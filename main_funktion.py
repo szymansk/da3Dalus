@@ -88,9 +88,6 @@ shell = TopoDS_Shell()
 builder.MakeShell(shell)
 
 
-# In[2]:
-
-
 import sys
 
 sys.path.append("C:/Users/motto/Downloads/tigl-examples-master/tigl-examples-master/tigl/python/geometry-modeling")
@@ -105,23 +102,72 @@ from Rumpf import profil
 from Einleseservice import einlesen
 from Ausgabeservice import ausgabe
 
+import os
+import urllib.request
+from app import app
+from flask import Flask, request, redirect, jsonify
+from werkzeug.utils import secure_filename
+
 
 # In[3]:
 
+def open_file(filename):
+    ein=einlesen()
+    aus=ausgabe()
+    w1=Wandstaerke()
+    a1=Aussparung()
+    r1=rippen()
+    v1=verschieben()
+    am1=abmessungen()
+    p1=profil()
+    f2=fluegel()
 
-ein=einlesen()
-aus=ausgabe()
-w1=Wandstaerke()
-a1=Aussparung()
-r1=rippen()
-v1=verschieben()
-am1=abmessungen()
-p1=profil()
-f2=fluegel()
-#tigl_h=ein.cpacs_einlesen("C:/Users/motto/Downloads/tigl-master/tigl-master/tests/unittests/TestData/D150_v30.xml")
-tigl_h=ein.cpacs_einlesen("C:/Users/motto/Downloads/tigl-master/tigl-master/tests/unittests/TestData/simpletest.cpacs.xml")
-f2.make_fluegel(tigl_h)
-#p1.make_profil()
+    tigl_h=ein.cpacs_einlesen(filename)
+    #tigl_h=ein.cpacs_einlesen("C:/Users/motto/Downloads/tigl-master/tigl-master/tests/unittests/TestData/simpletest.cpacs.xml")
+    #tigl_h=ein.cpacs_einlesen("C:/Users/motto/Downloads/tigl-master/tigl-master/tests/unittests/TestData/simpletest.cpacs.xml")
+    f2.make_fluegel(tigl_h)
+
+
+    #f2.make_fluegel(tigl_h)
+    #p1.make_profil()
+
+ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif','xml','json'])
+
+def allowed_file(filename):
+	return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route('/file-upload', methods=['POST'])
+def upload_file():
+	# check if the post request has the file part
+	if 'file' not in request.files:
+		resp = jsonify({'message' : 'No file part in the request'})
+		resp.status_code = 400
+		return resp
+	file = request.files['file']
+    #oeff.open_file(file)
+	if file.filename == '':
+		resp = jsonify({'message' : 'No file selected for uploading'})
+		resp.status_code = 400
+		return resp
+	if file and allowed_file(file.filename):
+		filename = secure_filename(file.filename)
+        #open_file(file.filename)
+        #oeff.open_file(file.filename)
+		file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+		resp = jsonify({'message' : 'File successfully uploaded'})
+		resp.status_code = 201
+		return resp
+	else:
+		resp = jsonify({'message' : 'Allowed file types are txt, pdf, png, jpg, jpeg, gif'})
+		resp.status_code = 400
+		return resp
+
+if __name__ == "__main__":
+    open_file("C:/uploads/D150_v30.xml")
+    app.run()
+
+ 
+
 
 
 
