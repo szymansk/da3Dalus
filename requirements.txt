@@ -4,18 +4,3 @@ numpy==1.21.5
 OCC==0.0.2.dev20190912195130
 Werkzeug==2.0.3
 jinja2
-
-docker run -d -it -v /srv/runner:/etc/gitlab-runner --name runner-hostnet gitlab/gitlab-runner register \
-  --non-interactive \
-  --url "http://adesso-cis1-ba-lm-dev01.test-server.ag/" \
-  --registration-token "f_LQFRLisP_BzLpjjGs9" \
-  --executor "docker" \
-  --docker-image docker:latest \
-  --description "gitlab runner with network mode host enabled" \
-  --tag-list "hostnet" \
-  --run-untagged="false" \
-  --locked="false" \
-  --docker-network-mode "host" \
-  --docker-privileged="true" \
-  --docker-volumes ["/var/run/docker.sock:/var/run/docker.sock"] \
-  --docker-tlsverify="false" 
