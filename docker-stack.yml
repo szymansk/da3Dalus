@@ -1,0 +1,10 @@
+version: '3.3'
+services:
+
+  # Application services
+  cad-modelling-service:
+    image: adesso-cis1-ba-lm-dev01.test-server.ag:4567/da3dalus/cad-modelling-service:latest
+    container_name: cad-modelling-service
+    ports:
+      - 5000:5000
+    restart: always
