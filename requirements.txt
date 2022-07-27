@@ -1,0 +1,5 @@
+flask
+ipywidgets
+numpy
+OCC
+Werkzeug
