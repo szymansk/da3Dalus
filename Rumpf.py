@@ -81,13 +81,14 @@ builder.MakeShell(shell)
 
 import sys
 
-sys.path.append("C:/Users/motto/Downloads/tigl-examples-master/tigl-examples-master/tigl/python/geometry-modeling")
+sys.path.append("C:/Users/motto/cad-modelling-service")
 
 from Wand_erstellen import Wandstaerke
 from Aussparungen import Aussparung
 from Innenstruktur import rippen
 from shape_verschieben import verschieben
 from abmasse import abmessungen
+from Ausgabeservice import ausgabe
 
 
 # In[2]:
@@ -98,6 +99,7 @@ w1=Wandstaerke()
 v1=verschieben()
 i1=rippen()
 ab1=abmessungen()
+aus=ausgabe()
 
 
 
@@ -115,15 +117,15 @@ class profil:
             
         return shape
 
-    def make_profil(self):
-
+    def make_profil(self,tigl_h):
+        self.tigl_h=tigl_h
         display, start_display, add_menu, add_function_to_menu = init_display()
         #servo,b1,b2,fertig = a1.make_Servo(0.15,0.2,0.2)
 
         #display.DisplayShape(servo.Shape(),color="blue")
         #display.DisplayShape(b1)
         #display.DisplayShape(b2)
-        
+        '''
         tixi_h = tixi3wrapper.Tixi3()
         tigl_h = tigl3wrapper.Tigl3()
 
@@ -131,7 +133,7 @@ class profil:
         tixi_h.open("C:/Users/motto/Downloads/tigl-master/tigl-master/tests/unittests/TestData/D150_v30.xml")
         #tixi_h.open("C:/Program Files/TIGL-3.2.3-win64 (1)/TIGL-3.2.3-win64/share/doc/tigl3/examples/simpletest.cpacs.xml")
         tigl_h.open(tixi_h, "")
-        
+        '''
         # get the configuration manager
         mgr = tigl3.configuration.CCPACSConfigurationManager_get_instance()
 
@@ -195,8 +197,9 @@ class profil:
 
             #display.DisplayShape(CommonSurface3)
             fertig=BRepAlgoAPI_Fuse(ausgehoelt,CommonSurface3).Shape()
-
-        display.DisplayShape(fertig,transparency=0.8)
+            
+            display.DisplayShape(fertig,transparency=0.8)
+            aus.write_stl_file2(fertig,"flugel.stl")
                 #CS.append(BRepAlgoAPI_Common(m_rippen,profile[isegment-1]).Shape())
                 #verbunden.append(BRepAlgoAPI_Fuse(neu[isegment-1],CS[isegment-1]).Shape())
             #display.DisplayShape(verbunden,transparency=0.8)
