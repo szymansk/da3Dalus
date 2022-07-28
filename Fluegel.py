@@ -90,7 +90,8 @@ builder.MakeShell(shell)
 
 import sys
 
-sys.path.append("C:/Users/motto/Downloads/tigl-examples-master/tigl-examples-master/tigl/python/geometry-modeling")
+#sys.path.append("C:/Users/motto/Downloads/tigl-examples-master/tigl-examples-master/tigl/python/geometry-modeling")
+sys.path.append("C:/Users/motto/cad-modelling-service")
 
 from Wand_erstellen import Wandstaerke
 from Aussparungen import Aussparung
@@ -172,11 +173,14 @@ class fluegel:
                 aMirroredShape = aBRespTrsf.Shape()
                 
                 fluegelgesamt=BRepAlgoAPI_Fuse(verbunden,aMirroredShape).Shape()
-                #aus.write_stl_file(fluegelgesamt,"fluegel.stl")
+                aus.write_stl_file2(fluegelgesamt,"fluegel.stl")
                 display.DisplayShape(fluegelgesamt,transparency=0.8)
+                
 
             else:
                 display.DisplayShape(verbunden,transparency=0.8)
+                aus.write_stl_file2(verbunden,"flugel.stl")
+                
 
 
         display.FitAll()
