@@ -42,11 +42,11 @@ from OCC.Core.BRepOffset import BRepOffset_Skin
 from OCC.Core.BRepOffsetAPI import BRepOffsetAPI_MakeThickSolid, BRepOffsetAPI_ThruSections
 
 from OCC.Core.BRepFeat import (
-    BRepFeat_MakePrism,
-    BRepFeat_MakeDPrism,
-    BRepFeat_SplitShape,
-    BRepFeat_MakeLinearForm,
-    BRepFeat_MakeRevol,
+	BRepFeat_MakePrism,
+	BRepFeat_MakeDPrism,
+	BRepFeat_SplitShape,
+	BRepFeat_MakeLinearForm,
+	BRepFeat_MakeRevol,
 )
 
 from OCC.Core.Geom import Geom_CylindricalSurface, Geom_Plane, Geom_Surface
@@ -58,10 +58,10 @@ from OCC.Core import StlAPI
 import numpy as np
 
 from OCC.Core.BRepAlgoAPI import (
-    BRepAlgoAPI_Fuse,
-    BRepAlgoAPI_Common,
-    BRepAlgoAPI_Section,
-    BRepAlgoAPI_Cut,
+	BRepAlgoAPI_Fuse,
+	BRepAlgoAPI_Common,
+	BRepAlgoAPI_Section,
+	BRepAlgoAPI_Cut,
 )
 
 from OCC.Extend.TopologyUtils import TopologyExplorer
@@ -90,7 +90,8 @@ builder.MakeShell(shell)
 
 import sys
 
-sys.path.append("C:/Users/motto/Downloads/tigl-examples-master/tigl-examples-master/tigl/python/geometry-modeling")
+#sys.path.append("C:/Users/motto/Downloads/tigl-examples-master/tigl-examples-master/tigl/python/geometry-modeling")
+sys.path.append("C:/Users/motto/cad-modelling-service")
 
 from Wand_erstellen import Wandstaerke
 from Aussparungen import Aussparung
@@ -112,24 +113,31 @@ from werkzeug.utils import secure_filename
 # In[3]:
 
 def open_file(filename):
-    ein=einlesen()
-    aus=ausgabe()
-    w1=Wandstaerke()
-    a1=Aussparung()
-    r1=rippen()
-    v1=verschieben()
-    am1=abmessungen()
-    p1=profil()
-    f2=fluegel()
+	ein=einlesen()
+	aus=ausgabe()
+	w1=Wandstaerke()
+	a1=Aussparung()
+	r1=rippen()
+	v1=verschieben()
+	am1=abmessungen()
+	p1=profil()
+	f2=fluegel()
 
-    tigl_h=ein.cpacs_einlesen(filename)
-    #tigl_h=ein.cpacs_einlesen("C:/Users/motto/Downloads/tigl-master/tigl-master/tests/unittests/TestData/simpletest.cpacs.xml")
-    #tigl_h=ein.cpacs_einlesen("C:/Users/motto/Downloads/tigl-master/tigl-master/tests/unittests/TestData/simpletest.cpacs.xml")
-    f2.make_fluegel(tigl_h)
+	tigl_h=ein.cpacs_einlesen(filename)
+
+	f2.make_fluegel(tigl_h)
+	
+	#p1.make_profil(tigl_h)
+	#display, start_display, add_menu, add_function_to_menu = init_display()
+
+	#display.DisplayShape(flugelfertig)
+
+	#start_display()
+	#display.FitAll()
 
 
-    #f2.make_fluegel(tigl_h)
-    #p1.make_profil()
+	#f2.make_fluegel(tigl_h)
+	#p1.make_profil()
 
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif','xml','json'])
 
@@ -144,31 +152,26 @@ def upload_file():
 		resp.status_code = 400
 		return resp
 	file = request.files['file']
-    #oeff.open_file(file)
+
 	if file.filename == '':
 		resp = jsonify({'message' : 'No file selected for uploading'})
 		resp.status_code = 400
 		return resp
+
 	if file and allowed_file(file.filename):
 		filename = secure_filename(file.filename)
-        #open_file(file.filename)
-        #oeff.open_file(file.filename)
 		file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 		resp = jsonify({'message' : 'File successfully uploaded'})
 		resp.status_code = 201
+		open_file(os.path.join(app.config['UPLOAD_FOLDER'],filename))
 		return resp
+
 	else:
 		resp = jsonify({'message' : 'Allowed file types are txt, pdf, png, jpg, jpeg, gif'})
 		resp.status_code = 400
 		return resp
 
 if __name__ == "__main__":
-    open_file("C:/uploads/D150_v30.xml")
-    app.run()
-
- 
-
-
-
-
-
+	#open_file("C:/uploads/D150_v30.xml")
+	#open_file(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+	app.run()
