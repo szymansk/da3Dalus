@@ -90,7 +90,6 @@ builder.MakeShell(shell)
 
 import sys
 
-#sys.path.append("C:/Users/motto/Downloads/tigl-examples-master/tigl-examples-master/tigl/python/geometry-modeling")
 sys.path.append("C:/Users/motto/cad-modelling-service")
 
 from Wand_erstellen import Wandstaerke
