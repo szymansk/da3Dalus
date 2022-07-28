@@ -88,9 +88,9 @@ shell = TopoDS_Shell()
 builder.MakeShell(shell)
 
 
-import sys
+#import sys
 
-sys.path.append("C:/Users/motto/cad-modelling-service")
+#sys.path.append("C:/Users/motto/cad-modelling-service")
 
 from Wand_erstellen import Wandstaerke
 from Aussparungen import Aussparung
