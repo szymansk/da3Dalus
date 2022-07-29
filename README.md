@@ -1,0 +1,12 @@
+# Testing
+
+1. Open up a Termial, change to your file folder and enter the following command:
+```
+python main_funktion.py
+```
+2. Make sure you have a file folder C:/uploads
+2. Then send a file via Postman with the following selection
+
+![Postman](Postman.png)
+
+4. The resulting Stl output file is located in the same folder as the Python programs
