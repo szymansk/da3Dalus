@@ -1,11 +1,11 @@
 # Testing
 
 1. Open up a Termial, change to your file folder with:
-```bash
+```
  cd filepath
 ```
 and enter the following command:
-```bash
+```
 python main_funktion.py
 ```
 2. Make sure you have a file folder C:/uploads
