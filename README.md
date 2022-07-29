@@ -1,11 +1,15 @@
 # Testing
 
-1. Open up a Termial, change to your file folder and enter the following command:
+1. Open up a Termial, change to your file folder with:
+```bash
+ cd filepath
 ```
+and enter the following command:
+```bash
 python main_funktion.py
 ```
 2. Make sure you have a file folder C:/uploads
-2. Then send a file via Postman with the following selection
+3. Then send a file via Postman with the following selection
 
 ![Postman](Postman.PNG)
 
