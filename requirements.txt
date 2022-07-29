@@ -1,6 +1,6 @@
-Flask==1.1.2
-ipywidgets==7.6.5
-numpy==1.21.5
-OCC==0.0.2.dev20190912195130
-Werkzeug==2.0.3
+flask
+ipywidgets
+numpy
+OCC
+Werkzeug
 jinja2
