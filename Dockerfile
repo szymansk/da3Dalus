@@ -1,4 +1,10 @@
-FROM adesso-cis1-ba-lm-dev01.test-server.ag:4567/da3dalus/cad-modelling-service/conda-base:latest
+FROM continuumio/miniconda3:latest
+
+RUN conda install -yc dlr-sc tigl3
+RUN conda install -c conda-forge pythreejs
+
+RUN apt-get update
+RUN apt-get install ffmpeg libsm6 libxext6  -y
 
 WORKDIR /usr/src/app
 
