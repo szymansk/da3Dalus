@@ -26,6 +26,6 @@ The *response* is an STL file with the modelled object.
 
 ### Example
 
-![Example in Postman](Postman.png)
+![Example in Postman](Postman.PNG)
 
 *Note: The response in Postman is shown as raw data. The file can be saved by clicking 'Save Response' -> 'Save to a file'.*
