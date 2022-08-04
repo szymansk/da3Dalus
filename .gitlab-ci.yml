@@ -2,6 +2,7 @@ stages:
   - docker-build
 
 real-docker-build:
+  stage: docker-build
   image: docker:20.10.10
   services:
       - docker:20.10.10-dind
