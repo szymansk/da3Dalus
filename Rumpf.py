@@ -119,7 +119,7 @@ class profil:
 
     def make_profil(self,tigl_h):
         self.tigl_h=tigl_h
-        display, start_display, add_menu, add_function_to_menu = init_display()
+        # display, start_display, add_menu, add_function_to_menu = init_display()
         #servo,b1,b2,fertig = a1.make_Servo(0.15,0.2,0.2)
 
         #display.DisplayShape(servo.Shape(),color="blue")
@@ -198,8 +198,8 @@ class profil:
             #display.DisplayShape(CommonSurface3)
             fertig=BRepAlgoAPI_Fuse(ausgehoelt,CommonSurface3).Shape()
             
-            display.DisplayShape(fertig,transparency=0.8)
-            aus.write_stl_file2(fertig,"flugel.stl")
+            # display.DisplayShape(fertig,transparency=0.8)
+            aus.write_stl_file2(fertig,"rumpf.stl")
                 #CS.append(BRepAlgoAPI_Common(m_rippen,profile[isegment-1]).Shape())
                 #verbunden.append(BRepAlgoAPI_Fuse(neu[isegment-1],CS[isegment-1]).Shape())
             #display.DisplayShape(verbunden,transparency=0.8)
@@ -207,9 +207,9 @@ class profil:
 
             
             
-        display.FitAll()
+        # display.FitAll()
 
-        start_display()
+        # start_display()
 
         #return fertig
     
