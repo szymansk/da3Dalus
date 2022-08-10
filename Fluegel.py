@@ -116,7 +116,7 @@ class fluegel:
     
     def make_fluegel(self,tigl_h):
         self.tigl_h=tigl_h
-        display, start_display, add_menu, add_function_to_menu = init_display()
+        # display, start_display, add_menu, add_function_to_menu = init_display()
         '''
         tixi_h = tixi3wrapper.Tixi3()
         tigl_h = tigl3wrapper.Tigl3()
@@ -174,16 +174,16 @@ class fluegel:
                 
                 fluegelgesamt=BRepAlgoAPI_Fuse(verbunden,aMirroredShape).Shape()
                 aus.write_stl_file2(fluegelgesamt,"fluegel.stl")
-                display.DisplayShape(fluegelgesamt,transparency=0.8)
+                # display.DisplayShape(fluegelgesamt,transparency=0.8)
                 
 
             else:
-                display.DisplayShape(verbunden,transparency=0.8)
-                aus.write_stl_file2(verbunden,"flugel.stl")
+                # display.DisplayShape(verbunden,transparency=0.8)
+                aus.write_stl_file2(verbunden,"fluegel.stl")
                 
 
 
-        display.FitAll()
+        # display.FitAll()
 
-        start_display()
+        # start_display()
         

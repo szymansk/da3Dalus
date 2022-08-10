@@ -105,13 +105,13 @@ from Ausgabeservice import ausgabe
 import os
 import urllib.request
 from app import app
-from flask import Flask, request, redirect, jsonify
+from flask import Flask, request, redirect, jsonify, send_file
 from werkzeug.utils import secure_filename
 
 
 # In[3]:
 
-def open_file(filename):
+def open_wing(filename):
 	ein=einlesen()
 	aus=ausgabe()
 	w1=Wandstaerke()
@@ -126,7 +126,7 @@ def open_file(filename):
 
 	f2.make_fluegel(tigl_h)
 	
-	#p1.make_profil(tigl_h)
+	p1.make_profil(tigl_h)
 	#display, start_display, add_menu, add_function_to_menu = init_display()
 
 	#display.DisplayShape(flugelfertig)
@@ -138,13 +138,28 @@ def open_file(filename):
 	#f2.make_fluegel(tigl_h)
 	#p1.make_profil()
 
+def open_fuselage(filename):
+	ein=einlesen()
+	aus=ausgabe()
+	w1=Wandstaerke()
+	a1=Aussparung()
+	r1=rippen()
+	v1=verschieben()
+	am1=abmessungen()
+	p1=profil()
+	f2=fluegel()
+
+	tigl_h=ein.cpacs_einlesen(filename)
+	
+	p1.make_profil(tigl_h)
+
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif','xml','json'])
 
 def allowed_file(filename):
 	return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-@app.route('/file-upload', methods=['POST'])
-def upload_file():
+@app.route('/wing-upload', methods=['POST'])
+def upload_wing():
 	# check if the post request has the file part
 	if 'file' not in request.files:
 		resp = jsonify({'message' : 'No file part in the request'})
@@ -159,11 +174,42 @@ def upload_file():
 
 	if file and allowed_file(file.filename):
 		filename = secure_filename(file.filename)
-		file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-		resp = jsonify({'message' : 'File successfully uploaded'})
-		resp.status_code = 201
-		open_file(os.path.join(app.config['UPLOAD_FOLDER'],filename))
+		file_path = filename
+		file.save(file_path)
+		# resp = jsonify({'message' : 'File successfully uploaded'})
+		# resp.status_code = 201
+		open_wing(file_path)
+		# return resp
+		return send_file("fluegel.stl")
+
+	else:
+		resp = jsonify({'message' : 'Allowed file types are txt, pdf, png, jpg, jpeg, gif'})
+		resp.status_code = 400
 		return resp
+
+@app.route('/fuselage-upload', methods=['POST'])
+def upload_fuselage():
+	# check if the post request has the file part
+	if 'file' not in request.files:
+		resp = jsonify({'message' : 'No file part in the request'})
+		resp.status_code = 400
+		return resp
+	file = request.files['file']
+
+	if file.filename == '':
+		resp = jsonify({'message' : 'No file selected for uploading'})
+		resp.status_code = 400
+		return resp
+
+	if file and allowed_file(file.filename):
+		filename = secure_filename(file.filename)
+		file_path = filename
+		file.save(file_path)
+		# resp = jsonify({'message' : 'File successfully uploaded'})
+		# resp.status_code = 201
+		open_fuselage(file_path)
+		# return resp
+		return send_file("rumpf.stl")
 
 	else:
 		resp = jsonify({'message' : 'Allowed file types are txt, pdf, png, jpg, jpeg, gif'})
