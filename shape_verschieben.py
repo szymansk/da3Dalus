@@ -123,12 +123,12 @@ class verschieben:
 
         return shp
 
-    def make_translation_fuse(self,shape,breite,anz):
+    def make_translation_fuse(self,shape,breite,anz,rasterabstand):
         self.s2=[]
         for i in range(anz):
             self.s2=translate_shp(shape,gp_Vec(0.0,breite,0.0))
             rippen=BRepAlgoAPI_Fuse(shape,self.s2).Shape()
-            breite=breite-0.9
+            breite=breite-rasterabstand
             shape=rippen
 
         return shape
