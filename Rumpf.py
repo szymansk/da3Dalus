@@ -140,7 +140,6 @@ class profil:
         # get the CPACS configuration, defined by the tigl handle
         # we need to access the underlying tigl handle (that is used in the C/C++ API)
         config = mgr.get_configuration(tigl_h._handle.value)
-        
         CommonSurface=[]
         for ifuse in range(1, config.get_fuselage_count() + 1):
             fuselage = config.get_fuselage(ifuse)
@@ -189,7 +188,7 @@ class profil:
             #display.DisplayShape(verbunden)
 
             cs=i1.fuse_shapes_common(profile)
-            ausgehoelt=w1.create_hollowedsolid(cs)
+            ausgehoelt=w1.create_hollowedsolid(cs,0.04)
 
             #display.DisplayShape(cs,transparency=0.8)
             #display.DisplayShape(neu,transparency=0.8)
