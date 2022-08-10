@@ -111,7 +111,7 @@ class Wandstaerke:
 
         return Geom_Plane.DownCast(BRep_Tool_Surface(aFace))
 
-    def create_hollowedsolid(self,shape):
+    def create_hollowedsolid(self,shape,thickness):
         # Our goal is to find the highest Z face and remove it
         faceToRemove = None
         zMax = -1
@@ -137,7 +137,7 @@ class Wandstaerke:
         facesToRemove.Append(faceToRemove)
 
         #myBody = BRepOffsetAPI_MakeThickSolid(myBody, facesToRemove, -thickness / 50.0, 0.001)
-        myBody = BRepOffsetAPI_MakeThickSolid(shape, facesToRemove, 0.02, 0.001)
+        myBody = BRepOffsetAPI_MakeThickSolid(shape, facesToRemove, thickness, 0.001)
         myBody=myBody.Shape()
 
         return myBody
