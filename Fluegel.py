@@ -133,30 +133,32 @@ class fluegel:
         # we need to access the underlying tigl handle (that is used in the C/C++ API)
         config = mgr.get_configuration(tigl_h._handle.value)
 
+        rasterabstand=2
 
-        #for iwing in range(1, config.get_wing_count() + 1):
-        for iwing in range(1, 2):
-
+        for iwing in range(1, config.get_wing_count() + 1):
+        
             wing = config.get_wing(iwing)
             wing_shape = wing.get_loft().shape()
+            
             xmin,ymin,zmin,xmax,ymax,zmax = am2.get_koordinates(wing_shape)
 
             mirrored_shape = wing.get_mirrored_loft()
             
 
-            wing_shape_huelle = w2.create_hollowedsolid(wing_shape)
+            wing_shape_huelle = w2.create_hollowedsolid(wing_shape,0.04)
             xdiff,zdiff,ydiff = am2.get_dimensions(xmin,ymin,zmin,xmax,ymax,zmax)
 
 
             #S=make_ribs(xdiff*0.5,ydiff,zdiff,2.0)
-            S= r2.make_ribs(xdiff,ydiff,0.2,zdiff)
-            #anzahl = 200
-            anzahl = 10
+            S= r2.make_ribs(xdiff,ydiff,0.02,zdiff*2)
+            #anzahl = 10
+            anzahl=int(xdiff/rasterabstand)
 
 
             #Sneu = make_translation(S,-0.1,anzahl)
             #Sneu = v2.make_translation(S.Shape(),0.1,anzahl)
-            Sneu = v2.make_translation_fuse(S.Shape(),-0.9,anzahl)
+            #Sneu = v2.make_translation_fuse(S.Shape(),-0.9,anzahl)
+            Sneu = v2.make_translation_fuse(S.Shape(),-rasterabstand,anzahl,rasterabstand)
             m_rippen = r2.move_rippen_neu(Sneu,xmin,ymax,zmin)
 
             CommonSurface = BRepAlgoAPI_Common(m_rippen,wing_shape).Shape()
