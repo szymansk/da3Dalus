@@ -90,18 +90,18 @@ builder.MakeShell(shell)
 # In[ ]:
 
 
-class abmessungen:
-    def get_koordinates(self,shape):
-        bbox = Bnd_Box()
-        brepbndlib_Add(shape,bbox)
-        xmin, ymin, zmin, xmax,ymax,zmax = bbox.Get()
+#class abmessungen:
+def get_koordinates(shape) :
+    bbox = Bnd_Box()
+    brepbndlib_Add(shape,bbox)
+    xmin, ymin, zmin, xmax,ymax,zmax = bbox.Get()
 
-        return xmin, ymin, zmin,xmax,ymax,zmax
-    
-    def get_dimensions(self,xmin,ymin,zmin,xmax,ymax,zmax):
-        xdiff = xmax - xmin
-        zdiff = zmax - zmin
-        ydiff = ymax - ymin
+    return xmin, ymin, zmin,xmax,ymax,zmax
 
-        return xdiff,zdiff,ydiff
+def get_dimensions(xmin,ymin,zmin,xmax,ymax,zmax):
+    xdiff = xmax - xmin
+    zdiff = zmax - zmin
+    ydiff = ymax - ymin
+
+    return xdiff,zdiff,ydiff
 

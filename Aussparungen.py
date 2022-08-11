@@ -95,7 +95,7 @@ builder.MakeShell(shell)
 
 class Aussparung:
     
-    def motor_auslesen(self,pfad):
+    def motor_auslesen(pfad):
         from xml.etree.ElementTree import parse
         doc = parse(pfad).getroot()
 
@@ -111,7 +111,7 @@ class Aussparung:
             
         return shaftDiameter, shaftLength,motorLength,motorDiameter,overallLength,connectorType,slots,poles
 
-    def servo_auslesen(self,pfad):
+    def servo_auslesen(pfad):
         from xml.etree.ElementTree import parse
         doc = parse(pfad).getroot()
 
@@ -127,7 +127,7 @@ class Aussparung:
             
         return shaftDiameter, shaftLength,motorLength,motorDiameter,overallLength,connectorType,slots,poles
        
-    def make_motor_schacht(self,shaftDiameter,shaftLength,motorLength,motorDiameter,overallLength):
+    def make_motor_schacht(shaftDiameter,shaftLength,motorLength,motorDiameter,overallLength):
         puffer=1
         skalierung=1
         shaftDiameter*=skalierung
@@ -165,7 +165,7 @@ class Aussparung:
 
         return fertig
     
-    def make_akku_schacht(self,length,height,width,puffer):
+    def make_akku_schacht(length,height,width,puffer):
         length+=puffer
         height+=puffer
         width+=puffer
@@ -176,52 +176,52 @@ class Aussparung:
         #start_display()
         return akku
         
-    def verschieben(self,shape,x,y,z):
+    def verschieben(shape,x,y,z):
         s2=translate_shp(shape,gp_Vec(x,y,z))
         return s2
         
     def make_Servo(self,hoehe,breite,tiefe):
         import math
-        self.dreieckoben_y = hoehe+math.tan(45)*(breite*0.5)
-        self.dreieckunten_y = -math.tan(45)*(breite*0.5)
+        dreieckoben_y = hoehe+math.tan(45)*(breite*0.5)
+        dreieckunten_y = -math.tan(45)*(breite*0.5)
 
-        self.breitedreieckgesamt= ((hoehe*0.5)/math.tan(45))*2+breite
-        self.breitedreieck= (hoehe*0.5)/math.tan(45)
+        breitedreieckgesamt= ((hoehe*0.5)/math.tan(45))*2+breite
+        breitedreieck= (hoehe*0.5)/math.tan(45)
 
         mkw = BRepBuilderAPI_MakeWire()
 
         ## Pkt 1 nach 2
         mkw.Add(
-            BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, 0.0, hoehe*0.5), gp_Pnt(self.breitedreieck,0.0, 0.0)).Edge()
+            BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, 0.0, hoehe*0.5), gp_Pnt(breitedreieck,0.0, 0.0)).Edge()
         )
         ## Pkt 2 nach 3
         mkw.Add(
-            BRepBuilderAPI_MakeEdge(gp_Pnt(self.breitedreieck,0.0, 0.0), gp_Pnt(self.breitedreieck+breite,0.0, 0.0)).Edge()
+            BRepBuilderAPI_MakeEdge(gp_Pnt(breitedreieck,0.0, 0.0), gp_Pnt(breitedreieck+breite,0.0, 0.0)).Edge()
         )
 
         ## Pkt 3 nach 4
         mkw.Add(
             BRepBuilderAPI_MakeEdge(
-                gp_Pnt(self.breitedreieck+breite,0.0, 0.0), gp_Pnt(self.breitedreieckgesamt, 0.0, hoehe*0.5)
+                gp_Pnt(breitedreieck+breite,0.0, 0.0), gp_Pnt(breitedreieckgesamt, 0.0, hoehe*0.5)
             ).Edge()
         )
         ## Pkt 4 nach 5
         mkw.Add(
             BRepBuilderAPI_MakeEdge(
-                gp_Pnt(self.breitedreieckgesamt, 0.0, hoehe*0.5), gp_Pnt(self.breitedreieck+breite, 0.0, hoehe)
+                gp_Pnt(breitedreieckgesamt, 0.0, hoehe*0.5), gp_Pnt(breitedreieck+breite, 0.0, hoehe)
             ).Edge()
         )
 
         ## Pkt 5 nach 6
         mkw.Add(
             BRepBuilderAPI_MakeEdge(
-                gp_Pnt(self.breitedreieck+breite, 0.0, hoehe), gp_Pnt(self.breitedreieck, 0.0, hoehe)
+                gp_Pnt(breitedreieck+breite, 0.0, hoehe), gp_Pnt(breitedreieck, 0.0, hoehe)
             ).Edge()
         )
         ## Pkt 6 nach 1
         mkw.Add(
             BRepBuilderAPI_MakeEdge(
-                gp_Pnt(self.breitedreieck, 0.0, hoehe), gp_Pnt(0.0, 0.0, hoehe*0.5)
+                gp_Pnt(breitedreieck, 0.0, hoehe), gp_Pnt(0.0, 0.0, hoehe*0.5)
             ).Edge()
         )
 

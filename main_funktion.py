@@ -92,15 +92,12 @@ builder.MakeShell(shell)
 
 #sys.path.append("C:/Users/motto/cad-modelling-service")
 
-from Wand_erstellen import Wandstaerke
-from Aussparungen import Aussparung
-from Innenstruktur import rippen
-from shape_verschieben import verschieben
-from abmasse import abmessungen
+
+
 from Fluegel import fluegel
 from Rumpf import profil
 from Einleseservice import einlesen
-from Ausgabeservice import ausgabe
+from Ausgabeservice import *
 
 import os
 import urllib.request
@@ -108,49 +105,22 @@ from app import app
 from flask import Flask, request, redirect, jsonify, send_file
 from werkzeug.utils import secure_filename
 
-
-# In[3]:
-
 def open_wing(filename):
 	ein=einlesen()
-	aus=ausgabe()
-	w1=Wandstaerke()
-	a1=Aussparung()
-	r1=rippen()
-	v1=verschieben()
-	am1=abmessungen()
 	p1=profil()
 	f2=fluegel()
-
 	tigl_h=ein.cpacs_einlesen(filename)
-
 	f2.make_fluegel(tigl_h)
-	
 	p1.make_profil(tigl_h)
 	#display, start_display, add_menu, add_function_to_menu = init_display()
-
 	#display.DisplayShape(flugelfertig)
-
 	#start_display()
 	#display.FitAll()
 
-
-	#f2.make_fluegel(tigl_h)
-	#p1.make_profil()
-
 def open_fuselage(filename):
 	ein=einlesen()
-	aus=ausgabe()
-	w1=Wandstaerke()
-	a1=Aussparung()
-	r1=rippen()
-	v1=verschieben()
-	am1=abmessungen()
 	p1=profil()
-	f2=fluegel()
-
 	tigl_h=ein.cpacs_einlesen(filename)
-	
 	p1.make_profil(tigl_h)
 
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif','xml','json'])

@@ -82,56 +82,53 @@ from OCC.Core.Quantity import Quantity_NOC_RED
 import os
 
 from math import radians
-
+'''
 builder = BRep_Builder()
 shell = TopoDS_Shell()
 builder.MakeShell(shell)
+'''
 
-
-# In[3]:
-
-
-class verschieben:
+#class verschieben:
     
 
-    def make_translation(self,shape, breite,anz):
-        self.s2=[]
-        for i in range(anz):  
-            self.s2.append(translate_shp(shape,gp_Vec(0.0,breite,0.0)))
-            #breite=breite-0.3
-            breite=breite-0.8
-        #s2 = translate_shp(shape.Shape(),gp_Vec(0.0,breite,0.0))
-        return self.s2
+def make_translation(shape, breite,anz):
+    s2=[]
+    for i in range(anz):  
+        s2.append(translate_shp(shape,gp_Vec(0.0,breite,0.0)))
+        #breite=breite-0.3
+        breite=breite-0.8
+    #s2 = translate_shp(shape.Shape(),gp_Vec(0.0,breite,0.0))
+    return s2
 
-        
-    def rotate_shape(self, shape, axis, angle):
-        """Rotate a shape around an axis, with a given angle.
-        @param shape : the shape to rotate
-        @point : the origin of the axis
-        @vector : the axis direction
-        @angle : the value of the rotation
-        @return: the rotated shape.
-        """
-        #assert_shape_not_null(shape)
-        #if unite == "deg":  # convert angle to radians
-        angle = radians(angle)
-        trns = gp_Trsf()
-        trns.SetRotation(axis, angle)
-        brep_trns = BRepBuilderAPI_Transform(shape, trns, False)
-        brep_trns.Build()
-        shp = brep_trns.Shape()
+    
+def rotate_shape(shape, axis, angle):
+    """Rotate a shape around an axis, with a given angle.
+    @param shape : the shape to rotate
+    @point : the origin of the axis
+    @vector : the axis direction
+    @angle : the value of the rotation
+    @return: the rotated shape.
+    """
+    #assert_shape_not_null(shape)
+    #if unite == "deg":  # convert angle to radians
+    angle = radians(angle)
+    trns = gp_Trsf()
+    trns.SetRotation(axis, angle)
+    brep_trns = BRepBuilderAPI_Transform(shape, trns, False)
+    brep_trns.Build()
+    shp = brep_trns.Shape()
 
-        return shp
+    return shp
 
-    def make_translation_fuse(self,shape,breite,anz,rasterabstand):
-        self.s2=[]
-        for i in range(anz):
-            self.s2=translate_shp(shape,gp_Vec(0.0,breite,0.0))
-            rippen=BRepAlgoAPI_Fuse(shape,self.s2).Shape()
-            breite=breite-rasterabstand
-            shape=rippen
+def make_translation_fuse(shape,breite,anz,rasterabstand):
+    s2=[]
+    for i in range(anz):
+        s2=translate_shp(shape,gp_Vec(0.0,breite,0.0))
+        rippen=BRepAlgoAPI_Fuse(shape,s2).Shape()
+        breite=breite-rasterabstand
+        shape=rippen
 
-        return shape
+    return shape
 
 
 

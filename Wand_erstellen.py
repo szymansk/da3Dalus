@@ -91,54 +91,54 @@ builder.MakeShell(shell)
 # In[2]:
 
 
-class Wandstaerke:
-    def face_is_plane(self,face):
+#class Wandstaerke:
+def face_is_plane(face):
 
-        #Returns True if the TopoDS_Shape is a plane, False otherwise
+    #Returns True if the TopoDS_Shape is a plane, False otherwise
 
-        hs = BRep_Tool_Surface(face)
-        downcast_result= Geom_Plane.DownCast(hs)
-        #print(downcast_result)
+    hs = BRep_Tool_Surface(face)
+    downcast_result= Geom_Plane.DownCast(hs)
+    #print(downcast_result)
 
-        if downcast_result is None:
-            return False
-        else:
-            return True
+    if downcast_result is None:
+        return False
+    else:
+        return True
 
-    def geom_plane_from_face(self,aFace):
+def geom_plane_from_face(aFace):
 
-        #Returns the geometric plane entity from a planar surface
+    #Returns the geometric plane entity from a planar surface
 
-        return Geom_Plane.DownCast(BRep_Tool_Surface(aFace))
+    return Geom_Plane.DownCast(BRep_Tool_Surface(aFace))
 
-    def create_hollowedsolid(self,shape,thickness):
-        # Our goal is to find the highest Z face and remove it
-        faceToRemove = None
-        zMax = -1
+def create_hollowedsolid(shape,thickness):
+    # Our goal is to find the highest Z face and remove it
+    faceToRemove = None
+    zMax = -1
 
-        # We have to work our way through all the faces to find the highest Z face so we can remove it for the shell
-        aFaceExplorer = TopExp_Explorer(shape, TopAbs_FACE)
-        while aFaceExplorer.More():
-            aFace = topods.Face(aFaceExplorer.Current())
+    # We have to work our way through all the faces to find the highest Z face so we can remove it for the shell
+    aFaceExplorer = TopExp_Explorer(shape, TopAbs_FACE)
+    while aFaceExplorer.More():
+        aFace = topods.Face(aFaceExplorer.Current())
 
-            if self.face_is_plane(aFace):
-                aPlane = self.geom_plane_from_face(aFace)
+        if face_is_plane(aFace):
+            aPlane = geom_plane_from_face(aFace)
 
-                # We want the highest Z face, so compare this to the previous faces
-                aPnt = aPlane.Location()
-                aZ = aPnt.Z()
-                if aZ > zMax:
-                    zMax = aZ
-                    faceToRemove = aFace
+            # We want the highest Z face, so compare this to the previous faces
+            aPnt = aPlane.Location()
+            aZ = aPnt.Z()
+            if aZ > zMax:
+                zMax = aZ
+                faceToRemove = aFace
 
-            aFaceExplorer.Next()
+        aFaceExplorer.Next()
 
-        facesToRemove = TopTools_ListOfShape()
-        facesToRemove.Append(faceToRemove)
+    facesToRemove = TopTools_ListOfShape()
+    facesToRemove.Append(faceToRemove)
 
-        #myBody = BRepOffsetAPI_MakeThickSolid(myBody, facesToRemove, -thickness / 50.0, 0.001)
-        myBody = BRepOffsetAPI_MakeThickSolid(shape, facesToRemove, thickness, 0.001)
-        myBody=myBody.Shape()
+    #myBody = BRepOffsetAPI_MakeThickSolid(myBody, facesToRemove, -thickness / 50.0, 0.001)
+    myBody = BRepOffsetAPI_MakeThickSolid(shape, facesToRemove, thickness, 0.001)
+    myBody=myBody.Shape()
 
-        return myBody
+    return myBody
 
