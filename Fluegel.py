@@ -14,11 +14,11 @@ from unicodedata import mirrored
 
 import tigl3.boolean_ops
 import tigl3.configuration
-import tigl3.configuration as config3
+import tigl3.configuration as TConfig
 import tigl3.curve_factories
 import tigl3.exports as exp
 import tigl3.geometry
-import tigl3.geometry as geo
+import tigl3.geometry as TGeo
 import tigl3.surface_factories
 
 import OCC.Core.BRep as OBrep
@@ -47,10 +47,11 @@ from OCC.Core.BRepFeat import (BRepFeat_MakeDPrism, BRepFeat_MakeLinearForm,
 from OCC.Core.GCE2d import GCE2d_MakeSegment
 from OCC.Core.Geom import Geom_CylindricalSurface, Geom_Plane, Geom_Surface
 from OCC.Core.Geom2d import Geom2d_Curve, Geom2d_Ellipse, Geom2d_TrimmedCurve
-'''
+
 builder = OBrep.BRep_Builder() 
 shell = OTopo.TopoDS_Shell()
 builder.MakeShell(shell)
+'''
 
 from abmasse import *
 from Ausgabeservice import *
@@ -79,23 +80,29 @@ class fluegel:
         # display, start_display, add_menu, add_function_to_menu = init_display()
         # get the configuration manager
         #mgr: config3.CCPACSConfigurationManager  = tigl3.configuration.CCPACSConfigurationManager_get_instance()
-        mgr = tigl3.configuration.CCPACSConfigurationManager_get_instance()
+        mgr: TConfig.CCPACSConfigurationManager  = tigl3.configuration.CCPACSConfigurationManager_get_instance()
         
         # get the CPACS configuration, defined by the tigl handle
         # we need to access the underlying tigl handle (that is used in the C/C++ API)
         #config: config3.CCPACSConfiguration = mgr.get_configuration(tigl_h._handle.value)
-        config = mgr.get_configuration(tigl_h._handle.value)
+        config: TConfig.CCPACSConfiguration = mgr.get_configuration(tigl_h._handle.value)
 
         #FIXME grid_spacing
         rasterabstand=2
 
         for iwing in range(1, config.get_wing_count() + 1):
             #Get wing returns CPACSWing, XML Wing description
-            wing = config.get_wing(iwing)
+            wing: TConfig.CCPACSWing= config.get_wing(iwing)
+            wing_segemnt: TConfig.CCPACSWingSegment= wing.get_segment()
+            wing_segemnt.get_trailing_edge_shape()
+            
 
             #Get_loft()-shape() creates a TigleShape out of the Wing
             #3D solid  with Tigl metadata
-            wing_shape = wing.get_loft().shape()
+            wing_loft: TGeo.CNamedShape = wing.get_loft()
+            #wing_shape = wing.get_loft().shape()
+            wing_shape: OTopo.TopoDS_Shape = wing_loft.shape()
+            
                       
             #returns the korditnates from the bound box of the Wing_shape
             #calculate the diferences

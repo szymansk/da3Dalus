@@ -193,9 +193,9 @@ def make_ribs(hoehe,breite,dicke,extrude):
     #neu2 =mirrow_shape_x(mkw)
 
     S = BRepPrimAPI_MakePrism(
-        BRepBuilderAPI_MakeFace(mkw.Wire()).Face(),
-        gp_Vec(gp_Pnt(0.0, 0.0, 0.0), gp_Pnt(0.0, 0.0, extrude)),
-    )
+            BRepBuilderAPI_MakeFace(mkw.Wire()).Face(),
+            gp_Vec(gp_Pnt(0.0, 0.0, 0.0), gp_Pnt(0.0, 0.0, extrude)),
+        )
 
     ## verschieben damit gesamtes Modell drinnen ist
     ########################  z    y   z 
