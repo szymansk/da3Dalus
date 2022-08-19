@@ -37,19 +37,38 @@ from abmasse import *
 from Ausgabeservice import *
 from Aussparungen import *
 from Innenstruktur import *
+from Rib import *
 from shape_verschieben import *
 from Wand_erstellen import *
 
 class Wing:
     
-    def __init__(self, cpacs_wing_configuration:TConfig.CCPACSConfiguration,nr, name) -> None:
-        self.cpacs_wing_configuration: TConfig.CCPACSConfiguration= cpacs_wing_configuration
-        self.cpacs_wing: TConfig.CCPACSWing= cpacs_wing_configuration.get_wing(nr)
-        wing_loft: TGeo.CNamedShape= self.cpacs_wing.get_loft()
-        self.wing_shape: OTopo.TopoDS_Shape= wing_loft.shape()
-        self.wing_hollow: OTopo.TopoDS_Shape= None
-        self.rib:None
-        print("Wing", wing_loft.name, "was initialized")
+    def __init__(self) -> None:    
+        self.shape: OTopo.TopoDS_Shape= None
+        self.hollow: OTopo.TopoDS_Shape= None
+        self.with_ribs: OTopo.TopoDS_Shape= None
+        self.mirrored_shape: OTopo.TopoDS_Shape= None
+        """         
+        self.rib= None
+        self.ribs= None
+        self.rib_profile=None
+        self.rib_spacing=None
+        self.rib_height= None
+        self.rib_thikness= None
+        self.rib_extrude_lenght= None
+         """
+        self.rib:Rib=Rib()
+        self.type:str=type
+        self.xmin:float=None
+        self.ymin:float=None
+        self.zmin:float=None
+        self.xmax:float=None
+        self.ymax:float=None
+        self.zmax:float=None
+        self.xdiff:float=None
+        self.ydiff:float=None
+        self.zdiff:float=None
+        print("Wing was initialized")
     
     
     def get_wingspan(self):
@@ -59,3 +78,15 @@ class Wing:
         mirorred_loft= self.cpacs_wing.get_mirrored_loft
         return mirorred_loft!= None
     
+    def calculate_koordinates(self) :
+        bbox = Bnd_Box()
+        brepbndlib_Add(self.shape,bbox)
+        self.xmin, self.ymin, self.zmin, self.xmax,self.ymax,self.zmax = bbox.Get()
+
+    def calculate_outter_dimensions(self):
+        self.xdiff = self.xmax - self.xmin
+        self.zdiff = self.zmax - self.zmin
+        self.ydiff = self.ymax - self.ymin
+
+    def __str__(self) -> str:
+        return "Wing:", "xmin:" ,self.xmin, "ymin" ,self.ymin, "zmin:", self.zmin, "xmax:", self.xmax, "ymax:", self.ymax, "zmax:", self.zmax, "xdiff:", self.xdiff, "ydiff:", self.ydiff, "zdiff:",self.zdiff

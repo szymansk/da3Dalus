@@ -5,21 +5,18 @@ import OCC.Core.BRepPrimAPI as OPrim
 import OCC.Core.BRep as OBrep
 from OCC.Core.gp import *
 
-class Rib:
-    def __init__(self):
-        self.rib= None
-        self.ribs= None
-        self.profile:OTopo.TopoDS_Face=None
-        self.spacing=None
-        self.height= None
-        self.thikness= None
-        self.extrude_lenght= None
+class Ribs:
+    
+    def __init__(self, profile_height, profile_thikness, extrude_lenght,type:str="x") -> None:
+        self.profile_height= profile_height
+        self.profile_thikness=profile_thikness
+        self.extrude_lenght=extrude_lenght
         self.type:str=type
-
-    def set_profile(self, type) -> OTopo.TopoDS_Face:
-        '''
-        set_profile x, /, -/,
-        '''
+        self.profile:OTopo.TopoDS_Face=self.face_profile(type)
+        self.single=self.extrude_profile(extrude_lenght)
+        self.shape=None    
+    
+    def face_profile(self, type) -> OTopo.TopoDS_Face:
         face:OTopo.TopoDS_Face=None
         if type=="/":
             #TODO / profile Funktion
@@ -31,17 +28,16 @@ class Rib:
             pass
         else : #x
             face= self.x_profile()        
-        self.profile=face
+        return face
         
     def x_profile(self)-> OTopo.TopoDS_Face:
-        print("test:", self.height, self.thikness)
-        gesamt_x = 0.0+math.tan(45)*self.height + self.thikness
+        gesamt_x = 0.0+math.tan(45)*self.profile_height + self.profile_thikness
         mitte_x = gesamt_x*0.5
-        mitte_lx= (gesamt_x-self.thikness)*0.5
-        mitte_rx= (gesamt_x+self.thikness)*0.5
-        mitte_yl= self.height*0.5
-        mitte_yo= (self.height+self.thikness)*0.5
-        mitte_yu= (self.height-self.thikness)*0.5
+        mitte_lx= (gesamt_x-self.profile_thikness)*0.5
+        mitte_rx= (gesamt_x+self.profile_thikness)*0.5
+        mitte_yl= self.profile_height*0.5
+        mitte_yo= (self.profile_height+self.profile_thikness)*0.5
+        mitte_yu= (self.profile_height-self.profile_thikness)*0.5
 
         mkw = OBuilder.BRepBuilderAPI_MakeWire()
 
@@ -53,40 +49,40 @@ class Rib:
         ## Pkt 2 nach 3
         mkw.Add(
             OBuilder.BRepBuilderAPI_MakeEdge(
-                gp_Pnt(mitte_lx,mitte_yl, 0.0), gp_Pnt(0.0, self.height, 0.0)
+                gp_Pnt(mitte_lx,mitte_yl, 0.0), gp_Pnt(0.0, self.profile_height, 0.0)
             ).Edge()
         )
         ## Pkt 3 nach 4
         mkw.Add(
             OBuilder.BRepBuilderAPI_MakeEdge(
-                gp_Pnt(0.0, self.height, 0.0), gp_Pnt(self.thikness, self.height, 0.0)
+                gp_Pnt(0.0, self.profile_height, 0.0), gp_Pnt(self.profile_thikness, self.profile_height, 0.0)
             ).Edge()
         )
         ## Pkt 4 nach 5
         mkw.Add(
             OBuilder.BRepBuilderAPI_MakeEdge(
-                gp_Pnt(self.thikness, self.height, 0.0), gp_Pnt(mitte_x, mitte_yo, 0.0)
+                gp_Pnt(self.profile_thikness, self.profile_height, 0.0), gp_Pnt(mitte_x, mitte_yo, 0.0)
             ).Edge()
         )
 
         ##  Pkt5 nach 6
         mkw.Add(
             OBuilder.BRepBuilderAPI_MakeEdge(
-                    gp_Pnt(mitte_x, mitte_yo, 0.0), gp_Pnt(gesamt_x-self.thikness,self.height , 0.0)
+                    gp_Pnt(mitte_x, mitte_yo, 0.0), gp_Pnt(gesamt_x-self.profile_thikness,self.profile_height , 0.0)
             ).Edge()
         )
 
         ## Pkt6 nach 7
         mkw.Add(
             OBuilder.BRepBuilderAPI_MakeEdge(
-                gp_Pnt(gesamt_x-self.thikness,self.height , 0.0), gp_Pnt(gesamt_x, self.height, 0.0)
+                gp_Pnt(gesamt_x-self.profile_thikness,self.profile_height , 0.0), gp_Pnt(gesamt_x, self.profile_height, 0.0)
             ).Edge()
         )
 
         ## Pkt 7 nach 8
         mkw.Add(
             OBuilder.BRepBuilderAPI_MakeEdge(
-                gp_Pnt(gesamt_x, self.height, 0.0), gp_Pnt(mitte_rx,mitte_yl, 0.0)
+                gp_Pnt(gesamt_x, self.profile_height, 0.0), gp_Pnt(mitte_rx,mitte_yl, 0.0)
             ).Edge()
         )
 
@@ -100,31 +96,34 @@ class Rib:
         ## Pk 9 nach 10
         mkw.Add(
             OBuilder.BRepBuilderAPI_MakeEdge(
-                gp_Pnt(gesamt_x, 0.0, 0.0), gp_Pnt(gesamt_x-self.thikness, 0.0, 0.0)
+                gp_Pnt(gesamt_x, 0.0, 0.0), gp_Pnt(gesamt_x-self.profile_thikness, 0.0, 0.0)
             ).Edge()
         )
 
         ## Pk 10 nach 11
         mkw.Add(
             OBuilder.BRepBuilderAPI_MakeEdge(
-                gp_Pnt(gesamt_x-self.thikness, 0.0, 0.0), gp_Pnt(mitte_x, mitte_yu, 0.0)
+                gp_Pnt(gesamt_x-self.profile_thikness, 0.0, 0.0), gp_Pnt(mitte_x, mitte_yu, 0.0)
             ).Edge()
         )
 
         ## Pk 11 nach 12
         mkw.Add(
             OBuilder.BRepBuilderAPI_MakeEdge(
-                gp_Pnt(mitte_x, mitte_yu, 0.0), gp_Pnt(self.thikness, 0.0, 0.0)
+                gp_Pnt(mitte_x, mitte_yu, 0.0), gp_Pnt(self.profile_thikness, 0.0, 0.0)
             ).Edge()
         )
 
         ## Pk 12 nach 1
         mkw.Add(
             OBuilder.BRepBuilderAPI_MakeEdge(
-                gp_Pnt(self.thikness, 0.0, 0.0), gp_Pnt(0.0, 0.0, 0.0)
+                gp_Pnt(self.profile_thikness, 0.0, 0.0), gp_Pnt(0.0, 0.0, 0.0)
             ).Edge()
         )
         
         face: OTopo.TopoDS_Face= OBuilder.BRepBuilderAPI_MakeFace(mkw.Wire()).Face()
         return face
-    
+        
+            
+
+                

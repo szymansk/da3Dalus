@@ -8,7 +8,7 @@ from unicodedata import mirrored
 
 import tigl3.boolean_ops
 import tigl3.configuration
-import tigl3.configuration as config3
+import tigl3.configuration as TConfig
 import tigl3.curve_factories
 import tigl3.exports as exp
 import tigl3.geometry
@@ -38,36 +38,106 @@ from shape_verschieben import *
 from Wand_erstellen import *
 
 class WingFactory:
-    def __init__(self, wing_configuration) -> None:
-        self.wing:Wing= Wing(wing_configuration)
-        self.rib_factory: RibFactory= RibFactory()
+    def __init__(self, tigl_handle) -> None:
+        self.tigl_handle=tigl_handle
+        self.config_manager: TConfig.CCPACSConfigurationManager  = TConfig.CCPACSConfigurationManager_get_instance()
+        self.cpacs_configuration: TConfig.CCPACSConfiguration= self.config_manager.get_configuration(tigl_handle._handle.value)
+        self.wing:Wing= Wing()
         
-    def create_solid_wing(self, wing:Wing):
-        pass
+        #self.rib_factory: RibFactory= RibFactory()
+        
+    def create_wing_shape(self, wing_nr):
+        #Get wing returns CPACSWing, XML Wing description
+        wing: TConfig.CCPACSWing= self.cpacs_configuration.get_wing(wing_nr)            
+        
+        #Get_loft()-shape() creates a TigleShape out of the Wing
+        #3D solid  with Tigl metadata
+        wing_loft: TGeo.CNamedShape = wing.get_loft()
+        #wing_shape = wing.get_loft().shape()
+        self.wing.shape: OTopo.TopoDS_Shape = wing_loft.shape()
+        self.wing.calculate_koordinates()
+        self.wing.calculate_outter_dimensions()
+        print(self.wing.__str__())
     
     def create_holow_wing(self, thickness:float):
-        self.wing.wing_hollow= create_hollowedsolid(thickness)
+        self.wing.hollow= create_hollowedsolid(self.wing.shape ,thickness)
     
-    def create_mirrored_wing(self) -> Wing:
+    def create_mirrored_wing(self):
         if self.wing.has_mirrored_shape:
             # Set up the mirror
-                aTrsf= Ogp.gp_Trsf()
-                aTrsf.SetMirror(Ogp.gp_Ax2(Ogp.gp_Pnt(0,0,0),Ogp.gp_Dir(0,1,0)))
-                # Apply the mirror transformation
-                aBRespTrsf = OBuilder.BRepBuilderAPI_Transform(verbunden, aTrsf)
+            aTrsf= Ogp.gp_Trsf()
+            aTrsf.SetMirror(Ogp.gp_Ax2(Ogp.gp_Pnt(0,0,0),Ogp.gp_Dir(0,1,0)))
+            # Apply the mirror transformation
+            aBRespTrsf = OBuilder.BRepBuilderAPI_Transform(self.wing.with_ribs, aTrsf)
+            # Get the mirrored shape back out of the transformation and convert back to a wire
+            self.wing.mirrored_shape = aBRespTrsf.Shape()         
+            #TODO connect both wings
+            #fluegelgesamt=OAlgo.BRepAlgoAPI_Fuse(verbunden,aMirroredShape).Shape()
+    
+    def has_mirrored_shape(self) -> boolean:     
+        mirorred_loft= self.cpacs_wing.get_mirrored_loft
+        return mirorred_loft!= None
+              
+    def fuse_ribs(self):
+        print("Start Fuse")
+        #cuts the ribs to the shape of the wing
+        CommonSurface = OAlgo.BRepAlgoAPI_Common(self.wing.rib.ribs,self.wing.shape).Shape()
+        #fuses Wing and Ribs to 1 shape
+        self.wing.with_ribs= OAlgo.BRepAlgoAPI_Fuse(self.wing.hollow,CommonSurface).Shape()
+        print("end fuse")
+    
+    def calculate_ribs_quantity(self) ->int:
+        x= int(2*(self.wing.ydiff/self.wing.rib.spacing))
+        print("Rib_quantity:" , x)
+        
+        return (x)
+    
+    #TODO where does height, thikness, extrude come frome?
+    def create_rib_grid(self, spacing, thikness,type:str="x"):
+       self.wing.rib.height=self.wing.xdiff
+       self.wing.rib.thikness=thikness
+       self.wing.rib.set_profile(type)
+       self.wing.rib.extrude_lenght=self.wing.zdiff
+       self.wing.rib.spacing=spacing
+       self.extrude_profile(self.wing.rib.extrude_lenght)
+       self.make_pattern()
+        
+    def extrude_profile(self, extrude_lenght):
+        self.wing.rib.extrude_length=extrude_lenght
+        self.wing.rib.rib= OPrim.BRepPrimAPI_MakePrism(
+            self.wing.rib.profile,
+            gp_Vec(gp_Pnt(0.0, 0.0, 0.0), gp_Pnt(0.0, 0.0, self.wing.rib.extrude_lenght)),
+        )
+               
+    def make_pattern(self):
+        trans_rib=None
+        ribs=self.wing.rib.rib.Shape()
+        spacing=self.wing.rib.spacing       
+        q=self.calculate_ribs_quantity()
+        position=-(spacing*q/4)
+        print("position:",position)
+        for i in range(q):
+            trans_rib=OExs.translate_shp(self.wing.rib.rib.Shape(),gp_Vec(0.0,position,0.0))
+            #ribs=OAlgo.BRepAlgoAPI_Fuse(self.rib.single,trans_rib).Shape()
+            ribs=OAlgo.BRepAlgoAPI_Fuse(ribs,trans_rib).Shape()
+            position=position + spacing
+        #ribs=move_rippen_neu(ribs,self.wing.xmin,self.wing.ymax,self.wing.zmin)
+        self.wing.rib.ribs= ribs
+    
+    #def move_rippen(self,rippen_gesamt,xmin,ymin,zmin):
+    def move_rippen(self):
+        from tigl3.geometry import CTiglTransformation
+        #help(CTiglTransformation)
 
-                # Get the mirrored shape back out of the transformation and convert back to a wire
-                aMirroredShape = aBRespTrsf.Shape()
-                aMirroredShape
-                
-                fluegelgesamt=OAlgo.BRepAlgoAPI_Fuse(verbunden,aMirroredShape).Shape()
-            
+        trafo = CTiglTransformation()
+        trafo.add_translation(self.wing.xmin,self.wing.ymin,self.wing.zmin)
+        self.wing.rib.ribs=trafo.transform(self.wing.rib.ribs)
+
     
-    
-    def add_ribs(self):
-        pass
-    
-    def calculate_ribs_quantity(self, spacing):
-        return self.wing.get_wingspan()/spacing
+    def export_stl(self, name, mirored=False):
+        if mirored:
+            write_stl_file2(self.wing.mirrored_shape, name)
+        else:
+            write_stl_file2(self.wing.with_ribs, name)
     
         

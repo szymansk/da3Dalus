@@ -77,11 +77,15 @@ import tigl3.configuration, tigl3.geometry, tigl3.boolean_ops, tigl3.exports
 
 from OCC.Core.BRepBndLib import brepbndlib_Add
 from OCC.Core.Bnd import Bnd_Box
-
+from tigl3.geometry import CTiglTransformation
+import tigl3.geometry as TGeo
 from OCC.Core.Quantity import Quantity_NOC_RED
 import os
 
 from math import radians
+from AirplaneFactory import AirplaneFactory
+
+from WingFactory import WingFactory
 
 builder = BRep_Builder()
 shell = TopoDS_Shell()
@@ -189,4 +193,29 @@ def upload_fuselage():
 if __name__ == "__main__":
 	#open_file("C:/uploads/D150_v30.xml")
 	#open_file(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-	app.run()
+	#app.run()
+	tixi_h = tixi3wrapper.Tixi3()
+	tigl_h = tigl3wrapper.Tigl3()
+	#tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\fluegel_test_1008.xml")
+	tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\CPACS_30_D150.xml")
+	tigl_h.open(tixi_h, "")
+	wing_thikness=0.01
+	rib_spacing=4
+	rib_thikness=0.2
+	airplane_factory=AirplaneFactory(tigl_h,wing_thikness,rib_spacing,rib_thikness)
+	airplane_factory.create_airplane()
+	airplane_factory.fuse_all_wings()
+	
+	box = BRepPrimAPI_MakeBox(1, 1, 1).Shape()
+	box2 = BRepPrimAPI_MakeBox(1, 1, 1).Shape()
+	trafo= TGeo.CTiglTransformation()
+	#trafo.add_translation(0,wf.wing.rib.height,0)
+	#box2=trafo.transform(box2)
+	display, start_display, add_menu, add_function_to_menu = init_display()
+	display.DisplayShape(airplane_factory.airplane.allwings)
+	#display.DisplayShape(wf.wing.rib.ribs)
+	display.DisplayShape(box)
+	display.DisplayShape(box2)
+	start_display()
+	display.FitAll()
+

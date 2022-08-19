@@ -92,10 +92,7 @@ class fluegel:
 
         for iwing in range(1, config.get_wing_count() + 1):
             #Get wing returns CPACSWing, XML Wing description
-            wing: TConfig.CCPACSWing= config.get_wing(iwing)
-            wing_segemnt: TConfig.CCPACSWingSegment= wing.get_segment()
-            wing_segemnt.get_trailing_edge_shape()
-            
+            wing: TConfig.CCPACSWing= config.get_wing(iwing)            
 
             #Get_loft()-shape() creates a TigleShape out of the Wing
             #3D solid  with Tigl metadata
