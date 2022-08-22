@@ -78,14 +78,16 @@ class WingFactory:
         mirorred_loft= self.cpacs_wing.get_mirrored_loft
         return mirorred_loft!= None
               
-    def fuse_ribs(self):
+    def fuse_ribs(self, ribs):
         print("Start Fuse")
         #cuts the ribs to the shape of the wing
-        CommonSurface = OAlgo.BRepAlgoAPI_Common(self.wing.rib.ribs,self.wing.shape).Shape()
+        #CommonSurface = OAlgo.BRepAlgoAPI_Common(self.wing.rib.ribs,self.wing.shape).Shape()
+        CommonSurface = OAlgo.BRepAlgoAPI_Common(ribs,self.wing.shape).Shape()
         #fuses Wing and Ribs to 1 shape
         self.wing.with_ribs= OAlgo.BRepAlgoAPI_Fuse(self.wing.hollow,CommonSurface).Shape()
         print("end fuse")
     
+    '''
     def calculate_ribs_quantity(self) ->int:
         x= int(2*(self.wing.ydiff/self.wing.rib.spacing))
         print("Rib_quantity:" , x)
@@ -132,7 +134,7 @@ class WingFactory:
         trafo = CTiglTransformation()
         trafo.add_translation(self.wing.xmin,self.wing.ymin,self.wing.zmin)
         self.wing.rib.ribs=trafo.transform(self.wing.rib.ribs)
-
+    '''
     
     def export_stl(self, name, mirored=False):
         if mirored:

@@ -218,4 +218,3 @@ if __name__ == "__main__":
 	display.DisplayShape(box2)
 	start_display()
 	display.FitAll()
-

@@ -12,6 +12,7 @@ class Rib:
         self.profile:OTopo.TopoDS_Face=None
         self.spacing=None
         self.height= None
+        self.ydiff=None
         self.thikness= None
         self.extrude_lenght= None
         self.type:str=type

@@ -20,8 +20,10 @@ import OCC.Core.gp as Ogp
 import OCC.Core.TopoDS as OTopo
 from OCC.Display.SimpleGui import init_display
 from Airplane import Airplane
+from Fuselage import Fuselage
 from RibFactory import RibFactory
 from WingFactory import WingFactory
+from FuselageFactory import *
 from abmasse import *
 
 class AirplaneFactory:
@@ -30,10 +32,12 @@ class AirplaneFactory:
         self.config_manager: TConfig.CCPACSConfigurationManager  = TConfig.CCPACSConfigurationManager_get_instance()
         self.configuration: TConfig.CCPACSConfiguration= self.config_manager.get_configuration(tigl_handle._handle.value)
         self.airplane: Airplane= Airplane()
-        self.wing_thikness=wing_thikness
-        self.rib_spacing=rib_spacing
-        self.rib_thikness=rib_thikness
-        self.wing_factory=WingFactory(tigl_handle)
+        self.wing_factory: WingFactory= WingFactory(tigl_handle)
+        self.fuselage_factory: FuselageFactory= FuselageFactory(tigl_handle)
+        self.rib_factory: RibFactory= RibFactory()
+        self.wing_thikness= wing_thikness
+        self.rib_spacing= rib_spacing
+        self.rib_thikness= rib_thikness
     
 
     def cpacs_einlesen(self,filename):
@@ -45,26 +49,24 @@ class AirplaneFactory:
 
         return tixi_h, tigl_h
     
-    def get_configuration(self):
-        mgr: TConfig.CCPACSConfigurationManager = tigl3.configuration.CCPACSConfigurationManager_get_instance()
-        config: TConfig.CCPACSConfiguration= mgr.get_configuration(self.tigl_handler._handle.value)
-        return config
-    
     def create_airplane(self):
         self.create_right_mainwing()
         self.create_left_mainwing()
         self.create_right_h_tailwing()
         self.create_left_h_tailwing()
         self.create_v_tailwing()
+        self.create_fuselage()
         
     def create_wing(self,nr,name):
         #wing_factory= WingFactory(tigl_h)
         print("----Creating", name)
         self.wing_factory.create_wing_shape(nr)
         self.wing_factory.create_holow_wing(self.wing_thikness)
-        self.wing_factory.create_rib_grid(self.rib_spacing,self.wing_thikness)
-        self.wing_factory.move_rippen()
-        self.wing_factory.fuse_ribs()
+        #self.wing_factory.create_rib_grid(self.rib_spacing,self.wing_thikness)
+        #self.wing_factory.move_rippen()
+        self.rib_factory.create_rib_grid(self.rib_spacing,self.wing_thikness,self.wing_factory.wing.xdiff,self.wing_factory.wing.ydiff, self.wing_factory.wing.zdiff)
+        self.rib_factory.move_rippen(self.wing_factory.wing.xmin,self.wing_factory.wing.ymin,self.wing_factory.wing.zmin)
+        self.wing_factory.fuse_ribs(self.rib_factory.rib.ribs)
         self.wing_factory.export_stl(name)
     
     def create_right_mainwing(self):
@@ -118,3 +120,12 @@ class AirplaneFactory:
             self.airplane.allwings=OAlgo.BRepAlgoAPI_Fuse(self.airplane.tailwings, self.airplane.mainwings).Shape()
         else:
             print("Fusing allwing notposible")
+    
+    def create_fuselage(self):
+        self.fuselage_factory.create_fuselage_shape(1)
+        self.fuselage_factory.create_holow_fuselage(self.wing_thikness)
+        self.rib_factory.create_rib_grid(self.rib_spacing,self.wing_thikness,self.fuselage_factory.fuselage.xdiff,self.fuselage_factory.fuselage.ydiff, self.fuselage_factory.fuselage.zdiff)
+        self.rib_factory.move_rippen(self.fuselage_factory.fuselage.xmin,self.fuselage_factory.fuselage.ymin,self.fuselage_factory.fuselage.zmin)
+        self.fuselage_factory.fuse_ribs(self.rib_factory.rib.ribs)
+        self.wing_factory.export_stl(name)
+        
