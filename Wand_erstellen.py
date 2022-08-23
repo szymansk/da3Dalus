@@ -134,7 +134,8 @@ def create_hollowedsolid(shape,thickness):
         aFaceExplorer.Next()
 
     facesToRemove = TopTools_ListOfShape()
-    facesToRemove.Append(faceToRemove)
+    if faceToRemove != None:
+        facesToRemove.Append(faceToRemove)
 
     #myBody = BRepOffsetAPI_MakeThickSolid(myBody, facesToRemove, -thickness / 50.0, 0.001)
     myBody = BRepOffsetAPI_MakeThickSolid(shape, facesToRemove, thickness, 0.001)

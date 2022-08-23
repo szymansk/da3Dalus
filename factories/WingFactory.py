@@ -26,9 +26,9 @@ import OCC.Core.gp as Ogp
 import OCC.Core.TopoDS as OTopo
 from OCC.Display.SimpleGui import init_display
 
-from RibFactory import *
-from Wing import *
-from Rib import *
+from factories.RibFactory import *
+from parts.Wing import *
+from parts.Rib import *
 
 from abmasse import *
 from Ausgabeservice import *

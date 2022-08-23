@@ -19,11 +19,11 @@ import OCC.Core.BRepPrimAPI as OPrim
 import OCC.Core.gp as Ogp
 import OCC.Core.TopoDS as OTopo
 from OCC.Display.SimpleGui import init_display
-from Airplane import Airplane
-from Fuselage import Fuselage
-from RibFactory import RibFactory
-from WingFactory import WingFactory
-from FuselageFactory import *
+from parts.Airplane import Airplane
+from parts.Fuselage import Fuselage
+from factories.RibFactory import RibFactory
+from factories.WingFactory import WingFactory
+from factories.FuselageFactory import *
 from abmasse import *
 
 class AirplaneFactory:
@@ -124,8 +124,12 @@ class AirplaneFactory:
     def create_fuselage(self):
         self.fuselage_factory.create_fuselage_shape(1)
         self.fuselage_factory.create_holow_fuselage(self.wing_thikness)
-        self.rib_factory.create_rib_grid(self.rib_spacing,self.wing_thikness,self.fuselage_factory.fuselage.xdiff,self.fuselage_factory.fuselage.ydiff, self.fuselage_factory.fuselage.zdiff)
-        self.rib_factory.move_rippen(self.fuselage_factory.fuselage.xmin,self.fuselage_factory.fuselage.ymin,self.fuselage_factory.fuselage.zmin)
+        #Swap x and z because we rotate 90 aorund y axis
+        self.rib_factory.create_rib_grid(self.rib_spacing,self.wing_thikness,self.fuselage_factory.fuselage.zdiff,self.fuselage_factory.fuselage.ydiff, self.fuselage_factory.fuselage.xdiff)
+        self.rib_factory.rotate(gp_OY(),90)
+        #self.rib_factory.move_rippen(self.fuselage_factory.fuselage.xmin,self.fuselage_factory.fuselage.ymin,self.fuselage_factory.fuselage.zmin)
+        self.rib_factory.move_rippen(0,self.fuselage_factory.fuselage.ymin*1.5,-self.fuselage_factory.fuselage.zmin*1.5)
         self.fuselage_factory.fuse_ribs(self.rib_factory.rib.ribs)
-        self.wing_factory.export_stl(name)
+        self.airplane.set_fuselage(self.fuselage_factory.fuselage.with_ribs)
+        self.fuselage_factory.export_stl("fuselage.stl")
         

@@ -26,9 +26,9 @@ import OCC.Core.gp as Ogp
 import OCC.Core.TopoDS as OTopo
 from OCC.Display.SimpleGui import init_display
 
-from RibFactory import *
-from Wing import *
-from Fuselage import *
+from factories.RibFactory import *
+from parts.Wing import *
+from parts.Fuselage import *
 
 from abmasse import *
 from Ausgabeservice import *
@@ -45,7 +45,7 @@ class FuselageFactory:
         self.fuselage:Fuselage= Fuselage()
     
     def create_fuselage_shape(self, fuse_nr):
-        fuselage: TConfig.CCPACSFuselage= self.cpacs_configuration.get_fuselage()
+        fuselage: TConfig.CCPACSFuselage= self.cpacs_configuration.get_fuselage(fuse_nr)
         fuselage_loft: TGeo.CNamedShape= fuselage.get_loft()
         self.fuselage.shape: OTopo.TopoDS_Shape=fuselage_loft.shape()
         self.fuselage.calculate_koordinates()
@@ -63,6 +63,9 @@ class FuselageFactory:
         #fuses Wing and Ribs to 1 shape
         self.fuselage.with_ribs= OAlgo.BRepAlgoAPI_Fuse(self.fuselage.hollow,CommonSurface).Shape()
         print("end fuse")
+    
+    def export_stl(self, name):
+        write_stl_file2(self.fuselage.with_ribs, name)
         
     def make_profil(self,tigl_h):
         self.tigl_h=tigl_h

@@ -1,7 +1,7 @@
 class Airplane:
     def __init__(self) -> None:
         self.wings={}
-        self.fuselage=[]
+        self.fuselage=None
         self.mainwings=None
         self.tailwings=None
         self.allwings=None
@@ -20,4 +20,7 @@ class Airplane:
     
     def set_v_tailwing(self,wing):
         self.wings.update({"v_tailwing": wing})
+    
+    def set_fuselage(self, fuselage):
+        self.fuselage=fuselage
         

@@ -2,7 +2,7 @@ import OCC.Core.BRepAlgoAPI as OAlgo
 import OCC.Extend.ShapeFactory as OExs
 import tigl3.geometry as TGeo
 from math import *
-from Rib import *
+from parts.Rib import *
 
 
 
@@ -51,6 +51,7 @@ class RibFactory:
     def calculate_ribs_quantity(self) ->int:
         x= int(2*(self.rib.ydiff/self.rib.spacing))
         print("Rib_quantity:" , x)
+        x=6
         return (x)
 
     #def move_rippen(self,rippen_gesamt,xmin,ymin,zmin):
