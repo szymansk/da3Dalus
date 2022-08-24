@@ -1,3 +1,4 @@
+import sys
 from tixi3 import tixi3wrapper
 from tigl3 import tigl3wrapper
 import tigl3.boolean_ops
@@ -22,12 +23,22 @@ from OCC.Display.SimpleGui import init_display
 from parts.Airplane import Airplane
 from parts.Fuselage import Fuselage
 from factories.RibFactory import RibFactory
-from factories.WingFactory import WingFactory
+from factories.WingFactory import WingFactory 
 from factories.FuselageFactory import *
 from abmasse import *
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler("debug.log"),
+        logging.StreamHandler()
+    ]
+)
 
 class AirplaneFactory:
-    def __init__(self, tigl_handle, wing_thikness,rib_spacing,rib_thikness) -> None:
+    def __init__(self, tigl_handle, shell_thikness, fuselage_rib_spacing,rib_spacing,rib_thikness) -> None:
         self.tigl_handle=tigl_handle
         self.config_manager: TConfig.CCPACSConfigurationManager  = TConfig.CCPACSConfigurationManager_get_instance()
         self.configuration: TConfig.CCPACSConfiguration= self.config_manager.get_configuration(tigl_handle._handle.value)
@@ -35,7 +46,8 @@ class AirplaneFactory:
         self.wing_factory: WingFactory= WingFactory(tigl_handle)
         self.fuselage_factory: FuselageFactory= FuselageFactory(tigl_handle)
         self.rib_factory: RibFactory= RibFactory()
-        self.wing_thikness= wing_thikness
+        self.shell_thikness= shell_thikness
+        self.fuselage_rib_spacing= fuselage_rib_spacing
         self.rib_spacing= rib_spacing
         self.rib_thikness= rib_thikness
     
@@ -60,11 +72,12 @@ class AirplaneFactory:
     def create_wing(self,nr,name):
         #wing_factory= WingFactory(tigl_h)
         print("----Creating", name)
+        logging.info("Creating ", name)
         self.wing_factory.create_wing_shape(nr)
-        self.wing_factory.create_holow_wing(self.wing_thikness)
+        self.wing_factory.create_holow_wing(self.shell_thikness)
         #self.wing_factory.create_rib_grid(self.rib_spacing,self.wing_thikness)
         #self.wing_factory.move_rippen()
-        self.rib_factory.create_rib_grid(self.rib_spacing,self.wing_thikness,self.wing_factory.wing.xdiff,self.wing_factory.wing.ydiff, self.wing_factory.wing.zdiff)
+        self.rib_factory.create_rib_grid(self.rib_spacing,self.shell_thikness,self.wing_factory.wing.xdiff,self.wing_factory.wing.ydiff, self.wing_factory.wing.zdiff)
         self.rib_factory.move_rippen(self.wing_factory.wing.xmin,self.wing_factory.wing.ymin,self.wing_factory.wing.zmin)
         self.wing_factory.fuse_ribs(self.rib_factory.rib.ribs)
         self.wing_factory.export_stl(name)
@@ -91,41 +104,43 @@ class AirplaneFactory:
         self.airplane.set_left_tailwing(self.wing_factory.wing.mirrored_shape)
     
     def create_v_tailwing(self):
-        self.create_wing(3, "v_tailwing")
-        self.wing_factory.export_stl("v_tailwing.stl")
+        self.create_wing(3, "v_tailwing.stl")
         self.airplane.set_v_tailwing(self.wing_factory.wing.with_ribs)
         
     def fuse_mainwings(self):
         if self.airplane.wings.get("right_mainwing") != None and self.airplane.wings.get("left_mainwing") != None:
-            print("Fusing mainwings")
+            print("__PROG__:Fusing mainwings")
             self.airplane.mainwings=OAlgo.BRepAlgoAPI_Fuse(self.airplane.wings.get("right_mainwing"), self.airplane.wings.get("left_mainwing")).Shape()
         else:
-            print("Fusing mainwings not posible")
+            print("__ERROR__:Fusing mainwings not posible")
+            print("right: ", self.airplane.wings.get("right_mainwing")!= None,  "left: ", self.airplane.wings.get("left_mainwing") )
         
     def fuse_tailwings(self):
         if self.airplane.wings.get("right_h_tailwing") !=None and self.airplane.wings.get("left_h_tailwing") !=None: 
-            print("Fusing tailwings")     
+            print("__PROG__:Fusing tailwings")     
             h_tailwings=OAlgo.BRepAlgoAPI_Fuse(self.airplane.wings.get("right_h_tailwing"), self.airplane.wings.get("left_h_tailwing")).Shape()
             #FIXME Add Vertikale Tailwing
             self.airplane.tailwings=OAlgo.BRepAlgoAPI_Fuse(h_tailwings, self.airplane.wings.get("v_tailwing")).Shape()
             #self.airplane.tailwings=h_tailwings
         else:
-            print("Fusing tailwings not posible")
+            print("__ERROR__: Fusing tailwings not posible")
+            print("right:", self.airplane.wings.get("right_h_tailwing") !=None , "left: ", self.airplane.wings.get("left_h_tailwing") !=None)
     
     def fuse_all_wings(self):
         self.fuse_mainwings()
         self.fuse_tailwings()
-        print("Fusing allwings") 
+        print("__PROG__:Fusing allwings") 
         if self.airplane.tailwings != None and self.airplane.mainwings!= None:
             self.airplane.allwings=OAlgo.BRepAlgoAPI_Fuse(self.airplane.tailwings, self.airplane.mainwings).Shape()
         else:
-            print("Fusing allwing notposible")
+            print("__ERROR__:Fusing allwing notposible")
+            print("Tail:", self.airplane.tailwings != None , "Main:", self.airplane.mainwings!= None)
     
     def create_fuselage(self):
         self.fuselage_factory.create_fuselage_shape(1)
-        self.fuselage_factory.create_holow_fuselage(self.wing_thikness)
+        self.fuselage_factory.create_holow_fuselage(self.shell_thikness)
         #Swap x and z because we rotate 90 aorund y axis
-        self.rib_factory.create_rib_grid(self.rib_spacing,self.wing_thikness,self.fuselage_factory.fuselage.zdiff,self.fuselage_factory.fuselage.ydiff, self.fuselage_factory.fuselage.xdiff)
+        self.rib_factory.create_rib_grid(self.fuselage_rib_spacing,self.shell_thikness,self.fuselage_factory.fuselage.zdiff,self.fuselage_factory.fuselage.ydiff, self.fuselage_factory.fuselage.xdiff)
         self.rib_factory.rotate(gp_OY(),90)
         #self.rib_factory.move_rippen(self.fuselage_factory.fuselage.xmin,self.fuselage_factory.fuselage.ymin,self.fuselage_factory.fuselage.zmin)
         self.rib_factory.move_rippen(0,self.fuselage_factory.fuselage.ymin*1.5,-self.fuselage_factory.fuselage.zmin*1.5)
