@@ -26,6 +26,12 @@ from OCC.Extend.TopologyUtils import (discretize_edge,get_sorted_hlr_edges,list_
 
 
 class ausgabe:
+    def write_stl_tigl(self,a_shape):
+        import tigl3.exports
+        exporter = tigl3.exports.create_exporter("stl")
+        exporter.add_shape(a_shape)
+        exporter.write("test.stl")
+
     def write_stl_file(self,a_shape,filename):
         from tigl3.exports import create_exporter, IgesShapeOptions
         '''
