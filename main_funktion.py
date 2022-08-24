@@ -86,28 +86,19 @@ from math import radians
 from factories.AirplaneFactory import AirplaneFactory
 
 from factories.WingFactory import WingFactory
-
-builder = BRep_Builder()
-shell = TopoDS_Shell()
-builder.MakeShell(shell)
-
-
-#import sys
-
-#sys.path.append("C:/Users/motto/cad-modelling-service")
-
-
-
 from Fluegel import fluegel
 from Rumpf import profil
 from Einleseservice import einlesen
 from Ausgabeservice import *
 
 import os
+import Zipfolder as myZip
 import urllib.request
 from app import app
 from flask import Flask, request, redirect, jsonify, send_file
 from werkzeug.utils import secure_filename
+import logging
+
 
 def open_wing(filename):
 	ein=einlesen()
@@ -132,8 +123,62 @@ ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif','xml','json'
 def allowed_file(filename):
 	return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def check_file(files):
+    # check if the post request has the file part
+	if 'file' not in files:
+		resp = jsonify({'message' : 'No file part in the request'})
+		resp.status_code = 400
+		return resp
+	file = files['file']
+
+	if file.filename == '':
+		resp = jsonify({'message' : 'No file selected for uploading'})
+		resp.status_code = 400
+		return resp
+	return None
+    
+def extract_tigl(file_path):
+	tixi_h = tixi3wrapper.Tixi3()
+	tigl_h = tigl3wrapper.Tigl3()
+	tixi_h.open(file_path)
+	tigl_h.open(tixi_h, "")
+	return tigl_h
+ 
+@app.route('/create_airplane', methods=['POST'])
+def create_right_wing():
+	resp= check_file(request.files)
+	if resp != None: 
+		return resp
+	else:
+		file= request.files['file']
+	
+	if file and allowed_file(file.filename):
+		filename = secure_filename(file.filename)
+		file_path = "test_cpacs\\" + filename
+		file.save(file_path)
+		tigl_h= extract_tigl(file_path)
+		'''
+		wing_thikness=0.01
+		rib_spacing=1
+		rib_thikness=0.2
+		'''
+		wing_thikness=float(request.args.get("wing_thikness"))
+		rib_spacing=float(request.args.get("rib_spacing"))
+		rib_thikness=float(request.args.get("rib_thikness"))
+		print("wing:",wing_thikness,"rib_s:" ,rib_spacing, "rib_t",rib_thikness)
+		airplane_factory=AirplaneFactory(tigl_h,wing_thikness,rib_spacing,rib_thikness)
+		airplane_factory.create_right_mainwing()
+		return send_file("right_mainwing.stl")
+
+	else:
+		resp = jsonify({'message' : 'Allowed file types are txt, pdf, png, jpg, jpeg, gif'})
+		resp.status_code = 400
+		return resp
+
+
 @app.route('/wing-upload', methods=['POST'])
 def upload_wing():
+    '''
 	# check if the post request has the file part
 	if 'file' not in request.files:
 		resp = jsonify({'message' : 'No file part in the request'})
@@ -145,21 +190,27 @@ def upload_wing():
 		resp = jsonify({'message' : 'No file selected for uploading'})
 		resp.status_code = 400
 		return resp
+	'''
+    resp= check_file(request.files)
+    if resp != None: 
+        return resp
+    else:
+        file= request.files['file']
 
-	if file and allowed_file(file.filename):
-		filename = secure_filename(file.filename)
-		file_path = filename
-		file.save(file_path)
-		# resp = jsonify({'message' : 'File successfully uploaded'})
-		# resp.status_code = 201
-		open_wing(file_path)
-		# return resp
-		return send_file("fluegel.stl")
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        file_path = filename
+        file.save(file_path)
+        # resp = jsonify({'message' : 'File successfully uploaded'})
+        # resp.status_code = 201
+        open_wing(file_path)
+        # return resp
+        return send_file("p_right_mainwing.stl")
 
-	else:
-		resp = jsonify({'message' : 'Allowed file types are txt, pdf, png, jpg, jpeg, gif'})
-		resp.status_code = 400
-		return resp
+    else:
+        resp = jsonify({'message' : 'Allowed file types are txt, pdf, png, jpg, jpeg, gif'})
+        resp.status_code = 400
+        return resp
 
 @app.route('/fuselage-upload', methods=['POST'])
 def upload_fuselage():
@@ -190,36 +241,49 @@ def upload_fuselage():
 		resp.status_code = 400
 		return resp
 
-if __name__ == "__main__":
-	#open_file("C:/uploads/D150_v30.xml")
-	#open_file(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-	#app.run()
-    tixi_h = tixi3wrapper.Tixi3()
-    tigl_h = tigl3wrapper.Tigl3()
+def my_logging():
+    #logging.basicConfig(filename='example.log', level=logging.INFO)
+	logging.basicConfig(level=logging.INFO)
+	logging.info("Start logging")
+    
+def development():
+	tixi_h = tixi3wrapper.Tixi3()
+	tigl_h = tigl3wrapper.Tigl3()
 	#tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\fluegel_test_1008.xml")
-    tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\CPACS_30_D150.xml")
-    tigl_h.open(tixi_h, "")
-    wing_thikness=0.01
-    rib_spacing=1
-    rib_thikness=0.2
-    airplane_factory=AirplaneFactory(tigl_h,wing_thikness,rib_spacing,rib_thikness)
-    airplane_factory.create_right_mainwing()
-    #airplane_factory.create_airplane()
+	tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\CPACS_30_D150.xml")
+	tigl_h.open(tixi_h, "")
+	shell_thikness=0.01
+	fuselage_rib_spacing=1.5
+	rib_spacing=4
+	rib_thikness=0.2
+	airplane_factory=AirplaneFactory(tigl_h,shell_thikness,fuselage_rib_spacing,rib_spacing,rib_thikness)
+	#airplane_factory.create_right_mainwing()
+	
+	airplane_factory.create_airplane()
     #airplane_factory.create_fuselage()
-    #airplane_factory.fuse_all_wings()
-    box = BRepPrimAPI_MakeBox(1, 1, 1).Shape()
-    box2 = BRepPrimAPI_MakeBox(1, 1, 1).Shape()
-    trafo= TGeo.CTiglTransformation()
+	#airplane_factory.fuse_all_wings()
+	myZip.zip_stls()
+	box = BRepPrimAPI_MakeBox(1, 1, 1).Shape()
+	#box2 = BRepPrimAPI_MakeBox(1, 1, 1).Shape()
+	#trafo= TGeo.CTiglTransformation()
 	#trafo.add_translation(0,wf.wing.rib.height,0)
 	#box2=trafo.transform(box2)
-    display, start_display, add_menu, add_function_to_menu = init_display()
-    display.DisplayShape( airplane_factory.airplane.wings.get("right_mainwing"))
-    #display.DisplayShape(airplane_factory.airplane.allwings)
-    #display.DisplayShape(airplane_factory.airplane.fuselage)
-    #display.DisplayShape(airplane_factory.rib_factory.rib.ribs)
+	display, start_display, add_menu, add_function_to_menu = init_display()
+	#display.DisplayShape( airplane_factory.airplane.wings.get("right_mainwing"))
+	display.DisplayShape(airplane_factory.airplane.allwings)
+	#display.DisplayShape(airplane_factory.airplane.fuselage)
+	display.DisplayShape(airplane_factory.rib_factory.rib.ribs)
     #display.DisplayShape(wf.wing.rib.ribs)
-    display.DisplayShape(box)
-    display.DisplayShape(box2)
-    display.FitAll()
-    start_display()
+	display.DisplayShape(box)
+	#display.DisplayShape(box2)
+	display.FitAll()
+	start_display()
+    
+if __name__ == "__main__":
+	my_logging()
+	development()
+ 	#app.run()
+	
+	
+
     

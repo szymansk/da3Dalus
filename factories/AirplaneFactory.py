@@ -28,15 +28,6 @@ from factories.FuselageFactory import *
 from abmasse import *
 import logging
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler("debug.log"),
-        logging.StreamHandler()
-    ]
-)
-
 class AirplaneFactory:
     def __init__(self, tigl_handle, shell_thikness, fuselage_rib_spacing,rib_spacing,rib_thikness) -> None:
         self.tigl_handle=tigl_handle
@@ -62,17 +53,16 @@ class AirplaneFactory:
         return tixi_h, tigl_h
     
     def create_airplane(self):
+        logging.info("Creating airplane")
         self.create_right_mainwing()
         self.create_left_mainwing()
         self.create_right_h_tailwing()
         self.create_left_h_tailwing()
-        self.create_v_tailwing()
+        #self.create_v_tailwing()
         self.create_fuselage()
         
     def create_wing(self,nr,name):
-        #wing_factory= WingFactory(tigl_h)
-        print("----Creating", name)
-        logging.info("Creating ", name)
+        logging.info("Creating " + name)
         self.wing_factory.create_wing_shape(nr)
         self.wing_factory.create_holow_wing(self.shell_thikness)
         #self.wing_factory.create_rib_grid(self.rib_spacing,self.wing_thikness)
@@ -109,34 +99,38 @@ class AirplaneFactory:
         
     def fuse_mainwings(self):
         if self.airplane.wings.get("right_mainwing") != None and self.airplane.wings.get("left_mainwing") != None:
-            print("__PROG__:Fusing mainwings")
+            logging.info("Fusing mainwings")
             self.airplane.mainwings=OAlgo.BRepAlgoAPI_Fuse(self.airplane.wings.get("right_mainwing"), self.airplane.wings.get("left_mainwing")).Shape()
         else:
-            print("__ERROR__:Fusing mainwings not posible")
+            logging.critical("Fusing mainwings not posible")
             print("right: ", self.airplane.wings.get("right_mainwing")!= None,  "left: ", self.airplane.wings.get("left_mainwing") )
         
     def fuse_tailwings(self):
         if self.airplane.wings.get("right_h_tailwing") !=None and self.airplane.wings.get("left_h_tailwing") !=None: 
-            print("__PROG__:Fusing tailwings")     
-            h_tailwings=OAlgo.BRepAlgoAPI_Fuse(self.airplane.wings.get("right_h_tailwing"), self.airplane.wings.get("left_h_tailwing")).Shape()
+            logging.info("Fusing tailwings")     
+            self.airplane.tailwings=OAlgo.BRepAlgoAPI_Fuse(self.airplane.wings.get("right_h_tailwing"), self.airplane.wings.get("left_h_tailwing")).Shape()
             #FIXME Add Vertikale Tailwing
-            self.airplane.tailwings=OAlgo.BRepAlgoAPI_Fuse(h_tailwings, self.airplane.wings.get("v_tailwing")).Shape()
+            try:
+                self.airplane.tailwings=OAlgo.BRepAlgoAPI_Fuse(self.airplane.tailwings, self.airplane.wings.get("v_tailwing")).Shape()
+            except:
+                pass
             #self.airplane.tailwings=h_tailwings
         else:
-            print("__ERROR__: Fusing tailwings not posible")
+            logging.critical("Fusing tailwings not posible")
             print("right:", self.airplane.wings.get("right_h_tailwing") !=None , "left: ", self.airplane.wings.get("left_h_tailwing") !=None)
     
     def fuse_all_wings(self):
         self.fuse_mainwings()
         self.fuse_tailwings()
-        print("__PROG__:Fusing allwings") 
         if self.airplane.tailwings != None and self.airplane.mainwings!= None:
+            logging.info("Fusing allwings") 
             self.airplane.allwings=OAlgo.BRepAlgoAPI_Fuse(self.airplane.tailwings, self.airplane.mainwings).Shape()
         else:
-            print("__ERROR__:Fusing allwing notposible")
-            print("Tail:", self.airplane.tailwings != None , "Main:", self.airplane.mainwings!= None)
+            logging.critical(":Fusing allwing notposible")
+            logging.critical("Tail:" + str(self.airplane.tailwings != None) + "Main:" + str(self.airplane.mainwings!= None))
     
     def create_fuselage(self):
+        logging.info("Creating fuselage")
         self.fuselage_factory.create_fuselage_shape(1)
         self.fuselage_factory.create_holow_fuselage(self.shell_thikness)
         #Swap x and z because we rotate 90 aorund y axis

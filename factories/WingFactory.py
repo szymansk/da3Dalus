@@ -24,6 +24,7 @@ import OCC.Core.BRepOffset as OOffset
 import OCC.Core.BRepPrimAPI as OPrim
 import OCC.Core.gp as Ogp
 import OCC.Core.TopoDS as OTopo
+import time
 from OCC.Display.SimpleGui import init_display
 
 from factories.RibFactory import *
@@ -36,6 +37,7 @@ from Aussparungen import *
 from Innenstruktur import *
 from shape_verschieben import *
 from Wand_erstellen import *
+import logging
 
 class WingFactory:
     def __init__(self, tigl_handle) -> None:
@@ -47,22 +49,23 @@ class WingFactory:
         #self.rib_factory: RibFactory= RibFactory()
         
     def create_wing_shape(self, wing_nr):
+        ''' Creates the wing shape out of the CPACS and stores it in the wing:Wing Objekt. Calls the funktions to calculate_koordinates and calculate_outter_dimensions '''
         #Get wing returns CPACSWing, XML Wing description
-        wing: TConfig.CCPACSWing= self.cpacs_configuration.get_wing(wing_nr)            
-        
+        wing: TConfig.CCPACSWing= self.cpacs_configuration.get_wing(wing_nr)                   
         #Get_loft()-shape() creates a TigleShape out of the Wing
         #3D solid  with Tigl metadata
         wing_loft: TGeo.CNamedShape = wing.get_loft()
-        #wing_shape = wing.get_loft().shape()
         self.wing.shape: OTopo.TopoDS_Shape = wing_loft.shape()
         self.wing.calculate_koordinates()
         self.wing.calculate_outter_dimensions()
         print(self.wing.__str__())
     
     def create_holow_wing(self, thickness:float):
+        '''Creates a new Hollows_wing shape with a given thikness and stores it in the wing:Wing Objekt'''
         self.wing.hollow= create_hollowedsolid(self.wing.shape ,thickness)
     
     def create_mirrored_wing(self):
+        '''Creates a mirrored shape from the wing.with_ribs and stores it in the wing:Wing Objekt'''
         if self.wing.has_mirrored_shape:
             # Set up the mirror
             aTrsf= Ogp.gp_Trsf()
@@ -74,18 +77,22 @@ class WingFactory:
             #TODO connect both wings
             #fluegelgesamt=OAlgo.BRepAlgoAPI_Fuse(verbunden,aMirroredShape).Shape()
     
-    def has_mirrored_shape(self) -> boolean:     
+    def has_mirrored_shape(self) -> boolean:
+        '''checks if the wing in the factory has a mirrored shape'''     
         mirorred_loft= self.cpacs_wing.get_mirrored_loft
         return mirorred_loft!= None
               
     def fuse_ribs(self, ribs):
-        print("Start Fuse")
+        logging.info("Start Fuse ---- Wait")
+        start= time.time()
         #cuts the ribs to the shape of the wing
         #CommonSurface = OAlgo.BRepAlgoAPI_Common(self.wing.rib.ribs,self.wing.shape).Shape()
         CommonSurface = OAlgo.BRepAlgoAPI_Common(ribs,self.wing.shape).Shape()
         #fuses Wing and Ribs to 1 shape
         self.wing.with_ribs= OAlgo.BRepAlgoAPI_Fuse(self.wing.hollow,CommonSurface).Shape()
-        print("end fuse")
+        end= time.time()
+        dif= end-start
+        logging.info("Fuse took " + str(dif) + "seconds")
     
     '''
     def calculate_ribs_quantity(self) ->int:
@@ -137,9 +144,10 @@ class WingFactory:
     '''
     
     def export_stl(self, name, mirored=False):
+        
         if mirored:
             write_stl_file2(self.wing.mirrored_shape, name)
         else:
             write_stl_file2(self.wing.with_ribs, name)
-    
+        logging.info("exporting .stl file")
         

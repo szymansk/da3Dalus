@@ -24,6 +24,7 @@ import OCC.Core.BRepOffset as OOffset
 import OCC.Core.BRepPrimAPI as OPrim
 import OCC.Core.gp as Ogp
 import OCC.Core.TopoDS as OTopo
+import time
 from OCC.Display.SimpleGui import init_display
 
 from factories.RibFactory import *
@@ -36,6 +37,7 @@ from Aussparungen import *
 from Innenstruktur import *
 from shape_verschieben import *
 from Wand_erstellen import *
+import logging
 
 class FuselageFactory:
     def __init__(self, tigl_handle) -> None:
@@ -56,13 +58,16 @@ class FuselageFactory:
         self.fuselage.hollow= create_hollowedsolid(self.fuselage.shape ,thickness)
     
     def fuse_ribs(self, ribs):
-        print("Start Fuse")
+        logging.info("Start Fuselage Fuse ---- Wait")
+        start= time.time()
         #cuts the ribs to the shape of the wing
         #CommonSurface = OAlgo.BRepAlgoAPI_Common(self.wing.rib.ribs,self.wing.shape).Shape()
         CommonSurface = OAlgo.BRepAlgoAPI_Common(ribs,self.fuselage.shape).Shape()
         #fuses Wing and Ribs to 1 shape
         self.fuselage.with_ribs= OAlgo.BRepAlgoAPI_Fuse(self.fuselage.hollow,CommonSurface).Shape()
-        print("end fuse")
+        end= time.time()
+        dif= end-start
+        logging.info("Fuselage Fuse took " + str(dif) + "seconds")
     
     def export_stl(self, name):
         write_stl_file2(self.fuselage.with_ribs, name)

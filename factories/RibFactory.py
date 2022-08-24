@@ -3,6 +3,7 @@ import OCC.Extend.ShapeFactory as OExs
 import tigl3.geometry as TGeo
 from math import *
 from parts.Rib import *
+import logging
 
 
 
@@ -13,15 +14,16 @@ class RibFactory:
               
     #TODO where does height, thikness, extrude come frome?
     def create_rib_grid(self, spacing, thikness,xdiff, ydiff, zdiff,type:str="x"):
+        logging.info("Creating rid grid")
        #self.rib.height=self.wing.xdiff
-       self.rib.height=xdiff
-       self.rib.thikness=thikness
-       self.rib.set_profile(type)
-       self.rib.extrude_lenght=zdiff
-       self.rib.ydiff=ydiff
-       self.rib.spacing=spacing
-       self.extrude_profile(self.rib.extrude_lenght)
-       self.make_pattern()
+        self.rib.height=xdiff
+        self.rib.thikness=thikness
+        self.rib.set_profile(type)
+        self.rib.extrude_lenght=zdiff
+        self.rib.ydiff=ydiff
+        self.rib.spacing=spacing
+        self.extrude_profile(self.rib.extrude_lenght)
+        self.make_pattern()
     
     #def create_rib(self,profile_height, profile_thikness, extrude_lenght):
      #   self.single = Ribs(profile_height, profile_thikness, extrude_lenght)
@@ -35,23 +37,25 @@ class RibFactory:
         
     def make_pattern(self):
         trans_rib=None
-        ribs=self.rib.rib.Shape()
+        ribs=None
         spacing=self.rib.spacing       
         q=self.calculate_ribs_quantity()
-        position=-(spacing*q/4)
-        print("position:",position)
+        #position=-(spacing*round(q/2))
+        position= -self.rib.height
+        logging.info("Pattern will start at position: " + str(position))
         for i in range(q):
             trans_rib=OExs.translate_shp(self.rib.rib.Shape(),gp_Vec(0.0,position,0.0))
-            #ribs=OAlgo.BRepAlgoAPI_Fuse(self.rib.single,trans_rib).Shape()
-            ribs=OAlgo.BRepAlgoAPI_Fuse(ribs,trans_rib).Shape()
+            if i==0:
+                ribs= trans_rib
+            else:
+                ribs=OAlgo.BRepAlgoAPI_Fuse(ribs,trans_rib).Shape()
             position=position + spacing
         #ribs=move_rippen_neu(ribs,self.wing.xmin,self.wing.ymax,self.wing.zmin)
         self.rib.ribs= ribs
     
     def calculate_ribs_quantity(self) ->int:
         x= int(2*(self.rib.ydiff/self.rib.spacing))
-        print("Rib_quantity:" , x)
-        x=6
+        #logging.info("Wing lenght/span: " + "{:.2f}".format(self.rib.ydiff) + " spacing: " +self.rib.spacing + " Rib_quantity: "  + x)
         return (x)
 
     #def move_rippen(self,rippen_gesamt,xmin,ymin,zmin):

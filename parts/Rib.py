@@ -7,8 +7,8 @@ from OCC.Core.gp import *
 
 class Rib:
     def __init__(self):
-        self.rib= None
-        self.ribs= None
+        self.rib: OTopo.TopoDS_Shape=None
+        self.ribs:OTopo.TopoDS_Shape= None
         self.profile:OTopo.TopoDS_Face=None
         self.spacing=None
         self.height= None

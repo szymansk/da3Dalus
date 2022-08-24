@@ -1,6 +1,7 @@
-
-
-if __name__ == "__main__":
-	#open_file("C:/uploads/D150_v30.xml")
-	#open_file(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-	app.run()
+import logging
+#logging.basicConfig(filename='example.log', level=logging.INFO)
+logging.basicConfig(level=logging.INFO)
+logging.debug('This message should go to the log file')
+logging.info('So should this')
+logging.warning('And this, too')
+logging.error('And non-ASCII stuff, too, like Øresund and Malmö')

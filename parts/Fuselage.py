@@ -66,5 +66,5 @@ class Fuselage:
         self.ydiff = self.ymax - self.ymin
         
     def __str__(self) -> str:
-        return "Fuselage:", "xmin:" ,self.xmin, "ymin" ,self.ymin, "zmin:", self.zmin, "xmax:", self.xmax, "ymax:", self.ymax, "zmax:", self.zmax, "xdiff:", self.xdiff, "ydiff:", self.ydiff, "zdiff:",self.zdiff
+        return "Fuselage:", "xmin:" ,"{:.2f}".format(self.xmin), "ymin" ,"{:.2f}".format(self.ymin), "zmin:", "{:.2f}".format(self.zmin), "xmax:", "{:.2f}".format(self.xmax), "ymax:", "{:.2f}".format(self.ymax), "zmax:", "{:.2f}".format(self.zmax), "xdiff:", "{:.2f}".format(self.xdiff), "ydiff:", "{:.2f}".format(self.ydiff), "zdiff:", "{:.2f}".format(self.zdiff)
     
