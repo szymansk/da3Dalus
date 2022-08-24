@@ -11,9 +11,11 @@ from tigl3.tigl3wrapper import Tigl3, TiglBoolean
 from tixi3.tixi3wrapper import Tixi3
 import sys
 
-from tigl3.geometry import CTiglTransformation
+from tigl3.geometry import CTiglTransformation, CNamedShape
 
 import tigl3.configuration, tigl3.geometry, tigl3.boolean_ops, tigl3.exports
+from tigl3.boolean_ops import CCutShape, CMergeShapes, CFuseShapes
+
 from OCC.Core.Quantity import Quantity_NOC_RED
 import os
 
@@ -117,15 +119,7 @@ class fluegel:
     def make_fluegel(self,tigl_h):
         self.tigl_h=tigl_h
         # display, start_display, add_menu, add_function_to_menu = init_display()
-        '''
-        tixi_h = tixi3wrapper.Tixi3()
-        tigl_h = tigl3wrapper.Tigl3()
 
-
-        tixi_h.open("C:/Users/motto/Downloads/tigl-master/tigl-master/tests/unittests/TestData/D150_v30.xml")
-
-        tigl_h.open(tixi_h, "")
-        '''
         # get the configuration manager
         mgr = tigl3.configuration.CCPACSConfigurationManager_get_instance()
 
@@ -135,18 +129,37 @@ class fluegel:
 
         rasterabstand=2
 
+        # Geometrie des Akkus anlegen
+        akku = a2.make_akku_schacht(3,3,3,0.8)
+
         for iwing in range(1, config.get_wing_count() + 1):
         
             wing = config.get_wing(iwing)
+
+            ############# AUSSPARUNG #############
+            # Aussparung platzieren
+            trafo=CTiglTransformation()
+            trafo.add_translation(2,3,0)
+            moved_box = trafo.transform(akku)
+            #Aussparung als CNamedShape bennen
+            namedBox = CNamedShape(moved_box, "CutOut")
+            #Ausschneiden
+            cutter = CCutShape(wing.get_loft(),namedBox)
+            cutted_wing_shape = cutter.named_shape()
+            #Dem Wing hinzufügen
+            wing.get_loft().Set(cutted_wing_shape)
+            ########################################
+
+
             wing_shape = wing.get_loft().shape()
             
             xmin,ymin,zmin,xmax,ymax,zmax = am2.get_koordinates(wing_shape)
-
-            mirrored_shape = wing.get_mirrored_loft()
-            
-
-            wing_shape_huelle = w2.create_hollowedsolid(wing_shape,0.04)
             xdiff,zdiff,ydiff = am2.get_dimensions(xmin,ymin,zmin,xmax,ymax,zmax)
+         
+            wing_shape_huelle = w2.create_hollowedsolid(wing_shape,0.04)
+            # Ausgehoelter Fluegel als neues Shape setzten
+            winghuelle=CNamedShape(wing_shape_huelle,"winghuelle")
+            wing.get_loft().Set(winghuelle)
 
 
             #S=make_ribs(xdiff*0.5,ydiff,zdiff,2.0)
@@ -161,10 +174,27 @@ class fluegel:
             Sneu = v2.make_translation_fuse(S.Shape(),-rasterabstand,anzahl,rasterabstand)
             m_rippen = r2.move_rippen_neu(Sneu,xmin,ymax,zmin)
 
+            #Ueberschneidung zwischen Rippen und Fluegel
             CommonSurface = BRepAlgoAPI_Common(m_rippen,wing_shape).Shape()
-            verbunden= BRepAlgoAPI_Fuse(wing_shape_huelle,CommonSurface).Shape()
+            ueberschneidung = CNamedShape(CommonSurface, "Rippen")
+
+            #Rippen und Fluegel verbinden
+            merger= CMergeShapes(wing.get_loft(), ueberschneidung)
+            merger_wing_shape = merger.named_shape()
+            wing.get_loft().Set(merger_wing_shape)
+            #display.DisplayShape(wing.get_loft().shape())
+
+            mirrored_shape = wing.get_mirrored_loft()
 
             if mirrored_shape is not None:
+                fused_wings = CFuseShapes(wing.get_loft(),wing.get_mirrored_loft()).named_shape()
+                wing.get_loft().Set(fused_wings)
+                #display.DisplayShape(wing.get_loft().shape(),transparency=0.8)
+
+                #in STL exportieren
+                aus.write_stl_file(wing.get_loft().shape(),"fluegel_neu")
+
+                '''
                 # Set up the mirror
                 aTrsf= gp_Trsf()
                 aTrsf.SetMirror(gp_Ax2(gp_Pnt(0,0,0),gp_Dir(0,1,0)))
@@ -177,12 +207,16 @@ class fluegel:
                 fluegelgesamt=BRepAlgoAPI_Fuse(verbunden,aMirroredShape).Shape()
                 aus.write_stl_file2(fluegelgesamt,"fluegel.stl")
                 # display.DisplayShape(fluegelgesamt,transparency=0.8)
-                
+                '''
 
             else:
-                # display.DisplayShape(verbunden,transparency=0.8)
+                #display.DisplayShape(wing.get_loft(),transparency=0.8)
+                aus.write_stl_file(wing.get_loft(),"fluegel_neu")
+
+                '''
+                display.DisplayShape(verbunden,transparency=0.8)
                 aus.write_stl_file2(verbunden,"fluegel.stl")
-                
+                '''
 
 
         # display.FitAll()
