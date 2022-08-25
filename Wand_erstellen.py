@@ -93,9 +93,7 @@ builder.MakeShell(shell)
 
 class Wandstaerke:
     def face_is_plane(self,face):
-
         #Returns True if the TopoDS_Shape is a plane, False otherwise
-
         hs = BRep_Tool_Surface(face)
         downcast_result= Geom_Plane.DownCast(hs)
         #print(downcast_result)
@@ -108,7 +106,6 @@ class Wandstaerke:
     def geom_plane_from_face(self,aFace):
 
         #Returns the geometric plane entity from a planar surface
-
         return Geom_Plane.DownCast(BRep_Tool_Surface(aFace))
 
     def create_hollowedsolid(self,shape,thickness):
@@ -136,7 +133,6 @@ class Wandstaerke:
         facesToRemove = TopTools_ListOfShape()
         facesToRemove.Append(faceToRemove)
 
-        #myBody = BRepOffsetAPI_MakeThickSolid(myBody, facesToRemove, -thickness / 50.0, 0.001)
         myBody = BRepOffsetAPI_MakeThickSolid(shape, facesToRemove, thickness, 0.001)
         myBody=myBody.Shape()
 
