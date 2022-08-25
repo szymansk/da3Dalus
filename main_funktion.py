@@ -219,4 +219,5 @@ def upload_fuselage():
 if __name__ == "__main__":
 	#open_file("C:/uploads/D150_v30.xml")
 	#open_file(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+	#open_wing("C:/uploads/fluegel_mitat.xml")
 	app.run()
