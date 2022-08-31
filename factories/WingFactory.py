@@ -18,9 +18,9 @@ import tigl3.surface_factories
 import OCC.Core.BRep as OBrep
 import OCC.Core.BRepAlgoAPI as OAlgo
 import OCC.Core.BRepBuilderAPI as OBuilder
+import OCC.Core.BRepOffsetAPI as OOff
 import OCC.Core.BRepFeat as OFeat
 import OCC.Core.BRepGProp  as OProp
-import OCC.Core.BRepOffset as OOffset
 import OCC.Core.BRepPrimAPI as OPrim
 import OCC.Core.gp as Ogp
 import OCC.Core.TopoDS as OTopo
@@ -44,6 +44,7 @@ class WingFactory:
         self.tigl_handle=tigl_handle
         self.config_manager: TConfig.CCPACSConfigurationManager  = TConfig.CCPACSConfigurationManager_get_instance()
         self.cpacs_configuration: TConfig.CCPACSConfiguration= self.config_manager.get_configuration(tigl_handle._handle.value)
+        self.wing_configuration= None
         self.wing:Wing= Wing()
         
         #self.rib_factory: RibFactory= RibFactory()
@@ -51,10 +52,10 @@ class WingFactory:
     def create_wing_shape(self, wing_nr):
         ''' Creates the wing shape out of the CPACS and stores it in the wing:Wing Objekt. Calls the funktions to calculate_koordinates and calculate_outter_dimensions '''
         #Get wing returns CPACSWing, XML Wing description
-        wing: TConfig.CCPACSWing= self.cpacs_configuration.get_wing(wing_nr)                   
+        self.wing_configuration: TConfig.CCPACSWing= self.cpacs_configuration.get_wing(wing_nr)                   
         #Get_loft()-shape() creates a TigleShape out of the Wing
         #3D solid  with Tigl metadata
-        wing_loft: TGeo.CNamedShape = wing.get_loft()
+        wing_loft: TGeo.CNamedShape = self.wing_configuration.get_loft()
         self.wing.shape: OTopo.TopoDS_Shape = wing_loft.shape()
         self.wing.calculate_koordinates()
         self.wing.calculate_outter_dimensions()
@@ -63,7 +64,9 @@ class WingFactory:
     def create_holow_wing(self, thickness:float):
         '''Creates a new Hollows_wing shape with a given thikness and stores it in the wing:Wing Objekt'''
         self.wing.hollow= create_hollowedsolid(self.wing.shape ,thickness)
-    
+        #facesToRemove = TopTools_ListOfShape()
+        #self.wing.hollow= OOff.BRepOffsetAPI_MakeThickSolid(self.wing.shape, facesToRemove, 0.2, 0.001)
+        
     def create_mirrored_wing(self):
         '''Creates a mirrored shape from the wing.with_ribs and stores it in the wing:Wing Objekt'''
         if self.wing.has_mirrored_shape:
@@ -79,7 +82,7 @@ class WingFactory:
     
     def has_mirrored_shape(self) -> boolean:
         '''checks if the wing in the factory has a mirrored shape'''     
-        mirorred_loft= self.cpacs_wing.get_mirrored_loft
+        mirorred_loft= self.wing_configuration.get_mirrored_loft()
         return mirorred_loft!= None
               
     def fuse_ribs(self, ribs):
@@ -93,6 +96,9 @@ class WingFactory:
         end= time.time()
         dif= end-start
         logging.info("Fuse took " + str(dif) + "seconds")
+    
+    def get_solid_mainwings(self):
+        pass
     
     '''
     def calculate_ribs_quantity(self) ->int:

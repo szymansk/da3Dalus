@@ -132,13 +132,15 @@ class AirplaneFactory:
     def create_fuselage(self):
         logging.info("Creating fuselage")
         self.fuselage_factory.create_fuselage_shape(1)
+        #self.fuselage_factory.cut_out_wing()
         self.fuselage_factory.create_holow_fuselage(self.shell_thikness)
         #Swap x and z because we rotate 90 aorund y axis
+        '''
         self.rib_factory.create_rib_grid(self.fuselage_rib_spacing,self.shell_thikness,self.fuselage_factory.fuselage.zdiff,self.fuselage_factory.fuselage.ydiff, self.fuselage_factory.fuselage.xdiff)
         self.rib_factory.rotate(gp_OY(),90)
-        #self.rib_factory.move_rippen(self.fuselage_factory.fuselage.xmin,self.fuselage_factory.fuselage.ymin,self.fuselage_factory.fuselage.zmin)
         self.rib_factory.move_rippen(0,self.fuselage_factory.fuselage.ymin*1.5,-self.fuselage_factory.fuselage.zmin*1.5)
         self.fuselage_factory.fuse_ribs(self.rib_factory.rib.ribs)
+        '''
         self.airplane.set_fuselage(self.fuselage_factory.fuselage.with_ribs)
         self.fuselage_factory.export_stl("fuselage.stl")
         

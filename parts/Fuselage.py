@@ -39,9 +39,11 @@ from Wand_erstellen import *
 
 class Fuselage:
     def __init__(self) -> None:
+        self.loft: TGeo.CNamedShape=None
         self.shape: OTopo.TopoDS_Shape= None
         self.hollow: OTopo.TopoDS_Shape= None
         self.with_ribs: OTopo.TopoDS_Shape= None
+        self.cutted= TGeo.CNamedShape= None
         self.rib:Rib=Rib()
         self.type:str=type
         

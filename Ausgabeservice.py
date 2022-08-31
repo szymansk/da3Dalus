@@ -43,6 +43,8 @@ def write_stl_file(a_shape,filename):
     if not os.path.isfile(filename):
         raise IOError("File not written to disk.")
 
+#deflection 0.01 feinmaschiger
+#angular_deflection = 0.01
 def write_stl_file2(a_shape,filename,mode="ascii",linear_deflection=0.9,angular_deflection=0.5):
     mypath= "stls\\" + filename
     if a_shape.IsNull():

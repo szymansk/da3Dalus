@@ -5,19 +5,19 @@ from re import A
 from turtle import Shape
 from unicodedata import mirrored
 
-
-import tigl3.boolean_ops
 import tigl3.configuration
 import tigl3.configuration as TConfig
 import tigl3.curve_factories
 import tigl3.exports as exp
 import tigl3.geometry
-import tigl3.geometry as geo
+import tigl3.geometry as TGeo
 import tigl3.surface_factories
+import tigl3.boolean_ops as TBoo
 
 import OCC.Core.BRep as OBrep
 import OCC.Core.BRepAlgoAPI as OAlgo
 import OCC.Core.BRepBuilderAPI as OBuilder
+import OCC.Core.BRepOffsetAPI as OOff
 import OCC.Core.BRepFeat as OFeat
 import OCC.Core.BRepGProp  as OProp
 import OCC.Core.BRepOffset as OOffset
@@ -48,14 +48,16 @@ class FuselageFactory:
     
     def create_fuselage_shape(self, fuse_nr):
         fuselage: TConfig.CCPACSFuselage= self.cpacs_configuration.get_fuselage(fuse_nr)
-        fuselage_loft: TGeo.CNamedShape= fuselage.get_loft()
-        self.fuselage.shape: OTopo.TopoDS_Shape=fuselage_loft.shape()
+        self.fuselage.loft: TGeo.CNamedShape= fuselage.get_loft()
+        self.fuselage.shape: OTopo.TopoDS_Shape=self.fuselage.loft.shape()
         self.fuselage.calculate_koordinates()
         self.fuselage.calculate_outter_dimensions()
         print(self.fuselage.__str__())
         
     def create_holow_fuselage(self, thickness:float):
         self.fuselage.hollow= create_hollowedsolid(self.fuselage.shape ,thickness)
+        #facesToRemove = TopTools_ListOfShape()
+        #self.fuselage.hollow= OOff.BRepOffsetAPI_MakeThickSolid(self.fuselage.cutted.shape(), facesToRemove, thickness, 0.001)
     
     def fuse_ribs(self, ribs):
         logging.info("Start Fuselage Fuse ---- Wait")
@@ -68,7 +70,26 @@ class FuselageFactory:
         end= time.time()
         dif= end-start
         logging.info("Fuselage Fuse took " + str(dif) + "seconds")
-    
+     
+    def cut_out_wing(self):
+        display, start_display, add_menu, add_function_to_menu = init_display()
+        wing: TConfig.CCPACSWing= self.cpacs_configuration.get_wing(1) 
+        wing_loft: TGeo.CNamedShape = wing.get_loft()
+        wing_shape: OTopo.TopoDS_Shape = wing_loft.shape()
+        aTrsf= Ogp.gp_Trsf()
+        aTrsf.SetMirror(Ogp.gp_Ax2(Ogp.gp_Pnt(0,0,0),Ogp.gp_Dir(0,1,0)))
+        transformed_wing = OBuilder.BRepBuilderAPI_Transform(wing_shape, aTrsf)
+        mirrored_wing= transformed_wing.Shape()
+        complete_wing2= BRepAlgoAPI_Fuse(wing_shape,mirrored_wing).Shape()
+        print("complete:" ,type(complete_wing2))
+        #display.DisplayShape(complete_wing)
+        #display.FitAll()
+        #start_display()
+        named_wings_shape= TGeo.CNamedShape(complete_wing2, "cutout")
+        cutter= TBoo.CCutShape(self.fuselage.loft, named_wings_shape)
+        self.fuselage.cutted:TGeo.CNamedShape= cutter.named_shape().shape()
+
+            
     def export_stl(self, name):
         write_stl_file2(self.fuselage.with_ribs, name)
         
