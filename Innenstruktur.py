@@ -92,153 +92,153 @@ builder.MakeShell(shell)
 # In[3]:
 
 
-class rippen:
-    def make_ribs(self,hoehe,breite,dicke,extrude):
-        import math
-        #hoehe=0.03
-        #breite=0.03
-        #dicke=0.015
+#class rippen:
+def make_ribs(hoehe,breite,dicke,extrude):
+    import math
+    #hoehe=0.03
+    #breite=0.03
+    #dicke=0.015
 
-        gesamt_x = 0.0+math.tan(45)*hoehe+dicke
-        mitte_x = gesamt_x*0.5
-        mitte_lx= (gesamt_x-dicke)*0.5
-        mitte_rx= (gesamt_x+dicke)*0.5
-        mitte_yl= hoehe*0.5
-        mitte_yo= (hoehe+dicke)*0.5
-        mitte_yu= (hoehe-dicke)*0.5
+    gesamt_x = 0.0+math.tan(45)*hoehe+dicke
+    mitte_x = gesamt_x*0.5
+    mitte_lx= (gesamt_x-dicke)*0.5
+    mitte_rx= (gesamt_x+dicke)*0.5
+    mitte_yl= hoehe*0.5
+    mitte_yo= (hoehe+dicke)*0.5
+    mitte_yu= (hoehe-dicke)*0.5
 
-        mkw = BRepBuilderAPI_MakeWire()
+    mkw = BRepBuilderAPI_MakeWire()
 
-        ## Pkt 1 nach 2
-        mkw.Add(
-            BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, 0.0, 0.0), gp_Pnt(mitte_lx,mitte_yl, 0.0)).Edge()
-        )
+    ## Pkt 1 nach 2
+    mkw.Add(
+        BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, 0.0, 0.0), gp_Pnt(mitte_lx,mitte_yl, 0.0)).Edge()
+    )
 
-        ## Pkt 2 nach 3
-        mkw.Add(
-            BRepBuilderAPI_MakeEdge(
-                gp_Pnt(mitte_lx,mitte_yl, 0.0), gp_Pnt(0.0, hoehe, 0.0)
-            ).Edge()
-        )
-        ## Pkt 3 nach 4
-        mkw.Add(
-            BRepBuilderAPI_MakeEdge(
-                gp_Pnt(0.0, hoehe, 0.0), gp_Pnt(dicke, hoehe, 0.0)
-            ).Edge()
-        )
-        ## Pkt 4 nach 5
-        mkw.Add(
-            BRepBuilderAPI_MakeEdge(
-                gp_Pnt(dicke, hoehe, 0.0), gp_Pnt(mitte_x, mitte_yo, 0.0)
-            ).Edge()
-        )
+    ## Pkt 2 nach 3
+    mkw.Add(
+        BRepBuilderAPI_MakeEdge(
+            gp_Pnt(mitte_lx,mitte_yl, 0.0), gp_Pnt(0.0, hoehe, 0.0)
+        ).Edge()
+    )
+    ## Pkt 3 nach 4
+    mkw.Add(
+        BRepBuilderAPI_MakeEdge(
+            gp_Pnt(0.0, hoehe, 0.0), gp_Pnt(dicke, hoehe, 0.0)
+        ).Edge()
+    )
+    ## Pkt 4 nach 5
+    mkw.Add(
+        BRepBuilderAPI_MakeEdge(
+            gp_Pnt(dicke, hoehe, 0.0), gp_Pnt(mitte_x, mitte_yo, 0.0)
+        ).Edge()
+    )
 
-        ##  Pkt5 nach 6
-        mkw.Add(
-            BRepBuilderAPI_MakeEdge(
-                 gp_Pnt(mitte_x, mitte_yo, 0.0), gp_Pnt(gesamt_x-dicke,hoehe , 0.0)
-            ).Edge()
-        )
+    ##  Pkt5 nach 6
+    mkw.Add(
+        BRepBuilderAPI_MakeEdge(
+                gp_Pnt(mitte_x, mitte_yo, 0.0), gp_Pnt(gesamt_x-dicke,hoehe , 0.0)
+        ).Edge()
+    )
 
-        ## Pkt6 nach 7
-        mkw.Add(
-            BRepBuilderAPI_MakeEdge(
-                gp_Pnt(gesamt_x-dicke,hoehe , 0.0), gp_Pnt(gesamt_x, hoehe, 0.0)
-            ).Edge()
-        )
+    ## Pkt6 nach 7
+    mkw.Add(
+        BRepBuilderAPI_MakeEdge(
+            gp_Pnt(gesamt_x-dicke,hoehe , 0.0), gp_Pnt(gesamt_x, hoehe, 0.0)
+        ).Edge()
+    )
 
-        ## Pkt 7 nach 8
-        mkw.Add(
-            BRepBuilderAPI_MakeEdge(
-                gp_Pnt(gesamt_x, hoehe, 0.0), gp_Pnt(mitte_rx,mitte_yl, 0.0)
-            ).Edge()
-        )
+    ## Pkt 7 nach 8
+    mkw.Add(
+        BRepBuilderAPI_MakeEdge(
+            gp_Pnt(gesamt_x, hoehe, 0.0), gp_Pnt(mitte_rx,mitte_yl, 0.0)
+        ).Edge()
+    )
 
-        ## Pkt 8 nach 9
-        mkw.Add(
-            BRepBuilderAPI_MakeEdge(
-                gp_Pnt(mitte_rx,mitte_yl, 0.0), gp_Pnt(gesamt_x, 0.0, 0.0)
-            ).Edge()
-        )
+    ## Pkt 8 nach 9
+    mkw.Add(
+        BRepBuilderAPI_MakeEdge(
+            gp_Pnt(mitte_rx,mitte_yl, 0.0), gp_Pnt(gesamt_x, 0.0, 0.0)
+        ).Edge()
+    )
 
-        ## Pk 9 nach 10
-        mkw.Add(
-            BRepBuilderAPI_MakeEdge(
-                gp_Pnt(gesamt_x, 0.0, 0.0), gp_Pnt(gesamt_x-dicke, 0.0, 0.0)
-            ).Edge()
-        )
+    ## Pk 9 nach 10
+    mkw.Add(
+        BRepBuilderAPI_MakeEdge(
+            gp_Pnt(gesamt_x, 0.0, 0.0), gp_Pnt(gesamt_x-dicke, 0.0, 0.0)
+        ).Edge()
+    )
 
-        ## Pk 10 nach 11
-        mkw.Add(
-            BRepBuilderAPI_MakeEdge(
-                gp_Pnt(gesamt_x-dicke, 0.0, 0.0), gp_Pnt(mitte_x, mitte_yu, 0.0)
-            ).Edge()
-        )
+    ## Pk 10 nach 11
+    mkw.Add(
+        BRepBuilderAPI_MakeEdge(
+            gp_Pnt(gesamt_x-dicke, 0.0, 0.0), gp_Pnt(mitte_x, mitte_yu, 0.0)
+        ).Edge()
+    )
 
-        ## Pk 11 nach 12
-        mkw.Add(
-            BRepBuilderAPI_MakeEdge(
-                gp_Pnt(mitte_x, mitte_yu, 0.0), gp_Pnt(dicke, 0.0, 0.0)
-            ).Edge()
-        )
+    ## Pk 11 nach 12
+    mkw.Add(
+        BRepBuilderAPI_MakeEdge(
+            gp_Pnt(mitte_x, mitte_yu, 0.0), gp_Pnt(dicke, 0.0, 0.0)
+        ).Edge()
+    )
 
-        ## Pk 12 nach 1
-        mkw.Add(
-            BRepBuilderAPI_MakeEdge(
-                gp_Pnt(dicke, 0.0, 0.0), gp_Pnt(0.0, 0.0, 0.0)
-            ).Edge()
-        )
+    ## Pk 12 nach 1
+    mkw.Add(
+        BRepBuilderAPI_MakeEdge(
+            gp_Pnt(dicke, 0.0, 0.0), gp_Pnt(0.0, 0.0, 0.0)
+        ).Edge()
+    )
 
-        #neu=mirrow_shape_y(mkw)
-        #neu2 =mirrow_shape_x(mkw)
+    #neu=mirrow_shape_y(mkw)
+    #neu2 =mirrow_shape_x(mkw)
 
-        S = BRepPrimAPI_MakePrism(
+    S = BRepPrimAPI_MakePrism(
             BRepBuilderAPI_MakeFace(mkw.Wire()).Face(),
             gp_Vec(gp_Pnt(0.0, 0.0, 0.0), gp_Pnt(0.0, 0.0, extrude)),
         )
 
-        ## verschieben damit gesamtes Modell drinnen ist
-        ########################  z    y   z 
-        #S2=verschieben(S.Shape(),0.0,0.0,0.0)
-        #S2=rotate_shape(S.Shape(),gp_OY,90)
+    ## verschieben damit gesamtes Modell drinnen ist
+    ########################  z    y   z 
+    #S2=verschieben(S.Shape(),0.0,0.0,0.0)
+    #S2=rotate_shape(S.Shape(),gp_OY,90)
 
-        return S
+    return S
 
-    def move_rippen_neu(self,rippen_gesamt,xmin,ymin,zmin):
-        from tigl3.geometry import CTiglTransformation
-        #help(CTiglTransformation)
+def move_rippen_neu(rippen_gesamt,xmin,ymin,zmin):
+    from tigl3.geometry import CTiglTransformation
+    #help(CTiglTransformation)
 
-        trafo = CTiglTransformation()
-        trafo.add_translation(xmin,ymin,zmin)
-        moved_rippen=trafo.transform(rippen_gesamt)
+    trafo = CTiglTransformation()
+    trafo.add_translation(xmin,ymin,zmin)
+    moved_rippen=trafo.transform(rippen_gesamt)
 
-        return moved_rippen
-    
-    def move_rippen(self,rippen_gesamt,xmin,ymin,zmin):
-        from tigl3.geometry import CTiglTransformation
-        #help(CTiglTransformation)
+    return moved_rippen
 
-        trafo = CTiglTransformation()
-        trafo.add_translation(xmin,ymin,zmin)
+def move_rippen(self,rippen_gesamt,xmin,ymin,zmin):
+    from tigl3.geometry import CTiglTransformation
+    #help(CTiglTransformation)
 
-        self.moved_rippen=[]
-        anzahl=35
-        for a in range(anzahl-1):
-            self.moved_rippen.append(trafo.transform(rippen_gesamt[a]))
-            #display.DisplayShape(moved_rippen[a])
+    trafo = CTiglTransformation()
+    trafo.add_translation(xmin,ymin,zmin)
 
-        return self.moved_rippen
+    self.moved_rippen=[]
+    anzahl=35
+    for a in range(anzahl-1):
+        self.moved_rippen.append(trafo.transform(rippen_gesamt[a]))
+        #display.DisplayShape(moved_rippen[a])
 
-    def fuse_shapes_common(self,Commonsurface):
-        i=0
-        fertig=Commonsurface[i]
-        while (i+1)<(len(Commonsurface)-1):
-            for i in range(len(Commonsurface)-1):
-                #common=BRepAlgoAPI_Fuse(Commonsurface[i],Commonsurface[i+1]).Shape()
-                common=BRepAlgoAPI_Fuse(fertig,Commonsurface[i]).Shape()
-                fertig=common
-                                        
-        return fertig
+    return self.moved_rippen
+
+def fuse_shapes_common(Commonsurface):
+    i=0
+    fertig=Commonsurface[i]
+    while (i+1)<(len(Commonsurface)-1):
+        for i in range(len(Commonsurface)-1):
+            #common=BRepAlgoAPI_Fuse(Commonsurface[i],Commonsurface[i+1]).Shape()
+            common=BRepAlgoAPI_Fuse(fertig,Commonsurface[i]).Shape()
+            fertig=common
+                                    
+    return fertig
 
 
 

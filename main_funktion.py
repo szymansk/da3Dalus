@@ -77,80 +77,46 @@ import tigl3.configuration, tigl3.geometry, tigl3.boolean_ops, tigl3.exports
 
 from OCC.Core.BRepBndLib import brepbndlib_Add
 from OCC.Core.Bnd import Bnd_Box
-
+from tigl3.geometry import CTiglTransformation
+import tigl3.geometry as TGeo
 from OCC.Core.Quantity import Quantity_NOC_RED
 import os
 
 from math import radians
+from factories.AirplaneFactory import AirplaneFactory
 
-builder = BRep_Builder()
-shell = TopoDS_Shell()
-builder.MakeShell(shell)
-
-
-#import sys
-
-#sys.path.append("C:/Users/motto/cad-modelling-service")
-
-from Wand_erstellen import Wandstaerke
-from Aussparungen import Aussparung
-from Innenstruktur import rippen
-from shape_verschieben import verschieben
-from abmasse import abmessungen
+from factories.WingFactory import WingFactory
 from Fluegel import fluegel
 from Rumpf import profil
 from Einleseservice import einlesen
-from Ausgabeservice import ausgabe
+from Ausgabeservice import *
 
 import os
+import Zipfolder as myZip
 import urllib.request
 from app import app
 from flask import Flask, request, redirect, jsonify, send_file
 from werkzeug.utils import secure_filename
+import logging
 
-
-# In[3]:
 
 def open_wing(filename):
 	ein=einlesen()
-	aus=ausgabe()
-	w1=Wandstaerke()
-	a1=Aussparung()
-	r1=rippen()
-	v1=verschieben()
-	am1=abmessungen()
 	p1=profil()
 	f2=fluegel()
-
 	tigl_h=ein.cpacs_einlesen(filename)
-
 	f2.make_fluegel(tigl_h)
 	
 	#p1.make_profil(tigl_h)
 	#display, start_display, add_menu, add_function_to_menu = init_display()
-
 	#display.DisplayShape(flugelfertig)
-
 	#start_display()
 	#display.FitAll()
 
-
-	#f2.make_fluegel(tigl_h)
-	#p1.make_profil()
-
 def open_fuselage(filename):
 	ein=einlesen()
-	aus=ausgabe()
-	w1=Wandstaerke()
-	a1=Aussparung()
-	r1=rippen()
-	v1=verschieben()
-	am1=abmessungen()
 	p1=profil()
-	f2=fluegel()
-
 	tigl_h=ein.cpacs_einlesen(filename)
-	
 	p1.make_profil(tigl_h)
 
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif','xml','json'])
@@ -158,8 +124,62 @@ ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif','xml','json'
 def allowed_file(filename):
 	return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def check_file(files):
+    # check if the post request has the file part
+	if 'file' not in files:
+		resp = jsonify({'message' : 'No file part in the request'})
+		resp.status_code = 400
+		return resp
+	file = files['file']
+
+	if file.filename == '':
+		resp = jsonify({'message' : 'No file selected for uploading'})
+		resp.status_code = 400
+		return resp
+	return None
+    
+def extract_tigl(file_path):
+	tixi_h = tixi3wrapper.Tixi3()
+	tigl_h = tigl3wrapper.Tigl3()
+	tixi_h.open(file_path)
+	tigl_h.open(tixi_h, "")
+	return tigl_h
+ 
+@app.route('/create_airplane', methods=['POST'])
+def create_right_wing():
+	resp= check_file(request.files)
+	if resp != None: 
+		return resp
+	else:
+		file= request.files['file']
+	
+	if file and allowed_file(file.filename):
+		filename = secure_filename(file.filename)
+		file_path = "test_cpacs\\" + filename
+		file.save(file_path)
+		tigl_h= extract_tigl(file_path)
+		'''
+		wing_thikness=0.01
+		rib_spacing=1
+		rib_thikness=0.2
+		'''
+		wing_thikness=float(request.args.get("wing_thikness"))
+		rib_spacing=float(request.args.get("rib_spacing"))
+		rib_thikness=float(request.args.get("rib_thikness"))
+		print("wing:",wing_thikness,"rib_s:" ,rib_spacing, "rib_t",rib_thikness)
+		airplane_factory=AirplaneFactory(tigl_h,wing_thikness,rib_spacing,rib_thikness)
+		airplane_factory.create_right_mainwing()
+		return send_file("right_mainwing.stl")
+
+	else:
+		resp = jsonify({'message' : 'Allowed file types are txt, pdf, png, jpg, jpeg, gif'})
+		resp.status_code = 400
+		return resp
+
+
 @app.route('/wing-upload', methods=['POST'])
 def upload_wing():
+    '''
 	# check if the post request has the file part
 	if 'file' not in request.files:
 		resp = jsonify({'message' : 'No file part in the request'})
@@ -171,21 +191,27 @@ def upload_wing():
 		resp = jsonify({'message' : 'No file selected for uploading'})
 		resp.status_code = 400
 		return resp
+	'''
+    resp= check_file(request.files)
+    if resp != None: 
+        return resp
+    else:
+        file= request.files['file']
 
-	if file and allowed_file(file.filename):
-		filename = secure_filename(file.filename)
-		file_path = filename
-		file.save(file_path)
-		# resp = jsonify({'message' : 'File successfully uploaded'})
-		# resp.status_code = 201
-		open_wing(file_path)
-		# return resp
-		return send_file("fluegel.stl")
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        file_path = filename
+        file.save(file_path)
+        # resp = jsonify({'message' : 'File successfully uploaded'})
+        # resp.status_code = 201
+        open_wing(file_path)
+        # return resp
+        return send_file("p_right_mainwing.stl")
 
-	else:
-		resp = jsonify({'message' : 'Allowed file types are txt, pdf, png, jpg, jpeg, gif'})
-		resp.status_code = 400
-		return resp
+    else:
+        resp = jsonify({'message' : 'Allowed file types are txt, pdf, png, jpg, jpeg, gif'})
+        resp.status_code = 400
+        return resp
 
 @app.route('/fuselage-upload', methods=['POST'])
 def upload_fuselage():
@@ -216,8 +242,72 @@ def upload_fuselage():
 		resp.status_code = 400
 		return resp
 
+def my_logging():
+    #logging.basicConfig(filename='example.log', level=logging.INFO)
+	logging.basicConfig(level=logging.INFO)
+	logging.info("Start logging")
+    
+def development():
+	i_cpacs=2
+	
+	tixi_h = tixi3wrapper.Tixi3()
+	tigl_h = tigl3wrapper.Tigl3()
+	if i_cpacs==1:
+		tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\fluegel_test_1008.xml")
+	if i_cpacs==2:
+		tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\CPACS_30_D150.xml")
+	if i_cpacs==3:
+		tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\aircombat.xml")
+	if i_cpacs==4:
+		tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\tinywing_skaliert.xml")
+	tigl_h.open(tixi_h, "")
+	shell_thikness=0.2
+	fuselage_rib_spacing=1.5
+	rib_spacing=4
+	rib_thikness=0.2
+	airplane_factory=AirplaneFactory(tigl_h,shell_thikness,fuselage_rib_spacing,rib_spacing,rib_thikness)
+	display, start_display, add_menu, add_function_to_menu = init_display()
+	box = BRepPrimAPI_MakeBox(1, 1, 1).Shape()
+	d_ribs=False
+	variant=2
+	if variant==1:
+		airplane_factory.create_airplane()
+		airplane_factory.fuse_all_wings()
+		display.DisplayShape(airplane_factory.airplane.allwings)
+		display.DisplayShape(airplane_factory.airplane.fuselage)
+	elif variant==2:
+		airplane_factory.create_right_mainwing()
+		display.DisplayShape( airplane_factory.airplane.wings.get("right_mainwing"))
+	elif variant==3:
+		#airplane_factory.create_right_mainwing()
+		airplane_factory.create_fuselage()
+		display.DisplayShape(airplane_factory.airplane.fuselage)
+	else:
+		logging.info("invalid variant")
+  
+	if d_ribs:
+		display.DisplayShape(airplane_factory.rib_factory.rib.ribs)
+  
+	myZip.zip_stls()
+	
+	box2 = BRepPrimAPI_MakeBox(1, 1, 1).Shape()
+	#trafo= TGeo.CTiglTransformation()
+	#trafo.add_translation(0,wf.wing.rib.height,0)
+	#box2=trafo.transform(box2)
+	display.DisplayShape(box2)
+	
+	
+    
+	display.DisplayShape(box)
+
+	display.FitAll()
+	start_display()
+    
 if __name__ == "__main__":
-	#open_file("C:/uploads/D150_v30.xml")
-	#open_file(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-	#open_wing("C:/uploads/fluegel_mitat.xml")
-	app.run()
+	my_logging()
+	development()
+ 	#app.run()
+	
+	
+
+    

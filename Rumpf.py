@@ -75,25 +75,23 @@ import os
 
 from math import radians
 
+'''
 builder = BRep_Builder()
 shell = TopoDS_Shell()
 builder.MakeShell(shell)
+'''
 
-#import sys
-
-#sys.path.append("C:/Users/motto/cad-modelling-service")
-
-from Wand_erstellen import Wandstaerke
-from Aussparungen import Aussparung
-from Innenstruktur import rippen
-from shape_verschieben import verschieben
-from abmasse import abmessungen
-from Ausgabeservice import ausgabe
 
 
 # In[2]:
+from abmasse import *
+from Ausgabeservice import *
+from Aussparungen import *
+from Innenstruktur import *
+from shape_verschieben import *
+from Wand_erstellen import *
 
-
+'''
 a1=Aussparung()
 w1=Wandstaerke()
 v1=verschieben()
@@ -101,6 +99,13 @@ i1=rippen()
 ab1=abmessungen()
 aus=ausgabe()
 
+from Wand_erstellen import Wandstaerke
+from Aussparungen import Aussparung
+from Innenstruktur import rippen
+from shape_verschieben import verschieben
+from abmasse import abmessungen
+from Ausgabeservice import ausgabe
+'''
 
 
 class profil:
@@ -121,25 +126,17 @@ class profil:
         self.tigl_h=tigl_h
         # display, start_display, add_menu, add_function_to_menu = init_display()
         #servo,b1,b2,fertig = a1.make_Servo(0.15,0.2,0.2)
-
         #display.DisplayShape(servo.Shape(),color="blue")
         #display.DisplayShape(b1)
         #display.DisplayShape(b2)
-        '''
-        tixi_h = tixi3wrapper.Tixi3()
-        tigl_h = tigl3wrapper.Tigl3()
 
-        #dir_path = os.path.dirname(os.path.realpath(__file__))
-        tixi_h.open("C:/Users/motto/Downloads/tigl-master/tigl-master/tests/unittests/TestData/D150_v30.xml")
-        #tixi_h.open("C:/Program Files/TIGL-3.2.3-win64 (1)/TIGL-3.2.3-win64/share/doc/tigl3/examples/simpletest.cpacs.xml")
-        tigl_h.open(tixi_h, "")
-        '''
+        #FIXME unpack config outsource
         # get the configuration manager
         mgr = tigl3.configuration.CCPACSConfigurationManager_get_instance()
-
         # get the CPACS configuration, defined by the tigl handle
         # we need to access the underlying tigl handle (that is used in the C/C++ API)
         config = mgr.get_configuration(tigl_h._handle.value)
+        
         CommonSurface=[]
         for ifuse in range(1, config.get_fuselage_count() + 1):
             fuselage = config.get_fuselage(ifuse)
@@ -147,21 +144,22 @@ class profil:
 
             #display.DisplayShape(fuselage_shape)
 
-            xmin,ymin,zmin,xmax,ymax,zmax = ab1.get_koordinates(fuselage_shape)
-            xdiff,zdiff,ydiff = ab1.get_dimensions(xmin,ymin,zmin,xmax,ymax,zmax)
+            xmin,ymin,zmin,xmax,ymax,zmax = get_koordinates(fuselage_shape)
+            xdiff,zdiff,ydiff = get_dimensions(xmin,ymin,zmin,xmax,ymax,zmax)
             #print(xdiff,zdiff,ydiff,xmax)
             #print(xmax,ymax,zmax)
 
             #S=make_ribs(ydiff,xdiff,0.1,xmax)
             # hoehe,breite,dicke,extrude
-            S=i1.make_ribs(zdiff,ydiff,0.1,xmax*2)
-            Srotate=v1.rotate_shape(S.Shape(),gp_OY(),90)
+            S=make_ribs(zdiff,ydiff,0.1,xmax*2)
+            #rotate ribs so it can be printed
+            Srotate=rotate_shape(S.Shape(),gp_OY(),90)
             anzahl = 3
             #Sneu = make_translation(Srotate,-0.1,anzahl)
             Sskdl= self.make_translation_fuse(Srotate,-0.9,anzahl)
             #display.DisplayShape(Sskdl)
             
-            m_rippen = i1.move_rippen_neu(Sskdl,0,0,zdiff*0.5)
+            m_rippen = move_rippen_neu(Sskdl,0,0,zdiff*0.5)
           
             #m_rippen = move_rippen_neu(Sskdl,0,0,0)
             #display.DisplayShape(m_rippen)
@@ -187,8 +185,8 @@ class profil:
                 #display.DisplayShape(CommonSurface3)
             #display.DisplayShape(verbunden)
 
-            cs=i1.fuse_shapes_common(profile)
-            ausgehoelt=w1.create_hollowedsolid(cs,0.04)
+            cs=fuse_shapes_common(profile)
+            ausgehoelt=create_hollowedsolid(cs,0.04)
 
             #display.DisplayShape(cs,transparency=0.8)
             #display.DisplayShape(neu,transparency=0.8)
@@ -198,7 +196,7 @@ class profil:
             fertig=BRepAlgoAPI_Fuse(ausgehoelt,CommonSurface3).Shape()
             
             # display.DisplayShape(fertig,transparency=0.8)
-            aus.write_stl_file2(fertig,"rumpf.stl")
+            write_stl_file2(fertig,"rumpf.stl")
                 #CS.append(BRepAlgoAPI_Common(m_rippen,profile[isegment-1]).Shape())
                 #verbunden.append(BRepAlgoAPI_Fuse(neu[isegment-1],CS[isegment-1]).Shape())
             #display.DisplayShape(verbunden,transparency=0.8)

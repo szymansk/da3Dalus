@@ -5,24 +5,34 @@
 
 
 from __future__ import print_function
+
+from math import radians
+from re import A
+from turtle import Shape
 from unicodedata import mirrored
 
 from tigl3.tigl3wrapper import Tigl3, TiglBoolean
 from tixi3.tixi3wrapper import Tixi3
 import sys
 
-from tigl3.geometry import CTiglTransformation, CNamedShape
-
-import tigl3.configuration, tigl3.geometry, tigl3.boolean_ops, tigl3.exports
-from tigl3.boolean_ops import CCutShape, CMergeShapes, CFuseShapes
-
-from OCC.Core.Quantity import Quantity_NOC_RED
-import os
-
+import tigl3.boolean_ops
+import tigl3.configuration
+import tigl3.configuration as TConfig
 import tigl3.curve_factories
+import tigl3.exports as exp
+import tigl3.geometry
+import tigl3.geometry as TGeo
 import tigl3.surface_factories
-from OCC.Core.gp import gp_Pnt, gp_OX, gp_OY,gp_OZ, gp_Vec, gp_Trsf, gp_DZ, gp_Ax2, gp_Ax3, gp_Pnt2d, gp_Dir2d, gp_Ax2d, gp_Dir
-from OCC.Core.gp import gp_Ax1, gp_Pnt, gp_Dir, gp_Trsf
+
+import OCC.Core.BRep as OBrep
+import OCC.Core.BRepAlgoAPI as OAlgo
+import OCC.Core.BRepBuilderAPI as OBuilder
+import OCC.Core.BRepFeat as OFeat
+import OCC.Core.BRepGProp  as OProp
+import OCC.Core.BRepOffset as OOffset
+import OCC.Core.BRepPrimAPI as OPrim
+import OCC.Core.gp as Ogp
+import OCC.Core.TopoDS as OTopo
 from OCC.Display.SimpleGui import init_display
 
 from OCC.Display.WebGl.jupyter_renderer import JupyterRenderer
@@ -102,31 +112,41 @@ from shape_verschieben import verschieben
 from abmasse import abmessungen
 from Ausgabeservice import ausgabe
 
+from abmasse import *
+from Ausgabeservice import *
+from Aussparungen import *
+from Innenstruktur import *
+from shape_verschieben import *
+from Wand_erstellen import *
 
 # In[2]:
 
-
+# FIXME dont "initialize" the class, import Funktions
+'''
 w2=Wandstaerke()
 a2=Aussparung()
 r2=rippen()
 v2=verschieben()
 am2=abmessungen()
 aus=ausgabe()
-
+'''
 
 class fluegel:
     
     def make_fluegel(self,tigl_h):
+        #FIXME  unpack configuration 1 time and give it as paramater to the other function
         self.tigl_h=tigl_h
         # display, start_display, add_menu, add_function_to_menu = init_display()
-
         # get the configuration manager
-        mgr = tigl3.configuration.CCPACSConfigurationManager_get_instance()
-
+        #mgr: config3.CCPACSConfigurationManager  = tigl3.configuration.CCPACSConfigurationManager_get_instance()
+        mgr: TConfig.CCPACSConfigurationManager  = tigl3.configuration.CCPACSConfigurationManager_get_instance()
+        
         # get the CPACS configuration, defined by the tigl handle
         # we need to access the underlying tigl handle (that is used in the C/C++ API)
-        config = mgr.get_configuration(tigl_h._handle.value)
+        #config: config3.CCPACSConfiguration = mgr.get_configuration(tigl_h._handle.value)
+        config: TConfig.CCPACSConfiguration = mgr.get_configuration(tigl_h._handle.value)
 
+        #FIXME grid_spacing
         rasterabstand=2
 
         # Geometrie des Akkus anlegen
@@ -186,6 +206,11 @@ class fluegel:
 
             mirrored_shape = wing.get_mirrored_loft()
 
+            #exluced vertikal wing
+            #creates mirrored wing
+            #fuses both wings to a set_of_wings
+            #FIXME return Left, RIght and set of Wings
+            #FIXME outsource the export funktion
             if mirrored_shape is not None:
                 fused_wings = CFuseShapes(wing.get_loft(),wing.get_mirrored_loft()).named_shape()
                 wing.get_loft().Set(fused_wings)
@@ -196,16 +221,17 @@ class fluegel:
 
                 '''
                 # Set up the mirror
-                aTrsf= gp_Trsf()
-                aTrsf.SetMirror(gp_Ax2(gp_Pnt(0,0,0),gp_Dir(0,1,0)))
+                aTrsf= Ogp.gp_Trsf()
+                aTrsf.SetMirror(Ogp.gp_Ax2(Ogp.gp_Pnt(0,0,0),Ogp.gp_Dir(0,1,0)))
                 # Apply the mirror transformation
-                aBRespTrsf = BRepBuilderAPI_Transform(verbunden, aTrsf)
+                aBRespTrsf = OBuilder.BRepBuilderAPI_Transform(verbunden, aTrsf)
 
                 # Get the mirrored shape back out of the transformation and convert back to a wire
                 aMirroredShape = aBRespTrsf.Shape()
+                aMirroredShape
                 
-                fluegelgesamt=BRepAlgoAPI_Fuse(verbunden,aMirroredShape).Shape()
-                aus.write_stl_file2(fluegelgesamt,"fluegel.stl")
+                fluegelgesamt=OAlgo.BRepAlgoAPI_Fuse(verbunden,aMirroredShape).Shape()
+                write_stl_file2(fluegelgesamt,"fluegel.stl")
                 # display.DisplayShape(fluegelgesamt,transparency=0.8)
                 '''
 

@@ -27,7 +27,7 @@ from OCC.Extend.DataExchange import write_stl_file
 
 class einlesen:
     def cpacs_einlesen(self,filename):
-        self.filename=filename
+        #self.filename=filename
         tixi_h = tixi3wrapper.Tixi3()
         tigl_h = tigl3wrapper.Tigl3()
 

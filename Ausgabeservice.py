@@ -41,37 +41,39 @@ class ausgabe:
             print(f"Warning: {filename} already exists and will be replaced") 
         '''
 
-        stl_exporter = create_exporter("stl")
-        stl_exporter.add_shape(a_shape)
-        #stl_exporter.write("test.stl")
-        stl_exporter.write(filename +".stl")
+    stl_exporter = create_exporter("stl")
+    stl_exporter.add_shape(a_shape)
+    #stl_exporter.write("test.stl")
+    stl_exporter.write(filename +".stl")
 
-        if not os.path.isfile(filename):
-            raise IOError("File not written to disk.")
-    
-    def write_stl_file2(self,a_shape,filename,mode="ascii",linear_deflection=0.9,angular_deflection=0.5):
-        
-        if a_shape.IsNull():
-            raise AssertionError("Shape is null.")
-        if mode not in ["ascii", "binary"]:
-            raise AssertionError("mode should be either ascii or binary")
-        if os.path.isfile(filename):
-            print(f"Warning: {filename} already exists and will be replaced")
-        # first mesh the shape
-        mesh = BRepMesh_IncrementalMesh(
-            a_shape, linear_deflection, False, angular_deflection, True
-        )
-        # mesh.SetDeflection(0.05)
-        mesh.Perform()
-        if not mesh.IsDone():
-            raise AssertionError("Mesh is not done.")
+    if not os.path.isfile(filename):
+        raise IOError("File not written to disk.")
 
-        stl_exporter = StlAPI_Writer()
-        if mode == "ascii":
-            stl_exporter.SetASCIIMode(True)
-        else:  # binary, just set the ASCII flag to False
-            stl_exporter.SetASCIIMode(False)
-        stl_exporter.Write(a_shape, filename)
+#deflection 0.01 feinmaschiger
+#angular_deflection = 0.01
+def write_stl_file2(a_shape,filename,mode="ascii",linear_deflection=0.9,angular_deflection=0.5):
+    mypath= "stls\\" + filename
+    if a_shape.IsNull():
+        raise AssertionError("Shape is null.")
+    if mode not in ["ascii", "binary"]:
+        raise AssertionError("mode should be either ascii or binary")
+    if os.path.isfile(mypath):
+        print(f"Warning: {mypath} already exists and will be replaced")
+    # first mesh the shape
+    mesh = BRepMesh_IncrementalMesh(
+        a_shape, linear_deflection, False, angular_deflection, True
+    )
+    # mesh.SetDeflection(0.05)
+    mesh.Perform()
+    if not mesh.IsDone():
+        raise AssertionError("Mesh is not done.")
 
-        if not os.path.isfile(filename):
-            raise IOError("File not written to disk.")
+    stl_exporter = StlAPI_Writer()
+    if mode == "ascii":
+        stl_exporter.SetASCIIMode(True)
+    else:  # binary, just set the ASCII flag to False
+        stl_exporter.SetASCIIMode(False)
+    stl_exporter.Write(a_shape, mypath)
+
+    if not os.path.isfile(mypath):
+        raise IOError("File not written to disk.")
