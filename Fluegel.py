@@ -11,6 +11,9 @@ from re import A
 from turtle import Shape
 from unicodedata import mirrored
 
+from tigl3.tigl3wrapper import Tigl3, TiglBoolean
+from tixi3.tixi3wrapper import Tixi3
+import sys
 
 import tigl3.boolean_ops
 import tigl3.configuration
@@ -31,27 +34,83 @@ import OCC.Core.BRepPrimAPI as OPrim
 import OCC.Core.gp as Ogp
 import OCC.Core.TopoDS as OTopo
 from OCC.Display.SimpleGui import init_display
-'''
-from OCC.Core.BRep import BRep_Builder, BRep_Tool_Surface
-from OCC.Core.BRepAlgoAPI import (BRepAlgoAPI_Common, BRepAlgoAPI_Cut,
-                                  BRepAlgoAPI_Fuse, BRepAlgoAPI_Section)
-from OCC.Core.BRepBuilderAPI import (BRepBuilderAPI_MakeEdge,
-                                     BRepBuilderAPI_MakeFace,
-                                     BRepBuilderAPI_MakeWire,
-                                     BRepBuilderAPI_Transform)
-                                     
-from OCC.Core.BRepFeat import (BRepFeat_MakeDPrism, BRepFeat_MakeLinearForm,
-                               BRepFeat_MakePrism, BRepFeat_MakeRevol,
-                               BRepFeat_SplitShape)
-                               from OCC.Core.GC import GC_MakeArcOfCircle, GC_MakeSegment
-from OCC.Core.GCE2d import GCE2d_MakeSegment
-from OCC.Core.Geom import Geom_CylindricalSurface, Geom_Plane, Geom_Surface
-from OCC.Core.Geom2d import Geom2d_Curve, Geom2d_Ellipse, Geom2d_TrimmedCurve
 
-builder = OBrep.BRep_Builder() 
-shell = OTopo.TopoDS_Shell()
+from OCC.Display.WebGl.jupyter_renderer import JupyterRenderer
+from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_MakeFace, BRepBuilderAPI_MakeEdge
+from OCC.Core.GC import GC_MakeArcOfCircle, GC_MakeSegment
+from OCC.Core.GCE2d import GCE2d_MakeSegment
+from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_MakeEdge, BRepBuilderAPI_MakeWire, BRepBuilderAPI_MakeFace, BRepBuilderAPI_Transform
+from OCC.Core.BRepPrimAPI import BRepPrimAPI_MakePrism, BRepPrimAPI_MakeCylinder, BRepPrimAPI_MakeBox
+
+from OCC.Core.BRep import BRep_Tool_Surface, BRep_Builder
+from OCC.Core.BRepAlgoAPI import BRepAlgoAPI_Cut, BRepAlgoAPI_Fuse
+from OCC.Core.TopoDS import topods, TopoDS_Edge, TopoDS_Compound
+from OCC.Core.TopExp import TopExp_Explorer
+from OCC.Core.TopAbs import TopAbs_EDGE, TopAbs_FACE
+from OCC.Core.TopTools import TopTools_ListOfShape
+
+from OCC.Core.BOPAlgo import BOPAlgo_MakerVolume
+
+from OCC.Core.BRepOffset import BRepOffset_Skin
+from OCC.Core.BRepOffsetAPI import BRepOffsetAPI_MakeThickSolid, BRepOffsetAPI_ThruSections
+
+from OCC.Core.BRepFeat import (
+    BRepFeat_MakePrism,
+    BRepFeat_MakeDPrism,
+    BRepFeat_SplitShape,
+    BRepFeat_MakeLinearForm,
+    BRepFeat_MakeRevol,
+)
+
+from OCC.Core.Geom import Geom_CylindricalSurface, Geom_Plane, Geom_Surface
+from OCC.Core.Geom2d import Geom2d_TrimmedCurve, Geom2d_Ellipse, Geom2d_Curve
+
+from OCC.Core.TopoDS import TopoDS_Shell, TopoDS_Solid, TopoDS_Wire, TopoDS_Edge
+from OCC.Core import StlAPI
+
+import numpy as np
+
+from OCC.Core.BRepAlgoAPI import (
+    BRepAlgoAPI_Fuse,
+    BRepAlgoAPI_Common,
+    BRepAlgoAPI_Section,
+    BRepAlgoAPI_Cut,
+)
+
+from OCC.Extend.TopologyUtils import TopologyExplorer
+from OCC.Extend.ShapeFactory import translate_shp
+
+from OCC.Core.GProp import GProp_GProps
+from OCC.Core.BRepGProp import brepgprop_VolumeProperties, brepgprop_SurfaceProperties
+
+
+from tixi3 import tixi3wrapper
+from tigl3 import tigl3wrapper
+import tigl3.configuration, tigl3.geometry, tigl3.boolean_ops, tigl3.exports
+
+from OCC.Core.BRepBndLib import brepbndlib_Add
+from OCC.Core.Bnd import Bnd_Box
+
+from OCC.Core.Quantity import Quantity_NOC_RED
+import os
+
+from math import radians
+
+builder = BRep_Builder()
+shell = TopoDS_Shell()
 builder.MakeShell(shell)
-'''
+
+#import sys
+
+#sys.path.append("C:/Users/motto/Downloads/tigl-examples-master/tigl-examples-master/tigl/python/geometry-modeling")
+#sys.path.append("C:/Users/motto/cad-modelling-service")
+
+from Wand_erstellen import Wandstaerke
+from Aussparungen import Aussparung
+from Innenstruktur import rippen
+from shape_verschieben import verschieben
+from abmasse import abmessungen
+from Ausgabeservice import ausgabe
 
 from abmasse import *
 from Ausgabeservice import *
@@ -90,47 +149,62 @@ class fluegel:
         #FIXME grid_spacing
         rasterabstand=2
 
-        for iwing in range(1, config.get_wing_count() + 1):
-            #Get wing returns CPACSWing, XML Wing description
-            wing: TConfig.CCPACSWing= config.get_wing(iwing)            
+        # Geometrie des Akkus anlegen
+        akku = a2.make_akku_schacht(3,3,3,0.8)
 
-            #Get_loft()-shape() creates a TigleShape out of the Wing
-            #3D solid  with Tigl metadata
-            wing_loft: TGeo.CNamedShape = wing.get_loft()
-            #wing_shape = wing.get_loft().shape()
-            wing_shape: OTopo.TopoDS_Shape = wing_loft.shape()
+        for iwing in range(1, config.get_wing_count() + 1):
+        
+            wing = config.get_wing(iwing)
+
+            ############# AUSSPARUNG #############
+            # Aussparung platzieren
+            trafo=CTiglTransformation()
+            trafo.add_translation(2,3,0)
+            moved_box = trafo.transform(akku)
+            #Aussparung als CNamedShape bennen
+            namedBox = CNamedShape(moved_box, "CutOut")
+            #Ausschneiden
+            cutter = CCutShape(wing.get_loft(),namedBox)
+            cutted_wing_shape = cutter.named_shape()
+            #Dem Wing hinzufügen
+            wing.get_loft().Set(cutted_wing_shape)
+            ########################################
+
+
+            wing_shape = wing.get_loft().shape()
             
-                      
-            #returns the korditnates from the bound box of the Wing_shape
-            #calculate the diferences
-            xmin,ymin,zmin,xmax,ymax,zmax = get_koordinates(wing_shape)
-            xdiff,zdiff,ydiff = get_dimensions(xmin,ymin,zmin,xmax,ymax,zmax)
-            
-            #create mirror loft, if not possible return null. 
-            #Vertikal wing has no mirrored loft
-            mirrored_shape = wing.get_mirrored_loft()
-            
-            #makes a hollowed shape from wing with a thickness 0.04
-            wing_shape_huelle = create_hollowedsolid(wing_shape,0.04)
-            
-            #creates 1 rib with an X-profile
-            #FIXME change names in definition, and remove unused "breite"
-            # def make_ribs(self,hoehe,-breite,dicke,extrude):
-            S= make_ribs(xdiff,ydiff,0.02,zdiff*2)
-            
-            #calculate de ammount of ribs that should be created
+            xmin,ymin,zmin,xmax,ymax,zmax = am2.get_koordinates(wing_shape)
+            xdiff,zdiff,ydiff = am2.get_dimensions(xmin,ymin,zmin,xmax,ymax,zmax)
+         
+            wing_shape_huelle = w2.create_hollowedsolid(wing_shape,0.04)
+            # Ausgehoelter Fluegel als neues Shape setzten
+            winghuelle=CNamedShape(wing_shape_huelle,"winghuelle")
+            wing.get_loft().Set(winghuelle)
+
+
+            #S=make_ribs(xdiff*0.5,ydiff,zdiff,2.0)
+            S= r2.make_ribs(xdiff,ydiff,0.02,zdiff*2)
+            #anzahl = 10
             anzahl=int(xdiff/rasterabstand)
 
-            #create a shape of a pattern of ribs
-            Sneu: OTopo.TopoDS_Shape= make_translation_fuse(S.Shape(),-rasterabstand,anzahl,rasterabstand)
-            
-            #moves the pattern to a new Position
-            m_rippen = move_rippen_neu(Sneu,xmin,ymax,zmin)
-            
-            #cuts the ribs to the shape of the wing
-            CommonSurface = OAlgo.BRepAlgoAPI_Common(m_rippen,wing_shape).Shape()
-            #fuses Wing and Ribs to 1 shape
-            verbunden= OAlgo.BRepAlgoAPI_Fuse(wing_shape_huelle,CommonSurface).Shape()
+
+            #Sneu = make_translation(S,-0.1,anzahl)
+            #Sneu = v2.make_translation(S.Shape(),0.1,anzahl)
+            #Sneu = v2.make_translation_fuse(S.Shape(),-0.9,anzahl)
+            Sneu = v2.make_translation_fuse(S.Shape(),-rasterabstand,anzahl,rasterabstand)
+            m_rippen = r2.move_rippen_neu(Sneu,xmin,ymax,zmin)
+
+            #Ueberschneidung zwischen Rippen und Fluegel
+            CommonSurface = BRepAlgoAPI_Common(m_rippen,wing_shape).Shape()
+            ueberschneidung = CNamedShape(CommonSurface, "Rippen")
+
+            #Rippen und Fluegel verbinden
+            merger= CMergeShapes(wing.get_loft(), ueberschneidung)
+            merger_wing_shape = merger.named_shape()
+            wing.get_loft().Set(merger_wing_shape)
+            #display.DisplayShape(wing.get_loft().shape())
+
+            mirrored_shape = wing.get_mirrored_loft()
 
             #exluced vertikal wing
             #creates mirrored wing
@@ -138,6 +212,14 @@ class fluegel:
             #FIXME return Left, RIght and set of Wings
             #FIXME outsource the export funktion
             if mirrored_shape is not None:
+                fused_wings = CFuseShapes(wing.get_loft(),wing.get_mirrored_loft()).named_shape()
+                wing.get_loft().Set(fused_wings)
+                #display.DisplayShape(wing.get_loft().shape(),transparency=0.8)
+
+                #in STL exportieren
+                aus.write_stl_file(wing.get_loft().shape(),"fluegel_neu")
+
+                '''
                 # Set up the mirror
                 aTrsf= Ogp.gp_Trsf()
                 aTrsf.SetMirror(Ogp.gp_Ax2(Ogp.gp_Pnt(0,0,0),Ogp.gp_Dir(0,1,0)))
@@ -151,12 +233,16 @@ class fluegel:
                 fluegelgesamt=OAlgo.BRepAlgoAPI_Fuse(verbunden,aMirroredShape).Shape()
                 write_stl_file2(fluegelgesamt,"fluegel.stl")
                 # display.DisplayShape(fluegelgesamt,transparency=0.8)
-                
+                '''
 
             else:
-                # display.DisplayShape(verbunden,transparency=0.8)
-                write_stl_file2(verbunden,"fluegel.stl")
-                
+                #display.DisplayShape(wing.get_loft(),transparency=0.8)
+                aus.write_stl_file(wing.get_loft(),"fluegel_neu")
+
+                '''
+                display.DisplayShape(verbunden,transparency=0.8)
+                aus.write_stl_file2(verbunden,"fluegel.stl")
+                '''
 
 
         # display.FitAll()

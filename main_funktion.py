@@ -106,7 +106,8 @@ def open_wing(filename):
 	f2=fluegel()
 	tigl_h=ein.cpacs_einlesen(filename)
 	f2.make_fluegel(tigl_h)
-	p1.make_profil(tigl_h)
+	
+	#p1.make_profil(tigl_h)
 	#display, start_display, add_menu, add_function_to_menu = init_display()
 	#display.DisplayShape(flugelfertig)
 	#start_display()
