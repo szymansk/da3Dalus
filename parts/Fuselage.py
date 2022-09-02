@@ -29,6 +29,7 @@ from OCC.Display.SimpleGui import init_display
 from factories.RibFactory import *
 from parts.Wing import *
 from parts.Rib import *
+import logging
 
 from abmasse import *
 from Ausgabeservice import *
@@ -53,9 +54,9 @@ class Fuselage:
         self.xmax:float=None
         self.ymax:float=None
         self.zmax:float=None
-        self.xdiff:float=None
-        self.ydiff:float=None
-        self.zdiff:float=None
+        self.lenght:float=None
+        self.width:float=None
+        self.height:float=None
         
     def calculate_koordinates(self) :
         bbox = Bnd_Box()
@@ -63,10 +64,10 @@ class Fuselage:
         self.xmin, self.ymin, self.zmin, self.xmax,self.ymax,self.zmax = bbox.Get()
 
     def calculate_outter_dimensions(self):
-        self.xdiff = self.xmax - self.xmin
-        self.zdiff = self.zmax - self.zmin
-        self.ydiff = self.ymax - self.ymin
+        self.lenght = self.xmax - self.xmin
+        self.height = self.zmax - self.zmin
+        self.width = self.ymax - self.ymin
         
     def __str__(self) -> str:
-        return "Fuselage:", "xmin:" ,"{:.2f}".format(self.xmin), "ymin" ,"{:.2f}".format(self.ymin), "zmin:", "{:.2f}".format(self.zmin), "xmax:", "{:.2f}".format(self.xmax), "ymax:", "{:.2f}".format(self.ymax), "zmax:", "{:.2f}".format(self.zmax), "xdiff:", "{:.2f}".format(self.xdiff), "ydiff:", "{:.2f}".format(self.ydiff), "zdiff:", "{:.2f}".format(self.zdiff)
+        return "Fuselage:", "xmin:" ,"{:.2f}".format(self.xmin), "ymin" ,"{:.2f}".format(self.ymin), "zmin:", "{:.2f}".format(self.zmin), "xmax:", "{:.2f}".format(self.xmax), "ymax:", "{:.2f}".format(self.ymax), "zmax:", "{:.2f}".format(self.zmax), "\nlenght:", "{:.2f}".format(self.lenght), "width:", "{:.2f}".format(self.width), "height:", "{:.2f}".format(self.height)
     

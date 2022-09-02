@@ -41,13 +41,13 @@ class ausgabe:
             print(f"Warning: {filename} already exists and will be replaced") 
         '''
 
-    stl_exporter = create_exporter("stl")
-    stl_exporter.add_shape(a_shape)
-    #stl_exporter.write("test.stl")
-    stl_exporter.write(filename +".stl")
+        stl_exporter = create_exporter("stl")
+        stl_exporter.add_shape(a_shape)
+        #stl_exporter.write("test.stl")
+        stl_exporter.write(filename +".stl")
 
-    if not os.path.isfile(filename):
-        raise IOError("File not written to disk.")
+        if not os.path.isfile(filename):
+            raise IOError("File not written to disk.")
 
 #deflection 0.01 feinmaschiger
 #angular_deflection = 0.01

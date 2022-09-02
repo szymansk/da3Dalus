@@ -63,7 +63,7 @@ if i_cpacs==2:
 if i_cpacs==3:
 	tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\aircombat_skaliert_f38.xml")
 if i_cpacs==4:
-	tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\tinybit_rumpf.xml") 
+	tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\tinywing_skaliert.xml") 
  
 tigl_handle.open(tixi_h, "")
 
@@ -172,6 +172,10 @@ rippen_cuted=  OAlgo.BRepAlgoAPI_Cut(rippen, moved_hardware_box).Shape()
 rippen_cuted= OAlgo.BRepAlgoAPI_Fuse(rippen_cuted,reinforcement_tunnel_out).Shape()
 #rippen_cuted= OAlgo.BRepAlgoAPI_Cut(rippen_cuted, reinforcement_tunnel_in).Shape()
 rippen_cuted=OAlgo.BRepAlgoAPI_Common(cutted_fuselage_shape, rippen_cuted).Shape()
+point:Ogp.gp_Pnt =TGeo.get_center_of_mass(rippen_cuted)
+print(point.X(), point.Y(), point.Z())
+center_of_mass = OPrim.BRepPrimAPI_MakeSphere(point, 1).Shape()
+#center_mass_box= OExs.translate_shp(mybox,Ogp.gp_Vec(point.XYZ()))
 print("Starting las Fuse: Wait...")
 #fuselage_done=OAlgo.BRepAlgoAPI_Fuse(fuselage_hollow,rippen_cuted).Shape()
 #fuselage_done= OAlgo.BRepAlgoAPI_Cut(fuselage_done, reinforcement_tunnel_in).Shape()
@@ -184,6 +188,7 @@ except:
 ###
 display, start_display, add_menu, add_function_to_menu = init_display()
 #display.DisplayShape(reinforcement_tunnel_out) 
+display.DisplayShape(center_of_mass, color="BLUE") 
 display.DisplayShape(rippen_ver) 
 display.DisplayShape(rippen_cuted) 
 #display.DisplayShape(mybox) 

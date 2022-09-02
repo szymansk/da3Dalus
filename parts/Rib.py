@@ -10,12 +10,16 @@ class Rib:
         self.rib: OTopo.TopoDS_Shape=None
         self.ribs:OTopo.TopoDS_Shape= None
         self.profile:OTopo.TopoDS_Face=None
+        self.reinforcement_tunnel_in:OTopo.TopoDS_Face=None
+        self.reinforcement_tunnel_out:OTopo.TopoDS_Face=None
         self.spacing=None
         self.height= None
+        self.width= None
         self.ydiff=None
         self.thikness= None
         self.extrude_lenght= None
         self.type:str=type
+        
 
     def set_profile(self, type) -> OTopo.TopoDS_Face:
         '''

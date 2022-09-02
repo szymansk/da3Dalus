@@ -31,6 +31,7 @@ import OCC.Core.BRepOffset as OOffset
 import OCC.Core.BRepPrimAPI as OPrim
 import OCC.Core.gp as Ogp
 import OCC.Core.TopoDS as OTopo
+import logging
 from OCC.Display.SimpleGui import init_display
 
 from abmasse import *
@@ -41,13 +42,17 @@ from parts.Rib import *
 from shape_verschieben import *
 from Wand_erstellen import *
 
+
 class Wing:
     
-    def __init__(self) -> None:    
+    def __init__(self) -> None:
+        logging.info("Wing init")
         self.shape: OTopo.TopoDS_Shape= None
         self.hollow: OTopo.TopoDS_Shape= None
         self.with_ribs: OTopo.TopoDS_Shape= None
         self.mirrored_shape: OTopo.TopoDS_Shape= None
+        self.mirrored_with_ribs: OTopo.TopoDS_Shape= None
+        self.complete:OTopo.TopoDS_Shape= None
         """         
         self.rib= None
         self.ribs= None
@@ -65,11 +70,9 @@ class Wing:
         self.xmax:float=None
         self.ymax:float=None
         self.zmax:float=None
-        self.xdiff:float=None
-        self.ydiff:float=None
-        self.zdiff:float=None
-        print("Wing was initialized")
-    
+        self.lenght:float=None
+        self.width:float=None
+        self.height:float=None    
     
     def get_wingspan(self):
         return self.cpacs_wing.get_wingspan()
@@ -84,9 +87,9 @@ class Wing:
         self.xmin, self.ymin, self.zmin, self.xmax,self.ymax,self.zmax = bbox.Get()
 
     def calculate_outter_dimensions(self):
-        self.xdiff = self.xmax - self.xmin
-        self.zdiff = self.zmax - self.zmin
-        self.ydiff = self.ymax - self.ymin
+        self.width = self.xmax - self.xmin
+        self.height = self.zmax - self.zmin
+        self.lenght = self.ymax - self.ymin
 
     def __str__(self) -> str:
-        return "Wing:", "xmin:" ,"{:.2f}".format(self.xmin), "ymin" ,"{:.2f}".format(self.ymin), "zmin:", "{:.2f}".format(self.zmin), "xmax:", "{:.2f}".format(self.xmax), "ymax:", "{:.2f}".format(self.ymax), "zmax:", "{:.2f}".format(self.zmax), "xdiff:", "{:.2f}".format(self.xdiff), "ydiff:", "{:.2f}".format(self.ydiff), "zdiff:", "{:.2f}".format(self.zdiff)
+        return "Wing:", "xmin:" ,"{:.2f}".format(self.xmin), "ymin" ,"{:.2f}".format(self.ymin), "zmin:", "{:.2f}".format(self.zmin), "xmax:", "{:.2f}".format(self.xmax), "ymax:", "{:.2f}".format(self.ymax), "zmax:", "{:.2f}".format(self.zmax), "\nlenght:", "{:.2f}".format(self.lenght), "width:", "{:.2f}".format(self.width), "height:", "{:.2f}".format(self.height)

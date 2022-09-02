@@ -84,15 +84,12 @@ def geom_plane_from_face(aFace):
 
     #Returns the geometric plane entity from a planar surface
     return Geom_Plane.DownCast(BRep_Tool_Surface(aFace))
-=======
 class Wandstaerke:
     def face_is_plane(self,face):
         #Returns True if the TopoDS_Shape is a plane, False otherwise
         hs = BRep_Tool_Surface(face)
         downcast_result= Geom_Plane.DownCast(hs)
         #print(downcast_result)
->>>>>>> origin/master
-
 def create_hollowedsolid(shape,thickness):
     # Our goal is to find the highest Z face and remove it
     faceToRemove = None
@@ -113,10 +110,8 @@ def create_hollowedsolid(shape,thickness):
             if aZ > zMax:
                 zMax = aZ
                 faceToRemove = aFace
-=======
         #Returns the geometric plane entity from a planar surface
         return Geom_Plane.DownCast(BRep_Tool_Surface(aFace))
->>>>>>> origin/master
 
         aFaceExplorer.Next()
 
@@ -129,7 +124,7 @@ def create_hollowedsolid(shape,thickness):
     myBody= BRepOffsetAPI_MakeThickSolid(shape, facesToRemove, thickness, 0.001)
     #myBody= BRepOffsetAPI_MakeThickSolid.MakeThickSolidBySimple(None, shape, thickness)
     i=0
-    print("IsDone:", myBody.IsDone())
+    print("--------------------IsDone:", myBody.IsDone())
     
     myBody=myBody.Shape()
 

@@ -46,9 +46,9 @@ if i_cpacs==2:
 if i_cpacs==3:
 	tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\aircombat.xml")
 if i_cpacs==4:
-	tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\tinybit_rumpf.xml") 
+	tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\tiny_bit_skaliert.xml") 
 if i_cpacs==5:
-	tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\aircombat_skaliert_f38.xml") 
+	tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\aircombat_skaliert_f38_one_profile.xml") 
 tigl_handle.open(tixi_h, "")
 
 
@@ -60,7 +60,7 @@ cpacs_configuration: TConfig.CCPACSConfiguration= config_manager.get_configurati
 wing: TConfig.CCPACSWing= cpacs_configuration.get_wing(1)   
 wing_loft: TGeo.CNamedShape = wing.get_loft()
 wing_shape: OTopo.TopoDS_Shape = wing_loft.shape()
-# Set up the mirror
+#Set up the mirror
 wing1: TConfig.CCPACSWing= cpacs_configuration.get_wing(3)   
 wing_loft1: TGeo.CNamedShape = wing1.get_loft()
 wing_shape1: OTopo.TopoDS_Shape = wing_loft1.shape()

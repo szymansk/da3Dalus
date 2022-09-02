@@ -86,8 +86,8 @@ from math import radians
 from factories.AirplaneFactory import AirplaneFactory
 
 from factories.WingFactory import WingFactory
-from Fluegel import fluegel
-from Rumpf import profil
+#from Fluegel import fluegel
+#from Rumpf import profil
 from Einleseservice import einlesen
 from Ausgabeservice import *
 
@@ -257,7 +257,7 @@ def development():
 	if i_cpacs==2:
 		tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\CPACS_30_D150.xml")
 	if i_cpacs==3:
-		tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\aircombat.xml")
+		tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\aircombat_skaliert_f38_one_profile.xml")
 	if i_cpacs==4:
 		tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\tinywing_skaliert.xml")
 	tigl_h.open(tixi_h, "")
@@ -269,7 +269,7 @@ def development():
 	display, start_display, add_menu, add_function_to_menu = init_display()
 	box = BRepPrimAPI_MakeBox(1, 1, 1).Shape()
 	d_ribs=False
-	variant=2
+	variant=3
 	if variant==1:
 		airplane_factory.create_airplane()
 		airplane_factory.fuse_all_wings()
@@ -281,7 +281,8 @@ def development():
 	elif variant==3:
 		#airplane_factory.create_right_mainwing()
 		airplane_factory.create_fuselage()
-		display.DisplayShape(airplane_factory.airplane.fuselage)
+		display.DisplayShape(airplane_factory.airplane.fuselage, transparency=0.8)
+		display.DisplayShape(airplane_factory.rib_factory.rib.ribs)
 	else:
 		logging.info("invalid variant")
   
