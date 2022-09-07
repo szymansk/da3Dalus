@@ -133,15 +133,15 @@ class AirplaneFactory:
         logging.info("Creating fuselage")
         self.wing_factory.create_wing_shape(1)
         self.fuselage_factory.create_fuselage_shape(1)
-        self.fuselage_factory.cut_out_wing(self.wing_factory.wing.complete)
-        self.fuselage_factory.create_holow_fuselage(self.shell_thikness)
-        self.airplane.set_fuselage(self.fuselage_factory.fuselage.hollow)
+        cutted_fuselage=self.fuselage_factory.fuselage.cutted=self.fuselage_factory.cut_out_shape(self.wing_factory.wing.complete, self.wing_factory.wing_configuration.get_name())
+        hollowed_fuselage= self.fuselage_factory.fuselage.hollow=self.fuselage_factory.create_holow_fuselage(self.shell_thikness, cutted_fuselage)
+        self.airplane.set_fuselage(hollowed_fuselage)
         self.rib_factory.create_star_ribs(self.fuselage_factory.fuselage.lenght,
                                           self.fuselage_factory.fuselage.width,
                                           self.fuselage_factory.fuselage.height,
                                           self.shell_thikness)
-        self.rib_factory.cut_out_wing(self.wing_factory.wing.complete)
-        self.rib_factory.cut_rib_as_fuselage(self.fuselage_factory.fuselage.cutted)
+        cuted_rib=self.rib_factory.rib.ribs=self.rib_factory.cut_out_wing(self.wing_factory.wing.complete)
+        cuted_rib=self.rib_factory.rib.ribs=self.rib_factory.cut_rib_as_fuselage(cuted_rib, cutted_fuselage)
         #Swap x and z because we rotate 90 aorund y axis
         '''
         self.rib_factory.create_rib_grid(self.fuselage_rib_spacing,self.shell_thikness,self.fuselage_factory.fuselage.zdiff,self.fuselage_factory.fuselage.ydiff, self.fuselage_factory.fuselage.xdiff)

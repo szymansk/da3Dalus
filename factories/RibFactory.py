@@ -62,31 +62,36 @@ class RibFactory:
     def create_star_ribs(self,fuselage_lenght, fuselage_width, fuselage_height, thikness,factor_length=0.4, factor=0.8):
         logging.info("Creating star ribs")
         heavy_ribs=self.create_heavy_ribs(fuselage_lenght, fuselage_width, fuselage_height, thikness,factor_length=0.4, factor=0.8)
+        hardware_cutout_box= self.hardware_box(fuselage_height, fuselage_lenght, fuselage_width, factor_length, factor)
+        heavy_ribs=self.cutout_from_ribs(hardware_cutout_box)
         light_ribs= self.create_light_ribs(fuselage_lenght, fuselage_width, fuselage_height, thikness,factor_length=0.4, factor=0.8)
+        star=self.rib.ribs= OAlgo.BRepAlgoAPI_Fuse(heavy_ribs,light_ribs).Shape()
         self.create_reinforcement_tunnel_out()
-        self.fuse_reinforcement_tunnel_out()
+        star= self.rib.ribs=self.fuse_reinforcement_tunnel_out()
+        return star
     
-    def create_heavy_ribs(self,fuselage_lenght, fuselage_width, fuselage_height, thikness,factor_length=0.4, factor=0.8):
+    def create_heavy_ribs(self,fuselage_lenght, fuselage_width, fuselage_height, thikness,factor_length=0.4, factor=0.8, quantity=2):
         logging.info("Creating heavy ribs")
         big_rib=self.create_big_rib(fuselage_lenght, fuselage_width, fuselage_height, thikness)
-        big_rib_pattern=self.rib.ribs=self.circle_pattern(big_rib)
+        big_rib_pattern=self.rib.ribs=self.circle_pattern(big_rib, "big rib",quantity)
         return big_rib_pattern
     
     def create_light_ribs(self,fuselage_lenght, fuselage_width, fuselage_height, thikness,factor_length=0.4, factor=0.8):
-        logging.info("Creating light ribs: first Heavy ribs and then cutout Cylinder")
-        
-        hardware_cutout_box= self.hardware_box(fuselage_height, fuselage_lenght, fuselage_width, factor_length, factor)       
-        self.rib.ribs=self.cut_out_from_ribs(hardware_cutout_box)
-
-        
+        logging.info("Creating light ribs: first Heavy ribs and then cutout Cylinder")       
+        heavy_ribs=self.create_heavy_ribs(fuselage_lenght, fuselage_width, fuselage_height, thikness,factor_length, factor, 4)
+        cylinder= OPrim.BRepPrimAPI_MakeCylinder((fuselage_height*factor)/2,100).Shape()
+        cylinder= self.rotate_shape(cylinder, Ogp.gp_OY(), 90, "Cylinder")
+        return self.cutout_from_ribs(cylinder)   
     
+    '''
     def create_thin_ribs(self,fuselage_lenght, fuselage_width, fuselage_height, thikness, factor=0.8):
         logging.info("Creating thin ribs")
         big_rib=self.create_big_rib(fuselage_lenght, fuselage_width, fuselage_height, thikness)
         big_rib_pattern=self.circle_pattern(self.rib.rib)
         cylinder= OPrim.BRepPrimAPI_MakeCylinder((fuselage_height*factor)/2,100).Shape()
         cylinder= self.rotate_shape(cylinder, Ogp.gp_OY(), 90)
-        self.cut_out_from_ribs(cylinder)
+        self.cutout_from_ribs(cylinder)
+    '''
 
     def create_big_rib(self, fuselage_lenght, fuselage_width, fuselage_height, thikness):
         logging.info("Creating big rib")
@@ -100,12 +105,12 @@ class RibFactory:
         self.rib.rib= big_rib
         return big_rib
         
-    def circle_pattern(self, shape, quantity=2):
+    def circle_pattern(self, shape, shape_name, quantity=2):
         logging.info("Creating circle pattern")
         d_angle= 180/quantity
         for i in range(quantity):     
             angle=i*d_angle
-            new_shape= self.rotate_shape(shape, Ogp.gp_OX(), angle)
+            new_shape= self.rotate_shape(shape, Ogp.gp_OX(), angle,shape_name)
             if i==0:
                 patern=new_shape
             else:
@@ -113,13 +118,13 @@ class RibFactory:
                 logging.info("Fusing rib to pattern")
         return patern
     
-    def cut_out_from_ribs(self, hardware_box)->OTopo.TopoDS_Shape:
+    def cutout_from_ribs(self, hardware_box)->OTopo.TopoDS_Shape:
         logging.info("Cutting from ribs")
         return OAlgo.BRepAlgoAPI_Cut(self.rib.ribs, hardware_box).Shape()
     
-    def cut_rib_as_fuselage(self, fuselage)->OTopo.TopoDS_Shape:
+    def cut_rib_as_fuselage(self, fuselage, ribs)->OTopo.TopoDS_Shape:
         logging.info("Cutting Ribs to Fuselage form")
-        return OAlgo.BRepAlgoAPI_Common(fuselage, self.rib.ribs).Shape()
+        return OAlgo.BRepAlgoAPI_Common(fuselage, ribs).Shape()
         
     def cut_out_wing(self, wings)->OTopo.TopoDS_Shape:
         logging.info("Cutting wings from ribs")
@@ -151,7 +156,7 @@ class RibFactory:
         brep_trns.Build()
         self.rib.ribs = brep_trns.Shape()
     
-    def rotate_shape(self, shape, axis, angle)->OTopo.TopoDS_Shape:
+    def rotate_shape(self, shape, axis, angle, shape_name= "Shape")->OTopo.TopoDS_Shape:
         """Rotate a shape around an axis, with a given angle.
         @param shape : the shape to rotate
         @point : the origin of the axis
@@ -159,7 +164,7 @@ class RibFactory:
         @angle : the value of the rotation
         @return: the rotated shape.
         """
-        logstr= "Rotating Shape over given axis: " + str(angle) + "°"
+        logstr= "Rotating " + shape_name +" over given axis: " + str(angle) + "°"
         logging.info(logstr)
         #assert_shape_not_null(shape)
         #if unite == "deg":  # convert angle to radians
@@ -190,7 +195,6 @@ class RibFactory:
     def fuse_reinforcement_tunnel_out(self)->OTopo.TopoDS_Shape:
         logging.info("Fusing reinforcement tunnel out")
         fused= OAlgo.BRepAlgoAPI_Fuse(self.rib.ribs,self.rib.reinforcement_tunnel_out).Shape()
-        self.rib.ribs=fused
         return fused
     
 
