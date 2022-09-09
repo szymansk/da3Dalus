@@ -67,7 +67,7 @@ class AirplaneFactory:
         self.wing_factory.create_holow_wing(self.shell_thikness)
         #self.wing_factory.create_rib_grid(self.rib_spacing,self.wing_thikness)
         #self.wing_factory.move_rippen()
-        self.rib_factory.create_rib_grid(self.rib_spacing,self.shell_thikness,self.wing_factory.wing.xdiff,self.wing_factory.wing.ydiff, self.wing_factory.wing.zdiff)
+        self.rib_factory.create_rib_grid(self.rib_spacing,self.shell_thikness,self.wing_factory.wing.width,self.wing_factory.wing.lenght, self.wing_factory.wing.height)
         self.rib_factory.move_rippen(self.wing_factory.wing.xmin,self.wing_factory.wing.ymin,self.wing_factory.wing.zmin)
         self.wing_factory.fuse_ribs(self.rib_factory.rib.ribs)
         self.wing_factory.export_stl(name)
@@ -131,8 +131,11 @@ class AirplaneFactory:
     
     def create_fuselage(self):
         logging.info("Creating fuselage")
+        m=myDisplay.instance()
         self.wing_factory.create_wing_shape(1)
+        m.display_this_shape(self.wing_factory.wing.shape)
         self.fuselage_factory.create_fuselage_shape(1)
+        m.display_this_shape(self.fuselage_factory.fuselage.shape)
         cutted_fuselage=self.fuselage_factory.fuselage.cutted=self.fuselage_factory.cut_out_shape(self.wing_factory.wing.complete, self.wing_factory.wing_configuration.get_name())
         hollowed_fuselage= self.fuselage_factory.fuselage.hollow=self.fuselage_factory.create_holow_fuselage(self.shell_thikness, cutted_fuselage)
         self.airplane.set_fuselage(hollowed_fuselage)
@@ -142,6 +145,7 @@ class AirplaneFactory:
                                           self.shell_thikness)
         cuted_rib=self.rib_factory.rib.ribs=self.rib_factory.cut_out_wing(self.wing_factory.wing.complete)
         cuted_rib=self.rib_factory.rib.ribs=self.rib_factory.cut_rib_as_fuselage(cuted_rib, cutted_fuselage)
+        #fuselage_with_ribs= self.fuselage_factory.fuselage.with_ribs=self.fuselage_factory.add_ribs(cuted_rib, "Star Ribs")
         #Swap x and z because we rotate 90 aorund y axis
         '''
         self.rib_factory.create_rib_grid(self.fuselage_rib_spacing,self.shell_thikness,self.fuselage_factory.fuselage.zdiff,self.fuselage_factory.fuselage.ydiff, self.fuselage_factory.fuselage.xdiff)
@@ -149,7 +153,7 @@ class AirplaneFactory:
         self.rib_factory.move_rippen(0,self.fuselage_factory.fuselage.ymin*1.5,-self.fuselage_factory.fuselage.zmin*1.5)
         self.fuselage_factory.fuse_ribs(self.rib_factory.rib.ribs)
         '''
-#        self.airplane.set_fuselage(self.fuselage_factory.fuselage.with_ribs)
-        
-        #self.fuselage_factory.export_stl("fuselage.stl")
+        self.airplane.set_fuselage(hollowed_fuselage) 
+        print("------------STL") 
+        #self.fuselage_factory.export_stl("fuselage_0907.stl")
         

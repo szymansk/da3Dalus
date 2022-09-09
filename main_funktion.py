@@ -99,6 +99,10 @@ from flask import Flask, request, redirect, jsonify, send_file
 from werkzeug.utils import secure_filename
 import logging
 
+from mydisplay import myDisplay
+
+
+
 
 def open_wing(filename):
 	ein=einlesen()
@@ -266,43 +270,40 @@ def development():
 	rib_spacing=4
 	rib_thikness=0.2
 	airplane_factory=AirplaneFactory(tigl_h,shell_thikness,fuselage_rib_spacing,rib_spacing,rib_thikness)
-	display, start_display, add_menu, add_function_to_menu = init_display()
-	box = BRepPrimAPI_MakeBox(1, 1, 1).Shape()
+	#display, start_display, add_menu, add_function_to_menu = init_display()
 	d_ribs=False
 	variant=3
 	if variant==1:
 		airplane_factory.create_airplane()
 		airplane_factory.fuse_all_wings()
-		display.DisplayShape(airplane_factory.airplane.allwings)
-		display.DisplayShape(airplane_factory.airplane.fuselage)
+		#display.DisplayShape(airplane_factory.airplane.allwings)
+		#display.DisplayShape(airplane_factory.airplane.fuselage)
 	elif variant==2:
 		airplane_factory.create_right_mainwing()
-		display.DisplayShape( airplane_factory.airplane.wings.get("right_mainwing"))
+		#display.DisplayShape( airplane_factory.airplane.wings.get("right_mainwing"))
 	elif variant==3:
 		#airplane_factory.create_right_mainwing()
 		airplane_factory.create_fuselage()
-		display.DisplayShape(airplane_factory.airplane.fuselage, transparency=0.8)
-		display.DisplayShape(airplane_factory.rib_factory.rib.ribs)
+		#display.DisplayShape(airplane_factory.airplane.fuselage, transparency=0.8)
+		#display.DisplayShape(airplane_factory.rib_factory.rib.ribs)
+		#try:
+			#display_this_shape(airplane_factory.fuselage_factory.fuselage.with_ribs)
+		#except:
+			#logging.error("Not possible to display Fuselage with ribs")
 	else:
 		logging.info("invalid variant")
   
-	if d_ribs:
-		display.DisplayShape(airplane_factory.rib_factory.rib.ribs)
+	#if d_ribs:
+		#display.DisplayShape(airplane_factory.rib_factory.rib.ribs)
   
 	myZip.zip_stls()
-	
-	box2 = BRepPrimAPI_MakeBox(1, 1, 1).Shape()
-	#trafo= TGeo.CTiglTransformation()
-	#trafo.add_translation(0,wf.wing.rib.height,0)
-	#box2=trafo.transform(box2)
-	display.DisplayShape(box2)
-	
-	
-    
-	display.DisplayShape(box)
+	box = BRepPrimAPI_MakeBox(1, 1, 1).Shape()
+	#display.DisplayShape(box)
 
-	display.FitAll()
-	start_display()
+	#display.FitAll()
+	#start_display()
+	md=myDisplay.instance()
+	md.start()
     
 if __name__ == "__main__":
 	my_logging()

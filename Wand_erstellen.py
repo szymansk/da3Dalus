@@ -70,7 +70,6 @@ from tixi3.tixi3wrapper import Tixi3
 def face_is_plane(face):
 
     #Returns True if the TopoDS_Shape is a plane, False otherwise
-
     hs = BRep_Tool_Surface(face)
     downcast_result= Geom_Plane.DownCast(hs)
     #print(downcast_result)
@@ -94,7 +93,7 @@ def create_hollowedsolid(shape,thickness):
     # Our goal is to find the highest Z face and remove it
     faceToRemove = None
     zMax = -1
-
+    print("Starting Create Hollow")
     # We have to work our way through all the faces to find the highest Z face so we can remove it for the shell
     aFaceExplorer = TopExp_Explorer(shape, TopAbs_FACE)
     while aFaceExplorer.More():
@@ -117,9 +116,9 @@ def create_hollowedsolid(shape,thickness):
 
     facesToRemove: TopTools_ListOfShape = TopTools_ListOfShape()
     if faceToRemove != None:
-        ("TRUE")
+        print("Faces to remove is not empty")
         facesToRemove.Append(faceToRemove)
-        
+    print("--------Faces to remove Size:" + facesToRemove.Size())    
     #myBody = BRepOffsetAPI_MakeThickSolid(myBody, facesToRemove, -thickness / 50.0, 0.001)
     myBody= BRepOffsetAPI_MakeThickSolid(shape, facesToRemove, thickness, 0.001)
     #myBody= BRepOffsetAPI_MakeThickSolid.MakeThickSolidBySimple(None, shape, thickness)

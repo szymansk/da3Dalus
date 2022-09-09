@@ -45,25 +45,34 @@ class FuselageFactory:
         self.tigl_handle=tigl_handle
         self.config_manager: TConfig.CCPACSConfigurationManager  = TConfig.CCPACSConfigurationManager_get_instance()
         self.cpacs_configuration: TConfig.CCPACSConfiguration= self.config_manager.get_configuration(tigl_handle._handle.value)
+        self.fuselage_test:TConfig.CCPACSFuselage= None
         self.fuselage:Fuselage= Fuselage()
+        self.md= myDisplay.instance()
     
     def create_fuselage_shape(self, fuse_nr):
-        fuselage: TConfig.CCPACSFuselage= self.cpacs_configuration.get_fuselage(fuse_nr)
-        logstr= "Creating Fuselage Shape: " + fuselage.get_name()
-        self.fuselage.loft: TGeo.CNamedShape= fuselage.get_loft()
+        self.fuselage_test: TConfig.CCPACSFuselage= self.cpacs_configuration.get_fuselage(fuse_nr)
+        logstr= "Creating Fuselage Shape: " + self.fuselage_test.get_name()
+        self.fuselage.loft: TGeo.CNamedShape= self.fuselage_test.get_loft()
         self.fuselage.shape: OTopo.TopoDS_Shape=self.fuselage.loft.shape()
         self.fuselage.calculate_koordinates()
         self.fuselage.calculate_outter_dimensions()
         logging.info(self.fuselage.__str__())
+        self.md.display_this_shape(self.fuselage.shape)
+        
         
     def create_holow_fuselage(self, thickness:float, fuselage=None):
         logstr= "Hollowing Fuselage: thickness=" + str(thickness)
         logging.info(logstr)
         if fuselage== None:
             fuselage=self.fuselage.cutted
-        #self.fuselage.hollow= create_hollowedsolid(self.fuselage.shape ,thickness)
+        print(fuselage.__str__)
+        #hollowed= create_hollowedsolid(fuselage,thickness)
+        #hollowed= self.neu_create_hollow_fuselage(thickness)
+        #print("Type: " + str(type(hollowed))) 
+        #print("isNull:" + str(hollowed.IsNull()))
         facesToRemove = TopTools_ListOfShape()
         hollowed= OOff.BRepOffsetAPI_MakeThickSolid(fuselage, facesToRemove, thickness, 0.001).Shape()
+        self.md.display_this_shape(hollowed)
         return hollowed
                 
     def add_ribs(self, ribs, name) -> OTopo.TopoDS_Shape:
@@ -71,6 +80,7 @@ class FuselageFactory:
         logging.info(logstr)           
         comon= self.common_shape(ribs, name)
         fused= self.fuse_shape(comon, name)
+        self.md.display_this_shape(fused)
         return fused
       
     def fuse_shape(self, shape, name= "Shape", fuselage= None) -> OTopo.TopoDS_Shape:
@@ -84,6 +94,7 @@ class FuselageFactory:
         end= time.time()
         dif= end-start
         logging.info("Fusing: End  ---- Time=" + str(dif) + "seconds")
+        self.md.display_this_shape(fused_fuselage)
         return fused_fuselage
     
     def common_shape(self, shape, name="shape", fuselage= None)-> OTopo.TopoDS_Shape:
@@ -97,6 +108,7 @@ class FuselageFactory:
         end= time.time()
         dif= end-start
         logging.info("Common: End  ---- Time: " + str(dif) + "seconds")
+        self.md.display_this_shape(common)
         return common
          
     def cut_out_shape(self,shape, name= "shape", fuselage=None)-> OTopo.TopoDS_Shape:
@@ -109,8 +121,21 @@ class FuselageFactory:
             cutted_fuselage:TopoDS_Shape= OAlgo.BRepAlgoAPI_Cut(self.fuselage.shape,shape).Shape()
         else:
             cutted_fuselage:TopoDS_Shape= OAlgo.BRepAlgoAPI_Cut(fuselage,shape).Shape()
+        self.md.display_this_shape(cutted_fuselage)
         return cutted_fuselage
+    
+    def neu_create_hollow_fuselage(self, thickness=0.04):
+        profile=[]
+        for isegment in range(1, self.fuselage_test.get_segment_count() + 1):
+                #for isegment in range(1, 16):
+                segment: TConfig.CCPACSFuselageSegment = self.fuselage_test.get_segment(isegment)
+                segment_loft: TGeo.CNamedShape= segment.get_loft()
+                segment_shape: OTopo.TopoDS_Shape= segment_loft.shape()
+                profile.append(segment_shape)
+        cs=fuse_shapes_common(profile)
+        ausgehoelt=create_hollowedsolid(cs,thickness)
+        return ausgehoelt
         
     def export_stl(self, name):
-        write_stl_file2(self.fuselage.with_ribs, name)
+        write_stl_file2(self.fuselage.hollow, name)
         

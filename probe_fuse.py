@@ -57,13 +57,14 @@ def rotate_shape(shape, axis, angle):
 left = OPrim.BRepPrimAPI_MakeBox(10, 10, 10).Shape()
 left= OExs.translate_shp(left,Ogp.gp_Vec(-5,-50, -5))
 right: TopoDS_Solid = OPrim.BRepPrimAPI_MakeBox(30, 30, 30).Shape()
+right= OExs.translate_shp(right,Ogp.gp_Vec(-25,75, -5))
 complement: OTopo.TopoDS_Shape= right.Complemented()
 complement= OExs.translate_shp(complement,Ogp.gp_Vec(-25,50, -5))
 #right= OOff.BRepOffsetAPI_MakeThickSolid.MakeThickSolidBySimple(right,2)
-solidmaker= OOff.BRepOffsetAPI_MakeThickSolid()
-solidmaker.MakeThickSolidBySimple(right,2)
-if(solidmaker.IsDone):
-    right=solidmaker.Shape()
+#solidmaker= OOff.BRepOffsetAPI_MakeThickSolid()
+#solidmaker.MakeThickSolidBySimple(right,2)
+#if(solidmaker.IsDone):
+    #right=solidmaker.Shape()
 
 print(type(right))
 #face:OTopo.TopoDS_Face= right.TopFace()
@@ -77,7 +78,7 @@ cylinder= OExs.translate_shp(cylinder,Ogp.gp_Vec(0,0, -50))
 cylinder= rotate_shape(cylinder, Ogp.gp_OX(), 90)
 
 complete=OAlgo.BRepAlgoAPI_Fuse(left,cylinder).Shape()
-#complete=OAlgo.BRepAlgoAPI_Fuse(complete,right).Shape()
+complete=OAlgo.BRepAlgoAPI_Fuse(complete,right).Shape()
 
 point:Ogp.gp_Pnt =TGeo.get_center_of_mass(complete)
 print(point.X(), point.Y(), point.Z())

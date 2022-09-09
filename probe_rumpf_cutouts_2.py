@@ -1,3 +1,4 @@
+from re import M
 from tixi3 import tixi3wrapper
 from tigl3 import tigl3wrapper
 import tigl3.boolean_ops
@@ -32,6 +33,7 @@ from math import *
 from OCC.Core.TopTools import TopTools_ListOfShape
 
 from abmasse import get_dimensions, get_koordinates
+from mydisplay import myDisplay
 
 def rotate_shape(shape, axis, angle):
     """Rotate a shape around an axis, with a given angle.
@@ -52,6 +54,8 @@ def rotate_shape(shape, axis, angle):
 
     return shp
 
+
+m=myDisplay.instance()
 i_cpacs=2
 tixi_h = tixi3wrapper.Tixi3()
 
@@ -78,29 +82,20 @@ cpacs_configuration: TConfig.CCPACSConfiguration= config_manager.get_configurati
 wing: TConfig.CCPACSWing= cpacs_configuration.get_wing(1)   
 wing_loft: TGeo.CNamedShape = wing.get_loft()
 wing_shape: OTopo.TopoDS_Shape = wing_loft.shape()
+m.display_this_shape(wing_shape)
 # Set up the mirror
 aTrsf= Ogp.gp_Trsf()
 aTrsf.SetMirror(Ogp.gp_Ax2(Ogp.gp_Pnt(0,0,0),Ogp.gp_Dir(0,1,0)))
 transformed_wing = OBuilder.BRepBuilderAPI_Transform(wing_shape, aTrsf)
 mirrored_wing= transformed_wing.Shape()
 complete_wing= OAlgo.BRepAlgoAPI_Fuse(wing_shape,mirrored_wing).Shape()
+m.display_this_shape(complete_wing)
 #Named Shape for Cutout
 named_wings_shape: TGeo.CNamedShape= TGeo.CNamedShape(complete_wing, "CutOut_Wings")
 print("complete:" ,type(complete_wing))
 #Hollow Wing
 facesToRemove = TopTools_ListOfShape()
 hollow_complete_wing= OOff.BRepOffsetAPI_MakeThickSolid(wing_shape, facesToRemove, 0.02, 0.001)
-
-###
-#Create tunnel for carbon reinforcement
-###
-reinforcement_tunnel_in= OPrim.BRepPrimAPI_MakeCylinder(0.2,100).Shape()
-reinforcement_tunnel_in= rotate_shape(reinforcement_tunnel_in, Ogp.gp_OY(), 90)
-reinforcement_tunnel_out= OPrim.BRepPrimAPI_MakeCylinder(0.3,100).Shape()
-reinforcement_tunnel_out= rotate_shape(reinforcement_tunnel_out, Ogp.gp_OY(), 90)
-#reinforcement_tunnel=OAlgo.BRepAlgoAPI_Cut(reinforcement_tunnel_out,reinforcement_tunnel_in).Shape()
-#named_reinforcement_tunnel: TGeo.CNamedShape= TGeo.CNamedShape(complete_wing, "CutOut_Reinforcement")
-
 
 ###
 #Creates Fuselage
@@ -111,6 +106,18 @@ fuselage_shape: OTopo.TopoDS_Shape=fuselage_loft.shape()
 xmin, ymin, zmin, xmax,ymax,zmax= get_koordinates(fuselage_shape)
 fuselage_lenght, fuselage_height, fuselage_widht= get_dimensions(xmin, ymin, zmin, xmax,ymax,zmax)
 print(fuselage_lenght, fuselage_height, fuselage_widht)
+m.display_this_shape(fuselage_shape)
+
+# Fuselage cutout wing       
+#cutter= TBoo.CCutShape(fuselage_loft, named_wings_shape)
+#cutted_fuselage_shape:TGeo.CNamedShape= cutter.named_shape()
+cutted_fuselage_shape= OAlgo.BRepAlgoAPI_Cut(fuselage_shape,complete_wing).Shape()
+m.display_this_shape(cutted_fuselage_shape)
+
+facesToRemove = TopTools_ListOfShape()
+# Fuselage Hollow, walls for wings 
+fuselage_hollow= OOff.BRepOffsetAPI_MakeThickSolid(cutted_fuselage_shape, facesToRemove, 0.2, 0.001).Shape()
+m.display_this_shape(fuselage_hollow, True)
 
 ###
 #Creates Ribs
@@ -126,23 +133,25 @@ hardware_box_lenght= fuselage_lenght*0.4
 hardware_box_widht= fuselage_widht*0.8
 hardware_box= OPrim.BRepPrimAPI_MakeBox(hardware_box_lenght, hardware_box_widht, hardware_box_height).Shape()
 moved_hardware_box= OExs.translate_shp(hardware_box,Ogp.gp_Vec(0,-hardware_box_widht/2, -hardware_box_height+ rib_width))
+m.display_this_shape(moved_hardware_box)
 
 #Cutout for Extra Ribs
-cylinder= OPrim.BRepPrimAPI_MakeCylinder((fuselage_height*0.8)/2,100).Shape()
+cylinder= OPrim.BRepPrimAPI_MakeCylinder((fuselage_height*0.8)/2,40).Shape()
 cylinder= rotate_shape(cylinder, Ogp.gp_OY(), 90)
+m.display_this_shape(cylinder)
 
-# Cross ribs
+###
+#Create tunnel for carbon reinforcement
+###
+reinforcement_tunnel_in= OPrim.BRepPrimAPI_MakeCylinder(0.2,40).Shape()
+reinforcement_tunnel_in= rotate_shape(reinforcement_tunnel_in, Ogp.gp_OY(), 90)
+reinforcement_tunnel_out= OPrim.BRepPrimAPI_MakeCylinder(0.3,40).Shape()
+reinforcement_tunnel_out= rotate_shape(reinforcement_tunnel_out, Ogp.gp_OY(), 90)
+#reinforcement_tunnel=OAlgo.BRepAlgoAPI_Cut(reinforcement_tunnel_out,reinforcement_tunnel_in).Shape()
+#named_reinforcement_tunnel: TGeo.CNamedShape= TGeo.CNamedShape(complete_wing, "CutOut_Reinforcement")
+m.display_this_shape(reinforcement_tunnel_out)
+
 rib_quantity=2
-d_angle= 180/rib_quantity
-for i in range(rib_quantity):     
-    angle=i*d_angle
-    print(i, angle) 
-    sbox= rotate_shape(moved_box, Ogp.gp_OX(), angle)
-    if i==0:
-        rippen=sbox
-    else:
-        rippen=OAlgo.BRepAlgoAPI_Fuse(rippen,sbox).Shape()
-
 # Extraribs
 d_angle=180/(rib_quantity*2)
 for i in range(rib_quantity*2):
@@ -153,25 +162,43 @@ for i in range(rib_quantity*2):
         rippen_ver=sbox
     else:
         rippen_ver=OAlgo.BRepAlgoAPI_Fuse(rippen_ver,sbox).Shape()
+m.display_this_shape(rippen_ver)
         
-# Fuselage cutout wing       
-#cutter= TBoo.CCutShape(fuselage_loft, named_wings_shape)
-#cutted_fuselage_shape:TGeo.CNamedShape= cutter.named_shape()
-cutted_fuselage_shape= OAlgo.BRepAlgoAPI_Cut(fuselage_shape,complete_wing).Shape()
+
 # Fuselage CutOut reinfurceennt tunnel
 #cutter= TBoo.CCutShape(cutted_fuselage_shape, named_reinforcement_tunnel)
-#cutted_fuselage_shape:TGeo.CNamedShape= cutter.named_shape()
-#cutted_fuselage_shape= OAlgo.BRepAlgoAPI_Cut(cutted_fuselage_shape,reinforcement_tunnel).Shape()
-facesToRemove = TopTools_ListOfShape()
-# Fuselage Hollow, walls for wings 
-fuselage_hollow= OOff.BRepOffsetAPI_MakeThickSolid(cutted_fuselage_shape, facesToRemove, 0.2, 0.001).Shape()
-              
+        
 rippen_ver= OAlgo.BRepAlgoAPI_Cut(rippen_ver, cylinder).Shape()
+m.display_this_shape(rippen_ver)
+
 rippen_ver= OAlgo.BRepAlgoAPI_Common(cutted_fuselage_shape, rippen_ver).Shape()
+m.display_this_shape(rippen_ver)
+
+# Cross ribs
+d_angle= 180/rib_quantity
+for i in range(rib_quantity):     
+    angle=i*d_angle
+    print(i, angle) 
+    sbox= rotate_shape(moved_box, Ogp.gp_OX(), angle)
+    if i==0:
+        rippen=sbox
+    else:
+        rippen=OAlgo.BRepAlgoAPI_Fuse(rippen,sbox).Shape()
+m.display_this_shape(rippen)
+
 rippen_cuted=  OAlgo.BRepAlgoAPI_Cut(rippen, moved_hardware_box).Shape()
+m.display_this_shape(rippen_cuted)
+
 rippen_cuted= OAlgo.BRepAlgoAPI_Fuse(rippen_cuted,reinforcement_tunnel_out).Shape()
+m.display_this_shape(rippen_cuted)
+
 #rippen_cuted= OAlgo.BRepAlgoAPI_Cut(rippen_cuted, reinforcement_tunnel_in).Shape()
 rippen_cuted=OAlgo.BRepAlgoAPI_Common(cutted_fuselage_shape, rippen_cuted).Shape()
+m.display_this_shape(rippen_cuted)
+
+rippen_gesamt=OAlgo.BRepAlgoAPI_Fuse(rippen_cuted, rippen_ver).Shape()
+m.display_this_shape(rippen_gesamt)
+
 point:Ogp.gp_Pnt =TGeo.get_center_of_mass(rippen_cuted)
 print(point.X(), point.Y(), point.Z())
 center_of_mass = OPrim.BRepPrimAPI_MakeSphere(point, 1).Shape()
@@ -183,9 +210,7 @@ try:
     write_stl_file2(fuselage_done, "Fuselage_Done.stl")
 except:
     print("No export")
-###
-#Display
-###
+'''
 display, start_display, add_menu, add_function_to_menu = init_display()
 #display.DisplayShape(reinforcement_tunnel_out) 
 display.DisplayShape(center_of_mass, color="BLUE") 
@@ -195,10 +220,11 @@ display.DisplayShape(rippen_cuted)
 display.DisplayShape(fuselage_hollow, transparency=.8) 
 #display.DisplayShape(cutted_fuselage_shape, transparency=.8)
 #display.DisplayShape(fuselage_done, transparency=0.8)
-    
 
 #display, start_display, add_menu, add_function_to_menu = init_display()
 #display.DisplayShape(moved_box, transparency=.8)
 #display.DisplayShape(sbox, transparency=.8)
 display.FitAll()
 start_display()
+'''
+m.start()

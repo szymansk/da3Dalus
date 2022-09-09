@@ -5,6 +5,7 @@ import OCC.Extend.ShapeFactory as OExs
 import tigl3.geometry as TGeo
 import OCC.Core.gp as Ogp
 from math import *
+from mydisplay import myDisplay
 from parts.Rib import *
 import logging
 
@@ -14,6 +15,7 @@ class RibFactory:
     
     def __init__(self) -> None:
         self.rib:Rib= Rib()
+        self.md=myDisplay.instance()
               
     #TODO where does height, thikness, extrude come frome?
     def create_rib_grid(self, spacing, thikness,xdiff, ydiff, zdiff,type:str="x"):
@@ -140,7 +142,7 @@ class RibFactory:
         return moved_hardware_box
 
     def move_rippen(self, x, y,z ):
-        logstr= "Moving ribs to x:" + x + " y:" + y + " z:" + z
+        logstr= "Moving ribs to x:" + str(x) + " y:" + str(y) + " z:" + str(z)
         logging.info(logstr)
         trafo = TGeo.CTiglTransformation()
         trafo.add_translation(x,y,z)

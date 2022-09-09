@@ -234,6 +234,7 @@ def fuse_shapes_common(Commonsurface):
     fertig=Commonsurface[i]
     while (i+1)<(len(Commonsurface)-1):
         for i in range(len(Commonsurface)-1):
+            print("i:" + str(i)  + " von: " + str(range(len(Commonsurface)-1)))
             #common=BRepAlgoAPI_Fuse(Commonsurface[i],Commonsurface[i+1]).Shape()
             common=BRepAlgoAPI_Fuse(fertig,Commonsurface[i]).Shape()
             fertig=common
