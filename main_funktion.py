@@ -252,8 +252,8 @@ def my_logging():
 	logging.info("Start logging")
     
 def development():
-	i_cpacs=2
-	
+	i_cpacs=3
+	md=myDisplay.instance()
 	tixi_h = tixi3wrapper.Tixi3()
 	tigl_h = tigl3wrapper.Tigl3()
 	if i_cpacs==1:
@@ -265,7 +265,7 @@ def development():
 	if i_cpacs==4:
 		tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\tinywing_skaliert.xml")
 	tigl_h.open(tixi_h, "")
-	shell_thikness=0.2
+	shell_thikness=0.01
 	fuselage_rib_spacing=1.5
 	rib_spacing=4
 	rib_thikness=0.2
@@ -302,7 +302,7 @@ def development():
 
 	#display.FitAll()
 	#start_display()
-	md=myDisplay.instance()
+	
 	md.start()
     
 if __name__ == "__main__":

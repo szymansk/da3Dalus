@@ -41,6 +41,7 @@ class AirplaneFactory:
         self.fuselage_rib_spacing= fuselage_rib_spacing
         self.rib_spacing= rib_spacing
         self.rib_thikness= rib_thikness
+        self.md= myDisplay.instance()
     
 
     def cpacs_einlesen(self,filename):
@@ -61,6 +62,7 @@ class AirplaneFactory:
         #self.create_v_tailwing()
         self.create_fuselage()
         
+        
     def create_wing(self,nr,name):
         logging.info("Creating " + name)
         self.wing_factory.create_wing_shape(nr)
@@ -75,6 +77,8 @@ class AirplaneFactory:
     def create_right_mainwing(self):
         self.create_wing(1,"right_mainwing.stl")
         self.airplane.set_right_mainwing(self.wing_factory.wing.with_ribs)
+        self.md.display_this_shape(self.wing_factory.wing.with_ribs)
+        
         
     def create_left_mainwing(self):
         '''

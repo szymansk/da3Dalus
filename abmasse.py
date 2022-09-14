@@ -14,14 +14,16 @@ from OCC.Core.Bnd import Bnd_Box
 def get_koordinates(shape) :
     bbox = Bnd_Box()
     brepbndlib_Add(shape,bbox)
-    xmin, ymin, zmin, xmax,ymax,zmax = bbox.Get()
-
+    xmin,ymin,zmin,xmax,ymax,zmax = bbox.Get()
     return xmin, ymin, zmin,xmax,ymax,zmax
 
 def get_dimensions(xmin,ymin,zmin,xmax,ymax,zmax):
     xdiff = xmax - xmin
-    zdiff = zmax - zmin
     ydiff = ymax - ymin
+    zdiff = zmax - zmin
+    return xdiff,ydiff,zdiff
 
-    return xdiff,zdiff,ydiff
-
+def get_dimensions_from_Shape(shape):
+    xmin, ymin, zmin,xmax,ymax,zmax=get_koordinates(shape)
+    xdiff,ydiff,zdiff= get_dimensions(xmin, ymin, zmin,xmax,ymax,zmax)
+    return xdiff, ydiff, zdiff

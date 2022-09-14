@@ -35,17 +35,28 @@ from mydisplay import *
 from abmasse import get_dimensions, get_koordinates
 
 
-m= myDisplay(5,True)
-
+m= myDisplay(0.5,True)
+wand=0.1
+complete=None
 x,y,z= 10,10,10
-for i in range(0,10):
+box2= OPrim.BRepPrimAPI_MakeBox(x, y, z).Shape()
+for i in range(0,2):
     print("i:" + str(i) + " i+10: "+ str(i*10))
     box= OPrim.BRepPrimAPI_MakeBox(x, y, z).Shape()
     j=i*10
+    wand+=0.2
     moved_box= OExs.translate_shp(box,Ogp.gp_Vec(0, j, 0))
-    m.display_this_shape(moved_box)
+    hollow=create_hollowedsolid(moved_box,wand)
+    if i==0:
+        complete=hollow
+    else:
+        complete=OAlgo.BRepAlgoAPI_Fuse(complete,hollow).Shape()
+    m.display_this_shape(hollow,"",True)
     m.display.FitAll()
 
-box= OPrim.BRepPrimAPI_MakeBox(x/2, y*2, z).Shape()
-m.display_this_shape(box)
+#box= OPrim.BRepPrimAPI_MakeBox(x/2, y*2, z).Shape()
+m.display_this_shape(box2)
+
 m.start()
+
+write_stl_file2(complete, "box_test.stl")

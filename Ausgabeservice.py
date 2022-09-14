@@ -50,8 +50,8 @@ class ausgabe:
             raise IOError("File not written to disk.")
 
 #deflection 0.01 feinmaschiger
-#angular_deflection = 0.01
-def write_stl_file2(a_shape,filename,mode="ascii",linear_deflection=0.9,angular_deflection=0.5):
+#angular_deflection = 0.9
+def write_stl_file2(a_shape,filename,mode="ascii",linear_deflection=0.01,angular_deflection=0.01):
     mypath= "stls\\" + filename
     if a_shape.IsNull():
         raise AssertionError("Shape is null.")
@@ -77,3 +77,8 @@ def write_stl_file2(a_shape,filename,mode="ascii",linear_deflection=0.9,angular_
 
     if not os.path.isfile(mypath):
         raise IOError("File not written to disk.")
+
+def write_stls_srom_list(list):
+    for i,shape in enumerate(list):
+        name= "fuselage\\fuselage" + str(i) + ".stl"
+        write_stl_file2(shape, name)

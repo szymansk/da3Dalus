@@ -56,8 +56,10 @@ def rotate_shape(shape, axis, angle):
 
 left = OPrim.BRepPrimAPI_MakeBox(10, 10, 10).Shape()
 left= OExs.translate_shp(left,Ogp.gp_Vec(-5,-50, -5))
+left= create_hollowedsolid(left,0.4)
 right: TopoDS_Solid = OPrim.BRepPrimAPI_MakeBox(30, 30, 30).Shape()
 right= OExs.translate_shp(right,Ogp.gp_Vec(-25,75, -5))
+right= create_hollowedsolid(right,1)
 complement: OTopo.TopoDS_Shape= right.Complemented()
 complement= OExs.translate_shp(complement,Ogp.gp_Vec(-25,50, -5))
 #right= OOff.BRepOffsetAPI_MakeThickSolid.MakeThickSolidBySimple(right,2)
@@ -95,3 +97,5 @@ display.DisplayShape(complete)
 
 display.FitAll()
 start_display()
+
+write_stl_file2(complete, "Box_test.stl")

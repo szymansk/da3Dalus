@@ -52,7 +52,7 @@ def rotate_shape(shape, axis, angle):
 
     return shp
 
-i_cpacs=2
+i_cpacs=3
 tixi_h = tixi3wrapper.Tixi3()
 
 tigl_handle = tigl3wrapper.Tigl3()
@@ -61,7 +61,7 @@ if i_cpacs==1:
 if i_cpacs==2:
     tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\CPACS_30_D150.xml")
 if i_cpacs==3:
-	tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\aircombat.xml")
+	tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\aircombat_skaliert_f38_one_profile.xml")
 if i_cpacs==4:
 	tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\tinybit_rumpf.xml") 
 tigl_handle.open(tixi_h, "")
@@ -74,19 +74,21 @@ fuselage: TConfig.CCPACSFuselage= cpacs_configuration.get_fuselage(1)
 
 fuselage_loft: TGeo.CNamedShape= fuselage.get_loft()
 fuselage_shape: OTopo.TopoDS_Shape=fuselage_loft.shape()
-xmin, ymin, zmin, xmax,ymax,zmax= get_koordinates(fuselage_shape)
-fuselage_lenght, fuselage_height, fuselage_widht= get_dimensions(xmin, ymin, zmin, xmax,ymax,zmax)
+'''
+
+#xmin, ymin, zmin, xmax,ymax,zmax= get_koordinates(fuselage_shape)
+#fuselage_lenght, fuselage_height, fuselage_widht= get_dimensions(xmin, ymin, zmin, xmax,ymax,zmax)
 
 
-print(fuselage_lenght, fuselage_height, fuselage_widht)
-fuselage_hollow= create_hollowedsolid(fuselage_shape, 0.2)
+#print(fuselage_lenght, fuselage_height, fuselage_widht)
+#fuselage_hollow= create_hollowedsolid(fuselage_shape, 0.2)
 display, start_display, add_menu, add_function_to_menu = init_display()
 #myheight= 5
 rib_width= 0.2
 #mylenght= 50
 mybox = OPrim.BRepPrimAPI_MakeBox(1, 1, 1).Shape()
-box = OPrim.BRepPrimAPI_MakeBox(fuselage_lenght, rib_width, fuselage_height).Shape()
-moved_box= OExs.translate_shp(box,Ogp.gp_Vec(0,-rib_width/2,-fuselage_height/2))
+#box = OPrim.BRepPrimAPI_MakeBox(fuselage_lenght, rib_width, fuselage_height).Shape()
+#moved_box= OExs.translate_shp(box,Ogp.gp_Vec(0,-rib_width/2,-fuselage_height/2))
 
 hardware_box_height=fuselage_height*0.8
 hardware_box_lenght= fuselage_lenght*0.4
@@ -125,11 +127,20 @@ rippen_ver= OAlgo.BRepAlgoAPI_Cut(rippen_ver, cylinder).Shape()
 rippen_ver= OAlgo.BRepAlgoAPI_Common(fuselage_shape, rippen_ver).Shape()
 rippen_cuted=  OAlgo.BRepAlgoAPI_Cut(rippen, moved_hardware_box).Shape()
 rippen_cuted=OAlgo.BRepAlgoAPI_Common(fuselage_shape, rippen_cuted).Shape()
+'''
 ##fuselage_done=OAlgo.BRepAlgoAPI_Fuse(fuselage_hollow,rippen_cuted).Shape()
-display.DisplayShape(rippen_ver) 
-display.DisplayShape(rippen_cuted) 
-display.DisplayShape(mybox) 
-display.DisplayShape(fuselage_hollow, transparency=.8) 
+box= OPrim.BRepPrimAPI_MakeBox(10, 100, 100).Shape()
+moved_box= OExs.translate_shp(box,Ogp.gp_Vec(31, -30, -50))
+#fuselage_cuted=  OAlgo.BRepAlgoAPI_Cut(fuselage_shape, moved_box).Shape()
+fuselage_cuted=create_hollowedsolid(fuselage_shape,0.4)
+
+
+''''''
+display, start_display, add_menu, add_function_to_menu = init_display()
+display.DisplayShape(fuselage_cuted) 
+#display.DisplayShape(rippen_cuted) 
+#display.DisplayShape(mybox) 
+#display.DisplayShape(fuselage_hollow, transparency=.8) 
 #display.DisplayShape(box)
     
 
@@ -138,3 +149,5 @@ display.DisplayShape(fuselage_hollow, transparency=.8)
 #display.DisplayShape(sbox, transparency=.8)
 display.FitAll()
 start_display()
+
+write_stl_file2(fuselage_cuted, "test_shape.stl")
