@@ -1,5 +1,6 @@
 import logging
 from operator import length_hint
+from os import name
 from re import M
 from turtle import position, shape
 from tixi3 import tixi3wrapper
@@ -40,7 +41,7 @@ from abmasse import *
 from mydisplay import myDisplay
 
 class ShapeSlicer:
-    def __init__(self, shape, quantity, part="fuselage"):
+    def __init__(self, shape, quantity, name="", dev=False):
         self.parts_list=[]
         self.quantity:int= quantity
         self.cutout_front_box:OTopo.TopoDS_Shape= None
@@ -50,7 +51,8 @@ class ShapeSlicer:
         self.part_lenght:float=self.total_lenght/quantity
         self.position_front:float=0.0
         self.position_back:float=0.0
-        self.m=myDisplay.instance()
+        self.m=myDisplay.instance(dev)
+        self.name= name
         logstr= "Dividing shape in " + str(quantity) + "equal parts of lenght " + str(self.part_lenght)
         logging.info(logstr)
     
@@ -77,6 +79,8 @@ class ShapeSlicer:
     def slice2(self):
         for i in range(0,self.quantity):
             #self.position_front=self.part_lenght*i-self.part_lenght
+            logstr= "Part " + str(i)
+            logging.info(logstr)
             self.position_front=-self.total_lenght+self.part_lenght*i
             self.position_back=self.part_lenght*(i+1)
             self.cutout_front_box=OPrim.BRepPrimAPI_MakeBox(self.total_lenght, self.total_widht, self.total_height).Shape()
@@ -95,8 +99,9 @@ class ShapeSlicer:
                 part=OAlgo.BRepAlgoAPI_Cut(part,self.cutout_front_box).Shape()
             part=OAlgo.BRepAlgoAPI_Cut(part,self.cutout_back_box).Shape()
             logstr= "Part " + str(i)
-            self.m.display_this_shape(part,logstr)
+            #self.m.display_this_shape(part,logstr)
             self.parts_list.append(part)
+        self.m.display_slice_x(self.parts_list, self.name)
         
             
             

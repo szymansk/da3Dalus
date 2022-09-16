@@ -65,8 +65,7 @@ from tigl3.geometry import CTiglTransformation
 from tigl3.tigl3wrapper import Tigl3, TiglBoolean
 from tixi3 import tixi3wrapper
 from tixi3.tixi3wrapper import Tixi3
-
-from mydisplay import myDisplay
+#from mydisplay import myDisplay
 
 
 

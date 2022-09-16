@@ -98,6 +98,7 @@ from app import app
 from flask import Flask, request, redirect, jsonify, send_file
 from werkzeug.utils import secure_filename
 import logging
+from probe_rumps_cutout_2 import *
 
 from mydisplay import myDisplay
 
@@ -122,6 +123,12 @@ def open_fuselage(filename):
 	p1=profil()
 	tigl_h=ein.cpacs_einlesen(filename)
 	p1.make_profil(tigl_h)
+
+def create_fuselage(filename):
+	tigl_h= extract_tigl(filename)
+	a=aircombat_test(True, tigl_h)
+	a.test1()
+    
 
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif','xml','json'])
 
@@ -237,9 +244,10 @@ def upload_fuselage():
 		file.save(file_path)
 		# resp = jsonify({'message' : 'File successfully uploaded'})
 		# resp.status_code = 201
-		open_fuselage(file_path)
-		# return resp
-		return send_file("rumpf.stl")
+		#open_fuselage(file_path)
+		create_fuselage(file_path)
+		logging.info("prepering to send zip")
+		return send_file("stls\\fuselage.zip")
 
 	else:
 		resp = jsonify({'message' : 'Allowed file types are txt, pdf, png, jpg, jpeg, gif'})
@@ -304,11 +312,17 @@ def development():
 	#start_display()
 	
 	md.start()
+
+def dev2():
+	tigl_h= extract_tigl(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\aircombat_v2.xml")
+	a=aircombat_test(True, tigl_h)
+	a.test1()
     
 if __name__ == "__main__":
 	my_logging()
-	development()
- 	#app.run()
+	#development()
+	#dev2()
+	app.run()
 	
 	
 
