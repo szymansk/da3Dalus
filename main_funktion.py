@@ -86,8 +86,8 @@ from math import radians
 from factories.AirplaneFactory import AirplaneFactory
 
 from factories.WingFactory import WingFactory
-from Fluegel import fluegel
-from Rumpf import profil
+#from Fluegel import fluegel
+#from Rumpf import profil
 from Einleseservice import einlesen
 from Ausgabeservice import *
 
@@ -98,6 +98,11 @@ from app import app
 from flask import Flask, request, redirect, jsonify, send_file
 from werkzeug.utils import secure_filename
 import logging
+from probe_rumps_cutout_2 import *
+
+from mydisplay import myDisplay
+
+
 
 
 def open_wing(filename):
@@ -118,6 +123,12 @@ def open_fuselage(filename):
 	p1=profil()
 	tigl_h=ein.cpacs_einlesen(filename)
 	p1.make_profil(tigl_h)
+
+def create_fuselage(filename):
+	tigl_h= extract_tigl(filename)
+	a=aircombat_test(True, tigl_h)
+	a.test1()
+    
 
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif','xml','json'])
 
@@ -233,9 +244,10 @@ def upload_fuselage():
 		file.save(file_path)
 		# resp = jsonify({'message' : 'File successfully uploaded'})
 		# resp.status_code = 201
-		open_fuselage(file_path)
-		# return resp
-		return send_file("rumpf.stl")
+		#open_fuselage(file_path)
+		create_fuselage(file_path)
+		logging.info("prepering to send zip")
+		return send_file("stls\\fuselage.zip")
 
 	else:
 		resp = jsonify({'message' : 'Allowed file types are txt, pdf, png, jpg, jpeg, gif'})
@@ -248,8 +260,8 @@ def my_logging():
 	logging.info("Start logging")
     
 def development():
-	i_cpacs=2
-	
+	i_cpacs=3
+	md=myDisplay.instance()
 	tixi_h = tixi3wrapper.Tixi3()
 	tigl_h = tigl3wrapper.Tigl3()
 	if i_cpacs==1:
@@ -257,56 +269,60 @@ def development():
 	if i_cpacs==2:
 		tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\CPACS_30_D150.xml")
 	if i_cpacs==3:
-		tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\aircombat.xml")
+		tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\aircombat_skaliert_f38_one_profile.xml")
 	if i_cpacs==4:
 		tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\tinywing_skaliert.xml")
 	tigl_h.open(tixi_h, "")
-	shell_thikness=0.2
+	shell_thikness=0.01
 	fuselage_rib_spacing=1.5
 	rib_spacing=4
 	rib_thikness=0.2
 	airplane_factory=AirplaneFactory(tigl_h,shell_thikness,fuselage_rib_spacing,rib_spacing,rib_thikness)
-	display, start_display, add_menu, add_function_to_menu = init_display()
-	box = BRepPrimAPI_MakeBox(1, 1, 1).Shape()
+	#display, start_display, add_menu, add_function_to_menu = init_display()
 	d_ribs=False
-	variant=2
+	variant=3
 	if variant==1:
 		airplane_factory.create_airplane()
 		airplane_factory.fuse_all_wings()
-		display.DisplayShape(airplane_factory.airplane.allwings)
-		display.DisplayShape(airplane_factory.airplane.fuselage)
+		#display.DisplayShape(airplane_factory.airplane.allwings)
+		#display.DisplayShape(airplane_factory.airplane.fuselage)
 	elif variant==2:
 		airplane_factory.create_right_mainwing()
-		display.DisplayShape( airplane_factory.airplane.wings.get("right_mainwing"))
+		#display.DisplayShape( airplane_factory.airplane.wings.get("right_mainwing"))
 	elif variant==3:
 		#airplane_factory.create_right_mainwing()
 		airplane_factory.create_fuselage()
-		display.DisplayShape(airplane_factory.airplane.fuselage)
+		#display.DisplayShape(airplane_factory.airplane.fuselage, transparency=0.8)
+		#display.DisplayShape(airplane_factory.rib_factory.rib.ribs)
+		#try:
+			#display_this_shape(airplane_factory.fuselage_factory.fuselage.with_ribs)
+		#except:
+			#logging.error("Not possible to display Fuselage with ribs")
 	else:
 		logging.info("invalid variant")
   
-	if d_ribs:
-		display.DisplayShape(airplane_factory.rib_factory.rib.ribs)
+	#if d_ribs:
+		#display.DisplayShape(airplane_factory.rib_factory.rib.ribs)
   
 	myZip.zip_stls()
-	
-	box2 = BRepPrimAPI_MakeBox(1, 1, 1).Shape()
-	#trafo= TGeo.CTiglTransformation()
-	#trafo.add_translation(0,wf.wing.rib.height,0)
-	#box2=trafo.transform(box2)
-	display.DisplayShape(box2)
-	
-	
-    
-	display.DisplayShape(box)
+	box = BRepPrimAPI_MakeBox(1, 1, 1).Shape()
+	#display.DisplayShape(box)
 
-	display.FitAll()
-	start_display()
+	#display.FitAll()
+	#start_display()
+	
+	md.start()
+
+def dev2():
+	tigl_h= extract_tigl(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\aircombat_v2.xml")
+	a=aircombat_test(True, tigl_h)
+	a.test1()
     
 if __name__ == "__main__":
 	my_logging()
-	development()
- 	#app.run()
+	#development()
+	#dev2()
+	app.run()
 	
 	
 

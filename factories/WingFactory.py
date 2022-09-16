@@ -30,6 +30,7 @@ from OCC.Display.SimpleGui import init_display
 from factories.RibFactory import *
 from parts.Wing import *
 from parts.Rib import *
+from mydisplay import *
 
 from abmasse import *
 from Ausgabeservice import *
@@ -52,41 +53,56 @@ class WingFactory:
     def create_wing_shape(self, wing_nr):
         ''' Creates the wing shape out of the CPACS and stores it in the wing:Wing Objekt. Calls the funktions to calculate_koordinates and calculate_outter_dimensions '''
         #Get wing returns CPACSWing, XML Wing description
-        self.wing_configuration: TConfig.CCPACSWing= self.cpacs_configuration.get_wing(wing_nr)                   
+        self.wing_configuration: TConfig.CCPACSWing= self.cpacs_configuration.get_wing(wing_nr) 
+        logstr= "Creating Wing Shape from: " + self.wing_configuration.get_name() 
+        logging.info(logstr)                
         #Get_loft()-shape() creates a TigleShape out of the Wing
         #3D solid  with Tigl metadata
         wing_loft: TGeo.CNamedShape = self.wing_configuration.get_loft()
         self.wing.shape: OTopo.TopoDS_Shape = wing_loft.shape()
+        self.create_mirrored_wing(False)
+        self.fuse_mirrored_wing()
         self.wing.calculate_koordinates()
         self.wing.calculate_outter_dimensions()
-        print(self.wing.__str__())
+        logging.info(self.wing.__str__())
     
     def create_holow_wing(self, thickness:float):
         '''Creates a new Hollows_wing shape with a given thikness and stores it in the wing:Wing Objekt'''
+        logstr= "Hollowing Wing: " + self.wing_configuration.get_name()
+        logging.info(logstr)            
         self.wing.hollow= create_hollowedsolid(self.wing.shape ,thickness)
         #facesToRemove = TopTools_ListOfShape()
         #self.wing.hollow= OOff.BRepOffsetAPI_MakeThickSolid(self.wing.shape, facesToRemove, 0.2, 0.001)
         
-    def create_mirrored_wing(self):
+    def create_mirrored_wing(self, withribs=True):
         '''Creates a mirrored shape from the wing.with_ribs and stores it in the wing:Wing Objekt'''
+        logstr= "Creating Mirrored Wing from: " + self.wing_configuration.get_name()
+        logging.info(logstr)    
         if self.wing.has_mirrored_shape:
             # Set up the mirror
             aTrsf= Ogp.gp_Trsf()
             aTrsf.SetMirror(Ogp.gp_Ax2(Ogp.gp_Pnt(0,0,0),Ogp.gp_Dir(0,1,0)))
             # Apply the mirror transformation
-            aBRespTrsf = OBuilder.BRepBuilderAPI_Transform(self.wing.with_ribs, aTrsf)
-            # Get the mirrored shape back out of the transformation and convert back to a wire
-            self.wing.mirrored_shape = aBRespTrsf.Shape()         
-            #TODO connect both wings
-            #fluegelgesamt=OAlgo.BRepAlgoAPI_Fuse(verbunden,aMirroredShape).Shape()
+            if withribs==True:
+                aBRespTrsf = OBuilder.BRepBuilderAPI_Transform(self.wing.with_ribs, aTrsf)
+                # Get the mirrored shape back out of the transformation and convert back to a wire
+                self.wing.mirrored_with_ribs = aBRespTrsf.Shape()         
+            else:
+                aBRespTrsf = OBuilder.BRepBuilderAPI_Transform(self.wing.shape, aTrsf)
+                self.wing.mirrored_shape = aBRespTrsf.Shape()
+                
+    def fuse_mirrored_wing(self):
+        logstr= "Fussing: " + self.wing_configuration.get_name()
+        logging.info(logstr)    
+        self.wing.complete= OAlgo.BRepAlgoAPI_Fuse(self.wing.shape,self.wing.mirrored_shape).Shape()
     
     def has_mirrored_shape(self) -> boolean:
         '''checks if the wing in the factory has a mirrored shape'''     
         mirorred_loft= self.wing_configuration.get_mirrored_loft()
         return mirorred_loft!= None
-              
+        
     def fuse_ribs(self, ribs):
-        logging.info("Start Fuse ---- Wait")
+        logging.info("Fusing: Ribs to Wing ---- Wait")
         start= time.time()
         #cuts the ribs to the shape of the wing
         #CommonSurface = OAlgo.BRepAlgoAPI_Common(self.wing.rib.ribs,self.wing.shape).Shape()
@@ -95,7 +111,7 @@ class WingFactory:
         self.wing.with_ribs= OAlgo.BRepAlgoAPI_Fuse(self.wing.hollow,CommonSurface).Shape()
         end= time.time()
         dif= end-start
-        logging.info("Fuse took " + str(dif) + "seconds")
+        logging.info("Fusing: End ---- Took " + str(dif) + " seconds")
     
     def get_solid_mainwings(self):
         pass
