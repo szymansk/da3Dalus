@@ -102,7 +102,25 @@ class ShapeSlicer:
             #self.m.display_this_shape(part,logstr)
             self.parts_list.append(part)
         self.m.display_slice_x(self.parts_list, self.name)
+    
+    def slice_with_list(self, list_of_pos):
+        frontbox=None
+        rearbox=None
         
+        for i,front_pos in enumerate(list_of_pos):
+            part=self.shape
+            print(i)
+            rearbox=OPrim.BRepPrimAPI_MakeBox(self.total_lenght, self.total_widht, self.total_height).Shape()
+            rearbox= OExs.translate_shp(rearbox, Ogp.gp_Vec(list_of_pos[i],-self.total_widht/2, -self.total_height/2))
+            part1=OAlgo.BRepAlgoAPI_Cut(part,rearbox).Shape()
+            self.m.display_cut(part1,part,rearbox)
+            if i != 0:
+                frontbox=OPrim.BRepPrimAPI_MakeBox(list_of_pos[i-1], self.total_widht, self.total_height).Shape()
+                frontbox= OExs.translate_shp(frontbox, Ogp.gp_Vec(0,-self.total_widht/2, -self.total_height/2))
+                self.m.display_this_shape(frontbox)
+                part1=OAlgo.BRepAlgoAPI_Cut(part1,frontbox).Shape()
+            self.parts_list.append(part1)
+        self.m.display_slice_x(self.parts_list, self.name)
             
             
     

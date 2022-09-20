@@ -27,3 +27,10 @@ def get_dimensions_from_Shape(shape):
     xmin, ymin, zmin,xmax,ymax,zmax=get_koordinates(shape)
     xdiff,ydiff,zdiff= get_dimensions(xmin, ymin, zmin,xmax,ymax,zmax)
     return xdiff, ydiff, zdiff
+
+def get_koordinate(shape, koordinate_name="xmin"):
+    bbox = Bnd_Box()
+    brepbndlib_Add(shape,bbox)
+    xmin,ymin,zmin,xmax,ymax,zmax = bbox.Get()
+    koordinate_dict={"xmin":xmin,"ymin": ymin, "zmin": zmin, "xmax":xmax, "ymax": ymax, "zmax":zmax}#
+    return koordinate_dict.get(koordinate_name)

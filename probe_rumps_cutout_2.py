@@ -1,6 +1,7 @@
 import logging
 from re import M
 from turtle import position
+from unicodedata import mirrored
 from tixi3 import tixi3wrapper
 from tigl3 import tigl3wrapper
 import tigl3.boolean_ops
@@ -34,7 +35,7 @@ import tigl3.boolean_ops as TBoo
 from math import *
 from OCC.Core.TopTools import TopTools_ListOfShape
 
-from abmasse import get_dimensions, get_koordinates
+from abmasse import get_dimensions, get_koordinate, get_koordinates
 from mydisplay import myDisplay
 from shape_verschieben import rotate_shape
 from shapeslicer.ShapeSlicer import ShapeSlicer
@@ -97,15 +98,14 @@ class aircombat_test:
         self.wing: TConfig.CCPACSWing= self.cpacs_configuration.get_wing(1)   
         self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
         self.wing_shape: OTopo.TopoDS_Shape = self.wing_loft.shape()
-        #self.m.display_this_shape(self.wing_shape, "Right wing Shape")
         # Set up the mirror
         aTrsf= Ogp.gp_Trsf()
         aTrsf.SetMirror(Ogp.gp_Ax2(Ogp.gp_Pnt(0,0,0),Ogp.gp_Dir(0,1,0)))
         transformed_wing = OBuilder.BRepBuilderAPI_Transform(self.wing_shape, aTrsf)
         mirrored_wing= transformed_wing.Shape()
         self.complete_wing= OAlgo.BRepAlgoAPI_Fuse(self.wing_shape,mirrored_wing).Shape()
-        #self.complete_wing=OExs.translate_shp(complete_wing,Ogp.gp_Vec(0,0, 2))
-        self.m.display_this_shape(self.complete_wing,msg="Fused completewing")
+        self.m.display_fuse(self.complete_wing,self.wing_shape, mirrored_wing, "complete_wing")
+        #self.m.display_this_shape(self.complete_wing,msg="Fused completewing")
 
 
     def create_fuselage(self):
@@ -115,20 +115,20 @@ class aircombat_test:
         #self.fuselage_shape=OExs.translate_shp(self.fuselage_shape,Ogp.gp_Vec(0,0,0.003))
         xmin, ymin, zmin, xmax,ymax,zmax= get_koordinates(self.fuselage_shape)
         self.fuselage_lenght, self.fuselage_widht, self.fuselage_height= get_dimensions(xmin, ymin, zmin, xmax,ymax,zmax)
-        print("Fuselage Dimensions", self.fuselage_lenght, self.fuselage_height, self.fuselage_widht)
-        self.m.display_this_shape(self.fuselage_shape, "Fuselage Shape")
+        logstr= f"Fuselage Dimensions lenght={self.fuselage_lenght}, widht={self.fuselage_widht} height={self.fuselage_height}"
+        logging.info(logstr)
+        self.m.display_this_shape(self.fuselage_shape, logstr)
         
     def cut_fuselage_with_wing(self):
         self.cutted_fuselage_shape= OAlgo.BRepAlgoAPI_Cut(self.fuselage_shape,self.complete_wing).Shape()
-        print(type(self.cutted_fuselage_shape), self.cutted_fuselage_shape.ShapeType())
         self.m.display_this_shape(self.cutted_fuselage_shape, "Cutted Fuselage")
         
-    def hollow_fuselage(self):
+    def hollow_fuselage(self, thickness=0.0004):
         #facesToRemove = TopTools_ListOfShape()
-        # Fuselage Hollow, walls for wings #0.01
+        #Fuselage Hollow, walls for wings #0.01
         #self.fuselage_hollow= OOff.BRepOffsetAPI_MakeThickSolid(self.cutted_fuselage_shape, facesToRemove, 0.04, 0.01).Shape()
-        self.fuselage_hollow= create_hollowedsolid(self.fuselage_shape,0.0004)
-        self.m.display_this_shape(self.fuselage_hollow, "Hollow Fuselage- Thickness 0.4mm",True)
+        self.fuselage_hollow= create_hollowedsolid(self.fuselage_shape,thickness)
+        self.m.display_this_shape(self.fuselage_hollow, f"Hollow Fuselage- Thickness {thickness}",True)
         
 
     def create_cross_rib(self):
@@ -155,17 +155,19 @@ class aircombat_test:
                 self.rippen=OAlgo.BRepAlgoAPI_Fuse(self.rippen,sbox).Shape()
         self.m.display_this_shape(self.rippen, "Cross Ribs")
         
-    def create_quadrat_rib(self, rib_width=0.0004, factor=0.3):
+    def create_quadrat_rib2(self, rib_width=0.0004, factor=0.3):
         box = OPrim.BRepPrimAPI_MakeBox(self.fuselage_lenght*2, rib_width*2, self.fuselage_height*2).Shape()
         moved_box= OExs.translate_shp(box,Ogp.gp_Vec(0,-rib_width,-self.fuselage_height))
         #self.m.display_this_shape(moved_box, "Moved Box")
         #self.m.display_in_origin(self.moved_box)
         ver_rib=moved_box
-        ver_rib_1=OExs.translate_shp(ver_rib,Ogp.gp_Vec(0.0,self.fuselage_widht*factor,0.0))
-        ver_rib_2=OExs.translate_shp(ver_rib,Ogp.gp_Vec(0.0,-self.fuselage_widht*factor,0.0))
+        y_pos=self.fuselage_widht*factor
+        ver_rib_1=OExs.translate_shp(ver_rib,Ogp.gp_Vec(0.0,y_pos,0.0))
+        ver_rib_2=OExs.translate_shp(ver_rib,Ogp.gp_Vec(0.0,-y_pos,0.0))
         hor_rib= rotate_shape(moved_box, Ogp.gp_OX(), 90)
-        hor_rib_1=OExs.translate_shp(hor_rib,Ogp.gp_Vec(0.0,0.0,self.fuselage_height*factor))
-        hor_rib_2=OExs.translate_shp(hor_rib,Ogp.gp_Vec(0.0,0.0,-self.fuselage_height*factor))
+        z_pos=y_pos
+        hor_rib_1=OExs.translate_shp(hor_rib,Ogp.gp_Vec(0.0,0.0,z_pos))
+        hor_rib_2=OExs.translate_shp(hor_rib,Ogp.gp_Vec(0.0,0.0,-z_pos))
         rippen=ver_rib_1
         rippen=OAlgo.BRepAlgoAPI_Fuse(rippen,ver_rib_2).Shape()
         rippen=OAlgo.BRepAlgoAPI_Fuse(rippen,hor_rib_1).Shape()
@@ -173,42 +175,94 @@ class aircombat_test:
         self.m.display_this_shape(rippen, "Quadrat Ribs")
         return rippen
     
-    def create_cylinder_reinforcemnt(self, factor=0.3,radius=0.004 ):
+    def create_quadrat_rib(self, rib_width, y_max,y_min,z_max,z_min):
+        box = OPrim.BRepPrimAPI_MakeBox(self.fuselage_lenght*1.2, rib_width, self.fuselage_height*1.2).Shape()
+        moved_box= OExs.translate_shp(box,Ogp.gp_Vec(0,-rib_width,-self.fuselage_height/2))
+        ver_rib=moved_box
+        ver_rib_1=OExs.translate_shp(ver_rib,Ogp.gp_Vec(0.0,y_max,0.0))
+        ver_rib_2=OExs.translate_shp(ver_rib,Ogp.gp_Vec(0.0,y_min,0.0))
+        #berechnen der top stelle des flügels
+        self.wing_zmax= get_koordinate(self.wing_shape, "zmax")
+        hor_rib= rotate_shape(moved_box, Ogp.gp_OX(), 90)
+        hor_rib_1=OExs.translate_shp(hor_rib,Ogp.gp_Vec(0.0,0.0,z_max))
+        hor_rib_2=OExs.translate_shp(hor_rib,Ogp.gp_Vec(0.0,0.0,z_min))
+        interim_rib=ver_rib_1
+        interim_rib=OAlgo.BRepAlgoAPI_Fuse(interim_rib,ver_rib_2).Shape()
+        interim_rib=OAlgo.BRepAlgoAPI_Fuse(interim_rib,hor_rib_1).Shape()
+        quadrat_rib=OAlgo.BRepAlgoAPI_Fuse(interim_rib,hor_rib_2).Shape()
+        logstr= f"Quadrat ribs: x_pos=0 y_max={y_max:.3f} y_min={y_min:.3f} z_max={z_max:.3f} z_min={z_min:.3f}"
+        self.m.display_fuse(quadrat_rib, interim_rib, hor_rib_2, logstr)
+        logging.info(logstr)
+        return quadrat_rib
+    
+    
+    def create_cylinder_reinforcemnt(self, radius, y_max,y_min,z_max,z_min ):
         cylinder= OPrim.BRepPrimAPI_MakeCylinder(radius,self.fuselage_lenght).Shape()
         cylinder= self.rotate_shape(cylinder, Ogp.gp_OY(), 90)
-        cylinder_1= OExs.translate_shp(cylinder,Ogp.gp_Vec(0.0,self.fuselage_widht*factor,self.fuselage_height*factor))
-        cylinder_2= OExs.translate_shp(cylinder,Ogp.gp_Vec(0.0,self.fuselage_widht*factor,-self.fuselage_height*factor))
-        cylinder_3= OExs.translate_shp(cylinder,Ogp.gp_Vec(0.0,-self.fuselage_widht*factor,-self.fuselage_height*factor))
-        cylinder_4= OExs.translate_shp(cylinder,Ogp.gp_Vec(0.0,-self.fuselage_widht*factor,self.fuselage_height*factor))
-        cylinders=cylinder_1
-        cylinders=OAlgo.BRepAlgoAPI_Fuse(cylinders,cylinder_2).Shape()
-        cylinders=OAlgo.BRepAlgoAPI_Fuse(cylinders,cylinder_3).Shape()
-        cylinders=OAlgo.BRepAlgoAPI_Fuse(cylinders,cylinder_4).Shape()
-        self.m.display_this_shape(cylinders, "Reinforcement 4")
+        x_pos=0
+        cylinder_1= OExs.translate_shp(cylinder,Ogp.gp_Vec(0.0,y_max,z_max))
+        cylinder_2= OExs.translate_shp(cylinder,Ogp.gp_Vec(0.0,y_max,z_min))
+        cylinder_3= OExs.translate_shp(cylinder,Ogp.gp_Vec(0.0,y_min,z_min))
+        cylinder_4= OExs.translate_shp(cylinder,Ogp.gp_Vec(0.0,y_min,z_max))
+        interim_cylinders=cylinder_1
+        interim_cylinders=OAlgo.BRepAlgoAPI_Fuse(interim_cylinders,cylinder_2).Shape()
+        interim_cylinders=OAlgo.BRepAlgoAPI_Fuse(interim_cylinders,cylinder_3).Shape()
+        cylinders=OAlgo.BRepAlgoAPI_Fuse(interim_cylinders,cylinder_4).Shape()
+        logstr= f"Tunnel for Carbon Reinforcements x_pos=0 y_pos_max={y_max:.3f} y_pos_min={y_min:.3f} z_pos_max={z_max:.3f} z_pos_min={z_min:.3f}"
+        self.m.display_fuse(cylinders,interim_cylinders, cylinder_4, logstr)
+        logging.info(logstr)
         return cylinders
     
-    def create_reduktion_cylinders(self, factor, radius, position):
-        cylinder= OPrim.BRepPrimAPI_MakeCylinder(radius,self.fuselage_widht).Shape()
-        cylinder= self.rotate_shape(cylinder, Ogp.gp_OY(), 90)
-        cylinder_1= OExs.translate_shp(cylinder,Ogp.gp_Vec(0.0,self.fuselage_widht*factor,self.fuselage_height*factor))
-        cylinder_2= OExs.translate_shp(cylinder,Ogp.gp_Vec(0.0,self.fuselage_widht*factor,-self.fuselage_height*factor))
-        cylinder_3= OExs.translate_shp(cylinder,Ogp.gp_Vec(0.0,-self.fuselage_widht*factor,-self.fuselage_height*factor))
-        cylinder_4= OExs.translate_shp(cylinder,Ogp.gp_Vec(0.0,-self.fuselage_widht*factor,self.fuselage_height*factor))
-        cylinders=cylinder_1
-        cylinders=OAlgo.BRepAlgoAPI_Fuse(cylinders,cylinder_2).Shape()
-        cylinders=OAlgo.BRepAlgoAPI_Fuse(cylinders,cylinder_3).Shape()
-        cylinders=OAlgo.BRepAlgoAPI_Fuse(cylinders,cylinder_4).Shape()
-        self.m.display_this_shape(cylinders, "Reinforcement 4")
-        return cylinders
+    def create_rib_weight_reduction_recces(self, radius=0.01, distance=0.1):
+        #testCylinder=OPrim.BRepPrimAPI_MakeCylinder(radius,self.fuselage_widht).Shape()
+        #self.m.display_this_shape(testCylinder)
+        box= OPrim.BRepPrimAPI_MakeBox(0.001,0.001,0.001).Shape()
+        cylinder= OPrim.BRepPrimAPI_MakeCylinder(radius,self.fuselage_height).Shape()
+        cylinder= self.rotate_shape(cylinder, Ogp.gp_OX(), 90)
+        cylinder_pattern= self.create_linear_pattern(cylinder, 8, distance)
+        self.m.display_this_shape(cylinder_pattern)
+        self.m.display_in_origin(cylinder_pattern)
+        self.m.display_in_origin(box)
+        return cylinder_pattern
+        
+    def create_linear_pattern(self, shape, quantity, distance):
+        pattern=shape
+        logstr= f"Creating a linear pattern of {quantity} x {distance} meters"
+        logging.info(logstr)
+        for i in range(1,quantity):
+            x= i*distance
+            moved_shape= OExs.translate_shp(shape,Ogp.gp_Vec(x,0.0,0.0))
+            newpattern= OAlgo.BRepAlgoAPI_Fuse(pattern, moved_shape).Shape()
+            pattern=newpattern
+        return pattern
+            
         
     def create_sharp_ribs(self,rib_width=0.0004, factor=0.3, radius=0.004):
-        quadrat= self.create_quadrat_rib(rib_width, factor)
-        cylinders= self.create_cylinder_reinforcemnt(factor, radius)
-        #weight_reduktion_cylinders= self.create_reduktion_cylinders(factor, radius, position)
-        
-        self.rippen_cuted= OAlgo.BRepAlgoAPI_Fuse(quadrat,cylinders).Shape()
+        y_max= self.fuselage_widht*factor
+        y_min= -y_max
+        z_max= self.fuselage_height*factor
+        z_min=get_koordinate(self.wing_shape,"zmax")
+        quadrat= self.create_quadrat_rib(rib_width, y_max,y_min,z_max,z_min)
+        cylinders= self.create_cylinder_reinforcemnt(radius, y_max,y_min,z_max,z_min)
+        reduktion_radius=((z_max-z_min)*0.8)/2
+        reduktion_zpos=((z_max-z_min)/2)-reduktion_radius+(rib_width/2)
+        logstr= f"y_max= {y_max:.4f} y_min {y_min:.4f} z_max= {z_max:.4f} z_min= {z_min:.4f} radius= {reduktion_radius:.4f} z_pos= {reduktion_zpos:.5f}"
+        logging.info(logstr)
+        weight_reduktion_cylinders_hor= self.create_rib_weight_reduction_recces(reduktion_radius, 0.1)
+        weight_reduktion_cylinders_hor= OExs.translate_shp(weight_reduktion_cylinders_hor,Ogp.gp_Vec(reduktion_radius*2,self.fuselage_widht/2,reduktion_zpos))
+        rippen_cut_recces= OAlgo.BRepAlgoAPI_Cut(quadrat,weight_reduktion_cylinders_hor).Shape()
+        self.m.display_cut(rippen_cut_recces, quadrat, weight_reduktion_cylinders_hor, logstr)
+        reduktion_radius=y_max*0.7
+        weight_reduktion_cylinders_ver= self.create_rib_weight_reduction_recces(reduktion_radius, 0.1)
+        weight_reduktion_cylinders_ver= OExs.translate_shp(weight_reduktion_cylinders_ver,Ogp.gp_Vec(reduktion_radius*2,self.fuselage_widht/2,0))
+        weight_reduktion_cylinders_ver= OExs.rotate_shape(weight_reduktion_cylinders_ver,Ogp.gp_OX(), 90)
+        rippen_cut_recces2= OAlgo.BRepAlgoAPI_Cut(rippen_cut_recces,weight_reduktion_cylinders_ver).Shape()
+        self.m.display_cut(rippen_cut_recces2, rippen_cut_recces, weight_reduktion_cylinders_ver, "Cut")
+        self.rippen_cuted= OAlgo.BRepAlgoAPI_Fuse(rippen_cut_recces2,cylinders).Shape()
+        #self.rippen_cuted= OAlgo.BRepAlgoAPI_Fuse(quadrat,cylinders).Shape()
         #self.m.display_this_shape(self.rippen_cuted, "Sharp Rippen")
-        self.m.display_fuse(self.rippen_cuted,quadrat,cylinders, "Sharp Ribs")
+        logging.info("Fused ribs and cylinders")
+        self.m.display_fuse(self.rippen_cuted,quadrat,cylinders, "Fused ribs and cylinders")
     
     def create_thin_star_ribs(self):
         #Cutout for Extra Ribs
@@ -253,12 +307,7 @@ class aircombat_test:
         self.m.display_this_shape(self.rippen_cuted, "Ribs with reinforcement tunel")
 
     def common_fuselage_ribs_cuted(self):
-        #self.rippen_cuted=OAlgo.BRepAlgoAPI_Common(self.cutted_fuselage_shape, self.rippen_cuted).Shape()
-        #self.m.display_in_origin(self.fuselage_shape, True)
-        #self.m.display_in_origin(self.rippen_cuted, True)
-        #fuselage_offset= OOff.BRepOffsetAPI_MakeOffsetShape(self.fuselage_shape, 0.0004,0.0001).Shape()
         self.rippen_cuted_form=OAlgo.BRepAlgoAPI_Common(self.fuselage_shape,self.rippen_cuted).Shape()
-        #self.m.display_this_shape(self.rippen_cuted,"Cut ribs to fuselage shape")
         self.m.display_common(self.rippen_cuted_form, self.fuselage_shape, self.rippen_cuted, "Cut ribs to fuselage Shape")
         
 
@@ -327,26 +376,36 @@ class aircombat_test:
         myZip.zip_stls2()
         logging.info("Done")
         #self.m.start()
+    
+    def slicing_positions(self):
+        result=[]
+        before_wing = get_koordinate(self.wing_shape, "xmin")- 0.0004
+        after_wing =get_koordinate(self.wing_shape, "xmax")+ 0.0004
+        result.append(before_wing)
+        result.append(after_wing)
+        end_fuselage= get_koordinate(self.fuselage_shape, "xmax")
+        split_rear_fuselage=(end_fuselage+after_wing)/2
+        result.append(split_rear_fuselage)
+        result.append(end_fuselage)
+        return result
         
     
 
 
 if __name__ == "__main__":
     a=aircombat_test(True)
-    #a.create_mainwing()
+    a.create_mainwing()
     a.create_fuselage()
     a.offset_fuselage() 
     a.create_sharp_ribs() 
-    #a.create_cross_rib()
-    #a.reinforcement_tunel_out()
-    #a.cut_ribs_harwarebox()
-    #a.fuse_reinforcemt_ribs()
     a.common_fuselage_ribs_cuted()
     a.cut_fuselage_ribs()
-    #a.cut_wings_from_fuselage()
+    a.cut_wings_from_fuselage()
 
-    slicer=ShapeSlicer(a.fuselage_with_ribs,4,"fuselage")
-    slicer.slice2()
+    slicer=ShapeSlicer(a.fuselage_done,4,"fuselage")
+    #slicer.slice2()
+    pos_list=a.slicing_positions()
+    slicer.slice_with_list(pos_list)
     write_stls_srom_list(slicer.parts_list)
     
     a.m.start()

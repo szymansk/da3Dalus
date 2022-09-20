@@ -2,6 +2,7 @@ from cgitb import text
 from pickle import FALSE
 import OCC.Core.TopoDS as OTopo
 from OCC.Display.SimpleGui import init_display
+from OCC.Core.Graphic3d import Graphic3d_RenderingParams
 from  OCC.Display.SimpleGui import *
 import OCC.Extend.ShapeFactory as OExs
 import OCC.Core.gp as Ogp
@@ -21,6 +22,22 @@ class myDisplay:
             self.dev=dev
             self.origin= -distance
             self.half_widht= None
+            add_menu("camera projection")
+            add_menu("view")
+            add_function_to_menu("camera projection", self.perspective)
+            add_function_to_menu("camera projection", self.orthographic)
+            add_function_to_menu("camera projection", self.anaglyph_red_cyan)
+            add_function_to_menu("camera projection", self.anaglyph_red_cyan_optimized)
+            add_function_to_menu("camera projection", self.anaglyph_yellow_blue)
+            add_function_to_menu("camera projection", self.anaglyph_green_magenta)
+            add_function_to_menu("camera projection", self.exit)
+            self.display.View_Top()
+            add_function_to_menu("view",self.display.View_Top)
+            add_function_to_menu("view",self.display.View_Bottom)
+            add_function_to_menu("view", self.display.View_Right)
+            add_function_to_menu("view", self.display.View_Left)
+            add_function_to_menu("view", self.display.View_Front)
+            add_function_to_menu("view", self.display.View_Rear)
         else:
             self.dev=False
     
@@ -124,4 +141,36 @@ class myDisplay:
         if self.dev:
             self.start_display()
 
+    def perspective(self,event=None):
+        self.display.SetPerspectiveProjection()
+        self.display.FitAll()
+
+
+    def orthographic(self,event=None):
+        self.display.SetOrthographicProjection()
+        self.display.FitAll()
+
+
+    def anaglyph_red_cyan(self,event=None):
+        self.display.SetAnaglyphMode(Graphic3d_RenderingParams.Anaglyph_RedCyan_Simple)
+        self.display.FitAll()
+
+
+    def anaglyph_red_cyan_optimized(self,event=None):
+        self.display.SetAnaglyphMode(Graphic3d_RenderingParams.Anaglyph_RedCyan_Optimized)
+        self.display.FitAll()
+
+
+    def anaglyph_yellow_blue(self,event=None):
+        self.display.SetAnaglyphMode(Graphic3d_RenderingParams.Anaglyph_YellowBlue_Simple)
+        self.display.FitAll()
+
+
+    def anaglyph_green_magenta(self,event=None):
+        self.display.SetAnaglyphMode(Graphic3d_RenderingParams.Anaglyph_GreenMagenta_Simple)
+        self.display.FitAll()
+
+
+    def exit(event=None):
+        sys.exit()
 

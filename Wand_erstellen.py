@@ -65,6 +65,7 @@ from tigl3.geometry import CTiglTransformation
 from tigl3.tigl3wrapper import Tigl3, TiglBoolean
 from tixi3 import tixi3wrapper
 from tixi3.tixi3wrapper import Tixi3
+import logging
 #from mydisplay import myDisplay
 
 
@@ -92,7 +93,7 @@ def create_hollowedsolid(shape,thickness):
     # Our goal is to find the highest Z face and remove it
     faceToRemove = None
     zMax = -1
-    print("Starting Create Hollow")
+    logging.info("Starting Create Hollow")
     # We have to work our way through all the faces to find the highest Z face so we can remove it for the shell
     aFaceExplorer = TopExp_Explorer(shape, TopAbs_FACE)
     while aFaceExplorer.More():
@@ -111,9 +112,8 @@ def create_hollowedsolid(shape,thickness):
         aFaceExplorer.Next()
 
     facesToRemove: TopTools_ListOfShape = TopTools_ListOfShape()
-    print("--------Faces to remove Size:" + str(facesToRemove.Size())) 
+    logging.info("hollowing: Faces to remove Size:" + str(facesToRemove.Size())) 
     if faceToRemove != None:
-        print("Faces to remove is not empty")
         facesToRemove.Append(faceToRemove)
     myBody= BRepOffsetAPI_MakeThickSolid(shape, facesToRemove, thickness, 0.001)
     #else:

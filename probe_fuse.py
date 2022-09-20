@@ -33,6 +33,7 @@ from math import *
 from OCC.Core.TopTools import TopTools_ListOfShape
 
 from abmasse import get_dimensions, get_koordinates
+from mydisplay import myDisplay
 
 def rotate_shape(shape, axis, angle):
     """Rotate a shape around an axis, with a given angle.
@@ -53,7 +54,7 @@ def rotate_shape(shape, axis, angle):
 
     return shp
 
-
+m=myDisplay.instance(True)
 left = OPrim.BRepPrimAPI_MakeBox(10, 10, 10).Shape()
 left= OExs.translate_shp(left,Ogp.gp_Vec(-5,-50, -5))
 left= create_hollowedsolid(left,0.4)
@@ -62,40 +63,31 @@ right= OExs.translate_shp(right,Ogp.gp_Vec(-25,75, -5))
 right= create_hollowedsolid(right,1)
 complement: OTopo.TopoDS_Shape= right.Complemented()
 complement= OExs.translate_shp(complement,Ogp.gp_Vec(-25,50, -5))
-#right= OOff.BRepOffsetAPI_MakeThickSolid.MakeThickSolidBySimple(right,2)
-#solidmaker= OOff.BRepOffsetAPI_MakeThickSolid()
-#solidmaker.MakeThickSolidBySimple(right,2)
-#if(solidmaker.IsDone):
-    #right=solidmaker.Shape()
-
 print(type(right))
-#face:OTopo.TopoDS_Face= right.TopFace()
-#facesToRemove: TopTools_ListOfShape = TopTools_ListOfShape()
-#facesToRemove.Append(face)
-#right= BRepOffsetAPI_MakeThickSolid(right, facesToRemove, 5, 0.001)
-#right= OExs.translate_shp(right,Ogp.gp_Vec(-5,50, -5))
-
 cylinder= OPrim.BRepPrimAPI_MakeCylinder(2, 100).Shape()
 cylinder= OExs.translate_shp(cylinder,Ogp.gp_Vec(0,0, -50))
 cylinder= rotate_shape(cylinder, Ogp.gp_OX(), 90)
 
 complete=OAlgo.BRepAlgoAPI_Fuse(left,cylinder).Shape()
-complete=OAlgo.BRepAlgoAPI_Fuse(complete,right).Shape()
+m.display_fuse(complete, left, cylinder) 
+complete2=OAlgo.BRepAlgoAPI_Fuse(complete,right).Shape()
+m.display_fuse(complete2, complete, right) 
 
 point:Ogp.gp_Pnt =TGeo.get_center_of_mass(complete)
 print(point.X(), point.Y(), point.Z())
 center_of_mass = OPrim.BRepPrimAPI_MakeSphere(point, 3).Shape()
 
+m.start()
 
-display, start_display, add_menu, add_function_to_menu = init_display()
-display.DisplayShape(center_of_mass, color="BLUE")
-display.DisplayShape(complete) 
+#display, start_display, add_menu, add_function_to_menu = init_display()
+#display.DisplayShape(center_of_mass, color="BLUE")
+#display.DisplayShape(complete) 
 #display.DisplayShape(complement) 
 #display.DisplayShape(right) 
 #display.DisplayShape(cylinder) 
 
 
-display.FitAll()
-start_display()
+#display.FitAll()
+#start_display()
 
-write_stl_file2(complete, "Box_test.stl")
+#write_stl_file2(complete, "Box_test.stl")
