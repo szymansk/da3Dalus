@@ -52,7 +52,7 @@ class ausgabe:
 #deflection 0.01 feinmaschiger
 #angular_deflection = 0.9
 #linear deflection 0.003 dauert lange aber superglatt oberfläche
-def write_stl_file2(a_shape,filename,mode="ascii",linear_deflection=0.003,angular_deflection=0.01):
+def write_stl_file2(a_shape,filename,mode="ascii",linear_deflection=0.03,angular_deflection=0.01):
     mypath= "stls\\" + filename
     if a_shape.IsNull():
         raise AssertionError("Shape is null.")
@@ -75,6 +75,7 @@ def write_stl_file2(a_shape,filename,mode="ascii",linear_deflection=0.003,angula
     else:  # binary, just set the ASCII flag to False
         stl_exporter.SetASCIIMode(False)
     stl_exporter.Write(a_shape, mypath)
+    
 
     if not os.path.isfile(mypath):
         raise IOError("File not written to disk.")
