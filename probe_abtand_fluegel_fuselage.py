@@ -63,7 +63,7 @@ print("Wing", "x", w_xmin,"y",w_ymin,"z",w_zmin,"x",w_xmax,"y",w_ymax,"z",w_zmax
 print("Wing diff", "x", x,"y",y,"z",z)
 m.display_in_origin(wing_shape)
 #Set up the mirror
-#wing1: TConfig.CCPACSWing= cpacs_configuration.get_wing(3)   
+#wing1: TConfig.CCPaACSWing= cpacs_configuration.get_wing(3)   
 #wing_loft1: TGeo.CNamedShape = wing1.get_loft()
 #wing_shape1: OTopo.TopoDS_Shape = wing_loft1.shape()
 
