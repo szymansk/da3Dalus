@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 from __future__ import print_function
 
 from tigl3.tigl3wrapper import Tigl3, TiglBoolean
@@ -260,12 +254,12 @@ def my_logging():
 	logging.info("Start logging")
     
 def development():
-	i_cpacs=3
+	i_cpacs=1
 	md=myDisplay.instance()
 	tixi_h = tixi3wrapper.Tixi3()
 	tigl_h = tigl3wrapper.Tigl3()
 	if i_cpacs==1:
-		tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\fluegel_test_1008.xml")
+		tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\aircombat_v2.xml")
 	if i_cpacs==2:
 		tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\CPACS_30_D150.xml")
 	if i_cpacs==3:
@@ -291,7 +285,7 @@ def development():
 		#display.DisplayShape( airplane_factory.airplane.wings.get("right_mainwing"))
 	elif variant==3:
 		#airplane_factory.create_right_mainwing()
-		airplane_factory.create_fuselage()
+		airplane_factory.create_aircombat_fuselage()
 		#display.DisplayShape(airplane_factory.airplane.fuselage, transparency=0.8)
 		#display.DisplayShape(airplane_factory.rib_factory.rib.ribs)
 		#try:
@@ -320,7 +314,7 @@ def dev2():
     
 if __name__ == "__main__":
 	my_logging()
-	#development()
+	development()
 	#dev2()
 	app.run()
 	

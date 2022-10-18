@@ -20,10 +20,11 @@ from OCC.Core.TCollection import TCollection_ExtendedString
 from OCC.Core.Quantity import Quantity_Color, Quantity_TOC_RGB
 from OCC.Core.TopLoc import TopLoc_Location
 from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_Transform
+from OCC.Core.StlAPI import stlapi
 
 from OCC.Extend.TopologyUtils import (discretize_edge,get_sorted_hlr_edges,list_of_shapes_to_compound,)
 
-
+stlapi.Write()
 
 class ausgabe:
     def write_stl_tigl(self,a_shape):
@@ -52,7 +53,7 @@ class ausgabe:
 #deflection 0.01 feinmaschiger
 #angular_deflection = 0.9
 #linear deflection 0.003 dauert lange aber superglatt oberfläche
-def write_stl_file2(a_shape,filename,mode="ascii",linear_deflection=0.03,angular_deflection=0.01):
+def write_stl_file2(a_shape,filename,mode="ascii",linear_deflection=0.002,angular_deflection=0.01):
     mypath= "stls\\" + filename
     if a_shape.IsNull():
         raise AssertionError("Shape is null.")
@@ -76,11 +77,10 @@ def write_stl_file2(a_shape,filename,mode="ascii",linear_deflection=0.03,angular
         stl_exporter.SetASCIIMode(False)
     stl_exporter.Write(a_shape, mypath)
     
-
     if not os.path.isfile(mypath):
         raise IOError("File not written to disk.")
 
-def write_stls_srom_list(list):
+def write_stls_srom_list(list,plane_part="test"):
     for i,shape in enumerate(list):
-        name= "fuselage\\fuselage" + str(i) + ".stl"
+        name= "airplane\\"+ plane_part + str(i) + ".stl"
         write_stl_file2(shape, name)
