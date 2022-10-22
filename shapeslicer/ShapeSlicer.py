@@ -2,7 +2,7 @@ import logging
 from operator import length_hint
 from os import name
 from re import M
-from turtle import position, shape
+from turtle import position, shape, width
 from tixi3 import tixi3wrapper
 from tigl3 import tigl3wrapper
 import tigl3.boolean_ops
@@ -47,13 +47,15 @@ class ShapeSlicer:
         self.cutout_front_box:OTopo.TopoDS_Shape= None
         self.cutout_back_box:OTopo.TopoDS_Shape= None
         self.total_lenght, self.total_widht, self.total_height= get_dimensions_from_Shape(shape)
-        self.shape=self.orient_shape(shape)
+        #self.shape=self.orient_shape(shape)
+        self.shape=shape
         self.part_lenght:float=self.total_lenght/quantity
         self.position_front:float=0.0
         self.position_back:float=0.0
         self.m=myDisplay.instance(dev)
         self.name= name
-        logstr= "Dividing shape in " + str(quantity) + "equal parts of lenght " + str(self.part_lenght)
+        #logstr= "Dividing shape in " + str(quantity) + "equal parts of lenght " + str(self.part_lenght)
+        logstr= "initiating slicer"
         logging.info(logstr)
     
     def orient_shape(self,shape)-> OTopo.TopoDS_Shape:
@@ -103,27 +105,131 @@ class ShapeSlicer:
             self.parts_list.append(part)
         self.m.display_slice_x(self.parts_list, self.name)
     
-    def slice_with_list(self, list_of_pos):
+    def slice_with_list_cut(self, list_of_pos):
         frontbox=None
         rearbox=None
         
         for i,front_pos in enumerate(list_of_pos):
             part=self.shape
-            print(i)
             rearbox=OPrim.BRepPrimAPI_MakeBox(self.total_lenght, self.total_widht, self.total_height).Shape()
             rearbox= OExs.translate_shp(rearbox, Ogp.gp_Vec(list_of_pos[i],-self.total_widht/2, -self.total_height/2))
             part1=OAlgo.BRepAlgoAPI_Cut(part,rearbox).Shape()
-            self.m.display_cut(part1,part,rearbox)
-            if i != 0:
-                frontbox=OPrim.BRepPrimAPI_MakeBox(list_of_pos[i-1], self.total_widht, self.total_height).Shape()
-                frontbox= OExs.translate_shp(frontbox, Ogp.gp_Vec(0,-self.total_widht/2, -self.total_height/2))
-                self.m.display_this_shape(frontbox)
-                part1=OAlgo.BRepAlgoAPI_Cut(part1,frontbox).Shape()
+            #self.m.display_cut(part1,part,rearbox)
+            if i!= len(list_of_pos):
+                lenght=list_of_pos[i]
+                if i!= 0:
+                    logging.info("Cutting frontbox " + str(i))
+                    frontbox=OPrim.BRepPrimAPI_MakeBox(list_of_pos[i-1], self.total_widht, self.total_height).Shape()
+                    frontbox= OExs.translate_shp(frontbox, Ogp.gp_Vec(0.0,-self.total_widht/2, -self.total_height/2))
+                    beforecut=part1
+                    part1=OAlgo.BRepAlgoAPI_Cut(beforecut,frontbox).Shape()
+                    self.m.display_cut(part1, beforecut,frontbox)
+                    #lenght=list_of_pos[i+1]-list_of_pos[i] 
+                logstr= f"Part {i}  {lenght=}"
+                logging.info(logstr)
+            else:
+                self.m.display_cut(part1,part,rearbox)
+            #self.m.display_this_shape(part1)
+            self.parts_list.append(part1)
+        self.m.display_slice_x(self.parts_list, self.name)
+    
+    def slice_with_list_common(self, list_of_pos, direction="x"):
+        frontbox=None
+        
+        for i,front_pos in enumerate(list_of_pos):
+            part=self.shape
+            if i==0:
+                lenght=list_of_pos[i]
+            else:
+                lenght=list_of_pos[i]-list_of_pos[i-1]
+            if i==0:
+                frontbox=OPrim.BRepPrimAPI_MakeBox(lenght+0.01, self.total_widht, self.total_height).Shape()
+                frontbox= OExs.translate_shp(frontbox, Ogp.gp_Vec(-0.01,-self.total_widht/2, -self.total_height/2))
+            else:
+                frontbox=OPrim.BRepPrimAPI_MakeBox(lenght, self.total_widht, self.total_height).Shape()
+                frontbox= OExs.translate_shp(frontbox, Ogp.gp_Vec(list_of_pos[i-1],-self.total_widht/2, -self.total_height/2))
+            part1=OAlgo.BRepAlgoAPI_Common(part,frontbox).Shape()
+            self.m.display_common(part1,frontbox, part)
+            logging.info("Coomon frontbox " + str(i))
+            logstr= f"Part {i}  {lenght=}"
+            logging.info(logstr)
+            self.parts_list.append(part1)
+        self.m.display_slice_x(self.parts_list, self.name)
+    
+    def slice_with_list_common_y(self, list_of_pos):
+        frontbox=None
+        xmin,ymin,zmin,xmax,ymax,zmax= get_koordinates(self.shape)
+        for i,front_pos in enumerate(list_of_pos):
+            part=self.shape
+            if i==0:
+                width=list_of_pos[i]
+            else:
+                width=list_of_pos[i]-list_of_pos[i-1]
+            if i==0:
+                frontbox=OPrim.BRepPrimAPI_MakeBox(self.total_lenght, width, self.total_height).Shape()
+                frontbox= OExs.translate_shp(frontbox, Ogp.gp_Vec(xmin,0.0, zmin))
+            else:
+                frontbox=OPrim.BRepPrimAPI_MakeBox(self.total_lenght, width, self.total_height).Shape()
+                frontbox= OExs.translate_shp(frontbox, Ogp.gp_Vec(xmin,list_of_pos[i-1], zmin))
+            part1=OAlgo.BRepAlgoAPI_Common(part,frontbox).Shape()
+            self.m.display_common(part1,frontbox, part)
+            logging.info("Common frontbox " + str(i))
+            logstr= f"Part {i}  {width=}"
+            logging.info(logstr)
             self.parts_list.append(part1)
         self.m.display_slice_x(self.parts_list, self.name)
             
-            
+    def slicing_positions(self):
+        result=[]
+        before_wing = dimensions_mainwing.get("xmin")- 0.02
+        after_wing = dimensions_mainwing["xmax"]+ 0.002
+        mid_wing= (after_wing+ before_wing)/2
+        result.append(before_wing/2)
+        result.append(before_wing)
+        result.append(after_wing)
+        result.append(mid_wing)
+        end_fuselage= dimensions_fuselage["xmax"]
+        split_rear_fuselage=(end_fuselage+after_wing)/2
+        result.append(split_rear_fuselage)
+        result.append(end_fuselage)
+        return result
     
+    def slicing_positions2(self,wing_shape, fuselage_shape):
+        result=[]
+        before_wing = get_koordinate(wing_shape, "xmin")- 0.0004
+        after_wing =get_koordinate(wing_shape, "xmax")+ 0.0004
+        mid_wing= (after_wing+ before_wing)/2
+        result.append(before_wing/2)
+        result.append(before_wing)
+        result.append(mid_wing)
+        result.append(after_wing)
+        end_fuselage= get_koordinate(fuselage_shape, "xmax")
+        split_rear_fuselage=(end_fuselage+after_wing)/2
+        result.append(split_rear_fuselage)
+        result.append(end_fuselage)
+        logging.info(result)
+        logging.info(len(result))
+        return result
+    
+    def slicing_postion_wing(self,wing_shape,factor=0.4):
+        result=[]
+        ymax=get_koordinate(wing_shape, "ymax")
+        start_of_flap= ymax * factor+0.001
+        half_of_start= start_of_flap/2
+        rest= ymax-start_of_flap
+        dif=rest/3
+        p1=start_of_flap+dif
+        p2=p1+dif
+        result.append(half_of_start)
+        result.append(start_of_flap)
+        result.append(p1)
+        result.append(p2)
+        result.append(ymax)
+        logging.info(result)
+        logging.info(len(result))
+        return result
+        
+        
     
         
 

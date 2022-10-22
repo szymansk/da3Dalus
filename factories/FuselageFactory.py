@@ -52,19 +52,32 @@ class FuselageFactory:
     def create_fuselage_shape(self, fuse_nr):
         self.fuselage_test: TConfig.CCPACSFuselage= self.cpacs_configuration.get_fuselage(fuse_nr)
         logstr= "Creating Fuselage Shape: " + self.fuselage_test.get_name()
+        logging.info(logstr)
         self.fuselage.loft: TGeo.CNamedShape= self.fuselage_test.get_loft()
-        self.fuselage.shape: OTopo.TopoDS_Shape=self.fuselage.loft.shape()
-        self.fuselage.calculate_koordinates()
-        self.fuselage.calculate_outter_dimensions()
-        logging.info(self.fuselage.__str__())
-        self.md.display_this_shape(self.fuselage.shape)
-        
+        self.fuselage.prim["shape"]: OTopo.TopoDS_Shape=self.fuselage.loft.shape()
+        claculate_fuselage_dimension(self.fuselage.prim["shape"])
+        #self.fuselage.calculate_koordinates()
+        #self.fuselage.calculate_outter_dimensions()
+        self.md.display_this_shape(self.fuselage.prim["shape"])
+    
+    def offset_fuselage(self, offset=0.0008):
+        self.fuselage.prim["offset"]= OOff.BRepOffsetAPI_MakeOffsetShape(self.fuselage.prim["shape"], offset,0.000001).Shape()
+        msg= "Fuselage with an offset of " + str(offset) + " meters"
+        self.md.display_this_shape(self.fuselage.prim["offset"],msg)
+        return self.fuselage.prim["offset"]
+    
+    def cut_from_fuselage(self, shape,msg):
+        logstr= "Cut " + msg + "from fuselage"
+        logging.info(logstr)
+        self.fuselage.compound[msg]=OAlgo.BRepAlgoAPI_Cut(self.fuselage.compound["offset"],shape).Shape()
+        self.md.display_cut(self.fuselage.compound[msg],self.fuselage.compound["offset"],shape,logstr)
+        return self.fuselage.compound[msg]
         
     def create_holow_fuselage(self, thickness:float, fuselage=None):
         logstr= "Hollowing Fuselage: thickness=" + str(thickness)
         logging.info(logstr)
         if fuselage== None:
-            fuselage=self.fuselage.cutted
+            fuselage=self.fuselage.prim["cutted"]
         print(fuselage.__str__)
         #hollowed= create_hollowedsolid(fuselage,thickness)
         #hollowed= self.neu_create_hollow_fuselage(thickness)
@@ -135,6 +148,9 @@ class FuselageFactory:
         cs=fuse_shapes_common(profile)
         ausgehoelt=create_hollowedsolid(cs,thickness)
         return ausgehoelt
+    
+    def fuse_to_fuselage(self,shape):
+        self.fuselage.compound["with_ribs"]=self.fuselage.compound[next(reversed(self.fuselage.compound))]
         
     def export_stl(self, name):
         write_stl_file2(self.fuselage.hollow, name)

@@ -53,13 +53,14 @@ class WingFactory:
     def create_wing_shape(self, wing_nr):
         ''' Creates the wing shape out of the CPACS and stores it in the wing:Wing Objekt. Calls the funktions to calculate_koordinates and calculate_outter_dimensions '''
         #Get wing returns CPACSWing, XML Wing description
-        self.wing_configuration: TConfig.CCPACSWing= self.cpacs_configuration.get_wing(wing_nr) 
+        self.wing_configuration: TConfig.CCPACSWing= self.cpacs_configuration.get_wing(wing_nr)
         logstr= "Creating Wing Shape from: " + self.wing_configuration.get_name() 
         logging.info(logstr)                
         #Get_loft()-shape() creates a TigleShape out of the Wing
         #3D solid  with Tigl metadata
         wing_loft: TGeo.CNamedShape = self.wing_configuration.get_loft()
         self.wing.shape: OTopo.TopoDS_Shape = wing_loft.shape()
+        claculate_mainwing_dimension(self.wing.shape) 
         self.create_mirrored_wing(False)
         self.fuse_mirrored_wing()
         self.wing.calculate_koordinates()

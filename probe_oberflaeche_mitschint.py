@@ -28,11 +28,13 @@ import OCC.Extend.ShapeFactory as OExs
 import time
 from OCC.Display.SimpleGui import init_display
 import tigl3.boolean_ops as TBoo
-from Ausgabeservice import write_stl_file2
+from Ausgabeservice import write_stl_file2, write_stls_srom_list
 from abmasse import get_dimensions_from_Shape
 from mydisplay import myDisplay
 from Wand_erstellen import *
 import logging
+
+from shapeslicer.ShapeSlicer import ShapeSlicer
 
 def get_tigl_handler(i_cpacs):
     tixi_handle = tixi3wrapper.Tixi3()
@@ -48,30 +50,35 @@ def get_tigl_handler(i_cpacs):
         tixi_handle.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\CPACS_30_D150.xml")
     if i_cpacs==4:
         tixi_handle.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\test_fuselage_v2.xml")
-    if i_cpacs==5:
-        tixi_handle.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\d150_rumpf_skaliert_v2.xml")
     tigl_handle.open(tixi_handle, "")
     return tigl_handle
     
 
 m= myDisplay.instance(True)
 
-for i in range(4,6):
-    print(i)
-    tigl_handle= get_tigl_handler(i)
-    config_manager: TConfig.CCPACSConfigurationManager  = TConfig.CCPACSConfigurationManager_get_instance()
-   
-    cpacs_configuration: TConfig.CCPACSConfiguration= config_manager.get_configuration(tigl_handle._handle.value)
-    fuselage: TConfig.CCPACSFuselage= cpacs_configuration.get_fuselage(1)
-    name2= fuselage.get_name()
-    fuselage_loft: TGeo.CNamedShape= fuselage.get_loft()
-    fuselage_shape: OTopo.TopoDS_Shape=fuselage_loft.shape()
-    x,y,z=get_dimensions_from_Shape(fuselage_shape)
-    msg= f"stest {name2}  {x:.3f} {y:.3f} {z:.3f} "
-    m.display_this_shape(fuselage_shape, msg)
-    name2= name2 + str(i) + ".stl"
-    write_stl_file2(fuselage_shape,name2)
-    print("Done")
+tigl_handle= get_tigl_handler(0)
+config_manager: TConfig.CCPACSConfigurationManager  = TConfig.CCPACSConfigurationManager_get_instance()
+
+cpacs_configuration: TConfig.CCPACSConfiguration= config_manager.get_configuration(tigl_handle._handle.value)
+fuselage: TConfig.CCPACSFuselage= cpacs_configuration.get_fuselage(1)
+name2= fuselage.get_name()
+fuselage_loft: TGeo.CNamedShape= fuselage.get_loft()
+fuselage_shape: OTopo.TopoDS_Shape=fuselage_loft.shape()
+x,y,z=get_dimensions_from_Shape(fuselage_shape)
+msg= f"stest {name2}  {x:.3f} {y:.3f} {z:.3f} "
+m.display_this_shape(fuselage_shape, msg)
+m.display_in_origin(fuselage_shape, True)
+name2= name2 + str(0) + ".stl"
+box = OPrim.BRepPrimAPI_MakeBox(x*.6,y,z).Shape()
+box = OExs.translate_shp(box,Ogp.gp_Vec(0.0,-y/2,0.0))
+m.display_in_origin(box)
+fuselage_done=OAlgo.BRepAlgoAPI_Cut(fuselage_shape, box).Shape()
+m.display_cut(fuselage_done, fuselage_shape, box)
+spliter=ShapeSlicer(fuselage_done,5,"test_fuselage")
+spliter.slice()
+write_stls_srom_list(spliter.parts_list)
+#write_stl_file2(fuselage_shape,name2)
+print("Done")
     
 m.start()
 

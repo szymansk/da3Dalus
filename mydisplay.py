@@ -6,6 +6,7 @@ from OCC.Core.Graphic3d import Graphic3d_RenderingParams
 from  OCC.Display.SimpleGui import *
 import OCC.Extend.ShapeFactory as OExs
 import OCC.Core.gp as Ogp
+import OCC.Core.BRepPrimAPI as OPrim
 import logging
 
 from abmasse import *
@@ -32,21 +33,21 @@ class myDisplay:
             add_function_to_menu("camera projection", self.anaglyph_green_magenta)
             add_function_to_menu("camera projection", self.exit)
             self.display.View_Top()
-            add_function_to_menu("view",self.display.View_Top)
-            add_function_to_menu("view",self.display.View_Bottom)
-            add_function_to_menu("view", self.display.View_Right)
-            add_function_to_menu("view", self.display.View_Left)
-            add_function_to_menu("view", self.display.View_Front)
-            add_function_to_menu("view", self.display.View_Rear)
+            add_function_to_menu("view",self.myview_Top)
+            add_function_to_menu("view",self.myview_Bottom)
+            add_function_to_menu("view", self.myview_Right)
+            add_function_to_menu("view", self.myview_Left)
+            add_function_to_menu("view", self.myview_Front)
+            add_function_to_menu("view", self.myview_Rear)
         else:
             self.dev=False
     
     @staticmethod
-    def instance(dev):
+    def instance(dev=False):
 
         if myDisplay.my_instance is None:
             if dev:
-                myDisplay.my_instance= myDisplay(0.5, True)
+                myDisplay.my_instance= myDisplay(1.2, True)
             else:
                 myDisplay.my_instance=myDisplay()
         return myDisplay.my_instance
@@ -92,6 +93,11 @@ class myDisplay:
                 self.display.DisplayShape(shape, transparency=0.8) 
             else:
                 self.display.DisplayShape(shape)
+        self.display.FitAll()
+    
+    def display_point_in_origin(self,point,radius=0.005):
+            sphere = OPrim.BRepPrimAPI_MakeSphere(point, radius).Shape()
+            self.display_in_origin(sphere,True)
             
     def display_fuse(self, fused_shape, shape1, shape2, msg="", trans=False):
         if self.dev:
@@ -100,6 +106,7 @@ class myDisplay:
             self.display.DisplayShape(shape1, transparency=0.8)
             self.display.DisplayShape(shape2, color="GREEN")
             self.display_this_shape(fused_shape, msg, trans)
+            self.display.FitAll()
         
     def display_cut(self, cuted_shape, shape1, shape2, msg="", trans=False):
         if self.dev:
@@ -108,6 +115,7 @@ class myDisplay:
             self.display.DisplayShape(shape1, transparency=0.8)
             self.display.DisplayShape(shape2, color="RED")
             self.display_this_shape(cuted_shape, msg, trans)
+            self.display.FitAll()
     
     def display_common(self, common_shape, shape1, shape2, msg="", trans=False):
         if self.dev:
@@ -116,18 +124,20 @@ class myDisplay:
             self.display.DisplayShape(shape1, color="Yellow", transparency=0.8)
             self.display.DisplayShape(shape2)
             self.display_this_shape(common_shape, msg, trans)
+            self.display.FitAll()
         
     def display_slice_x(self, parts_list, name=""):
         if self.dev:
             x_position= 0 
             x_position_msg=x_position
             for i,part in enumerate(parts_list):
+                msg= name + str(i)
+                logging.info(msg)
                 part=OExs.translate_shp(part,Ogp.gp_Vec(x_position,self.y_position, 0.0))
                 self.display.DisplayShape(part)
                 x,y,z= get_dimensions_from_Shape(part)
-                msg= name + str(i)
-                self.display.DisplayMessage(point=Ogp.gp_Pnt(x_position,self.y_position-0.2,0.0), text_to_write=msg)
-                x_position+= self.distance/4
+                #self.display.DisplayMessage(point=Ogp.gp_Pnt(x_position,self.y_position-0.2,0.0), text_to_write=msg)
+                x_position+= self.distance/16
                 x_position_msg+= (x_position+ x)
             
         
@@ -169,6 +179,31 @@ class myDisplay:
     def anaglyph_green_magenta(self,event=None):
         self.display.SetAnaglyphMode(Graphic3d_RenderingParams.Anaglyph_GreenMagenta_Simple)
         self.display.FitAll()
+    
+    def myview_Top(self):
+        self.display.View_Top()
+        self.display.FitAll()
+        
+    def myview_Bottom(self):
+        self.display.View_Bottom()
+        self.display.FitAll()
+        
+    def myview_Right(self):
+         self.display.View_Right()
+         self.display.FitAll()
+         
+    def myview_Left(self):
+         self.display.View_Left()
+         self.display.FitAll()
+         
+    def myview_Front(self):
+         self.display.View_Front()
+         self.display.FitAll()
+         
+    def myview_Rear(self):
+         self.display.View_Rear()
+         self.display.FitAll()
+         
 
 
     def exit(event=None):

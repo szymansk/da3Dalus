@@ -24,7 +24,7 @@ from OCC.Core.StlAPI import stlapi
 
 from OCC.Extend.TopologyUtils import (discretize_edge,get_sorted_hlr_edges,list_of_shapes_to_compound,)
 
-stlapi.Write()
+#stlapi.Write()
 
 class ausgabe:
     def write_stl_tigl(self,a_shape):

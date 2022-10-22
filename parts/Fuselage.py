@@ -40,23 +40,15 @@ from Wand_erstellen import *
 
 class Fuselage:
     def __init__(self) -> None:
+        self.prim= OrderedDict()
+        self.compound=OrderedDict()
         self.loft: TGeo.CNamedShape=None
         self.shape: OTopo.TopoDS_Shape= None
         self.hollow: OTopo.TopoDS_Shape= None
         self.with_ribs: OTopo.TopoDS_Shape= None
         self.cutted= TGeo.CNamedShape= None
-        self.rib:Rib=Rib()
         self.type:str=type
         
-        self.xmin:float=None
-        self.ymin:float=None
-        self.zmin:float=None
-        self.xmax:float=None
-        self.ymax:float=None
-        self.zmax:float=None
-        self.lenght:float=None
-        self.width:float=None
-        self.height:float=None
         
     def calculate_koordinates(self) :
         bbox = Bnd_Box()

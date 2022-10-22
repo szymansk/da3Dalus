@@ -1,4 +1,5 @@
 from inspect import _void
+from turtle import width
 from typing import Any
 from unittest import result
 import OCC.Core.BRepAlgoAPI as OAlgo
@@ -11,16 +12,15 @@ from mydisplay import myDisplay
 from parts.Rib import *
 import logging
 from BooleanOperationsForLists import *
+from shape_verschieben import *
 
 
 
 class RibFactory:
     
-    def __init__(self, shape) -> None:
+    def __init__(self) -> None:
         self.rib:Rib= Rib()
         self.md=myDisplay.instance()
-        self.dimensions= 
-        self.shape_length, self.shape_width, self.shape_height= get_dimensions_from_Shape(shape)
               
     #TODO where does height, thikness, extrude come frome?
     def create_rib_grid(self, spacing, thikness,xdiff, ydiff, zdiff,type:str="x"):
@@ -132,6 +132,11 @@ class RibFactory:
     def cut_rib_as_fuselage(self, fuselage, ribs)->OTopo.TopoDS_Shape:
         logging.info("Cutting Ribs to Fuselage form")
         return OAlgo.BRepAlgoAPI_Common(fuselage, ribs).Shape()
+    
+    def common_to_ribs(self, shape)->OTopo.TopoDS_Shape:
+        logging.info("Common ribs to Shape form")
+        self.rib.compound["shaped_rib"]=OAlgo.BRepAlgoAPI_Common(self.rib.compound[next(reversed(self.rib.compound))], shape).Shape()
+        return self.rib.compound["shaped_rib"]
         
     def cut_out_wing(self, wings)->OTopo.TopoDS_Shape:
         logging.info("Cutting wings from ribs")
@@ -223,25 +228,116 @@ class RibFactory:
         self.md.display_this_shape(tunnels, logstr)
         return tunnels
     
-    def create_quadrat_rib(self, rib_width, y_max,y_min,z_max,z_min):
+    def create_quadrat_rib(self, rib_width, lenght, height, y_max,y_min,z_max,z_min):
         prim=[]
         compound=[]
-        prim.append(OPrim.BRepPrimAPI_MakeBox(self.shape_length*1.2, rib_width, self.shape_height*1.2).Shape())
-        prim.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(0,-rib_width,-self.shape_height/2)))
+        lenght*=1.2
+        height*=1.2
+        prim.append(OPrim.BRepPrimAPI_MakeBox(lenght, rib_width, height).Shape())
+        prim.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(0,-rib_width/2,-self.shape_height/2)))
         compound.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(0.0,y_max,0.0)))
         compound.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(0.0,y_min,0.0)))
         #berechnen der top stelle des flügels
-        self.wing_zmax= get_koordinate(self.wing_shape, "zmax")
-        hor_rib= rotate_shape(moved_box, Ogp.gp_OX(), 90)
-        hor_rib_1=OExs.translate_shp(hor_rib,Ogp.gp_Vec(0.0,0.0,z_max))
-        hor_rib_2=OExs.translate_shp(hor_rib,Ogp.gp_Vec(0.0,0.0,z_min))
-        interim_rib=ver_rib_1
-        interim_rib=OAlgo.BRepAlgoAPI_Fuse(interim_rib,ver_rib_2).Shape()
-        interim_rib=OAlgo.BRepAlgoAPI_Fuse(interim_rib,hor_rib_1).Shape()
-        quadrat_rib=OAlgo.BRepAlgoAPI_Fuse(interim_rib,hor_rib_2).Shape()
+        hor_rib= rotate_shape(prim[-1], Ogp.gp_OX(), 90)
+        compound.append(OExs.translate_shp(hor_rib,Ogp.gp_Vec(0.0,0.0,z_max)))
+        compound.append(OExs.translate_shp(hor_rib,Ogp.gp_Vec(0.0,0.0,z_min)))
+        interim_rib=fuse_list_of_shapes(compound)
         logstr= f"Quadrat ribs: x_pos=0 y_max={y_max:.3f} y_min={y_min:.3f} z_max={z_max:.3f} z_min={z_min:.3f}"
-        self.m.display_fuse(quadrat_rib, interim_rib, hor_rib_2, logstr)
+        self.md.display_this_shape(interim_rib,logstr)
         logging.info(logstr)
-        return quadrat_rib
+        return interim_rib
     
+    def create_cylinder_reinforcemnt(self, radius,lenght,y_max,y_min,z_max,z_min ):
+        x_pos=0.0
+        logstr= f"Tunnel for Carbon Reinforcements {x_pos=:.3f} {y_max=:.3f} {y_min=:.3f} {z_max=:.3f} {z_min=:.3f}"
+        logging.info(logstr)
+        prim=[]
+        compound=[]
+        prim.append(OPrim.BRepPrimAPI_MakeCylinder(radius,lenght).Shape())
+        prim.append(rotate_shape(prim[-1], Ogp.gp_OY(), 90))
+        compound.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(x_pos,y_max,z_max)))
+        compound.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(x_pos,y_max,z_min)))
+        compound.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(x_pos,y_min,z_min)))
+        compound.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(x_pos,y_min,z_max)))
+        interim_cylinders= fuse_list_of_shapes(compound)
+        self.md.display_this_shape(interim_cylinders)
+        return interim_cylinders
+
+    def create_rib_weight_reduction_recces(self, radius=0.01, lenght=0.2, distance=0.1):
+        prim=[]
+        prim.append(OPrim.BRepPrimAPI_MakeCylinder(radius,lenght).Shape())
+        prim.append(rotate_shape(prim[-1], Ogp.gp_OX(), 90))
+        recces=self.create_linear_pattern(prim[-1], 8, distance)
+        self.md.display_this_shape(recces)
+        return recces
+
+    def create_linear_pattern(self, shape, quantity, distance):
+        pattern=shape
+        logstr= f"Linear pattern of {quantity} x {distance} meters"
+        logging.info(logstr)
+        list=[]
+        for i in range(1,quantity):
+            x= i*distance
+            list.append(OExs.translate_shp(shape,Ogp.gp_Vec(x,0.0,0.0)))
+        pattern=fuse_list_of_shapes(list, logstr)
+        return pattern
+
+    def create_wing_reinforcement_ribs(self):
+        prim=[]
+        compound=[]
+        xmin= dimensions_mainwing("xmin")
+        zmax= dimensions_mainwing("zmax")
+        length, width, height= get_mainwing_dimensions()
+        box_length, box_width, box_height= length/2, 0.0004, 2*height
+        prim.append(OPrim.BRepPrimAPI_MakeBox(box_length, box_width, box_height).Shape())
+        prim.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(0,-box_width/2,-box_height/2)))
+        prim.append(OExs.rotate_shape(prim[-1], Ogp.gp_OY(), 60))
+        prim.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(xmin-0.002,0,zmax-0.01 )))
+        f_length, f_width, f_height= get_fuselage_dimensions()
+        rib_width= f_width * 0.7
+        distance= rib_width/5
+        prim.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(0,-distance*2,0)))
+        for i in range(0,5):
+            compound.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(0,distance*i,0)))
+        compound.append(fuse_list_of_shapes(compound))
+        box = OPrim.BRepPrimAPI_MakeBox(f_length, f_width, f_height).Shape()
+        moved_box= OExs.translate_shp(box,Ogp.gp_Vec(0,-f_width/2, zmax ))
+        compound.append(OAlgo.BRepAlgoAPI_Cut(compound[-1],moved_box).Shape())
+        self.md.display_cut(compound[-1],compound[-2], moved_box)
+        return compound[-1]
+    
+   
+    def create_sharp_ribs(self,rib_width=0.0004, factor=0.3, radius=0.004):
+        prim=[]
+        compound=[]
+        y_max= dimensions_fuselage["ymax"]*factor
+        y_min= -y_max
+        z_max= dimensions_fuselage["zmax"]*factor
+        z_min= dimensions_mainwing["zmax"]+ radius
+        lenght= dimensions_fuselage["lenght"]
+        width= dimensions_fuselage["width"]
+        prim.append(self.create_quadrat_rib(rib_width,y_max,y_min,z_max,z_min))
+        prim.append(self.create_cylinder_reinforcemnt(radius,lenght, y_max,y_min,z_max,z_min))
+        reduktion_radius=((z_max-z_min)*0.8)/2
+        reduktion_zpos=((z_max-z_min)/2)-reduktion_radius+(rib_width/2)    
+        logstr= f"y_max= {y_max:.4f} y_min {y_min:.4f} z_max= {z_max:.4f} z_min= {z_min:.4f} radius= {reduktion_radius:.4f} z_pos= {reduktion_zpos:.5f}"
+        logging.info(logstr)   
+        prim.append(self.create_rib_weight_reduction_recces(reduktion_radius, 0.1))
+        prim.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(reduktion_radius*2,width/2,reduktion_zpos)))
+        compound.append(OAlgo.BRepAlgoAPI_Cut(prim[0],prim[-1]).Shape())
+        self.md.display_cut(compound[-1], prim[0], prim[-1], logstr)
+        reduktion_radius=y_max*0.7
+        prim.append(self.create_rib_weight_reduction_recces(reduktion_radius, 0.1))
+        prim.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(reduktion_radius*2,self.fuselage_widht/2,0)))
+        prim.append(OExs.rotate_shape(prim[-1],Ogp.gp_OX(), 90))
+        compound.append(OAlgo.BRepAlgoAPI_Cut(compound[-1],prim[-1]).Shape())
+        self.md.display_cut(compound[-1], compound[-2], prim[-1], "Ribs with vertikal cutout")
+        prim.append(self.create_wing_reinforcement_ribs())
+        compound.append(OAlgo.BRepAlgoAPI_Fuse(compound[-1],prim[-1]).Shape())
+        self.md.display_fuse(compound[-1],compound[-2], prim[-1])
+        compound.append(OAlgo.BRepAlgoAPI_Fuse(compound[-1],prim[1]).Shape())
+        logging.info("Fused ribs and cylinders")
+        self.md.display_fuse(compound[-1],compound[-2],prim[1], "Fused ribs and cylinders")
+        self.rib.compound["sharp ribs"]= compound[-1]
+        return compound[-1]
 

@@ -4,10 +4,13 @@ import OCC.Core.BRepBuilderAPI as OBuilder
 import OCC.Core.BRepPrimAPI as OPrim
 import OCC.Core.BRep as OBrep
 from OCC.Core.gp import *
+from collections import OrderedDict
 
 class Rib:
     def __init__(self):
-        self.rib: OTopo.TopoDS_Shape=None
+        self.compound= OrderedDict()
+        self.primitive_shapes= OrderedDict()
+        self.dimensions= ()
         self.ribs:OTopo.TopoDS_Shape= None
         self.profile:OTopo.TopoDS_Face=None
         self.reinforcement_tunnel_in:OTopo.TopoDS_Face=None

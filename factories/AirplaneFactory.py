@@ -27,6 +27,7 @@ from factories.WingFactory import WingFactory
 from factories.FuselageFactory import *
 from abmasse import *
 import logging
+from shapeslicer.ShapeSlicer import ShapeSlicer
 
 class AirplaneFactory:
     def __init__(self, tigl_handle, shell_thikness, fuselage_rib_spacing,rib_spacing,rib_thikness) -> None:
@@ -135,11 +136,10 @@ class AirplaneFactory:
     
     def create_fuselage(self):
         logging.info("Creating fuselage")
-        m=myDisplay.instance()
         self.wing_factory.create_wing_shape(1)
-        m.display_this_shape(self.wing_factory.wing.shape)
+        self.md.display_this_shape(self.wing_factory.wing.shape)
         self.fuselage_factory.create_fuselage_shape(1)
-        m.display_this_shape(self.fuselage_factory.fuselage.shape)
+        self.md.display_this_shape(self.fuselage_factory.fuselage.shape)
         cutted_fuselage=self.fuselage_factory.fuselage.cutted=self.fuselage_factory.cut_out_shape(self.wing_factory.wing.complete, self.wing_factory.wing_configuration.get_name())
         hollowed_fuselage= self.fuselage_factory.fuselage.hollow=self.fuselage_factory.create_holow_fuselage(self.shell_thikness, cutted_fuselage)
         self.airplane.set_fuselage(hollowed_fuselage)
@@ -160,4 +160,17 @@ class AirplaneFactory:
         self.airplane.set_fuselage(hollowed_fuselage) 
         print("------------STL") 
         #self.fuselage_factory.export_stl("fuselage_0907.stl")
+    
+    def create_aircombat_fuselage(self):
+        shapes=[]
+        self.wing_factory.create_wing_shape(1)
+        self.fuselage_factory.create_fuselage_shape()
+        self.fuselage_factory.offset_fuselage()
+        ribs=self.rib_factory.create_sharp_ribs()
+        ribs_shaped=self.rib_factory.common_to_ribs(self.fuselage_factory.fuselage.prim["shape"])
+        fuselage_with_ribs= self.fuselage_factory.cut_from_fuselage(ribs_shaped, "shaped_ribs")
+        fuselage_with_wing_cutout= self.fuselage_factory.cut_from_fuselage(self.wing_factory.wing.complete, "wings")
+        slicer=ShapeSlicer(fuselage_with_wing_cutout,4,"fuselage",False)
+        pos_list=slicer.slicing_positions()
+        slicer.slice_with_list(pos_list)
         

@@ -1,0 +1,626 @@
+<?xml version="1.0" encoding="utf-8"?>
+<cpacs xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://cpacs.googlecode.com/files/CPACS_21_Schema.xsd">
+  <header>
+    <name>Empty</name>
+    <description>Empty aircraft</description>
+    <creator>Malo Drougard</creator>
+    <timestamp>2019-02-27T15:12:47</timestamp>
+    <version>0.2</version>
+    <cpacsVersion>3.0</cpacsVersion>
+    <updates>
+    </updates>
+  </header>
+  <vehicles>
+    <aircraft>
+      <model uID="CpacsAircraft">
+        <name>Cpacs2Test</name>
+        <reference>
+          <area>1</area>
+          <length>1</length>
+          <point>
+            <x>0</x>
+            <y>0</y>
+            <z>0</z>
+          </point>
+        </reference>
+        <fuselages>
+          <fuselage uID="generatedFuselage">
+            <name>generatedFuselage</name>
+            <description>Fuselage generated from the function CCPACSFuselages::CreateFuselage</description>
+            <transformation uID="generatedFuselageTransformation">
+              <scaling uID="generatedFuselageTransformationScal">
+                <x>0.1</x>
+                <y>0.1</y>
+                <z>0.1</z>
+              </scaling>
+              <rotation uID="generatedFuselageTransformationRot">
+                <x>0</x>
+                <y>0</y>
+                <z>0</z>
+              </rotation>
+              <translation uID="generatedFuselageTransformationTransl">
+                <x>0</x>
+                <y>0</y>
+                <z>-0.001</z>
+              </translation>
+            </transformation>
+            <sections>
+              <section uID="generatedFuselageSec1">
+                <name>generatedFuselageSec1</name>
+                <transformation uID="generatedFuselageSec1Tr">
+                  <scaling uID="generatedFuselageSec1TrScal">
+                    <x>1</x>
+                    <y>0.30023</y>
+                    <z>0.499781</z>
+                  </scaling>
+                  <rotation uID="generatedFuselageSec1TrRot">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <translation uID="generatedFuselageSec1TrTransl">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="generatedFuselageSec1Elem1">
+                    <name>generatedFuselageSec1Elem1</name>
+                    <profileUID>squareProfile</profileUID>
+                    <transformation uID="generatedFuselageSec1Elem1Tr">
+                      <scaling uID="generatedFuselageSec1Elem1TrScal">
+                        <x>1</x>
+                        <y>1</y>
+                        <z>1</z>
+                      </scaling>
+                      <rotation uID="generatedFuselageSec1Elem1TrRot">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </rotation>
+                      <translation uID="generatedFuselageSec1Elem1TrTransl">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="generatedFuselageSec2">
+                <name>generatedFuselageSec2</name>
+                <transformation uID="generatedFuselageSec2Tr">
+                  <scaling uID="generatedFuselageSec2TrScal">
+                    <x>1</x>
+                    <y>1</y>
+                    <z>1</z>
+                  </scaling>
+                  <rotation uID="generatedFuselageSec2TrRot">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <translation uID="generatedFuselageSec2TrTransl">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="generatedFuselageSec2Elem1">
+                    <name>generatedFuselageSec2Elem1</name>
+                    <profileUID>squareProfile</profileUID>
+                    <transformation uID="generatedFuselageSec2Elem1Tr">
+                      <scaling uID="generatedFuselageSec2Elem1TrScal">
+                        <x>1</x>
+                        <y>1</y>
+                        <z>1</z>
+                      </scaling>
+                      <rotation uID="generatedFuselageSec2Elem1TrRot">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </rotation>
+                      <translation uID="generatedFuselageSec2Elem1TrTransl">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="generatedFuselageSec3">
+                <name>generatedFuselageSec3</name>
+                <transformation uID="generatedFuselageSec3Tr">
+                  <scaling uID="generatedFuselageSec3TrScal">
+                    <x>1</x>
+                    <y>1</y>
+                    <z>1</z>
+                  </scaling>
+                  <rotation uID="generatedFuselageSec3TrRot">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <translation uID="generatedFuselageSec3TrTransl">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="generatedFuselageSec3Elem1">
+                    <name>generatedFuselageSec3Elem1</name>
+                    <profileUID>squareProfile</profileUID>
+                    <transformation uID="generatedFuselageSec3Elem1Tr">
+                      <scaling uID="generatedFuselageSec3Elem1TrScal">
+                        <x>1</x>
+                        <y>1</y>
+                        <z>1</z>
+                      </scaling>
+                      <rotation uID="generatedFuselageSec3Elem1TrRot">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </rotation>
+                      <translation uID="generatedFuselageSec3Elem1TrTransl">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="generatedFuselageSec4">
+                <name>generatedFuselageSec4</name>
+                <transformation uID="generatedFuselageSec4Tr">
+                  <scaling uID="generatedFuselageSec4TrScal">
+                    <x>1</x>
+                    <y>0.19997</y>
+                    <z>0.399824</z>
+                  </scaling>
+                  <rotation uID="generatedFuselageSec4TrRot">
+                    <x>-6.83478e-07</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <translation uID="generatedFuselageSec4TrTransl">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="generatedFuselageSec4Elem1">
+                    <name>generatedFuselageSec4Elem1</name>
+                    <profileUID>squareProfile</profileUID>
+                    <transformation uID="generatedFuselageSec4Elem1Tr">
+                      <scaling uID="generatedFuselageSec4Elem1TrScal">
+                        <x>1</x>
+                        <y>1</y>
+                        <z>1</z>
+                      </scaling>
+                      <rotation uID="generatedFuselageSec4Elem1TrRot">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </rotation>
+                      <translation uID="generatedFuselageSec4Elem1TrTransl">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="generatedFuselageSec1Bis">
+                <name>generatedFuselageSec1Bis</name>
+                <transformation uID="generatedFuselageSec1BisTr">
+                  <scaling uID="generatedFuselageSec1BisTrScal">
+                    <x>0.758304</x>
+                    <y>0.758304</y>
+                    <z>0.758304</z>
+                  </scaling>
+                  <rotation uID="generatedFuselageSec1BisTrRot">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <translation uID="generatedFuselageSec1BisTrTransl">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="generatedFuselageSec1BisElem1">
+                    <name>generatedFuselageSec1BisElem1</name>
+                    <profileUID>squareProfile</profileUID>
+                    <transformation uID="generatedFuselageSec1BisElem1Tr">
+                      <scaling uID="generatedFuselageSec1BisElem1TrScal">
+                        <x>1</x>
+                        <y>1</y>
+                        <z>1</z>
+                      </scaling>
+                      <rotation uID="generatedFuselageSec1BisElem1TrRot">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </rotation>
+                      <translation uID="generatedFuselageSec1BisElem1TrTransl">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="generatedFuselageSec1BisBis">
+                <name>generatedFuselageSec1BisBis</name>
+                <transformation uID="generatedFuselageSec1BisBisTr">
+                  <scaling uID="generatedFuselageSec1BisBisTrScal">
+                    <x>0.887419</x>
+                    <y>0.887419</y>
+                    <z>0.887419</z>
+                  </scaling>
+                  <rotation uID="generatedFuselageSec1BisBisTrRot">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <translation uID="generatedFuselageSec1BisBisTrTransl">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="generatedFuselageSec1BisBisElem1">
+                    <name>generatedFuselageSec1BisBisElem1</name>
+                    <profileUID>squareProfile</profileUID>
+                    <transformation uID="generatedFuselageSec1BisBisElem1Tr">
+                      <scaling uID="generatedFuselageSec1BisBisElem1TrScal">
+                        <x>1</x>
+                        <y>1</y>
+                        <z>1</z>
+                      </scaling>
+                      <rotation uID="generatedFuselageSec1BisBisElem1TrRot">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </rotation>
+                      <translation uID="generatedFuselageSec1BisBisElem1TrTransl">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="generatedFuselageSec2Bis">
+                <name>generatedFuselageSec2Bis</name>
+                <transformation uID="generatedFuselageSec2BisTr">
+                  <scaling uID="generatedFuselageSec2BisTrScal">
+                    <x>1</x>
+                    <y>1</y>
+                    <z>1</z>
+                  </scaling>
+                  <rotation uID="generatedFuselageSec2BisTrRot">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <translation uID="generatedFuselageSec2BisTrTransl">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="generatedFuselageSec2BisElem1">
+                    <name>generatedFuselageSec2BisElem1</name>
+                    <profileUID>squareProfile</profileUID>
+                    <transformation uID="generatedFuselageSec2BisElem1Tr">
+                      <scaling uID="generatedFuselageSec2BisElem1TrScal">
+                        <x>1</x>
+                        <y>1</y>
+                        <z>1</z>
+                      </scaling>
+                      <rotation uID="generatedFuselageSec2BisElem1TrRot">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </rotation>
+                      <translation uID="generatedFuselageSec2BisElem1TrTransl">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="generatedFuselageSec2BisBis">
+                <name>generatedFuselageSec2BisBis</name>
+                <transformation uID="generatedFuselageSec2BisBisTr">
+                  <scaling uID="generatedFuselageSec2BisBisTrScal">
+                    <x>1</x>
+                    <y>1</y>
+                    <z>1</z>
+                  </scaling>
+                  <rotation uID="generatedFuselageSec2BisBisTrRot">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <translation uID="generatedFuselageSec2BisBisTrTransl">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="generatedFuselageSec2BisBisElem1">
+                    <name>generatedFuselageSec2BisBisElem1</name>
+                    <profileUID>squareProfile</profileUID>
+                    <transformation uID="generatedFuselageSec2BisBisElem1Tr">
+                      <scaling uID="generatedFuselageSec2BisBisElem1TrScal">
+                        <x>1</x>
+                        <y>1</y>
+                        <z>1</z>
+                      </scaling>
+                      <rotation uID="generatedFuselageSec2BisBisElem1TrRot">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </rotation>
+                      <translation uID="generatedFuselageSec2BisBisElem1TrTransl">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="generatedFuselageSec3Bis">
+                <name>generatedFuselageSec3Bis</name>
+                <transformation uID="generatedFuselageSec3BisTr">
+                  <scaling uID="generatedFuselageSec3BisTrScal">
+                    <x>0.734831</x>
+                    <y>0.734831</y>
+                    <z>0.734831</z>
+                  </scaling>
+                  <rotation uID="generatedFuselageSec3BisTrRot">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <translation uID="generatedFuselageSec3BisTrTransl">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="generatedFuselageSec3BisElem1">
+                    <name>generatedFuselageSec3BisElem1</name>
+                    <profileUID>squareProfile</profileUID>
+                    <transformation uID="generatedFuselageSec3BisElem1Tr">
+                      <scaling uID="generatedFuselageSec3BisElem1TrScal">
+                        <x>1</x>
+                        <y>1</y>
+                        <z>1</z>
+                      </scaling>
+                      <rotation uID="generatedFuselageSec3BisElem1TrRot">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </rotation>
+                      <translation uID="generatedFuselageSec3BisElem1TrTransl">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="generatedFuselageSec3BisBis">
+                <name>generatedFuselageSec3BisBis</name>
+                <transformation uID="generatedFuselageSec3BisBisTr">
+                  <scaling uID="generatedFuselageSec3BisBisTrScal">
+                    <x>0.556745</x>
+                    <y>0.556745</y>
+                    <z>0.556745</z>
+                  </scaling>
+                  <rotation uID="generatedFuselageSec3BisBisTrRot">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <translation uID="generatedFuselageSec3BisBisTrTransl">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="generatedFuselageSec3BisBisElem1">
+                    <name>generatedFuselageSec3BisBisElem1</name>
+                    <profileUID>squareProfile</profileUID>
+                    <transformation uID="generatedFuselageSec3BisBisElem1Tr">
+                      <scaling uID="generatedFuselageSec3BisBisElem1TrScal">
+                        <x>1</x>
+                        <y>1</y>
+                        <z>1</z>
+                      </scaling>
+                      <rotation uID="generatedFuselageSec3BisBisElem1TrRot">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </rotation>
+                      <translation uID="generatedFuselageSec3BisBisElem1TrTransl">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+            </sections>
+            <positionings>
+              <positioning uID="generatedFuselageSec1GenPos">
+                <name></name>
+                <length>0.000699865</length>
+                <sweepAngle>0</sweepAngle>
+                <dihedralAngle>90</dihedralAngle>
+                <fromSectionUID></fromSectionUID>
+                <toSectionUID>generatedFuselageSec1</toSectionUID>
+              </positioning>
+              <positioning uID="generatedFuselageSec2GenPos">
+                <name></name>
+                <length>1</length>
+                <sweepAngle>89.9599</sweepAngle>
+                <dihedralAngle>90</dihedralAngle>
+                <fromSectionUID>generatedFuselageSec1</fromSectionUID>
+                <toSectionUID>generatedFuselageSec2</toSectionUID>
+              </positioning>
+              <positioning uID="generatedFuselageSec3GenPos">
+                <name></name>
+                <length>1</length>
+                <sweepAngle>90</sweepAngle>
+                <dihedralAngle>0</dihedralAngle>
+                <fromSectionUID>generatedFuselageSec2</fromSectionUID>
+                <toSectionUID>generatedFuselageSec3</toSectionUID>
+              </positioning>
+              <positioning uID="generatedFuselageSec4GenPos">
+                <name></name>
+                <length>1</length>
+                <sweepAngle>89.9518</sweepAngle>
+                <dihedralAngle>-90</dihedralAngle>
+                <fromSectionUID>generatedFuselageSec3</fromSectionUID>
+                <toSectionUID>generatedFuselageSec4</toSectionUID>
+              </positioning>
+              <positioning uID="generatedFuselageSec1BisGenPos">
+                <name>Autogenerated positioning to set the position of section: generatedFuselageSec1Bis</name>
+                <length>0.500001</length>
+                <sweepAngle>89.8577</sweepAngle>
+                <dihedralAngle>90</dihedralAngle>
+                <toSectionUID>generatedFuselageSec1Bis</toSectionUID>
+              </positioning>
+              <positioning uID="generatedFuselageSec1BisBisGenPos">
+                <name>Autogenerated positioning to set the position of section: generatedFuselageSec1BisBis</name>
+                <length>0.750001</length>
+                <sweepAngle>89.8982</sweepAngle>
+                <dihedralAngle>90</dihedralAngle>
+                <toSectionUID>generatedFuselageSec1BisBis</toSectionUID>
+              </positioning>
+              <positioning uID="generatedFuselageSec2BisGenPos">
+                <name>Autogenerated positioning to set the position of section: generatedFuselageSec2Bis</name>
+                <length>1.5</length>
+                <sweepAngle>89.9465</sweepAngle>
+                <dihedralAngle>90</dihedralAngle>
+                <toSectionUID>generatedFuselageSec2Bis</toSectionUID>
+              </positioning>
+              <positioning uID="generatedFuselageSec2BisBisGenPos">
+                <name>Autogenerated positioning to set the position of section: generatedFuselageSec2BisBis</name>
+                <length>1.75</length>
+                <sweepAngle>89.9542</sweepAngle>
+                <dihedralAngle>90</dihedralAngle>
+                <toSectionUID>generatedFuselageSec2BisBis</toSectionUID>
+              </positioning>
+              <positioning uID="generatedFuselageSec3BisGenPos">
+                <name>Autogenerated positioning to set the position of section: generatedFuselageSec3Bis</name>
+                <length>2.5</length>
+                <sweepAngle>89.9717</sweepAngle>
+                <dihedralAngle>90</dihedralAngle>
+                <toSectionUID>generatedFuselageSec3Bis</toSectionUID>
+              </positioning>
+              <positioning uID="generatedFuselageSec3BisBisGenPos">
+                <name>Autogenerated positioning to set the position of section: generatedFuselageSec3BisBis</name>
+                <length>2.75</length>
+                <sweepAngle>89.9774</sweepAngle>
+                <dihedralAngle>90</dihedralAngle>
+                <toSectionUID>generatedFuselageSec3BisBis</toSectionUID>
+              </positioning>
+            </positionings>
+            <segments>
+              <segment uID="generatedFuselageSeg1">
+                <name>generatedFuselageSeg1</name>
+                <fromElementUID>generatedFuselageSec1Elem1</fromElementUID>
+                <toElementUID>generatedFuselageSec1BisElem1</toElementUID>
+              </segment>
+              <segment uID="generatedFuselageSeg1bis">
+                <name>generatedFuselageSeg1bis</name>
+                <fromElementUID>generatedFuselageSec1BisElem1</fromElementUID>
+                <toElementUID>generatedFuselageSec1BisBisElem1</toElementUID>
+              </segment>
+              <segment uID="generatedFuselageSeg1bisbis">
+                <name>generatedFuselageSeg1bisbis</name>
+                <fromElementUID>generatedFuselageSec1BisBisElem1</fromElementUID>
+                <toElementUID>generatedFuselageSec2Elem1</toElementUID>
+              </segment>
+              <segment uID="generatedFuselageSeg2">
+                <name>generatedFuselageSeg2</name>
+                <fromElementUID>generatedFuselageSec2Elem1</fromElementUID>
+                <toElementUID>generatedFuselageSec2BisElem1</toElementUID>
+              </segment>
+              <segment uID="generatedFuselageSeg2bis">
+                <name>generatedFuselageSeg2bis</name>
+                <fromElementUID>generatedFuselageSec2BisElem1</fromElementUID>
+                <toElementUID>generatedFuselageSec2BisBisElem1</toElementUID>
+              </segment>
+              <segment uID="generatedFuselageSeg2bisbis">
+                <name>generatedFuselageSeg2bisbis</name>
+                <fromElementUID>generatedFuselageSec2BisBisElem1</fromElementUID>
+                <toElementUID>generatedFuselageSec3Elem1</toElementUID>
+              </segment>
+              <segment uID="generatedFuselageSeg3">
+                <name>generatedFuselageSeg3</name>
+                <fromElementUID>generatedFuselageSec3Elem1</fromElementUID>
+                <toElementUID>generatedFuselageSec3BisElem1</toElementUID>
+              </segment>
+              <segment uID="generatedFuselageSeg3bis">
+                <name>generatedFuselageSeg3bis</name>
+                <fromElementUID>generatedFuselageSec3BisElem1</fromElementUID>
+                <toElementUID>generatedFuselageSec3BisBisElem1</toElementUID>
+              </segment>
+              <segment uID="generatedFuselageSeg3bisbis">
+                <name>generatedFuselageSeg3bisbis</name>
+                <fromElementUID>generatedFuselageSec3BisBisElem1</fromElementUID>
+                <toElementUID>generatedFuselageSec4Elem1</toElementUID>
+              </segment>
+            </segments>
+          </fuselage>
+        </fuselages>
+        <wings>  
+	</wings>
+      </model>
+    </aircraft>
+    <profiles>
+      <wingAirfoils>
+      </wingAirfoils>
+      <fuselageProfiles>
+        <fuselageProfile uID="squareProfile">
+          <name>square</name>
+          <description>A rectangular profile with rounded corners</description>
+          <pointList>
+            <x mapType="vector">0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0</x>
+            <y mapType="vector">0;0.0604682;0.120933;0.181382;0.241288;0.29909;0.352944;0.400748;0.440579;0.470913;0.490857;0.499591;0.498986;0.497784;0.497239;0.496717;0.496117;0.495319;0.49455;0.493647;0.495764;0.496594;0.486575;0.465874;0.435351;0.39616;0.349349;0.297568;0.241161;0.181399;0.120931;0.0604647;0;-0.0604647;-0.120931;-0.181399;-0.241161;-0.297568;-0.349349;-0.39616;-0.435351;-0.465874;-0.486575;-0.496594;-0.495764;-0.493647;-0.49455;-0.495319;-0.496117;-0.496717;-0.497239;-0.497784;-0.498986;-0.499591;-0.490857;-0.470913;-0.440579;-0.400748;-0.352944;-0.29909;-0.241288;-0.181382;-0.120933;-0.0604682;0</y>
+            <z mapType="vector">-0.499295;-0.498972;-0.498387;-0.497391;-0.490817;-0.476542;-0.454222;-0.424101;-0.387042;-0.344405;-0.297854;-0.24906;-0.199686;-0.150306;-0.100918;-0.0515298;-0.0021422;0.0472435;0.0966295;0.146013;0.195367;0.244697;0.293333;0.339666;0.382228;0.419751;0.450921;0.476369;0.493933;0.500642;0.500397;0.49992;0.499295;0.49992;0.500397;0.500642;0.493933;0.476369;0.450921;0.419751;0.382228;0.339666;0.293333;0.244697;0.195367;0.146013;0.0966295;0.0472435;-0.0021422;-0.0515298;-0.100918;-0.150306;-0.199686;-0.24906;-0.297854;-0.344405;-0.387042;-0.424101;-0.454222;-0.476542;-0.490817;-0.497391;-0.498387;-0.498972;-0.499295</z>
+          </pointList>
+        </fuselageProfile>
+      </fuselageProfiles>
+    </profiles>
+  </vehicles>
+  <toolspecific>
+  </toolspecific>
+</cpacs>

@@ -1,5 +1,5 @@
 import logging
-from re import M
+from re import M, X
 from turtle import position
 from unicodedata import mirrored
 from tixi3 import tixi3wrapper
@@ -28,14 +28,16 @@ import OCC.Core.BRepBuilderAPI as OBui
 import OCC.Core.BRepPrimAPI as OPrim
 import OCC.Extend.ShapeFactory as OExs
 from Ausgabeservice import *
+from CablePipe import CabelPipe
 from Wand_erstellen import *
 import time
 from OCC.Display.SimpleGui import init_display
 import tigl3.boolean_ops as TBoo
 from math import *
 from OCC.Core.TopTools import TopTools_ListOfShape
+from BooleanOperationsForLists import *
 
-from abmasse import get_dimensions, get_koordinate, get_koordinates
+from abmasse import *
 from mydisplay import myDisplay
 from shape_verschieben import rotate_shape
 from shapeslicer.ShapeSlicer import ShapeSlicer
@@ -69,9 +71,13 @@ class aircombat_test:
         if i_cpacs==5:
             self.tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\aircombat_original_oneprofil_mitte.xml")
         if i_cpacs==4:
-            self.tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\tinywing_skaliert.xml") 
+            self.tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\tinybit_new.xml") 
         if i_cpacs==6:
             self.tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\aircombat_v2.xml")       
+        if i_cpacs==7:
+            self.tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\test_fluegel_punkte.xml")  
+        if i_cpacs==8:
+            self.tixi_h.open(r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\test_rumpf_punkte.xml")  
         self.tigl_handle.open(self.tixi_h, "")
         self.config_manager: TConfig.CCPACSConfigurationManager  = TConfig.CCPACSConfigurationManager_get_instance()
         self.cpacs_configuration: TConfig.CCPACSConfiguration= self.config_manager.get_configuration(self.tigl_handle._handle.value)
@@ -102,11 +108,155 @@ class aircombat_test:
         aTrsf= Ogp.gp_Trsf()
         aTrsf.SetMirror(Ogp.gp_Ax2(Ogp.gp_Pnt(0,0,0),Ogp.gp_Dir(0,1,0)))
         transformed_wing = OBuilder.BRepBuilderAPI_Transform(self.wing_shape, aTrsf)
+        claculate_mainwing_dimension(self.wing_shape)
         mirrored_wing= transformed_wing.Shape()
         self.complete_wing= OAlgo.BRepAlgoAPI_Fuse(self.wing_shape,mirrored_wing).Shape()
         self.m.display_fuse(self.complete_wing,self.wing_shape, mirrored_wing, "complete_wing")
         #self.m.display_this_shape(self.complete_wing,msg="Fused completewing")
 
+    def create_offset_wing(self, offset=0.0008):
+        self.wing_offset= OOff.BRepOffsetAPI_MakeOffsetShape(self.wing_shape, offset,0.00001).Shape()
+        self.m.display_this_shape(self.wing_offset)
+    
+    def create_right_wing(self, rib_width=0.0002, angle=45):
+        wing=[]
+        rib= self.create_wing_ribs(rib_width,angle)
+        wing.append(OAlgo.BRepAlgoAPI_Common(self.wing_shape,rib).Shape())
+        self.m.display_common(wing[-1],self.wing_shape,rib)
+        wing.append(OAlgo.BRepAlgoAPI_Cut(self.wing_offset,wing[-1]).Shape())
+        self.m.display_cut(wing[-1],self.wing_offset,wing[-2])
+        
+        #Create cable pipe and add to wing
+        cable_pipe=self.create_cable_pipe()
+        wing.append(OAlgo.BRepAlgoAPI_Cut(wing[-1],cable_pipe).Shape())
+        self.m.display_cut(wing[-1],wing[-2],cable_pipe)
+        
+        #Create hinge recces and add to wing
+        #hinge_recess=self.create_hinge_recces()
+        #wing.append(OAlgo.BRepAlgoAPI_Cut(wing[-1],hinge_recess).Shape())
+        #self.m.display_cut(wing[-1],hinge_recess,wing[-2])
+        
+        #Create Flapscutout
+        flaps_cutout=self.create_flaps_and_cutout(wing[-1])
+        wing.append(OAlgo.BRepAlgoAPI_Cut(wing[-1],flaps_cutout).Shape())
+        self.m.display_cut(wing[-1],wing[-2],flaps_cutout)
+        self.wing_done=wing[-1]
+    
+    def create_wing_ribs(self, rib_width=0.0002, angle=45):
+        rib=[]
+        rib.append(self.create_diagonal_ribs(rib_width, angle=45))
+        rib.append(self.create_horizontal_wing_ribs(rib_width))
+        rib.append(OAlgo.BRepAlgoAPI_Fuse(rib[-2],rib[-1]).Shape())
+        self.m.display_fuse(rib[-1],rib[-3],rib[-2])
+        rib.append(self.create_carbontunnel_wing())
+        rib.append(OAlgo.BRepAlgoAPI_Fuse(rib[-2],rib[-1]).Shape())
+        self.m.display_fuse(rib[-1],rib[-3],rib[-2])
+        return rib[-1]
+        '''
+        rib.append(OAlgo.BRepAlgoAPI_Common(self.wing_shape,rib[-1]).Shape())
+        self.m.display_common(rib[-1],self.wing_shape,rib[-2])
+        rib.append(OAlgo.BRepAlgoAPI_Cut(self.wing_offset,rib[-1]).Shape())
+        self.m.display_common(rib[-1],self.wing_offset,rib[-2])
+        rib.append(self.create_flaps_and_cutout(rib))
+        self.wing_done=rib[-1]
+        '''
+    
+    def create_diagonal_ribs(self,rib_width,angle):
+        prim=[]
+        xmin,ymin,zmin,xmax,ymax,zmax= get_koordinates(self.wing_shape)
+        wing_lenght, wing_width, wing_height= get_dimensions_from_Shape(self.wing_shape)
+        prim.append(OPrim.BRepPrimAPI_MakeBox(wing_lenght*2, rib_width, wing_height).Shape())
+        prim.append(OExs.rotate_shape(prim[-1],gp_OZ(),angle))
+        prim.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(xmin,-rib_width,zmin)))
+        self.m.display_this_shape(prim[-1])
+        ribs_distance=0.1
+        ribs_quantity=round((wing_width/ribs_distance)*2)
+        prim.append(self.create_linear_pattern(prim[-1],ribs_quantity,ribs_distance,"y"))
+        prim.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(0,-wing_width/2,0)))
+        self.m.display_this_shape(prim[-1])
+        return prim[-1]
+    
+    def create_horizontal_wing_ribs(self,rib_width):
+        prim=[]
+        xmin,ymin,zmin,xmax,ymax,zmax= get_koordinates(self.wing_shape)
+        wing_lenght, wing_width, wing_height= get_dimensions_from_Shape(self.wing_shape)
+        prim.append(OPrim.BRepPrimAPI_MakeBox(rib_width, wing_width, wing_height).Shape())
+        distance=wing_lenght/4
+        x_pos=xmin+distance-rib_width/2
+        prim.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(x_pos,0.0,zmin)))
+        self.m.display_this_shape(prim[-1])
+        prim.append(self.create_linear_pattern(prim[-1],3,distance,"x"))
+        self.m.display_this_shape(prim[-1])
+        return prim[-1]
+    
+    def create_carbontunnel_wing(self):
+        prim=[]
+        xmin,ymin,zmin,xmax,ymax,zmax= get_koordinates(self.wing_shape)
+        wing_lenght, wing_width, wing_height= get_dimensions_from_Shape(self.wing_shape)
+        prim.append(OPrim.BRepPrimAPI_MakeCylinder(0.0024, wing_width).Shape())
+        prim.append(OExs.rotate_shape(prim[-1],gp_OX(),-90))
+        distance=wing_lenght/4
+        x_pos=xmin+distance
+        z_pos=zmin+wing_height/2
+        prim.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(x_pos,0.0,z_pos)))
+        self.m.display_this_shape(prim[-1])
+        prim.append(self.create_linear_pattern(prim[-1],2,distance,"x"))
+        self.m.display_this_shape(prim[-1])
+        return prim[-1]
+    
+    def create_flaps_and_cutout(self,wing):
+        logging.info(f"Creating flaps cutout")
+        prim=[]
+        xmin,ymin,zmin,xmax,ymax,zmax= get_koordinates(self.wing_shape)
+        wing_lenght, wing_width, wing_height= get_dimensions_from_Shape(self.wing_shape)
+        flaps_lenght, flaps_width, flaps_height= 0.03, wing_width*0.6, wing_height
+        prim.append(OPrim.BRepPrimAPI_MakeBox(flaps_lenght, flaps_width, flaps_height).Shape())
+        x,y,z=xmax-flaps_lenght,wing_width*0.4,zmin
+        prim.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(x,y,z)))
+        return prim[-1]
+        #wing_with_cutout=OAlgo.BRepAlgoAPI_Cut(wing,prim[-1]).Shape()
+        #self.m.display_cut(wing_with_cutout,wing,prim[-1])
+        #return wing_with_cutout
+    
+    def create_cable_pipe(self):
+        xmin,ymin,zmin,xmax,ymax,zmax= get_koordinates(self.wing_shape)
+        wing_lenght, wing_width, wing_height= get_dimensions_from_Shape(self.wing_shape)
+        servo_pos=wing_width*0.45
+        points, x,y=self.list_for_pipe1(servo_pos,zmax,zmin)
+        mcp=CabelPipe(points,0.003)
+        L_pipe=[]
+        L_pipe.append(mcp.get_pipe())
+        self.m.display_in_origin(L_pipe[-1])
+        
+        points2=self.list_for_pipe2()
+        mcp=CabelPipe(points2,0.003)
+        zL_pipe=[]
+        zL_pipe.append(mcp.get_pipe())
+        zL_pipe.append(OExs.rotate_shape(zL_pipe[-1],gp_OY(),90))
+        zL_pipe.append(OExs.translate_shp(zL_pipe[-1],Ogp.gp_Vec(x,servo_pos,0.0)))
+        
+        L_pipe.append(OAlgo.BRepAlgoAPI_Fuse(L_pipe[-1],zL_pipe[-1]).Shape())
+        L_pipe.append(OExs.rotate_shape(L_pipe[-1],gp_OY(),-90))
+        x_pos=((2/3)*wing_lenght)+xmin
+        z_pos=0.005
+        y_pos=0.015
+        L_pipe.append(OExs.translate_shp(L_pipe[-1],Ogp.gp_Vec(x_pos,y_pos,z_pos)))
+        return L_pipe[-1]
+    
+    def create_servo_recess(self,lenght,width,height,x_pos,y_pos,z_pos):
+        recess=[]
+        recess.append(OPrim.BRepPrimAPI_MakeBox(lenght,width,height))
+        recess.append(OExs.translate_shp(recess[-1]),Ogp.gp_Vec(x_pos,y_pos,z_pos))
+        lenght=lenght*1.1
+        width=width*0.2
+        recess.append(OPrim.BRepPrimAPI_MakeBox(lenght,width,height))
+        recess.append(OExs.translate_shp(recess[-1]),Ogp.gp_Vec(x_pos,y_pos,z_pos))
+        recess.append(OAlgo.BRepAlgoAPI_Fuse(recess[-3],recess[-1]).Shape())
+        self.m.display_fuse(recess[-1],recess[-4],recess[-2])
+        return recess[-1]
+    
+    #def create_hinge_recces(self)
+    
 
     def create_fuselage(self):
         self.fuselage: TConfig.CCPACSFuselage= self.cpacs_configuration.get_fuselage(1)
@@ -114,6 +264,7 @@ class aircombat_test:
         self.fuselage_shape: OTopo.TopoDS_Shape=self.fuselage_loft.shape()
         #self.fuselage_shape=OExs.translate_shp(self.fuselage_shape,Ogp.gp_Vec(0,0,0.003))
         xmin, ymin, zmin, xmax,ymax,zmax= get_koordinates(self.fuselage_shape)
+        claculate_fuselage_dimension(self.fuselage_shape)
         self.fuselage_lenght, self.fuselage_widht, self.fuselage_height= get_dimensions(xmin, ymin, zmin, xmax,ymax,zmax)
         logstr= f"Fuselage Dimensions lenght={self.fuselage_lenght}, widht={self.fuselage_widht} height={self.fuselage_height}"
         logging.info(logstr)
@@ -175,9 +326,36 @@ class aircombat_test:
         self.m.display_this_shape(rippen, "Quadrat Ribs")
         return rippen
     
+    def create_wing_reinforcement_ribs(self):
+        xmin, ymin, zmin, xmax, ymax, zmax= get_koordinates(self.wing_shape)
+        length, width, height= get_dimensions_from_Shape(self.wing_shape)
+        box_length, box_width, box_height= length/2, 0.0004, 2*height
+        box = OPrim.BRepPrimAPI_MakeBox(box_length, box_width, box_height).Shape()
+        moved_box= OExs.translate_shp(box,Ogp.gp_Vec(0,-box_width/2,-box_height/2))
+        rot_box= OExs.rotate_shape(moved_box, Ogp.gp_OY(), 60)
+        moved_box= OExs.translate_shp(rot_box,Ogp.gp_Vec(xmin-0.002,0,zmax-0.01 ))
+        f_length, f_width, f_height= get_dimensions_from_Shape(self.fuselage_shape)
+        rib_width= f_width * 0.6
+        distance= rib_width/7
+        rib= OExs.translate_shp(moved_box,Ogp.gp_Vec(0,-distance*3,0))
+        for i in range(0,7):
+            movedrib= OExs.translate_shp(rib,Ogp.gp_Vec(0,distance*i,0))
+            if i==0:
+                ribs=movedrib
+            else:
+                ribs2= OAlgo.BRepAlgoAPI_Fuse(ribs,movedrib).Shape()
+                ribs=ribs2
+        box = OPrim.BRepPrimAPI_MakeBox(f_length, f_width, f_height).Shape()
+        moved_box= OExs.translate_shp(box,Ogp.gp_Vec(0,-f_width/2, zmax ))
+        ribs_cut= OAlgo.BRepAlgoAPI_Cut(ribs,moved_box).Shape()
+        self.m.display_cut(ribs_cut,ribs, moved_box)
+        return ribs_cut
+    
     def create_quadrat_rib(self, rib_width, y_max,y_min,z_max,z_min):
-        box = OPrim.BRepPrimAPI_MakeBox(self.fuselage_lenght*1.2, rib_width, self.fuselage_height*1.2).Shape()
-        moved_box= OExs.translate_shp(box,Ogp.gp_Vec(0,-rib_width,-self.fuselage_height/2))
+        rib_lenght=self.fuselage_lenght*1.2
+        rib_height=self.fuselage_height*1.2
+        box = OPrim.BRepPrimAPI_MakeBox(rib_lenght, rib_width, rib_height).Shape()
+        moved_box= OExs.translate_shp(box,Ogp.gp_Vec(-rib_lenght*0.1,-rib_width/2,-rib_height/2))
         ver_rib=moved_box
         ver_rib_1=OExs.translate_shp(ver_rib,Ogp.gp_Vec(0.0,y_max,0.0))
         ver_rib_2=OExs.translate_shp(ver_rib,Ogp.gp_Vec(0.0,y_min,0.0))
@@ -221,27 +399,33 @@ class aircombat_test:
         cylinder= self.rotate_shape(cylinder, Ogp.gp_OX(), 90)
         cylinder_pattern= self.create_linear_pattern(cylinder, 8, distance)
         self.m.display_this_shape(cylinder_pattern)
-        self.m.display_in_origin(cylinder_pattern)
-        self.m.display_in_origin(box)
+        #self.m.display_in_origin(cylinder_pattern)
+        #self.m.display_in_origin(box)
         return cylinder_pattern
         
-    def create_linear_pattern(self, shape, quantity, distance):
+    def create_linear_pattern(self, shape, quantity, distance,direction="x"):
         pattern=shape
         logstr= f"Creating a linear pattern of {quantity} x {distance} meters"
         logging.info(logstr)
+        x,y,z=0.0,0.0,0.0
         for i in range(1,quantity):
-            x= i*distance
-            moved_shape= OExs.translate_shp(shape,Ogp.gp_Vec(x,0.0,0.0))
+            if direction=="x":
+                x= i*distance
+            if direction=="y":
+                y= i*distance
+            if direction=="z":
+                z= i*distance
+            moved_shape= OExs.translate_shp(shape,Ogp.gp_Vec(x,y,z))
             newpattern= OAlgo.BRepAlgoAPI_Fuse(pattern, moved_shape).Shape()
             pattern=newpattern
         return pattern
             
         
-    def create_sharp_ribs(self,rib_width=0.0004, factor=0.3, radius=0.004):
+    def create_sharp_ribs(self,rib_width=0.0002, factor=0.3, radius=0.00245):
         y_max= self.fuselage_widht*factor
         y_min= -y_max
         z_max= self.fuselage_height*factor
-        z_min=get_koordinate(self.wing_shape,"zmax")
+        z_min=get_koordinate(self.wing_shape,"zmax")+ 0.003
         quadrat= self.create_quadrat_rib(rib_width, y_max,y_min,z_max,z_min)
         cylinders= self.create_cylinder_reinforcemnt(radius, y_max,y_min,z_max,z_min)
         reduktion_radius=((z_max-z_min)*0.8)/2
@@ -258,11 +442,32 @@ class aircombat_test:
         weight_reduktion_cylinders_ver= OExs.rotate_shape(weight_reduktion_cylinders_ver,Ogp.gp_OX(), 90)
         rippen_cut_recces2= OAlgo.BRepAlgoAPI_Cut(rippen_cut_recces,weight_reduktion_cylinders_ver).Shape()
         self.m.display_cut(rippen_cut_recces2, rippen_cut_recces, weight_reduktion_cylinders_ver, "Cut")
-        self.rippen_cuted= OAlgo.BRepAlgoAPI_Fuse(rippen_cut_recces2,cylinders).Shape()
+        hardware_cutout= self.create_hardware_cutout(factor,radius)
+        ribs_with_hardware_cutout= OAlgo.BRepAlgoAPI_Cut(rippen_cut_recces2,hardware_cutout).Shape()
+        self.m.display_cut(ribs_with_hardware_cutout,rippen_cut_recces2,hardware_cutout)
+        wing_reinforcement=self.create_wing_reinforcement_ribs()
+        rippen_with_reinforcement=OAlgo.BRepAlgoAPI_Fuse(ribs_with_hardware_cutout,wing_reinforcement).Shape()
+        self.m.display_fuse(rippen_with_reinforcement,rippen_cut_recces2, wing_reinforcement)
+        self.rippen_cuted= OAlgo.BRepAlgoAPI_Fuse(rippen_with_reinforcement,cylinders).Shape()
         #self.rippen_cuted= OAlgo.BRepAlgoAPI_Fuse(quadrat,cylinders).Shape()
         #self.m.display_this_shape(self.rippen_cuted, "Sharp Rippen")
         logging.info("Fused ribs and cylinders")
-        self.m.display_fuse(self.rippen_cuted,quadrat,cylinders, "Fused ribs and cylinders")
+        self.m.display_fuse(self.rippen_cuted,rippen_with_reinforcement,cylinders, "Fused ribs and cylinders")
+        
+    def create_hardware_cutout(self, factor, radius):
+        hardware_cutout_lenght=self.fuselage_lenght * 0.2
+        hardware_cutout_width= self.fuselage_widht * (factor*2) - (radius*2) 
+        hardware_cutout_height= self.fuselage_height /2
+        hardware_x_pos= get_koordinate(self.wing_shape, "xmin")
+        box = OPrim.BRepPrimAPI_MakeBox(hardware_cutout_lenght,hardware_cutout_width, hardware_cutout_height).Shape()
+        moved_box= OExs.translate_shp(box,Ogp.gp_Vec(hardware_x_pos,-hardware_cutout_width/2,-hardware_cutout_height))
+        cylinder=BRepPrimAPI_MakeCylinder(hardware_cutout_width/2,hardware_cutout_height).Shape()
+        c1=OExs.translate_shp(cylinder,Ogp.gp_Vec(hardware_x_pos,0.0,-hardware_cutout_height))
+        hardware_x_pos+= hardware_cutout_lenght
+        c2=OExs.translate_shp(cylinder,Ogp.gp_Vec(hardware_x_pos,0.0,-hardware_cutout_height))
+        c_list=[moved_box,c1,c2]
+        cutout=fuse_list_of_shapes(c_list)
+        return cutout
     
     def create_thin_star_ribs(self):
         #Cutout for Extra Ribs
@@ -358,7 +563,7 @@ class aircombat_test:
         
     def cut_wings_from_fuselage(self):
         self.fuselage_done= OAlgo.BRepAlgoAPI_Cut(self.fuselage_with_ribs, self.complete_wing).Shape()
-        self.m.display_cut(self.fuselage_done, self.fuselage_with_ribs, self.complete_wing)
+        self.m.display_cut(self.fuselage_done, self.fuselage_with_ribs, self.complete_wing, "", True)
         
     def test1(self):
         self.create_mainwing()
@@ -388,25 +593,162 @@ class aircombat_test:
         result.append(split_rear_fuselage)
         result.append(end_fuselage)
         return result
+    
+    def create_tunnel(self, factor=0.3, radius=0.0024):
+        y_max= self.fuselage_widht*factor
+        y_min= -y_max
+        z_max= self.fuselage_height*factor
+        z_min=get_koordinate(self.wing_shape,"zmax")+ 0.003
+        cylinders= self.create_cylinder_reinforcemnt(radius, y_max,y_min,z_max,z_min)
+        cylinders= OAlgo.BRepAlgoAPI_Common(self.fuselage_offset, cylinders).Shape()
+        self.fuselage_done2= OAlgo.BRepAlgoAPI_Fuse(self.fuselage_done,cylinders).Shape()
+        self.m.display_fuse(self.fuselage_done2,self.fuselage_done,cylinders)
+        
+    def create_hardware_oppening(self,lenght, width, height):
+        box = OPrim.BRepPrimAPI_MakeBox().Shape()
+        
+    def create_harware_wingcutout_for_hardware(self):
+        x,y,z,xmax,ymax,zmax=get_koordinates(self.wing_shape)
+        lenght,width,height=get_dimensions_from_Shape(self.complete_wing)
+        width= self.fuselage_widht*0.6
+        box = OPrim.BRepPrimAPI_MakeBox(lenght,width,height).Shape()
+        box= translate_shp(box,gp_Vec(x,-width/2,z))
+        wing_section= OAlgo.BRepAlgoAPI_Common(self.complete_wing, box).Shape()
+        self.m.display_common(wing_section,box, self.complete_wing)
+        wing_section_offset=OOff.BRepOffsetAPI_MakeOffsetShape(wing_section, 0.003,0.0001).Shape()
+        self.m.display_this_shape(wing_section_offset)
+        self.fuselage_done= OAlgo.BRepAlgoAPI_Cut(self.fuselage_wing_cutout, wing_section_offset).Shape()
+        self.m.display_cut(self.fuselage_done,self.fuselage_wing_cutout, wing_section_offset)
+        return wing_section_offset
+    
+    def create_harware_wingcutout_for_hardware2(self):
+        x,y,z,xmax,ymax,zmax=get_koordinates(self.wing_shape)
+        lenght,width,height=get_dimensions_from_Shape(self.wing_shape)
+        box = OPrim.BRepPrimAPI_MakeBox(lenght,width,height).Shape()
+        ypos= self.fuselage_widht*0.3
+        box1= translate_shp(box,gp_Vec(x,ypos,z))
+        ypos= -ypos-width
+        box2= translate_shp(box,gp_Vec(x,ypos,z))
+        wing_section1= OAlgo.BRepAlgoAPI_Cut(self.complete_wing, box1).Shape()
+        self.m.display_cut(wing_section1,self.complete_wing, box1)
+        wing_section= OAlgo.BRepAlgoAPI_Cut(wing_section1, box2).Shape()
+        self.m.display_cut(wing_section,wing_section1, box2)
+        wing_section_offset=OOff.BRepOffsetAPI_MakeOffsetShape(wing_section, 0.003,0.0001).Shape()
+        self.m.display_this_shape(wing_section_offset)
+        self.fuselage_done= OAlgo.BRepAlgoAPI_Cut(self.fuselage_wing_cutout, wing_section_offset).Shape()
+        self.m.display_cut(self.fuselage_done,self.fuselage_wing_cutout, wing_section_offset)
+        return wing_section_offset
+    
+    def create_harware_wingcutout_for_hardware3(self):
+        x,y,z,xmax,ymax,zmax=get_koordinates(self.wing_shape)
+        lenght,width,height=get_dimensions_from_Shape(self.wing_shape)
+        box = OPrim.BRepPrimAPI_MakeBox(lenght,width,height).Shape()
+        ypos= self.fuselage_widht*0.3
+        box1= translate_shp(box,gp_Vec(x,ypos,z))
+        ypos= -ypos-width
+        box2= translate_shp(box,gp_Vec(x,ypos,z))
+        wing_section1= OAlgo.BRepAlgoAPI_Cut(self.complete_wing, box1).Shape()
+        self.m.display_cut(wing_section1,self.complete_wing, box1)
+        wing_section= OAlgo.BRepAlgoAPI_Cut(wing_section1, box2).Shape()
+        self.m.display_cut(wing_section,wing_section1, box2)
+        wing_section_offset=OOff.BRepOffsetAPI_MakeOffsetShape(wing_section, 0.003,0.0001).Shape()
+        self.m.display_this_shape(wing_section_offset)
+        temp=self.fuselage_offset
+        temp= OAlgo.BRepAlgoAPI_Cut(self.fuselage_offset, wing_section_offset).Shape()
+        self.m.display_cut(temp,self.fuselage_offset, wing_section_offset)
+        self.fuselage_offset=temp
+        return wing_section_offset
+    
+    def create_fuselage_with_ribs(self):
+        self.create_fuselage()
+        self.offset_fuselage()
+        #a.create_harware_wingcutout_for_hardware3() 
+        self.create_sharp_ribs() 
+        self.common_fuselage_ribs_cuted()
+        self.cut_fuselage_ribs()
+        #self.cut_wings_from_fuselage()
+        #self.create_harware_wingcutout_for_hardware2()
+        #self.create_tunnel()
+    
+    def list_for_pipe1(self,servo_y_pos, zmax, zmin):
+        points=[]
+        y_pos=0.00
+        points.append(Ogp.gp_Pnt(zmax,y_pos,0.0))
+        logging.info(f"{y_pos=} {zmax=}")
+        z=zmin+0.005
+        points.append(Ogp.gp_Pnt(z,y_pos,0.0))
+        logging.info(f"{y_pos=} {z=}")
+        points.append(Ogp.gp_Pnt(z,servo_y_pos,0.0))
+        logging.info(f"{servo_y_pos=} {z=}")
+        return points, z,y_pos
+
+    def list_for_pipe2(self):
+        points=[]
+        y_pos=0.02
+        x_pos=0.02
+        points.append(Ogp.gp_Pnt(x_pos,y_pos,0.0))
+        points.append(Ogp.gp_Pnt(0.0,y_pos,0.0))
+        points.append(Ogp.gp_Pnt(0.0,0.0,0.0))
+        return points
+
+    def create_pipe(self, wing_shape):
+        xmin,ymin,zmin,xmax,ymax,zmax= get_koordinates(wing_shape)
+        wing_lenght, wing_width, wing_height= get_dimensions_from_Shape(wing_shape)
+        servo_pos=wing_width*0.45
+        points, x,y=self.list_for_pipe1(servo_pos,zmax,zmin)
+        mcp=CabelPipe(points,0.003)
+        L_pipe=[]
+        L_pipe.append(mcp.get_pipe())
+        self.m.display_in_origin(L_pipe[-1])
+        
+        points2=self.list_for_pipe2()
+        mcp=CabelPipe(points2,0.003)
+        zL_pipe=[]
+        zL_pipe.append(mcp.get_pipe())
+        zL_pipe.append(OExs.rotate_shape(zL_pipe[-1],gp_OY(),90))
+        zL_pipe.append(OExs.translate_shp(zL_pipe[-1],Ogp.gp_Vec(x,servo_pos,0.0)))
+        
+        L_pipe.append(OAlgo.BRepAlgoAPI_Fuse(L_pipe[-1],zL_pipe[-1]).Shape())
+        L_pipe.append(OExs.rotate_shape(L_pipe[-1],gp_OY(),-90))
+        x_pos=((2/3)*wing_lenght)+xmin
+        z_pos=0.005
+        y_pos=0.015
+        L_pipe.append(OExs.translate_shp(L_pipe[-1],Ogp.gp_Vec(x_pos,y_pos,z_pos)))
+        return L_pipe[-1]
+
         
     
-
-
 if __name__ == "__main__":
     a=aircombat_test(True)
+    
     a.create_mainwing()
+    a.create_offset_wing()
+    a.create_right_wing()
+    wing_slicer= ShapeSlicer(a.wing_done,5,"wing")
+    pos_list=wing_slicer.slicing_postion_wing(a.wing_shape)
+    wing_slicer.slice_with_list_common_y(pos_list)
+    #a.create_fuselage_with_ribs()
+    
+    '''
     a.create_fuselage()
-    a.offset_fuselage() 
+    a.offset_fuselage()
+    #a.create_harware_wingcutout_for_hardware3() 
     a.create_sharp_ribs() 
     a.common_fuselage_ribs_cuted()
     a.cut_fuselage_ribs()
     a.cut_wings_from_fuselage()
+    #a.create_harware_wingcutout_for_hardware2()
+    a.create_tunnel()
 
-    slicer=ShapeSlicer(a.fuselage_done,4,"fuselage")
+    slicer=ShapeSlicer(a.fuselage_done2,4,"fuselage")
     #slicer.slice2()
-    pos_list=a.slicing_positions()
-    slicer.slice_with_list(pos_list)
-    write_stls_srom_list(slicer.parts_list)
+    pos_list=slicer.slicing_positions2(a.wing_shape, a.fuselage_shape)
+    slicer.slice_with_list_common(pos_list)
+    '''
+    #slicer=ShapeSlicer(a.fuselage_done2,4,"fuselage")
+    #slicer.slice()
+    #write_stls_srom_list(wing_slicer.parts_list,"fuselage")
+    #myZip.zip_stls2()
     
     a.m.start()
     

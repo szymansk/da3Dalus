@@ -2,14 +2,48 @@
 # coding: utf-8
 
 from __future__ import print_function
+from operator import length_hint
 from OCC.Core.BRepBndLib import brepbndlib_Add
 from OCC.Core.Bnd import Bnd_Box
 
+dimensions_mainwing={}
+dimensions_fuselage={}
 
+def claculate_mainwing_dimension(shape):
+    bbox = Bnd_Box()
+    brepbndlib_Add(shape,bbox)
+    xmin,ymin,zmin,xmax,ymax,zmax = bbox.Get()
+    global dimensions_mainwing 
+    dimensions_mainwing={"xmin":xmin,"ymin": ymin, "zmin": zmin, 
+                     "xmax":xmax, "ymax": ymax, "zmax":zmax,
+                     "lenght":xmax-xmin, "width": ymax-ymin, "height":zmax-zmin,
+                     "xmid":(xmax-xmin)/2, "ymid": ymax-ymin, "zmid":zmax-zmin
+                     }
+    print(dimensions_mainwing)
 
-# In[ ]:
+def claculate_fuselage_dimension(shape):
+    bbox = Bnd_Box()
+    brepbndlib_Add(shape,bbox)
+    xmin,ymin,zmin,xmax,ymax,zmax = bbox.Get()
+    global dimensions_fuselage 
+    dimensions_fuselage={"xmin":xmin,"ymin": ymin, "zmin": zmin, 
+                     "xmax":xmax, "ymax": ymax, "zmax":zmax,
+                     "lenght":xmax-xmin, "width": ymax-ymin, "height":zmax-zmin,
+                     "xmid":(xmax-xmin)/2, "ymid": ymax-ymin, "zmid":zmax-zmin
+                     }
 
+def get_fuselage_dimensions():
+    length=dimensions_fuselage("lenght")
+    width=dimensions_fuselage("width")
+    height=dimensions_fuselage("height")
+    return length, width, height
 
+def get_mainwing_dimensions():
+    length=dimensions_mainwing("lenght")
+    width=dimensions_mainwing("width")
+    height=dimensions_mainwing("height")
+    return length, width, height
+    
 #class abmessungen:
 def get_koordinates(shape) :
     bbox = Bnd_Box()
@@ -32,5 +66,38 @@ def get_koordinate(shape, koordinate_name="xmin"):
     bbox = Bnd_Box()
     brepbndlib_Add(shape,bbox)
     xmin,ymin,zmin,xmax,ymax,zmax = bbox.Get()
-    koordinate_dict={"xmin":xmin,"ymin": ymin, "zmin": zmin, "xmax":xmax, "ymax": ymax, "zmax":zmax}#
+    global koordinate_dict 
+    koordinate_dict={"xmin":xmin,"ymin": ymin, "zmin": zmin, "xmax":xmax, "ymax": ymax, "zmax":zmax}
     return koordinate_dict.get(koordinate_name)
+
+
+'''
+XMIN=None
+XMAX=None
+YMIN=None
+YMAX=None
+ZMIN=None
+ZMAX=None
+HEIGHT=None
+WIDTH=None
+LENGHT=None
+
+XMIN=None
+XMAX=None
+YMIN=None
+YMAX=None
+ZMIN=None
+ZMAX=None
+HEIGHT=None
+WIDTH=None
+LENGHT=None
+
+def claculate_koordinates(shape):
+    global XMIN
+    global XMAX
+    global YMIN= get_koordinate(shape, "ymin")
+    
+    YMAX=None
+    ZMIN=None
+    ZMAX=None
+    '''
