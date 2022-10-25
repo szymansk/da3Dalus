@@ -7,12 +7,12 @@ import OCC.Extend.ShapeFactory as OExs
 import tigl3.geometry as TGeo
 import OCC.Core.gp as Ogp
 from math import *
-from abmasse import *
-from mydisplay import myDisplay
+from _alt.abmasse import *
+from Extra.mydisplay import myDisplay
 from parts.Rib import *
 import logging
-from BooleanOperationsForLists import *
-from shape_verschieben import *
+from Extra.BooleanOperationsForLists import *
+from _alt.shape_verschieben import *
 
 
 
@@ -61,6 +61,7 @@ class RibFactory:
                 ribs=OAlgo.BRepAlgoAPI_Fuse(ribs,trans_rib).Shape()
             position=position + spacing
         self.rib.ribs= ribs
+        self.md.display_in_origin(ribs)
     
     def calculate_ribs_quantity(self) ->int:
         x= int(2*(self.rib.ydiff/self.rib.spacing))

@@ -31,12 +31,12 @@ from parts.Wing import *
 from parts.Rib import *
 import logging
 
-from abmasse import *
-from Ausgabeservice import *
-from Aussparungen import *
-from Innenstruktur import *
-from shape_verschieben import *
-from Wand_erstellen import *
+from _alt.abmasse import *
+from stl_exporter.Ausgabeservice import *
+from _alt.Aussparungen import *
+from _alt.Innenstruktur import *
+from _alt.shape_verschieben import *
+from _alt.Wand_erstellen import *
 
 class Fuselage:
     def __init__(self) -> None:

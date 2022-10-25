@@ -34,13 +34,13 @@ import OCC.Core.TopoDS as OTopo
 import logging
 from OCC.Display.SimpleGui import init_display
 
-from abmasse import *
-from Ausgabeservice import *
-from Aussparungen import *
-from Innenstruktur import *
+from _alt.abmasse import *
+from stl_exporter.Ausgabeservice import *
+from _alt.Aussparungen import *
+from _alt.Innenstruktur import *
 from parts.Rib import *
-from shape_verschieben import *
-from Wand_erstellen import *
+from _alt.shape_verschieben import *
+from _alt.Wand_erstellen import *
 
 
 class Wing:
