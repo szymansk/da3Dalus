@@ -40,8 +40,8 @@ import Extra.tigl_extractor as tigl_extractor
 import Extra.patterns as pat
 import Dimensions.ShapeDimensions as PDim
 
-class RuderFactory:
-    def __init__(self,tigl_handle,wingNr):
+class ServoRecessFactory:
+    def __init__(self,tigl_handle,wingNr,ruder_pos,servo_size):
         self.tigl_handle=tigl_handle
         self.config_manager: TConfig.CCPACSConfigurationManager  = TConfig.CCPACSConfigurationManager_get_instance()
         self.cpacs_configuration: TConfig.CCPACSConfiguration= self.config_manager.get_configuration(tigl_handle._handle.value)
@@ -51,13 +51,15 @@ class RuderFactory:
         self.wing_koordinates=PDim.ShapeDimensions(self.wing_shape)
         self.shape:OTopo.TopoDS_Shape=None
         self.shapes:list=[]
+        self.ruder_pos=ruder_pos
+        self.servo_size=servo_size
         self.m= myDisplay.instance()
         logging.info(f"{self.wing_koordinates=}")
 
-    def create_ruder_option1(self,factor=(1/3)):
-        logging.info(f"Creating ribs option1")
-        ribs=[]
-        logging.info(f" segment Count: {self.wing.get_segment_count()}")
+    def create_servoRecess_option1(self):
+        box= OPrim.BRepPrimAPI_MakeBox(self.servo_size[1],self.servo_size[2],self.servo_size[3])
+        pass
+
         
     def get_shape(self):
         return self.shape
@@ -94,19 +96,4 @@ class RuderFactory:
         return cutout_offset
         
 
-if __name__ == "__main__":
-    #tigl_handle= tigl_extractor.get_tigl_handler("aircombat_v7")
-    tigl_handle= tigl_extractor.get_tigl_handler("simple_aircraft_v2")
-    m=myDisplay.instance(True,6)
-    a=RuderFactory(tigl_handle,1)
-    cutout=a.get_trailing_edge_cutOut(0.002)
-    #m.display_in_origin(a.wing_shape,"",True)
-    wing_cut=OAlgo.BRepAlgoAPI_Cut(a.wing_shape,cutout).Shape()
-    #m.display_this_shape(wing_cut)
-    m.display_cut(wing_cut,a.wing_shape,cutout)
-    #m.display_in_origin(a.get_trailing_edge_cutOut(),"",True)
-    m.display_in_origin(wing_cut,"",True)
-    m.display_in_origin(a.get_create_trailing_edge_shape())
-    #a._create_trailing_edge()
-    a.m.start()
     

@@ -39,7 +39,7 @@ import logging
 import Extra.BooleanOperationsForLists as BooleanOperationsForLists
 import Extra.tigl_extractor as tigl_extractor
 import Extra.patterns as pat
-import dimensions.ShapeDimensions as PDim
+import Dimensions.ShapeDimensions as PDim
 
 class ReinforcementePipeFactory:
     def __init__(self,tigl_handle,wingNr):

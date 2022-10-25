@@ -80,7 +80,7 @@ class WingFactory:
         
     
     def get_shape(self)-> OTopo.TopoDS_Shape:
-        return self.shape()
+        return self.shapes[-1]
         
     def _create_wing_shape(self, wing_nr):
         ''' Creates the wing shape out of the CPACS and stores it in the wing:Wing Objekt. Calls the funktions to calculate_koordinates and calculate_outter_dimensions '''

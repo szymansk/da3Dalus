@@ -38,7 +38,7 @@ import logging
 import Extra.BooleanOperationsForLists as BooleanOperationsForLists
 import Extra.tigl_extractor as tigl_extractor
 import Extra.patterns as pat
-import dimensions.ShapeDimensions as PDim
+import Dimensions.ShapeDimensions as PDim
 
 class WingRibFactory:
     def __init__(self,tigl_handle,wingNr):
@@ -87,8 +87,13 @@ class WingRibFactory:
         #diagonaleribs
         front_sweep_angle=math.degrees(math.atan(x_dif/y_dif))
         rib_angle=60-front_sweep_angle
-        rib_distance=0.05
-        rib_quantity=y_dif/0.05
+        if y_dif>1:
+            rib_distance=0.5
+        else: 
+            rib_distance=0.05
+        rib_quantity=round(y_dif/rib_distance)
+        logging.info(f"{y_dif=} {rib_quantity=}")
+        rib_quantity=12
         ribs.append(self._create_diagonal_ribs(rib_width, rib_angle,rib_quantity))
         
         #fused ribs
@@ -216,6 +221,5 @@ if __name__ == "__main__":
     a.create_ribs_option1()
     m.display_in_origin(a.get_shape())
     m.display_in_origin(a.wing_shape)
-    #a._create_trailing_edge()
     a.m.start()
     
