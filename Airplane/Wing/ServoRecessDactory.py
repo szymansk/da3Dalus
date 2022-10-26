@@ -30,6 +30,7 @@ import OCC.Extend.ShapeFactory as OExs
 import time
 from OCC.Display.SimpleGui import init_display
 import tigl3.boolean_ops as TBoo
+from Dimensions.ShapeDimensions import ShapeDimensions
 from stl_exporter.Ausgabeservice import write_stl_file2
 from _alt.abmasse import *
 from Extra.mydisplay import myDisplay
@@ -57,7 +58,13 @@ class ServoRecessFactory:
         logging.info(f"{self.wing_koordinates=}")
 
     def create_servoRecess_option1(self):
-        box= OPrim.BRepPrimAPI_MakeBox(self.servo_size[1],self.servo_size[2],self.servo_size[3])
+        box=[]
+        box.append( OPrim.BRepPrimAPI_MakeBox(self.servo_size[1],self.servo_size[2],self.servo_size[3]))
+        box_dimension=ShapeDimensions(box)
+        point= box_dimension.get_point(1)
+        
+        
+        box= OExs.rotate_shape(box,)
         pass
 
         

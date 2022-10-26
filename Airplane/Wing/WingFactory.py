@@ -74,6 +74,7 @@ class WingFactory:
         self.shapes.append(OAlgo.BRepAlgoAPI_Cut(self.wing_shape,self.shapes[-1]).Shape())
         self.m.display_cut(self.shapes[-1],self.wing_shape,self.shapes[-2])
         
+        #Cut-Out Ruder 
         ruder=self.ruder_factory.get_trailing_edge_cutOut()
         self.shapes.append(OAlgo.BRepAlgoAPI_Cut(self.shapes[-1],ruder).Shape())
         self.m.display_cut(self.shapes[-1],self.shapes[-2],ruder)     

@@ -1,7 +1,6 @@
-from __future__ import print_function
 import enum
 import math 
-from turtle import Shape, distance
+from turtle import Shape
 from unicodedata import mirrored, name
 
 
@@ -41,29 +40,38 @@ import Extra.patterns as pat
 import Dimensions.ShapeDimensions as PDim
 
 class WingRibFactory:
-    def __init__(self,tigl_handle,wingNr):
+    '''
+    This class is used to create the Ribs for the given wing_index. After initializing the class, call one of the create methods
+    '''
+    def __init__(self,tigl_handle,wing_index):
         self.tigl_handle=tigl_handle
         self.config_manager: TConfig.CCPACSConfigurationManager  = TConfig.CCPACSConfigurationManager_get_instance()
         self.cpacs_configuration: TConfig.CCPACSConfiguration= self.config_manager.get_configuration(tigl_handle._handle.value)
-        self.wing: TConfig.CCPACSWing= self.cpacs_configuration.get_wing(wingNr)
+        self.wing: TConfig.CCPACSWing= self.cpacs_configuration.get_wing(wing_index)
         self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
         self.wing_shape: OTopo.TopoDS_Shape = self.wing_loft.shape()
         self.wing_koordinates=PDim.ShapeDimensions(self.wing_shape)
         self.shape:OTopo.TopoDS_Shape=None
         self.shapes:list=[]
-        self.m= myDisplay.instance()
+        self.display= myDisplay.instance()
         logging.info(f"{self.wing_koordinates=}")
 
-    def create_ribs_option1(self,horizontal_rib_quantity=5,diagonal_rib_quantity=18, rib_width=0.0004):
+    def create_ribs_option1(self,horizontal_rib_quantity=3, rib_width=0.0004)-> OTopo.TopoDS_Shape:
+        '''
+        Creates a rib cage with horizontal oriented ribs and diagonal ribs
+        Parameters
+        horizontal_rib_quantity default=3
+        rib_width in meters default=0.0004m
+        '''
         logging.info(f"Creating ribs option1")
+        logging.info(f"Segment Count: {self.wing.get_segment_count()}")
         ribs=[]
-        logging.info(f" segment Count: {self.wing.get_segment_count()}")
         for index in range(1,self.wing.get_segment_count()+1):
             logging.info(f"{index=}")
-            segment:TConfig.CCPACSWingSegment=self.wing.get_segment(index)
-            inner:OTopo.TopoDS_Shape=segment.get_inner_closure()
-            outer:OTopo.TopoDS_Shape=segment.get_outer_closure()
-            
+            segment: TConfig.CCPACSWingSegment= self.wing.get_segment(index)
+            inner: OTopo.TopoDS_Shape= segment.get_inner_closure()
+            outer: OTopo.TopoDS_Shape= segment.get_outer_closure()
+           
             inner_dimensions= PDim.ShapeDimensions(inner)
             outer_dimensions= PDim.ShapeDimensions(outer)
             inner_x_list=inner_dimensions.get_koordinates_on_achs(horizontal_rib_quantity)
@@ -98,66 +106,74 @@ class WingRibFactory:
         
         #fused ribs
         ribs.append(OAlgo.BRepAlgoAPI_Fuse(ribs[-1],ribs[-2]).Shape())
-        self.m.display_fuse(ribs[-1],ribs[-2],ribs[-3], "complete_ribs")
+        self.display.display_fuse(ribs[-1],ribs[-2],ribs[-3], "complete_ribs")
         
         #trim ribs to wing Shape
         ribs.append(OAlgo.BRepAlgoAPI_Common(self.wing_shape,ribs[-1]).Shape())
-        self.m.display_common(ribs[-1], self.wing_shape, ribs[-2])
+        self.display.display_common(ribs[-1], self.wing_shape, ribs[-2])
         self.shapes=ribs
         self.shape=ribs[-1]
     
-    def get_shape(self):
+    def get_shape(self)-> OTopo.TopoDS_Shape:
+        '''
+        returns the shape of the created WingRIb
+        '''
         return self.shape
         
-    def _get_wire_x_koordinates_of_segment(self, shape, quantity:int, position="inner"):
-        wire_dimensions=PDim.ShapeDimensions(shape)
-        logging.info(f"{wire_dimensions}")
-        x_diff=wire_dimensions.get_length()/(quantity+1)
-        x_list=[]
-        for i in range(1,quantity+1):
-            new_x=wire_dimensions.get_xmin()+(i*x_diff)
-            logging.info(f"adding {new_x=:.4f}")
-            x_list.append(new_x)
-        y=wire_dimensions.get_ymin()
-        z=wire_dimensions.get_zmin()
-        logging.info(f"{y=:.3f} {z=:.3f}")
-        return x_list,y,z
-
-    def _make_oriented_horizontal_ribs(self,root_x_list,tip_x_list,root_y,root_z,lenght, width, height, rib_width):
+    def _make_oriented_horizontal_ribs(self,root_x_list,tip_x_list,root_y,root_z,lenght, width, height, rib_width)-> OTopo.TopoDS_Shape:
+        '''
+        Creates a multiple oriented horizontal rib.
+        Paramaters
+        root_x_list a list with x kordiante values where the rib should start
+        tip_x_list a list with x kordiante values where the rib should end
+        root_y y koordinate where the rib schould start
+        root_z z koordinate where the rib schould start
+        lenght, width, height parameters of the shape that is becoming the rib
+        rib_width 
+        '''
         logging.info(f"Creating horizontal ribs with {len(root_x_list)} ribs and {rib_width=}")
         ribs=[]
-
         for i,x in enumerate(root_x_list):
             ribs.append(self._make_single_box_rib(root_x_list[i],tip_x_list[i],root_y,root_z, lenght, width, height, rib_width))
         fused_ribs=BooleanOperationsForLists.fuse_list_of_shapes(ribs)
         return fused_ribs
         
-    def _make_single_box_rib(self,x_inner,x_outer,y_pos,z_pos, seg_lenght, seg_width, seg_height, rib_width=0.0004):
+    def _make_single_box_rib(self,x_inner,x_outer,y_pos,z_pos, seg_lenght, seg_width, seg_height, rib_width=0.0004)-> OTopo.TopoDS_Shape:
+        '''
+        Creates a singl oriented horizontal rib.
+        Paramaters
+        x_inner a x kordiante where the rib should start
+        x_outer a x kordiante where the rib should end
+        y_pos y koordinate where the rib schould start
+        z_pos z koordinate where the rib schould start
+        seg_lenght, seg_width, seg_height parameters of the Segment that is becoming the rib
+        rib_width 
+        '''
         corner_points=[]
         #point1
-        x=x_inner+(rib_width/2)
-        logging.info(f"test {x_inner=:.6f} {x=:.6f}")
-        y=y_pos
-        z=z_pos
-        corner_points.append(gp_Pnt(x,y,z))
+        x_cor=x_inner+(rib_width/2)
+        logging.info(f"test {x_inner=:.6f} {x_cor=:.6f}")
+        y_cor=y_pos
+        z_cor=z_pos
+        corner_points.append(gp_Pnt(x_cor,y_cor,z_cor))
         
         #point2
-        x=x_outer+(rib_width/2)
-        y=y_pos+seg_width
-        z=z_pos
-        corner_points.append(gp_Pnt(x,y,z))
+        x_cor=x_outer+(rib_width/2)
+        y_cor=y_pos+seg_width
+        z_cor=z_pos
+        corner_points.append(gp_Pnt(x_cor,y_cor,z_cor))
         
         #point3
-        x=x_outer-(rib_width/2)
-        y=y
-        z=z_pos
-        corner_points.append(gp_Pnt(x,y,z))
+        x_cor=x_outer-(rib_width/2)
+        y_cor=y_pos
+        z_cor=z_pos
+        corner_points.append(gp_Pnt(x_cor,y_cor,z_cor))
         
         #point4
-        x=x_inner-(rib_width/2)
-        y=y_pos
-        z=z_pos
-        corner_points.append(gp_Pnt(x,y,z))
+        x_cor=x_inner-(rib_width/2)
+        y_cor=y_pos
+        z_cor=z_pos
+        corner_points.append(gp_Pnt(x_cor,y_cor,z_cor))
         
         mkw = BRepBuilderAPI_MakeWire()
         for i,point in enumerate(corner_points):
@@ -175,15 +191,18 @@ class WingRibFactory:
         #m.display_in_origin(prism)
         return prism
     
-    def _create_diagonal_ribs(self,rib_width,angle,ribs_quantity=None):
+    def _create_diagonal_ribs(self,rib_width,angle,ribs_quantity=None)-> OTopo.TopoDS_Shape:
+        '''
+        Creates a pattern of diagonal ribs for the class wing
+        '''
         logging.info(f"Creating diagonal ribs: {rib_width=} {angle=} {ribs_quantity=}")
         prim=[]
         xmin,ymin,zmin,xmax,ymax,zmax= get_koordinates(self.wing_shape)
         wing_lenght, wing_width, wing_height= get_dimensions_from_Shape(self.wing_shape)
-        prim.append(OPrim.BRepPrimAPI_MakeBox(wing_lenght*2, rib_width, wing_height).Shape())
+        prim.append(OPrim.BRepPrimAPI_MakeBox(self.wing_koordinates.get_length()*2, rib_width, self.wing_koordinates.get_height()).Shape())
         prim.append(OExs.rotate_shape(prim[-1],gp_OZ(),angle))
         prim.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(xmin,-rib_width,zmin)))
-        self.m.display_this_shape(prim[-1])
+        #self.display.display_this_shape(prim[-1])
         if ribs_quantity==None:
             ribs_distance=0.1
             ribs_quantity=round((wing_width/ribs_distance)*2)
@@ -193,33 +212,5 @@ class WingRibFactory:
             ribs_quantity=ribs_quantity*2
         prim.append(pat.create_linear_pattern(prim[-1],ribs_quantity,ribs_distance,"y"))
         prim.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(0,-wing_width/2,0)))
-        self.m.display_this_shape(prim[-1])
+        self.display.display_this_shape(prim[-1])
         return prim[-1]
-    
-    def _create_trailing_edge(self):
-        wing1=self.wing
-        compseg:TConfig.CCPACSWingComponentSegment=wing1.get_component_segment(1)
-        control_surface:TConfig.CCPACSControlSurfaces=compseg.get_control_surfaces()
-        trailing_edge_devices:TConfig.CCPACSTrailingEdgeDevices=control_surface.get_trailing_edge_devices()
-        count=trailing_edge_devices.get_trailing_edge_device_count()
-        logging.info(f"{count=}")
-        logging.info(trailing_edge_devices)
-        trailing_edge_device:TConfig.CCPACSTrailingEdgeDevice=trailing_edge_devices.get_trailing_edge_device(1)
-        logging.info(trailing_edge_device)
-        loft:TGeo.CNamedShape=trailing_edge_device.get_loft()
-        #logging.info(f"{type(loft)}")
-        shape=loft.shape()
-        self.m.display_in_origin(shape)
-        self.m.display_in_origin(self.wing_shape,True)
-        
-
-if __name__ == "__main__":
-    #tigl_handle= tigl_extractor.get_tigl_handler("aircombat_v7")
-    tigl_handle= tigl_extractor.get_tigl_handler("simple_aircraft_v2")
-    m=myDisplay.instance(True,6)
-    a=WingRibFactory(tigl_handle,1)
-    a.create_ribs_option1()
-    m.display_in_origin(a.get_shape())
-    m.display_in_origin(a.wing_shape)
-    a.m.start()
-    
