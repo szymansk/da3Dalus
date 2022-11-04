@@ -9,7 +9,6 @@ import OCC.Core.gp as Ogp
 from math import *
 from _alt.abmasse import *
 from Extra.mydisplay import myDisplay
-from parts.Rib import *
 import logging
 from Extra.BooleanOperationsForLists import *
 from _alt.shape_verschieben import *

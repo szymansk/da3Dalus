@@ -8,15 +8,6 @@ import tigl3.exports as exp
 import tigl3.geometry
 import tigl3.geometry as TGeo
 import tigl3.surface_factories
-
-import OCC.Core.BRep as OBrep
-import OCC.Core.Bnd as OBnd
-import OCC.Core.BRepAlgoAPI as OAlgo
-import OCC.Core.BRepBuilderAPI as OBuilder
-import OCC.Core.BRepOffsetAPI as OOff
-import OCC.Core.BRepFeat as OFeat
-import OCC.Core.BRepGProp  as OProp
-import OCC.Core.BRepOffset as OOffset
 import OCC.Core.BRepOffsetAPI as OOff
 import OCC.Core.BRepPrimAPI as OPrim
 import OCC.Core.gp as Ogp
@@ -24,16 +15,14 @@ import OCC.Core.TopoDS as OTopo
 import OCC.Core.BRepBuilderAPI as OBui
 import OCC.Core.BRepPrimAPI as OPrim
 import OCC.Extend.ShapeFactory as OExs
-from stl_exporter.Ausgabeservice import *
-from _alt.Wand_erstellen import *
 import time
 from OCC.Display.SimpleGui import init_display
 import tigl3.boolean_ops as TBoo
 from math import *
 from OCC.Core.TopTools import TopTools_ListOfShape
 
-from _alt.abmasse import get_dimensions, get_koordinates
-from Extra.mydisplay import myDisplay
+
+# from Extra.mydisplay import myDisplay
 
 def rotate_shape(shape, axis, angle):
     """Rotate a shape around an axis, with a given angle.
@@ -43,8 +32,8 @@ def rotate_shape(shape, axis, angle):
     @angle : the value of the rotation
     @return: the rotated shape.
     """
-    #assert_shape_not_null(shape)
-    #if unite == "deg":  # convert angle to radians
+    # assert_shape_not_null(shape)
+    # if unite == "deg":  # convert angle to radians
     angle = radians(angle)
     trns = Ogp.gp_Trsf()
     trns.SetRotation(axis, angle)
@@ -54,20 +43,49 @@ def rotate_shape(shape, axis, angle):
 
     return shp
 
-m=myDisplay.instance(True)
+
+display, start_display, add_menu, add_function_to_menu = init_display()
+# m=myDisplay.instance(True)
+
+'''
+point=OPrim.BRepPrimAPI_MakeSphere(1).Shape()
 left = OPrim.BRepPrimAPI_MakeBox(10, 10, 10).Shape()
+display.DisplayShape(point)
+display.DisplayShape(left,transparency=0.8)
+left= OExs.rotate_shape(left,Ogp.gp_OX(),90)
+display.DisplayShape(left)
+start_display()
+'''
+
+'''
 left= OExs.translate_shp(left,Ogp.gp_Vec(-5,-50, -5))
-left= create_hollowedsolid(left,0.4)
-right: TopoDS_Solid = OPrim.BRepPrimAPI_MakeBox(30, 30, 30).Shape()
+#left= create_hollowedsolid(left,0.4)
+right: OTopo.TopoDS_Solid = OPrim.BRepPrimAPI_MakeBox(30, 30, 30).Shape()
 right= OExs.translate_shp(right,Ogp.gp_Vec(-25,75, -5))
-right= create_hollowedsolid(right,1)
+#right= create_hollowedsolid(right,1)
 complement: OTopo.TopoDS_Shape= right.Complemented()
 complement= OExs.translate_shp(complement,Ogp.gp_Vec(-25,50, -5))
 print(type(right))
-cylinder= OPrim.BRepPrimAPI_MakeCylinder(2, 100).Shape()
-#cylinder= OExs.translate_shp(cylinder,Ogp.gp_Vec(0,0, -50))
-#cylinder= rotate_shape(cylinder, Ogp.gp_OX(), 90)
+'''
+print("1")
+point = OPrim.BRepPrimAPI_MakeSphere(3).Shape()
+print("2")
+cylinder = OPrim.BRepPrimAPI_MakeCylinder(2, 50).Shape()
+print("3")
+display.DisplayShape(cylinder, transparency=0.8)
+print("4")
+# cylinder= OExs.translate_shp(cylinder,Ogp.gp_Vec(0,0, -50))
+cylinder = OExs.rotate_shape(cylinder, Ogp.gp_OX(), 90)
+print("5")
+display.DisplayShape(cylinder)
+print("6")
+display.DisplayShape(point)
+print("7")
 
+display.FitAll()
+start_display()
+
+'''
 complete=OAlgo.BRepAlgoAPI_Fuse(left,cylinder).Shape()
 m.display_fuse(complete, left, cylinder) 
 complete2=OAlgo.BRepAlgoAPI_Fuse(complete,right).Shape()
@@ -76,18 +94,17 @@ m.display_fuse(complete2, complete, right)
 point:Ogp.gp_Pnt =TGeo.get_center_of_mass(complete)
 print(point.X(), point.Y(), point.Z())
 center_of_mass = OPrim.BRepPrimAPI_MakeSphere(point, 3).Shape()
+'''
 
-m.start()
-
-#display, start_display, add_menu, add_function_to_menu = init_display()
-#display.DisplayShape(center_of_mass, color="BLUE")
-#display.DisplayShape(complete) 
-#display.DisplayShape(complement) 
-#display.DisplayShape(right) 
-#display.DisplayShape(cylinder) 
+# display, start_display, add_menu, add_function_to_menu = init_display()
+# display.DisplayShape(center_of_mass, color="BLUE")
+# display.DisplayShape(complete)
+# display.DisplayShape(complement)
+# display.DisplayShape(right)
+# display.DisplayShape(cylinder)
 
 
-#display.FitAll()
-#start_display()
+# display.FitAll()
+# start_display()
 
-#write_stl_file2(complete, "Box_test.stl")
+# write_stl_file2(complete, "Box_test.stl")

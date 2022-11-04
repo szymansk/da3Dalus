@@ -1,5 +1,3 @@
-from cgitb import text
-from pickle import FALSE
 import OCC.Core.TopoDS as OTopo
 from OCC.Display.SimpleGui import init_display
 from OCC.Core.Graphic3d import Graphic3d_RenderingParams
@@ -78,9 +76,9 @@ class myDisplay:
     
     def next_y_position(self, shape):
 
-        xdiff,ydiff,zdiff=get_dimensions_from_Shape(shape)
-        pos= self.y_position+ self.distance + (ydiff/2)
-        #print("ydiff:", ydiff, "pos:", pos)
+        xdiff, self.ydiff, zdiff = get_dimensions_from_Shape(shape)
+        pos = self.y_position + self.distance + (self.ydiff / 2)
+        # print("ydiff:", ydiff, "pos:", pos)
         return pos
           
     def get_display(self):
@@ -96,9 +94,15 @@ class myDisplay:
         self.display.FitAll()
     
     def display_point_in_origin(self,point:Ogp.gp_Pnt,radius=0.005,text=""):
+        if self.dev:
             sphere = OPrim.BRepPrimAPI_MakeSphere(point, radius).Shape()
+            tpoint = point
+            ypos = point.Y() + self.origin
+            print(f"{ypos=} = {point.Y()=} {self.origin=}")
+            tpoint.SetY(ypos)
+            self.display.DisplayMessage(point, text_to_write=text)
             self.display.DisplayMessage(point, text)
-            self.display_in_origin(sphere,text,True)
+            self.display_in_origin(sphere, text, True)
             
     def display_fuse(self, fused_shape, shape1, shape2, msg="", trans=False):
         if self.dev:
@@ -117,42 +121,52 @@ class myDisplay:
             self.display.DisplayShape(shape2, color="RED")
             self.display_this_shape(cuted_shape, msg, trans)
             self.display.FitAll()
-    
+
     def display_common(self, common_shape, shape1, shape2, msg="", trans=False):
         if self.dev:
-            shape1=OExs.translate_shp(shape1,Ogp.gp_Vec(0.0,self.y_position,-self.distance))
-            shape2=OExs.translate_shp(shape2,Ogp.gp_Vec(0.0,self.y_position,-self.distance))
+            shape1 = OExs.translate_shp(shape1, Ogp.gp_Vec(0.0, self.y_position, -self.distance))
+            shape2 = OExs.translate_shp(shape2, Ogp.gp_Vec(0.0, self.y_position, -self.distance))
             self.display.DisplayShape(shape1, color="Yellow", transparency=0.8)
             self.display.DisplayShape(shape2)
             self.display_this_shape(common_shape, msg, trans)
             self.display.FitAll()
-        
+
+    def display_multipe_cuts(self, shape, list_to_cut, msg="", trans=False):
+        if self.dev:
+            shape = OExs.translate_shp(shape, Ogp.gp_Vec(0.0, self.y_position, -self.distance))
+            self.display.DisplayShape(shape, transparency=0.8)
+            for shape_to_cut in list_to_cut:
+                shape_n = OExs.translate_shp(shape_to_cut, Ogp.gp_Vec(0.0, self.y_position, -self.distance))
+                self.display.DisplayShape(shape_n, color="Red", transparency=0.5)
+            self.display_this_shape(shape, msg, trans)
+            self.display.FitAll()
+
     def display_slice_x(self, parts_list, name=""):
         if self.dev:
-            x_position= 0 
-            x_position_msg=x_position
-            for i,part in enumerate(parts_list):
-                msg= name + str(i)
+            x_position = 0
+            x_position_msg = x_position
+            for i, part in enumerate(parts_list):
+                msg = f"displaying {name} {i}"
                 logging.info(msg)
-                part=OExs.translate_shp(part,Ogp.gp_Vec(x_position,self.y_position, 0.0))
+                part = OExs.translate_shp(part, Ogp.gp_Vec(x_position, self.y_position, 0.0))
                 self.display.DisplayShape(part)
-                x,y,z= get_dimensions_from_Shape(part)
-                #self.display.DisplayMessage(point=Ogp.gp_Pnt(x_position,self.y_position-0.2,0.0), text_to_write=msg)
-                x_position+= self.distance/16
-                x_position_msg+= (x_position+ x)
-            
-        
-    def display_this_shape2(shape):
-        display, start_display, add_menu, add_function_to_menu = init_display()
-        display.DisplayShape(shape) 
-        display.FitAll()
-        start_display()
-    
+                x, y, z = get_dimensions_from_Shape(part)
+                # self.display.DisplayMessage(point=Ogp.gp_Pnt(x_position,self.y_position-0.2,0.0), text_to_write=msg)
+                x_position += self.distance / 16
+                x_position_msg += (x_position + x)
+
+    def display_this_shape2(self, shape):
+        if self.dev:
+            display, start_display, add_menu, add_function_to_menu = init_display()
+            display.DisplayShape(shape)
+            display.FitAll()
+            start_display()
+
     def start(self):
         if self.dev:
             self.start_display()
 
-    def perspective(self,event=None):
+    def perspective(self, event=None):
         self.display.SetPerspectiveProjection()
         self.display.FitAll()
 

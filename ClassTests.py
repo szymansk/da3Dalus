@@ -1,30 +1,127 @@
+import OCC.Core.TopoDS as OTopo
+import OCC.Core.gp as Ogp
+import tigl3.configuration as TConfig
+import tigl3.geometry as TGeo
+
+import Airplane.AirplaneFactory as ap
+import Airplane.ReinforcementPipeFactory as rpf
+import Airplane.Wing.CablePipeFactory as cp
+import Airplane.Wing.RuderFactory as rf
+import Airplane.Wing.ServoRecessFactory as srf
 import Airplane.Wing.WingFactory as wf
 import Airplane.Wing.WingRibFactory as wrf
-import Airplane.Wing.RuderFactory as rf
-import Airplane.Wing.CablePipe as cp
-import Airplane.ReinforcementPipeFactory as rpf
-import Extra.tigl_extractor as tg
+import Airplane.Fuselage.FuselageFactory as ff
+import Airplane.Fuselage.EngineMountFactory as em
 import Extra.mydisplay as myDisplay
+import Extra.tigl_extractor as tg
+from Dimensions.ShapeDimensions import ShapeDimensions
 
-m=myDisplay.myDisplay.instance(True,6)
-tigl_h=tg.get_tigl_handler("simple_aircraft_v2")
-test_class_name="WingFactory"
-if test_class_name== "WingFactory":
-    test_class= wf.WingFactory(tigl_h,1)
-    test_class.create_wing_option1()
-if test_class_name== "WingRibFactory":
-    test_class= wrf.WingRibFactory(tigl_h,1)
-    test_class.create_ribs_option1()
-if test_class_name== "RuderFactory":
-    test_class= rf.RuderFactory(tigl_h,1)
-    test_class.get_trailing_edge_cutOut()
-if test_class_name== "ReinforcementPipeFactory":
-    test_class= rpf.ReinforcementePipeFactory(tigl_h,1)
-    test_class.create_reinforcemente_pipe_option1(pipe_position=[1,2])
-    
-    
-shape=test_class.get_shape()
-m.display_this_shape(shape)
-m.start()
+if __name__ == "__main__":
+    m = myDisplay.myDisplay.instance(True, 0.5)
+    tigl_h = tg.get_tigl_handler("aircombat_v12")
+    test_class_name = "Ruder"
+    if test_class_name == "WingFactory":
+        test_class = wf.WingFactory(tigl_h, 1)
+        test_class.create_wing_option1()
+    if test_class_name == "WingRibFactory":
+        test_class = wrf.WingRibFactory(tigl_h, 1)
+        test_class.create_ribs_option1()
+    if test_class_name == "RuderFactory":
+        test_class = rf.RuderFactory(tigl_h, 1)
+        test_class.get_trailing_edge_cutout()
+    if test_class_name == "Ruder":
+        config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
+        cpacs_configuration: TConfig.CCPACSConfiguration = config_manager.get_configuration(tigl_h._handle.value)
+        wing: TConfig.CCPACSWing = cpacs_configuration.get_wing(1)
+        wing_loft: TGeo.CNamedShape = wing.get_loft()
+        wing_shape: OTopo.TopoDS_Shape = wing_loft.shape()
 
+        compseg: TConfig.CCPACSWingComponentSegment = wing.get_component_segment(1)
+        control_surface: TConfig.CCPACSControlSurfaces = compseg.get_control_surfaces()
+        trailing_edge_devices: TConfig.CCPACSTrailingEdgeDevices = control_surface.get_trailing_edge_devices()
+        trailing_edge_device: TConfig.CCPACSTrailingEdgeDevice = trailing_edge_devices.get_trailing_edge_device(1)
+        loft: TGeo.CNamedShape = trailing_edge_device.get_loft()
+        shape = loft.shape()
 
+        m.display_in_origin(shape)
+        m.display_in_origin(wing_shape, "", True)
+    if test_class_name == "ReinforcementPipeFactory":
+        test_class = rpf.ReinforcementePipeFactory(tigl_h, 1)
+        test_class.create_reinforcemente_pipe_option1(pipe_position=[1, 2])
+    if test_class_name == "ServoRecessFactory":
+        # servo_size=(0.0023,0.0024,0.0012)
+        servo_size = (0.15, 0.15, 0.05)
+        ruder_factory = rf.RuderFactory(tigl_h, 1)
+        ruder = ruder_factory.get_create_trailing_edge_shape()
+        test_class = srf.ServoRecessFactory(tigl_h, 1, ruder, servo_size=servo_size)
+        test_class.create_servoRecess_option1()
+        m.display_in_origin(test_class.wing_shape, "", True)
+        m.display_in_origin(ruder)
+    if test_class_name == "CablePipeFactory":
+        ruder_factory = rf.RuderFactory(tigl_h, 1)
+        ruder = ruder_factory.get_create_trailing_edge_shape()
+        r_d = ShapeDimensions(ruder)
+        m.display_in_origin(ruder, "", True)
+        servo_size = (0.15, 0.15, 0.05)
+        ruder_factory = rf.RuderFactory(tigl_h, 1)
+        servo_factory = srf.ServoRecessFactory(tigl_h, 1)
+        servo_factory.create_servoRecess_option1(ruder, servo_size=servo_size)
+        servo = servo_factory.get_shape()
+        servo_dimension = ShapeDimensions(servo, "servo")
+        servo_points = servo_dimension.get_points()
+        '''
+        for p in servo_points:
+            m.display_point_in_origin(p)
+        wing_dim=servo_factory.wing_dimensions
+        '''
+        config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
+        cpacs_configuration: TConfig.CCPACSConfiguration = config_manager.get_configuration(tigl_h._handle.value)
+        fuselage: TConfig.CCPACSWing = cpacs_configuration.get_fuselage(1)
+        fuselage_loft: TGeo.CNamedShape = fuselage.get_loft()
+        fuselage_shape: OTopo.TopoDS_Shape = fuselage_loft.shape()
+        fuselage_dimensions = ShapeDimensions(fuselage_shape, "fuselage")
+        fuselage_mid_point: Ogp.gp_Pnt = fuselage_dimensions.get_point(0)
+
+        points = []
+        # Point0
+        p: Ogp.gp_Pnt = servo_dimension.get_point(0)
+        point0: Ogp.gp_Pnt = Ogp.gp_Pnt(p.X(), p.Y(), p.Z())
+        points.append(point0)
+
+        # point1
+        p1: Ogp.gp_Pnt = servo_dimension.get_point(1)
+        point1: Ogp.gp_Pnt = Ogp.gp_Pnt(p1.X() - 0.04, p1.Y() - 0.05, p1.Z())
+        points.append(point1)
+
+        # point2
+        point2: Ogp.gp_Pnt = Ogp.gp_Pnt(p.X() - 0.05, fuselage_dimensions.get_ymax() / 2, p.Z())
+        points.append(point2)
+
+        # point3
+        point3: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_mid_point.X(), fuselage_mid_point.Y(), fuselage_mid_point.Z())
+        points.append(point3)
+
+        test_class = cp.CabelPipeFactory(tigl_h, 1, points, 0.001)
+        test_class.create_complete_pipe()
+    if test_class_name == "RightWing":
+        test_class = ap.AirplaneFactory(tigl_h)
+        test_class.create_wing(1, "right_wing")
+    if test_class_name == "FuselageFactory":
+        test_class = ff.FuselageFactory(tigl_h, 1)
+        test_class.create_fuselage_option1()
+    if test_class_name == "AirplaneFactory":
+        test_class = ap.AirplaneFactory(tigl_h, True)
+        test_class.create_airplane()
+    if test_class_name == "EngineMount":
+        test_class = em.EngineMountFactory(tigl_h)
+        motor_lenght = 0.043
+        shaft_lenght = 0.03
+        mount_width = 0.035
+        mount_hole_dim = 0.004
+        alpha_angle = 5
+        beta_angle = 5
+        test_class.create_engine_mount(motor_lenght, shaft_lenght, mount_width, mount_hole_dim, alpha_angle, beta_angle)
+
+    # shape = test_class.get_shape()
+    # m.display_in_origin(shape)
+    m.start()
