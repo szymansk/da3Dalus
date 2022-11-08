@@ -1,11 +1,10 @@
 import logging
 import os
 
+from OCC.Core.IMeshTools import IMeshTools_Parameters
 from OCC.Core.BRepMesh import BRepMesh_IncrementalMesh
 from OCC.Core.StlAPI import StlAPI_Writer
-
-
-# stlapi.Write()
+from pathlib import Path
 
 class exporter:
     def __init__(self):
@@ -34,34 +33,44 @@ class exporter:
         if not os.path.isfile(filename):
             raise IOError("File not written to disk.")
 
-    # deflection 0.01 feinmaschiger
-    # angular_deflection = 0.01
-    # linear deflection 0.003 dauert lange aber superglatt oberfläche
-    def write_stl_file2(self, a_shape, filename, mode="ascii", linear_deflection=0.01, angular_deflection=0.05):
-        mypath = "stls\\" + filename
-        if a_shape.IsNull():
-            raise AssertionError("Shape is null.")
+    def write_stl_file2(self, shape, filepath, mode="ascii", linear_deflection=0.00002):
+
+        # getting the absolute path of the file that is to be exported
+        abs_filepath = filepath.absolute()
+
+        # parameter validation
+        if shape.IsNull():
+            raise AssertionError("Shape cannot be null.")
         if mode not in ["ascii", "binary"]:
-            raise AssertionError("mode should be either ascii or binary")
-        if os.path.isfile(mypath):
-            print(f"Warning: {mypath} already exists and will be replaced")
-        # first mesh the shape
-        mesh = BRepMesh_IncrementalMesh(
-            a_shape, linear_deflection, False, angular_deflection, True
-        )
-        # mesh.SetDeflection(0.05)
+            raise AssertionError("Mode should be either 'ascii' or 'binary'.")
+        if os.path.isfile(filepath):
+            print(f"Warning: {filepath} already exists and will be replaced.")
+
+        # turning the shape into a mesh of triangles
+        params = IMeshTools_Parameters()
+        params.Deflection = linear_deflection
+        params.InParallel = True
+        params.AllowQualityDecrease = False
+
+        mesh = BRepMesh_IncrementalMesh(shape, params)
+
         mesh.Perform()
         if not mesh.IsDone():
             raise AssertionError("Mesh is not done.")
 
+        # creating an STL exporter instance
         stl_exporter = StlAPI_Writer()
+
+        # setting the STL exporter mode
         if mode == "ascii":
             stl_exporter.SetASCIIMode(True)
         else:  # binary, just set the ASCII flag to False
             stl_exporter.SetASCIIMode(False)
-        stl_exporter.Write(a_shape, mypath)
 
-        if not os.path.isfile(mypath):
+        # writing the STL data to a file
+        stl_exporter.Write(shape, str(abs_filepath))
+
+        if not os.path.isfile(abs_filepath):
             raise IOError("File not written to disk.")
 
     def write_stls_from_list(self, list, plane_part="test"):
