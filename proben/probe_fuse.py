@@ -14,48 +14,35 @@ import OCC.Core.gp as Ogp
 import OCC.Core.TopoDS as OTopo
 import OCC.Core.BRepBuilderAPI as OBui
 import OCC.Core.BRepPrimAPI as OPrim
+import OCC.Core.BRepAlgoAPI as OAlgo
 import OCC.Extend.ShapeFactory as OExs
+import Extra.BooleanOperationsForLists as bof
 import time
 from OCC.Display.SimpleGui import init_display
 import tigl3.boolean_ops as TBoo
 from math import *
 from OCC.Core.TopTools import TopTools_ListOfShape
 
+from Extra.mydisplay import myDisplay
 
-# from Extra.mydisplay import myDisplay
+if __name__ == "__main__":
+    m = myDisplay.instance(True, 12)
 
-def rotate_shape(shape, axis, angle):
-    """Rotate a shape around an axis, with a given angle.
-    @param shape : the shape to rotate
-    @point : the origin of the axis
-    @vector : the axis direction
-    @angle : the value of the rotation
-    @return: the rotated shape.
-    """
-    # assert_shape_not_null(shape)
-    # if unite == "deg":  # convert angle to radians
-    angle = radians(angle)
-    trns = Ogp.gp_Trsf()
-    trns.SetRotation(axis, angle)
-    brep_trns = OBui.BRepBuilderAPI_Transform(shape, trns, False)
-    brep_trns.Build()
-    shp = brep_trns.Shape()
+    point = OPrim.BRepPrimAPI_MakeSphere(2).Shape()
+    point2 = point
+    point2 = OExs.translate_shp(point2, Ogp.gp_Vec(0, 2, 3))
+    left = OPrim.BRepPrimAPI_MakeBox(10, 10, 10).Shape()
 
-    return shp
+    list_tu_cut = [point, point2]
+    m.display_in_origin(point)
+    m.display_in_origin(point2)
+    m.display_in_origin(left, True)
 
-
-display, start_display, add_menu, add_function_to_menu = init_display()
-# m=myDisplay.instance(True)
-
-'''
-point=OPrim.BRepPrimAPI_MakeSphere(1).Shape()
-left = OPrim.BRepPrimAPI_MakeBox(10, 10, 10).Shape()
-display.DisplayShape(point)
-display.DisplayShape(left,transparency=0.8)
-left= OExs.rotate_shape(left,Ogp.gp_OX(),90)
-display.DisplayShape(left)
-start_display()
-'''
+    # cuted= OAlgo.BRepAlgoAPI_Cut(left,point).Shape()
+    cuted = bof.cut_list_of_shapes(left, list_tu_cut)
+    m.display_this_shape(cuted)
+    m.display_cut(cuted, left, point)
+    m.start()
 
 '''
 left= OExs.translate_shp(left,Ogp.gp_Vec(-5,-50, -5))
@@ -66,7 +53,7 @@ right= OExs.translate_shp(right,Ogp.gp_Vec(-25,75, -5))
 complement: OTopo.TopoDS_Shape= right.Complemented()
 complement= OExs.translate_shp(complement,Ogp.gp_Vec(-25,50, -5))
 print(type(right))
-'''
+
 print("1")
 point = OPrim.BRepPrimAPI_MakeSphere(3).Shape()
 print("2")
@@ -85,7 +72,7 @@ print("7")
 display.FitAll()
 start_display()
 
-'''
+
 complete=OAlgo.BRepAlgoAPI_Fuse(left,cylinder).Shape()
 m.display_fuse(complete, left, cylinder) 
 complete2=OAlgo.BRepAlgoAPI_Fuse(complete,right).Shape()

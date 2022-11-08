@@ -131,14 +131,14 @@ class myDisplay:
             self.display_this_shape(common_shape, msg, trans)
             self.display.FitAll()
 
-    def display_multipe_cuts(self, shape, list_to_cut, msg="", trans=False):
+    def display_multipe_cuts(self, cuted_shape, original_shape, list_to_cut, msg="", trans=False):
         if self.dev:
-            shape = OExs.translate_shp(shape, Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-            self.display.DisplayShape(shape, transparency=0.8)
+            moved_shape = OExs.translate_shp(original_shape, Ogp.gp_Vec(0.0, self.y_position, -self.distance))
+            self.display.DisplayShape(moved_shape, transparency=0.8)
             for shape_to_cut in list_to_cut:
                 shape_n = OExs.translate_shp(shape_to_cut, Ogp.gp_Vec(0.0, self.y_position, -self.distance))
                 self.display.DisplayShape(shape_n, color="Red", transparency=0.5)
-            self.display_this_shape(shape, msg, trans)
+            self.display_this_shape(cuted_shape, msg, trans)
             self.display.FitAll()
 
     def display_slice_x(self, parts_list, name=""):

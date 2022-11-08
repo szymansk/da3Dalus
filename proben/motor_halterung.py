@@ -17,7 +17,7 @@ import Dimensions.ShapeDimensions as PDim
 if __name__ == "__main__":
     m = myDisplay.instance(True, 5)
 
-    tigl_handle = tg.get_tigl_handler("simple_aircraft_v2")
+    tigl_handle = tg.get_tigl_handler("simple_aircraft")
     config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
     cpacs_configuration: TConfig.CCPACSConfiguration = config_manager.get_configuration(tigl_handle._handle.value)
     fuselage: TConfig.CCPACSFuselage = cpacs_configuration.get_fuselage(1)
@@ -25,6 +25,13 @@ if __name__ == "__main__":
     fuselage_loft: TGeo.CNamedShape = fuselage.get_loft()
     fuselage_shape: OTopo.TopoDS_Shape = fuselage_loft.shape()
     fuselage_dimensions = PDim.ShapeDimensions(fuselage_shape)
+
+    engines = TConfig.CCPACSEngines = cpacs_configuration.get_engines()
+    engine_positions: TConfig.CCPACSEnginePositions = cpacs_configuration.get_engine_positions()
+    print(f"{engine_positions.get_engine_position_count()=}")
+    pos: TConfig.CCPACSEnginePosition = engine_positions.get_engine_position()
+    pos_parent: TConfig.CCPACSEnginePosition = pos.get_parent()
+    print(type(pos_parent))
 
     lenght = 5
     width = 3
@@ -43,7 +50,7 @@ if __name__ == "__main__":
 
     shapes_to_cut = [inner_box, cylinder]
     engine_mount = []
-    engine_mount.append(cut_list_of_shapes(outer_box, shapes_to_cut))
+    engine_mount.append(cut_list_of_shapes(outer_box, shapes_to_cut, "Here"))
 
     radius = 0.3
     cylinder_lenght = lenght * 0.4

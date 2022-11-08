@@ -75,6 +75,6 @@ class exporter:
 
     def write_stls_from_list(self, list, plane_part="test"):
         for i, shape in enumerate(list):
-            name = plane_part + str(i) + ".stl"
+            name = plane_part + str(i)
             logging.info(f"Exporting {name}")
             self.write_stl_file2(shape, name)
