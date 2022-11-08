@@ -77,17 +77,19 @@ class CablePipeFactory:
 
         # point1
         p1: Ogp.gp_Pnt = servo_dimensions.get_point(1)
-        point1: Ogp.gp_Pnt = Ogp.gp_Pnt(p1.X() - 0.04, p1.Y() - 0.05, p.Z())
+        point1: Ogp.gp_Pnt = Ogp.gp_Pnt(p1.X() - servo_dimensions.get_length() / 2,
+                                        p1.Y() - servo_dimensions.get_width() / 2, p.Z())
         points.append(point1)
 
         # point2
+        wing_inner_cord = self._get_segment_dimensions(1)
         fuselage_mid_point: Ogp.gp_Pnt = fuselage_dimensions.get_point(0)
-        point2: Ogp.gp_Pnt = Ogp.gp_Pnt(p.X() - 0.05, fuselage_dimensions.get_ymax() / 2,
-                                        self.wing_koordinates.get_zmid())
+        point2: Ogp.gp_Pnt = Ogp.gp_Pnt(p.X(), fuselage_dimensions.get_ymax() / 2,
+                                        wing_inner_cord.get_zmid())
         points.append(point2)
 
         # point3
-        point3: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_mid_point.X(), fuselage_mid_point.Y(), fuselage_mid_point.Z())
+        point3: Ogp.gp_Pnt = Ogp.gp_Pnt(wing_inner_cord.get_xmid(), fuselage_mid_point.Y(), fuselage_mid_point.Z())
         points.append(point3)
         return points
 
@@ -124,3 +126,9 @@ class CablePipeFactory:
         sphere: OTopo.TopoDS_Shape = OPrim.BRepPrimAPI_MakeSphere(centre, radius).Shape()
         self.display.display_this_shape(sphere)
         return sphere
+
+    def _get_segment_dimensions(self, index):
+        segment: TConfig.CCPACSWingSegment = self.wing.get_segment(index)
+        wire: OTopo.TopoDS_Wire = segment.get_inner_closure()
+        wire_dimensions = PDim.ShapeDimensions(wire)
+        return wire_dimensions

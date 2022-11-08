@@ -13,7 +13,6 @@ def fuse_list_of_shapes(shape_list, msg="", trans=False) -> OTopo.TopoDS_Shape:
     """
     logging.info(f"Starting to fuse_list_of_shapes")
     fused = []
-    shape = None
     md = myDisplay.instance()
     for index, shape in enumerate(shape_list):
         logging.info(f"Fussing Shape {index + 1} from {len(shape_list)}")
@@ -21,7 +20,10 @@ def fuse_list_of_shapes(shape_list, msg="", trans=False) -> OTopo.TopoDS_Shape:
             fused.append(shape)
         else:
             fused.append(OAlgo.BRepAlgoAPI_Fuse(fused[-1], shape).Shape())
-    md.display_fuse(fused[-1], fused[-2], shape, msg, trans)
+    if len(fused) > 1:
+        md.display_fuse(fused[-1], fused[-2], shape_list[-1], msg, trans)
+    else:
+        md.display_this_shape(shape_list[-1])
     return fused[-1]
 
 
@@ -35,7 +37,7 @@ def cut_list_of_shapes(shape, shape_list, msg="", trans=False) -> OTopo.TopoDS_S
     :return:
     """
     logging.info(f"Starting to cut_list_of_shapes")
-    cuted = []
+    cuted = [shape]
     md = myDisplay.instance()
     for index, shape_to_cut in enumerate(shape_list):
         logging.info(f"Cutting Shape {index + 1} from {len(shape_list)}")
@@ -45,5 +47,5 @@ def cut_list_of_shapes(shape, shape_list, msg="", trans=False) -> OTopo.TopoDS_S
             cuted.append(OAlgo.BRepAlgoAPI_Cut(cuted[-1], shape_to_cut).Shape())
     if cuted[-1] == None:
         logging.error(f"cut_list_of_shapes result is None")
-    md.display_multipe_cuts(shape, shape_list, msg, trans)
+    md.display_multipe_cuts(cuted[-1], shape, shape_list, msg, trans)
     return cuted[-1]

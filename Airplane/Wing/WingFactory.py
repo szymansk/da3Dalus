@@ -39,17 +39,17 @@ class WingFactory:
         internal_struktur = []
 
         # Ribs
-        self.wing_rib_factory.create_ribs_option1(3)
+        self.wing_rib_factory.create_ribs_option1(5)
         internal_struktur.append(self.wing_rib_factory.get_shape())
 
         # Pipese for CarbonRod
-        self.reinforcement_pipe_factory.create_reinforcemente_pipe_option1_wing(radius=0.01, thickness=0.0004,
-                                                                                quantity=3,
-                                                                                pipe_position=[0, 2])
+        self.reinforcement_pipe_factory.create_reinforcemente_pipe_option1_wing(radius=0.003, thickness=0.0004,
+                                                                                quantity=5,
+                                                                                pipe_position=[0, 1])
         internal_struktur.append(self.reinforcement_pipe_factory.get_shape())
 
         # Servo Reccess
-        servo_size = (0.15, 0.15, 0.05)
+        servo_size = (0.024, 0.024, 0.012)
         ruder_shape = self.ruder_factory.get_trailing_edge_shape()
         self.servo_recces_factory.create_servoRecess_option1(ruder_shape, servo_size)
         servo = self.servo_recces_factory.get_shape()
@@ -71,11 +71,19 @@ class WingFactory:
         self.shapes.append(fuse_list_of_shapes(internal_struktur))
 
         # Cut internal Strukture from Wing
-        wing_offset: OTopo.TopoDS_Shape = OOff.BRepOffsetAPI_MakeOffsetShape(self.wing_shape, 0.008, 0.000001).Shape()
-        logging.info(f"{type(wing_offset)}")
+        offset = 0.001
+        toleranz = offset / 8
+        wing_offset: OTopo.TopoDS_Shape = OOff.BRepOffsetAPI_MakeOffsetShape(self.wing_shape, offset, toleranz).Shape()
+        while wing_offset is None and offset < 0.01:
+            offset *= 1.2  # 20% mehr
+            toleranz *= 1.2
+            wing_offset: OTopo.TopoDS_Shape = OOff.BRepOffsetAPI_MakeOffsetShape(self.wing_shape, offset,
+                                                                                 toleranz).Shape()
+            logging.info(f"Offseting wing with {offset=} {toleranz=} {type(wing_offset)}")
+
         # self.shapes.append(OAlgo.BRepAlgoAPI_Cut(self.wing_shape, self.shapes[-1]).Shape())
         self.shapes.append(OAlgo.BRepAlgoAPI_Cut(wing_offset, self.shapes[-1]).Shape())
-        self.m.display_cut(self.shapes[-1], self.wing_shape, self.shapes[-2])
+        self.m.display_cut(self.shapes[-1], wing_offset, self.shapes[-2])
 
         # Cut-Out Ruder
         offset: float = 0.002

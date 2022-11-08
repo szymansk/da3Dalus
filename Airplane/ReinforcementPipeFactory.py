@@ -45,8 +45,8 @@ class ReinforcementePipeFactory:
 
         inner_dimensions = PDim.ShapeDimensions(inner)
         outer_dimensions = PDim.ShapeDimensions(outer)
-        inner_x_list = inner_dimensions.get_koordinates_on_achs(3)
-        outer_x_list = outer_dimensions.get_koordinates_on_achs(3)
+        inner_x_list = inner_dimensions.get_koordinates_on_achs(quantity)
+        outer_x_list = outer_dimensions.get_koordinates_on_achs(quantity)
 
         lenght = inner_dimensions.get_length()
         height = inner_dimensions.get_height()
@@ -66,6 +66,8 @@ class ReinforcementePipeFactory:
                 point2 = Ogp.gp_Pnt(outer_x_list[i], outer_dimensions.get_ymin(), outer_dimensions.get_zmid())
                 pipe = self.pipe_section(point1, point2, radius + thickness)
                 self.shapes.append(pipe)
+                self.m.display_in_origin(pipe)
+
         cylinders = Bof.fuse_list_of_shapes(self.shapes)
         self.shape = cylinders
         return cylinders

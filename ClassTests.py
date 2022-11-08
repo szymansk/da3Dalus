@@ -14,15 +14,22 @@ import Airplane.Fuselage.FuselageFactory as ff
 import Airplane.Fuselage.EngineMountFactory as em
 import Extra.mydisplay as myDisplay
 import Extra.tigl_extractor as tg
+import Extra.ShapeSlicer as ss
+import stl_exporter.Ausgabeservice as exp
 from Dimensions.ShapeDimensions import ShapeDimensions
 
 if __name__ == "__main__":
     m = myDisplay.myDisplay.instance(True, 0.5)
-    tigl_h = tg.get_tigl_handler("aircombat_v12")
-    test_class_name = "Ruder"
+    tigl_h = tg.get_tigl_handler("aircombat_v13")
+    test_class_name = "WingFactory"
     if test_class_name == "WingFactory":
         test_class = wf.WingFactory(tigl_h, 1)
-        test_class.create_wing_option1()
+        my_wing = test_class.create_wing_option1()
+        my_slicer = ss.ShapeSlicer(my_wing, 5, "Wing_v1_")
+        my_slicer.slice_by_cut()
+        my_exporter = exp.exporter()
+        my_exporter.write_step_from_list(my_slicer.parts_list, "Wing_v1_")
+        my_exporter.write_stls_from_list(my_slicer.parts_list, "Wing_v1_")
     if test_class_name == "WingRibFactory":
         test_class = wrf.WingRibFactory(tigl_h, 1)
         test_class.create_ribs_option1()
@@ -47,14 +54,20 @@ if __name__ == "__main__":
         m.display_in_origin(wing_shape, "", True)
     if test_class_name == "ReinforcementPipeFactory":
         test_class = rpf.ReinforcementePipeFactory(tigl_h, 1)
-        test_class.create_reinforcemente_pipe_option1(pipe_position=[1, 2])
+        radius = 0.003
+        thickness = 0.0004
+        quantity = 5
+        pipe_position = [0, 1]
+        pipe = test_class.create_reinforcemente_pipe_option1_wing(radius, thickness, quantity, pipe_position)
+        m.display_in_origin(pipe)
+        m.display_in_origin(test_class.wing_shape, "", True)
     if test_class_name == "ServoRecessFactory":
         # servo_size=(0.0023,0.0024,0.0012)
-        servo_size = (0.15, 0.15, 0.05)
+        servo_size = (0.024, 0.024, 0.012)
         ruder_factory = rf.RuderFactory(tigl_h, 1)
-        ruder = ruder_factory.get_create_trailing_edge_shape()
-        test_class = srf.ServoRecessFactory(tigl_h, 1, ruder, servo_size=servo_size)
-        test_class.create_servoRecess_option1()
+        ruder = ruder_factory.get_trailing_edge_cutout(offset=0.002)
+        test_class = srf.ServoRecessFactory(tigl_h, 1)
+        test_class.create_servoRecess_option1(ruder, servo_size=servo_size)
         m.display_in_origin(test_class.wing_shape, "", True)
         m.display_in_origin(ruder)
     if test_class_name == "CablePipeFactory":

@@ -20,9 +20,9 @@ class EngineMountFactory:
         self.m = myDisplay.instance(True, 5)
         config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
         cpacs_configuration: TConfig.CCPACSConfiguration = config_manager.get_configuration(tigl_handle._handle.value)
-        fuselage: TConfig.CCPACSFuselage = cpacs_configuration.get_fuselage(1)
+        self.fuselage: TConfig.CCPACSFuselage = cpacs_configuration.get_fuselage(1)
 
-        fuselage_loft: TGeo.CNamedShape = fuselage.get_loft()
+        fuselage_loft: TGeo.CNamedShape = self.fuselage.get_loft()
         self.fuselage_shape: OTopo.TopoDS_Shape = fuselage_loft.shape()
         self.fuselage_dimensions = PDim.ShapeDimensions(self.fuselage_shape)
 
@@ -56,6 +56,7 @@ class EngineMountFactory:
         outer_cylinder = OExs.rotate_shape(outer_cylinder, Ogp.gp_OY(), 90)
         inner_cylinder = OPrim.BRepPrimAPI_MakeCylinder(radius * .5, cylinder_lenght).Shape()
         inner_cylinder = OExs.rotate_shape(inner_cylinder, Ogp.gp_OY(), 90)
+        horizontal_box = OPrim.BRepPrimAPI_MakeBox(lenght * factor, width * factor, height * factor).Shape()
         mutter = OAlgo.BRepAlgoAPI_Cut(outer_cylinder, inner_cylinder).Shape()
         mutter = OExs.translate_shp(mutter, Ogp.gp_Vec(0, width / 2, 0))
         muttern = create_circular_pattern(mutter, 4)
@@ -89,6 +90,17 @@ class EngineMountFactory:
                                          self.fuselage_dimensions.get_height()).Shape()]
         x_pos = position - thickness
         box.append(OExs.translate_shp(box[-1], Ogp.gp_Vec(x_pos, self.fuselage_dimensions.get_ymin(),
+                                                          self.fuselage_dimensions.get_zmin())))
+        panel = OAlgo.BRepAlgoAPI_Common(self.fuselage_shape, box[-1]).Shape()
+        self.m.display_cut(panel, self.fuselage_shape, box[-1])
+        return panel
+
+    def _front_point(self):
+        self.fuselage.set
+        thickness = self.fuselage_dimensions.get_length() * 0.005
+        box = [OPrim.BRepPrimAPI_MakeBox(thickness, self.fuselage_dimensions.get_width(),
+                                         self.fuselage_dimensions.get_height()).Shape()]
+        box.append(OExs.translate_shp(box[-1], Ogp.gp_Vec(0, self.fuselage_dimensions.get_ymin(),
                                                           self.fuselage_dimensions.get_zmin())))
         panel = OAlgo.BRepAlgoAPI_Common(self.fuselage_shape, box[-1]).Shape()
         self.m.display_cut(panel, self.fuselage_shape, box[-1])

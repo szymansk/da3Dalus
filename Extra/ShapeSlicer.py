@@ -4,6 +4,7 @@ import OCC.Core.gp as Ogp
 import OCC.Extend.ShapeFactory as OExs
 
 from Dimensions.ShapeDimensions import ShapeDimensions
+from Extra.BooleanOperationsForLists import cut_list_of_shapes
 from Extra.mydisplay import myDisplay
 from _alt.Wand_erstellen import *
 from _alt.abmasse import *
@@ -15,8 +16,8 @@ class ShapeSlicer:
         self.m = myDisplay.instance()
         self.parts_list = []
         self.quantity: int = quantity
-        self.cutout_front_box: OTopo.TopoDS_Shape = None
-        self.cutout_back_box: OTopo.TopoDS_Shape = None
+        # self.cutout_front_box: OTopo.TopoDS_Shape = None
+        # self.cutout_back_box: OTopo.TopoDS_Shape = None
         self.shape_dimensions = ShapeDimensions(shape)
         self.shape = self.orient_shape(shape)
         # self.shape = shape
@@ -57,42 +58,34 @@ class ShapeSlicer:
             self.m.display_this_shape(part, logstr)
             self.parts_list.append(part)
 
+
     def slice_by_cut(self):
         for i in range(0, self.quantity):
-            # self.position_front=self.part_lenght*i-self.part_lenght
-            logstr = "Slicing Part " + str(i)
+            part_number = f"{self.name}  {i}"
+            logstr = f"Slicing {part_number}"
             logging.info(logstr)
             self.position_front = -self.shape_dimensions.get_length() + self.part_lenght * i
             self.position_back = self.part_lenght * (i + 1)
-            self.cutout_front_box = OPrim.BRepPrimAPI_MakeBox(self.shape_dimensions.get_length(),
-                                                              self.shape_dimensions.get_width(),
-                                                              self.shape_dimensions.get_height()).Shape()
-            self.cutout_front_box = OExs.translate_shp(self.cutout_front_box,
-                                                       Ogp.gp_Vec(0, (self.shape_dimensions.get_ymin()),
-                                                                  self.shape_dimensions.get_zmin()))  # (-self.total_height / 2)
-            # self.cutout_back_box = OPrim.BRepPrimAPI_MakeBox(self.shape_dimensions.get_length(), self.shape_dimensions.get_width(),
-            # self.shape_dimensions.get_height()).Shape()
-            self.cutout_back_box = self.cutout_front_box
-            # OExs.translate_shp(self.cutout_back_box,
-            #                                     Ogp.gp_Vec(0, (-self.shape_dimensions.get_width() / 2), (-self.shape_dimensions.get_height() / 2)))
+            cutout_box = OPrim.BRepPrimAPI_MakeBox(self.shape_dimensions.get_point(1),
+                                                   self.shape_dimensions.get_length(),
+                                                   self.shape_dimensions.get_width() * 2,
+                                                   self.shape_dimensions.get_height() * 2).Shape()
+            cutout_front_box = OExs.translate_shp(cutout_box, Ogp.gp_Vec(self.position_front,
+                                                                         -self.shape_dimensions.get_width() / 2,
+                                                                         -self.shape_dimensions.get_height() / 2))
 
-            part: OTopo.TopoDS_Shape = self.shape
-            self.cutout_front_box = OExs.translate_shp(self.cutout_front_box, Ogp.gp_Vec(self.position_front, 0, 0))
-            logstr = "Front Cutout " + str(i)
-            # self.m.display_this_shape(self.cutout_front_box,logstr)
-            self.cutout_back_box = OExs.translate_shp(self.cutout_back_box, Ogp.gp_Vec(self.position_back, 0, 0))
-            logstr = "Back Cutout " + str(i)
-            # self.m.display_this_shape(self.cutout_back_box,logstr)
-            if i != 0:
-                part_before = part
-                part = OAlgo.BRepAlgoAPI_Cut(part_before, self.cutout_front_box).Shape()
-                self.m.display_cut(part, part_before, self.cutout_front_box)
-            part_before = part
-            part = OAlgo.BRepAlgoAPI_Cut(part_before, self.cutout_back_box).Shape()
-            self.m.display_cut(part, part_before, self.cutout_back_box)
-            self.m.display_this_shape(part, logstr)
-            self.parts_list.append(part)
+            cutout_back_box = OExs.translate_shp(cutout_box,
+                                                 Ogp.gp_Vec(self.position_back, -self.shape_dimensions.get_width() / 2,
+                                                            -self.shape_dimensions.get_height() / 2))
+
+            cutout_list = [cutout_front_box, cutout_back_box]
+
+            wing_part = cut_list_of_shapes(self.shape, cutout_list, part_number)
+            # self.m.display_multipe_cuts(wing_part, self.shape, cutout_list)
+            self.parts_list.append(wing_part)
+
         self.m.display_slice_x(self.parts_list, self.name)
+
 
     def slice_with_list_cut(self, list_of_pos):
         '''

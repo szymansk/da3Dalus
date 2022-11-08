@@ -60,7 +60,7 @@ class ServoRecessFactory:
         self.display.display_common(section, section_bound_box, self.wing_shape)
         section_dimensions = ShapeDimensions(section)
 
-        x_pos = section_dimensions.get_xmid() - servo_recess_dimension.get_xmid()
+        x_pos = section_dimensions.get_xmid() + servo_recess_dimension.get_length() * 0.2
         y_pos = self.ruder_dimensions.get_ymin() + (
                 self.ruder_dimensions.get_width() / 3) - servo_recess_dimension.get_width()
         height_dif = abs(section_dimensions.get_height() - servo_recess_dimension.get_height()) / 2

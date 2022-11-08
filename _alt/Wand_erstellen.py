@@ -70,26 +70,62 @@ import logging
 
 
 
-#class Wandstaerke:
-def face_is_plane(face):
+class Wandstaerke:
+    def face_is_plane(self, face):
 
-    #Returns True if the TopoDS_Shape is a plane, False otherwise
-    hs: OGeom.Geom_Surface = BRep_Tool_Surface(face)
-    downcast_result= OGeom.Geom_Plane.DownCast(hs)
-    print(type(downcast_result))
+        # Returns True if the TopoDS_Shape is a plane, False otherwise
+        hs: OGeom.Geom_Surface = BRep_Tool_Surface(face)
+        downcast_result = OGeom.Geom_Plane.DownCast(hs)
+        print(type(downcast_result))
 
-    if downcast_result is None:
-        return False
-    else:
-        return True
+        if downcast_result is None:
+            return False
+        else:
+            return True
 
-def geom_plane_from_face(aFace):
+    def geom_plane_from_face(self, aFace):
 
-    #Returns the geometric plane entity from a planar surface
-    return Geom_Plane.DownCast(BRep_Tool_Surface(aFace))
-    
-        
-def create_hollowedsolid(shape,thickness):
+        # Returns the geometric plane entity from a planar surface
+        return Geom_Plane.DownCast(BRep_Tool_Surface(aFace))
+
+    def create_hollowedsolid(self, shape, thickness):
+        # Our goal is to find the highest Z face and remove it
+        faceToRemove = None
+        XMin = 10
+        logging.info("Starting Create Hollow")
+        # We have to work our way through all the faces to find the highest Z face so we can remove it for the shell
+        aFaceExplorer = TopExp_Explorer(shape, TopAbs_FACE)
+        while aFaceExplorer.More():
+            aFace: OTopo.TopoDS_Face = topods.Face(aFaceExplorer.Current())
+
+            if self.face_is_plane(aFace):
+                aPlane = self.geom_plane_from_face(aFace)
+
+                # We want the highest Z face, so compare this to the previous faces
+                aPnt = aPlane.Location()
+                aX = aPnt.X()
+
+                print(aX)
+                if aX < XMin:
+                    XMin = aX
+                    faceToRemove = aFace
+            aFaceExplorer.Next()
+
+        facesToRemove: TopTools_ListOfShape = TopTools_ListOfShape()
+        facesToRemove.Append(faceToRemove)
+        logging.info("hollowing: Faces to remove Size:" + str(facesToRemove.Size()))
+        myBody = BRepOffsetAPI_MakeThickSolid(shape, facesToRemove, thickness, 0.0001)
+        i = 0
+        while not myBody.IsDone():
+            i += 1
+            print(f"{i=}")
+
+        myBody = myBody.Shape()
+
+        return myBody
+
+
+'''def create_hollowedsolid(self, shape, thickness):
     # Our goal is to find the highest Z face and remove it
     faceToRemove = None
     zMax = -1
@@ -99,12 +135,13 @@ def create_hollowedsolid(shape,thickness):
     while aFaceExplorer.More():
         aFace: OTopo.TopoDS_Face = topods.Face(aFaceExplorer.Current())
 
-        if face_is_plane(aFace):
-            aPlane = geom_plane_from_face(aFace)
+        if self.face_is_plane(aFace):
+            aPlane = self.geom_plane_from_face(aFace)
 
             # We want the highest Z face, so compare this to the previous faces
             aPnt = aPlane.Location()
             aZ = aPnt.Z()
+
             print(aZ)
             if aZ > zMax:
                 zMax = aZ
@@ -112,19 +149,19 @@ def create_hollowedsolid(shape,thickness):
         aFaceExplorer.Next()
 
     facesToRemove: TopTools_ListOfShape = TopTools_ListOfShape()
-    logging.info("hollowing: Faces to remove Size:" + str(facesToRemove.Size())) 
+    logging.info("hollowing: Faces to remove Size:" + str(facesToRemove.Size()))
     if faceToRemove != None:
         facesToRemove.Append(faceToRemove)
-    myBody= BRepOffsetAPI_MakeThickSolid(shape, facesToRemove, thickness, 0.001)
-    #else:
-        #solidmaker= OBrepOffset.BRepOffsetAPI_MakeThickSolid()
-        #myBody= OBrepOffset.BRepOffsetAPI_MakeThickSolid.MakeThickSolidBySimple(shape, thickness)
-        #print(type(myBody))
-        #myBody= BRepOffsetAPI_MakeThickSolid.MakeThickSolidBySimple(shape, thickness, thickness)
-    #myBody = BRepOffsetAPI_MakeThickSolid(myBody, facesToRemove, -thickness / 50.0, 0.001)
+    myBody = BRepOffsetAPI_MakeThickSolid(shape, facesToRemove, thickness, 0.001)
+    # else:
+    # solidmaker= OBrepOffset.BRepOffsetAPI_MakeThickSolid()
+    # myBody= OBrepOffset.BRepOffsetAPI_MakeThickSolid.MakeThickSolidBySimple(shape, thickness)
+    # print(type(myBody))
+    # myBody= BRepOffsetAPI_MakeThickSolid.MakeThickSolidBySimple(shape, thickness, thickness)
+    # myBody = BRepOffsetAPI_MakeThickSolid(myBody, facesToRemove, -thickness / 50.0, 0.001)
 
-    #print("--------------------IsDone:", myBody.IsDone())
-    myBody=myBody.Shape()
+    # print("--------------------IsDone:", myBody.IsDone())
+    myBody = myBody.Shape()
 
     return myBody
-
+'''

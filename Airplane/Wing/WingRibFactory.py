@@ -59,7 +59,8 @@ class WingRibFactory:
             outer_x_list = outer_dimensions.get_koordinates_on_achs(horizontal_rib_quantity)
 
             lenght = inner_dimensions.get_length()
-            height = inner_dimensions.get_height()
+            # height = inner_dimensions.get_height()
+            height = self.wing_koordinates.get_height()
             logging.info(f"{lenght=} {height=}")
 
             x_dif = abs(inner_dimensions.get_xmin() - outer_dimensions.get_xmin())
