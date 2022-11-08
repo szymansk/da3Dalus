@@ -10,9 +10,9 @@ import tigl3.geometry as TGeo
 
 from Dimensions.ShapeDimensions import ShapeDimensions
 from Extra.mydisplay import myDisplay
-# import stl_exporter.Ausgabeservice as stlexp
+import stl_exporter.Ausgabeservice as STLExporter
 from _alt.Wand_erstellen import *
-
+from pathlib import Path
 
 def rotate_shape(shape, axis, angle):
     """Rotate a shape around an axis, with a given angle.
@@ -41,8 +41,7 @@ if __name__ == "__main__":
 
     tigl_handle = tigl3wrapper.Tigl3()
     if i_cpacs == 1:
-        tixi_h.open(
-            r"C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs\aircombat_v6.xml")
+        tixi_h.open(str(Path(__file__).parent.parent / "test_cpacs" / "aircombat_v6.xml"))
     tigl_handle.open(tixi_h, "")
 
     config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
@@ -64,4 +63,8 @@ if __name__ == "__main__":
     m.display_this_shape(fuselage_shape)
     m.start_display()
 
-    write_stl_file2(cuted_fuselage, "fuselage_cuted.stl")
+    export_folder = Path(__file__).parent.parent / "stls"
+    # creates folder if it does not exist
+    export_folder.mkdir(parents=True, exist_ok=True)
+
+    STLExporter.exporter().write_stl_file2(cuted_fuselage, export_folder / "fuselage_cuted.stl")
