@@ -8,6 +8,7 @@ from Airplane.Wing.RuderFactory import RuderFactory
 from Airplane.Wing.ServoRecessFactory import ServoRecessFactory
 from Airplane.Wing.WingRibFactory import *
 from Dimensions.ShapeDimensions import ShapeDimensions
+from Extra.ShellCreator import ShellCreator
 from factories.RibFactory import *
 
 
@@ -90,6 +91,66 @@ class WingFactory:
         ruder_cutout: OTopo.TopoDS_Shape = self.ruder_factory.get_trailing_edge_cutout(offset)
         self.shapes.append(OAlgo.BRepAlgoAPI_Cut(self.shapes[-1], ruder_cutout).Shape())
         self.m.display_cut(self.shapes[-1], self.shapes[-2], ruder_cutout)
+        return self.shapes[-1]
+
+    def create_wing_option2(self) -> OTopo.TopoDS_Shape:
+        """
+        Creates wing with its internat Strukture, made out of Ribs, Pipe for Carbon Rod, Servo Reccess,
+        CablePipe and Cutout for the Ruder
+        :return:
+        """
+        internal_struktur = []
+
+        # Ribs
+        self.wing_rib_factory.create_ribs_option1(5)
+        internal_struktur.append(self.wing_rib_factory.get_shape())
+
+        # Pipese for CarbonRod
+        self.reinforcement_pipe_factory.create_reinforcemente_pipe_option1_wing(radius=0.003, thickness=0.0004,
+                                                                                quantity=5,
+                                                                                pipe_position=[0, 1])
+        internal_struktur.append(self.reinforcement_pipe_factory.get_shape())
+
+        # Servo Reccess
+        servo_size = (0.024, 0.024, 0.012)
+        ruder_shape = self.ruder_factory.get_trailing_edge_shape()
+        self.servo_recces_factory.create_servoRecess_option1(ruder_shape, servo_size)
+        servo = self.servo_recces_factory.get_shape()
+        servo_dimensions = ShapeDimensions(servo, "servo")
+        internal_struktur.append(servo)
+
+        # Cable Pipe
+        fuselage: TConfig.CCPACSWing = self.cpacs_configuration.get_fuselage(1)
+        fuselage_loft: TGeo.CNamedShape = fuselage.get_loft()
+        fuselage_shape: OTopo.TopoDS_Shape = fuselage_loft.shape()
+        fuselage_dimensions = ShapeDimensions(fuselage_shape, "fuselage")
+
+        points = self.cable_pipe_factory.points_route_thru(servo_dimensions, fuselage_dimensions)
+        self.cable_pipe_factory.create_complete_pipe(points, servo_dimensions.get_height() / 2)
+        cable_pipe: OTopo.TopoDS_Shape = self.cable_pipe_factory.get_shape()
+        internal_struktur.append(cable_pipe)
+
+        # Fuse internal Strukture
+        self.shapes.append(fuse_list_of_shapes(internal_struktur))
+
+        # Cut-Out Ruder from internal strukture
+        offset: float = 0.002
+        ruder_cutout: OTopo.TopoDS_Shape = self.ruder_factory.get_trailing_edge_cutout(offset)
+        self.shapes.append(OAlgo.BRepAlgoAPI_Cut(self.shapes[-1], ruder_cutout).Shape())
+        self.m.display_cut(self.shapes[-1], self.shapes[-2], ruder_cutout)
+
+        # Make a Shell out of the wing
+        wing_with_ruder_cutout = OAlgo.BRepAlgoAPI_Cut(self.wing_shape, ruder_cutout).Shape()
+        shellcreator = ShellCreator(wing_with_ruder_cutout)
+        wing_shell = shellcreator.create_shell(thickness=0.002, achs="Y", end="min")
+
+        # Resize internalstructure, cutting with the wing_
+        # self.shapes.append(OAlgo.BRepAlgoAPI_Cut(self.shapes[-1], wing_shell).Shape())
+        # self.m.display_cut(self.shapes[-1], self.shapes[-2], wing_shell)
+
+        # Fussing Innerstructure to wing
+        self.shapes.append(OAlgo.BRepAlgoAPI_Fuse(wing_shell, self.shapes[-1]).Shape())
+        self.m.display_fuse(self.shapes[-1], self.wing_shape, self.shapes[-2])
         return self.shapes[-1]
 
     def get_shape(self) -> OTopo.TopoDS_Shape:
