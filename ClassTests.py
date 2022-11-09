@@ -15,21 +15,22 @@ import Airplane.Fuselage.EngineMountFactory as em
 import Extra.mydisplay as myDisplay
 import Extra.tigl_extractor as tg
 import Extra.ShapeSlicer as ss
+import Extra.ShellCreator as cs
 import stl_exporter.Ausgabeservice as exp
 from Dimensions.ShapeDimensions import ShapeDimensions
 
 if __name__ == "__main__":
     m = myDisplay.myDisplay.instance(True, 0.5)
-    tigl_h = tg.get_tigl_handler("aircombat_v13")
+    tigl_h = tg.get_tigl_handler("aircombat_v12")
     test_class_name = "WingFactory"
     if test_class_name == "WingFactory":
         test_class = wf.WingFactory(tigl_h, 1)
         my_wing = test_class.create_wing_option1()
-        my_slicer = ss.ShapeSlicer(my_wing, 5, "Wing_v1_")
+        my_slicer = ss.ShapeSlicer(my_wing, 5, "Wing_v2_")
         my_slicer.slice_by_cut()
-        my_exporter = exp.exporter()
-        my_exporter.write_step_from_list(my_slicer.parts_list, "Wing_v1_")
-        my_exporter.write_stls_from_list(my_slicer.parts_list, "Wing_v1_")
+        # my_exporter = exp.exporter()
+        # my_exporter.write_step_from_list(my_slicer.parts_list, "Wing_v2_")
+        # my_exporter.write_stls_from_list(my_slicer.parts_list, "Wing_v2_")
     if test_class_name == "WingRibFactory":
         test_class = wrf.WingRibFactory(tigl_h, 1)
         test_class.create_ribs_option1()
@@ -134,6 +135,11 @@ if __name__ == "__main__":
         alpha_angle = 5
         beta_angle = 5
         test_class.create_engine_mount(motor_lenght, shaft_lenght, mount_width, mount_hole_dim, alpha_angle, beta_angle)
+    if test_class_name == "ShellCreator":
+        wing_f = wf.WingFactory(tigl_h, 1)
+        test_class = cs.ShellCreator(wing_f.wing_shape)
+        my_shape = test_class.create_shell(0.001, "Y", "min")
+        m.display_in_origin(my_shape)
 
     # shape = test_class.get_shape()
     # m.display_in_origin(shape)
