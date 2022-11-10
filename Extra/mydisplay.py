@@ -52,20 +52,21 @@ class myDisplay:
 
     def display_this_shape(self,shape,msg="",trans=False):
         if self.dev:
-            try:           
-                self.id+=1                
-                shape=OExs.translate_shp(shape,Ogp.gp_Vec(0.0,self.y_position,0.0))
-                #self.y_position=self.my_y_position(shape)
+            if OTopo.TopoDS_Iterator(shape).More():
+                self.id += 1
+                shape = OExs.translate_shp(shape, Ogp.gp_Vec(0.0, self.y_position, 0.0))
                 if trans:
-                    self.display.DisplayShape(shape, transparency=0.8)    
+                    self.display.DisplayShape(shape, transparency=0.8)
                 else:
                     self.display.DisplayShape(shape)
-                self.display.DisplayMessage(point=Ogp.gp_Pnt(0.0,self.y_position-0.2,0.0), text_to_write=msg)
+                self.display.DisplayMessage(point=Ogp.gp_Pnt(0.0, self.y_position - 0.2, 0.0), text_to_write=msg)
                 self.display.FitAll()
-                self.y_position=self.next_y_position(shape)
-            except:
-                logging.warning("Display this Shape: Shape can not be displayed: posible Null")
-                self.start()
+                self.y_position = self.next_y_position(shape)
+            else:
+                logstr = f"Shape can not be displayed: {msg}"
+                logging.warning(logstr)
+                self.display.DisplayMessage(point=Ogp.gp_Pnt(0.0, self.y_position - 0.2, 0.0), text_to_write=logstr)
+                self.y_position = self.y_position + 3 * self.distance
             
     def my_y_position(self, shape):
 
@@ -139,6 +140,18 @@ class myDisplay:
                 shape_n = OExs.translate_shp(shape_to_cut, Ogp.gp_Vec(0.0, self.y_position, -self.distance))
                 self.display.DisplayShape(shape_n, color="Red", transparency=0.5)
             self.display_this_shape(cuted_shape, msg, trans)
+            self.display.FitAll()
+
+    def display_colission(self, kollision_shape, shape1, shape2, msg="", trans=False):
+        if self.dev:
+            shape1a = OExs.translate_shp(shape1, Ogp.gp_Vec(0.0, self.y_position, -self.distance))
+            shape2a = OExs.translate_shp(shape2, Ogp.gp_Vec(0.0, self.y_position, -self.distance))
+            self.display.DisplayShape(shape1a, color="Yellow", transparency=0.8)
+            self.display.DisplayShape(shape2a, transparency=0.8)
+            if OTopo.TopoDS_Iterator(kollision_shape).More():
+                shape3a = OExs.translate_shp(kollision_shape, Ogp.gp_Vec(0.0, self.y_position, -self.distance))
+                self.display.DisplayShape(shape3a, color="Red")
+            self.display_this_shape(kollision_shape, msg, trans)
             self.display.FitAll()
 
     def display_slice_x(self, parts_list, name=""):

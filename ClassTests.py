@@ -1,7 +1,9 @@
 import OCC.Core.TopoDS as OTopo
 import OCC.Core.gp as Ogp
+import OCC.Extend.ShapeFactory as OExs
 import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
+import OCC.Core.BRepPrimAPI as OPrim
 
 import Airplane.AirplaneFactory as ap
 import Airplane.ReinforcementPipeFactory as rpf
@@ -16,13 +18,26 @@ import Extra.mydisplay as myDisplay
 import Extra.tigl_extractor as tg
 import Extra.ShapeSlicer as ss
 import Extra.ShellCreator as cs
+import Extra.CollisionDetector as cd
 import stl_exporter.Ausgabeservice as exp
 from Dimensions.ShapeDimensions import ShapeDimensions
 
 if __name__ == "__main__":
-    m = myDisplay.myDisplay.instance(True, 0.5)
+    m = myDisplay.myDisplay.instance(True, 1)
     tigl_h = tg.get_tigl_handler("aircombat_v12")
-    test_class_name = "WingFactory"
+    config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
+    cpacs_configuration: TConfig.CCPACSConfiguration = config_manager.get_configuration(tigl_h._handle.value)
+    fuselage: TConfig.CCPACSWing = cpacs_configuration.get_fuselage(1)
+    fuselage_loft: TGeo.CNamedShape = fuselage.get_loft()
+    fuselage_shape: OTopo.TopoDS_Shape = fuselage_loft.shape()
+    fuselage_dimensions = ShapeDimensions(fuselage_shape, "fuselage")
+
+    wing: TConfig.CCPACSWing = cpacs_configuration.get_wing(1)
+    wing_loft: TGeo.CNamedShape = wing.get_loft()
+    wing_shape: OTopo.TopoDS_Shape = wing_loft.shape()
+    wing_dimensions = ShapeDimensions(wing_shape, "wing")
+
+    test_class_name = "CollisionCreator2"
     if test_class_name == "WingFactory":
         test_class = wf.WingFactory(tigl_h, 1)
         my_wing = test_class.create_wing_option1()
@@ -140,6 +155,33 @@ if __name__ == "__main__":
         test_class = cs.ShellCreator(wing_f.wing_shape)
         my_shape = test_class.create_shell(0.001, "Y", "min")
         m.display_in_origin(my_shape)
+    if test_class_name == "CollisionCreator":
+        collision_detector = cd.CollisionDetector()
+        if collision_detector.check_colission(fuselage_shape, wing_shape, "Fuselage", "Wing", True):
+            print("test1:erfolgreich")
+        else:
+            print("test1:fehlgeschlagen")
+
+        moved_wing = OExs.translate_shp(wing_shape, Ogp.gp_Vec(0, 0, 0.5))
+        if collision_detector.check_colission(fuselage_shape, moved_wing, "Fuselage", "Moved_Wing", False):
+            print("test2:erfolgreich")
+        else:
+            print("test2:fehlgeschlagen")
+    if test_class_name == "CollisionCreator2":
+        collision_detector = cd.CollisionDetector()
+        moved_wing: OTopo.TopoDS_Shape = OExs.translate_shp(wing_shape, Ogp.gp_Vec(0, 0, 0.2))
+        named_moved_wing: TGeo.CNamedShape = TGeo.CNamedShape(moved_wing, "moved_wing")
+        box = OPrim.BRepPrimAPI_MakeBox(wing_dimensions.get_point(0), wing_dimensions.get_length() / 2,
+                                        wing_dimensions.get_width() / 2, 0.3).Shape()
+        named_box: TGeo.CNamedShape = TGeo.CNamedShape(box, "box")
+
+        fuselage_testcases = [(wing_loft, False), (named_moved_wing, True), (named_box, False)]
+        wing_testcases = [(named_moved_wing, False), (named_box, True)]
+        moved_wing_testcases = [(named_box, True)]
+        test_cases = {fuselage_loft: fuselage_testcases, wing_loft: wing_testcases,
+                      named_moved_wing: moved_wing_testcases}
+
+        collision_detector.multiple_collision_check(test_cases)
 
     # shape = test_class.get_shape()
     # m.display_in_origin(shape)
