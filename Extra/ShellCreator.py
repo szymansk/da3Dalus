@@ -18,12 +18,13 @@ from OCC.Core.TopExp import TopExp_Explorer
 from OCC.Core.TopTools import TopTools_ListOfShape
 from OCC.Core.TopoDS import (topods)
 from Extra.mydisplay import myDisplay
+import tigl3.geometry as TGeo
 
 
 class ShellCreator:
-    def __init__(self, shape):
+    def __init__(self, named_shape):
         self.m = myDisplay.instance()
-        self.shape = shape
+        self.named_shape = named_shape
 
     def face_is_plane(self, face):
 
@@ -52,7 +53,7 @@ class ShellCreator:
             var_max = -10
 
         # We have to work our way through all the faces to find the highest Z face so we can remove it for the shell
-        a_face_explorer = TopExp_Explorer(self.shape, TopAbs_FACE)
+        a_face_explorer = TopExp_Explorer(self.named_shape.shape(), TopAbs_FACE)
         while a_face_explorer.More():
             a_face: OTopo.TopoDS_Face = topods.Face(a_face_explorer.Current())
 
@@ -84,12 +85,12 @@ class ShellCreator:
         faces_to_remove: TopTools_ListOfShape = TopTools_ListOfShape()
         faces_to_remove.Append(faceToRemove)
         logging.info(f"Removing  {str(faces_to_remove.Size())} faces")
-        make_thick_solid = BRepOffsetAPI_MakeThickSolid(self.shape, faces_to_remove, thickness, 0.0001)
+        make_thick_solid = BRepOffsetAPI_MakeThickSolid(self.named_shape.shape(), faces_to_remove, thickness, 0.0001)
 
         if not make_thick_solid.IsDone():
             logging.error(f"Shelling did not work")
 
-        new_shell = make_thick_solid.Shape()
+        new_shell: TGeo.CNamedShape = TGeo.CNamedShape(make_thick_solid.Shape(), f"{self.named_shape.name} Shell")
         self.m.display_this_shape(new_shell)
 
         return new_shell

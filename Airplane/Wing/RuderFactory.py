@@ -21,12 +21,12 @@ class RuderFactory:
         self.wing: TConfig.CCPACSWing = self.cpacs_configuration.get_wing(wingNr)
         self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
         self.wing_shape: OTopo.TopoDS_Shape = self.wing_loft.shape()
-        self.wing_koordinates = PDim.ShapeDimensions(self.wing_shape)
-        self.shape: OTopo.TopoDS_Shape = OTopo.TopoDS_Shape()
+        self.wing_koordinates = PDim.ShapeDimensions(self.wing_loft)
+        self.namedshape: TGeo.CNamedShape = TGeo.CNamedShape()
         self.shapes: list = []
         self.m = myDisplay.instance()
 
-    def create_ruder_option1(self, factor_ruderarm_pos) -> OTopo.TopoDS_Shape:
+    def create_ruder_option1(self, factor_ruderarm_pos) -> TGeo.CNamedShape:
         """
         Creates the Ruder with the ruderarm at the given position
         :param factor_ruderarm_pos:
@@ -35,13 +35,13 @@ class RuderFactory:
         logging.info(f"Creating ribs option1")
         logging.info(f"Segment Count: {self.wing.get_segment_count()}")
         # TODO: Implementaions of create ruder
-        result: TopoDS_Shape = OTopo.TopoDS_Shape()
+        result: TGeo.CNamedShape = TGeo.CNamedShape()
         return result
 
-    def get_shape(self) -> OTopo.TopoDS_Shape:
-        return self.shape
+    def get_namedshape(self) -> TGeo.CNamedShape:
+        return self.namedshape
 
-    def get_trailing_edge_shape(self, component_segment_index=1, device_index=1) -> OTopo.TopoDS_Shape:
+    def get_trailing_edge_shape(self, component_segment_index=1, device_index=1) -> TGeo.CNamedShape:
         """
         gets the trailing edge decice shape from the CPACS configuration
         :param component_segment_index: int default 1
@@ -55,11 +55,10 @@ class RuderFactory:
         trailing_edge_device: TConfig.CCPACSTrailingEdgeDevice = trailing_edge_devices.get_trailing_edge_device(
             device_index)
         loft: TGeo.CNamedShape = trailing_edge_device.get_loft()
-        shape = loft.shape()
-        self.m.display_this_shape(shape)
-        return shape
+        self.m.display_this_shape(loft)
+        return loft
 
-    def get_trailing_edge_cutout(self, offset=0.02, component_segment_index=1, device_index=1) -> OTopo.TopoDS_Shape:
+    def get_trailing_edge_cutout(self, offset=0.02, component_segment_index=1, device_index=1) -> TGeo.CNamedShape:
         """
         Returns the cutout shape with a given offset
         :param offset: float
@@ -77,4 +76,5 @@ class RuderFactory:
         cutout_shape: OTopo.TopoDS_Shape = cutout_nshape.shape()
         cutout_offset: OTopo.TopoDS_Shape = OOff.BRepOffsetAPI_MakeOffsetShape(cutout_shape, offset,
                                                                                0.000001).Shape()
-        return cutout_offset
+        cutout_nshape.set_shape(cutout_offset)
+        return cutout_nshape

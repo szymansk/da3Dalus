@@ -47,7 +47,7 @@ class exporter:
     # linear deflection 0.003 dauert lange aber superglatt oberfläche
     def write_stl_file2(self, a_shape, filename, mode="ascii", linear_deflection=0.01, angular_deflection=0.05):
         mypath = "stls\\" + filename + ".stl"
-        if a_shape.IsNull():
+        if a_shape.shape().IsNull():
             raise AssertionError("Shape is null.")
         if mode not in ["ascii", "binary"]:
             raise AssertionError("mode should be either ascii or binary")
@@ -55,7 +55,7 @@ class exporter:
             print(f"Warning: {mypath} already exists and will be replaced")
         # first mesh the shape
         mesh = BRepMesh_IncrementalMesh(
-            a_shape, linear_deflection, False, angular_deflection, True
+            a_shape.shape(), linear_deflection, False, angular_deflection, True
         )
         # mesh.SetDeflection(0.05)
         mesh.Perform()
@@ -67,7 +67,7 @@ class exporter:
             stl_exporter.SetASCIIMode(True)
         else:  # binary, just set the ASCII flag to False
             stl_exporter.SetASCIIMode(False)
-        stl_exporter.Write(a_shape, mypath)
+        stl_exporter.Write(a_shape.shape(), mypath)
 
         if not os.path.isfile(mypath):
             raise IOError("File not written to disk.")

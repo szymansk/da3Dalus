@@ -4,6 +4,7 @@ import OCC.Core.BRepAlgoAPI as OAlgo
 import OCC.Core.TopoDS as OTopo
 
 import Extra.mydisplay as myDisplay
+import tigl3.geometry as TGeo
 
 
 class CollisionDetector:
@@ -45,15 +46,41 @@ class CollisionDetector:
                 self.m.display_colission(overlap_shape, shape1, shape2, logstr)
             return False
 
-    def check_namedshape_collision(self, shape1, shape2, expectation):
+    def check_namedshape_collision(self, named_shape1: TGeo.CNamedShape, named_shape2: TGeo.CNamedShape,
+                                   expectation: bool = True):
         """
+        This method check if the 2 given Shapes overlap/collide.
+        By default, it is expected that they do. If they collide it returs True, if they don't False.
+        You can change the expectation with the expectation param
+        :param shape1: primary shape
+        :param shape2: shape to test for collision
+        :param name1: name of the first shape for logging Default: "shape1"
+        :param name2: name of the second shape for logging Defaul: "shape2"
+        :param expectation: do you expect them to collide. Default:True
+        :return: True if collision matches expectation
+        """
+        overlap_shape = OAlgo.BRepAlgoAPI_Common(named_shape1.shape(), named_shape2.shape()).Shape()
+        named_overlap = TGeo.CNamedShape(overlap_shape, "Kollision")
 
-        :param shape1:
-        :param shape2:
-        :param expectation:
-        :return:
-        """
-        return self.check_shapes_colission(shape1.shape(), shape2.shape(), shape1.name(), shape2.name(), expectation)
+        if OTopo.TopoDS_Iterator(overlap_shape).More():
+            kollision = True
+        else:
+            kollision = False
+        logging.info(
+            f"Collision check between {named_shape1.name()} and {named_shape2.name()}: {expectation=} result= {kollision}")
+
+        if kollision == expectation:
+            return True
+        else:
+            if kollision and expectation == False:
+                logstr = f"Unexpected collision between {named_shape1.name()} and {named_shape2.name()}"
+                logging.error(logstr)
+                self.m.display_colission(named_overlap, named_shape1, named_shape2, logstr)
+            if not kollision and expectation == True:
+                logstr = f"Expected collision between {named_shape1.name()} and {named_shape2.name()} does not exist "
+                logging.error(logstr)
+                self.m.display_colission(named_overlap, named_shape1, named_shape2, logstr)
+            return False
 
     def multiple_collision_check(self, test_cases):
         """

@@ -7,6 +7,7 @@ import Dimensions.ShapeDimensions as PDim
 import Extra.BooleanOperationsForLists as BOl
 import Extra.patterns as pat
 from Extra.mydisplay import myDisplay
+import tigl3.geometry as TGeo
 from _alt.Wand_erstellen import *
 from _alt.abmasse import *
 
@@ -17,20 +18,20 @@ class FuselageRibFactory:
     After initializing the class, call one of the create methods
     """
 
-    def __init__(self, fuselage_shape, wing_shape):
+    def __init__(self, fuselage_loft, wing_loft):
         self.display = myDisplay.instance()
         logging.info(f"Initilizing FuselageRibFactory")
-        self.fuselage_shape = fuselage_shape
-        self.fuselage_koordinates = PDim.ShapeDimensions(self.fuselage_shape)
-        self.wing_shape = wing_shape
-        self.wing_koordinates = PDim.ShapeDimensions(self.wing_shape)
+        self.fuselage_loft = fuselage_loft
+        self.fuselage_koordinates = PDim.ShapeDimensions(self.fuselage_loft)
+        self.wing_loft = wing_loft
+        self.wing_koordinates = PDim.ShapeDimensions(self.wing_loft)
         self.ribwidth = None
         self.factor = None
 
         self.shape: OTopo.TopoDS_Shape = OTopo.TopoDS_Shape()
         self.shapes: list = []
 
-    def create_sharp_ribs(self, rib_width, y_max, y_min, z_max, z_min):
+    def create_sharp_ribs(self, rib_width, y_max, y_min, z_max, z_min) -> TGeo.CNamedShape:
         """
         Create a rib cage with a # profile
         :param rib_width:
@@ -50,19 +51,24 @@ class FuselageRibFactory:
         # vertikal ribs
         logging.info(f"Creating vertikal ribs")
         ver_rib = moved_box
-        ver_rib_1 = OExs.translate_shp(ver_rib, Ogp.gp_Vec(0.0, y_max, self.fuselage_koordinates.get_zmin()))
-        ver_rib_2 = OExs.translate_shp(ver_rib, Ogp.gp_Vec(0.0, y_min, self.fuselage_koordinates.get_zmin()))
+        ver_rib_1 = TGeo.CNamedShape(
+            OExs.translate_shp(ver_rib, Ogp.gp_Vec(0.0, y_max, self.fuselage_koordinates.get_zmin())),
+            f"{self.fuselage_loft.name()}_vertikal_rib_1")
+        ver_rib_2 = TGeo.CNamedShape(
+            OExs.translate_shp(ver_rib, Ogp.gp_Vec(0.0, y_min, self.fuselage_koordinates.get_zmin())),
+            f"{self.fuselage_loft.name()}_vertikal_rib_2")
 
         # Horizontal ribs
         logging.info(f"Creating Horizontal ribs")
         hor_rib = OExs.rotate_shape(moved_box, Ogp.gp_OX(), 90)
-        hor_rib_1 = OExs.translate_shp(hor_rib, Ogp.gp_Vec(0.0, rib_height / 2, z_max))
-        hor_rib_2 = OExs.translate_shp(hor_rib, Ogp.gp_Vec(0.0, rib_height / 2, z_min))
+        hor_rib_1 = TGeo.CNamedShape(OExs.translate_shp(hor_rib, Ogp.gp_Vec(0.0, rib_height / 2, z_max)),
+                                     f"{self.fuselage_loft.name()}_horizontal_rib_1")
+        hor_rib_2 = TGeo.CNamedShape(OExs.translate_shp(hor_rib, Ogp.gp_Vec(0.0, rib_height / 2, z_min)),
+                                     f"{self.fuselage_loft.name()}_horizontal_rib_2")
 
         # Fuse all ribs
-        ribs: list[TopoDS_Shape] = [ver_rib_1, ver_rib_2, hor_rib_1, hor_rib_2]
-        fused_ribs = BOl.fuse_list_of_shapes(ribs)
-
+        ribs: list[TGeo.CNamedShape] = [ver_rib_1, ver_rib_2, hor_rib_1, hor_rib_2]
+        fused_ribs = BOl.fuse_list_of_namedshapes(ribs)
         return fused_ribs
 
     def get_shape(self) -> OTopo.TopoDS_Shape:
