@@ -1,7 +1,7 @@
 import OCC.Core.BRepPrimAPI as OPrim
-import OCC.Core.TopoDS as OTopo
 import OCC.Core.gp as Ogp
 import OCC.Extend.ShapeFactory as OExs
+import tigl3.geometry as TGeo
 
 import Extra.BooleanOperationsForLists as Bof
 import Extra.patterns as Pat
@@ -12,13 +12,13 @@ class FuselageCutouts:
     def __int__(self):
         self.shape: None
 
-    def create_cylinder_pattern(self, radius, height, quantity, distance) -> OTopo.TopoDS_Shape:
-        cylinder = OPrim.BRepPrimAPI_MakeCylinder(radius, height).Shape()
-        cylinder_pattern = Pat.create_linear_pattern(cylinder, quantity, distance)
+    def create_cylinder_pattern(self, radius, height, quantity, distance) -> TGeo.CNamedShape:
+        cylinder = TGeo.CNamedShape(OPrim.BRepPrimAPI_MakeCylinder(radius, height).Shape(), "cylinder_cutout")
+        cylinder_pattern = Pat.create_linear_pattern(cylinder, quantity, distance, "x")
         return cylinder_pattern
 
     def create_hardware_cutout(self, fuselage_dimensions: ShapeDimensions, wing_dimensions: ShapeDimensions,
-                               width_factor, position="bottom") -> OTopo.TopoDS_Shape:
+                               width_factor, position="bottom") -> TGeo.CNamedShape:
         """
         :param fuselage_dimensions:
         :param wing_dimensions:
@@ -38,13 +38,16 @@ class FuselageCutouts:
             hardware_z_pos = fuselage_dimensions.get_zmax() - hardware_cutout_height
 
         box = OPrim.BRepPrimAPI_MakeBox(hardware_cutout_lenght, hardware_cutout_width, hardware_cutout_height).Shape()
-        moved_box = OExs.translate_shp(box,
-                                       Ogp.gp_Vec(hardware_x_pos, hardware_y_pos, hardware_z_pos))
+        moved_box = TGeo.CNamedShape(OExs.translate_shp(box,
+                                                        Ogp.gp_Vec(hardware_x_pos, hardware_y_pos, hardware_z_pos)),
+                                     "box_cutout")
 
         cylinder = OPrim.BRepPrimAPI_MakeCylinder(hardware_cutout_width / 2, hardware_cutout_height).Shape()
-        c1 = OExs.translate_shp(cylinder, Ogp.gp_Vec(hardware_x_pos, 0.0, hardware_z_pos))
+        c1 = TGeo.CNamedShape(OExs.translate_shp(cylinder, Ogp.gp_Vec(hardware_x_pos, 0.0, hardware_z_pos)),
+                              "c1_cutout")
         hardware_x_pos += hardware_cutout_lenght
-        c2 = OExs.translate_shp(cylinder, Ogp.gp_Vec(hardware_x_pos, 0.0, hardware_z_pos))
+        c2 = TGeo.CNamedShape(OExs.translate_shp(cylinder, Ogp.gp_Vec(hardware_x_pos, 0.0, hardware_z_pos)),
+                              "c2_cutout")
         c_list = [moved_box, c1, c2]
-        cutout = Bof.fuse_list_of_shapes(c_list)
+        cutout = Bof.fuse_list_of_namedshapes(c_list, "hardware_cutout")
         return cutout

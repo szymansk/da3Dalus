@@ -21,7 +21,7 @@ class ServoRecessFactory:
         self.wing: TConfig.CCPACSWing = self.cpacs_configuration.get_wing(wingNr)
         self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
         self.wing_shape: OTopo.TopoDS_Shape = self.wing_loft.shape()
-        self.wing_dimensions = PDim.ShapeDimensions(self.wing_shape)
+        self.wing_dimensions = PDim.ShapeDimensions(self.wing_loft)
         self.shape: OTopo.TopoDS_Shape = OTopo.TopoDS_Shape()
         self.shapes: list = []
         # self.ruder_dimensions=ShapeDimensions(ruder_shape)
@@ -29,36 +29,41 @@ class ServoRecessFactory:
         self.display = myDisplay.instance()
         logging.info(f"{self.wing_dimensions.__str__()}")
 
-    def create_servoRecess_option1(self, ruder_shape, servo_size=(0.0023, 0.0024, 0.0012)):
+    def create_servoRecess_option1(self, named_ruder, servo_size=(0.0023, 0.0024, 0.0012)) -> TGeo.CNamedShape:
         """
         Creates the recces for the given size of a servo
         :param ruder_shape: TopoDS_Shape
         :param servo_size: (float, float, float)
         :return:
         """
-        logging.info(f"Creating servo Recess for {servo_size=}")
-        self.ruder_shape = ruder_shape
-        self.ruder_dimensions = ShapeDimensions(ruder_shape)
+        logging.info(f"Creating servo Recess for {servo_size=} for {named_ruder.name()}")
+        self.ruder_shape = named_ruder.shape()
+        self.ruder_dimensions = ShapeDimensions(named_ruder)
         self.servo_size = servo_size
         # Make box for recces
-        servo_recess: list[TopoDS_Shape] = []
-        servo_recess.append(
-            OPrim.BRepPrimAPI_MakeBox(self.servo_size[0], self.servo_size[1], self.servo_size[2]).Shape())
+        servo_recess: list[TGeo.CNamedShape] = []
+        named_servo_recess = TGeo.CNamedShape(
+            OPrim.BRepPrimAPI_MakeBox(self.servo_size[0], self.servo_size[1], self.servo_size[2]).Shape(),
+            "servo_recess")
+        servo_recess.append(named_servo_recess)
+        servo_recess_dimension = ShapeDimensions(servo_recess[-1])
 
         # Make box to find y-Positioning
-        section_bound_box = OPrim.BRepPrimAPI_MakeBox(self.wing_dimensions.get_length(), self.servo_size[1],
-                                                      self.wing_dimensions.get_height()).Shape()
-        servo_recess_dimension = ShapeDimensions(servo_recess[-1])
+        section_bound_box = TGeo.CNamedShape(
+            OPrim.BRepPrimAPI_MakeBox(self.wing_dimensions.get_length(), self.servo_size[1],
+                                      self.wing_dimensions.get_height()).Shape(), "bounding_box")
 
         y_pos = self.ruder_dimensions.get_ymin() + (
                 self.ruder_dimensions.get_width() / 3) - servo_recess_dimension.get_width()
 
-        section_bound_box = OExs.translate_shp(section_bound_box, Ogp.gp_Vec(self.wing_dimensions.get_xmin(), y_pos,
-                                                                             self.wing_dimensions.get_zmin()))
+        section_bound_box.set_shape(
+            OExs.translate_shp(section_bound_box.shape(), Ogp.gp_Vec(self.wing_dimensions.get_xmin(), y_pos,
+                                                                     self.wing_dimensions.get_zmin())))
 
-        section = OAlgo.BRepAlgoAPI_Common(section_bound_box, self.wing_shape).Shape()
-        self.display.display_common(section, section_bound_box, self.wing_shape)
-        section_dimensions = ShapeDimensions(section)
+        servo_section = TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Common(section_bound_box.shape(), self.wing_shape).Shape(),
+                                         "servosection")
+        self.display.display_common(servo_section, section_bound_box, self.wing_loft)
+        section_dimensions = ShapeDimensions(servo_section)
 
         x_pos = section_dimensions.get_xmid() + servo_recess_dimension.get_length() * 0.2
         y_pos = self.ruder_dimensions.get_ymin() + (
@@ -68,12 +73,11 @@ class ServoRecessFactory:
         # TODO calculate z_Position correctly. Recces does not touche the wing border
 
         # Display
-        servo_recess.append(OExs.translate_shp(servo_recess[-1], Ogp.gp_Vec(x_pos, y_pos, z_pos)))
-        self.display.display_in_origin(servo_recess[-1], "", True)
-        self.display.display_in_origin(section_bound_box, "", True)
-        self.display.display_in_origin(self.wing_shape, "", True)
+        named_servo_recess.set_shape(OExs.translate_shp(servo_recess[-1].shape(), Ogp.gp_Vec(x_pos, y_pos, z_pos)))
+        servo_recess.append(named_servo_recess)
 
-        self.shape = servo_recess[-1]
+        self.namedshape = servo_recess[-1]
+        return servo_recess[-1]
 
-    def get_shape(self) -> OTopo.TopoDS_Shape:
-        return self.shape
+    def get_shape(self) -> TGeo.CNamedShape:
+        return self.namedshape

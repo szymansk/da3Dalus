@@ -16,9 +16,10 @@ class AirplaneFactory:
     def create_airplane(self):
         logging.info("Creating airplane")
         self.create_right_mainwing()
+        self.create_left_mainwing()
         self.create_fuselage()
 
-    def create_right_mainwing(self, wing_index=1, name="right_mainwing"):
+    def create_wing(self, wing_index=1, name="wing"):
         """
 
         :param nr:
@@ -26,21 +27,26 @@ class AirplaneFactory:
         :return:
         """
         logging.info("Creating " + name)
-        wing_factory = WingFactory(self.tigl_handle, wing_index)
-        wing_factory.create_wing_option1()
-        wing_shape = wing_factory.get_shape()
-        slicer = ShapeSlicer(wing_shape, 5)
+        self.wing_factory = WingFactory(self.tigl_handle, wing_index)
+        self.wing_factory.create_wing_option1()
+        named_wing = self.wing_factory.get_shape()
+        slicer = ShapeSlicer(named_wing, 5)
         slicer.slice_by_cut()
         my_exporter = exp.exporter()
         my_exporter.write_stls_from_list(slicer.parts_list, name)
+
+    def create_right_mainwing(self):
+        self.create_wing(1, "right_mainwing")
 
     def create_left_mainwing(self):
         '''
         Creates a mirrored shape of the "rightwing" in the factory, must be called after create_right_wing
         '''
-        self.wing_factory.create_mirrored_wing()
-        self.wing_factory.export_stl("left_mainwing.stl", True)
-        self.airplane.set_left_mainwing(self.wing_factory.wing.mirrored_shape)
+        left_wing = self.wing_factory.create_mirrored_wing()
+        slicer = ShapeSlicer(left_wing, 5)
+        slicer.slice_by_cut()
+        my_exporter = exp.exporter()
+        my_exporter.write_stls_from_list(slicer.parts_list, "left_mainwing")
 
     def create_right_h_tailwing(self):
         self.create_wing(2, "right_h_tailwing.stl")

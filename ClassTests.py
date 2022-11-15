@@ -24,20 +24,25 @@ from Dimensions.ShapeDimensions import ShapeDimensions
 
 if __name__ == "__main__":
     m = myDisplay.myDisplay.instance(True, 1)
-    tigl_h = tg.get_tigl_handler("aircombat_v12")
+    tigl_h = tg.get_tigl_handler("aircombat_v13")
     config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
     cpacs_configuration: TConfig.CCPACSConfiguration = config_manager.get_configuration(tigl_h._handle.value)
     fuselage: TConfig.CCPACSWing = cpacs_configuration.get_fuselage(1)
     fuselage_loft: TGeo.CNamedShape = fuselage.get_loft()
     fuselage_shape: OTopo.TopoDS_Shape = fuselage_loft.shape()
-    fuselage_dimensions = ShapeDimensions(fuselage_shape, "fuselage")
+    fuselage_dimensions = ShapeDimensions(fuselage_loft)
 
     wing: TConfig.CCPACSWing = cpacs_configuration.get_wing(1)
     wing_loft: TGeo.CNamedShape = wing.get_loft()
     wing_shape: OTopo.TopoDS_Shape = wing_loft.shape()
-    wing_dimensions = ShapeDimensions(wing_shape, "wing")
+    wing_dimensions = ShapeDimensions(wing_loft)
 
-    test_class_name = "CollisionCreator2"
+    m.display_in_origin(wing_shape)
+    m.display_in_origin(fuselage_shape)
+
+    test_class_name = ""
+    if test_class_name == "":
+        pass
     if test_class_name == "WingFactory":
         test_class = wf.WingFactory(tigl_h, 1)
         my_wing = test_class.create_wing_option1()

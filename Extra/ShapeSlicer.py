@@ -2,67 +2,63 @@ import OCC.Core.BRepAlgoAPI as OAlgo
 import OCC.Core.BRepPrimAPI as OPrim
 import OCC.Core.gp as Ogp
 import OCC.Extend.ShapeFactory as OExs
+import tigl3.geometry as TGeo
 
 from Dimensions.ShapeDimensions import ShapeDimensions
-from Extra.BooleanOperationsForLists import cut_list_of_shapes
+from Extra.BooleanOperationsForLists import cut_list_of_namedshapes
 from Extra.mydisplay import myDisplay
 from _alt.Wand_erstellen import *
 from _alt.abmasse import *
-from _alt.shape_verschieben import *
 
 
 class ShapeSlicer:
-    def __init__(self, shape, quantity, name="", dev=False):
+    def __init__(self, named_shape, quantity, dev=False):
         self.m = myDisplay.instance()
         self.parts_list = []
         self.quantity: int = quantity
         # self.cutout_front_box: OTopo.TopoDS_Shape = None
         # self.cutout_back_box: OTopo.TopoDS_Shape = None
-        self.shape_dimensions = ShapeDimensions(shape)
-        self.shape = self.orient_shape(shape)
+        self.shape_dimensions = ShapeDimensions(named_shape)
+        self.namedshape = self.orient_shape(named_shape)
         # self.shape = shape
         self.part_lenght: float = self.shape_dimensions.get_length() / quantity
         self.position_front: float = 0.0
         self.position_back: float = 0.0
-        self.name = name
         # logstr= "Dividing shape in " + str(quantity) + "equal parts of lenght " + str(self.part_lenght)
         logstr = "initiating slicer"
         logging.info(logstr)
 
-    def orient_shape(self, shape) -> OTopo.TopoDS_Shape:
+    def orient_shape(self, namedshape) -> TGeo.CNamedShape:
         '''Rotates the shape 90 degrees over the Zaxis if the shape is wider than longer'''
         if self.shape_dimensions.get_length() < self.shape_dimensions.get_width():
-            logging.info(f"Orienting Shape")
-            shape2 = OExs.rotate_shape(shape, Ogp.gp_OZ(), -90)
-            self.m.display_this_shape(shape2, "Rotated_shape")
+            logging.info(f"Rotating {namedshape.name()} by 90 degrees")
+            rot_shape = OExs.rotate_shape(namedshape.shape(), Ogp.gp_OZ(), -90)
+            result: TGeo.CNamedShape = TGeo.CNamedShape(rot_shape, namedshape.name())
+            self.m.display_this_shape(result, f"Rotated {namedshape.name()}")
+            self.shape_dimensions = ShapeDimensions(result)
+            self.part_lenght: float = self.shape_dimensions.get_length() / self.quantity
         else:
-            shape2 = shape
-        self.shape_dimensions = ShapeDimensions(shape2)
-        self.part_lenght: float = self.shape_dimensions.get_length() / self.quantity
-        return shape2
+            result = namedshape
+        return result
 
     def slice_by_common(self):
         for i in range(0, self.quantity):
             self.position_front = self.part_lenght * i
-            self.cutout_front_box = OPrim.BRepPrimAPI_MakeBox(self.part_lenght, self.total_widht,
-                                                              self.total_height).Shape()
-            self.cutout_front_box = OExs.translate_shp(self.cutout_front_box,
-                                                       Ogp.gp_Vec(self.position_front, (-self.total_widht / 2),
-                                                                  (-self.total_height / 2)))
-            part: OTopo.TopoDS_Shape = self.shape
-            logstr = "Front Cutout " + str(i)
-            self.m.display_this_shape(self.cutout_front_box, logstr)
-            self.m.display_in_origin(self.cutout_front_box, True)
+            self.cutout_front_box = OPrim.BRepPrimAPI_MakeBox(self.shape_dimensions.get_point(1), self.part_lenght,
+                                                              self.shape_dimensions.get_width(),
+                                                              self.shape_dimensions.get_height()).Shape()
+            self.cutout_front_box = OExs.translate_shp(self.cutout_front_box, Ogp.gp_Vec(self.position_front, 0, 0))
+            part: OTopo.TopoDS_Shape = self.namedshape.shape()
+
             part = OAlgo.BRepAlgoAPI_Common(part, self.cutout_front_box).Shape()
             logstr = "Part " + str(i)
             self.m.display_this_shape(part, logstr)
             self.parts_list.append(part)
 
-
     def slice_by_cut(self):
         for i in range(0, self.quantity):
-            part_number = f"{self.name}  {i}"
-            logstr = f"Slicing {part_number}"
+            part_name = f"{self.namedshape.name()}  {i}"
+            logstr = f"Slicing {part_name}"
             logging.info(logstr)
             self.position_front = -self.shape_dimensions.get_length() + self.part_lenght * i
             self.position_back = self.part_lenght * (i + 1)
@@ -73,19 +69,19 @@ class ShapeSlicer:
             cutout_front_box = OExs.translate_shp(cutout_box, Ogp.gp_Vec(self.position_front,
                                                                          -self.shape_dimensions.get_width() / 2,
                                                                          -self.shape_dimensions.get_height() / 2))
+            named_cutout_front_box: TGeo.CNamedShape = TGeo.CNamedShape(cutout_front_box, "cutout_front_box")
 
             cutout_back_box = OExs.translate_shp(cutout_box,
                                                  Ogp.gp_Vec(self.position_back, -self.shape_dimensions.get_width() / 2,
                                                             -self.shape_dimensions.get_height() / 2))
+            named_cutout_back_box: TGeo.CNamedShape = TGeo.CNamedShape(cutout_back_box, "cutout_back_box")
 
-            cutout_list = [cutout_front_box, cutout_back_box]
+            cutout_list = [named_cutout_front_box, named_cutout_back_box]
 
-            wing_part = cut_list_of_shapes(self.shape, cutout_list, part_number)
-            # self.m.display_multipe_cuts(wing_part, self.shape, cutout_list)
+            wing_part = cut_list_of_namedshapes(self.namedshape, cutout_list, part_name)
             self.parts_list.append(wing_part)
 
-        self.m.display_slice_x(self.parts_list, self.name)
-
+        self.m.display_slice_x(self.parts_list, f"Sliced {self.namedshape.name()}")
 
     def slice_with_list_cut(self, list_of_pos):
         '''
@@ -97,7 +93,7 @@ class ShapeSlicer:
         rearbox = None
 
         for i, front_pos in enumerate(list_of_pos):
-            part = self.shape
+            part = self.namedshape
             rearbox = OPrim.BRepPrimAPI_MakeBox(self.total_lenght, self.total_widht, self.total_height).Shape()
             rearbox = OExs.translate_shp(rearbox,
                                          Ogp.gp_Vec(list_of_pos[i], -self.total_widht / 2, -self.total_height / 2))

@@ -68,7 +68,7 @@ class exporter:
             stl_exporter.SetASCIIMode(False)
 
         # writing the STL data to a file
-        stl_exporter.Write(shape, str(abs_filepath))
+        stl_exporter.Write(shape.shape(), str(abs_filepath))
 
         if not os.path.isfile(abs_filepath):
             raise IOError("File not written to disk.")

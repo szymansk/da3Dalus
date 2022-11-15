@@ -15,8 +15,11 @@ import Extra.tigl_extractor as tg
 from Dimensions.ShapeDimensions import ShapeDimensions
 
 if __name__ == "__main__":
-    m = myDisplay.myDisplay.instance(True, 6)
-    tigl_h = tg.get_tigl_handler("simple_aircraft_v2")
+    m = myDisplay.myDisplay.instance(True, 1, False)
+    tigl_h = tg.get_tigl_handler("v9_mit_Engine")
     test_class = ap.AirplaneFactory(tigl_h)
-    test_class.create_wing(1, "right_wing")
+    # test_class.create_right_mainwing()
+    # test_class.create_left_mainwing()
+    # test_class.create_fuselage()
+    test_class.create_airplane()
     m.start()
