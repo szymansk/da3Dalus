@@ -97,6 +97,15 @@ class myDisplay:
                 self.display.DisplayShape(moved_shape, text)
         self.display.FitAll()
 
+    def display_in_secondfloor(self, named_shape: TGeo.CNamedShape, text="", trans=False):
+        if self.dev:
+            moved_shape = OExs.translate_shp(named_shape.shape(), Ogp.gp_Vec(0.0, self.origin, -self.origin))
+            if trans:
+                self.display.DisplayShape(moved_shape, text, transparency=0.8)
+            else:
+                self.display.DisplayShape(moved_shape, text)
+        self.display.FitAll()
+
     def display_point_in_origin(self, point: Ogp.gp_Pnt, radius=0.005, text=""):
         if self.dev:
             sphere = OPrim.BRepPrimAPI_MakeSphere(point, radius).Shape()
@@ -175,7 +184,7 @@ class myDisplay:
         if self.dev:
             x_position = 0
             x_position_msg = x_position
-            moved_part = None
+            moved_part: TGeo.CNamedShape = TGeo.CNamedShape()
             for i, part in enumerate(parts_list):
                 logging.info(f"Displaying {part.name()}")
                 moved_part = TGeo.CNamedShape(
@@ -185,6 +194,7 @@ class myDisplay:
                 part_dimensions = sd.ShapeDimensions(moved_part)
                 x_position += self.distance / 16
                 x_position_msg += (x_position + part_dimensions.get_length())
+
             if self.log:
                 self.display.DisplayMessage(point=Ogp.gp_Pnt(0.0, self.y_position - 0.2, 0.0), text_to_write=name)
             self.display.FitAll()

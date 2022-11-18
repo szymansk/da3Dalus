@@ -283,20 +283,20 @@ class RibFactory:
         return pattern
 
     def create_wing_reinforcement_ribs(self):
-        prim=[]
-        compound=[]
-        xmin= dimensions_mainwing("xmin")
-        zmax= dimensions_mainwing("zmax")
-        length, width, height= get_mainwing_dimensions()
-        box_length, box_width, box_height= length/2, 0.0004, 2*height
+        prim = []
+        compound = []
+        xmin = dimensions_mainwing("x_min")
+        zmax = dimensions_mainwing("z_max")
+        length, width, height = get_mainwing_dimensions()
+        box_length, box_width, box_height = length / 2, 0.0004, 2 * height
         prim.append(OPrim.BRepPrimAPI_MakeBox(box_length, box_width, box_height).Shape())
-        prim.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(0,-box_width/2,-box_height/2)))
+        prim.append(OExs.translate_shp(prim[-1], Ogp.gp_Vec(0, -box_width / 2, -box_height / 2)))
         prim.append(OExs.rotate_shape(prim[-1], Ogp.gp_OY(), 60))
-        prim.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(xmin-0.002,0,zmax-0.01 )))
-        f_length, f_width, f_height= get_fuselage_dimensions()
-        rib_width= f_width * 0.7
-        distance= rib_width/5
-        prim.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(0,-distance*2,0)))
+        prim.append(OExs.translate_shp(prim[-1], Ogp.gp_Vec(xmin - 0.002, 0, zmax - 0.01)))
+        f_length, f_width, f_height = get_fuselage_dimensions()
+        rib_width = f_width * 0.7
+        distance = rib_width / 5
+        prim.append(OExs.translate_shp(prim[-1], Ogp.gp_Vec(0, -distance * 2, 0)))
         for i in range(0,5):
             compound.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(0,distance*i,0)))
         compound.append(fuse_list_of_shapes(compound))
@@ -308,22 +308,22 @@ class RibFactory:
     
    
     def create_sharp_ribs(self,rib_width=0.0004, factor=0.3, radius=0.004):
-        prim=[]
-        compound=[]
-        y_max= dimensions_fuselage["ymax"]*factor
-        y_min= -y_max
-        z_max= dimensions_fuselage["zmax"]*factor
-        z_min= dimensions_mainwing["zmax"]+ radius
-        lenght= dimensions_fuselage["lenght"]
-        width= dimensions_fuselage["width"]
-        prim.append(self.create_quadrat_rib(rib_width,y_max,y_min,z_max,z_min))
-        prim.append(self.create_cylinder_reinforcemnt(radius,lenght, y_max,y_min,z_max,z_min))
-        reduktion_radius=((z_max-z_min)*0.8)/2
-        reduktion_zpos=((z_max-z_min)/2)-reduktion_radius+(rib_width/2)    
-        logstr= f"y_max= {y_max:.4f} y_min {y_min:.4f} z_max= {z_max:.4f} z_min= {z_min:.4f} radius= {reduktion_radius:.4f} z_pos= {reduktion_zpos:.5f}"
-        logging.info(logstr)   
+        prim = []
+        compound = []
+        y_max = dimensions_fuselage["y_max"] * factor
+        y_min = -y_max
+        z_max = dimensions_fuselage["z_max"] * factor
+        z_min = dimensions_mainwing["z_max"] + radius
+        lenght = dimensions_fuselage["lenght"]
+        width = dimensions_fuselage["width"]
+        prim.append(self.create_quadrat_rib(rib_width, y_max, y_min, z_max, z_min))
+        prim.append(self.create_cylinder_reinforcemnt(radius, lenght, y_max, y_min, z_max, z_min))
+        reduktion_radius = ((z_max - z_min) * 0.8) / 2
+        reduktion_zpos = ((z_max - z_min) / 2) - reduktion_radius + (rib_width / 2)
+        logstr = f"y_max= {y_max:.4f} y_min {y_min:.4f} z_max= {z_max:.4f} z_min= {z_min:.4f} radius= {reduktion_radius:.4f} z_pos= {reduktion_zpos:.5f}"
+        logging.info(logstr)
         prim.append(self.create_rib_weight_reduction_recces(reduktion_radius, 0.1))
-        prim.append(OExs.translate_shp(prim[-1],Ogp.gp_Vec(reduktion_radius*2,width/2,reduktion_zpos)))
+        prim.append(OExs.translate_shp(prim[-1], Ogp.gp_Vec(reduktion_radius * 2, width / 2, reduktion_zpos)))
         compound.append(OAlgo.BRepAlgoAPI_Cut(prim[0],prim[-1]).Shape())
         self.md.display_cut(compound[-1], prim[0], prim[-1], logstr)
         reduktion_radius=y_max*0.7

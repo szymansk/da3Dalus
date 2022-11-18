@@ -23,7 +23,7 @@ import stl_exporter.Ausgabeservice as exp
 from Dimensions.ShapeDimensions import ShapeDimensions
 
 if __name__ == "__main__":
-    m = myDisplay.myDisplay.instance(True, 1.5)
+    m = myDisplay.myDisplay.instance(True, 1.5, True)
     tigl_h = tg.get_tigl_handler("aircombat_v13")
     config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
     cpacs_configuration: TConfig.CCPACSConfiguration = config_manager.get_configuration(tigl_h._handle.value)
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     m.display_in_origin(fuselage_loft, "", True)
 
     test_class = wf.WingFactory(tigl_h, 1)
-    my_wing = test_class.create_wing_option1()
+    my_wing = test_class.create_wing_with_inbuilt_servo()
     # my_slicer = ss.ShapeSlicer(my_wing, 5, "Wing_v2_")
     # my_slicer.slice_by_cut()
 

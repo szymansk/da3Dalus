@@ -44,7 +44,7 @@ if __name__ == "__main__":
     thickness = 0.0004
     quantity = 5
     pipe_position = [0, 1]
-    pipe = test_class.create_reinforcemente_pipe_option1_wing(radius, thickness, quantity, pipe_position)
+    pipe = test_class.create_reinforcemente_pipe_wing(radius, thickness, quantity, pipe_position)
     m.display_in_origin(pipe)
 
     m.start()

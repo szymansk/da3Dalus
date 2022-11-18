@@ -1,34 +1,17 @@
 import logging
 
 import OCC.Core.TopoDS as OTopo
-import OCC.Core.gp as Ogp
-import OCC.Extend.ShapeFactory as OExs
 import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
-import OCC.Core.BRepPrimAPI as OPrim
 
-import Airplane.AirplaneFactory as ap
-import Airplane.ReinforcementPipeFactory as rpf
-import Airplane.Wing.CablePipeFactory as cp
-import Airplane.Wing.RuderFactory as rf
-import Airplane.Wing.ServoRecessFactory as srf
-import Airplane.Wing.WingFactory as wf
-import Airplane.Wing.WingRibFactory as wrf
-import Airplane.Fuselage.FuselageFactory as ff
-import Airplane.Fuselage.EngineMountFactory as em
 import Extra.mydisplay as myDisplay
 import Extra.tigl_extractor as tg
-import tigl3.boolean_ops as boo
-import Extra.ShapeSlicer as ss
-import Extra.ShellCreator as cs
-import Extra.CollisionDetector as cd
-import stl_exporter.Ausgabeservice as exp
 from Dimensions.ShapeDimensions import ShapeDimensions
 
 if __name__ == "__main__":
     m = myDisplay.myDisplay.instance(True, 1.5)
     # try:
-    tigl_h = tg.get_tigl_handler("simple_aircraft")
+    tigl_h = tg.get_tigl_handler("aircombat_v14")
     config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
     cpacs_configuration: TConfig.CCPACSConfiguration = config_manager.get_configuration(tigl_h._handle.value)
     fuselage: TConfig.CCPACSWing = cpacs_configuration.get_fuselage(1)
@@ -64,19 +47,26 @@ if __name__ == "__main__":
     except:
         logging.warning(f"No mirrored {ruder_loft.name()}")
 
-    m.start()
+    all_engines = cpacs_configuration.get_engines()
 
-    '''
-    engines: TConfig.CPACSEngines = cpacs_configuration.get_engines()
-    print(engines.get_next_uidparent())
-    print(f"{engines.get_engine_count()=}")
-    engine: TConfig.CPACSEngine= engines.get_engine(1)
-    print(engine.get_thrust_00scaling())
-    #engine_loft: TGeo.CNamedShape = engines.get
-    #engine_shape: OTopo.TopoDS_Shape = engine_loft.shape()
-    #engine_dimensions = ShapeDimensions(engine_loft)
-    #m.display_in_origin(engine_loft, "", True)
+    engine_positions: TConfig.CCPACSEnginePositions = cpacs_configuration.get_engine_positions()
+    engine_position: TConfig.CCPACSEnginePosition = engine_positions.get_engine_position(1)
+    engine_position_transformation: TGeo.CCPACSTransformation = engine_position.get_transformation()
+
+    rotation: TGeo.CTiglPoint = engine_position_transformation.get_rotation()
+    down_thrust_angle = rotation.y
+    right_thrust_angle = rotation.z
+    logging.info(f"{down_thrust_angle=}")
+    logging.info(f"{right_thrust_angle=}")
+
+    translation: TGeo.CCPACSPointAbsRel = engine_position_transformation.get_translation()
+    logging.info(f"engine position= ({translation.get_x()},\t {translation.get_y()},\t {translation.get_z()})")
+
+    engine_scaling: TGeo.CTiglPoint = engine_position_transformation.get_scaling()
+    engine_length = engine_scaling.x
+    engine_width = engine_scaling.y
+    engine_height = engine_scaling.z
+    logging.info(
+        f"engine size= length: {engine_length},width: {engine_width}, height: {engine_height},\t")
+
     m.start()
-    #except:
-    #    m.start()
-    '''

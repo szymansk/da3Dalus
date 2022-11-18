@@ -16,7 +16,7 @@ from Dimensions.ShapeDimensions import ShapeDimensions
 
 if __name__ == "__main__":
     m = myDisplay.myDisplay.instance(True, 1, False)
-    tigl_h = tg.get_tigl_handler("v9_mit_Engine")
+    tigl_h = tg.get_tigl_handler("aircombat_v14")
     test_class = ap.AirplaneFactory(tigl_h)
     # test_class.create_right_mainwing()
     # test_class.create_left_mainwing()

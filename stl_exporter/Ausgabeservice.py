@@ -4,7 +4,9 @@ import os
 from OCC.Core.IMeshTools import IMeshTools_Parameters
 from OCC.Core.BRepMesh import BRepMesh_IncrementalMesh
 from OCC.Core.StlAPI import StlAPI_Writer
+import tigl3.geometry as TGeo
 from pathlib import Path
+import OCC.Core.TopoDS as OTopo
 
 class exporter:
     def __init__(self):
@@ -33,13 +35,18 @@ class exporter:
         if not os.path.isfile(filename):
             raise IOError("File not written to disk.")
 
-    def write_stl_file2(self, shape, filepath, mode="ascii", linear_deflection=0.00002):
+    def write_stl_file2(self, named_shape: TGeo.CNamedShape, filename, mode="ascii", linear_deflection=0.00002):
+
+        export_folder = Path(__file__).parent.parent / "stls"
+        # creates folder if it does not exist
+        export_folder.mkdir(parents=True, exist_ok=True)
+        filepath = export_folder / f"{named_shape.name()}.stl"
 
         # getting the absolute path of the file that is to be exported
         abs_filepath = filepath.absolute()
 
         # parameter validation
-        if shape.IsNull():
+        if not OTopo.TopoDS_Iterator(named_shape.shape()).More():
             raise AssertionError("Shape cannot be null.")
         if mode not in ["ascii", "binary"]:
             raise AssertionError("Mode should be either 'ascii' or 'binary'.")
@@ -52,7 +59,7 @@ class exporter:
         params.InParallel = True
         params.AllowQualityDecrease = False
 
-        mesh = BRepMesh_IncrementalMesh(shape, params)
+        mesh = BRepMesh_IncrementalMesh(named_shape.shape(), params)
 
         mesh.Perform()
         if not mesh.IsDone():
@@ -68,13 +75,12 @@ class exporter:
             stl_exporter.SetASCIIMode(False)
 
         # writing the STL data to a file
-        stl_exporter.Write(shape.shape(), str(abs_filepath))
+        stl_exporter.Write(named_shape.shape(), str(abs_filepath))
 
         if not os.path.isfile(abs_filepath):
             raise IOError("File not written to disk.")
 
     def write_stls_from_list(self, list, plane_part="test"):
-        for i, shape in enumerate(list):
-            name = plane_part + str(i)
-            logging.info(f"Exporting {name}")
-            self.write_stl_file2(shape, name)
+        for i, named_shape in enumerate(list):
+            logging.info(f"Exporting {named_shape.name()}")
+            self.write_stl_file2(named_shape, named_shape.name())

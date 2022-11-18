@@ -11,26 +11,26 @@ dimensions_fuselage={}
 
 def claculate_mainwing_dimension(shape):
     bbox = Bnd_Box()
-    brepbndlib_Add(shape,bbox)
-    xmin,ymin,zmin,xmax,ymax,zmax = bbox.Get()
-    global dimensions_mainwing 
-    dimensions_mainwing={"xmin":xmin,"ymin": ymin, "zmin": zmin, 
-                     "xmax":xmax, "ymax": ymax, "zmax":zmax,
-                     "lenght":xmax-xmin, "width": ymax-ymin, "height":zmax-zmin,
-                     "xmid":(xmax-xmin)/2, "ymid": ymax-ymin, "zmid":zmax-zmin
-                     }
+    brepbndlib_Add(shape, bbox)
+    xmin, ymin, zmin, xmax, ymax, zmax = bbox.Get()
+    global dimensions_mainwing
+    dimensions_mainwing = {"x_min": xmin, "y_min": ymin, "z_min": zmin,
+                           "x_max": xmax, "y_max": ymax, "z_max": zmax,
+                           "lenght": xmax - xmin, "width": ymax - ymin, "height": zmax - zmin,
+                           "x_mid": (xmax - xmin) / 2, "y_mid": ymax - ymin, "z_mid": zmax - zmin
+                           }
     print(dimensions_mainwing)
 
 def claculate_fuselage_dimension(shape):
     bbox = Bnd_Box()
-    brepbndlib_Add(shape,bbox)
-    xmin,ymin,zmin,xmax,ymax,zmax = bbox.Get()
-    global dimensions_fuselage 
-    dimensions_fuselage={"xmin":xmin,"ymin": ymin, "zmin": zmin, 
-                     "xmax":xmax, "ymax": ymax, "zmax":zmax,
-                     "lenght":xmax-xmin, "width": ymax-ymin, "height":zmax-zmin,
-                     "xmid":(xmax-xmin)/2, "ymid": ymax-ymin, "zmid":zmax-zmin
-                     }
+    brepbndlib_Add(shape, bbox)
+    xmin, ymin, zmin, xmax, ymax, zmax = bbox.Get()
+    global dimensions_fuselage
+    dimensions_fuselage = {"x_min": xmin, "y_min": ymin, "z_min": zmin,
+                           "x_max": xmax, "y_max": ymax, "z_max": zmax,
+                           "lenght": xmax - xmin, "width": ymax - ymin, "height": zmax - zmin,
+                           "x_mid": (xmax - xmin) / 2, "y_mid": ymax - ymin, "z_mid": zmax - zmin
+                           }
 
 def get_fuselage_dimensions():
     length=dimensions_fuselage("lenght")
@@ -62,12 +62,13 @@ def get_dimensions_from_Shape(shape):
     xdiff,ydiff,zdiff= get_dimensions(xmin, ymin, zmin,xmax,ymax,zmax)
     return xdiff, ydiff, zdiff
 
-def get_koordinate(shape, koordinate_name="xmin"):
+
+def get_koordinate(shape, koordinate_name="x_min"):
     bbox = Bnd_Box()
-    brepbndlib_Add(shape,bbox)
-    xmin,ymin,zmin,xmax,ymax,zmax = bbox.Get()
-    global koordinate_dict 
-    koordinate_dict={"xmin":xmin,"ymin": ymin, "zmin": zmin, "xmax":xmax, "ymax": ymax, "zmax":zmax}
+    brepbndlib_Add(shape, bbox)
+    xmin, ymin, zmin, xmax, ymax, zmax = bbox.Get()
+    global koordinate_dict
+    koordinate_dict = {"x_min": xmin, "y_min": ymin, "z_min": zmin, "x_max": xmax, "y_max": ymax, "z_max": zmax}
     return koordinate_dict.get(koordinate_name)
 
 
@@ -95,7 +96,7 @@ LENGHT=None
 def claculate_koordinates(shape):
     global XMIN
     global XMAX
-    global YMIN= get_koordinate(shape, "ymin")
+    global YMIN= get_koordinate(shape, "y_min")
     
     YMAX=None
     ZMIN=None

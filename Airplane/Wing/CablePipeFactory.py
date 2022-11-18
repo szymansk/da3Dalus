@@ -6,7 +6,6 @@ import OCC.Core.BRepPrimAPI as OPrim
 import OCC.Core.gp as Ogp
 import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
-from OCC.Core.ChFi2d import *  # ChFi2d_AnaFilletAlgo
 
 import Dimensions.ShapeDimensions as PDim
 import Extra.BooleanOperationsForLists as BooleanOperationsForLists
@@ -21,52 +20,51 @@ class CablePipeFactory:
     """
 
     def __init__(self, tigl_handle, wing_nr) -> None:
+        self.display = myDisplay.instance()
         self.tigl_handle = tigl_handle
         self.config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
         self.cpacs_configuration: TConfig.CCPACSConfiguration = self.config_manager.get_configuration(
             tigl_handle._handle.value)
+
         self.wing: TConfig.CCPACSWing = self.cpacs_configuration.get_wing(wing_nr)
         self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
         self.wing_shape: OTopo.TopoDS_Shape = self.wing_loft.shape()
         self.wing_koordinates = PDim.ShapeDimensions(self.wing_loft)
-        self.display = myDisplay.instance(True)
-        # self.fillet_radius=self.radius*1.5
-        self.named_shape = None
-        self.points = None
-        self.radius = None
+
+        self.named_shape = TGeo.CNamedShape()
+        self.points: list[Ogp.gp_Pnt] = []
+        self.radius: float = 0.002
 
     def get_shape(self) -> TGeo.CNamedShape:
-        """
-        :return: Shape of the pipe Shape
-        """
         return self.named_shape
 
     def create_complete_pipe(self, points: list, radius) -> TGeo.CNamedShape:
         """
-        Create a Pipe that runs trhu the given Points with the given radius
+        Create a Pipe that runs through the given Points with the given radius
         :param points: list of points
         :param radius: in meters
-        :return:
+        :return: the namedshape of the created pipe
         """
         self.points = points
         self.radius = radius
         pipe_shapes = []
-        print(f"{len(self.points)=}")
+        logging.info(f"Creating a pipe thru {len(self.points)=} points")
         for i in range(0, len(self.points) - 1):
-            print(f"{i=}")
-            pipe_shapes.append(self._pipe_section(self.points[i], self.points[i + 1], self.radius))
+            pipe_shapes.append(self._pipe_section(self.points[i], self.points[i + 1], self.radius, i))
 
         for i in range(1, len(self.points)):
-            pipe_shapes.append(self._pipe_corner(self.points[i], self.radius))
+            pipe_shapes.append(self._pipe_corner(self.points[i], self.radius, i))
 
-        named_pipe = BooleanOperationsForLists.fuse_list_of_namedshapes(pipe_shapes, "Cable_pipe")
+        named_pipe = BooleanOperationsForLists.fuse_list_of_namedshapes(pipe_shapes, "cable_pipe")
         self.loft = named_pipe
         return named_pipe
 
     def points_route_thru(self, servo_dimensions: ShapeDimensions, fuselage_dimensions: ShapeDimensions):
         """
-        :param servo_dimensions:
-        :param fuselage_dimensions:
+        This method returs a list of point that describe the rout of a pipe. it Starts at the centre of the servo and
+        ends at the centre of the fuselage
+        :param servo_dimensions: dimensions of the servo
+        :param fuselage_dimensions: dimensions of the fuselage
         :return: list of points
         """
         points = []
@@ -93,22 +91,24 @@ class CablePipeFactory:
         points.append(point3)
         return points
 
-    def _pipe_section(self, point1: Ogp.gp_Pnt, point2: Ogp.gp_Pnt, radius=0.002) -> TGeo.CNamedShape:
+    def _pipe_section(self, start: Ogp.gp_Pnt, end: Ogp.gp_Pnt, radius=0.002, index=0) -> TGeo.CNamedShape:
         """
-        Create a pipe between 2 given points witha given radius
-        :param point1:
-        :param point2:
-        :param radius: in meters
-        :return: pipe section
+        Create a pipe between 2 given points with a given radius
+        :param start: starting point of the pipe section
+        :param end: ending point of the pipe section
+        :param radius: in meters default set to 0.002 meters
+        :param index: a number to identify the pipesection
+        :return: named shape of pipe section
         """
+        logging.info(f"Creating pipesection_{index}")
         make_wire = OBuilder.BRepBuilderAPI_MakeWire()
-        edge = OBuilder.BRepBuilderAPI_MakeEdge(point1, point2).Edge()
+        edge = OBuilder.BRepBuilderAPI_MakeEdge(start, end).Edge()
         make_wire.Add(edge)
         make_wire.Build()
         wire = make_wire.Wire()
 
-        mydir = Ogp.gp_Dir(point2.X() - point1.X(), point2.Y() - point1.Y(), point2.Z() - point1.Z())
-        circle = Ogp.gp_Circ(gp_Ax2(point1, mydir), radius)
+        mydir = Ogp.gp_Dir(end.X() - start.X(), end.Y() - start.Y(), end.Z() - start.Z())
+        circle = Ogp.gp_Circ(gp_Ax2(start, mydir), radius)
 
         profile_edge = OBuilder.BRepBuilderAPI_MakeEdge(circle).Edge()
         profile_wire = OBuilder.BRepBuilderAPI_MakeWire(profile_edge).Wire()
@@ -116,15 +116,17 @@ class CablePipeFactory:
         pipe_section = TGeo.CNamedShape(OOff.BRepOffsetAPI_MakePipe(wire, profile_face).Shape(), "Pipesection")
         return pipe_section
 
-    def _pipe_corner(self, centre, radius) -> TGeo.CNamedShape:
+    def _pipe_corner(self, centre: Ogp.gp_Pnt, radius: float, index=0) -> TGeo.CNamedShape:
         """
-        returss a sphere witch is used in the curves (corners) of the pipe
-        :param centre:
-        :param radius:
-        :return:
+        returns a sphere witch is used in the curves (corners) of the pipe
+        :param centre: a point at the center of the corner
+        :param radius: radius of the corner
+        :param index: a number to identify the corner
+        :return: named shape of the corner
         """
+        logging.info(f"Creating pipecorner_{index}")
         sphere: OTopo.TopoDS_Shape = OPrim.BRepPrimAPI_MakeSphere(centre, radius).Shape()
-        named_sphere: TGeo.CNamedShape = TGeo.CNamedShape(sphere, "Pipecorner")
+        named_sphere: TGeo.CNamedShape = TGeo.CNamedShape(sphere, f"pipecorner_{index}")
         return named_sphere
 
     def _get_segment_dimensions(self, index):

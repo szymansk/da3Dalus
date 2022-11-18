@@ -142,22 +142,22 @@ class profil:
             fuselage = config.get_fuselage(ifuse)
             fuselage_shape = fuselage.get_loft().shape()
 
-            #display.DisplayShape(fuselage_shape)
+            # display.DisplayShape(fuselage_shape)
 
-            xmin,ymin,zmin,xmax,ymax,zmax = get_koordinates(fuselage_shape)
-            xdiff,zdiff,ydiff = get_dimensions(xmin,ymin,zmin,xmax,ymax,zmax)
-            #print(xdiff,zdiff,ydiff,xmax)
-            #print(xmax,ymax,zmax)
+            xmin, ymin, zmin, xmax, ymax, zmax = get_koordinates(fuselage_shape)
+            xdiff, zdiff, ydiff = get_dimensions(xmin, ymin, zmin, xmax, ymax, zmax)
+            # print(xdiff,zdiff,ydiff,x_max)
+            # print(x_max,y_max,z_max)
 
-            #S=make_ribs(ydiff,xdiff,0.1,xmax)
+            # S=make_ribs(ydiff,xdiff,0.1,x_max)
             # hoehe,breite,dicke,extrude
-            S=make_ribs(zdiff,ydiff,0.1,xmax*2)
-            #rotate ribs so it can be printed
-            Srotate=rotate_shape(S.Shape(),gp_OY(),90)
+            S = make_ribs(zdiff, ydiff, 0.1, xmax * 2)
+            # rotate ribs so it can be printed
+            Srotate = rotate_shape(S.Shape(), gp_OY(), 90)
             anzahl = 3
-            #Sneu = make_translation(Srotate,-0.1,anzahl)
-            Sskdl= self.make_translation_fuse(Srotate,-0.9,anzahl)
-            #display.DisplayShape(Sskdl)
+            # Sneu = make_translation(Srotate,-0.1,anzahl)
+            Sskdl = self.make_translation_fuse(Srotate, -0.9, anzahl)
+            # display.DisplayShape(Sskdl)
             
             m_rippen = move_rippen_neu(Sskdl,0,0,zdiff*0.5)
           

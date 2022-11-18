@@ -27,7 +27,7 @@ import stl_exporter.Ausgabeservice as exp
 from Dimensions.ShapeDimensions import ShapeDimensions
 
 if __name__ == "__main__":
-    m = myDisplay.myDisplay.instance(True, 1.5)
+    m = myDisplay.myDisplay.instance(True, 4)
     # try:
     tigl_h = tg.get_tigl_handler("simple_aircraft")
     config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     ruder_loft: TGeo.CNamedShape = trailing_edge_device.get_loft()
     # m.display_in_origin(ruder_loft, "", True)
 
-    testcase_wing = [(ruder_loft, False), (fuselage_loft, False)]
+    testcase_wing = [(ruder_loft, True), (fuselage_loft, False)]
 
     testcases_all = {wing_loft: testcase_wing}
 

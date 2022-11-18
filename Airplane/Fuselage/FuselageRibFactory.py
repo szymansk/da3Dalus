@@ -1,13 +1,12 @@
 import OCC.Core.BRepPrimAPI as OPrim
 import OCC.Core.gp as Ogp
 import OCC.Extend.ShapeFactory as OExs
-from OCC.Core.TopoDS import TopoDS_Shape
+import tigl3.geometry as TGeo
 
 import Dimensions.ShapeDimensions as PDim
 import Extra.BooleanOperationsForLists as BOl
 import Extra.patterns as pat
 from Extra.mydisplay import myDisplay
-import tigl3.geometry as TGeo
 from _alt.Wand_erstellen import *
 from _alt.abmasse import *
 
@@ -22,137 +21,85 @@ class FuselageRibFactory:
         self.display = myDisplay.instance()
         logging.info(f"Initilizing FuselageRibFactory")
         self.fuselage_loft = fuselage_loft
-        self.fuselage_koordinates = PDim.ShapeDimensions(self.fuselage_loft)
+        self.fuselage_coordinates = PDim.ShapeDimensions(self.fuselage_loft)
+
         self.wing_loft = wing_loft
-        self.wing_koordinates = PDim.ShapeDimensions(self.wing_loft)
-        self.ribwidth = None
+        self.wing_coordinates = PDim.ShapeDimensions(self.wing_loft)
+
+        self.rib_width = None
         self.factor = None
 
-        self.shape: OTopo.TopoDS_Shape = OTopo.TopoDS_Shape()
-        self.shapes: list = []
+        self.shape: TGeo.CNamedShape = TGeo.CNamedShape()
+        self.shapes: list[TGeo.CNamedShape] = []
 
     def create_sharp_ribs(self, rib_width, y_max, y_min, z_max, z_min) -> TGeo.CNamedShape:
         """
         Create a rib cage with a # profile
-        :param rib_width:
+        :param rib_width: describes the width of the rib
         :param y_max: postion of the first vertikal rib
         :param y_min: postion of the second vertikal rib
         :param z_max: postion of the first horizontal rib
         :param z_min: postion of the first horizontal rib
-        :return:
+        :return: namedshape of the created ribs
         """
         logstr = f"Quadrat ribs: x_pos=0 y_max={y_max:.3f} y_min={y_min:.3f} z_max={z_max:.3f} z_min={z_min:.3f}"
         logging.info(logstr)
-        rib_lenght = self.fuselage_koordinates.get_length() * 1.2
-        rib_height = self.fuselage_koordinates.get_height() * 1.2
+
+        # Factor to make the ribs lenght and height bigger, to ensure that they are big enogh
+        factor = 1.2
+        rib_lenght = self.fuselage_coordinates.get_length() * factor
+        rib_height = self.fuselage_coordinates.get_height() * factor
         box = OPrim.BRepPrimAPI_MakeBox(rib_lenght, rib_width, rib_height).Shape()
+        # move to the front by 10% and center on y axis
         moved_box = OExs.translate_shp(box, Ogp.gp_Vec(-rib_lenght * 0.1, -rib_width / 2, 0))
 
         # vertikal ribs
         logging.info(f"Creating vertikal ribs")
         ver_rib = moved_box
-        ver_rib_1 = TGeo.CNamedShape(
-            OExs.translate_shp(ver_rib, Ogp.gp_Vec(0.0, y_max, self.fuselage_koordinates.get_zmin())),
+        ver_rib_right = TGeo.CNamedShape(
+            OExs.translate_shp(ver_rib, Ogp.gp_Vec(0.0, y_max, self.fuselage_coordinates.get_zmin())),
             f"{self.fuselage_loft.name()}_vertikal_rib_1")
-        ver_rib_2 = TGeo.CNamedShape(
-            OExs.translate_shp(ver_rib, Ogp.gp_Vec(0.0, y_min, self.fuselage_koordinates.get_zmin())),
+        ver_rib_left = TGeo.CNamedShape(
+            OExs.translate_shp(ver_rib, Ogp.gp_Vec(0.0, y_min, self.fuselage_coordinates.get_zmin())),
             f"{self.fuselage_loft.name()}_vertikal_rib_2")
 
         # Horizontal ribs
         logging.info(f"Creating Horizontal ribs")
         hor_rib = OExs.rotate_shape(moved_box, Ogp.gp_OX(), 90)
-        hor_rib_1 = TGeo.CNamedShape(OExs.translate_shp(hor_rib, Ogp.gp_Vec(0.0, rib_height / 2, z_max)),
-                                     f"{self.fuselage_loft.name()}_horizontal_rib_1")
-        hor_rib_2 = TGeo.CNamedShape(OExs.translate_shp(hor_rib, Ogp.gp_Vec(0.0, rib_height / 2, z_min)),
-                                     f"{self.fuselage_loft.name()}_horizontal_rib_2")
+        hor_rib_top = TGeo.CNamedShape(OExs.translate_shp(hor_rib, Ogp.gp_Vec(0.0, rib_height / 2, z_max)),
+                                       f"{self.fuselage_loft.name()}_horizontal_rib_1")
+        hor_rib_bottom = TGeo.CNamedShape(OExs.translate_shp(hor_rib, Ogp.gp_Vec(0.0, rib_height / 2, z_min)),
+                                          f"{self.fuselage_loft.name()}_horizontal_rib_2")
 
         # Fuse all ribs
-        ribs: list[TGeo.CNamedShape] = [ver_rib_1, ver_rib_2, hor_rib_1, hor_rib_2]
+        ribs: list[TGeo.CNamedShape] = [ver_rib_right, ver_rib_left, hor_rib_top, hor_rib_bottom]
         fused_ribs = BOl.fuse_list_of_namedshapes(ribs)
+        self.shape = fused_ribs
         return fused_ribs
 
-    def get_shape(self) -> OTopo.TopoDS_Shape:
-        """
-        returns the shape of the created WingRIb
-        """
+    def get_shape(self) -> TGeo.CNamedShape:
         return self.shape
 
-    def _make_single_box_rib(self, x_inner, x_outer, y_pos, z_pos, seg_lenght, seg_width, seg_height,
-                             rib_width=0.0004) -> OTopo.TopoDS_Shape:
-        """
-        Creates a singl oriented horizontal rib.
-        Paramaters
-        x_inner a x kordiante where the rib should start
-        x_outer a x kordiante where the rib should end
-        y_pos y koordinate where the rib schould start
-        z_pos z koordinate where the rib schould start
-        seg_lenght, seg_width, seg_height parameters of the Segment that is becoming the rib
-        rib_width
-        """
-        corner_points = []
-        # point1
-        x_cor = x_inner + (rib_width / 2)
-        logging.info(f"test {x_inner=:.6f} {x_cor=:.6f}")
-        y_cor = y_pos
-        z_cor = z_pos
-        corner_points.append(gp_Pnt(x_cor, y_cor, z_cor))
+    def create_wing_suport_ribs(self, overlapdimensions) -> TGeo.CNamedShape:
+        rib_quantity = 6
 
-        # point2
-        x_cor = x_outer + (rib_width / 2)
-        y_cor = y_pos + seg_width
-        z_cor = z_pos
-        corner_points.append(gp_Pnt(x_cor, y_cor, z_cor))
+        rib_lenght = self.wing_coordinates.get_length() * 1.2
+        rib_width = 0.0008
+        rib_height = overlapdimensions.get_height() + 0.004
 
-        # point3
-        x_cor = x_outer - (rib_width / 2)
-        y_cor = y_pos + seg_width
-        z_cor = z_pos
-        corner_points.append(gp_Pnt(x_cor, y_cor, z_cor))
+        complete_distance = self.fuselage_coordinates.get_width() * 0.8
+        single_distance = complete_distance / (rib_quantity)
 
-        # point4
-        x_cor = x_inner - (rib_width / 2)
-        y_cor = y_pos
-        z_cor = z_pos
-        corner_points.append(gp_Pnt(x_cor, y_cor, z_cor))
+        single_rib = OPrim.BRepPrimAPI_MakeBox(rib_lenght, rib_width, rib_height).Shape()
+        named_single_rib = TGeo.CNamedShape(single_rib, "single_rib")
+        rib_pattern = pat.create_linear_pattern(named_single_rib, rib_quantity, single_distance, "y")
+        rib_pattern_dimensions = PDim.ShapeDimensions(rib_pattern)
 
-        mkw = BRepBuilderAPI_MakeWire()
-        for i, point in enumerate(corner_points):
-            logging.info(f"Creating Edge {i} from {len(corner_points)}")
-            if point != corner_points[-1]:
-                mkw.Add(BRepBuilderAPI_MakeEdge(corner_points[i], corner_points[i + 1]).Edge())
-            else:
-                mkw.Add(BRepBuilderAPI_MakeEdge(corner_points[i], corner_points[0]).Edge())
+        x_pos = overlapdimensions.get_xmid() - rib_pattern_dimensions.get_xmid()
+        y_pos = overlapdimensions.get_ymid() - rib_pattern_dimensions.get_ymid()
+        z_pos = overlapdimensions.get_zmin() - rib_pattern_dimensions.get_zmin()
 
-        logging.info(f"Creating Prism out of Edges")
-        prism = BRepPrimAPI_MakePrism(
-            BRepBuilderAPI_MakeFace(mkw.Wire()).Face(),
-            gp_Vec(gp_Pnt(0.0, 0.0, 0.0), gp_Pnt(0.0, 0.0, seg_height)),
-        ).Shape()
-        # m.display_in_origin(prism)
-        return prism
+        rib_pattern.set_shape(OExs.translate_shp(rib_pattern.shape(), Ogp.gp_Vec(x_pos, y_pos, z_pos)))
+        self.display.display_this_shape(rib_pattern)
 
-    def _create_diagonal_ribs(self, rib_width, angle, ribs_quantity=0) -> OTopo.TopoDS_Shape:
-        """
-        Creates a pattern of diagonal ribs for the class wing
-        """
-        logging.info(f"Creating diagonal ribs: {rib_width=} {angle=} {ribs_quantity=}")
-        prim = []
-        xmin, ymin, zmin, xmax, ymax, zmax = get_koordinates(self.wing_shape)
-        wing_lenght, wing_width, wing_height = get_dimensions_from_Shape(self.wing_shape)
-        prim.append(OPrim.BRepPrimAPI_MakeBox(self.wing_koordinates.get_length() * 2, rib_width,
-                                              self.wing_koordinates.get_height()).Shape())
-        prim.append(OExs.rotate_shape(prim[-1], gp_OZ(), angle))
-        prim.append(OExs.translate_shp(prim[-1], Ogp.gp_Vec(xmin, -rib_width, zmin)))
-        # self.display.display_this_shape(prim[-1])
-        if ribs_quantity == 0:
-            ribs_distance = 0.1
-            ribs_quantity = round((wing_width / ribs_distance) * 2)
-            logging.debug(f"{ribs_quantity=} {wing_width}")
-        else:
-            ribs_distance = wing_width / ribs_quantity
-            ribs_quantity = ribs_quantity * 2
-        prim.append(pat.create_linear_pattern(prim[-1], ribs_quantity, ribs_distance, "y"))
-        prim.append(OExs.translate_shp(prim[-1], Ogp.gp_Vec(0, -wing_width / 2, 0)))
-        self.display.display_this_shape(prim[-1])
-        self.shape = prim[-1]
-        return prim[-1]
+        return rib_pattern

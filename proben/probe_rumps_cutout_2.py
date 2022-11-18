@@ -342,7 +342,7 @@ class aircombat_test:
         ver_rib_1 = OExs.translate_shp(ver_rib, Ogp.gp_Vec(0.0, y_max, 0.0))
         ver_rib_2 = OExs.translate_shp(ver_rib, Ogp.gp_Vec(0.0, y_min, 0.0))
         # berechnen der top stelle des flügels
-        self.wing_zmax = get_koordinate(self.wing_shape, "zmax")
+        self.wing_zmax = get_koordinate(self.wing_shape, "z_max")
         hor_rib = rotate_shape(moved_box, Ogp.gp_OX(), 90)
         hor_rib_1 = OExs.translate_shp(hor_rib, Ogp.gp_Vec(0.0, 0.0, z_max))
         hor_rib_2 = OExs.translate_shp(hor_rib, Ogp.gp_Vec(0.0, 0.0, z_min))
@@ -405,7 +405,7 @@ class aircombat_test:
         y_max = self.fuselage_widht * factor
         y_min = -y_max
         z_max = self.fuselage_height * factor
-        z_min = get_koordinate(self.wing_shape, "zmax") + 0.003
+        z_min = get_koordinate(self.wing_shape, "z_max") + 0.003
         quadrat = self.create_quadrat_rib(rib_width, y_max, y_min, z_max, z_min)
         cylinders = self.create_cylinder_reinforcemnt(radius, y_max, y_min, z_max, z_min)
         reduktion_radius = ((z_max - z_min) * 0.8) / 2
@@ -442,7 +442,7 @@ class aircombat_test:
         hardware_cutout_lenght = self.fuselage_lenght * 0.2
         hardware_cutout_width = self.fuselage_widht * (factor * 2) - (radius * 2)
         hardware_cutout_height = self.fuselage_height / 2
-        hardware_x_pos = get_koordinate(self.wing_shape, "xmin")
+        hardware_x_pos = get_koordinate(self.wing_shape, "x_min")
         box = OPrim.BRepPrimAPI_MakeBox(hardware_cutout_lenght, hardware_cutout_width, hardware_cutout_height).Shape()
         moved_box = OExs.translate_shp(box,
                                        Ogp.gp_Vec(hardware_x_pos, -hardware_cutout_width / 2, -hardware_cutout_height))
@@ -571,11 +571,11 @@ class aircombat_test:
 
     def slicing_positions(self):
         result = []
-        before_wing = get_koordinate(self.wing_shape, "xmin") - 0.0004
-        after_wing = get_koordinate(self.wing_shape, "xmax") + 0.0004
+        before_wing = get_koordinate(self.wing_shape, "x_min") - 0.0004
+        after_wing = get_koordinate(self.wing_shape, "x_max") + 0.0004
         result.append(before_wing)
         result.append(after_wing)
-        end_fuselage = get_koordinate(self.fuselage_shape, "xmax")
+        end_fuselage = get_koordinate(self.fuselage_shape, "x_max")
         split_rear_fuselage = (end_fuselage + after_wing) / 2
         result.append(split_rear_fuselage)
         result.append(end_fuselage)
@@ -585,7 +585,7 @@ class aircombat_test:
         y_max = self.fuselage_widht * factor
         y_min = -y_max
         z_max = self.fuselage_height * factor
-        z_min = get_koordinate(self.wing_shape, "zmax") + 0.003
+        z_min = get_koordinate(self.wing_shape, "z_max") + 0.003
         cylinders = self.create_cylinder_reinforcemnt(radius, y_max, y_min, z_max, z_min)
         cylinders = OAlgo.BRepAlgoAPI_Common(self.fuselage_offset, cylinders).Shape()
         self.fuselage_done2 = OAlgo.BRepAlgoAPI_Fuse(self.fuselage_done, cylinders).Shape()

@@ -9,7 +9,6 @@ import os
 def get_tigl_handler(name):
     tixi_handle = tixi3wrapper.Tixi3()
     tigl_handle = tigl3wrapper.Tigl3()
-    # base_dir= r'C:\Users\schneichel\OneDrive - adesso Group\Dokumente\GitHub\cad-modelling-service-2\test_cpacs'
     base_dir = r'.\test_cpacs'
     if name != None or name != "":
         name = name + ".xml"
@@ -19,3 +18,16 @@ def get_tigl_handler(name):
         logging.error("Extracting tigl was not possible")
     tigl_handle.open(tixi_handle, "")
     return tigl_handle
+
+
+def get_tixi_handler(name):
+    tixi_handle = tixi3wrapper.Tixi3()
+    tigl_handle = tigl3wrapper.Tigl3()
+    base_dir = r'.\test_cpacs'
+    if name != None or name != "":
+        name = name + ".xml"
+        path = os.path.join(base_dir, name)
+        tixi_handle.open(path)
+    else:
+        logging.error("Extracting tixi was not possible")
+    return tixi_handle
