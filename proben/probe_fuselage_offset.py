@@ -1,39 +1,10 @@
-from tixi3 import tixi3wrapper
-from tigl3 import tigl3wrapper
-import tigl3.boolean_ops
-import tigl3.configuration
-import tigl3.configuration as TConfig
-import tigl3.curve_factories
-import tigl3.exports as exp
-import tigl3.geometry
-import tigl3.geometry as TGeo
-import tigl3.surface_factories
-
-import OCC.Core.BRep as OBrep
-import OCC.Core.Bnd as OBnd
-import OCC.Core.BRepAlgoAPI as OAlgo
-import OCC.Core.BRepBuilderAPI as OBuilder
 import OCC.Core.BRepOffsetAPI as OOff
-import OCC.Core.BRepFeat as OFeat
-import OCC.Core.BRepGProp as OProp
-import OCC.Core.BRepOffset as OOffset
-import OCC.Core.BRepPrimAPI as OPrim
-import OCC.Core.gp as Ogp
-import OCC.Core.TopoDS as OTopo
-import OCC.Core.BRepBuilderAPI as OBui
-import OCC.Core.BRepPrimAPI as OPrim
-import OCC.Extend.ShapeFactory as OExs
-from stl_exporter.Ausgabeservice import *
-from _alt.Wand_erstellen import *
-import time
-from OCC.Display.SimpleGui import init_display
-import tigl3.boolean_ops as TBoo
-from math import *
-from OCC.Core.TopTools import TopTools_ListOfShape
+import tigl3.configuration as TConfig
 
-from _alt.abmasse import get_dimensions, get_koordinates
 import Extra.mydisplay as myDisplay
 import Extra.tigl_extractor as tg
+from _alt.Wand_erstellen import *
+from stl_exporter.Exporter import *
 
 if __name__ == "__main__":
     m = myDisplay.myDisplay.instance(True, 0.5)

@@ -83,7 +83,7 @@ from Airplane.Wing.WingFactory import WingFactory
 #from Fluegel import fluegel
 #from Rumpf import profil
 from _alt.Einleseservice import einlesen
-from stl_exporter.Ausgabeservice import *
+from stl_exporter.Exporter import *
 
 import os
 import Extra.Zipfolder as myZip
@@ -173,7 +173,7 @@ def create_right_wing():
 		rib_thikness=float(request.args.get("rib_thikness"))
 		print("wing:",wing_thikness,"rib_s:" ,rib_spacing, "rib_t",rib_thikness)
 		airplane_factory=AirplaneFactory(tigl_h,wing_thikness,rib_spacing,rib_thikness)
-		airplane_factory.create_right_mainwing()
+		airplane_factory.create_right_main_wing()
 		return send_file("right_mainwing.stl")
 
 	else:
@@ -281,7 +281,7 @@ def development():
 		#display.DisplayShape(airplane_factory.airplane.allwings)
 		#display.DisplayShape(airplane_factory.airplane.fuselage)
 	elif variant==2:
-		airplane_factory.create_right_mainwing()
+		airplane_factory.create_right_main_wing()
 		#display.DisplayShape( airplane_factory.airplane.wings.get("right_mainwing"))
 	elif variant==3:
 		#airplane_factory.create_right_mainwing()

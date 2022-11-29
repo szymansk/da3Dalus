@@ -1,14 +1,9 @@
-import tigl3.configuration as TConfig
-from math import *
-
 import OCC.Core.BRepBuilderAPI as OBui
 import OCC.Core.BRepBuilderAPI as OBuilder
 import OCC.Core.BRepOffsetAPI as OOff
 import tigl3.configuration as TConfig
-import tigl3.geometry as TGeo
 
 from Extra.BooleanOperationsForLists import *
-from Extra.ShapeSlicer import ShapeSlicer
 from Extra.mydisplay import myDisplay
 # from Airplane.Wing.CablePipeFactory import CabelPipe
 from _alt.Wand_erstellen import *

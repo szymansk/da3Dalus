@@ -18,22 +18,19 @@ class ReinforcementePipeFactory:
     This class ist used to create the reinforcementpipe for the wing and the fuselage
     '''
 
-    def __init__(self, tigl_handle, wing_nr):
-        self.tigl_handle = tigl_handle
-        self.config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
-        self.cpacs_configuration: TConfig.CCPACSConfiguration = self.config_manager.get_configuration(
-            tigl_handle._handle.value)
-        self.wing: TConfig.CCPACSWing = self.cpacs_configuration.get_wing(wing_nr)
+    def __init__(self, wing, fuselage):
+
+        self.wing: TConfig.CCPACSWing = wing
         self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
         self.wing_shape: OTopo.TopoDS_Shape = self.wing_loft.shape()
         self.wing_koordinates = PDim.ShapeDimensions(self.wing_loft)
 
-        self.fuselage: TConfig.CCPACSFuselage = self.cpacs_configuration.get_fuselage(1)
+        self.fuselage: TConfig.CCPACSFuselage = fuselage
         self.fuselage_loft: TGeo.CNamedShape = self.fuselage.get_loft()
         self.fuselage_shape: OTopo.TopoDS_Shape = self.fuselage_loft.shape()
-        self.fuselage_koordiantes = PDim.ShapeDimensions(self.fuselage_loft)
+        self.fuselage_coordinates = PDim.ShapeDimensions(self.fuselage_loft)
 
-        self.namedshape: TGeo.CNamedShape = TGeo.CNamedShape()
+        self.named_shape: TGeo.CNamedShape = TGeo.CNamedShape()
         self.shapes: list[TGeo.CNamedShape] = []
         self.m = myDisplay.instance()
 
@@ -51,8 +48,8 @@ class ReinforcementePipeFactory:
         inner_x_list = inner_dimensions.get_coordinates_on_axis(quantity)
         outer_x_list = outer_dimensions.get_coordinates_on_axis(quantity)
 
-        x_dif = abs(inner_dimensions.get_xmin() - outer_dimensions.get_xmin())
-        y_dif = abs(inner_dimensions.get_ymin() - outer_dimensions.get_ymin())
+        x_dif = abs(inner_dimensions.get_x_min() - outer_dimensions.get_x_min())
+        y_dif = abs(inner_dimensions.get_y_min() - outer_dimensions.get_y_min())
         width = math.hypot(x_dif, y_dif)
         logging.info(f"{radius=:.4f} {thickness=:.4f} {width=:.4f}")
 
@@ -62,8 +59,8 @@ class ReinforcementePipeFactory:
         # Cylinder
         for i, x in enumerate(inner_x_list):
             if i in pipe_position:
-                start = Ogp.gp_Pnt(x, inner_dimensions.get_ymin(), inner_dimensions.get_zmid())
-                end = Ogp.gp_Pnt(outer_x_list[i], outer_dimensions.get_ymin(), outer_dimensions.get_zmid())
+                start = Ogp.gp_Pnt(x, inner_dimensions.get_y_min(), inner_dimensions.get_z_mid())
+                end = Ogp.gp_Pnt(outer_x_list[i], outer_dimensions.get_y_min(), outer_dimensions.get_z_mid())
                 pipe = self.create_pipe_section(start, end, radius + thickness, f"pipe_section_{i}")
                 self.shapes.append(pipe)
                 self.m.display_in_origin(pipe)
@@ -75,32 +72,32 @@ class ReinforcementePipeFactory:
     def create_reinforcement_pipe_fuselage(self, radius, y_max, y_min, z_max, z_min) -> TGeo.CNamedShape:
 
         # pipe1
-        start: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_koordiantes.get_xmin(), y_max, z_max)
-        end: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_koordiantes.get_xmax(), y_max, z_max)
+        start: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_coordinates.get_x_min(), y_max, z_max)
+        end: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_coordinates.get_x_max(), y_max, z_max)
         pipe1 = self.create_pipe_section(start, end, radius, "pipe_section_1")
 
         # pipe2
-        start: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_koordiantes.get_xmin(), y_min, z_max)
-        end: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_koordiantes.get_xmax(), y_min, z_max)
+        start: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_coordinates.get_x_min(), y_min, z_max)
+        end: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_coordinates.get_x_max(), y_min, z_max)
         pipe2 = self.create_pipe_section(start, end, radius, "pipe_section_2")
 
         # pipe3
-        start: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_koordiantes.get_xmin(), y_min, z_min)
-        end: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_koordiantes.get_xmax(), y_min, z_min)
+        start: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_coordinates.get_x_min(), y_min, z_min)
+        end: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_coordinates.get_x_max(), y_min, z_min)
         pipe3 = self.create_pipe_section(start, end, radius, "pipe_section_3")
 
         # pipe4
-        start: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_koordiantes.get_xmin(), y_max, z_min)
-        end: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_koordiantes.get_xmax(), y_max, z_min)
+        start: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_coordinates.get_x_min(), y_max, z_min)
+        end: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_coordinates.get_x_max(), y_max, z_min)
         pipe4 = self.create_pipe_section(start, end, radius, "pipe_section_4")
 
         pipes = [pipe1, pipe2, pipe3, pipe4]
         fused_pipes = Bof.fuse_list_of_namedshapes(pipes, "Reinforcement_pipes")
-        self.namedshape = fused_pipes
+        self.named_shape = fused_pipes
         return fused_pipes
 
     def get_shape(self) -> TGeo.CNamedShape:
-        return self.namedshape
+        return self.named_shape
 
     def create_pipe_section(self, start: Ogp.gp_Pnt, end: Ogp.gp_Pnt, radius: int, name="") -> TGeo.CNamedShape:
         '''

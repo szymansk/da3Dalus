@@ -1,4 +1,4 @@
-from math import *
+from pathlib import Path
 
 import OCC.Core.BRepAlgoAPI as OAlgo
 import OCC.Core.BRepBuilderAPI as OBui
@@ -8,11 +8,11 @@ import OCC.Extend.ShapeFactory as OExs
 import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
 
+import stl_exporter.Exporter as STLExporter
 from Dimensions.ShapeDimensions import ShapeDimensions
 from Extra.mydisplay import myDisplay
-import stl_exporter.Ausgabeservice as STLExporter
 from _alt.Wand_erstellen import *
-from pathlib import Path
+
 
 def rotate_shape(shape, axis, angle):
     """Rotate a shape around an axis, with a given angle.
@@ -67,4 +67,4 @@ if __name__ == "__main__":
     # creates folder if it does not exist
     export_folder.mkdir(parents=True, exist_ok=True)
 
-    STLExporter.exporter().write_stl_file2(cuted_fuselage, export_folder / "fuselage_cuted.stl")
+    STLExporter.Exporter().write_stl_file(cuted_fuselage, export_folder / "fuselage_cuted.stl")

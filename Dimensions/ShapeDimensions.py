@@ -9,16 +9,16 @@ from OCC.Core.Bnd import Bnd_Box
 
 
 class ShapeDimensions:
-    '''
-    provides information about the boundingbox of the given shape, lenght, width, height and corner points
-    '''
+    """
+    Provides information about the bounding box of the given shape, length, width, height and corner points
+    """
 
     def __init__(self, named_shape: TGeo.CNamedShape) -> None:
         self.named_shape: TGeo.CNamedShape = named_shape
         self.x_min, self.y_min, self.z_min, self.x_max, self.y_max, self.z_max = self._calc_coordinates(
             named_shape.shape())
         self.lenght, self.width, self.height = self._calc_dimensions_from_Shape(named_shape.shape())
-        self.x_mid, self.y_mid, self.z_mid = self._calc_mid_kordinates()
+        self.x_mid, self.y_mid, self.z_mid = self._calc_mid_coordinates()
         self.points = self._calc_points()
         # logging.info(f"{named_shape.name()} dimensions {self.__str__()}")
 
@@ -35,14 +35,14 @@ class ShapeDimensions:
 
     def _calc_dimensions(self, x_min, y_min, z_min, x_max, y_max, z_max) -> (float, float, float):
         '''
-        Calculates the diference between kordinates on the 3-axis (x,y,z)
-        :param xmin: float
-        :param ymin: float
-        :param zmin: float
-        :param xmax: float
-        :param ymax: float
-        :param zmax: float
-        :return: xdiff, ydiff, zdiff
+        Calculates the difference between coordinates on the 3-axis (x,y,z) from the min and max values of the axes
+        :param x_min: float
+        :param y_min: float
+        :param z_min: float
+        :param x_max: float
+        :param y_max: float
+        :param z_max: float
+        :return: x_diff, y_diff, z_diff
         '''
         x_diff = x_max - x_min
         y_diff = y_max - y_min
@@ -51,7 +51,7 @@ class ShapeDimensions:
 
     def _calc_dimensions_from_Shape(self, shape) -> (float, float, float):
         '''
-        Calculates the leght, width and height of the shapes bounding box
+        Calculates the length, width and height of the shapes bounding box
         :param shape: TopoDS_Shape
         :return: (float, float, float)
         '''
@@ -59,25 +59,25 @@ class ShapeDimensions:
         x_diff, y_diff, z_diff = self._calc_dimensions(x_min, y_min, z_min, x_max, y_max, z_max)
         return x_diff, y_diff, z_diff
 
-    def _calc_mid_kordinates(self) -> (float, float, float):
+    def _calc_mid_coordinates(self) -> (float, float, float):
         '''
         calculates the mid x,y,z coordinates of the shape.
         coordinate between min and max
         :return: (x_mid, y_mid, z_mid)
         '''
-        xmid = self.x_min + (self.lenght / 2)
-        ymid = self.y_min + (self.width / 2)
-        zmid = self.z_min + (self.height / 2)
-        return xmid, ymid, zmid
+        x_mid = self.x_min + (self.lenght / 2)
+        y_mid = self.y_min + (self.width / 2)
+        z_mid = self.z_min + (self.height / 2)
+        return x_mid, y_mid, z_mid
 
     def _calc_points(self) -> list[Ogp.gp_Pnt]:
-        '''
+        """
         calculates all 8 corner points of the shape bounding box
         and the middle point(0)
-        point(1) ist the corner with all the minimum kordinates.
+        point(1) ist the corner with all the minimum coordinates.
         the next corners are calculated counterclockwise
-        :return:
-        '''
+        :return: the 8 corner points as list
+        """
         point0 = Ogp.gp_Pnt(self.x_mid, self.y_mid, self.z_mid)
         point1 = Ogp.gp_Pnt(self.x_min, self.y_min, self.z_min)
         point2 = Ogp.gp_Pnt(self.x_max, self.y_min, self.z_min)
@@ -90,31 +90,31 @@ class ShapeDimensions:
         points = [point0, point1, point2, point3, point4, point5, point6, point7, point8]
         return points
 
-    def get_xmin(self) -> float:
+    def get_x_min(self) -> float:
         return self.x_min
 
-    def get_ymin(self) -> float:
+    def get_y_min(self) -> float:
         return self.y_min
 
-    def get_zmin(self) -> float:
+    def get_z_min(self) -> float:
         return self.z_min
 
-    def get_xmid(self) -> float:
+    def get_x_mid(self) -> float:
         return self.x_mid
 
-    def get_ymid(self) -> float:
+    def get_y_mid(self) -> float:
         return self.y_mid
 
-    def get_zmid(self) -> float:
+    def get_z_mid(self) -> float:
         return self.z_mid
 
-    def get_xmax(self) -> float:
+    def get_x_max(self) -> float:
         return self.x_max
 
-    def get_ymax(self) -> float:
+    def get_y_max(self) -> float:
         return self.y_max
 
-    def get_zmax(self) -> float:
+    def get_z_max(self) -> float:
         return self.z_max
 
     def get_length(self) -> float:
@@ -137,21 +137,21 @@ class ShapeDimensions:
 
     def get_coordinates_on_axis(self, quantity: int) -> list[float]:
         '''
-        Returns a list of x-cordinates evenly distributed on the x achis of the shape
+        Returns a list of x-coordinates evenly distributed on the x-axis of the shape
         :param quantity: int
         :return: list[float]
         '''
         x_diff = self.get_length() / (quantity + 1)
         x_coordinates = []
         for i in range(1, quantity + 1):
-            new_x = self.get_xmin() + (i * x_diff)
+            new_x = self.get_x_min() + (i * x_diff)
             x_coordinates.append(new_x)
         logging.info(f"{self.named_shape.name()} {x_coordinates=}")
         return x_coordinates
 
     def get_bounding_box_shape(self) -> OTopo.TopoDS_Shape:
         '''
-        returns a Shape of the boundingbox
+        returns a Shape of the bounding box
         :return: opoDS_Shape
         '''
         return OPrim.BRepPrimAPI_MakeBox(self.points[1], self.lenght, self.width, self.height).Shape()

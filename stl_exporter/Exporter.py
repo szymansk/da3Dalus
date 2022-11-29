@@ -8,34 +8,12 @@ import tigl3.geometry as TGeo
 from pathlib import Path
 import OCC.Core.TopoDS as OTopo
 
-class exporter:
+
+class Exporter:
     def __init__(self):
         pass
 
-    def write_stl_tigl(self, a_shape):
-        import tigl3.exports
-        exporter = tigl3.exports.create_exporter("stl")
-        exporter.add_shape(a_shape)
-        exporter.write("test.stl")
-
-    def write_stl_file(self, a_shape, filename):
-        from tigl3.exports import create_exporter
-        '''
-        if a_shape.IsNull():
-            raise AssertionError("Shape is null.")
-        if os.path.isfile(filename):
-            print(f"Warning: {filename} already exists and will be replaced") 
-        '''
-
-        stl_exporter = create_exporter("stl")
-        stl_exporter.add_shape(a_shape)
-        # stl_exporter.write("test.stl")
-        stl_exporter.write(filename + ".stl")
-
-        if not os.path.isfile(filename):
-            raise IOError("File not written to disk.")
-
-    def write_stl_file2(self, named_shape: TGeo.CNamedShape, filename, mode="ascii", linear_deflection=0.00002):
+    def write_stl_file(self, named_shape: TGeo.CNamedShape, filename, mode="ascii", linear_deflection=0.00002):
 
         export_folder = Path(__file__).parent.parent / "stls"
         # creates folder if it does not exist
@@ -80,7 +58,7 @@ class exporter:
         if not os.path.isfile(abs_filepath):
             raise IOError("File not written to disk.")
 
-    def write_stls_from_list(self, list, plane_part="test"):
+    def write_stls_from_list(self, list):
         for i, named_shape in enumerate(list):
             logging.info(f"Exporting {named_shape.name()}")
-            self.write_stl_file2(named_shape, named_shape.name())
+            self.write_stl_file(named_shape, named_shape.name())

@@ -8,17 +8,26 @@ import Extra.mydisplay as myDisplay
 import Extra.tigl_extractor as tg
 from Dimensions.ShapeDimensions import ShapeDimensions
 
+from Airplane.Configuration import Configuration
+
+CPACS_FILE_NAME = "aircombat_v14"
+
 if __name__ == "__main__":
+    logging.info("Start test for CPACS shapes for CPACS file ")
     m = myDisplay.myDisplay.instance(True, 1.5)
+
     # try:
-    tigl_h = tg.get_tigl_handler("aircombat_v14")
-    config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
-    cpacs_configuration: TConfig.CCPACSConfiguration = config_manager.get_configuration(tigl_h._handle.value)
-    fuselage: TConfig.CCPACSWing = cpacs_configuration.get_fuselage(1)
+    tigl_h = tg.get_tigl_handler(CPACS_FILE_NAME)
+    configuration = Configuration(tigl_h)
+
+    # setting and display fuselage
+    fuselage: TConfig.CCPACSWing = configuration.get_fuselage()
     fuselage_loft: TGeo.CNamedShape = fuselage.get_loft()
     fuselage_shape: OTopo.TopoDS_Shape = fuselage_loft.shape()
     fuselage_dimensions = ShapeDimensions(fuselage_loft)
     m.display_in_origin(fuselage_loft, "", True)
+
+    cpacs_configuration = configuration.get_cpacs_configuration()
 
     for i in range(1, cpacs_configuration.get_wing_count() + 1):
 
@@ -28,22 +37,23 @@ if __name__ == "__main__":
         wing_dimensions = ShapeDimensions(wing_loft)
         m.display_in_origin(wing_loft, "", True)
         try:
-            mirroered_loft = wing.get_mirrored_loft()
-            m.display_in_origin(mirroered_loft, "", True)
+            mirrored_loft = wing.get_mirrored_loft()
+            m.display_in_origin(mirrored_loft, "", True)
         except:
             logging.warning(f"No mirrored {wing_loft.name()}")
 
-    wing: TConfig.CCPACSWing = cpacs_configuration.get_wing(1)
+    wing: TConfig.CCPACSWing = configuration.get_right_main_wing()
 
-    compseg: TConfig.CCPACSWingComponentSegment = wing.get_component_segment(1)
-    control_surface: TConfig.CCPACSControlSurfaces = compseg.get_control_surfaces()
+    comp_segment: TConfig.CCPACSWingComponentSegment = wing.get_component_segment(1)
+    control_surface: TConfig.CCPACSControlSurfaces = comp_segment.get_control_surfaces()
     trailing_edge_devices: TConfig.CCPACSTrailingEdgeDevices = control_surface.get_trailing_edge_devices()
     trailing_edge_device: TConfig.CCPACSTrailingEdgeDevice = trailing_edge_devices.get_trailing_edge_device(1)
     ruder_loft: TGeo.CNamedShape = trailing_edge_device.get_loft()
     m.display_in_origin(ruder_loft, "", True)
+
     try:
-        mirroered_loft = trailing_edge_device.get_mirrored_loft()
-        m.display_in_origin(mirroered_loft, "", True)
+        mirrored_loft = trailing_edge_device.get_mirrored_loft()
+        m.display_in_origin(mirrored_loft, "", True)
     except:
         logging.warning(f"No mirrored {ruder_loft.name()}")
 

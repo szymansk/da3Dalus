@@ -1,18 +1,8 @@
-import OCC.Core.gp as Ogp
-import OCC.Core.BRepPrimAPI as OPrim
-import OCC.Extend.ShapeFactory as OExs
-from Extra.mydisplay import myDisplay
-import OCC.Core.BRepPrimAPI as OPrim
-import OCC.Core.gp as Ogp
-import OCC.Extend.ShapeFactory as OExs
 import tigl3.configuration as TConfig
-import tigl3.geometry as TGeo
 
-from Extra.mydisplay import myDisplay
-from Extra.BooleanOperationsForLists import *
-from Extra.patterns import *
-import Extra.tigl_extractor as tg
 import Dimensions.ShapeDimensions as PDim
+import Extra.tigl_extractor as tg
+from Extra.patterns import *
 
 if __name__ == "__main__":
     m = myDisplay.instance(True, 5)

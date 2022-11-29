@@ -10,36 +10,26 @@ from Airplane.ReinforcementPipeFactory import ReinforcementePipeFactory
 from Extra.BooleanOperationsForLists import *
 
 
-# import logging
-# import OCC.Core.TopoDS as OTopo
-# from Extra.mydisplay import myDisplay
-
-
 class FuselageFactory:
-    def __init__(self, tigl_handle, index=1) -> None:
+    def __init__(self, wing, fuselage) -> None:
         self.md = myDisplay.instance()
-        self.tigl_handle = tigl_handle
-        self.config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
-        self.cpacs_configuration: TConfig.CCPACSConfiguration = self.config_manager.get_configuration(
-            tigl_handle._handle.value)
 
-        self.fuselage: TConfig.CCPACSFuselage = self.cpacs_configuration.get_fuselage(index)
+        self.fuselage: TConfig.CCPACSFuselage = fuselage
         logging.info(f"Creating Fuselage Shape: {self.fuselage.get_name()}")
 
         self.fuselage_loft: TGeo.CNamedShape = self.fuselage.get_loft()
         self.fuselage_dimensions = PDim.ShapeDimensions(self.fuselage_loft)
 
-        self.wing: TConfig.CCPACSWing = self.cpacs_configuration.get_wing(1)
+        self.wing: TConfig.CCPACSWing = wing
         self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
         self.wing_shape: TopoDS_Shape = self.wing_loft.shape()
         self.wing_shape_complete: TGeo.CNamedShape = self._create_complete_wing_shape()
         self.wing_dimensions = PDim.ShapeDimensions(self.wing_loft)
 
         self.rib_factory = FuselageRibFactory(self.fuselage_loft, self.wing_loft)
-        wing_index = 1  # mainwing
-        self.reinforcement_pipe_factory = ReinforcementePipeFactory(self.tigl_handle, wing_index)
+        self.reinforcement_pipe_factory = ReinforcementePipeFactory(wing, fuselage)
         self.cutouts = FuselageCutouts()
-        self.engine_mount_factory = EngineMountFactory(self.tigl_handle)
+        self.engine_mount_factory = EngineMountFactory(fuselage)
         self._calc_motor_dimensions()
 
         self.shape = None
@@ -48,15 +38,15 @@ class FuselageFactory:
 
     def create_fuselage_with_sharp_ribs(self, factor=0.5) -> TGeo.CNamedShape:
         """
-        Creates the Fuselage, with sharp ribs, reinforcementpipes, weightreduktion recces,hardwareopening
+        Creates the Fuselage, with sharp ribs, reinforcement pipes, weight reduction recces,hardwareopening
         :param factor: smaller than 1, describes the size of the ribcage inside the fuselage
         :return:
         """
 
         # Create Motor cape and shorten fuselage
         plate_thickness = 0.005
-        motor_cutout_leght = self.engine_length + self.engine_length + plate_thickness
-        engine_cape = self._create_engine_cape(motor_cutout_leght)
+        motor_cutout_length = self.engine_length + self.engine_length + plate_thickness
+        engine_cape = self._create_engine_cape(motor_cutout_length)
         self.fuselage_parts.append(engine_cape)
 
         # Create Motor mount
@@ -73,49 +63,48 @@ class FuselageFactory:
         ribs: TGeo.CNamedShape = self.rib_factory.create_sharp_ribs(rib_width, y_max, y_min, z_max, z_min)
         internal_structure.append(ribs)
 
-        # ReinforcementPipes
+        # Reinforcement Pipes
         radius: float = 0.003
         reinforcement_pipes: TGeo.CNamedShape = self.reinforcement_pipe_factory.create_reinforcement_pipe_fuselage(
             radius, y_max, y_min, z_max, z_min)
         internal_structure.append(reinforcement_pipes)
 
-        # Fuse internalstructure
-        fused_internal_strukture: TGeo.CNamedShape = fuse_list_of_namedshapes(internal_structure)
+        # Fuse internal structure
+        fused_internal_structure: TGeo.CNamedShape = fuse_list_of_namedshapes(internal_structure)
 
         # Create Reduction recces
         cutouts, hardware_cutout = self._create_recces_cutouts(y_max, y_min, z_max, z_min, factor)
 
-        # cuted Internal Strcture
-        cuted_internal_strukture: list[TGeo.CNamedShape] = []
-        cuted_internal_strukture.append(cut_list_of_shapes(fused_internal_strukture, cutouts))
+        # cuted Internal Structure
+        cuted_internal_structure: list[TGeo.CNamedShape] = [cut_list_of_shapes(fused_internal_structure, cutouts)]
 
         # Wing Support ribs
-        overlap_dimensions = self._overlap_fuselage_wing_dimmensions()
-        wing_support: TGeo.CNamedShape = self.rib_factory.create_wing_suport_ribs(overlap_dimensions)
-        cuted_internal_strukture.append(TGeo.CNamedShape(
-            OAlgo.BRepAlgoAPI_Fuse(cuted_internal_strukture[-1].shape(), wing_support.shape()).Shape(),
+        overlap_dimensions = self._overlap_fuselage_wing_dimensions()
+        wing_support: TGeo.CNamedShape = self.rib_factory.create_wing_support_ribs(overlap_dimensions)
+        cuted_internal_structure.append(TGeo.CNamedShape(
+            OAlgo.BRepAlgoAPI_Fuse(cuted_internal_structure[-1].shape(), wing_support.shape()).Shape(),
             "Internalstructure"))
-        self.md.display_fuse(cuted_internal_strukture[-1], cuted_internal_strukture[-2], wing_support)
+        self.md.display_fuse(cuted_internal_structure[-1], cuted_internal_structure[-2], wing_support)
 
         # Hardware_cutout
-        cuted_internal_strukture.append(TGeo.CNamedShape(
-            OAlgo.BRepAlgoAPI_Cut(cuted_internal_strukture[-1].shape(), hardware_cutout.shape()).Shape(),
+        cuted_internal_structure.append(TGeo.CNamedShape(
+            OAlgo.BRepAlgoAPI_Cut(cuted_internal_structure[-1].shape(), hardware_cutout.shape()).Shape(),
             "Internalstructure"))
-        self.md.display_cut(cuted_internal_strukture[-1], cuted_internal_strukture[-2], hardware_cutout)
+        self.md.display_cut(cuted_internal_structure[-1], cuted_internal_structure[-2], hardware_cutout)
 
         # Shape the internal strukture
-        cuted_internal_strukture.append(TGeo.CNamedShape(
-            OAlgo.BRepAlgoAPI_Common(self.fuselage_loft.shape(), cuted_internal_strukture[-1].shape()).Shape(),
+        cuted_internal_structure.append(TGeo.CNamedShape(
+            OAlgo.BRepAlgoAPI_Common(self.fuselage_loft.shape(), cuted_internal_structure[-1].shape()).Shape(),
             "Shaped_internalestrukture"))
-        self.md.display_common(cuted_internal_strukture[-1], self.fuselage_loft, cuted_internal_strukture[-2])
+        self.md.display_common(cuted_internal_structure[-1], self.fuselage_loft, cuted_internal_structure[-2])
 
         # Inverse internal Strukture
         logging.info(f"Cuting internatl strukture form Fuselage")
         self.fuselage_shape_offset = self._offset_fuselage()
         self.shapes.append(TGeo.CNamedShape(
-            OAlgo.BRepAlgoAPI_Cut(self.fuselage_shape_offset.shape(), cuted_internal_strukture[-1].shape()).Shape(),
+            OAlgo.BRepAlgoAPI_Cut(self.fuselage_shape_offset.shape(), cuted_internal_structure[-1].shape()).Shape(),
             f"{self.fuselage_loft.name()}"))
-        self.md.display_cut(self.shapes[-1], self.fuselage_shape_offset, cuted_internal_strukture[-1])
+        self.md.display_cut(self.shapes[-1], self.fuselage_shape_offset, cuted_internal_structure[-1])
 
         # Cutout Wings from Fuselage
         logging.info(f"Cuting wings form Fuselage")
@@ -140,8 +129,6 @@ class FuselageFactory:
         """
         """
         offset_maker: OOff.BRepOffsetAPI_MakeOffsetShape = OOff.BRepOffsetAPI_MakeOffsetShape()
-        # result = TGeo.CNamedShape(OOff.BRepOffsetAPI_MakeOffsetShape(self.fuselage_loft.shape(), offset, 0.0001).Shape(),
-        #                         f"{self.fuselage_loft.name()}_offset")
         offset_maker.PerformBySimple(self.fuselage_loft.shape(), offset)
         result = TGeo.CNamedShape(offset_maker.Shape(), f"{self.fuselage_loft.name()}_offset")
         msg = f"Fuselage with {str(offset)=} meters"
@@ -152,8 +139,8 @@ class FuselageFactory:
         """
         :return: True if wing is on top
         """
-        logging.warning(f"{overlapdimension.get_zmin()=} < {self.fuselage_dimensions.get_zmax()}")
-        if overlapdimension.get_zmax() > self.fuselage_dimensions.get_zmid():
+        logging.warning(f"{overlapdimension.get_z_min()=} < {self.fuselage_dimensions.get_z_max()}")
+        if overlapdimension.get_z_max() > self.fuselage_dimensions.get_z_mid():
             logging.info(f"High wing aircraft")
             return True
         else:
@@ -163,8 +150,8 @@ class FuselageFactory:
         """
         return: True if wing is on bottom
         """
-        logging.warning(f"{overlapdimension.get_zmax()=} > {self.fuselage_dimensions.get_zmin()}")
-        if overlapdimension.get_zmin() < self.fuselage_dimensions.get_zmid():
+        logging.warning(f"{overlapdimension.get_z_max()=} > {self.fuselage_dimensions.get_z_min()}")
+        if overlapdimension.get_z_min() < self.fuselage_dimensions.get_z_mid():
             logging.info(f"Low wing aircraft")
             return True
         else:
@@ -172,19 +159,20 @@ class FuselageFactory:
 
     def _is_mid_wing(self, overlapdimension, toleranz_factor=0.25) -> bool:
         """
-        :param toleranz_factor: factor to determine if the wing is close to the midle default is set 0.25 (25%)
+        :param toleranz_factor: factor to determine if the wing is close to the middle default is set 0.25 (25%)
         :return: True if the Wing is near the middle of the fuselage +- tolerance
         """
         toleranz = self.fuselage_dimensions.get_height() * toleranz_factor
-        if overlapdimension.get_zmid() <= self.fuselage_dimensions.get_zmid() + toleranz and \
-                overlapdimension.get_zmid() >= self.fuselage_dimensions.get_zmid() - toleranz:
+
+        if self.fuselage_dimensions.get_z_mid() + toleranz >= overlapdimension.get_z_mid() \
+                >= self.fuselage_dimensions.get_z_mid() - toleranz:
             return True
         else:
             return False
 
-    def _overlap_fuselage_wing_dimmensions(self) -> PDim.ShapeDimensions:
+    def _overlap_fuselage_wing_dimensions(self) -> PDim.ShapeDimensions:
         """
-        creats a overlap shape using the Opencascade function Common between wing and fuselage and returns its dimensions
+        Creates an overlap shape using the Opencascade function Common between wing and fuselage
         :return: the shape dimensions of the overlap shape
         """
         overlap = TGeo.CNamedShape(
@@ -194,10 +182,10 @@ class FuselageFactory:
         return result
 
     def _create_complete_wing_shape(self) -> TGeo.CNamedShape:
-        '''
-        creates the comple meinewing outer shpae, by mirroring the right wing and fusing them together
-        :return: complet wing shape
-        '''
+        """
+        creates the complete main wing outer shape, by mirroring the right wing and fusing them together
+        :return: complete wing shape
+        """
         # Set up the mirror
         atrsf = Ogp.gp_Trsf()
         atrsf.SetMirror(Ogp.gp_Ax2(Ogp.gp_Pnt(0, 0, 0), Ogp.gp_Dir(0, 1, 0)))
@@ -208,13 +196,13 @@ class FuselageFactory:
         self.md.display_fuse(complete_wing, self.wing_loft, mirrored_wing_loft)
         return complete_wing
 
-    def _create_engine_cape(self, motor_cutout_leght) -> TGeo.CNamedShape:
+    def _create_engine_cape(self, motor_cutout_length) -> TGeo.CNamedShape:
         '''
         Cut the fuselage tip, so the motor can be positioned there. Fuselage loft is updated and returns the Engine cape Shape
-        :param motor_cutout_leght: lenght of the motor
+        :param motor_cutout_length: length of the motor
         '''
         cutout_box = TGeo.CNamedShape(
-            OPrim.BRepPrimAPI_MakeBox(self.fuselage_dimensions.get_point(1), motor_cutout_leght,
+            OPrim.BRepPrimAPI_MakeBox(self.fuselage_dimensions.get_point(1), motor_cutout_length,
                                       self.fuselage_dimensions.get_width(),
                                       self.fuselage_dimensions.get_height()).Shape(), "cape_cut_out")
 
@@ -260,32 +248,32 @@ class FuselageFactory:
         y_max: float = (self.fuselage_dimensions.get_width() * factor) / 2
         y_min: float = -y_max
 
-        overlap_dimension: PDim.ShapeDimensions = self._overlap_fuselage_wing_dimmensions()
+        overlap_dimension: PDim.ShapeDimensions = self._overlap_fuselage_wing_dimensions()
         position = None
         spacing = 0.003
         # Check if high wing or low wing
         if self._is_high_wing(overlap_dimension):
-            z_max_below_overlap: float = overlap_dimension.get_zmin() - spacing
-            z_max_claculated_with_factor: float = self.fuselage_dimensions.get_zmid() + (
+            z_max_below_overlap: float = overlap_dimension.get_z_min() - spacing
+            z_max_calculated_with_factor: float = self.fuselage_dimensions.get_z_mid() + (
                     (self.fuselage_dimensions.get_height() * factor) / 2)
 
-            # z_max can not collide with wing, and schould not be smaller than the height of the fuselage * factor
-            z_max: float = min(z_max_below_overlap, z_max_claculated_with_factor)
-            z_min: float = self.fuselage_dimensions.get_zmid() - ((self.fuselage_dimensions.get_height() * factor) / 2)
+            # z_max can not collide with wing, and may not be smaller than the height of the fuselage * factor
+            z_max: float = min(z_max_below_overlap, z_max_calculated_with_factor)
+            z_min: float = self.fuselage_dimensions.get_z_mid() - ((self.fuselage_dimensions.get_height() * factor) / 2)
             self.position = "top"
         elif self._is_low_wing(overlap_dimension):
-            z_min_over_overlap: float = overlap_dimension.get_zmax() + spacing
-            z_min_calculated_with_factor: float = self.fuselage_dimensions.get_zmid() - (
+            z_min_over_overlap: float = overlap_dimension.get_z_max() + spacing
+            z_min_calculated_with_factor: float = self.fuselage_dimensions.get_z_mid() - (
                     (self.fuselage_dimensions.get_height() * factor) / 2)
 
             # z_max can not collide with wing, and schould not be smaller than the height of the fuselage * factor
             z_min: float = max(z_min_over_overlap, z_min_calculated_with_factor)
-            z_max = self.fuselage_dimensions.get_zmid() + ((self.fuselage_dimensions.get_height() * factor) / 2)
+            z_max = self.fuselage_dimensions.get_z_mid() + ((self.fuselage_dimensions.get_height() * factor) / 2)
             self.position = "bottom"
         else:
-            z_max = self.fuselage_dimensions.get_zmid() + ((self.fuselage_dimensions.get_height() * factor) / 2)
-            z_min = self.fuselage_dimensions.get_zmid() - ((self.fuselage_dimensions.get_height() * factor) / 2)
-            logging.error(f"Ribs will colide")
+            z_max = self.fuselage_dimensions.get_z_mid() + ((self.fuselage_dimensions.get_height() * factor) / 2)
+            z_min = self.fuselage_dimensions.get_z_mid() - ((self.fuselage_dimensions.get_height() * factor) / 2)
+            logging.error(f"Ribs will collide")
 
         logging.info(f"Plane with {position} wing")
         return y_max, y_min, z_max, z_min
@@ -305,7 +293,7 @@ class FuselageFactory:
                                                                                   distance)
         cylinder_pattern_ver: TGeo.CNamedShape = TGeo.CNamedShape(OExs.translate_shp(cylinder_pattern.shape(),
                                                                                      Ogp.gp_Vec(distance / 2, 0,
-                                                                                                self.fuselage_dimensions.get_zmin())),
+                                                                                                self.fuselage_dimensions.get_z_min())),
                                                                   f"{cylinder_pattern.name()}_vertikal")
 
         self.md.display_this_shape(cylinder_pattern_ver, cylinder_pattern_ver.name())
@@ -321,132 +309,10 @@ class FuselageFactory:
         self.md.display_this_shape(cylinder_pattern_hor, cylinder_pattern_hor.name())
         cutouts.append(cylinder_pattern_hor)
 
-        # Hardware Oppening
+        # Hardware Opening
         hardware_opening: TGeo.CNamedShape = self.cutouts.create_hardware_cutout(self.fuselage_dimensions,
                                                                                  self.wing_dimensions, factor,
                                                                                  self.position)
 
         return cutouts, hardware_opening
 
-
-'''
-    def create_fuselage_with_sharp_ribs(self, factor=0.5) -> TopoDS_Shape:
-        """
-        Creates the Fuselage, with sharp ribs, reinforcementpipes, weightreduktion recces,hardwareopening
-        :param factor: smaller than 1, describes the size of the ribcage inside the fuselage
-        :return:
-        """
-
-        motor_lenght = 0.04
-        motor_schaft = 0.02
-        motor_cutout_leght = motor_lenght + motor_schaft
-        self._cut_front_fuselage_for_motor(motor_cutout_leght)
-
-        internal_structure: list[TGeo.CNamedShape] = []
-
-        y_max: float = (self.fuselage_dimensions.get_width() * factor) / 2
-        y_min: float = -y_max
-
-        overlap_dimension: PDim.ShapeDimensions = self._overlap_fuselage_wing_dimmensions()
-        position = None
-        spacing = 0.003
-        # Check if high wing or low wing
-        if self._is_high_wing(overlap_dimension):
-            z_max_below_overlap: float = overlap_dimension.get_zmin() - spacing
-            z_max_claculated_with_factor: float = self.fuselage_dimensions.get_zmid() + (
-                    (self.fuselage_dimensions.get_height() * factor) / 2)
-
-            # z_max can not collide with wing, and schould not be smaller than the height of the fuselage * factor
-            z_max: float = min(z_max_below_overlap, z_max_claculated_with_factor)
-            z_min: float = self.fuselage_dimensions.get_zmid() - ((self.fuselage_dimensions.get_height() * factor) / 2)
-            position = "top"
-        elif self._is_low_wing(overlap_dimension):
-            z_min_over_overlap: float = overlap_dimension.get_zmax() + spacing
-            z_min_calculated_with_factor: float = self.fuselage_dimensions.get_zmid() - (
-                    (self.fuselage_dimensions.get_height() * factor) / 2)
-
-            # z_max can not collide with wing, and schould not be smaller than the height of the fuselage * factor
-            z_min: float = max(z_min_over_overlap, z_min_calculated_with_factor)
-            z_max = self.fuselage_dimensions.get_zmid() + ((self.fuselage_dimensions.get_height() * factor) / 2)
-            position = "bottom"
-        else:
-            z_max = self.fuselage_dimensions.get_zmid() + ((self.fuselage_dimensions.get_height() * factor) / 2)
-            z_min = self.fuselage_dimensions.get_zmid() - ((self.fuselage_dimensions.get_height() * factor) / 2)
-            logging.error(f"Ribs will colide")
-
-        logging.info(f"Plane with {position} wing")
-        # Ribs
-        rib_width: float = 0.002
-        ribs: TGeo.CNamedShape = self.rib_factory.create_sharp_ribs(rib_width, y_max, y_min, z_max, z_min)
-        internal_structure.append(ribs)
-
-        # ReinforcementPipes
-        radius: float = 0.003
-        reinforcement_pipes: TGeo.CNamedShape = self.reinforcement_pipe_factory.create_reinforcement_pipe_fuselage(
-            radius, y_max,
-            y_min, z_max,
-            z_min)
-        internal_structure.append(reinforcement_pipes)
-        fused_internal_strukture: TGeo.CNamedShape = fuse_list_of_namedshapes(internal_structure)
-
-        cutouts: list[TGeo.CNamedShape] = []
-        # Vertikal reduktion recces :half of the distance between ribs with a factor 80%
-        radius_factor= 0.8
-        radius_with_z = ((z_max - z_min) / 2) * radius_factor
-        radius_with_y = ((y_max - y_min) / 2) * radius_factor
-        radius = min(radius_with_z, radius_with_y)
-
-        distance: float = radius * 3
-        quantity: int = round(self.fuselage_dimensions.get_length() / distance) + 1
-
-        cylinder_pattern: TGeo.CNamedShape = self.cutouts.create_cylinder_pattern(radius,
-                                                        self.fuselage_dimensions.get_height(), quantity, distance)
-        cylinder_pattern_ver: TGeo.CNamedShape = TGeo.CNamedShape(OExs.translate_shp(cylinder_pattern.shape(),
-                                                                                     Ogp.gp_Vec(distance / 2, 0,
-                                                                                                self.fuselage_dimensions.get_zmin())),
-                                                                  f"{cylinder_pattern.name()}_vertikal")
-        self.m.display_this_shape(cylinder_pattern_ver, cylinder_pattern_ver.name())
-        cutouts.append(cylinder_pattern_ver)
-
-        cylinder_pattern_hor: TGeo.CNamedShape = TGeo.CNamedShape(
-            OExs.rotate_shape(cylinder_pattern.shape(), Ogp.gp_OX(), 90), f"{cylinder_pattern.name()}_horizontal")
-        z_pos: float = (z_max + z_min) / 2
-        cylinder_pattern_hor.set_shape(OExs.translate_shp(cylinder_pattern_hor.shape(),
-                                                          Ogp.gp_Vec(distance / 2,
-                                                                     self.fuselage_dimensions.get_height() / 2,
-                                                                     z_pos)))
-        self.m.display_this_shape(cylinder_pattern_hor, cylinder_pattern_hor.name())
-        cutouts.append(cylinder_pattern_hor)
-
-        # Hardware Oppening
-        hardware_opening: TGeo.CNamedShape = self.cutouts.create_hardware_cutout(self.fuselage_dimensions,
-                                                                                 self.wing_dimensions, factor,
-                                                                                 position)
-        cutouts.append(hardware_opening)
-
-        # cuted Internal Strcture
-        cuted_internal_strukture: list[TGeo.CNamedShape] = []
-        cuted_internal_strukture.append(cut_list_of_shapes(fused_internal_strukture, cutouts))
-        self.m.display_in_secondfloor(cuted_internal_strukture[-1])
-
-        # Shape the internalt strukture
-        cuted_internal_strukture.append(TGeo.CNamedShape(
-            OAlgo.BRepAlgoAPI_Common(self.fuselage_loft.shape(), cuted_internal_strukture[-1].shape()).Shape(),
-            "Shaped_internalestrukture"))
-        self.m.display_common(cuted_internal_strukture[-1], self.fuselage_loft, cuted_internal_strukture[-2])
-
-        # Inverse internal Strukture
-        logging.info(f"Cuting internatl strukture form Fuselage")
-        self.shapes.append(TGeo.CNamedShape(
-            OAlgo.BRepAlgoAPI_Cut(self.fuselage_shape_offset.shape(), cuted_internal_strukture[-1].shape()).Shape(),
-            f"{self.fuselage_loft.name()}"))
-        self.m.display_cut(self.shapes[-1], self.fuselage_shape_offset, cuted_internal_strukture[-1])
-
-        # Cutout WIngs from Fuselage
-        logging.info(f"Cuting wings form Fuselage")
-        self.shapes.append(TGeo.CNamedShape(
-            OAlgo.BRepAlgoAPI_Cut(self.shapes[-1].shape(), self.wing_shape_complete.shape()).Shape(),
-            f"{self.fuselage_loft.name()}"))
-        self.m.display_cut(self.shapes[-1], self.shapes[-1], self.wing_shape_complete)
-        return self.shapes[-1]
-'''

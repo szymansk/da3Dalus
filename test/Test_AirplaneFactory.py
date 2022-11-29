@@ -1,25 +1,19 @@
-import OCC.Core.TopoDS as OTopo
-import OCC.Core.gp as Ogp
-import tigl3.configuration as TConfig
-import tigl3.geometry as TGeo
-
 import Airplane.AirplaneFactory as ap
-import Airplane.ReinforcementPipeFactory as rpf
-import Airplane.Wing.CablePipeFactory as cp
-import Airplane.Wing.RuderFactory as rf
-import Airplane.Wing.ServoRecessFactory as srf
-import Airplane.Wing.WingFactory as wf
-import Airplane.Wing.WingRibFactory as wrf
 import Extra.mydisplay as myDisplay
 import Extra.tigl_extractor as tg
-from Dimensions.ShapeDimensions import ShapeDimensions
+import logging
+
+
+CPACS_FILE_NAME = "aircombat_v14"
 
 if __name__ == "__main__":
+
+    logging.info(f"Start testing Airplane Factory with CPACS File {CPACS_FILE_NAME}")
     m = myDisplay.myDisplay.instance(True, 1, False)
-    tigl_h = tg.get_tigl_handler("aircombat_v14")
+
+    tigl_h = tg.get_tigl_handler(CPACS_FILE_NAME)
     test_class = ap.AirplaneFactory(tigl_h)
-    # test_class.create_right_mainwing()
-    # test_class.create_left_mainwing()
-    # test_class.create_fuselage()
     test_class.create_airplane()
+
+    logging.info("Test finished. Display Results")
     m.start()

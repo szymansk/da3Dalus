@@ -19,7 +19,7 @@ import Extra.tigl_extractor as tg
 import Extra.ShapeSlicer as ss
 import Extra.ShellCreator as cs
 import Extra.CollisionDetector as cd
-import stl_exporter.Ausgabeservice as exp
+import stl_exporter.Exporter as exp
 from Dimensions.ShapeDimensions import ShapeDimensions
 
 if __name__ == "__main__":
@@ -128,7 +128,7 @@ if __name__ == "__main__":
         points.append(point1)
 
         # point2
-        point2: Ogp.gp_Pnt = Ogp.gp_Pnt(p.X() - 0.05, fuselage_dimensions.get_ymax() / 2, p.Z())
+        point2: Ogp.gp_Pnt = Ogp.gp_Pnt(p.X() - 0.05, fuselage_dimensions.get_y_max() / 2, p.Z())
         points.append(point2)
 
         # point3
@@ -139,7 +139,7 @@ if __name__ == "__main__":
         test_class.create_complete_pipe()
     if test_class_name == "RightWing":
         test_class = ap.AirplaneFactory(tigl_h)
-        test_class.create_wing(1, "right_wing")
+        test_class.create_right_main_wing(1, "right_wing")
     if test_class_name == "FuselageFactory":
         test_class = ff.FuselageFactory(tigl_h, 1)
         test_class.create_fuselage_option1()

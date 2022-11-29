@@ -8,7 +8,6 @@ import Extra.BooleanOperationsForLists as BOl
 import Extra.patterns as pat
 from Extra.mydisplay import myDisplay
 from _alt.Wand_erstellen import *
-from _alt.abmasse import *
 
 
 class FuselageRibFactory:
@@ -18,8 +17,9 @@ class FuselageRibFactory:
     """
 
     def __init__(self, fuselage_loft, wing_loft):
+        logging.info(f"Initializing FuselageRibFactory")
+
         self.display = myDisplay.instance()
-        logging.info(f"Initilizing FuselageRibFactory")
         self.fuselage_loft = fuselage_loft
         self.fuselage_coordinates = PDim.ShapeDimensions(self.fuselage_loft)
 
@@ -45,22 +45,23 @@ class FuselageRibFactory:
         logstr = f"Quadrat ribs: x_pos=0 y_max={y_max:.3f} y_min={y_min:.3f} z_max={z_max:.3f} z_min={z_min:.3f}"
         logging.info(logstr)
 
-        # Factor to make the ribs lenght and height bigger, to ensure that they are big enogh
+        # Factor to make the ribs length and height bigger, to ensure that they are big enough
         factor = 1.2
-        rib_lenght = self.fuselage_coordinates.get_length() * factor
+        rib_length = self.fuselage_coordinates.get_length() * factor
         rib_height = self.fuselage_coordinates.get_height() * factor
-        box = OPrim.BRepPrimAPI_MakeBox(rib_lenght, rib_width, rib_height).Shape()
-        # move to the front by 10% and center on y axis
-        moved_box = OExs.translate_shp(box, Ogp.gp_Vec(-rib_lenght * 0.1, -rib_width / 2, 0))
+        box = OPrim.BRepPrimAPI_MakeBox(rib_length, rib_width, rib_height).Shape()
 
-        # vertikal ribs
+        # move to the front by 10% and center on y-axis
+        moved_box = OExs.translate_shp(box, Ogp.gp_Vec(-rib_length * 0.1, -rib_width / 2, 0))
+
+        # vertical ribs
         logging.info(f"Creating vertikal ribs")
         ver_rib = moved_box
         ver_rib_right = TGeo.CNamedShape(
-            OExs.translate_shp(ver_rib, Ogp.gp_Vec(0.0, y_max, self.fuselage_coordinates.get_zmin())),
+            OExs.translate_shp(ver_rib, Ogp.gp_Vec(0.0, y_max, self.fuselage_coordinates.get_z_min())),
             f"{self.fuselage_loft.name()}_vertikal_rib_1")
         ver_rib_left = TGeo.CNamedShape(
-            OExs.translate_shp(ver_rib, Ogp.gp_Vec(0.0, y_min, self.fuselage_coordinates.get_zmin())),
+            OExs.translate_shp(ver_rib, Ogp.gp_Vec(0.0, y_min, self.fuselage_coordinates.get_z_min())),
             f"{self.fuselage_loft.name()}_vertikal_rib_2")
 
         # Horizontal ribs
@@ -80,24 +81,24 @@ class FuselageRibFactory:
     def get_shape(self) -> TGeo.CNamedShape:
         return self.shape
 
-    def create_wing_suport_ribs(self, overlapdimensions) -> TGeo.CNamedShape:
-        rib_quantity = 6
+    def create_wing_support_ribs(self, overlap_dimensions) -> TGeo.CNamedShape:
 
-        rib_lenght = self.wing_coordinates.get_length() * 1.2
+        rib_quantity = 6
+        rib_length = self.wing_coordinates.get_length() * 1.2
         rib_width = 0.0008
-        rib_height = overlapdimensions.get_height() + 0.004
+        rib_height = overlap_dimensions.get_height() + 0.004
 
         complete_distance = self.fuselage_coordinates.get_width() * 0.8
-        single_distance = complete_distance / (rib_quantity)
+        single_distance = complete_distance / rib_quantity
 
-        single_rib = OPrim.BRepPrimAPI_MakeBox(rib_lenght, rib_width, rib_height).Shape()
+        single_rib = OPrim.BRepPrimAPI_MakeBox(rib_length, rib_width, rib_height).Shape()
         named_single_rib = TGeo.CNamedShape(single_rib, "single_rib")
         rib_pattern = pat.create_linear_pattern(named_single_rib, rib_quantity, single_distance, "y")
         rib_pattern_dimensions = PDim.ShapeDimensions(rib_pattern)
 
-        x_pos = overlapdimensions.get_xmid() - rib_pattern_dimensions.get_xmid()
-        y_pos = overlapdimensions.get_ymid() - rib_pattern_dimensions.get_ymid()
-        z_pos = overlapdimensions.get_zmin() - rib_pattern_dimensions.get_zmin()
+        x_pos = overlap_dimensions.get_x_mid() - rib_pattern_dimensions.get_x_mid()
+        y_pos = overlap_dimensions.get_y_mid() - rib_pattern_dimensions.get_y_mid()
+        z_pos = overlap_dimensions.get_z_min() - rib_pattern_dimensions.get_z_min()
 
         rib_pattern.set_shape(OExs.translate_shp(rib_pattern.shape(), Ogp.gp_Vec(x_pos, y_pos, z_pos)))
         self.display.display_this_shape(rib_pattern)

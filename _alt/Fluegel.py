@@ -110,10 +110,10 @@ from _alt.Aussparungen import Aussparung
 from _alt.Innenstruktur import rippen
 from _alt.shape_verschieben import verschieben
 from _alt.abmasse import abmessungen
-from stl_exporter.Ausgabeservice import ausgabe
+from stl_exporter.Exporter import ausgabe
 
 from _alt.abmasse import *
-from stl_exporter.Ausgabeservice import *
+from stl_exporter.Exporter import *
 from _alt.Aussparungen import *
 from _alt.Innenstruktur import *
 from _alt.shape_verschieben import *

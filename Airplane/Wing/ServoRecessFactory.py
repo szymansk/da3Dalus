@@ -13,15 +13,13 @@ from _alt.Wand_erstellen import *
 
 
 class ServoRecessFactory:
-    def __init__(self, tigl_handle, wingNr):
-        self.tigl_handle = tigl_handle
-        self.config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
-        self.cpacs_configuration: TConfig.CCPACSConfiguration = self.config_manager.get_configuration(
-            tigl_handle._handle.value)
-        self.wing: TConfig.CCPACSWing = self.cpacs_configuration.get_wing(wingNr)
+    def __init__(self, wing):
+
+        self.wing: TConfig.CCPACSWing = wing
         self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
         self.wing_shape: OTopo.TopoDS_Shape = self.wing_loft.shape()
         self.wing_dimensions = PDim.ShapeDimensions(self.wing_loft)
+
         self.shape: OTopo.TopoDS_Shape = OTopo.TopoDS_Shape()
         self.shapes: list = []
         # self.ruder_dimensions=ShapeDimensions(ruder_shape)
@@ -53,23 +51,23 @@ class ServoRecessFactory:
             OPrim.BRepPrimAPI_MakeBox(self.wing_dimensions.get_length(), self.servo_size[1],
                                       self.wing_dimensions.get_height()).Shape(), "bounding_box")
 
-        y_pos = self.ruder_dimensions.get_ymin() + (
+        y_pos = self.ruder_dimensions.get_y_min() + (
                 self.ruder_dimensions.get_width() / 3) - servo_recess_dimension.get_width()
 
         section_bound_box.set_shape(
-            OExs.translate_shp(section_bound_box.shape(), Ogp.gp_Vec(self.wing_dimensions.get_xmin(), y_pos,
-                                                                     self.wing_dimensions.get_zmin())))
+            OExs.translate_shp(section_bound_box.shape(), Ogp.gp_Vec(self.wing_dimensions.get_x_min(), y_pos,
+                                                                     self.wing_dimensions.get_z_min())))
 
         servo_section = TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Common(section_bound_box.shape(), self.wing_shape).Shape(),
                                          "servosection")
         self.display.display_common(servo_section, section_bound_box, self.wing_loft)
         section_dimensions = ShapeDimensions(servo_section)
 
-        x_pos = section_dimensions.get_xmid() + servo_recess_dimension.get_length() * 0.2
-        y_pos = self.ruder_dimensions.get_ymin() + (
+        x_pos = section_dimensions.get_x_mid() + servo_recess_dimension.get_length() * 0.2
+        y_pos = self.ruder_dimensions.get_y_min() + (
                 self.ruder_dimensions.get_width() / 3) - servo_recess_dimension.get_width()
         height_dif = abs(section_dimensions.get_height() - servo_recess_dimension.get_height()) / 2
-        z_pos = section_dimensions.get_zmax() - height_dif - servo_recess_dimension.get_height()
+        z_pos = section_dimensions.get_z_max() - height_dif - servo_recess_dimension.get_height()
         # TODO calculate z_Position correctly. Recces does not touche the wing border
 
         # Display

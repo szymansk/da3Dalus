@@ -19,21 +19,14 @@ class CablePipeFactory:
     This CLass is used to create a Cable Pipe in the wing
     """
 
-    def __init__(self, tigl_handle, wing_nr) -> None:
-        self.display = myDisplay.instance()
-        self.tigl_handle = tigl_handle
-        self.config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
-        self.cpacs_configuration: TConfig.CCPACSConfiguration = self.config_manager.get_configuration(
-            tigl_handle._handle.value)
+    def __init__(self, wing) -> None:
 
-        self.wing: TConfig.CCPACSWing = self.cpacs_configuration.get_wing(wing_nr)
-        self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
-        self.wing_shape: OTopo.TopoDS_Shape = self.wing_loft.shape()
-        self.wing_koordinates = PDim.ShapeDimensions(self.wing_loft)
+        self.wing: TConfig.CCPACSWing = wing
 
         self.named_shape = TGeo.CNamedShape()
         self.points: list[Ogp.gp_Pnt] = []
         self.radius: float = 0.002
+        self.display = myDisplay.instance()
 
     def get_shape(self) -> TGeo.CNamedShape:
         return self.named_shape
@@ -43,12 +36,13 @@ class CablePipeFactory:
         Create a Pipe that runs through the given Points with the given radius
         :param points: list of points
         :param radius: in meters
-        :return: the namedshape of the created pipe
+        :return: the named shape of the created pipe
         """
         self.points = points
         self.radius = radius
         pipe_shapes = []
-        logging.info(f"Creating a pipe thru {len(self.points)=} points")
+        logging.info(f"Creating a pipe through {len(self.points)=} points")
+
         for i in range(0, len(self.points) - 1):
             pipe_shapes.append(self._pipe_section(self.points[i], self.points[i + 1], self.radius, i))
 
@@ -59,15 +53,16 @@ class CablePipeFactory:
         self.loft = named_pipe
         return named_pipe
 
-    def points_route_thru(self, servo_dimensions: ShapeDimensions, fuselage_dimensions: ShapeDimensions):
+    def points_route_through(self, servo_dimensions: ShapeDimensions, fuselage_dimensions: ShapeDimensions):
         """
-        This method returs a list of point that describe the rout of a pipe. it Starts at the centre of the servo and
+        This method returns a list of point that describe the route of a pipe. It starts at the centre of the servo and
         ends at the centre of the fuselage
         :param servo_dimensions: dimensions of the servo
         :param fuselage_dimensions: dimensions of the fuselage
         :return: list of points
         """
         points = []
+
         # Point0
         p: Ogp.gp_Pnt = servo_dimensions.get_point(0)
         point0: Ogp.gp_Pnt = Ogp.gp_Pnt(p.X(), p.Y(), p.Z())
@@ -82,12 +77,12 @@ class CablePipeFactory:
         # point2
         wing_inner_cord = self._get_segment_dimensions(1)
         fuselage_mid_point: Ogp.gp_Pnt = fuselage_dimensions.get_point(0)
-        point2: Ogp.gp_Pnt = Ogp.gp_Pnt(p.X(), fuselage_dimensions.get_ymax() / 2,
-                                        wing_inner_cord.get_zmid())
+        point2: Ogp.gp_Pnt = Ogp.gp_Pnt(p.X(), fuselage_dimensions.get_y_max() / 2,
+                                        wing_inner_cord.get_z_mid())
         points.append(point2)
 
         # point3
-        point3: Ogp.gp_Pnt = Ogp.gp_Pnt(wing_inner_cord.get_xmid(), fuselage_mid_point.Y(), fuselage_mid_point.Z())
+        point3: Ogp.gp_Pnt = Ogp.gp_Pnt(wing_inner_cord.get_x_mid(), fuselage_mid_point.Y(), fuselage_mid_point.Z())
         points.append(point3)
         return points
 
@@ -107,8 +102,8 @@ class CablePipeFactory:
         make_wire.Build()
         wire = make_wire.Wire()
 
-        mydir = Ogp.gp_Dir(end.X() - start.X(), end.Y() - start.Y(), end.Z() - start.Z())
-        circle = Ogp.gp_Circ(gp_Ax2(start, mydir), radius)
+        my_dir = Ogp.gp_Dir(end.X() - start.X(), end.Y() - start.Y(), end.Z() - start.Z())
+        circle = Ogp.gp_Circ(gp_Ax2(start, my_dir), radius)
 
         profile_edge = OBuilder.BRepBuilderAPI_MakeEdge(circle).Edge()
         profile_wire = OBuilder.BRepBuilderAPI_MakeWire(profile_edge).Wire()

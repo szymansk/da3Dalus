@@ -15,32 +15,30 @@ from _alt.Wand_erstellen import *
 
 
 class WingRibFactory:
-    '''
+    """
     This class is used to create the Ribs for the given wing identifies by the index
     After initializing the class, call one of the create methods
-    '''
+    """
 
-    def __init__(self, tigl_handle, wing_index):
-        self.tigl_handle = tigl_handle
-        self.config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
-        self.cpacs_configuration: TConfig.CCPACSConfiguration = self.config_manager.get_configuration(
-            tigl_handle._handle.value)
-        self.wing: TConfig.CCPACSWing = self.cpacs_configuration.get_wing(wing_index)
+    def __init__(self, wing):
+
+        self.wing: TConfig.CCPACSWing = wing
         self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
         self.wing_shape: OTopo.TopoDS_Shape = self.wing_loft.shape()
         self.wing_coordinates = PDim.ShapeDimensions(self.wing_loft)
+
         self.shape: TGeo.CNamedShape = TGeo.CNamedShape()
-        self.shapes: list = []
         self.display = myDisplay.instance()
+
         logging.info(f"{self.wing_coordinates=}")
 
     def create_ribcage(self, horizontal_rib_quantity=3, rib_width=0.0004) -> TGeo.CNamedShape:
-        '''
+        """
         Creates a rib cage with horizontal oriented ribs and diagonal ribs
         Parameters
         horizontal_rib_quantity: The number of horizontal ribs, setting by default to 3
         rib_width: Width of the inner_closure ribs of wing and fuselage in meters default=0.0004
-        '''
+        """
         logging.info(f"Creating ribs option1")
         logging.info(f"Segment Count: {self.wing.get_segment_count()}")
         ribs: list[TGeo.CNamedShape] = []
@@ -59,32 +57,33 @@ class WingRibFactory:
             outer_x_list = outer_dimensions.get_coordinates_on_axis(horizontal_rib_quantity)
 
             lenght = inner_dimensions.get_length()
-            # height = inner_dimensions.get_height()
             height = self.wing_coordinates.get_height()
             logging.info(f"{lenght=} {height=}")
 
-            x_dif = abs(inner_dimensions.get_xmin() - outer_dimensions.get_xmin())
-            y_dif = abs(inner_dimensions.get_ymin() - outer_dimensions.get_ymin())
+            x_dif = abs(inner_dimensions.get_x_min() - outer_dimensions.get_x_min())
+            y_dif = abs(inner_dimensions.get_y_min() - outer_dimensions.get_y_min())
             width = math.hypot(x_dif, y_dif)
             name = f"segment_{index}"
+
             # horitzontal_ribs
-            ribs.append(self._create_oriented_horizontal_ribs(inner_x_list, outer_x_list, inner_dimensions.get_ymin(),
-                                                              inner_dimensions.get_zmin(), lenght, width, height,
+            ribs.append(self._create_oriented_horizontal_ribs(inner_x_list, outer_x_list, inner_dimensions.get_y_min(),
+                                                              inner_dimensions.get_z_min(), width, height,
                                                               rib_width, name))
 
         logging.info(f"ribs list lenght: {len(ribs)}")
 
-        # Fuse if lenght of ribs longer than 1
+        # Fuse if length of ribs longer than 1
         if len(ribs) > 1:
             ribs.append(
                 BooleanOperationsForLists.fuse_list_of_namedshapes(ribs, f"{self.wing_loft.name()}_oriented_ribs"))
 
-        # diagonaleribs
+        # diagonale ribs
         front_sweep_angle = math.degrees(math.atan(x_dif / y_dif))
         starting_angle = 60
         rib_angle = starting_angle - front_sweep_angle
 
-        # rib distance depends on the dimmension of the wing, can be removed as soon as all Test CPACS wingspan are arounf 1 meter long
+        # rib distance depends on the dimmension of the wing,
+        # can be removed as soon as all Test CPACS wingspan are around 1 meter long
         if y_dif > 1:
             rib_distance = 0.5
         else:
@@ -110,22 +109,22 @@ class WingRibFactory:
         self.shape = trimed_wing
         return trimed_wing
 
-    def get_namedshape(self) -> TGeo.CNamedShape:
+    def get_named_shape(self) -> TGeo.CNamedShape:
         """
         returns the shape of the created wingrIb
         """
         return self.shape
 
     def _create_oriented_horizontal_ribs(self, root_x_list: list[float], tip_x_list: list[float], root_y: float,
-                                         root_z: float, lenght: float, width: float, height: float,
+                                         root_z: float, width: float, height: float,
                                          rib_width: float, name="") -> TGeo.CNamedShape:
         """
         Creates a multiple oriented horizontal rib.
         Paramaters:
         root_x_list: a list with x kordiante values where the rib should start
         tip_x_list: a list with x kordiante values where the rib should end
-        root_y: y koordinate where the rib schould start
-        root_z: z koordinate where the rib schould start
+        root_y: y coordinate where the rib schould start
+        root_z: z coordinate where the rib schould start
         lenght, width, height parameters of the shape that is becoming the rib
         rib_width: the width of the rib given in meters
         """
@@ -152,26 +151,26 @@ class WingRibFactory:
         rib_width: the width of the rib given in meters
         """
         corner_points = []
-        # point1: bottom right corner of a box, at the root segment
+        # point 1: bottom right corner of a box, at the root segment
         x_cor = x_inner + (rib_width / 2)
         logging.info(f"test {x_inner=:.6f} {x_cor=:.6f}")
         y_cor = y_pos
         z_cor = z_pos
         corner_points.append(gp_Pnt(x_cor, y_cor, z_cor))
 
-        # point2 bottom right corner of a box, at the tip segment
+        # point 2: bottom right corner of a box, at the tip segment
         x_cor = x_outer + (rib_width / 2)
         y_cor = y_pos + seg_width
         z_cor = z_pos
         corner_points.append(gp_Pnt(x_cor, y_cor, z_cor))
 
-        # point3 bottom left corner of a box, at the tip segment
+        # point 3: bottom left corner of a box, at the tip segment
         x_cor = x_outer - (rib_width / 2)
         y_cor = y_pos + seg_width
         z_cor = z_pos
         corner_points.append(gp_Pnt(x_cor, y_cor, z_cor))
 
-        # point4 bottom left corner of a box, at the root segment
+        # point 4: bottom left corner of a box, at the root segment
         x_cor = x_inner - (rib_width / 2)
         y_cor = y_pos
         z_cor = z_pos
@@ -204,8 +203,8 @@ class WingRibFactory:
                                      "singlerib_box"))
         prim.append(TGeo.CNamedShape(OExs.rotate_shape(prim[-1].shape(), gp_OZ(), angle), "singlerib_moved_box"))
         prim.append(TGeo.CNamedShape(
-            OExs.translate_shp(prim[-1].shape(), Ogp.gp_Vec(self.wing_coordinates.get_xmin(), -rib_width,
-                                                            self.wing_coordinates.get_zmin())), "singlerib"))
+            OExs.translate_shp(prim[-1].shape(), Ogp.gp_Vec(self.wing_coordinates.get_x_min(), -rib_width,
+                                                            self.wing_coordinates.get_z_min())), "singlerib"))
         # self.display.display_this_shape(prim[-1])
         if ribs_quantity == 0:
             ribs_distance = 0.05

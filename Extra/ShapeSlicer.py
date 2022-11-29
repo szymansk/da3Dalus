@@ -128,7 +128,7 @@ class ShapeSlicer:
     def slicing_positions(self, fuselage_shape):
         result = []
         spacing = 0.0004
-        before_wing = self.shape_dimensions.get_xmin() - spacing
+        before_wing = self.shape_dimensions.get_x_min() - spacing
         after_wing = self.shape_dimensions.x_max + spacing
         mid_wing = (after_wing + before_wing) / 2
         result.append(before_wing / 2)
@@ -136,7 +136,7 @@ class ShapeSlicer:
         result.append(mid_wing)
         result.append(after_wing)
         fuselage_dimensions = ShapeDimensions(fuselage_shape)
-        end_fuselage = fuselage_dimensions.get_xmax()
+        end_fuselage = fuselage_dimensions.get_x_max()
         split_rear_fuselage = (end_fuselage + after_wing) / 2
         result.append(split_rear_fuselage)
         result.append(end_fuselage)

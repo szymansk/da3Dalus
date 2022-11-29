@@ -19,7 +19,7 @@ class FuselageCutouts:
         :param radius: radius of each cylinder
         :param height: height of the cylinders
         :param quantity: amount of cylinders
-        :param distance: distances between the each cylinder
+        :param distance: distances between each cylinder
         :return:
         '''
         cylinder = TGeo.CNamedShape(OPrim.BRepPrimAPI_MakeCylinder(radius, height).Shape(), "cylinder_cutout")
@@ -29,26 +29,27 @@ class FuselageCutouts:
     def create_hardware_cutout(self, fuselage_dimensions: ShapeDimensions, wing_dimensions: ShapeDimensions,
                                width_factor, position="bottom") -> TGeo.CNamedShape:
         """
-        Creates a cutout that is the same lenght as the wing and has the width of the fuselage times the factor.
+        Creates a cutout that is the same length as the wing and has the width of the fuselage times the factor.
         It is positiones at the top or bottom
         :param fuselage_dimensions: dimensions of the fuselage shpae
-        :param wing_dimensions: dimenasions of the wing shape
+        :param wing_dimensions: dimensions of the wing shape
         :param width_factor: factor used to create the inner ribcage
         :param position: describes the position of the cutout, top/bottom
         :return:
         """
-        hardware_cutout_lenght = wing_dimensions.get_length()
-        hardware_cutout_width = fuselage_dimensions.get_width() * width_factor * 0.8  # 80% otherwise thers a collision
+        hardware_cutout_length = wing_dimensions.get_length()
+
+        # times 0.8 (80%) to avoid collision
+        hardware_cutout_width = fuselage_dimensions.get_width() * width_factor * 0.8
         hardware_cutout_height = fuselage_dimensions.get_height() / 2
 
-        hardware_x_pos = wing_dimensions.get_xmin() + wing_dimensions.get_length() * 0.2
+        hardware_x_pos = wing_dimensions.get_x_min() + wing_dimensions.get_length() * 0.2
         hardware_y_pos = -hardware_cutout_width / 2
-        if position == "bottom":
-            hardware_z_pos = fuselage_dimensions.get_zmin()
-        else:
-            hardware_z_pos = fuselage_dimensions.get_zmax() - hardware_cutout_height
 
-        box = OPrim.BRepPrimAPI_MakeBox(hardware_cutout_lenght, hardware_cutout_width, hardware_cutout_height).Shape()
+        hardware_z_pos = fuselage_dimensions.get_z_min() if position == "bottom" \
+            else fuselage_dimensions.get_z_max() - hardware_cutout_height
+
+        box = OPrim.BRepPrimAPI_MakeBox(hardware_cutout_length, hardware_cutout_width, hardware_cutout_height).Shape()
         moved_box = TGeo.CNamedShape(OExs.translate_shp(box,
                                                         Ogp.gp_Vec(hardware_x_pos, hardware_y_pos, hardware_z_pos)),
                                      "box_cutout")
@@ -56,7 +57,7 @@ class FuselageCutouts:
         cylinder = OPrim.BRepPrimAPI_MakeCylinder(hardware_cutout_width / 2, hardware_cutout_height).Shape()
         cylinder_front = TGeo.CNamedShape(OExs.translate_shp(cylinder, Ogp.gp_Vec(hardware_x_pos, 0.0, hardware_z_pos)),
                                           "c1_cutout")
-        hardware_x_pos += hardware_cutout_lenght
+        hardware_x_pos += hardware_cutout_length
         cylinder_back = TGeo.CNamedShape(OExs.translate_shp(cylinder, Ogp.gp_Vec(hardware_x_pos, 0.0, hardware_z_pos)),
                                          "c2_cutout")
         cutouts = [moved_box, cylinder_front, cylinder_back]
@@ -76,8 +77,8 @@ class FuselageCutouts:
         bolt_holes = Pat.create_linear_pattern(bolt_hole, 2, distance, "x")
 
         bolt_holes_dimensions = ShapeDimensions(bolt_holes)
-        x_pos = overlap_dimensions.get_xmid() - bolt_holes_dimensions.get_xmid()
-        z_pos = overlap_dimensions.get_zmin() + (overlap_dimensions.get_height() * 0.8)
+        x_pos = overlap_dimensions.get_x_mid() - bolt_holes_dimensions.get_x_mid()
+        z_pos = overlap_dimensions.get_z_min() + (overlap_dimensions.get_height() * 0.8)
 
         bolt_holes.set_shape(OExs.translate_shp(bolt_holes.shape(), Ogp.gp_Vec(x_pos, 0, z_pos)))
         return bolt_holes

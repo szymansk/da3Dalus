@@ -1,28 +1,11 @@
 import logging
 
 import OCC.Core.TopoDS as OTopo
-import OCC.Core.gp as Ogp
-import OCC.Extend.ShapeFactory as OExs
 import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
-import OCC.Core.BRepPrimAPI as OPrim
 
-import Airplane.AirplaneFactory as ap
-import Airplane.ReinforcementPipeFactory as rpf
-import Airplane.Wing.CablePipeFactory as cp
-import Airplane.Wing.RuderFactory as rf
-import Airplane.Wing.ServoRecessFactory as srf
-import Airplane.Wing.WingFactory as wf
-import Airplane.Wing.WingRibFactory as wrf
-import Airplane.Fuselage.FuselageFactory as ff
-import Airplane.Fuselage.EngineMountFactory as em
 import Extra.mydisplay as myDisplay
 import Extra.tigl_extractor as tg
-import tigl3.boolean_ops as boo
-import Extra.ShapeSlicer as ss
-import Extra.ShellCreator as cs
-import Extra.CollisionDetector as cd
-import stl_exporter.Ausgabeservice as exp
 from Dimensions.ShapeDimensions import ShapeDimensions
 
 if __name__ == "__main__":

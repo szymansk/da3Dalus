@@ -74,7 +74,7 @@ class myDisplay:
 
     def my_y_position(self, named_shape: TGeo.CNamedShape):
         shape_dimensions = sd.ShapeDimensions(named_shape)
-        pos = self.y_position + (shape_dimensions.get_ymid())
+        pos = self.y_position + (shape_dimensions.get_y_mid())
         return pos
 
     def next_y_position(self, named_shape: TGeo.CNamedShape):

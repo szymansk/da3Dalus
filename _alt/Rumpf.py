@@ -85,7 +85,7 @@ builder.MakeShell(shell)
 
 # In[2]:
 from _alt.abmasse import *
-from stl_exporter.Ausgabeservice import *
+from stl_exporter.Exporter import *
 from _alt.Aussparungen import *
 from _alt.Innenstruktur import *
 from _alt.shape_verschieben import *
