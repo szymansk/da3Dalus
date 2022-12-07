@@ -11,25 +11,27 @@ from Extra.BooleanOperationsForLists import *
 
 
 class FuselageFactory:
-    def __init__(self, wing, fuselage) -> None:
+    def __init__(self, configuration) -> None:
         self.md = myDisplay.instance()
 
-        self.fuselage: TConfig.CCPACSFuselage = fuselage
+        self.fuselage: TConfig.CCPACSFuselage = configuration.get_fuselage()
         logging.info(f"Creating Fuselage Shape: {self.fuselage.get_name()}")
 
         self.fuselage_loft: TGeo.CNamedShape = self.fuselage.get_loft()
         self.fuselage_dimensions = PDim.ShapeDimensions(self.fuselage_loft)
 
-        self.wing: TConfig.CCPACSWing = wing
+        self.cpacs_configuration = configuration.cpacs_configuration
+
+        self.wing: TConfig.CCPACSWing = configuration.get_right_main_wing()
         self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
         self.wing_shape: TopoDS_Shape = self.wing_loft.shape()
         self.wing_shape_complete: TGeo.CNamedShape = self._create_complete_wing_shape()
         self.wing_dimensions = PDim.ShapeDimensions(self.wing_loft)
 
         self.rib_factory = FuselageRibFactory(self.fuselage_loft, self.wing_loft)
-        self.reinforcement_pipe_factory = ReinforcementePipeFactory(wing, fuselage)
+        self.reinforcement_pipe_factory = ReinforcementePipeFactory(self.wing, self.fuselage)
         self.cutouts = FuselageCutouts()
-        self.engine_mount_factory = EngineMountFactory(fuselage)
+        self.engine_mount_factory = EngineMountFactory(configuration)
         self._calc_motor_dimensions()
 
         self.shape = None
@@ -79,7 +81,7 @@ class FuselageFactory:
         cuted_internal_structure: list[TGeo.CNamedShape] = [cut_list_of_shapes(fused_internal_structure, cutouts)]
 
         # Wing Support ribs
-        overlap_dimensions = self._overlap_fuselage_wing_dimensions()
+        overlap_dimensions = self.overlap_fuselage_wing_dimensions()
         wing_support: TGeo.CNamedShape = self.rib_factory.create_wing_support_ribs(overlap_dimensions)
         cuted_internal_structure.append(TGeo.CNamedShape(
             OAlgo.BRepAlgoAPI_Fuse(cuted_internal_structure[-1].shape(), wing_support.shape()).Shape(),
@@ -170,7 +172,7 @@ class FuselageFactory:
         else:
             return False
 
-    def _overlap_fuselage_wing_dimensions(self) -> PDim.ShapeDimensions:
+    def overlap_fuselage_wing_dimensions(self) -> PDim.ShapeDimensions:
         """
         Creates an overlap shape using the Opencascade function Common between wing and fuselage
         :return: the shape dimensions of the overlap shape
@@ -248,7 +250,7 @@ class FuselageFactory:
         y_max: float = (self.fuselage_dimensions.get_width() * factor) / 2
         y_min: float = -y_max
 
-        overlap_dimension: PDim.ShapeDimensions = self._overlap_fuselage_wing_dimensions()
+        overlap_dimension: PDim.ShapeDimensions = self.overlap_fuselage_wing_dimensions()
         position = None
         spacing = 0.003
         # Check if high wing or low wing

@@ -33,7 +33,7 @@ if __name__ == "__main__":
     m.display_in_secondfloor(wing_loft, "", True)
     m.display_in_secondfloor(fuselage_loft, "", True)
 
-    test_class = em.EngineMountFactory(tigl_h)
+    test_class = em.EngineMountFactory(configuration)
     my_engine_mount = test_class.create_engine_mount(PLATE_THICKNESS)
 
     m.display_in_secondfloor(my_engine_mount)

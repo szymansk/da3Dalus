@@ -3,6 +3,7 @@ import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
 
 import Airplane.Fuselage.FuselageRibFactory as frf
+from Airplane.Fuselage.FuselageFactory import FuselageFactory
 import Extra.mydisplay as myDisplay
 import Extra.tigl_extractor as tg
 from Dimensions.ShapeDimensions import ShapeDimensions
@@ -30,8 +31,9 @@ if __name__ == "__main__":
     m.display_in_origin(wing_loft, "", True)
     m.display_in_origin(fuselage_loft, "", True)
 
+    fuselage_factory = FuselageFactory(configuration)
     test_class = frf.FuselageRibFactory(fuselage_loft, wing_loft)
-    ribs = test_class.create_wing_support_ribs()
+    ribs = test_class.create_wing_support_ribs(fuselage_factory.overlap_fuselage_wing_dimensions())
     m.display_in_origin(ribs)
 
     logging.info("Test finished. Display results")

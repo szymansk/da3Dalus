@@ -6,9 +6,10 @@ from Extra.mydisplay import myDisplay
 
 
 class EngineMountFactory:
-    def __init__(self, fuselage):
+    def __init__(self, configuration):
         self.m = myDisplay.instance()
-        self.fuselage: TConfig.CCPACSFuselage = fuselage
+        self.cpacs_configuration = configuration.get_cpacs_configuration()
+        self.fuselage: TConfig.CCPACSFuselage = configuration.get_fuselage()
         self.fuselage_loft: TGeo.CNamedShape = self.fuselage.get_loft()
         self.fuselage_shape: OTopo.TopoDS_Shape = self.fuselage_loft.shape()
         self.fuselage_dimensions = PDim.ShapeDimensions(self.fuselage_loft)

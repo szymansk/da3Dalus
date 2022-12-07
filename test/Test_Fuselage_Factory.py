@@ -33,7 +33,7 @@ if __name__ == "__main__":
     m.display_in_origin(wing_loft, "", True)
     m.display_in_origin(fuselage_loft, "", True)
 
-    test_class = ff.FuselageFactory(wing, fuselage)
+    test_class = ff.FuselageFactory(configuration)
     constructed_fuselage = test_class.create_fuselage_with_sharp_ribs()
     my_slicer = ss.ShapeSlicer(constructed_fuselage, NUMBER_OF_CUTS)
 

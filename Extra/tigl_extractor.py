@@ -9,7 +9,7 @@ import os
 def get_tigl_handler(name):
     tixi_handle = tixi3wrapper.Tixi3()
     tigl_handle = tigl3wrapper.Tigl3()
-    base_dir = r'.\test_cpacs'
+    base_dir = r'..\test_cpacs'
     if name != None or name != "":
         name = name + ".xml"
         path = os.path.join(base_dir, name)
