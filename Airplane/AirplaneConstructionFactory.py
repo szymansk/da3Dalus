@@ -148,43 +148,7 @@ class GeneralJSONDecoder(JSONDecoder):
         return cls(**intersection)
 
 
-class FuselageShapeCreator(AbstractShapeCreator):
-    def __init__(self, creator_id: str,
-                 fuselage_index: int,
-                 right_main_wing_index: int,
-                 ribcage_factor: float,
-                 engine_mount_factory=None,
-                 cpacs_configuration: CCPACSConfiguration = None,
-                 tigl_handel=None):
-        self.identifier = creator_id
-        self.fuselage_index = fuselage_index
-        self.right_main_wing_index = right_main_wing_index
-        self.ribcage_factor = ribcage_factor
-        self._tigl_handel = tigl_handel
-        self._configuration = configuration
-        self._cpacs_configuration = cpacs_configuration
-        self._configuration = configuration
-        self._engine_mount_factory = engine_mount_factory
-
-    def create_shape(self, input_shapes: Iterable[tgl_geom.CNamedShape], **kwargs) -> Iterable[tgl_geom.CNamedShape]:
-        print('--> '.join(['{}={!r}'.format(k, v) for k, v in kwargs.items()]), "==>", self.identifier)
-        from Airplane.Fuselage.FuselageFactory import FuselageFactory
-        fuselage_factory = FuselageFactory(cpacs_configuration=self._cpacs_configuration,
-                                           fuselage_index=self.fuselage_index,
-                                           right_main_wing_index=self.right_main_wing_index)
-        fuselage_factory.create_fuselage_with_sharp_ribs(engine_mount_factory=self._engine_mount_factory,
-                                                         factor=self.ribcage_factor)
-        return [fuselage_factory.get_shape()]
-
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
-
-
+# !!! no function yet only example
 class WingServoMountCreator(AbstractShapeCreator):
     def __init__(self, creator_id: str, width: float, height: float, length: float, tigl_handel=None, wing_stuff=None):
         """
@@ -193,7 +157,7 @@ class WingServoMountCreator(AbstractShapeCreator):
         :param width:
         :param height:
         :param length:
-        :param tigl_handel: 
+        :param tigl_handel:
         :param wing_stuff:
         """
         self.identifier = creator_id
@@ -218,6 +182,7 @@ class WingServoMountCreator(AbstractShapeCreator):
         self.creator_id = value
 
 
+# !!! no function yet only example
 class FuseShapesCreator(AbstractShapeCreator):
     """
     This class shows an example on how you can use a list of shapes, that have been created in previous steps.
@@ -250,12 +215,81 @@ class FuseShapesCreator(AbstractShapeCreator):
                 raise KeyError('shapes are missing for fusing: {}'.format(missing))
         return shapes
 
-    def create_shape(self, input_shape: tgl_geom.CNamedShape, **kwargs) -> Iterable[tgl_geom.CNamedShape]:
+    def create_shape(self, input_shapes: Iterable[tgl_geom.CNamedShape], **kwargs) -> Iterable[tgl_geom.CNamedShape]:
         shapes = self._check_if_shapes_are_available(**kwargs)
 
         print('--> '.join(['{}={!r}'.format(k, v) for k, v in kwargs.items()]), "==>", self.identifier, ': ',
               ', '.join(['{}={!r}'.format(k, v) for k, v in shapes.items()]))
         return "created {id}".format(id=self.identifier)
+
+
+class FuselageShapeCreator(AbstractShapeCreator):
+    def __init__(self, creator_id: str,
+                 fuselage_index: int,
+                 right_main_wing_index: int,
+                 ribcage_factor: float,
+                 plate_thickness: float,
+                 rib_width: float,
+                 reinforcement_pipes_radius: float,
+                 cpacs_configuration: CCPACSConfiguration = None,
+                 tigl_handel=None):
+        self.identifier = creator_id
+        self.fuselage_index = fuselage_index
+        self.right_main_wing_index = right_main_wing_index
+        self.ribcage_factor = ribcage_factor
+        self.plate_thickness = plate_thickness
+        self.rib_width = rib_width
+        self.reinforcement_pipes_radius = reinforcement_pipes_radius
+        self._tigl_handel = tigl_handel
+        self._configuration = configuration
+        self._cpacs_configuration = cpacs_configuration
+        self._configuration = configuration
+
+    def create_shape(self, input_shapes: Iterable[tgl_geom.CNamedShape], **kwargs) -> Iterable[tgl_geom.CNamedShape]:
+        print('--> '.join(['{}={!r}'.format(k, v) for k, v in kwargs.items()]), "==>", self.identifier)
+        from Airplane.Fuselage.FuselageFactory import FuselageFactory
+        fuselage_factory = FuselageFactory(cpacs_configuration=self._cpacs_configuration,
+                                           fuselage_index=self.fuselage_index,
+                                           right_main_wing_index=self.right_main_wing_index)
+        fuselage_factory.create_fuselage_with_sharp_ribs(
+            ribcage_factor=self.ribcage_factor,
+            plate_thickness=self.plate_thickness,
+            rib_width=self.rib_width,
+            reinforcement_pipes_radius=self.reinforcement_pipes_radius)
+        return [fuselage_factory.get_shape()]
+
+    @property
+    def identifier(self):
+        return self.creator_id
+
+    @identifier.setter
+    def identifier(self, value):
+        self.creator_id = value
+
+
+class EngineMountShapeCreator(AbstractShapeCreator):
+    def __init__(self, creator_id: str,
+                 mount_plate_thickness: float,
+                 fuselage_index: int,
+                 cpacs_configuration: CCPACSConfiguration = None):
+        self.identifier = creator_id
+        self.fuselage_index = fuselage_index
+        self.mount_plate_thickness = mount_plate_thickness
+        self._cpacs_configuration = cpacs_configuration
+
+    def create_shape(self, input_shapes: Iterable[tgl_geom.CNamedShape], **kwargs) -> Iterable[tgl_geom.CNamedShape]:
+        print('--> '.join(['{}={!r}'.format(k, v) for k, v in kwargs.items()]), "==>", self.identifier)
+        _engine_mount_factory = EngineMountFactory(cpacs_configuration=self._cpacs_configuration,
+                                                   fuselage_index=self.fuselage_index)
+        return [_engine_mount_factory.create_engine_mount(plate_thickness=self.mount_plate_thickness)]
+
+    @property
+    def identifier(self):
+        return self.creator_id
+
+    @identifier.setter
+    def identifier(self, value):
+        self.creator_id = value
 
 
 class SliceShapesCreator(AbstractShapeCreator):
@@ -281,6 +315,46 @@ class SliceShapesCreator(AbstractShapeCreator):
         return parts
 
 
+class ExportToStlCreator(AbstractShapeCreator):
+    @property
+    def identifier(self):
+        return self.creator_id
+
+    @identifier.setter
+    def identifier(self, value):
+        self.creator_id = value
+
+    def __init__(self, creator_id: str, additional_shapes_to_export: Iterable[str]=None):
+        self.identifier = creator_id
+        self.additional_shapes_to_export = additional_shapes_to_export
+
+    def _check_if_shapes_are_available(self, **kwargs):
+        """
+        Check if the shapes, that are needed, have been created before and are available in kwargs.
+        :param kwargs:
+        :return:
+        """
+        shapes = {}
+        if self.additional_shapes_to_export is not None:
+            shapes = {k: kwargs[k] for k in kwargs.keys() & self.additional_shapes_to_export}
+            missing = {(k if k not in kwargs.keys() else None) for k in self.additional_shapes_to_export}  # check what is missing
+            missing = [i for i in missing if i is not None]  # remove all Nones
+            if len(missing) > 0:
+                raise KeyError('shapes are missing for fusing: {}'.format(missing))
+        return shapes
+
+    def create_shape(self, input_shapes: Iterable[tgl_geom.CNamedShape], **kwargs) -> Iterable[tgl_geom.CNamedShape]:
+        shapes = self._check_if_shapes_are_available(**kwargs)
+        all_shapes = [*shapes.values()]
+        all_shapes = [item for sublist in all_shapes for item in sublist]
+        all_shapes.extend(input_shapes)
+
+        import stl_exporter.Exporter as Exporter
+        stl_exporter = Exporter.Exporter()
+        stl_exporter.write_stls_from_list(all_shapes)
+        return all_shapes
+
+
 if __name__ == "__main__":
     CPACS_FILE_NAME = "aircombat_v14"
     NUMBER_OF_CUTS = 5
@@ -300,42 +374,36 @@ if __name__ == "__main__":
     configuration = Configuration(tigl_h)
 
     # defining the shape creators
-    fuselage0 = FuselageShapeCreator("fuselage", fuselage_index=1, right_main_wing_index=1, ribcage_factor=0.5)
     shapeSlicer = SliceShapesCreator("fuselage_slicer", number_of_cuts=5)
-    #fuselage1 = FuselageShapeCreator("horst1")
-    #fuselage2 = FuselageShapeCreator("horst2")
-    #wingServo = WingServoMountCreator("servo", 0.24, 0.12, 0.24)
-    #fuseShapes = FuseShapesCreator("fusing", shapes_to_fuse=["horst0", "horst1"])
+    engineMount = EngineMountShapeCreator("engine_mount", fuselage_index=1, mount_plate_thickness=0.005)
+    fuselage0 = FuselageShapeCreator("fuselage",
+                                     fuselage_index=1,
+                                     right_main_wing_index=1,
+                                     ribcage_factor=0.5,
+                                     plate_thickness=0.005,
+                                     rib_width=0.002,
+                                     reinforcement_pipes_radius=0.003)
+    shapeStlExport = ExportToStlCreator("stl_exporter", additional_shapes_to_export=["engine_mount"])
 
     # building up the workflow
-    map0 = ConstructionStepNode(fuselage0)
-    mapSS = ConstructionStepNode(shapeSlicer)
-    #map1 = ConstructionStepNode(fuselage1)
-    #map2 = ConstructionStepNode(fuselage2)
-    #map3 = ConstructionStepNode(wingServo)
-    #map4 = ConstructionStepNode(fuseShapes)
+    fuselageNode = ConstructionStepNode(fuselage0)
+    engineMountNode = ConstructionStepNode(engineMount)
+    shapeSlicerMountNode = ConstructionStepNode(shapeSlicer)
+    shapeStlExportNode = ConstructionStepNode(shapeStlExport)
 
     # linking the map
-    map0.append(mapSS)
-    #map2.append(map3)
-    #map0.append(map1)
-    #map0.append(map2)
-    #map1.append(map4)
-
-    # constructing all shapes
-    #structure = map0.construct()
-
-    #print('generated structure is: ', structure)
+    fuselageNode.append(shapeSlicerMountNode)
+    engineMountNode.append(fuselageNode)
+    shapeSlicerMountNode.append(shapeStlExportNode)
 
     import json
 
     # dump to a json string
-    json_data: str = json.dumps(map0, indent=4, cls=GeneralJSONEncoder)
+    json_data: str = json.dumps(engineMountNode, indent=4, cls=GeneralJSONEncoder)
 
     # load the string
     # tigl_handel is parameter which is not in the json file, but needed by the constructor of a creator class
     myMap = json.loads(json_data, cls=GeneralJSONDecoder,
-                       engine_mount_factory=EngineMountFactory(configuration),
                        cpacs_configuration=cpacs_configuration,
                        tigl_handel=tigl_h,
                        wing_stuff="wing_stuff is okay")

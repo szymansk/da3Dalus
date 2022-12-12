@@ -10,6 +10,7 @@ from Extra.mydisplay import myDisplay
 from .Configuration import Configuration
 
 
+# Remark: function in SliceShapeCreator
 def cut_component(component, quantity):
     """
     Cuts the component into serveral parts, defined by the quantity

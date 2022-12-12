@@ -36,44 +36,46 @@ class FuselageFactory:
         self.shapes = []
         self.fuselage_parts: list[TGeo.CNamedShape] = []
 
-    def create_fuselage_with_sharp_ribs(self, engine_mount_factory: EngineMountFactory, factor=0.5) -> TGeo.CNamedShape:
+    def create_fuselage_with_sharp_ribs(self,
+                                        ribcage_factor: float = 0.5,
+                                        plate_thickness: float = 0.005,
+                                        rib_width: float = 0.002,
+                                        reinforcement_pipes_radius: float = 0.003) \
+            -> TGeo.CNamedShape:
         """
         Creates the Fuselage, with sharp ribs, reinforcement pipes, weight reduction recces,hardwareopening
-        :param factor: smaller than 1, describes the size of the ribcage inside the fuselage
+        :param reinforcement_pipes_radius:
+        :param rib_width:
+        :param plate_thickness:
+        :param engine_mount_shape: the shape of the engine mount
+        :param ribcage_factor: smaller than 1, describes the size of the ribcage inside the fuselage
         :return:
         """
 
         # Create Motor cape and shorten fuselage
-        plate_thickness = 0.005
         motor_cutout_length = self.engine_length + self.engine_length + plate_thickness
         engine_cape = self._create_engine_cape(motor_cutout_length)
         self.fuselage_parts.append(engine_cape)
 
-        # Create Motor mount
-        engine_mount = engine_mount_factory.create_engine_mount(plate_thickness)
-        self.fuselage_parts.append(engine_mount)
-
         internal_structure: list[TGeo.CNamedShape] = []
 
         # Calculate the positions for the rib
-        y_max, y_min, z_max, z_min = self._calc_rib_positions(factor)
+        y_max, y_min, z_max, z_min = self._calc_rib_positions(ribcage_factor)
 
         # Ribs
-        rib_width: float = 0.002
         ribs: TGeo.CNamedShape = self.rib_factory.create_sharp_ribs(rib_width, y_max, y_min, z_max, z_min)
         internal_structure.append(ribs)
 
         # Reinforcement Pipes
-        radius: float = 0.003
         reinforcement_pipes: TGeo.CNamedShape = self.reinforcement_pipe_factory.create_reinforcement_pipe_fuselage(
-            radius, y_max, y_min, z_max, z_min)
+            reinforcement_pipes_radius, y_max, y_min, z_max, z_min)
         internal_structure.append(reinforcement_pipes)
 
         # Fuse internal structure
         fused_internal_structure: TGeo.CNamedShape = fuse_list_of_namedshapes(internal_structure)
 
         # Create Reduction recces
-        cutouts, hardware_cutout = self._create_recces_cutouts(y_max, y_min, z_max, z_min, factor)
+        cutouts, hardware_cutout = self._create_recces_cutouts(y_max, y_min, z_max, z_min, ribcage_factor)
 
         # cuted Internal Structure
         cuted_internal_structure: list[TGeo.CNamedShape] = [cut_list_of_shapes(fused_internal_structure, cutouts)]
