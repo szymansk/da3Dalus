@@ -1,11 +1,13 @@
 import logging
 
+import tigl3.geometry
+
 import stl_exporter.Exporter as exp
 from Airplane.Fuselage.FuselageFactory import FuselageFactory
 from Airplane.Wing.WingFactory import WingFactory
 from Extra.ShapeSlicer import ShapeSlicer
 from Extra.mydisplay import myDisplay
-from Configuration import Configuration
+from .Configuration import Configuration
 
 
 def cut_component(component, quantity):
@@ -102,12 +104,9 @@ class AirplaneFactory:
         :return:
         """
 
-        wing = self.configuration.get_right_main_wing()
-        fuselage = self.configuration.get_fuselage()
-
-        fuselage_factory = FuselageFactory(wing, fuselage)
+        fuselage_factory = FuselageFactory(self.configuration)
         fuselage_factory.create_fuselage_with_sharp_ribs()
-        fuselage_shape = fuselage_factory.get_shape()
+        fuselage_shape: tigl3.geometry.CNamedShape = fuselage_factory.get_shape()
 
         cut_parts = cut_component(fuselage_shape, parts_quantity)
 

@@ -11,18 +11,17 @@ from Extra.BooleanOperationsForLists import *
 
 
 class FuselageFactory:
-    def __init__(self, configuration) -> None:
+    def __init__(self, configuration, cpacs_configuration, fuselage_index: int = 1, right_main_wing_index: int = 1) -> None:
         self.md = myDisplay.instance()
+        self.cpacs_configuration = cpacs_configuration
 
-        self.fuselage: TConfig.CCPACSFuselage = configuration.get_fuselage()
+        self.fuselage: TConfig.CCPACSFuselage = cpacs_configuration.get_fuselage(fuselage_index)
         logging.info(f"Creating Fuselage Shape: {self.fuselage.get_name()}")
 
         self.fuselage_loft: TGeo.CNamedShape = self.fuselage.get_loft()
         self.fuselage_dimensions = PDim.ShapeDimensions(self.fuselage_loft)
 
-        self.cpacs_configuration = configuration.cpacs_configuration
-
-        self.wing: TConfig.CCPACSWing = configuration.get_right_main_wing()
+        self.wing: TConfig.CCPACSWing = self.cpacs_configuration.get_wing(right_main_wing_index)
         self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
         self.wing_shape: TopoDS_Shape = self.wing_loft.shape()
         self.wing_shape_complete: TGeo.CNamedShape = self._create_complete_wing_shape()
