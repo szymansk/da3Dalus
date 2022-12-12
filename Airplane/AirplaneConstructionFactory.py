@@ -9,6 +9,7 @@ import tigl3.geometry as tgl_geom
 from tigl3.configuration import CCPACSConfiguration
 
 from Airplane import Configuration
+from Airplane.Fuselage.EngineMountFactory import EngineMountFactory
 
 
 class AbstractShapeCreator(metaclass=abc.ABCMeta):
@@ -148,24 +149,31 @@ class GeneralJSONDecoder(JSONDecoder):
 
 
 class FuselageShapeCreator(AbstractShapeCreator):
-    def __init__(self, creator_id: str, fuselage_index: int, right_main_wing_index: int, configuration=None,
-                 cpacs_configuration: CCPACSConfiguration = None, tigl_handel=None):
+    def __init__(self, creator_id: str,
+                 fuselage_index: int,
+                 right_main_wing_index: int,
+                 ribcage_factor: float,
+                 engine_mount_factory=None,
+                 cpacs_configuration: CCPACSConfiguration = None,
+                 tigl_handel=None):
         self.identifier = creator_id
         self.fuselage_index = fuselage_index
         self.right_main_wing_index = right_main_wing_index
+        self.ribcage_factor = ribcage_factor
         self._tigl_handel = tigl_handel
         self._configuration = configuration
         self._cpacs_configuration = cpacs_configuration
         self._configuration = configuration
+        self._engine_mount_factory = engine_mount_factory
 
     def create_shape(self, input_shapes: Iterable[tgl_geom.CNamedShape], **kwargs) -> Iterable[tgl_geom.CNamedShape]:
         print('--> '.join(['{}={!r}'.format(k, v) for k, v in kwargs.items()]), "==>", self.identifier)
         from Airplane.Fuselage.FuselageFactory import FuselageFactory
-        fuselage_factory = FuselageFactory(configuration=self._configuration,
-                                           cpacs_configuration=self._cpacs_configuration,
+        fuselage_factory = FuselageFactory(cpacs_configuration=self._cpacs_configuration,
                                            fuselage_index=self.fuselage_index,
                                            right_main_wing_index=self.right_main_wing_index)
-        fuselage_factory.create_fuselage_with_sharp_ribs()
+        fuselage_factory.create_fuselage_with_sharp_ribs(engine_mount_factory=self._engine_mount_factory,
+                                                         factor=self.ribcage_factor)
         return [fuselage_factory.get_shape()]
 
     @property
@@ -292,7 +300,7 @@ if __name__ == "__main__":
     configuration = Configuration(tigl_h)
 
     # defining the shape creators
-    fuselage0 = FuselageShapeCreator("fuselage", fuselage_index=1, right_main_wing_index=1)
+    fuselage0 = FuselageShapeCreator("fuselage", fuselage_index=1, right_main_wing_index=1, ribcage_factor=0.5)
     shapeSlicer = SliceShapesCreator("fuselage_slicer", number_of_cuts=5)
     #fuselage1 = FuselageShapeCreator("horst1")
     #fuselage2 = FuselageShapeCreator("horst2")
@@ -326,8 +334,11 @@ if __name__ == "__main__":
 
     # load the string
     # tigl_handel is parameter which is not in the json file, but needed by the constructor of a creator class
-    myMap = json.loads(json_data, cls=GeneralJSONDecoder, configuration=configuration,
-                       cpacs_configuration=cpacs_configuration, tigl_handel=tigl_h, wing_stuff="wing_stuff is okay")
+    myMap = json.loads(json_data, cls=GeneralJSONDecoder,
+                       engine_mount_factory=EngineMountFactory(configuration),
+                       cpacs_configuration=cpacs_configuration,
+                       tigl_handel=tigl_h,
+                       wing_stuff="wing_stuff is okay")
 
     # dump again to check
     print(json.dumps(myMap, indent=4, cls=GeneralJSONEncoder))

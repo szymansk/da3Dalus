@@ -11,7 +11,7 @@ from Extra.BooleanOperationsForLists import *
 
 
 class FuselageFactory:
-    def __init__(self, configuration, cpacs_configuration, fuselage_index: int = 1, right_main_wing_index: int = 1) -> None:
+    def __init__(self, cpacs_configuration, fuselage_index: int = 1, right_main_wing_index: int = 1) -> None:
         self.md = myDisplay.instance()
         self.cpacs_configuration = cpacs_configuration
 
@@ -30,14 +30,13 @@ class FuselageFactory:
         self.rib_factory = FuselageRibFactory(self.fuselage_loft, self.wing_loft)
         self.reinforcement_pipe_factory = ReinforcementePipeFactory(self.wing, self.fuselage)
         self.cutouts = FuselageCutouts()
-        self.engine_mount_factory = EngineMountFactory(configuration)
         self._calc_motor_dimensions()
 
         self.shape = None
         self.shapes = []
         self.fuselage_parts: list[TGeo.CNamedShape] = []
 
-    def create_fuselage_with_sharp_ribs(self, factor=0.5) -> TGeo.CNamedShape:
+    def create_fuselage_with_sharp_ribs(self, engine_mount_factory: EngineMountFactory, factor=0.5) -> TGeo.CNamedShape:
         """
         Creates the Fuselage, with sharp ribs, reinforcement pipes, weight reduction recces,hardwareopening
         :param factor: smaller than 1, describes the size of the ribcage inside the fuselage
@@ -51,7 +50,7 @@ class FuselageFactory:
         self.fuselage_parts.append(engine_cape)
 
         # Create Motor mount
-        engine_mount = self.engine_mount_factory.create_engine_mount(plate_thickness)
+        engine_mount = engine_mount_factory.create_engine_mount(plate_thickness)
         self.fuselage_parts.append(engine_mount)
 
         internal_structure: list[TGeo.CNamedShape] = []
