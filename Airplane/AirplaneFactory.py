@@ -34,7 +34,6 @@ def export_components_to_stl(components):
     my_exporter.write_stls_from_list(components)
 
 
-
 class AirplaneFactory:
     """
     With this class it is possible to create all the parts of an airplane.
@@ -106,8 +105,8 @@ class AirplaneFactory:
         """
 
         fuselage_factory = FuselageFactory(self.configuration)
-        fuselage_factory.create_fuselage_with_sharp_ribs()
-        fuselage_shape: tigl3.geometry.CNamedShape = fuselage_factory.get_shape()
+        fuselage_shape: tigl3.geometry.CNamedShape = fuselage_factory.create_fuselage_with_sharp_ribs(fuselage_loft=fuselage_factory.fuselage_loft,
+                                                         cpacs_configuration=fuselage_factory.cpacs_configuration)
 
         cut_parts = cut_component(fuselage_shape, parts_quantity)
 

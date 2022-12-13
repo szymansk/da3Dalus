@@ -9,10 +9,8 @@ from Dimensions.ShapeDimensions import ShapeDimensions
 
 
 class FuselageCutouts:
-    def __init__(self):
-        self.shape: None
-
-    def create_cylinder_pattern(self, radius: float, height: float, quantity: float,
+    @classmethod
+    def create_cylinder_pattern(cls, radius: float, height: float, quantity: float,
                                 distance: float) -> TGeo.CNamedShape:
         '''
         Creates a linear patter of cylinders that are used as Cutouts
@@ -26,7 +24,9 @@ class FuselageCutouts:
         cylinder_pattern = Pat.create_linear_pattern(cylinder, quantity, distance, "x")
         return cylinder_pattern
 
-    def create_hardware_cutout(self, fuselage_dimensions: ShapeDimensions, wing_dimensions: ShapeDimensions,
+
+    @classmethod
+    def create_hardware_cutout(cls, fuselage_dimensions: ShapeDimensions, wing_dimensions: ShapeDimensions,
                                width_factor, position="bottom") -> TGeo.CNamedShape:
         """
         Creates a cutout that is the same length as the wing and has the width of the fuselage times the factor.
@@ -64,7 +64,9 @@ class FuselageCutouts:
         cutout = Bof.fuse_list_of_namedshapes(cutouts, "hardware_cutout")
         return cutout
 
-    def create_bolt_hole(self, overlap_dimensions: ShapeDimensions) -> TGeo.CNamedShape:
+
+    @classmethod
+    def create_bolt_hole(cls, overlap_dimensions: ShapeDimensions) -> TGeo.CNamedShape:
         # Woodsticks diamater= 6mm + printing thicknes 0.4mm*2 + toleranz
         radius = 0.007 / 2
         cylinder_lenght = overlap_dimensions.get_width() * 1.2

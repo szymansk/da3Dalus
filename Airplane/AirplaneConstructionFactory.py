@@ -4,9 +4,11 @@ from json import JSONEncoder, JSONDecoder
 import abc
 from collections.abc import MutableMapping
 from collections.abc import Iterable
+from typing import List, Union, Dict, Any
 
 import tigl3.geometry as tgl_geom
-from tigl3.configuration import CCPACSConfiguration
+from tigl3.configuration import CCPACSConfiguration, CCPACSFuselage, CCPACSEnginePositions, CCPACSEnginePosition
+from tigl3.geometry import CNamedShape
 
 from Airplane import Configuration
 from Airplane.Fuselage.EngineMountFactory import EngineMountFactory
@@ -228,16 +230,16 @@ class FuselageShapeCreator(AbstractShapeCreator):
                  fuselage_index: int,
                  right_main_wing_index: int,
                  ribcage_factor: float,
-                 plate_thickness: float,
                  rib_width: float,
                  reinforcement_pipes_radius: float,
+                 fuselage_base_shape_id: str = None,
                  cpacs_configuration: CCPACSConfiguration = None,
                  tigl_handel=None):
         self.identifier = creator_id
+        self.fuselage_base_shape_id = fuselage_base_shape_id
         self.fuselage_index = fuselage_index
         self.right_main_wing_index = right_main_wing_index
         self.ribcage_factor = ribcage_factor
-        self.plate_thickness = plate_thickness
         self.rib_width = rib_width
         self.reinforcement_pipes_radius = reinforcement_pipes_radius
         self._tigl_handel = tigl_handel
@@ -245,18 +247,26 @@ class FuselageShapeCreator(AbstractShapeCreator):
         self._cpacs_configuration = cpacs_configuration
         self._configuration = configuration
 
+        if self.fuselage_base_shape_id is not None:
+            s = self.fuselage_base_shape_id
+            self._fbs_idx = int(s[s.find('[')+1:s.find(']')])
+            self._fbs_str = s[0:s.find('[')]
+
     def create_shape(self, input_shapes: Iterable[tgl_geom.CNamedShape], **kwargs) -> Iterable[tgl_geom.CNamedShape]:
         print('--> '.join(['{}={!r}'.format(k, v) for k, v in kwargs.items()]), "==>", self.identifier)
+        named_fuselage_loft = kwargs.get(self._fbs_str)[self._fbs_idx]\
+            if self.fuselage_base_shape_id is not None \
+            else cpacs_configuration.get_fuselage(self.fuselage_index).get_loft()
         from Airplane.Fuselage.FuselageFactory import FuselageFactory
-        fuselage_factory = FuselageFactory(cpacs_configuration=self._cpacs_configuration,
-                                           fuselage_index=self.fuselage_index,
-                                           right_main_wing_index=self.right_main_wing_index)
-        fuselage_factory.create_fuselage_with_sharp_ribs(
+        shape = FuselageFactory.create_fuselage_with_sharp_ribs(
+            cpacs_configuration=cpacs_configuration,
+            fuselage_loft=named_fuselage_loft,
+            fuselage_index=self.fuselage_index,
+            right_main_wing_index=self.right_main_wing_index,
             ribcage_factor=self.ribcage_factor,
-            plate_thickness=self.plate_thickness,
             rib_width=self.rib_width,
             reinforcement_pipes_radius=self.reinforcement_pipes_radius)
-        return [fuselage_factory.get_shape()]
+        return [shape]
 
     @property
     def identifier(self):
@@ -355,6 +365,47 @@ class ExportToStlCreator(AbstractShapeCreator):
         return all_shapes
 
 
+class EngineCapeShapeCreator(AbstractShapeCreator):
+    def __init__(self, creator_id: str,
+                 fuselage_index: int,
+                 engine_index: int,
+                 mount_plate_thickness: float,
+                 cpacs_configuration: CCPACSConfiguration = None,
+                 tigl_handel=None):
+        self.identifier = creator_id
+        self.fuselage_index = fuselage_index
+        self.mount_plate_thickness = mount_plate_thickness
+        self.engine_index = engine_index
+        self._tigl_handel = tigl_handel
+        self._configuration = configuration
+        self._cpacs_configuration = cpacs_configuration
+        self._configuration = configuration
+
+    def create_shape(self, input_shapes: Iterable[tgl_geom.CNamedShape], **kwargs) -> Iterable[
+        tgl_geom.CNamedShape]:
+        print('--> '.join(['{}={!r}'.format(k, v) for k, v in kwargs.items()]), "==>", self.identifier)
+
+        engine_positions: CCPACSEnginePositions = self._cpacs_configuration.get_engine_positions()
+        engine_position: CCPACSEnginePosition = engine_positions.get_engine_position(self.engine_index)
+        engine_position_transformation: tgl_geom.CCPACSTransformation = engine_position.get_transformation()
+        engine_scaling: tgl_geom.CTiglPoint = engine_position_transformation.get_scaling()
+        engine_length = engine_scaling.x
+
+        from Airplane.Fuselage.FuselageFactory import FuselageFactory
+        shape = FuselageFactory.create_engine_cape(cpacs_configuration=self._cpacs_configuration,
+                                                   fuselage_index=self.fuselage_index,
+                                                   motor_cutout_length=2*engine_length+ self.mount_plate_thickness)
+        return shape
+
+    @property
+    def identifier(self):
+        return self.creator_id
+
+    @identifier.setter
+    def identifier(self, value):
+        self.creator_id = value
+        
+
 if __name__ == "__main__":
     CPACS_FILE_NAME = "aircombat_v14"
     NUMBER_OF_CUTS = 5
@@ -375,31 +426,40 @@ if __name__ == "__main__":
 
     # defining the shape creators
     shapeSlicer = SliceShapesCreator("fuselage_slicer", number_of_cuts=5)
-    engineMount = EngineMountShapeCreator("engine_mount", fuselage_index=1, mount_plate_thickness=0.005)
+    engineMount = EngineMountShapeCreator("engine_mount",
+                                          fuselage_index=1,
+                                          mount_plate_thickness=0.005)
     fuselage0 = FuselageShapeCreator("fuselage",
+                                     fuselage_base_shape_id="engine_cape[1]",
                                      fuselage_index=1,
                                      right_main_wing_index=1,
                                      ribcage_factor=0.5,
-                                     plate_thickness=0.005,
                                      rib_width=0.002,
                                      reinforcement_pipes_radius=0.003)
-    shapeStlExport = ExportToStlCreator("stl_exporter", additional_shapes_to_export=["engine_mount"])
+    shapeStlExport = ExportToStlCreator("stl_exporter",
+                                        additional_shapes_to_export=["engine_mount", "engine_cape"])
+    engineCape = EngineCapeShapeCreator("engine_cape",
+                                        engine_index=1,
+                                        fuselage_index=1,
+                                        mount_plate_thickness=0.005)
 
     # building up the workflow
     fuselageNode = ConstructionStepNode(fuselage0)
     engineMountNode = ConstructionStepNode(engineMount)
     shapeSlicerMountNode = ConstructionStepNode(shapeSlicer)
     shapeStlExportNode = ConstructionStepNode(shapeStlExport)
+    engineCapeNode = ConstructionStepNode(engineCape)
 
     # linking the map
-    fuselageNode.append(shapeSlicerMountNode)
+    engineCapeNode.append(engineMountNode)
     engineMountNode.append(fuselageNode)
+    fuselageNode.append(shapeSlicerMountNode)
     shapeSlicerMountNode.append(shapeStlExportNode)
 
     import json
 
     # dump to a json string
-    json_data: str = json.dumps(engineMountNode, indent=4, cls=GeneralJSONEncoder)
+    json_data: str = json.dumps(engineCapeNode, indent=4, cls=GeneralJSONEncoder)
 
     # load the string
     # tigl_handel is parameter which is not in the json file, but needed by the constructor of a creator class
