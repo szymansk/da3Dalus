@@ -155,7 +155,7 @@ class EngineMountFactory:
         cylinder.set_shape(OExs.rotate_shape(cylinder.shape(), Ogp.gp_OY(), 90))
 
         shapes_to_cut = [inner_schaft_box, cylinder]
-        cuted_box = cut_list_of_shapes(outer_box, shapes_to_cut)
+        cuted_box = BooleanCADListOperation.cut_list_of_shapes(outer_box, shapes_to_cut)
         cuted_box.set_name("engine_mount")
         return cuted_box
 

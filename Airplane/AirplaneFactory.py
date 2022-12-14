@@ -105,8 +105,9 @@ class AirplaneFactory:
         """
 
         fuselage_factory = FuselageFactory(self.configuration)
-        fuselage_shape: tigl3.geometry.CNamedShape = fuselage_factory.create_fuselage_with_sharp_ribs(fuselage_loft=fuselage_factory.fuselage_loft,
-                                                         cpacs_configuration=fuselage_factory.cpacs_configuration)
+        fuselage_shape: tigl3.geometry.CNamedShape = fuselage_factory.create_fuselage_with_sharp_ribs(
+            shape__fuselage_loft=fuselage_factory.fuselage_loft,
+            cpacs_configuration=fuselage_factory.cpacs_configuration)
 
         cut_parts = cut_component(fuselage_shape, parts_quantity)
 

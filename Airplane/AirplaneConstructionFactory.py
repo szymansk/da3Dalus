@@ -4,11 +4,9 @@ from json import JSONEncoder, JSONDecoder
 import abc
 from collections.abc import MutableMapping
 from collections.abc import Iterable
-from typing import List, Union, Dict, Any
 
 import tigl3.geometry as tgl_geom
-from tigl3.configuration import CCPACSConfiguration, CCPACSFuselage, CCPACSEnginePositions, CCPACSEnginePosition
-from tigl3.geometry import CNamedShape
+from tigl3.configuration import CCPACSConfiguration, CCPACSEnginePositions, CCPACSEnginePosition
 
 from Airplane import Configuration
 from Airplane.Fuselage.EngineMountFactory import EngineMountFactory
@@ -30,7 +28,7 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def create_shape(self, input_shapes: Iterable[tgl_geom.CNamedShape], **kwargs) -> Iterable[tgl_geom.CNamedShape]:
+    def create_shape(self, input_shapes: list[tgl_geom.CNamedShape], **kwargs) -> list[tgl_geom.CNamedShape]:
         """
         This method will create a shape. The shape can depend on shapes of previous steps. All previous steps
         occur in the kwargs variable. The key are the 'identifier's and the values hold the shapes.
@@ -40,6 +38,22 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         """
         pass
 
+    @classmethod
+    def _check_if_shapes_are_available(cls, needed_shapes: list[str], **kwargs) -> dict[str, list[tgl_geom.CNamedShape]]:
+        """
+        Check if the shapes, that are needed, have been created before and are available in kwargs.
+        :param kwargs:
+        :return:
+        """
+        shapes = {}
+        if needed_shapes is not None:
+            shapes = {k: kwargs[k] for k in kwargs.keys() & needed_shapes}
+            missing = {(k if k not in kwargs.keys() else None) for k in needed_shapes}  # check what is missing
+            missing = [i for i in missing if i is not None]  # remove all Nones
+            if len(missing) > 0:
+                raise KeyError('shapes are missing: {}'.format(missing))
+        return shapes
+
 
 class AbstractConstructionStep(metaclass=abc.ABCMeta):
     """
@@ -47,7 +61,7 @@ class AbstractConstructionStep(metaclass=abc.ABCMeta):
     """
 
     @abc.abstractmethod
-    def construct(self, input_shapes: Iterable[tgl_geom.CNamedShape], **kwargs) -> Iterable[tgl_geom.CNamedShape]:
+    def construct(self, input_shapes: list[tgl_geom.CNamedShape], **kwargs) -> list[tgl_geom.CNamedShape]:
         pass
 
 
@@ -87,16 +101,16 @@ class ConstructionStepNode(AbstractConstructionStep, MutableMapping):
         """
         self.update({value.creator.identifier: value})
 
-    def construct(self, input_shapes: Iterable[tgl_geom.CNamedShape] = None, **kwargs):
+    def construct(self, input_shapes: list[tgl_geom.CNamedShape] = None, **kwargs):
         """
         Executes the construction of all shapes based on the defined workflow structure.
         :param input_shapes: the shapes that have been constructed in the last step
         :param kwargs: holding the shapes of the previous steps as a dict of shape lists (input_shapes is the last entry of this dict)
         :return: a structure based on the identifiers, that represents the workflow
         """
-        self._output_shapes: Iterable[tgl_geom.CNamedShape] = self.creator.create_shape(input_shapes=input_shapes, **kwargs)
+        self._output_shapes: list[tgl_geom.CNamedShape] = self.creator.create_shape(input_shapes=input_shapes, **kwargs)
         kwargs[self.creator.identifier] = self._output_shapes
-        output_list: Iterable[tgl_geom.CNamedShape] = []
+        output_list: list[tgl_geom.CNamedShape] = []
         for key in self.successors:
             output_list.append(self.successors.get(key).construct(input_shapes=self._output_shapes, **kwargs))
         output_dict = {self.creator.identifier: {"shapes": {s.name(): s for s in self._output_shapes}, "steps": output_list}}
@@ -170,7 +184,7 @@ class WingServoMountCreator(AbstractShapeCreator):
         self._tigl_handel = tigl_handel
         self._wing_stuff = wing_stuff
 
-    def create_shape(self, input_shape: tgl_geom.CNamedShape, **kwargs) -> Iterable[tgl_geom.CNamedShape]:
+    def create_shape(self, input_shape: tgl_geom.CNamedShape, **kwargs) -> list[tgl_geom.CNamedShape]:
         print(' --> '.join(['{}={!r}'.format(k, v) for k, v in kwargs.items()]), "==>", self.identifier, "using",
               self._wing_stuff)
         return "created {id}".format(id=self.identifier)
@@ -217,12 +231,50 @@ class FuseShapesCreator(AbstractShapeCreator):
                 raise KeyError('shapes are missing for fusing: {}'.format(missing))
         return shapes
 
-    def create_shape(self, input_shapes: Iterable[tgl_geom.CNamedShape], **kwargs) -> Iterable[tgl_geom.CNamedShape]:
+    def create_shape(self, input_shapes: list[tgl_geom.CNamedShape], **kwargs) -> list[tgl_geom.CNamedShape]:
         shapes = self._check_if_shapes_are_available(**kwargs)
 
         print('--> '.join(['{}={!r}'.format(k, v) for k, v in kwargs.items()]), "==>", self.identifier, ': ',
               ', '.join(['{}={!r}'.format(k, v) for k, v in shapes.items()]))
         return "created {id}".format(id=self.identifier)
+
+
+class CutShapesCreator(AbstractShapeCreator):
+    """
+    This class shows an example on how you can use a list of shapes, that have been created in previous steps.
+    """
+
+    @property
+    def identifier(self):
+        return self.creator_id
+
+    @identifier.setter
+    def identifier(self, value):
+        self.creator_id = value
+
+    def __init__(self, creator_id: str,
+                 minuend: str = None,
+                 subtrahend: str = None):
+        self.identifier = creator_id
+        self.minuend = minuend
+        self.subtrahend = subtrahend
+
+    def create_shape(self, input_shapes: list[tgl_geom.CNamedShape], **kwargs) -> list[tgl_geom.CNamedShape]:
+        shapes = AbstractShapeCreator._check_if_shapes_are_available([self.minuend, self.subtrahend], **kwargs)
+
+        print('--> '.join(['{}={!r}'.format(k, v) for k, v in kwargs.items()]), "==>", self.identifier, ': ',
+              ', '.join(['{}={!r}'.format(k, v) for k, v in shapes.items()]))
+        from Extra.BooleanOperationsForLists import BooleanCADListOperation
+
+        shape__minuend = shapes.get(self.minuend)
+        shape__subtrahend = shapes.get(self.subtrahend)
+        shape = BooleanCADListOperation.cut_shape_from_shape(shape__minuend,
+                                                             shape__subtrahend,
+                                                             "{a}/{b}".format(a=self.minuend, b=self.subtrahend))
+        myDisplay.instance().display_cut(shape,
+                                         shape__minuend,
+                                         shape__subtrahend)
+        return [shape]
 
 
 class FuselageShapeCreator(AbstractShapeCreator):
@@ -252,15 +304,15 @@ class FuselageShapeCreator(AbstractShapeCreator):
             self._fbs_idx = int(s[s.find('[')+1:s.find(']')])
             self._fbs_str = s[0:s.find('[')]
 
-    def create_shape(self, input_shapes: Iterable[tgl_geom.CNamedShape], **kwargs) -> Iterable[tgl_geom.CNamedShape]:
+    def create_shape(self, input_shapes: list[tgl_geom.CNamedShape], **kwargs) -> list[tgl_geom.CNamedShape]:
         print('--> '.join(['{}={!r}'.format(k, v) for k, v in kwargs.items()]), "==>", self.identifier)
         named_fuselage_loft = kwargs.get(self._fbs_str)[self._fbs_idx]\
             if self.fuselage_base_shape_id is not None \
-            else cpacs_configuration.get_fuselage(self.fuselage_index).get_loft()
+            else ccpacs_configuration.get_fuselage(self.fuselage_index).get_loft()
         from Airplane.Fuselage.FuselageFactory import FuselageFactory
         shape = FuselageFactory.create_fuselage_with_sharp_ribs(
-            cpacs_configuration=cpacs_configuration,
-            fuselage_loft=named_fuselage_loft,
+            cpacs_configuration=ccpacs_configuration,
+            shape__fuselage_loft=named_fuselage_loft,
             fuselage_index=self.fuselage_index,
             right_main_wing_index=self.right_main_wing_index,
             ribcage_factor=self.ribcage_factor,
@@ -287,7 +339,7 @@ class EngineMountShapeCreator(AbstractShapeCreator):
         self.mount_plate_thickness = mount_plate_thickness
         self._cpacs_configuration = cpacs_configuration
 
-    def create_shape(self, input_shapes: Iterable[tgl_geom.CNamedShape], **kwargs) -> Iterable[tgl_geom.CNamedShape]:
+    def create_shape(self, input_shapes: list[tgl_geom.CNamedShape], **kwargs) -> list[tgl_geom.CNamedShape]:
         print('--> '.join(['{}={!r}'.format(k, v) for k, v in kwargs.items()]), "==>", self.identifier)
         _engine_mount_factory = EngineMountFactory(cpacs_configuration=self._cpacs_configuration,
                                                    fuselage_index=self.fuselage_index)
@@ -315,13 +367,14 @@ class SliceShapesCreator(AbstractShapeCreator):
         self.identifier = creator_id
         self.number_of_cuts = number_of_cuts
 
-    def create_shape(self, input_shapes: Iterable[tgl_geom.CNamedShape], **kwargs) -> Iterable[tgl_geom.CNamedShape]:
+    def create_shape(self, input_shapes: list[tgl_geom.CNamedShape], **kwargs) -> list[tgl_geom.CNamedShape]:
         from Extra.ShapeSlicer import ShapeSlicer
-        parts = []
+        parts: list[tgl_geom.CNamedShape] = []
         for shape in input_shapes:
             my_slicer = ShapeSlicer(shape, self.number_of_cuts)
             my_slicer.slice_by_cut()
             parts.extend(my_slicer.parts_list)
+        # return {"{}.{}".format(self.identifier,part.name()): part for part in parts}
         return parts
 
 
@@ -334,11 +387,11 @@ class ExportToStlCreator(AbstractShapeCreator):
     def identifier(self, value):
         self.creator_id = value
 
-    def __init__(self, creator_id: str, additional_shapes_to_export: Iterable[str]=None):
-        self.identifier = creator_id
-        self.additional_shapes_to_export = additional_shapes_to_export
+    def __init__(self, creator_id: str, additional_shapes_to_export: list[str]=None):
+        self.identifier: str = creator_id
+        self.additional_shapes_to_export: list[str] = additional_shapes_to_export
 
-    def _check_if_shapes_are_available(self, **kwargs):
+    def _check_if_shapes_are_available(self, **kwargs) -> dict[str, list[tgl_geom.CNamedShape]]:
         """
         Check if the shapes, that are needed, have been created before and are available in kwargs.
         :param kwargs:
@@ -353,11 +406,12 @@ class ExportToStlCreator(AbstractShapeCreator):
                 raise KeyError('shapes are missing for fusing: {}'.format(missing))
         return shapes
 
-    def create_shape(self, input_shapes: Iterable[tgl_geom.CNamedShape], **kwargs) -> Iterable[tgl_geom.CNamedShape]:
-        shapes = self._check_if_shapes_are_available(**kwargs)
+    def create_shape(self, input_shapes: list[tgl_geom.CNamedShape], **kwargs) -> list[tgl_geom.CNamedShape]:
+        shapes = AbstractShapeCreator._check_if_shapes_are_available(self.additional_shapes_to_export, **kwargs)
         all_shapes = [*shapes.values()]
         all_shapes = [item for sublist in all_shapes for item in sublist]
         all_shapes.extend(input_shapes)
+        all_shapes = list(set(all_shapes))  # remove duplicates
 
         import stl_exporter.Exporter as Exporter
         stl_exporter = Exporter.Exporter()
@@ -381,7 +435,7 @@ class EngineCapeShapeCreator(AbstractShapeCreator):
         self._cpacs_configuration = cpacs_configuration
         self._configuration = configuration
 
-    def create_shape(self, input_shapes: Iterable[tgl_geom.CNamedShape], **kwargs) -> Iterable[
+    def create_shape(self, input_shapes: list[tgl_geom.CNamedShape], **kwargs) -> Iterable[
         tgl_geom.CNamedShape]:
         print('--> '.join(['{}={!r}'.format(k, v) for k, v in kwargs.items()]), "==>", self.identifier)
 
@@ -420,7 +474,7 @@ if __name__ == "__main__":
     shapeDisplay = myDisplay.instance(True, 5)
 
     tigl_h = tg.get_tigl_handler(CPACS_FILE_NAME)
-    cpacs_configuration: CCPACSConfiguration = CCPACSConfigurationManager_get_instance().get_configuration(tigl_h._handle.value)
+    ccpacs_configuration: CCPACSConfiguration = CCPACSConfigurationManager_get_instance().get_configuration(tigl_h._handle.value)
 
     configuration = Configuration(tigl_h)
 
@@ -464,7 +518,7 @@ if __name__ == "__main__":
     # load the string
     # tigl_handel is parameter which is not in the json file, but needed by the constructor of a creator class
     myMap = json.loads(json_data, cls=GeneralJSONDecoder,
-                       cpacs_configuration=cpacs_configuration,
+                       cpacs_configuration=ccpacs_configuration,
                        tigl_handel=tigl_h,
                        wing_stuff="wing_stuff is okay")
 

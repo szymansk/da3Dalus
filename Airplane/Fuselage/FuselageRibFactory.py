@@ -16,9 +16,10 @@ class FuselageRibFactory:
     After initializing the class, call one of the create methods
     """
 
-    def __init__(self, fuselage_loft, wing_loft):
+    def __init__(self, fuselage, wing):
         logging.info(f"Initializing FuselageRibFactory")
-
+        fuselage_loft = fuselage.get_loft()
+        wing_loft = wing.get_loft()
         self.display = myDisplay.instance()
         self.fuselage_loft = fuselage_loft
         self.fuselage_coordinates = PDim.ShapeDimensions(self.fuselage_loft)

@@ -4,6 +4,7 @@ import tigl3.geometry as TGeo
 from Extra.mydisplay import *
 
 
+#class BooleanCADListOperation:
 def fuse_list_of_namedshapes(shape_list, name="list_of_shapes", trans=False) -> TGeo.CNamedShape:
     """
     fuses all the shapes in the list to one shape
@@ -29,7 +30,6 @@ def fuse_list_of_namedshapes(shape_list, name="list_of_shapes", trans=False) -> 
     else:
         md.display_this_shape(shape_list[-1], name)
     return fused[-1]
-
 
 def cut_list_of_namedshapes(shape: TGeo.CNamedShape, shape_list, name="list_of_shapes",
                             trans=False) -> TGeo.CNamedShape:
@@ -81,27 +81,49 @@ def fuse_list_of_shapes(shape_list, msg="", trans=False) -> OTopo.TopoDS_Shape:
     return fused[-1]
 
 
-def cut_list_of_shapes(named_shape: TGeo.CNamedShape, shape_list: list[TGeo.CNamedShape], msg="",
-                       trans=False) -> TGeo.CNamedShape:
-    """
-    returns the shape after cuting all the shapes on the list
-    :param shape: to be cut from
-    :param shape_list: shapes to be cutout
-    :param msg: text to be displayed
-    :param trans: set transparency
-    :return:
-    """
-    logging.info(f"Starting to cut from {named_shape.name()}")
-    cuted = [named_shape.shape()]
-    md = myDisplay.instance()
-    for index, shape_to_cut in enumerate(shape_list):
-        logging.info(f"Cutting {shape_to_cut.name()}: Element {index + 1} from {len(shape_list)}")
-        if not cuted:
-            cuted.append(OAlgo.BRepAlgoAPI_Cut(named_shape.shape(), shape_to_cut.shape()).Shape())
-        else:
-            cuted.append(OAlgo.BRepAlgoAPI_Cut(cuted[-1], shape_to_cut.shape()).Shape())
-    if cuted[-1] == None:
-        logging.error(f"cut_list_of_shapes result is None")
-    result = TGeo.CNamedShape(cuted[-1], f"cuted_{named_shape.name()}")
-    md.display_multipe_cuts(result, named_shape, shape_list, msg, trans)
-    return result
+class BooleanCADListOperation:
+    @staticmethod
+    def cut_list_of_shapes(named_shape: TGeo.CNamedShape, shape_list: list[TGeo.CNamedShape], msg="",
+                           trans=False) -> TGeo.CNamedShape:
+        """
+        returns the shape after cutting all the shapes on the list
+        :param named_shape: to be cut from
+        :param shape_list: shapes to be cut out
+        :param msg: text to be displayed
+        :param trans: set transparency
+        :return:
+        """
+        logging.info(f"Starting to cut from {named_shape.name()}")
+        cuted = [named_shape.shape()]
+        md = myDisplay.instance()
+        for index, shape_to_cut in enumerate(shape_list):
+            logging.info(f"Cutting {shape_to_cut.name()}: Element {index + 1} from {len(shape_list)}")
+            if not cuted:
+                cuted.append(OAlgo.BRepAlgoAPI_Cut(named_shape.shape(), shape_to_cut.shape()).Shape())
+            else:
+                cuted.append(OAlgo.BRepAlgoAPI_Cut(cuted[-1], shape_to_cut.shape()).Shape())
+        if cuted[-1] is None:
+            logging.error(f"cut_list_of_shapes result is None")
+        result = TGeo.CNamedShape(cuted[-1], f"cuted_{named_shape.name()}")
+        md.display_multipe_cuts(result, named_shape, shape_list, msg, trans)
+        return result
+
+    @staticmethod
+    def fuse_shapes(a: TGeo.CNamedShape, b: TGeo.CNamedShape, new_name: str) -> TGeo.CNamedShape:
+        return TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Fuse(a.shape(), b.shape()).Shape(), new_name)
+
+    @staticmethod
+    def cut_shape_from_shape(a: TGeo.CNamedShape, b: TGeo.CNamedShape, new_name: str) -> TGeo.CNamedShape:
+        """
+        A-B
+        :param A:
+        :param B:
+        :return:
+        """
+        return TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Cut(a.shape(), b.shape()).Shape(), new_name)
+
+    @staticmethod
+    def intersect_shape_with_shape(a: TGeo.CNamedShape, b: TGeo.CNamedShape, new_name: str) -> TGeo.CNamedShape:
+        return TGeo.CNamedShape(
+            OAlgo.BRepAlgoAPI_Common(a.shape(), b.shape()).Shape(), new_name)
+
