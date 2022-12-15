@@ -3,7 +3,7 @@ import OCC.Core.BRepAlgoAPI as OAlgo
 import OCC.Extend.ShapeFactory as OExs
 import OCC.Core.gp as Ogp
 from Extra.BooleanOperationsForLists import *
-import Extra.mydisplay as myDisplay
+import Extra.ConstructionStepsViewer as myDisplay
 
 def create_linear_pattern(namedshape, quantity, distance, direction="x") -> TGeo.CNamedShape:
     pattern = namedshape.shape()

@@ -94,7 +94,7 @@ from app import app
 import logging
 from probe_rumps_cutout_2 import *
 
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 
 
 
@@ -255,7 +255,7 @@ def my_logging():
     
 def development():
 	i_cpacs=1
-	md=myDisplay.instance(True)
+	md=ConstructionStepsViewer.instance(True)
 	tixi_h = tixi3wrapper.Tixi3()
 	tigl_h = tigl3wrapper.Tigl3()
 	if i_cpacs==1:

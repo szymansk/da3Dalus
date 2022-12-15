@@ -4,10 +4,10 @@ import OCC.Core.gp as Ogp
 import OCC.Extend.ShapeFactory as OExs
 import tigl3.geometry as TGeo
 
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 
 if __name__ == "__main__":
-    m = myDisplay.instance(True, 12)
+    m = ConstructionStepsViewer.instance(True, 12)
 
     point = TGeo.CNamedShape(OPrim.BRepPrimAPI_MakeSphere(2).Shape(), "point")
     point2 = point

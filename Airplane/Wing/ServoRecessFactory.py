@@ -8,7 +8,7 @@ from OCC.Core.TopoDS import TopoDS_Shape
 
 import Dimensions.ShapeDimensions as PDim
 from Dimensions.ShapeDimensions import ShapeDimensions
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 from _alt.Wand_erstellen import *
 
 
@@ -24,7 +24,7 @@ class ServoRecessFactory:
         self.shapes: list = []
         # self.ruder_dimensions=ShapeDimensions(ruder_shape)
         # self.servo_size=servo_size
-        self.display = myDisplay.instance()
+        self.display = ConstructionStepsViewer.instance()
         logging.info(f"{self.wing_dimensions.__str__()}")
 
     def create_servoRecess_option1(self, named_ruder, servo_size=(0.0023, 0.0024, 0.0012)) -> TGeo.CNamedShape:

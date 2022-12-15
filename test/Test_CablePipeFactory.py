@@ -6,7 +6,7 @@ import tigl3.geometry as TGeo
 import Airplane.Wing.CablePipeFactory as cp
 import Airplane.Wing.RuderFactory as rf
 import Airplane.Wing.ServoRecessFactory as srf
-import Extra.mydisplay as myDisplay
+import Extra.ConstructionStepsViewer as myDisplay
 import Extra.tigl_extractor as tg
 from Dimensions.ShapeDimensions import ShapeDimensions
 from Airplane.Configuration import Configuration
@@ -19,7 +19,7 @@ if __name__ == "__main__":
 
     logging.info("Start test for Cable Pipe Factory")
 
-    m = myDisplay.myDisplay.instance(True, 1.5)
+    m = myDisplay.ConstructionStepsViewer.instance(True, 1.5)
     tigl_h = tg.get_tigl_handler(CPACS_FILE_NAME)
     configuration = Configuration(tigl_h)
 

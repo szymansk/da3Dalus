@@ -10,9 +10,9 @@ from OCC.Display.SimpleGui import *
 import Dimensions.ShapeDimensions as sd
 
 
-class myDisplay:
+class ConstructionStepsViewer:
     distance: float
-    my_instance: 'myDisplay' = None
+    my_instance: 'ConstructionStepsViewer' = None
 
     def __init__(self, distance=0.5, dev=False, log=False) -> None:
         if dev:
@@ -46,12 +46,12 @@ class myDisplay:
     @staticmethod
     def instance(dev=False, distance=1, log=False):
 
-        if myDisplay.my_instance is None:
+        if ConstructionStepsViewer.my_instance is None:
             if dev:
-                myDisplay.my_instance = myDisplay(distance, True, log)
+                ConstructionStepsViewer.my_instance = ConstructionStepsViewer(distance, True, log)
             else:
-                myDisplay.my_instance = myDisplay(distance)
-        return myDisplay.my_instance
+                ConstructionStepsViewer.my_instance = ConstructionStepsViewer(distance)
+        return ConstructionStepsViewer.my_instance
 
     def display_this_shape(self, named_shape: TGeo.CNamedShape, msg="", trans=False) -> None:
         if self.dev:

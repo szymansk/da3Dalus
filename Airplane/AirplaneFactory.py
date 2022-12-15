@@ -6,7 +6,7 @@ import stl_exporter.Exporter as exp
 from Airplane.Fuselage.FuselageFactory import FuselageFactory
 from Airplane.Wing.WingFactory import WingFactory
 from Extra.ShapeSlicer import ShapeSlicer
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 from .Configuration import Configuration
 
 
@@ -43,7 +43,7 @@ class AirplaneFactory:
         """
         :param tigl_handle: has the cpacs configuration in it  which is needed to create all parts
         """
-        self.m = myDisplay.instance()
+        self.m = ConstructionStepsViewer.instance()
         self.configuration = Configuration(tigl_handle)
 
     def create_airplane(self):

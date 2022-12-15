@@ -31,14 +31,14 @@ import tigl3.boolean_ops as TBoo
 
 from Dimensions.ShapeDimensions import ShapeDimensions
 from _alt.abmasse import *
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 from _alt.Wand_erstellen import *
 import logging
 import Extra.BooleanOperationsForLists as BooleanOperationsForLists
 import Extra.tigl_extractor as tigl_extractor
 
 if __name__ == "__main__":
-    m = myDisplay.instance(True)
+    m = ConstructionStepsViewer.instance(True)
     # tigl_handle= tigl_extractor.get_tigl_handler("simple_aircraft_v2")
     tigl_handle = tigl_extractor.get_tigl_handler("aircombat_v11")
 

@@ -5,7 +5,7 @@ import Extra.tigl_extractor as tg
 from Extra.patterns import *
 
 if __name__ == "__main__":
-    m = myDisplay.instance(True, 5)
+    m = ConstructionStepsViewer.instance(True, 5)
 
     tigl_handle = tg.get_tigl_handler("simple_aircraft")
     config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()

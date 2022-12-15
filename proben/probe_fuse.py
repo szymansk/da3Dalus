@@ -3,10 +3,10 @@ import OCC.Core.gp as Ogp
 import OCC.Extend.ShapeFactory as OExs
 
 import Extra.BooleanOperationsForLists as bof
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 
 if __name__ == "__main__":
-    m = myDisplay.instance(True, 12)
+    m = ConstructionStepsViewer.instance(True, 12)
 
     point = OPrim.BRepPrimAPI_MakeSphere(2).Shape()
     point2 = point

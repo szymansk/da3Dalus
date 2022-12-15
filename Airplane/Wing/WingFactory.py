@@ -21,7 +21,7 @@ class WingFactory:
         """
         Initialize the class with the tigle handle with the CPACS configuration and the index of the wing to be created
         """
-        self.m = myDisplay.instance()
+        self.m = ConstructionStepsViewer.instance()
 
         self.wing: TConfig.CCPACSWing = wing
         self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()

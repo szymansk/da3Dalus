@@ -5,14 +5,14 @@ import tigl3.configuration as TConfig
 
 import Dimensions.ShapeDimensions as PDim
 import Extra.ShapeSlicer as ss
-import Extra.mydisplay as md
+import Extra.ConstructionStepsViewer as md
 import Extra.tigl_extractor as tg
 import _alt.Wand_erstellen as we
 from stl_exporter.Exporter import *
 
 if __name__ == "__main__":
     tigl_handle = tg.get_tigl_handler("aircombat_v12")
-    m = md.myDisplay.instance(True, 1)
+    m = md.ConstructionStepsViewer.instance(True, 1)
     config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
     cpacs_configuration: TConfig.CCPACSConfiguration = config_manager.get_configuration(tigl_handle._handle.value)
 

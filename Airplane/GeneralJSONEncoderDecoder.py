@@ -1,7 +1,7 @@
 import inspect
 from json import JSONEncoder, JSONDecoder
 
-from Airplane.ConstructionStepNode import ConstructionStepNode
+from FuselageConstructionSteps import *
 
 
 class GeneralJSONEncoder(JSONEncoder):

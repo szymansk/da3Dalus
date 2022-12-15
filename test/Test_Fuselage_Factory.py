@@ -5,7 +5,7 @@ import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
 
 import Airplane.Fuselage.FuselageFactory as ff
-import Extra.mydisplay as myDisplay
+import Extra.ConstructionStepsViewer as myDisplay
 import Extra.tigl_extractor as tg
 import Extra.ShapeSlicer as ss
 from Dimensions.ShapeDimensions import ShapeDimensions
@@ -16,7 +16,7 @@ NUMBER_OF_CUTS = 5
 
 if __name__ == "__main__":
     logging.info(f"Start test for Fuselage Factory with CPACS file {CPACS_FILE_NAME}")
-    m = myDisplay.myDisplay.instance(True, 5)
+    m = myDisplay.ConstructionStepsViewer.instance(True, 5)
     tigl_h = tg.get_tigl_handler(CPACS_FILE_NAME)
     configuration = Configuration(tigl_h)
 

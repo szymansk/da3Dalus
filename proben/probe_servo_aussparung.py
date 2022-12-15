@@ -8,7 +8,7 @@ import OCC.Core.gp as Ogp
 import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
 
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 from _alt.Wand_erstellen import *
 from proben.probe_Cable_pipe import create_pipe
 
@@ -42,7 +42,7 @@ def draft_angle_from_shape(myshape):
     
 
 if __name__ == '__main__':
-    m=myDisplay.instance(True)
+    m=ConstructionStepsViewer.instance(True)
     #pipe()
     tixi_handle = tixi3wrapper.Tixi3()
     tigl_handle = tigl3wrapper.Tigl3()

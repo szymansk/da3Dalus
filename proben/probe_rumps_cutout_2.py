@@ -4,7 +4,7 @@ import OCC.Core.BRepOffsetAPI as OOff
 import tigl3.configuration as TConfig
 
 from Extra.BooleanOperationsForLists import *
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 # from Airplane.Wing.CablePipeFactory import CabelPipe
 from _alt.Wand_erstellen import *
 from _alt.abmasse import *
@@ -19,14 +19,14 @@ class aircombat_test:
             self.init_dev(dev)
 
     def init_prod(self, dev, tigl_h):
-        self.m = myDisplay.instance(dev)
+        self.m = ConstructionStepsViewer.instance(dev)
         self.tigl_handle = tigl_h
         self.config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
         self.cpacs_configuration: TConfig.CCPACSConfiguration = self.config_manager.get_configuration(
             self.tigl_handle._handle.value)
 
     def init_dev(self, dev=True):
-        self.m = myDisplay.instance(dev)
+        self.m = ConstructionStepsViewer.instance(dev)
         i_cpacs = 6
         self.tixi_h = tixi3wrapper.Tixi3()
         self.tigl_handle = tigl3wrapper.Tigl3()

@@ -10,7 +10,7 @@ import tigl3.geometry as TGeo
 import Dimensions.ShapeDimensions as PDim
 import Extra.BooleanOperationsForLists as BooleanOperationsForLists
 import Extra.patterns as pat
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 from _alt.Wand_erstellen import *
 
 
@@ -28,7 +28,7 @@ class WingRibFactory:
         self.wing_coordinates = PDim.ShapeDimensions(self.wing_loft)
 
         self.shape: TGeo.CNamedShape = TGeo.CNamedShape()
-        self.display = myDisplay.instance()
+        self.display = ConstructionStepsViewer.instance()
 
         logging.info(f"{self.wing_coordinates=}")
 

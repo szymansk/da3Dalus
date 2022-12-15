@@ -6,7 +6,7 @@ import tigl3.geometry as TGeo
 
 from Dimensions.ShapeDimensions import ShapeDimensions
 from Extra.BooleanOperationsForLists import cut_list_of_namedshapes
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 import logging
 
 
@@ -22,7 +22,7 @@ class ShapeSlicer:
         :param quantity: int default=3
         '''
         logging.info("Initiating slicer")
-        self.m = myDisplay.instance()
+        self.m = ConstructionStepsViewer.instance()
         self.parts_list = []
         self.quantity: int = quantity
         self.shape_dimensions = ShapeDimensions(named_shape)

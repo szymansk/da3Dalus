@@ -3,7 +3,7 @@ import OCC.Core.BRepPrimAPI as OPrim
 import OCC.Core.gp as Ogp
 import OCC.Extend.ShapeFactory as OExs
 
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 from _alt.shape_verschieben import rotate_shape
 
 
@@ -41,7 +41,7 @@ def fuse_list_of_shapes(list, msg=""):
 
 #testCylinder=OPrim.BRepPrimAPI_MakeCylinder(radius,self.fuselage_widht).Shape()
 #self.m.display_this_shape(testCylinder)
-m=myDisplay.instance(True)
+m=ConstructionStepsViewer.instance(True)
 
 cylinder= OPrim.BRepPrimAPI_MakeCylinder(1,5).Shape()
 cylinder2= rotate_shape(cylinder, Ogp.gp_OX(), 90)

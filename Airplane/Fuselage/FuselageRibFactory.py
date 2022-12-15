@@ -6,7 +6,7 @@ import tigl3.geometry as TGeo
 import Dimensions.ShapeDimensions as PDim
 import Extra.BooleanOperationsForLists as BOl
 import Extra.patterns as pat
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 from _alt.Wand_erstellen import *
 
 
@@ -20,7 +20,7 @@ class FuselageRibFactory:
         logging.info(f"Initializing FuselageRibFactory")
         fuselage_loft = fuselage.get_loft()
         wing_loft = wing.get_loft()
-        self.display = myDisplay.instance()
+        self.display = ConstructionStepsViewer.instance()
         self.fuselage_loft = fuselage_loft
         self.fuselage_coordinates = PDim.ShapeDimensions(self.fuselage_loft)
 

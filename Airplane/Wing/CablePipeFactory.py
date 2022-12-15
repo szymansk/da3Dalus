@@ -10,7 +10,7 @@ import tigl3.geometry as TGeo
 import Dimensions.ShapeDimensions as PDim
 import Extra.BooleanOperationsForLists as BooleanOperationsForLists
 from Dimensions import ShapeDimensions
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 from _alt.Wand_erstellen import *
 
 
@@ -26,7 +26,7 @@ class CablePipeFactory:
         self.named_shape = TGeo.CNamedShape()
         self.points: list[Ogp.gp_Pnt] = []
         self.radius: float = 0.002
-        self.display = myDisplay.instance()
+        self.display = ConstructionStepsViewer.instance()
 
     def get_shape(self) -> TGeo.CNamedShape:
         return self.named_shape

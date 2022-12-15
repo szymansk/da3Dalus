@@ -3,14 +3,14 @@ import logging
 import OCC.Core.BRepAlgoAPI as OAlgo
 import OCC.Core.TopoDS as OTopo
 
-import Extra.mydisplay as myDisplay
+import Extra.ConstructionStepsViewer as myDisplay
 import tigl3.geometry as TGeo
 
 
 class CollisionDetector:
     def __init__(self):
         logging.info(f"Initialising CollisionDetector")
-        self.m = myDisplay.myDisplay.instance()
+        self.m = myDisplay.ConstructionStepsViewer.instance()
 
     def check_shapes_colission(self, shape1: OTopo.TopoDS_Shape, shape2: OTopo.TopoDS_Shape, name1: str = "shape1",
                                name2: str = "shape2", expectation: bool = True):

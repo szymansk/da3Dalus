@@ -5,44 +5,12 @@ from Airplane import Configuration
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
 from Airplane.ConstructionStepNode import ConstructionStepNode
 from Airplane.Fuselage.EngineMountFactory import EngineMountFactory
-from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
 from Extra.BooleanOperationsForLists import BooleanCADOperation
 
-
-# !!! no function yet only example
-class WingServoMountCreator(AbstractShapeCreator):
-    def __init__(self, creator_id: str, width: float, height: float, length: float, tigl_handel=None, wing_stuff=None):
-        """
-        Example where wing_stuff is injected during the json decoding by the decoder object
-        :param creator_id:
-        :param width:
-        :param height:
-        :param length:
-        :param tigl_handel:
-        :param wing_stuff:
-        """
-        self.identifier = creator_id
-        self.width = width
-        self.height = height
-        self.length = length
-
-        self._tigl_handel = tigl_handel
-        self._wing_stuff = wing_stuff
-
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        print(' --> '.join(['{}={!r}'.format(k, v) for k, v in kwargs.items()]), "==>", self.identifier, "using",
-              self._wing_stuff)
-        return "created {id}".format(id=self.identifier)
-
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
+from Extra.ConstructionStepsViewer import *
 
 
+# === BEGIN: Basic shape operations ===
 class Fuse2ShapesCreator(AbstractShapeCreator):
     """
     Fusing two shapes into one.
@@ -70,9 +38,9 @@ class Fuse2ShapesCreator(AbstractShapeCreator):
             shapes[self.shape_a], shapes[self.shape_b], self.identifier)
 
         if self.enable_display:
-            myDisplay.instance().display_fuse(fused_shape,
-                                              shapes[self.shape_a],
-                                              shapes[self.shape_b])
+            ConstructionStepsViewer.instance().display_fuse(fused_shape,
+                                                            shapes[self.shape_a],
+                                                            shapes[self.shape_b])
 
         return {self.identifier: fused_shape}
 
@@ -110,16 +78,58 @@ class Cut2ShapesCreator(AbstractShapeCreator):
                                                              shape__subtrahend,
                                                              self.identifier)
         if self.enable_display:
-            myDisplay.instance().display_cut(cut_shape,
-                                             shape__minuend,
-                                             shape__subtrahend)
+            ConstructionStepsViewer.instance().display_cut(cut_shape,
+                                                           shape__minuend,
+                                                           shape__subtrahend)
 
         return {self.identifier: cut_shape}
 
 
+class SimpleOffsetShapeCreator(AbstractShapeCreator):
+    """
+    Creates a simple offset shape from given shape or the take the first input_shape,
+    which is bigger(+)/smaller(-) bei the given <offset>[m].
+    """
+
+    @property
+    def identifier(self):
+        return self.creator_id
+
+    @identifier.setter
+    def identifier(self, value):
+        self.creator_id = value
+
+    def __init__(self, creator_id: str,
+                 offset: float,
+                 shape: str = None,
+                 enable_display: bool = True):
+        self.identifier = creator_id
+        self.offset = offset
+        self.shape = shape
+        self.enable_display = enable_display
+
+    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        if self.shape is None:
+            shape = list(input_shapes.values())[0]
+        else:
+            shapes = AbstractShapeCreator.check_if_shapes_are_available([self.shape], **kwargs)
+            shape = shapes[self.shape]
+
+        from OCC.Core.BRepOffsetAPI import BRepOffsetAPI_MakeOffsetShape
+        offset_maker: BRepOffsetAPI_MakeOffsetShape = BRepOffsetAPI_MakeOffsetShape()
+        offset_maker.PerformBySimple(shape.shape(), self.offset)
+        result = TGeo.CNamedShape(offset_maker.Shape(), f"{shape.name()}_offset")
+
+        if self.enable_display:
+            msg = f"Fuselage with {str(self.offset)=} meters"
+            ConstructionStepsViewer.instance().display_this_shape(result, msg)
+
+        return {self.identifier: shape}
+
+
 class Intersect2ShapesCreator(AbstractShapeCreator):
     """
-    Intersect (common) two shapes into one.
+    Cut the subtrahend from the minuend (minuend - subtrahend = new_shape).
     """
 
     @property
@@ -140,63 +150,21 @@ class Intersect2ShapesCreator(AbstractShapeCreator):
     def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         shapes = AbstractShapeCreator.check_if_shapes_are_available([self.shape_a, self.shape_b], **kwargs)
 
-        shape = BooleanCADOperation.intersect_shape_with_shape(
-            shapes[self.shape_a], shapes[self.shape_b], self.identifier)
+        from Extra.BooleanOperationsForLists import BooleanCADOperation
 
+        shape__a = shapes.get(self.shape_a)
+        shape__b = shapes.get(self.shape_b)
+        cut_shape = BooleanCADOperation.intersect_shape_with_shape(shape__a,
+                                                                   shape__b,
+                                                                   self.identifier)
         if self.enable_display:
-            myDisplay.instance().display_common(shape,
-                                                shapes[self.shape_a],
-                                                shapes[self.shape_b])
+            ConstructionStepsViewer.instance().display_common(cut_shape,
+                                                              shape__a,
+                                                              shape__b)
 
-        return {self.identifier: shape}
+        return {self.identifier: cut_shape}
 
-
-class FuselageShapeCreator(AbstractShapeCreator):
-    def __init__(self, creator_id: str,
-                 fuselage_index: int,
-                 right_main_wing_index: int,
-                 ribcage_factor: float,
-                 fuselage_reinforcement_shape_id: str,
-                 fuselage_base_shape_id: str = None,
-                 cpacs_configuration: CCPACSConfiguration = None,
-                 tigl_handel=None):
-        self.identifier: str = creator_id
-        self.fuselage_reinforcement_shape_id = fuselage_reinforcement_shape_id
-        self.fuselage_base_shape_id = fuselage_base_shape_id
-        self.fuselage_index = fuselage_index
-        self.right_main_wing_index = right_main_wing_index
-        self.ribcage_factor = ribcage_factor
-        self._tigl_handel = tigl_handel
-        self._configuration = configuration
-        self._cpacs_configuration = cpacs_configuration
-        self._configuration = configuration
-
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        check = [self.fuselage_reinforcement_shape_id, self.fuselage_base_shape_id] \
-            if self.fuselage_base_shape_id is not None else [self.fuselage_reinforcement_shape_id]
-        AbstractShapeCreator.check_if_shapes_are_available(check, **kwargs)
-
-        named_fuselage_loft = kwargs.get(self.fuselage_base_shape_id)\
-            if self.fuselage_base_shape_id is not None \
-            else ccpacs_configuration.get_fuselage(self.fuselage_index).get_loft()
-
-        from Airplane.Fuselage.FuselageFactory import FuselageFactory
-        shape = FuselageFactory.create_fuselage_with_sharp_ribs(
-            cpacs_configuration=ccpacs_configuration,
-            shape__fuselage_loft=named_fuselage_loft,
-            shape__fuselage_reinforcement_wing_support=kwargs[self.fuselage_reinforcement_shape_id],
-            fuselage_index=self.fuselage_index,
-            right_main_wing_index=self.right_main_wing_index,
-            ribcage_factor=self.ribcage_factor)
-        return {str(self.identifier): shape}
-
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
+# === END basic shape operations ===
 
 
 class EngineMountShapeCreator(AbstractShapeCreator):
@@ -286,20 +254,14 @@ class EngineCapeShapeCreator(AbstractShapeCreator):
                  fuselage_index: int,
                  engine_index: int,
                  mount_plate_thickness: float,
-                 cpacs_configuration: CCPACSConfiguration = None,
-                 tigl_handel=None):
+                 cpacs_configuration: CCPACSConfiguration = None):
         self.identifier = creator_id
         self.fuselage_index = fuselage_index
         self.mount_plate_thickness = mount_plate_thickness
         self.engine_index = engine_index
-        self._tigl_handel = tigl_handel
-        self._configuration = configuration
         self._cpacs_configuration = cpacs_configuration
-        self._configuration = configuration
 
     def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        print('--> '.join(['{}={!r}'.format(k, v) for k, v in kwargs.items()]), "==>", self.identifier)
-
         engine_positions: CCPACSEnginePositions = self._cpacs_configuration.get_engine_positions()
         engine_position: CCPACSEnginePosition = engine_positions.get_engine_position(self.engine_index)
         engine_position_transformation: tgl_geom.CCPACSTransformation = engine_position.get_transformation()
@@ -404,6 +366,103 @@ class FuselageWingSupportShapeCreator(AbstractShapeCreator):
         self.creator_id = value
 
 
+class FuselageElectronicsAccessCutOutShapeCreator(AbstractShapeCreator):
+    """
+    Creates a cutout shape for creating the access to the electronics depending on the wing position ('top',
+    'middle', 'bottom')
+    """
+
+    def __init__(self, creator_id: str,
+                 fuselage_index: int,
+                 ribcage_factor: float,
+                 right_main_wing_index: int,
+                 wing_position: str = None,
+                 cpacs_configuration: CCPACSConfiguration = None
+                 ):
+        self.identifier: str = creator_id
+        self.fuselage_index = fuselage_index
+        self.right_main_wing_index = right_main_wing_index
+        self._cpacs_configuration = cpacs_configuration
+        self.ribcage_factor = ribcage_factor
+        self.wing_position = wing_position
+
+    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        from Airplane.Fuselage.FuselageFactory import FuselageFactory
+        shape__hardware_cutout = FuselageFactory.create_hardware_cutout(cpacs_configuration=self._cpacs_configuration,
+                                                                        fuselage_index=self.fuselage_index,
+                                                                        ribcage_factor=self.ribcage_factor,
+                                                                        right_main_wing_index=self.right_main_wing_index,
+                                                                        position=self.wing_position)
+        return {str(self.identifier): shape__hardware_cutout}
+
+    @property
+    def identifier(self):
+        return self.creator_id
+
+    @identifier.setter
+    def identifier(self, value):
+        self.creator_id = value
+
+
+class WingAttachmentBoltHolesShapeCreator(AbstractShapeCreator):
+    """
+    Create two bolts along the roll-axis through the fuselage,
+    to hold some rubber band.
+    """
+    def __init__(self, creator_id: str,
+                 fuselage_index: int,
+                 right_main_wing_index: int,
+                 cpacs_configuration: CCPACSConfiguration = None
+                 ):
+        self.identifier: str = creator_id
+        self.fuselage_index = fuselage_index
+        self.right_main_wing_index = right_main_wing_index
+        self._cpacs_configuration = cpacs_configuration
+
+    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        from Airplane.Fuselage.FuselageFactory import FuselageFactory
+        overlap_dimensions = FuselageFactory.overlap_fuselage_wing_dimensions(self._cpacs_configuration,
+                                                                              self.fuselage_index,
+                                                                              self.right_main_wing_index)
+        from Airplane.Fuselage.FuselageCutouts import FuselageCutouts
+        shape__bolt_holes = FuselageCutouts.create_bolt_hole(overlap_dimensions)
+        return {str(self.identifier): shape__bolt_holes}
+
+    @property
+    def identifier(self):
+        return self.creator_id
+
+    @identifier.setter
+    def identifier(self, value):
+        self.creator_id = value
+
+
+class FullWingLoftShapeCreator(AbstractShapeCreator):
+    def __init__(self, creator_id: str,
+                 right_main_wing_index: int,
+                 cpacs_configuration: CCPACSConfiguration = None):
+        self.identifier: str = creator_id
+        self.right_main_wing_index = right_main_wing_index
+        self._cpacs_configuration = cpacs_configuration
+
+    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        complete_wing = BooleanCADOperation.fuse_shapes(
+            self._cpacs_configuration.get_wing(self.right_main_wing_index).get_loft(),
+            self._cpacs_configuration.get_wing(self.right_main_wing_index).get_mirrored_loft(),
+            self.identifier)
+        ConstructionStepsViewer.instance().display_fuse(complete_wing,
+            self._cpacs_configuration.get_wing(self.right_main_wing_index).get_loft(),
+            self._cpacs_configuration.get_wing(self.right_main_wing_index).get_mirrored_loft())
+        return {str(self.identifier): complete_wing}
+
+    @property
+    def identifier(self):
+        return self.creator_id
+
+    @identifier.setter
+    def identifier(self, value):
+        self.creator_id = value
+
 
 
 if __name__ == "__main__":
@@ -414,27 +473,19 @@ if __name__ == "__main__":
 
     logging.info(f"Start test for Fuselage Factory with CPACS file {CPACS_FILE_NAME}")
 
-    from Extra.mydisplay import myDisplay
-    from tigl3.configuration import CCPACSConfiguration, \
-        CCPACSConfigurationManager_get_instance
-    shapeDisplay = myDisplay.instance(True, 5)
+    from Extra.ConstructionStepsViewer import ConstructionStepsViewer
+    from tigl3.configuration import CCPACSConfiguration, CCPACSConfigurationManager_get_instance
+    shapeDisplay = ConstructionStepsViewer.instance(True, 1)
 
     tigl_h = tg.get_tigl_handler(CPACS_FILE_NAME)
-    ccpacs_configuration: CCPACSConfiguration = CCPACSConfigurationManager_get_instance().get_configuration(tigl_h._handle.value)
-
-    configuration = Configuration(tigl_h)
+    ccpacs_configuration: CCPACSConfiguration = CCPACSConfigurationManager_get_instance()\
+        .get_configuration(tigl_h._handle.value)
 
     # defining the shape creators
     shapeSlicer = SliceShapesCreator("fuselage_slicer", number_of_parts=5)
     engineMount = EngineMountShapeCreator("engine_mount",
                                           fuselage_index=1,
                                           mount_plate_thickness=0.005)
-    fuselage = FuselageShapeCreator("fuselage",
-                                    fuselage_base_shape_id="engine_cape.loft",
-                                    fuselage_index=1,
-                                    fuselage_reinforcement_shape_id="fuselage_reinforcement",
-                                    right_main_wing_index=1,
-                                    ribcage_factor=0.5)
     shapeStlExport = ExportToStlCreator("stl_exporter",
                                         additional_shapes_to_export=["engine_mount", "engine_cape.cape"])
     engineCape = EngineCapeShapeCreator("engine_cape",
@@ -453,9 +504,36 @@ if __name__ == "__main__":
     fuse_reinforcement_wing_sup = Fuse2ShapesCreator("reinforcement",
                                                      shape_a="fuselage_reinforcement",
                                                      shape_b="wing_support")
+    electronics_access = FuselageElectronicsAccessCutOutShapeCreator("electronics_cutout",
+                                                                     fuselage_index=1,
+                                                                     ribcage_factor=0.5,
+                                                                     right_main_wing_index=1,
+                                                                     wing_position=None)
+    reinforcement = Cut2ShapesCreator("reinforcement",
+                                      minuend="reinforcement",
+                                      subtrahend="electronics_cutout")
+    internal_structure = Intersect2ShapesCreator("internal_structure",
+                                                 shape_a="engine_cape.loft",
+                                                 shape_b="reinforcement")
+    offset_fuselage = SimpleOffsetShapeCreator("offset_fuselage",
+                                               shape="engine_cape.loft",
+                                               offset=0.001)
+    reinforced_fuselage = Cut2ShapesCreator("reinforced_fuselage",
+                                            minuend="offset_fuselage",
+                                            subtrahend="internal_structure")
+    full_wing_loft = FullWingLoftShapeCreator("wings",
+                                              right_main_wing_index=1)
+    cut_wing_from_fuselage = Cut2ShapesCreator("fuselage_wo_wings",
+                                               minuend="reinforced_fuselage",
+                                               subtrahend="wings")
+    wing_attachment_bolt = WingAttachmentBoltHolesShapeCreator("attachment_bolts",
+                                                               fuselage_index=1,
+                                                               right_main_wing_index=1)
+    cut_bolts_from_fuselage = Cut2ShapesCreator("final_fuselage",
+                                                minuend="fuselage_wo_wings",
+                                                subtrahend="attachment_bolts")
 
     # building up the workflow
-    fuselageNode = ConstructionStepNode(fuselage)
     engineMountNode = ConstructionStepNode(engineMount)
     shapeSlicerMountNode = ConstructionStepNode(shapeSlicer)
     shapeStlExportNode = ConstructionStepNode(shapeStlExport)
@@ -463,17 +541,35 @@ if __name__ == "__main__":
     fuselageReinforcementNode = ConstructionStepNode(fuselage_reinforcement)
     wingSupportNode = ConstructionStepNode(wing_support)
     reinforcementNode = ConstructionStepNode(fuse_reinforcement_wing_sup)
+    electronicsAccessNode = ConstructionStepNode(electronics_access)
+    reinforcementWithCutoutNode = ConstructionStepNode(reinforcement)
+    internalStructureNode = ConstructionStepNode(internal_structure)
+    offsetFuselageNode = ConstructionStepNode(offset_fuselage)
+    reinforcedFuselageNode = ConstructionStepNode(reinforced_fuselage)
+    full_wing_loft_node = ConstructionStepNode(full_wing_loft)
+    cut_wing_from_fuselage_node = ConstructionStepNode(cut_wing_from_fuselage)
+    wing_attachment_bolt_node = ConstructionStepNode(wing_attachment_bolt)
+    cut_bolts_from_fuselage_node = ConstructionStepNode(cut_bolts_from_fuselage)
 
     # linking the map
     engineCapeNode.append(engineMountNode)
     engineMountNode.append(fuselageReinforcementNode)
     fuselageReinforcementNode.append(wingSupportNode)
     wingSupportNode.append(reinforcementNode)
-    reinforcementNode.append(fuselageNode)
-    fuselageNode.append(shapeSlicerMountNode)
+    reinforcementNode.append(electronicsAccessNode)
+    electronicsAccessNode.append(reinforcementWithCutoutNode)
+    reinforcementWithCutoutNode.append(internalStructureNode)
+    internalStructureNode.append(offsetFuselageNode)
+    offsetFuselageNode.append(reinforcedFuselageNode)
+    reinforcedFuselageNode.append(full_wing_loft_node)
+    full_wing_loft_node.append(cut_wing_from_fuselage_node)
+    cut_wing_from_fuselage_node.append(wing_attachment_bolt_node)
+    wing_attachment_bolt_node.append(cut_bolts_from_fuselage_node)
+    cut_bolts_from_fuselage_node.append(shapeSlicerMountNode)
     shapeSlicerMountNode.append(shapeStlExportNode)
 
     import json
+    from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
 
     # dump to a json string
     json_data: str = json.dumps(engineCapeNode, indent=4, cls=GeneralJSONEncoder)

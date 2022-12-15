@@ -2,12 +2,12 @@ import tigl3.configuration as TConfig
 
 import Dimensions.ShapeDimensions as PDim
 from Extra.patterns import *
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 
 
 class EngineMountFactory:
     def __init__(self, cpacs_configuration: TConfig.CCPACSConfiguration, fuselage_index: int):
-        self.m = myDisplay.instance()
+        self.m = ConstructionStepsViewer.instance()
         self.cpacs_configuration = cpacs_configuration
         self.fuselage: TConfig.CCPACSFuselage = cpacs_configuration.get_fuselage(fuselage_index)
         self.fuselage_loft: TGeo.CNamedShape = self.fuselage.get_loft()

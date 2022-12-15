@@ -9,7 +9,7 @@ import tigl3.geometry as TGeo
 from Airplane.Wing.CablePipe import CabelPipe
 from OCC.Core.ChFi2d import *  # ChFi2d_AnaFilletAlgo
 
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 from _alt.Wand_erstellen import *
 from _alt.abmasse import *
 
@@ -106,7 +106,7 @@ def create_pipe(wing_shape):
     return L_pipe[-1]
 
 if __name__ == '__main__':
-    m=myDisplay.instance(True)
+    m=ConstructionStepsViewer.instance(True)
     #pipe()
     tixi_handle = tixi3wrapper.Tixi3()
     tigl_handle = tigl3wrapper.Tigl3()

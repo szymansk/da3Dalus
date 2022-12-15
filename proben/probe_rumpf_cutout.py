@@ -5,7 +5,7 @@ import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
 
 import Extra.tigl_extractor as tg
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 
 
 def _create_complete_wing_shape(self) -> TGeo.CNamedShape:
@@ -25,7 +25,7 @@ def _create_complete_wing_shape(self) -> TGeo.CNamedShape:
 
 
 if __name__ == "__main__":
-    m = myDisplay.instance(True, 0.25)
+    m = ConstructionStepsViewer.instance(True, 0.25)
 
     tigl_handle = tg.get_tigl_handler("aircombat_v14")
 

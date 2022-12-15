@@ -1,13 +1,13 @@
 import OCC.Core.BRepOffsetAPI as OOff
 import tigl3.configuration as TConfig
 
-import Extra.mydisplay as myDisplay
+import Extra.ConstructionStepsViewer as myDisplay
 import Extra.tigl_extractor as tg
 from _alt.Wand_erstellen import *
 from stl_exporter.Exporter import *
 
 if __name__ == "__main__":
-    m = myDisplay.myDisplay.instance(True, 0.5)
+    m = myDisplay.ConstructionStepsViewer.instance(True, 0.5)
     tigl_handle = tg.get_tigl_handler("aircombat_v12")
 
     config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()

@@ -8,7 +8,7 @@ import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
 
 from Extra.ShapeSlicer import ShapeSlicer
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 from _alt.Wand_erstellen import *
 from _alt.abmasse import get_dimensions_from_Shape
 from stl_exporter.Exporter import write_stls_srom_list
@@ -32,7 +32,7 @@ def get_tigl_handler(i_cpacs):
     return tigl_handle
     
 
-m= myDisplay.instance(True)
+m= ConstructionStepsViewer.instance(True)
 
 tigl_handle= get_tigl_handler(0)
 config_manager: TConfig.CCPACSConfigurationManager  = TConfig.CCPACSConfigurationManager_get_instance()

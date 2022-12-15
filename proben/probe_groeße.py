@@ -7,7 +7,7 @@ import OCC.Extend.ShapeFactory as OExs
 import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
 
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 from _alt.Wand_erstellen import *
 from _alt.abmasse import get_dimensions_from_Shape, get_koordinates
 
@@ -30,7 +30,7 @@ tigl_handle.open(tixi_h, "")
 
 
 
-m= myDisplay.instance(True)
+m= ConstructionStepsViewer.instance(True)
 config_manager: TConfig.CCPACSConfigurationManager  = TConfig.CCPACSConfigurationManager_get_instance()
 cpacs_configuration: TConfig.CCPACSConfiguration= config_manager.get_configuration(tigl_handle._handle.value)
 

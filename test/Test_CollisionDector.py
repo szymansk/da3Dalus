@@ -5,7 +5,7 @@ import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
 
 import Extra.CollisionDetector as cd
-import Extra.mydisplay as myDisplay
+import Extra.ConstructionStepsViewer as myDisplay
 import Extra.tigl_extractor as tg
 from Dimensions.ShapeDimensions import ShapeDimensions
 from Airplane.Configuration import Configuration
@@ -16,7 +16,7 @@ CPACS_FILE_NAME = "simple_aircraft"
 
 if __name__ == "__main__":
     logging.info(f"Start test for Collision Detector with CPACS file {CPACS_FILE_NAME}")
-    m = myDisplay.myDisplay.instance(True, 4)
+    m = myDisplay.ConstructionStepsViewer.instance(True, 4)
 
     # try:
     tigl_h = tg.get_tigl_handler("simple_aircraft")

@@ -10,7 +10,7 @@ import tigl3.geometry as TGeo
 
 import stl_exporter.Exporter as STLExporter
 from Dimensions.ShapeDimensions import ShapeDimensions
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 from _alt.Wand_erstellen import *
 
 
@@ -37,7 +37,7 @@ def rotate_shape(shape, axis, angle):
 if __name__ == "__main__":
     i_cpacs = 1
     tixi_h = tixi3wrapper.Tixi3()
-    m = myDisplay.instance(True)
+    m = ConstructionStepsViewer.instance(True)
 
     tigl_handle = tigl3wrapper.Tigl3()
     if i_cpacs == 1:

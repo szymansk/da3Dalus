@@ -10,7 +10,7 @@ from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_MakeWire, BRepBuilderAPI_Make
 
 import Dimensions.ShapeDimensions as PDim
 import Extra.BooleanOperationsForLists as Bof
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 
 
 class ReinforcementePipeFactory:
@@ -32,7 +32,7 @@ class ReinforcementePipeFactory:
 
         self.named_shape: TGeo.CNamedShape = TGeo.CNamedShape()
         self.shapes: list[TGeo.CNamedShape] = []
-        self.m = myDisplay.instance()
+        self.m = ConstructionStepsViewer.instance()
 
     def create_reinforcemente_pipe_wing(self, radius=0.002, thickness=0.0004, quantity=3,
                                         pipe_position=None) -> TGeo.CNamedShape:

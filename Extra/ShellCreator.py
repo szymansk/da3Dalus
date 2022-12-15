@@ -17,13 +17,13 @@ from OCC.Core.TopAbs import TopAbs_FACE
 from OCC.Core.TopExp import TopExp_Explorer
 from OCC.Core.TopTools import TopTools_ListOfShape
 from OCC.Core.TopoDS import (topods)
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 import tigl3.geometry as TGeo
 
 
 class ShellCreator:
     def __init__(self, named_shape):
-        self.m = myDisplay.instance()
+        self.m = ConstructionStepsViewer.instance()
         self.named_shape = named_shape
 
     def face_is_plane(self, face):

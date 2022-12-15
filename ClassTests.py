@@ -14,7 +14,7 @@ import Airplane.Wing.WingFactory as wf
 import Airplane.Wing.WingRibFactory as wrf
 import Airplane.Fuselage.FuselageFactory as ff
 import Airplane.Fuselage.EngineMountFactory as em
-import Extra.mydisplay as myDisplay
+import Extra.ConstructionStepsViewer as myDisplay
 import Extra.tigl_extractor as tg
 import Extra.ShapeSlicer as ss
 import Extra.ShellCreator as cs
@@ -23,7 +23,7 @@ import stl_exporter.Exporter as exp
 from Dimensions.ShapeDimensions import ShapeDimensions
 
 if __name__ == "__main__":
-    m = myDisplay.myDisplay.instance(True, 1)
+    m = myDisplay.ConstructionStepsViewer.instance(True, 1)
     tigl_h = tg.get_tigl_handler("aircombat_v13")
     config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
     cpacs_configuration: TConfig.CCPACSConfiguration = config_manager.get_configuration(tigl_h._handle.value)

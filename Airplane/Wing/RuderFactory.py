@@ -4,7 +4,7 @@ import OCC.Core.BRepOffsetAPI as OOff
 import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
 
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 from _alt.Wand_erstellen import *
 
 
@@ -21,7 +21,7 @@ class RuderFactory:
 
         self.wing: TConfig.CCPACSWing = wing
         self.named_shape: TGeo.CNamedShape = TGeo.CNamedShape()
-        self.m = myDisplay.instance()
+        self.m = ConstructionStepsViewer.instance()
 
     def create_ruder(self, factor_ruderarm_pos=0.333) -> TGeo.CNamedShape:
         """

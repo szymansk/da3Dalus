@@ -9,7 +9,7 @@ import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
 
 import Extra.BooleanOperationsForLists as BooleanOperationsForLists
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 from _alt.Wand_erstellen import *
 from _alt.abmasse import *
 
@@ -110,7 +110,7 @@ def make_single_box_rib(x_root,x_tip,y_pos,z_pos, lenght, width, height, rib_wid
     
 OTools.BRepTools_ReShape()
 
-m= myDisplay.instance(True)
+m= ConstructionStepsViewer.instance(True)
 
 
 tigl_handle= get_tigl_handler(0)

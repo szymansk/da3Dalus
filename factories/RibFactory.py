@@ -8,7 +8,7 @@ import tigl3.geometry as TGeo
 import OCC.Core.gp as Ogp
 from math import *
 from _alt.abmasse import *
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 import logging
 from Extra.BooleanOperationsForLists import *
 from _alt.shape_verschieben import *
@@ -19,7 +19,7 @@ class RibFactory:
     
     def __init__(self) -> None:
         self.rib:Rib= Rib()
-        self.md=myDisplay.instance()
+        self.md=ConstructionStepsViewer.instance()
               
     #TODO where does height, thikness, extrude come frome?
     def create_rib_grid(self, spacing, thikness,xdiff, ydiff, zdiff,type:str="x"):

@@ -4,7 +4,7 @@ import OCC.Core.TopoDS as OTopo
 import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
 
-import Extra.mydisplay as myDisplay
+import Extra.ConstructionStepsViewer as myDisplay
 import Extra.tigl_extractor as tg
 from Dimensions.ShapeDimensions import ShapeDimensions
 
@@ -14,7 +14,7 @@ CPACS_FILE_NAME = "aircombat_v14"
 
 if __name__ == "__main__":
     logging.info("Start test for CPACS shapes for CPACS file ")
-    m = myDisplay.myDisplay.instance(True, 1.5)
+    m = myDisplay.ConstructionStepsViewer.instance(True, 1.5)
 
     # try:
     tigl_h = tg.get_tigl_handler(CPACS_FILE_NAME)

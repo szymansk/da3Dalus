@@ -1,7 +1,7 @@
 import OCC.Core.BRepAlgoAPI as OAlgo
 import tigl3.geometry as TGeo
 
-from Extra.mydisplay import *
+from Extra.ConstructionStepsViewer import *
 
 
 #class BooleanCADListOperation:
@@ -15,7 +15,7 @@ def fuse_list_of_namedshapes(shape_list, name="list_of_shapes", trans=False) -> 
     """
     logging.info(f"Starting to fuse {name} ")
     fused = []
-    md = myDisplay.instance()
+    md = ConstructionStepsViewer.instance()
     element: TGeo.CNamedShape
     for index, element in enumerate(shape_list):
         logging.info(f"Fussing {element.name()}: Element {index + 1} from {len(shape_list)}")
@@ -43,7 +43,7 @@ def cut_list_of_namedshapes(shape: TGeo.CNamedShape, shape_list, name="list_of_s
     """
     logging.info(f"Starting to cut {name}")
     cuted = [shape.shape()]
-    md = myDisplay.instance()
+    md = ConstructionStepsViewer.instance()
     for index, element in enumerate(shape_list):
         logging.info(f"Cutting {element.name()}: Element {index + 1} from {len(shape_list)}")
         if not cuted:
@@ -67,7 +67,7 @@ def fuse_list_of_shapes(shape_list, msg="", trans=False) -> OTopo.TopoDS_Shape:
     """
     logging.info(f"Starting to fuse_list_of_shapes")
     fused = []
-    md = myDisplay.instance()
+    md = ConstructionStepsViewer.instance()
     for index, shape in enumerate(shape_list):
         logging.info(f"Fussing Shape {index + 1} from {len(shape_list)}")
         if not fused:
@@ -95,7 +95,7 @@ class BooleanCADOperation:
         """
         logging.info(f"Starting to cut from {named_shape.name()}")
         cuted = [named_shape.shape()]
-        md = myDisplay.instance()
+        md = ConstructionStepsViewer.instance()
         for index, shape_to_cut in enumerate(shape_list):
             logging.info(f"Cutting {shape_to_cut.name()}: Element {index + 1} from {len(shape_list)}")
             if not cuted:

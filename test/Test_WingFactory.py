@@ -3,7 +3,7 @@ import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
 
 import Airplane.Wing.WingFactory as wf
-import Extra.mydisplay as myDisplay
+import Extra.ConstructionStepsViewer as myDisplay
 import Extra.tigl_extractor as tg
 from Dimensions.ShapeDimensions import ShapeDimensions
 
@@ -13,7 +13,7 @@ CPACS_FILE_NAME = "aircombat_v13"
 
 if __name__ == "__main__":
     logging.info(f"Start test for Wing Factory with CPACS file {CPACS_FILE_NAME}")
-    m = myDisplay.myDisplay.instance(True, 1.5, True)
+    m = myDisplay.ConstructionStepsViewer.instance(True, 1.5, True)
     tigl_h = tg.get_tigl_handler(CPACS_FILE_NAME)
     configuration = Configuration(tigl_h)
 

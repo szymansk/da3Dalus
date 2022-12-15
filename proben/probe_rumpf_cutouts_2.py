@@ -10,7 +10,7 @@ import OCC.Extend.ShapeFactory as OExs
 import tigl3.configuration as TConfig
 from OCC.Core.TopTools import TopTools_ListOfShape
 
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 from _alt.Wand_erstellen import *
 from _alt.abmasse import get_dimensions, get_koordinates
 from stl_exporter.Exporter import *
@@ -36,7 +36,7 @@ def rotate_shape(shape, axis, angle):
     return shp
 
 
-m=myDisplay.instance()
+m=ConstructionStepsViewer.instance()
 i_cpacs=2
 tixi_h = tixi3wrapper.Tixi3()
 

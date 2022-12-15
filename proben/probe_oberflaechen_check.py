@@ -3,7 +3,7 @@ from __future__ import print_function
 import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
 
-from Extra.mydisplay import myDisplay
+from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 from _alt.Wand_erstellen import *
 from _alt.abmasse import get_dimensions_from_Shape
 from stl_exporter.Exporter import write_stl_file2
@@ -29,7 +29,7 @@ def get_tigl_handler(i_cpacs):
     return tigl_handle
     
 
-m= myDisplay.instance(True)
+m= ConstructionStepsViewer.instance(True)
 
 for i in range(4,6):
     print(i)
