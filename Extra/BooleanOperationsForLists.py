@@ -81,7 +81,7 @@ def fuse_list_of_shapes(shape_list, msg="", trans=False) -> OTopo.TopoDS_Shape:
     return fused[-1]
 
 
-class BooleanCADListOperation:
+class BooleanCADOperation:
     @staticmethod
     def cut_list_of_shapes(named_shape: TGeo.CNamedShape, shape_list: list[TGeo.CNamedShape], msg="",
                            trans=False) -> TGeo.CNamedShape:

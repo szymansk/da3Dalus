@@ -10,6 +10,7 @@ from tigl3.configuration import CCPACSConfiguration, CCPACSEnginePositions, CCPA
 
 from Airplane import Configuration
 from Airplane.Fuselage.EngineMountFactory import EngineMountFactory
+from Extra.BooleanOperationsForLists import BooleanCADOperation
 
 
 class AbstractShapeCreator(metaclass=abc.ABCMeta):
@@ -39,11 +40,11 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         pass
 
     @classmethod
-    def _check_if_shapes_are_available(cls, needed_shapes: list[str], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def check_if_shapes_are_available(cls, needed_shapes: list[str], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         """
         Check if the shapes, that are needed, have been created before and are available in kwargs.
         :param kwargs:
-        :return:
+        :return: a dictionary with the needed_shapes
         """
         shapes = {}
         if needed_shapes is not None:
@@ -198,10 +199,9 @@ class WingServoMountCreator(AbstractShapeCreator):
         self.creator_id = value
 
 
-# !!! no function yet only example
-class FuseShapesCreator(AbstractShapeCreator):
+class Fuse2ShapesCreator(AbstractShapeCreator):
     """
-    This class shows an example on how you can use a list of shapes, that have been created in previous steps.
+    Fusing two shapes into one.
     """
 
     @property
@@ -212,36 +212,30 @@ class FuseShapesCreator(AbstractShapeCreator):
     def identifier(self, value):
         self.creator_id = value
 
-    def __init__(self, creator_id: str, shapes_to_fuse=None):
+    def __init__(self, creator_id: str, shape_a: str = None, shape_b: str = None,
+                 enable_display: bool = True):
         self.identifier = creator_id
-        self.shapes_to_fuse = shapes_to_fuse
-
-    def _check_if_shapes_are_available(self, **kwargs):
-        """
-        Check if the shapes, that are needed, have been created before and are available in kwargs.
-        :param kwargs:
-        :return:
-        """
-        shapes = {}
-        if self.shapes_to_fuse is not None:
-            shapes = {k: kwargs[k] for k in kwargs.keys() & self.shapes_to_fuse}
-            missing = {(k if k not in kwargs.keys() else None) for k in self.shapes_to_fuse}  # check what is missing
-            missing = [i for i in missing if i is not None]  # remove all Nones
-            if len(missing) > 0:
-                raise KeyError('shapes are missing for fusing: {}'.format(missing))
-        return shapes
+        self.shape_a = shape_a
+        self.shape_b = shape_b
+        self.enable_display = enable_display
 
     def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        shapes = self._check_if_shapes_are_available(**kwargs)
+        shapes = AbstractShapeCreator.check_if_shapes_are_available([self.shape_a, self.shape_b], **kwargs)
 
-        print('--> '.join(['{}={!r}'.format(k, v) for k, v in kwargs.items()]), "==>", self.identifier, ': ',
-              ', '.join(['{}={!r}'.format(k, v) for k, v in shapes.items()]))
-        return "created {id}".format(id=self.identifier)
+        fused_shape = BooleanCADOperation.fuse_shapes(
+            shapes[self.shape_a], shapes[self.shape_b], self.identifier)
+
+        if self.enable_display:
+            myDisplay.instance().display_fuse(fused_shape,
+                                              shapes[self.shape_a],
+                                              shapes[self.shape_b])
+
+        return {self.identifier: fused_shape}
 
 
-class CutShapesCreator(AbstractShapeCreator):
+class Cut2ShapesCreator(AbstractShapeCreator):
     """
-    This class shows an example on how you can use a list of shapes, that have been created in previous steps.
+    Cut the subtrahend from the minuend (minuend - subtrahend = new_shape).
     """
 
     @property
@@ -254,27 +248,63 @@ class CutShapesCreator(AbstractShapeCreator):
 
     def __init__(self, creator_id: str,
                  minuend: str = None,
-                 subtrahend: str = None):
+                 subtrahend: str = None,
+                 enable_display: bool = True):
         self.identifier = creator_id
         self.minuend = minuend
         self.subtrahend = subtrahend
+        self.enable_display = enable_display
 
     def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        shapes = AbstractShapeCreator._check_if_shapes_are_available([self.minuend, self.subtrahend], **kwargs)
+        shapes = AbstractShapeCreator.check_if_shapes_are_available([self.minuend, self.subtrahend], **kwargs)
 
-        print('--> '.join(['{}={!r}'.format(k, v) for k, v in kwargs.items()]), "==>", self.identifier, ': ',
-              ', '.join(['{}={!r}'.format(k, v) for k, v in shapes.items()]))
-        from Extra.BooleanOperationsForLists import BooleanCADListOperation
+        from Extra.BooleanOperationsForLists import BooleanCADOperation
 
         shape__minuend = shapes.get(self.minuend)
         shape__subtrahend = shapes.get(self.subtrahend)
-        shape = BooleanCADListOperation.cut_shape_from_shape(shape__minuend,
+        cut_shape = BooleanCADOperation.cut_shape_from_shape(shape__minuend,
                                                              shape__subtrahend,
-                                                             "{a}/{b}".format(a=self.minuend, b=self.subtrahend))
-        myDisplay.instance().display_cut(shape,
-                                         shape__minuend,
-                                         shape__subtrahend)
-        return [shape]
+                                                             self.identifier)
+        if self.enable_display:
+            myDisplay.instance().display_cut(cut_shape,
+                                             shape__minuend,
+                                             shape__subtrahend)
+
+        return {self.identifier: cut_shape}
+
+
+class Intersect2ShapesCreator(AbstractShapeCreator):
+    """
+    Intersect (common) two shapes into one.
+    """
+
+    @property
+    def identifier(self):
+        return self.creator_id
+
+    @identifier.setter
+    def identifier(self, value):
+        self.creator_id = value
+
+    def __init__(self, creator_id: str, shape_a: str = None, shape_b: str = None,
+                 enable_display: bool = True):
+        self.identifier = creator_id
+        self.shape_a = shape_a
+        self.shape_b = shape_b
+        self.enable_display = enable_display
+
+    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        shapes = AbstractShapeCreator.check_if_shapes_are_available([self.shape_a, self.shape_b], **kwargs)
+
+        shape = BooleanCADOperation.intersect_shape_with_shape(
+            shapes[self.shape_a], shapes[self.shape_b], self.identifier)
+
+        if self.enable_display:
+            myDisplay.instance().display_common(shape,
+                                                shapes[self.shape_a],
+                                                shapes[self.shape_b])
+
+        return {self.identifier: shape}
 
 
 class FuselageShapeCreator(AbstractShapeCreator):
@@ -282,37 +312,38 @@ class FuselageShapeCreator(AbstractShapeCreator):
                  fuselage_index: int,
                  right_main_wing_index: int,
                  ribcage_factor: float,
-                 rib_width: float,
-                 reinforcement_pipes_radius: float,
+                 fuselage_reinforcement_shape_id: str,
                  fuselage_base_shape_id: str = None,
                  cpacs_configuration: CCPACSConfiguration = None,
                  tigl_handel=None):
         self.identifier: str = creator_id
+        self.fuselage_reinforcement_shape_id = fuselage_reinforcement_shape_id
         self.fuselage_base_shape_id = fuselage_base_shape_id
         self.fuselage_index = fuselage_index
         self.right_main_wing_index = right_main_wing_index
         self.ribcage_factor = ribcage_factor
-        self.rib_width = rib_width
-        self.reinforcement_pipes_radius = reinforcement_pipes_radius
         self._tigl_handel = tigl_handel
         self._configuration = configuration
         self._cpacs_configuration = cpacs_configuration
         self._configuration = configuration
 
     def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        print('--> '.join(['{}={!r}'.format(k, v) for k, v in kwargs.items()]), "==>", self.identifier)
+        check = [self.fuselage_reinforcement_shape_id, self.fuselage_base_shape_id] \
+            if self.fuselage_base_shape_id is not None else [self.fuselage_reinforcement_shape_id]
+        AbstractShapeCreator.check_if_shapes_are_available(check, **kwargs)
+
         named_fuselage_loft = kwargs.get(self.fuselage_base_shape_id)\
             if self.fuselage_base_shape_id is not None \
             else ccpacs_configuration.get_fuselage(self.fuselage_index).get_loft()
+
         from Airplane.Fuselage.FuselageFactory import FuselageFactory
         shape = FuselageFactory.create_fuselage_with_sharp_ribs(
             cpacs_configuration=ccpacs_configuration,
             shape__fuselage_loft=named_fuselage_loft,
+            shape__fuselage_reinforcement_wing_support=kwargs[self.fuselage_reinforcement_shape_id],
             fuselage_index=self.fuselage_index,
             right_main_wing_index=self.right_main_wing_index,
-            ribcage_factor=self.ribcage_factor,
-            rib_width=self.rib_width,
-            reinforcement_pipes_radius=self.reinforcement_pipes_radius)
+            ribcage_factor=self.ribcage_factor)
         return {str(self.identifier): shape}
 
     @property
@@ -351,6 +382,11 @@ class EngineMountShapeCreator(AbstractShapeCreator):
 
 
 class SliceShapesCreator(AbstractShapeCreator):
+    """
+    Slices the given shape in <number_of_parts> parts along the x-axis. And returns a dictionary with the parts.
+    The naming convention for a key is <identifier>[<part_number>], e.g. {"fuselage[0]": <CNamedShape>, "fuselage[1]": <CNamedShape>}
+    """
+
     @property
     def identifier(self):
         return self.creator_id
@@ -359,20 +395,18 @@ class SliceShapesCreator(AbstractShapeCreator):
     def identifier(self, value):
         self.creator_id = value
 
-    def __init__(self, creator_id: str, number_of_cuts: int):
+    def __init__(self, creator_id: str, number_of_parts: int):
         self.identifier = creator_id
-        self.number_of_cuts = number_of_cuts
+        self.number_of_parts = number_of_parts
 
     def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         from Extra.ShapeSlicer import ShapeSlicer
         parts: dict[str, tgl_geom.CNamedShape] = {}
         for shape in input_shapes.values():
-            my_slicer = ShapeSlicer(shape, self.number_of_cuts)
+            my_slicer = ShapeSlicer(shape, self.number_of_parts)
             my_slicer.slice_by_cut()
-            i = 0
-            for s in my_slicer.parts_list:
-                parts["{}:{}".format(self.identifier,i)] = s
-                i = i+1
+            for i, s in enumerate(my_slicer.parts_list):
+                parts["{}[{}]".format(self.identifier, i)] = s
         return parts
 
 
@@ -390,7 +424,7 @@ class ExportToStlCreator(AbstractShapeCreator):
         self.additional_shapes_to_export: list[str] = additional_shapes_to_export
 
     def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        all_shapes = AbstractShapeCreator._check_if_shapes_are_available(self.additional_shapes_to_export, **kwargs)
+        all_shapes = AbstractShapeCreator.check_if_shapes_are_available(self.additional_shapes_to_export, **kwargs)
         all_shapes.update(input_shapes)
 
         import stl_exporter.Exporter as Exporter
@@ -441,7 +475,92 @@ class EngineCapeShapeCreator(AbstractShapeCreator):
     @identifier.setter
     def identifier(self, value):
         self.creator_id = value
-        
+
+
+class FuselageReinforcementShapeCreator(AbstractShapeCreator):
+    def __init__(self, creator_id: str,
+                 fuselage_index: int,
+                 right_main_wing_index: int,
+                 rib_width: float,
+                 ribcage_factor: float,
+                 reinforcement_pipes_radius: float,
+                 cpacs_configuration: CCPACSConfiguration = None
+                 ):
+        self.identifier: str = creator_id
+        self.fuselage_index = fuselage_index
+        self.right_main_wing_index = right_main_wing_index
+        self.rib_width = rib_width
+        self.ribcage_factor = ribcage_factor
+        self.reinforcement_pipes_radius = reinforcement_pipes_radius
+        self._cpacs_configuration = cpacs_configuration
+
+    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        from Airplane.Fuselage.FuselageFactory import FuselageFactory
+        from Airplane.Fuselage.FuselageRibFactory import FuselageRibFactory
+        from Airplane.ReinforcementPipeFactory import ReinforcementePipeFactory
+
+        rib_factory = FuselageRibFactory(self._cpacs_configuration.get_wing(self.right_main_wing_index),
+                                         self._cpacs_configuration.get_fuselage(self.fuselage_index))
+        reinforcement_pipe_factory = ReinforcementePipeFactory(
+            self._cpacs_configuration.get_wing(self.right_main_wing_index),
+            self._cpacs_configuration.get_fuselage(self.fuselage_index))
+
+        shape__fuselage_reinforcement = FuselageFactory.create_fuselage_reinforcement(
+            cpacs_configuration=self._cpacs_configuration,
+            fuselage_index=self.fuselage_index,
+            reinforcement_pipe_factory=reinforcement_pipe_factory,
+            reinforcement_pipes_radius=self.reinforcement_pipes_radius,
+            rib_factory=rib_factory,
+            rib_width=self.rib_width,
+            ribcage_factor=self.ribcage_factor,
+            right_main_wing_index=self.right_main_wing_index)
+
+        return {str(self.identifier): shape__fuselage_reinforcement}
+
+    @property
+    def identifier(self):
+        return self.creator_id
+
+    @identifier.setter
+    def identifier(self, value):
+        self.creator_id = value
+
+
+class FuselageWingSupportShapeCreator(AbstractShapeCreator):
+    def __init__(self, creator_id: str,
+                 fuselage_index: int,
+                 right_main_wing_index: int,
+                 cpacs_configuration: CCPACSConfiguration = None
+                 ):
+        self.identifier: str = creator_id
+        self.fuselage_index = fuselage_index
+        self.right_main_wing_index = right_main_wing_index
+        self._cpacs_configuration = cpacs_configuration
+
+    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        from Airplane.Fuselage.FuselageFactory import FuselageFactory
+        from Airplane.Fuselage.FuselageRibFactory import FuselageRibFactory
+
+        rib_factory = FuselageRibFactory(self._cpacs_configuration.get_wing(self.right_main_wing_index),
+                                         self._cpacs_configuration.get_fuselage(self.fuselage_index))
+
+        shape__wing_support = FuselageFactory.create_wing_support_shape(self._cpacs_configuration,
+                                                                        rib_factory,
+                                                                        self.fuselage_index,
+                                                                        self.right_main_wing_index)
+
+        return {str(self.identifier): shape__wing_support}
+
+    @property
+    def identifier(self):
+        return self.creator_id
+
+    @identifier.setter
+    def identifier(self, value):
+        self.creator_id = value
+
+
+
 
 if __name__ == "__main__":
     CPACS_FILE_NAME = "aircombat_v14"
@@ -462,34 +581,52 @@ if __name__ == "__main__":
     configuration = Configuration(tigl_h)
 
     # defining the shape creators
-    shapeSlicer = SliceShapesCreator("fuselage_slicer", number_of_cuts=5)
+    shapeSlicer = SliceShapesCreator("fuselage_slicer", number_of_parts=5)
     engineMount = EngineMountShapeCreator("engine_mount",
                                           fuselage_index=1,
                                           mount_plate_thickness=0.005)
-    fuselage0 = FuselageShapeCreator("fuselage",
-                                     fuselage_base_shape_id="engine_cape.loft",
-                                     fuselage_index=1,
-                                     right_main_wing_index=1,
-                                     ribcage_factor=0.5,
-                                     rib_width=0.002,
-                                     reinforcement_pipes_radius=0.003)
+    fuselage = FuselageShapeCreator("fuselage",
+                                    fuselage_base_shape_id="engine_cape.loft",
+                                    fuselage_index=1,
+                                    fuselage_reinforcement_shape_id="fuselage_reinforcement",
+                                    right_main_wing_index=1,
+                                    ribcage_factor=0.5)
     shapeStlExport = ExportToStlCreator("stl_exporter",
                                         additional_shapes_to_export=["engine_mount", "engine_cape.cape"])
     engineCape = EngineCapeShapeCreator("engine_cape",
                                         engine_index=1,
                                         fuselage_index=1,
                                         mount_plate_thickness=0.005)
+    fuselage_reinforcement = FuselageReinforcementShapeCreator("fuselage_reinforcement",
+                                                               fuselage_index=1,
+                                                               right_main_wing_index=1,
+                                                               ribcage_factor=0.5,
+                                                               rib_width=0.002,
+                                                               reinforcement_pipes_radius=0.003)
+
+    wing_support = FuselageWingSupportShapeCreator("wing_support",
+                                                   fuselage_index=1,
+                                                   right_main_wing_index=1)
+    fuse_reinforcement_wing_sup = Fuse2ShapesCreator("reinforcement",
+                                                     shape_a="fuselage_reinforcement",
+                                                     shape_b="wing_support")
 
     # building up the workflow
-    fuselageNode = ConstructionStepNode(fuselage0)
+    fuselageNode = ConstructionStepNode(fuselage)
     engineMountNode = ConstructionStepNode(engineMount)
     shapeSlicerMountNode = ConstructionStepNode(shapeSlicer)
     shapeStlExportNode = ConstructionStepNode(shapeStlExport)
     engineCapeNode = ConstructionStepNode(engineCape)
+    fuselageReinforcementNode = ConstructionStepNode(fuselage_reinforcement)
+    wingSupportNode = ConstructionStepNode(wing_support)
+    reinforcementNode = ConstructionStepNode(fuse_reinforcement_wing_sup)
 
     # linking the map
     engineCapeNode.append(engineMountNode)
-    engineMountNode.append(fuselageNode)
+    engineMountNode.append(fuselageReinforcementNode)
+    fuselageReinforcementNode.append(wingSupportNode)
+    wingSupportNode.append(reinforcementNode)
+    reinforcementNode.append(fuselageNode)
     fuselageNode.append(shapeSlicerMountNode)
     shapeSlicerMountNode.append(shapeStlExportNode)
 
