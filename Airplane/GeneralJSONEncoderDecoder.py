@@ -28,11 +28,10 @@ class GeneralJSONDecoder(JSONDecoder):
         the json. The keyword arguments of JSONDecoder can be used as well.
         """
         self.kwargs = kwargs
-        import json
         # remove kwargs for JSONDecoder from kwargs for our objects
-        init_params = inspect.signature(json.JSONDecoder.__init__).parameters
+        init_params = inspect.signature(JSONDecoder.__init__).parameters
         intersection = {k: self.kwargs[k] for k in self.kwargs.keys() & init_params.keys()}
-        json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **intersection)
+        JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **intersection)
 
     def object_hook(self, dic: dict):
         if GeneralJSONEncoder.JSON_CLASS_TYPE_ID not in dic:
@@ -42,10 +41,14 @@ class GeneralJSONDecoder(JSONDecoder):
         cls = getattr(sys.modules[__name__], dic[GeneralJSONEncoder.JSON_CLASS_TYPE_ID])
         init_params = inspect.signature(cls.__init__).parameters
 
-        # select the extra parameters found in kwargs
-        intersection = {k: self.kwargs[k] for k in self.kwargs.keys() & init_params.keys()}
-        # get init_params from dic
-        intersection_dict = {k: dic[k] for k in dic.keys() & init_params.keys()}
-        # join and create object
-        intersection.update(intersection_dict)
+        if "kwargs" in init_params.keys():
+            intersection = dic
+            intersection.update(self.kwargs)
+        else:
+            # select the extra parameters found in kwargs
+            intersection = {k: self.kwargs[k] for k in self.kwargs.keys() & init_params.keys()}
+            # get init_params from dic
+            intersection_dict = {k: dic[k] for k in dic.keys() & init_params.keys()}
+            # join and create object
+            intersection.update(intersection_dict)
         return cls(**intersection)
