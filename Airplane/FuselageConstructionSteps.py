@@ -1,13 +1,56 @@
 import tigl3.geometry as tgl_geom
 from tigl3.configuration import CCPACSConfiguration, CCPACSEnginePositions, CCPACSEnginePosition
 
-from Airplane import Configuration
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
 from Airplane.ConstructionStepNode import ConstructionStepNode
 from Airplane.Fuselage.EngineMountFactory import EngineMountFactory
 from Extra.BooleanOperationsForLists import BooleanCADOperation
 
 from Extra.ConstructionStepsViewer import *
+
+
+class LoadJsonCreator(AbstractShapeCreator):
+    """
+    Loading a construction workflow from json, and returns all created shapes.
+    """
+
+    @property
+    def identifier(self):
+        return self.creator_id
+
+    @identifier.setter
+    def identifier(self, value):
+        self.creator_id = value
+
+    def __init__(self, creator_id: str,
+                 json_file_path: str = None,
+                 shapes_needed: list[str] = None,
+                 enable_display: bool = True,
+                 **kwargs):
+        self.identifier = creator_id
+        self.json_file_path = json_file_path
+        self.shapes_needed = shapes_needed
+        self.enable_display = enable_display
+        self._to_be_injected = kwargs
+
+    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        shapes = AbstractShapeCreator.check_if_shapes_are_available(self.shapes_needed, **kwargs)
+
+        import json
+        from Airplane.GeneralJSONEncoderDecoder import GeneralJSONDecoder
+        _json_file = open(self.json_file_path)
+        constructor = json.load(_json_file,
+                                cls=GeneralJSONDecoder,
+                                **self._to_be_injected)
+        _json_file.close()
+
+        # if self.enable_display:
+        #     ConstructionStepsViewer.instance().display_fuse(fused_shape,
+        #                                                     shapes[self.shape_a],
+        #                                                     shapes[self.shape_b])
+
+        # build on basis of deserialized json
+        return constructor.construct()
 
 
 # === BEGIN: Basic shape operations ===
@@ -440,19 +483,25 @@ class WingAttachmentBoltHolesShapeCreator(AbstractShapeCreator):
 class FullWingLoftShapeCreator(AbstractShapeCreator):
     def __init__(self, creator_id: str,
                  right_main_wing_index: int,
-                 cpacs_configuration: CCPACSConfiguration = None):
+                 cpacs_configuration: CCPACSConfiguration = None,
+                 enable_display: bool = True):
         self.identifier: str = creator_id
         self.right_main_wing_index = right_main_wing_index
         self._cpacs_configuration = cpacs_configuration
+        self.enable_display = enable_display
 
     def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         complete_wing = BooleanCADOperation.fuse_shapes(
             self._cpacs_configuration.get_wing(self.right_main_wing_index).get_loft(),
             self._cpacs_configuration.get_wing(self.right_main_wing_index).get_mirrored_loft(),
             self.identifier)
-        ConstructionStepsViewer.instance().display_fuse(complete_wing,
-            self._cpacs_configuration.get_wing(self.right_main_wing_index).get_loft(),
-            self._cpacs_configuration.get_wing(self.right_main_wing_index).get_mirrored_loft())
+
+        if self.enable_display:
+            ConstructionStepsViewer.instance().display_fuse(
+                complete_wing,
+                self._cpacs_configuration.get_wing(self.right_main_wing_index).get_loft(),
+                self._cpacs_configuration.get_wing(self.right_main_wing_index).get_mirrored_loft())
+
         return {str(self.identifier): complete_wing}
 
     @property
@@ -464,12 +513,13 @@ class FullWingLoftShapeCreator(AbstractShapeCreator):
         self.creator_id = value
 
 
-
 if __name__ == "__main__":
     CPACS_FILE_NAME = "aircombat_v14"
     NUMBER_OF_CUTS = 5
     import logging
     import Extra.tigl_extractor as tg
+    import json
+    from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
 
     logging.info(f"Start test for Fuselage Factory with CPACS file {CPACS_FILE_NAME}")
 
@@ -482,104 +532,112 @@ if __name__ == "__main__":
         .get_configuration(tigl_h._handle.value)
 
     # defining the shape creators
-    shapeSlicer = SliceShapesCreator("fuselage_slicer", number_of_parts=5)
-    engineMount = EngineMountShapeCreator("engine_mount",
+    shape_slicer_node = ConstructionStepNode(
+        SliceShapesCreator("fuselage_slicer", number_of_parts=5))
+    engine_mount_node = ConstructionStepNode(
+        EngineMountShapeCreator("engine_mount",
+                                fuselage_index=1,
+                                mount_plate_thickness=0.005))
+    shape_stl_export_node = ConstructionStepNode(
+        ExportToStlCreator("stl_exporter",
+                           additional_shapes_to_export=["engine_mount", "engine_cape.cape"]))
+    engine_cape_node = ConstructionStepNode(
+        EngineCapeShapeCreator("engine_cape",
+                               engine_index=1,
+                               fuselage_index=1,
+                               mount_plate_thickness=0.005))
+    fuselage_reinforcement_node = ConstructionStepNode(
+        FuselageReinforcementShapeCreator("fuselage_reinforcement",
                                           fuselage_index=1,
-                                          mount_plate_thickness=0.005)
-    shapeStlExport = ExportToStlCreator("stl_exporter",
-                                        additional_shapes_to_export=["engine_mount", "engine_cape.cape"])
-    engineCape = EngineCapeShapeCreator("engine_cape",
-                                        engine_index=1,
+                                          right_main_wing_index=1,
+                                          ribcage_factor=0.5,
+                                          rib_width=0.002,
+                                          reinforcement_pipes_radius=0.003))
+    wing_support_node = ConstructionStepNode(
+        FuselageWingSupportShapeCreator("wing_support",
                                         fuselage_index=1,
-                                        mount_plate_thickness=0.005)
-    fuselage_reinforcement = FuselageReinforcementShapeCreator("fuselage_reinforcement",
-                                                               fuselage_index=1,
-                                                               right_main_wing_index=1,
-                                                               ribcage_factor=0.5,
-                                                               rib_width=0.002,
-                                                               reinforcement_pipes_radius=0.003)
-    wing_support = FuselageWingSupportShapeCreator("wing_support",
-                                                   fuselage_index=1,
-                                                   right_main_wing_index=1)
-    fuse_reinforcement_wing_sup = Fuse2ShapesCreator("reinforcement",
-                                                     shape_a="fuselage_reinforcement",
-                                                     shape_b="wing_support")
-    electronics_access = FuselageElectronicsAccessCutOutShapeCreator("electronics_cutout",
-                                                                     fuselage_index=1,
-                                                                     ribcage_factor=0.5,
-                                                                     right_main_wing_index=1,
-                                                                     wing_position=None)
-    reinforcement = Cut2ShapesCreator("reinforcement",
-                                      minuend="reinforcement",
-                                      subtrahend="electronics_cutout")
-    internal_structure = Intersect2ShapesCreator("internal_structure",
-                                                 shape_a="engine_cape.loft",
-                                                 shape_b="reinforcement")
-    offset_fuselage = SimpleOffsetShapeCreator("offset_fuselage",
-                                               shape="engine_cape.loft",
-                                               offset=0.001)
-    reinforced_fuselage = Cut2ShapesCreator("reinforced_fuselage",
-                                            minuend="offset_fuselage",
-                                            subtrahend="internal_structure")
-    full_wing_loft = FullWingLoftShapeCreator("wings",
-                                              right_main_wing_index=1)
-    cut_wing_from_fuselage = Cut2ShapesCreator("fuselage_wo_wings",
-                                               minuend="reinforced_fuselage",
-                                               subtrahend="wings")
-    wing_attachment_bolt = WingAttachmentBoltHolesShapeCreator("attachment_bolts",
-                                                               fuselage_index=1,
-                                                               right_main_wing_index=1)
-    cut_bolts_from_fuselage = Cut2ShapesCreator("final_fuselage",
-                                                minuend="fuselage_wo_wings",
-                                                subtrahend="attachment_bolts")
+                                        right_main_wing_index=1))
+    fuse_reinforcement_wing_sup_node = ConstructionStepNode(
+        Fuse2ShapesCreator("reinforcement",
+                           shape_a="fuselage_reinforcement",
+                           shape_b="wing_support"))
+    electronics_access_node = ConstructionStepNode(
+        FuselageElectronicsAccessCutOutShapeCreator("electronics_cutout",
+                                                    fuselage_index=1,
+                                                    ribcage_factor=0.5,
+                                                    right_main_wing_index=1,
+                                                    wing_position=None))
+    reinforcement_node = ConstructionStepNode(
+        Cut2ShapesCreator("reinforcement",
+                          minuend="reinforcement",
+                          subtrahend="electronics_cutout"))
+    internal_structure_node = ConstructionStepNode(
+        Intersect2ShapesCreator("internal_structure",
+                                shape_a="engine_cape.loft",
+                                shape_b="reinforcement"))
+    offset_fuselage_node = ConstructionStepNode(
+        SimpleOffsetShapeCreator("offset_fuselage",
+                                 shape="engine_cape.loft",
+                                 offset=0.004))
+    reinforced_fuselage_node = ConstructionStepNode(
+        Cut2ShapesCreator("reinforced_fuselage",
+                          minuend="offset_fuselage",
+                          subtrahend="internal_structure"))
+    full_wing_loft_node = ConstructionStepNode(
+        FullWingLoftShapeCreator("wings",
+                                 right_main_wing_index=1))
+    cut_wing_from_fuselage_node = ConstructionStepNode(
+        Cut2ShapesCreator("fuselage_wo_wings",
+                          minuend="reinforced_fuselage",
+                          subtrahend="wings"))
+    wing_attachment_bolt_node = ConstructionStepNode(
+        WingAttachmentBoltHolesShapeCreator("attachment_bolts",
+                                            fuselage_index=1,
+                                            right_main_wing_index=1))
+    cut_bolts_from_fuselage_node = ConstructionStepNode(
+        Cut2ShapesCreator("final_fuselage",
+                          minuend="fuselage_wo_wings",
+                          subtrahend="attachment_bolts"))
 
-    # building up the workflow
-    engineMountNode = ConstructionStepNode(engineMount)
-    shapeSlicerMountNode = ConstructionStepNode(shapeSlicer)
-    shapeStlExportNode = ConstructionStepNode(shapeStlExport)
-    engineCapeNode = ConstructionStepNode(engineCape)
-    fuselageReinforcementNode = ConstructionStepNode(fuselage_reinforcement)
-    wingSupportNode = ConstructionStepNode(wing_support)
-    reinforcementNode = ConstructionStepNode(fuse_reinforcement_wing_sup)
-    electronicsAccessNode = ConstructionStepNode(electronics_access)
-    reinforcementWithCutoutNode = ConstructionStepNode(reinforcement)
-    internalStructureNode = ConstructionStepNode(internal_structure)
-    offsetFuselageNode = ConstructionStepNode(offset_fuselage)
-    reinforcedFuselageNode = ConstructionStepNode(reinforced_fuselage)
-    full_wing_loft_node = ConstructionStepNode(full_wing_loft)
-    cut_wing_from_fuselage_node = ConstructionStepNode(cut_wing_from_fuselage)
-    wing_attachment_bolt_node = ConstructionStepNode(wing_attachment_bolt)
-    cut_bolts_from_fuselage_node = ConstructionStepNode(cut_bolts_from_fuselage)
+    # ============
+    full_wing_file_path = "full_wing.json"
+    full_wing_file = open(full_wing_file_path, "w")
+    json.dump(fp=full_wing_file, obj=full_wing_loft_node, indent=4, cls=GeneralJSONEncoder)
+    full_wing_file.close()
+
+    json_load_node = ConstructionStepNode(
+        LoadJsonCreator("load_json",
+                        json_file_path=full_wing_file_path,
+                        cpacs_configuration=ccpacs_configuration))
+
+    json_load_node.construct()
+    #shapeDisplay.start()
+    # =============
 
     # linking the map
-    engineCapeNode.append(engineMountNode)
-    engineMountNode.append(fuselageReinforcementNode)
-    fuselageReinforcementNode.append(wingSupportNode)
-    wingSupportNode.append(reinforcementNode)
-    reinforcementNode.append(electronicsAccessNode)
-    electronicsAccessNode.append(reinforcementWithCutoutNode)
-    reinforcementWithCutoutNode.append(internalStructureNode)
-    internalStructureNode.append(offsetFuselageNode)
-    offsetFuselageNode.append(reinforcedFuselageNode)
-    reinforcedFuselageNode.append(full_wing_loft_node)
-    full_wing_loft_node.append(cut_wing_from_fuselage_node)
+    engine_cape_node.append(engine_mount_node)
+    engine_mount_node.append(fuselage_reinforcement_node)
+    fuselage_reinforcement_node.append(wing_support_node)
+    wing_support_node.append(fuse_reinforcement_wing_sup_node)
+    fuse_reinforcement_wing_sup_node.append(electronics_access_node)
+    electronics_access_node.append(reinforcement_node)
+    reinforcement_node.append(internal_structure_node)
+    internal_structure_node.append(offset_fuselage_node)
+    offset_fuselage_node.append(reinforced_fuselage_node)
+    reinforced_fuselage_node.append(json_load_node)
+    json_load_node.append(cut_wing_from_fuselage_node)
     cut_wing_from_fuselage_node.append(wing_attachment_bolt_node)
     wing_attachment_bolt_node.append(cut_bolts_from_fuselage_node)
-    cut_bolts_from_fuselage_node.append(shapeSlicerMountNode)
-    shapeSlicerMountNode.append(shapeStlExportNode)
-
-    import json
-    from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
+    cut_bolts_from_fuselage_node.append(shape_slicer_node)
+    shape_slicer_node.append(shape_stl_export_node)
 
     # dump to a json string
-    json_data: str = json.dumps(engineCapeNode, indent=4, cls=GeneralJSONEncoder)
+    json_data: str = json.dumps(engine_cape_node, indent=4, cls=GeneralJSONEncoder)
 
     # load the string
     # tigl_handel is parameter which is not in the json file, but needed by the constructor of a creator class
     myMap = json.loads(json_data, cls=GeneralJSONDecoder,
-                       cpacs_configuration=ccpacs_configuration,
-                       tigl_handel=tigl_h,
-                       wing_stuff="wing_stuff is okay")
+                       cpacs_configuration=ccpacs_configuration)
 
     # dump again to check
     print(json.dumps(myMap, indent=4, cls=GeneralJSONEncoder))
