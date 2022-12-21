@@ -25,7 +25,9 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         occur in the kwargs variable. The key are the 'identifier's and the values hold the shapes.
         :param input_shapes: shapes created in the step before
         :param kwargs: the previously created shapes identified by their 'identifier's
-        :return: a new shape
+        :return: a new dictionary with new shapes. the naming convention is that shapes, which have known name
+        get a key like <identifier>.<known_name>, shapes which are created like a list get a key that
+        corresponds to a list key that is <identifier>[#increasing_number]
         """
         pass
 
@@ -33,7 +35,8 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
     def check_if_shapes_are_available(cls, needed_shapes: list[str], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         """
         Check if the shapes, that are needed, have been created before and are available in kwargs.
-        :param kwargs:
+        :param needed_shapes: list of str with shape identifiers
+        :param kwargs: dictionary of keyword arguments
         :return: a dictionary with the needed_shapes
         """
         shapes = {}
