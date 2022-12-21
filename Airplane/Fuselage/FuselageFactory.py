@@ -3,15 +3,19 @@ import tigl3.configuration as TConfig
 
 import Dimensions.ShapeDimensions as PDim
 from Airplane.Fuselage.FuselageCutouts import FuselageCutouts
+from Airplane.Fuselage.FuselageRibFactory import FuselageRibFactory
 from Extra.BooleanOperationsForLists import *
 
 
 class FuselageFactory:
     @classmethod
-    def create_wing_support_shape(cls, cpacs_configuration, rib_factory, fuselage_index, right_main_wing_index):
+    def create_wing_support_shape(cls, cpacs_configuration, fuselage_index, right_main_wing_index):
         overlap_dimensions = FuselageFactory.overlap_fuselage_wing_dimensions(cpacs_configuration, fuselage_index,
                                                                               right_main_wing_index)
-        shape__wing_support = cls.create_wing_support(rib_factory, overlap_dimensions)
+        shape__wing_support = FuselageRibFactory.create_wing_support_ribs(
+                            overlap_dimensions=overlap_dimensions,
+                            fuselage_loft=cpacs_configuration.get_fuselage(fuselage_index).get_loft(),
+                            wing_loft=cpacs_configuration.get_wing(right_main_wing_index).get_loft())
         return shape__wing_support
 
     @classmethod
@@ -28,36 +32,50 @@ class FuselageFactory:
         return shape__hardware_cutout
 
     @classmethod
-    def create_wing_support(cls, rib_factory, overlap_dimensions):
+    def create_wing_support(cls, overlap_dimensions, fuselage_loft: TGeo.CNamedShape, wing_loft: TGeo.CNamedShape):
         # Wing Support ribs
-        shape__wing_support: TGeo.CNamedShape = rib_factory.create_wing_support_ribs(overlap_dimensions)
+        shape__wing_support: TGeo.CNamedShape = FuselageRibFactory.create_wing_support_ribs(
+            overlap_dimensions=overlap_dimensions,
+            fuselage_loft=fuselage_loft,
+            wing_loft=wing_loft)
         return shape__wing_support
 
     @classmethod
-    def create_fuselage_reinforcement(cls, cpacs_configuration, fuselage_index, reinforcement_pipe_factory,
-                                    reinforcement_pipes_radius, rib_factory, rib_width, ribcage_factor,
-                                    right_main_wing_index):
+    def create_fuselage_reinforcement(cls, cpacs_configuration,
+                                      fuselage_index,
+                                      reinforcement_pipes_radius,
+                                      rib_width, ribcage_factor,
+                                      right_main_wing_index,
+                                      fuselage_loft: TGeo.CNamedShape):
         internal_structure: list[TGeo.CNamedShape] = []
         # Calculate the positions for the rib
         y_max, y_min, z_max, z_min = FuselageFactory._calc_rib_positions(ribcage_factor,
                                                                          cpacs_configuration,
                                                                          fuselage_index,
                                                                          right_main_wing_index,
+                                                                         fuselage_loft,
                                                                          spacing=0.003)
+
+        fuselage_dimensions = PDim.ShapeDimensions(fuselage_loft);
+
         # Ribs
-        ribs: TGeo.CNamedShape = rib_factory.create_sharp_ribs(rib_width, y_max, y_min, z_max, z_min)
+        ribs: TGeo.CNamedShape = FuselageRibFactory.create_sharp_ribs(rib_width, y_max, y_min, z_max, z_min,
+                                                                      fuselage_loft)
         internal_structure.append(ribs)
+
         # Reinforcement Pipes
-        reinforcement_pipes: TGeo.CNamedShape = reinforcement_pipe_factory.create_reinforcement_pipe_fuselage(
-            reinforcement_pipes_radius, y_max, y_min, z_max, z_min)
+        from Airplane.ReinforcementPipeFactory import ReinforcementePipeFactory
+        reinforcement_pipes: TGeo.CNamedShape = ReinforcementePipeFactory.create_reinforcement_pipe_fuselage(
+            reinforcement_pipes_radius, y_max, y_min, z_max, z_min, fuselage_dimensions)
         internal_structure.append(reinforcement_pipes)
+
         # Fuse internal structure
         fused_internal_structure: TGeo.CNamedShape = fuse_list_of_namedshapes(internal_structure)
+
         # Create Reduction recces
         cutouts: list[TGeo.CNamedShape] = \
             FuselageFactory._create_recces_cutouts_for_fuselage_reinforcement(y_max, y_min, z_max, z_min,
-                                                                            cpacs_configuration=cpacs_configuration,
-                                                                            fuselage_index=fuselage_index)
+                                                                              fuselage_loft=fuselage_loft)
         # cut Internal Structure
         shape__fuselage_reinforcement = BooleanCADOperation.cut_list_of_shapes(fused_internal_structure, cutouts)
         return shape__fuselage_reinforcement
@@ -205,9 +223,10 @@ class FuselageFactory:
 
     @classmethod
     def _calc_rib_positions(cls, factor, cpacs_configuration, fuselage_index,
-                            right_main_wing_index, spacing: float = 0.003):
-        y_max: float = (PDim.ShapeDimensions(
-            cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_width() * factor) / 2
+                            right_main_wing_index,
+                            fuselage_loft: TGeo.CNamedShape,
+                            spacing: float = 0.003):
+        y_max: float = (PDim.ShapeDimensions(fuselage_loft).get_width() * factor) / 2
         y_min: float = -y_max
 
         overlap_dimension: PDim.ShapeDimensions = FuselageFactory.overlap_fuselage_wing_dimensions(cpacs_configuration,
@@ -217,38 +236,25 @@ class FuselageFactory:
         # Check if high wing or low wing
         if FuselageFactory._is_high_wing(overlap_dimension, cpacs_configuration, fuselage_index):
             z_max_below_overlap: float = overlap_dimension.get_z_min() - spacing
-            z_max_calculated_with_factor: float = PDim.ShapeDimensions(
-                cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_z_mid() + (
+            z_max_calculated_with_factor: float = PDim.ShapeDimensions(fuselage_loft).get_z_mid() + (
                                                           (PDim.ShapeDimensions(cpacs_configuration.get_fuselage(
                                                               fuselage_index).get_loft()).get_height() * factor) / 2)
 
             # z_max can not collide with wing, and may not be smaller than the height of the fuselage * factor
             z_max: float = min(z_max_below_overlap, z_max_calculated_with_factor)
             z_min: float = PDim.ShapeDimensions(
-                cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_z_mid() - ((PDim.ShapeDimensions(
-                cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_height() * factor) / 2)
+                fuselage_loft).get_z_mid() - ((PDim.ShapeDimensions(fuselage_loft).get_height() * factor) / 2)
         elif FuselageFactory._is_low_wing(overlap_dimension, cpacs_configuration, fuselage_index):
             z_min_over_overlap: float = overlap_dimension.get_z_max() + spacing
             z_min_calculated_with_factor: float = PDim.ShapeDimensions(
-                cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_z_mid() - (
-                                                          (PDim.ShapeDimensions(cpacs_configuration.get_fuselage(
-                                                              fuselage_index).get_loft()).get_height() * factor) / 2)
+                fuselage_loft).get_z_mid() - ((PDim.ShapeDimensions(fuselage_loft).get_height() * factor) / 2)
 
             # z_max can not collide with wing, and schould not be smaller than the height of the fuselage * factor
             z_min: float = max(z_min_over_overlap, z_min_calculated_with_factor)
-            z_max = PDim.ShapeDimensions(cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_z_mid() + ((
-                                                         PDim.ShapeDimensions(
-                                                             cpacs_configuration.get_fuselage(
-                                                                 fuselage_index).get_loft()).get_height() * factor) / 2)
+            z_max = PDim.ShapeDimensions(fuselage_loft).get_z_mid() + ((PDim.ShapeDimensions(fuselage_loft).get_height() * factor) / 2)
         else:
-            z_max = PDim.ShapeDimensions(cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_z_mid() + ((
-                                                         PDim.ShapeDimensions(
-                                                             cpacs_configuration.get_fuselage(
-                                                                 fuselage_index).get_loft()).get_height() * factor) / 2)
-            z_min = PDim.ShapeDimensions(cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_z_mid() - ((
-                                                         PDim.ShapeDimensions(
-                                                             cpacs_configuration.get_fuselage(
-                                                                 fuselage_index).get_loft()).get_height() * factor) / 2)
+            z_max = PDim.ShapeDimensions(fuselage_loft).get_z_mid() + ((PDim.ShapeDimensions(fuselage_loft).get_height() * factor) / 2)
+            z_min = PDim.ShapeDimensions(fuselage_loft).get_z_mid() - ((PDim.ShapeDimensions(fuselage_loft).get_height() * factor) / 2)
             logging.error(f"Ribs will collide")
 
         return y_max, y_min, z_max, z_min
@@ -268,7 +274,8 @@ class FuselageFactory:
         return position
 
     @classmethod
-    def _create_recces_cutouts_for_fuselage_reinforcement(cls, y_max, y_min, z_max, z_min, cpacs_configuration, fuselage_index):
+    def _create_recces_cutouts_for_fuselage_reinforcement(cls, y_max, y_min, z_max, z_min,
+                                                          fuselage_loft: TGeo.CNamedShape):
         cutouts = []
         radius_factor = 0.8
         radius_with_z = ((z_max - z_min) / 2) * radius_factor
@@ -276,19 +283,15 @@ class FuselageFactory:
         radius = min(radius_with_z, radius_with_y)
 
         distance: float = radius * 3
-        quantity: int = round(PDim.ShapeDimensions(
-            cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_length() / distance) + 1
-        cylinder_height = PDim.ShapeDimensions(
-            cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_height()
+        quantity: int = round(PDim.ShapeDimensions(fuselage_loft).get_length() / distance) + 1
+        cylinder_height = PDim.ShapeDimensions(fuselage_loft).get_height()
 
         cylinder_pattern: TGeo.CNamedShape = FuselageCutouts.create_cylinder_pattern(radius, cylinder_height,
                                                                                      quantity, distance)
-        cylinder_pattern_ver: TGeo.CNamedShape = TGeo.CNamedShape(OExs.translate_shp(cylinder_pattern.shape(),
-                                                                                     Ogp.gp_Vec(distance / 2, 0,
-                                                                                                PDim.ShapeDimensions(
-                                                                                                    cpacs_configuration.get_fuselage(
-                                                                                                        fuselage_index).get_loft()).get_z_min())),
-                                                                  f"{cylinder_pattern.name()}_vertikal")
+        cylinder_pattern_ver: TGeo.CNamedShape = TGeo.CNamedShape(
+            OExs.translate_shp(cylinder_pattern.shape(),
+                               Ogp.gp_Vec(distance / 2, 0, PDim.ShapeDimensions(fuselage_loft).get_z_min())),
+            f"{cylinder_pattern.name()}_vertikal")
 
         ConstructionStepsViewer.instance().display_this_shape(cylinder_pattern_ver, cylinder_pattern_ver.name())
         cutouts.append(cylinder_pattern_ver)
@@ -298,9 +301,7 @@ class FuselageFactory:
         z_pos: float = (z_max + z_min) / 2
         cylinder_pattern_hor.set_shape(OExs.translate_shp(cylinder_pattern_hor.shape(),
                                                           Ogp.gp_Vec(distance / 2,
-                                                                     PDim.ShapeDimensions(
-                                                                         cpacs_configuration.get_fuselage(
-                                                                             fuselage_index).get_loft()).get_height() / 2,
+                                                                     PDim.ShapeDimensions(fuselage_loft).get_height() / 2,
                                                                      z_pos)))
 
         ConstructionStepsViewer.instance().display_this_shape(cylinder_pattern_hor, cylinder_pattern_hor.name())

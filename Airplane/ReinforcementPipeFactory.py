@@ -61,7 +61,7 @@ class ReinforcementePipeFactory:
             if i in pipe_position:
                 start = Ogp.gp_Pnt(x, inner_dimensions.get_y_min(), inner_dimensions.get_z_mid())
                 end = Ogp.gp_Pnt(outer_x_list[i], outer_dimensions.get_y_min(), outer_dimensions.get_z_mid())
-                pipe = self.create_pipe_section(start, end, radius + thickness, f"pipe_section_{i}")
+                pipe = ReinforcementePipeFactory.create_pipe_section(start, end, radius + thickness, f"pipe_section_{i}")
                 self.shapes.append(pipe)
                 self.m.display_in_origin(pipe)
 
@@ -69,37 +69,40 @@ class ReinforcementePipeFactory:
         self.shape = cylinders
         return cylinders
 
-    def create_reinforcement_pipe_fuselage(self, radius, y_max, y_min, z_max, z_min) -> TGeo.CNamedShape:
+    @classmethod
+    def create_reinforcement_pipe_fuselage(cls, radius, y_max, y_min, z_max, z_min,
+                                           fuselage_dimensions: PDim.ShapeDimensions) -> TGeo.CNamedShape:
+
 
         # pipe1
-        start: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_coordinates.get_x_min(), y_max, z_max)
-        end: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_coordinates.get_x_max(), y_max, z_max)
-        pipe1 = self.create_pipe_section(start, end, radius, "pipe_section_1")
+        start: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_dimensions.get_x_min(), y_max, z_max)
+        end: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_dimensions.get_x_max(), y_max, z_max)
+        pipe1 = ReinforcementePipeFactory.create_pipe_section(start, end, radius, "pipe_section_1")
 
         # pipe2
-        start: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_coordinates.get_x_min(), y_min, z_max)
-        end: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_coordinates.get_x_max(), y_min, z_max)
-        pipe2 = self.create_pipe_section(start, end, radius, "pipe_section_2")
+        start: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_dimensions.get_x_min(), y_min, z_max)
+        end: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_dimensions.get_x_max(), y_min, z_max)
+        pipe2 = ReinforcementePipeFactory.create_pipe_section(start, end, radius, "pipe_section_2")
 
         # pipe3
-        start: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_coordinates.get_x_min(), y_min, z_min)
-        end: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_coordinates.get_x_max(), y_min, z_min)
-        pipe3 = self.create_pipe_section(start, end, radius, "pipe_section_3")
+        start: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_dimensions.get_x_min(), y_min, z_min)
+        end: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_dimensions.get_x_max(), y_min, z_min)
+        pipe3 = ReinforcementePipeFactory.create_pipe_section(start, end, radius, "pipe_section_3")
 
         # pipe4
-        start: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_coordinates.get_x_min(), y_max, z_min)
-        end: Ogp.gp_Pnt = Ogp.gp_Pnt(self.fuselage_coordinates.get_x_max(), y_max, z_min)
-        pipe4 = self.create_pipe_section(start, end, radius, "pipe_section_4")
+        start: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_dimensions.get_x_min(), y_max, z_min)
+        end: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_dimensions.get_x_max(), y_max, z_min)
+        pipe4 = ReinforcementePipeFactory.create_pipe_section(start, end, radius, "pipe_section_4")
 
         pipes = [pipe1, pipe2, pipe3, pipe4]
         fused_pipes = Bof.fuse_list_of_namedshapes(pipes, "Reinforcement_pipes")
-        self.named_shape = fused_pipes
         return fused_pipes
 
     def get_shape(self) -> TGeo.CNamedShape:
         return self.named_shape
 
-    def create_pipe_section(self, start: Ogp.gp_Pnt, end: Ogp.gp_Pnt, radius: int, name="") -> TGeo.CNamedShape:
+    @classmethod
+    def create_pipe_section(cls, start: Ogp.gp_Pnt, end: Ogp.gp_Pnt, radius: int, name="") -> TGeo.CNamedShape:
         '''
         Creates a cylinder between the start and end, with the given radius
         :param start: starting point
@@ -114,8 +117,8 @@ class ReinforcementePipeFactory:
         make_wire.Build()
         wire = make_wire.Wire()
 
-        dir = Ogp.gp_Dir(end.X() - start.X(), end.Y() - start.Y(), end.Z() - start.Z())
-        circle = Ogp.gp_Circ(Ogp.gp_Ax2(start, dir), radius)
+        direction = Ogp.gp_Dir(end.X() - start.X(), end.Y() - start.Y(), end.Z() - start.Z())
+        circle = Ogp.gp_Circ(Ogp.gp_Ax2(start, direction), radius)
         profile_edge = BRepBuilderAPI_MakeEdge(circle).Edge()
         profile_wire = BRepBuilderAPI_MakeWire(profile_edge).Wire()
         profile_face = BRepBuilderAPI_MakeFace(profile_wire).Face()

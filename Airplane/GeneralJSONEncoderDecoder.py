@@ -42,13 +42,13 @@ class GeneralJSONDecoder(JSONDecoder):
         init_params = inspect.signature(cls.__init__).parameters
 
         if "kwargs" in init_params.keys():
-            intersection = dic
-            intersection.update(self.kwargs)
+            intersection_dict = dic
+            intersection_dict.update(self.kwargs)
         else:
             # select the extra parameters found in kwargs
             intersection = {k: self.kwargs[k] for k in self.kwargs.keys() & init_params.keys()}
             # get init_params from dic
-            intersection_dict = {k: dic[k] for k in dic.keys() & init_params.keys()}
+            intersection_dict ={k: dic[k] for k in dic.keys() & init_params.keys()}
             # join and create object
-            intersection.update(intersection_dict)
-        return cls(**intersection)
+            intersection_dict.update(intersection)
+        return cls(**intersection_dict)
