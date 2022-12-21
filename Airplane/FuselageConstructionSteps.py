@@ -1,8 +1,10 @@
+import logging
+
 import tigl3.geometry as tgl_geom
 from tigl3.configuration import CCPACSConfiguration, CCPACSEnginePositions, CCPACSEnginePosition
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
-from Airplane.ConstructionStepNode import ConstructionStepNode
+from Airplane.ConstructionStepNode import ConstructionStepNode, JSONStepNode
 from Airplane.Fuselage.EngineMountFactory import EngineMountFactory
 from Extra.BooleanOperationsForLists import BooleanCADOperation
 
@@ -521,6 +523,7 @@ if __name__ == "__main__":
     import json
     from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
 
+    logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
     logging.info(f"Start test for Fuselage Factory with CPACS file {CPACS_FILE_NAME}")
 
     from Extra.ConstructionStepsViewer import ConstructionStepsViewer
@@ -605,13 +608,11 @@ if __name__ == "__main__":
     json.dump(fp=full_wing_file, obj=full_wing_loft_node, indent=4, cls=GeneralJSONEncoder)
     full_wing_file.close()
 
-    json_load_node = ConstructionStepNode(
-        LoadJsonCreator("load_json",
-                        json_file_path=full_wing_file_path,
+    json_step_node = JSONStepNode(json_file_path="full_wing.json",
+                                  cpacs_configuration=ccpacs_configuration)
+    # test = json_step_node.create_shape()
                         cpacs_configuration=ccpacs_configuration))
 
-    json_load_node.construct()
-    #shapeDisplay.start()
     # =============
 
     # linking the map
@@ -624,7 +625,7 @@ if __name__ == "__main__":
     reinforcement_node.append(internal_structure_node)
     internal_structure_node.append(offset_fuselage_node)
     offset_fuselage_node.append(reinforced_fuselage_node)
-    reinforced_fuselage_node.append(json_load_node)
+    reinforced_fuselage_node.append(json_step_node)
     json_load_node.append(cut_wing_from_fuselage_node)
     cut_wing_from_fuselage_node.append(wing_attachment_bolt_node)
     wing_attachment_bolt_node.append(cut_bolts_from_fuselage_node)
@@ -636,14 +637,14 @@ if __name__ == "__main__":
 
     # load the string
     # tigl_handel is parameter which is not in the json file, but needed by the constructor of a creator class
-    myMap = json.loads(json_data, cls=GeneralJSONDecoder,
-                       cpacs_configuration=ccpacs_configuration)
+    myMap: ConstructionStepNode = json.loads(json_data, cls=GeneralJSONDecoder,
+                                             cpacs_configuration=ccpacs_configuration)
 
     # dump again to check
-    print(json.dumps(myMap, indent=4, cls=GeneralJSONEncoder))
+    print(json.dumps(myMap, indent=2, cls=GeneralJSONEncoder))
 
     # build on basis of deserialized json
-    structure = myMap.construct()
+    structure = myMap.create_shape()
 
     from pprint import pprint
     pprint(structure)

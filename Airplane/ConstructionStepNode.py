@@ -1,12 +1,11 @@
-from typing import MutableMapping
+from typing import MutableMapping, Union
 
 from tigl3 import geometry as tgl_geom
 
-from Airplane.AbstractConstructionStep import AbstractConstructionStep
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
 
 
-class ConstructionStepNode(AbstractConstructionStep, MutableMapping):
+class ConstructionStepNode(AbstractShapeCreator, MutableMapping):
     """
     A node that is a map and holds in itself the following steps in the construction tree
     """
@@ -18,7 +17,16 @@ class ConstructionStepNode(AbstractConstructionStep, MutableMapping):
         """
         self.successors = {} if successors is None else successors
         self.creator: AbstractShapeCreator = creator
+        self.identifier = f"{creator.identifier}.node"
         self._output_shapes = None
+
+    @property
+    def identifier(self):
+        return self._creator_id
+
+    @identifier.setter
+    def identifier(self, value):
+        self._creator_id = value
 
     def __getitem__(self, key: str):
         return self.successors[key]
@@ -42,17 +50,41 @@ class ConstructionStepNode(AbstractConstructionStep, MutableMapping):
         """
         self.update({value.creator.identifier: value})
 
-    def construct(self, input_shapes: dict[str, tgl_geom.CNamedShape] = None, **kwargs) -> dict[str, object]:
+    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape] = None, **kwargs) \
+            -> dict[str, Union[object, tgl_geom.CNamedShape]]:
         """
         Executes the construction of all shapes based on the defined workflow structure.
-        :param input_shapes: the shapes that have been constructed in the last step
-        :param kwargs: holding the shapes of the previous steps as a dict of shape lists
-        (input_shapes is the last entry of this dict)
-        :return: a dict with all shapes created during the workflow
+        :param input_shapes: the shapes that have been constructed in the predecessor step
+        :param kwargs: holding the shapes of all previous steps as a dict of shapes
+        :return: a dict with all shapes that have been created up to this step
         """
         self._output_shapes = self.creator.create_shape(input_shapes=input_shapes, **kwargs)
         kwargs.update(self._output_shapes)
-        output_dict = self._output_shapes
         for key in self.successors:
-            output_dict.update(self.successors.get(key).construct(input_shapes=self._output_shapes, **kwargs))
-        return output_dict
+            kwargs.update(self.successors.get(key).create_shape(input_shapes=self._output_shapes, **kwargs))
+        return kwargs
+
+
+class JSONStepNode(ConstructionStepNode):
+    def __init__(self, json_file_path: str, **kwargs):
+        """
+        :param geometry: the geometry, that is created in this node
+        :param successors: all following construction steps
+        """
+        import json
+        from Airplane.GeneralJSONEncoderDecoder import GeneralJSONDecoder
+
+        self.json_file_path = json_file_path
+        self._to_be_injected = kwargs
+        _json_file = open(self.json_file_path)
+        creator: ConstructionStepNode = json.load(_json_file,
+                                                  cls=GeneralJSONDecoder,
+                                                  **self._to_be_injected)
+        _json_file.close()
+        if "successors" in kwargs.keys():
+            kwargs.pop("successors")
+        if "creator" in kwargs.keys():
+            kwargs.pop("creator")
+        super().__init__(creator=creator.creator, successors=creator.successors, **kwargs)
+        pass
+
