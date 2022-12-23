@@ -43,7 +43,7 @@ for i in range(4,6):
     fuselage_shape: OTopo.TopoDS_Shape=fuselage_loft.shape()
     x,y,z=get_dimensions_from_Shape(fuselage_shape)
     msg= f"stest {name2}  {x:.3f} {y:.3f} {z:.3f} "
-    m.display_this_shape(fuselage_shape, msg)
+    m.display_this_shape(fuselage_shape, severity=logging.NOTSET, msg)
     name2= name2 + str(i) + ".stl"
     write_stl_file2(fuselage_shape,name2)
     print("Done")

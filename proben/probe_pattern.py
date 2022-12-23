@@ -31,7 +31,7 @@ def fuse_list_of_shapes(list, msg=""):
             fused.append(shape)
         else:
             fused.append(OAlgo.BRepAlgoAPI_Fuse(fused[-1],shape).Shape())
-            m.display_fuse(fused[-1],fused[-2], shape,msg)
+            m.display_fuse(fused[-1], fused[-2], shape, logging.NOTSET, msg)
     return fused[-1]
 
 

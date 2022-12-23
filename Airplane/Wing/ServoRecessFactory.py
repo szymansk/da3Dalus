@@ -25,7 +25,7 @@ class ServoRecessFactory:
         # self.ruder_dimensions=ShapeDimensions(ruder_shape)
         # self.servo_size=servo_size
         self.display = ConstructionStepsViewer.instance()
-        logging.info(f"{self.wing_dimensions.__str__()}")
+        logging.debug(f"{self.wing_dimensions.__str__()}")
 
     def create_servoRecess_option1(self, named_ruder, servo_size=(0.0023, 0.0024, 0.0012)) -> TGeo.CNamedShape:
         """
@@ -34,7 +34,7 @@ class ServoRecessFactory:
         :param servo_size: (float, float, float)
         :return:
         """
-        logging.info(f"Creating servo Recess for {servo_size=} for {named_ruder.name()}")
+        logging.debug(f"Creating servo Recess for {servo_size=} for {named_ruder.name()}")
         self.ruder_shape = named_ruder.shape()
         self.ruder_dimensions = ShapeDimensions(named_ruder)
         self.servo_size = servo_size
@@ -60,7 +60,7 @@ class ServoRecessFactory:
 
         servo_section = TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Common(section_bound_box.shape(), self.wing_shape).Shape(),
                                          "servosection")
-        self.display.display_common(servo_section, section_bound_box, self.wing_loft)
+        self.display.display_common(servo_section, section_bound_box, self.wing_loft, logging.NOTSET)
         section_dimensions = ShapeDimensions(servo_section)
 
         x_pos = section_dimensions.get_x_mid() + servo_recess_dimension.get_length() * 0.2

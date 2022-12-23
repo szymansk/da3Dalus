@@ -29,7 +29,7 @@ class FuselageRibFactory:
         :return: namedshape of the created ribs
         """
         logstr = f"Quadrat ribs: x_pos=0 y_max={y_max:.3f} y_min={y_min:.3f} z_max={z_max:.3f} z_min={z_min:.3f}"
-        logging.info(logstr)
+        logging.debug(logstr)
 
         # Factor to make the ribs length and height bigger, to ensure that they are big enough
         factor = 1.2
@@ -41,7 +41,7 @@ class FuselageRibFactory:
         moved_box = OExs.translate_shp(box, Ogp.gp_Vec(-rib_length * 0.1, -rib_width / 2, 0))
 
         # vertical ribs
-        logging.info(f"Creating vertikal ribs")
+        logging.debug(f"Creating vertikal ribs")
         ver_rib = moved_box
         ver_rib_right = TGeo.CNamedShape(
             OExs.translate_shp(ver_rib, Ogp.gp_Vec(0.0, y_max, PDim.ShapeDimensions(fuselage_loft).get_z_min())),
@@ -51,7 +51,7 @@ class FuselageRibFactory:
             f"{fuselage_loft.name()}_vertikal_rib_2")
 
         # Horizontal ribs
-        logging.info(f"Creating Horizontal ribs")
+        logging.debug(f"Creating Horizontal ribs")
         hor_rib = OExs.rotate_shape(moved_box, Ogp.gp_OX(), 90)
         hor_rib_top = TGeo.CNamedShape(OExs.translate_shp(hor_rib, Ogp.gp_Vec(0.0, rib_height / 2, z_max)),
                                        f"{fuselage_loft.name()}_horizontal_rib_1")
@@ -64,28 +64,26 @@ class FuselageRibFactory:
         return fused_ribs
 
     @classmethod
-    def create_wing_support_ribs(cls, overlap_dimensions,
-                                 fuselage_loft: TGeo.CNamedShape,
-                                 wing_loft: TGeo.CNamedShape) -> TGeo.CNamedShape:
+    def create_wing_support_ribs(cls, overlap_dimensions, fuselage_loft: TGeo.CNamedShape, wing_loft: TGeo.CNamedShape,
+                                 rib_quantity: int, rib_width: float, rib_height_factor: float) -> TGeo.CNamedShape:
 
-        rib_quantity = 6
         rib_length = PDim.ShapeDimensions(wing_loft).get_length() * 1.2
-        rib_width = 0.0008
-        rib_height = overlap_dimensions.get_height() + 0.004
+        rib_height = (overlap_dimensions.get_height()) + 0.004
 
         complete_distance = PDim.ShapeDimensions(fuselage_loft).get_width() * 0.8
         single_distance = complete_distance / rib_quantity
 
-        single_rib = OPrim.BRepPrimAPI_MakeBox(rib_length, rib_width, rib_height).Shape()
+        single_rib = OPrim.BRepPrimAPI_MakeBox(rib_length, rib_width, rib_height * rib_height_factor).Shape()
         named_single_rib = TGeo.CNamedShape(single_rib, "single_rib")
         rib_pattern = pat.create_linear_pattern(named_single_rib, rib_quantity, single_distance, "y")
         rib_pattern_dimensions = PDim.ShapeDimensions(rib_pattern)
 
         x_pos = overlap_dimensions.get_x_mid() - rib_pattern_dimensions.get_x_mid()
         y_pos = overlap_dimensions.get_y_mid() - rib_pattern_dimensions.get_y_mid()
-        z_pos = overlap_dimensions.get_z_min() - rib_pattern_dimensions.get_z_min()
+        z_pos = overlap_dimensions.get_z_min() - rib_pattern_dimensions.get_z_min() \
+                                               - ((rib_height * rib_height_factor) - rib_height) / 2.0
 
         rib_pattern.set_shape(OExs.translate_shp(rib_pattern.shape(), Ogp.gp_Vec(x_pos, y_pos, z_pos)))
-        ConstructionStepsViewer.instance().display_this_shape(rib_pattern)
+        ConstructionStepsViewer.instance().display_this_shape(rib_pattern, severity=logging.NOTSET)
 
         return rib_pattern

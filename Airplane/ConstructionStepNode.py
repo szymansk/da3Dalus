@@ -65,6 +65,63 @@ class ConstructionStepNode(AbstractShapeCreator, MutableMapping):
         return kwargs
 
 
+class ConstructionRootNode(AbstractShapeCreator, MutableMapping):
+    """
+    A node that is a map and holds in itself the following steps in the construction tree
+    """
+
+    def __init__(self, creator_id: str, successors=None):
+        """
+        :param geometry: the geometry, that is created in this node
+        :param successors: all following construction steps
+        """
+        self.successors = {} if successors is None else successors
+        self.identifier = creator_id
+        self._output_shapes = None
+
+    @property
+    def identifier(self):
+        return self.creator_id
+
+    @identifier.setter
+    def identifier(self, value):
+        self.creator_id = value
+
+    def __getitem__(self, key: str):
+        return self.successors[key]
+
+    def __setitem__(self, key, value):
+        self.successors[key] = value
+
+    def __delitem__(self, key):
+        del self.successors[key]
+
+    def __len__(self):
+        return len(self.successors)
+
+    def __iter__(self):
+        return iter(self.successors)
+
+    def append(self, value) -> None:
+        """
+        Append a ConstructionStepNode to this map.
+        :param value: ConstructionStepNode
+        """
+        self.update({value.creator.identifier: value})
+
+    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape] = None, **kwargs) \
+            -> dict[str, Union[object, tgl_geom.CNamedShape]]:
+        """
+        Executes the construction of all shapes based on the defined workflow structure.
+        :param input_shapes: the shapes that have been constructed in the predecessor step
+        :param kwargs: holding the shapes of all previous steps as a dict of shapes
+        :return: a dict with all shapes that have been created up to this step
+        """
+        for key in self.successors:
+            kwargs.update(self.successors.get(key).create_shape(input_shapes=self._output_shapes, **kwargs))
+        return kwargs
+
+
 class JSONStepNode(ConstructionStepNode):
     def __init__(self, json_file_path: str, **kwargs):
         """

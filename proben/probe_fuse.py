@@ -14,14 +14,14 @@ if __name__ == "__main__":
     left = OPrim.BRepPrimAPI_MakeBox(10, 10, 10).Shape()
 
     list_tu_cut = [point, point2]
-    m.display_in_origin(point)
-    m.display_in_origin(point2)
-    m.display_in_origin(left, True)
+    m.display_in_origin(point, logging.NOTSET)
+    m.display_in_origin(point2, logging.NOTSET)
+    m.display_in_origin(left, logging.NOTSET, True)
 
     # cuted= OAlgo.BRepAlgoAPI_Cut(left,point).Shape()
     cuted = bof.cut_list_of_shapes(left, list_tu_cut)
-    m.display_this_shape(cuted)
-    m.display_cut(cuted, left, point)
+    m.display_this_shape(cuted, severity=logging.NOTSET)
+    m.display_cut(cuted, left, point, logging.NOTSET)
     m.start()
 
 '''

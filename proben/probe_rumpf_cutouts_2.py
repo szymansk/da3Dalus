@@ -63,7 +63,7 @@ cpacs_configuration: TConfig.CCPACSConfiguration= config_manager.get_configurati
 wing: TConfig.CCPACSWing= cpacs_configuration.get_wing(1)   
 wing_loft: TGeo.CNamedShape = wing.get_loft()
 wing_shape: OTopo.TopoDS_Shape = wing_loft.shape()
-m.display_this_shape(wing_shape, "Right wing Shape")
+m.display_this_shape(wing_shape, severity=logging.NOTSET, "Right wing Shape")
 # Set up the mirror
 aTrsf= Ogp.gp_Trsf()
 aTrsf.SetMirror(Ogp.gp_Ax2(Ogp.gp_Pnt(0,0,0),Ogp.gp_Dir(0,1,0)))
@@ -71,7 +71,7 @@ transformed_wing = OBuilder.BRepBuilderAPI_Transform(wing_shape, aTrsf)
 mirrored_wing= transformed_wing.Shape()
 complete_wing= OAlgo.BRepAlgoAPI_Fuse(wing_shape,mirrored_wing).Shape()
 complete_wing=OExs.translate_shp(complete_wing,Ogp.gp_Vec(0,0, 2))
-m.display_this_shape(complete_wing,msg="Fused completewing")
+m.display_this_shape(complete_wing, severity=logging.NOTSET, msg="Fused completewing")
 #Named Shape for Cutout
 named_wings_shape: TGeo.CNamedShape= TGeo.CNamedShape(complete_wing, "CutOut_Wings")
 print("complete:" ,type(complete_wing))
@@ -89,7 +89,7 @@ fuselage_shape=OExs.translate_shp(fuselage_shape,Ogp.gp_Vec(0,0, 2))
 xmin, ymin, zmin, xmax,ymax,zmax= get_koordinates(fuselage_shape)
 fuselage_lenght, fuselage_height, fuselage_widht= get_dimensions(xmin, ymin, zmin, xmax,ymax,zmax)
 print("Fuselage Dimensions", fuselage_lenght, fuselage_height, fuselage_widht)
-m.display_this_shape(fuselage_shape, "Fuselage Shape")
+m.display_this_shape(fuselage_shape, severity=logging.NOTSET, "Fuselage Shape")
 
 #fuselage_hollow= create_hollowedsolid(fuselage_shape,0.2)
 #m.display_this_shape(fuselage_hollow, "Hollowed Fuselage", True)
@@ -98,13 +98,13 @@ m.display_this_shape(fuselage_shape, "Fuselage Shape")
 #cutted_fuselage_shape:TGeo.CNamedShape= cutter.named_shape()
 cutted_fuselage_shape= OAlgo.BRepAlgoAPI_Cut(fuselage_shape,complete_wing).Shape()
 print(type(cutted_fuselage_shape), cutted_fuselage_shape.ShapeType())
-m.display_this_shape(cutted_fuselage_shape, "Cutted Fuselage")
+m.display_this_shape(cutted_fuselage_shape, severity=logging.NOTSET, "Cutted Fuselage")
 
 facesToRemove = TopTools_ListOfShape()
 # Fuselage Hollow, walls for wings 
 fuselage_hollow= OOff.BRepOffsetAPI_MakeThickSolid(cutted_fuselage_shape, facesToRemove, 0.02, 0.001).Shape()
 #fuselage_hollow= create_hollowedsolid(cutted_fuselage_shape,0.2)
-m.display_this_shape(fuselage_hollow, "Hollow Fuselage- THickness 0.4",True)
+m.display_this_shape(fuselage_hollow, severity=logging.NOTSET, "Hollow Fuselage- THickness 0.4", True)
 
 
 ###
@@ -121,13 +121,13 @@ hardware_box_lenght= fuselage_lenght*0.4
 hardware_box_widht= fuselage_widht*0.8
 hardware_box= OPrim.BRepPrimAPI_MakeBox(hardware_box_lenght, hardware_box_widht, hardware_box_height).Shape()
 moved_hardware_box= OExs.translate_shp(hardware_box,Ogp.gp_Vec(0,-hardware_box_widht/2, -hardware_box_height+ rib_width))
-m.display_this_shape(moved_hardware_box, "Hardware Box")
+m.display_this_shape(moved_hardware_box, severity=logging.NOTSET, "Hardware Box")
 
 #Cutout for Extra Ribs
 #cylinder= OPrim.BRepPrimAPI_MakeCylinder((fuselage_height*0.8)/2,40).Shape()
 cylinder= OPrim.BRepPrimAPI_MakeCylinder(1.5,40).Shape()
 cylinder= rotate_shape(cylinder, Ogp.gp_OY(), 90)
-m.display_this_shape(cylinder, "Cylinder Cutout")
+m.display_this_shape(cylinder, severity=logging.NOTSET, "Cylinder Cutout")
 
 ###
 #Create tunnel for carbon reinforcement
@@ -138,7 +138,7 @@ reinforcement_tunnel_out= OPrim.BRepPrimAPI_MakeCylinder(0.3,40).Shape()
 reinforcement_tunnel_out= rotate_shape(reinforcement_tunnel_out, Ogp.gp_OY(), 90)
 #reinforcement_tunnel=OAlgo.BRepAlgoAPI_Cut(reinforcement_tunnel_out,reinforcement_tunnel_in).Shape()
 #named_reinforcement_tunnel: TGeo.CNamedShape= TGeo.CNamedShape(complete_wing, "CutOut_Reinforcement")
-m.display_this_shape(reinforcement_tunnel_out, "Reinforcement Tunel")
+m.display_this_shape(reinforcement_tunnel_out, severity=logging.NOTSET, "Reinforcement Tunel")
 
 rib_quantity=2
 # Extraribs
@@ -151,17 +151,17 @@ for i in range(rib_quantity*2):
         rippen_ver=sbox
     else:
         rippen_ver=OAlgo.BRepAlgoAPI_Fuse(rippen_ver,sbox).Shape()
-m.display_this_shape(rippen_ver, "Star ribs")
+m.display_this_shape(rippen_ver, severity=logging.NOTSET, "Star ribs")
         
 
 # Fuselage CutOut reinfurceennt tunnel
 #cutter= TBoo.CCutShape(cutted_fuselage_shape, named_reinforcement_tunnel)
         
 rippen_ver= OAlgo.BRepAlgoAPI_Cut(rippen_ver, cylinder).Shape()
-m.display_this_shape(rippen_ver,"Starribs with cylinder cutout")
+m.display_this_shape(rippen_ver, severity=logging.NOTSET, "Starribs with cylinder cutout")
 
 rippen_ver= OAlgo.BRepAlgoAPI_Common(fuselage_shape, rippen_ver).Shape()
-m.display_this_shape(rippen_ver, "Ribs cut to fuselage shape")
+m.display_this_shape(rippen_ver, severity=logging.NOTSET, "Ribs cut to fuselage shape")
 
 # Cross ribs
 d_angle= 180/rib_quantity
@@ -173,20 +173,20 @@ for i in range(rib_quantity):
         rippen=sbox
     else:
         rippen=OAlgo.BRepAlgoAPI_Fuse(rippen,sbox).Shape()
-m.display_this_shape(rippen, "Cross Ribs")
+m.display_this_shape(rippen, severity=logging.NOTSET, "Cross Ribs")
 
 rippen_cuted=  OAlgo.BRepAlgoAPI_Cut(rippen, moved_hardware_box).Shape()
-m.display_this_shape(rippen_cuted, "Cross Ribs with hardware Box Cutout")
+m.display_this_shape(rippen_cuted, severity=logging.NOTSET, "Cross Ribs with hardware Box Cutout")
 
 rippen_cuted= OAlgo.BRepAlgoAPI_Fuse(rippen_cuted,reinforcement_tunnel_out).Shape()
-m.display_this_shape(rippen_cuted, "Ribs with reinforcement tunel")
+m.display_this_shape(rippen_cuted, severity=logging.NOTSET, "Ribs with reinforcement tunel")
 
 #rippen_cuted= OAlgo.BRepAlgoAPI_Cut(rippen_cuted, reinforcement_tunnel_in).Shape()
 rippen_cuted=OAlgo.BRepAlgoAPI_Common(cutted_fuselage_shape, rippen_cuted).Shape()
-m.display_this_shape(rippen_cuted,"Cut ribs to fuselage shape")
+m.display_this_shape(rippen_cuted, severity=logging.NOTSET, "Cut ribs to fuselage shape")
 
 rippen_gesamt=OAlgo.BRepAlgoAPI_Fuse(rippen_cuted, rippen_ver).Shape()
-m.display_this_shape(rippen_gesamt, " Fused Ribs")
+m.display_this_shape(rippen_gesamt, severity=logging.NOTSET, " Fused Ribs")
 
 point:Ogp.gp_Pnt =TGeo.get_center_of_mass(rippen_cuted)
 print(point.X(), point.Y(), point.Z())

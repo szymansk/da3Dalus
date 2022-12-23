@@ -16,9 +16,9 @@ if __name__ == "__main__":
     common_sphere = TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Common(point.shape(), point2.shape()).Shape(), "Commn_spehe")
 
     # list_tu_cut = [point, point2]
-    m.display_in_origin(point, "", True)
-    m.display_in_origin(point2, "", True)
-    m.display_in_origin(common_sphere, "")
+    m.display_in_origin(point, logging.NOTSET, "", True)
+    m.display_in_origin(point2, logging.NOTSET, "", True)
+    m.display_in_origin(common_sphere, logging.NOTSET, "")
     # m.display_in_origin(box, True)
 
     m.start()

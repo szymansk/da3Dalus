@@ -13,7 +13,7 @@ from Airplane.Configuration import Configuration
 CPACS_FILE_NAME = "aircombat_v14"
 
 if __name__ == "__main__":
-    logging.info("Start test for CPACS shapes for CPACS file ")
+    logging.debug("Start test for CPACS shapes for CPACS file ")
     m = myDisplay.ConstructionStepsViewer.instance(True, 1.5)
 
     # try:
@@ -25,7 +25,7 @@ if __name__ == "__main__":
     fuselage_loft: TGeo.CNamedShape = fuselage.get_loft()
     fuselage_shape: OTopo.TopoDS_Shape = fuselage_loft.shape()
     fuselage_dimensions = ShapeDimensions(fuselage_loft)
-    m.display_in_origin(fuselage_loft, "", True)
+    m.display_in_origin(fuselage_loft, logging.NOTSET, "", True)
 
     cpacs_configuration = configuration.get_cpacs_configuration()
 
@@ -35,10 +35,10 @@ if __name__ == "__main__":
         wing_loft: TGeo.CNamedShape = wing.get_loft()
         wing_shape: OTopo.TopoDS_Shape = wing_loft.shape()
         wing_dimensions = ShapeDimensions(wing_loft)
-        m.display_in_origin(wing_loft, "", True)
+        m.display_in_origin(wing_loft, logging.NOTSET, "", True)
         try:
             mirrored_loft = wing.get_mirrored_loft()
-            m.display_in_origin(mirrored_loft, "", True)
+            m.display_in_origin(mirrored_loft, logging.NOTSET, "", True)
         except:
             logging.warning(f"No mirrored {wing_loft.name()}")
 
@@ -49,11 +49,11 @@ if __name__ == "__main__":
     trailing_edge_devices: TConfig.CCPACSTrailingEdgeDevices = control_surface.get_trailing_edge_devices()
     trailing_edge_device: TConfig.CCPACSTrailingEdgeDevice = trailing_edge_devices.get_trailing_edge_device(1)
     ruder_loft: TGeo.CNamedShape = trailing_edge_device.get_loft()
-    m.display_in_origin(ruder_loft, "", True)
+    m.display_in_origin(ruder_loft, logging.NOTSET, "", True)
 
     try:
         mirrored_loft = trailing_edge_device.get_mirrored_loft()
-        m.display_in_origin(mirrored_loft, "", True)
+        m.display_in_origin(mirrored_loft, logging.NOTSET, "", True)
     except:
         logging.warning(f"No mirrored {ruder_loft.name()}")
 
@@ -66,17 +66,17 @@ if __name__ == "__main__":
     rotation: TGeo.CTiglPoint = engine_position_transformation.get_rotation()
     down_thrust_angle = rotation.y
     right_thrust_angle = rotation.z
-    logging.info(f"{down_thrust_angle=}")
-    logging.info(f"{right_thrust_angle=}")
+    logging.debug(f"{down_thrust_angle=}")
+    logging.debug(f"{right_thrust_angle=}")
 
     translation: TGeo.CCPACSPointAbsRel = engine_position_transformation.get_translation()
-    logging.info(f"engine position= ({translation.get_x()},\t {translation.get_y()},\t {translation.get_z()})")
+    logging.debug(f"engine position= ({translation.get_x()},\t {translation.get_y()},\t {translation.get_z()})")
 
     engine_scaling: TGeo.CTiglPoint = engine_position_transformation.get_scaling()
     engine_length = engine_scaling.x
     engine_width = engine_scaling.y
     engine_height = engine_scaling.z
-    logging.info(
+    logging.debug(
         f"engine size= length: {engine_length},width: {engine_width}, height: {engine_height},\t")
 
     m.start()

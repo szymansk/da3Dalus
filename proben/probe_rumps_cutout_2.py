@@ -88,25 +88,25 @@ class aircombat_test:
         claculate_mainwing_dimension(self.wing_shape)
         mirrored_wing = transformed_wing.Shape()
         self.complete_wing = OAlgo.BRepAlgoAPI_Fuse(self.wing_shape, mirrored_wing).Shape()
-        self.m.display_fuse(self.complete_wing, self.wing_shape, mirrored_wing, "complete_wing")
+        self.m.display_fuse(self.complete_wing, self.wing_shape, mirrored_wing, logging.NOTSET, "complete_wing")
         # self.m.display_this_shape(self.complete_wing,msg="Fused completewing")
 
     def create_offset_wing(self, offset=0.0008):
         self.wing_offset = OOff.BRepOffsetAPI_MakeOffsetShape(self.wing_shape, offset, 0.00001).Shape()
-        self.m.display_this_shape(self.wing_offset)
+        self.m.display_this_shape(self.wing_offset, severity=logging.NOTSET)
 
     def create_right_wing(self, rib_width=0.0002, angle=45):
         wing = []
         rib = self.create_wing_ribs(rib_width, angle)
         wing.append(OAlgo.BRepAlgoAPI_Common(self.wing_shape, rib).Shape())
-        self.m.display_common(wing[-1], self.wing_shape, rib)
+        self.m.display_common(wing[-1], self.wing_shape, rib, logging.NOTSET)
         wing.append(OAlgo.BRepAlgoAPI_Cut(self.wing_offset, wing[-1]).Shape())
-        self.m.display_cut(wing[-1], self.wing_offset, wing[-2])
+        self.m.display_cut(wing[-1], self.wing_offset, wing[-2], logging.NOTSET)
 
         # Create cable pipe and add to wing
         cable_pipe = self.create_cable_pipe()
         wing.append(OAlgo.BRepAlgoAPI_Cut(wing[-1], cable_pipe).Shape())
-        self.m.display_cut(wing[-1], wing[-2], cable_pipe)
+        self.m.display_cut(wing[-1], wing[-2], cable_pipe, logging.NOTSET)
 
         # Create hinge recces and add to wing
         # hinge_recess=self.create_hinge_recces()
@@ -116,7 +116,7 @@ class aircombat_test:
         # Create Flapscutout
         flaps_cutout = self.create_flaps_and_cutout(wing[-1])
         wing.append(OAlgo.BRepAlgoAPI_Cut(wing[-1], flaps_cutout).Shape())
-        self.m.display_cut(wing[-1], wing[-2], flaps_cutout)
+        self.m.display_cut(wing[-1], wing[-2], flaps_cutout, logging.NOTSET)
         self.wing_done = wing[-1]
 
     def create_wing_ribs(self, rib_width=0.0002, angle=45):
@@ -124,10 +124,10 @@ class aircombat_test:
         rib.append(self.create_diagonal_ribs(rib_width, angle=45))
         rib.append(self.create_horizontal_wing_ribs(rib_width))
         rib.append(OAlgo.BRepAlgoAPI_Fuse(rib[-2], rib[-1]).Shape())
-        self.m.display_fuse(rib[-1], rib[-3], rib[-2])
+        self.m.display_fuse(rib[-1], rib[-3], rib[-2], logging.NOTSET)
         rib.append(self.create_carbontunnel_wing())
         rib.append(OAlgo.BRepAlgoAPI_Fuse(rib[-2], rib[-1]).Shape())
-        self.m.display_fuse(rib[-1], rib[-3], rib[-2])
+        self.m.display_fuse(rib[-1], rib[-3], rib[-2], logging.NOTSET)
         return rib[-1]
         '''
         rib.append(OAlgo.BRepAlgoAPI_Common(self.wing_shape,rib[-1]).Shape())
@@ -145,12 +145,12 @@ class aircombat_test:
         prim.append(OPrim.BRepPrimAPI_MakeBox(wing_lenght * 2, rib_width, wing_height).Shape())
         prim.append(OExs.rotate_shape(prim[-1], gp_OZ(), angle))
         prim.append(OExs.translate_shp(prim[-1], Ogp.gp_Vec(xmin, -rib_width, zmin)))
-        self.m.display_this_shape(prim[-1])
+        self.m.display_this_shape(prim[-1], severity=logging.NOTSET)
         ribs_distance = 0.1
         ribs_quantity = round((wing_width / ribs_distance) * 2)
         prim.append(self.create_linear_pattern(prim[-1], ribs_quantity, ribs_distance, "y"))
         prim.append(OExs.translate_shp(prim[-1], Ogp.gp_Vec(0, -wing_width / 2, 0)))
-        self.m.display_this_shape(prim[-1])
+        self.m.display_this_shape(prim[-1], severity=logging.NOTSET)
         return prim[-1]
 
     def create_horizontal_wing_ribs(self, rib_width):
@@ -161,9 +161,9 @@ class aircombat_test:
         distance = wing_lenght / 4
         x_pos = xmin + distance - rib_width / 2
         prim.append(OExs.translate_shp(prim[-1], Ogp.gp_Vec(x_pos, 0.0, zmin)))
-        self.m.display_this_shape(prim[-1])
+        self.m.display_this_shape(prim[-1], severity=logging.NOTSET)
         prim.append(self.create_linear_pattern(prim[-1], 3, distance, "x"))
-        self.m.display_this_shape(prim[-1])
+        self.m.display_this_shape(prim[-1], severity=logging.NOTSET)
         return prim[-1]
 
     def create_carbontunnel_wing(self):
@@ -176,13 +176,13 @@ class aircombat_test:
         x_pos = xmin + distance
         z_pos = zmin + wing_height / 2
         prim.append(OExs.translate_shp(prim[-1], Ogp.gp_Vec(x_pos, 0.0, z_pos)))
-        self.m.display_this_shape(prim[-1])
+        self.m.display_this_shape(prim[-1], severity=logging.NOTSET)
         prim.append(self.create_linear_pattern(prim[-1], 2, distance, "x"))
-        self.m.display_this_shape(prim[-1])
+        self.m.display_this_shape(prim[-1], severity=logging.NOTSET)
         return prim[-1]
 
     def create_flaps_and_cutout(self, wing):
-        logging.info(f"Creating flaps cutout")
+        logging.debug(f"Creating flaps cutout")
         prim = []
         xmin, ymin, zmin, xmax, ymax, zmax = get_koordinates(self.wing_shape)
         wing_lenght, wing_width, wing_height = get_dimensions_from_Shape(self.wing_shape)
@@ -203,7 +203,7 @@ class aircombat_test:
         mcp = CabelPipe(points, 0.003)
         L_pipe = []
         L_pipe.append(mcp.get_pipe())
-        self.m.display_in_origin(L_pipe[-1])
+        self.m.display_in_origin(L_pipe[-1], logging.NOTSET)
 
         points2 = self.list_for_pipe2()
         mcp = CabelPipe(points2, 0.003)
@@ -229,7 +229,7 @@ class aircombat_test:
         recess.append(OPrim.BRepPrimAPI_MakeBox(lenght, width, height))
         recess.append(OExs.translate_shp(recess[-1]), Ogp.gp_Vec(x_pos, y_pos, z_pos))
         recess.append(OAlgo.BRepAlgoAPI_Fuse(recess[-3], recess[-1]).Shape())
-        self.m.display_fuse(recess[-1], recess[-4], recess[-2])
+        self.m.display_fuse(recess[-1], recess[-4], recess[-2], logging.NOTSET)
         return recess[-1]
 
     # def create_hinge_recces(self)
@@ -244,19 +244,20 @@ class aircombat_test:
         self.fuselage_lenght, self.fuselage_widht, self.fuselage_height = get_dimensions(xmin, ymin, zmin, xmax, ymax,
                                                                                          zmax)
         logstr = f"Fuselage Dimensions lenght={self.fuselage_lenght}, widht={self.fuselage_widht} height={self.fuselage_height}"
-        logging.info(logstr)
-        self.m.display_this_shape(self.fuselage_shape, logstr)
+        logging.debug(logstr)
+        self.m.display_this_shape(self.fuselage_shape, severity=logging.NOTSET, logstr)
 
     def cut_fuselage_with_wing(self):
         self.cutted_fuselage_shape = OAlgo.BRepAlgoAPI_Cut(self.fuselage_shape, self.complete_wing).Shape()
-        self.m.display_this_shape(self.cutted_fuselage_shape, "Cutted Fuselage")
+        self.m.display_this_shape(self.cutted_fuselage_shape, severity=logging.NOTSET, "Cutted Fuselage")
 
     def hollow_fuselage(self, thickness=0.0004):
         # facesToRemove = TopTools_ListOfShape()
         # Fuselage Hollow, walls for wings #0.01
         # self.fuselage_hollow= OOff.BRepOffsetAPI_MakeThickSolid(self.cutted_fuselage_shape, facesToRemove, 0.04, 0.01).Shape()
         self.fuselage_hollow = create_hollowedsolid(self.fuselage_shape, thickness)
-        self.m.display_this_shape(self.fuselage_hollow, f"Hollow Fuselage- Thickness {thickness}", True)
+        self.m.display_this_shape(self.fuselage_hollow, severity=logging.NOTSET,
+                                  f"Hollow Fuselage- Thickness {thickness}", True)
 
     def create_cross_rib(self):
         rib_width = 0.0004
@@ -270,7 +271,7 @@ class aircombat_test:
         hardware_box = OPrim.BRepPrimAPI_MakeBox(hardware_box_lenght, hardware_box_widht, hardware_box_height).Shape()
         self.moved_hardware_box = OExs.translate_shp(hardware_box, Ogp.gp_Vec(0, -hardware_box_widht / 2,
                                                                               -hardware_box_height + (rib_width / 2)))
-        self.m.display_this_shape(self.moved_hardware_box, "Hardware Box")
+        self.m.display_this_shape(self.moved_hardware_box, severity=logging.NOTSET, "Hardware Box")
         rib_quantity = 2
         d_angle = 180 / rib_quantity
         for i in range(rib_quantity):
@@ -281,7 +282,7 @@ class aircombat_test:
                 self.rippen = sbox
             else:
                 self.rippen = OAlgo.BRepAlgoAPI_Fuse(self.rippen, sbox).Shape()
-        self.m.display_this_shape(self.rippen, "Cross Ribs")
+        self.m.display_this_shape(self.rippen, severity=logging.NOTSET, "Cross Ribs")
 
     def create_quadrat_rib2(self, rib_width=0.0004, factor=0.3):
         box = OPrim.BRepPrimAPI_MakeBox(self.fuselage_lenght * 2, rib_width * 2, self.fuselage_height * 2).Shape()
@@ -300,7 +301,7 @@ class aircombat_test:
         rippen = OAlgo.BRepAlgoAPI_Fuse(rippen, ver_rib_2).Shape()
         rippen = OAlgo.BRepAlgoAPI_Fuse(rippen, hor_rib_1).Shape()
         rippen = OAlgo.BRepAlgoAPI_Fuse(rippen, hor_rib_2).Shape()
-        self.m.display_this_shape(rippen, "Quadrat Ribs")
+        self.m.display_this_shape(rippen, severity=logging.NOTSET, "Quadrat Ribs")
         return rippen
 
     def create_wing_reinforcement_ribs(self):
@@ -325,7 +326,7 @@ class aircombat_test:
         box = OPrim.BRepPrimAPI_MakeBox(f_length, f_width, f_height).Shape()
         moved_box = OExs.translate_shp(box, Ogp.gp_Vec(0, -f_width / 2, zmax))
         ribs_cut = OAlgo.BRepAlgoAPI_Cut(ribs, moved_box).Shape()
-        self.m.display_cut(ribs_cut, ribs, moved_box)
+        self.m.display_cut(ribs_cut, ribs, moved_box, logging.NOTSET)
         return ribs_cut
 
     def create_quadrat_rib(self, rib_width, y_max, y_min, z_max, z_min):
@@ -346,8 +347,8 @@ class aircombat_test:
         interim_rib = OAlgo.BRepAlgoAPI_Fuse(interim_rib, hor_rib_1).Shape()
         quadrat_rib = OAlgo.BRepAlgoAPI_Fuse(interim_rib, hor_rib_2).Shape()
         logstr = f"Quadrat ribs: x_pos=0 y_max={y_max:.3f} y_min={y_min:.3f} z_max={z_max:.3f} z_min={z_min:.3f}"
-        self.m.display_fuse(quadrat_rib, interim_rib, hor_rib_2, logstr)
-        logging.info(logstr)
+        self.m.display_fuse(quadrat_rib, interim_rib, hor_rib_2, logging.NOTSET, logstr)
+        logging.debug(logstr)
         return quadrat_rib
 
     def create_cylinder_reinforcemnt(self, radius, y_max, y_min, z_max, z_min):
@@ -363,8 +364,8 @@ class aircombat_test:
         interim_cylinders = OAlgo.BRepAlgoAPI_Fuse(interim_cylinders, cylinder_3).Shape()
         cylinders = OAlgo.BRepAlgoAPI_Fuse(interim_cylinders, cylinder_4).Shape()
         logstr = f"Tunnel for Carbon Reinforcements x_pos=0 y_pos_max={y_max:.3f} y_pos_min={y_min:.3f} z_pos_max={z_max:.3f} z_pos_min={z_min:.3f}"
-        self.m.display_fuse(cylinders, interim_cylinders, cylinder_4, logstr)
-        logging.info(logstr)
+        self.m.display_fuse(cylinders, interim_cylinders, cylinder_4, logging.NOTSET, logstr)
+        logging.debug(logstr)
         return cylinders
 
     def create_rib_weight_reduction_recces(self, radius=0.01, distance=0.1):
@@ -374,7 +375,7 @@ class aircombat_test:
         cylinder = OPrim.BRepPrimAPI_MakeCylinder(radius, self.fuselage_height).Shape()
         cylinder = self.rotate_shape(cylinder, Ogp.gp_OX(), 90)
         cylinder_pattern = self.create_linear_pattern(cylinder, 8, distance)
-        self.m.display_this_shape(cylinder_pattern)
+        self.m.display_this_shape(cylinder_pattern, severity=logging.NOTSET)
         # self.m.display_in_origin(cylinder_pattern)
         # self.m.display_in_origin(box)
         return cylinder_pattern
@@ -382,7 +383,7 @@ class aircombat_test:
     def create_linear_pattern(self, shape, quantity, distance, direction="x"):
         pattern = shape
         logstr = f"Creating a linear pattern of {quantity} x {distance} meters"
-        logging.info(logstr)
+        logging.debug(logstr)
         x, y, z = 0.0, 0.0, 0.0
         for i in range(1, quantity):
             if direction == "x":
@@ -406,13 +407,13 @@ class aircombat_test:
         reduktion_radius = ((z_max - z_min) * 0.8) / 2
         reduktion_zpos = ((z_max - z_min) / 2) - reduktion_radius + (rib_width / 2)
         logstr = f"y_max= {y_max:.4f} y_min {y_min:.4f} z_max= {z_max:.4f} z_min= {z_min:.4f} radius= {reduktion_radius:.4f} z_pos= {reduktion_zpos:.5f}"
-        logging.info(logstr)
+        logging.debug(logstr)
         weight_reduktion_cylinders_hor = self.create_rib_weight_reduction_recces(reduktion_radius, 0.1)
         weight_reduktion_cylinders_hor = OExs.translate_shp(weight_reduktion_cylinders_hor,
                                                             Ogp.gp_Vec(reduktion_radius * 2, self.fuselage_widht / 2,
                                                                        reduktion_zpos))
         rippen_cut_recces = OAlgo.BRepAlgoAPI_Cut(quadrat, weight_reduktion_cylinders_hor).Shape()
-        self.m.display_cut(rippen_cut_recces, quadrat, weight_reduktion_cylinders_hor, logstr)
+        self.m.display_cut(rippen_cut_recces, quadrat, weight_reduktion_cylinders_hor, logging.NOTSET, logstr)
         reduktion_radius = y_max * 0.7
         weight_reduktion_cylinders_ver = self.create_rib_weight_reduction_recces(reduktion_radius, 0.1)
         weight_reduktion_cylinders_ver = OExs.translate_shp(weight_reduktion_cylinders_ver,
@@ -420,18 +421,19 @@ class aircombat_test:
                                                                        0))
         weight_reduktion_cylinders_ver = OExs.rotate_shape(weight_reduktion_cylinders_ver, Ogp.gp_OX(), 90)
         rippen_cut_recces2 = OAlgo.BRepAlgoAPI_Cut(rippen_cut_recces, weight_reduktion_cylinders_ver).Shape()
-        self.m.display_cut(rippen_cut_recces2, rippen_cut_recces, weight_reduktion_cylinders_ver, "Cut")
+        self.m.display_cut(rippen_cut_recces2, rippen_cut_recces, weight_reduktion_cylinders_ver, logging.NOTSET, "Cut")
         hardware_cutout = self.create_hardware_cutout(factor, radius)
         ribs_with_hardware_cutout = OAlgo.BRepAlgoAPI_Cut(rippen_cut_recces2, hardware_cutout).Shape()
-        self.m.display_cut(ribs_with_hardware_cutout, rippen_cut_recces2, hardware_cutout)
+        self.m.display_cut(ribs_with_hardware_cutout, rippen_cut_recces2, hardware_cutout, logging.NOTSET)
         wing_reinforcement = self.create_wing_reinforcement_ribs()
         rippen_with_reinforcement = OAlgo.BRepAlgoAPI_Fuse(ribs_with_hardware_cutout, wing_reinforcement).Shape()
-        self.m.display_fuse(rippen_with_reinforcement, rippen_cut_recces2, wing_reinforcement)
+        self.m.display_fuse(rippen_with_reinforcement, rippen_cut_recces2, wing_reinforcement, logging.NOTSET)
         self.rippen_cuted = OAlgo.BRepAlgoAPI_Fuse(rippen_with_reinforcement, cylinders).Shape()
         # self.rippen_cuted= OAlgo.BRepAlgoAPI_Fuse(quadrat,cylinders).Shape()
         # self.m.display_this_shape(self.rippen_cuted, "Sharp Rippen")
-        logging.info("Fused ribs and cylinders")
-        self.m.display_fuse(self.rippen_cuted, rippen_with_reinforcement, cylinders, "Fused ribs and cylinders")
+        logging.debug("Fused ribs and cylinders")
+        self.m.display_fuse(self.rippen_cuted, rippen_with_reinforcement, cylinders, logging.NOTSET,
+                            "Fused ribs and cylinders")
 
     def create_hardware_cutout(self, factor, radius):
         hardware_cutout_lenght = self.fuselage_lenght * 0.2
@@ -454,7 +456,7 @@ class aircombat_test:
         # cylinder= OPrim.BRepPrimAPI_MakeCylinder((fuselage_height*0.8)/2,40).Shape()
         cylinder = OPrim.BRepPrimAPI_MakeCylinder(1.5, 40).Shape()
         cylinder = self.rotate_shape(cylinder, Ogp.gp_OY(), 90)
-        self.m.display_this_shape(cylinder, "Cylinder Cutout")
+        self.m.display_this_shape(cylinder, severity=logging.NOTSET, "Cylinder Cutout")
         rib_quantity = 2
         # Extraribs
         d_angle = 180 / (rib_quantity * 2)
@@ -466,9 +468,9 @@ class aircombat_test:
                 self.rippen_ver = sbox
             else:
                 self.rippen_ver = OAlgo.BRepAlgoAPI_Fuse(self.rippen_ver, sbox).Shape()
-        self.m.display_this_shape(self.rippen_ver, "Star ribs")
+        self.m.display_this_shape(self.rippen_ver, severity=logging.NOTSET, "Star ribs")
         self.rippen_ver = OAlgo.BRepAlgoAPI_Cut(self.rippen_ver, cylinder).Shape()
-        self.m.display_this_shape(self.rippen_ver, "Starribs with cylinder cutout")
+        self.m.display_this_shape(self.rippen_ver, severity=logging.NOTSET, "Starribs with cylinder cutout")
 
     def reinforcement_tunel_in(self):
         self.reinforcement_tunnel_in = OPrim.BRepPrimAPI_MakeCylinder(0.002, self.fuselage_lenght).Shape()
@@ -477,28 +479,28 @@ class aircombat_test:
     def reinforcement_tunel_out(self):
         self.reinforcement_tunnel_out = OPrim.BRepPrimAPI_MakeCylinder(0.004, self.fuselage_lenght).Shape()
         self.reinforcement_tunnel_out = self.rotate_shape(self.reinforcement_tunnel_out, Ogp.gp_OY(), 90)
-        self.m.display_this_shape(self.reinforcement_tunnel_out, "Reinforcement Tunel")
+        self.m.display_this_shape(self.reinforcement_tunnel_out, severity=logging.NOTSET, "Reinforcement Tunel")
 
     def common_fuselage_ribs_ver(self):
         self.rippen_ver = OAlgo.BRepAlgoAPI_Common(self.fuselage_shape, self.rippen_ver).Shape()
-        self.m.display_this_shape(self.rippen_ver, "Ribs cut to fuselage shape")
+        self.m.display_this_shape(self.rippen_ver, severity=logging.NOTSET, "Ribs cut to fuselage shape")
 
     def cut_ribs_harwarebox(self):
         self.rippen_cuted = OAlgo.BRepAlgoAPI_Cut(self.rippen, self.moved_hardware_box).Shape()
-        self.m.display_this_shape(self.rippen_cuted, "Cross Ribs with hardware Box Cutout")
+        self.m.display_this_shape(self.rippen_cuted, severity=logging.NOTSET, "Cross Ribs with hardware Box Cutout")
 
     def fuse_reinforcemt_ribs(self):
         self.rippen_cuted = OAlgo.BRepAlgoAPI_Fuse(self.rippen_cuted, self.reinforcement_tunnel_out).Shape()
-        self.m.display_this_shape(self.rippen_cuted, "Ribs with reinforcement tunel")
+        self.m.display_this_shape(self.rippen_cuted, severity=logging.NOTSET, "Ribs with reinforcement tunel")
 
     def common_fuselage_ribs_cuted(self):
         self.rippen_cuted_form = OAlgo.BRepAlgoAPI_Common(self.fuselage_shape, self.rippen_cuted).Shape()
-        self.m.display_common(self.rippen_cuted_form, self.fuselage_shape, self.rippen_cuted,
+        self.m.display_common(self.rippen_cuted_form, self.fuselage_shape, self.rippen_cuted, logging.NOTSET,
                               "Cut ribs to fuselage Shape")
 
     def fuse_ribs(self):
         self.rippen_gesamt = OAlgo.BRepAlgoAPI_Fuse(self.rippen_cuted, self.rippen_ver).Shape()
-        self.m.display_this_shape(self.rippen_gesamt, " Fused Ribs")
+        self.m.display_this_shape(self.rippen_gesamt, severity=logging.NOTSET, " Fused Ribs")
 
     def center_mass(self):
         point: Ogp.gp_Pnt = TGeo.get_center_of_mass(self.rippen_cuted)
@@ -511,7 +513,7 @@ class aircombat_test:
         # self.m.display_in_origin(self.rippen_cuted)
         self.fuselage_done = OAlgo.BRepAlgoAPI_Fuse(self.fuselage_hollow, self.rippen_cuted).Shape()
         # self.m.display_this_shape(self.fuselage_done, "Done")
-        self.m.display_fuse(self.fuselage_done, self.fuselage_hollow, self.rippen_cuted)
+        self.m.display_fuse(self.fuselage_done, self.fuselage_hollow, self.rippen_cuted, logging.NOTSET)
 
     def test_fuse(self):
         print("---------Starting Test Fuse: Wait...")
@@ -519,9 +521,9 @@ class aircombat_test:
         mybox = OPrim.BRepPrimAPI_MakeBox(self.fuselage_lenght / 10, self.fuselage_widht / 10,
                                           self.fuselage_height / 10).Shape()
         mybox = translate_shp(mybox, gp_Vec(0, self.fuselage_widht / 2, self.fuselage_height / 2))
-        self.m.display_in_origin(mybox)
+        self.m.display_in_origin(mybox, logging.NOTSET)
         self.fuselage_done = OAlgo.BRepAlgoAPI_Fuse(self.fuselage_hollow, self.rippen_cuted).Shape()
-        self.m.display_this_shape(self.fuselage_done, "Test Fuse")
+        self.m.display_this_shape(self.fuselage_done, severity=logging.NOTSET, "Test Fuse")
 
     def cut_fuselage_ribs(self):
         print("Cutting: fuselage and ribs...")
@@ -529,23 +531,23 @@ class aircombat_test:
         # self.m.display_in_origin(self.rippen_cuted)
         self.fuselage_with_ribs = OAlgo.BRepAlgoAPI_Cut(self.fuselage_offset, self.rippen_cuted_form).Shape()
         # self.m.display_this_shape(self.fuselage_done, "Done")
-        self.m.display_cut(self.fuselage_with_ribs, self.fuselage_offset, self.rippen_cuted_form,
+        self.m.display_cut(self.fuselage_with_ribs, self.fuselage_offset, self.rippen_cuted_form, logging.NOTSET,
                            "Fuselage with ribs cutout")
 
     def create_hollow(self, offset=0.001):
         fuselage_offset = OOff.BRepOffsetAPI_MakeOffsetShape(self.fuselage_shape, -offset, 0.0001).Shape()
-        self.m.display_this_shape(fuselage_offset)
+        self.m.display_this_shape(fuselage_offset, severity=logging.NOTSET)
         self.fuselage_hollow = OAlgo.BRepAlgoAPI_Cut(self.fuselage_shape, fuselage_offset).Shape()
-        self.m.display_this_shape(self.fuselage_hollow, "")
+        self.m.display_this_shape(self.fuselage_hollow, severity=logging.NOTSET, "")
 
     def offset_fuselage(self, offset=0.0008):
         self.fuselage_offset = OOff.BRepOffsetAPI_MakeOffsetShape(self.fuselage_shape, offset, 0.000001).Shape()
         msg = "Fuselage with an offset of " + str(offset) + " meters"
-        self.m.display_this_shape(self.fuselage_offset, msg)
+        self.m.display_this_shape(self.fuselage_offset, severity=logging.NOTSET, msg)
 
     def cut_wings_from_fuselage(self):
         self.fuselage_done = OAlgo.BRepAlgoAPI_Cut(self.fuselage_with_ribs, self.complete_wing).Shape()
-        self.m.display_cut(self.fuselage_done, self.fuselage_with_ribs, self.complete_wing, "", True)
+        self.m.display_cut(self.fuselage_done, self.fuselage_with_ribs, self.complete_wing, logging.NOTSET, "", True)
 
     def test1(self):
         self.create_mainwing()
@@ -557,11 +559,11 @@ class aircombat_test:
         self.cut_wings_from_fuselage()
         # slicer = ShapeSlicer(self.fuselage_done, 4, "fuselage", False)
         # slicer.slice2()
-        # logging.info("Starting to write STLS")
+        # logging.debug("Starting to write STLS")
         # write_stls_srom_list(slicer.parts_list)
-        # logging.info("Finished to write STLS")
+        # logging.debug("Finished to write STLS")
         # myZip.zip_stls2()
-        logging.info("Done")
+        logging.debug("Done")
         # self.m.start()
 
     def slicing_positions(self):
@@ -584,7 +586,7 @@ class aircombat_test:
         cylinders = self.create_cylinder_reinforcemnt(radius, y_max, y_min, z_max, z_min)
         cylinders = OAlgo.BRepAlgoAPI_Common(self.fuselage_offset, cylinders).Shape()
         self.fuselage_done2 = OAlgo.BRepAlgoAPI_Fuse(self.fuselage_done, cylinders).Shape()
-        self.m.display_fuse(self.fuselage_done2, self.fuselage_done, cylinders)
+        self.m.display_fuse(self.fuselage_done2, self.fuselage_done, cylinders, logging.NOTSET)
 
     def create_hardware_oppening(self, lenght, width, height):
         box = OPrim.BRepPrimAPI_MakeBox().Shape()
@@ -596,11 +598,11 @@ class aircombat_test:
         box = OPrim.BRepPrimAPI_MakeBox(lenght, width, height).Shape()
         box = translate_shp(box, gp_Vec(x, -width / 2, z))
         wing_section = OAlgo.BRepAlgoAPI_Common(self.complete_wing, box).Shape()
-        self.m.display_common(wing_section, box, self.complete_wing)
+        self.m.display_common(wing_section, box, self.complete_wing, logging.NOTSET)
         wing_section_offset = OOff.BRepOffsetAPI_MakeOffsetShape(wing_section, 0.003, 0.0001).Shape()
-        self.m.display_this_shape(wing_section_offset)
+        self.m.display_this_shape(wing_section_offset, severity=logging.NOTSET)
         self.fuselage_done = OAlgo.BRepAlgoAPI_Cut(self.fuselage_wing_cutout, wing_section_offset).Shape()
-        self.m.display_cut(self.fuselage_done, self.fuselage_wing_cutout, wing_section_offset)
+        self.m.display_cut(self.fuselage_done, self.fuselage_wing_cutout, wing_section_offset, logging.NOTSET)
         return wing_section_offset
 
     def create_harware_wingcutout_for_hardware2(self):
@@ -612,13 +614,13 @@ class aircombat_test:
         ypos = -ypos - width
         box2 = translate_shp(box, gp_Vec(x, ypos, z))
         wing_section1 = OAlgo.BRepAlgoAPI_Cut(self.complete_wing, box1).Shape()
-        self.m.display_cut(wing_section1, self.complete_wing, box1)
+        self.m.display_cut(wing_section1, self.complete_wing, box1, logging.NOTSET)
         wing_section = OAlgo.BRepAlgoAPI_Cut(wing_section1, box2).Shape()
-        self.m.display_cut(wing_section, wing_section1, box2)
+        self.m.display_cut(wing_section, wing_section1, box2, logging.NOTSET)
         wing_section_offset = OOff.BRepOffsetAPI_MakeOffsetShape(wing_section, 0.003, 0.0001).Shape()
-        self.m.display_this_shape(wing_section_offset)
+        self.m.display_this_shape(wing_section_offset, severity=logging.NOTSET)
         self.fuselage_done = OAlgo.BRepAlgoAPI_Cut(self.fuselage_wing_cutout, wing_section_offset).Shape()
-        self.m.display_cut(self.fuselage_done, self.fuselage_wing_cutout, wing_section_offset)
+        self.m.display_cut(self.fuselage_done, self.fuselage_wing_cutout, wing_section_offset, logging.NOTSET)
         return wing_section_offset
 
     def create_harware_wingcutout_for_hardware3(self):
@@ -630,14 +632,14 @@ class aircombat_test:
         ypos = -ypos - width
         box2 = translate_shp(box, gp_Vec(x, ypos, z))
         wing_section1 = OAlgo.BRepAlgoAPI_Cut(self.complete_wing, box1).Shape()
-        self.m.display_cut(wing_section1, self.complete_wing, box1)
+        self.m.display_cut(wing_section1, self.complete_wing, box1, logging.NOTSET)
         wing_section = OAlgo.BRepAlgoAPI_Cut(wing_section1, box2).Shape()
-        self.m.display_cut(wing_section, wing_section1, box2)
+        self.m.display_cut(wing_section, wing_section1, box2, logging.NOTSET)
         wing_section_offset = OOff.BRepOffsetAPI_MakeOffsetShape(wing_section, 0.003, 0.0001).Shape()
-        self.m.display_this_shape(wing_section_offset)
+        self.m.display_this_shape(wing_section_offset, severity=logging.NOTSET)
         temp = self.fuselage_offset
         temp = OAlgo.BRepAlgoAPI_Cut(self.fuselage_offset, wing_section_offset).Shape()
-        self.m.display_cut(temp, self.fuselage_offset, wing_section_offset)
+        self.m.display_cut(temp, self.fuselage_offset, wing_section_offset, logging.NOTSET)
         self.fuselage_offset = temp
         return wing_section_offset
 
@@ -656,12 +658,12 @@ class aircombat_test:
         points = []
         y_pos = 0.00
         points.append(Ogp.gp_Pnt(zmax, y_pos, 0.0))
-        logging.info(f"{y_pos=} {zmax=}")
+        logging.debug(f"{y_pos=} {zmax=}")
         z = zmin + 0.005
         points.append(Ogp.gp_Pnt(z, y_pos, 0.0))
-        logging.info(f"{y_pos=} {z=}")
+        logging.debug(f"{y_pos=} {z=}")
         points.append(Ogp.gp_Pnt(z, servo_y_pos, 0.0))
-        logging.info(f"{servo_y_pos=} {z=}")
+        logging.debug(f"{servo_y_pos=} {z=}")
         return points, z, y_pos
 
     def list_for_pipe2(self):
@@ -681,7 +683,7 @@ class aircombat_test:
         mcp = CabelPipe(points, 0.003)
         L_pipe = []
         L_pipe.append(mcp.get_pipe())
-        self.m.display_in_origin(L_pipe[-1])
+        self.m.display_in_origin(L_pipe[-1], logging.NOTSET)
 
         points2 = self.list_for_pipe2()
         mcp = CabelPipe(points2, 0.003)

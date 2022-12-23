@@ -45,5 +45,19 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
             missing = {(k if k not in kwargs.keys() else None) for k in needed_shapes}  # check what is missing
             missing = [i for i in missing if i is not None]  # remove all Nones
             if len(missing) > 0:
-                raise KeyError('shapes are missing: {}'.format(missing))
+                raise KeyError(f'shapes are missing: {missing}')
         return shapes
+
+    @classmethod
+    def return_needed_shapes(cls,
+                             shapes_needed: list[str],
+                             input_shapes: dict[str, tgl_geom.CNamedShape],
+                             **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        # for each none position of shapes_need, we take one of the input_shapes
+        # we expect input shapes ordered most significant last
+        if sum(x is None for x in shapes_needed) > len(input_shapes):
+            raise KeyError('there are less input_shapes than shapes_needed.')
+        enum = input_shapes.keys().__iter__()
+        needed_shapes = [shape_key if shape_key is not None else next(enum) for i, shape_key in enumerate(shapes_needed)]
+        shapes = AbstractShapeCreator.check_if_shapes_are_available(needed_shapes, **kwargs)
+        return {key: shapes[key] for key in needed_shapes}

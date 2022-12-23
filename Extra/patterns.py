@@ -8,7 +8,7 @@ import Extra.ConstructionStepsViewer as myDisplay
 def create_linear_pattern(namedshape, quantity, distance, direction="x") -> TGeo.CNamedShape:
     pattern = namedshape.shape()
     logstr = f"Creating a linear pattern of {namedshape.name()} with {quantity} x {distance} meters"
-    logging.info(logstr)
+    logging.debug(logstr)
     x, y, z = 0.0, 0.0, 0.0
     for i in range(1, quantity):
         if direction == "x":
@@ -26,7 +26,7 @@ def create_linear_pattern(namedshape, quantity, distance, direction="x") -> TGeo
 
 def create_circular_pattern(namedshape, quantity, bound=360, start=0) -> TGeo.CNamedShape:
     shapes = []
-    logging.info(f"Creating a circular pattern with {quantity} elements, around {bound} degress starting at {start}")
+    logging.debug(f"Creating a circular pattern with {quantity} elements, around {bound} degress starting at {start}")
 
     d_angle = bound / quantity
     for i in range(quantity):

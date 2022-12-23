@@ -15,7 +15,7 @@ import logging;
 CPACS_FILE_NAME = "simple_aircraft"
 
 if __name__ == "__main__":
-    logging.info(f"Start test for Collision Detector with CPACS file {CPACS_FILE_NAME}")
+    logging.debug(f"Start test for Collision Detector with CPACS file {CPACS_FILE_NAME}")
     m = myDisplay.ConstructionStepsViewer.instance(True, 4)
 
     # try:
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     fuselage_loft: TGeo.CNamedShape = fuselage.get_loft()
     fuselage_shape: OTopo.TopoDS_Shape = fuselage_loft.shape()
     fuselage_dimensions = ShapeDimensions(fuselage_loft)
-    m.display_in_origin(fuselage_loft, "", True)
+    m.display_in_origin(fuselage_loft, logging.NOTSET, "", True)
 
     # Setting wing
     wing: TConfig.CCPACSWing = configuration.get_right_main_wing()
@@ -49,5 +49,5 @@ if __name__ == "__main__":
     collisions_detector = cd.CollisionDetector()
     collisions_detector.multiple_collision_check(testcases_all)
 
-    logging.info("Test finished. Display results")
+    logging.debug("Test finished. Display results")
     m.start()

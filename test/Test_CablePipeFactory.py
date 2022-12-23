@@ -17,13 +17,13 @@ CPACS_FILE_NAME = "aircombat_v13"
 
 if __name__ == "__main__":
 
-    logging.info("Start test for Cable Pipe Factory")
+    logging.debug("Start test for Cable Pipe Factory")
 
     m = myDisplay.ConstructionStepsViewer.instance(True, 1.5)
     tigl_h = tg.get_tigl_handler(CPACS_FILE_NAME)
     configuration = Configuration(tigl_h)
 
-    logging.info(f"Created configuration for CPCAS file {CPACS_FILE_NAME}")
+    logging.debug(f"Created configuration for CPCAS file {CPACS_FILE_NAME}")
 
     # setting fuselage
     fuselage: TConfig.CCPACSWing = configuration.get_fuselage()
@@ -37,14 +37,14 @@ if __name__ == "__main__":
     wing_shape: OTopo.TopoDS_Shape = wing_loft.shape()
     wing_dimensions = ShapeDimensions(wing_loft)
 
-    m.display_in_origin(wing_loft, "", True)
-    m.display_in_origin(fuselage_loft, "", True)
+    m.display_in_origin(wing_loft, logging.NOTSET, "", True)
+    m.display_in_origin(fuselage_loft, logging.NOTSET, "", True)
 
     # testing creation of ruder
     ruder_factory = rf.RuderFactory(wing)
     ruder = ruder_factory.get_trailing_edge_shape()
     r_d = ShapeDimensions(ruder)
-    m.display_in_origin(ruder, "", True)
+    m.display_in_origin(ruder, logging.NOTSET, "", True)
 
     # testing creation of servo
     servo_size = (0.024, 0.024, 0.012)
@@ -60,7 +60,7 @@ if __name__ == "__main__":
     points = test_class.points_route_through(servo_dimension, fuselage_dimensions)
     pipe = test_class.create_complete_pipe(points, 0.005)
 
-    logging.info("Test finished. Display results")
-    m.display_in_origin(pipe)
-    m.display_in_origin(servo_recces)
+    logging.debug("Test finished. Display results")
+    m.display_in_origin(pipe, logging.NOTSET)
+    m.display_in_origin(servo_recces, logging.NOTSET)
     m.start()

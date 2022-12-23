@@ -13,7 +13,7 @@ from Airplane.Configuration import Configuration
 CPACS_FILE_NAME = "aircombat_v13"
 
 if __name__ == "__main__":
-    logging.info(f"Start test for Wing Factory with CPACS file {CPACS_FILE_NAME}")
+    logging.debug(f"Start test for Wing Factory with CPACS file {CPACS_FILE_NAME}")
     m = myDisplay.ConstructionStepsViewer.instance(True, 1.5)
     tigl_h = tg.get_tigl_handler(CPACS_FILE_NAME)
     configuration = Configuration(tigl_h)
@@ -28,13 +28,13 @@ if __name__ == "__main__":
     wing_shape: OTopo.TopoDS_Shape = wing_loft.shape()
     wing_dimensions = ShapeDimensions(wing_loft)
 
-    m.display_in_origin(wing_loft, "", True)
-    m.display_in_origin(fuselage_loft, "", True)
+    m.display_in_origin(wing_loft, logging.NOTSET, "", True)
+    m.display_in_origin(fuselage_loft, logging.NOTSET, "", True)
 
     fuselage_factory = FuselageFactory(configuration)
     test_class = frf.FuselageRibFactory(fuselage_loft, wing_loft)
-    ribs = test_class.create_wing_support_ribs(fuselage_factory.overlap_fuselage_wing_dimensions())
-    m.display_in_origin(ribs)
+    ribs = test_class.create_wing_support_ribs(fuselage_factory.overlap_fuselage_wing_dimensions(),,,,
+    m.display_in_origin(ribs, logging.NOTSET)
 
-    logging.info("Test finished. Display results")
+    logging.debug("Test finished. Display results")
     m.start()

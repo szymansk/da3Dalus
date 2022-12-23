@@ -20,7 +20,7 @@ class ShapeDimensions:
         self.lenght, self.width, self.height = self._calc_dimensions_from_Shape(named_shape.shape())
         self.x_mid, self.y_mid, self.z_mid = self._calc_mid_coordinates()
         self.points = self._calc_points()
-        # logging.info(f"{named_shape.name()} dimensions {self.__str__()}")
+        # logging.debug(f"{named_shape.name()} dimensions {self.__str__()}")
 
     def _calc_coordinates(self, shape: OTopo.TopoDS_Shape) -> (float, float, float, float, float, float):
         '''
@@ -146,7 +146,7 @@ class ShapeDimensions:
         for i in range(1, quantity + 1):
             new_x = self.get_x_min() + (i * x_diff)
             x_coordinates.append(new_x)
-        logging.info(f"{self.named_shape.name()} {x_coordinates=}")
+        logging.debug(f"{self.named_shape.name()} {x_coordinates=}")
         return x_coordinates
 
     def get_bounding_box_shape(self) -> OTopo.TopoDS_Shape:

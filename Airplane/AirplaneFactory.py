@@ -18,7 +18,7 @@ def cut_component(component, quantity):
     :param quantity: The number of parts the component will be cut into
     :return: The cut parts of the component
     """
-    logging.info(f"Cut the {component.name()} into {quantity} parts")
+    logging.debug(f"Cut the {component.name()} into {quantity} parts")
     slicer = ShapeSlicer(component, quantity)
     slicer.slice_by_cut()
     return slicer.parts_list
@@ -31,7 +31,7 @@ def export_components_to_stl(components):
     :return:
     """
     my_exporter = exp.Exporter()
-    my_exporter.write_stls_from_list(components)
+    my_exporter.write_stls_from_list(components, "binary", 0.0001)
 
 
 class AirplaneFactory:
@@ -112,6 +112,6 @@ class AirplaneFactory:
         cut_parts = cut_component(fuselage_shape, parts_quantity)
 
         parts_to_export = fuselage_factory.fuselage_parts + cut_parts
-        self.m.display_slice_x(parts_to_export)
+        self.m.display_slice_x(parts_to_export, logging.NOTSET)
 
         export_components_to_stl(cut_parts)

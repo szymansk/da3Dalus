@@ -14,7 +14,7 @@ from Airplane.Configuration import Configuration
 CPACS_FILE_NAME = "aircombat_v13"
 
 if __name__ == "__main__":
-    logging.info(f"Start test for Servo Recces Factory with CPACS file {CPACS_FILE_NAME}")
+    logging.debug(f"Start test for Servo Recces Factory with CPACS file {CPACS_FILE_NAME}")
     m = myDisplay.ConstructionStepsViewer.instance(True, 1.5)
     tigl_h = tg.get_tigl_handler(CPACS_FILE_NAME)
     configuration = Configuration(tigl_h)
@@ -29,13 +29,13 @@ if __name__ == "__main__":
     wing_shape: OTopo.TopoDS_Shape = wing_loft.shape()
     wing_dimensions = ShapeDimensions(wing_loft)
 
-    m.display_in_origin(wing_loft, "", True)
+    m.display_in_origin(wing_loft, logging.NOTSET, "", True)
     servo_size = (0.024, 0.024, 0.012)
     ruder_factory = rf.RuderFactory(wing)
     ruder = ruder_factory.get_trailing_edge_cutout(offset=0.002)
     test_class = srf.ServoRecessFactory(wing)
     servo = test_class.create_servoRecess_option1(ruder, servo_size=servo_size)
-    m.display_in_origin(servo)
+    m.display_in_origin(servo, logging.NOTSET)
 
-    logging.info("Test finished. Display results")
+    logging.debug("Test finished. Display results")
     m.start()

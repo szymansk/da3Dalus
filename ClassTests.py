@@ -37,8 +37,8 @@ if __name__ == "__main__":
     wing_shape: OTopo.TopoDS_Shape = wing_loft.shape()
     wing_dimensions = ShapeDimensions(wing_loft)
 
-    m.display_in_origin(wing_shape)
-    m.display_in_origin(fuselage_shape)
+    m.display_in_origin(wing_shape, logging.NOTSET)
+    m.display_in_origin(fuselage_shape, logging.NOTSET)
 
     test_class_name = ""
     if test_class_name == "":
@@ -71,8 +71,8 @@ if __name__ == "__main__":
         loft: TGeo.CNamedShape = trailing_edge_device.get_loft()
         shape = loft.shape()
 
-        m.display_in_origin(shape)
-        m.display_in_origin(wing_shape, "", True)
+        m.display_in_origin(shape, logging.NOTSET)
+        m.display_in_origin(wing_shape, logging.NOTSET, "", True)
     if test_class_name == "ReinforcementPipeFactory":
         test_class = rpf.ReinforcementePipeFactory(tigl_h, 1)
         radius = 0.003
@@ -80,8 +80,8 @@ if __name__ == "__main__":
         quantity = 5
         pipe_position = [0, 1]
         pipe = test_class.create_reinforcemente_pipe_wing(radius, thickness, quantity, pipe_position)
-        m.display_in_origin(pipe)
-        m.display_in_origin(test_class.wing_shape, "", True)
+        m.display_in_origin(pipe, logging.NOTSET)
+        m.display_in_origin(test_class.wing_shape, logging.NOTSET, "", True)
     if test_class_name == "ServoRecessFactory":
         # servo_size=(0.0023,0.0024,0.0012)
         servo_size = (0.024, 0.024, 0.012)
@@ -89,13 +89,13 @@ if __name__ == "__main__":
         ruder = ruder_factory.get_trailing_edge_cutout(offset=0.002)
         test_class = srf.ServoRecessFactory(tigl_h, 1)
         test_class.create_servoRecess_option1(ruder, servo_size=servo_size)
-        m.display_in_origin(test_class.wing_shape, "", True)
-        m.display_in_origin(ruder)
+        m.display_in_origin(test_class.wing_shape, logging.NOTSET, "", True)
+        m.display_in_origin(ruder, logging.NOTSET)
     if test_class_name == "CablePipeFactory":
         ruder_factory = rf.RuderFactory(tigl_h, 1)
         ruder = ruder_factory.get_create_trailing_edge_shape()
         r_d = ShapeDimensions(ruder)
-        m.display_in_origin(ruder, "", True)
+        m.display_in_origin(ruder, logging.NOTSET, "", True)
         servo_size = (0.15, 0.15, 0.05)
         ruder_factory = rf.RuderFactory(tigl_h, 1)
         servo_factory = srf.ServoRecessFactory(tigl_h, 1)
@@ -159,7 +159,7 @@ if __name__ == "__main__":
         wing_f = wf.WingFactory(tigl_h, 1)
         test_class = cs.ShellCreator(wing_f.wing_shape)
         my_shape = test_class.create_shell(0.001, "Y", "min")
-        m.display_in_origin(my_shape)
+        m.display_in_origin(my_shape, logging.NOTSET)
     if test_class_name == "CollisionCreator":
         collision_detector = cd.CollisionDetector()
         if collision_detector.check_colission(fuselage_shape, wing_shape, "Fuselage", "Wing", True):

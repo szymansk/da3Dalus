@@ -37,18 +37,18 @@ def get_points_of_segment(amount:int, wing:TConfig.CCPACSWing,section= 0):
         seg_wire:OTopo.TopoDS_Wire=wing_seg.get_inner_wire()
         section_name="Root_Section_wire"
     xmin,ymin,zmin,xmax,ymax,zmax=get_koordinates(seg_wire)
-    logging.info(f"{section_name} {xmin=:.3f} {ymin=:.3f} {zmin=:.3f} {xmax=:.3f} {ymax=:.3f} {zmax=:.3f}")
+    logging.debug(f"{section_name} {xmin=:.3f} {ymin=:.3f} {zmin=:.3f} {xmax=:.3f} {ymax=:.3f} {zmax=:.3f}")
     lenght, width, height= get_dimensions_from_Shape(seg_wire)
-    logging.info(f"{section_name} {lenght=:.3f} {width=:.3f} {height=:.3f}")
+    logging.debug(f"{section_name} {lenght=:.3f} {width=:.3f} {height=:.3f}")
     x_diff=lenght/(amount+1)
     x_list=[]
     for i in range(1,amount+1):
         new_x=xmin+(i*x_diff)
-        logging.info(f"adding {new_x=:.3f}")
+        logging.debug(f"adding {new_x=:.3f}")
         x_list.append(new_x)
     y=ymax
     z=zmin
-    logging.info(f"{y=:.3f} {z=:.3f}")
+    logging.debug(f"{y=:.3f} {z=:.3f}")
     return x_list,y,z
 
 def make_oriented_horizontal_ribs(root_x_list,tip_x_list,w_ymin,w_zmin, lenght, width, height, rib_width):
@@ -63,7 +63,7 @@ def make_single_box_rib(x_root,x_tip,y_pos,z_pos, lenght, width, height, rib_wid
     corner_points=[]
     #point1
     x=x_root+(rib_width/2)
-    logging.info(f"test {x_root=:.6f} {x=:.6f}")
+    logging.debug(f"test {x_root=:.6f} {x=:.6f}")
     y=y_pos
     z=z_pos
     corner_points.append(gp_Pnt(x,y,z))
@@ -95,7 +95,7 @@ def make_single_box_rib(x_root,x_tip,y_pos,z_pos, lenght, width, height, rib_wid
     for i,point in enumerate(corner_points):
         if point!= corner_points[-1]:
             mkw.Add(BRepBuilderAPI_MakeEdge(corner_points[i], corner_points[i+1]).Edge())
-            logging.info(f"{i=}")
+            logging.debug(f"{i=}")
         else:
             mkw.Add(BRepBuilderAPI_MakeEdge(corner_points[i], corner_points[0]).Edge())
     
@@ -124,13 +124,13 @@ w_xmin,w_ymin,w_zmin,w_xmax,w_ymax,w_zmax=get_koordinates(wing_shape)
 lenght, width, height=get_dimensions_from_Shape(wing_shape)
 print(f"Wing {w_xmin=:.3f} {w_ymin=:.3f} {w_zmin=:.3f} {w_xmax=:.3f} {w_ymax=:.3f} {w_zmax=:.3f}")
 print(f"Wing diff {lenght=:.3f} {width=:.3f} {height=:.3f}")
-m.display_in_origin(wing_shape,True)
+m.display_in_origin(wing_shape, logging.NOTSET, True)
 
 root_x_list,wire_y,wire_z=get_points_of_segment(5,wing,0)
 for wire_x in root_x_list:
     point:Ogp.gp_Pnt =Ogp.gp_Pnt(wire_x,wire_y,wire_z)
     sphere = OPrim.BRepPrimAPI_MakeSphere(point, 0.002).Shape()
-    m.display_in_origin(sphere,True)
+    m.display_in_origin(sphere, logging.NOTSET, True)
 print(f"{root_x_list=}")
 
 tip_x_list,wire_y,wire_z=get_points_of_segment(5,wing,1)
@@ -138,13 +138,13 @@ for wire_x in tip_x_list:
     point:Ogp.gp_Pnt =Ogp.gp_Pnt(wire_x,wire_y,wire_z)
     sphere = OPrim.BRepPrimAPI_MakeSphere(point, 0.002).Shape()
     #c= OPrim.BRepPrimAPI_MakeCylinder()
-    
-    m.display_in_origin(sphere)
+
+    m.display_in_origin(sphere, logging.NOTSET)
 print(f"{tip_x_list=}")
 
 rib_width=0.0004
 hor=make_oriented_horizontal_ribs(root_x_list,tip_x_list,w_ymin,w_zmin, lenght, width, height, rib_width)
-m.display_in_origin(hor)
+m.display_in_origin(hor, logging.NOTSET)
 
 
 

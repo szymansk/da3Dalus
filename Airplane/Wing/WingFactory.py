@@ -74,7 +74,7 @@ class WingFactory:
         internal_structure.append(cable_pipe)
 
         for ix in internal_structure:
-            logging.info(f"---{type(ix)}---")
+            logging.debug(f"---{type(ix)}---")
 
         # Fuse internal Structure
         self.shapes.append(fuse_list_of_namedshapes(internal_structure, "internal structure"))
@@ -89,13 +89,13 @@ class WingFactory:
             toleranz *= 1.2
             wing_offset: OTopo.TopoDS_Shape = OOff.BRepOffsetAPI_MakeOffsetShape(self.wing_shape, offset,
                                                                                  toleranz).Shape()
-            logging.info(f"Offseting wing with {offset=} {toleranz=} {type(wing_offset)}")
+            logging.debug(f"Offseting wing with {offset=} {toleranz=} {type(wing_offset)}")
 
         named_wing_offset = TGeo.CNamedShape(wing_offset, "Wingoffset")
 
         self.shapes.append(TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Cut(wing_offset, self.shapes[-1].shape()).Shape(),
                                             f"{self.wing_loft.name()}"))
-        self.m.display_cut(self.shapes[-1], named_wing_offset, self.shapes[-2])
+        self.m.display_cut(self.shapes[-1], named_wing_offset, self.shapes[-2], logging.NOTSET)
 
         # Cut-Out Ruder
         offset: float = 0.002
@@ -103,7 +103,7 @@ class WingFactory:
         self.shapes.append(
             TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Cut(self.shapes[-1].shape(), ruder_cutout.shape()).Shape(),
                              f"{self.wing_loft.name()}"))
-        self.m.display_cut(self.shapes[-1], self.shapes[-2], ruder_cutout)
+        self.m.display_cut(self.shapes[-1], self.shapes[-2], ruder_cutout, logging.NOTSET)
 
         # Collision Tests
         reinforcement_tests = [(servo, False), (cable_pipe, False), (ruder_cutout, False)]

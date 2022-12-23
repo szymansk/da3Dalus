@@ -20,7 +20,7 @@ def _create_complete_wing_shape(self) -> TGeo.CNamedShape:
     mirrored_wing_loft: TGeo.CNamedShape = self.wing.get_mirrored_loft()
     complete_wing: TGeo.CNamedShape = TGeo.CNamedShape(
         OAlgo.BRepAlgoAPI_Fuse(self.wing_shape, mirrored_wing_loft.shape()).Shape(), "Complete wing")
-    self.shapeDisplay.display_fuse(complete_wing, self.wing_loft, mirrored_wing_loft)
+    self.shapeDisplay.display_fuse(complete_wing, self.wing_loft, mirrored_wing_loft, logging.NOTSET)
     return complete_wing
 
 
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     # m.display_fuse(complete_wing, wing_loft, mirrored_wing_loft)
 
     cut = TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Cut(fuselage_shape, complete_wing.shape()).Shape(), "cut")
-    m.display_cut(cut, fuselage_loft, complete_wing)
+    m.display_cut(cut, fuselage_loft, complete_wing, logging.NOTSET)
 
     m.start()
 

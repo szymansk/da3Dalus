@@ -56,15 +56,15 @@ if __name__ == "__main__":
                                     fuselage_dim.get_height()).Shape()
     moved_box = OExs.translate_shp(box, Ogp.gp_Vec(0, -fuselage_dim.get_width() / 2, 0))
     cuted_fuselage = OAlgo.BRepAlgoAPI_Fuse(fuselage_shape, moved_box).Shape()
-    m.display_fuse(cuted_fuselage, fuselage_shape, moved_box)
+    m.display_fuse(cuted_fuselage, fuselage_shape, moved_box, logging.NOTSET)
 
     # slicer=s.ShapeSlicer()
 
-    m.display_this_shape(fuselage_shape)
+    m.display_this_shape(fuselage_shape, severity=logging.NOTSET)
     m.start_display()
 
     export_folder = Path(__file__).parent.parent / "stls"
     # creates folder if it does not exist
     export_folder.mkdir(parents=True, exist_ok=True)
 
-    STLExporter.Exporter().write_stl_file(cuted_fuselage, export_folder / "fuselage_cuted.stl")
+    STLExporter.Exporter().write_stl_file(cuted_fuselage)

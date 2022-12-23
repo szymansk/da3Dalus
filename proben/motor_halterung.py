@@ -52,7 +52,7 @@ if __name__ == "__main__":
     mutter = OExs.translate_shp(mutter, Ogp.gp_Vec(0, width / 2, 0))
     muttern = create_circular_pattern(mutter, 4)
     engine_mount.append(OAlgo.BRepAlgoAPI_Fuse(engine_mount[-1], muttern).Shape())
-    m.display_fuse(engine_mount[-1], engine_mount[-2], muttern)
+    m.display_fuse(engine_mount[-1], engine_mount[-2], muttern, logging.NOTSET)
 
     cutout_angle = [OPrim.BRepPrimAPI_MakeBox(lenght, 2 * width, 2 * height).Shape()]
     alpha_angle = 5
@@ -62,13 +62,13 @@ if __name__ == "__main__":
     cutout_angle.append(OExs.rotate_shape(cutout_angle[-1], Ogp.gp_OZ(), beta_angle))
 
     engine_mount.append(OAlgo.BRepAlgoAPI_Cut(engine_mount[-1], cutout_angle[-1]).Shape())
-    m.display_cut(engine_mount[-1], engine_mount[-2], cutout_angle[-1])
+    m.display_cut(engine_mount[-1], engine_mount[-2], cutout_angle[-1], logging.NOTSET)
 
-    m.display_in_origin(cylinder, "", True)
-    m.display_in_origin(outer_box, "", True)
-    m.display_in_origin(inner_box, "", True)
-    m.display_in_origin(cutout_angle[-1], "", True)
-    m.display_this_shape(engine_mount[-1], "", True)
+    m.display_in_origin(cylinder, logging.NOTSET, "", True)
+    m.display_in_origin(outer_box, logging.NOTSET, "", True)
+    m.display_in_origin(inner_box, logging.NOTSET, "", True)
+    m.display_in_origin(cutout_angle[-1], logging.NOTSET, "", True)
+    m.display_this_shape(engine_mount[-1], severity=logging.NOTSET, "", True)
     m.start()
 
 '''

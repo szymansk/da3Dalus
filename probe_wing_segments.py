@@ -57,7 +57,7 @@ if __name__ == "__main__":
     trailing_edge_devices: TConfig.CCPACSTrailingEdgeDevices = control_surface.get_trailing_edge_devices()
     trailing_edge_device: TConfig.CCPACSTrailingEdgeDevice = trailing_edge_devices.get_trailing_edge_device(1)
 
-    m.display_this_shape(trailing_edge_device)
+    m.display_this_shape(trailing_edge_device, severity=logging.NOTSET)
 
     '''
     for i in range(1,wing.get_segment_count()+1):
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     print(f"{inner_dim.get_length()=}")
       '''
 
-    m.display_in_origin(wing_shape, "", True)
+    m.display_in_origin(wing_shape, logging.NOTSET, "", True)
     print("Done")
 
     m.start()

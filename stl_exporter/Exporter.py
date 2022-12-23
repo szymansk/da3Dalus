@@ -13,7 +13,7 @@ class Exporter:
     def __init__(self):
         pass
 
-    def write_stl_file(self, named_shape: TGeo.CNamedShape, filename, mode="ascii", linear_deflection=0.00002):
+    def write_stl_file(self, named_shape: TGeo.CNamedShape, mode="ascii", linear_deflection=0.00002):
 
         export_folder = Path(__file__).parent.parent / "stls"
         # creates folder if it does not exist
@@ -58,7 +58,7 @@ class Exporter:
         if not os.path.isfile(abs_filepath):
             raise IOError("File not written to disk.")
 
-    def write_stls_from_list(self, list):
-        for i, named_shape in enumerate(list):
-            logging.info(f"Exporting {named_shape.name()}")
-            self.write_stl_file(named_shape, named_shape.name())
+    def write_stls_from_list(self, shape_list, mode, linear_deflection):
+        for i, named_shape in enumerate(shape_list):
+            logging.debug(f"Exporting {named_shape.name()}")
+            self.write_stl_file(named_shape, mode=mode, linear_deflection=linear_deflection)

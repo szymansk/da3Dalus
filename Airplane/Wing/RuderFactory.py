@@ -17,7 +17,7 @@ class RuderFactory:
         """
          Initialize the class with the tigle handle with the CPACS configuration and the index of the wing to be created
          """
-        logging.info(f"Initialize Ruder Factory")
+        logging.debug(f"Initialize Ruder Factory")
 
         self.wing: TConfig.CCPACSWing = wing
         self.named_shape: TGeo.CNamedShape = TGeo.CNamedShape()
@@ -29,8 +29,8 @@ class RuderFactory:
         :param factor_ruderarm_pos:
         :return:
         """
-        logging.info(f"Creating ribs option1")
-        logging.info(f"Segment Count: {self.wing.get_segment_count()}")
+        logging.debug(f"Creating ribs option1")
+        logging.debug(f"Segment Count: {self.wing.get_segment_count()}")
         # TODO: Implementaions of create ruder
         result: TGeo.CNamedShape = TGeo.CNamedShape()
         return result
@@ -45,14 +45,14 @@ class RuderFactory:
         :param device_index: index of the device, setting defaul index to1
         :return:
         """
-        logging.info(f"Getting trailing edge device from {component_segment_index=} {device_index=}")
+        logging.debug(f"Getting trailing edge device from {component_segment_index=} {device_index=}")
         compseg: TConfig.CCPACSWingComponentSegment = self.wing.get_component_segment(component_segment_index)
         control_surface: TConfig.CCPACSControlSurfaces = compseg.get_control_surfaces()
         trailing_edge_devices: TConfig.CCPACSTrailingEdgeDevices = control_surface.get_trailing_edge_devices()
         trailing_edge_device: TConfig.CCPACSTrailingEdgeDevice = trailing_edge_devices.get_trailing_edge_device(
             device_index)
         loft: TGeo.CNamedShape = trailing_edge_device.get_loft()
-        self.m.display_this_shape(loft)
+        self.m.display_this_shape(loft, severity=logging.NOTSET)
         return loft
 
     def get_trailing_edge_cutout(self, offset=0.02, component_segment_index=1, device_index=1) -> TGeo.CNamedShape:
@@ -63,7 +63,7 @@ class RuderFactory:
         :param device_index: index of the device, setting defaul index to1
         :return:
         """
-        logging.info(f"Getting trailing edge cutout from {component_segment_index=} {device_index=}")
+        logging.debug(f"Getting trailing edge cutout from {component_segment_index=} {device_index=}")
         compseg: TConfig.CCPACSWingComponentSegment = self.wing.get_component_segment(component_segment_index)
         control_surface: TConfig.CCPACSControlSurfaces = compseg.get_control_surfaces()
         trailing_edge_devices: TConfig.CCPACSTrailingEdgeDevices = control_surface.get_trailing_edge_devices()

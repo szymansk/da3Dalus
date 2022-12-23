@@ -57,18 +57,18 @@ def pipe():
     profile_wire = BRepBuilderAPI_MakeWire(profile_edge).Wire()
     profile_face = BRepBuilderAPI_MakeFace(profile_wire).Face()
     pipe = OBrepOffset.BRepOffsetAPI_MakePipe(wire, profile_face).Shape()
-    m.display_in_origin(pipe)
+    m.display_in_origin(pipe, logging.NOTSET)
 
 def list_for_pipe1(servo_y_pos, zmax, zmin):
     points=[]
     y_pos=0.00
     points.append(Ogp.gp_Pnt(zmax,y_pos,0.0))
-    logging.info(f"{y_pos=} {zmax=}")
+    logging.debug(f"{y_pos=} {zmax=}")
     z=zmin+0.005
     points.append(Ogp.gp_Pnt(z,y_pos,0.0))
-    logging.info(f"{y_pos=} {z=}")
+    logging.debug(f"{y_pos=} {z=}")
     points.append(Ogp.gp_Pnt(z,servo_y_pos,0.0))
-    logging.info(f"{servo_y_pos=} {z=}")
+    logging.debug(f"{servo_y_pos=} {z=}")
     return points, z,y_pos
 
 def list_for_pipe2():
@@ -88,7 +88,7 @@ def create_pipe(wing_shape):
     mcp=CabelPipe(points,0.003)
     L_pipe=[]
     L_pipe.append(mcp.get_pipe())
-    m.display_in_origin(L_pipe[-1])
+    m.display_in_origin(L_pipe[-1], logging.NOTSET)
     
     points2=list_for_pipe2()
     mcp=CabelPipe(points2,0.003)
@@ -119,9 +119,9 @@ if __name__ == '__main__':
     name2= wing.get_name()
     wing_loft: TGeo.CNamedShape= wing.get_loft()
     wing_shape: OTopo.TopoDS_Shape=wing_loft.shape()
-    m.display_in_origin(wing_shape,True)
+    m.display_in_origin(wing_shape, logging.NOTSET, True)
     pipe_complete=create_pipe(wing_shape)
-    m.display_in_origin(pipe_complete)
+    m.display_in_origin(pipe_complete, logging.NOTSET)
     
     m.start()
    

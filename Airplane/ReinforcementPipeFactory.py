@@ -36,7 +36,7 @@ class ReinforcementePipeFactory:
 
     def create_reinforcemente_pipe_wing(self, radius=0.002, thickness=0.0004, quantity=3,
                                         pipe_position=None) -> TGeo.CNamedShape:
-        logging.info(f"Creating reinforcement option1")
+        logging.debug(f"Creating reinforcement option1")
 
         segment_first: TConfig.CPACSWingSegment = self.wing.get_segment(1)
         segment_last: TConfig.CPACSWingSegment = self.wing.get_segment(self.wing.get_segment_count())
@@ -51,7 +51,7 @@ class ReinforcementePipeFactory:
         x_dif = abs(inner_dimensions.get_x_min() - outer_dimensions.get_x_min())
         y_dif = abs(inner_dimensions.get_y_min() - outer_dimensions.get_y_min())
         width = math.hypot(x_dif, y_dif)
-        logging.info(f"{radius=:.4f} {thickness=:.4f} {width=:.4f}")
+        logging.debug(f"{radius=:.4f} {thickness=:.4f} {width=:.4f}")
 
         if pipe_position is None:
             pipe_position = range(0, quantity)
@@ -63,7 +63,7 @@ class ReinforcementePipeFactory:
                 end = Ogp.gp_Pnt(outer_x_list[i], outer_dimensions.get_y_min(), outer_dimensions.get_z_mid())
                 pipe = ReinforcementePipeFactory.create_pipe_section(start, end, radius + thickness, f"pipe_section_{i}")
                 self.shapes.append(pipe)
-                self.m.display_in_origin(pipe)
+                self.m.display_in_origin(pipe, logging.NOTSET)
 
         cylinders = Bof.fuse_list_of_namedshapes(self.shapes, f"reinforcement_pipe")
         self.shape = cylinders

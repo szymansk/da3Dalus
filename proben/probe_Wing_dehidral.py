@@ -19,7 +19,7 @@ if __name__ == "__main__":
     fuselage_loft: TGeo.CNamedShape = fuselage.get_loft()
     fuselage_shape: OTopo.TopoDS_Shape = fuselage_loft.shape()
     fuselage_dimensions = ShapeDimensions(fuselage_loft)
-    m.display_in_origin(fuselage_loft, "", True)
+    m.display_in_origin(fuselage_loft, logging.NOTSET, "", True)
 
     for i in range(1, cpacs_configuration.get_wing_count() + 1):
 
@@ -27,10 +27,10 @@ if __name__ == "__main__":
         wing_loft: TGeo.CNamedShape = wing.get_loft()
         wing_shape: OTopo.TopoDS_Shape = wing_loft.shape()
         wing_dimensions = ShapeDimensions(wing_loft)
-        m.display_in_origin(wing_loft, "", True)
+        m.display_in_origin(wing_loft, logging.NOTSET, "", True)
         try:
             mirroered_loft = wing.get_mirrored_loft()
-            m.display_in_origin(mirroered_loft, "", True)
+            m.display_in_origin(mirroered_loft, logging.NOTSET, "", True)
         except:
             logging.warning(f"No mirrored {wing_loft.name()}")
 

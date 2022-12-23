@@ -19,10 +19,10 @@ if __name__ == "__main__":
     wing: TConfig.CCPACSFuselage = cpacs_configuration.get_wing(1)
     wing_loft: TGeo.CNamedShape = wing.get_loft()
     wing_shape: OTopo.TopoDS_Shape = wing_loft.shape()
-    m.display_in_origin(wing_shape, "", True)
+    m.display_in_origin(wing_shape, logging.NOTSET, "", True)
 
     wing_offset: OTopo.TopoDS_Shape = OOff.BRepOffsetAPI_MakeOffsetShape(fuselage_shape, 0.0004, 0.0001).Shape()
 
-    m.display_in_origin(wing_offset)
+    m.display_in_origin(wing_offset, logging.NOTSET)
 
     m.start()

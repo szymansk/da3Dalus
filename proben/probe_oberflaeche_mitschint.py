@@ -11,7 +11,7 @@ from Extra.ShapeSlicer import ShapeSlicer
 from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 from _alt.Wand_erstellen import *
 from _alt.abmasse import get_dimensions_from_Shape
-from stl_exporter.Exporter import write_stls_srom_list
+from stl_exporter.Exporter import Ewrite_stls_from_list
 
 
 def get_tigl_handler(i_cpacs):
@@ -44,17 +44,17 @@ fuselage_loft: TGeo.CNamedShape= fuselage.get_loft()
 fuselage_shape: OTopo.TopoDS_Shape=fuselage_loft.shape()
 x,y,z=get_dimensions_from_Shape(fuselage_shape)
 msg= f"stest {name2}  {x:.3f} {y:.3f} {z:.3f} "
-m.display_this_shape(fuselage_shape, msg)
-m.display_in_origin(fuselage_shape, True)
+m.display_this_shape(fuselage_shape, severity=logging.NOTSET, msg=msg)
+m.display_in_origin(fuselage_shape, logging.NOTSET, True)
 name2= name2 + str(0) + ".stl"
 box = OPrim.BRepPrimAPI_MakeBox(x*.6,y,z).Shape()
 box = OExs.translate_shp(box,Ogp.gp_Vec(0.0,-y/2,0.0))
-m.display_in_origin(box)
+m.display_in_origin(box, logging.NOTSET)
 fuselage_done=OAlgo.BRepAlgoAPI_Cut(fuselage_shape, box).Shape()
-m.display_cut(fuselage_done, fuselage_shape, box)
+m.display_cut(fuselage_done, fuselage_shape, box, logging.NOTSET)
 spliter=ShapeSlicer(fuselage_done,5,"test_fuselage")
 spliter.slice()
-write_stls_srom_list(spliter.parts_list)
+write_stls_from_list(spliter.parts_list)
 #write_stl_file2(fuselage_shape,name2)
 print("Done")
     

@@ -21,7 +21,7 @@ class ShapeSlicer:
         :param named_shape: CNamedShape
         :param quantity: int default=3
         '''
-        logging.info("Initiating slicer")
+        logging.debug("Initiating slicer")
         self.m = ConstructionStepsViewer.instance()
         self.parts_list = []
         self.quantity: int = quantity
@@ -36,10 +36,10 @@ class ShapeSlicer:
         Rotates the shape 90 degrees over the Zaxis if the shape is wider than longer
         '''
         if self.shape_dimensions.get_length() < self.shape_dimensions.get_width():
-            logging.info(f"Rotating {namedshape.name()} by 90 degrees")
+            logging.debug(f"Rotating {namedshape.name()} by 90 degrees")
             rotated_shape = OExs.rotate_shape(namedshape.shape(), Ogp.gp_OZ(), -90)
             result: TGeo.CNamedShape = TGeo.CNamedShape(rotated_shape, namedshape.name())
-            self.m.display_this_shape(result, f"Rotated {namedshape.name()}")
+            self.m.display_this_shape(result, severity=logging.NOTSET, msg=f"Rotated {namedshape.name()}")
             self.shape_dimensions = ShapeDimensions(result)
             self.part_lenght: float = self.shape_dimensions.get_length() / self.quantity
         else:
@@ -60,7 +60,7 @@ class ShapeSlicer:
             part: TGeo.CNamedShape = self.namedshape
             name = f"{self.namedshape.name()}_{i}"
             part = TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Common(part.shape(), cutout_box).Shape(), name)
-            self.m.display_this_shape(part)
+            self.m.display_this_shape(part, severity=logging.NOTSET)
             self.parts_list.append(part)
 
     def slice_by_cut(self):
@@ -71,7 +71,7 @@ class ShapeSlicer:
         for i in range(0, self.quantity):
             part_name = f"{self.namedshape.name()}  {i}"
             logstr = f"Slicing {part_name}"
-            logging.info(logstr)
+            logging.debug(logstr)
             self.position_front = -self.shape_dimensions.get_length() + self.part_lenght * i
             self.position_back = self.part_lenght * (i + 1)
             cutout_box = OPrim.BRepPrimAPI_MakeBox(self.shape_dimensions.get_point(1),
@@ -93,7 +93,7 @@ class ShapeSlicer:
             wing_part = cut_list_of_namedshapes(self.namedshape, cutout_list, part_name)
             self.parts_list.append(wing_part)
 
-        self.m.display_slice_x(self.parts_list, f"Sliced {self.namedshape.name()}")
+        self.m.display_slice_x(self.parts_list, logging.NOTSET, f"Sliced {self.namedshape.name()}")
 
     def slice_with_list_cut(self, list_of_pos: list[float]):
         '''
@@ -114,16 +114,16 @@ class ShapeSlicer:
             if i != len(list_of_pos):
                 lenght = list_of_pos[i]
                 if i != 0:
-                    logging.info("Cutting frontbox " + str(i))
+                    logging.debug("Cutting frontbox " + str(i))
                     # Create a box for the front with the lenght of the position on the list and cut it from the shape
                     frontbox = OPrim.BRepPrimAPI_MakeBox(self.shape_dimensions.get_point(0), list_of_pos[i - 1],
                                                          self.shape_dimensions.get_width(),
                                                          self.shape_dimensions.get_height()).Shape()
                     beforecut = part1
                     part1 = OAlgo.BRepAlgoAPI_Cut(beforecut, frontbox).Shape()
-                logging.info(f"Part {i}  {lenght=}")
+                logging.debug(f"Part {i}  {lenght=}")
             self.parts_list.append(part1)
-        self.m.display_slice_x(self.parts_list, self.namedshape.name())
+        self.m.display_slice_x(self.parts_list, logging.NOTSET, self.namedshape.name())
 
     def slicing_positions(self, fuselage_shape):
         result = []
@@ -140,6 +140,6 @@ class ShapeSlicer:
         split_rear_fuselage = (end_fuselage + after_wing) / 2
         result.append(split_rear_fuselage)
         result.append(end_fuselage)
-        logging.info(result)
-        logging.info(len(result))
+        logging.debug(result)
+        logging.debug(len(result))
         return result

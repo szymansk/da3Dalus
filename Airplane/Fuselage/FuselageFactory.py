@@ -9,20 +9,25 @@ from Extra.BooleanOperationsForLists import *
 
 class FuselageFactory:
     @classmethod
-    def create_wing_support_shape(cls, cpacs_configuration, fuselage_index, right_main_wing_index):
+    def create_wing_support_shape(cls, cpacs_configuration, fuselage_index: int, right_main_wing_index: int,
+                                  rib_quantity: int, rib_width: float, rib_height_factor):
         overlap_dimensions = FuselageFactory.overlap_fuselage_wing_dimensions(cpacs_configuration, fuselage_index,
                                                                               right_main_wing_index)
-        shape__wing_support = FuselageRibFactory.create_wing_support_ribs(
-                            overlap_dimensions=overlap_dimensions,
-                            fuselage_loft=cpacs_configuration.get_fuselage(fuselage_index).get_loft(),
-                            wing_loft=cpacs_configuration.get_wing(right_main_wing_index).get_loft())
+        shape__wing_support = FuselageRibFactory.create_wing_support_ribs(overlap_dimensions=overlap_dimensions,
+                                                                          fuselage_loft=cpacs_configuration.get_fuselage(
+                                                                              fuselage_index).get_loft(),
+                                                                          wing_loft=cpacs_configuration.get_wing(
+                                                                              right_main_wing_index).get_loft(),
+                                                                          rib_quantity=rib_quantity,
+                                                                          rib_width=rib_width,
+                                                                          rib_height_factor=rib_height_factor)
         return shape__wing_support
 
     @classmethod
     def create_hardware_cutout(cls, cpacs_configuration, fuselage_index, ribcage_factor,
                                right_main_wing_index, position=None):
         # Hardware Opening for inserting akku, rc, ... from the bottom
-        position = position if position is None else FuselageFactory._calc_wing_position(cpacs_configuration,
+        position = position if position is not None else FuselageFactory._calc_wing_position(cpacs_configuration,
                                                                                          fuselage_index,
                                                                                          right_main_wing_index)
         shape__hardware_cutout: TGeo.CNamedShape = FuselageCutouts.create_hardware_cutout(
@@ -35,9 +40,8 @@ class FuselageFactory:
     def create_wing_support(cls, overlap_dimensions, fuselage_loft: TGeo.CNamedShape, wing_loft: TGeo.CNamedShape):
         # Wing Support ribs
         shape__wing_support: TGeo.CNamedShape = FuselageRibFactory.create_wing_support_ribs(
-            overlap_dimensions=overlap_dimensions,
-            fuselage_loft=fuselage_loft,
-            wing_loft=wing_loft)
+            overlap_dimensions=overlap_dimensions, fuselage_loft=fuselage_loft, wing_loft=wing_loft, rib_quantity=6,
+            rib_width=0.0008, rib_height_factor=1.0)
         return shape__wing_support
 
     @classmethod
@@ -88,7 +92,7 @@ class FuselageFactory:
         offset_maker.PerformBySimple(fuselage_loft.shape(), offset)
         result = TGeo.CNamedShape(offset_maker.Shape(), f"{fuselage_loft.name()}_offset")
         msg = f"Fuselage with {str(offset)=} meters"
-        ConstructionStepsViewer.instance().display_this_shape(result, msg)
+        ConstructionStepsViewer.instance().display_this_shape(result, severity=logging.NOTSET, msg=msg)
         return result
 
     @classmethod
@@ -144,14 +148,15 @@ class FuselageFactory:
         :return: the shape dimensions of the overlap shape
         """
         wing = FuselageFactory._create_complete_wing_shape(cpacs_configuration, right_main_wing_index)
+        fuselage_loft = cpacs_configuration.get_fuselage(fuselage_index).get_loft()
         overlap = BooleanCADOperation.intersect_shape_with_shape(
-            cpacs_configuration.get_fuselage(fuselage_index).get_loft(),
+            fuselage_loft,
             wing,
             "Overlap")
-        ConstructionStepsViewer.instance().display_common(
-            overlap,
-            cpacs_configuration.get_fuselage(fuselage_index).get_loft(),
-            wing)
+        result0 = PDim.ShapeDimensions(overlap)
+        ConstructionStepsViewer.instance().display_common(overlap,
+                                                          fuselage_loft,
+                                                          wing, logging.FATAL)
         result = PDim.ShapeDimensions(overlap)
         return result
 
@@ -191,9 +196,9 @@ class FuselageFactory:
         cut_fuselage = OAlgo.BRepAlgoAPI_Cut(fuselage_loft.shape(), cutout_box.shape()).Shape()
         named_cut_fuselage = TGeo.CNamedShape(cut_fuselage, "cut_fuselage")
 
-        ConstructionStepsViewer.instance().display_this_shape(named_cut_fuselage)
+        ConstructionStepsViewer.instance().display_this_shape(named_cut_fuselage, severity=logging.NOTSET)
         parts = [named_engine_cape, named_cut_fuselage]
-        ConstructionStepsViewer.instance().display_slice_x(parts)
+        ConstructionStepsViewer.instance().display_slice_x(parts, logging.NOTSET)
 
         return [named_engine_cape, named_cut_fuselage]
 
@@ -207,10 +212,10 @@ class FuselageFactory:
         rotation: TGeo.CTiglPoint = engine_position_transformation.get_rotation()
         self.down_thrust_angle = rotation.y
         self.right_thrust_angle = rotation.z
-        logging.info(f"{self.down_thrust_angle=},\t {self.right_thrust_angle=}")
+        logging.debug(f"{self.down_thrust_angle=},\t {self.right_thrust_angle=}")
 
         self.motor_position: TGeo.CCPACSPointAbsRel = engine_position_transformation.get_translation()
-        logging.info(
+        logging.debug(
             f"engine position= ({self.motor_position.get_x()},\t {self.motor_position.get_y()},\t {self.motor_position.get_z()})")
 
         engine_scaling: TGeo.CTiglPoint = engine_position_transformation.get_scaling()
@@ -218,7 +223,7 @@ class FuselageFactory:
         self.engine_width = engine_scaling.y
         self.engine_height = engine_scaling.z
         self.engine_schaft_lenght = self.engine_length / 3
-        logging.info(
+        logging.debug(
             f"engine size= length: {self.engine_length},width: {self.engine_width}, height: {self.engine_height},\t")
 
     @classmethod
@@ -270,7 +275,7 @@ class FuselageFactory:
             position = "top"
         elif FuselageFactory._is_low_wing(overlap_dimension, cpacs_configuration, fuselage_index):
             position = "bottom"
-        logging.info(f"Plane with {position} wing")
+        logging.debug(f"Plane with {position} wing")
         return position
 
     @classmethod
@@ -293,7 +298,8 @@ class FuselageFactory:
                                Ogp.gp_Vec(distance / 2, 0, PDim.ShapeDimensions(fuselage_loft).get_z_min())),
             f"{cylinder_pattern.name()}_vertikal")
 
-        ConstructionStepsViewer.instance().display_this_shape(cylinder_pattern_ver, cylinder_pattern_ver.name())
+        ConstructionStepsViewer.instance().display_this_shape(cylinder_pattern_ver, severity=logging.NOTSET,
+                                                              msg=cylinder_pattern_ver.name())
         cutouts.append(cylinder_pattern_ver)
 
         cylinder_pattern_hor: TGeo.CNamedShape = TGeo.CNamedShape(
@@ -304,7 +310,8 @@ class FuselageFactory:
                                                                      PDim.ShapeDimensions(fuselage_loft).get_height() / 2,
                                                                      z_pos)))
 
-        ConstructionStepsViewer.instance().display_this_shape(cylinder_pattern_hor, cylinder_pattern_hor.name())
+        ConstructionStepsViewer.instance().display_this_shape(cylinder_pattern_hor, severity=logging.NOTSET,
+                                                              msg=cylinder_pattern_hor.name())
         cutouts.append(cylinder_pattern_hor)
 
         return cutouts

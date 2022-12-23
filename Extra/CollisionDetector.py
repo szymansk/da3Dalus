@@ -9,7 +9,7 @@ import tigl3.geometry as TGeo
 
 class CollisionDetector:
     def __init__(self):
-        logging.info(f"Initialising CollisionDetector")
+        logging.debug(f"Initialising CollisionDetector")
         self.m = myDisplay.ConstructionStepsViewer.instance()
 
     def check_shapes_colission(self, shape1: OTopo.TopoDS_Shape, shape2: OTopo.TopoDS_Shape, name1: str = "shape1",
@@ -31,7 +31,7 @@ class CollisionDetector:
             kollision = True
         else:
             kollision = False
-        logging.info(f"Collision check between {name1} and {name2}: {expectation=} result= {kollision}")
+        logging.debug(f"Collision check between {name1} and {name2}: {expectation=} result= {kollision}")
 
         if kollision == expectation:
             return True
@@ -39,11 +39,11 @@ class CollisionDetector:
             if kollision and expectation == False:
                 logstr = f"Unexpected collision between {name1} and {name2}"
                 logging.error(logstr)
-                self.m.display_colission(overlap_shape, shape1, shape2, logstr)
+                self.m.display_colission(overlap_shape, shape1, shape2, logging.NOTSET, logstr)
             if not kollision and expectation == True:
                 logstr = f"Expected collision between {name1} and {name2} does not exist "
                 logging.error(logstr)
-                self.m.display_colission(overlap_shape, shape1, shape2, logstr)
+                self.m.display_colission(overlap_shape, shape1, shape2, logging.NOTSET, logstr)
             return False
 
     def check_namedshape_collision(self, named_shape1: TGeo.CNamedShape, named_shape2: TGeo.CNamedShape,
@@ -66,7 +66,7 @@ class CollisionDetector:
             kollision = True
         else:
             kollision = False
-        logging.info(
+        logging.debug(
             f"Collision check between {named_shape1.name()} and {named_shape2.name()}: {expectation=} result= {kollision}")
 
         if kollision == expectation:
@@ -75,11 +75,11 @@ class CollisionDetector:
             if kollision and expectation == False:
                 logstr = f"Unexpected collision between {named_shape1.name()} and {named_shape2.name()}"
                 logging.error(logstr)
-                self.m.display_colission(named_overlap, named_shape1, named_shape2, logstr)
+                self.m.display_colission(named_overlap, named_shape1, named_shape2, logging.NOTSET, logstr)
             if not kollision and expectation == True:
                 logstr = f"Expected collision between {named_shape1.name()} and {named_shape2.name()} does not exist "
                 logging.error(logstr)
-                self.m.display_colission(named_overlap, named_shape1, named_shape2, logstr)
+                self.m.display_colission(named_overlap, named_shape1, named_shape2, logging.NOTSET, logstr)
             return False
 
     def multiple_collision_check(self, test_cases):

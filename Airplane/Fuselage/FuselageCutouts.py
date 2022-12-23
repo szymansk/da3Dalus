@@ -41,12 +41,12 @@ class FuselageCutouts:
 
         # times 0.8 (80%) to avoid collision
         hardware_cutout_width = fuselage_dimensions.get_width() * width_factor * 0.8
-        hardware_cutout_height = fuselage_dimensions.get_height() / 2
+        hardware_cutout_height = fuselage_dimensions.get_height()
 
         hardware_x_pos = wing_dimensions.get_x_min() + wing_dimensions.get_length() * 0.2
         hardware_y_pos = -hardware_cutout_width / 2
 
-        hardware_z_pos = fuselage_dimensions.get_z_min() if position == "bottom" \
+        hardware_z_pos = fuselage_dimensions.get_z_min() - hardware_cutout_height/2 if position == "bottom" \
             else fuselage_dimensions.get_z_max() - hardware_cutout_height
 
         box = OPrim.BRepPrimAPI_MakeBox(hardware_cutout_length, hardware_cutout_width, hardware_cutout_height).Shape()

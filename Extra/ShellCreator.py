@@ -45,7 +45,7 @@ class ShellCreator:
 
     def create_shell(self, thickness, achs="Y", end="min"):
         # Our goal is to find the highest Z face and remove it
-        logging.info(f"Creating Shell with {thickness} and removing Face on the {end=} of {achs=}")
+        logging.debug(f"Creating Shell with {thickness} and removing Face on the {end=} of {achs=}")
         faceToRemove = None
         if end == "min":
             var_min = 10
@@ -69,7 +69,7 @@ class ShellCreator:
                 else:
                     a_coordinate = aPnt.Y()
 
-                logging.info(f"{a_coordinate=}")
+                logging.debug(f"{a_coordinate=}")
                 if end == "min":
                     if a_coordinate < var_min:
                         var_min = a_coordinate
@@ -84,13 +84,13 @@ class ShellCreator:
 
         faces_to_remove: TopTools_ListOfShape = TopTools_ListOfShape()
         faces_to_remove.Append(faceToRemove)
-        logging.info(f"Removing  {str(faces_to_remove.Size())} faces")
+        logging.debug(f"Removing  {str(faces_to_remove.Size())} faces")
         make_thick_solid = BRepOffsetAPI_MakeThickSolid(self.named_shape.shape(), faces_to_remove, thickness, 0.0001)
 
         if not make_thick_solid.IsDone():
             logging.error(f"Shelling did not work")
 
         new_shell: TGeo.CNamedShape = TGeo.CNamedShape(make_thick_solid.Shape(), f"{self.named_shape.name} Shell")
-        self.m.display_this_shape(new_shell)
+        self.m.display_this_shape(new_shell, severity=logging.NOTSET)
 
         return new_shell

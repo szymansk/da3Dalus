@@ -3,7 +3,6 @@
     "creator": {
         "creator_id": "wings",
         "right_main_wing_index": 1,
-        "enable_display": true,
         "$TYPE": "FullWingLoftShapeCreator"
     },
     "$TYPE": "ConstructionStepNode"

@@ -55,9 +55,9 @@ if __name__ == '__main__':
     name2= wing.get_name()
     wing_loft: TGeo.CNamedShape= wing.get_loft()
     wing_shape: OTopo.TopoDS_Shape=wing_loft.shape()
-    m.display_in_origin(wing_shape,True)
+    m.display_in_origin(wing_shape, logging.NOTSET, True)
     pipe_complete=create_pipe(wing_shape)
-    m.display_in_origin(pipe_complete)
+    m.display_in_origin(pipe_complete, logging.NOTSET)
     
     m.start()
    

@@ -39,7 +39,7 @@ class EngineMountFactory:
         new_mount = engine_mount[-1]
         new_mount.set_shape(OAlgo.BRepAlgoAPI_Fuse(new_mount.shape(), nuts.shape()).Shape())
         engine_mount.append(new_mount)
-        self.m.display_fuse(engine_mount[-1], engine_mount[-2], nuts)
+        self.m.display_fuse(engine_mount[-1], engine_mount[-2], nuts, logging.NOTSET)
 
         # cutting engine area
         cutout_angle = TGeo.CNamedShape(
@@ -54,7 +54,7 @@ class EngineMountFactory:
         new_mount = engine_mount[-1]
         new_mount.set_shape(OAlgo.BRepAlgoAPI_Cut(engine_mount[-1].shape(), cutout_angle.shape()).Shape())
         engine_mount.append(new_mount)
-        self.m.display_cut(engine_mount[-1], engine_mount[-2], cutout_angle)
+        self.m.display_cut(engine_mount[-1], engine_mount[-2], cutout_angle, logging.NOTSET)
 
         # positioning mount
 
@@ -68,7 +68,7 @@ class EngineMountFactory:
         new_mount.set_shape(OAlgo.BRepAlgoAPI_Fuse(engine_mount[-1].shape(), back_plate.shape()).Shape())
         engine_mount.append(new_mount)
 
-        self.m.display_fuse(engine_mount[-1], engine_mount[-2], back_plate)
+        self.m.display_fuse(engine_mount[-1], engine_mount[-2], back_plate, logging.NOTSET)
         return new_mount
 
     def _create_back_plate(self, plate_thickness):
@@ -83,7 +83,7 @@ class EngineMountFactory:
         box.set_shape(OExs.translate_shp(box.shape(), Ogp.gp_Vec(x_pos, self.fuselage_dimensions.get_y_min(),
                                                                  self.fuselage_dimensions.get_z_min())))
         panel = TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Common(self.fuselage_shape, box.shape()).Shape(), "Panel")
-        self.m.display_cut(panel, self.fuselage_loft, box)
+        self.m.display_cut(panel, self.fuselage_loft, box, logging.NOTSET)
         return panel
 
     def _front_point(self):
@@ -94,7 +94,7 @@ class EngineMountFactory:
         box.append(OExs.translate_shp(box[-1], Ogp.gp_Vec(0, self.fuselage_dimensions.get_y_min(),
                                                           self.fuselage_dimensions.get_z_min())))
         panel = OAlgo.BRepAlgoAPI_Common(self.fuselage_shape, box[-1]).Shape()
-        self.m.display_cut(panel, self.fuselage_shape, box[-1])
+        self.m.display_cut(panel, self.fuselage_shape, box[-1], logging.NOTSET)
         return panel
 
     def _calc_motor_dimensions(self):
@@ -107,10 +107,10 @@ class EngineMountFactory:
         rotation: TGeo.CTiglPoint = engine_position_transformation.get_rotation()
         self.down_thrust_angle = rotation.y
         self.right_thrust_angle = rotation.z
-        logging.info(f"{self.down_thrust_angle=},\t {self.right_thrust_angle=}")
+        logging.debug(f"{self.down_thrust_angle=},\t {self.right_thrust_angle=}")
 
         self.motor_position: TGeo.CCPACSPointAbsRel = engine_position_transformation.get_translation()
-        logging.info(
+        logging.debug(
             f"engine position= ({self.motor_position.get_x()},\t {self.motor_position.get_y()},\t {self.motor_position.get_z()})")
 
         engine_scaling: TGeo.CTiglPoint = engine_position_transformation.get_scaling()
@@ -118,7 +118,7 @@ class EngineMountFactory:
         self.engine_width = engine_scaling.y
         self.engine_height = engine_scaling.z
         self.engine_schaft_lenght = self.engine_length * 0.3
-        logging.info(
+        logging.debug(
             f"engine size= length: {self.engine_length},width: {self.engine_width}, height: {self.engine_height},\t")
 
     def _create_schaft_box(self) -> TGeo.CNamedShape:
@@ -178,5 +178,5 @@ class EngineMountFactory:
         nut = TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Cut(outer_cylinder.shape(), inner_cylinder.shape()).Shape(), "nut")
         nut.set_shape(OExs.translate_shp(nut.shape(), Ogp.gp_Vec(0, self.outer_schaft_box_width / 2, 0)))
         nuts = create_circular_pattern(nut, 4)
-        self.m.display_this_shape(nuts)
+        self.m.display_this_shape(nuts, severity=logging.NOTSET)
         return nuts

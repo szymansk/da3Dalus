@@ -9,6 +9,8 @@ from OCC.Display.SimpleGui import *
 # from Dimensions.ShapeDimensions import ShapeDimensions
 import Dimensions.ShapeDimensions as sd
 
+import logging
+
 
 class ConstructionStepsViewer:
     distance: float
@@ -53,8 +55,8 @@ class ConstructionStepsViewer:
                 ConstructionStepsViewer.my_instance = ConstructionStepsViewer(distance)
         return ConstructionStepsViewer.my_instance
 
-    def display_this_shape(self, named_shape: TGeo.CNamedShape, msg="", trans=False) -> None:
-        if self.dev:
+    def display_this_shape(self, named_shape: TGeo.CNamedShape, severity, msg="", trans=False) -> None:
+        if self.dev and severity >= logging.root.level:
             if OTopo.TopoDS_Iterator(named_shape.shape()).More():
                 self.id += 1
                 shape = OExs.translate_shp(named_shape.shape(), Ogp.gp_Vec(0.0, self.y_position, 0.0))
@@ -80,16 +82,16 @@ class ConstructionStepsViewer:
     def next_y_position(self, named_shape: TGeo.CNamedShape):
 
         shape_dimensions = sd.ShapeDimensions(named_shape)
-        self.ydiff = shape_dimensions.get_width()
-        pos = self.y_position + self.distance + (self.ydiff)
+        ydiff = shape_dimensions.get_width()
+        pos = self.y_position + self.distance + ydiff
         # print("ydiff:", ydiff, "pos:", pos)
         return pos
 
     def get_display(self):
         return self.display
 
-    def display_in_origin(self, named_shape: TGeo.CNamedShape, text="", trans=False):
-        if self.dev:
+    def display_in_origin(self, named_shape: TGeo.CNamedShape, severity, text="", trans=False):
+        if self.dev and severity >= logging.root.level:
             moved_shape = OExs.translate_shp(named_shape.shape(), Ogp.gp_Vec(0.0, self.origin, 0.0))
             if trans:
                 self.display.DisplayShape(moved_shape, text, transparency=0.8)
@@ -116,59 +118,55 @@ class ConstructionStepsViewer:
             if self.log:
                 self.display.DisplayMessage(point, text_to_write=text)
             named_spere = TGeo.CNamedShape(sphere, text)
-            self.display_in_origin(named_spere, text, True)
+            self.display_in_origin(named_spere, logging.NOTSET, text, True)
 
     def display_fuse(self, fused_shape: TGeo.CNamedShape, named_shape1: TGeo.CNamedShape,
-                     named_shape2: TGeo.CNamedShape, msg="",
-                     trans=False):
-        if self.dev:
+                     named_shape2: TGeo.CNamedShape, severity, msg="", trans=False):
+        if self.dev and severity >= logging.root.level:
             shape1 = OExs.translate_shp(named_shape1.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
             shape2 = OExs.translate_shp(named_shape2.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
             self.display.DisplayShape(shape1, transparency=0.8)
             self.display.DisplayShape(shape2, color="GREEN")
-            self.display_this_shape(fused_shape,
-                                    f"{fused_shape.name()}: fusion between {named_shape1.name()} and {named_shape2.name()}",
-                                    trans)
+            self.display_this_shape(fused_shape, severity=severity,
+                                    msg=f"{msg}: {fused_shape.name()}: fusion between {named_shape1.name()} and {named_shape2.name()}",
+                                    trans=trans)
             self.display.FitAll()
 
     def display_cut(self, cuted_shape: TGeo.CNamedShape, named_shape1: TGeo.CNamedShape, named_shape2: TGeo.CNamedShape,
-                    msg="",
-                    trans=False):
-        if self.dev:
+                    severity, msg="", trans=False):
+        if self.dev and severity >= logging.root.level:
             shape1 = OExs.translate_shp(named_shape1.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
             shape2 = OExs.translate_shp(named_shape2.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
             self.display.DisplayShape(shape1, transparency=0.8)
             self.display.DisplayShape(shape2, color="RED")
-            self.display_this_shape(cuted_shape, f"{cuted_shape.name()} {msg}", trans)
+            self.display_this_shape(cuted_shape, severity=severity, msg=f"{cuted_shape.name()} {msg}", trans=trans)
             self.display.FitAll()
 
     def display_common(self, common_shape: TGeo.CNamedShape, named_shape1: TGeo.CNamedShape,
-                       named_shape2: TGeo.CNamedShape, msg="",
-                       trans=False):
-        if self.dev:
+                       named_shape2: TGeo.CNamedShape, severity, msg="", trans=False):
+        if self.dev and severity >= logging.root.level:
             shape1 = OExs.translate_shp(named_shape1.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
             shape2 = OExs.translate_shp(named_shape2.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-            logging.info(f"{self.y_position=}")
+            logging.debug(f"{self.y_position=}")
             self.display.DisplayShape(shape1, color="Yellow", transparency=0.8)
             self.display.DisplayShape(shape2)
-            self.display_this_shape(common_shape, f"{common_shape.name()} {msg}", trans)
+            self.display_this_shape(common_shape, severity=severity, msg=f"{common_shape.name()} {msg}", trans=trans)
             self.display.FitAll()
 
-    def display_multipe_cuts(self, cuted_shape: TGeo.CNamedShape, original_shape: TGeo.CNamedShape,
+    def display_multipe_cuts(self, cuted_shape: TGeo.CNamedShape, original_shape: TGeo.CNamedShape, severity,
                              list_to_cut=list[: TGeo.CNamedShape], msg="", trans=False):
-        if self.dev:
+        if self.dev and severity >= logging.root.level:
             moved_shape = OExs.translate_shp(original_shape.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
             self.display.DisplayShape(moved_shape, transparency=0.8)
             for shape_to_cut in list_to_cut:
                 shape_n = OExs.translate_shp(shape_to_cut.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
                 self.display.DisplayShape(shape_n, color="Red", transparency=0.5)
-            self.display_this_shape(cuted_shape, f"{msg}", trans)
+            self.display_this_shape(cuted_shape, severity=severity, msg=f"{msg}", trans=trans)
             self.display.FitAll()
 
     def display_colission(self, kollision_shape: TGeo.CNamedShape, named_shape1: TGeo.CNamedShape,
-                          named_shape2: TGeo.CNamedShape,
-                          msg="", trans=False):
-        if self.dev:
+                          named_shape2: TGeo.CNamedShape, severity, msg="", trans=False):
+        if self.dev and severity >= logging.root.level:
             shape1 = OExs.translate_shp(named_shape1.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
             shape2 = OExs.translate_shp(named_shape2.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
             self.display.DisplayShape(shape1, color="Yellow", transparency=0.8)
@@ -176,17 +174,17 @@ class ConstructionStepsViewer:
             if OTopo.TopoDS_Iterator(kollision_shape.shape()).More():
                 shape3a = OExs.translate_shp(kollision_shape.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
                 self.display.DisplayShape(shape3a, color="Red")
-            self.display_this_shape(kollision_shape,
-                                    f"Colission between {named_shape1.name()} and {named_shape2.name()}", trans)
+            self.display_this_shape(kollision_shape, severity=severity,
+                                    msg=f"collision between {named_shape1.name()} and {named_shape2.name()}", trans=trans)
             self.display.FitAll()
 
-    def display_slice_x(self, parts_list: list[TGeo.CNamedShape], name=""):
-        if self.dev:
+    def display_slice_x(self, parts_list: list[TGeo.CNamedShape], severity, name=""):
+        if self.dev and severity >= logging.root.level:
             x_position = 0
             x_position_msg = x_position
             moved_part: TGeo.CNamedShape = TGeo.CNamedShape()
             for i, part in enumerate(parts_list):
-                logging.info(f"Displaying {part.name()}")
+                logging.debug(f"Displaying {part.name()}")
                 moved_part = TGeo.CNamedShape(
                     OExs.translate_shp(part.shape(), Ogp.gp_Vec(x_position, self.y_position, 0.0)),
                     f"Moved_{part.name()}")

@@ -15,7 +15,7 @@ CPACS_FILE_NAME = "aircombat_v14"
 NUMBER_OF_CUTS = 5
 
 if __name__ == "__main__":
-    logging.info(f"Start test for Fuselage Factory with CPACS file {CPACS_FILE_NAME}")
+    logging.debug(f"Start test for Fuselage Factory with CPACS file {CPACS_FILE_NAME}")
     m = myDisplay.ConstructionStepsViewer.instance(True, 5)
     tigl_h = tg.get_tigl_handler(CPACS_FILE_NAME)
     configuration = Configuration(tigl_h)
@@ -30,13 +30,13 @@ if __name__ == "__main__":
     wing_shape: OTopo.TopoDS_Shape = wing_loft.shape()
     wing_dimensions = ShapeDimensions(wing_loft)
 
-    m.display_in_origin(wing_loft, "", True)
-    m.display_in_origin(fuselage_loft, "", True)
+    m.display_in_origin(wing_loft, logging.NOTSET, "", True)
+    m.display_in_origin(fuselage_loft, logging.NOTSET, "", True)
 
     test_class = ff.FuselageFactory(configuration)
     constructed_fuselage = test_class.create_fuselage_with_sharp_ribs()
     my_slicer = ss.ShapeSlicer(constructed_fuselage, NUMBER_OF_CUTS)
 
-    logging.info("Test finished. Display results")
+    logging.debug("Test finished. Display results")
 
     m.start()

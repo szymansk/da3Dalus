@@ -15,7 +15,7 @@ CPACS_FILE_NAME = "aircombat_v14"
 PLATE_THICKNESS = 0.005
 
 if __name__ == "__main__":
-    logging.info(f"Start test for Engine Mount Factory with CPACS file {CPACS_FILE_NAME}")
+    logging.debug(f"Start test for Engine Mount Factory with CPACS file {CPACS_FILE_NAME}")
     m = myDisplay.ConstructionStepsViewer.instance(True, 0.5)
     tigl_h = tg.get_tigl_handler(CPACS_FILE_NAME)
     configuration = Configuration(tigl_h)
@@ -37,6 +37,6 @@ if __name__ == "__main__":
     my_engine_mount = test_class.create_engine_mount(PLATE_THICKNESS)
 
     m.display_in_secondfloor(my_engine_mount)
-    logging.info("Test finished. Display results")
+    logging.debug("Test finished. Display results")
 
     m.start()

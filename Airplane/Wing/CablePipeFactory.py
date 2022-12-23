@@ -41,7 +41,7 @@ class CablePipeFactory:
         self.points = points
         self.radius = radius
         pipe_shapes = []
-        logging.info(f"Creating a pipe through {len(self.points)=} points")
+        logging.debug(f"Creating a pipe through {len(self.points)=} points")
 
         for i in range(0, len(self.points) - 1):
             pipe_shapes.append(self._pipe_section(self.points[i], self.points[i + 1], self.radius, i))
@@ -95,7 +95,7 @@ class CablePipeFactory:
         :param index: a number to identify the pipesection
         :return: named shape of pipe section
         """
-        logging.info(f"Creating pipesection_{index}")
+        logging.debug(f"Creating pipesection_{index}")
         make_wire = OBuilder.BRepBuilderAPI_MakeWire()
         edge = OBuilder.BRepBuilderAPI_MakeEdge(start, end).Edge()
         make_wire.Add(edge)
@@ -119,7 +119,7 @@ class CablePipeFactory:
         :param index: a number to identify the corner
         :return: named shape of the corner
         """
-        logging.info(f"Creating pipecorner_{index}")
+        logging.debug(f"Creating pipecorner_{index}")
         sphere: OTopo.TopoDS_Shape = OPrim.BRepPrimAPI_MakeSphere(centre, radius).Shape()
         named_sphere: TGeo.CNamedShape = TGeo.CNamedShape(sphere, f"pipecorner_{index}")
         return named_sphere
