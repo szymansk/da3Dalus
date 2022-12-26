@@ -92,7 +92,7 @@ class Wandstaerke:
         # Our goal is to find the highest Z face and remove it
         faceToRemove = None
         XMin = 10
-        logging.info("Starting Create Hollow")
+        logging.debug("Starting Create Hollow")
         # We have to work our way through all the faces to find the highest Z face so we can remove it for the shell
         aFaceExplorer = TopExp_Explorer(shape, TopAbs_FACE)
         while aFaceExplorer.More():
@@ -113,7 +113,7 @@ class Wandstaerke:
 
         facesToRemove: TopTools_ListOfShape = TopTools_ListOfShape()
         facesToRemove.Append(faceToRemove)
-        logging.info("hollowing: Faces to remove Size:" + str(facesToRemove.Size()))
+        logging.debug("hollowing: Faces to remove Size:" + str(facesToRemove.Size()))
         myBody = BRepOffsetAPI_MakeThickSolid(shape, facesToRemove, thickness, 0.0001)
         i = 0
         while not myBody.IsDone():
@@ -129,7 +129,7 @@ class Wandstaerke:
     # Our goal is to find the highest Z face and remove it
     faceToRemove = None
     zMax = -1
-    logging.info("Starting Create Hollow")
+    logging.debug("Starting Create Hollow")
     # We have to work our way through all the faces to find the highest Z face so we can remove it for the shell
     aFaceExplorer = TopExp_Explorer(shape, TopAbs_FACE)
     while aFaceExplorer.More():
@@ -149,7 +149,7 @@ class Wandstaerke:
         aFaceExplorer.Next()
 
     facesToRemove: TopTools_ListOfShape = TopTools_ListOfShape()
-    logging.info("hollowing: Faces to remove Size:" + str(facesToRemove.Size()))
+    logging.debug("hollowing: Faces to remove Size:" + str(facesToRemove.Size()))
     if faceToRemove != None:
         facesToRemove.Append(faceToRemove)
     myBody = BRepOffsetAPI_MakeThickSolid(shape, facesToRemove, thickness, 0.001)

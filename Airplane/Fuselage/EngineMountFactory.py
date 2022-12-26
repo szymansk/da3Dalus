@@ -7,139 +7,201 @@ from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 
 class EngineMountFactory:
     def __init__(self, cpacs_configuration: TConfig.CCPACSConfiguration, fuselage_index: int):
-        self.m = ConstructionStepsViewer.instance()
-        self.cpacs_configuration = cpacs_configuration
         self.fuselage: TConfig.CCPACSFuselage = cpacs_configuration.get_fuselage(fuselage_index)
-        self.fuselage_loft: TGeo.CNamedShape = self.fuselage.get_loft()
-        self.fuselage_shape: OTopo.TopoDS_Shape = self.fuselage_loft.shape()
-        self.fuselage_dimensions = PDim.ShapeDimensions(self.fuselage_loft)
-        self._calc_motor_dimensions()
+        self.fuselage_loft: TGeo.CNamedShape = cpacs_configuration.get_fuselage(fuselage_index).get_loft()
 
-    def create_engine_mount(self, plate_thickness):
+    # mount_plate_thickness: float, 
+    # engine_screw_hole_circle: float,
+    #                  engine_total_cover_length: float, engine_mount_box_length: float, engine_down_thrust_deg: float,
+    #                  engine_side_thrust_deg: float, engine_screw_din_diameter: float, engine_screw_length: float,
+    #                  fuselage_index: int, engine_index: int, cpacs_configuration: CCPACSConfiguration = None
+    def create_engine_mount(self, mount_plate_thickness: float, engine_screw_hole_circle: float,
+                            engine_total_cover_length, engine_mount_box_length, engine_down_thrust_deg,
+                            engine_side_thrust_deg, engine_screw_din_diameter, engine_screw_length, fuselage_index,
+                            engine_index, cpacs_configuration):
         '''
         lenght = self.engine_length
         width = self.engine_width * 1.1
         height = width
         factor = 0.7
         mount_hole_dim= 0.01
+        :param engine_mount_box_length: 
+        :param engine_down_thrust_deg: 
+        :param engine_side_thrust_deg: 
+        :param engine_screw_din_diameter: 
+        :param engine_screw_length: 
+        :param fuselage_index: 
+        :param engine_total_cover_length: 
+        :param engine_index: 
+        :param cpacs_configuration:
+        :param engine_screw_hole_circle:
         '''
 
+        _engine_down_thrust_deg, _engine_side_thrust_deg, motor_position, _engine_total_cover_length, engine_width, engine_height \
+            = EngineMountFactory._calc_motor_dimensions(cpacs_configuration, engine_index=engine_index)
+        engine_down_thrust_deg = _engine_down_thrust_deg if engine_down_thrust_deg is None else engine_down_thrust_deg
+        engine_side_thrust_deg = _engine_side_thrust_deg if engine_side_thrust_deg is None else engine_side_thrust_deg
+        engine_total_cover_length = _engine_total_cover_length if engine_total_cover_length is None else engine_total_cover_length
+
         # Shaft Box
-        schaft_box = self._create_schaft_box()
+        schaft_box, outer_schaft_box_length = self._create_schaft_box(screw_hole_circle=engine_screw_hole_circle,
+                                                                      engine_mount_box_length=engine_mount_box_length)
 
         engine_mount = [TGeo.CNamedShape, schaft_box]
 
         # plate
-        back_plate = self._create_back_plate(plate_thickness)
+        back_plate = self._create_back_plate(mount_plate_thickness, outer_schaft_box_length, engine_total_cover_length,
+                                             fuselage_index, cpacs_configuration)
 
         # Screwpoints / nuts
-        nuts = self._create_nuts()
+        nuts, inner_cylinders = \
+            self._create_nuts(outer_schaft_box_length, engine_screw_hole_circle, engine_screw_din_diameter)
 
-        # Fusing engine mount and nuts
-        new_mount = engine_mount[-1]
-        new_mount.set_shape(OAlgo.BRepAlgoAPI_Fuse(new_mount.shape(), nuts.shape()).Shape())
-        engine_mount.append(new_mount)
-        self.m.display_fuse(engine_mount[-1], engine_mount[-2], nuts, logging.NOTSET)
+        # translate nuts along x
+        nuts.set_shape(OExs.translate_shp(nuts.shape(), Ogp.gp_Vec(engine_total_cover_length,
+                                                                   motor_position.get_y(),
+                                                                   motor_position.get_z())))
+        inner_cylinders.set_shape(OExs.translate_shp(inner_cylinders.shape(), Ogp.gp_Vec(engine_total_cover_length,
+                                                                                         motor_position.get_y(),
+                                                                                         motor_position.get_z())))
+        # rotate nuts by down and side thrust
+        nuts.set_shape(OExs.rotate_shape(nuts.shape(), Ogp.gp_OY(), engine_down_thrust_deg))
+        nuts.set_shape(OExs.rotate_shape(nuts.shape(), Ogp.gp_OZ(), engine_side_thrust_deg))
+
+        inner_cylinders.set_shape(OExs.rotate_shape(inner_cylinders.shape(), Ogp.gp_OY(), engine_down_thrust_deg))
+        inner_cylinders.set_shape(OExs.rotate_shape(inner_cylinders.shape(), Ogp.gp_OZ(), engine_side_thrust_deg))
 
         # cutting engine area
         cutout_angle = TGeo.CNamedShape(
-            OPrim.BRepPrimAPI_MakeBox(self.outer_schaft_box_length, 2 * self.outer_schaft_box_width,
-                                      2 * self.outer_schaft_box_height).Shape(), "cutout_agle")
-        cutout_angle.set_shape(OExs.translate_shp(cutout_angle.shape(), Ogp.gp_Vec(-self.outer_schaft_box_length * 0.9,
-                                                                                   -self.outer_schaft_box_width,
-                                                                                   -self.outer_schaft_box_height)))
-        cutout_angle.set_shape(OExs.rotate_shape(cutout_angle.shape(), Ogp.gp_OY(), self.down_thrust_angle))
-        cutout_angle.set_shape(OExs.rotate_shape(cutout_angle.shape(), Ogp.gp_OZ(), self.right_thrust_angle))
+            OPrim.BRepPrimAPI_MakeBox(outer_schaft_box_length, 2 * engine_screw_hole_circle,
+                                      2 * engine_screw_hole_circle).Shape(), "cutout_agle")
+        cutout_angle.set_shape(OExs.translate_shp(cutout_angle.shape(), Ogp.gp_Vec(-outer_schaft_box_length * 0.9,
+                                                                                   -engine_screw_hole_circle,
+                                                                                   -engine_screw_hole_circle)))
+        cutout_angle.set_shape(OExs.rotate_shape(cutout_angle.shape(), Ogp.gp_OY(), engine_down_thrust_deg))
+        cutout_angle.set_shape(OExs.rotate_shape(cutout_angle.shape(), Ogp.gp_OZ(), engine_side_thrust_deg))
 
         new_mount = engine_mount[-1]
         new_mount.set_shape(OAlgo.BRepAlgoAPI_Cut(engine_mount[-1].shape(), cutout_angle.shape()).Shape())
         engine_mount.append(new_mount)
-        self.m.display_cut(engine_mount[-1], engine_mount[-2], cutout_angle, logging.NOTSET)
+        ConstructionStepsViewer.instance().display_cut(engine_mount[-1], engine_mount[-2], cutout_angle, logging.NOTSET)
 
         # positioning mount
 
         new_mount = engine_mount[-1]
+        # translate along x
         new_mount.set_shape(
-            OExs.translate_shp(engine_mount[-1].shape(), Ogp.gp_Vec(self.engine_length, self.motor_position.get_y(),
-                                                                    self.motor_position.get_z())))
+            OExs.translate_shp(engine_mount[-1].shape(), Ogp.gp_Vec(engine_total_cover_length, motor_position.get_y(),
+                                                                    motor_position.get_z())))
         engine_mount.append(new_mount)
 
         new_mount = engine_mount[-1]
         new_mount.set_shape(OAlgo.BRepAlgoAPI_Fuse(engine_mount[-1].shape(), back_plate.shape()).Shape())
         engine_mount.append(new_mount)
+        ConstructionStepsViewer.instance().display_fuse(engine_mount[-1], engine_mount[-2], back_plate, logging.NOTSET)
 
-        self.m.display_fuse(engine_mount[-1], engine_mount[-2], back_plate, logging.NOTSET)
+        # Fusing engine mount and nuts
+        new_mount = engine_mount[-1]
+        new_mount.set_shape(OAlgo.BRepAlgoAPI_Fuse(new_mount.shape(), nuts.shape()).Shape())
+        engine_mount.append(new_mount)
+        ConstructionStepsViewer.instance().display_fuse(engine_mount[-1], engine_mount[-2], nuts, logging.NOTSET)
+
+        new_mount.set_shape(OAlgo.BRepAlgoAPI_Cut(engine_mount[-1].shape(), inner_cylinders.shape()).Shape())
+
         return new_mount
 
-    def _create_back_plate(self, plate_thickness):
+    @staticmethod
+    def _create_back_plate(plate_thickness, outer_schaft_box_length, engine_total_cover_length, fuselage_index,
+                           cpacs_configuration):
         '''
         Cuts a slice of the Fuselage to use as a backplate for the engine mount
+        :param engine_total_cover_length:
+        :param fuselage_index:
+        :param cpacs_configuration: 
+        :param outer_schaft_box_length: 
         :return:
+        
+        TODO: Das muss entweder vom Cape oder vom Rest des lofts abgezogen werden oder so skaliert sein, dass der engine cape drüber passt
         '''
-        panel_x_position = self.engine_length + self.outer_schaft_box_length
-        box = TGeo.CNamedShape(OPrim.BRepPrimAPI_MakeBox(plate_thickness, self.fuselage_dimensions.get_width(),
-                                                         self.fuselage_dimensions.get_height()).Shape(), "boud_box")
+        panel_x_position = engine_total_cover_length + outer_schaft_box_length
+        box = TGeo.CNamedShape(OPrim.BRepPrimAPI_MakeBox(plate_thickness, 
+                                                         PDim.ShapeDimensions(cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_width(),
+                                                         PDim.ShapeDimensions(cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_height())
+                               .Shape(), "boud_box")
         x_pos = panel_x_position
-        box.set_shape(OExs.translate_shp(box.shape(), Ogp.gp_Vec(x_pos, self.fuselage_dimensions.get_y_min(),
-                                                                 self.fuselage_dimensions.get_z_min())))
-        panel = TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Common(self.fuselage_shape, box.shape()).Shape(), "Panel")
-        self.m.display_cut(panel, self.fuselage_loft, box, logging.NOTSET)
+        box.set_shape(OExs.translate_shp(box.shape(), Ogp.gp_Vec(x_pos, PDim.ShapeDimensions(cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_y_min(),
+                                                                 PDim.ShapeDimensions(cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_z_min())))
+        panel = TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Common(cpacs_configuration.get_fuselage(fuselage_index).get_loft().shape(), box.shape()).Shape(), "Panel")
+        ConstructionStepsViewer.instance().display_cut(panel, cpacs_configuration.get_fuselage(fuselage_index).get_loft(), box, logging.NOTSET)
         return panel
 
-    def _front_point(self):
+    @staticmethod
+    def _front_point(fuselage_index, cpacs_configuration):
         # self.fuselage.set
-        thickness = self.fuselage_dimensions.get_length() * 0.005
-        box = [OPrim.BRepPrimAPI_MakeBox(thickness, self.fuselage_dimensions.get_width(),
-                                         self.fuselage_dimensions.get_height()).Shape()]
-        box.append(OExs.translate_shp(box[-1], Ogp.gp_Vec(0, self.fuselage_dimensions.get_y_min(),
-                                                          self.fuselage_dimensions.get_z_min())))
-        panel = OAlgo.BRepAlgoAPI_Common(self.fuselage_shape, box[-1]).Shape()
-        self.m.display_cut(panel, self.fuselage_shape, box[-1], logging.NOTSET)
+        thickness = PDim.ShapeDimensions(
+            cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_length() * 0.005
+        box = [OPrim.BRepPrimAPI_MakeBox(thickness, PDim.ShapeDimensions(
+            cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_width(),
+                                         PDim.ShapeDimensions(cpacs_configuration.get_fuselage(
+                                             fuselage_index).fuselage.get_loft()).get_height()).Shape()]
+        box.append(OExs.translate_shp(box[-1], Ogp.gp_Vec(0, PDim.ShapeDimensions(
+            cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_y_min(),
+                                                          PDim.ShapeDimensions(cpacs_configuration.get_fuselage(
+                                                              fuselage_index).fuselage.get_loft()).get_z_min())))
+        panel = OAlgo.BRepAlgoAPI_Common(cpacs_configuration.get_fuselage(fuselage_index).get_loft().shape(),
+                                         box[-1]).Shape()
+        ConstructionStepsViewer.instance().display_cut(panel, cpacs_configuration.get_fuselage(
+            fuselage_index).get_loft().shape(), box[-1], logging.NOTSET)
         return panel
 
-    def _calc_motor_dimensions(self):
-        all_engines = self.cpacs_configuration.get_engines()
+    @classmethod
+    def _calc_motor_dimensions(cls, cpacs_configuration, engine_index):
+        all_engines = cpacs_configuration.get_engines()
 
-        engine_positions: TConfig.CCPACSEnginePositions = self.cpacs_configuration.get_engine_positions()
-        engine_position: TConfig.CCPACSEnginePosition = engine_positions.get_engine_position(1)
+        engine_positions: TConfig.CCPACSEnginePositions = cpacs_configuration.get_engine_positions()
+        engine_position: TConfig.CCPACSEnginePosition = engine_positions.get_engine_position(engine_index)
         engine_position_transformation: TGeo.CCPACSTransformation = engine_position.get_transformation()
 
         rotation: TGeo.CTiglPoint = engine_position_transformation.get_rotation()
-        self.down_thrust_angle = rotation.y
-        self.right_thrust_angle = rotation.z
-        logging.debug(f"{self.down_thrust_angle=},\t {self.right_thrust_angle=}")
+        down_thrust_angle = rotation.y
+        right_thrust_angle = rotation.z
+        logging.debug(f"{down_thrust_angle=},\t {right_thrust_angle=}")
 
-        self.motor_position: TGeo.CCPACSPointAbsRel = engine_position_transformation.get_translation()
+        motor_position: TGeo.CCPACSPointAbsRel = engine_position_transformation.get_translation()
         logging.debug(
-            f"engine position= ({self.motor_position.get_x()},\t {self.motor_position.get_y()},\t {self.motor_position.get_z()})")
+            f"engine position= ({motor_position.get_x()},\t {motor_position.get_y()},\t {motor_position.get_z()})")
 
         engine_scaling: TGeo.CTiglPoint = engine_position_transformation.get_scaling()
-        self.engine_length = engine_scaling.x
-        self.engine_width = engine_scaling.y
-        self.engine_height = engine_scaling.z
-        self.engine_schaft_lenght = self.engine_length * 0.3
+        engine_length = engine_scaling.x
+        engine_width = engine_scaling.y
+        engine_height = engine_scaling.z
+        # self.engine_schaft_lenght = self.engine_length * 0.3
         logging.debug(
-            f"engine size= length: {self.engine_length},width: {self.engine_width}, height: {self.engine_height},\t")
+            f"engine size= length: {engine_length},width: {engine_width}, height: {engine_height},\t")
+        return down_thrust_angle, right_thrust_angle, motor_position, engine_length, engine_width, engine_height
 
-    def _create_schaft_box(self) -> TGeo.CNamedShape:
+    @staticmethod
+    def _create_schaft_box(screw_hole_circle: float, engine_mount_box_length: float) -> TGeo.CNamedShape:
         """
         Creates the main part of the engine mount. It consists of a Hollowed box with a through hole
+        :param engine_mount_box_length: 
+        :param screw_hole_circle:
         :return:
         """
-        self.outer_schaft_box_length = self.engine_schaft_lenght * 1.2
-        self.outer_schaft_box_width = self.engine_width * 1.1
-        self.outer_schaft_box_height = self.outer_schaft_box_width
+        outer_schaft_box_length = engine_mount_box_length * 1.2
+        outer_schaft_box_width = screw_hole_circle
+        outer_schaft_box_height = outer_schaft_box_width
         outer_box = TGeo.CNamedShape(
-            OPrim.BRepPrimAPI_MakeBox(self.outer_schaft_box_length, self.outer_schaft_box_width,
-                                      self.outer_schaft_box_height).Shape(), "outer_box")
-        outer_box.set_shape(OExs.translate_shp(outer_box.shape(), Ogp.gp_Vec(0, -self.outer_schaft_box_width / 2,
-                                                                             -self.outer_schaft_box_height / 2)))
+            OPrim.BRepPrimAPI_MakeBox(outer_schaft_box_length, outer_schaft_box_width,
+                                      outer_schaft_box_height).Shape(), "outer_box")
+        outer_box.set_shape(OExs.translate_shp(outer_box.shape(), Ogp.gp_Vec(0, -outer_schaft_box_width / 2,
+                                                                             -outer_schaft_box_height / 2)))
 
         factor = 0.7
-        x_pos = (1 - factor) * self.outer_schaft_box_length
-        inner_schaft_box_lenght = self.outer_schaft_box_length * factor
-        inner_schaft_box_width = self.outer_schaft_box_width * factor
-        inner_schaft_box_height = self.outer_schaft_box_height * factor
+        x_pos = (1 - factor) * outer_schaft_box_length
+        inner_schaft_box_lenght = outer_schaft_box_length * factor
+        inner_schaft_box_width = outer_schaft_box_width * factor
+        inner_schaft_box_height = outer_schaft_box_height * factor
 
         inner_schaft_box = TGeo.CNamedShape(
             OPrim.BRepPrimAPI_MakeBox(inner_schaft_box_lenght, inner_schaft_box_width, inner_schaft_box_height).Shape(),
@@ -150,33 +212,40 @@ class EngineMountFactory:
 
         # Throughhole
         radius = inner_schaft_box_width / 2
-        cylinder = TGeo.CNamedShape(OPrim.BRepPrimAPI_MakeCylinder(radius, self.outer_schaft_box_length).Shape(),
+        cylinder = TGeo.CNamedShape(OPrim.BRepPrimAPI_MakeCylinder(radius, outer_schaft_box_length).Shape(),
                                     "throughhole")
         cylinder.set_shape(OExs.rotate_shape(cylinder.shape(), Ogp.gp_OY(), 90))
 
         shapes_to_cut = [inner_schaft_box, cylinder]
         cuted_box = BooleanCADOperation.cut_list_of_shapes(outer_box, shapes_to_cut)
         cuted_box.set_name("engine_mount")
-        return cuted_box
+        return cuted_box, outer_schaft_box_length
 
-    def _create_nuts(self) -> TGeo.CNamedShape:
+    @staticmethod
+    def _create_nuts(outer_schaft_box_length, engine_screw_hole_circle, engine_screw_din_diameter) -> TGeo.CNamedShape:
         """
 
+        :param engine_screw_din_diameter:
+        :param engine_screw_hole_circle:
+        :param outer_schaft_box_length: 
         :return:
         """
-        mount_hole_diameter = 0.01
+        mount_hole_diameter = engine_screw_din_diameter + 0.006
         mount_hole_radius = mount_hole_diameter / 2
-        cylinder_lenght = self.outer_schaft_box_length
-        outer_cylinder = TGeo.CNamedShape(OPrim.BRepPrimAPI_MakeCylinder(mount_hole_radius, cylinder_lenght).Shape(),
+        cylinder_lenght = outer_schaft_box_length
+        outer_cylinder = TGeo.CNamedShape(OPrim.BRepPrimAPI_MakeCylinder(mount_hole_radius, cylinder_lenght*1.1).Shape(),
                                           "outer_cylider")
         outer_cylinder.set_shape(OExs.rotate_shape(outer_cylinder.shape(), Ogp.gp_OY(), 90))
         inner_cylinder = TGeo.CNamedShape(
-            OPrim.BRepPrimAPI_MakeCylinder(mount_hole_radius * .5, cylinder_lenght).Shape(),
+            OPrim.BRepPrimAPI_MakeCylinder(engine_screw_din_diameter/2, cylinder_lenght*1.1).Shape(),
             "inner_cylinder")
         inner_cylinder.set_shape(OExs.rotate_shape(inner_cylinder.shape(), Ogp.gp_OY(), 90))
 
         nut = TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Cut(outer_cylinder.shape(), inner_cylinder.shape()).Shape(), "nut")
-        nut.set_shape(OExs.translate_shp(nut.shape(), Ogp.gp_Vec(0, self.outer_schaft_box_width / 2, 0)))
-        nuts = create_circular_pattern(nut, 4)
-        self.m.display_this_shape(nuts, severity=logging.NOTSET)
-        return nuts
+        nut.set_shape(OExs.translate_shp(nut.shape(), Ogp.gp_Vec(0, engine_screw_hole_circle / 2, 0)))
+        nuts = create_circular_pattern_around_xaxis(nut, 4)
+        ConstructionStepsViewer.instance().display_this_shape(nuts, severity=logging.NOTSET)
+
+        inner_cylinder.set_shape(OExs.translate_shp(inner_cylinder.shape(), Ogp.gp_Vec(0, engine_screw_hole_circle / 2, 0)))
+        inner_cylinders = create_circular_pattern_around_xaxis(inner_cylinder, 4)
+        return nuts, inner_cylinders

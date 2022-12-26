@@ -50,7 +50,7 @@ if __name__ == "__main__":
     inner_cylinder = OExs.rotate_shape(inner_cylinder, Ogp.gp_OY(), 90)
     mutter = OAlgo.BRepAlgoAPI_Cut(outer_cylinder, inner_cylinder).Shape()
     mutter = OExs.translate_shp(mutter, Ogp.gp_Vec(0, width / 2, 0))
-    muttern = create_circular_pattern(mutter, 4)
+    muttern = create_circular_pattern_around_xaxis(mutter, 4)
     engine_mount.append(OAlgo.BRepAlgoAPI_Fuse(engine_mount[-1], muttern).Shape())
     m.display_fuse(engine_mount[-1], engine_mount[-2], muttern, logging.NOTSET)
 

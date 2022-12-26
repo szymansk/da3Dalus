@@ -24,7 +24,7 @@ def create_linear_pattern(namedshape, quantity, distance, direction="x") -> TGeo
     return result
 
 
-def create_circular_pattern(namedshape, quantity, bound=360, start=0) -> TGeo.CNamedShape:
+def create_circular_pattern_around_xaxis(namedshape, quantity, bound=360, start=0) -> TGeo.CNamedShape:
     shapes = []
     logging.debug(f"Creating a circular pattern with {quantity} elements, around {bound} degress starting at {start}")
 

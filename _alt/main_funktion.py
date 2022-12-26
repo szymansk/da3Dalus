@@ -240,7 +240,7 @@ def upload_fuselage():
 		# resp.status_code = 201
 		#open_fuselage(file_path)
 		create_fuselage(file_path)
-		logging.info("prepering to send zip")
+		logging.debug("prepering to send zip")
 		return send_file("stls\\fuselage.zip")
 
 	else:
@@ -251,7 +251,7 @@ def upload_fuselage():
 def my_logging():
     #logging.basicConfig(filename='example.log', level=logging.INFO)
 	logging.basicConfig(level=logging.INFO)
-	logging.info("Start logging")
+	logging.debug("Start logging")
     
 def development():
 	i_cpacs=1
@@ -293,7 +293,7 @@ def development():
 		#except:
 			#logging.error("Not possible to display Fuselage with ribs")
 	else:
-		logging.info("invalid variant")
+		logging.debug("invalid variant")
   
 	#if d_ribs:
 		#display.DisplayShape(airplane_factory.rib_factory.rib.ribs)

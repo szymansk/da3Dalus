@@ -188,3 +188,12 @@ fabric.properties
 
 # idea folder, uncomment if you don't need it
 # .idea
+components/.DS_Store
+
+components/servos/.DS_Store
+
+components/servos/ditex-servo-masse/.DS_Store
+
+.DS_Store
+
+.idea/

@@ -2,6 +2,7 @@ import logging
 import sys
 
 import tigl3.geometry as tgl_geom
+from OCC.Core.TopoDS import TopoDS_Shape
 from tigl3.configuration import CCPACSConfiguration, CCPACSEnginePositions, CCPACSEnginePosition
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
@@ -125,7 +126,7 @@ class SimpleOffsetShapeCreator(AbstractShapeCreator):
 
 class Intersect2ShapesCreator(AbstractShapeCreator):
     """
-    Cut the subtrahend from the minuend (minuend - subtrahend = new_shape).
+    Intersect the sahpe A with shape B (minuend / subtrahend = new_shape).
     """
 
     @property
@@ -144,7 +145,8 @@ class Intersect2ShapesCreator(AbstractShapeCreator):
     def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         shapes = AbstractShapeCreator.return_needed_shapes([self.shape_a, self.shape_b], input_shapes, **kwargs)
         shape_list = list(shapes.values())
-        logging.info(f"intersecting shapes '{list(shapes.keys())[0]}' / '{list(shapes.keys())[1]}' --> '{self.identifier}'")
+        logging.info(
+            f"intersecting shapes '{list(shapes.keys())[0]}' / '{list(shapes.keys())[1]}' --> '{self.identifier}'")
 
         from Extra.BooleanOperationsForLists import BooleanCADOperation
 
@@ -158,9 +160,81 @@ class Intersect2ShapesCreator(AbstractShapeCreator):
         return {self.identifier: cut_shape}
 
 
+class ScaleRotateTranslateCreator(AbstractShapeCreator):
+    """
+    Scale, rotate (x,y,z) and then translate the shape.
+    """
+
+    @property
+    def identifier(self):
+        return self.creator_id
+
+    @identifier.setter
+    def identifier(self, value):
+        self.creator_id = value
+
+    def __init__(self, creator_id: str,
+                 shape_id: str,
+                 scale: float = 1.0,
+                 rot_x: float = .0,
+                 rot_y: float = .0,
+                 rot_z: float = .0,
+                 trans_x: float = .0,
+                 trans_y: float = .0,
+                 trans_z: float = .0):
+        self.identifier = creator_id
+        self.shape_id = shape_id
+        self.trans_x = trans_x
+        self.trans_y = trans_y
+        self.trans_z = trans_z
+        self.rot_x = rot_x
+        self.rot_y = rot_y
+        self.rot_z = rot_z
+        self.scale = scale
+
+    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        shapes = AbstractShapeCreator.return_needed_shapes([self.shape_id], input_shapes, **kwargs)
+        shape_list = list(shapes.values())
+        shape = shape_list[0]
+        trans_shape = self.transform_by(shape,
+                                        trans_x=self.trans_x,
+                                        trans_y=self.trans_y,
+                                        trans_z=self.trans_z,
+                                        rot_x=self.rot_x,
+                                        rot_y=self.rot_y,
+                                        rot_z=self.rot_z,
+                                        scale=self.scale)
+
+        ConstructionStepsViewer.instance().display_this_shape(trans_shape, severity=logging.INFO)
+
+        return {self.identifier: trans_shape}
+
+    @classmethod
+    def transform_by(cls, shape: tgl_geom.CNamedShape,
+                     scale: float = 1.0,
+                     rot_x: float = .0,
+                     rot_y: float = .0,
+                     rot_z: float = .0,
+                     trans_x: float = .0,
+                     trans_y: float = .0,
+                     trans_z: float = .0
+                     ):
+        trafo = tgl_geom.CTiglTransformation()
+        trafo.add_scaling(scale, scale, scale)
+        trafo.add_rotation_x(rot_x)
+        trafo.add_rotation_y(rot_y)
+        trafo.add_rotation_z(rot_z)
+        trafo.add_translation(trans_x, trans_y, trans_z)
+        topods = trafo.transform(shape.shape())
+        return tgl_geom.CNamedShape(topods, f"{shape.name()}_transformed")
+
+
+# === END basic shape operations ===
+
+
 class IgesImportCreator(AbstractShapeCreator):
     """
-    Cut the subtrahend from the minuend (minuend - subtrahend = new_shape).
+    Import an iges file as a shape.
     """
 
     @property
@@ -190,11 +264,9 @@ class IgesImportCreator(AbstractShapeCreator):
         self.rot_z = rot_z
         self.scale = scale
 
-
     def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
 
         topods = self._iges_importer(self.iges_file)
-        shape = tgl_geom.CNamedShape(topods, f"{self.identifier}")
 
         trafo = tgl_geom.CTiglTransformation()
         trafo.add_scaling(self.scale, self.scale, self.scale)
@@ -203,14 +275,14 @@ class IgesImportCreator(AbstractShapeCreator):
         trafo.add_rotation_z(self.rot_z)
         trafo.add_translation(self.trans_x, self.trans_y, self.trans_z)
 
-
-        trans_shape = trafo.transform(shape)
+        topods: TopoDS_Shape = trafo.transform(topods)
+        trans_shape = tgl_geom.CNamedShape(topods, f"{self.identifier}")
 
         ConstructionStepsViewer.instance().display_this_shape(trans_shape, severity=logging.INFO)
 
         return {self.identifier: trans_shape}
 
-    def _iges_importer(self, path_):
+    def _iges_importer(self, path_) -> TopoDS_Shape:
         from OCC.Extend.DataExchange import read_iges_file
         # return read_iges_file(filename=self.iges_file, return_as_shapes=True)
         from OCC.Core.IFSelect import IFSelect_RetDone, IFSelect_ItemsByEntity
@@ -227,15 +299,145 @@ class IgesImportCreator(AbstractShapeCreator):
             return aResShape
         else:
             raise AssertionError("could not import IGES file: {0}".format(path_))
-# === END basic shape operations ===
+
+
+class ExportToIgesCreator(AbstractShapeCreator):
+    @property
+    def identifier(self):
+        return self.creator_id
+
+    @identifier.setter
+    def identifier(self, value):
+        self.creator_id = value
+
+    def __init__(self, creator_id: str, file_path: str, shapes_to_export: list[str] = None):
+        self.identifier: str = creator_id
+        self.file_path: str = file_path
+        self.shapes_to_export: list[str] = shapes_to_export
+
+    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        all_shapes = AbstractShapeCreator.check_if_shapes_are_available(self.shapes_to_export, **kwargs)
+
+        from tigl3.import_export_helper import export_shapes
+        path = os.path.join(self.file_path, f"{self.identifier}.igs")
+        export_shapes(list(all_shapes.values()), path, deflection=0.0001)
+
+        return all_shapes
+
+
+class ExportToStepCreator(AbstractShapeCreator):
+    @property
+    def identifier(self):
+        return self.creator_id
+
+    @identifier.setter
+    def identifier(self, value):
+        self.creator_id = value
+
+    def __init__(self, creator_id: str, file_path: str, shapes_to_export: list[str] = None):
+        self.identifier: str = creator_id
+        self.file_path: str = file_path
+        self.shapes_to_export: list[str] = shapes_to_export
+
+    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        all_shapes = AbstractShapeCreator.check_if_shapes_are_available(self.shapes_to_export, **kwargs)
+
+        # ===============
+        from OCC.Core.STEPControl import STEPControl_Controller, STEPControl_Writer, STEPControl_AsIs
+
+        st = STEPControl_Controller()
+        st.Init()
+
+        step_writer = STEPControl_Writer()
+        dd = step_writer.WS().TransferWriter().FinderProcess()
+        from OCC.Core.Interface import Interface_Static_SetCVal
+
+        # defines the version of schema used for the output STEP file:
+        # 1 or AP214CD (default): AP214, CD version (dated 26 November 1996),
+        # 2 or AP214DIS: AP214, DIS version (dated 15 September 1998).
+        # 3 or AP203: AP203, possibly with modular extensions (depending on data written to a file).
+        # 4 or AP214IS: AP214, IS version (dated 2002)
+        # 5 or AP242DIS: AP242, DIS version.
+        Interface_Static_SetCVal("write.step.schema", "AP203")
+
+        # 0 (Off) : (default) writes STEP files without assemblies.
+        # 1 (On) : writes all shapes in the form of STEP assemblies.
+        # 2 (Auto) : writes shapes having a structure of (possibly nested) TopoDS_Compounds in the form of STEP
+        #    assemblies, single shapes are written without assembly structures.
+        Interface_Static_SetCVal("write.step.assembly", "0")  #
+
+        Interface_Static_SetCVal("write.step.unit", "MM")
+
+        for shape in all_shapes.values():
+            t_shape = ScaleRotateTranslateCreator.transform_by(shape=shape, scale=1000.0)
+            step_writer.Transfer(t_shape.shape(), STEPControl_AsIs)
+            step_path = os.path.join(self.file_path, f"{self.identifier}_{shape.name()}.stp")
+            step_writer.Write(step_path)
+        # ===============
+
+        return all_shapes
+
+
+class ExportToStlCreator(AbstractShapeCreator):
+    @property
+    def identifier(self):
+        return self.creator_id
+
+    @identifier.setter
+    def identifier(self, value):
+        self.creator_id = value
+
+    def __init__(self, creator_id: str,
+                 mode: str = "binary",  # "binary" od "ascii"
+                 linear_deflection: float = 0.00001,
+                 additional_shapes_to_export: list[str] = None):
+        self.identifier: str = creator_id
+        self.mode = mode
+        self.linear_deflection = linear_deflection
+        self.additional_shapes_to_export: list[str] = additional_shapes_to_export
+
+    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        all_shapes = AbstractShapeCreator.check_if_shapes_are_available(self.additional_shapes_to_export, **kwargs)
+        all_shapes.update(input_shapes)
+
+        import stl_exporter.Exporter as Exporter
+        stl_exporter = Exporter.Exporter()
+        stl_exporter.write_stls_from_list(all_shapes.values(), mode=self.mode, linear_deflection=self.linear_deflection)
+        return all_shapes
+
+
+# === END basic import export operations ===
 
 
 class EngineMountShapeCreator(AbstractShapeCreator):
-    def __init__(self, creator_id: str,
-                 mount_plate_thickness: float,
-                 fuselage_index: int,
-                 cpacs_configuration: CCPACSConfiguration = None):
+    def __init__(self, creator_id: str, mount_plate_thickness: float, engine_screw_hole_circle: float,
+                 engine_total_cover_length: float, engine_mount_box_length: float, engine_down_thrust_deg: float,
+                 engine_side_thrust_deg: float, engine_screw_din_diameter: float, engine_screw_length: float,
+                 fuselage_index: int, engine_index: int, cpacs_configuration: CCPACSConfiguration = None):
+        """
+
+        :param engine_index:
+        :param creator_id:
+        :param mount_plate_thickness: thickness of the mount backplate
+        :param engine_screw_hole_circle: the diameter of the screw circle of the engine mount
+        :param engine_total_cover_length: the length of the engine from where it touches the mount to the point which should be outside the cape
+        :param engine_mount_box_length: length of the box, the engine is screwd onto. (can be used to give place for a shaft)
+        :param engine_down_thrust_deg: down thrust in degree
+        :param engine_side_thrust_deg: side thrust in degree
+        :param engine_screw_din_diameter: diameter of the screws used to fix the engine (e.g. 4 for M4)
+        :param engine_screw_length: length of the screws used to fix the engine
+        :param fuselage_index:
+        :param cpacs_configuration:
+        """
+        self.engine_index = engine_index
+        self.engine_screw_length = engine_screw_length
         self.identifier = creator_id
+        self.engine_screw_hole_circle = engine_screw_hole_circle
+        self.engine_total_cover_length = engine_total_cover_length
+        self.engine_mount_box_length = engine_mount_box_length
+        self.engine_down_thrust_deg = engine_down_thrust_deg
+        self.engine_side_thrust_deg = engine_side_thrust_deg
+        self.engine_screw_din_diameter = engine_screw_din_diameter
         self.fuselage_index = fuselage_index
         self.mount_plate_thickness = mount_plate_thickness
         self._cpacs_configuration = cpacs_configuration
@@ -243,7 +445,17 @@ class EngineMountShapeCreator(AbstractShapeCreator):
     def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         _engine_mount_factory = EngineMountFactory(cpacs_configuration=self._cpacs_configuration,
                                                    fuselage_index=self.fuselage_index)
-        mount = _engine_mount_factory.create_engine_mount(plate_thickness=self.mount_plate_thickness)
+        mount = _engine_mount_factory.create_engine_mount(mount_plate_thickness=self.mount_plate_thickness,
+                                                          engine_screw_hole_circle=self.engine_screw_hole_circle,
+                                                          engine_total_cover_length=self.engine_total_cover_length,
+                                                          engine_mount_box_length=self.engine_mount_box_length,
+                                                          engine_down_thrust_deg=self.engine_down_thrust_deg,
+                                                          engine_side_thrust_deg=self.engine_side_thrust_deg,
+                                                          engine_screw_din_diameter=self.engine_screw_din_diameter,
+                                                          engine_screw_length=self.engine_screw_length,
+                                                          fuselage_index=self.fuselage_index,
+                                                          engine_index=self.engine_index,
+                                                          cpacs_configuration=self._cpacs_configuration)
         ConstructionStepsViewer.instance().display_this_shape(mount, logging.INFO, msg=f"{self.identifier}")
         return {str(self.identifier): mount}
 
@@ -286,61 +498,12 @@ class SliceShapesCreator(AbstractShapeCreator):
         return parts
 
 
-class ExportToStlCreator(AbstractShapeCreator):
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
-
-    def __init__(self, creator_id: str,
-                 mode: str = "binary",  # "binary" od "ascii"
-                 linear_deflection: float = 0.00001,
-                 additional_shapes_to_export: list[str] = None):
-        self.identifier: str = creator_id
-        self.mode = mode
-        self.linear_deflection = linear_deflection
-        self.additional_shapes_to_export: list[str] = additional_shapes_to_export
-
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        all_shapes = AbstractShapeCreator.check_if_shapes_are_available(self.additional_shapes_to_export, **kwargs)
-        all_shapes.update(input_shapes)
-
-        import stl_exporter.Exporter as Exporter
-        stl_exporter = Exporter.Exporter()
-        stl_exporter.write_stls_from_list(all_shapes.values(), mode=self.mode, linear_deflection=self.linear_deflection)
-        return all_shapes
-
-
-class ExportToIgesCreator(AbstractShapeCreator):
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
-
-    def __init__(self, creator_id: str, shapes_to_export: list[str] = None):
-        self.identifier: str = creator_id
-        self.shapes_to_export: list[str] = shapes_to_export
-
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        all_shapes = AbstractShapeCreator.check_if_shapes_are_available(self.shapes_to_export, **kwargs)
-
-        import stl_exporter.Exporter as Exporter
-        from tigl3.import_export_helper import export_shapes
-        export_shapes(list(all_shapes.values()), f"{self.identifier}.igs", deflection=0.0001)
-        return all_shapes
-
-
 class EngineCapeShapeCreator(AbstractShapeCreator):
     """
     Creates an engine cape <identifier>.cape and fuselage loft without the cape <identifier>.loft, by cutting the cape
     of the full fuselage loft.
     """
+
     def __init__(self, creator_id: str,
                  fuselage_index: int,
                  engine_index: int,
@@ -362,7 +525,8 @@ class EngineCapeShapeCreator(AbstractShapeCreator):
         from Airplane.Fuselage.FuselageFactory import FuselageFactory
         shapes = FuselageFactory.create_engine_cape(cpacs_configuration=self._cpacs_configuration,
                                                     fuselage_index=self.fuselage_index,
-                                                    motor_cutout_length=2*engine_length+ self.mount_plate_thickness)
+                                                    motor_cutout_length=(
+                                                                                    1 + 0.3 * 1.2) * engine_length + self.mount_plate_thickness)
         ConstructionStepsViewer.instance().display_slice_x(shapes, logging.INFO, name=f"{self.identifier}")
 
         return {f"{self.identifier}.cape": shapes[0], f"{self.identifier}.loft": shapes[1]}
@@ -423,14 +587,22 @@ class FuselageReinforcementShapeCreator(AbstractShapeCreator):
 
 
 class FuselageWingSupportShapeCreator(AbstractShapeCreator):
+    """
+    Creates wing support by using vertical cube shaped ribs.
+
+    TODO: should be improved to ribs that form a trapezoid 50° angles, so printing will be easier.
+         /-----\
+        /_______\
+    """
+
     def __init__(self, creator_id: str, fuselage_index: int, right_main_wing_index: int, rib_quantity: int,
                  rib_width: float, rib_height_factor: float, cpacs_configuration: CCPACSConfiguration = None):
         self.identifier: str = creator_id
-        self.fuselage_index = fuselage_index
-        self.right_main_wing_index = right_main_wing_index
-        self.rib_quantity = rib_quantity
-        self.rib_width = rib_width
-        self.rib_height_factor = rib_height_factor
+        self.fuselage_index: int = fuselage_index
+        self.right_main_wing_index: int = right_main_wing_index
+        self.rib_quantity: int = rib_quantity
+        self.rib_width: float = rib_width
+        self.rib_height_factor: float = rib_height_factor
         self._cpacs_configuration = cpacs_configuration
 
     def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
@@ -497,6 +669,7 @@ class WingAttachmentBoltHolesShapeCreator(AbstractShapeCreator):
     Create two bolts along the roll-axis through the fuselage,
     to hold some rubber band.
     """
+
     def __init__(self, creator_id: str,
                  fuselage_index: int,
                  right_main_wing_index: int,
@@ -543,8 +716,8 @@ class FullWingLoftShapeCreator(AbstractShapeCreator):
             self.identifier)
 
         ConstructionStepsViewer.instance().display_fuse(complete_wing, self._cpacs_configuration.get_wing(
-                self.right_main_wing_index).get_loft(), self._cpacs_configuration.get_wing(
-                self.right_main_wing_index).get_mirrored_loft(), logging.INFO)
+            self.right_main_wing_index).get_loft(), self._cpacs_configuration.get_wing(
+            self.right_main_wing_index).get_mirrored_loft(), logging.INFO)
         ConstructionStepsViewer.instance().display_this_shape(
             complete_wing, logging.INFO, msg=f"{self.identifier}")
         return {str(self.identifier): complete_wing}
@@ -567,15 +740,16 @@ if __name__ == "__main__":
     from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
 
     logging.basicConfig(format='%(levelname)s:%(module)s:%(filename)s(%(lineno)d):%(funcName)s(): %(message)s',
-                        level=logging.INFO, stream=sys.stdout)
+                        level=logging.NOTSET, stream=sys.stdout)
     logging.info(f"Start test for Fuselage Factory with CPACS file {CPACS_FILE_NAME}")
 
     from Extra.ConstructionStepsViewer import ConstructionStepsViewer
     from tigl3.configuration import CCPACSConfiguration, CCPACSConfigurationManager_get_instance
+
     shapeDisplay = ConstructionStepsViewer.instance(dev=True, distance=1, log=False)
 
     tigl_h = tg.get_tigl_handler(CPACS_FILE_NAME)
-    ccpacs_configuration: CCPACSConfiguration = CCPACSConfigurationManager_get_instance()\
+    ccpacs_configuration: CCPACSConfiguration = CCPACSConfigurationManager_get_instance() \
         .get_configuration(tigl_h._handle.value)
 
     # ============
@@ -583,7 +757,7 @@ if __name__ == "__main__":
         FullWingLoftShapeCreator("wings",
                                  right_main_wing_index=1))
 
-    full_wing_file_path = "full_wing.json"
+    full_wing_file_path = "../components/constructions/full_wing.json"
     full_wing_file = open(full_wing_file_path, "w")
     json.dump(fp=full_wing_file, obj=full_wing_loft_node, indent=4, cls=GeneralJSONEncoder)
     full_wing_file.close()
@@ -606,7 +780,7 @@ if __name__ == "__main__":
 
     cut_rudder_from_elevator_node = ConstructionStepNode(
         Cut2ShapesCreator("rudder_with_slot",
-                          #minuend="rudder",
+                          # minuend="rudder",
                           subtrahend="elevator"))
     full_rudder_loft_node.append(cut_rudder_from_elevator_node)
     # "rudder" - "elevator" -> "rudder_with_slot"
@@ -618,17 +792,37 @@ if __name__ == "__main__":
 
     engine_mount_node = ConstructionStepNode(
         EngineMountShapeCreator("engine_mount",
+                                mount_plate_thickness=0.005,
+                                engine_screw_hole_circle=0.042,
+                                engine_total_cover_length=0.0452,
+                                engine_mount_box_length=0.0133,
+                                engine_down_thrust_deg=None,
+                                engine_side_thrust_deg=None,
+                                engine_screw_din_diameter=0.0032,
+                                engine_screw_length=0.016,
                                 fuselage_index=1,
-                                mount_plate_thickness=0.005))
+                                engine_index=1))
     root_node.append(engine_mount_node)
     # -> "engine_mount"
+
+    brushless_shape_import = ConstructionStepNode(
+        IgesImportCreator("brushless",
+                          iges_file="../components/brushless/DPower_AL3542-5_AL3542-7_AL35-09_v2.iges",
+                          trans_x=.0,
+                          trans_y=.0,
+                          trans_z=.0,
+                          rot_x=.0,
+                          rot_y=-2.5,
+                          rot_z=-2.5,
+                          scale=0.001))
+    # >>>> root_node.append(brushless_shape_import)
 
     engine_cape_node = ConstructionStepNode(
         EngineCapeShapeCreator("engine_cape",
                                engine_index=1,
                                fuselage_index=1,
                                mount_plate_thickness=0.005))
-    root_node.append(engine_cape_node)
+    # >>> root_node.append(engine_cape_node)
     # -> "engine_cape.cape", "engine_cape.loft"
 
     fuselage_reinforcement_node = ConstructionStepNode(
@@ -644,19 +838,19 @@ if __name__ == "__main__":
 
     servo_shape_import = ConstructionStepNode(
         IgesImportCreator("servo",
-                          iges_file="servo.iges",
+                          iges_file="../components/servos/unknown/Servo.iges",
                           trans_x=0.67,
                           trans_y=-0.02066,
                           trans_z=.0,
                           rot_x=.0,
                           rot_y=90.0,
-                          rot_z=-90.0+3.4,
+                          rot_z=-90.0 + 3.4,
                           scale=0.001))
     fuselage_reinforcement_node.append(servo_shape_import)
     # -> "servo"
 
     fuse_servo_with_fuselage = ConstructionStepNode(
-        Fuse2ShapesCreator("reinforcement3",
+        Fuse2ShapesCreator("fuselage_reinforcement",
                            shape_a="fuselage_reinforcement",
                            # shape_b="servo"
                            ))
@@ -674,9 +868,9 @@ if __name__ == "__main__":
     # -> "wing_support"
 
     fuse_reinforcement_wing_sup_node = ConstructionStepNode(
-        Fuse2ShapesCreator("reinforcement0",
-                           shape_a="reinforcement3",
-                           #shape_b="wing_support"
+        Fuse2ShapesCreator("fuselage_reinforcement",
+                           shape_a="fuselage_reinforcement",
+                           # shape_b="wing_support"
                            ))
     wing_support_node.append(fuse_reinforcement_wing_sup_node)
     # "reinforcement3" + "wing_support" -> "reinforcement0"
@@ -685,16 +879,16 @@ if __name__ == "__main__":
         FuselageWingSupportShapeCreator("elevator_support",
                                         fuselage_index=1,
                                         right_main_wing_index=2,
-                                        rib_quantity=12,
+                                        rib_quantity=8,
                                         rib_width=0.0004,
                                         rib_height_factor=20))
     fuse_reinforcement_wing_sup_node.append(full_elevator_support_loft_node)
     # -> "elevator_support"
 
     fuse_reinforcement_elevator_sup_node = ConstructionStepNode(
-        Fuse2ShapesCreator("reinforcement1",
-                           shape_a="reinforcement0",
-                           #shape_b="elevator_support"
+        Fuse2ShapesCreator("fuselage_reinforcement",
+                           shape_a="fuselage_reinforcement",
+                           # shape_b="elevator_support"
                            ))
     full_elevator_support_loft_node.append(fuse_reinforcement_elevator_sup_node)
     # "reinforcement0 + "elevator_support" -> "reinforcement1"
@@ -709,9 +903,9 @@ if __name__ == "__main__":
     # -> "electronics_cutout"
 
     reinforcement_node = ConstructionStepNode(
-        Cut2ShapesCreator("reinforcement2",
-                          minuend="reinforcement1",
-                          #subtrahend="electronics_cutout"
+        Cut2ShapesCreator("fuselage_reinforcement",
+                          minuend="fuselage_reinforcement",
+                          # subtrahend="electronics_cutout"
                           ))
     electronics_access_node.append(reinforcement_node)
     # "reinforcement1" - "electronics_cutout" -> "reinforcement2"
@@ -719,7 +913,7 @@ if __name__ == "__main__":
     internal_structure_node = ConstructionStepNode(
         Intersect2ShapesCreator("internal_structure",
                                 shape_a="engine_cape.loft",
-                                #shape_b="reinforcement2"
+                                # shape_b="reinforcement2"
                                 ))
     reinforcement_node.append(internal_structure_node)
     # "engine_cape.loft" / "reinforcement2" -> "internal_structure"
@@ -733,12 +927,12 @@ if __name__ == "__main__":
 
     reinforced_fuselage_node = ConstructionStepNode(
         Cut2ShapesCreator("reinforced_fuselage",
-                          #minuend="offset_fuselage",
+                          # minuend="offset_fuselage",
                           subtrahend="internal_structure"))
     offset_fuselage_node.append(reinforced_fuselage_node)
     # "offset_fuselage" - "internal_structure" -> "reinforced_fuselage",
 
-    load_create_fullwing_from_json = JSONStepNode(json_file_path="full_wing.json",
+    load_create_fullwing_from_json = JSONStepNode(json_file_path="../components/constructions/full_wing.json",
                                                   cpacs_configuration=ccpacs_configuration)
     reinforced_fuselage_node.append(load_create_fullwing_from_json)
     # -> "wings"
@@ -746,14 +940,14 @@ if __name__ == "__main__":
     cut_wing_from_fuselage_node = ConstructionStepNode(
         Cut2ShapesCreator("fuselage_wo_wings",
                           minuend="reinforced_fuselage",
-                          #subtrahend="wings"
+                          # subtrahend="wings"
                           ))
     load_create_fullwing_from_json.append(cut_wing_from_fuselage_node)
     # "reinforced_fuselage" - "wings" -> "fuselage_wo_wings"
 
     cut_elevator_from_fuselage_node = ConstructionStepNode(
         Cut2ShapesCreator("fuselage_wo_elevator",
-                          #minuend="fuselage_wo_wings",
+                          # minuend="fuselage_wo_wings",
                           subtrahend="elevator"))
     cut_wing_from_fuselage_node.append(cut_elevator_from_fuselage_node)
     # "fuselage_wo_wings" - "elevator" -> "fuselage_wo_elevator"
@@ -768,20 +962,20 @@ if __name__ == "__main__":
     cut_bolts_from_fuselage_node = ConstructionStepNode(
         Cut2ShapesCreator("final_fuselage",
                           minuend="fuselage_wo_elevator",
-                          #subtrahend="attachment_bolts"
+                          # subtrahend="attachment_bolts"
                           ))
     wing_attachment_bolt_node.append(cut_bolts_from_fuselage_node)
     # "fuselage_wo_elevator" - "attachment_bolts" -> "final_fuselage"
 
     stamp_shape_import = ConstructionStepNode(
         IgesImportCreator("servo_stamp",
-                          iges_file="servo_stamp.iges",
+                          iges_file="../components/servos/unknown/servo_stamp.iges",
                           trans_x=0.67,
                           trans_y=-0.02066,
                           trans_z=.0,
                           rot_x=.0,
                           rot_y=90.0,
-                          rot_z=-90.0+3.4,
+                          rot_z=-90.0 + 3.4,
                           scale=0.001))
     cut_bolts_from_fuselage_node.append(stamp_shape_import)
     # -> "servo_stamp"
@@ -789,7 +983,7 @@ if __name__ == "__main__":
     cut_servo_from_fuselage_node = ConstructionStepNode(
         Cut2ShapesCreator("final_fuselage",
                           minuend="final_fuselage",
-                          #subtrahend="servo_stamp"
+                          # subtrahend="servo_stamp"
                           ))
     stamp_shape_import.append(cut_servo_from_fuselage_node)
     # "final_fuselage" - "servo_stamp" -> "final_fuselage"
@@ -797,20 +991,20 @@ if __name__ == "__main__":
     fuse_servo_with_final_fuselage_node = ConstructionStepNode(
         Fuse2ShapesCreator("final_fuselage",
                            shape_a="final_fuselage",
-                           #shape_b="servo_stamp"
+                           # shape_b="servo_stamp"
                            ))
     stamp_shape_import.append(fuse_servo_with_final_fuselage_node)
     # "final_fuselage" + "servo_stamp" -> "final_fuselage"
 
     stamp_fill_shape_import = ConstructionStepNode(
         IgesImportCreator("servo_stamp_fill",
-                          iges_file="servo_stamp_fill.iges",
+                          iges_file="../components/servos/unknown/servo_stamp_fill.iges",
                           trans_x=0.67,
                           trans_y=-0.02066,
                           trans_z=.0,
                           rot_x=.0,
                           rot_y=90.0,
-                          rot_z=-90.0+3.4,
+                          rot_z=-90.0 + 3.4,
                           scale=0.001))
     fuse_servo_with_final_fuselage_node.append(stamp_fill_shape_import)
     # -> "servo_stamp"
@@ -818,7 +1012,7 @@ if __name__ == "__main__":
     cut_servo_fill_from_fuselage_node = ConstructionStepNode(
         Cut2ShapesCreator("final_fuselage",
                           minuend="final_fuselage",
-                          #subtrahend="servo_stamp_fill"
+                          # subtrahend="servo_stamp_fill"
                           ))
     stamp_fill_shape_import.append(cut_servo_fill_from_fuselage_node)
     # "final_fuselage" - "servo_stamp" -> "final_fuselage"
@@ -835,20 +1029,25 @@ if __name__ == "__main__":
                                                         "elevators[0]",
                                                         "elevators[1]",
                                                         "rudder_with_slot"]))
-    shape_slicer_node.append(shape_stl_export_node)
+    # >>>> shape_slicer_node.append(shape_stl_export_node)
     # "fuselage_slicer[0] .. [4]", "engine_mount", "engine_cape.cape",
     # "elevators[0]", "elevators[1]", "rudder_with_slot" -> *
 
     shape_iges_export_node = ConstructionStepNode(
         ExportToIgesCreator("aircombat",
-                            shapes_to_export=[#"engine_mount",
+                            file_path="../exports",
+                            shapes_to_export=["brushless",
                                               "engine_cape.cape",
                                               "elevator",
                                               "final_fuselage",
                                               "rudder_with_slot"]))
-    root_node.append(shape_iges_export_node)
-    # "engine_mount", "engine_cape.cape", "elevator", "final_fuselage", "rudder_with_slot" ->
+    # >>>> root_node.append(shape_iges_export_node)
+    # "engine_cape.cape", "elevator", "final_fuselage", "rudder_with_slot" ->
 
+    mount_step_export_node = ConstructionStepNode(
+        ExportToStepCreator("engine_mount_ig", file_path="../exports", shapes_to_export=["engine_mount"]))
+    root_node.append(mount_step_export_node)
+    # "engine_mount", "engine_cape.cape", "elevator", "final_fuselage", "rudder_with_slot" ->
 
     # dump to a json string
     json_data: str = json.dumps(root_node, indent=4, cls=GeneralJSONEncoder)
@@ -860,12 +1059,14 @@ if __name__ == "__main__":
 
     # dump again to check
     print(json.dumps(myMap, indent=2, cls=GeneralJSONEncoder))
+    try:
+        # build on basis of deserialized json
+        structure = myMap.create_shape()
+        from pprint import pprint
 
-    # build on basis of deserialized json
-    structure = myMap.create_shape()
-
-    from pprint import pprint
-    pprint(structure)
+        pprint(structure)
+    except Exception as err:
+        logging.fatal(f"{err.with_traceback()}")
 
     shapeDisplay.start()
 

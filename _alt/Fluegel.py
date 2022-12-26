@@ -217,7 +217,7 @@ class fluegel:
                 #display.DisplayShape(wing.get_loft().shape(),transparency=0.8)
 
                 #in STL exportieren
-                aus.write_stl_file(wing.get_loft().shape(),"fluegel_neu")
+                aus.write_stl_file(wing.get_loft().shape())
 
                 '''
                 # Set up the mirror
@@ -237,7 +237,7 @@ class fluegel:
 
             else:
                 #display.DisplayShape(wing.get_loft(),transparency=0.8)
-                aus.write_stl_file(wing.get_loft(),"fluegel_neu")
+                aus.write_stl_file(wing.get_loft())
 
                 '''
                 display.DisplayShape(verbunden,transparency=0.8)
