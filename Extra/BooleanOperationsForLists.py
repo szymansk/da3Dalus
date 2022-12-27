@@ -57,7 +57,7 @@ def cut_list_of_namedshapes(shape: TGeo.CNamedShape, shape_list, name="list_of_s
     return result
 
 
-def fuse_list_of_shapes(shape_list, msg="", trans=False) -> OTopo.TopoDS_Shape:
+def fuse_list_of_shapes(shape_list: list[OTopo.TopoDS_Shape], msg="", trans=False) -> OTopo.TopoDS_Shape:
     """
     fuses all the shapes in the list to one shape
     :param shape_list: list of shapes
@@ -68,12 +68,14 @@ def fuse_list_of_shapes(shape_list, msg="", trans=False) -> OTopo.TopoDS_Shape:
     logging.debug(f"Starting to fuse_list_of_shapes")
     fused = []
     md = ConstructionStepsViewer.instance()
+
     for index, shape in enumerate(shape_list):
-        logging.debug(f"Fussing Shape {index + 1} from {len(shape_list)}")
+        logging.debug(f"Fusing shape {index + 1} from {len(shape_list)}")
         if not fused:
             fused.append(shape)
         else:
             fused.append(OAlgo.BRepAlgoAPI_Fuse(fused[-1], shape).Shape())
+
     if len(fused) > 1:
         md.display_fuse(fused[-1], fused[-2], shape_list[-1], logging.NOTSET, msg, trans)
     else:

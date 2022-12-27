@@ -175,9 +175,10 @@ class FuselageFactory:
         return complete_wing
 
     @classmethod
-    def create_engine_cape(cls, cpacs_configuration, fuselage_index, motor_cutout_length) -> list[TGeo.CNamedShape]:
+    def create_engine_cape(cls, cpacs_configuration, fuselage_index, mount_plate_thickness, motor_cutout_length) -> list[TGeo.CNamedShape]:
         '''
         Cut the fuselage tip, so the motor can be positioned there. Fuselage loft is updated and returns the Engine cape Shape
+        :param mount_plate_thickness:
         :param motor_cutout_length: length of the motor
         '''
         fuselage: TConfig.CCPACSFuselage = cpacs_configuration.get_fuselage(fuselage_index)
@@ -189,11 +190,15 @@ class FuselageFactory:
             OPrim.BRepPrimAPI_MakeBox(fuselage_dimensions.get_point(1), motor_cutout_length,
                                       fuselage_dimensions.get_width(),
                                       fuselage_dimensions.get_height()).Shape(), "cape_cut_out")
+        cutout_box2 = TGeo.CNamedShape(
+            OPrim.BRepPrimAPI_MakeBox(fuselage_dimensions.get_point(1), motor_cutout_length+mount_plate_thickness,
+                                      fuselage_dimensions.get_width(),
+                                      fuselage_dimensions.get_height()).Shape(), "cape_cut_out")
 
         engine_cape = OAlgo.BRepAlgoAPI_Common(fuselage_loft.shape(), cutout_box.shape()).Shape()
         named_engine_cape = TGeo.CNamedShape(engine_cape, "engine_cape")
 
-        cut_fuselage = OAlgo.BRepAlgoAPI_Cut(fuselage_loft.shape(), cutout_box.shape()).Shape()
+        cut_fuselage = OAlgo.BRepAlgoAPI_Cut(fuselage_loft.shape(), cutout_box2.shape()).Shape()
         named_cut_fuselage = TGeo.CNamedShape(cut_fuselage, "cut_fuselage")
 
         ConstructionStepsViewer.instance().display_this_shape(named_cut_fuselage, severity=logging.NOTSET)

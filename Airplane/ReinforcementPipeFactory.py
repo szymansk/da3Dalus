@@ -73,24 +73,25 @@ class ReinforcementePipeFactory:
     def create_reinforcement_pipe_fuselage(cls, radius, y_max, y_min, z_max, z_min,
                                            fuselage_dimensions: PDim.ShapeDimensions) -> TGeo.CNamedShape:
 
+        length = abs(fuselage_dimensions.get_x_min() - fuselage_dimensions.get_x_max())
 
         # pipe1
-        start: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_dimensions.get_x_min(), y_max, z_max)
+        start: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_dimensions.get_x_min()-length/2.0, y_max, z_max)
         end: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_dimensions.get_x_max(), y_max, z_max)
         pipe1 = ReinforcementePipeFactory.create_pipe_section(start, end, radius, "pipe_section_1")
 
         # pipe2
-        start: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_dimensions.get_x_min(), y_min, z_max)
+        start: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_dimensions.get_x_min()-length/2.0, y_min, z_max)
         end: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_dimensions.get_x_max(), y_min, z_max)
         pipe2 = ReinforcementePipeFactory.create_pipe_section(start, end, radius, "pipe_section_2")
 
         # pipe3
-        start: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_dimensions.get_x_min(), y_min, z_min)
+        start: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_dimensions.get_x_min()-length/2.0, y_min, z_min)
         end: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_dimensions.get_x_max(), y_min, z_min)
         pipe3 = ReinforcementePipeFactory.create_pipe_section(start, end, radius, "pipe_section_3")
 
         # pipe4
-        start: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_dimensions.get_x_min(), y_max, z_min)
+        start: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_dimensions.get_x_min()-length/2.0, y_max, z_min)
         end: Ogp.gp_Pnt = Ogp.gp_Pnt(fuselage_dimensions.get_x_max(), y_max, z_min)
         pipe4 = ReinforcementePipeFactory.create_pipe_section(start, end, radius, "pipe_section_4")
 

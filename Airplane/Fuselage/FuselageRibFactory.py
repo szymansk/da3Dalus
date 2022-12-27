@@ -32,30 +32,31 @@ class FuselageRibFactory:
         logging.debug(logstr)
 
         # Factor to make the ribs length and height bigger, to ensure that they are big enough
-        factor = 1.2
-        rib_length = PDim.ShapeDimensions(fuselage_loft).get_length() * factor
-        rib_height = PDim.ShapeDimensions(fuselage_loft).get_height() * factor
+        factor = 0
+        rib_length = PDim.ShapeDimensions(fuselage_loft).get_length() * (1.+2*factor)
+        rib_height = PDim.ShapeDimensions(fuselage_loft).get_height() * (1.+2*factor)
         box = OPrim.BRepPrimAPI_MakeBox(rib_length, rib_width, rib_height).Shape()
 
-        # move to the front by 10% and center on y-axis
-        moved_box = OExs.translate_shp(box, Ogp.gp_Vec(-rib_length * 0.1, -rib_width / 2, 0))
+        # move to the front by factor% and center on y-axis
+        moved_box = OExs.translate_shp(box, Ogp.gp_Vec(-rib_length * factor/2, -rib_width / 2, 0))
 
         # vertical ribs
+        x_pos = PDim.ShapeDimensions(fuselage_loft).get_x_min()
         logging.debug(f"Creating vertikal ribs")
         ver_rib = moved_box
         ver_rib_right = TGeo.CNamedShape(
-            OExs.translate_shp(ver_rib, Ogp.gp_Vec(0.0, y_max, PDim.ShapeDimensions(fuselage_loft).get_z_min())),
+            OExs.translate_shp(ver_rib, Ogp.gp_Vec(x_pos, y_max, PDim.ShapeDimensions(fuselage_loft).get_z_min())),
             f"{fuselage_loft.name()}_vertikal_rib_1")
         ver_rib_left = TGeo.CNamedShape(
-            OExs.translate_shp(ver_rib, Ogp.gp_Vec(0.0, y_min, PDim.ShapeDimensions(fuselage_loft).get_z_min())),
+            OExs.translate_shp(ver_rib, Ogp.gp_Vec(x_pos, y_min, PDim.ShapeDimensions(fuselage_loft).get_z_min())),
             f"{fuselage_loft.name()}_vertikal_rib_2")
 
         # Horizontal ribs
         logging.debug(f"Creating Horizontal ribs")
         hor_rib = OExs.rotate_shape(moved_box, Ogp.gp_OX(), 90)
-        hor_rib_top = TGeo.CNamedShape(OExs.translate_shp(hor_rib, Ogp.gp_Vec(0.0, rib_height / 2, z_max)),
+        hor_rib_top = TGeo.CNamedShape(OExs.translate_shp(hor_rib, Ogp.gp_Vec(x_pos, rib_height / 2, z_max)),
                                        f"{fuselage_loft.name()}_horizontal_rib_1")
-        hor_rib_bottom = TGeo.CNamedShape(OExs.translate_shp(hor_rib, Ogp.gp_Vec(0.0, rib_height / 2, z_min)),
+        hor_rib_bottom = TGeo.CNamedShape(OExs.translate_shp(hor_rib, Ogp.gp_Vec(x_pos, rib_height / 2, z_min)),
                                           f"{fuselage_loft.name()}_horizontal_rib_2")
 
         # Fuse all ribs

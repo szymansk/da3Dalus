@@ -1,0 +1,16 @@
+name: cad_modelling_service_v7.7
+channels:
+    - conda-forge
+    - dlr-sc
+dependencies:
+    - python=3.9
+    - pythreejs
+    - tigl3=3.2.3
+    - pythonocc-core
+    - flask
+    #- ipywidgets
+    #- numpy
+    - jinja2
+    - pip
+    - pip:
+        - -r requirements.txt

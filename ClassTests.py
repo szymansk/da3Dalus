@@ -147,7 +147,7 @@ if __name__ == "__main__":
         test_class = ap.AirplaneFactory(tigl_h, True)
         test_class.create_airplane()
     if test_class_name == "EngineMount":
-        test_class = em.EngineMountFactory(tigl_h)
+        test_class = em.EngineMountFactory()
         motor_lenght = 0.043
         shaft_lenght = 0.03
         mount_width = 0.035
