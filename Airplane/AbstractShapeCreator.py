@@ -55,9 +55,11 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
                              **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         # for each none position of shapes_need, we take one of the input_shapes
         # we expect input shapes ordered most significant last
-        if sum(x is None for x in shapes_needed) > len(input_shapes):
+        len_input_shapes = 0 if input_shapes is None else len(input_shapes)
+        if sum(x is None for x in shapes_needed) > len_input_shapes:
             raise KeyError('there are less input_shapes than shapes_needed.')
-        enum = input_shapes.keys().__iter__()
-        needed_shapes = [shape_key if shape_key is not None else next(enum) for i, shape_key in enumerate(shapes_needed)]
-        shapes = AbstractShapeCreator.check_if_shapes_are_available(needed_shapes, **kwargs)
-        return {key: shapes[key] for key in needed_shapes}
+        if input_shapes is not None:
+            enum = input_shapes.keys().__iter__()
+            shapes_needed = [shape_key if shape_key is not None else next(enum) for i, shape_key in enumerate(shapes_needed)]
+        shapes = AbstractShapeCreator.check_if_shapes_are_available(shapes_needed, **kwargs)
+        return {key: shapes[key] for key in shapes_needed}
