@@ -1,4 +1,3 @@
-from inspect import _void
 from turtle import width
 from typing import Any
 from unittest import result
@@ -18,7 +17,7 @@ from _alt.shape_verschieben import *
 class RibFactory:
     
     def __init__(self) -> None:
-        self.rib:Rib= Rib()
+        self.rib:Rib = Rib()
         self.md=ConstructionStepsViewer.instance()
               
     #TODO where does height, thikness, extrude come frome?
@@ -164,7 +163,7 @@ class RibFactory:
         angle = radians(angle)
         trns = gp_Trsf()
         trns.SetRotation(axis, angle)
-        brep_trns = OBuilder.BRepBuilderAPI_Transform(self.rib.ribs, trns, False)
+        brep_trns = BRepBuilderAPI_Transform(self.rib.ribs, trns, False)
         brep_trns.Build()
         self.rib.ribs = brep_trns.Shape()
     

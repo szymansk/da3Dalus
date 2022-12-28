@@ -153,6 +153,17 @@ class ConstructionStepsViewer:
             self.display_this_shape(common_shape, severity=severity, msg=f"{common_shape.name()} {msg}", trans=trans)
             self.display.FitAll()
 
+    def display_offset(self, common_shape: TGeo.CNamedShape, named_shape1: TGeo.CNamedShape,
+                       named_shape2: TGeo.CNamedShape, severity, msg="", trans=False):
+        if self.dev and severity >= logging.root.level:
+            shape1 = OExs.translate_shp(named_shape1.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
+            shape2 = OExs.translate_shp(named_shape2.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
+            logging.debug(f"{self.y_position=}")
+            self.display.DisplayShape(shape1, color='BLUE', transparency=0.3)
+            self.display.DisplayShape(shape2, color='GREEN')
+            self.display_this_shape(common_shape, severity=severity, msg=f"{common_shape.name()} {msg}", trans=trans)
+            self.display.FitAll()
+
     def display_multipe_cuts(self, cuted_shape: TGeo.CNamedShape, original_shape: TGeo.CNamedShape, severity,
                              list_to_cut=list[: TGeo.CNamedShape], msg="", trans=False):
         if self.dev and severity >= logging.root.level:

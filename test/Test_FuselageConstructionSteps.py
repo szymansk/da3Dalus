@@ -10,7 +10,7 @@ from Airplane.FuselageConstructionSteps import FullWingLoftShapeCreator, Cut2Sha
     EngineMountShapeCreator, EngineCapeShapeCreator, FuselageReinforcementShapeCreator, IgesImportCreator, \
     Fuse2ShapesCreator, FuselageWingSupportShapeCreator, FuselageElectronicsAccessCutOutShapeCreator, \
     Intersect2ShapesCreator, SimpleOffsetShapeCreator, WingAttachmentBoltHolesShapeCreator, ExportToStlCreator, \
-    StepImportCreator, ExportToIgesCreator, ExportToStepCreator
+    StepImportCreator, ExportToIgesCreator, ExportToStepCreator, FullWingShapeCreator
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
 
 if __name__ == "__main__":
@@ -18,7 +18,7 @@ if __name__ == "__main__":
     NUMBER_OF_CUTS = 5
 
     logging.basicConfig(format='%(levelname)s:%(module)s:%(filename)s(%(lineno)d):%(funcName)s(): %(message)s',
-                        level=logging.DEBUG, stream=sys.stdout)
+                        level=logging.INFO, stream=sys.stdout)
     logging.info(f"Start test for Fuselage Factory with CPACS file {CPACS_FILE_NAME}")
 
     from Extra.ConstructionStepsViewer import ConstructionStepsViewer
@@ -43,6 +43,12 @@ if __name__ == "__main__":
     # =============
     # defining as simple root node
     root_node = ConstructionRootNode(creator_id="root")
+
+    full_wing_node = ConstructionStepNode(
+        FullWingShapeCreator("full_wing",
+                             fuselage_index=1,
+                             right_main_wing_index=1))
+    root_node.append(full_wing_node)
 
     full_elevator_loft_node = ConstructionStepNode(
         FullWingLoftShapeCreator("elevator",
@@ -290,29 +296,30 @@ if __name__ == "__main__":
     stamp_fill_shape_import.append(cut_servo_fill_from_fuselage_node)
     # "final_fuselage" - "servo_stamp" -> "final_fuselage"
 
+    offset_cape_node = ConstructionStepNode(
+        SimpleOffsetShapeCreator("engine_cape.big",
+                                 shape="engine_cape.cape",
+                                 offset=0.0008))
+    cut_servo_fill_from_fuselage_node.append(offset_cape_node)
+    # "engine_cape.loft" -> "offset_fuselage"
+
     cut_engine_mount_from_fuselage_node = ConstructionStepNode(
-        Cut2ShapesCreator("final_fuselage_test",
+        Cut2ShapesCreator("final_fuselage",
                           minuend="final_fuselage",
                           subtrahend="engine_mount"
                           ))
-    root_node.append(cut_engine_mount_from_fuselage_node)
+    offset_cape_node.append(cut_engine_mount_from_fuselage_node)
 
     shape_slicer_node = ConstructionStepNode(
         SliceShapesCreator("fuselage_slicer", number_of_parts=5))
     cut_engine_mount_from_fuselage_node.append(shape_slicer_node)
     # "final_fuselage" -> "fuselage_slicer[0] .. [4]"
 
-    offset_cape_node = ConstructionStepNode(
-        SimpleOffsetShapeCreator("engine_cape.cape",
-                                 shape="engine_cape.cape",
-                                 offset=0.0008))
-    root_node.append(offset_cape_node)
-    # "engine_cape.loft" -> "offset_fuselage"
 
     shape_stl_export_node = ConstructionStepNode(
         ExportToStlCreator("stl_exporter",
                            additional_shapes_to_export=["engine_mount",
-                                                        "engine_cape.cape",
+                                                        "engine_cape.big",
                                                         "elevators[0]",
                                                         "elevators[1]",
                                                         "rudder"]))
@@ -345,32 +352,36 @@ if __name__ == "__main__":
     root_node.append(servo_model_import)
     # -> "servo"
 
-    shape_iges_export_node = ConstructionStepNode(
-        ExportToIgesCreator("aircombat",
-                            file_path="../exports",
-                            shapes_to_export=[  # "engine_mount",
-                                              "brushless",
-                                              "engine_cape.cape",
-                                              "elevator",
-                                              "final_fuselage",
-                                              "rudder",
-                                              "servo_model"
-                                              ]))
-    # root_node.append(shape_iges_export_node)
-    # "engine_cape.cape", "elevator", "final_fuselage", "rudder_with_slot" ->
-
-    mount_step_export_node = ConstructionStepNode(
+    aircraft_step_export_node = ConstructionStepNode(
         ExportToStepCreator(Path(CPACS_FILE_NAME).stem,
                             file_path="../exports",
                             shapes_to_export=["engine_mount",
                                               "brushless",
-                                              "engine_cape.cape",
+                                              "engine_cape.big",
                                               "elevator",
                                               "final_fuselage",
                                               "rudder",
-                                              "servo_model"]))
-    root_node.append(mount_step_export_node)
+                                              "servo_model",
+                                              "full_wing.right",
+                                              "full_wing.left"]))
+    root_node.append(aircraft_step_export_node)
     # "engine_mount", "engine_cape.cape", "elevator", "final_fuselage", "rudder_with_slot" ->
+
+    shape_iges_export_node = ConstructionStepNode(
+        ExportToIgesCreator("aircombat",
+                            file_path="../exports",
+                            shapes_to_export=["engine_mount",
+                                              "brushless",
+                                              "engine_cape.big",
+                                              "elevator",
+                                              "final_fuselage",
+                                              "rudder",
+                                              "servo_model",
+                                              "full_wing.right",
+                                              "full_wing.left"
+                                              ]))
+    # root_node.append(shape_iges_export_node)
+    # "engine_cape.cape", "elevator", "final_fuselage", "rudder_with_slot" ->
 
     # dump to a json string
     json_data: str = json.dumps(root_node, indent=4, cls=GeneralJSONEncoder)

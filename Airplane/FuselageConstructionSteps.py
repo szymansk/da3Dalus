@@ -120,7 +120,10 @@ class SimpleOffsetShapeCreator(AbstractShapeCreator):
         result = TGeo.CNamedShape(solid_shape, f"{shape.name()}_offset")
 
         msg = f"Fuselage with {str(self.offset)=} meters"
-        ConstructionStepsViewer.instance().display_this_shape(result, severity=logging.INFO, msg=msg)
+        if self.offset > 0:
+            ConstructionStepsViewer.instance().display_offset(result, result, shape, severity=logging.INFO, msg=msg)
+        else:
+            ConstructionStepsViewer.instance().display_offset(result, shape, result, severity=logging.INFO, msg=msg)
 
         return {self.identifier: result}
 
@@ -395,7 +398,7 @@ class ExportToIgesCreator(AbstractShapeCreator):
 
         from tigl3.import_export_helper import export_shapes
         path = os.path.join(self.file_path, f"{self.identifier}.igs")
-        export_shapes(list(all_shapes.values()), path, deflection=0.0001)
+        export_shapes(list(all_shapes.values()), path, deflection=0.000001)
 
         return all_shapes
 
@@ -418,17 +421,39 @@ class ExportToStepCreator(AbstractShapeCreator):
         all_shapes = AbstractShapeCreator.check_if_shapes_are_available(self.shapes_to_export, **kwargs)
         logging.info(f"exporting step model '{self.identifier}' --> '{self.file_path}'")
 
-        # ===============
-        from OCC.Core.STEPControl import STEPControl_Controller, STEPControl_Writer, STEPControl_AsIs
 
+        from OCC.Core.STEPControl import STEPControl_AsIs
+        step_writer = self._generateStepWriter()
+
+        for name, shape in all_shapes.items():
+            step_writer = self._generateStepWriter()
+            t_shape = ScaleRotateTranslateCreator.transform_by(shape=shape, scale=1000.0)
+            step_writer.Transfer(t_shape.shape(), STEPControl_AsIs)
+            step_path = os.path.join(self.file_path, f"{self.identifier}_{name}.stp")
+            step_writer.Write(step_path)
+
+        step_writer = self._generateStepWriter()
+        for name, shape in all_shapes.items():
+            t_shape = ScaleRotateTranslateCreator.transform_by(shape=shape, scale=1000.0)
+            import OCC.Core.IFSelect as IFSelect
+            if step_writer.Transfer(t_shape.shape(), STEPControl_AsIs) != IFSelect.IFSelect_RetDone:
+                logging.fatal(f"error while exporting '{name}'")
+                raise RuntimeError(f"error while exporting '{name}'")
+
+        step_path = os.path.join(self.file_path, f"{self.identifier}.stp")
+        logging.debug(f"writing model to '{step_path}'")
+        step_writer.Write(step_path)
+
+        return all_shapes
+
+    def _generateStepWriter(self):
+        # ===============
+        from OCC.Core.STEPControl import STEPControl_Controller, STEPControl_Writer
         st = STEPControl_Controller()
         st.Init()
-
         step_writer = STEPControl_Writer()
         dd = step_writer.WS().TransferWriter().FinderProcess()
-
         from OCC.Core.Interface import Interface_Static_SetCVal, Interface_Static_SetIVal
-
         # defines the version of schema used for the output STEP file:
         # 1 or AP214CD (default): AP214, CD version (dated 26 November 1996),
         # 2 or AP214DIS: AP214, DIS version (dated 15 September 1998).
@@ -436,30 +461,14 @@ class ExportToStepCreator(AbstractShapeCreator):
         # 4 or AP214IS: AP214, IS version (dated 2002)
         # 5 or AP242DIS: AP242, DIS version.
         Interface_Static_SetCVal("write.step.schema", "AP214CD")
-
         # 0 (Off) : (default) writes STEP files without assemblies.
         # 1 (On) : writes all shapes in the form of STEP assemblies.
         # 2 (Auto) : writes shapes having a structure of (possibly nested) TopoDS_Compounds in the form of STEP
         #    assemblies, single shapes are written without assembly structures.
         Interface_Static_SetIVal("write.step.assembly", 0)
-
-        Interface_Static_SetCVal("write.step.unit", "MM")
-
-        Interface_Static_SetIVal("write.precision.mode", 1)
-
-        for shape_key in all_shapes.keys():
-            shape = all_shapes[shape_key]
-            t_shape = ScaleRotateTranslateCreator.transform_by(shape=shape, scale=1000.0)
-            import OCC.Core.IFSelect as IFSelect
-            if step_writer.Transfer(t_shape.shape(), STEPControl_AsIs, False) != IFSelect.IFSelect_RetDone:
-                logging.fatal(f"error while exporting '{shape_key}'")
-                raise RuntimeError(f"error while exporting '{shape_key}'")
-
-        step_path = os.path.join(self.file_path, f"{self.identifier}.stp")
-        step_writer.Write(step_path)
-        # ===============
-
-        return all_shapes
+        Interface_Static_SetCVal("write.step.unit", "M")
+        Interface_Static_SetIVal("write.precision.mode", 0)
+        return step_writer
 
 
 class ExportToStlCreator(AbstractShapeCreator):
@@ -809,6 +818,53 @@ class FullWingLoftShapeCreator(AbstractShapeCreator):
         ConstructionStepsViewer.instance().display_this_shape(
             complete_wing, logging.INFO, msg=f"{self.identifier}")
         return {str(self.identifier): complete_wing}
+
+    @property
+    def identifier(self):
+        return self.creator_id
+
+    @identifier.setter
+    def identifier(self, value):
+        self.creator_id = value
+
+
+class FullWingShapeCreator(AbstractShapeCreator):
+    def __init__(self, creator_id: str,
+                 right_main_wing_index: int,
+                 fuselage_index: int,
+                 cpacs_configuration: CCPACSConfiguration = None,
+                 ):
+        self.fuselage_index = fuselage_index
+        self.identifier: str = creator_id
+        self.right_main_wing_index = right_main_wing_index
+        self._cpacs_configuration = cpacs_configuration
+
+    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        right_wing, left_wing = self._create_right_main_wing()
+
+        ConstructionStepsViewer.instance().display_this_shape(
+            right_wing, logging.INFO, msg=f"{self.identifier}")
+        ConstructionStepsViewer.instance().display_this_shape(
+            left_wing, logging.INFO, msg=f"{self.identifier}")
+        return {f"{str(self.identifier)}.right": right_wing, f"{str(self.identifier)}.left": left_wing}
+
+    def _create_right_main_wing(self):
+        """
+        Creates the .stl files of the wing describes in the CPACSConfiguration
+        :return:
+        """
+        logging.info("Creating right main wing")
+        right_main_wing = self._cpacs_configuration.get_wing(self.right_main_wing_index)
+        fuselage = self._cpacs_configuration.get_fuselage(self.fuselage_index)
+
+        from Airplane.Wing.WingFactory import WingFactory
+        wing_factory = WingFactory(right_main_wing, fuselage)
+        wing_factory.create_wing_with_inbuilt_servo()
+        right_wing = wing_factory.get_shape()
+
+        left_wing = wing_factory.create_mirrored_wing()
+
+        return right_wing, left_wing
 
     @property
     def identifier(self):

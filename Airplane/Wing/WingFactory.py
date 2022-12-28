@@ -8,8 +8,9 @@ from Airplane.Wing.RuderFactory import RuderFactory
 from Airplane.Wing.ServoRecessFactory import ServoRecessFactory
 from Airplane.Wing.WingRibFactory import *
 from Dimensions.ShapeDimensions import ShapeDimensions
+from Extra.BooleanOperationsForLists import fuse_list_of_namedshapes
 from Extra.CollisionDetector import CollisionDetector
-from factories.RibFactory import *
+#from factories.RibFactory import *
 
 
 class WingFactory:
