@@ -19,14 +19,18 @@ class CablePipeFactory:
     This CLass is used to create a Cable Pipe in the wing
     """
 
-    def __init__(self, wing) -> None:
+    def __init__(self, cpacs_configuration, wing_nr) -> None:
+        self.display = ConstructionStepsViewer.instance()
+        self.cpacs_configuration: TConfig.CCPACSConfiguration = cpacs_configuration
 
-        self.wing: TConfig.CCPACSWing = wing
+        self.wing: TConfig.CCPACSWing = self.cpacs_configuration.get_wing(wing_nr)
+        self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
+        self.wing_shape: OTopo.TopoDS_Shape = self.wing_loft.shape()
+        self.wing_koordinates = PDim.ShapeDimensions(self.wing_loft)
 
         self.named_shape = TGeo.CNamedShape()
         self.points: list[Ogp.gp_Pnt] = []
         self.radius: float = 0.002
-        self.display = ConstructionStepsViewer.instance()
 
     def get_shape(self) -> TGeo.CNamedShape:
         return self.named_shape
@@ -36,13 +40,12 @@ class CablePipeFactory:
         Create a Pipe that runs through the given Points with the given radius
         :param points: list of points
         :param radius: in meters
-        :return: the named shape of the created pipe
+        :return: the namedshape of the created pipe
         """
         self.points = points
         self.radius = radius
         pipe_shapes = []
-        logging.debug(f"Creating a pipe through {len(self.points)=} points")
-
+        logging.info(f"Creating a pipe thru {len(self.points)=} points")
         for i in range(0, len(self.points) - 1):
             pipe_shapes.append(self._pipe_section(self.points[i], self.points[i + 1], self.radius, i))
 
@@ -53,16 +56,15 @@ class CablePipeFactory:
         self.loft = named_pipe
         return named_pipe
 
-    def points_route_through(self, servo_dimensions: ShapeDimensions, fuselage_dimensions: ShapeDimensions):
+    def points_route_thru(self, servo_dimensions: ShapeDimensions, fuselage_dimensions: ShapeDimensions):
         """
-        This method returns a list of point that describe the route of a pipe. It starts at the centre of the servo and
+        This method returs a list of point that describe the rout of a pipe. it Starts at the centre of the servo and
         ends at the centre of the fuselage
         :param servo_dimensions: dimensions of the servo
         :param fuselage_dimensions: dimensions of the fuselage
         :return: list of points
         """
         points = []
-
         # Point0
         p: Ogp.gp_Pnt = servo_dimensions.get_point(0)
         point0: Ogp.gp_Pnt = Ogp.gp_Pnt(p.X(), p.Y(), p.Z())
@@ -82,7 +84,7 @@ class CablePipeFactory:
         points.append(point2)
 
         # point3
-        point3: Ogp.gp_Pnt = Ogp.gp_Pnt(wing_inner_cord.get_x_mid(), fuselage_mid_point.Y(), fuselage_mid_point.Z())
+        point3: Ogp.gp_Pnt = Ogp.gp_Pnt(p.X(), fuselage_mid_point.Y(), fuselage_mid_point.Z())
         points.append(point3)
         return points
 
@@ -95,20 +97,20 @@ class CablePipeFactory:
         :param index: a number to identify the pipesection
         :return: named shape of pipe section
         """
-        logging.debug(f"Creating pipesection_{index}")
+        logging.info(f"Creating pipesection_{index}")
         make_wire = OBuilder.BRepBuilderAPI_MakeWire()
         edge = OBuilder.BRepBuilderAPI_MakeEdge(start, end).Edge()
         make_wire.Add(edge)
         make_wire.Build()
         wire = make_wire.Wire()
 
-        my_dir = Ogp.gp_Dir(end.X() - start.X(), end.Y() - start.Y(), end.Z() - start.Z())
-        circle = Ogp.gp_Circ(gp_Ax2(start, my_dir), radius)
+        mydir = Ogp.gp_Dir(end.X() - start.X(), end.Y() - start.Y(), end.Z() - start.Z())
+        circle = Ogp.gp_Circ(gp_Ax2(start, mydir), radius)
 
         profile_edge = OBuilder.BRepBuilderAPI_MakeEdge(circle).Edge()
         profile_wire = OBuilder.BRepBuilderAPI_MakeWire(profile_edge).Wire()
         profile_face = OBuilder.BRepBuilderAPI_MakeFace(profile_wire).Face()
-        pipe_section = TGeo.CNamedShape(OOff.BRepOffsetAPI_MakePipe(wire, profile_face).Shape(), "Pipesection")
+        pipe_section = TGeo.CNamedShape(OOff.BRepOffsetAPI_MakePipe(wire, profile_face).Shape(), f"pipesection_{index}")
         return pipe_section
 
     def _pipe_corner(self, centre: Ogp.gp_Pnt, radius: float, index=0) -> TGeo.CNamedShape:
@@ -119,7 +121,7 @@ class CablePipeFactory:
         :param index: a number to identify the corner
         :return: named shape of the corner
         """
-        logging.debug(f"Creating pipecorner_{index}")
+        logging.info(f"Creating pipecorner_{index}")
         sphere: OTopo.TopoDS_Shape = OPrim.BRepPrimAPI_MakeSphere(centre, radius).Shape()
         named_sphere: TGeo.CNamedShape = TGeo.CNamedShape(sphere, f"pipecorner_{index}")
         return named_sphere

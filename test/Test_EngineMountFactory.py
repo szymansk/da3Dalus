@@ -34,10 +34,9 @@ if __name__ == "__main__":
     m.display_in_secondfloor(fuselage_loft, "", True)
 
     test_class = em.EngineMountFactory()
-    my_engine_mount = test_class.create_engine_mount(PLATE_THICKNESS, 0.034, self.engine_total_cover_length,
-                                                     self.engine_mount_box_length, self.engine_down_thrust_deg,
-                                                     self.engine_side_thrust_deg, self.engine_screw_din_diameter,
-                                                     self.engine_srew_length, self.fuselage_index, 1,
+    my_engine_mount = test_class.create_engine_mount(self.engine_total_cover_length, self.engine_mount_box_length,
+                                                     self.engine_down_thrust_deg, self.engine_side_thrust_deg, 0.034,
+                                                     self.engine_screw_din_diameter, self.engine_srew_length, 1,
                                                      cpacs_configuration)
 
     m.display_in_secondfloor(my_engine_mount)

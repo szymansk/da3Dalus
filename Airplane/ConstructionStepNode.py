@@ -18,7 +18,6 @@ class ConstructionStepNode(AbstractShapeCreator, MutableMapping):
         self.successors = {} if successors is None else successors
         self.creator: AbstractShapeCreator = creator
         self.identifier = f"{creator.identifier}.node"
-        self._output_shapes = None
 
     @property
     def identifier(self):
@@ -58,10 +57,26 @@ class ConstructionStepNode(AbstractShapeCreator, MutableMapping):
         :param kwargs: holding the shapes of all previous steps as a dict of shapes
         :return: a dict with all shapes that have been created up to this step
         """
-        self._output_shapes = self.creator.create_shape(input_shapes=input_shapes, **kwargs)
-        kwargs.update(self._output_shapes)
+        output_shapes = self.creator.create_shape(input_shapes=input_shapes, **kwargs)
+
+        if input_shapes is None:
+            _input_shapes = {}
+        else:
+            _input_shapes = input_shapes.copy()  # otherwise we will give a reverence down, which will be changed
+
+        # remove existing objects
+        for key in output_shapes:
+            try:
+                del _input_shapes[key]
+            except KeyError:
+                pass
+        # and overwrite with new values so that the last created shapes are at the end of the dict
+        _input_shapes.update(output_shapes.copy())
+
+        kwargs.update(output_shapes.copy())
         for key in self.successors:
-            kwargs.update(self.successors.get(key).create_shape(input_shapes=self._output_shapes, **kwargs))
+            kwargs.update(self.successors.get(key).create_shape(_input_shapes, **kwargs))
+        # del _input_shapes  # deleting this list
         return kwargs
 
 
@@ -118,7 +133,7 @@ class ConstructionRootNode(AbstractShapeCreator, MutableMapping):
         :return: a dict with all shapes that have been created up to this step
         """
         for key in self.successors:
-            kwargs.update(self.successors.get(key).create_shape(input_shapes=self._output_shapes, **kwargs))
+            kwargs.update(self.successors.get(key).create_shape(input_shapes={}, **kwargs))
         return kwargs
 
 

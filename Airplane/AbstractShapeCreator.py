@@ -22,7 +22,7 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
     def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         """
         This method will create a shape. The shape can depend on shapes of previous steps. All previous steps
-        occur in the kwargs variable. The key are the 'identifier's and the values hold the shapes.
+        occur in the kwargs variable. The keys are the 'identifier's and the values hold the shapes.
         :param input_shapes: shapes created in the step before
         :param kwargs: the previously created shapes identified by their 'identifier's
         :return: a new dictionary with new shapes. the naming convention is that shapes, which have known name
@@ -59,7 +59,7 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         if sum(x is None for x in shapes_needed) > len_input_shapes:
             raise KeyError('there are less input_shapes than shapes_needed.')
         if input_shapes is not None:
-            enum = input_shapes.keys().__iter__()
-            shapes_needed = [shape_key if shape_key is not None else next(enum) for i, shape_key in enumerate(shapes_needed)]
+            enum = input_shapes.keys().__reversed__()
+            shapes_needed = [shape_key if shape_key is not None else next(enum) for shape_key in shapes_needed]
         shapes = AbstractShapeCreator.check_if_shapes_are_available(shapes_needed, **kwargs)
         return {key: shapes[key] for key in shapes_needed}

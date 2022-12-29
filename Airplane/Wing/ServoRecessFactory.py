@@ -1,3 +1,5 @@
+import logging
+
 import OCC.Core.BRepAlgoAPI as OAlgo
 import OCC.Core.BRepPrimAPI as OPrim
 import OCC.Core.gp as Ogp
@@ -13,19 +15,18 @@ from _alt.Wand_erstellen import *
 
 
 class ServoRecessFactory:
-    def __init__(self, wing):
-
-        self.wing: TConfig.CCPACSWing = wing
+    def __init__(self, cpacs_configuration, wingNr):
+        self.cpacs_configuration: TConfig.CCPACSConfiguration = cpacs_configuration
+        self.wing: TConfig.CCPACSWing = self.cpacs_configuration.get_wing(wingNr)
         self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
         self.wing_shape: OTopo.TopoDS_Shape = self.wing_loft.shape()
         self.wing_dimensions = PDim.ShapeDimensions(self.wing_loft)
-
         self.shape: OTopo.TopoDS_Shape = OTopo.TopoDS_Shape()
         self.shapes: list = []
         # self.ruder_dimensions=ShapeDimensions(ruder_shape)
         # self.servo_size=servo_size
         self.display = ConstructionStepsViewer.instance()
-        logging.debug(f"{self.wing_dimensions.__str__()}")
+        logging.info(f"{self.wing_dimensions.__str__()}")
 
     def create_servoRecess_option1(self, named_ruder, servo_size=(0.0023, 0.0024, 0.0012)) -> TGeo.CNamedShape:
         """
@@ -34,7 +35,7 @@ class ServoRecessFactory:
         :param servo_size: (float, float, float)
         :return:
         """
-        logging.debug(f"Creating servo Recess for {servo_size=} for {named_ruder.name()}")
+        logging.info(f"Creating servo Recess for {servo_size=} for {named_ruder.name()}")
         self.ruder_shape = named_ruder.shape()
         self.ruder_dimensions = ShapeDimensions(named_ruder)
         self.servo_size = servo_size

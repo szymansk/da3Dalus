@@ -18,17 +18,17 @@ class ReinforcementePipeFactory:
     This class ist used to create the reinforcementpipe for the wing and the fuselage
     '''
 
-    def __init__(self, wing, fuselage):
+    def __init__(self, wing):
 
         self.wing: TConfig.CCPACSWing = wing
         self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
         self.wing_shape: OTopo.TopoDS_Shape = self.wing_loft.shape()
         self.wing_koordinates = PDim.ShapeDimensions(self.wing_loft)
 
-        self.fuselage: TConfig.CCPACSFuselage = fuselage
-        self.fuselage_loft: TGeo.CNamedShape = self.fuselage.get_loft()
-        self.fuselage_shape: OTopo.TopoDS_Shape = self.fuselage_loft.shape()
-        self.fuselage_coordinates = PDim.ShapeDimensions(self.fuselage_loft)
+        # self.fuselage: TConfig.CCPACSFuselage = fuselage
+        # self.fuselage_loft: TGeo.CNamedShape = self.fuselage.get_loft()
+        # self.fuselage_shape: OTopo.TopoDS_Shape = self.fuselage_loft.shape()
+        # self.fuselage_coordinates = PDim.ShapeDimensions(self.fuselage_loft)
 
         self.named_shape: TGeo.CNamedShape = TGeo.CNamedShape()
         self.shapes: list[TGeo.CNamedShape] = []
@@ -103,7 +103,7 @@ class ReinforcementePipeFactory:
         return self.named_shape
 
     @classmethod
-    def create_pipe_section(cls, start: Ogp.gp_Pnt, end: Ogp.gp_Pnt, radius: int, name="") -> TGeo.CNamedShape:
+    def create_pipe_section(cls, start: Ogp.gp_Pnt, end: Ogp.gp_Pnt, radius: float, name="") -> TGeo.CNamedShape:
         '''
         Creates a cylinder between the start and end, with the given radius
         :param start: starting point

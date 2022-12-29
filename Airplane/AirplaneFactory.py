@@ -83,19 +83,37 @@ class AirplaneFactory:
         export_components_to_stl(cut_parts)
 
     def create_right_horizontal_tail_wing(self):
-        """
-        Creates the rigth horizontal tail wing
+        '''
+        Creates the rigth horizontal tailwing
         :return:
-        """
+        '''
         # Todo Creat wing with ribs, rudercutout, hingecutout
-        pass
+        logging.info("Creating " + name)
+        self.wing_factory = WingFactory(self.tigl_handle, wing_index)
+        self.wing_factory.create_solid_wing()
+        named_wing = self.wing_factory.get_shape()
+
+        parts_quantity = 1
+        slicer = ShapeSlicer(named_wing, parts_quantity)
+        slicer.slice_by_cut()
+
+        my_exporter = exp.exporter()
+        my_exporter.write_stls_from_list(slicer.parts_list, name)
 
     def create_left_horizontal_tail_wing(self):
-        """
+        '''
         Creates a mirrored shape of the "right_tailwing" in the factory, must be called after create_right_h_tailwing
         :return:
-        """
-        pass
+        '''
+        left_wing = self.wing_factory.create_mirrored_wing()
+
+        parts_quantity = 2
+        slicer = ShapeSlicer(left_wing, parts_quantity)
+        slicer.slice_by_cut()
+
+        my_exporter = exp.exporter()
+        my_exporter.write_stls_from_list(slicer.parts_list, "left_mainwing")
+
 
     def create_fuselage(self, parts_quantity=6):
         """

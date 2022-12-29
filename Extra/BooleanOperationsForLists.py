@@ -77,7 +77,9 @@ def fuse_list_of_shapes(shape_list: list[OTopo.TopoDS_Shape], msg="", trans=Fals
             fused.append(OAlgo.BRepAlgoAPI_Fuse(fused[-1], shape).Shape())
 
     if len(fused) > 1:
-        md.display_fuse(fused[-1], fused[-2], shape_list[-1], logging.NOTSET, msg, trans)
+        md.display_fuse(TGeo.CNamedShape(fused[-1], ""),
+                        TGeo.CNamedShape(fused[-2], ""),
+                        TGeo.CNamedShape(shape_list[-1], ""), logging.NOTSET, msg, trans)
     else:
         md.display_this_shape(shape_list[-1], severity=logging.NOTSET)
     return fused[-1]

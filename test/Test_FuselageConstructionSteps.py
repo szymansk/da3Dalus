@@ -10,7 +10,7 @@ from Airplane.FuselageConstructionSteps import FullWingLoftShapeCreator, Cut2Sha
     EngineMountShapeCreator, EngineCapeShapeCreator, FuselageReinforcementShapeCreator, IgesImportCreator, \
     Fuse2ShapesCreator, FuselageWingSupportShapeCreator, FuselageElectronicsAccessCutOutShapeCreator, \
     Intersect2ShapesCreator, SimpleOffsetShapeCreator, WingAttachmentBoltHolesShapeCreator, ExportToStlCreator, \
-    StepImportCreator, ExportToIgesCreator, ExportToStepCreator, FullWingShapeCreator
+    StepImportCreator, ExportToIgesCreator, ExportToStepCreator, FullWingShapeCreator, EngineMountPanelShapeCreator
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
 
 if __name__ == "__main__":
@@ -72,22 +72,25 @@ if __name__ == "__main__":
     elevator_slicer_node = ConstructionStepNode(
         SliceShapesCreator("elevators", number_of_parts=2))
     full_elevator_loft_node.append(elevator_slicer_node)
-    # "elevator" -> "elevators[0]", "elevators[1]"
+    # "elevator" -> "elevator[0]", "elevator[1]"
 
     engine_mount_node = ConstructionStepNode(
-        EngineMountShapeCreator("engine_mount",
-                                mount_plate_thickness=0.005,
-                                engine_screw_hole_circle=0.042,
-                                engine_total_cover_length=0.0452,
-                                engine_mount_box_length=0.0133*2.5,  # 0.0133,
-                                engine_down_thrust_deg=None,
-                                engine_side_thrust_deg=None,
-                                engine_screw_din_diameter=0.0032,
-                                engine_screw_length=0.016,
-                                fuselage_index=1,
-                                engine_index=1))
+        EngineMountShapeCreator("engine_mount", mount_plate_thickness=0.005, engine_screw_hole_circle=0.042,
+                                engine_mount_box_length=0.0133 * 2.5, engine_screw_din_diameter=0.0032,
+                                engine_screw_length=0.016, engine_index=1, engine_total_cover_length=None,
+                                engine_down_thrust_deg=None, engine_side_thrust_deg=None))
     root_node.append(engine_mount_node)
-    # -> "engine_mount"
+
+    engine_panel_node = ConstructionStepNode(
+        EngineMountPanelShapeCreator("engine_mount_plate", mount_plate_thickness=0.005, engine_screw_hole_circle=0.042,
+                                     engine_mount_box_length=0.0133 * 2.5,
+                                     engine_index=1, fuselage_index=1, engine_total_cover_length=None,
+                                     engine_down_thrust_deg=None, engine_side_thrust_deg=None))
+    engine_mount_node.append(engine_panel_node)
+
+    fuse_mount_with_plate = ConstructionStepNode(
+        Fuse2ShapesCreator("engine_mount"))
+    engine_panel_node.append(fuse_mount_with_plate)
 
     engine_cape_node = ConstructionStepNode(
         EngineCapeShapeCreator("engine_cape",
@@ -95,7 +98,7 @@ if __name__ == "__main__":
                                fuselage_index=1,
                                engine_total_cover_length=0.0452,
                                engine_mount_box_length=0.0133 * 2.5,
-                               mount_plate_thickness=0.005))
+                               mount_plate_thickness=0.005+0.0008))
     root_node.append(engine_cape_node)
     # -> "engine_cape.cape", "engine_cape.loft"
 
@@ -296,11 +299,11 @@ if __name__ == "__main__":
     stamp_fill_shape_import.append(cut_servo_fill_from_fuselage_node)
     # "final_fuselage" - "servo_stamp" -> "final_fuselage"
 
-    offset_cape_node = ConstructionStepNode(
-        SimpleOffsetShapeCreator("engine_cape.big",
-                                 shape="engine_cape.cape",
-                                 offset=0.0008))
-    cut_servo_fill_from_fuselage_node.append(offset_cape_node)
+    # offset_cape_node = ConstructionStepNode(
+    #     SimpleOffsetShapeCreator("engine_cape.big",
+    #                              shape="engine_cape.cape",
+    #                              offset=0.0008))
+    # cut_servo_fill_from_fuselage_node.append(offset_cape_node)
     # "engine_cape.loft" -> "offset_fuselage"
 
     cut_engine_mount_from_fuselage_node = ConstructionStepNode(
@@ -308,7 +311,7 @@ if __name__ == "__main__":
                           minuend="final_fuselage",
                           subtrahend="engine_mount"
                           ))
-    offset_cape_node.append(cut_engine_mount_from_fuselage_node)
+    cut_servo_fill_from_fuselage_node.append(cut_engine_mount_from_fuselage_node)
 
     shape_slicer_node = ConstructionStepNode(
         SliceShapesCreator("fuselage_slicer", number_of_parts=5))
@@ -319,13 +322,17 @@ if __name__ == "__main__":
     shape_stl_export_node = ConstructionStepNode(
         ExportToStlCreator("stl_exporter",
                            additional_shapes_to_export=["engine_mount",
-                                                        "engine_cape.big",
-                                                        "elevators[0]",
-                                                        "elevators[1]",
+                                                        "engine_cape.cape",
+                                                        "final_fuselage[0]",
+                                                        "final_fuselage[1]",
+                                                        "final_fuselage[2]",
+                                                        "final_fuselage[3]",
+                                                        "final_fuselage[4]",
+                                                        "elevator[1]",
                                                         "rudder"]))
     shape_slicer_node.append(shape_stl_export_node)
     # "fuselage_slicer[0] .. [4]", "engine_mount", "engine_cape.cape",
-    # "elevators[0]", "elevators[1]", "rudder_with_slot" -> *
+    # "elevator[0]", "elevator[1]", "rudder_with_slot" -> *
 
     brushless_shape_import = ConstructionStepNode(
         IgesImportCreator("brushless",
@@ -352,36 +359,39 @@ if __name__ == "__main__":
     root_node.append(servo_model_import)
     # -> "servo"
 
+    lipo_model_import = ConstructionStepNode(
+        IgesImportCreator("lipo_model",
+                          iges_file="../components/lipo/D-Power HD-2200 4S Lipo (14,8V) 30C v1.iges",
+                          trans_x=0.09,
+                          trans_y=0.0,
+                          trans_z=-0.029,
+                          rot_x=0.0,
+                          rot_y=0.0,
+                          rot_z=0,
+                          scale=0.001))
+    root_node.append(lipo_model_import)
+    # -> "servo"
+
     aircraft_step_export_node = ConstructionStepNode(
         ExportToStepCreator(Path(CPACS_FILE_NAME).stem,
                             file_path="../exports",
                             shapes_to_export=["engine_mount",
                                               "brushless",
-                                              "engine_cape.big",
+                                              "lipo_model",
+                                              #"engine_cape.big",
+                                              "engine_cape.cape",
                                               "elevator",
                                               "final_fuselage",
                                               "rudder",
                                               "servo_model",
                                               "full_wing.right",
-                                              "full_wing.left"]))
+                                              "full_wing.left",
+                                              "full_wing.right_ail",
+                                              "full_wing.left_ail"
+                                              ]))
     root_node.append(aircraft_step_export_node)
     # "engine_mount", "engine_cape.cape", "elevator", "final_fuselage", "rudder_with_slot" ->
 
-    shape_iges_export_node = ConstructionStepNode(
-        ExportToIgesCreator("aircombat",
-                            file_path="../exports",
-                            shapes_to_export=["engine_mount",
-                                              "brushless",
-                                              "engine_cape.big",
-                                              "elevator",
-                                              "final_fuselage",
-                                              "rudder",
-                                              "servo_model",
-                                              "full_wing.right",
-                                              "full_wing.left"
-                                              ]))
-    # root_node.append(shape_iges_export_node)
-    # "engine_cape.cape", "elevator", "final_fuselage", "rudder_with_slot" ->
 
     # dump to a json string
     json_data: str = json.dumps(root_node, indent=4, cls=GeneralJSONEncoder)
@@ -400,8 +410,6 @@ if __name__ == "__main__":
 
         pprint(structure)
     except Exception as err:
-        logging.fatal(f"{err}")
-
-    shapeDisplay.start()
-
+        shapeDisplay.start()
+        raise err
     pass
