@@ -1,3 +1,5 @@
+from typing import Union
+
 import OCC.Core.BRepOffsetAPI as OOff
 import tigl3.configuration as TConfig
 
@@ -9,56 +11,44 @@ from Extra.BooleanOperationsForLists import *
 
 class FuselageFactory:
     @classmethod
-    def create_wing_support_shape(cls, cpacs_configuration, fuselage_index: int, right_main_wing_index: int,
-                                  rib_quantity: int, rib_width: float, rib_height_factor):
-        overlap_dimensions = FuselageFactory.overlap_fuselage_wing_dimensions(cpacs_configuration, fuselage_index,
-                                                                              right_main_wing_index)
+    def create_wing_support_shape(cls, rib_quantity: int, rib_width: float, rib_height_factor: float,
+                                  fuselage_loft: TGeo.CNamedShape, full_wing_loft: TGeo.CNamedShape) \
+            -> TGeo.CNamedShape:
+        overlap_dimensions = FuselageFactory.overlap_fuselage_wing_dimensions(fuselage_loft, full_wing_loft)
         shape__wing_support = FuselageRibFactory.create_wing_support_ribs(overlap_dimensions=overlap_dimensions,
-                                                                          fuselage_loft=cpacs_configuration.get_fuselage(
-                                                                              fuselage_index).get_loft(),
-                                                                          wing_loft=cpacs_configuration.get_wing(
-                                                                              right_main_wing_index).get_loft(),
+                                                                          fuselage_loft=fuselage_loft,
+                                                                          full_wing_loft=full_wing_loft,
                                                                           rib_quantity=rib_quantity,
                                                                           rib_width=rib_width,
                                                                           rib_height_factor=rib_height_factor)
         return shape__wing_support
 
     @classmethod
-    def create_hardware_cutout(cls, cpacs_configuration, fuselage_index, ribcage_factor,
-                               right_main_wing_index, position=None):
+    def create_hardware_cutout(cls, ribcage_factor: float, fuselage_loft: TGeo.CNamedShape,
+                               full_wing_loft: TGeo.CNamedShape, position: str = Union["top", "middle", "bottom"]) \
+            -> TGeo.CNamedShape:
         # Hardware Opening for inserting akku, rc, ... from the bottom
-        position = position if position is not None else FuselageFactory._calc_wing_position(cpacs_configuration,
-                                                                                         fuselage_index,
-                                                                                         right_main_wing_index)
+        position = position if position is not None else FuselageFactory._calc_wing_position(fuselage_loft,
+                                                                                             full_wing_loft)
         shape__hardware_cutout: TGeo.CNamedShape = FuselageCutouts.create_hardware_cutout(
-            PDim.ShapeDimensions(cpacs_configuration.get_fuselage(fuselage_index).get_loft()),
-            PDim.ShapeDimensions(cpacs_configuration.get_wing(right_main_wing_index).get_loft()), ribcage_factor,
-            position)
+            PDim.ShapeDimensions(fuselage_loft), PDim.ShapeDimensions(full_wing_loft), ribcage_factor, position)
         return shape__hardware_cutout
 
     @classmethod
-    def create_wing_support(cls, overlap_dimensions, fuselage_loft: TGeo.CNamedShape, wing_loft: TGeo.CNamedShape):
+    def create_wing_support(cls, overlap_dimensions, fuselage_loft: TGeo.CNamedShape, wing_loft: TGeo.CNamedShape) -> TGeo.CNamedShape:
         # Wing Support ribs
         shape__wing_support: TGeo.CNamedShape = FuselageRibFactory.create_wing_support_ribs(
-            overlap_dimensions=overlap_dimensions, fuselage_loft=fuselage_loft, wing_loft=wing_loft, rib_quantity=6,
-            rib_width=0.0008, rib_height_factor=1.0)
+            overlap_dimensions=overlap_dimensions, fuselage_loft=fuselage_loft, full_wing_loft=wing_loft,
+            rib_quantity=6, rib_width=0.0008, rib_height_factor=1.0)
         return shape__wing_support
 
     @classmethod
-    def create_fuselage_reinforcement(cls, cpacs_configuration,
-                                      fuselage_index,
-                                      reinforcement_pipes_radius,
-                                      rib_width, ribcage_factor,
-                                      right_main_wing_index,
-                                      fuselage_loft: TGeo.CNamedShape):
+    def create_fuselage_reinforcement(cls, reinforcement_pipes_radius: float, rib_width: float, rib_spacing: float, ribcage_factor: float,
+                                      fuselage_loft: TGeo.CNamedShape, full_wing_loft: TGeo.CNamedShape) -> TGeo.CNamedShape:
         internal_structure: list[TGeo.CNamedShape] = []
         # Calculate the positions for the rib
-        y_max, y_min, z_max, z_min = FuselageFactory._calc_rib_positions(ribcage_factor,
-                                                                         cpacs_configuration,
-                                                                         fuselage_index,
-                                                                         right_main_wing_index,
-                                                                         fuselage_loft,
-                                                                         spacing=0.003)
+        y_max, y_min, z_max, z_min = FuselageFactory._calc_rib_positions(ribcage_factor, fuselage_loft, full_wing_loft,
+                                                                         spacing=rib_spacing)
 
         fuselage_dimensions = PDim.ShapeDimensions(fuselage_loft);
 
@@ -85,7 +75,7 @@ class FuselageFactory:
         return shape__fuselage_reinforcement
 
     @classmethod
-    def _offset_fuselage(cls, fuselage_loft, offset=0.001) -> TGeo.CNamedShape:
+    def _offset_fuselage(cls, fuselage_loft: TGeo.CNamedShape, offset=0.001) -> TGeo.CNamedShape:
         """
         """
         offset_maker: OOff.BRepOffsetAPI_MakeOffsetShape = OOff.BRepOffsetAPI_MakeOffsetShape()
@@ -96,83 +86,67 @@ class FuselageFactory:
         return result
 
     @classmethod
-    def _is_high_wing(cls, overlapdimension, cpacs_configuration, fuselage_index: int = 1) -> bool:
+    def _is_high_wing(cls, overlapdimension, fuselage_loft: TGeo.CNamedShape) -> bool:
         """
+        :param fuselage_loft:
         :return: True if wing is on top
         """
         logging.warning(
-            f"{overlapdimension.get_z_min()=} < {PDim.ShapeDimensions(cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_z_max()}")
-        if overlapdimension.get_z_max() > PDim.ShapeDimensions(
-                cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_z_mid():
+            f"{overlapdimension.get_z_min()=} < {PDim.ShapeDimensions(fuselage_loft).get_z_max()}")
+        if overlapdimension.get_z_max() > PDim.ShapeDimensions(fuselage_loft).get_z_mid():
             logging.info(f"High wing aircraft")
             return True
         else:
             return False
 
     @classmethod
-    def _is_low_wing(cls, overlapdimension, cpacs_configuration, fuselage_index) -> bool:
+    def _is_low_wing(cls, overlapdimension, fuselage_loft: TGeo.CNamedShape) -> bool:
         """
         return: True if wing is on bottom
+        :param fuselage_loft:
         """
         logging.warning(
-            f"{overlapdimension.get_z_max()=} > {PDim.ShapeDimensions(cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_z_min()}")
-        if overlapdimension.get_z_min() < PDim.ShapeDimensions(
-                cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_z_mid():
+            f"{overlapdimension.get_z_max()=} > {PDim.ShapeDimensions(fuselage_loft).get_z_min()}")
+        if overlapdimension.get_z_min() < PDim.ShapeDimensions(fuselage_loft).get_z_mid():
             logging.info(f"Low wing aircraft")
             return True
         else:
             return False
 
     @classmethod
-    def _is_mid_wing(cls, overlapdimension, cpacs_configuration, fuselage_index, toleranz_factor=0.25) -> bool:
+    def _is_mid_wing(cls, overlapdimension, fuselage_loft: TGeo.CNamedShape, toleranz_factor=0.25) -> bool:
         """
+        :param fuselage_loft:
         :param toleranz_factor: factor to determine if the wing is close to the middle default is set 0.25 (25%)
         :return: True if the Wing is near the middle of the fuselage +- tolerance
         """
-        toleranz = PDim.ShapeDimensions(
-            cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_height() * toleranz_factor
+        toleranz = PDim.ShapeDimensions(fuselage_loft).get_height() * toleranz_factor
 
-        if PDim.ShapeDimensions(cpacs_configuration.get_fuselage(
-                fuselage_index).get_loft()).get_z_mid() + toleranz >= overlapdimension.get_z_mid() \
-                >= PDim.ShapeDimensions(
-            cpacs_configuration.get_fuselage(fuselage_index).get_loft()).get_z_mid() - toleranz:
+        if PDim.ShapeDimensions(fuselage_loft).get_z_mid() + toleranz >= overlapdimension.get_z_mid() \
+                >= PDim.ShapeDimensions(fuselage_loft).get_z_mid() - toleranz:
             return True
         else:
             return False
 
     @classmethod
-    def overlap_fuselage_wing_dimensions(cls, cpacs_configuration, fuselage_index,
-                                         right_main_wing_index) -> PDim.ShapeDimensions:
+    def overlap_fuselage_wing_dimensions(cls, fuselage_loft: TGeo.CNamedShape, full_wing_loft: TGeo.CNamedShape) -> PDim.ShapeDimensions:
         """
         Creates an overlap shape using the Opencascade function Common between wing and fuselage
+        :param full_wing_loft:
+        :param fuselage_loft:
         :return: the shape dimensions of the overlap shape
         """
-        wing = FuselageFactory._create_complete_wing_shape(cpacs_configuration, right_main_wing_index)
-        fuselage_loft = cpacs_configuration.get_fuselage(fuselage_index).get_loft()
         overlap = BooleanCADOperation.intersect_shape_with_shape(
             fuselage_loft,
-            wing,
+            full_wing_loft,
             "Overlap")
         result0 = PDim.ShapeDimensions(overlap)
         ConstructionStepsViewer.instance().display_common(overlap,
                                                           fuselage_loft,
-                                                          wing, logging.FATAL)
+                                                          full_wing_loft,
+                                                          logging.FATAL)
         result = PDim.ShapeDimensions(overlap)
         return result
-
-    @classmethod
-    def _create_complete_wing_shape(cls, cpacs_configuration, right_main_wing_index) -> TGeo.CNamedShape:
-        """
-        creates the complete main wing outer shape, by mirroring the right wing and fusing them together
-        :return: complete wing shape
-        """
-        complete_wing = BooleanCADOperation.fuse_shapes(cpacs_configuration.get_wing(right_main_wing_index).get_loft(),
-                                                        cpacs_configuration.get_wing(right_main_wing_index).get_mirrored_loft(),
-                                                        "Complete wing")
-        # ConstructionStepsViewer.instance().display_fuse(complete_wing,
-        #                                                 cpacs_configuration.get_wing(right_main_wing_index).get_loft(),
-        #                                                 cpacs_configuration.get_wing(right_main_wing_index).get_mirrored_loft())
-        return complete_wing
 
     @classmethod
     def create_engine_cape(cls, mount_plate_thickness: float, motor_cutout_length: float,
@@ -208,54 +182,26 @@ class FuselageFactory:
 
         return [named_engine_cape, named_cut_fuselage]
 
-    def _calc_motor_dimensions(self, cpacs_configuration):
-        all_engines = cpacs_configuration.get_engines()
-
-        engine_positions: TConfig.CCPACSEnginePositions = cpacs_configuration.get_engine_positions()
-        engine_position: TConfig.CCPACSEnginePosition = engine_positions.get_engine_position(1)
-        engine_position_transformation: TGeo.CCPACSTransformation = engine_position.get_transformation()
-
-        rotation: TGeo.CTiglPoint = engine_position_transformation.get_rotation()
-        self.down_thrust_angle = rotation.y
-        self.right_thrust_angle = rotation.z
-        logging.debug(f"{self.down_thrust_angle=},\t {self.right_thrust_angle=}")
-
-        self.motor_position: TGeo.CCPACSPointAbsRel = engine_position_transformation.get_translation()
-        logging.debug(
-            f"engine position= ({self.motor_position.get_x()},\t {self.motor_position.get_y()},\t {self.motor_position.get_z()})")
-
-        engine_scaling: TGeo.CTiglPoint = engine_position_transformation.get_scaling()
-        self.engine_length = engine_scaling.x
-        self.engine_width = engine_scaling.y
-        self.engine_height = engine_scaling.z
-        self.engine_schaft_lenght = self.engine_length / 3
-        logging.debug(
-            f"engine size= length: {self.engine_length},width: {self.engine_width}, height: {self.engine_height},\t")
-
     @classmethod
-    def _calc_rib_positions(cls, factor, cpacs_configuration, fuselage_index,
-                            right_main_wing_index,
-                            fuselage_loft: TGeo.CNamedShape,
-                            spacing: float = 0.003):
+    def _calc_rib_positions(cls, factor, fuselage_loft: TGeo.CNamedShape, full_wing_loft: TGeo.CNamedShape,
+                            spacing: float = 0.003) -> tuple[float, float, float, float]:
         y_max: float = (PDim.ShapeDimensions(fuselage_loft).get_width() * factor) / 2
         y_min: float = -y_max
 
-        overlap_dimension: PDim.ShapeDimensions = FuselageFactory.overlap_fuselage_wing_dimensions(cpacs_configuration,
-                                                                                                   fuselage_index,
-                                                                                                   right_main_wing_index)
+        overlap_dimension: PDim.ShapeDimensions = FuselageFactory.overlap_fuselage_wing_dimensions(fuselage_loft,
+                                                                                                   full_wing_loft)
 
         # Check if high wing or low wing
-        if FuselageFactory._is_high_wing(overlap_dimension, cpacs_configuration, fuselage_index):
+        if FuselageFactory._is_high_wing(overlap_dimension, fuselage_loft):
             z_max_below_overlap: float = overlap_dimension.get_z_min() - spacing
             z_max_calculated_with_factor: float = PDim.ShapeDimensions(fuselage_loft).get_z_mid() + (
-                                                          (PDim.ShapeDimensions(cpacs_configuration.get_fuselage(
-                                                              fuselage_index).get_loft()).get_height() * factor) / 2)
+                                                          (PDim.ShapeDimensions(fuselage_loft).get_height() * factor) / 2)
 
             # z_max can not collide with wing, and may not be smaller than the height of the fuselage * factor
             z_max: float = min(z_max_below_overlap, z_max_calculated_with_factor)
             z_min: float = PDim.ShapeDimensions(
                 fuselage_loft).get_z_mid() - ((PDim.ShapeDimensions(fuselage_loft).get_height() * factor) / 2)
-        elif FuselageFactory._is_low_wing(overlap_dimension, cpacs_configuration, fuselage_index):
+        elif FuselageFactory._is_low_wing(overlap_dimension, fuselage_loft):
             z_min_over_overlap: float = overlap_dimension.get_z_max() + spacing
             z_min_calculated_with_factor: float = PDim.ShapeDimensions(
                 fuselage_loft).get_z_mid() - ((PDim.ShapeDimensions(fuselage_loft).get_height() * factor) / 2)
@@ -271,15 +217,14 @@ class FuselageFactory:
         return y_max, y_min, z_max, z_min
 
     @classmethod
-    def _calc_wing_position(cls, cpacs_configuration, fuselage_index, right_main_wing_index):
-        overlap_dimension: PDim.ShapeDimensions = FuselageFactory.overlap_fuselage_wing_dimensions(cpacs_configuration,
-                                                                                                   fuselage_index,
-                                                                                                   right_main_wing_index)
+    def _calc_wing_position(cls, fuselage_loft: TGeo.CNamedShape, full_wing_loft: TGeo.CNamedShape) -> str:
+        overlap_dimension: PDim.ShapeDimensions = FuselageFactory.overlap_fuselage_wing_dimensions(fuselage_loft,
+                                                                                                   full_wing_loft)
         position = None
         # Check if high wing or low wing
-        if FuselageFactory._is_high_wing(overlap_dimension, cpacs_configuration, fuselage_index):
+        if FuselageFactory._is_high_wing(overlap_dimension, fuselage_loft):
             position = "top"
-        elif FuselageFactory._is_low_wing(overlap_dimension, cpacs_configuration, fuselage_index):
+        elif FuselageFactory._is_low_wing(overlap_dimension, fuselage_loft):
             position = "bottom"
         logging.debug(f"Plane with {position} wing")
         return position

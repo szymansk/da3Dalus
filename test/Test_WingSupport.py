@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
     fuselage_factory = FuselageFactory(configuration)
     test_class = frf.FuselageRibFactory(fuselage_loft, wing_loft)
-    ribs = test_class.create_wing_support_ribs(fuselage_factory.overlap_fuselage_wing_dimensions(),,,,
+    ribs = test_class.create_wing_support_ribs(fuselage_factory.overlap_fuselage_wing_dimensions(,,,,,,,,,
     m.display_in_origin(ribs, logging.NOTSET)
 
     logging.debug("Test finished. Display results")

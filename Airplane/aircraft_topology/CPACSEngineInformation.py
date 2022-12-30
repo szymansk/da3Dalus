@@ -1,3 +1,4 @@
+import abc
 import logging
 
 from OCC.Wrapper.wrapper_utils import deprecated
@@ -5,13 +6,23 @@ from tigl3.configuration import CCPACSEnginePositions, CCPACSEnginePosition, CCP
 from tigl3.geometry import CCPACSTransformation, CTiglPoint, CCPACSPointAbsRel
 
 
-class EngineInformation:
+class EngineInformation(metaclass=abc.ABCMeta):
+
+    def __init__(self, down_thrust: float, side_thrust: float, position: CCPACSPointAbsRel, length: float, width: float,
+                 height: float):
+        self.height = height
+        self.width = width
+        self.length = length
+        self.position = position
+        self.side_thrust = side_thrust
+        self.down_thrust = down_thrust
+
+
+class CPACSEngineInformation(EngineInformation):
 
     def __init__(self, engine_index: int, cpacs_configuration: CCPACSConfiguration):
-        self.down_thrust, self.side_thrust, self.position, \
-            self.length, self.width, self.height = \
-            EngineInformation._calc_motor_dimensions(engine_index=engine_index,
-                                                     cpacs_configuration=cpacs_configuration)
+        super().__init__(*CPACSEngineInformation._calc_motor_dimensions(engine_index=engine_index,
+                                                                        cpacs_configuration=cpacs_configuration))
 
     @classmethod
     def get_engine_down_thrust_angle(cls, engine_index: int, cpacs_configuration: CCPACSConfiguration) -> float:
@@ -49,7 +60,7 @@ class EngineInformation:
         return engine_scaling.x, engine_scaling.y, engine_scaling.z
 
     @classmethod
-    def _calc_motor_dimensions(cls, engine_index: int, cpacs_configuration: CCPACSConfiguration)\
+    def _calc_motor_dimensions(cls, engine_index: int, cpacs_configuration: CCPACSConfiguration) \
             -> tuple[float, float, CCPACSPointAbsRel, float, float, float]:
         """
         obsolete do not use

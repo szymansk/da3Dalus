@@ -26,19 +26,13 @@ if __name__ == "__main__":
     ccpacs_configuration: CCPACSConfiguration = CCPACSConfigurationManager_get_instance() \
         .get_configuration(tigl_h._handle.value)
 
-    # ============
-    full_wing_loft_node = ConstructionStepNode(
-        FullWingLoftShapeCreator("wings",
-                                 right_main_wing_index=1))
-
-    full_wing_file_path = "../components/constructions/full_wing.json"
-    full_wing_file = open(full_wing_file_path, "w")
-    json.dump(fp=full_wing_file, obj=full_wing_loft_node, indent=4, cls=GeneralJSONEncoder)
-    full_wing_file.close()
-
-    # =============
     # defining as simple root node
     root_node = ConstructionRootNode(creator_id="root")
+
+    full_wing_loft_node = ConstructionStepNode(
+        FullWingLoftShapeCreator("full_wing_loft",
+                                 right_main_wing_index=1))
+    root_node.append(full_wing_loft_node)
 
     full_wing_node = ConstructionStepNode(
         FullWingShapeCreator("full_wing", right_main_wing_index=1))
@@ -99,13 +93,9 @@ if __name__ == "__main__":
     # -> "engine_cape.cape", "engine_cape.loft"
 
     fuselage_reinforcement_node = ConstructionStepNode(
-        FuselageReinforcementShapeCreator("fuselage_reinforcement",
-                                          fuselage_index=1,
-                                          fuselage_loft="engine_cape.loft",
-                                          right_main_wing_index=1,
-                                          ribcage_factor=0.5,
-                                          rib_width=0.001,
-                                          reinforcement_pipes_radius=0.002))
+        FuselageReinforcementShapeCreator("fuselage_reinforcement", rib_width=0.001, rib_spacing=0.003,
+                                          ribcage_factor=0.5, reinforcement_pipes_radius=0.002,
+                                          fuselage_loft="engine_cape.loft", full_wing_loft="full_wing_loft"))
     engine_cape_node.append(fuselage_reinforcement_node)
     # "engine_cape.loft" -> "fuselage_reinforcement"
 
@@ -131,12 +121,8 @@ if __name__ == "__main__":
     # "fuselage_reinforcement" + "servo" -> "reinforcement3"
 
     wing_support_node = ConstructionStepNode(
-        FuselageWingSupportShapeCreator("wing_support",
-                                        fuselage_index=1,
-                                        right_main_wing_index=1,
-                                        rib_quantity=6,
-                                        rib_width=0.0008,
-                                        rib_height_factor=1))
+        FuselageWingSupportShapeCreator("wing_support", rib_quantity=6, rib_width=0.0008, rib_height_factor=1,
+                                        fuselage_loft="engine_cape.loft", full_wing_loft="full_wing_loft"))
     fuse_servo_with_fuselage.append(wing_support_node)
     # -> "wing_support"
 
@@ -149,12 +135,8 @@ if __name__ == "__main__":
     # "reinforcement3" + "wing_support" -> "reinforcement0"
 
     full_elevator_support_loft_node = ConstructionStepNode(
-        FuselageWingSupportShapeCreator("elevator_support",
-                                        fuselage_index=1,
-                                        right_main_wing_index=2,
-                                        rib_quantity=8,
-                                        rib_width=0.0004,
-                                        rib_height_factor=20))
+        FuselageWingSupportShapeCreator("elevator_support", rib_quantity=8, rib_width=0.0004, rib_height_factor=20,
+                                        fuselage_loft="engine_cape.loft", full_wing_loft="elevator"))
     fuse_reinforcement_wing_sup_node.append(full_elevator_support_loft_node)
     # -> "elevator_support"
 
@@ -167,10 +149,8 @@ if __name__ == "__main__":
     # "reinforcement0 + "elevator_support" -> "reinforcement1"
 
     electronics_access_node = ConstructionStepNode(
-        FuselageElectronicsAccessCutOutShapeCreator("electronics_cutout",
-                                                    fuselage_index=1,
-                                                    ribcage_factor=0.5,
-                                                    right_main_wing_index=1,
+        FuselageElectronicsAccessCutOutShapeCreator("electronics_cutout", ribcage_factor=0.5,
+                                                    fuselage_loft="engine_cape.loft", full_wing_loft="full_wing_loft",
                                                     wing_position=None))
     fuse_reinforcement_elevator_sup_node.append(electronics_access_node)
     # -> "electronics_cutout"
@@ -231,9 +211,8 @@ if __name__ == "__main__":
     # "fuselage_wo_wings" - "elevator" -> "fuselage_wo_elevator"
 
     wing_attachment_bolt_node = ConstructionStepNode(
-        WingAttachmentBoltHolesShapeCreator("attachment_bolts",
-                                            fuselage_index=1,
-                                            right_main_wing_index=1))
+        WingAttachmentBoltHolesShapeCreator("attachment_bolts", fuselage_loft="engine_cape.loft",
+                                            full_wing_loft="full_wing_loft"))
     cut_elevator_from_fuselage_node.append(wing_attachment_bolt_node)
     # -> "attachment_bolts"
 
@@ -325,7 +304,7 @@ if __name__ == "__main__":
                                                              "final_fuselage[4]",
                                                              "elevator[1]",
                                                              "rudder"]))
-    shape_slicer_node.append(shape_stl_export_node)
+    # >>>> shape_slicer_node.append(shape_stl_export_node)
     # "fuselage_slicer[0] .. [4]", "engine_mount", "engine_cape.cape",
     # "elevator[0]", "elevator[1]", "rudder_with_slot" -> *
 
@@ -391,10 +370,13 @@ if __name__ == "__main__":
     # dump to a json string
     json_data: str = json.dumps(root_node, indent=4, cls=GeneralJSONEncoder)
 
+    engine_information = {1: CPACSEngineInformation(1, ccpacs_configuration)}
+
     # load the string
     # tigl_handel is parameter which is not in the json file, but needed by the constructor of a creator class
     myMap: ConstructionStepNode = json.loads(json_data, cls=GeneralJSONDecoder,
-                                             cpacs_configuration=ccpacs_configuration)
+                                             cpacs_configuration=ccpacs_configuration,
+                                             engine_information=engine_information)
 
     # dump again to check
     print(json.dumps(myMap, indent=2, cls=GeneralJSONEncoder))
@@ -402,8 +384,8 @@ if __name__ == "__main__":
         # build on basis of deserialized json
         structure = myMap.create_shape()
         from pprint import pprint
-
         pprint(structure)
+        shapeDisplay.start()
     except Exception as err:
         shapeDisplay.start()
         raise err

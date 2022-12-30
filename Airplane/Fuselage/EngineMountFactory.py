@@ -3,7 +3,7 @@ import logging
 import tigl3.configuration as TConfig
 
 import Dimensions.ShapeDimensions as PDim
-from Airplane.aircraft_topology.EngineInformation import EngineInformation
+from Airplane.aircraft_topology.CPACSEngineInformation import CPACSEngineInformation, EngineInformation
 from Extra.patterns import *
 from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 

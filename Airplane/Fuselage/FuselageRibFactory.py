@@ -65,10 +65,11 @@ class FuselageRibFactory:
         return fused_ribs
 
     @classmethod
-    def create_wing_support_ribs(cls, overlap_dimensions, fuselage_loft: TGeo.CNamedShape, wing_loft: TGeo.CNamedShape,
-                                 rib_quantity: int, rib_width: float, rib_height_factor: float) -> TGeo.CNamedShape:
+    def create_wing_support_ribs(cls, overlap_dimensions, fuselage_loft: TGeo.CNamedShape,
+                                 full_wing_loft: TGeo.CNamedShape, rib_quantity: int, rib_width: float,
+                                 rib_height_factor: float) -> TGeo.CNamedShape:
 
-        rib_length = PDim.ShapeDimensions(wing_loft).get_length() * 1.2
+        rib_length = PDim.ShapeDimensions(full_wing_loft).get_length() * 1.2
         rib_height = (overlap_dimensions.get_height()) + 0.004
 
         complete_distance = PDim.ShapeDimensions(fuselage_loft).get_width() * 0.8
