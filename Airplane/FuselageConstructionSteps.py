@@ -20,23 +20,17 @@ class Fuse2ShapesCreator(AbstractShapeCreator):
     Fusing shape B with shape A.
     """
 
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
-
     def __init__(self, creator_id: str, shape_a: str = None, shape_b: str = None):
-        self.identifier = creator_id
         self.shape_a = shape_a
         self.shape_b = shape_b
+        super().__init__(creator_id, shapes_of_interest_keys=[self.shape_a, self.shape_b])
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        shapes = AbstractShapeCreator.return_needed_shapes([self.shape_a, self.shape_b], input_shapes, **kwargs)
-        shape_list = list(shapes.values())
-        logging.info(f"fusing shapes '{list(shapes.keys())[0]}' + '{list(shapes.keys())[1]}' --> '{self.identifier}'")
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        shape_list = list(shapes_of_interest.values())
+        logging.info(
+            f"fusing shapes '{list(shapes_of_interest.keys())[0]}' + '{list(shapes_of_interest.keys())[1]}' --> '{self.identifier}'")
 
         fused_shape = BooleanCADOperation.fuse_shapes(shape_list[0], shape_list[1], self.identifier)
         ConstructionStepsViewer.instance().display_fuse(fused_shape, shape_list[0], shape_list[1], logging.INFO)
@@ -49,22 +43,15 @@ class FuseMultipleShapesCreator(AbstractShapeCreator):
     Fusing shape B with shape A.
     """
 
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
-
     def __init__(self, creator_id: str, shapes: list[str]):
         self.shapes = shapes
-        self.identifier = creator_id
+        super().__init__(creator_id, shapes_of_interest_keys=[self.shape_a, self.shape_b])
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        shapes = AbstractShapeCreator.return_needed_shapes(self.shapes, input_shapes, **kwargs)
-        shape_list = list(shapes.values())
-        logging.info(f"fusing shapes '{'+'.join(shapes.keys())}' --> '{self.identifier}'")
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        shape_list = list(shapes_of_interest.values())
+        logging.info(f"fusing shapes '{'+'.join(shapes_of_interest.keys())}' --> '{self.identifier}'")
 
         fused_shape = BooleanCADOperation.fuse_list_of_namedshapes(shape_list, self.identifier)
         ConstructionStepsViewer.instance().display_fused_shapes(fused_shape, shape_list, logging.INFO,
@@ -78,25 +65,19 @@ class Cut2ShapesCreator(AbstractShapeCreator):
     Cut the subtrahend from the minuend (minuend - subtrahend = new_shape).
     """
 
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
-
     def __init__(self, creator_id: str,
                  minuend: str = None,
                  subtrahend: str = None):
-        self.identifier = creator_id
         self.minuend = minuend
         self.subtrahend = subtrahend
+        super().__init__(creator_id, shapes_of_interest_keys=[self.minuend, self.subtrahend])
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        shapes = AbstractShapeCreator.return_needed_shapes([self.minuend, self.subtrahend], input_shapes, **kwargs)
-        shape_list = list(shapes.values())
-        logging.info(f"cutting shapes '{list(shapes.keys())[0]}' - '{list(shapes.keys())[1]}' --> '{self.identifier}'")
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        shape_list = list(shapes_of_interest.values())
+        logging.info(
+            f"cutting shapes '{list(shapes_of_interest.keys())[0]}' - '{list(shapes_of_interest.keys())[1]}' --> '{self.identifier}'")
 
         from Extra.BooleanOperationsForLists import BooleanCADOperation
         shape__minuend = shape_list[0]
@@ -115,26 +96,19 @@ class SimpleOffsetShapeCreator(AbstractShapeCreator):
     which is bigger(+)/smaller(-) bei the given <offset>[m].
     """
 
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
-
     def __init__(self, creator_id: str,
                  offset: float,
                  shape: str = None,
                  ):
-        self.identifier = creator_id
         self.offset = offset
         self.shape = shape
+        super().__init__(creator_id, shapes_of_interest_keys=[shape])
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        shapes = AbstractShapeCreator.return_needed_shapes([self.shape], input_shapes, **kwargs)
-        shape_list = list(shapes.values())
-        logging.info(f"offset shape '{list(shapes.keys())[0]}' by {self.offset}m --> '{self.identifier}'")
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        shape_list = list(shapes_of_interest.values())
+        logging.info(f"offset shape '{list(shapes_of_interest.keys())[0]}' by {self.offset}m --> '{self.identifier}'")
 
         shape = shape_list[0]
 
@@ -162,24 +136,17 @@ class Intersect2ShapesCreator(AbstractShapeCreator):
     Intersect the sahpe A with shape B (minuend / subtrahend = new_shape).
     """
 
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
-
     def __init__(self, creator_id: str, shape_a: str = None, shape_b: str = None):
-        self.identifier = creator_id
         self.shape_a = shape_a
         self.shape_b = shape_b
+        super().__init__(creator_id, shapes_of_interest_keys=[self.shape_a, self.shape_b])
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        shapes = AbstractShapeCreator.return_needed_shapes([self.shape_a, self.shape_b], input_shapes, **kwargs)
-        shape_list = list(shapes.values())
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        shape_list = list(shapes_of_interest.values())
         logging.info(
-            f"intersecting shapes '{list(shapes.keys())[0]}' / '{list(shapes.keys())[1]}' --> '{self.identifier}'")
+            f"intersecting shapes '{list(shapes_of_interest.keys())[0]}' / '{list(shapes_of_interest.keys())[1]}' --> '{self.identifier}'")
 
         from Extra.BooleanOperationsForLists import BooleanCADOperation
 
@@ -198,14 +165,6 @@ class ScaleRotateTranslateCreator(AbstractShapeCreator):
     Scale, rotate (x,y,z) and then translate the shape.
     """
 
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
-
     def __init__(self, creator_id: str,
                  shape_id: str,
                  scale: float = 1.0,
@@ -215,7 +174,6 @@ class ScaleRotateTranslateCreator(AbstractShapeCreator):
                  trans_x: float = .0,
                  trans_y: float = .0,
                  trans_z: float = .0):
-        self.identifier = creator_id
         self.shape_id = shape_id
         self.trans_x = trans_x
         self.trans_y = trans_y
@@ -224,13 +182,15 @@ class ScaleRotateTranslateCreator(AbstractShapeCreator):
         self.rot_y = rot_y
         self.rot_z = rot_z
         self.scale = scale
+        super().__init__(creator_id, shapes_of_interest_keys=[self.shape_id])
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        shapes = AbstractShapeCreator.return_needed_shapes([self.shape_id], input_shapes, **kwargs)
-        shape_list = list(shapes.values())
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        shape_list = list(shapes_of_interest.values())
         shape = shape_list[0]
         logging.info(
-            f"scale {self.scale}, rotate ({self.rot_x}, {self.rot_y}, {self.rot_z}) and translate ({self.trans_x}, {self.trans_y}, {self.trans_z}) '{list(shapes.keys())[0]}' --> '{self.identifier}'")
+            f"scale {self.scale}, rotate ({self.rot_x}, {self.rot_y}, {self.rot_z}) and translate ({self.trans_x}, {self.trans_y}, {self.trans_z}) '{list(shapes_of_interest.keys())[0]}' --> '{self.identifier}'")
         trans_shape = self.transform_by(shape,
                                         trans_x=self.trans_x,
                                         trans_y=self.trans_y,
@@ -281,14 +241,6 @@ class IgesImportCreator(AbstractShapeCreator):
     Import an iges file as a shape.
     """
 
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
-
     def __init__(self, creator_id: str, iges_file: str,
                  trans_x: float = .0,
                  trans_y: float = .0,
@@ -298,7 +250,6 @@ class IgesImportCreator(AbstractShapeCreator):
                  rot_z: float = .0,
                  scale: float = 1.0
                  ):
-        self.identifier = creator_id
         self.iges_file = iges_file
         self.trans_x = trans_x
         self.trans_y = trans_y
@@ -307,8 +258,11 @@ class IgesImportCreator(AbstractShapeCreator):
         self.rot_y = rot_y
         self.rot_z = rot_z
         self.scale = scale
+        super().__init__(creator_id, shapes_of_interest_keys=None)
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         logging.info(f"importing iges model '{self.iges_file}' --> '{self.identifier}'")
 
         from OCC.Extend.DataExchange import read_iges_file
@@ -345,14 +299,6 @@ class StepImportCreator(AbstractShapeCreator):
     Import an iges file as a shape.
     """
 
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
-
     def __init__(self, creator_id: str, step_file: str,
                  trans_x: float = .0,
                  trans_y: float = .0,
@@ -362,7 +308,6 @@ class StepImportCreator(AbstractShapeCreator):
                  rot_z: float = .0,
                  scale: float = 1.0
                  ):
-        self.identifier = creator_id
         self.step_file = step_file
         self.trans_x = trans_x
         self.trans_y = trans_y
@@ -371,8 +316,11 @@ class StepImportCreator(AbstractShapeCreator):
         self.rot_y = rot_y
         self.rot_z = rot_z
         self.scale = scale
+        super().__init__(creator_id, shapes_of_interest_keys=None)
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         logging.info(f"importing step model '{self.step_file}' --> '{self.identifier}'")
 
         topods = self._step_importer(self.step_file)
@@ -397,51 +345,39 @@ class StepImportCreator(AbstractShapeCreator):
 
 
 class ExportToIgesCreator(AbstractShapeCreator):
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
 
     def __init__(self, creator_id: str, file_path: str, shapes_to_export: list[str] = None):
-        self.identifier: str = creator_id
         self.file_path: str = file_path
         self.shapes_to_export: list[str] = shapes_to_export
+        super().__init__(creator_id, shapes_of_interest_keys=self.shapes_to_export)
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        all_shapes = AbstractShapeCreator.check_if_shapes_are_available(self.shapes_to_export, **kwargs)
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         logging.info(f"exporting iges model '{self.identifier}' --> '{self.file_path}'")
 
         from tigl3.import_export_helper import export_shapes
         path = os.path.join(self.file_path, f"{self.identifier}.igs")
-        export_shapes(list(all_shapes.values()), path, deflection=0.000001)
+        export_shapes(list(shapes_of_interest.values()), path, deflection=0.000001)
 
-        return all_shapes
+        return shapes_of_interest
 
 
 class ExportToStepCreator(AbstractShapeCreator):
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
 
     def __init__(self, creator_id: str, file_path: str, shapes_to_export: list[str] = None):
-        self.identifier: str = creator_id
         self.file_path: str = file_path
         self.shapes_to_export: list[str] = shapes_to_export
+        super().__init__(creator_id, shapes_of_interest_keys=self.shapes_to_export)
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        all_shapes = AbstractShapeCreator.check_if_shapes_are_available(self.shapes_to_export, **kwargs)
-        logging.info(f"exporting step model '{', '.join(all_shapes.keys())}' --> '{self.file_path}'")
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        logging.info(f"exporting step model '{', '.join(shapes_of_interest.keys())}' --> '{self.file_path}'")
 
         from OCC.Core.STEPControl import STEPControl_AsIs
 
-        for name, shape in all_shapes.items():
+        for name, shape in shapes_of_interest.items():
             step_writer = self._generateStepWriter()
             t_shape = ScaleRotateTranslateCreator.transform_by(shape=shape, scale=1000.0)
             step_writer.Transfer(t_shape.shape(), STEPControl_AsIs)
@@ -449,7 +385,7 @@ class ExportToStepCreator(AbstractShapeCreator):
             step_writer.Write(step_path)
 
         step_writer = self._generateStepWriter()
-        for name, shape in all_shapes.items():
+        for name, shape in shapes_of_interest.items():
             t_shape = ScaleRotateTranslateCreator.transform_by(shape=shape, scale=1000.0)
             import OCC.Core.IFSelect as IFSelect
             if step_writer.Transfer(t_shape.shape(), STEPControl_AsIs) != IFSelect.IFSelect_RetDone:
@@ -460,7 +396,7 @@ class ExportToStepCreator(AbstractShapeCreator):
         logging.debug(f"writing model to '{step_path}'")
         step_writer.Write(step_path)
 
-        return all_shapes
+        return shapes_of_interest
 
     def _generateStepWriter(self):
         # ===============
@@ -488,32 +424,25 @@ class ExportToStepCreator(AbstractShapeCreator):
 
 
 class ExportToStlCreator(AbstractShapeCreator):
-    @property
-    def identifier(self):
-        return self.creator_id
 
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
-
-    def __init__(self, creator_id: str,
-                 mode: str = "binary",  # "binary" od "ascii"
-                 linear_deflection: float = 0.0000001,
-                 additional_shapes_to_export: list[str] = None):
-        self.identifier: str = creator_id
+    def __init__(self, creator_id: str, shapes_to_export: list[str], mode: str = "binary",
+                 linear_deflection: float = 0.0000001):
         self.mode = mode
         self.linear_deflection = linear_deflection
-        self.additional_shapes_to_export: list[str] = additional_shapes_to_export \
-            if additional_shapes_to_export is not None else [None]
+        self.shapes_to_export: list[str] = shapes_to_export \
+            if shapes_to_export is not None else [None]
+        super().__init__(creator_id, shapes_of_interest_keys=self.shapes_to_export)
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        all_shapes = AbstractShapeCreator.check_if_shapes_are_available(self.additional_shapes_to_export, **kwargs)
-        logging.info(f"converting shapes '{', '.join(all_shapes.keys())}' to .STL")
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        logging.info(f"converting shapes '{', '.join(shapes_of_interest.keys())}' to .STL")
 
         import stl_exporter.Exporter as Exporter
         stl_exporter = Exporter.Exporter()
-        stl_exporter.write_stls_from_list(all_shapes.values(), mode=self.mode, linear_deflection=self.linear_deflection)
-        return all_shapes
+        stl_exporter.write_stls_from_list(shapes_of_interest.values(), mode=self.mode,
+                                          linear_deflection=self.linear_deflection)
+        return shapes_of_interest
 
 
 # === END basic import export operations ===
@@ -540,7 +469,6 @@ class EngineMountShapeCreator(AbstractShapeCreator):
         """
         self.engine_index = engine_index
         self.engine_screw_length = engine_screw_length
-        self.identifier = creator_id
         self.engine_screw_hole_circle = engine_screw_hole_circle
         self.engine_total_cover_length = engine_total_cover_length
         self.engine_mount_box_length = engine_mount_box_length
@@ -550,8 +478,11 @@ class EngineMountShapeCreator(AbstractShapeCreator):
         self.mount_plate_thickness = mount_plate_thickness
         self._cpacs_configuration = cpacs_configuration
         self._engine_information = None
+        super().__init__(creator_id, shapes_of_interest_keys=None)
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         logging.info(f" creating mount for engine '{self.engine_index}' --> '{self.identifier}'")
 
         self._engine_information = EngineInformation(self.engine_index, self._cpacs_configuration) \
@@ -574,14 +505,6 @@ class EngineMountShapeCreator(AbstractShapeCreator):
         ConstructionStepsViewer.instance().display_this_shape(mount, logging.INFO, msg=f"{self.identifier}")
         return {str(self.identifier): mount}
 
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
-
 
 class EngineMountPanelShapeCreator(AbstractShapeCreator):
     def __init__(self, creator_id: str, mount_plate_thickness: float, engine_screw_hole_circle: float,
@@ -590,7 +513,7 @@ class EngineMountPanelShapeCreator(AbstractShapeCreator):
                  full_fuselage_loft: str = None, cpacs_configuration: CCPACSConfiguration = None):
         """
 
-        :param cpacs_configuration: 
+        :param cpacs_configuration:
         :param engine_index:
         :param creator_id:
         :param mount_plate_thickness: thickness of the mount backplate
@@ -603,7 +526,6 @@ class EngineMountPanelShapeCreator(AbstractShapeCreator):
         self._cpacs_configuration = cpacs_configuration
         self.full_fuselage_loft = full_fuselage_loft
         self.engine_index = engine_index
-        self.identifier = creator_id
         self.engine_screw_hole_circle = engine_screw_hole_circle
         self.engine_total_cover_length = engine_total_cover_length
         self.engine_mount_box_length = engine_mount_box_length
@@ -611,9 +533,11 @@ class EngineMountPanelShapeCreator(AbstractShapeCreator):
         self.engine_side_thrust_deg = engine_side_thrust_deg
         self.mount_plate_thickness = mount_plate_thickness
         self._engine_information = None
+        super().__init__(creator_id, shapes_of_interest_keys=[self.full_fuselage_loft])
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        all_shapes = AbstractShapeCreator.check_if_shapes_are_available([self.full_fuselage_loft], **kwargs)
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         logging.info(f" creating mount panel for engine '{self.engine_index}' --> '{self.identifier}'")
 
         self._engine_information = EngineInformation(self.engine_index, self._cpacs_configuration) \
@@ -633,18 +557,11 @@ class EngineMountPanelShapeCreator(AbstractShapeCreator):
                                                            engine_total_cover_length=self.engine_total_cover_length,
                                                            engine_screw_hole_circle=self.engine_screw_hole_circle,
                                                            engine_position=self._engine_information.position,
-                                                           full_fuselage_loft=all_shapes[self.full_fuselage_loft])
+                                                           full_fuselage_loft=shapes_of_interest[
+                                                               self.full_fuselage_loft])
 
         ConstructionStepsViewer.instance().display_this_shape(mount_plate, logging.INFO, msg=f"{self.identifier}")
         return {str(self.identifier): mount_plate}
-
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
 
 
 class SliceShapesCreator(AbstractShapeCreator):
@@ -653,20 +570,14 @@ class SliceShapesCreator(AbstractShapeCreator):
     The naming convention for a key is <shape_identifier>[<part_number>], e.g. {"fuselage[0]": <CNamedShape>, "fuselage[1]": <CNamedShape>}
     """
 
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
-
     def __init__(self, creator_id: str, number_of_parts: int, shapes_to_slice: list[str] = None):
         self.shapes_to_slice = shapes_to_slice if shapes_to_slice is not None else [None]
-        self.identifier = creator_id
         self.number_of_parts = number_of_parts
+        super().__init__(creator_id, shapes_of_interest_keys=self.shapes_to_slice)
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         shapes = AbstractShapeCreator.return_needed_shapes(self.shapes_to_slice, input_shapes, **kwargs)
         logging.info(f"slicing shapes '{shapes.keys()}' in {self.number_of_parts} parts")
 
@@ -692,16 +603,17 @@ class EngineCapeShapeCreator(AbstractShapeCreator):
                  full_fuselage_loft: str = None,
                  cpacs_configuration: CCPACSConfiguration = None):
         self.full_fuselage_loft = full_fuselage_loft
-        self.identifier = creator_id
         self.fuselage_index = fuselage_index
         self.mount_plate_thickness = mount_plate_thickness
         self.engine_total_cover_length = engine_total_cover_length
         self.engine_mount_box_length = engine_mount_box_length
         self.engine_index = engine_index
         self._cpacs_configuration = cpacs_configuration
+        super().__init__(creator_id, shapes_of_interest_keys=[self.full_fuselage_loft])
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        all_shapes = AbstractShapeCreator.check_if_shapes_are_available([self.full_fuselage_loft], **kwargs)
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         logging.info(f"creating engine cape and loft --> '{self.identifier}.cape, {self.identifier}.loft'")
 
         _engine_information = EngineInformation(self.engine_index, self._cpacs_configuration)
@@ -715,17 +627,17 @@ class EngineCapeShapeCreator(AbstractShapeCreator):
         from Airplane.Fuselage.FuselageFactory import FuselageFactory
         shapes = FuselageFactory.create_engine_cape(mount_plate_thickness=self.mount_plate_thickness,
                                                     motor_cutout_length=self.engine_total_cover_length + self.engine_mount_box_length + engine_x_offset,
-                                                    full_fuselage_loft=all_shapes[self.full_fuselage_loft])
+                                                    full_fuselage_loft=shapes_of_interest[self.full_fuselage_loft])
         ConstructionStepsViewer.instance().display_slice_x(shapes, logging.INFO, name=f"{self.identifier}")
 
         return {f"{self.identifier}.cape": shapes[0], f"{self.identifier}.loft": shapes[1]}
 
     @property
-    def identifier(self):
+    def identifier(self) -> str:
         return self.creator_id
 
     @identifier.setter
-    def identifier(self, value):
+    def identifier(self, value) -> str:
         self.creator_id = value
 
 
@@ -739,7 +651,6 @@ class FuselageReinforcementShapeCreator(AbstractShapeCreator):
                  reinforcement_pipes_radius: float,
                  cpacs_configuration: CCPACSConfiguration = None
                  ):
-        self.identifier: str = creator_id
         self.fuselage_index = fuselage_index
         self.fuselage_loft = fuselage_loft
         self.right_main_wing_index = right_main_wing_index
@@ -747,12 +658,14 @@ class FuselageReinforcementShapeCreator(AbstractShapeCreator):
         self.ribcage_factor = ribcage_factor
         self.reinforcement_pipes_radius = reinforcement_pipes_radius
         self._cpacs_configuration = cpacs_configuration
+        super().__init__(creator_id, shapes_of_interest_keys=[self.fuselage_loft])
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         logging.info(f"creating fuselage reinforcement with index {self.fuselage_index}--> '{self.identifier}'")
-        from Airplane.Fuselage.FuselageFactory import FuselageFactory
-        all_shapes = AbstractShapeCreator.check_if_shapes_are_available([self.fuselage_loft], **kwargs)
 
+        from Airplane.Fuselage.FuselageFactory import FuselageFactory
         shape__fuselage_reinforcement = FuselageFactory.create_fuselage_reinforcement(
             cpacs_configuration=self._cpacs_configuration,
             fuselage_index=self.fuselage_index,
@@ -760,20 +673,12 @@ class FuselageReinforcementShapeCreator(AbstractShapeCreator):
             rib_width=self.rib_width,
             ribcage_factor=self.ribcage_factor,
             right_main_wing_index=self.right_main_wing_index,
-            fuselage_loft=all_shapes[self.fuselage_loft])
+            fuselage_loft=shapes_of_interest[self.fuselage_loft])
 
         ConstructionStepsViewer.instance().display_this_shape(
             shape__fuselage_reinforcement, logging.INFO, msg=f"{self.identifier}")
 
         return {str(self.identifier): shape__fuselage_reinforcement}
-
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
 
 
 class FuselageWingSupportShapeCreator(AbstractShapeCreator):
@@ -787,15 +692,17 @@ class FuselageWingSupportShapeCreator(AbstractShapeCreator):
 
     def __init__(self, creator_id: str, fuselage_index: int, right_main_wing_index: int, rib_quantity: int,
                  rib_width: float, rib_height_factor: float, cpacs_configuration: CCPACSConfiguration = None):
-        self.identifier: str = creator_id
         self.fuselage_index: int = fuselage_index
         self.right_main_wing_index: int = right_main_wing_index
         self.rib_quantity: int = rib_quantity
         self.rib_width: float = rib_width
         self.rib_height_factor: float = rib_height_factor
         self._cpacs_configuration = cpacs_configuration
+        super().__init__(creator_id, shapes_of_interest_keys=None)
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         logging.info(f"creating wing support reinforcement with index {self.fuselage_index} --> '{self.identifier}'")
 
         from Airplane.Fuselage.FuselageFactory import FuselageFactory
@@ -806,14 +713,6 @@ class FuselageWingSupportShapeCreator(AbstractShapeCreator):
         ConstructionStepsViewer.instance().display_this_shape(
             shape__wing_support, logging.INFO, msg=f"{self.identifier}")
         return {str(self.identifier): shape__wing_support}
-
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
 
 
 class FuselageElectronicsAccessCutOutShapeCreator(AbstractShapeCreator):
@@ -829,14 +728,16 @@ class FuselageElectronicsAccessCutOutShapeCreator(AbstractShapeCreator):
                  wing_position: str = None,
                  cpacs_configuration: CCPACSConfiguration = None
                  ):
-        self.identifier: str = creator_id
         self.fuselage_index = fuselage_index
         self.right_main_wing_index = right_main_wing_index
         self._cpacs_configuration = cpacs_configuration
         self.ribcage_factor = ribcage_factor
         self.wing_position = wing_position
+        super().__init__(creator_id, shapes_of_interest_keys=None)
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         logging.info(f"creating fuselage electronics cutout with index {self.fuselage_index} --> '{self.identifier}'")
 
         from Airplane.Fuselage.FuselageFactory import FuselageFactory
@@ -848,14 +749,6 @@ class FuselageElectronicsAccessCutOutShapeCreator(AbstractShapeCreator):
         ConstructionStepsViewer.instance().display_this_shape(
             shape__hardware_cutout, logging.INFO, msg=f"{self.identifier}")
         return {str(self.identifier): shape__hardware_cutout}
-
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
 
 
 class WingAttachmentBoltHolesShapeCreator(AbstractShapeCreator):
@@ -869,12 +762,14 @@ class WingAttachmentBoltHolesShapeCreator(AbstractShapeCreator):
                  right_main_wing_index: int,
                  cpacs_configuration: CCPACSConfiguration = None
                  ):
-        self.identifier: str = creator_id
         self.fuselage_index = fuselage_index
         self.right_main_wing_index = right_main_wing_index
         self._cpacs_configuration = cpacs_configuration
+        super().__init__(creator_id, shapes_of_interest_keys=None)
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         logging.info(f"creating wing attachment bolts --> '{self.identifier}'")
 
         from Airplane.Fuselage.FuselageFactory import FuselageFactory
@@ -887,25 +782,19 @@ class WingAttachmentBoltHolesShapeCreator(AbstractShapeCreator):
             shape__bolt_holes, logging.INFO, msg=f"{self.identifier}")
         return {str(self.identifier): shape__bolt_holes}
 
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
-
 
 class FullWingLoftShapeCreator(AbstractShapeCreator):
     def __init__(self, creator_id: str,
                  right_main_wing_index: int,
                  cpacs_configuration: CCPACSConfiguration = None,
                  ):
-        self.identifier: str = creator_id
         self.right_main_wing_index = right_main_wing_index
         self._cpacs_configuration = cpacs_configuration
+        super().__init__(creator_id, shapes_of_interest_keys=None)
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         logging.info(f"creating wing loft/hull with index {self.right_main_wing_index} --> '{self.identifier}'")
 
         complete_wing = BooleanCADOperation.fuse_shapes(
@@ -920,46 +809,35 @@ class FullWingLoftShapeCreator(AbstractShapeCreator):
             complete_wing, logging.INFO, msg=f"{self.identifier}")
         return {str(self.identifier): complete_wing}
 
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
-
 
 class FullFuselageLoftShapeCreator(AbstractShapeCreator):
     def __init__(self, creator_id: str,
                  fuselage_index: int,
                  cpacs_configuration: CCPACSConfiguration = None):
         self.fuselage_index = fuselage_index
-        self.identifier: str = creator_id
         self._cpacs_configuration = cpacs_configuration
+        super().__init__(creator_id, shapes_of_interest_keys=None)
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         logging.info(f"creating wing loft/hull with index {self.fuselage_index} --> '{self.identifier}'")
         full_fuselage_loft = self._cpacs_configuration.get_fuselage(self.fuselage_index).get_loft()
 
-        ConstructionStepsViewer.instance().display_this_shape(full_fuselage_loft, logging.INFO, msg=f"{self.identifier}")
+        ConstructionStepsViewer.instance().display_this_shape(full_fuselage_loft, logging.INFO,
+                                                              msg=f"{self.identifier}")
         return {str(self.identifier): full_fuselage_loft}
-
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
 
 
 class FullWingShapeCreator(AbstractShapeCreator):
     def __init__(self, creator_id: str, right_main_wing_index: int, cpacs_configuration: CCPACSConfiguration = None):
-        self.identifier: str = creator_id
         self.right_main_wing_index = right_main_wing_index
         self._cpacs_configuration = cpacs_configuration
+        super().__init__(creator_id, shapes_of_interest_keys=None)
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         logging.info(f"creating wing with index {self.right_main_wing_index} --> '{self.identifier}'")
         right_wing, left_wing, right_aileron, left_aileron = self._create_right_main_wing()
 
@@ -988,11 +866,3 @@ class FullWingShapeCreator(AbstractShapeCreator):
             left_aileron = None
 
         return right_wing, left_wing, right_aileron, left_aileron
-
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value

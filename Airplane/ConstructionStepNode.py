@@ -17,15 +17,7 @@ class ConstructionStepNode(AbstractShapeCreator, MutableMapping):
         """
         self.successors = {} if successors is None else successors
         self.creator: AbstractShapeCreator = creator
-        self.identifier = f"{creator.identifier}.node"
-
-    @property
-    def identifier(self):
-        return self._creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self._creator_id = value
+        super().__init__(f"{creator.identifier}.node", shapes_of_interest_keys=None)
 
     def __getitem__(self, key: str):
         return self.successors[key]
@@ -49,10 +41,11 @@ class ConstructionStepNode(AbstractShapeCreator, MutableMapping):
         """
         self.update({value.creator.identifier: value})
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape] = None, **kwargs) \
+    def _create_shape(self, shapes_of_interest, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) \
             -> dict[str, Union[object, tgl_geom.CNamedShape]]:
         """
         Executes the construction of all shapes based on the defined workflow structure.
+        :param shapes_of_interest: 
         :param input_shapes: the shapes that have been constructed in the predecessor step
         :param kwargs: holding the shapes of all previous steps as a dict of shapes
         :return: a dict with all shapes that have been created up to this step
@@ -91,16 +84,8 @@ class ConstructionRootNode(AbstractShapeCreator, MutableMapping):
         :param successors: all following construction steps
         """
         self.successors = {} if successors is None else successors
-        self.identifier = creator_id
         self._output_shapes = None
-
-    @property
-    def identifier(self):
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value):
-        self.creator_id = value
+        super().__init__(f"{creator_id}.root", shapes_of_interest_keys=None)
 
     def __getitem__(self, key: str):
         return self.successors[key]
@@ -124,7 +109,7 @@ class ConstructionRootNode(AbstractShapeCreator, MutableMapping):
         """
         self.update({value.creator.identifier: value})
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape] = None, **kwargs) \
+    def _create_shape(self, shapes_of_interest, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) \
             -> dict[str, Union[object, tgl_geom.CNamedShape]]:
         """
         Executes the construction of all shapes based on the defined workflow structure.
@@ -159,4 +144,3 @@ class JSONStepNode(ConstructionStepNode):
             kwargs.pop("creator")
         super().__init__(creator=creator.creator, successors=creator.successors, **kwargs)
         pass
-

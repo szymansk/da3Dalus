@@ -1,4 +1,5 @@
 import abc
+from typing import Union
 
 from tigl3 import geometry as tgl_geom
 
@@ -7,22 +8,32 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
     """
     Base class for shape creating/modifying nodes.
     """
+    def __init__(self, creator_id, shapes_of_interest_keys: Union[list[str], None]):
+        self._shapes_of_interest_keys = shapes_of_interest_keys
+        self.creator_id = creator_id
 
     @property
-    @abc.abstractmethod
-    def identifier(self):
+    def identifier(self) -> str:
         """
         This property is abstract and used in the ConstructionStepKnode. The variable, that ist used to hold the
         property should not be private (does not start with an '_'). Otherwise, it will not be de-/serialized.
         :return: identifier as name of this shape. If used several times the shape will be overwritten in future steps.
         """
+        return self.creator_id
         pass
 
+    @property
+    def shapes_of_interest_keys(self) -> list[str]:
+        return self._shapes_of_interest_keys
+
     @abc.abstractmethod
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def _create_shape(self, shapes_of_interest, input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         """
         This method will create a shape. The shape can depend on shapes of previous steps. All previous steps
         occur in the kwargs variable. The keys are the 'identifier's and the values hold the shapes.
+        :param shapes_of_interest: all shapes declared in the list of 'shapes_of_interest_keys' None values will be
+        filled with shapes from the input_shapes most significant last.
         :param input_shapes: shapes created in the step before
         :param kwargs: the previously created shapes identified by their 'identifier's
         :return: a new dictionary with new shapes. the naming convention is that shapes, which have known name
@@ -31,6 +42,10 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         """
         pass
 
+    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape] = None, **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        shapes_of_interest = AbstractShapeCreator.return_needed_shapes(self.shapes_of_interest_keys, input_shapes, **kwargs) \
+            if self.shapes_of_interest_keys is not None else None
+        return self._create_shape(shapes_of_interest, input_shapes, **kwargs)
 
     @classmethod
     def check_if_shapes_are_available(cls, needed_shapes: list[str], **kwargs) -> dict[str, tgl_geom.CNamedShape]:

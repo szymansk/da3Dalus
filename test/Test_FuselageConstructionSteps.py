@@ -316,16 +316,15 @@ if __name__ == "__main__":
 
 
     shape_stl_export_node = ConstructionStepNode(
-        ExportToStlCreator("stl_exporter",
-                           additional_shapes_to_export=["engine_mount",
-                                                        "engine_cape.cape",
-                                                        "final_fuselage[0]",
-                                                        "final_fuselage[1]",
-                                                        "final_fuselage[2]",
-                                                        "final_fuselage[3]",
-                                                        "final_fuselage[4]",
-                                                        "elevator[1]",
-                                                        "rudder"]))
+        ExportToStlCreator("stl_exporter", shapes_to_export=["engine_mount",
+                                                             "engine_cape.cape",
+                                                             "final_fuselage[0]",
+                                                             "final_fuselage[1]",
+                                                             "final_fuselage[2]",
+                                                             "final_fuselage[3]",
+                                                             "final_fuselage[4]",
+                                                             "elevator[1]",
+                                                             "rudder"]))
     shape_slicer_node.append(shape_stl_export_node)
     # "fuselage_slicer[0] .. [4]", "engine_mount", "engine_cape.cape",
     # "elevator[0]", "elevator[1]", "rudder_with_slot" -> *

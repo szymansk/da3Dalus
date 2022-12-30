@@ -1,9 +1,10 @@
 {
     "successors": {},
     "creator": {
-        "creator_id": "wings",
         "right_main_wing_index": 1,
+        "creator_id": "wings",
         "$TYPE": "FullWingLoftShapeCreator"
     },
+    "creator_id": "wings.node",
     "$TYPE": "ConstructionStepNode"
 }

@@ -84,7 +84,7 @@ if __name__ == "__main__":
     print(json.dumps(myMap, indent=2, cls=GeneralJSONEncoder))
 
     # build on basis of deserialized json
-    structure = myMap.create_shape()
+    structure = myMap._create_shape(all_shapes, )
     from pprint import pprint
 
     pprint(structure)

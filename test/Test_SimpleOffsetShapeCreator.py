@@ -160,7 +160,7 @@ if __name__ == "__main__":
 
 
     shape_stl_export_node = ConstructionStepNode(
-        ExportToStlCreator("stl_exporter"))
+        ExportToStlCreator("stl_exporter", None))
     shape_slicer_node.append(shape_stl_export_node)
 
     mount_step_export_node = ConstructionStepNode(
@@ -182,7 +182,7 @@ if __name__ == "__main__":
     print(json.dumps(myMap, indent=2, cls=GeneralJSONEncoder))
     try:
         # build on basis of deserialized json
-        structure = myMap.create_shape()
+        structure = myMap._create_shape(all_shapes, )
         from pprint import pprint
 
         pprint(structure)
