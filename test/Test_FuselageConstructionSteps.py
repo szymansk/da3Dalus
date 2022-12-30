@@ -6,11 +6,7 @@ import Extra.tigl_extractor as tg
 import json
 
 from Airplane.ConstructionStepNode import ConstructionStepNode, ConstructionRootNode, JSONStepNode
-from Airplane.FuselageConstructionSteps import FullWingLoftShapeCreator, Cut2ShapesCreator, SliceShapesCreator, \
-    EngineMountShapeCreator, EngineCapeShapeCreator, FuselageReinforcementShapeCreator, IgesImportCreator, \
-    Fuse2ShapesCreator, FuselageWingSupportShapeCreator, FuselageElectronicsAccessCutOutShapeCreator, \
-    Intersect2ShapesCreator, SimpleOffsetShapeCreator, WingAttachmentBoltHolesShapeCreator, ExportToStlCreator, \
-    StepImportCreator, ExportToIgesCreator, ExportToStepCreator, FullWingShapeCreator, EngineMountPanelShapeCreator
+from Airplane.FuselageConstructionSteps import *
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
 
 if __name__ == "__main__":
@@ -45,10 +41,12 @@ if __name__ == "__main__":
     root_node = ConstructionRootNode(creator_id="root")
 
     full_wing_node = ConstructionStepNode(
-        FullWingShapeCreator("full_wing",
-                             fuselage_index=1,
-                             right_main_wing_index=1))
+        FullWingShapeCreator("full_wing", right_main_wing_index=1))
     root_node.append(full_wing_node)
+
+    full_fuselage_loft_node = ConstructionStepNode(
+        FullFuselageLoftShapeCreator("full_fuselage_loft", fuselage_index=1))
+    root_node.append(full_fuselage_loft_node)
 
     full_elevator_loft_node = ConstructionStepNode(
         FullWingLoftShapeCreator("elevator",
@@ -83,9 +81,10 @@ if __name__ == "__main__":
 
     engine_panel_node = ConstructionStepNode(
         EngineMountPanelShapeCreator("engine_mount_plate", mount_plate_thickness=0.005, engine_screw_hole_circle=0.042,
-                                     engine_mount_box_length=0.0133 * 2.5,
-                                     engine_index=1, fuselage_index=1, engine_total_cover_length=None,
-                                     engine_down_thrust_deg=None, engine_side_thrust_deg=None))
+                                     engine_mount_box_length=0.0133 * 2.5, engine_index=1,
+                                     full_fuselage_loft="full_fuselage_loft",
+                                     engine_total_cover_length=None, engine_side_thrust_deg=None,
+                                     engine_down_thrust_deg=None))
     engine_mount_node.append(engine_panel_node)
 
     fuse_mount_with_plate = ConstructionStepNode(
@@ -93,12 +92,9 @@ if __name__ == "__main__":
     engine_panel_node.append(fuse_mount_with_plate)
 
     engine_cape_node = ConstructionStepNode(
-        EngineCapeShapeCreator("engine_cape",
-                               engine_index=1,
-                               fuselage_index=1,
-                               engine_total_cover_length=0.0452,
-                               engine_mount_box_length=0.0133 * 2.5,
-                               mount_plate_thickness=0.005+0.0008))
+        EngineCapeShapeCreator("engine_cape", fuselage_index=1, engine_index=1, engine_total_cover_length=0.0452,
+                               engine_mount_box_length=0.0133 * 2.5, mount_plate_thickness=0.005 + 0.0008,
+                               full_fuselage_loft="full_fuselage_loft"))
     root_node.append(engine_cape_node)
     # -> "engine_cape.cape", "engine_cape.loft"
 

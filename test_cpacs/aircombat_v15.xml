@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<cpacs xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://cpacs.googlecode.com/files/CPACS_21_Schema.xsd">
+<cpacs xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://www.cpacs.de/schema/v3_2_0/cpacs_schema.xsd">
   <header>
     <name>Empty</name>
     <description>Empty aircraft</description>
@@ -1051,6 +1051,76 @@
                 <toElementUID>ho_stabSec2Elem1</toElementUID>
               </segment>
             </segments>
+            <componentSegments>
+              <componentSegment uID="elevator_flap">
+                <name>elevator</name>
+                <fromElementUID>ho_stabSec1Elem1</fromElementUID>
+                <toElementUID>ho_stabSec2Elem1</toElementUID>
+                <controlSurfaces>
+                  <trailingEdgeDevices>
+                    <trailingEdgeDevice uID="elevator">
+                      <name>elevator</name>
+                      <parentUID>elevator_flap</parentUID>
+                      <outerShape>
+
+                        <innerBorder>
+                          <etaLE>
+                            <eta>0.27391</eta>
+                            <referenceUID>elevator_flap</referenceUID>
+                          </etaLE>
+                          <etaTE>
+                            <eta>0.281</eta>
+                            <referenceUID>elevator_flap</referenceUID>
+                          </etaTE>
+                          <xsiLE>
+                            <xsi>0.3</xsi>
+                            <referenceUID>elevator_flap</referenceUID>
+                          </xsiLE>
+                        </innerBorder>
+
+                        <outerBorder>
+                          <etaLE>
+                            <eta>1</eta>
+                            <referenceUID>elevator_flap</referenceUID>
+                          </etaLE>
+                          <xsiLE>
+                            <xsi>0.4</xsi>
+                            <referenceUID>elevator_flap</referenceUID>
+                          </xsiLE>
+                        </outerBorder>
+                      </outerShape>
+                      <path>
+                        <innerHingePoint>
+                          <hingeXsi>0.88</hingeXsi>
+                          <hingeRelHeight>0.5</hingeRelHeight>
+                        </innerHingePoint>
+                        <outerHingePoint>
+                          <hingeXsi>0.88</hingeXsi>
+                          <hingeRelHeight>0.5</hingeRelHeight>
+                        </outerHingePoint>
+                        <steps>
+                          <step>
+                            <controlParameter>-1</controlParameter>
+                            <hingeLineRotation>-30</hingeLineRotation>
+                            <relDeflection>0</relDeflection>
+                          </step>
+                          <step>
+                            <controlParameter>0</controlParameter>
+                            <hingeLineRotation>0</hingeLineRotation>
+                            <relDeflection>0</relDeflection>
+                          </step>
+                          <step>
+                            <controlParameter>1</controlParameter>
+                            <hingeLineRotation>30</hingeLineRotation>
+                            <relDeflection>0</relDeflection>
+                          </step>
+                        </steps>
+                      </path>
+                    </trailingEdgeDevice>
+                  </trailingEdgeDevices>
+                </controlSurfaces>
+              </componentSegment>
+            </componentSegments>
           </wing>
           <wing symmetry="x-z-plane" uID="vert_stabiliazer">
             <name>vert_stabiliazer</name>
@@ -1499,6 +1569,20 @@
                         </z>
           </pointList>
         </wingAirfoil>
+        <wingAirfoil uID="elevator_airfoil">
+          <name>elevator_airfoil</name>
+          <pointList>
+            <z mapType="vector">
+         0.000000; 0.000110; 0.000580; 0.001530; 0.002920; 0.004660; 0.006730; 0.009160; 0.011880; 0.014770; 0.017630; 0.020140; 0.022200 ;0.023940 ;0.025460 ;0.026780 ;0.027900 ;0.028830 ;0.029520 ;0.029960 ;0.030110 ;0.029920 ;0.029310 ;0.028160 ;0.026330 ;0.023630 ;0.020030 ;0.015570 ;0.010440 ;0.005000 ;0.000000;-0.005000;-0.010440; -0.015570;-0.020030;-0.023630;-0.026330;-0.028160;-0.029310;-0.029920;-0.030110;-0.029960;-0.029520;-0.028830;-0.027900;-0.026780;-0.025460;-0.023940;-0.022200;-0.020140;-0.017630;-0.014770;-0.011880;-0.009160;-0.006730;-0.004660;-0.002920;-0.001530;-0.000580;-0.000110; 0.000000
+            </z>
+            <x mapType="vector">;
+              1.000000;  0.996810;  0.987420;  0.972190;  0.951530;  0.925720;  0.895070;  0.860040;  0.821140;  0.778930;  0.733980;  0.686720;  0.637380;  0.586370;  0.534260;  0.481680;  0.429260;  0.377590;  0.327310;  0.278990;  0.233220;  0.190530;  0.151470;  0.116470;  0.085890;  0.059960;  0.038690;  0.022090;  0.010070;  0.002590;  0.000000;  0.002590;  0.010070;  0.022090;  0.038690;  0.059960;  0.085890;  0.116470;  0.151470;  0.190530;  0.233220;  0.278990;  0.327310;  0.377590;  0.429260;  0.481680;  0.534260;  0.586370;  0.637380;  0.686720;  0.733980;  0.778930;  0.821140;  0.860040;  0.895070;  0.925720;  0.951530;  0.972190;  0.987420;  0.996810;  1.000000
+            </x>
+            <y mapType="vector">0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0
+</y>
+          </pointList>
+        </wingAirfoil>
+
         <wingAirfoil uID="ac_wing_v2">
           <name>Aircombat Wing Version 2</name>
           <pointList>

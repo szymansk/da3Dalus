@@ -38,12 +38,8 @@ if __name__ == "__main__":
 
 
     engine_cape_node = ConstructionStepNode(
-        EngineCapeShapeCreator("engine_cape",
-                               engine_index=1,
-                               fuselage_index=1,
-                               engine_total_cover_length=0.0452,
-                               engine_mount_box_length=0.0133 * 2.5,
-                               mount_plate_thickness=0.005))
+        EngineCapeShapeCreator("engine_cape", fuselage_index=1, engine_index=1, engine_total_cover_length=0.0452,
+                               engine_mount_box_length=0.0133 * 2.5, mount_plate_thickness=0.005))
     root_node.append(engine_cape_node)
     # -> "engine_cape.cape", "engine_cape.loft"
 

@@ -132,6 +132,21 @@ class ConstructionStepsViewer:
                                     trans=trans)
             self.display.FitAll()
 
+    def display_fused_shapes(self, fused_shape: TGeo.CNamedShape, shape_dict: dict[str, TGeo.CNamedShape], severity, msg="", trans=False):
+        if self.dev and severity >= logging.root.level:
+            first = True
+            for key, val in shape_dict.items():
+                if first:
+                    shape = OExs.translate_shp(val.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
+                    self.display.DisplayShape(shape, transparency=0.8)
+                    first = False
+                shape = OExs.translate_shp(val.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
+                self.display.DisplayShape(shape, color="GREEN")
+
+            self.display_this_shape(fused_shape, severity=severity, msg=f"{msg}", trans=trans)
+            self.display.FitAll()
+
+
     def display_cut(self, cuted_shape: TGeo.CNamedShape, named_shape1: TGeo.CNamedShape, named_shape2: TGeo.CNamedShape,
                     severity, msg="", trans=False):
         if self.dev and severity >= logging.root.level:

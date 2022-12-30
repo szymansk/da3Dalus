@@ -74,7 +74,7 @@ class FuselageFactory:
         internal_structure.append(reinforcement_pipes)
 
         # Fuse internal structure
-        fused_internal_structure: TGeo.CNamedShape = fuse_list_of_namedshapes(internal_structure)
+        fused_internal_structure: TGeo.CNamedShape = BooleanCADOperation.fuse_list_of_namedshapes(internal_structure)
 
         # Create Reduction recces
         cutouts: list[TGeo.CNamedShape] = \
@@ -175,14 +175,15 @@ class FuselageFactory:
         return complete_wing
 
     @classmethod
-    def create_engine_cape(cls, cpacs_configuration, fuselage_index, mount_plate_thickness, motor_cutout_length) -> list[TGeo.CNamedShape]:
+    def create_engine_cape(cls, mount_plate_thickness: float, motor_cutout_length: float,
+                           full_fuselage_loft: TGeo.CNamedShape) -> list[TGeo.CNamedShape]:
         '''
         Cut the fuselage tip, so the motor can be positioned there. Fuselage loft is updated and returns the Engine cape Shape
+        :param full_fuselage_loft:
         :param mount_plate_thickness:
         :param motor_cutout_length: length of the motor
         '''
-        fuselage: TConfig.CCPACSFuselage = cpacs_configuration.get_fuselage(fuselage_index)
-        fuselage_loft: TGeo.CNamedShape = fuselage.get_loft()
+        fuselage_loft: TGeo.CNamedShape = full_fuselage_loft
 
         fuselage_dimensions = PDim.ShapeDimensions(fuselage_loft)
 

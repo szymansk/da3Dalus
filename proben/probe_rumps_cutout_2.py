@@ -249,14 +249,14 @@ class aircombat_test:
 
     def cut_fuselage_with_wing(self):
         self.cutted_fuselage_shape = OAlgo.BRepAlgoAPI_Cut(self.fuselage_shape, self.complete_wing).Shape()
-        self.m.display_this_shape(self.cutted_fuselage_shape, severity=logging.NOTSET, "Cutted Fuselage")
+        self.m.display_this_shape(self.cutted_fuselage_shape, severity=logging.NOTSET, msg="Cutted Fuselage")
 
     def hollow_fuselage(self, thickness=0.0004):
         # facesToRemove = TopTools_ListOfShape()
         # Fuselage Hollow, walls for wings #0.01
         # self.fuselage_hollow= OOff.BRepOffsetAPI_MakeThickSolid(self.cutted_fuselage_shape, facesToRemove, 0.04, 0.01).Shape()
         self.fuselage_hollow = create_hollowedsolid(self.fuselage_shape, thickness)
-        self.m.display_this_shape(self.fuselage_hollow, severity=logging.NOTSET,
+        self.m.display_this_shape(self.fuselage_hollow, severity=logging.NOTSET, msg=
                                   f"Hollow Fuselage- Thickness {thickness}", True)
 
     def create_cross_rib(self):
@@ -271,7 +271,7 @@ class aircombat_test:
         hardware_box = OPrim.BRepPrimAPI_MakeBox(hardware_box_lenght, hardware_box_widht, hardware_box_height).Shape()
         self.moved_hardware_box = OExs.translate_shp(hardware_box, Ogp.gp_Vec(0, -hardware_box_widht / 2,
                                                                               -hardware_box_height + (rib_width / 2)))
-        self.m.display_this_shape(self.moved_hardware_box, severity=logging.NOTSET, "Hardware Box")
+        self.m.display_this_shape(self.moved_hardware_box, severity=logging.NOTSET, msg="Hardware Box")
         rib_quantity = 2
         d_angle = 180 / rib_quantity
         for i in range(rib_quantity):
@@ -282,7 +282,7 @@ class aircombat_test:
                 self.rippen = sbox
             else:
                 self.rippen = OAlgo.BRepAlgoAPI_Fuse(self.rippen, sbox).Shape()
-        self.m.display_this_shape(self.rippen, severity=logging.NOTSET, "Cross Ribs")
+        self.m.display_this_shape(self.rippen, severity=logging.NOTSET, msg="Cross Ribs")
 
     def create_quadrat_rib2(self, rib_width=0.0004, factor=0.3):
         box = OPrim.BRepPrimAPI_MakeBox(self.fuselage_lenght * 2, rib_width * 2, self.fuselage_height * 2).Shape()
@@ -301,7 +301,7 @@ class aircombat_test:
         rippen = OAlgo.BRepAlgoAPI_Fuse(rippen, ver_rib_2).Shape()
         rippen = OAlgo.BRepAlgoAPI_Fuse(rippen, hor_rib_1).Shape()
         rippen = OAlgo.BRepAlgoAPI_Fuse(rippen, hor_rib_2).Shape()
-        self.m.display_this_shape(rippen, severity=logging.NOTSET, "Quadrat Ribs")
+        self.m.display_this_shape(rippen, severity=logging.NOTSET, msg="Quadrat Ribs")
         return rippen
 
     def create_wing_reinforcement_ribs(self):
@@ -448,7 +448,7 @@ class aircombat_test:
         hardware_x_pos += hardware_cutout_lenght
         c2 = OExs.translate_shp(cylinder, Ogp.gp_Vec(hardware_x_pos, 0.0, -hardware_cutout_height))
         c_list = [moved_box, c1, c2]
-        cutout = fuse_list_of_shapes(c_list)
+        cutout = BooleanCADOperation.fuse_list_of_shapes(c_list)
         return cutout
 
     def create_thin_star_ribs(self):
@@ -456,7 +456,7 @@ class aircombat_test:
         # cylinder= OPrim.BRepPrimAPI_MakeCylinder((fuselage_height*0.8)/2,40).Shape()
         cylinder = OPrim.BRepPrimAPI_MakeCylinder(1.5, 40).Shape()
         cylinder = self.rotate_shape(cylinder, Ogp.gp_OY(), 90)
-        self.m.display_this_shape(cylinder, severity=logging.NOTSET, "Cylinder Cutout")
+        self.m.display_this_shape(cylinder, severity=logging.NOTSET, msg="Cylinder Cutout")
         rib_quantity = 2
         # Extraribs
         d_angle = 180 / (rib_quantity * 2)
@@ -468,9 +468,9 @@ class aircombat_test:
                 self.rippen_ver = sbox
             else:
                 self.rippen_ver = OAlgo.BRepAlgoAPI_Fuse(self.rippen_ver, sbox).Shape()
-        self.m.display_this_shape(self.rippen_ver, severity=logging.NOTSET, "Star ribs")
+        self.m.display_this_shape(self.rippen_ver, severity=logging.NOTSET, msg="Star ribs")
         self.rippen_ver = OAlgo.BRepAlgoAPI_Cut(self.rippen_ver, cylinder).Shape()
-        self.m.display_this_shape(self.rippen_ver, severity=logging.NOTSET, "Starribs with cylinder cutout")
+        self.m.display_this_shape(self.rippen_ver, severity=logging.NOTSET, msg="Starribs with cylinder cutout")
 
     def reinforcement_tunel_in(self):
         self.reinforcement_tunnel_in = OPrim.BRepPrimAPI_MakeCylinder(0.002, self.fuselage_lenght).Shape()
@@ -479,19 +479,19 @@ class aircombat_test:
     def reinforcement_tunel_out(self):
         self.reinforcement_tunnel_out = OPrim.BRepPrimAPI_MakeCylinder(0.004, self.fuselage_lenght).Shape()
         self.reinforcement_tunnel_out = self.rotate_shape(self.reinforcement_tunnel_out, Ogp.gp_OY(), 90)
-        self.m.display_this_shape(self.reinforcement_tunnel_out, severity=logging.NOTSET, "Reinforcement Tunel")
+        self.m.display_this_shape(self.reinforcement_tunnel_out, severity=logging.NOTSET, msg="Reinforcement Tunel")
 
     def common_fuselage_ribs_ver(self):
         self.rippen_ver = OAlgo.BRepAlgoAPI_Common(self.fuselage_shape, self.rippen_ver).Shape()
-        self.m.display_this_shape(self.rippen_ver, severity=logging.NOTSET, "Ribs cut to fuselage shape")
+        self.m.display_this_shape(self.rippen_ver, severity=logging.NOTSET, msg="Ribs cut to fuselage shape")
 
     def cut_ribs_harwarebox(self):
         self.rippen_cuted = OAlgo.BRepAlgoAPI_Cut(self.rippen, self.moved_hardware_box).Shape()
-        self.m.display_this_shape(self.rippen_cuted, severity=logging.NOTSET, "Cross Ribs with hardware Box Cutout")
+        self.m.display_this_shape(self.rippen_cuted, severity=logging.NOTSET, msg="Cross Ribs with hardware Box Cutout")
 
     def fuse_reinforcemt_ribs(self):
         self.rippen_cuted = OAlgo.BRepAlgoAPI_Fuse(self.rippen_cuted, self.reinforcement_tunnel_out).Shape()
-        self.m.display_this_shape(self.rippen_cuted, severity=logging.NOTSET, "Ribs with reinforcement tunel")
+        self.m.display_this_shape(self.rippen_cuted, severity=logging.NOTSET, msg="Ribs with reinforcement tunel")
 
     def common_fuselage_ribs_cuted(self):
         self.rippen_cuted_form = OAlgo.BRepAlgoAPI_Common(self.fuselage_shape, self.rippen_cuted).Shape()
@@ -500,7 +500,7 @@ class aircombat_test:
 
     def fuse_ribs(self):
         self.rippen_gesamt = OAlgo.BRepAlgoAPI_Fuse(self.rippen_cuted, self.rippen_ver).Shape()
-        self.m.display_this_shape(self.rippen_gesamt, severity=logging.NOTSET, " Fused Ribs")
+        self.m.display_this_shape(self.rippen_gesamt, severity=logging.NOTSET, msg=" Fused Ribs")
 
     def center_mass(self):
         point: Ogp.gp_Pnt = TGeo.get_center_of_mass(self.rippen_cuted)
@@ -523,7 +523,7 @@ class aircombat_test:
         mybox = translate_shp(mybox, gp_Vec(0, self.fuselage_widht / 2, self.fuselage_height / 2))
         self.m.display_in_origin(mybox, logging.NOTSET)
         self.fuselage_done = OAlgo.BRepAlgoAPI_Fuse(self.fuselage_hollow, self.rippen_cuted).Shape()
-        self.m.display_this_shape(self.fuselage_done, severity=logging.NOTSET, "Test Fuse")
+        self.m.display_this_shape(self.fuselage_done, severity=logging.NOTSET, msg="Test Fuse")
 
     def cut_fuselage_ribs(self):
         print("Cutting: fuselage and ribs...")
@@ -538,7 +538,7 @@ class aircombat_test:
         fuselage_offset = OOff.BRepOffsetAPI_MakeOffsetShape(self.fuselage_shape, -offset, 0.0001).Shape()
         self.m.display_this_shape(fuselage_offset, severity=logging.NOTSET)
         self.fuselage_hollow = OAlgo.BRepAlgoAPI_Cut(self.fuselage_shape, fuselage_offset).Shape()
-        self.m.display_this_shape(self.fuselage_hollow, severity=logging.NOTSET, "")
+        self.m.display_this_shape(self.fuselage_hollow, severity=logging.NOTSET, msg="")
 
     def offset_fuselage(self, offset=0.0008):
         self.fuselage_offset = OOff.BRepOffsetAPI_MakeOffsetShape(self.fuselage_shape, offset, 0.000001).Shape()

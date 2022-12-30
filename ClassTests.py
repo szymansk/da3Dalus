@@ -156,7 +156,7 @@ if __name__ == "__main__":
         beta_angle = 5
         test_class.create_engine_mount(self.engine_total_cover_length, self.engine_mount_box_length,
                                        self.engine_down_thrust_deg, self.engine_side_thrust_deg, 0.034,
-                                       self.engine_screw_din_diameter, self.engine_srew_length, 1, cpacs_configuration)
+                                       self.engine_screw_din_diameter, 1)
     if test_class_name == "ShellCreator":
         wing_f = wf.WingFactory(tigl_h, 1)
         test_class = cs.ShellCreator(wing_f.wing_shape)

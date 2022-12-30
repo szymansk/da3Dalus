@@ -31,6 +31,7 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         """
         pass
 
+
     @classmethod
     def check_if_shapes_are_available(cls, needed_shapes: list[str], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         """

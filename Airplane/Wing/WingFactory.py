@@ -11,9 +11,8 @@ from Airplane.Wing.RuderFactory import RuderFactory
 from Airplane.Wing.ServoRecessFactory import ServoRecessFactory
 from Airplane.Wing.WingRibFactory import *
 from Dimensions.ShapeDimensions import ShapeDimensions
-from Extra.BooleanOperationsForLists import fuse_list_of_namedshapes, BooleanCADOperation
+from Extra.BooleanOperationsForLists import BooleanCADOperation
 from Extra.CollisionDetector import CollisionDetector
-# from factories.RibFactory import *
 from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 
 
@@ -66,23 +65,24 @@ class WingFactory:
         # Servo Reccess
         servo_size = (0.024, 0.024, 0.012)
         ruder_shape = self.ruder_factory.get_trailing_edge_shape()
-        servo = self.servo_recces_factory.create_servoRecess_option1(ruder_shape, servo_size)
-        servo_dimensions = ShapeDimensions(servo)
-        internal_structur.append(servo)
+        if ruder_shape is not None:
+            servo = self.servo_recces_factory.create_servoRecess_option1(ruder_shape, servo_size)
+            servo_dimensions = ShapeDimensions(servo)
+            internal_structur.append(servo)
 
-        # Cable Pipe
-        fuselage: TConfig.CCPACSWing = self.cpacs_configuration.get_fuselage(1)
-        fuselage_loft: TGeo.CNamedShape = fuselage.get_loft()
-        fuselage_dimensions = ShapeDimensions(fuselage_loft)
+            # Cable Pipe
+            fuselage: TConfig.CCPACSWing = self.cpacs_configuration.get_fuselage(1)
+            fuselage_loft: TGeo.CNamedShape = fuselage.get_loft()
+            fuselage_dimensions = ShapeDimensions(fuselage_loft)
 
-        points = self.cable_pipe_factory.points_route_thru(servo_dimensions, fuselage_dimensions)
-        cable_pipe = self.cable_pipe_factory.create_complete_pipe(points, servo_dimensions.get_height() / 2)
-        internal_structur.append(cable_pipe)
+            points = self.cable_pipe_factory.points_route_thru(servo_dimensions, fuselage_dimensions)
+            cable_pipe = self.cable_pipe_factory.create_complete_pipe(points, servo_dimensions.get_height() / 2)
+            internal_structur.append(cable_pipe)
 
         for ix in internal_structur:
             logging.info(f"---{type(ix)}---")
         # Fuse internal Structure
-        self.shapes.append(fuse_list_of_namedshapes(internal_structur, "internal structure"))
+        self.shapes.append(BooleanCADOperation.fuse_list_of_namedshapes(internal_structur, "internal structure"))
         self.m.display_in_secondfloor(self.shapes[-1])
 
         # Cut internal Strukture from Wing
@@ -107,26 +107,29 @@ class WingFactory:
         # Cut-Out Ruder
         offset: float = 0.002
         ruder_cutout, ruder_cut_small = self.ruder_factory.get_trailing_edge_cutout(offset)
-        wing = self.shapes[-1]
-        self.shapes.append(
-            TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Cut(self.shapes[-1].shape(), ruder_cutout.shape()).Shape(),
-                             f"{self.wing_loft.name()}"))
-        self.m.display_cut(self.shapes[-1], self.shapes[-2], ruder_cutout, logging.NOTSET)
+        if ruder_cutout is not None:
+            wing = self.shapes[-1]
+            self.shapes.append(
+                TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Cut(self.shapes[-1].shape(), ruder_cutout.shape()).Shape(),
+                                 f"{self.wing_loft.name()}"))
+            self.m.display_cut(self.shapes[-1], self.shapes[-2], ruder_cutout, logging.NOTSET)
 
-        # rudder
-        aileron = BooleanCADOperation.intersect_shape_with_shape(wing, ruder_cut_small, "aileron")
-        # self.m.display_cut(aileron, self.shapes[-1], aileron, logging.NOTSET)
+            # rudder
+            aileron = BooleanCADOperation.intersect_shape_with_shape(wing, ruder_cut_small, "aileron")
+            # self.m.display_cut(aileron, self.shapes[-1], aileron, logging.NOTSET)
 
-        self.m.display_this_shape(aileron, logging.INFO)
-        #raise RuntimeError
+            self.m.display_this_shape(aileron, logging.INFO)
+            #raise RuntimeError
 
-        # Collision Tests
-        reinforcement_tests = [(servo, False), (cable_pipe, False), (ruder_cutout, False)]
-        servo_tests = [(cable_pipe, True), (ruder_cutout, False)]
-        ruder_test = [(cable_pipe, False)]
-        all_test = {reinforcement_rod: reinforcement_tests, servo: servo_tests, ruder_cutout: ruder_test}
-        collision_detector = CollisionDetector()
-        collision_detector.multiple_collision_check(all_test)
+            # Collision Tests
+            reinforcement_tests = [(servo, False), (cable_pipe, False), (ruder_cutout, False)]
+            servo_tests = [(cable_pipe, True), (ruder_cutout, False)]
+            ruder_test = [(cable_pipe, False)]
+            all_test = {reinforcement_rod: reinforcement_tests, servo: servo_tests, ruder_cutout: ruder_test}
+            collision_detector = CollisionDetector()
+            collision_detector.multiple_collision_check(all_test)
+        else:
+            aileron = None
 
         return self.shapes[-1], aileron
 
@@ -164,11 +167,12 @@ class WingFactory:
 
         # Cut-Out Ruder
         offset: float = 0.002
-        ruder_cutout: TGeo.CNamedShape = self.ruder_factory.get_trailing_edge_cutout(offset)
-        self.shapes.append(
-            TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Cut(self.shapes[-1].shape(), ruder_cutout.shape()).Shape(),
-                             f"{self.wing_loft.name()}"))
-        self.m.display_cut(self.shapes[-1], self.shapes[-2], ruder_cutout, logging.NOTSET)
+        ruder_cutout, _ = self.ruder_factory.get_trailing_edge_cutout(offset)
+        if ruder_cutout is not None:
+            self.shapes.append(
+                TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Cut(self.shapes[-1].shape(), ruder_cutout.shape()).Shape(),
+                                 f"{self.wing_loft.name()}"))
+            self.m.display_cut(self.shapes[-1], self.shapes[-2], ruder_cutout, logging.NOTSET)
 
     def get_shape(self) -> TGeo.CNamedShape:
         return self.shapes[-1]

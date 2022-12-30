@@ -61,7 +61,7 @@ class FuselageRibFactory:
 
         # Fuse all ribs
         ribs: list[TGeo.CNamedShape] = [ver_rib_right, ver_rib_left, hor_rib_top, hor_rib_bottom]
-        fused_ribs = BOl.fuse_list_of_namedshapes(ribs)
+        fused_ribs = BOl.BooleanCADOperation.fuse_list_of_namedshapes(ribs)
         return fused_ribs
 
     @classmethod

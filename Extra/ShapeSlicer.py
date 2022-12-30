@@ -5,7 +5,7 @@ import OCC.Extend.ShapeFactory as OExs
 import tigl3.geometry as TGeo
 
 from Dimensions.ShapeDimensions import ShapeDimensions
-from Extra.BooleanOperationsForLists import cut_list_of_namedshapes
+from Extra.BooleanOperationsForLists import BooleanCADOperation
 from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 import logging
 
@@ -90,7 +90,7 @@ class ShapeSlicer:
 
             cutout_list = [named_cutout_front_box, named_cutout_back_box]
 
-            wing_part = cut_list_of_namedshapes(self.namedshape, cutout_list, part_name)
+            wing_part = BooleanCADOperation.cut_list_of_namedshapes(self.namedshape, cutout_list, part_name)
             self.parts_list.append(wing_part)
 
         self.m.display_slice_x(self.parts_list, logging.NOTSET, f"Sliced {self.namedshape.name()}")

@@ -34,5 +34,5 @@ def create_circular_pattern_around_xaxis(namedshape, quantity, bound=360, start=
         shapes.append(
             TGeo.CNamedShape(OExs.rotate_shape(namedshape.shape(), Ogp.gp_OX(), angle), f"{namedshape.name()}_{i}"))
 
-    result = fuse_list_of_namedshapes(shapes, namedshape.name())
+    result = BooleanCADOperation.fuse_list_of_namedshapes(shapes, namedshape.name())
     return result

@@ -55,7 +55,7 @@ def make_oriented_horizontal_ribs(root_x_list,tip_x_list,w_ymin,w_zmin, lenght, 
     ribs=[]
     for i,x in enumerate(root_x_list):
         ribs.append(make_single_box_rib(root_x_list[i],tip_x_list[i],w_ymin,w_zmin, lenght, width, height, rib_width))
-    fused_ribs=BooleanOperationsForLists.fuse_list_of_shapes(ribs)
+    fused_ribs= BooleanOperationsForLists.BooleanCADOperation.fuse_list_of_shapes(ribs)
     return fused_ribs
     
     

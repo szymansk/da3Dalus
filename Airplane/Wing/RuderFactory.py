@@ -53,7 +53,11 @@ class RuderFactory:
         :return:
         """
         logging.info(f"Getting trailing edge device from {component_segment_index=} {device_index=}")
-        compseg: TConfig.CCPACSWingComponentSegment = self.wing.get_component_segment(component_segment_index)
+        try:
+            compseg: TConfig.CCPACSWingComponentSegment = self.wing.get_component_segment(component_segment_index)
+        except IndexError:
+            logging.info(f"cannot find trailing edge device")
+            return None
         control_surface: TConfig.CCPACSControlSurfaces = compseg.get_control_surfaces()
         trailing_edge_devices: TConfig.CCPACSTrailingEdgeDevices = control_surface.get_trailing_edge_devices()
         trailing_edge_device: TConfig.CCPACSTrailingEdgeDevice = trailing_edge_devices.get_trailing_edge_device(
@@ -71,7 +75,10 @@ class RuderFactory:
         :return:
         """
         logging.info(f"Getting trailing edge cutout from {component_segment_index=} {device_index=}")
-        compseg: TConfig.CCPACSWingComponentSegment = self.wing.get_component_segment(component_segment_index)
+        try:
+            compseg: TConfig.CCPACSWingComponentSegment = self.wing.get_component_segment(component_segment_index)
+        except IndexError:
+            return None, None
         control_surface: TConfig.CCPACSControlSurfaces = compseg.get_control_surfaces()
         trailing_edge_devices: TConfig.CCPACSTrailingEdgeDevices = control_surface.get_trailing_edge_devices()
 

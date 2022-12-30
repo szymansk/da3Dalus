@@ -65,7 +65,7 @@ class ReinforcementePipeFactory:
                 self.shapes.append(pipe)
                 self.m.display_in_origin(pipe, logging.NOTSET)
 
-        cylinders = Bof.fuse_list_of_namedshapes(self.shapes, f"reinforcement_pipe")
+        cylinders = Bof.BooleanCADOperation.fuse_list_of_namedshapes(self.shapes, f"reinforcement_pipe")
         self.shape = cylinders
         return cylinders
 
@@ -96,7 +96,7 @@ class ReinforcementePipeFactory:
         pipe4 = ReinforcementePipeFactory.create_pipe_section(start, end, radius, "pipe_section_4")
 
         pipes = [pipe1, pipe2, pipe3, pipe4]
-        fused_pipes = Bof.fuse_list_of_namedshapes(pipes, "Reinforcement_pipes")
+        fused_pipes = Bof.BooleanCADOperation.fuse_list_of_namedshapes(pipes, "Reinforcement_pipes")
         return fused_pipes
 
     def get_shape(self) -> TGeo.CNamedShape:

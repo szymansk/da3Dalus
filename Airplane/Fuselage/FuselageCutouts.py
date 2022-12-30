@@ -61,7 +61,7 @@ class FuselageCutouts:
         cylinder_back = TGeo.CNamedShape(OExs.translate_shp(cylinder, Ogp.gp_Vec(hardware_x_pos, 0.0, hardware_z_pos)),
                                          "c2_cutout")
         cutouts = [moved_box, cylinder_front, cylinder_back]
-        cutout = Bof.fuse_list_of_namedshapes(cutouts, "hardware_cutout")
+        cutout = Bof.BooleanCADOperation.fuse_list_of_namedshapes(cutouts, "hardware_cutout")
         return cutout
 
 

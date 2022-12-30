@@ -52,7 +52,7 @@ class CablePipeFactory:
         for i in range(1, len(self.points)):
             pipe_shapes.append(self._pipe_corner(self.points[i], self.radius, i))
 
-        named_pipe = BooleanOperationsForLists.fuse_list_of_namedshapes(pipe_shapes, "cable_pipe")
+        named_pipe = BooleanOperationsForLists.BooleanCADOperation.fuse_list_of_namedshapes(pipe_shapes, "cable_pipe")
         self.loft = named_pipe
         return named_pipe
 
