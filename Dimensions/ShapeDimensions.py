@@ -5,6 +5,7 @@ import OCC.Core.TopoDS as OTopo
 import OCC.Core.gp as Ogp
 import tigl3.geometry as TGeo
 from OCC.Core.BRepBndLib import brepbndlib_Add
+from OCC.Core.BRepMesh import BRepMesh_IncrementalMesh
 from OCC.Core.Bnd import Bnd_Box
 
 
@@ -29,9 +30,38 @@ class ShapeDimensions:
         :return: x_min, y_min, z_min, x_max, y_max, z_max
         '''
         bbox = Bnd_Box()
+        bbox.SetGap(0.0001)
         brepbndlib_Add(shape, bbox)
         x_min, y_min, z_min, x_max, y_max, z_max = bbox.Get()
+
+        #x_min, y_min, z_min, x_max, y_max, z_max, _, _, _ = self.get_boundingbox(shape)
         return x_min, y_min, z_min, x_max, y_max, z_max
+
+    def get_boundingbox(self, shape, tol=1e-6, use_mesh=True):
+        """ return the bounding box of the TopoDS_Shape `shape`
+        Parameters
+        ----------
+        shape : TopoDS_Shape or a subclass such as TopoDS_Face
+            the shape to compute the bounding box from
+        tol: float
+            tolerance of the computed boundingbox
+        use_mesh : bool
+            a flag that tells whether or not the shape has first to be meshed before the bbox
+            computation. This produces more accurate results
+        """
+        bbox = Bnd_Box()
+        bbox.SetGap(tol)
+        if use_mesh:
+            mesh = BRepMesh_IncrementalMesh()
+            mesh.SetParallelDefault(True)
+            mesh.SetShape(shape)
+            mesh.Perform()
+            if not mesh.IsDone():
+                raise AssertionError("Mesh not done.")
+        brepbndlib_Add(shape, bbox, use_mesh)
+
+        xmin, ymin, zmin, xmax, ymax, zmax = bbox.Get()
+        return xmin, ymin, zmin, xmax, ymax, zmax, xmax - xmin, ymax - ymin, zmax - zmin
 
     def _calc_dimensions(self, x_min, y_min, z_min, x_max, y_max, z_max) -> (float, float, float):
         '''

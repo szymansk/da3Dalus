@@ -74,6 +74,37 @@ class ConstructionStepsViewer:
                 self.display.DisplayMessage(point=Ogp.gp_Pnt(0.0, self.y_position - 0.2, 0.0), text_to_write=logstr)
                 self.y_position = self.y_position + 3 * self.distance
 
+    def display_point_on_shape(self, named_shape: TGeo.CNamedShape, p: Ogp.gp_Pnt, severity, msg="", color="GREEN", trans=True) -> None:
+        if self.dev and severity >= logging.root.level:
+            #display point
+            p.SetY(p.Y() + self.y_position)
+            self.display.DisplayShape(p, color=color)
+            self.display.DisplayMessage(p, msg, height=0.1)
+
+            if OTopo.TopoDS_Iterator(named_shape.shape()).More():
+                self.id += 1
+                shape = OExs.translate_shp(named_shape.shape(), Ogp.gp_Vec(0.0, self.y_position, 0.0))
+                if trans:
+                    self.display.DisplayShape(shape, transparency=0.9, color="BLUE")
+                else:
+                    self.display.DisplayShape(shape)
+                if self.log:
+                    self.display.DisplayMessage(point=Ogp.gp_Pnt(0.0, self.y_position - 0.2, 0.0), text_to_write=msg)
+                self.display.FitAll()
+                self.y_position = self.next_y_position(named_shape)
+            else:
+                logstr = f"Shape can not be displayed: {msg}"
+                logging.warning(logstr)
+                self.display.DisplayMessage(point=Ogp.gp_Pnt(0.0, self.y_position - 0.2, 0.0), text_to_write=logstr)
+                self.y_position = self.y_position + 3 * self.distance
+
+    def display_points(self, points: list[tuple[Ogp.gp_Pnt]], severity, msg="", color="RED") -> None:
+        if self.dev and severity >= logging.root.level:
+            for i, p in enumerate(points):
+                # p.SetY(p.Y() + self.y_position)
+                self.display.DisplayShape(p, color=color)
+                self.display.DisplayMessage(p, f"{msg}{i}", height=10)
+
     def my_y_position(self, named_shape: TGeo.CNamedShape):
         shape_dimensions = sd.ShapeDimensions(named_shape)
         pos = self.y_position + (shape_dimensions.get_y_mid())
@@ -138,12 +169,28 @@ class ConstructionStepsViewer:
             for key, val in shape_dict.items():
                 if first:
                     shape = OExs.translate_shp(val.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-                    self.display.DisplayShape(shape, transparency=0.8)
+                    self.display.DisplayShape(shape, transparency=0.8, color="BLUE")
                     first = False
-                shape = OExs.translate_shp(val.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-                self.display.DisplayShape(shape, color="GREEN")
+                else:
+                    shape = OExs.translate_shp(val.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
+                    self.display.DisplayShape(shape, color="GREEN")
 
             self.display_this_shape(fused_shape, severity=severity, msg=f"{msg}", trans=trans)
+            self.display.FitAll()
+
+    def display_cut_shapes(self, cut_shape: TGeo.CNamedShape, shape_dict: dict[str, TGeo.CNamedShape], severity, msg="", trans=False):
+        if self.dev and severity >= logging.root.level:
+            first = True
+            for key, val in shape_dict.items():
+                if first:
+                    shape = OExs.translate_shp(val.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
+                    self.display.DisplayShape(shape, transparency=0.8, color="BLUE")
+                    first = False
+                else:
+                    shape = OExs.translate_shp(val.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
+                    self.display.DisplayShape(shape, color="RED")
+
+            self.display_this_shape(cut_shape, severity=severity, msg=f"{msg}", trans=trans)
             self.display.FitAll()
 
 
@@ -155,6 +202,16 @@ class ConstructionStepsViewer:
             self.display.DisplayShape(shape1, transparency=0.8)
             self.display.DisplayShape(shape2, color="RED")
             self.display_this_shape(cuted_shape, severity=severity, msg=f"{cuted_shape.name()} {msg}", trans=trans)
+            self.display.FitAll()
+
+    def display_scale_larger(self, scaled_shape: TGeo.CNamedShape, scaled: TGeo.CNamedShape, to_be_scaled: TGeo.CNamedShape,
+                    severity, msg="", trans=False):
+        if self.dev and severity >= logging.root.level:
+            shape1 = OExs.translate_shp(scaled.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
+            shape2 = OExs.translate_shp(to_be_scaled.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
+            self.display.DisplayShape(shape1, transparency=0.8)
+            self.display.DisplayShape(shape2, color="RED")
+            self.display_this_shape(scaled_shape, severity=severity, msg=f"{scaled_shape.name()} {msg}", trans=trans)
             self.display.FitAll()
 
     def display_common(self, common_shape: TGeo.CNamedShape, named_shape1: TGeo.CNamedShape,

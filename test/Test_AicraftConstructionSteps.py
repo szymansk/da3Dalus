@@ -67,18 +67,18 @@ if __name__ == "__main__":
     # "elevator" -> "elevator[0]", "elevator[1]"
 
     engine_mount_node = ConstructionStepNode(
-        EngineMountShapeCreator("engine_mount", mount_plate_thickness=0.005, engine_screw_hole_circle=0.042,
-                                engine_mount_box_length=0.0133 * 2.5, engine_screw_din_diameter=0.0032,
-                                engine_screw_length=0.016, engine_index=1, engine_total_cover_length=None,
-                                engine_down_thrust_deg=None, engine_side_thrust_deg=None))
+        EngineMountShapeCreator("engine_mount", engine_index=1, mount_plate_thickness=0.005,
+                                engine_screw_hole_circle=0.042, engine_mount_box_length=0.0133 * 2.5,
+                                engine_screw_din_diameter=0.0032, engine_screw_length=0.016,
+                                engine_total_cover_length=None, engine_down_thrust_deg=None,
+                                engine_side_thrust_deg=None))
     root_node.append(engine_mount_node)
 
     engine_panel_node = ConstructionStepNode(
-        EngineMountPanelShapeCreator("engine_mount_plate", mount_plate_thickness=0.005, engine_screw_hole_circle=0.042,
-                                     engine_mount_box_length=0.0133 * 2.5, engine_index=1,
-                                     full_fuselage_loft="full_fuselage_loft",
+        EngineMountPanelShapeCreator("engine_mount_plate", engine_index=1, mount_plate_thickness=0.005,
+                                     engine_screw_hole_circle=0.042, engine_mount_box_length=0.0133 * 2.5,
                                      engine_total_cover_length=None, engine_side_thrust_deg=None,
-                                     engine_down_thrust_deg=None))
+                                     engine_down_thrust_deg=None, full_fuselage_loft="full_fuselage_loft"))
     engine_mount_node.append(engine_panel_node)
 
     fuse_mount_with_plate = ConstructionStepNode(
@@ -86,8 +86,8 @@ if __name__ == "__main__":
     engine_panel_node.append(fuse_mount_with_plate)
 
     engine_cape_node = ConstructionStepNode(
-        EngineCapeShapeCreator("engine_cape", fuselage_index=1, engine_index=1, engine_total_cover_length=0.0452,
-                               engine_mount_box_length=0.0133 * 2.5, mount_plate_thickness=0.005 + 0.0008,
+        EngineCapeShapeCreator("engine_cape", engine_index=1, mount_plate_thickness=0.005 + 0.0008,
+                               engine_mount_box_length=0.0133 * 2.5, engine_total_cover_length=0.0452,
                                full_fuselage_loft="full_fuselage_loft"))
     root_node.append(engine_cape_node)
     # -> "engine_cape.cape", "engine_cape.loft"
@@ -100,15 +100,8 @@ if __name__ == "__main__":
     # "engine_cape.loft" -> "fuselage_reinforcement"
 
     servo_shape_import = ConstructionStepNode(
-        IgesImportCreator("servo",
-                          iges_file="../components/servos/unknown/Servo.iges",
-                          trans_x=0.67,
-                          trans_y=-0.02066,
-                          trans_z=.0,
-                          rot_x=.0,
-                          rot_y=90.0,
-                          rot_z=-90.0 + 3.4,
-                          scale=0.001))
+        IgesImportCreator("servo", iges_file="../components/servos/unknown/Servo.iges", trans_x=0.67, trans_y=-0.02066,
+                          trans_z=.0, rot_x=.0, rot_y=90.0, rot_z=-90.0 + 3.4, scale=0.001))
     fuselage_reinforcement_node.append(servo_shape_import)
     # -> "servo"
 
@@ -149,7 +142,7 @@ if __name__ == "__main__":
     # "reinforcement0 + "elevator_support" -> "reinforcement1"
 
     electronics_access_node = ConstructionStepNode(
-        FuselageElectronicsAccessCutOutShapeCreator("electronics_cutout", ribcage_factor=0.5,
+        FuselageElectronicsAccessCutOutShapeCreator("electronics_cutout", ribcage_factor=0.5, length_factor=0.8,
                                                     fuselage_loft="engine_cape.loft", full_wing_loft="full_wing_loft",
                                                     wing_position=None))
     fuse_reinforcement_elevator_sup_node.append(electronics_access_node)
@@ -225,15 +218,8 @@ if __name__ == "__main__":
     # "fuselage_wo_elevator" - "attachment_bolts" -> "final_fuselage"
 
     stamp_shape_import = ConstructionStepNode(
-        IgesImportCreator("servo_stamp",
-                          iges_file="../components/servos/unknown/servo_stamp.iges",
-                          trans_x=0.67,
-                          trans_y=-0.02066,
-                          trans_z=.0,
-                          rot_x=.0,
-                          rot_y=90.0,
-                          rot_z=-90.0 + 3.4,
-                          scale=0.001))
+        IgesImportCreator("servo_stamp", iges_file="../components/servos/unknown/servo_stamp.iges", trans_x=0.67,
+                          trans_y=-0.02066, trans_z=.0, rot_x=.0, rot_y=90.0, rot_z=-90.0 + 3.4, scale=0.001))
     cut_bolts_from_fuselage_node.append(stamp_shape_import)
     # -> "servo_stamp"
 
@@ -254,14 +240,8 @@ if __name__ == "__main__":
     # "final_fuselage" + "servo_stamp" -> "final_fuselage"
 
     stamp_fill_shape_import = ConstructionStepNode(
-        IgesImportCreator("servo_stamp_fill",
-                          iges_file="../components/servos/unknown/servo_stamp_fill.iges",
-                          trans_x=0.67,
-                          trans_y=-0.02066,
-                          trans_z=.0,
-                          rot_x=.0,
-                          rot_y=90.0,
-                          rot_z=-90.0 + 3.4,
+        IgesImportCreator("servo_stamp_fill", iges_file="../components/servos/unknown/servo_stamp_fill.iges",
+                          trans_x=0.67, trans_y=-0.02066, trans_z=.0, rot_x=.0, rot_y=90.0, rot_z=-90.0 + 3.4,
                           scale=0.001))
     fuse_servo_with_final_fuselage_node.append(stamp_fill_shape_import)
     # -> "servo_stamp"
@@ -309,15 +289,8 @@ if __name__ == "__main__":
     # "elevator[0]", "elevator[1]", "rudder_with_slot" -> *
 
     brushless_shape_import = ConstructionStepNode(
-        IgesImportCreator("brushless",
-                          iges_file="../components/brushless/DPower_AL3542-5_AL3542-7_AL35-09_v2.iges",
-                          trans_x=.0,
-                          trans_y=.0,
-                          trans_z=.0,
-                          rot_x=.0,
-                          rot_y=-2.5,
-                          rot_z=-2.5,
-                          scale=0.001))
+        IgesImportCreator("brushless", iges_file="../components/brushless/DPower_AL3542-5_AL3542-7_AL35-09_v2.iges",
+                          trans_x=.0, trans_y=.0, trans_z=.0, rot_x=.0, rot_y=-2.5, rot_z=-2.5, scale=0.001))
     root_node.append(brushless_shape_import)
 
     servo_model_import = ConstructionStepNode(
@@ -334,15 +307,8 @@ if __name__ == "__main__":
     # -> "servo"
 
     lipo_model_import = ConstructionStepNode(
-        IgesImportCreator("lipo_model",
-                          iges_file="../components/lipo/D-Power HD-2200 4S Lipo (14,8V) 30C v1.iges",
-                          trans_x=0.09,
-                          trans_y=0.0,
-                          trans_z=-0.029,
-                          rot_x=0.0,
-                          rot_y=0.0,
-                          rot_z=0,
-                          scale=0.001))
+        IgesImportCreator("lipo_model", iges_file="../components/lipo/D-Power HD-2200 4S Lipo (14,8V) 30C v1.iges",
+                          trans_x=0.09, trans_y=0.0, trans_z=-0.029, rot_x=0.0, rot_y=0.0, rot_z=0, scale=0.001))
     root_node.append(lipo_model_import)
     # -> "servo"
 
@@ -370,7 +336,7 @@ if __name__ == "__main__":
     # dump to a json string
     json_data: str = json.dumps(root_node, indent=4, cls=GeneralJSONEncoder)
 
-    engine_information = {1: CPACSEngineInformation(1, ccpacs_configuration)}
+    engine_information = {1: CPACSEngineInformation(1, ccpacs_configuration, 0.042, 0.0133 * 2.5, 0.0032, 0.016)}
 
     # load the string
     # tigl_handel is parameter which is not in the json file, but needed by the constructor of a creator class

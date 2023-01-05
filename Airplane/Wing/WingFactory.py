@@ -82,7 +82,7 @@ class WingFactory:
         for ix in internal_structur:
             logging.info(f"---{type(ix)}---")
         # Fuse internal Structure
-        self.shapes.append(BooleanCADOperation.fuse_list_of_namedshapes(internal_structur, "internal structure"))
+        self.shapes.append(BooleanCADOperation.fuse_list_of_named_shapes(internal_structur, "internal structure"))
         self.m.display_in_secondfloor(self.shapes[-1])
 
         # Cut internal Strukture from Wing

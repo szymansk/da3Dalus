@@ -197,3 +197,4 @@ components/servos/ditex-servo-masse/.DS_Store
 .DS_Store
 
 .idea/
+/exports/

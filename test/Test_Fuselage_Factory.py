@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
     test_class = ff.FuselageFactory(configuration)
     constructed_fuselage = test_class.create_fuselage_with_sharp_ribs()
-    my_slicer = ss.ShapeSlicer(constructed_fuselage, NUMBER_OF_CUTS)
+    my_slicer = ss.ShapeSlicer(constructed_fuselage, self.loglevel, NUMBER_OF_CUTS)
 
     logging.debug("Test finished. Display results")
 

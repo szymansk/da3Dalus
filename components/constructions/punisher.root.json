@@ -1,0 +1,273 @@
+{
+    "successors": {
+        "full_wing_loft": {
+            "successors": {},
+            "creator": {
+                "step_file": "../components/aircraft/RV-7/wing.step",
+                "trans_x": 0.0,
+                "trans_y": 0.0,
+                "trans_z": 0.0,
+                "rot_x": 0.0,
+                "rot_y": 0.0,
+                "rot_z": 0.0,
+                "scale": 0.04,
+                "creator_id": "full_wing_loft",
+                "$TYPE": "StepImportCreator"
+            },
+            "creator_id": "full_wing_loft.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "full_fuselage_loft": {
+            "successors": {},
+            "creator": {
+                "step_file": "../components/aircraft/RV-7/fuselage.step",
+                "trans_x": 0.0,
+                "trans_y": 0.0,
+                "trans_z": 0.0,
+                "rot_x": 0.0,
+                "rot_y": 0.0,
+                "rot_z": 0.0,
+                "scale": 0.04,
+                "creator_id": "full_fuselage_loft",
+                "$TYPE": "StepImportCreator"
+            },
+            "creator_id": "full_fuselage_loft.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "engine_mount": {
+            "successors": {
+                "engine_mount_plate": {
+                    "successors": {
+                        "engine_mount": {
+                            "successors": {},
+                            "creator": {
+                                "shape_a": null,
+                                "shape_b": null,
+                                "creator_id": "engine_mount",
+                                "$TYPE": "Fuse2ShapesCreator"
+                            },
+                            "creator_id": "engine_mount.node",
+                            "$TYPE": "ConstructionStepNode"
+                        }
+                    },
+                    "creator": {
+                        "full_fuselage_loft": "full_fuselage_loft",
+                        "engine_index": 1,
+                        "engine_screw_hole_circle": 0.042,
+                        "engine_total_cover_length": null,
+                        "engine_mount_box_length": 0.03325,
+                        "engine_down_thrust_deg": null,
+                        "engine_side_thrust_deg": null,
+                        "mount_plate_thickness": 0.005,
+                        "creator_id": "engine_mount_plate",
+                        "$TYPE": "EngineMountPanelShapeCreator"
+                    },
+                    "creator_id": "engine_mount_plate.node",
+                    "$TYPE": "ConstructionStepNode"
+                }
+            },
+            "creator": {
+                "engine_index": 1,
+                "engine_screw_length": 0.016,
+                "engine_screw_hole_circle": 0.042,
+                "engine_total_cover_length": null,
+                "engine_mount_box_length": 0.03325,
+                "engine_down_thrust_deg": null,
+                "engine_side_thrust_deg": null,
+                "engine_screw_din_diameter": 0.0032,
+                "mount_plate_thickness": 0.005,
+                "creator_id": "engine_mount",
+                "$TYPE": "EngineMountShapeCreator"
+            },
+            "creator_id": "engine_mount.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "engine_cape": {
+            "successors": {},
+            "creator": {
+                "full_fuselage_loft": "full_fuselage_loft",
+                "mount_plate_thickness": 0.0058000000000000005,
+                "engine_total_cover_length": 0.0452,
+                "engine_mount_box_length": 0.03325,
+                "engine_index": 1,
+                "creator_id": "engine_cape",
+                "$TYPE": "EngineCapeShapeCreator"
+            },
+            "creator_id": "engine_cape.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "fuselage_reinforcement_0": {
+            "successors": {},
+            "creator": {
+                "rib_spacing": 0.003,
+                "full_wing_loft": "full_wing_loft",
+                "fuselage_loft": "engine_cape.loft",
+                "rib_width": 0.001,
+                "ribcage_factor": 0.5,
+                "reinforcement_pipes_radius": 0.002,
+                "creator_id": "fuselage_reinforcement_0",
+                "$TYPE": "FuselageReinforcementShapeCreator"
+            },
+            "creator_id": "fuselage_reinforcement_0.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "wing_support": {
+            "successors": {},
+            "creator": {
+                "full_wing_loft": "full_wing_loft",
+                "fuselage_loft": "engine_cape.loft",
+                "rib_quantity": 6,
+                "rib_width": 0.0008,
+                "rib_height_factor": 1,
+                "creator_id": "wing_support",
+                "$TYPE": "FuselageWingSupportShapeCreator"
+            },
+            "creator_id": "wing_support.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "fuselage_reinforcement_1": {
+            "successors": {},
+            "creator": {
+                "shapes": [
+                    "fuselage_reinforcement_0",
+                    "wing_support"
+                ],
+                "creator_id": "fuselage_reinforcement_1",
+                "$TYPE": "FuseMultipleShapesCreator"
+            },
+            "creator_id": "fuselage_reinforcement_1.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "electronics_cutout": {
+            "successors": {},
+            "creator": {
+                "full_wing_loft": "full_wing_loft",
+                "fuselage_loft": "engine_cape.loft",
+                "ribcage_factor": 0.5,
+                "wing_position": null,
+                "creator_id": "electronics_cutout",
+                "$TYPE": "FuselageElectronicsAccessCutOutShapeCreator"
+            },
+            "creator_id": "electronics_cutout.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "fuselage_reinforcement": {
+            "successors": {
+                "internal_structure": {
+                    "successors": {
+                        "final_fuselage": {
+                            "successors": {
+                                "final_fuselage": {
+                                    "successors": {
+                                        "fuselage_slicer": {
+                                            "successors": {},
+                                            "creator": {
+                                                "shapes_to_slice": [
+                                                    null
+                                                ],
+                                                "number_of_parts": 5,
+                                                "creator_id": "fuselage_slicer",
+                                                "$TYPE": "SliceShapesCreator"
+                                            },
+                                            "creator_id": "fuselage_slicer.node",
+                                            "$TYPE": "ConstructionStepNode"
+                                        }
+                                    },
+                                    "creator": {
+                                        "subtrahends": [
+                                            "full_wing_loft",
+                                            "engine_mount"
+                                        ],
+                                        "minuend": null,
+                                        "creator_id": "final_fuselage",
+                                        "$TYPE": "CutMultipleShapesCreator"
+                                    },
+                                    "creator_id": "final_fuselage.node",
+                                    "$TYPE": "ConstructionStepNode"
+                                }
+                            },
+                            "creator": {
+                                "minuend": "engine_cape.loft",
+                                "subtrahend": "internal_structure",
+                                "creator_id": "final_fuselage",
+                                "$TYPE": "Cut2ShapesCreator"
+                            },
+                            "creator_id": "final_fuselage.node",
+                            "$TYPE": "ConstructionStepNode"
+                        }
+                    },
+                    "creator": {
+                        "shape_a": "engine_cape.loft",
+                        "shape_b": null,
+                        "creator_id": "internal_structure",
+                        "$TYPE": "Intersect2ShapesCreator"
+                    },
+                    "creator_id": "internal_structure.node",
+                    "$TYPE": "ConstructionStepNode"
+                }
+            },
+            "creator": {
+                "minuend": "fuselage_reinforcement_1",
+                "subtrahend": "electronics_cutout",
+                "creator_id": "fuselage_reinforcement",
+                "$TYPE": "Cut2ShapesCreator"
+            },
+            "creator_id": "fuselage_reinforcement.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "brushless": {
+            "successors": {},
+            "creator": {
+                "iges_file": "../components/brushless/DPower_AL3542-5_AL3542-7_AL35-09_v2.iges",
+                "trans_x": 0.057,
+                "trans_y": 0,
+                "trans_z": 0,
+                "rot_x": 0,
+                "rot_y": -2.5,
+                "rot_z": -2.5,
+                "scale": 0.001,
+                "creator_id": "brushless",
+                "$TYPE": "IgesImportCreator"
+            },
+            "creator_id": "brushless.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "lipo_model": {
+            "successors": {},
+            "creator": {
+                "iges_file": "../components/lipo/D-Power HD-2200 4S Lipo (14,8V) 30C v1.iges",
+                "trans_x": 0.09,
+                "trans_y": 0.0,
+                "trans_z": -0.029,
+                "rot_x": 0.0,
+                "rot_y": 0.0,
+                "rot_z": 0,
+                "scale": 0.001,
+                "creator_id": "lipo_model",
+                "$TYPE": "IgesImportCreator"
+            },
+            "creator_id": "lipo_model.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "punisher": {
+            "successors": {},
+            "creator": {
+                "file_path": "../exports",
+                "shapes_to_export": [
+                    "engine_mount",
+                    "brushless",
+                    "lipo_model",
+                    "engine_cape.cape",
+                    "engine_cape.loft",
+                    "full_wing_loft"
+                ],
+                "creator_id": "punisher",
+                "$TYPE": "ExportToStepCreator"
+            },
+            "creator_id": "punisher.node",
+            "$TYPE": "ConstructionStepNode"
+        }
+    },
+    "creator_id": "punisher.root",
+    "$TYPE": "ConstructionRootNode"
+}

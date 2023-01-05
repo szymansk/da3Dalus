@@ -19,8 +19,8 @@ def cut_component(component, quantity):
     :return: The cut parts of the component
     """
     logging.debug(f"Cut the {component.name()} into {quantity} parts")
-    slicer = ShapeSlicer(component, quantity)
-    slicer.slice_by_cut()
+    slicer = ShapeSlicer(component, self.loglevel, quantity)
+    slicer.slice_by_cut(self.loglevel)
     return slicer.parts_list
 
 
@@ -94,8 +94,8 @@ class AirplaneFactory:
         named_wing = self.wing_factory.get_shape()
 
         parts_quantity = 1
-        slicer = ShapeSlicer(named_wing, parts_quantity)
-        slicer.slice_by_cut()
+        slicer = ShapeSlicer(named_wing, self.loglevel, parts_quantity)
+        slicer.slice_by_cut(self.loglevel)
 
         my_exporter = exp.exporter()
         my_exporter.write_stls_from_list(slicer.parts_list, name)
@@ -108,8 +108,8 @@ class AirplaneFactory:
         left_wing = self.wing_factory.create_mirrored_wing()
 
         parts_quantity = 2
-        slicer = ShapeSlicer(left_wing, parts_quantity)
-        slicer.slice_by_cut()
+        slicer = ShapeSlicer(left_wing, self.loglevel, parts_quantity)
+        slicer.slice_by_cut(self.loglevel)
 
         my_exporter = exp.exporter()
         my_exporter.write_stls_from_list(slicer.parts_list, "left_mainwing")

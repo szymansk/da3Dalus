@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
     shapes_to_cut = [inner_box, cylinder]
     engine_mount = []
-    engine_mount.append(BooleanCADOperation.cut_list_of_shapes(outer_box, shapes_to_cut, "Here"))
+    engine_mount.append(BooleanCADOperation.cut_list_of_named_shapes(outer_box, shapes_to_cut, "Here"))
 
     radius = 0.3
     cylinder_lenght = lenght * 0.4

@@ -27,17 +27,18 @@ class FuselageCutouts:
 
     @classmethod
     def create_hardware_cutout(cls, fuselage_dimensions: ShapeDimensions, wing_dimensions: ShapeDimensions,
-                               width_factor, position="bottom") -> TGeo.CNamedShape:
+                               width_factor, length_factor, position="bottom") -> TGeo.CNamedShape:
         """
         Creates a cutout that is the same length as the wing and has the width of the fuselage times the factor.
         It is positiones at the top or bottom
+        :param length_factor:
         :param fuselage_dimensions: dimensions of the fuselage shpae
         :param wing_dimensions: dimensions of the wing shape
         :param width_factor: factor used to create the inner ribcage
         :param position: describes the position of the cutout, top/bottom
         :return:
         """
-        hardware_cutout_length = wing_dimensions.get_length()
+        hardware_cutout_length = wing_dimensions.get_length() * length_factor
 
         # times 0.8 (80%) to avoid collision
         hardware_cutout_width = fuselage_dimensions.get_width() * width_factor * 0.8
@@ -46,7 +47,8 @@ class FuselageCutouts:
         hardware_x_pos = wing_dimensions.get_x_min() + wing_dimensions.get_length() * 0.2
         hardware_y_pos = -hardware_cutout_width / 2
 
-        hardware_z_pos = fuselage_dimensions.get_z_min() - hardware_cutout_height/2 if position == "bottom" \
+        hardware_z_pos = fuselage_dimensions.get_z_min() - hardware_cutout_height/2 \
+            if position == "bottom" \
             else fuselage_dimensions.get_z_max() - hardware_cutout_height
 
         box = OPrim.BRepPrimAPI_MakeBox(hardware_cutout_length, hardware_cutout_width, hardware_cutout_height).Shape()
@@ -61,7 +63,7 @@ class FuselageCutouts:
         cylinder_back = TGeo.CNamedShape(OExs.translate_shp(cylinder, Ogp.gp_Vec(hardware_x_pos, 0.0, hardware_z_pos)),
                                          "c2_cutout")
         cutouts = [moved_box, cylinder_front, cylinder_back]
-        cutout = Bof.BooleanCADOperation.fuse_list_of_namedshapes(cutouts, "hardware_cutout")
+        cutout = Bof.BooleanCADOperation.fuse_list_of_named_shapes(cutouts, "hardware_cutout")
         return cutout
 
 

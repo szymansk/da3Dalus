@@ -1,4 +1,5 @@
 import abc
+import logging
 from typing import Union
 
 from tigl3 import geometry as tgl_geom
@@ -8,7 +9,8 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
     """
     Base class for shape creating/modifying nodes.
     """
-    def __init__(self, creator_id, shapes_of_interest_keys: Union[list[str], None]):
+    def __init__(self, creator_id, shapes_of_interest_keys: Union[list[str], None], loglevel=logging.FATAL):
+        self.loglevel = loglevel
         self._shapes_of_interest_keys = shapes_of_interest_keys
         self.creator_id = creator_id
 
@@ -43,12 +45,20 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         pass
 
     def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape] = None, **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        shapes_of_interest = AbstractShapeCreator.return_needed_shapes(self.shapes_of_interest_keys, input_shapes, **kwargs) \
+        shapes_of_interest = self.return_needed_shapes(shapes_needed=self.shapes_of_interest_keys,
+                                                       input_shapes=input_shapes, **kwargs) \
             if self.shapes_of_interest_keys is not None else None
-        return self._create_shape(shapes_of_interest, input_shapes, **kwargs)
+        # setting the module specific log-level
+        actual_loglevel = logging.getLogger().getEffectiveLevel()
+        if self.loglevel < actual_loglevel:
+            logging.getLogger().setLevel(level=self.loglevel)
+        # do the construction
+        result = self._create_shape(shapes_of_interest, input_shapes, **kwargs)
+        # reset to actual log-level
+        logging.getLogger().setLevel(level=actual_loglevel)
+        return result
 
-    @classmethod
-    def check_if_shapes_are_available(cls, needed_shapes: list[str], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def check_if_shapes_are_available(self, needed_shapes: list[str], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         """
         Check if the shapes, that are needed, have been created before and are available in kwargs.
         :param needed_shapes: list of str with shape identifiers
@@ -61,11 +71,10 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
             missing = {(k if k not in kwargs.keys() else None) for k in needed_shapes}  # check what is missing
             missing = [i for i in missing if i is not None]  # remove all Nones
             if len(missing) > 0:
-                raise KeyError(f'shapes are missing: {missing}')
+                raise KeyError(f"shapes are missing in step '{self.identifier}': {missing}")
         return shapes
 
-    @classmethod
-    def return_needed_shapes(cls,
+    def return_needed_shapes(self,
                              shapes_needed: list[str],
                              input_shapes: dict[str, tgl_geom.CNamedShape],
                              **kwargs) -> dict[str, tgl_geom.CNamedShape]:
@@ -73,9 +82,9 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         # we expect input shapes ordered most significant last
         len_input_shapes = 0 if input_shapes is None else len(input_shapes)
         if sum(x is None for x in shapes_needed) > len_input_shapes:
-            raise KeyError('there are less input_shapes than shapes_needed.')
+            raise KeyError(f'{self.identifier}: there are less input_shapes than shapes_needed.')
         if input_shapes is not None:
             enum = input_shapes.keys().__reversed__()
             shapes_needed = [shape_key if shape_key is not None else next(enum) for shape_key in shapes_needed]
-        shapes = AbstractShapeCreator.check_if_shapes_are_available(shapes_needed, **kwargs)
+        shapes = self.check_if_shapes_are_available(shapes_needed, **kwargs)
         return {key: shapes[key] for key in shapes_needed}

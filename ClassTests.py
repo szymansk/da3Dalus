@@ -46,8 +46,8 @@ if __name__ == "__main__":
     if test_class_name == "WingFactory":
         test_class = wf.WingFactory(tigl_h, 1)
         my_wing = test_class.create_wing_with_inbuilt_servo()
-        my_slicer = ss.ShapeSlicer(my_wing, 5, "Wing_v2_")
-        my_slicer.slice_by_cut()
+        my_slicer = ss.ShapeSlicer(my_wing, self.loglevel, 5)
+        my_slicer.slice_by_cut(self.loglevel)
         # my_exporter = exp.exporter()
         # my_exporter.write_step_from_list(my_slicer.parts_list, "Wing_v2_")
         # my_exporter.write_stls_from_list(my_slicer.parts_list, "Wing_v2_")

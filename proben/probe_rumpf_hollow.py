@@ -42,8 +42,8 @@ if __name__ == "__main__":
     wand = we.Wandstaerke()
     holow_shape = wand.create_hollowedsolid(cuted_shape, 0.0004)
 
-    my_slicer = ss.ShapeSlicer(wing_shape, 3, "Wing")
-    my_slicer.slice_by_cut()
+    my_slicer = ss.ShapeSlicer(wing_shape, self.loglevel, 3)
+    my_slicer.slice_by_cut(self.loglevel)
 
     ##fuselage_done=OAlgo.BRepAlgoAPI_Fuse(fuselage_hollow,rippen_cuted).Shape()
     # box= OPrim.BRepPrimAPI_MakeBox(10, 100, 100).Shape()

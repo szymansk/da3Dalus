@@ -1,4 +1,5 @@
-<cpacs xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../schema/cpacs_schema.xsd">
+<cpacs xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="https://www.cpacs.de/schema/v3_2_0/cpacs_schema.xsd">
     <header>
         <name>Simple aircraft template</name>
         <creator>DLR-SL</creator>

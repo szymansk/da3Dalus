@@ -74,7 +74,7 @@ class WingRibFactory:
         # Fuse if lenght of ribs longer than 1
         if len(ribs) > 1:
             ribs.append(
-                BooleanOperationsForLists.BooleanCADOperation.fuse_list_of_namedshapes(ribs, f"{self.wing_loft.name()}_oriented_ribs"))
+                BooleanOperationsForLists.BooleanCADOperation.fuse_list_of_named_shapes(ribs, f"{self.wing_loft.name()}_oriented_ribs"))
 
         # diagonaleribs
         front_sweep_angle = math.degrees(math.atan(x_dif / y_dif))
@@ -132,7 +132,7 @@ class WingRibFactory:
             ribs.append(
                 self._create_single_box_rib(root_x_list[i], tip_x_list[i], root_y, root_z, width, height, rib_width,
                                             f"single_rib_{i}"))
-        fused_ribs: TGeo.CNamedShape = BooleanOperationsForLists.BooleanCADOperation.fuse_list_of_namedshapes(ribs,
+        fused_ribs: TGeo.CNamedShape = BooleanOperationsForLists.BooleanCADOperation.fuse_list_of_named_shapes(ribs,
                                                                                           f"{name}_oriented_horizontal_ribs")
         return fused_ribs
 

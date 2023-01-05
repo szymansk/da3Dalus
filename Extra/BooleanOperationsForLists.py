@@ -60,7 +60,7 @@ class BooleanCADOperation:
         return fused[-1]
 
     @staticmethod
-    def fuse_list_of_namedshapes(shape_list: list[TGeo.CNamedShape], msg="", trans=False) -> TGeo.CNamedShape:
+    def fuse_list_of_named_shapes(shape_list: list[TGeo.CNamedShape], msg="", trans=False) -> TGeo.CNamedShape:
         """
         fuses all the shapes in the list to one shape
         :param shape_list: list of shapes
@@ -89,8 +89,8 @@ class BooleanCADOperation:
         return TGeo.CNamedShape(fused[-1], "fused")
 
     @staticmethod
-    def cut_list_of_shapes(named_shape: TGeo.CNamedShape, shape_list: list[TGeo.CNamedShape], msg="",
-                           trans=False) -> TGeo.CNamedShape:
+    def cut_list_of_named_shapes(named_shape: TGeo.CNamedShape, shape_list: list[TGeo.CNamedShape], msg="",
+                                 trans=False) -> TGeo.CNamedShape:
         """
         returns the shape after cutting all the shapes on the list
         :param named_shape: to be cut from
@@ -118,11 +118,6 @@ class BooleanCADOperation:
     def fuse_shapes(a: TGeo.CNamedShape, b: TGeo.CNamedShape, new_name: str) -> TGeo.CNamedShape:
         return TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Fuse(a.shape(), b.shape()).Shape(), new_name)
 
-        #
-        # shape: TGeo.CNamedShape = CMergeShapes(a, b).named_shape()
-        # shape.set_name(new_name)
-        # return shape
-
     @staticmethod
     def cut_shape_from_shape(a: TGeo.CNamedShape, b: TGeo.CNamedShape, new_name: str) -> TGeo.CNamedShape:
         """
@@ -132,10 +127,6 @@ class BooleanCADOperation:
         :return:
         """
         return TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Cut(a.shape(), b.shape()).Shape(), new_name)
-        # from tigl3.boolean_ops import CCutShape
-        # shape: TGeo.CNamedShape = CCutShape(a, b).named_shape()
-        # shape.set_name(new_name)
-        # return shape
 
     @staticmethod
     def intersect_shape_with_shape(a: TGeo.CNamedShape, b: TGeo.CNamedShape, new_name: str) -> TGeo.CNamedShape:

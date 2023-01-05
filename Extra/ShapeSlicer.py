@@ -15,9 +15,10 @@ class ShapeSlicer:
     This class provides methods to slice/divide a Shape into different parts(shapes)
     '''
 
-    def __init__(self, named_shape: TGeo.CNamedShape, quantity=3):
+    def __init__(self, named_shape: TGeo.CNamedShape, loglevel, quantity=3):
         '''
         to initialize this class the shape is need and the quantity of pices you want to devide it in
+        :param loglevel:
         :param named_shape: CNamedShape
         :param quantity: int default=3
         '''
@@ -26,14 +27,15 @@ class ShapeSlicer:
         self.parts_list = []
         self.quantity: int = quantity
         self.shape_dimensions = ShapeDimensions(named_shape)
-        self.namedshape = self.orient_shape(named_shape)
+        self.namedshape = self.orient_shape(named_shape, loglevel)
         self.part_lenght: float = self.shape_dimensions.get_length() / quantity
         self.position_front: float = 0.0
         self.position_back: float = 0.0
 
-    def orient_shape(self, namedshape) -> TGeo.CNamedShape:
+    def orient_shape(self, namedshape, loglevel) -> TGeo.CNamedShape:
         '''
         Rotates the shape 90 degrees over the Zaxis if the shape is wider than longer
+        :param loglevel:
         '''
         if self.shape_dimensions.get_length() < self.shape_dimensions.get_width():
             logging.debug(f"Rotating {namedshape.name()} by 90 degrees")
@@ -63,10 +65,11 @@ class ShapeSlicer:
             self.m.display_this_shape(part, severity=logging.NOTSET)
             self.parts_list.append(part)
 
-    def slice_by_cut(self):
+    def slice_by_cut(self, loglevel):
         '''
         slices the shape using the cut method from Opencascade and stores the parts in the partslist of the class.
         2 Cutout boxes move from front to back of the shape. Everything inside the box is removed. The leftover is the new part
+        :param loglevel:
         '''
         for i in range(0, self.quantity):
             part_name = f"{self.namedshape.name()}  {i}"

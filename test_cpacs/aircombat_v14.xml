@@ -1204,7 +1204,7 @@
                                 <z>-2.5</z>
                             </rotation>
                             <translation refType="absLocal" uID="SimpleEngine_translation">
-                                <x>-0.0052</x>
+                                <x>0</x>
                                 <y>0</y>
                                 <z>0</z>
                             </translation>
