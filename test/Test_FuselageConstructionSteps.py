@@ -50,9 +50,9 @@ if __name__ == "__main__":
     root_node.append(full_elevator_loft_node)
 
     wing_attachment_bolt_node = ConstructionStepNode(
-        WingAttachmentBoltHolesShapeCreator("attachment_bolts",
-                                            fuselage_loft="full_fuselage_loft",
-                                            full_wing_loft="full_wing_loft"))
+        WingAttachmentBoltCutoutShapeCreator("attachment_bolts",
+                                             fuselage_loft="full_fuselage_loft",
+                                             full_wing_loft="full_wing_loft"))
     root_node.append(wing_attachment_bolt_node)
 
     servo_shape_import = ConstructionStepNode(

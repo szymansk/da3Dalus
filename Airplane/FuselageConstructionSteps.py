@@ -3,8 +3,16 @@ import sys
 from pathlib import Path
 
 import tigl3.geometry as tgl_geom
-from OCC.Core.TopAbs import TopAbs_Orientation
+from OCC.Core.AIS import AIS_Shape, AIS_Axis
+from OCC.Core.BRepAdaptor import BRepAdaptor_Surface
+from OCC.Core.BRepExtrema import BRepExtrema_DistShapeShape
+from OCC.Core.Geom import Geom_Axis1Placement
+from OCC.Core.GeomAbs import *
+from OCC.Core.TopAbs import *
+from OCC.Core.TopExp import TopExp_Explorer
 from OCC.Core.TopoDS import TopoDS_Shape
+from OCC.Core.gp import gp_Ax1
+from OCC.Extend.TopologyUtils import TopologyExplorer
 from tigl3.configuration import CCPACSConfiguration
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
@@ -379,8 +387,134 @@ class StepImportCreator(AbstractShapeCreator):
                                                                scale_z=self.scale_z)
 
         ConstructionStepsViewer.instance().display_this_shape(trans_shape, severity=logging.DEBUG)
-
         return {self.identifier: trans_shape}
+
+    @classmethod
+    def step_importer(cls, path_) -> TopoDS_Shape:
+        from OCC.Extend.DataExchange import read_step_file
+        shapes = read_step_file(path_)
+        return shapes
+
+
+class DimensionsCalcCreator(AbstractShapeCreator):
+    """
+    Import an iges file as a shape.
+    """
+
+    def __init__(self, creator_id: str,
+                 shape: str,
+                 loglevel=logging.INFO
+                 ):
+        self.shape = shape
+        super().__init__(creator_id, shapes_of_interest_keys=[self.shape], loglevel=loglevel)
+
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        logging.info(f"calculating dimensions of shape '{self.shape}' --> '{self.identifier}.dim'")
+
+        named_shape = shapes_of_interest[self.shape]
+        topods = named_shape.shape()
+
+        t = TopologyExplorer(topods)
+        # loop over faces only
+        locations = []
+        axis= []
+        for f in t.faces():
+            # call the recognition function
+            location, vec, surf_type = self.recognize_face(f)
+            if location is not None and surf_type == GeomAbs_Plane:
+                locations.append(location)
+                axis.append(vec)
+
+        ConstructionStepsViewer.instance().display_points_on_shape(named_shape, locations, logging.NOTSET)
+        # ais_shp = AIS_Axis(Geom_Axis1Placement(locations[0], axis[0]))
+        # ConstructionStepsViewer.instance().display.Context.Display(ais_shp, True)
+        # raise RuntimeError
+        return {self.identifier: named_shape}
+
+    def recognize_face(self, a_face):
+        """ Takes a TopoDS shape and tries to identify its nature
+        whether it is a plane a cylinder a torus etc.
+        if a plane, returns the normal
+        if a cylinder, returns the radius
+        """
+        surf = BRepAdaptor_Surface(a_face, True)
+        surf_type = surf.GetType()
+        if surf_type == GeomAbs_Plane:
+            print("--> plane")
+            # look for the properties of the plane
+            # first get the related gp_Pln
+            gp_pln = surf.Plane()
+            location = gp_pln.Location()  # a point of the plane
+            normal = gp_pln.Axis().Direction()  # the plane normal
+            # then export location and normal to the console output
+            print("--> Location (global coordinates)", location.X(), location.Y(), location.Z())
+            print("--> Normal (global coordinates)", normal.X(), normal.Y(), normal.Z())
+            return location, normal, surf_type
+        elif surf_type == GeomAbs_Cylinder:
+            print("--> cylinder")
+            # look for the properties of the cylinder
+            # first get the related gp_Cyl
+            gp_cyl = surf.Cylinder()
+            location = gp_cyl.Location()  # a point of the axis
+            axis = gp_cyl.Axis().Direction()  # the cylinder axis
+            # then export location and normal to the console output
+            print("--> Location (global coordinates)", location.X(), location.Y(), location.Z())
+            print("--> Axis (global coordinates)", axis.X(), axis.Y(), axis.Z())
+            return location, axis, surf_type
+        elif surf_type == GeomAbs_Cone:
+            print("--> cone")
+            # look for the properties of the cylinder
+            # first get the related gp_Cyl
+            gp_cyl = surf.Cone()
+            location = gp_cyl.Location()  # a point of the axis
+            axis = gp_cyl.Axis().Direction()  # the cylinder axis
+            # then export location and normal to the console output
+            print("--> Location (global coordinates)", location.X(), location.Y(), location.Z())
+            print("--> Axis (global coordinates)", axis.X(), axis.Y(), axis.Z())
+            return location, axis, surf_type
+        elif surf_type == GeomAbs_Sphere:
+            print("--> sphere")
+            # look for the properties of the cylinder
+            # first get the related gp_Cyl
+            gp_cyl = surf.Sphere()
+            location = gp_cyl.Location()  # a point of the axis
+            axis = gp_cyl.Radius()  # the cylinder axis
+            # then export location and normal to the console output
+            print("--> Location (global coordinates)", location.X(), location.Y(), location.Z())
+            print("--> radius", axis)
+            return location, axis, surf_type
+        elif surf_type == GeomAbs_Torus:
+            print("--> torus")
+            # look for the properties of the cylinder
+            # first get the related gp_Cyl
+            gp_cyl = surf.Torus()
+            location = gp_cyl.Location()  # a point of the axis
+            axis = gp_cyl.Axis().Direction()  # the cylinder axis
+            # then export location and normal to the console output
+            print("--> Location (global coordinates)", location.X(), location.Y(), location.Z())
+            print("--> Axis (global coordinates)", axis.X(), axis.Y(), axis.Z())
+            return location, axis, surf_type
+        elif surf_type == GeomAbs_BezierSurface:
+            print("--> bezier surface")
+        elif surf_type == GeomAbs_BSplineSurface:
+            print("--> bspline surface")
+            surf = surf.BSpline()
+        elif surf_type == GeomAbs_SurfaceOfRevolution:
+            print("--> SurfaceOfRevolution")
+        elif surf_type == GeomAbs_SurfaceOfExtrusion:
+            print("--> SurfaceOfExtrusion")
+        elif surf_type == GeomAbs_OffsetSurface:
+            print("--> OffsetSurface")
+        elif surf_type == GeomAbs_OtherSurface:
+            print("--> other surface")
+        else:
+            # TODO there are plenty other type that can be checked
+            # see documentation for the BRepAdaptor class
+            # https://www.opencascade.com/doc/occt-6.9.1/refman/html/class_b_rep_adaptor___surface.html
+            print(f"'{surf_type}' not implemented")
+        return None, None, None
 
     @classmethod
     def step_importer(cls, path_) -> TopoDS_Shape:
@@ -519,6 +653,7 @@ class ServoImporterCreator(AbstractShapeCreator):
             self.import_servo_shape(file, shapes, servo)
         self.import_servo_shape(self.servo_model, shapes, servo, mirroring=self.mirror_model_by_plane)
 
+
         return {f"{self.identifier}.stamp": shapes[0],
                 f"{self.identifier}.filling": shapes[1],
                 f"{self.identifier}.feature": shapes[2],
@@ -584,6 +719,8 @@ class ComponentImporterCreator(AbstractShapeCreator):
                                                          trans_y=component.trans_y,
                                                          trans_z=component.trans_z,
                                                          mirroring=self.mirror_model_by_plane)
+
+        ConstructionStepsViewer.instance().display_this_shape(shape, logging.DEBUG, f"{self.identifier}")
 
         return {f"{self.identifier}": shape}
 
@@ -909,7 +1046,7 @@ class FuselageElectronicsAccessCutOutShapeCreator(AbstractShapeCreator):
         return {str(self.identifier): shape__hardware_cutout}
 
 
-class WingAttachmentBoltHolesShapeCreator(AbstractShapeCreator):
+class WingAttachmentBoltCutoutShapeCreator(AbstractShapeCreator):
     """
     Create two bolts along the roll-axis through the fuselage,
     to hold some rubber band.

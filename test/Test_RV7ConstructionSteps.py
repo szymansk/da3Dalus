@@ -16,12 +16,14 @@ from Airplane.aircraft_topology.EngineInformation import Position
 #       * cutout for elevator flap rod (carbon 1mm) in elvator and in rudder
 #       * wings with servos for aileron and flaps
 #       * cutouts for elevator and rudder rods (anlenkung carbonstab 1mm)
-#       * ruderhörner
+#       * ruderhörner der Anlenkpunkt sollte über der Drehachse liegen und der Abstand beider
+#         Drehpunkte sollte mit dem Abstand der Anschlusspunkte übereinstimmen vergleich:
+#         (https://www.rc-network.de/threads/die-kinematik-ungewollter-differenzierung.11779720/)
 
 if __name__ == "__main__":
 
     logging.basicConfig(format='%(levelname)s:%(module)s:%(filename)s(%(lineno)d):%(funcName)s(): %(message)s',
-                        level=logging.DEBUG, stream=sys.stdout)
+                        level=logging.INFO, stream=sys.stdout)
 
     shapeDisplay = ConstructionStepsViewer.instance(dev=True, distance=1, log=False)
 
@@ -48,9 +50,15 @@ if __name__ == "__main__":
 
     aileron_node = ConstructionStepNode(
         StepImportCreator("aileron",
-                          step_file="../components/aircraft/RV-7/aileron.step",
+                          step_file="../components/aircraft/RV-7/aileron_right.step",
                           scale=base_scale))
     root_node.append(aileron_node)
+
+    dim_calculator_node = ConstructionStepNode(
+        DimensionsCalcCreator("dim_calc",
+                              shape="aileron",
+                              loglevel=logging.NOTSET))
+    # root_node.append(dim_calculator_node)
 
     full_fuselage_loft_node = ConstructionStepNode(
         StepImportCreator("full_fuselage",
@@ -117,6 +125,7 @@ if __name__ == "__main__":
                              servo_model="../components/servos/AS215BBMG.step",
                              servo_idx=2))
     root_node.append(rudder_servo_shape_import)
+
     # #########
 
     engine_mount_node = ConstructionStepNode(
@@ -147,12 +156,12 @@ if __name__ == "__main__":
                                full_fuselage_loft="full_fuselage"))
     root_node.append(engine_cape_full_node)
 
-    # wing_attachment_bolt_node = ConstructionStepNode(
-    #     WingAttachmentBoltHolesShapeCreator("attachment_bolts",
-    #                                         fuselage_loft="engine_cape_offset.loft",
-    #                                         #fuselage_loft="offset_fuselage",
-    #                                         full_wing_loft="full_wing_loft"))
-    # root_node.append(wing_attachment_bolt_node)
+    wing_attachment_bolt_node = ConstructionStepNode(
+        WingAttachmentBoltCutoutShapeCreator("attachment_bolts",
+                                             fuselage_loft="engine_cape_offset.loft",
+                                             #fuselage_loft="offset_fuselage",
+                                             full_wing_loft="full_wing_loft"))
+    root_node.append(wing_attachment_bolt_node)
 
     fuselage_reinforcement_node = ConstructionStepNode(
         FuselageReinforcementShapeCreator("fuselage_reinforcement_0", rib_width=0.001, rib_spacing=0.00,  # 3,
@@ -319,9 +328,16 @@ if __name__ == "__main__":
         trans_z=0.044-0.0244)
     servo_information = {1: servo_elevator, 2: servo_rudder}
 
-    engine_info1 = EngineInformation(down_thrust=-2.5, side_thrust=-2.5, position=Position(0.0458, 0, 0), length=0.0452,
-                                     width=0.035, height=0.035, screw_hole_circle=0.042, mount_box_length=0.0133 * 2.5,
-                                     screw_din_diameter=0.0032, screw_length=0.016)
+    engine_info1 = EngineInformation(down_thrust=-2.5,
+                                     side_thrust=-2.5,
+                                     position=Position(0.0458, 0, 0),
+                                     length=0.0452,
+                                     width=0.035,
+                                     height=0.035,
+                                     screw_hole_circle=0.042,
+                                     mount_box_length=0.0133 * 2.5,
+                                     screw_din_diameter=0.0032,
+                                     screw_length=0.016)
 
     # engine_information = {1: CPACSEngineInformation(1, ccpacs_configuration)}
     engine_information = {1: engine_info1}

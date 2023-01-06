@@ -204,8 +204,8 @@ if __name__ == "__main__":
     # "fuselage_wo_wings" - "elevator" -> "fuselage_wo_elevator"
 
     wing_attachment_bolt_node = ConstructionStepNode(
-        WingAttachmentBoltHolesShapeCreator("attachment_bolts", fuselage_loft="engine_cape.loft",
-                                            full_wing_loft="full_wing_loft"))
+        WingAttachmentBoltCutoutShapeCreator("attachment_bolts", fuselage_loft="engine_cape.loft",
+                                             full_wing_loft="full_wing_loft"))
     cut_elevator_from_fuselage_node.append(wing_attachment_bolt_node)
     # -> "attachment_bolts"
 

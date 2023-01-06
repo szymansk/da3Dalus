@@ -3,7 +3,12 @@ import OCC.Core.TopoDS as OTopo
 import OCC.Core.gp as Ogp
 import OCC.Extend.ShapeFactory as OExs
 import tigl3.geometry as TGeo
+from OCC.Core.AIS import AIS_Point
+from OCC.Core.Aspect import Aspect_TOM_BALL, Aspect_TypeOfMarker
+from OCC.Core.Geom import Geom_CartesianPoint
 from OCC.Core.Graphic3d import Graphic3d_RenderingParams
+from OCC.Core.Prs3d import Prs3d_PointAspect
+from OCC.Core.Quantity import Quantity_Color, Quantity_NOC_HOTPINK4, Quantity_NameOfColor
 from OCC.Display.SimpleGui import *
 
 # from Dimensions.ShapeDimensions import ShapeDimensions
@@ -65,7 +70,7 @@ class ConstructionStepsViewer:
                 else:
                     self.display.DisplayShape(shape)
                 if self.log:
-                    self.display.DisplayMessage(point=Ogp.gp_Pnt(0.0, self.y_position - 0.2, 0.0), text_to_write=msg)
+                    self.display.DisplayMessage(point=Ogp.gp_Pnt(0.0, self.y_position - 0.2, 0.0), text_to_write=msg, height=50)
                 self.display.FitAll()
                 self.y_position = self.next_y_position(named_shape)
             else:
@@ -78,8 +83,20 @@ class ConstructionStepsViewer:
         if self.dev and severity >= logging.root.level:
             #display point
             p.SetY(p.Y() + self.y_position)
-            self.display.DisplayShape(p, color=color)
-            self.display.DisplayMessage(p, msg, height=0.1)
+            p = Geom_CartesianPoint(p)
+            ais_point = AIS_Point(p)
+
+            drawer = ais_point.Attributes()
+            q_color = Quantity_Color(Quantity_NOC_HOTPINK4)
+
+            asp = Prs3d_PointAspect(Aspect_TOM_BALL, q_color, 3)
+            drawer.SetPointAspect(asp)
+            ais_point.SetAttributes(drawer)
+
+            self.display.Context.Display(ais_point, False)
+
+            #self.display.DisplayShape(p, color=color)
+            self.display.DisplayMessage(p, msg, height=50)
 
             if OTopo.TopoDS_Iterator(named_shape.shape()).More():
                 self.id += 1
@@ -102,8 +119,56 @@ class ConstructionStepsViewer:
         if self.dev and severity >= logging.root.level:
             for i, p in enumerate(points):
                 # p.SetY(p.Y() + self.y_position)
-                self.display.DisplayShape(p, color=color)
-                self.display.DisplayMessage(p, f"{msg}{i}", height=10)
+                # display point
+                p.SetY(p.Y() + self.y_position)
+                p = Geom_CartesianPoint(p)
+                ais_point = AIS_Point(p)
+
+                drawer = ais_point.Attributes()
+                q_color = Quantity_Color(Quantity_NameOfColor(i*10))
+
+                asp = Prs3d_PointAspect(Aspect_TOM_BALL, q_color, 3)
+                drawer.SetPointAspect(asp)
+                ais_point.SetAttributes(drawer)
+
+                self.display.Context.Display(ais_point, False)
+                self.display.DisplayMessage(p, f"{msg}{i}", height=50)
+
+    def display_points_on_shape(self,  named_shape: TGeo.CNamedShape,points: list[tuple[Ogp.gp_Pnt]], severity, msg="", color="RED", trans=True, point_aspect: Aspect_TypeOfMarker = Aspect_TOM_BALL) -> None:
+        if self.dev and severity >= logging.root.level:
+            for i, p in enumerate(points):
+                # p.SetY(p.Y() + self.y_position)
+                # display point
+                p.SetY(p.Y() + self.y_position)
+                _p = Geom_CartesianPoint(p)
+                ais_point = AIS_Point(_p)
+
+                drawer = ais_point.Attributes()
+                q_color = Quantity_Color(Quantity_NameOfColor((i*10) % (Quantity_NameOfColor.Quantity_NOC_WHITE+1)))
+
+                asp = Prs3d_PointAspect(point_aspect, q_color, 3)
+                drawer.SetPointAspect(asp)
+                ais_point.SetAttributes(drawer)
+
+                self.display.Context.Display(ais_point, False)
+                self.display.DisplayMessage(p, f"{i}", height=50)
+
+            if OTopo.TopoDS_Iterator(named_shape.shape()).More():
+                self.id += 1
+                shape = OExs.translate_shp(named_shape.shape(), Ogp.gp_Vec(0.0, self.y_position, 0.0))
+                if trans:
+                    self.display.DisplayShape(shape, transparency=0.9, color="BLUE")
+                else:
+                    self.display.DisplayShape(shape)
+                if self.log:
+                    self.display.DisplayMessage(point=Ogp.gp_Pnt(0.0, self.y_position - 0.2, 0.0), text_to_write=msg)
+                self.display.FitAll()
+                self.y_position = self.next_y_position(named_shape)
+            else:
+                logstr = f"Shape can not be displayed: {msg}"
+                logging.warning(logstr)
+                self.display.DisplayMessage(point=Ogp.gp_Pnt(0.0, self.y_position - 0.2, 0.0), text_to_write=logstr, height=50)
+                self.y_position = self.y_position + 3 * self.distance
 
     def my_y_position(self, named_shape: TGeo.CNamedShape):
         shape_dimensions = sd.ShapeDimensions(named_shape)

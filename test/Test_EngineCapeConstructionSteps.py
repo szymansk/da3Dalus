@@ -11,7 +11,7 @@ from Airplane.ConstructionStepNode import ConstructionStepNode, ConstructionRoot
 from Airplane.FuselageConstructionSteps import FullWingLoftShapeCreator, Cut2ShapesCreator, SliceShapesCreator, \
     EngineMountShapeCreator, EngineCapeShapeCreator, FuselageReinforcementShapeCreator, IgesImportCreator, \
     Fuse2ShapesCreator, FuselageWingSupportShapeCreator, FuselageElectronicsAccessCutOutShapeCreator, \
-    Intersect2ShapesCreator, SimpleOffsetShapeCreator, WingAttachmentBoltHolesShapeCreator, ExportToStlCreator, \
+    Intersect2ShapesCreator, SimpleOffsetShapeCreator, WingAttachmentBoltCutoutShapeCreator, ExportToStlCreator, \
     StepImportCreator, ExportToIgesCreator, ExportToStepCreator, FullWingShapeCreator, EngineMountPanelShapeCreator, \
     FullFuselageLoftShapeCreator
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder

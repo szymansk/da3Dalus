@@ -47,7 +47,7 @@
         "aileron": {
             "successors": {},
             "creator": {
-                "step_file": "../components/aircraft/RV-7/aileron.step",
+                "step_file": "../components/aircraft/RV-7/aileron_right.step",
                 "trans_x": 0.0,
                 "trans_y": 0.0,
                 "trans_z": 0.0,
@@ -355,6 +355,19 @@
             },
             "loglevel": 50,
             "creator_id": "engine_cape.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "attachment_bolts": {
+            "successors": {},
+            "creator": {
+                "full_wing_loft": "full_wing_loft",
+                "fuselage_loft": "engine_cape_offset.loft",
+                "loglevel": 20,
+                "creator_id": "attachment_bolts",
+                "$TYPE": "WingAttachmentBoltCutoutShapeCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "attachment_bolts.node",
             "$TYPE": "ConstructionStepNode"
         },
         "fuselage_reinforcement_0": {
