@@ -200,30 +200,3 @@ class WingOffsetCreator(AbstractShapeCreator):
 
         return {self.identifier: shape}
 
-
-class WingRestCreator(AbstractShapeCreator):
-    def __init__(self, creator_id: str, wing_loft: str, wing_index: int, internal_structure, wing_offset,
-                 cpacs_configuration=None, wing_information: dict[int, WingInformation] = None, loglevel=logging.INFO):
-        self.wing_offset = wing_offset
-        self.internal_structure = internal_structure
-        self._wing_information = wing_information
-        self.wing_loft = wing_loft
-        self.wing_index = wing_index
-        self._cpacs_configuration = cpacs_configuration
-        super().__init__(creator_id, shapes_of_interest_keys=[self.wing_loft,
-                                                              self.internal_structure,
-                                                              self.wing_offset], loglevel=loglevel)
-
-    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
-                      input_shapes: dict[str, tgl_geom.CNamedShape],
-                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
-        logging.info(
-            f"wing rest '{', '.join(shapes_of_interest.keys())}' --> '{self.identifier}'")
-        factory = WingFactory(self._cpacs_configuration, self.wing_index)
-        shape, _ = factory.create_wing_with_inbuilt_servo(shapes_of_interest[self.internal_structure],
-                                                          self._wing_information[self.wing_index],
-                                                          shapes_of_interest[self.wing_offset])
-
-        ConstructionStepsViewer.instance().display_this_shape(shape, logging.DEBUG, msg=f"{self.identifier}")
-
-        return {self.identifier: shape}

@@ -14,13 +14,6 @@ from Airplane.WingConstructionSteps import *
 from Airplane.aircraft_topology.EngineInformation import Position
 from Airplane.aircraft_topology.WingInformation import CPACSWingInformation
 
-# TODO: * cutouts for hinges
-#       * cutout for elevator flap rod (carbon 1mm) in elvator and in rudder
-#       * wings with servos for aileron and flaps
-#       * cutouts for elevator and rudder rods (anlenkung carbonstab 1mm)
-#       * ruderhörner der Anlenkpunkt sollte über der Drehachse liegen und der Abstand beider
-#         Drehpunkte sollte mit dem Abstand der Anschlusspunkte übereinstimmen vergleich:
-#         (https://www.rc-network.de/threads/die-kinematik-ungewollter-differenzierung.11779720/)
 
 if __name__ == "__main__":
 
@@ -38,12 +31,6 @@ if __name__ == "__main__":
 
     shapeDisplay = ConstructionStepsViewer.instance(dev=True, distance=1, log=False)
 
-    base_scale = 0.04
-    ribcage_factor = 0.35
-    mount_plate_thickness = 0.005
-    engine_screw_hole_circle = 0.042
-    engine_mount_box_length = 0.0133 * 2.5
-
     # defining as simple root node
     root_node = ConstructionRootNode(creator_id="wings")
 
@@ -51,38 +38,6 @@ if __name__ == "__main__":
         FullWingLoftShapeCreator("full_wing_loft",
                                  right_main_wing_index=1))
     root_node.append(full_wing_loft_node)
-
-    # full_wing_loft_node = ConstructionStepNode(
-    #     StepImportCreator("right_wing_loft",
-    #                       step_file="../components/aircraft/RV-7/wing_right.step",
-    #                       scale=base_scale))
-    # root_node.append(full_wing_loft_node)
-
-    # flaps_node = ConstructionStepNode(
-    #     StepImportCreator("flaps",
-    #                       step_file="../components/aircraft/RV-7/ flaps.step",
-    #                       scale=base_scale))
-    # root_node.append(flaps_node)
-    #
-    # aileron_node = ConstructionStepNode(
-    #     StepImportCreator("aileron",
-    #                       step_file="../components/aircraft/RV-7/aileron_right.step",
-    #                       scale=base_scale))
-    # root_node.append(aileron_node)
-    #
-    # full_fuselage_loft_node = ConstructionStepNode(
-    #     StepImportCreator("full_fuselage",
-    #                       step_file="../components/aircraft/RV-7/fuselage.step",
-    #                       scale_x=base_scale,
-    #                       scale_y=base_scale - base_scale*0.01,
-    #                       scale_z=base_scale - base_scale*0.01))
-    # root_node.append(full_fuselage_loft_node)
-    #
-    # offset_fuselage_node = ConstructionStepNode(
-    #     StepImportCreator("offset_fuselage",
-    #                       step_file="../components/aircraft/RV-7/fuselage_inlets.step",
-    #                       scale=base_scale))
-    # root_node.append(offset_fuselage_node)
 
     wing_rib_cage_node = ConstructionStepNode(
         WingRibCageCreator("wing_ribs", wing_loft="full_wing_loft.right", wing_index=1, rib_distance=0.04,
@@ -130,32 +85,24 @@ if __name__ == "__main__":
     root_node.append(wing_offset_node)
 
     cut_internal_structure_node = ConstructionStepNode(
-        CutMultipleShapesCreator("final_wing",
+        CutMultipleShapesCreator("right_wing",
                                  minuend="wing_offset",
                                  subtrahends=["internal_structure", "aileron_cut_out.offset"],
                                  loglevel=logging.DEBUG))
     root_node.append(cut_internal_structure_node)
 
     mirror_wing = ConstructionStepNode(
-        MirrorShapeCreator("left_wing", shape="final_wing"))
+        MirrorShapeCreator("left_wing", shape="right_wing"))
     root_node.append(mirror_wing)
 
     mirror_aileron = ConstructionStepNode(
         MirrorShapeCreator("left_aileron", shape="aileron"))
     root_node.append(mirror_aileron)
 
-    rest_wing_node = ConstructionStepNode(
-        WingRestCreator("rest", wing_loft="full_wing_loft.right",
-                        wing_index=1,
-                        internal_structure="cut_internal_structure",
-                        wing_offset="wing_offset",
-                        loglevel=logging.DEBUG))
-    #root_node.append(rest_wing_node)
-
     aircraft_step_export_node = ConstructionStepNode(
         ExportToStepCreator(Path(f"{root_node.identifier}").stem,
                             file_path="../exports",
-                            shapes_to_export=["final_wing", "aileron", "left_wing"],
+                            shapes_to_export=["right_wing", "aileron", "left_wing", "left_aileron"],
                             loglevel=logging.DEBUG))
     root_node.append(aircraft_step_export_node)
 
