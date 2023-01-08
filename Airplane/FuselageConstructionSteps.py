@@ -5,6 +5,7 @@ from pathlib import Path
 import tigl3.geometry as tgl_geom
 from OCC.Core.AIS import AIS_Shape, AIS_Axis
 from OCC.Core.BRepAdaptor import BRepAdaptor_Surface
+from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_Transform
 from OCC.Core.BRepExtrema import BRepExtrema_DistShapeShape
 from OCC.Core.Geom import Geom_Axis1Placement
 from OCC.Core.GeomAbs import *
@@ -173,6 +174,38 @@ class SimpleOffsetShapeCreator(AbstractShapeCreator):
             ConstructionStepsViewer.instance().display_offset(result, result, shape, severity=logging.DEBUG, msg=msg)
         else:
             ConstructionStepsViewer.instance().display_offset(result, shape, result, severity=logging.DEBUG, msg=msg)
+
+        return {self.identifier: result}
+
+
+class MirrorShapeCreator(AbstractShapeCreator):
+    """
+    Creates a simple offset shape from given shape or the take the first input_shape,
+    which is bigger(+)/smaller(-) bei the given <offset>[m].
+    """
+
+    def __init__(self, creator_id: str,
+                 shape: str = None,
+                 loglevel=logging.INFO):
+        self.shape = shape
+        super().__init__(creator_id, shapes_of_interest_keys=[shape], loglevel=loglevel)
+
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        logging.info(f"mirror '{list(shapes_of_interest.keys())[0]}'  --> '{self.identifier}'")
+        shape = shapes_of_interest[self.shape]
+
+        # Set up the mirror
+        aTrsf = Ogp.gp_Trsf()
+        aTrsf.SetMirror(Ogp.gp_Ax2(Ogp.gp_Pnt(0, 0, 0), Ogp.gp_DY()))
+        # Apply the mirror transformation
+        aBRespTrsf = BRepBuilderAPI_Transform(shape.shape(), aTrsf)
+
+        topods_shape = aBRespTrsf.Shape()
+        result = TGeo.CNamedShape(topods_shape, f"mirrored_{shape.name()}")
+
+        ConstructionStepsViewer.instance().display_offset(result, shape, result, severity=logging.DEBUG, msg=self.identifier)
 
         return {self.identifier: result}
 
@@ -1150,12 +1183,13 @@ class FullWingShapeCreator(AbstractShapeCreator):
 
         from Airplane.Wing.WingFactory import WingFactory
         wing_factory = WingFactory(self._cpacs_configuration, self.right_main_wing_index)
-        right_wing, right_aileron = wing_factory.create_wing_with_inbuilt_servo(rib_cage_shape, reinforcement_rod,
-                                                                                self._wing_information[self.wing_index])
+        right_wing, right_aileron = wing_factory.create_wing_with_inbuilt_servo(rib_cage_shape,
+                                                                                self._wing_information[self.wing_index],
+                                                                                "wing_offset")
 
-        left_wing = wing_factory.create_mirrored_wing(right_wing)
+        left_wing = WingFactory.create_mirrored_wing(right_wing)
         if right_aileron is not None:
-            left_aileron = wing_factory.create_mirrored_wing(right_aileron)
+            left_aileron = WingFactory.create_mirrored_wing(right_aileron)
         else:
             left_aileron = None
 

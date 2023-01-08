@@ -32,7 +32,7 @@ if __name__ == "__main__":
     m.display_in_origin(wing_loft, logging.NOTSET, "", True)
     servo_size = (0.024, 0.024, 0.012)
     ruder_factory = rf.RuderFactory(wing)
-    ruder = ruder_factory.get_trailing_edge_cutout(offset=0.002)
+    ruder = ruder_factory.get_trailing_edge_cutout(wing, offset=0.002)
     test_class = srf.ServoRecessFactory(wing)
     servo = test_class.create_servoRecess_option1(ruder, servo_size=servo_size)
     m.display_in_origin(servo, logging.NOTSET)

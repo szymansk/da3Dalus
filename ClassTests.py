@@ -45,8 +45,8 @@ if __name__ == "__main__":
         pass
     if test_class_name == "WingFactory":
         test_class = wf.WingFactory(tigl_h, 1)
-        my_wing = test_class.create_wing_with_inbuilt_servo(rib_cage_shape, reinforcement_rod,
-                                                            self._wing_information[self.wing_index])
+        my_wing = test_class.create_wing_with_inbuilt_servo(rib_cage_shape, self._wing_information[self.wing_index],
+                                                            "wing_offset")
         my_slicer = ss.ShapeSlicer(my_wing, self.loglevel, 5)
         my_slicer.slice_by_cut(self.loglevel)
         # my_exporter = exp.exporter()
@@ -57,7 +57,7 @@ if __name__ == "__main__":
         test_class.create_ribcage(wing_shape, self._wing_information[self.wing_index], self.rib_distance)
     if test_class_name == "RuderFactory":
         test_class = rf.RuderFactory(tigl_h, 1)
-        test_class.get_trailing_edge_cutout()
+        test_class.get_trailing_edge_cutout(wing)
     if test_class_name == "Ruder":
         config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
         cpacs_configuration: TConfig.CCPACSConfiguration = config_manager.get_configuration(tigl_h._handle.value)
@@ -87,7 +87,7 @@ if __name__ == "__main__":
         # servo_size=(0.0023,0.0024,0.0012)
         servo_size = (0.024, 0.024, 0.012)
         ruder_factory = rf.RuderFactory(tigl_h, 1)
-        ruder = ruder_factory.get_trailing_edge_cutout(offset=0.002)
+        ruder = ruder_factory.get_trailing_edge_cutout(wing, offset=0.002)
         test_class = srf.ServoRecessFactory(tigl_h, 1)
         test_class.create_servoRecess_option1(ruder, servo_size=servo_size)
         m.display_in_origin(test_class.wing_shape, logging.NOTSET, "", True)

@@ -25,7 +25,7 @@ from Airplane.aircraft_topology.WingInformation import CPACSWingInformation
 if __name__ == "__main__":
 
     logging.basicConfig(format='%(levelname)s:%(module)s:%(filename)s(%(lineno)d):%(funcName)s(): %(message)s',
-                        level=logging.INFO, stream=sys.stdout)
+                        level=logging.DEBUG, stream=sys.stdout)
     CPACS_FILE_NAME = "aircombat_v14"
     NUMBER_OF_CUTS = 5
 
@@ -91,220 +91,71 @@ if __name__ == "__main__":
 
     wing_pipes_node = ConstructionStepNode(
         ReinforcementPipesCreator("pipes", wing_index=1, pipe_diameter=0.006, wall_thickness=0.0004,
-                                  pipe_position=[0, 1], loglevel=logging.NOTSET))
+                                  pipe_position=[0, 1], loglevel=logging.INFO))
     root_node.append(wing_pipes_node)
 
+    aileron_shape_node = ConstructionStepNode(
+        CPACSTrailingEdgeDeviceCreator("aileron",
+                                       wing_index=1,
+                                       component_segment_index=1,
+                                       device_index=1,
+                                       loglevel=logging.INFO))
+    root_node.append(aileron_shape_node)
+
+    aileron_cut_out_shape_node = ConstructionStepNode(
+        CPACSTrailingEdgeDeviceCutOutCreator("aileron_cut_out",
+                                             wing_index=1,
+                                             component_segment_index=1,
+                                             device_index=1,
+                                             loglevel=logging.INFO))
+    root_node.append(aileron_cut_out_shape_node)
+
+    servo_node = ConstructionStepNode(
+        CPACSServoCutOutCreator("servo",
+                                aileron="aileron",
+                                wing_index=1,
+                                loglevel=logging.INFO))
+    root_node.append(servo_node)
+
+    fuse_inernal_node = ConstructionStepNode(
+        FuseMultipleShapesCreator("internal_structure",
+                                  shapes=["wing_ribs", "pipes", "servo.servo", "servo.cable"],
+                                  loglevel=logging.INFO))
+    root_node.append(fuse_inernal_node)
+
+    wing_offset_node = ConstructionStepNode(
+        WingOffsetCreator("wing_offset",
+                          wing_loft="full_wing_loft.right",
+                          loglevel=logging.INFO))
+    root_node.append(wing_offset_node)
+
+    cut_internal_structure_node = ConstructionStepNode(
+        CutMultipleShapesCreator("final_wing",
+                                 minuend="wing_offset",
+                                 subtrahends=["internal_structure", "aileron_cut_out.offset"],
+                                 loglevel=logging.DEBUG))
+    root_node.append(cut_internal_structure_node)
+
+    mirror_wing = ConstructionStepNode(
+        MirrorShapeCreator("left_wing", shape="final_wing"))
+    root_node.append(mirror_wing)
+
+    mirror_aileron = ConstructionStepNode(
+        MirrorShapeCreator("left_aileron", shape="aileron"))
+    root_node.append(mirror_aileron)
+
     rest_wing_node = ConstructionStepNode(
-        WingRestCreator("rest",
-                        wing_loft="full_wing_loft.right",
-                        reinforcement="wing_ribs",
-                        pipes="pipes",
+        WingRestCreator("rest", wing_loft="full_wing_loft.right",
                         wing_index=1,
-                        loglevel=logging.NOTSET))
-    root_node.append(rest_wing_node)
-    #
-    # cockpit_node = ConstructionStepNode(
-    #     StepImportCreator("cockpit",
-    #                       step_file="../components/aircraft/RV-7/cockpit.step",
-    #                       scale=base_scale))
-    # offset_fuselage_node.append(cockpit_node)
-    #
-    # cut_cockpit_node = ConstructionStepNode(
-    #     Cut2ShapesCreator("cockpit"))
-    # cockpit_node.append(cut_cockpit_node)
-    #
-    # full_elevator_loft_node = ConstructionStepNode(
-    #     StepImportCreator("elevator",
-    #                       step_file="../components/aircraft/RV-7/full_elevator_straight.step",
-    #                       scale=base_scale))
-    # root_node.append(full_elevator_loft_node)
-    #
-    # rudder_loft_node = ConstructionStepNode(
-    #     StepImportCreator("rudder",
-    #                       step_file="../components/aircraft/RV-7/rudder_fix_final.step",
-    #                       scale=base_scale))
-    # root_node.append(rudder_loft_node)
-    #
-    # rudder_flap_loft_node = ConstructionStepNode(
-    #     StepImportCreator("rudder_flap",
-    #                       step_file="../components/aircraft/RV-7/rudder_flap.step",
-    #                       scale=base_scale))
-    # root_node.append(rudder_flap_loft_node)
-    #
-    # elevator_flap_loft_node = ConstructionStepNode(
-    #     StepImportCreator("elevator_flap",
-    #                       step_file="../components/aircraft/RV-7/elevator_flap_straight.step",
-    #                       scale=base_scale))
-    # root_node.append(elevator_flap_loft_node)
-    #
-    # elevator_servo_shape_import = ConstructionStepNode(
-    #     ServoImporterCreator("elevator_servo",
-    #                          servo_feature="../components/servos/unknown/servo_24x24x12_inside.step",
-    #                          servo_stamp="../components/servos/unknown/servo_24x24x12_inside_stamp.step",
-    #                          servo_filling=None,
-    #                          servo_model="../components/servos/AS215BBMG_left.step",
-    #                          servo_idx=1))
-    # root_node.append(elevator_servo_shape_import)
-    #
-    # rudder_servo_shape_import = ConstructionStepNode(
-    #     ServoImporterCreator("rudder_servo",
-    #                          servo_feature="../components/servos/unknown/servo_24x24x12_inside.step",
-    #                          servo_stamp="../components/servos/unknown/servo_24x24x12_inside_stamp.step",
-    #                          servo_filling=None,
-    #                          servo_model="../components/servos/AS215BBMG.step",
-    #                          servo_idx=2))
-    # root_node.append(rudder_servo_shape_import)
-    #
-    # # #########
-    #
-    # engine_mount_node = ConstructionStepNode(
-    #     EngineMountShapeCreator("engine_mount", engine_index=1, mount_plate_thickness=mount_plate_thickness))
-    # root_node.append(engine_mount_node)
-    #
-    # engine_panel_node = ConstructionStepNode(
-    #     EngineMountPanelShapeCreator("engine_mount_plate", engine_index=1, mount_plate_thickness=mount_plate_thickness,
-    #                                  full_fuselage_loft="offset_fuselage"))
-    # engine_mount_node.append(engine_panel_node)
-    #
-    # fuse_mount_with_plate = ConstructionStepNode(
-    #     Fuse2ShapesCreator("engine_mount"))
-    # engine_panel_node.append(fuse_mount_with_plate)
-    #
-    # # engine mount END
-    #
-    # engine_cape_node = ConstructionStepNode(
-    #     EngineCapeShapeCreator("engine_cape_offset",
-    #                            engine_index=1,
-    #                            mount_plate_thickness=mount_plate_thickness,
-    #                            full_fuselage_loft="offset_fuselage"))
-    # root_node.append(engine_cape_node)
-    #
-    # engine_cape_full_node = ConstructionStepNode(
-    #     EngineCapeShapeCreator("engine_cape", engine_index=1,
-    #                            mount_plate_thickness=mount_plate_thickness,
-    #                            full_fuselage_loft="full_fuselage"))
-    # root_node.append(engine_cape_full_node)
-    #
-    # wing_attachment_bolt_node = ConstructionStepNode(
-    #     WingAttachmentBoltCutoutShapeCreator("attachment_bolts",
-    #                                          fuselage_loft="engine_cape_offset.loft",
-    #                                          #fuselage_loft="offset_fuselage",
-    #                                          full_wing_loft="full_wing_loft"))
-    # root_node.append(wing_attachment_bolt_node)
-    #
-    # fuselage_reinforcement_node = ConstructionStepNode(
-    #     FuselageReinforcementShapeCreator("fuselage_reinforcement_0", rib_width=0.001, rib_spacing=0.00,  # 3,
-    #                                       ribcage_factor=ribcage_factor, reinforcement_pipes_radius=0.002,
-    #                                       fuselage_loft="engine_cape.loft", full_wing_loft="full_wing_loft"))
-    # root_node.append(fuselage_reinforcement_node)
-    #
-    # wing_support_node = ConstructionStepNode(
-    #     FuselageWingSupportShapeCreator("wing_support", rib_quantity=6, rib_width=0.0008, rib_height_factor=1,
-    #                                     fuselage_loft="engine_cape.loft", full_wing_loft="full_wing_loft"))
-    # root_node.append(wing_support_node)
-    #
-    # full_elevator_support_loft_node = ConstructionStepNode(
-    #     FuselageWingSupportShapeCreator("elevator_support", rib_quantity=8, rib_width=0.0004, rib_height_factor=20,
-    #                                     fuselage_loft="engine_cape.loft", full_wing_loft="elevator"))
-    # wing_support_node.append(full_elevator_support_loft_node)
-    #
-    # fuse_fuselage_reinforcements = ConstructionStepNode(
-    #     FuseMultipleShapesCreator("fuselage_reinforcement_1",
-    #                               shapes=["fuselage_reinforcement_0",
-    #                                       "elevator_servo.feature",
-    #                                       "rudder_servo.feature",
-    #                                       "wing_support",
-    #                                       "elevator_support",
-    #                                       ]))
-    # root_node.append(fuse_fuselage_reinforcements)
-    #
-    # electronics_access_node = ConstructionStepNode(
-    #     FuselageElectronicsAccessCutOutShapeCreator("electronics_cutout",
-    #                                                 ribcage_factor=ribcage_factor,
-    #                                                 length_factor=0.8,
-    #                                                 fuselage_loft="engine_cape.loft",
-    #                                                 full_wing_loft="full_wing_loft",
-    #                                                 wing_position=None))
-    # root_node.append(electronics_access_node)
-    #
-    # reinforcement_node = ConstructionStepNode(
-    #     CutMultipleShapesCreator("fuselage_reinforcement",
-    #                              minuend="fuselage_reinforcement_1",
-    #                              subtrahends=["electronics_cutout",
-    #                                           "elevator_servo.stamp",
-    #                                           "rudder_servo.stamp",
-    #                                           #"attachment_bolts"
-    #                                           ],
-    #                              loglevel=logging.DEBUG
-    #                              ))
-    # root_node.append(reinforcement_node)
-    #
-    # holes_in_engine_mount = ConstructionStepNode(
-    #     Cut2ShapesCreator("engine_mount",
-    #                       minuend="engine_mount"))
-    # reinforcement_node.append(holes_in_engine_mount)
-    #
-    # internal_structure_node = ConstructionStepNode(
-    #     Intersect2ShapesCreator("internal_structure",
-    #                             shape_a="engine_cape.loft",
-    #                             # shape_b="reinforcement2"
-    #                             ))
-    # reinforcement_node.append(internal_structure_node)
-    #
-    # reinforced_fuselage_node = ConstructionStepNode(
-    #     Cut2ShapesCreator("final_fuselage",
-    #                       #  minuend="engine_cape.loft",
-    #                       minuend="engine_cape_offset.loft",
-    #                       subtrahend="internal_structure"))
-    # internal_structure_node.append(reinforced_fuselage_node)
-    #
-    # cut_wing_from_fuselage_node = ConstructionStepNode(
-    #     CutMultipleShapesCreator("final_fuselage",
-    #                              minuend="final_fuselage",
-    #                              subtrahends=["full_wing_loft",
-    #                                           "elevator",
-    #                                           "rudder",
-    #                                           #"attachment_bolts",
-    #                                           #"elevator_servo.filling",
-    #                                           #"rudder_servo.filling",
-    #                                           "engine_mount"
-    #                                           ]))
-    # reinforced_fuselage_node.append(cut_wing_from_fuselage_node)
-    #
-    # shape_slicer_node = ConstructionStepNode(
-    #     SliceShapesCreator("fuselage_slicer",
-    #                        shapes_to_slice=["final_fuselage"],
-    #                        number_of_parts=5))
-    # cut_wing_from_fuselage_node.append(shape_slicer_node)
-    #
-    # rudder_cut_elevator_node = ConstructionStepNode(
-    #     Cut2ShapesCreator("elevator_cut",
-    #                       minuend="elevator",
-    #                       subtrahend="rudder"))
-    # root_node.append(rudder_cut_elevator_node)
-    #
-    # elevator_slicer_node = ConstructionStepNode(
-    #     SliceShapesCreator("elevator_slicer",
-    #                        shapes_to_slice=["elevator"],
-    #                        number_of_parts=2))
-    # rudder_cut_elevator_node.append(elevator_slicer_node)
-    #
-    # brushless_shape_import = ConstructionStepNode(
-    #     ComponentImporterCreator("brushless",
-    #                              component_file="../components/brushless/DPower_AL3542-5_AL3542-7_AL35-09_v2.iges",
-    #                              component_idx="brushless"))
-    # root_node.append(brushless_shape_import)
-    #
-    # lipo_model_import = ConstructionStepNode(
-    #     ComponentImporterCreator("lipo_model",
-    #                              component_file="../components/lipo/D-Power HD-2200 4S Lipo (14,8V) 30C v1.iges",
-    #                              component_idx="lipo"))
-    # root_node.append(lipo_model_import)
+                        internal_structure="cut_internal_structure",
+                        wing_offset="wing_offset",
+                        loglevel=logging.DEBUG))
+    #root_node.append(rest_wing_node)
 
     aircraft_step_export_node = ConstructionStepNode(
         ExportToStepCreator(Path(f"{root_node.identifier}").stem,
                             file_path="../exports",
-                            shapes_to_export=["rest"],
+                            shapes_to_export=["final_wing", "aileron", "left_wing"],
                             loglevel=logging.DEBUG))
     root_node.append(aircraft_step_export_node)
 

@@ -25,8 +25,9 @@ class ReinforcementPipeFactory:
         logging.debug(f"Creating reinforcement option1")
 
         root_segment = wing_information.segments[0]
-        inner_x_list = root_segment.tip_x_list
-        outer_x_list = root_segment.root_x_list
+        tip_segment = wing_information.segments[-1]
+        inner_x_list = root_segment.root_x_list
+        outer_x_list = tip_segment.tip_x_list
 
         width = root_segment.width
         logging.debug(f"{radius=:.4f} {thickness=:.4f} {width=:.4f}")
@@ -36,7 +37,7 @@ class ReinforcementPipeFactory:
         for i, x in enumerate(inner_x_list):
             if i in pipe_position:
                 start = Ogp.gp_Pnt(x, root_segment.root_y_min, root_segment.root_z_mid)
-                end = Ogp.gp_Pnt(outer_x_list[i], root_segment.tip_y_min, root_segment.tip_z_mid)
+                end = Ogp.gp_Pnt(outer_x_list[i], tip_segment.tip_y_min, tip_segment.tip_z_mid)
                 pipe = ReinforcementPipeFactory.create_pipe_section(start, end, radius + thickness, f"pipe_section_{i}")
                 shapes.append(pipe)
                 ConstructionStepsViewer.instance().display_in_origin(pipe, logging.NOTSET)

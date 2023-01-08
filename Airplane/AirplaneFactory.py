@@ -67,8 +67,8 @@ class AirplaneFactory:
         fuselage = self.configuration.get_fuselage()
 
         self.wing_factory = WingFactory(right_main_wing, fuselage)
-        self.wing_factory.create_wing_with_inbuilt_servo(rib_cage_shape, reinforcement_rod,
-                                                         self._wing_information[self.wing_index])
+        self.wing_factory.create_wing_with_inbuilt_servo(rib_cage_shape, self._wing_information[self.wing_index],
+                                                         "wing_offset")
         named_wing = self.wing_factory.get_shape()
 
         cut_parts = cut_component(named_wing, parts_quantity)

@@ -45,16 +45,18 @@ class RuderFactory:
     def get_namedshape(self) -> TGeo.CNamedShape:
         return self.namedshape
 
-    def get_trailing_edge_shape(self, component_segment_index=1, device_index=1) -> TGeo.CNamedShape:
+    @classmethod
+    def get_trailing_edge_shape(cls, wing, component_segment_index=1, device_index=1) -> TGeo.CNamedShape:
         """
         gets the trailing edge decice shape from the CPACS configuration
+        :param wing:
         :param component_segment_index: index of the componente segment default set to 1
         :param device_index: index of the device, setting defaul index to1
         :return:
         """
         logging.info(f"Getting trailing edge device from {component_segment_index=} {device_index=}")
         try:
-            compseg: TConfig.CCPACSWingComponentSegment = self.wing.get_component_segment(component_segment_index)
+            compseg: TConfig.CCPACSWingComponentSegment = wing.get_component_segment(component_segment_index)
         except IndexError:
             logging.info(f"cannot find trailing edge device")
             return None
@@ -63,12 +65,15 @@ class RuderFactory:
         trailing_edge_device: TConfig.CCPACSTrailingEdgeDevice = trailing_edge_devices.get_trailing_edge_device(
             device_index)
         loft: TGeo.CNamedShape = trailing_edge_device.get_loft()
-        self.m.display_this_shape(loft, logging.NOTSET)
+        ConstructionStepsViewer.instance().display_this_shape(loft, logging.NOTSET)
         return loft
 
-    def get_trailing_edge_cutout(self, offset=0.02, component_segment_index=1, device_index=1) -> TGeo.CNamedShape:
+    @classmethod
+    def get_trailing_edge_cutout(cls, wing, offset=0.02, component_segment_index=1, device_index=1) \
+            -> tuple[TGeo.CNamedShape, TGeo.CNamedShape]:
         """
         Returns the cutout shape with a given offset
+        :param wing:
         :param offset: how much bigger should the cutout be
         :param component_segment_index: index of the componente segment default set to 1
         :param device_index: index of the device, setting defaul index to1
@@ -76,7 +81,7 @@ class RuderFactory:
         """
         logging.info(f"Getting trailing edge cutout from {component_segment_index=} {device_index=}")
         try:
-            compseg: TConfig.CCPACSWingComponentSegment = self.wing.get_component_segment(component_segment_index)
+            compseg: TConfig.CCPACSWingComponentSegment = wing.get_component_segment(component_segment_index)
         except IndexError:
             return None, None
         control_surface: TConfig.CCPACSControlSurfaces = compseg.get_control_surfaces()

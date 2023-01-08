@@ -39,73 +39,30 @@ class WingFactory:
         self.servo_recces_factory: ServoRecessFactory = ServoRecessFactory(cpacs_configuration, wing_index)
         self.cable_pipe_factory: CablePipeFactory = CablePipeFactory(cpacs_configuration, wing_index)
 
-    def create_wing_with_inbuilt_servo(self, rib_cage_shape, reinforcement_rod, wing_information) -> TGeo.CNamedShape:
+    def create_wing_with_inbuilt_servo(self, internal_structure, wing_information, named_wing_offset) -> TGeo.CNamedShape:
         """
         Creates wing with its internat Strukture, made out of Ribs, Pipe for Carbon Rod, Servo Reccess,
         CablePipe and Cutout for the Ruder
-        :param reinforcement_rod:
+        :param named_wing_offset:
         :param wing_information:
-        :param rib_cage_shape:
+        :param internal_structure:
         :return: the namedshape of the konstrukted wing
         """
-        internal_structur: list[TGeo.CNamedShape] = []
-
-        # Ribs
-        internal_structur.append(rib_cage_shape)
-
-
-        internal_structur.append(reinforcement_rod)
-
-        # Servo Reccess
-        servo_size = (0.024, 0.024, 0.012)
-        ruder_shape = self.ruder_factory.get_trailing_edge_shape()
-        if ruder_shape is not None:
-            servo = self.servo_recces_factory.create_servoRecess_option1(ruder_shape, servo_size)
-            servo_dimensions = ShapeDimensions(servo)
-            internal_structur.append(servo)
-
-            # Cable Pipe
-            fuselage: TConfig.CCPACSWing = self.cpacs_configuration.get_fuselage(1)
-            fuselage_loft: TGeo.CNamedShape = fuselage.get_loft()
-            fuselage_dimensions = ShapeDimensions(fuselage_loft)
-
-            points = self.cable_pipe_factory.points_route_thru(servo_dimensions, fuselage_dimensions)
-            cable_pipe = self.cable_pipe_factory.create_complete_pipe(points, servo_dimensions.get_height() / 2)
-            internal_structur.append(cable_pipe)
-
-        for ix in internal_structur:
-            logging.info(f"---{type(ix)}---")
-        # Fuse internal Structure
-        self.shapes.append(BooleanCADOperation.fuse_list_of_named_shapes(internal_structur, "internal structure"))
-        #self.m.display_in_secondfloor(self.shapes[-1])
-        self.m.display_fused_shapes(self.shapes[-1], {s.name(): s for s in internal_structur}, logging.NOTSET)
-
-        # Cut internal Strukture from Wing
-        offset = 0.001
-        toleranz = offset / 8
-        wing_offset: OTopo.TopoDS_Shape = OOff.BRepOffsetAPI_MakeOffsetShape(self.wing_loft.shape(), offset,
-                                                                             0.000001).Shape()
-        while wing_offset is None and offset < 0.01:
-            offset *= 1.2  # 20% mehr
-            toleranz *= 1.2
-            wing_offset: OTopo.TopoDS_Shape = OOff.BRepOffsetAPI_MakeOffsetShape(self.wing_loft.shape(), offset,
-                                                                                 toleranz).Shape()
-            logging.info(f"Offseting wing with {offset=} {toleranz=} {type(wing_offset)}")
-
-        named_wing_offset = TGeo.CNamedShape(wing_offset, "Wingoffset")
-
-        # self.shapes.append(OAlgo.BRepAlgoAPI_Cut(self.wing_shape, self.shapes[-1]).Shape())
-        self.shapes.append(TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Cut(wing_offset, self.shapes[-1].shape()).Shape(),
-                                            f"{self.wing_loft.name()}"))
-        self.m.display_cut(self.shapes[-1], named_wing_offset, self.shapes[-2], logging.NOTSET)
+        self.shapes.append(internal_structure)
+        #
+        # # self.shapes.append(OAlgo.BRepAlgoAPI_Cut(self.wing_shape, self.shapes[-1]).Shape())
+        # self.shapes.append(TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Cut(named_wing_offset.shape(), self.shapes[-1].shape()).Shape(),
+        #                                     f"{self.wing_loft.name()}"))
+        # self.m.display_cut(self.shapes[-1], named_wing_offset, self.shapes[-2], logging.NOTSET)
 
         # Cut-Out Ruder
         offset: float = 0.002
-        ruder_cutout, ruder_cut_small = self.ruder_factory.get_trailing_edge_cutout(offset)
+        ruder_cutout, ruder_cut_small = self.ruder_factory.get_trailing_edge_cutout(wing, offset)
+
         if ruder_cutout is not None:
             wing = self.shapes[-1]
             self.shapes.append(
-                TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Cut(self.shapes[-1].shape(), ruder_cutout.reinforcement()).Shape(),
+                TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Cut(self.shapes[-1].shape(), ruder_cutout.shape()).Shape(),
                                  f"{self.wing_loft.name()}"))
             self.m.display_cut(self.shapes[-1], self.shapes[-2], ruder_cutout, logging.NOTSET)
 
@@ -117,24 +74,16 @@ class WingFactory:
             #raise RuntimeError
 
             # Collision Tests
-            reinforcement_tests = [(servo, False), (cable_pipe, False), (ruder_cutout, False)]
-            servo_tests = [(cable_pipe, True), (ruder_cutout, False)]
-            ruder_test = [(cable_pipe, False)]
-            all_test = {reinforcement_rod: reinforcement_tests, servo: servo_tests, ruder_cutout: ruder_test}
-            collision_detector = CollisionDetector()
-            collision_detector.multiple_collision_check(all_test)
+            #reinforcement_tests = [(servo, False), (cable_pipe, False), (ruder_cutout, False)]
+            #servo_tests = [(cable_pipe, True), (ruder_cutout, False)]
+            #ruder_test = [(cable_pipe, False)]
+            #all_test = {reinforcement_rod: reinforcement_tests, servo: servo_tests, ruder_cutout: ruder_test}
+            #collision_detector = CollisionDetector()
+            #collision_detector.multiple_collision_check(all_test)
         else:
             aileron = None
 
         return self.shapes[-1], aileron
-
-    def create_wing_with_ribs(self) -> TGeo.CNamedShape:
-        '''
-        Creates wing with its internal Strukture, made out of only Ribs
-        :return: the namedshape of the konstrukted wing
-        '''
-        # Todo Create a wing that only has diagonal and horizontal ribs. for Vertikal tail wing
-        pass
 
     def create_wing_with_ruder(self, rib_cage_shape) -> TGeo.CNamedShape:
         '''
@@ -163,24 +112,23 @@ class WingFactory:
 
         # Cut-Out Ruder
         offset: float = 0.002
-        ruder_cutout, _ = self.ruder_factory.get_trailing_edge_cutout(offset)
+        ruder_cutout, _ = self.ruder_factory.get_trailing_edge_cutout(wing, offset)
         if ruder_cutout is not None:
             self.shapes.append(
-                TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Cut(self.shapes[-1].shape(), ruder_cutout.reinforcement()).Shape(),
+                TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Cut(self.shapes[-1].shape(), ruder_cutout.shape()).Shape(),
                                  f"{self.wing_loft.name()}"))
             self.m.display_cut(self.shapes[-1], self.shapes[-2], ruder_cutout, logging.NOTSET)
 
-    def get_shape(self) -> TGeo.CNamedShape:
-        return self.shapes[-1]
 
-    def create_mirrored_wing(self, shape) -> TGeo.CNamedShape:
+    @classmethod
+    def create_mirrored_wing(cls, shape) -> TGeo.CNamedShape:
         # Set up the mirror
         aTrsf = Ogp.gp_Trsf()
         aTrsf.SetMirror(Ogp.gp_Ax2(Ogp.gp_Pnt(0, 0, 0), Ogp.gp_Dir(0, 1, 0)))
         # Apply the mirror transformation
-        aBRespTrsf = OBui.BRepBuilderAPI_Transform(shape.reinforcement(), aTrsf)
+        aBRespTrsf = OBui.BRepBuilderAPI_Transform(shape.shape(), aTrsf)
 
         # Get the mirrored shape back out of the transformation and convert back to a wire
         mirrord_wing_shape = aBRespTrsf.Shape()
-        named_mirrored_wing_shape = TGeo.CNamedShape(mirrord_wing_shape, f"mirrored_{self.wing_loft.name()}")
+        named_mirrored_wing_shape = TGeo.CNamedShape(mirrord_wing_shape, f"mirrored_{shape.name()}")
         return named_mirrored_wing_shape

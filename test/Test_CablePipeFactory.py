@@ -42,7 +42,7 @@ if __name__ == "__main__":
 
     # testing creation of ruder
     ruder_factory = rf.RuderFactory(wing)
-    ruder = ruder_factory.get_trailing_edge_shape()
+    ruder = ruder_factory.get_trailing_edge_shape(wing)
     r_d = ShapeDimensions(ruder)
     m.display_in_origin(ruder, logging.NOTSET, "", True)
 

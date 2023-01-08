@@ -36,7 +36,7 @@
                 "wall_thickness": 0.0004,
                 "pipe_diameter": 0.006,
                 "wing_index": 1,
-                "loglevel": 0,
+                "loglevel": 20,
                 "creator_id": "pipes",
                 "$TYPE": "ReinforcementPipesCreator"
             },
@@ -44,19 +44,114 @@
             "creator_id": "pipes.node",
             "$TYPE": "ConstructionStepNode"
         },
-        "rest": {
+        "aileron": {
             "successors": {},
             "creator": {
-                "pipes": "pipes",
-                "wing_loft": "full_wing_loft.right",
+                "device_index": 1,
+                "component_segment_index": 1,
                 "wing_index": 1,
-                "reinforcement": "wing_ribs",
-                "loglevel": 0,
-                "creator_id": "rest",
-                "$TYPE": "WingRestCreator"
+                "loglevel": 20,
+                "creator_id": "aileron",
+                "$TYPE": "CPACSTrailingEdgeDeviceCreator"
             },
             "loglevel": 50,
-            "creator_id": "rest.node",
+            "creator_id": "aileron.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "aileron_cut_out": {
+            "successors": {},
+            "creator": {
+                "device_index": 1,
+                "component_segment_index": 1,
+                "wing_index": 1,
+                "loglevel": 20,
+                "creator_id": "aileron_cut_out",
+                "$TYPE": "CPACSTrailingEdgeDeviceCutOutCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "aileron_cut_out.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "servo": {
+            "successors": {},
+            "creator": {
+                "aileron": "aileron",
+                "wing_index": 1,
+                "loglevel": 20,
+                "creator_id": "servo",
+                "$TYPE": "CPACSServoCutOutCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "servo.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "internal_structure": {
+            "successors": {},
+            "creator": {
+                "shapes": [
+                    "wing_ribs",
+                    "pipes",
+                    "servo.servo",
+                    "servo.cable"
+                ],
+                "loglevel": 20,
+                "creator_id": "internal_structure",
+                "$TYPE": "FuseMultipleShapesCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "internal_structure.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "wing_offset": {
+            "successors": {},
+            "creator": {
+                "wing_loft": "full_wing_loft.right",
+                "loglevel": 20,
+                "creator_id": "wing_offset",
+                "$TYPE": "WingOffsetCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "wing_offset.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "final_wing": {
+            "successors": {},
+            "creator": {
+                "subtrahends": [
+                    "internal_structure",
+                    "aileron_cut_out.offset"
+                ],
+                "minuend": "wing_offset",
+                "loglevel": 10,
+                "creator_id": "final_wing",
+                "$TYPE": "CutMultipleShapesCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "final_wing.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "left_wing": {
+            "successors": {},
+            "creator": {
+                "shape": "final_wing",
+                "loglevel": 20,
+                "creator_id": "left_wing",
+                "$TYPE": "MirrorShapeCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "left_wing.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "left_aileron": {
+            "successors": {},
+            "creator": {
+                "shape": "aileron",
+                "loglevel": 20,
+                "creator_id": "left_aileron",
+                "$TYPE": "MirrorShapeCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "left_aileron.node",
             "$TYPE": "ConstructionStepNode"
         },
         "wings": {
@@ -64,7 +159,9 @@
             "creator": {
                 "file_path": "../exports",
                 "shapes_to_export": [
-                    "rest"
+                    "final_wing",
+                    "aileron",
+                    "left_wing"
                 ],
                 "loglevel": 10,
                 "creator_id": "wings",

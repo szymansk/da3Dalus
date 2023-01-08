@@ -1,10 +1,16 @@
 import tigl3.geometry as tgl_geom
+from OCC.Core.BRepOffsetAPI import BRepOffsetAPI_MakeOffsetShape
+from tigl3.configuration import CCPACSWing
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
 from Airplane.ReinforcementPipeFactory import ReinforcementPipeFactory
+from Airplane.Wing.CablePipeFactory import CablePipeFactory
+from Airplane.Wing.RuderFactory import RuderFactory
+from Airplane.Wing.ServoRecessFactory import ServoRecessFactory
 from Airplane.Wing.WingFactory import WingFactory
 from Airplane.Wing.WingRibFactory import WingRibFactory
 from Airplane.aircraft_topology.WingInformation import WingInformation
+from Dimensions.ShapeDimensions import ShapeDimensions
 from Extra.BooleanOperationsForLists import BooleanCADOperation
 
 from Extra.ConstructionStepsViewer import *
@@ -63,23 +69,150 @@ class ReinforcementPipesCreator(AbstractShapeCreator):
         return {self.identifier: shape}
 
 
-class WingRestCreator(AbstractShapeCreator):
+class CPACSTrailingEdgeDeviceCreator(AbstractShapeCreator):
+    def __init__(self, creator_id: str,
+                 wing_index: int,
+                 component_segment_index: int,
+                 device_index: int,
+                 cpacs_configuration=None,
+                 wing_information: dict[int, WingInformation] = None,
+                 loglevel=logging.INFO):
+        self.device_index = device_index
+        self.component_segment_index = component_segment_index
+        self._cpacs_configuration = cpacs_configuration
+        self._wing_information = wing_information
+        self.wing_index = wing_index
+        super().__init__(creator_id, shapes_of_interest_keys=None, loglevel=loglevel)
+
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        logging.info(
+            f"trailing edge device ''  --> '{self.identifier}'")
+        factory = RuderFactory(self._cpacs_configuration, self.wing_index)
+        wing: CCPACSWing = self._cpacs_configuration.get_wing(self.wing_index)
+        shape = RuderFactory.get_trailing_edge_shape(wing, component_segment_index=self.component_segment_index,
+                                                     device_index=self.device_index)
+        ConstructionStepsViewer.instance().display_this_shape(shape, logging.DEBUG, msg=f"{self.identifier}")
+
+        return {self.identifier: shape}
+
+
+class CPACSTrailingEdgeDeviceCutOutCreator(AbstractShapeCreator):
+    def __init__(self, creator_id: str,
+                 wing_index: int,
+                 component_segment_index: int,
+                 device_index: int,
+                 cpacs_configuration=None,
+                 wing_information: dict[int, WingInformation] = None,
+                 loglevel=logging.INFO):
+        self.device_index = device_index
+        self.component_segment_index = component_segment_index
+        self._cpacs_configuration = cpacs_configuration
+        self._wing_information = wing_information
+        self.wing_index = wing_index
+        super().__init__(creator_id, shapes_of_interest_keys=None, loglevel=loglevel)
+
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        logging.info(
+            f"trailing edge device ''  --> '{self.identifier}'")
+        wing: CCPACSWing = self._cpacs_configuration.get_wing(self.wing_index)
+        shape, shape2 = RuderFactory.get_trailing_edge_cutout(wing,
+                                                              offset=0.002,
+                                                              component_segment_index=self.component_segment_index,
+                                                              device_index=self.device_index)
+        ConstructionStepsViewer.instance().display_this_shape(shape, logging.DEBUG, msg=f"{self.identifier}")
+
+        return {f"{self.identifier}.offset": shape, f"{self.identifier}": shape2}
+
+
+class CPACSServoCutOutCreator(AbstractShapeCreator):
     def __init__(self,
                  creator_id: str,
-                 wing_loft: str,
-                 reinforcement: str,
-                 pipes: str,
+                 aileron: str,
                  wing_index: int,
                  cpacs_configuration=None,
                  wing_information: dict[int, WingInformation] = None,
                  loglevel=logging.INFO):
-        self.pipes = pipes
+        self.aileron = aileron
+        self._cpacs_configuration = cpacs_configuration
+        self._wing_information = wing_information
+        self.wing_index = wing_index
+        super().__init__(creator_id, shapes_of_interest_keys=[self.aileron], loglevel=loglevel)
+
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        logging.info(
+            f"trailing edge device ''  --> '{self.identifier}'")
+
+        servo_size = (0.024, 0.024, 0.012)
+        ruder_shape = shapes_of_interest[self.aileron]
+        servo_recces_factory: ServoRecessFactory = ServoRecessFactory(self._cpacs_configuration,
+                                                                      self.wing_index)
+        servo = servo_recces_factory.create_servoRecess_option1(ruder_shape, servo_size)
+        servo_dimensions = ShapeDimensions(servo)
+
+        # Cable Pipe
+        fuselage: CCPACSWing = self._cpacs_configuration.get_fuselage(1)
+        fuselage_loft: TGeo.CNamedShape = fuselage.get_loft()
+        fuselage_dimensions = ShapeDimensions(fuselage_loft)
+
+        cable_pipe_factory: CablePipeFactory = CablePipeFactory(self._cpacs_configuration,
+                                                                self.wing_index)
+        points = cable_pipe_factory.points_route_thru(servo_dimensions, fuselage_dimensions)
+        cable_pipe = cable_pipe_factory.create_complete_pipe(points, servo_dimensions.get_height() / 2)
+
+        ConstructionStepsViewer.instance().display_this_shape(servo, logging.DEBUG, msg=f"{self.identifier}.servo")
+        ConstructionStepsViewer.instance().display_this_shape(cable_pipe, logging.DEBUG, msg=f"{self.identifier}.cable")
+
+        return {f"{self.identifier}.servo": servo, f"{self.identifier}.cable": cable_pipe}
+
+
+class WingOffsetCreator(AbstractShapeCreator):
+    def __init__(self, creator_id: str, wing_loft: str, loglevel=logging.INFO):
+        self.wing_loft = wing_loft
+        super().__init__(creator_id, shapes_of_interest_keys=[self.wing_loft], loglevel=loglevel)
+
+    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
+                      input_shapes: dict[str, tgl_geom.CNamedShape],
+                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+        logging.info(
+            f"wing offset '{', '.join(shapes_of_interest.keys())}' --> '{self.identifier}'")
+        # Cut internal structure from Wing
+        offset = 0.0008
+        toleranz = offset / 8
+        wing_offset: OTopo.TopoDS_Shape = BRepOffsetAPI_MakeOffsetShape(shapes_of_interest[self.wing_loft].shape(),
+                                                                        offset,
+                                                                        toleranz).Shape()
+        while wing_offset is None and offset < 0.01:
+            offset *= 1.2  # 20% mehr
+            toleranz *= 1.2
+            wing_offset: OTopo.TopoDS_Shape = BRepOffsetAPI_MakeOffsetShape(shapes_of_interest[self.wing_loft].shape(),
+                                                                            offset,
+                                                                            toleranz).Shape()
+            logging.info(f"Offseting wing with {offset=} {toleranz=} {type(wing_offset)}")
+
+        shape = TGeo.CNamedShape(wing_offset, "wing offset")
+        ConstructionStepsViewer.instance().display_this_shape(shape, logging.DEBUG, msg=f"{self.identifier}")
+
+        return {self.identifier: shape}
+
+
+class WingRestCreator(AbstractShapeCreator):
+    def __init__(self, creator_id: str, wing_loft: str, wing_index: int, internal_structure, wing_offset,
+                 cpacs_configuration=None, wing_information: dict[int, WingInformation] = None, loglevel=logging.INFO):
+        self.wing_offset = wing_offset
+        self.internal_structure = internal_structure
         self._wing_information = wing_information
         self.wing_loft = wing_loft
         self.wing_index = wing_index
-        self.reinforcement = reinforcement
         self._cpacs_configuration = cpacs_configuration
-        super().__init__(creator_id, shapes_of_interest_keys=[self.wing_loft, reinforcement, pipes], loglevel=loglevel)
+        super().__init__(creator_id, shapes_of_interest_keys=[self.wing_loft,
+                                                              self.internal_structure,
+                                                              self.wing_offset], loglevel=loglevel)
 
     def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
                       input_shapes: dict[str, tgl_geom.CNamedShape],
@@ -87,11 +220,10 @@ class WingRestCreator(AbstractShapeCreator):
         logging.info(
             f"wing rest '{', '.join(shapes_of_interest.keys())}' --> '{self.identifier}'")
         factory = WingFactory(self._cpacs_configuration, self.wing_index)
-        shape, _ = factory.create_wing_with_inbuilt_servo(shapes_of_interest[self.reinforcement],
-                                                          shapes_of_interest[self.pipes],
-                                                          self._wing_information[self.wing_index])
+        shape, _ = factory.create_wing_with_inbuilt_servo(shapes_of_interest[self.internal_structure],
+                                                          self._wing_information[self.wing_index],
+                                                          shapes_of_interest[self.wing_offset])
 
         ConstructionStepsViewer.instance().display_this_shape(shape, logging.DEBUG, msg=f"{self.identifier}")
 
         return {self.identifier: shape}
-
