@@ -75,14 +75,14 @@ class EngineMountFactory:
 
         # Fusing engine mount and nuts
         new_mount = engine_mount[-1]
-        new_mount.set_shape(OAlgo.BRepAlgoAPI_Fuse(new_mount.shape(), nuts.shape()).Shape())
+        new_mount.set_shape(OAlgo.BRepAlgoAPI_Fuse(new_mount.reinforcement(), nuts.shape()).Shape())
         engine_mount.append(new_mount)
         ConstructionStepsViewer.instance().display_fuse(engine_mount[-1], engine_mount[-2], nuts, logging.NOTSET)
 
         new_mount.set_shape(OAlgo.BRepAlgoAPI_Cut(engine_mount[-1].shape(), inner_cylinders.shape()).Shape())
         # translating mount to the correct position
         if abs(engine_side_thrust_deg) > 90.0:
-            new_mount.set_shape(OExs.rotate_shape(new_mount.shape(), Ogp.gp_OZ(), 180.0))
+            new_mount.set_shape(OExs.rotate_shape(new_mount.reinforcement(), Ogp.gp_OZ(), 180.0))
 
         motor_position = engine_information.position
         new_mount.set_shape(

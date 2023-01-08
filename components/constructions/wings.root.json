@@ -1,0 +1,81 @@
+{
+    "successors": {
+        "full_wing_loft": {
+            "successors": {},
+            "creator": {
+                "right_main_wing_index": 1,
+                "loglevel": 20,
+                "creator_id": "full_wing_loft",
+                "$TYPE": "FullWingLoftShapeCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "full_wing_loft.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "wing_ribs": {
+            "successors": {},
+            "creator": {
+                "rib_distance": 0.04,
+                "wing_loft": "full_wing_loft.right",
+                "wing_index": 1,
+                "loglevel": 20,
+                "creator_id": "wing_ribs",
+                "$TYPE": "WingRibCageCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "wing_ribs.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "pipes": {
+            "successors": {},
+            "creator": {
+                "pipe_position": [
+                    0,
+                    1
+                ],
+                "wall_thickness": 0.0004,
+                "pipe_diameter": 0.006,
+                "wing_index": 1,
+                "loglevel": 0,
+                "creator_id": "pipes",
+                "$TYPE": "ReinforcementPipesCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "pipes.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "rest": {
+            "successors": {},
+            "creator": {
+                "pipes": "pipes",
+                "wing_loft": "full_wing_loft.right",
+                "wing_index": 1,
+                "reinforcement": "wing_ribs",
+                "loglevel": 0,
+                "creator_id": "rest",
+                "$TYPE": "WingRestCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "rest.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "wings": {
+            "successors": {},
+            "creator": {
+                "file_path": "../exports",
+                "shapes_to_export": [
+                    "rest"
+                ],
+                "loglevel": 10,
+                "creator_id": "wings",
+                "$TYPE": "ExportToStepCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "wings.node",
+            "$TYPE": "ConstructionStepNode"
+        }
+    },
+    "loglevel": 50,
+    "creator_id": "wings.root",
+    "$TYPE": "ConstructionRootNode"
+}

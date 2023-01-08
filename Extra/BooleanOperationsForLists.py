@@ -22,9 +22,9 @@ class BooleanCADOperation:
         for index, element in enumerate(shape_list):
             logging.debug(f"Cutting {element.name()}: Element {index + 1} from {len(shape_list)}")
             if not cuted:
-                cuted.append(OAlgo.BRepAlgoAPI_Cut(shape.shape(), element.shape()).Shape())
+                cuted.append(OAlgo.BRepAlgoAPI_Cut(shape.shape(), element.reinforcement()).Shape())
             else:
-                cuted.append(OAlgo.BRepAlgoAPI_Cut(cuted[-1], element.shape()).Shape())
+                cuted.append(OAlgo.BRepAlgoAPI_Cut(cuted[-1], element.reinforcement()).Shape())
         if cuted[-1] == None:
             logging.error(f"Cutting list of shapes Failed")
         result: TGeo.CNamedShape = TGeo.CNamedShape(cuted[-1], name)

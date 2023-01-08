@@ -61,7 +61,7 @@ try:
     cutted_fuselage_shape:TGeo.CNamedShape= cutter.named_shape()
     print(type(cutted_fuselage_shape))
     #fuselage.get_loft().Set(cutted_fuselage_shape)
-    fuselage_hollow= create_hollowedsolid(fuselage.get_loft().shape() ,0.2)
+    fuselage_hollow= create_hollowedsolid(fuselage.get_loft().reinforcement(), 0.2)
     facesToRemove = TopTools_ListOfShape()
     #fuselage_hollow= OOff.BRepOffsetAPI_MakeThickSolid(fuselage.get_loft().shape(), facesToRemove, 0.2, 0.001)
     fuselage_hollow= OOff.BRepOffsetAPI_MakeThickSolid(cutted_fuselage_shape.shape(), facesToRemove, 0.2, 0.001).Shape()

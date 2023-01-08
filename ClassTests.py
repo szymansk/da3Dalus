@@ -45,7 +45,8 @@ if __name__ == "__main__":
         pass
     if test_class_name == "WingFactory":
         test_class = wf.WingFactory(tigl_h, 1)
-        my_wing = test_class.create_wing_with_inbuilt_servo()
+        my_wing = test_class.create_wing_with_inbuilt_servo(rib_cage_shape, reinforcement_rod,
+                                                            self._wing_information[self.wing_index])
         my_slicer = ss.ShapeSlicer(my_wing, self.loglevel, 5)
         my_slicer.slice_by_cut(self.loglevel)
         # my_exporter = exp.exporter()
@@ -53,7 +54,7 @@ if __name__ == "__main__":
         # my_exporter.write_stls_from_list(my_slicer.parts_list, "Wing_v2_")
     if test_class_name == "WingRibFactory":
         test_class = wrf.WingRibFactory(tigl_h, 1)
-        test_class.create_ribcage()
+        test_class.create_ribcage(wing_shape, self._wing_information[self.wing_index], self.rib_distance)
     if test_class_name == "RuderFactory":
         test_class = rf.RuderFactory(tigl_h, 1)
         test_class.get_trailing_edge_cutout()
@@ -74,12 +75,12 @@ if __name__ == "__main__":
         m.display_in_origin(shape, logging.NOTSET)
         m.display_in_origin(wing_shape, logging.NOTSET, "", True)
     if test_class_name == "ReinforcementPipeFactory":
-        test_class = rpf.ReinforcementePipeFactory(tigl_h, 1)
+        test_class = rpf.ReinforcementPipeFactory(tigl_h, 1)
         radius = 0.003
         thickness = 0.0004
         quantity = 5
         pipe_position = [0, 1]
-        pipe = test_class.create_reinforcemente_pipe_wing(radius, thickness, quantity, pipe_position)
+        pipe = test_class.create_reinforcemente_pipe_wing(wing_information, radius, thickness, pipe_position)
         m.display_in_origin(pipe, logging.NOTSET)
         m.display_in_origin(test_class.wing_shape, logging.NOTSET, "", True)
     if test_class_name == "ServoRecessFactory":

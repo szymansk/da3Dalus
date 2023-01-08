@@ -1087,17 +1087,19 @@ class FullWingLoftShapeCreator(AbstractShapeCreator):
                       **kwargs) -> dict[str, tgl_geom.CNamedShape]:
         logging.info(f"creating wing loft/hull with index {self.right_main_wing_index} --> '{self.identifier}'")
 
+        right_wing = self._cpacs_configuration.get_wing(self.right_main_wing_index).get_loft()
+        left_wing = self._cpacs_configuration.get_wing(self.right_main_wing_index).get_mirrored_loft()
         complete_wing = BooleanCADOperation.fuse_shapes(
-            self._cpacs_configuration.get_wing(self.right_main_wing_index).get_loft(),
-            self._cpacs_configuration.get_wing(self.right_main_wing_index).get_mirrored_loft(),
+            right_wing,
+            left_wing,
             self.identifier)
 
-        ConstructionStepsViewer.instance().display_fuse(complete_wing, self._cpacs_configuration.get_wing(
-            self.right_main_wing_index).get_loft(), self._cpacs_configuration.get_wing(
-            self.right_main_wing_index).get_mirrored_loft(), logging.DEBUG)
+        ConstructionStepsViewer.instance().display_fuse(complete_wing, right_wing, left_wing, logging.DEBUG)
         ConstructionStepsViewer.instance().display_this_shape(
             complete_wing, logging.DEBUG, msg=f"{self.identifier}")
-        return {str(self.identifier): complete_wing}
+        return {str(self.identifier): complete_wing,
+                f"{self.identifier}.right": right_wing,
+                f"{self.identifier}.left": left_wing }
 
 
 class FullFuselageLoftShapeCreator(AbstractShapeCreator):
@@ -1148,7 +1150,8 @@ class FullWingShapeCreator(AbstractShapeCreator):
 
         from Airplane.Wing.WingFactory import WingFactory
         wing_factory = WingFactory(self._cpacs_configuration, self.right_main_wing_index)
-        right_wing, right_aileron = wing_factory.create_wing_with_inbuilt_servo()
+        right_wing, right_aileron = wing_factory.create_wing_with_inbuilt_servo(rib_cage_shape, reinforcement_rod,
+                                                                                self._wing_information[self.wing_index])
 
         left_wing = wing_factory.create_mirrored_wing(right_wing)
         if right_aileron is not None:

@@ -62,8 +62,8 @@ class FuselageFactory:
         internal_structure.append(ribs)
 
         # Reinforcement Pipes
-        from Airplane.ReinforcementPipeFactory import ReinforcementePipeFactory
-        reinforcement_pipes: TGeo.CNamedShape = ReinforcementePipeFactory.create_reinforcement_pipe_fuselage(
+        from Airplane.ReinforcementPipeFactory import ReinforcementPipeFactory
+        reinforcement_pipes: TGeo.CNamedShape = ReinforcementPipeFactory.create_reinforcement_pipe_fuselage(
             reinforcement_pipes_radius, y_max, y_min, z_max, z_min, fuselage_dimensions)
         internal_structure.append(reinforcement_pipes)
 

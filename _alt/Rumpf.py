@@ -140,7 +140,7 @@ class profil:
         CommonSurface=[]
         for ifuse in range(1, config.get_fuselage_count() + 1):
             fuselage = config.get_fuselage(ifuse)
-            fuselage_shape = fuselage.get_loft().shape()
+            fuselage_shape = fuselage.get_loft().reinforcement()
 
             # display.DisplayShape(fuselage_shape)
 
@@ -176,7 +176,7 @@ class profil:
             for isegment in range(1, fuselage.get_segment_count() + 1):
             #for isegment in range(1, 16):
                 segment = fuselage.get_segment(isegment)
-                profile.append(segment.get_loft().shape())
+                profile.append(segment.get_loft().reinforcement())
                 #CommonSurface3.append(BRepAlgoAPI_Common(m_rippen,profile[isegment-1]).Shape())
                 #neu.append(w1.create_hollowedsolid(segment.get_loft().shape()))
                 #verbunden.append(BRepAlgoAPI_Fuse(neu[isegment-1],CommonSurface3[isegment-1]).Shape())

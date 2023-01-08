@@ -8,114 +8,80 @@ import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
 
 import Dimensions.ShapeDimensions as PDim
-import Extra.BooleanOperationsForLists as BooleanOperationsForLists
+from Extra.BooleanOperationsForLists import BooleanCADOperation
 import Extra.patterns as pat
+from Airplane.aircraft_topology.WingInformation import WingInformation
 from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 from _alt.Wand_erstellen import *
 
 
 class WingRibFactory:
-    '''
+    """
     This class is used to create the Ribs for the given wing identifies by the index
     After initializing the class, call one of the create methods
-    '''
+    """
 
-    def __init__(self, cpacs_configuration, wing_index):
-        self.cpacs_configuration: TConfig.CCPACSConfiguration = cpacs_configuration
-        self.wing: TConfig.CCPACSWing = self.cpacs_configuration.get_wing(wing_index)
-        self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
-        self.wing_shape: OTopo.TopoDS_Shape = self.wing_loft.shape()
-        self.wing_coordinates = PDim.ShapeDimensions(self.wing_loft)
-        self.shape: TGeo.CNamedShape = TGeo.CNamedShape()
-        self.shapes: list = []
-        self.display = ConstructionStepsViewer.instance()
-        logging.info(f"{self.wing_coordinates=}")
-
-    def create_ribcage(self, horizontal_rib_quantity=3, rib_width=0.0004) -> TGeo.CNamedShape:
+    @classmethod
+    def create_ribcage(cls, wing_shape: TGeo.CNamedShape, wing_information: WingInformation,
+                       rib_distance, rib_width=0.0004) -> TGeo.CNamedShape:
         '''
         Creates a rib cage with horizontal oriented ribs and diagonal ribs
         Parameters
         horizontal_rib_quantity: The number of horizontal ribs, setting by default to 3
         rib_width: Width of the inner_closure ribs of wing and fuselage in meters default=0.0004
+        :param rib_distance:
+        :param WingInformation:
+        :param wing_shape:
         '''
-        logging.info(f"Creating ribs option1")
-        logging.info(f"Segment Count: {self.wing.get_segment_count()}")
+        logging.debug(f"Creating ribs option1")
         ribs: list[TGeo.CNamedShape] = []
-        x_dif: float = 0.0
-        y_dif: float = 0.0
 
-        for index in range(1, self.wing.get_segment_count() + 1):
-            logging.info(f"{index=}")
-            segment: TConfig.CCPACSWingSegment = self.wing.get_segment(index)
-            inner_closure: TGeo.CNamedShape = TGeo.CNamedShape(segment.get_inner_closure(), "inner_closure")
-            outer_closure: TGeo.CNamedShape = TGeo.CNamedShape(segment.get_outer_closure(), "outer_closure")
+        for index, seg in enumerate(wing_information.segments):
+            ribs.append(WingRibFactory._create_oriented_horizontal_ribs(root_x_list=seg.root_x_list,
+                                                                        tip_x_list=seg.tip_x_list,
+                                                                        root_y_min=seg.root_y_min,
+                                                                        root_z_min=seg.root_z_min,
+                                                                        width=seg.width,
+                                                                        height=seg.height,
+                                                                        rib_width=rib_width,
+                                                                        name=f"segment_{index}"))
+        front_sweep_angle = wing_information.segments[-1].sweep_angle
+        y_dif = wing_information.get_wing_length()
 
-            inner_dimensions = PDim.ShapeDimensions(inner_closure)
-            outer_dimensions = PDim.ShapeDimensions(outer_closure)
-            inner_x_list = inner_dimensions.get_coordinates_on_axis(horizontal_rib_quantity)
-            outer_x_list = outer_dimensions.get_coordinates_on_axis(horizontal_rib_quantity)
-
-            lenght = inner_dimensions.get_length()
-            # height = inner_dimensions.get_height()
-            height = self.wing_coordinates.get_height()
-            logging.info(f"{lenght=} {height=}")
-
-            x_dif = abs(inner_dimensions.get_x_min() - outer_dimensions.get_x_min())
-            y_dif = abs(inner_dimensions.get_y_min() - outer_dimensions.get_y_min())
-            width = math.hypot(x_dif, y_dif)
-            name = f"segment_{index}"
-            # horitzontal_ribs
-            ribs.append(self._create_oriented_horizontal_ribs(inner_x_list, outer_x_list, inner_dimensions.get_y_min(),
-                                                              inner_dimensions.get_z_min(), lenght, width, height,
-                                                              rib_width, name))
-
-        logging.info(f"ribs list lenght: {len(ribs)}")
+        logging.debug(f"ribs list lenght: {len(ribs)}")
 
         # Fuse if lenght of ribs longer than 1
         if len(ribs) > 1:
             ribs.append(
-                BooleanOperationsForLists.BooleanCADOperation.fuse_list_of_named_shapes(ribs, f"{self.wing_loft.name()}_oriented_ribs"))
+                BooleanCADOperation.fuse_list_of_named_shapes(ribs, f"{wing_shape.name()}_oriented_ribs"))
 
         # diagonaleribs
-        front_sweep_angle = math.degrees(math.atan(x_dif / y_dif))
         starting_angle = 60
         rib_angle = starting_angle - front_sweep_angle
 
-        # rib distance depends on the dimmension of the wing, can be removed as soon as all Test CPACS wingspan are arounf 1 meter long
-        if y_dif > 3:
-            rib_distance = 0.5
-        else:
-            rib_distance = 0.04
-
         rib_quantity = round(y_dif / rib_distance)
-        logging.info(f"{y_dif=} {rib_quantity=}")
-        ribs.append(self._create_diagonal_ribs(rib_width, rib_angle, rib_quantity))
+        logging.debug(f"{y_dif=} {rib_quantity=}")
+        ribs.append(WingRibFactory._create_diagonal_ribs(rib_width, rib_angle, wing_shape, rib_quantity))
 
         # fused ribs
         ribs.append(TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Fuse(ribs[-1].shape(), ribs[-2].shape()).Shape(),
-                                     f"{self.wing_loft.name()}_complete_ribs"))
-        self.display.display_fuse(ribs[-1], ribs[-2], ribs[-3], logging.NOTSET)
+                                     f"{wing_shape.name()}_complete_ribs"))
+        ConstructionStepsViewer.instance().display_fuse(ribs[-1], ribs[-2], ribs[-3], logging.NOTSET)
 
         # trim ribs to wing Shape
         ribs.append(TGeo.CNamedShape(OExs.translate_shp(ribs[-1].shape(), Ogp.gp_Vec(0, 0, -0.005)),
-                                     f"{self.wing_loft.name()}_cmoved_ribs"))
+                                     f"{wing_shape.name()}_cmoved_ribs"))
         trimed_wing: TGeo.CNamedShape = TGeo.CNamedShape(
-            OAlgo.BRepAlgoAPI_Common(self.wing_shape, ribs[-1].shape()).Shape(), f"trimed_{self.wing_loft.name()}_ribs")
+            OAlgo.BRepAlgoAPI_Common(wing_shape.shape(), ribs[-1].shape()).Shape(), f"trimed_{wing_shape.name()}_ribs")
 
         ribs.append(trimed_wing)
-        self.display.display_common(ribs[-1], self.wing_loft, ribs[-2], logging.NOTSET)
-        self.shape = trimed_wing
+        ConstructionStepsViewer.instance().display_common(ribs[-1], wing_shape, ribs[-2], logging.NOTSET)
         return trimed_wing
 
-    def get_namedshape(self) -> TGeo.CNamedShape:
-        """
-        returns the shape of the created wingrIb
-        """
-        return self.shape
-
-    def _create_oriented_horizontal_ribs(self, root_x_list: list[float], tip_x_list: list[float], root_y: float,
-                                         root_z: float, lenght: float, width: float, height: float,
-                                         rib_width: float, name="") -> TGeo.CNamedShape:
+    @staticmethod
+    def _create_oriented_horizontal_ribs(root_x_list: list[float], tip_x_list: list[float], root_y_min: float,
+                                         root_z_min: float, width: float, height: float, rib_width: float, name="") \
+            -> TGeo.CNamedShape:
         """
         Creates a multiple oriented horizontal rib.
         Paramaters:
@@ -126,18 +92,19 @@ class WingRibFactory:
         lenght, width, height parameters of the shape that is becoming the rib
         rib_width: the width of the rib given in meters
         """
-        logging.info(f"Creating horizontal ribs for {name} with {len(root_x_list)} ribs and {rib_width=}")
+        logging.debug(f"Creating horizontal ribs for {name} with {len(root_x_list)} ribs and {rib_width=}")
         ribs = []
         for i in range(0, len(root_x_list)):
             ribs.append(
-                self._create_single_box_rib(root_x_list[i], tip_x_list[i], root_y, root_z, width, height, rib_width,
+                WingRibFactory._create_single_box_rib(root_x_list[i], tip_x_list[i], root_y_min, root_z_min, width, height, rib_width,
                                             f"single_rib_{i}"))
-        fused_ribs: TGeo.CNamedShape = BooleanOperationsForLists.BooleanCADOperation.fuse_list_of_named_shapes(ribs,
+        fused_ribs: TGeo.CNamedShape = BooleanCADOperation.fuse_list_of_named_shapes(ribs,
                                                                                           f"{name}_oriented_horizontal_ribs")
         return fused_ribs
 
-    def _create_single_box_rib(self, x_inner, x_outer, y_pos, z_pos, seg_width, seg_height,
-                               rib_width=0.0004, name="single_rib") -> TGeo.CNamedShape:
+    @staticmethod
+    def _create_single_box_rib(x_inner, x_outer, y_pos, z_pos, seg_width, seg_height,
+                               rib_width, name="single_rib") -> TGeo.CNamedShape:
         """
         Creates a singl oriented horizontal rib.
         Paramaters:
@@ -151,7 +118,7 @@ class WingRibFactory:
         corner_points = []
         # point1: bottom right corner of a box, at the root segment
         x_cor = x_inner + (rib_width / 2)
-        logging.info(f"test {x_inner=:.6f} {x_cor=:.6f}")
+        logging.debug(f"test {x_inner=:.6f} {x_cor=:.6f}")
         y_cor = y_pos
         z_cor = z_pos
         corner_points.append(gp_Pnt(x_cor, y_cor, z_cor))
@@ -176,13 +143,13 @@ class WingRibFactory:
 
         make_wire = BRepBuilderAPI_MakeWire()
         for i, point in enumerate(corner_points):
-            logging.info(f"Creating Edge {i + 1} from {len(corner_points)}")
+            logging.debug(f"Creating Edge {i + 1} from {len(corner_points)}")
             if point != corner_points[-1]:
                 make_wire.Add(BRepBuilderAPI_MakeEdge(corner_points[i], corner_points[i + 1]).Edge())
             else:
                 make_wire.Add(BRepBuilderAPI_MakeEdge(corner_points[i], corner_points[0]).Edge())
 
-        logging.info(f"Creating {name} out of Edges")
+        logging.debug(f"Creating {name} out of Edges")
         prism = BRepPrimAPI_MakePrism(
             BRepBuilderAPI_MakeFace(make_wire.Wire()).Face(),
             gp_Vec(gp_Pnt(0.0, 0.0, 0.0), gp_Pnt(0.0, 0.0, seg_height)),
@@ -190,32 +157,34 @@ class WingRibFactory:
         named_single_rib: TGeo.CNamedShape = TGeo.CNamedShape(prism, name)
         return named_single_rib
 
-    def _create_diagonal_ribs(self, rib_width, angle, ribs_quantity=0) -> TGeo.CNamedShape:
+    @staticmethod
+    def _create_diagonal_ribs(rib_width, angle, wing_shape, ribs_quantity) -> TGeo.CNamedShape:
         """
         Creates a pattern of diagonal ribs for the class wing
+        :param wing_shape:
         """
-        ribs_quantity = 5
-        logging.info(f"Creating diagonal ribs: {rib_width=} {angle=} {ribs_quantity=}")
+        logging.debug(f"Creating diagonal ribs: {rib_width=} {angle=} {ribs_quantity=}")
         prim = []
-        prim.append(TGeo.CNamedShape(OPrim.BRepPrimAPI_MakeBox(self.wing_coordinates.get_length() * 2, rib_width,
-                                                               self.wing_coordinates.get_height() * 1.2).Shape(),
+        wing_dimension = PDim.ShapeDimensions(wing_shape)
+        prim.append(TGeo.CNamedShape(OPrim.BRepPrimAPI_MakeBox(wing_dimension.get_length() * 2, rib_width,
+                                                               wing_dimension.get_height() * 1.2).Shape(),
                                      "singlerib_box"))
         prim.append(TGeo.CNamedShape(OExs.rotate_shape(prim[-1].shape(), gp_OZ(), angle), "singlerib_moved_box"))
         prim.append(TGeo.CNamedShape(
-            OExs.translate_shp(prim[-1].shape(), Ogp.gp_Vec(self.wing_coordinates.get_x_min(), -rib_width,
-                                                            self.wing_coordinates.get_z_min())), "singlerib"))
-        # self.display.display_this_shape(prim[-1])
+            OExs.translate_shp(prim[-1].shape(), Ogp.gp_Vec(wing_dimension.get_x_min(), -rib_width,
+                                                            wing_dimension.get_z_min())), "singlerib"))
+        # ConstructionStepsViewer.instance().display_this_shape(prim[-1])
         if ribs_quantity == 0:
             ribs_distance = 0.03
-            ribs_quantity = round((self.wing_coordinates.get_width() / ribs_distance) * 2)
+            ribs_quantity = round((wing_dimension.get_width() / ribs_distance) * 2)
         else:
-            ribs_distance = self.wing_coordinates.get_width() / ribs_quantity
+            ribs_distance = wing_dimension.get_width() / ribs_quantity
             ribs_quantity = ribs_quantity * 2
 
         prim.append(pat.create_linear_pattern(prim[-1], ribs_quantity, ribs_distance, "y"))
         prim.append(TGeo.CNamedShape(
-            OExs.translate_shp(prim[-1].shape(), Ogp.gp_Vec(0, -self.wing_coordinates.get_width() / 2, 0)),
+            OExs.translate_shp(prim[-1].shape(), Ogp.gp_Vec(0, -wing_dimension.get_width() / 2, 0)),
             "diagonal ribs"))
         named_diagonal_ribs: TGeo.CNamedShape = TGeo.CNamedShape(prim[-1].shape(), "diagonal ribs")
-        self.display.display_this_shape(named_diagonal_ribs, logging.NOTSET)
+        ConstructionStepsViewer.instance().display_this_shape(named_diagonal_ribs, logging.NOTSET)
         return named_diagonal_ribs

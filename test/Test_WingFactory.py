@@ -31,7 +31,8 @@ if __name__ == "__main__":
     m.display_in_origin(fuselage_loft, logging.NOTSET, "", True)
 
     test_class = wf.WingFactory(wing, fuselage)
-    my_wing = test_class.create_wing_with_inbuilt_servo()
+    my_wing = test_class.create_wing_with_inbuilt_servo(rib_cage_shape, reinforcement_rod,
+                                                        self._wing_information[self.wing_index])
 
     logging.debug("Test finished. Display results")
     m.start()

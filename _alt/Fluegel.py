@@ -171,7 +171,7 @@ class fluegel:
             ########################################
 
 
-            wing_shape = wing.get_loft().shape()
+            wing_shape = wing.get_loft().reinforcement()
             
             xmin,ymin,zmin,xmax,ymax,zmax = am2.get_koordinates(wing_shape)
             xdiff,zdiff,ydiff = am2.get_dimensions(xmin,ymin,zmin,xmax,ymax,zmax)
@@ -217,7 +217,7 @@ class fluegel:
                 #display.DisplayShape(wing.get_loft().shape(),transparency=0.8)
 
                 #in STL exportieren
-                aus.write_stl_file(wing.get_loft().shape())
+                aus.write_stl_file(wing.get_loft().reinforcement())
 
                 '''
                 # Set up the mirror

@@ -30,14 +30,14 @@ if __name__ == "__main__":
     m.display_in_origin(wing_loft, logging.NOTSET, "", True)
 
     logging.debug("Create Reinforcement Pipe Factory")
-    test_class = rpf.ReinforcementePipeFactory(wing, fuselage)
+    test_class = rpf.ReinforcementPipeFactory(wing, fuselage)
 
     radius = 0.003
     thickness = 0.0004
     quantity = 5
 
     pipe_position = [0, 1]
-    pipe = test_class.create_reinforcemente_pipe_wing(radius, thickness, quantity, pipe_position)
+    pipe = test_class.create_reinforcemente_pipe_wing(wing_information, radius, thickness, pipe_position)
     m.display_in_origin(pipe, logging.NOTSET)
 
     logging.debug("Test finished. Display results")
