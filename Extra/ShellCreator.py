@@ -53,7 +53,7 @@ class ShellCreator:
             var_max = -10
 
         # We have to work our way through all the faces to find the highest Z face so we can remove it for the shell
-        a_face_explorer = TopExp_Explorer(self.named_shape.reinforcement(), TopAbs_FACE)
+        a_face_explorer = TopExp_Explorer(self.named_shape.shape(), TopAbs_FACE)
         while a_face_explorer.More():
             a_face: OTopo.TopoDS_Face = topods.Face(a_face_explorer.Current())
 
@@ -85,7 +85,7 @@ class ShellCreator:
         faces_to_remove: TopTools_ListOfShape = TopTools_ListOfShape()
         faces_to_remove.Append(faceToRemove)
         logging.debug(f"Removing  {str(faces_to_remove.Size())} faces")
-        make_thick_solid = BRepOffsetAPI_MakeThickSolid(self.named_shape.reinforcement(), faces_to_remove, thickness, 0.0001)
+        make_thick_solid = BRepOffsetAPI_MakeThickSolid(self.named_shape.shape(), faces_to_remove, thickness, 0.0001)
 
         if not make_thick_solid.IsDone():
             logging.error(f"Shelling did not work")

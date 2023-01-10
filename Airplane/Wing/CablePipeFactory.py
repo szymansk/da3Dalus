@@ -1,17 +1,19 @@
 from __future__ import print_function
 
+import logging
+
 import OCC.Core.BRepBuilderAPI as OBuilder
 import OCC.Core.BRepOffsetAPI as OOff
 import OCC.Core.BRepPrimAPI as OPrim
 import OCC.Core.gp as Ogp
 import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
+from OCC.Core.TopoDS import TopoDS_Shape, TopoDS_Wire
 
 import Dimensions.ShapeDimensions as PDim
 import Extra.BooleanOperationsForLists as BooleanOperationsForLists
 from Dimensions import ShapeDimensions
 from Extra.ConstructionStepsViewer import ConstructionStepsViewer
-from _alt.Wand_erstellen import *
 
 
 class CablePipeFactory:
@@ -25,7 +27,7 @@ class CablePipeFactory:
 
         self.wing: TConfig.CCPACSWing = self.cpacs_configuration.get_wing(wing_nr)
         self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
-        self.wing_shape: OTopo.TopoDS_Shape = self.wing_loft.shape()
+        self.wing_shape: TopoDS_Shape = self.wing_loft.shape()
         self.wing_koordinates = PDim.ShapeDimensions(self.wing_loft)
 
         self.named_shape = TGeo.CNamedShape()
@@ -105,7 +107,7 @@ class CablePipeFactory:
         wire = make_wire.Wire()
 
         mydir = Ogp.gp_Dir(end.X() - start.X(), end.Y() - start.Y(), end.Z() - start.Z())
-        circle = Ogp.gp_Circ(gp_Ax2(start, mydir), radius)
+        circle = Ogp.gp_Circ(Ogp.gp_Ax2(start, mydir), radius)
 
         profile_edge = OBuilder.BRepBuilderAPI_MakeEdge(circle).Edge()
         profile_wire = OBuilder.BRepBuilderAPI_MakeWire(profile_edge).Wire()
@@ -122,13 +124,13 @@ class CablePipeFactory:
         :return: named shape of the corner
         """
         logging.info(f"Creating pipecorner_{index}")
-        sphere: OTopo.TopoDS_Shape = OPrim.BRepPrimAPI_MakeSphere(centre, radius).Shape()
+        sphere: TopoDS_Shape = OPrim.BRepPrimAPI_MakeSphere(centre, radius).Shape()
         named_sphere: TGeo.CNamedShape = TGeo.CNamedShape(sphere, f"pipecorner_{index}")
         return named_sphere
 
     def _get_segment_dimensions(self, index):
         segment: TConfig.CCPACSWingSegment = self.wing.get_segment(index)
-        wire: OTopo.TopoDS_Wire = segment.get_inner_closure()
+        wire: TopoDS_Wire = segment.get_inner_closure()
         named_wire = TGeo.CNamedShape(wire, "wire")
         wire_dimensions = PDim.ShapeDimensions(named_wire)
         return wire_dimensions

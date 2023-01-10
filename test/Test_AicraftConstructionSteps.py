@@ -34,9 +34,9 @@ if __name__ == "__main__":
                                  right_main_wing_index=1))
     root_node.append(full_wing_loft_node)
 
-    full_wing_node = ConstructionStepNode(
-        FullWingShapeCreator("full_wing", right_main_wing_index=1))
-    root_node.append(full_wing_node)
+    # full_wing_node = ConstructionStepNode(
+    #     FullWingShapeCreator("full_wing", right_main_wing_index=1))
+    # root_node.append(full_wing_node)
 
     full_fuselage_loft_node = ConstructionStepNode(
         FullFuselageLoftShapeCreator("full_fuselage_loft", fuselage_index=1))
@@ -183,7 +183,8 @@ if __name__ == "__main__":
     offset_fuselage_node.append(reinforced_fuselage_node)
     # "offset_fuselage" - "internal_structure" -> "reinforced_fuselage",
 
-    load_create_fullwing_from_json = JSONStepNode(json_file_path="../components/constructions/full_wing.json",
+
+    load_create_fullwing_from_json = JSONStepNode(json_file_path="../components/constructions/wings.root.json",
                                                   cpacs_configuration=ccpacs_configuration)
     reinforced_fuselage_node.append(load_create_fullwing_from_json)
     # -> "wings"

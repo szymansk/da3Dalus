@@ -1,10 +1,10 @@
-import math
+import logging
 
 import OCC.Core.BRepAlgoAPI as OAlgo
 import OCC.Core.BRepPrimAPI as OPrim
-import OCC.Core.gp as Ogp
+from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_MakeWire, BRepBuilderAPI_MakeEdge, BRepBuilderAPI_MakeFace
+from OCC.Core.gp import *
 import OCC.Extend.ShapeFactory as OExs
-import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
 
 import Dimensions.ShapeDimensions as PDim
@@ -12,7 +12,6 @@ from Extra.BooleanOperationsForLists import BooleanCADOperation
 import Extra.patterns as pat
 from Airplane.aircraft_topology.WingInformation import WingInformation
 from Extra.ConstructionStepsViewer import ConstructionStepsViewer
-from _alt.Wand_erstellen import *
 
 
 class WingRibFactory:
@@ -69,7 +68,7 @@ class WingRibFactory:
         ConstructionStepsViewer.instance().display_fuse(ribs[-1], ribs[-2], ribs[-3], logging.NOTSET)
 
         # trim ribs to wing Shape
-        ribs.append(TGeo.CNamedShape(OExs.translate_shp(ribs[-1].shape(), Ogp.gp_Vec(0, 0, -0.005)),
+        ribs.append(TGeo.CNamedShape(OExs.translate_shp(ribs[-1].shape(), gp_Vec(0, 0, -0.005)),
                                      f"{wing_shape.name()}_cmoved_ribs"))
         trimed_wing: TGeo.CNamedShape = TGeo.CNamedShape(
             OAlgo.BRepAlgoAPI_Common(wing_shape.shape(), ribs[-1].shape()).Shape(), f"trimed_{wing_shape.name()}_ribs")
@@ -150,7 +149,7 @@ class WingRibFactory:
                 make_wire.Add(BRepBuilderAPI_MakeEdge(corner_points[i], corner_points[0]).Edge())
 
         logging.debug(f"Creating {name} out of Edges")
-        prism = BRepPrimAPI_MakePrism(
+        prism = OPrim.BRepPrimAPI_MakePrism(
             BRepBuilderAPI_MakeFace(make_wire.Wire()).Face(),
             gp_Vec(gp_Pnt(0.0, 0.0, 0.0), gp_Pnt(0.0, 0.0, seg_height)),
         ).Shape()
@@ -171,7 +170,7 @@ class WingRibFactory:
                                      "singlerib_box"))
         prim.append(TGeo.CNamedShape(OExs.rotate_shape(prim[-1].shape(), gp_OZ(), angle), "singlerib_moved_box"))
         prim.append(TGeo.CNamedShape(
-            OExs.translate_shp(prim[-1].shape(), Ogp.gp_Vec(wing_dimension.get_x_min(), -rib_width,
+            OExs.translate_shp(prim[-1].shape(), gp_Vec(wing_dimension.get_x_min(), -rib_width,
                                                             wing_dimension.get_z_min())), "singlerib"))
         # ConstructionStepsViewer.instance().display_this_shape(prim[-1])
         if ribs_quantity == 0:
@@ -183,7 +182,7 @@ class WingRibFactory:
 
         prim.append(pat.create_linear_pattern(prim[-1], ribs_quantity, ribs_distance, "y"))
         prim.append(TGeo.CNamedShape(
-            OExs.translate_shp(prim[-1].shape(), Ogp.gp_Vec(0, -wing_dimension.get_width() / 2, 0)),
+            OExs.translate_shp(prim[-1].shape(), gp_Vec(0, -wing_dimension.get_width() / 2, 0)),
             "diagonal ribs"))
         named_diagonal_ribs: TGeo.CNamedShape = TGeo.CNamedShape(prim[-1].shape(), "diagonal ribs")
         ConstructionStepsViewer.instance().display_this_shape(named_diagonal_ribs, logging.NOTSET)

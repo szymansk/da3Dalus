@@ -22,9 +22,9 @@ class BooleanCADOperation:
         for index, element in enumerate(shape_list):
             logging.debug(f"Cutting {element.name()}: Element {index + 1} from {len(shape_list)}")
             if not cuted:
-                cuted.append(OAlgo.BRepAlgoAPI_Cut(shape.shape(), element.reinforcement()).Shape())
+                cuted.append(OAlgo.BRepAlgoAPI_Cut(shape.shape(), element.shape()).Shape())
             else:
-                cuted.append(OAlgo.BRepAlgoAPI_Cut(cuted[-1], element.reinforcement()).Shape())
+                cuted.append(OAlgo.BRepAlgoAPI_Cut(cuted[-1], element.shape()).Shape())
         if cuted[-1] == None:
             logging.error(f"Cutting list of shapes Failed")
         result: TGeo.CNamedShape = TGeo.CNamedShape(cuted[-1], name)
@@ -100,17 +100,17 @@ class BooleanCADOperation:
         :return:
         """
         logging.debug(f"Starting to cut from {named_shape.name()}")
-        cuted = [named_shape.shape()]
+        cut_topods = [named_shape.shape()]
         md = ConstructionStepsViewer.instance()
         for index, shape_to_cut in enumerate(shape_list):
             logging.debug(f"Cutting {shape_to_cut.name()}: Element {index + 1} from {len(shape_list)}")
-            if not cuted:
-                cuted.append(OAlgo.BRepAlgoAPI_Cut(named_shape.shape(), shape_to_cut.shape()).Shape())
+            if not cut_topods:
+                cut_topods.append(OAlgo.BRepAlgoAPI_Cut(named_shape.shape(), shape_to_cut.shape()).Shape())
             else:
-                cuted.append(OAlgo.BRepAlgoAPI_Cut(cuted[-1], shape_to_cut.shape()).Shape())
-        if cuted[-1] is None:
+                cut_topods.append(OAlgo.BRepAlgoAPI_Cut(cut_topods[-1], shape_to_cut.shape()).Shape())
+        if cut_topods[-1] is None:
             logging.error(f"cut_list_of_shapes result is None")
-        result = TGeo.CNamedShape(cuted[-1], f"cuted_{named_shape.name()}")
+        result = TGeo.CNamedShape(cut_topods[-1], f"cuted_{named_shape.name()}")
         md.display_multipe_cuts(result, named_shape, logging.NOTSET, shape_list, msg, trans)
         return result
 

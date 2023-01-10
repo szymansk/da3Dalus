@@ -13,11 +13,11 @@ from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDe
 from Airplane.aircraft_topology.ServoInformation import ServoInformation
 
 if __name__ == "__main__":
-    CPACS_FILE_NAME = "aircombat_v15"
+    CPACS_FILE_NAME = "aircombat_V10"
     NUMBER_OF_CUTS = 5
 
     logging.basicConfig(format='%(levelname)s:%(module)s:%(filename)s(%(lineno)d):%(funcName)s(): %(message)s',
-                        level=logging.INFO, stream=sys.stdout)
+                        level=logging.DEBUG, stream=sys.stdout)
     logging.info(f"Start test for Fuselage Factory with CPACS file {CPACS_FILE_NAME}")
 
     from Extra.ConstructionStepsViewer import ConstructionStepsViewer
@@ -25,7 +25,7 @@ if __name__ == "__main__":
 
     shapeDisplay = ConstructionStepsViewer.instance(dev=True, distance=1, log=False)
 
-    tigl_h = tg.get_tigl_handler(CPACS_FILE_NAME)
+    tigl_h = tg.get_tigl_handler(CPACS_FILE_NAME, base_dir="./components/cpacs")
     ccpacs_configuration: CCPACSConfiguration = CCPACSConfigurationManager_get_instance() \
         .get_configuration(tigl_h._handle.value)
 
@@ -182,7 +182,7 @@ if __name__ == "__main__":
 
     shape_slicer_node = ConstructionStepNode(
         SliceShapesCreator("fuselage_slicer", number_of_parts=5))
-    cut_wing_from_fuselage_node.append(shape_slicer_node)
+    # cut_wing_from_fuselage_node.append(shape_slicer_node)
     # "final_fuselage" -> "fuselage_slicer[0] .. [4]"
 
     shape_stl_export_node = ConstructionStepNode(

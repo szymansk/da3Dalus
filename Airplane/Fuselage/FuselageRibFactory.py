@@ -1,3 +1,5 @@
+import logging
+
 import OCC.Core.BRepPrimAPI as OPrim
 import OCC.Core.gp as Ogp
 import OCC.Extend.ShapeFactory as OExs
@@ -7,7 +9,6 @@ import Dimensions.ShapeDimensions as PDim
 import Extra.BooleanOperationsForLists as BOl
 import Extra.patterns as pat
 from Extra.ConstructionStepsViewer import ConstructionStepsViewer
-from _alt.Wand_erstellen import *
 
 
 class FuselageRibFactory:

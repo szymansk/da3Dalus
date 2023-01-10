@@ -1,12 +1,14 @@
 from __future__ import print_function
 
+import logging
+
 import OCC.Core.BRepOffsetAPI as OOff
 import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
+from OCC.Core.TopoDS import TopoDS_Shape
 
 import Dimensions.ShapeDimensions as PDim
 from Extra.ConstructionStepsViewer import ConstructionStepsViewer
-from _alt.Wand_erstellen import *
 
 
 class RuderFactory:
@@ -23,7 +25,7 @@ class RuderFactory:
 
         self.wing: TConfig.CCPACSWing = self.cpacs_configuration.get_wing(wing_index)
         self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
-        self.wing_shape: OTopo.TopoDS_Shape = self.wing_loft.shape()
+        self.wing_shape: TopoDS_Shape = self.wing_loft.shape()
         self.wing_koordinates = PDim.ShapeDimensions(self.wing_loft)
 
         self.namedshape: TGeo.CNamedShape = TGeo.CNamedShape()
@@ -90,10 +92,10 @@ class RuderFactory:
         trailing_edge_device: TConfig.CCPACSTrailingEdgeDevice = trailing_edge_devices.get_trailing_edge_device(
             device_index)
         cutout_namedshape_a: TGeo.CNamedShape = trailing_edge_device.get_cut_out_shape()
-        cutout_shape: OTopo.TopoDS_Shape = cutout_namedshape_a.shape()
+        cutout_shape: TopoDS_Shape = cutout_namedshape_a.shape()
 
         toleranz = 0.000001
-        cutout_offset: OTopo.TopoDS_Shape = OOff.BRepOffsetAPI_MakeOffsetShape(cutout_shape, offset, toleranz).Shape()
+        cutout_offset: TopoDS_Shape = OOff.BRepOffsetAPI_MakeOffsetShape(cutout_shape, offset, toleranz).Shape()
         cutout_namedshape = TGeo.CNamedShape(cutout_offset, "")
 
         return cutout_namedshape, cutout_namedshape_a

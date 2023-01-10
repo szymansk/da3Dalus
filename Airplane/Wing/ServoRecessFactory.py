@@ -11,7 +11,6 @@ from OCC.Core.TopoDS import TopoDS_Shape
 import Dimensions.ShapeDimensions as PDim
 from Dimensions.ShapeDimensions import ShapeDimensions
 from Extra.ConstructionStepsViewer import ConstructionStepsViewer
-from _alt.Wand_erstellen import *
 
 
 class ServoRecessFactory:
@@ -19,9 +18,9 @@ class ServoRecessFactory:
         self.cpacs_configuration: TConfig.CCPACSConfiguration = cpacs_configuration
         self.wing: TConfig.CCPACSWing = self.cpacs_configuration.get_wing(wingNr)
         self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
-        self.wing_shape: OTopo.TopoDS_Shape = self.wing_loft.shape()
+        self.wing_shape: TopoDS_Shape = self.wing_loft.shape()
         self.wing_dimensions = PDim.ShapeDimensions(self.wing_loft)
-        self.shape: OTopo.TopoDS_Shape = OTopo.TopoDS_Shape()
+        self.shape: TopoDS_Shape = TopoDS_Shape()
         self.shapes: list = []
         # self.ruder_dimensions=ShapeDimensions(ruder_shape)
         # self.servo_size=servo_size

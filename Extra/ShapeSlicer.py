@@ -39,7 +39,7 @@ class ShapeSlicer:
         '''
         if self.shape_dimensions.get_length() < self.shape_dimensions.get_width():
             logging.debug(f"Rotating {namedshape.name()} by 90 degrees")
-            rotated_shape = OExs.rotate_shape(namedshape.reinforcement(), Ogp.gp_OZ(), -90)
+            rotated_shape = OExs.rotate_shape(namedshape.shape(), Ogp.gp_OZ(), -90)
             result: TGeo.CNamedShape = TGeo.CNamedShape(rotated_shape, namedshape.name())
             self.m.display_this_shape(result, severity=logging.NOTSET, msg=f"Rotated {namedshape.name()}")
             self.shape_dimensions = ShapeDimensions(result)
