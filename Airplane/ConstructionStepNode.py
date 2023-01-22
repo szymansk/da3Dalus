@@ -1,9 +1,7 @@
 from typing import MutableMapping, Union
-
-from tigl3 import geometry as tgl_geom
+from cadquery import Workplane
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
-
 
 class ConstructionStepNode(AbstractShapeCreator, MutableMapping):
     """
@@ -41,8 +39,8 @@ class ConstructionStepNode(AbstractShapeCreator, MutableMapping):
         """
         self.update({value.creator.identifier: value})
 
-    def _create_shape(self, shapes_of_interest, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) \
-            -> dict[str, Union[object, tgl_geom.CNamedShape]]:
+    def _create_shape(self, shapes_of_interest, input_shapes: dict[str, Workplane], **kwargs) \
+            -> dict[str, Union[object, Workplane]]:
         """
         Executes the construction of all shapes based on the defined workflow structure.
         :param shapes_of_interest: 
@@ -109,8 +107,8 @@ class ConstructionRootNode(AbstractShapeCreator, MutableMapping):
         """
         self.update({value.creator.identifier: value})
 
-    def _create_shape(self, shapes_of_interest, input_shapes: dict[str, tgl_geom.CNamedShape], **kwargs) \
-            -> dict[str, Union[object, tgl_geom.CNamedShape]]:
+    def _create_shape(self, shapes_of_interest, input_shapes: dict[str, Workplane], **kwargs) \
+            -> dict[str, Union[object, Workplane]]:
         """
         Executes the construction of all shapes based on the defined workflow structure.
         :param input_shapes: the shapes that have been constructed in the predecessor step

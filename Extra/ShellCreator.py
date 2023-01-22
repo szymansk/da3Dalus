@@ -8,15 +8,15 @@ from __future__ import print_function
 
 import logging
 
-import OCC.Core.Geom as OGeom
-import OCC.Core.TopoDS as OTopo
-from OCC.Core.BRep import BRep_Tool_Surface
-from OCC.Core.BRepOffsetAPI import (BRepOffsetAPI_MakeThickSolid)
-from OCC.Core.Geom import Geom_Plane
-from OCC.Core.TopAbs import TopAbs_FACE
-from OCC.Core.TopExp import TopExp_Explorer
-from OCC.Core.TopTools import TopTools_ListOfShape
-from OCC.Core.TopoDS import (topods)
+import OCP.Geom as OGeom
+import OCP.TopoDS as OTopo
+from OCP.BRep import BRep_Tool_Surface
+from OCP.BRepOffsetAPI import (BRepOffsetAPI_MakeThickSolid)
+from OCP.Geom import Geom_Plane
+from OCP.TopAbs import TopAbs_FACE
+from OCP.TopExp import TopExp_Explorer
+from OCP.TopTools import TopTools_ListOfShape
+from OCP.TopoDS import (topods)
 from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 import tigl3.geometry as TGeo
 

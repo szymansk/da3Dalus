@@ -1,6 +1,6 @@
 import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
-import OCC.Core.TopoDS as OTopo
+import OCP.TopoDS as OTopo
 
 
 class ShapeExtractor:

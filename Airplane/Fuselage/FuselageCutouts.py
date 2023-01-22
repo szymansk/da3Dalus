@@ -1,6 +1,6 @@
-import OCC.Core.BRepPrimAPI as OPrim
-import OCC.Core.gp as Ogp
-import OCC.Extend.ShapeFactory as OExs
+import OCP.BRepPrimAPI as OPrim
+import OCP.gp as Ogp
+import OCP.ShapeFactory as OExs
 import tigl3.geometry as TGeo
 
 import Extra.BooleanOperationsForLists as Bof

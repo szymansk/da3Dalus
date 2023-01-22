@@ -1,4 +1,4 @@
-from OCC.Core.gp import *
+from OCP.gp import *
 
 
 class ComponentInformation:

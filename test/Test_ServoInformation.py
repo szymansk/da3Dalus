@@ -1,6 +1,6 @@
 import math
 
-from OCC.Core.gp import gp_Vec
+from OCP.gp import gp_Vec
 
 from Airplane.aircraft_topology.ServoInformation import ServoInformation
 from Extra.tigl_extractor import *

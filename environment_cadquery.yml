@@ -2,8 +2,9 @@ name: cad_query_modelling_service
 channels:
     - conda-forge
     - cadquery
+    - defaults
 dependencies:
-    - python=3.9
-    - cadquery=2.*
+    - python>=3.9
+    - cadquery>=2
     - cq-editor
-    - pip
+    - nptyping<2

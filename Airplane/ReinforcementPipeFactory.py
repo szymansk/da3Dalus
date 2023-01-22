@@ -1,18 +1,16 @@
 import logging
 import math
 
-import OCC.Core.BRepOffsetAPI as OOff
-import OCC.Core.TopoDS as OTopo
-import OCC.Core.gp as Ogp
-import tigl3.configuration as TConfig
-import tigl3.geometry as TGeo
-from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_MakeWire, BRepBuilderAPI_MakeEdge, BRepBuilderAPI_MakeFace
+import OCP.BRepOffsetAPI as OOff
+import OCP.TopoDS as OTopo
+import OCP.gp as Ogp
+from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeWire, BRepBuilderAPI_MakeEdge, BRepBuilderAPI_MakeFace
 
 import Dimensions.ShapeDimensions as PDim
 import Extra.BooleanOperationsForLists as Bof
 from Airplane.aircraft_topology.WingInformation import WingInformation
 from Extra.ConstructionStepsViewer import ConstructionStepsViewer
-
+from cadquery import Workplane
 
 class ReinforcementPipeFactory:
     '''
@@ -21,7 +19,7 @@ class ReinforcementPipeFactory:
 
     @classmethod
     def create_reinforcemente_pipe_wing(cls, wing_information: WingInformation, radius, thickness,
-                                        pipe_position=None) -> TGeo.CNamedShape:
+                                        pipe_position=None) -> Workplane:
         logging.debug(f"Creating reinforcement option1")
 
         root_segment = wing_information.segments[0]
@@ -32,7 +30,7 @@ class ReinforcementPipeFactory:
         width = root_segment.width
         logging.debug(f"{radius=:.4f} {thickness=:.4f} {width=:.4f}")
 
-        shapes: list[TGeo.CNamedShape] = []
+        shapes: list[Workplane] = []
         # Cylinder
         for i, x in enumerate(inner_x_list):
             if i in pipe_position:
@@ -47,7 +45,7 @@ class ReinforcementPipeFactory:
 
     @classmethod
     def create_reinforcement_pipe_fuselage(cls, radius, y_max, y_min, z_max, z_min,
-                                           fuselage_dimensions: PDim.ShapeDimensions) -> TGeo.CNamedShape:
+                                           fuselage_dimensions: PDim.ShapeDimensions) -> Workplane:
 
         length = abs(fuselage_dimensions.get_x_min() - fuselage_dimensions.get_x_max())
 
@@ -76,7 +74,7 @@ class ReinforcementPipeFactory:
         return fused_pipes
 
     @classmethod
-    def create_pipe_section(cls, start: Ogp.gp_Pnt, end: Ogp.gp_Pnt, radius: float, name="") -> TGeo.CNamedShape:
+    def create_pipe_section(cls, start: Ogp.gp_Pnt, end: Ogp.gp_Pnt, radius: float, name="") -> Workplane:
         '''
         Creates a cylinder between the start and end, with the given radius
         :param start: starting point
@@ -96,5 +94,5 @@ class ReinforcementPipeFactory:
         profile_edge = BRepBuilderAPI_MakeEdge(circle).Edge()
         profile_wire = BRepBuilderAPI_MakeWire(profile_edge).Wire()
         profile_face = BRepBuilderAPI_MakeFace(profile_wire).Face()
-        pipe = TGeo.CNamedShape(OOff.BRepOffsetAPI_MakePipe(wire, profile_face).Shape(), name)
+        pipe = Workplane(OOff.BRepOffsetAPI_MakePipe(wire, profile_face).Shape(), name)
         return pipe

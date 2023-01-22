@@ -2,19 +2,17 @@ from __future__ import print_function
 
 import logging
 
-import OCC.Core.BRepBuilderAPI as OBuilder
-import OCC.Core.BRepOffsetAPI as OOff
-import OCC.Core.BRepPrimAPI as OPrim
-import OCC.Core.gp as Ogp
-import tigl3.configuration as TConfig
-import tigl3.geometry as TGeo
-from OCC.Core.TopoDS import TopoDS_Shape, TopoDS_Wire
+import OCP.BRepBuilderAPI as OBuilder
+import OCP.BRepOffsetAPI as OOff
+import OCP.BRepPrimAPI as OPrim
+import OCP.gp as Ogp
+from OCP.TopoDS import TopoDS_Shape, TopoDS_Wire
 
 import Dimensions.ShapeDimensions as PDim
 import Extra.BooleanOperationsForLists as BooleanOperationsForLists
 from Dimensions import ShapeDimensions
 from Extra.ConstructionStepsViewer import ConstructionStepsViewer
-
+from cadquery import Workplane
 
 class CablePipeFactory:
     """
@@ -26,18 +24,18 @@ class CablePipeFactory:
         self.cpacs_configuration: TConfig.CCPACSConfiguration = cpacs_configuration
 
         self.wing: TConfig.CCPACSWing = self.cpacs_configuration.get_wing(wing_nr)
-        self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
+        self.wing_loft: Workplane = self.wing.get_loft()
         self.wing_shape: TopoDS_Shape = self.wing_loft.shape()
         self.wing_koordinates = PDim.ShapeDimensions(self.wing_loft)
 
-        self.named_shape = TGeo.CNamedShape()
+        self.named_shape = Workplane()
         self.points: list[Ogp.gp_Pnt] = []
         self.radius: float = 0.002
 
-    def get_shape(self) -> TGeo.CNamedShape:
+    def get_shape(self) -> Workplane:
         return self.named_shape
 
-    def create_complete_pipe(self, points: list, radius) -> TGeo.CNamedShape:
+    def create_complete_pipe(self, points: list, radius) -> Workplane:
         """
         Create a Pipe that runs through the given Points with the given radius
         :param points: list of points
@@ -90,7 +88,7 @@ class CablePipeFactory:
         points.append(point3)
         return points
 
-    def _pipe_section(self, start: Ogp.gp_Pnt, end: Ogp.gp_Pnt, radius=0.002, index=0) -> TGeo.CNamedShape:
+    def _pipe_section(self, start: Ogp.gp_Pnt, end: Ogp.gp_Pnt, radius=0.002, index=0) -> Workplane:
         """
         Create a pipe between 2 given points with a given radius
         :param start: starting point of the pipe section
@@ -112,10 +110,10 @@ class CablePipeFactory:
         profile_edge = OBuilder.BRepBuilderAPI_MakeEdge(circle).Edge()
         profile_wire = OBuilder.BRepBuilderAPI_MakeWire(profile_edge).Wire()
         profile_face = OBuilder.BRepBuilderAPI_MakeFace(profile_wire).Face()
-        pipe_section = TGeo.CNamedShape(OOff.BRepOffsetAPI_MakePipe(wire, profile_face).Shape(), f"pipesection_{index}")
+        pipe_section = Workplane(OOff.BRepOffsetAPI_MakePipe(wire, profile_face).Shape(), f"pipesection_{index}")
         return pipe_section
 
-    def _pipe_corner(self, centre: Ogp.gp_Pnt, radius: float, index=0) -> TGeo.CNamedShape:
+    def _pipe_corner(self, centre: Ogp.gp_Pnt, radius: float, index=0) -> Workplane:
         """
         returns a sphere witch is used in the curves (corners) of the pipe
         :param centre: a point at the center of the corner
@@ -125,12 +123,12 @@ class CablePipeFactory:
         """
         logging.info(f"Creating pipecorner_{index}")
         sphere: TopoDS_Shape = OPrim.BRepPrimAPI_MakeSphere(centre, radius).Shape()
-        named_sphere: TGeo.CNamedShape = TGeo.CNamedShape(sphere, f"pipecorner_{index}")
+        named_sphere: Workplane = Workplane(sphere, f"pipecorner_{index}")
         return named_sphere
 
     def _get_segment_dimensions(self, index):
         segment: TConfig.CCPACSWingSegment = self.wing.get_segment(index)
         wire: TopoDS_Wire = segment.get_inner_closure()
-        named_wire = TGeo.CNamedShape(wire, "wire")
+        named_wire = Workplane(wire, "wire")
         wire_dimensions = PDim.ShapeDimensions(named_wire)
         return wire_dimensions

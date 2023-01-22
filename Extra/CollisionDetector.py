@@ -1,11 +1,10 @@
 import logging
 
-import OCC.Core.BRepAlgoAPI as OAlgo
-import OCC.Core.TopoDS as OTopo
+import OCP.BRepAlgoAPI as OAlgo
+import OCP.TopoDS as OTopo
 
 import Extra.ConstructionStepsViewer as myDisplay
-import tigl3.geometry as TGeo
-
+from cadquery import Workplane
 
 class CollisionDetector:
     def __init__(self):
@@ -46,7 +45,7 @@ class CollisionDetector:
                 self.m.display_colission(overlap_shape, shape1, shape2, logging.NOTSET, logstr)
             return False
 
-    def check_namedshape_collision(self, named_shape1: TGeo.CNamedShape, named_shape2: TGeo.CNamedShape,
+    def check_namedshape_collision(self, named_shape1: Workplane, named_shape2: Workplane,
                                    expectation: bool = True):
         """
         This method check if the 2 given Shapes overlap/collide.
@@ -60,7 +59,7 @@ class CollisionDetector:
         :return: True if collision matches expectation
         """
         overlap_shape = OAlgo.BRepAlgoAPI_Common(named_shape1.shape(), named_shape2.shape()).Shape()
-        named_overlap = TGeo.CNamedShape(overlap_shape, "Kollision")
+        named_overlap = Workplane(overlap_shape, "Kollision")
 
         if OTopo.TopoDS_Iterator(overlap_shape).More():
             kollision = True

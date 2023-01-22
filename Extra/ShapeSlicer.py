@@ -1,7 +1,7 @@
-import OCC.Core.BRepAlgoAPI as OAlgo
-import OCC.Core.BRepPrimAPI as OPrim
-import OCC.Core.gp as Ogp
-import OCC.Extend.ShapeFactory as OExs
+import OCP.BRepAlgoAPI as OAlgo
+import OCP.BRepPrimAPI as OPrim
+import OCP.gp as Ogp
+import OCP.ShapeFactory as OExs
 import tigl3.geometry as TGeo
 
 from Dimensions.ShapeDimensions import ShapeDimensions

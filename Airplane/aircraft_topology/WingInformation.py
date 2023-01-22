@@ -1,8 +1,6 @@
 import logging
 import math
 
-from tigl3.configuration import CCPACSWingSegment
-from tigl3.geometry import CNamedShape
 
 from Dimensions.ShapeDimensions import ShapeDimensions
 from Extra.ConstructionStepsViewer import ConstructionStepsViewer
@@ -61,7 +59,7 @@ class CPACSWingInformation(WingInformation):
         segments = []
         for index in range(1, wing.get_segment_count() + 1):
             logging.debug(f"{index=}")
-            segment: CCPACSWingSegment = wing.get_segment(index)
+            segment = wing.get_segment(index)
             inner_closure: CNamedShape = CNamedShape(segment.get_inner_closure(), "inner_closure")
             outer_closure: CNamedShape = CNamedShape(segment.get_outer_closure(), "outer_closure")
 

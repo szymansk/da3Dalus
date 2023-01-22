@@ -1,6 +1,6 @@
 import logging
 
-import OCC.Core.TopoDS as OTopo
+import OCP.TopoDS as OTopo
 import tigl3.configuration as TConfig
 import tigl3.geometry as TGeo
 

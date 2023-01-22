@@ -2,8 +2,7 @@ import abc
 import logging
 from typing import Union
 
-from tigl3 import geometry as tgl_geom
-
+from cadquery import Workplane
 
 class AbstractShapeCreator(metaclass=abc.ABCMeta):
     """
@@ -29,8 +28,8 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         return self._shapes_of_interest_keys
 
     @abc.abstractmethod
-    def _create_shape(self, shapes_of_interest, input_shapes: dict[str, tgl_geom.CNamedShape],
-                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def _create_shape(self, shapes_of_interest, input_shapes: dict[str, Workplane],
+                      **kwargs) -> dict[str, Workplane]:
         """
         This method will create a shape. The shape can depend on shapes of previous steps. All previous steps
         occur in the kwargs variable. The keys are the 'identifier's and the values hold the shapes.
@@ -44,7 +43,7 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         """
         pass
 
-    def create_shape(self, input_shapes: dict[str, tgl_geom.CNamedShape] = None, **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def create_shape(self, input_shapes: dict[str, Workplane] = None, **kwargs) -> dict[str, Workplane]:
         shapes_of_interest = self.return_needed_shapes(shapes_needed=self.shapes_of_interest_keys,
                                                        input_shapes=input_shapes, **kwargs) \
             if self.shapes_of_interest_keys is not None else None
@@ -58,7 +57,7 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         logging.getLogger().setLevel(level=actual_loglevel)
         return result
 
-    def check_if_shapes_are_available(self, needed_shapes: list[str], **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def check_if_shapes_are_available(self, needed_shapes: list[str], **kwargs) -> dict[str, Workplane]:
         """
         Check if the shapes, that are needed, have been created before and are available in kwargs.
         :param needed_shapes: list of str with shape identifiers
@@ -76,8 +75,8 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
 
     def return_needed_shapes(self,
                              shapes_needed: list[str],
-                             input_shapes: dict[str, tgl_geom.CNamedShape],
-                             **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+                             input_shapes: dict[str, Workplane],
+                             **kwargs) -> dict[str, Workplane]:
         # for each none position of shapes_need, we take one of the input_shapes
         # we expect input shapes ordered most significant last
         len_input_shapes = 0 if input_shapes is None else len(input_shapes)

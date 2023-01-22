@@ -94,7 +94,7 @@ if __name__ == "__main__":
 
     fuselage_reinforcement_node = ConstructionStepNode(
         FuselageReinforcementShapeCreator("fuselage_reinforcement", rib_width=0.001, rib_spacing=0.003,
-                                          ribcage_factor=0.5, reinforcement_pipes_radius=0.002,
+                                          ribcage_factor=0.5, reinforcement_pipes_diameter=0.002,
                                           fuselage_loft="engine_cape.loft", full_wing_loft="full_wing_loft"))
     engine_cape_node.append(fuselage_reinforcement_node)
     # "engine_cape.loft" -> "fuselage_reinforcement"

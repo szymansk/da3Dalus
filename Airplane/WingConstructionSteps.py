@@ -1,6 +1,4 @@
-import tigl3.geometry as tgl_geom
-from OCC.Core.BRepOffsetAPI import BRepOffsetAPI_MakeOffsetShape
-from tigl3.configuration import CCPACSWing
+from OCP.BRepOffsetAPI import BRepOffsetAPI_MakeOffsetShape
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
 from Airplane.ReinforcementPipeFactory import ReinforcementPipeFactory
@@ -26,9 +24,9 @@ class WingRibCageCreator(AbstractShapeCreator):
         self._cpacs_configuration = cpacs_configuration
         super().__init__(creator_id, shapes_of_interest_keys=[self.wing_loft], loglevel=loglevel)
 
-    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
-                      input_shapes: dict[str, tgl_geom.CNamedShape],
-                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
+                      input_shapes: dict[str, Workplane],
+                      **kwargs) -> dict[str, Workplane]:
         logging.info(
             f"wing rib cage '{', '.join(shapes_of_interest.keys())}' --> '{self.identifier}'")
         shape = WingRibFactory.create_ribcage(shapes_of_interest[self.wing_loft],
@@ -50,9 +48,9 @@ class ReinforcementPipesCreator(AbstractShapeCreator):
         self.wing_index = wing_index
         super().__init__(creator_id, shapes_of_interest_keys=None, loglevel=loglevel)
 
-    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
-                      input_shapes: dict[str, tgl_geom.CNamedShape],
-                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
+                      input_shapes: dict[str, Workplane],
+                      **kwargs) -> dict[str, Workplane]:
         logging.info(
             f"wing pipes  --> '{self.identifier}'")
 
@@ -84,9 +82,9 @@ class CPACSTrailingEdgeDeviceCreator(AbstractShapeCreator):
         self.wing_index = wing_index
         super().__init__(creator_id, shapes_of_interest_keys=None, loglevel=loglevel)
 
-    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
-                      input_shapes: dict[str, tgl_geom.CNamedShape],
-                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
+                      input_shapes: dict[str, Workplane],
+                      **kwargs) -> dict[str, Workplane]:
         logging.info(
             f"trailing edge device ''  --> '{self.identifier}'")
         factory = RuderFactory(self._cpacs_configuration, self.wing_index)
@@ -113,9 +111,9 @@ class CPACSTrailingEdgeDeviceCutOutCreator(AbstractShapeCreator):
         self.wing_index = wing_index
         super().__init__(creator_id, shapes_of_interest_keys=None, loglevel=loglevel)
 
-    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
-                      input_shapes: dict[str, tgl_geom.CNamedShape],
-                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
+                      input_shapes: dict[str, Workplane],
+                      **kwargs) -> dict[str, Workplane]:
         logging.info(
             f"trailing edge device ''  --> '{self.identifier}'")
         wing: CCPACSWing = self._cpacs_configuration.get_wing(self.wing_index)
@@ -142,9 +140,9 @@ class CPACSServoCutOutCreator(AbstractShapeCreator):
         self.wing_index = wing_index
         super().__init__(creator_id, shapes_of_interest_keys=[self.aileron], loglevel=loglevel)
 
-    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
-                      input_shapes: dict[str, tgl_geom.CNamedShape],
-                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
+                      input_shapes: dict[str, Workplane],
+                      **kwargs) -> dict[str, Workplane]:
         logging.info(
             f"trailing edge device ''  --> '{self.identifier}'")
 
@@ -176,9 +174,9 @@ class WingOffsetCreator(AbstractShapeCreator):
         self.wing_loft = wing_loft
         super().__init__(creator_id, shapes_of_interest_keys=[self.wing_loft], loglevel=loglevel)
 
-    def _create_shape(self, shapes_of_interest: dict[str, tgl_geom.CNamedShape],
-                      input_shapes: dict[str, tgl_geom.CNamedShape],
-                      **kwargs) -> dict[str, tgl_geom.CNamedShape]:
+    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
+                      input_shapes: dict[str, Workplane],
+                      **kwargs) -> dict[str, Workplane]:
         logging.info(
             f"wing offset '{', '.join(shapes_of_interest.keys())}' --> '{self.identifier}'")
         # Cut internal structure from Wing

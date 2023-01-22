@@ -1,9 +1,9 @@
 import logging
 from typing import Union
 
-import OCC.Core.BRepOffsetAPI as OOff
+import OCP.BRepOffsetAPI as OOff
 import tigl3.configuration as TConfig
-from OCC.Core.gp import gp_Pnt
+from OCP.gp import gp_Pnt
 
 import Dimensions.ShapeDimensions as PDim
 from Airplane.Fuselage.FuselageCutouts import FuselageCutouts

@@ -1,12 +1,12 @@
 import logging
 import os
 
-from OCC.Core.IMeshTools import IMeshTools_Parameters
-from OCC.Core.BRepMesh import BRepMesh_IncrementalMesh
-from OCC.Core.StlAPI import StlAPI_Writer
+from OCP.IMeshTools import IMeshTools_Parameters
+from OCP.BRepMesh import BRepMesh_IncrementalMesh
+from OCP.StlAPI import StlAPI_Writer
 import tigl3.geometry as TGeo
 from pathlib import Path
-import OCC.Core.TopoDS as OTopo
+import OCP.TopoDS as OTopo
 
 
 class Exporter:

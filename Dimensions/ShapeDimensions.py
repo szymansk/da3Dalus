@@ -1,24 +1,25 @@
 import logging
 
-import OCC.Core.BRepPrimAPI as OPrim
-import OCC.Core.TopoDS as OTopo
-import OCC.Core.gp as Ogp
-import tigl3.geometry as TGeo
-from OCC.Core.BRepBndLib import brepbndlib_Add
-from OCC.Core.BRepMesh import BRepMesh_IncrementalMesh
-from OCC.Core.Bnd import Bnd_Box
+import OCP.BRepPrimAPI as OPrim
+import OCP.TopoDS as OTopo
+import OCP.gp as Ogp
+#from OCP.BRepBndLib import brepbndlib_Add
+from OCP.BRepMesh import BRepMesh_IncrementalMesh
+from OCP.Bnd import Bnd_Box
 
+from OCP.TopoDS import TopoDS_Shape
+import cadquery as cq
 
 class ShapeDimensions:
     """
     Provides information about the bounding box of the given shape, length, width, height and corner points
     """
 
-    def __init__(self, named_shape: TGeo.CNamedShape) -> None:
-        self.named_shape: TGeo.CNamedShape = named_shape
+    def __init__(self, named_shape: TopoDS_Shape) -> None:
+        self.named_shape: TopoDS_Shape = named_shape
         self.x_min, self.y_min, self.z_min, self.x_max, self.y_max, self.z_max = self._calc_coordinates(
-            named_shape.shape())
-        self.lenght, self.width, self.height = self._calc_dimensions_from_Shape(named_shape.shape())
+            named_shape)
+        self.lenght, self.width, self.height = self._calc_dimensions_from_Shape(named_shape)
         self.x_mid, self.y_mid, self.z_mid = self._calc_mid_coordinates()
         self.points = self._calc_points()
         # logging.debug(f"{named_shape.name()} dimensions {self.__str__()}")
@@ -29,39 +30,8 @@ class ShapeDimensions:
         :param shape: TopoDS_Shape
         :return: x_min, y_min, z_min, x_max, y_max, z_max
         '''
-        bbox = Bnd_Box()
-        bbox.SetGap(0.0001)
-        brepbndlib_Add(shape, bbox)
-        x_min, y_min, z_min, x_max, y_max, z_max = bbox.Get()
-
-        #x_min, y_min, z_min, x_max, y_max, z_max, _, _, _ = self.get_boundingbox(shape)
-        return x_min, y_min, z_min, x_max, y_max, z_max
-
-    def get_boundingbox(self, shape, tol=1e-6, use_mesh=True):
-        """ return the bounding box of the TopoDS_Shape `shape`
-        Parameters
-        ----------
-        shape : TopoDS_Shape or a subclass such as TopoDS_Face
-            the shape to compute the bounding box from
-        tol: float
-            tolerance of the computed boundingbox
-        use_mesh : bool
-            a flag that tells whether or not the shape has first to be meshed before the bbox
-            computation. This produces more accurate results
-        """
-        bbox = Bnd_Box()
-        bbox.SetGap(tol)
-        if use_mesh:
-            mesh = BRepMesh_IncrementalMesh()
-            mesh.SetParallelDefault(True)
-            mesh.SetShape(shape)
-            mesh.Perform()
-            if not mesh.IsDone():
-                raise AssertionError("Mesh not done.")
-        brepbndlib_Add(shape, bbox, use_mesh)
-
-        xmin, ymin, zmin, xmax, ymax, zmax = bbox.Get()
-        return xmin, ymin, zmin, xmax, ymax, zmax, xmax - xmin, ymax - ymin, zmax - zmin
+        bbox = cq.CQ(shape).findSolid().BoundingBox()
+        return bbox.xmin, bbox.ymin, bbox.zmin, bbox.xmax, bbox.ymax, bbox.zmax
 
     def _calc_dimensions(self, x_min, y_min, z_min, x_max, y_max, z_max) -> (float, float, float):
         '''

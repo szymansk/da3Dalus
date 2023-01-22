@@ -1,23 +1,20 @@
 import logging
 
-import OCC.Core.BRepAlgoAPI as OAlgo
-import OCC.Core.BRepPrimAPI as OPrim
-import OCC.Core.gp as Ogp
-import OCC.Extend.ShapeFactory as OExs
-import tigl3.configuration as TConfig
-import tigl3.geometry as TGeo
-from OCC.Core.TopoDS import TopoDS_Shape
+import OCP.BRepAlgoAPI as OAlgo
+import OCP.BRepPrimAPI as OPrim
+import OCP.gp as Ogp
+from OCP.TopoDS import TopoDS_Shape
 
 import Dimensions.ShapeDimensions as PDim
 from Dimensions.ShapeDimensions import ShapeDimensions
 from Extra.ConstructionStepsViewer import ConstructionStepsViewer
-
+from cadquery import Workplane
 
 class ServoRecessFactory:
     def __init__(self, cpacs_configuration, wingNr):
         self.cpacs_configuration: TConfig.CCPACSConfiguration = cpacs_configuration
         self.wing: TConfig.CCPACSWing = self.cpacs_configuration.get_wing(wingNr)
-        self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
+        self.wing_loft: Workplane = self.wing.get_loft()
         self.wing_shape: TopoDS_Shape = self.wing_loft.shape()
         self.wing_dimensions = PDim.ShapeDimensions(self.wing_loft)
         self.shape: TopoDS_Shape = TopoDS_Shape()
@@ -27,7 +24,7 @@ class ServoRecessFactory:
         self.display = ConstructionStepsViewer.instance()
         logging.info(f"{self.wing_dimensions.__str__()}")
 
-    def create_servoRecess_option1(self, named_ruder, servo_size=(0.0023, 0.0024, 0.0012)) -> TGeo.CNamedShape:
+    def create_servoRecess_option1(self, named_ruder, servo_size=(0.0023, 0.0024, 0.0012)) -> Workplane:
         """
         Creates the recces for the given size of a servo
         :param ruder_shape: TopoDS_Shape
@@ -39,15 +36,15 @@ class ServoRecessFactory:
         self.ruder_dimensions = ShapeDimensions(named_ruder)
         self.servo_size = servo_size
         # Make box for recces
-        servo_recess: list[TGeo.CNamedShape] = []
-        named_servo_recess = TGeo.CNamedShape(
+        servo_recess: list[Workplane] = []
+        named_servo_recess = Workplane(
             OPrim.BRepPrimAPI_MakeBox(self.servo_size[0], self.servo_size[1], self.servo_size[2]).Shape(),
             "servo_recess")
         servo_recess.append(named_servo_recess)
         servo_recess_dimension = ShapeDimensions(servo_recess[-1])
 
         # Make box to find y-Positioning
-        section_bound_box = TGeo.CNamedShape(
+        section_bound_box = Workplane(
             OPrim.BRepPrimAPI_MakeBox(self.wing_dimensions.get_length(), self.servo_size[1],
                                       self.wing_dimensions.get_height()).Shape(), "bounding_box")
 
@@ -58,7 +55,7 @@ class ServoRecessFactory:
             OExs.translate_shp(section_bound_box.shape(), Ogp.gp_Vec(self.wing_dimensions.get_x_min(), y_pos,
                                                                      self.wing_dimensions.get_z_min())))
 
-        servo_section = TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Common(section_bound_box.shape(), self.wing_shape).Shape(),
+        servo_section = Workplane(OAlgo.BRepAlgoAPI_Common(section_bound_box.shape(), self.wing_shape).Shape(),
                                          "servosection")
         self.display.display_common(servo_section, section_bound_box, self.wing_loft, logging.NOTSET)
         section_dimensions = ShapeDimensions(servo_section)
@@ -77,5 +74,5 @@ class ServoRecessFactory:
         self.namedshape = servo_recess[-1]
         return servo_recess[-1]
 
-    def get_shape(self) -> TGeo.CNamedShape:
+    def get_shape(self) -> Workplane:
         return self.namedshape

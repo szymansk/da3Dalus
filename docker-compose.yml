@@ -1,0 +1,20 @@
+version: '3.9'
+
+services:
+  cq-client:
+    image: szymanski2adesso/cadquery-client:arm64v8
+    container_name: cq-client
+    volumes:
+      - ./:/home/cadquery/workspace
+    stdin_open: true 
+    tty: true
+    depends_on:
+      - cq-server
+
+  cq-server:
+    image: szymanski2adesso/cq-server:amd64
+    container_name: cq-server
+    platform: linux/amd64    
+    command: "run"
+    ports:
+      - "5050:5000"

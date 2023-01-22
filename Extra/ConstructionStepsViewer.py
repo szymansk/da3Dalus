@@ -1,15 +1,16 @@
-import OCC.Core.BRepPrimAPI as OPrim
-import OCC.Core.TopoDS as OTopo
-import OCC.Core.gp as Ogp
-import OCC.Extend.ShapeFactory as OExs
-import tigl3.geometry as TGeo
-from OCC.Core.AIS import AIS_Point
-from OCC.Core.Aspect import Aspect_TOM_BALL, Aspect_TypeOfMarker
-from OCC.Core.Geom import Geom_CartesianPoint
-from OCC.Core.Graphic3d import Graphic3d_RenderingParams
-from OCC.Core.Prs3d import Prs3d_PointAspect
-from OCC.Core.Quantity import Quantity_Color, Quantity_NOC_HOTPINK4, Quantity_NameOfColor
-from OCC.Display.SimpleGui import *
+import OCP.BRepPrimAPI as OPrim
+import OCP.TopoDS as OTopo
+import OCP.gp as Ogp
+#import OCP.ShapeFactory as OExs
+from OCP.AIS import AIS_Point
+from OCP.Aspect import Aspect_TOM_BALL, Aspect_TypeOfMarker
+from OCP.Geom import Geom_CartesianPoint
+from OCP.Graphic3d import Graphic3d_RenderingParams
+from OCP.Prs3d import Prs3d_PointAspect
+from OCP.Quantity import Quantity_Color, Quantity_NOC_HOTPINK4, Quantity_NameOfColor
+#from OCC.Display.SimpleGui import *
+from cadq_server import CQServerConnector
+from cadquery import Workplane, Assembly, Color
 
 # from Dimensions.ShapeDimensions import ShapeDimensions
 import Dimensions.ShapeDimensions as sd
@@ -19,34 +20,12 @@ import logging
 
 class ConstructionStepsViewer:
     distance: float
-    my_instance: 'ConstructionStepsViewer' = None
+    my_instance: CQServerConnector = None
 
     def __init__(self, distance=0.5, dev=False, log=False) -> None:
+        self.dev = dev
         if dev:
-            self.display, self.start_display, add_menu, add_function_to_menu = init_display()
-            self.id = 0
-            self.y_position = 0
-            self.distance = distance
-            self.dev = dev
-            self.log = log
-            self.origin = -distance
-            self.half_widht = None
-            add_menu("camera projection")
-            add_menu("view")
-            add_function_to_menu("camera projection", self.perspective)
-            add_function_to_menu("camera projection", self.orthographic)
-            add_function_to_menu("camera projection", self.anaglyph_red_cyan)
-            add_function_to_menu("camera projection", self.anaglyph_red_cyan_optimized)
-            add_function_to_menu("camera projection", self.anaglyph_yellow_blue)
-            add_function_to_menu("camera projection", self.anaglyph_green_magenta)
-            add_function_to_menu("camera projection", self.exit)
-            self.display.View_Top()
-            add_function_to_menu("view", self.myview_Top)
-            add_function_to_menu("view", self.myview_Bottom)
-            add_function_to_menu("view", self.myview_Right)
-            add_function_to_menu("view", self.myview_Left)
-            add_function_to_menu("view", self.myview_Front)
-            add_function_to_menu("view", self.myview_Rear)
+            self.display = CQServerConnector("http://cq-server:5000/json")
         else:
             self.dev = False
 
@@ -60,122 +39,28 @@ class ConstructionStepsViewer:
                 ConstructionStepsViewer.my_instance = ConstructionStepsViewer(distance)
         return ConstructionStepsViewer.my_instance
 
-    def display_this_shape(self, named_shape: TGeo.CNamedShape, severity, msg="", trans=False) -> None:
+    def display_this_shape(self, named_shape: Workplane, severity, msg="", trans=False) -> None:
         if self.dev and severity >= logging.root.level:
-            if OTopo.TopoDS_Iterator(named_shape.shape()).More():
-                self.id += 1
-                shape = OExs.translate_shp(named_shape.shape(), Ogp.gp_Vec(0.0, self.y_position, 0.0))
-                if trans:
-                    self.display.DisplayShape(shape, transparency=0.8)
-                else:
-                    self.display.DisplayShape(shape)
-                if self.log:
-                    self.display.DisplayMessage(point=Ogp.gp_Pnt(0.0, self.y_position - 0.2, 0.0), text_to_write=msg, height=50)
-                self.display.FitAll()
-                self.y_position = self.next_y_position(named_shape)
-            else:
-                logstr = f"Shape can not be displayed: {msg}"
-                logging.warning(logstr)
-                self.display.DisplayMessage(point=Ogp.gp_Pnt(0.0, self.y_position - 0.2, 0.0), text_to_write=logstr)
-                self.y_position = self.y_position + 3 * self.distance
+            self.display.render(msg, named_shape)
 
-    def display_point_on_shape(self, named_shape: TGeo.CNamedShape, p: Ogp.gp_Pnt, severity, msg="", color="GREEN", trans=True) -> None:
+    def display_point_on_shape(self, named_shape: Workplane, p: Ogp.gp_Pnt, severity, msg="", color="GREEN", trans=True) -> None:
         if self.dev and severity >= logging.root.level:
-            #display point
-            p.SetY(p.Y() + self.y_position)
-            p = Geom_CartesianPoint(p)
-            ais_point = AIS_Point(p)
-
-            drawer = ais_point.Attributes()
-            q_color = Quantity_Color(Quantity_NOC_HOTPINK4)
-
-            asp = Prs3d_PointAspect(Aspect_TOM_BALL, q_color, 3)
-            drawer.SetPointAspect(asp)
-            ais_point.SetAttributes(drawer)
-
-            self.display.Context.Display(ais_point, False)
-
-            #self.display.DisplayShape(p, color=color)
-            self.display.DisplayMessage(p, msg, height=50)
-
-            if OTopo.TopoDS_Iterator(named_shape.shape()).More():
-                self.id += 1
-                shape = OExs.translate_shp(named_shape.shape(), Ogp.gp_Vec(0.0, self.y_position, 0.0))
-                if trans:
-                    self.display.DisplayShape(shape, transparency=0.9, color="BLUE")
-                else:
-                    self.display.DisplayShape(shape)
-                if self.log:
-                    self.display.DisplayMessage(point=Ogp.gp_Pnt(0.0, self.y_position - 0.2, 0.0), text_to_write=msg)
-                self.display.FitAll()
-                self.y_position = self.next_y_position(named_shape)
-            else:
-                logstr = f"Shape can not be displayed: {msg}"
-                logging.warning(logstr)
-                self.display.DisplayMessage(point=Ogp.gp_Pnt(0.0, self.y_position - 0.2, 0.0), text_to_write=logstr)
-                self.y_position = self.y_position + 3 * self.distance
+            self.display.render(msg, named_shape)
 
     def display_points(self, points: list[tuple[Ogp.gp_Pnt]], severity, msg="", color="RED") -> None:
         if self.dev and severity >= logging.root.level:
-            for i, p in enumerate(points):
-                # p.SetY(p.Y() + self.y_position)
-                # display point
-                p.SetY(p.Y() + self.y_position)
-                p = Geom_CartesianPoint(p)
-                ais_point = AIS_Point(p)
+            self.display.render(msg, named_shape)
 
-                drawer = ais_point.Attributes()
-                q_color = Quantity_Color(Quantity_NameOfColor(i*10))
-
-                asp = Prs3d_PointAspect(Aspect_TOM_BALL, q_color, 3)
-                drawer.SetPointAspect(asp)
-                ais_point.SetAttributes(drawer)
-
-                self.display.Context.Display(ais_point, False)
-                self.display.DisplayMessage(p, f"{msg}{i}", height=50)
-
-    def display_points_on_shape(self,  named_shape: TGeo.CNamedShape,points: list[tuple[Ogp.gp_Pnt]], severity, msg="", color="RED", trans=True, point_aspect: Aspect_TypeOfMarker = Aspect_TOM_BALL) -> None:
+    def display_points_on_shape(self,  named_shape: Workplane,points: list[tuple[Ogp.gp_Pnt]], severity, msg="", color="RED", trans=True, point_aspect: Aspect_TypeOfMarker = Aspect_TOM_BALL) -> None:
         if self.dev and severity >= logging.root.level:
-            for i, p in enumerate(points):
-                # p.SetY(p.Y() + self.y_position)
-                # display point
-                p.SetY(p.Y() + self.y_position)
-                _p = Geom_CartesianPoint(p)
-                ais_point = AIS_Point(_p)
+            self.display.render(msg, named_shape)
 
-                drawer = ais_point.Attributes()
-                q_color = Quantity_Color(Quantity_NameOfColor((i*10) % (Quantity_NameOfColor.Quantity_NOC_WHITE+1)))
-
-                asp = Prs3d_PointAspect(point_aspect, q_color, 3)
-                drawer.SetPointAspect(asp)
-                ais_point.SetAttributes(drawer)
-
-                self.display.Context.Display(ais_point, False)
-                self.display.DisplayMessage(p, f"{i}", height=50)
-
-            if OTopo.TopoDS_Iterator(named_shape.shape()).More():
-                self.id += 1
-                shape = OExs.translate_shp(named_shape.shape(), Ogp.gp_Vec(0.0, self.y_position, 0.0))
-                if trans:
-                    self.display.DisplayShape(shape, transparency=0.9, color="BLUE")
-                else:
-                    self.display.DisplayShape(shape)
-                if self.log:
-                    self.display.DisplayMessage(point=Ogp.gp_Pnt(0.0, self.y_position - 0.2, 0.0), text_to_write=msg)
-                self.display.FitAll()
-                self.y_position = self.next_y_position(named_shape)
-            else:
-                logstr = f"Shape can not be displayed: {msg}"
-                logging.warning(logstr)
-                self.display.DisplayMessage(point=Ogp.gp_Pnt(0.0, self.y_position - 0.2, 0.0), text_to_write=logstr, height=50)
-                self.y_position = self.y_position + 3 * self.distance
-
-    def my_y_position(self, named_shape: TGeo.CNamedShape):
+    def my_y_position(self, named_shape: Workplane):
         shape_dimensions = sd.ShapeDimensions(named_shape)
         pos = self.y_position + (shape_dimensions.get_y_mid())
         return pos
 
-    def next_y_position(self, named_shape: TGeo.CNamedShape):
+    def next_y_position(self, named_shape: Workplane):
 
         shape_dimensions = sd.ShapeDimensions(named_shape)
         ydiff = shape_dimensions.get_width()
@@ -186,7 +71,7 @@ class ConstructionStepsViewer:
     def get_display(self):
         return self.display
 
-    def display_in_origin(self, named_shape: TGeo.CNamedShape, severity, text="", trans=False):
+    def display_in_origin(self, named_shape: Workplane, severity, text="", trans=False):
         if self.dev and severity >= logging.root.level:
             moved_shape = OExs.translate_shp(named_shape.shape(), Ogp.gp_Vec(0.0, self.origin, 0.0))
             if trans:
@@ -195,7 +80,7 @@ class ConstructionStepsViewer:
                 self.display.DisplayShape(moved_shape, text)
         self.display.FitAll()
 
-    def display_in_secondfloor(self, named_shape: TGeo.CNamedShape, text="", trans=False):
+    def display_in_secondfloor(self, named_shape: Workplane, text="", trans=False):
         if self.dev:
             moved_shape = OExs.translate_shp(named_shape.shape(), Ogp.gp_Vec(0.0, self.origin, -self.origin))
             if trans:
@@ -213,190 +98,61 @@ class ConstructionStepsViewer:
             tpoint.SetY(ypos)
             if self.log:
                 self.display.DisplayMessage(point, text_to_write=text)
-            named_spere = TGeo.CNamedShape(sphere, text)
+            named_spere = Workplane(sphere, text)
             self.display_in_origin(named_spere, logging.NOTSET, text, True)
 
-    def display_fuse(self, fused_shape: TGeo.CNamedShape, named_shape1: TGeo.CNamedShape,
-                     named_shape2: TGeo.CNamedShape, severity, msg="", trans=False):
+    def display_fuse(self, fused_shape: Workplane, named_shape1: Workplane,
+                     named_shape2: Workplane, severity, msg="", trans=False):
         if self.dev and severity >= logging.root.level:
-            shape1 = OExs.translate_shp(named_shape1.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-            shape2 = OExs.translate_shp(named_shape2.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-            self.display.DisplayShape(shape1, transparency=0.8)
-            self.display.DisplayShape(shape2, color="GREEN")
-            self.display_this_shape(fused_shape, severity=severity,
-                                    msg=f"{msg}: {fused_shape.name()}: fusion between {named_shape1.name()} and {named_shape2.name()}",
-                                    trans=trans)
-            self.display.FitAll()
+            self.display.render(msg, fused_shape)
 
-    def display_fused_shapes(self, fused_shape: TGeo.CNamedShape, shape_dict: dict[str, TGeo.CNamedShape], severity, msg="", trans=False):
+    def display_fused_shapes(self, fused_shape: Workplane, shape_dict: dict[str, Workplane], severity, msg="", trans=False):
         if self.dev and severity >= logging.root.level:
-            first = True
-            for key, val in shape_dict.items():
-                if first:
-                    shape = OExs.translate_shp(val.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-                    self.display.DisplayShape(shape, transparency=0.8, color="BLUE")
-                    first = False
-                else:
-                    shape = OExs.translate_shp(val.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-                    self.display.DisplayShape(shape, color="GREEN")
+            self.display.render(msg, fused_shape)
 
-            self.display_this_shape(fused_shape, severity=severity, msg=f"{msg}", trans=trans)
-            self.display.FitAll()
-
-    def display_cut_shapes(self, cut_shape: TGeo.CNamedShape, shape_dict: dict[str, TGeo.CNamedShape], severity, msg="", trans=False):
+    def display_cut_shapes(self, cut_shape: Workplane, shape_dict: dict[str, Workplane], severity, msg="", trans=False):
         if self.dev and severity >= logging.root.level:
-            first = True
-            for key, val in shape_dict.items():
-                if first:
-                    shape = OExs.translate_shp(val.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-                    self.display.DisplayShape(shape, transparency=0.8, color="BLUE")
-                    first = False
-                else:
-                    shape = OExs.translate_shp(val.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-                    self.display.DisplayShape(shape, color="RED")
-
-            self.display_this_shape(cut_shape, severity=severity, msg=f"{msg}", trans=trans)
-            self.display.FitAll()
+            self.display.render(msg, cut_shape)
 
 
-    def display_cut(self, cuted_shape: TGeo.CNamedShape, named_shape1: TGeo.CNamedShape, named_shape2: TGeo.CNamedShape,
+    def display_cut(self, result: Workplane, minuend: Workplane, subtrahend: Workplane,
                     severity, msg="", trans=False):
         if self.dev and severity >= logging.root.level:
-            shape1 = OExs.translate_shp(named_shape1.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-            shape2 = OExs.translate_shp(named_shape2.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-            self.display.DisplayShape(shape1, transparency=0.8)
-            self.display.DisplayShape(shape2, color="RED")
-            self.display_this_shape(cuted_shape, severity=severity, msg=f"{cuted_shape.name()} {msg}", trans=trans)
-            self.display.FitAll()
+            min_ass = Assembly()
+            min_ass.add(minuend).color = Color("blue")
+            sub_ass = Assembly()
+            sub_ass.add(subtrahend).color=Color("red")
+            res_ass = Assembly()
+            res_ass.add(result).add(min_ass).add(sub_ass)
+            self.display.render(msg, res_ass)
 
-    def display_scale_larger(self, scaled_shape: TGeo.CNamedShape, scaled: TGeo.CNamedShape, to_be_scaled: TGeo.CNamedShape,
+    def display_scale_larger(self, scaled_shape: Workplane, scaled: Workplane, to_be_scaled: Workplane,
                     severity, msg="", trans=False):
         if self.dev and severity >= logging.root.level:
-            shape1 = OExs.translate_shp(scaled.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-            shape2 = OExs.translate_shp(to_be_scaled.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-            self.display.DisplayShape(shape1, transparency=0.8)
-            self.display.DisplayShape(shape2, color="RED")
-            self.display_this_shape(scaled_shape, severity=severity, msg=f"{scaled_shape.name()} {msg}", trans=trans)
-            self.display.FitAll()
+            self.display.render(msg, scaled_shape)
 
-    def display_common(self, common_shape: TGeo.CNamedShape, named_shape1: TGeo.CNamedShape,
-                       named_shape2: TGeo.CNamedShape, severity, msg="", trans=False):
+    def display_common(self, common_shape: Workplane, named_shape1: Workplane,
+                       named_shape2: Workplane, severity, msg="", trans=False):
         if self.dev and severity >= logging.root.level:
-            shape1 = OExs.translate_shp(named_shape1.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-            shape2 = OExs.translate_shp(named_shape2.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-            logging.debug(f"{self.y_position=}")
-            self.display.DisplayShape(shape1, color="Yellow", transparency=0.8)
-            self.display.DisplayShape(shape2)
-            self.display_this_shape(common_shape, severity=severity, msg=f"{common_shape.name()} {msg}", trans=trans)
-            self.display.FitAll()
+            self.display.render(msg, common_shape)
 
-    def display_offset(self, common_shape: TGeo.CNamedShape, named_shape1: TGeo.CNamedShape,
-                       named_shape2: TGeo.CNamedShape, severity, msg="", trans=False):
+    def display_offset(self, common_shape: Workplane, named_shape1: Workplane,
+                       named_shape2: Workplane, severity, msg="", trans=False):
         if self.dev and severity >= logging.root.level:
-            shape1 = OExs.translate_shp(named_shape1.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-            shape2 = OExs.translate_shp(named_shape2.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-            logging.debug(f"{self.y_position=}")
-            self.display.DisplayShape(shape1, color='BLUE', transparency=0.3)
-            self.display.DisplayShape(shape2, color='GREEN')
-            self.display_this_shape(common_shape, severity=severity, msg=f"{common_shape.name()} {msg}", trans=trans)
-            self.display.FitAll()
+            self.display.render(msg, common_shape)
 
-    def display_multipe_cuts(self, cuted_shape: TGeo.CNamedShape, original_shape: TGeo.CNamedShape, severity,
-                             list_to_cut=list[: TGeo.CNamedShape], msg="", trans=False):
+    def display_multipe_cuts(self, cuted_shape: Workplane, original_shape: Workplane, severity,
+                             list_to_cut=list[: Workplane], msg="", trans=False):
         if self.dev and severity >= logging.root.level:
-            moved_shape = OExs.translate_shp(original_shape.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-            self.display.DisplayShape(moved_shape, transparency=0.8)
-            for shape_to_cut in list_to_cut:
-                shape_n = OExs.translate_shp(shape_to_cut.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-                self.display.DisplayShape(shape_n, color="Red", transparency=0.5)
-            self.display_this_shape(cuted_shape, severity=severity, msg=f"{msg}", trans=trans)
-            self.display.FitAll()
+            self.display.render(msg, cuted_shape)
 
-    def display_colission(self, kollision_shape: TGeo.CNamedShape, named_shape1: TGeo.CNamedShape,
-                          named_shape2: TGeo.CNamedShape, severity, msg="", trans=False):
+    def display_colission(self, kollision_shape: Workplane, named_shape1: Workplane,
+                          named_shape2: Workplane, severity, msg="", trans=False):
         if self.dev and severity >= logging.root.level:
-            shape1 = OExs.translate_shp(named_shape1.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-            shape2 = OExs.translate_shp(named_shape2.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-            self.display.DisplayShape(shape1, color="Yellow", transparency=0.8)
-            self.display.DisplayShape(shape2, transparency=0.8)
-            if OTopo.TopoDS_Iterator(kollision_shape.shape()).More():
-                shape3a = OExs.translate_shp(kollision_shape.shape(), Ogp.gp_Vec(0.0, self.y_position, -self.distance))
-                self.display.DisplayShape(shape3a, color="Red")
-            self.display_this_shape(kollision_shape, severity=severity,
-                                    msg=f"collision between {named_shape1.name()} and {named_shape2.name()}", trans=trans)
-            self.display.FitAll()
+            self.display.render(msg, kollision_shape)
 
-    def display_slice_x(self, parts_list: list[TGeo.CNamedShape], severity, name=""):
+    def display_slice_x(self, parts_list: list[Workplane], severity, name=""):
         if self.dev and severity >= logging.root.level:
-            x_position = 0
-            x_position_msg = x_position
-            moved_part: TGeo.CNamedShape = TGeo.CNamedShape()
-            for i, part in enumerate(parts_list):
-                logging.debug(f"Displaying {part.name()}")
-                moved_part = TGeo.CNamedShape(
-                    OExs.translate_shp(part.shape(), Ogp.gp_Vec(x_position, self.y_position, 0.0)),
-                    f"Moved_{part.name()}")
-                self.display.DisplayShape(moved_part.shape())
-                part_dimensions = sd.ShapeDimensions(moved_part)
-                x_position += self.distance / 16
-                x_position_msg += (x_position + part_dimensions.get_length())
+            self.display.render(name, parts_list)
 
-            if self.log:
-                self.display.DisplayMessage(point=Ogp.gp_Pnt(0.0, self.y_position - 0.2, 0.0), text_to_write=name)
-            self.display.FitAll()
-            self.y_position = self.next_y_position(moved_part)
-
-    def start(self):
-        if self.dev:
-            self.start_display()
-
-    def perspective(self, event=None):
-        self.display.SetPerspectiveProjection()
-        self.display.FitAll()
-
-    def orthographic(self, event=None):
-        self.display.SetOrthographicProjection()
-        self.display.FitAll()
-
-    def anaglyph_red_cyan(self, event=None):
-        self.display.SetAnaglyphMode(Graphic3d_RenderingParams.Anaglyph_RedCyan_Simple)
-        self.display.FitAll()
-
-    def anaglyph_red_cyan_optimized(self, event=None):
-        self.display.SetAnaglyphMode(Graphic3d_RenderingParams.Anaglyph_RedCyan_Optimized)
-        self.display.FitAll()
-
-    def anaglyph_yellow_blue(self, event=None):
-        self.display.SetAnaglyphMode(Graphic3d_RenderingParams.Anaglyph_YellowBlue_Simple)
-        self.display.FitAll()
-
-    def anaglyph_green_magenta(self, event=None):
-        self.display.SetAnaglyphMode(Graphic3d_RenderingParams.Anaglyph_GreenMagenta_Simple)
-        self.display.FitAll()
-
-    def myview_Top(self):
-        self.display.View_Top()
-        self.display.FitAll()
-
-    def myview_Bottom(self):
-        self.display.View_Bottom()
-        self.display.FitAll()
-
-    def myview_Right(self):
-        self.display.View_Right()
-        self.display.FitAll()
-
-    def myview_Left(self):
-        self.display.View_Left()
-        self.display.FitAll()
-
-    def myview_Front(self):
-        self.display.View_Front()
-        self.display.FitAll()
-
-    def myview_Rear(self):
-        self.display.View_Rear()
-        self.display.FitAll()
-
-    def exit(event=None):
-        sys.exit()
+    

@@ -1,7 +1,5 @@
 import abc
-
-from tigl3 import geometry as tgl_geom
-
+from cadquery import Workplane
 
 class AbstractConstructionStep(metaclass=abc.ABCMeta):
     """
@@ -9,5 +7,5 @@ class AbstractConstructionStep(metaclass=abc.ABCMeta):
     """
 
     @abc.abstractmethod
-    def construct(self, input_shapes: list[tgl_geom.CNamedShape], **kwargs) -> list[tgl_geom.CNamedShape]:
+    def construct(self, input_shapes: list[Workplane], **kwargs) -> list[Workplane]:
         pass
