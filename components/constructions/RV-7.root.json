@@ -1,9 +1,9 @@
 {
     "successors": {
-        "offset_fuselage": {
+        "full_fuselage": {
             "successors": {},
             "creator": {
-                "step_file": "./workspace/components/aircraft/RV-7/fuselage_inlets.step",
+                "step_file": "./workspace/components/aircraft/RV-7/fuselage.step",
                 "trans_x": 0.0,
                 "trans_y": 0.0,
                 "trans_z": 0.0,
@@ -15,79 +15,27 @@
                 "scale_y": 40.0,
                 "scale_z": 40.0,
                 "loglevel": 20,
-                "creator_id": "offset_fuselage",
+                "creator_id": "full_fuselage",
                 "$TYPE": "StepImportCreator"
             },
             "loglevel": 50,
-            "creator_id": "offset_fuselage.node",
+            "creator_id": "full_fuselage.node",
             "$TYPE": "ConstructionStepNode"
         },
-        "engine_mount": {
-            "successors": {
-                "engine_mount_plate": {
-                    "successors": {
-                        "engine_mount": {
-                            "successors": {},
-                            "creator": {
-                                "shape_a": null,
-                                "shape_b": null,
-                                "loglevel": 20,
-                                "creator_id": "engine_mount",
-                                "$TYPE": "Fuse2ShapesCreator"
-                            },
-                            "loglevel": 50,
-                            "creator_id": "engine_mount.node",
-                            "$TYPE": "ConstructionStepNode"
-                        }
-                    },
-                    "creator": {
-                        "full_fuselage_loft": "offset_fuselage",
-                        "engine_index": 1,
-                        "engine_screw_hole_circle": null,
-                        "engine_total_cover_length": null,
-                        "engine_mount_box_length": null,
-                        "engine_down_thrust_deg": null,
-                        "engine_side_thrust_deg": null,
-                        "mount_plate_thickness": 5.0,
-                        "loglevel": 20,
-                        "creator_id": "engine_mount_plate",
-                        "$TYPE": "EngineMountPanelShapeCreator"
-                    },
-                    "loglevel": 50,
-                    "creator_id": "engine_mount_plate.node",
-                    "$TYPE": "ConstructionStepNode"
-                }
-            },
-            "creator": {
-                "engine_index": 1,
-                "engine_screw_length": null,
-                "engine_screw_hole_circle": null,
-                "engine_total_cover_length": null,
-                "engine_mount_box_length": null,
-                "engine_down_thrust_deg": null,
-                "engine_side_thrust_deg": null,
-                "engine_screw_din_diameter": null,
-                "mount_plate_thickness": 5.0,
-                "loglevel": 20,
-                "creator_id": "engine_mount",
-                "$TYPE": "EngineMountShapeCreator"
-            },
-            "loglevel": 50,
-            "creator_id": "engine_mount.node",
-            "$TYPE": "ConstructionStepNode"
-        },
-        "brushless": {
+        "engine_cape": {
             "successors": {},
             "creator": {
-                "component_idx": "brushless",
-                "component_file": "./workspace/components/brushless/DPower_AL3542-5_AL3542-7_AL35-09_v2.step",
-                "mirror_model_by_plane": "",
+                "full_fuselage_loft": "full_fuselage",
+                "mount_plate_thickness": 5.0,
+                "engine_total_cover_length": null,
+                "engine_mount_box_length": null,
+                "engine_index": 1,
                 "loglevel": 20,
-                "creator_id": "brushless",
-                "$TYPE": "ComponentImporterCreator"
+                "creator_id": "engine_cape",
+                "$TYPE": "EngineCapeShapeCreator"
             },
             "loglevel": 50,
-            "creator_id": "brushless.node",
+            "creator_id": "engine_cape.node",
             "$TYPE": "ConstructionStepNode"
         },
         "RV-7": {
@@ -95,8 +43,8 @@
             "creator": {
                 "file_path": "./workspace/exports",
                 "shapes_to_export": [
-                    "engine_mount",
-                    "brushless"
+                    "engine_cape.cape",
+                    "engine_cape.loft"
                 ],
                 "loglevel": 20,
                 "creator_id": "RV-7",
