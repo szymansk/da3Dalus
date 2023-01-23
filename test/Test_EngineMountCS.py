@@ -102,7 +102,8 @@ if __name__ == "__main__":
                                      screw_hole_circle=0.042*1000,
                                      mount_box_length=0.0133 * 2.5*1000,
                                      screw_din_diameter=0.0032*1000,
-                                     screw_length=0.016*1000)
+                                     screw_length=0.016*1000,
+                                     rot_x=45)
 
     # engine_information = {1: CPACSEngineInformation(1, ccpacs_configuration)}
     engine_information = {1: engine_info1}

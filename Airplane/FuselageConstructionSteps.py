@@ -1,7 +1,7 @@
 import logging
 import os
 from pathlib import Path
-from math import sqrt, fmod
+from math import sqrt, fmod, sin, cos, radians
 
 from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform
 from OCP.GeomAbs import *
@@ -464,15 +464,47 @@ class ExportToStepCreator(AbstractShapeCreator):
         exporters.assembly.exportAssembly(ass, step_path)
         logging.debug(f"writing model to '{step_path}'")
 
-        #from OCP.STEPControl import STEPControl_Writer, STEPControl_AsIs
-        #from OCP.IFSelect import IFSelect_RetDone, IFSelect_ReturnStatus
-        #writer = STEPControl_Writer()
-        #aStat: IFSelect_ReturnStatus  = writer.Transfer(ass.toCompound(),STEPControl_AsIs)
-        #aStat = writer.Write(step_path)
-        #if aStat != IFSelect_RetDone:
-        #   logging.ERROR("Step writing error")
+        from OCP.STEPControl import STEPControl_Controller, STEPControl_Writer, STEPControl_AsIs
+        from OCP.IFSelect import IFSelect_RetDone, IFSelect_ReturnStatus
+        step_writer = self._generateStepWriter()
+        for name, shape in shapes_of_interest.items():
+            #t_shape = ScaleRotateTranslateCreator.transform_by(shape=shape, scale=1000.0)
+            if step_writer.Transfer(shape.findSolid().wrapped, STEPControl_AsIs) != IFSelect_RetDone:
+                logging.fatal(f"error while exporting '{name}'")
+                raise RuntimeError(f"error while exporting '{name}'")
+
+        step_path = os.path.join(self.file_path, f"{self.identifier}.stp")
+
+        aStat = step_writer.Write(step_path)
+        if aStat != IFSelect_RetDone:
+            logging.ERROR("Step writing error")
 
         return shapes_of_interest
+
+    def _generateStepWriter(self):
+        # ===============
+        from OCP.STEPControl import STEPControl_Controller, STEPControl_Writer, STEPControl_AsIs
+        st = STEPControl_Controller()
+        #st.Init()
+        step_writer = STEPControl_Writer()
+        dd = step_writer.WS().TransferWriter().FinderProcess()
+        #from OCP.Interface_Static import Interface_Static_SetCVal, Interface_Static_SetIVal
+        # defines the version of schema used for the output STEP file:
+        # 1 or AP214CD (default): AP214, CD version (dated 26 November 1996),
+        # 2 or AP214DIS: AP214, DIS version (dated 15 September 1998).
+        # 3 or AP203: AP203, possibly with modular extensions (depending on data written to a file).
+        # 4 or AP214IS: AP214, IS version (dated 2002)
+        # 5 or AP242DIS: AP242, DIS version.
+        #Interface_Static_SetCVal("write.step.schema", "AP214CD")
+        # 0 (Off) : (default) writes STEP files without assemblies.
+        # 1 (On) : writes all shapes in the form of STEP assemblies.
+        # 2 (Auto) : writes shapes having a structure of (possibly nested) TopoDS_Compounds in the form of STEP
+        #    assemblies, single shapes are written without assembly structures.
+        #Interface_Static_SetIVal("write.step.assembly", 0)
+        #Interface_Static_SetCVal("write.step.unit", "")
+        #Interface_Static_SetIVal("write.precision.mode", 0)
+        return step_writer
+
 
 
 class ExportToStlCreator(AbstractShapeCreator):
@@ -680,9 +712,18 @@ class EngineMountShapeCreator(AbstractShapeCreator):
                     .vertices(tag='corners').cylinder(engine_mount_box_length*2,(engine_screw_din_diameter)/2, combine='cut')\
                     .faces(tag='cyl').rect(engine_screw_hole_circle*10,engine_screw_hole_circle*10).extrude(-100, combine='cut')\
                     .faces(tag='rear').workplane().rect(engine_screw_hole_circle*10,engine_screw_hole_circle*10).extrude(100, combine='cut')\
-                    .display()                     
+                    .display()   
+
+        origin = cq.Vector(motor_position.get_x(),motor_position.get_y(),motor_position.get_z()) 
+        rot_mat = cq.Matrix()
+        rot_mat.rotateY(radians(fmod(engine_information.side_thrust,180)))
+        rot_mat.rotateZ(radians(engine_information.down_thrust))
+
+        l = cq.Vector(engine_total_cover_length, 0, 0)
+        target = rot_mat.multiply(l) 
+        target.x = engine_total_cover_length  # TODO: this is a little hack! 
                 
-        mount = mount.translate((engine_total_cover_length + engine_mount_box_length/2, 0, 0))
+        mount = mount.translate(target+cq.Vector(engine_mount_box_length/2, 0, 0))
 
         if abs(engine_side_thrust_deg) > 90.0:
             mount = mount.rotate((0,0,0),(0,0,1),180)
@@ -755,22 +796,28 @@ class EngineMountPanelShapeCreator(AbstractShapeCreator):
     @classmethod
     def _create_back_plate(cls, mount_plate_thickness: float, engine_mount_box_length: float,
                           engine_total_cover_length: float, engine_screw_hole_circle: float, engine_position: Position,
-                          full_fuselage_loft: Workplane, engine_information) \
+                          full_fuselage_loft: Workplane, engine_information: EngineInformation) \
             -> Workplane:
         '''
         Cuts a slice of the Fuselage to use as a backplate for the engine mount
         '''
         mount_plate: cq.Workplane = None
         motor_position = engine_information.position
-        origin = (motor_position.get_x(),motor_position.get_y(),motor_position.get_z()) 
+        origin = cq.Vector(motor_position.get_x(),motor_position.get_y(),motor_position.get_z()) 
+        rot_mat = cq.Matrix()
+        rot_mat.rotateY(radians(fmod(engine_information.side_thrust,180)))
+        rot_mat.rotateZ(radians(engine_information.down_thrust))
+
+        l = cq.Vector(engine_total_cover_length, 0, 0)
+        target = rot_mat.multiply(l)
 
         if abs(engine_information.side_thrust) < 90:
             mount_plate = full_fuselage_loft.faces("<X").workplane(origin=origin, invert=True, offset=engine_total_cover_length + engine_mount_box_length+mount_plate_thickness)\
                 .split(keepBottom=True).faces(">X").workplane(invert=True, offset=mount_plate_thickness).split(keepBottom=True).display()
         else: # pusher engine at the tail
             mount_plate = full_fuselage_loft.faces(">X").workplane(origin=origin, invert=True, offset=engine_total_cover_length + engine_mount_box_length+mount_plate_thickness)\
-                .split(keepBottom=True).faces("<X").workplane(invert=True, offset=mount_plate_thickness).split(keepBottom=True).display()
-        mount_plate = mount_plate.workplane(origin=(0,0,0)).circle(sqrt(0.5)*engine_screw_hole_circle/2).cutThruAll().display()        
+                .split(keepBottom=True).faces("<X").workplane(invert=True, offset=mount_plate_thickness).split(keepBottom=True).display()    
+        mount_plate = mount_plate.workplane(origin= origin+target).circle(sqrt(0.5)*engine_screw_hole_circle/2).cutThruAll().display()        
 
         return mount_plate
 
