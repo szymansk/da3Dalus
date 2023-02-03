@@ -1,22 +1,20 @@
 import logging
 import os
 from pathlib import Path
-from math import sqrt, fmod, sin, cos, radians
 
 from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform
-from OCP.GeomAbs import *
-from OCP.TopAbs import *
 from OCP.TopoDS import TopoDS_Shape
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
 from Airplane.aircraft_topology.ComponentInformation import ComponentInformation
-from Airplane.aircraft_topology.EngineInformation import EngineInformation
 from Airplane.aircraft_topology.ServoInformation import ServoInformation
+from Airplane.creator.ScaleRotateTranslateCreator import ScaleRotateTranslateCreator
+from Airplane.creator.StepImportCreator import StepImportCreator
 from Extra.BooleanOperationsForLists import BooleanCADOperation
-from .aircraft_topology.EngineInformation import Position, EngineInformation
 
 from Extra.ConstructionStepsViewer import *
 import cadquery as cq
+
 
 # === BEGIN: Basic shape operations ===
 class Fuse2ShapesCreator(AbstractShapeCreator):
@@ -36,9 +34,8 @@ class Fuse2ShapesCreator(AbstractShapeCreator):
         logging.info(
             f"fusing shapes '{list(shapes_of_interest.keys())[0]}' + '{list(shapes_of_interest.keys())[1]}' --> '{self.identifier}'")
 
-        fused_shape = shape_list[0].union(shape_list[1]).display(self.identifier, logging.DEBUG)
-        #  BooleanCADOperation.fuse_shapes(shape_list[0], shape_list[1], self.identifier)
-        # ConstructionStepsViewer.instance().display_fuse(fused_shape, shape_list[0], shape_list[1], logging.DEBUG)
+        fused_shape = shape_list[0] + shape_list[1]
+        fused_shape.display(self.identifier, logging.DEBUG)
 
         return {self.identifier: fused_shape}
 
@@ -58,9 +55,11 @@ class FuseMultipleShapesCreator(AbstractShapeCreator):
         shape_list = list(shapes_of_interest.values())
         logging.info(f"fusing shapes '{' + '.join(shapes_of_interest.keys())}' --> '{self.identifier}'")
 
-        fused_shape = BooleanCADOperation.fuse_list_of_named_shapes(shape_list, self.identifier)
-        ConstructionStepsViewer.instance().display_fused_shapes(fused_shape, shapes_of_interest, logging.DEBUG,
-                                                                msg=self.identifier)
+        fused_shape = shape_list[0]
+        for shape in shape_list[1:]:
+            fused_shape += shape
+
+        fused_shape.display(self.identifier, logging.DEBUG)
 
         return {self.identifier: fused_shape}
 
@@ -84,12 +83,14 @@ class Cut2ShapesCreator(AbstractShapeCreator):
         logging.info(
             f"cutting shapes '{list(shapes_of_interest.keys())[0]}' - '{list(shapes_of_interest.keys())[1]}' --> '{self.identifier}'")
 
-        from Extra.BooleanOperationsForLists import BooleanCADOperation
         shape__minuend = shape_list[0]
         shape__subtrahend = shape_list[1]
-        cut_shape = shape__minuend.cut(shape__subtrahend)
-
-        ConstructionStepsViewer.instance().display_cut(cut_shape, shape__minuend, shape__subtrahend, logging.DEBUG)
+        try:
+            cut_shape = shape__minuend.cut(shape__subtrahend, clean=True).display(name=self.identifier, severity=logging.DEBUG)
+        except:
+            logging.error(
+                f"FAILED: cutting shapes '{list(shapes_of_interest.keys())[0]}' - '{list(shapes_of_interest.keys())[1]}' --> '{self.identifier}'")
+            cut_shape = shape__minuend
 
         return {self.identifier: cut_shape}
 
@@ -111,11 +112,11 @@ class CutMultipleShapesCreator(AbstractShapeCreator):
         logging.info(f"cutting shapes '{' - '.join(shapes_of_interest.keys())}' --> '{self.identifier}'")
         subtrahends_shapes = [shapes_of_interest[key] for key in self.subtrahends]
 
-        shape = BooleanCADOperation.cut_list_of_named_shapes(list(shapes_of_interest.values())[0],
-                                                             subtrahends_shapes, self.identifier)
+        shape = list(shapes_of_interest.values())[0]
+        for subtrahend in subtrahends_shapes:
+            shape = shape.cut(subtrahend, clean=True)
+            shape.display(name=f"{self.identifier}", severity=logging.DEBUG)
 
-        ConstructionStepsViewer.instance().display_cut_shapes(shape, shapes_of_interest, logging.DEBUG,
-                                                              msg=self.identifier)
         return {self.identifier: shape}
 
 
@@ -131,45 +132,70 @@ class SimpleOffsetShapeCreator(AbstractShapeCreator):
                  loglevel=logging.INFO):
         self.offset = offset
         self.shape = shape
-        
+
         super().__init__(creator_id, shapes_of_interest_keys=[shape], loglevel=loglevel)
 
     def _create_shape(self, shapes_of_interest: dict[str, Workplane],
                       input_shapes: dict[str, Workplane],
                       **kwargs) -> dict[str, Workplane]:
         shape_list = list(shapes_of_interest.values())
-        logging.info(f"offset shape '{list(shapes_of_interest.keys())[0]}' by {self.offset}m --> '{self.identifier}'")
+        logging.info(f"offset shape '{list(shapes_of_interest.keys())[0]}' by {self.offset}mm --> '{self.identifier}'")
 
-        shape = shape_list[0]
+        shape = shape_list[0].offset3D(self.offset).display(name=self.identifier, severity=logging.DEBUG)
 
-        from OCP.BRepOffsetAPI import BRepOffsetAPI_MakeOffsetShape
-        from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeSolid
+        return {self.identifier: shape}
 
-        try:
-            offset_maker: BRepOffsetAPI_MakeOffsetShape = BRepOffsetAPI_MakeOffsetShape()
-            offset_maker.PerformByJoin(shape.shape(), self.offset, self.offset / 100)
-            logging.debug(f"{type(offset_maker.Shape())} == {type(OTopo.TopoDS_Shell())}")
-            solid_maker = BRepBuilderAPI_MakeSolid(offset_maker.Shape())
-            solid_shape = solid_maker.Solid()
-            result = TGeo.CNamedShape(solid_shape, f"{shape.name()}_offset")
-        except:
-            offset_maker: BRepOffsetAPI_MakeOffsetShape = BRepOffsetAPI_MakeOffsetShape()
-            offset_maker.PerformBySimple(shape.shape(), self.offset)
-            logging.debug(f"{type(offset_maker.Shape())} == {type(OTopo.TopoDS_Shell())}")
-            result = offset_maker.Shape()
 
-        # solid_maker = BRepBuilderAPI_MakeSolid(offset_maker.Shape())
-        # solid_shape = solid_maker.Solid()
-        # result = TGeo.CNamedShape(solid_shape, f"{shape.name()}_offset")
+class FuselageShellShapeCreator(AbstractShapeCreator):
+    """
+    Creates a simple offset shape from given shape or the take the first input_shape,
+    which is bigger(+)/smaller(-) bei the given <offset>[m].
+    """
 
-        msg = f"Fuselage with {str(self.offset)=} meters"
-        if self.offset > 0:
-            ConstructionStepsViewer.instance().display_offset(result, result, shape, severity=logging.DEBUG, msg=msg)
-        else:
-            ConstructionStepsViewer.instance().display_offset(result, shape, result, severity=logging.DEBUG, msg=msg)
+    def __init__(self, creator_id: str,
+                 thickness: float,
+                 shape: str = None,
+                 loglevel=logging.INFO):
+        self.thickness = thickness
+        self.shape = shape
 
-        return {self.identifier: result}
+        super().__init__(creator_id, shapes_of_interest_keys=[shape], loglevel=loglevel)
 
+    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
+                      input_shapes: dict[str, Workplane],
+                      **kwargs) -> dict[str, Workplane]:
+        shape_list = list(shapes_of_interest.values())
+        logging.info(f"offset shape '{list(shapes_of_interest.keys())[0]}' by {self.thickness}mm --> '{self.identifier}'")
+
+        shape = shape_list[0].faces('<X or >X').shell(self.thickness).display(name=self.identifier, severity=logging.DEBUG)
+
+        return {self.identifier: shape}
+
+class RepairFacesShapeCreator(AbstractShapeCreator):
+    """
+    Creates a simple offset shape from given shape or the take the first input_shape,
+    which is bigger(+)/smaller(-) bei the given <offset>[m].
+    """
+
+    def __init__(self, creator_id: str,
+                 shape: str = None,
+                 repair_tool: str = None,
+                 loglevel=logging.INFO):
+        self.repair_tool = repair_tool
+        self.shape = shape
+
+        super().__init__(creator_id, shapes_of_interest_keys=[shape, repair_tool], loglevel=loglevel)
+
+    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
+                      input_shapes: dict[str, Workplane],
+                      **kwargs) -> dict[str, Workplane]:
+        shape_list = list(shapes_of_interest.values())
+        logging.info(f"repair shape '{list(shapes_of_interest.keys())[0]}' with {list(shapes_of_interest.keys())[1]} --> '{self.identifier}'")
+
+        faces = shape_list[1].faces()
+        shape = shape_list[0].add(faces).combine(glue=True, tol=0.05).display(name=self.identifier, severity=logging.DEBUG)
+
+        return {self.identifier: shape}
 
 class MirrorShapeCreator(AbstractShapeCreator):
     """
@@ -198,14 +224,15 @@ class MirrorShapeCreator(AbstractShapeCreator):
         topods_shape = aBRespTrsf.Shape()
         result = TGeo.CNamedShape(topods_shape, f"mirrored_{shape.name()}")
 
-        ConstructionStepsViewer.instance().display_offset(result, shape, result, severity=logging.DEBUG, msg=self.identifier)
+        ConstructionStepsViewer.instance().display_offset(result, shape, result, severity=logging.DEBUG,
+                                                          msg=self.identifier)
 
         return {self.identifier: result}
 
 
 class Intersect2ShapesCreator(AbstractShapeCreator):
     """
-    Intersect the sahpe A with shape B (minuend / subtrahend = new_shape).
+    Intersect the shape A with shape B (minuend / subtrahend = new_shape).
     """
 
     def __init__(self, creator_id: str, shape_a: str = None, shape_b: str = None, loglevel=logging.INFO):
@@ -220,91 +247,11 @@ class Intersect2ShapesCreator(AbstractShapeCreator):
         logging.info(
             f"intersecting shapes '{list(shapes_of_interest.keys())[0]}' / '{list(shapes_of_interest.keys())[1]}' --> '{self.identifier}'")
 
-        from Extra.BooleanOperationsForLists import BooleanCADOperation
-
         shape__a = shape_list[0]
         shape__b = shape_list[1]
-        cut_shape = BooleanCADOperation.intersect_shape_with_shape(shape__a,
-                                                                   shape__b,
-                                                                   self.identifier)
-        ConstructionStepsViewer.instance().display_common(cut_shape, shape__a, shape__b, logging.DEBUG)
+        shape__a.intersect(shape__b).combine(glue=True, tol=0.05).display(name=self.identifier, severity=logging.DEBUG)
 
-        return {self.identifier: cut_shape}
-
-
-class ScaleRotateTranslateCreator(AbstractShapeCreator):
-    """
-    Scale, rotate (x,y,z) and then translate the shape.
-    """
-
-    def __init__(self, creator_id: str, shape_id: str, scale: float = 1.0, rot_x: float = .0, rot_y: float = .0,
-                 rot_z: float = .0, trans_x: float = .0, trans_y: float = .0, trans_z: float = .0, scale_x=1.0,
-                 scale_y=1.0, scale_z=1.0, mirroring="", loglevel=logging.INFO):
-        self.mirroring = mirroring
-        self.shape_id = shape_id
-        self.trans_x = trans_x
-        self.trans_y = trans_y
-        self.trans_z = trans_z
-        self.rot_x = rot_x
-        self.rot_y = rot_y
-        self.rot_z = rot_z
-        self.scale = scale
-        self.scale_x = scale_x
-        self.scale_y = scale_y
-        self.scale_z = scale_z
-
-        if self.scale != 1.0:
-            self.scale_x = self.scale_y = self.scale_z = self.scale
-
-        super().__init__(creator_id, shapes_of_interest_keys=[self.shape_id], loglevel=loglevel)
-
-    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
-                      input_shapes: dict[str, Workplane],
-                      **kwargs) -> dict[str, Workplane]:
-        shape_list = list(shapes_of_interest.values())
-        shape = shape_list[0]
-        logging.info(
-            f"scale ({self.scale_x}, {self.scale_y}, {self.scale_z}), rotate ({self.rot_x}, {self.rot_y}, {self.rot_z}) "
-            f"and translate ({self.trans_x}, {self.trans_y}, {self.trans_z}) '{list(shapes_of_interest.keys())[0]}' "
-            f"--> '{self.identifier}'")
-        trans_shape = self.transform_by(shape, scale=self.scale, rot_x=self.rot_x, rot_y=self.rot_y, rot_z=self.rot_z,
-                                        trans_x=self.trans_x, trans_y=self.trans_y, trans_z=self.trans_z,
-                                        mirroring=self.mirroring)
-        trans_shape.set_name(self.identifier)
-        ConstructionStepsViewer.instance().display_scale_larger(trans_shape, trans_shape, shape, severity=logging.DEBUG)
-
-        return {self.identifier: trans_shape}
-
-    @classmethod
-    def transform_by(cls, shape: Workplane, scale: float = 1.0, rot_x: float = .0, rot_y: float = .0,
-                     rot_z: float = .0, trans_x: float = .0, trans_y: float = .0, trans_z: float = .0, scale_x=1.0,
-                     scale_y=1.0, scale_z=1.0, mirroring="") -> Workplane:
-        if scale != 1.0:
-            logging.debug(f"setting all scale dimensions to factor: {scale}")
-            scale_x = scale_y = scale_z = scale
-        
-        shape = cq.CQ(shape.findSolid()\
-            .scale(scale)\
-            .rotate((0,0,0),(1,0,0),rot_x)\
-            .rotate((0,0,0),(0,1,0),rot_y)\
-            .rotate((0,0,0),(0,0,1),rot_z)\
-            .translate((trans_x, trans_y, trans_z)))
-
-        # trafo = tgl_geom.CTiglTransformation()
-        # trafo.add_scaling(scale_x, scale_y, scale_z)
-        # trafo.add_rotation_x(rot_x)
-        # trafo.add_rotation_y(rot_y)
-        # trafo.add_rotation_z(rot_z)
-        # trafo.add_translation(trans_x, trans_y, trans_z)
-
-        # if mirroring == "xy":
-        #     trafo.add_mirroring_at_xyplane()
-        # elif mirroring == "xz":
-        #     trafo.add_mirroring_at_xzplane()
-        # elif mirroring == "yz":
-        #     trafo.add_projection_on_yzplane()
-
-        return shape
+        return {self.identifier: shape__a}
 
 
 # === END basic shape operations ===
@@ -340,7 +287,7 @@ class IgesImportCreator(AbstractShapeCreator):
                       **kwargs) -> dict[str, Workplane]:
         logging.info(f"importing iges model '{self.iges_file}' --> '{self.identifier}'")
 
-        topo:TopoDS_Shape = IgesImportCreator.iges_importer(self.iges_file)
+        topo: TopoDS_Shape = IgesImportCreator.iges_importer(self.iges_file)
         shape = Workplane(topo, self.identifier)
 
         trans_shape = ScaleRotateTranslateCreator.transform_by(shape, rot_x=self.rot_x, rot_y=self.rot_y,
@@ -355,71 +302,14 @@ class IgesImportCreator(AbstractShapeCreator):
 
     @classmethod
     def iges_importer(cls, iges_file) -> TopoDS_Shape:
-        from OCP.IIGESFile_Read import IGESFile_Read 
-        #from OCP.Extend.DataExchange import read_iges_file
+        from OCP.IIGESFile_Read import IGESFile_Read
+        # from OCP.Extend.DataExchange import read_iges_file
         topods: list[TopoDS_Shape] = IGESFile_Read(iges_file,
-                                                    return_as_shapes=True,
-                                                    verbosity=True,
-                                                    visible_only=True)
+                                                   return_as_shapes=True,
+                                                   verbosity=True,
+                                                   visible_only=True)
 
         return BooleanCADOperation.fuse_list_of_shapes(topods) if len(topods) > 1 else topods[0]
-
-
-class StepImportCreator(AbstractShapeCreator):
-    """
-    Import an iges file as a shape.
-    """
-
-    def __init__(self, creator_id: str, step_file: str,
-                 trans_x: float = .0,
-                 trans_y: float = .0,
-                 trans_z: float = .0,
-                 rot_x: float = .0,
-                 rot_y: float = .0,
-                 rot_z: float = .0,
-                 scale: float = 1.0,
-                 scale_x=1.0,
-                 scale_y=1.0,
-                 scale_z=1.0, loglevel=logging.INFO
-                 ):
-        self.step_file = step_file
-        self.trans_x = trans_x
-        self.trans_y = trans_y
-        self.trans_z = trans_z
-        self.rot_x = rot_x
-        self.rot_y = rot_y
-        self.rot_z = rot_z
-        self.scale = scale
-        self.scale_x = scale_x
-        self.scale_y = scale_y
-        self.scale_z = scale_z
-
-        if self.scale != 1.0:
-            self.scale_x = self.scale_y = self.scale_z = self.scale
-
-        super().__init__(creator_id, shapes_of_interest_keys=None, loglevel=loglevel)
-
-    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
-                      input_shapes: dict[str, Workplane],
-                      **kwargs) -> dict[str, Workplane]:
-        logging.info(f"importing step model '{self.step_file}' --> '{self.identifier}'")
-
-        workplane = StepImportCreator.step_importer(self.step_file)
-        trans_shape = ScaleRotateTranslateCreator.transform_by(workplane, scale=self.scale,
-                                                               rot_x=self.rot_x, rot_y=self.rot_y,
-                                                               rot_z=self.rot_z, trans_x=self.trans_x,
-                                                               trans_y=self.trans_y, trans_z=self.trans_z,
-                                                               scale_x=self.scale_x, scale_y=self.scale_y,
-                                                               scale_z=self.scale_z).display(name=self.identifier,severity=logging.DEBUG)
-
-        #ConstructionStepsViewer.instance().display_this_shape(trans_shape, severity=logging.DEBUG)
-        return {self.identifier: trans_shape}
-
-    @classmethod
-    def step_importer(cls, path_) -> Workplane:
-        from cadquery import importers
-        shapes = importers.importStep(path_)
-        return shapes
 
 
 class ExportToIgesCreator(AbstractShapeCreator):
@@ -464,11 +354,11 @@ class ExportToStepCreator(AbstractShapeCreator):
         exporters.assembly.exportAssembly(ass, step_path)
         logging.debug(f"writing model to '{step_path}'")
 
-        from OCP.STEPControl import STEPControl_Controller, STEPControl_Writer, STEPControl_AsIs
-        from OCP.IFSelect import IFSelect_RetDone, IFSelect_ReturnStatus
+        from OCP.STEPControl import STEPControl_AsIs
+        from OCP.IFSelect import IFSelect_RetDone
         step_writer = self._generateStepWriter()
         for name, shape in shapes_of_interest.items():
-            #t_shape = ScaleRotateTranslateCreator.transform_by(shape=shape, scale=1000.0)
+            # t_shape = ScaleRotateTranslateCreator.transform_by(shape=shape, scale=1000.0)
             if step_writer.Transfer(shape.findSolid().wrapped, STEPControl_AsIs) != IFSelect_RetDone:
                 logging.fatal(f"error while exporting '{name}'")
                 raise RuntimeError(f"error while exporting '{name}'")
@@ -483,28 +373,27 @@ class ExportToStepCreator(AbstractShapeCreator):
 
     def _generateStepWriter(self):
         # ===============
-        from OCP.STEPControl import STEPControl_Controller, STEPControl_Writer, STEPControl_AsIs
+        from OCP.STEPControl import STEPControl_Controller, STEPControl_Writer
         st = STEPControl_Controller()
-        #st.Init()
+        # st.Init()
         step_writer = STEPControl_Writer()
         dd = step_writer.WS().TransferWriter().FinderProcess()
-        #from OCP.Interface_Static import Interface_Static_SetCVal, Interface_Static_SetIVal
+        # from OCP.Interface_Static import Interface_Static_SetCVal, Interface_Static_SetIVal
         # defines the version of schema used for the output STEP file:
         # 1 or AP214CD (default): AP214, CD version (dated 26 November 1996),
         # 2 or AP214DIS: AP214, DIS version (dated 15 September 1998).
         # 3 or AP203: AP203, possibly with modular extensions (depending on data written to a file).
         # 4 or AP214IS: AP214, IS version (dated 2002)
         # 5 or AP242DIS: AP242, DIS version.
-        #Interface_Static_SetCVal("write.step.schema", "AP214CD")
+        # Interface_Static_SetCVal("write.step.schema", "AP214CD")
         # 0 (Off) : (default) writes STEP files without assemblies.
         # 1 (On) : writes all shapes in the form of STEP assemblies.
         # 2 (Auto) : writes shapes having a structure of (possibly nested) TopoDS_Compounds in the form of STEP
         #    assemblies, single shapes are written without assembly structures.
-        #Interface_Static_SetIVal("write.step.assembly", 0)
-        #Interface_Static_SetCVal("write.step.unit", "")
-        #Interface_Static_SetIVal("write.precision.mode", 0)
+        # Interface_Static_SetIVal("write.step.assembly", 0)
+        # Interface_Static_SetCVal("write.step.unit", "")
+        # Interface_Static_SetIVal("write.precision.mode", 0)
         return step_writer
-
 
 
 class ExportToStlCreator(AbstractShapeCreator):
@@ -551,18 +440,20 @@ class ServoImporterCreator(AbstractShapeCreator):
                       **kwargs) -> dict[str, Workplane]:
         logging.info(f"importing servo model '{self.identifier}' --> '{self.identifier}.stamp, "
                      f"{self.identifier}.filling, {self.identifier}.feature, {self.identifier}.model'")
-        from pathlib import Path
         servo = self._servo_information[self.servo_idx]
         shapes: list[Workplane] = []
         for file in [self.servo_stamp, self.servo_filling, self.servo_feature]:
             self.import_servo_shape(file, shapes, servo)
         self.import_servo_shape(self.servo_model, shapes, servo, mirroring=self.mirror_model_by_plane)
-
-
-        return {f"{self.identifier}.stamp": shapes[0],
+        dict = {f"{self.identifier}.stamp": shapes[0],
                 f"{self.identifier}.filling": shapes[1],
                 f"{self.identifier}.feature": shapes[2],
                 f"{self.identifier}.model": shapes[3]}
+        for k, v in dict.items():
+            if v is not None:
+                v.display(name=k, severity=logging.DEBUG)
+
+        return dict
 
     def import_servo_shape(self, file, shapes, servo, mirroring=""):
         if file is None:
@@ -575,7 +466,7 @@ class ServoImporterCreator(AbstractShapeCreator):
             else:
                 logging.fatal(f"cannot load file '{file}'. suffix unknown!")
 
-            shapes[-1] = ScaleRotateTranslateCreator.transform_by(shapes[-1], scale=0.001, rot_x=servo.rot_x,
+            shapes[-1] = ScaleRotateTranslateCreator.transform_by(shapes[-1], scale=1, rot_x=servo.rot_x,
                                                                   rot_y=servo.rot_y, rot_z=servo.rot_z,
                                                                   trans_x=servo.trans_x, trans_y=servo.trans_y,
                                                                   trans_z=servo.trans_z,
@@ -623,207 +514,10 @@ class ComponentImporterCreator(AbstractShapeCreator):
                                                          trans_x=component.trans_x,
                                                          trans_y=component.trans_y,
                                                          trans_z=component.trans_z,
-                                                         mirroring=self.mirror_model_by_plane)\
-                                                        .display(self.identifier, logging.DEBUG)
+                                                         mirroring=self.mirror_model_by_plane) \
+            .display(self.identifier, logging.DEBUG)
 
         return {f"{self.identifier}": shape}
-
-
-class EngineMountShapeCreator(AbstractShapeCreator):
-    def __init__(self, creator_id: str, engine_index: int, mount_plate_thickness: float,
-                 engine_screw_hole_circle: float = None, engine_mount_box_length: float = None,
-                 engine_screw_din_diameter: float = None,
-                 engine_screw_length: float = None, engine_total_cover_length: float = None,
-                 engine_down_thrust_deg: float = None, engine_side_thrust_deg: float = None,
-                 engine_information: dict[int, EngineInformation] = None, loglevel=logging.INFO):
-        """
-
-        :param engine_index:
-        :param creator_id:
-        :param mount_plate_thickness: thickness of the mount backplate
-        :param engine_screw_hole_circle: the diameter of the screw circle of the engine mount
-        :param engine_total_cover_length: the length of the engine from where it touches the mount to the point which should be outside the cape
-        :param engine_mount_box_length: length of the box, the engine is screwd onto. (can be used to give place for a shaft)
-        :param engine_down_thrust_deg: down thrust in degree
-        :param engine_side_thrust_deg: side thrust in degree
-        :param engine_screw_din_diameter: diameter of the screws used to fix the engine (e.g. 4 for M4)
-        :param engine_screw_length: length of the screws used to fix the engine
-        :param cpacs_configuration:
-        """
-        self.engine_index = engine_index
-        self.engine_screw_length = engine_screw_length
-        self.engine_screw_hole_circle = engine_screw_hole_circle
-        self.engine_total_cover_length = engine_total_cover_length
-        self.engine_mount_box_length = engine_mount_box_length
-        self.engine_down_thrust_deg = engine_down_thrust_deg
-        self.engine_side_thrust_deg = engine_side_thrust_deg
-        self.engine_screw_din_diameter = engine_screw_din_diameter
-        self.mount_plate_thickness = mount_plate_thickness
-        self._engine_information = engine_information
-        super().__init__(creator_id, shapes_of_interest_keys=None, loglevel=loglevel)
-
-    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
-                      input_shapes: dict[str, Workplane],
-                      **kwargs) -> dict[str, Workplane]:
-        logging.info(f" creating mount for engine '{self.engine_index}' --> '{self.identifier}'")
-
-        self.engine_down_thrust_deg = self._engine_information[self.engine_index].down_thrust \
-            if self.engine_down_thrust_deg is None else self.engine_down_thrust_deg
-        self.engine_side_thrust_deg = self._engine_information[self.engine_index].side_thrust \
-            if self.engine_side_thrust_deg is None else self.engine_side_thrust_deg
-        self.engine_total_cover_length = self._engine_information[self.engine_index].length \
-            if self.engine_total_cover_length is None \
-            else self.engine_total_cover_length
-        self.engine_screw_length = self._engine_information[self.engine_index].engine_screw_length \
-            if self.engine_screw_length is None else self.engine_screw_length
-        self.engine_screw_hole_circle = self._engine_information[self.engine_index].engine_screw_hole_circle \
-            if self.engine_screw_hole_circle is None else self.engine_screw_hole_circle
-        self.engine_mount_box_length = self._engine_information[self.engine_index].engine_mount_box_length \
-            if self.engine_mount_box_length is None else self.engine_mount_box_length
-        self.engine_screw_din_diameter = self._engine_information[self.engine_index].engine_screw_din_diameter \
-            if self.engine_screw_din_diameter is None else self.engine_screw_din_diameter
-
-
-        mount = EngineMountShapeCreator._create_engine_mount(engine_total_cover_length=self.engine_total_cover_length,
-                                                            engine_mount_box_length=self.engine_mount_box_length,
-                                                            engine_down_thrust_deg=self.engine_down_thrust_deg,
-                                                            engine_side_thrust_deg=self.engine_side_thrust_deg,
-                                                            engine_screw_hole_circle=self.engine_screw_hole_circle,
-                                                            engine_screw_din_diameter=self.engine_screw_din_diameter,
-                                                            engine_information=self._engine_information[self.engine_index])\
-                                                            .display(self.identifier, logging.DEBUG)
-
-        return {str(self.identifier): mount}
-
-    @classmethod
-    def _create_engine_mount(cls, engine_total_cover_length: float, engine_mount_box_length: float, engine_down_thrust_deg: float,
-                            engine_side_thrust_deg: float, engine_screw_hole_circle: float, engine_screw_din_diameter: float,
-                            engine_information: EngineInformation) -> Workplane:
-
-        motor_position = engine_information.position
-        origin = (motor_position.get_x(),motor_position.get_y(),motor_position.get_z()) 
-        # Shaft Box
-        mount = cq.Workplane("YZ").box(engine_screw_hole_circle, engine_screw_hole_circle, engine_mount_box_length)\
-                    .faces(">X").tag('rear').rect(sqrt(0.5)*engine_screw_hole_circle, sqrt(0.5)*engine_screw_hole_circle).cutBlind(-engine_mount_box_length * 1.2)\
-                    .faces("<X").transformed(rotate=(engine_down_thrust_deg, fmod(engine_side_thrust_deg, 180.0),0))\
-                    .rect(sqrt(0.5)*engine_screw_hole_circle,sqrt(0.5)*engine_screw_hole_circle,forConstruction=True).last()\
-                    .vertices().tag('corners').cylinder(engine_mount_box_length*1,(engine_screw_din_diameter+6)/2).faces("<X").tag('cyl')\
-                    .vertices(tag='corners').cylinder(engine_mount_box_length*1.2,(engine_screw_din_diameter+6)/2).faces("<X")\
-                    .vertices(tag='corners').cylinder(engine_mount_box_length*2,(engine_screw_din_diameter)/2, combine='cut')\
-                    .faces(tag='cyl').rect(engine_screw_hole_circle*10,engine_screw_hole_circle*10).extrude(-100, combine='cut')\
-                    .faces(tag='rear').workplane().rect(engine_screw_hole_circle*10,engine_screw_hole_circle*10).extrude(100, combine='cut')\
-                    .display()   
-
-        origin = cq.Vector(motor_position.get_x(),motor_position.get_y(),motor_position.get_z()) 
-        rot_mat = cq.Matrix()
-        rot_mat.rotateY(radians(fmod(engine_information.side_thrust,180)))
-        rot_mat.rotateZ(radians(engine_information.down_thrust))
-
-        l = cq.Vector(engine_total_cover_length, 0, 0)
-        target = rot_mat.multiply(l) 
-        target.x = engine_total_cover_length  # TODO: this is a little hack! 
-                
-        mount = mount.translate(target+cq.Vector(engine_mount_box_length/2, 0, 0))
-
-        if abs(engine_side_thrust_deg) > 90.0:
-            mount = mount.rotate((0,0,0),(0,0,1),180)
-        motor_position = engine_information.position
-        mount = mount.translate(origin)
-                    
-        return mount
-
-
-class EngineMountPanelShapeCreator(AbstractShapeCreator):
-    def __init__(self, creator_id: str, engine_index: int, mount_plate_thickness: float,
-                 engine_screw_hole_circle: float = None, engine_mount_box_length: float = None,
-                 engine_total_cover_length: float = None, engine_side_thrust_deg: float = None,
-                 engine_down_thrust_deg: float = None, full_fuselage_loft: str = None,
-                 engine_information: dict[int, EngineInformation] = None, loglevel=logging.INFO):
-        """
-        Cuts a slice of the fuselage to use as a backplate for the engine mount. A hole is
-        added behinde the engine mount for cabels.
-
-        :param engine_index:
-        :param creator_id:
-        :param mount_plate_thickness: thickness of the mount backplate
-        :param engine_screw_hole_circle: the diameter of the screw circle of the engine mount
-        :param engine_total_cover_length: the length of the engine from where it touches the mount to the point which should be outside the cape
-        :param engine_mount_box_length: length of the box, the engine is screwd onto. (can be used to give place for a shaft)
-        :param engine_down_thrust_deg: down thrust in degree
-        :param engine_side_thrust_deg: side thrust in degree
-        """
-        self.full_fuselage_loft = full_fuselage_loft
-        self.engine_index = engine_index
-        self.engine_screw_hole_circle = engine_screw_hole_circle
-        self.engine_total_cover_length = engine_total_cover_length
-        self.engine_mount_box_length = engine_mount_box_length
-        self.engine_down_thrust_deg = engine_down_thrust_deg
-        self.engine_side_thrust_deg = engine_side_thrust_deg
-        self.mount_plate_thickness = mount_plate_thickness
-        self._engine_information = engine_information
-        super().__init__(creator_id, shapes_of_interest_keys=[self.full_fuselage_loft], loglevel=loglevel)
-
-    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
-                      input_shapes: dict[str, Workplane],
-                      **kwargs) -> dict[str, Workplane]:
-        logging.info(f" creating mount panel for engine '{self.engine_index}' --> '{self.identifier}'")
-
-        self.engine_down_thrust_deg = self._engine_information[self.engine_index].down_thrust \
-            if self.engine_down_thrust_deg is None else self.engine_down_thrust_deg
-        self.engine_side_thrust_deg = self._engine_information[self.engine_index].side_thrust \
-            if self.engine_side_thrust_deg is None else self.engine_side_thrust_deg
-        self.engine_total_cover_length = self._engine_information[self.engine_index].length \
-            if self.engine_total_cover_length is None \
-            else self.engine_total_cover_length
-        self.engine_screw_hole_circle = self._engine_information[self.engine_index].engine_screw_hole_circle \
-            if self.engine_screw_hole_circle is None else self.engine_screw_hole_circle
-        self.engine_mount_box_length = self._engine_information[self.engine_index].engine_mount_box_length \
-            if self.engine_mount_box_length is None else self.engine_mount_box_length
-
-        mount_plate, _, _ = EngineMountPanelShapeCreator._create_back_plate(mount_plate_thickness=self.mount_plate_thickness,
-                                                           engine_mount_box_length=self.engine_mount_box_length,
-                                                           engine_total_cover_length=self.engine_total_cover_length,
-                                                           engine_screw_hole_circle=self.engine_screw_hole_circle,
-                                                           engine_position=self._engine_information[
-                                                               self.engine_index].position,
-                                                           full_fuselage_loft=shapes_of_interest[
-                                                               self.full_fuselage_loft],
-                                                           engine_information=self._engine_information[
-                                                               self.engine_index])
-        mount_plate.display(self.identifier, logging.DEBUG)
-        return {str(self.identifier): mount_plate}
-
-    @classmethod
-    def _create_back_plate(cls, mount_plate_thickness: float, engine_mount_box_length: float,
-                          engine_total_cover_length: float, engine_screw_hole_circle: float, engine_position: Position,
-                          full_fuselage_loft: Workplane, engine_information: EngineInformation) \
-            -> Workplane:
-        '''
-        Cuts a slice of the Fuselage to use as a backplate for the engine mount
-        '''
-        mount_plate: cq.Workplane = None
-        motor_position = engine_information.position
-        origin = cq.Vector(motor_position.get_x(),motor_position.get_y(),motor_position.get_z()) 
-        rot_mat = cq.Matrix()
-        rot_mat.rotateY(radians(fmod(engine_information.side_thrust,180)))
-        rot_mat.rotateZ(radians(engine_information.down_thrust))
-
-        l = cq.Vector(engine_total_cover_length, 0, 0)
-        target = rot_mat.multiply(l)
-
-        if abs(engine_information.side_thrust) < 90:
-            mount_plate = full_fuselage_loft.faces("<X").workplane(origin=origin, invert=True, offset=engine_total_cover_length + engine_mount_box_length+mount_plate_thickness)
-            fuselage = mount_plate.split(keepTop=True).display()
-            mount_plate = mount_plate.split(keepBottom=True)
-            mount_plate = mount_plate.faces(">X").workplane(invert=True, offset=mount_plate_thickness)
-            engine_cape = mount_plate.split(keepTop=True).display()
-            mount_plate = mount_plate.split(keepBottom=True).display()
-        else: # pusher engine at the tail
-            mount_plate = full_fuselage_loft.faces(">X").workplane(origin=origin, invert=True, offset=engine_total_cover_length + engine_mount_box_length+mount_plate_thickness)\
-                .split(keepBottom=True).faces("<X").workplane(invert=True, offset=mount_plate_thickness).split(keepBottom=True).display()    
-        mount_plate = mount_plate.workplane(origin= origin+target).circle(sqrt(0.5)*engine_screw_hole_circle/2).cutThruAll().display()        
-
-        return mount_plate, fuselage, engine_cape
 
 
 class SliceShapesCreator(AbstractShapeCreator):
@@ -853,208 +547,10 @@ class SliceShapesCreator(AbstractShapeCreator):
         return parts
 
 
-class EngineCapeShapeCreator(AbstractShapeCreator):
-    """
-    Creates an engine cape <identifier>.cape and fuselage loft without the cape <identifier>.loft, by cutting the cape
-    of the full fuselage loft.
-    """
-
-    def __init__(self, creator_id: str, engine_index: int, mount_plate_thickness: float,
-                 engine_mount_box_length: float = None, engine_total_cover_length: float = None,
-                 full_fuselage_loft: str = None, engine_information: dict[int, EngineInformation] = None,
-                 loglevel=logging.INFO):
-        self.full_fuselage_loft = full_fuselage_loft
-        self.mount_plate_thickness = mount_plate_thickness
-        self.engine_total_cover_length = engine_total_cover_length
-        self.engine_mount_box_length = engine_mount_box_length
-        self.engine_index = engine_index
-        self._engine_information = engine_information
-        super().__init__(creator_id, shapes_of_interest_keys=[self.full_fuselage_loft], loglevel=loglevel)
-
-    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
-                      input_shapes: dict[str, Workplane],
-                      **kwargs) -> dict[str, Workplane]:
-        logging.info(f"creating engine cape and loft --> '{self.identifier}.cape, {self.identifier}.loft'")
-
-        self.engine_total_cover_length = self._engine_information[self.engine_index].length \
-            if self.engine_total_cover_length is None \
-            else self.engine_total_cover_length
-        engine_screw_hole_circle = self._engine_information[self.engine_index].engine_screw_hole_circle
-        self.engine_mount_box_length = self._engine_information[self.engine_index].engine_mount_box_length \
-            if self.engine_mount_box_length is None else self.engine_mount_box_length
-
-        mount_plate, fuselage, cape = EngineMountPanelShapeCreator._create_back_plate(mount_plate_thickness=self.mount_plate_thickness,
-                                                           engine_mount_box_length=self.engine_mount_box_length,
-                                                           engine_total_cover_length=self.engine_total_cover_length,
-                                                           engine_screw_hole_circle=engine_screw_hole_circle,
-                                                           engine_position=self._engine_information[
-                                                               self.engine_index].position,
-                                                           full_fuselage_loft=shapes_of_interest[
-                                                               self.full_fuselage_loft],
-                                                           engine_information=self._engine_information[
-                                                               self.engine_index])
-        #ass = cq.Assembly()
-        #ass.add(mount_plate).add(fuselage).add(cape)
-        #cq.CQ(ass).display(self.identifier, logging.DEBUG)
-
-        return {f"{self.identifier}.cape": cape, f"{self.identifier}.loft": fuselage}
-
-    @property
-    def identifier(self) -> str:
-        return self.creator_id
-
-    @identifier.setter
-    def identifier(self, value) -> str:
-        self.creator_id = value
-
-
-class FuselageReinforcementShapeCreator(AbstractShapeCreator):
-    def __init__(self, creator_id: str, rib_width: float, rib_spacing, ribcage_factor: float,
-                 reinforcement_pipes_diameter: float, fuselage_loft: str, full_wing_loft, loglevel=logging.INFO):
-        """
-        Creates a cage like structure with pipes for CFRP-rods in the four intersections.
-        :param creator_id:
-        :param rib_width: the width of the enforcement rib (wall to wall)
-        :param rib_spacing: minimum spacing between wing and enforcement
-        :param ribcage_factor: the width of the enforcement cage is 'fuselage_width * ribcage_factor'
-        :param reinforcement_pipes_diameter: the radius of the CFRP-rods that go through the fuselage
-        :param fuselage_loft: the loft the enforcement should be designed for
-        :param full_wing_loft: needed to calculate the ribcage dimensions
-        """
-        self.rib_spacing = rib_spacing
-        self.full_wing_loft = full_wing_loft
-        self.fuselage_loft = fuselage_loft
-        self.rib_width = rib_width
-        self.ribcage_factor = ribcage_factor
-        self.reinforcement_pipes_diameter = reinforcement_pipes_diameter
-        super().__init__(creator_id, shapes_of_interest_keys=[self.fuselage_loft, self.full_wing_loft], loglevel=loglevel)
-
-    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
-                      input_shapes: dict[str, Workplane],
-                      **kwargs) -> dict[str, Workplane]:
-        logging.info(f"creating fuselage reinforcement for {self.fuselage_loft} --> '{self.identifier}'")
-
-        from Airplane.Fuselage.FuselageFactory import FuselageFactory
-        shape__fuselage_reinforcement = FuselageFactory.create_fuselage_reinforcement(
-            reinforcement_pipes_radius=self.reinforcement_pipes_diameter/2.0, rib_width=self.rib_width,
-            rib_spacing=self.rib_spacing,
-            ribcage_factor=self.ribcage_factor, fuselage_loft=shapes_of_interest[self.fuselage_loft],
-            full_wing_loft=shapes_of_interest[self.full_wing_loft])
-
-        ConstructionStepsViewer.instance().display_this_shape(
-            shape__fuselage_reinforcement, logging.DEBUG, msg=f"{self.identifier}")
-
-        return {str(self.identifier): shape__fuselage_reinforcement}
-
-
-class FuselageWingSupportShapeCreator(AbstractShapeCreator):
-    """    Creates wing support by using vertical cube shaped ribs.
-
-    TODO: should be improved to ribs that form a trapezoid 50° angles, so printing will be easier.
-         /-----\
-        /_______\
-    """
-
-    def __init__(self, creator_id: str, rib_quantity: int, rib_width: float, rib_height_factor: float,
-                 fuselage_loft: str, full_wing_loft, loglevel=logging.INFO):
-        self.full_wing_loft = full_wing_loft
-        self.fuselage_loft = fuselage_loft
-        self.rib_quantity: int = rib_quantity
-        self.rib_width: float = rib_width
-        self.rib_height_factor: float = rib_height_factor
-        super().__init__(creator_id, shapes_of_interest_keys=[self.fuselage_loft, self.full_wing_loft], loglevel=loglevel)
-
-    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
-                      input_shapes: dict[str, Workplane],
-                      **kwargs) -> dict[str, Workplane]:
-        logging.info(
-            f"creating wing support reinforcement for '{self.full_wing_loft}' with '{self.fuselage_loft}' --> '{self.identifier}'")
-
-        from Airplane.Fuselage.FuselageFactory import FuselageFactory
-
-        shape__wing_support = FuselageFactory.create_wing_support_shape(rib_quantity=self.rib_quantity,
-                                                                        rib_width=self.rib_width,
-                                                                        rib_height_factor=self.rib_height_factor,
-                                                                        fuselage_loft=shapes_of_interest[
-                                                                            self.fuselage_loft],
-                                                                        full_wing_loft=shapes_of_interest[
-                                                                            self.full_wing_loft])
-        ConstructionStepsViewer.instance().display_this_shape(
-            shape__wing_support, logging.DEBUG, msg=f"{self.identifier}")
-        return {str(self.identifier): shape__wing_support}
-
-
-class FuselageElectronicsAccessCutOutShapeCreator(AbstractShapeCreator):
-
-    def __init__(self, creator_id: str, ribcage_factor: float, length_factor, fuselage_loft, full_wing_loft,
-                 wing_position: str = None, loglevel=logging.INFO):
-        """
-        Creates a cutout shape for creating the access to the electronics depending on the wing position ('top',
-        'middle', 'bottom').
-            - width is '0.8 * ribcage_factor * fuselage_width'
-            - length 'root_chord * length_factor'
-        :param creator_id:
-        :param ribcage_factor: the width of the enforcement cage is 'fuselage_width * ribcage_factor'
-        :param length_factor: defines the length of the cutout 'root_chord * length_factor'
-        :param fuselage_loft: the loft the enforcement should be designed for
-        :param full_wing_loft: needed to re calculate the ribcage dimensions
-        :param wing_position: ('top', 'middle', 'bottom')
-        """
-        self.length_factor = length_factor
-        self.full_wing_loft = full_wing_loft
-        self.fuselage_loft = fuselage_loft
-        self.ribcage_factor = ribcage_factor
-        self.wing_position = wing_position
-        super().__init__(creator_id, shapes_of_interest_keys=[self.fuselage_loft, self.full_wing_loft], loglevel=loglevel)
-
-    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
-                      input_shapes: dict[str, Workplane],
-                      **kwargs) -> dict[str, Workplane]:
-        logging.info(f"creating fuselage electronics cutout for {self.fuselage_loft} --> '{self.identifier}'")
-
-        from Airplane.Fuselage.FuselageFactory import FuselageFactory
-        shape__hardware_cutout = FuselageFactory.create_hardware_cutout(ribcage_factor=self.ribcage_factor,
-                                                                        fuselage_loft=shapes_of_interest[
-                                                                            self.fuselage_loft],
-                                                                        full_wing_loft=shapes_of_interest[
-                                                                            self.full_wing_loft],
-                                                                        length_factor=self.length_factor,
-                                                                        position=self.wing_position)
-        ConstructionStepsViewer.instance().display_this_shape(
-            shape__hardware_cutout, logging.DEBUG, msg=f"{self.identifier}")
-        return {str(self.identifier): shape__hardware_cutout}
-
-
-class WingAttachmentBoltCutoutShapeCreator(AbstractShapeCreator):
-    """
-    Create two bolts along the roll-axis through the fuselage,
-    to hold some rubber band.
-    """
-
-    def __init__(self, creator_id: str, fuselage_loft: str, full_wing_loft: str, loglevel=logging.INFO):
-        self.full_wing_loft = full_wing_loft
-        self.fuselage_loft = fuselage_loft
-        super().__init__(creator_id, shapes_of_interest_keys=[self.fuselage_loft, self.full_wing_loft], loglevel=loglevel)
-
-    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
-                      input_shapes: dict[str, Workplane],
-                      **kwargs) -> dict[str, Workplane]:
-        logging.info(f"creating wing attachment bolts --> '{self.identifier}'")
-
-        from Airplane.Fuselage.FuselageFactory import FuselageFactory
-        overlap_dimensions = FuselageFactory.overlap_fuselage_wing_dimensions(shapes_of_interest[self.fuselage_loft],
-                                                                              shapes_of_interest[self.full_wing_loft])
-        from Airplane.Fuselage.FuselageCutouts import FuselageCutouts
-        shape__bolt_holes = FuselageCutouts.create_bolt_hole(overlap_dimensions)
-        ConstructionStepsViewer.instance().display_this_shape(
-            shape__bolt_holes, logging.DEBUG, msg=f"{self.identifier}")
-        return {str(self.identifier): shape__bolt_holes}
-
-
 class FullWingLoftShapeCreator(AbstractShapeCreator):
     def __init__(self, creator_id: str,
                  right_main_wing_index: int,
-                 cpacs_configuration = None,
+                 cpacs_configuration=None,
                  loglevel=logging.INFO
                  ):
         self.right_main_wing_index = right_main_wing_index
@@ -1078,13 +574,13 @@ class FullWingLoftShapeCreator(AbstractShapeCreator):
             complete_wing, logging.DEBUG, msg=f"{self.identifier}")
         return {str(self.identifier): complete_wing,
                 f"{self.identifier}.right": right_wing,
-                f"{self.identifier}.left": left_wing }
+                f"{self.identifier}.left": left_wing}
 
 
 class FullFuselageLoftShapeCreator(AbstractShapeCreator):
     def __init__(self, creator_id: str,
                  fuselage_index: int,
-                 cpacs_configuration = None, loglevel=logging.INFO):
+                 cpacs_configuration=None, loglevel=logging.INFO):
         self.fuselage_index = fuselage_index
         self._cpacs_configuration = cpacs_configuration
         super().__init__(creator_id, shapes_of_interest_keys=None, loglevel=loglevel)
@@ -1098,4 +594,3 @@ class FullFuselageLoftShapeCreator(AbstractShapeCreator):
         ConstructionStepsViewer.instance().display_this_shape(full_fuselage_loft, logging.DEBUG,
                                                               msg=f"{self.identifier}")
         return {str(self.identifier): full_fuselage_loft}
-

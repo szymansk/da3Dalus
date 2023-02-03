@@ -1,16 +1,20 @@
 import sys
-import logging
-from pathlib import Path
-
-from OCP.gp import gp_Pnt
 
 import Extra.tigl_extractor as tg
 import json
 
-from Airplane.ConstructionStepNode import ConstructionStepNode, ConstructionRootNode, JSONStepNode
+from Airplane.ConstructionStepNode import ConstructionStepNode, ConstructionRootNode
 from Airplane.FuselageConstructionSteps import *
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
 from Airplane.aircraft_topology.ServoInformation import ServoInformation
+from Airplane.creator.EngineCapeShapeCreator import EngineCapeShapeCreator
+from Airplane.creator.EngineMountPanelShapeCreator import EngineMountPanelShapeCreator
+from Airplane.creator.EngineMountShapeCreator import EngineMountShapeCreator
+from Airplane.creator.FuselageElectronicsAccessCutOutShapeCreator import FuselageElectronicsAccessCutOutShapeCreator
+from Airplane.creator.FuselageReinforcementShapeCreator import FuselageReinforcementShapeCreator
+from Airplane.creator.FuselageWingSupportShapeCreator import FuselageWingSupportShapeCreator
+from Airplane.creator.StepImportCreator import StepImportCreator
+from Airplane.creator.WingAttachmentBoltCutoutShapeCreator import WingAttachmentBoltCutoutShapeCreator
 
 if __name__ == "__main__":
     CPACS_FILE_NAME = "aircombat_V10"
@@ -50,9 +54,8 @@ if __name__ == "__main__":
     root_node.append(full_elevator_loft_node)
 
     wing_attachment_bolt_node = ConstructionStepNode(
-        WingAttachmentBoltCutoutShapeCreator("attachment_bolts",
-                                             fuselage_loft="full_fuselage_loft",
-                                             full_wing_loft="full_wing_loft"))
+        WingAttachmentBoltCutoutShapeCreator("attachment_bolts", fuselage_loft="full_fuselage_loft",
+                                             full_wing_loft="full_wing_loft", bolt_diameter=6))
     root_node.append(wing_attachment_bolt_node)
 
     servo_shape_import = ConstructionStepNode(
@@ -104,18 +107,19 @@ if __name__ == "__main__":
 
     fuselage_reinforcement_node = ConstructionStepNode(
         FuselageReinforcementShapeCreator("fuselage_reinforcement", rib_width=0.001, rib_spacing=0.003,
-                                          ribcage_factor=0.5, reinforcement_pipes_diameter=0.002,
+                                          ribcage_factor=0.5, reinforcement_pipes_diameter=0.002, print_resolution=0.2,
                                           fuselage_loft="engine_cape.loft", full_wing_loft="full_wing_loft"))
     engine_cape_node.append(fuselage_reinforcement_node)
 
     wing_support_node = ConstructionStepNode(
         FuselageWingSupportShapeCreator("wing_support", rib_quantity=6, rib_width=0.0008, rib_height_factor=1,
-                                        fuselage_loft="engine_cape.loft", full_wing_loft="full_wing_loft"))
+                                        rib_z_offset=0, fuselage_loft="engine_cape.loft",
+                                        full_wing_loft="full_wing_loft"))
     engine_cape_node.append(wing_support_node)
 
     full_elevator_support_loft_node = ConstructionStepNode(
         FuselageWingSupportShapeCreator("elevator_support", rib_quantity=8, rib_width=0.0004, rib_height_factor=20,
-                                        fuselage_loft="engine_cape.loft", full_wing_loft="elevator"))
+                                        rib_z_offset=0, fuselage_loft="engine_cape.loft", full_wing_loft="elevator"))
     engine_cape_node.append(full_elevator_support_loft_node)
 
     fuse_fuselage_reinforcements = ConstructionStepNode(

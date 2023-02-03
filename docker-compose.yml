@@ -6,7 +6,8 @@ services:
     container_name: cq-client
     volumes:
       - ./:/home/cadquery/workspace
-    stdin_open: true 
+    stdin_open: true
+    entrypoint: "/opt/anaconda/bin/python"
     tty: true
     depends_on:
       - cq-server

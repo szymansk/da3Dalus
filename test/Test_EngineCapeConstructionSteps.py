@@ -9,11 +9,17 @@ import json
 
 from Airplane.ConstructionStepNode import ConstructionStepNode, ConstructionRootNode, JSONStepNode
 from Airplane.FuselageConstructionSteps import FullWingLoftShapeCreator, Cut2ShapesCreator, SliceShapesCreator, \
-    EngineMountShapeCreator, EngineCapeShapeCreator, FuselageReinforcementShapeCreator, IgesImportCreator, \
-    Fuse2ShapesCreator, FuselageWingSupportShapeCreator, FuselageElectronicsAccessCutOutShapeCreator, \
-    Intersect2ShapesCreator, SimpleOffsetShapeCreator, WingAttachmentBoltCutoutShapeCreator, ExportToStlCreator, \
-    StepImportCreator, ExportToIgesCreator, ExportToStepCreator, FullWingShapeCreator, EngineMountPanelShapeCreator, \
-    FullFuselageLoftShapeCreator
+    IgesImportCreator, \
+    Fuse2ShapesCreator, Intersect2ShapesCreator, SimpleOffsetShapeCreator, ExportToStlCreator, \
+    ExportToIgesCreator, ExportToStepCreator, FullWingShapeCreator, FullFuselageLoftShapeCreator
+from Airplane.creator.FuselageElectronicsAccessCutOutShapeCreator import FuselageElectronicsAccessCutOutShapeCreator
+from Airplane.creator.FuselageWingSupportShapeCreator import FuselageWingSupportShapeCreator
+from Airplane.creator.WingAttachmentBoltCutoutShapeCreator import WingAttachmentBoltCutoutShapeCreator
+from Airplane.creator.StepImportCreator import StepImportCreator
+from Airplane.creator.EngineMountShapeCreator import EngineMountShapeCreator
+from Airplane.creator.EngineCapeShapeCreator import EngineCapeShapeCreator
+from Airplane.creator.FuselageReinforcementShapeCreator import FuselageReinforcementShapeCreator
+from Airplane.creator.EngineMountPanelShapeCreator import EngineMountPanelShapeCreator
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
 from Airplane.aircraft_topology.EngineInformation import CPACSEngineInformation, EngineInformation, Position
 

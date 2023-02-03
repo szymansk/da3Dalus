@@ -15,7 +15,7 @@ class ShapeDimensions:
     Provides information about the bounding box of the given shape, length, width, height and corner points
     """
 
-    def __init__(self, named_shape: TopoDS_Shape) -> None:
+    def __init__(self, named_shape: cq.Workplane) -> None:
         self.named_shape: TopoDS_Shape = named_shape
         self.x_min, self.y_min, self.z_min, self.x_max, self.y_max, self.z_max = self._calc_coordinates(
             named_shape)
@@ -24,13 +24,13 @@ class ShapeDimensions:
         self.points = self._calc_points()
         # logging.debug(f"{named_shape.name()} dimensions {self.__str__()}")
 
-    def _calc_coordinates(self, shape: OTopo.TopoDS_Shape) -> (float, float, float, float, float, float):
+    def _calc_coordinates(self, shape: cq.Workplane) -> (float, float, float, float, float, float):
         '''
         calculates the max and min coordinates of the 3-axis (x,y,z)
         :param shape: TopoDS_Shape
         :return: x_min, y_min, z_min, x_max, y_max, z_max
         '''
-        bbox = cq.CQ(shape).findSolid().BoundingBox()
+        bbox = shape.findSolid().BoundingBox()
         return bbox.xmin, bbox.ymin, bbox.zmin, bbox.xmax, bbox.ymax, bbox.zmax
 
     def _calc_dimensions(self, x_min, y_min, z_min, x_max, y_max, z_max) -> (float, float, float):
@@ -49,7 +49,7 @@ class ShapeDimensions:
         z_diff = z_max - z_min
         return x_diff, y_diff, z_diff
 
-    def _calc_dimensions_from_Shape(self, shape) -> (float, float, float):
+    def _calc_dimensions_from_Shape(self, shape: cq.Workplane) -> (float, float, float):
         '''
         Calculates the length, width and height of the shapes bounding box
         :param shape: TopoDS_Shape

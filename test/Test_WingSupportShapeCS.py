@@ -1,9 +1,15 @@
+import logging
 import sys
 
 import json 
 import os
 
+from Airplane.creator.EngineCapeShapeCreator import EngineCapeShapeCreator
+from Airplane.creator import EngineMountPanelShapeCreator
 from Airplane.creator.EngineMountShapeCreator import EngineMountShapeCreator
+from Airplane.creator.FuselageReinforcementShapeCreator import FuselageReinforcementShapeCreator
+from Airplane.creator.FuselageWingSupportShapeCreator import FuselageWingSupportShapeCreator
+from Airplane.creator.WingAttachmentBoltCutoutShapeCreator import WingAttachmentBoltCutoutShapeCreator
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
@@ -11,8 +17,7 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 from Airplane.ConstructionStepNode import ConstructionStepNode, ConstructionRootNode
 from Airplane.FuselageConstructionSteps import *
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
-from Airplane.aircraft_topology.EngineInformation import Position
-
+from Airplane.aircraft_topology.EngineInformation import Position, EngineInformation
 
 if __name__ == "__main__":
 
@@ -31,66 +36,65 @@ if __name__ == "__main__":
     root_node = ConstructionRootNode(creator_id="RV-7")
     pwd = os.path.curdir
 
-    offset_fuselage_node = ConstructionStepNode(
-        StepImportCreator("offset_fuselage",
-                          step_file=os.path.abspath("../components/aircraft/RV-7/fuselage_inlets.step"),
+    full_wing_loft_node = ConstructionStepNode(
+        StepImportCreator("full_wing_loft",
+                          step_file=os.path.abspath(f"../components/aircraft/RV-7/wing.step"),
                           scale=base_scale))
-    root_node.append(offset_fuselage_node)
+    root_node.append(full_wing_loft_node)
 
-    # #########
-    engine_mount_node = ConstructionStepNode(
-        EngineMountShapeCreator("engine_mount", engine_index=1, mount_plate_thickness=mount_plate_thickness))
-    root_node.append(engine_mount_node)
+    full_fuselage_loft_node = ConstructionStepNode(
+        StepImportCreator("full_fuselage",
+                          step_file=os.path.abspath(f"../components/aircraft/RV-7/fuselage.step"),
+                          scale=base_scale - base_scale * 0.01,
+                          scale_x=base_scale,
+                          scale_y=base_scale - base_scale*0.01,
+                          scale_z=base_scale - base_scale*0.01))
+    root_node.append(full_fuselage_loft_node)
 
-    engine_panel_node = ConstructionStepNode(
-        EngineMountPanelShapeCreator("engine_mount_plate", engine_index=1, mount_plate_thickness=mount_plate_thickness,
-                                     full_fuselage_loft="offset_fuselage"))
-    engine_mount_node.append(engine_panel_node)
+    wing_support_node = ConstructionStepNode(
+        FuselageWingSupportShapeCreator("wing_support", rib_quantity=18, rib_width=0.0008 * 1000, rib_height_factor=1.5,
+                                        rib_z_offset=0, fuselage_loft="full_fuselage", full_wing_loft="full_wing_loft",
+                                        loglevel=logging.DEBUG))
+    #root_node.append(wing_support_node)
 
-    fuse_mount_with_plate = ConstructionStepNode(
-        Fuse2ShapesCreator("engine_mount"))
-    engine_panel_node.append(fuse_mount_with_plate)
-    # engine mount END
+    full_elevator_loft_node = ConstructionStepNode(
+        StepImportCreator("elevator",
+                          step_file=os.path.abspath(f"../components/aircraft/RV-7/full_elevator_straight.step"),
+                          scale=base_scale))
+    root_node.append(full_elevator_loft_node)
 
-    brushless_shape_import = ConstructionStepNode(
-        ComponentImporterCreator("brushless",
-                                 component_file=os.path.abspath("../components/brushless/DPower_AL3542-5_AL3542-7_AL35-09_v2.step"),
-                                 component_idx="brushless"))
-    root_node.append(brushless_shape_import)
-
-    aircraft_step_export_node = ConstructionStepNode(
-        ExportToStepCreator(Path(f"{root_node.identifier}").stem,
-                            file_path=os.path.abspath("../exports"),
-                            shapes_to_export=["engine_mount",
-                                              "brushless"]))
-    root_node.append(aircraft_step_export_node)
+    full_elevator_support_loft_node = ConstructionStepNode(
+        FuselageWingSupportShapeCreator("elevator_support", rib_quantity=8, rib_width=0.0004 * 1000,
+                                        rib_height_factor=6, rib_z_offset=20, fuselage_loft="full_fuselage",
+                                        full_wing_loft="elevator"))
+    root_node.append(full_elevator_support_loft_node)
 
     # dump to a json string
     json_data: str = json.dumps(root_node, indent=4, cls=GeneralJSONEncoder)
 
     servo_elevator = ServoInformation(
-        height=0.022,
-        width=0.012,
-        length=0.023,
-        lever_length=0.023,
+        height=0.022*1000,
+        width=0.012*1000,
+        length=0.023*1000,
+        lever_length=0.023*1000,
         rot_x=180.0,
         rot_y=0.0,
         rot_z=0.0,
-        trans_x=0.28+0.02,
-        trans_y=0.005,
-        trans_z=0.044-0.0244)
+        trans_x=0.28*1000+0.02*1000,
+        trans_y=0.005*1000,
+        trans_z=0.044*1000-0.0244*1000)
 
     servo_rudder = ServoInformation(
-        height=0.022,
-        width=0.012,
-        length=0.023,
-        lever_length=0.023,
+        height=0.022*1000,
+        width=0.012*1000,
+        length=0.023*1000,
+        lever_length=0.023*1000,
         rot_x=180.0,
         rot_y=0.0,
         rot_z=0.0,
-        trans_x=0.28+0.02,
-        trans_y=-0.005-0.012,
-        trans_z=0.044-0.0244)
+        trans_x=0.28*1000+0.02*1000,
+        trans_y=-0.005*1000-0.012*1000,
+        trans_z=0.044*1000-0.0244*1000)
     servo_information = {1: servo_elevator, 2: servo_rudder}
 
     engine_info1 = EngineInformation(down_thrust=-2.5,
@@ -102,14 +106,13 @@ if __name__ == "__main__":
                                      screw_hole_circle=0.042*1000,
                                      mount_box_length=0.0133 * 2.5*1000,
                                      screw_din_diameter=0.0032*1000,
-                                     screw_length=0.016*1000,
-                                     rot_x=45)
+                                     screw_length=0.016*1000)
 
     # engine_information = {1: CPACSEngineInformation(1, ccpacs_configuration)}
     engine_information = {1: engine_info1}
 
-    lipo_information = ComponentInformation(width=0.031, height=0.035, length=0.108,
-                                            trans_x=0.129, trans_y=0.0, trans_z=-0.021,
+    lipo_information = ComponentInformation(width=0.031*1000, height=0.035*1000, length=0.108*1000,
+                                            trans_x=0.129*1000, trans_y=0.0, trans_z=-0.021*1000,
                                             rot_x=0.0, rot_y=0.0, rot_z=0)
 
     component_information = {"brushless": engine_info1, "lipo": lipo_information}

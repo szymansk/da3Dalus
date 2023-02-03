@@ -1,7 +1,8 @@
 import OCP.BRepAlgoAPI as OAlgo
 
 from Extra.ConstructionStepsViewer import *
-from cadquery import Workplane
+from cadquery import Workplane, Solid
+
 
 class BooleanCADOperation:
 
@@ -131,8 +132,10 @@ class BooleanCADOperation:
 
     @staticmethod
     def intersect_shape_with_shape(a: Workplane, b: Workplane, new_name: str) -> Workplane:
-        named_shape = Workplane(
-            OAlgo.BRepAlgoAPI_Common(a.shape(), b.shape()).Shape(), new_name)
-        named_shape.shape()
+        a_solid = a.findSolid().Solids()[0].wrapped
+        b_solid = b.findSolid().Solids()[0].wrapped
+        a.findSolid().BoundingBox()
+        named_shape = Workplane(Solid(
+            OAlgo.BRepAlgoAPI_Common(a_solid, b_solid).Shape())).tag(new_name)
         return named_shape
 

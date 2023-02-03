@@ -1,5 +1,9 @@
+from datetime import datetime
 import json
+import logging
 import sys
+import time
+import uuid
 
 import requests
 from jupyter_cadquery.base import _tessellate_group
@@ -44,10 +48,10 @@ class CQServerConnector:
 
     def __init__(self, url):
         self.url = url
-        CQServerConnector.assembly = Assembly()
+        CQServerConnector.assembly = Assembly(name="root")
 
     def render(self, name, cq_model):
-        CQServerConnector.assembly.add(cq_model)
+        CQServerConnector.assembly.add(cq_model, name=f"{name}_{datetime.now()}")
         json_model = get_json_model(CQServerConnector.assembly)
         json_data = get_data(name, json_model)
         self.post_data(json_data)
@@ -57,7 +61,7 @@ class CQServerConnector:
         r = requests.post(url=self.url, json=data, timeout=20)
         # extracting response text 
         resp = r.text
-        print(f"Render Response:{resp}")
+        logging.debug(f"Render Response:{resp}")
         return r
 
 
