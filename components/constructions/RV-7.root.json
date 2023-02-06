@@ -10,16 +10,60 @@
                 "rot_x": 0.0,
                 "rot_y": 0.0,
                 "rot_z": 0.0,
-                "scale": 38.0,
-                "scale_x": 38.0,
-                "scale_y": 38.0,
-                "scale_z": 38.0,
+                "scale": 38,
+                "scale_x": 38,
+                "scale_y": 38,
+                "scale_z": 38,
                 "loglevel": 20,
                 "creator_id": "full_wing_loft",
                 "$TYPE": "StepImportCreator"
             },
             "loglevel": 50,
             "creator_id": "full_wing_loft.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "flaps": {
+            "successors": {},
+            "creator": {
+                "step_file": "/opt/project/components/aircraft/RV-7/flaps.step",
+                "trans_x": 0.0,
+                "trans_y": 0.0,
+                "trans_z": 0.0,
+                "rot_x": 0.0,
+                "rot_y": 0.0,
+                "rot_z": 0.0,
+                "scale": 38,
+                "scale_x": 38,
+                "scale_y": 38,
+                "scale_z": 38,
+                "loglevel": 20,
+                "creator_id": "flaps",
+                "$TYPE": "StepImportCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "flaps.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "aileron": {
+            "successors": {},
+            "creator": {
+                "step_file": "/opt/project/components/aircraft/RV-7/aileron_right.step",
+                "trans_x": 0.0,
+                "trans_y": 0.0,
+                "trans_z": 0.0,
+                "rot_x": 0.0,
+                "rot_y": 0.0,
+                "rot_z": 0.0,
+                "scale": 38,
+                "scale_x": 38,
+                "scale_y": 38,
+                "scale_z": 38,
+                "loglevel": 20,
+                "creator_id": "aileron",
+                "$TYPE": "StepImportCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "aileron.node",
             "$TYPE": "ConstructionStepNode"
         },
         "fuselage_hull_imp": {
@@ -36,6 +80,42 @@
                     "loglevel": 50,
                     "creator_id": "fuselage_small_hull.node",
                     "$TYPE": "ConstructionStepNode"
+                },
+                "cockpit": {
+                    "successors": {
+                        "cockpit": {
+                            "successors": {},
+                            "creator": {
+                                "minuend": null,
+                                "subtrahend": null,
+                                "loglevel": 20,
+                                "creator_id": "cockpit",
+                                "$TYPE": "Cut2ShapesCreator"
+                            },
+                            "loglevel": 50,
+                            "creator_id": "cockpit.node",
+                            "$TYPE": "ConstructionStepNode"
+                        }
+                    },
+                    "creator": {
+                        "step_file": "/opt/project/components/aircraft/RV-7/cockpit.step",
+                        "trans_x": 0.0,
+                        "trans_y": 0.0,
+                        "trans_z": 0.0,
+                        "rot_x": 0.0,
+                        "rot_y": 0.0,
+                        "rot_z": 0.0,
+                        "scale": 38,
+                        "scale_x": 38,
+                        "scale_y": 38,
+                        "scale_z": 38,
+                        "loglevel": 20,
+                        "creator_id": "cockpit",
+                        "$TYPE": "StepImportCreator"
+                    },
+                    "loglevel": 50,
+                    "creator_id": "cockpit.node",
+                    "$TYPE": "ConstructionStepNode"
                 }
             },
             "creator": {
@@ -46,10 +126,10 @@
                 "rot_x": 0.0,
                 "rot_y": 0.0,
                 "rot_z": 0.0,
-                "scale": 38.0,
-                "scale_x": 38.0,
-                "scale_y": 38.0,
-                "scale_z": 38.0,
+                "scale": 38,
+                "scale_x": 38,
+                "scale_y": 38,
+                "scale_z": 38,
                 "loglevel": 20,
                 "creator_id": "fuselage_hull_imp",
                 "$TYPE": "StepImportCreator"
@@ -68,10 +148,10 @@
                 "rot_x": 0.0,
                 "rot_y": 0.0,
                 "rot_z": 0.0,
-                "scale": 38.0,
-                "scale_x": 38.0,
-                "scale_y": 38.0,
-                "scale_z": 38.0,
+                "scale": 38,
+                "scale_x": 38,
+                "scale_y": 38,
+                "scale_z": 38,
                 "loglevel": 20,
                 "creator_id": "elevator",
                 "$TYPE": "StepImportCreator"
@@ -90,16 +170,60 @@
                 "rot_x": 0.0,
                 "rot_y": 0.0,
                 "rot_z": 0.0,
-                "scale": 38.0,
-                "scale_x": 38.0,
-                "scale_y": 38.0,
-                "scale_z": 38.0,
+                "scale": 38,
+                "scale_x": 38,
+                "scale_y": 38,
+                "scale_z": 38,
                 "loglevel": 20,
                 "creator_id": "rudder",
                 "$TYPE": "StepImportCreator"
             },
             "loglevel": 50,
             "creator_id": "rudder.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "rudder_flap": {
+            "successors": {},
+            "creator": {
+                "step_file": "/opt/project/components/aircraft/RV-7/rudder_flap.step",
+                "trans_x": 0.0,
+                "trans_y": 0.0,
+                "trans_z": 0.0,
+                "rot_x": 0.0,
+                "rot_y": 0.0,
+                "rot_z": 0.0,
+                "scale": 38,
+                "scale_x": 38,
+                "scale_y": 38,
+                "scale_z": 38,
+                "loglevel": 20,
+                "creator_id": "rudder_flap",
+                "$TYPE": "StepImportCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "rudder_flap.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "elevator_flap": {
+            "successors": {},
+            "creator": {
+                "step_file": "/opt/project/components/aircraft/RV-7/elevator_flap_straight.step",
+                "trans_x": 0.0,
+                "trans_y": 0.0,
+                "trans_z": 0.0,
+                "rot_x": 0.0,
+                "rot_y": 0.0,
+                "rot_z": 0.0,
+                "scale": 38,
+                "scale_x": 38,
+                "scale_y": 38,
+                "scale_z": 38,
+                "loglevel": 20,
+                "creator_id": "elevator_flap",
+                "$TYPE": "StepImportCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "elevator_flap.node",
             "$TYPE": "ConstructionStepNode"
         },
         "elevator_servo": {
@@ -164,7 +288,7 @@
                         "engine_mount_box_length": null,
                         "engine_down_thrust_deg": null,
                         "engine_side_thrust_deg": null,
-                        "mount_plate_thickness": 5.0,
+                        "mount_plate_thickness": 5,
                         "loglevel": 20,
                         "creator_id": "engine_mount_plate",
                         "$TYPE": "EngineMountPanelShapeCreator"
@@ -183,7 +307,7 @@
                 "engine_down_thrust_deg": null,
                 "engine_side_thrust_deg": null,
                 "engine_screw_din_diameter": null,
-                "mount_plate_thickness": 5.0,
+                "mount_plate_thickness": 5,
                 "loglevel": 20,
                 "creator_id": "engine_mount_init",
                 "$TYPE": "EngineMountShapeCreator"
@@ -196,7 +320,7 @@
             "successors": {},
             "creator": {
                 "full_fuselage_loft": "fuselage_hull_imp",
-                "mount_plate_thickness": 5.0,
+                "mount_plate_thickness": 5,
                 "engine_total_cover_length": null,
                 "engine_mount_box_length": null,
                 "engine_index": 1,
@@ -212,7 +336,7 @@
             "successors": {},
             "creator": {
                 "full_fuselage_loft": "fuselage_small_hull",
-                "mount_plate_thickness": 5.0,
+                "mount_plate_thickness": 5,
                 "engine_total_cover_length": null,
                 "engine_mount_box_length": null,
                 "engine_index": 1,
@@ -222,19 +346,6 @@
             },
             "loglevel": 50,
             "creator_id": "fuselage_small_hull.node",
-            "$TYPE": "ConstructionStepNode"
-        },
-        "fuselage_shell_loft": {
-            "successors": {},
-            "creator": {
-                "thickness": -0.2,
-                "fuselage": "fuselage_hull.loft",
-                "loglevel": 10,
-                "creator_id": "fuselage_shell_loft",
-                "$TYPE": "FuselageShellShapeCreator"
-            },
-            "loglevel": 50,
-            "creator_id": "fuselage_shell_loft.node",
             "$TYPE": "ConstructionStepNode"
         },
         "attachment_bolts": {
@@ -255,11 +366,12 @@
             "successors": {},
             "creator": {
                 "print_resolution": 0.2,
-                "rib_spacing": 0.0,
+                "rib_spacing": 5.0,
                 "full_wing_loft": "full_wing_loft",
                 "fuselage_loft": "fuselage_hull.loft",
                 "rib_width": 0.8,
                 "ribcage_factor": 0.5,
+                "circle_factor": 0.9,
                 "reinforcement_pipes_diameter": 2.0,
                 "loglevel": 20,
                 "creator_id": "fuselage_reinforcement_raw",
@@ -399,12 +511,67 @@
             "creator_id": "final_fuselage.node",
             "$TYPE": "ConstructionStepNode"
         },
+        "elevator_cut": {
+            "successors": {},
+            "creator": {
+                "minuend": "elevator",
+                "subtrahend": "rudder",
+                "loglevel": 20,
+                "creator_id": "elevator_cut",
+                "$TYPE": "Cut2ShapesCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "elevator_cut.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "brushless": {
+            "successors": {},
+            "creator": {
+                "component_idx": "brushless",
+                "component_file": "/opt/project/components/brushless/DPower_AL3542-5_AL3542-7_AL35-09_v2.step",
+                "mirror_model_by_plane": "",
+                "loglevel": 20,
+                "creator_id": "brushless",
+                "$TYPE": "ComponentImporterCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "brushless.node",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "lipo_model": {
+            "successors": {},
+            "creator": {
+                "component_idx": "lipo",
+                "component_file": "/opt/project/components/lipo/D-Power HD-2200 4S Lipo (14,8V) 30C v1.iges",
+                "mirror_model_by_plane": "",
+                "loglevel": 10,
+                "creator_id": "lipo_model",
+                "$TYPE": "ComponentImporterCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "lipo_model.node",
+            "$TYPE": "ConstructionStepNode"
+        },
         "RV-7": {
             "successors": {},
             "creator": {
                 "file_path": "../exports",
                 "shapes_to_export": [
-                    "final_fuselage"
+                    "engine_mount",
+                    "brushless",
+                    "lipo_model",
+                    "fuselage_hull.cape",
+                    "final_fuselage",
+                    "full_wing_loft",
+                    "elevator",
+                    "elevator_flap",
+                    "rudder",
+                    "rudder_flap",
+                    "flaps",
+                    "aileron",
+                    "cockpit",
+                    "elevator_servo.model",
+                    "rudder_servo.model"
                 ],
                 "loglevel": 20,
                 "creator_id": "RV-7",

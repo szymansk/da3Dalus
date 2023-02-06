@@ -2,8 +2,12 @@ import logging
 import os
 from pathlib import Path
 
+import OCP
 from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform
+from OCP.IGESControl import IGESControl_Reader, IGESControl_Writer
+from OCP.Interface import Interface_Static
 from OCP.TopoDS import TopoDS_Shape
+from cadquery import Shape
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
 from Airplane.aircraft_topology.ComponentInformation import ComponentInformation
@@ -213,6 +217,7 @@ class RepairFacesShapeCreator(AbstractShapeCreator):
         return {self.identifier: shape}
 
 
+#TODO: MirrorShapeCreator
 class MirrorShapeCreator(AbstractShapeCreator):
     """
     Creates a simple offset shape from given shape or the take the first input_shape,
@@ -245,7 +250,6 @@ class MirrorShapeCreator(AbstractShapeCreator):
 
         return {self.identifier: result}
 
-
 class Intersect2ShapesCreator(AbstractShapeCreator):
     """
     Intersect the shape A with shape B (minuend / subtrahend = new_shape).
@@ -268,8 +272,6 @@ class Intersect2ShapesCreator(AbstractShapeCreator):
         new_shape = shape__a.intersect(shape__b).combine(glue=True).display(name=self.identifier, severity=logging.DEBUG)
 
         return {self.identifier: new_shape}
-
-
 # === END basic shape operations ===
 
 class IgesImportCreator(AbstractShapeCreator):
@@ -316,16 +318,22 @@ class IgesImportCreator(AbstractShapeCreator):
         return {self.identifier: trans_shape}
 
     @classmethod
-    def iges_importer(cls, iges_file) -> TopoDS_Shape:
-        from OCP.IIGESFile_Read import IGESFile_Read
-        # from OCP.Extend.DataExchange import read_iges_file
-        topods: list[TopoDS_Shape] = IGESFile_Read(iges_file,
-                                                   return_as_shapes=True,
-                                                   verbosity=True,
-                                                   visible_only=True)
+    def iges_importer(cls, filename) -> Workplane:
+        """Imports a IGES file as a new CQ Workplane object."""
+        reader = IGESControl_Reader()
+        # with suppress_stdout_stderr():
+        read_status = reader.ReadFile(filename)
+        if read_status != OCP.IFSelect.IFSelect_RetDone:
+            raise ValueError("IGES file %s could not be loaded" % (filename))
+        reader.TransferRoots()
+        occ_shapes = []
+        for i in range(reader.NbShapes()):
+            occ_shapes.append(reader.Shape(i + 1))
+        solids = []
+        for shape in occ_shapes:
+            solids.append(Shape.cast(shape))
 
-        return BooleanCADOperation.fuse_list_of_shapes(topods) if len(topods) > 1 else topods[0]
-
+        return cq.Workplane("XY").newObject(solids)
 
 class ExportToIgesCreator(AbstractShapeCreator):
 
@@ -337,14 +345,28 @@ class ExportToIgesCreator(AbstractShapeCreator):
     def _create_shape(self, shapes_of_interest: dict[str, Workplane],
                       input_shapes: dict[str, Workplane],
                       **kwargs) -> dict[str, Workplane]:
-        logging.info(f"exporting iges model '{self.identifier}' --> '{self.file_path}'")
-
-        from tigl3.import_export_helper import export_shapes
-        path = os.path.join(self.file_path, f"{self.identifier}.igs")
-        export_shapes(list(shapes_of_interest.values()), path, deflection=0.000001)
-
+        for key, shape in shapes_of_interest.items():
+            path = os.path.join(self.file_path, f"{self.identifier}_{key}.igs")
+            logging.info(f"exporting iges model '{key}' --> '{path}'")
+            self.export_iges_file(shape, path)
         return shapes_of_interest
 
+    @classmethod
+    def export_iges_file(cls, shape, filename, author=None, organization=None):
+        """ Exports a shape to an IGES file.  """
+        # initialize iges writer in BRep mode
+        writer = IGESControl_Writer("MM", 1)
+        Interface_Static.SetIVal("write.iges.brep.mode", 1)
+        # write surfaces with iges 5.3 entities
+        Interface_Static.SetIVal("write.convertsurface.mode", 1)
+        Interface_Static.SetIVal("write.precision.mode", 1)
+        if author is not None:
+           Interface_Static.SetCVal("write.iges.header.author", author)
+        if organization is not None:
+           Interface_Static.SetCVal("write.iges.header.company", organization)
+        writer.AddShape(shape.val().wrapped)
+        writer.ComputeModel()
+        writer.Write(filename)
 
 class ExportToStepCreator(AbstractShapeCreator):
 
@@ -409,7 +431,6 @@ class ExportToStepCreator(AbstractShapeCreator):
         # Interface_Static_SetCVal("write.step.unit", "")
         # Interface_Static_SetIVal("write.precision.mode", 0)
         return step_writer
-
 
 class ExportToStlCreator(AbstractShapeCreator):
 
@@ -514,7 +535,7 @@ class ComponentImporterCreator(AbstractShapeCreator):
         component = self._component_information[self.component_idx]
         file = self.component_file
         if Path(file).suffix.lower() in [".iges", ".igs"]:
-            shape = Workplane(IgesImportCreator.iges_importer(file), Path(file).name.lower())
+            shape = IgesImportCreator.iges_importer(file)
         elif Path(file).suffix.lower() in [".step", ".stp"]:
             shape = StepImportCreator.step_importer(file)
         else:
