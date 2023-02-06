@@ -154,7 +154,7 @@ if __name__ == "__main__":
     fuselage_shell_node = ConstructionStepNode(
         FuselageShellShapeCreator("full_fuselage_shell",
                                   thickness=0.8,
-                                  shape="fuselage_hull.loft"))
+                                  fuselage="fuselage_hull.loft"))
     #root_node.append(fuselage_shell_node)
 
     fuselage_small_hull_split = ConstructionStepNode(

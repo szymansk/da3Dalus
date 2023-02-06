@@ -24,7 +24,7 @@ class Exporter:
         abs_filepath = filepath.absolute()
 
         # parameter validation
-        if not OTopo.TopoDS_Iterator(named_shape.shape()).More():
+        if not OTopo.TopoDS_Iterator(named_shape.fuselage()).More():
             raise AssertionError("Shape cannot be null.")
         if mode not in ["ascii", "binary"]:
             raise AssertionError("Mode should be either 'ascii' or 'binary'.")
@@ -37,7 +37,7 @@ class Exporter:
         params.InParallel = True
         params.AllowQualityDecrease = False
 
-        mesh = BRepMesh_IncrementalMesh(named_shape.shape(), params)
+        mesh = BRepMesh_IncrementalMesh(named_shape.fuselage(), params)
 
         mesh.Perform()
         if not mesh.IsDone():
@@ -53,7 +53,7 @@ class Exporter:
             stl_exporter.SetASCIIMode(False)
 
         # writing the STL data to a file
-        stl_exporter.Write(named_shape.shape(), str(abs_filepath))
+        stl_exporter.Write(named_shape.fuselage(), str(abs_filepath))
 
         if not os.path.isfile(abs_filepath):
             raise IOError("File not written to disk.")

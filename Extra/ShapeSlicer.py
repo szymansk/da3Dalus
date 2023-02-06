@@ -39,7 +39,7 @@ class ShapeSlicer:
         '''
         if self.shape_dimensions.get_length() < self.shape_dimensions.get_width():
             logging.debug(f"Rotating {namedshape.name()} by 90 degrees")
-            rotated_shape = OExs.rotate_shape(namedshape.shape(), Ogp.gp_OZ(), -90)
+            rotated_shape = OExs.rotate_shape(namedshape.fuselage(), Ogp.gp_OZ(), -90)
             result: TGeo.CNamedShape = TGeo.CNamedShape(rotated_shape, namedshape.name())
             self.m.display_this_shape(result, severity=logging.NOTSET, msg=f"Rotated {namedshape.name()}")
             self.shape_dimensions = ShapeDimensions(result)
@@ -61,7 +61,7 @@ class ShapeSlicer:
             cutout_box = OExs.translate_shp(cutout_box, Ogp.gp_Vec(position_front, 0, 0))
             part: TGeo.CNamedShape = self.namedshape
             name = f"{self.namedshape.name()}_{i}"
-            part = TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Common(part.shape(), cutout_box).Shape(), name)
+            part = TGeo.CNamedShape(OAlgo.BRepAlgoAPI_Common(part.fuselage(), cutout_box).Shape(), name)
             self.m.display_this_shape(part, severity=logging.NOTSET)
             self.parts_list.append(part)
 
@@ -106,7 +106,7 @@ class ShapeSlicer:
         frontbox = None
         rearbox = None
         for i in range(0, len(list_of_pos)):
-            part = self.namedshape.shape()
+            part = self.namedshape.fuselage()
             # Create a box cutout box for the back, and move it wo the postion on the list and cut it from the shape
             rearbox = OPrim.BRepPrimAPI_MakeBox(self.shape_dimensions.get_point(0), self.shape_dimensions.get_length(),
                                                 self.shape_dimensions.get_width(),

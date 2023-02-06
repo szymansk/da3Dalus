@@ -86,4 +86,5 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
             enum = input_shapes.keys().__reversed__()
             shapes_needed = [shape_key if shape_key is not None else next(enum) for shape_key in shapes_needed]
         shapes = self.check_if_shapes_are_available(shapes_needed, **kwargs)
-        return {key: Workplane(shapes[key].findSolid().copy()) for key in shapes_needed}
+
+        return {key: shapes[key] for key in shapes_needed}

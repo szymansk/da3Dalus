@@ -127,7 +127,7 @@ class WingFactory:
         aTrsf = Ogp.gp_Trsf()
         aTrsf.SetMirror(Ogp.gp_Ax2(Ogp.gp_Pnt(0, 0, 0), Ogp.gp_Dir(0, 1, 0)))
         # Apply the mirror transformation
-        aBRespTrsf = OBui.BRepBuilderAPI_Transform(shape.shape(), aTrsf)
+        aBRespTrsf = OBui.BRepBuilderAPI_Transform(shape.fuselage(), aTrsf)
 
         # Get the mirrored shape back out of the transformation and convert back to a wire
         mirrord_wing_shape = aBRespTrsf.Shape()

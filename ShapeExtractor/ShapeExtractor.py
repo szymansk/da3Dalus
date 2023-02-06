@@ -13,13 +13,13 @@ class ShapeExtractor:
     def get_wing(self, wing_index):
         self.wing: TConfig.CCPACSWing = self.cpacs_configuration.get_wing(wing_index)
         self.wing_loft: TGeo.CNamedShape = self.wing.get_loft()
-        self.wing_shape: OTopo.TopoDS_Shape = self.wing_loft.shape()
+        self.wing_shape: OTopo.TopoDS_Shape = self.wing_loft.fuselage()
         return self.wing_shape
 
     def get_fuselage(self, fuselage_index):
         self.fuselage: TConfig.CCPACSWing = self.cpacs_configuration.get_fuselage(fuselage_index)
         self.fuselage_loft: TGeo.CNamedShape = self.fuselage.get_loft()
-        self.fuselage_shape: OTopo.TopoDS_Shape = self.fuselage_loft.shape()
+        self.fuselage_shape: OTopo.TopoDS_Shape = self.fuselage_loft.fuselage()
         return self.fuselage_shape
 
     def get_trailing_edge_device(self, wing_index, device_index):
@@ -33,7 +33,7 @@ class ShapeExtractor:
         trailing_edge_device: TConfig.CCPACSTrailingEdgeDevice = trailing_edge_devices.get_trailing_edge_device(
             device_index)
         cutout_Nshape: TGeo.CNamedShape = trailing_edge_device.get_cut_out_shape()
-        cutout_shape: OTopo.TopoDS_Shape = cutout_Nshape.shape()
+        cutout_shape: OTopo.TopoDS_Shape = cutout_Nshape.fuselage()
         shape_nshape: TGeo.CNamedShape = trailing_edge_device.get_loft()
-        shape: OTopo.TopoDS_Shape = shape_nshape.shape()
+        shape: OTopo.TopoDS_Shape = shape_nshape.fuselage()
         return shape, cutout_shape

@@ -14,6 +14,7 @@ from Extra.BooleanOperationsForLists import BooleanCADOperation
 
 from Extra.ConstructionStepsViewer import *
 import cadquery as cq
+from OCP.BRepAlgoAPI import BRepAlgoAPI_Cut
 
 
 # === BEGIN: Basic shape operations ===
@@ -33,10 +34,11 @@ class Fuse2ShapesCreator(AbstractShapeCreator):
         shape_list = list(shapes_of_interest.values())
         logging.info(
             f"fusing shapes '{list(shapes_of_interest.keys())[0]}' + '{list(shapes_of_interest.keys())[1]}' --> '{self.identifier}'")
+        shape_list = [sh if isinstance(sh, cq.Workplane) else cq.Workplane(obj=sh) for sh in shape_list]
 
         fused_shape = shape_list[0] + shape_list[1]
-        fused_shape.display(self.identifier, logging.DEBUG)
 
+        fused_shape.display(name=self.identifier, severity=logging.DEBUG)
         return {self.identifier: fused_shape}
 
 
@@ -58,9 +60,9 @@ class FuseMultipleShapesCreator(AbstractShapeCreator):
         fused_shape = shape_list[0]
         for shape in shape_list[1:]:
             fused_shape += shape
+        fused_shape = fused_shape.combine(glue=True)
 
         fused_shape.display(self.identifier, logging.DEBUG)
-
         return {self.identifier: fused_shape}
 
 
@@ -81,17 +83,24 @@ class Cut2ShapesCreator(AbstractShapeCreator):
                       **kwargs) -> dict[str, Workplane]:
         shape_list = list(shapes_of_interest.values())
         logging.info(
-            f"cutting shapes '{list(shapes_of_interest.keys())[0]}' - '{list(shapes_of_interest.keys())[1]}' --> '{self.identifier}'")
+            f"cutting shapes '{list(shapes_of_interest.keys())[0]}' - '{list(shapes_of_interest.keys())[1]}' "
+            f"--> '{self.identifier}'")
 
         shape__minuend = shape_list[0]
         shape__subtrahend = shape_list[1]
         try:
-            cut_shape = shape__minuend.cut(shape__subtrahend, clean=True).display(name=self.identifier, severity=logging.DEBUG)
+            cut_shape = shape__minuend.cut(shape__subtrahend, clean=True).combine(glue=True)
         except:
             logging.error(
-                f"FAILED: cutting shapes '{list(shapes_of_interest.keys())[0]}' - '{list(shapes_of_interest.keys())[1]}' --> '{self.identifier}'")
+                f"FAILED: cutting shapes '{list(shapes_of_interest.keys())[0]}' - "
+                f"'{list(shapes_of_interest.keys())[1]}' --> '{self.identifier}'")
             cut_shape = shape__minuend
+        #
+        # topods = BRepAlgoAPI_Cut(shape__minuend.findSolid().wrapped, shape__subtrahend.findSolid().wrapped).Shape()
+        # solid = cq.Solid(topods)
+        # cut_shape = cq.Workplane(solid).display(name=f"{self.identifier}", severity=logging.DEBUG)
 
+        cut_shape.display(name=self.identifier, severity=logging.DEBUG)
         return {self.identifier: cut_shape}
 
 
@@ -115,9 +124,11 @@ class CutMultipleShapesCreator(AbstractShapeCreator):
         shape = list(shapes_of_interest.values())[0]
         for subtrahend in subtrahends_shapes:
             shape = shape.cut(subtrahend, clean=True)
-            shape.display(name=f"{self.identifier}", severity=logging.DEBUG)
+            shape.display(name=f"{self.identifier}", severity=logging.NOTSET)
+        new_shape = shape.combine(glue=True)
 
-        return {self.identifier: shape}
+        new_shape.display(name=f"{self.identifier}", severity=logging.DEBUG)
+        return {self.identifier: new_shape}
 
 
 class SimpleOffsetShapeCreator(AbstractShapeCreator):
@@ -154,22 +165,26 @@ class FuselageShellShapeCreator(AbstractShapeCreator):
 
     def __init__(self, creator_id: str,
                  thickness: float,
-                 shape: str = None,
+                 fuselage: str = None,
                  loglevel=logging.INFO):
         self.thickness = thickness
-        self.shape = shape
+        self.fuselage = fuselage
 
-        super().__init__(creator_id, shapes_of_interest_keys=[shape], loglevel=loglevel)
+        super().__init__(creator_id, shapes_of_interest_keys=[self.fuselage], loglevel=loglevel)
 
     def _create_shape(self, shapes_of_interest: dict[str, Workplane],
                       input_shapes: dict[str, Workplane],
                       **kwargs) -> dict[str, Workplane]:
         shape_list = list(shapes_of_interest.values())
-        logging.info(f"offset shape '{list(shapes_of_interest.keys())[0]}' by {self.thickness}mm --> '{self.identifier}'")
+        logging.info(f"shell shape '{list(shapes_of_interest.keys())[0]}' by {self.thickness}mm --> '{self.identifier}'")
 
-        shape = shape_list[0].faces('<X or >X').shell(self.thickness).display(name=self.identifier, severity=logging.DEBUG)
+        fuselage = shape_list[0].findSolid()
+        offset_shape = cq.Workplane("ZY").newObject([fuselage]).offset3D(self.thickness)
+        shape = cq.Workplane("ZY").newObject([fuselage]).cut(toCut=offset_shape)\
+            .display(name=f"{self.identifier}", severity=logging.DEBUG).findSolid()
 
         return {self.identifier: shape}
+
 
 class RepairFacesShapeCreator(AbstractShapeCreator):
     """
@@ -196,6 +211,7 @@ class RepairFacesShapeCreator(AbstractShapeCreator):
         shape = shape_list[0].add(faces).combine(glue=True, tol=0.05).display(name=self.identifier, severity=logging.DEBUG)
 
         return {self.identifier: shape}
+
 
 class MirrorShapeCreator(AbstractShapeCreator):
     """
@@ -249,13 +265,12 @@ class Intersect2ShapesCreator(AbstractShapeCreator):
 
         shape__a = shape_list[0]
         shape__b = shape_list[1]
-        shape__a.intersect(shape__b).combine(glue=True, tol=0.05).display(name=self.identifier, severity=logging.DEBUG)
+        new_shape = shape__a.intersect(shape__b).combine(glue=True).display(name=self.identifier, severity=logging.DEBUG)
 
-        return {self.identifier: shape__a}
+        return {self.identifier: new_shape}
 
 
 # === END basic shape operations ===
-
 
 class IgesImportCreator(AbstractShapeCreator):
     """

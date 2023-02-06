@@ -23,9 +23,9 @@ class BooleanCADOperation:
         for index, element in enumerate(shape_list):
             logging.debug(f"Cutting {element.name()}: Element {index + 1} from {len(shape_list)}")
             if not cuted:
-                cuted.append(OAlgo.BRepAlgoAPI_Cut(shape.shape(), element.shape()).Shape())
+                cuted.append(OAlgo.BRepAlgoAPI_Cut(shape.shape(), element.fuselage()).Shape())
             else:
-                cuted.append(OAlgo.BRepAlgoAPI_Cut(cuted[-1], element.shape()).Shape())
+                cuted.append(OAlgo.BRepAlgoAPI_Cut(cuted[-1], element.fuselage()).Shape())
         if cuted[-1] == None:
             logging.error(f"Cutting list of shapes Failed")
         result: Workplane = Workplane(cuted[-1], name)

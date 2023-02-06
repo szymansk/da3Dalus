@@ -32,7 +32,7 @@ class ServoRecessFactory:
         :return:
         """
         logging.info(f"Creating servo Recess for {servo_size=} for {named_ruder.name()}")
-        self.ruder_shape = named_ruder.shape()
+        self.ruder_shape = named_ruder.fuselage()
         self.ruder_dimensions = ShapeDimensions(named_ruder)
         self.servo_size = servo_size
         # Make box for recces

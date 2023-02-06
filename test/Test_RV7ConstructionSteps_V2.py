@@ -72,9 +72,9 @@ if __name__ == "__main__":
 
     fuselage_small_hull = ConstructionStepNode(
         SimpleOffsetShapeCreator("fuselage_small_hull",
-                                 offset=-1.2,
+                                 offset=-0.8,
                                  shape="fuselage_hull_imp",
-                                 loglevel=logging.INFO))
+                                 loglevel=logging.DEBUG))
     fuselage_hull.append(fuselage_small_hull)
 
     cockpit = ConstructionStepNode(
@@ -154,17 +154,18 @@ if __name__ == "__main__":
                                full_fuselage_loft="fuselage_hull_imp"))
     root_node.append(fuselage_hull_split)
 
-    fuselage_shell_node = ConstructionStepNode(
-        FuselageShellShapeCreator("full_fuselage_shell",
-                                  thickness=0.8,
-                                  shape="fuselage_hull.loft"))
-    #root_node.append(fuselage_shell_node)
-
     fuselage_small_hull_split = ConstructionStepNode(
         EngineCapeShapeCreator("fuselage_small_hull", engine_index=1,
                                mount_plate_thickness=mount_plate_thickness,
                                full_fuselage_loft="fuselage_small_hull"))
     root_node.append(fuselage_small_hull_split)
+
+    fuselage_shell_loft = ConstructionStepNode(
+        FuselageShellShapeCreator("fuselage_shell_loft",
+                                  fuselage="fuselage_hull.loft",
+                                  thickness=-0.2,
+                                  loglevel=logging.DEBUG))
+    root_node.append(fuselage_shell_loft)
 
     wing_attachment_bolt_node = ConstructionStepNode(
         WingAttachmentBoltCutoutShapeCreator("attachment_bolts",
@@ -182,14 +183,14 @@ if __name__ == "__main__":
 
     wing_support_node = ConstructionStepNode(
         FuselageWingSupportShapeCreator("wing_support_raw",
-                                        rib_quantity=18, rib_width=0.0008 * 1000, rib_height_factor=1.2,
+                                        rib_quantity=7, rib_width=0.0008 * 1000, rib_height_factor=1.2,
                                         rib_z_offset=0, fuselage_loft="fuselage_hull.loft",
                                         full_wing_loft="full_wing_loft", loglevel=logging.INFO))
     root_node.append(wing_support_node)
 
     full_elevator_support_loft_node = ConstructionStepNode(
         FuselageWingSupportShapeCreator("elevator_support_raw",
-                                        rib_quantity=8, rib_width=0.0008 * 1000,
+                                        rib_quantity=5, rib_width=0.0008 * 1000,
                                         rib_height_factor=6, rib_z_offset=25, fuselage_loft="fuselage_hull.loft",
                                         full_wing_loft="elevator"))
     root_node.append(full_elevator_support_loft_node)
@@ -213,44 +214,35 @@ if __name__ == "__main__":
     root_node.append(electronics_access_node)
 
     cut_electronics_fuse_rei = ConstructionStepNode(
-        Cut2ShapesCreator("cut_electronics_fuse_rei",
-                          minuend="all_raw_fuselage_reinforcements_fused",
-                          subtrahend="electronics_cutout",
-                          ))
+        CutMultipleShapesCreator("cut_electronics_fuse_rei",
+                                 minuend="all_raw_fuselage_reinforcements_fused",
+                                 subtrahends=["electronics_cutout",
+                                              "elevator_servo.stamp",
+                                              "rudder_servo.stamp"],
+                                 loglevel=logging.INFO))
     root_node.append(cut_electronics_fuse_rei)
 
     intersect_raw_fus_reinf_fuselage_small_hull = ConstructionStepNode(
         Intersect2ShapesCreator("intersect_raw_fus_reinf_fuselage_small_hull",
                                 shape_a="cut_electronics_fuse_rei",
-                                shape_b="fuselage_small_hull",
-                                loglevel=logging.DEBUG
-                                )
-    )
+                                shape_b="fuselage_small_hull.loft",
+                                loglevel=logging.DEBUG))
     root_node.append(intersect_raw_fus_reinf_fuselage_small_hull)
 
     fuselage_hull_final = ConstructionStepNode(
-        Cut2ShapesCreator("fuselage_hull_final",
-                          minuend="fuselage_hull.loft",
-                          subtrahend="intersect_raw_fus_reinf_fuselage_small_hull",
-                          loglevel=logging.DEBUG))
+        CutMultipleShapesCreator("fuselage_hull_final",
+                                 minuend="fuselage_hull.loft",
+                                 subtrahends=["intersect_raw_fus_reinf_fuselage_small_hull"],
+                                 loglevel=logging.DEBUG))
     root_node.append(fuselage_hull_final)
 
-    repair_hull = ConstructionStepNode(
-        RepairFacesShapeCreator("repair",
-                                shape="fuselage_hull_final",
-                                repair_tool="fuselage_hull.loft",
-                                loglevel=logging.DEBUG))
-    #root_node.append(repair_hull)
+    # fuselage_with_shell = ConstructionStepNode(
+    #     Fuse2ShapesCreator("fuselage_with_shell",
+    #                        shape_a="fuselage_hull_final",
+    #                        shape_b="fuselage_shell_loft",
+    #                        loglevel=logging.DEBUG))
+    # root_node.append(fuselage_with_shell)
 
-    fuselage_final = ConstructionStepNode(
-        CutMultipleShapesCreator("fuselage_final",
-                                 minuend="fuselage_hull_final",
-                                 subtrahends=["elevator_servo.stamp",
-                                              "rudder_servo.stamp",
-                                              "attachment_bolts"],
-                                 loglevel=logging.DEBUG
-                                 ))
-    root_node.append(fuselage_final)
 
     # holes_in_engine_mount = ConstructionStepNode(
     #     Cut2ShapesCreator("engine_mount",
@@ -273,15 +265,16 @@ if __name__ == "__main__":
 
     cut_wing_from_fuselage_node = ConstructionStepNode(
         CutMultipleShapesCreator("final_fuselage",
-                                 minuend="fuselage_final",
+                                 minuend="fuselage_hull_final",
                                  subtrahends=["full_wing_loft",
                                               "elevator",
-                                              "rudder",
-                                              #"attachment_bolts",
+                                              #"rudder",
+                                              "attachment_bolts",
                                               #"elevator_servo.filling",
                                               #"rudder_servo.filling",
-                                              "engine_mount"
-                                              ]))
+                                              #"engine_mount"
+                                              ],
+                                 loglevel=logging.DEBUG))
     root_node.append(cut_wing_from_fuselage_node)
     #
     # shape_slicer_node = ConstructionStepNode(
@@ -319,7 +312,7 @@ if __name__ == "__main__":
     aircraft_step_export_node = ConstructionStepNode(
         ExportToStepCreator(Path(f"{root_node.identifier}").stem,
                             file_path="../exports",
-                            shapes_to_export=[#"repair",
+                            shapes_to_export=[# "fuselage_with_shell",
                                               # "engine_mount",
                                               # "brushless",
                                               # "lipo_model",

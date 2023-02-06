@@ -27,9 +27,9 @@
                 "fuselage_small_hull": {
                     "successors": {},
                     "creator": {
-                        "offset": -1.2,
+                        "offset": -0.8,
                         "shape": "fuselage_hull_imp",
-                        "loglevel": 20,
+                        "loglevel": 10,
                         "creator_id": "fuselage_small_hull",
                         "$TYPE": "SimpleOffsetShapeCreator"
                     },
@@ -224,6 +224,19 @@
             "creator_id": "fuselage_small_hull.node",
             "$TYPE": "ConstructionStepNode"
         },
+        "fuselage_shell_loft": {
+            "successors": {},
+            "creator": {
+                "thickness": -0.2,
+                "fuselage": "fuselage_hull.loft",
+                "loglevel": 10,
+                "creator_id": "fuselage_shell_loft",
+                "$TYPE": "FuselageShellShapeCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "fuselage_shell_loft.node",
+            "$TYPE": "ConstructionStepNode"
+        },
         "attachment_bolts": {
             "successors": {},
             "creator": {
@@ -262,7 +275,7 @@
                 "rib_z_offset": 0,
                 "full_wing_loft": "full_wing_loft",
                 "fuselage_loft": "fuselage_hull.loft",
-                "rib_quantity": 18,
+                "rib_quantity": 7,
                 "rib_width": 0.8,
                 "rib_height_factor": 1.2,
                 "loglevel": 20,
@@ -279,7 +292,7 @@
                 "rib_z_offset": 25,
                 "full_wing_loft": "elevator",
                 "fuselage_loft": "fuselage_hull.loft",
-                "rib_quantity": 8,
+                "rib_quantity": 5,
                 "rib_width": 0.8,
                 "rib_height_factor": 6,
                 "loglevel": 20,
@@ -327,11 +340,15 @@
         "cut_electronics_fuse_rei": {
             "successors": {},
             "creator": {
+                "subtrahends": [
+                    "electronics_cutout",
+                    "elevator_servo.stamp",
+                    "rudder_servo.stamp"
+                ],
                 "minuend": "all_raw_fuselage_reinforcements_fused",
-                "subtrahend": "electronics_cutout",
                 "loglevel": 20,
                 "creator_id": "cut_electronics_fuse_rei",
-                "$TYPE": "Cut2ShapesCreator"
+                "$TYPE": "CutMultipleShapesCreator"
             },
             "loglevel": 50,
             "creator_id": "cut_electronics_fuse_rei.node",
@@ -341,7 +358,7 @@
             "successors": {},
             "creator": {
                 "shape_a": "cut_electronics_fuse_rei",
-                "shape_b": "fuselage_small_hull",
+                "shape_b": "fuselage_small_hull.loft",
                 "loglevel": 10,
                 "creator_id": "intersect_raw_fus_reinf_fuselage_small_hull",
                 "$TYPE": "Intersect2ShapesCreator"
@@ -353,31 +370,16 @@
         "fuselage_hull_final": {
             "successors": {},
             "creator": {
+                "subtrahends": [
+                    "intersect_raw_fus_reinf_fuselage_small_hull"
+                ],
                 "minuend": "fuselage_hull.loft",
-                "subtrahend": "intersect_raw_fus_reinf_fuselage_small_hull",
                 "loglevel": 10,
                 "creator_id": "fuselage_hull_final",
-                "$TYPE": "Cut2ShapesCreator"
-            },
-            "loglevel": 50,
-            "creator_id": "fuselage_hull_final.node",
-            "$TYPE": "ConstructionStepNode"
-        },
-        "fuselage_final": {
-            "successors": {},
-            "creator": {
-                "subtrahends": [
-                    "elevator_servo.stamp",
-                    "rudder_servo.stamp",
-                    "attachment_bolts"
-                ],
-                "minuend": "fuselage_hull_final",
-                "loglevel": 10,
-                "creator_id": "fuselage_final",
                 "$TYPE": "CutMultipleShapesCreator"
             },
             "loglevel": 50,
-            "creator_id": "fuselage_final.node",
+            "creator_id": "fuselage_hull_final.node",
             "$TYPE": "ConstructionStepNode"
         },
         "final_fuselage": {
@@ -386,11 +388,10 @@
                 "subtrahends": [
                     "full_wing_loft",
                     "elevator",
-                    "rudder",
-                    "engine_mount"
+                    "attachment_bolts"
                 ],
-                "minuend": "fuselage_final",
-                "loglevel": 20,
+                "minuend": "fuselage_hull_final",
+                "loglevel": 10,
                 "creator_id": "final_fuselage",
                 "$TYPE": "CutMultipleShapesCreator"
             },

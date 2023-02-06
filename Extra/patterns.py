@@ -6,7 +6,7 @@ from Extra.BooleanOperationsForLists import *
 import Extra.ConstructionStepsViewer as myDisplay
 
 def create_linear_pattern(namedshape, quantity, distance, direction="x") -> Workplane:
-    pattern = namedshape.shape()
+    pattern = namedshape.fuselage()
     logstr = f"Creating a linear pattern of {namedshape.name()} with {quantity} x {distance} meters"
     logging.debug(logstr)
     x, y, z = 0.0, 0.0, 0.0
@@ -17,7 +17,7 @@ def create_linear_pattern(namedshape, quantity, distance, direction="x") -> Work
             y = i * distance
         if direction == "z":
             z = i * distance
-        moved_shape = OExs.translate_shp(namedshape.shape(), Ogp.gp_Vec(x, y, z))
+        moved_shape = OExs.translate_shp(namedshape.fuselage(), Ogp.gp_Vec(x, y, z))
         newpattern = OAlgo.BRepAlgoAPI_Fuse(pattern, moved_shape).Shape()
         pattern = newpattern
     result = Workplane(pattern, f"{namedshape.name()}_pattern")
@@ -32,7 +32,7 @@ def create_circular_pattern_around_xaxis(namedshape, quantity, bound=360, start=
     for i in range(quantity):
         angle = start + i * d_angle
         shapes.append(
-            Workplane(OExs.rotate_shape(namedshape.shape(), Ogp.gp_OX(), angle), f"{namedshape.name()}_{i}"))
+            Workplane(OExs.rotate_shape(namedshape.fuselage(), Ogp.gp_OX(), angle), f"{namedshape.name()}_{i}"))
 
     result = BooleanCADOperation.fuse_list_of_named_shapes(shapes, namedshape.name())
     return result
