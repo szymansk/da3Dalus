@@ -1,6 +1,12 @@
 import logging
 
-from cadquery import Workplane
+from OCP import TopoDS
+from OCP.BRepBuilderAPI import BRepBuilderAPI_Sewing, BRepBuilderAPI_MakeSolid
+from OCP.ShapeFix import ShapeFix_Shape
+from OCP.TopAbs import TopAbs_SHELL
+from OCP.TopExp import TopExp_Explorer
+from OCP.TopOpeBRepBuild import TopOpeBRepBuild_ShellToSolid
+from cadquery import Workplane, Solid, Shell
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
 from Airplane.creator.ScaleRotateTranslateCreator import ScaleRotateTranslateCreator
@@ -51,8 +57,8 @@ class StepImportCreator(AbstractShapeCreator):
                                                                rot_z=self.rot_z, trans_x=self.trans_x,
                                                                trans_y=self.trans_y, trans_z=self.trans_z,
                                                                scale_x=self.scale_x, scale_y=self.scale_y,
-                                                               scale_z=self.scale_z).display(name=self.identifier,severity=logging.DEBUG)
-
+                                                               scale_z=self.scale_z)
+        trans_shape.display(name=self.identifier,severity=logging.DEBUG)
         return {self.identifier: trans_shape}
 
     @classmethod

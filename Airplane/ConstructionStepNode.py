@@ -15,7 +15,7 @@ class ConstructionStepNode(AbstractShapeCreator, MutableMapping):
         """
         self.successors = {} if successors is None else successors
         self.creator: AbstractShapeCreator = creator
-        super().__init__(f"{creator.identifier}.node", shapes_of_interest_keys=None)
+        super().__init__(f"{creator.identifier}", shapes_of_interest_keys=None)
 
     def __getitem__(self, key: str):
         return self.successors[key]

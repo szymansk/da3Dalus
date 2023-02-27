@@ -1,3 +1,5 @@
+import logging
+
 from OCP.BRepOffsetAPI import BRepOffsetAPI_MakeOffsetShape
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
@@ -7,6 +9,7 @@ from Airplane.Wing.RuderFactory import RuderFactory
 from Airplane.Wing.ServoRecessFactory import ServoRecessFactory
 from Airplane.Wing.WingFactory import WingFactory
 from Airplane.Wing.WingRibFactory import WingRibFactory
+from Airplane.aircraft_topology.WingConfiguration import WingConfiguration
 from Airplane.aircraft_topology.WingInformation import WingInformation
 from Dimensions.ShapeDimensions import ShapeDimensions
 from Extra.BooleanOperationsForLists import BooleanCADOperation
@@ -198,3 +201,61 @@ class WingOffsetCreator(AbstractShapeCreator):
 
         return {self.identifier: shape}
 
+
+class WingLoftCreator(AbstractShapeCreator):
+    def __init__(self,
+                 creator_id: str,
+                 wing_config: WingConfiguration=None,
+                 loglevel=logging.INFO):
+        self._wing_config = wing_config
+        super().__init__(creator_id, shapes_of_interest_keys=[], loglevel=loglevel)
+
+    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
+                      input_shapes: dict[str, Workplane],
+                      **kwargs) -> dict[str, Workplane]:
+        logging.info(
+            f"wing loft from configuration --> '{self.identifier}'")
+
+        wing_root: Workplane = (
+            Workplane('XZ').wing_root_segment(
+                root_airfoil=self._wing_config.segments[0].root_airfoil,
+                root_chord=self._wing_config.segments[0].root_chord,
+                root_dihedral=self._wing_config.segments[0].root_dihedral,
+                root_incidence=self._wing_config.segments[0].root_incidence,
+                length=self._wing_config.segments[0].length,
+                sweep=self._wing_config.segments[0].sweep,
+                tip_chord=self._wing_config.segments[0].tip_chord,
+                tip_dihedral=self._wing_config.segments[0].tip_dihedral,
+                tip_incidence=self._wing_config.segments[0].tip_incidence,
+                tip_airfoil=self._wing_config.segments[0].tip_airfoil))
+        wing_root.display(name=f"{self.identifier}_seg", severity=logging.DEBUG)
+
+        origin, rot = wing_root.val().toTuple()
+        prev_segment = self._wing_config.segments[0]
+
+        for segment_config in self._wing_config.segments[1:]:
+            wing_segment: Workplane = (
+                Workplane('XZ').wing_root_segment(
+                    root_airfoil=segment_config.root_airfoil,
+                    root_chord=segment_config.root_chord,
+                    root_dihedral=segment_config.root_dihedral,
+                    root_incidence=segment_config.root_incidence,
+                    length=segment_config.length,
+                    sweep=segment_config.sweep,
+                    tip_chord=segment_config.tip_chord,
+                    tip_dihedral=segment_config.tip_dihedral,
+                    tip_incidence=segment_config.tip_incidence,
+                    tip_airfoil=segment_config.tip_airfoil))
+
+            wing_segment = wing_segment \
+                .rotate((0, 0, 0), (1, 0, 0), prev_segment.root_dihedral + prev_segment.tip_dihedral) \
+                .rotate((0, 0, 0), (0, 1, 0), prev_segment.root_incidence + prev_segment.tip_incidence) \
+                .translate(origin)
+            wing_segment.display(name=f"{self.identifier}_seg", severity=logging.DEBUG)
+            origin, rot = wing_segment.val().toTuple()
+            prev_segment = segment_config
+            wing_root = wing_root + wing_segment
+
+        ConstructionStepsViewer.instance().display_this_shape(wing_root, logging.DEBUG, msg=f"{self.identifier}")
+
+        return {self.identifier: wing_root}

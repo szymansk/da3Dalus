@@ -156,8 +156,7 @@ class SimpleOffsetShapeCreator(AbstractShapeCreator):
         shape_list = list(shapes_of_interest.values())
         logging.info(f"offset shape '{list(shapes_of_interest.keys())[0]}' by {self.offset}mm --> '{self.identifier}'")
 
-        shape = shape_list[0].offset3D(self.offset).display(name=self.identifier, severity=logging.DEBUG)
-
+        shape: Workplane = shape_list[0].offset3D(self.offset).sewAndFix().display(name=self.identifier, severity=logging.DEBUG)
         return {self.identifier: shape}
 
 
@@ -304,16 +303,12 @@ class IgesImportCreator(AbstractShapeCreator):
                       **kwargs) -> dict[str, Workplane]:
         logging.info(f"importing iges model '{self.iges_file}' --> '{self.identifier}'")
 
-        topo: TopoDS_Shape = IgesImportCreator.iges_importer(self.iges_file)
-        shape = Workplane(topo, self.identifier)
-
+        shape = IgesImportCreator.iges_importer(self.iges_file)
         trans_shape = ScaleRotateTranslateCreator.transform_by(shape, rot_x=self.rot_x, rot_y=self.rot_y,
                                                                rot_z=self.rot_z, trans_x=self.trans_x,
                                                                trans_y=self.trans_y, trans_z=self.trans_z,
                                                                scale_x=self.scale_x, scale_y=self.scale_y,
                                                                scale_z=self.scale_z)
-
-        ConstructionStepsViewer.instance().display_this_shape(trans_shape, severity=logging.DEBUG)
 
         return {self.identifier: trans_shape}
 
