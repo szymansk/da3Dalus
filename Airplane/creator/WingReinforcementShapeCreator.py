@@ -34,7 +34,7 @@ class WingReinforcementShapeCreator(AbstractShapeCreator):
         pipe_diameter = 6
         printer_resolution = 0.2
         chord_beam_position = 0.33
-        tip_end_in_length_percent = 0.99
+        tip_end_in_length_percent = 0.95
         beam_with_pipe = True
 
         wing = shapes_of_interest[self.full_wing_loft]
@@ -44,8 +44,9 @@ class WingReinforcementShapeCreator(AbstractShapeCreator):
         wing_center = wing.findSolid().CenterOfBoundBox()
 
         root_section = wing.faces('<Y').display(name="root", severity=logging.NOTSET)
-        tip_section = cq.Workplane('XZ', origin=(wing_center.x, wing_bbox.ymin + wing_bbox.ylen * tip_end_in_length_percent, wing_center.z))\
-            .add(wing).section().display(name="tip", severity=logging.NOTSET)
+        #tip_section = cq.Workplane('XZ', origin=(wing_center.x, wing_bbox.ymin + wing_bbox.ylen * tip_end_in_length_percent, wing_center.z))\
+        #    .add(wing).section().display(name="tip", severity=logging.NOTSET)
+        tip_section = wing.faces('>Y').display(name="tip", severity=logging.NOTSET)
 
         ribs = self.construct_ribs(wing, rib_quantity, rib_width, wing_rib_angle_roll, wing_rib_angle_yaw)
 
@@ -73,7 +74,7 @@ class WingReinforcementShapeCreator(AbstractShapeCreator):
     def construct_ribs(self, wing, rib_quantity, rib_width, wing_rib_angle_roll, wing_rib_angle_yaw,
                        make_cross_rib=False, cut_offset_wing=False, skip_first=True):
         logging.debug("constructing ribs...")
-        wing_bbox = wing.findSolid().BoundingBox(tolerance=0.0001)
+        wing_bbox = wing.findSolid().BoundingBox(tolerance=1e-3)
         wing_center = wing.findSolid().CenterOfBoundBox()
         offset_wing = None
         if cut_offset_wing:

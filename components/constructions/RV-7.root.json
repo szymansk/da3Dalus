@@ -1,6 +1,6 @@
 {
     "successors": {
-        "full_wing_loft": {
+        "full_wing_loft_a": {
             "successors": {},
             "creator": {
                 "step_file": "/opt/project/components/aircraft/RV-7/wing.step",
@@ -14,12 +14,25 @@
                 "scale_x": 38,
                 "scale_y": 38,
                 "scale_z": 38,
-                "loglevel": 20,
-                "creator_id": "full_wing_loft",
+                "loglevel": 10,
+                "creator_id": "full_wing_loft_a",
                 "$TYPE": "StepImportCreator"
             },
             "loglevel": 50,
-            "creator_id": "full_wing_loft.node",
+            "creator_id": "full_wing_loft_a",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "full_wing_loft": {
+            "successors": {},
+            "creator": {
+                "wing_side": "BOTH",
+                "wing_index": "main_wing",
+                "loglevel": 10,
+                "creator_id": "full_wing_loft",
+                "$TYPE": "WingLoftCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "full_wing_loft",
             "$TYPE": "ConstructionStepNode"
         },
         "flaps": {
@@ -41,7 +54,7 @@
                 "$TYPE": "StepImportCreator"
             },
             "loglevel": 50,
-            "creator_id": "flaps.node",
+            "creator_id": "flaps",
             "$TYPE": "ConstructionStepNode"
         },
         "aileron": {
@@ -63,7 +76,7 @@
                 "$TYPE": "StepImportCreator"
             },
             "loglevel": 50,
-            "creator_id": "aileron.node",
+            "creator_id": "aileron",
             "$TYPE": "ConstructionStepNode"
         },
         "fuselage_hull_imp": {
@@ -78,7 +91,7 @@
                         "$TYPE": "SimpleOffsetShapeCreator"
                     },
                     "loglevel": 50,
-                    "creator_id": "fuselage_small_hull.node",
+                    "creator_id": "fuselage_small_hull",
                     "$TYPE": "ConstructionStepNode"
                 },
                 "cockpit": {
@@ -93,7 +106,7 @@
                                 "$TYPE": "Cut2ShapesCreator"
                             },
                             "loglevel": 50,
-                            "creator_id": "cockpit.node",
+                            "creator_id": "cockpit",
                             "$TYPE": "ConstructionStepNode"
                         }
                     },
@@ -114,7 +127,7 @@
                         "$TYPE": "StepImportCreator"
                     },
                     "loglevel": 50,
-                    "creator_id": "cockpit.node",
+                    "creator_id": "cockpit",
                     "$TYPE": "ConstructionStepNode"
                 }
             },
@@ -135,7 +148,7 @@
                 "$TYPE": "StepImportCreator"
             },
             "loglevel": 50,
-            "creator_id": "fuselage_hull_imp.node",
+            "creator_id": "fuselage_hull_imp",
             "$TYPE": "ConstructionStepNode"
         },
         "elevator": {
@@ -157,7 +170,7 @@
                 "$TYPE": "StepImportCreator"
             },
             "loglevel": 50,
-            "creator_id": "elevator.node",
+            "creator_id": "elevator",
             "$TYPE": "ConstructionStepNode"
         },
         "rudder": {
@@ -179,7 +192,7 @@
                 "$TYPE": "StepImportCreator"
             },
             "loglevel": 50,
-            "creator_id": "rudder.node",
+            "creator_id": "rudder",
             "$TYPE": "ConstructionStepNode"
         },
         "rudder_flap": {
@@ -201,7 +214,7 @@
                 "$TYPE": "StepImportCreator"
             },
             "loglevel": 50,
-            "creator_id": "rudder_flap.node",
+            "creator_id": "rudder_flap",
             "$TYPE": "ConstructionStepNode"
         },
         "elevator_flap": {
@@ -223,7 +236,7 @@
                 "$TYPE": "StepImportCreator"
             },
             "loglevel": 50,
-            "creator_id": "elevator_flap.node",
+            "creator_id": "elevator_flap",
             "$TYPE": "ConstructionStepNode"
         },
         "elevator_servo": {
@@ -241,7 +254,7 @@
                 "$TYPE": "ServoImporterCreator"
             },
             "loglevel": 50,
-            "creator_id": "elevator_servo.node",
+            "creator_id": "elevator_servo",
             "$TYPE": "ConstructionStepNode"
         },
         "rudder_servo": {
@@ -259,7 +272,7 @@
                 "$TYPE": "ServoImporterCreator"
             },
             "loglevel": 50,
-            "creator_id": "rudder_servo.node",
+            "creator_id": "rudder_servo",
             "$TYPE": "ConstructionStepNode"
         },
         "engine_mount_init": {
@@ -271,12 +284,12 @@
                             "creator": {
                                 "shape_a": null,
                                 "shape_b": null,
-                                "loglevel": 20,
+                                "loglevel": 10,
                                 "creator_id": "engine_mount",
                                 "$TYPE": "Fuse2ShapesCreator"
                             },
                             "loglevel": 50,
-                            "creator_id": "engine_mount.node",
+                            "creator_id": "engine_mount",
                             "$TYPE": "ConstructionStepNode"
                         }
                     },
@@ -294,7 +307,7 @@
                         "$TYPE": "EngineMountPanelShapeCreator"
                     },
                     "loglevel": 50,
-                    "creator_id": "engine_mount_plate.node",
+                    "creator_id": "engine_mount_plate",
                     "$TYPE": "ConstructionStepNode"
                 }
             },
@@ -313,7 +326,7 @@
                 "$TYPE": "EngineMountShapeCreator"
             },
             "loglevel": 50,
-            "creator_id": "engine_mount_init.node",
+            "creator_id": "engine_mount_init",
             "$TYPE": "ConstructionStepNode"
         },
         "fuselage_hull": {
@@ -329,7 +342,7 @@
                 "$TYPE": "EngineCapeShapeCreator"
             },
             "loglevel": 50,
-            "creator_id": "fuselage_hull.node",
+            "creator_id": "fuselage_hull",
             "$TYPE": "ConstructionStepNode"
         },
         "fuselage_small_hull": {
@@ -345,7 +358,7 @@
                 "$TYPE": "EngineCapeShapeCreator"
             },
             "loglevel": 50,
-            "creator_id": "fuselage_small_hull.node",
+            "creator_id": "fuselage_small_hull",
             "$TYPE": "ConstructionStepNode"
         },
         "attachment_bolts": {
@@ -359,7 +372,7 @@
                 "$TYPE": "WingAttachmentBoltCutoutShapeCreator"
             },
             "loglevel": 50,
-            "creator_id": "attachment_bolts.node",
+            "creator_id": "attachment_bolts",
             "$TYPE": "ConstructionStepNode"
         },
         "fuselage_reinforcement_raw": {
@@ -370,7 +383,7 @@
                 "full_wing_loft": "full_wing_loft",
                 "fuselage_loft": "fuselage_hull.loft",
                 "rib_width": 0.8,
-                "ribcage_factor": 0.5,
+                "ribcage_factor": 0.49,
                 "circle_factor": 0.9,
                 "reinforcement_pipes_diameter": 2.0,
                 "loglevel": 20,
@@ -378,7 +391,7 @@
                 "$TYPE": "FuselageReinforcementShapeCreator"
             },
             "loglevel": 50,
-            "creator_id": "fuselage_reinforcement_raw.node",
+            "creator_id": "fuselage_reinforcement_raw",
             "$TYPE": "ConstructionStepNode"
         },
         "wing_support_raw": {
@@ -390,12 +403,12 @@
                 "rib_quantity": 7,
                 "rib_width": 0.8,
                 "rib_height_factor": 1.2,
-                "loglevel": 20,
+                "loglevel": 10,
                 "creator_id": "wing_support_raw",
                 "$TYPE": "FuselageWingSupportShapeCreator"
             },
             "loglevel": 50,
-            "creator_id": "wing_support_raw.node",
+            "creator_id": "wing_support_raw",
             "$TYPE": "ConstructionStepNode"
         },
         "elevator_support_raw": {
@@ -412,7 +425,7 @@
                 "$TYPE": "FuselageWingSupportShapeCreator"
             },
             "loglevel": 50,
-            "creator_id": "elevator_support_raw.node",
+            "creator_id": "elevator_support_raw",
             "$TYPE": "ConstructionStepNode"
         },
         "all_raw_fuselage_reinforcements_fused": {
@@ -430,7 +443,7 @@
                 "$TYPE": "FuseMultipleShapesCreator"
             },
             "loglevel": 50,
-            "creator_id": "all_raw_fuselage_reinforcements_fused.node",
+            "creator_id": "all_raw_fuselage_reinforcements_fused",
             "$TYPE": "ConstructionStepNode"
         },
         "electronics_cutout": {
@@ -439,14 +452,14 @@
                 "length_factor": 0.7,
                 "full_wing_loft": "full_wing_loft",
                 "fuselage_loft": "fuselage_hull.loft",
-                "ribcage_factor": 0.5,
+                "ribcage_factor": 0.49,
                 "wing_position": null,
                 "loglevel": 20,
                 "creator_id": "electronics_cutout",
                 "$TYPE": "FuselageElectronicsAccessCutOutShapeCreator"
             },
             "loglevel": 50,
-            "creator_id": "electronics_cutout.node",
+            "creator_id": "electronics_cutout",
             "$TYPE": "ConstructionStepNode"
         },
         "cut_electronics_fuse_rei": {
@@ -463,7 +476,7 @@
                 "$TYPE": "CutMultipleShapesCreator"
             },
             "loglevel": 50,
-            "creator_id": "cut_electronics_fuse_rei.node",
+            "creator_id": "cut_electronics_fuse_rei",
             "$TYPE": "ConstructionStepNode"
         },
         "intersect_raw_fus_reinf_fuselage_small_hull": {
@@ -476,7 +489,7 @@
                 "$TYPE": "Intersect2ShapesCreator"
             },
             "loglevel": 50,
-            "creator_id": "intersect_raw_fus_reinf_fuselage_small_hull.node",
+            "creator_id": "intersect_raw_fus_reinf_fuselage_small_hull",
             "$TYPE": "ConstructionStepNode"
         },
         "fuselage_hull_final": {
@@ -486,12 +499,12 @@
                     "intersect_raw_fus_reinf_fuselage_small_hull"
                 ],
                 "minuend": "fuselage_hull.loft",
-                "loglevel": 10,
+                "loglevel": 20,
                 "creator_id": "fuselage_hull_final",
                 "$TYPE": "CutMultipleShapesCreator"
             },
             "loglevel": 50,
-            "creator_id": "fuselage_hull_final.node",
+            "creator_id": "fuselage_hull_final",
             "$TYPE": "ConstructionStepNode"
         },
         "final_fuselage": {
@@ -508,7 +521,7 @@
                 "$TYPE": "CutMultipleShapesCreator"
             },
             "loglevel": 50,
-            "creator_id": "final_fuselage.node",
+            "creator_id": "final_fuselage",
             "$TYPE": "ConstructionStepNode"
         },
         "elevator_cut": {
@@ -521,7 +534,7 @@
                 "$TYPE": "Cut2ShapesCreator"
             },
             "loglevel": 50,
-            "creator_id": "elevator_cut.node",
+            "creator_id": "elevator_cut",
             "$TYPE": "ConstructionStepNode"
         },
         "brushless": {
@@ -535,7 +548,7 @@
                 "$TYPE": "ComponentImporterCreator"
             },
             "loglevel": 50,
-            "creator_id": "brushless.node",
+            "creator_id": "brushless",
             "$TYPE": "ConstructionStepNode"
         },
         "lipo_model": {
@@ -549,7 +562,7 @@
                 "$TYPE": "ComponentImporterCreator"
             },
             "loglevel": 50,
-            "creator_id": "lipo_model.node",
+            "creator_id": "lipo_model",
             "$TYPE": "ConstructionStepNode"
         },
         "RV-7": {
@@ -578,7 +591,7 @@
                 "$TYPE": "ExportToStepCreator"
             },
             "loglevel": 50,
-            "creator_id": "RV-7.node",
+            "creator_id": "RV-7",
             "$TYPE": "ConstructionStepNode"
         }
     },

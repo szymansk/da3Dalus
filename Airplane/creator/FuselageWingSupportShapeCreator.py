@@ -10,10 +10,6 @@ from Airplane.creator import WingAttachmentBoltCutoutShapeCreator
 
 class FuselageWingSupportShapeCreator(AbstractShapeCreator):
     """    Creates wing support by using vertical cube shaped ribs.
-
-    TODO: should be improved to ribs that form a trapezoid 50° angles, so printing will be easier.
-         /-----\
-        /_______\
     """
 
     def __init__(self, creator_id: str, rib_quantity: int, rib_width: float, rib_height_factor: float, rib_z_offset,

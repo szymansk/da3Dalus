@@ -4,6 +4,8 @@ import sys
 import json 
 import os
 
+from Airplane.WingConstructionSteps import WingLoftCreator
+from Airplane.aircraft_topology.WingConfiguration import WingConfiguration
 from Airplane.creator.EngineCapeShapeCreator import EngineCapeShapeCreator
 from Airplane.creator import EngineMountPanelShapeCreator
 from Airplane.creator.EngineMountShapeCreator import EngineMountShapeCreator
@@ -38,7 +40,7 @@ if __name__ == "__main__":
     base_scale = 38
     printer_resolution = 0.2  # 0.2 mm layer hight
     
-    ribcage_factor = 0.5
+    ribcage_factor = 0.49
     mount_plate_thickness = 5
     engine_screw_hole_circle = 42.0
     engine_mount_box_length = 13.3 * 2.5
@@ -47,10 +49,15 @@ if __name__ == "__main__":
     root_node = ConstructionRootNode(creator_id="RV-7")
     pwd = os.path.curdir
 
-    full_wing_loft_node = ConstructionStepNode(
-        StepImportCreator("full_wing_loft",
+    full_wing_loft_node_a = ConstructionStepNode(
+        StepImportCreator("full_wing_loft_a",
                           step_file=os.path.abspath(f"../components/aircraft/RV-7/wing.step"),
-                          scale=base_scale, loglevel=logging.INFO))
+                          scale=base_scale, loglevel=logging.DEBUG))
+    root_node.append(full_wing_loft_node_a)
+
+    full_wing_loft_node = ConstructionStepNode(
+        WingLoftCreator("full_wing_loft",
+                        wing_index="main_wing", wing_side="BOTH", loglevel=logging.DEBUG))
     root_node.append(full_wing_loft_node)
 
     flaps_node = ConstructionStepNode(
@@ -74,7 +81,7 @@ if __name__ == "__main__":
 
     fuselage_small_hull = ConstructionStepNode(
         SimpleOffsetShapeCreator("fuselage_small_hull",
-                                 offset=-0.8,
+                                 offset=-4 * printer_resolution,
                                  shape="fuselage_hull_imp",
                                  loglevel=logging.DEBUG))
     fuselage_hull.append(fuselage_small_hull)
@@ -143,7 +150,8 @@ if __name__ == "__main__":
     engine_mount_init.append(engine_mount_plate)
 
     engine_mount = ConstructionStepNode(
-        Fuse2ShapesCreator("engine_mount"))
+        Fuse2ShapesCreator("engine_mount",
+                                 loglevel=logging.DEBUG))
     engine_mount_plate.append(engine_mount)
     # engine mount END
 
@@ -170,15 +178,15 @@ if __name__ == "__main__":
         FuselageReinforcementShapeCreator("fuselage_reinforcement_raw",
                                           rib_width=4 * printer_resolution, rib_spacing=5.0,
                                           ribcage_factor=ribcage_factor, reinforcement_pipes_diameter=2.0,
-                                          print_resolution=printer_resolution, fuselage_loft="fuselage_hull.loft",
-                                          full_wing_loft="full_wing_loft"))
+                                          print_resolution=printer_resolution, fuselage_loft=f"{fuselage_hull_split.creator_id}.loft",
+                                          full_wing_loft=full_wing_loft_node.creator_id))
     root_node.append(fuselage_reinforcement_node)
 
     wing_support_node = ConstructionStepNode(
         FuselageWingSupportShapeCreator("wing_support_raw",
                                         rib_quantity=7, rib_width=4 * printer_resolution, rib_height_factor=1.2,
                                         rib_z_offset=0, fuselage_loft="fuselage_hull.loft",
-                                        full_wing_loft="full_wing_loft", loglevel=logging.INFO))
+                                        full_wing_loft="full_wing_loft", loglevel=logging.DEBUG))
     root_node.append(wing_support_node)
 
     full_elevator_support_loft_node = ConstructionStepNode(
@@ -226,7 +234,7 @@ if __name__ == "__main__":
         CutMultipleShapesCreator("fuselage_hull_final",
                                  minuend="fuselage_hull.loft",
                                  subtrahends=["intersect_raw_fus_reinf_fuselage_small_hull"],
-                                 loglevel=logging.DEBUG))
+                                 loglevel=logging.INFO))
     root_node.append(fuselage_hull_final)
 
 
@@ -271,7 +279,8 @@ if __name__ == "__main__":
     brushless_shape_import = ConstructionStepNode(
         ComponentImporterCreator("brushless",
                                  component_file=os.path.abspath(f"../components/brushless/DPower_AL3542-5_AL3542-7_AL35-09_v2.step"),
-                                 component_idx="brushless"))
+                                 component_idx="brushless",
+                                 loglevel=logging.INFO))
     root_node.append(brushless_shape_import)
 
     lipo_model_import = ConstructionStepNode(
@@ -359,12 +368,25 @@ if __name__ == "__main__":
 
     component_information = {"brushless": engine_info1, "lipo": lipo_information}
 
+    airfoil = "../components/airfoils/naca23013.5.dat"
+    wing_configuration = {"main_wing": WingConfiguration(root_airfoil=airfoil,
+                                           nose_pnt=(192.113, -1, -44.5),
+                                           root_chord=183,
+                                           root_dihedral=3.7,
+                                           root_incidence=0,
+                                           length=410,
+                                           sweep=0,
+                                           tip_chord=183,
+                                           tip_dihedral=0,
+                                           tip_incidence=0)}
+
     # load the string
     # tigl_handel is parameter which is not in the json file, but needed by the constructor of a creator class
     myMap: ConstructionStepNode = json.loads(json_data, cls=GeneralJSONDecoder,
                                              engine_information=engine_information,
                                              servo_information=servo_information,
-                                             component_information=component_information)
+                                             component_information=component_information,
+                                             wing_config=wing_configuration)
 
     # dump again to check
     print(json.dumps(myMap, indent=2, cls=GeneralJSONEncoder))

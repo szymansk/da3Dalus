@@ -52,7 +52,7 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         if self.loglevel < actual_loglevel:
             logging.getLogger().setLevel(level=self.loglevel)
         # do the construction
-        result = self._create_shape(shapes_of_interest, input_shapes, **kwargs)
+        result= self._create_shape(shapes_of_interest, input_shapes, **kwargs)
         # reset to actual log-level
         logging.getLogger().setLevel(level=actual_loglevel)
         return result

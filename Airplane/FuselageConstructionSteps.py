@@ -156,7 +156,7 @@ class SimpleOffsetShapeCreator(AbstractShapeCreator):
         shape_list = list(shapes_of_interest.values())
         logging.info(f"offset shape '{list(shapes_of_interest.keys())[0]}' by {self.offset}mm --> '{self.identifier}'")
 
-        shape: Workplane = shape_list[0].offset3D(self.offset).sewAndFix().display(name=self.identifier, severity=logging.DEBUG)
+        shape: Workplane = shape_list[0].offset3D(self.offset, perform_simple=True).display(name=self.identifier, severity=logging.DEBUG)
         return {self.identifier: shape}
 
 

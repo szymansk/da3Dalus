@@ -31,8 +31,7 @@ if __name__ == "__main__":
     pwd = os.path.curdir
 
     full_fuselage_loft_node = ConstructionStepNode(
-        StepImportCreator("full_fuselage",
-                          step_file=os.path.abspath("../components/aircraft/RV-7/fuselage.step"),
+        StepImportCreator("full_fuselage", file_name=os.path.abspath("../components/aircraft/RV-7/fuselage.step"),
                           scale=base_scale))
     root_node.append(full_fuselage_loft_node)
 

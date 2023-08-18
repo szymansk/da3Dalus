@@ -209,14 +209,8 @@ if __name__ == "__main__":
     root_node.append(brushless_shape_import)
 
     servo_model_import = ConstructionStepNode(
-        StepImportCreator("servo_model",
-                          step_file="../components/servos/AS215BBMG v4.step",
-                          trans_x=servo_pt.X(),
-                          trans_y=servo_pt.Y(),
-                          trans_z=servo_pt.Z(),
-                          rot_x=90.0,
-                          rot_y=0,
-                          rot_z=servo_ang,
+        StepImportCreator("servo_model", file_name="../components/servos/AS215BBMG v4.step", trans_x=servo_pt.X(),
+                          trans_y=servo_pt.Y(), trans_z=servo_pt.Z(), rot_x=90.0, rot_y=0, rot_z=servo_ang,
                           scale=0.001))
     root_node.append(servo_model_import)
 
