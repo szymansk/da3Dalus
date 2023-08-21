@@ -1,0 +1,119 @@
+{
+    "successors": {
+        "wing_loft": {
+            "successors": {},
+            "creator": {
+                "wing_side": "RIGHT",
+                "wing_index": "main_wing",
+                "loglevel": 10,
+                "creator_id": "wing_loft",
+                "$TYPE": "WingLoftCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "wing_loft",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "full_wing_loft": {
+            "successors": {},
+            "creator": {
+                "step_file": "/opt/project/components/aircraft/RV-7/wing_right.step",
+                "trans_x": 0.0,
+                "trans_y": 0.0,
+                "trans_z": 0.0,
+                "rot_x": 0.0,
+                "rot_y": 0.0,
+                "rot_z": 0.0,
+                "scale": 38,
+                "scale_x": 38,
+                "scale_y": 38,
+                "scale_z": 38,
+                "loglevel": 10,
+                "creator_id": "full_wing_loft",
+                "$TYPE": "StepImportCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "full_wing_loft",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "big_full_wing_loft": {
+            "successors": {},
+            "creator": {
+                "offset": 3.2,
+                "shape": "wing_loft",
+                "loglevel": 10,
+                "creator_id": "big_full_wing_loft",
+                "$TYPE": "SimpleOffsetShapeCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "big_full_wing_loft",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "small_full_wing_loft": {
+            "successors": {},
+            "creator": {
+                "offset": -0.4,
+                "shape": "wing_loft",
+                "loglevel": 10,
+                "creator_id": "small_full_wing_loft",
+                "$TYPE": "SimpleOffsetShapeCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "small_full_wing_loft",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "fuselage_hull_imp": {
+            "successors": {},
+            "creator": {
+                "step_file": "/opt/project/components/aircraft/RV-7/fuselage_inlets.step",
+                "trans_x": 0.0,
+                "trans_y": 0.0,
+                "trans_z": 0.0,
+                "rot_x": 0.0,
+                "rot_y": 0.0,
+                "rot_z": 0.0,
+                "scale": 38,
+                "scale_x": 38,
+                "scale_y": 38,
+                "scale_z": 38,
+                "loglevel": 20,
+                "creator_id": "fuselage_hull_imp",
+                "$TYPE": "StepImportCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "fuselage_hull_imp",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "wing_reinforcement": {
+            "successors": {},
+            "creator": {
+                "full_wing_loft": "wing_loft",
+                "fuselage_loft": "big_full_wing_loft",
+                "loglevel": 0,
+                "creator_id": "wing_reinforcement",
+                "$TYPE": "WingReinforcementShapeCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "wing_reinforcement",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "RV-7-wing": {
+            "successors": {},
+            "creator": {
+                "file_path": "../exports",
+                "shapes_to_export": [
+                    "wing_reinforcement",
+                    "big_full_wing_loft"
+                ],
+                "loglevel": 20,
+                "creator_id": "RV-7-wing",
+                "$TYPE": "ExportToStepCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "RV-7-wing",
+            "$TYPE": "ConstructionStepNode"
+        }
+    },
+    "loglevel": 50,
+    "creator_id": "RV-7-wing.root",
+    "$TYPE": "ConstructionRootNode"
+}
