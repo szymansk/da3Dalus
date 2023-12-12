@@ -7,7 +7,9 @@ from tigl3.geometry import CCPACSPointAbsRel
 import Extra.tigl_extractor as tg
 import json
 
-from Airplane.ConstructionStepNode import ConstructionStepNode, ConstructionRootNode, JSONStepNode
+from Airplane.ConstructionStepNode import ConstructionStepNode
+from Airplane.JSONStepNode import JSONStepNode
+from Airplane.ConstructionRootNode import ConstructionRootNode
 from Airplane.FuselageConstructionSteps import FullWingLoftShapeCreator, Cut2ShapesCreator, SliceShapesCreator, \
     IgesImportCreator, \
     Fuse2ShapesCreator, Intersect2ShapesCreator, SimpleOffsetShapeCreator, ExportToStlCreator, \

@@ -16,7 +16,7 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
     @property
     def identifier(self) -> str:
         """
-        This property is abstract and used in the ConstructionStepKnode. The variable, that ist used to hold the
+        This property is abstract and used in the ConstructionStepNode. The variable, that ist used to hold the
         property should not be private (does not start with an '_'). Otherwise, it will not be de-/serialized.
         :return: identifier as name of this shape. If used several times the shape will be overwritten in future steps.
         """
@@ -61,7 +61,7 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         """
         Check if the shapes, that are needed, have been created before and are available in kwargs.
         :param needed_shapes: list of str with shape identifiers
-        :param kwargs: dictionary of keyword arguments
+        :param kwargs: dictionary of all created shapes
         :return: a dictionary with the needed_shapes
         """
         shapes = {}
@@ -77,8 +77,10 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
                              shapes_needed: list[str],
                              input_shapes: dict[str, Workplane],
                              **kwargs) -> dict[str, Workplane]:
-        # for each none position of shapes_need, we take one of the input_shapes
-        # we expect input shapes ordered most significant last
+        """
+        for each position of shapes_need that is 'None', we take one shape from the input_shapes.
+        we expect the input shapes to be ordered most significant last
+        """
         len_input_shapes = 0 if input_shapes is None else len(input_shapes)
         if sum(x is None for x in shapes_needed) > len_input_shapes:
             raise KeyError(f'{self.identifier}: there are less input_shapes than shapes_needed.')

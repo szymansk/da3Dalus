@@ -3,7 +3,8 @@ import sys
 import Extra.tigl_extractor as tg
 import json
 
-from Airplane.ConstructionStepNode import ConstructionStepNode, ConstructionRootNode
+from Airplane.ConstructionStepNode import ConstructionStepNode
+from Airplane.ConstructionRootNode import ConstructionRootNode
 from Airplane.FuselageConstructionSteps import *
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
 from Airplane.aircraft_topology.EngineInformation import Position

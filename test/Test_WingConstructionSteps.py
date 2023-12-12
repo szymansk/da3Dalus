@@ -7,7 +7,9 @@ from tigl3.tigl3wrapper import Tigl3
 import Extra.tigl_extractor as tg
 import json
 
-from Airplane.ConstructionStepNode import ConstructionStepNode, ConstructionRootNode, JSONStepNode
+from Airplane.ConstructionStepNode import ConstructionStepNode
+from Airplane.JSONStepNode import JSONStepNode
+from Airplane.ConstructionRootNode import ConstructionRootNode
 from Airplane.FuselageConstructionSteps import *
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
 from Airplane.WingConstructionSteps import *

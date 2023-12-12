@@ -3,7 +3,7 @@ import tigl3.geometry as TGeo
 import OCP.TopoDS as OTopo
 
 
-class ShapeExtractor:
+class CPACSShapeExtractor:
     def __init__(self, tigl_handle):
         self.tigl_handle = tigl_handle
         self.config_manager: TConfig.CCPACSConfigurationManager = TConfig.CCPACSConfigurationManager_get_instance()
