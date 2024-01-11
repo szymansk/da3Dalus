@@ -380,7 +380,7 @@
             "creator": {
                 "print_resolution": 0.2,
                 "rib_spacing": 5.0,
-                "full_wing_loft": "full_wing_loft",
+                "full_wing_loft": "full_wing_loft_a",
                 "fuselage_loft": "fuselage_hull.loft",
                 "rib_width": 0.8,
                 "ribcage_factor": 0.49,
@@ -398,7 +398,7 @@
             "successors": {},
             "creator": {
                 "rib_z_offset": 0,
-                "full_wing_loft": "full_wing_loft",
+                "full_wing_loft": "full_wing_loft_a",
                 "fuselage_loft": "fuselage_hull.loft",
                 "rib_quantity": 7,
                 "rib_width": 0.8,
@@ -450,7 +450,7 @@
             "successors": {},
             "creator": {
                 "length_factor": 0.7,
-                "full_wing_loft": "full_wing_loft",
+                "full_wing_loft": "full_wing_loft_a",
                 "fuselage_loft": "fuselage_hull.loft",
                 "ribcage_factor": 0.49,
                 "wing_position": null,
@@ -511,7 +511,7 @@
             "successors": {},
             "creator": {
                 "subtrahends": [
-                    "full_wing_loft",
+                    "full_wing_loft_a",
                     "elevator",
                     "attachment_bolts"
                 ],
@@ -575,7 +575,7 @@
                     "lipo_model",
                     "fuselage_hull.cape",
                     "final_fuselage",
-                    "full_wing_loft",
+                    "full_wing_loft_a",
                     "elevator",
                     "elevator_flap",
                     "rudder",

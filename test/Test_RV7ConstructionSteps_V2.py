@@ -180,14 +180,14 @@ if __name__ == "__main__":
                                           rib_width=4 * printer_resolution, rib_spacing=5.0,
                                           ribcage_factor=ribcage_factor, reinforcement_pipes_diameter=2.0,
                                           print_resolution=printer_resolution, fuselage_loft=f"{fuselage_hull_split.creator_id}.loft",
-                                          full_wing_loft=full_wing_loft_node.creator_id))
+                                          full_wing_loft=full_wing_loft_node_a.creator_id))
     root_node.append(fuselage_reinforcement_node)
 
     wing_support_node = ConstructionStepNode(
         FuselageWingSupportShapeCreator("wing_support_raw",
                                         rib_quantity=7, rib_width=4 * printer_resolution, rib_height_factor=1.2,
                                         rib_z_offset=0, fuselage_loft="fuselage_hull.loft",
-                                        full_wing_loft="full_wing_loft", loglevel=logging.DEBUG))
+                                        full_wing_loft=full_wing_loft_node_a.creator_id, loglevel=logging.DEBUG))
     root_node.append(wing_support_node)
 
     full_elevator_support_loft_node = ConstructionStepNode(
@@ -211,7 +211,7 @@ if __name__ == "__main__":
                                                     ribcage_factor=ribcage_factor,
                                                     length_factor=0.7,
                                                     fuselage_loft="fuselage_hull.loft",
-                                                    full_wing_loft="full_wing_loft",
+                                                    full_wing_loft=full_wing_loft_node_a.creator_id,
                                                     wing_position=None))
     root_node.append(electronics_access_node)
 
@@ -248,7 +248,7 @@ if __name__ == "__main__":
     cut_wing_from_fuselage_node = ConstructionStepNode(
         CutMultipleShapesCreator("final_fuselage",
                                  minuend="fuselage_hull_final",
-                                 subtrahends=["full_wing_loft",
+                                 subtrahends=[full_wing_loft_node_a.creator_id,
 #                                              "rudder",
                                               "elevator",
                                               "attachment_bolts",
@@ -301,7 +301,7 @@ if __name__ == "__main__":
                                               "lipo_model",
                                               "fuselage_hull.cape",
                                               "final_fuselage",
-                                              "full_wing_loft",
+                                              full_wing_loft_node_a.creator_id,
                                               # "final_fuselage[0]",
                                               # "final_fuselage[1]",
                                               # "final_fuselage[2]",

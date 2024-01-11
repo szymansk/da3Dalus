@@ -8,10 +8,10 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
     """
     Base class for shape creating/modifying nodes.
     """
-    def __init__(self, creator_id, shapes_of_interest_keys: Union[list[str], None], loglevel=logging.FATAL):
-        self.loglevel = loglevel
-        self._shapes_of_interest_keys = shapes_of_interest_keys
-        self.creator_id = creator_id
+    def __init__(self, creator_id: str, shapes_of_interest_keys: Union[list[str], None], loglevel:int=logging.FATAL):
+        self.loglevel: int = loglevel
+        self._shapes_of_interest_keys: Union[list[str], None] = shapes_of_interest_keys
+        self.creator_id: str = creator_id
 
     @property
     def identifier(self) -> str:
@@ -28,7 +28,7 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         return self._shapes_of_interest_keys
 
     @abc.abstractmethod
-    def _create_shape(self, shapes_of_interest, input_shapes: dict[str, Workplane],
+    def _create_shape(self, shapes_of_interest: Union[list[str], None], input_shapes: dict[str, Workplane],
                       **kwargs) -> dict[str, Workplane]:
         """
         This method will create a shape. The shape can depend on shapes of previous steps. All previous steps

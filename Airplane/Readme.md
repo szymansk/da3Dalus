@@ -5,9 +5,16 @@ append ```ConstructionStepNodes``` to this root node and to all other ```Constru
 ```ConstructionStepNodes``` contain instances from classes that inherit from the ```AbstractShapeCreator.```  We call 
 those instances shape creators.
 
-Shape creators implement the ```_create_shape(self, shapes_of_interest: dict[str, Workplane],
-                      input_shapes: dict[str, Workplane],
-                      **kwargs) -> dict[str, Workplane].```
+## Shape Creators
+Shape creators implement the abstract function from the `AbstractShapeCreator` class:
+```python
+def _create_shape(self, 
+                  shapes_of_interest: dict[str, Workplane],
+                  input_shapes: dict[str, Workplane],
+                  **kwargs) 
+                -> dict[str, Workplane]
+```
+                      
 When we call the ```create_shape``` methode of the root node, then the construction tree is traversed depth first, 
 and in each step the shape creator is called and either creates new shapes, modifies shapes that have been created 
 before or performs other operations like fusing shapes or cutting of shapes from other shapes. The shapes are returned
@@ -60,9 +67,33 @@ Let's have a look at the `_create_shape` function inherited from the abstract ba
 ```
 The ```input_shapes: dict[str, Workplane]``` parameter holds a dictionary with all the shapes that have been constructed 
 in the previous step identified by their keys. `**kwargs` holds the shapes of all previous steps as a dict of shapes. 
-This is how we can access any shapes. However, best practice is to use the `shapes_of_interest: dict[str, Workplane]` 
-parameter, which contains only the shapes that we handed over to the super constructor. 
+This is how we can access any shape. However, best practice is to use the `shapes_of_interest: dict[str, Workplane]` 
+parameter, which contains only the shapes that we handed over to the super constructor. This is what we do in the following
+code line.
+```python
+        shape_list = list(shapes_of_interest.values())
+```
+Afterwards we do some obligatory logging that tells us which action is performed on which shapes and which shape will 
+be returned.
+```python
+        logging.info(f"fusing shapes '{list(shapes_of_interest.keys())[0]}' + '{list(shapes_of_interest.keys())[1]}' --> '{self.identifier}'")
+```
+In the next line we convert objects of a shape type to cadquery Workplane objects. 
+```python
+        shape_list = [sh if isinstance(sh, cq.Workplane) else cq.Workplane(obj=sh) for sh in shape_list]
+```
+Then we perform the construction, here we just fuse two objects.
+```python
+        fused_shape = shape_list[0] + shape_list[1]
+```
+Finally, we do some obligatory visual logging of the produced shape and return it as a dictionary, with the class's 
+`identifier`, which is by default equal to the `creator_id` from the constructor.
+```python
+        fused_shape.display(name=self.identifier, severity=logging.DEBUG)
+        return {self.identifier: fused_shape}
+```
 
+The full class code in one block.
 ```python
 class Fuse2ShapesCreator(AbstractShapeCreator):
     """
@@ -85,6 +116,8 @@ class Fuse2ShapesCreator(AbstractShapeCreator):
         fused_shape.display(name=self.identifier, severity=logging.DEBUG)
         return {self.identifier: fused_shape}
 ```
+
+
 
 ```mermaid
 classDiagram
@@ -114,7 +147,8 @@ classDiagram
         _create_shape()
     }
     MutableMapping <|.. ConstructionRootNode
-    AbstractShapeCreator <|-- ConstructionRootNode
+    AbstractShapeCreator <|.. ConstructionRootNode
+    AbstractShapeCreator o-- ConstructionRootNode
     
     class ConstructionStepNode {
         ConstructionStepNode(self, creator: AbstractShapeCreator, successors=None, **kwargs)
@@ -125,6 +159,7 @@ classDiagram
     
     MutableMapping <|.. ConstructionStepNode
     AbstractShapeCreator o-- ConstructionStepNode
+    AbstractShapeCreator <|.. ConstructionStepNode
 
     class JSONStepNode
     

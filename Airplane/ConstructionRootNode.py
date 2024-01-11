@@ -22,10 +22,10 @@ class ConstructionRootNode(AbstractShapeCreator, MutableMapping):
     def __getitem__(self, key: str):
         return self.successors[key]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value):
         self.successors[key] = value
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str):
         del self.successors[key]
 
     def __len__(self):
@@ -41,7 +41,7 @@ class ConstructionRootNode(AbstractShapeCreator, MutableMapping):
         """
         self.update({value.creator.identifier: value})
 
-    def _create_shape(self, shapes_of_interest, input_shapes: dict[str, Workplane], **kwargs) \
+    def _create_shape(self, shapes_of_interest: Union[list[str], None], input_shapes: dict[str, Workplane], **kwargs) \
             -> dict[str, Union[object, Workplane]]:
         """
         Executes the construction of all shapes based on the defined workflow structure.
