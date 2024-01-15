@@ -9,6 +9,8 @@ services:
     stdin_open: true
     entrypoint: "/opt/anaconda/bin/python"
     tty: true
+    ports:
+      - "8888:8888"
     depends_on:
       - cq-server
 
