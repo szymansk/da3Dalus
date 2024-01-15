@@ -58,13 +58,11 @@ class FuselageReinforcementShapeCreator(AbstractShapeCreator):
         center_y = fus_bbox.ylen/2+fus_bbox.ymin
         center_z = min_z_position + box_height / 2
 
-        outer_pipe_radius = self.reinforcement_pipes_diameter / 2  # + 2 * self.print_resolution
-        inner_pipe_radius = self.reinforcement_pipes_diameter / 2 + self.print_resolution
+        outer_pipe_radius = self.reinforcement_pipes_diameter / 2
 
         centered = (True, True, False)
         shape__fuselage_reinforcement = cq.Workplane('YZ').workplane(offset=fus_bbox.xmin).tag('nose')\
-            .moveTo(center_y, center_z).rect(box_width,
-                                             box_height, forConstruction=True).tag('rect')\
+            .moveTo(center_y, center_z).rect(box_width, box_height, forConstruction=True).tag('rect')\
             .vertices().tag('v_rect').vertices('>Y and >Z').tag('c1').box(self.rib_width, fus_bbox.zlen * 2, fus_bbox.xlen, centered=centered)\
             .vertices(tag='c1').cylinder(radius=outer_pipe_radius, height=fus_bbox.xlen, centered=centered)\
             .vertices(tag='rect').vertices('<Y and <Z').tag('c2').box(self.rib_width, fus_bbox.zlen * 2, fus_bbox.xlen, centered=centered)\
@@ -73,10 +71,12 @@ class FuselageReinforcementShapeCreator(AbstractShapeCreator):
             .vertices(tag='c3').cylinder(radius=outer_pipe_radius, height=fus_bbox.xlen, centered=centered)\
             .vertices(tag='rect') .vertices('<Y and >Z').tag('c4').box(fus_bbox.zlen * 2, self.rib_width, fus_bbox.xlen, centered=centered)\
             .vertices(tag='c4').cylinder(radius=outer_pipe_radius, height=fus_bbox.xlen, centered=centered)  # \
-            #.vertices(tag='c1').cylinder(combine='s', radius=inner_pipe_radius, height=fus_bbox.xlen, centered=centered)\
-            #.vertices(tag='c2').cylinder(combine='s', radius=inner_pipe_radius, height=fus_bbox.xlen, centered=centered)\
-            #.vertices(tag='c3').cylinder(combine='s', radius=inner_pipe_radius, height=fus_bbox.xlen, centered=centered)\
-            #.vertices(tag='c4').cylinder(combine='s', radius=inner_pipe_radius, height=fus_bbox.xlen, centered=centered)
+
+        rods = cq.Workplane('YZ')\
+            .add(shape__fuselage_reinforcement.vertices(tag='c1')).vertices(tag='c1').cylinder(radius=outer_pipe_radius, height=fus_bbox.xlen, centered=centered)\
+            .add(shape__fuselage_reinforcement.vertices(tag='c2')).vertices(tag='c2').cylinder(radius=outer_pipe_radius, height=fus_bbox.xlen, centered=centered)\
+            .add(shape__fuselage_reinforcement.vertices(tag='c3')).vertices(tag='c3').cylinder(radius=outer_pipe_radius, height=fus_bbox.xlen, centered=centered)\
+            .add(shape__fuselage_reinforcement.vertices(tag='c4')).vertices(tag='c4').cylinder(radius=outer_pipe_radius, height=fus_bbox.xlen, centered=centered)
 
         # middle section cutouts
         start_v = cq.Vector(fus_bbox.xmin, center_y, center_z)
@@ -108,7 +108,7 @@ class FuselageReinforcementShapeCreator(AbstractShapeCreator):
                                                         shape__fuselage_reinforcement, start_v)
 
         shape__fuselage_reinforcement.display(name=self.identifier, severity=logging.DEBUG)
-        return {str(self.identifier): shape__fuselage_reinforcement}
+        return {str(self.identifier): shape__fuselage_reinforcement, f"{self.identifier}.rods": rods}
 
     def _do_cutout(self, plane, box_height, fus_bbox, outer_pipe_radius, shape__fuselage_reinforcement, start_v):
         for offset in numpy.arange(0, fus_bbox.xlen * 1.3, box_height * 1.1):
