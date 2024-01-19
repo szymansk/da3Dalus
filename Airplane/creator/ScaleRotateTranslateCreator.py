@@ -45,7 +45,7 @@ class ScaleRotateTranslateCreator(AbstractShapeCreator):
         trans_shape = self.transform_by(shape, scale=self.scale, rot_x=self.rot_x, rot_y=self.rot_y, rot_z=self.rot_z,
                                         trans_x=self.trans_x, trans_y=self.trans_y, trans_z=self.trans_z,
                                         mirroring=self.mirroring)
-        trans_shape.display(self.identifier, severity=logging.DEBUG)
+        trans_shape.display(name=self.identifier, severity=logging.DEBUG)
 
         return {self.identifier: trans_shape}
 

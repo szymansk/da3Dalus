@@ -67,9 +67,9 @@ class FuselageReinforcementShapeCreator(AbstractShapeCreator):
             .vertices(tag='c1').cylinder(radius=outer_pipe_radius, height=fus_bbox.xlen, centered=centered)\
             .vertices(tag='rect').vertices('<Y and <Z').tag('c2').box(self.rib_width, fus_bbox.zlen * 2, fus_bbox.xlen, centered=centered)\
             .vertices(tag='c2').cylinder(radius=outer_pipe_radius, height=fus_bbox.xlen, centered=centered)\
-            .vertices(tag='rect') .vertices('>Y and <Z').tag('c3').box(fus_bbox.zlen * 2, self.rib_width, fus_bbox.xlen, centered=centered)\
+            .vertices(tag='rect').vertices('>Y and <Z').tag('c3').box(fus_bbox.zlen * 2, self.rib_width, fus_bbox.xlen, centered=centered)\
             .vertices(tag='c3').cylinder(radius=outer_pipe_radius, height=fus_bbox.xlen, centered=centered)\
-            .vertices(tag='rect') .vertices('<Y and >Z').tag('c4').box(fus_bbox.zlen * 2, self.rib_width, fus_bbox.xlen, centered=centered)\
+            .vertices(tag='rect').vertices('<Y and >Z').tag('c4').box(fus_bbox.zlen * 2, self.rib_width, fus_bbox.xlen, centered=centered)\
             .vertices(tag='c4').cylinder(radius=outer_pipe_radius, height=fus_bbox.xlen, centered=centered)  # \
 
         rods = cq.Workplane('YZ')\

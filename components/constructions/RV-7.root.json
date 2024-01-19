@@ -279,17 +279,31 @@
             "successors": {
                 "engine_mount_plate": {
                     "successors": {
-                        "engine_mount": {
-                            "successors": {},
+                        "engine_mount_plate_cutout": {
+                            "successors": {
+                                "engine_mount": {
+                                    "successors": {},
+                                    "creator": {
+                                        "shape_a": "engine_mount_plate_cutout",
+                                        "shape_b": "engine_mount_init",
+                                        "loglevel": 10,
+                                        "creator_id": "engine_mount",
+                                        "$TYPE": "Fuse2ShapesCreator"
+                                    },
+                                    "loglevel": 50,
+                                    "creator_id": "engine_mount",
+                                    "$TYPE": "ConstructionStepNode"
+                                }
+                            },
                             "creator": {
-                                "shape_a": null,
-                                "shape_b": null,
-                                "loglevel": 10,
-                                "creator_id": "engine_mount",
-                                "$TYPE": "Fuse2ShapesCreator"
+                                "minuend": "engine_mount_plate",
+                                "subtrahend": "engine_mount_init.cutout",
+                                "loglevel": 20,
+                                "creator_id": "engine_mount_plate_cutout",
+                                "$TYPE": "Cut2ShapesCreator"
                             },
                             "loglevel": 50,
-                            "creator_id": "engine_mount",
+                            "creator_id": "engine_mount_plate_cutout",
                             "$TYPE": "ConstructionStepNode"
                         }
                     },
@@ -302,7 +316,7 @@
                         "engine_down_thrust_deg": null,
                         "engine_side_thrust_deg": null,
                         "mount_plate_thickness": 5,
-                        "loglevel": 20,
+                        "loglevel": 10,
                         "creator_id": "engine_mount_plate",
                         "$TYPE": "EngineMountPanelShapeCreator"
                     },
@@ -321,7 +335,8 @@
                 "engine_side_thrust_deg": null,
                 "engine_screw_din_diameter": null,
                 "mount_plate_thickness": 5,
-                "loglevel": 20,
+                "cutout_thickness": 5.8,
+                "loglevel": 10,
                 "creator_id": "engine_mount_init",
                 "$TYPE": "EngineMountShapeCreator"
             },
@@ -520,7 +535,8 @@
             "successors": {},
             "creator": {
                 "subtrahends": [
-                    "intersect_raw_fus_reinf_fuselage_small_hull"
+                    "intersect_raw_fus_reinf_fuselage_small_hull",
+                    "engine_mount_init.cutout"
                 ],
                 "minuend": "fuselage_hull.loft",
                 "loglevel": 20,
@@ -593,7 +609,6 @@
             "creator": {
                 "file_path": "../exports",
                 "shapes_to_export": [
-                    "engine_mount",
                     "motor_mount_with_rod_holes",
                     "brushless",
                     "lipo_model",

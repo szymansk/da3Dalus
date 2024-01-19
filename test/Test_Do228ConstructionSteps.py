@@ -9,7 +9,7 @@ from Airplane.FuselageConstructionSteps import *
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
 from Airplane.aircraft_topology.EngineInformation import Position
 from Airplane.creator.EngineCapeShapeCreator import EngineCapeShapeCreator
-from Airplane.creator.EngineMountPanelShapeCreator import EngineMountPanelShapeCreator
+from Airplane.creator.EngineCoverAndMountPanelAndFuselageShapeCreator import EngineCoverAndMountPanelAndFuselageShapeCreator
 from Airplane.creator.EngineMountShapeCreator import EngineMountShapeCreator
 from Airplane.creator.FuselageElectronicsAccessCutOutShapeCreator import FuselageElectronicsAccessCutOutShapeCreator
 from Airplane.creator.FuselageReinforcementShapeCreator import FuselageReinforcementShapeCreator
@@ -98,7 +98,7 @@ if __name__ == "__main__":
     # #########
 
     engine_mount_node = ConstructionStepNode(
-        EngineMountShapeCreator("engine_mount", engine_index=1, mount_plate_thickness=0.005,
+        EngineMountShapeCreator("engine_mount", engine_index=1, mount_plate_thickness=0.005, cutout_thickness=12423,
                                 engine_screw_hole_circle=0.042, engine_mount_box_length=0.0133 * 2.5,
                                 engine_screw_din_diameter=0.0032, engine_screw_length=0.016,
                                 engine_total_cover_length=None, engine_down_thrust_deg=None,
@@ -106,10 +106,10 @@ if __name__ == "__main__":
     root_node.append(engine_mount_node)
 
     engine_panel_node = ConstructionStepNode(
-        EngineMountPanelShapeCreator("engine_mount_plate", engine_index=1, mount_plate_thickness=0.005,
-                                     engine_screw_hole_circle=0.042, engine_mount_box_length=0.0133 * 2.5,
-                                     engine_total_cover_length=None, engine_side_thrust_deg=None,
-                                     engine_down_thrust_deg=None, full_fuselage_loft="full_fuselage_loft"))
+        EngineCoverAndMountPanelAndFuselageShapeCreator("engine_mount_plate", engine_index=1, mount_plate_thickness=0.005,
+                                                        engine_screw_hole_circle=0.042, engine_mount_box_length=0.0133 * 2.5,
+                                                        engine_total_cover_length=None, engine_side_thrust_deg=None,
+                                                        engine_down_thrust_deg=None, full_fuselage_loft="full_fuselage_loft"))
     engine_mount_node.append(engine_panel_node)
 
     fuse_mount_with_plate = ConstructionStepNode(

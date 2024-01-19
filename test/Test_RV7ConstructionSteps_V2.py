@@ -7,7 +7,7 @@ import os
 from Airplane.WingConstructionSteps import WingLoftCreator
 from Airplane.aircraft_topology.WingConfiguration import WingConfiguration
 from Airplane.creator.EngineCapeShapeCreator import EngineCapeShapeCreator
-from Airplane.creator import EngineMountPanelShapeCreator
+from Airplane.creator import EngineCoverAndMountPanelAndFuselageShapeCreator
 from Airplane.creator.EngineMountShapeCreator import EngineMountShapeCreator
 from Airplane.creator.FuselageElectronicsAccessCutOutShapeCreator import FuselageElectronicsAccessCutOutShapeCreator
 from Airplane.creator.FuselageReinforcementShapeCreator import FuselageReinforcementShapeCreator
@@ -142,18 +142,29 @@ if __name__ == "__main__":
     # #########
     engine_mount_init = ConstructionStepNode(
         EngineMountShapeCreator("engine_mount_init",
-                                engine_index=1, mount_plate_thickness=mount_plate_thickness))
+                                engine_index=1,
+                                mount_plate_thickness=mount_plate_thickness,
+                                cutout_thickness=mount_plate_thickness+4*printer_resolution, loglevel=logging.DEBUG))
     root_node.append(engine_mount_init)
 
     engine_mount_plate = ConstructionStepNode(
-        EngineMountPanelShapeCreator("engine_mount_plate", engine_index=1, mount_plate_thickness=mount_plate_thickness,
-                                     full_fuselage_loft="fuselage_hull_imp"))
+        EngineCoverAndMountPanelAndFuselageShapeCreator(
+            "engine_mount_plate", engine_index=1, mount_plate_thickness=mount_plate_thickness,
+                      full_fuselage_loft="fuselage_hull_imp", loglevel=logging.DEBUG))
     engine_mount_init.append(engine_mount_plate)
+
+    engine_mount_plate_cutout = ConstructionStepNode(
+        Cut2ShapesCreator("engine_mount_plate_cutout",
+                          minuend=engine_mount_plate.creator_id,
+                          subtrahend=f"{engine_mount_init.creator_id}.cutout"))
+    engine_mount_plate.append(engine_mount_plate_cutout)
 
     engine_mount = ConstructionStepNode(
         Fuse2ShapesCreator("engine_mount",
-                                 loglevel=logging.DEBUG))
-    engine_mount_plate.append(engine_mount)
+                           shape_a=engine_mount_plate_cutout.creator_id,
+                           shape_b=engine_mount_init.creator_id,
+                           loglevel=logging.DEBUG))
+    engine_mount_plate_cutout.append(engine_mount)
     # engine mount END
 
     fuselage_hull_split = ConstructionStepNode(
@@ -248,10 +259,10 @@ if __name__ == "__main__":
     fuselage_hull_final = ConstructionStepNode(
         CutMultipleShapesCreator("fuselage_hull_final",
                                  minuend="fuselage_hull.loft",
-                                 subtrahends=["intersect_raw_fus_reinf_fuselage_small_hull"],
+                                 subtrahends=["intersect_raw_fus_reinf_fuselage_small_hull",
+                                              f"{engine_mount_init.creator_id}.cutout"],
                                  loglevel=logging.INFO))
     root_node.append(fuselage_hull_final)
-
 
     # holes_in_engine_mount = ConstructionStepNode(
     #     Cut2ShapesCreator("engine_mount",

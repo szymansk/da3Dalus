@@ -5,7 +5,7 @@ import json
 import os
 
 from Airplane.creator.EngineCapeShapeCreator import EngineCapeShapeCreator
-from Airplane.creator import EngineMountPanelShapeCreator
+from Airplane.creator import EngineCoverAndMountPanelAndFuselageShapeCreator
 from Airplane.creator.EngineMountShapeCreator import EngineMountShapeCreator
 from Airplane.creator.FuselageElectronicsAccessCutOutShapeCreator import FuselageElectronicsAccessCutOutShapeCreator
 from Airplane.creator.FuselageReinforcementShapeCreator import FuselageReinforcementShapeCreator
@@ -131,12 +131,13 @@ if __name__ == "__main__":
     # #########
 
     engine_mount_init = ConstructionStepNode(
-        EngineMountShapeCreator("engine_mount_init", engine_index=1, mount_plate_thickness=mount_plate_thickness))
+        EngineMountShapeCreator("engine_mount_init", engine_index=1, mount_plate_thickness=mount_plate_thickness,
+                                cutout_thickness=12423))
     root_node.append(engine_mount_init)
 
     engine_mount_plate = ConstructionStepNode(
-        EngineMountPanelShapeCreator("engine_mount_plate", engine_index=1, mount_plate_thickness=mount_plate_thickness,
-                                     full_fuselage_loft="fuselage_hull_imp"))
+        EngineCoverAndMountPanelAndFuselageShapeCreator("engine_mount_plate", engine_index=1, mount_plate_thickness=mount_plate_thickness,
+                                                        full_fuselage_loft="fuselage_hull_imp"))
     engine_mount_init.append(engine_mount_plate)
 
     engine_mount = ConstructionStepNode(
