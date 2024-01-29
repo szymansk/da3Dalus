@@ -8,3 +8,4 @@ from Airplane.creator.StepImportCreator import StepImportCreator
 from Airplane.creator.WingAttachmentBoltCutoutShapeCreator import WingAttachmentBoltCutoutShapeCreator
 from Airplane.creator.FuselageElectronicsAccessCutOutShapeCreator import FuselageElectronicsAccessCutOutShapeCreator
 from Airplane.creator.WingReinforcementShapeCreator import WingReinforcementShapeCreator
+from Airplane.creator.WingLoftCreator import WingLoftCreator

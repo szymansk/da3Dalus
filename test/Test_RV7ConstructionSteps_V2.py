@@ -1,10 +1,9 @@
-import logging
 import sys
 
 import json 
 import os
 
-from Airplane.WingConstructionSteps import WingLoftCreator
+from Airplane.creator.WingLoftCreator import WingLoftCreator
 from Airplane.aircraft_topology.WingConfiguration import WingConfiguration
 from Airplane.creator.EngineCapeShapeCreator import EngineCapeShapeCreator
 from Airplane.creator import EngineCoverAndMountPanelAndFuselageShapeCreator
@@ -12,7 +11,6 @@ from Airplane.creator.EngineMountShapeCreator import EngineMountShapeCreator
 from Airplane.creator.FuselageElectronicsAccessCutOutShapeCreator import FuselageElectronicsAccessCutOutShapeCreator
 from Airplane.creator.FuselageReinforcementShapeCreator import FuselageReinforcementShapeCreator
 from Airplane.creator.FuselageWingSupportShapeCreator import FuselageWingSupportShapeCreator
-from Airplane.creator.WingAttachmentBoltCutoutShapeCreator import WingAttachmentBoltCutoutShapeCreator
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))

@@ -1,10 +1,9 @@
-import logging
 import sys
 
 import json 
 import os
 
-from Airplane.WingConstructionSteps import WingLoftCreator
+from Airplane.creator.WingLoftCreator import WingLoftCreator
 from Airplane.aircraft_topology.WingConfiguration import WingConfiguration
 from Airplane.creator.WingReinforcementShapeCreator import WingReinforcementShapeCreator
 
