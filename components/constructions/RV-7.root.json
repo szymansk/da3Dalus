@@ -27,6 +27,7 @@
             "creator": {
                 "wing_side": "BOTH",
                 "wing_index": "main_wing",
+                "offset": 0,
                 "loglevel": 10,
                 "creator_id": "full_wing_loft",
                 "$TYPE": "WingLoftCreator"
@@ -318,7 +319,7 @@
                         "mount_plate_thickness": 5,
                         "loglevel": 10,
                         "creator_id": "engine_mount_plate",
-                        "$TYPE": "EngineMountPanelShapeCreator"
+                        "$TYPE": "EngineCoverAndMountPanelAndFuselageShapeCreator"
                     },
                     "loglevel": 50,
                     "creator_id": "engine_mount_plate",
@@ -419,7 +420,7 @@
             "creator": {
                 "print_resolution": 0.2,
                 "rib_spacing": 5.0,
-                "full_wing_loft": "full_wing_loft_a",
+                "full_wing_loft": "full_wing_loft",
                 "fuselage_loft": "fuselage_hull.loft",
                 "rib_width": 0.8,
                 "ribcage_factor": 0.49,
@@ -437,7 +438,7 @@
             "successors": {},
             "creator": {
                 "rib_z_offset": 0,
-                "full_wing_loft": "full_wing_loft_a",
+                "full_wing_loft": "full_wing_loft",
                 "fuselage_loft": "fuselage_hull.loft",
                 "rib_quantity": 7,
                 "rib_width": 0.8,
@@ -489,7 +490,7 @@
             "successors": {},
             "creator": {
                 "length_factor": 0.7,
-                "full_wing_loft": "full_wing_loft_a",
+                "full_wing_loft": "full_wing_loft",
                 "fuselage_loft": "fuselage_hull.loft",
                 "ribcage_factor": 0.49,
                 "wing_position": null,
@@ -551,7 +552,7 @@
             "successors": {},
             "creator": {
                 "subtrahends": [
-                    "full_wing_loft_a",
+                    "full_wing_loft",
                     "elevator"
                 ],
                 "minuend": "fuselage_hull_final",
@@ -614,7 +615,7 @@
                     "lipo_model",
                     "fuselage_hull.cape",
                     "final_fuselage",
-                    "full_wing_loft_a",
+                    "full_wing_loft",
                     "elevator",
                     "rudder_cut",
                     "elevator_flap",

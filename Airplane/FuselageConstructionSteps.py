@@ -93,16 +93,12 @@ class Cut2ShapesCreator(AbstractShapeCreator):
         shape__minuend = shape_list[0]
         shape__subtrahend = shape_list[1]
         try:
-            cut_shape = shape__minuend.cut(shape__subtrahend, clean=True).combine(glue=True)
+            cut_shape = shape__minuend.cut(shape__subtrahend.solids().val(), clean=True).combine(glue=True)
         except:
             logging.error(
                 f"FAILED: cutting shapes '{list(shapes_of_interest.keys())[0]}' - "
                 f"'{list(shapes_of_interest.keys())[1]}' --> '{self.identifier}'")
             cut_shape = shape__minuend
-        #
-        # topods = BRepAlgoAPI_Cut(shape__minuend.findSolid().wrapped, shape__subtrahend.findSolid().wrapped).Shape()
-        # solid = cq.Solid(topods)
-        # cut_shape = cq.Workplane(solid).display(name=f"{self.identifier}", severity=logging.DEBUG)
 
         cut_shape.display(name=self.identifier, severity=logging.DEBUG)
         return {self.identifier: cut_shape}

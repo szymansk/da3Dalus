@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   cq-client:
-    image: szymanski2adesso/cadquery-client:arm64v8
+    image: szymanski2adesso/cadquery-client:2.4.0
     container_name: cq-client
     volumes:
       - ./:/home/cadquery/workspace
@@ -21,3 +21,12 @@ services:
     command: "run"
     ports:
       - "5050:5000"
+
+  cq-runtime:
+    image: szymanski2adesso/cadquery-runtime:2.4.0
+    container_name: cq-runtime
+    volumes:
+      - ./:/home/cadquery/workspace
+    stdin_open: true
+    entrypoint: "/venv/bin/python"
+    tty: true
