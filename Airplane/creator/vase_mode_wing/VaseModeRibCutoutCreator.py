@@ -6,27 +6,58 @@ from cadquery import Workplane
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
 from Airplane.aircraft_topology.WingConfiguration import WingConfiguration
 
-from cq_plugins.wing.wing_segment import wing_segment
-from cq_plugins.wing.wing_root_segment import wing_root_segment
 
-
-class WingLoftCreator(AbstractShapeCreator):
+class VaseModeRibCutoutCreator(AbstractShapeCreator):
+    """
+    Create a cutout shape that should be intersected with the hull shape.
+    The shape :
+               |   /||\      |
+               |  / ||   \   |
+    leading    | /  ||     \ | trailing
+    edge       | \  ||     / | edge
+               |  \ ||   /   |
+               |   \||/      |
+               offset      offest
+    """
     def __init__(self, creator_id: str,
                  wing_index: Union[str, int],
-                 offset: float = 0,
+                 printer_wall_thickness: float,
+                 spare_support_geometry_is_round: bool,
+                 spare_support_dimension_width: float,
+                 spare_support_dimension_height: float,
+                 leading_edge_offset: float,
+                 trailing_edge_offset: float,
+                 minimum_rib_angle: float,
                  wing_config: dict[int, WingConfiguration] = None,
-                 wing_side: Literal["LEFT","RIGHT","BOTH"]="RIGHT",
+                 wing_side: Literal["LEFT","RIGHT","BOTH"] = "RIGHT",
                  loglevel=logging.INFO):
-        self.wing_side = wing_side
-        self.wing_index = wing_index
-        self.offset = offset
-        self._wing_config = wing_config
+        """
+        parameters:
+        printer_wall_thickness - printer settings wall thickness
+        spare_support_geometry_is_round -- default true
+        spare_support_dimension_x -- diameter if round is true
+        spare_support_dimension_z -- ignored if round
+        leading_edge_offset --
+        trailing_edge_offset --
+        minimum_rib_angle -- important for printability (should be > 45°)
+        """
+        self.printer_wall_thickness: float = printer_wall_thickness
+        self.spare_support_geometry_is_round: bool = spare_support_geometry_is_round
+        self.spare_support_dimension_width: float = spare_support_dimension_width
+        self.spare_support_dimension_height: float = spare_support_dimension_height
+        self.leading_edge_offset: float = leading_edge_offset
+        self.trailing_edge_offset: float = trailing_edge_offset
+        self.minimum_rib_angle: float = minimum_rib_angle
+        self.wing_side: Literal["LEFT","RIGHT","BOTH"]  = wing_side
+        self.wing_index: Union[str, int] = wing_index
+        self._wing_config: dict[int, WingConfiguration] = wing_config
+
         super().__init__(creator_id, shapes_of_interest_keys=[], loglevel=loglevel)
 
     def _create_shape(self, shapes_of_interest: dict[str, Workplane],
                       input_shapes: dict[str, Workplane],
                       **kwargs) -> dict[str, Workplane]:
-        logging.info(f"wing loft from configuration --> '{self.identifier}'")
+        logging.info(f"wing rib cutout from configuration --> '{self.identifier}'")
 
         wing_config: WingConfiguration = self._wing_config[self.wing_index]
         right_wing: Workplane = (

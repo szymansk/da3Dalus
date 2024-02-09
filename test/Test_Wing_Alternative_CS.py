@@ -70,6 +70,24 @@ if __name__ == "__main__":
                           loglevel=logging.INFO))
     root_node.append(cut_hull)
 
+    ### CREATE REINFORCET WING IN VASE MODE PRINTING
+    # https://www.abbottaerospace.com/aa-sb-001/22-aircraft-specific-design-features-and-design-methods/22-16-57-wings/22-16-2-main-wing-box/
+    # steps
+    # 1. create hull (done)
+    # 2. create offset_hull (done)
+    # 3. cut ribs from offset_hull
+    # 4. cut offset_rib_hull from hull
+    # 5. create spares
+    #    a. main spare
+    #    b. front spare
+    #    c. rear spare
+    # 6. join spares with offset_rib_hull
+    # 7. add servo
+    #    a. servo mount
+    #    b. servo cover
+    # 8. helper shapes for main rib
+    #
+
     aircraft_step_export_node = ConstructionStepNode(
         ExportToStepCreator(Path(f"{root_node.identifier}").stem,
                             file_path="../exports",
