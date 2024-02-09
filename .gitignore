@@ -216,3 +216,7 @@ components/servos/ditex-servo-masse/.DS_Store
 *.vsix
 
 **.icloud
+jupyter/.jupyter/
+jupyter/.local/
+jupyter/.ipython/
+
