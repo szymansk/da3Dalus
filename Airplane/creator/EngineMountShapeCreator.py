@@ -9,12 +9,12 @@ from Airplane.aircraft_topology.EngineInformation import EngineInformation
 
 
 class EngineMountShapeCreator(AbstractShapeCreator):
-    def __init__(self, creator_id: str, engine_index: int, mount_plate_thickness: float,
+    def __init__(self, creator_id: str, engine_index: int, mount_plate_thickness: float, cutout_thickness,
                  engine_screw_hole_circle: float = None, engine_mount_box_length: float = None,
-                 engine_screw_din_diameter: float = None,
-                 engine_screw_length: float = None, engine_total_cover_length: float = None,
-                 engine_down_thrust_deg: float = None, engine_side_thrust_deg: float = None,
-                 engine_information: dict[int, EngineInformation] = None, loglevel=logging.INFO):
+                 engine_screw_din_diameter: float = None, engine_screw_length: float = None,
+                 engine_total_cover_length: float = None, engine_down_thrust_deg: float = None,
+                 engine_side_thrust_deg: float = None, engine_information: dict[int, EngineInformation] = None,
+                 loglevel=logging.INFO):
         """
 
         :param engine_index:
@@ -38,6 +38,7 @@ class EngineMountShapeCreator(AbstractShapeCreator):
         self.engine_side_thrust_deg = engine_side_thrust_deg
         self.engine_screw_din_diameter = engine_screw_din_diameter
         self.mount_plate_thickness = mount_plate_thickness
+        self.cutout_thickness = cutout_thickness
         self._engine_information = engine_information
         super().__init__(creator_id, shapes_of_interest_keys=None, loglevel=loglevel)
 
@@ -62,22 +63,24 @@ class EngineMountShapeCreator(AbstractShapeCreator):
         self.engine_screw_din_diameter = self._engine_information[self.engine_index].engine_screw_din_diameter \
             if self.engine_screw_din_diameter is None else self.engine_screw_din_diameter
 
-        mount = EngineMountShapeCreator._create_engine_mount(engine_total_cover_length=self.engine_total_cover_length,
+        mount, cutout = self._create_engine_mount(engine_total_cover_length=self.engine_total_cover_length,
                                                              engine_mount_box_length=self.engine_mount_box_length,
                                                              engine_down_thrust_deg=self.engine_down_thrust_deg,
                                                              engine_side_thrust_deg=self.engine_side_thrust_deg,
                                                              engine_screw_hole_circle=self.engine_screw_hole_circle,
                                                              engine_screw_din_diameter=self.engine_screw_din_diameter,
                                                              engine_information=self._engine_information[
-                                                                 self.engine_index])
-        mount.display(self.identifier, logging.DEBUG)
+                                                                 self.engine_index],
+                                                             cutout_thickness=self.cutout_thickness)
+        mount.display(name=self.identifier, severity=logging.DEBUG)
+        cutout.display(name=f"{self.identifier}.cutout", severity=logging.DEBUG)
 
-        return {str(self.identifier): mount}
+        return {str(self.identifier): mount, f"{self.identifier}.cutout": cutout}
 
-    @classmethod
-    def _create_engine_mount(cls, engine_total_cover_length: float, engine_mount_box_length: float, engine_down_thrust_deg: float,
+
+    def _create_engine_mount(self, engine_total_cover_length: float, engine_mount_box_length: float, engine_down_thrust_deg: float,
                             engine_side_thrust_deg: float, engine_screw_hole_circle: float, engine_screw_din_diameter: float,
-                            engine_information: EngineInformation) -> Workplane:
+                            engine_information: EngineInformation, cutout_thickness: float) -> tuple[Workplane, Workplane]:
 
         motor_position = engine_information.position
         origin = (motor_position.get_x(),motor_position.get_y(),motor_position.get_z())
@@ -90,8 +93,12 @@ class EngineMountShapeCreator(AbstractShapeCreator):
                     .vertices(tag='corners').cylinder(engine_mount_box_length*1.2,(engine_screw_din_diameter+6)/2).faces("<X")\
                     .vertices(tag='corners').cylinder(engine_mount_box_length*2,(engine_screw_din_diameter)/2, combine='cut')\
                     .faces(tag='cyl').rect(engine_screw_hole_circle*10,engine_screw_hole_circle*10).extrude(-100, combine='cut')\
-                    .faces(tag='rear').workplane().rect(engine_screw_hole_circle*10,engine_screw_hole_circle*10).extrude(100, combine='cut')\
-                    .display()
+                    .faces(tag='rear').workplane().rect(engine_screw_hole_circle*10,engine_screw_hole_circle*10).extrude(100, combine='cut')
+
+        cutout = cq.Workplane().copyWorkplane(mount.faces(tag='rear')).box(
+            sqrt(0.5) * (engine_screw_hole_circle-(engine_screw_din_diameter+6)/2),
+            sqrt(0.5) * (engine_screw_hole_circle-(engine_screw_din_diameter+6)/2),
+            cutout_thickness*2, centered=(True, True, True))
 
         origin = cq.Vector(motor_position.get_x(),motor_position.get_y(),motor_position.get_z())
         rot_mat = cq.Matrix()
@@ -103,10 +110,13 @@ class EngineMountShapeCreator(AbstractShapeCreator):
         target.x = engine_total_cover_length  # TODO: this is a little hack!
 
         mount = mount.translate(target+cq.Vector(engine_mount_box_length/2, 0, 0))
+        cutout = cutout.translate(target+cq.Vector(engine_mount_box_length/2, 0, 0))
 
         if abs(engine_side_thrust_deg) > 90.0:
             mount = mount.rotate((0,0,0),(0,0,1),180)
+            cutout = cutout.rotate((0,0,0),(0,0,1),180)
         motor_position = engine_information.position
         mount = mount.translate(origin)
+        cutout = cutout.translate(origin)
 
-        return mount
+        return mount, cutout

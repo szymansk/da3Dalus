@@ -2,6 +2,8 @@ import math
 import random
 import uuid
 from typing import Literal
+import numpy as np
+from numpy.linalg import norm
 
 import cadquery as cq
 import logging
@@ -129,61 +131,38 @@ def airfoil(self: cq.Workplane, selig_file: str, chord: float, offset: float = 0
             point_list.append((tok_x, tok_y))
 
     if offset == 0:
-        point_list = [(p[0] * chord, p[1] * chord) for p in point_list]
+        scaled_point_list = [(p[0] * chord, p[1] * chord) for p in point_list]
     else:
-        nose_point = min(point_list, key=lambda t: t[0])
-        nose_idx = point_list.index(nose_point)
 
-        point_list_top = [(p[0] * chord, p[1] * chord + offset) for p in point_list[:nose_idx]]
-        point_list_bottom = [(p[0] * chord, p[1] * chord - offset) for p in point_list[nose_idx:]]
+        points = [(point_list[i - 1], point_list[i], point_list[(i + 1) % len(point_list)]) for i in range(len(point_list))]
 
-        finished = False
-        it_top = len(point_list_top)-1
-        it_bottom = 0
-        top = point_list_top[it_top]
-        bottom = point_list_bottom[it_bottom]
-        switch_to_back = False
-        while (not finished):
-            if top[0] < bottom[0]: # top liegt vor bottom
-                if top[1] < bottom[1]:  # top liegt unter bottom
-                    point_list_top.pop(it_top)
-                    it_top -= 1
-                    if switch_to_back:
-                        point_list_top = point_list_top[it_top+1:]
-                        it_top = -1
-                        point_list_bottom = point_list_bottom[:it_bottom]
-                else: # top liegt über bottom
-                    if not switch_to_back:
-                        point_list_top.pop(it_top)
-                        it_top -= 1
-                    switch_to_back = True
-                    it_top -= 1
-                finished = True if it_top < 0 else False
-                top = point_list_top[it_top] if it_top >=0 else top
-            else: # top liegt hinter bottom
-                if top[1] < bottom[1]:  # top liegt unter bottom
-                    point_list_bottom.pop(it_bottom)
-                    if switch_to_back:
-                        point_list_top = point_list_top[it_top+1:]
-                        it_top = 0
-                        point_list_bottom = point_list_bottom[:it_bottom]
-                else: # top liegt über bottom
-                    if not switch_to_back:
-                        point_list_top.pop(it_top)
-                        it_top -= 1
-                    switch_to_back = True
-                    it_bottom += 1
-                finished = True if it_bottom == len(point_list_bottom) else False
-                bottom = point_list_bottom[it_bottom] if it_bottom < len(point_list_bottom) else bottom
+        # (norm((np.array(p[0]) - np.array(p[1]))) * (np.array(p[2]) - np.array(p[1])) + norm((np.array(p[2]) - np.array(p[1]))) * (np.array(p[0]) - np.array(p[1]))) / (norm((np.array(p[2]) - np.array(p[1]))) + norm((np.array(p[0]) - np.array(p[1]))))
+        # a = (np.array(p[2]) - np.array(p[1]))
+        # b = (np.array(p[0]) - np.array(p[1]))
+        correction_vecs = [  (norm((np.array(p[0]) - np.array(p[1]))) * (np.array(p[2]) - np.array(p[1])) + norm((np.array(p[2]) - np.array(p[1]))) * (np.array(p[0]) - np.array(p[1]))) / (norm((np.array(p[2]) - np.array(p[1]))) + norm((np.array(p[0]) - np.array(p[1])))) for p in points]
+        correction_vecs_norm = [cv / norm(cv) for cv in correction_vecs]
+        correction_vecs_norm_tup = [ (cv[0], cv[1]) for cv in correction_vecs_norm]
 
-        offset_point_list = point_list_top
-        offset_point_list.extend(point_list_bottom)
+        offset_point_list = [(point_list[i][0] * chord + offset * correction_vecs_norm_tup[i][0],
+          point_list[i][1] * chord + offset * correction_vecs_norm_tup[i][1]) for i in range(len(point_list))]
+
+        ## remove the crossing at the wings tail edge
+        # 1. simple solution
+        offset_point_list_copy = offset_point_list.copy()
+        for i in range(len(offset_point_list)):
+            if offset_point_list[i][1] <= offset_point_list[-i-1][1]:
+                del offset_point_list_copy[0]
+                del offset_point_list_copy[-1]
+            else:
+                break
 
     file.close()
     plane = self.plane
     new_plane = cq.Plane(xDir=plane.xDir, origin=(0, 0, 0), normal=plane.zDir)
     shape = (cq.Workplane(inPlane=new_plane)
-             .splineApprox(points=point_list if offset == 0 else offset_point_list, forConstruction=forConstruction, tol=1e-3).close()
+             .splineApprox(points=scaled_point_list if offset == 0 else offset_point_list_copy,
+                           forConstruction=forConstruction,
+                           tol=1e-3).close()
              .val())
     trans_shape = shape.translate(plane.origin)
 
@@ -214,10 +193,9 @@ def wing_root_segment(self: cq.Workplane, root_airfoil: str,
                  .plane.rotated((tip_dihedral, 0, -tip_incidence)))
     airfoil_tip = (airfoil_root.copyWorkplane(cq.Workplane(tip_plane))
                    .airfoil(tip_airfoil, tip_chord, offset=offset))
-    wing = airfoil_tip.loft()  # ruled=True --> airfoils must have same number of points
+    wing = airfoil_tip.loft(combine='a')  # ruled=True --> airfoils must have same number of points
     
-    return wing.newObject([tip_plane.location, airfoil_tip.val(), wing.findSolid()])
-
+    return wing.newObject([tip_plane.location, airfoil_tip.val(), wing.val()])
 
 cq.Workplane.wing_root_segment = wing_root_segment
 
@@ -239,12 +217,12 @@ def wing_segment(self: cq.Workplane, tip_airfoil: str, tip_chord: float, length:
 
     tip_plane = (cq.Workplane().copyWorkplane(airfoil_root).workplane(offset=-length, origin=tip_origin)
                  .plane.rotated((tip_dihedral, 0, -tip_incidence)))
-    airfoil_tip = (airfoil_root.copyWorkplane(cq.Workplane(tip_plane))
+    airfoil_tip = (cq.Workplane().copyWorkplane(cq.Workplane(tip_plane)).add(airfoil_root.vals()[1]).toPending()
                    .airfoil(tip_airfoil, tip_chord, offset=offset))
     pending = airfoil_tip.ctx.pendingWires
     try:
-        _wing = airfoil_tip.loft()  # ruled=True --> airfoils must have same number of points
-        return _wing.newObject([tip_plane.location, airfoil_tip.val(), self.findSolid(), _wing.findSolid()])
+        _wing = airfoil_tip.loft().union(airfoil_root.vals()[2])  # ruled=True --> airfoils must have same number of points
+        return _wing.newObject([tip_plane.location, airfoil_tip.val(), _wing.val()])
     except:
         loft = cq.Solid.makeLoft(pending)
         _wing = cq.Workplane(obj=loft).copyWorkplane(

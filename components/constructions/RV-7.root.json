@@ -27,6 +27,7 @@
             "creator": {
                 "wing_side": "BOTH",
                 "wing_index": "main_wing",
+                "offset": 0,
                 "loglevel": 10,
                 "creator_id": "full_wing_loft",
                 "$TYPE": "WingLoftCreator"
@@ -279,17 +280,31 @@
             "successors": {
                 "engine_mount_plate": {
                     "successors": {
-                        "engine_mount": {
-                            "successors": {},
+                        "engine_mount_plate_cutout": {
+                            "successors": {
+                                "engine_mount": {
+                                    "successors": {},
+                                    "creator": {
+                                        "shape_a": "engine_mount_plate_cutout",
+                                        "shape_b": "engine_mount_init",
+                                        "loglevel": 10,
+                                        "creator_id": "engine_mount",
+                                        "$TYPE": "Fuse2ShapesCreator"
+                                    },
+                                    "loglevel": 50,
+                                    "creator_id": "engine_mount",
+                                    "$TYPE": "ConstructionStepNode"
+                                }
+                            },
                             "creator": {
-                                "shape_a": null,
-                                "shape_b": null,
-                                "loglevel": 10,
-                                "creator_id": "engine_mount",
-                                "$TYPE": "Fuse2ShapesCreator"
+                                "minuend": "engine_mount_plate",
+                                "subtrahend": "engine_mount_init.cutout",
+                                "loglevel": 20,
+                                "creator_id": "engine_mount_plate_cutout",
+                                "$TYPE": "Cut2ShapesCreator"
                             },
                             "loglevel": 50,
-                            "creator_id": "engine_mount",
+                            "creator_id": "engine_mount_plate_cutout",
                             "$TYPE": "ConstructionStepNode"
                         }
                     },
@@ -302,9 +317,9 @@
                         "engine_down_thrust_deg": null,
                         "engine_side_thrust_deg": null,
                         "mount_plate_thickness": 5,
-                        "loglevel": 20,
+                        "loglevel": 10,
                         "creator_id": "engine_mount_plate",
-                        "$TYPE": "EngineMountPanelShapeCreator"
+                        "$TYPE": "EngineCoverAndMountPanelAndFuselageShapeCreator"
                     },
                     "loglevel": 50,
                     "creator_id": "engine_mount_plate",
@@ -321,7 +336,8 @@
                 "engine_side_thrust_deg": null,
                 "engine_screw_din_diameter": null,
                 "mount_plate_thickness": 5,
-                "loglevel": 20,
+                "cutout_thickness": 5.8,
+                "loglevel": 10,
                 "creator_id": "engine_mount_init",
                 "$TYPE": "EngineMountShapeCreator"
             },
@@ -361,26 +377,50 @@
             "creator_id": "fuselage_small_hull",
             "$TYPE": "ConstructionStepNode"
         },
-        "attachment_bolts": {
-            "successors": {},
-            "creator": {
-                "bolt_diameter": 6,
-                "full_wing_loft": "full_wing_loft",
-                "fuselage_loft": "fuselage_hull.loft",
-                "loglevel": 20,
-                "creator_id": "attachment_bolts",
-                "$TYPE": "WingAttachmentBoltCutoutShapeCreator"
-            },
-            "loglevel": 50,
-            "creator_id": "attachment_bolts",
-            "$TYPE": "ConstructionStepNode"
-        },
         "fuselage_reinforcement_raw": {
-            "successors": {},
+            "successors": {
+                "translated_rods": {
+                    "successors": {
+                        "motor_mount_with_rod_holes": {
+                            "successors": {},
+                            "creator": {
+                                "minuend": "engine_mount",
+                                "subtrahend": null,
+                                "loglevel": 10,
+                                "creator_id": "motor_mount_with_rod_holes",
+                                "$TYPE": "Cut2ShapesCreator"
+                            },
+                            "loglevel": 50,
+                            "creator_id": "motor_mount_with_rod_holes",
+                            "$TYPE": "ConstructionStepNode"
+                        }
+                    },
+                    "creator": {
+                        "mirroring": "",
+                        "shape_id": "fuselage_reinforcement_raw.rods",
+                        "trans_x": -10,
+                        "trans_y": 0.0,
+                        "trans_z": 0.0,
+                        "rot_x": 0.0,
+                        "rot_y": 0.0,
+                        "rot_z": 0.0,
+                        "scale": 1.0,
+                        "scale_x": 1.0,
+                        "scale_y": 1.0,
+                        "scale_z": 1.0,
+                        "loglevel": 10,
+                        "creator_id": "translated_rods",
+                        "$TYPE": "ScaleRotateTranslateCreator"
+                    },
+                    "loglevel": 50,
+                    "creator_id": "translated_rods",
+                    "$TYPE": "ConstructionStepNode"
+                }
+            },
             "creator": {
                 "print_resolution": 0.2,
                 "rib_spacing": 5.0,
-                "full_wing_loft": "full_wing_loft_a",
+                "full_wing_loft": "full_wing_loft",
                 "fuselage_loft": "fuselage_hull.loft",
                 "rib_width": 0.8,
                 "ribcage_factor": 0.49,
@@ -398,7 +438,7 @@
             "successors": {},
             "creator": {
                 "rib_z_offset": 0,
-                "full_wing_loft": "full_wing_loft_a",
+                "full_wing_loft": "full_wing_loft",
                 "fuselage_loft": "fuselage_hull.loft",
                 "rib_quantity": 7,
                 "rib_width": 0.8,
@@ -450,7 +490,7 @@
             "successors": {},
             "creator": {
                 "length_factor": 0.7,
-                "full_wing_loft": "full_wing_loft_a",
+                "full_wing_loft": "full_wing_loft",
                 "fuselage_loft": "fuselage_hull.loft",
                 "ribcage_factor": 0.49,
                 "wing_position": null,
@@ -496,7 +536,8 @@
             "successors": {},
             "creator": {
                 "subtrahends": [
-                    "intersect_raw_fus_reinf_fuselage_small_hull"
+                    "intersect_raw_fus_reinf_fuselage_small_hull",
+                    "engine_mount_init.cutout"
                 ],
                 "minuend": "fuselage_hull.loft",
                 "loglevel": 20,
@@ -511,9 +552,8 @@
             "successors": {},
             "creator": {
                 "subtrahends": [
-                    "full_wing_loft_a",
-                    "elevator",
-                    "attachment_bolts"
+                    "full_wing_loft",
+                    "elevator"
                 ],
                 "minuend": "fuselage_hull_final",
                 "loglevel": 10,
@@ -524,17 +564,17 @@
             "creator_id": "final_fuselage",
             "$TYPE": "ConstructionStepNode"
         },
-        "elevator_cut": {
+        "rudder_cut": {
             "successors": {},
             "creator": {
-                "minuend": "elevator",
-                "subtrahend": "rudder",
+                "minuend": "rudder",
+                "subtrahend": "elevator",
                 "loglevel": 20,
-                "creator_id": "elevator_cut",
+                "creator_id": "rudder_cut",
                 "$TYPE": "Cut2ShapesCreator"
             },
             "loglevel": 50,
-            "creator_id": "elevator_cut",
+            "creator_id": "rudder_cut",
             "$TYPE": "ConstructionStepNode"
         },
         "brushless": {
@@ -570,15 +610,15 @@
             "creator": {
                 "file_path": "../exports",
                 "shapes_to_export": [
-                    "engine_mount",
+                    "motor_mount_with_rod_holes",
                     "brushless",
                     "lipo_model",
                     "fuselage_hull.cape",
                     "final_fuselage",
-                    "full_wing_loft_a",
+                    "full_wing_loft",
                     "elevator",
+                    "rudder_cut",
                     "elevator_flap",
-                    "rudder",
                     "rudder_flap",
                     "flaps",
                     "aileron",

@@ -40,7 +40,8 @@ if __name__ == "__main__":
 
     # #########
     engine_mount_node = ConstructionStepNode(
-        EngineMountShapeCreator("engine_mount", engine_index=1, mount_plate_thickness=mount_plate_thickness))
+        EngineMountShapeCreator("engine_mount", engine_index=1, mount_plate_thickness=mount_plate_thickness,
+                                cutout_thickness=12423))
     root_node.append(engine_mount_node)
 
     engine_panel_node = ConstructionStepNode(

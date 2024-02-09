@@ -4,7 +4,7 @@ from cadquery import Workplane
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
 from Airplane.aircraft_topology.EngineInformation import EngineInformation
-from Airplane.creator.EngineMountPanelShapeCreator import EngineMountPanelShapeCreator
+from Airplane.creator.EngineCoverAndMountPanelAndFuselageShapeCreator import EngineCoverAndMountPanelAndFuselageShapeCreator
 
 
 class EngineCapeShapeCreator(AbstractShapeCreator):
@@ -33,20 +33,15 @@ class EngineCapeShapeCreator(AbstractShapeCreator):
         self.engine_total_cover_length = self._engine_information[self.engine_index].length \
             if self.engine_total_cover_length is None \
             else self.engine_total_cover_length
-        engine_screw_hole_circle = self._engine_information[self.engine_index].engine_screw_hole_circle
         self.engine_mount_box_length = self._engine_information[self.engine_index].engine_mount_box_length \
             if self.engine_mount_box_length is None else self.engine_mount_box_length
 
-        mount_plate, fuselage, cape = EngineMountPanelShapeCreator.slice_fuselage_in_cape_motormount_mainfuselage(
+        mount_plate, fuselage, cape = EngineCoverAndMountPanelAndFuselageShapeCreator.slice_fuselage_in_cape_motormount_mainfuselage(
             mount_plate_thickness=self.mount_plate_thickness,
             engine_mount_box_length=self.engine_mount_box_length,
             engine_total_cover_length=self.engine_total_cover_length,
-            engine_screw_hole_circle=engine_screw_hole_circle,
-            engine_position=self._engine_information[
-                self.engine_index].position,
             full_fuselage_loft=shapes_of_interest[
-                self.full_fuselage_loft],
-            engine_information=self._engine_information[
+                self.full_fuselage_loft], engine_information=self._engine_information[
                 self.engine_index])
 
         cape.display(name=f"{self.identifier}.cape", severity=logging.DEBUG)

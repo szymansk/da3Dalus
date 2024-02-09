@@ -8,7 +8,7 @@ from Airplane.AbstractShapeCreator import AbstractShapeCreator
 from Airplane.aircraft_topology.EngineInformation import EngineInformation, Position
 
 
-class EngineMountPanelShapeCreator(AbstractShapeCreator):
+class EngineCoverAndMountPanelAndFuselageShapeCreator(AbstractShapeCreator):
     def __init__(self, creator_id: str, engine_index: int, mount_plate_thickness: float,
                  engine_screw_hole_circle: float = None, engine_mount_box_length: float = None,
                  engine_total_cover_length: float = None, engine_side_thrust_deg: float = None,
@@ -50,28 +50,27 @@ class EngineMountPanelShapeCreator(AbstractShapeCreator):
         self.engine_total_cover_length = self._engine_information[self.engine_index].length \
             if self.engine_total_cover_length is None \
             else self.engine_total_cover_length
-        self.engine_screw_hole_circle = self._engine_information[self.engine_index].engine_screw_hole_circle \
-            if self.engine_screw_hole_circle is None else self.engine_screw_hole_circle
         self.engine_mount_box_length = self._engine_information[self.engine_index].engine_mount_box_length \
             if self.engine_mount_box_length is None else self.engine_mount_box_length
 
-        mount_plate, _, _ = EngineMountPanelShapeCreator.slice_fuselage_in_cape_motormount_mainfuselage(mount_plate_thickness=self.mount_plate_thickness,
-                                                                                                        engine_mount_box_length=self.engine_mount_box_length,
-                                                                                                        engine_total_cover_length=self.engine_total_cover_length,
-                                                                                                        engine_screw_hole_circle=self.engine_screw_hole_circle,
-                                                                                                        engine_position=self._engine_information[
-                                                               self.engine_index].position,
-                                                                                                        full_fuselage_loft=shapes_of_interest[
-                                                               self.full_fuselage_loft],
-                                                                                                        engine_information=self._engine_information[
-                                                               self.engine_index])
-        mount_plate.display(self.identifier, logging.DEBUG)
-        return {str(self.identifier): mount_plate}
+        mount_plate, _, _ = EngineCoverAndMountPanelAndFuselageShapeCreator.slice_fuselage_in_cape_motormount_mainfuselage(
+            mount_plate_thickness=self.mount_plate_thickness,
+            engine_mount_box_length=self.engine_mount_box_length,
+            engine_total_cover_length=self.engine_total_cover_length,
+            full_fuselage_loft=shapes_of_interest[
+                self.full_fuselage_loft], engine_information=self._engine_information[
+                self.engine_index])
+
+        mount_plate.display(name=f"{self.identifier}", severity=logging.DEBUG)
+
+        return {f"{self.identifier}": mount_plate}
 
     @classmethod
-    def slice_fuselage_in_cape_motormount_mainfuselage(cls, mount_plate_thickness: float, engine_mount_box_length: float,
-                                                       engine_total_cover_length: float, engine_screw_hole_circle: float, engine_position: Position,
-                                                       full_fuselage_loft: Workplane, engine_information: EngineInformation) \
+    def slice_fuselage_in_cape_motormount_mainfuselage(cls, mount_plate_thickness: float,
+                                                       engine_mount_box_length: float,
+                                                       engine_total_cover_length: float,
+                                                       full_fuselage_loft: Workplane,
+                                                       engine_information: EngineInformation) \
             -> tuple[Workplane, Workplane, Workplane]:
         '''
         Cuts a slice of the Fuselage to use as a backplate for the engine mount
@@ -88,14 +87,13 @@ class EngineMountPanelShapeCreator(AbstractShapeCreator):
 
         if abs(engine_information.side_thrust) < 90:
             mount_plate = full_fuselage_loft.faces("<X").workplane(origin=origin, invert=True, offset=engine_total_cover_length + engine_mount_box_length+mount_plate_thickness)
-            fuselage = mount_plate.split(keepTop=True).display()
+            fuselage = mount_plate.split(keepTop=True)
             mount_plate = mount_plate.split(keepBottom=True)
             mount_plate = mount_plate.faces(">X").workplane(invert=True, offset=mount_plate_thickness)
-            engine_cape = mount_plate.split(keepTop=True).display()
-            mount_plate = mount_plate.split(keepBottom=True).display()
+            engine_cape = mount_plate.split(keepTop=True)
+            mount_plate = mount_plate.split(keepBottom=True)
         else: # pusher engine at the tail
             mount_plate = full_fuselage_loft.faces(">X").workplane(origin=origin, invert=True, offset=engine_total_cover_length + engine_mount_box_length+mount_plate_thickness)\
-                .split(keepBottom=True).faces("<X").workplane(invert=True, offset=mount_plate_thickness).split(keepBottom=True).display()
-        mount_plate = mount_plate.workplane(origin= origin+target).circle(sqrt(0.5)*engine_screw_hole_circle/2).cutThruAll().display()
+                .split(keepBottom=True).faces("<X").workplane(invert=True, offset=mount_plate_thickness).split(keepBottom=True)
 
         return mount_plate, fuselage, engine_cape

@@ -5,7 +5,7 @@ import json
 import os
 
 from Airplane.creator.EngineCapeShapeCreator import EngineCapeShapeCreator
-from Airplane.creator import EngineMountPanelShapeCreator
+from Airplane.creator import EngineCoverAndMountPanelAndFuselageShapeCreator
 from Airplane.creator.EngineMountShapeCreator import EngineMountShapeCreator
 from Airplane.creator.FuselageReinforcementShapeCreator import FuselageReinforcementShapeCreator
 from Airplane.creator.FuselageWingSupportShapeCreator import FuselageWingSupportShapeCreator
