@@ -1,6 +1,4 @@
 import math
-import random
-import uuid
 from typing import Literal
 import numpy as np
 from numpy.linalg import norm
@@ -11,18 +9,14 @@ import logging
 from OCP.BRepBuilderAPI import BRepBuilderAPI_Sewing, BRepBuilderAPI_MakeSolid, BRepBuilderAPI_GTransform
 from OCP.BRepOffset import BRepOffset_Skin
 from OCP.BRepOffsetAPI import BRepOffsetAPI_MakeOffsetShape
-from OCP.BRepTools import BRepTools_ReShape
 from OCP.GeomAbs import GeomAbs_Arc, GeomAbs_Tangent, GeomAbs_Intersection
 from OCP.ShapeFix import ShapeFix_Shape
-from OCP.StdFail import StdFail_NotDone
-from OCP.TopAbs import TopAbs_SHELL, TopAbs_FACE
+from OCP.TopAbs import TopAbs_SHELL
 from OCP.TopExp import TopExp_Explorer
-from OCP.TopoDS import TopoDS_Shape, TopoDS_Face, TopoDS_Solid
 from OCP.gp import gp_GTrsf, gp_Mat, gp_XYZ
 from cadquery import Workplane, Shell, Solid
 
 from cadq_server.cadq_server_connector import CQServerConnector
-
 
 def _display(self: Workplane, name: str = "", color: cq.Color = cq.Color("gold"), severity: int = logging.NOTSET,
              url: str = "http://cq-server:5000/json") -> Workplane:
@@ -136,9 +130,6 @@ def airfoil(self: cq.Workplane, selig_file: str, chord: float, offset: float = 0
 
         points = [(point_list[i - 1], point_list[i], point_list[(i + 1) % len(point_list)]) for i in range(len(point_list))]
 
-        # (norm((np.array(p[0]) - np.array(p[1]))) * (np.array(p[2]) - np.array(p[1])) + norm((np.array(p[2]) - np.array(p[1]))) * (np.array(p[0]) - np.array(p[1]))) / (norm((np.array(p[2]) - np.array(p[1]))) + norm((np.array(p[0]) - np.array(p[1]))))
-        # a = (np.array(p[2]) - np.array(p[1]))
-        # b = (np.array(p[0]) - np.array(p[1]))
         correction_vecs = [  (norm((np.array(p[0]) - np.array(p[1]))) * (np.array(p[2]) - np.array(p[1])) + norm((np.array(p[2]) - np.array(p[1]))) * (np.array(p[0]) - np.array(p[1]))) / (norm((np.array(p[2]) - np.array(p[1]))) + norm((np.array(p[0]) - np.array(p[1])))) for p in points]
         correction_vecs_norm = [cv / norm(cv) for cv in correction_vecs]
         correction_vecs_norm_tup = [ (cv[0], cv[1]) for cv in correction_vecs_norm]
@@ -196,6 +187,7 @@ def wing_root_segment(self: cq.Workplane, root_airfoil: str,
     wing = airfoil_tip.loft(combine='a')  # ruled=True --> airfoils must have same number of points
     
     return wing.newObject([tip_plane.location, airfoil_tip.val(), wing.val()])
+
 
 cq.Workplane.wing_root_segment = wing_root_segment
 
