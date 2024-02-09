@@ -8,7 +8,7 @@ from Airplane.aircraft_topology.WingConfiguration import WingConfiguration
 
 from cq_plugins.wing.wing_segment import wing_segment
 from cq_plugins.wing.wing_root_segment import wing_root_segment
-
+from cq_plugins.fix_shape.fix_shape import fix_shape
 
 class WingLoftCreator(AbstractShapeCreator):
     def __init__(self, creator_id: str,
