@@ -135,8 +135,7 @@ def segmentToEdge(
 @segmentToEdge.register
 def segmentToEdge(
         self: T, start_tag: str, direction: Point, end_tag: str, tag: Optional[str] = None,
-        forConstruction: bool = False
-) -> T:
+        forConstruction: bool = False) -> T:
     """
     Construction of a segment that stops at the given tagged end edge.
     Starting at the end point of the tagged start edge.
@@ -168,8 +167,7 @@ def segmentToEdge(
 
 @segmentToEdge.register
 def segmentToEdge(
-        self: T, angle: Union[float, int], end_tag: str, tag: Optional[str] = None, forConstruction: bool = False
-) -> T:
+        self: T, angle: Union[float, int], end_tag: str, tag: Optional[str] = None, forConstruction: bool = False) -> T:
     """
     Construction of a segment that stops at the given tagged end edge.
     Starting at the end point of the last edge.
@@ -231,4 +229,30 @@ def segmentToEdge(
     else:
         return self
 
+    return self.edge(val, tag, forConstruction)
+
+@segmentToEdge.register
+def segmentToEdge(
+        self: T, start_tag: str, r: Union[float, int], end_tag: str, s: Union[float, int], tag: Optional[str] = None,
+        forConstruction: bool = False) -> T:
+    """
+    Construction of a segment between two edges.
+
+    start_tag: start edge tag
+    r        : factor 0 - start point 1 - end point but accepts also multiples
+    end_tag  : the finale edge to reach
+    s        : factor 0 - start point 1 - end point but accepts also multiples
+    """
+
+    seg1 = self._tags[start_tag][0]
+    start_1 = tcast(Edge, seg1).startPoint()
+    end_1 = tcast(Edge, seg1).endPoint()
+    point_1 = (end_1-start_1)*r + start_1
+
+    seg2 = self._tags[end_tag][0]
+    start_2 = tcast(Edge, seg2).startPoint()
+    end_2 = tcast(Edge, seg2).endPoint()
+    point_2 = (end_2-start_2)*s + start_2
+
+    val = Edge.makeLine(point_1, point_2)
     return self.edge(val, tag, forConstruction)
