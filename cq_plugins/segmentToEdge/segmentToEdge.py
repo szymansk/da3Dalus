@@ -8,14 +8,13 @@ from scipy.spatial.transform import Rotation as R
 
 T = TypeVar("T", bound="Sketch")
 Modes = Literal["a", "s", "i", "c"]  # add, subtract, intersect, construct
-Point = Union[Vector, Tuple[float, float]]
+Point = Union[Vector, Tuple[Union[int, float], Union[int, float]]]
 
 def _line(p1, p2):
     A = (p1[1] - p2[1])
     B = (p2[0] - p1[0])
     C = (p1[0] * p2[1] - p2[0] * p1[1])
     return A, B, -C
-
 
 def _intersection(L1, L2):
     D = L1[0] * L2[1] - L1[1] * L2[0]
@@ -39,14 +38,12 @@ def _line_segments_intersection(edge: Edge, v1: Point, v2: Point) -> Edge:
     return Edge.makeLine(v1, Vector(I))
 
 @multimethod
-def segmentToEdge(self: T, point: Point, direction: Point, end_tag: str, tag: Optional[str] = None,
-                     forConstruction: bool = False
-                     ) -> T:
+def segmentToEdge(self: T, point: Point, direction: Point, end_tag: str, tag: Optional[str] = None, forConstruction: bool = False) -> T:
     """
     Construction of a segment that stops at the given tagged end edge.
     Starting at the given point.
 
-    point.   : start point
+    point    : start point
     start_tag: start edge tag
     direction: direction of the segment
     end_tag  : the finale edge to reach
@@ -61,13 +58,12 @@ def segmentToEdge(self: T, point: Point, direction: Point, end_tag: str, tag: Op
     if edge.geomType() == "LINE":
         val = _line_segments_intersection(edge, v1, v2)
         if (val == False):
-            return self
-    # elif v0.geomType() == "CIRCLE":
+            raise RuntimeError('defined segment would be parallel to target edge')
+    #elif v0.geomType() == "CIRCLE":
     else:
         return self
 
     return self.edge(val, tag, forConstruction)
-
 
 @segmentToEdge.register
 def segmentToEdge(self: T, point: Point, angle: Union[float, int], end_tag: str, tag: Optional[str] = None,
@@ -94,8 +90,8 @@ def segmentToEdge(self: T, point: Point, angle: Union[float, int], end_tag: str,
     if edge.geomType() == "LINE":
         val = _line_segments_intersection(edge, v1, v2)
         if (val == False):
-            return self
-            # elif v0.geomType() == "CIRCLE":
+            raise RuntimeError('defined segment would be parallel to target edge')
+    # elif v0.geomType() == "CIRCLE":
     else:
         return self
 
@@ -118,13 +114,13 @@ def segmentToEdge(
     seg2 = self._tags[end_tag][0]
     edge = tcast(Edge, seg2)
     v1: Vector = Vector(point)
-    v2: Vector = direction * 10 + v1
+    v2: Vector = Vector(direction) * 10 + v1
 
     # dispatch on geom type
     if edge.geomType() == "LINE":
         val = _line_segments_intersection(edge, v1, v2)
         if (val == False):
-            return self
+            raise RuntimeError('defined segment would be parallel to target edge')
     # elif v0.geomType() == "CIRCLE":
     else:
         return self
@@ -151,13 +147,13 @@ def segmentToEdge(
     seg2 = self._tags[end_tag][0]
     edge = tcast(Edge, seg2)
     v1: Vector = Vector(point)
-    v2: Vector = direction * 10 + v1
+    v2: Vector = Vector(direction) * 10 + v1
 
     # dispatch on geom type
     if edge.geomType() == "LINE":
         val = _line_segments_intersection(edge, v1, v2)
         if (val == False):
-            return self
+            raise RuntimeError('defined segment would be parallel to target edge')
     # elif v0.geomType() == "CIRCLE":
     else:
         return self
@@ -188,7 +184,7 @@ def segmentToEdge(
     if edge.geomType() == "LINE":
         val = _line_segments_intersection(edge, v1, v2)
         if (val == False):
-            return self
+            raise RuntimeError('defined segment would be parallel to target edge')
     # elif v0.geomType() == "CIRCLE":
     else:
         return self
@@ -224,7 +220,7 @@ def segmentToEdge(
     if edge.geomType() == "LINE":
         val = _line_segments_intersection(edge, v1, v2)
         if (val == False):
-            return self
+            raise RuntimeError('defined segment would be parallel to target edge')
     # elif v0.geomType() == "CIRCLE":
     else:
         return self
