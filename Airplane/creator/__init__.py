@@ -9,3 +9,5 @@ from Airplane.creator.WingAttachmentBoltCutoutShapeCreator import WingAttachment
 from Airplane.creator.FuselageElectronicsAccessCutOutShapeCreator import FuselageElectronicsAccessCutOutShapeCreator
 from Airplane.creator.WingReinforcementShapeCreator import WingReinforcementShapeCreator
 from Airplane.creator.WingLoftCreator import WingLoftCreator
+from Airplane.creator.VaseModeRibCutoutCreator import VaseModeRibCutoutCreator
+from Airplane.creator.AddMultipleShapesCreator import AddMultipleShapesCreator

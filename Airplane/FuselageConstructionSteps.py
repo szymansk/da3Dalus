@@ -40,7 +40,7 @@ class Fuse2ShapesCreator(AbstractShapeCreator):
             f"fusing shapes '{list(shapes_of_interest.keys())[0]}' + '{list(shapes_of_interest.keys())[1]}' --> '{self.identifier}'")
         shape_list = [sh if isinstance(sh, cq.Workplane) else cq.Workplane(obj=sh) for sh in shape_list]
 
-        fused_shape = shape_list[0] + shape_list[1]
+        fused_shape = shape_list[0].union(toUnion=shape_list[1])
 
         fused_shape.display(name=self.identifier, severity=logging.DEBUG)
         return {self.identifier: fused_shape}
@@ -63,9 +63,8 @@ class FuseMultipleShapesCreator(AbstractShapeCreator):
 
         fused_shape = shape_list[0]
         for shape in shape_list[1:]:
-            fused_shape += shape
-        fused_shape = fused_shape.combine(glue=True)
-
+            fused_shape = fused_shape.union(toUnion=shape)
+        fused_shape = fused_shape.combine()
         fused_shape.display(self.identifier, logging.DEBUG)
         return {self.identifier: fused_shape}
 

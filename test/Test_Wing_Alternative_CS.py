@@ -3,7 +3,7 @@ import sys
 import json 
 import os
 
-from Airplane.creator.WingLoftCreator import WingLoftCreator
+from Airplane.creator import AddMultipleShapesCreator, WingLoftCreator, VaseModeRibCutoutCreator
 from Airplane.aircraft_topology.WingConfiguration import WingConfiguration
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -25,14 +25,39 @@ if __name__ == "__main__":
     base_scale = 38
     printer_resolution = 0.2  # 0.2 mm layer height
     
-    ribcage_factor = 0.5
-    mount_plate_thickness = 5
-    engine_screw_hole_circle = 42.0
-    engine_mount_box_length = 13.3 * 2.5
+    ribcage_factor: float = 0.5
+    mount_plate_thickness: float = 5
+    engine_screw_hole_circle: float = 42.0
+    engine_mount_box_length: float = 13.3 * 2.5
+
+    printer_wall_thickness: float = 0.42
+    spare_support_geometry_is_round: bool = False
+    spare_support_dimension_width: float = 6
+    spare_support_dimension_height: float = 6
+    spare_perpendicular: bool = False
+    spare_position_factor: float = 1 / 3  # value betweein (0,1) as fraction of the chord
+    leading_edge_offset: float = 10
+    trailing_edge_offset: float = 30
+    minimum_rib_angle: float = 45
 
     # defining as simple root node
     root_node = ConstructionRootNode(creator_id="RV-7-wing")
     pwd = os.path.curdir
+
+    vase_wing_loft = ConstructionStepNode(
+        VaseModeRibCutoutCreator(creator_id="vase_wing",
+                             wing_index="main_wing",
+                             wing_side="BOTH",
+                             printer_wall_thickness=printer_wall_thickness,
+                             spare_support_geometry_is_round=spare_support_geometry_is_round,
+                             spare_support_dimension_width=spare_support_dimension_width,
+                             spare_support_dimension_height=spare_support_dimension_height,
+                             leading_edge_offset=leading_edge_offset,
+                             trailing_edge_offset=trailing_edge_offset,
+                             offset=printer_wall_thickness,
+                             minimum_rib_angle=minimum_rib_angle,
+                             loglevel=logging.DEBUG))
+    root_node.append(vase_wing_loft)
 
     full_wing_loft = ConstructionStepNode(
         WingLoftCreator("wing_loft",
@@ -45,7 +70,7 @@ if __name__ == "__main__":
         WingLoftCreator(f"{full_wing_loft.creator_id}.offset",
                         wing_index="main_wing",
                         wing_side="BOTH",
-                        offset=0.42*2,
+                        offset=printer_wall_thickness*2,
                         loglevel=logging.DEBUG))
     full_wing_loft.append(full_wing_loft_offset)
 
@@ -55,6 +80,12 @@ if __name__ == "__main__":
                           subtrahend=full_wing_loft_offset.creator_id,
                         loglevel=logging.DEBUG))
     full_wing_loft_offset.append(full_wing_loft_hull)
+
+    full_wing_loft_vase = ConstructionStepNode(
+        AddMultipleShapesCreator(f"{full_wing_loft.creator_id}.vase",
+                          shapes=[f"{full_wing_loft_hull.creator_id}", f"{vase_wing_loft.creator_id}.cutout"],
+                          loglevel=logging.DEBUG))
+    full_wing_loft_offset.append(full_wing_loft_vase)
 
     fuselage_hull = ConstructionStepNode(
         StepImportCreator("fuselage_hull_imp",
@@ -91,7 +122,8 @@ if __name__ == "__main__":
     aircraft_step_export_node = ConstructionStepNode(
         ExportToStepCreator(Path(f"{root_node.identifier}").stem,
                             file_path="../exports",
-                            shapes_to_export=[full_wing_loft_hull.creator_id
+                            shapes_to_export=[full_wing_loft_hull.creator_id,
+                                              full_wing_loft_vase.creator_id
                                               ]))
     root_node.append(aircraft_step_export_node)
 
