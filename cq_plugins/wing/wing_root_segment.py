@@ -37,5 +37,5 @@ def wing_root_segment(self: cq.Workplane, root_airfoil: str,
 
     final_wing = wing.union(toUnion=center_wing).copyWorkplane(self).split(keepBottom=True)
 
-    return wing.newObject([tip_plane.location, airfoil_tip.val(), final_wing.val()])
+    return wing.newObject([tip_plane, airfoil_tip.val(), final_wing.val()])
 

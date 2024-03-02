@@ -1,3 +1,5 @@
+import logging
+
 import math
 from typing import Literal
 
@@ -11,9 +13,7 @@ def wing_segment(self: cq.Workplane, tip_airfoil: str, tip_chord: float, length:
                  sweep: float = 0, sweep_mode: Literal["distance", "angle"] = "distance",
                  tip_incidence: float = 0, tip_dihedral: float = 0, offset: float = 0):
     airfoil_root: Workplane = self
-    airfoil_root_location: Location = airfoil_root.vals()[-3]
     airfoil_root_wires: Wire = airfoil_root.vals()[-2]
-    airfoil_root_solid: Solid = airfoil_root.vals()[-1]
     airfoil_root.ctx.pendingWires = [airfoil_root_wires]
     root_plane = airfoil_root.plane
     tip_origin = root_plane.origin
@@ -32,12 +32,12 @@ def wing_segment(self: cq.Workplane, tip_airfoil: str, tip_chord: float, length:
     pending = airfoil_tip.ctx.pendingWires
     try:
         _wing = airfoil_tip.loft()#.union(airfoil_root_solid)  # ruled=True --> airfoils must have same number of points
-        return _wing.newObject([tip_plane.location, airfoil_tip.val(), _wing.val()])
+        return _wing.newObject([tip_plane, airfoil_tip.val(), _wing.val()])
     except:
         loft = cq.Solid.makeLoft(pending)
         _wing = cq.Workplane(obj=loft).copyWorkplane(
             airfoil_tip)  # ruled=True --> airfoils must have same number of points0
-        return _wing.newObject([tip_plane.location, airfoil_tip.val(), self.findSolid(), _wing.findSolid()])
+        return _wing.newObject([tip_plane, airfoil_tip.val(), self.findSolid(), _wing.findSolid()])
 
 
 if __name__ == "__main__":

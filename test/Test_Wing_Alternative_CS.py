@@ -3,7 +3,9 @@ import sys
 import json 
 import os
 
-from Airplane.creator import AddMultipleShapesCreator, WingLoftCreator, VaseModeRibCutoutCreator
+from Airplane.creator import (AddMultipleShapesCreator, WingLoftCreator,
+                              VaseModeRibCutoutCreator, VaseModeSpareCreator,
+                              VaseModeWingCreator)
 from Airplane.aircraft_topology.WingConfiguration import WingConfiguration
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -45,7 +47,7 @@ if __name__ == "__main__":
     pwd = os.path.curdir
 
     vase_wing_loft = ConstructionStepNode(
-        VaseModeRibCutoutCreator(creator_id="vase_wing",
+        VaseModeWingCreator(creator_id="vase_wing",
                              wing_index="main_wing",
                              wing_side="BOTH",
                              printer_wall_thickness=printer_wall_thickness,
@@ -58,6 +60,21 @@ if __name__ == "__main__":
                              minimum_rib_angle=minimum_rib_angle,
                              loglevel=logging.DEBUG))
     root_node.append(vase_wing_loft)
+
+    vase_wing_spare = ConstructionStepNode(
+        VaseModeSpareCreator(creator_id="vase_spare",
+                                 wing_index="main_wing",
+                                 wing_side="BOTH",
+                                 printer_wall_thickness=printer_wall_thickness,
+                                 spare_support_geometry_is_round=spare_support_geometry_is_round,
+                                 spare_support_dimension_width=spare_support_dimension_width,
+                                 spare_support_dimension_height=spare_support_dimension_height,
+                                 leading_edge_offset=leading_edge_offset,
+                                 trailing_edge_offset=trailing_edge_offset,
+                                 offset=printer_wall_thickness,
+                                 minimum_rib_angle=minimum_rib_angle,
+                                 loglevel=logging.DEBUG))
+    root_node.append(vase_wing_spare)
 
     full_wing_loft = ConstructionStepNode(
         WingLoftCreator("wing_loft",
@@ -83,7 +100,10 @@ if __name__ == "__main__":
 
     full_wing_loft_vase = ConstructionStepNode(
         AddMultipleShapesCreator(f"{full_wing_loft.creator_id}.vase",
-                          shapes=[f"{full_wing_loft_hull.creator_id}", f"{vase_wing_loft.creator_id}.cutout"],
+                          shapes=[f"{full_wing_loft_hull.creator_id}",
+                                  f"{vase_wing_loft.creator_id}.cutout",
+                                  f"{vase_wing_spare.creator_id}.spare"
+                                  ],
                           loglevel=logging.DEBUG))
     full_wing_loft_offset.append(full_wing_loft_vase)
 
