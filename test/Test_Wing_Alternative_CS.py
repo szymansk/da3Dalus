@@ -61,51 +61,12 @@ if __name__ == "__main__":
                              loglevel=logging.DEBUG))
     root_node.append(vase_wing_loft)
 
-    vase_wing_spare = ConstructionStepNode(
-        VaseModeSpareCreator(creator_id="vase_spare",
-                                 wing_index="main_wing",
-                                 wing_side="BOTH",
-                                 printer_wall_thickness=printer_wall_thickness,
-                                 spare_support_geometry_is_round=spare_support_geometry_is_round,
-                                 spare_support_dimension_width=spare_support_dimension_width,
-                                 spare_support_dimension_height=spare_support_dimension_height,
-                                 leading_edge_offset=leading_edge_offset,
-                                 trailing_edge_offset=trailing_edge_offset,
-                                 offset=printer_wall_thickness,
-                                 minimum_rib_angle=minimum_rib_angle,
-                                 loglevel=logging.DEBUG))
-    root_node.append(vase_wing_spare)
-
     full_wing_loft = ConstructionStepNode(
         WingLoftCreator("wing_loft",
                         wing_index="main_wing",
                         wing_side="BOTH",
                         loglevel=logging.DEBUG))
     root_node.append(full_wing_loft)
-
-    full_wing_loft_offset = ConstructionStepNode(
-        WingLoftCreator(f"{full_wing_loft.creator_id}.offset",
-                        wing_index="main_wing",
-                        wing_side="BOTH",
-                        offset=printer_wall_thickness*2,
-                        loglevel=logging.DEBUG))
-    full_wing_loft.append(full_wing_loft_offset)
-
-    full_wing_loft_hull = ConstructionStepNode(
-        Cut2ShapesCreator(f"{full_wing_loft.creator_id}.hull",
-                          minuend=full_wing_loft.creator_id,
-                          subtrahend=full_wing_loft_offset.creator_id,
-                        loglevel=logging.DEBUG))
-    full_wing_loft_offset.append(full_wing_loft_hull)
-
-    full_wing_loft_vase = ConstructionStepNode(
-        AddMultipleShapesCreator(f"{full_wing_loft.creator_id}.vase",
-                          shapes=[f"{full_wing_loft_hull.creator_id}",
-                                  f"{vase_wing_loft.creator_id}.cutout",
-                                  f"{vase_wing_spare.creator_id}.spare"
-                                  ],
-                          loglevel=logging.DEBUG))
-    full_wing_loft_offset.append(full_wing_loft_vase)
 
     fuselage_hull = ConstructionStepNode(
         StepImportCreator("fuselage_hull_imp",
@@ -142,9 +103,7 @@ if __name__ == "__main__":
     aircraft_step_export_node = ConstructionStepNode(
         ExportToStepCreator(Path(f"{root_node.identifier}").stem,
                             file_path="../exports",
-                            shapes_to_export=[full_wing_loft_hull.creator_id,
-                                              full_wing_loft_vase.creator_id
-                                              ]))
+                            shapes_to_export=[vase_wing_loft.creator_id]))
     root_node.append(aircraft_step_export_node)
 
     #####################
@@ -200,6 +159,7 @@ if __name__ == "__main__":
     component_information = {"brushless": engine_info1, "lipo": lipo_information}
 
     #airfoil = "../components/airfoils/naca23013.5.dat"
+    test_wing = 2
     airfoil = "../components/airfoils/naca2415.dat"
     wing_config = WingConfiguration(root_airfoil=airfoil,
                       nose_pnt=(192.113, 0, -44.5),
@@ -211,32 +171,49 @@ if __name__ == "__main__":
                       tip_chord=183,
                       tip_dihedral=0,
                       tip_incidence=0)
-    wing_config.add_segment(length=100,
-                           sweep=20,
-                           tip_chord=183-20,
-                           tip_dihedral=15,
-                           tip_incidence=0)
-    wing_config.add_segment(length=5,
-                           sweep=5,
-                           tip_chord=183-20-5,
-                           tip_dihedral=15,
-                           tip_incidence=0)
-    wing_config.add_segment(length=5,
-                           sweep=5,
-                           tip_chord=183-20-10,
-                           tip_dihedral=15,
-                           tip_incidence=0)
-    wing_config.add_segment(length=5,
-                           sweep=5,
-                           tip_chord=183-20-15,
-                           tip_dihedral=15,
-                           tip_incidence=0)
-    wing_config.add_segment(length=50,
-                           sweep=45+50,
-                           tip_chord=183-20-20-40-50,
-                           tip_dihedral=0,
-                           tip_incidence=0,
-                           tip_airfoil="../components/airfoils/nacam2.dat")
+    if test_wing == 1:
+        wing_config.add_segment(length=100,
+                               sweep=20,
+                               tip_chord=183-20,
+                               tip_dihedral=15,
+                               tip_incidence=0)
+        wing_config.add_segment(length=5,
+                               sweep=5,
+                               tip_chord=183-20-5,
+                               tip_dihedral=15,
+                               tip_incidence=0)
+        wing_config.add_segment(length=5,
+                               sweep=5,
+                               tip_chord=183-20-10,
+                               tip_dihedral=15,
+                               tip_incidence=0)
+        wing_config.add_segment(length=5,
+                               sweep=5,
+                               tip_chord=183-20-15,
+                               tip_dihedral=15,
+                               tip_incidence=0)
+        wing_config.add_segment(length=50,
+                               sweep=45+50,
+                               tip_chord=183-20-20-40-50,
+                               tip_dihedral=0,
+                               tip_incidence=0,
+                               tip_airfoil="../components/airfoils/nacam2.dat")
+    elif test_wing == 2:
+        wing_config.add_segment(length=100,
+                               sweep=10,
+                               tip_chord=183-20,
+                               tip_dihedral=5,
+                               tip_incidence=0)
+        wing_config.add_segment(length=50,
+                               sweep=10,
+                               tip_chord=183-40,
+                               tip_dihedral=10,
+                               tip_incidence=0)
+        wing_config.add_segment(length=50,
+                               sweep=10,
+                               tip_chord=183-80,
+                               tip_dihedral=5,
+                               tip_incidence=0)
     wing_configuration = {"main_wing": wing_config}
 
 
