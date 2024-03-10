@@ -1,11 +1,39 @@
-from typing import TypeVar, Any, List, Tuple
+import logging
+from typing import TypeVar, Any, List, Tuple, Literal, Union
 
 import numpy as np
-from cadquery import Workplane, Plane
+from cadquery import Workplane, Plane, Vector, Sketch
 from numpy import ndarray, dtype, generic
 from scipy.spatial.transform import Rotation
 
 T = TypeVar("T", bound="WingConfiguration")
+SpareMode = Literal["normal", "follow"]
+
+class TrailingEdgeDevice:
+    def __init__(self,
+                 name: str,
+                 rel_chord_root:float,
+                 rel_chord_tip:float
+                 ):
+        self.name = name
+        self.rel_chord_root = rel_chord_root
+        self.rel_chord_tip = rel_chord_tip
+        pass
+
+class Spare:
+    def __init__(self,
+                 spare_support_dimension_width:float,
+                 spare_support_dimension_height:float,
+                 spare_length: float = None,
+                 spare_vector: Tuple[float,float,float]= None,
+                 spare_origin: Tuple[float,float,float] = None,
+                 spare_mode: SpareMode = "normal"):
+        self.spare_support_dimension_width = spare_support_dimension_width
+        self.spare_support_dimension_height = spare_support_dimension_height
+        self.spare_length = spare_length
+        self.spare_mode = spare_mode
+        self.spare_vector = Vector(spare_vector) if spare_vector is not None else None
+        self.spare_origin = Vector(spare_origin) if spare_origin is not None else None
 
 class WingSegment:
     def __init__(self, root_airfoil: str,
@@ -19,7 +47,9 @@ class WingSegment:
                  tip_airfoil: str = None,
                  tip_dihedral: float = 0,
                  tip_incidence: float = 0,
-                 tip_trailing_edge: float = 1):
+                 tip_trailing_edge: float = 1,
+                 spare_list: List[Spare] = None,
+                 trailing_edge_device: TrailingEdgeDevice = None):
         self.tip_trailing_edge = tip_trailing_edge
         self.root_trailing_edge = root_trailing_edge
         self.tip_airfoil = tip_airfoil
@@ -32,7 +62,8 @@ class WingSegment:
         self.root_incidence = root_incidence
         self.tip_dihedral = tip_dihedral
         self.tip_incidence = tip_incidence
-
+        self.spare_list = spare_list
+        self.trailing_edge_device = trailing_edge_device
 
 class WingConfiguration:
     """
@@ -51,12 +82,28 @@ class WingConfiguration:
                  tip_airfoil: str = None,
                  tip_dihedral: float = 0,
                  tip_incidence: float = 0,
-                 tip_trailing_edge: float = 1):
+                 tip_trailing_edge: float = 1,
+                 spare_list: List[Spare] = None):
         self.nose_pnt: tuple[float, float, float] = nose_pnt
         root_segment = WingSegment(root_airfoil, length, root_chord, tip_chord,
                                    sweep, root_dihedral, root_incidence, root_trailing_edge,
-                                   tip_airfoil, tip_dihedral, tip_incidence, tip_trailing_edge)
+                                   tip_airfoil, tip_dihedral, tip_incidence, tip_trailing_edge,
+                                   spare_list=spare_list)
         self.segments: list[WingSegment] = [root_segment]
+
+        # spare vector is perpendicular
+        for spare in self.segments[0].spare_list:
+            if spare.spare_vector is None:
+                spare.spare_vector = self.get_wing_workplane(0).plane.yDir
+            else:
+                # use spare_vector as offset to the perpendicular vector
+                spare.spare_vector = spare.spare_vector.normalized()
+
+            if spare.spare_origin is None:
+                spare.spare_origin = Vector(self.segments[0].root_chord/3, 0., 0.)
+            else:
+                spare.spare_origin = spare.spare_origin
+            pass
 
     def add_segment(self: T,
                     length: float,
@@ -66,12 +113,42 @@ class WingConfiguration:
                     tip_dihedral: float = 0,
                     tip_incidence: float = 0,
                     root_trailing_edge: float = 1,
-                    tip_trailing_edge: float = 1 ):
+                    tip_trailing_edge: float = 1,
+                    spare_list: List[Spare] = None,
+                    trailing_edge_device: TrailingEdgeDevice = None):
         airfoil = self.segments[-1].root_airfoil if self.segments[-1].tip_airfoil is None else self.segments[-1].tip_airfoil
         tip_airfoil = airfoil if tip_airfoil is None else tip_airfoil
+
         segment = WingSegment(airfoil, length, self.segments[-1].tip_chord, tip_chord,
-                              sweep, 0, 0, root_trailing_edge, tip_airfoil, tip_dihedral, tip_incidence, tip_trailing_edge)
+                              sweep, 0, 0, root_trailing_edge,
+                              tip_airfoil, tip_dihedral, tip_incidence, tip_trailing_edge,
+                              spare_list=spare_list, trailing_edge_device=trailing_edge_device)
         self.segments.append(segment)
+
+        segment_number = len(self.segments) - 1
+
+        for spare_idx in range(len(self.segments[segment_number].spare_list)):
+            if self.segments[segment_number].spare_list[spare_idx].spare_mode == "follow":
+                # follows the previous spare vector
+                self.segments[segment_number].spare_list[spare_idx].spare_vector = self.segments[segment_number - 1].spare_list[spare_idx].spare_vector
+                self.segments[segment_number].spare_list[spare_idx].spare_origin = (self.segments[segment_number - 1].spare_list[spare_idx].spare_origin
+                                                              + (self.segments[segment_number - 1].spare_list[spare_idx].spare_vector
+                                                                 * self.segments[segment_number - 1].length))
+
+            elif self.segments[segment_number].spare_list[spare_idx].spare_mode == "normal":
+                seg_plane = self.get_wing_workplane(segment_number).plane
+                if self.segments[segment_number].spare_list[spare_idx].spare_vector is None:
+                    self.segments[segment_number].spare_list[spare_idx].spare_vector = seg_plane.yDir
+
+                else:
+                    # use spare_vector as offset to the perpendicular vector
+                    self.segments[segment_number].spare_list[spare_idx].spare_vector = self.segments[segment_number].spare_list[spare_idx].spare_vector.normalized()
+
+                if self.segments[segment_number].spare_list[spare_idx].spare_origin is None:
+                    self.segments[segment_number].spare_list[spare_idx].spare_origin = seg_plane.origin + Vector(self.segments[segment_number].root_chord / 3, 0., 0.)
+                else:
+                    self.segments[segment_number].spare_list[spare_idx].spare_origin = seg_plane.origin + self.segments[segment_number].spare_list[spare_idx].spare_origin
+                pass
 
     def get_wing_workplane(self: T, segment: int = 0) -> Workplane:
         """
@@ -145,6 +222,27 @@ class WingConfiguration:
         file.close()
 
         return scaled_point_list
+
+    def get_trailing_edge_device_planes(self: T, segment: int) -> Tuple[Plane, Plane]:
+        seg = self.segments[segment]
+        ted = seg.trailing_edge_device
+
+        if ted is None:
+            logging.warning("No trailing edge device")
+            return None, None
+        else:
+            wing_wp = self.get_wing_workplane(segment)
+            wing_wp_tip = self.get_wing_workplane(segment+1)
+
+            origin_root = (wing_wp.plane.origin
+                           + wing_wp.plane.xDir * seg.root_chord * ted.rel_chord_root)
+            origin_tip = (wing_wp_tip.plane.origin
+                          + wing_wp_tip.plane.xDir * seg.tip_chord * ted.rel_chord_tip)
+
+            normal = wing_wp.plane.yDir
+            root_plane = Plane(origin=origin_root, xDir=wing_wp.plane.xDir, normal=normal)
+            tip_plane = Plane(origin=origin_tip, xDir=wing_wp_tip.plane.xDir, normal=normal)
+            return root_plane, tip_plane
 
     @staticmethod
     def _create_homogeneous_rotation_matrix(axis: str, degrees: float) -> ndarray[Any, dtype[generic | generic | Any]]:

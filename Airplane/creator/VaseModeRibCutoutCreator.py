@@ -7,15 +7,16 @@ from math import cos, asin, degrees, radians, atan2
 
 from cadquery import Workplane, Plane, Sketch
 from cadquery.occ_impl.shapes import Edge
-from cadquery.occ_impl.geom import Vector
+from cadquery.occ_impl.geom import Vector, Location
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
-from Airplane.aircraft_topology.WingConfiguration import WingConfiguration
+from Airplane.aircraft_topology.WingConfiguration import WingConfiguration, TrailingEdgeDevice, WingSegment
 
 from cq_plugins.wing.wing_segment import wing_segment
 from cq_plugins.wing.wing_root_segment import wing_root_segment
 from cq_plugins.fix_shape.fix_shape import fix_shape
 from cq_plugins.segmentToEdge import segmentToEdge
+
 
 def _calc_edge_start(sketch: Sketch, id_s: str, spare_nose_tip, tip_nose) -> Tuple[float, float, bool]:
     try:
@@ -24,7 +25,7 @@ def _calc_edge_start(sketch: Sketch, id_s: str, spare_nose_tip, tip_nose) -> Tup
         p_te = sketch.segmentToEdge('spare_tail', 180, 'rib_tl' + id_s, 'helper')._tags['helper'][0].endPoint()
         sketch.select('helper').delete()
         lower_part = True
-        if ((spare_nose_tip[0] - p_le.x) > 0 and abs(p_le.y - tip_nose[1]) < tip_nose[1]*0.1):
+        if ((spare_nose_tip[0] - p_le.x) > 0 and abs(p_le.y - tip_nose[1]) < tip_nose[1] * 0.1):
             pass
         else:
             p_le = sketch.segmentToEdge('spare_nose', 180, 'rib_nr' + id_s, 'helper')._tags['helper'][0].endPoint()
@@ -43,23 +44,23 @@ def _calc_edge_start(sketch: Sketch, id_s: str, spare_nose_tip, tip_nose) -> Tup
     trailing_edge_start = p_te.x - tip_nose[0]
     return (leading_edge_start, trailing_edge_start, lower_part)
 
-def _rib_cutout(segment: int, wing_config: WingConfiguration, printer_wall_thickness: float,
-                spare_support_dimension_width: float, spare_support_dimension_height: float, leading_edge_offset: float,
+
+def _rib_cutout(segment: int, wing_config: WingConfiguration, printer_wall_thickness: float, leading_edge_offset: float,
                 trailing_edge_offset: float, leading_edge_start: float = None, trailing_edge_start: float = None,
                 start_upper_part: bool = False, minimum_rib_angle: float = 45, spare_perpendicular: bool = False,
-                spare_position_factor: float = 1. / 3., spare_vector=None,
-                spare_vector_origin:Vector=None) -> Tuple[Sketch, float, float, bool, Vector]:
+                spare_position_factor: float = 1. / 3., spare_idx: int = 0) -> Tuple[
+    Sketch, float, float, bool, Vector]:
     """
     Constructs a set of hourglass like structures in between the nose and the tail part of the wing.
 
     """
 
     (root_nose_offset, root_nose_start, root_tail_offset, root_tail_start, spare_nose_root,
-     spare_nose_tip, spare_tail_root, spare_tail_tip, tip_nose, tip_nose_offset, tip_tail_offset, spare_vector_origin) = (
+     spare_nose_tip, spare_tail_root, spare_tail_tip, tip_nose, tip_nose_offset, tip_tail_offset,
+     spare_vector_origin) = (
         _calculate_wing_construction_points(segment, printer_wall_thickness, leading_edge_offset, leading_edge_start,
-                                            trailing_edge_offset, trailing_edge_start, spare_support_dimension_width,
-                                            spare_position_factor, wing_config, spare_perpendicular,
-                                            spare_vector=spare_vector, spare_vector_origin=spare_vector_origin)
+                                            trailing_edge_offset, trailing_edge_start, spare_position_factor,
+                                            wing_config, spare_perpendicular, spare_idx=spare_idx)
     )
 
     # Drawing the offset outlines in the sketch.
@@ -80,30 +81,31 @@ def _rib_cutout(segment: int, wing_config: WingConfiguration, printer_wall_thick
         const_lines = (
             const_lines
             .segmentToEdge(Vector(tuple(root_tail_start)),
-                        180.-minimum_rib_angle, 'spare_tail', 'rib_tl') # rib: tail left  \
-            .segmentToEdge(minimum_rib_angle, 'tail_os', 'rib_tr')     # rib: tail right /
-            .segmentToEdge(180.,'nose_os', 'help_top', forConstruction=False)
-            .segmentToEdge('rib_tl', 180.,'spare_nose', 'help_middle', forConstruction=False)
-            .segment(Vector(tuple(root_nose_start)),'rib_nl')          # rib: nose left  /
-            .segmentToEdge('help_middle', 1, 'help_top', 1., 'rib_nr')        # rib: nose right \
-            .segment(Vector(tuple(root_tail_start)),Vector(tuple(root_tail_start))
-                     -Vector((0,wing_config.segments[segment].length*0.1,0)),'nose_ext')
-            .segment(Vector(tuple(root_nose_start)),Vector(tuple(root_nose_start))
-                    -Vector((0,wing_config.segments[segment].length*0.1,0)),'tail_ext')
-            .segmentToEdge('nose_ext',1.,'tail_ext',1.,'root')
-            )
+                           180. - minimum_rib_angle, 'spare_tail', 'rib_tl')  # rib: tail left  \
+            .segmentToEdge(minimum_rib_angle, 'tail_os', 'rib_tr')  # rib: tail right /
+            .segmentToEdge(180., 'nose_os', 'help_top', forConstruction=False)
+            .segmentToEdge('rib_tl', 180., 'spare_nose', 'help_middle', forConstruction=False)
+            .segment(Vector(tuple(root_nose_start)), 'rib_nl')  # rib: nose left  /
+            .segmentToEdge('help_middle', 1, 'help_top', 1., 'rib_nr')  # rib: nose right \
+            .segment(Vector(tuple(root_tail_start)), Vector(tuple(root_tail_start))
+                     - Vector((0, wing_config.segments[segment].length * 0.1, 0)), 'nose_ext')
+            .segment(Vector(tuple(root_nose_start)), Vector(tuple(root_nose_start))
+                     - Vector((0, wing_config.segments[segment].length * 0.1, 0)), 'tail_ext')
+            .segmentToEdge('nose_ext', 1., 'tail_ext', 1., 'root')
+        )
     else:
         const_lines = (
             const_lines
-            .segmentToEdge(Vector(tuple(root_tail_start)), minimum_rib_angle, 'tail_os', 'rib_tr')     # rib: tail right (upper) /
-            .segmentToEdge(180.,'nose_os', 'help_top', forConstruction=False)
-            .segmentToEdge('help_top', 1., Vector(tuple(root_nose_start)), 'rib_nr') # rib: nose right (upper) \
-            .segment(Vector(tuple(root_tail_start)),Vector(tuple(root_tail_start))
-                     -Vector((0,wing_config.segments[segment].length*0.1,0)),'nose_ext')
-            .segment(Vector(tuple(root_nose_start)),Vector(tuple(root_nose_start))
-                    -Vector((0,wing_config.segments[segment].length*0.1,0)),'tail_ext')
-            .segmentToEdge('nose_ext',1.,'tail_ext',1.,'root')
-            )
+            .segmentToEdge(Vector(tuple(root_tail_start)), minimum_rib_angle, 'tail_os',
+                           'rib_tr')  # rib: tail right (upper) /
+            .segmentToEdge(180., 'nose_os', 'help_top', forConstruction=False)
+            .segmentToEdge('help_top', 1., Vector(tuple(root_nose_start)), 'rib_nr')  # rib: nose right (upper) \
+            .segment(Vector(tuple(root_tail_start)), Vector(tuple(root_tail_start))
+                     - Vector((0, wing_config.segments[segment].length * 0.1, 0)), 'nose_ext')
+            .segment(Vector(tuple(root_nose_start)), Vector(tuple(root_nose_start))
+                     - Vector((0, wing_config.segments[segment].length * 0.1, 0)), 'tail_ext')
+            .segmentToEdge('nose_ext', 1., 'tail_ext', 1., 'root')
+        )
 
     # health check
     # 'rib_nr' should not end left of 'rib_tr'
@@ -151,7 +153,7 @@ def _rib_cutout(segment: int, wing_config: WingConfiguration, printer_wall_thick
         id_s = id_s + '_'
 
     # Removing all constrution lines...
-    #if not start_upper_part:
+    # if not start_upper_part:
     const_lines.select('help_middle' + id_s).delete()
     const_lines.select('nose_os').delete()
     const_lines.select('spare_nose').delete()
@@ -160,12 +162,18 @@ def _rib_cutout(segment: int, wing_config: WingConfiguration, printer_wall_thick
 
     return const_lines, *_calc_edge_start(const_lines, id_s, spare_nose_tip, tip_nose), spare_vector_origin
 
+
 def _calculate_wing_construction_points(segment: int, printer_wall_thickness: float, leading_edge_offset: float,
                                         leading_edge_start: float, trailing_edge_offset: float,
-                                        trailing_edge_start: float, spare_support_dimension_width: float,
-                                        spare_position_factor: float, wing_config: WingConfiguration,
-                                        spare_perpendicular: bool = False, spare_vector: Vector = None,
-                                        spare_vector_origin: Vector = None):
+                                        trailing_edge_start: float, spare_position_factor: float,
+                                        wing_config: WingConfiguration, spare_perpendicular: bool = False,
+                                        spare_idx: int = 0):
+    spare_vector = wing_config.segments[segment].spare_list[spare_idx].spare_vector
+    spare_vector_origin = wing_config.segments[segment].spare_list[spare_idx].spare_origin
+    spare_support_dimension_width = wing_config.segments[segment].spare_list[spare_idx].spare_support_dimension_width
+
+    spare_vector_origin.y = 0
+
     if leading_edge_start is None:
         leading_edge_start = leading_edge_offset
     if trailing_edge_start is None:
@@ -189,10 +197,10 @@ def _calculate_wing_construction_points(segment: int, printer_wall_thickness: fl
 
     # Calculating the spare nose and tail positions from root to tip
     if spare_vector is None:
-        spare_nose_root = (np.asarray(( wing_config.segments[segment].root_chord, 0., 0.))
+        spare_nose_root = (np.asarray((wing_config.segments[segment].root_chord, 0., 0.))
                            * spare_position_factor
                            - np.asarray((0.5 * spare_support_dimension_width, 0., 0.))
-                           - np.asarray((1.0 * printer_wall_thickness, 0., 0.)) )
+                           - np.asarray((1.0 * printer_wall_thickness, 0., 0.)))
         spare_tail_root = (np.asarray((wing_config.segments[segment].root_chord, 0., 0.))
                            * spare_position_factor
                            + np.asarray((0.5 * spare_support_dimension_width, 0., 0.))
@@ -200,10 +208,17 @@ def _calculate_wing_construction_points(segment: int, printer_wall_thickness: fl
     else:
         spare_nose_root = (np.asarray(spare_vector_origin.toTuple())
                            - np.asarray((0.5 * spare_support_dimension_width, 0., 0.))
-                           - np.asarray((1.0 * printer_wall_thickness, 0., 0.)) )
+                           - np.asarray((1.0 * printer_wall_thickness, 0., 0.)))
         spare_tail_root = (np.asarray(spare_vector_origin.toTuple())
                            + np.asarray((0.5 * spare_support_dimension_width, 0., 0.))
                            + np.asarray((1.0 * printer_wall_thickness, 0., 0.)))
+        if segment > 0:
+            # origin is in globale coordinates, but the sketch starts with the nose point as (0,0,0)
+            # so we need to shift along x by the sweep
+            sweep_sum = sum([ws.sweep for ws in wing_config.segments[0:segment]])
+            spare_nose_root = spare_nose_root - np.asarray((sweep_sum, 0., 0.))
+            spare_tail_root = spare_tail_root - np.asarray((sweep_sum, 0., 0.))
+
         pass
 
     _spare_vector_origin = None
@@ -216,19 +231,21 @@ def _calculate_wing_construction_points(segment: int, printer_wall_thickness: fl
                           * spare_position_factor
                           + np.asarray((1., 0., 0.)) * spare_support_dimension_width / 2
                           + np.asarray((1., 0., 0.)) * printer_wall_thickness)
-    elif not spare_perpendicular and spare_vector is not None: # a spare vector is given
+    elif not spare_perpendicular and spare_vector is not None:  # a spare vector is given
         vec = np.asarray((spare_vector.x, spare_vector.y, spare_vector.z))
-        norm_vec = vec/np.linalg.norm(vec)
+        norm_vec = vec / np.linalg.norm(vec)
         spare_nose_tip = (spare_nose_root
-                          + norm_vec * wing_config.segments[segment].length)
+                          + norm_vec * wing_config.segments[segment].length
+                          )
         spare_tail_tip = (spare_tail_root
-                          + norm_vec * wing_config.segments[segment].length)
+                          + norm_vec * wing_config.segments[segment].length
+                          )
         _spare_vector_origin = (spare_vector_origin
                                 + Vector(tuple(norm_vec * wing_config.segments[segment].length))
-                                - Vector((wing_config.segments[segment].sweep, 0.,0.)) #MARK
+                                - Vector((wing_config.segments[segment].sweep, 0., 0.))  # MARK
                                 )
         _spare_vector_origin.y = 0
-    else: # spare is perpendicular to x-axis (roll axis of the plane)
+    else:  # spare is perpendicular to x-axis (roll axis of the plane)
         spare_nose_tip = (spare_nose_root
                           + np.asarray((0., 1., 0.)) * wing_config.segments[segment].length)
         spare_tail_tip = (spare_tail_root
@@ -241,9 +258,9 @@ def _calculate_wing_construction_points(segment: int, printer_wall_thickness: fl
             tip_nose, tip_nose_offset,
             tip_tail_offset, _spare_vector_origin)
 
+
 def _construct_spare_sketch(printer_wall_thickness: float, spare_support_dimension_width: float,
                             spare_support_dimension_height: float) -> Sketch:
-
     beta = degrees(asin((0.5 * printer_wall_thickness) / (0.5 * spare_support_dimension_width)))
     x = cos(radians(beta)) * (0.5 * spare_support_dimension_width)
 
@@ -278,348 +295,17 @@ def _construct_spare_sketch(printer_wall_thickness: float, spare_support_dimensi
     )
     return const_lines
 
-class VaseModeRibCutoutCreator(AbstractShapeCreator):
-    """
-    Create a cutout shape that should be intersected with the hull shape.
-    The shape :
-               | \  ||     / | trailing
-    leading    |  \ ||   /   | edge
-    edge       |   \||/      |
-               |   /||\      |
-               |  / ||   \   |
-               | /  ||     \ |
-               offset        offset
-    """
-
-    def __init__(self, creator_id: str,
-                 wing_index: Union[str, int],
-                 printer_wall_thickness: float,
-                 spare_support_geometry_is_round: bool,
-                 spare_support_dimension_width: float,
-                 spare_support_dimension_height: float,
-                 leading_edge_offset: float,
-                 trailing_edge_offset: float,
-                 offset: float,
-                 spare_position_factor: float = 1. / 3.,
-                 minimum_rib_angle: float = 45,
-                 spare_perpendicular: bool = False,
-                 invert_cutout: bool = False,
-                 taper_cutout: float = 0.,
-                 wing_config: dict[int, WingConfiguration] = None,
-                 wing_side: Literal["LEFT", "RIGHT", "BOTH"] = "RIGHT",
-                 loglevel: int =logging.INFO):
-        """
-        parameters:
-        printer_wall_thickness - printer settings wall thickness
-        spare_support_geometry_is_round -- default true
-        spare_support_dimension_x -- diameter if round is true
-        spare_support_dimension_z -- ignored if round
-        leading_edge_offset --
-        trailing_edge_offset --
-        minimum_rib_angle -- important for printability (should be > 45°)
-        """
-        self.printer_wall_thickness: float = printer_wall_thickness
-        self.spare_support_geometry_is_round: bool = spare_support_geometry_is_round
-        self.spare_support_dimension_width: float = spare_support_dimension_width
-        self.spare_support_dimension_height: float = spare_support_dimension_height
-        self.spare_perpendicular: bool = spare_perpendicular
-        self.spare_position_factor: float = spare_position_factor
-        self.leading_edge_offset: float = leading_edge_offset
-        self.trailing_edge_offset: float = trailing_edge_offset
-        self.offset: float = offset
-        self.minimum_rib_angle: float = minimum_rib_angle
-        self.invert_cutout: bool = invert_cutout
-        self.taper_cutout: float = taper_cutout
-        self.wing_side: Literal["LEFT", "RIGHT", "BOTH"] = wing_side
-        self.wing_index: Union[str, int] = wing_index
-        self._wing_config: dict[int, WingConfiguration] = wing_config
-
-        super().__init__(creator_id, shapes_of_interest_keys=[], loglevel=loglevel)
-
-    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
-                      input_shapes: dict[str, Workplane],
-                      **kwargs) -> dict[str, Workplane]:
-        logging.info(f"wing rib cutout from configuration --> '{self.identifier}'")
-
-        wing_config: WingConfiguration = self._wing_config[self.wing_index]
-        right_wing: Workplane = (
-            Workplane('XZ')
-            .wing_root_segment(
-                root_airfoil=wing_config.segments[0].root_airfoil,
-                root_chord=wing_config.segments[0].root_chord,
-                root_dihedral=wing_config.segments[0].root_dihedral,
-                root_incidence=wing_config.segments[0].root_incidence,
-                length=wing_config.segments[0].length,
-                sweep=wing_config.segments[0].sweep,
-                tip_chord=wing_config.segments[0].tip_chord,
-                tip_dihedral=wing_config.segments[0].tip_dihedral,
-                tip_incidence=wing_config.segments[0].tip_incidence,
-                tip_airfoil=wing_config.segments[0].tip_airfoil,
-                offset=self.offset))
-
-        segment = 0
-        current: Workplane = right_wing
-        right_wing_cutout, leading_edge_start, trailing_edge_start = (
-            self._create_ribs_shape(current, segment,wing_config, None, None))
-
-        for segment_config in wing_config.segments[1:]:
-            segment = segment + 1
-            current = current.wing_segment(
-                length=segment_config.length,
-                sweep=segment_config.sweep,
-                tip_chord=segment_config.tip_chord,
-                tip_dihedral=segment_config.tip_dihedral,
-                tip_incidence=segment_config.tip_incidence,
-                tip_airfoil=segment_config.tip_airfoil,
-                offset=self.offset)
-            right_wing.add(current)
-
-            raw_ribs, leading_edge_start, trailing_edge_start = self._create_ribs_shape(current, segment, wing_config,
-                                                                                        leading_edge_start,
-                                                                                        trailing_edge_start)
-            right_wing_cutout.add(raw_ribs)
-
-        right_wing_cutout = right_wing_cutout.combine(glue=True)
-
-        if self.wing_side == "LEFT":
-            right_wing = right_wing.mirror("XZ")
-            right_wing_cutout = right_wing_cutout.mirror("XZ")
-        elif self.wing_side == "BOTH":
-            left_wing = right_wing.mirror("XZ")
-            right_wing = right_wing.union(left_wing)
-            left_wing_cutout = right_wing_cutout.mirror("XZ")
-            right_wing_cutout = right_wing_cutout.union(left_wing_cutout)
-
-        right_wing = right_wing.fix_shape()
-        right_wing = right_wing.translate(wing_config.nose_pnt).display(name=f"{self.identifier}",
-                                                                        severity=logging.DEBUG)
-        right_wing_cutout = right_wing_cutout.fix_shape()
-        right_wing_cutout = right_wing_cutout.translate(wing_config.nose_pnt).display(name=f"{self.identifier}.cutout",
-                                                                                      severity=logging.DEBUG)
-
-        return {self.identifier: right_wing, f"{self.identifier}.cutout": right_wing_cutout}
-
-    def _create_ribs_shape(self, current, segment, wing_config, leading_edge_start, trailing_edge_start):
-        cutout_face, leading_edge_start, trailing_edge_start, lower_part = _rib_cutout(segment=segment,
-                                                                                       wing_config=wing_config,
-                                                                                       printer_wall_thickness=self.printer_wall_thickness,
-                                                                                       spare_support_dimension_width=self.spare_support_dimension_width,
-                                                                                       spare_support_dimension_height=self.spare_support_dimension_height,
-                                                                                       leading_edge_offset=self.leading_edge_offset,
-                                                                                       trailing_edge_offset=self.trailing_edge_offset,
-                                                                                       leading_edge_start=leading_edge_start,
-                                                                                       trailing_edge_start=trailing_edge_start,
-                                                                                       minimum_rib_angle=self.minimum_rib_angle,
-                                                                                       spare_perpendicular=self.spare_perpendicular,
-                                                                                       spare_position_factor=self.spare_position_factor)
-        cutout_face.assemble()
-        try:
-            if self.invert_cutout:
-                raw_ribs = (
-                    wing_config.get_wing_workplane(segment=segment)
-                    .placeSketch(cutout_face)
-                    .extrude(until=100, taper=self.taper_cutout, both=True)
-                    .intersect(current)
-                )
-            else:
-                raw_ribs = (
-                    wing_config.get_wing_workplane(segment=segment)
-                    .placeSketch(cutout_face)
-                    .add(current)
-                    .cutThruAll(taper=self.taper_cutout)
-                )
-            pass
-        except:
-            logging.warning(f"could not create segment: {segment}!")
-        pass
-        return raw_ribs, leading_edge_start, trailing_edge_start
-
-class VaseModeSpareCreator(AbstractShapeCreator):
-    """
-    """
-
-    def __init__(self, creator_id: str,
-                 wing_index: Union[str, int],
-                 printer_wall_thickness: float,
-                 spare_support_geometry_is_round: bool,
-                 spare_support_dimension_width: float,
-                 spare_support_dimension_height: float,
-                 leading_edge_offset: float,
-                 trailing_edge_offset: float,
-                 offset: float,
-                 spare_position_factor: float = 1. / 3.,
-                 minimum_rib_angle: float = 45,
-                 spare_perpendicular: bool = False,
-                 invert_cutout: bool = False,
-                 taper_cutout: float = 0.,
-                 wing_config: dict[int, WingConfiguration] = None,
-                 wing_side: Literal["LEFT", "RIGHT", "BOTH"] = "RIGHT",
-                 loglevel: int =logging.INFO):
-        """
-        parameters:
-        printer_wall_thickness - printer settings wall thickness
-        spare_support_geometry_is_round -- default true
-        spare_support_dimension_x -- diameter if round is true
-        spare_support_dimension_z -- ignored if round
-        leading_edge_offset --
-        trailing_edge_offset --
-        minimum_rib_angle -- important for printability (should be > 45°)
-        """
-        self.printer_wall_thickness: float = printer_wall_thickness
-        self.spare_support_geometry_is_round: bool = spare_support_geometry_is_round
-        self.spare_support_dimension_width: float = spare_support_dimension_width
-        self.spare_support_dimension_height: float = spare_support_dimension_height
-        self.spare_perpendicular: bool = spare_perpendicular
-        self.spare_position_factor: float = spare_position_factor
-        self.leading_edge_offset: float = leading_edge_offset
-        self.trailing_edge_offset: float = trailing_edge_offset
-        self.offset: float = offset
-        self.minimum_rib_angle: float = minimum_rib_angle
-        self.invert_cutout: bool = invert_cutout
-        self.taper_cutout: float = taper_cutout
-        self.wing_side: Literal["LEFT", "RIGHT", "BOTH"] = wing_side
-        self.wing_index: Union[str, int] = wing_index
-        self._wing_config: dict[int, WingConfiguration] = wing_config
-
-        super().__init__(creator_id, shapes_of_interest_keys=[], loglevel=loglevel)
-
-    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
-                      input_shapes: dict[str, Workplane],
-                      **kwargs) -> dict[str, Workplane]:
-        logging.info(f"wing spare from configuration --> '{self.identifier}'")
-
-        wing_config: WingConfiguration = self._wing_config[self.wing_index]
-        segment = 0
-
-        right_wing: Workplane = (
-            Workplane('XZ')
-            .wing_root_segment(
-                root_airfoil=wing_config.segments[segment].root_airfoil,
-                root_chord=wing_config.segments[segment].root_chord,
-                root_dihedral=wing_config.segments[segment].root_dihedral,
-                root_incidence=wing_config.segments[segment].root_incidence,
-                length=wing_config.segments[segment].length,
-                sweep=wing_config.segments[segment].sweep,
-                tip_chord=wing_config.segments[segment].tip_chord,
-                tip_dihedral=wing_config.segments[segment].tip_dihedral,
-                tip_incidence=wing_config.segments[segment].tip_incidence,
-                tip_airfoil=wing_config.segments[segment].tip_airfoil,
-                offset=self.offset))
-        current: Workplane = right_wing
-
-        right_wing_spare, spare_plane = self._create_spare_shape(current, segment, wing_config)
-
-        #right_wing_spare.display("wing_w_spare", severity=logging.DEBUG)
-
-        right_wing_slot = (Workplane(spare_plane)
-                    .box(length=self.printer_wall_thickness,
-                         width=100,
-                         height=wing_config.segments[segment].length*2,
-                         centered=False)
-                    )
-        right_wing = current
-
-        for segment_config in wing_config.segments[1:]:
-            segment = segment + 1
-            current = current.wing_segment(
-                length=segment_config.length,
-                sweep=segment_config.sweep,
-                tip_chord=segment_config.tip_chord,
-                tip_dihedral=segment_config.tip_dihedral,
-                tip_incidence=segment_config.tip_incidence,
-                tip_airfoil=segment_config.tip_airfoil,
-                offset=self.offset)
-
-            raw_spare, spare_plane = self._create_spare_shape(current, segment, wing_config)
-
-            right_wing_spare = right_wing_spare.add(raw_spare)
-
-            right_wing_slot = right_wing_slot.add(Workplane(spare_plane)
-                        .box(length=self.printer_wall_thickness,
-                             width=100,
-                             height=wing_config.segments[segment].length,
-                             centered=False)
-                        )
-
-            right_wing.add(current) #.add(right_wing_spare).cut(right_wing_slot))
-            pass
-
-        right_wing = right_wing.fix_shape()
-        #right_wing_spare.display("wing_w_spare", severity=logging.DEBUG)
-        #right_wing_spare = right_wing_spare.combine()
-
-        if self.wing_side == "LEFT":
-            right_wing = right_wing.mirror("XZ")
-            right_wing_spare = right_wing_spare.mirror("XZ")
-            right_wing_slot = right_wing_slot.mirror("XZ")
-        elif self.wing_side == "BOTH":
-            left_wing = right_wing.mirror("XZ")
-            right_wing = right_wing.union(left_wing)
-            left_wing_spare = right_wing_spare.mirror("XZ")
-            right_wing_spare = right_wing_spare.add(left_wing_spare)
-            left_wing_slot = right_wing_slot.mirror("XZ")
-            right_wing_slot = right_wing_slot.add(left_wing_slot)
-
-        right_wing = right_wing.fix_shape()
-        right_wing = right_wing.translate(wing_config.nose_pnt).display(name=f"{self.identifier}",
-                                                                        severity=logging.DEBUG)
-        right_wing_spare = right_wing_spare.fix_shape()
-        right_wing_spare = (right_wing_spare.translate(wing_config.nose_pnt)
-                            .display(name=f"{self.identifier}.spare", severity=logging.DEBUG))
-
-        right_wing_slot = right_wing_slot.fix_shape()
-        right_wing_slot = (right_wing_slot.translate(wing_config.nose_pnt)
-                            .display(name=f"{self.identifier}.slot", severity=logging.DEBUG))
-
-        return {self.identifier: right_wing,
-                f"{self.identifier}.spare": right_wing_spare,
-                f"{self.identifier}.slot": right_wing_slot}
-
-    def _create_spare_shape(self, current, segment, wing_config):
-        # create spare sketch
-        spare_sketch = _construct_spare_sketch(printer_wall_thickness=self.printer_wall_thickness,
-                                               spare_support_dimension_width=self.spare_support_dimension_width,
-                                               spare_support_dimension_height=self.spare_support_dimension_height)
-        # calc extrude direction
-        wing_wp = wing_config.get_wing_workplane(segment)
-        diff = 0.0
-        if segment > 0:
-            diff = (wing_config.segments[segment - 1].tip_chord - wing_config.segments[
-                segment].tip_chord) * self.spare_position_factor
-        rotation = degrees(atan2(wing_config.segments[segment].sweep - diff, wing_config.segments[segment].length))
-        origin = wing_wp.plane.origin + Vector(
-            (wing_config.segments[segment].root_chord * self.spare_position_factor, 0, 0))
-        spare_plane = (Plane(origin=origin, xDir=wing_wp.plane.xDir, normal=wing_wp.plane.yDir)
-                       .rotated((0.0, rotation, 0.0))
-                       )
-        # extrude and intersect
-        raw_spare = (Workplane(spare_plane)
-                     .placeSketch(spare_sketch)
-                     .extrude(wing_config.segments[segment].length * 10, both=True)
-                     .intersect(toIntersect=current))
-        return raw_spare, spare_plane
 
 class VaseModeWingCreator(AbstractShapeCreator):
     """
     """
 
-    def __init__(self, creator_id: str,
-                 wing_index: Union[str, int],
-                 printer_wall_thickness: float,
-                 spare_support_geometry_is_round: bool,
-                 spare_support_dimension_width: float,
-                 spare_support_dimension_height: float,
-                 leading_edge_offset: float,
-                 trailing_edge_offset: float,
-                 offset: float,
-                 spare_position_factor: float = 1. / 3.,
-                 minimum_rib_angle: float = 45,
-                 spare_perpendicular: bool = False,
-                 invert_cutout: bool = False,
-                 taper_cutout: float = 0.,
+    def __init__(self, creator_id: str, wing_index: Union[str, int], printer_wall_thickness: float,
+                 leading_edge_offset: float, trailing_edge_offset: float, offset: float,
+                 spare_position_factor: float = 1. / 3., minimum_rib_angle: float = 45,
+                 spare_perpendicular: bool = False, invert_cutout: bool = False, taper_cutout: float = 0.,
                  wing_config: dict[int, WingConfiguration] = None,
-                 wing_side: Literal["LEFT", "RIGHT", "BOTH"] = "RIGHT",
-                 loglevel: int =logging.INFO):
+                 wing_side: Literal["LEFT", "RIGHT", "BOTH"] = "RIGHT", loglevel: int = logging.INFO):
         """
         parameters:
         printer_wall_thickness - printer settings wall thickness
@@ -631,9 +317,6 @@ class VaseModeWingCreator(AbstractShapeCreator):
         minimum_rib_angle -- important for printability (should be > 45°)
         """
         self.printer_wall_thickness: float = printer_wall_thickness
-        self.spare_support_geometry_is_round: bool = spare_support_geometry_is_round
-        self.spare_support_dimension_width: float = spare_support_dimension_width
-        self.spare_support_dimension_height: float = spare_support_dimension_height
         self.spare_perpendicular: bool = spare_perpendicular
         self.spare_position_factor: float = spare_position_factor
         self.leading_edge_offset: float = leading_edge_offset
@@ -652,37 +335,55 @@ class VaseModeWingCreator(AbstractShapeCreator):
                       input_shapes: dict[str, Workplane],
                       **kwargs) -> dict[str, Workplane]:
         logging.info(f"wing spare from configuration --> '{self.identifier}'")
-
         wing_config: WingConfiguration = self._wing_config[self.wing_index]
 
-        segment = 0
+        segment = 0  # root segment
+        # create root segment shapes for hull creation
         right_wing, right_wing_2xpwt_offset, right_wing_pwt_offset = self._create_basic_root_segment_shapes(wing_config)
 
+        # create the hull
         # we need to take the last objects from the workplanes, those are the solids.
-        right_wing_hull = Workplane( right_wing.vals()[-1].cut(right_wing_2xpwt_offset.vals()[-1]))
+        right_wing_hull = Workplane(right_wing.vals()[-1].cut(right_wing_2xpwt_offset.vals()[-1]))
 
         current_pwt_offset: Workplane = right_wing_pwt_offset
         current_2xpwt_offset: Workplane = right_wing_2xpwt_offset
         current: Workplane = right_wing
 
-        spare_vector: Vector = Vector((0.04, 1, 0)).normalized() ##SPARE
-        #spare_vector = None
+        # create root segment spare
+        right_wing_spare, spare_plane = self._create_spare_shape(current=current_pwt_offset,
+                                                                 segment=segment,
+                                                                 wing_config=wing_config)
 
-        right_wing_spare, spare_plane = self._create_spare_shape(current_pwt_offset, segment, wing_config)
+        # create root segment ribs
         right_wing_cutout, leading_edge_start, trailing_edge_start, spare_vector_origin, lower_part = (
             self._create_ribs_shape(current=current_pwt_offset, segment=segment, wing_config=wing_config,
-                                    leading_edge_start=None, trailing_edge_start=None, start_upper_part=False,
-                                    spare_vector=spare_vector, spare_vector_origin=Vector(
-                    (wing_config.segments[segment].root_chord * self.spare_position_factor, 0., 0.))))
+                                    leading_edge_start=None, trailing_edge_start=None, start_upper_part=False))
 
+        # create root segment slot
         right_wing_slot = (Workplane(spare_plane)
-                    .box(length=self.printer_wall_thickness,
-                         width=100,
-                         height=wing_config.segments[segment].length*3,
-                         centered=(False,False,True))
-                    )
-        final_right_wing = right_wing_hull.add(right_wing_spare).add(right_wing_cutout).cut(right_wing_slot)
+                           .box(length=self.printer_wall_thickness,
+                                width=100,
+                                height=wing_config.segments[segment].length * 3,
+                                centered=(False, False, True))
+                           )
 
+        final_right_wing = right_wing_hull.add(right_wing_spare).add(right_wing_cutout).cut(right_wing_slot)
+        # final_right_wing.display(f"fin | {segment}", 500)
+
+        # create additional spares
+        for spare_idx in range(1, len(wing_config.segments[segment].spare_list)):
+            spare_shape, _ = self._create_spare_shape(
+                current=current_pwt_offset,
+                segment=segment,
+                wing_config=wing_config,
+                spare_idx=spare_idx)
+            pass
+            final_right_wing = final_right_wing.add(spare_shape)
+
+        # dictionary for trailing edge devices (teds)
+        teds: dict[str, Workplane] = {}
+
+        # create the other segments
         for segment_config in wing_config.segments[1:]:
             segment = segment + 1
             current, current_2xpwt_offset, current_pwt_offset = self._create_basic_wing_shapes(current,
@@ -692,12 +393,12 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
             current_hull = Workplane(current.vals()[-1].cut(current_2xpwt_offset.vals()[-1]))
 
-            raw_spare, spare_plane = self._create_spare_shape(current_pwt_offset, segment, wing_config)
+            raw_spare, spare_plane = self._create_spare_shape(current=current_pwt_offset, segment=segment,
+                                                              wing_config=wing_config, spare_idx=0)
             right_wing_spare = right_wing_spare.add(raw_spare)
 
             raw_ribs, leading_edge_start, trailing_edge_start, spare_vector_origin, lower_part = self._create_ribs_shape(
-                current_pwt_offset, segment, wing_config, leading_edge_start, trailing_edge_start,  not lower_part,
-                spare_vector=spare_vector, spare_vector_origin=spare_vector_origin)
+                current_pwt_offset, segment, wing_config, leading_edge_start, trailing_edge_start, not lower_part)
             right_wing_cutout.add(raw_ribs)
 
             right_wing_slot = (Workplane(spare_plane)
@@ -706,6 +407,59 @@ class VaseModeWingCreator(AbstractShapeCreator):
                                     height=wing_config.segments[segment].length * 10,
                                     centered=(False, False, True))
                                )
+
+            for spare_idx in range(1, len(wing_config.segments[segment].spare_list)):
+                raw_add_spar, _ = self._create_spare_shape(current=current_pwt_offset, segment=segment,
+                                                           wing_config=wing_config, spare_idx=spare_idx)
+
+            # cut out trailing edge device (ted) from segment
+            if wing_config.segments[segment].trailing_edge_device is not None:
+                wcs: WingSegment = wing_config.segments[segment]
+                ted: TrailingEdgeDevice = wing_config.segments[segment].trailing_edge_device
+                ted_root_plane, ted_tip_plane = wing_config.get_trailing_edge_device_planes(segment)
+
+                # make the cut and create the ted
+                max_chord = max(wcs.root_chord * ted.rel_chord_root,
+                                wcs.tip_chord * ted.rel_chord_tip + wcs.sweep)
+                sketch: Sketch = (Sketch()
+                                  .segment((-max_chord, -max_chord), (-max_chord, max_chord))
+                                  .segment((-max_chord, max_chord), (max_chord, max_chord))
+                                  .segment((max_chord, max_chord), (self.printer_wall_thickness, 0))
+                                  .segment((self.printer_wall_thickness, 0), (max_chord, -max_chord))
+                                  .close()
+                                  .assemble()
+                                  )
+                sketch: Sketch = (Sketch()
+                                  .segment((self.printer_wall_thickness, 0), (max_chord, max_chord))
+                                  .segment((max_chord, max_chord), (max_chord, -max_chord))
+                                  .close()
+                                  .assemble()
+                                  )
+                vec = ted_root_plane.toLocalCoords(ted_tip_plane.origin)
+                length = np.linalg.norm(np.array(list(vec.toTuple())))
+
+                cutout = (Workplane(inPlane=ted_root_plane).workplane(offset=self.printer_wall_thickness*2)
+                          .placeSketch(sketch, sketch.moved(Location(vec.normalized().multiply(length-self.printer_wall_thickness*4)))).loft())
+
+                ted_shape = current.intersect(cutout)
+                teds[f"{ted.name}::{segment}"] = ted_shape
+
+                # cut it from the wing
+                sketch: Sketch = (Sketch()
+                                  .segment((0, -max_chord), (0, max_chord))
+                                  .segment((0, max_chord), (max_chord, max_chord))
+                                  .segment((max_chord, max_chord), (max_chord, -max_chord))
+                                  .close()
+                                  .assemble()
+                                  )
+
+                cutout = (Workplane(inPlane=ted_root_plane)
+                          .placeSketch(sketch, sketch.moved(Location(vec * 2))).loft())
+
+                current_hull = current_hull.cut(cutout)
+                raw_ribs = raw_ribs.cut(cutout)
+                pass
+
             final_right_wing = final_right_wing.add(
                 current_hull
                 .add(raw_spare)
@@ -714,7 +468,6 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 .combine())
 
             right_wing_pwt_offset.add(current_pwt_offset)
-            #final_right_wing.display("fin", 500)
             pass
 
         final_right_wing = final_right_wing.fix_shape().combine()
@@ -724,6 +477,8 @@ class VaseModeWingCreator(AbstractShapeCreator):
             right_wing_spare = right_wing_spare.mirror("XZ")
             right_wing_cutout = right_wing_cutout.mirror("XZ")
             final_right_wing = final_right_wing.mirror("XZ")
+            for (k, v) in teds.items():
+                teds[k] = v.mirror("XZ")
         elif self.wing_side == "BOTH":
             left_wing_spare = right_wing_spare.mirror("XZ")
             right_wing_spare = right_wing_spare.add(left_wing_spare)
@@ -734,6 +489,10 @@ class VaseModeWingCreator(AbstractShapeCreator):
             left_right_wing = final_right_wing.mirror("XZ")
             final_right_wing = final_right_wing.add(left_right_wing)
 
+            _teds: dict[str, Workplane] = teds.copy()
+            for (k, v) in teds.items():
+                _teds[f"{k}*"] = v.mirror("XZ")
+            teds = _teds
 
         right_wing_spare = right_wing_spare.fix_shape()
         right_wing_cutout = right_wing_cutout.fix_shape()
@@ -748,12 +507,17 @@ class VaseModeWingCreator(AbstractShapeCreator):
         final_right_wing = (final_right_wing.translate(wing_config.nose_pnt)
                             .display(name=f"{self.identifier}", severity=logging.DEBUG))
 
+        for (k, v) in teds.items():
+            teds[k] = (v.translate(wing_config.nose_pnt)
+                    .display(name=f"{self.identifier}.ted[{k}]", severity=logging.DEBUG))
+
         return {self.identifier: final_right_wing,
                 f"{self.identifier}.spare": right_wing_spare,
                 f"{self.identifier}.cutout": right_wing_cutout,
-                f"{self.identifier}.slot": right_wing_slot}
+                f"{self.identifier}.slot": right_wing_slot,
+                f"{self.identifier}.teds": teds}
 
-    def _create_basic_root_segment_shapes(self, wing_config: WingConfiguration, segment:int=0):
+    def _create_basic_root_segment_shapes(self, wing_config: WingConfiguration, segment: int = 0):
         right_wing_pwt_offset: Workplane = (
             Workplane('XZ')
             .wing_root_segment(
@@ -825,44 +589,68 @@ class VaseModeWingCreator(AbstractShapeCreator):
             offset=0.0)
         return current, current_2xpwt_offset, current_pwt_offset
 
-    def _create_spare_shape(self, current, segment, wing_config):
+    def _create_spare_shape(self, current: Workplane, segment: int, wing_config: WingConfiguration,
+                            spare_idx: int = 0) -> Tuple[Workplane, Plane]:
+        spare_vector = wing_config.segments[segment].spare_list[spare_idx].spare_vector
+        spare_vector_origin = wing_config.segments[segment].spare_list[spare_idx].spare_origin
+        spare_support_dimension_width = wing_config.segments[segment].spare_list[
+            spare_idx].spare_support_dimension_width
+        spare_support_dimension_height = wing_config.segments[segment].spare_list[
+            spare_idx].spare_support_dimension_height
+        spare_length = wing_config.segments[segment].spare_list[spare_idx].spare_length
+
         # create spare sketch
         spare_sketch = _construct_spare_sketch(printer_wall_thickness=self.printer_wall_thickness,
-                                               spare_support_dimension_width=self.spare_support_dimension_width,
-                                               spare_support_dimension_height=self.spare_support_dimension_height)
+                                               spare_support_dimension_width=spare_support_dimension_width,
+                                               spare_support_dimension_height=spare_support_dimension_height)
         # calc extrude direction
-        wing_wp = wing_config.get_wing_workplane(segment)
-        diff = 0.0
-        if segment > 0:
-            diff = ((wing_config.segments[segment - 1].tip_chord - wing_config.segments[segment].tip_chord)
-                    * self.spare_position_factor)
-        rotation = degrees(atan2(wing_config.segments[segment].sweep - diff, wing_config.segments[segment].length))
-        origin = wing_wp.plane.origin + Vector(
-            (wing_config.segments[segment].root_chord * self.spare_position_factor, 0, 0))
+        if spare_vector is None:
+            wing_wp = wing_config.get_wing_workplane(segment)
+            diff = 0.0
+            if segment > 0:
+                diff = ((wing_config.segments[segment - 1].tip_chord - wing_config.segments[segment].tip_chord)
+                        * self.spare_position_factor)
+            rotation = degrees(atan2(wing_config.segments[segment].sweep - diff, wing_config.segments[segment].length))
+            origin = wing_wp.plane.origin + Vector(
+                (wing_config.segments[segment].root_chord * self.spare_position_factor, 0, 0))
+            xDir = wing_wp.plane.xDir
+            normal = wing_wp.plane.yDir
+            spare_plane = (Plane(origin=origin, xDir=xDir, normal=normal)
+                           .rotated((0.0, rotation, 0.0)))
+        else:
+            # the spare vector defines a vector the spare should follow (normal of the spare_plane)
+            # the spare vector can be changed for segments or can be the same
+            wing_wp = wing_config.get_wing_workplane(segment)
+            xDir = wing_wp.plane.xDir
+            normal = spare_vector.normalized()
+            spare_plane = Plane(origin=spare_vector_origin, xDir=xDir, normal=normal)
+            pass
 
-        spare_plane = (Plane(origin=origin, xDir=wing_wp.plane.xDir, normal=wing_wp.plane.yDir)
-                       .rotated((0.0, rotation, 0.0))
-                       )
+        extrude_length = wing_config.segments[segment].length * 10 if spare_length is None else spare_length
         # extrude and intersect
         raw_spare = (Workplane(spare_plane)
                      .placeSketch(spare_sketch)
-                     .extrude(wing_config.segments[segment].length * 10, both=True)
+                     .extrude(extrude_length, both=True)
                      .intersect(toIntersect=current))
         return raw_spare, spare_plane
 
     def _create_ribs_shape(self, current, segment, wing_config, leading_edge_start, trailing_edge_start,
-                           start_upper_part, spare_vector: Vector = None, spare_vector_origin: Vector = None):
+                           start_upper_part, spare_idx: int = 0):
+        teof = 0.0
+        if wing_config.segments[segment].trailing_edge_device is not None:
+            teof = wing_config.segments[segment].root_chord * ( 1 - wing_config.segments[segment].trailing_edge_device.rel_chord_root)
+
+        trailing_edge_offset = self.trailing_edge_offset if teof < self.trailing_edge_offset else teof
+
         cutout_face, leading_edge_start, trailing_edge_start, lower_part, spare_vector_origin = _rib_cutout(
             segment=segment, wing_config=wing_config, printer_wall_thickness=self.printer_wall_thickness,
-            spare_support_dimension_width=self.spare_support_dimension_width,
-            spare_support_dimension_height=self.spare_support_dimension_height,
-            leading_edge_offset=self.leading_edge_offset, trailing_edge_offset=self.trailing_edge_offset,
+            leading_edge_offset=self.leading_edge_offset, trailing_edge_offset=trailing_edge_offset,
             leading_edge_start=leading_edge_start, trailing_edge_start=trailing_edge_start,
-            minimum_rib_angle=self.minimum_rib_angle, spare_perpendicular=self.spare_perpendicular,
-            spare_position_factor=self.spare_position_factor, spare_vector=spare_vector,
-            spare_vector_origin=spare_vector_origin, start_upper_part=start_upper_part)
+            start_upper_part=start_upper_part, minimum_rib_angle=self.minimum_rib_angle,
+            spare_perpendicular=self.spare_perpendicular, spare_position_factor=self.spare_position_factor,
+            spare_idx=spare_idx)
         cutout_face.assemble()
-        #Workplane().placeSketch(cutout_face).extrude(until=10, both=True).display("hmmm",500) ###REMOVE
+        # Workplane().placeSketch(cutout_face).extrude(until=10, both=True).display("hmmm",500) ###REMOVE
         try:
             if self.invert_cutout:
                 raw_ribs = (

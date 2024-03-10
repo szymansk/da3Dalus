@@ -1,12 +1,13 @@
 import sys
 
-import json 
+import json
 import os
 
+from cadquery import Vector
+
 from Airplane.creator import (AddMultipleShapesCreator, WingLoftCreator,
-                              VaseModeRibCutoutCreator, VaseModeSpareCreator,
                               VaseModeWingCreator)
-from Airplane.aircraft_topology.WingConfiguration import WingConfiguration
+from Airplane.aircraft_topology.WingConfiguration import WingConfiguration, Spare, TrailingEdgeDevice
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
@@ -26,7 +27,7 @@ if __name__ == "__main__":
 
     base_scale = 38
     printer_resolution = 0.2  # 0.2 mm layer height
-    
+
     ribcage_factor: float = 0.5
     mount_plate_thickness: float = 5
     engine_screw_hole_circle: float = 42.0
@@ -47,41 +48,33 @@ if __name__ == "__main__":
     pwd = os.path.curdir
 
     vase_wing_loft = ConstructionStepNode(
-        VaseModeWingCreator(creator_id="vase_wing",
-                             wing_index="main_wing",
-                             wing_side="BOTH",
-                             printer_wall_thickness=printer_wall_thickness,
-                             spare_support_geometry_is_round=spare_support_geometry_is_round,
-                             spare_support_dimension_width=spare_support_dimension_width,
-                             spare_support_dimension_height=spare_support_dimension_height,
-                             leading_edge_offset=leading_edge_offset,
-                             trailing_edge_offset=trailing_edge_offset,
-                             offset=printer_wall_thickness,
-                             minimum_rib_angle=minimum_rib_angle,
-                             loglevel=logging.DEBUG))
+        VaseModeWingCreator(creator_id="vase_wing", wing_index="main_wing",
+                            printer_wall_thickness=printer_wall_thickness, leading_edge_offset=leading_edge_offset,
+                            trailing_edge_offset=trailing_edge_offset, offset=printer_wall_thickness,
+                            minimum_rib_angle=minimum_rib_angle, wing_side="BOTH", loglevel=logging.DEBUG))
     root_node.append(vase_wing_loft)
 
-    full_wing_loft = ConstructionStepNode(
-        WingLoftCreator("wing_loft",
-                        wing_index="main_wing",
-                        wing_side="BOTH",
-                        loglevel=logging.DEBUG))
-    root_node.append(full_wing_loft)
-
-    fuselage_hull = ConstructionStepNode(
-        StepImportCreator("fuselage_hull_imp",
-                          step_file=os.path.abspath(f"../components/aircraft/RV-7/fuselage_inlets.step"),
-                          scale=base_scale,
-                          loglevel=logging.INFO))
-    root_node.append(fuselage_hull)
-
-    cut_hull = ConstructionStepNode(
-        Cut2ShapesCreator("cut_wing_from_fuselage",
-                          minuend=fuselage_hull.creator_id,
-                          subtrahend=f"{full_wing_loft.creator_id}",
-                          loglevel=logging.INFO))
-    root_node.append(cut_hull)
-
+    # full_wing_loft = ConstructionStepNode(
+    #    WingLoftCreator("wing_loft",
+    #                    wing_index="main_wing",
+    #                    wing_side="BOTH",
+    #                    loglevel=logging.DEBUG))
+    # root_node.append(full_wing_loft)
+    #
+    # fuselage_hull = ConstructionStepNode(
+    #    StepImportCreator("fuselage_hull_imp",
+    #                      step_file=os.path.abspath(f"../components/aircraft/RV-7/fuselage_inlets.step"),
+    #                      scale=base_scale,
+    #                      loglevel=logging.INFO))
+    # root_node.append(fuselage_hull)
+    #
+    # cut_hull = ConstructionStepNode(
+    #    Cut2ShapesCreator("cut_wing_from_fuselage",
+    #                      minuend=fuselage_hull.creator_id,
+    #                      subtrahend=f"{full_wing_loft.creator_id}",
+    #                      loglevel=logging.INFO))
+    # root_node.append(cut_hull)
+    #
     ### CREATE REINFORCET WING IN VASE MODE PRINTING
     # https://www.abbottaerospace.com/aa-sb-001/22-aircraft-specific-design-features-and-design-methods/22-16-57-wings/22-16-2-main-wing-box/
     # steps
@@ -114,108 +107,132 @@ if __name__ == "__main__":
     json_data: str = json.dumps(root_node, indent=4, cls=GeneralJSONEncoder)
 
     servo_elevator = ServoInformation(
-        height=0.022*1000,
-        width=0.012*1000,
-        length=0.023*1000,
-        lever_length=0.023*1000,
+        height=0.022 * 1000,
+        width=0.012 * 1000,
+        length=0.023 * 1000,
+        lever_length=0.023 * 1000,
         rot_x=180.0,
         rot_y=0.0,
         rot_z=0.0,
-        trans_x=0.28*1000+0.02*1000,
-        trans_y=0.005*1000,
-        trans_z=0.044*1000-0.0244*1000)
+        trans_x=0.28 * 1000 + 0.02 * 1000,
+        trans_y=0.005 * 1000,
+        trans_z=0.044 * 1000 - 0.0244 * 1000)
 
     servo_rudder = ServoInformation(
-        height=0.022*1000,
-        width=0.012*1000,
-        length=0.023*1000,
-        lever_length=0.023*1000,
+        height=0.022 * 1000,
+        width=0.012 * 1000,
+        length=0.023 * 1000,
+        lever_length=0.023 * 1000,
         rot_x=180.0,
         rot_y=0.0,
         rot_z=0.0,
-        trans_x=0.28*1000+0.02*1000,
-        trans_y=-0.005*1000-0.012*1000,
-        trans_z=0.044*1000-0.0244*1000)
+        trans_x=0.28 * 1000 + 0.02 * 1000,
+        trans_y=-0.005 * 1000 - 0.012 * 1000,
+        trans_z=0.044 * 1000 - 0.0244 * 1000)
     servo_information = {1: servo_elevator, 2: servo_rudder}
 
     engine_info1 = EngineInformation(down_thrust=-2.5,
                                      side_thrust=-2.5,
-                                     position=Position(0.0458*1000, 0, 0),
-                                     length=0.0452*1000,
-                                     width=0.035*1000,
-                                     height=0.035*1000,
-                                     screw_hole_circle=0.042*1000,
-                                     mount_box_length=0.0133 * 2.5*1000,
-                                     screw_din_diameter=0.0032*1000,
-                                     screw_length=0.016*1000,
+                                     position=Position(0.0458 * 1000, 0, 0),
+                                     length=0.0452 * 1000,
+                                     width=0.035 * 1000,
+                                     height=0.035 * 1000,
+                                     screw_hole_circle=0.042 * 1000,
+                                     mount_box_length=0.0133 * 2.5 * 1000,
+                                     screw_din_diameter=0.0032 * 1000,
+                                     screw_length=0.016 * 1000,
                                      rot_x=45)
 
     engine_information = {1: engine_info1}
 
-    lipo_information = ComponentInformation(width=0.031*1000, height=0.035*1000, length=0.108*1000,
-                                            trans_x=0.129*1000, trans_y=0.0, trans_z=-0.021*1000,
+    lipo_information = ComponentInformation(width=0.031 * 1000, height=0.035 * 1000, length=0.108 * 1000,
+                                            trans_x=0.129 * 1000, trans_y=0.0, trans_z=-0.021 * 1000,
                                             rot_x=0.0, rot_y=0.0, rot_z=0)
 
     component_information = {"brushless": engine_info1, "lipo": lipo_information}
 
-    #airfoil = "../components/airfoils/naca23013.5.dat"
+    # airfoil = "../components/airfoils/naca23013.5.dat"
     test_wing = 2
     airfoil = "../components/airfoils/naca2415.dat"
     wing_config = WingConfiguration(root_airfoil=airfoil,
-                      nose_pnt=(192.113, 0, -44.5),
-                      root_chord=183,
-                      root_dihedral=3.7,
-                      root_incidence=0,
-                      length=410,
-                      sweep=0,
-                      tip_chord=183,
-                      tip_dihedral=0,
-                      tip_incidence=0)
+                                    nose_pnt=(192.113, 0, -44.5),
+                                    root_chord=183,
+                                    root_dihedral=3.7,
+                                    root_incidence=0,
+                                    length=410,
+                                    sweep=0,
+                                    tip_chord=183,
+                                    tip_dihedral=0,
+                                    tip_incidence=0,
+                                    spare_list=[
+                                        Spare(spare_support_dimension_width=6,
+                                              spare_support_dimension_height=6,
+                                              spare_vector=(15, 410, 37),
+                                              spare_origin=(190 * 0.33, 0, -3)),
+                                        Spare(spare_support_dimension_width=6,
+                                              spare_support_dimension_height=6,
+                                              spare_length=50,
+                                              spare_vector=(0, 1, 0),
+                                              spare_origin=(190 * 0.63, 0, 6))
+                                    ])
     if test_wing == 1:
         wing_config.add_segment(length=100,
-                               sweep=20,
-                               tip_chord=183-20,
-                               tip_dihedral=15,
-                               tip_incidence=0)
+                                sweep=20,
+                                tip_chord=183 - 20,
+                                tip_dihedral=15,
+                                tip_incidence=0)
         wing_config.add_segment(length=5,
-                               sweep=5,
-                               tip_chord=183-20-5,
-                               tip_dihedral=15,
-                               tip_incidence=0)
+                                sweep=5,
+                                tip_chord=183 - 20 - 5,
+                                tip_dihedral=15,
+                                tip_incidence=0)
         wing_config.add_segment(length=5,
-                               sweep=5,
-                               tip_chord=183-20-10,
-                               tip_dihedral=15,
-                               tip_incidence=0)
+                                sweep=5,
+                                tip_chord=183 - 20 - 10,
+                                tip_dihedral=15,
+                                tip_incidence=0)
         wing_config.add_segment(length=5,
-                               sweep=5,
-                               tip_chord=183-20-15,
-                               tip_dihedral=15,
-                               tip_incidence=0)
+                                sweep=5,
+                                tip_chord=183 - 20 - 15,
+                                tip_dihedral=15,
+                                tip_incidence=0)
         wing_config.add_segment(length=50,
-                               sweep=45+50,
-                               tip_chord=183-20-20-40-50,
-                               tip_dihedral=0,
-                               tip_incidence=0,
-                               tip_airfoil="../components/airfoils/nacam2.dat")
+                                sweep=45 + 50,
+                                tip_chord=183 - 20 - 20 - 40 - 50,
+                                tip_dihedral=0,
+                                tip_incidence=0,
+                                tip_airfoil="../components/airfoils/nacam2.dat")
     elif test_wing == 2:
         wing_config.add_segment(length=100,
-                               sweep=10,
-                               tip_chord=183-20,
-                               tip_dihedral=5,
-                               tip_incidence=0)
-        wing_config.add_segment(length=50,
-                               sweep=10,
-                               tip_chord=183-40,
-                               tip_dihedral=10,
-                               tip_incidence=0)
-        wing_config.add_segment(length=50,
-                               sweep=10,
-                               tip_chord=183-80,
-                               tip_dihedral=5,
-                               tip_incidence=0)
-    wing_configuration = {"main_wing": wing_config}
+                                sweep=10,
+                                tip_chord=183 - 20,
+                                tip_dihedral=5,
+                                tip_incidence=0,
+                                spare_list=[
+                                    Spare(spare_support_dimension_width=6,
+                                          spare_support_dimension_height=6,
+                                          spare_mode="follow")],
+                                trailing_edge_device=TrailingEdgeDevice("quer",0.8,0.8))
 
+        wing_config.add_segment(length=50,
+                                sweep=10,
+                                tip_chord=183 - 40,
+                                tip_dihedral=10,
+                                tip_incidence=0,
+                                spare_list=[
+                                    Spare(spare_support_dimension_width=3,
+                                          spare_support_dimension_height=3,
+                                          spare_mode="follow")])
+        wing_config.add_segment(length=50,
+                                sweep=10,
+                                tip_chord=183 - 80,
+                                tip_dihedral=5,
+                                tip_incidence=0,
+                                spare_list=[
+                                    Spare(spare_support_dimension_width=3,
+                                          spare_support_dimension_height=3,
+                                          spare_mode="follow")])
+    wing_configuration = {"main_wing": wing_config}
 
     # load the string
     myMap: ConstructionStepNode = json.loads(json_data, cls=GeneralJSONDecoder,
