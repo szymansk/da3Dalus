@@ -3,7 +3,6 @@ from OCP.gp import *
 from Airplane.aircraft_topology.ComponentInformation import ComponentInformation
 from Extra.ConstructionStepsViewer import ConstructionStepsViewer
 
-
 class ServoInformation(ComponentInformation):
     def __init__(self, height: float, width: float, length: float, lever_length: float, rot_x: float = 0.0, rot_y: float = 0.0,
                  rot_z: float = 0.0, trans_x: float = 0.0, trans_y: float = 0.0, trans_z: float = 0.0):

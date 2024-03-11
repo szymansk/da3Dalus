@@ -1,7 +1,11 @@
 from OCP.gp import *
 
+gp_DX: gp_Dir = gp_Dir(gp_XYZ(1, 0, 0))
+gp_DY: gp_Dir = gp_Dir(gp_XYZ(0, 1, 0))
+gp_DZ: gp_Dir = gp_Dir(gp_XYZ(0, 0, 1))
 
 class ComponentInformation:
+
     def __init__(self, height: float, width: float, length: float, rot_x: float = 0.0, rot_y: float = 0.0,
                  rot_z: float = 0.0, trans_x: float = 0.0, trans_y: float = 0.0, trans_z: float = 0.0):
 
@@ -20,14 +24,14 @@ class ComponentInformation:
 
     def get_middle_point(self) -> gp_Vec:
         middle = gp_Vec(self.trans_x + self.length/2, self.trans_y - self.width/2, self.trans_z - self.length/2)
-        middle.Rotate(gp_Ax1(self.get_corner_point(), gp_DX()), self.rot_x)
-        middle.Rotate(gp_Ax1(self.get_corner_point(), gp_DY()), self.rot_y)
-        middle.Rotate(gp_Ax1(self.get_corner_point(), gp_DZ()), self.rot_z)
+        middle.Rotate(gp_Ax1(self.get_corner_point(), gp_DX), self.rot_x)
+        middle.Rotate(gp_Ax1(self.get_corner_point(), gp_DY), self.rot_y)
+        middle.Rotate(gp_Ax1(self.get_corner_point(), gp_DZ), self.rot_z)
         return middle
 
     def get_z_axis(self) -> gp_Dir:
-        z = gp_DZ()
-        z.Rotate(gp_Ax1(self.get_corner_point(), gp_DX()), self.rot_x)
-        z.Rotate(gp_Ax1(self.get_corner_point(), gp_DY()), self.rot_y)
-        z.Rotate(gp_Ax1(self.get_corner_point(), gp_DZ()), self.rot_z)
+        z = gp_DZ
+        z.Rotate(gp_Ax1(self.get_corner_point(), gp_DX), self.rot_x)
+        z.Rotate(gp_Ax1(self.get_corner_point(), gp_DY), self.rot_y)
+        z.Rotate(gp_Ax1(self.get_corner_point(), gp_DZ), self.rot_z)
         return z
