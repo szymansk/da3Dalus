@@ -51,5 +51,5 @@ def airfoil(self: cq.Workplane, selig_file: str, chord: float, offset: float = 0
              .val())
     trans_shape = shape.translate(plane.origin)
 
-    return self.newObject([trans_shape]).toPending()
+    return self.newObject([trans_shape])
 

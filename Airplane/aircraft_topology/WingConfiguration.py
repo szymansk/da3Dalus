@@ -1,8 +1,9 @@
 import logging
+import sys
 from typing import TypeVar, Any, List, Tuple, Literal, Union
 
 import numpy as np
-from cadquery import Workplane, Plane, Vector, Sketch
+from cadquery import Workplane, Plane, Vector, Sketch, Matrix
 from numpy import ndarray, dtype, generic
 from scipy.spatial.transform import Rotation
 
@@ -13,11 +14,13 @@ class TrailingEdgeDevice:
     def __init__(self,
                  name: str,
                  rel_chord_root:float,
-                 rel_chord_tip:float
+                 rel_chord_tip:float,
+                 suspension_type: Literal["middle", "top", "round_inside", "round_outside"]
                  ):
         self.name = name
         self.rel_chord_root = rel_chord_root
         self.rel_chord_tip = rel_chord_tip
+        self.suspension_type = suspension_type
         pass
 
 class Spare:
@@ -85,6 +88,8 @@ class WingConfiguration:
                  tip_trailing_edge: float = 1,
                  spare_list: List[Spare] = None):
         self.nose_pnt: tuple[float, float, float] = nose_pnt
+        if tip_airfoil is None:
+            tip_airfoil = root_airfoil
         root_segment = WingSegment(root_airfoil, length, root_chord, tip_chord,
                                    sweep, root_dihedral, root_incidence, root_trailing_edge,
                                    tip_airfoil, tip_dihedral, tip_incidence, tip_trailing_edge,
@@ -116,10 +121,11 @@ class WingConfiguration:
                     tip_trailing_edge: float = 1,
                     spare_list: List[Spare] = None,
                     trailing_edge_device: TrailingEdgeDevice = None):
-        airfoil = self.segments[-1].root_airfoil if self.segments[-1].tip_airfoil is None else self.segments[-1].tip_airfoil
-        tip_airfoil = airfoil if tip_airfoil is None else tip_airfoil
+        root_airfoil = self.segments[-1].tip_airfoil
+        if tip_airfoil is None: #continue with previous airfoil
+            tip_airfoil = root_airfoil
 
-        segment = WingSegment(airfoil, length, self.segments[-1].tip_chord, tip_chord,
+        segment = WingSegment(root_airfoil, length, self.segments[-1].tip_chord, tip_chord,
                               sweep, 0, 0, root_trailing_edge,
                               tip_airfoil, tip_dihedral, tip_incidence, tip_trailing_edge,
                               spare_list=spare_list, trailing_edge_device=trailing_edge_device)
@@ -153,7 +159,8 @@ class WingConfiguration:
     def get_wing_workplane(self: T, segment: int = 0) -> Workplane:
         """
         Creating a workplane where the 0-point is located at the wing's nose point
-        and the workplane is going through the wing.
+        and the workplane is going through the wing. X is pointin from the nose to the tail,
+        y is pointing from the root along the nose to the tip and z ist point upwards.
 
         Remark: an incident angle at the wing_tip cannot be covered with this
         workplane.
@@ -196,12 +203,9 @@ class WingConfiguration:
         return wp_plane
 
     def get_airfoil_points(self: T, segment: int, isRoot: bool = False) -> list[tuple[float, float]]:
-        if segment == 0 and isRoot:
+        if isRoot:
             selig_file = self.segments[segment].root_airfoil
             chord = self.segments[segment].root_chord
-        elif isRoot:
-            selig_file = self.segments[segment-1].tip_airfoil
-            chord = self.segments[segment-1].tip_chord
         else:
             selig_file = self.segments[segment].tip_airfoil
             chord = self.segments[segment].tip_chord
@@ -251,3 +255,72 @@ class WingConfiguration:
         matrix = np.hstack((matrix, [[0], [0], [0]]))
         matrix = np.vstack((matrix, [0, 0, 0, 1]))
         return matrix
+
+    def get_points_on_surface(self: T, segment:int,
+                              relative_chord:float, relative_length: float,
+                              coordinate_system: Literal["world","wing","root_airfoil"]="world") -> Tuple[Vector, Vector]:
+        """
+        Returns the points on the surface (top, bottom) in the airfoil coordinatesystem.
+        x points along the airfoil's center line, y points to the top, and z points along the nose
+
+        Remark: only a two point interpolation is implemented, this leads to large deviations from the
+        real surface on segments with high curvature (e.g. the nose)
+        """
+        root_points = self.get_airfoil_points(segment=segment, isRoot=True)
+        tip_points = self.get_airfoil_points(segment=segment)
+
+        # as we loft our wings only ruled lay all points on vector from the relative root to tip point
+        # therefore we need to calculate the points (top/bottom surface) for root an tip airfoil
+        x_root = relative_chord * self.segments[segment].root_chord
+        x,y = self._interpolate_y_at_x(root_points, x_root)
+        root_top = Vector(x,0,y)
+        x,y = self._interpolate_y_at_x(root_points, x_root, reverse=True)
+        root_bottom = Vector(x,0,y)
+
+        root_wp = self.get_wing_workplane(segment=segment)
+        root_to_world = root_wp.plane.toWorldCoords(root_top.toTuple())
+        root_bo_world = root_wp.plane.toWorldCoords(root_bottom.toTuple())
+
+        x_tip = relative_chord * self.segments[segment].root_chord
+        x,y = self._interpolate_y_at_x(tip_points, x_tip)
+        tip_top = Vector(x, self.segments[segment].length, y)
+        x,y = self._interpolate_y_at_x(tip_points, x_tip, reverse=True)
+        tip_bottom = Vector(x, self.segments[segment].length, y)
+
+        tip_wp = self.get_wing_workplane(segment=segment+1)
+        tip_to_world = tip_wp.plane.toWorldCoords(tip_top.toTuple())
+        tip_bo_world = tip_wp.plane.toWorldCoords(tip_bottom.toTuple())
+
+        # interpolate along the length
+        interpolated_top = (tip_to_world - root_to_world) * relative_length + root_to_world
+        interpolated_bottom = (tip_bo_world - root_bo_world) * relative_length + root_bo_world
+
+        if coordinate_system == "world":
+            return interpolated_top, interpolated_bottom
+        elif coordinate_system == "wing":
+            return root_wp.plane.toLocalCoords(interpolated_top), root_wp.plane.toLocalCoords(interpolated_bottom)
+        elif coordinate_system == "root_airfoil":
+            it = root_wp.plane.toLocalCoords(interpolated_top)
+            ib = root_wp.plane.toLocalCoords(interpolated_bottom)
+            return Vector(it.x, it.z, it.y), Vector(ib.x, ib.z, ib.y)
+        else:
+            logging.critical(f"unknown coordinate system {coordinate_system}")
+            raise ValueError(f"unknown coordinate system {coordinate_system}")
+
+    def _interpolate_y_at_x(self, points, x, reverse=False) -> Tuple[float, float]:
+        #TODO: implement a better interpolation that really follows the spline
+        offset = -1
+        rng = range(len(points))
+        if reverse:
+            offset = 1
+            rng = reversed(rng)
+
+        for idx in rng:
+            x_l, y_l = points[idx]
+            if x_l <= x:  # perform a linear interpolation
+                x_r, y_r = points[idx + offset]
+                u = (x_r - x) / (x_r - x_l)  # factor in this airfoil segment
+                y_t = y_r - u * (y_r - y_l)
+                x_t = x
+                break
+        return x_t, y_t

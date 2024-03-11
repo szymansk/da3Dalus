@@ -28,7 +28,7 @@ def wing_segment(self: cq.Workplane, tip_airfoil: str, tip_chord: float, length:
     tip_plane = (cq.Workplane().copyWorkplane(airfoil_root).workplane(offset=-length, origin=tip_origin)
                  .plane.rotated((tip_dihedral, 0, -tip_incidence)))
     airfoil_tip = (cq.Workplane().copyWorkplane(cq.Workplane(tip_plane)).add(airfoil_root_wires).toPending()
-                   .airfoil(tip_airfoil, tip_chord, offset=offset))
+                   .airfoil(tip_airfoil, tip_chord, offset=offset).toPending())
     pending = airfoil_tip.ctx.pendingWires
     try:
         _wing = airfoil_tip.loft()#.union(airfoil_root_solid)  # ruled=True --> airfoils must have same number of points

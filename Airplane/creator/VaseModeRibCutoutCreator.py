@@ -414,50 +414,9 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
             # cut out trailing edge device (ted) from segment
             if wing_config.segments[segment].trailing_edge_device is not None:
-                wcs: WingSegment = wing_config.segments[segment]
-                ted: TrailingEdgeDevice = wing_config.segments[segment].trailing_edge_device
-                ted_root_plane, ted_tip_plane = wing_config.get_trailing_edge_device_planes(segment)
-
-                # make the cut and create the ted
-                max_chord = max(wcs.root_chord * ted.rel_chord_root,
-                                wcs.tip_chord * ted.rel_chord_tip + wcs.sweep)
-                sketch: Sketch = (Sketch()
-                                  .segment((-max_chord, -max_chord), (-max_chord, max_chord))
-                                  .segment((-max_chord, max_chord), (max_chord, max_chord))
-                                  .segment((max_chord, max_chord), (self.printer_wall_thickness, 0))
-                                  .segment((self.printer_wall_thickness, 0), (max_chord, -max_chord))
-                                  .close()
-                                  .assemble()
-                                  )
-                sketch: Sketch = (Sketch()
-                                  .segment((self.printer_wall_thickness, 0), (max_chord, max_chord))
-                                  .segment((max_chord, max_chord), (max_chord, -max_chord))
-                                  .close()
-                                  .assemble()
-                                  )
-                vec = ted_root_plane.toLocalCoords(ted_tip_plane.origin)
-                length = np.linalg.norm(np.array(list(vec.toTuple())))
-
-                cutout = (Workplane(inPlane=ted_root_plane).workplane(offset=self.printer_wall_thickness*2)
-                          .placeSketch(sketch, sketch.moved(Location(vec.normalized().multiply(length-self.printer_wall_thickness*4)))).loft())
-
-                ted_shape = current.intersect(cutout)
-                teds[f"{ted.name}::{segment}"] = ted_shape
-
-                # cut it from the wing
-                sketch: Sketch = (Sketch()
-                                  .segment((0, -max_chord), (0, max_chord))
-                                  .segment((0, max_chord), (max_chord, max_chord))
-                                  .segment((max_chord, max_chord), (max_chord, -max_chord))
-                                  .close()
-                                  .assemble()
-                                  )
-
-                cutout = (Workplane(inPlane=ted_root_plane)
-                          .placeSketch(sketch, sketch.moved(Location(vec * 2))).loft())
-
-                current_hull = current_hull.cut(cutout)
-                raw_ribs = raw_ribs.cut(cutout)
+                current_hull, raw_ribs, ted_shape = self._create_ted_shapes(current, current_hull, raw_ribs,
+                                                                                 segment, wing_config)
+                teds[f"{wing_config.segments[segment].trailing_edge_device.name}::{segment}"] = ted_shape
                 pass
 
             final_right_wing = final_right_wing.add(
@@ -516,6 +475,51 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 f"{self.identifier}.cutout": right_wing_cutout,
                 f"{self.identifier}.slot": right_wing_slot,
                 f"{self.identifier}.teds": teds}
+
+    def _create_ted_shapes(self, current: Workplane, current_hull: Workplane, raw_ribs: Workplane,
+                           segment: int, wing_config: WingConfiguration) -> Tuple[Workplane, Workplane, Workplane]:
+        wcs: WingSegment = wing_config.segments[segment]
+        ted: TrailingEdgeDevice = wing_config.segments[segment].trailing_edge_device
+        ted_root_plane, ted_tip_plane = wing_config.get_trailing_edge_device_planes(segment)
+
+        # make the cut and create the ted
+        ted_sketch, wing_sketch = self._ted_sketch_by_suspension_type(ted, wcs)
+
+        vec = ted_root_plane.toLocalCoords(ted_tip_plane.origin)
+        length = np.linalg.norm(np.array(list(vec.toTuple())))
+        cutout = (Workplane(inPlane=ted_root_plane).workplane(offset=self.printer_wall_thickness * 2)
+                  .placeSketch(ted_sketch, ted_sketch.moved(
+            Location(vec.normalized().multiply(length - self.printer_wall_thickness * 4)))).loft())
+        ted_shape = current.intersect(cutout)
+        # cut it from the wing
+
+        cutout = (Workplane(inPlane=ted_root_plane)
+                  .placeSketch(wing_sketch, wing_sketch.moved(Location(vec * 2))).loft())
+        current_hull = current_hull.cut(cutout)
+        raw_ribs = raw_ribs.cut(cutout)
+        return current_hull, raw_ribs, ted_shape
+
+    def _ted_sketch_by_suspension_type(self, ted, wcs):
+        if ted.suspension_type == "middle":
+            max_chord = max(wcs.root_chord * ted.rel_chord_root,
+                            wcs.tip_chord * ted.rel_chord_tip + wcs.sweep)
+
+            ted_sketch: Sketch = (Sketch()
+                                  .segment((self.printer_wall_thickness, 0), (max_chord, max_chord))
+                                  .segment((max_chord, max_chord), (max_chord, -max_chord))
+                                  .close()
+                                  .assemble()
+                                  )
+            wing_sketch: Sketch = (Sketch()
+                                   .segment((0, -max_chord), (0, max_chord))
+                                   .segment((0, max_chord), (max_chord, max_chord))
+                                   .segment((max_chord, max_chord), (max_chord, -max_chord))
+                                   .close()
+                                   .assemble()
+                                   )
+        else:
+            pass
+        return ted_sketch, wing_sketch
 
     def _create_basic_root_segment_shapes(self, wing_config: WingConfiguration, segment: int = 0):
         right_wing_pwt_offset: Workplane = (

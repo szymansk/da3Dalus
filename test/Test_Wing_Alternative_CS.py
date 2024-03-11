@@ -151,10 +151,11 @@ if __name__ == "__main__":
 
     component_information = {"brushless": engine_info1, "lipo": lipo_information}
 
-    # airfoil = "../components/airfoils/naca23013.5.dat"
+    airfoil2 = "../components/airfoils/naca23013.5.dat"
     test_wing = 2
     airfoil = "../components/airfoils/naca2415.dat"
     wing_config = WingConfiguration(root_airfoil=airfoil,
+                                    #tip_airfoil=airfoil2,
                                     nose_pnt=(192.113, 0, -44.5),
                                     root_chord=183,
                                     root_dihedral=3.7,
@@ -212,7 +213,13 @@ if __name__ == "__main__":
                                     Spare(spare_support_dimension_width=6,
                                           spare_support_dimension_height=6,
                                           spare_mode="follow")],
-                                trailing_edge_device=TrailingEdgeDevice("quer",0.8,0.8))
+                                trailing_edge_device=
+                                TrailingEdgeDevice(
+                                    name="quer",
+                                    rel_chord_root=0.8,
+                                    rel_chord_tip=0.8,
+                                    suspension_type="middle"
+                                ))
 
         wing_config.add_segment(length=50,
                                 sweep=10,
@@ -233,6 +240,9 @@ if __name__ == "__main__":
                                           spare_support_dimension_height=3,
                                           spare_mode="follow")])
     wing_configuration = {"main_wing": wing_config}
+    (top, bottom) = wing_config.get_points_on_surface(0, 0.55, 0.5)
+    (top1, bottom1) = wing_config.get_points_on_surface(0, 0.55, 0.5, "wing")
+    (top2, bottom2) = wing_config.get_points_on_surface(0, 0.55, 0.5, "root_airfoil")
 
     # load the string
     myMap: ConstructionStepNode = json.loads(json_data, cls=GeneralJSONDecoder,
