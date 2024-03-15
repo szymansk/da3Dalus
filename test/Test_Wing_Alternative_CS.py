@@ -51,7 +51,7 @@ if __name__ == "__main__":
         VaseModeWingCreator(creator_id="vase_wing", wing_index="main_wing",
                             printer_wall_thickness=printer_wall_thickness, leading_edge_offset=leading_edge_offset,
                             trailing_edge_offset=trailing_edge_offset, offset=printer_wall_thickness,
-                            minimum_rib_angle=minimum_rib_angle, wing_side="BOTH", loglevel=logging.DEBUG))
+                            minimum_rib_angle=minimum_rib_angle, wing_side="RIGHT", loglevel=logging.DEBUG))
     root_node.append(vase_wing_loft)
 
     # full_wing_loft = ConstructionStepNode(
@@ -96,7 +96,9 @@ if __name__ == "__main__":
     aircraft_step_export_node = ConstructionStepNode(
         ExportToStepCreator(Path(f"{root_node.identifier}").stem,
                             file_path="../exports",
-                            shapes_to_export=[vase_wing_loft.creator_id]))
+                            shapes_to_export=[vase_wing_loft.creator_id,
+                                              f"{vase_wing_loft.creator_id}.flaps[1]",
+                                              f"{vase_wing_loft.creator_id}.aileron[2]"]))
     root_node.append(aircraft_step_export_node)
 
     #####################
@@ -160,7 +162,7 @@ if __name__ == "__main__":
                                     root_chord=183,
                                     root_dihedral=3.7,
                                     root_incidence=0,
-                                    length=410,
+                                    length=50,
                                     sweep=0,
                                     tip_chord=183,
                                     tip_dihedral=0,
@@ -168,8 +170,8 @@ if __name__ == "__main__":
                                     spare_list=[
                                         Spare(spare_support_dimension_width=6,
                                               spare_support_dimension_height=6,
-                                              spare_vector=(15, 410, 37),
-                                              spare_origin=(190 * 0.33, 0, -3)),
+                                              spare_vector=(0, 410, 37),
+                                              spare_origin=(183 * 0.33, 0, -3)),
                                         Spare(spare_support_dimension_width=6,
                                               spare_support_dimension_height=6,
                                               spare_length=50,
@@ -204,6 +206,51 @@ if __name__ == "__main__":
                                 tip_incidence=0,
                                 tip_airfoil="../components/airfoils/nacam2.dat")
     elif test_wing == 2:
+        wing_config.add_segment(length=400,
+                               sweep=0,
+                               tip_chord=183,
+                               tip_dihedral=0,
+                               tip_incidence=0,
+                               spare_list=[
+                                   Spare(spare_support_dimension_width=6,
+                                         spare_support_dimension_height=6,
+                                         spare_mode="follow")],
+                                trailing_edge_device=
+                                TrailingEdgeDevice(
+                                    name="flaps",
+                                    rel_chord_root=0.8,
+                                    rel_chord_tip=0.8,
+                                    hinge_spacing=0.5,
+                                    side_spacing=1.,
+                                    trailing_edge_offset_factor=1.4,
+                                    positive_deflection_deg=10,
+                                    negative_deflection_deg=50,
+                                    hinge_type="top"
+                                )
+                                )
+        wing_config.add_segment(length=200,
+                               sweep=0,
+                               tip_chord=183,
+                               tip_dihedral=0,
+                               tip_incidence=0,
+                               spare_list=[
+                                   Spare(spare_support_dimension_width=6,
+                                         spare_support_dimension_height=6,
+                                         spare_mode="follow")],
+                                trailing_edge_device=
+                                TrailingEdgeDevice(
+                                    name="aileron",
+                                    rel_chord_root=0.8,
+                                    rel_chord_tip=0.8,
+                                    hinge_spacing=0.5,
+                                    side_spacing=1.,
+                                    trailing_edge_offset_factor=1.4,
+                                    positive_deflection_deg=45,
+                                    negative_deflection_deg=25,
+                                    hinge_type="top"
+                                )
+                                )
+
         wing_config.add_segment(length=100,
                                 sweep=10,
                                 tip_chord=183 - 20,
@@ -213,13 +260,7 @@ if __name__ == "__main__":
                                     Spare(spare_support_dimension_width=6,
                                           spare_support_dimension_height=6,
                                           spare_mode="follow")],
-                                trailing_edge_device=
-                                TrailingEdgeDevice(
-                                    name="quer",
-                                    rel_chord_root=0.8,
-                                    rel_chord_tip=0.8,
-                                    suspension_type="middle"
-                                ))
+                                )
 
         wing_config.add_segment(length=50,
                                 sweep=10,
@@ -240,9 +281,9 @@ if __name__ == "__main__":
                                           spare_support_dimension_height=3,
                                           spare_mode="follow")])
     wing_configuration = {"main_wing": wing_config}
-    (top, bottom) = wing_config.get_points_on_surface(0, 0.55, 0.5)
-    (top1, bottom1) = wing_config.get_points_on_surface(0, 0.55, 0.5, "wing")
-    (top2, bottom2) = wing_config.get_points_on_surface(0, 0.55, 0.5, "root_airfoil")
+    #(top, bottom) = wing_config.get_points_on_surface(0, 0.55, 0.5)
+    #(top1, bottom1) = wing_config.get_points_on_surface(0, 0.55, 0.5, "wing")
+    #(top2, bottom2) = wing_config.get_points_on_surface(0, 0.55, 0.5, "root_airfoil")
 
     # load the string
     myMap: ConstructionStepNode = json.loads(json_data, cls=GeneralJSONDecoder,

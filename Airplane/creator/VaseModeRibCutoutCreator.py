@@ -3,6 +3,7 @@ import logging
 import numpy as np
 
 from typing import Union, Literal, Tuple, cast as tcast
+
 from math import cos, asin, degrees, radians, atan2
 
 from cadquery import Workplane, Plane, Sketch
@@ -48,8 +49,7 @@ def _calc_edge_start(sketch: Sketch, id_s: str, spare_nose_tip, tip_nose) -> Tup
 def _rib_cutout(segment: int, wing_config: WingConfiguration, printer_wall_thickness: float, leading_edge_offset: float,
                 trailing_edge_offset: float, leading_edge_start: float = None, trailing_edge_start: float = None,
                 start_upper_part: bool = False, minimum_rib_angle: float = 45, spare_perpendicular: bool = False,
-                spare_position_factor: float = 1. / 3., spare_idx: int = 0) -> Tuple[
-    Sketch, float, float, bool, Vector]:
+                spare_position_factor: float = 1. / 3., spare_idx: int = 0) -> Tuple[Sketch, float, float, bool, Vector]:
     """
     Constructs a set of hourglass like structures in between the nose and the tail part of the wing.
 
@@ -134,8 +134,11 @@ def _rib_cutout(segment: int, wing_config: WingConfiguration, printer_wall_thick
             .segmentToEdge('help_middle_' + id_s, 1, 'help_top_' + id_s, 1., 'rib_nr_' + id_s)
             .select('help_top' + id_s).delete()
         )
-        if not start_upper_part:
+        try:
+        #if not start_upper_part:
             const_lines.select('help_middle' + id_s).delete()
+        except Exception:
+            pass
 
         # health check
         # 'rib_nr' should not end left of 'rib_tr'
@@ -154,7 +157,10 @@ def _rib_cutout(segment: int, wing_config: WingConfiguration, printer_wall_thick
 
     # Removing all constrution lines...
     # if not start_upper_part:
-    const_lines.select('help_middle' + id_s).delete()
+    try:
+        const_lines.select('help_middle' + id_s).delete()
+    except Exception:
+        pass
     const_lines.select('nose_os').delete()
     const_lines.select('spare_nose').delete()
     const_lines.select('spare_tail').delete()
@@ -261,36 +267,40 @@ def _calculate_wing_construction_points(segment: int, printer_wall_thickness: fl
 
 def _construct_spare_sketch(printer_wall_thickness: float, spare_support_dimension_width: float,
                             spare_support_dimension_height: float) -> Sketch:
-    beta = degrees(asin((0.5 * printer_wall_thickness) / (0.5 * spare_support_dimension_width)))
+    gap_height = 0.5 * printer_wall_thickness
+
+    beta = degrees(asin((gap_height / 2.0) / (0.5 * spare_support_dimension_width)))
     x = cos(radians(beta)) * (0.5 * spare_support_dimension_width)
 
+    # the width of the spare next to the support beam
+    spare_support_width = 0.5 * spare_support_dimension_width + 2 * printer_wall_thickness
+
     hight = 100
-    spf = 0.5
     const_lines = (
         Sketch()
-        .segment((-spf * spare_support_dimension_width - printer_wall_thickness, printer_wall_thickness * spf),
-                 (-spf * spare_support_dimension_width - printer_wall_thickness, hight), 'left_t')
-        .segment((spf * spare_support_dimension_width + printer_wall_thickness, printer_wall_thickness * spf),
-                 (spf * spare_support_dimension_width + printer_wall_thickness, hight), 'right_t')
-        .segment((-spf * spare_support_dimension_width - printer_wall_thickness, hight),
-                 (spf * spare_support_dimension_width + printer_wall_thickness, hight), 'top')
-        .segment((x, printer_wall_thickness * spf),
-                 (spf * spare_support_dimension_width + printer_wall_thickness, printer_wall_thickness * spf))
-        .segment((-x, printer_wall_thickness * spf),
-                 (-(spf * spare_support_dimension_width + printer_wall_thickness), printer_wall_thickness * spf))
-        .arc((0.0, 0.0), spf * spare_support_dimension_width, beta, 180. - (2. * beta), 'spare_t')
-        # .assemble()
-        .segment((-spf * spare_support_dimension_width - printer_wall_thickness, -printer_wall_thickness * spf),
-                 (-spf * spare_support_dimension_width - printer_wall_thickness, -hight), 'left_b')
-        .segment((spf * spare_support_dimension_width + printer_wall_thickness, -printer_wall_thickness * spf),
-                 (spf * spare_support_dimension_width + printer_wall_thickness, -hight), 'right_b')
-        .segment((-spf * spare_support_dimension_width - printer_wall_thickness, -hight),
-                 (spf * spare_support_dimension_width + printer_wall_thickness, -hight), 'bottom')
-        .segment((x, -printer_wall_thickness * spf),
-                 (spf * spare_support_dimension_width + printer_wall_thickness, -printer_wall_thickness * spf))
-        .segment((-x, -printer_wall_thickness * spf),
-                 (-(spf * spare_support_dimension_width + printer_wall_thickness), -printer_wall_thickness * spf))
-        .arc((0.0, 0.0), spf * spare_support_dimension_width, -beta, -(180. - (2. * beta)), 'spare_b')
+        .segment((-spare_support_width, gap_height / 2.0),
+                 (-spare_support_width, hight), 'left_t')
+        .segment((spare_support_width, gap_height / 2.0),
+                 (spare_support_width, hight), 'right_t')
+        .segment((-spare_support_width, hight),
+                 (spare_support_width, hight), 'top')
+        .segment((x, gap_height / 2.0),
+                 (spare_support_width, gap_height / 2.0))
+        .segment((-x, gap_height / 2.0),
+                 (-(spare_support_width), gap_height / 2.0))
+        .arc((0.0, 0.0), 0.5 * spare_support_dimension_width, beta, 180. - (2. * beta), 'spare_t')
+        .assemble()
+        .segment((-spare_support_width, -gap_height / 2.0),
+                 (-spare_support_width, -hight), 'left_b')
+        .segment((spare_support_width, -gap_height / 2.0),
+                 (spare_support_width, -hight), 'right_b')
+        .segment((-spare_support_width, -hight),
+                 (spare_support_width, -hight), 'bottom')
+        .segment((x, -gap_height / 2.0),
+                 (spare_support_width, -gap_height / 2.0))
+        .segment((-x, -gap_height / 2.0),
+                 (-(spare_support_width), -gap_height / 2.0))
+        .arc((0.0, 0.0), 0.5 * spare_support_dimension_width, -beta, -(180. - (2. * beta)), 'spare_b')
         .assemble()
     )
     return const_lines
@@ -307,6 +317,13 @@ class VaseModeWingCreator(AbstractShapeCreator):
                  wing_config: dict[int, WingConfiguration] = None,
                  wing_side: Literal["LEFT", "RIGHT", "BOTH"] = "RIGHT", loglevel: int = logging.INFO):
         """
+        returns as shapes:
+        creator_id -> the complete wing,
+        creator_id.spare -> the spare,
+        creator_id.cutout -> the ribs cutout,
+        creator_id.slot -> the slot for vase mode,
+        creator_id.teds -> the trailing edge devices dict as a dict of "trailing_edge_device.name::segment"
+
         parameters:
         printer_wall_thickness - printer settings wall thickness
         spare_support_geometry_is_round -- default true
@@ -361,7 +378,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
         # create root segment slot
         right_wing_slot = (Workplane(spare_plane)
-                           .box(length=self.printer_wall_thickness,
+                           .box(length=0.5*self.printer_wall_thickness,
                                 width=100,
                                 height=wing_config.segments[segment].length * 3,
                                 centered=(False, False, True))
@@ -402,7 +419,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
             right_wing_cutout.add(raw_ribs)
 
             right_wing_slot = (Workplane(spare_plane)
-                               .box(length=self.printer_wall_thickness,
+                               .box(length=0.5*self.printer_wall_thickness,
                                     width=100,
                                     height=wing_config.segments[segment].length * 10,
                                     centered=(False, False, True))
@@ -415,8 +432,8 @@ class VaseModeWingCreator(AbstractShapeCreator):
             # cut out trailing edge device (ted) from segment
             if wing_config.segments[segment].trailing_edge_device is not None:
                 current_hull, raw_ribs, ted_shape = self._create_ted_shapes(current, current_hull, raw_ribs,
-                                                                                 segment, wing_config)
-                teds[f"{wing_config.segments[segment].trailing_edge_device.name}::{segment}"] = ted_shape
+                                                                            segment, wing_config)
+                teds[f"{wing_config.segments[segment].trailing_edge_device.name}[{segment}]"] = ted_shape
                 pass
 
             final_right_wing = final_right_wing.add(
@@ -468,13 +485,17 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
         for (k, v) in teds.items():
             teds[k] = (v.translate(wing_config.nose_pnt)
-                    .display(name=f"{self.identifier}.ted[{k}]", severity=logging.DEBUG))
+                       .display(name=f"{self.identifier}.ted[{k}]", severity=logging.DEBUG))
 
-        return {self.identifier: final_right_wing,
-                f"{self.identifier}.spare": right_wing_spare,
-                f"{self.identifier}.cutout": right_wing_cutout,
-                f"{self.identifier}.slot": right_wing_slot,
-                f"{self.identifier}.teds": teds}
+        final_dict: dict = {self.identifier: final_right_wing,
+                            f"{self.identifier}.spare": right_wing_spare,
+                            f"{self.identifier}.cutout": right_wing_cutout,
+                            f"{self.identifier}.slot": right_wing_slot}
+
+        for (k, v) in teds.items():
+            final_dict[f"{self.identifier}.{k}"] = v
+
+        return final_dict
 
     def _create_ted_shapes(self, current: Workplane, current_hull: Workplane, raw_ribs: Workplane,
                            segment: int, wing_config: WingConfiguration) -> Tuple[Workplane, Workplane, Workplane]:
@@ -483,29 +504,59 @@ class VaseModeWingCreator(AbstractShapeCreator):
         ted_root_plane, ted_tip_plane = wing_config.get_trailing_edge_device_planes(segment)
 
         # make the cut and create the ted
-        ted_sketch, wing_sketch = self._ted_sketch_by_suspension_type(ted, wcs)
+        ted_sketch, ted_sketch_tip, wing_sketch, wing_sketch_tip = self._ted_sketch_by_suspension_type(ted, wing_config,
+                                                                                                       segment)
 
-        vec = ted_root_plane.toLocalCoords(ted_tip_plane.origin)
-        length = np.linalg.norm(np.array(list(vec.toTuple())))
-        cutout = (Workplane(inPlane=ted_root_plane).workplane(offset=self.printer_wall_thickness * 2)
-                  .placeSketch(ted_sketch, ted_sketch.moved(
-            Location(vec.normalized().multiply(length - self.printer_wall_thickness * 4)))).loft())
-        ted_shape = current.intersect(cutout)
+        ted_intersect = (Workplane(inPlane=ted_root_plane)
+                         .placeSketch(ted_sketch, ted_sketch_tip).loft())
+        ted_shape = current.intersect(ted_intersect)
+
+        # TODO: Cut the side_spacing from the ted_shape
+        ted_shape = ted_shape.cut(
+            Workplane(inPlane=ted_root_plane).box(wcs.root_chord * 4, wcs.root_chord * 4, ted.side_spacing,
+                                                  centered=(True, True, False)))
+        length = (ted_tip_plane.origin - ted_root_plane.origin)
+
+        ted_shape = ted_shape.cut(
+            Workplane(inPlane=ted_root_plane).workplane(offset=length.y - ted.side_spacing).box(wcs.root_chord * 4,
+                                                                                              wcs.root_chord * 4,
+                                                                                              wcs.root_chord * 4,
+                                                                                              centered=(True, True,
+                                                                                                        False)))
+
         # cut it from the wing
+        wing_cutout = (Workplane(inPlane=ted_root_plane)
+                       .placeSketch(wing_sketch, wing_sketch_tip).loft())
 
-        cutout = (Workplane(inPlane=ted_root_plane)
-                  .placeSketch(wing_sketch, wing_sketch.moved(Location(vec * 2))).loft())
-        current_hull = current_hull.cut(cutout)
-        raw_ribs = raw_ribs.cut(cutout)
+        # current_hull.display("current_hull", 500)
+
+        current_hull = current_hull.cut(wing_cutout)
+        raw_ribs = raw_ribs.cut(wing_cutout)
+
+        # ted_intersect.display("ted_intersect", 500)
+        # wing_cutout.display("cutout", 500)
+        # ted_shape.display("ted_shape", 500)
+        # raw_ribs.display("raw_ribs", 500)
+
         return current_hull, raw_ribs, ted_shape
 
-    def _ted_sketch_by_suspension_type(self, ted, wcs):
-        if ted.suspension_type == "middle":
-            max_chord = max(wcs.root_chord * ted.rel_chord_root,
-                            wcs.tip_chord * ted.rel_chord_tip + wcs.sweep)
+    def _ted_sketch_by_suspension_type(self, ted, wing_config: WingConfiguration, segment: int) \
+            -> Tuple[Sketch, Sketch, Sketch, Sketch]:
+        """
+        The wing_shape is always used as a cut shape and the ted_shape is an intersect shape.
+        """
+        wcs: WingSegment = wing_config.segments[segment]
 
+        ted_root_plane, ted_tip_plane = wing_config.get_trailing_edge_device_planes(segment)
+        loft_direction_vector = ted_root_plane.toLocalCoords(ted_tip_plane.origin)
+        loft_direction_vector_length = np.linalg.norm(np.array(list(loft_direction_vector.toTuple())))
+
+        max_chord = max(wcs.root_chord * ted.rel_chord_root,
+                        wcs.tip_chord * ted.rel_chord_tip + wcs.sweep)
+
+        if ted.suspension_type == "middle":
             ted_sketch: Sketch = (Sketch()
-                                  .segment((self.printer_wall_thickness, 0), (max_chord, max_chord))
+                                  .segment((ted.hinge_spacing, 0), (max_chord, max_chord))
                                   .segment((max_chord, max_chord), (max_chord, -max_chord))
                                   .close()
                                   .assemble()
@@ -517,9 +568,122 @@ class VaseModeWingCreator(AbstractShapeCreator):
                                    .close()
                                    .assemble()
                                    )
+
+            ted_sketch_tip = ted_sketch.moved(
+                Location(loft_direction_vector.normalized().multiply(loft_direction_vector_length - ted.side_spacing)))
+            ted_sketch = ted_sketch.moved(
+                Location(loft_direction_vector.normalized().multiply(ted.side_spacing)))
+            wing_sketch_tip = wing_sketch.moved(Location(loft_direction_vector * 2))
+        elif ted.suspension_type == "top_simple":
+            top, bottom = wing_config.get_points_on_surface(segment, ted.rel_chord_root, 0, "root_airfoil")
+            top_t, bottom_t = wing_config.get_points_on_surface(segment, ted.rel_chord_tip, 1.0, "root_airfoil")
+
+            top_offset = top_t - top
+
+            ted_sketch: Sketch = (Sketch()
+                                  .segment((ted.hinge_spacing, -top.y), (max_chord, -top.y))
+                                  .segment((max_chord, -top.y), (max_chord, max_chord))
+                                  .close()
+                                  .assemble()
+                                  )
+            wing_sketch: Sketch = (Sketch()
+                                   .segment((0, -max_chord), (0, max_chord))
+                                   .segment((0, max_chord), (max_chord, max_chord))
+                                   .segment((max_chord, max_chord), (max_chord, -max_chord))
+                                   .close()
+                                   .assemble()
+                                   )
+
+            _ted_sketch_tip: Sketch = (Sketch()
+                                       .segment((top_offset.x + ted.hinge_spacing, -top_t.y), (max_chord, -top_t.y))
+                                       .segment((max_chord, -top_t.y), (max_chord, max_chord))
+                                       .close()
+                                       .assemble()
+                                       )
+            _wing_sketch_tip: Sketch = (Sketch()
+                                        .segment((top_offset.x, -max_chord), (top_offset.x, max_chord))
+                                        .segment((top_offset.x, max_chord), (max_chord, max_chord))
+                                        .segment((max_chord, max_chord), (max_chord, -max_chord))
+                                        .close()
+                                        .assemble()
+                                        )
+
+            length = np.linalg.norm(np.array(list(top_offset.toTuple())))
+
+            ted_sketch_tip = _ted_sketch_tip.moved(Location(Vector(0, 0, length)))
+            wing_sketch_tip = _wing_sketch_tip.moved(Location(Vector(0, 0, length)))
+            pass
+        elif ted.suspension_type == "top":
+            top, bottom = wing_config.get_points_on_surface(segment, ted.rel_chord_root, 0, "root_airfoil")
+            top_t, bottom_t = wing_config.get_points_on_surface(segment, ted.rel_chord_tip, 1.0, "root_airfoil")
+
+            top_offset = top_t - top
+            root_radius = abs((bottom - top).y)
+            tip_radius = abs((bottom_t - top_t).y)
+
+            ted_sketch: Sketch = (Sketch()
+                                  .segment((max_chord, -top.y), (max_chord, -3 * max_chord), 'help')
+                                  .arc((0, -top.y), root_radius, 180 - ted.negative_deflection_deg,
+                                       -(90 - ted.negative_deflection_deg), tag="arc")
+                                  .segmentToEdge(-(270 - ted.negative_deflection_deg + 90), 'help', 'diag')
+                                  .segment((0, -top.y), (0, -top.y + 2 * ted.hinge_spacing), 'edge')
+                                  .segmentToEdge('arc', 0.0, 'edge', 1.0)
+                                  # .segmentToEdge('arc', 0.0, (0, -top.y))
+                                  .segment((0, -top.y), (max_chord, -top.y), 'top')
+                                  .segmentToEdge('diag', 1.0, 'top', 1.0)
+                                  .select('help').delete()
+                                  .assemble()
+                                  )
+            _ted_sketch_tip: Sketch = (Sketch()
+                                       .segment((max_chord, -top_t.y), (max_chord, -3 * max_chord), 'help')
+                                       .arc((top_offset.x, -top_t.y), tip_radius, 180 - ted.negative_deflection_deg,
+                                            -(90 - ted.negative_deflection_deg), "arc")
+                                       .segmentToEdge(-(270 - ted.negative_deflection_deg + 90), 'help', 'diag')
+                                       .segment((top_offset.x, -top_t.y),
+                                                (top_offset.x, -top_t.y + 2 * ted.hinge_spacing), 'edge')
+                                       .segmentToEdge('arc', 0.0, 'edge', 1.0)
+                                       # .segmentToEdge('arc', 0.0, (top_offset.x, -top_t.y))
+                                       .segment((top_offset.x, -top_t.y), (max_chord, -top_t.y), 'top')
+                                       .segmentToEdge('diag', 1.0, 'top', 1.0)
+                                       .select('help').delete()
+                                       .assemble()
+                                       )
+
+            wing_sketch: Sketch = (Sketch()
+                                   .segment((max_chord, -top.y), (max_chord, top.y), 'help')
+                                   .arc((0., -top.y), root_radius + ted.hinge_spacing, 180,
+                                        -(90 - ted.negative_deflection_deg), 'arc')
+                                   .segmentToEdge(-(270 - ted.negative_deflection_deg + 90), 'help', 'diag')
+                                   .select('help').delete()
+                                   .segmentToEdge('arc', 0.0, (-ted.hinge_spacing, -top.y), 'diag2')
+                                   .segment((-ted.hinge_spacing, -top.y), (-ted.hinge_spacing, -max_chord))
+                                   .segment((-ted.hinge_spacing, -max_chord), (max_chord, -max_chord))
+                                   .segmentToEdge(90., 'diag')
+                                   .assemble()
+                                   )
+            _wing_sketch_tip: Sketch = (Sketch()
+                                        .segment((max_chord, -top_t.y), (max_chord, top.y), 'help')
+                                        .arc((top_offset.x, -top_t.y), tip_radius + ted.hinge_spacing, 180,
+                                             -(90 - ted.negative_deflection_deg), 'arc')
+                                        .segmentToEdge(-(270 - ted.negative_deflection_deg + 90), 'help', 'diag')
+                                        .select('help').delete()
+                                        .segmentToEdge('arc', 0.0, (-ted.hinge_spacing + top_offset.x, -top_t.y),
+                                                       'diag2')
+                                        .segment((-ted.hinge_spacing + top_offset.x, -top_t.y),
+                                                 (-ted.hinge_spacing + top_offset.x, -max_chord))
+                                        .segment((-ted.hinge_spacing + top_offset.x, -max_chord),
+                                                 (max_chord, -max_chord))
+                                        .segmentToEdge(90., 'diag')
+                                        .assemble()
+                                        )
+            length = np.linalg.norm(np.array(list(top_offset.toTuple())))
+
+            ted_sketch_tip = _ted_sketch_tip.moved(Location(Vector(0, 0, length)))
+            wing_sketch_tip = _wing_sketch_tip.moved(Location(Vector(0, 0, length)))
+            pass
         else:
             pass
-        return ted_sketch, wing_sketch
+        return ted_sketch, ted_sketch_tip, wing_sketch, wing_sketch_tip
 
     def _create_basic_root_segment_shapes(self, wing_config: WingConfiguration, segment: int = 0):
         right_wing_pwt_offset: Workplane = (
@@ -640,9 +804,14 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
     def _create_ribs_shape(self, current, segment, wing_config, leading_edge_start, trailing_edge_start,
                            start_upper_part, spare_idx: int = 0):
+        ted = wing_config.segments[segment].trailing_edge_device
         teof = 0.0
-        if wing_config.segments[segment].trailing_edge_device is not None:
-            teof = wing_config.segments[segment].root_chord * ( 1 - wing_config.segments[segment].trailing_edge_device.rel_chord_root)
+        if ted is not None:
+            teof = (max((wing_config.segments[segment].root_chord *
+                    (1 - ted.rel_chord_root)),
+                       ((wing_config.segments[segment].tip_chord+ wing_config.segments[segment].sweep) *
+                        (1 - ted.rel_chord_tip)))
+                    * ted.trailing_edge_offset_factor)
 
         trailing_edge_offset = self.trailing_edge_offset if teof < self.trailing_edge_offset else teof
 

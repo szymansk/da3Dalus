@@ -15,12 +15,22 @@ class TrailingEdgeDevice:
                  name: str,
                  rel_chord_root:float,
                  rel_chord_tip:float,
-                 suspension_type: Literal["middle", "top", "round_inside", "round_outside"]
+                 hinge_spacing:float,
+                 side_spacing:float,
+                 positive_deflection_deg: float = 45,
+                 negative_deflection_deg: float = 45,
+                 trailing_edge_offset_factor: float = 1.0,
+                 hinge_type: Literal["middle", "top", "top_simple", "round_inside", "round_outside"] = "top"
                  ):
         self.name = name
         self.rel_chord_root = rel_chord_root
         self.rel_chord_tip = rel_chord_tip
-        self.suspension_type = suspension_type
+        self.hinge_spacing = hinge_spacing
+        self.side_spacing = side_spacing
+        self.positive_deflection_deg = positive_deflection_deg
+        self.negative_deflection_deg = negative_deflection_deg
+        self.trailing_edge_offset_factor = trailing_edge_offset_factor
+        self.suspension_type = hinge_type
         pass
 
 class Spare:
@@ -281,11 +291,11 @@ class WingConfiguration:
         root_to_world = root_wp.plane.toWorldCoords(root_top.toTuple())
         root_bo_world = root_wp.plane.toWorldCoords(root_bottom.toTuple())
 
-        x_tip = relative_chord * self.segments[segment].root_chord
+        x_tip = relative_chord * self.segments[segment].tip_chord
         x,y = self._interpolate_y_at_x(tip_points, x_tip)
-        tip_top = Vector(x, self.segments[segment].length, y)
+        tip_top = Vector(x, 0, y)
         x,y = self._interpolate_y_at_x(tip_points, x_tip, reverse=True)
-        tip_bottom = Vector(x, self.segments[segment].length, y)
+        tip_bottom = Vector(x, 0, y)
 
         tip_wp = self.get_wing_workplane(segment=segment+1)
         tip_to_world = tip_wp.plane.toWorldCoords(tip_top.toTuple())
