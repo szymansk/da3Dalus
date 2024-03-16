@@ -19,355 +19,18 @@ from cq_plugins.fix_shape.fix_shape import fix_shape
 from cq_plugins.segmentToEdge import segmentToEdge
 
 
-def _calc_edge_start(sketch: Sketch, id_s: str, spare_nose_tip, tip_nose) -> Tuple[float, float, bool]:
-    """
-    Constructs the start points leading_edge_start, trailing_edge_start for the next segment, and if it
-    starts in the lower or upper part of the hour glas shape.
-    """
-    try:
-        # The construction uses the spare_nose_tip and tip_nose points and draws a horizontal line to intersect with
-        # the rib_nl (nose left) and rib_tl (tip left) lines.
-        p_le = sketch.segmentToEdge('spare_nose', 180, 'rib_nl' + id_s, 'helper')._tags['helper'][0].endPoint()
-        sketch.select('helper').delete()
-        p_te = sketch.segmentToEdge('spare_tail', 180, 'rib_tl' + id_s, 'helper')._tags['helper'][0].endPoint()
-        sketch.select('helper').delete()
-        lower_part = True
-        if ((spare_nose_tip[0] - p_le.x) > 0 and abs(p_le.y - tip_nose[1]) < tip_nose[1] * 0.1):
-            pass
-        else:
-            p_le = sketch.segmentToEdge('spare_nose', 180, 'rib_nr' + id_s, 'helper')._tags['helper'][0].endPoint()
-            sketch.select('helper').delete()
-            p_te = sketch.segmentToEdge('spare_tail', 180, 'rib_tr' + id_s, 'helper')._tags['helper'][0].endPoint()
-            sketch.select('helper').delete()
-            lower_part = False
-    except:
-        p_le = sketch.segmentToEdge('spare_nose', 180, 'rib_nr' + id_s, 'helper')._tags['helper'][0].endPoint()
-        sketch.select('helper').delete()
-        p_te = sketch.segmentToEdge('spare_tail', 180, 'rib_tr' + id_s, 'helper')._tags['helper'][0].endPoint()
-        sketch.select('helper').delete()
-        lower_part = False
-
-    leading_edge_start = p_le.x - tip_nose[0]
-    trailing_edge_start = p_te.x - tip_nose[0]
-    return (leading_edge_start, trailing_edge_start, lower_part)
-
-
-def _rib_cutout(segment: int, wing_config: WingConfiguration, printer_wall_thickness: float, leading_edge_offset: float,
-                trailing_edge_offset: float, leading_edge_start: float = None, trailing_edge_start: float = None,
-                start_upper_part: bool = False, minimum_rib_angle: float = 45, spare_perpendicular: bool = False,
-                spare_position_factor: float = 1. / 3., spare_idx: int = 0) -> Tuple[Sketch, float, float, bool, Vector]:
-    """
-    Constructs a set of hourglass like structures in between the nose and the tail part of the wing.
-
-    """
-
-    (root_nose_offset, root_nose_start, root_tail_offset, root_tail_start, spare_nose_root,
-     spare_nose_tip, spare_tail_root, spare_tail_tip, tip_nose, tip_nose_offset, tip_tail_offset,
-     spare_vector_origin) = (
-        _calculate_wing_construction_points(segment, printer_wall_thickness, leading_edge_offset, leading_edge_start,
-                                            trailing_edge_offset, trailing_edge_start, spare_position_factor,
-                                            wing_config, spare_perpendicular, spare_idx=spare_idx)
-    )
-
-    # Drawing the offset outlines in the sketch.
-    const_lines: Sketch = (
-        Sketch()
-        .segment(Vector(tuple(root_nose_offset)),
-                 Vector(tuple(tip_nose_offset)), 'nose_os', forConstruction=True)
-        .segment(Vector(tuple(root_tail_offset)),
-                 Vector(tuple(tip_tail_offset)), 'tail_os', forConstruction=True)
-        .segment(Vector(tuple(spare_tail_root)),
-                 Vector(tuple(spare_tail_tip)), 'spare_tail', forConstruction=True)
-        .segment(Vector(tuple(spare_nose_root)),
-                 Vector(tuple(spare_nose_tip)), 'spare_nose', forConstruction=True)
-    )
-
-    # Constructing the first row of ribs...
-    if not start_upper_part:
-        const_lines = (
-            const_lines
-            .segmentToEdge(Vector(tuple(root_tail_start)),
-                           180. - minimum_rib_angle, 'spare_tail', 'rib_tl')  # rib: tail left  \
-            .segmentToEdge(minimum_rib_angle, 'tail_os', 'rib_tr')  # rib: tail right /
-            .segmentToEdge(180., 'nose_os', 'help_top', forConstruction=False)
-            .segmentToEdge('rib_tl', 180., 'spare_nose', 'help_middle', forConstruction=False)
-            .segment(Vector(tuple(root_nose_start)), 'rib_nl')  # rib: nose left  /
-            .segmentToEdge('help_middle', 1, 'help_top', 1., 'rib_nr')  # rib: nose right \
-            .segment(Vector(tuple(root_tail_start)), Vector(tuple(root_tail_start))
-                     - Vector((0, wing_config.segments[segment].length * 0.1, 0)), 'nose_ext')
-            .segment(Vector(tuple(root_nose_start)), Vector(tuple(root_nose_start))
-                     - Vector((0, wing_config.segments[segment].length * 0.1, 0)), 'tail_ext')
-            .segmentToEdge('nose_ext', 1., 'tail_ext', 1., 'root')
-        )
-    else:
-        const_lines = (
-            const_lines
-            .segmentToEdge(Vector(tuple(root_tail_start)), minimum_rib_angle, 'tail_os',
-                           'rib_tr')  # rib: tail right (upper) /
-            .segmentToEdge(180., 'nose_os', 'help_top', forConstruction=False)
-            .segmentToEdge('help_top', 1., Vector(tuple(root_nose_start)), 'rib_nr')  # rib: nose right (upper) \
-            .segment(Vector(tuple(root_tail_start)), Vector(tuple(root_tail_start))
-                     - Vector((0, wing_config.segments[segment].length * 0.1, 0)), 'nose_ext')
-            .segment(Vector(tuple(root_nose_start)), Vector(tuple(root_nose_start))
-                     - Vector((0, wing_config.segments[segment].length * 0.1, 0)), 'tail_ext')
-            .segmentToEdge('nose_ext', 1., 'tail_ext', 1., 'root')
-        )
-
-    # health check
-    # 'rib_nr' should not end left of 'rib_tr'
-    if (tcast(Edge, const_lines._tags['rib_nr'][0]).endPoint().x >
-            tcast(Edge, const_lines._tags['rib_tr'][0]).endPoint().x):
-        start_p = tcast(Edge, const_lines._tags['rib_nr'][0]).startPoint()
-        const_lines = (
-            const_lines
-            .select('rib_nr').delete()
-            .segmentToEdge(start_p, 180 - minimum_rib_angle, 'nose_os', 'rib_nr')  # rib: nose right (upper) \
-            .select('help_top').delete()
-            .segmentToEdge('rib_tr', 1., 'rib_nr', 1., 'help_top')  # rib: nose right (upper) \
-        )
-
-    # Constructing as many ribs as do fit in the wing.
-    id_s = ''
-    while (tcast(Edge, const_lines._tags['help_top' + id_s][0]).startPoint().y
-           < wing_config.segments[segment].length):
-        const_lines = (
-            const_lines
-            .segmentToEdge('rib_tr' + id_s, 180 - minimum_rib_angle, 'spare_tail', 'rib_tl_' + id_s)
-            .segmentToEdge(minimum_rib_angle, 'tail_os', 'rib_tr_' + id_s)
-            .segmentToEdge(180, 'nose_os', 'help_top_' + id_s, forConstruction=False)
-            .segmentToEdge('rib_tl_' + id_s, 180, 'spare_nose', 'help_middle_' + id_s, forConstruction=False)
-            .segmentToEdge('help_top' + id_s, 1, 'help_middle_' + id_s, 1, 'rib_nl_' + id_s)
-            .segmentToEdge('help_middle_' + id_s, 1, 'help_top_' + id_s, 1., 'rib_nr_' + id_s)
-            .select('help_top' + id_s).delete()
-        )
-        try:
-        #if not start_upper_part:
-            const_lines.select('help_middle' + id_s).delete()
-        except Exception:
-            pass
-
-        # health check
-        # 'rib_nr' should not end left of 'rib_tr'
-        if (tcast(Edge, const_lines._tags['rib_nr_' + id_s][0]).endPoint().x >
-                tcast(Edge, const_lines._tags['rib_tr_' + id_s][0]).endPoint().x):
-            start_p = tcast(Edge, const_lines._tags['rib_nr' + id_s][0]).startPoint()
-            const_lines = (
-                const_lines
-                .select('rib_nr_' + id_s).delete()
-                .segmentToEdge(start_p, 180 - minimum_rib_angle, 'nose_os',
-                               'rib_nr_' + id_s)  # rib: nose right (upper) \
-                .select('help_top').delete()
-                .segmentToEdge('rib_tr', 1., 'rib_nr', 1., 'help_top')  # rib: nose right (upper) \
-            )
-        id_s = id_s + '_'
-
-    # Removing all constrution lines...
-    # if not start_upper_part:
-    try:
-        const_lines.select('help_middle' + id_s).delete()
-    except Exception:
-        pass
-
-    leading_edge_start, trailing_edge_start, lower_part = _calc_edge_start(const_lines, id_s, spare_nose_tip, tip_nose)
-
-    const_lines.select('nose_os').delete()
-    const_lines.select('spare_nose').delete()
-    const_lines.select('spare_tail').delete()
-    const_lines.select('tail_os').delete()
-
-    return const_lines, leading_edge_start, trailing_edge_start, lower_part, spare_vector_origin
-
-
-def _calculate_wing_construction_points(segment: int, printer_wall_thickness: float, leading_edge_offset: float,
-                                        leading_edge_start: float, trailing_edge_offset: float,
-                                        trailing_edge_start: float, spare_position_factor: float,
-                                        wing_config: WingConfiguration, spare_perpendicular: bool = False,
-                                        spare_idx: int = 0):
-    spare_vector = wing_config.segments[segment].spare_list[spare_idx].spare_vector
-    spare_vector_origin = wing_config.segments[segment].spare_list[spare_idx].spare_origin
-    spare_support_dimension_width = wing_config.segments[segment].spare_list[spare_idx].spare_support_dimension_width
-
-    spare_vector_origin.y = 0
-
-    if leading_edge_start is None:
-        leading_edge_start = leading_edge_offset
-    if trailing_edge_start is None:
-        trailing_edge_start = wing_config.segments[segment].root_chord - trailing_edge_offset
-
-    # calculating the leading edge guides from root to tip
-    root_nose = np.asarray((.0, .0, .0))
-    root_nose_offset = root_nose + np.asarray((leading_edge_offset, .0, .0))
-    tip_nose = np.asarray((wing_config.segments[segment].sweep, wing_config.segments[segment].length, 0.))
-    tip_nose_offset = tip_nose + np.asarray((leading_edge_offset, .0, .0))
-
-    # calculating the trailing edge guides from root to tip
-    root_tail = np.asarray((wing_config.segments[segment].root_chord, .0, .0))
-    root_tail_offset = root_tail - np.asarray((trailing_edge_offset, .0, .0))
-    tip_tail = tip_nose + np.asarray((wing_config.segments[segment].tip_chord, .0, .0))
-    tip_tail_offset = tip_tail - np.asarray((trailing_edge_offset, .0, .0))
-
-    # calculating the rib start points
-    root_nose_start = np.asarray((leading_edge_start, .0, .0))
-    root_tail_start = np.asarray((trailing_edge_start, .0, .0))
-
-    spare_support_width = 0.5 * spare_support_dimension_width + 2 * printer_wall_thickness
-
-    # Calculating the spare nose and tail positions from root to tip
-    if spare_vector is None:
-        spare_nose_root = (np.asarray((wing_config.segments[segment].root_chord, 0., 0.))
-                           * spare_position_factor
-                           - np.asarray((spare_support_width, 0., 0.)))
-        spare_tail_root = (np.asarray((wing_config.segments[segment].root_chord, 0., 0.))
-                           * spare_position_factor
-                           + np.asarray((spare_support_width, 0., 0.)))
-    else:
-        spare_nose_root = (np.asarray(spare_vector_origin.toTuple())
-                           - np.asarray((spare_support_width, 0., 0.)))
-        spare_tail_root = (np.asarray(spare_vector_origin.toTuple())
-                           + np.asarray((spare_support_width, 0., 0.)))
-        if segment > 0:
-            # origin is in global coordinates, but the sketch starts with the nose point as (0,0,0)
-            # so we need to shift along x by the sweep
-            sweep_sum = sum([ws.sweep for ws in wing_config.segments[0:segment]])
-            spare_nose_root = spare_nose_root - np.asarray((sweep_sum, 0., 0.))
-            spare_tail_root = spare_tail_root - np.asarray((sweep_sum, 0., 0.))
-
-        pass
-
-    _spare_vector_origin = None
-    if not spare_perpendicular and spare_vector is None:
-        spare_nose_tip = (tip_nose + np.asarray((1., 0., 0.)) * wing_config.segments[segment].tip_chord
-                          * spare_position_factor
-                          - np.asarray((1., 0., 0.)) * spare_support_dimension_width / 2
-                          - np.asarray((1., 0., 0.)) * printer_wall_thickness)
-        spare_tail_tip = (tip_nose + np.asarray((1., 0., 0.)) * wing_config.segments[segment].tip_chord
-                          * spare_position_factor
-                          + np.asarray((1., 0., 0.)) * spare_support_dimension_width / 2
-                          + np.asarray((1., 0., 0.)) * printer_wall_thickness)
-    elif not spare_perpendicular and spare_vector is not None:  # a spare vector is given
-        vec = np.asarray((spare_vector.x, spare_vector.y, spare_vector.z))
-        norm_vec = vec / np.linalg.norm(vec)
-        spare_nose_tip = (spare_nose_root
-                          + norm_vec * wing_config.segments[segment].length
-                          )
-        spare_tail_tip = (spare_tail_root
-                          + norm_vec * wing_config.segments[segment].length
-                          )
-        _spare_vector_origin = (spare_vector_origin
-                                + Vector(tuple(norm_vec * wing_config.segments[segment].length))
-                                - Vector((wing_config.segments[segment].sweep, 0., 0.))  # MARK
-                                )
-        _spare_vector_origin.y = 0
-    else:  # spare is perpendicular to x-axis (roll axis of the plane)
-        spare_nose_tip = (spare_nose_root
-                          + np.asarray((0., 1., 0.)) * wing_config.segments[segment].length)
-        spare_tail_tip = (spare_tail_root
-                          + np.asarray((0., 1., 0.)) * wing_config.segments[segment].length)
-
-    return (root_nose_offset, root_nose_start,
-            root_tail_offset, root_tail_start,
-            spare_nose_root, spare_nose_tip,
-            spare_tail_root, spare_tail_tip,
-            tip_nose, tip_nose_offset,
-            tip_tail_offset, _spare_vector_origin)
-
-
-def _construct_spare_sketch(printer_wall_thickness: float, spare_support_dimension_width: float,
-                            spare_support_dimension_height: float) -> Sketch:
-    gap_height = 0.5 * printer_wall_thickness
-
-    beta = degrees(asin((gap_height / 2.0) / (0.5 * spare_support_dimension_width)))
-    x = cos(radians(beta)) * (0.5 * spare_support_dimension_width)
-
-    # the width of the spare next to the support beam
-    spare_support_width = 0.5 * spare_support_dimension_width + 2 * printer_wall_thickness
-
-    hight = 100
-    if spare_support_dimension_height == spare_support_dimension_width:
-        const_lines = (
-            Sketch()
-            .segment((-spare_support_width, gap_height / 2.0),
-                     (-spare_support_width, hight), 'left_t')
-            .segment((spare_support_width, gap_height / 2.0),
-                     (spare_support_width, hight), 'right_t')
-            .segment((-spare_support_width, hight),
-                     (spare_support_width, hight), 'top')
-            .segment((x, gap_height / 2.0),
-                     (spare_support_width, gap_height / 2.0))
-            .segment((-x, gap_height / 2.0),
-                     (-(spare_support_width), gap_height / 2.0))
-            .arc((0.0, 0.0), 0.5 * spare_support_dimension_width, beta, 180. - (2. * beta), 'spare_t')
-            .assemble()
-            .segment((-spare_support_width, -gap_height / 2.0),
-                     (-spare_support_width, -hight), 'left_b')
-            .segment((spare_support_width, -gap_height / 2.0),
-                     (spare_support_width, -hight), 'right_b')
-            .segment((-spare_support_width, -hight),
-                     (spare_support_width, -hight), 'bottom')
-            .segment((x, -gap_height / 2.0),
-                     (spare_support_width, -gap_height / 2.0))
-            .segment((-x, -gap_height / 2.0),
-                     (-(spare_support_width), -gap_height / 2.0))
-            .arc((0.0, 0.0), 0.5 * spare_support_dimension_width, -beta, -(180. - (2. * beta)), 'spare_b')
-            .assemble()
-        )
-    else:
-        const_lines = (
-            Sketch()
-            .segment((-spare_support_width, gap_height / 2.0),
-                     (-spare_support_width, hight), 'left_t')
-            .segment((spare_support_width, gap_height / 2.0),
-                     (spare_support_width, hight), 'right_t')
-            .segment((-spare_support_width, hight),
-                     (spare_support_width, hight), 'top')
-            .segment((x, gap_height / 2.0),
-                     (spare_support_width, gap_height / 2.0))
-
-            .segment(( x, gap_height / 2.0),
-                     ( x, spare_support_dimension_height/2.0 - (gap_height / 2.0)))
-            .segment(( x, spare_support_dimension_height/2.0 - (gap_height / 2.0)),
-                     (-x, spare_support_dimension_height/2.0 - (gap_height / 2.0)))
-            .segment((-x, spare_support_dimension_height/2.0 - (gap_height / 2.0)),
-                     (-x, gap_height / 2.0))
-
-            .segment((-x, gap_height / 2.0),
-                     (-(spare_support_width), gap_height / 2.0))
-            .assemble()
-            .segment((-spare_support_width, -gap_height / 2.0),
-                     (-spare_support_width, -hight), 'left_b')
-            .segment((spare_support_width, -gap_height / 2.0),
-                     (spare_support_width, -hight), 'right_b')
-            .segment((-spare_support_width, -hight),
-                     (spare_support_width, -hight), 'bottom')
-            .segment((x, -gap_height / 2.0),
-                     (spare_support_width, -gap_height / 2.0))
-
-            .segment((x, - gap_height / 2.0),
-                     (x, -(spare_support_dimension_height / 2.0 - (gap_height / 2.0))))
-            .segment((x, -(spare_support_dimension_height / 2.0 - (gap_height / 2.0))),
-                     (-x, -(spare_support_dimension_height / 2.0 - (gap_height / 2.0))))
-            .segment((-x, -(spare_support_dimension_height / 2.0 - (gap_height / 2.0))),
-                     (-x, -(gap_height / 2.0)))
-
-            .segment((-x, -gap_height / 2.0),
-                     (-(spare_support_width), -gap_height / 2.0))
-            .assemble()
-        )
-
-    return const_lines
-
-
 class VaseModeWingCreator(AbstractShapeCreator):
     """
     """
 
     def __init__(self, creator_id: str, wing_index: Union[str, int], printer_wall_thickness: float,
-                 leading_edge_offset: float, trailing_edge_offset: float, offset: float,
-                 spare_position_factor: float = 1. / 3., minimum_rib_angle: float = 45,
-                 spare_perpendicular: bool = False, invert_cutout: bool = False, taper_cutout: float = 0.,
+                 leading_edge_offset_factor: float, trailing_edge_offset_factor: float, spare_position_factor: float = 1. / 3.,
+                 minimum_rib_angle: float = 45, spare_perpendicular: bool = False,
                  wing_config: dict[int, WingConfiguration] = None,
                  wing_side: Literal["LEFT", "RIGHT", "BOTH"] = "RIGHT", loglevel: int = logging.INFO):
         """
+        TODO: leading_edge_offset and trailing_edge_offset should be a factor in terms of the chord
+
         returns as shapes:
         creator_id -> the complete wing,
         creator_id.spare -> the spare,
@@ -387,12 +50,9 @@ class VaseModeWingCreator(AbstractShapeCreator):
         self.printer_wall_thickness: float = printer_wall_thickness
         self.spare_perpendicular: bool = spare_perpendicular
         self.spare_position_factor: float = spare_position_factor
-        self.leading_edge_offset: float = leading_edge_offset
-        self.trailing_edge_offset: float = trailing_edge_offset
-        self.offset: float = offset
+        self.leading_edge_offset_factor: float = leading_edge_offset_factor
+        self.trailing_edge_offset_factor: float = trailing_edge_offset_factor
         self.minimum_rib_angle: float = minimum_rib_angle
-        self.invert_cutout: bool = invert_cutout
-        self.taper_cutout: float = taper_cutout
         self.wing_side: Literal["LEFT", "RIGHT", "BOTH"] = wing_side
         self.wing_index: Union[str, int] = wing_index
         self._wing_config: dict[int, WingConfiguration] = wing_config
@@ -819,7 +479,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
         spare_length = wing_config.segments[segment].spare_list[spare_idx].spare_length
 
         # create spare sketch
-        spare_sketch = _construct_spare_sketch(printer_wall_thickness=self.printer_wall_thickness,
+        spare_sketch = VaseModeWingCreator._construct_spare_sketch(printer_wall_thickness=self.printer_wall_thickness,
                                                spare_support_dimension_width=spare_support_dimension_width,
                                                spare_support_dimension_height=spare_support_dimension_height)
         # calc extrude direction
@@ -856,41 +516,376 @@ class VaseModeWingCreator(AbstractShapeCreator):
     def _create_ribs_shape(self, current, segment, wing_config, leading_edge_start, trailing_edge_start,
                            start_upper_part, spare_idx: int = 0):
         ted = wing_config.segments[segment].trailing_edge_device
+        root_chord = wing_config.segments[segment].root_chord
         teof = 0.0
         if ted is not None:
-            teof = (max((wing_config.segments[segment].root_chord * (1 - ted.rel_chord_root)),
+            teof = (max((root_chord * (1 - ted.rel_chord_root)),
                        ((wing_config.segments[segment].tip_chord+ wing_config.segments[segment].sweep) *
                         (1 - ted.rel_chord_tip)))
                     * ted.trailing_edge_offset_factor)
 
-        trailing_edge_offset = self.trailing_edge_offset if teof < self.trailing_edge_offset else teof
+        trailing_edge_offset = self.trailing_edge_offset_factor * root_chord \
+            if teof < self.trailing_edge_offset_factor * root_chord else teof
 
-        cutout_face, leading_edge_start, trailing_edge_start, lower_part, spare_vector_origin = _rib_cutout(
-            segment=segment, wing_config=wing_config, printer_wall_thickness=self.printer_wall_thickness,
-            leading_edge_offset=self.leading_edge_offset, trailing_edge_offset=trailing_edge_offset,
-            leading_edge_start=leading_edge_start, trailing_edge_start=trailing_edge_start,
-            start_upper_part=start_upper_part, minimum_rib_angle=self.minimum_rib_angle,
-            spare_perpendicular=self.spare_perpendicular, spare_position_factor=self.spare_position_factor,
-            spare_idx=spare_idx)
+        cutout_face, leading_edge_start, trailing_edge_start, lower_part, spare_vector_origin = (
+            VaseModeWingCreator._rib_cutout(
+                segment=segment, wing_config=wing_config, printer_wall_thickness=self.printer_wall_thickness,
+                leading_edge_offset=self.leading_edge_offset_factor*root_chord, trailing_edge_offset=trailing_edge_offset,
+                leading_edge_start=leading_edge_start, trailing_edge_start=trailing_edge_start,
+                start_upper_part=start_upper_part, minimum_rib_angle=self.minimum_rib_angle,
+                spare_perpendicular=self.spare_perpendicular, spare_position_factor=self.spare_position_factor,
+                spare_idx=spare_idx))
         cutout_face.assemble()
-        # Workplane().placeSketch(cutout_face).extrude(until=10, both=True).display("hmmm",500) ###REMOVE
         try:
-            if self.invert_cutout:
-                raw_ribs = (
-                    wing_config.get_wing_workplane(segment=segment)
-                    .placeSketch(cutout_face)
-                    .extrude(until=100, taper=self.taper_cutout, both=True)
-                    .intersect(current)
-                )
-            else:
-                raw_ribs = (
-                    wing_config.get_wing_workplane(segment=segment)
-                    .placeSketch(cutout_face)
-                    .add(current)
-                    .cutThruAll(taper=self.taper_cutout)
-                )
-            pass
+            raw_ribs = (
+                wing_config.get_wing_workplane(segment=segment)
+                .placeSketch(cutout_face)
+                .add(current)
+                .cutThruAll()
+            )
         except:
             logging.warning(f"could not create segment: {segment}!")
         pass
         return raw_ribs, leading_edge_start, trailing_edge_start, spare_vector_origin, lower_part
+
+    @staticmethod
+    def _rib_cutout(segment: int, wing_config: WingConfiguration, printer_wall_thickness: float, leading_edge_offset: float,
+                    trailing_edge_offset: float, leading_edge_start: float = None, trailing_edge_start: float = None,
+                    start_upper_part: bool = False, minimum_rib_angle: float = 45, spare_perpendicular: bool = False,
+                    spare_position_factor: float = 1. / 3., spare_idx: int = 0) -> Tuple[Sketch, float, float, bool, Vector]:
+        """
+        Constructs a set of hourglass like structures in between the nose and the tail part of the wing.
+
+        TODO: Implement a zigzag pattern for the rib segments, to improve stability.
+        """
+
+        (root_nose_offset, root_nose_start, root_tail_offset, root_tail_start, spare_nose_root,
+         spare_nose_tip, spare_tail_root, spare_tail_tip, tip_nose, tip_nose_offset, tip_tail_offset,
+         spare_vector_origin) = (
+            VaseModeWingCreator._calculate_wing_construction_points(segment, printer_wall_thickness, leading_edge_offset, leading_edge_start,
+                                                trailing_edge_offset, trailing_edge_start, spare_position_factor,
+                                                wing_config, spare_perpendicular, spare_idx=spare_idx)
+        )
+
+        # Drawing the offset outlines in the sketch.
+        const_lines: Sketch = (
+            Sketch()
+            .segment(Vector(tuple(root_nose_offset)),
+                     Vector(tuple(tip_nose_offset)), 'nose_os', forConstruction=True)
+            .segment(Vector(tuple(root_tail_offset)),
+                     Vector(tuple(tip_tail_offset)), 'tail_os', forConstruction=True)
+            .segment(Vector(tuple(spare_tail_root)),
+                     Vector(tuple(spare_tail_tip)), 'spare_tail', forConstruction=True)
+            .segment(Vector(tuple(spare_nose_root)),
+                     Vector(tuple(spare_nose_tip)), 'spare_nose', forConstruction=True)
+        )
+
+        # Constructing the first row of ribs...
+        if not start_upper_part:
+            const_lines = (
+                const_lines
+                .segmentToEdge(Vector(tuple(root_tail_start)),
+                               180. - minimum_rib_angle, 'spare_tail', 'rib_tl')  # rib: tail left  \
+                .segmentToEdge(minimum_rib_angle, 'tail_os', 'rib_tr')  # rib: tail right /
+                .segmentToEdge(180., 'nose_os', 'help_top', forConstruction=False)
+                .segmentToEdge('rib_tl', 180., 'spare_nose', 'help_middle', forConstruction=False)
+                .segment(Vector(tuple(root_nose_start)), 'rib_nl')  # rib: nose left  /
+                .segmentToEdge('help_middle', 1, 'help_top', 1., 'rib_nr')  # rib: nose right \
+                .segment(Vector(tuple(root_tail_start)), Vector(tuple(root_tail_start))
+                         - Vector((0, wing_config.segments[segment].length * 0.1, 0)), 'nose_ext')
+                .segment(Vector(tuple(root_nose_start)), Vector(tuple(root_nose_start))
+                         - Vector((0, wing_config.segments[segment].length * 0.1, 0)), 'tail_ext')
+                .segmentToEdge('nose_ext', 1., 'tail_ext', 1., 'root')
+            )
+        else:
+            const_lines = (
+                const_lines
+                .segmentToEdge(Vector(tuple(root_tail_start)), minimum_rib_angle, 'tail_os',
+                               'rib_tr')  # rib: tail right (upper) /
+                .segmentToEdge(180., 'nose_os', 'help_top', forConstruction=False)
+                .segmentToEdge('help_top', 1., Vector(tuple(root_nose_start)), 'rib_nr')  # rib: nose right (upper) \
+                .segment(Vector(tuple(root_tail_start)), Vector(tuple(root_tail_start))
+                         - Vector((0, wing_config.segments[segment].length * 0.1, 0)), 'nose_ext')
+                .segment(Vector(tuple(root_nose_start)), Vector(tuple(root_nose_start))
+                         - Vector((0, wing_config.segments[segment].length * 0.1, 0)), 'tail_ext')
+                .segmentToEdge('nose_ext', 1., 'tail_ext', 1., 'root')
+            )
+
+        # health check
+        # 'rib_nr' should not end left of 'rib_tr'
+        if (tcast(Edge, const_lines._tags['rib_nr'][0]).endPoint().x >
+                tcast(Edge, const_lines._tags['rib_tr'][0]).endPoint().x):
+            start_p = tcast(Edge, const_lines._tags['rib_nr'][0]).startPoint()
+            const_lines = (
+                const_lines
+                .select('rib_nr').delete()
+                .segmentToEdge(start_p, 180 - minimum_rib_angle, 'nose_os', 'rib_nr')  # rib: nose right (upper) \
+                .select('help_top').delete()
+                .segmentToEdge('rib_tr', 1., 'rib_nr', 1., 'help_top')  # rib: nose right (upper) \
+            )
+
+        # Constructing as many ribs as do fit in the wing.
+        id_s = ''
+        while (tcast(Edge, const_lines._tags['help_top' + id_s][0]).startPoint().y
+               < wing_config.segments[segment].length):
+            const_lines = (
+                const_lines
+                .segmentToEdge('rib_tr' + id_s, 180 - minimum_rib_angle, 'spare_tail', 'rib_tl_' + id_s)
+                .segmentToEdge(minimum_rib_angle, 'tail_os', 'rib_tr_' + id_s)
+                .segmentToEdge(180, 'nose_os', 'help_top_' + id_s, forConstruction=False)
+                .segmentToEdge('rib_tl_' + id_s, 180, 'spare_nose', 'help_middle_' + id_s, forConstruction=False)
+                .segmentToEdge('help_top' + id_s, 1, 'help_middle_' + id_s, 1, 'rib_nl_' + id_s)
+                .segmentToEdge('help_middle_' + id_s, 1, 'help_top_' + id_s, 1., 'rib_nr_' + id_s)
+                .select('help_top' + id_s).delete()
+            )
+            try:
+            #if not start_upper_part:
+                const_lines.select('help_middle' + id_s).delete()
+            except Exception:
+                pass
+
+            # health check
+            # 'rib_nr' should not end left of 'rib_tr'
+            if (tcast(Edge, const_lines._tags['rib_nr_' + id_s][0]).endPoint().x >
+                    tcast(Edge, const_lines._tags['rib_tr_' + id_s][0]).endPoint().x):
+                start_p = tcast(Edge, const_lines._tags['rib_nr' + id_s][0]).startPoint()
+                const_lines = (
+                    const_lines
+                    .select('rib_nr_' + id_s).delete()
+                    .segmentToEdge(start_p, 180 - minimum_rib_angle, 'nose_os',
+                                   'rib_nr_' + id_s)  # rib: nose right (upper) \
+                    .select('help_top').delete()
+                    .segmentToEdge('rib_tr', 1., 'rib_nr', 1., 'help_top')  # rib: nose right (upper) \
+                )
+            id_s = id_s + '_'
+
+        # Removing all constrution lines...
+        # if not start_upper_part:
+        try:
+            const_lines.select('help_middle' + id_s).delete()
+        except Exception:
+            pass
+
+        leading_edge_start, trailing_edge_start, lower_part = (
+            VaseModeWingCreator._calc_edge_start(const_lines, id_s, spare_nose_tip, tip_nose))
+
+        const_lines.select('nose_os').delete()
+        const_lines.select('spare_nose').delete()
+        const_lines.select('spare_tail').delete()
+        const_lines.select('tail_os').delete()
+
+        return const_lines, leading_edge_start, trailing_edge_start, lower_part, spare_vector_origin
+
+    @staticmethod
+    def _calc_edge_start(sketch: Sketch, id_s: str, spare_nose_tip, tip_nose) -> Tuple[float, float, bool]:
+        """
+        Constructs the start points leading_edge_start, trailing_edge_start for the next segment, and if it
+        starts in the lower or upper part of the hour glas shape.
+        """
+        try:
+            # The construction uses the spare_nose_tip and tip_nose points and draws a horizontal line to intersect with
+            # the rib_nl (nose left) and rib_tl (tip left) lines.
+            p_le = sketch.segmentToEdge('spare_nose', 180, 'rib_nl' + id_s, 'helper')._tags['helper'][0].endPoint()
+            sketch.select('helper').delete()
+            p_te = sketch.segmentToEdge('spare_tail', 180, 'rib_tl' + id_s, 'helper')._tags['helper'][0].endPoint()
+            sketch.select('helper').delete()
+            lower_part = True
+            if ((spare_nose_tip[0] - p_le.x) > 0 and abs(p_le.y - tip_nose[1]) < tip_nose[1] * 0.1):
+                pass
+            else:
+                p_le = sketch.segmentToEdge('spare_nose', 180, 'rib_nr' + id_s, 'helper')._tags['helper'][0].endPoint()
+                sketch.select('helper').delete()
+                p_te = sketch.segmentToEdge('spare_tail', 180, 'rib_tr' + id_s, 'helper')._tags['helper'][0].endPoint()
+                sketch.select('helper').delete()
+                lower_part = False
+        except:
+            p_le = sketch.segmentToEdge('spare_nose', 180, 'rib_nr' + id_s, 'helper')._tags['helper'][0].endPoint()
+            sketch.select('helper').delete()
+            p_te = sketch.segmentToEdge('spare_tail', 180, 'rib_tr' + id_s, 'helper')._tags['helper'][0].endPoint()
+            sketch.select('helper').delete()
+            lower_part = False
+
+        leading_edge_start = p_le.x - tip_nose[0]
+        trailing_edge_start = p_te.x - tip_nose[0]
+        return (leading_edge_start, trailing_edge_start, lower_part)
+
+    @staticmethod
+    def _calculate_wing_construction_points(segment: int, printer_wall_thickness: float, leading_edge_offset: float,
+                                            leading_edge_start: float, trailing_edge_offset: float,
+                                            trailing_edge_start: float, spare_position_factor: float,
+                                            wing_config: WingConfiguration, spare_perpendicular: bool = False,
+                                            spare_idx: int = 0):
+        spare_vector = wing_config.segments[segment].spare_list[spare_idx].spare_vector
+        spare_vector_origin = wing_config.segments[segment].spare_list[spare_idx].spare_origin
+        spare_support_dimension_width = wing_config.segments[segment].spare_list[spare_idx].spare_support_dimension_width
+
+        spare_vector_origin.y = 0
+
+        if leading_edge_start is None:
+            leading_edge_start = leading_edge_offset
+        if trailing_edge_start is None:
+            trailing_edge_start = wing_config.segments[segment].root_chord - trailing_edge_offset
+
+        # calculating the leading edge guides from root to tip
+        root_nose = np.asarray((.0, .0, .0))
+        root_nose_offset = root_nose + np.asarray((leading_edge_offset, .0, .0))
+        tip_nose = np.asarray((wing_config.segments[segment].sweep, wing_config.segments[segment].length, 0.))
+        tip_nose_offset = tip_nose + np.asarray((leading_edge_offset, .0, .0))
+
+        # calculating the trailing edge guides from root to tip
+        root_tail = np.asarray((wing_config.segments[segment].root_chord, .0, .0))
+        root_tail_offset = root_tail - np.asarray((trailing_edge_offset, .0, .0))
+        tip_tail = tip_nose + np.asarray((wing_config.segments[segment].tip_chord, .0, .0))
+        tip_tail_offset = tip_tail - np.asarray((trailing_edge_offset, .0, .0))
+
+        # calculating the rib start points
+        root_nose_start = np.asarray((leading_edge_start, .0, .0))
+        root_tail_start = np.asarray((trailing_edge_start, .0, .0))
+
+        spare_support_width = 0.5 * spare_support_dimension_width + 2 * printer_wall_thickness
+
+        # Calculating the spare nose and tail positions from root to tip
+        if spare_vector is None:
+            spare_nose_root = (np.asarray((wing_config.segments[segment].root_chord, 0., 0.))
+                               * spare_position_factor
+                               - np.asarray((spare_support_width, 0., 0.)))
+            spare_tail_root = (np.asarray((wing_config.segments[segment].root_chord, 0., 0.))
+                               * spare_position_factor
+                               + np.asarray((spare_support_width, 0., 0.)))
+        else:
+            spare_nose_root = (np.asarray(spare_vector_origin.toTuple())
+                               - np.asarray((spare_support_width, 0., 0.)))
+            spare_tail_root = (np.asarray(spare_vector_origin.toTuple())
+                               + np.asarray((spare_support_width, 0., 0.)))
+            if segment > 0:
+                # origin is in global coordinates, but the sketch starts with the nose point as (0,0,0)
+                # so we need to shift along x by the sweep
+                sweep_sum = sum([ws.sweep for ws in wing_config.segments[0:segment]])
+                spare_nose_root = spare_nose_root - np.asarray((sweep_sum, 0., 0.))
+                spare_tail_root = spare_tail_root - np.asarray((sweep_sum, 0., 0.))
+
+            pass
+
+        _spare_vector_origin = None
+        if not spare_perpendicular and spare_vector is None:
+            spare_nose_tip = (tip_nose + np.asarray((1., 0., 0.)) * wing_config.segments[segment].tip_chord
+                              * spare_position_factor
+                              - np.asarray((1., 0., 0.)) * spare_support_dimension_width / 2
+                              - np.asarray((1., 0., 0.)) * printer_wall_thickness)
+            spare_tail_tip = (tip_nose + np.asarray((1., 0., 0.)) * wing_config.segments[segment].tip_chord
+                              * spare_position_factor
+                              + np.asarray((1., 0., 0.)) * spare_support_dimension_width / 2
+                              + np.asarray((1., 0., 0.)) * printer_wall_thickness)
+        elif not spare_perpendicular and spare_vector is not None:  # a spare vector is given
+            vec = np.asarray((spare_vector.x, spare_vector.y, spare_vector.z))
+            norm_vec = vec / np.linalg.norm(vec)
+            spare_nose_tip = spare_nose_root + norm_vec * wing_config.segments[segment].length
+            spare_tail_tip = spare_tail_root + norm_vec * wing_config.segments[segment].length
+            _spare_vector_origin = (spare_vector_origin
+                                    + Vector(tuple(norm_vec * wing_config.segments[segment].length))
+                                    - Vector((wing_config.segments[segment].sweep, 0., 0.))
+                                    )
+            _spare_vector_origin.y = 0
+        else:  # spare is perpendicular to x-axis (roll axis of the plane)
+            spare_nose_tip = (spare_nose_root
+                              + np.asarray((0., 1., 0.)) * wing_config.segments[segment].length)
+            spare_tail_tip = (spare_tail_root
+                              + np.asarray((0., 1., 0.)) * wing_config.segments[segment].length)
+
+        return (root_nose_offset, root_nose_start,
+                root_tail_offset, root_tail_start,
+                spare_nose_root, spare_nose_tip,
+                spare_tail_root, spare_tail_tip,
+                tip_nose, tip_nose_offset,
+                tip_tail_offset, _spare_vector_origin)
+
+    @staticmethod
+    def _construct_spare_sketch(printer_wall_thickness: float, spare_support_dimension_width: float,
+                                spare_support_dimension_height: float) -> Sketch:
+        """
+        Construct a sketch that is extruded to form a spare.
+
+        For the vase mode it is important to leave gaps as the top part of the spare is connected to the
+        upper hull of the wing and the bottom part to the bottom hull.
+        """
+        gap_height = 0.5 * printer_wall_thickness
+
+        beta = degrees(asin((gap_height / 2.0) / (0.5 * spare_support_dimension_width)))
+        x = cos(radians(beta)) * (0.5 * spare_support_dimension_width)
+
+        # the width of the spare next to the support beam
+        spare_support_width = 0.5 * spare_support_dimension_width + 2 * printer_wall_thickness
+
+        hight = 100
+        if spare_support_dimension_height == spare_support_dimension_width:
+            const_lines = (
+                Sketch()
+                .segment((-spare_support_width, gap_height / 2.0),
+                         (-spare_support_width, hight), 'left_t')
+                .segment((spare_support_width, gap_height / 2.0),
+                         (spare_support_width, hight), 'right_t')
+                .segment((-spare_support_width, hight),
+                         (spare_support_width, hight), 'top')
+                .segment((x, gap_height / 2.0),
+                         (spare_support_width, gap_height / 2.0))
+                .segment((-x, gap_height / 2.0),
+                         (-(spare_support_width), gap_height / 2.0))
+                .arc((0.0, 0.0), 0.5 * spare_support_dimension_width, beta, 180. - (2. * beta), 'spare_t')
+                .assemble()
+                .segment((-spare_support_width, -gap_height / 2.0),
+                         (-spare_support_width, -hight), 'left_b')
+                .segment((spare_support_width, -gap_height / 2.0),
+                         (spare_support_width, -hight), 'right_b')
+                .segment((-spare_support_width, -hight),
+                         (spare_support_width, -hight), 'bottom')
+                .segment((x, -gap_height / 2.0),
+                         (spare_support_width, -gap_height / 2.0))
+                .segment((-x, -gap_height / 2.0),
+                         (-(spare_support_width), -gap_height / 2.0))
+                .arc((0.0, 0.0), 0.5 * spare_support_dimension_width, -beta, -(180. - (2. * beta)), 'spare_b')
+                .assemble()
+            )
+        else:
+            const_lines = (
+                Sketch()
+                .segment((-spare_support_width, gap_height / 2.0),
+                         (-spare_support_width, hight), 'left_t')
+                .segment((spare_support_width, gap_height / 2.0),
+                         (spare_support_width, hight), 'right_t')
+                .segment((-spare_support_width, hight),
+                         (spare_support_width, hight), 'top')
+                .segment((x, gap_height / 2.0),
+                         (spare_support_width, gap_height / 2.0))
+
+                .segment(( x, gap_height / 2.0),
+                         ( x, spare_support_dimension_height/2.0 - (gap_height / 2.0)))
+                .segment(( x, spare_support_dimension_height/2.0 - (gap_height / 2.0)),
+                         (-x, spare_support_dimension_height/2.0 - (gap_height / 2.0)))
+                .segment((-x, spare_support_dimension_height/2.0 - (gap_height / 2.0)),
+                         (-x, gap_height / 2.0))
+
+                .segment((-x, gap_height / 2.0),
+                         (-(spare_support_width), gap_height / 2.0))
+                .assemble()
+                .segment((-spare_support_width, -gap_height / 2.0),
+                         (-spare_support_width, -hight), 'left_b')
+                .segment((spare_support_width, -gap_height / 2.0),
+                         (spare_support_width, -hight), 'right_b')
+                .segment((-spare_support_width, -hight),
+                         (spare_support_width, -hight), 'bottom')
+                .segment((x, -gap_height / 2.0),
+                         (spare_support_width, -gap_height / 2.0))
+
+                .segment((x, - gap_height / 2.0),
+                         (x, -(spare_support_dimension_height / 2.0 - (gap_height / 2.0))))
+                .segment((x, -(spare_support_dimension_height / 2.0 - (gap_height / 2.0))),
+                         (-x, -(spare_support_dimension_height / 2.0 - (gap_height / 2.0))))
+                .segment((-x, -(spare_support_dimension_height / 2.0 - (gap_height / 2.0))),
+                         (-x, -(gap_height / 2.0)))
+
+                .segment((-x, -gap_height / 2.0),
+                         (-(spare_support_width), -gap_height / 2.0))
+                .assemble()
+            )
+
+        return const_lines

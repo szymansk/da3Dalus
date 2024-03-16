@@ -5,8 +5,7 @@ import os
 
 from cadquery import Vector
 
-from Airplane.creator import (AddMultipleShapesCreator, WingLoftCreator,
-                              VaseModeWingCreator)
+from Airplane.creator import VaseModeWingCreator
 from Airplane.aircraft_topology.WingConfiguration import WingConfiguration, Spare, TrailingEdgeDevice
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -39,8 +38,8 @@ if __name__ == "__main__":
     spare_support_dimension_height: float = 6
     spare_perpendicular: bool = False
     spare_position_factor: float = 1 / 3  # value betweein (0,1) as fraction of the chord
-    leading_edge_offset: float = 10
-    trailing_edge_offset: float = 30
+    leading_edge_offset: float = 0.06 # value betweein (0,1) as fraction of the chord
+    trailing_edge_offset: float = 0.17 # value betweein (0,1) as fraction of the chord
     minimum_rib_angle: float = 45
 
     # defining as simple root node
@@ -49,9 +48,9 @@ if __name__ == "__main__":
 
     vase_wing_loft = ConstructionStepNode(
         VaseModeWingCreator(creator_id="vase_wing", wing_index="main_wing",
-                            printer_wall_thickness=printer_wall_thickness, leading_edge_offset=leading_edge_offset,
-                            trailing_edge_offset=trailing_edge_offset, offset=printer_wall_thickness,
-                            minimum_rib_angle=minimum_rib_angle, wing_side="RIGHT", loglevel=logging.DEBUG))
+                            printer_wall_thickness=printer_wall_thickness, leading_edge_offset_factor=leading_edge_offset,
+                            trailing_edge_offset_factor=trailing_edge_offset, minimum_rib_angle=minimum_rib_angle,
+                            wing_side="RIGHT", loglevel=logging.DEBUG))
     root_node.append(vase_wing_loft)
 
     # full_wing_loft = ConstructionStepNode(
