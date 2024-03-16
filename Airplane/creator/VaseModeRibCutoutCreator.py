@@ -20,7 +20,13 @@ from cq_plugins.segmentToEdge import segmentToEdge
 
 
 def _calc_edge_start(sketch: Sketch, id_s: str, spare_nose_tip, tip_nose) -> Tuple[float, float, bool]:
+    """
+    Constructs the start points leading_edge_start, trailing_edge_start for the next segment, and if it
+    starts in the lower or upper part of the hour glas shape.
+    """
     try:
+        # The construction uses the spare_nose_tip and tip_nose points and draws a horizontal line to intersect with
+        # the rib_nl (nose left) and rib_tl (tip left) lines.
         p_le = sketch.segmentToEdge('spare_nose', 180, 'rib_nl' + id_s, 'helper')._tags['helper'][0].endPoint()
         sketch.select('helper').delete()
         p_te = sketch.segmentToEdge('spare_tail', 180, 'rib_tl' + id_s, 'helper')._tags['helper'][0].endPoint()
@@ -161,12 +167,15 @@ def _rib_cutout(segment: int, wing_config: WingConfiguration, printer_wall_thick
         const_lines.select('help_middle' + id_s).delete()
     except Exception:
         pass
+
+    leading_edge_start, trailing_edge_start, lower_part = _calc_edge_start(const_lines, id_s, spare_nose_tip, tip_nose)
+
     const_lines.select('nose_os').delete()
     const_lines.select('spare_nose').delete()
     const_lines.select('spare_tail').delete()
     const_lines.select('tail_os').delete()
 
-    return const_lines, *_calc_edge_start(const_lines, id_s, spare_nose_tip, tip_nose), spare_vector_origin
+    return const_lines, leading_edge_start, trailing_edge_start, lower_part, spare_vector_origin
 
 
 def _calculate_wing_construction_points(segment: int, printer_wall_thickness: float, leading_edge_offset: float,
@@ -201,25 +210,23 @@ def _calculate_wing_construction_points(segment: int, printer_wall_thickness: fl
     root_nose_start = np.asarray((leading_edge_start, .0, .0))
     root_tail_start = np.asarray((trailing_edge_start, .0, .0))
 
+    spare_support_width = 0.5 * spare_support_dimension_width + 2 * printer_wall_thickness
+
     # Calculating the spare nose and tail positions from root to tip
     if spare_vector is None:
         spare_nose_root = (np.asarray((wing_config.segments[segment].root_chord, 0., 0.))
                            * spare_position_factor
-                           - np.asarray((0.5 * spare_support_dimension_width, 0., 0.))
-                           - np.asarray((1.0 * printer_wall_thickness, 0., 0.)))
+                           - np.asarray((spare_support_width, 0., 0.)))
         spare_tail_root = (np.asarray((wing_config.segments[segment].root_chord, 0., 0.))
                            * spare_position_factor
-                           + np.asarray((0.5 * spare_support_dimension_width, 0., 0.))
-                           + np.asarray((1.0 * printer_wall_thickness, 0., 0.)))
+                           + np.asarray((spare_support_width, 0., 0.)))
     else:
         spare_nose_root = (np.asarray(spare_vector_origin.toTuple())
-                           - np.asarray((0.5 * spare_support_dimension_width, 0., 0.))
-                           - np.asarray((1.0 * printer_wall_thickness, 0., 0.)))
+                           - np.asarray((spare_support_width, 0., 0.)))
         spare_tail_root = (np.asarray(spare_vector_origin.toTuple())
-                           + np.asarray((0.5 * spare_support_dimension_width, 0., 0.))
-                           + np.asarray((1.0 * printer_wall_thickness, 0., 0.)))
+                           + np.asarray((spare_support_width, 0., 0.)))
         if segment > 0:
-            # origin is in globale coordinates, but the sketch starts with the nose point as (0,0,0)
+            # origin is in global coordinates, but the sketch starts with the nose point as (0,0,0)
             # so we need to shift along x by the sweep
             sweep_sum = sum([ws.sweep for ws in wing_config.segments[0:segment]])
             spare_nose_root = spare_nose_root - np.asarray((sweep_sum, 0., 0.))
@@ -276,33 +283,77 @@ def _construct_spare_sketch(printer_wall_thickness: float, spare_support_dimensi
     spare_support_width = 0.5 * spare_support_dimension_width + 2 * printer_wall_thickness
 
     hight = 100
-    const_lines = (
-        Sketch()
-        .segment((-spare_support_width, gap_height / 2.0),
-                 (-spare_support_width, hight), 'left_t')
-        .segment((spare_support_width, gap_height / 2.0),
-                 (spare_support_width, hight), 'right_t')
-        .segment((-spare_support_width, hight),
-                 (spare_support_width, hight), 'top')
-        .segment((x, gap_height / 2.0),
-                 (spare_support_width, gap_height / 2.0))
-        .segment((-x, gap_height / 2.0),
-                 (-(spare_support_width), gap_height / 2.0))
-        .arc((0.0, 0.0), 0.5 * spare_support_dimension_width, beta, 180. - (2. * beta), 'spare_t')
-        .assemble()
-        .segment((-spare_support_width, -gap_height / 2.0),
-                 (-spare_support_width, -hight), 'left_b')
-        .segment((spare_support_width, -gap_height / 2.0),
-                 (spare_support_width, -hight), 'right_b')
-        .segment((-spare_support_width, -hight),
-                 (spare_support_width, -hight), 'bottom')
-        .segment((x, -gap_height / 2.0),
-                 (spare_support_width, -gap_height / 2.0))
-        .segment((-x, -gap_height / 2.0),
-                 (-(spare_support_width), -gap_height / 2.0))
-        .arc((0.0, 0.0), 0.5 * spare_support_dimension_width, -beta, -(180. - (2. * beta)), 'spare_b')
-        .assemble()
-    )
+    if spare_support_dimension_height == spare_support_dimension_width:
+        const_lines = (
+            Sketch()
+            .segment((-spare_support_width, gap_height / 2.0),
+                     (-spare_support_width, hight), 'left_t')
+            .segment((spare_support_width, gap_height / 2.0),
+                     (spare_support_width, hight), 'right_t')
+            .segment((-spare_support_width, hight),
+                     (spare_support_width, hight), 'top')
+            .segment((x, gap_height / 2.0),
+                     (spare_support_width, gap_height / 2.0))
+            .segment((-x, gap_height / 2.0),
+                     (-(spare_support_width), gap_height / 2.0))
+            .arc((0.0, 0.0), 0.5 * spare_support_dimension_width, beta, 180. - (2. * beta), 'spare_t')
+            .assemble()
+            .segment((-spare_support_width, -gap_height / 2.0),
+                     (-spare_support_width, -hight), 'left_b')
+            .segment((spare_support_width, -gap_height / 2.0),
+                     (spare_support_width, -hight), 'right_b')
+            .segment((-spare_support_width, -hight),
+                     (spare_support_width, -hight), 'bottom')
+            .segment((x, -gap_height / 2.0),
+                     (spare_support_width, -gap_height / 2.0))
+            .segment((-x, -gap_height / 2.0),
+                     (-(spare_support_width), -gap_height / 2.0))
+            .arc((0.0, 0.0), 0.5 * spare_support_dimension_width, -beta, -(180. - (2. * beta)), 'spare_b')
+            .assemble()
+        )
+    else:
+        const_lines = (
+            Sketch()
+            .segment((-spare_support_width, gap_height / 2.0),
+                     (-spare_support_width, hight), 'left_t')
+            .segment((spare_support_width, gap_height / 2.0),
+                     (spare_support_width, hight), 'right_t')
+            .segment((-spare_support_width, hight),
+                     (spare_support_width, hight), 'top')
+            .segment((x, gap_height / 2.0),
+                     (spare_support_width, gap_height / 2.0))
+
+            .segment(( x, gap_height / 2.0),
+                     ( x, spare_support_dimension_height/2.0 - (gap_height / 2.0)))
+            .segment(( x, spare_support_dimension_height/2.0 - (gap_height / 2.0)),
+                     (-x, spare_support_dimension_height/2.0 - (gap_height / 2.0)))
+            .segment((-x, spare_support_dimension_height/2.0 - (gap_height / 2.0)),
+                     (-x, gap_height / 2.0))
+
+            .segment((-x, gap_height / 2.0),
+                     (-(spare_support_width), gap_height / 2.0))
+            .assemble()
+            .segment((-spare_support_width, -gap_height / 2.0),
+                     (-spare_support_width, -hight), 'left_b')
+            .segment((spare_support_width, -gap_height / 2.0),
+                     (spare_support_width, -hight), 'right_b')
+            .segment((-spare_support_width, -hight),
+                     (spare_support_width, -hight), 'bottom')
+            .segment((x, -gap_height / 2.0),
+                     (spare_support_width, -gap_height / 2.0))
+
+            .segment((x, - gap_height / 2.0),
+                     (x, -(spare_support_dimension_height / 2.0 - (gap_height / 2.0))))
+            .segment((x, -(spare_support_dimension_height / 2.0 - (gap_height / 2.0))),
+                     (-x, -(spare_support_dimension_height / 2.0 - (gap_height / 2.0))))
+            .segment((-x, -(spare_support_dimension_height / 2.0 - (gap_height / 2.0))),
+                     (-x, -(gap_height / 2.0)))
+
+            .segment((-x, -gap_height / 2.0),
+                     (-(spare_support_width), -gap_height / 2.0))
+            .assemble()
+        )
+
     return const_lines
 
 
@@ -807,8 +858,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
         ted = wing_config.segments[segment].trailing_edge_device
         teof = 0.0
         if ted is not None:
-            teof = (max((wing_config.segments[segment].root_chord *
-                    (1 - ted.rel_chord_root)),
+            teof = (max((wing_config.segments[segment].root_chord * (1 - ted.rel_chord_root)),
                        ((wing_config.segments[segment].tip_chord+ wing_config.segments[segment].sweep) *
                         (1 - ted.rel_chord_tip)))
                     * ted.trailing_edge_offset_factor)

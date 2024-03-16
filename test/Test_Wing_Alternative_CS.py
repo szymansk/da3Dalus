@@ -172,8 +172,8 @@ if __name__ == "__main__":
                                               spare_support_dimension_height=6,
                                               spare_vector=(0, 410, 37),
                                               spare_origin=(183 * 0.33, 0, -3)),
-                                        Spare(spare_support_dimension_width=6,
-                                              spare_support_dimension_height=6,
+                                        Spare(spare_support_dimension_width=2,
+                                              spare_support_dimension_height=12,
                                               spare_length=50,
                                               spare_vector=(0, 1, 0),
                                               spare_origin=(190 * 0.63, 0, 6))
