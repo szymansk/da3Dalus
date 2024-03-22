@@ -238,8 +238,9 @@ if __name__ == "__main__":
                                     servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
                                                 latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
                                                 cable_z=26),
+                                    servo_placement='bottom',
                                     rel_chord_servo_position=0.43,
-                                    rel_length_servo_position=0.6
+                                    rel_length_servo_position=0.45
 
                                 )
                                 )
@@ -266,6 +267,7 @@ if __name__ == "__main__":
                                     servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
                                                 latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
                                                 cable_z=26),
+                                    servo_placement='top',
                                     rel_chord_servo_position=0.43,
                                     rel_length_servo_position=0.3
                                 )

@@ -21,6 +21,7 @@ class TrailingEdgeDevice:
                  hinge_spacing:float,
                  side_spacing:float,
                  servo: Servo = None,
+                 servo_placement: Literal["top", "bottom"] = 'top',
                  rel_chord_servo_position: float = None,
                  rel_length_servo_position: float = None,
                  positive_deflection_deg: float = 25,
@@ -35,6 +36,7 @@ class TrailingEdgeDevice:
         self.side_spacing = side_spacing
 
         self.servo = servo
+        self.servo_placement = servo_placement
         self.rel_chord_servo_position = rel_chord_servo_position
         self.rel_length_servo_position = rel_length_servo_position
 
