@@ -12,6 +12,7 @@ from cadquery.occ_impl.geom import Vector, Location
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
 from Airplane.aircraft_topology.WingConfiguration import WingConfiguration, TrailingEdgeDevice, WingSegment
+from Airplane.creator import ScaleRotateTranslateCreator
 
 from cq_plugins.wing.wing_segment import wing_segment
 from cq_plugins.wing.wing_root_segment import wing_root_segment
@@ -95,8 +96,16 @@ class VaseModeWingCreator(AbstractShapeCreator):
                                 centered=(False, False, True))
                            )
 
+        # dictionary for trailing edge devices (teds)
+        teds: dict[str, Workplane] = {}
+        # cut out trailing edge device (ted) from segment
+        if wing_config.segments[segment].trailing_edge_device is not None:
+            right_wing_hull, right_wing_cutout, ted_shape = self._create_ted_shapes(current, right_wing_hull, right_wing_cutout,
+                                                                        segment, wing_config)
+            teds[f"{wing_config.segments[segment].trailing_edge_device.name}[{segment}]"] = ted_shape
+            pass
+
         final_right_wing = right_wing_hull.add(right_wing_spare).add(right_wing_cutout).cut(right_wing_slot)
-        # final_right_wing.display(f"fin | {segment}", 500)
 
         # create additional spares
         for spare_idx in range(1, len(wing_config.segments[segment].spare_list)):
@@ -107,9 +116,6 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 spare_idx=spare_idx)
             pass
             final_right_wing = final_right_wing.add(spare_shape)
-
-        # dictionary for trailing edge devices (teds)
-        teds: dict[str, Workplane] = {}
 
         # create the other segments
         for segment_config in wing_config.segments[1:]:
@@ -129,22 +135,26 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 current_pwt_offset, segment, wing_config, leading_edge_start, trailing_edge_start, not lower_part)
             right_wing_cutout.add(raw_ribs)
 
+            wing_segment = wing_config.segments[segment]
             right_wing_slot = (Workplane(spare_plane)
                                .box(length=0.5*self.printer_wall_thickness,
                                     width=100,
-                                    height=wing_config.segments[segment].length * 10,
+                                    height=wing_segment.length * 10,
                                     centered=(False, False, True))
                                )
 
-            for spare_idx in range(1, len(wing_config.segments[segment].spare_list)):
+            for spare_idx in range(1, len(wing_segment.spare_list)):
                 raw_add_spar, _ = self._create_spare_shape(current=current_pwt_offset, segment=segment,
                                                            wing_config=wing_config, spare_idx=spare_idx)
 
             # cut out trailing edge device (ted) from segment
-            if wing_config.segments[segment].trailing_edge_device is not None:
+            ted = wing_segment.trailing_edge_device
+            if ted is not None:
                 current_hull, raw_ribs, ted_shape = self._create_ted_shapes(current, current_hull, raw_ribs,
                                                                             segment, wing_config)
-                teds[f"{wing_config.segments[segment].trailing_edge_device.name}[{segment}]"] = ted_shape
+                teds[f"{ted.name}[{segment}]"] = ted_shape
+                if ted.servo is not None:
+                    current_hull = self._create_servo_mount_and_cover(current, current_hull, segment, wing_config)
                 pass
 
             final_right_wing = final_right_wing.add(
@@ -185,6 +195,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
         right_wing_cutout = right_wing_cutout.fix_shape()
         final_right_wing = final_right_wing.fix_shape().combine()
 
+        # TODO: remove translations from creator... this should be translated, later or by assembly constraints
         right_wing_spare = (right_wing_spare.translate(wing_config.nose_pnt)
                             .display(name=f"{self.identifier}.spare", severity=logging.DEBUG))
 
@@ -208,6 +219,71 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
         return final_dict
 
+    def _create_servo_mount_and_cover(self, current, current_hull, segment, wing_config):
+        ted = wing_config.segments[segment].trailing_edge_device
+        servo = ted.servo
+
+        servo_mount = servo.create_laying_mount_for_wing()
+        cover = servo.create_servo_cover_for_wing(self.printer_wall_thickness, 3.)
+        cover_small = servo.create_servo_cover_for_wing(self.printer_wall_thickness, 0.)
+
+        plane = wing_config.get_wing_workplane(segment=segment).plane
+        # transform servo to wing segments coordinate system
+        # in general we align the servo z-axis with the segments pitch axes...
+
+        servo_orientation_deg = 180 # 0 - lays on the bottom / 180 - hangs from the top
+        # the servo's 0-point will coincide with the segments nose-point
+        # finally we need to put the servo to the place in the segment where we want it to be
+        servo_origin_top, servo_origin_bottom = wing_config.get_points_on_surface(segment=segment,
+                                                                                  relative_chord=ted.rel_chord_servo_position,
+                                                                                  relative_length=ted.rel_length_servo_position)
+        servo_mount = (Workplane(servo_mount.findSolid().mirror(mirrorPlane="YZ")
+                                    .rotate((0, 0, 0), (0, 1, 0),servo_orientation_deg).located(plane.location)))
+
+        cover = (Workplane(cover.findSolid().mirror(mirrorPlane="YZ")
+                                .rotate((0, 0, 0), (0, 1, 0),servo_orientation_deg).located(plane.location)))
+
+        cover_small = (Workplane(cover_small.findSolid().mirror(mirrorPlane="YZ")
+                                .rotate((0, 0, 0), (0, 1, 0),servo_orientation_deg).located(plane.location)))
+
+        so = plane.toLocalCoords(servo_origin_top)
+        sob = plane.toLocalCoords(servo_origin_bottom)
+
+        trans = plane.xDir * so.x + plane.yDir * so.y + plane.zDir * (so.z - (so.z - sob.z) * 0.15)
+        servo_mount = servo_mount.translate(trans)
+        servo_mount = servo_mount.intersect(current)
+        updated_hull = current_hull.union(servo_mount)
+
+        trans = plane.xDir * sob.x + plane.yDir * sob.y + plane.zDir * sob.z
+
+        cover = cover.translate(trans)
+        cover = cover.intersect(current_hull)
+
+        cover_small = cover_small.translate(trans)
+        cover_small = cover_small.intersect(current_hull)
+
+        cover_top = cover.translate(plane.zDir * 2*self.printer_wall_thickness)
+        cover_bottom = cover.translate(plane.zDir * (-2*self.printer_wall_thickness))
+
+        cover = cover + cover_top + cover_bottom
+        cover = cover.faces("%BSPLINE").chamfer(2 * self.printer_wall_thickness)
+
+        cover_small = (cover_small.translate(plane.zDir*(4*self.printer_wall_thickness))
+                       .faces("%BSPLINE").faces(">Z").chamfer(1.99 * self.printer_wall_thickness))
+        cover = cover + cover_small
+
+        cover.display("cover", 500)
+        current_hull.display("hull", 500)
+        updated_hull = updated_hull + cover
+
+        box=Workplane().box(3,1,12, centered=False)
+        box = (Workplane(box.findSolid().mirror(mirrorPlane="YZ")
+                           .rotate((0, 0, 0), (0, 1, 0), servo_orientation_deg).located(plane.location)))
+        trans = plane.xDir * so.x + plane.yDir * so.y + plane.zDir * (so.z - (so.z - sob.z) * 0.15)
+        box = box.translate(trans).display("box",24234)
+
+        return updated_hull
+
     def _create_ted_shapes(self, current: Workplane, current_hull: Workplane, raw_ribs: Workplane,
                            segment: int, wing_config: WingConfiguration) -> Tuple[Workplane, Workplane, Workplane]:
         wcs: WingSegment = wing_config.segments[segment]
@@ -222,18 +298,18 @@ class VaseModeWingCreator(AbstractShapeCreator):
                          .placeSketch(ted_sketch, ted_sketch_tip).loft())
         ted_shape = current.intersect(ted_intersect)
 
-        # TODO: Cut the side_spacing from the ted_shape
-        ted_shape = ted_shape.cut(
-            Workplane(inPlane=ted_root_plane).box(wcs.root_chord * 4, wcs.root_chord * 4, ted.side_spacing,
-                                                  centered=(True, True, False)))
-        length = (ted_tip_plane.origin - ted_root_plane.origin)
+        if ted.side_spacing > 0:
+            ted_shape = ted_shape.cut(
+                Workplane(inPlane=ted_root_plane).box(wcs.root_chord * 4, wcs.root_chord * 4, ted.side_spacing,
+                                                      centered=(True, True, False)))
+            length = (ted_tip_plane.origin - ted_root_plane.origin)
 
-        ted_shape = ted_shape.cut(
-            Workplane(inPlane=ted_root_plane).workplane(offset=length.y - ted.side_spacing).box(wcs.root_chord * 4,
-                                                                                              wcs.root_chord * 4,
-                                                                                              wcs.root_chord * 4,
-                                                                                              centered=(True, True,
-                                                                                                        False)))
+            ted_shape = ted_shape.cut(
+                Workplane(inPlane=ted_root_plane).workplane(offset=length.y - ted.side_spacing).box(wcs.root_chord * 4,
+                                                                                                  wcs.root_chord * 4,
+                                                                                                  wcs.root_chord * 4,
+                                                                                                  centered=(True, True,
+                                                                                                            False)))
 
         # cut it from the wing
         wing_cutout = (Workplane(inPlane=ted_root_plane)
@@ -282,8 +358,9 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
             ted_sketch_tip = ted_sketch.moved(
                 Location(loft_direction_vector.normalized().multiply(loft_direction_vector_length - ted.side_spacing)))
-            ted_sketch = ted_sketch.moved(
-                Location(loft_direction_vector.normalized().multiply(ted.side_spacing)))
+            if ted.side_spacing > 0:
+                ted_sketch = ted_sketch.moved(
+                    Location(loft_direction_vector.normalized().multiply(ted.side_spacing)))
             wing_sketch_tip = wing_sketch.moved(Location(loft_direction_vector * 2))
         elif ted.suspension_type == "top_simple":
             top, bottom = wing_config.get_points_on_surface(segment, ted.rel_chord_root, 0, "root_airfoil")

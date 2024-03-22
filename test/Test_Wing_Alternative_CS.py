@@ -5,6 +5,7 @@ import os
 
 from cadquery import Vector
 
+from Airplane.aircraft_topology.ServoInformation import Servo
 from Airplane.creator import VaseModeWingCreator
 from Airplane.aircraft_topology.WingConfiguration import WingConfiguration, Spare, TrailingEdgeDevice
 
@@ -38,8 +39,8 @@ if __name__ == "__main__":
     spare_support_dimension_height: float = 6
     spare_perpendicular: bool = False
     spare_position_factor: float = 1 / 3  # value betweein (0,1) as fraction of the chord
-    leading_edge_offset: float = 0.06 # value betweein (0,1) as fraction of the chord
-    trailing_edge_offset: float = 0.17 # value betweein (0,1) as fraction of the chord
+    leading_edge_offset: float = 0.06  # value betweein (0,1) as fraction of the chord
+    trailing_edge_offset: float = 0.17  # value betweein (0,1) as fraction of the chord
     minimum_rib_angle: float = 45
 
     # defining as simple root node
@@ -48,10 +49,19 @@ if __name__ == "__main__":
 
     vase_wing_loft = ConstructionStepNode(
         VaseModeWingCreator(creator_id="vase_wing", wing_index="main_wing",
-                            printer_wall_thickness=printer_wall_thickness, leading_edge_offset_factor=leading_edge_offset,
+                            printer_wall_thickness=printer_wall_thickness,
+                            leading_edge_offset_factor=leading_edge_offset,
                             trailing_edge_offset_factor=trailing_edge_offset, minimum_rib_angle=minimum_rib_angle,
-                            wing_side="RIGHT", loglevel=logging.DEBUG))
+                            wing_side="BOTH", loglevel=logging.DEBUG))
     root_node.append(vase_wing_loft)
+
+    elevator = ConstructionStepNode(
+        VaseModeWingCreator(creator_id="elevator", wing_index="elevator",
+                            printer_wall_thickness=printer_wall_thickness,
+                            leading_edge_offset_factor=leading_edge_offset,
+                            trailing_edge_offset_factor=trailing_edge_offset, minimum_rib_angle=minimum_rib_angle,
+                            wing_side="BOTH", loglevel=logging.DEBUG))
+    #root_node.append(elevator)
 
     # full_wing_loft = ConstructionStepNode(
     #    WingLoftCreator("wing_loft",
@@ -156,7 +166,7 @@ if __name__ == "__main__":
     test_wing = 2
     airfoil = "../components/airfoils/naca2415.dat"
     wing_config = WingConfiguration(root_airfoil=airfoil,
-                                    #tip_airfoil=airfoil2,
+                                    # tip_airfoil=airfoil2,
                                     nose_pnt=(192.113, 0, -44.5),
                                     root_chord=183,
                                     root_dihedral=3.7,
@@ -205,15 +215,15 @@ if __name__ == "__main__":
                                 tip_incidence=0,
                                 tip_airfoil="../components/airfoils/nacam2.dat")
     elif test_wing == 2:
-        wing_config.add_segment(length=400,
-                               sweep=0,
-                               tip_chord=183,
-                               tip_dihedral=0,
-                               tip_incidence=0,
-                               spare_list=[
-                                   Spare(spare_support_dimension_width=6,
-                                         spare_support_dimension_height=6,
-                                         spare_mode="follow")],
+        wing_config.add_segment(length=200,
+                                sweep=0,
+                                tip_chord=183,
+                                tip_dihedral=0,
+                                tip_incidence=0,
+                                spare_list=[
+                                    Spare(spare_support_dimension_width=6,
+                                          spare_support_dimension_height=6,
+                                          spare_mode="follow")],
                                 trailing_edge_device=
                                 TrailingEdgeDevice(
                                     name="flaps",
@@ -224,18 +234,24 @@ if __name__ == "__main__":
                                     trailing_edge_offset_factor=1.4,
                                     positive_deflection_deg=10,
                                     negative_deflection_deg=50,
-                                    hinge_type="top"
+                                    hinge_type="top",
+                                    servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
+                                                latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
+                                                cable_z=26),
+                                    rel_chord_servo_position=0.43,
+                                    rel_length_servo_position=0.6
+
                                 )
                                 )
         wing_config.add_segment(length=200,
-                               sweep=0,
-                               tip_chord=183,
-                               tip_dihedral=0,
-                               tip_incidence=0,
-                               spare_list=[
-                                   Spare(spare_support_dimension_width=6,
-                                         spare_support_dimension_height=6,
-                                         spare_mode="follow")],
+                                sweep=0,
+                                tip_chord=183,
+                                tip_dihedral=0,
+                                tip_incidence=0,
+                                spare_list=[
+                                    Spare(spare_support_dimension_width=6,
+                                          spare_support_dimension_height=6,
+                                          spare_mode="follow")],
                                 trailing_edge_device=
                                 TrailingEdgeDevice(
                                     name="aileron",
@@ -246,7 +262,12 @@ if __name__ == "__main__":
                                     trailing_edge_offset_factor=1.4,
                                     positive_deflection_deg=45,
                                     negative_deflection_deg=25,
-                                    hinge_type="top"
+                                    hinge_type="top",
+                                    servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
+                                                latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
+                                                cable_z=26),
+                                    rel_chord_servo_position=0.43,
+                                    rel_length_servo_position=0.3
                                 )
                                 )
 
@@ -279,10 +300,67 @@ if __name__ == "__main__":
                                     Spare(spare_support_dimension_width=3,
                                           spare_support_dimension_height=3,
                                           spare_mode="follow")])
-    wing_configuration = {"main_wing": wing_config}
-    #(top, bottom) = wing_config.get_points_on_surface(0, 0.55, 0.5)
-    #(top1, bottom1) = wing_config.get_points_on_surface(0, 0.55, 0.5, "wing")
-    #(top2, bottom2) = wing_config.get_points_on_surface(0, 0.55, 0.5, "root_airfoil")
+
+    rudder_airfoil = "../components/airfoils/naca0008.dat"
+    elevator_config = WingConfiguration(root_airfoil=rudder_airfoil,
+                                        # tip_airfoil=airfoil2,
+                                        nose_pnt=(593.573, 0, 31.608),
+                                        root_chord=122,
+                                        root_dihedral=0,
+                                        root_incidence=0,
+                                        length=165,
+                                        sweep=29,
+                                        tip_chord=76,
+                                        tip_dihedral=0,
+                                        tip_incidence=0,
+                                        spare_list=[
+                                            Spare(spare_support_dimension_width=2,
+                                                  spare_support_dimension_height=2,
+                                                  spare_vector=(0, 1, 0),
+                                                  spare_origin=(122 * 0.3, 0, 0)),
+                                            Spare(spare_support_dimension_width=2,
+                                                  spare_support_dimension_height=2,
+                                                  spare_length=30,
+                                                  spare_vector=(0, 1, 0),
+                                                  spare_origin=(122 * 0.5, 0, 0))
+                                        ],
+                                        trailing_edge_device=TrailingEdgeDevice(
+                                            name="elevator",
+                                            rel_chord_root=(122. - 47.) / 122.,
+                                            rel_chord_tip=(122. - 47. - 29.) / 76.,
+                                            hinge_spacing=0.5,
+                                            side_spacing=0.,
+                                            trailing_edge_offset_factor=1.,
+                                            positive_deflection_deg=30,
+                                            negative_deflection_deg=30,
+                                            hinge_type="top"
+                                        )
+                                        )
+
+    #elevator_config.add_segment(length=165 - 7.6,
+    #                        sweep=29. ,#- (29./165.) * 7.6,
+    #                        tip_chord=76,
+    #                        tip_dihedral=0,
+    #                        tip_incidence=0,
+    #                        spare_list=[
+    #                            Spare(spare_support_dimension_width=2.,
+    #                                  spare_support_dimension_height=2.,
+    #                                  spare_mode="follow")]
+    #                        ,
+    #                        trailing_edge_device=TrailingEdgeDevice(
+    #                            name="elevator",
+    #                            rel_chord_root=(122. - 47.) / 122.,
+    #                            rel_chord_tip=(122. - 47. - 29.) / 76.,
+    #                            hinge_spacing=0.5,
+    #                            side_spacing=0.,
+    #                            trailing_edge_offset_factor=1.,
+    #                            positive_deflection_deg=30,
+    #                            negative_deflection_deg=30,
+    #                            hinge_type="top"
+    #                        )
+    #                        )
+    wing_configuration = {"main_wing": wing_config,
+                          "elevator": elevator_config}
 
     # load the string
     myMap: ConstructionStepNode = json.loads(json_data, cls=GeneralJSONDecoder,

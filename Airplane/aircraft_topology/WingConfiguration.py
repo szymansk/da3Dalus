@@ -7,18 +7,24 @@ from cadquery import Workplane, Plane, Vector, Sketch, Matrix
 from numpy import ndarray, dtype, generic
 from scipy.spatial.transform import Rotation
 
+from Airplane.aircraft_topology.ServoInformation import Servo
+
 T = TypeVar("T", bound="WingConfiguration")
 SpareMode = Literal["normal", "follow"]
 
 class TrailingEdgeDevice:
+
     def __init__(self,
                  name: str,
                  rel_chord_root:float,
                  rel_chord_tip:float,
                  hinge_spacing:float,
                  side_spacing:float,
-                 positive_deflection_deg: float = 45,
-                 negative_deflection_deg: float = 45,
+                 servo: Servo = None,
+                 rel_chord_servo_position: float = None,
+                 rel_length_servo_position: float = None,
+                 positive_deflection_deg: float = 25,
+                 negative_deflection_deg: float = 25,
                  trailing_edge_offset_factor: float = 1.0,
                  hinge_type: Literal["middle", "top", "top_simple", "round_inside", "round_outside"] = "top"
                  ):
@@ -27,6 +33,11 @@ class TrailingEdgeDevice:
         self.rel_chord_tip = rel_chord_tip
         self.hinge_spacing = hinge_spacing
         self.side_spacing = side_spacing
+
+        self.servo = servo
+        self.rel_chord_servo_position = rel_chord_servo_position
+        self.rel_length_servo_position = rel_length_servo_position
+
         self.positive_deflection_deg = positive_deflection_deg
         self.negative_deflection_deg = negative_deflection_deg
         self.trailing_edge_offset_factor = trailing_edge_offset_factor
@@ -96,14 +107,15 @@ class WingConfiguration:
                  tip_dihedral: float = 0,
                  tip_incidence: float = 0,
                  tip_trailing_edge: float = 1,
-                 spare_list: List[Spare] = None):
+                 spare_list: List[Spare] = None,
+                trailing_edge_device: TrailingEdgeDevice = None):
         self.nose_pnt: tuple[float, float, float] = nose_pnt
         if tip_airfoil is None:
             tip_airfoil = root_airfoil
         root_segment = WingSegment(root_airfoil, length, root_chord, tip_chord,
                                    sweep, root_dihedral, root_incidence, root_trailing_edge,
                                    tip_airfoil, tip_dihedral, tip_incidence, tip_trailing_edge,
-                                   spare_list=spare_list)
+                                   spare_list=spare_list, trailing_edge_device=trailing_edge_device)
         self.segments: list[WingSegment] = [root_segment]
 
         # spare vector is perpendicular
