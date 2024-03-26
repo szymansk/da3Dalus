@@ -6,6 +6,7 @@ import numpy as np
 from cadquery import Workplane, Plane, Vector, Sketch, Matrix
 from numpy import ndarray, dtype, generic
 from scipy.spatial.transform import Rotation
+from scipy.interpolate import interp1d
 
 from Airplane.aircraft_topology.ServoInformation import Servo
 
@@ -282,9 +283,11 @@ class WingConfiguration:
 
     def get_points_on_surface(self: T, segment:int,
                               relative_chord:float, relative_length: float,
-                              coordinate_system: Literal["world","wing","root_airfoil"]="world") -> Tuple[Vector, Vector]:
+                              coordinate_system: Literal["world","wing","root_airfoil"]="world",
+                              x_offset: float = .0,
+                              z_offset: float = .0) -> Tuple[Vector, Vector]:
         """
-        Returns the points on the surface (top, bottom) in the airfoil coordinatesystem.
+        Returns the points on the surface (top, bottom) in the airfoil coordinate system.
         x points along the airfoil's center line, y points to the top, and z points along the nose
 
         Remark: only a two point interpolation is implemented, this leads to large deviations from the
@@ -293,12 +296,12 @@ class WingConfiguration:
         root_points = self.get_airfoil_points(segment=segment, isRoot=True)
         tip_points = self.get_airfoil_points(segment=segment)
 
-        # as we loft our wings only ruled lay all points on vector from the relative root to tip point
-        # therefore we need to calculate the points (top/bottom surface) for root an tip airfoil
+        # as we loft our wings only ruled. All points lie on vector from the relative root to tip point
+        # therefore we need to calculate the points (top/bottom surface) for root and tip airfoil
         x_root = relative_chord * self.segments[segment].root_chord
-        x,y = self._interpolate_y_at_x(root_points, x_root)
+        x,y = self._interpolate_y_at_x(root_points, x_root + x_offset)
         root_top = Vector(x,0,y)
-        x,y = self._interpolate_y_at_x(root_points, x_root, reverse=True)
+        x,y = self._interpolate_y_at_x(root_points, x_root + x_offset, reverse=True)
         root_bottom = Vector(x,0,y)
 
         root_wp = self.get_wing_workplane(segment=segment)
@@ -306,9 +309,9 @@ class WingConfiguration:
         root_bo_world = root_wp.plane.toWorldCoords(root_bottom.toTuple())
 
         x_tip = relative_chord * self.segments[segment].tip_chord
-        x,y = self._interpolate_y_at_x(tip_points, x_tip)
+        x,y = self._interpolate_y_at_x(tip_points, x_tip + x_offset)
         tip_top = Vector(x, 0, y)
-        x,y = self._interpolate_y_at_x(tip_points, x_tip, reverse=True)
+        x,y = self._interpolate_y_at_x(tip_points, x_tip + x_offset, reverse=True)
         tip_bottom = Vector(x, 0, y)
 
         tip_wp = self.get_wing_workplane(segment=segment+1)
@@ -316,8 +319,10 @@ class WingConfiguration:
         tip_bo_world = tip_wp.plane.toWorldCoords(tip_bottom.toTuple())
 
         # interpolate along the length
-        interpolated_top = (tip_to_world - root_to_world) * relative_length + root_to_world
-        interpolated_bottom = (tip_bo_world - root_bo_world) * relative_length + root_bo_world
+        interpolated_top = ((tip_to_world - root_to_world) * (relative_length + z_offset/self.segments[segment].length)
+                            + root_to_world)
+        interpolated_bottom = ((tip_bo_world - root_bo_world) * (relative_length + z_offset/self.segments[segment].length)
+                               + root_bo_world)
 
         if coordinate_system == "world":
             return interpolated_top, interpolated_bottom
@@ -332,19 +337,17 @@ class WingConfiguration:
             raise ValueError(f"unknown coordinate system {coordinate_system}")
 
     def _interpolate_y_at_x(self, points, x, reverse=False) -> Tuple[float, float]:
-        #TODO: implement a better interpolation that really follows the spline
-        offset = -1
-        rng = range(len(points))
-        if reverse:
-            offset = 1
-            rng = reversed(rng)
+        # Extrahiere x- und y-Werte aus den Punkten
+        if not reverse:
+            x_values = [point[0] for point in points[:len(points)//2+1]]
+            y_values = [point[1] for point in points[:len(points)//2+1]]
+        else:
+            x_values = [point[0] for point in points[len(points)//2:]]
+            y_values = [point[1] for point in points[len(points)//2:]]
 
-        for idx in rng:
-            x_l, y_l = points[idx]
-            if x_l <= x:  # perform a linear interpolation
-                x_r, y_r = points[idx + offset]
-                u = (x_r - x) / (x_r - x_l)  # factor in this airfoil segment
-                y_t = y_r - u * (y_r - y_l)
-                x_t = x
-                break
-        return x_t, y_t
+        # Erstelle eine Interpolationsfunktion
+        interpolation_function = interp1d(x_values, y_values, kind='cubic')
+
+        # Interpoliere den y-Wert für den gegebenen x-Wert
+        interpolated_y = interpolation_function(x)
+        return x, interpolated_y

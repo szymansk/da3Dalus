@@ -51,7 +51,8 @@ if __name__ == "__main__":
         VaseModeWingCreator(creator_id="vase_wing", wing_index="main_wing",
                             printer_wall_thickness=printer_wall_thickness,
                             leading_edge_offset_factor=leading_edge_offset,
-                            trailing_edge_offset_factor=trailing_edge_offset, minimum_rib_angle=minimum_rib_angle,
+                            trailing_edge_offset_factor=trailing_edge_offset,
+                            minimum_rib_angle=minimum_rib_angle,
                             wing_side="BOTH", loglevel=logging.DEBUG))
     root_node.append(vase_wing_loft)
 
@@ -59,7 +60,8 @@ if __name__ == "__main__":
         VaseModeWingCreator(creator_id="elevator", wing_index="elevator",
                             printer_wall_thickness=printer_wall_thickness,
                             leading_edge_offset_factor=leading_edge_offset,
-                            trailing_edge_offset_factor=trailing_edge_offset, minimum_rib_angle=minimum_rib_angle,
+                            trailing_edge_offset_factor=trailing_edge_offset,
+                            minimum_rib_angle=minimum_rib_angle,
                             wing_side="BOTH", loglevel=logging.DEBUG))
     #root_node.append(elevator)
 

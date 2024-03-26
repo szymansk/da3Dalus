@@ -19,6 +19,8 @@ from cq_plugins.wing.wing_root_segment import wing_root_segment
 from cq_plugins.fix_shape.fix_shape import fix_shape
 from cq_plugins.segmentToEdge import segmentToEdge
 
+MOUNT_PLATE_THICKNESS = 1.0
+
 
 class VaseModeWingCreator(AbstractShapeCreator):
     """
@@ -31,8 +33,6 @@ class VaseModeWingCreator(AbstractShapeCreator):
                  wing_config: dict[int, WingConfiguration] = None,
                  wing_side: Literal["LEFT", "RIGHT", "BOTH"] = "RIGHT", loglevel: int = logging.INFO):
         """
-        TODO: leading_edge_offset and trailing_edge_offset should be a factor in terms of the chord
-
         returns as shapes:
         creator_id -> the complete wing,
         creator_id.spare -> the spare,
@@ -91,7 +91,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
         # create root segment slot
         right_wing_slot = (Workplane(spare_plane)
-                           .box(length=0.5 * self.printer_wall_thickness,
+                           .box(length=0.05 * self.printer_wall_thickness,
                                 width=100,
                                 height=wing_config.segments[segment].length * 3,
                                 centered=(False, False, True))
@@ -139,7 +139,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
             wing_segment = wing_config.segments[segment]
             right_wing_slot = (Workplane(spare_plane)
-                               .box(length=0.5 * self.printer_wall_thickness,
+                               .box(length=0.05 * self.printer_wall_thickness,
                                     width=100,
                                     height=wing_segment.length * 10,
                                     centered=(False, False, True))
@@ -152,12 +152,14 @@ class VaseModeWingCreator(AbstractShapeCreator):
             # cut out trailing edge device (ted) from segment
             ted = wing_segment.trailing_edge_device
             if ted is not None:
+                if ted.servo is not None:
+                    # TODO: return the ted link plane( with origin and x-direction)
+                    current_hull, glue_in_mount = self._create_servo_mount_and_cover(current, current_hull, segment, wing_config,
+                                                                      ted.servo_placement)
+                # TODO: use the ted link origin and direction to construct a rudder horn with linkage for the ted
                 current_hull, raw_ribs, ted_shape = self._create_ted_shapes(current, current_hull, raw_ribs,
                                                                             segment, wing_config)
                 teds[f"{ted.name}[{segment}]"] = ted_shape
-                if ted.servo is not None:
-                    current_hull = self._create_servo_mount_and_cover(current, current_hull,
-                                                                      segment, wing_config, ted.servo_placement)
                 pass
 
             final_right_wing = final_right_wing.add(
@@ -223,16 +225,16 @@ class VaseModeWingCreator(AbstractShapeCreator):
         return final_dict
 
     def _create_servo_mount_and_cover(self, current: Workplane, current_hull: Workplane, segment: int,
-                                      wing_config: WingConfiguration,
-                                      placement: Literal['top', 'bottom'] = 'top') -> Workplane:
+                                      wing_config: WingConfiguration, placement: Literal['top', 'bottom'] = 'top',
+                                      rim_size:float=2.5) -> tuple[Workplane, Workplane]:
         ted = wing_config.segments[segment].trailing_edge_device
         servo = ted.servo
 
         servo_mount = servo.create_laying_mount_for_wing()
-        cover = servo.create_servo_cover_for_wing(self.printer_wall_thickness, 3.)
+        cover = servo.create_servo_cover_for_wing(self.printer_wall_thickness, rim_size)
         cover_small = servo.create_servo_cover_for_wing(self.printer_wall_thickness, 0.)
 
-        plane = wing_config.get_wing_workplane(segment=segment).plane
+        wing_plane = wing_config.get_wing_workplane(segment=segment).plane
         # transform servo to wing segments coordinate system
         # in general we align the servo z-axis with the segments pitch axes...
         # the servo's 0-point will coincide with the segments nose-point
@@ -241,36 +243,67 @@ class VaseModeWingCreator(AbstractShapeCreator):
                                                                                   relative_chord=ted.rel_chord_servo_position,
                                                                                   relative_length=ted.rel_length_servo_position)
 
+        left_upper_top, left_upper_bottom = wing_config.get_points_on_surface(segment=segment,
+                                                                              relative_chord=ted.rel_chord_servo_position,
+                                                                              relative_length=ted.rel_length_servo_position,
+                                                                              x_offset=-(ted.servo.leading_length+
+                                                                              ted.servo.latch_length),
+                                                                              z_offset=0.)
+        left_lower_top, left_lower_bottom = wing_config.get_points_on_surface(segment=segment,
+                                                                              relative_chord=ted.rel_chord_servo_position,
+                                                                              relative_length=ted.rel_length_servo_position,
+                                                                              x_offset=-(ted.servo.leading_length+
+                                                                              ted.servo.latch_length),
+                                                                              z_offset=-ted.servo.height)
+        right_lower_top, right_lower_bottom = wing_config.get_points_on_surface(segment=segment,
+                                                                              relative_chord=ted.rel_chord_servo_position,
+                                                                              relative_length=ted.rel_length_servo_position,
+                                                                              x_offset=ted.servo.trailing_length+
+                                                                              ted.servo.latch_length,
+                                                                              z_offset=-ted.servo.height)
+        right_upper_top, right_upper_bottom = wing_config.get_points_on_surface(segment=segment,
+                                                                              relative_chord=ted.rel_chord_servo_position,
+                                                                              relative_length=ted.rel_length_servo_position,
+                                                                              x_offset=ted.servo.trailing_length+
+                                                                              ted.servo.latch_length,
+                                                                              z_offset=0.)
+        top_min = min(wing_plane.toLocalCoords(left_upper_top).z,
+                      wing_plane.toLocalCoords(right_upper_top).z,
+                      wing_plane.toLocalCoords(left_lower_top).z,
+                      wing_plane.toLocalCoords(right_lower_top).z)
+        bottom_max = max(wing_plane.toLocalCoords(left_upper_bottom).z,
+                         wing_plane.toLocalCoords(right_upper_bottom).z,
+                         wing_plane.toLocalCoords(left_lower_bottom).z,
+                         wing_plane.toLocalCoords(right_lower_bottom).z)
+
         if placement == 'bottom':
             servo_orientation_deg = 0
-            sob = plane.toLocalCoords(servo_origin_top)
-            so = plane.toLocalCoords(servo_origin_bottom)
+            sob = wing_plane.toLocalCoords(servo_origin_top)
+            so = wing_plane.toLocalCoords(servo_origin_bottom)
             direction = -1.
             selector = "<Z"
+            correction = bottom_max + MOUNT_PLATE_THICKNESS
         else:
             servo_orientation_deg = 180  # 0 - lays on the bottom / 180 - hangs from the top
-            so = plane.toLocalCoords(servo_origin_top)
-            sob = plane.toLocalCoords(servo_origin_bottom)
+            so = wing_plane.toLocalCoords(servo_origin_top)
+            sob = wing_plane.toLocalCoords(servo_origin_bottom)
             direction = 1.
             selector = ">Z"
+            correction = top_min - MOUNT_PLATE_THICKNESS
 
-        trans_mount = plane.xDir * so.x + plane.yDir * so.y + plane.zDir * (so.z - (so.z - sob.z) * 0.15)
-        trans_cover = plane.xDir * sob.x + plane.yDir * sob.y + plane.zDir * sob.z
+        # TODO: place the mount optimally in the hull, get rid of 15% of the thickness parameter
+        # correction = (so.z - (so.z - sob.z) * 0.15)
+        trans_mount = wing_plane.xDir * so.x + wing_plane.yDir * so.y + wing_plane.zDir * correction
+        trans_cover = wing_plane.xDir * (sob.x + rim_size) + wing_plane.yDir * sob.y + wing_plane.zDir * sob.z
 
-        servo_mount = (Workplane(servo_mount.findSolid().mirror(mirrorPlane="YZ")
-                                 .rotate((0, 0, 0), (0, 1, 0), servo_orientation_deg)
-                                 .rotate((0, 0, 0), (0, 0, 1), 180 - servo_orientation_deg)
-                                 .located(plane.location)))
+        mirror_and_rotate = lambda wp: (Workplane(wp.findSolid().mirror(mirrorPlane="YZ")
+                                     .rotate((0, 0, 0), (0, 1, 0), servo_orientation_deg)
+                                     .rotate((0, 0, 0), (0, 0, 1), 180 - servo_orientation_deg)
+                                     .located(wing_plane.location)))
 
-        cover = (Workplane(cover.findSolid().mirror(mirrorPlane="YZ")
-                           .rotate((0, 0, 0), (0, 1, 0), servo_orientation_deg)
-                           .rotate((0, 0, 0), (0, 0, 1), 180 - servo_orientation_deg)
-                           .located(plane.location)))
-
-        cover_small = (Workplane(cover_small.findSolid().mirror(mirrorPlane="YZ")
-                                 .rotate((0, 0, 0), (0, 1, 0), servo_orientation_deg)
-                                 .rotate((0, 0, 0), (0, 0, 1), 180 - servo_orientation_deg)
-                                 .located(plane.location)))
+        servo_mount = mirror_and_rotate(servo_mount)
+        cover = mirror_and_rotate(cover)
+        cover_small = mirror_and_rotate(cover_small)
 
         servo_mount = servo_mount.translate(trans_mount)
         servo_mount = servo_mount.intersect(current)
@@ -282,20 +315,20 @@ class VaseModeWingCreator(AbstractShapeCreator):
         cover_small = cover_small.translate(trans_cover)
         cover_small = cover_small.intersect(current_hull)
 
-        cover_top = cover.translate(plane.zDir * 1.95 * self.printer_wall_thickness)
-        cover_bottom = cover.translate(plane.zDir * (-1.95 * self.printer_wall_thickness))
+        cover_top = cover.translate(wing_plane.zDir * 1.9 * self.printer_wall_thickness)
+        cover_bottom = cover.translate(wing_plane.zDir * (-1.9 * self.printer_wall_thickness))
 
         cover = cover + cover_top + cover_bottom
         cover = cover.faces("%BSPLINE").chamfer(2 * self.printer_wall_thickness)
 
-        cover_small = (cover_small.translate(plane.zDir * (direction * 4 * self.printer_wall_thickness))
+        cover_small = (cover_small.translate(wing_plane.zDir * (direction * 3.5 * self.printer_wall_thickness))
                        .faces("%BSPLINE").faces(selector).chamfer(1.99 * self.printer_wall_thickness))
         cover = cover + cover_small
 
-        # cover.display("cover", 500)
-        # current_hull.display("hull", 500)
+        cover.display("cover", 500)
+        current_hull.display("hull", 500)
         updated_hull = updated_hull + cover
-        # updated_hull.display("hull", 500)
+        updated_hull.display("hull", 500)
 
         # box=Workplane().box(3,1,12, centered=False)
         # box = (Workplane(box.findSolid().mirror(mirrorPlane="YZ")
@@ -303,7 +336,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
         # trans = plane.xDir * so.x + plane.yDir * so.y + plane.zDir * (so.z - (so.z - sob.z) * 0.15)
         # box = box.translate(trans).display("box",24234)
 
-        return updated_hull
+        return updated_hull, servo.create_laying_glue_in_mount(base_thickness=MOUNT_PLATE_THICKNESS)
 
     def _create_ted_shapes(self, current: Workplane, current_hull: Workplane, raw_ribs: Workplane,
                            segment: int, wing_config: WingConfiguration) -> Tuple[Workplane, Workplane, Workplane]:
@@ -653,8 +686,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
                     leading_edge_offset: float,
                     trailing_edge_offset: float, leading_edge_start: float = None, trailing_edge_start: float = None,
                     start_upper_part: bool = False, minimum_rib_angle: float = 45, spare_perpendicular: bool = False,
-                    spare_position_factor: float = 1. / 3., spare_idx: int = 0) -> Tuple[
-        Sketch, float, float, bool, Vector]:
+                    spare_position_factor: float = 1. / 3., spare_idx: int = 0) -> Tuple[Sketch, float, float, bool, Vector]:
         """
         Constructs a set of hourglass like structures in between the nose and the tail part of the wing.
 
@@ -914,7 +946,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
         For the vase mode it is important to leave gaps as the top part of the spare is connected to the
         upper hull of the wing and the bottom part to the bottom hull.
         """
-        gap_height = 0.5 * printer_wall_thickness
+        gap_height = 0.05 * printer_wall_thickness
 
         beta = degrees(asin((gap_height / 2.0) / (0.5 * spare_support_dimension_width)))
         x = cos(radians(beta)) * (0.5 * spare_support_dimension_width)

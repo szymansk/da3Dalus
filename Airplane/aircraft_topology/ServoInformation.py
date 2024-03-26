@@ -1,10 +1,6 @@
 import logging
-
 from OCP.gp import *
-
 from Airplane.aircraft_topology.ComponentInformation import ComponentInformation
-from Extra.ConstructionStepsViewer import ConstructionStepsViewer
-
 
 class ServoInformation(ComponentInformation):
     def __init__(self, height: float, width: float, length: float, lever_length: float, rot_x: float = 0.0,
@@ -42,9 +38,9 @@ class ServoInformation(ComponentInformation):
                          height=self.height)
 
 
-from typing import TypeVar, Any, List, Tuple, Literal, Union
+from typing import TypeVar
 
-from cadquery import Solid, Sketch, Workplane
+from cadquery import Sketch, Workplane
 
 T = TypeVar("T", bound="Servo")
 
@@ -81,9 +77,7 @@ class Servo:
         self.trailing_length: float = self.length - self.leading_length
         pass
 
-    def create_laying_glue_in_mount(self: T) -> Workplane:
-        base_thickness = 1
-
+    def create_laying_glue_in_mount(self: T, base_thickness:float = 1.0) -> Workplane:
         servo_outlines = (Sketch()
                           .segment((0, 0), (-self.leading_length, 0))
                           .segment((-self.leading_length, 0),
@@ -162,10 +156,10 @@ class Servo:
 
     def create_laying_mount_for_wing(self: T) -> Workplane:
         glue_in_mount_outlines = (Sketch()
-                                  .segment((0, 10), (-self.leading_length - self.latch_length, 10))
-                                  .segment((-self.leading_length - self.latch_length, 10),
-                                           (-self.leading_length - self.latch_length, -self.height))
-                                  .segment((-self.leading_length - self.latch_length, -self.height),
+                                  .segment((0, 10), (-(self.leading_length + self.latch_length), 10))
+                                  .segment((-(self.leading_length + self.latch_length), 10),
+                                           (-(self.leading_length + self.latch_length), -self.height))
+                                  .segment((-(self.leading_length + self.latch_length), -self.height),
                                            (self.trailing_length + self.latch_length, -self.height))
                                   .segment((self.trailing_length + self.latch_length, -self.height),
                                            (self.trailing_length + self.latch_length, 10))
@@ -173,10 +167,10 @@ class Servo:
                                   .assemble()
                                   )
         mount_outlines_bottom = (Sketch()
-                                 .segment((-0, 20), (-self.leading_length - self.latch_length, 20))
-                                 .segment((-self.leading_length - self.latch_length, 20),
-                                          (-self.leading_length - self.latch_length, -self.height - 20))
-                                 .segment((-self.leading_length - self.latch_length, -self.height - 20),
+                                 .segment((-0, 20), (-(self.leading_length + self.latch_length), 20))
+                                 .segment((-(self.leading_length + self.latch_length), 20),
+                                          (-(self.leading_length + self.latch_length), -self.height - 20))
+                                 .segment((-(self.leading_length + self.latch_length), -self.height - 20),
                                           (self.trailing_length + self.latch_length + 20, -self.height - 20))
                                  .segment((self.trailing_length + self.latch_length + 20, -self.height - 20),
                                           (self.trailing_length + self.latch_length + 20, 20))
@@ -184,10 +178,10 @@ class Servo:
                                  .assemble()
                                  )
         mount_outlines = (Sketch()
-                          .segment((-0, 0), (-self.leading_length - self.latch_length, 0))
-                          .segment((-self.leading_length - self.latch_length, 0),
-                                   (-self.leading_length - self.latch_length, -self.height - 20))
-                          .segment((-self.leading_length - self.latch_length, -self.height - 20),
+                          .segment((-0, 0), (-(self.leading_length + self.latch_length), 0))
+                          .segment((-(self.leading_length + self.latch_length), 0),
+                                   (-(self.leading_length + self.latch_length), -self.height - 20))
+                          .segment((-(self.leading_length + self.latch_length), -self.height - 20),
                                    (self.trailing_length + self.latch_length + 20, -self.height - 20))
                           .segment((self.trailing_length + self.latch_length + 20, -self.height - 20),
                                    (self.trailing_length + self.latch_length + 20, 0))
@@ -202,6 +196,7 @@ class Servo:
                  .faces(">Z").workplane().placeSketch(glue_in_mount_outlines).extrude(until=-2, combine='cut')
                  .edges('>Z').edges('<Y').chamfer(18)
                  .edges('>Z').edges('>X').chamfer(18)
+                 .faces(">Z").edges("<<Y[3]").chamfer(1.99)
                  )
         return mount
 
@@ -226,10 +221,12 @@ class Servo:
         return cover
 
 if __name__ == "__main__":
+    from cadq_server import CQServerConnector
     servo = Servo(length=23, width=12.5, height=31.5, leading_length=6,
                   latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
                   cable_z=26)
-    glue_in_mount = servo._create_laying_glue_in_mount()
-    mount = servo._create_laying_mount_for_wing()
+    glue_in_mount = servo.create_laying_glue_in_mount()
+    mount = servo.create_laying_mount_for_wing()
 
-    mount.add(glue_in_mount).display("mounts", logging.DEBUG)
+    mount.add(glue_in_mount).display("mounts", 5000)
+    pass
