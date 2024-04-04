@@ -1,4 +1,5 @@
 import logging
+import math
 import sys
 from typing import TypeVar, Any, List, Tuple, Literal, Union
 
@@ -76,7 +77,8 @@ class WingSegment:
                  tip_incidence: float = 0,
                  tip_trailing_edge: float = 1,
                  spare_list: List[Spare] = None,
-                 trailing_edge_device: TrailingEdgeDevice = None):
+                 trailing_edge_device: TrailingEdgeDevice = None,
+                 number_interpolation_points:int = None):
         self.tip_trailing_edge = tip_trailing_edge
         self.root_trailing_edge = root_trailing_edge
         self.tip_airfoil = tip_airfoil
@@ -91,6 +93,7 @@ class WingSegment:
         self.tip_incidence = tip_incidence
         self.spare_list = spare_list
         self.trailing_edge_device = trailing_edge_device
+        self.number_interpolation_points = number_interpolation_points
 
 class WingConfiguration:
     """
@@ -110,6 +113,7 @@ class WingConfiguration:
                  tip_dihedral: float = 0,
                  tip_incidence: float = 0,
                  tip_trailing_edge: float = 1,
+                 number_interpolation_points: int=None,
                  spare_list: List[Spare] = None,
                 trailing_edge_device: TrailingEdgeDevice = None):
         self.nose_pnt: tuple[float, float, float] = nose_pnt
@@ -118,7 +122,8 @@ class WingConfiguration:
         root_segment = WingSegment(root_airfoil, length, root_chord, tip_chord,
                                    sweep, root_dihedral, root_incidence, root_trailing_edge,
                                    tip_airfoil, tip_dihedral, tip_incidence, tip_trailing_edge,
-                                   spare_list=spare_list, trailing_edge_device=trailing_edge_device)
+                                   spare_list=spare_list, trailing_edge_device=trailing_edge_device,
+                                   number_interpolation_points=number_interpolation_points)
         self.segments: list[WingSegment] = [root_segment]
 
         # spare vector is perpendicular
@@ -153,7 +158,8 @@ class WingConfiguration:
         segment = WingSegment(root_airfoil, length, self.segments[-1].tip_chord, tip_chord,
                               sweep, 0, 0, root_trailing_edge,
                               tip_airfoil, tip_dihedral, tip_incidence, tip_trailing_edge,
-                              spare_list=spare_list, trailing_edge_device=trailing_edge_device)
+                              spare_list=spare_list, trailing_edge_device=trailing_edge_device,
+                              number_interpolation_points=self.segments[0].number_interpolation_points)
         self.segments.append(segment)
 
         segment_number = len(self.segments) - 1
@@ -268,9 +274,8 @@ class WingConfiguration:
             origin_tip = (wing_wp_tip.plane.origin
                           + wing_wp_tip.plane.xDir * seg.tip_chord * ted.rel_chord_tip)
 
-            normal = wing_wp.plane.yDir
-            root_plane = Plane(origin=origin_root, xDir=wing_wp.plane.xDir, normal=normal)
-            tip_plane = Plane(origin=origin_tip, xDir=wing_wp_tip.plane.xDir, normal=normal)
+            root_plane = Plane(origin=origin_root, xDir=wing_wp.plane.xDir, normal=wing_wp.plane.yDir)
+            tip_plane = Plane(origin=origin_tip, xDir=wing_wp_tip.plane.xDir, normal=wing_wp_tip.plane.yDir)
             return root_plane, tip_plane
 
     @staticmethod
@@ -283,7 +288,7 @@ class WingConfiguration:
 
     def get_points_on_surface(self: T, segment:int,
                               relative_chord:float, relative_length: float,
-                              coordinate_system: Literal["world","wing","root_airfoil"]="world",
+                              coordinate_system: Literal["world","wing","root_airfoil","tip_airfoil"]="world",
                               x_offset: float = .0,
                               z_offset: float = .0) -> Tuple[Vector, Vector]:
         """
@@ -332,6 +337,11 @@ class WingConfiguration:
             it = root_wp.plane.toLocalCoords(interpolated_top)
             ib = root_wp.plane.toLocalCoords(interpolated_bottom)
             return Vector(it.x, it.z, it.y), Vector(ib.x, ib.z, ib.y)
+        elif coordinate_system == "tip_airfoil":
+            tip_wp = self.get_wing_workplane(segment=segment+1)
+            it = tip_wp.plane.toLocalCoords(interpolated_top)
+            ib = tip_wp.plane.toLocalCoords(interpolated_bottom)
+            return Vector(it.x, it.z, it.y), Vector(ib.x, ib.z, ib.y)
         else:
             logging.critical(f"unknown coordinate system {coordinate_system}")
             raise ValueError(f"unknown coordinate system {coordinate_system}")
@@ -339,11 +349,11 @@ class WingConfiguration:
     def _interpolate_y_at_x(self, points, x, reverse=False) -> Tuple[float, float]:
         # Extrahiere x- und y-Werte aus den Punkten
         if not reverse:
-            x_values = [point[0] for point in points[:len(points)//2+1]]
-            y_values = [point[1] for point in points[:len(points)//2+1]]
+            x_values = [point[0] for point in points[:math.ceil(len(points)/2)]]
+            y_values = [point[1] for point in points[:math.ceil(len(points)/2)]]
         else:
-            x_values = [point[0] for point in points[len(points)//2:]]
-            y_values = [point[1] for point in points[len(points)//2:]]
+            x_values = [point[0] for point in points[math.floor(len(points)/2):]]
+            y_values = [point[1] for point in points[math.floor(len(points)/2):]]
 
         # Erstelle eine Interpolationsfunktion
         interpolation_function = interp1d(x_values, y_values, kind='cubic')

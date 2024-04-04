@@ -1,4 +1,5 @@
 import logging
+import math
 
 import numpy as np
 
@@ -8,15 +9,12 @@ from math import cos, asin, degrees, radians, atan2
 
 from cadquery import Workplane, Plane, Sketch
 from cadquery.occ_impl.shapes import Edge
-from cadquery.occ_impl.geom import Vector, Location
+from cadquery.occ_impl.geom import Vector
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
 from Airplane.aircraft_topology.WingConfiguration import WingConfiguration, TrailingEdgeDevice, WingSegment
-from Airplane.creator import ScaleRotateTranslateCreator
+from Airplane.creator.ted_sketch_creators import ted_sketch_creators
 
-from cq_plugins.wing.wing_segment import wing_segment
-from cq_plugins.wing.wing_root_segment import wing_root_segment
-from cq_plugins.fix_shape.fix_shape import fix_shape
 from cq_plugins.segmentToEdge import segmentToEdge
 
 MOUNT_PLATE_THICKNESS = 1.0
@@ -64,7 +62,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
     def _create_shape(self, shapes_of_interest: dict[str, Workplane],
                       input_shapes: dict[str, Workplane],
                       **kwargs) -> dict[str, Workplane]:
-        logging.info(f"wing spare from configuration --> '{self.identifier}'")
+        logging.info(f"construct vase mode wing from configuration --> '{self.identifier}'")
         wing_config: WingConfiguration = self._wing_config[self.wing_index]
 
         segment = 0  # root segment
@@ -230,51 +228,17 @@ class VaseModeWingCreator(AbstractShapeCreator):
         ted = wing_config.segments[segment].trailing_edge_device
         servo = ted.servo
 
-        servo_mount = servo.create_laying_mount_for_wing()
-        cover = servo.create_servo_cover_for_wing(self.printer_wall_thickness, rim_size)
-        cover_small = servo.create_servo_cover_for_wing(self.printer_wall_thickness, 0.)
-
         wing_plane = wing_config.get_wing_workplane(segment=segment).plane
-        # transform servo to wing segments coordinate system
-        # in general we align the servo z-axis with the segments pitch axes...
-        # the servo's 0-point will coincide with the segments nose-point
-        # finally we need to put the servo to the place in the segment where we want it to be
+
+        servo_mount = servo.create_laying_mount_for_wing()
+        cover = servo.create_servo_cover_for_wing(self.printer_wall_thickness, rim_size, in_plane= None)
+        cover_small = servo.create_servo_cover_for_wing(self.printer_wall_thickness, 0., in_plane= None)
+
         servo_origin_top, servo_origin_bottom = wing_config.get_points_on_surface(segment=segment,
                                                                                   relative_chord=ted.rel_chord_servo_position,
                                                                                   relative_length=ted.rel_length_servo_position)
 
-        left_upper_top, left_upper_bottom = wing_config.get_points_on_surface(segment=segment,
-                                                                              relative_chord=ted.rel_chord_servo_position,
-                                                                              relative_length=ted.rel_length_servo_position,
-                                                                              x_offset=-(ted.servo.leading_length+
-                                                                              ted.servo.latch_length),
-                                                                              z_offset=0.)
-        left_lower_top, left_lower_bottom = wing_config.get_points_on_surface(segment=segment,
-                                                                              relative_chord=ted.rel_chord_servo_position,
-                                                                              relative_length=ted.rel_length_servo_position,
-                                                                              x_offset=-(ted.servo.leading_length+
-                                                                              ted.servo.latch_length),
-                                                                              z_offset=-ted.servo.height)
-        right_lower_top, right_lower_bottom = wing_config.get_points_on_surface(segment=segment,
-                                                                              relative_chord=ted.rel_chord_servo_position,
-                                                                              relative_length=ted.rel_length_servo_position,
-                                                                              x_offset=ted.servo.trailing_length+
-                                                                              ted.servo.latch_length,
-                                                                              z_offset=-ted.servo.height)
-        right_upper_top, right_upper_bottom = wing_config.get_points_on_surface(segment=segment,
-                                                                              relative_chord=ted.rel_chord_servo_position,
-                                                                              relative_length=ted.rel_length_servo_position,
-                                                                              x_offset=ted.servo.trailing_length+
-                                                                              ted.servo.latch_length,
-                                                                              z_offset=0.)
-        top_min = min(wing_plane.toLocalCoords(left_upper_top).z,
-                      wing_plane.toLocalCoords(right_upper_top).z,
-                      wing_plane.toLocalCoords(left_lower_top).z,
-                      wing_plane.toLocalCoords(right_lower_top).z)
-        bottom_max = max(wing_plane.toLocalCoords(left_upper_bottom).z,
-                         wing_plane.toLocalCoords(right_upper_bottom).z,
-                         wing_plane.toLocalCoords(left_lower_bottom).z,
-                         wing_plane.toLocalCoords(right_lower_bottom).z)
+        bottom_max, top_min = self.calculate_lowest_point_for_mount(segment, ted, wing_config, wing_plane)
 
         if placement == 'bottom':
             servo_orientation_deg = 0
@@ -282,17 +246,15 @@ class VaseModeWingCreator(AbstractShapeCreator):
             so = wing_plane.toLocalCoords(servo_origin_bottom)
             direction = -1.
             selector = "<Z"
-            correction = bottom_max + MOUNT_PLATE_THICKNESS
+            correction = bottom_max + 2*MOUNT_PLATE_THICKNESS
         else:
             servo_orientation_deg = 180  # 0 - lays on the bottom / 180 - hangs from the top
             so = wing_plane.toLocalCoords(servo_origin_top)
             sob = wing_plane.toLocalCoords(servo_origin_bottom)
             direction = 1.
             selector = ">Z"
-            correction = top_min - MOUNT_PLATE_THICKNESS
+            correction = top_min - 2*MOUNT_PLATE_THICKNESS # we need to compensate a not so good rotation
 
-        # TODO: place the mount optimally in the hull, get rid of 15% of the thickness parameter
-        # correction = (so.z - (so.z - sob.z) * 0.15)
         trans_mount = wing_plane.xDir * so.x + wing_plane.yDir * so.y + wing_plane.zDir * correction
         trans_cover = wing_plane.xDir * (sob.x + rim_size) + wing_plane.yDir * sob.y + wing_plane.zDir * sob.z
 
@@ -318,17 +280,18 @@ class VaseModeWingCreator(AbstractShapeCreator):
         cover_top = cover.translate(wing_plane.zDir * 1.9 * self.printer_wall_thickness)
         cover_bottom = cover.translate(wing_plane.zDir * (-1.9 * self.printer_wall_thickness))
 
-        cover = cover + cover_top + cover_bottom
+        cover = cover.union(toUnion=cover_top, clean=True, glue=True).union(toUnion=cover_bottom, clean=True, glue=True)
         cover = cover.faces("%BSPLINE").chamfer(2 * self.printer_wall_thickness)
 
         cover_small = (cover_small.translate(wing_plane.zDir * (direction * 3.5 * self.printer_wall_thickness))
                        .faces("%BSPLINE").faces(selector).chamfer(1.99 * self.printer_wall_thickness))
-        cover = cover + cover_small
+        cover = cover.union(toUnion=cover_small, clean=True, glue=True)
+        updated_hull = updated_hull.union(toUnion=cover, clean=True, glue=True)
 
-        cover.display("cover", 500)
-        current_hull.display("hull", 500)
-        updated_hull = updated_hull + cover
-        updated_hull.display("hull", 500)
+        #cover.display("cover", 500)
+        #current_hull.display("hull", 500)
+        #updated_hull.display("hull", 500)
+        #servo_mount.display("servo_mount", 500)
 
         # box=Workplane().box(3,1,12, centered=False)
         # box = (Workplane(box.findSolid().mirror(mirrorPlane="YZ")
@@ -338,18 +301,46 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
         return updated_hull, servo.create_laying_glue_in_mount(base_thickness=MOUNT_PLATE_THICKNESS)
 
+    def calculate_lowest_point_for_mount(self, segment, ted, wing_config, wing_plane):
+        x_offset_interval = np.linspace(-(ted.servo.leading_length + ted.servo.latch_length),
+                                        ted.servo.trailing_length + ted.servo.latch_length,
+                                        10)
+        y_offset_interval = np.linspace(-ted.servo.height, 0.0, 3)
+
+        top_min = math.inf
+        bottom_max = -math.inf
+        for y_off in y_offset_interval:
+            for x_off in x_offset_interval:
+                top_wc, bottom_wc = wing_config.get_points_on_surface(segment=segment,
+                                                                      relative_chord=ted.rel_chord_servo_position,
+                                                                      relative_length=ted.rel_length_servo_position,
+                                                                      x_offset=x_off,
+                                                                      z_offset=y_off,
+                                                                      coordinate_system='world')
+                top_lc = wing_plane.toLocalCoords(top_wc)
+                bottom_lc = wing_plane.toLocalCoords(bottom_wc)
+                if top_min > top_lc.z:
+                    top_min = top_lc.z
+                if bottom_max < bottom_lc.z:
+                    bottom_max = bottom_lc.z
+                pass
+
+        return bottom_max, top_min
+
     def _create_ted_shapes(self, current: Workplane, current_hull: Workplane, raw_ribs: Workplane,
                            segment: int, wing_config: WingConfiguration) -> Tuple[Workplane, Workplane, Workplane]:
         wcs: WingSegment = wing_config.segments[segment]
         ted: TrailingEdgeDevice = wing_config.segments[segment].trailing_edge_device
         ted_root_plane, ted_tip_plane = wing_config.get_trailing_edge_device_planes(segment)
 
-        # make the cut and create the ted
-        ted_sketch, ted_sketch_tip, wing_sketch, wing_sketch_tip = self._ted_sketch_by_suspension_type(ted, wing_config,
-                                                                                                       segment)
+        # make the intersect and cut shape and create the ted
+        ted_sketch, ted_sketch_tip, wing_sketch, wing_sketch_tip = (
+            ted_sketch_creators[ted.suspension_type](ted=ted, wing_config=wing_config, segment=segment))
 
-        ted_intersect = (Workplane(inPlane=ted_root_plane)
-                         .placeSketch(ted_sketch, ted_sketch_tip).loft())
+        # intersect it with the wing
+        ted_intersect = (Workplane()
+                         .placeSketch(ted_sketch.moved(ted_root_plane.location),
+                                      ted_sketch_tip.moved(ted_tip_plane.location)).loft())
         ted_shape = current.intersect(ted_intersect)
 
         if ted.side_spacing > 0:
@@ -367,166 +358,22 @@ class VaseModeWingCreator(AbstractShapeCreator):
                                                                                                     False)))
 
         # cut it from the wing
-        wing_cutout = (Workplane(inPlane=ted_root_plane)
-                       .placeSketch(wing_sketch, wing_sketch_tip).loft())
+        wing_cutout = (Workplane()
+                       .placeSketch(wing_sketch.moved(ted_root_plane.location),
+                                    wing_sketch_tip.moved(ted_tip_plane.location)).loft())
 
-        # current_hull.display("current_hull", 500)
+
+        #current_hull.display("current_hull", 500)
 
         current_hull = current_hull.cut(wing_cutout)
         raw_ribs = raw_ribs.cut(wing_cutout)
 
-        # ted_intersect.display("ted_intersect", 500)
-        # wing_cutout.display("cutout", 500)
-        # ted_shape.display("ted_shape", 500)
-        # raw_ribs.display("raw_ribs", 500)
+        #ted_intersect.display("ted_intersect", 500)
+        #wing_cutout.display("cutout", 500)
+        #ted_shape.display("ted_shape", 500)
+        #raw_ribs.display("raw_ribs", 500)
 
         return current_hull, raw_ribs, ted_shape
-
-    def _ted_sketch_by_suspension_type(self, ted, wing_config: WingConfiguration, segment: int) \
-            -> Tuple[Sketch, Sketch, Sketch, Sketch]:
-        """
-        The wing_shape is always used as a cut shape and the ted_shape is an intersect shape.
-        """
-        wcs: WingSegment = wing_config.segments[segment]
-
-        ted_root_plane, ted_tip_plane = wing_config.get_trailing_edge_device_planes(segment)
-        loft_direction_vector = ted_root_plane.toLocalCoords(ted_tip_plane.origin)
-        loft_direction_vector_length = np.linalg.norm(np.array(list(loft_direction_vector.toTuple())))
-
-        max_chord = max(wcs.root_chord * ted.rel_chord_root,
-                        wcs.tip_chord * ted.rel_chord_tip + wcs.sweep)
-
-        if ted.suspension_type == "middle":
-            ted_sketch: Sketch = (Sketch()
-                                  .segment((ted.hinge_spacing, 0), (max_chord, max_chord))
-                                  .segment((max_chord, max_chord), (max_chord, -max_chord))
-                                  .close()
-                                  .assemble()
-                                  )
-            wing_sketch: Sketch = (Sketch()
-                                   .segment((0, -max_chord), (0, max_chord))
-                                   .segment((0, max_chord), (max_chord, max_chord))
-                                   .segment((max_chord, max_chord), (max_chord, -max_chord))
-                                   .close()
-                                   .assemble()
-                                   )
-
-            ted_sketch_tip = ted_sketch.moved(
-                Location(loft_direction_vector.normalized().multiply(loft_direction_vector_length - ted.side_spacing)))
-            if ted.side_spacing > 0:
-                ted_sketch = ted_sketch.moved(
-                    Location(loft_direction_vector.normalized().multiply(ted.side_spacing)))
-            wing_sketch_tip = wing_sketch.moved(Location(loft_direction_vector * 2))
-        elif ted.suspension_type == "top_simple":
-            top, bottom = wing_config.get_points_on_surface(segment, ted.rel_chord_root, 0, "root_airfoil")
-            top_t, bottom_t = wing_config.get_points_on_surface(segment, ted.rel_chord_tip, 1.0, "root_airfoil")
-
-            top_offset = top_t - top
-
-            ted_sketch: Sketch = (Sketch()
-                                  .segment((ted.hinge_spacing, -top.y), (max_chord, -top.y))
-                                  .segment((max_chord, -top.y), (max_chord, max_chord))
-                                  .close()
-                                  .assemble()
-                                  )
-            wing_sketch: Sketch = (Sketch()
-                                   .segment((0, -max_chord), (0, max_chord))
-                                   .segment((0, max_chord), (max_chord, max_chord))
-                                   .segment((max_chord, max_chord), (max_chord, -max_chord))
-                                   .close()
-                                   .assemble()
-                                   )
-
-            _ted_sketch_tip: Sketch = (Sketch()
-                                       .segment((top_offset.x + ted.hinge_spacing, -top_t.y), (max_chord, -top_t.y))
-                                       .segment((max_chord, -top_t.y), (max_chord, max_chord))
-                                       .close()
-                                       .assemble()
-                                       )
-            _wing_sketch_tip: Sketch = (Sketch()
-                                        .segment((top_offset.x, -max_chord), (top_offset.x, max_chord))
-                                        .segment((top_offset.x, max_chord), (max_chord, max_chord))
-                                        .segment((max_chord, max_chord), (max_chord, -max_chord))
-                                        .close()
-                                        .assemble()
-                                        )
-
-            length = np.linalg.norm(np.array(list(top_offset.toTuple())))
-
-            ted_sketch_tip = _ted_sketch_tip.moved(Location(Vector(0, 0, length)))
-            wing_sketch_tip = _wing_sketch_tip.moved(Location(Vector(0, 0, length)))
-            pass
-        elif ted.suspension_type == "top":
-            top, bottom = wing_config.get_points_on_surface(segment, ted.rel_chord_root, 0, "root_airfoil")
-            top_t, bottom_t = wing_config.get_points_on_surface(segment, ted.rel_chord_tip, 1.0, "root_airfoil")
-
-            top_offset = top_t - top
-            root_radius = abs((bottom - top).y)
-            tip_radius = abs((bottom_t - top_t).y)
-
-            ted_sketch: Sketch = (Sketch()
-                                  .segment((max_chord, -top.y), (max_chord, -3 * max_chord), 'help')
-                                  .arc((0, -top.y), root_radius, 180 - ted.negative_deflection_deg,
-                                       -(90 - ted.negative_deflection_deg), tag="arc")
-                                  .segmentToEdge(-(270 - ted.negative_deflection_deg + 90), 'help', 'diag')
-                                  .segment((0, -top.y), (0, -top.y + 2 * ted.hinge_spacing), 'edge')
-                                  .segmentToEdge('arc', 0.0, 'edge', 1.0)
-                                  # .segmentToEdge('arc', 0.0, (0, -top.y))
-                                  .segment((0, -top.y), (max_chord, -top.y), 'top')
-                                  .segmentToEdge('diag', 1.0, 'top', 1.0)
-                                  .select('help').delete()
-                                  .assemble()
-                                  )
-            _ted_sketch_tip: Sketch = (Sketch()
-                                       .segment((max_chord, -top_t.y), (max_chord, -3 * max_chord), 'help')
-                                       .arc((top_offset.x, -top_t.y), tip_radius, 180 - ted.negative_deflection_deg,
-                                            -(90 - ted.negative_deflection_deg), "arc")
-                                       .segmentToEdge(-(270 - ted.negative_deflection_deg + 90), 'help', 'diag')
-                                       .segment((top_offset.x, -top_t.y),
-                                                (top_offset.x, -top_t.y + 2 * ted.hinge_spacing), 'edge')
-                                       .segmentToEdge('arc', 0.0, 'edge', 1.0)
-                                       # .segmentToEdge('arc', 0.0, (top_offset.x, -top_t.y))
-                                       .segment((top_offset.x, -top_t.y), (max_chord, -top_t.y), 'top')
-                                       .segmentToEdge('diag', 1.0, 'top', 1.0)
-                                       .select('help').delete()
-                                       .assemble()
-                                       )
-
-            wing_sketch: Sketch = (Sketch()
-                                   .segment((max_chord, -top.y), (max_chord, top.y), 'help')
-                                   .arc((0., -top.y), root_radius + ted.hinge_spacing, 180,
-                                        -(90 - ted.negative_deflection_deg), 'arc')
-                                   .segmentToEdge(-(270 - ted.negative_deflection_deg + 90), 'help', 'diag')
-                                   .select('help').delete()
-                                   .segmentToEdge('arc', 0.0, (-ted.hinge_spacing, -top.y), 'diag2')
-                                   .segment((-ted.hinge_spacing, -top.y), (-ted.hinge_spacing, -max_chord))
-                                   .segment((-ted.hinge_spacing, -max_chord), (max_chord, -max_chord))
-                                   .segmentToEdge(90., 'diag')
-                                   .assemble()
-                                   )
-            _wing_sketch_tip: Sketch = (Sketch()
-                                        .segment((max_chord, -top_t.y), (max_chord, top.y), 'help')
-                                        .arc((top_offset.x, -top_t.y), tip_radius + ted.hinge_spacing, 180,
-                                             -(90 - ted.negative_deflection_deg), 'arc')
-                                        .segmentToEdge(-(270 - ted.negative_deflection_deg + 90), 'help', 'diag')
-                                        .select('help').delete()
-                                        .segmentToEdge('arc', 0.0, (-ted.hinge_spacing + top_offset.x, -top_t.y),
-                                                       'diag2')
-                                        .segment((-ted.hinge_spacing + top_offset.x, -top_t.y),
-                                                 (-ted.hinge_spacing + top_offset.x, -max_chord))
-                                        .segment((-ted.hinge_spacing + top_offset.x, -max_chord),
-                                                 (max_chord, -max_chord))
-                                        .segmentToEdge(90., 'diag')
-                                        .assemble()
-                                        )
-            length = np.linalg.norm(np.array(list(top_offset.toTuple())))
-
-            ted_sketch_tip = _ted_sketch_tip.moved(Location(Vector(0, 0, length)))
-            wing_sketch_tip = _wing_sketch_tip.moved(Location(Vector(0, 0, length)))
-            pass
-        else:
-            pass
-        return ted_sketch, ted_sketch_tip, wing_sketch, wing_sketch_tip
 
     def _create_basic_root_segment_shapes(self, wing_config: WingConfiguration, segment: int = 0):
         right_wing_pwt_offset: Workplane = (
@@ -542,7 +389,9 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 tip_dihedral=wing_config.segments[segment].tip_dihedral,
                 tip_incidence=wing_config.segments[segment].tip_incidence,
                 tip_airfoil=wing_config.segments[segment].tip_airfoil,
-                offset=self.printer_wall_thickness))
+                offset=self.printer_wall_thickness,
+                number_interpolation_points=wing_config.segments[0].number_interpolation_points
+            ))
         right_wing_2xpwt_offset: Workplane = (
             Workplane('XZ')
             .wing_root_segment(
@@ -556,7 +405,9 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 tip_dihedral=wing_config.segments[segment].tip_dihedral,
                 tip_incidence=wing_config.segments[segment].tip_incidence,
                 tip_airfoil=wing_config.segments[segment].tip_airfoil,
-                offset=2.0 * self.printer_wall_thickness))
+                offset=2.0 * self.printer_wall_thickness,
+                number_interpolation_points=wing_config.segments[0].number_interpolation_points
+            ))
         right_wing: Workplane = (
             Workplane('XZ')
             .wing_root_segment(
@@ -570,7 +421,9 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 tip_dihedral=wing_config.segments[segment].tip_dihedral,
                 tip_incidence=wing_config.segments[segment].tip_incidence,
                 tip_airfoil=wing_config.segments[segment].tip_airfoil,
-                offset=0.0))
+                offset=0.0,
+                number_interpolation_points=wing_config.segments[0].number_interpolation_points
+            ))
         return right_wing, right_wing_2xpwt_offset, right_wing_pwt_offset
 
     def _create_basic_wing_shapes(self, _current, _current_2xpwt_offset, _current_pwt_offset, segment_config):
@@ -581,7 +434,8 @@ class VaseModeWingCreator(AbstractShapeCreator):
             tip_dihedral=segment_config.tip_dihedral,
             tip_incidence=segment_config.tip_incidence,
             tip_airfoil=segment_config.tip_airfoil,
-            offset=self.printer_wall_thickness)
+            offset=self.printer_wall_thickness,
+            number_interpolation_points=segment_config.number_interpolation_points)
         current_2xpwt_offset = _current_2xpwt_offset.wing_segment(
             length=segment_config.length,
             sweep=segment_config.sweep,
@@ -589,7 +443,8 @@ class VaseModeWingCreator(AbstractShapeCreator):
             tip_dihedral=segment_config.tip_dihedral,
             tip_incidence=segment_config.tip_incidence,
             tip_airfoil=segment_config.tip_airfoil,
-            offset=2.0 * self.printer_wall_thickness)
+            offset=2.0 * self.printer_wall_thickness,
+            number_interpolation_points=segment_config.number_interpolation_points)
         current = _current.wing_segment(
             length=segment_config.length,
             sweep=segment_config.sweep,
@@ -597,7 +452,8 @@ class VaseModeWingCreator(AbstractShapeCreator):
             tip_dihedral=segment_config.tip_dihedral,
             tip_incidence=segment_config.tip_incidence,
             tip_airfoil=segment_config.tip_airfoil,
-            offset=0.0)
+            offset=0.0,
+            number_interpolation_points=segment_config.number_interpolation_points)
         return current, current_2xpwt_offset, current_pwt_offset
 
     def _create_spare_shape(self, current: Workplane, segment: int, wing_config: WingConfiguration,

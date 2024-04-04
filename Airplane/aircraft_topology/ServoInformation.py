@@ -40,7 +40,7 @@ class ServoInformation(ComponentInformation):
 
 from typing import TypeVar
 
-from cadquery import Sketch, Workplane
+from cadquery import Sketch, Workplane, Plane
 
 T = TypeVar("T", bound="Servo")
 
@@ -200,7 +200,7 @@ class Servo:
                  )
         return mount
 
-    def create_servo_cover_for_wing(self: T, printer_wall_thickness: float, offset: float) -> Workplane:
+    def create_servo_cover_for_wing(self: T, printer_wall_thickness: float, offset: float, in_plane:Plane = None) -> Workplane:
         width_left = self.leading_length + self.latch_length + offset
         width_right = self.trailing_length + self.latch_length + offset
         height_down = self.height + offset
@@ -213,10 +213,11 @@ class Servo:
                           .close()
                           .assemble()
                           )
-        cover = (Workplane()
-                 .placeSketch(cover_outlines).extrude(until=printer_wall_thickness * 15)
+        wp = Workplane(inPlane=in_plane, origin=(0,0,0)) if in_plane is not None else Workplane()
+        cover = (wp
+                 .placeSketch(cover_outlines).extrude(until=printer_wall_thickness * 10)
                  .faces("<Z").workplane(invert=True)
-                 .placeSketch(cover_outlines).extrude(until=-printer_wall_thickness * 15)
+                 .placeSketch(cover_outlines).extrude(until=-printer_wall_thickness * 10)
                  )
         return cover
 
