@@ -1,4 +1,6 @@
 import logging
+from pprint import pprint
+
 import math
 
 import numpy as np
@@ -26,7 +28,6 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
     def __init__(self, creator_id: str, wing_index: Union[str, int], printer_wall_thickness: float,
                  leading_edge_offset_factor: float, trailing_edge_offset_factor: float,
-                 spare_position_factor: float = 1. / 3.,
                  minimum_rib_angle: float = 45, spare_perpendicular: bool = False,
                  wing_config: dict[int, WingConfiguration] = None,
                  wing_side: Literal["LEFT", "RIGHT", "BOTH"] = "RIGHT", loglevel: int = logging.INFO):
@@ -49,7 +50,6 @@ class VaseModeWingCreator(AbstractShapeCreator):
         """
         self.printer_wall_thickness: float = printer_wall_thickness
         self.spare_perpendicular: bool = spare_perpendicular
-        self.spare_position_factor: float = spare_position_factor
         self.leading_edge_offset_factor: float = leading_edge_offset_factor
         self.trailing_edge_offset_factor: float = trailing_edge_offset_factor
         self.minimum_rib_angle: float = minimum_rib_angle
@@ -123,7 +123,8 @@ class VaseModeWingCreator(AbstractShapeCreator):
             current, current_2xpwt_offset, current_pwt_offset = self._create_basic_wing_shapes(current,
                                                                                                current_2xpwt_offset,
                                                                                                current_pwt_offset,
-                                                                                               segment_config)
+                                                                                               wing_config,
+                                                                                               segment)
 
             current_hull = Workplane(current.vals()[-1].cut(current_2xpwt_offset.vals()[-1]))
 
@@ -375,7 +376,10 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
         return current_hull, raw_ribs, ted_shape
 
-    def _create_basic_root_segment_shapes(self, wing_config: WingConfiguration, segment: int = 0):
+    def _create_basic_root_segment_shapes(self, wing_config: WingConfiguration):
+        segment: int = 0
+        root_plane = wing_config.get_wing_workplane(segment).plane.rotated((90,0,0))
+        tip_plane = wing_config.get_wing_workplane(segment+1).plane.rotated((90,0,0))
         right_wing_pwt_offset: Workplane = (
             Workplane('XZ')
             .wing_root_segment(
@@ -390,8 +394,11 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 tip_incidence=wing_config.segments[segment].tip_incidence,
                 tip_airfoil=wing_config.segments[segment].tip_airfoil,
                 offset=self.printer_wall_thickness,
-                number_interpolation_points=wing_config.segments[0].number_interpolation_points
+                number_interpolation_points=wing_config.segments[0].number_interpolation_points,
+                root_plane=root_plane,
+                tip_plane=tip_plane
             ))
+
         right_wing_2xpwt_offset: Workplane = (
             Workplane('XZ')
             .wing_root_segment(
@@ -406,7 +413,9 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 tip_incidence=wing_config.segments[segment].tip_incidence,
                 tip_airfoil=wing_config.segments[segment].tip_airfoil,
                 offset=2.0 * self.printer_wall_thickness,
-                number_interpolation_points=wing_config.segments[0].number_interpolation_points
+                number_interpolation_points=wing_config.segments[0].number_interpolation_points,
+                root_plane=root_plane,
+                tip_plane=tip_plane
             ))
         right_wing: Workplane = (
             Workplane('XZ')
@@ -422,11 +431,21 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 tip_incidence=wing_config.segments[segment].tip_incidence,
                 tip_airfoil=wing_config.segments[segment].tip_airfoil,
                 offset=0.0,
-                number_interpolation_points=wing_config.segments[0].number_interpolation_points
+                number_interpolation_points=wing_config.segments[0].number_interpolation_points,
+                root_plane=root_plane,
+                tip_plane=tip_plane
             ))
         return right_wing, right_wing_2xpwt_offset, right_wing_pwt_offset
 
-    def _create_basic_wing_shapes(self, _current, _current_2xpwt_offset, _current_pwt_offset, segment_config):
+    def _create_basic_wing_shapes(self, _current: Workplane,
+                                  _current_2xpwt_offset: Workplane,
+                                  _current_pwt_offset: Workplane,
+                                  wing_config:WingConfiguration,
+                                  segment: int):
+        segment_config = wing_config.segments[segment]
+        root_plane = wing_config.get_wing_workplane(segment).plane.rotated((90,0,0))
+        tip_plane = wing_config.get_wing_workplane(segment+1).plane.rotated((90,0,0))
+
         current_pwt_offset = _current_pwt_offset.wing_segment(
             length=segment_config.length,
             sweep=segment_config.sweep,
@@ -435,7 +454,10 @@ class VaseModeWingCreator(AbstractShapeCreator):
             tip_incidence=segment_config.tip_incidence,
             tip_airfoil=segment_config.tip_airfoil,
             offset=self.printer_wall_thickness,
-            number_interpolation_points=segment_config.number_interpolation_points)
+            number_interpolation_points=segment_config.number_interpolation_points,
+            root_plane=root_plane,
+            tip_plane=tip_plane
+        )
         current_2xpwt_offset = _current_2xpwt_offset.wing_segment(
             length=segment_config.length,
             sweep=segment_config.sweep,
@@ -444,7 +466,9 @@ class VaseModeWingCreator(AbstractShapeCreator):
             tip_incidence=segment_config.tip_incidence,
             tip_airfoil=segment_config.tip_airfoil,
             offset=2.0 * self.printer_wall_thickness,
-            number_interpolation_points=segment_config.number_interpolation_points)
+            number_interpolation_points=segment_config.number_interpolation_points,
+            root_plane=root_plane,
+            tip_plane=tip_plane)
         current = _current.wing_segment(
             length=segment_config.length,
             sweep=segment_config.sweep,
@@ -453,7 +477,9 @@ class VaseModeWingCreator(AbstractShapeCreator):
             tip_incidence=segment_config.tip_incidence,
             tip_airfoil=segment_config.tip_airfoil,
             offset=0.0,
-            number_interpolation_points=segment_config.number_interpolation_points)
+            number_interpolation_points=segment_config.number_interpolation_points,
+            root_plane=root_plane,
+            tip_plane=tip_plane)
         return current, current_2xpwt_offset, current_pwt_offset
 
     def _create_spare_shape(self, current: Workplane, segment: int, wing_config: WingConfiguration,
@@ -470,28 +496,13 @@ class VaseModeWingCreator(AbstractShapeCreator):
         spare_sketch = VaseModeWingCreator._construct_spare_sketch(printer_wall_thickness=self.printer_wall_thickness,
                                                                    spare_support_dimension_width=spare_support_dimension_width,
                                                                    spare_support_dimension_height=spare_support_dimension_height)
-        # calc extrude direction
-        if spare_vector is None:
-            wing_wp = wing_config.get_wing_workplane(segment)
-            diff = 0.0
-            if segment > 0:
-                diff = ((wing_config.segments[segment - 1].tip_chord - wing_config.segments[segment].tip_chord)
-                        * self.spare_position_factor)
-            rotation = degrees(atan2(wing_config.segments[segment].sweep - diff, wing_config.segments[segment].length))
-            origin = wing_wp.plane.origin + Vector(
-                (wing_config.segments[segment].root_chord * self.spare_position_factor, 0, 0))
-            xDir = wing_wp.plane.xDir
-            normal = wing_wp.plane.yDir
-            spare_plane = (Plane(origin=origin, xDir=xDir, normal=normal)
-                           .rotated((0.0, rotation, 0.0)))
-        else:
-            # the spare vector defines a vector the spare should follow (normal of the spare_plane)
-            # the spare vector can be changed for segments or can be the same
-            wing_wp = wing_config.get_wing_workplane(segment)
-            xDir = wing_wp.plane.xDir
-            normal = spare_vector.normalized()
-            spare_plane = Plane(origin=spare_vector_origin, xDir=xDir, normal=normal)
-            pass
+
+        # the spare vector defines a vector the spare should follow (normal of the spare_plane)
+        # the spare vector can be changed for segments or can be the same
+        wing_wp = wing_config.get_wing_workplane(segment)
+        xDir = wing_wp.plane.xDir
+        normal = spare_vector.normalized()
+        spare_plane = Plane(origin=spare_vector_origin, xDir=xDir, normal=normal)
 
         extrude_length = wing_config.segments[segment].length * 10 if spare_length is None else spare_length
         # extrude and intersect
@@ -504,6 +515,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
     def _create_ribs_shape(self, current, segment, wing_config, leading_edge_start, trailing_edge_start,
                            start_upper_part, spare_idx: int = 0):
         ted = wing_config.segments[segment].trailing_edge_device
+        spare_position_factor = wing_config.segments[segment].spare_list[0].spare_position_factor
         root_chord = wing_config.segments[segment].root_chord
         teof = 0.0
         if ted is not None:
@@ -516,14 +528,13 @@ class VaseModeWingCreator(AbstractShapeCreator):
             if teof < self.trailing_edge_offset_factor * root_chord else teof
 
         cutout_face, leading_edge_start, trailing_edge_start, lower_part, spare_vector_origin = (
-            VaseModeWingCreator._rib_cutout(
-                segment=segment, wing_config=wing_config, printer_wall_thickness=self.printer_wall_thickness,
-                leading_edge_offset=self.leading_edge_offset_factor * root_chord,
-                trailing_edge_offset=trailing_edge_offset,
-                leading_edge_start=leading_edge_start, trailing_edge_start=trailing_edge_start,
-                start_upper_part=start_upper_part, minimum_rib_angle=self.minimum_rib_angle,
-                spare_perpendicular=self.spare_perpendicular, spare_position_factor=self.spare_position_factor,
-                spare_idx=spare_idx))
+            VaseModeWingCreator._rib_cutout(segment=segment, wing_config=wing_config,
+                                            printer_wall_thickness=self.printer_wall_thickness,
+                                            leading_edge_offset=self.leading_edge_offset_factor * root_chord,
+                                            trailing_edge_offset=trailing_edge_offset,
+                                            leading_edge_start=leading_edge_start,
+                                            trailing_edge_start=trailing_edge_start, start_upper_part=start_upper_part,
+                                            minimum_rib_angle=self.minimum_rib_angle, spare_idx=spare_idx))
         cutout_face.assemble()
         try:
             raw_ribs = (
@@ -539,10 +550,9 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
     @staticmethod
     def _rib_cutout(segment: int, wing_config: WingConfiguration, printer_wall_thickness: float,
-                    leading_edge_offset: float,
-                    trailing_edge_offset: float, leading_edge_start: float = None, trailing_edge_start: float = None,
-                    start_upper_part: bool = False, minimum_rib_angle: float = 45, spare_perpendicular: bool = False,
-                    spare_position_factor: float = 1. / 3., spare_idx: int = 0) -> Tuple[Sketch, float, float, bool, Vector]:
+                    leading_edge_offset: float, trailing_edge_offset: float, leading_edge_start: float = None,
+                    trailing_edge_start: float = None, start_upper_part: bool = False, minimum_rib_angle: float = 45,
+                    spare_idx: int = 0) -> Tuple[Sketch, float, float, bool, Vector]:
         """
         Constructs a set of hourglass like structures in between the nose and the tail part of the wing.
 
@@ -555,9 +565,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
             VaseModeWingCreator._calculate_wing_construction_points(segment, printer_wall_thickness,
                                                                     leading_edge_offset, leading_edge_start,
                                                                     trailing_edge_offset, trailing_edge_start,
-                                                                    spare_position_factor,
-                                                                    wing_config, spare_perpendicular,
-                                                                    spare_idx=spare_idx)
+                                                                    wing_config, spare_idx=spare_idx)
         )
 
         # Drawing the offset outlines in the sketch.
@@ -705,11 +713,11 @@ class VaseModeWingCreator(AbstractShapeCreator):
     @staticmethod
     def _calculate_wing_construction_points(segment: int, printer_wall_thickness: float, leading_edge_offset: float,
                                             leading_edge_start: float, trailing_edge_offset: float,
-                                            trailing_edge_start: float, spare_position_factor: float,
-                                            wing_config: WingConfiguration, spare_perpendicular: bool = False,
+                                            trailing_edge_start: float, wing_config: WingConfiguration,
                                             spare_idx: int = 0):
         spare_vector = wing_config.segments[segment].spare_list[spare_idx].spare_vector
         spare_vector_origin = wing_config.segments[segment].spare_list[spare_idx].spare_origin
+        spare_position_factor = wing_config.segments[segment].spare_list[spare_idx].spare_position_factor
         spare_support_dimension_width = wing_config.segments[segment].spare_list[
             spare_idx].spare_support_dimension_width
 
@@ -739,52 +747,28 @@ class VaseModeWingCreator(AbstractShapeCreator):
         spare_support_width = 0.5 * spare_support_dimension_width + 2 * printer_wall_thickness
 
         # Calculating the spare nose and tail positions from root to tip
-        if spare_vector is None:
-            spare_nose_root = (np.asarray((wing_config.segments[segment].root_chord, 0., 0.))
-                               * spare_position_factor
-                               - np.asarray((spare_support_width, 0., 0.)))
-            spare_tail_root = (np.asarray((wing_config.segments[segment].root_chord, 0., 0.))
-                               * spare_position_factor
-                               + np.asarray((spare_support_width, 0., 0.)))
-        else:
-            spare_nose_root = (np.asarray(spare_vector_origin.toTuple())
-                               - np.asarray((spare_support_width, 0., 0.)))
-            spare_tail_root = (np.asarray(spare_vector_origin.toTuple())
-                               + np.asarray((spare_support_width, 0., 0.)))
-            if segment > 0:
-                # origin is in global coordinates, but the sketch starts with the nose point as (0,0,0)
-                # so we need to shift along x by the sweep
-                sweep_sum = sum([ws.sweep for ws in wing_config.segments[0:segment]])
-                spare_nose_root = spare_nose_root - np.asarray((sweep_sum, 0., 0.))
-                spare_tail_root = spare_tail_root - np.asarray((sweep_sum, 0., 0.))
+        spare_nose_root = (np.asarray(spare_vector_origin.toTuple())
+                           - np.asarray((spare_support_width, 0., 0.)))
+        spare_tail_root = (np.asarray(spare_vector_origin.toTuple())
+                           + np.asarray((spare_support_width, 0., 0.)))
+        if segment > 0:
+            # origin is in global coordinates, but the sketch starts with the nose point as (0,0,0)
+            # so we need to shift along x by the sweep
+            sweep_sum = sum([ws.sweep for ws in wing_config.segments[0:segment]])
+            spare_nose_root = spare_nose_root - np.asarray((sweep_sum, 0., 0.))
+            spare_tail_root = spare_tail_root - np.asarray((sweep_sum, 0., 0.))
 
-            pass
-
-        _spare_vector_origin = None
-        if not spare_perpendicular and spare_vector is None:
-            spare_nose_tip = (tip_nose + np.asarray((1., 0., 0.)) * wing_config.segments[segment].tip_chord
-                              * spare_position_factor
-                              - np.asarray((1., 0., 0.)) * spare_support_dimension_width / 2
-                              - np.asarray((1., 0., 0.)) * printer_wall_thickness)
-            spare_tail_tip = (tip_nose + np.asarray((1., 0., 0.)) * wing_config.segments[segment].tip_chord
-                              * spare_position_factor
-                              + np.asarray((1., 0., 0.)) * spare_support_dimension_width / 2
-                              + np.asarray((1., 0., 0.)) * printer_wall_thickness)
-        elif not spare_perpendicular and spare_vector is not None:  # a spare vector is given
-            vec = np.asarray((spare_vector.x, spare_vector.y, spare_vector.z))
-            norm_vec = vec / np.linalg.norm(vec)
-            spare_nose_tip = spare_nose_root + norm_vec * wing_config.segments[segment].length
-            spare_tail_tip = spare_tail_root + norm_vec * wing_config.segments[segment].length
-            _spare_vector_origin = (spare_vector_origin
-                                    + Vector(tuple(norm_vec * wing_config.segments[segment].length))
-                                    - Vector((wing_config.segments[segment].sweep, 0., 0.))
-                                    )
-            _spare_vector_origin.y = 0
-        else:  # spare is perpendicular to x-axis (roll axis of the plane)
-            spare_nose_tip = (spare_nose_root
-                              + np.asarray((0., 1., 0.)) * wing_config.segments[segment].length)
-            spare_tail_tip = (spare_tail_root
-                              + np.asarray((0., 1., 0.)) * wing_config.segments[segment].length)
+        # we have to remove the z part, because we would loose some length to the z part,
+        # which leads to an ugly offset in the segments
+        vec = np.asarray((spare_vector.x, spare_vector.y, 0.0))
+        norm_vec = vec / np.linalg.norm(vec)
+        spare_nose_tip = spare_nose_root + norm_vec * wing_config.segments[segment].length
+        spare_tail_tip = spare_tail_root + norm_vec * wing_config.segments[segment].length
+        _spare_vector_origin = (spare_vector_origin
+                                + Vector(tuple(norm_vec * wing_config.segments[segment].length))
+                                - Vector((wing_config.segments[segment].sweep, 0., 0.))
+                                )
+        _spare_vector_origin.y = 0
 
         return (root_nose_offset, root_nose_start,
                 root_tail_offset, root_tail_start,

@@ -18,6 +18,7 @@ from cadquery import Assembly
 class Progress:
     def update(self):
         print(".", end="", flush=True)
+
 def get_json_model(*cad_objs, names=None, colors=None, alphas=None, **kwargs) -> list:
     part_group = to_assembly(
         *cad_objs,
@@ -86,7 +87,7 @@ class CQServerConnector:
         r = requests.post(url=self.url, json=data, timeout=30)
         # extracting response text 
         resp = r.text
-        logging.debug(f"Render Response:{resp}")
+        #logging.debug(f"Render Response:{resp}")
         return r
 
 

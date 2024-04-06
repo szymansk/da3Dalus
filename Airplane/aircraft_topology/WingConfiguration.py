@@ -12,7 +12,7 @@ from scipy.interpolate import interp1d
 from Airplane.aircraft_topology.ServoInformation import Servo
 
 T = TypeVar("T", bound="WingConfiguration")
-SpareMode = Literal["normal", "follow"]
+SpareMode = Literal["normal", "follow", "standard", "standard_backward"]
 
 class TrailingEdgeDevice:
 
@@ -48,20 +48,30 @@ class TrailingEdgeDevice:
         self.suspension_type = hinge_type
         pass
 
+    def __repr__(self):
+        from pprint import pformat
+        return pformat(vars(self), indent=4, width=1)
+
 class Spare:
     def __init__(self,
                  spare_support_dimension_width:float,
                  spare_support_dimension_height:float,
+                 spare_position_factor:float = None,
                  spare_length: float = None,
                  spare_vector: Tuple[float,float,float]= None,
                  spare_origin: Tuple[float,float,float] = None,
-                 spare_mode: SpareMode = "normal"):
+                 spare_mode: SpareMode = "standard"):
         self.spare_support_dimension_width = spare_support_dimension_width
         self.spare_support_dimension_height = spare_support_dimension_height
+        self.spare_position_factor: float = spare_position_factor
         self.spare_length = spare_length
         self.spare_mode = spare_mode
         self.spare_vector = Vector(spare_vector) if spare_vector is not None else None
         self.spare_origin = Vector(spare_origin) if spare_origin is not None else None
+
+    def __repr__(self):
+        from pprint import pformat
+        return pformat(vars(self), indent=4, width=1)
 
 class WingSegment:
     def __init__(self, root_airfoil: str,
@@ -95,6 +105,10 @@ class WingSegment:
         self.trailing_edge_device = trailing_edge_device
         self.number_interpolation_points = number_interpolation_points
 
+    def __repr__(self):
+        from pprint import pformat
+        return pformat(vars(self), indent=4, width=1)
+
 class WingConfiguration:
     """
     This class holds the definition of the wing defined by connected segments. The first segment
@@ -119,26 +133,43 @@ class WingConfiguration:
         self.nose_pnt: tuple[float, float, float] = nose_pnt
         if tip_airfoil is None:
             tip_airfoil = root_airfoil
+
         root_segment = WingSegment(root_airfoil, length, root_chord, tip_chord,
                                    sweep, root_dihedral, root_incidence, root_trailing_edge,
                                    tip_airfoil, tip_dihedral, tip_incidence, tip_trailing_edge,
                                    spare_list=spare_list, trailing_edge_device=trailing_edge_device,
                                    number_interpolation_points=number_interpolation_points)
+
         self.segments: list[WingSegment] = [root_segment]
+        self.wing_workplanes: dict[int, Workplane] = {}
+        self.wing_workplanes[0] = self.get_wing_workplane(0)
 
-        # spare vector is perpendicular
+        self.scaled_point_list: dict[str, list[tuple[float, float]]] = {}
+
         for spare in self.segments[0].spare_list:
-            if spare.spare_vector is None:
-                spare.spare_vector = self.get_wing_workplane(0).plane.yDir
-            else:
-                # use spare_vector as offset to the perpendicular vector
-                spare.spare_vector = spare.spare_vector.normalized()
+            self._set_standard_spare_origin_vector(0, spare)
 
-            if spare.spare_origin is None:
-                spare.spare_origin = Vector(self.segments[0].root_chord/3, 0., 0.)
-            else:
-                spare.spare_origin = spare.spare_origin
-            pass
+    def _get_standard_spare_origin_and_vector(self, start_segment, end_segment, spare_position_factor):
+        if start_segment > end_segment:
+            raise ValueError(f"start_segment {start_segment} cannot be greater than end_segment {end_segment}")
+
+        tip_idx = end_segment + 1
+        root_plane = self.get_wing_workplane(start_segment).plane
+        tip_plane = self.get_wing_workplane(tip_idx).plane
+        # the spare starts at the chord*spare_position_factor
+        root_chamber = self.get_chamber_y_at_rel_chord(segment=start_segment,
+                                                       relative_chord=spare_position_factor)
+        tip_chamber = self.get_chamber_y_at_rel_chord(segment=end_segment,
+                                                      relative_chord=spare_position_factor,
+                                                      relative_length=1.)
+        spare_origin = (root_plane.origin
+                        + root_plane.xDir * (self.segments[start_segment].root_chord * spare_position_factor)
+                        + root_plane.zDir * root_chamber)
+        spare_end = (tip_plane.origin
+                     + tip_plane.xDir * (self.segments[end_segment].tip_chord * spare_position_factor)
+                     + tip_plane.zDir * tip_chamber)
+        spare_vector = (spare_end - spare_origin).normalized()
+        return spare_vector, spare_origin
 
     def add_segment(self: T,
                     length: float,
@@ -164,28 +195,77 @@ class WingConfiguration:
 
         segment_number = len(self.segments) - 1
 
-        for spare_idx in range(len(self.segments[segment_number].spare_list)):
-            if self.segments[segment_number].spare_list[spare_idx].spare_mode == "follow":
-                # follows the previous spare vector
-                self.segments[segment_number].spare_list[spare_idx].spare_vector = self.segments[segment_number - 1].spare_list[spare_idx].spare_vector
-                self.segments[segment_number].spare_list[spare_idx].spare_origin = (self.segments[segment_number - 1].spare_list[spare_idx].spare_origin
-                                                              + (self.segments[segment_number - 1].spare_list[spare_idx].spare_vector
-                                                                 * self.segments[segment_number - 1].length))
+        self.wing_workplanes[segment_number] = self.get_wing_workplane(segment_number)
 
-            elif self.segments[segment_number].spare_list[spare_idx].spare_mode == "normal":
+        for spare_idx in range(len(self.segments[segment_number].spare_list)):
+            spare = self.segments[segment_number].spare_list[spare_idx]
+
+            if spare.spare_position_factor is None:
+                spare.spare_position_factor = 0.25
+
+            if spare.spare_mode == "follow":
+                # follows the previous spare vector
+                self._set_follow_spare_origin_vector(segment_number, spare, spare_idx)
+            elif spare.spare_mode == "standard_backward":
+                start_segment = 0
+                for seg_num in reversed(range(segment_number)):
+                    if len(self.segments[seg_num].spare_list) > spare_idx:
+                        if self.segments[seg_num].spare_list[spare_idx].spare_mode != "follow":
+                            found_spare = self.segments[seg_num].spare_list[spare_idx]
+                            start_segment = seg_num
+                            break
+
+                found_spare.spare_vector, found_spare.spare_origin = self._get_standard_spare_origin_and_vector(
+                    start_segment=start_segment,
+                    end_segment=segment_number,
+                    spare_position_factor=found_spare.spare_position_factor)
+
+                for seg_num in range(start_segment+1, segment_number+1):
+                    follows_spare = self.segments[seg_num].spare_list[spare_idx]
+                    self._set_follow_spare_origin_vector(seg_num, follows_spare, spare_idx)
+
+                pass
+
+            elif spare.spare_mode == "standard":
+                self._set_standard_spare_origin_vector(segment_number, spare)
+            elif spare.spare_mode == "normal":
                 seg_plane = self.get_wing_workplane(segment_number).plane
-                if self.segments[segment_number].spare_list[spare_idx].spare_vector is None:
-                    self.segments[segment_number].spare_list[spare_idx].spare_vector = seg_plane.yDir
+                if spare.spare_vector is None:
+                    spare.spare_vector = seg_plane.yDir
 
                 else:
                     # use spare_vector as offset to the perpendicular vector
-                    self.segments[segment_number].spare_list[spare_idx].spare_vector = self.segments[segment_number].spare_list[spare_idx].spare_vector.normalized()
+                    spare.spare_vector = spare.spare_vector.normalized()
 
-                if self.segments[segment_number].spare_list[spare_idx].spare_origin is None:
-                    self.segments[segment_number].spare_list[spare_idx].spare_origin = seg_plane.origin + Vector(self.segments[segment_number].root_chord / 3, 0., 0.)
+                if spare.spare_origin is None:
+                    spare.spare_origin = seg_plane.origin + seg_plane.xDir * (self.segments[segment_number].root_chord*spare.spare_position_factor)
                 else:
-                    self.segments[segment_number].spare_list[spare_idx].spare_origin = seg_plane.origin + self.segments[segment_number].spare_list[spare_idx].spare_origin
+                    spare.spare_origin = seg_plane.origin + spare.spare_origin
                 pass
+
+    def _set_follow_spare_origin_vector(self, segment_number, spare, spare_idx):
+        spare.spare_vector = self.segments[segment_number - 1].spare_list[spare_idx].spare_vector
+        spare.spare_origin = (self.segments[segment_number - 1].spare_list[spare_idx].spare_origin
+                              + (self.segments[segment_number - 1].spare_list[spare_idx].spare_vector
+                                 * self.segments[segment_number - 1].length))
+
+    def _set_standard_spare_origin_vector(self, segment_number, spare):
+        if spare.spare_vector is None and spare.spare_position_factor is not None:
+            # make spare vector following the spare_position_factor
+            # that is centered inside of the airfoil at the chamber (middle of surfaces)
+            spare.spare_vector, _ = self._get_standard_spare_origin_and_vector(start_segment=segment_number,
+                                                                               end_segment=segment_number,
+                                                                               spare_position_factor=spare.spare_position_factor)
+        elif spare.spare_vector is None:
+            # make a perpendicular spare
+            spare.spare_vector = self.get_wing_workplane(segment_number).plane.yDir
+        else:
+            # use spare_vector
+            spare.spare_vector = spare.spare_vector.normalized()
+        if spare.spare_origin is None:
+            _, spare.spare_origin = self._get_standard_spare_origin_and_vector(start_segment=segment_number,
+                                                                               end_segment=segment_number,
+                                                                               spare_position_factor=spare.spare_position_factor)
 
     def get_wing_workplane(self: T, segment: int = 0) -> Workplane:
         """
@@ -196,6 +276,10 @@ class WingConfiguration:
         Remark: an incident angle at the wing_tip cannot be covered with this
         workplane.
         """
+
+        if segment in self.wing_workplanes.keys():
+            return self.wing_workplanes[segment]
+
         seg = 0
         all_trans = [
             [1, 0, 0, 0],
@@ -213,15 +297,15 @@ class WingConfiguration:
             r_tip_dihedral = self._create_homogeneous_rotation_matrix('x', self.segments[seg].tip_dihedral)
             r_tip_incidence = self._create_homogeneous_rotation_matrix('y', self.segments[seg].tip_incidence)
 
-            all_trans = np.matmul(r_tip_dihedral, all_trans)
             all_trans = np.matmul(r_tip_incidence, all_trans)
+            all_trans = np.matmul(r_tip_dihedral, all_trans)
             all_trans = np.matmul(t_sweep_length, all_trans)
 
         r_root_incidence = self._create_homogeneous_rotation_matrix('y', self.segments[seg].root_incidence)
         r_root_dihedral = self._create_homogeneous_rotation_matrix('x', self.segments[seg].root_dihedral)
 
-        all_trans = np.matmul(r_root_dihedral, all_trans)
         all_trans = np.matmul(r_root_incidence, all_trans)
+        all_trans = np.matmul(r_root_dihedral, all_trans)
 
         normal = all_trans.transpose()[2]
         origin = all_trans.transpose()[3]
@@ -231,9 +315,18 @@ class WingConfiguration:
 
         wp_plane = (Workplane(inPlane=plane, origin=origin))
 
+        self.wing_workplanes[segment] = wp_plane
         return wp_plane
 
     def get_airfoil_points(self: T, segment: int, isRoot: bool = False) -> list[tuple[float, float]]:
+        """
+        Returns the airfoils points as list
+        """
+        # lazy loading
+        key = f"{segment}.{isRoot}"
+        if key in self.scaled_point_list:
+            return self.scaled_point_list[key]
+
         if isRoot:
             selig_file = self.segments[segment].root_airfoil
             chord = self.segments[segment].root_chord
@@ -253,10 +346,16 @@ class WingConfiguration:
                 tok_x = float(tokens[0])
                 point_list.append((tok_x, tok_y))
 
-        scaled_point_list: list[tuple[float, float]] = [(p[0] * chord, p[1] * chord) for p in point_list]
+        self.scaled_point_list[key] = [(p[0] * chord, p[1] * chord) for p in point_list]
         file.close()
 
-        return scaled_point_list
+        return self.scaled_point_list[key]
+
+    def get_chamber_y_at_rel_chord(self: T, segment: int, relative_chord:float, relative_length: float = 0.) -> float:
+        upper,  lower = self.get_points_on_surface(segment, relative_chord=relative_chord, relative_length=relative_length)
+        up_ar = np.asarray(upper.toTuple())
+        low_ar  = np.asarray(lower.toTuple())
+        return np.linalg.norm(up_ar - low_ar)/2
 
     def get_trailing_edge_device_planes(self: T, segment: int) -> Tuple[Plane, Plane]:
         seg = self.segments[segment]
@@ -287,7 +386,8 @@ class WingConfiguration:
         return matrix
 
     def get_points_on_surface(self: T, segment:int,
-                              relative_chord:float, relative_length: float,
+                              relative_chord:float,
+                              relative_length: float = 0.,
                               coordinate_system: Literal["world","wing","root_airfoil","tip_airfoil"]="world",
                               x_offset: float = .0,
                               z_offset: float = .0) -> Tuple[Vector, Vector]:
@@ -361,3 +461,7 @@ class WingConfiguration:
         # Interpoliere den y-Wert für den gegebenen x-Wert
         interpolated_y = interpolation_function(x)
         return x, interpolated_y
+
+    def __repr__(self):
+        from pprint import pformat
+        return pformat(vars(self), indent=4, width=1)

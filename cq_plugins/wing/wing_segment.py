@@ -4,7 +4,7 @@ import math
 from typing import Literal
 
 import cadquery as cq
-from cadquery import Workplane
+from cadquery import Workplane, Plane
 
 from cq_plugins.wing.wing_root_segment import wing_root_segment
 from cadquery.occ_impl.shapes import Wire, Solid, Location
@@ -12,22 +12,26 @@ from cadquery.occ_impl.shapes import Wire, Solid, Location
 def wing_segment(self: cq.Workplane, tip_airfoil: str, tip_chord: float, length: float,
                  sweep: float = 0, sweep_mode: Literal["distance", "angle"] = "distance",
                  tip_incidence: float = 0, tip_dihedral: float = 0, offset: float = 0,
-                 number_interpolation_points: int = None):
+                 number_interpolation_points: int = None,
+                      root_plane: Plane = None,
+                      tip_plane: Plane = None):
     airfoil_root: Workplane = self
     airfoil_root_wires: Wire = airfoil_root.vals()[-2]
     airfoil_root.ctx.pendingWires = [airfoil_root_wires]
-    root_plane = airfoil_root.plane
-    if sweep_mode == "distance":
-        tip_origin = root_plane.origin + root_plane.xDir * sweep
-    else:
-        e = length
-        b = e / math.cos(math.radians(sweep))
-        sweep_by_ang = math.sqrt(b * b - e * e)
-        tip_origin = root_plane.origin + root_plane.xDir * sweep_by_ang
+    if root_plane is None:
+        root_plane = airfoil_root.plane
 
-    tip_plane = (cq.Workplane(inPlane=root_plane).workplane(offset=-length, origin=tip_origin)
-                 .plane.rotated((tip_dihedral, 0, -tip_incidence)))
-    airfoil_tip = (cq.Workplane().copyWorkplane(cq.Workplane(tip_plane)).add(airfoil_root_wires).toPending()
+    if tip_plane is None:
+        if sweep_mode == "angle":
+            e = length
+            b = e / math.cos(math.radians(sweep))
+            sweep = math.sqrt(b * b - e * e)
+        tip_origin = root_plane.origin + root_plane.xDir * sweep
+
+        tip_plane = (cq.Workplane(inPlane=root_plane).workplane(offset=-length, origin=tip_origin)
+                     .plane.rotated((tip_dihedral, 0, -tip_incidence)))
+
+    airfoil_tip = (cq.Workplane(inPlane=tip_plane).add(airfoil_root_wires).toPending()
                    .airfoil(tip_airfoil, tip_chord, offset=offset, number_interpolation_points=number_interpolation_points).toPending())
     pending = airfoil_tip.ctx.pendingWires
     try:
