@@ -157,17 +157,18 @@ class WingConfiguration:
         root_plane = self.get_wing_workplane(start_segment).plane
         tip_plane = self.get_wing_workplane(tip_idx).plane
         # the spare starts at the chord*spare_position_factor
-        root_chamber = self.get_chamber_y_at_rel_chord(segment=start_segment,
+        root_chamber, diff_root = self.get_chamber_y_at_rel_chord(segment=start_segment,
                                                        relative_chord=spare_position_factor)
-        tip_chamber = self.get_chamber_y_at_rel_chord(segment=end_segment,
+
+        tip_chamber, diff_tip = self.get_chamber_y_at_rel_chord(segment=end_segment,
                                                       relative_chord=spare_position_factor,
                                                       relative_length=1.)
         spare_origin = (root_plane.origin
                         + root_plane.xDir * (self.segments[start_segment].root_chord * spare_position_factor)
-                        + root_plane.zDir * root_chamber)
+                        + root_plane.zDir * (root_chamber+diff_root))
         spare_end = (tip_plane.origin
                      + tip_plane.xDir * (self.segments[end_segment].tip_chord * spare_position_factor)
-                     + tip_plane.zDir * tip_chamber)
+                     + tip_plane.zDir * (tip_chamber+diff_tip))
         spare_vector = (spare_end - spare_origin).normalized()
         return spare_vector, spare_origin
 
@@ -351,11 +352,23 @@ class WingConfiguration:
 
         return self.scaled_point_list[key]
 
-    def get_chamber_y_at_rel_chord(self: T, segment: int, relative_chord:float, relative_length: float = 0.) -> float:
+    def get_chamber_y_at_rel_chord(self: T, segment: int, relative_chord:float, relative_length: float = 0.) -> Tuple[float,Vector]:
         upper,  lower = self.get_points_on_surface(segment, relative_chord=relative_chord, relative_length=relative_length)
         up_ar = np.asarray(upper.toTuple())
         low_ar  = np.asarray(lower.toTuple())
-        return np.linalg.norm(up_ar - low_ar)/2
+
+        root_plane = self.get_wing_workplane(segment).plane
+        tip_plane = self.get_wing_workplane(segment+1).plane
+
+        # calculate the offset from the lower surface to the chord
+        root_point = root_plane.origin + root_plane.xDir * (self.segments[segment].root_chord * relative_chord)
+        tip_point = tip_plane.origin + tip_plane.xDir * (self.segments[segment].tip_chord * relative_chord)
+        chord_point = root_point + (tip_point - root_point)*relative_length
+
+        chord_to_lower_surface = lower - chord_point
+        chord_to_lower_height = np.linalg.norm(np.asarray(chord_to_lower_surface.toTuple())) * np.sign(chord_to_lower_surface.z)
+
+        return np.linalg.norm(up_ar - low_ar)/2, chord_to_lower_height
 
     def get_trailing_edge_device_planes(self: T, segment: int) -> Tuple[Plane, Plane]:
         seg = self.segments[segment]
