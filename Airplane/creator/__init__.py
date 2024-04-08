@@ -14,9 +14,7 @@ from Airplane.creator.AddMultipleShapesCreator import AddMultipleShapesCreator
 from Airplane.creator.ComponentImporterCreator import ComponentImporterCreator
 from Airplane.creator.Cut2ShapesCreator import Cut2ShapesCreator
 from Airplane.creator.CutMultipleShapesCreator import CutMultipleShapesCreator
-from Airplane.creator.ExportTo3mfCreator import ExportTo3mfCreator
-from Airplane.creator.ExportToIgesCreator import ExportToIgesCreator
-from Airplane.creator.ExportToStepCreator import ExportToStepCreator
+from Airplane.creator.export.ExportToIgesCreator import ExportToIgesCreator
 from Airplane.creator.Fuse2ShapesCreator import Fuse2ShapesCreator
 from Airplane.creator.FuselageShellShapeCreator import FuselageShellShapeCreator
 from Airplane.creator.FuseMultipleShapesCreator import FuseMultipleShapesCreator

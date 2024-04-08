@@ -1,6 +1,6 @@
 {
     "successors": {
-        "vase_wing_2": {
+        "vase_wing": {
             "successors": {},
             "creator": {
                 "printer_wall_thickness": 0.42,
@@ -9,13 +9,28 @@
                 "trailing_edge_offset_factor": 0.17,
                 "minimum_rib_angle": 45,
                 "wing_side": "BOTH",
-                "wing_index": "main_wing_2",
+                "wing_index": "main_wing",
                 "loglevel": 10,
-                "creator_id": "vase_wing_2",
+                "creator_id": "vase_wing",
                 "$TYPE": "VaseModeWingCreator"
             },
             "loglevel": 50,
-            "creator_id": "vase_wing_2",
+            "creator_id": "vase_wing",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "RV-7-wing": {
+            "successors": {},
+            "creator": {
+                "file_path": "../exports",
+                "shapes_to_export": [
+                    "vase_wing"
+                ],
+                "loglevel": 20,
+                "creator_id": "RV-7-wing",
+                "$TYPE": "ExportToStepCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "RV-7-wing",
             "$TYPE": "ConstructionStepNode"
         }
     },

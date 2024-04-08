@@ -9,7 +9,7 @@ from Airplane.aircraft_topology.ComponentInformation import ComponentInformation
 from Airplane.aircraft_topology.ServoInformation import ServoInformation
 from Airplane.creator.ComponentImporterCreator import ComponentImporterCreator
 from Airplane.creator.Cut2ShapesCreator import Cut2ShapesCreator
-from Airplane.creator.ExportToStepCreator import ExportToStepCreator
+from Airplane.creator.export.ExportToStepCreator import ExportToStepCreator
 from Airplane.creator.Fuse2ShapesCreator import Fuse2ShapesCreator
 from Airplane.creator import EngineCoverAndMountPanelAndFuselageShapeCreator, StepImportCreator
 from Airplane.creator.EngineMountShapeCreator import EngineMountShapeCreator
