@@ -1,39 +1,47 @@
+import logging
+
 import math
 from typing import Literal
 
 import cadquery as cq
-from cadquery import Workplane
+from cadquery import Workplane, Plane
 
 from cq_plugins.wing.wing_root_segment import wing_root_segment
+from cadquery.occ_impl.shapes import Wire, Solid, Location
 
 def wing_segment(self: cq.Workplane, tip_airfoil: str, tip_chord: float, length: float,
                  sweep: float = 0, sweep_mode: Literal["distance", "angle"] = "distance",
-                 tip_incidence: float = 0, tip_dihedral: float = 0, offset: float = 0):
-    airfoil_root = self
-    airfoil_root.ctx.pendingWires = [self.vals()[1]]
-    root_plane = airfoil_root.plane
-    tip_origin = root_plane.origin
-    if sweep_mode == "distance":
-        tip_origin.x = tip_origin.x + sweep
-    else:
-        e = length
-        b = e / math.cos(math.radians(sweep))
-        sweep_by_ang = math.sqrt(b * b - e * e)
-        tip_origin.x = tip_origin.x + sweep_by_ang
+                 tip_incidence: float = 0, tip_dihedral: float = 0, offset: float = 0,
+                 number_interpolation_points: int = None,
+                      root_plane: Plane = None,
+                      tip_plane: Plane = None):
+    airfoil_root: Workplane = self
+    airfoil_root_wires: Wire = airfoil_root.vals()[-2]
+    airfoil_root.ctx.pendingWires = [airfoil_root_wires]
+    if root_plane is None:
+        root_plane = airfoil_root.plane
 
-    tip_plane = (cq.Workplane().copyWorkplane(airfoil_root).workplane(offset=-length, origin=tip_origin)
-                 .plane.rotated((tip_dihedral, 0, -tip_incidence)))
-    airfoil_tip = (cq.Workplane().copyWorkplane(cq.Workplane(tip_plane)).add(airfoil_root.vals()[1]).toPending()
-                   .airfoil(tip_airfoil, tip_chord, offset=offset))
+    if tip_plane is None:
+        if sweep_mode == "angle":
+            e = length
+            b = e / math.cos(math.radians(sweep))
+            sweep = math.sqrt(b * b - e * e)
+        tip_origin = root_plane.origin + root_plane.xDir * sweep
+
+        tip_plane = (cq.Workplane(inPlane=root_plane).workplane(offset=-length, origin=tip_origin)
+                     .plane.rotated((tip_dihedral, 0, -tip_incidence)))
+
+    airfoil_tip = (cq.Workplane(inPlane=tip_plane).add(airfoil_root_wires).toPending()
+                   .airfoil(tip_airfoil, tip_chord, offset=offset, number_interpolation_points=number_interpolation_points).toPending())
     pending = airfoil_tip.ctx.pendingWires
     try:
-        _wing = airfoil_tip.loft().union(airfoil_root.vals()[2])  # ruled=True --> airfoils must have same number of points
-        return _wing.newObject([tip_plane.location, airfoil_tip.val(), _wing.val()])
+        _wing = airfoil_tip.loft()#.union(airfoil_root_solid)  # ruled=True --> airfoils must have same number of points
+        return _wing.newObject([tip_plane, airfoil_tip.val(), _wing.val()])
     except:
         loft = cq.Solid.makeLoft(pending)
-        _wing = cq.Workplane(obj=loft).copyWorkplane(
-            airfoil_tip)  # ruled=True --> airfoils must have same number of points0
-        return _wing.newObject([tip_plane.location, airfoil_tip.val(), self.findSolid(), _wing.findSolid()])
+        _wing = (cq.Workplane(obj=loft)
+                    .copyWorkplane(airfoil_tip))  # ruled=True --> airfoils must have same number of points0
+        return _wing.newObject([tip_plane, airfoil_tip.val(), self.findSolid(), _wing.findSolid()])
 
 
 if __name__ == "__main__":

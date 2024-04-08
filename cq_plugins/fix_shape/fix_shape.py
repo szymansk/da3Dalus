@@ -1,7 +1,6 @@
 from OCP.ShapeFix import ShapeFix_Shape
 from cadquery import Workplane, Solid
 
-
 def fix_shape(self: Workplane) -> Workplane:
     fix_shape = ShapeFix_Shape(self.findSolid().wrapped)
     fix_shape.SetPrecision(1e-3)

@@ -235,15 +235,37 @@ def segmentToEdge(
     Construction of a segment between two edges.
 
     start_tag: start edge tag
-    r        : factor 0 - start point 1 - end point but accepts also multiples
+    r        : path parameter [0,1] 0 - start point 1 - end point but accepts also factors r > 1 or r < 0
     end_tag  : the finale edge to reach
-    s        : factor 0 - start point 1 - end point but accepts also multiples
+    s        : path parameter [0,1] 0 - start point 1 - end point but accepts also factors s > 1 or s < 0
     """
 
     seg1 = self._tags[start_tag][0]
     start_1 = tcast(Edge, seg1).startPoint()
     end_1 = tcast(Edge, seg1).endPoint()
     point_1 = (end_1-start_1)*r + start_1
+
+    seg2 = self._tags[end_tag][0]
+    start_2 = tcast(Edge, seg2).startPoint()
+    end_2 = tcast(Edge, seg2).endPoint()
+    point_2 = (end_2-start_2)*s + start_2
+
+    val = Edge.makeLine(point_1, point_2)
+    return self.edge(val, tag, forConstruction)
+
+@segmentToEdge.register
+def segmentToEdge(self: T, end_tag: str, s: Union[float, int], point: Point, tag: Optional[str] = None, forConstruction: bool = False) -> T:
+    """
+    Construction of a segment between the point and a point on an edge segment defined by end_tag and s as
+    the path parameter.
+
+    point    : start point
+    end_tag  : the finale edge to reach
+    s        : path parameter [0,1] 0 - start point 1 - end point but accepts also factors s > 1 or s < 0
+    point    : start point
+    """
+
+    point_1 = Vector(point)
 
     seg2 = self._tags[end_tag][0]
     start_2 = tcast(Edge, seg2).startPoint()

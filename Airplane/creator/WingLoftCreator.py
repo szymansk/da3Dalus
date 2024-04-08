@@ -8,7 +8,7 @@ from Airplane.aircraft_topology.WingConfiguration import WingConfiguration
 
 from cq_plugins.wing.wing_segment import wing_segment
 from cq_plugins.wing.wing_root_segment import wing_root_segment
-
+from cq_plugins.fix_shape.fix_shape import fix_shape
 
 class WingLoftCreator(AbstractShapeCreator):
     def __init__(self, creator_id: str,
@@ -44,20 +44,21 @@ class WingLoftCreator(AbstractShapeCreator):
                 tip_airfoil=wing_config.segments[0].tip_airfoil,
                 offset=self.offset))
 
+        current: Workplane = right_wing
         for segment_config in wing_config.segments[1:]:
-            right_wing: Workplane = (
-                right_wing.wing_segment(
-                    length=segment_config.length,
-                    sweep=segment_config.sweep,
-                    tip_chord=segment_config.tip_chord,
-                    tip_dihedral=segment_config.tip_dihedral,
-                    tip_incidence=segment_config.tip_incidence,
-                    tip_airfoil=segment_config.tip_airfoil,
-                    offset=self.offset))
+            current = current.wing_segment(
+                length=segment_config.length,
+                sweep=segment_config.sweep,
+                tip_chord=segment_config.tip_chord,
+                tip_dihedral=segment_config.tip_dihedral,
+                tip_incidence=segment_config.tip_incidence,
+                tip_airfoil=segment_config.tip_airfoil,
+                offset=self.offset)
+            right_wing.add(current)
 
-        bb_right = right_wing.findSolid().BoundingBox(tolerance=1e-3)
-        right_wing = right_wing.translate((0,-abs(bb_right.ymin)-1, 0))
-        right_wing = right_wing.fix_shape()
+        #bb_right = right_wing.findSolid().BoundingBox(tolerance=1e-3)
+        #right_wing = right_wing.translate((0,-abs(bb_right.ymin)-1, 0))
+        #right_wing = right_wing.fix_shape()
 
         if self.wing_side == "LEFT":
             right_wing = right_wing.mirror("XZ")
