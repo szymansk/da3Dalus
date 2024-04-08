@@ -1,5 +1,4 @@
 import logging
-from pprint import pprint
 
 import math
 
@@ -7,18 +6,20 @@ import numpy as np
 
 from typing import Union, Literal, Tuple, cast as tcast
 
-from math import cos, asin, degrees, radians, atan2
+from math import cos, asin, degrees, radians
 
 from cadquery import Workplane, Plane, Sketch
 from cadquery.occ_impl.shapes import Edge
 from cadquery.occ_impl.geom import Vector
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
-from Airplane.aircraft_topology.WingConfiguration import WingConfiguration, TrailingEdgeDevice, WingSegment
+from Airplane.aircraft_topology.wing.WingConfiguration import WingConfiguration
+from Airplane.aircraft_topology.wing.WingSegment import WingSegment
+from Airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
 from Airplane.creator.ted_sketch_creators import ted_sketch_creators
 
-from cq_plugins.segmentToEdge import segmentToEdge
-from cadq_server.cadq_server_connector import CQServerConnector
+import cq_plugins
+import cadq_server.cq_helper
 
 MOUNT_PLATE_THICKNESS = 1.0
 

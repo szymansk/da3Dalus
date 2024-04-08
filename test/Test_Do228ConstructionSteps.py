@@ -8,7 +8,8 @@ from pathlib import Path
 from Airplane.ConstructionStepNode import ConstructionStepNode
 from Airplane.ConstructionRootNode import ConstructionRootNode
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
-from Airplane.aircraft_topology.EngineInformation import EngineInformation, Position
+from Airplane.aircraft_topology.EngineInformation import EngineInformation
+from Airplane.aircraft_topology.Position import Position
 from Airplane.creator import *
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))

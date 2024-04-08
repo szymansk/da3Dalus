@@ -1,122 +1,18 @@
 import logging
 import math
-import sys
-from typing import TypeVar, Any, List, Tuple, Literal, Union
+from typing import TypeVar, Any, List, Tuple, Literal
 
 import numpy as np
-from cadquery import Workplane, Plane, Vector, Sketch, Matrix
+from cadquery import Workplane, Plane, Vector
 from numpy import ndarray, dtype, generic
 from scipy.spatial.transform import Rotation
 from scipy.interpolate import interp1d
 
-from Airplane.aircraft_topology.ServoInformation import Servo
+from Airplane.aircraft_topology.wing.Spare import Spare
+from Airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
+from Airplane.aircraft_topology.wing.WingSegment import WingSegment
 
 T = TypeVar("T", bound="WingConfiguration")
-SpareMode = Literal["normal", "follow", "standard", "standard_backward"]
-
-class TrailingEdgeDevice:
-
-    def __init__(self,
-                 name: str,
-                 rel_chord_root:float,
-                 rel_chord_tip:float,
-                 hinge_spacing:float,
-                 side_spacing:float,
-                 servo: Servo = None,
-                 servo_placement: Literal["top", "bottom"] = 'top',
-                 rel_chord_servo_position: float = None,
-                 rel_length_servo_position: float = None,
-                 positive_deflection_deg: float = 25,
-                 negative_deflection_deg: float = 25,
-                 trailing_edge_offset_factor: float = 1.0,
-                 hinge_type: Literal["middle", "top", "top_simple", "round_inside", "round_outside"] = "top"
-                 ):
-        self.name = name
-        self.rel_chord_root = rel_chord_root
-        self.rel_chord_tip = rel_chord_tip
-        self.hinge_spacing = hinge_spacing
-        self.side_spacing = side_spacing
-
-        self.servo = servo
-        self.servo_placement = servo_placement
-        self.rel_chord_servo_position = rel_chord_servo_position
-        self.rel_length_servo_position = rel_length_servo_position
-
-        self.positive_deflection_deg = positive_deflection_deg
-        self.negative_deflection_deg = negative_deflection_deg
-        self.trailing_edge_offset_factor = trailing_edge_offset_factor
-        self.suspension_type = hinge_type
-        pass
-
-    def __repr__(self):
-        from pprint import pformat
-        return pformat(vars(self), indent=4, width=1)
-
-class Spare:
-    def __init__(self,
-                 spare_support_dimension_width:float,
-                 spare_support_dimension_height:float,
-                 spare_position_factor:float = None,
-                 spare_length: float = None,
-                 spare_start: float = 0.0,
-                 spare_vector: Tuple[float,float,float]= None,
-                 spare_origin: Tuple[float,float,float] = None,
-                 spare_mode: SpareMode = "standard"):
-        self.spare_support_dimension_width = spare_support_dimension_width
-        self.spare_support_dimension_height = spare_support_dimension_height
-        self.spare_position_factor: float = spare_position_factor
-        self.spare_length = spare_length
-        self.spare_start = spare_start
-        self.spare_mode = spare_mode
-        self.spare_vector = Vector(spare_vector) if spare_vector is not None else None
-        self.spare_origin = Vector(spare_origin) if spare_origin is not None else None
-
-    def __repr__(self):
-        from pprint import pformat
-        return pformat(vars(self), indent=4, width=1)
-
-WingSegmentType = Literal['root','segment','tip']
-class WingSegment:
-    def __init__(self, root_airfoil: str,
-                 length: float,
-                 root_chord: float,
-                 tip_chord: float,
-                 sweep: float = 0,
-                 root_dihedral: float = 0,
-                 root_incidence: float = 0,
-                 root_trailing_edge: float = 1,
-                 tip_airfoil: str = None,
-                 tip_dihedral: float = 0,
-                 tip_incidence: float = 0,
-                 tip_trailing_edge: float = 1,
-                 spare_list: List[Spare] = None,
-                 trailing_edge_device: TrailingEdgeDevice = None,
-                 number_interpolation_points:int = None,
-                 tip_type: Literal['round'] = None,
-                 wing_segment_type: WingSegmentType = 'segment'):
-        self.tip_trailing_edge = tip_trailing_edge
-        self.root_trailing_edge = root_trailing_edge
-        self.tip_airfoil = tip_airfoil
-        self.root_airfoil = root_airfoil
-        self.length = length
-        self.root_chord = root_chord
-        self.tip_chord = tip_chord
-        self.sweep = sweep
-        self.root_dihedral = root_dihedral
-        self.root_incidence = root_incidence
-        self.tip_dihedral = tip_dihedral
-        self.tip_incidence = tip_incidence
-        self.spare_list = spare_list
-        self.trailing_edge_device = trailing_edge_device
-        self.number_interpolation_points = number_interpolation_points
-        self.tip_type = tip_type
-        self.wing_segment_type = wing_segment_type
-
-    def __repr__(self):
-        from pprint import pformat
-        return pformat(vars(self), indent=4, width=1)
-
-
 
 class WingConfiguration:
     """
@@ -138,7 +34,7 @@ class WingConfiguration:
                  tip_trailing_edge: float = 1,
                  number_interpolation_points: int=None,
                  spare_list: List[Spare] = None,
-                trailing_edge_device: TrailingEdgeDevice = None):
+                 trailing_edge_device: TrailingEdgeDevice = None):
         self.nose_pnt: tuple[float, float, float] = nose_pnt
         if tip_airfoil is None:
             tip_airfoil = root_airfoil

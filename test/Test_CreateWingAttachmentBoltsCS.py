@@ -10,7 +10,8 @@ from Airplane.creator import *
 from Airplane.ConstructionStepNode import ConstructionStepNode
 from Airplane.ConstructionRootNode import ConstructionRootNode
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
-from Airplane.aircraft_topology.EngineInformation import Position, EngineInformation
+from Airplane.aircraft_topology.EngineInformation import EngineInformation
+from Airplane.aircraft_topology.Position import Position
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))

@@ -1,4 +1,0 @@
-
-class TrailingEdgeDeviceInformation(ComponentInformation):
-
-    pass

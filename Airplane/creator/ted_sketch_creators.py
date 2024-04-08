@@ -1,10 +1,11 @@
 from typing import Tuple
 
 import numpy as np
-from cadquery import Sketch, Location, Vector
+from cadquery import Sketch, Location
 
-from Airplane.aircraft_topology import WingConfiguration
-from Airplane.aircraft_topology.WingConfiguration import WingSegment, TrailingEdgeDevice
+from Airplane.aircraft_topology.wing import WingConfiguration
+from Airplane.aircraft_topology.wing.WingSegment import WingSegment
+from Airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
 
 """
 This file contains trailing edge device (ted) sketch creators, which create sketches for 

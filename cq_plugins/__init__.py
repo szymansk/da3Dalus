@@ -1,1 +1,9 @@
+from cq_plugins.fix_shape.fix_shape import fix_shape
 from cq_plugins.offest3D.offset3D import offset3D
+from cq_plugins.scaleXyz.scaleXyz import _scaleXyz
+from cq_plugins.segmentToEdge.segmentToEdge import segmentToEdge
+from cq_plugins.sew_fix_shape.sew_fix_shape import sewAndFixShape
+from cq_plugins.wing.wing_segment import wing_segment
+from cq_plugins.wing.airfoil import airfoil
+from cq_plugins.wing.wing_root_segment import wing_root_segment
+
