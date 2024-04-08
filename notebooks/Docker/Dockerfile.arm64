@@ -10,8 +10,6 @@ EXPOSE 8888
 
 USER cq 
 
-#ADD --chown=cq:cq examples /home/cq
-#ADD --chown=cq:cq viewer.ipynb /home/cq
 ADD --chown=cq:cq run.sh /tmp
 RUN chmod +x /tmp/run.sh
 

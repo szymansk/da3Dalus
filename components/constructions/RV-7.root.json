@@ -420,7 +420,7 @@
             "creator": {
                 "print_resolution": 0.2,
                 "rib_spacing": 5.0,
-                "full_wing_loft": "full_wing_loft",
+                "full_wing_loft": "full_wing_loft_a",
                 "fuselage_loft": "fuselage_hull.loft",
                 "rib_width": 0.8,
                 "ribcage_factor": 0.49,
@@ -438,7 +438,7 @@
             "successors": {},
             "creator": {
                 "rib_z_offset": 0,
-                "full_wing_loft": "full_wing_loft",
+                "full_wing_loft": "full_wing_loft_a",
                 "fuselage_loft": "fuselage_hull.loft",
                 "rib_quantity": 7,
                 "rib_width": 0.8,
@@ -490,7 +490,7 @@
             "successors": {},
             "creator": {
                 "length_factor": 0.7,
-                "full_wing_loft": "full_wing_loft",
+                "full_wing_loft": "full_wing_loft_a",
                 "fuselage_loft": "fuselage_hull.loft",
                 "ribcage_factor": 0.49,
                 "wing_position": null,
@@ -552,7 +552,7 @@
             "successors": {},
             "creator": {
                 "subtrahends": [
-                    "full_wing_loft",
+                    "full_wing_loft_a",
                     "elevator"
                 ],
                 "minuend": "fuselage_hull_final",
@@ -603,35 +603,6 @@
             },
             "loglevel": 50,
             "creator_id": "lipo_model",
-            "$TYPE": "ConstructionStepNode"
-        },
-        "RV-7": {
-            "successors": {},
-            "creator": {
-                "file_path": "../exports",
-                "shapes_to_export": [
-                    "motor_mount_with_rod_holes",
-                    "brushless",
-                    "lipo_model",
-                    "fuselage_hull.cape",
-                    "final_fuselage",
-                    "full_wing_loft",
-                    "elevator",
-                    "rudder_cut",
-                    "elevator_flap",
-                    "rudder_flap",
-                    "flaps",
-                    "aileron",
-                    "cockpit",
-                    "elevator_servo.model",
-                    "rudder_servo.model"
-                ],
-                "loglevel": 20,
-                "creator_id": "RV-7",
-                "$TYPE": "ExportToStepCreator"
-            },
-            "loglevel": 50,
-            "creator_id": "RV-7",
             "$TYPE": "ConstructionStepNode"
         }
     },

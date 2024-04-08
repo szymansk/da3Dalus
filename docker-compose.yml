@@ -3,23 +3,37 @@ version: '3.9'
 services:
   cq-client:
     image: szymanski2adesso/cadquery-client:2.4.0
+    platform: linux/arm64
     container_name: cq-client
     volumes:
       - ./:/home/cadquery/workspace
     stdin_open: true
-    entrypoint: "/opt/anaconda/bin/python"
+    entrypoint: "/opt/anaconda/envs/cq/bin/python"
+    tty: true
+
+  cq-win_client:
+    platform: linux/amd64
+    build:
+      context: ./notebooks/Docker
+      dockerfile: notebooks/Docker/Dockerfile.amd64
+    container_name: cq-win-client
+    volumes:
+      - ./:/home/cadquery/workspace
+    stdin_open: true
+    entrypoint: "/opt/conda/envs/cq/bin/python"
     tty: true
 
   cq-server:
     image: szymanski2adesso/cq-server:amd64
+    platform: linux/amd64
     container_name: cq-server
-    platform: linux/amd64    
     command: "run"
     ports:
       - "5050:5000"
 
   cq-runtime:
     image: szymanski2adesso/cadquery-runtime:2.4.0
+    platform: linux/arm64
     container_name: cq-runtime
     volumes:
       - ./:/home/cadquery/workspace
@@ -29,11 +43,24 @@ services:
 
   cq-jupyter:
     image: szymanski2adesso/cadquery-jupyter:2.4.0
+    platform: linux/amd64
+    container_name: cq-jupyter
     build:
       context: ./notebooks/Docker
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.arm64
       cache_from:
         - szymanski2adesso/cadquery-client:2.4.0
+    ports:
+      - 8888:8888
+    volumes:
+      - ./:/home/cq/data
+
+  cq-win-jupyter:
+    platform: linux/amd64
+    container_name: cq-win-jupyter
+    build:
+      context: ./notebooks/Docker
+      dockerfile: notebooks/Docker/Dockerfile.amd64
     ports:
       - 8888:8888
     volumes:

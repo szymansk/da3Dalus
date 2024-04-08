@@ -7,7 +7,6 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 import cadquery as cq
 from cadq_server.cadq_server_connector import CQServerConnector
 
-from OCP.TopoDS import TopoDS_Shape
 from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
 
 if __name__ == "__main__":
