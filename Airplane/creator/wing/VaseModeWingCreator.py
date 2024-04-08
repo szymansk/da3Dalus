@@ -16,10 +16,10 @@ from Airplane.AbstractShapeCreator import AbstractShapeCreator
 from Airplane.aircraft_topology.wing.WingConfiguration import WingConfiguration
 from Airplane.aircraft_topology.wing.WingSegment import WingSegment
 from Airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
-from Airplane.creator.ted_sketch_creators import ted_sketch_creators
+from Airplane.creator.wing.ted_sketch_creators import ted_sketch_creators
 
 import cq_plugins
-import cadq_server.cq_helper
+import cadq_server
 
 MOUNT_PLATE_THICKNESS = 1.0
 

@@ -10,7 +10,7 @@ from Airplane.aircraft_topology.ServoInformation import ServoInformation
 from Airplane.aircraft_topology.Servo import Servo
 
 from Airplane.creator import *
-from Airplane.creator.export import ExportToStepCreator
+from Airplane.creator.export_import import ExportToStepCreator
 
 from Airplane.aircraft_topology.wing.WingConfiguration import WingConfiguration
 from Airplane.aircraft_topology.wing.Spare import Spare

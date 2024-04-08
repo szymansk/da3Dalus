@@ -4,7 +4,7 @@ from cadquery import Workplane
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
 from Airplane.aircraft_topology.EngineInformation import EngineInformation
-from Airplane.creator.EngineCoverAndMountPanelAndFuselageShapeCreator import EngineCoverAndMountPanelAndFuselageShapeCreator
+from Airplane.creator.fuselage.EngineCoverAndMountPanelAndFuselageShapeCreator import EngineCoverAndMountPanelAndFuselageShapeCreator
 
 
 class EngineCapeShapeCreator(AbstractShapeCreator):

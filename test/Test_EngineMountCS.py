@@ -7,12 +7,12 @@ from pathlib import Path
 
 from Airplane.aircraft_topology.ComponentInformation import ComponentInformation
 from Airplane.aircraft_topology.ServoInformation import ServoInformation
-from Airplane.creator.ComponentImporterCreator import ComponentImporterCreator
-from Airplane.creator.Cut2ShapesCreator import Cut2ShapesCreator
-from Airplane.creator.export.ExportToStepCreator import ExportToStepCreator
-from Airplane.creator.Fuse2ShapesCreator import Fuse2ShapesCreator
+from Airplane.creator.components.ComponentImporterCreator import ComponentImporterCreator
+from Airplane.creator.cad_operations.Cut2ShapesCreator import Cut2ShapesCreator
+from Airplane.creator.export_import.ExportToStepCreator import ExportToStepCreator
+from Airplane.creator.cad_operations.Fuse2ShapesCreator import Fuse2ShapesCreator
 from Airplane.creator import EngineCoverAndMountPanelAndFuselageShapeCreator, StepImportCreator
-from Airplane.creator.EngineMountShapeCreator import EngineMountShapeCreator
+from Airplane.creator.fuselage.EngineMountShapeCreator import EngineMountShapeCreator
 from Airplane.ConstructionStepNode import ConstructionStepNode
 from Airplane.ConstructionRootNode import ConstructionRootNode
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder

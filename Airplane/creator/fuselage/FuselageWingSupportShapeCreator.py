@@ -5,8 +5,6 @@ from cadquery import Workplane, Vector
 import cadquery as cq
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
-from Airplane.creator import WingAttachmentBoltCutoutShapeCreator
-
 
 class FuselageWingSupportShapeCreator(AbstractShapeCreator):
     """    Creates wing support by using vertical cube shaped ribs.
