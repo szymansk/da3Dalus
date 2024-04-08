@@ -1,26 +1,18 @@
+import logging
+import os
 import sys
 
 import json
+from pathlib import Path
 
 from Airplane.ConstructionStepNode import ConstructionStepNode
 from Airplane.ConstructionRootNode import ConstructionRootNode
-from Airplane.creator.Cut2ShapesCreator import Cut2ShapesCreator
-from Airplane.creator.CutMultipleShapesCreator import CutMultipleShapesCreator
-from Airplane.creator.ExportToStepCreator import ExportToStepCreator
-from Airplane.creator.Fuse2ShapesCreator import Fuse2ShapesCreator
-from Airplane.creator.FuseMultipleShapesCreator import FuseMultipleShapesCreator
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
-from Airplane.creator.IgesImportCreator import IgesImportCreator
-from Airplane.creator.Intersect2ShapesCreator import Intersect2ShapesCreator
-from Airplane.creator.SimpleOffsetShapeCreator import SimpleOffsetShapeCreator
-from Airplane.aircraft_topology.EngineInformation import Position, EngineInformation
-from Airplane.creator.EngineCapeShapeCreator import EngineCapeShapeCreator
-from Airplane.creator.EngineCoverAndMountPanelAndFuselageShapeCreator import EngineCoverAndMountPanelAndFuselageShapeCreator
-from Airplane.creator.EngineMountShapeCreator import EngineMountShapeCreator
-from Airplane.creator.FuselageElectronicsAccessCutOutShapeCreator import FuselageElectronicsAccessCutOutShapeCreator
-from Airplane.creator.FuselageReinforcementShapeCreator import FuselageReinforcementShapeCreator
-from Airplane.creator.FuselageWingSupportShapeCreator import FuselageWingSupportShapeCreator
-from Airplane.creator.StepImportCreator import StepImportCreator
+from Airplane.aircraft_topology.EngineInformation import EngineInformation, Position
+from Airplane.creator import *
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 if __name__ == "__main__":
     CPACS_FILE_NAME = "aircombat_v14"

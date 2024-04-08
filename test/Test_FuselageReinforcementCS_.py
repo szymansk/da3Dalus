@@ -1,20 +1,20 @@
+import logging
 import sys
 
 import json 
 import os
 
-from Airplane.creator.Intersect2ShapesCreator import Intersect2ShapesCreator
-from Airplane.creator.SimpleOffsetShapeCreator import SimpleOffsetShapeCreator
-from Airplane.creator.EngineCapeShapeCreator import EngineCapeShapeCreator
-from Airplane.creator.FuselageReinforcementShapeCreator import FuselageReinforcementShapeCreator
-
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.dirname(SCRIPT_DIR))
-
+from Airplane.aircraft_topology.ComponentInformation import ComponentInformation
+from Airplane.aircraft_topology.ServoInformation import ServoInformation
+from Airplane.creator import *
 from Airplane.ConstructionStepNode import ConstructionStepNode
 from Airplane.ConstructionRootNode import ConstructionRootNode
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
 from Airplane.aircraft_topology.EngineInformation import Position, EngineInformation
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(SCRIPT_DIR))
+
 
 # TODO: * cutouts for hinges
 #       * cutout for elevator flap rod (carbon 1mm) in elvator and in rudder

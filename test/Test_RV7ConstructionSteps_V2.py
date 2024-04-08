@@ -1,33 +1,21 @@
+import logging
 import sys
 
 import json 
 import os
+from pathlib import Path
 
-from Airplane.creator.ComponentImporterCreator import ComponentImporterCreator
-from Airplane.creator.Cut2ShapesCreator import Cut2ShapesCreator
-from Airplane.creator.CutMultipleShapesCreator import CutMultipleShapesCreator
-from Airplane.creator.ExportToStepCreator import ExportToStepCreator
-from Airplane.creator.Fuse2ShapesCreator import Fuse2ShapesCreator
-from Airplane.creator.FuseMultipleShapesCreator import FuseMultipleShapesCreator
-from Airplane.creator.Intersect2ShapesCreator import Intersect2ShapesCreator
-from Airplane.creator.ServoImporterCreator import ServoImporterCreator
-from Airplane.creator.SimpleOffsetShapeCreator import SimpleOffsetShapeCreator
-from Airplane.creator.WingLoftCreator import WingLoftCreator
-from Airplane.aircraft_topology.WingConfiguration import WingConfiguration
-from Airplane.creator.EngineCapeShapeCreator import EngineCapeShapeCreator
-from Airplane.creator import EngineCoverAndMountPanelAndFuselageShapeCreator
-from Airplane.creator.EngineMountShapeCreator import EngineMountShapeCreator
-from Airplane.creator.FuselageElectronicsAccessCutOutShapeCreator import FuselageElectronicsAccessCutOutShapeCreator
-from Airplane.creator.FuselageReinforcementShapeCreator import FuselageReinforcementShapeCreator
-from Airplane.creator.FuselageWingSupportShapeCreator import FuselageWingSupportShapeCreator
-
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.dirname(SCRIPT_DIR))
-
+from Airplane.creator import *
 from Airplane.ConstructionStepNode import ConstructionStepNode
 from Airplane.ConstructionRootNode import ConstructionRootNode
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
 from Airplane.aircraft_topology.EngineInformation import Position, EngineInformation
+from Airplane.aircraft_topology.ComponentInformation import ComponentInformation
+from Airplane.aircraft_topology.ServoInformation import ServoInformation
+from Airplane.aircraft_topology.WingConfiguration import WingConfiguration
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 # TODO: * cutouts for hinges
 #       * cutout for elevator flap rod (carbon 1mm) in elvator and in rudder
