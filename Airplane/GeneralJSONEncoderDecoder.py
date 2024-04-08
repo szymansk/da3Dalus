@@ -3,7 +3,6 @@ from json import JSONEncoder, JSONDecoder
 
 from Airplane.ConstructionStepNode import *
 from Airplane.ConstructionRootNode import *
-from Airplane.FuselageConstructionSteps import *
 from Airplane.creator import *
 
 class GeneralJSONEncoder(JSONEncoder):

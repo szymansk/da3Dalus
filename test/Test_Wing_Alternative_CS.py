@@ -1,9 +1,13 @@
+import logging
 import sys
 
 import json
 import os
+from pathlib import Path
 
-from Airplane.aircraft_topology.ServoInformation import Servo
+from Airplane.aircraft_topology.ComponentInformation import ComponentInformation
+from Airplane.creator.ExportToStepCreator import ExportToStepCreator
+from Airplane.aircraft_topology.ServoInformation import Servo, ServoInformation
 from Airplane.creator import VaseModeWingCreator
 from Airplane.aircraft_topology.WingConfiguration import WingConfiguration, Spare, TrailingEdgeDevice
 
@@ -12,7 +16,6 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 from Airplane.ConstructionStepNode import ConstructionStepNode
 from Airplane.ConstructionRootNode import ConstructionRootNode
-from Airplane.FuselageConstructionSteps import *
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
 from Airplane.aircraft_topology.EngineInformation import Position, EngineInformation
 

@@ -3,6 +3,8 @@ import sys
 import json 
 import os
 
+from Airplane.creator.Intersect2ShapesCreator import Intersect2ShapesCreator
+from Airplane.creator.SimpleOffsetShapeCreator import SimpleOffsetShapeCreator
 from Airplane.creator.EngineCapeShapeCreator import EngineCapeShapeCreator
 from Airplane.creator.FuselageReinforcementShapeCreator import FuselageReinforcementShapeCreator
 
@@ -11,7 +13,6 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 from Airplane.ConstructionStepNode import ConstructionStepNode
 from Airplane.ConstructionRootNode import ConstructionRootNode
-from Airplane.FuselageConstructionSteps import *
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
 from Airplane.aircraft_topology.EngineInformation import Position, EngineInformation
 
