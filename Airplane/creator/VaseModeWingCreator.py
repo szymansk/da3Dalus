@@ -526,9 +526,11 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
         extrude_length = wing_config.segments[segment].length * 10 if spare.spare_length is None else spare.spare_length
         # extrude and intersect
-        raw_spare = (Workplane(spare_plane)
+        both_directions: bool = False if spare.spare_start != 0. else True
+        raw_spare = (Workplane(inPlane=spare_plane)
+                     .workplane(offset=spare.spare_start)
                      .placeSketch(spare_sketch)
-                     .extrude(extrude_length, both=True)
+                     .extrude(extrude_length, both=both_directions)
                      .intersect(toIntersect=current))
         return raw_spare, spare_plane
 

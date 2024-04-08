@@ -58,6 +58,7 @@ class Spare:
                  spare_support_dimension_height:float,
                  spare_position_factor:float = None,
                  spare_length: float = None,
+                 spare_start: float = 0.0,
                  spare_vector: Tuple[float,float,float]= None,
                  spare_origin: Tuple[float,float,float] = None,
                  spare_mode: SpareMode = "standard"):
@@ -65,6 +66,7 @@ class Spare:
         self.spare_support_dimension_height = spare_support_dimension_height
         self.spare_position_factor: float = spare_position_factor
         self.spare_length = spare_length
+        self.spare_start = spare_start
         self.spare_mode = spare_mode
         self.spare_vector = Vector(spare_vector) if spare_vector is not None else None
         self.spare_origin = Vector(spare_origin) if spare_origin is not None else None
@@ -73,6 +75,7 @@ class Spare:
         from pprint import pformat
         return pformat(vars(self), indent=4, width=1)
 
+WingSegmentType = Literal['root','segment','tip']
 class WingSegment:
     def __init__(self, root_airfoil: str,
                  length: float,
@@ -89,7 +92,8 @@ class WingSegment:
                  spare_list: List[Spare] = None,
                  trailing_edge_device: TrailingEdgeDevice = None,
                  number_interpolation_points:int = None,
-                 tip_type: Literal['round'] = None):
+                 tip_type: Literal['round'] = None,
+                 wing_segment_type: WingSegmentType = 'segment'):
         self.tip_trailing_edge = tip_trailing_edge
         self.root_trailing_edge = root_trailing_edge
         self.tip_airfoil = tip_airfoil
@@ -106,10 +110,13 @@ class WingSegment:
         self.trailing_edge_device = trailing_edge_device
         self.number_interpolation_points = number_interpolation_points
         self.tip_type = tip_type
+        self.wing_segment_type = wing_segment_type
 
     def __repr__(self):
         from pprint import pformat
         return pformat(vars(self), indent=4, width=1)
+
+
 
 class WingConfiguration:
     """
@@ -140,7 +147,8 @@ class WingConfiguration:
                                    sweep, root_dihedral, root_incidence, root_trailing_edge,
                                    tip_airfoil, tip_dihedral, tip_incidence, tip_trailing_edge,
                                    spare_list=spare_list, trailing_edge_device=trailing_edge_device,
-                                   number_interpolation_points=number_interpolation_points)
+                                   number_interpolation_points=number_interpolation_points,
+                                   wing_segment_type='root')
 
         self.segments: list[WingSegment] = [root_segment]
         self.wing_workplanes: dict[int, Workplane] = {}
@@ -183,6 +191,9 @@ class WingConfiguration:
                      tip_dihedral: float = 0,
                      tip_incidence: float = 0,
                      number_interpolation_points: int = None):
+        if self.segments[-1].wing_segment_type == 'tip':
+            raise ValueError(f"The previous wing segment cannot be a '{self.segments[-1].wing_segment_type}'")
+
         root_airfoil = self.segments[-1].tip_airfoil
         if tip_airfoil is None:  # continue with previous airfoil
             tip_airfoil = root_airfoil
@@ -195,7 +206,8 @@ class WingConfiguration:
                               sweep, 0, 0, root_trailing_edge,
                               tip_airfoil, tip_dihedral, tip_incidence, tip_trailing_edge,
                               number_interpolation_points=nip,
-                              tip_type=tip_type)
+                              tip_type=tip_type,
+                              wing_segment_type='tip')
         self.segments.append(segment)
 
         segment_number = len(self.segments) - 1
@@ -214,6 +226,9 @@ class WingConfiguration:
                     number_interpolation_points: int = None,
                     spare_list: List[Spare] = None,
                     trailing_edge_device: TrailingEdgeDevice = None):
+        if self.segments[-1].wing_segment_type == 'tip':
+            raise ValueError(f"The previous wing segment cannot be a '{self.segments[-1].wing_segment_type}'")
+
         root_airfoil = self.segments[-1].tip_airfoil
         if tip_airfoil is None: #continue with previous airfoil
             tip_airfoil = root_airfoil
@@ -225,7 +240,8 @@ class WingConfiguration:
                               tip_airfoil, tip_dihedral, tip_incidence, tip_trailing_edge,
                               spare_list=spare_list, trailing_edge_device=trailing_edge_device,
                               number_interpolation_points=nip,
-                              tip_type=None)
+                              tip_type=None,
+                              wing_segment_type='segment')
         self.segments.append(segment)
 
         segment_number = len(self.segments) - 1
