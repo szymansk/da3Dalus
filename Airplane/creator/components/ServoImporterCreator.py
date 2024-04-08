@@ -4,9 +4,10 @@ from pathlib import Path
 from cadquery import Workplane
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
-from Airplane.creator.IgesImportCreator import IgesImportCreator
+from Airplane.creator.export_import.IgesImportCreator import IgesImportCreator
 from Airplane.aircraft_topology.ServoInformation import ServoInformation
-from Airplane.creator import StepImportCreator, ScaleRotateTranslateCreator
+from Airplane.creator import StepImportCreator
+from Airplane.creator.cad_operations import ScaleRotateTranslateCreator
 
 
 class ServoImporterCreator(AbstractShapeCreator):

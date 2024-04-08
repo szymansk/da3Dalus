@@ -6,7 +6,7 @@ from OCP.IGESControl import IGESControl_Reader
 from cadquery import Workplane, Shape
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
-from Airplane.creator import ScaleRotateTranslateCreator
+from Airplane.creator.cad_operations import ScaleRotateTranslateCreator
 
 
 class IgesImportCreator(AbstractShapeCreator):

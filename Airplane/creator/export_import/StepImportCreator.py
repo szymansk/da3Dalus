@@ -1,15 +1,9 @@
 import logging
 
-from OCP import TopoDS
-from OCP.BRepBuilderAPI import BRepBuilderAPI_Sewing, BRepBuilderAPI_MakeSolid
-from OCP.ShapeFix import ShapeFix_Shape
-from OCP.TopAbs import TopAbs_SHELL
-from OCP.TopExp import TopExp_Explorer
-from OCP.TopOpeBRepBuild import TopOpeBRepBuild_ShellToSolid
-from cadquery import Workplane, Solid, Shell
+from cadquery import Workplane
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
-from Airplane.creator.ScaleRotateTranslateCreator import ScaleRotateTranslateCreator
+from Airplane.creator.cad_operations.ScaleRotateTranslateCreator import ScaleRotateTranslateCreator
 
 
 class StepImportCreator(AbstractShapeCreator):
