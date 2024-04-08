@@ -58,6 +58,7 @@ class Spare:
                  spare_support_dimension_height:float,
                  spare_position_factor:float = None,
                  spare_length: float = None,
+                 spare_start: float = 0.0,
                  spare_vector: Tuple[float,float,float]= None,
                  spare_origin: Tuple[float,float,float] = None,
                  spare_mode: SpareMode = "standard"):
@@ -65,6 +66,7 @@ class Spare:
         self.spare_support_dimension_height = spare_support_dimension_height
         self.spare_position_factor: float = spare_position_factor
         self.spare_length = spare_length
+        self.spare_start = spare_start
         self.spare_mode = spare_mode
         self.spare_vector = Vector(spare_vector) if spare_vector is not None else None
         self.spare_origin = Vector(spare_origin) if spare_origin is not None else None
@@ -73,6 +75,7 @@ class Spare:
         from pprint import pformat
         return pformat(vars(self), indent=4, width=1)
 
+WingSegmentType = Literal['root','segment','tip']
 class WingSegment:
     def __init__(self, root_airfoil: str,
                  length: float,
@@ -88,7 +91,9 @@ class WingSegment:
                  tip_trailing_edge: float = 1,
                  spare_list: List[Spare] = None,
                  trailing_edge_device: TrailingEdgeDevice = None,
-                 number_interpolation_points:int = None):
+                 number_interpolation_points:int = None,
+                 tip_type: Literal['round'] = None,
+                 wing_segment_type: WingSegmentType = 'segment'):
         self.tip_trailing_edge = tip_trailing_edge
         self.root_trailing_edge = root_trailing_edge
         self.tip_airfoil = tip_airfoil
@@ -104,10 +109,14 @@ class WingSegment:
         self.spare_list = spare_list
         self.trailing_edge_device = trailing_edge_device
         self.number_interpolation_points = number_interpolation_points
+        self.tip_type = tip_type
+        self.wing_segment_type = wing_segment_type
 
     def __repr__(self):
         from pprint import pformat
         return pformat(vars(self), indent=4, width=1)
+
+
 
 class WingConfiguration:
     """
@@ -138,7 +147,8 @@ class WingConfiguration:
                                    sweep, root_dihedral, root_incidence, root_trailing_edge,
                                    tip_airfoil, tip_dihedral, tip_incidence, tip_trailing_edge,
                                    spare_list=spare_list, trailing_edge_device=trailing_edge_device,
-                                   number_interpolation_points=number_interpolation_points)
+                                   number_interpolation_points=number_interpolation_points,
+                                   wing_segment_type='root')
 
         self.segments: list[WingSegment] = [root_segment]
         self.wing_workplanes: dict[int, Workplane] = {}
@@ -157,19 +167,52 @@ class WingConfiguration:
         root_plane = self.get_wing_workplane(start_segment).plane
         tip_plane = self.get_wing_workplane(tip_idx).plane
         # the spare starts at the chord*spare_position_factor
-        root_chamber = self.get_chamber_y_at_rel_chord(segment=start_segment,
+        root_chamber, diff_root = self.get_chamber_y_at_rel_chord(segment=start_segment,
                                                        relative_chord=spare_position_factor)
-        tip_chamber = self.get_chamber_y_at_rel_chord(segment=end_segment,
+
+        tip_chamber, diff_tip = self.get_chamber_y_at_rel_chord(segment=end_segment,
                                                       relative_chord=spare_position_factor,
                                                       relative_length=1.)
         spare_origin = (root_plane.origin
                         + root_plane.xDir * (self.segments[start_segment].root_chord * spare_position_factor)
-                        + root_plane.zDir * root_chamber)
+                        + root_plane.zDir * (root_chamber+diff_root))
         spare_end = (tip_plane.origin
                      + tip_plane.xDir * (self.segments[end_segment].tip_chord * spare_position_factor)
-                     + tip_plane.zDir * tip_chamber)
+                     + tip_plane.zDir * (tip_chamber+diff_tip))
         spare_vector = (spare_end - spare_origin).normalized()
         return spare_vector, spare_origin
+
+    def add_tip_segment(self: T,
+                     tip_type: Literal['round','flat'],
+                     length: float,
+                     tip_chord: float,
+                     sweep: float = 0,
+                     tip_airfoil: str = None,
+                     tip_dihedral: float = 0,
+                     tip_incidence: float = 0,
+                     number_interpolation_points: int = None):
+        if self.segments[-1].wing_segment_type == 'tip':
+            raise ValueError(f"The previous wing segment cannot be a '{self.segments[-1].wing_segment_type}'")
+
+        root_airfoil = self.segments[-1].tip_airfoil
+        if tip_airfoil is None:  # continue with previous airfoil
+            tip_airfoil = root_airfoil
+
+        nip = number_interpolation_points if number_interpolation_points is not None else self.segments[
+            0].number_interpolation_points
+        root_trailing_edge: float = 1.
+        tip_trailing_edge: float = 1.
+        segment = WingSegment(root_airfoil, length, self.segments[-1].tip_chord, tip_chord,
+                              sweep, 0, 0, root_trailing_edge,
+                              tip_airfoil, tip_dihedral, tip_incidence, tip_trailing_edge,
+                              number_interpolation_points=nip,
+                              tip_type=tip_type,
+                              wing_segment_type='tip')
+        self.segments.append(segment)
+
+        segment_number = len(self.segments) - 1
+
+        self.wing_workplanes[segment_number] = self.get_wing_workplane(segment_number)
 
     def add_segment(self: T,
                     length: float,
@@ -180,68 +223,77 @@ class WingConfiguration:
                     tip_incidence: float = 0,
                     root_trailing_edge: float = 1,
                     tip_trailing_edge: float = 1,
+                    number_interpolation_points: int = None,
                     spare_list: List[Spare] = None,
                     trailing_edge_device: TrailingEdgeDevice = None):
+        if self.segments[-1].wing_segment_type == 'tip':
+            raise ValueError(f"The previous wing segment cannot be a '{self.segments[-1].wing_segment_type}'")
+
         root_airfoil = self.segments[-1].tip_airfoil
         if tip_airfoil is None: #continue with previous airfoil
             tip_airfoil = root_airfoil
+
+        nip = number_interpolation_points if number_interpolation_points is not None else self.segments[0].number_interpolation_points
 
         segment = WingSegment(root_airfoil, length, self.segments[-1].tip_chord, tip_chord,
                               sweep, 0, 0, root_trailing_edge,
                               tip_airfoil, tip_dihedral, tip_incidence, tip_trailing_edge,
                               spare_list=spare_list, trailing_edge_device=trailing_edge_device,
-                              number_interpolation_points=self.segments[0].number_interpolation_points)
+                              number_interpolation_points=nip,
+                              tip_type=None,
+                              wing_segment_type='segment')
         self.segments.append(segment)
 
         segment_number = len(self.segments) - 1
 
         self.wing_workplanes[segment_number] = self.get_wing_workplane(segment_number)
 
-        for spare_idx in range(len(self.segments[segment_number].spare_list)):
-            spare = self.segments[segment_number].spare_list[spare_idx]
+        if self.segments[segment_number].spare_list is not None:
+            for spare_idx in range(len(self.segments[segment_number].spare_list)):
+                spare = self.segments[segment_number].spare_list[spare_idx]
 
-            if spare.spare_position_factor is None:
-                spare.spare_position_factor = 0.25
+                if spare.spare_position_factor is None:
+                    spare.spare_position_factor = 0.25
 
-            if spare.spare_mode == "follow":
-                # follows the previous spare vector
-                self._set_follow_spare_origin_vector(segment_number, spare, spare_idx)
-            elif spare.spare_mode == "standard_backward":
-                start_segment = 0
-                for seg_num in reversed(range(segment_number)):
-                    if len(self.segments[seg_num].spare_list) > spare_idx:
-                        if self.segments[seg_num].spare_list[spare_idx].spare_mode != "follow":
-                            found_spare = self.segments[seg_num].spare_list[spare_idx]
-                            start_segment = seg_num
-                            break
+                if spare.spare_mode == "follow":
+                    # follows the previous spare vector
+                    self._set_follow_spare_origin_vector(segment_number, spare, spare_idx)
+                elif spare.spare_mode == "standard_backward":
+                    start_segment = 0
+                    for seg_num in reversed(range(segment_number)):
+                        if len(self.segments[seg_num].spare_list) > spare_idx:
+                            if self.segments[seg_num].spare_list[spare_idx].spare_mode != "follow":
+                                found_spare = self.segments[seg_num].spare_list[spare_idx]
+                                start_segment = seg_num
+                                break
 
-                found_spare.spare_vector, found_spare.spare_origin = self._get_standard_spare_origin_and_vector(
-                    start_segment=start_segment,
-                    end_segment=segment_number,
-                    spare_position_factor=found_spare.spare_position_factor)
+                    found_spare.spare_vector, found_spare.spare_origin = self._get_standard_spare_origin_and_vector(
+                        start_segment=start_segment,
+                        end_segment=segment_number,
+                        spare_position_factor=found_spare.spare_position_factor)
 
-                for seg_num in range(start_segment+1, segment_number+1):
-                    follows_spare = self.segments[seg_num].spare_list[spare_idx]
-                    self._set_follow_spare_origin_vector(seg_num, follows_spare, spare_idx)
+                    for seg_num in range(start_segment+1, segment_number+1):
+                        follows_spare = self.segments[seg_num].spare_list[spare_idx]
+                        self._set_follow_spare_origin_vector(seg_num, follows_spare, spare_idx)
 
-                pass
+                    pass
 
-            elif spare.spare_mode == "standard":
-                self._set_standard_spare_origin_vector(segment_number, spare)
-            elif spare.spare_mode == "normal":
-                seg_plane = self.get_wing_workplane(segment_number).plane
-                if spare.spare_vector is None:
-                    spare.spare_vector = seg_plane.yDir
+                elif spare.spare_mode == "standard":
+                    self._set_standard_spare_origin_vector(segment_number, spare)
+                elif spare.spare_mode == "normal":
+                    seg_plane = self.get_wing_workplane(segment_number).plane
+                    if spare.spare_vector is None:
+                        spare.spare_vector = seg_plane.yDir
 
-                else:
-                    # use spare_vector as offset to the perpendicular vector
-                    spare.spare_vector = spare.spare_vector.normalized()
+                    else:
+                        # use spare_vector as offset to the perpendicular vector
+                        spare.spare_vector = spare.spare_vector.normalized()
 
-                if spare.spare_origin is None:
-                    spare.spare_origin = seg_plane.origin + seg_plane.xDir * (self.segments[segment_number].root_chord*spare.spare_position_factor)
-                else:
-                    spare.spare_origin = seg_plane.origin + spare.spare_origin
-                pass
+                    if spare.spare_origin is None:
+                        spare.spare_origin = seg_plane.origin + seg_plane.xDir * (self.segments[segment_number].root_chord*spare.spare_position_factor)
+                    else:
+                        spare.spare_origin = seg_plane.origin + spare.spare_origin
+                    pass
 
     def _set_follow_spare_origin_vector(self, segment_number, spare, spare_idx):
         spare.spare_vector = self.segments[segment_number - 1].spare_list[spare_idx].spare_vector
@@ -351,11 +403,23 @@ class WingConfiguration:
 
         return self.scaled_point_list[key]
 
-    def get_chamber_y_at_rel_chord(self: T, segment: int, relative_chord:float, relative_length: float = 0.) -> float:
+    def get_chamber_y_at_rel_chord(self: T, segment: int, relative_chord:float, relative_length: float = 0.) -> Tuple[float,Vector]:
         upper,  lower = self.get_points_on_surface(segment, relative_chord=relative_chord, relative_length=relative_length)
         up_ar = np.asarray(upper.toTuple())
         low_ar  = np.asarray(lower.toTuple())
-        return np.linalg.norm(up_ar - low_ar)/2
+
+        root_plane = self.get_wing_workplane(segment).plane
+        tip_plane = self.get_wing_workplane(segment+1).plane
+
+        # calculate the offset from the lower surface to the chord
+        root_point = root_plane.origin + root_plane.xDir * (self.segments[segment].root_chord * relative_chord)
+        tip_point = tip_plane.origin + tip_plane.xDir * (self.segments[segment].tip_chord * relative_chord)
+        chord_point = root_point + (tip_point - root_point)*relative_length
+
+        chord_to_lower_surface = lower - chord_point
+        chord_to_lower_height = np.linalg.norm(np.asarray(chord_to_lower_surface.toTuple())) * np.sign(chord_to_lower_surface.z)
+
+        return np.linalg.norm(up_ar - low_ar)/2, chord_to_lower_height
 
     def get_trailing_edge_device_planes(self: T, segment: int) -> Tuple[Plane, Plane]:
         seg = self.segments[segment]

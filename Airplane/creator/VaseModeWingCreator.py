@@ -68,6 +68,8 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
         segment = 0  # root segment
         # create root segment shapes for hull creation
+        # those shapes are need to produce a hull and the base for the ribs
+        # the shapes are offset by  1 and 2 * printer_wall_thickness
         right_wing, right_wing_2xpwt_offset, right_wing_pwt_offset = self._create_basic_root_segment_shapes(wing_config)
 
         # create the hull
@@ -119,62 +121,85 @@ class VaseModeWingCreator(AbstractShapeCreator):
             final_right_wing = final_right_wing.add(spare_shape)
 
         # create the other segments
-        for segment_config in wing_config.segments[1:]:
-            segment = segment + 1
+        for segment in range(1, len(wing_config.segments)):
+            wing_segment = wing_config.segments[segment]
+            # create all wing shapes that are need to produce a hull and the base for the ribs
+            # the shapes are offsetted by  1 and 2 * printer_wall_thickness
             current, current_2xpwt_offset, current_pwt_offset = self._create_basic_wing_shapes(current,
                                                                                                current_2xpwt_offset,
                                                                                                current_pwt_offset,
                                                                                                wing_config,
                                                                                                segment)
+            # add a wing_tip
+            if wing_segment.tip_type is not None and segment == len(wing_config.segments)-1:
+                # only do this if it is the last segment in the list
+                if wing_segment.tip_type is 'flat':
+                    final_right_wing = final_right_wing.add(current)
+                elif wing_segment.tip_type is 'round':
+                    # TODO: implent a wing tip
+                    # using a simple fillet does work in fusion360 but not with cadquery
+                    current = current.faces("%PLANE and >Y").wires().toPending().fillet(wing_segment.length*0.95)
+                    final_right_wing = final_right_wing.add(current)
+            else:
+                # make a hull that is 2 * printer_wall_thickness thick
+                current_hull = Workplane(current.vals()[-1].cut(current_2xpwt_offset.vals()[-1]))
 
-            current_hull = Workplane(current.vals()[-1].cut(current_2xpwt_offset.vals()[-1]))
+                # create the base shape of the main spare and the spare's plane
+                raw_spare, spare_plane = self._create_spare_shape(current=current_pwt_offset, segment=segment,
+                                                                  wing_config=wing_config, spare_idx=0)
+                right_wing_spare = right_wing_spare.add(raw_spare)
 
-            raw_spare, spare_plane = self._create_spare_shape(current=current_pwt_offset, segment=segment,
-                                                              wing_config=wing_config, spare_idx=0)
-            right_wing_spare = right_wing_spare.add(raw_spare)
+                # create the cut out for the ribs in an hour glass like shape
+                # the cut out is created in a way that the main spare fits into it nicely
+                raw_ribs, leading_edge_start, trailing_edge_start, spare_vector_origin, lower_part = self._create_ribs_shape(
+                    current_pwt_offset, segment, wing_config, leading_edge_start, trailing_edge_start, not lower_part)
+                right_wing_cutout.add(raw_ribs)
 
-            raw_ribs, leading_edge_start, trailing_edge_start, spare_vector_origin, lower_part = self._create_ribs_shape(
-                current_pwt_offset, segment, wing_config, leading_edge_start, trailing_edge_start, not lower_part)
-            right_wing_cutout.add(raw_ribs)
+                # create a shape for the slot that is needed to make the wing printable in vase mode
+                # only spare with index 0 will get this slot
+                right_wing_slot = (Workplane(spare_plane)
+                                   .box(length=0.05 * self.printer_wall_thickness,
+                                        width=100,
+                                        height=wing_segment.length * 10,
+                                        centered=(False, False, True)))
 
-            wing_segment = wing_config.segments[segment]
-            right_wing_slot = (Workplane(spare_plane)
-                               .box(length=0.05 * self.printer_wall_thickness,
-                                    width=100,
-                                    height=wing_segment.length * 10,
-                                    centered=(False, False, True))
-                               )
+                # create all other spares
+                for spare_idx in range(1, len(wing_segment.spare_list)):
+                    raw_add_spar, _ = self._create_spare_shape(current=current_pwt_offset, segment=segment,
+                                                               wing_config=wing_config, spare_idx=spare_idx)
 
-            for spare_idx in range(1, len(wing_segment.spare_list)):
-                raw_add_spar, _ = self._create_spare_shape(current=current_pwt_offset, segment=segment,
-                                                           wing_config=wing_config, spare_idx=spare_idx)
+                # cut out trailing edge device (ted) from segment
+                ted = wing_segment.trailing_edge_device
+                if ted is not None:
+                    if ted.servo is not None:
+                        # if we have a servo defined for the ted than we create the mount and an access opening (cover)
+                        # TODO: return the ted link plane( with origin and x-direction)
+                        current_hull, glue_in_mount = self._create_servo_mount_and_cover(current, current_hull, segment, wing_config,
+                                                                          ted.servo_placement)
+                    # create the shape of the ted including the hinge
+                    # TODO: use the ted link origin and direction to construct a rudder horn with linkage for the ted
+                    current_hull, raw_ribs, ted_shape = self._create_ted_shapes(current, current_hull, raw_ribs,
+                                                                                segment, wing_config)
+                    teds[f"{ted.name}[{segment}]"] = ted_shape
+                    pass
 
-            # cut out trailing edge device (ted) from segment
-            ted = wing_segment.trailing_edge_device
-            if ted is not None:
-                if ted.servo is not None:
-                    # TODO: return the ted link plane( with origin and x-direction)
-                    current_hull, glue_in_mount = self._create_servo_mount_and_cover(current, current_hull, segment, wing_config,
-                                                                      ted.servo_placement)
-                # TODO: use the ted link origin and direction to construct a rudder horn with linkage for the ted
-                current_hull, raw_ribs, ted_shape = self._create_ted_shapes(current, current_hull, raw_ribs,
-                                                                            segment, wing_config)
-                teds[f"{ted.name}[{segment}]"] = ted_shape
-                pass
-
-            final_right_wing = final_right_wing.add(
-                current_hull
-                .add(raw_spare)
-                .add(raw_ribs)
-                .cut(right_wing_slot)
-                .combine())
+                # finally put everything together (however due to the complexity a 'union' does not work
+                final_right_wing = final_right_wing.add(
+                    current_hull
+                    .add(raw_spare)
+                    .add(raw_ribs)
+                    .cut(right_wing_slot)
+                    .combine())
 
             right_wing_pwt_offset.add(current_pwt_offset)
             pass
 
+        # we combine everything and try to fix the shape
         final_right_wing = final_right_wing.fix_shape().combine()
         right_wing_cutout = right_wing_cutout.combine(glue=True)
 
+        # now we decide if we need the left, right or both wings for the wing
+        # for the vertical stabilizer with the rudder we do only need one side
         if self.wing_side == "LEFT":
             right_wing_spare = right_wing_spare.mirror("XZ")
             right_wing_cutout = right_wing_cutout.mirror("XZ")
@@ -200,6 +225,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
         right_wing_cutout = right_wing_cutout.fix_shape()
         final_right_wing = final_right_wing.fix_shape().combine()
 
+        # translate all shapes to the final place in the airplane
         # TODO: remove translations from creator... this should be translated, later or by assembly constraints
         right_wing_spare = (right_wing_spare.translate(wing_config.nose_pnt)
                             .display(name=f"{self.identifier}.spare", severity=logging.DEBUG))
@@ -485,31 +511,27 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
     def _create_spare_shape(self, current: Workplane, segment: int, wing_config: WingConfiguration,
                             spare_idx: int = 0) -> Tuple[Workplane, Plane]:
-        spare_vector = wing_config.segments[segment].spare_list[spare_idx].spare_vector
-        spare_vector_origin = wing_config.segments[segment].spare_list[spare_idx].spare_origin
-        spare_support_dimension_width = wing_config.segments[segment].spare_list[
-            spare_idx].spare_support_dimension_width
-        spare_support_dimension_height = wing_config.segments[segment].spare_list[
-            spare_idx].spare_support_dimension_height
-        spare_length = wing_config.segments[segment].spare_list[spare_idx].spare_length
+        spare = wing_config.segments[segment].spare_list[spare_idx]
 
         # create spare sketch
         spare_sketch = VaseModeWingCreator._construct_spare_sketch(printer_wall_thickness=self.printer_wall_thickness,
-                                                                   spare_support_dimension_width=spare_support_dimension_width,
-                                                                   spare_support_dimension_height=spare_support_dimension_height)
+                                                                   spare_support_dimension_width=spare.spare_support_dimension_width,
+                                                                   spare_support_dimension_height=spare.spare_support_dimension_height)
 
         # the spare vector defines a vector the spare should follow (normal of the spare_plane)
         # the spare vector can be changed for segments or can be the same
         wing_wp = wing_config.get_wing_workplane(segment)
-        xDir = wing_wp.plane.xDir
-        normal = spare_vector.normalized()
-        spare_plane = Plane(origin=spare_vector_origin, xDir=xDir, normal=normal)
+        spare_plane = Plane(origin=spare.spare_origin,
+                            xDir=wing_wp.plane.xDir,
+                            normal=spare.spare_vector.normalized())
 
-        extrude_length = wing_config.segments[segment].length * 10 if spare_length is None else spare_length
+        extrude_length = wing_config.segments[segment].length * 10 if spare.spare_length is None else spare.spare_length
         # extrude and intersect
-        raw_spare = (Workplane(spare_plane)
+        both_directions: bool = False if spare.spare_start != 0. else True
+        raw_spare = (Workplane(inPlane=spare_plane)
+                     .workplane(offset=spare.spare_start)
                      .placeSketch(spare_sketch)
-                     .extrude(extrude_length, both=True)
+                     .extrude(extrude_length, both=both_directions)
                      .intersect(toIntersect=current))
         return raw_spare, spare_plane
 
