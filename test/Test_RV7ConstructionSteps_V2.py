@@ -34,8 +34,6 @@ if __name__ == "__main__":
     logging.basicConfig(format='%(levelname)s:%(module)s:%(filename)s(%(lineno)d):%(funcName)s(): %(message)s',
                         level=logging.INFO, stream=sys.stdout)
 
-    shapeDisplay = ConstructionStepsViewer.instance(dev=True, distance=1, log=False)
-
     base_scale = 38
     printer_resolution = 0.2  # 0.2 mm layer hight
     
@@ -344,7 +342,7 @@ if __name__ == "__main__":
                                               "elevator_servo.model",
                                               "rudder_servo.model"
                                               ]))
-    root_node.append(aircraft_step_export_node)
+    #root_node.append(aircraft_step_export_node)
 
     ###### END: DESGIN TREE
 

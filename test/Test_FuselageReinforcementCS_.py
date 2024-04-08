@@ -13,7 +13,7 @@ from Airplane.ConstructionStepNode import ConstructionStepNode
 from Airplane.ConstructionRootNode import ConstructionRootNode
 from Airplane.FuselageConstructionSteps import *
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
-from Airplane.aircraft_topology.EngineInformation import Position
+from Airplane.aircraft_topology.EngineInformation import Position, EngineInformation
 
 # TODO: * cutouts for hinges
 #       * cutout for elevator flap rod (carbon 1mm) in elvator and in rudder
@@ -28,7 +28,6 @@ if __name__ == "__main__":
     logging.basicConfig(format='%(levelname)s:%(module)s:%(filename)s(%(lineno)d):%(funcName)s(): %(message)s',
                         level=logging.DEBUG, stream=sys.stdout)
 
-    shapeDisplay = ConstructionStepsViewer.instance(dev=True, distance=1, log=False)
 
     base_scale = 0.04*1000
     ribcage_factor = 0.35
@@ -49,24 +48,34 @@ if __name__ == "__main__":
     full_fuselage_loft_node = ConstructionStepNode(
         StepImportCreator("full_fuselage",
                           step_file=os.path.abspath(f"../components/aircraft/RV-7/fuselage.step"),
-                          scale=base_scale - base_scale * 0.01,
-                          scale_x=base_scale,
-                          scale_y=base_scale - base_scale*0.01,
-                          scale_z=base_scale - base_scale*0.01))
+                          scale=base_scale))
     root_node.append(full_fuselage_loft_node)
 
     engine_cape_full_node = ConstructionStepNode(
         EngineCapeShapeCreator("engine_cape", engine_index=1,
                                mount_plate_thickness=mount_plate_thickness,
-                               full_fuselage_loft="full_fuselage"))
+                               full_fuselage_loft=full_fuselage_loft_node.creator_id))
     root_node.append(engine_cape_full_node)
 
     fuselage_reinforcement_node = ConstructionStepNode(
         FuselageReinforcementShapeCreator("fuselage_reinforcement_0", rib_width=0.0008 * 1000, rib_spacing=0.00 * 1000,
                                           ribcage_factor=ribcage_factor, reinforcement_pipes_diameter=0.002 * 1000,
-                                          print_resolution=0.2, fuselage_loft="engine_cape.loft",
-                                          full_wing_loft="full_wing_loft"))
+                                          print_resolution=0.2, fuselage_loft=f"{engine_cape_full_node.creator_id}.loft",
+                                          full_wing_loft=full_wing_loft_node.creator_id))
     root_node.append(fuselage_reinforcement_node)
+
+    fuselage_small_hull = ConstructionStepNode(
+        SimpleOffsetShapeCreator("fuselage_small_hull",
+                                 offset=-0.8,
+                                 shape=full_fuselage_loft_node.creator_id))
+    root_node.append(fuselage_small_hull)
+
+    fuselage_reinforcement = ConstructionStepNode(
+        Intersect2ShapesCreator("fuselage_reinforcement",
+                                shape_a=fuselage_reinforcement_node.creator_id,
+                                shape_b=fuselage_small_hull.creator_id))
+    root_node.append(fuselage_reinforcement)
+    fuselage_reinforcement
 
     # dump to a json string
     json_data: str = json.dumps(root_node, indent=4, cls=GeneralJSONEncoder)

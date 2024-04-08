@@ -1,9 +1,4 @@
-import abc
-import logging
-from typing import Union
-
 from Airplane.aircraft_topology.ComponentInformation import ComponentInformation
-
 
 class Position:
     def __init__(self, x, y, z):

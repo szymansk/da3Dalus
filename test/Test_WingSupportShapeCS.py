@@ -1,15 +1,9 @@
 import logging
 import sys
-
 import json 
 import os
 
-from Airplane.creator.EngineCapeShapeCreator import EngineCapeShapeCreator
-from Airplane.creator import EngineCoverAndMountPanelAndFuselageShapeCreator
-from Airplane.creator.EngineMountShapeCreator import EngineMountShapeCreator
-from Airplane.creator.FuselageReinforcementShapeCreator import FuselageReinforcementShapeCreator
 from Airplane.creator.FuselageWingSupportShapeCreator import FuselageWingSupportShapeCreator
-from Airplane.creator.WingAttachmentBoltCutoutShapeCreator import WingAttachmentBoltCutoutShapeCreator
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
@@ -20,12 +14,11 @@ from Airplane.FuselageConstructionSteps import *
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
 from Airplane.aircraft_topology.EngineInformation import Position, EngineInformation
 
-if __name__ == "__main__":
 
+# TODO: add VaseModeWing...
+if __name__ == "__main__":
     logging.basicConfig(format='%(levelname)s:%(module)s:%(filename)s(%(lineno)d):%(funcName)s(): %(message)s',
                         level=logging.NOTSET, stream=sys.stdout)
-
-    shapeDisplay = ConstructionStepsViewer.instance(dev=True, distance=1, log=False)
 
     base_scale = 0.04*1000
     ribcage_factor = 0.35
@@ -56,7 +49,7 @@ if __name__ == "__main__":
         FuselageWingSupportShapeCreator("wing_support", rib_quantity=18, rib_width=0.0008 * 1000, rib_height_factor=1.5,
                                         rib_z_offset=0, fuselage_loft="full_fuselage", full_wing_loft="full_wing_loft",
                                         loglevel=logging.DEBUG))
-    #root_node.append(wing_support_node)
+    root_node.append(wing_support_node)
 
     full_elevator_loft_node = ConstructionStepNode(
         StepImportCreator("elevator",

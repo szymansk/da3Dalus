@@ -1,19 +1,9 @@
 import OCP.BRepPrimAPI as OPrim
-import OCP.TopoDS as OTopo
+
 import OCP.gp as Ogp
-#import OCP.ShapeFactory as OExs
-from OCP.AIS import AIS_Point
 from OCP.Aspect import Aspect_TOM_BALL, Aspect_TypeOfMarker
-from OCP.Geom import Geom_CartesianPoint
-from OCP.Graphic3d import Graphic3d_RenderingParams
-from OCP.Prs3d import Prs3d_PointAspect
-from OCP.Quantity import Quantity_Color, Quantity_NOC_HOTPINK4, Quantity_NameOfColor
-#from OCC.Display.SimpleGui import *
 from cadq_server import CQServerConnector
 from cadquery import Workplane, Assembly, Color
-
-# from Dimensions.ShapeDimensions import ShapeDimensions
-import Dimensions.ShapeDimensions as sd
 
 import logging
 
@@ -56,17 +46,19 @@ class ConstructionStepsViewer:
             self.display.render(msg, named_shape)
 
     def my_y_position(self, named_shape: Workplane):
-        shape_dimensions = sd.ShapeDimensions(named_shape)
-        pos = self.y_position + (shape_dimensions.get_y_mid())
-        return pos
+        #shape_dimensions = sd.ShapeDimensions(named_shape)
+        #pos = self.y_position + (shape_dimensions.get_y_mid())
+        #return pos
+        pass
 
     def next_y_position(self, named_shape: Workplane):
 
-        shape_dimensions = sd.ShapeDimensions(named_shape)
-        ydiff = shape_dimensions.get_width()
-        pos = self.y_position + self.distance + ydiff
+        #shape_dimensions = sd.ShapeDimensions(named_shape)
+        #ydiff = shape_dimensions.get_width()
+        #pos = self.y_position + self.distance + ydiff
         # print("ydiff:", ydiff, "pos:", pos)
-        return pos
+        #return pos
+        pass
 
     def get_display(self):
         return self.display

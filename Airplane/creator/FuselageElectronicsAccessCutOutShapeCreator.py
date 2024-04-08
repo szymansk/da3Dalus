@@ -1,11 +1,9 @@
 import logging
 
-from cadquery import Workplane, Vector
+from cadquery import Workplane
 import cadquery as cq
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
-from Extra.ConstructionStepsViewer import ConstructionStepsViewer
-
 
 class FuselageElectronicsAccessCutOutShapeCreator(AbstractShapeCreator):
 

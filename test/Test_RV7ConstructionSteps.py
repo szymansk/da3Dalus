@@ -34,8 +34,6 @@ if __name__ == "__main__":
     logging.basicConfig(format='%(levelname)s:%(module)s:%(filename)s(%(lineno)d):%(funcName)s(): %(message)s',
                         level=logging.DEBUG, stream=sys.stdout)
 
-    shapeDisplay = ConstructionStepsViewer.instance(dev=True, distance=1, log=False)
-
     base_scale = 0.039*1000
     ribcage_factor = 0.5
     mount_plate_thickness = 0.005*1000
@@ -131,7 +129,9 @@ if __name__ == "__main__":
     # #########
 
     engine_mount_init = ConstructionStepNode(
-        EngineMountShapeCreator("engine_mount_init", engine_index=1, mount_plate_thickness=mount_plate_thickness,
+        EngineMountShapeCreator("engine_mount_init",
+                                engine_index=1,
+                                mount_plate_thickness=mount_plate_thickness,
                                 cutout_thickness=12423))
     root_node.append(engine_mount_init)
 
@@ -387,7 +387,6 @@ if __name__ == "__main__":
                                      screw_din_diameter=0.0032*1000,
                                      screw_length=0.016*1000)
 
-    # engine_information = {1: CPACSEngineInformation(1, ccpacs_configuration)}
     engine_information = {1: engine_info1}
 
     lipo_information = ComponentInformation(width=0.031*1000, height=0.035*1000, length=0.108*1000,

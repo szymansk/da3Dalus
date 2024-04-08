@@ -18,6 +18,7 @@ from Airplane.aircraft_topology.WingConfiguration import WingConfiguration, Trai
 from Airplane.creator.ted_sketch_creators import ted_sketch_creators
 
 from cq_plugins.segmentToEdge import segmentToEdge
+from cadq_server.cadq_server_connector import CQServerConnector
 
 MOUNT_PLATE_THICKNESS = 1.0
 

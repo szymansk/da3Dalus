@@ -6,8 +6,8 @@ import OCP
 from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform
 from OCP.IGESControl import IGESControl_Reader, IGESControl_Writer
 from OCP.Interface import Interface_Static
-from OCP.TopoDS import TopoDS_Shape
-from cadquery import Shape
+
+from cadquery import Shape, Workplane
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
 from Airplane.aircraft_topology.ComponentInformation import ComponentInformation
@@ -16,9 +16,7 @@ from Airplane.creator.ScaleRotateTranslateCreator import ScaleRotateTranslateCre
 from Airplane.creator.StepImportCreator import StepImportCreator
 from Extra.BooleanOperationsForLists import BooleanCADOperation
 
-from Extra.ConstructionStepsViewer import *
 import cadquery as cq
-from OCP.BRepAlgoAPI import BRepAlgoAPI_Cut
 
 
 # === BEGIN: Basic shape operations ===
@@ -130,6 +128,7 @@ class CutMultipleShapesCreator(AbstractShapeCreator):
         return {self.identifier: new_shape}
 
 
+from cq_plugins.offest3D.offset3D import offset3D
 class SimpleOffsetShapeCreator(AbstractShapeCreator):
     """
     Creates a simple offset shape from given shape or the take the first input_shape,
@@ -212,37 +211,37 @@ class RepairFacesShapeCreator(AbstractShapeCreator):
 
 
 #TODO: MirrorShapeCreator
-class MirrorShapeCreator(AbstractShapeCreator):
-    """
-    Creates a simple offset shape from given shape or the take the first input_shape,
-    which is bigger(+)/smaller(-) bei the given <offset>[m].
-    """
-
-    def __init__(self, creator_id: str,
-                 shape: str = None,
-                 loglevel=logging.INFO):
-        self.shape = shape
-        super().__init__(creator_id, shapes_of_interest_keys=[shape], loglevel=loglevel)
-
-    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
-                      input_shapes: dict[str, Workplane],
-                      **kwargs) -> dict[str, Workplane]:
-        logging.info(f"mirror '{list(shapes_of_interest.keys())[0]}'  --> '{self.identifier}'")
-        shape = shapes_of_interest[self.shape]
-
-        # Set up the mirror
-        aTrsf = Ogp.gp_Trsf()
-        aTrsf.SetMirror(Ogp.gp_Ax2(Ogp.gp_Pnt(0, 0, 0), Ogp.gp_DY()))
-        # Apply the mirror transformation
-        aBRespTrsf = BRepBuilderAPI_Transform(shape.shape(), aTrsf)
-
-        topods_shape = aBRespTrsf.Shape()
-        result = TGeo.CNamedShape(topods_shape, f"mirrored_{shape.name()}")
-
-        ConstructionStepsViewer.instance().display_offset(result, shape, result, severity=logging.DEBUG,
-                                                          msg=self.identifier)
-
-        return {self.identifier: result}
+# class MirrorShapeCreator(AbstractShapeCreator):
+#     """
+#     Creates a simple offset shape from given shape or the take the first input_shape,
+#     which is bigger(+)/smaller(-) bei the given <offset>[m].
+#     """
+# 
+#     def __init__(self, creator_id: str,
+#                  shape: str = None,
+#                  loglevel=logging.INFO):
+#         self.shape = shape
+#         super().__init__(creator_id, shapes_of_interest_keys=[shape], loglevel=loglevel)
+# 
+#     def _create_shape(self, shapes_of_interest: dict[str, Workplane],
+#                       input_shapes: dict[str, Workplane],
+#                       **kwargs) -> dict[str, Workplane]:
+#         logging.info(f"mirror '{list(shapes_of_interest.keys())[0]}'  --> '{self.identifier}'")
+#         shape = shapes_of_interest[self.shape]
+# 
+#         # Set up the mirror
+#         aTrsf = Ogp.gp_Trsf()
+#         aTrsf.SetMirror(Ogp.gp_Ax2(Ogp.gp_Pnt(0, 0, 0), Ogp.gp_DY()))
+#         # Apply the mirror transformation
+#         aBRespTrsf = BRepBuilderAPI_Transform(shape.shape(), aTrsf)
+# 
+#         topods_shape = aBRespTrsf.Shape()
+#         result = TGeo.CNamedShape(topods_shape, f"mirrored_{shape.name()}")
+# 
+#         ConstructionStepsViewer.instance().display_offset(result, shape, result, severity=logging.DEBUG,
+#                                                           msg=self.identifier)
+# 
+#         return {self.identifier: result}
 
 class Intersect2ShapesCreator(AbstractShapeCreator):
     """
@@ -394,7 +393,7 @@ class ExportToStepCreator(AbstractShapeCreator):
 
         aStat = step_writer.Write(step_path)
         if aStat != IFSelect_RetDone:
-            logging.ERROR("Step writing error")
+            logging.error("Step writing error")
 
         return shapes_of_interest
 
@@ -422,26 +421,26 @@ class ExportToStepCreator(AbstractShapeCreator):
         # Interface_Static_SetIVal("write.precision.mode", 0)
         return step_writer
 
-class ExportToStlCreator(AbstractShapeCreator):
-
-    def __init__(self, creator_id: str, shapes_to_export: list[str], mode: str = "binary",
-                 linear_deflection: float = 0.0000001, loglevel=logging.INFO):
-        self.mode = mode
-        self.linear_deflection = linear_deflection
-        self.shapes_to_export: list[str] = shapes_to_export \
-            if shapes_to_export is not None else [None]
-        super().__init__(creator_id, shapes_of_interest_keys=self.shapes_to_export, loglevel=loglevel)
-
-    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
-                      input_shapes: dict[str, Workplane],
-                      **kwargs) -> dict[str, Workplane]:
-        logging.info(f"converting shapes '{', '.join(shapes_of_interest.keys())}' to .STL")
-
-        import stl_exporter.Exporter as Exporter
-        stl_exporter = Exporter.Exporter()
-        stl_exporter.write_stls_from_list(shapes_of_interest.values(), mode=self.mode,
-                                          linear_deflection=self.linear_deflection)
-        return shapes_of_interest
+# class ExportToStlCreator(AbstractShapeCreator):
+#
+#     def __init__(self, creator_id: str, shapes_to_export: list[str], mode: str = "binary",
+#                  linear_deflection: float = 0.0000001, loglevel=logging.INFO):
+#         self.mode = mode
+#         self.linear_deflection = linear_deflection
+#         self.shapes_to_export: list[str] = shapes_to_export \
+#             if shapes_to_export is not None else [None]
+#         super().__init__(creator_id, shapes_of_interest_keys=self.shapes_to_export, loglevel=loglevel)
+#
+#     def _create_shape(self, shapes_of_interest: dict[str, Workplane],
+#                       input_shapes: dict[str, Workplane],
+#                       **kwargs) -> dict[str, Workplane]:
+#         logging.info(f"converting shapes '{', '.join(shapes_of_interest.keys())}' to .STL")
+#
+#         import stl_exporter.Exporter as Exporter
+#         stl_exporter = Exporter.Exporter()
+#         stl_exporter.write_stls_from_list(shapes_of_interest.values(), mode=self.mode,
+#                                           linear_deflection=self.linear_deflection)
+#         return shapes_of_interest
 
 
 class ExportTo3mfCreator(AbstractShapeCreator):
@@ -578,77 +577,77 @@ class ComponentImporterCreator(AbstractShapeCreator):
         return {f"{self.identifier}": shape}
 
 
-class SliceShapesCreator(AbstractShapeCreator):
-    """
-    Slices the given shape in <number_of_parts> parts along the x-axis. And returns a dictionary with the parts.
-    The naming convention for a key is <shape_identifier>[<part_number>], e.g. {"fuselage[0]": <CNamedShape>, "fuselage[1]": <CNamedShape>}
-    """
-
-    def __init__(self, creator_id: str, number_of_parts: int, shapes_to_slice: list[str] = None, loglevel=logging.INFO):
-        self.shapes_to_slice = shapes_to_slice if shapes_to_slice is not None else [None]
-        self.number_of_parts = number_of_parts
-        super().__init__(creator_id, shapes_of_interest_keys=self.shapes_to_slice, loglevel=loglevel)
-
-    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
-                      input_shapes: dict[str, Workplane],
-                      **kwargs) -> dict[str, Workplane]:
-        logging.info(f"slicing each shape of '{', '.join(shapes_of_interest.keys())}' in {self.number_of_parts} parts")
-
-        from Extra.ShapeSlicer import ShapeSlicer
-        parts: dict[str, Workplane] = {}
-        for key, shape in shapes_of_interest.items():
-            my_slicer = ShapeSlicer(shape, self.loglevel, self.number_of_parts)
-            my_slicer.slice_by_cut(self.loglevel)
-            for i, s in enumerate(my_slicer.parts_list):
-                parts[f"{key}[{i}]"] = s
-                ConstructionStepsViewer.instance().display_this_shape(s, logging.DEBUG, msg=f"{key}[{i}]")
-        return parts
-
-
-class FullWingLoftShapeCreator(AbstractShapeCreator):
-    def __init__(self, creator_id: str,
-                 right_main_wing_index: int,
-                 cpacs_configuration=None,
-                 loglevel=logging.INFO
-                 ):
-        self.right_main_wing_index = right_main_wing_index
-        self._cpacs_configuration = cpacs_configuration
-        super().__init__(creator_id, shapes_of_interest_keys=None, loglevel=loglevel)
-
-    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
-                      input_shapes: dict[str, Workplane],
-                      **kwargs) -> dict[str, Workplane]:
-        logging.info(f"creating wing loft/hull with index {self.right_main_wing_index} --> '{self.identifier}'")
-
-        right_wing = self._cpacs_configuration.get_wing(self.right_main_wing_index).get_loft()
-        left_wing = self._cpacs_configuration.get_wing(self.right_main_wing_index).get_mirrored_loft()
-        complete_wing = BooleanCADOperation.fuse_shapes(
-            right_wing,
-            left_wing,
-            self.identifier)
-
-        ConstructionStepsViewer.instance().display_fuse(complete_wing, right_wing, left_wing, logging.DEBUG)
-        ConstructionStepsViewer.instance().display_this_shape(
-            complete_wing, logging.DEBUG, msg=f"{self.identifier}")
-        return {str(self.identifier): complete_wing,
-                f"{self.identifier}.right": right_wing,
-                f"{self.identifier}.left": left_wing}
+# class SliceShapesCreator(AbstractShapeCreator):
+#     """
+#     Slices the given shape in <number_of_parts> parts along the x-axis. And returns a dictionary with the parts.
+#     The naming convention for a key is <shape_identifier>[<part_number>], e.g. {"fuselage[0]": <CNamedShape>, "fuselage[1]": <CNamedShape>}
+#     """
+#
+#     def __init__(self, creator_id: str, number_of_parts: int, shapes_to_slice: list[str] = None, loglevel=logging.INFO):
+#         self.shapes_to_slice = shapes_to_slice if shapes_to_slice is not None else [None]
+#         self.number_of_parts = number_of_parts
+#         super().__init__(creator_id, shapes_of_interest_keys=self.shapes_to_slice, loglevel=loglevel)
+#
+#     def _create_shape(self, shapes_of_interest: dict[str, Workplane],
+#                       input_shapes: dict[str, Workplane],
+#                       **kwargs) -> dict[str, Workplane]:
+#         logging.info(f"slicing each shape of '{', '.join(shapes_of_interest.keys())}' in {self.number_of_parts} parts")
+#
+#         from Extra.ShapeSlicer import ShapeSlicer
+#         parts: dict[str, Workplane] = {}
+#         for key, shape in shapes_of_interest.items():
+#             my_slicer = ShapeSlicer(shape, self.loglevel, self.number_of_parts)
+#             my_slicer.slice_by_cut(self.loglevel)
+#             for i, s in enumerate(my_slicer.parts_list):
+#                 parts[f"{key}[{i}]"] = s
+#                 ConstructionStepsViewer.instance().display_this_shape(s, logging.DEBUG, msg=f"{key}[{i}]")
+#         return parts
 
 
-class FullFuselageLoftShapeCreator(AbstractShapeCreator):
-    def __init__(self, creator_id: str,
-                 fuselage_index: int,
-                 cpacs_configuration=None, loglevel=logging.INFO):
-        self.fuselage_index = fuselage_index
-        self._cpacs_configuration = cpacs_configuration
-        super().__init__(creator_id, shapes_of_interest_keys=None, loglevel=loglevel)
+# class FullWingLoftShapeCreator(AbstractShapeCreator):
+#     def __init__(self, creator_id: str,
+#                  right_main_wing_index: int,
+#                  cpacs_configuration=None,
+#                  loglevel=logging.INFO
+#                  ):
+#         self.right_main_wing_index = right_main_wing_index
+#         self._cpacs_configuration = cpacs_configuration
+#         super().__init__(creator_id, shapes_of_interest_keys=None, loglevel=loglevel)
+#
+#     def _create_shape(self, shapes_of_interest: dict[str, Workplane],
+#                       input_shapes: dict[str, Workplane],
+#                       **kwargs) -> dict[str, Workplane]:
+#         logging.info(f"creating wing loft/hull with index {self.right_main_wing_index} --> '{self.identifier}'")
+#
+#         right_wing = self._cpacs_configuration.get_wing(self.right_main_wing_index).get_loft()
+#         left_wing = self._cpacs_configuration.get_wing(self.right_main_wing_index).get_mirrored_loft()
+#         complete_wing = BooleanCADOperation.fuse_shapes(
+#             right_wing,
+#             left_wing,
+#             self.identifier)
+#
+#         ConstructionStepsViewer.instance().display_fuse(complete_wing, right_wing, left_wing, logging.DEBUG)
+#         ConstructionStepsViewer.instance().display_this_shape(
+#             complete_wing, logging.DEBUG, msg=f"{self.identifier}")
+#         return {str(self.identifier): complete_wing,
+#                 f"{self.identifier}.right": right_wing,
+#                 f"{self.identifier}.left": left_wing}
 
-    def _create_shape(self, shapes_of_interest: dict[str, Workplane],
-                      input_shapes: dict[str, Workplane],
-                      **kwargs) -> dict[str, Workplane]:
-        logging.info(f"creating wing loft/hull with index {self.fuselage_index} --> '{self.identifier}'")
-        full_fuselage_loft = self._cpacs_configuration.get_fuselage(self.fuselage_index).get_loft()
 
-        ConstructionStepsViewer.instance().display_this_shape(full_fuselage_loft, logging.DEBUG,
-                                                              msg=f"{self.identifier}")
-        return {str(self.identifier): full_fuselage_loft}
+# class FullFuselageLoftShapeCreator(AbstractShapeCreator):
+#     def __init__(self, creator_id: str,
+#                  fuselage_index: int,
+#                  cpacs_configuration=None, loglevel=logging.INFO):
+#         self.fuselage_index = fuselage_index
+#         self._cpacs_configuration = cpacs_configuration
+#         super().__init__(creator_id, shapes_of_interest_keys=None, loglevel=loglevel)
+#
+#     def _create_shape(self, shapes_of_interest: dict[str, Workplane],
+#                       input_shapes: dict[str, Workplane],
+#                       **kwargs) -> dict[str, Workplane]:
+#         logging.info(f"creating wing loft/hull with index {self.fuselage_index} --> '{self.identifier}'")
+#         full_fuselage_loft = self._cpacs_configuration.get_fuselage(self.fuselage_index).get_loft()
+#
+#         ConstructionStepsViewer.instance().display_this_shape(full_fuselage_loft, logging.DEBUG,
+#                                                               msg=f"{self.identifier}")
+#         return {str(self.identifier): full_fuselage_loft}

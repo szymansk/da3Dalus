@@ -4,8 +4,6 @@ import cadquery as cq
 from cadquery import Workplane
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
-from Extra.ConstructionStepsViewer import ConstructionStepsViewer
-
 
 class ScaleRotateTranslateCreator(AbstractShapeCreator):
     """

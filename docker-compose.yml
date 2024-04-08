@@ -9,10 +9,6 @@ services:
     stdin_open: true
     entrypoint: "/opt/anaconda/bin/python"
     tty: true
-    #ports:
-    #  - "8888:8888"
-    #depends_on:
-    #  - cq-server
 
   cq-server:
     image: szymanski2adesso/cq-server:amd64
@@ -30,13 +26,6 @@ services:
     stdin_open: true
     entrypoint: "/venv/bin/python"
     tty: true
-
-  #cq-jupyter:
-  #  image: bwalter42/jupyter_cadquery:3.5.2
-  #  ports:
-  #    - 8888:8888
-  #  volumes:
-  #    - ./:/home/cq/data
 
   cq-jupyter:
     image: szymanski2adesso/cadquery-jupyter:2.4.0

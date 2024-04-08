@@ -146,7 +146,7 @@ class WingConfiguration:
 
         self.scaled_point_list: dict[str, list[tuple[float, float]]] = {}
 
-        for spare in self.segments[0].spare_list:
+        for spare in [ spare for spare in (self.segments[0].spare_list or [])]:
             self._set_standard_spare_origin_vector(0, spare)
 
     def _get_standard_spare_origin_and_vector(self, start_segment, end_segment, spare_position_factor):

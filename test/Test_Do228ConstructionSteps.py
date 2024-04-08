@@ -1,13 +1,12 @@
 import sys
 
-import Extra.tigl_extractor as tg
 import json
 
 from Airplane.ConstructionStepNode import ConstructionStepNode
 from Airplane.ConstructionRootNode import ConstructionRootNode
 from Airplane.FuselageConstructionSteps import *
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
-from Airplane.aircraft_topology.EngineInformation import Position
+from Airplane.aircraft_topology.EngineInformation import Position, EngineInformation
 from Airplane.creator.EngineCapeShapeCreator import EngineCapeShapeCreator
 from Airplane.creator.EngineCoverAndMountPanelAndFuselageShapeCreator import EngineCoverAndMountPanelAndFuselageShapeCreator
 from Airplane.creator.EngineMountShapeCreator import EngineMountShapeCreator
@@ -23,15 +22,6 @@ if __name__ == "__main__":
     logging.basicConfig(format='%(levelname)s:%(module)s:%(filename)s(%(lineno)d):%(funcName)s(): %(message)s',
                         level=logging.INFO, stream=sys.stdout)
     logging.info(f"Start test for Fuselage Factory with CPACS file {CPACS_FILE_NAME}")
-
-    from Extra.ConstructionStepsViewer import ConstructionStepsViewer
-    from tigl3.configuration import CCPACSConfiguration, CCPACSConfigurationManager_get_instance
-
-    shapeDisplay = ConstructionStepsViewer.instance(dev=True, distance=1, log=False)
-
-    tigl_h = tg.get_tigl_handler(CPACS_FILE_NAME)
-    ccpacs_configuration: CCPACSConfiguration = CCPACSConfigurationManager_get_instance() \
-        .get_configuration(tigl_h._handle.value)
 
     # defining as simple root node
     root_node = ConstructionRootNode(creator_id="punisher")
@@ -205,21 +195,7 @@ if __name__ == "__main__":
                                               ]))
     reinforced_fuselage_node.append(cut_wing_from_fuselage_node)
 
-    shape_slicer_node = ConstructionStepNode(
-        SliceShapesCreator("fuselage_slicer", number_of_parts=5))
-    cut_wing_from_fuselage_node.append(shape_slicer_node)
-    # "final_fuselage" -> "fuselage_slicer[0] .. [4]"
 
-    shape_stl_export_node = ConstructionStepNode(
-        ExportToStlCreator("stl_exporter", shapes_to_export=["engine_mount",
-                                                             "engine_cape.cape",
-                                                             "final_fuselage[0]",
-                                                             "final_fuselage[1]",
-                                                             "final_fuselage[2]",
-                                                             "final_fuselage[3]",
-                                                             "final_fuselage[4]",
-                                                             "elevator[1]",
-                                                             "rudder"]))
     # >>>> root_node.append(shape_stl_export_node)
     # "fuselage_slicer[0] .. [4]", "engine_mount", "engine_cape.cape",
     # "elevator[0]", "elevator[1]", "rudder_with_slot" -> *
@@ -276,7 +252,6 @@ if __name__ == "__main__":
     # load the string
     # tigl_handel is parameter which is not in the json file, but needed by the constructor of a creator class
     myMap: ConstructionStepNode = json.loads(json_data, cls=GeneralJSONDecoder,
-                                             cpacs_configuration=ccpacs_configuration,
                                              engine_information=engine_information)
 
     # dump again to check
@@ -292,8 +267,6 @@ if __name__ == "__main__":
         from pprint import pprint
 
         pprint(structure)
-        shapeDisplay.start()
     except Exception as err:
-        shapeDisplay.start()
         raise err
     pass

@@ -3,8 +3,6 @@ import sys
 import json
 import os
 
-from cadquery import Vector
-
 from Airplane.aircraft_topology.ServoInformation import Servo
 from Airplane.creator import VaseModeWingCreator
 from Airplane.aircraft_topology.WingConfiguration import WingConfiguration, Spare, TrailingEdgeDevice
@@ -22,8 +20,6 @@ if __name__ == "__main__":
 
     logging.basicConfig(format='%(levelname)s:%(module)s:%(filename)s(%(lineno)d):%(funcName)s(): %(message)s',
                         level=logging.NOTSET, stream=sys.stdout)
-
-    shapeDisplay = ConstructionStepsViewer.instance(dev=True, distance=1, log=False)
 
     base_scale = 38
     printer_resolution = 0.2  # 0.2 mm layer height

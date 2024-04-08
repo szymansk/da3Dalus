@@ -1,8 +1,9 @@
 import logging
 
+from cadquery import Workplane
+
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
 
-from Extra.ConstructionStepsViewer import *
 class AddMultipleShapesCreator(AbstractShapeCreator):
     """
     Add shape B to shape A. This is not a fuse operation.

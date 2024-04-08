@@ -47,37 +47,6 @@ class FuselageFactory:
             rib_quantity=6, rib_width=0.0008, rib_height_factor=1.0)
         return shape__wing_support
 
-    @classmethod
-    def create_fuselage_reinforcement(cls, reinforcement_pipes_radius: float, rib_width: float, rib_spacing: float, ribcage_factor: float,
-                                      fuselage_loft: cq.Workplane, full_wing_loft: cq.Workplane) -> cq.Workplane:
-        internal_structure: list[cq.Workplane] = []
-        # Calculate the positions for the rib
-        y_max, y_min, z_max, z_min = FuselageFactory._calc_rib_positions(ribcage_factor, fuselage_loft, full_wing_loft,
-                                                                         spacing=rib_spacing)
-
-        fuselage_dimensions = PDim.ShapeDimensions(fuselage_loft)
-
-        # Ribs
-        ribs: cq.Workplane = FuselageRibFactory.create_sharp_ribs(rib_width, y_max, y_min, z_max, z_min,
-                                                                      fuselage_loft)
-        internal_structure.append(ribs)
-
-        # Reinforcement Pipes
-        from Airplane.ReinforcementPipeFactory import ReinforcementPipeFactory
-        reinforcement_pipes: cq.Workplane = ReinforcementPipeFactory.create_reinforcement_pipe_fuselage(
-            reinforcement_pipes_radius, y_max, y_min, z_max, z_min, fuselage_dimensions)
-        internal_structure.append(reinforcement_pipes)
-
-        # Fuse internal structure
-        fused_internal_structure: cq.Workplane = BooleanCADOperation.fuse_list_of_named_shapes(internal_structure)
-
-        # Create Reduction recces
-        cutouts: list[cq.Workplane] = \
-            FuselageFactory._create_recces_cutouts_for_fuselage_reinforcement(y_max, y_min, z_max, z_min,
-                                                                              fuselage_loft=fuselage_loft)
-        # cut Internal Structure
-        shape__fuselage_reinforcement = BooleanCADOperation.cut_list_of_named_shapes(fused_internal_structure, cutouts)
-        return shape__fuselage_reinforcement
 
     @classmethod
     def _offset_fuselage(cls, fuselage_loft: cq.Workplane, offset=0.001) -> cq.Workplane:

@@ -1,8 +1,10 @@
+import logging
 import sys
 
 import json 
 import os
 
+from Airplane.creator import EngineCoverAndMountPanelAndFuselageShapeCreator
 from Airplane.creator.EngineMountShapeCreator import EngineMountShapeCreator
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -12,52 +14,68 @@ from Airplane.ConstructionStepNode import ConstructionStepNode
 from Airplane.ConstructionRootNode import ConstructionRootNode
 from Airplane.FuselageConstructionSteps import *
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
-from Airplane.aircraft_topology.EngineInformation import Position
-
+from Airplane.aircraft_topology.EngineInformation import Position, EngineInformation
 
 if __name__ == "__main__":
 
     logging.basicConfig(format='%(levelname)s:%(module)s:%(filename)s(%(lineno)d):%(funcName)s(): %(message)s',
                         level=logging.NOTSET, stream=sys.stdout)
 
-    shapeDisplay = ConstructionStepsViewer.instance(dev=True, distance=1, log=False)
+    logging.root.level = logging.INFO
+    base_scale = 38
+    printer_resolution = 0.2  # 0.2 mm layer hight
 
-    base_scale = 0.04*1000
-    ribcage_factor = 0.35
-    mount_plate_thickness = 0.005*1000
-    engine_screw_hole_circle = 0.042*1000
-    engine_mount_box_length = 0.0133 * 2.5*1000
+    ribcage_factor = 0.49
+    mount_plate_thickness = 5
+    engine_screw_hole_circle = 42.0
+    engine_mount_box_length = 13.3 * 2.5
 
     # defining as simple root node
     root_node = ConstructionRootNode(creator_id="RV-7")
     pwd = os.path.curdir
 
-    offset_fuselage_node = ConstructionStepNode(
-        StepImportCreator("offset_fuselage",
+    fuselage_hull = ConstructionStepNode(
+        StepImportCreator("fuselage_hull_imp",
                           step_file=os.path.abspath("../components/aircraft/RV-7/fuselage_inlets.step"),
-                          scale=base_scale))
-    root_node.append(offset_fuselage_node)
+                          scale=base_scale,
+                          loglevel=logging.CRITICAL))
+    root_node.append(fuselage_hull)
 
     # #########
-    engine_mount_node = ConstructionStepNode(
-        EngineMountShapeCreator("engine_mount", engine_index=1, mount_plate_thickness=mount_plate_thickness,
-                                cutout_thickness=12423))
-    root_node.append(engine_mount_node)
+    engine_mount_init = ConstructionStepNode(
+        EngineMountShapeCreator("engine_mount_init",
+                                engine_index=1,
+                                mount_plate_thickness=mount_plate_thickness,
+                                cutout_thickness=mount_plate_thickness + 4 * printer_resolution,
+                                loglevel=logging.CRITICAL))
+    root_node.append(engine_mount_init)
 
-    engine_panel_node = ConstructionStepNode(
-        EngineMountPanelShapeCreator("engine_mount_plate", engine_index=1, mount_plate_thickness=mount_plate_thickness,
-                                     full_fuselage_loft="offset_fuselage"))
-    engine_mount_node.append(engine_panel_node)
+    engine_mount_plate = ConstructionStepNode(
+        EngineCoverAndMountPanelAndFuselageShapeCreator(
+            "engine_mount_plate", engine_index=1, mount_plate_thickness=mount_plate_thickness,
+            full_fuselage_loft="fuselage_hull_imp", loglevel=logging.CRITICAL))
+    engine_mount_init.append(engine_mount_plate)
 
-    fuse_mount_with_plate = ConstructionStepNode(
-        Fuse2ShapesCreator("engine_mount"))
-    engine_panel_node.append(fuse_mount_with_plate)
+    engine_mount_plate_cutout = ConstructionStepNode(
+        Cut2ShapesCreator("engine_mount_plate_cutout",
+                          minuend=engine_mount_plate.creator_id,
+                          subtrahend=f"{engine_mount_init.creator_id}.cutout",
+                          loglevel=logging.CRITICAL))
+    engine_mount_plate.append(engine_mount_plate_cutout)
+
+    engine_mount = ConstructionStepNode(
+        Fuse2ShapesCreator("engine_mount",
+                           shape_a=engine_mount_plate_cutout.creator_id,
+                           shape_b=engine_mount_init.creator_id,
+                           loglevel=logging.DEBUG))
+    engine_mount_plate_cutout.append(engine_mount)
     # engine mount END
 
     brushless_shape_import = ConstructionStepNode(
         ComponentImporterCreator("brushless",
                                  component_file=os.path.abspath("../components/brushless/DPower_AL3542-5_AL3542-7_AL35-09_v2.step"),
-                                 component_idx="brushless"))
+                                 component_idx="brushless",
+                                 loglevel=logging.DEBUG))
     root_node.append(brushless_shape_import)
 
     aircraft_step_export_node = ConstructionStepNode(
@@ -107,7 +125,6 @@ if __name__ == "__main__":
                                      screw_length=0.016*1000,
                                      rot_x=45)
 
-    # engine_information = {1: CPACSEngineInformation(1, ccpacs_configuration)}
     engine_information = {1: engine_info1}
 
     lipo_information = ComponentInformation(width=0.031, height=0.035, length=0.108,
