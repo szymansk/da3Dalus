@@ -1,0 +1,23 @@
+import logging
+import requests
+
+from cadquery import Workplane
+from cq_plugins.display.cadq_server_connector import CQServerConnector
+
+def display(self: Workplane, name: str = "", severity: int = logging.NOTSET,
+             url: str = "http://cq-server:5000/json", names=None, colors=None, alphas=None, **kwargs) -> Workplane:
+    if severity >= logging.root.level:
+        display._connector = display._connector if display._connector is not None else CQServerConnector(url=url)
+        try:
+            display._connector.render(name=name, cq_model=self, names=names, colors=colors, alphas=alphas, **kwargs)
+        except requests.exceptions.ConnectionError as e:
+            logging.error(f"could not render '{name}'")
+            pass
+    return self
+
+
+
+
+
+
+

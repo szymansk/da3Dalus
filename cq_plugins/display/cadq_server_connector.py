@@ -84,9 +84,9 @@ class CQServerConnector:
 
     def post_data(self, data):
         # sending post request and saving response as response object
-        r = requests.post(url=self.url, json=data, timeout=30)
+        r = requests.post(url=self.url, json=data, timeout=5)
         # extracting response text 
-        resp = r.text
+        #resp = r.text
         #logging.debug(f"Render Response:{resp}")
         return r
 

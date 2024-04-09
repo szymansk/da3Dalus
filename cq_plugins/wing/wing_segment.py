@@ -35,7 +35,7 @@ def wing_segment(self: cq.Workplane, tip_airfoil: str, tip_chord: float, length:
                    .airfoil(tip_airfoil, tip_chord, offset=offset, number_interpolation_points=number_interpolation_points).toPending())
     pending = airfoil_tip.ctx.pendingWires
     try:
-        _wing = airfoil_tip.loft()#.union(airfoil_root_solid)  # ruled=True --> airfoils must have same number of points
+        _wing = airfoil_tip.loft(ruled=True)#.union(airfoil_root_solid)  # ruled=True --> airfoils must have same number of points
         return _wing.newObject([tip_plane, airfoil_tip.val(), _wing.val()])
     except:
         loft = cq.Solid.makeLoft(pending)

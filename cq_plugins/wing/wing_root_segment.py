@@ -33,7 +33,7 @@ def wing_root_segment(self: cq.Workplane, root_airfoil: str,
                      .plane.rotated((tip_dihedral, 0, -tip_incidence)))
     airfoil_tip: Workplane = (airfoil_root.copyWorkplane(cq.Workplane(inPlane=tip_plane))
                               .airfoil(tip_airfoil, tip_chord, offset=offset, number_interpolation_points=number_interpolation_points).toPending())
-    wing: Workplane = airfoil_tip.loft(combine='a')  # ruled=True --> airfoils must have same number of points
+    wing: Workplane = airfoil_tip.loft(combine='a', ruled=True) #--> airfoils must have same number of points
 
     # add a connection part
     center_plane: Plane = self.plane.rotated((0, 0, -root_incidence))
@@ -41,7 +41,7 @@ def wing_root_segment(self: cq.Workplane, root_airfoil: str,
     center_root: Workplane = (cq.Workplane(inPlane=center_plane).workplane(offset=length))
     center: Workplane = (base_root.copyWorkplane(center_root)
                          .airfoil(root_airfoil, root_chord, offset=offset, number_interpolation_points=number_interpolation_points).toPending())
-    center_wing = center.loft(combine='a')
+    center_wing = center.loft(combine='a', ruled=True)
 
     final_wing = wing.union(toUnion=center_wing).copyWorkplane(self).split(keepBottom=True)
 

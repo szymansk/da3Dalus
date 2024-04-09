@@ -6,4 +6,4 @@ from cq_plugins.sew_fix_shape.sew_fix_shape import sewAndFixShape
 from cq_plugins.wing.wing_segment import wing_segment
 from cq_plugins.wing.airfoil import airfoil
 from cq_plugins.wing.wing_root_segment import wing_root_segment
-
+from cq_plugins.display.display import display
