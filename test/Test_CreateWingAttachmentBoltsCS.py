@@ -1,26 +1,31 @@
+import logging
 import sys
-
-import json 
 import os
 
-from Airplane.creator.EngineCapeShapeCreator import EngineCapeShapeCreator
-from Airplane.creator.WingAttachmentBoltCutoutShapeCreator import WingAttachmentBoltCutoutShapeCreator
+import json
+from pathlib import Path
+
+from airplane.ConstructionStepNode import ConstructionStepNode
+from airplane.ConstructionRootNode import ConstructionRootNode
+from airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
+
+from airplane.aircraft_topology.components import *
+from airplane.aircraft_topology.Position import Position
+from airplane.aircraft_topology.wing import *
+from airplane.creator.components import *
+from airplane.creator.export_import import *
+from airplane.creator.fuselage import *
+from airplane.creator.cad_operations import *
+from airplane.creator.wing import *
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
-from Airplane.ConstructionStepNode import ConstructionStepNode
-from Airplane.ConstructionRootNode import ConstructionRootNode
-from Airplane.FuselageConstructionSteps import *
-from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
-from Airplane.aircraft_topology.EngineInformation import Position
 
 if __name__ == "__main__":
 
     logging.basicConfig(format='%(levelname)s:%(module)s:%(filename)s(%(lineno)d):%(funcName)s(): %(message)s',
                         level=logging.NOTSET, stream=sys.stdout)
-
-    shapeDisplay = ConstructionStepsViewer.instance(dev=True, distance=1, log=False)
 
     base_scale = 0.04*1000
     ribcage_factor = 0.35

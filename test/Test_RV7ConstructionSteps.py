@@ -1,29 +1,29 @@
 import logging
 import sys
-
-import json 
 import os
 
-from Airplane.creator.EngineCapeShapeCreator import EngineCapeShapeCreator
-from Airplane.creator import EngineCoverAndMountPanelAndFuselageShapeCreator
-from Airplane.creator.EngineMountShapeCreator import EngineMountShapeCreator
-from Airplane.creator.FuselageElectronicsAccessCutOutShapeCreator import FuselageElectronicsAccessCutOutShapeCreator
-from Airplane.creator.FuselageReinforcementShapeCreator import FuselageReinforcementShapeCreator
-from Airplane.creator.FuselageWingSupportShapeCreator import FuselageWingSupportShapeCreator
-from Airplane.creator.WingAttachmentBoltCutoutShapeCreator import WingAttachmentBoltCutoutShapeCreator
+import json
+from pathlib import Path
+
+from airplane.ConstructionStepNode import ConstructionStepNode
+from airplane.ConstructionRootNode import ConstructionRootNode
+from airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
+
+from airplane.aircraft_topology.components import *
+from airplane.aircraft_topology.Position import Position
+from airplane.aircraft_topology.wing import *
+from airplane.creator.components import *
+from airplane.creator.export_import import *
+from airplane.creator.fuselage import *
+from airplane.creator.cad_operations import *
+from airplane.creator.wing import *
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
-from Airplane.ConstructionStepNode import ConstructionStepNode
-from Airplane.ConstructionRootNode import ConstructionRootNode
-from Airplane.FuselageConstructionSteps import *
-from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
-from Airplane.aircraft_topology.EngineInformation import Position, EngineInformation
 
 # TODO: * cutouts for hinges
 #       * cutout for elevator flap rod (carbon 1mm) in elvator and in rudder
-#       * wings with servos for aileron and flaps
 #       * cutouts for elevator and rudder rods (anlenkung carbonstab 1mm)
 #       * ruderhörner der Anlenkpunkt sollte über der Drehachse liegen und der Abstand beider
 #         Drehpunkte sollte mit dem Abstand der Anschlusspunkte übereinstimmen vergleich:
@@ -33,8 +33,6 @@ if __name__ == "__main__":
 
     logging.basicConfig(format='%(levelname)s:%(module)s:%(filename)s(%(lineno)d):%(funcName)s(): %(message)s',
                         level=logging.DEBUG, stream=sys.stdout)
-
-    shapeDisplay = ConstructionStepsViewer.instance(dev=True, distance=1, log=False)
 
     base_scale = 0.039*1000
     ribcage_factor = 0.5
@@ -131,7 +129,9 @@ if __name__ == "__main__":
     # #########
 
     engine_mount_init = ConstructionStepNode(
-        EngineMountShapeCreator("engine_mount_init", engine_index=1, mount_plate_thickness=mount_plate_thickness,
+        EngineMountShapeCreator("engine_mount_init",
+                                engine_index=1,
+                                mount_plate_thickness=mount_plate_thickness,
                                 cutout_thickness=12423))
     root_node.append(engine_mount_init)
 
@@ -387,7 +387,6 @@ if __name__ == "__main__":
                                      screw_din_diameter=0.0032*1000,
                                      screw_length=0.016*1000)
 
-    # engine_information = {1: CPACSEngineInformation(1, ccpacs_configuration)}
     engine_information = {1: engine_info1}
 
     lipo_information = ComponentInformation(width=0.031*1000, height=0.035*1000, length=0.108*1000,

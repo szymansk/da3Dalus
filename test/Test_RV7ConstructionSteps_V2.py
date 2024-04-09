@@ -1,25 +1,26 @@
+import logging
 import sys
-
-import json 
 import os
 
-from Airplane.creator.WingLoftCreator import WingLoftCreator
-from Airplane.aircraft_topology.WingConfiguration import WingConfiguration
-from Airplane.creator.EngineCapeShapeCreator import EngineCapeShapeCreator
-from Airplane.creator import EngineCoverAndMountPanelAndFuselageShapeCreator
-from Airplane.creator.EngineMountShapeCreator import EngineMountShapeCreator
-from Airplane.creator.FuselageElectronicsAccessCutOutShapeCreator import FuselageElectronicsAccessCutOutShapeCreator
-from Airplane.creator.FuselageReinforcementShapeCreator import FuselageReinforcementShapeCreator
-from Airplane.creator.FuselageWingSupportShapeCreator import FuselageWingSupportShapeCreator
+import json
+from pathlib import Path
+
+from airplane.ConstructionStepNode import ConstructionStepNode
+from airplane.ConstructionRootNode import ConstructionRootNode
+from airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
+
+from airplane.aircraft_topology.components import *
+from airplane.aircraft_topology.Position import Position
+from airplane.aircraft_topology.wing import *
+from airplane.creator.components import *
+from airplane.creator.export_import import *
+from airplane.creator.fuselage import *
+from airplane.creator.cad_operations import *
+from airplane.creator.wing import *
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
-from Airplane.ConstructionStepNode import ConstructionStepNode
-from Airplane.ConstructionRootNode import ConstructionRootNode
-from Airplane.FuselageConstructionSteps import *
-from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
-from Airplane.aircraft_topology.EngineInformation import Position, EngineInformation
 
 # TODO: * cutouts for hinges
 #       * cutout for elevator flap rod (carbon 1mm) in elvator and in rudder
@@ -33,8 +34,6 @@ if __name__ == "__main__":
 
     logging.basicConfig(format='%(levelname)s:%(module)s:%(filename)s(%(lineno)d):%(funcName)s(): %(message)s',
                         level=logging.INFO, stream=sys.stdout)
-
-    shapeDisplay = ConstructionStepsViewer.instance(dev=True, distance=1, log=False)
 
     base_scale = 38
     printer_resolution = 0.2  # 0.2 mm layer hight
@@ -344,7 +343,7 @@ if __name__ == "__main__":
                                               "elevator_servo.model",
                                               "rudder_servo.model"
                                               ]))
-    root_node.append(aircraft_step_export_node)
+    #root_node.append(aircraft_step_export_node)
 
     ###### END: DESGIN TREE
 

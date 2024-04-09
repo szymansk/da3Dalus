@@ -1,81 +1,21 @@
 {
     "successors": {
-        "wing_loft": {
-            "successors": {
-                "wing_loft.offset": {
-                    "successors": {
-                        "wing_loft.hull": {
-                            "successors": {},
-                            "creator": {
-                                "minuend": "wing_loft",
-                                "subtrahend": "wing_loft.offset",
-                                "loglevel": 10,
-                                "creator_id": "wing_loft.hull",
-                                "$TYPE": "Cut2ShapesCreator"
-                            },
-                            "loglevel": 50,
-                            "creator_id": "wing_loft.hull",
-                            "$TYPE": "ConstructionStepNode"
-                        }
-                    },
-                    "creator": {
-                        "wing_side": "BOTH",
-                        "wing_index": "main_wing",
-                        "offset": 0.84,
-                        "loglevel": 10,
-                        "creator_id": "wing_loft.offset",
-                        "$TYPE": "WingLoftCreator"
-                    },
-                    "loglevel": 50,
-                    "creator_id": "wing_loft.offset",
-                    "$TYPE": "ConstructionStepNode"
-                }
-            },
+        "vase_wing": {
+            "successors": {},
             "creator": {
+                "printer_wall_thickness": 0.42,
+                "spare_perpendicular": false,
+                "leading_edge_offset_factor": 0.06,
+                "trailing_edge_offset_factor": 0.17,
+                "minimum_rib_angle": 45,
                 "wing_side": "BOTH",
                 "wing_index": "main_wing",
-                "offset": 0,
                 "loglevel": 10,
-                "creator_id": "wing_loft",
-                "$TYPE": "WingLoftCreator"
+                "creator_id": "vase_wing",
+                "$TYPE": "VaseModeWingCreator"
             },
             "loglevel": 50,
-            "creator_id": "wing_loft",
-            "$TYPE": "ConstructionStepNode"
-        },
-        "fuselage_hull_imp": {
-            "successors": {},
-            "creator": {
-                "step_file": "/opt/project/components/aircraft/RV-7/fuselage_inlets.step",
-                "trans_x": 0.0,
-                "trans_y": 0.0,
-                "trans_z": 0.0,
-                "rot_x": 0.0,
-                "rot_y": 0.0,
-                "rot_z": 0.0,
-                "scale": 38,
-                "scale_x": 38,
-                "scale_y": 38,
-                "scale_z": 38,
-                "loglevel": 20,
-                "creator_id": "fuselage_hull_imp",
-                "$TYPE": "StepImportCreator"
-            },
-            "loglevel": 50,
-            "creator_id": "fuselage_hull_imp",
-            "$TYPE": "ConstructionStepNode"
-        },
-        "cut_wing_from_fuselage": {
-            "successors": {},
-            "creator": {
-                "minuend": "fuselage_hull_imp",
-                "subtrahend": "wing_loft",
-                "loglevel": 20,
-                "creator_id": "cut_wing_from_fuselage",
-                "$TYPE": "Cut2ShapesCreator"
-            },
-            "loglevel": 50,
-            "creator_id": "cut_wing_from_fuselage",
+            "creator_id": "vase_wing",
             "$TYPE": "ConstructionStepNode"
         },
         "RV-7-wing": {
@@ -83,7 +23,7 @@
             "creator": {
                 "file_path": "../exports",
                 "shapes_to_export": [
-                    "wing_loft.hull"
+                    "vase_wing"
                 ],
                 "loglevel": 20,
                 "creator_id": "RV-7-wing",

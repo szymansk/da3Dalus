@@ -1,29 +1,30 @@
+import logging
 import sys
-
-import json
 import os
 
-from cadquery import Vector
+import json
+from pathlib import Path
 
-from Airplane.aircraft_topology.ServoInformation import Servo
-from Airplane.creator import VaseModeWingCreator
-from Airplane.aircraft_topology.WingConfiguration import WingConfiguration, Spare, TrailingEdgeDevice
+from airplane.ConstructionStepNode import ConstructionStepNode
+from airplane.ConstructionRootNode import ConstructionRootNode
+from airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
+
+from airplane.aircraft_topology.components import *
+from airplane.aircraft_topology.Position import Position
+from airplane.aircraft_topology.wing import *
+from airplane.creator.components import *
+from airplane.creator.export_import import *
+from airplane.creator.fuselage import *
+from airplane.creator.cad_operations import *
+from airplane.creator.wing import *
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
-
-from Airplane.ConstructionStepNode import ConstructionStepNode
-from Airplane.ConstructionRootNode import ConstructionRootNode
-from Airplane.FuselageConstructionSteps import *
-from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
-from Airplane.aircraft_topology.EngineInformation import Position, EngineInformation
 
 if __name__ == "__main__":
 
     logging.basicConfig(format='%(levelname)s:%(module)s:%(filename)s(%(lineno)d):%(funcName)s(): %(message)s',
                         level=logging.NOTSET, stream=sys.stdout)
-
-    shapeDisplay = ConstructionStepsViewer.instance(dev=True, distance=1, log=False)
 
     base_scale = 38
     printer_resolution = 0.2  # 0.2 mm layer height
@@ -54,7 +55,7 @@ if __name__ == "__main__":
                             trailing_edge_offset_factor=trailing_edge_offset,
                             minimum_rib_angle=minimum_rib_angle,
                             wing_side="BOTH", loglevel=logging.DEBUG))
-    #root_node.append(vase_wing_loft)
+    root_node.append(vase_wing_loft)
 
     vase_wing_loft_2 = ConstructionStepNode(
         VaseModeWingCreator(creator_id="vase_wing_2", wing_index="main_wing_2",
@@ -63,7 +64,7 @@ if __name__ == "__main__":
                             trailing_edge_offset_factor=trailing_edge_offset,
                             minimum_rib_angle=minimum_rib_angle,
                             wing_side="BOTH", loglevel=logging.DEBUG))
-    root_node.append(vase_wing_loft_2)
+    #root_node.append(vase_wing_loft_2)
 
     vase_wing_loft_3 = ConstructionStepNode(
         VaseModeWingCreator(creator_id="vase_wing_3", wing_index="main_wing_3",
@@ -118,10 +119,10 @@ if __name__ == "__main__":
         ExportToStepCreator(Path(f"{root_node.identifier}").stem,
                             file_path="../exports",
                             shapes_to_export=[vase_wing_loft.creator_id,
-                                              f"{vase_wing_loft.creator_id}.flaps[1]",
-                                              f"{vase_wing_loft.creator_id}.aileron[2]"
+                                              #f"{vase_wing_loft.creator_id}.flaps[1]",
+                                              #f"{vase_wing_loft.creator_id}.aileron[2]"
                                               ]))
-    #root_node.append(aircraft_step_export_node)
+    root_node.append(aircraft_step_export_node)
 
     #####################
     #####################
@@ -176,119 +177,130 @@ if __name__ == "__main__":
     component_information = {"brushless": engine_info1, "lipo": lipo_information}
 
     #### WING ####
-    # airfoil = "../components/airfoils/naca2415.dat"
-    # wing_config = WingConfiguration(root_airfoil=airfoil,
-    #                                 # tip_airfoil=airfoil2,
-    #                                 nose_pnt=(192.113, 0, -44.5),
-    #                                 root_chord=183,
-    #                                 root_dihedral=3.7,
-    #                                 root_incidence=0,
-    #                                 length=50,
-    #                                 sweep=0,
-    #                                 tip_chord=183,
-    #                                 tip_dihedral=0,
-    #                                 tip_incidence=0,
-    #                                 spare_list=[
-    #                                     Spare(spare_support_dimension_width=6,
-    #                                           spare_support_dimension_height=6,
-    #                                           spare_vector=(0, 410, 37),
-    #                                           spare_origin=(183 * 0.33, 0, -3)),
-    #                                     Spare(spare_support_dimension_width=2,
-    #                                           spare_support_dimension_height=12,
-    #                                           spare_length=50,
-    #                                           spare_vector=(0, 1, 0),
-    #                                           spare_origin=(190 * 0.63, 0, 6))
-    #                                 ])
-    #
-    # wing_config.add_segment(length=200,
-    #                         sweep=0,
-    #                         tip_chord=183,
-    #                         tip_dihedral=0,
-    #                         tip_incidence=0,
-    #                         spare_list=[
-    #                             Spare(spare_support_dimension_width=6,
-    #                                   spare_support_dimension_height=6,
-    #                                   spare_mode="follow")],
-    #                         trailing_edge_device=
-    #                         TrailingEdgeDevice(
-    #                             name="flaps",
-    #                             rel_chord_root=0.8,
-    #                             rel_chord_tip=0.8,
-    #                             hinge_spacing=0.5,
-    #                             side_spacing=1.,
-    #                             trailing_edge_offset_factor=1.4,
-    #                             positive_deflection_deg=10,
-    #                             negative_deflection_deg=50,
-    #                             hinge_type="top",
-    #                             servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
-    #                                         latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
-    #                                         cable_z=26),
-    #                             servo_placement='bottom',
-    #                             rel_chord_servo_position=0.43,
-    #                             rel_length_servo_position=0.45
-    #
-    #                         )
-    #                         )
-    # wing_config.add_segment(length=200,
-    #                         sweep=0,
-    #                         tip_chord=183,
-    #                         tip_dihedral=0,
-    #                         tip_incidence=0,
-    #                         spare_list=[
-    #                             Spare(spare_support_dimension_width=6,
-    #                                   spare_support_dimension_height=6,
-    #                                   spare_mode="follow")],
-    #                         trailing_edge_device=
-    #                         TrailingEdgeDevice(
-    #                             name="aileron",
-    #                             rel_chord_root=0.8,
-    #                             rel_chord_tip=0.8,
-    #                             hinge_spacing=0.5,
-    #                             side_spacing=1.,
-    #                             trailing_edge_offset_factor=1.4,
-    #                             positive_deflection_deg=45,
-    #                             negative_deflection_deg=25,
-    #                             hinge_type="top",
-    #                             servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
-    #                                         latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
-    #                                         cable_z=26),
-    #                             servo_placement='top',
-    #                             rel_chord_servo_position=0.43,
-    #                             rel_length_servo_position=0.3
-    #                         )
-    #                         )
-    #
-    # wing_config.add_segment(length=100,
-    #                         sweep=10,
-    #                         tip_chord=183 - 20,
-    #                         tip_dihedral=5,
-    #                         tip_incidence=0,
-    #                         spare_list=[
-    #                             Spare(spare_support_dimension_width=6,
-    #                                   spare_support_dimension_height=6,
-    #                                   spare_mode="follow")],
-    #                         )
-    #
-    # wing_config.add_segment(length=50,
-    #                         sweep=10,
-    #                         tip_chord=183 - 40,
-    #                         tip_dihedral=10,
-    #                         tip_incidence=0,
-    #                         spare_list=[
-    #                             Spare(spare_support_dimension_width=3,
-    #                                   spare_support_dimension_height=3,
-    #                                   spare_mode="follow")])
-    # wing_config.add_segment(length=50,
-    #                         sweep=10,
-    #                         tip_chord=183 - 80,
-    #                         tip_dihedral=5,
-    #                         tip_incidence=0,
-    #                         spare_list=[
-    #                             Spare(spare_support_dimension_width=3,
-    #                                   spare_support_dimension_height=3,
-    #                                   spare_mode="follow")],
-    #                         #tip_airfoil="../components/airfoils/nacam2.dat"
-    #                         )
+    airfoil = "../components/airfoils/naca2415.dat"
+    wing_config = WingConfiguration(root_airfoil=airfoil,
+                                    # tip_airfoil=airfoil2,
+                                    nose_pnt=(192.113, 0, -44.5),
+                                    root_chord=183,
+                                    root_dihedral=3.7,
+                                    root_incidence=0,
+                                    length=50,
+                                    sweep=0,
+                                    tip_chord=183,
+                                    tip_dihedral=0,
+                                    tip_incidence=0,
+                                    spare_list=[
+                                        Spare(spare_support_dimension_width=6,
+                                              spare_support_dimension_height=6,
+                                              spare_vector=(0, 410, 37),
+                                              spare_origin=(183 * 0.33, 0, -3)),
+                                        Spare(spare_support_dimension_width=2,
+                                              spare_support_dimension_height=12,
+                                              spare_length=40,
+                                              #spare_start=0,
+                                              spare_vector=(0, 1, 0),
+                                              spare_origin=(190 * 0.63, 0, 6))
+                                    ])
+
+    wing_config.add_segment(length=200,
+                            sweep=0,
+                            tip_chord=183,
+                            tip_dihedral=0,
+                            tip_incidence=0,
+                            spare_list=[
+                                Spare(spare_support_dimension_width=6,
+                                      spare_support_dimension_height=6,
+                                      spare_mode="follow")],
+                            trailing_edge_device=
+                            TrailingEdgeDevice(
+                                name="flaps",
+                                rel_chord_root=0.8,
+                                rel_chord_tip=0.8,
+                                hinge_spacing=0.5,
+                                side_spacing=1.,
+                                trailing_edge_offset_factor=1.4,
+                                positive_deflection_deg=10,
+                                negative_deflection_deg=50,
+                                hinge_type="top",
+                                servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
+                                            latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
+                                            cable_z=26),
+                                servo_placement='bottom',
+                                rel_chord_servo_position=0.43,
+                                rel_length_servo_position=0.45
+
+                            )
+                            )
+    wing_config.add_segment(length=200,
+                            sweep=0,
+                            tip_chord=183,
+                            tip_dihedral=0,
+                            tip_incidence=0,
+                            spare_list=[
+                                Spare(spare_support_dimension_width=6,
+                                      spare_support_dimension_height=6,
+                                      spare_mode="follow")],
+                            trailing_edge_device=
+                            TrailingEdgeDevice(
+                                name="aileron",
+                                rel_chord_root=0.8,
+                                rel_chord_tip=0.8,
+                                hinge_spacing=0.5,
+                                side_spacing=1.,
+                                trailing_edge_offset_factor=1.4,
+                                positive_deflection_deg=45,
+                                negative_deflection_deg=25,
+                                hinge_type="top",
+                                servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
+                                            latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
+                                            cable_z=26),
+                                servo_placement='top',
+                                rel_chord_servo_position=0.43,
+                                rel_length_servo_position=0.3
+                            )
+                            )
+
+    wing_config.add_segment(length=100,
+                            sweep=10,
+                            tip_chord=183 - 20,
+                            tip_dihedral=5,
+                            tip_incidence=0,
+                            spare_list=[
+                                Spare(spare_support_dimension_width=6,
+                                      spare_support_dimension_height=6,
+                                      spare_mode="follow")],
+                            )
+
+    wing_config.add_segment(length=50,
+                            sweep=10,
+                            tip_chord=183 - 40,
+                            tip_dihedral=10,
+                            tip_incidence=0,
+                            spare_list=[
+                                Spare(spare_support_dimension_width=3,
+                                      spare_support_dimension_height=3,
+                                      spare_mode="follow")])
+    wing_config.add_segment(length=50,
+                            sweep=10,
+                            tip_chord=183 - 80,
+                            tip_dihedral=5,
+                            tip_incidence=0,
+                            spare_list=[
+                                Spare(spare_support_dimension_width=3,
+                                      spare_support_dimension_height=3,
+                                      spare_mode="follow")],
+                            #tip_airfoil="../components/airfoils/nacam2.dat",
+                            )
+
+    wing_config.add_tip_segment(length=printer_wall_thickness,
+                                sweep=1,
+                                tip_chord=100,
+                                tip_dihedral=0,
+                                tip_incidence=0,
+                                tip_airfoil="../components/airfoils/nacam2.dat",
+                                number_interpolation_points=35,
+                                tip_type="flat"
+                                )
     ##### WING_2 ####
     wing_config_2 = WingConfiguration(root_airfoil="../components/airfoils/a18.dat",
                                     # tip_airfoil=airfoil2,
@@ -450,7 +462,7 @@ if __name__ == "__main__":
     ##### WING_4 ####
     wing_config_4 = WingConfiguration(root_airfoil="../components/airfoils/naca2415.dat",
                                     # tip_airfoil=airfoil2,
-                                    nose_pnt=(-250, 0, 0),
+                                    nose_pnt=(-450, 0, 0),
                                     root_chord=150,
                                     root_dihedral=10,
                                     root_incidence=5,
@@ -585,7 +597,7 @@ if __name__ == "__main__":
     #                            hinge_type="top"
     #                        )
     #                        )
-    wing_configuration = {#"main_wing": wing_config,
+    wing_configuration = {"main_wing": wing_config,
                           "main_wing_2": wing_config_2,
                           "main_wing_3": wing_config_3,
                           "main_wing_4": wing_config_4,
