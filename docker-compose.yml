@@ -14,8 +14,8 @@ services:
   cq-win_client:
     platform: linux/amd64
     build:
-      context: ./notebooks/Docker
-      dockerfile: notebooks/Docker/Dockerfile.amd64
+      context: docker
+      dockerfile: notebooks/docker/Dockerfile.amd64.dockerfile
     container_name: cq-win-client
     volumes:
       - ./:/home/cadquery/workspace
@@ -46,8 +46,8 @@ services:
     platform: linux/amd64
     container_name: cq-jupyter
     build:
-      context: ./notebooks/Docker
-      dockerfile: Dockerfile.arm64
+      context: docker
+      dockerfile: docker/Dockerfile.arm64.dockerfile
       cache_from:
         - szymanski2adesso/cadquery-client:2.4.0
     ports:
@@ -59,8 +59,8 @@ services:
     platform: linux/amd64
     container_name: cq-win-jupyter
     build:
-      context: ./notebooks/Docker
-      dockerfile: notebooks/Docker/Dockerfile.amd64
+      context: docker
+      dockerfile: notebooks/docker/Dockerfile.amd64.dockerfile
     ports:
       - 8888:8888
     volumes:

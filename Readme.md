@@ -17,8 +17,9 @@ If you are using pyCharm you should select as interpreter:
 
 You should edit your run configuration and select one of the file in the 'test' directory.
 
-After this you are able to run and debug the code in your docker container.
+To show the generated shapes you must launch the *cq-server* service. You will then find here the ![cadquery_viewer](http://localhost:5050).
 
+After this you are able to run and debug the code in your docker container.
 
 ## Folder Structure
 
