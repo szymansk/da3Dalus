@@ -1,12 +1,11 @@
 import logging
-from math import radians, fmod, sqrt
+from math import radians, fmod
 
 import cadquery as cq
 from cadquery import Workplane
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
-from Airplane.aircraft_topology.EngineInformation import EngineInformation
-from Airplane.aircraft_topology.Position import Position
+from Airplane.aircraft_topology.components.EngineInformation import EngineInformation
 
 
 class EngineCoverAndMountPanelAndFuselageShapeCreator(AbstractShapeCreator):

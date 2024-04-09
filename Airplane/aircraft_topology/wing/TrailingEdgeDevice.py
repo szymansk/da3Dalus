@@ -1,6 +1,6 @@
 from typing import Literal
 
-from Airplane.aircraft_topology.Servo import Servo
+from Airplane.aircraft_topology.components.Servo import Servo
 
 
 class TrailingEdgeDevice:

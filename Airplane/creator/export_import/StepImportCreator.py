@@ -3,7 +3,7 @@ import logging
 from cadquery import Workplane
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
-from Airplane.creator.cad_operations.ScaleRotateTranslateCreator import ScaleRotateTranslateCreator
+from Airplane.creator.cad_operations import ScaleRotateTranslateCreator
 
 
 class StepImportCreator(AbstractShapeCreator):

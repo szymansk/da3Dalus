@@ -1,23 +1,22 @@
 import logging
 import sys
-
-import json 
 import os
+
+import json
 from pathlib import Path
 
-from Airplane.aircraft_topology.ComponentInformation import ComponentInformation
-from Airplane.aircraft_topology.ServoInformation import ServoInformation
-from Airplane.creator.components.ComponentImporterCreator import ComponentImporterCreator
-from Airplane.creator.cad_operations.Cut2ShapesCreator import Cut2ShapesCreator
-from Airplane.creator.export_import.ExportToStepCreator import ExportToStepCreator
-from Airplane.creator.cad_operations.Fuse2ShapesCreator import Fuse2ShapesCreator
-from Airplane.creator import EngineCoverAndMountPanelAndFuselageShapeCreator, StepImportCreator
-from Airplane.creator.fuselage.EngineMountShapeCreator import EngineMountShapeCreator
 from Airplane.ConstructionStepNode import ConstructionStepNode
 from Airplane.ConstructionRootNode import ConstructionRootNode
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
-from Airplane.aircraft_topology.EngineInformation import EngineInformation
+
+from Airplane.aircraft_topology.components import *
 from Airplane.aircraft_topology.Position import Position
+from Airplane.aircraft_topology.wing import *
+from Airplane.creator.components import *
+from Airplane.creator.export_import import *
+from Airplane.creator.fuselage import *
+from Airplane.creator.cad_operations import *
+from Airplane.creator.wing import *
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))

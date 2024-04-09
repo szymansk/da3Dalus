@@ -2,13 +2,15 @@ import inspect
 from json import JSONEncoder, JSONDecoder
 
 from Airplane.ConstructionStepNode import *
-from Airplane.ConstructionRootNode import *
-from Airplane.creator import *
-from Airplane.creator.cad_operations import *
+
+# even though this imports may not be referenced directly
+# they are needed as we use inspection, where they are called
+from .ConstructionRootNode import ConstructionRootNode
+from Airplane.creator.components import *
 from Airplane.creator.export_import import *
 from Airplane.creator.fuselage import *
-from Airplane.creator.components import *
 from Airplane.creator.wing import *
+from Airplane.creator.cad_operations import *
 
 class GeneralJSONEncoder(JSONEncoder):
     """

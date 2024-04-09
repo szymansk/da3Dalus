@@ -1,30 +1,25 @@
 import logging
 import sys
+import os
 
 import json
-import os
 from pathlib import Path
 
-from Airplane.aircraft_topology.ComponentInformation import ComponentInformation
-from Airplane.aircraft_topology.ServoInformation import ServoInformation
-from Airplane.aircraft_topology.Servo import Servo
-
-from Airplane.creator import *
-from Airplane.creator.export_import import ExportToStepCreator
-
-from Airplane.aircraft_topology.wing.WingConfiguration import WingConfiguration
-from Airplane.aircraft_topology.wing.Spare import Spare
-from Airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
 from Airplane.ConstructionStepNode import ConstructionStepNode
 from Airplane.ConstructionRootNode import ConstructionRootNode
 from Airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
-from Airplane.aircraft_topology.EngineInformation import EngineInformation
+
+from Airplane.aircraft_topology.components import *
 from Airplane.aircraft_topology.Position import Position
+from Airplane.aircraft_topology.wing import *
+from Airplane.creator.components import *
+from Airplane.creator.export_import import *
+from Airplane.creator.fuselage import *
+from Airplane.creator.cad_operations import *
+from Airplane.creator.wing import *
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
-
-
 
 if __name__ == "__main__":
 

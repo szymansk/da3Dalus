@@ -5,8 +5,8 @@ from cadquery import Workplane
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
 from Airplane.creator.export_import.IgesImportCreator import IgesImportCreator
-from Airplane.aircraft_topology.ServoInformation import ServoInformation
-from Airplane.creator import StepImportCreator
+from Airplane.aircraft_topology.components.ServoInformation import ServoInformation
+from Airplane.creator.export_import import StepImportCreator
 from Airplane.creator.cad_operations import ScaleRotateTranslateCreator
 
 

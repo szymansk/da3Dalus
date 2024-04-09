@@ -3,7 +3,7 @@ import logging
 from cadquery import Workplane
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
-from Airplane.aircraft_topology.EngineInformation import EngineInformation
+from Airplane.aircraft_topology.components.EngineInformation import EngineInformation
 from Airplane.creator.fuselage.EngineCoverAndMountPanelAndFuselageShapeCreator import EngineCoverAndMountPanelAndFuselageShapeCreator
 
 

@@ -20,7 +20,7 @@ You should edit your run configuration and select one of the file in the 'test' 
 After this you are able to run and debug the code in your docker container.
 
 
-## Folder Strukture
+## Folder Structure
 
 * *test* Folder - scripts that build and test
 * [*components* Folder](./components/Readme.md) - components that can be reused

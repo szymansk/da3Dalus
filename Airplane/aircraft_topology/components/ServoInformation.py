@@ -1,7 +1,5 @@
 from OCP.gp import *
-from Airplane.aircraft_topology.ComponentInformation import ComponentInformation
-from Airplane.aircraft_topology.Servo import Servo
-
+from Airplane.aircraft_topology.components.ComponentInformation import ComponentInformation
 
 class ServoInformation(ComponentInformation):
     def __init__(self, height: float, width: float, length: float, lever_length: float, rot_x: float = 0.0,
@@ -37,14 +35,3 @@ class ServoInformation(ComponentInformation):
                          length=self.length,
                          width=self.width,
                          height=self.height)
-
-
-if __name__ == "__main__":
-    servo = Servo(length=23, width=12.5, height=31.5, leading_length=6,
-                  latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
-                  cable_z=26)
-    glue_in_mount = servo.create_laying_glue_in_mount()
-    mount = servo.create_laying_mount_for_wing()
-
-    mount.add(glue_in_mount).display("mounts", 5000)
-    pass

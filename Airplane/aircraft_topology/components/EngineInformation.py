@@ -1,4 +1,4 @@
-from Airplane.aircraft_topology.ComponentInformation import ComponentInformation
+from Airplane.aircraft_topology.components.ComponentInformation import ComponentInformation
 from Airplane.aircraft_topology.Position import Position
 
 class EngineInformation(ComponentInformation):

@@ -5,7 +5,7 @@ import cadquery as cq
 from cadquery import Workplane
 
 from Airplane.AbstractShapeCreator import AbstractShapeCreator
-from Airplane.aircraft_topology.EngineInformation import EngineInformation
+from Airplane.aircraft_topology.components.EngineInformation import EngineInformation
 
 
 class EngineMountShapeCreator(AbstractShapeCreator):

@@ -1,1 +1,2 @@
-from Airplane.creator.wing.WingLoftCreator import WingLoftCreator
+from .WingLoftCreator import WingLoftCreator
+from .VaseModeWingCreator import VaseModeWingCreator
