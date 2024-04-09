@@ -19,7 +19,6 @@ from airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevic
 from airplane.creator.wing.ted_sketch_creators import ted_sketch_creators
 
 import cq_plugins
-import cadq_server
 
 MOUNT_PLATE_THICKNESS = 1.0
 
