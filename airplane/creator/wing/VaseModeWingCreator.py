@@ -109,7 +109,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
             teds[f"{wing_config.segments[segment].trailing_edge_device.name}[{segment}]"] = ted_shape
             pass
 
-        final_right_wing = right_wing_hull.add(right_wing_spare).add(right_wing_cutout).cut(right_wing_slot)
+        final_right_wing = right_wing_hull.add(right_wing_spare).add(right_wing_cutout).cut(right_wing_slot).combine()
 
         # create additional spares
         for spare_idx in range(1, len(wing_config.segments[segment].spare_list)):

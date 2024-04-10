@@ -81,7 +81,7 @@ class WingConfiguration:
     def add_tip_segment(self: T,
                      tip_type: Literal['round','flat'],
                      length: float,
-                     tip_chord: float,
+                     tip_chord: float = None,
                      sweep: float = 0,
                      tip_airfoil: str = None,
                      tip_dihedral: float = 0,
@@ -93,6 +93,8 @@ class WingConfiguration:
         root_airfoil = self.segments[-1].tip_airfoil
         if tip_airfoil is None:  # continue with previous airfoil
             tip_airfoil = root_airfoil
+
+        tip_chord = tip_chord if tip_chord is not None else self.segments[-1].tip_chord
 
         nip = number_interpolation_points if number_interpolation_points is not None else self.segments[
             0].number_interpolation_points
@@ -112,7 +114,7 @@ class WingConfiguration:
 
     def add_segment(self: T,
                     length: float,
-                    tip_chord: float,
+                    tip_chord: float = None,
                     sweep: float = 0,
                     tip_airfoil: str = None,
                     tip_dihedral: float = 0,
@@ -130,6 +132,8 @@ class WingConfiguration:
             tip_airfoil = root_airfoil
 
         nip = number_interpolation_points if number_interpolation_points is not None else self.segments[0].number_interpolation_points
+
+        tip_chord = tip_chord if tip_chord is not None else self.segments[-1].tip_chord
 
         segment = WingSegment(root_airfoil, length, self.segments[-1].tip_chord, tip_chord,
                               sweep, 0, 0, root_trailing_edge,
@@ -198,6 +202,8 @@ class WingConfiguration:
                                  * self.segments[segment_number - 1].length))
 
     def _set_standard_spare_origin_vector(self, segment_number, spare):
+        if spare.spare_position_factor is None:
+            spare.spare_position_factor = 0.25
         if spare.spare_vector is None and spare.spare_position_factor is not None:
             # make spare vector following the spare_position_factor
             # that is centered inside of the airfoil at the chamber (middle of surfaces)
