@@ -1,0 +1,41 @@
+{
+    "successors": {
+        "vase_wing": {
+            "successors": {},
+            "creator": {
+                "printer_wall_thickness": 0.42,
+                "spare_perpendicular": false,
+                "leading_edge_offset_factor": 0.06,
+                "trailing_edge_offset_factor": 0.17,
+                "minimum_rib_angle": 45,
+                "wing_side": "BOTH",
+                "wing_index": "main_wing",
+                "loglevel": 10,
+                "creator_id": "vase_wing",
+                "$TYPE": "VaseModeWingCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "vase_wing",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "eHawk-wing": {
+            "successors": {},
+            "creator": {
+                "file_path": "../exports",
+                "shapes_to_export": [
+                    "vase_wing",
+                    "vase_wing.aileron[1]"
+                ],
+                "loglevel": 20,
+                "creator_id": "eHawk-wing",
+                "$TYPE": "ExportToStepCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "eHawk-wing",
+            "$TYPE": "ConstructionStepNode"
+        }
+    },
+    "loglevel": 50,
+    "creator_id": "eHawk-wing.root",
+    "$TYPE": "ConstructionRootNode"
+}
