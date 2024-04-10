@@ -83,14 +83,13 @@ class WingConfiguration:
         if self.segments[-1].wing_segment_type == 'tip':
             raise ValueError(f"The previous wing segment cannot be a '{self.segments[-1].wing_segment_type}'")
 
-        root_airfoil = Airfoil(airfoil=self.segments[-1].tip_airfoil.airfoil, chord=self.segments[-1].tip_airfoil.chord)
-        if tip_airfoil.airfoil is None:  # continue with previous airfoil
-            tip_airfoil.airfoil = root_airfoil
+        root_airfoil = Airfoil(airfoil=self.segments[-1].tip_airfoil.airfoil,
+                               chord=self.segments[-1].tip_airfoil.chord)
 
+        tip_airfoil.airfoil = tip_airfoil.airfoil if tip_airfoil.airfoil is not None else root_airfoil.airfoil
         tip_airfoil.chord = tip_airfoil.chord if tip_airfoil.chord is not None else self.segments[-1].tip_airfoil.chord
+        nip = number_interpolation_points if number_interpolation_points is not None else self.segments[0].number_interpolation_points
 
-        nip = number_interpolation_points if number_interpolation_points is not None else self.segments[
-            0].number_interpolation_points
         segment = WingSegment(root_airfoil=root_airfoil,
                               length=length,
                               sweep=sweep,
@@ -114,12 +113,11 @@ class WingConfiguration:
 
         root_airfoil = Airfoil(airfoil= self.segments[-1].tip_airfoil.airfoil,
                                chord=self.segments[-1].tip_airfoil.chord)
-        if tip_airfoil.airfoil is None: #continue with previous airfoil
-            tip_airfoil.airfoil = root_airfoil.airfoil
 
-        nip = number_interpolation_points if number_interpolation_points is not None else self.segments[0].number_interpolation_points
-
+        tip_airfoil.airfoil = tip_airfoil.airfoil if tip_airfoil.airfoil is not None else root_airfoil.airfoil
         tip_airfoil.chord = tip_airfoil.chord if tip_airfoil.chord is not None else self.segments[-1].tip_airfoil.chord
+        nip = number_interpolation_points if number_interpolation_points is not None else self.segments[
+            0].number_interpolation_points
 
         segment = WingSegment(root_airfoil=root_airfoil,
                               length=length,
