@@ -12,6 +12,7 @@ from airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDe
 from airplane.aircraft_topology.components import *
 from airplane.aircraft_topology.Position import Position
 from airplane.aircraft_topology.wing import *
+from airplane.aircraft_topology.wing.WingSegment import Airfoil
 from airplane.creator.components import *
 from airplane.creator.export_import import *
 from airplane.creator.fuselage import *
@@ -101,16 +102,11 @@ if __name__ == "__main__":
 
     #### WING ####
     airfoil = "../components/airfoils/clarky.dat"
-    wing_config = WingConfiguration(root_airfoil=airfoil,
-                                    nose_pnt=(0, 0, 0),
-                                    root_chord=160.,
-                                    root_dihedral=2.,
-                                    root_incidence=0,
+    wing_config = WingConfiguration(nose_pnt=(0, 0, 0),
+                                    root_airfoil=Airfoil(airfoil=airfoil, chord=160., dihedral=2., incidence=0),
                                     length=220.,
                                     sweep=0,
-                                    tip_chord=160.,
-                                    tip_dihedral=0,
-                                    tip_incidence=0,
+                                    tip_airfoil=Airfoil(chord=160., dihedral=0, incidence=0),
                                     spare_list=[
                                         Spare(spare_support_dimension_width=4,
                                               spare_support_dimension_height=4,
@@ -121,26 +117,30 @@ if __name__ == "__main__":
                                               spare_length=70)
                                     ])
 
-    wing_config.add_segment(length=750 - 220, tip_chord=100, sweep=0, tip_dihedral=0, tip_incidence=0, spare_list=[
-        Spare(spare_support_dimension_width=4,
-              spare_support_dimension_height=4,
-              spare_mode="standard_backward")], trailing_edge_device=TrailingEdgeDevice(
-        name="aileron",
-        rel_chord_root=0.8,
-        rel_chord_tip=0.8,
-        hinge_spacing=0.5,
-        side_spacing=1.,
-        trailing_edge_offset_factor=1.4,
-        positive_deflection_deg=45,
-        negative_deflection_deg=25,
-        hinge_type="top",
-        servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
-                    latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
-                    cable_z=26),
-        servo_placement='top',
-        rel_chord_servo_position=0.29,
-        rel_length_servo_position=0.2
-    ))
+    wing_config.add_segment(
+        length=750 - 220,
+        sweep=0,
+        tip_airfoil=Airfoil( chord=100, dihedral=0, incidence=0),
+        spare_list=[
+            Spare(spare_support_dimension_width=4,
+                  spare_support_dimension_height=4,
+                  spare_mode="standard_backward")], trailing_edge_device=TrailingEdgeDevice(
+            name="aileron",
+            rel_chord_root=0.8,
+            rel_chord_tip=0.8,
+            hinge_spacing=0.5,
+            side_spacing=1.,
+            trailing_edge_offset_factor=1.4,
+            positive_deflection_deg=45,
+            negative_deflection_deg=25,
+            hinge_type="top",
+            servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
+                        latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
+                        cable_z=26),
+            servo_placement='top',
+            rel_chord_servo_position=0.29,
+            rel_length_servo_position=0.2
+        ))
 
     # wing_config.add_segment(length=100,
     #                         sweep=10,
@@ -176,9 +176,6 @@ if __name__ == "__main__":
     #
     wing_config.add_tip_segment(length=printer_wall_thickness,
                                 sweep=1,
-                                #tip_chord=100,
-                                #tip_dihedral=0,
-                                #tip_incidence=0,
                                 tip_type="flat"
                                 )
 

@@ -12,6 +12,7 @@ from airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDe
 from airplane.aircraft_topology.components import *
 from airplane.aircraft_topology.Position import Position
 from airplane.aircraft_topology.wing import *
+from airplane.aircraft_topology.wing.WingSegment import Airfoil
 from airplane.creator.components import *
 from airplane.creator.export_import import *
 from airplane.creator.fuselage import *
@@ -400,10 +401,11 @@ if __name__ == "__main__":
     component_information = {"brushless": engine_info1, "lipo": lipo_information}
 
     airfoil = "../components/airfoils/naca23013.5.dat"
-    wing_configuration = {"main_wing": WingConfiguration(root_airfoil=airfoil, nose_pnt=(192.113, -1, -44.5),
-                                                         length=410, root_chord=183, tip_chord=183, sweep=0,
-                                                         root_dihedral=3.7, root_incidence=0, tip_dihedral=0,
-                                                         tip_incidence=0)}
+    wing_configuration = {"main_wing": WingConfiguration(nose_pnt=(192.113, -1, -44.5),
+                                                         root_airfoil=Airfoil( airfoil=airfoil, chord=183, dihedral=3.7, incidence=0),
+                                                         length=410,
+                                                         sweep=0,
+                                                         tip_airfoil=Airfoil(chord=183, dihedral=0, incidence=0))}
 
     # load the string
     # tigl_handel is parameter which is not in the json file, but needed by the constructor of a creator class

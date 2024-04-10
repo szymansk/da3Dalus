@@ -373,14 +373,14 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
         if ted.side_spacing > 0:
             ted_shape = ted_shape.cut(
-                Workplane(inPlane=ted_root_plane).box(wcs.root_chord * 4, wcs.root_chord * 4, ted.side_spacing,
+                Workplane(inPlane=ted_root_plane).box(wcs.root_airfoil.chord * 4, wcs.root_airfoil.chord * 4, ted.side_spacing,
                                                       centered=(True, True, False)))
             length = (ted_tip_plane.origin - ted_root_plane.origin)
 
             ted_shape = ted_shape.cut(
-                Workplane(inPlane=ted_root_plane).workplane(offset=length.y - ted.side_spacing).box(wcs.root_chord * 4,
-                                                                                                    wcs.root_chord * 4,
-                                                                                                    wcs.root_chord * 4,
+                Workplane(inPlane=ted_root_plane).workplane(offset=length.y - ted.side_spacing).box(wcs.root_airfoil.chord * 4,
+                                                                                                    wcs.root_airfoil.chord * 4,
+                                                                                                    wcs.root_airfoil.chord * 4,
                                                                                                     centered=(
                                                                                                     True, True,
                                                                                                     False)))
@@ -410,16 +410,16 @@ class VaseModeWingCreator(AbstractShapeCreator):
         right_wing_pwt_offset: Workplane = (
             Workplane('XZ')
             .wing_root_segment(
-                root_airfoil=wing_config.segments[segment].root_airfoil,
-                root_chord=wing_config.segments[segment].root_chord,
-                root_dihedral=wing_config.segments[segment].root_dihedral,
-                root_incidence=wing_config.segments[segment].root_incidence,
+                root_airfoil=wing_config.segments[segment].root_airfoil.airfoil,
+                root_chord=wing_config.segments[segment].root_airfoil.chord,
+                root_dihedral=wing_config.segments[segment].root_airfoil.dihedral,
+                root_incidence=wing_config.segments[segment].root_airfoil.incidence,
                 length=wing_config.segments[segment].length,
                 sweep=wing_config.segments[segment].sweep,
-                tip_chord=wing_config.segments[segment].tip_chord,
-                tip_dihedral=wing_config.segments[segment].tip_dihedral,
-                tip_incidence=wing_config.segments[segment].tip_incidence,
-                tip_airfoil=wing_config.segments[segment].tip_airfoil,
+                tip_chord=wing_config.segments[segment].tip_airfoil.chord,
+                tip_dihedral=wing_config.segments[segment].tip_airfoil.dihedral,
+                tip_incidence=wing_config.segments[segment].tip_airfoil.incidence,
+                tip_airfoil=wing_config.segments[segment].tip_airfoil.airfoil,
                 offset=self.printer_wall_thickness,
                 number_interpolation_points=wing_config.segments[0].number_interpolation_points,
                 root_plane=root_plane,
@@ -429,16 +429,16 @@ class VaseModeWingCreator(AbstractShapeCreator):
         right_wing_2xpwt_offset: Workplane = (
             Workplane('XZ')
             .wing_root_segment(
-                root_airfoil=wing_config.segments[segment].root_airfoil,
-                root_chord=wing_config.segments[segment].root_chord,
-                root_dihedral=wing_config.segments[segment].root_dihedral,
-                root_incidence=wing_config.segments[segment].root_incidence,
+                root_airfoil=wing_config.segments[segment].root_airfoil.airfoil,
+                root_chord=wing_config.segments[segment].root_airfoil.chord,
+                root_dihedral=wing_config.segments[segment].root_airfoil.dihedral,
+                root_incidence=wing_config.segments[segment].root_airfoil.incidence,
                 length=wing_config.segments[segment].length,
                 sweep=wing_config.segments[segment].sweep,
-                tip_chord=wing_config.segments[segment].tip_chord,
-                tip_dihedral=wing_config.segments[segment].tip_dihedral,
-                tip_incidence=wing_config.segments[segment].tip_incidence,
-                tip_airfoil=wing_config.segments[segment].tip_airfoil,
+                tip_chord=wing_config.segments[segment].tip_airfoil.chord,
+                tip_dihedral=wing_config.segments[segment].tip_airfoil.dihedral,
+                tip_incidence=wing_config.segments[segment].tip_airfoil.incidence,
+                tip_airfoil=wing_config.segments[segment].tip_airfoil.airfoil,
                 offset=2.0 * self.printer_wall_thickness,
                 number_interpolation_points=wing_config.segments[0].number_interpolation_points,
                 root_plane=root_plane,
@@ -447,16 +447,16 @@ class VaseModeWingCreator(AbstractShapeCreator):
         right_wing: Workplane = (
             Workplane('XZ')
             .wing_root_segment(
-                root_airfoil=wing_config.segments[segment].root_airfoil,
-                root_chord=wing_config.segments[segment].root_chord,
-                root_dihedral=wing_config.segments[segment].root_dihedral,
-                root_incidence=wing_config.segments[segment].root_incidence,
+                root_airfoil=wing_config.segments[segment].root_airfoil.airfoil,
+                root_chord=wing_config.segments[segment].root_airfoil.chord,
+                root_dihedral=wing_config.segments[segment].root_airfoil.dihedral,
+                root_incidence=wing_config.segments[segment].root_airfoil.incidence,
                 length=wing_config.segments[segment].length,
                 sweep=wing_config.segments[segment].sweep,
-                tip_chord=wing_config.segments[segment].tip_chord,
-                tip_dihedral=wing_config.segments[segment].tip_dihedral,
-                tip_incidence=wing_config.segments[segment].tip_incidence,
-                tip_airfoil=wing_config.segments[segment].tip_airfoil,
+                tip_chord=wing_config.segments[segment].tip_airfoil.chord,
+                tip_dihedral=wing_config.segments[segment].tip_airfoil.dihedral,
+                tip_incidence=wing_config.segments[segment].tip_airfoil.incidence,
+                tip_airfoil=wing_config.segments[segment].tip_airfoil.airfoil,
                 offset=0.0,
                 number_interpolation_points=wing_config.segments[0].number_interpolation_points,
                 root_plane=root_plane,
@@ -476,10 +476,10 @@ class VaseModeWingCreator(AbstractShapeCreator):
         current_pwt_offset = _current_pwt_offset.wing_segment(
             length=segment_config.length,
             sweep=segment_config.sweep,
-            tip_chord=segment_config.tip_chord,
-            tip_dihedral=segment_config.tip_dihedral,
-            tip_incidence=segment_config.tip_incidence,
-            tip_airfoil=segment_config.tip_airfoil,
+            tip_chord=segment_config.tip_airfoil.chord,
+            tip_dihedral=segment_config.tip_airfoil.dihedral,
+            tip_incidence=segment_config.tip_airfoil.incidence,
+            tip_airfoil=segment_config.tip_airfoil.airfoil,
             offset=self.printer_wall_thickness,
             number_interpolation_points=segment_config.number_interpolation_points,
             root_plane=root_plane,
@@ -488,10 +488,10 @@ class VaseModeWingCreator(AbstractShapeCreator):
         current_2xpwt_offset = _current_2xpwt_offset.wing_segment(
             length=segment_config.length,
             sweep=segment_config.sweep,
-            tip_chord=segment_config.tip_chord,
-            tip_dihedral=segment_config.tip_dihedral,
-            tip_incidence=segment_config.tip_incidence,
-            tip_airfoil=segment_config.tip_airfoil,
+            tip_chord=segment_config.tip_airfoil.chord,
+            tip_dihedral=segment_config.tip_airfoil.dihedral,
+            tip_incidence=segment_config.tip_airfoil.incidence,
+            tip_airfoil=segment_config.tip_airfoil.airfoil,
             offset=2.0 * self.printer_wall_thickness,
             number_interpolation_points=segment_config.number_interpolation_points,
             root_plane=root_plane,
@@ -499,10 +499,10 @@ class VaseModeWingCreator(AbstractShapeCreator):
         current = _current.wing_segment(
             length=segment_config.length,
             sweep=segment_config.sweep,
-            tip_chord=segment_config.tip_chord,
-            tip_dihedral=segment_config.tip_dihedral,
-            tip_incidence=segment_config.tip_incidence,
-            tip_airfoil=segment_config.tip_airfoil,
+            tip_chord=segment_config.tip_airfoil.chord,
+            tip_dihedral=segment_config.tip_airfoil.dihedral,
+            tip_incidence=segment_config.tip_airfoil.incidence,
+            tip_airfoil=segment_config.tip_airfoil.airfoil,
             offset=0.0,
             number_interpolation_points=segment_config.number_interpolation_points,
             root_plane=root_plane,
@@ -539,11 +539,11 @@ class VaseModeWingCreator(AbstractShapeCreator):
                            start_upper_part, spare_idx: int = 0):
         ted = wing_config.segments[segment].trailing_edge_device
         spare_position_factor = wing_config.segments[segment].spare_list[0].spare_position_factor
-        root_chord = wing_config.segments[segment].root_chord
+        root_chord = wing_config.segments[segment].root_airfoil.chord
         teof = 0.0
         if ted is not None:
             teof = (max((root_chord * (1 - ted.rel_chord_root)),
-                        ((wing_config.segments[segment].tip_chord + wing_config.segments[segment].sweep) *
+                        ((wing_config.segments[segment].tip_airfoil.chord + wing_config.segments[segment].sweep) *
                          (1 - ted.rel_chord_tip)))
                     * ted.trailing_edge_offset_factor)
 
@@ -749,7 +749,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
         if leading_edge_start is None:
             leading_edge_start = leading_edge_offset
         if trailing_edge_start is None:
-            trailing_edge_start = wing_config.segments[segment].root_chord - trailing_edge_offset
+            trailing_edge_start = wing_config.segments[segment].root_airfoil.chord - trailing_edge_offset
 
         # calculating the leading edge guides from root to tip
         root_nose = np.asarray((.0, .0, .0))
@@ -758,9 +758,9 @@ class VaseModeWingCreator(AbstractShapeCreator):
         tip_nose_offset = tip_nose + np.asarray((leading_edge_offset, .0, .0))
 
         # calculating the trailing edge guides from root to tip
-        root_tail = np.asarray((wing_config.segments[segment].root_chord, .0, .0))
+        root_tail = np.asarray((wing_config.segments[segment].root_airfoil.chord, .0, .0))
         root_tail_offset = root_tail - np.asarray((trailing_edge_offset, .0, .0))
-        tip_tail = tip_nose + np.asarray((wing_config.segments[segment].tip_chord, .0, .0))
+        tip_tail = tip_nose + np.asarray((wing_config.segments[segment].tip_airfoil.chord, .0, .0))
         tip_tail_offset = tip_tail - np.asarray((trailing_edge_offset, .0, .0))
 
         # calculating the rib start points

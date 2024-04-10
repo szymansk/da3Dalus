@@ -31,8 +31,8 @@ def create_MIDDLE_ted_sketch(segment: int, ted: TrailingEdgeDevice, wing_config:
     ted_root_plane, ted_tip_plane = wing_config.get_trailing_edge_device_planes(segment)
     loft_direction_vector = ted_root_plane.toLocalCoords(ted_tip_plane.origin)
     loft_direction_vector_length = np.linalg.norm(np.array(list(loft_direction_vector.toTuple())))
-    max_chord = max(wcs.root_chord * ted.rel_chord_root,
-                    wcs.tip_chord * ted.rel_chord_tip + wcs.sweep)
+    max_chord = max(wcs.root_airfoil.chord * ted.rel_chord_root,
+                    wcs.tip_airfoil.chord * ted.rel_chord_tip + wcs.sweep)
 
     ted_sketch: Sketch = (Sketch()
                           .segment((ted.hinge_spacing, 0), (max_chord, max_chord))
@@ -58,8 +58,8 @@ def create_MIDDLE_ted_sketch(segment: int, ted: TrailingEdgeDevice, wing_config:
 
 def create_SIMPLE_TOP_ted_sketch(segment, ted, wing_config):
     wcs: WingSegment = wing_config.segments[segment]
-    max_chord = max(wcs.root_chord * ted.rel_chord_root,
-                    wcs.tip_chord * ted.rel_chord_tip + wcs.sweep)
+    max_chord = max(wcs.root_airfoil.chord * ted.rel_chord_root,
+                    wcs.tip_airfoil.chord * ted.rel_chord_tip + wcs.sweep)
 
     top, bottom = wing_config.get_points_on_surface(segment, ted.rel_chord_root, 0, "root_airfoil")
     top_t, bottom_t = wing_config.get_points_on_surface(segment, ted.rel_chord_tip, 1.0, "root_airfoil")
@@ -96,8 +96,8 @@ def create_SIMPLE_TOP_ted_sketch(segment, ted, wing_config):
 def create_TOP_ted_sketch(segment, ted, wing_config):
     wcs: WingSegment = wing_config.segments[segment]
 
-    max_chord = max(wcs.root_chord * ted.rel_chord_root,
-                    wcs.tip_chord * ted.rel_chord_tip + wcs.sweep)
+    max_chord = max(wcs.root_airfoil.chord * ted.rel_chord_root,
+                    wcs.tip_airfoil.chord * ted.rel_chord_tip + wcs.sweep)
 
     top, bottom = wing_config.get_points_on_surface(segment, ted.rel_chord_root, 0, "root_airfoil")
     top_t, bottom_t = wing_config.get_points_on_surface(segment, ted.rel_chord_tip, 1.0, "root_airfoil")
