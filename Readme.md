@@ -1,4 +1,6 @@
 # README
+## Documentation
+The documentation is written in asciidoctor and can be found in the '/docs/' directory. To compile the documentation use ```make doc´´´. You can find the documentation in the '/docs/html/' directory.
 
 ## Build, Run & Debug
 Best is to build and debug your code inside of a docker container. The repository contains a 'docker-compose.yml' with all services needed. The 'docker-compose.dev.yml' is only to overcome an issue with the pyCharm editor.

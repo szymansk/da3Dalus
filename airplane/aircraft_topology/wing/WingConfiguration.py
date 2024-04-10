@@ -10,7 +10,7 @@ from scipy.interpolate import interp1d
 
 from airplane.aircraft_topology.wing.Spare import Spare
 from airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
-from airplane.aircraft_topology.wing.WingSegment import WingSegment
+from airplane.aircraft_topology.wing.WingSegment import WingSegment, TipType
 
 T = TypeVar("T", bound="WingConfiguration")
 
@@ -19,11 +19,11 @@ class WingConfiguration:
     This class holds the definition of the wing defined by connected segments. The first segment
     defined by this class is the root segment.
     """
-    def __init__(self, root_airfoil: str, nose_pnt: tuple[float, float, float], length: float, root_chord: float,
+    def __init__(self: T, root_airfoil: str, nose_pnt: tuple[float, float, float], length: float, root_chord: float,
                  tip_chord: float, sweep: float = 0, root_dihedral: float = 0, root_incidence: float = 0,
                  tip_airfoil: str = None, tip_dihedral: float = 0, tip_incidence: float = 0,
                  number_interpolation_points: int = None, spare_list: List[Spare] = None,
-                 trailing_edge_device: TrailingEdgeDevice = None):
+                 trailing_edge_device: TrailingEdgeDevice = None) -> T:
         self.nose_pnt: tuple[float, float, float] = nose_pnt
         if tip_airfoil is None:
             tip_airfoil = root_airfoil
@@ -66,14 +66,14 @@ class WingConfiguration:
         return spare_vector, spare_origin
 
     def add_tip_segment(self: T,
-                     tip_type: Literal['round','flat'],
-                     length: float,
-                     tip_chord: float = None,
-                     sweep: float = 0,
-                     tip_airfoil: str = None,
-                     tip_dihedral: float = 0,
-                     tip_incidence: float = 0,
-                     number_interpolation_points: int = None):
+                        tip_type: TipType,
+                        length: float,
+                        tip_chord: float = None,
+                        sweep: float = 0,
+                        tip_airfoil: str = None,
+                        tip_dihedral: float = 0,
+                        tip_incidence: float = 0,
+                        number_interpolation_points: int = None) -> None:
         if self.segments[-1].wing_segment_type == 'tip':
             raise ValueError(f"The previous wing segment cannot be a '{self.segments[-1].wing_segment_type}'")
 
@@ -85,8 +85,6 @@ class WingConfiguration:
 
         nip = number_interpolation_points if number_interpolation_points is not None else self.segments[
             0].number_interpolation_points
-        root_trailing_edge: float = 1.
-        tip_trailing_edge: float = 1.
         segment = WingSegment(root_airfoil, length, self.segments[-1].tip_chord, tip_chord, sweep, 0, 0, tip_airfoil,
                               tip_dihedral, tip_incidence, number_interpolation_points=nip, tip_type=tip_type,
                               wing_segment_type='tip')
@@ -96,18 +94,9 @@ class WingConfiguration:
 
         self._wing_workplanes[segment_number] = self.get_wing_workplane(segment_number)
 
-    def add_segment(self: T,
-                    length: float,
-                    tip_chord: float = None,
-                    sweep: float = 0,
-                    tip_airfoil: str = None,
-                    tip_dihedral: float = 0,
-                    tip_incidence: float = 0,
-                    root_trailing_edge: float = 1,
-                    tip_trailing_edge: float = 1,
-                    number_interpolation_points: int = None,
-                    spare_list: List[Spare] = None,
-                    trailing_edge_device: TrailingEdgeDevice = None):
+    def add_segment(self: T, length: float, tip_chord: float = None, sweep: float = 0, tip_airfoil: str = None,
+                    tip_dihedral: float = 0, tip_incidence: float = 0, number_interpolation_points: int = None,
+                    spare_list: List[Spare] = None, trailing_edge_device: TrailingEdgeDevice = None) -> None:
         if self.segments[-1].wing_segment_type == 'tip':
             raise ValueError(f"The previous wing segment cannot be a '{self.segments[-1].wing_segment_type}'")
 
@@ -119,10 +108,18 @@ class WingConfiguration:
 
         tip_chord = tip_chord if tip_chord is not None else self.segments[-1].tip_chord
 
-        segment = WingSegment(root_airfoil, length, self.segments[-1].tip_chord, tip_chord,
-                              sweep, 0, 0, root_trailing_edge,
-                              tip_airfoil, tip_dihedral, tip_incidence, tip_trailing_edge,
-                              spare_list=spare_list, trailing_edge_device=trailing_edge_device,
+        segment = WingSegment(root_airfoil=root_airfoil,
+                              length=length,
+                              root_chord=self.segments[-1].tip_chord,
+                              tip_chord=tip_chord,
+                              sweep=sweep,
+                              root_dihedral=0,
+                              root_incidence=0,
+                              tip_airfoil=tip_airfoil,
+                              tip_dihedral=tip_dihedral,
+                              tip_incidence=tip_incidence,
+                              spare_list=spare_list,
+                              trailing_edge_device=trailing_edge_device,
                               number_interpolation_points=nip,
                               tip_type=None,
                               wing_segment_type='segment')
@@ -289,7 +286,7 @@ class WingConfiguration:
 
         return self._scaled_point_list[key]
 
-    def get_chamber_y_at_rel_chord(self: T, segment: int, relative_chord:float, relative_length: float = 0.) -> Tuple[float,Vector]:
+    def get_chamber_y_at_rel_chord(self: T, segment: int, relative_chord:float, relative_length: float = 0.) -> Tuple[float, float]:
         upper,  lower = self.get_points_on_surface(segment, relative_chord=relative_chord, relative_length=relative_length)
         up_ar = np.asarray(upper.toTuple())
         low_ar  = np.asarray(lower.toTuple())

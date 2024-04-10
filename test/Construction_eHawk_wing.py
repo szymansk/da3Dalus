@@ -45,7 +45,7 @@ if __name__ == "__main__":
     minimum_rib_angle: float = 45
 
     # defining as simple root node
-    root_node = ConstructionRootNode(creator_id="RV-7-wing")
+    root_node = ConstructionRootNode(creator_id="eHawk-wing")
     pwd = os.path.curdir
 
     vase_wing_loft = ConstructionStepNode(
@@ -121,34 +121,26 @@ if __name__ == "__main__":
                                               spare_length=70)
                                     ])
 
-    wing_config.add_segment(length=750-220,
-                            sweep=0,
-                            tip_chord=100,
-                            tip_dihedral=0,
-                            tip_incidence=0,
-                            spare_list=[
-                                Spare(spare_support_dimension_width=4,
-                                      spare_support_dimension_height=4,
-                                      spare_mode="standard_backward")],
-                            trailing_edge_device=
-                            TrailingEdgeDevice(
-                                name="aileron",
-                                rel_chord_root=0.8,
-                                rel_chord_tip=0.8,
-                                hinge_spacing=0.5,
-                                side_spacing=1.,
-                                trailing_edge_offset_factor=1.4,
-                                positive_deflection_deg=45,
-                                negative_deflection_deg=25,
-                                hinge_type="top",
-                                servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
-                                            latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
-                                            cable_z=26),
-                                servo_placement='top',
-                                rel_chord_servo_position=0.29,
-                                rel_length_servo_position=0.2
-                            )
-                            )
+    wing_config.add_segment(length=750 - 220, tip_chord=100, sweep=0, tip_dihedral=0, tip_incidence=0, spare_list=[
+        Spare(spare_support_dimension_width=4,
+              spare_support_dimension_height=4,
+              spare_mode="standard_backward")], trailing_edge_device=TrailingEdgeDevice(
+        name="aileron",
+        rel_chord_root=0.8,
+        rel_chord_tip=0.8,
+        hinge_spacing=0.5,
+        side_spacing=1.,
+        trailing_edge_offset_factor=1.4,
+        positive_deflection_deg=45,
+        negative_deflection_deg=25,
+        hinge_type="top",
+        servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
+                    latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
+                    cable_z=26),
+        servo_placement='top',
+        rel_chord_servo_position=0.29,
+        rel_length_servo_position=0.2
+    ))
 
     # wing_config.add_segment(length=100,
     #                         sweep=10,

@@ -14,10 +14,10 @@ From this we derive two design rules:
 . the _design flow_ consists of building blocks containing inputs that are important for this flow, but independent from the configuration.
 . the _configurations_ contain information that is specific for this plane.
 
-= Configurations
+== Configurations
 
 include::WingConfiguration.adoc[]
 
-= Code Insights
+== Code Insights
 
 include::CoreBuildingBlocks.adoc[]

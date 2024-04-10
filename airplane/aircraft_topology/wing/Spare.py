@@ -4,7 +4,6 @@ from cadquery import Vector
 
 SpareMode = Literal["normal", "follow", "standard", "standard_backward"]
 
-
 class Spare:
     def __init__(self,
                  spare_support_dimension_width:float,

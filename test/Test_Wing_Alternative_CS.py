@@ -193,95 +193,61 @@ if __name__ == "__main__":
                   spare_origin=(190 * 0.63, 0, 6))
         ])
 
-    wing_config.add_segment(length=200,
-                            sweep=0,
-                            tip_chord=183,
-                            tip_dihedral=0,
-                            tip_incidence=0,
-                            spare_list=[
-                                Spare(spare_support_dimension_width=6,
-                                      spare_support_dimension_height=6,
-                                      spare_mode="follow")],
-                            trailing_edge_device=
-                            TrailingEdgeDevice(
-                                name="flaps",
-                                rel_chord_root=0.8,
-                                rel_chord_tip=0.8,
-                                hinge_spacing=0.5,
-                                side_spacing=1.,
-                                trailing_edge_offset_factor=1.4,
-                                positive_deflection_deg=10,
-                                negative_deflection_deg=50,
-                                hinge_type="top",
-                                servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
-                                            latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
-                                            cable_z=26),
-                                servo_placement='bottom',
-                                rel_chord_servo_position=0.43,
-                                rel_length_servo_position=0.45
+    wing_config.add_segment(length=200, tip_chord=183, sweep=0, tip_dihedral=0, tip_incidence=0, spare_list=[
+        Spare(spare_support_dimension_width=6,
+              spare_support_dimension_height=6,
+              spare_mode="follow")], trailing_edge_device=TrailingEdgeDevice(
+        name="flaps",
+        rel_chord_root=0.8,
+        rel_chord_tip=0.8,
+        hinge_spacing=0.5,
+        side_spacing=1.,
+        trailing_edge_offset_factor=1.4,
+        positive_deflection_deg=10,
+        negative_deflection_deg=50,
+        hinge_type="top",
+        servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
+                    latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
+                    cable_z=26),
+        servo_placement='bottom',
+        rel_chord_servo_position=0.43,
+        rel_length_servo_position=0.45
 
-                            )
-                            )
-    wing_config.add_segment(length=200,
-                            sweep=0,
-                            tip_chord=183,
-                            tip_dihedral=0,
-                            tip_incidence=0,
-                            spare_list=[
-                                Spare(spare_support_dimension_width=6,
-                                      spare_support_dimension_height=6,
-                                      spare_mode="follow")],
-                            trailing_edge_device=
-                            TrailingEdgeDevice(
-                                name="aileron",
-                                rel_chord_root=0.8,
-                                rel_chord_tip=0.8,
-                                hinge_spacing=0.5,
-                                side_spacing=1.,
-                                trailing_edge_offset_factor=1.4,
-                                positive_deflection_deg=45,
-                                negative_deflection_deg=25,
-                                hinge_type="top",
-                                servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
-                                            latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
-                                            cable_z=26),
-                                servo_placement='top',
-                                rel_chord_servo_position=0.43,
-                                rel_length_servo_position=0.3
-                            )
-                            )
+    ))
+    wing_config.add_segment(length=200, tip_chord=183, sweep=0, tip_dihedral=0, tip_incidence=0, spare_list=[
+        Spare(spare_support_dimension_width=6,
+              spare_support_dimension_height=6,
+              spare_mode="follow")], trailing_edge_device=TrailingEdgeDevice(
+        name="aileron",
+        rel_chord_root=0.8,
+        rel_chord_tip=0.8,
+        hinge_spacing=0.5,
+        side_spacing=1.,
+        trailing_edge_offset_factor=1.4,
+        positive_deflection_deg=45,
+        negative_deflection_deg=25,
+        hinge_type="top",
+        servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
+                    latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
+                    cable_z=26),
+        servo_placement='top',
+        rel_chord_servo_position=0.43,
+        rel_length_servo_position=0.3
+    ))
 
-    wing_config.add_segment(length=100,
-                            sweep=10,
-                            tip_chord=183 - 20,
-                            tip_dihedral=5,
-                            tip_incidence=0,
-                            spare_list=[
-                                Spare(spare_support_dimension_width=6,
-                                      spare_support_dimension_height=6,
-                                      spare_mode="follow")],
-                            )
+    wing_config.add_segment(length=100, tip_chord=183 - 20, sweep=10, tip_dihedral=5, tip_incidence=0, spare_list=[
+        Spare(spare_support_dimension_width=6,
+              spare_support_dimension_height=6,
+              spare_mode="follow")])
 
-    wing_config.add_segment(length=50,
-                            sweep=10,
-                            tip_chord=183 - 40,
-                            tip_dihedral=10,
-                            tip_incidence=0,
-                            spare_list=[
-                                Spare(spare_support_dimension_width=3,
-                                      spare_support_dimension_height=3,
-                                      spare_mode="follow")])
-    wing_config.add_segment(length=50,
-                            sweep=10,
-                            tip_chord=183 - 80,
-                            tip_dihedral=5,
-                            tip_incidence=0,
-                            spare_list=[
-                                Spare(spare_support_dimension_width=3,
-                                      spare_support_dimension_height=3,
-                                      spare_mode="follow")],
-                            #tip_airfoil="../components/airfoils/nacam2.dat",
-                            )
+    wing_config.add_segment(length=50, tip_chord=183 - 40, sweep=10, tip_dihedral=10, tip_incidence=0, spare_list=[
+        Spare(spare_support_dimension_width=3,
+              spare_support_dimension_height=3,
+              spare_mode="follow")])
+    wing_config.add_segment(length=50, tip_chord=183 - 80, sweep=10, tip_dihedral=5, tip_incidence=0, spare_list=[
+        Spare(spare_support_dimension_width=3,
+              spare_support_dimension_height=3,
+              spare_mode="follow")])
 
     wing_config.add_tip_segment(length=printer_wall_thickness,
                                 sweep=1,
@@ -303,65 +269,49 @@ if __name__ == "__main__":
                   # spare_origin=(150 * 0.25, 0, 5.4)
                   )
         ])
-    wing_config_2.add_segment(length=250,
-                            sweep=25/2.,
-                            tip_chord=125,
-                            tip_dihedral=0,
-                            tip_incidence=0,
-                            spare_list=[
-                                Spare(spare_support_dimension_width=3,
-                                      spare_support_dimension_height=3,
-                                      spare_mode="follow")],
-                            trailing_edge_device=
-                            TrailingEdgeDevice(
-                                name="flaps",
-                                rel_chord_root=0.9,
-                                rel_chord_tip=0.9,
-                                hinge_spacing=0.5,
-                                side_spacing=1.,
-                                trailing_edge_offset_factor=1.4,
-                                positive_deflection_deg=10,
-                                negative_deflection_deg=50,
-                                hinge_type="top",
-                                servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
-                                            latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
-                                            cable_z=26),
-                                servo_placement='top',
-                                rel_chord_servo_position=0.43,
-                                rel_length_servo_position=0.45
-                            ),
-                              tip_airfoil="../components/airfoils/a18.dat"
-                            )
+    wing_config_2.add_segment(length=250, tip_chord=125, sweep=25 / 2., tip_airfoil="../components/airfoils/a18.dat",
+                              tip_dihedral=0, tip_incidence=0, spare_list=[
+            Spare(spare_support_dimension_width=3,
+                  spare_support_dimension_height=3,
+                  spare_mode="follow")], trailing_edge_device=TrailingEdgeDevice(
+            name="flaps",
+            rel_chord_root=0.9,
+            rel_chord_tip=0.9,
+            hinge_spacing=0.5,
+            side_spacing=1.,
+            trailing_edge_offset_factor=1.4,
+            positive_deflection_deg=10,
+            negative_deflection_deg=50,
+            hinge_type="top",
+            servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
+                        latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
+                        cable_z=26),
+            servo_placement='top',
+            rel_chord_servo_position=0.43,
+            rel_length_servo_position=0.45
+        ))
 
-    wing_config_2.add_segment(length=250,
-                            sweep=25/2.,
-                            tip_chord=100,
-                            tip_dihedral=0,
-                            tip_incidence=0,
-                            spare_list=[
-                                Spare(spare_support_dimension_width=3,
-                                      spare_support_dimension_height=3,
-                                      spare_mode="standard_backward")],
-                            trailing_edge_device=
-                            TrailingEdgeDevice(
-                                name="aileron",
-                                rel_chord_root=0.9,
-                                rel_chord_tip=0.9,
-                                hinge_spacing=0.5,
-                                side_spacing=1.,
-                                trailing_edge_offset_factor=1.4,
-                                positive_deflection_deg=25,
-                                negative_deflection_deg=25,
-                                hinge_type="middle",
-                                servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
-                                            latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
-                                            cable_z=26),
-                                servo_placement='bottom',
-                                rel_chord_servo_position=0.43,
-                                rel_length_servo_position=0.45
-                            ),
-                              tip_airfoil="../components/airfoils/a18.dat"
-                            )
+    wing_config_2.add_segment(length=250, tip_chord=100, sweep=25 / 2., tip_airfoil="../components/airfoils/a18.dat",
+                              tip_dihedral=0, tip_incidence=0, spare_list=[
+            Spare(spare_support_dimension_width=3,
+                  spare_support_dimension_height=3,
+                  spare_mode="standard_backward")], trailing_edge_device=TrailingEdgeDevice(
+            name="aileron",
+            rel_chord_root=0.9,
+            rel_chord_tip=0.9,
+            hinge_spacing=0.5,
+            side_spacing=1.,
+            trailing_edge_offset_factor=1.4,
+            positive_deflection_deg=25,
+            negative_deflection_deg=25,
+            hinge_type="middle",
+            servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
+                        latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
+                        cable_z=26),
+            servo_placement='bottom',
+            rel_chord_servo_position=0.43,
+            rel_length_servo_position=0.45
+        ))
 
     ##### WING_3 ####
     wing_config_3 = WingConfiguration(root_airfoil="../components/airfoils/naca2415.dat", nose_pnt=(-250, 0, 0),
@@ -372,63 +322,47 @@ if __name__ == "__main__":
                   spare_vector=None,  # (0, 550, 0),
                   spare_origin=(150 * 0.33, 0, 5))
         ])
-    wing_config_3.add_segment(length=250,
-                            sweep=25,#25/2.,
-                            tip_chord=125,
-                            tip_dihedral=3,
-                            tip_incidence=0,
-                            spare_list=[
-                                Spare(spare_support_dimension_width=3,
-                                      spare_support_dimension_height=3,
-                                      spare_mode="follow")],
-                            trailing_edge_device=
-                            TrailingEdgeDevice(
-                                name="flaps",
-                                rel_chord_root=0.9,
-                                rel_chord_tip=0.9,
-                                hinge_spacing=0.5,
-                                side_spacing=1.,
-                                trailing_edge_offset_factor=1.4,
-                                positive_deflection_deg=10,
-                                negative_deflection_deg=50,
-                                hinge_type="top",
-                                servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
-                                            latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
-                                            cable_z=26),
-                                servo_placement='top',
-                                rel_chord_servo_position=0.43,
-                                rel_length_servo_position=0.45
-                            )
-                            )
+    wing_config_3.add_segment(length=250, tip_chord=125, sweep=25, tip_dihedral=3, tip_incidence=0, spare_list=[
+        Spare(spare_support_dimension_width=3,
+              spare_support_dimension_height=3,
+              spare_mode="follow")], trailing_edge_device=TrailingEdgeDevice(
+        name="flaps",
+        rel_chord_root=0.9,
+        rel_chord_tip=0.9,
+        hinge_spacing=0.5,
+        side_spacing=1.,
+        trailing_edge_offset_factor=1.4,
+        positive_deflection_deg=10,
+        negative_deflection_deg=50,
+        hinge_type="top",
+        servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
+                    latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
+                    cable_z=26),
+        servo_placement='top',
+        rel_chord_servo_position=0.43,
+        rel_length_servo_position=0.45
+    ))
 
-    wing_config_3.add_segment(length=250,
-                            sweep=25,#25/2.,
-                            tip_chord=100,
-                            tip_dihedral=0,
-                            tip_incidence=0,
-                            spare_list=[
-                                Spare(spare_support_dimension_width=3,
-                                      spare_support_dimension_height=3,
-                                      spare_mode="follow")],
-                            trailing_edge_device=
-                            TrailingEdgeDevice(
-                                name="aileron",
-                                rel_chord_root=0.9,
-                                rel_chord_tip=0.9,
-                                hinge_spacing=0.5,
-                                side_spacing=1.,
-                                trailing_edge_offset_factor=1.4,
-                                positive_deflection_deg=25,
-                                negative_deflection_deg=25,
-                                hinge_type="middle",
-                                servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
-                                            latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
-                                            cable_z=26),
-                                servo_placement='bottom',
-                                rel_chord_servo_position=0.43,
-                                rel_length_servo_position=0.45
-                            )
-                            )
+    wing_config_3.add_segment(length=250, tip_chord=100, sweep=25, tip_dihedral=0, tip_incidence=0, spare_list=[
+        Spare(spare_support_dimension_width=3,
+              spare_support_dimension_height=3,
+              spare_mode="follow")], trailing_edge_device=TrailingEdgeDevice(
+        name="aileron",
+        rel_chord_root=0.9,
+        rel_chord_tip=0.9,
+        hinge_spacing=0.5,
+        side_spacing=1.,
+        trailing_edge_offset_factor=1.4,
+        positive_deflection_deg=25,
+        negative_deflection_deg=25,
+        hinge_type="middle",
+        servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
+                    latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
+                    cable_z=26),
+        servo_placement='bottom',
+        rel_chord_servo_position=0.43,
+        rel_length_servo_position=0.45
+    ))
 
     ##### WING_4 ####
     wing_config_4 = WingConfiguration(root_airfoil="../components/airfoils/naca2415.dat", nose_pnt=(-450, 0, 0),
@@ -441,63 +375,47 @@ if __name__ == "__main__":
                   # spare_origin=(150 * 0.33, 0, 5)
                   )
         ])
-    wing_config_4.add_segment(length=250,
-                            sweep=10,#25/2.,
-                            tip_chord=125,
-                            tip_dihedral=0,
-                            tip_incidence=0,
-                            spare_list=[
-                                Spare(spare_support_dimension_width=3,
-                                      spare_support_dimension_height=3,
-                                      spare_mode="follow")],
-                            trailing_edge_device=
-                            TrailingEdgeDevice(
-                                name="flaps",
-                                rel_chord_root=0.9,
-                                rel_chord_tip=0.9,
-                                hinge_spacing=0.5,
-                                side_spacing=1.,
-                                trailing_edge_offset_factor=1.4,
-                                positive_deflection_deg=10,
-                                negative_deflection_deg=50,
-                                hinge_type="top",
-                                servo= None, #Servo(length=23, width=12.5, height=31.5, leading_length=6,
-                                            #latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
-                                            #cable_z=26),
-                                servo_placement='top',
-                                rel_chord_servo_position=0.43,
-                                rel_length_servo_position=0.45
-                            )
-                            )
+    wing_config_4.add_segment(length=250, tip_chord=125, sweep=10, tip_dihedral=0, tip_incidence=0, spare_list=[
+        Spare(spare_support_dimension_width=3,
+              spare_support_dimension_height=3,
+              spare_mode="follow")], trailing_edge_device=TrailingEdgeDevice(
+        name="flaps",
+        rel_chord_root=0.9,
+        rel_chord_tip=0.9,
+        hinge_spacing=0.5,
+        side_spacing=1.,
+        trailing_edge_offset_factor=1.4,
+        positive_deflection_deg=10,
+        negative_deflection_deg=50,
+        hinge_type="top",
+        servo=None,  # Servo(length=23, width=12.5, height=31.5, leading_length=6,
+        # latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
+        # cable_z=26),
+        servo_placement='top',
+        rel_chord_servo_position=0.43,
+        rel_length_servo_position=0.45
+    ))
 
-    wing_config_4.add_segment(length=250,
-                            sweep=10,#25/2.,
-                            tip_chord=100,
-                            tip_dihedral=0,
-                            tip_incidence=0,
-                            spare_list=[
-                                Spare(spare_support_dimension_width=3,
-                                      spare_support_dimension_height=3,
-                                      spare_mode="follow")],
-                            trailing_edge_device=
-                            TrailingEdgeDevice(
-                                name="aileron",
-                                rel_chord_root=0.9,
-                                rel_chord_tip=0.9,
-                                hinge_spacing=0.5,
-                                side_spacing=1.,
-                                trailing_edge_offset_factor=1.4,
-                                positive_deflection_deg=25,
-                                negative_deflection_deg=25,
-                                hinge_type="middle",
-                                servo=None,#Servo(length=23, width=12.5, height=31.5, leading_length=6,
-                                           # latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
-                                           # cable_z=26),
-                                servo_placement='bottom',
-                                rel_chord_servo_position=0.43,
-                                rel_length_servo_position=0.45
-                            )
-                            )
+    wing_config_4.add_segment(length=250, tip_chord=100, sweep=10, tip_dihedral=0, tip_incidence=0, spare_list=[
+        Spare(spare_support_dimension_width=3,
+              spare_support_dimension_height=3,
+              spare_mode="follow")], trailing_edge_device=TrailingEdgeDevice(
+        name="aileron",
+        rel_chord_root=0.9,
+        rel_chord_tip=0.9,
+        hinge_spacing=0.5,
+        side_spacing=1.,
+        trailing_edge_offset_factor=1.4,
+        positive_deflection_deg=25,
+        negative_deflection_deg=25,
+        hinge_type="middle",
+        servo=None,  # Servo(length=23, width=12.5, height=31.5, leading_length=6,
+        # latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
+        # cable_z=26),
+        servo_placement='bottom',
+        rel_chord_servo_position=0.43,
+        rel_length_servo_position=0.45
+    ))
 
     ##### RUDDER ####
     rudder_airfoil = "../components/airfoils/naca0008.dat"

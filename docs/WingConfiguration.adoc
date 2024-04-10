@@ -1,23 +1,25 @@
 ## Wing Configuration
 
-The wing configuration is important for the generation of an aeroplane. In general it consists of segment. There is always one _root_-segment, followed by a number of _segment_s or a _tip_-segments.
+The +WingConfiguration+ is important for the generation of an aeroplane. In general it consists of segment. There is always one _root_-segment, followed by a number of _segment_s or a _tip_-segments.
 
 [plantuml,"wing",svg]
-.A wing consists of segments of tpye _root_, _segment_ and _tip_.
+.A wing consists of segments of +WingSegmentType+ _root_, _segment_ and _tip_.
 ----
 @startebnf
-Wing = root, {segment}, {tip};
+WingConfiguration = root, {segment}, {tip};
 @endebnf
 ----
 
 A segment describes a part of a wing that is constructed by lofting the root airfoil of this segment to the tip airfoil of the segment. For segments of type _segment_ or _tip_ the root airfoil is equal to the previous segment's tip airfoil.
 
 [plantuml, "asf", svg]
+.Class Diagram
 ----
 @startuml
 class WingConfiguration {
     segments: list[WingSegment]
     nose_point: Tuple[float, float, float]
+
 }
 
 class WingSegment {
@@ -35,11 +37,17 @@ class WingSegment {
     number_interpolation_points: int
     spare_list: list[Spare]
     trailing_edge_device: list[TrailingEdgeDevice]
-    wing_segment_type: Literal["root", "segment", "tip"]
+    wing_segment_type: WingSegmentType
 }
 
+enum SpareMode {
+Literal["normal","follow","standard","standard_backward"]
+}
+
+SpareMode <--* Spare
+
 class Spare {
-    spare_mode: Literal["normal","follow","standard","standard_backward"]
+    spare_mode: SpareMode
     spare_origin: Vector
     spare_position_factor: float
     spare_support_dimension_height: float
@@ -49,27 +57,52 @@ class Spare {
     spare_vector: Vector
 }
 
-"trailing_edge_device": {
-    "hinge_spacing": 0.5,
-    "name": "flaps",
-    "negative_deflection_deg": 50,
-    "positive_deflection_deg": 10,
-    "rel_chord_root": 0.8,
-    "rel_chord_servo_position": 0.43,
-    "rel_chord_tip": 0.8,
-    "rel_length_servo_position": 0.45,
-    "servo": <airplane.aircraft_topology.components.Servo.Servo object at 0xffff78a66710>,
-    "servo_placement": "bottom",
-    "side_spacing": 1.0,
-    "suspension_type": "top",
-    "trailing_edge_offset_factor": 1.4
-},
+class TrailingEdgeDevice {
+    name: str
+    hinge_spacing: float
+    negative_deflection_deg: float
+    positive_deflection_deg: float
+    rel_chord_root: float
+    rel_chord_servo_position: float
+    rel_chord_tip: float
+    rel_length_servo_position: float
+    servo: Servo
+    servo_placement: Literal["bottom", "top"]
+    side_spacing: float
+    suspension_type: Literal["top"]
+    trailing_edge_offset_factor: float
+}
+
+enum ServoPlacement {
+Literal["top", "bottom"]
+}
+
+enum HingeType {
+Literal["middle", "top", "top_simple", "round_inside", "round_outside"]
+}
+
+enum WingSegmentType {
+Literal['root','segment','tip']
+}
+enum TipType {
+Literal["flat", "round"]
+}
 
 WingConfiguration *--> WingSegment
 WingSegment *--> Spare
+WingSegment *--> TrailingEdgeDevice
+TrailingEdgeDevice *--> HingeType
+WingSegment *--> TipType
+WingSegment *--> WingSegmentType
+TrailingEdgeDevice *--> ServoPlacement
 
 @enduml
 ----
 
+    def __init__(self, root_airfoil: str, length: float, root_chord: float, tip_chord: float, sweep: float = 0, root_dihedral: float = 0, root_incidence: float = 0, tip_airfoil: str = None, tip_dihedral: float = 0, tip_incidence: float = 0, spare_list: List[Spare] = None, trailing_edge_device: TrailingEdgeDevice = None, number_interpolation_points: int = None, tip_type: TipType = None, wing_segment_type: WingSegmentType = 'segment')
+
+    def add_segment(self: T, length: float, tip_chord: float = None, sweep: float = 0, tip_airfoil: str = None, tip_dihedral: float = 0, tip_incidence: float = 0, number_interpolation_points: int = None, spare_list: List[Spare] = None, trailing_edge_device: TrailingEdgeDevice = None) -> None
+
+    def add_tip_segment(self: T, tip_type: TipType, length: float, tip_chord: float = None, sweep: float = 0, tip_airfoil: str = None, tip_dihedral: float = 0, tip_incidence: float = 0, number_interpolation_points: int = None) -> None
 
 image::../images/images with text/Folie1.png[]

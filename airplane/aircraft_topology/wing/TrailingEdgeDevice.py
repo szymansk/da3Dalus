@@ -2,6 +2,8 @@ from typing import Literal
 
 from airplane.aircraft_topology.components.Servo import Servo
 
+ServoPlacement = Literal["top", "bottom"]
+HingeType = Literal["middle", "top", "top_simple", "round_inside", "round_outside"]
 
 class TrailingEdgeDevice:
 
@@ -12,13 +14,13 @@ class TrailingEdgeDevice:
                  hinge_spacing:float,
                  side_spacing:float,
                  servo: Servo = None,
-                 servo_placement: Literal["top", "bottom"] = 'top',
+                 servo_placement: ServoPlacement = 'top',
                  rel_chord_servo_position: float = None,
                  rel_length_servo_position: float = None,
                  positive_deflection_deg: float = 25,
                  negative_deflection_deg: float = 25,
                  trailing_edge_offset_factor: float = 1.0,
-                 hinge_type: Literal["middle", "top", "top_simple", "round_inside", "round_outside"] = "top"
+                 hinge_type: HingeType = "top"
                  ):
         self.name = name
         self.rel_chord_root = rel_chord_root
