@@ -1,0 +1,75 @@
+## Wing Configuration
+
+The wing configuration is important for the generation of an aeroplane. In general it consists of segment. There is always one _root_-segment, followed by a number of _segment_s or a _tip_-segments.
+
+[plantuml,"wing",svg]
+.A wing consists of segments of tpye _root_, _segment_ and _tip_.
+----
+@startebnf
+Wing = root, {segment}, {tip};
+@endebnf
+----
+
+A segment describes a part of a wing that is constructed by lofting the root airfoil of this segment to the tip airfoil of the segment. For segments of type _segment_ or _tip_ the root airfoil is equal to the previous segment's tip airfoil.
+
+[plantuml, "asf", svg]
+----
+@startuml
+class WingConfiguration {
+    segments: list[WingSegment]
+    nose_point: Tuple[float, float, float]
+}
+
+class WingSegment {
+    length: float
+    root_airfoil: str
+    root_chord: float
+    root_dihedral: float
+    root_incidence: float
+    sweep: float
+    tip_airfoil: str
+    tip_chord: float
+    tip_dihedral: float
+    tip_incidence: float
+    tip_type: float
+    number_interpolation_points: int
+    spare_list: list[Spare]
+    trailing_edge_device: list[TrailingEdgeDevice]
+    wing_segment_type: Literal["root", "segment", "tip"]
+}
+
+class Spare {
+    spare_mode: Literal["normal","follow","standard","standard_backward"]
+    spare_origin: Vector
+    spare_position_factor: float
+    spare_support_dimension_height: float
+    spare_support_dimension_width: float
+    spare_start: float
+    spare_length: float
+    spare_vector: Vector
+}
+
+"trailing_edge_device": {
+    "hinge_spacing": 0.5,
+    "name": "flaps",
+    "negative_deflection_deg": 50,
+    "positive_deflection_deg": 10,
+    "rel_chord_root": 0.8,
+    "rel_chord_servo_position": 0.43,
+    "rel_chord_tip": 0.8,
+    "rel_length_servo_position": 0.45,
+    "servo": <airplane.aircraft_topology.components.Servo.Servo object at 0xffff78a66710>,
+    "servo_placement": "bottom",
+    "side_spacing": 1.0,
+    "suspension_type": "top",
+    "trailing_edge_offset_factor": 1.4
+},
+
+WingConfiguration *--> WingSegment
+WingSegment *--> Spare
+
+@enduml
+----
+
+
+image::../images/images with text/Folie1.png[]

@@ -7,25 +7,11 @@ WingSegmentType = Literal['root','segment','tip']
 
 
 class WingSegment:
-    def __init__(self, root_airfoil: str,
-                 length: float,
-                 root_chord: float,
-                 tip_chord: float,
-                 sweep: float = 0,
-                 root_dihedral: float = 0,
-                 root_incidence: float = 0,
-                 root_trailing_edge: float = 1,
-                 tip_airfoil: str = None,
-                 tip_dihedral: float = 0,
-                 tip_incidence: float = 0,
-                 tip_trailing_edge: float = 1,
-                 spare_list: List[Spare] = None,
-                 trailing_edge_device: TrailingEdgeDevice = None,
-                 number_interpolation_points:int = None,
-                 tip_type: Literal['round'] = None,
-                 wing_segment_type: WingSegmentType = 'segment'):
-        self.tip_trailing_edge = tip_trailing_edge
-        self.root_trailing_edge = root_trailing_edge
+    def __init__(self, root_airfoil: str, length: float, root_chord: float, tip_chord: float, sweep: float = 0,
+                 root_dihedral: float = 0, root_incidence: float = 0, tip_airfoil: str = None, tip_dihedral: float = 0,
+                 tip_incidence: float = 0, spare_list: List[Spare] = None,
+                 trailing_edge_device: TrailingEdgeDevice = None, number_interpolation_points: int = None,
+                 tip_type: Literal['round'] = None, wing_segment_type: WingSegmentType = 'segment'):
         self.tip_airfoil = tip_airfoil
         self.root_airfoil = root_airfoil
         self.length = length

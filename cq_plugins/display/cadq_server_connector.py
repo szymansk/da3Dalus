@@ -72,8 +72,9 @@ def get_data(module_name, json_model) -> dict:
 class CQServerConnector:
     assembly: Assembly
 
-    def __init__(self, url):
+    def __init__(self, url, timeout = 20):
         self.url = url
+        self.timeout = timeout
         CQServerConnector.assembly = Assembly(name="root")
 
     def render(self, name, cq_model, names=None, colors=None, alphas=None, **kwargs):
@@ -84,11 +85,15 @@ class CQServerConnector:
 
     def post_data(self, data):
         # sending post request and saving response as response object
-        r = requests.post(url=self.url, json=data, timeout=5)
-        # extracting response text 
-        #resp = r.text
-        #logging.debug(f"Render Response:{resp}")
-        return r
+        try:
+            r = requests.post(url=self.url, json=data, timeout=self.timeout)
+            # extracting response text
+            #resp = r.text
+            #logging.debug(f"Render Response:{resp}")
+            return r
+        except Exception as e:
+            logging.error(e)
+        return None
 
 
 class CQServerConnectorError(Exception):

@@ -1,0 +1,23 @@
+= da3Dalus - Aeroplane Design Processor
+
+The Aeroplane Design Processor's task is to produce a printable aeroplane design based on given configuration input.
+
+Basically the input can be divided into two classes.
+
+. the aeroplane _design flow_
+. the design flow _configurations_
+
+The _design flow_ specifies how and in which order aeroplane parts like wings, fuselage, engine mounts and many more are constructed and brought together. The _configuration_ defines how the _design flow_ is configured.
+
+From this we derive two design rules:
+
+. the _design flow_ consists of building blocks containing inputs that are important for this flow, but independent from the configuration.
+. the _configurations_ contain information that is specific for this plane.
+
+= Configurations
+
+include::WingConfiguration.adoc[]
+
+= Code Insights
+
+include::CoreBuildingBlocks.adoc[]
