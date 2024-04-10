@@ -19,38 +19,25 @@ class WingConfiguration:
     This class holds the definition of the wing defined by connected segments. The first segment
     defined by this class is the root segment.
     """
-    def __init__(self, root_airfoil: str,
-                 nose_pnt: tuple[float, float, float],
-                 length: float,
-                 root_chord: float,
-                 tip_chord: float,
-                 sweep: float = 0,
-                 root_dihedral: float = 0,
-                 root_incidence: float = 0,
-                 root_trailing_edge: float = 1,
-                 tip_airfoil: str = None,
-                 tip_dihedral: float = 0,
-                 tip_incidence: float = 0,
-                 tip_trailing_edge: float = 1,
-                 number_interpolation_points: int=None,
-                 spare_list: List[Spare] = None,
+    def __init__(self, root_airfoil: str, nose_pnt: tuple[float, float, float], length: float, root_chord: float,
+                 tip_chord: float, sweep: float = 0, root_dihedral: float = 0, root_incidence: float = 0,
+                 tip_airfoil: str = None, tip_dihedral: float = 0, tip_incidence: float = 0,
+                 number_interpolation_points: int = None, spare_list: List[Spare] = None,
                  trailing_edge_device: TrailingEdgeDevice = None):
         self.nose_pnt: tuple[float, float, float] = nose_pnt
         if tip_airfoil is None:
             tip_airfoil = root_airfoil
 
-        root_segment = WingSegment(root_airfoil, length, root_chord, tip_chord,
-                                   sweep, root_dihedral, root_incidence, root_trailing_edge,
-                                   tip_airfoil, tip_dihedral, tip_incidence, tip_trailing_edge,
-                                   spare_list=spare_list, trailing_edge_device=trailing_edge_device,
-                                   number_interpolation_points=number_interpolation_points,
-                                   wing_segment_type='root')
+        root_segment = WingSegment(root_airfoil, length, root_chord, tip_chord, sweep, root_dihedral, root_incidence,
+                                   tip_airfoil, tip_dihedral, tip_incidence, spare_list=spare_list,
+                                   trailing_edge_device=trailing_edge_device,
+                                   number_interpolation_points=number_interpolation_points, wing_segment_type='root')
 
         self.segments: list[WingSegment] = [root_segment]
-        self.wing_workplanes: dict[int, Workplane] = {}
-        self.wing_workplanes[0] = self.get_wing_workplane(0)
+        self._wing_workplanes: dict[int, Workplane] = {}
+        self._wing_workplanes[0] = self.get_wing_workplane(0)
 
-        self.scaled_point_list: dict[str, list[tuple[float, float]]] = {}
+        self._scaled_point_list: dict[str, list[tuple[float, float]]] = {}
 
         for spare in [ spare for spare in (self.segments[0].spare_list or [])]:
             self._set_standard_spare_origin_vector(0, spare)
@@ -98,17 +85,14 @@ class WingConfiguration:
             0].number_interpolation_points
         root_trailing_edge: float = 1.
         tip_trailing_edge: float = 1.
-        segment = WingSegment(root_airfoil, length, self.segments[-1].tip_chord, tip_chord,
-                              sweep, 0, 0, root_trailing_edge,
-                              tip_airfoil, tip_dihedral, tip_incidence, tip_trailing_edge,
-                              number_interpolation_points=nip,
-                              tip_type=tip_type,
+        segment = WingSegment(root_airfoil, length, self.segments[-1].tip_chord, tip_chord, sweep, 0, 0, tip_airfoil,
+                              tip_dihedral, tip_incidence, number_interpolation_points=nip, tip_type=tip_type,
                               wing_segment_type='tip')
         self.segments.append(segment)
 
         segment_number = len(self.segments) - 1
 
-        self.wing_workplanes[segment_number] = self.get_wing_workplane(segment_number)
+        self._wing_workplanes[segment_number] = self.get_wing_workplane(segment_number)
 
     def add_segment(self: T,
                     length: float,
@@ -131,18 +115,15 @@ class WingConfiguration:
 
         nip = number_interpolation_points if number_interpolation_points is not None else self.segments[0].number_interpolation_points
 
-        segment = WingSegment(root_airfoil, length, self.segments[-1].tip_chord, tip_chord,
-                              sweep, 0, 0, root_trailing_edge,
-                              tip_airfoil, tip_dihedral, tip_incidence, tip_trailing_edge,
-                              spare_list=spare_list, trailing_edge_device=trailing_edge_device,
-                              number_interpolation_points=nip,
-                              tip_type=None,
+        segment = WingSegment(root_airfoil, length, self.segments[-1].tip_chord, tip_chord, sweep, 0, 0, tip_airfoil,
+                              tip_dihedral, tip_incidence, spare_list=spare_list,
+                              trailing_edge_device=trailing_edge_device, number_interpolation_points=nip, tip_type=None,
                               wing_segment_type='segment')
         self.segments.append(segment)
 
         segment_number = len(self.segments) - 1
 
-        self.wing_workplanes[segment_number] = self.get_wing_workplane(segment_number)
+        self._wing_workplanes[segment_number] = self.get_wing_workplane(segment_number)
 
         if self.segments[segment_number].spare_list is not None:
             for spare_idx in range(len(self.segments[segment_number].spare_list)):
@@ -225,8 +206,8 @@ class WingConfiguration:
         workplane.
         """
 
-        if segment in self.wing_workplanes.keys():
-            return self.wing_workplanes[segment]
+        if segment in self._wing_workplanes.keys():
+            return self._wing_workplanes[segment]
 
         seg = 0
         all_trans = [
@@ -263,7 +244,7 @@ class WingConfiguration:
 
         wp_plane = (Workplane(inPlane=plane, origin=origin))
 
-        self.wing_workplanes[segment] = wp_plane
+        self._wing_workplanes[segment] = wp_plane
         return wp_plane
 
     def get_airfoil_points(self: T, segment: int, isRoot: bool = False) -> list[tuple[float, float]]:
@@ -272,8 +253,8 @@ class WingConfiguration:
         """
         # lazy loading
         key = f"{segment}.{isRoot}"
-        if key in self.scaled_point_list:
-            return self.scaled_point_list[key]
+        if key in self._scaled_point_list:
+            return self._scaled_point_list[key]
 
         if isRoot:
             selig_file = self.segments[segment].root_airfoil
@@ -294,10 +275,10 @@ class WingConfiguration:
                 tok_x = float(tokens[0])
                 point_list.append((tok_x, tok_y))
 
-        self.scaled_point_list[key] = [(p[0] * chord, p[1] * chord) for p in point_list]
+        self._scaled_point_list[key] = [(p[0] * chord, p[1] * chord) for p in point_list]
         file.close()
 
-        return self.scaled_point_list[key]
+        return self._scaled_point_list[key]
 
     def get_chamber_y_at_rel_chord(self: T, segment: int, relative_chord:float, relative_length: float = 0.) -> Tuple[float,Vector]:
         upper,  lower = self.get_points_on_surface(segment, relative_chord=relative_chord, relative_length=relative_length)
