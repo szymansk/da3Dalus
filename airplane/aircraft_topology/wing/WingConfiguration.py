@@ -10,7 +10,8 @@ from scipy.interpolate import interp1d
 
 from airplane.aircraft_topology.wing.Spare import Spare
 from airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
-from airplane.aircraft_topology.wing.WingSegment import WingSegment, TipType, Airfoil
+from airplane.aircraft_topology.wing.WingSegment import WingSegment, TipType
+from airplane.aircraft_topology.wing.Airfoil import Airfoil
 
 T = TypeVar("T", bound="WingConfiguration")
 

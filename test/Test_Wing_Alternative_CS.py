@@ -12,7 +12,7 @@ from airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDe
 from airplane.aircraft_topology.components import *
 from airplane.aircraft_topology.Position import Position
 from airplane.aircraft_topology.wing import *
-from airplane.aircraft_topology.wing.WingSegment import Airfoil
+from airplane.aircraft_topology.wing.Airfoil import Airfoil
 from airplane.creator.components import *
 from airplane.creator.export_import import *
 from airplane.creator.fuselage import *
