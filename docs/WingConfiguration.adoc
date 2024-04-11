@@ -1,10 +1,13 @@
 ## Wing Configuration
+:stem: latexmath
 
 image::../images/images with text/Folie1.png[]
 
-The +WingConfiguration+ is important for the generation of an aeroplane. In general it consists of segment. There is always one _root_-segment, followed by a number of _segment_s or a _tip_-segments.
+The +WingConfiguration+ is important for the generation of an aeroplane. In general it consists of an ordered list of segments. The list always starts with one _root_-segment, followed by a number of _segment_s wich are followed by a number of _tip_-segments.
 
-[plantuml,"wing",svg]
+For segments of type _segment_ or _tip_ the root airfoil and chord is equal to the previous segment's tip airfoil and chord. The dihedral and the incidence angle are always 0 for the root airfoil of a segment or tip.
+
+[plantuml,"wing_setup",svg]
 .A wing consists of segments of +WingSegmentType+ _root_, _segment_ and _tip_.
 ----
 @startebnf
@@ -12,15 +15,21 @@ WingConfiguration = root, {segment}, {tip};
 @endebnf
 ----
 
-A segment describes a part of a wing that is constructed by lofting the root airfoil of this segment to the tip airfoil of the segment. For segments of type _segment_ or _tip_ the root airfoil and chord is equal to the previous segment's tip airfoil and chord. The dihedral and the incidence angle are always 0 for the root airfoil of a segment or tip.
+The following class diagram shows the data structure that describes a wing configuration.
 
-[plantuml, "WingConfiguration", svg]
+[plantuml, "WingConfiguration_class_diagram", svg]
 .The WingConfiguration data structure.
 ----
 @startuml
 class WingConfiguration {
     segments: list[WingSegment]
     nose_point: Tuple[float, float, float]
+
+    + def __init__( self: T, \t\t// initializes the root segment\n\t\t nose_pnt: tuple[float, float, float],\n\t\t root_airfoil: Airfoil,\n\t\t length: float,\n\t\t sweep: float = 0,\n\t\t tip_airfoil: Airfoil = None,\n\t\t number_interpolation_points: int = None, spare_list: List[Spare] = None,\n\t\t trailing_edge_device: TrailingEdgeDevice = None) -> T
+
+    + def add_segment(self: T,\n\t\t length: float,\n\t\t sweep: float = 0,\n\t\t tip_airfoil: Airfoil = None,\n\t\t number_interpolation_points: int = None,\n\t\t spare_list: List[Spare] = None,\n\t\t trailing_edge_device: TrailingEdgeDevice = None) -> None
+
+    + def add_tip_segment(self: T,\n\t\t tip_type: TipType,\n\t\t length: float,\n\t\t sweep: float = 0,\n\t\t tip_airfoil: Airfoil = None,\n\t\t number_interpolation_points: int = None) -> None
 
 }
 
@@ -29,6 +38,7 @@ class Airfoil {
     chord: float
     dihedral: float
     incidence: float
+    rotation_point_rel_chord: float
 }
 
 class WingSegment {
@@ -41,13 +51,16 @@ class WingSegment {
     spare_list: list[Spare]
     trailing_edge_device: list[TrailingEdgeDevice]
     wing_segment_type: WingSegmentType
+
+    + def __init__(self,\n\t\t root_airfoil: Airfoil,\n\t\t length: float,\n\t\t sweep: float = 0,\n\t\t tip_airfoil: Airfoil = None,\n\t\t spare_list: List[Spare] = None,\n\t\t trailing_edge_device: TrailingEdgeDevice = None,\n\t\t number_interpolation_points: int = None,\n\t\t tip_type: TipType = None,\n\t\t wing_segment_type: WingSegmentType = 'segment')
+
 }
 
 enum SpareMode {
 Literal["normal","follow","standard","standard_backward"]
 }
 
-SpareMode <--* Spare
+SpareMode "1" <--* Spare
 
 class Spare {
     spare_mode: SpareMode
@@ -91,62 +104,49 @@ enum TipType {
 Literal["flat", "round"]
 }
 
-WingConfiguration *--> WingSegment
-WingSegment *--> Spare
-WingSegment *--> Airfoil
-WingSegment *--> TrailingEdgeDevice
-TrailingEdgeDevice *--> HingeType
-WingSegment *--> TipType
-WingSegment *--> WingSegmentType
-TrailingEdgeDevice *--> ServoPlacement
+WingConfiguration *--> "1..*" WingSegment
+WingSegment *--> "*" Spare
+WingSegment *--> "2" Airfoil
+WingSegment *--> "1" TrailingEdgeDevice
+TrailingEdgeDevice *--> "1" HingeType
+WingSegment *--> "1" TipType
+WingSegment *--> "1" WingSegmentType
+TrailingEdgeDevice *--> "1" ServoPlacement
 
 @enduml
 ----
 
+=== Airfoil
+[quote, Wikipedia]
+____
+An airfoil (American English) or aerofoil (British English) is a streamlined body that is capable of generating significantly more lift than drag.
+____
+The _airfoil_ (path to file) we use are in Selig-file format which describes a curve as a list of points (x,y) running from the _trailing edge_ (x=1.0) over the _upper surface_ to the _nose point_ (x=0.0) at the _leading edge_ back to the _trailing edges_ via the _lower surface_. Which is then interpolated by cadquery's https://cadquery.readthedocs.io/en/latest/classreference.html?highlight=interpolate#cadquery.Workplane.splineApprox[+splineApprox+]-function. To support cadquery in performing the loft in a ruled way, we have to make sure that the _number of interpolation points_ is equal in both airfoils that are used for the loft.
 
-[plantuml, "WingConfiguration_types", svg]
-.WingSegments data based on the WingSegmentTyp.
-----
-@startuml
+// A single segment describes a part of a wing that is constructed by lofting the root airfoil of this segment to the tip airfoil of the segment. Segments can be of type _root_, _segment_ or _tip_.
+[.clearfix]
+--
+.Airfoil parameter description
+image::../images/images with text/Folie2.png[Airfoil parameter description, id=airfoil_parameter]
+--
 
-class WingSegment(root) {
-    length: float
-    root_airfoil: Airfoil
-    sweep: float
-    tip_airfoil: Airfoil
-    number_interpolation_points: int
-    spare_list: list[Spare]
-    trailing_edge_device: list[TrailingEdgeDevice]
-    wing_segment_type: WingSegmentType = "root"
-}
+Before lofting the airfoils they can be rotated around the _chord line_ which leads to a dihedral of the wing. Or it can be rotated around a _rotation point (defined) relative (to the) chord (length)_ (latexmath:[r_{i}]). See figures xref:airfoil_parameter[xrefstyle=short], xref:airfoil_rot0[xrefstyle=short] and xref:airfoil_rot03[xrefstyle=short].
 
-class WingSegment(segment) {
-    length: float
-    sweep: float
-    tip_airfoil: Airfoil
-    number_interpolation_points: int
-    spare_list: list[Spare]
-    trailing_edge_device: list[TrailingEdgeDevice]
-    wing_segment_type: WingSegmentType = "segment"
-}
+[.clearfix]
+--
+[.left]
+.Rotation point at 0.0 relative chord.
+image::../images/images with text/Folie3.png[Airfoil parameter description, 450, scaledwidth="75%", id=airfoil_rot0]
+[.left]
+.Rotation point at 0.3 relative chord
+image::../images/images with text/Folie4.png[Airfoil parameter description, 450, scaledwidth="75%", id=airfoil_rot03]
+--
 
-class WingSegment(tip) {
-    length: float
-    sweep: float
-    tip_airfoil: Airfoil
-    tip_type: TipType
-    number_interpolation_points: int
-    wing_segment_type: WingSegmentType = "tip"
-}
+The root coordinate system latexmath:[H^N] for a segments N is calculated with the following homogeneous transformation matrixes:
 
-@enduml
-----
-[source,python]
-----
-def __init__(self, root_airfoil: Airfoil, length: float, sweep: float = 0, spare_list: List[Spare] = None, trailing_edge_device: TrailingEdgeDevice = None, number_interpolation_points: int = None, tip_type: TipType = None, wing_segment_type: WingSegmentType = 'segment')
+latexmath:[H^0 = T(-chord_{root} r_{root}, 0,0)\cdot R_x(dihedral_{root})\cdot R_y(incidence_{root}) \cdot T(chord_{root} r_{root}, 0,0)]
 
-def add_segment(self: T, length: float, sweep: float = 0, tip_airfoil: Airfoil = None, number_interpolation_points: int = None, spare_list: List[Spare] = None, trailing_edge_device: TrailingEdgeDevice = None) -> None
+latexmath:[H^i = T(-chord_{i} r_{i}, 0, 0)\cdot T(sweep_i, length_i,0) \cdot R_x(dihedral_i) \cdot R_y(incidence_i) \cdot T(chord_{i} r_{i}, 0,0)]
 
-def add_tip_segment(self: T, tip_type: TipType, length: float, sweep: float = 0, tip_airfoil: Airfoil = None, number_interpolation_points: int = None) -> None
-----
+latexmath:[H^N = H^0\cdot\prod^N_{n=1}H^n]
 

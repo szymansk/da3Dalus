@@ -120,7 +120,7 @@ if __name__ == "__main__":
     wing_config.add_segment(
         length=750 - 220,
         sweep=0,
-        tip_airfoil=Airfoil( chord=100, dihedral=0, incidence=0),
+        tip_airfoil=Airfoil( chord=100, dihedral=0, incidence=-2.5, rotation_point_rel_chord=0.28),
         spare_list=[
             Spare(spare_support_dimension_width=4,
                   spare_support_dimension_height=4,
@@ -134,9 +134,9 @@ if __name__ == "__main__":
             positive_deflection_deg=45,
             negative_deflection_deg=25,
             hinge_type="top",
-            servo=Servo(length=23, width=12.5, height=31.5, leading_length=6,
-                        latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
-                        cable_z=26),
+            servo=None,#Servo(length=23, width=12.5, height=31.5, leading_length=6,
+                       # latch_z=14.5, latch_x=7.25, latch_thickness=2.6, latch_length=6,
+                       # cable_z=26),
             servo_placement='top',
             rel_chord_servo_position=0.29,
             rel_length_servo_position=0.2

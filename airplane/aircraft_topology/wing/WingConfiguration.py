@@ -59,18 +59,18 @@ class WingConfiguration:
         root_plane = self.get_wing_workplane(start_segment).plane
         tip_plane = self.get_wing_workplane(tip_idx).plane
         # the spare starts at the chord*spare_position_factor
-        root_chamber, diff_root = self.get_chamber_y_at_rel_chord(segment=start_segment,
+        root_camber, diff_root = self.get_camber_y_at_rel_chord(segment=start_segment,
                                                        relative_chord=spare_position_factor)
 
-        tip_chamber, diff_tip = self.get_chamber_y_at_rel_chord(segment=end_segment,
+        tip_camber, diff_tip = self.get_camber_y_at_rel_chord(segment=end_segment,
                                                       relative_chord=spare_position_factor,
                                                       relative_length=1.)
         spare_origin = (root_plane.origin
                         + root_plane.xDir * (self.segments[start_segment].root_airfoil.chord * spare_position_factor)
-                        + root_plane.zDir * (root_chamber+diff_root))
+                        + root_plane.zDir * (root_camber+diff_root))
         spare_end = (tip_plane.origin
                      + tip_plane.xDir * (self.segments[end_segment].tip_airfoil.chord * spare_position_factor)
-                     + tip_plane.zDir * (tip_chamber+diff_tip))
+                     + tip_plane.zDir * (tip_camber+diff_tip))
         spare_vector = (spare_end - spare_origin).normalized()
         return spare_vector, spare_origin
 
@@ -80,6 +80,7 @@ class WingConfiguration:
                         sweep: float = 0,
                         tip_airfoil: Airfoil = None,
                         number_interpolation_points: int = None) -> None:
+        tip_airfoil = tip_airfoil if tip_airfoil is not None else Airfoil()
         if self.segments[-1].wing_segment_type == 'tip':
             raise ValueError(f"The previous wing segment cannot be a '{self.segments[-1].wing_segment_type}'")
 
@@ -192,7 +193,7 @@ class WingConfiguration:
             spare.spare_position_factor = 0.25
         if spare.spare_vector is None and spare.spare_position_factor is not None:
             # make spare vector following the spare_position_factor
-            # that is centered inside of the airfoil at the chamber (middle of surfaces)
+            # that is centered inside of the airfoil at the camber (middle of surfaces)
             spare.spare_vector, _ = self._get_standard_spare_origin_and_vector(start_segment=segment_number,
                                                                                end_segment=segment_number,
                                                                                spare_position_factor=spare.spare_position_factor)
@@ -226,6 +227,17 @@ class WingConfiguration:
             [0, 1, 0, 0],
             [0, 0, 1, 0],
             [0, 0, 0, 1]]
+        r_rel_chord = [
+            [1, 0, 0, self.segments[seg].root_airfoil.rotation_point_rel_chord],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]]
+
+        r_neg_rel_chord = [
+            [1, 0, 0, -self.segments[seg].root_airfoil.rotation_point_rel_chord],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]]
 
         for seg in reversed(range(segment)):
             t_sweep_length = [
@@ -234,18 +246,34 @@ class WingConfiguration:
                 [0, 0, 1, 0],
                 [0, 0, 0, 1]]
 
+            t_rel_chord = [
+                [1, 0, 0, self.segments[seg].tip_airfoil.rotation_point_rel_chord],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1]]
+
+            t_neg_rel_chord = [
+                [1, 0, 0, -self.segments[seg].tip_airfoil.rotation_point_rel_chord],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1]]
+
             r_tip_dihedral = self._create_homogeneous_rotation_matrix('x', self.segments[seg].tip_airfoil.dihedral)
             r_tip_incidence = self._create_homogeneous_rotation_matrix('y', self.segments[seg].tip_airfoil.incidence)
 
+            all_trans = np.matmul(t_rel_chord, all_trans)
             all_trans = np.matmul(r_tip_incidence, all_trans)
             all_trans = np.matmul(r_tip_dihedral, all_trans)
             all_trans = np.matmul(t_sweep_length, all_trans)
+            all_trans = np.matmul(t_neg_rel_chord, all_trans)
 
         r_root_incidence = self._create_homogeneous_rotation_matrix('y', self.segments[seg].root_airfoil.incidence)
         r_root_dihedral = self._create_homogeneous_rotation_matrix('x', self.segments[seg].root_airfoil.dihedral)
 
+        all_trans = np.matmul(r_rel_chord, all_trans)
         all_trans = np.matmul(r_root_incidence, all_trans)
         all_trans = np.matmul(r_root_dihedral, all_trans)
+        all_trans = np.matmul(r_neg_rel_chord, all_trans)
 
         normal = all_trans.transpose()[2]
         origin = all_trans.transpose()[3]
@@ -291,7 +319,7 @@ class WingConfiguration:
 
         return self._scaled_point_list[key]
 
-    def get_chamber_y_at_rel_chord(self: T, segment: int, relative_chord:float, relative_length: float = 0.) -> Tuple[float, float]:
+    def get_camber_y_at_rel_chord(self: T, segment: int, relative_chord:float, relative_length: float = 0.) -> Tuple[float, float]:
         upper,  lower = self.get_points_on_surface(segment, relative_chord=relative_chord, relative_length=relative_length)
         up_ar = np.asarray(upper.toTuple())
         low_ar  = np.asarray(lower.toTuple())
