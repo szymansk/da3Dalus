@@ -29,16 +29,16 @@ class WingLoftCreator(AbstractShapeCreator):
         right_wing: Workplane = (
             Workplane('XZ')
             .wing_root_segment(
-                root_airfoil=wing_config.segments[0].root_airfoil,
-                root_chord=wing_config.segments[0].root_chord,
-                root_dihedral=wing_config.segments[0].root_dihedral,
-                root_incidence=wing_config.segments[0].root_incidence,
+                root_airfoil=wing_config.segments[0].root_airfoil.airfoil,
+                root_chord=wing_config.segments[0].root_airfoil.chord,
+                root_dihedral=wing_config.segments[0].root_airfoil.dihedral,
+                root_incidence=wing_config.segments[0].root_airfoil.incidence,
                 length=wing_config.segments[0].length,
                 sweep=wing_config.segments[0].sweep,
-                tip_chord=wing_config.segments[0].tip_chord,
-                tip_dihedral=wing_config.segments[0].tip_dihedral,
-                tip_incidence=wing_config.segments[0].tip_incidence,
-                tip_airfoil=wing_config.segments[0].tip_airfoil,
+                tip_chord=wing_config.segments[0].tip_airfoil.chord,
+                tip_dihedral=wing_config.segments[0].tip_airfoil.dihedral,
+                tip_incidence=wing_config.segments[0].tip_airfoil.incidence,
+                tip_airfoil=wing_config.segments[0].tip_airfoil.airfoil,
                 offset=self.offset))
 
         current: Workplane = right_wing
@@ -46,10 +46,10 @@ class WingLoftCreator(AbstractShapeCreator):
             current = current.wing_segment(
                 length=segment_config.length,
                 sweep=segment_config.sweep,
-                tip_chord=segment_config.tip_chord,
-                tip_dihedral=segment_config.tip_dihedral,
-                tip_incidence=segment_config.tip_incidence,
-                tip_airfoil=segment_config.tip_airfoil,
+                tip_chord=segment_config.tip_airfoil.chord,
+                tip_dihedral=segment_config.tip_airfoil.dihedral,
+                tip_incidence=segment_config.tip_airfoil.incidence,
+                tip_airfoil=segment_config.tip_airfoil.airfoil,
                 offset=self.offset)
             right_wing.add(current)
 
