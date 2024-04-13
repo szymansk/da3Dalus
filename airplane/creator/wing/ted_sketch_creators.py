@@ -120,15 +120,15 @@ def create_TOP_ted_sketch(segment, ted, wing_config):
                           .assemble()
                           )
     ted_sketch_tip: Sketch = (Sketch()
-                               .segment((max_chord, -top_t.y), (max_chord, -3 * max_chord), 'help')
-                               .arc((0.0, -top_t.y), tip_radius, 180 - ted.negative_deflection_deg,
+                               .segment((max_chord, -top_t_ta.y), (max_chord, -3 * max_chord), 'help')
+                               .arc((0.0, -top_t_ta.y), tip_radius, 180 - ted.negative_deflection_deg,
                                     -(90 - ted.negative_deflection_deg), "arc")
                                .segmentToEdge(-(270 - ted.negative_deflection_deg + 90), 'help', 'diag')
-                               .segment((0.0, -top_t.y),
-                                        (0.0, -top_t.y + 2 * ted.hinge_spacing), 'edge')
+                               .segment((0.0, -top_t_ta.y),
+                                        (0.0, -top_t_ta.y + 2 * ted.hinge_spacing), 'edge')
                                .segmentToEdge('arc', 0.0, 'edge', 1.0)
                                # .segmentToEdge('arc', 0.0, (0.0, -top_t.y))
-                               .segment((0.0, -top_t.y), (max_chord, -top_t.y), 'top')
+                               .segment((0.0, -top_t_ta.y), (max_chord, -top_t_ta.y), 'top')
                                .segmentToEdge('diag', 1.0, 'top', 1.0)
                                .select('help').delete()
                                .assemble()
