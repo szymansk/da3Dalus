@@ -101,9 +101,14 @@ if __name__ == "__main__":
 
 
     #### WING ####
-    airfoil = "../components/airfoils/clarky.dat"
+    airfoil = "../components/airfoils/rg14a147.dat"
     wing_config = WingConfiguration(nose_pnt=(0, 0, 0),
-                                    root_airfoil=Airfoil(airfoil=airfoil, chord=160., dihedral=2., incidence=0),
+                                    number_interpolation_points=201,
+                                    root_airfoil=Airfoil(airfoil=airfoil,
+                                                         chord=160.,
+                                                         dihedral=2.,
+                                                         incidence=2.5,
+                                                         rotation_point_rel_chord=0.28),
                                     length=220.,
                                     sweep=0,
                                     tip_airfoil=Airfoil(chord=160., dihedral=0, incidence=0),
