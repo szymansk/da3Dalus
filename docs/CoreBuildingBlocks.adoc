@@ -1,4 +1,4 @@
-== Core Building Blocks
+=== Core Building Blocks
 
 The basic idea is, that we create a construction tree. The tree starts
 with a `+ConstructionRootNode.+` We can append `+ConstructionStepNodes+`
@@ -7,7 +7,7 @@ to this root node and to all other `+ConstructionStepNodes.+` All
 from the `+AbstractShapeCreator.+` We call those instances shape
 creators.
 
-=== Shape Creators
+==== Shape Creators
 
 Shape creators implement the abstract function from the
 `+AbstractShapeCreator+` class:

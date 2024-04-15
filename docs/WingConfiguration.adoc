@@ -1,9 +1,13 @@
-## Wing Configuration
+== Wing Configuration
 :stem: latexmath
+
+NOTE: can be found in module _airplane.aircraft_topology.wing_
 
 image::../images/images with text/Folie1.png[]
 
-The +WingConfiguration+ is important for the generation of an aeroplane. In general it consists of an ordered list of segments. The list always starts with one _root_-segment, followed by a number of _segment_s wich are followed by a number of _tip_-segments.
+The +WingConfiguration+ is important for the generation of an aeroplane. As it defines the shape and function of the wing, rudder, elevator or other wing like shapes.
+
+In general it consists of an ordered list of segments. The list always starts with one _root_-segment, followed by a number of _segment_s wich are followed by a number of _tip_-segments.
 
 For segments of type _segment_ or _tip_ the root airfoil and chord is equal to the previous segment's tip airfoil and chord. The dihedral and the incidence angle are always 0 for the root airfoil of a segment or tip.
 
@@ -11,7 +15,7 @@ For segments of type _segment_ or _tip_ the root airfoil and chord is equal to t
 .A wing consists of segments of +WingSegmentType+ _root_, _segment_ and _tip_.
 ----
 @startebnf
-WingConfiguration = root, {segment}, {tip};
+WingConfiguration = root, {segment}, tip;
 @endebnf
 ----
 
@@ -42,8 +46,8 @@ class Airfoil {
 }
 
 class WingSegment {
-    length: float
     root_airfoil: Airfoil
+    length: float
     sweep: float
     tip_airfoil: Airfoil
     tip_type: TipType
@@ -63,14 +67,14 @@ Literal["normal","follow","standard","standard_backward"]
 SpareMode "1" <--* Spare
 
 class Spare {
-    spare_mode: SpareMode
+    spare_vector: Vector
     spare_origin: Vector
+    spare_mode: SpareMode
     spare_position_factor: float
     spare_support_dimension_height: float
     spare_support_dimension_width: float
     spare_start: float
     spare_length: float
-    spare_vector: Vector
 }
 
 class TrailingEdgeDevice {
@@ -121,6 +125,9 @@ TrailingEdgeDevice *--> "1" ServoPlacement
 ____
 An airfoil (American English) or aerofoil (British English) is a streamlined body that is capable of generating significantly more lift than drag.
 ____
+
+==== Airfoil Parameter
+
 The _airfoil_ (path to file) we use are in Selig-file format which describes a curve as a list of points (x,y) running from the _trailing edge_ (x=1.0) over the _upper surface_ to the _nose point_ (x=0.0) at the _leading edge_ back to the _trailing edges_ via the _lower surface_. Which is then interpolated by cadquery's https://cadquery.readthedocs.io/en/latest/classreference.html?highlight=interpolate#cadquery.Workplane.splineApprox[+splineApprox+]-function. To support cadquery in performing the loft in a ruled way, we have to make sure that the _number of interpolation points_ is equal in both airfoils that are used for the loft.
 
 // A single segment describes a part of a wing that is constructed by lofting the root airfoil of this segment to the tip airfoil of the segment. Segments can be of type _root_, _segment_ or _tip_.
@@ -130,7 +137,7 @@ The _airfoil_ (path to file) we use are in Selig-file format which describes a c
 image::../images/images with text/Folie2.png[Airfoil parameter description, id=airfoil_parameter]
 --
 
-Before lofting the airfoils they can be rotated around the _chord line_ which leads to a dihedral of the wing. Or it can be rotated around a _rotation point (defined) relative (to the) chord (length)_ (latexmath:[r_{i}]). See figures xref:airfoil_parameter[xrefstyle=short], xref:airfoil_rot0[xrefstyle=short] and xref:airfoil_rot03[xrefstyle=short].
+Before lofting the airfoils they can be rotated around the _chord line_ which leads to a dihedral of the wing. Or it can be rotated around a _rotation point (defined) relative (to the) chord (length)_ we denote the chord length with latexmath:[C_{i}] and the relative chord factor with latexmath:[rc_{i} \in (0,1)], which is called the _angle of incidence (AoI)_ denoted with latexmath:[\iota_{i}]. See figures xref:airfoil_parameter[xrefstyle=short], xref:airfoil_rot0[xrefstyle=short] and xref:airfoil_rot03[xrefstyle=short].
 
 [.clearfix]
 --
@@ -138,15 +145,139 @@ Before lofting the airfoils they can be rotated around the _chord line_ which le
 .Rotation point at 0.0 relative chord.
 image::../images/images with text/Folie3.png[Airfoil parameter description, 450, scaledwidth="75%", id=airfoil_rot0]
 [.left]
-.Rotation point at 0.3 relative chord
+.Rotation point at 0.3 relative chord (same AoI)
 image::../images/images with text/Folie4.png[Airfoil parameter description, 450, scaledwidth="75%", id=airfoil_rot03]
 --
 
-The root coordinate system latexmath:[H^N] for a segments N is calculated with the following homogeneous transformation matrixes:
+An other parameter wich belongs to the airfoil is the _angle of dihedral_ latexmath:[\delta_{i}], which defines a rotation around the chord line as shown in figure xref:airfoil_parameter_dihedral[xrefstyle=short].
 
-latexmath:[H^0 = T(-chord_{root} r_{root}, 0,0)\cdot R_x(dihedral_{root})\cdot R_y(incidence_{root}) \cdot T(chord_{root} r_{root}, 0,0)]
+.Dihedral definition
+image::../images/images with text/Folie5.png[Airfoil parameter description, id=airfoil_parameter_dihedral]
 
-latexmath:[H^i = T(-chord_{i} r_{i}, 0, 0)\cdot T(sweep_i, length_i,0) \cdot R_x(dihedral_i) \cdot R_y(incidence_i) \cdot T(chord_{i} r_{i}, 0,0)]
+=== Wing Segment
 
-latexmath:[H^N = H^0\cdot\prod^N_{n=1}H^n]
+==== Segment Parameters
 
+A segment is defined by two airfoils the segments _root airfoil_ and the segments _tip airfoil_. Both airfoils have two defined offsets to each other:
+* the _length_ latexmath:[L_i] of a segment, which is the length of the loft along the y-axis (normal to the airfoil),
+* the _sweep_ latexmath:[S_{i}] of a segment, which defines x-offset between a segments _root airfoil_ and it's _tip airfoil_, the sweep can also be given as an angle, which will be internally converted to an x-offset.
+
+The offset along the z-axis is implicitly defined by the _angle of dihedral_.
+
+For ruled lofting we also definded the _number of interpolation points_ parameter, which helps to loft airfoils with different number of interpolation points. This is not a regular segment parameter as it only tries to overcome short comings from the underlying CAD-kernel implementation.
+
+.Sweep definition
+image::../images/images with text/Folie6.png[Airfoil parameter description, id=airfoil_parameter_sweep]
+
+==== Wing Segment Types
+
+===== Root
+There is only one root segment. It is parametrized during the instantiation of a _WingConfiguration_. This segment is initialized as a complete segment and needs a root airfoil and a tip airfoil.
+
+===== Segment
+A segment follows an other segment or the root segment. Hence, the previous tip airfoil is equal to the root airfoil of this segment. Therefore we only need the length, sweep and tip airfoil.
+
+===== Tip
+The tip is a special segment, which is also defined like the previous segment, but it also take the parameter _tip type_, which defines how the tip will be designed. Currently we only support 'flat' and 'round'. 'flat' is just like a flat wall attached wing tip. 'round' tries to use a chamfer to round the outlines of the airfoil. A tip does not have a spare nor a trailing edge device.
+
+==== Segment Coordinate Systems
+The coordinate system for a segment is defined by the previously defined parameters. It is always lokated in the nose point. We define it in a way, that it starts like the airplanes coordinate systems. Therefor x-axis goes from the leading edge nose point to the trailing edge end point. The y-axis points along the wing and the z-axis is pointing upwards along the produced lift vector of the segment.
+
+The coordinate system latexmath:[H^N] for a segments N is calculated with the homogeneous transformation matrixes described below. We reference the root airfoil of the root segment with i=0 and the following segments with i=1 and so on.
+
+NOTE: Be aware that the tip aifoil of segment i is equal to the root airfoil of segment i+1. That is why the the length and sweep are denoted with latexmath:[L_{i-i}] and latexmath:[S_{i-i}] as they belong to the segment before. If you want to calculate the coordinate system for the tip of a segment you need to calculate latexmath:[H^{N+1}].
+
+latexmath:[H^0 = T(-C_{0} rc_{0}, 0,0)\cdot R_x(\delta_{0})\cdot R_y(\iota_{0}) \cdot T(C_{0} r_{0}, 0,0)]
+
+latexmath:[H^i = T(-C_{i} rc_{i}, 0, 0)\cdot T(S_{i-1}, L_{i-1},0) \cdot R_x(\delta) \cdot R_y(\iota_i) \cdot T(C_{i} rc_{i}, 0,0)]
+
+latexmath:[H^N = H^0\cdot\prod^N_{n=1}H^n],
+
+where
+latexmath:[
+T(x,y,z)=
+  \begin{bmatrix}
+    1 & 0 & 0 & x \\
+    0 & 1 & 0 & y \\
+    0 & 0 & 1 & z \\
+    0 & 0 & 0 & 1 \\
+  \end{bmatrix} ],
+latexmath:[
+R_x(\theta)=
+  \begin{bmatrix}
+    1 & 0 & 0 & 0 \\
+    0 & \cos(\theta) & -\sin(\theta) & 0 \\
+    0 & \sin(\theta) & \cos(\theta) & 0 \\
+    0 & 0 & 0 & 1 \\
+  \end{bmatrix} ],
+
+and
+latexmath:[
+R_y(\theta)=
+  \begin{bmatrix}
+    \cos(\theta) & 0 & \sin(\theta) & 0\\
+    0 & 1 & 0 & 0 \\
+    -\sin(\theta) & 0 & \cos(\theta) & 0 \\
+    0 & 0 & 0 & 1 \\
+  \end{bmatrix} ]
+
+==== Spare
+.The main spare.
+image::../images/images with text/Folie7.png[spare, id=spare]
+
+A spare is a construction that runs lengthwise through the wing. We can add arbitrary spares to a wing. However, the spare with index 0, will always be treated as the main spare and has a major impact on the construction of the wing. In general this spare takes all the load of the wing and to reduce wing twist it should be placed in the area of the largest lift, which is in normal flight around the point of the maximum thickness, which is in most cases between 25%-30% of the chord length. You can define this placement via the _spare position factor_, the default value is 0.25.
+
+Another way to overwrite this setting is to use the _spare origin_. This is a vector given in the segments coordinate system which defines the spare's placement.
+
+An other important vector is the _spare vector_ it is also given in the segment's coordinate system and defines in which direction the spare will be lofted.
+
+The _spare length_ of spare tells us how far the spare will be lofted along the _spare vector_ and the _spare start_ states at which point on the _spare vector_ the loft will start.
+
+In general our spares will have some kind of support structure, which is not printed. This usually is a carbon rod round or rectangular formed. You can give the dimension of the rod by the _spare support dimension height_ and _spare support dimension width_ if height is equal width we will interpret this as a round rod. Otherwise it is rectangular.
+
+NOTE: You can create a squared rod by adding latexmath:[1e^{-10}] on one of the dimensions.
+
+===== Spare Mode
+The most important parameter is the _spare mode_ as it helps you to define some standard spares, which will calculate the _spare vector_ and the _spare origin_ for you if you set them to 'None'. If one of the following modes is effected by a previous spare or effects previous spares, than it will only effect spares with the same index.
+
+====== normal
+The *normal* _spare vector_ will be set to be normal to the xz-plane of the segment's coordinate system. It is equal to the segment's coordinate systems y-axis vector.
+
+====== follow
+The _spare vector_ will *follow* the direction of the previous one, so the _spare vector_ will be the previous _spare vector_ expressed in the current segment's coordinate system.
+
+====== standard
+The *standar* _spare vector_ is calculated in that way, that the spare vector will point from the mean camber point at the given relative chord (_spare position factor_) of the _root airfoil_ to the corresponding point of the _tip airfoil_. The start point also defines the _spare origin_ if it is not overwritten.
+
+====== standard backward
+This mode is similar to the previous one. But if differs in the way, how the _root airfoil_ is selected. If we come to a spare in 'standard_backward' mode, we backtrace through the previous spares and select the first spare, that is not in 'follow' mode. We use this segments _root airfoil_ in the same manner as in the 'standard' case. After calculation of the origin and the spare vector we adjust the other segments in between.
+
+NOTE: We also use (_spare position factor_) of the spare we found during backtracking.
+
+==== Trailing Edge Device
+.A trailing edge device, here an aileron.
+image::../images/images with text/Folie8.png[spare, id=spare]
+
+A _trailing edge device (ted)_ is usually used for flaps, rudder, elevators or ailerons. It is used to control the planes lift (flaps) or rotations (yaw, pitch, role), depending on the wing's function. Usually we give a ted a unique _name_, which in best practice also tells us it's function.
+
+We define that a segment, that defines a ted will always cutoff a part of the trailing edge of this wing. The cutoff starts at the root airfoils _rel(ative) chord (root)_ and goes in a straight line to the tip airfoils _rel(ative) chord (tip)_.
+
+We can define a spacing for ted that will reduce the size of the ted by the amount of mm accordingly. This given by the _side spacing tip_ and _side spacing root_ parameter.
+
+The _hinge spacing_ tells us, how much space we will leave between the wing and the ted.
+
+The _negative deflection_ and the _positive deflection_ angle state how much the ted should be deflected in extreme.
+
+The _hinge type_ defines, how the connection between the wing an the ted is constructed. Currently we support the following hinge types:
+
+* 'middle' - the hing is placed in the middle at the mean camber, the ted is shape in a way that it will reach the defined deflection
+* 'top' - the hinge is place at the upper surface camber, the ted is shape in a way that it will reach the defined deflectio and it the ted will reach into the wing an will always give a close surface on the upper and bottom surface of the wing.
+* 'top simple' - the hinge is place at the upper surface camber, the ted is shape in a way that it will reach the defined _negative deflection_
+* 'round inside' - the hinge is in the middle and the ted is round where it reaches into the wing.
+* 'round outside' - the hinge is in the middle and the ted is round to the inside where the wing reaches into the ted.
+
+NOTE: A ted could, if correctly parameterized span several segments. However, you have to treat this with care. Otherwise the ted will not properly rotate.
+
+==== Servo
+
+The servo is defined in conjunction of a trailing edged device as you usually need an actuator to make it move. The placement of the servo an the length and placement of the horns/levers can be crucial for the performance of the ted.
