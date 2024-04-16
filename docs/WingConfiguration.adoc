@@ -93,6 +93,20 @@ class TrailingEdgeDevice {
     trailing_edge_offset_factor: float
 }
 
+class Servo {
+    length: float
+    width: float
+    height: float
+    leading_length: float
+    latch_z: float
+    latch_x: float
+    latch_thickness: float
+    latch_length: float
+    cable_z: float
+    screw_hole_lx: float
+    screw_hole_d: float
+}
+
 enum ServoPlacement {
 Literal["top", "bottom"]
 }
@@ -113,6 +127,7 @@ WingSegment *--> "*" Spare
 WingSegment *--> "2" Airfoil
 WingSegment *--> "1" TrailingEdgeDevice
 TrailingEdgeDevice *--> "1" HingeType
+TrailingEdgeDevice *--> "1" Servo
 WingSegment *--> "1" TipType
 WingSegment *--> "1" WingSegmentType
 TrailingEdgeDevice *--> "1" ServoPlacement
@@ -270,14 +285,21 @@ The _negative deflection_ and the _positive deflection_ angle state how much the
 
 The _hinge type_ defines, how the connection between the wing an the ted is constructed. Currently we support the following hinge types:
 
-* 'middle' - the hing is placed in the middle at the mean camber, the ted is shape in a way that it will reach the defined deflection
-* 'top' - the hinge is place at the upper surface camber, the ted is shape in a way that it will reach the defined deflectio and it the ted will reach into the wing an will always give a close surface on the upper and bottom surface of the wing.
+* 'middle' - the hing is placed in the middle at the mean camber, the ted is shaped in a way that it will reach the defined deflection
+* 'top' - the hinge is place at the upper surface camber, the ted is shape in a way that it will reach the defined deflection and it the ted will reach into the wing an will always give a close surface on the upper and bottom surface of the wing.
 * 'top simple' - the hinge is place at the upper surface camber, the ted is shape in a way that it will reach the defined _negative deflection_
 * 'round inside' - the hinge is in the middle and the ted is round where it reaches into the wing.
 * 'round outside' - the hinge is in the middle and the ted is round to the inside where the wing reaches into the ted.
 
-NOTE: A ted could, if correctly parameterized span several segments. However, you have to treat this with care. Otherwise the ted will not properly rotate.
+NOTE: A ted could, if correctly parameterized span several segments. However, you have to treat this with care. Otherwise, the ted will not properly rotate.
 
 ==== Servo
-
+.A parameterized servo.
+image::../images/images with text/Folie9.png[spare, id=servo]
 The servo is defined in conjunction of a trailing edged device as you usually need an actuator to make it move. The placement of the servo an the length and placement of the horns/levers can be crucial for the performance of the ted.
+
+The position inside of the wing is determined by it's _rel(ative) chord servo position_ and _rel(ative wing) length servo position_. This gives the position of the servo's zero coordinates within the wing. The _servo placement_ 'top' defines that the servo lays on the upper camber surface and 'bottom' on the lower camber surface.
+
+The dimensions of the servo are defined in figure xref:servo[xrefstyle=short]
+
+NOTE: (to be implemented) If the servo position given as 'None' the system itself will place the servo in an optimal position for printing and for forces on the trailing edge device.
