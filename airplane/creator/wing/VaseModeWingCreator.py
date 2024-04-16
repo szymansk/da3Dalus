@@ -371,17 +371,19 @@ class VaseModeWingCreator(AbstractShapeCreator):
                                       ted_sketch_tip.moved(ted_tip_plane.location)).loft())
         ted_shape = current.intersect(ted_intersect)
 
-        if ted.side_spacing > 0:
+        length = (ted_tip_plane.origin - ted_root_plane.origin)
+        if ted.side_spacing_root > 0:
             ted_shape = ted_shape.cut(
-                Workplane(inPlane=ted_root_plane).box(wcs.root_airfoil.chord * 4, wcs.root_airfoil.chord * 4, ted.side_spacing,
+                Workplane(inPlane=ted_root_plane).box(wcs.root_airfoil.chord * 4, wcs.root_airfoil.chord * 4, ted.side_spacing_root,
                                                       centered=(True, True, False)))
             length = (ted_tip_plane.origin - ted_root_plane.origin)
 
+        if ted.side_spacing_tip > 0:
             ted_shape = ted_shape.cut(
-                Workplane(inPlane=ted_root_plane).workplane(offset=length.y - ted.side_spacing).box(wcs.root_airfoil.chord * 4,
-                                                                                                    wcs.root_airfoil.chord * 4,
-                                                                                                    wcs.root_airfoil.chord * 4,
-                                                                                                    centered=(
+                Workplane(inPlane=ted_root_plane).workplane(offset=length.y - ted.side_spacing_tip).box(wcs.root_airfoil.chord * 4,
+                                                                                                         wcs.root_airfoil.chord * 4,
+                                                                                                         wcs.root_airfoil.chord * 4,
+                                                                                                         centered=(
                                                                                                     True, True,
                                                                                                     False)))
 

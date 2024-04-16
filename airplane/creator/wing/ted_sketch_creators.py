@@ -48,10 +48,10 @@ def create_MIDDLE_ted_sketch(segment: int, ted: TrailingEdgeDevice, wing_config:
                            .assemble()
                            )
     ted_sketch_tip = ted_sketch.moved(
-        Location(loft_direction_vector.normalized().multiply(loft_direction_vector_length - ted.side_spacing)))
-    if ted.side_spacing > 0:
+        Location(loft_direction_vector.normalized().multiply(loft_direction_vector_length - ted.side_spacing_root)))
+    if ted.side_spacing_root > 0:
         ted_sketch = ted_sketch.moved(
-            Location(loft_direction_vector.normalized().multiply(ted.side_spacing)))
+            Location(loft_direction_vector.normalized().multiply(ted.side_spacing_root)))
     wing_sketch_tip = wing_sketch.moved(Location(loft_direction_vector * 2))
     return ted_sketch, ted_sketch_tip, wing_sketch, wing_sketch_tip
 
