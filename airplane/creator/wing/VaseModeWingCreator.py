@@ -20,6 +20,8 @@ from airplane.creator.wing.ted_sketch_creators import ted_sketch_creators
 
 import cq_plugins
 
+CUT_SIZE_REL_PRINTER_WALL_THICKNESS = 0.5
+
 MOUNT_PLATE_THICKNESS = 1.0
 
 
@@ -92,7 +94,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
         # create root segment slot
         right_wing_slot = (Workplane(spare_plane)
-                           .box(length=0.05 * self.printer_wall_thickness,
+                           .box(length=CUT_SIZE_REL_PRINTER_WALL_THICKNESS * self.printer_wall_thickness,
                                 width=100,
                                 height=wing_config.segments[segment].length * 3,
                                 centered=(False, False, True))
@@ -158,7 +160,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 # create a shape for the slot that is needed to make the wing printable in vase mode
                 # only spare with index 0 will get this slot
                 right_wing_slot = (Workplane(spare_plane)
-                                   .box(length=0.05 * self.printer_wall_thickness,
+                                   .box(length=CUT_SIZE_REL_PRINTER_WALL_THICKNESS * self.printer_wall_thickness,
                                         width=100,
                                         height=wing_segment.length * 10,
                                         centered=(False, False, True)))
@@ -167,6 +169,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 for spare_idx in range(1, len(wing_segment.spare_list)):
                     raw_add_spar, _ = self._create_spare_shape(current=current_pwt_offset, segment=segment,
                                                                wing_config=wing_config, spare_idx=spare_idx)
+                    raw_spare = raw_spare.add(raw_add_spar)
 
                 # cut out trailing edge device (ted) from segment
                 ted = wing_segment.trailing_edge_device
@@ -312,9 +315,9 @@ class VaseModeWingCreator(AbstractShapeCreator):
         cover = cover.faces("%BSPLINE").chamfer(2 * self.printer_wall_thickness)
 
         cover_small = (cover_small.translate(wing_plane.zDir * (direction * 3.5 * self.printer_wall_thickness))
-                       .faces("%BSPLINE").faces(selector).chamfer(1.99 * self.printer_wall_thickness))
-        cover = cover.union(toUnion=cover_small, clean=True, glue=True)
-        updated_hull = updated_hull.union(toUnion=cover, clean=True, glue=True)
+                       .faces("%BSPLINE").faces(selector).chamfer(1.9 * self.printer_wall_thickness))
+        cover = cover.union(toUnion=cover_small, clean=True, glue=False)
+        updated_hull = updated_hull.union(toUnion=cover, clean=True, glue=False)
 
         #cover.display("cover", 500)
         #current_hull.display("hull", 500)
