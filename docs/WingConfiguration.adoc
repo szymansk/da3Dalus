@@ -61,7 +61,7 @@ class WingSegment {
 }
 
 enum SpareMode {
-Literal["normal","follow","standard","standard_backward"]
+Literal["normal","follow","standard","standard_backward", "orthogonal_backward"]
 }
 
 SpareMode "1" <--* Spare
@@ -268,6 +268,9 @@ The *standar* _spare vector_ is calculated in that way, that the spare vector wi
 This mode is similar to the previous one. But if differs in the way, how the _root airfoil_ is selected. If we come to a spare in 'standard_backward' mode, we backtrace through the previous spares and select the first spare, that is not in 'follow' mode. We use this segments _root airfoil_ in the same manner as in the 'standard' case. After calculation of the origin and the spare vector we adjust the other segments in between.
 
 NOTE: We also use (_spare position factor_) of the spare we found during backtracking.
+
+====== orthogonal backward
+This mode is similar to the previous one. However, the spare will be orthogonal to the XZ-plane.
 
 ==== Trailing Edge Device
 .A trailing edge device, here an aileron.

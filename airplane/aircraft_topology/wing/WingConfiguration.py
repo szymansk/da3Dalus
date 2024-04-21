@@ -72,7 +72,15 @@ class WingConfiguration:
                      + tip_plane.xDir * (self.segments[end_segment].tip_airfoil.chord * spare_position_factor)
                      + tip_plane.zDir * (tip_camber+diff_tip))
         spare_vector = (spare_end - spare_origin).normalized()
-        return spare_vector, spare_origin
+
+        v = root_plane.toLocalCoords(spare_vector)
+        o = root_plane.toLocalCoords(spare_origin)
+        o.x = o.x + v.x
+        v.x = 0
+        spare_ortho_vector = root_plane.toWorldCoords(v)
+        spare_ortho_origin = root_plane.toWorldCoords(o)
+
+        return spare_vector, spare_origin, spare_ortho_vector, spare_ortho_origin
 
     def add_tip_segment(self: T,
                         tip_type: TipType,
@@ -81,8 +89,6 @@ class WingConfiguration:
                         tip_airfoil: Airfoil = None,
                         number_interpolation_points: int = None) -> None:
         tip_airfoil = tip_airfoil if tip_airfoil is not None else Airfoil()
-        if self.segments[-1].wing_segment_type == 'tip':
-            raise ValueError(f"The previous wing segment cannot be a '{self.segments[-1].wing_segment_type}'")
 
         root_airfoil = Airfoil(airfoil=self.segments[-1].tip_airfoil.airfoil,
                                chord=self.segments[-1].tip_airfoil.chord)
@@ -145,7 +151,7 @@ class WingConfiguration:
                 if spare.spare_mode == "follow":
                     # follows the previous spare vector
                     self._set_follow_spare_origin_vector(segment_number, spare, spare_idx)
-                elif spare.spare_mode == "standard_backward":
+                elif spare.spare_mode == "standard_backward" or spare.spare_mode == "orthogonal_backward":
                     start_segment = 0
                     for seg_num in reversed(range(segment_number)):
                         if len(self.segments[seg_num].spare_list) > spare_idx:
@@ -154,10 +160,15 @@ class WingConfiguration:
                                 start_segment = seg_num
                                 break
 
-                    found_spare.spare_vector, found_spare.spare_origin = self._get_standard_spare_origin_and_vector(
+                    found_spare.spare_vector, found_spare.spare_origin, spare_orthogonal_vector, spare_orthogonal_origin = (
+                        self._get_standard_spare_origin_and_vector(
                         start_segment=start_segment,
                         end_segment=segment_number,
-                        spare_position_factor=found_spare.spare_position_factor)
+                        spare_position_factor=found_spare.spare_position_factor))
+
+                    if spare.spare_mode == 'orthogonal_backward':
+                        found_spare.spare_vector = spare_orthogonal_vector
+                        found_spare.spare_origin = spare_orthogonal_origin
 
                     for seg_num in range(start_segment+1, segment_number+1):
                         follows_spare = self.segments[seg_num].spare_list[spare_idx]
@@ -194,7 +205,7 @@ class WingConfiguration:
         if spare.spare_vector is None and spare.spare_position_factor is not None:
             # make spare vector following the spare_position_factor
             # that is centered inside of the airfoil at the camber (middle of surfaces)
-            spare.spare_vector, _ = self._get_standard_spare_origin_and_vector(start_segment=segment_number,
+            spare.spare_vector, _, _, _ = self._get_standard_spare_origin_and_vector(start_segment=segment_number,
                                                                                end_segment=segment_number,
                                                                                spare_position_factor=spare.spare_position_factor)
         elif spare.spare_vector is None:
@@ -204,7 +215,7 @@ class WingConfiguration:
             # use spare_vector
             spare.spare_vector = spare.spare_vector.normalized()
         if spare.spare_origin is None:
-            _, spare.spare_origin = self._get_standard_spare_origin_and_vector(start_segment=segment_number,
+            _, spare.spare_origin, _, _ = self._get_standard_spare_origin_and_vector(start_segment=segment_number,
                                                                                end_segment=segment_number,
                                                                                spare_position_factor=spare.spare_position_factor)
 
