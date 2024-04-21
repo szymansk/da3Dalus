@@ -133,8 +133,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
                                                                                                wing_config,
                                                                                                segment)
             # add a wing_tip
-            if wing_segment.tip_type is not None and segment == len(wing_config.segments)-1:
-                # only do this if it is the last segment in the list
+            if wing_segment.tip_type is not None:
                 if wing_segment.tip_type is 'flat':
                     final_right_wing = final_right_wing.add(current)
                 elif wing_segment.tip_type is 'round':

@@ -15,7 +15,7 @@ For segments of type _segment_ or _tip_ the root airfoil and chord is equal to t
 .A wing consists of segments of +WingSegmentType+ _root_, _segment_ and _tip_.
 ----
 @startebnf
-WingConfiguration = root, {segment}, tip;
+WingConfiguration = root, {segment}, {tip};
 @endebnf
 ----
 
