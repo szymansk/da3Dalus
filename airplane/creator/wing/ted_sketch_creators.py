@@ -1,8 +1,11 @@
 from typing import Tuple
 
 import numpy as np
+import math
+
 from cadquery import Sketch, Location
 
+from airplane.aircraft_topology.printer3d import Printer3dSettings
 from airplane.aircraft_topology.wing import WingConfiguration
 from airplane.aircraft_topology.wing.WingSegment import WingSegment
 from airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
@@ -16,7 +19,7 @@ the wings hull.
 New ted sketch creators should have the signature:
 
 def create_XYZ_ted_sketch(segment: int, ted: TrailingEdgeDevice, wing_config: WingConfiguration) 
-    -> Tuple[Sketch, Sketch, Sketch, Sketch]:
+    -> Tuple[Sketch, Sketch, Sketch, Sketch, float]:
     ...
     return ted_sketch, ted_sketch_tip, wing_sketch, wing_sketch_tip
     
@@ -25,8 +28,8 @@ ted_sketch, ted_sketch_tip the sketches to be lofted and intersected with the wi
 wing_sketch, wing_sketch_tip the sketches to be lofted and cut from the wings hull.
 """
 
-def create_MIDDLE_ted_sketch(segment: int, ted: TrailingEdgeDevice, wing_config: WingConfiguration)\
-        -> Tuple[Sketch, Sketch, Sketch, Sketch]:
+def create_MIDDLE_ted_sketch(segment: int, ted: TrailingEdgeDevice, wing_config: WingConfiguration, printer_settings: Printer3dSettings)\
+        -> Tuple[Sketch, Sketch, Sketch, Sketch, float]:
     wcs: WingSegment = wing_config.segments[segment]
     ted_root_plane, ted_tip_plane = wing_config.get_trailing_edge_device_planes(segment)
     loft_direction_vector = ted_root_plane.toLocalCoords(ted_tip_plane.origin)
@@ -53,10 +56,12 @@ def create_MIDDLE_ted_sketch(segment: int, ted: TrailingEdgeDevice, wing_config:
         ted_sketch = ted_sketch.moved(
             Location(loft_direction_vector.normalized().multiply(ted.side_spacing_root)))
     wing_sketch_tip = wing_sketch.moved(Location(loft_direction_vector * 2))
-    return ted_sketch, ted_sketch_tip, wing_sketch, wing_sketch_tip
+    # TODO: ted_offset should be where the ted reaches into the wing
+    ted_offset = 1.0
+    return ted_sketch, ted_sketch_tip, wing_sketch, wing_sketch_tip, ted_offset
 
 
-def create_SIMPLE_TOP_ted_sketch(segment, ted, wing_config):
+def create_SIMPLE_TOP_ted_sketch(segment, ted, wing_config, printer_settings: Printer3dSettings):
     wcs: WingSegment = wing_config.segments[segment]
     max_chord = max(wcs.root_airfoil.chord * ted.rel_chord_root,
                     wcs.tip_airfoil.chord * ted.rel_chord_tip + wcs.sweep)
@@ -89,11 +94,12 @@ def create_SIMPLE_TOP_ted_sketch(segment, ted, wing_config):
                                 .close()
                                 .assemble()
                                 )
+    # TODO: ted_offset should be where the ted reaches into the wing
+    ted_offset = 1.0
+    return ted_sketch, ted_sketch_tip, wing_sketch, wing_sketch_tip, ted_offset
 
-    return ted_sketch, ted_sketch_tip, wing_sketch, wing_sketch_tip
 
-
-def create_TOP_ted_sketch(segment, ted, wing_config):
+def create_TOP_ted_sketch(segment, ted, wing_config, printer_settings: Printer3dSettings):
     wcs: WingSegment = wing_config.segments[segment]
 
     max_chord = max(wcs.root_airfoil.chord * ted.rel_chord_root,
@@ -106,12 +112,16 @@ def create_TOP_ted_sketch(segment, ted, wing_config):
     root_radius = abs((bottom - top).y)
     tip_radius = abs((bottom_t - top_t).y)
 
+    offset = printer_settings.wall_thickness*1.5
+    theta_rad = math.asin(offset / (root_radius + ted.hinge_spacing))
+    theta_deg = math.degrees(theta_rad)
+
     ted_sketch: Sketch = (Sketch()
                           .segment((max_chord, -top.y), (max_chord, -3 * max_chord), 'help')
                           .arc((0, -top.y), root_radius, 180 - ted.negative_deflection_deg,
                                -(90 - ted.negative_deflection_deg), tag="arc")
                           .segmentToEdge(-(270 - ted.negative_deflection_deg + 90), 'help', 'diag')
-                          .segment((0, -top.y), (0, -top.y + 2 * ted.hinge_spacing), 'edge')
+                          .segment((0, -top.y), (0, -top.y + 2 * offset), 'edge')
                           .segmentToEdge('arc', 0.0, 'edge', 1.0)
                           # .segmentToEdge('arc', 0.0, (0, -top.y))
                           .segment((0, -top.y), (max_chord, -top.y), 'top')
@@ -133,27 +143,28 @@ def create_TOP_ted_sketch(segment, ted, wing_config):
                                .select('help').delete()
                                .assemble()
                                )
+
     wing_sketch: Sketch = (Sketch()
-                           .segment((max_chord, -top.y), (max_chord, top.y), 'help')
-                           .arc((0., -top.y), root_radius + ted.hinge_spacing, 180,
+                           .segment((max_chord, -top.y+offset), (max_chord, top.y), 'help')
+                           .arc((0., -top.y), root_radius + ted.hinge_spacing, 180-theta_deg,
                                 -(90 - ted.negative_deflection_deg), 'arc')
                            .segmentToEdge(-(270 - ted.negative_deflection_deg + 90), 'help', 'diag')
                            .select('help').delete()
-                           .segmentToEdge('arc', 0.0, (-ted.hinge_spacing, -top.y), 'diag2')
-                           .segment((-ted.hinge_spacing, -top.y), (-ted.hinge_spacing, -max_chord))
+                           .segmentToEdge('arc', 0.0, (-ted.hinge_spacing, -top.y+offset), 'diag2')
+                           .segment((-ted.hinge_spacing, -top.y+offset), (-ted.hinge_spacing, -max_chord))
                            .segment((-ted.hinge_spacing, -max_chord), (max_chord, -max_chord))
                            .segmentToEdge(90., 'diag')
                            .assemble()
                            )
     wing_sketch_tip: Sketch = (Sketch()
-                                .segment((max_chord, -top_t_ta.y), (max_chord, top_t_ta.y), 'help')
-                                .arc((0, -top_t_ta.y), tip_radius + ted.hinge_spacing, 180,
+                                .segment((max_chord, -top_t_ta.y+offset), (max_chord, top_t_ta.y), 'help')
+                                .arc((0, -top_t_ta.y), tip_radius + ted.hinge_spacing, 180-theta_deg,
                                      -(90 - ted.negative_deflection_deg), 'arc')
                                 .segmentToEdge(-(270 - ted.negative_deflection_deg + 90), 'help', 'diag')
                                 .select('help').delete()
-                                .segmentToEdge('arc', 0.0, (-ted.hinge_spacing, -top_t_ta.y),
+                                .segmentToEdge('arc', 0.0, (-ted.hinge_spacing, -top_t_ta.y+offset),
                                                'diag2')
-                                .segment((-ted.hinge_spacing, -top_t_ta.y),
+                                .segment((-ted.hinge_spacing, -top_t_ta.y+offset),
                                          (-ted.hinge_spacing, -max_chord))
                                 .segment((-ted.hinge_spacing, -max_chord),
                                          (max_chord, -max_chord))
@@ -161,7 +172,7 @@ def create_TOP_ted_sketch(segment, ted, wing_config):
                                 .assemble()
                                 )
 
-    return ted_sketch, ted_sketch_tip, wing_sketch, wing_sketch_tip
+    return ted_sketch, ted_sketch_tip, wing_sketch, wing_sketch_tip, root_radius
 
 
 ted_sketch_creators = {

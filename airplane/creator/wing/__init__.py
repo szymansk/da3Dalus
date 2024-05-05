@@ -1,2 +1,3 @@
 from .WingLoftCreator import WingLoftCreator
 from .VaseModeWingCreator import VaseModeWingCreator
+from .StandWingSegmentOnPrinterCreator import StandWingSegmentOnPrinterCreator

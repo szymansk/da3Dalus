@@ -28,6 +28,7 @@ class WingConfiguration:
                  tip_airfoil: Airfoil = None,
                  number_interpolation_points: int = None, spare_list: List[Spare] = None,
                  trailing_edge_device: TrailingEdgeDevice = None) -> T:
+        self.segments = None
         self.nose_pnt: tuple[float, float, float] = nose_pnt
 
         if tip_airfoil.airfoil is None:
