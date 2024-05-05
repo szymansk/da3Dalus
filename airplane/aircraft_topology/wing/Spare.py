@@ -2,7 +2,7 @@ from typing import Literal, Tuple
 
 from cadquery import Vector
 
-SpareMode = Literal["normal", "follow", "standard", "standard_backward"]
+SpareMode = Literal["normal", "follow", "standard", "standard_backward", "orthogonal_backward"]
 
 class Spare:
     def __init__(self,

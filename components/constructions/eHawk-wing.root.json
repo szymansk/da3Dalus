@@ -1,12 +1,48 @@
 {
     "successors": {
         "vase_wing": {
-            "successors": {},
+            "successors": {
+                "winglet": {
+                    "successors": {},
+                    "creator": {
+                        "shapes": [
+                            "vase_wing[4]",
+                            "vase_wing[5]",
+                            "vase_wing[6]",
+                            "vase_wing[7]",
+                            "vase_wing[8]"
+                        ],
+                        "loglevel": 20,
+                        "creator_id": "winglet",
+                        "$TYPE": "FuseMultipleShapesCreator"
+                    },
+                    "loglevel": 50,
+                    "creator_id": "winglet",
+                    "$TYPE": "ConstructionStepNode"
+                },
+                "": {
+                    "successors": {},
+                    "creator": {
+                        "shape_dict": {
+                            "0": "vase_wing[0]",
+                            "1": "vase_wing[1]",
+                            "2": "vase_wing[2]",
+                            "3": "vase_wing[3]",
+                            "4": "winglet"
+                        },
+                        "wing_index": "main_wing",
+                        "loglevel": 10,
+                        "creator_id": "",
+                        "$TYPE": "StandWingSegmentOnPrinterCreator"
+                    },
+                    "loglevel": 50,
+                    "creator_id": "",
+                    "$TYPE": "ConstructionStepNode"
+                }
+            },
             "creator": {
-                "printer_wall_thickness": 0.42,
-                "spare_perpendicular": false,
-                "leading_edge_offset_factor": 0.06,
-                "trailing_edge_offset_factor": 0.17,
+                "leading_edge_offset_factor": 0.1,
+                "trailing_edge_offset_factor": 0.15,
                 "minimum_rib_angle": 45,
                 "wing_side": "BOTH",
                 "wing_index": "main_wing",
@@ -19,12 +55,42 @@
             "$TYPE": "ConstructionStepNode"
         },
         "eHawk-wing": {
-            "successors": {},
+            "successors": {
+                "eHawk-wing": {
+                    "successors": {},
+                    "creator": {
+                        "file_path": "../exports",
+                        "tolerance": 0.05,
+                        "angular_tolerance": 0.01,
+                        "shapes_to_export": [
+                            "vase_wing[0].print",
+                            "vase_wing[1].print",
+                            "vase_wing[2].print",
+                            "vase_wing[3].print",
+                            "winglet.print"
+                        ],
+                        "loglevel": 20,
+                        "creator_id": "eHawk-wing",
+                        "$TYPE": "ExportTo3mfCreator"
+                    },
+                    "loglevel": 50,
+                    "creator_id": "eHawk-wing",
+                    "$TYPE": "ConstructionStepNode"
+                }
+            },
             "creator": {
                 "file_path": "../exports",
                 "shapes_to_export": [
                     "vase_wing",
-                    "vase_wing.aileron[1]"
+                    "vase_wing[0].print",
+                    "vase_wing[1].print",
+                    "vase_wing[2].print",
+                    "vase_wing[3].print",
+                    "winglet.print",
+                    "vase_wing.aileron[2]",
+                    "vase_wing.aileron[3]",
+                    "vase_wing.aileron[2]*",
+                    "vase_wing.aileron[3]*"
                 ],
                 "loglevel": 20,
                 "creator_id": "eHawk-wing",

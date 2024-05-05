@@ -18,9 +18,9 @@ class Servo:
     Based on this coordinate system we can define all needed inputs for a servo
     """
 
-    def __init__(self: T, length: float, width: float, height: float, leading_length: float,
-                 latch_z: float, latch_x: float, latch_thickness: float, latch_length: float,
-                 cable_z: float):
+    def __init__(self: T, length: float, width: float, height: float, leading_length: float, latch_z: float,
+                 latch_x: float, latch_thickness: float, latch_length: float, cable_z: float, screw_hole_lx: float,
+                 screw_hole_d: float):
         self.length: float = length  # x-dimension
         self.width: float = width  # y-dimension
         self.height: float = height  # z-dimension
@@ -33,6 +33,9 @@ class Servo:
         self.latch_length: float = latch_length
 
         self.cable_z: float = cable_z
+
+        self.screw_hole_lx = screw_hole_lx
+        self.screw_hole_d = screw_hole_d
 
         self.trailing_length: float = self.length - self.leading_length
         pass
