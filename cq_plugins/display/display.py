@@ -4,7 +4,7 @@ import requests
 from cadquery import Workplane
 from cq_plugins.display.cadq_server_connector import CQServerConnector
 
-def display(self: Workplane, name: str = "", severity: int = logging.NOTSET,
+def display(self: Workplane, name: str = "NN", severity: int = logging.DEBUG,
              url: str = "http://cq-server:5000/json", names=None, colors=None, alphas=None, **kwargs) -> Workplane:
     if severity >= logging.root.level:
         display._connector = display._connector if display._connector is not None else CQServerConnector(url=url)

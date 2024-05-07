@@ -349,21 +349,22 @@ class WingConfiguration:
 
         return np.linalg.norm(up_ar - low_ar)/2, chord_to_lower_height
 
-    def get_trailing_edge_device_planes(self: T, segment: int) -> Tuple[Plane, Plane]:
-        seg = self.segments[segment]
-        ted = seg.trailing_edge_device
+    def get_trailing_edge_device_planes(self: T, start_segment: int, end_segment: int) -> Tuple[Plane, Plane]:
+        start_seg = self.segments[start_segment]
+        start_ted = start_seg.trailing_edge_device
+        end_seg = self.segments[end_segment]
 
-        if ted is None:
+        if start_ted is None:
             logging.warning("No trailing edge device")
             return None, None
         else:
-            wing_wp = self.get_wing_workplane(segment)
-            wing_wp_tip = self.get_wing_workplane(segment+1)
+            wing_wp = self.get_wing_workplane(start_segment)
+            wing_wp_tip = self.get_wing_workplane(end_segment+1)
 
             origin_root = (wing_wp.plane.origin
-                           + wing_wp.plane.xDir * seg.root_airfoil.chord * ted.rel_chord_root)
+                           + wing_wp.plane.xDir * start_seg.root_airfoil.chord * start_ted.rel_chord_root)
             origin_tip = (wing_wp_tip.plane.origin
-                          + wing_wp_tip.plane.xDir * seg.tip_airfoil.chord * ted.rel_chord_tip)
+                          + wing_wp_tip.plane.xDir * end_seg.tip_airfoil.chord * start_ted.rel_chord_tip)
 
             root_plane = Plane(origin=origin_root, xDir=wing_wp.plane.xDir, normal=wing_wp.plane.yDir)
             tip_plane = Plane(origin=origin_tip, xDir=wing_wp_tip.plane.xDir, normal=wing_wp_tip.plane.yDir)

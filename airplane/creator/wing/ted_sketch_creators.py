@@ -28,10 +28,10 @@ ted_sketch, ted_sketch_tip the sketches to be lofted and intersected with the wi
 wing_sketch, wing_sketch_tip the sketches to be lofted and cut from the wings hull.
 """
 
-def create_MIDDLE_ted_sketch(segment: int, ted: TrailingEdgeDevice, wing_config: WingConfiguration, printer_settings: Printer3dSettings)\
+def create_MIDDLE_ted_sketch(segment: int, end_segment: int, ted: TrailingEdgeDevice, wing_config: WingConfiguration, printer_settings: Printer3dSettings)\
         -> Tuple[Sketch, Sketch, Sketch, Sketch, float]:
     wcs: WingSegment = wing_config.segments[segment]
-    ted_root_plane, ted_tip_plane = wing_config.get_trailing_edge_device_planes(segment)
+    ted_root_plane, ted_tip_plane = wing_config.get_trailing_edge_device_planes(segment, segment)
     loft_direction_vector = ted_root_plane.toLocalCoords(ted_tip_plane.origin)
     loft_direction_vector_length = np.linalg.norm(np.array(list(loft_direction_vector.toTuple())))
     max_chord = max(wcs.root_airfoil.chord * ted.rel_chord_root,
@@ -61,7 +61,8 @@ def create_MIDDLE_ted_sketch(segment: int, ted: TrailingEdgeDevice, wing_config:
     return ted_sketch, ted_sketch_tip, wing_sketch, wing_sketch_tip, ted_offset
 
 
-def create_SIMPLE_TOP_ted_sketch(segment, ted, wing_config, printer_settings: Printer3dSettings):
+def create_SIMPLE_TOP_ted_sketch(segment: int, end_segment: int, ted: TrailingEdgeDevice, wing_config: WingConfiguration, printer_settings: Printer3dSettings)\
+        -> Tuple[Sketch, Sketch, Sketch, Sketch, float]:
     wcs: WingSegment = wing_config.segments[segment]
     max_chord = max(wcs.root_airfoil.chord * ted.rel_chord_root,
                     wcs.tip_airfoil.chord * ted.rel_chord_tip + wcs.sweep)
@@ -99,15 +100,18 @@ def create_SIMPLE_TOP_ted_sketch(segment, ted, wing_config, printer_settings: Pr
     return ted_sketch, ted_sketch_tip, wing_sketch, wing_sketch_tip, ted_offset
 
 
-def create_TOP_ted_sketch(segment, ted, wing_config, printer_settings: Printer3dSettings):
+def create_TOP_ted_sketch(segment: int, end_segment: int, ted: TrailingEdgeDevice, wing_config: WingConfiguration, printer_settings: Printer3dSettings)\
+        -> Tuple[Sketch, Sketch, Sketch, Sketch, float]:
     wcs: WingSegment = wing_config.segments[segment]
+    wcs_end: WingSegment = wing_config.segments[end_segment]
+    sweep = sum([wing_config.segments[i].sweep for i in range(segment, end_segment + 1)])
 
     max_chord = max(wcs.root_airfoil.chord * ted.rel_chord_root,
-                    wcs.tip_airfoil.chord * ted.rel_chord_tip + wcs.sweep)
+                    wcs_end.tip_airfoil.chord * ted.rel_chord_tip + sweep)
 
     top, bottom = wing_config.get_points_on_surface(segment, ted.rel_chord_root, 0, "root_airfoil")
-    top_t, bottom_t = wing_config.get_points_on_surface(segment, ted.rel_chord_tip, 1.0, "root_airfoil")
-    top_t_ta, bottom_t_ta = wing_config.get_points_on_surface(segment, ted.rel_chord_tip, 1.0, "tip_airfoil")
+    top_t, bottom_t = wing_config.get_points_on_surface(end_segment, ted.rel_chord_tip, 1.0, "root_airfoil")
+    top_t_ta, bottom_t_ta = wing_config.get_points_on_surface(end_segment, ted.rel_chord_tip, 1.0, "tip_airfoil")
 
     root_radius = abs((bottom - top).y)
     tip_radius = abs((bottom_t - top_t).y)

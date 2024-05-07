@@ -294,7 +294,7 @@ The _hinge type_ defines, how the connection between the wing an the ted is cons
 * 'round inside' - the hinge is in the middle and the ted is round where it reaches into the wing.
 * 'round outside' - the hinge is in the middle and the ted is round to the inside where the wing reaches into the ted.
 
-NOTE: A ted could, if correctly parameterized span several segments. However, you have to treat this with care. Otherwise, the ted will not properly rotate.
+The _name_ is used to collect all TEDs with the same name. The first TED will define all parameters. Than this TED is used to generate the TEDs of all segments with the same name. TEDs with same names should be in consecutive segments.
 
 ==== Servo
 .A parameterized servo.
