@@ -1,6 +1,6 @@
 import logging
 import math
-from typing import TypeVar, Any, List, Tuple, Literal
+from typing import TypeVar, Any, List, Tuple, Literal, Union
 
 import numpy as np
 from cadquery import Workplane, Plane, Vector
@@ -28,7 +28,7 @@ class WingConfiguration:
                  tip_airfoil: Airfoil = None,
                  number_interpolation_points: int = None, spare_list: List[Spare] = None,
                  trailing_edge_device: TrailingEdgeDevice = None) -> T:
-        self.segments = None
+        self.segments: Union[list[WingSegment],None]  = None
         self.nose_pnt: tuple[float, float, float] = nose_pnt
 
         if tip_airfoil.airfoil is None:

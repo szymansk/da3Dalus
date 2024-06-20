@@ -99,9 +99,11 @@ if __name__ == "__main__":
                 1 : "vase_wing[1]",
                 2 : "vase_wing[2]",
                 3 : "vase_wing[3]",
-                4 : "winglet"},
+                4 : "vase_wing[4]",
+                5 : "vase_wing[5]",
+                6 : "winglet"},
             loglevel=logging.DEBUG))
-    #vase_wing_loft.append(print_stand)
+    vase_wing_loft.append(print_stand)
 
     aircraft_3mf_export_node = ConstructionStepNode(
         ExportTo3mfCreator(Path(f"{root_node.identifier}_3mf").stem,
@@ -109,6 +111,7 @@ if __name__ == "__main__":
                             tolerance=0.05,
                             file_path="../exports",
                             shapes_to_export=[#vase_wing_loft.creator_id,
+                                              f"{vase_wing_loft.creator_id}[2].servo_mount",
                                               f"{vase_wing_loft.creator_id}[0].print",
                                               f"{vase_wing_loft.creator_id}[1].print",
                                               f"{vase_wing_loft.creator_id}[2].print",
@@ -133,9 +136,10 @@ if __name__ == "__main__":
                                               f"{vase_wing_loft.creator_id}.aileron[2]",
                                               f"{vase_wing_loft.creator_id}.aileron[3]",
                                               f"{vase_wing_loft.creator_id}.aileron[2]*",
-                                              f"{vase_wing_loft.creator_id}.aileron[3]*"
+                                              f"{vase_wing_loft.creator_id}.aileron[3]*",
+                                              f"{vase_wing_loft.creator_id}[2].servo_mount",
                                               ]))
-    #root_node.append(aircraft_step_export_node)
+    root_node.append(aircraft_step_export_node)
     #aircraft_step_export_node.append(aircraft_3mf_export_node)
 
 
@@ -290,10 +294,10 @@ if __name__ == "__main__":
         trailing_edge_device=TrailingEdgeDevice(name="aileron")
     )
 
-    l_middle = 75
-    l_tip = l_tip - 75
+    l_middle = 85
+    l_tip = l_tip - 85
     s_middle = 24-13
-    s_tip = 38-24
+    s_tip = 38-24-2
     c_root = wing_config.segments[-1].tip_airfoil.chord
     c_middle = None
     c_tip = 90

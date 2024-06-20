@@ -141,6 +141,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
         #############################
         # create the other segments #
         #############################
+        glue_in_mounts: dict[str, Workplane] = {}
         glue_support_ted_offset = ted_offset + self.printer_wall_thickness*3
         for segment in range(1, len(wing_config.segments)):
             wing_segment = wing_config.segments[segment]
@@ -185,7 +186,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 # the cut out is created in a way that the main spare fits into it nicely
                 logging.info(f"==> creating rib shapes for '{self.identifier}[{segment}]'")
                 raw_ribs, leading_edge_start, trailing_edge_start, spare_vector_origin, lower_part = self._create_ribs_shape(
-                    current_pwt_offset, segment, wing_config, leading_edge_start, trailing_edge_start, not lower_part)
+                    current_2xpwt_offset, segment, wing_config, leading_edge_start, trailing_edge_start, not lower_part)
 
                 # create a shape for the slot that is needed to make the wing printable in vase mode
                 # only spare with index 0 will get this slot
@@ -199,7 +200,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 # create all other spares
                 for spare_idx in range(1, len(wing_segment.spare_list)):
                     logging.info(f"==> creating spare '{spare_idx}' shapes for '{self.identifier}[{segment}]'")
-                    raw_add_spar, _ = self._create_spare_shape(current=current_pwt_offset, segment=segment,
+                    raw_add_spar, _ = self._create_spare_shape(current=current_2xpwt_offset, segment=segment,
                                                                wing_config=wing_config, spare_idx=spare_idx)
                     raw_spare = raw_spare.add(raw_add_spar)
 
@@ -233,6 +234,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
                         logging.info(f"==> create servo mount and cover shapes --> '{self.identifier}[{segment}]'")
                         current_hull, glue_in_mount = self._create_servo_mount_and_cover(current, current_hull, segment, wing_config,
                                                                           ted.servo_placement)
+                        glue_in_mounts[f"{self.identifier}[{segment}].servo_mount"] = glue_in_mount
                     # create the shape of the ted including the hinge
                     # TODO: use the ted link origin and direction to construct a rudder horn with linkage for the ted
                     logging.info(f"==> creating ted shapes for '{self.identifier}[{segment}]'")
@@ -273,7 +275,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
                 # finally put everything together
                 logging.info(f"==> combining shapes --> '{self.identifier}[{segment}]'")
-                final_right_segments[segment] = ( #final_right_segments[segment].add(
+                final_right_segments[segment] = (
                     current_hull
                     .union(raw_spare)
                     .union(raw_ribs)
@@ -317,7 +319,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
                        .display(name=f"{self.identifier}.ted[{k}]", severity=logging.DEBUG))
 
         # append main shapes
-        final_dict: dict = {self.identifier: final_right_wing}
+        final_dict: dict[str, Workplane] = {self.identifier: final_right_wing}
 
         # append all teds
         for (k, v) in teds.items():
@@ -327,6 +329,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
         for i, wing_seg in enumerate(final_right_segments):
             final_dict[f"{self.identifier}[{i}]"] = wing_seg
 
+        final_dict.update(glue_in_mounts)
         return final_dict
 
     def create_tip_glue_tongue(self, final_right_segments: list[Workplane],
@@ -464,7 +467,11 @@ class VaseModeWingCreator(AbstractShapeCreator):
         # trans = plane.xDir * so.x + plane.yDir * so.y + plane.zDir * (so.z - (so.z - sob.z) * 0.15)
         # box = box.translate(trans).display("box",24234)
 
-        return updated_hull, servo.create_laying_glue_in_mount(base_thickness=MOUNT_PLATE_THICKNESS)
+        glue_in_mount = servo.create_laying_glue_in_mount(base_thickness=MOUNT_PLATE_THICKNESS, placement='bottom')
+        glue_in_mount = mirror_and_rotate(glue_in_mount)
+        glue_in_mount = glue_in_mount.translate(trans_mount)
+
+        return updated_hull, glue_in_mount
 
     def calculate_lowest_point_for_mount(self, segment, ted, wing_config, wing_plane):
         x_offset_interval = np.linspace(-(ted.servo.leading_length + ted.servo.latch_length),

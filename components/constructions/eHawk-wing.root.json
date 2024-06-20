@@ -20,6 +20,27 @@
                     "loglevel": 50,
                     "creator_id": "winglet",
                     "$TYPE": "ConstructionStepNode"
+                },
+                "": {
+                    "successors": {},
+                    "creator": {
+                        "shape_dict": {
+                            "0": "vase_wing[0]",
+                            "1": "vase_wing[1]",
+                            "2": "vase_wing[2]",
+                            "3": "vase_wing[3]",
+                            "4": "vase_wing[4]",
+                            "5": "vase_wing[5]",
+                            "6": "winglet"
+                        },
+                        "wing_index": "main_wing",
+                        "loglevel": 10,
+                        "creator_id": "",
+                        "$TYPE": "StandWingSegmentOnPrinterCreator"
+                    },
+                    "loglevel": 50,
+                    "creator_id": "",
+                    "$TYPE": "ConstructionStepNode"
                 }
             },
             "creator": {
@@ -34,6 +55,31 @@
             },
             "loglevel": 50,
             "creator_id": "vase_wing",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "eHawk-wing": {
+            "successors": {},
+            "creator": {
+                "file_path": "../exports",
+                "shapes_to_export": [
+                    "vase_wing",
+                    "vase_wing[0].print",
+                    "vase_wing[1].print",
+                    "vase_wing[2].print",
+                    "vase_wing[3].print",
+                    "winglet.print",
+                    "vase_wing.aileron[2]",
+                    "vase_wing.aileron[3]",
+                    "vase_wing.aileron[2]*",
+                    "vase_wing.aileron[3]*",
+                    "vase_wing[2].servo_mount"
+                ],
+                "loglevel": 20,
+                "creator_id": "eHawk-wing",
+                "$TYPE": "ExportToStepCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "eHawk-wing",
             "$TYPE": "ConstructionStepNode"
         }
     },
