@@ -18,6 +18,8 @@ RUN . "/opt/conda/etc/profile.d/conda.sh" && conda activate cq && \
     pip install jupyter-cadquery==3.5.2 cadquery-massembly~=1.0.0 jupyterlab~=3.5 voila~=0.3.5 && \
     find / -type f -name '*.py[co]' -delete -o -type d -name __pycache__ -delete
 
+COPY run_amd64.sh /tmp/run_amd64.sh
+
 VOLUME /home/cq/
 WORKDIR /home/cq
 EXPOSE 8888
@@ -26,5 +28,7 @@ USER cq
 
 ADD --chown=cq:cq run_amd64.sh /tmp
 RUN chmod +x /tmp/run_amd64.sh
+
+# ENTRYPOINT ["tail","-f","/dev/null"]
 
 ENTRYPOINT ["/tmp/run_amd64.sh"]
