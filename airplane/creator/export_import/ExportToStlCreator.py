@@ -7,7 +7,7 @@ from cadquery import Workplane
 from airplane.AbstractShapeCreator import AbstractShapeCreator
 
 
-class ExportTo3mfCreator(AbstractShapeCreator):
+class ExportToStlCreator(AbstractShapeCreator):
     def __init__(self, creator_id: str, file_path: str, shapes_to_export: list[str],
                  tolerance: float = 0.1, angular_tolerance: float = 0.1, loglevel=logging.INFO):
         self.file_path: str = file_path
@@ -20,12 +20,12 @@ class ExportTo3mfCreator(AbstractShapeCreator):
     def _create_shape(self, shapes_of_interest: dict[str, Workplane],
                       input_shapes: dict[str, Workplane],
                       **kwargs) -> dict[str, Workplane]:
-        logging.info(f"converting shapes '{', '.join(shapes_of_interest.keys())}' to .3mf")
+        logging.info(f"converting shapes '{', '.join(shapes_of_interest.keys())}' to .stl")
 
         from cadquery import exporters
         #ass = cq.Assembly()
         for name, shape in shapes_of_interest.items():
-            step_path = os.path.join(self.file_path, f"{self.identifier}_{name}.3mf")
+            step_path = os.path.join(self.file_path, f"{self.identifier}_{name}.stl")
             logging.debug(f"writing model to '{step_path}'")
             exporters.export(shape, step_path,
                              tolerance=self.tolerance, angularTolerance=self.angular_tolerance)

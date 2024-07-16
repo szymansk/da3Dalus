@@ -15,8 +15,10 @@ class WingSegment:
                  sweep: float = 0,
                  tip_airfoil: Airfoil = None,
                  spare_list: List[Spare] = None,
-                 trailing_edge_device: TrailingEdgeDevice = None, number_interpolation_points: int = None,
-                 tip_type: TipType = None, wing_segment_type: WingSegmentType = 'segment'):
+                 trailing_edge_device: TrailingEdgeDevice = None,
+                 number_interpolation_points: int = None,
+                 tip_type: TipType = None,
+                 wing_segment_type: WingSegmentType = 'segment'):
 
         self.root_airfoil = root_airfoil
 

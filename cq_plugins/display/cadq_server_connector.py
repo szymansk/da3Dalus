@@ -17,7 +17,7 @@ from cadquery import Assembly
 
 class Progress:
     def update(self):
-        print(".", end="", flush=True)
+        print("=", end=">\n", flush=True)
 
 def get_json_model(*cad_objs, names=None, colors=None, alphas=None, **kwargs) -> list:
     part_group = to_assembly(
@@ -45,7 +45,8 @@ def get_json_model(*cad_objs, names=None, colors=None, alphas=None, **kwargs) ->
         if v is not None:
             config[k] = v
     try:
-        shapes = _tessellate_group(part_group, kwargs, Progress(), config.get("timeit"))
+        shapes = _tessellate_group(part_group, kwargs, None, config.get("timeit"))
+        #shapes = _tessellate_group(part_group, kwargs, Progress(), config.get("timeit"))
         assembly_json = numpy_to_json(shapes)
     except Exception as error:
         raise CQServerConnectorError('An error occured when tesselating the assembly.') from error

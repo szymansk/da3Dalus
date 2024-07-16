@@ -7,26 +7,17 @@ HingeType = Literal["middle", "top", "top_simple", "round_inside", "round_outsid
 
 class TrailingEdgeDevice:
 
-    def __init__(self,
-                 name: str,
-                 rel_chord_root:float,
-                 rel_chord_tip:float,
-                 hinge_spacing:float,
-                 side_spacing:float,
-                 servo: Servo = None,
-                 servo_placement: ServoPlacement = 'top',
-                 rel_chord_servo_position: float = None,
-                 rel_length_servo_position: float = None,
-                 positive_deflection_deg: float = 25,
-                 negative_deflection_deg: float = 25,
-                 trailing_edge_offset_factor: float = 1.0,
-                 hinge_type: HingeType = "top"
-                 ):
+    def __init__(self, name: str, rel_chord_root: float, rel_chord_tip: float, hinge_spacing: float,
+                 side_spacing_root: float, side_spacing_tip: float, servo: Servo = None, servo_placement: ServoPlacement = 'top',
+                 rel_chord_servo_position: float = None, rel_length_servo_position: float = None,
+                 positive_deflection_deg: float = 25, negative_deflection_deg: float = 25,
+                 trailing_edge_offset_factor: float = 1.0, hinge_type: HingeType = "top"):
         self.name = name
         self.rel_chord_root = rel_chord_root
         self.rel_chord_tip = rel_chord_tip
         self.hinge_spacing = hinge_spacing
-        self.side_spacing = side_spacing
+        self.side_spacing_root = side_spacing_root
+        self.side_spacing_tip = side_spacing_tip
 
         self.servo = servo
         self.servo_placement = servo_placement
