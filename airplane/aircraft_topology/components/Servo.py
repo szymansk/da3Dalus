@@ -1,4 +1,4 @@
-from typing import TypeVar
+from typing import TypeVar, Literal
 
 from cadquery import Workplane, Sketch, Plane
 
@@ -40,7 +40,7 @@ class Servo:
         self.trailing_length: float = self.length - self.leading_length
         pass
 
-    def create_laying_glue_in_mount(self: T, base_thickness:float = 1.0) -> Workplane:
+    def create_laying_glue_in_mount(self: T, base_thickness:float = 1.0, placement: Literal['top', 'bottom'] = 'top') -> Workplane:
         servo_outlines = (Sketch()
                           .segment((0, 0), (-self.leading_length, 0))
                           .segment((-self.leading_length, 0),
@@ -109,11 +109,16 @@ class Servo:
                                   .close()
                                   .assemble()
                                   )
+
         glue_in_mount = (Workplane()
-                         .placeSketch(glue_in_mount_outlines).extrude(until=self.width / 2 + base_thickness)
-                         .faces(">Z").workplane().placeSketch(servo_outlines).extrude(until=-self.width / 2.0,
-                                                                                      combine='cut')
-                         )
+        .placeSketch(glue_in_mount_outlines).extrude(until=  (self.width / 2 + base_thickness))
+        .faces(">Z").workplane().placeSketch(servo_outlines).extrude(
+            until=  (-self.width / 2.0),
+            combine='cut')
+        )
+
+        if placement == 'top':
+            glue_in_mount = glue_in_mount.mirror('XY')
 
         return glue_in_mount
 

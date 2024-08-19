@@ -1,6 +1,6 @@
 import logging
 import math
-from typing import TypeVar, Any, List, Tuple, Literal
+from typing import TypeVar, Any, List, Tuple, Literal, Union
 
 import numpy as np
 from cadquery import Workplane, Plane, Vector
@@ -11,7 +11,7 @@ from scipy.interpolate import interp1d
 from airplane.aircraft_topology.wing.Spare import Spare
 from airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
 from airplane.aircraft_topology.wing.WingSegment import WingSegment, TipType
-from airplane.aircraft_topology.wing.Airfoil import Airfoil
+from airplane.aircraft_topology.wing.Airfoil import Airfoil, CoordinateSystem
 
 T = TypeVar("T", bound="WingConfiguration")
 
@@ -25,27 +25,25 @@ class WingConfiguration:
                  root_airfoil: Airfoil,
                  length: float,
                  sweep: float = 0,
+                 sweepIsAngle: bool=False,
                  tip_airfoil: Airfoil = None,
-                 number_interpolation_points: int = None, spare_list: List[Spare] = None,
+                 number_interpolation_points: int = None,
+                 spare_list: List[Spare] = None,
                  trailing_edge_device: TrailingEdgeDevice = None) -> T:
-        self.segments = None
+        self.segments: Union[list[WingSegment],None]  = None
         self.nose_pnt: tuple[float, float, float] = nose_pnt
 
         if tip_airfoil.airfoil is None:
             tip_airfoil.airfoil = root_airfoil.airfoil
 
-        root_segment = WingSegment(root_airfoil=root_airfoil,
-                                   length=length,
-                                   sweep=sweep,
-                                   tip_airfoil=tip_airfoil,
-                                   spare_list=spare_list,
-                                   trailing_edge_device=trailing_edge_device,
-                                   number_interpolation_points=number_interpolation_points,
-                                   wing_segment_type='root')
+        root_segment = WingSegment(root_airfoil=root_airfoil, length=length, sweep=sweep, sweepIsAngle=sweepIsAngle, tip_airfoil=tip_airfoil,
+                                   spare_list=spare_list, trailing_edge_device=trailing_edge_device,
+                                   number_interpolation_points=number_interpolation_points, wing_segment_type='root')
 
         self.segments: list[WingSegment] = [root_segment]
         self._wing_workplanes: dict[int, Workplane] = {}
         self._wing_workplanes[0] = self.get_wing_workplane(0)
+        self.segments[0].root_airfoil.set_airfoil_coordinate_system((self._wing_workplanes[0].plane))
 
         self._scaled_point_list: dict[str, list[tuple[float, float]]] = {}
 
@@ -98,24 +96,18 @@ class WingConfiguration:
         tip_airfoil.chord = tip_airfoil.chord if tip_airfoil.chord is not None else self.segments[-1].tip_airfoil.chord
         nip = number_interpolation_points if number_interpolation_points is not None else self.segments[0].number_interpolation_points
 
-        segment = WingSegment(root_airfoil=root_airfoil,
-                              length=length,
-                              sweep=sweep,
-                              tip_airfoil=tip_airfoil,
-                              number_interpolation_points=nip,
-                              tip_type=tip_type,
-                              wing_segment_type='tip')
+        segment = WingSegment(root_airfoil=root_airfoil, length=length, sweep=sweep, tip_airfoil=tip_airfoil,
+                              number_interpolation_points=nip, tip_type=tip_type, wing_segment_type='tip')
         self.segments.append(segment)
 
         segment_number = len(self.segments) - 1
 
         self._wing_workplanes[segment_number] = self.get_wing_workplane(segment_number)
+        self.segments[segment_number].tip_airfoil.set_airfoil_coordinate_system((self._wing_workplanes[segment_number].plane))
 
-    def add_segment(self: T, length: float,
-                    sweep: float = 0,
-                    tip_airfoil: Airfoil = None,
-                    number_interpolation_points: int = None,
-                    spare_list: List[Spare] = None, trailing_edge_device: TrailingEdgeDevice = None) -> None:
+    def add_segment(self: T, length: float, sweep: float = 0, sweepIsAngle=False, tip_airfoil: Airfoil = None,
+                    number_interpolation_points: int = None, spare_list: List[Spare] = None,
+                    trailing_edge_device: TrailingEdgeDevice = None) -> None:
         if self.segments[-1].wing_segment_type == 'tip':
             raise ValueError(f"The previous wing segment cannot be a '{self.segments[-1].wing_segment_type}'")
 
@@ -127,20 +119,16 @@ class WingConfiguration:
         nip = number_interpolation_points if number_interpolation_points is not None else self.segments[
             0].number_interpolation_points
 
-        segment = WingSegment(root_airfoil=root_airfoil,
-                              length=length,
-                              sweep=sweep,
+        segment = WingSegment(root_airfoil=root_airfoil, length=length, sweep=sweep, sweepIsAngle=sweepIsAngle,
                               tip_airfoil=tip_airfoil,
-                              spare_list=spare_list,
-                              trailing_edge_device=trailing_edge_device,
-                              number_interpolation_points=nip,
-                              tip_type=None,
-                              wing_segment_type='segment')
+                              spare_list=spare_list, trailing_edge_device=trailing_edge_device,
+                              number_interpolation_points=nip, tip_type=None, wing_segment_type='segment')
         self.segments.append(segment)
 
         segment_number = len(self.segments) - 1
 
         self._wing_workplanes[segment_number] = self.get_wing_workplane(segment_number)
+        self.segments[segment_number].tip_airfoil.set_airfoil_coordinate_system((self._wing_workplanes[segment_number].plane))
 
         if self.segments[segment_number].spare_list is not None:
             for spare_idx in range(len(self.segments[segment_number].spare_list)):
@@ -239,53 +227,51 @@ class WingConfiguration:
             [0, 1, 0, 0],
             [0, 0, 1, 0],
             [0, 0, 0, 1]]
-        r_rel_chord = [
-            [1, 0, 0, self.segments[seg].root_airfoil.rotation_point_rel_chord],
-            [0, 1, 0, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1]]
-
-        r_neg_rel_chord = [
-            [1, 0, 0, -self.segments[seg].root_airfoil.rotation_point_rel_chord],
-            [0, 1, 0, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1]]
 
         for seg in reversed(range(segment)):
+            airfoil_ref = self.segments[seg].tip_airfoil
+            t_neg_rel_chord = [
+                [1, 0, 0, -airfoil_ref.rotation_point_rel_chord * airfoil_ref.chord],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1]]
+            r_tip_incidence = self._create_homogeneous_rotation_matrix('y', airfoil_ref.incidence)
+            r_tip_dihedral = self._create_homogeneous_rotation_matrix('x', airfoil_ref.dihedral)
             t_sweep_length = [
                 [1, 0, 0, self.segments[seg].sweep],
                 [0, 1, 0, self.segments[seg].length],
                 [0, 0, 1, 0],
                 [0, 0, 0, 1]]
-
             t_rel_chord = [
-                [1, 0, 0, self.segments[seg].tip_airfoil.rotation_point_rel_chord],
+                [1, 0, 0, airfoil_ref.rotation_point_rel_chord * airfoil_ref.chord],
                 [0, 1, 0, 0],
                 [0, 0, 1, 0],
                 [0, 0, 0, 1]]
 
-            t_neg_rel_chord = [
-                [1, 0, 0, -self.segments[seg].tip_airfoil.rotation_point_rel_chord],
-                [0, 1, 0, 0],
-                [0, 0, 1, 0],
-                [0, 0, 0, 1]]
-
-            r_tip_dihedral = self._create_homogeneous_rotation_matrix('x', self.segments[seg].tip_airfoil.dihedral)
-            r_tip_incidence = self._create_homogeneous_rotation_matrix('y', self.segments[seg].tip_airfoil.incidence)
-
-            all_trans = np.matmul(t_rel_chord, all_trans)
+            all_trans = np.matmul(t_neg_rel_chord, all_trans)
             all_trans = np.matmul(r_tip_incidence, all_trans)
             all_trans = np.matmul(r_tip_dihedral, all_trans)
             all_trans = np.matmul(t_sweep_length, all_trans)
-            all_trans = np.matmul(t_neg_rel_chord, all_trans)
+            all_trans = np.matmul(t_rel_chord, all_trans)
 
+        # process also the root airfoil for segment 0
+        r_rel_chord = [
+            [1, 0, 0, self.segments[seg].root_airfoil.rotation_point_rel_chord * self.segments[seg].root_airfoil.chord],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]]
         r_root_incidence = self._create_homogeneous_rotation_matrix('y', self.segments[seg].root_airfoil.incidence)
         r_root_dihedral = self._create_homogeneous_rotation_matrix('x', self.segments[seg].root_airfoil.dihedral)
+        r_neg_rel_chord = [
+            [1, 0, 0, -self.segments[seg].root_airfoil.rotation_point_rel_chord * self.segments[seg].root_airfoil.chord],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]]
 
-        all_trans = np.matmul(r_rel_chord, all_trans)
+        all_trans = np.matmul(r_neg_rel_chord, all_trans)
         all_trans = np.matmul(r_root_incidence, all_trans)
         all_trans = np.matmul(r_root_dihedral, all_trans)
-        all_trans = np.matmul(r_neg_rel_chord, all_trans)
+        all_trans = np.matmul(r_rel_chord, all_trans)
 
         normal = all_trans.transpose()[2]
         origin = all_trans.transpose()[3]
@@ -349,21 +335,22 @@ class WingConfiguration:
 
         return np.linalg.norm(up_ar - low_ar)/2, chord_to_lower_height
 
-    def get_trailing_edge_device_planes(self: T, segment: int) -> Tuple[Plane, Plane]:
-        seg = self.segments[segment]
-        ted = seg.trailing_edge_device
+    def get_trailing_edge_device_planes(self: T, start_segment: int, end_segment: int) -> Tuple[Plane, Plane]:
+        start_seg = self.segments[start_segment]
+        start_ted = start_seg.trailing_edge_device
+        end_seg = self.segments[end_segment]
 
-        if ted is None:
+        if start_ted is None:
             logging.warning("No trailing edge device")
             return None, None
         else:
-            wing_wp = self.get_wing_workplane(segment)
-            wing_wp_tip = self.get_wing_workplane(segment+1)
+            wing_wp = self.get_wing_workplane(start_segment)
+            wing_wp_tip = self.get_wing_workplane(end_segment+1)
 
             origin_root = (wing_wp.plane.origin
-                           + wing_wp.plane.xDir * seg.root_airfoil.chord * ted.rel_chord_root)
+                           + wing_wp.plane.xDir * start_seg.root_airfoil.chord * start_ted.rel_chord_root)
             origin_tip = (wing_wp_tip.plane.origin
-                          + wing_wp_tip.plane.xDir * seg.tip_airfoil.chord * ted.rel_chord_tip)
+                          + wing_wp_tip.plane.xDir * end_seg.tip_airfoil.chord * start_ted.rel_chord_tip)
 
             root_plane = Plane(origin=origin_root, xDir=wing_wp.plane.xDir, normal=wing_wp.plane.yDir)
             tip_plane = Plane(origin=origin_tip, xDir=wing_wp_tip.plane.xDir, normal=wing_wp_tip.plane.yDir)

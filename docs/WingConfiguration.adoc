@@ -202,11 +202,11 @@ The coordinate system latexmath:[H^N] for a segments N is calculated with the ho
 
 NOTE: Be aware that the tip aifoil of segment i is equal to the root airfoil of segment i+1. That is why the the length and sweep are denoted with latexmath:[L_{i-i}] and latexmath:[S_{i-i}] as they belong to the segment before. If you want to calculate the coordinate system for the tip of a segment you need to calculate latexmath:[H^{N+1}].
 
-latexmath:[H^0 = T(-C_{0} rc_{0}, 0,0)\cdot R_x(\delta_{0})\cdot R_y(\iota_{0}) \cdot T(C_{0} r_{0}, 0,0)]
+latexmath:[H_0 = T(C_{0} rc_{0}, 0,0)\cdot R_x(\delta_{0})\cdot R_y(\iota_{0}) \cdot T(-C_{0} r_{0}, 0,0)]
 
-latexmath:[H^i = T(-C_{i} rc_{i}, 0, 0)\cdot T(S_{i-1}, L_{i-1},0) \cdot R_x(\delta) \cdot R_y(\iota_i) \cdot T(C_{i} rc_{i}, 0,0)]
+latexmath:[H_i = T(C_{i} rc_{i}, 0, 0)\cdot T(S_{i-1}, L_{i-1},0) \cdot R_x(\delta_i) \cdot R_y(\iota_i) \cdot T(-C_{i} rc_{i}, 0,0)]
 
-latexmath:[H^N = H^0\cdot\prod^N_{n=1}H^n],
+latexmath:[C_N = H_0\cdot\prod^N_{n=1}H_n],
 
 where
 latexmath:[
@@ -218,23 +218,42 @@ T(x,y,z)=
     0 & 0 & 0 & 1 \\
   \end{bmatrix} ],
 latexmath:[
-R_x(\theta)=
+R_x(\delta_i)=
   \begin{bmatrix}
     1 & 0 & 0 & 0 \\
-    0 & \cos(\theta) & -\sin(\theta) & 0 \\
-    0 & \sin(\theta) & \cos(\theta) & 0 \\
+    0 & \cos(\delta_i) & -\sin(\delta_i) & 0 \\
+    0 & \sin(\delta_i) & \cos(\delta_i) & 0 \\
     0 & 0 & 0 & 1 \\
   \end{bmatrix} ],
 
 and
 latexmath:[
-R_y(\theta)=
+R_y(\iota_i)=
   \begin{bmatrix}
-    \cos(\theta) & 0 & \sin(\theta) & 0\\
+    \cos(\iota_i) & 0 & \sin(\iota_i) & 0\\
     0 & 1 & 0 & 0 \\
-    -\sin(\theta) & 0 & \cos(\theta) & 0 \\
+    -\sin(\iota_i) & 0 & \cos(\iota_i) & 0 \\
     0 & 0 & 0 & 1 \\
   \end{bmatrix} ]
+
+===== How calculate the parameters from given global Coordinate Systems
+
+latexmath:[C_N = (H_0\cdot\prod^{N-1}_{n=1}H_n)\cdot H_N]
+
+latexmath:[H_N = (H_0\cdot\prod^{N-1}_{n=1}H_n)^-\cdot C_N]
+
+latexmath:[H_N = C_{N-1}^-\cdot C_N ]
+
+The Inverse of a transformation Matrix
+latexmath:[
+\begin{pmatrix}
+R & t \\
+0 & 1
+\end{pmatrix}^- =
+\begin{pmatrix}
+R^T & -R^T\cdot t \\
+0 & 1
+\end{pmatrix}].
 
 ==== Spare
 .The main spare.
@@ -294,7 +313,7 @@ The _hinge type_ defines, how the connection between the wing an the ted is cons
 * 'round inside' - the hinge is in the middle and the ted is round where it reaches into the wing.
 * 'round outside' - the hinge is in the middle and the ted is round to the inside where the wing reaches into the ted.
 
-NOTE: A ted could, if correctly parameterized span several segments. However, you have to treat this with care. Otherwise, the ted will not properly rotate.
+The _name_ is used to collect all TEDs with the same name. The first TED will define all parameters. Than this TED is used to generate the TEDs of all segments with the same name. TEDs with same names should be in consecutive segments.
 
 ==== Servo
 .A parameterized servo.

@@ -6,11 +6,12 @@
                     "successors": {},
                     "creator": {
                         "shapes": [
-                            "vase_wing[4]",
-                            "vase_wing[5]",
                             "vase_wing[6]",
                             "vase_wing[7]",
-                            "vase_wing[8]"
+                            "vase_wing[8]",
+                            "vase_wing[9]",
+                            "vase_wing[10]",
+                            "vase_wing[11]"
                         ],
                         "loglevel": 20,
                         "creator_id": "winglet",
@@ -28,7 +29,9 @@
                             "1": "vase_wing[1]",
                             "2": "vase_wing[2]",
                             "3": "vase_wing[3]",
-                            "4": "winglet"
+                            "4": "vase_wing[4]",
+                            "5": "vase_wing[5]",
+                            "6": "winglet"
                         },
                         "wing_index": "main_wing",
                         "loglevel": 10,
@@ -55,29 +58,7 @@
             "$TYPE": "ConstructionStepNode"
         },
         "eHawk-wing": {
-            "successors": {
-                "eHawk-wing": {
-                    "successors": {},
-                    "creator": {
-                        "file_path": "../exports",
-                        "tolerance": 0.05,
-                        "angular_tolerance": 0.01,
-                        "shapes_to_export": [
-                            "vase_wing[0].print",
-                            "vase_wing[1].print",
-                            "vase_wing[2].print",
-                            "vase_wing[3].print",
-                            "winglet.print"
-                        ],
-                        "loglevel": 20,
-                        "creator_id": "eHawk-wing",
-                        "$TYPE": "ExportTo3mfCreator"
-                    },
-                    "loglevel": 50,
-                    "creator_id": "eHawk-wing",
-                    "$TYPE": "ConstructionStepNode"
-                }
-            },
+            "successors": {},
             "creator": {
                 "file_path": "../exports",
                 "shapes_to_export": [
@@ -90,7 +71,8 @@
                     "vase_wing.aileron[2]",
                     "vase_wing.aileron[3]",
                     "vase_wing.aileron[2]*",
-                    "vase_wing.aileron[3]*"
+                    "vase_wing.aileron[3]*",
+                    "vase_wing[2].servo_mount"
                 ],
                 "loglevel": 20,
                 "creator_id": "eHawk-wing",

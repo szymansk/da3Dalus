@@ -4,7 +4,7 @@ from typing import Literal
 import cadquery as cq
 from cadquery import Workplane, Plane
 
-import cq_plugins.wing.airfoil
+import cq_plugins.wing.airfoil_old
 
 def wing_root_segment(self: cq.Workplane, root_airfoil: str,
                       root_chord: float, tip_chord: float, length: float,
