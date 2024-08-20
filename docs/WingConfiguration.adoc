@@ -236,7 +236,22 @@ R_y(\iota_i)=
     0 & 0 & 0 & 1 \\
   \end{bmatrix} ]
 
-===== How calculate the parameters from given global Coordinate Systems
+
+==== How calculate the Parameters from given global Coordinate Systems
+
+If we perform the calculation of a single local coordinate system, we get the following homogeneours Transformation Matrix:
+
+latexmath:[H_i = \left[
+\begin{matrix}
+\cos{\left(\iota_i \right)} & 0 &\sin{\left(\iota_i \right)}  & - C_i rc_i \cos{\left(\iota_i \right)} + C_i rc_i + S_{i-1}\\
+\sin{\left(\delta_i \right)} \sin{\left(\iota_i \right)} & \cos{\left(\delta_i \right)} & - \sin{\left(\delta_i \right)} \cos{\left(\iota_i \right)} & - C_i rc_i \sin{\left(\delta_i \right)} \sin{\left(\iota_i \right)} + L_{i-1}\\
+- \sin{\left(\iota_i \right)} \cos{\left(\delta_i \right)} & \sin{\left(\delta_i \right)} & \cos{\left(\delta_i \right)} \cos{\left(i \right)} & C_i rc_i \sin{\left(\iota_i \right)} \cos{\left(\delta_i \right)}\\
+0 & 0 & 0 & 1
+\end{matrix}
+\right\]]
+
+Usually we only have the global coordinate systems, which we get from CPACS-files for instance. To transform the globale coordinate
+systems to local We can do the following. If we have the current global coordinate system latexmath:[C_N] and the previous global coordinate system latexmath:[C_{N-1}] we can derive:
 
 latexmath:[C_N = (H_0\cdot\prod^{N-1}_{n=1}H_n)\cdot H_N]
 
@@ -244,16 +259,32 @@ latexmath:[H_N = (H_0\cdot\prod^{N-1}_{n=1}H_n)^-\cdot C_N]
 
 latexmath:[H_N = C_{N-1}^-\cdot C_N ]
 
-The Inverse of a transformation Matrix
-latexmath:[
-\begin{pmatrix}
-R & t \\
-0 & 1
-\end{pmatrix}^- =
-\begin{pmatrix}
-R^T & -R^T\cdot t \\
-0 & 1
-\end{pmatrix}].
+From this we can calculate the parameters, by utilizing matrix latexmath:[H_i].
+
+Incident angle in radians:
+
+latexmath:[ \iota_i = atan2(\sin(\iota_i), \cos(\iota_i)) = atan2(H_i[0,2\], H_i[0,0\])]
+
+Dihedral in radians:
+
+latexmath:[ \delta_i = atan2(\sin(\delta_i), \cos(\delta_i)) = atan2(H_i[2,1\], H_i[1,1\])]
+
+Relative rotation point of incidence angle:
+
+latexmath:[ rc_i = H_i[3,3\]/C_i \sin{\left(\iota_i \right)} \cos{\left(\delta_i \right)}]
+
+Segment length in length units:
+
+latexmath:[ L_{i-1}  = H_i[1,3\] + C_i rc_i \sin{\left(\delta_i \right)} \sin{\left(\iota_i \right)} = H_i[1,3\] + C_i rc_i H_i[1,0\]]
+
+Sweep in length units:
+
+latexmath:[ S_{i-1} = H_i[0,3\] + C_i rc_i \left(\cos{\left(\iota_i \right)} - 1\right) =  H_i[0,3\] + C_i rc_i \left(H_i[0,0\] - 1\right)]
+
+And from this the sweep in radians:
+
+latexmath:[s_{i-1} = atan2\left({S_{i-1}, L_{i-1}}\right)]
+
 
 ==== Spare
 .The main spare.
