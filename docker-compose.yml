@@ -1,11 +1,9 @@
-version: '3.9'
-
 services:
   cq-client:
     #image: szymanski2adesso/cadquery-client:2.4.0
     platform: linux/arm64
     build:
-      context: docker
+      context: ./docker
       dockerfile: Dockerfile.client.arm64.dockerfile
       cache_from:
         - szymanski2adesso/cadquery-client:2.4.0
@@ -19,7 +17,7 @@ services:
   cq-win_client:
     platform: linux/amd64
     build:
-      context: docker
+      context: ./docker
       dockerfile: docker/Dockerfile.jupyter.amd64.dockerfile
     container_name: cq-win-client
     volumes:

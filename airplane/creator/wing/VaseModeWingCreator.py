@@ -552,7 +552,8 @@ class VaseModeWingCreator(AbstractShapeCreator):
         segment: int = 0
         root_plane = wing_config.get_wing_workplane(segment).plane.rotated((90,0,0))
         tip_plane = wing_config.get_wing_workplane(segment+1).plane.rotated((90,0,0))
-        right_wing_pwt_offset: Workplane = (
+
+        wing_root_segment_lambda = lambda offset : (
             Workplane('XZ')
             .wing_root_segment(
                 root_airfoil=wing_config.segments[segment].root_airfoil.airfoil,
@@ -565,48 +566,16 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 tip_dihedral=wing_config.segments[segment].tip_airfoil.dihedral,
                 tip_incidence=wing_config.segments[segment].tip_airfoil.incidence,
                 tip_airfoil=wing_config.segments[segment].tip_airfoil.airfoil,
-                offset=self.printer_wall_thickness,
+                offset=offset,
                 number_interpolation_points=wing_config.segments[0].number_interpolation_points,
                 root_plane=root_plane,
                 tip_plane=tip_plane
             ))
 
-        right_wing_2xpwt_offset: Workplane = (
-            Workplane('XZ')
-            .wing_root_segment(
-                root_airfoil=wing_config.segments[segment].root_airfoil.airfoil,
-                root_chord=wing_config.segments[segment].root_airfoil.chord,
-                root_dihedral=wing_config.segments[segment].root_airfoil.dihedral,
-                root_incidence=wing_config.segments[segment].root_airfoil.incidence,
-                length=wing_config.segments[segment].length,
-                sweep=wing_config.segments[segment].sweep,
-                tip_chord=wing_config.segments[segment].tip_airfoil.chord,
-                tip_dihedral=wing_config.segments[segment].tip_airfoil.dihedral,
-                tip_incidence=wing_config.segments[segment].tip_airfoil.incidence,
-                tip_airfoil=wing_config.segments[segment].tip_airfoil.airfoil,
-                offset=2.0 * self.printer_wall_thickness,
-                number_interpolation_points=wing_config.segments[0].number_interpolation_points,
-                root_plane=root_plane,
-                tip_plane=tip_plane
-            ))
-        right_wing: Workplane = (
-            Workplane('XZ')
-            .wing_root_segment(
-                root_airfoil=wing_config.segments[segment].root_airfoil.airfoil,
-                root_chord=wing_config.segments[segment].root_airfoil.chord,
-                root_dihedral=wing_config.segments[segment].root_airfoil.dihedral,
-                root_incidence=wing_config.segments[segment].root_airfoil.incidence,
-                length=wing_config.segments[segment].length,
-                sweep=wing_config.segments[segment].sweep,
-                tip_chord=wing_config.segments[segment].tip_airfoil.chord,
-                tip_dihedral=wing_config.segments[segment].tip_airfoil.dihedral,
-                tip_incidence=wing_config.segments[segment].tip_airfoil.incidence,
-                tip_airfoil=wing_config.segments[segment].tip_airfoil.airfoil,
-                offset=0.0,
-                number_interpolation_points=wing_config.segments[0].number_interpolation_points,
-                root_plane=root_plane,
-                tip_plane=tip_plane
-            ))
+        right_wing_pwt_offset: Workplane = wing_root_segment_lambda(self.printer_wall_thickness)
+        right_wing_2xpwt_offset: Workplane = wing_root_segment_lambda(2.0 * self.printer_wall_thickness)
+        right_wing: Workplane = wing_root_segment_lambda(0.0)
+
         return right_wing, right_wing_2xpwt_offset, right_wing_pwt_offset
 
     def _create_basic_wing_shapes(self, _current: Workplane,
@@ -618,40 +587,22 @@ class VaseModeWingCreator(AbstractShapeCreator):
         root_plane = wing_config.get_wing_workplane(segment).plane.rotated((90,0,0))
         tip_plane = wing_config.get_wing_workplane(segment+1).plane.rotated((90,0,0))
 
-        current_pwt_offset = _current_pwt_offset.wing_segment(
+        wing_segment_lambda = lambda actual, offset : actual.wing_segment(
             length=segment_config.length,
             sweep=segment_config.sweep,
             tip_chord=segment_config.tip_airfoil.chord,
             tip_dihedral=segment_config.tip_airfoil.dihedral,
             tip_incidence=segment_config.tip_airfoil.incidence,
             tip_airfoil=segment_config.tip_airfoil.airfoil,
-            offset=self.printer_wall_thickness,
+            offset=offset,
             number_interpolation_points=segment_config.number_interpolation_points,
             root_plane=root_plane,
             tip_plane=tip_plane
         )
-        current_2xpwt_offset = _current_2xpwt_offset.wing_segment(
-            length=segment_config.length,
-            sweep=segment_config.sweep,
-            tip_chord=segment_config.tip_airfoil.chord,
-            tip_dihedral=segment_config.tip_airfoil.dihedral,
-            tip_incidence=segment_config.tip_airfoil.incidence,
-            tip_airfoil=segment_config.tip_airfoil.airfoil,
-            offset=2.0 * self.printer_wall_thickness,
-            number_interpolation_points=segment_config.number_interpolation_points,
-            root_plane=root_plane,
-            tip_plane=tip_plane)
-        current = _current.wing_segment(
-            length=segment_config.length,
-            sweep=segment_config.sweep,
-            tip_chord=segment_config.tip_airfoil.chord,
-            tip_dihedral=segment_config.tip_airfoil.dihedral,
-            tip_incidence=segment_config.tip_airfoil.incidence,
-            tip_airfoil=segment_config.tip_airfoil.airfoil,
-            offset=0.0,
-            number_interpolation_points=segment_config.number_interpolation_points,
-            root_plane=root_plane,
-            tip_plane=tip_plane)
+
+        current_pwt_offset = wing_segment_lambda(_current_pwt_offset, self.printer_wall_thickness)
+        current_2xpwt_offset = wing_segment_lambda(_current_2xpwt_offset, 2.0 * self.printer_wall_thickness)
+        current = wing_segment_lambda(_current,0.0)
         return current, current_2xpwt_offset, current_pwt_offset
 
     def _create_spare_shape(self, current: Workplane, segment: int, wing_config: WingConfiguration,
