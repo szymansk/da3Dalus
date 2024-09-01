@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# when using pycharm change line separator on the bottom from CRLF to LF, you might also run dos2unix for this file
+
 VIEWER=0
 export THEME=light
 

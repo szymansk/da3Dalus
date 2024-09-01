@@ -1,5 +1,7 @@
 from typing import Literal, List
 
+import math
+
 from airplane.aircraft_topology.wing.Airfoil import Airfoil
 from airplane.aircraft_topology.wing.Spare import Spare
 from airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
@@ -9,10 +11,10 @@ TipType = Literal["flat", "round"]
 
 
 class WingSegment:
-    def __init__(self,
-                 root_airfoil: Airfoil,
+    def __init__(self, root_airfoil: Airfoil,
                  length: float,
                  sweep: float = 0,
+                 sweepIsAngle=False,
                  tip_airfoil: Airfoil = None,
                  spare_list: List[Spare] = None,
                  trailing_edge_device: TrailingEdgeDevice = None,
@@ -23,7 +25,15 @@ class WingSegment:
         self.root_airfoil = root_airfoil
 
         self.length = length
+
         self.sweep = sweep
+
+        if sweepIsAngle:
+            self.sweep_angle = sweep
+            self.sweep = length * math.tan(math.radians(sweep))
+        else:
+            sweep_angle_rad = math.atan(sweep / length)
+            self.sweep_angle = math.degrees(sweep_angle_rad)
 
         self.tip_airfoil = tip_airfoil
 

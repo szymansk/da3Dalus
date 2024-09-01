@@ -1,0 +1,230 @@
+{
+  "py/object": "airplane.aircraft_topology.wing.WingConfiguration.WingConfiguration",
+  "segments": [
+    // sec 1-2
+    {
+      "py/object": "airplane.aircraft_topology.wing.WingSegment.WingSegment",
+      "root_airfoil": {
+        "chord": 162.0,
+        "dihedral": 1,
+        "incidence": 0,
+        "rotation_point_rel_chord": 0
+      },
+      "length": 20.0,
+      "sweep": 0,
+      "sweep_angle": 0.0,
+      "tip_airfoil": {
+        "chord": 162.0,
+        "dihedral": 0,
+        "incidence": 0,
+        "rotation_point_rel_chord": 0
+      }
+    }, // 2
+    {
+      "py/object": "airplane.aircraft_topology.wing.WingSegment.WingSegment",
+      "root_airfoil": {
+        "chord": 162.0,
+        "dihedral": 0,
+        "incidence": 0,
+        "rotation_point_rel_chord": 0
+      },
+      "length": 200,
+      "sweep": 2.5,
+      "sweep_angle": 0.7161599454704085,
+      "tip_airfoil": {
+        "chord": 157,
+        "dihedral": 0,
+        "incidence": 0,
+        "rotation_point_rel_chord": 0
+      }
+    }, // 3
+    {
+      "py/object": "airplane.aircraft_topology.wing.WingSegment.WingSegment",
+      "root_airfoil": {
+        "chord": 157,
+        "dihedral": 0,
+        "incidence": 0,
+        "rotation_point_rel_chord": 0
+      },
+      "length": 250,
+      "sweep": 8,
+      "sweep_angle": 1.8328395059420592,
+      "tip_airfoil": {
+        "chord": 132.88888888888889,
+        "dihedral": 0,
+        "incidence": 0,
+        "rotation_point_rel_chord": 0
+      }
+    }, // 4
+    {
+      "py/object": "airplane.aircraft_topology.wing.WingSegment.WingSegment",
+      "root_airfoil": {
+        "chord": 132.88888888888889,
+        "dihedral": 0,
+        "incidence": 0,
+        "rotation_point_rel_chord": 0
+      },
+      "length": 75,
+      "sweep": 5,
+      "sweep_angle": 3.8140748342903543,
+      "tip_airfoil": {
+        "chord": 123.05555555555554,
+        "dihedral": 0,
+        "incidence": 0,
+        "rotation_point_rel_chord": 0
+      }
+    }, // 5
+    {
+      "py/object": "airplane.aircraft_topology.wing.WingSegment.WingSegment",
+      "root_airfoil": {
+        "chord": 123.05555555555554,
+        "dihedral": 0,
+        "incidence": 0,
+        "rotation_point_rel_chord": 0
+      },
+      "length": 85,
+      "sweep": 11,
+      "sweep_angle": 7.373766361330216,
+      "tip_airfoil": {
+        "chord": 105.21777777777777,
+        "dihedral": 0,
+        "incidence": 0,
+        "rotation_point_rel_chord": 0
+      }
+    }, // 6
+    {
+      "py/object": "airplane.aircraft_topology.wing.WingSegment.WingSegment",
+      "root_airfoil": {
+        "chord": 105.21777777777777,
+        "dihedral": 0,
+        "incidence": 0,
+        "rotation_point_rel_chord": 0
+      },
+      "length": 40,
+      "sweep": 12,
+      "sweep_angle": 16.69924423399362,
+      "tip_airfoil": {
+        "chord": 90,
+        "dihedral": 0,
+        "incidence": 0,
+        "rotation_point_rel_chord": 0
+      }
+    }, // 7
+    {
+      "py/object": "airplane.aircraft_topology.wing.WingSegment.WingSegment",
+      "root_airfoil": {
+        "chord": 90,
+        "dihedral": 0,
+        "incidence": 0,
+        "rotation_point_rel_chord": 0
+      },
+      "length": 20,
+      "sweep": 7.5,
+      "sweep_angle": 20.556045219583467,
+      "tip_airfoil": {
+        "chord": 79.5,
+        "dihedral": 5,
+        "incidence": -0.5,
+        "rotation_point_rel_chord": 0
+      }
+    }, // 8
+    {
+      "py/object": "airplane.aircraft_topology.wing.WingSegment.WingSegment",
+      "root_airfoil": {
+        "chord": 79.5,
+        "dihedral": 0,
+        "incidence": 0,
+        "rotation_point_rel_chord": 0
+      },
+      "length": 15,
+      "sweep": 7.5,
+      "sweep_angle": 26.56505117707799,
+      "tip_airfoil": {
+        "chord": 71.0,
+        "dihedral": 5,
+        "incidence": -0.5,
+        "rotation_point_rel_chord": 0
+      }
+    }, // 9
+    {
+      "py/object": "airplane.aircraft_topology.wing.WingSegment.WingSegment",
+      "root_airfoil": {
+
+        "chord": 71.0,
+        "dihedral": 0,
+        "incidence": 0,
+        "rotation_point_rel_chord": 0
+      },
+      "length": 15,
+      "sweep": 10,
+      "sweep_angle": 33.690067525979785,
+      "tip_airfoil": {
+        "chord": 62.0,
+        "dihedral": 5,
+        "incidence": -0.5,
+        "rotation_point_rel_chord": 0
+      }
+    }, // 10
+    {
+      "py/object": "airplane.aircraft_topology.wing.WingSegment.WingSegment",
+      "root_airfoil": {
+        "chord": 62.0,
+        "dihedral": 0,
+        "incidence": 0,
+        "rotation_point_rel_chord": 0
+      },
+      "length": 15,
+      "sweep": 12.5,
+      "sweep_angle": 39.8055710922652,
+      "tip_airfoil": {
+        "chord": 52.5,
+        "dihedral": 10,
+        "incidence": -0.5,
+        "rotation_point_rel_chord": 0
+      }
+    }, // 11
+    {
+      "py/object": "airplane.aircraft_topology.wing.WingSegment.WingSegment",
+      "root_airfoil": {
+        "chord": 52.5,
+        "dihedral": 0,
+        "incidence": 0,
+        "rotation_point_rel_chord": 0
+      },
+      "length": 10,
+      "sweep": 15,
+      "sweep_angle": 56.309932474020215,
+      "tip_airfoil": {
+        "chord": 40.5,
+        "dihedral": 15,
+        "incidence": -0.5,
+        "rotation_point_rel_chord": 0
+      }
+    }, // 12
+    {
+      "py/object": "airplane.aircraft_topology.wing.WingSegment.WingSegment",
+      "root_airfoil": {
+        "chord": 40.5,
+        "dihedral": 0,
+        "incidence": 0,
+        "rotation_point_rel_chord": 0
+      },
+      "length": 5,
+      "sweep": 17.5,
+      "sweep_angle": 74.05460409907715,
+      "tip_airfoil": {
+        "chord": 24.0,
+        "dihedral": 0,
+        "incidence": -0.5,
+        "rotation_point_rel_chord": 0
+      }
+    }  // 13
+  ],
+  "nose_pnt": {
+    "py/tuple": [
+      0,
+      0,
+      0
+    ]
+  }
+}

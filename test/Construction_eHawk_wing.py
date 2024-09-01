@@ -203,7 +203,7 @@ if __name__ == "__main__":
             Spare(spare_support_dimension_width=6.42,
                   spare_support_dimension_height=6.42,
                   spare_position_factor=0.55,
-                  spare_vector=(0.,1.,0.),
+                  spare_vector=(0., 1., 0.),
                   spare_length=70),
             Spare(spare_support_dimension_width=6.42,
                   spare_support_dimension_height=6.42,
@@ -213,23 +213,21 @@ if __name__ == "__main__":
         ])
 
     # segment 1
-    wing_config.add_segment(
-        length=200,
-        sweep=2.5,
-        tip_airfoil=Airfoil(chord=157, dihedral=0, incidence=0, rotation_point_rel_chord=0),
-        spare_list=[
-            Spare(spare_support_dimension_width=4.42,
-                  spare_support_dimension_height=4.42,
-                  spare_mode="follow"),
-            Spare(spare_support_dimension_width=6.42,
-                  spare_support_dimension_height=6.42,
-                  spare_mode="follow",
-                  spare_length=60),
-            Spare(spare_support_dimension_width=6.42,
-                  spare_support_dimension_height=6.42,
-                  spare_mode="follow",
-                  spare_length=60)
-        ])
+    wing_config.add_segment(length=200, sweep=2.5,
+                            tip_airfoil=Airfoil(chord=157, dihedral=0, incidence=0, rotation_point_rel_chord=0),
+                            spare_list=[
+                                Spare(spare_support_dimension_width=4.42,
+                                      spare_support_dimension_height=4.42,
+                                      spare_mode="follow"),
+                                Spare(spare_support_dimension_width=6.42,
+                                      spare_support_dimension_height=6.42,
+                                      spare_mode="follow",
+                                      spare_length=60),
+                                Spare(spare_support_dimension_width=6.42,
+                                      spare_support_dimension_height=6.42,
+                                      spare_mode="follow",
+                                      spare_length=60)
+                            ])
 
     l_middle = 250
     l_tip = 200
@@ -391,6 +389,12 @@ if __name__ == "__main__":
                                              servo_information=servo_information,
                                              wing_config=wing_configuration,
                                              printer_settings=printer_settings)
+
+    # dump wingconfig
+    import jsonpickle
+
+    wing_pickled = jsonpickle.encode(wing_config, indent=2)
+    print(wing_pickled)
 
     # dump again to check
     print(json.dumps(myMap, indent=2, cls=GeneralJSONEncoder))

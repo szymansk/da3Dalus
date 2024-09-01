@@ -1,0 +1,676 @@
+<cpacs xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://www.cpacs.de/schema/v3_4_0/cpacs_schema.xsd">
+  <header>
+    <creator>Anonym</creator>
+    <name>eHawk</name>
+    <version>1.0</version>
+    <cpacsVersion>3.2</cpacsVersion>
+    <timestamp>2024-08-16T04:55:29</timestamp>
+  </header>
+  <vehicles>
+    <aircraft>
+      <model uID="e898b1ae-e7f8-4be8-98b6-30ce8add87ab">
+        <name>eHawk</name>
+        <wings>
+          <wing uID="3fa43fdc-1be4-4466-9ebb-63db67b38153" symmetry="x-z-plane">
+            <name>NoName</name>
+            <transformation uID="41d5ba50-a873-44df-9796-2ddcca448221">
+              <rotation uID="41d5ba50-a873-44df-9796-2ddcca448221_rotation" refType="absLocal">
+                <x>0</x>
+                <y>0</y>
+                <z>0</z>
+              </rotation>
+              <scaling uID="41d5ba50-a873-44df-9796-2ddcca448221_scaling">
+                <x>1</x>
+                <y>1</y>
+                <z>1</z>
+              </scaling>
+              <translation uID="41d5ba50-a873-44df-9796-2ddcca448221_translation" refType="absLocal">
+                <x>0</x>
+                <y>0</y>
+                <z>0</z>
+              </translation>
+            </transformation>
+            <sections>
+              <section uID="da063bb0-0623-49af-9711-76d81b87259a">
+                <name>WingSection_1_Root</name>
+                <transformation uID="ac352757-e455-44e2-a604-266dea48bd31">
+                  <rotation uID="ac352757-e455-44e2-a604-266dea48bd31_rotation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <scaling uID="ac352757-e455-44e2-a604-266dea48bd31_scaling">
+                    <x>1</x>
+                    <y>1</y>
+                    <z>1</z>
+                  </scaling>
+                  <translation uID="ac352757-e455-44e2-a604-266dea48bd31_translation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="0b3e04fe-e58a-4026-9140-ef03b98e0f43">
+                    <name>WingSection_1_Root_element</name>
+                    <airfoilUID>f52b37d1-4d26-4754-bd9e-aa514e2df9e7</airfoilUID>
+                    <transformation uID="10ea6891-3e28-4147-929e-dbb38afef89b">
+                      <rotation uID="10ea6891-3e28-4147-929e-dbb38afef89b_rotation" refType="absGlobal">
+                        <x>1</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </rotation>
+                      <scaling uID="10ea6891-3e28-4147-929e-dbb38afef89b_scaling">
+                        <x>0.162</x>
+                        <y>1</y>
+                        <z>0.162</z>
+                      </scaling>
+                      <translation uID="10ea6891-3e28-4147-929e-dbb38afef89b_translation" refType="absGlobal">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="8fc38b2d-45cf-4c5c-b6a7-834c45759e66">
+                <name>WingSection_2</name>
+                <transformation uID="91d44ec6-81d8-4bcb-b962-2c28f425d6f1">
+                  <rotation uID="91d44ec6-81d8-4bcb-b962-2c28f425d6f1_rotation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <scaling uID="91d44ec6-81d8-4bcb-b962-2c28f425d6f1_scaling">
+                    <x>1</x>
+                    <y>1</y>
+                    <z>1</z>
+                  </scaling>
+                  <translation uID="91d44ec6-81d8-4bcb-b962-2c28f425d6f1_translation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="7e2972d8-05f2-428d-b0f8-532a6ffb4495">
+                    <name>WingSection_2_element</name>
+                    <airfoilUID>f52b37d1-4d26-4754-bd9e-aa514e2df9e7</airfoilUID>
+                    <transformation uID="d03507be-112e-41cb-93bf-87b1c6257c83">
+                      <rotation uID="d03507be-112e-41cb-93bf-87b1c6257c83_rotation" refType="absGlobal">
+                        <x>1</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </rotation>
+                      <scaling uID="d03507be-112e-41cb-93bf-87b1c6257c83_scaling">
+                        <x>0.162</x>
+                        <y>1</y>
+                        <z>0.162</z>
+                      </scaling>
+                      <translation uID="d03507be-112e-41cb-93bf-87b1c6257c83_translation" refType="absGlobal">
+                        <x>0</x>
+                        <y>0.019996953903127827</y>
+                        <z>0.00034904812874567024</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="41adf387-ba2a-4a79-b82f-cf548fc39ff8">
+                <name>WingSection_3</name>
+                <transformation uID="0ed1886c-8b0a-4ac9-863d-0c025bcda70f">
+                  <rotation uID="0ed1886c-8b0a-4ac9-863d-0c025bcda70f_rotation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <scaling uID="0ed1886c-8b0a-4ac9-863d-0c025bcda70f_scaling">
+                    <x>1</x>
+                    <y>1</y>
+                    <z>1</z>
+                  </scaling>
+                  <translation uID="0ed1886c-8b0a-4ac9-863d-0c025bcda70f_translation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="6d45c571-ac8a-49b5-a7fc-12f502cfdaa2">
+                    <name>WingSection_3_element</name>
+                    <airfoilUID>f52b37d1-4d26-4754-bd9e-aa514e2df9e7</airfoilUID>
+                    <transformation uID="8a637cda-7808-48ba-ac7a-f2d770dcd162">
+                      <rotation uID="8a637cda-7808-48ba-ac7a-f2d770dcd162_rotation" refType="absGlobal">
+                        <x>1</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </rotation>
+                      <scaling uID="8a637cda-7808-48ba-ac7a-f2d770dcd162_scaling">
+                        <x>0.157</x>
+                        <y>1</y>
+                        <z>0.157</z>
+                      </scaling>
+                      <translation uID="8a637cda-7808-48ba-ac7a-f2d770dcd162_translation" refType="absGlobal">
+                        <x>0.0025000000000000005</x>
+                        <y>0.2199664929344061</y>
+                        <z>0.0038395294162023724</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="67bafbdd-66ce-4713-b048-cc32c18ebc4e">
+                <name>WingSection_4</name>
+                <transformation uID="b4e5da33-6749-4b15-9b4c-8f9116e5f498">
+                  <rotation uID="b4e5da33-6749-4b15-9b4c-8f9116e5f498_rotation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <scaling uID="b4e5da33-6749-4b15-9b4c-8f9116e5f498_scaling">
+                    <x>1</x>
+                    <y>1</y>
+                    <z>1</z>
+                  </scaling>
+                  <translation uID="b4e5da33-6749-4b15-9b4c-8f9116e5f498_translation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="b18e0003-15d9-4721-9d3f-575402f64785">
+                    <name>WingSection_4_element</name>
+                    <airfoilUID>f52b37d1-4d26-4754-bd9e-aa514e2df9e7</airfoilUID>
+                    <transformation uID="ea9f75b6-aa3e-438d-ae60-98fecfc8b76d">
+                      <rotation uID="ea9f75b6-aa3e-438d-ae60-98fecfc8b76d_rotation" refType="absGlobal">
+                        <x>1</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </rotation>
+                      <scaling uID="ea9f75b6-aa3e-438d-ae60-98fecfc8b76d_scaling">
+                        <x>0.1328888888888889</x>
+                        <y>1</y>
+                        <z>0.1328888888888889</z>
+                      </scaling>
+                      <translation uID="ea9f75b6-aa3e-438d-ae60-98fecfc8b76d_translation" refType="absGlobal">
+                        <x>0.0105</x>
+                        <y>0.46992841672350394</y>
+                        <z>0.00820263102552325</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="cf518a34-074a-4531-842b-b60bd5beb632">
+                <name>WingSection_5</name>
+                <transformation uID="c5d2a12b-49d6-4717-a030-56db112cf613">
+                  <rotation uID="c5d2a12b-49d6-4717-a030-56db112cf613_rotation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <scaling uID="c5d2a12b-49d6-4717-a030-56db112cf613_scaling">
+                    <x>1</x>
+                    <y>1</y>
+                    <z>1</z>
+                  </scaling>
+                  <translation uID="c5d2a12b-49d6-4717-a030-56db112cf613_translation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="6c4c950d-82de-4af2-8ad6-8cd02c8a6fc7">
+                    <name>WingSection_5_element</name>
+                    <airfoilUID>f52b37d1-4d26-4754-bd9e-aa514e2df9e7</airfoilUID>
+                    <transformation uID="0613c8d0-3a67-4457-8318-eef8a4b72edc">
+                      <rotation uID="0613c8d0-3a67-4457-8318-eef8a4b72edc_rotation" refType="absGlobal">
+                        <x>1</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </rotation>
+                      <scaling uID="0613c8d0-3a67-4457-8318-eef8a4b72edc_scaling">
+                        <x>0.1230555556</x>
+                        <y>1</y>
+                        <z>0.1230555556</z>
+                      </scaling>
+                      <translation uID="0613c8d0-3a67-4457-8318-eef8a4b72edc_translation" refType="absGlobal">
+                        <x>0.015500000000000002</x>
+                        <y>0.5449169938602333</y>
+                        <z>0.009511561508319515</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="22218261-52a2-4be6-a91b-12fb069df9c5">
+                <name>WingSection_6</name>
+                <transformation uID="15be9117-b632-4714-ad90-61d12bffc551">
+                  <rotation uID="15be9117-b632-4714-ad90-61d12bffc551_rotation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <scaling uID="15be9117-b632-4714-ad90-61d12bffc551_scaling">
+                    <x>1</x>
+                    <y>1</y>
+                    <z>1</z>
+                  </scaling>
+                  <translation uID="15be9117-b632-4714-ad90-61d12bffc551_translation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="d2b79870-26b4-4660-8ecc-4e4320d63822">
+                    <name>WingSection_6_element</name>
+                    <airfoilUID>f52b37d1-4d26-4754-bd9e-aa514e2df9e7</airfoilUID>
+                    <transformation uID="7495e5c2-52a3-4bea-a28b-18e029dea26c">
+                      <rotation uID="7495e5c2-52a3-4bea-a28b-18e029dea26c_rotation" refType="absGlobal">
+                        <x>1</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </rotation>
+                      <scaling uID="7495e5c2-52a3-4bea-a28b-18e029dea26c_scaling">
+                        <x>0.10521777777777777</x>
+                        <y>1</y>
+                        <z>0.10521777777777777</z>
+                      </scaling>
+                      <translation uID="7495e5c2-52a3-4bea-a28b-18e029dea26c_translation" refType="absGlobal">
+                        <x>0.026500000000000003</x>
+                        <y>0.6299040479485266</y>
+                        <z>0.010995016055488614</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="39e4f8c9-6a63-40a4-a482-edc138d00264">
+                <name>WingSection_7</name>
+                <transformation uID="545defa3-1931-4cd0-ba25-ef007804080b">
+                  <rotation uID="545defa3-1931-4cd0-ba25-ef007804080b_rotation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <scaling uID="545defa3-1931-4cd0-ba25-ef007804080b_scaling">
+                    <x>1</x>
+                    <y>1</y>
+                    <z>1</z>
+                  </scaling>
+                  <translation uID="545defa3-1931-4cd0-ba25-ef007804080b_translation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="f249ab2c-866e-4422-b651-d5ac550a7731">
+                    <name>WingSection_7_element</name>
+                    <airfoilUID>f52b37d1-4d26-4754-bd9e-aa514e2df9e7</airfoilUID>
+                    <transformation uID="73a23036-cdbf-4eed-8e73-58b084773bbf">
+                      <rotation uID="73a23036-cdbf-4eed-8e73-58b084773bbf_rotation" refType="absGlobal">
+                        <x>1</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </rotation>
+                      <scaling uID="73a23036-cdbf-4eed-8e73-58b084773bbf_scaling">
+                        <x>0.09</x>
+                        <y>1</y>
+                        <z>0.09</z>
+                      </scaling>
+                      <translation uID="73a23036-cdbf-4eed-8e73-58b084773bbf_translation" refType="absGlobal">
+                        <x>0.038500000000000006</x>
+                        <y>0.6698979557547822</y>
+                        <z>0.011693112312979953</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="e468a6b7-2efc-4c7c-99c0-89d75464cad9">
+                <name>WingSection_8</name>
+                <transformation uID="2bb6336e-8069-41b4-9327-02fef673bfd7">
+                  <rotation uID="2bb6336e-8069-41b4-9327-02fef673bfd7_rotation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <scaling uID="2bb6336e-8069-41b4-9327-02fef673bfd7_scaling">
+                    <x>1</x>
+                    <y>1</y>
+                    <z>1</z>
+                  </scaling>
+                  <translation uID="2bb6336e-8069-41b4-9327-02fef673bfd7_translation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="e7fbb06b-2c5e-4c5c-9540-d5b6ea222606">
+                    <name>WingSection_8_element</name>
+                    <airfoilUID>f52b37d1-4d26-4754-bd9e-aa514e2df9e7</airfoilUID>
+                    <transformation uID="222f9453-2a54-45a8-a96b-451fba102783">
+                      <rotation uID="222f9453-2a54-45a8-a96b-451fba102783_rotation" refType="absGlobal">
+                        <x>5.999999999999997</x>
+                        <y>-0.5</y>
+                        <z>0</z>
+                      </rotation>
+                      <scaling uID="222f9453-2a54-45a8-a96b-451fba102783_scaling">
+                        <x>0.0795</x>
+                        <y>1</y>
+                        <z>0.0795</z>
+                      </scaling>
+                      <translation uID="222f9453-2a54-45a8-a96b-451fba102783_translation" refType="absGlobal">
+                        <x>0.046000000000000006</x>
+                        <y>0.68989490965791</y>
+                        <z>0.012042160441725624</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="72863e2a-77df-480c-9b48-8bf146c813ab">
+                <name>NoName_element_element</name>
+                <transformation uID="269597a6-cf94-4d6b-af93-e0e3554b7e7f">
+                  <rotation uID="269597a6-cf94-4d6b-af93-e0e3554b7e7f_rotation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <scaling uID="269597a6-cf94-4d6b-af93-e0e3554b7e7f_scaling">
+                    <x>1</x>
+                    <y>1</y>
+                    <z>1</z>
+                  </scaling>
+                  <translation uID="269597a6-cf94-4d6b-af93-e0e3554b7e7f_translation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="62bfeb8f-9263-4656-bcc7-286970df257b">
+                    <name>NoName_element_element_element</name>
+                    <airfoilUID>f52b37d1-4d26-4754-bd9e-aa514e2df9e7</airfoilUID>
+                    <transformation uID="ec06d64b-44ea-4dc2-8ec3-2c25c4241384">
+                      <rotation uID="ec06d64b-44ea-4dc2-8ec3-2c25c4241384_rotation" refType="absGlobal">
+                        <x>11.0005697778277</x>
+                        <y>-0.9980971563799762</y>
+                        <z>0.04358393527787519</z>
+                      </rotation>
+                      <scaling uID="ec06d64b-44ea-4dc2-8ec3-2c25c4241384_scaling">
+                        <x>0.071</x>
+                        <y>1</y>
+                        <z>0.071</z>
+                      </scaling>
+                      <translation uID="ec06d64b-44ea-4dc2-8ec3-2c25c4241384_translation" refType="absGlobal">
+                        <x>0.053499714422981286</x>
+                        <y>0.7048058968033445</y>
+                        <z>0.013675177870419237</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="7cf29051-44be-475c-9b92-1abe15e70e7a">
+                <name>WingSection_10</name>
+                <transformation uID="2cccd20f-6fe3-4690-82f5-9fcde155b37d">
+                  <rotation uID="2cccd20f-6fe3-4690-82f5-9fcde155b37d_rotation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <scaling uID="2cccd20f-6fe3-4690-82f5-9fcde155b37d_scaling">
+                    <x>1</x>
+                    <y>1</y>
+                    <z>1</z>
+                  </scaling>
+                  <translation uID="2cccd20f-6fe3-4690-82f5-9fcde155b37d_translation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="1501d970-b540-4e4a-af51-ce4cd5219808">
+                    <name>WingSection_10_element</name>
+                    <airfoilUID>f52b37d1-4d26-4754-bd9e-aa514e2df9e7</airfoilUID>
+                    <transformation uID="48d415aa-8780-4c61-855d-430acd540d50">
+                      <rotation uID="48d415aa-8780-4c61-855d-430acd540d50_rotation" refType="absGlobal">
+                        <x>16.00245593583591</x>
+                        <y>-1.4904988345034633</y>
+                        <z>0.1304412399996213</z>
+                      </rotation>
+                      <scaling uID="48d415aa-8780-4c61-855d-430acd540d50_scaling">
+                        <x>0.062</x>
+                        <y>1</y>
+                        <z>0.062</z>
+                      </scaling>
+                      <translation uID="48d415aa-8780-4c61-855d-430acd540d50_translation" refType="absGlobal">
+                        <x>0.06348678575713014</x>
+                        <y>0.7195045377235824</y>
+                        <z>0.016709706048658825</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="74d4d05e-ae6e-4e1c-ad62-74101fe28926">
+                <name>WingSection_11</name>
+                <transformation uID="46c30f81-9bbe-4acf-ab71-c76542a65cab">
+                  <rotation uID="46c30f81-9bbe-4acf-ab71-c76542a65cab_rotation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <scaling uID="46c30f81-9bbe-4acf-ab71-c76542a65cab_scaling">
+                    <x>1</x>
+                    <y>1</y>
+                    <z>1</z>
+                  </scaling>
+                  <translation uID="46c30f81-9bbe-4acf-ab71-c76542a65cab_translation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="6a5b6675-7d9c-4b57-9e52-d3d808f31220">
+                    <name>WingSection_11_element</name>
+                    <airfoilUID>f52b37d1-4d26-4754-bd9e-aa514e2df9e7</airfoilUID>
+                    <transformation uID="fe6e2768-2df9-4c68-ac46-74531fb21340">
+                      <rotation uID="fe6e2768-2df9-4c68-ac46-74531fb21340_rotation" refType="absGlobal">
+                        <x>26.00902645307071</x>
+                        <y>-1.9451878677796817</y>
+                        <z>0.38743539264661075</z>
+                      </rotation>
+                      <scaling uID="fe6e2768-2df9-4c68-ac46-74531fb21340_scaling">
+                        <x>0.0525</x>
+                        <y>1</y>
+                        <z>0.0525</z>
+                      </scaling>
+                      <translation uID="fe6e2768-2df9-4c68-ac46-74531fb21340_translation" refType="absGlobal">
+                        <x>0.07594838617203273</x>
+                        <y>0.7338612147099756</y>
+                        <z>0.021164404804766033</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="195780c7-496f-438f-a04c-667d0918da55">
+                <name>WingSection_12</name>
+                <transformation uID="60dcf66a-be02-4c78-995b-49b8e4b75ee0">
+                  <rotation uID="60dcf66a-be02-4c78-995b-49b8e4b75ee0_rotation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <scaling uID="60dcf66a-be02-4c78-995b-49b8e4b75ee0_scaling">
+                    <x>1</x>
+                    <y>1</y>
+                    <z>1</z>
+                  </scaling>
+                  <translation uID="60dcf66a-be02-4c78-995b-49b8e4b75ee0_translation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="56555b60-ede6-4bee-8ea5-f264806b261a">
+                    <name>WingSection_12_element</name>
+                    <airfoilUID>f52b37d1-4d26-4754-bd9e-aa514e2df9e7</airfoilUID>
+                    <transformation uID="1f4eccf0-a331-4d2a-8b76-a187b2ec3973">
+                      <rotation uID="1f4eccf0-a331-4d2a-8b76-a187b2ec3973_rotation" refType="absGlobal">
+                        <x>41.02374458927009</x>
+                        <y>-2.2787463502091785</y>
+                        <z>0.8780990466947707</z>
+                      </rotation>
+                      <scaling uID="1f4eccf0-a331-4d2a-8b76-a187b2ec3973_scaling">
+                        <x>0.0405</x>
+                        <y>1</y>
+                        <z>0.0405</z>
+                      </scaling>
+                      <translation uID="1f4eccf0-a331-4d2a-8b76-a187b2ec3973_translation" refType="absGlobal">
+                        <x>0.09087181902781136</x>
+                        <y>0.7427171585917317</y>
+                        <z>0.026049423715876548</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="650d932f-e367-40a4-9660-8d832da533b9">
+                <name>WingSection_13</name>
+                <transformation uID="049617b4-f62d-4051-916b-d6ceb771484f">
+                  <rotation uID="049617b4-f62d-4051-916b-d6ceb771484f_rotation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <scaling uID="049617b4-f62d-4051-916b-d6ceb771484f_scaling">
+                    <x>1</x>
+                    <y>1</y>
+                    <z>1</z>
+                  </scaling>
+                  <translation uID="049617b4-f62d-4051-916b-d6ceb771484f_translation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="d24c901c-389f-4aa0-a3f0-5432e54d6b64">
+                    <name>WingSection_13_element</name>
+                    <airfoilUID>f52b37d1-4d26-4754-bd9e-aa514e2df9e7</airfoilUID>
+                    <transformation uID="a73cdde0-f462-452b-b49f-15e5d9aa5c3d">
+                      <rotation uID="a73cdde0-f462-452b-b49f-15e5d9aa5c3d_rotation" refType="absGlobal">
+                        <x>41.03141607166004</x>
+                        <y>-2.7786876100512385</y>
+                        <z>0.8784375165686572</z>
+                      </rotation>
+                      <scaling uID="a73cdde0-f462-452b-b49f-15e5d9aa5c3d_scaling">
+                        <x>0.024</x>
+                        <y>1</y>
+                        <z>0.024</z>
+                      </scaling>
+                      <translation uID="a73cdde0-f462-452b-b49f-15e5d9aa5c3d_translation" refType="absGlobal">
+                        <x>0.10827936173942831</x>
+                        <y>0.7462365729102748</y>
+                        <z>0.030029521654076935</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+            </sections>
+            <segments>
+              <segment uID="a22d3eda-f2f8-4691-b7bb-ab57ef9171ee">
+                <name>Segment 0</name>
+                <fromElementUID>0b3e04fe-e58a-4026-9140-ef03b98e0f43</fromElementUID>
+                <toElementUID>7e2972d8-05f2-428d-b0f8-532a6ffb4495</toElementUID>
+              </segment>
+              <segment uID="929e0ade-792a-4287-ba39-d87b69c96b47">
+                <name>Segment 1</name>
+                <fromElementUID>7e2972d8-05f2-428d-b0f8-532a6ffb4495</fromElementUID>
+                <toElementUID>6d45c571-ac8a-49b5-a7fc-12f502cfdaa2</toElementUID>
+              </segment>
+              <segment uID="4e687526-3b9a-4318-894e-394784b71393">
+                <name>Segment 2</name>
+                <fromElementUID>6d45c571-ac8a-49b5-a7fc-12f502cfdaa2</fromElementUID>
+                <toElementUID>b18e0003-15d9-4721-9d3f-575402f64785</toElementUID>
+              </segment>
+              <segment uID="3499954b-7866-4a7b-9a5b-63b5a5d8985f">
+                <name>Segment 3</name>
+                <fromElementUID>b18e0003-15d9-4721-9d3f-575402f64785</fromElementUID>
+                <toElementUID>6c4c950d-82de-4af2-8ad6-8cd02c8a6fc7</toElementUID>
+              </segment>
+              <segment uID="42ef14cf-a83b-400c-980b-64b8688a3bf3">
+                <name>Segment 4</name>
+                <fromElementUID>6c4c950d-82de-4af2-8ad6-8cd02c8a6fc7</fromElementUID>
+                <toElementUID>d2b79870-26b4-4660-8ecc-4e4320d63822</toElementUID>
+              </segment>
+              <segment uID="bb23ca65-d841-4380-bfaf-e8b6eaa7c983">
+                <name>Segment 5</name>
+                <fromElementUID>d2b79870-26b4-4660-8ecc-4e4320d63822</fromElementUID>
+                <toElementUID>f249ab2c-866e-4422-b651-d5ac550a7731</toElementUID>
+              </segment>
+              <segment uID="2911305c-fb08-4143-866f-f6e52bb6f0b2">
+                <name>Segment 6</name>
+                <fromElementUID>f249ab2c-866e-4422-b651-d5ac550a7731</fromElementUID>
+                <toElementUID>e7fbb06b-2c5e-4c5c-9540-d5b6ea222606</toElementUID>
+              </segment>
+              <segment uID="6b24140b-7b01-43ed-97ac-750a4f5c05db">
+                <name>Segment 7</name>
+                <fromElementUID>e7fbb06b-2c5e-4c5c-9540-d5b6ea222606</fromElementUID>
+                <toElementUID>62bfeb8f-9263-4656-bcc7-286970df257b</toElementUID>
+              </segment>
+              <segment uID="f72425d9-0335-4e43-914a-06bd2b250d80">
+                <name>Segment 8</name>
+                <fromElementUID>62bfeb8f-9263-4656-bcc7-286970df257b</fromElementUID>
+                <toElementUID>1501d970-b540-4e4a-af51-ce4cd5219808</toElementUID>
+              </segment>
+              <segment uID="8b7dccc7-65e1-40f8-9f84-aef396c22eef">
+                <name>Segment 9</name>
+                <fromElementUID>1501d970-b540-4e4a-af51-ce4cd5219808</fromElementUID>
+                <toElementUID>6a5b6675-7d9c-4b57-9e52-d3d808f31220</toElementUID>
+              </segment>
+              <segment uID="0f10e7db-4bc2-47a9-a3c3-24b8078fd257">
+                <name>Segment 10</name>
+                <fromElementUID>6a5b6675-7d9c-4b57-9e52-d3d808f31220</fromElementUID>
+                <toElementUID>56555b60-ede6-4bee-8ea5-f264806b261a</toElementUID>
+              </segment>
+              <segment uID="3eb23c18-0100-4191-87cd-a3e7592c3f2b">
+                <name>Segment 11</name>
+                <fromElementUID>56555b60-ede6-4bee-8ea5-f264806b261a</fromElementUID>
+                <toElementUID>d24c901c-389f-4aa0-a3f0-5432e54d6b64</toElementUID>
+              </segment>
+            </segments>
+            <componentSegments/>
+          </wing>
+        </wings>
+        <fuselages/>
+      </model>
+    </aircraft>
+    <profiles>
+      <wingAirfoils>
+        <wingAirfoil uID="f52b37d1-4d26-4754-bd9e-aa514e2df9e7">
+          <name>RG-15 8.9%</name>
+          <pointList>
+            <x mapType="vector">1;0.99671;0.98726;0.97237;0.95248;0.92764;0.8981;0.86427;0.8266;0.78557;0.74165;0.69537;0.64723;0.59778;0.54753;0.49702;0.44676;0.39727;0.34902;0.30248;0.25809;0.21624;0.1773;0.14161;0.10945;0.08108;0.05673;0.03658;0.02076;0.00932;0.00235;0;0.00002;0.00336;0.01247;0.0267;0.04596;0.0701;0.09896;0.13224;0.16963;0.21073;0.25509;0.30221;0.35156;0.40257;0.45463;0.50713;0.55944;0.61128;0.66244;0.71237;0.76037;0.80575;0.84779;0.88583;0.91925;0.94748;0.97003;0.98652;0.9966;1</x>
+            <y mapType="vector">0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0</y>
+            <z mapType="vector">0;0.00054;0.00229;0.00514;0.00865;0.01254;0.01685;0.02152;0.02644;0.03149;0.03654;0.04146;0.04612;0.05039;0.05414;0.05727;0.05966;0.06123;0.0619;0.06162;0.06036;0.0581;0.05486;0.05068;0.04564;0.03985;0.03343;0.02654;0.01935;0.01214;0.00526;0;-0.00048;-0.00534;-0.01006;-0.01436;-0.01811;-0.02123;-0.02372;-0.02559;-0.02688;-0.02762;-0.02785;-0.02762;-0.02696;-0.0259;-0.02446;-0.02262;-0.02025;-0.01717;-0.01366;-0.01015;-0.00691;-0.00413;-0.00192;-0.00034;0.00062;0.00101;0.00097;0.00064;0.00021;0</z>
+          </pointList>
+        </wingAirfoil>
+      </wingAirfoils>
+      <fuselageProfiles/>
+    </profiles>
+  </vehicles>
+</cpacs>
