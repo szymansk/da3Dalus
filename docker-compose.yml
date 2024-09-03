@@ -68,3 +68,19 @@ services:
       - 8888:8888
     volumes:
       - ./:/home/cq/data
+
+  aero-cad-service:
+    platform: linux/arm64
+    build:
+      context: ./docker
+      dockerfile: Dockerfile.jupyter.arm64.dockerfile
+      cache_from:
+        - szymanski2adesso/cadquery-client:2.4.0
+    container_name: aero-cad-service
+    volumes:
+      - ./:/home/cq/app
+    stdin_open: true
+    entrypoint: "/tmp/run.sh --s nope"
+    tty: true
+    ports:
+      - 8085:8000

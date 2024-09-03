@@ -11,7 +11,8 @@ from scipy.interpolate import interp1d
 from airplane.aircraft_topology.wing.Spare import Spare
 from airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
 from airplane.aircraft_topology.wing.WingSegment import WingSegment, TipType
-from airplane.aircraft_topology.wing.Airfoil import Airfoil, CoordinateSystem
+from airplane.aircraft_topology.wing.Airfoil import Airfoil
+from airplane.aircraft_topology.wing.CoordinateSystem import CoordinateSystem
 
 T = TypeVar("T", bound="WingConfiguration")
 
@@ -444,3 +445,10 @@ class WingConfiguration:
     def __repr__(self):
         from pprint import pformat
         return pformat(vars(self), indent=4, width=1)
+
+    def __getstate__(self):
+        data = {}
+        for key, value in self.__dict__.items():
+            if not key.startswith('_'):
+                data[key] = value
+        return data

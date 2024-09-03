@@ -5,5 +5,7 @@ SHELL [ "/bin/bash", "-c" ]
 WORKDIR /home/cadquery
 RUN source ${CONDA_INSTALL_DIR}/bin/activate \
     && conda activate --no-stack cadquery \
-    && conda install -y -c conda-forge shapely jsonpickle
-
+    && conda install -y -c conda-forge  \
+    shapely  \
+    jsonpickle \
+    fastapi

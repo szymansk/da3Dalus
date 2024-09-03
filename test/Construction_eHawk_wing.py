@@ -379,6 +379,13 @@ if __name__ == "__main__":
 
     wing_configuration = {"main_wing": wing_config}
 
+    # dump wingconfig
+    import jsonpickle
+
+    wing_pickled = jsonpickle.encode(wing_config, indent=2, unpicklable=False)
+    print(wing_pickled)
+
+
     printer_settings = Printer3dSettings(layer_height=0.24,
                                          wall_thickness=0.42,
                                          rel_gap_wall_thickness=0.075)
@@ -389,12 +396,6 @@ if __name__ == "__main__":
                                              servo_information=servo_information,
                                              wing_config=wing_configuration,
                                              printer_settings=printer_settings)
-
-    # dump wingconfig
-    import jsonpickle
-
-    wing_pickled = jsonpickle.encode(wing_config, indent=2)
-    print(wing_pickled)
 
     # dump again to check
     print(json.dumps(myMap, indent=2, cls=GeneralJSONEncoder))

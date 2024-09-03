@@ -26,3 +26,9 @@ class Spare:
     def __repr__(self):
         from pprint import pformat
         return pformat(vars(self), indent=4, width=1)
+
+    def __getstate__(self):
+        data = self.__dict__.copy()
+        data['spare_vector'] = self.spare_vector.toTuple()
+        data['spare_origin'] = self.spare_origin.toTuple()
+        return data
