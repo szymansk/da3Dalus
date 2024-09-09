@@ -150,17 +150,20 @@ if __name__ == "__main__":
     # dump to a json string
     json_data: str = json.dumps(root_node, indent=4, cls=GeneralJSONEncoder)
 
-    servo_elevator = ServoInformation(
-        height=0.022 * 1000,
-        width=0.012 * 1000,
-        length=0.023 * 1000,
-        lever_length=0.023 * 1000,
-        rot_x=180.0,
-        rot_y=0.0,
-        rot_z=0.0,
-        trans_x=0.28 * 1000 + 0.02 * 1000,
-        trans_y=0.005 * 1000,
-        trans_z=0.044 * 1000 - 0.0244 * 1000)
+    servo_aileron = ServoInformation(
+        height=0,
+        width=0,
+        length=00,
+        lever_length=0,
+        servo=Servo(length=23,
+                        width=12.5,
+                        height=31.5,
+                        leading_length=6, latch_z=14.5,
+                        latch_x=7.25, latch_thickness=2.6,
+                        latch_length=6, cable_z=26,
+                        screw_hole_lx=0,
+                        screw_hole_d=0)
+        )
 
     servo_rudder = ServoInformation(
         height=0.022 * 1000,
@@ -173,7 +176,7 @@ if __name__ == "__main__":
         trans_x=0.28 * 1000 + 0.02 * 1000,
         trans_y=-0.005 * 1000 - 0.012 * 1000,
         trans_z=0.044 * 1000 - 0.0244 * 1000)
-    servo_information = {1: servo_elevator, 2: servo_rudder}
+    servo_information = {1: servo_aileron, 2: servo_rudder}
 
 
     # Spannweite	1520mm
@@ -254,14 +257,7 @@ if __name__ == "__main__":
             hinge_spacing=0.5,
             side_spacing_root=2.,
             side_spacing_tip=2.,
-            servo=Servo(length=23,
-                        width=12.5,
-                        height=31.5,
-                        leading_length=6, latch_z=14.5,
-                        latch_x=7.25, latch_thickness=2.6,
-                        latch_length=6, cable_z=26,
-                        screw_hole_lx=None,
-                        screw_hole_d=None),
+            servo=1,
             servo_placement='top',
             rel_chord_servo_position=0.414,
             rel_length_servo_position=0.486,
