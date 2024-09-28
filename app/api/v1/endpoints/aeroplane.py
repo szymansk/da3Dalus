@@ -1,5 +1,6 @@
 import http
 import json
+import logging
 import os
 import uuid
 from json import JSONDecodeError
@@ -24,8 +25,10 @@ tasks = {}
 tasks_lock = Lock()
 executor = ThreadPoolExecutor(max_workers=4)  # Passen Sie die Anzahl der Worker an Ihre Bedürfnisse an
 
-def create_aeroplane_task(task_id, request_dict):
+def create_aeroplane_task(aeroplane_id, request_dict):
     try:
+        logging.info(f"create aeroplane with 'aeroplane_id: {aeroplane_id}'")
+
         request = CreateAeroPlaneRequest(**request_dict)
         wings = {key: create_wing_configuration(value) for key, value in request.wings.items()}
 
@@ -63,13 +66,14 @@ def create_aeroplane_task(task_id, request_dict):
                     fuselage_config=request.fuselages,
                     **settings
                 )
-        structure = blue_print.create_shape()
-
-        zipfile = f"./tmp/{task_id}.zip"
+        blue_print.create_shape()
+        logging.info(f"finished aeroplane with 'aeroplane_id: {aeroplane_id}'")
+        zipfile = f"./tmp/{aeroplane_id}.zip"
         exports = "./tmp/exports"
 
         # zip files
         with ZipFile(zipfile, 'w') as zipf:
+            logging.info(f"zipping files for 'aeroplane_id: {aeroplane_id}'")
             for file in os.scandir(exports):
                 zipf.write(file.path)
 
@@ -79,62 +83,68 @@ def create_aeroplane_task(task_id, request_dict):
 
         result = {"zipfile": zipfile}
         with tasks_lock:
-            tasks[task_id]['status'] = 'SUCCESS'
-            tasks[task_id]['result'] = result
+            tasks[aeroplane_id]['status'] = 'SUCCESS'
+            tasks[aeroplane_id]['result'] = result
     except Exception as err:
         with tasks_lock:
-            tasks[task_id]['status'] = 'FAILURE'
-            tasks[task_id]['error'] = str(err)
+            tasks[aeroplane_id]['status'] = 'FAILURE'
+            tasks[aeroplane_id]['error'] = str(err)
 
 @router.post("/aeroplanes")
 async def create_aeroplane(request: CreateAeroPlaneRequest):
     try:
-        task_id = str(uuid.uuid4())
+        aeroplane_id = str(uuid.uuid4())
+        logging.info(f"called create aeroplane endpoint for 'aeroplane_id: {aeroplane_id}'")
         with tasks_lock:
-            tasks[task_id] = {'status': 'PENDING'}
-        executor.submit(create_aeroplane_task, task_id, request.dict())
+            tasks[aeroplane_id] = {'status': 'PENDING'}
+        tasks[aeroplane_id]['future'] = executor.submit(create_aeroplane_task, aeroplane_id, request.dict())
         return JSONResponse(
             status_code= http.HTTPStatus.ACCEPTED,
-            content={"task_id": task_id, "href": f"/aeroplanes/{task_id}"}
+            content={"aeroplane_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}"}
         )
     except Exception as err:
         raise HTTPException(status_code=500, detail=str(err))
 
 @router.get("/aeroplanes/{aeroplane_id}")
 async def get_aeroplane_task_status(aeroplane_id: str):
+    logging.info(f"called get aeroplane endpoint for 'aeroplane_id: {aeroplane_id}'")
     with tasks_lock:
         task = tasks.get(aeroplane_id)
     if not task:
         raise HTTPException(
             status_code=http.HTTPStatus.NOT_FOUND,
-            detail={"task_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": "Task not found"}
+            detail={"aeroplane_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": "Task not found"}
         )
+    if task['future'].running():
+        task['status'] = 'RUNNING'
     if task['status'] == 'PENDING':
         return JSONResponse(
             status_code= http.HTTPStatus.OK,
-            content={"task_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": task['status'], "message": "Task is pending."}
+            content={"aeroplane_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": task['status'], "message": "Task is pending."}
         )
     elif task['status'] == 'FAILURE':
         return JSONResponse(
             status_code= http.HTTPStatus.OK,
-            content={"task_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": task['status'], "message": task.get('error', 'An error occurred')}
+            content={"aeroplane_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": task['status'], "message": task.get('error', 'An error occurred')}
         )
     elif task['status'] == 'SUCCESS':
         return JSONResponse(
             status_code= http.HTTPStatus.OK,
-            content={"task_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": task['status'], "result": task.get('result')}
+            content={"aeroplane_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": task['status'], "result": task.get('result')}
         )
     else:
         return JSONResponse(
             status_code= http.HTTPStatus.OK,
-            content={"task_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": task['status'], "message": "Task is processing."}
+            content={"aeroplane_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": task['status'], "message": "Task is processing."}
         )
 
-@router.get("/aeroplanes/{task_id}/zip")
-async def download_aeroplane_zip(task_id: str):
-    task = tasks.get(task_id)
+@router.get("/aeroplanes/{aeroplane_id}/zip")
+async def download_aeroplane_zip(aeroplane_id: str):
+    logging.info(f"called get download aeroplane endpoint for 'aeroplane_id: {aeroplane_id}'")
+
+    task = tasks.get(aeroplane_id)
     if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
+        raise HTTPException(status_code=http.HTTPStatus.NOT_FOUND, detail="Task not found")
 
     if task['status'] != 'SUCCESS':
         return JSONResponse(
@@ -145,13 +155,19 @@ async def download_aeroplane_zip(task_id: str):
     # Abrufen des Dateipfads aus dem Aufgabenergebnis
     file_info = task.get('result')
     if not file_info or 'zipfile' not in file_info:
-        raise HTTPException(status_code=500, detail="File not available")
+        raise HTTPException(
+            status_code=http.HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail="File not available"
+        )
 
     file_path = file_info['zipfile']
 
     # Überprüfen, ob die Datei existiert
     if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(
+            status_code=http.HTTPStatus.NOT_FOUND,
+            detail="File not found"
+        )
 
     # Rückgabe der Datei als Antwort
     return FileResponse(
