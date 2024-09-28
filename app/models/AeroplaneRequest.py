@@ -52,7 +52,7 @@ class CreateAeroPlaneRequest(BaseModel):
                     "successors": {
                         "avase_wing": {
                             "successors": {
-                                "winglet": {
+                                "a_winglet": {
                                     "successors": {},
                                     "creator": {
                                         "shapes": [
@@ -64,14 +64,14 @@ class CreateAeroPlaneRequest(BaseModel):
                                             "avase_wing[11]"
                                         ],
                                         "loglevel": 20,
-                                        "creator_id": "winglet",
+                                        "creator_id": "a_winglet",
                                         "$TYPE": "FuseMultipleShapesCreator"
                                     },
                                     "loglevel": 50,
-                                    "creator_id": "winglet",
+                                    "creator_id": "a_winglet",
                                     "$TYPE": "ConstructionStepNode"
                                 },
-                                "": {
+                                "x_printable": {
                                     "successors": {},
                                     "creator": {
                                         "shape_dict": {
@@ -81,11 +81,11 @@ class CreateAeroPlaneRequest(BaseModel):
                                             "3": "avase_wing[3]",
                                             "4": "avase_wing[4]",
                                             "5": "avase_wing[5]",
-                                            "6": "winglet"
+                                            "6": "a_winglet"
                                         },
                                         "wing_index": "main_wing",
                                         "loglevel": 10,
-                                        "creator_id": "",
+                                        "creator_id": "x_printable",
                                         "$TYPE": "StandWingSegmentOnPrinterCreator"
                                     },
                                     "loglevel": 50,
@@ -110,14 +110,14 @@ class CreateAeroPlaneRequest(BaseModel):
                         "eHawk-wing": {
                             "successors": {},
                             "creator": {
-                                "file_path": "../exports",
+                                "file_path": "./tmp/exports",
                                 "shapes_to_export": [
                                     "avase_wing",
                                     "avase_wing[0].print",
                                     "avase_wing[1].print",
                                     "avase_wing[2].print",
                                     "avase_wing[3].print",
-                                    "winglet.print",
+                                    "a_winglet.print",
                                     "avase_wing.aileron[2]",
                                     "avase_wing.aileron[3]",
                                     "avase_wing.aileron[2]*",

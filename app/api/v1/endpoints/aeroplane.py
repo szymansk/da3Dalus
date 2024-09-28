@@ -1,10 +1,14 @@
+import http
 import json
 import os
+import uuid
 from json import JSONDecodeError
-from os import PathLike
-from pathlib import Path, PosixPath
+from threading import Lock
+from concurrent.futures import ThreadPoolExecutor
+from zipfile import ZipFile
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse, FileResponse
 
 from airplane import ConstructionStepNode, GeneralJSONDecoder
 from airplane.aircraft_topology.components import ServoInformation, Servo
@@ -15,54 +19,14 @@ from app.services.create_wing_configuration import create_wing_configuration, cr
 
 router = APIRouter()
 
+# In-Memory-Aufgabenverwaltung
+tasks = {}
+tasks_lock = Lock()
+executor = ThreadPoolExecutor(max_workers=4)  # Passen Sie die Anzahl der Worker an Ihre Bedürfnisse an
 
-@router.post("/aeroplanes/wings")
-def create_wing(wing: Wing):
-    wing_configuration = {"main_wing": create_wing_configuration(wing)}
-
-    printer_settings = Printer3dSettings(layer_height=0.24,
-                                         wall_thickness=0.42,
-                                         rel_gap_wall_thickness=0.075)
-    servo_aileron = ServoInformation(
-        height=0,
-        width=0,
-        length=00,
-        lever_length=0,
-        servo=Servo(
-            length=23,
-            width=12.5,
-            height=31.5,
-            leading_length=6, latch_z=14.5,
-            latch_x=7.25, latch_thickness=2.6,
-            latch_length=6, cable_z=26,
-            screw_hole_lx=0,
-            screw_hole_d=0
-        )
-    )
-
-    servo_information = {1: servo_aileron}
-
-    construction_name = "eHawk-wing.root"
-    json_file_path = os.path.abspath(f"./components/constructions/{construction_name}.json")
-    json_file = open(json_file_path, "r")
-
-    blue_print: ConstructionStepNode = json.load(json_file, cls=GeneralJSONDecoder,
-                                                 wing_config=wing_configuration,
-                                                 servo_information=servo_information,
-                                                 printer_settings=printer_settings)
+def create_aeroplane_task(task_id, request_dict):
     try:
-        structure = blue_print.create_shape()
-        from pprint import pprint
-        return {pprint(structure)}
-    except ValueError as err:
-        raise HTTPException(status_code=500, detail=err)
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=err)
-
-
-@router.post("/aeroplanes")
-def create_aeroplane(request: CreateAeroPlaneRequest):
-    try:
+        request = CreateAeroPlaneRequest(**request_dict)
         wings = {key: create_wing_configuration(value) for key, value in request.wings.items()}
 
         settings = request.settings.__dict__.copy()
@@ -79,31 +43,119 @@ def create_aeroplane(request: CreateAeroPlaneRequest):
                 trans_y=value.trans_y,
                 trans_z=value.trans_z,
                 servo=create_servo(value.servo)
-            ) for key, value in request.settings.servo_information.items()}
+            ) for key, value in request.settings.servo_information.items()
+        }
 
-        if type(request.blueprint) is dict: # Any
+        if isinstance(request.blueprint, dict):
             blue_print: ConstructionStepNode = json.loads(
-                str(request.blueprint).replace("'",'"'),
+                json.dumps(request.blueprint),
                 cls=GeneralJSONDecoder,
                 wing_config=wings,
                 fuselage_config=request.fuselages,
                 **settings
             )
         elif os.path.isfile(request.blueprint):
-            json_file = open(request.blueprint, "r")
-            blue_print: ConstructionStepNode = json.load(
-                json_file,
-                cls=GeneralJSONDecoder,
-                wing_config=wings,
-                fuselage_config=request.fuselages,
-                **settings
-            )
+            with open(request.blueprint, "r") as json_file:
+                blue_print: ConstructionStepNode = json.load(
+                    json_file,
+                    cls=GeneralJSONDecoder,
+                    wing_config=wings,
+                    fuselage_config=request.fuselages,
+                    **settings
+                )
         structure = blue_print.create_shape()
-        from pprint import pprint
-        return {pprint(structure)}
-    except JSONDecodeError:
-        raise HTTPException(status_code=500, detail="'blueprint' is not in a valid json format")
-    except ValueError as err:
-        raise HTTPException(status_code=500, detail=str(err))
+
+        zipfile = f"./tmp/{task_id}.zip"
+        exports = "./tmp/exports"
+
+        # zip files
+        with ZipFile(zipfile, 'w') as zipf:
+            for file in os.scandir(exports):
+                zipf.write(file.path)
+
+        # delete files
+        for file in os.scandir(exports):
+            os.unlink(file.path)
+
+        result = {"zipfile": zipfile}
+        with tasks_lock:
+            tasks[task_id]['status'] = 'SUCCESS'
+            tasks[task_id]['result'] = result
+    except Exception as err:
+        with tasks_lock:
+            tasks[task_id]['status'] = 'FAILURE'
+            tasks[task_id]['error'] = str(err)
+
+@router.post("/aeroplanes")
+async def create_aeroplane(request: CreateAeroPlaneRequest):
+    try:
+        task_id = str(uuid.uuid4())
+        with tasks_lock:
+            tasks[task_id] = {'status': 'PENDING'}
+        executor.submit(create_aeroplane_task, task_id, request.dict())
+        return JSONResponse(
+            status_code= http.HTTPStatus.ACCEPTED,
+            content={"task_id": task_id, "href": f"/aeroplanes/{task_id}"}
+        )
     except Exception as err:
         raise HTTPException(status_code=500, detail=str(err))
+
+@router.get("/aeroplanes/{aeroplane_id}")
+async def get_aeroplane_task_status(aeroplane_id: str):
+    with tasks_lock:
+        task = tasks.get(aeroplane_id)
+    if not task:
+        raise HTTPException(
+            status_code=http.HTTPStatus.NOT_FOUND,
+            detail={"task_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": "Task not found"}
+        )
+    if task['status'] == 'PENDING':
+        return JSONResponse(
+            status_code= http.HTTPStatus.OK,
+            content={"task_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": task['status'], "message": "Task is pending."}
+        )
+    elif task['status'] == 'FAILURE':
+        return JSONResponse(
+            status_code= http.HTTPStatus.OK,
+            content={"task_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": task['status'], "message": task.get('error', 'An error occurred')}
+        )
+    elif task['status'] == 'SUCCESS':
+        return JSONResponse(
+            status_code= http.HTTPStatus.OK,
+            content={"task_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": task['status'], "result": task.get('result')}
+        )
+    else:
+        return JSONResponse(
+            status_code= http.HTTPStatus.OK,
+            content={"task_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": task['status'], "message": "Task is processing."}
+        )
+
+@router.get("/aeroplanes/{task_id}/zip")
+async def download_aeroplane_zip(task_id: str):
+    task = tasks.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    if task['status'] != 'SUCCESS':
+        return JSONResponse(
+            status_code=http.HTTPStatus.BAD_REQUEST,
+            content={"detail": "Task not completed yet or failed"}
+        )
+
+    # Abrufen des Dateipfads aus dem Aufgabenergebnis
+    file_info = task.get('result')
+    if not file_info or 'zipfile' not in file_info:
+        raise HTTPException(status_code=500, detail="File not available")
+
+    file_path = file_info['zipfile']
+
+    # Überprüfen, ob die Datei existiert
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Rückgabe der Datei als Antwort
+    return FileResponse(
+        path=file_path,
+        media_type='application/zip',
+        filename=os.path.basename(file_path)
+    )
