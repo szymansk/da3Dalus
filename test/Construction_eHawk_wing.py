@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
     print_stand = ConstructionStepNode(
         StandWingSegmentOnPrinterCreator(
-            creator_id="",
+            creator_id="stand_wing_to_print",
             wing_index="main_wing",
             shape_dict= {
                 0 : "vase_wing[0]",

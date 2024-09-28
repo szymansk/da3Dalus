@@ -13,6 +13,8 @@ services:
     stdin_open: true
     entrypoint: "/opt/anaconda/envs/cq/bin/python"
     tty: true
+    ports:
+      - 8085:8000
 
   cq-win_client:
     platform: linux/amd64
