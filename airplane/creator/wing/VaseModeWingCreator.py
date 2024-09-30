@@ -4,7 +4,7 @@ import math
 
 import numpy as np
 
-from typing import Union, Literal, Tuple, cast as tcast
+from typing import Union, Literal, Tuple, cast as tcast, Optional
 
 from math import cos, asin, degrees, radians
 
@@ -13,6 +13,7 @@ from cadquery.occ_impl.shapes import Edge
 from cadquery.occ_impl.geom import Vector
 
 from airplane.AbstractShapeCreator import AbstractShapeCreator
+from airplane.aircraft_topology.components import ServoInformation
 from airplane.aircraft_topology.printer3d import Printer3dSettings
 from airplane.aircraft_topology.wing.WingConfiguration import WingConfiguration
 from airplane.aircraft_topology.wing.WingSegment import WingSegment
@@ -33,8 +34,9 @@ class VaseModeWingCreator(AbstractShapeCreator):
                  leading_edge_offset_factor: float,
                  trailing_edge_offset_factor: float,
                  minimum_rib_angle: float = 45,
-                 wing_config: dict[int, WingConfiguration] = None,
-                 printer_settings: Printer3dSettings = None,
+                 wing_config: Optional[dict[int, WingConfiguration]] = None,
+                 printer_settings: Optional[Printer3dSettings] = None,
+                 servo_information: Optional[dict[int, ServoInformation]] = None,
                  wing_side: Literal["LEFT", "RIGHT", "BOTH"] = "RIGHT", loglevel: int = logging.INFO):
         """
         returns as shapes:
@@ -55,6 +57,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
         self.wing_index: Union[str, int] = wing_index
         self._wing_config: dict[int, WingConfiguration] = wing_config
         self._printer_settings: Printer3dSettings = printer_settings
+        self._servo_information: dict[int, ServoInformation] = servo_information
 
         super().__init__(creator_id, shapes_of_interest_keys=[], loglevel=loglevel)
 
@@ -156,10 +159,10 @@ class VaseModeWingCreator(AbstractShapeCreator):
             # add a wing_tip
             if wing_segment.tip_type is not None:
                 logging.info(f"==> creating tip '{wing_segment.tip_type}' shape for '{self.identifier}[{segment}]'")
-                if wing_segment.tip_type is 'flat':
+                if wing_segment.tip_type == 'flat':
                     final_right_segments[segment] = current
-                elif wing_segment.tip_type is 'round':
-                    # TODO: implent a wing tip
+                elif wing_segment.tip_type == 'round':
+                    # TODO: implement a wing tip
                     # using a simple fillet does work in fusion360 but not with cadquery
                     current = current.faces("%PLANE and >Y").wires().toPending().fillet(wing_segment.length*0.95)
                     final_right_segments[segment] = current
@@ -228,7 +231,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
                             raise ValueError(f"same ted names should be in a sequence no segments in between")
                         last_ind = ind
 
-                    if ted.servo is not None:
+                    if ted.servo(self._servo_information) is not None:
                         # if we have a servo defined for the ted than we create the mount and an access opening (cover)
                         # TODO: return the ted link plane( with origin and x-direction)
                         logging.info(f"==> create servo mount and cover shapes --> '{self.identifier}[{segment}]'")
@@ -394,13 +397,12 @@ class VaseModeWingCreator(AbstractShapeCreator):
                                       wing_config: WingConfiguration, placement: Literal['top', 'bottom'] = 'top',
                                       rim_size:float=2.5) -> tuple[Workplane, Workplane]:
         ted = wing_config.segments[segment].trailing_edge_device
-        servo = ted.servo
 
         wing_plane = wing_config.get_wing_workplane(segment=segment).plane
 
-        servo_mount = servo.create_laying_mount_for_wing()
-        cover = servo.create_servo_cover_for_wing(self.printer_wall_thickness, rim_size, in_plane= None)
-        cover_small = servo.create_servo_cover_for_wing(self.printer_wall_thickness, 0., in_plane= None)
+        servo_mount = ted.servo(self._servo_information).create_laying_mount_for_wing()
+        cover = ted.servo(self._servo_information).create_servo_cover_for_wing(self.printer_wall_thickness, rim_size, in_plane= None)
+        cover_small = ted.servo(self._servo_information).create_servo_cover_for_wing(self.printer_wall_thickness, 0., in_plane= None)
 
         servo_origin_top, servo_origin_bottom = wing_config.get_points_on_surface(segment=segment,
                                                                                   relative_chord=ted.rel_chord_servo_position,
@@ -467,17 +469,17 @@ class VaseModeWingCreator(AbstractShapeCreator):
         # trans = plane.xDir * so.x + plane.yDir * so.y + plane.zDir * (so.z - (so.z - sob.z) * 0.15)
         # box = box.translate(trans).display("box",24234)
 
-        glue_in_mount = servo.create_laying_glue_in_mount(base_thickness=MOUNT_PLATE_THICKNESS, placement='bottom')
+        glue_in_mount = ted.servo(self._servo_information).create_laying_glue_in_mount(base_thickness=MOUNT_PLATE_THICKNESS, placement='bottom')
         glue_in_mount = mirror_and_rotate(glue_in_mount)
         glue_in_mount = glue_in_mount.translate(trans_mount)
 
         return updated_hull, glue_in_mount
 
     def calculate_lowest_point_for_mount(self, segment, ted, wing_config, wing_plane):
-        x_offset_interval = np.linspace(-(ted.servo.leading_length + ted.servo.latch_length),
-                                        ted.servo.trailing_length + ted.servo.latch_length,
+        x_offset_interval = np.linspace(-(ted.servo(self._servo_information).leading_length + ted.servo(self._servo_information).latch_length),
+                                        ted.servo(self._servo_information).trailing_length + ted.servo(self._servo_information).latch_length,
                                         10)
-        y_offset_interval = np.linspace(-ted.servo.height, 0.0, 3)
+        y_offset_interval = np.linspace(-ted.servo(self._servo_information).height, 0.0, 3)
 
         top_min = math.inf
         bottom_max = -math.inf
@@ -507,11 +509,11 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
         # make the intersect and cut shape and create the ted
         ted_sketch, ted_sketch_tip, wing_sketch, wing_sketch_tip, ted_distance = (
-            ted_sketch_creators[ted.suspension_type](ted=ted,
-                                                     wing_config=wing_config,
-                                                     segment=start_segment,
-                                                     end_segment=end_segment,
-                                                     printer_settings=self._printer_settings))
+            ted_sketch_creators[ted.hinge_type](ted=ted,
+                                                wing_config=wing_config,
+                                                segment=start_segment,
+                                                end_segment=end_segment,
+                                                printer_settings=self._printer_settings))
 
         # intersect it with the wing
         ted_intersect = (Workplane()
@@ -552,7 +554,8 @@ class VaseModeWingCreator(AbstractShapeCreator):
         segment: int = 0
         root_plane = wing_config.get_wing_workplane(segment).plane.rotated((90,0,0))
         tip_plane = wing_config.get_wing_workplane(segment+1).plane.rotated((90,0,0))
-        right_wing_pwt_offset: Workplane = (
+
+        wing_root_segment_lambda = lambda offset : (
             Workplane('XZ')
             .wing_root_segment(
                 root_airfoil=wing_config.segments[segment].root_airfoil.airfoil,
@@ -565,48 +568,16 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 tip_dihedral=wing_config.segments[segment].tip_airfoil.dihedral,
                 tip_incidence=wing_config.segments[segment].tip_airfoil.incidence,
                 tip_airfoil=wing_config.segments[segment].tip_airfoil.airfoil,
-                offset=self.printer_wall_thickness,
+                offset=offset,
                 number_interpolation_points=wing_config.segments[0].number_interpolation_points,
                 root_plane=root_plane,
                 tip_plane=tip_plane
             ))
 
-        right_wing_2xpwt_offset: Workplane = (
-            Workplane('XZ')
-            .wing_root_segment(
-                root_airfoil=wing_config.segments[segment].root_airfoil.airfoil,
-                root_chord=wing_config.segments[segment].root_airfoil.chord,
-                root_dihedral=wing_config.segments[segment].root_airfoil.dihedral,
-                root_incidence=wing_config.segments[segment].root_airfoil.incidence,
-                length=wing_config.segments[segment].length,
-                sweep=wing_config.segments[segment].sweep,
-                tip_chord=wing_config.segments[segment].tip_airfoil.chord,
-                tip_dihedral=wing_config.segments[segment].tip_airfoil.dihedral,
-                tip_incidence=wing_config.segments[segment].tip_airfoil.incidence,
-                tip_airfoil=wing_config.segments[segment].tip_airfoil.airfoil,
-                offset=2.0 * self.printer_wall_thickness,
-                number_interpolation_points=wing_config.segments[0].number_interpolation_points,
-                root_plane=root_plane,
-                tip_plane=tip_plane
-            ))
-        right_wing: Workplane = (
-            Workplane('XZ')
-            .wing_root_segment(
-                root_airfoil=wing_config.segments[segment].root_airfoil.airfoil,
-                root_chord=wing_config.segments[segment].root_airfoil.chord,
-                root_dihedral=wing_config.segments[segment].root_airfoil.dihedral,
-                root_incidence=wing_config.segments[segment].root_airfoil.incidence,
-                length=wing_config.segments[segment].length,
-                sweep=wing_config.segments[segment].sweep,
-                tip_chord=wing_config.segments[segment].tip_airfoil.chord,
-                tip_dihedral=wing_config.segments[segment].tip_airfoil.dihedral,
-                tip_incidence=wing_config.segments[segment].tip_airfoil.incidence,
-                tip_airfoil=wing_config.segments[segment].tip_airfoil.airfoil,
-                offset=0.0,
-                number_interpolation_points=wing_config.segments[0].number_interpolation_points,
-                root_plane=root_plane,
-                tip_plane=tip_plane
-            ))
+        right_wing_pwt_offset: Workplane = wing_root_segment_lambda(self.printer_wall_thickness)
+        right_wing_2xpwt_offset: Workplane = wing_root_segment_lambda(2.0 * self.printer_wall_thickness)
+        right_wing: Workplane = wing_root_segment_lambda(0.0)
+
         return right_wing, right_wing_2xpwt_offset, right_wing_pwt_offset
 
     def _create_basic_wing_shapes(self, _current: Workplane,
@@ -618,40 +589,22 @@ class VaseModeWingCreator(AbstractShapeCreator):
         root_plane = wing_config.get_wing_workplane(segment).plane.rotated((90,0,0))
         tip_plane = wing_config.get_wing_workplane(segment+1).plane.rotated((90,0,0))
 
-        current_pwt_offset = _current_pwt_offset.wing_segment(
+        wing_segment_lambda = lambda actual, offset : actual.wing_segment(
             length=segment_config.length,
             sweep=segment_config.sweep,
             tip_chord=segment_config.tip_airfoil.chord,
             tip_dihedral=segment_config.tip_airfoil.dihedral,
             tip_incidence=segment_config.tip_airfoil.incidence,
             tip_airfoil=segment_config.tip_airfoil.airfoil,
-            offset=self.printer_wall_thickness,
+            offset=offset,
             number_interpolation_points=segment_config.number_interpolation_points,
             root_plane=root_plane,
             tip_plane=tip_plane
         )
-        current_2xpwt_offset = _current_2xpwt_offset.wing_segment(
-            length=segment_config.length,
-            sweep=segment_config.sweep,
-            tip_chord=segment_config.tip_airfoil.chord,
-            tip_dihedral=segment_config.tip_airfoil.dihedral,
-            tip_incidence=segment_config.tip_airfoil.incidence,
-            tip_airfoil=segment_config.tip_airfoil.airfoil,
-            offset=2.0 * self.printer_wall_thickness,
-            number_interpolation_points=segment_config.number_interpolation_points,
-            root_plane=root_plane,
-            tip_plane=tip_plane)
-        current = _current.wing_segment(
-            length=segment_config.length,
-            sweep=segment_config.sweep,
-            tip_chord=segment_config.tip_airfoil.chord,
-            tip_dihedral=segment_config.tip_airfoil.dihedral,
-            tip_incidence=segment_config.tip_airfoil.incidence,
-            tip_airfoil=segment_config.tip_airfoil.airfoil,
-            offset=0.0,
-            number_interpolation_points=segment_config.number_interpolation_points,
-            root_plane=root_plane,
-            tip_plane=tip_plane)
+
+        current_pwt_offset = wing_segment_lambda(_current_pwt_offset, self.printer_wall_thickness)
+        current_2xpwt_offset = wing_segment_lambda(_current_2xpwt_offset, 2.0 * self.printer_wall_thickness)
+        current = wing_segment_lambda(_current,0.0)
         return current, current_2xpwt_offset, current_pwt_offset
 
     def _create_spare_shape(self, current: Workplane, segment: int, wing_config: WingConfiguration,

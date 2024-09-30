@@ -1,9 +1,10 @@
 #!/bin/bash
 
 VIEWER=0
+SERVICE=0
 export THEME=light
 
-while getopts "dvgw:h:" o; do
+while getopts "d:v:g:w:s:h:" o; do
     case "${o}" in
         v)
             VIEWER=1
@@ -20,7 +21,9 @@ while getopts "dvgw:h:" o; do
         d)
             export THEME=dark
             ;;
-    esac
+        s)
+            SERVICE=1
+            ;;    esac
 done
 
 if [[ "VIEWER" -eq "1" ]]; then
@@ -35,6 +38,11 @@ if [[ "VIEWER" -eq "1" ]]; then
     --VoilaConfiguration.file_whitelist="favicon.ico" \
     --VoilaConfiguration.file_whitelist=".*\.js" \
     /home/cq/viewer.ipynb
+elif [[ "SERVICE" -eq "1" ]]; then
+    echo "Starting service..."
+    . /opt/anaconda/bin/activate cadquery &&  \
+    cd /home/cq/app/ && \
+    fastapi run app/main.py
 else
     echo "Starting in JupyterLab mode: http://localhost:8888/lab"
     . /opt/anaconda/bin/activate cadquery && \

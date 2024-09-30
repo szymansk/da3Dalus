@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
     print_stand = ConstructionStepNode(
         StandWingSegmentOnPrinterCreator(
-            creator_id="",
+            creator_id="stand_wing_to_print",
             wing_index="main_wing",
             shape_dict= {
                 0 : "vase_wing[0]",
@@ -150,17 +150,20 @@ if __name__ == "__main__":
     # dump to a json string
     json_data: str = json.dumps(root_node, indent=4, cls=GeneralJSONEncoder)
 
-    servo_elevator = ServoInformation(
-        height=0.022 * 1000,
-        width=0.012 * 1000,
-        length=0.023 * 1000,
-        lever_length=0.023 * 1000,
-        rot_x=180.0,
-        rot_y=0.0,
-        rot_z=0.0,
-        trans_x=0.28 * 1000 + 0.02 * 1000,
-        trans_y=0.005 * 1000,
-        trans_z=0.044 * 1000 - 0.0244 * 1000)
+    servo_aileron = ServoInformation(
+        height=0,
+        width=0,
+        length=00,
+        lever_length=0,
+        servo=Servo(length=23,
+                        width=12.5,
+                        height=31.5,
+                        leading_length=6, latch_z=14.5,
+                        latch_x=7.25, latch_thickness=2.6,
+                        latch_length=6, cable_z=26,
+                        screw_hole_lx=0,
+                        screw_hole_d=0)
+        )
 
     servo_rudder = ServoInformation(
         height=0.022 * 1000,
@@ -173,7 +176,7 @@ if __name__ == "__main__":
         trans_x=0.28 * 1000 + 0.02 * 1000,
         trans_y=-0.005 * 1000 - 0.012 * 1000,
         trans_z=0.044 * 1000 - 0.0244 * 1000)
-    servo_information = {1: servo_elevator, 2: servo_rudder}
+    servo_information = {1: servo_aileron, 2: servo_rudder}
 
 
     # Spannweite	1520mm
@@ -185,14 +188,18 @@ if __name__ == "__main__":
     #### WING ####
     airfoil = "../components/airfoils/rg15.dat"  # eHawk RG15 Profil
     # segment 0
-    wing_config: WingConfiguration = WingConfiguration(nose_pnt=(0, 0, 0), root_airfoil=Airfoil(airfoil=airfoil,
-                                                                                                chord=162.,
-                                                                                                dihedral=1,
-                                                                                                incidence=0,
-                                                                                                rotation_point_rel_chord=0.3),
-                                                       length=20., sweep=0,
-                                                       tip_airfoil=Airfoil(chord=162., dihedral=0, incidence=0),
-                                                       number_interpolation_points=201, spare_list=[
+    wing_config: WingConfiguration = WingConfiguration(
+        nose_pnt=(0, 0, 0),
+        number_interpolation_points=201,
+        root_airfoil=Airfoil(airfoil=airfoil,
+                             chord=162.,
+                             dihedral=1,
+                             incidence=0,
+                             rotation_point_rel_chord=0.3),
+        length=20.,
+        sweep=0,
+        tip_airfoil=Airfoil(chord=162., dihedral=0, incidence=0),
+        spare_list=[
             Spare(spare_support_dimension_width=4.42,
                   spare_support_dimension_height=4.42,
                   spare_position_factor=0.25),
@@ -235,33 +242,30 @@ if __name__ == "__main__":
     l_middle, l_tip, s_middle, s_tip, c_root, c_middle, c_tip = straight_trailing_edge(l_middle, l_tip, s_middle, s_tip, c_root, c_middle, c_tip)
 
     # segment 2
-    wing_config.add_segment(length=l_middle, sweep=s_middle,
-                            tip_airfoil=Airfoil(chord=c_middle, dihedral=0, incidence=0, rotation_point_rel_chord=0),
-                            spare_list=[
-                                Spare(spare_support_dimension_width=4.42,
-                                      spare_support_dimension_height=4.42,
-                                      spare_mode="follow")], trailing_edge_device=TrailingEdgeDevice(
+    wing_config.add_segment(
+        length=l_middle,
+        sweep=s_middle,
+        tip_airfoil=Airfoil(chord=c_middle, dihedral=0, incidence=0, rotation_point_rel_chord=0),
+        spare_list=[
+            Spare(spare_support_dimension_width=4.42,
+                  spare_support_dimension_height=4.42,
+                  spare_mode="follow")],
+        trailing_edge_device=TrailingEdgeDevice(
             name="aileron",
             rel_chord_root=0.8,
             rel_chord_tip=0.8,
             hinge_spacing=0.5,
             side_spacing_root=2.,
             side_spacing_tip=2.,
-            servo=Servo(length=23,
-                        width=12.5,
-                        height=31.5,
-                        leading_length=6, latch_z=14.5,
-                        latch_x=7.25, latch_thickness=2.6,
-                        latch_length=6, cable_z=26,
-                        screw_hole_lx=None,
-                        screw_hole_d=None),
+            servo=1,
             servo_placement='top',
             rel_chord_servo_position=0.414,
             rel_length_servo_position=0.486,
             positive_deflection_deg=35,
             negative_deflection_deg=35,
             trailing_edge_offset_factor=1.2,
-            hinge_type="top"))
+            hinge_type="top")
+    )
 
     l_middle = 75
     l_tip = l_tip - 75
@@ -273,12 +277,16 @@ if __name__ == "__main__":
     l_middle, l_tip, s_middle, s_tip, c_root, c_middle, c_tip = straight_trailing_edge(l_middle, l_tip, s_middle, s_tip, c_root, c_middle, c_tip)
 
     # segment 3
-    wing_config.add_segment(length=l_middle, sweep=s_middle,
-                            tip_airfoil=Airfoil(chord=c_middle, dihedral=0, incidence=0, rotation_point_rel_chord=0),
-                            spare_list=[
-                                Spare(spare_support_dimension_width=4.42,
-                                      spare_support_dimension_height=4.42,
-                                      spare_mode="follow")], trailing_edge_device=TrailingEdgeDevice(name="aileron"))
+    wing_config.add_segment(
+        length=l_middle,
+        sweep=s_middle,
+        tip_airfoil=Airfoil(chord=c_middle, dihedral=0, incidence=0, rotation_point_rel_chord=0),
+        spare_list=[
+            Spare(spare_support_dimension_width=4.42,
+                  spare_support_dimension_height=4.42,
+                  spare_mode="follow")],
+        trailing_edge_device=TrailingEdgeDevice(name="aileron")
+    )
 
     l_middle = 85
     l_tip = l_tip - 85
@@ -290,27 +298,39 @@ if __name__ == "__main__":
     l_middle, l_tip, s_middle, s_tip, c_root, c_middle, c_tip = straight_trailing_edge(l_middle, l_tip, s_middle, s_tip, c_root, c_middle, c_tip)
 
     # segment 4
-    wing_config.add_segment(length=l_middle, sweep=s_middle,
-                            tip_airfoil=Airfoil(chord=c_middle, dihedral=0, incidence=0, rotation_point_rel_chord=0),
-                            spare_list=[
-                                Spare(spare_support_dimension_width=4.42,
-                                      spare_support_dimension_height=4.42,
-                                      spare_mode="follow")], trailing_edge_device=TrailingEdgeDevice(name="aileron"))
+    wing_config.add_segment(
+        length=l_middle,
+        sweep=s_middle,
+        tip_airfoil=Airfoil(chord=c_middle, dihedral=0, incidence=0, rotation_point_rel_chord=0),
+        spare_list=[
+            Spare(spare_support_dimension_width=4.42,
+                  spare_support_dimension_height=4.42,
+                  spare_mode="follow")],
+        trailing_edge_device=TrailingEdgeDevice(name="aileron")
+    )
 
     #segment 5
-    wing_config.add_segment(length=l_tip, sweep=s_tip,
-                            tip_airfoil=Airfoil(chord=c_tip, dihedral=0, incidence=0, rotation_point_rel_chord=0),
-                            spare_list=[
-                                Spare(spare_support_dimension_width=4.42,
-                                      spare_support_dimension_height=4.42,
-                                      spare_mode="follow")], trailing_edge_device=TrailingEdgeDevice(name="aileron"))
+    wing_config.add_segment(
+        length=l_tip,
+        sweep=s_tip,
+        tip_airfoil=Airfoil(chord=c_tip, dihedral=0, incidence=0, rotation_point_rel_chord=0),
+        spare_list=[
+            Spare(spare_support_dimension_width=4.42,
+                  spare_support_dimension_height=4.42,
+                  spare_mode="follow")],
+        trailing_edge_device=TrailingEdgeDevice(name="aileron")
+    )
 
     # here we start with the winglet
-    wing_config.add_segment(length=20, sweep=7.5, tip_airfoil=Airfoil(chord=90 - 7.5 - 3, dihedral=5, incidence=-0.5,
-                                                                      rotation_point_rel_chord=0), spare_list=[
-        Spare(spare_support_dimension_width=4.42,
-              spare_support_dimension_height=4.42,
-              spare_mode="standard_backward")])
+    wing_config.add_segment(
+        length=20,
+        sweep=7.5,
+        tip_airfoil=Airfoil(chord=90-7.5-3, dihedral=5, incidence=-0.5, rotation_point_rel_chord=0),
+        spare_list=[
+            Spare(spare_support_dimension_width=4.42,
+                  spare_support_dimension_height=4.42,
+                  spare_mode="standard_backward")],
+    )
 
     # segment 7
     wing_config.add_tip_segment(
@@ -355,6 +375,13 @@ if __name__ == "__main__":
 
     wing_configuration = {"main_wing": wing_config}
 
+    # dump wingconfig
+    import jsonpickle
+
+    wing_pickled = jsonpickle.encode(wing_config, indent=2, unpicklable=False)
+    print(wing_pickled)
+
+
     printer_settings = Printer3dSettings(layer_height=0.24,
                                          wall_thickness=0.42,
                                          rel_gap_wall_thickness=0.075)
@@ -365,12 +392,6 @@ if __name__ == "__main__":
                                              servo_information=servo_information,
                                              wing_config=wing_configuration,
                                              printer_settings=printer_settings)
-
-    # dump wingconfig
-    import jsonpickle
-
-    wing_pickled = jsonpickle.encode(wing_config, indent=2)
-    print(wing_pickled)
 
     # dump again to check
     print(json.dumps(myMap, indent=2, cls=GeneralJSONEncoder))

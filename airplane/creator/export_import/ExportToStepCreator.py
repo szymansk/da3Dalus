@@ -37,13 +37,14 @@ class ExportToStepCreator(AbstractShapeCreator):
             # t_shape = ScaleRotateTranslateCreator.transform_by(shape=shape, scale=1000.0)
             if step_writer.Transfer(shape.findSolid().wrapped, STEPControl_AsIs) != IFSelect_RetDone:
                 logging.fatal(f"error while exporting '{name}'")
-                raise RuntimeError(f"error while exporting '{name}'")
+                raise IOError(f"error while exporting '{name}'")
 
         step_path = os.path.join(self.file_path, f"{self.identifier}.stp")
 
         aStat = step_writer.Write(step_path)
         if aStat != IFSelect_RetDone:
             logging.error("Step writing error")
+            raise IOError("Step writing error")
 
         return shapes_of_interest
 

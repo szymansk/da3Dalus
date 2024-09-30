@@ -75,7 +75,6 @@ class EngineCoverAndMountPanelAndFuselageShapeCreator(AbstractShapeCreator):
         '''
         Cuts a slice of the Fuselage to use as a backplate for the engine mount
         '''
-        mount_plate: cq.Workplane = None
         motor_position = engine_information.position
         origin = cq.Vector(motor_position.get_x(),motor_position.get_y(),motor_position.get_z())
         rot_mat = cq.Matrix()
@@ -85,6 +84,8 @@ class EngineCoverAndMountPanelAndFuselageShapeCreator(AbstractShapeCreator):
         l = cq.Vector(engine_total_cover_length, 0, 0)
         target = rot_mat.multiply(l)
 
+        fuselage: Workplane|None = None
+        engine_cape: Workplane|None = None
         if abs(engine_information.side_thrust) < 90:
             mount_plate = full_fuselage_loft.faces("<X").workplane(origin=origin, invert=True, offset=engine_total_cover_length + engine_mount_box_length+mount_plate_thickness)
             fuselage = mount_plate.split(keepTop=True)
