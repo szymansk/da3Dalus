@@ -1,0 +1,244 @@
+<cpacs xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://www.cpacs.de/schema/v3_4_0/cpacs_schema.xsd">
+  <header>
+    <creator>Anonym</creator>
+    <name>NoName</name>
+    <version>1.0</version>
+    <cpacsVersion>3.2</cpacsVersion>
+    <timestamp>2024-09-10T02:40:26</timestamp>
+  </header>
+  <vehicles>
+    <aircraft>
+      <model uID="e54be111-2fae-4203-8588-88132a84a945">
+        <name>NoName</name>
+        <wings>
+          <wing uID="ceaccef8-6fd0-4727-a664-9cb4380468b0" symmetry="x-z-plane">
+            <name>NoName</name>
+            <transformation uID="8121082d-471d-48b9-a165-110890c6f0a1">
+              <rotation uID="8121082d-471d-48b9-a165-110890c6f0a1_rotation" refType="absLocal">
+                <x>0</x>
+                <y>0</y>
+                <z>0</z>
+              </rotation>
+              <scaling uID="8121082d-471d-48b9-a165-110890c6f0a1_scaling">
+                <x>1</x>
+                <y>1</y>
+                <z>1</z>
+              </scaling>
+              <translation uID="8121082d-471d-48b9-a165-110890c6f0a1_translation" refType="absLocal">
+                <x>0</x>
+                <y>0</y>
+                <z>0</z>
+              </translation>
+            </transformation>
+            <sections>
+              <section uID="9de434ab-7fd7-4bff-bd99-d9170b176615">
+                <name>NoName_element</name>
+                <transformation uID="f6a0c27d-fbc6-4968-9aa0-970bd7d1736f">
+                  <rotation uID="f6a0c27d-fbc6-4968-9aa0-970bd7d1736f_rotation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <scaling uID="f6a0c27d-fbc6-4968-9aa0-970bd7d1736f_scaling">
+                    <x>1</x>
+                    <y>1</y>
+                    <z>1</z>
+                  </scaling>
+                  <translation uID="f6a0c27d-fbc6-4968-9aa0-970bd7d1736f_translation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="3b037296-e117-4ca7-ae58-a71aff24fa72">
+                    <name>NoName_element_element</name>
+                    <airfoilUID>NACA0010</airfoilUID>
+                    <transformation uID="1ce65200-a1bc-4d8d-8490-960fcac00ada">
+                      <rotation uID="1ce65200-a1bc-4d8d-8490-960fcac00ada_rotation" refType="absGlobal">
+                        <x>4.9999999999999964</x>
+                        <y>3</y>
+                        <z>0</z>
+                      </rotation>
+                      <scaling uID="1ce65200-a1bc-4d8d-8490-960fcac00ada_scaling">
+                        <x>0.2</x>
+                        <y>1</y>
+                        <z>0.2</z>
+                      </scaling>
+                      <translation uID="1ce65200-a1bc-4d8d-8490-960fcac00ada_translation" refType="absGlobal">
+                        <x>0</x>
+                        <y>0</y>
+                        <z>0</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="7565f172-c6f4-4694-aa1c-5cb043377d8b">
+                <name>NoName_element</name>
+                <transformation uID="799c8ca2-0f37-4ab8-b5df-800957f7c9b9">
+                  <rotation uID="799c8ca2-0f37-4ab8-b5df-800957f7c9b9_rotation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <scaling uID="799c8ca2-0f37-4ab8-b5df-800957f7c9b9_scaling">
+                    <x>1</x>
+                    <y>1</y>
+                    <z>1</z>
+                  </scaling>
+                  <translation uID="799c8ca2-0f37-4ab8-b5df-800957f7c9b9_translation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="44cfc61c-9671-4bb4-adc3-c05744a427ee">
+                    <name>NoName_element_element</name>
+                    <airfoilUID>NACA0010</airfoilUID>
+                    <transformation uID="bb2519d6-573d-4219-81ff-ddccb567dc4d">
+                      <rotation uID="bb2519d6-573d-4219-81ff-ddccb567dc4d_rotation" refType="absGlobal">
+                        <x>0.0068696388463814085</x>
+                        <y>-0.011395052334881547</y>
+                        <z>0.26134868486208684</z>
+                      </rotation>
+                      <scaling uID="bb2519d6-573d-4219-81ff-ddccb567dc4d_scaling">
+                        <x>0.2</x>
+                        <y>1</y>
+                        <z>0.2</z>
+                      </scaling>
+                      <translation uID="bb2519d6-573d-4219-81ff-ddccb567dc4d_translation" refType="absGlobal">
+                        <x>0.08804266535478655</x>
+                        <y>0.49849949615157507</y>
+                        <z>0.038981308922247646</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="ae5f99eb-108c-45d7-8608-3a5aced56e75">
+                <name>NoName_element</name>
+                <transformation uID="2087df07-b2c5-4dd5-b55b-462e44fc42b5">
+                  <rotation uID="2087df07-b2c5-4dd5-b55b-462e44fc42b5_rotation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <scaling uID="2087df07-b2c5-4dd5-b55b-462e44fc42b5_scaling">
+                    <x>1</x>
+                    <y>1</y>
+                    <z>1</z>
+                  </scaling>
+                  <translation uID="2087df07-b2c5-4dd5-b55b-462e44fc42b5_translation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="3604ed47-73ac-449b-b353-e7adfa409363">
+                    <name>NoName_element_element</name>
+                    <airfoilUID>NACA0010</airfoilUID>
+                    <transformation uID="2231734c-0db7-43f1-b7d7-f4d284236900">
+                      <rotation uID="2231734c-0db7-43f1-b7d7-f4d284236900_rotation" refType="absGlobal">
+                        <x>-4.993079102310368</x>
+                        <y>-0.034129651971020976</y>
+                        <z>0.2593610537626552</z>
+                      </rotation>
+                      <scaling uID="2231734c-0db7-43f1-b7d7-f4d284236900_scaling">
+                        <x>0.15</x>
+                        <y>1</y>
+                        <z>0.15</z>
+                      </scaling>
+                      <translation uID="2231734c-0db7-43f1-b7d7-f4d284236900_translation" refType="absGlobal">
+                        <x>-0.0024005956477318687</x>
+                        <y>0.9980921460314593</y>
+                        <z>0.03902322152730125</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+              <section uID="6b2acb8c-87f8-478e-b9fe-54087540b9cc">
+                <name>NoName_element</name>
+                <transformation uID="b09ffb39-8f34-4753-ab09-aed072b4f27f">
+                  <rotation uID="b09ffb39-8f34-4753-ab09-aed072b4f27f_rotation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </rotation>
+                  <scaling uID="b09ffb39-8f34-4753-ab09-aed072b4f27f_scaling">
+                    <x>1</x>
+                    <y>1</y>
+                    <z>1</z>
+                  </scaling>
+                  <translation uID="b09ffb39-8f34-4753-ab09-aed072b4f27f_translation" refType="absGlobal">
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                  </translation>
+                </transformation>
+                <elements>
+                  <element uID="43fca9c0-16b4-427f-8816-6f0ddb3f72f8">
+                    <name>NoName_element_element</name>
+                    <airfoilUID>NACA0010</airfoilUID>
+                    <transformation uID="5d55dffc-fcdf-491f-94ac-5ce0d461e049">
+                      <rotation uID="5d55dffc-fcdf-491f-94ac-5ce0d461e049_rotation" refType="absGlobal">
+                        <x>-4.993079102310368</x>
+                        <y>-0.034129651971020976</y>
+                        <z>0.2593610537626552</z>
+                      </rotation>
+                      <scaling uID="5d55dffc-fcdf-491f-94ac-5ce0d461e049_scaling">
+                        <x>0.1</x>
+                        <y>1</y>
+                        <z>0.1</z>
+                      </scaling>
+                      <translation uID="5d55dffc-fcdf-491f-94ac-5ce0d461e049_translation" refType="absGlobal">
+                        <x>0.08349863174689115</x>
+                        <y>1.4965916796727212</y>
+                        <z>-0.004477798275597494</z>
+                      </translation>
+                    </transformation>
+                  </element>
+                </elements>
+              </section>
+            </sections>
+            <segments>
+              <segment uID="3430a395-a995-4cb5-ba00-a65efc99f736">
+                <name>Segment 0</name>
+                <fromElementUID>3b037296-e117-4ca7-ae58-a71aff24fa72</fromElementUID>
+                <toElementUID>44cfc61c-9671-4bb4-adc3-c05744a427ee</toElementUID>
+              </segment>
+              <segment uID="b99d6845-04f1-4dd5-9400-a4006ec22ffd">
+                <name>Segment 1</name>
+                <fromElementUID>44cfc61c-9671-4bb4-adc3-c05744a427ee</fromElementUID>
+                <toElementUID>3604ed47-73ac-449b-b353-e7adfa409363</toElementUID>
+              </segment>
+              <segment uID="5ef498ba-b651-46ff-8a80-b66279feaf61">
+                <name>Segment 2</name>
+                <fromElementUID>3604ed47-73ac-449b-b353-e7adfa409363</fromElementUID>
+                <toElementUID>43fca9c0-16b4-427f-8816-6f0ddb3f72f8</toElementUID>
+              </segment>
+            </segments>
+            <componentSegments/>
+          </wing>
+        </wings>
+        <fuselages/>
+      </model>
+    </aircraft>
+    <profiles>
+      <wingAirfoils>
+        <wingAirfoil uID="NACA0010">
+          <name>NACA0010</name>
+          <pointList>
+            <x mapType="vector">1;0.95;0.9;0.8;0.7;0.6;0.5;0.4;0.3;0.25;0.2;0.15;0.1;0.075;0.05;0.025;0.0125;0;0.0125;0.025;0.05;0.075;0.1;0.15;0.2;0.25;0.3;0.4;0.5;0.6;0.7;0.8;0.9;0.95;1;1</x>
+            <y mapType="vector">0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0</y>
+            <z mapType="vector">0.00105;0.00672;0.01207;0.02187;0.03053;0.03803;0.04412;0.04837;0.05002;0.04952;0.04782;0.04455;0.03902;0.035;0.02962;0.02178;0.01578;0;-0.01578;-0.02178;-0.02962;-0.035;-0.03902;-0.04455;-0.04782;-0.04952;-0.05002;-0.04837;-0.04412;-0.03803;-0.03053;-0.02187;-0.01207;-0.00672;-0.00105;0.00105</z>
+          </pointList>
+        </wingAirfoil>
+      </wingAirfoils>
+      <fuselageProfiles/>
+    </profiles>
+  </vehicles>
+</cpacs>
