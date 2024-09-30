@@ -1,0 +1,38 @@
+{
+    "successors": {
+        "vase_wing": {
+            "successors": {},
+            "creator": {
+                "leading_edge_offset_factor": 0.1,
+                "trailing_edge_offset_factor": 0.15,
+                "minimum_rib_angle": 45,
+                "wing_side": "BOTH",
+                "wing_index": "main_wing",
+                "loglevel": 10,
+                "creator_id": "vase_wing",
+                "$TYPE": "VaseModeWingCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "vase_wing",
+            "$TYPE": "ConstructionStepNode"
+        },
+        "configurator-test-wing": {
+            "successors": {},
+            "creator": {
+                "file_path": "../exports",
+                "shapes_to_export": [
+                    "vase_wing"
+                ],
+                "loglevel": 20,
+                "creator_id": "configurator-test-wing",
+                "$TYPE": "ExportToStepCreator"
+            },
+            "loglevel": 50,
+            "creator_id": "configurator-test-wing",
+            "$TYPE": "ConstructionStepNode"
+        }
+    },
+    "loglevel": 50,
+    "creator_id": "configurator-test-wing.root",
+    "$TYPE": "ConstructionRootNode"
+}
