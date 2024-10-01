@@ -3,7 +3,10 @@ import requests
 
 from cadquery import Workplane
 from cq_plugins.display.cadq_server_connector import CQServerConnector
+from decorators.general_decorators import conditional_execute
 
+
+@conditional_execute("DISPLAY_CONSTRUCTION_STEP")
 def display(self: Workplane, name: str = "NN", severity: int = logging.DEBUG,
              url: str = "http://cq-server:5000/json", names=None, colors=None, alphas=None, **kwargs) -> Workplane:
     if severity >= logging.root.level:
