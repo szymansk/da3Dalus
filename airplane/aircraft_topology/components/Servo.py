@@ -1,6 +1,8 @@
 from typing import TypeVar, Literal
 
 from cadquery import Workplane, Sketch, Plane
+from pydantic import NonNegativeFloat
+from pydantic.v1 import PositiveFloat
 
 T = TypeVar("T", bound="Servo")
 
@@ -18,9 +20,18 @@ class Servo:
     Based on this coordinate system we can define all needed inputs for a servo
     """
 
-    def __init__(self: T, length: float, width: float, height: float, leading_length: float, latch_z: float,
-                 latch_x: float, latch_thickness: float, latch_length: float, cable_z: float, screw_hole_lx: float,
-                 screw_hole_d: float):
+    def __init__(self: T,
+                 length: PositiveFloat,
+                 width: PositiveFloat,
+                 height: PositiveFloat,
+                 leading_length: NonNegativeFloat,
+                 latch_z: NonNegativeFloat,
+                 latch_x: NonNegativeFloat,
+                 latch_thickness: NonNegativeFloat,
+                 latch_length: NonNegativeFloat,
+                 cable_z: NonNegativeFloat,
+                 screw_hole_lx: NonNegativeFloat,
+                 screw_hole_d: NonNegativeFloat):
         self.length: float = length  # x-dimension
         self.width: float = width  # y-dimension
         self.height: float = height  # z-dimension
@@ -40,7 +51,9 @@ class Servo:
         self.trailing_length: float = self.length - self.leading_length
         pass
 
-    def create_laying_glue_in_mount(self: T, base_thickness:float = 1.0, placement: Literal['top', 'bottom'] = 'top') -> Workplane:
+    def create_laying_glue_in_mount(self: T,
+                                    base_thickness:float = 1.0,
+                                    placement: Literal['top', 'bottom'] = 'top') -> Workplane:
         servo_outlines = (Sketch()
                           .segment((0, 0), (-self.leading_length, 0))
                           .segment((-self.leading_length, 0),

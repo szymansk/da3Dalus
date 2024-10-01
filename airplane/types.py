@@ -21,3 +21,8 @@ TipType = Annotated[
     Field(description="Allowed values are 'flat' or 'round'"),
     BeforeValidator(lambda x: x.lower() if isinstance(x, str) else x)
 ]
+WingSides = Annotated[
+    Literal["LEFT", "RIGHT", "BOTH"],
+    Field(description="Allowed values are 'LEFT', 'RIGHT' or 'BOTH'"),
+    BeforeValidator(lambda x: x.upper() if isinstance(x, str) else x),
+]

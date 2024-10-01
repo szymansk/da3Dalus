@@ -5,7 +5,7 @@ from typing import TypeVar, Any, List, Tuple, Literal, Union, Optional
 import numpy as np
 from cadquery import Workplane, Plane, Vector
 from numpy import ndarray, dtype, generic
-from pydantic.v1 import PositiveFloat, PositiveInt, NonNegativeInt, NonNegativeFloat
+from pydantic import PositiveFloat, PositiveInt, NonNegativeInt, NonNegativeFloat
 from scipy.spatial.transform import Rotation
 from scipy.interpolate import interp1d
 from websocket.tests.test_http import OptsList

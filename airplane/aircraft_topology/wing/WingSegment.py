@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 import math
-from pydantic.v1 import PositiveFloat, PositiveInt, NonNegativeFloat
+from pydantic import PositiveFloat, PositiveInt, NonNegativeFloat
 
 from airplane.aircraft_topology.wing.Airfoil import Airfoil
 from airplane.aircraft_topology.wing.Spare import Spare

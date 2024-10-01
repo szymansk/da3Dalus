@@ -221,3 +221,5 @@ jupyter/.local/
 jupyter/.ipython/
 
 /docs/html/
+
+tmp/exports/

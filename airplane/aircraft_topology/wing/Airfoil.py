@@ -1,10 +1,19 @@
+from typing import Optional
+
 from cadquery import Plane
+from pydantic import PositiveFloat
 
 from airplane.aircraft_topology.wing.CoordinateSystem import CoordinateSystem
+from airplane.types import Factor
 
 
 class Airfoil:
-    def __init__(self, airfoil: str = None, chord: float = None, dihedral: float = 0, incidence: float = 0, rotation_point_rel_chord: float = 0):
+    def __init__(self,
+                 airfoil: Optional[str] = None,
+                 chord: Optional[PositiveFloat] = None,
+                 dihedral: float = 0,
+                 incidence: float = 0,
+                 rotation_point_rel_chord: Factor = 0.25):
         self.airfoil: str = airfoil
         self.chord: float = chord
         self.dihedral: float = dihedral

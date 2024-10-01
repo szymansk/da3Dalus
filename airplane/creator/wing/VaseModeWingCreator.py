@@ -5,14 +5,14 @@ import math
 import numpy as np
 
 from typing import Union, Literal, Tuple, cast as tcast, Optional, Annotated
-from pydantic import Field, confloat, BeforeValidator
+from pydantic import Field, NonNegativeInt
 
 from math import cos, asin, degrees, radians
 
 from cadquery import Workplane, Plane, Sketch
 from cadquery.occ_impl.shapes import Edge
 from cadquery.occ_impl.geom import Vector
-from pydantic.v1 import NonNegativeInt
+from pydantic.v1 import NonNegativeFloat
 
 from airplane.AbstractShapeCreator import AbstractShapeCreator
 from airplane.aircraft_topology.components import ServoInformation
@@ -22,16 +22,11 @@ from airplane.aircraft_topology.wing.WingSegment import WingSegment
 from airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
 from airplane.creator.wing.ted_sketch_creators import ted_sketch_creators
 
+from airplane.types import Factor, WingSides
+
 import cq_plugins
-from airplane.types import Factor
 
 MOUNT_PLATE_THICKNESS = 1.0
-
-WingSides = Annotated[
-    Literal["LEFT", "RIGHT", "BOTH"],
-    Field(description="Allowed values are 'LEFT', 'RIGHT' or 'BOTH'"),
-    BeforeValidator(lambda x: x.upper() if isinstance(x, str) else x),
-]
 
 class VaseModeWingCreator(AbstractShapeCreator):
     """
@@ -345,16 +340,17 @@ class VaseModeWingCreator(AbstractShapeCreator):
         final_dict.update(glue_in_mounts)
         return final_dict
 
-    def create_tip_glue_tongue(self, final_right_segments: list[Workplane],
+    def create_tip_glue_tongue(self,
+                               final_right_segments: list[Workplane],
                                raw_ribs_part: Workplane,
-                               segment: int,
-                               rel_tongue_length: float = 0.8,
-                               glue_tongue_depth:float = 3.,
-                               num_glue_tongue_ribs: int = 2,
-                               glue_tongue_ribs_rel_pos: float=0.3,
-                               glue_tongue_ribs_rel_length:float = 3.,
-                               glue_tongue_ribs_minimum_distance: float = 5.0,
-                               glue_support_ted_offset: float = 0.0):
+                               segment: NonNegativeInt,
+                               rel_tongue_length: NonNegativeFloat = 0.8,
+                               glue_tongue_depth: NonNegativeFloat = 3.,
+                               num_glue_tongue_ribs: NonNegativeInt = 2,
+                               glue_tongue_ribs_rel_pos: NonNegativeFloat = 0.3,
+                               glue_tongue_ribs_rel_length: NonNegativeFloat = 3.,
+                               glue_tongue_ribs_minimum_distance: NonNegativeFloat = 5.0,
+                               glue_support_ted_offset: NonNegativeFloat = 0.0):
 
         tip_glue_tongue = raw_ribs_part.faces("<Y").workplane(-glue_tongue_depth).split(keepTop=True)
         f_bb = tip_glue_tongue.faces("<Y").val().BoundingBox()
@@ -485,7 +481,11 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
         return updated_hull, glue_in_mount
 
-    def calculate_lowest_point_for_mount(self, segment, ted, wing_config, wing_plane):
+    def calculate_lowest_point_for_mount(self,
+                                         segment: NonNegativeInt,
+                                         ted: TrailingEdgeDevice,
+                                         wing_config: WingConfiguration,
+                                         wing_plane: Plane):
         x_offset_interval = np.linspace(-(ted.servo(self._servo_information).leading_length + ted.servo(self._servo_information).latch_length),
                                         ted.servo(self._servo_information).trailing_length + ted.servo(self._servo_information).latch_length,
                                         10)
@@ -511,8 +511,16 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
         return bottom_max, top_min
 
-    def _create_ted_shapes(self, current: Workplane, current_hull: Workplane, raw_ribs: Workplane, start_segment: int,
-                           end_segment: int, wing_config: WingConfiguration) -> Tuple[Workplane, Workplane, Workplane, float]:
+
+    def _create_ted_shapes(self,
+                           current: Workplane,
+                           current_hull: Workplane,
+                           raw_ribs: Workplane,
+                           start_segment: NonNegativeInt,
+                           end_segment: NonNegativeInt,
+                           wing_config: WingConfiguration
+                           ) -> Tuple[Workplane, Workplane, Workplane, float]:
+
         wcs: WingSegment = wing_config.segments[start_segment]
         ted: TrailingEdgeDevice = wing_config.segments[start_segment].trailing_edge_device
         ted_root_plane, ted_tip_plane = wing_config.get_trailing_edge_device_planes(start_segment, end_segment)

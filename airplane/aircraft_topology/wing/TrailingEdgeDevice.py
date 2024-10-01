@@ -1,6 +1,6 @@
 from typing import Literal, Optional
 
-from pydantic.v1 import NonNegativeFloat
+from pydantic import NonNegativeFloat
 
 from airplane.aircraft_topology.components import ServoInformation
 from airplane.aircraft_topology.components.Servo import Servo
