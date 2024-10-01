@@ -1,25 +1,24 @@
-from typing import Literal, List
+from typing import List, Optional
 
 import math
+from pydantic.v1 import PositiveFloat, PositiveInt, NonNegativeFloat
 
 from airplane.aircraft_topology.wing.Airfoil import Airfoil
 from airplane.aircraft_topology.wing.Spare import Spare
 from airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
-
-WingSegmentType = Literal['root','segment','tip']
-TipType = Literal["flat", "round"]
+from airplane.types import WingSegmentType, TipType
 
 
 class WingSegment:
     def __init__(self, root_airfoil: Airfoil,
-                 length: float,
-                 sweep: float = 0,
-                 sweepIsAngle=False,
-                 tip_airfoil: Airfoil = None,
+                 length: PositiveFloat,
+                 sweep: NonNegativeFloat = 0,
+                 sweep_is_angle: bool = False,
+                 tip_airfoil: Optional[Airfoil] = None,
                  spare_list: List[Spare] = None,
-                 trailing_edge_device: TrailingEdgeDevice = None,
-                 number_interpolation_points: int = None,
-                 tip_type: TipType = None,
+                 trailing_edge_device: Optional[TrailingEdgeDevice] = None,
+                 number_interpolation_points: Optional[PositiveInt] = None,
+                 tip_type: Optional[TipType] = None,
                  wing_segment_type: WingSegmentType = 'segment'):
 
         self.root_airfoil = root_airfoil
@@ -28,7 +27,7 @@ class WingSegment:
 
         self.sweep = sweep
 
-        if sweepIsAngle:
+        if sweep_is_angle:
             self.sweep_angle = sweep
             self.sweep = length * math.tan(math.radians(sweep))
         else:

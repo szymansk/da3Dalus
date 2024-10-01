@@ -1,7 +1,10 @@
 from typing import Literal, Optional
 
+from pydantic.v1 import NonNegativeFloat
+
 from airplane.aircraft_topology.components import ServoInformation
 from airplane.aircraft_topology.components.Servo import Servo
+from airplane.types import Factor
 
 ServoPlacement = Literal["top", "bottom"]
 HingeType = Literal["middle", "top", "top_simple", "round_inside", "round_outside"]
@@ -28,18 +31,18 @@ class TrailingEdgeDevice:
 
 
     def __init__(self, name: str,
-                 rel_chord_root: Optional[float] = None,
-                 rel_chord_tip: Optional[float] = None,
+                 rel_chord_root: Optional[Factor] = None,
+                 rel_chord_tip: Optional[Factor] = None,
                  hinge_spacing: Optional[float] = None,
-                 side_spacing_root: Optional[float] = None,
-                 side_spacing_tip: Optional[float] = None,
+                 side_spacing_root: Optional[NonNegativeFloat] = None,
+                 side_spacing_tip: Optional[NonNegativeFloat] = None,
                  servo: Optional[Servo|int] = None,
                  servo_placement: ServoPlacement = 'top',
-                 rel_chord_servo_position: Optional[float] = None,
-                 rel_length_servo_position: Optional[float] = None,
-                 positive_deflection_deg: float = 25,
-                 negative_deflection_deg: float = 25,
-                 trailing_edge_offset_factor: float = 1.0,
+                 rel_chord_servo_position: Optional[Factor] = None,
+                 rel_length_servo_position: Optional[Factor] = None,
+                 positive_deflection_deg: NonNegativeFloat = 25,
+                 negative_deflection_deg: NonNegativeFloat = 25,
+                 trailing_edge_offset_factor: Factor = 1.0,
                  hinge_type: HingeType = "top"):
         self.name = name
         self.rel_chord_root = rel_chord_root

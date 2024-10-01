@@ -23,10 +23,10 @@ from airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevic
 from airplane.creator.wing.ted_sketch_creators import ted_sketch_creators
 
 import cq_plugins
+from airplane.types import Factor
 
 MOUNT_PLATE_THICKNESS = 1.0
 
-Factor = confloat(ge=0, le=1.0)
 WingSides = Annotated[
     Literal["LEFT", "RIGHT", "BOTH"],
     Field(description="Allowed values are 'LEFT', 'RIGHT' or 'BOTH'"),
@@ -360,7 +360,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
         f_bb = tip_glue_tongue.faces("<Y").val().BoundingBox()
 
         if f_bb.xlen*rel_tongue_length < glue_tongue_depth*3:
-            logging.warn(f"Cannot make a tongue for {segment-1} as the gap is too small. You can change the length of your segments")
+            logging.warn(f"Cannot make a tongue for segment '{segment-1}' as the gap is too small. You can change the length of your segments")
             return # if the tongue's base is to small we cannot make a tongue
         
         # cutting of 55° to the right
