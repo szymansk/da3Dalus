@@ -8,7 +8,8 @@ RUN source ${CONDA_INSTALL_DIR}/bin/activate \
     && conda install -y -c conda-forge  \
     shapely  \
     jsonpickle \
-    fastapi
+    fastapi \
+    pydantic
 
 
 RUN adduser --disabled-password --gecos "Default user" --uid 1000 cq

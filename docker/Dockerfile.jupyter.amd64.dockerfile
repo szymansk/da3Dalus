@@ -6,7 +6,12 @@ RUN adduser --disabled-password --gecos "Default user" --uid 1000 cq && \
     apt-get clean
 
 RUN mamba create -n cq -y python=3.10 && \
-    mamba install -n cq -y -c conda-forge -c cadquery OCP=7.7.2 vtk=9.2 matplotlib=3.5 shapely jsonpickle fastapi && \
+    mamba install -n cq -y -c conda-forge -c cadquery OCP=7.7.2 vtk=9.2 matplotlib=3.5  \
+    shapely  \
+    jsonpickle  \
+    fastapi \
+    pydantic \
+    && \
     mamba clean --all && \
     find / -type f -name '*.py[co]' -delete -o -type d -name __pycache__ -delete
 

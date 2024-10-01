@@ -4,13 +4,15 @@ import math
 
 import numpy as np
 
-from typing import Union, Literal, Tuple, cast as tcast, Optional
+from typing import Union, Literal, Tuple, cast as tcast, Optional, Annotated
+from pydantic import Field, confloat, BeforeValidator
 
 from math import cos, asin, degrees, radians
 
 from cadquery import Workplane, Plane, Sketch
 from cadquery.occ_impl.shapes import Edge
 from cadquery.occ_impl.geom import Vector
+from pydantic.v1 import NonNegativeInt
 
 from airplane.AbstractShapeCreator import AbstractShapeCreator
 from airplane.aircraft_topology.components import ServoInformation
@@ -24,20 +26,28 @@ import cq_plugins
 
 MOUNT_PLATE_THICKNESS = 1.0
 
+Factor = confloat(ge=0, le=1.0)
+WingSides = Annotated[
+    Literal["LEFT", "RIGHT", "BOTH"],
+    Field(description="Allowed values are 'LEFT', 'RIGHT' or 'BOTH'"),
+    BeforeValidator(lambda x: x.upper() if isinstance(x, str) else x),
+]
+
 class VaseModeWingCreator(AbstractShapeCreator):
     """
     """
 
     def __init__(self,
                  creator_id: str,
-                 wing_index: Union[str, int],
-                 leading_edge_offset_factor: float,
-                 trailing_edge_offset_factor: float,
-                 minimum_rib_angle: float = 45,
-                 wing_config: Optional[dict[int, WingConfiguration]] = None,
+                 wing_index: Union[str, NonNegativeInt],
+                 leading_edge_offset_factor: Factor,
+                 trailing_edge_offset_factor: Factor,
+                 minimum_rib_angle: Annotated[float, Field(ge=45.0, default=45)] = 45,
+                 wing_config: Optional[dict[NonNegativeInt, WingConfiguration]] = None,
                  printer_settings: Optional[Printer3dSettings] = None,
-                 servo_information: Optional[dict[int, ServoInformation]] = None,
-                 wing_side: Literal["LEFT", "RIGHT", "BOTH"] = "RIGHT", loglevel: int = logging.INFO):
+                 servo_information: Optional[dict[NonNegativeInt, ServoInformation]] = None,
+                 wing_side: WingSides = "RIGHT",
+                 loglevel: int = logging.INFO):
         """
         returns as shapes:
         creator_id -> the complete wing,
