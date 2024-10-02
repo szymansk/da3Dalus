@@ -4,6 +4,7 @@ from typing import Union, Literal
 import math
 import numpy as np
 from cadquery import Workplane, Plane
+from pydantic.v1 import NonNegativeInt
 
 from airplane.AbstractShapeCreator import AbstractShapeCreator
 from airplane.aircraft_topology.wing.WingConfiguration import WingConfiguration
@@ -14,13 +15,13 @@ class StandWingSegmentOnPrinterCreator(AbstractShapeCreator):
     Transforms the given segment shape to stand on the XY-plane
     """
     def __init__(self, creator_id: str,
-                 shape_dict: dict[int, str],
-                 wing_index: Union[str, int],
-                 wing_config: dict[int, WingConfiguration] = None,
+                 shape_dict: dict[NonNegativeInt, str],
+                 wing_index: Union[str, NonNegativeInt],
+                 wing_config: dict[NonNegativeInt, WingConfiguration] = None,
                  loglevel=logging.INFO):
-        self.shape_dict: dict[int, str] = shape_dict
-        self.wing_index: Union[str, int] = wing_index
-        self._wing_config: dict[int, WingConfiguration] = wing_config
+        self.shape_dict: dict[NonNegativeInt, str] = shape_dict
+        self.wing_index: Union[str, NonNegativeInt] = wing_index
+        self._wing_config: dict[NonNegativeInt, WingConfiguration] = wing_config
         super().__init__(creator_id, shapes_of_interest_keys=[*shape_dict.values()], loglevel=loglevel)
 
     def _create_shape(self, shapes_of_interest: dict[str, Workplane],

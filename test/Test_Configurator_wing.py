@@ -102,7 +102,7 @@ if __name__ == "__main__":
                                                            rotation_point_rel_chord=0),
                                                        length=500.,
                                                        sweep=10,
-                                                       sweepIsAngle=True,
+                                                       sweep_is_angle=True,
                                                        tip_airfoil=Airfoil(
                                                            chord=200.,
                                                            dihedral=-5,
@@ -114,7 +114,7 @@ if __name__ == "__main__":
                   spare_support_dimension_height=3,
                   spare_position_factor=0.25),
         ])
-    wing_config.add_segment(length=500, sweep=-10, sweepIsAngle= True,
+    wing_config.add_segment(length=500, sweep=-10, sweep_is_angle= True,
                             tip_airfoil=Airfoil(chord=150, dihedral=-5, incidence=0, rotation_point_rel_chord=0),
                             spare_list=[
                                 Spare(spare_support_dimension_width=3,
@@ -122,7 +122,7 @@ if __name__ == "__main__":
                                       # spare_mode="follow"
                                       ),
                             ])
-    wing_config.add_segment(length=500, sweep=10, sweepIsAngle= True,
+    wing_config.add_segment(length=500, sweep=10, sweep_is_angle= True,
                             tip_airfoil=Airfoil(chord=100, dihedral=0, incidence=0, rotation_point_rel_chord=0),
                             spare_list=[
                                 Spare(spare_support_dimension_width=3,

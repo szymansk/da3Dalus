@@ -1,11 +1,22 @@
+from pydantic import PositiveFloat, NonNegativeFloat
+
 from airplane.aircraft_topology.components.ComponentInformation import ComponentInformation
 from airplane.aircraft_topology.Position import Position
 
 class EngineInformation(ComponentInformation):
 
-    def __init__(self, down_thrust: float, side_thrust: float, position: Position,
-                 length: float, width: float, height: float, screw_hole_circle: float, mount_box_length: float,
-                 screw_din_diameter: float, screw_length: float, rot_x: float=0.0):
+    def __init__(self,
+                 down_thrust: float,
+                 side_thrust: float,
+                 position: Position,
+                 length: PositiveFloat,
+                 width: PositiveFloat,
+                 height: PositiveFloat,
+                 screw_hole_circle: PositiveFloat,
+                 mount_box_length: NonNegativeFloat,
+                 screw_din_diameter: NonNegativeFloat,
+                 screw_length: NonNegativeFloat,
+                 rot_x: float=0.0):
         self.engine_screw_length = screw_length
         self.engine_screw_din_diameter = screw_din_diameter
         self.engine_mount_box_length = mount_box_length
