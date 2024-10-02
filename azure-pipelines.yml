@@ -16,7 +16,7 @@ resources:
 
 variables:
   # Container registry service connection established during pipeline creation
-  dockerRegistryServiceConnection: '93576322-1d48-487d-907a-b18348168f79'
+  dockerRegistryServiceConnection: '8063d339-5165-4aa1-be6e-3b372c643f8a'
   imageRepository: 'cad-modelling-service'
   containerRegistry: 'crda3dalusdev.azurecr.io'
   dockerfilePath: '$(Build.SourcesDirectory)/docker/Dockerfile.client.amd64.dockerfile'
