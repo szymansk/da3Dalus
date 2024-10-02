@@ -28,8 +28,8 @@ USER cq
 WORKDIR /home/cq/app
 COPY --chown=cq:cq . .
 
-RUN cp ./docker/launch.sh .
-RUN chmod +x ./launch.sh
+RUN cp /home/cq/app/docker/launch.sh .
+RUN chmod +x /home/cq/app/launch.sh
 
 RUN mkdir -p tmp/exports
 
