@@ -17,7 +17,7 @@ resources:
 variables:
   # Container registry service connection established during pipeline creation
   dockerRegistryServiceConnection: '93576322-1d48-487d-907a-b18348168f79'
-  imageRepository: 'aero-cad-service'
+  imageRepository: 'cad-modelling-service'
   containerRegistry: 'crda3dalusdev.azurecr.io'
   dockerfilePath: '$(Build.SourcesDirectory)/docker/Dockerfile.client.amd64.dockerfile'
   tag: '$(Build.BuildId)'
