@@ -1,6 +1,6 @@
 import logging
 import math
-from typing import TypeVar, Any, List, Tuple, Literal, Union, Optional
+from typing import TypeVar, Any, List, Tuple, Union, Optional
 
 import numpy as np
 from cadquery import Workplane, Plane, Vector
@@ -8,13 +8,11 @@ from numpy import ndarray, dtype, generic
 from pydantic import PositiveFloat, PositiveInt, NonNegativeInt, NonNegativeFloat
 from scipy.spatial.transform import Rotation
 from scipy.interpolate import interp1d
-from websocket.tests.test_http import OptsList
 
 from airplane.aircraft_topology.wing.Spare import Spare
 from airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
 from airplane.aircraft_topology.wing.WingSegment import WingSegment
 from airplane.aircraft_topology.wing.Airfoil import Airfoil
-from airplane.aircraft_topology.wing.CoordinateSystem import CoordinateSystem
 from airplane.types import Factor, TipType, CoordinateSystemBase
 
 T = TypeVar("T", bound="WingConfiguration")
