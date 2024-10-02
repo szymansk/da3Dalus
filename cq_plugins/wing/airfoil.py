@@ -4,7 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import requests
 from cadquery import cq
-from scipy.interpolate import CubicSpline
 import unittest
 import urllib3
 import shapely.geometry as shp

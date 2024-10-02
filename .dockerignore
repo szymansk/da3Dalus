@@ -1,0 +1,14 @@
+docs
+conda
+run
+vscode
+test
+notebooks
+Readme.md
+Makefile
+docker-compose.yml
+docker-compose.dev.yml
+.gitignore
+azure-pipelines.yml
+exports
+docker/Dockerfile*
