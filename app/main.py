@@ -1,6 +1,6 @@
 
 from fastapi import FastAPI
-from app.api.v1.endpoints import example, aeroplane
+from app.api.v1.endpoints import example, aeroplane, health
 
 import uvicorn
 
@@ -21,7 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(example.router, prefix="/api/v1", tags=["example"])
+app.include_router(health.router, tags=["health"])
 app.include_router(aeroplane.router, prefix="/api/v1", tags=["aeroplane"])
 
 if __name__ == '__main__':
