@@ -1,16 +1,19 @@
 from typing import Literal, Tuple
 
 from cadquery import Vector
+from pydantic import NonNegativeFloat
+
+from airplane.types import Factor
 
 SpareMode = Literal["normal", "follow", "standard", "standard_backward", "orthogonal_backward"]
 
 class Spare:
     def __init__(self,
-                 spare_support_dimension_width:float,
-                 spare_support_dimension_height:float,
-                 spare_position_factor:float = None,
-                 spare_length: float = None,
-                 spare_start: float = 0.0,
+                 spare_support_dimension_width: NonNegativeFloat,
+                 spare_support_dimension_height: NonNegativeFloat,
+                 spare_position_factor: Factor = None,
+                 spare_length: NonNegativeFloat = None,
+                 spare_start: NonNegativeFloat = 0.0,
                  spare_vector: Tuple[float,float,float]= None,
                  spare_origin: Tuple[float,float,float] = None,
                  spare_mode: SpareMode = "standard"):

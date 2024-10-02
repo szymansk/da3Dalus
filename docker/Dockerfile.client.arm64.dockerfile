@@ -8,4 +8,5 @@ RUN source ${CONDA_INSTALL_DIR}/bin/activate \
     && conda install -y -c conda-forge  \
     shapely  \
     jsonpickle \
-    fastapi
+    fastapi \
+    pydantic

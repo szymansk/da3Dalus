@@ -1,18 +1,21 @@
 import logging
 import math
-from typing import TypeVar, Any, List, Tuple, Literal, Union
+from typing import TypeVar, Any, List, Tuple, Literal, Union, Optional
 
 import numpy as np
 from cadquery import Workplane, Plane, Vector
 from numpy import ndarray, dtype, generic
+from pydantic import PositiveFloat, PositiveInt, NonNegativeInt, NonNegativeFloat
 from scipy.spatial.transform import Rotation
 from scipy.interpolate import interp1d
+from websocket.tests.test_http import OptsList
 
 from airplane.aircraft_topology.wing.Spare import Spare
 from airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
-from airplane.aircraft_topology.wing.WingSegment import WingSegment, TipType
+from airplane.aircraft_topology.wing.WingSegment import WingSegment
 from airplane.aircraft_topology.wing.Airfoil import Airfoil
 from airplane.aircraft_topology.wing.CoordinateSystem import CoordinateSystem
+from airplane.types import Factor, TipType, CoordinateSystemBase
 
 T = TypeVar("T", bound="WingConfiguration")
 
@@ -24,20 +27,20 @@ class WingConfiguration:
     def __init__(self: T,
                  nose_pnt: tuple[float, float, float],
                  root_airfoil: Airfoil,
-                 length: float,
-                 sweep: float = 0,
-                 sweepIsAngle: bool=False,
-                 tip_airfoil: Airfoil = None,
-                 number_interpolation_points: int = None,
-                 spare_list: List[Spare] = None,
-                 trailing_edge_device: TrailingEdgeDevice = None) -> T:
+                 length: PositiveFloat,
+                 sweep: NonNegativeFloat = 0,
+                 sweep_is_angle: bool=False,
+                 tip_airfoil: Optional[Airfoil] = None,
+                 number_interpolation_points: Optional[PositiveInt] = None,
+                 spare_list: Optional[List[Spare]] = None,
+                 trailing_edge_device: Optional[TrailingEdgeDevice] = None) -> T:
         self.segments: Union[list[WingSegment], None] = None
         self.nose_pnt: tuple[float, float, float] = nose_pnt
 
         if tip_airfoil.airfoil is None:
             tip_airfoil.airfoil = root_airfoil.airfoil
 
-        root_segment = WingSegment(root_airfoil=root_airfoil, length=length, sweep=sweep, sweepIsAngle=sweepIsAngle, tip_airfoil=tip_airfoil,
+        root_segment = WingSegment(root_airfoil=root_airfoil, length=length, sweep=sweep, sweep_is_angle=sweep_is_angle, tip_airfoil=tip_airfoil,
                                    spare_list=spare_list, trailing_edge_device=trailing_edge_device,
                                    number_interpolation_points=number_interpolation_points, wing_segment_type='root')
 
@@ -84,10 +87,11 @@ class WingConfiguration:
 
     def add_tip_segment(self: T,
                         tip_type: TipType,
-                        length: float,
-                        sweep: float = 0,
-                        tip_airfoil: Airfoil = None,
-                        number_interpolation_points: int = None) -> None:
+                        length: PositiveFloat,
+                        sweep: NonNegativeFloat = 0,
+                        tip_airfoil: Optional[Airfoil] = None,
+                        number_interpolation_points: Optional[PositiveInt] = None
+                        ) -> None:
         tip_airfoil = tip_airfoil if tip_airfoil is not None else Airfoil()
 
         root_airfoil = Airfoil(airfoil=self.segments[-1].tip_airfoil.airfoil,
@@ -106,9 +110,15 @@ class WingConfiguration:
         self._wing_workplanes[segment_number] = self.get_wing_workplane(segment_number)
         self.segments[segment_number].tip_airfoil.set_airfoil_coordinate_system((self._wing_workplanes[segment_number].plane))
 
-    def add_segment(self: T, length: float, sweep: float = 0, sweepIsAngle=False, tip_airfoil: Airfoil = None,
-                    number_interpolation_points: int = None, spare_list: List[Spare] = None,
-                    trailing_edge_device: TrailingEdgeDevice = None) -> None:
+    def add_segment(self: T,
+                    length: PositiveFloat,
+                    sweep: NonNegativeFloat = 0,
+                    sweep_is_angle = False,
+                    tip_airfoil: Optional[Airfoil] = None,
+                    number_interpolation_points: Optional[PositiveInt] = None,
+                    spare_list: Optional[List[Spare]] = None,
+                    trailing_edge_device: Optional[TrailingEdgeDevice] = None
+                    ) -> None:
         if self.segments[-1].wing_segment_type == 'tip':
             raise ValueError(f"The previous wing segment cannot be a '{self.segments[-1].wing_segment_type}'")
 
@@ -120,7 +130,7 @@ class WingConfiguration:
         nip = number_interpolation_points if number_interpolation_points is not None else self.segments[
             0].number_interpolation_points
 
-        segment = WingSegment(root_airfoil=root_airfoil, length=length, sweep=sweep, sweepIsAngle=sweepIsAngle,
+        segment = WingSegment(root_airfoil=root_airfoil, length=length, sweep=sweep, sweep_is_angle=sweep_is_angle,
                               tip_airfoil=tip_airfoil,
                               spare_list=spare_list, trailing_edge_device=trailing_edge_device,
                               number_interpolation_points=nip, tip_type=None, wing_segment_type='segment')
@@ -209,7 +219,7 @@ class WingConfiguration:
                                                                                end_segment=segment_number,
                                                                                spare_position_factor=spare.spare_position_factor)
 
-    def get_wing_workplane(self: T, segment: int = 0) -> Workplane:
+    def get_wing_workplane(self: T, segment: NonNegativeInt = 0) -> Workplane:
         """
         Creating a workplane where the 0-point is located at the wing's nose point
         and the workplane is going through the wing. X is pointin from the nose to the tail,
@@ -285,7 +295,7 @@ class WingConfiguration:
         self._wing_workplanes[segment] = wp_plane
         return wp_plane
 
-    def get_airfoil_points(self: T, segment: int, isRoot: bool = False) -> list[tuple[float, float]]:
+    def get_airfoil_points(self: T, segment: NonNegativeInt, isRoot: bool = False) -> list[tuple[float, float]]:
         """
         Returns the airfoils points as list
         """
@@ -318,7 +328,7 @@ class WingConfiguration:
 
         return self._scaled_point_list[key]
 
-    def get_camber_y_at_rel_chord(self: T, segment: int, relative_chord:float, relative_length: float = 0.) -> Tuple[float, float]:
+    def get_camber_y_at_rel_chord(self: T, segment: NonNegativeInt, relative_chord: Factor, relative_length: float = 0.) -> Tuple[float, float]:
         upper,  lower = self.get_points_on_surface(segment, relative_chord=relative_chord, relative_length=relative_length)
         up_ar = np.asarray(upper.toTuple())
         low_ar  = np.asarray(lower.toTuple())
@@ -336,7 +346,7 @@ class WingConfiguration:
 
         return np.linalg.norm(up_ar - low_ar)/2, chord_to_lower_height
 
-    def get_trailing_edge_device_planes(self: T, start_segment: int, end_segment: int) -> Tuple[Plane, Plane]:
+    def get_trailing_edge_device_planes(self: T, start_segment: NonNegativeInt, end_segment: NonNegativeInt) -> Tuple[Plane, Plane]:
         start_seg = self.segments[start_segment]
         start_ted = start_seg.trailing_edge_device
         end_seg = self.segments[end_segment]
@@ -365,12 +375,14 @@ class WingConfiguration:
         matrix = np.vstack((matrix, [0, 0, 0, 1]))
         return matrix
 
-    def get_points_on_surface(self: T, segment:int,
-                              relative_chord:float,
+    def get_points_on_surface(self: T,
+                              segment: NonNegativeInt,
+                              relative_chord: Factor,
                               relative_length: float = 0.,
-                              coordinate_system: Literal["world","wing","root_airfoil","tip_airfoil"]="world",
+                              coordinate_system: CoordinateSystemBase = "world",
                               x_offset: float = .0,
-                              z_offset: float = .0) -> Tuple[Vector, Vector]:
+                              z_offset: float = .0
+                              ) -> Tuple[Vector, Vector]:
         """
         Returns the points on the surface (top, bottom) in the airfoil coordinate system.
         x points along the airfoil's center line, y points to the top, and z points along the nose

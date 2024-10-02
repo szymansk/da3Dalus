@@ -13,7 +13,11 @@ class InvalidRotationMatrixException(Exception):
 
 
 class CoordinateSystem:
-    def __init__(self, xDir:tuple[float,float,float] | List[float], yDir:tuple[float,float,float] | List[float], zDir:tuple[float,float,float] | List[float], origin:tuple[float,float,float] | List[float]):
+    def __init__(self,
+                 xDir: tuple[float,float,float] | List[float],
+                 yDir: tuple[float,float,float] | List[float],
+                 zDir: tuple[float,float,float] | List[float],
+                 origin: tuple[float,float,float] | List[float]):
         self.xDir = list(xDir)
         self.yDir = list(yDir)
         self.zDir = list(zDir)

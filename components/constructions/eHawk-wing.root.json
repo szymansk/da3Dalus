@@ -21,7 +21,7 @@
                     "creator_id": "winglet",
                     "$TYPE": "ConstructionStepNode"
                 },
-                "": {
+                "stand_wing_to_print": {
                     "successors": {},
                     "creator": {
                         "shape_dict": {
@@ -35,11 +35,11 @@
                         },
                         "wing_index": "main_wing",
                         "loglevel": 10,
-                        "creator_id": "",
+                        "creator_id": "stand_wing_to_print",
                         "$TYPE": "StandWingSegmentOnPrinterCreator"
                     },
                     "loglevel": 50,
-                    "creator_id": "",
+                    "creator_id": "stand_wing_to_print",
                     "$TYPE": "ConstructionStepNode"
                 }
             },

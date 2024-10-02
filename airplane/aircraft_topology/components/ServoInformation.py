@@ -1,6 +1,8 @@
 from typing import Optional
 
 from OCP.gp import *
+from pydantic import PositiveFloat
+from pydantic.v1 import NonNegativeFloat
 
 from airplane.aircraft_topology.components import Servo
 from airplane.aircraft_topology.components.ComponentInformation import ComponentInformation
@@ -33,8 +35,8 @@ class ServoInformation(ComponentInformation):
         pass
 
     def __init__(self,
-                 height: float, width: float, length: float,
-                 lever_length: float,
+                 height: PositiveFloat, width: PositiveFloat, length: PositiveFloat,
+                 lever_length: NonNegativeFloat,
                  rot_x: float = 0.0, rot_y: float = 0.0, rot_z: float = 0.0,
                  trans_x: float = 0.0, trans_y: float = 0.0, trans_z: float = 0.0,
                  servo: Optional[Servo] = None):

@@ -55,9 +55,6 @@ def get_json_model(*cad_objs, names=None, colors=None, alphas=None, **kwargs) ->
 
 def get_data(module_name, json_model) -> dict:
     """Return the data to send to the client, that includes the tesselated model."""
-
-    data = {}
-
     try:
         data = {
             'module_name': module_name,

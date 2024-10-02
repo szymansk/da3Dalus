@@ -1,4 +1,5 @@
 from OCP.gp import *
+from pydantic import PositiveFloat
 
 gp_DX: gp_Dir = gp_Dir(gp_XYZ(1, 0, 0))
 gp_DY: gp_Dir = gp_Dir(gp_XYZ(0, 1, 0))
@@ -6,7 +7,7 @@ gp_DZ: gp_Dir = gp_Dir(gp_XYZ(0, 0, 1))
 
 class ComponentInformation:
 
-    def __init__(self, height: float, width: float, length: float, rot_x: float = 0.0, rot_y: float = 0.0,
+    def __init__(self, height: PositiveFloat, width: PositiveFloat, length: PositiveFloat, rot_x: float = 0.0, rot_y: float = 0.0,
                  rot_z: float = 0.0, trans_x: float = 0.0, trans_y: float = 0.0, trans_z: float = 0.0):
 
         self.trans_z = trans_z

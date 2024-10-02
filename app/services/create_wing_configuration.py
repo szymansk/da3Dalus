@@ -38,7 +38,7 @@ def create_segment(segment_model: SegmentModel) -> dict | None:
     if segment_model is None:
         return None
     initialization_dict = segment_model.__dict__.copy()
-    initialization_dict['sweepIsAngle'] = False
+    initialization_dict['sweep_is_angle'] = False
     initialization_dict['tip_airfoil'] = create_airfoil(segment_model.tip_airfoil)
     initialization_dict['spare_list'] = *[create_spare(spare) for spare in segment_model.spare_list],
     initialization_dict['trailing_edge_device'] = create_trailing_edge_device(segment_model.trailing_edge_device)
@@ -90,7 +90,7 @@ def create_root_segment(wing_model: WingModel) -> dict:
         wing_model.nose_pnt[1],
         wing_model.nose_pnt[2]
     )
-    initialization_dict['sweepIsAngle'] = False
+    initialization_dict['sweep_is_angle'] = False
     initialization_dict['root_airfoil'] = create_airfoil(root_segment.root_airfoil)
     initialization_dict['tip_airfoil'] = create_airfoil(root_segment.tip_airfoil)
     initialization_dict['spare_list'] = [create_spare(spare) for spare in root_segment.spare_list]

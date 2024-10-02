@@ -1,6 +1,6 @@
 services:
   cq-client:
-    #image: szymanski2adesso/cadquery-client:2.4.0
+    image: szymanski2adesso/cadquery-client:2.4.0
     platform: linux/arm64
     build:
       context: ./docker
@@ -72,10 +72,11 @@ services:
       - ./:/home/cq/data
 
   aero-cad-service:
+    image: szymanski2adesso/cadquery-client:2.4.0
     platform: linux/arm64
     build:
       context: ./docker
-      dockerfile: Dockerfile.jupyter.arm64.dockerfile
+      dockerfile: Dockerfile.client.arm64.dockerfile
       cache_from:
         - szymanski2adesso/cadquery-client:2.4.0
     container_name: aero-cad-service
@@ -85,4 +86,4 @@ services:
     entrypoint: "/tmp/run.sh --s nope"
     tty: true
     ports:
-      - 8085:8000
+      - 8086:8000
