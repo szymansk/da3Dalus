@@ -6,6 +6,7 @@ trigger:
   branches:
     include:
     - master
+    - feature/buildpipeline
   tags:
     include:
     - '*'
@@ -40,7 +41,7 @@ stages:
         repository: $(imageRepository)
         dockerfile: $(dockerfilePath)
         containerRegistry: $(dockerRegistryServiceConnection)
-        ${{ if eq(variables['Build.SourceBranchName'], 'master') }}:
+        ${{ if eq(variables['Build.SourceBranchName'], 'main') }}:
           tags: |
             latest
         ${{ else }}:
