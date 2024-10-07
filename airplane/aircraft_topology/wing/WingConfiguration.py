@@ -27,7 +27,7 @@ class WingConfiguration:
                  root_airfoil: Airfoil,
                  length: PositiveFloat,
                  sweep: NonNegativeFloat = 0,
-                 sweep_is_angle: bool=False,
+                 sweep_is_angle: bool = False,
                  tip_airfoil: Optional[Airfoil] = None,
                  number_interpolation_points: Optional[PositiveInt] = None,
                  spare_list: Optional[List[Spare]] = None,
@@ -92,8 +92,12 @@ class WingConfiguration:
                         ) -> None:
         tip_airfoil = tip_airfoil if tip_airfoil is not None else Airfoil()
 
-        root_airfoil = Airfoil(airfoil=self.segments[-1].tip_airfoil.airfoil,
-                               chord=self.segments[-1].tip_airfoil.chord)
+        root_airfoil = Airfoil(airfoil= self.segments[-1].tip_airfoil.airfoil,
+                               chord=self.segments[-1].tip_airfoil.chord,
+                               dihedral_as_rotation_in_degrees=self.segments[-1].tip_airfoil.dihedral_as_rotation_in_degrees,
+                               dihedral_as_translation=self.segments[-1].tip_airfoil.dihedral_as_translation,
+                               incidence=self.segments[-1].tip_airfoil.incidence,
+                               rotation_point_rel_chord=self.segments[-1].tip_airfoil.rotation_point_rel_chord)
 
         tip_airfoil.airfoil = tip_airfoil.airfoil if tip_airfoil.airfoil is not None else root_airfoil.airfoil
         tip_airfoil.chord = tip_airfoil.chord if tip_airfoil.chord is not None else self.segments[-1].tip_airfoil.chord
@@ -121,7 +125,11 @@ class WingConfiguration:
             raise ValueError(f"The previous wing segment cannot be a '{self.segments[-1].wing_segment_type}'")
 
         root_airfoil = Airfoil(airfoil= self.segments[-1].tip_airfoil.airfoil,
-                               chord=self.segments[-1].tip_airfoil.chord)
+                               chord=self.segments[-1].tip_airfoil.chord,
+                               dihedral_as_rotation_in_degrees=self.segments[-1].tip_airfoil.dihedral_as_rotation_in_degrees,
+                               dihedral_as_translation=self.segments[-1].tip_airfoil.dihedral_as_translation,
+                               incidence=self.segments[-1].tip_airfoil.incidence,
+                               rotation_point_rel_chord=self.segments[-1].tip_airfoil.rotation_point_rel_chord)
 
         tip_airfoil.airfoil = tip_airfoil.airfoil if tip_airfoil.airfoil is not None else root_airfoil.airfoil
         tip_airfoil.chord = tip_airfoil.chord if tip_airfoil.chord is not None else self.segments[-1].tip_airfoil.chord
@@ -245,11 +253,11 @@ class WingConfiguration:
                 [0, 0, 1, 0],
                 [0, 0, 0, 1]]
             r_tip_incidence = self._create_homogeneous_rotation_matrix('y', airfoil_ref.incidence)
-            r_tip_dihedral = self._create_homogeneous_rotation_matrix('x', airfoil_ref.dihedral)
+            r_tip_dihedral = self._create_homogeneous_rotation_matrix('x', airfoil_ref.dihedral_as_rotation_in_degrees)
             t_sweep_length = [
                 [1, 0, 0, self.segments[seg].sweep],
                 [0, 1, 0, self.segments[seg].length],
-                [0, 0, 1, 0],
+                [0, 0, 1, self.segments[seg].root_airfoil.dihedral_as_translation],
                 [0, 0, 0, 1]]
             t_rel_chord = [
                 [1, 0, 0, airfoil_ref.rotation_point_rel_chord * airfoil_ref.chord],
@@ -270,7 +278,7 @@ class WingConfiguration:
             [0, 0, 1, 0],
             [0, 0, 0, 1]]
         r_root_incidence = self._create_homogeneous_rotation_matrix('y', self.segments[seg].root_airfoil.incidence)
-        r_root_dihedral = self._create_homogeneous_rotation_matrix('x', self.segments[seg].root_airfoil.dihedral)
+        r_root_dihedral = self._create_homogeneous_rotation_matrix('x', self.segments[seg].root_airfoil.dihedral_as_rotation_in_degrees)
         r_neg_rel_chord = [
             [1, 0, 0, -self.segments[seg].root_airfoil.rotation_point_rel_chord * self.segments[seg].root_airfoil.chord],
             [0, 1, 0, 0],

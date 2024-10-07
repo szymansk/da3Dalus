@@ -7,9 +7,9 @@ image::../images/images with text/Folie1.png[]
 
 The +WingConfiguration+ is important for the generation of an aeroplane. As it defines the shape and function of the wing, rudder, elevator or other wing like shapes.
 
-In general it consists of an ordered list of segments. The list always starts with one _root_-segment, followed by a number of _segment_s wich are followed by a number of _tip_-segments.
+In general it consists of an ordered list of segments. The list always starts with one _root_-segment, followed by a number of _segments_ which are followed by a number of _tip_-segments.
 
-For segments of type _segment_ or _tip_ the root airfoil and chord is equal to the previous segment's tip airfoil and chord. The dihedral and the incidence angle are always 0 for the root airfoil of a segment or tip.
+For segments of type _segment_ or _tip_ the root airfoil is equal to the previous segment's tip airfoil.
 
 [plantuml,"wing_setup",svg]
 .A wing consists of segments of +WingSegmentType+ _root_, _segment_ and _tip_.
@@ -40,7 +40,8 @@ class WingConfiguration {
 class Airfoil {
     airfoil: str
     chord: float
-    dihedral: float
+    dihedral_as_rotation_in_degrees: DihedralInDegrees,
+    dihedral_as_translation: float,
     incidence: float
     rotation_point_rel_chord: float
 }
@@ -152,7 +153,21 @@ The _airfoil_ (path to file) we use are in Selig-file format which describes a c
 image::../images/images with text/Folie2.png[Airfoil parameter description, id=airfoil_parameter]
 --
 
-Before lofting the airfoils they can be rotated around the _chord line_ which leads to a dihedral of the wing. Or it can be rotated around a _rotation point (defined) relative (to the) chord (length)_ we denote the chord length with latexmath:[C_{i}] and the relative chord factor with latexmath:[rc_{i} \in (0,1)], which is called the _angle of incidence (AoI)_ denoted with latexmath:[\iota_{i}]. See figures xref:airfoil_parameter[xrefstyle=short], xref:airfoil_rot0[xrefstyle=short] and xref:airfoil_rot03[xrefstyle=short].
+#### dihedral
+Before lofting the segments airfoils they can be rotated around the _chord line_ which leads to a dihedral of the wing (_dihedral_as_rotation_in_degrees_ latexmath:[\delta_{i}]).
+
+A dihedral can also be obtained by translating the tip airfoil by _dihedral_as_translation_ latexmath:[D_{i}]). We bound this parameter to the root airfoil, which is not correct, as it does not change the segments root airfoil. However, we did it in alignment  to the _dihedral_as_rotation_in_degrees_ parameter.
+
+For some we put some constraints on those two parameters. We can only use one at a time. If we use _dihedral_as_translation_ then latexmath:[rc_{i} = 0.25].
+
+_Why do we constrain them?_ As we use CPACS we need to be able to recalculate the set of parameters from a transformation matrix. They are only unique if we constrain them like this.
+
+_Why do we need both?_ The rotational dihedral rotates the airfoils plane. This is very useful to design winglets. The translational dihedral keeps the airfoil plane unrotated. This keeps the airfoil as a true cut through the wing parallel to the xz-plane, which is needed for some aerodynamic calculations (e.g. as in aerosandbox).
+
+#### incidence angle or twist
+It can be rotated around a _rotation point (defined) relative (to the) chord (length)_, which is called the _angle of incidence (AoI)_ denoted with latexmath:[\iota_{i}]. We denote the chord length with latexmath:[C_{i}] and the relative chord factor with latexmath:[rc_{i} \in (0,1)]. In some applications this also called twist.
+
+See figures xref:airfoil_parameter[xrefstyle=short], xref:airfoil_rot0[xrefstyle=short] and xref:airfoil_rot03[xrefstyle=short].
 
 [.clearfix]
 --
@@ -204,7 +219,7 @@ NOTE: Be aware that the tip aifoil of segment i is equal to the root airfoil of 
 
 latexmath:[H_0 = T(C_{0} rc_{0}, 0,0)\cdot R_x(\delta_{0})\cdot R_y(\iota_{0}) \cdot T(-C_{0} r_{0}, 0,0)]
 
-latexmath:[H_i = T(C_{i} rc_{i}, 0, 0)\cdot T(S_{i-1}, L_{i-1},0) \cdot R_x(\delta_i) \cdot R_y(\iota_i) \cdot T(-C_{i} rc_{i}, 0,0)]
+latexmath:[H_i = T(C_{i} rc_{i}, 0, 0)\cdot T(S_{i-1}, L_{i-1}, D_{i-1}) \cdot R_x(\delta_i) \cdot R_y(\iota_i) \cdot T(-C_{i} rc_{i}, 0,0)]
 
 latexmath:[C_N = H_0\cdot\prod^N_{n=1}H_n],
 
@@ -245,7 +260,7 @@ latexmath:[H_i = \left[
 \begin{matrix}
 \cos{\left(\iota_i \right)} & 0 &\sin{\left(\iota_i \right)}  & - C_i rc_i \cos{\left(\iota_i \right)} + C_i rc_i + S_{i-1}\\
 \sin{\left(\delta_i \right)} \sin{\left(\iota_i \right)} & \cos{\left(\delta_i \right)} & - \sin{\left(\delta_i \right)} \cos{\left(\iota_i \right)} & - C_i rc_i \sin{\left(\delta_i \right)} \sin{\left(\iota_i \right)} + L_{i-1}\\
-- \sin{\left(\iota_i \right)} \cos{\left(\delta_i \right)} & \sin{\left(\delta_i \right)} & \cos{\left(\delta_i \right)} \cos{\left(i \right)} & C_i rc_i \sin{\left(\iota_i \right)} \cos{\left(\delta_i \right)}\\
+- \sin{\left(\iota_i \right)} \cos{\left(\delta_i \right)} & \sin{\left(\delta_i \right)} & \cos{\left(\delta_i \right)} \cos{\left(\iota_i \right)} & C_i rc_i \sin{\left(\iota_i \right)} \cos{\left(\delta_i \right) + D_{i-1}}\\
 0 & 0 & 0 & 1
 \end{matrix}
 \right\]]
@@ -265,13 +280,22 @@ Incident angle in radians:
 
 latexmath:[ \iota_i = atan2(\sin(\iota_i), \cos(\iota_i)) = atan2(H_i[0,2\], H_i[0,0\])]
 
-Dihedral in radians:
+The _dihedral_ can be given as a rotation around the x-axis latexmath:[\delta_i] or (exclusive or) a translation along the z-axis latexmath:[D_i]  (aerosandbox style)
+
+Case A: dihedral in radians as rotation around the x-axis latexmath:[D_{i-1}=0 \wedge \delta_i \neq 0]:
 
 latexmath:[ \delta_i = atan2(\sin(\delta_i), \cos(\delta_i)) = atan2(H_i[2,1\], H_i[1,1\])]
 
-Relative rotation point of incidence angle:
-
+From this we can derive the relative chord rotation point of incidence angle:
 latexmath:[ rc_i = H_i[3,3\]/C_i \sin{\left(\iota_i \right)} \cos{\left(\delta_i \right)}]
+
+Case B: dihedral in length as translation along the z-axis latexmath:[D_{i-1} \neq 0 \wedge \delta_i = 0 \wedge rc_i=0.25] (quater chord)
+
+_We need to set the incidence rotation point to a fixed value as it is not distinguishable if the z translation of the final transformation comes from the dihedral rotation around the x axis or  a dihedral translation._
+
+latexmath:[D_{i-1} = H_i[3,3\] - 0.25 \cdot C_i \sin{\left(\iota_i \right)}]
+
+latexmath:[ rc_i = 0.25]
 
 Segment length in length units:
 

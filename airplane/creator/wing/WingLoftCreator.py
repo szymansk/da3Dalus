@@ -31,12 +31,12 @@ class WingLoftCreator(AbstractShapeCreator):
             .wing_root_segment(
                 root_airfoil=wing_config.segments[0].root_airfoil.airfoil,
                 root_chord=wing_config.segments[0].root_airfoil.chord,
-                root_dihedral=wing_config.segments[0].root_airfoil.dihedral,
+                root_dihedral=wing_config.segments[0].root_airfoil.dihedral_as_rotation_in_degrees,
                 root_incidence=wing_config.segments[0].root_airfoil.incidence,
                 length=wing_config.segments[0].length,
                 sweep=wing_config.segments[0].sweep,
                 tip_chord=wing_config.segments[0].tip_airfoil.chord,
-                tip_dihedral=wing_config.segments[0].tip_airfoil.dihedral,
+                tip_dihedral=wing_config.segments[0].tip_airfoil.dihedral_as_rotation_in_degrees,
                 tip_incidence=wing_config.segments[0].tip_airfoil.incidence,
                 tip_airfoil=wing_config.segments[0].tip_airfoil.airfoil,
                 offset=self.offset))
@@ -47,7 +47,7 @@ class WingLoftCreator(AbstractShapeCreator):
                 length=segment_config.length,
                 sweep=segment_config.sweep,
                 tip_chord=segment_config.tip_airfoil.chord,
-                tip_dihedral=segment_config.tip_airfoil.dihedral,
+                tip_dihedral=segment_config.tip_airfoil.dihedral_as_rotation_in_degrees,
                 tip_incidence=segment_config.tip_airfoil.incidence,
                 tip_airfoil=segment_config.tip_airfoil.airfoil,
                 offset=self.offset)

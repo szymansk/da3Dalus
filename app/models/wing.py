@@ -1,5 +1,5 @@
 from typing import List, Optional, Literal
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator, PositiveFloat, NonNegativeFloat
 
 from app.models.Servo import Servo
 
@@ -34,10 +34,31 @@ class Spare(BaseModel):
 
 class Airfoil(BaseModel):
     airfoil: str
-    chord: float
-    dihedral: float
-    incidence: float
-    rotation_point_rel_chord: float
+    chord: PositiveFloat
+    dihedral_as_rotation_in_degrees: Optional[NonNegativeFloat] = 0
+    dihedral_as_translation: Optional[NonNegativeFloat] = 0
+    incidence: Optional[float] = 0
+    rotation_point_rel_chord: Optional[NonNegativeFloat] = 0.25
+
+    @model_validator(mode='after')
+    def check_dihedral_fields(self):
+        dihedral_rotation = self.dihedral_as_rotation_in_degrees
+        dihedral_translation = self.dihedral_as_translation
+        rotation_point_rel_chord = self.rotation_point_rel_chord
+
+        # Ensure that exactly one of the dihedral parameters is zero
+        if dihedral_rotation != 0 and dihedral_translation != 0:
+            raise ValueError(
+                "Exactly one of 'dihedral_as_rotation_in_degrees' or 'dihedral_as_translation' must be zero."
+            )
+
+        # If dihedral_translation > 0, then rotation_point_rel_chord must be 0.25
+        if dihedral_translation > 0 and rotation_point_rel_chord != 0.25:
+            raise ValueError(
+                "When 'dihedral_as_translation' > 0, 'rotation_point_rel_chord' must be 0.25 (quater chord)."
+            )
+
+        return self
 
 
 class Segment(BaseModel):

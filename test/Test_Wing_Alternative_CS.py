@@ -174,8 +174,8 @@ if __name__ == "__main__":
     #### WING ####
     airfoil = "../components/airfoils/naca2415.dat"
     wing_config = WingConfiguration(nose_pnt=(192.113, 0, -44.5),
-                                    root_airfoil=Airfoil(airfoil=airfoil, chord=183, dihedral=3.7, incidence=0),
-                                    length=50, sweep=0, tip_airfoil=Airfoil(chord=183, dihedral=0, incidence=0),
+                                    root_airfoil=Airfoil(airfoil=airfoil, chord=183, dihedral_as_rotation_in_degrees=3.7, incidence=0),
+                                    length=50, sweep=0, tip_airfoil=Airfoil(chord=183, dihedral_as_rotation_in_degrees=0, incidence=0),
                                     spare_list=[
                                         Spare(spare_support_dimension_width=6,
                                               spare_support_dimension_height=6,
@@ -234,23 +234,23 @@ if __name__ == "__main__":
                                                                              trailing_edge_offset_factor=1.4,
                                                                              hinge_type="top"))
 
-    wing_config.add_segment(length=100, sweep=10, tip_airfoil=Airfoil(chord=183 - 20, dihedral=5), spare_list=[
+    wing_config.add_segment(length=100, sweep=10, tip_airfoil=Airfoil(chord=183 - 20, dihedral_as_rotation_in_degrees=5), spare_list=[
         Spare(spare_support_dimension_width=6,
               spare_support_dimension_height=6,
               spare_mode="follow")])
 
-    wing_config.add_segment(length=50, sweep=10, tip_airfoil=Airfoil(chord=183 - 40, dihedral=10), spare_list=[
+    wing_config.add_segment(length=50, sweep=10, tip_airfoil=Airfoil(chord=183 - 40, dihedral_as_rotation_in_degrees=10), spare_list=[
         Spare(spare_support_dimension_width=3,
               spare_support_dimension_height=3,
               spare_mode="follow")])
-    wing_config.add_segment(length=50, sweep=10, tip_airfoil=Airfoil(chord=183 - 80, dihedral=5), spare_list=[
+    wing_config.add_segment(length=50, sweep=10, tip_airfoil=Airfoil(chord=183 - 80, dihedral_as_rotation_in_degrees=5), spare_list=[
         Spare(spare_support_dimension_width=3,
               spare_support_dimension_height=3,
               spare_mode="follow")])
 
     wing_config.add_tip_segment(length=printer_wall_thickness,
                                 sweep=1,
-                                tip_airfoil=Airfoil(airfoil="../components/airfoils/nacam2.dat", chord=100, dihedral=0,
+                                tip_airfoil=Airfoil(airfoil="../components/airfoils/nacam2.dat", chord=100, dihedral_as_rotation_in_degrees=0,
                                                     incidence=0),
                                 number_interpolation_points=35,
                                 tip_type="flat"
@@ -258,8 +258,8 @@ if __name__ == "__main__":
     ##### WING_2 ####
     wing_config_2 = WingConfiguration(nose_pnt=(0, 0, 0),
                                       root_airfoil=Airfoil(airfoil="../components/airfoils/a18.dat", chord=150,
-                                                           dihedral=10, incidence=3), length=50, sweep=0,
-                                      tip_airfoil=Airfoil(chord=150, dihedral=0, incidence=0),
+                                                           dihedral_as_rotation_in_degrees=10, incidence=3), length=50, sweep=0,
+                                      tip_airfoil=Airfoil(chord=150, dihedral_as_rotation_in_degrees=0, incidence=0),
                                       number_interpolation_points=301, spare_list=[
             Spare(spare_support_dimension_width=3,
                   spare_support_dimension_height=3,
@@ -314,14 +314,14 @@ if __name__ == "__main__":
     ##### WING_3 ####
     wing_config_3 = WingConfiguration(nose_pnt=(-250, 0, 0),
                                       root_airfoil=Airfoil(airfoil="../components/airfoils/naca2415.dat", chord=150,
-                                                           dihedral=0, incidence=3), length=50, sweep=0,
-                                      tip_airfoil=Airfoil(chord=150, dihedral=0, incidence=2), spare_list=[
+                                                           dihedral_as_rotation_in_degrees=0, incidence=3), length=50, sweep=0,
+                                      tip_airfoil=Airfoil(chord=150, dihedral_as_rotation_in_degrees=0, incidence=2), spare_list=[
             Spare(spare_support_dimension_width=3,
                   spare_support_dimension_height=3,
                   spare_vector=None,  # (0, 550, 0),
                   spare_origin=(150 * 0.33, 0, 5))
         ])
-    wing_config_3.add_segment(length=250, sweep=25, tip_airfoil=Airfoil(chord=125, dihedral=3), spare_list=[
+    wing_config_3.add_segment(length=250, sweep=25, tip_airfoil=Airfoil(chord=125, dihedral_as_rotation_in_degrees=3), spare_list=[
         Spare(spare_support_dimension_width=3,
               spare_support_dimension_height=3,
               spare_mode="follow")], trailing_edge_device=TrailingEdgeDevice(name="flaps", rel_chord_root=0.9,
@@ -370,8 +370,8 @@ if __name__ == "__main__":
     ##### WING_4 ####
     wing_config_4 = WingConfiguration(nose_pnt=(-450, 0, 0),
                                       root_airfoil=Airfoil(airfoil="../components/airfoils/naca2415.dat", chord=150,
-                                                           dihedral=10, incidence=5), length=50, sweep=5,
-                                      tip_airfoil=Airfoil(chord=145, dihedral=0, incidence=0), spare_list=[
+                                                           dihedral_as_rotation_in_degrees=10, incidence=5), length=50, sweep=5,
+                                      tip_airfoil=Airfoil(chord=145, dihedral_as_rotation_in_degrees=0, incidence=0), spare_list=[
             Spare(spare_support_dimension_width=3,
                   spare_support_dimension_height=3,
                   spare_position_factor=0.25
@@ -413,8 +413,8 @@ if __name__ == "__main__":
     rudder_airfoil = "../components/airfoils/naca0008.dat"
     elevator_config = WingConfiguration(nose_pnt=(593.573, 0, 31.608),
                                         root_airfoil=Airfoil(airfoil=rudder_airfoil, chord=122,
-                                                             dihedral=0, incidence=0), length=165, sweep=29,
-                                        tip_airfoil=Airfoil(chord=76, dihedral=0, incidence=0), spare_list=[
+                                                             dihedral_as_rotation_in_degrees=0, incidence=0), length=165, sweep=29,
+                                        tip_airfoil=Airfoil(chord=76, dihedral_as_rotation_in_degrees=0, incidence=0), spare_list=[
             Spare(spare_support_dimension_width=2,
                   spare_support_dimension_height=2,
                   spare_vector=(0, 1, 0),
