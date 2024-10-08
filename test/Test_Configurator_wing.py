@@ -64,6 +64,13 @@ if __name__ == "__main__":
     root_node = ConstructionRootNode(creator_id="configurator-test-wing")
     pwd = os.path.curdir
 
+    # wing_loft = ConstructionStepNode(
+    #     WingLoftCreator(creator_id="wing_loft",
+    #                     wing_index="main_wing",
+    #                     wing_side="BOTH",
+    #                     loglevel=logging.DEBUG))
+    # root_node.append(wing_loft)
+
     vase_wing_loft = ConstructionStepNode(
         VaseModeWingCreator(creator_id="vase_wing",
                             wing_index="main_wing",
@@ -75,11 +82,12 @@ if __name__ == "__main__":
     root_node.append(vase_wing_loft)
 
 
+
     aircraft_step_export_node = ConstructionStepNode(
         ExportToStepCreator(Path(f"{root_node.identifier}").stem,
                             file_path="../exports",
-                            shapes_to_export=[vase_wing_loft.creator_id
-                                              ]))
+                            shapes_to_export=[vase_wing_loft.creator_id]
+                            ))
     root_node.append(aircraft_step_export_node)
 
 

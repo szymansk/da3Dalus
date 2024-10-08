@@ -587,7 +587,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 tip_incidence=wing_config.segments[segment].tip_airfoil.incidence,
                 tip_airfoil=wing_config.segments[segment].tip_airfoil.airfoil,
                 offset=offset,
-                number_interpolation_points=wing_config.segments[0].number_interpolation_points,
+                number_interpolation_points=wing_config.segments[segment].number_interpolation_points,
                 root_plane=root_plane,
                 tip_plane=tip_plane
             ))

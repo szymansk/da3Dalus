@@ -24,25 +24,36 @@ class WingLoftCreator(AbstractShapeCreator):
                       input_shapes: dict[str, Workplane],
                       **kwargs) -> dict[str, Workplane]:
         logging.info(f"wing loft from configuration --> '{self.identifier}'")
-
         wing_config: WingConfiguration = self._wing_config[self.wing_index]
+
+        segment: int = 0
+        root_plane = wing_config.get_wing_workplane(segment).plane.rotated((90,0,0))
+        tip_plane = wing_config.get_wing_workplane(segment+1).plane.rotated((90,0,0))
+
         right_wing: Workplane = (
             Workplane('XZ')
             .wing_root_segment(
-                root_airfoil=wing_config.segments[0].root_airfoil.airfoil,
-                root_chord=wing_config.segments[0].root_airfoil.chord,
-                root_dihedral=wing_config.segments[0].root_airfoil.dihedral_as_rotation_in_degrees,
-                root_incidence=wing_config.segments[0].root_airfoil.incidence,
-                length=wing_config.segments[0].length,
-                sweep=wing_config.segments[0].sweep,
-                tip_chord=wing_config.segments[0].tip_airfoil.chord,
-                tip_dihedral=wing_config.segments[0].tip_airfoil.dihedral_as_rotation_in_degrees,
-                tip_incidence=wing_config.segments[0].tip_airfoil.incidence,
-                tip_airfoil=wing_config.segments[0].tip_airfoil.airfoil,
-                offset=self.offset))
+                root_airfoil=wing_config.segments[segment].root_airfoil.airfoil,
+                root_chord=wing_config.segments[segment].root_airfoil.chord,
+                root_dihedral=wing_config.segments[segment].root_airfoil.dihedral_as_rotation_in_degrees,
+                root_incidence=wing_config.segments[segment].root_airfoil.incidence,
+                length=wing_config.segments[segment].length,
+                sweep=wing_config.segments[segment].sweep,
+                tip_chord=wing_config.segments[segment].tip_airfoil.chord,
+                tip_dihedral=wing_config.segments[segment].tip_airfoil.dihedral_as_rotation_in_degrees,
+                tip_incidence=wing_config.segments[segment].tip_airfoil.incidence,
+                tip_airfoil=wing_config.segments[segment].tip_airfoil.airfoil,
+                offset=self.offset,
+                number_interpolation_points=wing_config.segments[segment].number_interpolation_points,
+                root_plane=root_plane,
+                tip_plane=tip_plane
+            ))
 
         current: Workplane = right_wing
-        for segment_config in wing_config.segments[1:]:
+        for idx, segment_config in enumerate(wing_config.segments[1:]):
+            root_plane = wing_config.get_wing_workplane(idx + 1).plane.rotated((90, 0, 0))
+            tip_plane = wing_config.get_wing_workplane(idx + 2).plane.rotated((90, 0, 0))
+
             current = current.wing_segment(
                 length=segment_config.length,
                 sweep=segment_config.sweep,
@@ -50,7 +61,11 @@ class WingLoftCreator(AbstractShapeCreator):
                 tip_dihedral=segment_config.tip_airfoil.dihedral_as_rotation_in_degrees,
                 tip_incidence=segment_config.tip_airfoil.incidence,
                 tip_airfoil=segment_config.tip_airfoil.airfoil,
-                offset=self.offset)
+                offset=self.offset,
+                number_interpolation_points=segment_config.number_interpolation_points,
+                root_plane=root_plane,
+                tip_plane=tip_plane
+            )
             right_wing.add(current)
 
         #bb_right = right_wing.findSolid().BoundingBox(tolerance=1e-3)
