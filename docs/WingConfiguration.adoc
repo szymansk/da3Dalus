@@ -3,7 +3,7 @@
 
 NOTE: can be found in module _airplane.aircraft_topology.wing_
 
-image::../images/images with text/Folie1.png[]
+image::./images/images with text/Folie1.png[]
 
 The +WingConfiguration+ is important for the generation of an aeroplane. As it defines the shape and function of the wing, rudder, elevator or other wing like shapes.
 
@@ -150,7 +150,7 @@ The _airfoil_ (path to file) we use are in Selig-file format which describes a c
 [.clearfix]
 --
 .Airfoil parameter description
-image::../images/images with text/Folie2.png[Airfoil parameter description, id=airfoil_parameter]
+image::./images/images with text/Folie2.png[Airfoil parameter description, id=airfoil_parameter]
 --
 
 #### dihedral
@@ -173,16 +173,16 @@ See figures xref:airfoil_parameter[xrefstyle=short], xref:airfoil_rot0[xrefstyle
 --
 [.left]
 .Rotation point at 0.0 relative chord.
-image::../images/images with text/Folie3.png[Airfoil parameter description, 450, scaledwidth="75%", id=airfoil_rot0]
+image::./images/images with text/Folie3.png[Airfoil parameter description, 450, scaledwidth="75%", id=airfoil_rot0]
 [.left]
 .Rotation point at 0.3 relative chord (same AoI)
-image::../images/images with text/Folie4.png[Airfoil parameter description, 450, scaledwidth="75%", id=airfoil_rot03]
+image::./images/images with text/Folie4.png[Airfoil parameter description, 450, scaledwidth="75%", id=airfoil_rot03]
 --
 
 An other parameter wich belongs to the airfoil is the _angle of dihedral_ latexmath:[\delta_{i}], which defines a rotation around the chord line as shown in figure xref:airfoil_parameter_dihedral[xrefstyle=short].
 
 .Dihedral definition
-image::../images/images with text/Folie5.png[Airfoil parameter description, id=airfoil_parameter_dihedral]
+image::./images/images with text/Folie5.png[Airfoil parameter description, id=airfoil_parameter_dihedral]
 
 === Wing Segment
 
@@ -197,7 +197,7 @@ The offset along the z-axis is implicitly defined by the _angle of dihedral_.
 For ruled lofting we also definded the _number of interpolation points_ parameter, which helps to loft airfoils with different number of interpolation points. This is not a regular segment parameter as it only tries to overcome short comings from the underlying CAD-kernel implementation.
 
 .Sweep definition
-image::../images/images with text/Folie6.png[Airfoil parameter description, id=airfoil_parameter_sweep]
+image::./images/images with text/Folie6.png[Airfoil parameter description, id=airfoil_parameter_sweep]
 
 ==== Wing Segment Types
 
@@ -312,7 +312,7 @@ latexmath:[s_{i-1} = atan2\left({S_{i-1}, L_{i-1}}\right)]
 
 ==== Spare
 .The main spare.
-image::../images/images with text/Folie7.png[spare, id=spare]
+image::./images/images with text/Folie7.png[spare, id=spare]
 
 A spare is a construction that runs lengthwise through the wing. We can add arbitrary spares to a wing. However, the spare with index 0, will always be treated as the main spare and has a major impact on the construction of the wing. In general this spare takes all the load of the wing and to reduce wing twist it should be placed in the area of the largest lift, which is in normal flight around the point of the maximum thickness, which is in most cases between 25%-30% of the chord length. You can define this placement via the _spare position factor_, the default value is 0.25.
 
@@ -348,7 +348,7 @@ This mode is similar to the previous one. However, the spare will be orthogonal 
 
 ==== Trailing Edge Device
 .A trailing edge device, here an aileron.
-image::../images/images with text/Folie8.png[spare, id=spare]
+image::./images/images with text/Folie8.png[spare, id=spare]
 
 A _trailing edge device (ted)_ is usually used for flaps, rudder, elevators or ailerons. It is used to control the planes lift (flaps) or rotations (yaw, pitch, role), depending on the wing's function. Usually we give a ted a unique _name_, which in best practice also tells us it's function.
 
@@ -372,7 +372,7 @@ The _name_ is used to collect all TEDs with the same name. The first TED will de
 
 ==== Servo
 .A parameterized servo.
-image::../images/images with text/Folie9.png[spare, id=servo]
+image::./images/images with text/Folie9.png[spare, id=servo]
 The servo is defined in conjunction of a trailing edged device as you usually need an actuator to make it move. The placement of the servo an the length and placement of the horns/levers can be crucial for the performance of the ted.
 
 The position inside of the wing is determined by it's _rel(ative) chord servo position_ and _rel(ative wing) length servo position_. This gives the position of the servo's zero coordinates within the wing. The _servo placement_ 'top' defines that the servo lays on the upper camber surface and 'bottom' on the lower camber surface.
