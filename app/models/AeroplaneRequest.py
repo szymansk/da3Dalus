@@ -144,7 +144,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "root_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 162.0,
-                                    "dihedral": 1,
+                                    "dihedral_as_rotation_in_degrees": 1,
                                     "incidence": 0,
                                     "rotation_point_rel_chord": 0.3
                                 },
@@ -153,7 +153,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "tip_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 162.0,
-                                    "dihedral": 0,
+                                    "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -215,7 +215,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "root_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 162.0,
-                                    "dihedral": 0,
+                                    "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -224,7 +224,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "tip_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 157,
-                                    "dihedral": 0,
+                                    "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -289,7 +289,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "root_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 157,
-                                    "dihedral": 0,
+                                    "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -298,7 +298,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "tip_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 132.88888888888889,
-                                    "dihedral": 0,
+                                    "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -343,7 +343,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "root_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 132.88888888888889,
-                                    "dihedral": 0,
+                                    "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -352,7 +352,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "tip_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 123.05555555555554,
-                                    "dihedral": 0,
+                                    "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -389,7 +389,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "root_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 123.05555555555554,
-                                    "dihedral": 0,
+                                    "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -398,7 +398,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "tip_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 105.21777777777777,
-                                    "dihedral": 0,
+                                    "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -435,7 +435,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "root_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 105.21777777777777,
-                                    "dihedral": 0,
+                                    "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -444,7 +444,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "tip_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 90,
-                                    "dihedral": 0,
+                                    "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -481,7 +481,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "root_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 90,
-                                    "dihedral": 0,
+                                    "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -490,7 +490,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "tip_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 79.5,
-                                    "dihedral": 5,
+                                    "dihedral_as_rotation_in_degrees": 5,
                                     "incidence": -0.5,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -519,7 +519,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "root_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 79.5,
-                                    "dihedral": 0,
+                                    "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -528,7 +528,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "tip_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 71.0,
-                                    "dihedral": 5,
+                                    "dihedral_as_rotation_in_degrees": 5,
                                     "incidence": -0.5,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -539,7 +539,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "root_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 71.0,
-                                    "dihedral": 0,
+                                    "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -548,7 +548,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "tip_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 62.0,
-                                    "dihedral": 5,
+                                    "dihedral_as_rotation_in_degrees": 5,
                                     "incidence": -0.5,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -559,7 +559,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "root_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 62.0,
-                                    "dihedral": 0,
+                                    "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -568,7 +568,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "tip_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 52.5,
-                                    "dihedral": 10,
+                                    "dihedral_as_rotation_in_degrees": 10,
                                     "incidence": -0.5,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -579,7 +579,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "root_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 52.5,
-                                    "dihedral": 0,
+                                    "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -588,7 +588,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "tip_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 40.5,
-                                    "dihedral": 15,
+                                    "dihedral_as_rotation_in_degrees": 15,
                                     "incidence": -0.5,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -599,7 +599,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "root_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 40.5,
-                                    "dihedral": 0,
+                                    "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
                                     "rotation_point_rel_chord": 0
                                 },
@@ -608,7 +608,7 @@ class CreateAeroPlaneRequest(BaseModel):
                                 "tip_airfoil": {
                                     "airfoil": "./components/airfoils/rg15.dat",
                                     "chord": 24.0,
-                                    "dihedral": 0,
+                                    "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": -0.5,
                                     "rotation_point_rel_chord": 0
                                 },

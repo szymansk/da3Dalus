@@ -193,12 +193,12 @@ if __name__ == "__main__":
         number_interpolation_points=201,
         root_airfoil=Airfoil(airfoil=airfoil,
                              chord=162.,
-                             dihedral=1,
+                             dihedral_as_rotation_in_degrees=1,
                              incidence=0,
                              rotation_point_rel_chord=0.3),
         length=20.,
         sweep=0,
-        tip_airfoil=Airfoil(chord=162., dihedral=0, incidence=0),
+        tip_airfoil=Airfoil(chord=162., dihedral_as_rotation_in_degrees=0, incidence=0),
         spare_list=[
             Spare(spare_support_dimension_width=4.42,
                   spare_support_dimension_height=4.42,
@@ -217,7 +217,7 @@ if __name__ == "__main__":
 
     # segment 1
     wing_config.add_segment(length=200, sweep=2.5,
-                            tip_airfoil=Airfoil(chord=157, dihedral=0, incidence=0, rotation_point_rel_chord=0),
+                            tip_airfoil=Airfoil(chord=157, dihedral_as_rotation_in_degrees=0, incidence=0, rotation_point_rel_chord=0),
                             spare_list=[
                                 Spare(spare_support_dimension_width=4.42,
                                       spare_support_dimension_height=4.42,
@@ -245,7 +245,7 @@ if __name__ == "__main__":
     wing_config.add_segment(
         length=l_middle,
         sweep=s_middle,
-        tip_airfoil=Airfoil(chord=c_middle, dihedral=0, incidence=0, rotation_point_rel_chord=0),
+        tip_airfoil=Airfoil(chord=c_middle, dihedral_as_rotation_in_degrees=0, incidence=0, rotation_point_rel_chord=0),
         spare_list=[
             Spare(spare_support_dimension_width=4.42,
                   spare_support_dimension_height=4.42,
@@ -280,7 +280,7 @@ if __name__ == "__main__":
     wing_config.add_segment(
         length=l_middle,
         sweep=s_middle,
-        tip_airfoil=Airfoil(chord=c_middle, dihedral=0, incidence=0, rotation_point_rel_chord=0),
+        tip_airfoil=Airfoil(chord=c_middle, dihedral_as_rotation_in_degrees=0, incidence=0, rotation_point_rel_chord=0),
         spare_list=[
             Spare(spare_support_dimension_width=4.42,
                   spare_support_dimension_height=4.42,
@@ -301,7 +301,7 @@ if __name__ == "__main__":
     wing_config.add_segment(
         length=l_middle,
         sweep=s_middle,
-        tip_airfoil=Airfoil(chord=c_middle, dihedral=0, incidence=0, rotation_point_rel_chord=0),
+        tip_airfoil=Airfoil(chord=c_middle, dihedral_as_rotation_in_degrees=0, incidence=0, rotation_point_rel_chord=0),
         spare_list=[
             Spare(spare_support_dimension_width=4.42,
                   spare_support_dimension_height=4.42,
@@ -313,7 +313,7 @@ if __name__ == "__main__":
     wing_config.add_segment(
         length=l_tip,
         sweep=s_tip,
-        tip_airfoil=Airfoil(chord=c_tip, dihedral=0, incidence=0, rotation_point_rel_chord=0),
+        tip_airfoil=Airfoil(chord=c_tip, dihedral_as_rotation_in_degrees=0, incidence=0, rotation_point_rel_chord=0),
         spare_list=[
             Spare(spare_support_dimension_width=4.42,
                   spare_support_dimension_height=4.42,
@@ -325,7 +325,7 @@ if __name__ == "__main__":
     wing_config.add_segment(
         length=20,
         sweep=7.5,
-        tip_airfoil=Airfoil(chord=90-7.5-3, dihedral=5, incidence=-0.5, rotation_point_rel_chord=0),
+        tip_airfoil=Airfoil(chord=90-7.5-3, dihedral_as_rotation_in_degrees=5, incidence=-0.5, rotation_point_rel_chord=0),
         spare_list=[
             Spare(spare_support_dimension_width=4.42,
                   spare_support_dimension_height=4.42,
@@ -336,35 +336,35 @@ if __name__ == "__main__":
     wing_config.add_tip_segment(
         length=15,
         sweep=7.5,
-        tip_airfoil=Airfoil(chord=90-2*7.5-4, dihedral=5, incidence=-0.5, rotation_point_rel_chord=0),
+        tip_airfoil=Airfoil(chord=90-2*7.5-4, dihedral_as_rotation_in_degrees=5, incidence=-0.5, rotation_point_rel_chord=0),
         tip_type='flat'
     )
 
     wing_config.add_tip_segment(
         length=15,
         sweep=10,
-        tip_airfoil=Airfoil(chord=90-2*7.5-10-3, dihedral=5, incidence=-0.5, rotation_point_rel_chord=0),
+        tip_airfoil=Airfoil(chord=90-2*7.5-10-3, dihedral_as_rotation_in_degrees=5, incidence=-0.5, rotation_point_rel_chord=0),
         tip_type='flat'
     )
 
     wing_config.add_tip_segment(
         length=15,
         sweep=12.5,
-        tip_airfoil=Airfoil(chord=90-2*7.5-10-12.5, dihedral=10, incidence=-0.5, rotation_point_rel_chord=0),
+        tip_airfoil=Airfoil(chord=90-2*7.5-10-12.5, dihedral_as_rotation_in_degrees=10, incidence=-0.5, rotation_point_rel_chord=0),
         tip_type='flat'
     )
 
     wing_config.add_tip_segment(
         length=10,
         sweep=15,
-        tip_airfoil=Airfoil(chord=90-2*7.5-10-12.5-15+3, dihedral=15, incidence=-0.5, rotation_point_rel_chord=0),
+        tip_airfoil=Airfoil(chord=90-2*7.5-10-12.5-15+3, dihedral_as_rotation_in_degrees=15, incidence=-0.5, rotation_point_rel_chord=0),
         tip_type='flat'
     )
 
     wing_config.add_tip_segment(
         length=5,
         sweep=17.5,
-        tip_airfoil=Airfoil(chord=90-2*7.5-10-12.5-15-17.5+4, dihedral=0, incidence=-0.5, rotation_point_rel_chord=0),
+        tip_airfoil=Airfoil(chord=90-2*7.5-10-12.5-15-17.5+4, dihedral_as_rotation_in_degrees=0, incidence=-0.5, rotation_point_rel_chord=0),
         tip_type='flat'
     )
 

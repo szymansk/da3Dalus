@@ -1,7 +1,9 @@
 from typing import MutableMapping, Union
+from collections import OrderedDict
 
 from cadquery import Workplane
 
+from airplane import ConstructionStepNode
 from airplane.AbstractShapeCreator import AbstractShapeCreator
 
 
@@ -10,12 +12,11 @@ class ConstructionRootNode(AbstractShapeCreator, MutableMapping):
     A node that is a map and holds in itself the following steps in the construction tree
     """
 
-    def __init__(self, creator_id: str, successors=None):
+    def __init__(self, creator_id: str, successors: OrderedDict[str, ConstructionStepNode] = None):
         """
-        :param geometry: the geometry, that is created in this node
         :param successors: all following construction steps
         """
-        self.successors = {} if successors is None else successors
+        self.successors = OrderedDict() if successors is None else successors
         self._output_shapes = None
         super().__init__(f"{creator_id}.root", shapes_of_interest_keys=None)
 

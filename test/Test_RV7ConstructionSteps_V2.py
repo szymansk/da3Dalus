@@ -402,9 +402,9 @@ if __name__ == "__main__":
 
     airfoil = "../components/airfoils/naca23013.5.dat"
     wing_configuration = {"main_wing": WingConfiguration(nose_pnt=(192.113, -1, -44.5),
-                                                         root_airfoil=Airfoil(airfoil=airfoil, chord=183, dihedral=3.7,
+                                                         root_airfoil=Airfoil(airfoil=airfoil, chord=183, dihedral_as_rotation_in_degrees=3.7,
                                                                               incidence=0), length=410, sweep=0,
-                                                         tip_airfoil=Airfoil(chord=183, dihedral=0, incidence=0))}
+                                                         tip_airfoil=Airfoil(chord=183, dihedral_as_rotation_in_degrees=0, incidence=0))}
 
     # load the string
     # tigl_handel is parameter which is not in the json file, but needed by the constructor of a creator class

@@ -1,19 +1,22 @@
-from typing import MutableMapping, Union
+from typing import MutableMapping, Union, TypeVar
+from collections import OrderedDict
 from cadquery import Workplane
 
 from airplane.AbstractShapeCreator import AbstractShapeCreator
+
+T = TypeVar("T", bound="ConstructionStepNode")
 
 class ConstructionStepNode(AbstractShapeCreator, MutableMapping):
     """
     A node that is a map and holds in itself the following steps in the construction tree
     """
 
-    def __init__(self, creator: AbstractShapeCreator, successors=None, **kwargs):
+    def __init__(self, creator: AbstractShapeCreator, successors: OrderedDict[str, T]=None, **kwargs):
         """
         :param geometry: the geometry, that is created in this node
         :param successors: all following construction steps
         """
-        self.successors = {} if successors is None else successors
+        self.successors = OrderedDict() if successors is None else successors
         self.creator: AbstractShapeCreator = creator
         super().__init__(f"{creator.identifier}", shapes_of_interest_keys=None)
 

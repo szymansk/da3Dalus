@@ -4,6 +4,8 @@ from pydantic import confloat, Field, BeforeValidator
 
 Factor = confloat(ge=0, le=1.0)
 
+DihedralInDegrees = confloat(ge=-180.0, le=180.0)
+
 CoordinateSystemBase = Annotated[
     Literal["world","wing","root_airfoil","tip_airfoil"],
     Field(description="Allowed values are 'world','wing','root_airfoil' or 'tip_airfoil'"),

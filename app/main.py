@@ -8,14 +8,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-origins = [
-    "http://localhost",
-    "http://localhost:8085",
-]
+# cors-origin problem with configurator
 
+# origins = [
+#     "http://localhost",
+#     "http://localhost:8085",
+# ]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"], # copied from other python backends to resolve the cors origin problem
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
