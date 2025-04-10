@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse, FileResponse
 
 from cad_designer.airplane import ConstructionStepNode, GeneralJSONDecoder
 from cad_designer.airplane.aircraft_topology.components import ServoInformation
-from app.models.AeroplaneRequest import CreateAeroPlaneRequest
+from app.models.AeroplaneRequest import CreateAeroPlaneRequest, CreateWingLoftRequest
 from app.services.create_wing_configuration import create_wing_configuration, create_servo
 
 router = APIRouter()
@@ -21,6 +21,7 @@ router = APIRouter()
 tasks = {}
 tasks_lock = Lock()
 executor = ThreadPoolExecutor(max_workers=4)  # Passen Sie die Anzahl der Worker an Ihre Bedürfnisse an
+
 
 def create_aeroplane_task(aeroplane_id, request_dict):
     try:
@@ -87,6 +88,7 @@ def create_aeroplane_task(aeroplane_id, request_dict):
             tasks[aeroplane_id]['status'] = 'FAILURE'
             tasks[aeroplane_id]['error'] = str(err)
 
+
 @router.post("/aeroplanes")
 async def create_aeroplane(request: CreateAeroPlaneRequest):
     try:
@@ -96,11 +98,71 @@ async def create_aeroplane(request: CreateAeroPlaneRequest):
             tasks[aeroplane_id] = {'status': 'PENDING'}
         tasks[aeroplane_id]['future'] = executor.submit(create_aeroplane_task, aeroplane_id, request.dict())
         return JSONResponse(
-            status_code= http.HTTPStatus.ACCEPTED,
+            status_code=http.HTTPStatus.ACCEPTED,
             content={"aeroplane_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}"}
         )
     except Exception as err:
         raise HTTPException(status_code=500, detail=str(err))
+
+
+@router.post("/aeroplanes/wing/loft/stl")
+async def create_wing_loft(request: CreateWingLoftRequest):
+    try:
+        aeroplane_id = str(uuid.uuid4())
+        logging.info(f"called create aeroplanes/wing/loft/stl endpoint for 'aeroplane_id: {aeroplane_id}'")
+        with tasks_lock:
+            tasks[aeroplane_id] = {'status': 'PENDING'}
+
+        construction = request.dict()
+        construction['fuselages'] = None
+        wings = list(construction['wings'].keys())
+        construction['blueprint'] = {
+            '$TYPE': 'ConstructionRootNode',
+            'creator_id': 'eHawk-wing.root.root',
+            'loglevel': 50,
+            'successors': {}
+        }
+
+        for wing in wings:
+            construction['blueprint']['successors'][wing] = \
+                {
+                    '$TYPE': 'ConstructionStepNode',
+                    'creator': {
+                        '$TYPE': 'WingLoftCreator',
+                        'creator_id': wing,
+                        'loglevel': 10, 'offset': 0,
+                        'wing_index': wing,
+                        'wing_side': 'BOTH'
+                    },
+                    'creator_id': wing,
+                    'loglevel': 50,
+                    'successors': {}
+                }
+        construction['blueprint']['successors']['stl-output-wing']=\
+            {
+                    '$TYPE': 'ConstructionStepNode',
+                    'creator': {
+                        '$TYPE': 'ExportToStlCreator',
+                        'angular_tolerance': 0.1,
+                        'creator_id': 'stl-output-wing',
+                        'file_path': './tmp/exports',
+                        'loglevel': 20,
+                        'shapes_to_export': wings,
+                        'tolerance': 0.1
+                    },
+                    'creator_id': 'stl-output-wing',
+                    'loglevel': 50,
+                    'successors': {}
+                }
+
+        tasks[aeroplane_id]['future'] = executor.submit(create_aeroplane_task, aeroplane_id, construction)
+        return JSONResponse(
+            status_code=http.HTTPStatus.ACCEPTED,
+            content={"aeroplane_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}"}
+        )
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=str(err))
+
 
 @router.get("/aeroplanes/{aeroplane_id}")
 async def get_aeroplane_task_status(aeroplane_id: str):
@@ -116,24 +178,29 @@ async def get_aeroplane_task_status(aeroplane_id: str):
         task['status'] = 'RUNNING'
     if task['status'] == 'PENDING':
         return JSONResponse(
-            status_code= http.HTTPStatus.OK,
-            content={"aeroplane_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": task['status'], "message": "Task is pending."}
+            status_code=http.HTTPStatus.OK,
+            content={"aeroplane_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": task['status'],
+                     "message": "Task is pending."}
         )
     elif task['status'] == 'FAILURE':
         return JSONResponse(
-            status_code= http.HTTPStatus.OK,
-            content={"aeroplane_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": task['status'], "message": task.get('error', 'An error occurred')}
+            status_code=http.HTTPStatus.OK,
+            content={"aeroplane_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": task['status'],
+                     "message": task.get('error', 'An error occurred')}
         )
     elif task['status'] == 'SUCCESS':
         return JSONResponse(
-            status_code= http.HTTPStatus.OK,
-            content={"aeroplane_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": task['status'], "result": task.get('result')}
+            status_code=http.HTTPStatus.OK,
+            content={"aeroplane_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": task['status'],
+                     "result": task.get('result')}
         )
     else:
         return JSONResponse(
-            status_code= http.HTTPStatus.OK,
-            content={"aeroplane_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": task['status'], "message": "Task is processing."}
+            status_code=http.HTTPStatus.OK,
+            content={"aeroplane_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": task['status'],
+                     "message": "Task is processing."}
         )
+
 
 @router.get("/aeroplanes/{aeroplane_id}/zip")
 async def download_aeroplane_zip(aeroplane_id: str):
