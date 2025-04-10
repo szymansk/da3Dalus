@@ -9,20 +9,16 @@ from typing import Optional
 import math
 from cadquery import Vector
 
-from airplane.ConstructionStepNode import ConstructionStepNode
-from airplane.ConstructionRootNode import ConstructionRootNode
-from airplane.GeneralJSONEncoderDecoder import GeneralJSONEncoder, GeneralJSONDecoder
+from cad_designer.airplane import ConstructionStepNode, GeneralJSONDecoder, GeneralJSONEncoder
+from cad_designer.airplane.ConstructionRootNode import ConstructionRootNode
 
-from airplane.aircraft_topology.components import *
-from airplane.aircraft_topology.Position import Position
-from airplane.aircraft_topology.printer3d import Printer3dSettings
-from airplane.aircraft_topology.wing import *
-from airplane.aircraft_topology.wing.Airfoil import Airfoil
-from airplane.creator.components import *
-from airplane.creator.export_import import *
-from airplane.creator.fuselage import *
-from airplane.creator.cad_operations import *
-from airplane.creator.wing import *
+from cad_designer.airplane.aircraft_topology.components import ServoInformation, Servo
+from cad_designer.airplane.aircraft_topology.printer3d import Printer3dSettings
+from cad_designer.airplane.aircraft_topology.wing import Spare, WingConfiguration, TrailingEdgeDevice
+from cad_designer.airplane.aircraft_topology.wing.Airfoil import Airfoil
+from cad_designer.airplane.creator.cad_operations import FuseMultipleShapesCreator
+from cad_designer.airplane.creator.export_import import ExportTo3mfCreator, ExportToStepCreator
+from cad_designer.airplane.creator.wing import VaseModeWingCreator, StandWingSegmentOnPrinterCreator
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))

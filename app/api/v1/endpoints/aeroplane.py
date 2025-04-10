@@ -3,7 +3,6 @@ import json
 import logging
 import os
 import uuid
-from json import JSONDecodeError
 from threading import Lock
 from concurrent.futures import ThreadPoolExecutor
 from zipfile import ZipFile
@@ -11,11 +10,9 @@ from zipfile import ZipFile
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 
-from airplane import ConstructionStepNode, GeneralJSONDecoder
-from airplane.aircraft_topology.components import ServoInformation, Servo
-from airplane.aircraft_topology.printer3d import Printer3dSettings
+from cad_designer.airplane import ConstructionStepNode, GeneralJSONDecoder
+from cad_designer.airplane.aircraft_topology.components import ServoInformation
 from app.models.AeroplaneRequest import CreateAeroPlaneRequest
-from app.models.wing import Wing
 from app.services.create_wing_configuration import create_wing_configuration, create_servo
 
 router = APIRouter()

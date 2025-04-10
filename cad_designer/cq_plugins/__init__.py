@@ -1,0 +1,7 @@
+from cad_designer.cq_plugins.fix_shape.fix_shape import fix_shape
+import cad_designer.cq_plugins.segmentToEdge
+import cad_designer.cq_plugins.display
+import cad_designer.cq_plugins.fix_shape
+import cad_designer.cq_plugins.offest3D
+import cad_designer.cq_plugins.sew_fix_shape
+import cad_designer.cq_plugins.wing

@@ -1,8 +1,6 @@
-from cffi.ffiplatform import flatten
-
-from airplane.aircraft_topology.components import Servo
-from airplane.aircraft_topology.wing import WingConfiguration, TrailingEdgeDevice, Spare
-from airplane.aircraft_topology.wing import Airfoil
+from cad_designer.airplane.aircraft_topology.components import Servo
+from cad_designer.airplane.aircraft_topology.wing import WingConfiguration, TrailingEdgeDevice, Spare
+from cad_designer.airplane.aircraft_topology.wing import Airfoil
 from app.models.wing import Wing as WingModel
 from app.models.wing import Airfoil as AirfoilModel
 from app.models.wing import Segment as SegmentModel

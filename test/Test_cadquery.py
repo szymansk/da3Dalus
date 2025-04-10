@@ -5,7 +5,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 import cadquery as cq
-from cq_plugins.display.cadq_server_connector import CQServerConnector
+from cad_designer.cq_plugins import CQServerConnector
 from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
 
 if __name__ == "__main__":
