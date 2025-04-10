@@ -105,7 +105,7 @@ async def create_aeroplane(request: CreateAeroPlaneRequest):
         raise HTTPException(status_code=500, detail=str(err))
 
 
-@router.post("/aeroplanes/wing/loft/stl")
+@router.post("/aeroplanes/wings/loft/stl")
 async def create_wing_loft(request: CreateWingLoftRequest):
     try:
         aeroplane_id = str(uuid.uuid4())
