@@ -1,6 +1,7 @@
 import json
+from enum import Enum
 from pathlib import Path
-from typing import Optional, Dict, Any, Union, OrderedDict
+from typing import Optional, Dict, Any, Union, OrderedDict, Literal
 
 from pydantic import BaseModel, Json
 
@@ -33,6 +34,16 @@ class ServoSettings(BaseModel):
 class AeroplaneSettings(BaseModel):
     printer_settings: Optional[Printer3dSettings]
     servo_information: Optional[Dict[int, ServoSettings]]
+
+class CreatorUrlType(str, Enum):
+    WING_LOFT = "wing_loft"
+    VASE_MODE_WING = "vase_mode_wing"
+
+class ExporterUrlType(str, Enum):
+    STL = "stl"
+    STEP = "step"
+    AMF = "amf"
+    IGES = "iges"
 
 class CreateWingLoftRequest(BaseModel):
     wings: Optional[Dict[str, Wing]]

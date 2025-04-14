@@ -7,12 +7,12 @@ from threading import Lock
 from concurrent.futures import ThreadPoolExecutor
 from zipfile import ZipFile
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse, FileResponse
 
 from cad_designer.airplane import ConstructionStepNode, GeneralJSONDecoder
 from cad_designer.airplane.aircraft_topology.components import ServoInformation
-from app.models.AeroplaneRequest import CreateAeroPlaneRequest, CreateWingLoftRequest
+from app.models.AeroplaneRequest import CreateAeroPlaneRequest, CreateWingLoftRequest, CreatorUrlType, ExporterUrlType
 from app.services.create_wing_configuration import create_wing_configuration, create_servo
 
 router = APIRouter()
@@ -105,8 +105,13 @@ async def create_aeroplane(request: CreateAeroPlaneRequest):
         raise HTTPException(status_code=500, detail=str(err))
 
 
-@router.post("/aeroplanes/wings/loft/stl")
-async def create_wing_loft(request: CreateWingLoftRequest):
+@router.post("/aeroplanes/wings/{creator_url_type}/{exporter_url_type}")
+async def create_wing_loft(request: CreateWingLoftRequest,
+                           creator_url_type: CreatorUrlType=CreatorUrlType.WING_LOFT,
+                           exporter_url_type: ExporterUrlType=ExporterUrlType.STL,
+                           leading_edge_offset_factor: float = Query(0.1, description="only need for vase mode wing"),
+                           trailing_edge_offset_factor: float = Query(0.15, description="only need for vase mode wing"),
+                           ):
     try:
         aeroplane_id = str(uuid.uuid4())
         logging.info(f"called create aeroplanes/wing/loft/stl endpoint for 'aeroplane_id: {aeroplane_id}'")
@@ -128,9 +133,10 @@ async def create_wing_loft(request: CreateWingLoftRequest):
                 {
                     '$TYPE': 'ConstructionStepNode',
                     'creator': {
-                        '$TYPE': 'WingLoftCreator',
+                        '$TYPE': "",
                         'creator_id': wing,
-                        'loglevel': 10, 'offset': 0,
+                        'loglevel': 10,
+                        'offset': 0,
                         'wing_index': wing,
                         'wing_side': 'BOTH'
                     },
@@ -138,19 +144,37 @@ async def create_wing_loft(request: CreateWingLoftRequest):
                     'loglevel': 50,
                     'successors': {}
                 }
-        construction['blueprint']['successors']['stl-output-wing']=\
+            if creator_url_type == CreatorUrlType.WING_LOFT:
+                construction['blueprint']['successors'][wing]['creator']['$TYPE'] = 'WingLoftCreator'
+            else: # creator == CreatorUrlType.VASE_MODE_WING:
+                construction['blueprint']['successors'][wing]['creator']['$TYPE'] = 'VaseModeWingCreator'
+                construction['blueprint']['successors'][wing]['creator']['leading_edge_offset_factor'] = \
+                    leading_edge_offset_factor
+                construction['blueprint']['successors'][wing]['creator']['trailing_edge_offset_factor'] = \
+                    trailing_edge_offset_factor
+
+        if exporter_url_type == ExporterUrlType.STL:
+            exporter_class = 'ExportToStlCreator'
+        elif exporter_url_type == ExporterUrlType.STEP:
+            exporter_class = 'ExportToStepCreator'
+        elif exporter_url_type == ExporterUrlType.IGES:
+            exporter_class = 'ExportToIgesCreator'
+        else: # exporter_url_type == ExporterUrlType.3MF:
+            exporter_class = 'ExportTo3MFCreator'
+
+        construction['blueprint']['successors']['output-wing']=\
             {
                     '$TYPE': 'ConstructionStepNode',
                     'creator': {
-                        '$TYPE': 'ExportToStlCreator',
+                        '$TYPE': exporter_class,
                         'angular_tolerance': 0.1,
-                        'creator_id': 'stl-output-wing',
+                        'creator_id': 'output-wing',
                         'file_path': './tmp/exports',
                         'loglevel': 20,
-                        'shapes_to_export': wings,
+                        #'shapes_to_export': wings,
                         'tolerance': 0.1
                     },
-                    'creator_id': 'stl-output-wing',
+                    'creator_id': 'output-wing',
                     'loglevel': 50,
                     'successors': {}
                 }

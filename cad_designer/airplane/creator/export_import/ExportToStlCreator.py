@@ -19,6 +19,8 @@ class ExportToStlCreator(AbstractShapeCreator):
     def _create_shape(self, shapes_of_interest: dict[str, Workplane],
                       input_shapes: dict[str, Workplane],
                       **kwargs) -> dict[str, Workplane]:
+        shapes_of_interest = shapes_of_interest if shapes_of_interest else kwargs
+
         logging.info(f"converting shapes '{', '.join(shapes_of_interest.keys())}' to .stl")
 
         from cadquery import exporters

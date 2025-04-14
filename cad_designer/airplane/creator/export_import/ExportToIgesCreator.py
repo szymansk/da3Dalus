@@ -18,6 +18,8 @@ class ExportToIgesCreator(AbstractShapeCreator):
     def _create_shape(self, shapes_of_interest: dict[str, Workplane],
                       input_shapes: dict[str, Workplane],
                       **kwargs) -> dict[str, Workplane]:
+        shapes_of_interest = shapes_of_interest if shapes_of_interest else kwargs
+
         for key, shape in shapes_of_interest.items():
             path = os.path.join(self.file_path, f"{self.identifier}_{key}.igs")
             logging.info(f"exporting iges model '{key}' --> '{path}'")
