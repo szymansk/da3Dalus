@@ -28,6 +28,34 @@ MOUNT_PLATE_THICKNESS = 1.0
 
 class VaseModeWingCreator(AbstractShapeCreator):
     """
+    The `VaseModeWingCreator` class is responsible for creating a wing structure that can be printed in
+    vase mode. The construction is based on a given wing configuration. It generates various wing components
+    such as hulls, ribs, spars, slots, and trailing edge devices (TEDs).
+
+    Attributes:
+        leading_edge_offset_factor (float): Factor to determine the offset of the leading edge.
+        trailing_edge_offset_factor (float): Factor to determine the offset of the trailing edge.
+        minimum_rib_angle (float): Minimum angle for ribs to ensure printability (default is 45°).
+        wing_side (Literal["LEFT", "RIGHT", "BOTH"]): Specifies which side of the wing to create.
+        wing_index (Union[str, int]): Index or identifier of the wing.
+        _wing_config (dict[int, WingConfiguration]): Configuration of the wing segments.
+        _printer_settings (Printer3dSettings): Printer settings for 3D printing.
+        _servo_information (dict[int, ServoInformation]): Information about servo placements.
+
+    Methods:
+        __init__(...): Initializes the `VaseModeWingCreator` with the required parameters.
+        _create_shape(...): Creates the complete wing structure, including all segments and components.
+        create_tip_glue_tongue(...): Adds glue tongues to the wing segments for easier assembly.
+        _create_servo_mount_and_cover(...): Creates a servo mount and cover for trailing edge devices.
+        calculate_lowest_point_for_mount(...): Calculates the lowest point for mounting a servo.
+        _create_ted_shapes(...): Creates the shapes for trailing edge devices and integrates them into the wing.
+        _create_basic_root_segment_shapes(...): Creates the basic shapes for the root segment of the wing.
+        _create_basic_wing_shapes(...): Creates the basic shapes for other wing segments.
+        _create_spare_shape(...): Creates the shape of a spar for a specific segment.
+        _create_ribs_shape(...): Creates the rib shapes for a wing segment.
+        _rib_cutout(...): Constructs the cutout for ribs in an hourglass-like structure.
+        _calculate_wing_construction_points(...): Calculates construction points for the wing based on its configuration.
+        _construct_spare_sketch(...): Constructs a sketch for a spar, considering gaps for vase mode printing.
     """
 
     def __init__(self,
@@ -42,16 +70,19 @@ class VaseModeWingCreator(AbstractShapeCreator):
                  wing_side: WingSides = "RIGHT",
                  loglevel: int = logging.INFO):
         """
-        returns as shapes:
-        creator_id -> the complete wing,
-        creator_id.spare -> the spare,
-        creator_id.cutout -> the ribs cutout,
-        creator_id.slot -> the slot for vase mode,
-        creator_id.teds -> the trailing edge devices dict as a dict of "trailing_edge_device.name::segment"
+        Initializes the VaseModeWingCreator class with the required parameters.
 
-        parameters:
-        printer_wall_thickness - printer settings wall thickness
-        minimum_rib_angle -- important for printability (should be > 45°)
+        Parameters:
+            creator_id (str): Identifier for the wing creator.
+            wing_index (Union[str, NonNegativeInt]): Index or identifier of the wing.
+            leading_edge_offset_factor (Factor): Factor to determine the offset of the leading edge.
+            trailing_edge_offset_factor (Factor): Factor to determine the offset of the trailing edge.
+            minimum_rib_angle (float): Minimum angle for ribs to ensure printability (default is 45°).
+            wing_config (Optional[dict[int, WingConfiguration]]): Configuration of the wing segments.
+            printer_settings (Optional[Printer3dSettings]): Printer settings for 3D printing.
+            servo_information (Optional[dict[int, ServoInformation]]): Information about servo placements.
+            wing_side (Literal["LEFT", "RIGHT", "BOTH"]): Specifies which side of the wing to create.
+            loglevel (int): Logging level for the class (default is logging.INFO).
         """
         self.leading_edge_offset_factor: float = leading_edge_offset_factor
         self.trailing_edge_offset_factor: float = trailing_edge_offset_factor
@@ -67,6 +98,46 @@ class VaseModeWingCreator(AbstractShapeCreator):
     def _create_shape(self, shapes_of_interest: dict[str, Workplane],
                       input_shapes: dict[str, Workplane],
                       **kwargs) -> dict[str, Workplane]:
+        """
+            Constructs the 3D shape of a wing in vase mode based on the provided wing configuration.
+
+            This method generates the wing structure by iterating through the segments of the wing configuration
+            and creating the necessary components such as hulls, ribs, spars, slots, and trailing edge devices (TEDs).
+            The final shape is assembled from these components and optionally mirrored to create left, right, or both wings.
+
+            Construction Steps:
+            1. **Initialization**:
+               - Retrieve the wing configuration and printer settings.
+               - Initialize variables for storing intermediate and final shapes.
+
+            2. **Root Segment Construction**:
+               - Create the basic shapes for the root segment, including offset shapes for the hull.
+               - Generate the hull by subtracting offset shapes.
+               - Create the main spar and additional spars for the root segment.
+               - Generate rib shapes and cutouts for the root segment.
+               - Create a slot for vase mode printing.
+               - Handle trailing edge devices (TEDs) if present, including their shapes and offsets.
+
+            3. **Other Segments Construction**:
+               - Iterate through the remaining segments of the wing.
+               - Create offset shapes for the hull and generate the hull for each segment.
+               - Generate spars, ribs, and slots for each segment.
+               - Handle trailing edge devices (TEDs) for each segment, including servo mounts and covers if required.
+               - Add glue tongues to facilitate assembly between segments.
+
+            4. **Final Assembly**:
+               - Combine all segment shapes into a single wing structure.
+               - Mirror the wing if the configuration specifies "LEFT" or "BOTH" sides.
+               - Translate the wing to its final position based on the configuration.
+
+            5. **Output**:
+               - Return a dictionary containing the final wing shape, individual segment shapes, and TED shapes.
+
+            Note:
+            - The method uses CadQuery's `Workplane` to construct and manipulate 3D shapes.
+            - The construction process ensures compatibility with vase mode printing by maintaining appropriate gaps and offsets.
+            """
+
         logging.info(f"construct vase mode wing from configuration --> '{self.identifier}'")
         wing_config: WingConfiguration = self._wing_config[self.wing_index]
         if self._printer_settings is not None:
@@ -349,6 +420,24 @@ class VaseModeWingCreator(AbstractShapeCreator):
                                glue_tongue_ribs_rel_length: NonNegativeFloat = 3.,
                                glue_tongue_ribs_minimum_distance: NonNegativeFloat = 5.0,
                                glue_support_ted_offset: NonNegativeFloat = 0.0):
+        """
+        Creates a tongue-like structure at the tip of a wing segment to facilitate gluing two wing segments together.
+
+        Parameters:
+            final_right_segments (list[Workplane]): A list of Workplane objects representing the final right wing segments.
+            raw_ribs_part (Workplane): The part of the ribs used to create the glue tongue.
+            segment (NonNegativeInt): The index of the current wing segment.
+            rel_tongue_length (NonNegativeFloat): The relative length of the glue tongue (default is 0.8).
+            glue_tongue_depth (NonNegativeFloat): The depth of the glue tongue (default is 3.0).
+            num_glue_tongue_ribs (NonNegativeInt): The number of ribs used as support for the glue tongue (default is 2).
+            glue_tongue_ribs_rel_pos (NonNegativeFloat): The relative position of the ribs for the glue tongue (default is 0.3).
+            glue_tongue_ribs_rel_length (NonNegativeFloat): The relative length of the ribs for the glue tongue (default is 3.0).
+            glue_tongue_ribs_minimum_distance (NonNegativeFloat): The minimum distance between ribs (default is 5.0).
+            glue_support_ted_offset (NonNegativeFloat): The offset for the trailing edge device (default is 0.0).
+
+        Returns:
+            None
+        """
 
         tip_glue_tongue = raw_ribs_part.faces("<Y").workplane(-glue_tongue_depth).split(keepTop=True)
         f_bb = tip_glue_tongue.faces("<Y").val().BoundingBox()
@@ -400,6 +489,21 @@ class VaseModeWingCreator(AbstractShapeCreator):
     def _create_servo_mount_and_cover(self, current: Workplane, current_hull: Workplane, segment: int,
                                       wing_config: WingConfiguration, placement: Literal['top', 'bottom'] = 'top',
                                       rim_size:float=2.5) -> tuple[Workplane, Workplane]:
+        """
+        Creates a servo mount and a cover for a trailing edge device (TED) in the wing segment.
+
+        Parameters:
+            current (Workplane): The current Workplane object representing the wing structure.
+            current_hull (Workplane): The current hull of the wing segment.
+            segment (int): The index of the wing segment.
+            wing_config (WingConfiguration): The configuration of the wing, including segment details.
+            placement (Literal['top', 'bottom']): Specifies whether the servo mount is placed on the top or bottom of the wing (default is 'top').
+            rim_size (float): The size of the rim around the servo cover (default is 2.5).
+
+        Returns:
+            tuple[Workplane, Workplane]: A tuple containing the updated wing hull and the servo mount Workplane.
+        """
+
         ted = wing_config.segments[segment].trailing_edge_device
 
         wing_plane = wing_config.get_wing_workplane(segment=segment).plane
@@ -484,6 +588,35 @@ class VaseModeWingCreator(AbstractShapeCreator):
                                          ted: TrailingEdgeDevice,
                                          wing_config: WingConfiguration,
                                          wing_plane: Plane):
+        """
+            Calculates the lowest and highest points for mounting a servo in a wing segment.
+
+            **Algorithm**:
+            1. **Initialization**:
+               - Define intervals for x- and y-offsets based on the servo's dimensions:
+                 - `x_offset_interval`: Covers the range from the leading edge to the trailing edge of the servo, including the latch length.
+                 - `y_offset_interval`: Covers the height of the servo.
+
+            2. **Iterative Calculation**:
+               - Iterate over all combinations of x- and y-offsets.
+               - For each combination:
+                 - Call `wing_config.get_points_on_surface` to calculate the world coordinates (`top_wc`, `bottom_wc`) of the top and bottom points on the wing surface.
+                 - Transform these world coordinates into local coordinates (`top_lc`, `bottom_lc`) using `wing_plane.toLocalCoords`.
+                 - Update `top_min` if the z-coordinate of `top_lc` is smaller.
+                 - Update `bottom_max` if the z-coordinate of `bottom_lc` is larger.
+
+            3. **Return**:
+               - Return the calculated `bottom_max` (highest point below) and `top_min` (lowest point above).
+
+            **Parameters**:
+                segment (NonNegativeInt): The index of the wing segment.
+                ted (TrailingEdgeDevice): The trailing edge device for which the servo is being mounted.
+                wing_config (WingConfiguration): The configuration of the wing, including segment details.
+                wing_plane (Plane): The working plane of the wing.
+
+            **Returns**:
+                tuple[float, float]: A tuple containing `bottom_max` (highest point below) and `top_min` (lowest point above).
+        """
         x_offset_interval = np.linspace(-(ted.servo(self._servo_information).leading_length + ted.servo(self._servo_information).latch_length),
                                         ted.servo(self._servo_information).trailing_length + ted.servo(self._servo_information).latch_length,
                                         10)

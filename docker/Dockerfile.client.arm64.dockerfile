@@ -9,4 +9,7 @@ RUN source ${CONDA_INSTALL_DIR}/bin/activate \
     shapely  \
     jsonpickle \
     fastapi \
-    pydantic
+    pydantic \
+    && conda uninstall casadi \
+    && pip install aerosandbox[full]
+
