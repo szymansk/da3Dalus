@@ -386,15 +386,6 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
         final_right_wing = final_right_wing.combine()#.fix_shape().combine()
 
-        # translate all shapes to the final place in the airplane
-        # TODO: remove translations from creator... this should be translated, later or by assembly constraints
-        final_right_wing = (final_right_wing.translate(wing_config.nose_pnt)
-                            .display(name=f"{self.identifier}", severity=logging.DEBUG))
-
-        for (k, v) in teds.items():
-            teds[k] = (v.translate(wing_config.nose_pnt)
-                       .display(name=f"{self.identifier}.ted[{k}]", severity=logging.DEBUG))
-
         # append main shapes
         final_dict: dict[str, Workplane] = {self.identifier: final_right_wing}
 

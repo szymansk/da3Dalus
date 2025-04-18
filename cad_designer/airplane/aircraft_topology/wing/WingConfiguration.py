@@ -240,9 +240,9 @@ class WingConfiguration:
 
         seg = 0
         all_trans = [
-            [1, 0, 0, 0],
-            [0, 1, 0, 0],
-            [0, 0, 1, 0],
+            [1, 0, 0, self.nose_pnt[0]],
+            [0, 1, 0, self.nose_pnt[1]],
+            [0, 0, 1, self.nose_pnt[2]],
             [0, 0, 0, 1]]
 
         for seg in reversed(range(segment)):

@@ -79,6 +79,5 @@ class WingLoftCreator(AbstractShapeCreator):
             right_wing = right_wing.union(left_wing)
 
         right_wing = right_wing.fix_shape()
-        right_wing = right_wing.translate(wing_config.nose_pnt).display(name=f"{self.identifier}", severity=logging.DEBUG)
 
         return {self.identifier: right_wing}
