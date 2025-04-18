@@ -17,9 +17,7 @@ from cad_designer.airplane.aircraft_topology.components import ServoInformation,
 from cad_designer.airplane.aircraft_topology.printer3d import Printer3dSettings
 from cad_designer.airplane.aircraft_topology.wing import Spare, WingConfiguration, TrailingEdgeDevice
 from cad_designer.airplane.aircraft_topology.wing.Airfoil import Airfoil
-from cad_designer.airplane.creator.cad_operations import FuseMultipleShapesCreator
-from cad_designer.airplane.creator.export_import import ExportTo3mfCreator, ExportToStepCreator
-from cad_designer.airplane.creator.wing import VaseModeWingCreator, StandWingSegmentOnPrinterCreator
+from cad_designer.aerosandbox.convert2aerosandbox import convert_wing_config_to_asb_wing, export_wing_to_stl
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
@@ -260,7 +258,7 @@ if __name__ == "__main__":
     wing_config.add_segment(
         length=20,
         sweep=7.5,
-        tip_airfoil=Airfoil(chord=90-7.5-3, dihedral_as_rotation_in_degrees=5, incidence=-0.5, rotation_point_rel_chord=0),
+        tip_airfoil=Airfoil(chord=90-7.5-3, dihedral_as_rotation_in_degrees=5, incidence=-0.5, rotation_point_rel_chord=0.25),
         spare_list=[
             Spare(spare_support_dimension_width=4.42,
                   spare_support_dimension_height=4.42,
@@ -271,35 +269,35 @@ if __name__ == "__main__":
     wing_config.add_tip_segment(
         length=15,
         sweep=7.5,
-        tip_airfoil=Airfoil(chord=90-2*7.5-4, dihedral_as_rotation_in_degrees=5, incidence=-0.5, rotation_point_rel_chord=0),
+        tip_airfoil=Airfoil(chord=90-2*7.5-4, dihedral_as_rotation_in_degrees=5, incidence=-0.5, rotation_point_rel_chord=0.25),
         tip_type='flat'
     )
 
     wing_config.add_tip_segment(
         length=15,
         sweep=10,
-        tip_airfoil=Airfoil(chord=90-2*7.5-10-3, dihedral_as_rotation_in_degrees=5, incidence=-0.5, rotation_point_rel_chord=0),
+        tip_airfoil=Airfoil(chord=90-2*7.5-10-3, dihedral_as_rotation_in_degrees=5, incidence=-0.5, rotation_point_rel_chord=0.25),
         tip_type='flat'
     )
 
     wing_config.add_tip_segment(
         length=15,
         sweep=12.5,
-        tip_airfoil=Airfoil(chord=90-2*7.5-10-12.5, dihedral_as_rotation_in_degrees=10, incidence=-0.5, rotation_point_rel_chord=0),
+        tip_airfoil=Airfoil(chord=90-2*7.5-10-12.5, dihedral_as_rotation_in_degrees=10, incidence=-0.5, rotation_point_rel_chord=0.25),
         tip_type='flat'
     )
 
     wing_config.add_tip_segment(
         length=10,
         sweep=15,
-        tip_airfoil=Airfoil(chord=90-2*7.5-10-12.5-15+3, dihedral_as_rotation_in_degrees=15, incidence=-0.5, rotation_point_rel_chord=0),
+        tip_airfoil=Airfoil(chord=90-2*7.5-10-12.5-15+3, dihedral_as_rotation_in_degrees=15, incidence=-0.5, rotation_point_rel_chord=0.25),
         tip_type='flat'
     )
 
     wing_config.add_tip_segment(
         length=5,
         sweep=17.5,
-        tip_airfoil=Airfoil(chord=90-2*7.5-10-12.5-15-17.5+4, dihedral_as_rotation_in_degrees=0, incidence=-0.5, rotation_point_rel_chord=0),
+        tip_airfoil=Airfoil(chord=90-2*7.5-10-12.5-15-17.5+4, dihedral_as_rotation_in_degrees=0, incidence=-0.5, rotation_point_rel_chord=0.25),
         tip_type='flat'
     )
 
@@ -307,6 +305,9 @@ if __name__ == "__main__":
     #                             sweep=1,
     #                             tip_type="flat"
     #                             )
+
+    wing = convert_wing_config_to_asb_wing(wing_config)
+    export_wing_to_stl(wing, "mein_fluegel.stl")
 
     wing_configuration = {"main_wing": wing_config}
 

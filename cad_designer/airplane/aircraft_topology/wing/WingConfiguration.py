@@ -3,6 +3,8 @@ import math
 from typing import TypeVar, Any, List, Tuple, Union, Optional
 
 import numpy as np
+import aerosandbox as asb
+
 from cadquery import Workplane, Plane, Vector
 from numpy import ndarray, dtype, generic
 from pydantic import PositiveFloat, PositiveInt, NonNegativeInt, NonNegativeFloat
@@ -372,6 +374,51 @@ class WingConfiguration:
             root_plane = Plane(origin=origin_root, xDir=wing_wp.plane.xDir, normal=wing_wp.plane.yDir)
             tip_plane = Plane(origin=origin_tip, xDir=wing_wp_tip.plane.xDir, normal=wing_wp_tip.plane.yDir)
             return root_plane, tip_plane
+
+    def get_asb_wing(self) -> asb.Wing:
+        sections = []
+
+        is_root = True
+        incidence_angle = 0
+        for i, segment in enumerate(self.segments):
+            if is_root:
+                root_plane = self.get_wing_workplane(i).plane
+                root_af = segment.root_airfoil
+
+                if root_af.rotation_point_rel_chord != 0.25:
+                    raise ValueError(f"WingXSec: {i} --> rotation_point_rel_chord must be 0.25 for aerosandbox")
+
+                incidence_angle += root_af.incidence
+                import os
+                root_origin = root_plane.origin
+                root_section = asb.WingXSec(
+                    xyz_le=[root_origin.x, root_origin.y, root_origin.z],
+                    chord=root_af.chord,
+                    airfoil=asb.Airfoil(name=os.path.abspath(root_af.airfoil)),
+                    twist=incidence_angle,
+                )
+                sections.append(root_section)
+                is_root = False
+
+            tip_plane = self.get_wing_workplane(i + 1).plane
+            tip_af = segment.tip_airfoil
+
+            if tip_af.rotation_point_rel_chord != 0.25:
+                raise ValueError(f"WingXSec: {i + 1} --> rotation_point_rel_chord must be 0.25 for aerosandbox")
+
+            incidence_angle += tip_af.incidence
+            tip_origin = tip_plane.origin
+            tip_section = asb.WingXSec(
+                xyz_le=[tip_origin.x, tip_origin.y, tip_origin.z],
+                chord=tip_af.chord,
+                airfoil=asb.Airfoil(name=os.path.abspath(tip_af.airfoil)),
+                twist=incidence_angle,
+            )
+
+            sections.append(tip_section)
+            pass
+
+        return asb.Wing(xsecs=sections, symmetric=True)
 
     @staticmethod
     def _create_homogeneous_rotation_matrix(axis: str, degrees: float) -> ndarray[Any, dtype[generic | generic | Any]]:

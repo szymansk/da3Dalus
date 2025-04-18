@@ -9,13 +9,19 @@ from typing import Optional
 import math
 from cadquery import Vector
 
+from cad_designer.airplane import ConstructionStepNode, GeneralJSONDecoder, GeneralJSONEncoder, WingLoftCreator
 from cad_designer.airplane.ConstructionRootNode import ConstructionRootNode
 
-from cad_designer.airplane.aircraft_topology import Printer3dSettings
+from cad_designer.airplane.aircraft_topology.printer3d import Printer3dSettings
+from cad_designer.airplane.aircraft_topology.wing import Spare, WingConfiguration
 from cad_designer.airplane.aircraft_topology.wing.Airfoil import Airfoil
+from cad_designer.airplane.creator.export_import import ExportToStepCreator
+from cad_designer.airplane.creator.wing import VaseModeWingCreator
+from cad_designer.aerosandbox.convert2aerosandbox import export_wing_to_stl
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
+
 
 def straight_trailing_edge(l_middle: Optional[float],
                            l_tip: Optional[float],
@@ -57,24 +63,23 @@ if __name__ == "__main__":
     root_node = ConstructionRootNode(creator_id="configurator-test-wing")
     pwd = os.path.curdir
 
-    # wing_loft = ConstructionStepNode(
-    #     WingLoftCreator(creator_id="wing_loft",
-    #                     wing_index="main_wing",
-    #                     wing_side="BOTH",
-    #                     loglevel=logging.DEBUG))
-    # root_node.append(wing_loft)
-
-    vase_wing_loft = ConstructionStepNode(
-        VaseModeWingCreator(creator_id="vase_wing",
+    loft_only = True
+    if loft_only:
+        vase_wing_loft = ConstructionStepNode(
+            WingLoftCreator(creator_id="wing_loft",
                             wing_index="main_wing",
-                            leading_edge_offset_factor=leading_edge_offset,
-                            trailing_edge_offset_factor=trailing_edge_offset,
-                            minimum_rib_angle=minimum_rib_angle,
                             wing_side="BOTH",
                             loglevel=logging.DEBUG))
+    else:
+        vase_wing_loft = ConstructionStepNode(
+            VaseModeWingCreator(creator_id="vase_wing",
+                                wing_index="main_wing",
+                                leading_edge_offset_factor=leading_edge_offset,
+                                trailing_edge_offset_factor=trailing_edge_offset,
+                                minimum_rib_angle=minimum_rib_angle,
+                                wing_side="BOTH",
+                                loglevel=logging.DEBUG))
     root_node.append(vase_wing_loft)
-
-
 
     aircraft_step_export_node = ConstructionStepNode(
         ExportToStepCreator(Path(f"{root_node.identifier}").stem,
@@ -82,6 +87,7 @@ if __name__ == "__main__":
                             shapes_to_export=[vase_wing_loft.creator_id]
                             ))
     root_node.append(aircraft_step_export_node)
+
 
 
     #####################
@@ -94,22 +100,22 @@ if __name__ == "__main__":
     #### WING ####
     airfoil = "../components/airfoils/naca0010.dat"
     # segment 0
-    wing_config: WingConfiguration = WingConfiguration(nose_pnt=(0, 0, 0),
+    wing_config: WingConfiguration = WingConfiguration(nose_pnt=(50, 0, 0),
                                                        root_airfoil=Airfoil(
                                                            airfoil=airfoil,
                                                            chord=200.,
-                                                           #dihedral_as_rotation_in_degrees=5,
-                                                           dihedral_as_translation=50,
-                                                           incidence=3,
+                                                           dihedral_as_rotation_in_degrees=5,
+                                                           #dihedral_as_translation=50,
+                                                           incidence=0,
                                                            rotation_point_rel_chord=0.25),
                                                        length=500.,
                                                        sweep=10,
                                                        sweep_is_angle=True,
                                                        tip_airfoil=Airfoil(
                                                            chord=200.,
-                                                           #dihedral_as_rotation_in_degrees=-5,
-                                                           dihedral_as_translation=-100,
-                                                           incidence=-3,
+                                                           dihedral_as_rotation_in_degrees=-5,
+                                                           #dihedral_as_translation=-100,
+                                                           incidence=5,
                                                            rotation_point_rel_chord=0.25),
                                                        #number_interpolation_points=201,
                                                        spare_list=[
@@ -118,7 +124,7 @@ if __name__ == "__main__":
                   spare_position_factor=0.25),
         ])
     wing_config.add_segment(length=500, sweep=-10, sweep_is_angle= True,
-                            tip_airfoil=Airfoil(chord=150, dihedral_as_rotation_in_degrees=-5, incidence=0, rotation_point_rel_chord=0),
+                            tip_airfoil=Airfoil(chord=150, dihedral_as_rotation_in_degrees=-5, incidence=0, rotation_point_rel_chord=0.25),
                             spare_list=[
                                 Spare(spare_support_dimension_width=3,
                                       spare_support_dimension_height=3,
@@ -126,13 +132,16 @@ if __name__ == "__main__":
                                       ),
                             ])
     wing_config.add_segment(length=500, sweep=10, sweep_is_angle= True,
-                            tip_airfoil=Airfoil(chord=100, dihedral_as_rotation_in_degrees=0, incidence=0, rotation_point_rel_chord=0),
+                            tip_airfoil=Airfoil(chord=100, dihedral_as_rotation_in_degrees=0, incidence=0, rotation_point_rel_chord=0.25),
                             spare_list=[
                                 Spare(spare_support_dimension_width=3,
                                       spare_support_dimension_height=3,
                                       # spare_mode="follow"
                                       ),
                             ])
+
+    asb_wing = wing_config.get_asb_wing()
+    export_wing_to_stl(asb_wing, f"../exports/{vase_wing_loft.creator_id}_asb.stl")
 
     wing_configuration = {"main_wing": wing_config}
 
