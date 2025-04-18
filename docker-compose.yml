@@ -1,6 +1,6 @@
 services:
   cq-client:
-    image: szymanski2adesso/cadquery-client:2.4.0
+    image: szymanski2adesso/cadquery-env:2.4.0
     platform: linux/arm64
     build:
       context: ./docker

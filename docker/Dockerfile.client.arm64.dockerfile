@@ -10,6 +10,7 @@ RUN source ${CONDA_INSTALL_DIR}/bin/activate \
     jsonpickle \
     fastapi \
     pydantic \
-    && conda uninstall casadi \
+    casadi=3.7.0 \
+    python-kaleido \
     && pip install aerosandbox[full]
 
