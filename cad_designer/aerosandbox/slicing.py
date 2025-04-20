@@ -2,7 +2,7 @@ import cadquery as cq
 import os
 import matplotlib.pyplot as plt
 import numpy as np
-from typing import Sequence
+from typing import Sequence, Optional
 
 import aerosandbox as asb
 from OCP.BRepGProp import BRepGProp
@@ -226,7 +226,7 @@ def fit_superellipse(points: np.ndarray, initial_n: float = 2.0) -> dict:
         "fun": result.fun
     }
 
-def fit_shape_area_superellipse(points: np.ndarray, initial_n: float = 2.0) -> dict:
+def fit_shape_area_superellipse(points: np.ndarray, initial_n: float = 2.0, prev_params: Optional[dict] = None, smoothness_weight: float = 0.1) -> dict:
     """
     Fits a symmetric superellipse to a given set of 2D points, ensuring symmetry about the Z-axis.
 
@@ -263,9 +263,15 @@ def fit_shape_area_superellipse(points: np.ndarray, initial_n: float = 2.0) -> d
         area_fit = approximate_area(a, b, n)
         shape_loss = np.mean((radii - fit_r) ** 2)
         area_loss = ((area_fit - area_actual) / area_actual) ** 2
+        loss = shape_loss / (np.mean(radii) ** 2) + 0.01 * area_loss
 
-        scale = np.mean(radii) ** 2
-        return shape_loss / scale + 0.01 * area_loss
+        # Smoothness term
+        if prev_params:
+            a_p, b_p, n_p = prev_params["a"], prev_params["b"], prev_params["n"]
+            smoothness_loss = (a - a_p) ** 2 + (b - b_p) ** 2 + (n - n_p) ** 2
+            loss += smoothness_weight * smoothness_loss
+
+        return loss
 
     result = minimize(
         objective,

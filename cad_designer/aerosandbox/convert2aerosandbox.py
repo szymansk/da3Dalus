@@ -130,15 +130,17 @@ def convert_solid_to_asb_fuselage(shape: Workplane, number_of_slices=100, spacin
 
     ellipse_slices = []
     for wires in wire_slices:
+        prev_params = None
         for points in wires:
             points_2d = np.array([(y, z) for (_, y, z) in points])
-            result = fit_shape_area_superellipse(points_2d)
+            result = fit_shape_area_superellipse(points_2d, prev_params=prev_params)
             logger.debug(f"Fitted parameters: {result}")
             if plot:
                 plot_superellipse_fit(points_3d= np.array(points), fit_result=result, num_samples = 200)
             result['center'] = np.array([points[0][0], result['center'][0], result['center'][1]])
             ellipse_slices.append(result)
             #break # only take one wire per slice
+            prev_params = result
 
     # convert ellipse_slices to FuselageXSec
     fuselage_xsecs = []
