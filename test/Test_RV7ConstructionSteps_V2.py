@@ -1,21 +1,33 @@
-import logging
-import sys
-import os
-
 import json
+import logging
+import os
+import sys
 from pathlib import Path
 
-from cad_designer.airplane.ConstructionRootNode import ConstructionRootNode
+from cadquery import Vector
 
+from cad_designer.aerosandbox.convert2aerosandbox import convert_step_to_asb_fuselage
+from cad_designer.airplane import ConstructionStepNode, GeneralJSONDecoder, GeneralJSONEncoder, EngineMountShapeCreator, \
+    EngineCoverAndMountPanelAndFuselageShapeCreator, Cut2ShapesCreator, StepImportCreator, WingLoftCreator, \
+    SimpleOffsetShapeCreator, ServoImporterCreator, Fuse2ShapesCreator, EngineCapeShapeCreator, \
+    FuselageReinforcementShapeCreator, ScaleRotateTranslateCreator, FuselageWingSupportShapeCreator, \
+    FuselageElectronicsAccessCutOutShapeCreator, CutMultipleShapesCreator, Intersect2ShapesCreator, \
+    ComponentImporterCreator
+from cad_designer.airplane.ConstructionRootNode import ConstructionRootNode
 from cad_designer.airplane.aircraft_topology.Position import Position
+from cad_designer.airplane.aircraft_topology.components import ServoInformation, EngineInformation, \
+    ComponentInformation
+from cad_designer.airplane.aircraft_topology.wing import WingConfiguration
 from cad_designer.airplane.aircraft_topology.wing.Airfoil import Airfoil
+from cad_designer.airplane.creator.cad_operations import FuseMultipleShapesCreator
+from cad_designer.airplane.creator.export_import import ExportToStepCreator
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 
 # TODO: * cutouts for hinges
-#       * cutout for elevator flap rod (carbon 1mm) in elvator and in rudder
+#       * cutout for elevator flap rod (carbon 1mm) in elevator and in rudder
 #       * wings with servos for aileron and flaps
 #       * cutouts for elevator and rudder rods (anlenkung carbonstab 1mm)
 #       * ruderhörner der Anlenkpunkt sollte über der Drehachse liegen und der Abstand beider
@@ -89,13 +101,15 @@ if __name__ == "__main__":
     elevator = ConstructionStepNode(
         StepImportCreator("elevator",
                           step_file=os.path.abspath(f"../components/aircraft/RV-7/full_elevator_straight.step"),
-                          scale=base_scale))
+                          scale=base_scale,
+                          loglevel=logging.DEBUG))
     root_node.append(elevator)
 
     rudder = ConstructionStepNode(
         StepImportCreator("rudder",
                           step_file=os.path.abspath(f"../components/aircraft/RV-7/rudder_fix_final.step"),
-                          scale=base_scale))
+                          scale=base_scale,
+                          loglevel=logging.DEBUG))
     root_node.append(rudder)
 
     rudder_flap = ConstructionStepNode(
@@ -335,7 +349,7 @@ if __name__ == "__main__":
                                               "elevator_servo.model",
                                               "rudder_servo.model"
                                               ]))
-    #root_node.append(aircraft_step_export_node)
+    root_node.append(aircraft_step_export_node)
 
     ###### END: DESGIN TREE
 
@@ -392,10 +406,102 @@ if __name__ == "__main__":
     component_information = {"brushless": engine_info1, "lipo": lipo_information}
 
     airfoil = "../components/airfoils/naca23013.5.dat"
-    wing_configuration = {"main_wing": WingConfiguration(nose_pnt=(192.113, -1, -44.5),
-                                                         root_airfoil=Airfoil(airfoil=airfoil, chord=183, dihedral_as_rotation_in_degrees=3.7,
-                                                                              incidence=0), length=410, sweep=0,
-                                                         tip_airfoil=Airfoil(chord=183, dihedral_as_rotation_in_degrees=0, incidence=0))}
+    elevator_airfoile = "../components/airfoils/n12.dat"
+    wing_configuration = {
+        "main_wing": WingConfiguration(
+            nose_pnt=(192.113, 0, -44.5),
+             root_airfoil=Airfoil(airfoil=airfoil, chord=183, dihedral_as_rotation_in_degrees=3.7,
+                                  incidence=0), length=410, sweep=0,
+             tip_airfoil=Airfoil(chord=183, dihedral_as_rotation_in_degrees=0, incidence=0)),
+        "elevator": WingConfiguration(
+            nose_pnt=(593.573, 0, 31.608),
+            root_airfoil=Airfoil(airfoil=elevator_airfoile, chord=118.771, dihedral_as_rotation_in_degrees=0,
+                                 incidence=0), length=165.5, sweep=27.945,
+            tip_airfoil=Airfoil(chord=75.849, dihedral_as_rotation_in_degrees=0, incidence=0)),
+        "rudder": WingConfiguration(
+            nose_pnt=(581.4, 0, -9.652),
+            root_airfoil=Airfoil(airfoil=elevator_airfoile,
+                                 chord=186.2,
+                                 dihedral_as_rotation_in_degrees=90,
+                                 incidence=0),
+            length=188.1, sweep=68.463,
+            tip_airfoil=Airfoil(chord=79.8, dihedral_as_rotation_in_degrees=0, incidence=0)),
+    }
+
+    #######
+    import aerosandbox as asb
+    asb_wing: asb.Wing = wing_configuration["main_wing"].get_asb_wing()
+    asb_elevator: asb.Wing = wing_configuration["elevator"].get_asb_wing()
+    asb_rudder: asb.Wing = wing_configuration["rudder"].get_asb_wing(symmetric=False)
+
+    fuselage = convert_step_to_asb_fuselage(
+        f"../components/aircraft/RV-7/fuselage.step",
+        number_of_slices = 100, spacing = None, plot = True, scale=base_scale)
+
+    airplane = asb.Airplane(
+        name="RV7",
+        xyz_ref = None,
+        wings = [asb_wing, asb_elevator, asb_rudder],
+        fuselages = fuselage,
+        propulsors = None,
+    )
+
+    def add_cylinder(figure, position, length, name: str, color:str = 'red'):
+        # Add a cylinder along the x-axis
+        cylinder_x = [position.x, position.x]
+        cylinder_y = [position.y, position.y]
+        cylinder_z = [position.z, position.z + length]
+        figure.add_scatter3d(
+            x=cylinder_x,
+            y=cylinder_y,
+            z=cylinder_z,
+            mode="lines",
+            line=dict(width=20, color=color),
+            name=f"{name} Cylinder"
+        )
+
+        # Add text at the top of the cylinder
+        figure.add_scatter3d(
+            x=[position.x],
+            y=[position.y],
+            z=[position.z + length],
+            mode="text",
+            text=[name],
+            textposition="top center",
+            textfont=dict(size=20, color="black"),
+            name=f"{name} Label"
+        )
+
+    # Add the main wing
+    figure = airplane.draw(backend="plotly", show=False)
+
+    # calculate mean aerodynamic chord (MAC) of the main wing
+    mac = asb_wing.mean_aerodynamic_chord()
+
+    # calculate the neutral point (NP) of the airplane
+    np = airplane.aerodynamic_center(chord_fraction=0.25)
+    add_cylinder(figure, Vector(*np), 10, "NP", color="green")
+
+    # static margin 15%-7,5% of MAC for the Center of Gravity (CG)
+    static_margin = 0.15
+    cg_position = Vector(*np) + Vector(-mac * static_margin, 0, 0)
+    add_cylinder(figure, cg_position, 10,f"CG-{static_margin*100}%", color="red")
+
+    static_margin = 0.075
+    cg_position = Vector(*np) + Vector(-mac * static_margin, 0, 0)
+    add_cylinder(figure, cg_position, 10,f"CG-{static_margin*100}%", color="red")
+
+    static_margin = 0.125
+    cg_position = Vector(*np) + Vector(-mac * static_margin, 0, 0)
+    add_cylinder(figure, cg_position, 10,f"XYZ_REF-{static_margin*100}%", color="blue")
+
+    # set the reference point of the airplane to the estimated CG position for dynamic analysis
+    airplane.xyz_ref = cg_position
+
+    figure.show()
+
+
+    ######
 
     # load the string
     # tigl_handel is parameter which is not in the json file, but needed by the constructor of a creator class

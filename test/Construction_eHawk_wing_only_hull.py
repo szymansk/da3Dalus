@@ -17,7 +17,7 @@ from cad_designer.airplane.aircraft_topology.components import ServoInformation,
 from cad_designer.airplane.aircraft_topology.printer3d import Printer3dSettings
 from cad_designer.airplane.aircraft_topology.wing import Spare, WingConfiguration, TrailingEdgeDevice
 from cad_designer.airplane.aircraft_topology.wing.Airfoil import Airfoil
-from cad_designer.aerosandbox.convert2aerosandbox import convert_wing_config_to_asb_wing, export_wing_to_stl
+from cad_designer.aerosandbox.convert2aerosandbox import convert_wing_config_to_asb_wing, export_asb_wing_to_stl
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
@@ -183,21 +183,12 @@ if __name__ == "__main__":
             Spare(spare_support_dimension_width=4.42,
                   spare_support_dimension_height=4.42,
                   spare_mode="follow")],
-        trailing_edge_device=TrailingEdgeDevice(
-            name="aileron",
-            rel_chord_root=0.8,
-            rel_chord_tip=0.8,
-            hinge_spacing=0.5,
-            side_spacing_root=2.,
-            side_spacing_tip=2.,
-            servo=1,
-            servo_placement='top',
-            rel_chord_servo_position=0.414,
-            rel_length_servo_position=0.486,
-            positive_deflection_deg=35,
-            negative_deflection_deg=35,
-            trailing_edge_offset_factor=1.2,
-            hinge_type="top")
+        trailing_edge_device=TrailingEdgeDevice(name="aileron", rel_chord_root=0.8, rel_chord_tip=0.8,
+                                                hinge_spacing=0.5, side_spacing_root=2., side_spacing_tip=2., servo=1,
+                                                servo_placement='top', rel_chord_servo_position=0.414,
+                                                rel_length_servo_position=0.486, positive_deflection_deg=35,
+                                                negative_deflection_deg=35, trailing_edge_offset_factor=1.2,
+                                                hinge_type="top")
     )
 
     l_middle = 75
@@ -307,7 +298,7 @@ if __name__ == "__main__":
     #                             )
 
     wing = convert_wing_config_to_asb_wing(wing_config)
-    export_wing_to_stl(wing, "mein_fluegel.stl")
+    export_asb_wing_to_stl(wing, "mein_fluegel.stl")
 
     wing_configuration = {"main_wing": wing_config}
 

@@ -17,7 +17,7 @@ from cad_designer.airplane.aircraft_topology.wing import Spare, WingConfiguratio
 from cad_designer.airplane.aircraft_topology.wing.Airfoil import Airfoil
 from cad_designer.airplane.creator.export_import import ExportToStepCreator
 from cad_designer.airplane.creator.wing import VaseModeWingCreator
-from cad_designer.aerosandbox.convert2aerosandbox import export_wing_to_stl
+from cad_designer.aerosandbox.convert2aerosandbox import export_asb_wing_to_stl
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
@@ -141,7 +141,7 @@ if __name__ == "__main__":
                             ])
 
     asb_wing = wing_config.get_asb_wing()
-    export_wing_to_stl(asb_wing, f"../exports/{vase_wing_loft.creator_id}_asb.stl")
+    export_asb_wing_to_stl(asb_wing, f"../exports/{vase_wing_loft.creator_id}_asb.stl")
 
     wing_configuration = {"main_wing": wing_config}
 

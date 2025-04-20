@@ -45,11 +45,12 @@ class WingConfiguration:
                                    number_interpolation_points=number_interpolation_points, wing_segment_type='root')
 
         self.segments: list[WingSegment] = [root_segment]
-        self._wing_workplanes: dict[int, Workplane] = {}
-        self._wing_workplanes[0] = self.get_wing_workplane(0)
-        self.segments[0].root_airfoil.set_airfoil_coordinate_system((self._wing_workplanes[0].plane))
+        self._wing_workplanes: dict[Tuple[int,bool], Workplane] = {}
+        self._wing_workplanes[(0, False)] = self.get_wing_workplane(0)
+        self.segments[0].root_airfoil.set_airfoil_coordinate_system((self._wing_workplanes[(0,False)].plane))
 
         self._scaled_point_list: dict[str, list[tuple[float, float]]] = {}
+        self._asb_wing: Optional[asb.Wing] = None
 
         for spare in [ spare for spare in (self.segments[0].spare_list or [])]:
             self._set_standard_spare_origin_vector(0, spare)
@@ -111,8 +112,8 @@ class WingConfiguration:
 
         segment_number = len(self.segments) - 1
 
-        self._wing_workplanes[segment_number] = self.get_wing_workplane(segment_number)
-        self.segments[segment_number].tip_airfoil.set_airfoil_coordinate_system((self._wing_workplanes[segment_number].plane))
+        self._wing_workplanes[(segment_number, False)] = self.get_wing_workplane(segment_number)
+        self.segments[segment_number].tip_airfoil.set_airfoil_coordinate_system((self._wing_workplanes[(segment_number,False)].plane))
 
     def add_segment(self: T,
                     length: PositiveFloat,
@@ -146,8 +147,8 @@ class WingConfiguration:
 
         segment_number = len(self.segments) - 1
 
-        self._wing_workplanes[segment_number] = self.get_wing_workplane(segment_number)
-        self.segments[segment_number].tip_airfoil.set_airfoil_coordinate_system((self._wing_workplanes[segment_number].plane))
+        self._wing_workplanes[(segment_number, False)] = self.get_wing_workplane(segment_number)
+        self.segments[segment_number].tip_airfoil.set_airfoil_coordinate_system((self._wing_workplanes[(segment_number, False)].plane))
 
         if self.segments[segment_number].spare_list is not None:
             for spare_idx in range(len(self.segments[segment_number].spare_list)):
@@ -227,25 +228,41 @@ class WingConfiguration:
                                                                                end_segment=segment_number,
                                                                                spare_position_factor=spare.spare_position_factor)
 
-    def get_wing_workplane(self: T, segment: NonNegativeInt = 0) -> Workplane:
+    def get_wing_workplane(self: T, segment: NonNegativeInt = 0, ignore_nose_point: bool = False) -> Workplane:
         """
-        Creating a workplane where the 0-point is located at the wing's nose point
-        and the workplane is going through the wing. X is pointin from the nose to the tail,
-        y is pointing from the root along the nose to the tip and z ist point upwards.
+        Creates a workplane for a specific wing segment.
 
-        Remark: an incident angle at the wing_tip cannot be covered with this
-        workplane.
+        The workplane's origin (0-point) is located at the wing's nose point, and the plane is aligned with the wing's geometry.
+        The X-axis points from the nose to the tail, the Y-axis points from the root along the nose to the tip, and the Z-axis points upwards.
+
+        Parameters:
+            segment (NonNegativeInt): The index of the wing segment for which the workplane is created. Defaults to 0 (root segment).
+            ignore_nose_point (bool): If True, the nose point is ignored when calculating the workplane's origin (no translation of the wing). Defaults to False.
+
+        Returns:
+            Workplane: A `cadquery.Workplane` object representing the workplane for the specified wing segment.
+
+        Remarks:
+            - This method does not account for an incident angle at the wing tip.
+            - The workplane is cached for each segment to improve performance.
         """
 
-        if segment in self._wing_workplanes.keys():
-            return self._wing_workplanes[segment]
+        if (segment, ignore_nose_point) in self._wing_workplanes.keys():
+            return self._wing_workplanes[(segment, ignore_nose_point)]
 
         seg = 0
-        all_trans = [
-            [1, 0, 0, self.nose_pnt[0]],
-            [0, 1, 0, self.nose_pnt[1]],
-            [0, 0, 1, self.nose_pnt[2]],
-            [0, 0, 0, 1]]
+        if not ignore_nose_point:
+            all_trans = [
+                [1, 0, 0, self.nose_pnt[0]],
+                [0, 1, 0, self.nose_pnt[1]],
+                [0, 0, 1, self.nose_pnt[2]],
+                [0, 0, 0, 1]]
+        else:
+            all_trans = [
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1]]
 
         for seg in reversed(range(segment)):
             airfoil_ref = self.segments[seg].tip_airfoil
@@ -300,7 +317,7 @@ class WingConfiguration:
 
         wp_plane = (Workplane(inPlane=plane, origin=origin))
 
-        self._wing_workplanes[segment] = wp_plane
+        self._wing_workplanes[(segment, ignore_nose_point)] = wp_plane
         return wp_plane
 
     def get_airfoil_points(self: T, segment: NonNegativeInt, isRoot: bool = False) -> list[tuple[float, float]]:
@@ -375,50 +392,79 @@ class WingConfiguration:
             tip_plane = Plane(origin=origin_tip, xDir=wing_wp_tip.plane.xDir, normal=wing_wp_tip.plane.yDir)
             return root_plane, tip_plane
 
-    def get_asb_wing(self) -> asb.Wing:
+    def get_asb_wing(self, symmetric:bool = True) -> asb.Wing:
+        # TODO: aerosandbox is in meters and not in mm we need to scale it
+        if self._asb_wing is not None:
+            return self._asb_wing
         sections = []
 
         is_root = True
         incidence_angle = 0
+        ignore_nose_point = True
+        import os
         for i, segment in enumerate(self.segments):
             if is_root:
-                root_plane = self.get_wing_workplane(i).plane
+
+                root_plane = self.get_wing_workplane(i, ignore_nose_point=ignore_nose_point).plane
                 root_af = segment.root_airfoil
 
                 if root_af.rotation_point_rel_chord != 0.25:
                     raise ValueError(f"WingXSec: {i} --> rotation_point_rel_chord must be 0.25 for aerosandbox")
 
+                if segment.trailing_edge_device is not None:
+                    if segment.trailing_edge_device.rel_chord_root != segment.trailing_edge_device.rel_chord_tip:
+                        raise ValueError(f"WingXSec: {i} --> trailing_edge_device rel_chord should be the same for root and tip")
+
+                control_surface = asb.ControlSurface(
+                    name = segment.trailing_edge_device.name,
+                    symmetric  = segment.trailing_edge_device.symmetric,
+                    deflection = 0.0,
+                    hinge_point = segment.trailing_edge_device.rel_chord_root,
+                    trailing_edge = True,
+                    analysis_specific_options = None) if segment.trailing_edge_device is not None else None
+
                 incidence_angle += root_af.incidence
-                import os
                 root_origin = root_plane.origin
                 root_section = asb.WingXSec(
-                    xyz_le=[root_origin.x, root_origin.y, root_origin.z],
                     chord=root_af.chord,
                     airfoil=asb.Airfoil(name=os.path.abspath(root_af.airfoil)),
                     twist=incidence_angle,
-                )
+                    control_surfaces=[control_surface],
+                ).translate([root_origin.x, root_origin.y, root_origin.z])
                 sections.append(root_section)
                 is_root = False
 
-            tip_plane = self.get_wing_workplane(i + 1).plane
+            tip_plane = self.get_wing_workplane(i + 1, ignore_nose_point=ignore_nose_point).plane
             tip_af = segment.tip_airfoil
 
             if tip_af.rotation_point_rel_chord != 0.25:
                 raise ValueError(f"WingXSec: {i + 1} --> rotation_point_rel_chord must be 0.25 for aerosandbox")
 
+            control_surface = asb.ControlSurface(
+                name = segment.trailing_edge_device.name,
+                symmetric = segment.trailing_edge_device.symmetric,
+                deflection = 0.0,
+                hinge_point = segment.trailing_edge_device.rel_chord_root,
+                trailing_edge = True,
+                analysis_specific_options = None) if segment.trailing_edge_device is not None else None
+
             incidence_angle += tip_af.incidence
             tip_origin = tip_plane.origin
             tip_section = asb.WingXSec(
-                xyz_le=[tip_origin.x, tip_origin.y, tip_origin.z],
                 chord=tip_af.chord,
                 airfoil=asb.Airfoil(name=os.path.abspath(tip_af.airfoil)),
                 twist=incidence_angle,
-            )
+                control_surfaces=[control_surface],
+            ).translate([tip_origin.x, tip_origin.y, tip_origin.z])
 
             sections.append(tip_section)
             pass
 
-        return asb.Wing(xsecs=sections, symmetric=True)
+        # create the aerosandbox wing
+        self._asb_wing = (asb.Wing(xsecs=sections, symmetric=symmetric)
+                            # translate the wing to the nose point
+                            .translate(list(self.nose_pnt)))
+        return self._asb_wing
 
     @staticmethod
     def _create_homogeneous_rotation_matrix(axis: str, degrees: float) -> ndarray[Any, dtype[generic | generic | Any]]:
