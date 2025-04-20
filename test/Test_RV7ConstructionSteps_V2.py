@@ -430,13 +430,14 @@ if __name__ == "__main__":
 
     #######
     import aerosandbox as asb
-    asb_wing: asb.Wing = wing_configuration["main_wing"].get_asb_wing()
-    asb_elevator: asb.Wing = wing_configuration["elevator"].get_asb_wing()
-    asb_rudder: asb.Wing = wing_configuration["rudder"].get_asb_wing(symmetric=False)
+    mm_to_m_scale = 1.0e-3
+    asb_wing: asb.Wing = wing_configuration["main_wing"].get_asb_wing(scale=mm_to_m_scale)
+    asb_elevator: asb.Wing = wing_configuration["elevator"].get_asb_wing(scale=mm_to_m_scale)
+    asb_rudder: asb.Wing = wing_configuration["rudder"].get_asb_wing(symmetric=False,scale=mm_to_m_scale)
 
     fuselage = convert_step_to_asb_fuselage(
         f"../components/aircraft/RV-7/fuselage.step",
-        number_of_slices = 100, spacing = None, plot = True, scale=base_scale)
+        number_of_slices = 100, spacing = None, plot = True, scale=base_scale*mm_to_m_scale)
 
     airplane = asb.Airplane(
         name="RV7",
@@ -480,26 +481,26 @@ if __name__ == "__main__":
 
     # calculate the neutral point (NP) of the airplane
     np = airplane.aerodynamic_center(chord_fraction=0.25)
-    add_cylinder(figure, Vector(*np), 10, "NP", color="green")
+    add_cylinder(figure, Vector(*np), 0.2, "NP", color="green")
 
     # static margin 15%-7,5% of MAC for the Center of Gravity (CG)
     static_margin = 0.15
     cg_position = Vector(*np) + Vector(-mac * static_margin, 0, 0)
-    add_cylinder(figure, cg_position, 10,f"CG-{static_margin*100}%", color="red")
+    add_cylinder(figure, cg_position, 0.2,f"CG-{static_margin*100}%", color="red")
 
     static_margin = 0.075
     cg_position = Vector(*np) + Vector(-mac * static_margin, 0, 0)
-    add_cylinder(figure, cg_position, 10,f"CG-{static_margin*100}%", color="red")
+    add_cylinder(figure, cg_position, 0.2,f"CG-{static_margin*100}%", color="red")
 
     static_margin = 0.125
     cg_position = Vector(*np) + Vector(-mac * static_margin, 0, 0)
-    add_cylinder(figure, cg_position, 10,f"XYZ_REF-{static_margin*100}%", color="blue")
+    add_cylinder(figure, cg_position, 0.2,f"XYZ_REF-{static_margin*100}%", color="blue")
 
     # set the reference point of the airplane to the estimated CG position for dynamic analysis
     airplane.xyz_ref = cg_position
 
     figure.show()
-
+    airplane.draw_three_view()
 
     ######
 

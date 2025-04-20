@@ -392,7 +392,7 @@ class WingConfiguration:
             tip_plane = Plane(origin=origin_tip, xDir=wing_wp_tip.plane.xDir, normal=wing_wp_tip.plane.yDir)
             return root_plane, tip_plane
 
-    def get_asb_wing(self, symmetric:bool = True) -> asb.Wing:
+    def get_asb_wing(self, symmetric:bool = True, scale: float = 1.0) -> asb.Wing:
         # TODO: aerosandbox is in meters and not in mm we need to scale it
         if self._asb_wing is not None:
             return self._asb_wing
@@ -426,11 +426,11 @@ class WingConfiguration:
                 incidence_angle += root_af.incidence
                 root_origin = root_plane.origin
                 root_section = asb.WingXSec(
-                    chord=root_af.chord,
+                    chord=root_af.chord*scale,
                     airfoil=asb.Airfoil(name=os.path.abspath(root_af.airfoil)),
                     twist=incidence_angle,
                     control_surfaces=[control_surface],
-                ).translate([root_origin.x, root_origin.y, root_origin.z])
+                ).translate([root_origin.x*scale, root_origin.y*scale, root_origin.z*scale])
                 sections.append(root_section)
                 is_root = False
 
@@ -451,11 +451,11 @@ class WingConfiguration:
             incidence_angle += tip_af.incidence
             tip_origin = tip_plane.origin
             tip_section = asb.WingXSec(
-                chord=tip_af.chord,
+                chord=tip_af.chord*scale,
                 airfoil=asb.Airfoil(name=os.path.abspath(tip_af.airfoil)),
                 twist=incidence_angle,
                 control_surfaces=[control_surface],
-            ).translate([tip_origin.x, tip_origin.y, tip_origin.z])
+            ).translate([tip_origin.x*scale, tip_origin.y*scale, tip_origin.z*scale])
 
             sections.append(tip_section)
             pass
@@ -463,7 +463,7 @@ class WingConfiguration:
         # create the aerosandbox wing
         self._asb_wing = (asb.Wing(xsecs=sections, symmetric=symmetric)
                             # translate the wing to the nose point
-                            .translate(list(self.nose_pnt)))
+                            .translate([x*scale for x in list(self.nose_pnt)]))
         return self._asb_wing
 
     @staticmethod

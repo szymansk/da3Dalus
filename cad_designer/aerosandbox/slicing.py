@@ -52,7 +52,7 @@ def slice_model_along_x(shape: cq.Workplane, spacing: float = 0.1, number_of_sli
             number_of_slices = 2
         xmin, xmax = get_x_bounds(shape.val())
         spacing = (xmax - xmin) / (number_of_slices-1)
-        logger.info(f"Slicing with {number_of_slices} slices set spacing = {spacing:.2f}")
+        logger.info(f"Slicing with {number_of_slices} slices set spacing = {spacing:.5f}")
     slices = []
     x = 0
     # getting all wires on the first X plane
@@ -261,9 +261,11 @@ def fit_shape_area_superellipse(points: np.ndarray, initial_n: float = 2.0) -> d
         a, b, n = params
         fit_r = superellipse_radius(angles, a, b, n)
         area_fit = approximate_area(a, b, n)
-        shape_loss = np.mean((radii - fit_r)**2)
-        area_loss = ((area_fit - area_actual) / area_actual)**2
-        return shape_loss + 0.01 * area_loss  # weight area lightly
+        shape_loss = np.mean((radii - fit_r) ** 2)
+        area_loss = ((area_fit - area_actual) / area_actual) ** 2
+
+        scale = np.mean(radii) ** 2
+        return shape_loss / scale + 0.01 * area_loss
 
     result = minimize(
         objective,
