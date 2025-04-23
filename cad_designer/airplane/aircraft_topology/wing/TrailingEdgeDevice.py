@@ -89,3 +89,52 @@ class TrailingEdgeDevice:
     def __repr__(self):
         from pprint import pformat
         return pformat(vars(self), indent=4, width=1)
+
+    def __getstate__(self):
+        """Return a dictionary of serializable attributes for JSON serialization."""
+        data = {}
+        for key, value in self.__dict__.items():
+            if key == '_servo' and isinstance(value, Servo):
+                data[key] = value.__getstate__() if hasattr(value, '__getstate__') else value
+            else:
+                data[key] = value
+        return data
+
+    @staticmethod
+    def from_json_dict(data: dict) -> 'TrailingEdgeDevice':
+        """
+        Create a TrailingEdgeDevice from a JSON dictionary.
+
+        Args:
+            data: Dictionary containing the TrailingEdgeDevice data.
+
+        Returns:
+            A new TrailingEdgeDevice instance.
+        """
+        from cad_designer.airplane.aircraft_topology.components.Servo import Servo
+
+        # Handle _servo if it's a Servo object
+        servo = data.get('_servo')
+        if isinstance(servo, dict) and 'model' in servo:
+            servo = Servo.from_json_dict(servo) if hasattr(Servo, 'from_json_dict') else servo
+
+        # Create and return the TrailingEdgeDevice
+        device = TrailingEdgeDevice(
+            name=data.get('name'),
+            rel_chord_root=data.get('rel_chord_root'),
+            rel_chord_tip=data.get('rel_chord_tip'),
+            hinge_spacing=data.get('hinge_spacing'),
+            side_spacing_root=data.get('side_spacing_root'),
+            side_spacing_tip=data.get('side_spacing_tip'),
+            servo=servo,
+            servo_placement=data.get('servo_placement'),
+            rel_chord_servo_position=data.get('rel_chord_servo_position'),
+            rel_length_servo_position=data.get('rel_length_servo_position'),
+            positive_deflection_deg=data.get('positive_deflection_deg'),
+            negative_deflection_deg=data.get('negative_deflection_deg'),
+            trailing_edge_offset_factor=data.get('trailing_edge_offset_factor'),
+            hinge_type=data.get('hinge_type'),
+            symmetric=data.get('symmetric')
+        )
+
+        return device

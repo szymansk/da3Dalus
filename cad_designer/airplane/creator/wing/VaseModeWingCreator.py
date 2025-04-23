@@ -67,7 +67,8 @@ class VaseModeWingCreator(AbstractShapeCreator):
                  wing_config: Optional[dict[NonNegativeInt, WingConfiguration]] = None,
                  printer_settings: Optional[Printer3dSettings] = None,
                  servo_information: Optional[dict[NonNegativeInt, ServoInformation]] = None,
-                 wing_side: WingSides = "RIGHT",
+                 wing_side: Optional[WingSides] = None,
+                 symmetric: bool = True,
                  loglevel: int = logging.INFO):
         """
         Initializes the VaseModeWingCreator class with the required parameters.
@@ -87,11 +88,12 @@ class VaseModeWingCreator(AbstractShapeCreator):
         self.leading_edge_offset_factor: float = leading_edge_offset_factor
         self.trailing_edge_offset_factor: float = trailing_edge_offset_factor
         self.minimum_rib_angle: float = minimum_rib_angle
-        self.wing_side: Literal["LEFT", "RIGHT", "BOTH"] = wing_side
+        self.wing_side: WingSides = wing_side
         self.wing_index: Union[str, int] = wing_index
         self._wing_config: dict[int, WingConfiguration] = wing_config
         self._printer_settings: Printer3dSettings = printer_settings
         self._servo_information: dict[int, ServoInformation] = servo_information
+        self.symmetric: bool = symmetric
 
         super().__init__(creator_id, shapes_of_interest_keys=[], loglevel=loglevel)
 
@@ -140,6 +142,12 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
         logging.info(f"construct vase mode wing from configuration --> '{self.identifier}'")
         wing_config: WingConfiguration = self._wing_config[self.wing_index]
+        if self.wing_side is None:
+            if wing_config.symmetric:
+                self._wing_side = "BOTH"
+            else:
+                self._wing_side = "RIGHT"
+
         if self._printer_settings is not None:
             self.printer_wall_thickness = self._printer_settings.wall_thickness
             self.gap_rel_printer_wall_thickness = self._printer_settings.rel_gap_wall_thickness

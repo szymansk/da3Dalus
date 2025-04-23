@@ -140,7 +140,7 @@ if __name__ == "__main__":
                                       ),
                             ])
 
-    asb_wing = wing_config.get_asb_wing()
+    asb_wing = wing_config.asb_wing()
     export_asb_wing_to_stl(asb_wing, f"../exports/{vase_wing_loft.creator_id}_asb.stl")
 
     wing_configuration = {"main_wing": wing_config}

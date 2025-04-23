@@ -146,14 +146,14 @@ def convert_solid_to_asb_fuselage(shape: Workplane, number_of_slices=100, spacin
     fuselage_xsecs = []
     for i, ellipse in enumerate(ellipse_slices):
         fuselage_xsec = asb.FuselageXSec(
-            xyz_c = ellipse['center'],
+            #xyz_c = ellipse['center'],
             xyz_normal = np.array([1.0, 0.0, 0.0]),
             radius = None,
             width = 2. * ellipse['a'],
             height = 2. * ellipse['b'],
             shape = ellipse['n'],
             analysis_specific_options = None,
-        )
+        ).translate(ellipse['center'])
 
         fuselage_xsecs.append(fuselage_xsec)
 

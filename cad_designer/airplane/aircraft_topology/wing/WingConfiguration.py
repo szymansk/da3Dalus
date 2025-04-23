@@ -1,4 +1,11 @@
 import logging
+
+from cad_designer.decorators.general_decorators import fluent_init
+
+logger = logging.getLogger(__name__)
+
+from functools import cached_property, cache
+
 import math
 from typing import TypeVar, Any, List, Tuple, Union, Optional
 
@@ -19,6 +26,7 @@ from cad_designer.airplane.types import Factor, TipType, CoordinateSystemBase
 
 T = TypeVar("T", bound="WingConfiguration")
 
+@fluent_init
 class WingConfiguration:
     """
     This class holds the definition of the wing defined by connected segments. The first segment
@@ -33,7 +41,8 @@ class WingConfiguration:
                  tip_airfoil: Optional[Airfoil] = None,
                  number_interpolation_points: Optional[PositiveInt] = None,
                  spare_list: Optional[List[Spare]] = None,
-                 trailing_edge_device: Optional[TrailingEdgeDevice] = None) -> T:
+                 trailing_edge_device: Optional[TrailingEdgeDevice] = None,
+                 symmetric: bool = True) -> T:
         self.segments: Union[list[WingSegment], None] = None
         self.nose_pnt: tuple[float, float, float] = nose_pnt
 
@@ -52,8 +61,11 @@ class WingConfiguration:
         self._scaled_point_list: dict[str, list[tuple[float, float]]] = {}
         self._asb_wing: Optional[asb.Wing] = None
 
+        self.symmetric: bool = symmetric
+
         for spare in [ spare for spare in (self.segments[0].spare_list or [])]:
             self._set_standard_spare_origin_vector(0, spare)
+
 
     def _get_standard_spare_origin_and_vector(self, start_segment, end_segment, spare_position_factor):
         if start_segment > end_segment:
@@ -92,7 +104,7 @@ class WingConfiguration:
                         sweep: NonNegativeFloat = 0,
                         tip_airfoil: Optional[Airfoil] = None,
                         number_interpolation_points: Optional[PositiveInt] = None
-                        ) -> None:
+                        ) -> T:
         tip_airfoil = tip_airfoil if tip_airfoil is not None else Airfoil()
 
         root_airfoil = Airfoil(airfoil= self.segments[-1].tip_airfoil.airfoil,
@@ -114,6 +126,7 @@ class WingConfiguration:
 
         self._wing_workplanes[(segment_number, False)] = self.get_wing_workplane(segment_number)
         self.segments[segment_number].tip_airfoil.set_airfoil_coordinate_system((self._wing_workplanes[(segment_number,False)].plane))
+        return self
 
     def add_segment(self: T,
                     length: PositiveFloat,
@@ -123,7 +136,7 @@ class WingConfiguration:
                     number_interpolation_points: Optional[PositiveInt] = None,
                     spare_list: Optional[List[Spare]] = None,
                     trailing_edge_device: Optional[TrailingEdgeDevice] = None
-                    ) -> None:
+                    ) -> T:
         if self.segments[-1].wing_segment_type == 'tip':
             raise ValueError(f"The previous wing segment cannot be a '{self.segments[-1].wing_segment_type}'")
 
@@ -201,6 +214,7 @@ class WingConfiguration:
                     else:
                         spare.spare_origin = seg_plane.origin + spare.spare_origin
                     pass
+        return self
 
     def _set_follow_spare_origin_vector(self, segment_number, spare, spare_idx):
         spare.spare_vector = self.segments[segment_number - 1].spare_list[spare_idx].spare_vector
@@ -377,7 +391,7 @@ class WingConfiguration:
         end_seg = self.segments[end_segment]
 
         if start_ted is None:
-            logging.warning("No trailing edge device")
+            logger.warning("No trailing edge device")
             return None, None
         else:
             wing_wp = self.get_wing_workplane(start_segment)
@@ -392,8 +406,8 @@ class WingConfiguration:
             tip_plane = Plane(origin=origin_tip, xDir=wing_wp_tip.plane.xDir, normal=wing_wp_tip.plane.yDir)
             return root_plane, tip_plane
 
-    def get_asb_wing(self, symmetric:bool = True, scale: float = 1.0) -> asb.Wing:
-        # TODO: aerosandbox is in meters and not in mm we need to scale it
+    @cache
+    def asb_wing(self, scale: float = 1.0) -> asb.Wing:
         if self._asb_wing is not None:
             return self._asb_wing
         sections = []
@@ -413,6 +427,7 @@ class WingConfiguration:
 
                 if segment.trailing_edge_device is not None:
                     if segment.trailing_edge_device.rel_chord_root != segment.trailing_edge_device.rel_chord_tip:
+                        logger.debug(f"WingXSec: {i} --> trailing_edge_device rel_chord should be the same for root and tip")
                         raise ValueError(f"WingXSec: {i} --> trailing_edge_device rel_chord should be the same for root and tip")
 
                 control_surface = asb.ControlSurface(
@@ -429,7 +444,7 @@ class WingConfiguration:
                     chord=root_af.chord*scale,
                     airfoil=asb.Airfoil(name=os.path.abspath(root_af.airfoil)),
                     twist=incidence_angle,
-                    control_surfaces=[control_surface],
+                    control_surfaces=[control_surface] if control_surface is not None else None,
                 ).translate([root_origin.x*scale, root_origin.y*scale, root_origin.z*scale])
                 sections.append(root_section)
                 is_root = False
@@ -454,14 +469,14 @@ class WingConfiguration:
                 chord=tip_af.chord*scale,
                 airfoil=asb.Airfoil(name=os.path.abspath(tip_af.airfoil)),
                 twist=incidence_angle,
-                control_surfaces=[control_surface],
+                control_surfaces=[control_surface] if control_surface is not None else None,
             ).translate([tip_origin.x*scale, tip_origin.y*scale, tip_origin.z*scale])
 
             sections.append(tip_section)
             pass
 
         # create the aerosandbox wing
-        self._asb_wing = (asb.Wing(xsecs=sections, symmetric=symmetric)
+        self._asb_wing = (asb.Wing(xsecs=sections, symmetric=self.symmetric)
                             # translate the wing to the nose point
                             .translate([x*scale for x in list(self.nose_pnt)]))
         return self._asb_wing
@@ -489,6 +504,7 @@ class WingConfiguration:
         Remark: only a two point interpolation is implemented, this leads to large deviations from the
         real surface on segments with high curvature (e.g. the nose)
         """
+        #TODO use t
         root_points = self.get_airfoil_points(segment=segment, isRoot=True)
         tip_points = self.get_airfoil_points(segment=segment)
 
@@ -534,7 +550,7 @@ class WingConfiguration:
             ib = tip_wp.plane.toLocalCoords(interpolated_bottom)
             return Vector(it.x, it.z, it.y), Vector(ib.x, ib.z, ib.y)
         else:
-            logging.critical(f"unknown coordinate system {coordinate_system}")
+            logger.critical(f"unknown coordinate system {coordinate_system}")
             raise ValueError(f"unknown coordinate system {coordinate_system}")
 
     def _interpolate_y_at_x(self, points, x, reverse=False) -> Tuple[float, float]:
@@ -561,5 +577,87 @@ class WingConfiguration:
         data = {}
         for key, value in self.__dict__.items():
             if not key.startswith('_'):
-                data[key] = value
+                if key == 'segments':
+                    data[key] = [segment.__getstate__() for segment in value] if value else None
+                else:
+                    data[key] = value
         return data
+
+    @staticmethod
+    def from_json_dict(data: dict) -> 'WingConfiguration':
+        """
+        Create a WingConfiguration from a JSON dictionary.
+
+        Args:
+            data: Dictionary containing the WingConfiguration data.
+
+        Returns:
+            A new WingConfiguration instance.
+        """
+        from cad_designer.airplane.aircraft_topology.wing.Airfoil import Airfoil
+        from cad_designer.airplane.aircraft_topology.wing.Spare import Spare
+        from cad_designer.airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
+
+        # Get airfoil data from the first segment if available
+        first_segment = data.get('segments', [])[0] if data.get('segments') else {}
+        root_airfoil_data = first_segment.get('root_airfoil', {}) if first_segment else data.get('root_airfoil', {})
+        tip_airfoil_data = first_segment.get('tip_airfoil', {}) if first_segment else data.get('tip_airfoil', {})
+
+        # Get spare list and trailing edge device from first segment if available
+        spare_list_data = first_segment.get('spare_list', []) if first_segment else data.get('spare_list', [])
+        trailing_edge_device_data = first_segment.get('trailing_edge_device', {}) if first_segment else data.get('trailing_edge_device', {})
+
+        # Get length and sweep from first segment if available
+        length = first_segment.get('length', data.get('length', 0)) if first_segment else data.get('length', 0)
+        sweep = first_segment.get('sweep', data.get('sweep', 0)) if first_segment else data.get('sweep', 0)
+
+        # Create the base wing configuration
+        wing = WingConfiguration(
+            nose_pnt=tuple(data.get('nose_pnt', (0, 0, 0))),
+            root_airfoil=Airfoil.from_json_dict(root_airfoil_data) if root_airfoil_data else Airfoil(),
+            length=length,
+            sweep=sweep,
+            sweep_is_angle=data.get('sweep_is_angle', False),
+            tip_airfoil=Airfoil.from_json_dict(tip_airfoil_data) if tip_airfoil_data else Airfoil(),
+            number_interpolation_points=data.get('number_interpolation_points'),
+            spare_list=[Spare.from_json_dict(spare) for spare in spare_list_data] if spare_list_data else None,
+            trailing_edge_device=TrailingEdgeDevice.from_json_dict(trailing_edge_device_data) if trailing_edge_device_data else None,
+            symmetric=data.get('symmetric', True)
+        )
+
+        # Restore segments if they exist
+        if 'segments' in data:
+            from cad_designer.airplane.aircraft_topology.wing.WingSegment import WingSegment
+            wing.segments = []
+            for segment_data in data['segments']:
+                segment = WingSegment.from_json_dict(segment_data)
+                wing.segments.append(segment)
+
+        return wing
+
+    @staticmethod
+    def from_json(file_path: str) -> 'WingConfiguration':
+        """
+        Load a WingConfiguration from a JSON file.
+
+        Args:
+            file_path: Path to the JSON file.
+
+        Returns:
+            A new WingConfiguration instance.
+        """
+        import json
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+        return WingConfiguration.from_json_dict(data)
+
+    def save_to_json(self, file_path: str) -> None:
+        """
+        Save the WingConfiguration to a JSON file.
+
+        Args:
+            file_path: Path to the JSON file.
+        """
+        import json
+        with open(file_path, 'w') as f:
+            json.dump(self.__getstate__(), f, indent=4)

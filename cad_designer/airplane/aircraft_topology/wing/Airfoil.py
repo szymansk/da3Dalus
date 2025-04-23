@@ -84,3 +84,23 @@ class Airfoil:
         state = self.__dict__.copy()
         del state['coordinate_system']
         return state
+
+    @staticmethod
+    def from_json_dict(data: dict) -> 'Airfoil':
+        """
+        Create an Airfoil from a JSON dictionary.
+
+        Args:
+            data: Dictionary containing the Airfoil data.
+
+        Returns:
+            A new Airfoil instance.
+        """
+        return Airfoil(
+            airfoil=data.get('airfoil'),
+            chord=data.get('chord'),
+            dihedral_as_rotation_in_degrees=data.get('dihedral_as_rotation_in_degrees', 0),
+            dihedral_as_translation=data.get('dihedral_as_translation', 0),
+            incidence=data.get('incidence', 0),
+            rotation_point_rel_chord=data.get('rotation_point_rel_chord', 0.25)
+        )

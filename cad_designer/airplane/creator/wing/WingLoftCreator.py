@@ -1,23 +1,25 @@
 import logging
-from typing import Union, Literal
+from typing import Union, Literal, Optional
 
 from cadquery import Workplane
+from pydantic import NonNegativeInt
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 from cad_designer.airplane.aircraft_topology.wing.WingConfiguration import WingConfiguration
+from cad_designer.airplane.types import WingSides
 
 
 class WingLoftCreator(AbstractShapeCreator):
     def __init__(self, creator_id: str,
                  wing_index: Union[str, int],
                  offset: float = 0,
-                 wing_config: dict[int, WingConfiguration] = None,
-                 wing_side: Literal["LEFT","RIGHT","BOTH"]="RIGHT",
+                 wing_config: Optional[dict[NonNegativeInt, WingConfiguration]] = None,
+                 wing_side: Optional[WingSides]=None,
                  loglevel=logging.INFO):
-        self.wing_side = wing_side
+        self.wing_side: WingSides = wing_side
         self.wing_index = wing_index
         self.offset = offset
-        self._wing_config = wing_config
+        self._wing_config: dict[int, WingConfiguration] = wing_config
         super().__init__(creator_id, shapes_of_interest_keys=[], loglevel=loglevel)
 
     def _create_shape(self, shapes_of_interest: dict[str, Workplane],
@@ -25,6 +27,11 @@ class WingLoftCreator(AbstractShapeCreator):
                       **kwargs) -> dict[str, Workplane]:
         logging.info(f"wing loft from configuration --> '{self.identifier}'")
         wing_config: WingConfiguration = self._wing_config[self.wing_index]
+        if self.wing_side is None:
+            if wing_config.symmetric:
+                self._wing_side = "BOTH"
+            else:
+                self._wing_side = "RIGHT"
 
         segment: int = 0
         root_plane = wing_config.get_wing_workplane(segment).plane.rotated((90,0,0))

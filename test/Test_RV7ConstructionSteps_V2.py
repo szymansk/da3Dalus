@@ -15,9 +15,11 @@ from cad_designer.airplane import ConstructionStepNode, GeneralJSONDecoder, Gene
     ComponentImporterCreator
 from cad_designer.airplane.ConstructionRootNode import ConstructionRootNode
 from cad_designer.airplane.aircraft_topology.Position import Position
+from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import AirplaneConfiguration
 from cad_designer.airplane.aircraft_topology.components import ServoInformation, EngineInformation, \
     ComponentInformation
-from cad_designer.airplane.aircraft_topology.wing import WingConfiguration
+from cad_designer.airplane.aircraft_topology.fuselage.FuselageConfiguration import FuselageConfiguration
+from cad_designer.airplane.aircraft_topology.wing import WingConfiguration, TrailingEdgeDevice
 from cad_designer.airplane.aircraft_topology.wing.Airfoil import Airfoil
 from cad_designer.airplane.creator.cad_operations import FuseMultipleShapesCreator
 from cad_designer.airplane.creator.export_import import ExportToStepCreator
@@ -38,6 +40,8 @@ if __name__ == "__main__":
 
     logging.basicConfig(format='%(levelname)s:%(module)s:%(filename)s(%(lineno)d):%(funcName)s(): %(message)s',
                         level=logging.INFO, stream=sys.stdout)
+
+    logger = logging.getLogger(__name__)
 
     base_scale = 38
     printer_resolution = 0.2  # 0.2 mm layer hight
@@ -406,19 +410,43 @@ if __name__ == "__main__":
     component_information = {"brushless": engine_info1, "lipo": lipo_information}
 
     airfoil = "../components/airfoils/naca23013.5.dat"
+    #airfoil = "../components/airfoils/s1223.dat"
+
     elevator_airfoile = "../components/airfoils/n12.dat"
     wing_configuration = {
-        "main_wing": WingConfiguration(
+        "main_wing": WingConfiguration.init(
+            symmetric=True,
             nose_pnt=(192.113, 0, -44.5),
-             root_airfoil=Airfoil(airfoil=airfoil, chord=183, dihedral_as_rotation_in_degrees=3.7,
-                                  incidence=0), length=410, sweep=0,
-             tip_airfoil=Airfoil(chord=183, dihedral_as_rotation_in_degrees=0, incidence=0)),
+            root_airfoil=Airfoil(airfoil=airfoil, chord=183, dihedral_as_rotation_in_degrees=0,
+                                  incidence=0),
+            length=5, sweep=0,
+            tip_airfoil=Airfoil(chord=183, dihedral_as_rotation_in_degrees=3.7, incidence=0),)
+        .add_segment(length=65,
+                     sweep=0,
+                     tip_airfoil=Airfoil(chord=183, incidence=0))
+        .add_segment(length=165, sweep=0,
+                     tip_airfoil=Airfoil(chord=183, incidence=0),
+                     trailing_edge_device=TrailingEdgeDevice(
+                            name="flaps",
+                            rel_chord_root=0.8,
+                            symmetric=True,))
+        .add_segment(length=165, sweep=0,
+                     tip_airfoil=Airfoil(chord=183, incidence=0),
+                     trailing_edge_device=TrailingEdgeDevice(
+                            name="aileron",
+                            rel_chord_root=0.8,
+                            symmetric=False)
+                     )
+        .add_tip_segment(
+            length=10, sweep=0, tip_type='round'),
         "elevator": WingConfiguration(
+            symmetric=True,
             nose_pnt=(593.573, 0, 31.608),
             root_airfoil=Airfoil(airfoil=elevator_airfoile, chord=118.771, dihedral_as_rotation_in_degrees=0,
                                  incidence=0), length=165.5, sweep=27.945,
             tip_airfoil=Airfoil(chord=75.849, dihedral_as_rotation_in_degrees=0, incidence=0)),
         "rudder": WingConfiguration(
+            symmetric=False,
             nose_pnt=(581.4, 0, -9.652),
             root_airfoil=Airfoil(airfoil=elevator_airfoile,
                                  chord=186.2,
@@ -427,25 +455,28 @@ if __name__ == "__main__":
             length=188.1, sweep=68.463,
             tip_airfoil=Airfoil(chord=79.8, dihedral_as_rotation_in_degrees=0, incidence=0)),
     }
+    fuselage_configuration = {
+        "fuselage": FuselageConfiguration
+        .from_json("../exports/fuselage.json")
+        #.from_step_file(f"../components/aircraft/RV-7/fuselage.step",
+        #                                                 scale=base_scale,
+        #                                                 number_of_slices=100)
+    }
+
+    airplane_config = AirplaneConfiguration(name="RV-7 RC Model",
+                                            total_mass_kg=2.0,
+                                            wings=list(wing_configuration.values()),
+                                            fuselages=list(fuselage_configuration.values()))
+
+    #airplane_config.save_to_zip("../exports/RV-7_RC_model.zip")
+    #airplane_config = AirplaneConfiguration.from_zip("../exports/RV-7_RC_model.zip")
+
+    analysis = airplane_config.airplane_analysis()
+    asb_airplane = airplane_config.asb_airplane
+    asb_wing = airplane_config.wings[0].asb_wing
 
     #######
     import aerosandbox as asb
-    mm_to_m_scale = 1.0e-3
-    asb_wing: asb.Wing = wing_configuration["main_wing"].get_asb_wing(scale=mm_to_m_scale)
-    asb_elevator: asb.Wing = wing_configuration["elevator"].get_asb_wing(scale=mm_to_m_scale)
-    asb_rudder: asb.Wing = wing_configuration["rudder"].get_asb_wing(symmetric=False,scale=mm_to_m_scale)
-
-    fuselage = convert_step_to_asb_fuselage(
-        f"../components/aircraft/RV-7/fuselage.step",
-        number_of_slices = 100, spacing = None, plot = True, scale=base_scale*mm_to_m_scale)
-
-    airplane = asb.Airplane(
-        name="RV7",
-        xyz_ref = None,
-        wings = [asb_wing, asb_elevator, asb_rudder],
-        fuselages = fuselage,
-        propulsors = None,
-    )
 
     def add_cylinder(figure, position, length, name: str, color:str = 'red'):
         # Add a cylinder along the x-axis
@@ -474,35 +505,167 @@ if __name__ == "__main__":
         )
 
     # Add the main wing
-    figure = airplane.draw(backend="plotly", show=False)
+    figure = asb_airplane.draw(backend="plotly", show=False)
 
     # calculate mean aerodynamic chord (MAC) of the main wing
     mac = asb_wing.mean_aerodynamic_chord()
 
     # calculate the neutral point (NP) of the airplane
-    np = airplane.aerodynamic_center(chord_fraction=0.25)
-    add_cylinder(figure, Vector(*np), 0.2, "NP", color="green")
+    null_ppoint = asb_airplane.aerodynamic_center(chord_fraction=0.25)
+    add_cylinder(figure, Vector(*null_ppoint), 0.2, "NP", color="green")
 
     # static margin 15%-7,5% of MAC for the Center of Gravity (CG)
     static_margin = 0.15
-    cg_position = Vector(*np) + Vector(-mac * static_margin, 0, 0)
+    cg_position = Vector(*null_ppoint) + Vector(-mac * static_margin, 0, 0)
     add_cylinder(figure, cg_position, 0.2,f"CG-{static_margin*100}%", color="red")
 
     static_margin = 0.075
-    cg_position = Vector(*np) + Vector(-mac * static_margin, 0, 0)
+    cg_position = Vector(*null_ppoint) + Vector(-mac * static_margin, 0, 0)
     add_cylinder(figure, cg_position, 0.2,f"CG-{static_margin*100}%", color="red")
 
     static_margin = 0.125
-    cg_position = Vector(*np) + Vector(-mac * static_margin, 0, 0)
+    cg_position = Vector(*null_ppoint) + Vector(-mac * static_margin, 0, 0)
     add_cylinder(figure, cg_position, 0.2,f"XYZ_REF-{static_margin*100}%", color="blue")
 
     # set the reference point of the airplane to the estimated CG position for dynamic analysis
-    airplane.xyz_ref = cg_position
+    asb_airplane.xyz_ref = list(cg_position.toTuple())
 
     figure.show()
-    airplane.draw_three_view()
+    asb_airplane.draw_three_view()
 
+    import numpy as np
+    alpha = np.linspace(-20, 20, 300)
+
+    aero = asb.AeroBuildup(
+        airplane=asb_airplane,
+        op_point=asb.OperatingPoint(
+            velocity=10,
+            alpha=alpha,
+            beta=0
+        ),
+    ).run()
+
+    logger.info(f"{aero}")
+
+    import matplotlib.pyplot as plt
+    import aerosandbox.tools.pretty_plots as p
+
+    fig, ax = plt.subplots(2, 2)
+
+    # ===== Werte vorbereiten =====
+    CL = aero["CL"]
+    CD = aero["CD"]
+    Cm = aero["Cm"]
+    CLCD = CL / CD
+
+    # Indizes der aerodynamisch interessanten Punkte
+    idx_clmax = np.argmax(CL)
+    idx_cdmin = np.argmin(CD)
+    idx_best_glide = np.argmax(CLCD)
+
+    # Werte extrahieren
+    alpha_clmax = alpha[idx_clmax]
+    clmax = CL[idx_clmax]
+
+    alpha_cdmin = alpha[idx_cdmin]
+    cdmin = CD[idx_cdmin]
+
+    alpha_glide = alpha[idx_best_glide]
+    clcd_max = CLCD[idx_best_glide]
+
+    # ===== Plot: CL vs Alpha =====
+    plt.sca(ax[0, 0])
+    plt.plot(alpha, CL, label="$C_L$")
+    plt.plot(alpha_clmax, clmax, "ro")  # CLmax markieren
+    plt.annotate(
+        f"$C_{{L, max}}$ = {clmax:.2f}\n$\\alpha$ = {alpha_clmax:.1f}°",
+        (alpha_clmax, clmax),
+        xytext=(10, -25), textcoords="offset points",
+        arrowprops=dict(arrowstyle="->"),
+    )
+    plt.xlabel(r"$\alpha$ [deg]")
+    plt.ylabel(r"$C_L$")
+    p.set_ticks(5, 1, 0.5, 0.1)
+    plt.grid(True)
+
+    # ===== Plot: CD vs Alpha =====
+    plt.sca(ax[0, 1])
+    plt.plot(alpha, CD, label="$C_D$")
+    plt.plot(alpha_cdmin, cdmin, "go")  # CDmin markieren
+    plt.annotate(
+        f"$C_{{D, min}}$ = {cdmin:.3f}\n$\\alpha$ = {alpha_cdmin:.1f}°",
+        (alpha_cdmin, cdmin),
+        xytext=(10, -25), textcoords="offset points",
+        arrowprops=dict(arrowstyle="->"),
+    )
+    plt.xlabel(r"$\alpha$ [deg]")
+    plt.ylabel(r"$C_D$")
+    p.set_ticks(5, 1, 0.05, 0.01)
+    plt.ylim(bottom=0)
+    plt.grid(True)
+
+    # ===== Plot: Cm vs Alpha =====
+    plt.sca(ax[1, 0])
+    plt.plot(alpha, Cm, label="$C_m$")
+    plt.xlabel(r"$\alpha$ [deg]")
+    plt.ylabel(r"$C_m$")
+    p.set_ticks(5, 1, 0.5, 0.1)
+    plt.grid(True)
+
+    # ===== Plot: CL/CD vs Alpha =====
+    plt.sca(ax[1, 1])
+    plt.plot(alpha, CLCD, label="$C_L/C_D$")
+    plt.plot(alpha_glide, clcd_max, "bo")  # max CL/CD markieren
+    plt.annotate(
+        f"$(C_L/C_D)_{{max}}$ = {clcd_max:.1f}\n$\\alpha$ = {alpha_glide:.1f}°",
+        (alpha_glide, clcd_max),
+        xytext=(10, -25), textcoords="offset points",
+        arrowprops=dict(arrowstyle="->"),
+    )
+    plt.xlabel(r"$\alpha$ [deg]")
+    plt.ylabel(r"$C_L/C_D$")
+    p.set_ticks(5, 1, 10, 2)
+    plt.grid(True)
+
+    # ===== Optional: vertikale Linien für Vergleich (alle Subplots) =====
+    for axis in ax.flat:
+        axis.axvline(x=alpha_clmax, color="r", linestyle="--", linewidth=0.8, label="α(CLmax)")
+        axis.axvline(x=alpha_glide, color="b", linestyle="--", linewidth=0.8, label="α(CL/CD max)")
+
+    # ===== Plot anzeigen =====
+    p.show_plot("Aircraft Aerodynamics")
+
+
+    def compute_stall_speed(CL_max, mass_kg, wing_area_m2, rho=1.225, g=9.81, return_kmh=False):
+        """
+        Berechnet die Stallgeschwindigkeit (V_stall) eines Flugzeugs.
+
+        Parameter:
+        - CL_max: maximaler Auftriebsbeiwert (dimensionless)
+        - mass_kg: Masse des Flugzeugs in kg
+        - wing_area_m2: Flügelfläche in Quadratmetern
+        - rho: Luftdichte in kg/m³ (Standard: 1.225)
+        - g: Erdbeschleunigung (Standard: 9.81 m/s²)
+        - return_kmh: Falls True, wird zusätzlich die Geschwindigkeit in km/h zurückgegeben
+
+        Rückgabe:
+        - V_stall_mps: Stallgeschwindigkeit in m/s
+        - V_stall_kmh: (optional) in km/h
+        """
+        weight_N = mass_kg * g
+        V_stall_mps = np.sqrt((2 * weight_N) / (rho * wing_area_m2 * CL_max))
+
+        if return_kmh:
+            V_stall_kmh = V_stall_mps * 3.6
+            return V_stall_mps, V_stall_kmh
+        else:
+            return V_stall_mps
+
+    total_mass = 2.0
+    stall_speed = compute_stall_speed(CL_max=clmax, mass_kg=total_mass, wing_area_m2=asb_wing.area(), return_kmh=True)
+    logger.info(f"The stall speed is {stall_speed[0]:.3f} m/s or {stall_speed[1]:.3f} km/h with a CLmax of {clmax:.2f} and a total mass of {total_mass} kg.")
     ######
+
 
     # load the string
     # tigl_handel is parameter which is not in the json file, but needed by the constructor of a creator class

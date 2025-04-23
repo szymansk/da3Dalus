@@ -73,6 +73,7 @@ def slice_model_along_x(shape: cq.Workplane, spacing: float = 0.1, number_of_sli
 
         # Perform the section split
         x += spacing
+        #TODO if the face is not parallel to YZ pane, this not allong the X axis
         wires = shape.faces("<X").workplane(offset=-x).split(keepTop=True).faces(">X").wires().all()
 
     return slices

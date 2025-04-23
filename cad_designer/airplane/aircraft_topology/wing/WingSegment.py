@@ -45,3 +45,60 @@ class WingSegment:
     def __repr__(self):
         from pprint import pformat
         return pformat(vars(self), indent=4, width=1)
+
+    def __getstate__(self):
+        """Return a dictionary of serializable attributes for JSON serialization."""
+        data = {}
+        for key, value in self.__dict__.items():
+            if key == 'root_airfoil' or key == 'tip_airfoil':
+                data[key] = value.__getstate__() if value else None
+            elif key == 'spare_list':
+                data[key] = [spare.__getstate__() for spare in value] if value else None
+            elif key == 'trailing_edge_device':
+                data[key] = value.__getstate__() if value else None
+            else:
+                data[key] = value
+        return data
+
+    @staticmethod
+    def from_json_dict(data: dict) -> 'WingSegment':
+        """
+        Create a WingSegment from a JSON dictionary.
+
+        Args:
+            data: Dictionary containing the WingSegment data.
+
+        Returns:
+            A new WingSegment instance.
+        """
+        from cad_designer.airplane.aircraft_topology.wing.Airfoil import Airfoil
+        from cad_designer.airplane.aircraft_topology.wing.Spare import Spare
+        from cad_designer.airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
+
+        # Create root_airfoil and tip_airfoil objects
+        root_airfoil = Airfoil.from_json_dict(data.get('root_airfoil')) if data.get('root_airfoil') else None
+        tip_airfoil = Airfoil.from_json_dict(data.get('tip_airfoil')) if data.get('tip_airfoil') else None
+
+        # Create spare_list
+        spare_list = None
+        if data.get('spare_list'):
+            spare_list = [Spare.from_json_dict(spare_data) for spare_data in data.get('spare_list')]
+
+        # Create trailing_edge_device
+        trailing_edge_device = None
+        if data.get('trailing_edge_device'):
+            trailing_edge_device = TrailingEdgeDevice.from_json_dict(data.get('trailing_edge_device'))
+
+        # Create and return the WingSegment
+        return WingSegment(
+            root_airfoil=root_airfoil,
+            length=data.get('length'),
+            sweep=data.get('sweep', 0),
+            sweep_is_angle=False,  # We use the calculated sweep value directly
+            tip_airfoil=tip_airfoil,
+            spare_list=spare_list,
+            trailing_edge_device=trailing_edge_device,
+            number_interpolation_points=data.get('number_interpolation_points'),
+            tip_type=data.get('tip_type'),
+            wing_segment_type=data.get('wing_segment_type', 'segment')
+        )

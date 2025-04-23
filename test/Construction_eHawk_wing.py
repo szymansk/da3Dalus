@@ -402,11 +402,11 @@ if __name__ == "__main__":
     #                             )
 
     import aerosandbox as asb
-    asb_wing: asb.Wing = wing_config.get_asb_wing()
+    asb_wing: asb.Wing = wing_config.asb_wing()
     figure = asb_wing.draw(backend="plotly")
     #export_asb_wing_to_stl(asb_wing, f"../exports/{vase_wing_loft.creator_id}_asb.stl")
 
-    asb_elevator: asb.Wing = elevator_config.get_asb_wing()
+    asb_elevator: asb.Wing = elevator_config.asb_wing()
 
 
     airplane = asb.Airplane(

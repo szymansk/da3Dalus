@@ -201,3 +201,53 @@ class Servo:
                  .placeSketch(cover_outlines).extrude(until=-printer_wall_thickness * 10)
                  )
         return cover
+
+    def __getstate__(self):
+        """Return a dictionary of serializable attributes for JSON serialization."""
+        return {
+            'model': self.__class__.__name__,
+            'length': self.length,
+            'width': self.width,
+            'height': self.height,
+            'leading_length': self.leading_length,
+            'latch_z': self.latch_z,
+            'latch_x': self.latch_x,
+            'latch_thickness': self.latch_thickness,
+            'latch_length': self.latch_length,
+            'cable_z': self.cable_z,
+            'screw_hole_lx': self.screw_hole_lx,
+            'screw_hole_d': self.screw_hole_d,
+            'trailing_length': self.trailing_length
+        }
+
+    @staticmethod
+    def from_json_dict(data: dict) -> 'Servo':
+        """
+        Create a Servo from a JSON dictionary.
+
+        Args:
+            data: Dictionary containing the Servo data.
+
+        Returns:
+            A new Servo instance.
+        """
+        # Create and return the Servo
+        servo = Servo(
+            length=data.get('length'),
+            width=data.get('width'),
+            height=data.get('height'),
+            leading_length=data.get('leading_length'),
+            latch_z=data.get('latch_z'),
+            latch_x=data.get('latch_x'),
+            latch_thickness=data.get('latch_thickness'),
+            latch_length=data.get('latch_length'),
+            cable_z=data.get('cable_z'),
+            screw_hole_lx=data.get('screw_hole_lx'),
+            screw_hole_d=data.get('screw_hole_d')
+        )
+
+        # Set trailing_length if it's in the data
+        if 'trailing_length' in data:
+            servo.trailing_length = data.get('trailing_length')
+
+        return servo

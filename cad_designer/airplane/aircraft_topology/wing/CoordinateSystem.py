@@ -25,6 +25,16 @@ class CoordinateSystem:
         R = np.matrix([xDir, yDir, zDir]).T
         self.euler_xyz: list[float] = CoordinateSystem._rotation_matrix_to_euler_angles( R,'XYZ').tolist()
 
+    def __getstate__(self):
+        """Convert the CoordinateSystem to a dictionary for JSON serialization."""
+        return {
+            "xDir": self.xDir,
+            "yDir": self.yDir,
+            "zDir": self.zDir,
+            "origin": self.origin,
+            "euler_xyz": self.euler_xyz
+        }
+
     @classmethod
     def _is_valid_rotation_matrix(cls, R):
         """
@@ -60,3 +70,48 @@ class CoordinateSystem:
         r = Rotation.from_matrix(R_matrix)
         euler_angles = r.as_euler(order.lower(), degrees=True)
         return euler_angles
+
+    @staticmethod
+    def from_json_dict(data: dict) -> 'CoordinateSystem':
+        """
+        Create a CoordinateSystem from a JSON dictionary.
+
+        Args:
+            data: Dictionary containing the CoordinateSystem data.
+
+        Returns:
+            A new CoordinateSystem instance.
+        """
+        return CoordinateSystem(
+            xDir=data.get('xDir', [1, 0, 0]),
+            yDir=data.get('yDir', [0, 1, 0]),
+            zDir=data.get('zDir', [0, 0, 1]),
+            origin=data.get('origin', [0, 0, 0])
+        )
+
+    @staticmethod
+    def from_json(file_path: str) -> 'CoordinateSystem':
+        """
+        Load a CoordinateSystem from a JSON file.
+
+        Args:
+            file_path: Path to the JSON file.
+
+        Returns:
+            A new CoordinateSystem instance.
+        """
+        import json
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+        return CoordinateSystem.from_json_dict(data)
+
+    def save_to_json(self, file_path: str) -> None:
+        """
+        Save the CoordinateSystem to a JSON file.
+
+        Args:
+            file_path: Path to the JSON file.
+        """
+        import json
+        with open(file_path, 'w') as f:
+            json.dump(self.__getstate__(), f, indent=4)

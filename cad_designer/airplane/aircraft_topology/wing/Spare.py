@@ -31,7 +31,33 @@ class Spare:
         return pformat(vars(self), indent=4, width=1)
 
     def __getstate__(self):
+        """Return a dictionary of serializable attributes for JSON serialization."""
         data = self.__dict__.copy()
-        data['spare_vector'] = self.spare_vector.toTuple()
-        data['spare_origin'] = self.spare_origin.toTuple()
+        if self.spare_vector is not None:
+            data['spare_vector'] = self.spare_vector.toTuple()
+        if self.spare_origin is not None:
+            data['spare_origin'] = self.spare_origin.toTuple()
         return data
+
+    @staticmethod
+    def from_json_dict(data: dict) -> 'Spare':
+        """
+        Create a Spare from a JSON dictionary.
+
+        Args:
+            data: Dictionary containing the Spare data.
+
+        Returns:
+            A new Spare instance.
+        """
+        # Create and return the Spare
+        return Spare(
+            spare_support_dimension_width=data.get('spare_support_dimension_width', 0),
+            spare_support_dimension_height=data.get('spare_support_dimension_height', 0),
+            spare_position_factor=data.get('spare_position_factor'),
+            spare_length=data.get('spare_length'),
+            spare_start=data.get('spare_start', 0.0),
+            spare_vector=data.get('spare_vector'),
+            spare_origin=data.get('spare_origin'),
+            spare_mode=data.get('spare_mode', 'standard')
+        )

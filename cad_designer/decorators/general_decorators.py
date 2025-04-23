@@ -20,3 +20,20 @@ def conditional_execute(env_var_name):
         return wrapper
     return decorator
 
+from inspect import signature
+from typing import TypeVar, Type
+
+T = TypeVar("T")
+
+def fluent_init(cls: Type[T]) -> Type[T]:
+    init_sig = signature(cls.__init__)
+    params = list(init_sig.parameters.values())[1:]
+
+    @staticmethod
+    @wraps(cls.__init__)
+    def init_method(*args, **kwargs) -> T:
+        return cls(*args, **kwargs)
+
+    init_method.__signature__ = init_sig.replace(parameters=params)  # type: ignore
+    setattr(cls, "init", init_method)
+    return cls
