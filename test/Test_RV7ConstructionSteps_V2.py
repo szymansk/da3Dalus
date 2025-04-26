@@ -468,6 +468,8 @@ if __name__ == "__main__":
                                             wings=list(wing_configuration.values()),
                                             fuselages=list(fuselage_configuration.values()))
 
+    airplane_config.asb_airplane.export_AVL(filename="../exports/RV7-airplane.AVL")
+
     #airplane_config.save_to_zip("../exports/RV-7_RC_model.zip")
     #airplane_config = AirplaneConfiguration.from_zip("../exports/RV-7_RC_model.zip")
 
@@ -475,6 +477,31 @@ if __name__ == "__main__":
     asb_airplane = airplane_config.asb_airplane
     asb_wing = airplane_config.wings[0].asb_wing
 
+    import aerosandbox as asb
+    vlm = asb.VortexLatticeMethod(
+        airplane=asb_airplane.with_control_deflections({"flaps": 0, "aileron": 0.0}),
+        op_point=asb.OperatingPoint(
+            velocity=15,  # m/s
+            alpha=5,  # degree
+            p=0.,
+            q=0.,
+            r=0.
+        )
+    )
+    aero_vlm = vlm.run()  # Returns a dictionary
+    vlm.draw(backend="plotly", show=True)
+
+    vlm_avl = asb.AVL(
+        airplane=asb_airplane.with_control_deflections({"flaps": 0, "aileron": 0.0}),
+        op_point=asb.OperatingPoint(
+            velocity=15,  # m/s
+            alpha=5,  # degree
+            p=0.,
+            q=0.,
+            r=0.
+        )
+    )
+    aero_avl = vlm_avl.run()  # Returns a dictionary
     #######
     import aerosandbox as asb
 

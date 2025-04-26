@@ -3,18 +3,22 @@ services:
     image: szymanski2adesso/cadquery-env:2.4.0
     platform: linux/arm64
     build:
-      context: ./docker
-      dockerfile: Dockerfile.client.arm64.dockerfile
+      context: .
+      dockerfile: docker/Dockerfile.client.arm64.dockerfile
       cache_from:
         - szymanski2adesso/cadquery-client:2.4.0
     container_name: cq-client
     volumes:
       - ./:/home/cadquery/workspace
+      - /tmp/.X11-unix:/tmp/.X11-unix
     stdin_open: true
     entrypoint: "/opt/anaconda/envs/cq/bin/python"
     tty: true
     ports:
       - 8085:8000
+    environment:
+      DISPLAY: "host.docker.internal:0"
+    #network_mode: host
 
   cq-win_client:
     platform: linux/amd64
