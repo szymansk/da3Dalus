@@ -1,47 +1,155 @@
-from typing import List, Optional, Literal
-from pydantic import BaseModel, model_validator, PositiveFloat, NonNegativeFloat
+from typing import List, Optional, Literal, Union
+from pydantic import BaseModel, model_validator, PositiveFloat, NonNegativeFloat, Field
 
 from app.models.Servo import Servo
 
 class TrailingEdgeDevice(BaseModel):
-    name: Optional[str] = None
-    rel_chord_root: Optional[float] = None
-    rel_chord_tip: Optional[float] = None
-    hinge_spacing: Optional[float] = None
-    side_spacing_root: Optional[float] = None
-    side_spacing_tip: Optional[float] = None
-    servo: Optional[Servo | int] = None
-    servo_placement: Literal["top", "bottom"] = 'top'
-    rel_chord_servo_position: Optional[float] = None
-    rel_length_servo_position: Optional[float] = None
-    positive_deflection_deg: Optional[float] = None
-    negative_deflection_deg: Optional[float] = None
-    trailing_edge_offset_factor: Optional[float] = None
-    hinge_type: Literal["middle", "top", "top_simple", "round_inside", "round_outside"] = 'top'
+    """
+    Represents a trailing edge device (control surface) on a wing, such as an aileron, flap, or elevator.
+
+    This model defines the geometry and configuration of control surfaces that are attached to the 
+    trailing edge of a wing segment.
+    """
+    name: Optional[str] = Field(
+        default=None, 
+        description="Name of the trailing edge device (e.g., 'aileron', 'flap', 'elevator')"
+    )
+    rel_chord_root: Optional[float] = Field(
+        default=None, 
+        description="Relative position of the hinge line at the root of the device as a fraction of chord length (0.0-1.0)"
+    )
+    rel_chord_tip: Optional[float] = Field(
+        default=None, 
+        description="Relative position of the hinge line at the tip of the device as a fraction of chord length (0.0-1.0)"
+    )
+    hinge_spacing: Optional[float] = Field(
+        default=None, 
+        description="Spacing between hinges in millimeters"
+    )
+    side_spacing_root: Optional[float] = Field(
+        default=None, 
+        description="Spacing from the root edge of the segment in millimeters"
+    )
+    side_spacing_tip: Optional[float] = Field(
+        default=None, 
+        description="Spacing from the tip edge of the segment in millimeters"
+    )
+    servo: Optional[Union[Servo, int]] = Field(
+        default=None, 
+        description="Servo object or servo index used to actuate the trailing edge device"
+    )
+    servo_placement: Literal["top", "bottom"] = Field(
+        default='top', 
+        description="Placement of the servo on the wing surface ('top' or 'bottom')"
+    )
+    rel_chord_servo_position: Optional[float] = Field(
+        default=None, 
+        description="Relative chord-wise position of the servo as a fraction of chord length (0.0-1.0)"
+    )
+    rel_length_servo_position: Optional[float] = Field(
+        default=None, 
+        description="Relative span-wise position of the servo as a fraction of segment length (0.0-1.0)"
+    )
+    positive_deflection_deg: Optional[float] = Field(
+        default=None, 
+        description="Maximum positive deflection angle in degrees"
+    )
+    negative_deflection_deg: Optional[float] = Field(
+        default=None, 
+        description="Maximum negative deflection angle in degrees"
+    )
+    trailing_edge_offset_factor: Optional[float] = Field(
+        default=None, 
+        description="Factor to determine the offset of the trailing edge for manufacturing purposes"
+    )
+    hinge_type: Literal["middle", "top", "top_simple", "round_inside", "round_outside"] = Field(
+        default='top', 
+        description="Type of hinge mechanism used for the trailing edge device"
+    )
 
 SpareMode = Literal["normal", "follow", "standard", "standard_backward", "orthogonal_backward"]
+"""
+Defines the different modes for spares. The "follow" mode behaviour is only applied on spares that have the same index:
+- normal: The spare goes along the normal vector of the cross section plane in tip direction
+- follow: The spare vector will follow the direction of the previous one, so the spare vector will be the previous spare vector expressed in the current segment’s coordinate system.
+- standard: The standard spare vector is calculated in that way, that the spare vector will point from the mean camber point at the given relative chord (spare position factor) of the root airfoil to the corresponding point of the tip airfoil. 
+- standard_backward: It is calculate like the "standard" mode but in direction of the root. It adjusts all spares in "follow" mode, that are found in root direction.
+- orthogonal_backward: Like the "standard_backward" mode, but the spare vector is orthogonal to the tip airfoils plane, it also adjusts the spare vectors of all spares in "follow" mode in root direction.
+"""
 
 class Spare(BaseModel):
-    spare_support_dimension_width: float
-    spare_support_dimension_height: float
-    spare_position_factor: float
-    spare_length: Optional[float] = None
-    spare_start: float
-    spare_mode: SpareMode
-    spare_vector: List[float]
-    spare_origin: List[float]
+    """
+    Represents a structural spar within a wing segment.
+
+    Spars are the main load-bearing elements of a wing that run spanwise (from root to tip)
+    and provide structural integrity and stiffness to the wing.
+    """
+    spare_support_dimension_width: float = Field(
+        description="Width of the spar support structure in millimeters"
+    )
+    spare_support_dimension_height: float = Field(
+        description="Height of the spar support structure in millimeters"
+    )
+    spare_position_factor: float = Field(
+        description="Relative chord-wise position of the spar as a fraction of chord length (0.0-1.0) from the leading edge"
+    )
+    spare_length: Optional[float] = Field(
+        default=None, 
+        description="Length of the spar in millimeters; if None, spans the entire segment"
+    )
+    spare_start: float = Field(
+        description="Starting position of the spar along the span in millimeters"
+    )
+    spare_mode: SpareMode = Field(
+        description="Mode determining how the spar is oriented and positioned within the wing"
+    )
+    spare_vector: List[float] = Field(
+        description="3D vector [x, y, z] defining the direction of the spar"
+    )
+    spare_origin: List[float] = Field(
+        description="3D coordinates [x, y, z] of the spar's origin point"
+    )
 
 
 class Airfoil(BaseModel):
-    airfoil: str
-    chord: PositiveFloat
-    dihedral_as_rotation_in_degrees: Optional[NonNegativeFloat] = 0
-    dihedral_as_translation: Optional[NonNegativeFloat] = 0
-    incidence: Optional[float] = 0
-    rotation_point_rel_chord: Optional[NonNegativeFloat] = 0.25
+    """
+    Represents an airfoil profile used in a wing segment.
+
+    An airfoil is the cross-sectional shape of a wing that determines its aerodynamic properties.
+    This model defines the geometry and orientation of an airfoil within a wing segment.
+    """
+    airfoil: str = Field(
+        description="Path to the airfoil data file or name of the airfoil profile"
+    )
+    chord: PositiveFloat = Field(
+        description="Length of the airfoil chord in millimeters"
+    )
+    dihedral_as_rotation_in_degrees: Optional[NonNegativeFloat] = Field(
+        default=0,
+        description="Dihedral angle in degrees, representing the upward angle of this cross section. Positive is wingtip upwards."
+    )
+    dihedral_as_translation: Optional[NonNegativeFloat] = Field(
+        default=0,
+        description="(obsolete) Alternative way to specify dihedral as a vertical translation in millimeters."
+    )
+    incidence: Optional[float] = Field(
+        default=0,
+        description="Incidence angle in degrees, representing the angle that this cross section is rotated around the rotation point defined by rotation_point_rel_chord. Positiv is leading edge upwards."
+    )
+    rotation_point_rel_chord: Optional[NonNegativeFloat] = Field(
+        default=0.25,
+        description="Relative position of the rotation point along the chord (0.0-1.0), typically 0.25 for quarter-chord."
+    )
 
     @model_validator(mode='after')
     def check_dihedral_fields(self):
+        """
+        Validates the dihedral parameters to ensure they are properly specified.
+
+        Rules:
+        1. Exactly one of dihedral_as_rotation_in_degrees or dihedral_as_translation must be zero
+        2. If dihedral_as_translation > 0, then rotation_point_rel_chord must be 0.25 (quarter chord)
+        """
         dihedral_rotation = self.dihedral_as_rotation_in_degrees
         dihedral_translation = self.dihedral_as_translation
         rotation_point_rel_chord = self.rotation_point_rel_chord
@@ -62,18 +170,57 @@ class Airfoil(BaseModel):
 
 
 class Segment(BaseModel):
-    root_airfoil: Airfoil
-    length: float
-    sweep: float
-    tip_airfoil: Airfoil
-    spare_list: Optional[List[Spare]] = None
-    trailing_edge_device: Optional[TrailingEdgeDevice] = None
-    number_interpolation_points: int
-    tip_type: Optional[str] = None
+    """
+    Represents a segment of a wing.
+
+    A wing is typically divided into multiple segments, each with its own geometric properties.
+    Each segment has a root and tip airfoil, that define a segments cross-sections.
+    A segment may contain spars and trailing-edge-devices.
+
+    A segment that follows the previous segment, in direction of the tip, will have the equal
+    geometric properties of its root airfoil as the tip airfoil of the previous segment.
+    """
+    root_airfoil: Airfoil = Field(
+        description="Airfoil profile at the root (inner end) of the segment"
+    )
+    length: float = Field(
+        description="Length of the segment in millimeters, measured along the span"
+    )
+    sweep: float = Field(
+        description="Sweep in millimeters, representing the backward translation of the segments tip cross section relative to the segments root cross section."
+    )
+    tip_airfoil: Airfoil = Field(
+        description="Airfoil profile at the tip (outer end) of the segment"
+    )
+    spare_list: Optional[List[Spare]] = Field(
+        default=None,
+        description="List of structural spars within the segment. The first spare_list[0] is the main spare of the wing."
+    )
+    trailing_edge_device: Optional[TrailingEdgeDevice] = Field(
+        default=None,
+        description="Control surface attached to the trailing edge of the segment"
+    )
+    number_interpolation_points: int = Field(
+        description="Number of points used for interpolation between root and tip airfoils"
+    )
+    tip_type: Optional[str] = Field(
+        default=None,
+        description="Type of wing tip for this segment (e.g., 'flat', 'rounded')"
+    )
 
 class Wing(BaseModel):
-    segments: List[Segment]
-    nose_pnt: List[float]
+    """
+    Represents a complete wing of an aircraft.
+
+    A wing consists of one or more segments and is positioned relative to the aircraft's
+    coordinate system using a nose point.
+    """
+    segments: List[Segment] = Field(
+        description="List of wing segments from root to tip"
+    )
+    nose_pnt: List[float] = Field(
+        description="3D coordinates [x, y, z] of the wing's nose point in the aircraft coordinate system"
+    )
 
     model_config = {
         "json_schema_extra": {

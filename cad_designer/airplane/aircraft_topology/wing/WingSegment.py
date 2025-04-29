@@ -10,6 +10,18 @@ from cad_designer.airplane.types import WingSegmentType, TipType
 
 
 class WingSegment:
+    """
+    Represents a segment of a wing with its geometric and structural properties.
+
+    The parameters of this class, along with the Airfoil parameters, are used to describe a chain of 
+    coordinate system transformations. Each set of parameters provides relative values for the 
+    transformation from one coordinate system to another. The main parameters for calculating these 
+    transformations are length, sweep, and the dihedral and incidence angles defined in the root and 
+    tip airfoils.
+
+    These transformations define how each segment connects to the previous one, creating a complete 
+    wing structure through a series of relative coordinate system transformations.
+    """
     def __init__(self, root_airfoil: Airfoil,
                  length: PositiveFloat,
                  sweep: NonNegativeFloat = 0,
@@ -20,6 +32,26 @@ class WingSegment:
                  number_interpolation_points: Optional[PositiveInt] = None,
                  tip_type: Optional[TipType] = None,
                  wing_segment_type: WingSegmentType = 'segment'):
+        """
+        Initializes a WingSegment instance.
+
+        Args:
+            root_airfoil (Airfoil): The airfoil at the root of the segment. Its parameters (dihedral, 
+                incidence) define the relative transformation from the previous segment.
+            length (PositiveFloat): The length of the segment, a key parameter for the coordinate 
+                system transformation.
+            sweep (NonNegativeFloat): The sweep of the segment, either as a distance or an angle 
+                depending on sweep_is_angle. This is a key parameter for the coordinate system transformation.
+            sweep_is_angle (bool): If True, sweep is interpreted as an angle in degrees; otherwise, 
+                it's interpreted as a distance.
+            tip_airfoil (Optional[Airfoil]): The airfoil at the tip of the segment. If provided, its 
+                parameters define the transformation at the end of the segment.
+            spare_list (List[Spare]): List of spares in the segment.
+            trailing_edge_device (Optional[TrailingEdgeDevice]): The trailing edge device attached to the segment.
+            number_interpolation_points (Optional[PositiveInt]): Number of points to use for interpolation.
+            tip_type (Optional[TipType]): The type of the tip of the segment.
+            wing_segment_type (WingSegmentType): The type of the wing segment.
+        """
 
         self.root_airfoil = root_airfoil
 

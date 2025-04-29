@@ -122,7 +122,11 @@ class FuselageConfiguration:
         fuselage = convert_step_to_asb_fuselage(
             step_file=step_file,
             number_of_slices=number_of_slices,
-            scale=scale*MM_TO_M)
+            scale=scale*MM_TO_M,
+        )
+        fuselage.analysis_specific_options= {
+                dict(panel_resolution=24, panel_spacing="cosine")
+            }
 
         if len(fuselage) == 0:
             logger.error(f"Failed to convert {step_file} to an Aerosandbox fuselage.")

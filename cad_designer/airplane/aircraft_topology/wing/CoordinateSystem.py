@@ -13,11 +13,38 @@ class InvalidRotationMatrixException(Exception):
 
 
 class CoordinateSystem:
+    """
+    Represents a coordinate system with its origin and three direction vectors.
+
+    This class is a fundamental part of the chain of coordinate system transformations described by 
+    the Airfoil and WingSegment classes. Each Airfoil has an associated CoordinateSystem that defines 
+    its position and orientation in 3D space. The parameters of Airfoils and Segments (such as length, 
+    dihedral, incidence, relative rotation point, and sweep) are used to calculate the transformations 
+    between these coordinate systems.
+
+    These transformations are relative, meaning each coordinate system is defined relative to the previous 
+    one in the chain, creating a hierarchical structure of coordinate systems that defines the complete 
+    geometry of the aircraft.
+    """
     def __init__(self,
                  xDir: tuple[float,float,float] | List[float],
                  yDir: tuple[float,float,float] | List[float],
                  zDir: tuple[float,float,float] | List[float],
                  origin: tuple[float,float,float] | List[float]):
+        """
+        Initializes a CoordinateSystem instance.
+
+        Args:
+            xDir: The x-direction vector of the coordinate system.
+            yDir: The y-direction vector of the coordinate system.
+            zDir: The z-direction vector of the coordinate system.
+            origin: The origin point of the coordinate system.
+
+        Note:
+            The direction vectors form a rotation matrix that, along with the origin, defines the 
+            transformation from the parent coordinate system to this one. This is part of the chain 
+            of transformations that defines the aircraft geometry.
+        """
         self.xDir = list(xDir)
         self.yDir = list(yDir)
         self.zDir = list(zDir)

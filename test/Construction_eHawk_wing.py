@@ -1,5 +1,8 @@
 import logging
 import sys
+
+from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import AirplaneConfiguration
+
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] [%(name)s] %(message)s",
@@ -192,7 +195,8 @@ if __name__ == "__main__":
     # Profil	    RG15
 
     #### WING ####
-    airfoil = "../components/airfoils/rg15.dat"  # eHawk RG15 Profil
+    #airfoil = "../components/airfoils/rg15.dat"  # eHawk RG15 Profil
+    airfoil = "../components/airfoils/mh32.dat"  # eHawk RG15 Profil
     # segment 0
     wing_config: WingConfiguration = WingConfiguration(
         nose_pnt=(0, 0, 0),
@@ -330,7 +334,7 @@ if __name__ == "__main__":
     wing_config.add_segment(
         length=20,
         sweep=7.5,
-        tip_airfoil=Airfoil(chord=90-7.5-3, dihedral_as_rotation_in_degrees=5, incidence=-0.5),
+        tip_airfoil=Airfoil(chord=90-7.5-3, dihedral_as_rotation_in_degrees=5, incidence=0),
         spare_list=[
             Spare(spare_support_dimension_width=4.42,
                   spare_support_dimension_height=4.42,
@@ -341,50 +345,50 @@ if __name__ == "__main__":
     wing_config.add_tip_segment(
         length=15,
         sweep=7.5,
-        tip_airfoil=Airfoil(chord=90-2*7.5-4, dihedral_as_rotation_in_degrees=5, incidence=-0.5),
+        tip_airfoil=Airfoil(chord=90-2*7.5-4, dihedral_as_rotation_in_degrees=5, incidence=0),
         tip_type='flat'
     )
 
     wing_config.add_tip_segment(
         length=15,
         sweep=10,
-        tip_airfoil=Airfoil(chord=90-2*7.5-10-3, dihedral_as_rotation_in_degrees=5, incidence=-0.5),
+        tip_airfoil=Airfoil(chord=90-2*7.5-10-3, dihedral_as_rotation_in_degrees=5, incidence=0),
         tip_type='flat'
     )
 
     wing_config.add_tip_segment(
         length=15,
         sweep=12.5,
-        tip_airfoil=Airfoil(chord=90-2*7.5-10-12.5, dihedral_as_rotation_in_degrees=10, incidence=-0.5),
+        tip_airfoil=Airfoil(chord=90-2*7.5-10-12.5, dihedral_as_rotation_in_degrees=10, incidence=-0.),
         tip_type='flat'
     )
 
     wing_config.add_tip_segment(
         length=10,
         sweep=15,
-        tip_airfoil=Airfoil(chord=90-2*7.5-10-12.5-15+3, dihedral_as_rotation_in_degrees=15, incidence=-0.5),
+        tip_airfoil=Airfoil(chord=90-2*7.5-10-12.5-15+3, dihedral_as_rotation_in_degrees=15, incidence=-0.),
         tip_type='flat'
     )
 
     wing_config.add_tip_segment(
         length=5,
         sweep=17.5,
-        tip_airfoil=Airfoil(chord=90-2*7.5-10-12.5-15-17.5+4, incidence=-0.5),
+        tip_airfoil=Airfoil(chord=90-2*7.5-10-12.5-15-17.5+4, incidence=-0.),
         tip_type='flat'
     )
 
-    elevator_airfoil = "../components/airfoils/e193.dat"
+    elevator_airfoil = "../components/airfoils/naca0010.dat"
 
     elevator_config: WingConfiguration = WingConfiguration(
-        nose_pnt=(400, 0, 0),
+        nose_pnt=(650, 0, 0),
         number_interpolation_points=201,
         root_airfoil=Airfoil(airfoil=airfoil,
-                             chord=70.,
-                             dihedral_as_rotation_in_degrees=0,
-                             incidence=0),
-        length=60.,
+                             chord=85.,
+                             dihedral_as_rotation_in_degrees=45,
+                             incidence=-2),
+        length=210.,
         sweep=15,
-        tip_airfoil=Airfoil(chord=70.-15, incidence=0),
+        tip_airfoil=Airfoil(chord=85.-15, incidence=0),
         spare_list=[
             Spare(spare_support_dimension_width=4.42,
                   spare_support_dimension_height=4.42,
@@ -394,28 +398,40 @@ if __name__ == "__main__":
                   spare_position_factor=0.55,
                   spare_vector=(0., 1., 0.),
                   spare_length=70),
-        ])
+
+        ],
+        trailing_edge_device=TrailingEdgeDevice(name="v-tail",
+                                                rel_chord_root=50/85,
+                                                rel_chord_tip=50/85,
+                                                hinge_spacing=0.5,
+                                                side_spacing_root=2.,
+                                                side_spacing_tip=2.,
+                                                positive_deflection_deg=35,
+                                                negative_deflection_deg=35,
+                                                trailing_edge_offset_factor=1.2,
+                                                hinge_type="top",
+                                                symmetric=False)
+    )
 
     # wing_config.add_tip_segment(length=printer_wall_thickness,
     #                             sweep=1,
     #                             tip_type="flat"
     #                             )
 
+    airplane_config = AirplaneConfiguration(name="eHawk",
+                                            total_mass_kg=0.6,
+                                            wings=[wing_config, elevator_config],
+                                            fuselages=None)
+
     import aerosandbox as asb
-    asb_wing: asb.Wing = wing_config.asb_wing()
-    figure = asb_wing.draw(backend="plotly")
+    asb_wing: asb.Wing = airplane_config.wings[0].asb_wing(scale=1e-3)
+    # figure = asb_wing.draw(backend="plotly")
     #export_asb_wing_to_stl(asb_wing, f"../exports/{vase_wing_loft.creator_id}_asb.stl")
 
-    asb_elevator: asb.Wing = elevator_config.asb_wing()
+    asb_elevator: asb.Wing = airplane_config.wings[1].asb_wing(1e-3)
 
 
-    airplane = asb.Airplane(
-        name="eHawk",
-        xyz_ref = None,
-        wings = [asb_wing, asb_elevator],
-        fuselages = None,
-        propulsors = None,
-    )
+    airplane = airplane_config.asb_airplane
 
     def add_cylinder(figure, position, length, name: str, color:str = 'red'):
         # Add a cylinder along the x-axis
@@ -451,26 +467,32 @@ if __name__ == "__main__":
 
     # calculate the neutral point (NP) of the airplane
     np = airplane.aerodynamic_center(chord_fraction=0.25)
-    add_cylinder(figure, Vector(*np), 10, "NP", color="green")
+    add_cylinder(figure, Vector(*np), 0.10, "NP", color="green")
 
     # static margin 15%-7,5% of MAC for the Center of Gravity (CG)
     static_margin = 0.15
     cg_position = Vector(*np) + Vector(-mac * static_margin, 0, 0)
-    add_cylinder(figure, cg_position, 10,f"CG-{static_margin*100}%", color="red")
+    add_cylinder(figure, cg_position, 0.10,f"CG-{static_margin*100}%", color="red")
 
     static_margin = 0.075
     cg_position = Vector(*np) + Vector(-mac * static_margin, 0, 0)
-    add_cylinder(figure, cg_position, 10,f"CG-{static_margin*100}%", color="red")
+    add_cylinder(figure, cg_position, 0.10,f"CG-{static_margin*100}%", color="red")
 
-    static_margin = 0.125
+    static_margin = 0.20
     cg_position = Vector(*np) + Vector(-mac * static_margin, 0, 0)
-    add_cylinder(figure, cg_position, 10,f"XYZ_REF-{static_margin*100}%", color="blue")
+    add_cylinder(figure, cg_position, 0.10,f"XYZ_REF-{static_margin*100}%", color="blue")
 
     # set the reference point of the airplane to the estimated CG position for dynamic analysis
-    airplane.xyz_ref = cg_position
+    airplane.xyz_ref = cg_position.toTuple()
 
     figure.show()
+    airplane.draw_three_view()
+    airplane.export_AVL(filename="../exports/eHawk.AVL", include_fuselages=False)
+
+    exit(0)
+
     wing_configuration = {"main_wing": wing_config}
+
 
     # dump wingconfig
     import jsonpickle

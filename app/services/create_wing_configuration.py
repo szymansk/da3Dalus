@@ -38,8 +38,11 @@ def create_segment(segment_model: SegmentModel) -> dict | None:
     initialization_dict = segment_model.__dict__.copy()
     initialization_dict['sweep_is_angle'] = False
     initialization_dict['tip_airfoil'] = create_airfoil(segment_model.tip_airfoil)
-    initialization_dict['spare_list'] = *[create_spare(spare) for spare in segment_model.spare_list],
-    initialization_dict['trailing_edge_device'] = create_trailing_edge_device(segment_model.trailing_edge_device)
+    if segment_model.spare_list is not None:
+        initialization_dict['spare_list'] = *[create_spare(spare) for spare in segment_model.spare_list],
+    else:
+        initialization_dict['spare_list'] = None
+    initialization_dict['trailing_edge_device'] = create_trailing_edge_device(segment_model.trailing_edge_device) if segment_model.trailing_edge_device is not None else None
 
     del initialization_dict['root_airfoil']
     del initialization_dict['tip_type']
@@ -91,8 +94,8 @@ def create_root_segment(wing_model: WingModel) -> dict:
     initialization_dict['sweep_is_angle'] = False
     initialization_dict['root_airfoil'] = create_airfoil(root_segment.root_airfoil)
     initialization_dict['tip_airfoil'] = create_airfoil(root_segment.tip_airfoil)
-    initialization_dict['spare_list'] = [create_spare(spare) for spare in root_segment.spare_list]
-    initialization_dict['trailing_edge_device'] = create_trailing_edge_device(root_segment.trailing_edge_device)
+    initialization_dict['spare_list'] = [create_spare(spare) for spare in root_segment.spare_list if spare is not None] if root_segment.spare_list is not None else None
+    initialization_dict['trailing_edge_device'] = create_trailing_edge_device(root_segment.trailing_edge_device) if root_segment.trailing_edge_device is not None else None
 
     del initialization_dict['tip_type']
 

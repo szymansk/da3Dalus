@@ -445,6 +445,20 @@ class WingConfiguration:
                     airfoil=asb.Airfoil(name=os.path.abspath(root_af.airfoil)),
                     twist=incidence_angle,
                     control_surfaces=[control_surface] if control_surface is not None else None,
+                    analysis_specific_options= {
+                        asb.AVL: dict(
+                                  spanwise_resolution=12,
+                                  spanwise_spacing="cosine",
+                                  cl_alpha_factor=None,  # This is a float
+                                  drag_polar=dict(
+                                      CL1=0,
+                                      CD1=0,
+                                      CL2=0,
+                                      CD2=0,
+                                      CL3=0,
+                                      CD3=0,
+                                  ),
+                               )},
                 ).translate([root_origin.x*scale, root_origin.y*scale, root_origin.z*scale])
                 sections.append(root_section)
                 is_root = False
@@ -476,7 +490,30 @@ class WingConfiguration:
             pass
 
         # create the aerosandbox wing
-        self._asb_wing = (asb.Wing(xsecs=sections, symmetric=self.symmetric)
+        self._asb_wing = (asb.Wing(xsecs=sections,
+                                   symmetric=self.symmetric,
+                                   color=None,
+                                   analysis_specific_options={
+                                       asb.AVL: dict(
+                                           wing_level_spanwise_spacing=True,
+                                           spanwise_resolution=12,
+                                           spanwise_spacing="cosine",
+                                           chordwise_resolution=12,
+                                           chordwise_spacing="cosine",
+                                           component=None,  # This is an int
+                                           no_wake=False,
+                                           no_alpha_beta=False,
+                                           no_load=False,
+                                           drag_polar=dict(
+                                               CL1=0,
+                                               CD1=0,
+                                               CL2=0,
+                                               CD2=0,
+                                               CL3=0,
+                                               CD3=0,
+                                           ),
+                                       )}
+                                   )
                             # translate the wing to the nose point
                             .translate([x*scale for x in list(self.nose_pnt)]))
         return self._asb_wing

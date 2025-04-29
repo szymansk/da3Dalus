@@ -339,7 +339,7 @@ The _spare vector_ will *follow* the direction of the previous one, so the _spar
 The *standar* _spare vector_ is calculated in that way, that the spare vector will point from the mean camber point at the given relative chord (_spare position factor_) of the _root airfoil_ to the corresponding point of the _tip airfoil_. The start point also defines the _spare origin_ if it is not overwritten.
 
 ====== standard backward
-This mode is similar to the previous one. But if differs in the way, how the _root airfoil_ is selected. If we come to a spare in 'standard_backward' mode, we backtrace through the previous spares and select the first spare, that is not in 'follow' mode. We use this segments _root airfoil_ in the same manner as in the 'standard' case. After calculation of the origin and the spare vector we adjust the other segments in between.
+This mode is similar to the previous one. But it differs in the way, how the _root airfoil_ is selected. If we come to a spare in 'standard_backward' mode, we backtrace through the previous spares and select the first spare, that is not in 'follow' mode. We use this segments _root airfoil_ in the same manner as in the 'standard' case. After calculation of the origin and the spare vector we adjust the other segments in between.
 
 NOTE: We also use (_spare position factor_) of the spare we found during backtracking.
 

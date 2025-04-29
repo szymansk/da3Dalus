@@ -7,21 +7,19 @@ from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 
 
 class ExportToStlCreator(AbstractShapeCreator):
-    def __init__(self, creator_id: str, file_path: str, shapes_to_export: list[str],
+    def __init__(self, creator_id: str, file_path: str, shapes_to_export: list[str] = None,
                  tolerance: float = 0.1, angular_tolerance: float = 0.1, loglevel=logging.INFO):
         self.file_path: str = file_path
         self.tolerance = tolerance
         self.angular_tolerance = angular_tolerance
-        self.shapes_to_export: list[str] = shapes_to_export \
-            if shapes_to_export is not None else [None]
+        self.shapes_to_export: list[str] = shapes_to_export
         super().__init__(creator_id, shapes_of_interest_keys=self.shapes_to_export, loglevel=loglevel)
 
     def _create_shape(self, shapes_of_interest: dict[str, Workplane],
                       input_shapes: dict[str, Workplane],
                       **kwargs) -> dict[str, Workplane]:
         shapes_of_interest = shapes_of_interest if shapes_of_interest else kwargs
-
-        logging.info(f"converting shapes '{', '.join(shapes_of_interest.keys())}' to .stl")
+        logging.info(f"exporting stl model '{', '.join(shapes_of_interest.keys())}' --> '{self.file_path}'")
 
         from cadquery import exporters
         #ass = cq.Assembly()

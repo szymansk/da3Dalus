@@ -11,12 +11,16 @@ class Airfoil:
     """
     Represents an airfoil with its geometric and aerodynamic properties.
 
+    The parameters of this class are used to describe a chain of coordinate system transformations.
+    Each set of parameters provides relative values for the transformation from one coordinate system to another.
+    The main parameters for calculating these transformations are dihedral, incidence, and relative rotation point.
+
     Attributes:
         airfoil (Optional[str]): The name or identifier of the airfoil.
         chord (Optional[PositiveFloat]): The chord length of the airfoil.
-        dihedral_as_rotation_in_degrees (DihedralInDegrees): The dihedral angle as a rotation in degrees.
-        dihedral_as_translation (float): The dihedral angle as a translation.
-        incidence (float): The incidence angle of the airfoil.
+        dihedral_as_rotation_in_degrees (DihedralInDegrees): The dihedral angle as a rotation in degrees, relative to the previous airfoil.
+        dihedral_as_translation (float): The dihedral angle as a translation, relative to the previous airfoil.
+        incidence (float): The incidence angle of the airfoil, relative to the previous airfoil.
         rotation_point_rel_chord (Factor): The relative position of the rotation point along the chord (default is 0.25 and must be 0.25 for aerosandbox).
         coordinate_system (Optional[CoordinateSystem]): The coordinate system associated with the airfoil.
     """

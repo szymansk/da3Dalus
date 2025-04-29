@@ -13,6 +13,7 @@ from cad_designer.airplane.aircraft_topology.wing import WingConfiguration
 import aerosandbox as asb
 import numpy as np
 
+
 class AirplaneConfiguration:
 
     def __init__(self,
@@ -105,7 +106,8 @@ class AirplaneConfiguration:
             data = json.load(f)
 
         wings = [WingConfiguration.from_json_dict(wing_data) for wing_data in data.get("wings", [])]
-        fuselages = [FuselageConfiguration.from_json_dict(fuselage_data) for fuselage_data in data.get("fuselages", [])] if "fuselages" in data else None
+        fuselages = [FuselageConfiguration.from_json_dict(fuselage_data) for fuselage_data in
+                     data.get("fuselages", [])] if "fuselages" in data else None
 
         return AirplaneConfiguration(
             name=data["name"],
@@ -159,7 +161,6 @@ class AirplaneConfiguration:
             fuselages=fuselages
         )
 
-
     @cached_property
     def asb_airplane(self):
         """Converts the AirplaneConfiguration object to an Aerosandbox airplane object"""
@@ -173,18 +174,25 @@ class AirplaneConfiguration:
             wings=wings,
             fuselages=fuselages,
             propulsors=None,
+            analysis_specific_options={
+                asb.AVL: dict(
+                    profile_drag_coefficient=0.,
+                )
+            }
         )
+
         self._asb_main_wing = asb_airplane.wings[self._main_wing_index]
         return asb_airplane
 
-    def airplane_analysis(self, CG_percent_MAC_in_front_of_NP: float = 12.5, elevation_m: float = 0, rho_kgm3: float = 1.225, gravity: float = 9.81):
+    def airplane_analysis(self, CG_percent_MAC_in_front_of_NP: float = 12.5, elevation_m: float = 0,
+                          rho_kgm3: float = 1.225, gravity: float = 9.81):
         alpha = np.linspace(-20, 20, 300)
         beta = np.linspace(-5, 5, 100)
 
         aero = asb.AeroBuildup(
             airplane=self.asb_airplane,
             op_point=asb.OperatingPoint(
-                velocity=10, # m/s is not important at this point
+                velocity=10,  # m/s is not important at this point
                 alpha=alpha,
                 beta=0
             ),
@@ -201,7 +209,7 @@ class AirplaneConfiguration:
         aero_beta = asb.AeroBuildup(
             airplane=self.asb_airplane,
             op_point=asb.OperatingPoint(
-                velocity=10, # m/s is not important at this point
+                velocity=10,  # m/s is not important at this point
                 alpha=aoa_at_best_LD,
                 beta=beta
             ),
@@ -212,10 +220,13 @@ class AirplaneConfiguration:
         stall_velocity_m_per_s = []
         travel_velocity_m_per_s = []
 
-        masses = np.linspace(self.total_mass*0.5, self.total_mass*1.5, 100)
+        masses = np.linspace(self.total_mass * 0.5, self.total_mass * 1.5, 100)
         for mass in masses:
-            stall_velocity_m_per_s.append(calculate_stall_velocity(CL_max, mass_kg=mass, wing_area_m2=self._asb_main_wing.area()))
-            travel_velocity_m_per_s.append(best_range_speed(CL_at_max_LD, mass_kg=mass, wing_area_m2=self._asb_main_wing.area(), rho=rho_kgm3, gravity=gravity))
+            stall_velocity_m_per_s.append(
+                calculate_stall_velocity(CL_max, mass_kg=mass, wing_area_m2=self._asb_main_wing.area()))
+            travel_velocity_m_per_s.append(
+                best_range_speed(CL_at_max_LD, mass_kg=mass, wing_area_m2=self._asb_main_wing.area(), rho=rho_kgm3,
+                                 gravity=gravity))
 
         from cad_designer.airplane.aircraft_topology.models.analysis_model import (
             AircraftSummaryModel, AircraftModel, EnvironmentModel, ControlSurfacesModel,
