@@ -162,7 +162,7 @@ class AirplaneConfiguration:
         )
 
     @cached_property
-    def asb_airplane(self):
+    def asb_airplane(self) -> asb.Airplane:
         """Converts the AirplaneConfiguration object to an Aerosandbox airplane object"""
         mm_to_m_scale = 1.0e-3
         wings = [wing.asb_wing(scale=mm_to_m_scale) for wing in self.wings]

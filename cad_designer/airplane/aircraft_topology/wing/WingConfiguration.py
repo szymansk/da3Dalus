@@ -416,6 +416,7 @@ class WingConfiguration:
         incidence_angle = 0
         ignore_nose_point = True
         import os
+
         for i, segment in enumerate(self.segments):
             if is_root:
 
@@ -496,7 +497,7 @@ class WingConfiguration:
                                    analysis_specific_options={
                                        asb.AVL: dict(
                                            wing_level_spanwise_spacing=True,
-                                           spanwise_resolution=12,
+                                           spanwise_resolution=int(round(tip_origin.y*scale*50)),
                                            spanwise_spacing="cosine",
                                            chordwise_resolution=12,
                                            chordwise_spacing="cosine",

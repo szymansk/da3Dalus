@@ -185,10 +185,9 @@ class AvlSingleControlSurfaceModel(BaseModel):
     Cld: float = Field(..., title="Control Surface Roll", description="Control surface roll contribution [-]")
     Cmd: float = Field(..., title="Control Surface Pitch", description="Control surface pitch contribution [-]")
     Cnd: float = Field(..., title="Control Surface Yaw", description="Control surface yaw contribution [-]")
+    deflection: float = Field(..., title="Control Surface Deflection", description="Control Surface  deflection angle [deg]")
 
 class AvlControlSurfaceModel(BaseModel):
-    aileron: float = Field(..., title="Aileron Deflection", description="Aileron deflection angle [deg]")
-    flaps: float = Field(..., title="Flap Setting", description="Flap setting [0-1]")
     control_surfaces: List[AvlSingleControlSurfaceModel] = Field(default_factory=list, title="Control Surfaces", description="List of control surfaces")
 
 class AvlFlightConditionModel(BaseModel):
@@ -356,13 +355,12 @@ class AvlAnalysisModel(BaseModel):
                 CYd=data[f'CYd{index}'],
                 Cld=data[f'Cld{index}'],
                 Cmd=data[f'Cmd{index}'],
-                Cnd=data[f'Cnd{index}']
+                Cnd=data[f'Cnd{index}'],
+                deflection = data[name]
             )
             control_surface_list.append(control_surface)
 
         control_surfaces = AvlControlSurfaceModel(
-            aileron=data['aileron'],
-            flaps=data['flaps'],
             control_surfaces=control_surface_list
         )
 

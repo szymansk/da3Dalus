@@ -30,7 +30,6 @@ class ServoSettings(BaseModel):
 
     servo: Optional[Servo]
 
-
 class AeroplaneSettings(BaseModel):
     printer_settings: Optional[Printer3dSettings]
     servo_information: Optional[Dict[int, ServoSettings]]

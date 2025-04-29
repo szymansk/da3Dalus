@@ -3,16 +3,23 @@ import json
 import logging
 import os
 import uuid
+import tempfile
 from threading import Lock
 from concurrent.futures import ThreadPoolExecutor
 from zipfile import ZipFile
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Body
 from fastapi.responses import JSONResponse, FileResponse
+
+import aerosandbox as asb
+import numpy as np
 
 from cad_designer.airplane import ConstructionStepNode, GeneralJSONDecoder
 from cad_designer.airplane.aircraft_topology.components import ServoInformation
+from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import AirplaneConfiguration
+from cad_designer.airplane.aircraft_topology.models.analysis_model import AvlAnalysisModel
 from app.models.AeroplaneRequest import CreateAeroPlaneRequest, CreateWingLoftRequest, CreatorUrlType, ExporterUrlType
+from app.models.WingAnalysisRequest import WingAnalysisRequest
 from app.services.create_wing_configuration import create_wing_configuration, create_servo
 
 router = APIRouter()
@@ -263,3 +270,69 @@ async def download_aeroplane_zip(aeroplane_id: str):
         media_type='application/zip',
         filename=os.path.basename(file_path)
     )
+
+@router.post("/aeroplanes/wings/analysis")
+async def analyze_wing_post(request: WingAnalysisRequest):
+    """
+    Analyze wings using AVL and return the analysis results.
+
+    This endpoint accepts wing configurations in the request body and performs AVL analysis.
+
+    Args:
+        request: The wing analysis request containing wing configurations and operating parameters
+
+    Returns:
+        AvlAnalysisModel: The AVL analysis results
+    """
+    try:
+        # Create a temporary directory
+
+        # Convert wings from the request to WingConfiguration objects
+        wings = {key: create_wing_configuration(value) for key, value in request.wings.items()}
+
+        # Create an AirplaneConfiguration object
+        airplane_config = AirplaneConfiguration(
+            name="Temporary Airplane",
+            total_mass_kg=1.0,  # Default mass
+            wings=list(wings.values()),
+            fuselages=None
+        )
+
+        # Create the atmosphere
+        atmosphere = asb.Atmosphere(
+            altitude=request.altitude
+        )
+
+        # Create the operating point
+        op_point = asb.OperatingPoint(
+            velocity=request.velocity,
+            alpha=request.alpha,
+            beta=request.beta,
+            p=request.p,
+            q=request.q,
+            r=request.r,
+            atmosphere=atmosphere
+        )
+
+        # Run the AVL analysis
+        avl = asb.AVL(
+            airplane=airplane_config.asb_airplane,
+            op_point=op_point,
+            xyz_ref=request.xyz_ref
+        )
+
+        # Get the results
+        avl_results = avl.run()
+
+        # Convert to AvlAnalysisModel
+        analysis_model = AvlAnalysisModel.from_dict(avl_results)
+
+        # Return the results
+        return analysis_model
+
+    except Exception as err:
+        logging.error(f"Error analyzing wing: {str(err)}")
+        raise HTTPException(
+            status_code=http.HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail=str(err)
+        )
