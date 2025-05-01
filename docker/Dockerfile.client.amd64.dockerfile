@@ -1,4 +1,38 @@
+FROM ubuntu:22.04 AS build_avl
+
+COPY ./Avl /home/avl/
+
+SHELL [ "/bin/bash", "-c" ]
+WORKDIR /home/avl
+RUN apt-get update \
+    && apt-get install wget -y \
+    && apt-get install build-essential -y \
+    && apt-get install cmake -y \
+    && apt-get install liblapack-dev -y \
+    && apt-get install libblas-dev -y \
+    && apt-get install libx11-dev -y \
+    && apt-get install gfortran -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN cd plotlib \
+    && make gfortran \
+    && ln -s libPlt_gSP.a libPlt.a \
+    && cd ..
+
+RUN cd eispack \
+    && make -f Makefile.mingw \
+    && ln -s eispack_gSP.a libeispack.a \
+    && cd ..
+
+RUN cd bin \
+    && make -f Makefile.gfortran avl
+
+
+
 FROM condaforge/mambaforge:24.7.1-2
+
+COPY --from=build_avl /home/avl/bin/avl /usr/local/bin/
 
 RUN adduser --disabled-password --gecos "Default user" --uid 1000 cq && \
     apt-get update -y && \
@@ -16,6 +50,9 @@ RUN mamba create -n cq -y python=3.10 &&\
     fastapi\
     pydantic\
     pip=24.0\
+    casadi=3.7.0 \
+    python-kaleido \
+    && pip install aerosandbox[full] \
     &&\
     mamba clean --all &&\
     find / -type f -name '*.py[co]' -delete -o -type d -name __pycache__ -delete
