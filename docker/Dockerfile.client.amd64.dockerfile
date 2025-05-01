@@ -1,11 +1,13 @@
 FROM ubuntu:22.04 AS build_avl
 
-RUN pwd && ls -al
+RUN mkdir -p /build
+WORKDIR /build
+COPY . /build
 
-COPY . .
+#COPY /build/Avl /home/avl/
 
 SHELL [ "/bin/bash", "-c" ]
-WORKDIR ./Avl
+WORKDIR /build/avl
 RUN apt-get update \
     && apt-get install wget -y \
     && apt-get install build-essential -y \
@@ -17,18 +19,18 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR ./plotlib
-RUN make gfortran \
+RUN cd plotlib \
+    && make gfortran \
     && ln -s libPlt_gSP.a libPlt.a \
     && cd ..
 
-WORKDIR ../eispack
-RUN make -f Makefile.mingw \
+RUN cd eispack \
+    && make -f Makefile.mingw \
     && ln -s eispack_gSP.a libeispack.a \
     && cd ..
 
-WORKDIR ../bin
-RUN make -f Makefile.gfortran avl
+RUN cd bin \
+    && make -f Makefile.gfortran avl
 
 
 
