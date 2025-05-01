@@ -38,6 +38,11 @@ class CreatorUrlType(str, Enum):
     WING_LOFT = "wing_loft"
     VASE_MODE_WING = "vase_mode_wing"
 
+class AnalysisToolUrlType(str, Enum):
+    AVL = "avl"
+    AEROBUILDUP = "aerobuildup"
+    VORTEX_LATTICE = "vortex_lattice"
+
 class ExporterUrlType(str, Enum):
     STL = "stl"
     STEP = "step"

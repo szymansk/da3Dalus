@@ -18,7 +18,8 @@ from cad_designer.airplane import ConstructionStepNode, GeneralJSONDecoder
 from cad_designer.airplane.aircraft_topology.components import ServoInformation
 from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import AirplaneConfiguration
 from cad_designer.airplane.aircraft_topology.models.analysis_model import AvlAnalysisModel
-from app.models.AeroplaneRequest import CreateAeroPlaneRequest, CreateWingLoftRequest, CreatorUrlType, ExporterUrlType
+from app.models.AeroplaneRequest import CreateAeroPlaneRequest, CreateWingLoftRequest, CreatorUrlType, ExporterUrlType, \
+    AnalysisToolUrlType
 from app.models.WingAnalysisRequest import WingAnalysisRequest
 from app.services.create_wing_configuration import create_wing_configuration, create_servo
 
@@ -271,8 +272,9 @@ async def download_aeroplane_zip(aeroplane_id: str):
         filename=os.path.basename(file_path)
     )
 
-@router.post("/aeroplanes/wings/analysis")
-async def analyze_wing_post(request: WingAnalysisRequest):
+@router.post("/aeroplanes/wings/{analysis_tool}")
+async def analyze_wing_post(analysis_tool: AnalysisToolUrlType = AnalysisToolUrlType.AVL,
+                            request: WingAnalysisRequest = Body(...)):
     """
     Analyze wings using AVL and return the analysis results.
 
@@ -314,18 +316,50 @@ async def analyze_wing_post(request: WingAnalysisRequest):
             atmosphere=atmosphere
         )
 
-        # Run the AVL analysis
-        avl = asb.AVL(
-            airplane=airplane_config.asb_airplane,
-            op_point=op_point,
-            xyz_ref=request.xyz_ref
-        )
+        asb_airplane = airplane_config.asb_airplane
+        asb_airplane.xyz_ref = request.xyz_ref
 
-        # Get the results
-        avl_results = avl.run()
+        if analysis_tool == AnalysisToolUrlType.AVL:
+            # Run the AVL analysis
+            avl = asb.AVL(
+                airplane=asb_airplane,
+                op_point=op_point,
+                xyz_ref=request.xyz_ref
+            )
+
+            # Get the results
+            avl_results = avl.run()
+            analysis_model = AvlAnalysisModel.from_avl_dict(avl_results)
+        elif analysis_tool == AnalysisToolUrlType.AEROBUILDUP:
+            abu = asb.AeroBuildup(
+                airplane=asb_airplane,
+                    op_point=op_point,
+                    xyz_ref=request.xyz_ref
+                )
+
+            # Get the results
+            abu_results = abu.run_with_stability_derivatives()
+            analysis_model = AvlAnalysisModel.from_abu_dict(
+                abu_results,
+                asb_airplan=asb_airplane
+            )
+        elif analysis_tool == AnalysisToolUrlType.VORTEX_LATTICE:
+            vlm = asb.VortexLatticeMethod(
+                airplane=asb_airplane,
+                op_point=op_point,
+                xyz_ref=request.xyz_ref
+            )
+
+            # Get the results
+            vlm_results = vlm.run_with_stability_derivatives()
+            analysis_model = AvlAnalysisModel.from_abu_dict(
+                vlm_results,
+                asb_airplan=asb_airplane
+            )
+            pass
+
 
         # Convert to AvlAnalysisModel
-        analysis_model = AvlAnalysisModel.from_dict(avl_results)
 
         # Return the results
         return analysis_model

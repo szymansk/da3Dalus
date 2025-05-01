@@ -1,7 +1,11 @@
 from enum import Enum
 
+import numpy as np
 from pydantic import BaseModel, Field
 from typing import List, Literal, Tuple, Union
+from typing import Optional
+
+import aerosandbox as asb
 
 
 class AircraftModel(BaseModel):
@@ -103,105 +107,105 @@ class StabilityModel(BaseModel):
     static_directional_stability_best_alpha: CnBetaClassification = Field(..., title="Lateral Stability", description="Static directional stability present")
 
 class AvlReferenceModel(BaseModel):
-    Bref: float = Field(..., title="Reference Span", description="Reference span [m]")
-    Cref: float = Field(..., title="Reference Chord", description="Reference chord [m]")
-    Sref: float = Field(..., title="Reference Area", description="Reference area [m²]")
-    Xref: float = Field(..., title="X Reference", description="X reference location [m]")
-    Yref: float = Field(..., title="Y Reference", description="Y reference location [m]")
-    Zref: float = Field(..., title="Z Reference", description="Z reference location [m]")
-    Xnp: float = Field(..., title="Neutral Point", description="Neutral point location [m]")
-    Strips: float = Field(..., title="Strip Count", description="Number of strips in the model [-]")
-    Surfaces: float = Field(..., title="Surface Count", description="Number of surfaces in the model [-]")
-    Vortices: float = Field(..., title="Vortex Count", description="Number of vortices in the model [-]")
+    Bref: Optional[float] = Field(None, title="Reference Span", description="Reference span [m]")
+    Cref: Optional[float] = Field(None, title="Reference Chord", description="Reference chord [m]")
+    Sref: Optional[float] = Field(None, title="Reference Area", description="Reference area [m²]")
+    Xref: Optional[float] = Field(None, title="X Reference", description="X reference location [m]")
+    Yref: Optional[float] = Field(None, title="Y Reference", description="Y reference location [m]")
+    Zref: Optional[float] = Field(None, title="Z Reference", description="Z reference location [m]")
+    Xnp: Optional[float] = Field(None, title="Neutral Point", description="Neutral point location [m]")
+    Strips: Optional[float] = Field(None, title="Strip Count", description="Number of strips in the model [-]")
+    Surfaces: Optional[float] = Field(None, title="Surface Count", description="Number of surfaces in the model [-]")
+    Vortices: Optional[float] = Field(None, title="Vortex Count", description="Number of vortices in the model [-]")
 
 class AvlForceModel(BaseModel):
-    F_b: Tuple[float, float, float] = Field(..., title="Body Axes Forces", description="Forces in body axes [N]")
-    F_g: Tuple[float, float, float] = Field(..., title="Geometry Axes Forces", description="Forces in geometry axes [N]")
-    F_w: List[float] = Field(..., title="Wind Axes Forces", description="Forces in wind axes [N]")
-    L: float = Field(..., title="Lift Force", description="Lift force [N]")
-    D: float = Field(..., title="Drag Force", description="Drag force [N]")
-    Y: float = Field(..., title="Side Force", description="Side force [N]")
+    F_b: Optional[List[Tuple[float, float, float]]] = Field(None, title="Body Axes Forces", description="List of forces in body axes for each alpha [N]")
+    F_g: Optional[List[Tuple[float, float, float]]] = Field(None, title="Geometry Axes Forces", description="List of forces in geometry axes for each alpha [N]")
+    F_w: Optional[List[List[float]]] = Field(None, title="Wind Axes Forces", description="List of forces in wind axes for each alpha [N]")
+    L: Optional[List[float]] = Field(None, title="Lift Force", description="List of lift force for each alpha [N]")
+    D: Optional[List[float]] = Field(None, title="Drag Force", description="List of drag force for each alpha [N]")
+    Y: Optional[List[float]] = Field(None, title="Side Force", description="List of side force for each alpha [N]")
 
 class AvlMomentModel(BaseModel):
-    M_b: List[float] = Field(..., title="Body Moments", description="Moments about body axes [Nm]")
-    M_g: Tuple[float, float, float] = Field(..., title="Geometry Moments", description="Moments about geometry axes [Nm]")
-    M_w: List[float] = Field(..., title="Wind Moments", description="Moments about wind axes [Nm]")
-    l_b: float = Field(..., title="Body Roll Moment", description="Roll moment in body axes [Nm]")
-    m_b: float = Field(..., title="Body Pitch Moment", description="Pitch moment in body axes [Nm]")
-    n_b: float = Field(..., title="Body Yaw Moment", description="Yaw moment in body axes [Nm]")
+    M_b: Optional[List[List[float]]] = Field(None, title="Body Moments", description="List of moments about body axes for each alpha [Nm]")
+    M_g: Optional[List[Tuple[float, float, float]]] = Field(None, title="Geometry Moments", description="List of moments about geometry axes for each alpha [Nm]")
+    M_w: Optional[List[List[float]]] = Field(None, title="Wind Moments", description="List of moments about wind axes for each alpha [Nm]")
+    l_b: Optional[List[float]] = Field(None, title="Body Roll Moment", description="List of roll moment in body axes for each alpha [Nm]")
+    m_b: Optional[List[float]] = Field(None, title="Body Pitch Moment", description="List of pitch moment in body axes for each alpha [Nm]")
+    n_b: Optional[List[float]] = Field(None, title="Body Yaw Moment", description="List of yaw moment in body axes for each alpha [Nm]")
 
 class AvlCoefficientsModel(BaseModel):
-    CL: float = Field(..., title="Lift Coefficient", description="Total lift coefficient [-]")
-    CD: float = Field(..., title="Drag Coefficient", description="Total drag coefficient [-]")
-    CY: float = Field(..., title="Y-Force Coefficient", description="Y-axis force coefficient [-]")
-    CZ: float = Field(..., title="Z-Force Coefficient", description="Z-axis force coefficient [-]")
-    CX: float = Field(..., title="X-Force Coefficient", description="X-axis force coefficient [-]")
-    Cl: float = Field(..., title="Roll Moment Coefficient", description="Roll moment coefficient [-]")
-    Cl_prime: float = Field(..., title="Roll Moment Prime", description="Roll moment coefficient prime [-]")#, alias="Cl'")
-    Cm: float = Field(..., title="Pitch Moment Coefficient", description="Pitch moment coefficient [-]")
-    Cn: float = Field(..., title="Yaw Moment Coefficient", description="Yaw moment coefficient [-]")
-    Cn_prime: float = Field(..., title="Yaw Moment Prime", description="Yaw moment coefficient prime [-]")#, alias="Cn'")
-    CDff: float = Field(..., title="Form Factor Drag", description="Form factor drag coefficient [-]")
-    CDind: float = Field(..., title="Induced Drag", description="Induced drag coefficient [-]")
-    CDvis: float = Field(..., title="Viscous Drag", description="Viscous drag coefficient [-]")
-    CLff: float = Field(..., title="Form Factor Lift", description="Form factor lift coefficient [-]")
-    CYff: float = Field(..., title="Form Factor Side Force", description="Form factor side force coefficient [-]")
-    e: float = Field(..., title="Oswald Efficiency", description="Oswald efficiency factor [-]")
+    CL: Optional[List[float]] = Field(None, title="Lift Coefficient", description="List of lift coefficient for each alpha [-]")
+    CD: Optional[List[float]] = Field(None, title="Drag Coefficient", description="List of drag coefficient for each alpha [-]")
+    CY: Optional[List[float]] = Field(None, title="Y-Force Coefficient", description="List of y-axis force coefficient for each alpha [-]")
+    CZ: Optional[List[float]] = Field(None, title="Z-Force Coefficient", description="List of z-axis force coefficient for each alpha [-]")
+    CX: Optional[List[float]] = Field(None, title="X-Force Coefficient", description="List of x-axis force coefficient for each alpha [-]")
+    Cl: Optional[List[float]] = Field(None, title="Roll Moment Coefficient", description="List of roll moment coefficient for each alpha [-]")
+    Cl_prime: Optional[List[float]] = Field(None, title="Roll Moment Prime", description="List of roll moment coefficient prime for each alpha [-]")#, alias="Cl'")
+    Cm: Optional[List[float]] = Field(None, title="Pitch Moment Coefficient", description="List of pitch moment coefficient for each alpha [-]")
+    Cn: Optional[List[float]] = Field(None, title="Yaw Moment Coefficient", description="List of yaw moment coefficient for each alpha [-]")
+    Cn_prime: Optional[List[float]] = Field(None, title="Yaw Moment Prime", description="List of yaw moment coefficient prime for each alpha [-]")#, alias="Cn'")
+    CDff: Optional[List[float]] = Field(None, title="Form Factor Drag", description="List of form factor drag coefficient for each alpha [-]")
+    CDind: Optional[List[float]] = Field(None, title="Induced Drag", description="List of induced drag coefficient for each alpha [-]")
+    CDvis: Optional[List[float]] = Field(None, title="Viscous Drag", description="List of viscous drag coefficient for each alpha [-]")
+    CLff: Optional[List[float]] = Field(None, title="Form Factor Lift", description="List of form factor lift coefficient for each alpha [-]")
+    CYff: Optional[List[float]] = Field(None, title="Form Factor Side Force", description="List of form factor side force coefficient for each alpha [-]")
+    e: Optional[List[float]] = Field(None, title="Oswald Efficiency", description="List of Oswald efficiency factor for each alpha [-]")
 
 class AvlDerivativesModel(BaseModel):
-    CLa: float = Field(..., title="Lift Curve Slope", description="Lift curve slope [1/rad]")
-    CLb: float = Field(..., title="Lift-Sideslip Derivative", description="Lift coefficient derivative with sideslip [1/rad]")
-    CLp: float = Field(..., title="Roll Damping", description="Roll damping derivative [1/rad]")
-    CLq: float = Field(..., title="Pitch Rate Lift", description="Pitch rate lift derivative [1/rad]")
-    CLr: float = Field(..., title="Yaw Rate Lift", description="Yaw rate lift derivative [1/rad]")
-    CYa: float = Field(..., title="Side Force-Alpha", description="Side force derivative with alpha [1/rad]")
-    CYb: float = Field(..., title="Side Force-Beta", description="Side force derivative with beta [1/rad]")
-    CYp: float = Field(..., title="Roll Rate Side Force", description="Roll rate side force derivative [1/rad]")
-    CYq: float = Field(..., title="Pitch Rate Side Force", description="Pitch rate side force derivative [1/rad]")
-    CYr: float = Field(..., title="Yaw Rate Side Force", description="Yaw rate side force derivative [1/rad]")
-    Cla: float = Field(..., title="Roll-Alpha Derivative", description="Roll moment derivative with alpha [1/rad]")
-    Clb: float = Field(..., title="Roll-Beta Derivative", description="Roll moment derivative with beta [1/rad]")
-    Clp: float = Field(..., title="Roll Damping", description="Roll damping derivative [1/rad]")
-    Clq: float = Field(..., title="Pitch Rate Roll", description="Pitch rate roll derivative [1/rad]")
-    Clr: float = Field(..., title="Yaw Rate Roll", description="Yaw rate roll derivative [1/rad]")
-    Cma: float = Field(..., title="Pitch-Alpha Derivative", description="Pitch moment derivative with alpha [1/rad]")
-    Cmb: float = Field(..., title="Pitch-Beta Derivative", description="Pitch moment derivative with beta [1/rad]")
-    Cmp: float = Field(..., title="Roll Rate Pitch", description="Roll rate pitch derivative [1/rad]")
-    Cmq: float = Field(..., title="Pitch Damping", description="Pitch damping derivative [1/rad]")
-    Cmr: float = Field(..., title="Yaw Rate Pitch", description="Yaw rate pitch derivative [1/rad]")
-    Cna: float = Field(..., title="Yaw-Alpha Derivative", description="Yaw moment derivative with alpha [1/rad]")
-    Cnb: float = Field(..., title="Yaw-Beta Derivative", description="Yaw moment derivative with beta [1/rad]")
-    Cnp: float = Field(..., title="Roll Rate Yaw", description="Roll rate yaw derivative [1/rad]")
-    Cnq: float = Field(..., title="Pitch Rate Yaw", description="Pitch rate yaw derivative [1/rad]")
-    Cnr: float = Field(..., title="Yaw Damping", description="Yaw damping derivative [1/rad]")
-    Clb_Cnr_div_Clr_Cnb: float = Field(..., title="Roll-Yaw Coupling", description="Roll-yaw coupling parameter [-]")#, alias="Clb Cnr / Clr Cnb")
+    CLa: Optional[List[float]] = Field(None, title="Lift Curve Slope", description="List of lift curve slope for each alpha [1/rad]")
+    CLb: Optional[List[float]] = Field(None, title="Lift-Sideslip Derivative", description="List of lift coefficient derivative with sideslip for each alpha [1/rad]")
+    CLp: Optional[List[float]] = Field(None, title="Roll Damping", description="List of roll damping derivative for each alpha [1/rad]")
+    CLq: Optional[List[float]] = Field(None, title="Pitch Rate Lift", description="List of pitch rate lift derivative for each alpha [1/rad]")
+    CLr: Optional[List[float]] = Field(None, title="Yaw Rate Lift", description="List of yaw rate lift derivative for each alpha [1/rad]")
+    CYa: Optional[List[float]] = Field(None, title="Side Force-Alpha", description="List of side force derivative with alpha for each alpha [1/rad]")
+    CYb: Optional[List[float]] = Field(None, title="Side Force-Beta", description="List of side force derivative with beta for each alpha [1/rad]")
+    CYp: Optional[List[float]] = Field(None, title="Roll Rate Side Force", description="List of roll rate side force derivative for each alpha [1/rad]")
+    CYq: Optional[List[float]] = Field(None, title="Pitch Rate Side Force", description="List of pitch rate side force derivative for each alpha [1/rad]")
+    CYr: Optional[List[float]] = Field(None, title="Yaw Rate Side Force", description="List of yaw rate side force derivative for each alpha [1/rad]")
+    Cla: Optional[List[float]] = Field(None, title="Roll-Alpha Derivative", description="List of roll moment derivative with alpha for each alpha [1/rad]")
+    Clb: Optional[List[float]] = Field(None, title="Roll-Beta Derivative", description="List of roll moment derivative with beta for each alpha [1/rad]")
+    Clp: Optional[List[float]] = Field(None, title="Roll Damping", description="List of roll damping derivative for each alpha [1/rad]")
+    Clq: Optional[List[float]] = Field(None, title="Pitch Rate Roll", description="List of pitch rate roll derivative for each alpha [1/rad]")
+    Clr: Optional[List[float]] = Field(None, title="Yaw Rate Roll", description="List of yaw rate roll derivative for each alpha [1/rad]")
+    Cma: Optional[List[float]] = Field(None, title="Pitch-Alpha Derivative", description="List of pitch moment derivative with alpha for each alpha [1/rad]")
+    Cmb: Optional[List[float]] = Field(None, title="Pitch-Beta Derivative", description="List of pitch moment derivative with beta for each alpha [1/rad]")
+    Cmp: Optional[List[float]] = Field(None, title="Roll Rate Pitch", description="List of roll rate pitch derivative for each alpha [1/rad]")
+    Cmq: Optional[List[float]] = Field(None, title="Pitch Damping", description="List of pitch damping derivative for each alpha [1/rad]")
+    Cmr: Optional[List[float]] = Field(None, title="Yaw Rate Pitch", description="List of yaw rate pitch derivative for each alpha [1/rad]")
+    Cna: Optional[List[float]] = Field(None, title="Yaw-Alpha Derivative", description="List of yaw moment derivative with alpha for each alpha [1/rad]")
+    Cnb: Optional[List[float]] = Field(None, title="Yaw-Beta Derivative", description="List of yaw moment derivative with beta for each alpha [1/rad]")
+    Cnp: Optional[List[float]] = Field(None, title="Roll Rate Yaw", description="List of roll rate yaw derivative for each alpha [1/rad]")
+    Cnq: Optional[List[float]] = Field(None, title="Pitch Rate Yaw", description="List of pitch rate yaw derivative for each alpha [1/rad]")
+    Cnr: Optional[List[float]] = Field(None, title="Yaw Damping", description="List of yaw damping derivative for each alpha [1/rad]")
+    Clb_Cnr_div_Clr_Cnb: Optional[List[float]] = Field(None, title="Roll-Yaw Coupling", description="List of roll-yaw coupling parameter for each alpha [-]")#, alias="Clb Cnr / Clr Cnb")
 
 class AvlSingleControlSurfaceModel(BaseModel):
-    name: str = Field(..., title="Control Surface Name", description="Name of the control surface")
-    ed: float = Field(..., title="Control Surface Efficiency", description="Control surface efficiency [-]")
-    CDff: float = Field(..., title="Control Surface Drag", description="Control surface drag contribution [-]")
-    CLd: float = Field(..., title="Control Surface Lift", description="Control surface lift contribution [-]")
-    CYd: float = Field(..., title="Control Surface Side Force", description="Control surface side force contribution [-]")
-    Cld: float = Field(..., title="Control Surface Roll", description="Control surface roll contribution [-]")
-    Cmd: float = Field(..., title="Control Surface Pitch", description="Control surface pitch contribution [-]")
-    Cnd: float = Field(..., title="Control Surface Yaw", description="Control surface yaw contribution [-]")
-    deflection: float = Field(..., title="Control Surface Deflection", description="Control Surface  deflection angle [deg]")
+    name: Optional[str] = Field(None, title="Control Surface Name", description="Name of the control surface")
+    ed: Optional[List[float]] = Field(None, title="Control Surface Efficiency", description="List of control surface efficiency for each alpha [-]")
+    CDff: Optional[List[float]] = Field(None, title="Control Surface Drag", description="List of control surface drag contribution for each alpha [-]")
+    CLd: Optional[List[float]] = Field(None, title="Control Surface Lift", description="List of control surface lift contribution for each alpha [-]")
+    CYd: Optional[List[float]] = Field(None, title="Control Surface Side Force", description="List of control surface side force contribution for each alpha [-]")
+    Cld: Optional[List[float]] = Field(None, title="Control Surface Roll", description="List of control surface roll contribution for each alpha [-]")
+    Cmd: Optional[List[float]] = Field(None, title="Control Surface Pitch", description="List of control surface pitch contribution for each alpha [-]")
+    Cnd: Optional[List[float]] = Field(None, title="Control Surface Yaw", description="List of control surface yaw contribution for each alpha [-]")
+    deflection: Optional[List[float]] = Field(None, title="Control Surface Deflection", description="List of control surface deflection angle for each alpha [deg]")
 
 class AvlControlSurfaceModel(BaseModel):
-    control_surfaces: List[AvlSingleControlSurfaceModel] = Field(default_factory=list, title="Control Surfaces", description="List of control surfaces")
+    control_surfaces: Optional[List[AvlSingleControlSurfaceModel]] = Field(None, title="Control Surfaces", description="List of control surfaces")
 
 class AvlFlightConditionModel(BaseModel):
-    alpha: float = Field(..., title="Angle of Attack", description="Angle of attack [deg]")
-    beta: float = Field(..., title="Sideslip Angle", description="Sideslip angle [deg]")
-    mach: float = Field(..., title="Mach Number", description="Mach number [-]")
-    p: float = Field(..., title="Roll Rate", description="Roll rate [rad/s]")
-    q: float = Field(..., title="Pitch Rate", description="Pitch rate [rad/s]")
-    r: float = Field(..., title="Yaw Rate", description="Yaw rate [rad/s]")
-    p_prime_b_div_2V: float = Field(..., title="Normalized Roll Acceleration", description="Normalized roll acceleration [-]")#, alias="p'b/2V")
-    pb_div_2V: float = Field(..., title="Normalized Roll Rate", description="Normalized roll rate [-]")#, alias="pb/2V")
-    qc_div_2V: float = Field(..., title="Normalized Pitch Rate", description="Normalized pitch rate [-]")#, alias="qc/2V")
-    r_prime_b_div_2V: float = Field(..., title="Normalized Yaw Acceleration", description="Normalized yaw acceleration [-]")#, alias="r'b/2V")
-    rb_div_2V: float = Field(..., title="Normalized Yaw Rate", description="Normalized yaw rate [-]")#, alias="rb/2V")
+    alpha: Optional[List[float]] = Field(None, title="Angle of Attack", description="List of angle of attack for each alpha [deg]")
+    beta: Optional[float] = Field(None, title="Sideslip Angle", description="Sideslip angle [deg]")
+    mach: Optional[float] = Field(None, title="Mach Number", description="Mach number [-]")
+    p: Optional[float] = Field(None, title="Roll Rate", description="Roll rate [rad/s]")
+    q: Optional[float] = Field(None, title="Pitch Rate", description="Pitch rate [rad/s]")
+    r: Optional[float] = Field(None, title="Yaw Rate", description="Yaw rate [rad/s]")
+    p_prime_b_div_2V: Optional[float] = Field(None, title="Normalized Roll Acceleration", description="Normalized roll acceleration [-]")#, alias="p'b/2V"
+    pb_div_2V: Optional[float] = Field(None, title="Normalized Roll Rate", description="Normalized roll rate [-]")#, alias="pb/2V"
+    qc_div_2V: Optional[float] = Field(None, title="Normalized Pitch Rate", description="Normalized pitch rate [-]")#, alias="qc/2V"
+    r_prime_b_div_2V: Optional[float] = Field(None, title="Normalized Yaw Acceleration", description="Normalized yaw acceleration [-]")#, alias="r'b/2V"
+    rb_div_2V: Optional[float] = Field(None, title="Normalized Yaw Rate", description="Normalized yaw rate [-]")#, alias="rb/2V"
 
 class AvlAnalysisModel(BaseModel):
     reference: AvlReferenceModel
@@ -213,7 +217,7 @@ class AvlAnalysisModel(BaseModel):
     flight_condition: AvlFlightConditionModel
 
     @staticmethod
-    def from_dict(data: dict) -> 'AvlAnalysisModel':
+    def from_avl_dict(data: dict) -> 'AvlAnalysisModel':
         """
         Create an AvlAnalysisModel instance from a flat dictionary structure.
 
@@ -238,69 +242,69 @@ class AvlAnalysisModel(BaseModel):
         )
 
         forces = AvlForceModel(
-            F_b=data['F_b'],
-            F_g=data['F_g'],
-            F_w=data['F_w'],
-            L=data['L'],
-            D=data['D'],
-            Y=data['Y']
+            F_b=[data['F_b']],
+            F_g=[data['F_g']],
+            F_w=[data['F_w']],
+            L=[data['L']],
+            D=[data['D']],
+            Y=[data['Y']]
         )
 
         moments = AvlMomentModel(
-            M_b=data['M_b'],
-            M_g=data['M_g'],
-            M_w=data['M_w'],
-            l_b=data['l_b'],
-            m_b=data['m_b'],
-            n_b=data['n_b']
+            M_b=[data['M_b']],
+            M_g=[data['M_g']],
+            M_w=[data['M_w']],
+            l_b=[data['l_b']],
+            m_b=[data['m_b']],
+            n_b=[data['n_b']]
         )
 
         coefficients = AvlCoefficientsModel(
-            CL=data['CL'],
-            CD=data['CD'],
-            CY=data['CY'],
-            CZ=data['CZ'],
-            CX=data['CX'],
-            Cl=data['Cl'],
-            Cl_prime=data["Cl'"],
-            Cm=data['Cm'],
-            Cn=data['Cn'],
-            Cn_prime=data["Cn'"],
-            CDff=data['CDff'],
-            CDind=data['CDind'],
-            CDvis=data['CDvis'],
-            CLff=data['CLff'],
-            CYff=data['CYff'],
-            e=data['e']
+            CL=[data['CL']],
+            CD=[data['CD']],
+            CY=[data['CY']],
+            CZ=[data['CZ']],
+            CX=[data['CX']],
+            Cl=[data['Cl']],
+            Cl_prime=[data["Cl'"]],
+            Cm=[data['Cm']],
+            Cn=[data['Cn']],
+            Cn_prime=[data["Cn'"]],
+            CDff=[data['CDff']],
+            CDind=[data['CDind']],
+            CDvis=[data['CDvis']],
+            CLff=[data['CLff']],
+            CYff=[data['CYff']],
+            e=[data['e']]
         )
 
         derivatives = AvlDerivativesModel(
-            CLa=data['CLa'],
-            CLb=data['CLb'],
-            CLp=data['CLp'],
-            CLq=data['CLq'],
-            CLr=data['CLr'],
-            CYa=data['CYa'],
-            CYb=data['CYb'],
-            CYp=data['CYp'],
-            CYq=data['CYq'],
-            CYr=data['CYr'],
-            Cla=data['Cla'],
-            Clb=data['Clb'],
-            Clp=data['Clp'],
-            Clq=data['Clq'],
-            Clr=data['Clr'],
-            Cma=data['Cma'],
-            Cmb=data['Cmb'],
-            Cmp=data['Cmp'],
-            Cmq=data['Cmq'],
-            Cmr=data['Cmr'],
-            Cna=data['Cna'],
-            Cnb=data['Cnb'],
-            Cnp=data['Cnp'],
-            Cnq=data['Cnq'],
-            Cnr=data['Cnr'],
-            Clb_Cnr_div_Clr_Cnb=data['Clb Cnr / Clr Cnb']
+            CLa=[data['CLa']],
+            CLb=[data['CLb']],
+            CLp=[data['CLp']],
+            CLq=[data['CLq']],
+            CLr=[data['CLr']],
+            CYa=[data['CYa']],
+            CYb=[data['CYb']],
+            CYp=[data['CYp']],
+            CYq=[data['CYq']],
+            CYr=[data['CYr']],
+            Cla=[data['Cla']],
+            Clb=[data['Clb']],
+            Clp=[data['Clp']],
+            Clq=[data['Clq']],
+            Clr=[data['Clr']],
+            Cma=[data['Cma']],
+            Cmb=[data['Cmb']],
+            Cmp=[data['Cmp']],
+            Cmq=[data['Cmq']],
+            Cmr=[data['Cmr']],
+            Cna=[data['Cna']],
+            Cnb=[data['Cnb']],
+            Cnp=[data['Cnp']],
+            Cnq=[data['Cnq']],
+            Cnr=[data['Cnr']],
+            Clb_Cnr_div_Clr_Cnb=[data['Clb Cnr / Clr Cnb']]
         )
 
         # Extract control surface names from keys between 'e' and 'CLa'
@@ -349,14 +353,14 @@ class AvlAnalysisModel(BaseModel):
             # Create the control surface model
             control_surface = AvlSingleControlSurfaceModel(
                 name=name,
-                ed=data[f'ed{index}'],
-                CDff=data[f'CDffd{index}'],
-                CLd=data[f'CLd{index}'],
-                CYd=data[f'CYd{index}'],
-                Cld=data[f'Cld{index}'],
-                Cmd=data[f'Cmd{index}'],
-                Cnd=data[f'Cnd{index}'],
-                deflection = data[name]
+                ed=[data[f'ed{index}']],
+                CDff=[data[f'CDffd{index}']],
+                CLd=[data[f'CLd{index}']],
+                CYd=[data[f'CYd{index}']],
+                Cld=[data[f'Cld{index}']],
+                Cmd=[data[f'Cmd{index}']],
+                Cnd=[data[f'Cnd{index}']],
+                deflection=[data[name]]
             )
             control_surface_list.append(control_surface)
 
@@ -365,7 +369,7 @@ class AvlAnalysisModel(BaseModel):
         )
 
         flight_condition = AvlFlightConditionModel(
-            alpha=data['alpha'],
+            alpha=[data['alpha']],
             beta=data['beta'],
             mach=data['mach'],
             p=data['p'],
@@ -379,6 +383,174 @@ class AvlAnalysisModel(BaseModel):
         )
 
         # Create main model
+        return AvlAnalysisModel(
+            reference=reference,
+            forces=forces,
+            moments=moments,
+            coefficients=coefficients,
+            derivatives=derivatives,
+            control_surfaces=control_surfaces,
+            flight_condition=flight_condition
+        )
+
+    @staticmethod
+    def from_abu_dict(data: dict, asb_airplan: asb.Airplane) -> 'AvlAnalysisModel':
+        """Create an AvlAnalysisModel from ABU-style dict, mapping provided values and using None for missing."""
+        # Reference
+        x_np_lat = data.get('x_np_lateral')
+        if isinstance(x_np_lat, (list, tuple)):
+            xnp_val = x_np_lat[0] if x_np_lat else None
+        else:
+            xnp_val = x_np_lat
+
+        reference = AvlReferenceModel(
+            Bref=asb_airplan.b_ref,
+            Cref=asb_airplan.c_ref,
+            Sref=asb_airplan.s_ref,
+            Xref=asb_airplan.xyz_ref[0],
+            Yref=asb_airplan.xyz_ref[1],
+            Zref=asb_airplan.xyz_ref[2],
+            Xnp=xnp_val,
+            Strips=None,
+            Surfaces=None,
+            Vortices=None
+        )
+        # Forces
+        f_b_raw = data.get('F_b')
+        if f_b_raw is not None and len(f_b_raw) == 3 and type(f_b_raw[0]) is np.float64:
+            f_b = [f_b_raw]
+        elif f_b_raw is not None and len(f_b_raw) == 3:
+            f_b = [(f_b_raw[0][0], f_b_raw[1][0], f_b_raw[2][0])]
+        else:
+            f_b = None
+        f_g_raw = data.get('F_g')
+        if f_g_raw is not None and len(f_g_raw) == 3 and type(f_g_raw[0]) is np.float64:
+            f_g = [f_g_raw]
+        elif f_g_raw is not None and len(f_g_raw) == 3:
+            f_g = [(f_g_raw[0][0], f_g_raw[1][0], f_g_raw[2][0])]
+        else:
+            f_g = None
+        f_w_raw = data.get('F_w')
+        if f_w_raw is not None and len(f_w_raw) == 3 and type(f_w_raw[0]) is np.float64:
+            f_w = [f_w_raw]
+        elif f_w_raw is not None and len(f_w_raw) == 3:
+            f_w = [(f_w_raw[0][0], f_w_raw[1][0], f_w_raw[2][0])]
+        else:
+            f_w = None
+
+        def to_list(val):
+            if isinstance(val, (list, tuple)):
+                vals = val
+            elif val is not None:
+                vals = [val]
+            else:
+                vals = None
+            return vals
+
+        forces = AvlForceModel(
+            F_b=f_b,
+            F_g=f_g,
+            F_w=f_w,
+            L=to_list(data.get('L')),
+            D=to_list(data.get('D')),
+            Y=to_list(data.get('Y'))
+        )
+        # Moments
+        m_b_raw = data.get('M_b')
+        if m_b_raw is not None and len(m_b_raw) == 3 and type(m_b_raw[0]) is np.float64:
+            m_b = [m_b_raw]
+        elif m_b_raw is not None and len(m_b_raw) == 3:
+            m_b = [(m_b_raw[0][0], m_b_raw[1][0], m_b_raw[2][0])]
+        else:
+            m_b = None
+        m_g_raw = data.get('M_g')
+        if m_g_raw is not None and len(m_g_raw) == 3 and type(m_g_raw[0]) is np.float64:
+            m_g = [m_g_raw]
+        elif m_g_raw is not None and len(m_g_raw) == 3:
+            m_g = [(m_g_raw[0][0], m_g_raw[1][0], m_g_raw[2][0])]
+        else:
+            m_g = None
+        m_w_raw = data.get('M_w')
+        if m_w_raw is not None and len(m_w_raw) == 3 and type(m_w_raw[0]) is np.float64:
+            m_w = [m_w_raw]
+        elif m_w_raw is not None and len(m_w_raw) == 3:
+            m_w = [(m_w_raw[0][0], m_w_raw[1][0], m_w_raw[2][0])]
+        else:
+            m_w = None
+        moments = AvlMomentModel(
+            M_b=m_b,
+            M_g=m_g,
+            M_w=m_w,
+            l_b=to_list(data.get('l_b')),
+            m_b=to_list(data.get('m_b')),
+            n_b=to_list(data.get('n_b'))
+        )
+        # Coefficients
+
+        coefficients = AvlCoefficientsModel(
+            CL=to_list(data.get('CL')),
+            CD=to_list(data.get('CD')),
+            CY=to_list(data.get('CY')),
+            CZ=to_list(data.get('CZ')),
+            CX=to_list(data.get('CX')),
+            Cl=to_list(data.get('Cl')),
+            Cl_prime=to_list(data.get("Cl'")),
+            Cm=to_list(data.get('Cm')),
+            Cn=to_list(data.get('Cn')),
+            Cn_prime=to_list(data.get("Cn'")),
+            CDff=to_list(data.get('CDff')),
+            CDind=to_list(data.get('CDind')),
+            CDvis=to_list(data.get('CDvis')),
+            CLff=to_list(data.get('CLff')),
+            CYff=to_list(data.get('CYff')),
+            e=[data.get('wing_aero_components')[0].oswalds_efficiency] if data.get('wing_aero_components') else None,
+        )
+        # Derivatives
+        derivatives = AvlDerivativesModel(
+            CLa=data.get('CLa'),
+            CLb=data.get('CLb'),
+            CLp=data.get('CLp'),
+            CLq=data.get('CLq'),
+            CLr=data.get('CLr'),
+            CYa=data.get('CYa'),
+            CYb=data.get('CYb'),
+            CYp=data.get('CYp'),
+            CYq=data.get('CYq'),
+            CYr=data.get('CYr'),
+            Cla=data.get('Cla'),
+            Clb=data.get('Clb'),
+            Clp=data.get('Clp'),
+            Clq=data.get('Clq'),
+            Clr=data.get('Clr'),
+            Cma=data.get('Cma'),
+            Cmb=data.get('Cmb'),
+            Cmp=data.get('Cmp'),
+            Cmq=data.get('Cmq'),
+            Cmr=data.get('Cmr'),
+            Cna=data.get('Cna'),
+            Cnb=data.get('Cnb'),
+            Cnp=data.get('Cnp'),
+            Cnq=data.get('Cnq'),
+            Cnr=data.get('Cnr'),
+            Clb_Cnr_div_Clr_Cnb=data.get('Clb Cnr / Clr Cnb')
+        )
+        # Control Surfaces
+        control_surfaces = AvlControlSurfaceModel(control_surfaces=None)
+        # Flight Condition
+        op_point = data.get('wing_aero_components')[0].op_point
+        flight_condition = AvlFlightConditionModel(
+            alpha=[op_point.alpha],
+            beta=op_point.beta,
+            mach=op_point.velocity/347.,
+            p=op_point.p,
+            q=op_point.q,
+            r=op_point.r,
+            p_prime_b_div_2V=None,
+            pb_div_2V=None,
+            qc_div_2V=None,
+            r_prime_b_div_2V=None,
+            rb_div_2V=None
+        )
         return AvlAnalysisModel(
             reference=reference,
             forces=forces,

@@ -7,6 +7,7 @@ trigger:
     include:
     - master
     - feature/buildpipeline
+    - feature/aerosanbox
   tags:
     include:
     - '*'
@@ -48,3 +49,27 @@ stages:
           tags: |
             latest
             $(Build.SourceBranchName)
+
+- stage: DeployAerosandbox
+  displayName: Deploy aerosandbox container
+  condition: eq(variables['Build.SourceBranchName'], 'feature/aerosandbox')
+  dependsOn: Build
+  jobs:
+    - deployment: DeployWebApp
+      displayName: Deploy to Azure Web App
+      environment: aerosandbox-dev
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - task: AzureWebAppContainer@1
+                displayName: Deploy container to Web App
+                inputs:
+                  azureSubscription: '8063d339-5165-4aa1-be6e-3b372c643f8a'
+                  appName: 'aerosandbox-cad-service'
+                  containers: |
+                    [
+                      {
+                        "image": "crda3dalusdev.azurecr.io/cad-modelling-service:feature-aerosandbox"
+                      }
+                    ]
