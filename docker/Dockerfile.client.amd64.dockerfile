@@ -64,10 +64,10 @@ RUN mamba create -n cq -y python=3.11 &&\
 
 RUN source /opt/conda/bin/activate \
     && conda activate --no-stack cq \
-    #&& conda install -y -c conda-forge gcc numpy pybind11 \
+    && conda install -y -c conda-forge quaternion \
     && pip install aerosandbox[full] \
-    && pip install numpy==1.23.5 \
-    && pip install numpy-quaternion \
+    #&& pip install numpy==1.23.5 \
+    #&& pip install --no-build-isolation numpy-quaternion \
     && pip install jupyter-cadquery==3.5.2 \
     && find / -type f -name '*.py[co]' -delete -o -type d -name __pycache__ -delete
 
