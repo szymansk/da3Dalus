@@ -61,9 +61,9 @@ RUN mamba create -n cq -y python=3.11 &&\
     mamba clean --all &&\
     find / -type f -name '*.py[co]' -delete -o -type d -name __pycache__ -delete
 
-RUN . "/opt/conda/etc/profile.d/conda.sh" && conda activate cq && \
-    pip install jupyter-cadquery==3.5.2 && \
-    find / -type f -name '*.py[co]' -delete -o -type d -name __pycache__ -delete
+#RUN . "/opt/conda/etc/profile.d/conda.sh" && conda activate cq && \
+#    pip install jupyter-cadquery==3.5.2 && \
+#    find / -type f -name '*.py[co]' -delete -o -type d -name __pycache__ -delete
 
 RUN apt-get update \
     && apt-get install liblapack-dev -y \
