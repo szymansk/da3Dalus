@@ -21,7 +21,7 @@ variables:
   imageRepository: 'cad-modelling-service'
   containerRegistry: 'crda3dalusdev.azurecr.io'
   dockerfilePath: '$(Build.SourcesDirectory)/docker/Dockerfile.client.amd64.dockerfile'
-  buildContext: $(Build.SourcesDirectory)
+  buildContext: '$(Build.SourcesDirectory)'
   tag: '$(Build.BuildId)'
 
   # Agent VM image name

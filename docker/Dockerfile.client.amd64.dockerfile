@@ -17,17 +17,17 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR ./Avl/plotlib
+WORKDIR ./plotlib
 RUN make gfortran \
     && ln -s libPlt_gSP.a libPlt.a \
     && cd ..
 
-WORKDIR ./Avl/eispack
+WORKDIR ../eispack
 RUN make -f Makefile.mingw \
     && ln -s eispack_gSP.a libeispack.a \
     && cd ..
 
-WORKDIR ./Avl/bin
+WORKDIR ../bin
 RUN make -f Makefile.gfortran avl
 
 
