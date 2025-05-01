@@ -38,6 +38,8 @@ FROM condaforge/mambaforge:24.7.1-2
 
 COPY --from=build_avl /build/Avl/bin/avl /usr/local/bin/
 
+SHELL [ "/bin/bash", "-c" ]
+
 RUN adduser --disabled-password --gecos "Default user" --uid 1000 cq && \
     apt-get update -y && \
     apt-get install --no-install-recommends -y libgl1-mesa-glx libglu1-mesa && \
