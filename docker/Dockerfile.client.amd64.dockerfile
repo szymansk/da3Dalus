@@ -62,8 +62,8 @@ RUN mamba create -n cq -y python=3.11 &&\
     mamba clean --all &&\
     find / -type f -name '*.py[co]' -delete -o -type d -name __pycache__ -delete
 
-RUN source ${CONDA_INSTALL_DIR}/bin/activate \
-    && conda activate --no-stack cadquery \
+RUN source /opt/conda/bin/activate \
+    && conda activate --no-stack cq \
     && pip install aerosandbox[full]
 
 #RUN . "/opt/conda/etc/profile.d/conda.sh" && conda activate cq && \
