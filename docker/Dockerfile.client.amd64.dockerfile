@@ -1,5 +1,7 @@
 FROM ubuntu:22.04 AS build_avl
 
+RUN pwd && ls -al
+
 COPY ./Avl /home/avl/
 
 SHELL [ "/bin/bash", "-c" ]
