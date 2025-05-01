@@ -43,12 +43,12 @@ RUN adduser --disabled-password --gecos "Default user" --uid 1000 cq && \
     apt-get install --no-install-recommends -y libgl1-mesa-glx libglu1-mesa && \
     apt-get clean
 
-RUN mamba create -n cq -y python=3.12 &&\
+RUN mamba create -n cq -y python=3.11 &&\
     mamba install -n cq -y -c conda-forge -c cadquery\
-    OCP=7.8.1.1\
-    vtk=9.3.1\
+    OCP=7.7.2\
+    #vtk=9.3.1\
     matplotlib=3.8\
-    cadquery=master\
+    cadquery=2.4.0\
     shapely\
     jsonpickle\
     fastapi\
@@ -64,6 +64,12 @@ RUN mamba create -n cq -y python=3.12 &&\
 RUN . "/opt/conda/etc/profile.d/conda.sh" && conda activate cq && \
     pip install jupyter-cadquery==3.5.2 && \
     find / -type f -name '*.py[co]' -delete -o -type d -name __pycache__ -delete
+
+RUN apt-get update \
+    && apt-get install liblapack-dev -y \
+    && apt-get install libblas-dev -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 USER cq
 WORKDIR /home/cq/app
