@@ -7,7 +7,7 @@ COPY . /build
 #COPY /build/Avl /home/avl/
 
 SHELL [ "/bin/bash", "-c" ]
-WORKDIR /build/avl
+WORKDIR /build/Avl
 RUN apt-get update \
     && apt-get install wget -y \
     && apt-get install build-essential -y \
@@ -19,17 +19,17 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN cd plotlib \
+RUN cd /build/Avl/plotlib \
     && make gfortran \
     && ln -s libPlt_gSP.a libPlt.a \
     && cd ..
 
-RUN cd eispack \
+RUN cd /build/Avl/eispack \
     && make -f Makefile.mingw \
     && ln -s eispack_gSP.a libeispack.a \
     && cd ..
 
-RUN cd bin \
+RUN cd /build/Avl/bin \
     && make -f Makefile.gfortran avl
 
 
