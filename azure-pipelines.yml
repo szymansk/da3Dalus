@@ -7,7 +7,7 @@ trigger:
     include:
     - master
     - feature/buildpipeline
-    - feature/aerosanbox
+    - feature/aerosandbox
   tags:
     include:
     - '*'
