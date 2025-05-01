@@ -43,10 +43,10 @@ RUN adduser --disabled-password --gecos "Default user" --uid 1000 cq && \
     apt-get install --no-install-recommends -y libgl1-mesa-glx libglu1-mesa && \
     apt-get clean
 
-RUN mamba create -n cq -y python=3.10 &&\
+RUN mamba create -n cq -y python=3.9 &&\
     mamba install -n cq -y -c conda-forge -c cadquery\
-    OCP=7.7.2\
-    vtk=9.2\
+    OCP=7.8.1.1\
+    vtk=9.3.1\
     matplotlib=3.8\
     cadquery=master\
     shapely\
