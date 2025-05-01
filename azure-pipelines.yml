@@ -57,7 +57,7 @@ stages:
   jobs:
     - deployment: DeployWebApp
       displayName: Deploy to Azure Web App
-      environment: aerosandbox-dev
+      #environment: aerosandbox-dev
       strategy:
         runOnce:
           deploy:
