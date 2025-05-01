@@ -54,7 +54,7 @@ RUN mamba create -n cq -y python=3.11 &&\
     fastapi\
     pydantic\
     pip=24.0\
-    casadi=3.7.0 \
+    casadi\#=3.7.0 \
     python-kaleido \
     && pip install aerosandbox[full] \
     &&\
