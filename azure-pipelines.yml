@@ -21,7 +21,7 @@ variables:
   imageRepository: 'cad-modelling-service'
   containerRegistry: 'crda3dalusdev.azurecr.io'
   dockerfilePath: '$(Build.SourcesDirectory)/docker/Dockerfile.client.amd64.dockerfile'
-  buildContext: '$(Build.SourcesDirectory)'
+  dockerBuildContext: '$(Build.SourcesDirectory)'
   tag: '$(Build.BuildId)'
 
   # Agent VM image name
@@ -42,7 +42,7 @@ stages:
         command: buildAndPush
         repository: $(imageRepository)
         dockerfile: $(dockerfilePath)
-        dockerBuildContext: $(buildContext)
+        buildContext: $(dockerBuildContext)
         containerRegistry: $(dockerRegistryServiceConnection)
         ${{ if eq(variables['Build.SourceBranchName'], 'main') }}:
           tags: |
