@@ -2,10 +2,10 @@ FROM ubuntu:22.04 AS build_avl
 
 RUN pwd && ls -al
 
-COPY ./Avl /home/avl/
+COPY . .
 
 SHELL [ "/bin/bash", "-c" ]
-WORKDIR /home/avl
+WORKDIR ./Avl
 RUN apt-get update \
     && apt-get install wget -y \
     && apt-get install build-essential -y \
