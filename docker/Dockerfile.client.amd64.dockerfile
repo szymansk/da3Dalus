@@ -36,7 +36,7 @@ RUN cd /build/Avl/bin \
 
 FROM condaforge/mambaforge:24.7.1-2
 
-COPY --from=build_avl /home/avl/bin/avl /usr/local/bin/
+COPY --from=build_avl /build/Avl/bin/avl /usr/local/bin/
 
 RUN adduser --disabled-password --gecos "Default user" --uid 1000 cq && \
     apt-get update -y && \
