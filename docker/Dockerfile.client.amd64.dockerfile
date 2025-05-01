@@ -56,10 +56,13 @@ RUN mamba create -n cq -y python=3.11 &&\
     pip=24.0\
     casadi\#=3.7.0 \
     python-kaleido \
-    && pip install aerosandbox[full] \
     &&\
     mamba clean --all &&\
     find / -type f -name '*.py[co]' -delete -o -type d -name __pycache__ -delete
+
+RUN source ${CONDA_INSTALL_DIR}/bin/activate \
+    && conda activate --no-stack cadquery \
+    && pip install aerosandbox[full]
 
 #RUN . "/opt/conda/etc/profile.d/conda.sh" && conda activate cq && \
 #    pip install jupyter-cadquery==3.5.2 && \
