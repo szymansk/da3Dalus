@@ -200,7 +200,7 @@ class Segment(BaseModel):
         default=None,
         description="Control surface attached to the trailing edge of the segment"
     )
-    number_interpolation_points: int = Field(
+    number_interpolation_points: Optional[int] = Field(
         description="Number of points used for interpolation between root and tip airfoils"
     )
     tip_type: Optional[str] = Field(
