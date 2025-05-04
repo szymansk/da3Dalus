@@ -11,4 +11,4 @@ class Base:
         return cls.__name__.lower()
 
 # Import all models here so they are registered with Base
-from app.models.aeroplane import Aeroplane, Wing, WingXSec, ControlSurface, Fuselage, FuselageXSecSuperEllipse
+#from app.models.aeroplane import Aeroplane, Wing, WingXSec, ControlSurface, Fuselage, FuselageXSecSuperEllipse

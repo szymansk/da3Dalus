@@ -224,3 +224,5 @@ jupyter/.ipython/
 
 tmp/exports/
 test/tmp/
+
+*.db

@@ -93,6 +93,15 @@ class Wing(Base):
     # Relationship with Aeroplane
     aeroplanes = relationship("Aeroplane", secondary=wing_association, back_populates="wings")
 
+    @classmethod
+    def from_dict(cls, name, data):
+        xsec_dicts = data.pop("x_secs", [])
+        data.pop("name", None)
+        wing = cls(name=name, **data)
+        for xd in xsec_dicts:
+            wing.x_secs.append(WingXSec(**xd))
+        return wing
+
 class FuselageXSecSuperEllipse(Base):
     __tablename__ = "fuselage_xsecs"
     xyz = Column(JSON, nullable=False)  # Store as JSON array
