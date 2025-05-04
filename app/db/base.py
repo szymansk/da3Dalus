@@ -9,6 +9,3 @@ class Base:
     @declared_attr
     def __tablename__(cls):
         return cls.__name__.lower()
-
-# Import all models here so they are registered with Base
-#from app.models.aeroplane import Aeroplane, Wing, WingXSec, ControlSurface, Fuselage, FuselageXSecSuperEllipse

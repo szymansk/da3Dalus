@@ -1,8 +1,8 @@
-"""create all tables
+"""initial schema
 
-Revision ID: 237a540cabca
+Revision ID: a6a68bfaf421
 Revises: 
-Create Date: 2025-05-03 22:10:21.330404
+Create Date: 2025-05-04 21:06:02.400617
 
 """
 from typing import Sequence, Union
@@ -11,9 +11,8 @@ from alembic import op
 import sqlalchemy as sa
 import app
 
-
 # revision identifiers, used by Alembic.
-revision: str = '237a540cabca'
+revision: str = 'a6a68bfaf421'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -26,6 +25,8 @@ def upgrade() -> None:
     sa.Column('uuid', app.models.aeroplane.GUID(), nullable=False),
     sa.Column('name', sa.String(), nullable=False),
     sa.Column('xyz_ref', sa.JSON(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.Column('id', sa.Integer(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('uuid')
@@ -33,23 +34,21 @@ def upgrade() -> None:
     op.create_index(op.f('ix_aeroplanes_id'), 'aeroplanes', ['id'], unique=False)
     op.create_table('fuselages',
     sa.Column('name', sa.String(), nullable=False),
+    sa.Column('aeroplane_id', sa.Integer(), nullable=True),
     sa.Column('id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['aeroplane_id'], ['aeroplanes.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_fuselages_id'), 'fuselages', ['id'], unique=False)
     op.create_table('wings',
     sa.Column('name', sa.String(), nullable=False),
     sa.Column('symmetric', sa.Boolean(), nullable=True),
+    sa.Column('aeroplane_id', sa.Integer(), nullable=True),
     sa.Column('id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['aeroplane_id'], ['aeroplanes.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_wings_id'), 'wings', ['id'], unique=False)
-    op.create_table('fuselage_association',
-    sa.Column('aeroplane_id', sa.Integer(), nullable=True),
-    sa.Column('fuselage_id', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['aeroplane_id'], ['aeroplanes.id'], ),
-    sa.ForeignKeyConstraint(['fuselage_id'], ['fuselages.id'], )
-    )
     op.create_table('fuselage_xsecs',
     sa.Column('xyz', sa.JSON(), nullable=False),
     sa.Column('a', sa.Float(), nullable=False),
@@ -57,16 +56,10 @@ def upgrade() -> None:
     sa.Column('n', sa.Float(), nullable=False),
     sa.Column('fuselage_id', sa.Integer(), nullable=True),
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['fuselage_id'], ['fuselages.id'], ),
+    sa.ForeignKeyConstraint(['fuselage_id'], ['fuselages.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_fuselage_xsecs_id'), 'fuselage_xsecs', ['id'], unique=False)
-    op.create_table('wing_association',
-    sa.Column('aeroplane_id', sa.Integer(), nullable=True),
-    sa.Column('wing_id', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['aeroplane_id'], ['aeroplanes.id'], ),
-    sa.ForeignKeyConstraint(['wing_id'], ['wings.id'], )
-    )
     op.create_table('wing_xsecs',
     sa.Column('xyz_le', sa.JSON(), nullable=False),
     sa.Column('chord', sa.Float(), nullable=False),
@@ -74,7 +67,7 @@ def upgrade() -> None:
     sa.Column('airfoil', sa.String(), nullable=False),
     sa.Column('wing_id', sa.Integer(), nullable=True),
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['wing_id'], ['wings.id'], ),
+    sa.ForeignKeyConstraint(['wing_id'], ['wings.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_wing_xsecs_id'), 'wing_xsecs', ['id'], unique=False)
@@ -85,7 +78,7 @@ def upgrade() -> None:
     sa.Column('deflection', sa.Float(), nullable=True),
     sa.Column('wing_xsec_id', sa.Integer(), nullable=True),
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['wing_xsec_id'], ['wing_xsecs.id'], ),
+    sa.ForeignKeyConstraint(['wing_xsec_id'], ['wing_xsecs.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_control_surfaces_id'), 'control_surfaces', ['id'], unique=False)
@@ -99,10 +92,8 @@ def downgrade() -> None:
     op.drop_table('control_surfaces')
     op.drop_index(op.f('ix_wing_xsecs_id'), table_name='wing_xsecs')
     op.drop_table('wing_xsecs')
-    op.drop_table('wing_association')
     op.drop_index(op.f('ix_fuselage_xsecs_id'), table_name='fuselage_xsecs')
     op.drop_table('fuselage_xsecs')
-    op.drop_table('fuselage_association')
     op.drop_index(op.f('ix_wings_id'), table_name='wings')
     op.drop_table('wings')
     op.drop_index(op.f('ix_fuselages_id'), table_name='fuselages')

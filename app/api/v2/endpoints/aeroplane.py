@@ -1,36 +1,39 @@
-import http
 import json
-import logging
 import os
-import uuid
-import tempfile
+from datetime import datetime
 from threading import Lock
 from concurrent.futures import ThreadPoolExecutor
 from zipfile import ZipFile
-from typing import Optional, List
+from typing import List, OrderedDict
 
-from fastapi import APIRouter, HTTPException, Query, Body, Depends
-from fastapi.responses import JSONResponse, FileResponse
-from pydantic import UUID4
+from fastapi import Response, status
+
+from fastapi import Path, Depends, Body, HTTPException, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
+from app.db.session import get_db
+import logging
+from datetime import datetime
 
-import aerosandbox as asb
-import numpy as np
+from pydantic import UUID4, BaseModel
 
-from app import schemas
+from fastapi import APIRouter, Path, Depends, Query, Body, HTTPException
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+from starlette.responses import JSONResponse
+
 from cad_designer.airplane import ConstructionStepNode, GeneralJSONDecoder
 from cad_designer.airplane.aircraft_topology.components import ServoInformation
-from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import AirplaneConfiguration
-from cad_designer.airplane.aircraft_topology.models.analysis_model import AvlAnalysisModel
-from app.models.AeroplaneRequest import CreateAeroPlaneRequest, CreateWingLoftRequest, CreatorUrlType, ExporterUrlType, \
-    AnalysisToolUrlType
-from app.models.WingAnalysisRequest import WingAnalysisRequest
-from app.services.create_wing_configuration import create_wing_configuration, create_servo
-from app.db.session import SessionLocal, get_db
-from app.models.aeroplane import Aeroplane
-import logging
+
 from app import schemas
+from app.models.AeroplaneRequest import CreateAeroPlaneRequest, CreateWingLoftRequest
+from app.services.create_wing_configuration import create_wing_configuration, create_servo
+from app.db.session import get_db
+from app.models.aeroplane import Aeroplane, Wing, WingXSec, ControlSurface
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -40,6 +43,7 @@ tasks_lock = Lock()
 executor = ThreadPoolExecutor(max_workers=4)  # Passen Sie die Anzahl der Worker an Ihre Bedürfnisse an
 
 AeroPlaneID = UUID4
+
 
 def create_aeroplane_task(aeroplane_id, request_dict):
     try:
@@ -106,22 +110,56 @@ def create_aeroplane_task(aeroplane_id, request_dict):
             tasks[aeroplane_id]['status'] = 'FAILURE'
             tasks[aeroplane_id]['error'] = str(err)
 
+
+class GetAeroplaneResponse(BaseModel):
+    class NameIdMap(BaseModel):
+        name: str
+        id: AeroPlaneID
+        created_at: datetime
+        updated_at: datetime
+
+    aeroplanes: List[NameIdMap]
+
+
 # Handle an aeroplane
-@router.get("/aeroplanes")
-async def get_aeroplanes():
+@router.get("/aeroplanes",
+            response_model=GetAeroplaneResponse,
+            status_code=status.HTTP_200_OK,
+            tags=["aeroplanes"])
+async def get_aeroplanes(db: Session = Depends(get_db)) -> GetAeroplaneResponse:
     """
-    Returns a list of all aeroplanes names with ids
+    Returns a list of all aeroplanes names with ids alphabetically sorted by the name.
     """
-    pass
+    try:
+        # Query all aeroplanes, ordered by name
+        aeroplanes = db.query(Aeroplane).order_by(Aeroplane.name).all()
+        items = [
+            GetAeroplaneResponse.NameIdMap(
+                name=ap.name,
+                id=ap.uuid,
+                created_at=ap.created_at,
+                updated_at=ap.updated_at,
+            )
+            for ap in aeroplanes
+        ]
+        return GetAeroplaneResponse(aeroplanes=items)
+    except SQLAlchemyError as e:
+        logging.error(f"Database error when listing aeroplanes: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    except Exception as e:
+        logging.error(f"Unexpected error when listing aeroplanes: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
-@router.post("/aeroplane")
+@router.post("/aeroplanes",
+             status_code=status.HTTP_201_CREATED,
+             tags=["aeroplanes"])
 async def create_aeroplane(
-        name: str = Query(... , description="The aeroplanes name.", examples=["RV-7", "eHawk"]),
+        name: str = Query(..., description="The aeroplanes name.", examples=["RV-7", "eHawk"]),
         db: Session = Depends(get_db)
-) -> AeroPlaneID:
+) -> JSONResponse:
     """
-    Create a new aeroplane instance and return its ID.
+    Create a new aeroplane instance and returns its ID.
     """
     try:
         # Create a new aeroplane instance
@@ -130,24 +168,26 @@ async def create_aeroplane(
         # Add to database
         with db.begin():
             db.add(aeroplane)
-            db.flush() # sets the aeroplane.id
+            db.flush()  # sets the aeroplane.id
             db.refresh(aeroplane)
 
         # Return the UUID
-        return aeroplane.uuid
+        return JSONResponse(content={"id": str(aeroplane.uuid)})
     except SQLAlchemyError as e:
         logging.error(f"Database error when creating aeroplane: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     except Exception as e:
         logging.error(f"Unexpected error when creating aeroplane: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
-    finally:
-        pass
 
-@router.get("/aeroplane")
+
+@router.get("/aeroplanes/{aeroplane_id}",
+            status_code=status.HTTP_200_OK,
+            response_model=schemas.aeroplane.Aeroplane,
+            tags=["aeroplanes"])
 async def get_aeroplane(
-    aeroplane_id: AeroPlaneID = Query(..., description="The ID of the aeroplane"),
-    db: Session = Depends(get_db)
+        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+        db: Session = Depends(get_db)
 ) -> schemas.aeroplane.Aeroplane:
     """
     Returns the aeroplane definition.
@@ -156,7 +196,25 @@ async def get_aeroplane(
         aeroplane = db.query(Aeroplane).filter(Aeroplane.uuid == aeroplane_id).first()
         if not aeroplane:
             raise HTTPException(status_code=404, detail="Aeroplane not found")
-        return schemas.aeroplane.Aeroplane.model_validate(aeroplane, from_attributes=True)
+
+        # Build wing and fuselage mappings for serialization
+        wing_map: OrderedDict[str, schemas.Wing] = OrderedDict({
+            w.name: schemas.Wing.model_validate(w, from_attributes=True)
+            for w in aeroplane.wings
+        })
+        fuselage_map: OrderedDict[str, schemas.Fuselage] = OrderedDict({
+            f.name: schemas.Fuselage.model_validate(f, from_attributes=True)
+            for f in aeroplane.fuselages
+        })
+
+        # Construct response model instance
+        result = schemas.aeroplane.Aeroplane(
+            name=aeroplane.name,
+            xyz_ref=aeroplane.xyz_ref,
+            wings=wing_map,
+            fuselages=fuselage_map
+        )
+        return result
     except SQLAlchemyError as e:
         logging.error(f"Database error when getting aeroplane: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
@@ -167,21 +225,24 @@ async def get_aeroplane(
         logging.error(f"Unexpected error when getting aeroplane: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
-@router.delete("/aeroplane")
+
+@router.delete("/aeroplanes/{aeroplane_id}",
+               status_code=status.HTTP_204_NO_CONTENT,
+               tags=["aeroplanes"])
 async def delete_aeroplane(
-    aeroplane_id: AeroPlaneID = Query(..., description="The ID of the aeroplane to be deleted"),
-    db: Session = Depends(get_db)
+        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane to be deleted"),
+        db: Session = Depends(get_db)
 ):
     """
     Deletes the aeroplane.
     """
     try:
-        aeroplane = db.query(Aeroplane).filter(Aeroplane.uuid == aeroplane_id).first()
-        if not aeroplane:
-            raise HTTPException(status_code=404, detail="Aeroplane not found")
         with db.begin():
+            aeroplane = db.query(Aeroplane).filter(Aeroplane.uuid == aeroplane_id).first()
+            if not aeroplane:
+                raise HTTPException(status_code=404, detail="Aeroplane not found")
             db.delete(aeroplane)
-        return {"deleted": aeroplane_id}
+        return
     except SQLAlchemyError as e:
         logging.error(f"Database error when deleting aeroplane: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
@@ -193,32 +254,23 @@ async def delete_aeroplane(
 
 
 # Handle an aeroplane wings
-from fastapi import Depends, Query, Body, HTTPException
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
-from app.db.session import get_db
-from app.models.aeroplane import Aeroplane, Wing
-from app import schemas
-import logging
-from pydantic import UUID4 as AeroPlaneID
-
-@router.get("/aeroplane/wings", response_model=List[schemas.Wing])
+@router.get("/aeroplanes/{aeroplane_id}/wings",
+            status_code=status.HTTP_200_OK,
+            response_model=List[str],
+            tags=["wings"])
 async def get_aeroplane_wings(
-    aeroplane_id: AeroPlaneID = Query(..., description="The ID of the aeroplane"),
-    db: Session = Depends(get_db)
-) -> List[schemas.Wing]:
+        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+        db: Session = Depends(get_db)
+) -> List[str]:
     """
-    Returns the aeroplane's wings.
+    Returns a list of aeroplane's wing names.
     """
     try:
         aeroplane = db.query(Aeroplane).filter(Aeroplane.uuid == aeroplane_id).first()
         if not aeroplane:
             raise HTTPException(status_code=404, detail="Aeroplane not found")
         wings = aeroplane.wings
-        return [
-            schemas.aeroplane.Wing.model_validate(w, from_attributes=True)
-            for w in wings
-        ]
+        return [w.name for w in wings]
     except SQLAlchemyError as e:
         logging.error(f"Database error when getting aeroplane wings: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
@@ -230,13 +282,16 @@ async def get_aeroplane_wings(
 
 
 # Handle an aeroplane wing
-@router.put("/aeroplane/wing", response_model=schemas.aeroplane.Wing)
+@router.put("/aeroplanes/{aeroplane_id}/wings/{wing_name}",
+            status_code=status.HTTP_201_CREATED,
+            response_class=Response,
+            tags=["wings"])
 async def create_aeroplane_wing(
-    aeroplane_id: AeroPlaneID = Query(..., description="The ID of the aeroplane"),
-    wing_name: str = Query(..., description="The ID of the wing"),
-    request: schemas.aeroplane.Wing = Body(...),
-    db: Session = Depends(get_db)
-) -> schemas.aeroplane.Wing:
+        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+        wing_name: str = Path(..., description="The ID of the wing"),
+        request: schemas.aeroplane.Wing = Body(..., description="The new wing data"),
+        db: Session = Depends(get_db)
+):
     """
     Create the wing for the aeroplane.
     """
@@ -246,10 +301,15 @@ async def create_aeroplane_wing(
             plane = db.query(Aeroplane).filter(Aeroplane.uuid == aeroplane_id).first()
             if not plane:
                 raise HTTPException(status_code=404, detail="Aeroplane not found")
+
+            if any(w.name == wing_name for w in plane.wings):
+                raise HTTPException(400, "Wing name must be unique for this aeroplane")
+
             wing = Wing.from_dict(name=wing_name, data=request.model_dump())
             plane.wings.append(wing)
             db.add(wing)
-        return schemas.aeroplane.Wing.model_validate(wing, from_attributes=True)
+            plane.updated_at = datetime.now()
+        return
     except SQLAlchemyError as e:
         logging.error(f"Database error when creating aeroplane wing: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
@@ -259,45 +319,58 @@ async def create_aeroplane_wing(
         logging.error(f"Unexpected error when creating aeroplane wing: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
-@router.post("/aeroplane/wing", response_model=schemas.aeroplane.Wing)
+
+@router.post(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}",
+    response_class=Response,
+    status_code=status.HTTP_201_CREATED,
+    tags=["wings"]
+)
 async def update_aeroplane_wing(
-    aeroplane_id: AeroPlaneID = Query(..., description="The ID of the aeroplane"),
-    wing_name: AeroPlaneID = Query(..., description="The ID of the wing"),
-    request: schemas.aeroplane.Wing = Body(...),
-    db: Session = Depends(get_db)
-) -> schemas.aeroplane.Wing:
+        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+        wing_name: str = Path(..., description="The ID of the wing"),
+        request: schemas.aeroplane.Wing = Body(..., description="The new wing data"),
+        db: Session = Depends(get_db),
+):
     """
-    Updates the wing for the aeroplane.
+    Overwrite an existing wing with the data in the request.
     """
     try:
         with db.begin():
-            plane = db.query(Aeroplane).filter(Aeroplane.uuid == aeroplane_id).first()
+            plane = (
+                db.query(Aeroplane)
+                .filter(Aeroplane.uuid == aeroplane_id)
+                .first()
+            )
             if not plane:
-                raise HTTPException(status_code=404, detail="Aeroplane not found")
-            wing = next((w for w in plane.wings if str(w.name) == str(wing_name)), None)
-            if not wing:
-                raise HTTPException(status_code=404, detail="Wing not found")
-            data = request.model_dump()
-            data.pop("id", None)
-            for key, value in data.items():
-                setattr(wing, key, value)
+                raise HTTPException(404, "Aeroplane not found")
 
-            db.add(wing)
-        return schemas.aeroplane.Wing.model_validate(wing, from_attributes=True)
-    except SQLAlchemyError as e:
-        logging.error(f"Database error when updating aeroplane wing: {e}")
-        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+            wing = next((w for w in plane.wings if w.name == wing_name), None)
+            if not wing:
+                raise HTTPException(404, "Wing not found")
+
+            new_wing = Wing.from_dict(name=wing_name, data=request.model_dump())
+            plane.wings.remove(wing)
+            plane.wings.append(new_wing)
+            plane.updated_at = datetime.now()
+        return
     except HTTPException:
         raise
+    except SQLAlchemyError as e:
+        logging.error("DB error updating wing: %s", e)
+        raise HTTPException(500, f"Database error: {e}")
     except Exception as e:
-        logging.error(f"Unexpected error when updating aeroplane wing: {e}")
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+        logging.error("Unexpected error updating wing: %s", e)
+        raise HTTPException(500, f"Unexpected error: {e}")
 
-@router.get("/aeroplane/wing", response_model=schemas.aeroplane.Wing)
+
+@router.get("/aeroplanes/{aeroplane_id}/wings/{wing_name}",
+            response_model=schemas.aeroplane.Wing,
+            tags=["wings"])
 async def get_aeroplane_wing(
-    aeroplane_id: AeroPlaneID = Query(..., description="The ID of the aeroplane"),
-    wing_name: AeroPlaneID = Query(..., description="The ID of the wing"),
-    db: Session = Depends(get_db)
+        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+        wing_name: str = Path(..., description="The ID of the wing"),
+        db: Session = Depends(get_db)
 ) -> schemas.aeroplane.Wing:
     """
     Returns the aeroplane wing.
@@ -321,11 +394,17 @@ async def get_aeroplane_wing(
         logging.error(f"Unexpected error when getting aeroplane wing: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
-@router.delete("/aeroplane/wing")
+
+@router.delete(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}",
+    response_class=Response,
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["wings"]
+)
 async def delete_aeroplane_wing(
-    aeroplane_id: AeroPlaneID = Query(..., description="The ID of the aeroplane"),
-    wing_name: AeroPlaneID = Query(..., description="The ID of the wing"),
-    db: Session = Depends(get_db)
+        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+        wing_name: str = Path(..., description="The ID of the wing"),
+        db: Session = Depends(get_db)
 ):
     """
     Delete a wing.
@@ -340,7 +419,8 @@ async def delete_aeroplane_wing(
             if not wing:
                 raise HTTPException(status_code=404, detail="Wing not found")
             db.delete(wing)
-        return {"deleted": wing_name}
+            plane.updated_at = datetime.now()
+        return
     except SQLAlchemyError as e:
         logging.error(f"Database error when deleting aeroplane wing: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
@@ -350,111 +430,326 @@ async def delete_aeroplane_wing(
         logging.error(f"Unexpected error when deleting aeroplane wing: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
+
+#########################################
 # Handle an aeroplane wing cross sections
-@router.get("/aeroplane/wing/cross_sections")
-async def get_aeroplane_wing_cross_sections(aeroplane_id: str =Query(..., description="The ID of the aeroplane"),
-                                             wing_name: str =Query(..., description="The ID of the wing")) -> dict:
-     """
-     Returns the aeroplane wing cross sections.
-     """
-     pass
+#########################################
+@router.get(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections",
+    response_model=List[schemas.aeroplane.WingXSec],
+    status_code=status.HTTP_200_OK,
+    tags=["cross-sections"],
+)
+async def get_aeroplane_wing_cross_sections(
+        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+        wing_name: str = Path(..., description="The ID of the wing"),
+        db: Session = Depends(get_db)
+) -> List[schemas.aeroplane.WingXSec]:
+    """
+    Returns the wing's cross-sections as an ordered list.
+    """
+    try:
+        aeroplane = db.query(Aeroplane).filter(Aeroplane.uuid == aeroplane_id).first()
+        if not aeroplane:
+            raise HTTPException(status_code=404, detail="Aeroplane not found")
+        wing = next((w for w in aeroplane.wings if w.name == wing_name), None)
+        if not wing:
+            raise HTTPException(status_code=404, detail="Wing not found")
+        # Serialize cross-sections
+        return [
+            schemas.aeroplane.WingXSec.model_validate(xs, from_attributes=True)
+            for xs in wing.x_secs
+        ]
+    except SQLAlchemyError as e:
+        logging.error(f"Database error when getting wing cross-sections: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Unexpected error when getting wing cross-sections: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
-@router.post("/aeroplane/wing/cross_section")
-async def create_aeroplane_wing_cross_section(aeroplane_id: str =Query(..., description="The ID of the aeroplane"),
-                                                  wing_name: str =Query(..., description="The ID of the wing"),
-                                                  request: CreateWingLoftRequest = Body(...)) -> dict:
-     """
-     Creates a new cross section for the wing.
-     """
-     pass
+from fastapi.responses import Response
+from datetime import datetime
+from sqlalchemy.exc import SQLAlchemyError
+import logging
 
-@router.put("/aeroplane/wing/cross_section")
-async def update_aeroplane_wing_cross_section(aeroplane_id: str =Query(..., description="The ID of the aeroplane"),
-                                                  wing_name: str =Query(..., description="The ID of the wing"),
-                                                  cross_section_id: str =Query(..., description="The ID of the cross section"),
-                                                  request: CreateWingLoftRequest = Body(...)) -> dict:
-     """
-     Updates the cross section for the aeroplane.
-     """
-     pass
+@router.delete(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    tags=["cross-sections"]
+)
+async def delete_aeroplane_wing_cross_sections(
+        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+        wing_name: str = Path(..., description="The ID of the wing"),
+        db: Session = Depends(get_db)
+):
+    """
+    Delete all cross-sections of a wing.
+    """
+    try:
+        with db.begin():
+            aeroplane = db.query(Aeroplane).filter(Aeroplane.uuid == aeroplane_id).first()
+            if not aeroplane:
+                raise HTTPException(status_code=404, detail="Aeroplane not found")
+            wing = next((w for w in aeroplane.wings if w.name == wing_name), None)
+            if not wing:
+                raise HTTPException(status_code=404, detail="Wing not found")
+            # Remove all cross-sections (using delete-orphan cascade)
+            wing.x_secs.clear()
+            # Touch parent timestamp
+            aeroplane.updated_at = datetime.now()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        logging.error(f"Database error when deleting wing cross-sections: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    except Exception as e:
+        logging.error(f"Unexpected error when deleting wing cross-sections: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
-@router.post("/aeroplane/wing/cross_section")
-async def create_aeroplane_wing_cross_section(aeroplane_id: str =Query(..., description="The ID of the aeroplane"),
-                                                wing_name: str =Query(..., description="The ID of the wing"),
-                                                cross_section_id: str =Query(..., description="The ID of the cross section"),
-                                                request: CreateWingLoftRequest = Body(...)) -> dict:
-         """
-         Creates a new cross section for the aeroplane.
+@router.get(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}",
+    response_model=schemas.aeroplane.WingXSec,
+    status_code=status.HTTP_200_OK,
+    tags=["cross-sections"],
+)
+async def get_aeroplane_wing_cross_section(
+        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+        wing_name: str = Path(..., description="The ID of the wing"),
+        cross_section_index: int = Path(..., description="The index of the cross section"),
+        db: Session = Depends(get_db)
+) -> schemas.aeroplane.WingXSec:
+    """
+    Returns the aeroplane wing cross sections as a list of names.
+    """
+    try:
+        aeroplane = db.query(Aeroplane).filter(Aeroplane.uuid == aeroplane_id).first()
+        if not aeroplane:
+            raise HTTPException(status_code=404, detail="Aeroplane not found")
+        wing = next((w for w in aeroplane.wings if w.name == wing_name), None)
+        if not wing:
+            raise HTTPException(status_code=404, detail="Wing not found")
+        x_secs = wing.x_secs
+        if cross_section_index < 0 or cross_section_index >= len(x_secs):
+            raise HTTPException(status_code=404, detail="Cross-section not found")
+        xs = x_secs[cross_section_index]
+        return schemas.aeroplane.WingXSec.model_validate(xs, from_attributes=True)
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        logging.error(f"Database error when getting wing cross-section: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    except Exception as e:
+        logging.error(f"Unexpected error when getting wing cross-section: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
-         response:
-                 200: OK
-                 500: Internal Server Error
-         """
-         pass
+
+@router.post(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}",
+    response_class=Response,
+    status_code=status.HTTP_201_CREATED,
+    tags=["cross-sections"],
+)
+async def create_aeroplane_wing_cross_section(
+        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+        wing_name: str = Path(..., description="The ID of the wing"),
+        cross_section_index: int = Path(...,
+                                        description="The index where it will be spliced into the list of cross sections. (-1 is the end of the list, 0 is the start of the list)"),
+        request: schemas.aeroplane.WingXSec = Body(..., description="Wing cross section request"),
+        db: Session = Depends(get_db)
+) :
+    """
+    Creates a new cross-section for the wing and splice it into the list of cross-sections.
+    """
+    try:
+        with db.begin():
+            aeroplane = db.query(Aeroplane).filter(Aeroplane.uuid == aeroplane_id).first()
+            if not aeroplane:
+                raise HTTPException(status_code=404, detail="Aeroplane not found")
+            wing = next((w for w in aeroplane.wings if w.name == wing_name), None)
+            if not wing:
+                raise HTTPException(status_code=404, detail="Wing not found")
+            # build new WingXSec from request data
+            data = request.model_dump()
+            cs_dict = data.pop("control_surface", None)
+            new_xsec = WingXSec(**data)
+
+            if cs_dict is not None:
+                # Accept both dict and pydantic model
+                if hasattr(cs_dict, "model_dump"):
+                    cs_dict = cs_dict.model_dump()
+                new_xsec.control_surface = ControlSurface(**cs_dict)
+
+            # determine insertion index
+            existing = wing.x_secs  # already ordered by sort_index
+            if cross_section_index == -1 or cross_section_index >= len(existing):
+                insertion_index = len(existing)
+            else:
+                insertion_index = cross_section_index
+            # shift sort_index of following cross-sections
+            for xs in existing[insertion_index:]:
+                xs.sort_index = xs.sort_index + 1
+                db.add(xs)
+            # assign sort_index and insert new cross-section
+            new_xsec.sort_index = insertion_index
+            if insertion_index == len(existing):
+                wing.x_secs.append(new_xsec)
+            else:
+                wing.x_secs.insert(insertion_index, new_xsec)
+            # touch parent timestamp
+            aeroplane.updated_at = datetime.now()
+            db.add(new_xsec)
+        return
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        logging.error(f"Database error when creating wing cross-section: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    except Exception as e:
+        logging.error(f"Unexpected error when creating wing cross-section: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
 
-@router.delete("/aeroplane/wing/cross_section")
-async def delete_aeroplane_wing_cross_section(aeroplane_id: str =Query(..., description="The ID of the aeroplane"),
-                                                wing_name: str =Query(..., description="The ID of the wing"),
-                                                cross_section_id: str =Query(..., description="The ID of the cross section")):
-         """
-         Delete a cross section.
+@router.put(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}",
+    response_class=Response,
+    status_code=status.HTTP_201_CREATED,
+    tags=["cross-sections"],
+)
+async def update_aeroplane_wing_cross_section(
+        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+        wing_name: str = Path(..., description="The ID of the wing"),
+        cross_section_index: int = Path(..., description="The index of the cross section"),
+        request: schemas.aeroplane.WingXSec = Body(...),
+        db: Session = Depends(get_db)
+):
+    """
+    Updates the cross section for the aeroplane.
+    """
+    try:
+        with db.begin():
+            aeroplane = db.query(Aeroplane).filter(Aeroplane.uuid == aeroplane_id).first()
+            if not aeroplane:
+                raise HTTPException(status_code=404, detail="Aeroplane not found")
+            wing = next((w for w in aeroplane.wings if w.name == wing_name), None)
+            if not wing:
+                raise HTTPException(status_code=404, detail="Wing not found")
+            x_secs = wing.x_secs
+            if cross_section_index < 0 or cross_section_index >= len(x_secs):
+                raise HTTPException(status_code=404, detail="Cross-section not found")
 
-         response:
-                 200: OK
-                 500: Internal Server Error
-         """
-         pass
+            data = request.model_dump()
+            cs_dict = data.pop("control_surface", None)
+            new_xsec = WingXSec(**data)
+            if cs_dict is not None:
+                # Accept both dict and pydantic model
+                if hasattr(cs_dict, "model_dump"):
+                    cs_dict = cs_dict.model_dump()
+                new_xsec.control_surface = ControlSurface(**cs_dict)
+
+            wing.x_secs[cross_section_index] = new_xsec
+            # Touch parent timestamp
+            aeroplane.updated_at = datetime.now()
+        return
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        logging.error(f"Database error when updating wing cross-section: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    except Exception as e:
+        logging.error(f"Unexpected error when updating wing cross-section: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
 
-@router.get("/aeroplane/wing/cross_section/spars")
-async def get_aeroplane_wing_cross_section_spars(aeroplane_id: str =Query(..., description="The ID of the aeroplane"),
-                                  wing_name: str =Query(..., description="The ID of the wing")) -> dict:
+@router.delete("/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}",
+               status_code=status.HTTP_204_NO_CONTENT,
+               tags=["cross-sections"])
+async def delete_aeroplane_wing_cross_section(
+        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+        wing_name: str = Path(..., description="The ID of the wing"),
+        cross_section_index: int = Path(..., description="The index of the cross section"),
+        db: Session = Depends(get_db)
+):
+    """
+    Delete a cross section.
+    """
+    try:
+        with db.begin():
+            aeroplane = db.query(Aeroplane).filter(Aeroplane.uuid == aeroplane_id).first()
+            if not aeroplane:
+                raise HTTPException(status_code=404, detail="Aeroplane not found")
+            wing = next((w for w in aeroplane.wings if w.name == wing_name), None)
+            if not wing:
+                raise HTTPException(status_code=404, detail="Wing not found")
+            x_secs = wing.x_secs
+            if cross_section_index < 0 or cross_section_index >= len(x_secs):
+                raise HTTPException(status_code=404, detail="Cross-section not found")
+            # Remove and delete the cross-section
+            xsec = x_secs.pop(cross_section_index)
+            db.delete(xsec)
+            aeroplane.updated_at = datetime.now()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        logging.error(f"Database error when deleting wing cross-section: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    except Exception as e:
+        logging.error(f"Unexpected error when deleting wing cross-section: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+
+
+@router.get("/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface",
+            tags=["spars"])
+async def get_aeroplane_wing_cross_section_spars(
+        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+        wing_name: str = Path(..., description="The ID of the wing"),
+        cross_section_index: int = Path(..., description="The index of the cross section"),
+) -> dict:
     """
     Returns the aeroplane wing spars.
-
-    response:
-        200: OK
-        500: Internal Server Error
     """
     pass
 
-@router.post("/aeroplane/wing/cross_section/spars")
-async def create_aeroplane_wing_cross_section_spars(aeroplane_id: str =Query(..., description="The ID of the aeroplane"),
-                                      wing_name: str =Query(..., description="The ID of the wing"),
-                                      request: CreateWingLoftRequest = Body(...)) -> dict:
+
+@router.post("/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/spars",
+             tags=["spars"])
+async def create_aeroplane_wing_cross_section_spars(
+        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+        wing_name: str = Path(..., description="The ID of the wing"),
+        cross_section_index: int = Path(..., description="The index of the cross section"),
+        request: CreateWingLoftRequest = Body(...)) -> dict:
     """
     Creates a new spar for the aeroplane.
-
-    response:
-        200: OK
-        500: Internal Server Error
     """
     pass
 
-@router.put("/aeroplane/wing/cross_section/spar")
-async def update_aeroplane_wing_cross_section_spar(aeroplane_id: str =Query(..., description="The ID of the aeroplane"),
-                                     wing_name: str =Query(..., description="The ID of the wing"),
-                                    spar_id: str =Query(..., description="The ID of the spar"),
-                                    request: CreateWingLoftRequest = Body(...)) -> dict:
+
+@router.put("/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/spars",
+            tags=["spars"])
+async def update_aeroplane_wing_cross_section_spar(
+        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+        wing_name: str = Path(..., description="The ID of the wing"),
+        cross_section_index: int = Path(..., description="The index of the cross section"),
+        spar_id: str = Query(..., description="The ID of the spar"),
+        request: CreateWingLoftRequest = Body(...)) -> dict:
     """
     Updates the spar for the aeroplane.
-
-    response:
-        200: OK
-        500: Internal Server Error
     """
     pass
 
-@router.delete("/aeroplane/wing/cross_section/spar")
-async def delete_aeroplane_wing_cross_section_spar(aeroplane_id: str =Query(..., description="The ID of the aeroplane"),
-                                     wing_name: str =Query(..., description="The ID of the wing"),
-                                    spar_id: str =Query(..., description="The ID of the spar")):
+
+@router.delete("/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/spars",
+               tags=["spars"])
+async def delete_aeroplane_wing_cross_section_spar(
+        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+        wing_name: str = Path(..., description="The ID of the wing"),
+        cross_section_index: int = Path(..., description="The index of the cross section"),
+        spar_id: str = Query(..., description="The ID of the spar")):
     """
     Delete a spar.
-
-    response:
-        200: OK
-        500: Internal Server Error
     """
     pass

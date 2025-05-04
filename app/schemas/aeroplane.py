@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, HttpUrl
 
 class Aeroplane(BaseModel):
     name: str = Field(..., description="Aeroplane name", examples=["Vanilla"])
-    wings: Optional[OrderedDict[str, OrderedDict[str, "Wing"]]] = Field(
+    wings: Optional[OrderedDict[str, "Wing"]] = Field(
         None, description="Aeroplane wings dictionary",
         examples=[
             {
@@ -28,7 +28,7 @@ class Aeroplane(BaseModel):
             }
         ]
     )
-    fuselages: Optional[OrderedDict[str, OrderedDict[str, "Fuselage"]]] = Field(
+    fuselages: Optional[OrderedDict[str, "Fuselage"]] = Field(
         None, description="Aeroplane fuselages dictionary",
         examples=[
             {
