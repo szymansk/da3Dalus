@@ -265,18 +265,11 @@ class WingConfiguration:
             return self._wing_workplanes[(segment, ignore_nose_point)]
 
         seg = 0
-        if not ignore_nose_point:
-            all_trans = [
-                [1, 0, 0, self.nose_pnt[0]],
-                [0, 1, 0, self.nose_pnt[1]],
-                [0, 0, 1, self.nose_pnt[2]],
-                [0, 0, 0, 1]]
-        else:
-            all_trans = [
-                [1, 0, 0, 0],
-                [0, 1, 0, 0],
-                [0, 0, 1, 0],
-                [0, 0, 0, 1]]
+        all_trans = [
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]]
 
         for seg in reversed(range(segment)):
             airfoil_ref = self.segments[seg].tip_airfoil
@@ -318,10 +311,24 @@ class WingConfiguration:
             [0, 0, 1, 0],
             [0, 0, 0, 1]]
 
+        if not ignore_nose_point:
+            nose_point_trans = [
+                [1, 0, 0, self.nose_pnt[0]],
+                [0, 1, 0, self.nose_pnt[1]],
+                [0, 0, 1, self.nose_pnt[2]],
+                [0, 0, 0, 1]]
+        else:
+            nose_point_trans = [
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1]]
+
         all_trans = np.matmul(r_neg_rel_chord, all_trans)
         all_trans = np.matmul(r_root_incidence, all_trans)
         all_trans = np.matmul(r_root_dihedral, all_trans)
         all_trans = np.matmul(r_rel_chord, all_trans)
+        all_trans = np.matmul(nose_point_trans, all_trans)
 
         normal = all_trans.transpose()[2]
         origin = all_trans.transpose()[3]
@@ -542,7 +549,6 @@ class WingConfiguration:
         Remark: only a two point interpolation is implemented, this leads to large deviations from the
         real surface on segments with high curvature (e.g. the nose)
         """
-        #TODO use t
         root_points = self.get_airfoil_points(segment=segment, isRoot=True)
         tip_points = self.get_airfoil_points(segment=segment)
 
