@@ -1,8 +1,8 @@
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, Optional, List
 from pydantic import BaseModel, Field
 
-from app.models.wing import Wing
-from app.models.AeroplaneRequest import AeroplaneSettings
+from app.schemas.wing import Wing
+from app.schemas.AeroplaneRequest import AeroplaneSettings
 
 
 class WingAnalysisRequest(BaseModel):

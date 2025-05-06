@@ -100,11 +100,11 @@ if __name__ == "__main__":
     #### WING ####
     airfoil = "../components/airfoils/naca0010.dat"
     # segment 0
-    wing_config: WingConfiguration = WingConfiguration(nose_pnt=(50, 0, 0),
+    wing_config: WingConfiguration = WingConfiguration(nose_pnt=(100, 0, 0),
                                                        root_airfoil=Airfoil(
                                                            airfoil=airfoil,
                                                            chord=200.,
-                                                           dihedral_as_rotation_in_degrees=5,
+                                                           dihedral_as_rotation_in_degrees=8,
                                                            #dihedral_as_translation=50,
                                                            incidence=0,
                                                            rotation_point_rel_chord=0.25),
@@ -113,7 +113,7 @@ if __name__ == "__main__":
                                                        sweep_is_angle=True,
                                                        tip_airfoil=Airfoil(
                                                            chord=200.,
-                                                           dihedral_as_rotation_in_degrees=-5,
+                                                           dihedral_as_rotation_in_degrees=-8,
                                                            #dihedral_as_translation=-100,
                                                            incidence=5,
                                                            rotation_point_rel_chord=0.25),
@@ -124,7 +124,7 @@ if __name__ == "__main__":
                   spare_position_factor=0.25),
         ])
     wing_config.add_segment(length=500, sweep=-10, sweep_is_angle= True,
-                            tip_airfoil=Airfoil(chord=150, dihedral_as_rotation_in_degrees=-5, incidence=0, rotation_point_rel_chord=0.25),
+                            tip_airfoil=Airfoil(chord=150, dihedral_as_rotation_in_degrees=8, incidence=-10, rotation_point_rel_chord=0.25),
                             spare_list=[
                                 Spare(spare_support_dimension_width=3,
                                       spare_support_dimension_height=3,

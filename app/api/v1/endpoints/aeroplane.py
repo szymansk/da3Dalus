@@ -3,7 +3,6 @@ import json
 import logging
 import os
 import uuid
-import tempfile
 from threading import Lock
 from concurrent.futures import ThreadPoolExecutor
 from zipfile import ZipFile
@@ -12,15 +11,14 @@ from fastapi import APIRouter, HTTPException, Query, Body
 from fastapi.responses import JSONResponse, FileResponse
 
 import aerosandbox as asb
-import numpy as np
 
 from cad_designer.airplane import ConstructionStepNode, GeneralJSONDecoder
 from cad_designer.airplane.aircraft_topology.components import ServoInformation
 from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import AirplaneConfiguration
 from cad_designer.airplane.aircraft_topology.models.analysis_model import AvlAnalysisModel
-from app.models.AeroplaneRequest import CreateAeroPlaneRequest, CreateWingLoftRequest, CreatorUrlType, ExporterUrlType, \
+from app.schemas.AeroplaneRequest import CreateAeroPlaneRequest, CreateWingLoftRequest, CreatorUrlType, ExporterUrlType, \
     AnalysisToolUrlType
-from app.models.WingAnalysisRequest import WingAnalysisRequest
+from app.schemas.WingAnalysisRequest import WingAnalysisRequest
 from app.services.create_wing_configuration import create_wing_configuration, create_servo
 
 router = APIRouter()

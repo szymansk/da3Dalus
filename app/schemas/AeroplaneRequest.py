@@ -1,13 +1,13 @@
 import json
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Dict, Any, Union, OrderedDict, Literal
+from typing import Optional, Dict, Any, Union, OrderedDict
 
-from pydantic import BaseModel, Json
+from pydantic import BaseModel
 
-from app.models.Printer3dSettings import Printer3dSettings
-from app.models.Servo import Servo
-from app.models.wing import Wing
+from app.schemas.Printer3dSettings import Printer3dSettings
+from app.schemas.Servo import Servo
+from app.schemas.wing import Wing
 
 
 class Fuselage(BaseModel):

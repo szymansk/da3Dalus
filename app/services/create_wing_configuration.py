@@ -1,12 +1,12 @@
 from cad_designer.airplane.aircraft_topology.components import Servo
 from cad_designer.airplane.aircraft_topology.wing import WingConfiguration, TrailingEdgeDevice, Spare
 from cad_designer.airplane.aircraft_topology.wing import Airfoil
-from app.models.wing import Wing as WingModel
-from app.models.wing import Airfoil as AirfoilModel
-from app.models.wing import Segment as SegmentModel
-from app.models.wing import TrailingEdgeDevice as TrailingEdgeDeviceModel
-from app.models.wing import Servo as ServoModel
-from app.models.wing import Spare as SpareModel
+from app.schemas.wing import Wing as WingModel
+from app.schemas.wing import Airfoil as AirfoilModel
+from app.schemas.wing import Segment as SegmentModel
+from app.schemas.wing import TrailingEdgeDevice as TrailingEdgeDeviceModel
+from app.schemas.wing import Servo as ServoModel
+from app.schemas.wing import Spare as SpareModel
 
 
 def create_airfoil(airfoil_model: AirfoilModel) -> Airfoil | None:

@@ -89,6 +89,7 @@ async def create_aeroplane(
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
+# noinspection PyTypeChecker
 @router.get("/aeroplanes/{aeroplane_id}",
             status_code=status.HTTP_200_OK,
             response_model=schemas.aeroplane.Aeroplane,
@@ -146,6 +147,7 @@ async def delete_aeroplane(
     """
     try:
         with db.begin():
+            # noinspection PyTypeChecker
             aeroplane = db.query(Aeroplane).filter(Aeroplane.uuid == aeroplane_id).first()
             if not aeroplane:
                 raise HTTPException(status_code=404, detail="Aeroplane not found")
@@ -431,7 +433,7 @@ async def get_aeroplane_wing_cross_section(
         db: Session = Depends(get_db)
 ) -> schemas.aeroplane.WingXSec:
     """
-    Returns the aeroplane wing cross sections as a list of names.
+    Returns the aeroplane wing cross-sections as a list of names.
     """
     try:
         aeroplane = db.query(Aeroplane).filter(Aeroplane.uuid == aeroplane_id).first()
@@ -535,7 +537,7 @@ async def update_aeroplane_wing_cross_section(
         db: Session = Depends(get_db)
 ):
     """
-    Updates the cross section for the aeroplane.
+    Updates the cross-section for the aeroplane.
     """
     try:
         with db.begin():
@@ -582,7 +584,7 @@ async def delete_aeroplane_wing_cross_section(
         db: Session = Depends(get_db)
 ):
     """
-    Delete a cross section.
+    Delete a cross-section.
     """
     try:
         with db.begin():
@@ -621,7 +623,7 @@ async def get_aeroplane_wing_cross_section_control_surface(
     wing_name: str = Path(..., description="The ID of the wing"),
     cross_section_index: int = Path(..., description="The index of the cross section"),
     db: Session = Depends(get_db),
-) -> schemas.aeroplane.ControlSurface:
+):
     """
     Returns the control surface for the given cross-section.
     """
@@ -639,6 +641,7 @@ async def get_aeroplane_wing_cross_section_control_surface(
         cs = xs.control_surface
         if not cs:
             raise HTTPException(status_code=404, detail="Control surface not found")
+        # Use Pydantic model for response
         return schemas.aeroplane.ControlSurface.model_validate(cs, from_attributes=True)
     except SQLAlchemyError as e:
         logging.error(f"Database error when getting control surface: {e}")
@@ -742,3 +745,4 @@ async def delete_aeroplane_wing_cross_section_control_surface(
     except Exception as e:
         logging.error(f"Unexpected error when deleting control surface: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+

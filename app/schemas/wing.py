@@ -1,7 +1,7 @@
 from typing import List, Optional, Literal, Union
 from pydantic import BaseModel, model_validator, PositiveFloat, NonNegativeFloat, Field
 
-from app.models.Servo import Servo
+from app.schemas.Servo import Servo
 
 class TrailingEdgeDevice(BaseModel):
     """

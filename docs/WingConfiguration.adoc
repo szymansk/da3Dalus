@@ -29,9 +29,9 @@ class WingConfiguration {
     segments: list[WingSegment]
     nose_point: Tuple[float, float, float]
 
-    + def __init__( self: T, \t\t// initializes the root segment\n\t\t nose_pnt: tuple[float, float, float],\n\t\t root_airfoil: Airfoil,\n\t\t length: float,\n\t\t sweep: float = 0,\n\t\t tip_airfoil: Airfoil = None,\n\t\t number_interpolation_points: int = None, spare_list: List[Spare] = None,\n\t\t trailing_edge_device: TrailingEdgeDevice = None) -> T
+    + def __init__( self: T, \t\t// initializes the root segment\n\t\t nose_pnt: tuple[float, float, float],\n\t\t root_airfoil: Airfoil,\n\t\t length: float,\n\t\t sweep: float = 0,\n\t\t tip_airfoil: Airfoil = None,\n\t\t number_interpolation_points: int = None, spar_list: List[spar] = None,\n\t\t trailing_edge_device: TrailingEdgeDevice = None) -> T
 
-    + def add_segment(self: T,\n\t\t length: float,\n\t\t sweep: float = 0,\n\t\t tip_airfoil: Airfoil = None,\n\t\t number_interpolation_points: int = None,\n\t\t spare_list: List[Spare] = None,\n\t\t trailing_edge_device: TrailingEdgeDevice = None) -> None
+    + def add_segment(self: T,\n\t\t length: float,\n\t\t sweep: float = 0,\n\t\t tip_airfoil: Airfoil = None,\n\t\t number_interpolation_points: int = None,\n\t\t spar_list: List[spar] = None,\n\t\t trailing_edge_device: TrailingEdgeDevice = None) -> None
 
     + def add_tip_segment(self: T,\n\t\t tip_type: TipType,\n\t\t length: float,\n\t\t sweep: float = 0,\n\t\t tip_airfoil: Airfoil = None,\n\t\t number_interpolation_points: int = None) -> None
 
@@ -53,29 +53,29 @@ class WingSegment {
     tip_airfoil: Airfoil
     tip_type: TipType
     number_interpolation_points: int
-    spare_list: list[Spare]
+    spar_list: list[spar]
     trailing_edge_device: list[TrailingEdgeDevice]
     wing_segment_type: WingSegmentType
 
-    + def __init__(self,\n\t\t root_airfoil: Airfoil,\n\t\t length: float,\n\t\t sweep: float = 0,\n\t\t tip_airfoil: Airfoil = None,\n\t\t spare_list: List[Spare] = None,\n\t\t trailing_edge_device: TrailingEdgeDevice = None,\n\t\t number_interpolation_points: int = None,\n\t\t tip_type: TipType = None,\n\t\t wing_segment_type: WingSegmentType = 'segment')
+    + def __init__(self,\n\t\t root_airfoil: Airfoil,\n\t\t length: float,\n\t\t sweep: float = 0,\n\t\t tip_airfoil: Airfoil = None,\n\t\t spar_list: List[spar] = None,\n\t\t trailing_edge_device: TrailingEdgeDevice = None,\n\t\t number_interpolation_points: int = None,\n\t\t tip_type: TipType = None,\n\t\t wing_segment_type: WingSegmentType = 'segment')
 
 }
 
-enum SpareMode {
+enum sparMode {
 Literal["normal","follow","standard","standard_backward", "orthogonal_backward"]
 }
 
-SpareMode "1" <--* Spare
+sparMode "1" <--* spar
 
-class Spare {
-    spare_vector: Vector
-    spare_origin: Vector
-    spare_mode: SpareMode
-    spare_position_factor: float
-    spare_support_dimension_height: float
-    spare_support_dimension_width: float
-    spare_start: float
-    spare_length: float
+class spar {
+    spar_vector: Vector
+    spar_origin: Vector
+    spar_mode: sparMode
+    spar_position_factor: float
+    spar_support_dimension_height: float
+    spar_support_dimension_width: float
+    spar_start: float
+    spar_length: float
 }
 
 class TrailingEdgeDevice {
@@ -124,7 +124,7 @@ Literal["flat", "round"]
 }
 
 WingConfiguration *--> "1..*" WingSegment
-WingSegment *--> "*" Spare
+WingSegment *--> "*" spar
 WingSegment *--> "2" Airfoil
 WingSegment *--> "1" TrailingEdgeDevice
 TrailingEdgeDevice *--> "1" HingeType
@@ -208,7 +208,7 @@ There is only one root segment. It is parametrized during the instantiation of a
 A segment follows an other segment or the root segment. Hence, the previous tip airfoil is equal to the root airfoil of this segment. Therefore we only need the length, sweep and tip airfoil.
 
 ===== Tip
-The tip is a special segment, which is also defined like the previous segment, but it also take the parameter _tip type_, which defines how the tip will be designed. Currently we only support 'flat' and 'round'. 'flat' is just like a flat wall attached wing tip. 'round' tries to use a chamfer to round the outlines of the airfoil. A tip does not have a spare nor a trailing edge device.
+The tip is a special segment, which is also defined like the previous segment, but it also take the parameter _tip type_, which defines how the tip will be designed. Currently we only support 'flat' and 'round'. 'flat' is just like a flat wall attached wing tip. 'round' tries to use a chamfer to round the outlines of the airfoil. A tip does not have a spar nor a trailing edge device.
 
 ==== Segment Coordinate Systems
 The coordinate system for a segment is defined by the previously defined parameters. It is always lokated in the nose point. We define it in a way, that it starts like the airplanes coordinate systems. Therefor x-axis goes from the leading edge nose point to the trailing edge end point. The y-axis points along the wing and the z-axis is pointing upwards along the produced lift vector of the segment.
@@ -310,45 +310,45 @@ And from this the sweep in radians:
 latexmath:[s_{i-1} = atan2\left({S_{i-1}, L_{i-1}}\right)]
 
 
-==== Spare
-.The main spare.
-image::./images/images with text/Folie7.png[spare, id=spare]
+==== spar
+.The main spar.
+image::./images/images with text/Folie7.png[spar, id=spar]
 
-A spare is a construction that runs lengthwise through the wing. We can add arbitrary spares to a wing. However, the spare with index 0, will always be treated as the main spare and has a major impact on the construction of the wing. In general this spare takes all the load of the wing and to reduce wing twist it should be placed in the area of the largest lift, which is in normal flight around the point of the maximum thickness, which is in most cases between 25%-30% of the chord length. You can define this placement via the _spare position factor_, the default value is 0.25.
+A spar is a construction that runs lengthwise through the wing. We can add arbitrary spars to a wing. However, the spar with index 0, will always be treated as the main spar and has a major impact on the construction of the wing. In general this spar takes all the load of the wing and to reduce wing twist it should be placed in the area of the largest lift, which is in normal flight around the point of the maximum thickness, which is in most cases between 25%-30% of the chord length. You can define this placement via the _spar position factor_, the default value is 0.25.
 
-Another way to overwrite this setting is to use the _spare origin_. This is a vector given in the segments coordinate system which defines the spare's placement.
+Another way to overwrite this setting is to use the _spar origin_. This is a vector given in the segments coordinate system which defines the spar's placement.
 
-An other important vector is the _spare vector_ it is also given in the segment's coordinate system and defines in which direction the spare will be lofted.
+An other important vector is the _spar vector_ it is also given in the segment's coordinate system and defines in which direction the spar will be lofted.
 
-The _spare length_ of spare tells us how far the spare will be lofted along the _spare vector_ and the _spare start_ states at which point on the _spare vector_ the loft will start.
+The _spar length_ of spar tells us how far the spar will be lofted along the _spar vector_ and the _spar start_ states at which point on the _spar vector_ the loft will start.
 
-In general our spares will have some kind of support structure, which is not printed. This usually is a carbon rod round or rectangular formed. You can give the dimension of the rod by the _spare support dimension height_ and _spare support dimension width_ if height is equal width we will interpret this as a round rod. Otherwise it is rectangular.
+In general our spars will have some kind of support structure, which is not printed. This usually is a carbon rod round or rectangular formed. You can give the dimension of the rod by the _spar support dimension height_ and _spar support dimension width_ if height is equal width we will interpret this as a round rod. Otherwise it is rectangular.
 
 NOTE: You can create a squared rod by adding latexmath:[1e^{-10}] on one of the dimensions.
 
-===== Spare Mode
-The most important parameter is the _spare mode_ as it helps you to define some standard spares, which will calculate the _spare vector_ and the _spare origin_ for you if you set them to 'None'. If one of the following modes is effected by a previous spare or effects previous spares, than it will only effect spares with the same index.
+===== spar Mode
+The most important parameter is the _spar mode_ as it helps you to define some standard spars, which will calculate the _spar vector_ and the _spar origin_ for you if you set them to 'None'. If one of the following modes is effected by a previous spar or effects previous spars, than it will only effect spars with the same index.
 
 ====== normal
-The *normal* _spare vector_ will be set to be normal to the xz-plane of the segment's coordinate system. It is equal to the segment's coordinate systems y-axis vector.
+The *normal* _spar vector_ will be set to be normal to the xz-plane of the segment's coordinate system. It is equal to the segment's coordinate systems y-axis vector.
 
 ====== follow
-The _spare vector_ will *follow* the direction of the previous one, so the _spare vector_ will be the previous _spare vector_ expressed in the current segment's coordinate system.
+The _spar vector_ will *follow* the direction of the previous one, so the _spar vector_ will be the previous _spar vector_ expressed in the current segment's coordinate system.
 
 ====== standard
-The *standar* _spare vector_ is calculated in that way, that the spare vector will point from the mean camber point at the given relative chord (_spare position factor_) of the _root airfoil_ to the corresponding point of the _tip airfoil_. The start point also defines the _spare origin_ if it is not overwritten.
+The *standar* _spar vector_ is calculated in that way, that the spar vector will point from the mean camber point at the given relative chord (_spar position factor_) of the _root airfoil_ to the corresponding point of the _tip airfoil_. The start point also defines the _spar origin_ if it is not overwritten.
 
 ====== standard backward
-This mode is similar to the previous one. But it differs in the way, how the _root airfoil_ is selected. If we come to a spare in 'standard_backward' mode, we backtrace through the previous spares and select the first spare, that is not in 'follow' mode. We use this segments _root airfoil_ in the same manner as in the 'standard' case. After calculation of the origin and the spare vector we adjust the other segments in between.
+This mode is similar to the previous one. But it differs in the way, how the _root airfoil_ is selected. If we come to a spar in 'standard_backward' mode, we backtrace through the previous spars and select the first spar, that is not in 'follow' mode. We use this segments _root airfoil_ in the same manner as in the 'standard' case. After calculation of the origin and the spar vector we adjust the other segments in between.
 
-NOTE: We also use (_spare position factor_) of the spare we found during backtracking.
+NOTE: We also use (_spar position factor_) of the spar we found during backtracking.
 
 ====== orthogonal backward
-This mode is similar to the previous one. However, the spare will be orthogonal to the XZ-plane.
+This mode is similar to the previous one. However, the spar will be orthogonal to the XZ-plane.
 
 ==== Trailing Edge Device
 .A trailing edge device, here an aileron.
-image::./images/images with text/Folie8.png[spare, id=spare]
+image::./images/images with text/Folie8.png[spar, id=spar]
 
 A _trailing edge device (ted)_ is usually used for flaps, rudder, elevators or ailerons. It is used to control the planes lift (flaps) or rotations (yaw, pitch, role), depending on the wing's function. Usually we give a ted a unique _name_, which in best practice also tells us it's function.
 
@@ -372,7 +372,7 @@ The _name_ is used to collect all TEDs with the same name. The first TED will de
 
 ==== Servo
 .A parameterized servo.
-image::./images/images with text/Folie9.png[spare, id=servo]
+image::./images/images with text/Folie9.png[spar, id=servo]
 The servo is defined in conjunction of a trailing edged device as you usually need an actuator to make it move. The placement of the servo an the length and placement of the horns/levers can be crucial for the performance of the ted.
 
 The position inside of the wing is determined by it's _rel(ative) chord servo position_ and _rel(ative wing) length servo position_. This gives the position of the servo's zero coordinates within the wing. The _servo placement_ 'top' defines that the servo lays on the upper camber surface and 'bottom' on the lower camber surface.
@@ -380,3 +380,85 @@ The position inside of the wing is determined by it's _rel(ative) chord servo po
 The dimensions of the servo are defined in figure xref:servo[xrefstyle=short]
 
 NOTE: (to be implemented) If the servo position given as 'None' the system itself will place the servo in an optimal position for printing and for forces on the trailing edge device.
+
+=== Mapping between WingConfiguration and aerosandbox
+
+
+|===
+|aerosandbox |WingConfiguration |Header 3
+
+|Wing.name | --  |
+|Wing.color | --  |
+|Wing.analysis_specific_options| --  |
+|Wing.symmetric | WingConfiguration.symmetric  |
+|Wing.translate | WingConfiguration.nose_point |
+|Wing.xsecs | WingSegment + Airfoil |
+|Wing.xsecs[0].xyz_le |  |
+|Wing.xsecs[0].chord | WingConfiguration.segments[0].root_airfoil.chord |
+|Wing.xsecs[0].twist | WingConfiguration.segments[0].root_airfoil.incidence |
+|Wing.xsecs[0].airfoil | WingConfiguration.segments[0].root_airfoil.airfoil |
+| fixed = 0.25| WingConfiguration.segments[0].root_airfoil.rotation_point_rel_chord |
+
+|Wing.xsecs[0].control_surfaces.name |  WingConfiguration.segments[0].trailing_edge_device.name |
+|Wing.xsecs[0].control_surfaces.symmetric |WingConfiguration.segments[0].trailing_edge_device.symmetrix  |
+|Wing.xsecs[0].control_surfaces.deflection | -- |
+|Wing.xsecs[0].control_surfaces.hinge_point | WingConfiguration.segments[0].trailing_edge_device.rel_chord_root |
+|tip == root | WingConfiguration.segments[0].trailing_edge_device.rel_chord_tip |
+|Wing.xsecs[0].control_surfaces.trailing_edge | fixed = True  | only trailing edge devices
+
+|===
+
+|===
+|WingConfiguration |asb.Wing |Remarks / Logic
+
+| .symmetric
+| .symmetric
+| the same
+
+|.nose_pnt
+|.translate(...)
+|The translation is performed on the whole wing at the end. Otherwise rotations like dihedral would be wrong.
+
+|.segments[0].root_airfoil
+|.xsecs[0]
+|The root airfoil of segment 0 corresponds to the first cross-section in asb.
+
+|.segments[i].tip_airfoil (for all i)
+|.xsecs[i+1]
+|The following cross-section coresponds to the tip airfoil of the previous segment.
+
+|.get_wing_workplane(i).origin
+|.xsecs[i].translate([x, y, z]) for all i
+|The origin of the segments plane is the origin of the trailing edge. xyz_le is deprecated, so we use translate(...).
+
+|segment[0].root_airfoil.incidence + Summe(segment[i].tip_airfoil.incidence) for i > 0 else
+segment[0].root_airfoil.incidence for i = 0
+|xsecs[i].twist
+|Our incidence angle is relative to the local x-axis of the previous cross-section. The twist is relative to the global x-axis. The point of rotation is fixed at 0.25 chord.
+
+|airfoil.airfoil (Path)
+|asb.Airfoil(name=os.path.abspath(...))
+|Must be absolute path to the airfoil file.
+
+|trailing_edge_device (optional)
+|asb.ControlSurface(...)
+|TED must hold rel_chord_root == rel_chord_tip as asb  defines only one hinge point.
+
+|trailing_edge_device.name
+|ControlSurface.name
+|
+
+|trailing_edge_device.symmetric
+|ControlSurface.symmetric
+|
+
+|trailing_edge_device.rel_chord_root
+|ControlSurface.hinge_point
+|We take the rel_chord_root parameter as the hinge point. Both must be equal.
+
+|–
+|ControlSurface.trailing_edge = True
+|Always true as we support only trailing edge devices.
+
+|===
+
