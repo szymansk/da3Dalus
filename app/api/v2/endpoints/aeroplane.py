@@ -1,115 +1,23 @@
-import json
-import os
-from datetime import datetime
-from threading import Lock
-from concurrent.futures import ThreadPoolExecutor
-from zipfile import ZipFile
-from typing import List, OrderedDict
-
-from fastapi import Response, status
-
-from fastapi import Path, Depends, Body, HTTPException, status
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
-from app.db.session import get_db
 import logging
 from datetime import datetime
-
-from pydantic import UUID4, BaseModel
+from typing import List, OrderedDict
 
 from fastapi import APIRouter, Path, Depends, Query, Body, HTTPException
-from sqlalchemy.exc import SQLAlchemyError
+from fastapi import Response
+from fastapi import status
+from pydantic import UUID4, BaseModel
 from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse
 
-from cad_designer.airplane import ConstructionStepNode, GeneralJSONDecoder
-from cad_designer.airplane.aircraft_topology.components import ServoInformation
-
 from app import schemas
-from app.models.AeroplaneRequest import CreateAeroPlaneRequest, CreateWingLoftRequest
-from app.services.create_wing_configuration import create_wing_configuration, create_servo
 from app.db.session import get_db
 from app.models.aeroplane import Aeroplane, Wing, WingXSec, ControlSurface
-
-import logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# In-Memory-Aufgabenverwaltung
-tasks = {}
-tasks_lock = Lock()
-executor = ThreadPoolExecutor(max_workers=4)  # Passen Sie die Anzahl der Worker an Ihre Bedürfnisse an
-
 AeroPlaneID = UUID4
-
-
-def create_aeroplane_task(aeroplane_id, request_dict):
-    try:
-        logging.info(f"create aeroplane with 'aeroplane_id: {aeroplane_id}'")
-
-        request = CreateAeroPlaneRequest(**request_dict)
-        wings = {key: create_wing_configuration(value) for key, value in request.wings.items()}
-
-        settings = request.settings.__dict__.copy()
-        settings['servo_information'] = {
-            key: ServoInformation(
-                height=value.height,
-                width=value.width,
-                length=value.length,
-                lever_length=value.lever_length,
-                rot_x=value.rot_x,
-                rot_y=value.rot_y,
-                rot_z=value.rot_z,
-                trans_x=value.trans_x,
-                trans_y=value.trans_y,
-                trans_z=value.trans_z,
-                servo=create_servo(value.servo)
-            ) for key, value in request.settings.servo_information.items()
-        }
-
-        if isinstance(request.blueprint, dict):
-            blue_print: ConstructionStepNode = json.loads(
-                json.dumps(request.blueprint),
-                cls=GeneralJSONDecoder,
-                wing_config=wings,
-                fuselage_config=request.fuselages,
-                **settings
-            )
-        elif os.path.isfile(request.blueprint):
-            with open(request.blueprint, "r") as json_file:
-                blue_print: ConstructionStepNode = json.load(
-                    json_file,
-                    cls=GeneralJSONDecoder,
-                    wing_config=wings,
-                    fuselage_config=request.fuselages,
-                    **settings
-                )
-        blue_print.create_shape()
-        logging.info(f"finished aeroplane with 'aeroplane_id: {aeroplane_id}'")
-        zipfile = f"./tmp/{aeroplane_id}.zip"
-        exports = "./tmp/exports"
-
-        # zip files
-        with ZipFile(zipfile, 'w') as zipf:
-            logging.info(f"zipping files for 'aeroplane_id: {aeroplane_id}'")
-            for file in os.scandir(exports):
-                zipf.write(file.path)
-
-        # delete files
-        for file in os.scandir(exports):
-            os.unlink(file.path)
-
-        result = {"zipfile": zipfile}
-        with tasks_lock:
-            tasks[aeroplane_id]['status'] = 'SUCCESS'
-            tasks[aeroplane_id]['result'] = result
-    except Exception as err:
-        with tasks_lock:
-            tasks[aeroplane_id]['status'] = 'FAILURE'
-            tasks[aeroplane_id]['error'] = str(err)
-
 
 class GetAeroplaneResponse(BaseModel):
     class NameIdMap(BaseModel):
@@ -702,54 +610,135 @@ async def delete_aeroplane_wing_cross_section(
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
 
-@router.get("/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface",
-            tags=["spars"])
-async def get_aeroplane_wing_cross_section_spars(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        wing_name: str = Path(..., description="The ID of the wing"),
-        cross_section_index: int = Path(..., description="The index of the cross section"),
-) -> dict:
+@router.get(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface",
+    response_model=schemas.aeroplane.ControlSurface,
+    status_code=status.HTTP_200_OK,
+    tags=["control_surface"],
+)
+async def get_aeroplane_wing_cross_section_control_surface(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    wing_name: str = Path(..., description="The ID of the wing"),
+    cross_section_index: int = Path(..., description="The index of the cross section"),
+    db: Session = Depends(get_db),
+) -> schemas.aeroplane.ControlSurface:
     """
-    Returns the aeroplane wing spars.
+    Returns the control surface for the given cross-section.
     """
-    pass
+    try:
+        aeroplane = db.query(Aeroplane).filter(Aeroplane.uuid == aeroplane_id).first()
+        if not aeroplane:
+            raise HTTPException(status_code=404, detail="Aeroplane not found")
+        wing = next((w for w in aeroplane.wings if w.name == wing_name), None)
+        if not wing:
+            raise HTTPException(status_code=404, detail="Wing not found")
+        x_secs = wing.x_secs
+        if cross_section_index < 0 or cross_section_index >= len(x_secs):
+            raise HTTPException(status_code=404, detail="Cross-section not found")
+        xs = x_secs[cross_section_index]
+        cs = xs.control_surface
+        if not cs:
+            raise HTTPException(status_code=404, detail="Control surface not found")
+        return schemas.aeroplane.ControlSurface.model_validate(cs, from_attributes=True)
+    except SQLAlchemyError as e:
+        logging.error(f"Database error when getting control surface: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Unexpected error when getting control surface: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
 
-@router.post("/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/spars",
-             tags=["spars"])
-async def create_aeroplane_wing_cross_section_spars(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        wing_name: str = Path(..., description="The ID of the wing"),
-        cross_section_index: int = Path(..., description="The index of the cross section"),
-        request: CreateWingLoftRequest = Body(...)) -> dict:
+@router.post(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface",
+    response_class=Response,
+    status_code=status.HTTP_201_CREATED,
+    tags=["control_surface"],
+)
+async def create_and_update_aeroplane_wing_cross_section_control_surface(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    wing_name: str = Path(..., description="The ID of the wing"),
+    cross_section_index: int = Path(..., description="The index of the cross section"),
+    request: schemas.ControlSurface = Body(...),
+    db: Session = Depends(get_db),
+) -> Response:
     """
-    Creates a new spar for the aeroplane.
+    Creates a new or updates an existing control surface for the given cross-section.
     """
-    pass
+    try:
+        with db.begin():
+            aeroplane = db.query(Aeroplane).filter(Aeroplane.uuid == aeroplane_id).first()
+            if not aeroplane:
+                raise HTTPException(status_code=404, detail="Aeroplane not found")
+            wing = next((w for w in aeroplane.wings if w.name == wing_name), None)
+            if not wing:
+                raise HTTPException(status_code=404, detail="Wing not found")
+            x_secs = wing.x_secs
+            if cross_section_index < 0 or cross_section_index >= len(x_secs):
+                raise HTTPException(status_code=404, detail="Cross-section not found")
+            xs = x_secs[cross_section_index]
+            data = request.model_dump()
+            # update existing or create new control surface
+            if xs.control_surface:
+                cs = xs.control_surface
+                for key, value in data.items():
+                    setattr(cs, key, value)
+            else:
+                cs = ControlSurface(**data)
+                xs.control_surface = cs
+                db.add(cs)
+            aeroplane.updated_at = datetime.now()
+        return Response(status_code=status.HTTP_201_CREATED)
+    except SQLAlchemyError as e:
+        logging.error(f"Database error when creating/updating control surface: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Unexpected error when creating/updating control surface: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
 
-@router.put("/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/spars",
-            tags=["spars"])
-async def update_aeroplane_wing_cross_section_spar(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        wing_name: str = Path(..., description="The ID of the wing"),
-        cross_section_index: int = Path(..., description="The index of the cross section"),
-        spar_id: str = Query(..., description="The ID of the spar"),
-        request: CreateWingLoftRequest = Body(...)) -> dict:
+@router.delete(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface",
+    response_class=Response,
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["control_surface"],
+)
+async def delete_aeroplane_wing_cross_section_control_surface(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    wing_name: str = Path(..., description="The ID of the wing"),
+    cross_section_index: int = Path(..., description="The index of the cross section"),
+    db: Session = Depends(get_db),
+) -> Response:
     """
-    Updates the spar for the aeroplane.
+    Deletes the control surface for the given cross-section.
     """
-    pass
-
-
-@router.delete("/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/spars",
-               tags=["spars"])
-async def delete_aeroplane_wing_cross_section_spar(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        wing_name: str = Path(..., description="The ID of the wing"),
-        cross_section_index: int = Path(..., description="The index of the cross section"),
-        spar_id: str = Query(..., description="The ID of the spar")):
-    """
-    Delete a spar.
-    """
-    pass
+    try:
+        with db.begin():
+            aeroplane = db.query(Aeroplane).filter(Aeroplane.uuid == aeroplane_id).first()
+            if not aeroplane:
+                raise HTTPException(status_code=404, detail="Aeroplane not found")
+            wing = next((w for w in aeroplane.wings if w.name == wing_name), None)
+            if not wing:
+                raise HTTPException(status_code=404, detail="Wing not found")
+            x_secs = wing.x_secs
+            if cross_section_index < 0 or cross_section_index >= len(x_secs):
+                raise HTTPException(status_code=404, detail="Cross-section not found")
+            xs = x_secs[cross_section_index]
+            cs = xs.control_surface
+            if not cs:
+                raise HTTPException(status_code=404, detail="Control surface not found")
+            xs.control_surface = None
+            db.delete(cs)
+            aeroplane.updated_at = datetime.now()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except SQLAlchemyError as e:
+        logging.error(f"Database error when deleting control surface: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Unexpected error when deleting control surface: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
