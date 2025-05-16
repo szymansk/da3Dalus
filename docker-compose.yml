@@ -52,7 +52,7 @@ services:
 
   cq-jupyter:
     image: szymanski2adesso/cadquery-jupyter:2.4.0
-    platform: linux/amd64
+    platform: linux/arm64
     container_name: cq-jupyter
     build:
       context: docker

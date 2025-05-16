@@ -51,12 +51,12 @@ class Airfoil:
         self.chord: float = chord
         self.dihedral_as_rotation_in_degrees: float = dihedral_as_rotation_in_degrees
         self.dihedral_as_translation: float = dihedral_as_translation
-        if self.dihedral_as_rotation_in_degrees != 0 and self.dihedral_as_translation != 0:
-            raise ValueError("either dihedral_as_rotation_in_radians or dihedral_as_translation must be zero!")
+        #if self.dihedral_as_rotation_in_degrees != 0 and self.dihedral_as_translation != 0:
+        #    raise ValueError("either dihedral_as_rotation_in_radians or dihedral_as_translation must be zero!")
         self.incidence: float = incidence
         self.rotation_point_rel_chord: float = rotation_point_rel_chord
-        if self.dihedral_as_translation != 0 and self.rotation_point_rel_chord != 0.25:
-            raise ValueError("if dihedral_as_translation is not zero, than rotation_point_rel_chord has to be 0.25!")
+        #if self.dihedral_as_translation != 0 and self.rotation_point_rel_chord != 0.25:
+        #    raise ValueError("if dihedral_as_translation is not zero, than rotation_point_rel_chord has to be 0.25!")
         self.coordinate_system = None
 
     def set_airfoil_coordinate_system(self, cs: Plane):

@@ -17,14 +17,8 @@ def test_wing_configuration_save_load():
     root_airfoil = Airfoil(airfoil="components/airfoils/naca0012.dat", chord=100, incidence=0)
     tip_airfoil = Airfoil(airfoil="components/airfoils/naca0012.dat", chord=50, incidence=0)
     
-    wing = WingConfiguration(
-        nose_pnt=(0, 0, 0),
-        root_airfoil=root_airfoil,
-        length=1000,
-        sweep=100,
-        tip_airfoil=tip_airfoil,
-        symmetric=True
-    )
+    wing = WingConfiguration(nose_pnt=(0, 0, 0), root_airfoil=root_airfoil, length=1000, sweep=100,
+                             tip_airfoil=tip_airfoil, symmetric=True)
     
     # Create output directory if it doesn't exist
     output_dir = Path("./tmp/test_json_save")

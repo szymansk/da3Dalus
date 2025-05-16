@@ -58,18 +58,14 @@ class VaseModeWingCreator(AbstractShapeCreator):
         _construct_spare_sketch(...): Constructs a sketch for a spar, considering gaps for vase mode printing.
     """
 
-    def __init__(self,
-                 creator_id: str,
-                 wing_index: Union[str, NonNegativeInt],
-                 leading_edge_offset_factor: Factor,
+    def __init__(self, creator_id: str, wing_index: Union[str, NonNegativeInt], leading_edge_offset_factor: Factor,
                  trailing_edge_offset_factor: Factor,
                  minimum_rib_angle: Annotated[float, Field(ge=45.0, default=45)] = 45,
                  wing_config: Optional[dict[NonNegativeInt, WingConfiguration]] = None,
                  printer_settings: Optional[Printer3dSettings] = None,
                  servo_information: Optional[dict[NonNegativeInt, ServoInformation]] = None,
-                 wing_side: Optional[WingSides] = None,
-                 symmetric: bool = True,
-                 loglevel: int = logging.INFO):
+                 wing_side: Optional[WingSides] = None, symmetric: bool = True, connected:bool=True, loglevel: int = logging.INFO,
+                 ):
         """
         Initializes the VaseModeWingCreator class with the required parameters.
 
@@ -94,6 +90,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
         self._printer_settings: Printer3dSettings = printer_settings
         self._servo_information: dict[int, ServoInformation] = servo_information
         self.symmetric: bool = symmetric
+        self.connected: bool = connected
 
         super().__init__(creator_id, shapes_of_interest_keys=[], loglevel=loglevel)
 
@@ -719,7 +716,8 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 offset=offset,
                 number_interpolation_points=wing_config.segments[segment].number_interpolation_points,
                 root_plane=root_plane,
-                tip_plane=tip_plane
+                tip_plane=tip_plane,
+                connected=self.connected,
             ))
 
         right_wing_pwt_offset: Workplane = wing_root_segment_lambda(self.printer_wall_thickness)

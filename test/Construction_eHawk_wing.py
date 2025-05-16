@@ -77,13 +77,10 @@ if __name__ == "__main__":
     pwd = os.path.curdir
 
     vase_wing_loft = ConstructionStepNode(
-        VaseModeWingCreator(creator_id="vase_wing",
-                            wing_index="main_wing",
+        VaseModeWingCreator(creator_id="vase_wing", wing_index="main_wing",
                             leading_edge_offset_factor=leading_edge_offset,
-                            trailing_edge_offset_factor=trailing_edge_offset,
-                            minimum_rib_angle=minimum_rib_angle,
-                            wing_side="BOTH",
-                            loglevel=logging.DEBUG))
+                            trailing_edge_offset_factor=trailing_edge_offset, minimum_rib_angle=minimum_rib_angle,
+                            wing_side="BOTH", loglevel=logging.DEBUG))
     root_node.append(vase_wing_loft)
 
     winglet = ConstructionStepNode(
@@ -198,17 +195,13 @@ if __name__ == "__main__":
     #airfoil = "../components/airfoils/rg15.dat"  # eHawk RG15 Profil
     airfoil = "../components/airfoils/mh32.dat"  # eHawk RG15 Profil
     # segment 0
-    wing_config: WingConfiguration = WingConfiguration(
-        nose_pnt=(0, 0, 0),
-        number_interpolation_points=201,
-        root_airfoil=Airfoil(airfoil=airfoil,
-                             chord=162.,
-                             dihedral_as_rotation_in_degrees=1,
-                             incidence=0),
-        length=20.,
-        sweep=0,
-        tip_airfoil=Airfoil(chord=162., incidence=0),
-        spare_list=[
+    wing_config: WingConfiguration = WingConfiguration(nose_pnt=(0, 0, 0), root_airfoil=Airfoil(airfoil=airfoil,
+                                                                                                chord=162.,
+                                                                                                dihedral_as_rotation_in_degrees=1,
+                                                                                                incidence=0),
+                                                       length=20., sweep=0,
+                                                       tip_airfoil=Airfoil(chord=162., incidence=0),
+                                                       number_interpolation_points=201, spare_list=[
             Spare(spare_support_dimension_width=4.42,
                   spare_support_dimension_height=4.42,
                   spare_position_factor=0.25),
@@ -379,17 +372,13 @@ if __name__ == "__main__":
 
     elevator_airfoil = "../components/airfoils/naca0010.dat"
 
-    elevator_config: WingConfiguration = WingConfiguration(
-        nose_pnt=(650, 0, 0),
-        number_interpolation_points=201,
-        root_airfoil=Airfoil(airfoil=airfoil,
-                             chord=85.,
-                             dihedral_as_rotation_in_degrees=45,
-                             incidence=-2),
-        length=210.,
-        sweep=15,
-        tip_airfoil=Airfoil(chord=85.-15, incidence=0),
-        spare_list=[
+    elevator_config: WingConfiguration = WingConfiguration(nose_pnt=(650, 0, 0), root_airfoil=Airfoil(airfoil=airfoil,
+                                                                                                      chord=85.,
+                                                                                                      dihedral_as_rotation_in_degrees=45,
+                                                                                                      incidence=-2),
+                                                           length=210., sweep=15,
+                                                           tip_airfoil=Airfoil(chord=85. - 15, incidence=0),
+                                                           number_interpolation_points=201, spare_list=[
             Spare(spare_support_dimension_width=4.42,
                   spare_support_dimension_height=4.42,
                   spare_position_factor=0.25),
@@ -399,19 +388,17 @@ if __name__ == "__main__":
                   spare_vector=(0., 1., 0.),
                   spare_length=70),
 
-        ],
-        trailing_edge_device=TrailingEdgeDevice(name="v-tail",
-                                                rel_chord_root=50/85,
-                                                rel_chord_tip=50/85,
-                                                hinge_spacing=0.5,
-                                                side_spacing_root=2.,
-                                                side_spacing_tip=2.,
-                                                positive_deflection_deg=35,
-                                                negative_deflection_deg=35,
-                                                trailing_edge_offset_factor=1.2,
-                                                hinge_type="top",
-                                                symmetric=False)
-    )
+        ], trailing_edge_device=TrailingEdgeDevice(name="v-tail",
+                                                   rel_chord_root=50 / 85,
+                                                   rel_chord_tip=50 / 85,
+                                                   hinge_spacing=0.5,
+                                                   side_spacing_root=2.,
+                                                   side_spacing_tip=2.,
+                                                   positive_deflection_deg=35,
+                                                   negative_deflection_deg=35,
+                                                   trailing_edge_offset_factor=1.2,
+                                                   hinge_type="top",
+                                                   symmetric=False))
 
     # wing_config.add_tip_segment(length=printer_wall_thickness,
     #                             sweep=1,

@@ -8,6 +8,8 @@
                 "minimum_rib_angle": 45,
                 "wing_side": "BOTH",
                 "wing_index": "main_wing",
+                "symmetric": true,
+                "connected": false,
                 "loglevel": 10,
                 "creator_id": "vase_wing",
                 "$TYPE": "VaseModeWingCreator"

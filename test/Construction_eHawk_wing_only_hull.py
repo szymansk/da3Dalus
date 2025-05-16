@@ -63,10 +63,7 @@ if __name__ == "__main__":
     pwd = os.path.curdir
 
     vase_wing_loft = ConstructionStepNode(
-        WingLoftCreator(creator_id="vase_wing",
-                        wing_index="main_wing",
-                        wing_side="BOTH",
-                        loglevel=logging.DEBUG))
+        WingLoftCreator(creator_id="vase_wing", wing_index="main_wing", wing_side="BOTH", loglevel=logging.DEBUG))
     root_node.append(vase_wing_loft)
 
     aircraft_step_export_node = ConstructionStepNode(
@@ -121,18 +118,15 @@ if __name__ == "__main__":
     #### WING ####
     airfoil = "../components/airfoils/rg15.dat"  # eHawk RG15 Profil
     # segment 0
-    wing_config: WingConfiguration = WingConfiguration(
-        nose_pnt=(0, 0, 0),
-        number_interpolation_points=201,
-        root_airfoil=Airfoil(airfoil=airfoil,
-                             chord=162.,
-                             dihedral_as_rotation_in_degrees=1,
-                             incidence=0,
-                             rotation_point_rel_chord=0.3),
-        length=20.,
-        sweep=0,
-        tip_airfoil=Airfoil(chord=162., dihedral_as_rotation_in_degrees=0, incidence=0),
-        spare_list=[
+    wing_config: WingConfiguration = WingConfiguration(nose_pnt=(0, 0, 0), root_airfoil=Airfoil(airfoil=airfoil,
+                                                                                                chord=162.,
+                                                                                                dihedral_as_rotation_in_degrees=1,
+                                                                                                incidence=0,
+                                                                                                rotation_point_rel_chord=0.3),
+                                                       length=20., sweep=0, tip_airfoil=Airfoil(chord=162.,
+                                                                                                dihedral_as_rotation_in_degrees=0,
+                                                                                                incidence=0),
+                                                       number_interpolation_points=201, spare_list=[
             Spare(spare_support_dimension_width=4.42,
                   spare_support_dimension_height=4.42,
                   spare_position_factor=0.25),

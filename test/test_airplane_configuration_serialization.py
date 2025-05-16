@@ -20,14 +20,8 @@ def test_airplane_configuration_serialization():
     root_airfoil = Airfoil(airfoil="components/airfoils/naca0012.dat", chord=100, incidence=0)
     tip_airfoil = Airfoil(airfoil="components/airfoils/naca0012.dat", chord=50, incidence=0)
     
-    wing = WingConfiguration(
-        nose_pnt=(0, 0, 0),
-        root_airfoil=root_airfoil,
-        length=1000,
-        sweep=100,
-        tip_airfoil=tip_airfoil,
-        symmetric=True
-    )
+    wing = WingConfiguration(nose_pnt=(0, 0, 0), root_airfoil=root_airfoil, length=1000, sweep=100,
+                             tip_airfoil=tip_airfoil, symmetric=True)
     
     # Create a simple fuselage configuration
     fuselage = FuselageConfiguration(name="test_fuselage")

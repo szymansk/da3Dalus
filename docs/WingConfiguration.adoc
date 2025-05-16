@@ -189,6 +189,7 @@ image::./images/images with text/Folie5.png[Airfoil parameter description, id=ai
 ==== Segment Parameters
 
 A segment is defined by two airfoils the segments _root airfoil_ and the segments _tip airfoil_. Both airfoils have two defined offsets to each other:
+
 * the _length_ latexmath:[L_i] of a segment, which is the length of the loft along the y-axis (normal to the airfoil),
 * the _sweep_ latexmath:[S_{i}] of a segment, which defines x-offset between a segments _root airfoil_ and it's _tip airfoil_, the sweep can also be given as an angle, which will be internally converted to an x-offset.
 
@@ -217,7 +218,7 @@ The coordinate system latexmath:[H^N] for a segments N is calculated with the ho
 
 NOTE: Be aware that the tip aifoil of segment i is equal to the root airfoil of segment i+1. That is why the the length and sweep are denoted with latexmath:[L_{i-i}] and latexmath:[S_{i-i}] as they belong to the segment before. If you want to calculate the coordinate system for the tip of a segment you need to calculate latexmath:[H^{N+1}].
 
-latexmath:[H_0 = T(C_{0} rc_{0}, 0,0)\cdot R_x(\delta_{0})\cdot R_y(\iota_{0}) \cdot T(-C_{0} r_{0}, 0,0)]
+latexmath:[H_0 = T(C_{0} rc_{0}, 0,0)\cdot T(0,0,0) \cdot R_x(\delta_{0})\cdot R_y(\iota_{0}) \cdot T(-C_{0} r_{0}, 0,0)]
 
 latexmath:[H_i = T(C_{i} rc_{i}, 0, 0)\cdot T(S_{i-1}, L_{i-1}, D_{i-1}) \cdot R_x(\delta_i) \cdot R_y(\iota_i) \cdot T(-C_{i} rc_{i}, 0,0)]
 
@@ -256,11 +257,11 @@ R_y(\iota_i)=
 
 If we perform the calculation of a single local coordinate system, we get the following homogeneours Transformation Matrix:
 
-latexmath:[H_i = \left[
+latexmath:[C_N = \left[
 \begin{matrix}
-\cos{\left(\iota_i \right)} & 0 &\sin{\left(\iota_i \right)}  & - C_i rc_i \cos{\left(\iota_i \right)} + C_i rc_i + S_{i-1}\\
-\sin{\left(\delta_i \right)} \sin{\left(\iota_i \right)} & \cos{\left(\delta_i \right)} & - \sin{\left(\delta_i \right)} \cos{\left(\iota_i \right)} & - C_i rc_i \sin{\left(\delta_i \right)} \sin{\left(\iota_i \right)} + L_{i-1}\\
-- \sin{\left(\iota_i \right)} \cos{\left(\delta_i \right)} & \sin{\left(\delta_i \right)} & \cos{\left(\delta_i \right)} \cos{\left(\iota_i \right)} & C_i rc_i \sin{\left(\iota_i \right)} \cos{\left(\delta_i \right) + D_{i-1}}\\
+\cos{\left(\iota_i \right)} & 0 &\sin{\left(\iota_i \right)}  & - c_i \tau_i \cos{\left(\iota_i \right)} + c_i \tau_i + S_{i-1}\\
+\sin{\left(\delta_i \right)} \sin{\left(\iota_i \right)} & \cos{\left(\delta_i \right)} & - \sin{\left(\delta_i \right)} \cos{\left(\iota_i \right)} & - c_i \tau_i \sin{\left(\delta_i \right)} \sin{\left(\iota_i \right)} + L_{i-1}\\
+- \sin{\left(\iota_i \right)} \cos{\left(\delta_i \right)} & \sin{\left(\delta_i \right)} & \cos{\left(\delta_i \right)} \cos{\left(\iota_i \right)} & c_i \tau_i \sin{\left(\iota_i \right)} \cos{\left(\delta_i \right) + D_{i-1}}\\
 0 & 0 & 0 & 1
 \end{matrix}
 \right\]]
@@ -278,39 +279,77 @@ From this we can calculate the parameters, by utilizing matrix latexmath:[H_i].
 
 Incident angle in radians:
 
-latexmath:[ \iota_i = atan2(\sin(\iota_i), \cos(\iota_i)) = atan2(H_i[0,2\], H_i[0,0\])]
+latexmath:[ \iota_i = \operatorname{atan2}(\sin(\iota_i), \cos(\iota_i)) = \operatorname{atan2}(H_i[0,2\], H_i[0,0\])]
 
 The _dihedral_ can be given as a rotation around the x-axis latexmath:[\delta_i] or (exclusive or) a translation along the z-axis latexmath:[D_i]  (aerosandbox style)
 
 Case A: dihedral in radians as rotation around the x-axis latexmath:[D_{i-1}=0 \wedge \delta_i \neq 0]:
 
-latexmath:[ \delta_i = atan2(\sin(\delta_i), \cos(\delta_i)) = atan2(H_i[2,1\], H_i[1,1\])]
+latexmath:[ \delta_i = \operatorname{atan2}(\sin(\delta_i), \cos(\delta_i)) = \operatorname{atan2}(H_i[2,1\], H_i[1,1\])]
 
 From this we can derive the relative chord rotation point of incidence angle:
-latexmath:[ rc_i = H_i[3,3\]/C_i \sin{\left(\iota_i \right)} \cos{\left(\delta_i \right)}]
+latexmath:[ \tau_i = H_i[2,3\]/\left(c_i \sin{\left(\iota_i \right)} \cos{\left(\delta_i \right)}\right)]
 
-Case B: dihedral in length as translation along the z-axis latexmath:[D_{i-1} \neq 0 \wedge \delta_i = 0 \wedge rc_i=0.25] (quater chord)
+Case B: dihedral in length as translation along the z-axis latexmath:[D_{i-1} \neq 0 \wedge \delta_i = 0 \wedge \tau_i=0.25] (quater chord)
 
 _We need to set the incidence rotation point to a fixed value as it is not distinguishable if the z translation of the final transformation comes from the dihedral rotation around the x axis or  a dihedral translation._
 
-latexmath:[D_{i-1} = H_i[3,3\] - 0.25 \cdot C_i \sin{\left(\iota_i \right)}]
+latexmath:[D_{i-1} = H_i[2,3\] - 0.25 \cdot c_i \sin{\left(\iota_i \right)}]
 
-latexmath:[ rc_i = 0.25]
+latexmath:[ \tau_i = 0.25]
 
 Segment length in length units:
 
-latexmath:[ L_{i-1}  = H_i[1,3\] + C_i rc_i \sin{\left(\delta_i \right)} \sin{\left(\iota_i \right)} = H_i[1,3\] + C_i rc_i H_i[1,0\]]
+latexmath:[ L_{i-1}  = H_i[1,3\] + c_i \tau_i \sin{\left(\delta_i \right)} \sin{\left(\iota_i \right)} = H_i[1,3\] + c_i \tau_i H_i[1,0\]]
 
 Sweep in length units:
 
-latexmath:[ S_{i-1} = H_i[0,3\] + C_i rc_i \left(\cos{\left(\iota_i \right)} - 1\right) =  H_i[0,3\] + C_i rc_i \left(H_i[0,0\] - 1\right)]
+latexmath:[ S_{i-1} = H_i[0,3\] + c_i \tau_i \left(\cos{\left(\iota_i \right)} - 1\right) =  H_i[0,3\] + c_i \tau_i \left(H_i[0,0\] - 1\right)]
 
 And from this the sweep in radians:
 
-latexmath:[s_{i-1} = atan2\left({S_{i-1}, L_{i-1}}\right)]
+latexmath:[s_{i-1} = \operatorname{atan2}\left({S_{i-1}, L_{i-1}}\right)]
 
+==== How to calculate the WingSegment and Airfoil Parameters from aerosandbox
 
-==== spar
+aerosandbox defines a Wing by defining the crossections as WingXSec objects. The WingXSec class has as attributes:
+
+xyz_le:: the origin vector latexmath:[o_{i}] of the trailing edge point (nose point of the airfoil) in the standard global coordinate system (x-axis pointing to the tail, z-axis up and y-axis along the right wing).
+
+twist :: the twist angle latexmath:[\theta_i] also globally defined as angle between center chord line to the x-axis, with a fixed rotation point  latexmath:[\tau_i = 0.25].
+
+chord :: the chord length latexmath:[c_i]
+
+latexmath:[R_N] :: aerosandbox provides the rotation matrix for the leading edge of a cross section which gives together with latexmath:[o_{i}] the homogeneous transformation matrix latexmath:[C_N].
+
+The global homogeneous transformation matrix latexmath:[C_N] for aerosandbox is:
+
+latexmath:[C_N =  T(S_{i-1}, L_{i-1}, D_{i-1}) \cdot T(C_{i} rc_{i}, 0, 0)\cdot R_y(\iota_i) \cdot T(-C_{i} rc_{i}, 0,0) \cdot R_x(\delta_i) ]
+
+latexmath:[C_N = \left[
+\begin{matrix}
+\cos{\left(\iota_{i} \right)} & \sin{\left(\delta_{i} \right)} \sin{\left(\iota_{i} \right)} & \sin{\left(\iota_{i} \right)} \cos{\left(\delta_{i} \right)} & - Ci rc_{i} \cos{\left(\iota_{i} \right)} + Ci rc_{i} + S_{prev}\\
+0 & \cos{\left(\delta_{i} \right)} & - \sin{\left(\delta_{i} \right)} & L_{prev}\\
+- \sin{\left(\iota_{i} \right)} & \sin{\left(\delta_{i} \right)} \cos{\left(\iota_{i} \right)} & \cos{\left(\delta_{i} \right)} \cos{\left(\iota_{i} \right)} & Ci rc_{i} \sin{\left(\iota_{i} \right)} + D_{prev}
+\\0 & 0 & 0 & 1
+\end{matrix}
+\right \] ]
+
+From this we can derive:
+
+latexmath:[\iota_i = \operatorname{atan2}(-C_N[2,0\], C_N[0,0\])]
+
+latexmath:[\delta_i = \operatorname{atan2}(-C_N[1,2\], C_N[1,1\])]
+
+latexmath:[S_i = (C_N[0,3\]+c_i\tau_iC_N[0,0\] - c_i\tau_i)]
+
+latexmath:[L_i=C_N[1,3\]]
+
+latexmath:[D_i=(C_N[2,3\]-c_i\tau_i-C_N[2,0\])]
+
+To enable the aerosandbox mode we need to set WingConfiguration.parameters = "aerosandbox".
+
+==== Spar
 .The main spar.
 image::./images/images with text/Folie7.png[spar, id=spar]
 

@@ -10,15 +10,13 @@ from cad_designer.airplane.types import WingSides
 
 
 class WingLoftCreator(AbstractShapeCreator):
-    def __init__(self, creator_id: str,
-                 wing_index: Union[str, int],
-                 offset: float = 0,
+    def __init__(self, creator_id: str, wing_index: Union[str, int], offset: float = 0,
                  wing_config: Optional[dict[NonNegativeInt, WingConfiguration]] = None,
-                 wing_side: Optional[WingSides]=None,
-                 loglevel=logging.INFO):
+                 wing_side: Optional[WingSides] = None, connected:bool=True, loglevel=logging.INFO):
         self.wing_side: WingSides = wing_side
         self.wing_index = wing_index
         self.offset = offset
+        self.connected = connected
         self._wing_config: dict[int, WingConfiguration] = wing_config
         super().__init__(creator_id, shapes_of_interest_keys=[], loglevel=loglevel)
 
@@ -53,7 +51,8 @@ class WingLoftCreator(AbstractShapeCreator):
                 offset=self.offset,
                 number_interpolation_points=wing_config.segments[segment].number_interpolation_points,
                 root_plane=root_plane,
-                tip_plane=tip_plane
+                tip_plane=tip_plane,
+                connected=self.connected,
             ))
 
         current: Workplane = right_wing

@@ -9,7 +9,8 @@ RUN source ${CONDA_INSTALL_DIR}/bin/activate \
     shapely  \
     jsonpickle \
     fastapi \
-    pydantic
+    pydantic \
+    sympy
 
 
 RUN adduser --disabled-password --gecos "Default user" --uid 1000 cq

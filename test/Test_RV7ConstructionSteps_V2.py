@@ -62,8 +62,7 @@ if __name__ == "__main__":
     root_node.append(full_wing_loft_node_a)
 
     full_wing_loft_node = ConstructionStepNode(
-        WingLoftCreator("full_wing_loft",
-                        wing_index="main_wing", wing_side="BOTH", loglevel=logging.DEBUG))
+        WingLoftCreator("full_wing_loft", wing_index="main_wing", wing_side="BOTH", loglevel=logging.DEBUG))
     root_node.append(full_wing_loft_node)
 
     flaps_node = ConstructionStepNode(
@@ -439,31 +438,25 @@ if __name__ == "__main__":
                      )
         .add_tip_segment(
             length=10, sweep=0, tip_type='round'),
-        "elevator": WingConfiguration(
-            symmetric=True,
-            nose_pnt=(593.573, 0, 31.608),
-            root_airfoil=Airfoil(airfoil=elevator_airfoile, chord=118.771, dihedral_as_rotation_in_degrees=0,
-                                 incidence=0), length=165.5, sweep=27.945,
-            tip_airfoil=Airfoil(chord=75.849, dihedral_as_rotation_in_degrees=0, incidence=0),
-            trailing_edge_device=TrailingEdgeDevice(
-                name="elevator",
-                rel_chord_root=0.6,
-                symmetric=True)
-        ),
-        "rudder": WingConfiguration(
-            symmetric=False,
-            nose_pnt=(581.4, 0, -9.652),
-            root_airfoil=Airfoil(airfoil=elevator_airfoile,
-                                 chord=186.2,
-                                 dihedral_as_rotation_in_degrees=90,
-                                 incidence=0),
-            length=188.1, sweep=68.463,
-            tip_airfoil=Airfoil(chord=79.8, dihedral_as_rotation_in_degrees=0, incidence=0),
-            trailing_edge_device=TrailingEdgeDevice(
-                name="rudder",
-                rel_chord_root=0.6,
-                symmetric=True)
-        ),
+        "elevator": WingConfiguration(nose_pnt=(593.573, 0, 31.608),
+                                      root_airfoil=Airfoil(airfoil=elevator_airfoile, chord=118.771,
+                                                           dihedral_as_rotation_in_degrees=0,
+                                                           incidence=0), length=165.5, sweep=27.945,
+                                      tip_airfoil=Airfoil(chord=75.849, dihedral_as_rotation_in_degrees=0, incidence=0),
+                                      trailing_edge_device=TrailingEdgeDevice(
+                                          name="elevator",
+                                          rel_chord_root=0.6,
+                                          symmetric=True), symmetric=True),
+        "rudder": WingConfiguration(nose_pnt=(581.4, 0, -9.652), root_airfoil=Airfoil(airfoil=elevator_airfoile,
+                                                                                      chord=186.2,
+                                                                                      dihedral_as_rotation_in_degrees=90,
+                                                                                      incidence=0), length=188.1,
+                                    sweep=68.463,
+                                    tip_airfoil=Airfoil(chord=79.8, dihedral_as_rotation_in_degrees=0, incidence=0),
+                                    trailing_edge_device=TrailingEdgeDevice(
+                                        name="rudder",
+                                        rel_chord_root=0.6,
+                                        symmetric=True), symmetric=False),
     }
     fuselage_configuration = {
         "fuselage": FuselageConfiguration
