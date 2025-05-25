@@ -20,8 +20,8 @@ class TestGetAeroplaneWings(unittest.TestCase):
         mock_db.query.return_value.filter.return_value.first.return_value = mock_model
 
         # Patch model_validate to return dummy schemas
-        dummy_schema1 = schemas.aeroplane.Wing.model_construct(id="w1")
-        dummy_schema2 = schemas.aeroplane.Wing.model_construct(id="w2")
+        dummy_schema1 = schemas.aeroplane.AsbWingSchema.model_construct(id="w1")
+        dummy_schema2 = schemas.aeroplane.AsbWingSchema.model_construct(id="w2")
         with patch(
             'app.api.v2.endpoints.aeroplane.schemas.aeroplane.Wing.model_validate',
             side_effect=[dummy_schema1, dummy_schema2]

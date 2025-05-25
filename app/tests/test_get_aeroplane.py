@@ -17,7 +17,7 @@ class TestGetAeroplane(unittest.TestCase):
         mock_db.query.return_value.filter.return_value.first.return_value = mock_model
 
         # patch model_validate to return a dummy schema
-        mock_schema = schemas.aeroplane.Aeroplane.model_construct(uuid=test_id, name="Test")
+        mock_schema = schemas.aeroplane.AeroplaneSchema.model_construct(uuid=test_id, name="Test")
         with patch(
             'app.api.v2.endpoints.aeroplane.schemas.aeroplane.Aeroplane.model_validate',
             return_value=mock_schema

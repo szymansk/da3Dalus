@@ -44,7 +44,7 @@ class GUID(TypeDecorator):
             return value
 
 
-class ControlSurface(Base):
+class ControlSurfaceModel(Base):
     __tablename__ = "control_surfaces"
     name = Column(String, nullable=False)
     hinge_point = Column(Float, default=0.8)
@@ -53,9 +53,9 @@ class ControlSurface(Base):
 
     # Relationship with WingXSec
     wing_xsec_id = Column(Integer, ForeignKey("wing_xsecs.id", ondelete="CASCADE"))
-    wing_xsec = relationship("WingXSec", back_populates="control_surface")
+    wing_xsec = relationship("WingXSecModel", back_populates="control_surface")
 
-class WingXSec(Base):
+class WingXSecModel(Base):
     __tablename__ = "wing_xsecs"
     xyz_le = Column(JSON, nullable=False)  # Store as JSON array
     chord = Column(Float, nullable=False)
@@ -64,29 +64,29 @@ class WingXSec(Base):
 
     # Relationship with Wing
     wing_id = Column(Integer, ForeignKey("wings.id", ondelete="CASCADE"))
-    wing = relationship("Wing", back_populates="x_secs")
+    wing = relationship("WingModel", back_populates="x_secs")
 
     # Relationship with ControlSurface
-    control_surface = relationship("ControlSurface", back_populates="wing_xsec", uselist=False)
+    control_surface = relationship("ControlSurfaceModel", back_populates="wing_xsec", uselist=False)
     # index to maintain ordering of cross-sections within a wing
     sort_index = Column(Integer, default=0, nullable=False)
 
-class Wing(Base):
+class WingModel(Base):
     __tablename__ = "wings"
     name = Column(String, nullable=False)
     symmetric = Column(Boolean, default=True)
 
     # One-to-many to WingXSec, ordered by sort_index
     x_secs = relationship(
-        "WingXSec",
+        "WingXSecModel",
         back_populates="wing",
         cascade="all, delete-orphan",
-        order_by="WingXSec.sort_index"
+        order_by="WingXSecModel.sort_index"
     )
 
     # ForeignKey to Aeroplane
     aeroplane_id = Column(Integer, ForeignKey("aeroplanes.id", ondelete="CASCADE"))
-    aeroplane = relationship("Aeroplane", back_populates="wings")
+    aeroplane = relationship("AeroplaneModel", back_populates="wings")
 
     @classmethod
     def from_dict(cls, name, data):
@@ -94,10 +94,10 @@ class Wing(Base):
         data.pop("name", None)
         wing = cls(name=name, **data)
         for xd in xsec_dicts:
-            wing.x_secs.append(WingXSec(**xd))
+            wing.x_secs.append(WingXSecModel(**xd))
         return wing
 
-class FuselageXSecSuperEllipse(Base):
+class FuselageXSecSuperEllipseModel(Base):
     __tablename__ = "fuselage_xsecs"
     xyz = Column(JSON, nullable=False)  # Store as JSON array
     a = Column(Float, nullable=False)
@@ -106,23 +106,23 @@ class FuselageXSecSuperEllipse(Base):
 
     # Relationship with Fuselage
     fuselage_id = Column(Integer, ForeignKey("fuselages.id", ondelete="CASCADE"))
-    fuselage = relationship("Fuselage", back_populates="x_secs")
+    fuselage = relationship("FuselageModel", back_populates="x_secs")
 
-class Fuselage(Base):
+class FuselageModel(Base):
     __tablename__ = "fuselages"
     name = Column(String, nullable=False)
 
     # Relationship with FuselageXSecSuperEllipse
     x_secs = relationship(
-        "FuselageXSecSuperEllipse",
+        "FuselageXSecSuperEllipseModel",
         back_populates="fuselage",
         cascade="all, delete-orphan")
 
     # ForeignKey to Aeroplane
     aeroplane_id = Column(Integer, ForeignKey("aeroplanes.id", ondelete="CASCADE"))
-    aeroplane = relationship("Aeroplane", back_populates="fuselages")
+    aeroplane = relationship("AeroplaneModel", back_populates="fuselages")
 
-class Aeroplane(Base):
+class AeroplaneModel(Base):
     __tablename__ = "aeroplanes"
     uuid = Column(GUID, default=lambda: uuid.uuid4(), unique=True, nullable=False)
     name = Column(String, nullable=False)
@@ -144,10 +144,10 @@ class Aeroplane(Base):
 
     # Relationships
     wings = relationship(
-        "Wing",
+        "WingModel",
         back_populates="aeroplane",
         cascade="all, delete-orphan")
     fuselages = relationship(
-        "Fuselage",
+        "FuselageModel",
         back_populates="aeroplane",
         cascade="all, delete-orphan")

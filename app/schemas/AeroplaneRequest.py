@@ -48,6 +48,7 @@ class ExporterUrlType(str, Enum):
     STEP = "step"
     AMF = "amf"
     IGES = "iges"
+    THREEMF = "3mf"
 
 class CreateWingLoftRequest(BaseModel):
     wings: Optional[Dict[str, Wing]]

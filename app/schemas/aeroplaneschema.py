@@ -3,9 +3,9 @@ from typing import OrderedDict, Optional
 from pydantic import BaseModel, Field, HttpUrl
 
 
-class Aeroplane(BaseModel):
+class AeroplaneSchema(BaseModel):
     name: str = Field(..., description="Aeroplane name", examples=["Vanilla"])
-    wings: Optional[OrderedDict[str, "Wing"]] = Field(
+    wings: Optional[OrderedDict[str, "AsbWingSchema"]] = Field(
         None, description="Aeroplane wings dictionary",
         examples=[
             {
@@ -16,19 +16,19 @@ class Aeroplane(BaseModel):
                         "xyz_le": [0, 0, 0],
                         "chord": 0.18,
                         "twist": 2,
-                        "airfoil": "./components/airfoil/naca0015.dat",
+                        "airfoil": "./components/airfoils/naca0015.dat",
                     },
                     {
                         "xyz_le": [0.01, 0.5, 0],
                         "chord": 0.16,
                         "twist": 0,
-                        "airfoil": "./components/airfoil/naca0015.dat",
+                        "airfoil": "./components/airfoils/naca0015.dat",
                     },
                 ],
             }
         ]
     )
-    fuselages: Optional[OrderedDict[str, "Fuselage"]] = Field(
+    fuselages: Optional[OrderedDict[str, "FuselageSchema"]] = Field(
         None, description="Aeroplane fuselages dictionary",
         examples=[
             {
@@ -57,7 +57,7 @@ class Aeroplane(BaseModel):
     )
 
 
-class ControlSurface(BaseModel):
+class ControlSurfaceSchema(BaseModel):
     name: str = Field(..., description="Control surface name",
                       examples=["Aileron", "Elevator", "Rudder", "Flap", "Elevon"])
     hinge_point: float = Field(
@@ -76,7 +76,7 @@ class ControlSurface(BaseModel):
     )
 
 
-class WingXSec(BaseModel):
+class WingXSecSchema(BaseModel):
     xyz_le: list[float] = Field(
         ...,
         description="Coordinates of the leading edge of the cross-section in the local coordinate system",
@@ -95,9 +95,9 @@ class WingXSec(BaseModel):
     airfoil: str | HttpUrl = Field(
         ...,
         description="Airfoil dat file location of the cross-section (file or URL)",
-        examples=["./components/airfoil/naca0015.dat", "https://m-selig.ae.illinois.edu/ads/coord/naca0015.dat"],
+        examples=["./components/airfoils/naca0015.dat", "https://m-selig.ae.illinois.edu/ads/coord/naca0015.dat"],
     )
-    control_surface: Optional[ControlSurface] = Field(
+    control_surface: Optional[ControlSurfaceSchema] = Field(
         None,
         description="Control surface on the cross-section",
         examples=[
@@ -117,14 +117,14 @@ class WingXSec(BaseModel):
     )
 
 
-class Wing(BaseModel):
+class AsbWingSchema(BaseModel):
     name: str = Field(..., description="Wing name", examples=["Main Wing", "Horizontal Stabilizer"])
     symmetric: bool = Field(
         True,
         description="Is the wing symmetric?",
         examples=[True, False],
     )
-    x_secs: list[WingXSec] = Field(
+    x_secs: list[WingXSecSchema] = Field(
         ...,
         description="List of cross-sections of the wing",
         min_length=2,
@@ -134,20 +134,20 @@ class Wing(BaseModel):
                     "xyz_le": [0, 0, 0],
                     "chord": 0.18,
                     "twist": 2,
-                    "airfoil": "./components/airfoil/naca0015.dat",
+                    "airfoil": "./components/airfoils/naca0015.dat",
                 },
                 {
                     "xyz_le": [0.01, 0.5, 0],
                     "chord": 0.16,
                     "twist": 0,
-                    "airfoil": "./components/airfoil/naca0015.dat",
+                    "airfoil": "./components/airfoils/naca0015.dat",
                 },
             ]
         ],
     )
 
 
-class FuselageXSecSuperEllipse(BaseModel):
+class FuselageXSecSuperEllipseSchema(BaseModel):
     xyz: list[float] = Field(
         ...,
         description="Coordinates of the center of the cross-section in the local coordinate system",
@@ -170,9 +170,9 @@ class FuselageXSecSuperEllipse(BaseModel):
     )
 
 
-class Fuselage(BaseModel):
+class FuselageSchema(BaseModel):
     name: str = Field(..., description="Fuselage name", examples=["Fuselage"])
-    x_secs: list[FuselageXSecSuperEllipse] = Field(
+    x_secs: list[FuselageXSecSuperEllipseSchema] = Field(
         ...,
         description="List of cross-sections of the fuselage",
         min_length=2,

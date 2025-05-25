@@ -24,7 +24,7 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 from app.db.base import Base
-import app.models.aeroplane       # this module imports Base and defines tables
+import app.models.aeroplanemodel       # this module imports Base and defines tables
 
 target_metadata = Base.metadata
 

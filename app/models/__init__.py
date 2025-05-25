@@ -1,1 +1,1 @@
-from app.models.aeroplane import Aeroplane
+from app.models.aeroplanemodel import AeroplaneModel

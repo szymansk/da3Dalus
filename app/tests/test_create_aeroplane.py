@@ -6,7 +6,7 @@ import uuid
 import asyncio
 
 from app.api.v2.endpoints.aeroplane import create_aeroplane
-from app.models.aeroplane import Aeroplane
+from app.models.aeroplanemodel import AeroplaneModel
 
 class TestCreateAeroplane(unittest.TestCase):
     def test_create_aeroplane_success(self):

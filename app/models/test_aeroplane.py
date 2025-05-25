@@ -2,7 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.db.base import Base
-from app.models.aeroplane import Aeroplane, Wing, WingXSec, ControlSurface, Fuselage, FuselageXSecSuperEllipse
+from app.models.aeroplanemodel import AeroplaneModel, WingModel, WingXSecModel, ControlSurfaceModel, FuselageModel, FuselageXSecSuperEllipseModel
 
 # Create an in-memory SQLite database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -16,34 +16,34 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 db = SessionLocal()
 
 # Create a test aeroplane
-aeroplane = Aeroplane(
+aeroplane = AeroplaneModel(
     name="Test Aeroplane",
     xyz_ref=[0, 0, 0]
 )
 
 # Create a test wing
-wing = Wing(
+wing = WingModel(
     name="Main Wing",
     symmetric=True
 )
 
 # Create test wing cross-sections
-wing_xsec1 = WingXSec(
+wing_xsec1 = WingXSecModel(
     xyz_le=[0, 0, 0],
     chord=0.18,
     twist=2,
-    airfoil="./components/airfoil/naca0015.dat"
+    airfoil="./components/airfoils/naca0015.dat"
 )
 
-wing_xsec2 = WingXSec(
+wing_xsec2 = WingXSecModel(
     xyz_le=[0.01, 0.5, 0],
     chord=0.16,
     twist=0,
-    airfoil="./components/airfoil/naca0015.dat"
+    airfoil="./components/airfoils/naca0015.dat"
 )
 
 # Create a test control surface
-control_surface = ControlSurface(
+control_surface = ControlSurfaceModel(
     name="Aileron",
     hinge_point=0.8,
     symmetric=False,
@@ -51,19 +51,19 @@ control_surface = ControlSurface(
 )
 
 # Create a test fuselage
-fuselage = Fuselage(
+fuselage = FuselageModel(
     name="Fuselage"
 )
 
 # Create test fuselage cross-sections
-fuselage_xsec1 = FuselageXSecSuperEllipse(
+fuselage_xsec1 = FuselageXSecSuperEllipseModel(
     xyz=[0, 0, 0],
     a=0.5,
     b=0.5,
     n=2
 )
 
-fuselage_xsec2 = FuselageXSecSuperEllipse(
+fuselage_xsec2 = FuselageXSecSuperEllipseModel(
     xyz=[0.01, 0.5, 0],
     a=0.6,
     b=0.4,
@@ -84,7 +84,7 @@ db.add(aeroplane)
 db.commit()
 
 # Query to verify
-aeroplane_from_db = db.query(Aeroplane).filter(Aeroplane.name == "Test Aeroplane").first()
+aeroplane_from_db = db.query(AeroplaneModel).filter(AeroplaneModel.name == "Test Aeroplane").first()
 print(f"Aeroplane UUID: {aeroplane_from_db.uuid}")
 print(f"Aeroplane name: {aeroplane_from_db.name}")
 print(f"Aeroplane xyz_ref: {aeroplane_from_db.xyz_ref}")
