@@ -365,7 +365,7 @@ class WingConfiguration:
             chord = self.segments[segment-1].tip_airfoil.chord
 
         # process also the root airfoil for segment 0
-        r_incidence = np.array(self._create_homogeneous_rotation_matrix('y', -r_incidence))
+        r_incidence = np.array(self._create_homogeneous_rotation_matrix('y', r_incidence))
         r_dihedral = np.array(self._create_homogeneous_rotation_matrix('x', r_dihedral))
 
         neg_rel_chord = np.eye(4)
@@ -782,11 +782,11 @@ class WingConfiguration:
             T = asb_wing._compute_xyz_le_of_WingXSec(idx) - nose_pnt
             C = np.hstack((R, T.reshape(-1, 1)))
 
-            incidence = math.degrees(math.atan2(-C[2, 0], C[0, 0]))
+            incidence = math.degrees(math.atan2(C[2, 0], C[0, 0]))
             dihedral_deg = math.degrees(math.atan2(-C[1, 2], C[1, 1]))
             sweep = C[0, 3] + xsec.chord * rotation_point_rel_chord * C[0, 0] - xsec.chord * rotation_point_rel_chord
             span = C[1, 3]
-            dihedral = C[2, 3] - xsec.chord * rotation_point_rel_chord * -C[2, 0]
+            dihedral = C[2, 3] + xsec.chord * rotation_point_rel_chord * C[2, 0]
             logger.info(
                 f"i:{incidence}, d: {(dihedral_deg)}, sweep: {sweep}, L: {span}, D:{dihedral}, c: {xsec.chord}, rci: {rotation_point_rel_chord}")
             parameter.append(SimpleNamespace(

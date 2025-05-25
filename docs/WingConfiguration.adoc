@@ -324,28 +324,39 @@ latexmath:[R_N] :: aerosandbox provides the rotation matrix for the leading edge
 
 The global homogeneous transformation matrix latexmath:[C_N] for aerosandbox is:
 
-latexmath:[C_N =  T(S_{i-1}, L_{i-1}, D_{i-1}) \cdot T(C_{i} rc_{i}, 0, 0)\cdot R_y(\iota_i) \cdot T(-C_{i} rc_{i}, 0,0) \cdot R_x(\delta_i) ]
+latexmath:[C_N =  T(S_{i-1}, L_{i-1}, D_{i-1}) \cdot T(C_{i} rc_{i}, 0, 0)\cdot R^-_y(\iota_i) \cdot T(-C_{i} rc_{i}, 0,0) \cdot R_x(\delta_i) ]
+
+with latexmath:[
+R^-_y(\iota_i)=
+  \begin{bmatrix}
+    \cos(\iota_i) & 0 & -\sin(\iota_i) & 0\\
+    0 & 1 & 0 & 0 \\
+    \sin(\iota_i) & 0 & \cos(\iota_i) & 0 \\
+    0 & 0 & 0 & 1 \\
+  \end{bmatrix} ],
+
+as aerosandbox seems to rotate in the wrong direction.
 
 latexmath:[C_N = \left[
 \begin{matrix}
 \cos{\left(\iota_{i} \right)} & \sin{\left(\delta_{i} \right)} \sin{\left(\iota_{i} \right)} & \sin{\left(\iota_{i} \right)} \cos{\left(\delta_{i} \right)} & - Ci rc_{i} \cos{\left(\iota_{i} \right)} + Ci rc_{i} + S_{prev}\\
 0 & \cos{\left(\delta_{i} \right)} & - \sin{\left(\delta_{i} \right)} & L_{prev}\\
-- \sin{\left(\iota_{i} \right)} & \sin{\left(\delta_{i} \right)} \cos{\left(\iota_{i} \right)} & \cos{\left(\delta_{i} \right)} \cos{\left(\iota_{i} \right)} & Ci rc_{i} \sin{\left(\iota_{i} \right)} + D_{prev}
+\sin{\left(\iota_{i} \right)} & \sin{\left(\delta_{i} \right)} \cos{\left(\iota_{i} \right)} & \cos{\left(\delta_{i} \right)} \cos{\left(\iota_{i} \right)} & -Ci rc_{i} \sin{\left(\iota_{i} \right)} + D_{prev}
 \\0 & 0 & 0 & 1
 \end{matrix}
 \right \] ]
 
 From this we can derive:
 
-latexmath:[\iota_i = \operatorname{atan2}(-C_N[2,0\], C_N[0,0\])]
+latexmath:[\iota_i = \operatorname{atan2}(C_N[2,0\], C_N[0,0\])]
 
 latexmath:[\delta_i = \operatorname{atan2}(-C_N[1,2\], C_N[1,1\])]
 
-latexmath:[S_i = (C_N[0,3\]+c_i\tau_iC_N[0,0\] - c_i\tau_i)]
+latexmath:[S_i = C_N[0,3\]+c_i\tau_iC_N[0,0\] - c_i\tau_i]
 
 latexmath:[L_i=C_N[1,3\]]
 
-latexmath:[D_i=(C_N[2,3\]-c_i\tau_i-C_N[2,0\])]
+latexmath:[D_i=C_N[2,3\]-c_i\tau_i + C_N[2,0\]]
 
 To enable the aerosandbox mode we need to set WingConfiguration.parameters = "aerosandbox".
 
