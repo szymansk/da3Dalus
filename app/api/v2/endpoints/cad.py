@@ -147,7 +147,13 @@ async def create_wing_loft(aeroplane_id: AeroPlaneID = Path(..., description="Th
 
         try:
             # Load the parent aeroplane
-            plane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
+            plane = (db.query(AeroplaneModel)
+                     .options(joinedload(AeroplaneModel.wings)
+                              .joinedload(WingModel.x_secs)
+                              .joinedload(WingXSecModel.control_surface))
+                     .options(joinedload(AeroplaneModel.fuselages)
+                              .joinedload(FuselageModel.x_secs))
+                     .filter(AeroplaneModel.uuid == aeroplane_id).first())
             if not plane:
                 raise HTTPException(status_code=404, detail="Aeroplane not found")
             # Find the wing belonging to this aeroplane
