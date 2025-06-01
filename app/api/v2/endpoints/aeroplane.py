@@ -12,6 +12,7 @@ from starlette.responses import JSONResponse
 from app import schemas
 from app.db.session import get_db
 from app.models.aeroplanemodel import AeroplaneModel, WingModel, WingXSecModel, ControlSurfaceModel
+from app.schemas.AeroplaneRequest import AeroplaneMassRequest
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +161,66 @@ async def delete_aeroplane(
         raise
     except Exception as e:
         logging.error(f"Unexpected error when deleting aeroplane: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
+@router.get("/aeroplanes/{aeroplane_id}/total_mass_kg",
+            status_code=status.HTTP_200_OK,
+            response_model=AeroplaneMassRequest,
+            tags=["aeroplanes"])
+async def get_aeroplane_total_mass_in_kg(
+        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+        db: Session = Depends(get_db)
+) -> AeroplaneMassRequest:
+    """
+    Returns the total weight of the aeroplane in kg.
+    """
+    try:
+        aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
+        if not aeroplane:
+            raise HTTPException(status_code=404, detail="Aeroplane not found")
+        if aeroplane.total_mass_kg is None:
+            raise HTTPException(status_code=404, detail="Aeroplane weight not set")
+        return AeroplaneMassRequest(total_mass_kg=aeroplane.total_mass_kg)
+    except SQLAlchemyError as e:
+        logging.error(f"Database error when getting aeroplane weight: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Unexpected error when getting aeroplane weight: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
+@router.post("/aeroplanes/{aeroplane_id}/total_mass_kg",
+             status_code=status.HTTP_201_CREATED,
+             response_class=Response,
+             tags=["aeroplanes"])
+async def create_aeroplane_total_mass_kg(
+        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+        total_mass_kg: AeroplaneMassRequest = Body(..., description="The total mass of the aeroplane in kg"),
+        db: Session = Depends(get_db)
+):
+    """ Set the total mass of the aeroplane in kg. If it already exists, it will be overwritten. """
+    try:
+        created: bool = False
+        with db.begin():
+            aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
+            if not aeroplane:
+                raise HTTPException(status_code=404, detail="Aeroplane not found")
+            if aeroplane.total_mass_kg is None:
+                created = True
+            aeroplane.total_mass_kg = total_mass_kg.total_mass_kg
+            aeroplane.updated_at = datetime.now()
+        if created:
+            return Response(status_code=status.HTTP_201_CREATED)
+        else:
+            return Response(status_code=status.HTTP_200_OK)
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when setting aeroplane mass: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    except Exception as e:
+        logger.error(f"Unexpected error when setting aeroplane mass: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 

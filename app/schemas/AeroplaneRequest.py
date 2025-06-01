@@ -1,9 +1,9 @@
 import json
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Dict, Any, Union, OrderedDict
+from typing import Optional, Dict, Any, Union, OrderedDict, List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.schemas.Printer3dSettings import Printer3dSettings
 from app.schemas.Servo import Servo
@@ -49,6 +49,22 @@ class ExporterUrlType(str, Enum):
     AMF = "amf"
     IGES = "iges"
     THREEMF = "3mf"
+
+class AeroplaneMassRequest(BaseModel):
+    total_mass_kg: float = Field(..., description="Total mass of the aeroplan in kg")
+
+class AlphaSweepRequest(BaseModel):
+    alpha_start: float = Field(..., description="start alpha in degrees")
+    alpha_end: float = Field(..., description="end alpha in degrees")
+    alpha_step: float = Field(..., description="steps in degrees")
+    velocity: Optional[float] = Field(10.0, description="velocity in m/s")
+    beta: Optional[float] = Field(1.0, description="beta (yaw angle) in m/s")
+    p: Optional[float] = Field(0.0, description="roll rate in rad/s")
+    q: Optional[float] = Field(0.0, description="pitch in rad/s")
+    r: Optional[float] = Field(0.0, description="roll in rad/s")
+    xyz_ref: Optional[List[float]] = Field([0.0,0.0,0.0], description="xyz reference points for moments and rotation rates")
+    altitude: Optional[float] = Field(0.0, description="altitude in m")
+
 
 class CreateWingLoftRequest(BaseModel):
     wings: Optional[Dict[str, Wing]]

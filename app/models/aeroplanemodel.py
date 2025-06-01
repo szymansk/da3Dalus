@@ -126,6 +126,7 @@ class AeroplaneModel(Base):
     __tablename__ = "aeroplanes"
     uuid = Column(GUID, default=lambda: uuid.uuid4(), unique=True, nullable=False)
     name = Column(String, nullable=False)
+    total_mass_kg = Column(Float, nullable=True)
     xyz_ref = Column(JSON, default=[0, 0, 0])  # Store as JSON array
     created_at = Column(
         DateTime(timezone=True),

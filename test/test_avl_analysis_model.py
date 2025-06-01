@@ -15,7 +15,7 @@ To run this test, you would need:
 Usage:
     python test_avl_analysis_model.py
 """
-from cad_designer.airplane.aircraft_topology.models.analysis_model import AvlAnalysisModel
+from cad_designer.airplane.aircraft_topology.models.analysis_model import AnalysisModel
 
 
 # The following imports would be needed in a real environment
@@ -143,7 +143,7 @@ def test_avl_analysis_model_from_dict():
                  'M_w': (-6.769527379318896e-05, -2.4450663063160825, 0.010900310967545396)}
 
     # Create the model from the dictionary
-    model = AvlAnalysisModel.from_dict(test_data)
+    model = AnalysisModel.from_dict(test_data)
     print("Successfully created AvlAnalysisModel from dictionary")
 
     # Verify reference model

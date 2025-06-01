@@ -2,33 +2,30 @@ import http
 import json
 import logging
 import os
-import uuid
+
 from threading import Lock
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional, List, Dict, Any, Union, OrderedDict
+
+from typing import Optional, List, Dict, Any, Union
 from zipfile import ZipFile
 
-from executing.executing import non_sentinel_instructions
 from fastapi import APIRouter, HTTPException, Query, Body, Path, Depends
 from fastapi.responses import JSONResponse, FileResponse
 
 import aerosandbox as asb
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app import schemas
 from app.api.v2.endpoints.aeroplane import AeroPlaneID
 from app.db.session import get_db
-from app.models import AeroplaneModel
+from app.models import AeroplaneModel, WingModel, WingXSecModel
+from app.models.aeroplanemodel import FuselageModel
 from app.schemas import FuselageSchema, AsbWingSchema
 from cad_designer.airplane import ConstructionStepNode, GeneralJSONDecoder
 from cad_designer.airplane.aircraft_topology.components import ServoInformation
-from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import AirplaneConfiguration
-from cad_designer.airplane.aircraft_topology.models.analysis_model import AvlAnalysisModel
-from app.schemas.AeroplaneRequest import CreateAeroPlaneRequest, CreatorUrlType, ExporterUrlType, \
-    AnalysisToolUrlType, AeroplaneSettings
-from app.schemas.WingAnalysisRequest import WingAnalysisRequest
-from app.services.create_wing_configuration import create_wing_configuration, create_servo
+from app.schemas.AeroplaneRequest import CreatorUrlType, ExporterUrlType, AeroplaneSettings
+from app.services.create_wing_configuration import create_servo
 from cad_designer.airplane.aircraft_topology.wing import WingConfiguration
 
 router = APIRouter()
@@ -38,6 +35,7 @@ tasks = {}
 tasks_lock = Lock()
 executor = ThreadPoolExecutor(max_workers=4)  # Passen Sie die Anzahl der Worker an Ihre Bedürfnisse an
 
+logger = logging.getLogger(__file__)
 
 def create_aeroplane_task(aeroplane_id,
                           blueprint: Union[Path, Any],
@@ -131,17 +129,23 @@ def create_aeroplane_task(aeroplane_id,
 @router.post("/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}")
 async def create_wing_loft(aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
                            wing_name: str = Path(..., description="The ID of the wing"),
-                           creator_url_type: CreatorUrlType=CreatorUrlType.WING_LOFT,
-                           exporter_url_type: ExporterUrlType=ExporterUrlType.STL,
+                           creator_url_type: CreatorUrlType = CreatorUrlType.WING_LOFT,
+                           exporter_url_type: ExporterUrlType = ExporterUrlType.STL,
                            leading_edge_offset_factor: float = Query(0.1, description="only need for vase mode wing"),
                            trailing_edge_offset_factor: float = Query(0.15, description="only need for vase mode wing"),
                            aeroplane_settings: Optional[AeroplaneSettings] =
-                                Body(None, description="General settings for the construction, not needed for a simple loft"),
+                           Body(None,
+                                description="General settings for the construction, not needed for a simple loft"),
                            db: Session = Depends(get_db)):
     try:
-        #aeroplane_id = str(uuid.uuid4())
-        #logging.info(f"called create aeroplanes/wing/loft/stl endpoint for 'aeroplane_id: {aeroplane_id}'")
+        # aeroplane_id = str(uuid.uuid4())
+        #logger.info(f"called create aeroplanes/wings/loft/stl endpoint for 'aeroplane_id: {aeroplane_id}'")
         aeroplane_id_str = str(aeroplane_id)
+        if tasks.get(aeroplane_id_str) is not None:
+            raise HTTPException(
+                status_code=http.HTTPStatus.LOCKED,
+                detail={"aeroplane_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": "other task is running"}
+            )
         with tasks_lock:
             tasks[aeroplane_id_str] = {'status': 'PENDING'}
 
@@ -161,12 +165,12 @@ async def create_wing_loft(aeroplane_id: AeroPlaneID = Path(..., description="Th
             if not wing:
                 raise HTTPException(status_code=404, detail="Wing not found")
         except SQLAlchemyError as e:
-            logging.error(f"Database error when getting aeroplane wing: {e}")
+            logger.error(f"Database error when getting aeroplane wing: {e}")
             raise HTTPException(status_code=500, detail=f"Database error: {e}")
         except HTTPException:
             raise
         except Exception as e:
-            logging.error(f"Unexpected error when getting aeroplane wing: {e}")
+            logger.error(f"Unexpected error when getting aeroplane wing: {e}")
             raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
         construction = dict()
@@ -198,7 +202,7 @@ async def create_wing_loft(aeroplane_id: AeroPlaneID = Path(..., description="Th
                 }
             if creator_url_type == CreatorUrlType.WING_LOFT:
                 construction['blueprint']['successors'][wing]['creator']['$TYPE'] = 'WingLoftCreator'
-            else: # creator == CreatorUrlType.VASE_MODE_WING:
+            else:  # creator == CreatorUrlType.VASE_MODE_WING:
                 construction['blueprint']['successors'][wing]['creator']['$TYPE'] = 'VaseModeWingCreator'
                 construction['blueprint']['successors'][wing]['creator']['leading_edge_offset_factor'] = \
                     leading_edge_offset_factor
@@ -216,25 +220,26 @@ async def create_wing_loft(aeroplane_id: AeroPlaneID = Path(..., description="Th
         else:
             raise HTTPException(status_code=404, detail="Exporter not found")
 
-        construction['blueprint']['successors']['output-wing']=\
+        construction['blueprint']['successors']['output-wing'] = \
             {
-                    '$TYPE': 'ConstructionStepNode',
-                    'creator': {
-                        '$TYPE': exporter_class,
-                        'angular_tolerance': 0.1,
-                        'creator_id': 'output-wing',
-                        'file_path': './tmp/exports',
-                        'loglevel': 20,
-                        #'shapes_to_export': wings,
-                        'tolerance': 0.1
-                    },
+                '$TYPE': 'ConstructionStepNode',
+                'creator': {
+                    '$TYPE': exporter_class,
+                    'angular_tolerance': 0.1,
                     'creator_id': 'output-wing',
-                    'loglevel': 50,
-                    'successors': {}
-                }
+                    'file_path': './tmp/exports',
+                    'loglevel': 20,
+                    # 'shapes_to_export': wings,
+                    'tolerance': 0.1
+                },
+                'creator_id': 'output-wing',
+                'loglevel': 50,
+                'successors': {}
+            }
 
-        #create_aeroplane_task(str(aeroplane_id), construction["blueprint"], construction["wings"], construction["fuselages"], None)
-        tasks[aeroplane_id_str]['future'] = executor.submit(create_aeroplane_task, aeroplane_id_str, construction["blueprint"], construction["wings"], construction["fuselages"], None)
+        tasks[aeroplane_id_str]['future'] = executor.submit(create_aeroplane_task, aeroplane_id_str,
+                                                            construction["blueprint"], construction["wings"],
+                                                            construction["fuselages"], None)
         return JSONResponse(
             status_code=http.HTTPStatus.ACCEPTED,
             content={"aeroplane_id": aeroplane_id_str, "href": f"/aeroplanes/{aeroplane_id_str}"}
@@ -253,20 +258,20 @@ def asbWingSchemaToWingConfig(wing) -> WingConfiguration:
         airfoil=asb.Airfoil(
             name=os.path.abspath(xs.airfoil),
         ),
-        control_surfaces= None,
-        #[asb.ControlSurface( #TODO: Lazy loading of controlsurface does not work
-        #    name=xs.control_surface.name,
-        #    symmetric=xs.control_surface.symmetric,
-        #    deflection=xs.control_surface.deflection,
-        #    hinge_point=xs.control_surface.hinge_point,
-        #    trailing_edge=True,
-        #)] if xs.control_surface else []
+        control_surfaces=
+        [asb.ControlSurface(
+            name=xs.control_surface.name,
+            symmetric=xs.control_surface.symmetric,
+            deflection=xs.control_surface.deflection,
+            hinge_point=xs.control_surface.hinge_point,
+            trailing_edge=True,
+        )] if xs.control_surface else []
     ) for xs in asb_wing.x_secs]
     wing_config = WingConfiguration.from_asb(xsecs, asb_wing.symmetric)
     return wing_config
 
 
-@router.get("/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}")
+@router.get("/aeroplanes/{aeroplane_id}/status")
 async def get_aeroplane_task_status(aeroplane_id: str):
     logging.info(f"called get aeroplane endpoint for 'aeroplane_id: {aeroplane_id}'")
     with tasks_lock:
@@ -302,6 +307,7 @@ async def get_aeroplane_task_status(aeroplane_id: str):
             content={"aeroplane_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": task['status'],
                      "message": "Task is processing."}
         )
+
 
 @router.get("/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}/zip")
 async def download_aeroplane_zip(aeroplane_id: str):
@@ -341,101 +347,3 @@ async def download_aeroplane_zip(aeroplane_id: str):
         filename=os.path.basename(file_path)
     )
 
-@router.post("/aeroplanes/{aeroplane_id}/wings/{wing_name}/{analysis_tool}")
-async def analyze_wing_post(analysis_tool: AnalysisToolUrlType = AnalysisToolUrlType.AVL,
-                            request: WingAnalysisRequest = Body(...)):
-    """
-    Analyze wings using AVL and return the analysis results.
-
-    This endpoint accepts wing configurations in the request body and performs AVL analysis.
-
-    Args:
-        request: The wing analysis request containing wing configurations and operating parameters
-
-    Returns:
-        AvlAnalysisModel: The AVL analysis results
-    """
-    try:
-        # Create a temporary directory
-
-        # Convert wings from the request to WingConfiguration objects
-        wings = {key: create_wing_configuration(value) for key, value in request.wings.items()}
-
-        # Create an AirplaneConfiguration object
-        airplane_config = AirplaneConfiguration(
-            name="Temporary Airplane",
-            total_mass_kg=1.0,  # Default mass
-            wings=list(wings.values()),
-            fuselages=None
-        )
-
-        # Create the atmosphere
-        atmosphere = asb.Atmosphere(
-            altitude=request.altitude
-        )
-
-        # Create the operating point
-        op_point = asb.OperatingPoint(
-            velocity=request.velocity,
-            alpha=request.alpha,
-            beta=request.beta,
-            p=request.p,
-            q=request.q,
-            r=request.r,
-            atmosphere=atmosphere
-        )
-
-        asb_airplane = airplane_config.asb_airplane
-        asb_airplane.xyz_ref = request.xyz_ref
-
-        if analysis_tool == AnalysisToolUrlType.AVL:
-            # Run the AVL analysis
-            avl = asb.AVL(
-                airplane=asb_airplane,
-                op_point=op_point,
-                xyz_ref=request.xyz_ref
-            )
-
-            # Get the results
-            avl_results = avl.run()
-            analysis_model = AvlAnalysisModel.from_avl_dict(avl_results)
-        elif analysis_tool == AnalysisToolUrlType.AEROBUILDUP:
-            abu = asb.AeroBuildup(
-                airplane=asb_airplane,
-                    op_point=op_point,
-                    xyz_ref=request.xyz_ref
-                )
-
-            # Get the results
-            abu_results = abu.run_with_stability_derivatives()
-            analysis_model = AvlAnalysisModel.from_abu_dict(
-                abu_results,
-                asb_airplan=asb_airplane
-            )
-        elif analysis_tool == AnalysisToolUrlType.VORTEX_LATTICE:
-            vlm = asb.VortexLatticeMethod(
-                airplane=asb_airplane,
-                op_point=op_point,
-                xyz_ref=request.xyz_ref
-            )
-
-            # Get the results
-            vlm_results = vlm.run_with_stability_derivatives()
-            analysis_model = AvlAnalysisModel.from_abu_dict(
-                vlm_results,
-                asb_airplan=asb_airplane
-            )
-            pass
-
-
-        # Convert to AvlAnalysisModel
-
-        # Return the results
-        return analysis_model
-
-    except Exception as err:
-        logging.error(f"Error analyzing wing: {str(err)}")
-        raise HTTPException(
-            status_code=http.HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail=str(err)
-        )

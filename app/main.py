@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from app.api.v1.endpoints import aeroplane as aeroplane_v1, health
 from app.api.v2.endpoints import aeroplane as aeroplane_v2
-from app.api.v2.endpoints import cad
+from app.api.v2.endpoints import cad, aeroanalysis, operating_points
 
 import uvicorn
 
@@ -35,7 +35,10 @@ app_v2 = FastAPI(
     redoc_url="/redoc",            # served at /api/v2/redoc
 )
 app_v2.include_router(aeroplane_v2.router, prefix="", tags=["aeroplane"])
-app_v2.include_router(cad.router, prefix="", tags=["aeroplane", "cad"])
+app_v2.include_router(cad.router, prefix="", tags=["cad"])
+app_v2.include_router(aeroanalysis.router, prefix="", tags=["aeroanalysis"])
+
+app_v2.include_router(operating_points.router, prefix="", tags=["operating_points"])
 
 # 4️⃣ Mount both under your root
 app.mount("/api/v1", app_v1)

@@ -15,7 +15,7 @@ import aerosandbox as asb
 from cad_designer.airplane import ConstructionStepNode, GeneralJSONDecoder
 from cad_designer.airplane.aircraft_topology.components import ServoInformation
 from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import AirplaneConfiguration
-from cad_designer.airplane.aircraft_topology.models.analysis_model import AvlAnalysisModel
+from cad_designer.airplane.aircraft_topology.models.analysis_model import AnalysisModel
 from app.schemas.AeroplaneRequest import CreateAeroPlaneRequest, CreateWingLoftRequest, CreatorUrlType, ExporterUrlType, \
     AnalysisToolUrlType
 from app.schemas.WingAnalysisRequest import WingAnalysisRequest
@@ -282,7 +282,7 @@ async def analyze_wing_post(analysis_tool: AnalysisToolUrlType = AnalysisToolUrl
         request: The wing analysis request containing wing configurations and operating parameters
 
     Returns:
-        AvlAnalysisModel: The AVL analysis results
+        AnalysisModel: The AVL analysis results
     """
     try:
         # Create a temporary directory
@@ -327,7 +327,7 @@ async def analyze_wing_post(analysis_tool: AnalysisToolUrlType = AnalysisToolUrl
 
             # Get the results
             avl_results = avl.run()
-            analysis_model = AvlAnalysisModel.from_avl_dict(avl_results)
+            analysis_model = AnalysisModel.from_avl_dict(avl_results)
         elif analysis_tool == AnalysisToolUrlType.AEROBUILDUP:
             abu = asb.AeroBuildup(
                 airplane=asb_airplane,
@@ -337,9 +337,10 @@ async def analyze_wing_post(analysis_tool: AnalysisToolUrlType = AnalysisToolUrl
 
             # Get the results
             abu_results = abu.run_with_stability_derivatives()
-            analysis_model = AvlAnalysisModel.from_abu_dict(
+            analysis_model = AnalysisModel.from_abu_dict(
                 abu_results,
-                asb_airplan=asb_airplane
+                asb_airplan=asb_airplane,
+                methode='aerobuildup',
             )
         elif analysis_tool == AnalysisToolUrlType.VORTEX_LATTICE:
             vlm = asb.VortexLatticeMethod(
@@ -350,9 +351,10 @@ async def analyze_wing_post(analysis_tool: AnalysisToolUrlType = AnalysisToolUrl
 
             # Get the results
             vlm_results = vlm.run_with_stability_derivatives()
-            analysis_model = AvlAnalysisModel.from_abu_dict(
+            analysis_model = AnalysisModel.from_abu_dict(
                 vlm_results,
-                asb_airplan=asb_airplane
+                asb_airplan=asb_airplane,
+                methode='vortex_lattice'
             )
             pass
 

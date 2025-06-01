@@ -114,6 +114,7 @@ class AvlReferenceModel(BaseModel):
     Yref: Optional[float] = Field(None, title="Y Reference", description="Y reference location [m]")
     Zref: Optional[float] = Field(None, title="Z Reference", description="Z reference location [m]")
     Xnp: Optional[float] = Field(None, title="Neutral Point", description="Neutral point location [m]")
+    Xnp_lat: Optional[float] = Field(None, title="Lateral Neutral Point", description="Lateral Neutral point location [m]")
     Strips: Optional[float] = Field(None, title="Strip Count", description="Number of strips in the model [-]")
     Surfaces: Optional[float] = Field(None, title="Surface Count", description="Number of surfaces in the model [-]")
     Vortices: Optional[float] = Field(None, title="Vortex Count", description="Number of vortices in the model [-]")
@@ -207,7 +208,8 @@ class AvlFlightConditionModel(BaseModel):
     r_prime_b_div_2V: Optional[float] = Field(None, title="Normalized Yaw Acceleration", description="Normalized yaw acceleration [-]")#, alias="r'b/2V"
     rb_div_2V: Optional[float] = Field(None, title="Normalized Yaw Rate", description="Normalized yaw rate [-]")#, alias="rb/2V"
 
-class AvlAnalysisModel(BaseModel):
+class AnalysisModel(BaseModel):
+    method: Literal['avl', 'aerobuildup', 'vortex_lattice'] = Field(..., title="Analysis Method", description="Method used for analysis: 'avl', 'aerobuildup', or 'vortex_lattice'")
     reference: AvlReferenceModel
     forces: AvlForceModel
     moments: AvlMomentModel
@@ -217,7 +219,7 @@ class AvlAnalysisModel(BaseModel):
     flight_condition: AvlFlightConditionModel
 
     @staticmethod
-    def from_avl_dict(data: dict) -> 'AvlAnalysisModel':
+    def from_avl_dict(data: dict) -> 'AnalysisModel':
         """
         Create an AvlAnalysisModel instance from a flat dictionary structure.
 
@@ -236,6 +238,7 @@ class AvlAnalysisModel(BaseModel):
             Yref=data['Yref'],
             Zref=data['Zref'],
             Xnp=data['Xnp'],
+            Xnp_lat=data['Xref'] - (data["Cnb"] * (data['Bref'] / data["CYb"])) if data['CYb'] != 0 else None,  # Example calculation for Xnp_lat
             Strips=data['Strips'],
             Surfaces=data['Surfaces'],
             Vortices=data['Vortices']
@@ -383,7 +386,8 @@ class AvlAnalysisModel(BaseModel):
         )
 
         # Create main model
-        return AvlAnalysisModel(
+        return AnalysisModel(
+            method='avl',
             reference=reference,
             forces=forces,
             moments=moments,
@@ -394,14 +398,20 @@ class AvlAnalysisModel(BaseModel):
         )
 
     @staticmethod
-    def from_abu_dict(data: dict, asb_airplan: asb.Airplane) -> 'AvlAnalysisModel':
+    def from_abu_dict(data: dict, asb_airplan: asb.Airplane, operation_point = None, methode: Literal['aerobuildup', 'vortex_lattice'] = 'aerobuildup') -> 'AnalysisModel':
         """Create an AvlAnalysisModel from ABU-style dict, mapping provided values and using None for missing."""
         # Reference
+        x_np = data.get('x_np')
+        if isinstance(x_np, (list, tuple)):
+            xnp_val = x_np[0] if x_np else None
+        else:
+            xnp_val = x_np
+
         x_np_lat = data.get('x_np_lateral')
         if isinstance(x_np_lat, (list, tuple)):
-            xnp_val = x_np_lat[0] if x_np_lat else None
+            xnp_lat_val = x_np_lat[0] if x_np_lat else None
         else:
-            xnp_val = x_np_lat
+            xnp_lat_val = x_np_lat
 
         reference = AvlReferenceModel(
             Bref=asb_airplan.b_ref,
@@ -411,6 +421,7 @@ class AvlAnalysisModel(BaseModel):
             Yref=asb_airplan.xyz_ref[1],
             Zref=asb_airplan.xyz_ref[2],
             Xnp=xnp_val,
+            Xnp_lat=xnp_lat_val,
             Strips=None,
             Surfaces=None,
             Vortices=None
@@ -507,37 +518,37 @@ class AvlAnalysisModel(BaseModel):
         )
         # Derivatives
         derivatives = AvlDerivativesModel(
-            CLa=data.get('CLa'),
-            CLb=data.get('CLb'),
-            CLp=data.get('CLp'),
-            CLq=data.get('CLq'),
-            CLr=data.get('CLr'),
-            CYa=data.get('CYa'),
-            CYb=data.get('CYb'),
-            CYp=data.get('CYp'),
-            CYq=data.get('CYq'),
-            CYr=data.get('CYr'),
-            Cla=data.get('Cla'),
-            Clb=data.get('Clb'),
-            Clp=data.get('Clp'),
-            Clq=data.get('Clq'),
-            Clr=data.get('Clr'),
-            Cma=data.get('Cma'),
-            Cmb=data.get('Cmb'),
-            Cmp=data.get('Cmp'),
-            Cmq=data.get('Cmq'),
-            Cmr=data.get('Cmr'),
-            Cna=data.get('Cna'),
-            Cnb=data.get('Cnb'),
-            Cnp=data.get('Cnp'),
-            Cnq=data.get('Cnq'),
-            Cnr=data.get('Cnr'),
-            Clb_Cnr_div_Clr_Cnb=data.get('Clb Cnr / Clr Cnb')
+            CLa=data.get('CLa') if type(data.get('CLa')) is list else [data.get('CLa')],
+            CLb=data.get('CLb') if type(data.get('CLb')) is list else [data.get('CLb')],
+            CLp=data.get('CLp') if type(data.get('CLp')) is list else [data.get('CLp')],
+            CLq=data.get('CLq') if type(data.get('CLq')) is list else [data.get('CLq')],
+            CLr=data.get('CLr') if type(data.get('CLr')) is list else [data.get('CLr')],
+            CYa=data.get('CYa') if type(data.get('CYa')) is list else [data.get('CYa')],
+            CYb=data.get('CYb') if type(data.get('CYb')) is list else [data.get('CYb')],
+            CYp=data.get('CYp') if type(data.get('CYp')) is list else [data.get('CYp')],
+            CYq=data.get('CYq') if type(data.get('CYq')) is list else [data.get('CYq')],
+            CYr=data.get('CYr') if type(data.get('CYr')) is list else [data.get('CYr')],
+            Cla=data.get('Cla') if type(data.get('Cla')) is list else [data.get('Cla')],
+            Clb=data.get('Clb') if type(data.get('Clb')) is list else [data.get('Clb')],
+            Clp=data.get('Clp') if type(data.get('Clp')) is list else [data.get('Clp')],
+            Clq=data.get('Clq') if type(data.get('Clq')) is list else [data.get('Clq')],
+            Clr=data.get('Clr') if type(data.get('Clr')) is list else [data.get('Clr')],
+            Cma=data.get('Cma') if type(data.get('Cma')) is list else [data.get('Cma')],
+            Cmb=data.get('Cmb') if type(data.get('Cmb')) is list else [data.get('Cmb')],
+            Cmp=data.get('Cmp') if type(data.get('Cmp')) is list else [data.get('Cmp')],
+            Cmq=data.get('Cmq') if type(data.get('Cmq')) is list else [data.get('Cmq')],
+            Cmr=data.get('Cmr') if type(data.get('Cmr')) is list else [data.get('Cmr')],
+            Cna=data.get('Cna') if type(data.get('Cna')) is list else [data.get('Cna')],
+            Cnb=data.get('Cnb') if type(data.get('Cnb')) is list else [data.get('Cnb')],
+            Cnp=data.get('Cnp') if type(data.get('Cnp')) is list else [data.get('Cnp')],
+            Cnq=data.get('Cnq') if type(data.get('Cnq')) is list else [data.get('Cnq')],
+            Cnr=data.get('Cnr') if type(data.get('Cnr')) is list else [data.get('Cnr')],
+            Clb_Cnr_div_Clr_Cnb=[(data['Clb']*data['Cnr']) / (data['Clr']/data['Cnb'])]
         )
         # Control Surfaces
         control_surfaces = AvlControlSurfaceModel(control_surfaces=None)
         # Flight Condition
-        op_point = data.get('wing_aero_components')[0].op_point
+        op_point = data.get('wing_aero_components')[0].op_point if data.get('wing_aero_components') else operation_point
         flight_condition = AvlFlightConditionModel(
             alpha=[op_point.alpha],
             beta=op_point.beta,
@@ -551,7 +562,8 @@ class AvlAnalysisModel(BaseModel):
             r_prime_b_div_2V=None,
             rb_div_2V=None
         )
-        return AvlAnalysisModel(
+        return AnalysisModel(
+            method=methode,
             reference=reference,
             forces=forces,
             moments=moments,
