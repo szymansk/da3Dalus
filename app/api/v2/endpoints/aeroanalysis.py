@@ -30,7 +30,9 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-@router.post("/aeroplanes/{aeroplane_id}/wings/{wing_name}/{analysis_tool}")
+@router.post("/aeroplanes/{aeroplane_id}/wings/{wing_name}/{analysis_tool}",
+             tags=["mcon"],
+             operation_id="analyze_wing_aerodynamics_at_operating_point",)
 async def analyze_wing_post(aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
                             wing_name: str = Path(..., description="The ID of the wing"),
                             operating_point: OperatingPointSchema = Body(...,
@@ -93,7 +95,9 @@ async def analyze_wing_post(aeroplane_id: AeroPlaneID = Path(..., description="T
         )
 
 
-@router.post("/aeroplanes/{aeroplane_id}/operating_point/{analysis_tool}")
+@router.post("/aeroplanes/{aeroplane_id}/operating_point/{analysis_tool}",
+             tags=["mcp"],
+             operation_id="analyze_airplane_at_operating_point")
 async def analyze_airplane_post(aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
                                 operating_point: OperatingPointSchema = Body(...,
                                                                              description="The operating point of the analysis"),
@@ -278,7 +282,9 @@ async def analyse_aerodynamics(analysis_tool: AnalysisToolUrlType,
         raise ValueError(
             f"Invalid analysis tool: {analysis_tool}. Must be one of: AVL, AeroBuildup, or Vortex Lattice.")
 
-@router.post("/aeroplanes/{aeroplane_id}/alpha_sweep")
+@router.post("/aeroplanes/{aeroplane_id}/alpha_sweep",
+             tags=["mcp"],
+             operation_id="analyze_airplane_perform_alpha_sweep")
 async def analyze_airplane_alpha_sweep(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
         sweep_request: AlphaSweepRequest = Body(..., description="Sweep definitions and flight conditions"),
@@ -336,7 +342,9 @@ async def analyze_airplane_alpha_sweep(
         )
 
 
-@router.post("/aeroplanes/{aeroplane_id}/simple_sweep")
+@router.post("/aeroplanes/{aeroplane_id}/simple_sweep",
+             tags=["mcp"],
+             operation_id="analyze_airplane_perform_parameter_sweep")
 async def analyze_airplane_simple_sweep(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
         sweep_request: SimpleSweepRequest = Body(..., description="Sweep definitions and flight conditions"),

@@ -226,3 +226,9 @@ tmp/exports/
 test/tmp/
 
 *.db
+
+output_figure.html
+
+test/main_wing.json
+
+components/constructions/configurator-test-wing.root.json

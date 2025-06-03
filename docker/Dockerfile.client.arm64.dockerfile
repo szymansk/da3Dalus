@@ -55,4 +55,6 @@ RUN source ${CONDA_INSTALL_DIR}/bin/activate \
     alembic \
     casadi=3.7.0 \
     python-kaleido \
-    && pip install aerosandbox[full]
+    && pip install aerosandbox[full]\
+    && pip install fastapi-mcp
+
