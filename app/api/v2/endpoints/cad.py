@@ -6,18 +6,17 @@ import os
 from threading import Lock
 from concurrent.futures import ThreadPoolExecutor
 
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, Dict, Any, Union
 from zipfile import ZipFile
 
 from fastapi import APIRouter, HTTPException, Query, Body, Path, Depends
 from fastapi.responses import JSONResponse, FileResponse
 
-import aerosandbox as asb
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
-from app import schemas
 from app.api.v2.endpoints.aeroplane import AeroPlaneID
+from app.converters.model_schema_converters import wingModelToWingConfig
 from app.db.session import get_db
 from app.models import AeroplaneModel, WingModel, WingXSecModel
 from app.models.aeroplanemodel import FuselageModel
@@ -39,7 +38,7 @@ logger = logging.getLogger(__file__)
 
 def create_aeroplane_task(aeroplane_id,
                           blueprint: Union[Path, Any],
-                          wings: Optional[Dict[str, AsbWingSchema]] = None,
+                          wings: Optional[Dict[str, WingModel]] = None,
                           fuselages: Optional[Dict[str, FuselageSchema]] = None,
                           request_settings: Optional[AeroplaneSettings] = None):
     try:
@@ -65,7 +64,7 @@ def create_aeroplane_task(aeroplane_id,
         else:
             settings = {}
 
-        wing_config: Dict[str, WingConfiguration] = {k: asbWingSchemaToWingConfig(w) for k, w in wings.items()}
+        wing_config: Dict[str, WingConfiguration] = {k: wingModelToWingConfig(w) for k, w in wings.items()}
 
         # if blueprint is a dict, we assume it is a JSON object
         if isinstance(blueprint, dict):
@@ -246,29 +245,6 @@ async def create_wing_loft(aeroplane_id: AeroPlaneID = Path(..., description="Th
         )
     except Exception as err:
         raise HTTPException(status_code=500, detail=str(err))
-
-
-def asbWingSchemaToWingConfig(wing) -> WingConfiguration:
-    asb_wing: schemas.AsbWingSchema = schemas.AsbWingSchema.model_validate(wing, from_attributes=True)
-    # Convert the wing to a WingConfiguration object
-    xsecs: List[asb.WingXSec] = [asb.WingXSec(
-        xyz_le=xs.xyz_le,
-        chord=xs.chord,
-        twist=xs.twist,
-        airfoil=asb.Airfoil(
-            name=os.path.abspath(xs.airfoil),
-        ),
-        control_surfaces=
-        [asb.ControlSurface(
-            name=xs.control_surface.name,
-            symmetric=xs.control_surface.symmetric,
-            deflection=xs.control_surface.deflection,
-            hinge_point=xs.control_surface.hinge_point,
-            trailing_edge=True,
-        )] if xs.control_surface else []
-    ) for xs in asb_wing.x_secs]
-    wing_config = WingConfiguration.from_asb(xsecs, asb_wing.symmetric)
-    return wing_config
 
 
 @router.get("/aeroplanes/{aeroplane_id}/status")

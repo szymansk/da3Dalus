@@ -113,8 +113,8 @@ class AvlReferenceModel(BaseModel):
     Xref: Optional[float] = Field(None, title="X Reference", description="X reference location [m]")
     Yref: Optional[float] = Field(None, title="Y Reference", description="Y reference location [m]")
     Zref: Optional[float] = Field(None, title="Z Reference", description="Z reference location [m]")
-    Xnp: Optional[float] = Field(None, title="Neutral Point", description="Neutral point location [m]")
-    Xnp_lat: Optional[float] = Field(None, title="Lateral Neutral Point", description="Lateral Neutral point location [m]")
+    Xnp: Optional[List[float]] = Field(None, title="Neutral Point", description="Neutral point location [m]")
+    Xnp_lat: Optional[List[float]] = Field(None, title="Lateral Neutral Point", description="Lateral Neutral point location [m]")
     Strips: Optional[float] = Field(None, title="Strip Count", description="Number of strips in the model [-]")
     Surfaces: Optional[float] = Field(None, title="Surface Count", description="Number of surfaces in the model [-]")
     Vortices: Optional[float] = Field(None, title="Vortex Count", description="Number of vortices in the model [-]")
@@ -146,11 +146,11 @@ class AvlCoefficientsModel(BaseModel):
     Cm: Optional[List[float]] = Field(None, title="Pitch Moment Coefficient", description="List of pitch moment coefficient for each alpha [-]")
     Cn: Optional[List[float]] = Field(None, title="Yaw Moment Coefficient", description="List of yaw moment coefficient for each alpha [-]")
     Cn_prime: Optional[List[float]] = Field(None, title="Yaw Moment Prime", description="List of yaw moment coefficient prime for each alpha [-]")#, alias="Cn'")
-    CDff: Optional[List[float]] = Field(None, title="Form Factor Drag", description="List of form factor drag coefficient for each alpha [-]")
+    CDff: Optional[List[float]] = Field(None, title="Drag in Trefftz Plane", description="List ofTrefftz Plane drag coefficient for each alpha [-]")
     CDind: Optional[List[float]] = Field(None, title="Induced Drag", description="List of induced drag coefficient for each alpha [-]")
     CDvis: Optional[List[float]] = Field(None, title="Viscous Drag", description="List of viscous drag coefficient for each alpha [-]")
-    CLff: Optional[List[float]] = Field(None, title="Form Factor Lift", description="List of form factor lift coefficient for each alpha [-]")
-    CYff: Optional[List[float]] = Field(None, title="Form Factor Side Force", description="List of form factor side force coefficient for each alpha [-]")
+    CLff: Optional[List[float]] = Field(None, title="Lift in Trefftz Plane", description="List of Trefftz Plane lift coefficient for each alpha [-]")
+    CYff: Optional[List[float]] = Field(None, title="Trefftz Plane Side Force", description="List of Trefftz Plane side force coefficient for each alpha [-]")
     e: Optional[List[float]] = Field(None, title="Oswald Efficiency", description="List of Oswald efficiency factor for each alpha [-]")
 
 class AvlDerivativesModel(BaseModel):
@@ -196,12 +196,12 @@ class AvlControlSurfaceModel(BaseModel):
     control_surfaces: Optional[List[AvlSingleControlSurfaceModel]] = Field(None, title="Control Surfaces", description="List of control surfaces")
 
 class AvlFlightConditionModel(BaseModel):
-    alpha: Optional[List[float]] = Field(None, title="Angle of Attack", description="List of angle of attack for each alpha [deg]")
-    beta: Optional[float] = Field(None, title="Sideslip Angle", description="Sideslip angle [deg]")
-    mach: Optional[float] = Field(None, title="Mach Number", description="Mach number [-]")
-    p: Optional[float] = Field(None, title="Roll Rate", description="Roll rate [rad/s]")
-    q: Optional[float] = Field(None, title="Pitch Rate", description="Pitch rate [rad/s]")
-    r: Optional[float] = Field(None, title="Yaw Rate", description="Yaw rate [rad/s]")
+    alpha: Optional[Union[float,List[float]]] = Field(None, title="Angle of Attack", description="List of angle of attack for each alpha [deg]")
+    beta: Optional[Union[float,List[float]]] = Field(None, title="Sideslip Angle", description="Sideslip angle [deg]")
+    mach: Optional[Union[float,List[float]]] = Field(None, title="Mach Number", description="Mach number [-]")
+    p: Optional[Union[float,List[float]]] = Field(None, title="Roll Rate", description="Roll rate [rad/s]")
+    q: Optional[Union[float,List[float]]] = Field(None, title="Pitch Rate", description="Pitch rate [rad/s]")
+    r: Optional[Union[float,List[float]]] = Field(None, title="Yaw Rate", description="Yaw rate [rad/s]")
     p_prime_b_div_2V: Optional[float] = Field(None, title="Normalized Roll Acceleration", description="Normalized roll acceleration [-]")#, alias="p'b/2V"
     pb_div_2V: Optional[float] = Field(None, title="Normalized Roll Rate", description="Normalized roll rate [-]")#, alias="pb/2V"
     qc_div_2V: Optional[float] = Field(None, title="Normalized Pitch Rate", description="Normalized pitch rate [-]")#, alias="qc/2V"
@@ -398,7 +398,7 @@ class AnalysisModel(BaseModel):
         )
 
     @staticmethod
-    def from_abu_dict(data: dict, asb_airplan: asb.Airplane, operation_point = None, methode: Literal['aerobuildup', 'vortex_lattice'] = 'aerobuildup') -> 'AnalysisModel':
+    def from_abu_dict(data: dict, asb_airplan: asb.Airplane, operating_point = None, methode: Literal['aerobuildup', 'vortex_lattice'] = 'aerobuildup') -> 'AnalysisModel':
         """Create an AvlAnalysisModel from ABU-style dict, mapping provided values and using None for missing."""
         # Reference
         x_np = data.get('x_np')
@@ -420,8 +420,8 @@ class AnalysisModel(BaseModel):
             Xref=asb_airplan.xyz_ref[0],
             Yref=asb_airplan.xyz_ref[1],
             Zref=asb_airplan.xyz_ref[2],
-            Xnp=xnp_val,
-            Xnp_lat=xnp_lat_val,
+            Xnp=[xnp_val] if isinstance(xnp_val, float) else x_np,
+            Xnp_lat=[xnp_lat_val] if isinstance(xnp_lat_val, float) else xnp_lat_val,
             Strips=None,
             Surfaces=None,
             Vortices=None
@@ -450,7 +450,7 @@ class AnalysisModel(BaseModel):
             f_w = None
 
         def to_list(val):
-            if isinstance(val, (list, tuple)):
+            if isinstance(val, (list, tuple, np.ndarray)):
                 vals = val
             elif val is not None:
                 vals = [val]
@@ -518,39 +518,39 @@ class AnalysisModel(BaseModel):
         )
         # Derivatives
         derivatives = AvlDerivativesModel(
-            CLa=data.get('CLa') if type(data.get('CLa')) is list else [data.get('CLa')],
-            CLb=data.get('CLb') if type(data.get('CLb')) is list else [data.get('CLb')],
-            CLp=data.get('CLp') if type(data.get('CLp')) is list else [data.get('CLp')],
-            CLq=data.get('CLq') if type(data.get('CLq')) is list else [data.get('CLq')],
-            CLr=data.get('CLr') if type(data.get('CLr')) is list else [data.get('CLr')],
-            CYa=data.get('CYa') if type(data.get('CYa')) is list else [data.get('CYa')],
-            CYb=data.get('CYb') if type(data.get('CYb')) is list else [data.get('CYb')],
-            CYp=data.get('CYp') if type(data.get('CYp')) is list else [data.get('CYp')],
-            CYq=data.get('CYq') if type(data.get('CYq')) is list else [data.get('CYq')],
-            CYr=data.get('CYr') if type(data.get('CYr')) is list else [data.get('CYr')],
-            Cla=data.get('Cla') if type(data.get('Cla')) is list else [data.get('Cla')],
-            Clb=data.get('Clb') if type(data.get('Clb')) is list else [data.get('Clb')],
-            Clp=data.get('Clp') if type(data.get('Clp')) is list else [data.get('Clp')],
-            Clq=data.get('Clq') if type(data.get('Clq')) is list else [data.get('Clq')],
-            Clr=data.get('Clr') if type(data.get('Clr')) is list else [data.get('Clr')],
-            Cma=data.get('Cma') if type(data.get('Cma')) is list else [data.get('Cma')],
-            Cmb=data.get('Cmb') if type(data.get('Cmb')) is list else [data.get('Cmb')],
-            Cmp=data.get('Cmp') if type(data.get('Cmp')) is list else [data.get('Cmp')],
-            Cmq=data.get('Cmq') if type(data.get('Cmq')) is list else [data.get('Cmq')],
-            Cmr=data.get('Cmr') if type(data.get('Cmr')) is list else [data.get('Cmr')],
-            Cna=data.get('Cna') if type(data.get('Cna')) is list else [data.get('Cna')],
-            Cnb=data.get('Cnb') if type(data.get('Cnb')) is list else [data.get('Cnb')],
-            Cnp=data.get('Cnp') if type(data.get('Cnp')) is list else [data.get('Cnp')],
-            Cnq=data.get('Cnq') if type(data.get('Cnq')) is list else [data.get('Cnq')],
-            Cnr=data.get('Cnr') if type(data.get('Cnr')) is list else [data.get('Cnr')],
-            Clb_Cnr_div_Clr_Cnb=[(data['Clb']*data['Cnr']) / (data['Clr']/data['Cnb'])]
+            CLa=to_list(data.get('CLa')),
+            CLb=to_list(data.get('CLb')),
+            CLp=to_list(data.get('CLp')),
+            CLq=to_list(data.get('CLq')),
+            CLr=to_list(data.get('CLr')),
+            CYa=to_list(data.get('CYa')),
+            CYb=to_list(data.get('CYb')),
+            CYp=to_list(data.get('CYp')),
+            CYq=to_list(data.get('CYq')),
+            CYr=to_list(data.get('CYr')),
+            Cla=to_list(data.get('Cla')),
+            Clb=to_list(data.get('Clb')),
+            Clp=to_list(data.get('Clp')),
+            Clq=to_list(data.get('Clq')),
+            Clr=to_list(data.get('Clr')),
+            Cma=to_list(data.get('Cma')),
+            Cmb=to_list(data.get('Cmb')),
+            Cmp=to_list(data.get('Cmp')),
+            Cmq=to_list(data.get('Cmq')),
+            Cmr=to_list(data.get('Cmr')),
+            Cna=to_list(data.get('Cna')),
+            Cnb=to_list(data.get('Cnb')),
+            Cnp=to_list(data.get('Cnp')),
+            Cnq=to_list(data.get('Cnq')),
+            Cnr=to_list(data.get('Cnr')),
+            Clb_Cnr_div_Clr_Cnb=None#[(data['Clb']*data['Cnr']) / (data['Clr']/data['Cnb'])]
         )
         # Control Surfaces
         control_surfaces = AvlControlSurfaceModel(control_surfaces=None)
         # Flight Condition
-        op_point = data.get('wing_aero_components')[0].op_point if data.get('wing_aero_components') else operation_point
+        op_point = data.get('wing_aero_components')[0].op_point if data.get('wing_aero_components') else operating_point
         flight_condition = AvlFlightConditionModel(
-            alpha=[op_point.alpha],
+            alpha=to_list(op_point.alpha),
             beta=op_point.beta,
             mach=op_point.velocity/347.,
             p=op_point.p,

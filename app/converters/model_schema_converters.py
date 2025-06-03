@@ -1,19 +1,23 @@
 import os
+from typing import List
 
+import aerosandbox as asb
 from aerosandbox import FuselageXSec
 
-from app.models import AeroplaneModel
+from app import schemas
+from app.models import AeroplaneModel, WingModel
 from app.schemas import AeroplaneSchema
+from cad_designer.airplane.aircraft_topology.wing import WingConfiguration
 
 
-async def aeroplaneModelToAeroplaneSchema(plane: AeroplaneModel) -> AeroplaneSchema:
+async def aeroplaneModelToAeroplaneSchema_async(plane: AeroplaneModel) -> AeroplaneSchema:
     plane_dict = plane.__dict__.copy()
     plane_dict["wings"] = {w.name: w for w in plane.wings}
     plane_dict["fuselages"] = {f.name: f for f in plane.fuselages}
     plane_schema: AeroplaneSchema = AeroplaneSchema.model_validate(plane_dict)
     return plane_schema
 
-async def aeroplaneSchemaToAsbAirplane(plane_schema: AeroplaneSchema) -> "asb.Airplane":
+async def aeroplaneSchemaToAsbAirplane_async(plane_schema: AeroplaneSchema) -> "asb.Airplane":
     """
     Convert an AeroplaneSchema to an Aerosandbox Airplane object.
 
@@ -69,3 +73,24 @@ async def aeroplaneSchemaToAsbAirplane(plane_schema: AeroplaneSchema) -> "asb.Ai
     )
 
     return asb_airplane
+
+def wingModelToWingConfig(wing: WingModel) -> WingConfiguration:
+    asb_wing: schemas.AsbWingSchema = schemas.AsbWingSchema.model_validate(wing, from_attributes=True)
+    # Convert the wing to a WingConfiguration object
+    xsecs: List[asb.WingXSec] = [asb.WingXSec(
+        xyz_le=xs.xyz_le,
+        chord=xs.chord,
+        twist=xs.twist,
+        airfoil=asb.Airfoil(
+            name=os.path.abspath(xs.airfoil),
+        ),
+        control_surfaces=
+        [asb.ControlSurface(
+            name=xs.control_surface.name,
+            symmetric=xs.control_surface.symmetric,
+            deflection=xs.control_surface.deflection,
+            hinge_point=xs.control_surface.hinge_point,
+            trailing_edge=True,
+        )] if xs.control_surface else []
+    ) for xs in asb_wing.x_secs]
+    return WingConfiguration.from_asb(xsecs, asb_wing.symmetric)

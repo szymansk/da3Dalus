@@ -1,7 +1,7 @@
 import json
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Dict, Any, Union, OrderedDict, List
+from typing import Optional, Dict, Any, Union, OrderedDict, List, Literal
 
 from pydantic import BaseModel, Field
 
@@ -54,16 +54,31 @@ class AeroplaneMassRequest(BaseModel):
     total_mass_kg: float = Field(..., description="Total mass of the aeroplan in kg")
 
 class AlphaSweepRequest(BaseModel):
-    alpha_start: float = Field(..., description="start alpha in degrees")
-    alpha_end: float = Field(..., description="end alpha in degrees")
-    alpha_step: float = Field(..., description="steps in degrees")
+    alpha_start: float = Field(-15, description="start alpha in degrees")
+    alpha_end: float = Field(20, description="end alpha in degrees")
+    alpha_num: int = Field(36, description="number of alphas to sweep")
     velocity: Optional[float] = Field(10.0, description="velocity in m/s")
-    beta: Optional[float] = Field(1.0, description="beta (yaw angle) in m/s")
+    beta: Optional[float] = Field(0.0, description="beta (yaw angle) in m/s")
     p: Optional[float] = Field(0.0, description="roll rate in rad/s")
     q: Optional[float] = Field(0.0, description="pitch in rad/s")
     r: Optional[float] = Field(0.0, description="roll in rad/s")
     xyz_ref: Optional[List[float]] = Field([0.0,0.0,0.0], description="xyz reference points for moments and rotation rates")
     altitude: Optional[float] = Field(0.0, description="altitude in m")
+
+class SimpleSweepRequest(BaseModel):
+    step_size: float = Field(0.5, description="sweep step size")
+    num: int = Field(30, description="number sweep samples")
+    sweep_var: Literal['alpha','velocity','beta','p','q','r'] = Field("alpha", description="variable to sweep over, e.g. alpha, beta, p, q, r")
+
+    alpha: float = Field(-5.0, description="start of fixed value for alpha in degrees")
+    velocity: Optional[float] = Field(10.0, description="start of fixed value for velocity in m/s")
+    beta: Optional[float] = Field(0.0, description="start of fixed value for beta (yaw angle) in m/s")
+    p: Optional[float] = Field(0.0, description="start of fixed value for roll rate in rad/s")
+    q: Optional[float] = Field(0.0, description="start of fixed value for pitch in rad/s")
+    r: Optional[float] = Field(0.0, description="start of fixed value for roll in rad/s")
+    xyz_ref: Optional[List[float]] = Field([0.0,0.0,0.0], description="start of fixed value for xyz reference points for moments and rotation rates")
+    altitude: Optional[float] = Field(0.0, description="start of fixed value for altitude in m")
+
 
 
 class CreateWingLoftRequest(BaseModel):

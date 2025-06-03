@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -17,7 +17,7 @@ class OperatingPointSchema(BaseModel):
 
     # Operating point parameters
     velocity: float = Field(10.0, description="Velocity in m/s")
-    alpha: float = Field(0.0, description="Angle of attack in degrees")
+    alpha: Union[float, List[float]] = Field(0.0, description="Angle of attack in degrees")
     beta: float = Field(0.0, description="Sideslip angle in degrees")
     p: float = Field(0.0, description="Roll rate in rad/s")
     q: float = Field(0.0, description="Pitch rate in rad/s")
