@@ -34,7 +34,8 @@ class GetAeroplaneResponse(BaseModel):
 @router.get("/aeroplanes",
             response_model=GetAeroplaneResponse,
             status_code=status.HTTP_200_OK,
-            tags=["aeroplanes"])
+            tags=["aeroplanes"],
+            operation_id="get_all_aeroplanes")
 async def get_aeroplanes(db: Session = Depends(get_db)) -> GetAeroplaneResponse:
     """
     Returns a list of all aeroplanes names with ids alphabetically sorted by the name.
@@ -53,16 +54,17 @@ async def get_aeroplanes(db: Session = Depends(get_db)) -> GetAeroplaneResponse:
         ]
         return GetAeroplaneResponse(aeroplanes=items)
     except SQLAlchemyError as e:
-        logging.error(f"Database error when listing aeroplanes: {str(e)}")
+        logger.error(f"Database error when listing aeroplanes: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     except Exception as e:
-        logging.error(f"Unexpected error when listing aeroplanes: {str(e)}")
+        logger.error(f"Unexpected error when listing aeroplanes: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
 @router.post("/aeroplanes",
              status_code=status.HTTP_201_CREATED,
-             tags=["aeroplanes"])
+             tags=["aeroplanes"],
+             operation_id="create_aeroplane")
 async def create_aeroplane(
         name: str = Query(..., description="The aeroplanes name.", examples=["RV-7", "eHawk"]),
         db: Session = Depends(get_db)
@@ -83,10 +85,10 @@ async def create_aeroplane(
         # Return the UUID
         return JSONResponse(content={"id": str(aeroplane.uuid)})
     except SQLAlchemyError as e:
-        logging.error(f"Database error when creating aeroplane: {str(e)}")
+        logger.error(f"Database error when creating aeroplane: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     except Exception as e:
-        logging.error(f"Unexpected error when creating aeroplane: {str(e)}")
+        logger.error(f"Unexpected error when creating aeroplane: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
@@ -94,13 +96,15 @@ async def create_aeroplane(
 @router.get("/aeroplanes/{aeroplane_id}",
             status_code=status.HTTP_200_OK,
             response_model=schemas.AeroplaneSchema,
-            tags=["aeroplanes"])
+            tags=["aeroplanes"],
+            operation_id="get_aeroplane_by_id")
 async def get_aeroplane(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
         db: Session = Depends(get_db)
 ) -> schemas.AeroplaneSchema:
     """
     Returns the aeroplane definition.
+    \f
     """
     try:
         aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
@@ -126,19 +130,20 @@ async def get_aeroplane(
         )
         return result
     except SQLAlchemyError as e:
-        logging.error(f"Database error when getting aeroplane: {str(e)}")
+        logger.error(f"Database error when getting aeroplane: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     except HTTPException as e:
         # re-raise FastAPI HTTPExceptions (e.g., 404) without modification
         raise e
     except Exception as e:
-        logging.error(f"Unexpected error when getting aeroplane: {str(e)}")
+        logger.error(f"Unexpected error when getting aeroplane: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
 @router.delete("/aeroplanes/{aeroplane_id}",
                status_code=status.HTTP_204_NO_CONTENT,
-               tags=["aeroplanes"])
+               tags=["aeroplanes"],
+               operation_id="delete_aeroplane")
 async def delete_aeroplane(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane to be deleted"),
         db: Session = Depends(get_db)
@@ -155,19 +160,20 @@ async def delete_aeroplane(
             db.delete(aeroplane)
         return
     except SQLAlchemyError as e:
-        logging.error(f"Database error when deleting aeroplane: {str(e)}")
+        logger.error(f"Database error when deleting aeroplane: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Unexpected error when deleting aeroplane: {str(e)}")
+        logger.error(f"Unexpected error when deleting aeroplane: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
 @router.get("/aeroplanes/{aeroplane_id}/total_mass_kg",
             status_code=status.HTTP_200_OK,
             response_model=AeroplaneMassRequest,
-            tags=["aeroplanes"])
+            tags=["aeroplanes"],
+            operation_id="get_aeroplane_total_mass")
 async def get_aeroplane_total_mass_in_kg(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
         db: Session = Depends(get_db)
@@ -183,19 +189,20 @@ async def get_aeroplane_total_mass_in_kg(
             raise HTTPException(status_code=404, detail="Aeroplane weight not set")
         return AeroplaneMassRequest(total_mass_kg=aeroplane.total_mass_kg)
     except SQLAlchemyError as e:
-        logging.error(f"Database error when getting aeroplane weight: {str(e)}")
+        logger.error(f"Database error when getting aeroplane weight: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Unexpected error when getting aeroplane weight: {str(e)}")
+        logger.error(f"Unexpected error when getting aeroplane weight: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
 @router.post("/aeroplanes/{aeroplane_id}/total_mass_kg",
              status_code=status.HTTP_201_CREATED,
              response_class=Response,
-             tags=["aeroplanes"])
+             tags=["aeroplanes"],
+             operation_id="set_aeroplane_total_mass")
 async def create_aeroplane_total_mass_kg(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
         total_mass_kg: AeroplaneMassRequest = Body(..., description="The total mass of the aeroplane in kg"),
@@ -228,7 +235,8 @@ async def create_aeroplane_total_mass_kg(
 @router.get("/aeroplanes/{aeroplane_id}/wings",
             status_code=status.HTTP_200_OK,
             response_model=List[str],
-            tags=["wings"])
+            tags=["wings"],
+            operation_id="get_aeroplane_wings")
 async def get_aeroplane_wings(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
         db: Session = Depends(get_db)
@@ -243,12 +251,12 @@ async def get_aeroplane_wings(
         wings = aeroplane.wings
         return [w.name for w in wings]
     except SQLAlchemyError as e:
-        logging.error(f"Database error when getting aeroplane wings: {str(e)}")
+        logger.error(f"Database error when getting aeroplane wings: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Unexpected error when getting aeroplane wings: {str(e)}")
+        logger.error(f"Unexpected error when getting aeroplane wings: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
@@ -256,7 +264,8 @@ async def get_aeroplane_wings(
 @router.put("/aeroplanes/{aeroplane_id}/wings/{wing_name}",
             status_code=status.HTTP_201_CREATED,
             response_class=Response,
-            tags=["wings"])
+            tags=["wings"],
+            operation_id="create_aeroplane_wing")
 async def create_aeroplane_wing(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
         wing_name: str = Path(..., description="The ID of the wing"),
@@ -282,12 +291,12 @@ async def create_aeroplane_wing(
             plane.updated_at = datetime.now()
         return
     except SQLAlchemyError as e:
-        logging.error(f"Database error when creating aeroplane wing: {e}")
+        logger.error(f"Database error when creating aeroplane wing: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Unexpected error when creating aeroplane wing: {e}")
+        logger.error(f"Unexpected error when creating aeroplane wing: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
 
@@ -295,7 +304,8 @@ async def create_aeroplane_wing(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}",
     response_class=Response,
     status_code=status.HTTP_201_CREATED,
-    tags=["wings"]
+    tags=["wings"],
+    operation_id="update_aeroplane_wing"
 )
 async def update_aeroplane_wing(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
@@ -328,16 +338,17 @@ async def update_aeroplane_wing(
     except HTTPException:
         raise
     except SQLAlchemyError as e:
-        logging.error("DB error updating wing: %s", e)
+        logger.error("DB error updating wing: %s", e)
         raise HTTPException(500, f"Database error: {e}")
     except Exception as e:
-        logging.error("Unexpected error updating wing: %s", e)
+        logger.error("Unexpected error updating wing: %s", e)
         raise HTTPException(500, f"Unexpected error: {e}")
 
 
 @router.get("/aeroplanes/{aeroplane_id}/wings/{wing_name}",
             response_model=schemas.AsbWingSchema,
-            tags=["wings"])
+            tags=["wings"],
+            operation_id="get_aeroplane_wing")
 async def get_aeroplane_wing(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
         wing_name: str = Path(..., description="The ID of the wing"),
@@ -357,12 +368,12 @@ async def get_aeroplane_wing(
             raise HTTPException(status_code=404, detail="Wing not found")
         return schemas.AsbWingSchema.model_validate(wing, from_attributes=True)
     except SQLAlchemyError as e:
-        logging.error(f"Database error when getting aeroplane wing: {e}")
+        logger.error(f"Database error when getting aeroplane wing: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Unexpected error when getting aeroplane wing: {e}")
+        logger.error(f"Unexpected error when getting aeroplane wing: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
 
@@ -370,7 +381,8 @@ async def get_aeroplane_wing(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}",
     response_class=Response,
     status_code=status.HTTP_204_NO_CONTENT,
-    tags=["wings"]
+    tags=["wings"],
+    operation_id="delete_aeroplane_wing"
 )
 async def delete_aeroplane_wing(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
@@ -393,12 +405,12 @@ async def delete_aeroplane_wing(
             plane.updated_at = datetime.now()
         return
     except SQLAlchemyError as e:
-        logging.error(f"Database error when deleting aeroplane wing: {e}")
+        logger.error(f"Database error when deleting aeroplane wing: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Unexpected error when deleting aeroplane wing: {e}")
+        logger.error(f"Unexpected error when deleting aeroplane wing: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
 
@@ -410,6 +422,7 @@ async def delete_aeroplane_wing(
     response_model=List[schemas.WingXSecSchema],
     status_code=status.HTTP_200_OK,
     tags=["cross-sections"],
+    operation_id="get_wing_cross_sections"
 )
 async def get_aeroplane_wing_cross_sections(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
@@ -432,12 +445,12 @@ async def get_aeroplane_wing_cross_sections(
             for xs in wing.x_secs
         ]
     except SQLAlchemyError as e:
-        logging.error(f"Database error when getting wing cross-sections: {e}")
+        logger.error(f"Database error when getting wing cross-sections: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Unexpected error when getting wing cross-sections: {e}")
+        logger.error(f"Unexpected error when getting wing cross-sections: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
 from fastapi.responses import Response
@@ -449,7 +462,8 @@ import logging
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    tags=["cross-sections"]
+    tags=["cross-sections"],
+    operation_id="delete_all_wing_cross_sections"
 )
 async def delete_aeroplane_wing_cross_sections(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
@@ -475,10 +489,10 @@ async def delete_aeroplane_wing_cross_sections(
     except HTTPException:
         raise
     except SQLAlchemyError as e:
-        logging.error(f"Database error when deleting wing cross-sections: {e}")
+        logger.error(f"Database error when deleting wing cross-sections: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
     except Exception as e:
-        logging.error(f"Unexpected error when deleting wing cross-sections: {e}")
+        logger.error(f"Unexpected error when deleting wing cross-sections: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
 @router.get(
@@ -486,6 +500,7 @@ async def delete_aeroplane_wing_cross_sections(
     response_model=schemas.WingXSecSchema,
     status_code=status.HTTP_200_OK,
     tags=["cross-sections"],
+    operation_id="get_wing_cross_section"
 )
 async def get_aeroplane_wing_cross_section(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
@@ -511,10 +526,10 @@ async def get_aeroplane_wing_cross_section(
     except HTTPException:
         raise
     except SQLAlchemyError as e:
-        logging.error(f"Database error when getting wing cross-section: {e}")
+        logger.error(f"Database error when getting wing cross-section: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
     except Exception as e:
-        logging.error(f"Unexpected error when getting wing cross-section: {e}")
+        logger.error(f"Unexpected error when getting wing cross-section: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
 
@@ -523,6 +538,7 @@ async def get_aeroplane_wing_cross_section(
     response_class=Response,
     status_code=status.HTTP_201_CREATED,
     tags=["cross-sections"],
+    operation_id="create_wing_cross_section"
 )
 async def create_aeroplane_wing_cross_section(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
@@ -577,10 +593,10 @@ async def create_aeroplane_wing_cross_section(
     except HTTPException:
         raise
     except SQLAlchemyError as e:
-        logging.error(f"Database error when creating wing cross-section: {e}")
+        logger.error(f"Database error when creating wing cross-section: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
     except Exception as e:
-        logging.error(f"Unexpected error when creating wing cross-section: {e}")
+        logger.error(f"Unexpected error when creating wing cross-section: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
 
@@ -589,6 +605,7 @@ async def create_aeroplane_wing_cross_section(
     response_class=Response,
     status_code=status.HTTP_201_CREATED,
     tags=["cross-sections"],
+    operation_id="update_wing_cross_section"
 )
 async def update_aeroplane_wing_cross_section(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
@@ -614,12 +631,21 @@ async def update_aeroplane_wing_cross_section(
 
             data = request.model_dump()
             cs_dict = data.pop("control_surface", None)
-            new_xsec = WingXSecModel(**data)
+            new_xsec = WingXSecModel(sort_index=cross_section_index, **data)
+
+            # Handle control surface
+            existing_xsec = x_secs[cross_section_index]
             if cs_dict is not None:
                 # Accept both dict and pydantic model
                 if hasattr(cs_dict, "model_dump"):
                     cs_dict = cs_dict.model_dump()
                 new_xsec.control_surface = ControlSurfaceModel(**cs_dict)
+            elif existing_xsec.control_surface is not None:
+                # Preserve existing control surface if not provided in request
+                cs_data = schemas.ControlSurfaceSchema.model_validate(
+                    existing_xsec.control_surface, from_attributes=True
+                ).model_dump()
+                new_xsec.control_surface = ControlSurfaceModel(**cs_data)
 
             wing.x_secs[cross_section_index] = new_xsec
             # Touch parent timestamp
@@ -628,16 +654,17 @@ async def update_aeroplane_wing_cross_section(
     except HTTPException:
         raise
     except SQLAlchemyError as e:
-        logging.error(f"Database error when updating wing cross-section: {e}")
+        logger.error(f"Database error when updating wing cross-section: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
     except Exception as e:
-        logging.error(f"Unexpected error when updating wing cross-section: {e}")
+        logger.error(f"Unexpected error when updating wing cross-section: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
 
 @router.delete("/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}",
                status_code=status.HTTP_204_NO_CONTENT,
-               tags=["cross-sections"])
+               tags=["cross-sections"],
+               operation_id="delete_wing_cross_section")
 async def delete_aeroplane_wing_cross_section(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
         wing_name: str = Path(..., description="The ID of the wing"),
@@ -666,10 +693,10 @@ async def delete_aeroplane_wing_cross_section(
     except HTTPException:
         raise
     except SQLAlchemyError as e:
-        logging.error(f"Database error when deleting wing cross-section: {e}")
+        logger.error(f"Database error when deleting wing cross-section: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
     except Exception as e:
-        logging.error(f"Unexpected error when deleting wing cross-section: {e}")
+        logger.error(f"Unexpected error when deleting wing cross-section: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
 
@@ -678,6 +705,7 @@ async def delete_aeroplane_wing_cross_section(
     response_model=schemas.ControlSurfaceSchema,
     status_code=status.HTTP_200_OK,
     tags=["control_surface"],
+    operation_id="get_control_surface"
 )
 async def get_aeroplane_wing_cross_section_control_surface(
     aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
@@ -705,12 +733,12 @@ async def get_aeroplane_wing_cross_section_control_surface(
         # Use Pydantic model for response
         return schemas.ControlSurfaceSchema.model_validate(cs, from_attributes=True)
     except SQLAlchemyError as e:
-        logging.error(f"Database error when getting control surface: {e}")
+        logger.error(f"Database error when getting control surface: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Unexpected error when getting control surface: {e}")
+        logger.error(f"Unexpected error when getting control surface: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
 
@@ -719,6 +747,7 @@ async def get_aeroplane_wing_cross_section_control_surface(
     response_class=Response,
     status_code=status.HTTP_201_CREATED,
     tags=["control_surface"],
+    operation_id="upsert_control_surface"
 )
 async def create_and_update_aeroplane_wing_cross_section_control_surface(
     aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
@@ -755,12 +784,12 @@ async def create_and_update_aeroplane_wing_cross_section_control_surface(
             aeroplane.updated_at = datetime.now()
         return Response(status_code=status.HTTP_201_CREATED)
     except SQLAlchemyError as e:
-        logging.error(f"Database error when creating/updating control surface: {e}")
+        logger.error(f"Database error when creating/updating control surface: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Unexpected error when creating/updating control surface: {e}")
+        logger.error(f"Unexpected error when creating/updating control surface: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
 
@@ -769,6 +798,7 @@ async def create_and_update_aeroplane_wing_cross_section_control_surface(
     response_class=Response,
     status_code=status.HTTP_204_NO_CONTENT,
     tags=["control_surface"],
+    operation_id="delete_control_surface"
 )
 async def delete_aeroplane_wing_cross_section_control_surface(
     aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
@@ -799,11 +829,11 @@ async def delete_aeroplane_wing_cross_section_control_surface(
             aeroplane.updated_at = datetime.now()
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except SQLAlchemyError as e:
-        logging.error(f"Database error when deleting control surface: {e}")
+        logger.error(f"Database error when deleting control surface: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Unexpected error when deleting control surface: {e}")
+        logger.error(f"Unexpected error when deleting control surface: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 

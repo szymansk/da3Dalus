@@ -125,7 +125,8 @@ def create_aeroplane_task(aeroplane_id,
             tasks[aeroplane_id]['error'] = str(err)
 
 
-@router.post("/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}")
+@router.post("/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}",
+         operation_id="create_wing_loft_export")
 async def create_wing_loft(aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
                            wing_name: str = Path(..., description="The ID of the wing"),
                            creator_url_type: CreatorUrlType = CreatorUrlType.WING_LOFT,
@@ -247,7 +248,8 @@ async def create_wing_loft(aeroplane_id: AeroPlaneID = Path(..., description="Th
         raise HTTPException(status_code=500, detail=str(err))
 
 
-@router.get("/aeroplanes/{aeroplane_id}/status")
+@router.get("/aeroplanes/{aeroplane_id}/status",
+         operation_id="get_aeroplane_task_status")
 async def get_aeroplane_task_status(aeroplane_id: str):
     logging.info(f"called get aeroplane endpoint for 'aeroplane_id: {aeroplane_id}'")
     with tasks_lock:
@@ -285,7 +287,8 @@ async def get_aeroplane_task_status(aeroplane_id: str):
         )
 
 
-@router.get("/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}/zip")
+@router.get("/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}/zip",
+         operation_id="download_export_zip")
 async def download_aeroplane_zip(aeroplane_id: str):
     logging.info(f"called get download aeroplane endpoint for 'aeroplane_id: {aeroplane_id}'")
 
@@ -322,4 +325,3 @@ async def download_aeroplane_zip(aeroplane_id: str):
         media_type='application/zip',
         filename=os.path.basename(file_path)
     )
-

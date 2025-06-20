@@ -35,6 +35,7 @@ SHELL [ "/bin/bash", "-c" ]
 
 # Copy AVL executable from build_avl stage to /usr/local/bin
 COPY --from=build_avl /home/avl/bin/avl /usr/local/bin/
+COPY external/fastapi_mcp-0.3.4.tar.gz /home/cadquery/external/
 
 WORKDIR /home/cadquery
 
@@ -54,7 +55,11 @@ RUN source ${CONDA_INSTALL_DIR}/bin/activate \
     sqlalchemy \
     alembic \
     casadi=3.7.0 \
-    python-kaleido \
     && pip install aerosandbox[full]\
-    && pip install fastapi-mcp
+    && pip install external/fastapi_mcp-0.3.4.tar.gz \
+    && pip install pydantic-settings
 
+RUN source ${CONDA_INSTALL_DIR}/bin/activate \
+    && conda activate --no-stack cadquery \
+    && conda remove -y kaleido || true \
+    && pip install -U kaleido

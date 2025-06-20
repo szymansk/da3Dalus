@@ -1,7 +1,8 @@
 from enum import Enum
 
+import math
 import numpy as np
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Literal, Tuple, Union
 from typing import Optional
 
@@ -154,32 +155,39 @@ class AvlCoefficientsModel(BaseModel):
     e: Optional[List[float]] = Field(None, title="Oswald Efficiency", description="List of Oswald efficiency factor for each alpha [-]")
 
 class AvlDerivativesModel(BaseModel):
-    CLa: Optional[List[float]] = Field(None, title="Lift Curve Slope", description="List of lift curve slope for each alpha [1/rad]")
-    CLb: Optional[List[float]] = Field(None, title="Lift-Sideslip Derivative", description="List of lift coefficient derivative with sideslip for each alpha [1/rad]")
-    CLp: Optional[List[float]] = Field(None, title="Roll Damping", description="List of roll damping derivative for each alpha [1/rad]")
-    CLq: Optional[List[float]] = Field(None, title="Pitch Rate Lift", description="List of pitch rate lift derivative for each alpha [1/rad]")
-    CLr: Optional[List[float]] = Field(None, title="Yaw Rate Lift", description="List of yaw rate lift derivative for each alpha [1/rad]")
-    CYa: Optional[List[float]] = Field(None, title="Side Force-Alpha", description="List of side force derivative with alpha for each alpha [1/rad]")
-    CYb: Optional[List[float]] = Field(None, title="Side Force-Beta", description="List of side force derivative with beta for each alpha [1/rad]")
-    CYp: Optional[List[float]] = Field(None, title="Roll Rate Side Force", description="List of roll rate side force derivative for each alpha [1/rad]")
-    CYq: Optional[List[float]] = Field(None, title="Pitch Rate Side Force", description="List of pitch rate side force derivative for each alpha [1/rad]")
-    CYr: Optional[List[float]] = Field(None, title="Yaw Rate Side Force", description="List of yaw rate side force derivative for each alpha [1/rad]")
-    Cla: Optional[List[float]] = Field(None, title="Roll-Alpha Derivative", description="List of roll moment derivative with alpha for each alpha [1/rad]")
-    Clb: Optional[List[float]] = Field(None, title="Roll-Beta Derivative", description="List of roll moment derivative with beta for each alpha [1/rad]")
-    Clp: Optional[List[float]] = Field(None, title="Roll Damping", description="List of roll damping derivative for each alpha [1/rad]")
-    Clq: Optional[List[float]] = Field(None, title="Pitch Rate Roll", description="List of pitch rate roll derivative for each alpha [1/rad]")
-    Clr: Optional[List[float]] = Field(None, title="Yaw Rate Roll", description="List of yaw rate roll derivative for each alpha [1/rad]")
-    Cma: Optional[List[float]] = Field(None, title="Pitch-Alpha Derivative", description="List of pitch moment derivative with alpha for each alpha [1/rad]")
-    Cmb: Optional[List[float]] = Field(None, title="Pitch-Beta Derivative", description="List of pitch moment derivative with beta for each alpha [1/rad]")
-    Cmp: Optional[List[float]] = Field(None, title="Roll Rate Pitch", description="List of roll rate pitch derivative for each alpha [1/rad]")
-    Cmq: Optional[List[float]] = Field(None, title="Pitch Damping", description="List of pitch damping derivative for each alpha [1/rad]")
-    Cmr: Optional[List[float]] = Field(None, title="Yaw Rate Pitch", description="List of yaw rate pitch derivative for each alpha [1/rad]")
-    Cna: Optional[List[float]] = Field(None, title="Yaw-Alpha Derivative", description="List of yaw moment derivative with alpha for each alpha [1/rad]")
-    Cnb: Optional[List[float]] = Field(None, title="Yaw-Beta Derivative", description="List of yaw moment derivative with beta for each alpha [1/rad]")
-    Cnp: Optional[List[float]] = Field(None, title="Roll Rate Yaw", description="List of roll rate yaw derivative for each alpha [1/rad]")
-    Cnq: Optional[List[float]] = Field(None, title="Pitch Rate Yaw", description="List of pitch rate yaw derivative for each alpha [1/rad]")
-    Cnr: Optional[List[float]] = Field(None, title="Yaw Damping", description="List of yaw damping derivative for each alpha [1/rad]")
-    Clb_Cnr_div_Clr_Cnb: Optional[List[float]] = Field(None, title="Roll-Yaw Coupling", description="List of roll-yaw coupling parameter for each alpha [-]")#, alias="Clb Cnr / Clr Cnb")
+    CLa: Optional[List[Optional[float]]] = Field(None, title="Lift Curve Slope", description="List of lift curve slope for each alpha [1/rad]")
+    CLb: Optional[List[Optional[float]]] = Field(None, title="Lift-Sideslip Derivative", description="List of lift coefficient derivative with sideslip for each alpha [1/rad]")
+    CLp: Optional[List[Optional[float]]] = Field(None, title="Roll Damping", description="List of roll damping derivative for each alpha [1/rad]")
+    CLq: Optional[List[Optional[float]]] = Field(None, title="Pitch Rate Lift", description="List of pitch rate lift derivative for each alpha [1/rad]")
+    CLr: Optional[List[Optional[float]]] = Field(None, title="Yaw Rate Lift", description="List of yaw rate lift derivative for each alpha [1/rad]")
+    CYa: Optional[List[Optional[float]]] = Field(None, title="Side Force-Alpha", description="List of side force derivative with alpha for each alpha [1/rad]")
+    CYb: Optional[List[Optional[float]]] = Field(None, title="Side Force-Beta", description="List of side force derivative with beta for each alpha [1/rad]")
+    CYp: Optional[List[Optional[float]]] = Field(None, title="Roll Rate Side Force", description="List of roll rate side force derivative for each alpha [1/rad]")
+    CYq: Optional[List[Optional[float]]] = Field(None, title="Pitch Rate Side Force", description="List of pitch rate side force derivative for each alpha [1/rad]")
+    CYr: Optional[List[Optional[float]]] = Field(None, title="Yaw Rate Side Force", description="List of yaw rate side force derivative for each alpha [1/rad]")
+    Cla: Optional[List[Optional[float]]] = Field(None, title="Roll-Alpha Derivative", description="List of roll moment derivative with alpha for each alpha [1/rad]")
+    Clb: Optional[List[Optional[float]]] = Field(None, title="Roll-Beta Derivative", description="List of roll moment derivative with beta for each alpha [1/rad]")
+    Clp: Optional[List[Optional[float]]] = Field(None, title="Roll Damping", description="List of roll damping derivative for each alpha [1/rad]")
+    Clq: Optional[List[Optional[float]]] = Field(None, title="Pitch Rate Roll", description="List of pitch rate roll derivative for each alpha [1/rad]")
+    Clr: Optional[List[Optional[float]]] = Field(None, title="Yaw Rate Roll", description="List of yaw rate roll derivative for each alpha [1/rad]")
+    Cma: Optional[List[Optional[float]]] = Field(None, title="Pitch-Alpha Derivative", description="List of pitch moment derivative with alpha for each alpha [1/rad]")
+    Cmb: Optional[List[Optional[float]]] = Field(None, title="Pitch-Beta Derivative", description="List of pitch moment derivative with beta for each alpha [1/rad]")
+    Cmp: Optional[List[Optional[float]]] = Field(None, title="Roll Rate Pitch", description="List of roll rate pitch derivative for each alpha [1/rad]")
+    Cmq: Optional[List[Optional[float]]] = Field(None, title="Pitch Damping", description="List of pitch damping derivative for each alpha [1/rad]")
+    Cmr: Optional[List[Optional[float]]] = Field(None, title="Yaw Rate Pitch", description="List of yaw rate pitch derivative for each alpha [1/rad]")
+    Cna: Optional[List[Optional[float]]] = Field(None, title="Yaw-Alpha Derivative", description="List of yaw moment derivative with alpha for each alpha [1/rad]")
+    Cnb: Optional[List[Optional[float]]] = Field(None, title="Yaw-Beta Derivative", description="List of yaw moment derivative with beta for each alpha [1/rad]")
+    Cnp: Optional[List[Optional[float]]] = Field(None, title="Roll Rate Yaw", description="List of roll rate yaw derivative for each alpha [1/rad]")
+    Cnq: Optional[List[Optional[float]]] = Field(None, title="Pitch Rate Yaw", description="List of pitch rate yaw derivative for each alpha [1/rad]")
+    Cnr: Optional[List[Optional[float]]] = Field(None, title="Yaw Damping", description="List of yaw damping derivative for each alpha [1/rad]")
+    Clb_Cnr_div_Clr_Cnb: Optional[List[Optional[float]]] = Field(None, title="Roll-Yaw Coupling", description="List of roll-yaw coupling parameter for each alpha [-]")#, alias="Clb Cnr / Clr Cnb")
+
+    @field_validator('*', mode='before')
+    @classmethod
+    def sanitize_floats(cls, v):
+        if isinstance(v, list):
+            return [x if isinstance(x, float) and math.isfinite(x) else None for x in v]
+        return v
 
 class AvlSingleControlSurfaceModel(BaseModel):
     name: Optional[str] = Field(None, title="Control Surface Name", description="Name of the control surface")
@@ -237,8 +245,8 @@ class AnalysisModel(BaseModel):
             Xref=data['Xref'],
             Yref=data['Yref'],
             Zref=data['Zref'],
-            Xnp=data['Xnp'],
-            Xnp_lat=data['Xref'] - (data["Cnb"] * (data['Bref'] / data["CYb"])) if data['CYb'] != 0 else None,  # Example calculation for Xnp_lat
+            Xnp=[data['Xnp']],
+            Xnp_lat=[data['Xref'] - (data["Cnb"] * (data['Bref'] / data["CYb"])) if data['CYb'] != 0 else None],  # Example calculation for Xnp_lat
             Strips=data['Strips'],
             Surfaces=data['Surfaces'],
             Vortices=data['Vortices']

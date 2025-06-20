@@ -10,7 +10,7 @@ from app.schemas.aeroanalysisschema import OperatingPointSchema, OperatingPointS
 router = APIRouter()
 
 # CRUD für OperatingPointModel
-@router.post("/operating_points/", response_model=OperatingPointSchema)
+@router.post("/operating_points/", response_model=OperatingPointSchema, operation_id="create_operating_point")
 def create_operating_point(op_data: OperatingPointSchema,
                            db: Session = Depends(get_db)):
     op = OperatingPointModel(**op_data.model_dump())
@@ -19,7 +19,7 @@ def create_operating_point(op_data: OperatingPointSchema,
     db.refresh(op)
     return op
 
-@router.get("/operating_points/{op_id}", response_model=OperatingPointSchema)
+@router.get("/operating_points/{op_id}", response_model=OperatingPointSchema, operation_id="get_operating_point")
 def read_operating_point(op_id: int,
                          db: Session = Depends(get_db)):
     op = db.query(OperatingPointModel).filter(OperatingPointModel.id == op_id).first()
@@ -27,7 +27,7 @@ def read_operating_point(op_id: int,
         raise HTTPException(status_code=404, detail="Operating point not found")
     return op
 
-@router.put("/operating_points/{op_id}", response_model=OperatingPointSchema)
+@router.put("/operating_points/{op_id}", response_model=OperatingPointSchema, operation_id="update_operating_point")
 def update_operating_point(op_id: int,
                            op_data: OperatingPointSchema,
                            db: Session = Depends(get_db)):
@@ -40,7 +40,7 @@ def update_operating_point(op_id: int,
     db.refresh(op)
     return op
 
-@router.delete("/operating_points/{op_id}")
+@router.delete("/operating_points/{op_id}", operation_id="delete_operating_point")
 def delete_operating_point(op_id: int, db: Session = Depends(get_db)):
     op = db.query(OperatingPointModel).filter(OperatingPointModel.id == op_id).first()
     if not op:
@@ -50,7 +50,7 @@ def delete_operating_point(op_id: int, db: Session = Depends(get_db)):
     return {"detail": "Operating point deleted"}
 
 # CRUD für OperatingPointSetModel
-@router.post("/operating_pointsets/", response_model=OperatingPointSetSchema)
+@router.post("/operating_pointsets/", response_model=OperatingPointSetSchema, operation_id="create_operating_pointset")
 def create_operating_pointset(opset_data: OperatingPointSetSchema,
                               db: Session = Depends(get_db)):
     opset = OperatingPointSetModel(**opset_data.model_dump())
@@ -59,14 +59,14 @@ def create_operating_pointset(opset_data: OperatingPointSetSchema,
     db.refresh(opset)
     return opset
 
-@router.get("/operating_pointsets/{opset_id}", response_model=OperatingPointSetSchema)
+@router.get("/operating_pointsets/{opset_id}", response_model=OperatingPointSetSchema, operation_id="get_operating_pointset")
 def read_operating_pointset(opset_id: int, db: Session = Depends(get_db)):
     opset = db.query(OperatingPointSetModel).filter(OperatingPointSetModel.id == opset_id).first()
     if not opset:
         raise HTTPException(status_code=404, detail="Operating point set not found")
     return opset
 
-@router.put("/operating_pointsets/{opset_id}", response_model=OperatingPointSetSchema)
+@router.put("/operating_pointsets/{opset_id}", response_model=OperatingPointSetSchema, operation_id="update_operating_pointset")
 def update_operating_pointset(opset_id: int, opset_data: OperatingPointSetSchema, db: Session = Depends(get_db)):
     opset = db.query(OperatingPointSetModel).filter(OperatingPointSetModel.id == opset_id).first()
     if not opset:
@@ -77,7 +77,7 @@ def update_operating_pointset(opset_id: int, opset_data: OperatingPointSetSchema
     db.refresh(opset)
     return opset
 
-@router.delete("/operating_pointsets/{opset_id}")
+@router.delete("/operating_pointsets/{opset_id}", operation_id="delete_operating_pointset")
 def delete_operating_pointset(opset_id: int, db: Session = Depends(get_db)):
     opset = db.query(OperatingPointSetModel).filter(OperatingPointSetModel.id == opset_id).first()
     if not opset:

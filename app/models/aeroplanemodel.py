@@ -94,7 +94,12 @@ class WingModel(Base):
         data.pop("name", None)
         wing = cls(name=name, **data)
         for xd in xsec_dicts:
-            wing.x_secs.append(WingXSecModel(**xd))
+            cs_dict = xd.pop("control_surface", None)
+            if cs_dict is not None:
+                cs = ControlSurfaceModel(**cs_dict)
+                wing.x_secs.append(WingXSecModel(control_surface=cs, **xd))
+            else:
+                wing.x_secs.append(WingXSecModel(**xd))
         return wing
 
 class FuselageXSecSuperEllipseModel(Base):
