@@ -8,12 +8,12 @@ import matplotlib.pyplot as plt
 
 from aerosandbox import Airplane
 from fastapi import Path, APIRouter, Body, HTTPException, Depends, Request
+from pydantic import UUID4
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 
 from app.api.utils import analyse_aerodynamics, compile_four_view_figure, save_content_and_get_static_url
-from app.api.v2.endpoints.aeroplane import AeroPlaneID
 from app.converters.model_schema_converters import aeroplaneSchemaToAsbAirplane_async
 from app.db.exceptions import NotFoundInDbException
 from app.db.repository import get_wing_by_name_and_aeroplane_id, get_aeroplane_by_id
@@ -26,6 +26,7 @@ from app.settings import Settings, get_settings
 from cad_designer.airplane.aircraft_topology.models.analysis_model import AnalysisModel
 
 router = APIRouter()
+AeroPlaneID = UUID4
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +121,7 @@ async def analyze_airplane_post(aeroplane_id: AeroPlaneID = Path(..., descriptio
             detail=str(err)
         )
 
-@router.post("/aeroplanes/{aeroplane_id}/operating_point/vortex_lattice/streamlines",
+@router.post("/aeroplanes/{aeroplane_id}/operating_point/vortex_lattice/streamlines/html_view",
              tags=["analysis"],
              response_class=PlainTextResponse,
              operation_id="get_streamlines_as_html",

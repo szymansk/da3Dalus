@@ -11,16 +11,16 @@ from zipfile import ZipFile
 
 from fastapi import APIRouter, HTTPException, Query, Body, Path, Depends
 from fastapi.responses import JSONResponse, FileResponse
+from pydantic import UUID4
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.v2.endpoints.aeroplane import AeroPlaneID
 from app.converters.model_schema_converters import wingModelToWingConfig
 from app.db.session import get_db
 from app.models import AeroplaneModel, WingModel, WingXSecModel
 from app.models.aeroplanemodel import FuselageModel
-from app.schemas import FuselageSchema, AsbWingSchema
+from app.schemas import FuselageSchema
 from cad_designer.airplane import ConstructionStepNode, GeneralJSONDecoder
 from cad_designer.airplane.aircraft_topology.components import ServoInformation
 from app.schemas.AeroplaneRequest import CreatorUrlType, ExporterUrlType, AeroplaneSettings
@@ -28,6 +28,8 @@ from app.services.create_wing_configuration import create_servo
 from cad_designer.airplane.aircraft_topology.wing import WingConfiguration
 
 router = APIRouter()
+
+AeroPlaneID = UUID4
 
 # In-Memory-Aufgabenverwaltung
 tasks = {}

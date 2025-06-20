@@ -18,7 +18,7 @@ app = FastAPI(
     docs_url="/docs",              # served at /api/v2/docs
     redoc_url="/redoc",            # served at /api/v2/redoc
 )
-app.include_router(aeroplane_v2.router, prefix="", tags=["aeroplane"])
+app.include_router(aeroplane_v2.router, prefix="", tags=[])
 app.include_router(cad.router, prefix="", tags=["cad"])
 app.include_router(aeroanalysis.router, prefix="", tags=["aeroanalysis"])
 app.include_router(operating_points.router, prefix="", tags=["operating_points"])
