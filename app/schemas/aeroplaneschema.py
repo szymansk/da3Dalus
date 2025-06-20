@@ -288,7 +288,7 @@ class FuselageSchema(BaseModel):
                     "n": 2,
                 },
                 {
-                    "xyz_ref": [0.01, 0.5, 0],
+                    "xyz": [0.01, 0.5, 0],
                     "a": 0.6,
                     "b": 0.4,
                     "n": 1.5,

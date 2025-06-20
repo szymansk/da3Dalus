@@ -451,7 +451,7 @@ async def get_aeroplane_three_view(
     """
     try:
         try:
-            plane_schema: AeroplaneSchema = await get_aeroplane_by_id(aeroplane_id)
+            plane_schema: AeroplaneSchema = await get_aeroplane_by_id(aeroplane_id, db)
         except SQLAlchemyError as e:
             logger.error(f"Database error when getting aeroplane: {e}")
             raise HTTPException(status_code=500, detail=f"Database error: {e}")

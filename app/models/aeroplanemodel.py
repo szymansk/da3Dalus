@@ -108,6 +108,8 @@ class FuselageXSecSuperEllipseModel(Base):
     a = Column(Float, nullable=False)
     b = Column(Float, nullable=False)
     n = Column(Float, nullable=False)
+    # index to maintain ordering of cross-sections within a fuselage
+    sort_index = Column(Integer, default=0, nullable=False)
 
     # Relationship with Fuselage
     fuselage_id = Column(Integer, ForeignKey("fuselages.id", ondelete="CASCADE"))
@@ -121,11 +123,21 @@ class FuselageModel(Base):
     x_secs = relationship(
         "FuselageXSecSuperEllipseModel",
         back_populates="fuselage",
-        cascade="all, delete-orphan")
+        cascade="all, delete-orphan",
+        order_by="FuselageXSecSuperEllipseModel.sort_index")
 
     # ForeignKey to Aeroplane
     aeroplane_id = Column(Integer, ForeignKey("aeroplanes.id", ondelete="CASCADE"))
     aeroplane = relationship("AeroplaneModel", back_populates="fuselages")
+
+    @classmethod
+    def from_dict(cls, name, data):
+        xsec_dicts = data.pop("x_secs", [])
+        data.pop("name", None)
+        fuselage = cls(name=name, **data)
+        for i, xd in enumerate(xsec_dicts):
+            fuselage.x_secs.append(FuselageXSecSuperEllipseModel(sort_index=i, **xd))
+        return fuselage
 
 class AeroplaneModel(Base):
     __tablename__ = "aeroplanes"
