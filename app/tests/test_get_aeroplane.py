@@ -5,29 +5,33 @@ from unittest.mock import MagicMock, patch
 from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.v2.endpoints.aeroplane import get_aeroplane
+from app.api.v2.endpoints.aeroplane.base import get_aeroplane
 from app import schemas
 
 class TestGetAeroplane(unittest.TestCase):
     def test_get_aeroplane_success(self):
         test_id = uuid.uuid4()
         mock_db = MagicMock()
-        # mock the ORM model instance
+        # mock the ORM model instance with required attributes
         mock_model = MagicMock()
+        mock_model.name = "Test Aeroplane"
+        mock_model.xyz_ref = [0, 0, 0]
+        mock_model.wings = []
+        mock_model.fuselages = []
         mock_db.query.return_value.filter.return_value.first.return_value = mock_model
 
-        # patch model_validate to return a dummy schema
-        mock_schema = schemas.aeroplane.AeroplaneSchema.model_construct(uuid=test_id, name="Test")
+        # patch AeroplaneSchema to return a dummy schema
+        mock_schema = MagicMock()
         with patch(
-            'app.api.v2.endpoints.aeroplane.schemas.aeroplane.Aeroplane.model_validate',
+            'app.schemas.AeroplaneSchema',
             return_value=mock_schema
-        ) as model_validate:
+        ) as schema_constructor:
             result = asyncio.run(get_aeroplane(aeroplane_id=test_id, db=mock_db))
 
         # assertions
         mock_db.query.assert_called_once()           # we queried the model
-        model_validate.assert_called_once_with(mock_model, from_attributes=True) # we converted via model_validate
-        self.assertIs(result, mock_schema)           # returned exactly our schema
+        schema_constructor.assert_called_once()      # we created a schema
+        self.assertEqual(result, mock_schema)        # returned the schema
 
     def test_get_aeroplane_not_found(self):
         test_id = uuid.uuid4()

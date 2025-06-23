@@ -5,7 +5,7 @@ from fastapi import HTTPException
 import uuid
 import asyncio
 
-from app.api.v2.endpoints.aeroplane import create_aeroplane
+from app.api.v2.endpoints.aeroplane.base import create_aeroplane
 from app.models.aeroplanemodel import AeroplaneModel
 
 class TestCreateAeroplane(unittest.TestCase):
@@ -20,12 +20,12 @@ class TestCreateAeroplane(unittest.TestCase):
         mock_aeroplane = MagicMock()
         mock_aeroplane.uuid = mock_uuid
 
-        # Setup the mock to return our mock aeroplane when Aeroplane is created
-        with patch('app.api.v2.endpoints.aeroplane.Aeroplane', return_value=mock_aeroplane):
+        # Setup the mock to return our mock aeroplane when AeroplaneModel is created
+        with patch('app.api.v2.endpoints.aeroplane.base.AeroplaneModel', return_value=mock_aeroplane):
             result = asyncio.run(create_aeroplane(name="Test Aeroplane", db=mock_db))
 
             # Assertions
-            self.assertEqual(result, mock_uuid)
+            self.assertEqual(result.body, bytes(f'{{"id":"{mock_uuid}"}}', 'utf-8'))
             mock_db.begin.assert_called_once()
             mock_db.add.assert_called_once_with(mock_aeroplane)
             mock_db.flush.assert_called_once()

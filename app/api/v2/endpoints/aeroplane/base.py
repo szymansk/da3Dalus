@@ -227,6 +227,8 @@ async def create_aeroplane_total_mass_kg(
     except SQLAlchemyError as e:
         logger.error(f"Database error when setting aeroplane mass: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Unexpected error when setting aeroplane mass: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")

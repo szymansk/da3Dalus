@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.v2.endpoints.aeroplane import (
+from app.api.v2.endpoints.aeroplane.wings import (
     create_aeroplane_wing,
     update_aeroplane_wing,
     get_aeroplane_wing,
@@ -25,13 +25,12 @@ class TestAeroplaneWingEndpoints(unittest.TestCase):
         plane.wings = []
         mock_db.query.return_value.filter.return_value.first.return_value = plane
 
-        request_schema = schemas.aeroplane.AsbWingSchema.model_construct(name=str(self.test_wing_name))
+        request_schema = schemas.AsbWingSchema.model_construct(name=str(self.test_wing_name))
 
-        with patch('app.api.v2.endpoints.aeroplane.Wing', autospec=True) as WingModel, \
-             patch('app.api.v2.endpoints.aeroplane.schemas.aeroplane.Wing.model_validate', return_value=request_schema) as validate:
-            # WingModel(uuid, **data) returns an instance
+        with patch('app.models.aeroplanemodel.WingModel.from_dict', autospec=True) as from_dict:
+            # WingModel.from_dict returns an instance
             wing_instance = MagicMock(name=str(self.test_wing_name))
-            WingModel.return_value = wing_instance
+            from_dict.return_value = wing_instance
             result = asyncio.run(
                 create_aeroplane_wing(
                     aeroplane_id=self.test_plane_id,
@@ -40,8 +39,8 @@ class TestAeroplaneWingEndpoints(unittest.TestCase):
                     db=mock_db
                 )
             )
-            # Ensure we convert via model_validate
-            validate.assert_called_once_with(wing_instance, from_attributes=True)
+            # Ensure from_dict was called with the correct parameters
+            from_dict.assert_called_once_with(name=self.test_wing_name, data=request_schema.model_dump())
 
     def test_update_wing_not_found_plane(self):
         mock_db = MagicMock()
@@ -52,7 +51,7 @@ class TestAeroplaneWingEndpoints(unittest.TestCase):
                 update_aeroplane_wing(
                     aeroplane_id=self.test_plane_id,
                     wing_name=self.test_wing_name,
-                    request=schemas.aeroplane.AsbWingSchema.model_construct(name=str(self.test_wing_name)),
+                    request=schemas.AsbWingSchema.model_construct(name=str(self.test_wing_name)),
                     db=mock_db
                 )
             )
@@ -61,13 +60,15 @@ class TestAeroplaneWingEndpoints(unittest.TestCase):
     def test_get_wing_success(self):
         mock_db = MagicMock()
         # Simulate plane with a wing
-        wing_model = MagicMock(name=self.test_wing_name, x_secs=[MagicMock(), MagicMock()])
+        wing_model = MagicMock()
+        wing_model.name = self.test_wing_name
+        wing_model.x_secs = [MagicMock(), MagicMock()]
         plane = MagicMock()
         plane.wings = [wing_model]
         mock_db.query.return_value.filter.return_value.first.return_value = plane
 
-        schema = schemas.aeroplane.AsbWingSchema.model_construct(name=str(self.test_wing_name), x_secs=[{'a':1}, {'b':2}])
-        with patch('app.api.v2.endpoints.aeroplane.schemas.aeroplane.Wing.model_validate', return_value=schema) as validate:
+        schema = schemas.AsbWingSchema.model_construct(name=str(self.test_wing_name), x_secs=[{'a':1}, {'b':2}])
+        with patch('app.schemas.AsbWingSchema.model_validate', return_value=schema) as validate:
             result = asyncio.run(
                 get_aeroplane_wing(
                     aeroplane_id=self.test_plane_id,

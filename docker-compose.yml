@@ -12,7 +12,7 @@ services:
       - ./:/home/cadquery/workspace
       - /tmp/.X11-unix:/tmp/.X11-unix
     stdin_open: true
-    entrypoint: "/opt/anaconda/envs/cq/bin/python"
+    entrypoint: "/opt/anaconda/envs/cadquery/bin/python"
     tty: true
     ports:
       - 8085:8000

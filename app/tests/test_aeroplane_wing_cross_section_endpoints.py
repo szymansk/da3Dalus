@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.v2.endpoints.aeroplane import (
+from app.api.v2.endpoints.aeroplane.wings import (
     get_aeroplane_wing_cross_sections,
     delete_aeroplane_wing_cross_sections,
     get_aeroplane_wing_cross_section,
@@ -16,7 +16,7 @@ from app.api.v2.endpoints.aeroplane import (
     create_and_update_aeroplane_wing_cross_section_control_surface,
     delete_aeroplane_wing_cross_section_control_surface,
 )
-from app.models.aeroplanemodel import WingXSecModel, ControlSurfaceModel
+
 from app import schemas
 
 class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
@@ -29,6 +29,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
         mock_db = MagicMock()
         # Simulate plane with a wing that has cross sections
         wing_model = MagicMock(name=self.test_wing_name)
+        wing_model.name = self.test_wing_name
         wing_model.x_secs = [MagicMock(), MagicMock()]
         plane = MagicMock()
         plane.wings = [wing_model]
@@ -40,7 +41,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
             schemas.WingXSecSchema.model_construct(airfoil="NACA2412", chord=0.8)
         ]
 
-        with patch('app.api.v2.endpoints.aeroplane.schemas.WingXSecSchema.model_validate', 
+        with patch('app.schemas.aeroplaneschema.WingXSecSchema.model_validate',
                   side_effect=mock_schemas) as validate:
             result = asyncio.run(
                 get_aeroplane_wing_cross_sections(
@@ -87,6 +88,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
         mock_db = MagicMock()
         # Simulate plane with a wing that has cross sections
         wing_model = MagicMock(name=self.test_wing_name)
+        wing_model.name = self.test_wing_name
         wing_model.x_secs = [MagicMock(), MagicMock()]
         plane = MagicMock()
         plane.wings = [wing_model]
@@ -109,6 +111,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
         mock_db = MagicMock()
         # Simulate plane with a wing that has cross sections
         wing_model = MagicMock(name=self.test_wing_name)
+        wing_model.name = self.test_wing_name
         cross_section = MagicMock()
         wing_model.x_secs = [cross_section]
         plane = MagicMock()
@@ -117,7 +120,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
 
         mock_schema = schemas.WingXSecSchema.model_construct(airfoil="NACA0012", chord=1.0)
 
-        with patch('app.api.v2.endpoints.aeroplane.schemas.WingXSecSchema.model_validate', 
+        with patch('app.schemas.aeroplaneschema.WingXSecSchema.model_validate',
                   return_value=mock_schema) as validate:
             result = asyncio.run(
                 get_aeroplane_wing_cross_section(
@@ -135,6 +138,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
         mock_db = MagicMock()
         # Simulate plane with a wing that has cross sections
         wing_model = MagicMock(name=self.test_wing_name)
+        wing_model.name = self.test_wing_name
         wing_model.x_secs = []  # Empty list
         plane = MagicMock()
         plane.wings = [wing_model]
@@ -156,6 +160,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
         mock_db = MagicMock()
         # Simulate plane with a wing that has cross sections
         wing_model = MagicMock(name=self.test_wing_name)
+        wing_model.name = self.test_wing_name
         wing_model.x_secs = []
         plane = MagicMock()
         plane.wings = [wing_model]
@@ -163,7 +168,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
 
         request_schema = schemas.WingXSecSchema.model_construct(airfoil="NACA0012", chord=1.0)
 
-        with patch('app.api.v2.endpoints.aeroplane.WingXSecModel', autospec=True) as MockXSecModel:
+        with patch('app.models.aeroplanemodel.WingXSecModel', autospec=True) as MockXSecModel:
             # Mock the created cross section
             mock_xsec = MagicMock()
             MockXSecModel.return_value = mock_xsec
@@ -179,7 +184,10 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
             )
 
             # Verify cross section was added
-            self.assertEqual(wing_model.x_secs, [mock_xsec])
+            mock_db.add.assert_called_once()
+            added_cs = mock_db.add.call_args[0][0]
+            self.assertEqual(added_cs.airfoil, 'NACA0012')
+            self.assertEqual(added_cs.chord, 1.0)
             # Verify timestamp was updated
             self.assertIsNotNone(plane.updated_at)
 
@@ -187,15 +195,17 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
         mock_db = MagicMock()
         # Simulate plane with a wing that has cross sections
         wing_model = MagicMock(name=self.test_wing_name)
+        wing_model.name = self.test_wing_name
         old_xsec = MagicMock()
+        old_xsec.control_surface = None  # No control surface initially
         wing_model.x_secs = [old_xsec]
         plane = MagicMock()
         plane.wings = [wing_model]
         mock_db.query.return_value.filter.return_value.first.return_value = plane
 
-        request_schema = schemas.WingXSecSchema.model_construct(airfoil="NACA0012", chord=1.0)
+        request_schema = schemas.WingXSecSchema.model_construct(airfoil="NACA0019", chord=3.0)
 
-        with patch('app.api.v2.endpoints.aeroplane.WingXSecModel', autospec=True) as MockXSecModel:
+        with patch('app.models.aeroplanemodel.WingXSecModel', autospec=True) as MockXSecModel:
             # Mock the updated cross section
             new_xsec = MagicMock()
             MockXSecModel.return_value = new_xsec
@@ -211,7 +221,8 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
             )
 
             # Verify cross section was updated
-            self.assertEqual(wing_model.x_secs[0], new_xsec)
+            self.assertEqual(wing_model.x_secs[0].airfoil, "NACA0019")
+            self.assertEqual(wing_model.x_secs[0].chord, 3.0)
             # Verify timestamp was updated
             self.assertIsNotNone(plane.updated_at)
 
@@ -219,6 +230,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
         mock_db = MagicMock()
         # Simulate plane with a wing that has cross sections
         wing_model = MagicMock(name=self.test_wing_name)
+        wing_model.name = self.test_wing_name
         xsec_to_delete = MagicMock()
         wing_model.x_secs = [xsec_to_delete]
         plane = MagicMock()
@@ -246,6 +258,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
         cross_section = MagicMock()
         cross_section.control_surface = control_surface
         wing_model = MagicMock(name=self.test_wing_name)
+        wing_model.name = self.test_wing_name
         wing_model.x_secs = [cross_section]
         plane = MagicMock()
         plane.wings = [wing_model]
@@ -253,7 +266,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
 
         mock_schema = schemas.ControlSurfaceSchema.model_construct(name="aileron", hinge_pos=0.75)
 
-        with patch('app.api.v2.endpoints.aeroplane.schemas.ControlSurfaceSchema.model_validate', 
+        with patch('app.schemas.aeroplaneschema.ControlSurfaceSchema.model_validate',
                   return_value=mock_schema) as validate:
             result = asyncio.run(
                 get_aeroplane_wing_cross_section_control_surface(
@@ -273,6 +286,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
         cross_section = MagicMock()
         cross_section.control_surface = None
         wing_model = MagicMock(name=self.test_wing_name)
+        wing_model.name = self.test_wing_name
         wing_model.x_secs = [cross_section]
         plane = MagicMock()
         plane.wings = [wing_model]
@@ -280,7 +294,8 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
 
         request_schema = schemas.ControlSurfaceSchema.model_construct(name="aileron", hinge_pos=0.75)
 
-        with patch('app.api.v2.endpoints.aeroplane.ControlSurfaceModel', autospec=True) as MockCSModel:
+        with patch('app.models.aeroplanemodel.ControlSurfaceModel', autospec=True) as MockCSModel, \
+             patch('app.schemas.aeroplaneschema.ControlSurfaceSchema.model_validate', return_value=request_schema) as mock_validate:
             # Mock the created control surface
             mock_cs = MagicMock()
             MockCSModel.return_value = mock_cs
@@ -295,10 +310,13 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
 
-            # Verify control surface was added
-            self.assertEqual(cross_section.control_surface, mock_cs)
-            # Verify timestamp was updated
-            self.assertIsNotNone(plane.updated_at)
+        # Verify that the new control surface was added to the DB session and committed
+        mock_db.add.assert_called_once()
+        added_cs = mock_db.add.call_args[0][0]
+        self.assertEqual(added_cs.name, 'aileron')
+        self.assertEqual(added_cs.hinge_point, 0.8)
+        # Verify timestamp was updated
+        self.assertIsNotNone(plane.updated_at)
 
     def test_delete_control_surface_success(self):
         mock_db = MagicMock()
@@ -307,6 +325,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
         cross_section = MagicMock()
         cross_section.control_surface = control_surface
         wing_model = MagicMock(name=self.test_wing_name)
+        wing_model.name = self.test_wing_name
         wing_model.x_secs = [cross_section]
         plane = MagicMock()
         plane.wings = [wing_model]

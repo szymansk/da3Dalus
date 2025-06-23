@@ -419,7 +419,7 @@ async def update_aeroplane_wing_cross_section(
 
             # Handle control surface
             existing_xsec = x_secs[cross_section_index]
-            if cs_dict is not None:
+            if cs_dict is not None: # Control surface provided in request
                 # Accept both dict and pydantic model
                 if hasattr(cs_dict, "model_dump"):
                     cs_dict = cs_dict.model_dump()

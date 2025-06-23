@@ -1,0 +1,461 @@
+import unittest
+import asyncio
+import uuid
+from unittest.mock import MagicMock, patch
+from fastapi import HTTPException, Response
+from sqlalchemy.exc import SQLAlchemyError
+from datetime import datetime
+from starlette.responses import JSONResponse
+
+from app.api.v2.endpoints.aeroplane.base import (
+    create_aeroplane,
+    get_aeroplanes,
+    get_aeroplane,
+    delete_aeroplane,
+    get_aeroplane_total_mass_in_kg,
+    create_aeroplane_total_mass_kg,
+    GetAeroplaneResponse
+)
+from app.models.aeroplanemodel import AeroplaneModel
+from app.schemas.AeroplaneRequest import AeroplaneMassRequest
+from app import schemas
+
+class TestCreateAeroplane(unittest.TestCase):
+    def test_create_aeroplane_success(self):
+        # Setup mock
+        mock_db = MagicMock()
+        begin_cm = mock_db.begin.return_value
+        begin_cm.__enter__.return_value = None
+
+        # Create a mock aeroplane with a UUID
+        mock_uuid = uuid.uuid4()
+        mock_aeroplane = MagicMock()
+        mock_aeroplane.uuid = mock_uuid
+
+        # Setup the mock to return our mock aeroplane when AeroplaneModel is created
+        with patch('app.api.v2.endpoints.aeroplane.base.AeroplaneModel', return_value=mock_aeroplane):
+            result = asyncio.run(create_aeroplane(name="Test Aeroplane", db=mock_db))
+
+            # Assertions
+            self.assertEqual(result.body, bytes(f'{{"id":"{mock_uuid}"}}', 'utf-8'))
+            mock_db.begin.assert_called_once()
+            mock_db.add.assert_called_once_with(mock_aeroplane)
+            mock_db.flush.assert_called_once()
+            mock_db.refresh.assert_called_once_with(mock_aeroplane)
+
+    def test_create_aeroplane_db_error(self):
+        # Setup mock
+        mock_db = MagicMock()
+        begin_cm = mock_db.begin.return_value
+        begin_cm.__enter__.side_effect = SQLAlchemyError("Test DB error")
+
+        # Call the function and check for exception
+        with self.assertRaises(HTTPException) as context:
+            asyncio.run(create_aeroplane(name="Test Aeroplane", db=mock_db))
+
+        # Assertions
+        self.assertEqual(context.exception.status_code, 500)
+        self.assertTrue("Database error" in context.exception.detail)
+        mock_db.begin.assert_called_once()
+
+    def test_create_aeroplane_unexpected_error(self):
+        # Setup mock
+        mock_db = MagicMock()
+        begin_cm = mock_db.begin.return_value
+        begin_cm.__enter__.return_value = None
+        mock_db.add.side_effect = Exception("Test unexpected error")
+
+        # Call the function and check for exception
+        with self.assertRaises(HTTPException) as context:
+            asyncio.run(create_aeroplane(name="Test Aeroplane", db=mock_db))
+
+        # Assertions
+        self.assertEqual(context.exception.status_code, 500)
+        self.assertTrue("Unexpected error" in context.exception.detail)
+        mock_db.begin.assert_called_once()
+
+class TestGetAeroplanes(unittest.TestCase):
+    def test_get_aeroplanes_success(self):
+        # Setup mock
+        mock_db = MagicMock()
+        
+        # Create mock aeroplanes
+        mock_aeroplane1 = MagicMock()
+        mock_aeroplane1.name = "Test Aeroplane 1"
+        mock_aeroplane1.uuid = uuid.uuid4()
+        mock_aeroplane1.created_at = datetime.now()
+        mock_aeroplane1.updated_at = datetime.now()
+        
+        mock_aeroplane2 = MagicMock()
+        mock_aeroplane2.name = "Test Aeroplane 2"
+        mock_aeroplane2.uuid = uuid.uuid4()
+        mock_aeroplane2.created_at = datetime.now()
+        mock_aeroplane2.updated_at = datetime.now()
+        
+        # Setup the mock to return our mock aeroplanes
+        mock_db.query.return_value.order_by.return_value.all.return_value = [mock_aeroplane1, mock_aeroplane2]
+        
+        # Call the function
+        result = asyncio.run(get_aeroplanes(db=mock_db))
+        
+        # Assertions
+        self.assertIsInstance(result, GetAeroplaneResponse)
+        self.assertEqual(len(result.aeroplanes), 2)
+        self.assertEqual(result.aeroplanes[0].name, mock_aeroplane1.name)
+        self.assertEqual(result.aeroplanes[0].id, mock_aeroplane1.uuid)
+        self.assertEqual(result.aeroplanes[1].name, mock_aeroplane2.name)
+        self.assertEqual(result.aeroplanes[1].id, mock_aeroplane2.uuid)
+        mock_db.query.assert_called_once_with(AeroplaneModel)
+        mock_db.query.return_value.order_by.assert_called_once()
+        mock_db.query.return_value.order_by.return_value.all.assert_called_once()
+    
+    def test_get_aeroplanes_db_error(self):
+        # Setup mock
+        mock_db = MagicMock()
+        mock_db.query.side_effect = SQLAlchemyError("Test DB error")
+        
+        # Call the function and check for exception
+        with self.assertRaises(HTTPException) as context:
+            asyncio.run(get_aeroplanes(db=mock_db))
+        
+        # Assertions
+        self.assertEqual(context.exception.status_code, 500)
+        self.assertTrue("Database error" in context.exception.detail)
+        mock_db.query.assert_called_once_with(AeroplaneModel)
+    
+    def test_get_aeroplanes_unexpected_error(self):
+        # Setup mock
+        mock_db = MagicMock()
+        mock_db.query.return_value.order_by.side_effect = Exception("Test unexpected error")
+        
+        # Call the function and check for exception
+        with self.assertRaises(HTTPException) as context:
+            asyncio.run(get_aeroplanes(db=mock_db))
+        
+        # Assertions
+        self.assertEqual(context.exception.status_code, 500)
+        self.assertTrue("Unexpected error" in context.exception.detail)
+        mock_db.query.assert_called_once_with(AeroplaneModel)
+
+class TestGetAeroplane(unittest.TestCase):
+    def test_get_aeroplane_success(self):
+        test_id = uuid.uuid4()
+        mock_db = MagicMock()
+        
+        # Mock the ORM model instance
+        mock_model = MagicMock()
+        mock_model.wings = []
+        mock_model.name = "Test Aeroplane 1"
+        mock_model.fuselages = []
+        mock_db.query.return_value.filter.return_value.first.return_value = mock_model
+        
+        # Mock the schema
+        mock_schema = MagicMock()
+        
+        # Patch the model_validate method
+        with patch('app.schemas.AeroplaneSchema.model_validate', return_value=mock_schema):
+            result = asyncio.run(get_aeroplane(aeroplane_id=test_id, db=mock_db))
+        
+        # Assertions
+        mock_db.query.assert_called_once_with(AeroplaneModel)
+        mock_db.query.return_value.filter.assert_called_once()
+        self.assertEqual(result.name, mock_model.name)
+    
+    def test_get_aeroplane_not_found(self):
+        test_id = uuid.uuid4()
+        mock_db = MagicMock()
+        
+        # .first() returns None → 404
+        mock_db.query.return_value.filter.return_value.first.return_value = None
+        
+        with self.assertRaises(HTTPException) as ctx:
+            asyncio.run(get_aeroplane(aeroplane_id=test_id, db=mock_db))
+        
+        self.assertEqual(ctx.exception.status_code, 404)
+        self.assertIn("Aeroplane not found", ctx.exception.detail)
+    
+    def test_get_aeroplane_db_error(self):
+        test_id = uuid.uuid4()
+        mock_db = MagicMock()
+        
+        # Simulate SQLAlchemy failure at query
+        mock_db.query.side_effect = SQLAlchemyError("DB is down")
+        
+        with self.assertRaises(HTTPException) as ctx:
+            asyncio.run(get_aeroplane(aeroplane_id=test_id, db=mock_db))
+        
+        self.assertEqual(ctx.exception.status_code, 500)
+        self.assertIn("Database error", ctx.exception.detail)
+    
+    def test_get_aeroplane_unexpected_error(self):
+        test_id = uuid.uuid4()
+        mock_db = MagicMock()
+        
+        # Simulate some other exception in filter()
+        mock_db.query.return_value.filter.side_effect = Exception("whoops")
+        
+        with self.assertRaises(HTTPException) as ctx:
+            asyncio.run(get_aeroplane(aeroplane_id=test_id, db=mock_db))
+        
+        self.assertEqual(ctx.exception.status_code, 500)
+        self.assertIn("Unexpected error", ctx.exception.detail)
+
+class TestDeleteAeroplane(unittest.TestCase):
+    def test_delete_aeroplane_success(self):
+        test_id = uuid.uuid4()
+        mock_db = MagicMock()
+        
+        # Simulate found object
+        mock_model = MagicMock()
+        mock_db.query.return_value.filter.return_value.first.return_value = mock_model
+        
+        # Context manager for transaction
+        begin_cm = mock_db.begin.return_value
+        begin_cm.__enter__.return_value = None
+        
+        result = asyncio.run(delete_aeroplane(aeroplane_id=test_id, db=mock_db))
+        
+        mock_db.query.assert_called_once_with(AeroplaneModel)
+        mock_db.delete.assert_called_once_with(mock_model)
+        # Ensure transaction was entered
+        begin_cm.__enter__.assert_called_once()
+        self.assertIsNone(result)
+    
+    def test_delete_aeroplane_not_found(self):
+        test_id = uuid.uuid4()
+        mock_db = MagicMock()
+        mock_db.query.return_value.filter.return_value.first.return_value = None
+        
+        with self.assertRaises(HTTPException) as ctx:
+            asyncio.run(delete_aeroplane(aeroplane_id=test_id, db=mock_db))
+        
+        self.assertEqual(ctx.exception.status_code, 404)
+        self.assertIn("Aeroplane not found", ctx.exception.detail)
+    
+    def test_delete_aeroplane_db_error(self):
+        test_id = uuid.uuid4()
+        mock_db = MagicMock()
+        mock_db.query.side_effect = SQLAlchemyError("DB down")
+        
+        with self.assertRaises(HTTPException) as ctx:
+            asyncio.run(delete_aeroplane(aeroplane_id=test_id, db=mock_db))
+        
+        self.assertEqual(ctx.exception.status_code, 500)
+        self.assertIn("Database error", ctx.exception.detail)
+    
+    def test_delete_aeroplane_unexpected_error(self):
+        test_id = uuid.uuid4()
+        mock_db = MagicMock()
+        
+        # Found model but delete blows up
+        mock_model = MagicMock()
+        mock_db.query.return_value.filter.return_value.first.return_value = mock_model
+        begin_cm = mock_db.begin.return_value
+        begin_cm.__enter__.return_value = None
+        mock_db.delete.side_effect = Exception("oops")
+        
+        with self.assertRaises(HTTPException) as ctx:
+            asyncio.run(delete_aeroplane(aeroplane_id=test_id, db=mock_db))
+        
+        self.assertEqual(ctx.exception.status_code, 500)
+        self.assertIn("Unexpected error", ctx.exception.detail)
+
+class TestGetAeroplaneTotalMass(unittest.TestCase):
+    def test_get_aeroplane_total_mass_success(self):
+        test_id = uuid.uuid4()
+        test_mass = 1000.5
+        mock_db = MagicMock()
+        
+        # Mock the ORM model instance
+        mock_model = MagicMock()
+        mock_model.total_mass_kg = test_mass
+        mock_db.query.return_value.filter.return_value.first.return_value = mock_model
+        
+        result = asyncio.run(get_aeroplane_total_mass_in_kg(aeroplane_id=test_id, db=mock_db))
+        
+        # Assertions
+        mock_db.query.assert_called_once_with(AeroplaneModel)
+        mock_db.query.return_value.filter.assert_called_once()
+        self.assertEqual(result.total_mass_kg, test_mass)
+    
+    def test_get_aeroplane_total_mass_not_found(self):
+        test_id = uuid.uuid4()
+        mock_db = MagicMock()
+        
+        # .first() returns None → 404
+        mock_db.query.return_value.filter.return_value.first.return_value = None
+        
+        with self.assertRaises(HTTPException) as ctx:
+            asyncio.run(get_aeroplane_total_mass_in_kg(aeroplane_id=test_id, db=mock_db))
+        
+        self.assertEqual(ctx.exception.status_code, 404)
+        self.assertIn("Aeroplane not found", ctx.exception.detail)
+    
+    def test_get_aeroplane_total_mass_not_set(self):
+        test_id = uuid.uuid4()
+        mock_db = MagicMock()
+        
+        # Mock the ORM model instance with None mass
+        mock_model = MagicMock()
+        mock_model.total_mass_kg = None
+        mock_db.query.return_value.filter.return_value.first.return_value = mock_model
+        
+        with self.assertRaises(HTTPException) as ctx:
+            asyncio.run(get_aeroplane_total_mass_in_kg(aeroplane_id=test_id, db=mock_db))
+        
+        self.assertEqual(ctx.exception.status_code, 404)
+        self.assertIn("Aeroplane weight not set", ctx.exception.detail)
+    
+    def test_get_aeroplane_total_mass_db_error(self):
+        test_id = uuid.uuid4()
+        mock_db = MagicMock()
+        
+        # Simulate SQLAlchemy failure at query
+        mock_db.query.side_effect = SQLAlchemyError("DB is down")
+        
+        with self.assertRaises(HTTPException) as ctx:
+            asyncio.run(get_aeroplane_total_mass_in_kg(aeroplane_id=test_id, db=mock_db))
+        
+        self.assertEqual(ctx.exception.status_code, 500)
+        self.assertIn("Database error", ctx.exception.detail)
+    
+    def test_get_aeroplane_total_mass_unexpected_error(self):
+        test_id = uuid.uuid4()
+        mock_db = MagicMock()
+        
+        # Simulate some other exception in filter()
+        mock_db.query.return_value.filter.side_effect = Exception("whoops")
+        
+        with self.assertRaises(HTTPException) as ctx:
+            asyncio.run(get_aeroplane_total_mass_in_kg(aeroplane_id=test_id, db=mock_db))
+        
+        self.assertEqual(ctx.exception.status_code, 500)
+        self.assertIn("Unexpected error", ctx.exception.detail)
+
+class TestCreateAeroplaneTotalMass(unittest.TestCase):
+    def test_create_aeroplane_total_mass_new_success(self):
+        test_id = uuid.uuid4()
+        test_mass = 1000.5
+        mock_db = MagicMock()
+        
+        # Mock the ORM model instance
+        mock_model = MagicMock()
+        mock_model.total_mass_kg = None
+        mock_db.query.return_value.filter.return_value.first.return_value = mock_model
+        
+        # Context manager for transaction
+        begin_cm = mock_db.begin.return_value
+        begin_cm.__enter__.return_value = None
+        
+        # Create request body
+        mass_request = AeroplaneMassRequest(total_mass_kg=test_mass)
+        
+        result = asyncio.run(create_aeroplane_total_mass_kg(
+            aeroplane_id=test_id, 
+            total_mass_kg=mass_request, 
+            db=mock_db
+        ))
+        
+        # Assertions
+        mock_db.query.assert_called_once_with(AeroplaneModel)
+        mock_db.query.return_value.filter.assert_called_once()
+        self.assertEqual(mock_model.total_mass_kg, test_mass)
+        self.assertIsInstance(result, Response)
+        self.assertEqual(result.status_code, 201)
+    
+    def test_create_aeroplane_total_mass_update_success(self):
+        test_id = uuid.uuid4()
+        old_mass = 900.0
+        new_mass = 1000.5
+        mock_db = MagicMock()
+        
+        # Mock the ORM model instance
+        mock_model = MagicMock()
+        mock_model.total_mass_kg = old_mass
+        mock_db.query.return_value.filter.return_value.first.return_value = mock_model
+        
+        # Context manager for transaction
+        begin_cm = mock_db.begin.return_value
+        begin_cm.__enter__.return_value = None
+        
+        # Create request body
+        mass_request = AeroplaneMassRequest(total_mass_kg=new_mass)
+        
+        result = asyncio.run(create_aeroplane_total_mass_kg(
+            aeroplane_id=test_id, 
+            total_mass_kg=mass_request, 
+            db=mock_db
+        ))
+        
+        # Assertions
+        mock_db.query.assert_called_once_with(AeroplaneModel)
+        mock_db.query.return_value.filter.assert_called_once()
+        self.assertEqual(mock_model.total_mass_kg, new_mass)
+        self.assertIsInstance(result, Response)
+        self.assertEqual(result.status_code, 200)
+    
+    def test_create_aeroplane_total_mass_not_found(self):
+        test_id = uuid.uuid4()
+        test_mass = 1000.5
+        mock_db = MagicMock()
+        
+        # .first() returns None → 404
+        mock_db.query.return_value.filter.return_value.first.return_value = None
+        
+        # Create request body
+        mass_request = AeroplaneMassRequest(total_mass_kg=test_mass)
+        
+        with self.assertRaises(HTTPException) as ctx:
+            asyncio.run(create_aeroplane_total_mass_kg(
+                aeroplane_id=test_id, 
+                total_mass_kg=mass_request, 
+                db=mock_db
+            ))
+        
+        self.assertEqual(ctx.exception.status_code, 404)
+        self.assertIn("Aeroplane not found", ctx.exception.detail)
+    
+    def test_create_aeroplane_total_mass_db_error(self):
+        test_id = uuid.uuid4()
+        test_mass = 1000.5
+        mock_db = MagicMock()
+        
+        # Simulate SQLAlchemy failure at query
+        mock_db.query.side_effect = SQLAlchemyError("DB is down")
+        
+        # Create request body
+        mass_request = AeroplaneMassRequest(total_mass_kg=test_mass)
+        
+        with self.assertRaises(HTTPException) as ctx:
+            asyncio.run(create_aeroplane_total_mass_kg(
+                aeroplane_id=test_id, 
+                total_mass_kg=mass_request, 
+                db=mock_db
+            ))
+        
+        self.assertEqual(ctx.exception.status_code, 500)
+        self.assertIn("Database error", ctx.exception.detail)
+    
+    def test_create_aeroplane_total_mass_unexpected_error(self):
+        test_id = uuid.uuid4()
+        test_mass = 1000.5
+        mock_db = MagicMock()
+        
+        # Simulate some other exception in filter()
+        mock_db.query.return_value.filter.side_effect = Exception("whoops")
+        
+        # Create request body
+        mass_request = AeroplaneMassRequest(total_mass_kg=test_mass)
+        
+        with self.assertRaises(HTTPException) as ctx:
+            asyncio.run(create_aeroplane_total_mass_kg(
+                aeroplane_id=test_id, 
+                total_mass_kg=mass_request, 
+                db=mock_db
+            ))
+        
+        self.assertEqual(ctx.exception.status_code, 500)
+        self.assertIn("Unexpected error", ctx.exception.detail)
+
+if __name__ == "__main__":
+    unittest.main()

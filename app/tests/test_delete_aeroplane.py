@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.v2.endpoints.aeroplane import delete_aeroplane
+from app.api.v2.endpoints.aeroplane.base import delete_aeroplane
 
 class TestDeleteAeroplane(unittest.TestCase):
     def test_delete_aeroplane_success(self):
@@ -23,7 +23,8 @@ class TestDeleteAeroplane(unittest.TestCase):
         mock_db.delete.assert_called_once_with(mock_model)
         # ensure transaction was entered
         begin_cm.__enter__.assert_called_once()
-        self.assertEqual(result, {"deleted": test_id})
+        # The delete_aeroplane function returns None as it uses a 204 No Content status code
+        self.assertIsNone(result)
 
     def test_delete_aeroplane_not_found(self):
         test_id = uuid.uuid4()
