@@ -1,4 +1,0 @@
-services:
-  cq-client:
-    entrypoint: []
-

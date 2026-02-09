@@ -53,17 +53,17 @@ async def analyze_wing_post(aeroplane_id: AeroPlaneID = Path(..., description="T
         AnalysisModel: The AVL analysis results
     """
     try:
-        try:
-            plane_schema = await get_wing_by_name_and_aeroplane_id(aeroplane_id, wing_name, db)
-        except SQLAlchemyError as e:
-            logger.error(f"Database error when getting aeroplane wing: {e}")
-            raise HTTPException(status_code=500, detail=f"Database error: {e}")
-        except NotFoundInDbException as not_found_error:
-            raise HTTPException(status_code=404, detail=str(not_found_error))
-        except Exception as e:
-            logger.error(f"Unexpected error when getting aeroplane wing: {e}")
-            raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+        plane_schema = await get_wing_by_name_and_aeroplane_id(aeroplane_id, wing_name, db)
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when getting aeroplane wing: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    except NotFoundInDbException as not_found_error:
+        raise HTTPException(status_code=404, detail=str(not_found_error))
+    except Exception as e:
+        logger.error(f"Unexpected error when getting aeroplane wing: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
+    try:
         asb_airplane: Airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
         asb_airplane.xyz_ref = operating_point.xyz_ref
         asb_airplane.wings = [w for w in asb_airplane.wings if w.name == wing_name]
@@ -100,17 +100,19 @@ async def analyze_airplane_post(aeroplane_id: AeroPlaneID = Path(..., descriptio
         AnalysisModel: The AVL analysis results
     """
     try:
-        try:
-            plane_schema: AeroplaneSchema = await get_aeroplane_by_id(aeroplane_id, db)
-        except SQLAlchemyError as e:
-            logger.error(f"Database error when getting aeroplane: {e}")
-            raise HTTPException(status_code=500, detail=f"Database error: {e}")
-        except NotFoundInDbException as not_found_error:
-            raise HTTPException(status_code=404, detail=str(not_found_error))
-        except Exception as e:
-            logger.error(f"Unexpected error when getting aeroplane: {e}")
-            raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+        plane_schema: AeroplaneSchema = await get_aeroplane_by_id(aeroplane_id, db)
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when getting aeroplane: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    except NotFoundInDbException as not_found_error:
+        raise HTTPException(status_code=404, detail=str(not_found_error))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error when getting aeroplane: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
+    try:
         asb_airplane: Airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
         result, _ = await analyse_aerodynamics(analysis_tool, operating_point, asb_airplane)
         return result
@@ -151,17 +153,16 @@ async def calculate_streamlines(aeroplane_id: AeroPlaneID = Path(..., descriptio
         HTTPException: If the aeroplane or wing is not found, or if there is a database or unexpected error.
     """
     try:
-        try:
-            plane_schema: AeroplaneSchema = await get_aeroplane_by_id(aeroplane_id, db)
-        except SQLAlchemyError as e:
-            logger.error(f"Database error when getting aeroplane: {e}")
-            raise HTTPException(status_code=500, detail=f"Database error: {e}")
-        except NotFoundInDbException as not_found_error:
-            raise HTTPException(status_code=404, detail=str(not_found_error))
-        except Exception as e:
-            logger.error(f"Unexpected error when getting aeroplane: {e}")
-            raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
-
+        plane_schema: AeroplaneSchema = await get_aeroplane_by_id(aeroplane_id, db)
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when getting aeroplane: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    except NotFoundInDbException as not_found_error:
+        raise HTTPException(status_code=404, detail=str(not_found_error))
+    except Exception as e:
+        logger.error(f"Unexpected error when getting aeroplane: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+    try:
         asb_airplane: Airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
         result, figure = await analyse_aerodynamics(AnalysisToolUrlType.VORTEX_LATTICE,
                                                     operating_point,
@@ -197,17 +198,16 @@ async def analyze_airplane_alpha_sweep(
     Performs an angle of attack sweep for a given airplane.
     """
     try:
-        try:
-            plane_schema: AeroplaneSchema = await get_aeroplane_by_id(aeroplane_id, db)
-        except SQLAlchemyError as e:
-            logger.error(f"Database error when getting aeroplane: {e}")
-            raise HTTPException(status_code=500, detail=f"Database error: {e}")
-        except NotFoundInDbException as not_found_error:
-            raise HTTPException(status_code=404, detail=str(not_found_error))
-        except Exception as e:
-            logger.error(f"Unexpected error when getting aeroplane: {e}")
-            raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
-
+        plane_schema: AeroplaneSchema = await get_aeroplane_by_id(aeroplane_id, db)
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when getting aeroplane: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    except NotFoundInDbException as not_found_error:
+        raise HTTPException(status_code=404, detail=str(not_found_error))
+    except Exception as e:
+        logger.error(f"Unexpected error when getting aeroplane: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+    try:
         asb_airplane: Airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
 
         operating_point = OperatingPointSchema(
@@ -246,17 +246,16 @@ async def analyze_airplane_simple_sweep(
     Performs sweep through the given sweep variable for a given airplane.
     """
     try:
-        try:
-            plane_schema: AeroplaneSchema = await get_aeroplane_by_id(aeroplane_id, db)
-        except SQLAlchemyError as e:
-            logger.error(f"Database error when getting aeroplane: {e}")
-            raise HTTPException(status_code=500, detail=f"Database error: {e}")
-        except NotFoundInDbException as not_found_error:
-            raise HTTPException(status_code=404, detail=str(not_found_error))
-        except Exception as e:
-            logger.error(f"Unexpected error when getting aeroplane: {e}")
-            raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
-
+        plane_schema: AeroplaneSchema = await get_aeroplane_by_id(aeroplane_id, db)
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when getting aeroplane: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    except NotFoundInDbException as not_found_error:
+        raise HTTPException(status_code=404, detail=str(not_found_error))
+    except Exception as e:
+        logger.error(f"Unexpected error when getting aeroplane: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+    try:
         asb_airplane: Airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
 
         operating_point = OperatingPointSchema(
@@ -391,17 +390,17 @@ async def get_streamlines_three_view(
         HTTPException: If the aeroplane is not found, or if there is a database or unexpected error.
     """
     try:
-        try:
-            plane_schema: AeroplaneSchema = await get_aeroplane_by_id(aeroplane_id, db)
-        except SQLAlchemyError as e:
-            logger.error(f"Database error when getting aeroplane: {e}")
-            raise HTTPException(status_code=500, detail=f"Database error: {e}")
-        except NotFoundInDbException as not_found_error:
-            raise HTTPException(status_code=404, detail=str(not_found_error))
-        except Exception as e:
-            logger.error(f"Unexpected error when getting aeroplane: {e}")
-            raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+        plane_schema: AeroplaneSchema = await get_aeroplane_by_id(aeroplane_id, db)
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when getting aeroplane: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    except NotFoundInDbException as not_found_error:
+        raise HTTPException(status_code=404, detail=str(not_found_error))
+    except Exception as e:
+        logger.error(f"Unexpected error when getting aeroplane: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
+    try:
         # Convert to aerosandbox Airplane
         asb_airplane: Airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
 
@@ -451,17 +450,17 @@ async def get_aeroplane_three_view(
         HTTPException: If the aeroplane is not found, or if there is a database or unexpected error.
     """
     try:
-        try:
-            plane_schema: AeroplaneSchema = await get_aeroplane_by_id(aeroplane_id, db)
-        except SQLAlchemyError as e:
-            logger.error(f"Database error when getting aeroplane: {e}")
-            raise HTTPException(status_code=500, detail=f"Database error: {e}")
-        except NotFoundInDbException as not_found_error:
-            raise HTTPException(status_code=404, detail=str(not_found_error))
-        except Exception as e:
-            logger.error(f"Unexpected error when getting aeroplane: {e}")
-            raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+        plane_schema: AeroplaneSchema = await get_aeroplane_by_id(aeroplane_id, db)
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when getting aeroplane: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    except NotFoundInDbException as not_found_error:
+        raise HTTPException(status_code=404, detail=str(not_found_error))
+    except Exception as e:
+        logger.error(f"Unexpected error when getting aeroplane: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
+    try:
         # Convert to aerosandbox Airplane
         asb_airplane: Airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
 

@@ -2,7 +2,7 @@ from typing import Optional
 
 from OCP.gp import *
 from pydantic import PositiveFloat
-from pydantic.v1 import NonNegativeFloat
+from pydantic import NonNegativeFloat
 
 from cad_designer.airplane.aircraft_topology.components import Servo
 from cad_designer.airplane.aircraft_topology.components.ComponentInformation import ComponentInformation

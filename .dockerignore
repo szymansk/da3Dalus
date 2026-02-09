@@ -2,7 +2,8 @@ docs
 conda
 run
 vscode
-test
+test/**
+!test/Construction_eHawk_wing.py
 notebooks
 Readme.md
 Makefile

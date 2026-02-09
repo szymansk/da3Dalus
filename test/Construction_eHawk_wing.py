@@ -476,7 +476,7 @@ if __name__ == "__main__":
     airplane.draw_three_view()
     airplane.export_AVL(filename="../exports/eHawk.AVL", include_fuselages=False)
 
-    exit(0)
+    #exit(0)
 
     wing_configuration = {"main_wing": wing_config}
 

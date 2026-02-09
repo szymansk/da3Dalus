@@ -1,31 +1,253 @@
-# README
-## Documentation
-The documentation is written in asciidoctor and can be found in the '/docs/' directory. To compile the documentation use ```make doc´´´. You can find the documentation in the '/docs/html/' directory.
+# da3Dalus CAD Modelling Service
 
-## Build, Run & Debug
-Best is to build and debug your code inside of a docker container. The repository contains a 'docker-compose.yml' with all services needed. The 'docker-compose.dev.yml' is only to overcome an issue with the pyCharm editor.
+## Introduction
 
-In general you should use the 'cq-client'/'cq-win_client' for development whith linux/arm64 or linux/amd64. 
+### Purpose
 
-If you are using pyCharm you should select as interpreter:
-* add interpreter: On Docker Compose...
-* select the corresponding development service
-  * arm64 : cq-client
-  * amd64 : cq-win_client
-* select as option 'System Interpreter'
-* add a new path to:
-  * arm64 : '/opt/anaconda/envs/cadquery/bin/python3'
-  * amd64 : '/opt/conda/envs/cq/bin/python3'
+The **da3Dalus CAD Modelling Service** is a RESTful API service that provides parametric CAD modelling and aerodynamic analysis capabilities for aircraft design. It combines CAD generation using CadQuery with aerodynamic simulation using Aerosandbox, enabling automated aircraft design workflows.
 
-You should edit your run configuration and select one of the file in the 'test' directory.
+### What It Provides
 
-To show the generated shapes you must launch the *cq-server* service. You will then find here the ![cadquery_viewer](http://localhost:5050).
+- **Parametric Aircraft Modelling**: Create and manage aircraft configurations including wings, fuselages, and complete assemblies
+- **CAD Generation**: Generate 3D CAD models (STEP files) from parametric definitions
+- **Aerodynamic Analysis**: Perform vortex lattice method (VLM) analysis, stability analysis, and parameter sweeps
+- **Operating Point Analysis**: Calculate aerodynamic performance at specific flight conditions
+- **3D Visualization**: Generate streamline plots and three-view diagrams
+- **Model Context Protocol (MCP) Server**: Exposes all API endpoints as MCP tools for AI agent integration
 
-After this you are able to run and debug the code in your docker container.
+### Technology Stack
 
-## Folder Structure
+- **FastAPI**: Modern web framework for building APIs
+- **CadQuery**: Parametric CAD scripting in Python
+- **Aerosandbox**: Aerodynamic analysis toolkit
+- **SQLAlchemy**: Database ORM for persistence
+- **FastAPI-MCP**: Model Context Protocol server integration
 
-* *test* Folder - scripts that build and test
-* [*components* Folder](./components/Readme.md) - components that can be reused
+---
+
+## Launching the Application
+
+### Option 1: Using Poetry (Local Development)
+
+Poetry is the recommended way for local development with hot-reload capabilities.
+
+#### Prerequisites
+
+- Python 3.11 or 3.12
+- Poetry installed (`curl -sSL https://install.python-poetry.org | python3 -`)
+
+#### Steps
+
+1. **Install dependencies:**
+   ```bash
+   poetry install
+   ```
+
+2. **Activate the virtual environment:**
+   ```bash
+   poetry shell
+   ```
+
+3. **Run the application:**
+   ```bash
+   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+   ```
+
+4. **Alternative: Using VS Code debugger:**
+   - Open the project in VS Code
+   - Press `F5` or select "FastAPI: app.main" from the Run and Debug panel
+   - The application will start with debugging enabled
+
+### Option 2: Using Docker Compose (Production)
+
+Docker Compose provides a containerized environment with all dependencies pre-installed.
+
+#### Prerequisites
+
+- Docker and Docker Compose installed
+
+#### Steps
+
+1. **Build the image:**
+   ```bash
+   docker compose build
+   ```
+
+2. **Start the service:**
+   ```bash
+   docker compose up -d
+   ```
+
+3. **View logs:**
+   ```bash
+   docker compose logs -f aero-cad-service
+   ```
+
+4. **Stop the service:**
+   ```bash
+   docker compose down
+   ```
+
+The service will be available at `http://localhost:8086` (mapped to internal port 8000).
+
+---
+
+## Testing and Documentation
+
+### API Documentation
+
+Once the application is running, you can access the interactive API documentation:
+
+- **Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs)
+  - Interactive API documentation with "Try it out" functionality
+  - Complete endpoint descriptions and request/response schemas
+
+- **ReDoc**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
+  - Alternative, more detailed API documentation
+
+- **OpenAPI Schema**: [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json)
+  - Machine-readable API specification
+
+### Testing MCP with MCP Inspector
+
+The application exposes a Model Context Protocol (MCP) server that can be tested using the MCP Inspector.
+
+#### Install MCP Inspector
+
+```bash
+npm install -g @modelcontextprotocol/inspector
+```
+
+#### Launch MCP Inspector
+
+1. **Start the application** (using Poetry or Docker)
+
+2. **Run MCP Inspector:**
+   ```bash
+   mcp-inspector http://localhost:8000/mcp/sse
+   ```
+
+3. **Access the Inspector UI:**
+   - Open your browser to the URL shown in the terminal (typically `http://localhost:5173`)
+   - The inspector will connect to your MCP server via Server-Sent Events (SSE)
+
+4. **Test MCP Tools:**
+   - Browse available tools (all API endpoints are exposed as MCP tools)
+   - Test tool invocations with different parameters
+   - View responses and schemas
+
+#### MCP Endpoints
+
+- **SSE Transport**: `GET http://localhost:8000/mcp/sse`
+- **HTTP Messages**: `POST http://localhost:8000/mcp/messages`
+
+#### MCP Client Configuration Example
+
+For Claude Desktop or other MCP clients:
+
+```json
+{
+  "mcpServers": {
+    "da3dalus-cad": {
+      "url": "http://localhost:8000/mcp",
+      "transport": "sse"
+    }
+  }
+}
+```
+
+---
+
+## Architecture
+
+### API Versioning
+
+The service uses API versioning with both v1 and v2 endpoints:
+
+- **v2** (current): Main API with full MCP support
+  - `/aeroplanes/` - Aircraft management
+  - `/operating_points/` - Flight condition definitions
+  - `/aeroplanes/{id}/wings/` - Wing analysis
+  - CAD generation and aerodynamic analysis endpoints
+
+### Key API Endpoints
+
+- **Health Check**: `GET /health`
+- **Aeroplane CRUD**: `POST|GET|PUT|DELETE /aeroplanes/`
+- **Wing Analysis**: `POST /aeroplanes/{id}/wings/{name}/{analysis_tool}`
+- **Operating Point Analysis**: `POST /aeroplanes/{id}/operating_point/{tool}`
+- **Stability Analysis**: `GET /aeroplanes/{id}/stability_summary`
+- **CAD Export**: Various endpoints for STEP file generation
+
+---
+
+## Development
+
+### Running Tests
+
+```bash
+poetry run pytest
+```
+
+Or use the included shell script:
+
+```bash
+./run_all_tests.sh
+```
+
+### Project Structure
+
+```
+app/
+├── api/           # API endpoints (v1 and v2)
+├── converters/    # Data converters between formats
+├── core/          # Core business logic
+├── db/            # Database configuration
+├── models/        # SQLAlchemy models
+├── schemas/       # Pydantic schemas
+└── services/      # Business logic services
+
+cad_designer/      # CAD generation modules
+components/        # Reusable aircraft components
+Avl/              # AVL analysis integration
+docs/             # Documentation (asciidoctor)
+```
+
+### Building Documentation
+
+The project documentation is written in AsciiDoctor format:
+
+```bash
+make doc
+```
+
+Generated documentation will be available in the `docs/html/` directory.
+
+### Environment Variables
+
+- `BROWSER_PATH`: Path to Chromium browser for rendering (default: `/usr/bin/chromium-browser`)
+- `QT_QPA_PLATFORM`: Set to `offscreen` for headless rendering
+
+---
+
+## Platform Support
+
+The application supports multiple platforms with conditional dependencies:
+
+- **macOS (arm64/x86_64)**: Full support including CadQuery, Aerosandbox, and visualization
+- **Linux (amd64)**: Full support
+- **Linux (aarch64)**: Full support in Docker (CadQuery and visualization tools excluded in poetry.toml due to availability)
+
+Platform-specific dependencies are handled via environment markers in [pyproject.toml](pyproject.toml).
+
+---
+
+## License
+
+[Your License Here]
+
+## Contributors
+
+Marc Szymanski (marc.szymanski@mac.com)
 
 

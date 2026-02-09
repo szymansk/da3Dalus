@@ -4,7 +4,7 @@ import numpy as np
 import math
 
 from cadquery import Sketch, Location
-from pydantic.v1 import NonNegativeInt
+from pydantic import NonNegativeInt
 
 from cad_designer.airplane.aircraft_topology.printer3d import Printer3dSettings
 from cad_designer.airplane.aircraft_topology.wing import WingConfiguration

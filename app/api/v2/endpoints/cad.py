@@ -239,9 +239,12 @@ async def create_wing_loft(aeroplane_id: AeroPlaneID = Path(..., description="Th
                 'successors': {}
             }
 
-        tasks[aeroplane_id_str]['future'] = executor.submit(create_aeroplane_task, aeroplane_id_str,
-                                                            construction["blueprint"], construction["wings"],
-                                                            construction["fuselages"], None)
+        tasks[aeroplane_id_str]['future'] = executor.submit(create_aeroplane_task,
+                                                            aeroplane_id_str,
+                                                            construction["blueprint"],
+                                                            construction["wings"],
+                                                            construction["fuselages"],
+                                                            aeroplane_settings)
         return JSONResponse(
             status_code=http.HTTPStatus.ACCEPTED,
             content={"aeroplane_id": aeroplane_id_str, "href": f"/aeroplanes/{aeroplane_id_str}"}

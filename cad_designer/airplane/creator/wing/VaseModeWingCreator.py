@@ -12,7 +12,7 @@ from math import cos, asin, degrees, radians
 from cadquery import Workplane, Plane, Sketch
 from cadquery.occ_impl.shapes import Edge
 from cadquery.occ_impl.geom import Vector
-from pydantic.v1 import NonNegativeFloat
+from pydantic import NonNegativeFloat
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 from cad_designer.airplane.aircraft_topology.components import ServoInformation

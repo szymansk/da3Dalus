@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
-@router.get("/health")
+@router.get("/api/status")
 def read_hello():
     return JSONResponse(
         status_code=http.HTTPStatus.CREATED,

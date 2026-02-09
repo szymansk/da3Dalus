@@ -2,7 +2,7 @@ from typing import TypeVar, Literal
 
 from cadquery import Workplane, Sketch, Plane
 from pydantic import NonNegativeFloat
-from pydantic.v1 import PositiveFloat
+from pydantic import PositiveFloat
 
 T = TypeVar("T", bound="Servo")
 

@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
 
+    
 app = FastAPI(
     title="da3dalus Model Context Protocol (v2)",
     version="2.0.0",
@@ -30,6 +31,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # Ensure tmp directory exists
 os.makedirs("tmp", exist_ok=True)
@@ -70,10 +72,10 @@ import multiprocessing
 import uvicorn
 if __name__ == "__main__":
     process_app = multiprocessing.Process(target=run_app, args=("app.main:app", 8000))
- #   process_analysis_tools = multiprocessing.Process(target=run_app, args=("app.main:app_analysis_tools", 8001))
+    #process_analysis_tools = multiprocessing.Process(target=run_app, args=("app.main:app_analysis_tools", 8001))
 
     process_app.start()
-#    process_analysis_tools.start()
+    #process_analysis_tools.start()
 
     process_app.join()
-#    process_analysis_tools.join()
+    #process_analysis_tools.join()

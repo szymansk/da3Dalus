@@ -43,7 +43,7 @@ class TestCreateAeroplane(unittest.TestCase):
 
         # Assertions
         self.assertEqual(context.exception.status_code, 500)
-        self.assertTrue("Database error" in context.exception.detail)
+        self.assertIn("Database error", context.exception.detail)
         mock_db.begin.assert_called_once()
 
     def test_create_aeroplane_unexpected_error(self):
@@ -59,7 +59,7 @@ class TestCreateAeroplane(unittest.TestCase):
 
         # Assertions
         self.assertEqual(context.exception.status_code, 500)
-        self.assertTrue("Unexpected error" in context.exception.detail)
+        self.assertIn("Unexpected error", context.exception.detail)
         mock_db.begin.assert_called_once()
 
 if __name__ == "__main__":

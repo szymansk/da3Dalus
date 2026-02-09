@@ -358,7 +358,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
-        self.assertTrue("Database error" in ctx.exception.detail)
+        self.assertIn("Database error", ctx.exception.detail)
 
     def test_get_cross_sections_unexpected_error(self):
         mock_db = MagicMock()
@@ -373,7 +373,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
-        self.assertTrue("Unexpected error" in ctx.exception.detail)
+        self.assertIn("Unexpected error", ctx.exception.detail)
 
     def test_delete_cross_sections_db_error(self):
         mock_db = MagicMock()
@@ -388,7 +388,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
-        self.assertTrue("Database error" in ctx.exception.detail)
+        self.assertIn("Database error", ctx.exception.detail)
 
     def test_delete_cross_sections_unexpected_error(self):
         mock_db = MagicMock()
@@ -403,7 +403,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
-        self.assertTrue("Unexpected error" in ctx.exception.detail)
+        self.assertIn("Unexpected error", ctx.exception.detail)
 
     def test_get_cross_section_db_error(self):
         mock_db = MagicMock()
@@ -419,7 +419,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
-        self.assertTrue("Database error" in ctx.exception.detail)
+        self.assertIn("Database error", ctx.exception.detail)
 
     def test_get_cross_section_unexpected_error(self):
         mock_db = MagicMock()
@@ -435,7 +435,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
-        self.assertTrue("Unexpected error" in ctx.exception.detail)
+        self.assertIn("Unexpected error", ctx.exception.detail)
 
     def test_create_cross_section_db_error(self):
         mock_db = MagicMock()
@@ -453,7 +453,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
-        self.assertTrue("Database error" in ctx.exception.detail)
+        self.assertIn("Database error", ctx.exception.detail)
 
     def test_create_cross_section_unexpected_error(self):
         mock_db = MagicMock()
@@ -471,7 +471,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
-        self.assertTrue("Unexpected error" in ctx.exception.detail)
+        self.assertIn("Unexpected error", ctx.exception.detail)
 
     def test_update_cross_section_db_error(self):
         mock_db = MagicMock()
@@ -489,7 +489,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
-        self.assertTrue("Database error" in ctx.exception.detail)
+        self.assertIn("Database error", ctx.exception.detail)
 
     def test_update_cross_section_unexpected_error(self):
         mock_db = MagicMock()
@@ -507,7 +507,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
-        self.assertTrue("Unexpected error" in ctx.exception.detail)
+        self.assertIn("Unexpected error", ctx.exception.detail)
 
     def test_delete_cross_section_db_error(self):
         mock_db = MagicMock()
@@ -523,7 +523,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
-        self.assertTrue("Database error" in ctx.exception.detail)
+        self.assertIn("Database error", ctx.exception.detail)
 
     def test_delete_cross_section_unexpected_error(self):
         mock_db = MagicMock()
@@ -539,7 +539,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
-        self.assertTrue("Unexpected error" in ctx.exception.detail)
+        self.assertIn("Unexpected error", ctx.exception.detail)
 
     def test_get_control_surface_db_error(self):
         mock_db = MagicMock()
@@ -555,7 +555,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
-        self.assertTrue("Database error" in ctx.exception.detail)
+        self.assertIn("Database error", ctx.exception.detail)
 
     def test_get_control_surface_unexpected_error(self):
         mock_db = MagicMock()
@@ -571,7 +571,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
-        self.assertTrue("Unexpected error" in ctx.exception.detail)
+        self.assertIn("Unexpected error", ctx.exception.detail)
 
     def test_create_control_surface_db_error(self):
         mock_db = MagicMock()
@@ -589,7 +589,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
-        self.assertTrue("Database error" in ctx.exception.detail)
+        self.assertIn("Database error", ctx.exception.detail)
 
     def test_create_control_surface_unexpected_error(self):
         mock_db = MagicMock()
@@ -607,7 +607,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
-        self.assertTrue("Unexpected error" in ctx.exception.detail)
+        self.assertIn("Unexpected error", ctx.exception.detail)
 
     def test_delete_control_surface_db_error(self):
         mock_db = MagicMock()
@@ -623,7 +623,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
-        self.assertTrue("Database error" in ctx.exception.detail)
+        self.assertIn("Database error", ctx.exception.detail)
 
     def test_delete_control_surface_unexpected_error(self):
         mock_db = MagicMock()
@@ -639,7 +639,7 @@ class TestAeroplaneWingCrossSectionEndpoints(unittest.TestCase):
                 )
             )
         self.assertEqual(ctx.exception.status_code, 500)
-        self.assertTrue("Unexpected error" in ctx.exception.detail)
+        self.assertIn("Unexpected error", ctx.exception.detail)
 
 if __name__ == "__main__":
     unittest.main()

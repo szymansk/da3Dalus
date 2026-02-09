@@ -36,7 +36,7 @@ class OperatingPointSchema(BaseModel):
                 "name": "level_flight",
                 "description": "Level flight at sea level",
                 "velocity": 15.0,
-                "alpha": 0.0,
+                "alpha": [0.0],
                 "beta": 0.0,
                 "p": 0.0,
                 "q": 0.0,

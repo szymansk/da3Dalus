@@ -1,8 +1,8 @@
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    base_url: str
-    openai_api_key: str
+    base_url: str = "http://localhost:8000"
+    openai_api_key: str = "sk*"
 
     class Config:
         env_file = ".env"
