@@ -21,7 +21,7 @@ The **da3Dalus CAD Modelling Service** is a RESTful API service that provides pa
 - **CadQuery**: Parametric CAD scripting in Python
 - **Aerosandbox**: Aerodynamic analysis toolkit
 - **SQLAlchemy**: Database ORM for persistence
-- **FastAPI-MCP**: Model Context Protocol server integration
+- **FastMCP 3.0**: Model Context Protocol server integration
 
 ---
 
@@ -124,12 +124,12 @@ npm install -g @modelcontextprotocol/inspector
 
 2. **Run MCP Inspector:**
    ```bash
-   mcp-inspector http://localhost:8000/mcp/sse
+   mcp-inspector http://localhost:8001/mcp
    ```
 
 3. **Access the Inspector UI:**
    - Open your browser to the URL shown in the terminal (typically `http://localhost:5173`)
-   - The inspector will connect to your MCP server via Server-Sent Events (SSE)
+   - The inspector will connect to your MCP server via Streamable HTTP
 
 4. **Test MCP Tools:**
    - Browse available tools (all API endpoints are exposed as MCP tools)
@@ -138,8 +138,7 @@ npm install -g @modelcontextprotocol/inspector
 
 #### MCP Endpoints
 
-- **SSE Transport**: `GET http://localhost:8000/mcp/sse`
-- **HTTP Messages**: `POST http://localhost:8000/mcp/messages`
+- **Streamable HTTP**: `http://localhost:8001/mcp`
 
 #### MCP Client Configuration Example
 
@@ -149,8 +148,8 @@ For Claude Desktop or other MCP clients:
 {
   "mcpServers": {
     "da3dalus-cad": {
-      "url": "http://localhost:8000/mcp",
-      "transport": "sse"
+      "type":"streamable-http",
+      "url": "http://localhost:8001/mcp"
     }
   }
 }

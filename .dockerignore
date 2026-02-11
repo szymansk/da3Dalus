@@ -13,3 +13,4 @@ docker-compose.dev.yml
 azure-pipelines.yml
 exports
 docker/Dockerfile*
+external/**

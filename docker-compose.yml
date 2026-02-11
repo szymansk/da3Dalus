@@ -9,6 +9,9 @@ services:
     container_name: aero-cad-service
     environment:
       - BROWSER_PATH=/usr/bin/chromium
+      - OCP_VSCODE_HOST="host.docker.internal"
+      - OCP_VSCODE_PORT=3939
+      - DISPLAY_CONSTRUCTION_STEP=TRUE
     ports:
       - 8086:8000
     restart: unless-stopped

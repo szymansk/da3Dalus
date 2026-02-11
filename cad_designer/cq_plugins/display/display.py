@@ -1,32 +1,25 @@
 import logging
+import os
 import requests
 
 from cadquery import Workplane
 from cad_designer.decorators.general_decorators import conditional_execute
 
-#from build123d import *
 from ocp_vscode import *
+
+ocp_vscode_host = os.getenv("OCP_VSCODE_HOST", "127.0.0.1")
+ocp_vscode_port = os.getenv("OCP_VSCODE_PORT", 3939)
+set_port(ocp_vscode_port, host=ocp_vscode_host)
 
 @conditional_execute("DISPLAY_CONSTRUCTION_STEP")
 def display(self: Workplane, name: str = "NN", severity: int = logging.DEBUG,
-             url: str = "http://cq-server:5000/json", names=None, colors=None, alphas=None, **kwargs) -> Workplane:
-    #from cad_designer.cq_plugins.display.cadq_server_connector import CQServerConnector
+            colors=None, alphas=None, **kwargs) -> Workplane:
 
     if severity >= logging.root.level:
-        #display._connector = display._connector if display._connector is not None else CQServerConnector(url=url)
         try:
-            #display._connector.render(name=name, cq_model=self, names=names, colors=colors, alphas=alphas, **kwargs)
-            #show(self, names=names, colors=colors, alphas=alphas, **kwargs)
             push_object(self, name=name, color=colors, alpha=alphas, **kwargs)
             show_objects()
         except requests.exceptions.ConnectionError as e:
             logging.error(f"could not render '{name}'")
             pass
     return self
-
-
-
-
-
-
-

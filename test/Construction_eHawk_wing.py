@@ -2,6 +2,7 @@ import logging
 import sys
 
 from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import AirplaneConfiguration
+from test.setup_logging import setup_logging
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -35,6 +36,9 @@ from cad_designer.aerosandbox.convert2aerosandbox import export_asb_wing_to_stl
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
+
+
+setup_logging()
 
 def straight_trailing_edge(l_middle: Optional[float],
                            l_tip: Optional[float],
@@ -80,7 +84,7 @@ if __name__ == "__main__":
         VaseModeWingCreator(creator_id="vase_wing", wing_index="main_wing",
                             leading_edge_offset_factor=leading_edge_offset,
                             trailing_edge_offset_factor=trailing_edge_offset, minimum_rib_angle=minimum_rib_angle,
-                            wing_side="BOTH", loglevel=logging.DEBUG))
+                            wing_side="BOTH", loglevel=logging.INFO))
     root_node.append(vase_wing_loft)
 
     winglet = ConstructionStepNode(
@@ -91,7 +95,8 @@ if __name__ == "__main__":
                      'vase_wing[8]',
                      'vase_wing[9]',
                      'vase_wing[10]',
-                     'vase_wing[11]']
+                     'vase_wing[11]'],
+            loglevel=logging.DEBUG
         )
     )
     vase_wing_loft.append(winglet)

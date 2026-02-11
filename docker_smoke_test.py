@@ -22,8 +22,8 @@ print('OCP: ok')
 import aerosandbox as asb
 print('aerosandbox: ok', getattr(asb, '__version__', 'unknown'))
 
-import fastapi_mcp as mcp
-print('fastapi_mcp: ok', getattr(mcp, '__version__', 'unknown'))
+import fastmcp
+print('fastmcp: ok', getattr(fastmcp, '__version__', 'unknown'))
 
 import ocp_vscode 
 print('ocp_vscode: ok', getattr(ocp_vscode, '__version__', 'unknown'))

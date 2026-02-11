@@ -85,5 +85,6 @@ class WingLoftCreator(AbstractShapeCreator):
             right_wing = right_wing.union(left_wing)
 
         right_wing = right_wing.fix_shape()
+        right_wing.display(name=f"wing loft '{self.identifier}'")
 
         return {self.identifier: right_wing}

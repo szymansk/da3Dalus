@@ -91,7 +91,7 @@ RUN micromamba create -y -n py311 -c conda-forge  \
         questionary \
     && micromamba run -n py311 pip install --no-deps vtk==9.5.2 \
     && micromamba run -n py311 pip install --no-deps cadquery-ocp==7.9.3.0 \
-    && micromamba run -n py311 pip install ocp_vscode \
+    #&& micromamba run -n py311 pip install ocp_vscode \
     && micromamba run -n py311 pip install aerosandbox[full] \
     && micromamba clean -a -y
 
@@ -121,7 +121,7 @@ COPY cad_designer/ ./cad_designer/
 COPY components/ ./components/
 COPY alembic/ ./alembic/
 COPY alembic.ini ./
-COPY test.db ./test.db
+COPY db/test.db ./db/test.db
 COPY __init__.py ./
 
 RUN mkdir -p ./tmp/exports

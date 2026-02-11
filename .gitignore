@@ -232,3 +232,4 @@ output_figure.html
 test/main_wing.json
 
 components/constructions/configurator-test-wing.root.json
+/external/

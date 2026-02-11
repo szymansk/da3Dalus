@@ -143,11 +143,17 @@ async def create_wing_loft(aeroplane_id: AeroPlaneID = Path(..., description="Th
         # aeroplane_id = str(uuid.uuid4())
         #logger.info(f"called create aeroplanes/wings/loft/stl endpoint for 'aeroplane_id: {aeroplane_id}'")
         aeroplane_id_str = str(aeroplane_id)
-        if tasks.get(aeroplane_id_str) is not None:
-            raise HTTPException(
-                status_code=http.HTTPStatus.LOCKED,
-                detail={"aeroplane_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": "other task is running"}
-            )
+        task = tasks.get(aeroplane_id_str)
+        if task is not None:
+            if task['future'].running() or task['status'] == 'PENDING':
+                raise HTTPException(
+                    status_code=http.HTTPStatus.LOCKED,
+                    detail={"aeroplane_id": aeroplane_id, "href": f"/aeroplanes/{aeroplane_id}", "status": "other task is running"}
+                )
+            else:
+                logger.debug(f"task for 'aeroplane_id: {aeroplane_id}' is in status '{task['status']}', removing it and starting a new one")
+                with tasks_lock:
+                    del tasks[aeroplane_id_str]
         with tasks_lock:
             tasks[aeroplane_id_str] = {'status': 'PENDING'}
 
