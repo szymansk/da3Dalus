@@ -1,0 +1,525 @@
+"""
+Wing Service - Business logic for wing and cross-section operations.
+
+This module contains the core logic for wing management,
+separated from HTTP concerns for better testability and reusability.
+"""
+
+import logging
+from datetime import datetime
+from typing import List, Optional
+
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
+from app import schemas
+from app.core.exceptions import NotFoundError, ValidationError, InternalError
+from app.models.aeroplanemodel import AeroplaneModel, WingModel, WingXSecModel, ControlSurfaceModel
+
+logger = logging.getLogger(__name__)
+
+
+def get_aeroplane_or_raise(db: Session, aeroplane_uuid) -> AeroplaneModel:
+    """
+    Get an aeroplane by UUID or raise NotFoundError.
+    
+    Raises:
+        NotFoundError: If the aeroplane does not exist.
+        InternalError: If a database error occurs.
+    """
+    try:
+        aeroplane = db.query(AeroplaneModel).filter(
+            AeroplaneModel.uuid == aeroplane_uuid
+        ).first()
+        
+        if not aeroplane:
+            raise NotFoundError(
+                message="Aeroplane not found",
+                details={"aeroplane_id": str(aeroplane_uuid)}
+            )
+        return aeroplane
+    except NotFoundError:
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when getting aeroplane: {e}")
+        raise InternalError(message=f"Database error: {e}")
+
+
+def get_wing_or_raise(aeroplane: AeroplaneModel, wing_name: str) -> WingModel:
+    """
+    Get a wing by name from an aeroplane or raise NotFoundError.
+    
+    Raises:
+        NotFoundError: If the wing does not exist.
+    """
+    wing = next((w for w in aeroplane.wings if w.name == wing_name), None)
+    if not wing:
+        raise NotFoundError(
+            message="Wing not found",
+            details={"wing_name": wing_name, "aeroplane_id": str(aeroplane.uuid)}
+        )
+    return wing
+
+
+def list_wing_names(db: Session, aeroplane_uuid) -> List[str]:
+    """
+    Get list of wing names for an aeroplane.
+    
+    Raises:
+        NotFoundError: If the aeroplane does not exist.
+        InternalError: If a database error occurs.
+    """
+    aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+    return [w.name for w in aeroplane.wings]
+
+
+def create_wing(
+    db: Session,
+    aeroplane_uuid,
+    wing_name: str,
+    wing_data: schemas.AsbWingSchema
+) -> None:
+    """
+    Create a new wing for an aeroplane.
+    
+    Raises:
+        NotFoundError: If the aeroplane does not exist.
+        ValidationError: If the wing name already exists.
+        InternalError: If a database error occurs.
+    """
+    try:
+        with db.begin():
+            plane = get_aeroplane_or_raise(db, aeroplane_uuid)
+            
+            if any(w.name == wing_name for w in plane.wings):
+                raise ValidationError(
+                    message="Wing name must be unique for this aeroplane",
+                    details={"wing_name": wing_name}
+                )
+            
+            wing = WingModel.from_dict(name=wing_name, data=wing_data.model_dump())
+            plane.wings.append(wing)
+            db.add(wing)
+            plane.updated_at = datetime.now()
+    except (NotFoundError, ValidationError):
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when creating wing: {e}")
+        raise InternalError(message=f"Database error: {e}")
+
+
+def update_wing(
+    db: Session,
+    aeroplane_uuid,
+    wing_name: str,
+    wing_data: schemas.AsbWingSchema
+) -> None:
+    """
+    Update an existing wing.
+    
+    Raises:
+        NotFoundError: If the aeroplane or wing does not exist.
+        InternalError: If a database error occurs.
+    """
+    try:
+        with db.begin():
+            plane = get_aeroplane_or_raise(db, aeroplane_uuid)
+            wing = get_wing_or_raise(plane, wing_name)
+            
+            new_wing = WingModel.from_dict(name=wing_name, data=wing_data.model_dump())
+            plane.wings.remove(wing)
+            plane.wings.append(new_wing)
+            plane.updated_at = datetime.now()
+    except (NotFoundError, ValidationError):
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when updating wing: {e}")
+        raise InternalError(message=f"Database error: {e}")
+
+
+def get_wing(db: Session, aeroplane_uuid, wing_name: str) -> schemas.AsbWingSchema:
+    """
+    Get a wing as schema.
+    
+    Raises:
+        NotFoundError: If the aeroplane or wing does not exist.
+        InternalError: If a database error occurs.
+    """
+    try:
+        plane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(plane, wing_name)
+        return schemas.AsbWingSchema.model_validate(wing, from_attributes=True)
+    except NotFoundError:
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when getting wing: {e}")
+        raise InternalError(message=f"Database error: {e}")
+
+
+def delete_wing(db: Session, aeroplane_uuid, wing_name: str) -> None:
+    """
+    Delete a wing.
+    
+    Raises:
+        NotFoundError: If the aeroplane or wing does not exist.
+        InternalError: If a database error occurs.
+    """
+    try:
+        with db.begin():
+            plane = get_aeroplane_or_raise(db, aeroplane_uuid)
+            wing = get_wing_or_raise(plane, wing_name)
+            db.delete(wing)
+            plane.updated_at = datetime.now()
+    except NotFoundError:
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when deleting wing: {e}")
+        raise InternalError(message=f"Database error: {e}")
+
+
+# Cross-section operations
+
+def get_wing_cross_sections(
+    db: Session,
+    aeroplane_uuid,
+    wing_name: str
+) -> List[schemas.WingXSecSchema]:
+    """
+    Get all cross-sections for a wing.
+    
+    Raises:
+        NotFoundError: If the aeroplane or wing does not exist.
+        InternalError: If a database error occurs.
+    """
+    try:
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        return [
+            schemas.WingXSecSchema.model_validate(xs, from_attributes=True)
+            for xs in wing.x_secs
+        ]
+    except NotFoundError:
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when getting cross-sections: {e}")
+        raise InternalError(message=f"Database error: {e}")
+
+
+def delete_all_cross_sections(db: Session, aeroplane_uuid, wing_name: str) -> None:
+    """
+    Delete all cross-sections from a wing.
+    
+    Raises:
+        NotFoundError: If the aeroplane or wing does not exist.
+        InternalError: If a database error occurs.
+    """
+    try:
+        with db.begin():
+            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+            wing = get_wing_or_raise(aeroplane, wing_name)
+            wing.x_secs.clear()
+            aeroplane.updated_at = datetime.now()
+    except NotFoundError:
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when deleting cross-sections: {e}")
+        raise InternalError(message=f"Database error: {e}")
+
+
+def get_cross_section(
+    db: Session,
+    aeroplane_uuid,
+    wing_name: str,
+    index: int
+) -> schemas.WingXSecSchema:
+    """
+    Get a specific cross-section by index.
+    
+    Raises:
+        NotFoundError: If the aeroplane, wing, or cross-section does not exist.
+        InternalError: If a database error occurs.
+    """
+    try:
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        x_secs = wing.x_secs
+        
+        if index < 0 or index >= len(x_secs):
+            raise NotFoundError(
+                message="Cross-section not found",
+                details={"index": index, "wing_name": wing_name}
+            )
+        
+        return schemas.WingXSecSchema.model_validate(x_secs[index], from_attributes=True)
+    except NotFoundError:
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when getting cross-section: {e}")
+        raise InternalError(message=f"Database error: {e}")
+
+
+def create_cross_section(
+    db: Session,
+    aeroplane_uuid,
+    wing_name: str,
+    index: int,
+    xsec_data: schemas.WingXSecSchema
+) -> None:
+    """
+    Create a new cross-section at the specified index.
+    
+    Raises:
+        NotFoundError: If the aeroplane or wing does not exist.
+        InternalError: If a database error occurs.
+    """
+    try:
+        with db.begin():
+            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+            wing = get_wing_or_raise(aeroplane, wing_name)
+            
+            data = xsec_data.model_dump()
+            cs_dict = data.pop("control_surface", None)
+            new_xsec = WingXSecModel(**data)
+            
+            if cs_dict is not None:
+                if hasattr(cs_dict, "model_dump"):
+                    cs_dict = cs_dict.model_dump()
+                new_xsec.control_surface = ControlSurfaceModel(**cs_dict)
+            
+            existing = wing.x_secs
+            if index == -1 or index >= len(existing):
+                insertion_index = len(existing)
+            else:
+                insertion_index = index
+            
+            for xs in existing[insertion_index:]:
+                xs.sort_index = xs.sort_index + 1
+                db.add(xs)
+            
+            new_xsec.sort_index = insertion_index
+            if insertion_index == len(existing):
+                wing.x_secs.append(new_xsec)
+            else:
+                wing.x_secs.insert(insertion_index, new_xsec)
+            
+            aeroplane.updated_at = datetime.now()
+            db.add(new_xsec)
+    except NotFoundError:
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when creating cross-section: {e}")
+        raise InternalError(message=f"Database error: {e}")
+
+
+def update_cross_section(
+    db: Session,
+    aeroplane_uuid,
+    wing_name: str,
+    index: int,
+    xsec_data: schemas.WingXSecSchema
+) -> None:
+    """
+    Update an existing cross-section.
+    
+    Raises:
+        NotFoundError: If the aeroplane, wing, or cross-section does not exist.
+        InternalError: If a database error occurs.
+    """
+    try:
+        with db.begin():
+            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+            wing = get_wing_or_raise(aeroplane, wing_name)
+            x_secs = wing.x_secs
+            
+            if index < 0 or index >= len(x_secs):
+                raise NotFoundError(
+                    message="Cross-section not found",
+                    details={"index": index}
+                )
+            
+            data = xsec_data.model_dump()
+            cs_dict = data.pop("control_surface", None)
+            new_xsec = WingXSecModel(sort_index=index, **data)
+            
+            existing_xsec = x_secs[index]
+            if cs_dict is not None:
+                if hasattr(cs_dict, "model_dump"):
+                    cs_dict = cs_dict.model_dump()
+                new_xsec.control_surface = ControlSurfaceModel(**cs_dict)
+            elif existing_xsec.control_surface is not None:
+                cs_data = schemas.ControlSurfaceSchema.model_validate(
+                    existing_xsec.control_surface, from_attributes=True
+                ).model_dump()
+                new_xsec.control_surface = ControlSurfaceModel(**cs_data)
+            
+            wing.x_secs[index] = new_xsec
+            aeroplane.updated_at = datetime.now()
+    except NotFoundError:
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when updating cross-section: {e}")
+        raise InternalError(message=f"Database error: {e}")
+
+
+def delete_cross_section(
+    db: Session,
+    aeroplane_uuid,
+    wing_name: str,
+    index: int
+) -> None:
+    """
+    Delete a cross-section.
+    
+    Raises:
+        NotFoundError: If the aeroplane, wing, or cross-section does not exist.
+        InternalError: If a database error occurs.
+    """
+    try:
+        with db.begin():
+            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+            wing = get_wing_or_raise(aeroplane, wing_name)
+            x_secs = wing.x_secs
+            
+            if index < 0 or index >= len(x_secs):
+                raise NotFoundError(
+                    message="Cross-section not found",
+                    details={"index": index}
+                )
+            
+            xsec = x_secs.pop(index)
+            db.delete(xsec)
+            aeroplane.updated_at = datetime.now()
+    except NotFoundError:
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when deleting cross-section: {e}")
+        raise InternalError(message=f"Database error: {e}")
+
+
+# Control surface operations
+
+def get_control_surface(
+    db: Session,
+    aeroplane_uuid,
+    wing_name: str,
+    xsec_index: int
+) -> schemas.ControlSurfaceSchema:
+    """
+    Get the control surface for a cross-section.
+    
+    Raises:
+        NotFoundError: If the aeroplane, wing, cross-section, or control surface does not exist.
+        InternalError: If a database error occurs.
+    """
+    try:
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        x_secs = wing.x_secs
+        
+        if xsec_index < 0 or xsec_index >= len(x_secs):
+            raise NotFoundError(
+                message="Cross-section not found",
+                details={"index": xsec_index}
+            )
+        
+        cs = x_secs[xsec_index].control_surface
+        if not cs:
+            raise NotFoundError(
+                message="Control surface not found",
+                details={"xsec_index": xsec_index}
+            )
+        
+        return schemas.ControlSurfaceSchema.model_validate(cs, from_attributes=True)
+    except NotFoundError:
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when getting control surface: {e}")
+        raise InternalError(message=f"Database error: {e}")
+
+
+def upsert_control_surface(
+    db: Session,
+    aeroplane_uuid,
+    wing_name: str,
+    xsec_index: int,
+    cs_data: schemas.ControlSurfaceSchema
+) -> None:
+    """
+    Create or update a control surface.
+    
+    Raises:
+        NotFoundError: If the aeroplane, wing, or cross-section does not exist.
+        InternalError: If a database error occurs.
+    """
+    try:
+        with db.begin():
+            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+            wing = get_wing_or_raise(aeroplane, wing_name)
+            x_secs = wing.x_secs
+            
+            if xsec_index < 0 or xsec_index >= len(x_secs):
+                raise NotFoundError(
+                    message="Cross-section not found",
+                    details={"index": xsec_index}
+                )
+            
+            xs = x_secs[xsec_index]
+            data = cs_data.model_dump()
+            
+            if xs.control_surface:
+                for key, value in data.items():
+                    setattr(xs.control_surface, key, value)
+            else:
+                cs = ControlSurfaceModel(**data)
+                xs.control_surface = cs
+                db.add(cs)
+            
+            aeroplane.updated_at = datetime.now()
+    except NotFoundError:
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when upserting control surface: {e}")
+        raise InternalError(message=f"Database error: {e}")
+
+
+def delete_control_surface(
+    db: Session,
+    aeroplane_uuid,
+    wing_name: str,
+    xsec_index: int
+) -> None:
+    """
+    Delete a control surface.
+    
+    Raises:
+        NotFoundError: If the aeroplane, wing, cross-section, or control surface does not exist.
+        InternalError: If a database error occurs.
+    """
+    try:
+        with db.begin():
+            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+            wing = get_wing_or_raise(aeroplane, wing_name)
+            x_secs = wing.x_secs
+            
+            if xsec_index < 0 or xsec_index >= len(x_secs):
+                raise NotFoundError(
+                    message="Cross-section not found",
+                    details={"index": xsec_index}
+                )
+            
+            xs = x_secs[xsec_index]
+            cs = xs.control_surface
+            if not cs:
+                raise NotFoundError(
+                    message="Control surface not found",
+                    details={"xsec_index": xsec_index}
+                )
+            
+            xs.control_surface = None
+            db.delete(cs)
+            aeroplane.updated_at = datetime.now()
+    except NotFoundError:
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when deleting control surface: {e}")
+        raise InternalError(message=f"Database error: {e}")
