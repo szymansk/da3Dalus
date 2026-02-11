@@ -1,10 +1,18 @@
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from app.api.v1.endpoints import aeroplane as health
 from app.api.v2.endpoints import aeroplane as aeroplane_v2
 from app.api.v2.endpoints import cad, aeroanalysis, operating_points
+from app.core.exceptions import (
+    ServiceException,
+    NotFoundError,
+    ValidationError,
+    ConflictError,
+    InternalError,
+)
 from app.logging_config import setup_logging
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -41,6 +49,37 @@ os.makedirs("tmp", exist_ok=True)
 app.mount("/static", StaticFiles(directory="tmp"), name="static")
 
 app.include_router(health.router, tags=["health"])
+
+
+# Global exception handler for ServiceException hierarchy
+@app.exception_handler(ServiceException)
+async def service_exception_handler(request: Request, exc: ServiceException):
+    """Translate service exceptions to HTTP responses."""
+    if isinstance(exc, NotFoundError):
+        status_code = 404
+        error_type = "not_found"
+    elif isinstance(exc, ValidationError):
+        status_code = 422
+        error_type = "validation_error"
+    elif isinstance(exc, ConflictError):
+        status_code = 409
+        error_type = "conflict"
+    elif isinstance(exc, InternalError):
+        status_code = 500
+        error_type = "internal_error"
+    else:
+        status_code = 500
+        error_type = "service_error"
+    
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "error": error_type,
+            "message": exc.message,
+            "details": exc.details,
+        },
+    )
+
 
 import uvicorn
 def run_app(entry_point:str = "app.main:app", port:int = 8000):
