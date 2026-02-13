@@ -1,18 +1,24 @@
 import os
 
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.api.v1.endpoints import aeroplane as health
 from app.api.v2.endpoints import aeroplane as aeroplane_v2
 from app.api.v2.endpoints import cad, aeroanalysis, operating_points
+from app.api.v2.endpoints import flight_profiles
 from app.core.exceptions import (
     ServiceException,
     NotFoundError,
     ValidationError,
+    ValidationDomainError,
     ConflictError,
     InternalError,
 )
+from sqlalchemy.exc import IntegrityError
+import logging
 from app.logging_config import setup_logging
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,6 +38,7 @@ app.include_router(aeroplane_v2.router, prefix="", tags=[])
 app.include_router(cad.router, prefix="", tags=["cad"])
 app.include_router(aeroanalysis.router, prefix="", tags=["aeroanalysis"])
 app.include_router(operating_points.router, prefix="", tags=["operating_points"])
+app.include_router(flight_profiles.router, prefix="", tags=["flight-profiles"])
 
 app.add_middleware(
     CORSMiddleware,
@@ -51,32 +58,72 @@ app.mount("/static", StaticFiles(directory="tmp"), name="static")
 app.include_router(health.router, tags=["health"])
 
 
+def _safe_json(value):
+    return jsonable_encoder(value, custom_encoder={BaseException: lambda e: str(e)})
+
+
 # Global exception handler for ServiceException hierarchy
 @app.exception_handler(ServiceException)
 async def service_exception_handler(request: Request, exc: ServiceException):
     """Translate service exceptions to HTTP responses."""
     if isinstance(exc, NotFoundError):
         status_code = 404
-        error_type = "not_found"
-    elif isinstance(exc, ValidationError):
+        error_code = "not_found"
+        logging.getLogger(__name__).info("4xx NotFound: %s", exc.details)
+    elif isinstance(exc, (ValidationError, ValidationDomainError)):
         status_code = 422
-        error_type = "validation_error"
+        error_code = "validation_error"
+        logging.getLogger(__name__).info("4xx Validation: %s", exc.details)
     elif isinstance(exc, ConflictError):
         status_code = 409
-        error_type = "conflict"
+        error_code = "conflict"
+        logging.getLogger(__name__).info("4xx Conflict: %s", exc.details)
     elif isinstance(exc, InternalError):
         status_code = 500
-        error_type = "internal_error"
+        error_code = "internal_error"
+        logging.getLogger(__name__).exception("5xx InternalError")
     else:
         status_code = 500
-        error_type = "service_error"
-    
+        error_code = "service_error"
+        logging.getLogger(__name__).exception("5xx ServiceException")
+
     return JSONResponse(
         status_code=status_code,
         content={
-            "error": error_type,
-            "message": exc.message,
-            "details": exc.details,
+            "error": {
+                "code": error_code,
+                "message": exc.message,
+                "details": _safe_json(exc.details) if exc.details else None,
+            }
+        },
+    )
+
+
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request: Request, exc: IntegrityError):
+    return JSONResponse(
+        status_code=409,
+        content={
+            "error": {
+                "code": "conflict",
+                "message": "name existiert bereits",
+                "details": None,
+            }
+        },
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
+    details = _safe_json(exc.errors())
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": {
+                "code": "validation_error",
+                "message": "Ungültige Eingabedaten",
+                "details": details,
+            }
         },
     )
 

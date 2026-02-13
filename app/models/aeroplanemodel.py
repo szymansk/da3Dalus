@@ -144,6 +144,8 @@ class AeroplaneModel(Base):
     uuid = Column(GUID, default=lambda: uuid.uuid4(), unique=True, nullable=False)
     name = Column(String, nullable=False)
     total_mass_kg = Column(Float, nullable=True)
+    # Optional assigned flight-intent profile used for target operating-point generation.
+    flight_profile_id = Column(Integer, ForeignKey("rc_flight_profiles.id"), nullable=True, index=True)
     xyz_ref = Column(JSON, default=[0, 0, 0])  # Store as JSON array
     created_at = Column(
         DateTime(timezone=True),
@@ -169,3 +171,4 @@ class AeroplaneModel(Base):
         "FuselageModel",
         back_populates="aeroplane",
         cascade="all, delete-orphan")
+    flight_profile = relationship("RCFlightProfileModel", back_populates="aircraft")

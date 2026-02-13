@@ -14,6 +14,11 @@ from alembic import context
 # access to the values within the .ini file in use.
 config = context.config
 
+# Keep Alembic DB target aligned with the application DB target.
+env_db_url = os.getenv("SQLALCHEMY_DATABASE_URL")
+if env_db_url:
+    config.set_main_option("sqlalchemy.url", env_db_url)
+
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:
@@ -25,6 +30,7 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata
 from app.db.base import Base
 import app.models.aeroplanemodel       # this module imports Base and defines tables
+import app.models.flightprofilemodel
 
 target_metadata = Base.metadata
 
