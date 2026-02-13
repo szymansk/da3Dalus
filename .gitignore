@@ -222,7 +222,7 @@ jupyter/.ipython/
 
 /docs/html/
 
-tmp/exports/
+tmp/**
 test/tmp/
 
 *.db

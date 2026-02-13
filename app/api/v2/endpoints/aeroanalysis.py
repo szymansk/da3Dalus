@@ -1,9 +1,12 @@
 import logging
+import os
+from urllib.parse import urljoin
+from uuid import uuid4
 
 from fastapi import Path, APIRouter, Body, Depends, Request
 from pydantic import UUID4
 from sqlalchemy.orm import Session
-from starlette.responses import PlainTextResponse, Response
+from starlette.responses import JSONResponse, PlainTextResponse, Response
 
 from app.db.session import get_db
 from app.schemas.AeroplaneRequest import AnalysisToolUrlType, AlphaSweepRequest, SimpleSweepRequest
@@ -83,6 +86,25 @@ async def analyze_airplane_alpha_sweep(
     """Performs an angle of attack sweep for a given airplane."""
     return await analysis_service.analyze_alpha_sweep(db, aeroplane_id, sweep_request)
 
+@router.post("/aeroplanes/{aeroplane_id}/alpha_sweep/diagram",
+             tags=["analysis"],
+             response_class=JSONResponse,
+             operation_id="analyze_alpha_sweep_diagram")
+async def analyze_airplane_alpha_sweep_diagram(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    sweep_request: AlphaSweepRequest = Body(..., description="Sweep definitions and flight conditions"),
+    db: Session = Depends(get_db),
+    request: Request = None,
+    settings: Settings = Depends(get_settings),
+) -> JSONResponse:
+    """Performs an angle of attack sweep, saves diagram under tmp, and returns its static URL."""
+    base_url = str(request.base_url).rstrip("/") if request else settings.base_url.rstrip("/")
+    base_url = base_url if base_url != "apiserver" else settings.base_url.rstrip("/")
+
+    full_url = await analysis_service.get_alpha_sweep_diagram_url(
+        db, aeroplane_id, sweep_request, base_url
+    )
+    return JSONResponse(content={"url": full_url})
 
 @router.post("/aeroplanes/{aeroplane_id}/simple_sweep",
              tags=["analysis"],
@@ -116,6 +138,8 @@ async def get_lift_distribution(
     """Returns the spanwise lift distribution for a given wing."""
     pass
 
+#TODO: implement an enpoint that returns a diagramm of the spanwise lift distribution for a given wing over a front view of the wing. The diagramm should be returned as a static URL to a PNG image. The service layer should generate the diagramm using matplotlib, save it under tmp and return the URL to the saved image. The endpoint should be a GET endpoint with the path /aeroplanes/{aeroplane_id}/wings/{wing_name}/lift_distribution/diagram and should return a JSON response with the URL to the diagramm.
+
 
 @router.get("/aeroplanes/{aeroplane_id}/moment_distribution",
          operation_id="get_aeroplane_moment_distribution")
@@ -124,8 +148,8 @@ async def get_moment_distribution(
     db: Session = Depends(get_db),
 ):
     """Returns the pitching moment distribution along the longitudinal axis."""
+    #TODO: Implement this endpoint in the service layer and return the moment distribution as a list of values along the longitudinal axis in a semantic meaningfull JSON response.
     pass
-
 
 @router.post("/aeroplanes/{aeroplane_id}/operating_point/vortex_lattice/streamlines/three_view",
          response_class=Response,
@@ -154,3 +178,57 @@ async def get_aeroplane_three_view(
     """Generates a three-view diagram of the aeroplane and returns it as a PNG image."""
     img_bytes = await analysis_service.get_three_view_image(db, aeroplane_id)
     return Response(content=img_bytes, media_type="image/png")
+
+
+@router.get("/aeroplanes/{aeroplane_id}/three_view/url",
+         tags=["analysis"],
+         response_class=JSONResponse,
+         operation_id="get_aeroplane_three_view_url")
+async def get_aeroplane_three_view_url(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    db: Session = Depends(get_db),
+    request: Request = None,
+    settings: Settings = Depends(get_settings),
+) -> JSONResponse:
+    """Generates a three-view diagram, saves it under tmp, and returns its static URL."""
+    img_bytes = await analysis_service.get_three_view_image(db, aeroplane_id)
+
+    content_dir = os.path.join("tmp", str(aeroplane_id), "png")
+    os.makedirs(content_dir, exist_ok=True)
+    filename = f"three_view_{uuid4().hex}.png"
+    file_path = os.path.join(content_dir, filename)
+    with open(file_path, "wb") as f:
+        f.write(img_bytes)
+
+    base_url = str(request.base_url).rstrip("/") if request else settings.base_url.rstrip("/")
+    base_url = base_url if base_url != "apiserver" else settings.base_url.rstrip("/")
+
+    return JSONResponse(content={"url": urljoin(base_url, f"/static/{aeroplane_id}/png/{filename}")})
+
+@router.post("/aeroplanes/{aeroplane_id}/operating_point/vortex_lattice/streamlines/three_view/url",
+             tags=["analysis"],
+             response_class=JSONResponse,
+             operation_id="get_streamlines_three_view_url")
+async def get_streamlines_three_view_url(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    operating_point: OperatingPointSchema = Body(..., description="The operating point of the analysis"),
+    db: Session = Depends(get_db),
+    request: Request = None,
+    settings: Settings = Depends(get_settings),
+) -> JSONResponse:
+    """Generates streamlines three-view image, saves it under tmp, and returns its static URL."""
+    img_bytes = await analysis_service.get_streamlines_three_view_image(
+        db, aeroplane_id, operating_point
+    )
+
+    content_dir = os.path.join("tmp", str(aeroplane_id), "png")
+    os.makedirs(content_dir, exist_ok=True)
+    filename = f"streamlines_three_view_{uuid4().hex}.png"
+    file_path = os.path.join(content_dir, filename)
+    with open(file_path, "wb") as f:
+        f.write(img_bytes)
+
+    base_url = str(request.base_url).rstrip("/") if request else settings.base_url.rstrip("/")
+    base_url = base_url if base_url != "apiserver" else settings.base_url.rstrip("/")
+
+    return JSONResponse(content={"url": urljoin(base_url, f"/static/{aeroplane_id}/png/{filename}")})
