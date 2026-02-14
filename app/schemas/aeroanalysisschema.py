@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field
@@ -45,3 +46,57 @@ class OperatingPointSchema(BaseModel):
                 "xyz_ref": [0.0, 0.0, 0.0],
             }
         }
+
+
+class OperatingPointStatus(str, Enum):
+    TRIMMED = "TRIMMED"
+    NOT_TRIMMED = "NOT_TRIMMED"
+    LIMIT_REACHED = "LIMIT_REACHED"
+
+
+class StoredOperatingPointCreate(BaseModel):
+    name: str
+    description: str
+    aircraft_id: Optional[int] = None
+    config: str = Field("clean", description="Aircraft configuration name, e.g. clean/takeoff/landing.")
+    status: OperatingPointStatus = Field(OperatingPointStatus.NOT_TRIMMED)
+    warnings: list[str] = Field(default_factory=list)
+    controls: dict[str, float] = Field(default_factory=dict, description="Trim outputs such as throttle/elevator.")
+    velocity: float = Field(..., description="Velocity in m/s")
+    alpha: float = Field(..., description="Angle of attack in radians")
+    beta: float = Field(..., description="Sideslip angle in radians")
+    p: float = Field(..., description="Roll rate in rad/s")
+    q: float = Field(..., description="Pitch rate in rad/s")
+    r: float = Field(..., description="Yaw rate in rad/s")
+    xyz_ref: List[float] = Field(default_factory=lambda: [0.0, 0.0, 0.0])
+    altitude: float = Field(..., description="Altitude in meters")
+
+    class Config:
+        from_attributes = True
+
+
+class StoredOperatingPointRead(StoredOperatingPointCreate):
+    id: int
+
+
+class GenerateOperatingPointSetRequest(BaseModel):
+    replace_existing: bool = Field(
+        False,
+        description="If true, delete existing operating points and sets for the aircraft before generating new ones.",
+    )
+    profile_id_override: Optional[int] = Field(
+        default=None,
+        description="Optional profile ID to use instead of the aircraft-assigned flight profile.",
+    )
+
+
+class GeneratedOperatingPointSetRead(BaseModel):
+    id: int
+    name: str
+    description: str
+    aircraft_id: Optional[int] = None
+    source_flight_profile_id: Optional[int] = None
+    operating_points: list[StoredOperatingPointRead]
+
+    class Config:
+        from_attributes = True

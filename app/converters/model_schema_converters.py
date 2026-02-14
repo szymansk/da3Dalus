@@ -17,6 +17,27 @@ async def aeroplaneModelToAeroplaneSchema_async(plane: AeroplaneModel) -> Aeropl
     plane_schema: AeroplaneSchema = AeroplaneSchema.model_validate(plane_dict)
     return plane_schema
 
+
+def _build_asb_airfoil(airfoil_ref) -> asb.Airfoil:
+    airfoil_ref_str = str(airfoil_ref)
+    absolute_ref = os.path.abspath(airfoil_ref_str) if not os.path.isabs(airfoil_ref_str) else airfoil_ref_str
+
+    if os.path.isfile(absolute_ref):
+        # If a local .dat path is available, load coordinates explicitly.
+        return asb.Airfoil(
+            name=os.path.splitext(os.path.basename(absolute_ref))[0],
+            coordinates=absolute_ref,
+        )
+
+    # If this looks like a file path but the file is unavailable, try the stem as an airfoil name.
+    airfoil_name_from_stem = os.path.splitext(os.path.basename(airfoil_ref_str))[0]
+    if airfoil_name_from_stem and airfoil_name_from_stem != airfoil_ref_str:
+        return asb.Airfoil(name=airfoil_name_from_stem)
+
+    # Fall back to ASB name-based lookup (e.g. "naca2412", "sd7037", UIUC names).
+    return asb.Airfoil(name=airfoil_ref_str)
+
+
 async def aeroplaneSchemaToAsbAirplane_async(plane_schema: AeroplaneSchema) -> "asb.Airplane":
     """
     Convert an AeroplaneSchema to an Aerosandbox Airplane object.
@@ -27,7 +48,7 @@ async def aeroplaneSchemaToAsbAirplane_async(plane_schema: AeroplaneSchema) -> "
     Returns:
         asb.Airplane: The converted Aerosandbox Airplane object.
     """
-    from aerosandbox import Airplane, Wing, WingXSec, Airfoil, ControlSurface, Fuselage
+    from aerosandbox import Airplane, Wing, WingXSec, ControlSurface, Fuselage
     asb_airplane: Airplane = Airplane(
         name=plane_schema.name,
         wings=[
@@ -39,17 +60,14 @@ async def aeroplaneSchemaToAsbAirplane_async(plane_schema: AeroplaneSchema) -> "
                         xyz_le=None,
                         chord=x_sec.chord,
                         twist=x_sec.twist,
-                        airfoil=Airfoil(
-                            name=os.path.abspath(x_sec.airfoil) if not os.path.isabs(
-                                x_sec.airfoil) else x_sec.airfoil,
-                        ),
-                        control_surface=[
+                        airfoil=_build_asb_airfoil(x_sec.airfoil),
+                        control_surfaces=[
                             ControlSurface(
                                 name=x_sec.control_surface.name,
                                 hinge_point=x_sec.control_surface.hinge_point,
                                 symmetric=x_sec.control_surface.symmetric,
                                 deflection=x_sec.control_surface.deflection
-                            )] if x_sec.control_surface else None
+                            )] if x_sec.control_surface else []
                     ).translate(x_sec.xyz_le) for x_sec in wing.x_secs
                 ] if wing.x_secs else None
             ) for wing_name, wing in plane_schema.wings.items()] if plane_schema.wings else None,
@@ -81,9 +99,7 @@ def wingModelToWingConfig(wing: WingModel) -> WingConfiguration:
         xyz_le=xs.xyz_le,
         chord=xs.chord,
         twist=xs.twist,
-        airfoil=asb.Airfoil(
-            name=os.path.abspath(xs.airfoil),
-        ),
+        airfoil=_build_asb_airfoil(xs.airfoil),
         control_surfaces=
         [asb.ControlSurface(
             name=xs.control_surface.name,

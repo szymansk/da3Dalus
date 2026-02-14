@@ -29,11 +29,9 @@ Falls Flight_profile fehlt, nutze Defaults:
 - near-stall factor = 1.20 * Vs_clean
 
 # Flight profiles
-Erstelle ein Flight Profile Model und Schema und füge auch diese der Datenbank hinzu. 
-Erweitere auch das aeroplane model und schema um die verweise auf die Flights profilen.
-Erweitere die Rest-Enpoints um eine CRUD schnittstelle zum Anlegen von Flights profilen.
-Für Default Flightsprofile lege möglich einfache REST-Enpoints an, die mit minimalen Aufwand ausgefüllt werden können.
-Sorge dafür, dass die Namen von Default Flightsprofilen nicht in der Anlage allgemeiner Missonsprofile verwendet werden können.
+Flight Profiles sind bereits im Projekt umgesetzt (Model, Schema, CRUD, Aircraft-Assignment).
+Nutze vorhandene Zuweisung `aircraft.flight_profile_id` als primäre Quelle für die OP-Generierung.
+Nur wenn kein Profil zugewiesen ist, greife auf sinnvolle Defaults zurück.
 
 # Backend-Funktionen (konzeptionell; nutze die verfügbaren APIs äquivalent)
 1) get_configs(aircraft_id) -> {clean, takeoff, landing, ...}
