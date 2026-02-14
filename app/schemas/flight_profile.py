@@ -145,7 +145,7 @@ class Goals(BaseModel):
     @model_validator(mode="after")
     def validate_speed_relationship(self):
         if self.max_level_speed_mps is not None and self.max_level_speed_mps <= self.cruise_speed_mps:
-            raise ValueError("max_level_speed_mps muss größer als cruise_speed_mps sein.")
+            raise ValueError("max_level_speed_mps must be greater than cruise_speed_mps.")
         return self
 
 
@@ -271,9 +271,9 @@ class RCFlightProfileCreate(BaseModel):
             return value
         trimmed = value.strip()
         if trimmed != value:
-            raise ValueError("name darf keine führenden oder nachgestellten Leerzeichen haben.")
+            raise ValueError("name must not have leading or trailing spaces.")
         if not _NAME_PATTERN.fullmatch(trimmed):
-            raise ValueError("name darf nur Buchstaben, Zahlen, Leerzeichen, '_' und '-' enthalten.")
+            raise ValueError("name may only contain letters, numbers, spaces, '_' and '-'.")
         return trimmed
 
     @model_validator(mode="after")
@@ -282,8 +282,8 @@ class RCFlightProfileCreate(BaseModel):
         max_n = (1 / math.cos(phi_rad)) if self.constraints.max_bank_deg < 90 else float("inf")
         if self.goals.target_turn_n > max_n + 0.05:
             raise ValueError(
-                "target_turn_n ist größer als das, was mit max_bank_deg erreichbar ist. "
-                "Erhöhe max_bank_deg oder senke target_turn_n."
+                "target_turn_n is greater than what is achievable with max_bank_deg. "
+                "Increase max_bank_deg or decrease target_turn_n."
             )
         return self
 
@@ -355,9 +355,9 @@ class RCFlightProfileUpdate(BaseModel):
             return value
         trimmed = value.strip()
         if trimmed != value:
-            raise ValueError("name darf keine führenden oder nachgestellten Leerzeichen haben.")
+            raise ValueError("name must not have leading or trailing spaces.")
         if not _NAME_PATTERN.fullmatch(trimmed):
-            raise ValueError("name darf nur Buchstaben, Zahlen, Leerzeichen, '_' und '-' enthalten.")
+            raise ValueError("name may only contain letters, numbers, spaces, '_' and '-'.")
         return trimmed
 
 

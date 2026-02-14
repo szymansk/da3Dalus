@@ -24,6 +24,18 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "MCP: app.mcp_server",
+            "type": "python",
+            "request": "launch",
+            "module": "app.mcp_server",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "PYTHONUNBUFFERED": "1"
+            }
+        },
+        {
             "name": "Python: Aktuelle Datei",
             "type": "python",
             "request": "launch",

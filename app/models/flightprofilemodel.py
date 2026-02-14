@@ -14,7 +14,7 @@ class RCFlightProfileModel(Base):
     # Unique profile name shown in UI, e.g. "rc_trainer_balanced".
     name = Column(String, nullable=False, unique=True, index=True)
     # Category used to filter profiles and apply defaults.
-    type = Column(String, nullable=False)
+    type = Column(String, nullable=False) 
     # Environmental assumptions in SI units.
     environment = Column(JSON, nullable=False)
     # Performance targets (speeds, margins, load factor, loiter goal).
