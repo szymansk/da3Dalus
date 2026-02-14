@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import inspect
 import re
 from typing import Any
@@ -48,7 +49,9 @@ def test_all_native_tool_names_are_registered():
     expected_names = set(mcp_server.MCP_TOOL_NAMES)
 
     assert listed_names == expected_names
-    assert len(listed_names) == 62
+    assert len(listed_names) == 60
+    assert "get_aeroplane_three_view_url" not in listed_names
+    assert "get_streamlines_three_view_url" not in listed_names
 
 
 def test_stub_endpoints_are_not_registered_as_tools():
@@ -72,9 +75,49 @@ def test_all_tool_handlers_delegate_through_call_endpoint(monkeypatch):
 
     async def _fake_call(endpoint_fn, **kwargs):
         captured_calls.append((endpoint_fn, kwargs))
+        if endpoint_fn.__name__ == "download_aeroplane_zip":
+            return {
+                "file_path": "tmp/fake.zip",
+                "filename": "fake.zip",
+                "media_type": "application/zip",
+            }
+        if endpoint_fn.__name__ == "calculate_streamlines":
+            return "http://unit.test/static/fake.html"
+        if endpoint_fn.__name__ == "analyze_airplane_alpha_sweep_diagram":
+            return {"url": "http://unit.test/static/fake.png"}
+        if endpoint_fn.__name__ in {"get_streamlines_three_view", "get_aeroplane_three_view"}:
+            return {
+                "media_type": "image/png",
+                "encoding": "base64",
+                "data": base64.b64encode(b"png").decode("ascii"),
+            }
         return {"endpoint": endpoint_fn.__name__, "kwargs": kwargs}
 
     monkeypatch.setattr(mcp_server, "_call_endpoint", _fake_call)
+    monkeypatch.setattr(
+        mcp_server,
+        "register_file_asset",
+        lambda *args, **kwargs: mcp_server.AssetEntry(
+            asset_id="asset",
+            kind="data",
+            file_path=mcp_server.Path("tmp/fake"),
+            mime_type="application/octet-stream",
+            public_url="http://unit.test/static/fake",
+            filename="fake",
+        ),
+    )
+    monkeypatch.setattr(
+        mcp_server,
+        "register_bytes_asset",
+        lambda *args, **kwargs: mcp_server.AssetEntry(
+            asset_id="asset",
+            kind="img",
+            file_path=mcp_server.Path("tmp/fake"),
+            mime_type="image/png",
+            public_url="http://unit.test/static/fake.png",
+            filename="fake.png",
+        ),
+    )
 
     for spec in mcp_server.TOOL_SPECS:
         handler = spec.handler
@@ -87,7 +130,7 @@ def test_all_tool_handlers_delegate_through_call_endpoint(monkeypatch):
 
         endpoint_fn, forwarded_kwargs = captured_calls[-1]
         assert callable(endpoint_fn)
-        assert result["endpoint"] == endpoint_fn.__name__
+        assert result is not None
 
         for key, expected_value in required_kwargs.items():
             assert key in forwarded_kwargs

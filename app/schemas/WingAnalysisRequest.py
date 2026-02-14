@@ -1,5 +1,5 @@
 from typing import Dict, Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.wing import Wing
 from app.schemas.AeroplaneRequest import AeroplaneSettings
@@ -29,8 +29,8 @@ class WingAnalysisRequest(BaseModel):
     # Atmosphere parameters
     altitude: float = Field(0.0, description="Altitude in meters")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "wings": {
                     "main_wing" : {
@@ -723,4 +723,5 @@ class WingAnalysisRequest(BaseModel):
                 "altitude": 0.0,
                 "xyz_ref": [0.055, 0.0, 0.0],
             }
-        }
+        },
+    )

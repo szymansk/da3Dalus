@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 # Schema für OperatingPointSet
 class OperatingPointSetSchema(BaseModel):
@@ -9,8 +9,7 @@ class OperatingPointSetSchema(BaseModel):
     description: str
     operating_points: list[int]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class OperatingPointSchema(BaseModel):
     name: Optional[str] = Field(None, description="Name of the operating point")
@@ -30,9 +29,9 @@ class OperatingPointSchema(BaseModel):
     # Atmosphere parameters
     altitude: float = Field(0.0, description="Altitude in meters")
 
-    class Config:
-        from_attributes = True
-        json_schema_extra = {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "example": {
                 "name": "level_flight",
                 "description": "Level flight at sea level",
@@ -45,7 +44,8 @@ class OperatingPointSchema(BaseModel):
                 "altitude": 0.0,
                 "xyz_ref": [0.0, 0.0, 0.0],
             }
-        }
+        },
+    )
 
 
 class OperatingPointStatus(str, Enum):
@@ -71,8 +71,7 @@ class StoredOperatingPointCreate(BaseModel):
     xyz_ref: List[float] = Field(default_factory=lambda: [0.0, 0.0, 0.0])
     altitude: float = Field(..., description="Altitude in meters")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StoredOperatingPointRead(StoredOperatingPointCreate):
@@ -98,5 +97,4 @@ class GeneratedOperatingPointSetRead(BaseModel):
     source_flight_profile_id: Optional[int] = None
     operating_points: list[StoredOperatingPointRead]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

@@ -1,6 +1,6 @@
 
-from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy import Column, Integer
+from sqlalchemy.orm import as_declarative, declared_attr
 
 @as_declarative()
 class Base:

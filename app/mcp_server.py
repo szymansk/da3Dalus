@@ -1,16 +1,23 @@
 """Native FastMCP tool server for the da3Dalus CAD modelling service."""
 
-from __future__ import annotations
-
 import base64
 import inspect
 import json
+import mimetypes
+import shutil
 from dataclasses import dataclass
+from pathlib import Path
+from threading import Lock
 from typing import Any, Callable
+from urllib.parse import urlparse
+from uuid import uuid4
 
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse, JSONResponse, Response
-from fastmcp import FastMCP
+from fastmcp import Context, FastMCP
+from fastmcp.exceptions import NotFoundError
+from fastmcp.resources.resource import ResourceContent, ResourceResult
+from fastmcp.server.dependencies import get_http_request
 from pydantic import UUID4
 
 from app import schemas
@@ -48,7 +55,19 @@ class MCPToolSpec:
     handler: Callable[..., Any]
 
 
+@dataclass(frozen=True)
+class AssetEntry:
+    asset_id: str
+    kind: str
+    file_path: Path
+    mime_type: str
+    public_url: str
+    filename: str | None
+
+
 TOOL_SPECS: list[MCPToolSpec] = []
+ASSET_REGISTRY: dict[str, AssetEntry] = {}
+ASSET_REGISTRY_LOCK = Lock()
 
 
 def mcp_tool(name: str, description: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
@@ -111,6 +130,279 @@ def _normalize_result(result: Any) -> Any:
         return {"status_code": result.status_code}
 
     return jsonable_encoder(result)
+
+
+def _normalize_file_path(file_path: str | Path) -> Path:
+    path = Path(file_path)
+    if not path.is_absolute():
+        path = Path.cwd() / path
+    return path.resolve()
+
+
+def _base_url_from_request_url(request_url: str) -> str | None:
+    parsed = urlparse(request_url)
+    if not parsed.scheme or not parsed.netloc:
+        return None
+
+    path_prefix = parsed.path.rstrip("/")
+    if path_prefix.endswith("/mcp"):
+        path_prefix = path_prefix[: -len("/mcp")]
+
+    return f"{parsed.scheme}://{parsed.netloc}{path_prefix}".rstrip("/")
+
+
+def _base_url_from_context(ctx: Context | None) -> str | None:
+    """Derive a public base URL from the active MCP request context when available."""
+    if ctx is None:
+        return None
+
+    request_context = getattr(ctx, "request_context", None)
+    request = getattr(request_context, "request", None)
+    request_url = getattr(request, "url", None)
+    if request_url is None:
+        return None
+
+    return _base_url_from_request_url(str(request_url))
+
+
+def _base_url_from_active_request() -> str | None:
+    """Derive a public base URL from the active MCP HTTP request when available."""
+    try:
+        request = get_http_request()
+    except RuntimeError:
+        return None
+
+    return _base_url_from_request_url(str(request.url))
+
+
+def resolve_public_base_url(ctx: Context | None = None) -> str:
+    """Resolve the public base URL for static assets."""
+    request_base_url = _base_url_from_context(ctx) or _base_url_from_active_request()
+    if request_base_url:
+        return request_base_url
+    return get_settings().base_url.rstrip("/")
+
+
+def build_public_url_from_tmp_path(file_path: Path, *, base_url: str | None = None) -> str:
+    """Build a public /static URL from a file located under tmp/."""
+    normalized = _normalize_file_path(file_path)
+    tmp_root = _normalize_file_path("tmp")
+    relative_path = normalized.relative_to(tmp_root)
+    resolved_base_url = (base_url or get_settings().base_url).rstrip("/")
+    return f"{resolved_base_url}/static/{relative_path.as_posix()}"
+
+
+def _resolve_tmp_path_from_static_url(url: str) -> Path:
+    parsed = urlparse(url)
+    path = parsed.path if parsed.scheme else url
+    if path.startswith("/static/"):
+        return _normalize_file_path(Path("tmp") / path.removeprefix("/static/"))
+    raise ValueError(f"Unsupported static URL format: {url}")
+
+
+def resolve_tmp_path_from_known_output(payload: Any) -> Path:
+    """Resolve a local tmp file path from URL/file endpoint outputs."""
+    if isinstance(payload, dict) and payload.get("file_path"):
+        return _normalize_file_path(payload["file_path"])
+
+    candidate: str | None = None
+    if isinstance(payload, str):
+        candidate = payload
+    elif isinstance(payload, dict) and isinstance(payload.get("url"), str):
+        candidate = payload["url"]
+
+    if not candidate:
+        raise ValueError(f"Unable to resolve file path from payload: {payload!r}")
+
+    candidate_path = Path(candidate)
+    if candidate_path.exists():
+        return _normalize_file_path(candidate_path)
+
+    if candidate.startswith("/static/") or "/static/" in candidate:
+        return _resolve_tmp_path_from_static_url(candidate)
+
+    if candidate.startswith("tmp/") or candidate.startswith("./tmp/"):
+        return _normalize_file_path(candidate)
+
+    parsed = urlparse(candidate)
+    if parsed.scheme in {"http", "https"}:
+        return _resolve_tmp_path_from_static_url(candidate)
+
+    raise ValueError(f"Unsupported output payload for file resolution: {payload!r}")
+
+
+def _infer_asset_kind(mime_type: str, explicit_kind: str | None = None) -> str:
+    if explicit_kind:
+        return explicit_kind
+    return "img" if mime_type.startswith("image/") else "data"
+
+
+def _store_asset_entry(
+    *,
+    asset_id: str,
+    file_path: Path,
+    mime_type: str,
+    kind: str,
+    filename: str | None,
+    base_url: str | None = None,
+) -> AssetEntry:
+    public_url = build_public_url_from_tmp_path(file_path, base_url=base_url)
+    entry = AssetEntry(
+        asset_id=asset_id,
+        kind=kind,
+        file_path=file_path,
+        mime_type=mime_type,
+        public_url=public_url,
+        filename=filename,
+    )
+    with ASSET_REGISTRY_LOCK:
+        ASSET_REGISTRY[asset_id] = entry
+    return entry
+
+
+def register_file_asset(
+    file_path: str | Path,
+    *,
+    mime_type: str | None = None,
+    kind: str | None = None,
+    filename: str | None = None,
+    base_url: str | None = None,
+) -> AssetEntry:
+    """Register an existing file as MCP resource and public URL asset."""
+    source_path = _normalize_file_path(file_path)
+    if not source_path.exists():
+        raise FileNotFoundError(f"Asset file does not exist: {source_path}")
+
+    tmp_root = _normalize_file_path("tmp")
+    normalized_path = source_path
+    if tmp_root not in source_path.parents and source_path != tmp_root:
+        copied_dir = tmp_root / "mcp_assets" / "external"
+        copied_dir.mkdir(parents=True, exist_ok=True)
+        copied_name = f"{uuid4().hex}_{source_path.name}"
+        normalized_path = (copied_dir / copied_name).resolve()
+        shutil.copy2(source_path, normalized_path)
+
+    resolved_mime = mime_type or mimetypes.guess_type(normalized_path.name)[0] or "application/octet-stream"
+    asset_kind = _infer_asset_kind(resolved_mime, explicit_kind=kind)
+    asset_filename = filename or normalized_path.name
+
+    return _store_asset_entry(
+        asset_id=uuid4().hex,
+        file_path=normalized_path,
+        mime_type=resolved_mime,
+        kind=asset_kind,
+        filename=asset_filename,
+        base_url=base_url,
+    )
+
+
+def register_bytes_asset(
+    content: bytes,
+    *,
+    mime_type: str,
+    kind: str | None = None,
+    filename: str | None = None,
+    base_url: str | None = None,
+) -> AssetEntry:
+    """Persist bytes under tmp/ and register them as MCP resource asset."""
+    asset_id = uuid4().hex
+    asset_kind = _infer_asset_kind(mime_type, explicit_kind=kind)
+
+    if filename:
+        target_name = filename
+    else:
+        default_suffix = ".png" if mime_type == "image/png" else ".bin"
+        target_name = f"{asset_id}{default_suffix}"
+
+    target_dir = _normalize_file_path(Path("tmp") / "mcp_assets" / asset_kind / asset_id[:2])
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target_path = (target_dir / target_name).resolve()
+    target_path.write_bytes(content)
+
+    return _store_asset_entry(
+        asset_id=asset_id,
+        file_path=target_path,
+        mime_type=mime_type,
+        kind=asset_kind,
+        filename=target_name,
+        base_url=base_url,
+    )
+
+
+def _asset_payload(entry: AssetEntry) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "resource_uri": f"{entry.kind}://{entry.asset_id}",
+        "public_url": entry.public_url,
+        "mime_type": entry.mime_type,
+    }
+    if entry.filename:
+        payload["filename"] = entry.filename
+    return payload
+
+
+def _asset_entry_or_raise(asset_id: str, expected_kind: str) -> AssetEntry:
+    with ASSET_REGISTRY_LOCK:
+        entry = ASSET_REGISTRY.get(asset_id)
+
+    if entry is None:
+        raise NotFoundError(f"Unknown asset resource ID: {asset_id}")
+    if entry.kind != expected_kind:
+        raise NotFoundError(
+            f"Asset {asset_id} is registered as '{entry.kind}' and cannot be read as '{expected_kind}'."
+        )
+    if not entry.file_path.exists():
+        raise NotFoundError(f"Asset file is missing: {entry.file_path}")
+
+    return entry
+
+
+def _to_resource_result(entry: AssetEntry) -> ResourceResult:
+    if entry.mime_type.startswith("text/"):
+        try:
+            text_content = entry.file_path.read_text(encoding="utf-8")
+            return ResourceResult([ResourceContent(text_content, mime_type=entry.mime_type)])
+        except UnicodeDecodeError:
+            pass
+
+    binary_content = entry.file_path.read_bytes()
+    return ResourceResult([ResourceContent(binary_content, mime_type=entry.mime_type)])
+
+
+def read_image_asset(asset_id: str) -> ResourceResult:
+    entry = _asset_entry_or_raise(asset_id, expected_kind="img")
+    return _to_resource_result(entry)
+
+
+def read_data_asset(asset_id: str) -> ResourceResult:
+    entry = _asset_entry_or_raise(asset_id, expected_kind="data")
+    return _to_resource_result(entry)
+
+
+def _register_image_payload(
+    payload: Any,
+    *,
+    filename_prefix: str,
+    base_url: str | None = None,
+) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        raise ValueError(f"Expected image payload dict, got: {type(payload).__name__}")
+
+    if payload.get("encoding") != "base64" or "data" not in payload:
+        raise ValueError(f"Expected base64 image payload, got: {payload!r}")
+
+    mime_type = payload.get("media_type", "image/png")
+    suffix = ".png" if mime_type == "image/png" else ".bin"
+    filename = f"{filename_prefix}_{uuid4().hex}{suffix}"
+    image_bytes = base64.b64decode(payload["data"])
+
+    entry = register_bytes_asset(
+        image_bytes,
+        mime_type=mime_type,
+        kind="img",
+        filename=filename,
+        base_url=base_url,
+    )
+    return _asset_payload(entry)
 
 
 # Aeroplane base tools
@@ -549,10 +841,22 @@ async def get_aeroplane_task_status_tool(aeroplane_id: str) -> Any:
 
 @mcp_tool(
     name="download_export_zip",
-    description="Get metadata for the generated export ZIP file of a completed task.",
+    description="Get a ZIP export as resource URI and public URL.",
 )
-async def download_export_zip_tool(aeroplane_id: str) -> Any:
-    return await _call_endpoint(cad.download_aeroplane_zip, aeroplane_id=aeroplane_id)
+async def download_export_zip_tool(aeroplane_id: str, ctx: Context = None) -> Any:
+    payload = await _call_endpoint(cad.download_aeroplane_zip, aeroplane_id=aeroplane_id)
+    if not isinstance(payload, dict) or "file_path" not in payload:
+        raise ValueError(f"Unexpected ZIP payload: {payload!r}")
+
+    public_base_url = resolve_public_base_url(ctx)
+    entry = register_file_asset(
+        payload["file_path"],
+        mime_type=payload.get("media_type", "application/zip"),
+        kind="data",
+        filename=payload.get("filename"),
+        base_url=public_base_url,
+    )
+    return _asset_payload(entry)
 
 
 # Aero analysis tools (implemented endpoints only)
@@ -594,16 +898,28 @@ async def analyze_airplane_at_operating_point_tool(
 
 @mcp_tool(
     name="get_streamlines_as_html",
-    description="Generate VLM streamlines and return the URL of an HTML visualization.",
+    description="Generate VLM streamlines as HTML resource URI and public URL.",
 )
-async def get_streamlines_as_html_tool(aeroplane_id: UUID4, operating_point: OperatingPointSchema) -> Any:
-    return await _call_endpoint(
+async def get_streamlines_as_html_tool(
+    aeroplane_id: UUID4,
+    operating_point: OperatingPointSchema,
+    ctx: Context = None,
+) -> Any:
+    payload = await _call_endpoint(
         aeroanalysis.calculate_streamlines,
         aeroplane_id=aeroplane_id,
         operating_point=operating_point,
         request=None,
         settings=get_settings(),
     )
+    html_path = resolve_tmp_path_from_known_output(payload)
+    entry = register_file_asset(
+        html_path,
+        mime_type="text/html",
+        kind="data",
+        base_url=resolve_public_base_url(ctx),
+    )
+    return _asset_payload(entry)
 
 
 @mcp_tool(
@@ -620,16 +936,28 @@ async def analyze_alpha_sweep_tool(aeroplane_id: UUID4, sweep_request: AlphaSwee
 
 @mcp_tool(
     name="analyze_alpha_sweep_diagram",
-    description="Generate an angle-of-attack sweep diagram and return its static URL.",
+    description="Generate an angle-of-attack sweep diagram as resource URI and public URL.",
 )
-async def analyze_alpha_sweep_diagram_tool(aeroplane_id: UUID4, sweep_request: AlphaSweepRequest) -> Any:
-    return await _call_endpoint(
+async def analyze_alpha_sweep_diagram_tool(
+    aeroplane_id: UUID4,
+    sweep_request: AlphaSweepRequest,
+    ctx: Context = None,
+) -> Any:
+    payload = await _call_endpoint(
         aeroanalysis.analyze_airplane_alpha_sweep_diagram,
         aeroplane_id=aeroplane_id,
         sweep_request=sweep_request,
         request=None,
         settings=get_settings(),
     )
+    diagram_path = resolve_tmp_path_from_known_output(payload)
+    entry = register_file_asset(
+        diagram_path,
+        mime_type="image/png",
+        kind="img",
+        base_url=resolve_public_base_url(ctx),
+    )
+    return _asset_payload(entry)
 
 
 @mcp_tool(
@@ -646,48 +974,35 @@ async def analyze_parameter_sweep_tool(aeroplane_id: UUID4, sweep_request: Simpl
 
 @mcp_tool(
     name="get_streamlines_three_view",
-    description="Generate a streamlines-based three-view PNG and return it as base64 data.",
+    description="Generate a streamlines-based three-view image as resource URI and public URL.",
 )
-async def get_streamlines_three_view_tool(aeroplane_id: UUID4, operating_point: OperatingPointSchema) -> Any:
-    return await _call_endpoint(
+async def get_streamlines_three_view_tool(
+    aeroplane_id: UUID4,
+    operating_point: OperatingPointSchema,
+    ctx: Context = None,
+) -> Any:
+    payload = await _call_endpoint(
         aeroanalysis.get_streamlines_three_view,
         aeroplane_id=aeroplane_id,
         operating_point=operating_point,
+    )
+    return _register_image_payload(
+        payload,
+        filename_prefix="streamlines_three_view",
+        base_url=resolve_public_base_url(ctx),
     )
 
 
 @mcp_tool(
     name="get_aeroplane_three_view",
-    description="Generate a three-view PNG image of the aeroplane and return it as base64 data.",
+    description="Generate a three-view image as resource URI and public URL.",
 )
-async def get_aeroplane_three_view_tool(aeroplane_id: UUID4) -> Any:
-    return await _call_endpoint(aeroanalysis.get_aeroplane_three_view, aeroplane_id=aeroplane_id)
-
-
-@mcp_tool(
-    name="get_aeroplane_three_view_url",
-    description="Generate a three-view diagram image and return its static URL.",
-)
-async def get_aeroplane_three_view_url_tool(aeroplane_id: UUID4) -> Any:
-    return await _call_endpoint(
-        aeroanalysis.get_aeroplane_three_view_url,
-        aeroplane_id=aeroplane_id,
-        request=None,
-        settings=get_settings(),
-    )
-
-
-@mcp_tool(
-    name="get_streamlines_three_view_url",
-    description="Generate a streamlines three-view image and return its static URL.",
-)
-async def get_streamlines_three_view_url_tool(aeroplane_id: UUID4, operating_point: OperatingPointSchema) -> Any:
-    return await _call_endpoint(
-        aeroanalysis.get_streamlines_three_view_url,
-        aeroplane_id=aeroplane_id,
-        operating_point=operating_point,
-        request=None,
-        settings=get_settings(),
+async def get_aeroplane_three_view_tool(aeroplane_id: UUID4, ctx: Context = None) -> Any:
+    payload = await _call_endpoint(aeroanalysis.get_aeroplane_three_view, aeroplane_id=aeroplane_id)
+    return _register_image_payload(
+        payload,
+        filename_prefix="three_view",
+        base_url=resolve_public_base_url(ctx),
     )
 
 
@@ -887,11 +1202,25 @@ MCP_TOOL_NAMES: tuple[str, ...] = tuple(spec.name for spec in TOOL_SPECS)
 
 
 def create_mcp_server() -> FastMCP:
-    """Create a native FastMCP server with explicitly registered tools."""
+    """Create a native FastMCP server with explicitly registered tools and resources."""
     mcp = FastMCP(name="da3dalus-cad-tools")
 
     for spec in TOOL_SPECS:
         mcp.tool(name=spec.name, description=spec.description)(spec.handler)
+
+    mcp.resource(
+        "img://{asset_id}",
+        name="image_asset",
+        description="Read a generated image asset by asset ID.",
+        mime_type="image/png",
+    )(read_image_asset)
+
+    mcp.resource(
+        "data://{asset_id}",
+        name="data_asset",
+        description="Read a generated HTML or ZIP asset by asset ID.",
+        mime_type="application/octet-stream",
+    )(read_data_asset)
 
     return mcp
 

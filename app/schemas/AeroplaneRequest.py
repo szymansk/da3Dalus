@@ -3,7 +3,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional, Dict, Any, Union, OrderedDict, List, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.Printer3dSettings import Printer3dSettings
 from app.schemas.Servo import Servo
@@ -85,12 +85,12 @@ class CreateWingLoftRequest(BaseModel):
     wings: Optional[Dict[str, Wing]]
     settings: Optional[AeroplaneSettings]
 
-    class Config:
-        json_encoders = {
+    model_config = ConfigDict(
+        json_encoders={
             dict: lambda v: json.dumps(v, sort_keys=False)
-        }
+        },
 
-        json_schema_extra = {
+        json_schema_extra={
             "example": {
                 "wings": {
                     "main_wing": {
@@ -613,7 +613,8 @@ class CreateWingLoftRequest(BaseModel):
                     }
                 }
             }
-        }
+        },
+    )
 
 
 class CreateAeroPlaneRequest(BaseModel):
@@ -622,12 +623,12 @@ class CreateAeroPlaneRequest(BaseModel):
     fuselages: Optional[OrderedDict[str, Fuselage]]
     settings: Optional[AeroplaneSettings]
 
-    class Config:
-        json_encoders = {
+    model_config = ConfigDict(
+        json_encoders={
             dict: lambda v: json.dumps(v, sort_keys=False)
-        }
+        },
 
-        json_schema_extra = {
+        json_schema_extra={
             "example": {
                 "blueprint": {
                     "successors": {
@@ -1240,5 +1241,5 @@ class CreateAeroPlaneRequest(BaseModel):
                     }
                 }
             }
-        }
-
+        },
+    )
