@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import Any, List, Optional
 
 import aerosandbox as asb
 from aerosandbox import FuselageXSec
@@ -7,7 +7,10 @@ from aerosandbox import FuselageXSec
 from app import schemas
 from app.models import AeroplaneModel, WingModel
 from app.schemas import AeroplaneSchema
-from cad_designer.airplane.aircraft_topology.wing import WingConfiguration
+from app.schemas.Servo import Servo as ServoSchema
+from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import AirplaneConfiguration
+from cad_designer.airplane.aircraft_topology.components.Servo import Servo as WingServo
+from cad_designer.airplane.aircraft_topology.wing import Spare, TrailingEdgeDevice, WingConfiguration
 
 
 async def aeroplaneModelToAeroplaneSchema_async(plane: AeroplaneModel) -> AeroplaneSchema:
@@ -36,80 +39,6 @@ def _build_asb_airfoil(airfoil_ref) -> asb.Airfoil:
 
     # Fall back to ASB name-based lookup (e.g. "naca2412", "sd7037", UIUC names).
     return asb.Airfoil(name=airfoil_ref_str)
-
-
-async def aeroplaneSchemaToAsbAirplane_async(plane_schema: AeroplaneSchema) -> "asb.Airplane":
-    """
-    Convert an AeroplaneSchema to an Aerosandbox Airplane object.
-
-    Args:
-        plane_schema (AeroplaneSchema): The schema to convert.
-
-    Returns:
-        asb.Airplane: The converted Aerosandbox Airplane object.
-    """
-    from aerosandbox import Airplane, Wing, WingXSec, ControlSurface, Fuselage
-    asb_airplane: Airplane = Airplane(
-        name=plane_schema.name,
-        wings=[
-            Wing(
-                name=wing_name,
-                symmetric=wing.symmetric,
-                xsecs=[
-                    WingXSec(
-                        xyz_le=None,
-                        chord=x_sec.chord,
-                        twist=x_sec.twist,
-                        airfoil=_build_asb_airfoil(x_sec.airfoil),
-                        control_surfaces=[
-                            ControlSurface(
-                                name=x_sec.control_surface.name,
-                                hinge_point=x_sec.control_surface.hinge_point,
-                                symmetric=x_sec.control_surface.symmetric,
-                                deflection=x_sec.control_surface.deflection
-                            )] if x_sec.control_surface else []
-                    ).translate(x_sec.xyz_le) for x_sec in wing.x_secs
-                ] if wing.x_secs else None
-            ) for wing_name, wing in plane_schema.wings.items()] if plane_schema.wings else None,
-        fuselages=[
-            Fuselage(
-                name=fuselage_name,
-                xsecs=[
-                    FuselageXSec(
-                        xyz_c=None,
-                        xyz_normal=None, #TODO: Implement normal vector handling
-                        radius=None,
-                        height=x_sec.a,
-                        width=x_sec.b,
-                        shape=x_sec.n
-                    ).translate(x_sec.xyz)
-                    for x_sec in fuselage.x_secs
-                ] if fuselage.x_secs else None,
-            ) for fuselage_name, fuselage in plane_schema.fuselages.items()
-        ] if plane_schema.fuselages else None,
-        xyz_ref=plane_schema.xyz_ref
-    )
-
-    return asb_airplane
-
-def wingModelToWingConfig(wing: WingModel) -> WingConfiguration:
-    asb_wing: schemas.AsbWingSchema = schemas.AsbWingSchema.model_validate(wing, from_attributes=True)
-    # Convert the wing to a WingConfiguration object
-    xsecs: List[asb.WingXSec] = [asb.WingXSec(
-        xyz_le=xs.xyz_le,
-        chord=xs.chord,
-        twist=xs.twist,
-        airfoil=_build_asb_airfoil(xs.airfoil),
-        control_surfaces=
-        [asb.ControlSurface(
-            name=xs.control_surface.name,
-            symmetric=xs.control_surface.symmetric,
-            deflection=xs.control_surface.deflection,
-            hinge_point=xs.control_surface.hinge_point,
-            trailing_edge=True,
-        )] if xs.control_surface else []
-    ) for xs in asb_wing.x_secs]
-    return WingConfiguration.from_asb(xsecs, asb_wing.symmetric)
 
 
 def _normalize_airfoil_reference_for_schema(airfoil_ref: asb.Airfoil | str) -> str:
@@ -159,6 +88,312 @@ def _prepare_wing_config_for_asb(wing_config: WingConfiguration) -> None:
     wing_config._asb_wing = None
 
 
+def _normalize_wing_config_ted_for_asb(wing_config: WingConfiguration):
+    """
+    Temporarily enforce rel_chord_tip == rel_chord_root for ASB conversion.
+
+    WingConfiguration.asb_wing() requires this, but rel_chord_tip is still preserved in schema details.
+    """
+    original_tip_values = []
+    for segment in wing_config.segments or []:
+        ted = segment.trailing_edge_device
+        if ted is None:
+            continue
+        original_tip_values.append((ted, ted.rel_chord_tip))
+        if ted.rel_chord_root is not None:
+            ted.rel_chord_tip = ted.rel_chord_root
+    return original_tip_values
+
+
+def _restore_wing_config_ted_after_asb(original_tip_values) -> None:
+    for ted, original_tip in original_tip_values:
+        ted.rel_chord_tip = original_tip
+
+
+def _to_payload(value: Any) -> Any:
+    if value is None:
+        return None
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
+    if isinstance(value, dict):
+        return value
+    if hasattr(value, "__dict__"):
+        return {k: v for k, v in value.__dict__.items() if not k.startswith("_")}
+    return value
+
+
+def _servo_to_schema(servo_value: Any) -> Optional[ServoSchema | int]:
+    if servo_value is None:
+        return None
+    if isinstance(servo_value, int):
+        return servo_value
+
+    payload = _to_payload(servo_value)
+    if isinstance(payload, dict):
+        try:
+            return ServoSchema(**payload)
+        except Exception:
+            return None
+    return None
+
+
+def _servo_to_wing_servo(servo_value: Any) -> Optional[WingServo | int]:
+    if servo_value is None:
+        return None
+    if isinstance(servo_value, int):
+        return servo_value
+
+    payload = _to_payload(servo_value)
+    if isinstance(payload, dict):
+        try:
+            return WingServo(**payload)
+        except Exception:
+            return None
+    return None
+
+
+def _spare_to_schema(spare: Spare) -> schemas.SpareDetailSchema:
+    vector = spare.spare_vector.toTuple() if getattr(spare, "spare_vector", None) is not None else None
+    origin = spare.spare_origin.toTuple() if getattr(spare, "spare_origin", None) is not None else None
+    return schemas.SpareDetailSchema(
+        spare_support_dimension_width=float(spare.spare_support_dimension_width),
+        spare_support_dimension_height=float(spare.spare_support_dimension_height),
+        spare_position_factor=None if spare.spare_position_factor is None else float(spare.spare_position_factor),
+        spare_length=None if spare.spare_length is None else float(spare.spare_length),
+        spare_start=0.0 if spare.spare_start is None else float(spare.spare_start),
+        spare_mode=spare.spare_mode,
+        spare_vector=[float(value) for value in vector] if vector is not None else None,
+        spare_origin=[float(value) for value in origin] if origin is not None else None,
+    )
+
+
+def _spare_schema_to_spare(spare_schema: schemas.SpareDetailSchema) -> Spare:
+    return Spare(
+        spare_support_dimension_width=float(spare_schema.spare_support_dimension_width),
+        spare_support_dimension_height=float(spare_schema.spare_support_dimension_height),
+        spare_position_factor=spare_schema.spare_position_factor,
+        spare_length=spare_schema.spare_length,
+        spare_start=spare_schema.spare_start,
+        spare_vector=tuple(spare_schema.spare_vector) if spare_schema.spare_vector is not None else None,
+        spare_origin=tuple(spare_schema.spare_origin) if spare_schema.spare_origin is not None else None,
+        spare_mode=spare_schema.spare_mode or "standard",
+    )
+
+
+def _trailing_edge_device_to_schema(ted: TrailingEdgeDevice) -> schemas.TrailingEdgeDeviceDetailSchema:
+    return schemas.TrailingEdgeDeviceDetailSchema(
+        name=ted.name,
+        rel_chord_root=ted.rel_chord_root,
+        rel_chord_tip=ted.rel_chord_tip,
+        hinge_spacing=ted.hinge_spacing,
+        side_spacing_root=ted.side_spacing_root,
+        side_spacing_tip=ted.side_spacing_tip,
+        servo=_servo_to_schema(getattr(ted, "_servo", None)),
+        servo_placement=ted.servo_placement,
+        rel_chord_servo_position=ted.rel_chord_servo_position,
+        rel_length_servo_position=ted.rel_length_servo_position,
+        positive_deflection_deg=ted.positive_deflection_deg,
+        negative_deflection_deg=ted.negative_deflection_deg,
+        trailing_edge_offset_factor=ted.trailing_edge_offset_factor,
+        hinge_type=ted.hinge_type,
+        symmetric=ted.symmetric,
+    )
+
+
+def _trailing_edge_device_schema_to_wing_ted(
+    ted_schema: schemas.TrailingEdgeDeviceDetailSchema,
+) -> TrailingEdgeDevice:
+    return TrailingEdgeDevice(
+        name=ted_schema.name or "control_surface",
+        rel_chord_root=ted_schema.rel_chord_root,
+        rel_chord_tip=ted_schema.rel_chord_tip,
+        hinge_spacing=ted_schema.hinge_spacing,
+        side_spacing_root=ted_schema.side_spacing_root,
+        side_spacing_tip=ted_schema.side_spacing_tip,
+        servo=_servo_to_wing_servo(ted_schema.servo),
+        servo_placement=ted_schema.servo_placement,
+        rel_chord_servo_position=ted_schema.rel_chord_servo_position,
+        rel_length_servo_position=ted_schema.rel_length_servo_position,
+        positive_deflection_deg=25.0 if ted_schema.positive_deflection_deg is None else ted_schema.positive_deflection_deg,
+        negative_deflection_deg=25.0 if ted_schema.negative_deflection_deg is None else ted_schema.negative_deflection_deg,
+        trailing_edge_offset_factor=(
+            1.0 if ted_schema.trailing_edge_offset_factor is None else ted_schema.trailing_edge_offset_factor
+        ),
+        hinge_type="top" if ted_schema.hinge_type is None else ted_schema.hinge_type,
+        symmetric=True if ted_schema.symmetric is None else ted_schema.symmetric,
+    )
+
+
+def _minimal_ted_from_control_surface(
+    control_surface: schemas.ControlSurfaceSchema,
+) -> schemas.TrailingEdgeDeviceDetailSchema:
+    deflection = abs(float(control_surface.deflection))
+    return schemas.TrailingEdgeDeviceDetailSchema(
+        name=control_surface.name,
+        rel_chord_root=control_surface.hinge_point,
+        rel_chord_tip=control_surface.hinge_point,
+        positive_deflection_deg=deflection,
+        negative_deflection_deg=deflection,
+        symmetric=control_surface.symmetric,
+    )
+
+
+def _control_surface_from_ted(
+    ted: schemas.TrailingEdgeDeviceDetailSchema,
+    fallback: Optional[schemas.ControlSurfaceSchema] = None,
+) -> schemas.ControlSurfaceSchema:
+    return schemas.ControlSurfaceSchema(
+        name=ted.name or (fallback.name if fallback else "Control Surface"),
+        hinge_point=(
+            ted.rel_chord_root
+            if ted.rel_chord_root is not None
+            else (fallback.hinge_point if fallback else 0.8)
+        ),
+        symmetric=ted.symmetric if ted.symmetric is not None else (fallback.symmetric if fallback else True),
+        deflection=fallback.deflection if fallback else 0.0,
+    )
+
+
+def _control_surface_for_xsec(
+    x_sec: schemas.WingXSecSchema,
+) -> Optional[schemas.ControlSurfaceSchema]:
+    if x_sec.trailing_edge_device is not None:
+        return _control_surface_from_ted(x_sec.trailing_edge_device, fallback=x_sec.control_surface)
+    return x_sec.control_surface
+
+
+def _asb_wing_xsecs_from_schema(wing: schemas.AsbWingSchema) -> List[asb.WingXSec]:
+    xsecs: List[asb.WingXSec] = []
+    for x_sec in wing.x_secs:
+        control_surface = _control_surface_for_xsec(x_sec)
+        xsecs.append(
+            asb.WingXSec(
+                xyz_le=x_sec.xyz_le,
+                chord=x_sec.chord,
+                twist=x_sec.twist,
+                airfoil=_build_asb_airfoil(x_sec.airfoil),
+                control_surfaces=[
+                    asb.ControlSurface(
+                        name=control_surface.name,
+                        symmetric=control_surface.symmetric,
+                        deflection=control_surface.deflection,
+                        hinge_point=control_surface.hinge_point,
+                        trailing_edge=True,
+                    )
+                ]
+                if control_surface
+                else [],
+            )
+        )
+    return xsecs
+
+
+def _hydrate_wing_configuration_details(
+    wing_config: WingConfiguration,
+    wing_schema: schemas.AsbWingSchema,
+) -> None:
+    for segment_index, segment in enumerate(wing_config.segments or []):
+        if segment_index >= len(wing_schema.x_secs) - 1:
+            break
+
+        x_sec = wing_schema.x_secs[segment_index]
+        if x_sec.x_sec_type is not None:
+            segment.wing_segment_type = x_sec.x_sec_type
+        if x_sec.tip_type is not None:
+            segment.tip_type = x_sec.tip_type
+        if x_sec.number_interpolation_points is not None:
+            segment.number_interpolation_points = x_sec.number_interpolation_points
+
+        if x_sec.spare_list is not None:
+            segment.spare_list = [_spare_schema_to_spare(spare_schema) for spare_schema in x_sec.spare_list]
+
+        ted_schema = x_sec.trailing_edge_device
+        if ted_schema is None and x_sec.control_surface is not None:
+            ted_schema = _minimal_ted_from_control_surface(x_sec.control_surface)
+        segment.trailing_edge_device = (
+            _trailing_edge_device_schema_to_wing_ted(ted_schema) if ted_schema is not None else None
+        )
+
+
+async def aeroplaneSchemaToAsbAirplane_async(plane_schema: AeroplaneSchema) -> "asb.Airplane":
+    """
+    Convert an AeroplaneSchema to an Aerosandbox Airplane object.
+
+    Args:
+        plane_schema (AeroplaneSchema): The schema to convert.
+
+    Returns:
+        asb.Airplane: The converted Aerosandbox Airplane object.
+    """
+    from aerosandbox import Airplane, Fuselage, Wing
+
+    asb_airplane: Airplane = Airplane(
+        name=plane_schema.name,
+        wings=[
+            Wing(
+                name=wing_name,
+                symmetric=wing.symmetric,
+                xsecs=[xsec for xsec in _asb_wing_xsecs_from_schema(wing)] if wing.x_secs else None,
+            )
+            for wing_name, wing in plane_schema.wings.items()
+        ]
+        if plane_schema.wings
+        else None,
+        fuselages=[
+            Fuselage(
+                name=fuselage_name,
+                xsecs=[
+                    FuselageXSec(
+                        xyz_c=None,
+                        xyz_normal=None,  # TODO: Implement normal vector handling
+                        radius=None,
+                        height=x_sec.a,
+                        width=x_sec.b,
+                        shape=x_sec.n,
+                    ).translate(x_sec.xyz)
+                    for x_sec in fuselage.x_secs
+                ]
+                if fuselage.x_secs
+                else None,
+            )
+            for fuselage_name, fuselage in plane_schema.fuselages.items()
+        ]
+        if plane_schema.fuselages
+        else None,
+        xyz_ref=plane_schema.xyz_ref,
+    )
+
+    return asb_airplane
+
+
+async def aeroplaneSchemaToAirplaneConfiguration_async(plane_schema: AeroplaneSchema) -> AirplaneConfiguration:
+    if plane_schema.total_mass_kg is None:
+        raise ValueError("AeroplaneSchema.total_mass_kg must be set to build AirplaneConfiguration.")
+
+    wing_configs: List[WingConfiguration] = []
+    for wing in (plane_schema.wings or {}).values():
+        xsecs = _asb_wing_xsecs_from_schema(wing)
+        wing_config = WingConfiguration.from_asb(xsecs=xsecs, symmetric=wing.symmetric)
+        _hydrate_wing_configuration_details(wing_config, wing)
+        wing_configs.append(wing_config)
+
+    return AirplaneConfiguration(
+        name=plane_schema.name,
+        total_mass_kg=plane_schema.total_mass_kg,
+        wings=wing_configs,
+        fuselages=None,
+    )
+
+
+def wingModelToWingConfig(wing: WingModel) -> WingConfiguration:
+    asb_wing: schemas.AsbWingSchema = schemas.AsbWingSchema.model_validate(wing, from_attributes=True)
+
+    xsecs = _asb_wing_xsecs_from_schema(asb_wing)
+    wing_config = WingConfiguration.from_asb(xsecs, asb_wing.symmetric)
+    _hydrate_wing_configuration_details(wing_config, asb_wing)
+    return wing_config
+
+
 def wingConfigToAsbWingSchema(
     wing_config: WingConfiguration,
     wing_name: str,
@@ -173,9 +408,14 @@ def wingConfigToAsbWingSchema(
         scale: Scaling used when creating the internal ASB wing (e.g. 0.001 for mm->m).
     """
     _prepare_wing_config_for_asb(wing_config)
-    asb_wing = wing_config.asb_wing(scale=scale)
+    ted_original_tip_values = _normalize_wing_config_ted_for_asb(wing_config)
+    try:
+        asb_wing = wing_config.asb_wing(scale=scale)
+    finally:
+        _restore_wing_config_ted_after_asb(ted_original_tip_values)
     section_data = _wing_configuration_sections(wing_config)
     x_secs = []
+
     for index, x_sec in enumerate(asb_wing.xsecs):
         control_surface = None
         if x_sec.control_surfaces:
@@ -195,6 +435,27 @@ def wingConfigToAsbWingSchema(
             section_twist = float(x_sec.twist)
             section_airfoil_ref = x_sec.airfoil
 
+        segment = wing_config.segments[index] if index < len(wing_config.segments) else None
+        trailing_edge_device = None
+        spare_list = None
+        x_sec_type = None
+        tip_type = None
+        number_interpolation_points = None
+
+        if segment is not None:
+            x_sec_type = segment.wing_segment_type
+            tip_type = segment.tip_type
+            number_interpolation_points = segment.number_interpolation_points
+
+            if segment.trailing_edge_device is not None:
+                trailing_edge_device = _trailing_edge_device_to_schema(segment.trailing_edge_device)
+                control_surface = _control_surface_from_ted(trailing_edge_device, fallback=control_surface)
+            elif control_surface is not None:
+                trailing_edge_device = _minimal_ted_from_control_surface(control_surface)
+
+            if segment.spare_list is not None:
+                spare_list = [_spare_to_schema(spare) for spare in segment.spare_list]
+
         x_secs.append(
             schemas.WingXSecSchema(
                 xyz_le=[float(value) for value in x_sec.xyz_le],
@@ -202,6 +463,11 @@ def wingConfigToAsbWingSchema(
                 twist=section_twist,
                 airfoil=_normalize_airfoil_reference_for_schema(section_airfoil_ref),
                 control_surface=control_surface,
+                x_sec_type=x_sec_type,
+                tip_type=tip_type,
+                number_interpolation_points=number_interpolation_points,
+                spare_list=spare_list,
+                trailing_edge_device=trailing_edge_device,
             )
         )
 

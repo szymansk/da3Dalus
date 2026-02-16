@@ -1,55 +1,22 @@
-from typing import OrderedDict, Optional
+from typing import Literal, Optional, OrderedDict
 
-from pydantic import BaseModel, Field, HttpUrl, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
+
+from app.schemas.Servo import Servo
+
+SparMode = Literal["normal", "follow", "standard", "standard_backward", "orthogonal_backward"]
+HingeType = Literal["middle", "top", "top_simple", "round_inside", "round_outside"]
+WingXSecType = Literal["root", "segment", "tip"]
+TipType = Literal["flat", "round"]
 
 
 class AeroplaneSchema(BaseModel):
     name: str = Field(..., description="Aeroplane name", examples=["Vanilla"])
-    total_mass_kg: Optional[float] = Field(None, description="Total mass of the aeroplane in kg", examples=[3.])
-    wings: Optional[OrderedDict[str, "AsbWingSchema"]] = Field(
-        None, description="Aeroplane wings dictionary",
-        examples=[
-            {
-                "name": "Main Wing",
-                "symmetric": True,
-                "x_secs": [
-                    {
-                        "xyz_le": [0, 0, 0],
-                        "chord": 0.18,
-                        "twist": 2,
-                        "airfoil": "./components/airfoils/naca0015.dat",
-                    },
-                    {
-                        "xyz_le": [0.01, 0.5, 0],
-                        "chord": 0.16,
-                        "twist": 0,
-                        "airfoil": "./components/airfoils/naca0015.dat",
-                    },
-                ],
-            }
-        ]
-    )
+    total_mass_kg: Optional[float] = Field(None, description="Total mass of the aeroplane in kg", examples=[3.0])
+    wings: Optional[OrderedDict[str, "AsbWingSchema"]] = Field(None, description="Aeroplane wings dictionary")
     fuselages: Optional[OrderedDict[str, "FuselageSchema"]] = Field(
-        None, description="Aeroplane fuselages dictionary",
-        examples=[
-            {
-                "name": "Fuselage",
-                "x_secs": [
-                    {
-                        "xyz": [0, 0, 0],
-                        "a": 0.5,
-                        "b": 0.5,
-                        "n": 2,
-                    },
-                    {
-                        "xyz": [0.01, 0.5, 0],
-                        "a": 0.6,
-                        "b": 0.4,
-                        "n": 1.5,
-                    },
-                ],
-            }
-        ],
+        None,
+        description="Aeroplane fuselages dictionary",
     )
     xyz_ref: Optional[list[float]] = Field(
         [0, 0, 0],
@@ -57,58 +24,15 @@ class AeroplaneSchema(BaseModel):
         examples=[[0, 0, 0], [0.01, 0.5, 0], [0.08, 1, 0.1]],
     )
 
-    model_config = ConfigDict(
-        from_attributes=True,
-        json_schema_extra = {
-            "example": {
-                "name": "Vanilla",
-                "total_mass_kg": 3.0,
-                "wings": {
-                    "Main Wing": {
-                        "symmetric": True,
-                        "x_secs": [
-                            {
-                                "xyz_le": [0, 0, 0],
-                                "chord": 0.18,
-                                "twist": 2,
-                                "airfoil": "./components/airfoils/naca0015.dat",
-                            },
-                            {
-                                "xyz_le": [0.01, 0.5, 0],
-                                "chord": 0.16,
-                                "twist": 0,
-                                "airfoil": "./components/airfoils/naca0015.dat",
-                            },
-                        ],
-                    }
-                },
-                "fuselages": {
-                    "Fuselage": {
-                        "x_secs": [
-                            {
-                                "xyz": [0, 0, 0],
-                                "a": 0.5,
-                                "b": 0.5,
-                                "n": 2,
-                            },
-                            {
-                                "xyz": [0.01, 0.5, 0],
-                                "a": 0.6,
-                                "b": 0.4,
-                                "n": 1.5,
-                            },
-                        ],
-                    }
-                },
-                "xyz_ref": [0, 0, 0],
-            }
-        }
-    )
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ControlSurfaceSchema(BaseModel):
-    name: str = Field(..., description="Control surface name",
-                      examples=["Aileron", "Elevator", "Rudder", "Flap", "Elevon"])
+    name: str = Field(
+        ...,
+        description="Control surface name",
+        examples=["Aileron", "Elevator", "Rudder", "Flap", "Elevon"],
+    )
     hinge_point: float = Field(
         0.8,
         description="Hinge point location of the control surface as a factor of the chord length",
@@ -116,7 +40,10 @@ class ControlSurfaceSchema(BaseModel):
     )
     symmetric: bool = Field(
         True,
-        description="Whether the control surface moves symmetric (e.g flaps, elevator) or anti-symmetric (e.g. aileron, elevon, v-tail) to the left and right wing",
+        description=(
+            "Whether the control surface moves symmetric (e.g flaps, elevator) or anti-symmetric "
+            "(e.g. aileron, elevon, v-tail) to the left and right wing"
+        ),
     )
     deflection: float = Field(
         0.0,
@@ -124,17 +51,73 @@ class ControlSurfaceSchema(BaseModel):
         examples=[5, 2, 0],
     )
 
-    model_config = ConfigDict(
-        from_attributes=True,
-        json_schema_extra = {
-            "example": {
-                "name": "Aileron",
-                "hinge_point": 0.8,
-                "symmetric": False,
-                "deflection": 5,
-            }
-        }
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SpareDetailSchema(BaseModel):
+    spare_support_dimension_width: float = Field(..., description="Spar support width in millimeters")
+    spare_support_dimension_height: float = Field(..., description="Spar support height in millimeters")
+    spare_position_factor: Optional[float] = Field(
+        None,
+        description="Relative chord-wise position of the spar as a factor (0.0-1.0)",
     )
+    spare_length: Optional[float] = Field(None, description="Spar length in millimeters")
+    spare_start: float = Field(0.0, description="Spar start offset in millimeters")
+    spare_mode: Optional[SparMode] = Field(
+        "standard",
+        description="Spar placement mode",
+    )
+    spare_vector: Optional[list[float]] = Field(None, description="Spar direction vector [x, y, z]")
+    spare_origin: Optional[list[float]] = Field(None, description="Spar origin [x, y, z]")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TrailingEdgeDeviceDetailSchema(BaseModel):
+    name: Optional[str] = Field(None, description="Trailing-edge device name")
+    rel_chord_root: Optional[float] = Field(None, description="Root hinge position as relative chord (0.0-1.0)")
+    rel_chord_tip: Optional[float] = Field(None, description="Tip hinge position as relative chord (0.0-1.0)")
+    hinge_spacing: Optional[float] = Field(None, description="Hinge spacing in millimeters")
+    side_spacing_root: Optional[float] = Field(None, description="Root side spacing in millimeters")
+    side_spacing_tip: Optional[float] = Field(None, description="Tip side spacing in millimeters")
+    servo: Optional[Servo | int] = Field(None, description="Servo object or servo index")
+    servo_placement: Literal["top", "bottom"] = Field(
+        "top",
+        description="Servo placement relative to the wing shell",
+    )
+    rel_chord_servo_position: Optional[float] = Field(
+        None,
+        description="Relative chord position of servo placement",
+    )
+    rel_length_servo_position: Optional[float] = Field(
+        None,
+        description="Relative segment-length position of servo placement",
+    )
+    positive_deflection_deg: Optional[float] = Field(None, description="Maximum positive deflection in degrees")
+    negative_deflection_deg: Optional[float] = Field(None, description="Maximum negative deflection in degrees")
+    trailing_edge_offset_factor: Optional[float] = Field(
+        None,
+        description="Trailing-edge offset factor for printable geometry",
+    )
+    hinge_type: Optional[HingeType] = Field(
+        None,
+        description="Hinge type",
+    )
+    symmetric: Optional[bool] = Field(
+        None,
+        description="Whether deflection is symmetric between left/right wing",
+    )
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class WingUnitsSchema(BaseModel):
+    geometry_length: Literal["m"] = Field("m", description="Unit of `xyz_le`, `chord` in x-sections")
+    detail_length: Literal["mm"] = Field("mm", description="Unit of detailed wing configuration fields")
+    angle: Literal["deg"] = Field("deg", description="Unit of angular fields")
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 class WingXSecSchema(BaseModel):
     xyz_le: list[float] = Field(
@@ -159,40 +142,31 @@ class WingXSecSchema(BaseModel):
     )
     control_surface: Optional[ControlSurfaceSchema] = Field(
         None,
-        description="Control surface on the cross-section",
-        examples=[
-            {
-                "name": "Aileron",
-                "hinge_point": 0.8,
-                "symmetric": False,
-                "deflection": 5,
-            },
-            {
-                "name": "Flap",
-                "hinge_point": 0.5,
-                "symmetric": True,
-                "deflection": 10,
-            },
-        ],
+        description="Control surface on the cross-section (ASB-compatible subset)",
+    )
+    x_sec_type: Optional[WingXSecType] = Field(
+        None,
+        description="Wing section type associated with the outgoing segment anchored at this x-section",
+    )
+    tip_type: Optional[TipType] = Field(
+        None,
+        description="Tip style for tip segments",
+    )
+    number_interpolation_points: Optional[int] = Field(
+        None,
+        description="Interpolation points used for lofting this segment",
+    )
+    spare_list: Optional[list[SpareDetailSchema]] = Field(
+        None,
+        description="Spar definitions associated with the outgoing segment at this x-section",
+    )
+    trailing_edge_device: Optional[TrailingEdgeDeviceDetailSchema] = Field(
+        None,
+        description="Detailed trailing-edge device definition for the outgoing segment at this x-section",
     )
 
-    model_config = ConfigDict(
-        from_attributes=True,
-        json_schema_extra = {
-            "example": {
-                "xyz_le": [0, 0, 0],
-                "chord": 0.18,
-                "twist": 2,
-                "airfoil": "./components/airfoils/naca0015.dat",
-                "control_surface": {
-                    "name": "Aileron",
-                    "hinge_point": 0.8,
-                    "symmetric": False,
-                    "deflection": 5,
-                }
-            }
-        }
-    )
+    model_config = ConfigDict(from_attributes=True)
+
 
 class AsbWingSchema(BaseModel):
     name: str = Field(..., description="Wing name", examples=["Main Wing", "Horizontal Stabilizer"])
@@ -205,47 +179,30 @@ class AsbWingSchema(BaseModel):
         ...,
         description="List of cross-sections of the wing",
         min_length=2,
-        examples=[
-            [
-                {
-                    "xyz_le": [0, 0, 0],
-                    "chord": 0.18,
-                    "twist": 2,
-                    "airfoil": "./components/airfoils/naca0015.dat",
-                },
-                {
-                    "xyz_le": [0.01, 0.5, 0],
-                    "chord": 0.16,
-                    "twist": 0,
-                    "airfoil": "./components/airfoils/naca0015.dat",
-                },
-            ]
-        ],
+    )
+    units: WingUnitsSchema = Field(
+        default_factory=WingUnitsSchema,
+        description="Units for wing geometry and optional detailed fields",
     )
 
-    model_config = ConfigDict(
-        from_attributes=True,
-        json_schema_extra={
-            "example": {
-                "name": "Horizontal Stabilizer",
-                "symmetric": True,
-                "x_secs": [
-                    {
-                        "xyz_le": [0, 0, 0],
-                        "chord": 0.18,
-                        "twist": 2,
-                        "airfoil": "./components/airfoils/naca0015.dat",
-                    },
-                    {
-                        "xyz_le": [0.01, 0.5, 0],
-                        "chord": 0.16,
-                        "twist": 0,
-                        "airfoil": "./components/airfoils/naca0015.dat",
-                    },
-                ],
-            }
-        }
-    )
+    @model_validator(mode="after")
+    def validate_last_xsec_has_no_segment_details(self):
+        last_xsec = self.x_secs[-1]
+        if (
+            last_xsec.x_sec_type is not None
+            or last_xsec.tip_type is not None
+            or last_xsec.number_interpolation_points is not None
+            or last_xsec.spare_list is not None
+            or last_xsec.trailing_edge_device is not None
+        ):
+            raise ValueError(
+                "Segment-specific fields are not allowed on the last x-section; "
+                "the last x-section is the terminal section only."
+            )
+        return self
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 class FuselageXSecSuperEllipseSchema(BaseModel):
     xyz: list[float] = Field(
@@ -269,9 +226,8 @@ class FuselageXSecSuperEllipseSchema(BaseModel):
         examples=[2, 1.5],
     )
 
-    model_config = ConfigDict(
-        from_attributes=True,
-    )
+    model_config = ConfigDict(from_attributes=True)
+
 
 class FuselageSchema(BaseModel):
     name: str = Field(..., description="Fuselage name", examples=["Fuselage"])
@@ -279,24 +235,6 @@ class FuselageSchema(BaseModel):
         ...,
         description="List of cross-sections of the fuselage",
         min_length=2,
-        examples=[
-            [
-                {
-                    "xyz": [0, 0, 0],
-                    "a": 0.5,
-                    "b": 0.5,
-                    "n": 2,
-                },
-                {
-                    "xyz": [0.01, 0.5, 0],
-                    "a": 0.6,
-                    "b": 0.4,
-                    "n": 1.5,
-                },
-            ]
-        ],
     )
 
-    model_config = ConfigDict(
-        from_attributes=True,
-    )
+    model_config = ConfigDict(from_attributes=True)

@@ -14,7 +14,14 @@ from sqlalchemy.orm import Session
 
 from app import schemas
 from app.core.exceptions import NotFoundError, ValidationError, InternalError
-from app.models.aeroplanemodel import AeroplaneModel, WingModel, WingXSecModel, ControlSurfaceModel
+from app.models.aeroplanemodel import (
+    AeroplaneModel,
+    WingModel,
+    WingXSecModel,
+    WingXSecDetailModel,
+    WingXSecSpareModel,
+    ControlSurfaceModel,
+)
 from app.schemas.wing import Wing as WingConfigurationSchema
 from app.services.create_wing_configuration import create_wing_configuration
 from app.converters.model_schema_converters import wingConfigToWingModel
@@ -307,6 +314,77 @@ def get_cross_section(
         raise InternalError(message=f"Database error: {e}")
 
 
+def _build_cross_section_model(
+    xsec_data: schemas.WingXSecSchema,
+    sort_index: int,
+    is_terminal_xsec: bool,
+    fallback_control_surface: Optional[ControlSurfaceModel] = None,
+) -> WingXSecModel:
+    data = xsec_data.model_dump()
+
+    control_surface = WingModel._as_payload(data.pop("control_surface", None))
+    trailing_edge_device = WingModel._as_payload(data.pop("trailing_edge_device", None))
+    spare_list = data.pop("spare_list", None)
+    x_sec_type = data.pop("x_sec_type", None)
+    tip_type = data.pop("tip_type", None)
+    number_interpolation_points = data.pop("number_interpolation_points", None)
+
+    fallback_cs_payload = WingModel._as_payload(fallback_control_surface)
+
+    if is_terminal_xsec:
+        trailing_edge_device = None
+        spare_list = None
+        x_sec_type = None
+        tip_type = None
+        number_interpolation_points = None
+    elif trailing_edge_device is not None:
+        control_surface = WingModel._control_surface_from_ted(
+            trailing_edge_device,
+            fallback=control_surface or fallback_cs_payload,
+        )
+    elif control_surface is not None:
+        trailing_edge_device = WingModel._minimal_ted_from_control_surface(control_surface)
+    elif fallback_cs_payload is not None:
+        control_surface = fallback_cs_payload
+        trailing_edge_device = WingModel._minimal_ted_from_control_surface(fallback_cs_payload)
+
+    new_xsec = WingXSecModel(sort_index=sort_index, **data)
+
+    if control_surface is not None:
+        new_xsec.control_surface = ControlSurfaceModel(**control_surface)
+
+    detail_required = any(
+        value is not None
+        for value in [
+            x_sec_type,
+            tip_type,
+            number_interpolation_points,
+            trailing_edge_device,
+            spare_list,
+        ]
+    )
+    if detail_required:
+        detail = WingXSecDetailModel(
+            x_sec_type=x_sec_type,
+            tip_type=tip_type,
+            number_interpolation_points=number_interpolation_points,
+        )
+
+        for spare_index, spare in enumerate(spare_list or []):
+            spare_payload = WingModel._as_payload(spare)
+            if spare_payload is None:
+                continue
+            detail.spares.append(WingXSecSpareModel(sort_index=spare_index, **spare_payload))
+
+        ted_model = WingModel._build_ted_model(trailing_edge_device)
+        if ted_model is not None:
+            detail.trailing_edge_device = ted_model
+
+        new_xsec.detail = detail
+
+    return new_xsec
+
+
 def create_cross_section(
     db: Session,
     aeroplane_uuid,
@@ -325,27 +403,23 @@ def create_cross_section(
         with db.begin():
             aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
             wing = get_wing_or_raise(aeroplane, wing_name)
-            
-            data = xsec_data.model_dump()
-            cs_dict = data.pop("control_surface", None)
-            new_xsec = WingXSecModel(**data)
-            
-            if cs_dict is not None:
-                if hasattr(cs_dict, "model_dump"):
-                    cs_dict = cs_dict.model_dump()
-                new_xsec.control_surface = ControlSurfaceModel(**cs_dict)
-            
+
             existing = wing.x_secs
             if index == -1 or index >= len(existing):
                 insertion_index = len(existing)
             else:
                 insertion_index = index
+
+            new_xsec = _build_cross_section_model(
+                xsec_data=xsec_data,
+                sort_index=insertion_index,
+                is_terminal_xsec=(insertion_index == len(existing)),
+            )
             
             for xs in existing[insertion_index:]:
                 xs.sort_index = xs.sort_index + 1
                 db.add(xs)
-            
-            new_xsec.sort_index = insertion_index
+
             if insertion_index == len(existing):
                 wing.x_secs.append(new_xsec)
             else:
@@ -385,21 +459,15 @@ def update_cross_section(
                     message="Cross-section not found",
                     details={"index": index}
                 )
-            
-            data = xsec_data.model_dump()
-            cs_dict = data.pop("control_surface", None)
-            new_xsec = WingXSecModel(sort_index=index, **data)
-            
+
             existing_xsec = x_secs[index]
-            if cs_dict is not None:
-                if hasattr(cs_dict, "model_dump"):
-                    cs_dict = cs_dict.model_dump()
-                new_xsec.control_surface = ControlSurfaceModel(**cs_dict)
-            elif existing_xsec.control_surface is not None:
-                cs_data = schemas.ControlSurfaceSchema.model_validate(
-                    existing_xsec.control_surface, from_attributes=True
-                ).model_dump()
-                new_xsec.control_surface = ControlSurfaceModel(**cs_data)
+            fallback_control_surface = existing_xsec.control_surface if existing_xsec.control_surface is not None else None
+            new_xsec = _build_cross_section_model(
+                xsec_data=xsec_data,
+                sort_index=index,
+                is_terminal_xsec=(index == len(x_secs) - 1),
+                fallback_control_surface=fallback_control_surface,
+            )
             
             wing.x_secs[index] = new_xsec
             aeroplane.updated_at = datetime.now()
