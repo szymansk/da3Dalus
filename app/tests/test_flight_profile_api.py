@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
 from app.db.session import get_db
-from app.main import app
+from app.main import create_app
 from app.models.aeroplanemodel import AeroplaneModel
 
 
@@ -38,6 +38,7 @@ def valid_profile_payload(name: str = "rc_trainer_balanced") -> dict:
 
 @pytest.fixture()
 def client_and_db():
+    app = create_app()
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -76,7 +77,7 @@ def test_create_duplicate_name_returns_409(client_and_db):
     client.post("/flight-profiles", json=payload)
     response = client.post("/flight-profiles", json=payload)
     assert response.status_code == 409
-    assert response.json()["error"]["code"] == "conflict"
+    assert "existiert" in response.json()["detail"]
 
 
 def test_list_profiles_returns_200(client_and_db):
@@ -93,7 +94,7 @@ def test_patch_rename_to_existing_name_returns_409(client_and_db):
     client.post("/flight-profiles", json=valid_profile_payload("profile_two"))
     response = client.patch(f"/flight-profiles/{first['id']}", json={"name": "profile_two"})
     assert response.status_code == 409
-    assert response.json()["error"]["code"] == "conflict"
+    assert "existiert" in response.json()["detail"]
 
 
 def test_delete_profile_with_assignment_returns_409(client_and_db):
@@ -110,6 +111,16 @@ def test_delete_profile_with_assignment_returns_409(client_and_db):
 
     response = client.delete(f"/flight-profiles/{profile['id']}")
     assert response.status_code == 409
+
+
+def test_delete_profile_returns_json_payload(client_and_db):
+    client, _ = client_and_db
+    profile = client.post("/flight-profiles", json=valid_profile_payload("delete_me_profile")).json()
+
+    response = client.delete(f"/flight-profiles/{profile['id']}")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.json() == {"status": "ok", "operation": "delete_flight_profile"}
 
 
 def test_assign_and_detach_profile_updates_aircraft(client_and_db):

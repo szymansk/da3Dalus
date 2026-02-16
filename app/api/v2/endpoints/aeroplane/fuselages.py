@@ -3,9 +3,8 @@ from datetime import datetime
 from typing import List
 
 from fastapi import APIRouter, Path, Depends, Body, HTTPException
-from fastapi import Response
 from fastapi import status
-from pydantic import UUID4
+from pydantic import UUID4, BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -18,6 +17,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 AeroPlaneID = UUID4
+
+
+class OperationStatusResponse(BaseModel):
+    status: str
+    operation: str
+
 
 # Handle an aeroplane fuselages
 @router.get("/aeroplanes/{aeroplane_id}/fuselages",
@@ -51,7 +56,7 @@ async def get_aeroplane_fuselages(
 # Handle an aeroplane fuselage
 @router.put("/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}",
             status_code=status.HTTP_201_CREATED,
-            response_class=Response,
+            response_model=OperationStatusResponse,
             tags=["fuselages"],
             operation_id="create_aeroplane_fuselage")
 async def create_aeroplane_fuselage(
@@ -79,7 +84,7 @@ async def create_aeroplane_fuselage(
             plane.fuselages.append(fuselage)
             db.add(fuselage)
             plane.updated_at = datetime.now()
-        return
+        return OperationStatusResponse(status="created", operation="create_aeroplane_fuselage")
     except SQLAlchemyError as e:
         logger.error(f"Database error when creating aeroplane fuselage: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
@@ -92,8 +97,8 @@ async def create_aeroplane_fuselage(
 
 @router.post(
     "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}",
-    response_class=Response,
-    status_code=status.HTTP_201_CREATED,
+    response_model=OperationStatusResponse,
+    status_code=status.HTTP_200_OK,
     tags=["fuselages"],
     operation_id="update_aeroplane_fuselage"
 )
@@ -126,7 +131,7 @@ async def update_aeroplane_fuselage(
             plane.fuselages.remove(fuselage)
             plane.fuselages.append(new_fuselage)
             plane.updated_at = datetime.now()
-        return
+        return OperationStatusResponse(status="ok", operation="update_aeroplane_fuselage")
     except HTTPException:
         raise
     except SQLAlchemyError as e:
@@ -171,8 +176,8 @@ async def get_aeroplane_fuselage(
 
 @router.delete(
     "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}",
-    response_class=Response,
-    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=OperationStatusResponse,
+    status_code=status.HTTP_200_OK,
     tags=["fuselages"],
     operation_id="delete_aeroplane_fuselage"
 )
@@ -195,7 +200,7 @@ async def delete_aeroplane_fuselage(
                 raise HTTPException(status_code=404, detail="Fuselage not found")
             db.delete(fuselage)
             plane.updated_at = datetime.now()
-        return
+        return OperationStatusResponse(status="ok", operation="delete_aeroplane_fuselage")
     except SQLAlchemyError as e:
         logger.error(f"Database error when deleting aeroplane fuselage: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
@@ -248,8 +253,8 @@ async def get_aeroplane_fuselage_cross_sections(
 
 @router.delete(
     "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}/cross_sections",
-    status_code=status.HTTP_204_NO_CONTENT,
-    response_class=Response,
+    status_code=status.HTTP_200_OK,
+    response_model=OperationStatusResponse,
     tags=["fuselage-cross-sections"],
     operation_id="delete_all_fuselage_cross_sections"
 )
@@ -273,7 +278,7 @@ async def delete_aeroplane_fuselage_cross_sections(
             fuselage.x_secs.clear()
             # Touch parent timestamp
             aeroplane.updated_at = datetime.now()
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
+        return OperationStatusResponse(status="ok", operation="delete_all_fuselage_cross_sections")
     except HTTPException:
         raise
     except SQLAlchemyError as e:
@@ -324,7 +329,7 @@ async def get_aeroplane_fuselage_cross_section(
 
 @router.post(
     "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}/cross_sections/{cross_section_index}",
-    response_class=Response,
+    response_model=OperationStatusResponse,
     status_code=status.HTTP_201_CREATED,
     tags=["fuselage-cross-sections"],
     operation_id="create_fuselage_cross_section"
@@ -374,7 +379,7 @@ async def create_aeroplane_fuselage_cross_section(
             # touch parent timestamp
             aeroplane.updated_at = datetime.now()
             db.add(new_xsec)
-        return
+        return OperationStatusResponse(status="created", operation="create_fuselage_cross_section")
     except HTTPException:
         raise
     except SQLAlchemyError as e:
@@ -387,8 +392,8 @@ async def create_aeroplane_fuselage_cross_section(
 
 @router.put(
     "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}/cross_sections/{cross_section_index}",
-    response_class=Response,
-    status_code=status.HTTP_201_CREATED,
+    response_model=OperationStatusResponse,
+    status_code=status.HTTP_200_OK,
     tags=["fuselage-cross-sections"],
     operation_id="update_fuselage_cross_section"
 )
@@ -421,7 +426,7 @@ async def update_aeroplane_fuselage_cross_section(
             fuselage.x_secs[cross_section_index] = new_xsec
             # Touch parent timestamp
             aeroplane.updated_at = datetime.now()
-        return
+        return OperationStatusResponse(status="ok", operation="update_fuselage_cross_section")
     except HTTPException:
         raise
     except SQLAlchemyError as e:
@@ -433,7 +438,8 @@ async def update_aeroplane_fuselage_cross_section(
 
 
 @router.delete("/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}/cross_sections/{cross_section_index}",
-               status_code=status.HTTP_204_NO_CONTENT,
+               status_code=status.HTTP_200_OK,
+               response_model=OperationStatusResponse,
                tags=["fuselage-cross-sections"],
                operation_id="delete_fuselage_cross_section")
 async def delete_aeroplane_fuselage_cross_section(
@@ -467,7 +473,7 @@ async def delete_aeroplane_fuselage_cross_section(
                     db.add(xs)
 
             aeroplane.updated_at = datetime.now()
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
+        return OperationStatusResponse(status="ok", operation="delete_fuselage_cross_section")
     except HTTPException:
         raise
     except SQLAlchemyError as e:

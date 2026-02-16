@@ -2,13 +2,15 @@ import http
 import json
 import logging
 import os
+import shutil
 import uuid
+from pathlib import Path
 from threading import Lock
 from concurrent.futures import ThreadPoolExecutor
 from zipfile import ZipFile
 
-from fastapi import APIRouter, HTTPException, Query, Body
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi import APIRouter, HTTPException, Query, Body, Request
+from fastapi.responses import JSONResponse
 
 import aerosandbox as asb
 
@@ -27,6 +29,26 @@ router = APIRouter()
 tasks = {}
 tasks_lock = Lock()
 executor = ThreadPoolExecutor(max_workers=4)  # Passen Sie die Anzahl der Worker an Ihre Bedürfnisse an
+
+
+def _ensure_file_under_tmp(file_path: str, aeroplane_id: str) -> Path:
+    source_path = Path(file_path)
+    if not source_path.is_absolute():
+        source_path = (Path.cwd() / source_path).resolve()
+    else:
+        source_path = source_path.resolve()
+
+    tmp_root = (Path.cwd() / "tmp").resolve()
+    tmp_root.mkdir(parents=True, exist_ok=True)
+
+    if tmp_root in source_path.parents:
+        return source_path
+
+    target_dir = tmp_root / str(aeroplane_id) / "zip"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target_path = (target_dir / source_path.name).resolve()
+    shutil.copy2(source_path, target_path)
+    return target_path
 
 
 def create_aeroplane_task(aeroplane_id, request_dict):
@@ -233,7 +255,7 @@ async def get_aeroplane_task_status(aeroplane_id: str):
 
 
 @router.get("/aeroplanes/{aeroplane_id}/zip")
-async def download_aeroplane_zip(aeroplane_id: str):
+async def download_aeroplane_zip(aeroplane_id: str, request: Request = None):
     logging.info(f"called get download aeroplane endpoint for 'aeroplane_id: {aeroplane_id}'")
 
     task = tasks.get(aeroplane_id)
@@ -263,11 +285,20 @@ async def download_aeroplane_zip(aeroplane_id: str):
             detail="File not found"
         )
 
-    # Rückgabe der Datei als Antwort
-    return FileResponse(
-        path=file_path,
-        media_type='application/zip',
-        filename=os.path.basename(file_path)
+    static_file_path = _ensure_file_under_tmp(file_path, aeroplane_id)
+    tmp_root = (Path.cwd() / "tmp").resolve()
+    static_relative = static_file_path.relative_to(tmp_root).as_posix()
+
+    base_url = str(request.base_url).rstrip("/") if request else ""
+    public_url = f"{base_url}/static/{static_relative}" if base_url else f"/static/{static_relative}"
+
+    return JSONResponse(
+        status_code=http.HTTPStatus.OK,
+        content={
+            "url": public_url,
+            "filename": os.path.basename(static_file_path),
+            "mime_type": "application/zip",
+        },
     )
 
 @router.post("/aeroplanes/wings/{analysis_tool}")

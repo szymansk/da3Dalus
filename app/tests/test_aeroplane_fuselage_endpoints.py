@@ -119,7 +119,8 @@ class TestAeroplaneFuselageEndpoints(unittest.TestCase):
         mock_db.delete.assert_called_once_with(fuselage_model)
         # Ensure transaction was entered
         begin_cm.__enter__.assert_called_once()
-        self.assertIsNone(result)
+        self.assertEqual(result.status, "ok")
+        self.assertEqual(result.operation, "delete_aeroplane_fuselage")
 
 if __name__ == "__main__":
     unittest.main()

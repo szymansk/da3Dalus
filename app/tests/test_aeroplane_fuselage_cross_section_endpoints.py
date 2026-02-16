@@ -117,7 +117,8 @@ class TestAeroplaneFuselageCrossSectionEndpoints(unittest.TestCase):
         mock_db.query.assert_called_once()
         mock_x_secs.clear.assert_called_once()
         begin_cm.__enter__.assert_called_once()
-        self.assertEqual(result.status_code, 204)
+        self.assertEqual(result.status, "ok")
+        self.assertEqual(result.operation, "delete_all_fuselage_cross_sections")
 
     def test_create_cross_section_success(self):
         mock_db = MagicMock()
