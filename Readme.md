@@ -124,7 +124,7 @@ npm install -g @modelcontextprotocol/inspector
 
 2. **Run MCP Inspector:**
    ```bash
-   mcp-inspector http://localhost:8001/mcp
+   mcp-inspector http://localhost:8000/mcp
    ```
 
 3. **Access the Inspector UI:**
@@ -138,7 +138,8 @@ npm install -g @modelcontextprotocol/inspector
 
 #### MCP Endpoints
 
-- **Streamable HTTP**: `http://localhost:8001/mcp`
+- **Streamable HTTP**: `http://localhost:8000/mcp`
+- MCP is mounted into the same FastAPI app as the REST API, so both run on one host/port.
 
 #### MCP Client Configuration Example
 
@@ -149,7 +150,7 @@ For Claude Desktop or other MCP clients:
   "mcpServers": {
     "da3dalus-cad": {
       "type":"streamable-http",
-      "url": "http://localhost:8001/mcp"
+      "url": "http://localhost:8000/mcp"
     }
   }
 }
@@ -248,5 +249,4 @@ Platform-specific dependencies are handled via environment markers in [pyproject
 ## Contributors
 
 Marc Szymanski (marc.szymanski@mac.com)
-
 

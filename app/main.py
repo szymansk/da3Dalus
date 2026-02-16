@@ -3,13 +3,14 @@ import os
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
+from fastapi.openapi.docs import get_swagger_ui_html, get_swagger_ui_oauth2_redirect_html
 from fastapi.responses import JSONResponse
 
-from app.api.v1.endpoints import aeroplane as health
 from app.api.v2.endpoints import aeroplane as aeroplane_v2
 from app.api.v2.endpoints import cad, aeroanalysis, operating_points
 from app.api.v2.endpoints import flight_profiles
-from app.mcp_server import create_mcp_server
+from app.api.v2.endpoints import airfoils
+from app.mcp_server import create_mcp_http_app
 from app.core.exceptions import (
     ServiceException,
     NotFoundError,
@@ -30,13 +31,13 @@ setup_logging()
 
 
 def create_app() -> FastAPI:
-    mcp_app = create_mcp_server().http_app(path="/")
+    mcp_app = create_mcp_http_app(path="/")
 
     app = FastAPI(
         title="da3dalus Model Context Protocol (v2)",
         version="2.0.0",
         openapi_url="/openapi.json",   # served at /api/v2/openapi.json
-        docs_url="/docs",              # served at /api/v2/docs
+        docs_url=None,                 # custom route below with custom favicon
         redoc_url="/redoc",            # served at /api/v2/redoc
         lifespan=mcp_app.lifespan,
     )
@@ -45,6 +46,7 @@ def create_app() -> FastAPI:
     app.include_router(aeroanalysis.router, prefix="", tags=["aeroanalysis"])
     app.include_router(operating_points.router, prefix="", tags=["operating_points"])
     app.include_router(flight_profiles.router, prefix="", tags=["flight-profiles"])
+    app.include_router(airfoils.router, prefix="", tags=["airfoils"])
 
     app.add_middleware(
         CORSMiddleware,
@@ -59,9 +61,23 @@ def create_app() -> FastAPI:
 
     # Mount static files
     app.mount("/static", StaticFiles(directory="tmp"), name="static")
+    app.mount("/assets", StaticFiles(directory="app/static"), name="assets")
     app.mount("/mcp", mcp_app)
 
-    app.include_router(health.router, tags=["health"])
+    @app.get("/docs", include_in_schema=False)
+    async def custom_swagger_ui_html():
+        return get_swagger_ui_html(
+            openapi_url=app.openapi_url,
+            title=f"{app.title} - Swagger UI",
+            swagger_favicon_url="/assets/swagger-favicon.svg",
+            oauth2_redirect_url=app.swagger_ui_oauth2_redirect_url,
+            swagger_ui_parameters=app.swagger_ui_parameters,
+        )
+
+    @app.get(app.swagger_ui_oauth2_redirect_url, include_in_schema=False)
+    async def swagger_ui_redirect():
+        return get_swagger_ui_oauth2_redirect_html()
+
     return app
 
 

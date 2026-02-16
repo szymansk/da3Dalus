@@ -22,6 +22,7 @@ from pydantic import UUID4
 
 from app import schemas
 from app.api.v2.endpoints import aeroanalysis
+from app.api.v2.endpoints import airfoils
 from app.api.v2.endpoints import cad
 from app.api.v2.endpoints import flight_profiles
 from app.api.v2.endpoints import operating_points
@@ -43,6 +44,7 @@ from app.schemas.aeroanalysisschema import (
     OperatingPointSchema,
     OperatingPointSetSchema,
     StoredOperatingPointCreate,
+    TrimOperatingPointRequest,
 )
 from app.schemas.flight_profile import FlightProfileType, RCFlightProfileCreate, RCFlightProfileUpdate
 from app.settings import get_settings
@@ -330,9 +332,18 @@ def register_bytes_asset(
 
 
 def _asset_payload(entry: AssetEntry) -> dict[str, Any]:
+    host_public_url = build_public_url_from_tmp_path(
+        entry.file_path,
+        base_url=get_settings().base_url.rstrip("/"),
+    )
     payload: dict[str, Any] = {
         "resource_uri": f"{entry.kind}://{entry.asset_id}",
-        "public_url": entry.public_url,
+        # URL as seen from the MCP caller/container network.
+        "url_from_docker_container": entry.public_url,
+        # URL that points to the host system base URL (for browser/WebUI usage).
+        "url_for_webui": host_public_url,
+        # Backward-compatible alias.
+        "url": host_public_url,
         "mime_type": entry.mime_type,
     }
     if entry.filename:
@@ -455,6 +466,28 @@ async def set_aeroplane_total_mass_tool(aeroplane_id: UUID4, total_mass_kg: Aero
         aeroplane_base.create_aeroplane_total_mass_kg,
         aeroplane_id=aeroplane_id,
         total_mass_kg=total_mass_kg,
+    )
+
+
+# Airfoil tools
+@mcp_tool(
+    name="is_airfoil_known",
+    description="Check whether a DAT airfoil file is available in components/airfoils.",
+)
+async def is_airfoil_known_tool(airfoil_name: str) -> Any:
+    return await _call_endpoint(airfoils.is_airfoil_known, airfoil_name=airfoil_name)
+
+
+@mcp_tool(
+    name="upload_airfoil_datfile",
+    description="Upload a DAT airfoil definition into components/airfoils.",
+)
+async def upload_airfoil_datfile_tool(file_name: str, dat_content: str, overwrite: bool = False) -> Any:
+    return await _call_endpoint(
+        airfoils.upload_airfoil_dat_content,
+        file_name=file_name,
+        dat_content=dat_content,
+        overwrite=overwrite,
     )
 
 
@@ -844,14 +877,20 @@ async def get_aeroplane_task_status_tool(aeroplane_id: str) -> Any:
     description="Get a ZIP export as resource URI and public URL.",
 )
 async def download_export_zip_tool(aeroplane_id: str, ctx: Context = None) -> Any:
-    payload = await _call_endpoint(cad.download_aeroplane_zip, aeroplane_id=aeroplane_id)
-    if not isinstance(payload, dict) or "file_path" not in payload:
+    payload = await _call_endpoint(
+        cad.download_aeroplane_zip,
+        aeroplane_id=aeroplane_id,
+        request=None,
+        settings=get_settings(),
+    )
+    if not isinstance(payload, dict) or "url" not in payload:
         raise ValueError(f"Unexpected ZIP payload: {payload!r}")
 
+    zip_path = resolve_tmp_path_from_known_output(payload)
     public_base_url = resolve_public_base_url(ctx)
     entry = register_file_asset(
-        payload["file_path"],
-        mime_type=payload.get("media_type", "application/zip"),
+        zip_path,
+        mime_type=payload.get("mime_type", payload.get("media_type", "application/zip")),
         kind="data",
         filename=payload.get("filename"),
         base_url=public_base_url,
@@ -985,12 +1024,17 @@ async def get_streamlines_three_view_tool(
         aeroanalysis.get_streamlines_three_view,
         aeroplane_id=aeroplane_id,
         operating_point=operating_point,
+        request=None,
+        settings=get_settings(),
     )
-    return _register_image_payload(
-        payload,
-        filename_prefix="streamlines_three_view",
+    image_path = resolve_tmp_path_from_known_output(payload)
+    entry = register_file_asset(
+        image_path,
+        mime_type=payload.get("mime_type", "image/png") if isinstance(payload, dict) else "image/png",
+        kind="img",
         base_url=resolve_public_base_url(ctx),
     )
+    return _asset_payload(entry)
 
 
 @mcp_tool(
@@ -998,12 +1042,20 @@ async def get_streamlines_three_view_tool(
     description="Generate a three-view image as resource URI and public URL.",
 )
 async def get_aeroplane_three_view_tool(aeroplane_id: UUID4, ctx: Context = None) -> Any:
-    payload = await _call_endpoint(aeroanalysis.get_aeroplane_three_view, aeroplane_id=aeroplane_id)
-    return _register_image_payload(
-        payload,
-        filename_prefix="three_view",
+    payload = await _call_endpoint(
+        aeroanalysis.get_aeroplane_three_view,
+        aeroplane_id=aeroplane_id,
+        request=None,
+        settings=get_settings(),
+    )
+    image_path = resolve_tmp_path_from_known_output(payload)
+    entry = register_file_asset(
+        image_path,
+        mime_type=payload.get("mime_type", "image/png") if isinstance(payload, dict) else "image/png",
+        kind="img",
         base_url=resolve_public_base_url(ctx),
     )
+    return _asset_payload(entry)
 
 
 # Operating-point tools
@@ -1019,6 +1071,21 @@ async def generate_default_operating_point_set_tool(
         operating_points.generate_default_operating_point_set,
         aircraft_id=aircraft_id,
         request=request or GenerateOperatingPointSetRequest(),
+    )
+
+
+@mcp_tool(
+    name="trim_operating_point",
+    description="Trim one operating point for an aircraft using the same trim logic as default operating-point generation.",
+)
+async def trim_operating_point_tool(
+    aircraft_id: UUID4,
+    request: TrimOperatingPointRequest,
+) -> Any:
+    return await _call_endpoint(
+        operating_points.trim_operating_point,
+        aircraft_id=aircraft_id,
+        request=request,
     )
 
 
@@ -1235,8 +1302,13 @@ def get_mcp() -> FastMCP:
     return mcp
 
 
+def create_mcp_http_app(path: str = "/"):
+    """Create an ASGI app that can be mounted into the main FastAPI server."""
+    return get_mcp().http_app(path=path)
+
+
 def run_mcp_server() -> None:
-    """Start the FastMCP server as a separate HTTP service."""
+    """Start the FastMCP server as a standalone HTTP service."""
     server = get_mcp()
     server.run(transport="http", host="0.0.0.0", port=8001, path="/mcp")
 
