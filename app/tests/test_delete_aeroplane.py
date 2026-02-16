@@ -23,8 +23,8 @@ class TestDeleteAeroplane(unittest.TestCase):
         mock_db.delete.assert_called_once_with(mock_model)
         # ensure transaction was entered
         begin_cm.__enter__.assert_called_once()
-        # The delete_aeroplane function returns None as it uses a 204 No Content status code
-        self.assertIsNone(result)
+        self.assertEqual(result.status, "ok")
+        self.assertEqual(result.operation, "delete_aeroplane")
 
     def test_delete_aeroplane_not_found(self):
         test_id = uuid.uuid4()

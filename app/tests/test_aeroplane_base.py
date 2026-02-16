@@ -5,7 +5,6 @@ from unittest.mock import MagicMock, patch
 from fastapi import HTTPException, Response
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
-from starlette.responses import JSONResponse
 
 from app.api.v2.endpoints.aeroplane.base import (
     create_aeroplane,
@@ -18,30 +17,21 @@ from app.api.v2.endpoints.aeroplane.base import (
 )
 from app.models.aeroplanemodel import AeroplaneModel
 from app.schemas.AeroplaneRequest import AeroplaneMassRequest
+from app.schemas.api_responses import CreateAeroplaneResponse, OperationStatusResponse
 from app import schemas
 
 class TestCreateAeroplane(unittest.TestCase):
     def test_create_aeroplane_success(self):
-        # Setup mock
         mock_db = MagicMock()
-        begin_cm = mock_db.begin.return_value
-        begin_cm.__enter__.return_value = None
-
-        # Create a mock aeroplane with a UUID
         mock_uuid = uuid.uuid4()
         mock_aeroplane = MagicMock()
         mock_aeroplane.uuid = mock_uuid
 
-        # Setup the mock to return our mock aeroplane when AeroplaneModel is created
-        with patch('app.api.v2.endpoints.aeroplane.base.AeroplaneModel', return_value=mock_aeroplane):
+        with patch('app.api.v2.endpoints.aeroplane.base.aeroplane_service.create_aeroplane', return_value=mock_aeroplane):
             result = asyncio.run(create_aeroplane(name="Test Aeroplane", db=mock_db))
 
-            # Assertions
-            self.assertEqual(result.body, bytes(f'{{"id":"{mock_uuid}"}}', 'utf-8'))
-            mock_db.begin.assert_called_once()
-            mock_db.add.assert_called_once_with(mock_aeroplane)
-            mock_db.flush.assert_called_once()
-            mock_db.refresh.assert_called_once_with(mock_aeroplane)
+            self.assertIsInstance(result, CreateAeroplaneResponse)
+            self.assertEqual(result.id, str(mock_uuid))
 
     def test_create_aeroplane_db_error(self):
         # Setup mock
@@ -219,7 +209,8 @@ class TestDeleteAeroplane(unittest.TestCase):
         mock_db.delete.assert_called_once_with(mock_model)
         # Ensure transaction was entered
         begin_cm.__enter__.assert_called_once()
-        self.assertIsNone(result)
+        self.assertEqual(result.status, "ok")
+        self.assertEqual(result.operation, "delete_aeroplane")
 
     def test_delete_aeroplane_not_found(self):
         test_id = uuid.uuid4()
@@ -346,6 +337,7 @@ class TestCreateAeroplaneTotalMass(unittest.TestCase):
         # Context manager for transaction
         begin_cm = mock_db.begin.return_value
         begin_cm.__enter__.return_value = None
+        response = Response()
 
         # Create request body
         mass_request = AeroplaneMassRequest(total_mass_kg=test_mass)
@@ -353,6 +345,7 @@ class TestCreateAeroplaneTotalMass(unittest.TestCase):
         result = asyncio.run(create_aeroplane_total_mass_kg(
             aeroplane_id=test_id, 
             total_mass_kg=mass_request, 
+            response=response,
             db=mock_db
         ))
 
@@ -360,8 +353,10 @@ class TestCreateAeroplaneTotalMass(unittest.TestCase):
         mock_db.query.assert_called_once_with(AeroplaneModel)
         mock_db.query.return_value.filter.assert_called_once()
         self.assertEqual(mock_model.total_mass_kg, test_mass)
-        self.assertIsInstance(result, Response)
-        self.assertEqual(result.status_code, 201)
+        self.assertIsInstance(result, OperationStatusResponse)
+        self.assertEqual(result.status, "created")
+        self.assertEqual(result.operation, "set_aeroplane_total_mass")
+        self.assertEqual(response.status_code, 201)
 
     def test_create_aeroplane_total_mass_update_success(self):
         test_id = uuid.uuid4()
@@ -377,6 +372,7 @@ class TestCreateAeroplaneTotalMass(unittest.TestCase):
         # Context manager for transaction
         begin_cm = mock_db.begin.return_value
         begin_cm.__enter__.return_value = None
+        response = Response()
 
         # Create request body
         mass_request = AeroplaneMassRequest(total_mass_kg=new_mass)
@@ -384,6 +380,7 @@ class TestCreateAeroplaneTotalMass(unittest.TestCase):
         result = asyncio.run(create_aeroplane_total_mass_kg(
             aeroplane_id=test_id, 
             total_mass_kg=mass_request, 
+            response=response,
             db=mock_db
         ))
 
@@ -391,8 +388,10 @@ class TestCreateAeroplaneTotalMass(unittest.TestCase):
         mock_db.query.assert_called_once_with(AeroplaneModel)
         mock_db.query.return_value.filter.assert_called_once()
         self.assertEqual(mock_model.total_mass_kg, new_mass)
-        self.assertIsInstance(result, Response)
-        self.assertEqual(result.status_code, 200)
+        self.assertIsInstance(result, OperationStatusResponse)
+        self.assertEqual(result.status, "ok")
+        self.assertEqual(result.operation, "set_aeroplane_total_mass")
+        self.assertEqual(response.status_code, 200)
 
     def test_create_aeroplane_total_mass_not_found(self):
         test_id = uuid.uuid4()

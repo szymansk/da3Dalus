@@ -10,3 +10,11 @@ from app.schemas.flight_profile import (
     RCFlightProfileRead,
     RCFlightProfileUpdate,
 )
+from app.schemas.api_responses import (
+    CreateAeroplaneResponse,
+    OperationStatusResponse,
+    StaticUrlResponse,
+    CadTaskAcceptedResponse,
+    CadTaskStatusResponse,
+    ZipAssetResponse,
+)
