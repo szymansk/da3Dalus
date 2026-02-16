@@ -40,3 +40,7 @@ python = ">=3.11,<3.14"
 
 [tool.poetry.group.binary.dependencies]
 nlopt = ">=2.9,<3.0"
+
+[tool.pytest.ini_options]
+norecursedirs = ["external"]
+addopts = "--ignore=docker_smoke_test.py"
