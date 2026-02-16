@@ -72,6 +72,26 @@ class WingConfiguration:
         for spare in [spare for spare in (self.segments[0].spare_list or [])]:
             self._set_standard_spare_origin_vector(0, spare)
 
+    @property
+    def length(self) -> float:
+        return self.segments[0].length if self.segments else 0.0
+
+    @length.setter
+    def length(self, value: float) -> None:
+        if not self.segments:
+            raise AttributeError("WingConfiguration has no segments.")
+        self.segments[0].length = value
+
+    @property
+    def sweep(self) -> float:
+        return self.segments[0].sweep if self.segments else 0.0
+
+    @sweep.setter
+    def sweep(self, value: float) -> None:
+        if not self.segments:
+            raise AttributeError("WingConfiguration has no segments.")
+        self.segments[0].sweep = value
+
     def _get_standard_spare_origin_and_vector(self, start_segment, end_segment, spare_position_factor):
         if start_segment > end_segment:
             raise ValueError(f"start_segment {start_segment} cannot be greater than end_segment {end_segment}")

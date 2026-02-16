@@ -203,6 +203,28 @@ class AvlSingleControlSurfaceModel(BaseModel):
 class AvlControlSurfaceModel(BaseModel):
     control_surfaces: Optional[List[AvlSingleControlSurfaceModel]] = Field(None, title="Control Surfaces", description="List of control surfaces")
 
+    def _deflection_by_name(self, name: str):
+        for control_surface in self.control_surfaces or []:
+            if control_surface.name == name:
+                return control_surface.deflection
+        return None
+
+    @property
+    def aileron(self):
+        return self._deflection_by_name("aileron")
+
+    @property
+    def flaps(self):
+        return self._deflection_by_name("flaps")
+
+    @property
+    def elevator(self):
+        return self._deflection_by_name("elevator")
+
+    @property
+    def rudder(self):
+        return self._deflection_by_name("rudder")
+
 class AvlFlightConditionModel(BaseModel):
     alpha: Optional[Union[float,List[float]]] = Field(None, title="Angle of Attack", description="List of angle of attack for each alpha [deg]")
     beta: Optional[Union[float,List[float]]] = Field(None, title="Sideslip Angle", description="Sideslip angle [deg]")
@@ -225,6 +247,54 @@ class AnalysisModel(BaseModel):
     derivatives: AvlDerivativesModel
     control_surfaces: AvlControlSurfaceModel
     flight_condition: AvlFlightConditionModel
+
+    @staticmethod
+    def _singleton_to_scalar(value):
+        if isinstance(value, list) and len(value) == 1:
+            return value[0]
+        return value
+
+    @classmethod
+    def _flatten_single_point_fields(cls, model: 'AnalysisModel') -> 'AnalysisModel':
+        model.reference.Xnp = cls._singleton_to_scalar(model.reference.Xnp)
+        model.reference.Xnp_lat = cls._singleton_to_scalar(model.reference.Xnp_lat)
+
+        model.forces.L = cls._singleton_to_scalar(model.forces.L)
+        model.forces.D = cls._singleton_to_scalar(model.forces.D)
+        model.forces.Y = cls._singleton_to_scalar(model.forces.Y)
+
+        model.moments.l_b = cls._singleton_to_scalar(model.moments.l_b)
+        model.moments.m_b = cls._singleton_to_scalar(model.moments.m_b)
+        model.moments.n_b = cls._singleton_to_scalar(model.moments.n_b)
+
+        model.coefficients.CL = cls._singleton_to_scalar(model.coefficients.CL)
+        model.coefficients.CD = cls._singleton_to_scalar(model.coefficients.CD)
+        model.coefficients.Cm = cls._singleton_to_scalar(model.coefficients.Cm)
+
+        model.derivatives.CLa = cls._singleton_to_scalar(model.derivatives.CLa)
+        model.derivatives.Cmq = cls._singleton_to_scalar(model.derivatives.Cmq)
+        model.derivatives.Cnb = cls._singleton_to_scalar(model.derivatives.Cnb)
+
+        for control_surface in model.control_surfaces.control_surfaces or []:
+            control_surface.ed = cls._singleton_to_scalar(control_surface.ed)
+            control_surface.CDff = cls._singleton_to_scalar(control_surface.CDff)
+            control_surface.CLd = cls._singleton_to_scalar(control_surface.CLd)
+            control_surface.CYd = cls._singleton_to_scalar(control_surface.CYd)
+            control_surface.Cld = cls._singleton_to_scalar(control_surface.Cld)
+            control_surface.Cmd = cls._singleton_to_scalar(control_surface.Cmd)
+            control_surface.Cnd = cls._singleton_to_scalar(control_surface.Cnd)
+            control_surface.deflection = cls._singleton_to_scalar(control_surface.deflection)
+
+        model.flight_condition.alpha = cls._singleton_to_scalar(model.flight_condition.alpha)
+        model.flight_condition.beta = cls._singleton_to_scalar(model.flight_condition.beta)
+        model.flight_condition.mach = cls._singleton_to_scalar(model.flight_condition.mach)
+
+        return model
+
+    @staticmethod
+    def from_dict(data: dict) -> 'AnalysisModel':
+        model = AnalysisModel.from_avl_dict(data)
+        return AnalysisModel._flatten_single_point_fields(model)
 
     @staticmethod
     def from_avl_dict(data: dict) -> 'AnalysisModel':
