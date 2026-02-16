@@ -13,7 +13,7 @@
                             "vase_wing[10]",
                             "vase_wing[11]"
                         ],
-                        "loglevel": 20,
+                        "loglevel": 10,
                         "creator_id": "winglet",
                         "$TYPE": "FuseMultipleShapesCreator"
                     },
@@ -51,7 +51,7 @@
                 "wing_index": "main_wing",
                 "symmetric": true,
                 "connected": true,
-                "loglevel": 10,
+                "loglevel": 20,
                 "creator_id": "vase_wing",
                 "$TYPE": "VaseModeWingCreator"
             },
