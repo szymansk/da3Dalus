@@ -15,6 +15,9 @@ from sqlalchemy.orm import Session
 from app import schemas
 from app.core.exceptions import NotFoundError, ValidationError, InternalError
 from app.models.aeroplanemodel import AeroplaneModel, WingModel, WingXSecModel, ControlSurfaceModel
+from app.schemas.wing import Wing as WingConfigurationSchema
+from app.services.create_wing_configuration import create_wing_configuration
+from app.converters.model_schema_converters import wingConfigToWingModel
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +108,52 @@ def create_wing(
         raise
     except SQLAlchemyError as e:
         logger.error(f"Database error when creating wing: {e}")
+        raise InternalError(message=f"Database error: {e}")
+
+
+def create_wing_from_wing_configuration(
+    db: Session,
+    aeroplane_uuid,
+    wing_name: str,
+    wing_config_data: WingConfigurationSchema,
+    scale: float = 0.001,
+) -> None:
+    """
+    Create a new wing for an aeroplane from WingConfiguration JSON.
+
+    The WingConfiguration schema is interpreted in millimeters by default and converted
+    to ASB/DB units via `scale` (default 0.001 -> meters).
+
+    Raises:
+        NotFoundError: If the aeroplane does not exist.
+        ValidationError: If the wing name already exists or input is invalid.
+        InternalError: If a database error occurs.
+    """
+    try:
+        with db.begin():
+            plane = get_aeroplane_or_raise(db, aeroplane_uuid)
+
+            if any(w.name == wing_name for w in plane.wings):
+                raise ValidationError(
+                    message="Wing name must be unique for this aeroplane",
+                    details={"wing_name": wing_name},
+                )
+
+            wing_configuration = create_wing_configuration(wing_config_data)
+            wing_model = wingConfigToWingModel(
+                wing_config=wing_configuration,
+                wing_name=wing_name,
+                scale=scale,
+            )
+            plane.wings.append(wing_model)
+            db.add(wing_model)
+            plane.updated_at = datetime.now()
+    except (NotFoundError, ValidationError):
+        raise
+    except (ValueError, TypeError) as e:
+        raise ValidationError(message=f"Invalid WingConfiguration payload: {e}")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when creating wing from WingConfiguration: {e}")
         raise InternalError(message=f"Database error: {e}")
 
 

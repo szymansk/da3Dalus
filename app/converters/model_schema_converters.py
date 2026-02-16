@@ -110,3 +110,124 @@ def wingModelToWingConfig(wing: WingModel) -> WingConfiguration:
         )] if xs.control_surface else []
     ) for xs in asb_wing.x_secs]
     return WingConfiguration.from_asb(xsecs, asb_wing.symmetric)
+
+
+def _normalize_airfoil_reference_for_schema(airfoil_ref: asb.Airfoil | str) -> str:
+    """Return a stable airfoil reference string for API/database schemas."""
+    raw_reference = str(getattr(airfoil_ref, "name", airfoil_ref) or "")
+    if not raw_reference:
+        return raw_reference
+
+    # Convert absolute paths inside ".../components/airfoils/..." back to a portable relative path.
+    normalized = raw_reference.replace("\\", "/")
+    parts = [part for part in normalized.split("/") if part]
+    for index in range(len(parts) - 1):
+        if parts[index].lower() == "components" and parts[index + 1].lower() == "airfoils":
+            relative = "/".join(parts[index:])
+            return f"./{relative}"
+
+    return raw_reference
+
+
+def _wing_configuration_sections(wing_config: WingConfiguration):
+    """
+    Return wing cross-section descriptors in section order (root first, then each segment tip).
+    """
+    if not wing_config.segments:
+        return []
+
+    sections = [(wing_config.segments[0].root_airfoil, wing_config.segments[0].trailing_edge_device)]
+    for segment in wing_config.segments:
+        sections.append((segment.tip_airfoil, segment.trailing_edge_device))
+    return sections
+
+
+def _prepare_wing_config_for_asb(wing_config: WingConfiguration) -> None:
+    """
+    Ensure WingConfiguration values are compatible with WingConfiguration.asb_wing().
+
+    `from_asb()` currently creates segments with rotation_point_rel_chord=0.0, but `asb_wing()`
+    requires 0.25. We normalize this before conversion.
+    """
+    for segment in wing_config.segments or []:
+        if segment.root_airfoil.rotation_point_rel_chord != 0.25:
+            segment.root_airfoil.rotation_point_rel_chord = 0.25
+        if segment.tip_airfoil.rotation_point_rel_chord != 0.25:
+            segment.tip_airfoil.rotation_point_rel_chord = 0.25
+
+    # Reset cached ASB representation so the updated geometry is used.
+    wing_config._asb_wing = None
+
+
+def wingConfigToAsbWingSchema(
+    wing_config: WingConfiguration,
+    wing_name: str,
+    scale: float = 1.0,
+) -> schemas.AsbWingSchema:
+    """
+    Convert a WingConfiguration to the v2 ASB wing schema.
+
+    Args:
+        wing_config: Source wing configuration.
+        wing_name: Name to assign in the resulting schema/model.
+        scale: Scaling used when creating the internal ASB wing (e.g. 0.001 for mm->m).
+    """
+    _prepare_wing_config_for_asb(wing_config)
+    asb_wing = wing_config.asb_wing(scale=scale)
+    section_data = _wing_configuration_sections(wing_config)
+    x_secs = []
+    for index, x_sec in enumerate(asb_wing.xsecs):
+        control_surface = None
+        if x_sec.control_surfaces:
+            cs = x_sec.control_surfaces[0]
+            control_surface = schemas.ControlSurfaceSchema(
+                name=cs.name,
+                hinge_point=float(cs.hinge_point),
+                symmetric=bool(cs.symmetric),
+                deflection=float(cs.deflection),
+            )
+
+        if index < len(section_data):
+            section_airfoil, _ = section_data[index]
+            section_twist = float(section_airfoil.incidence)
+            section_airfoil_ref = section_airfoil.airfoil
+        else:
+            section_twist = float(x_sec.twist)
+            section_airfoil_ref = x_sec.airfoil
+
+        x_secs.append(
+            schemas.WingXSecSchema(
+                xyz_le=[float(value) for value in x_sec.xyz_le],
+                chord=float(x_sec.chord),
+                twist=section_twist,
+                airfoil=_normalize_airfoil_reference_for_schema(section_airfoil_ref),
+                control_surface=control_surface,
+            )
+        )
+
+    return schemas.AsbWingSchema(
+        name=wing_name,
+        symmetric=bool(asb_wing.symmetric),
+        x_secs=x_secs,
+    )
+
+
+def wingConfigToWingModel(
+    wing_config: WingConfiguration,
+    wing_name: str,
+    scale: float = 1.0,
+) -> WingModel:
+    """
+    Convert a WingConfiguration to the persisted WingModel representation.
+
+    Args:
+        wing_config: Source wing configuration.
+        wing_name: Name to assign to the resulting wing model.
+        scale: Scaling used when creating the internal ASB wing (e.g. 0.001 for mm->m).
+    """
+    asb_wing_schema = wingConfigToAsbWingSchema(
+        wing_config=wing_config,
+        wing_name=wing_name,
+        scale=scale,
+    )
+    return WingModel.from_dict(name=wing_name, data=asb_wing_schema.model_dump())

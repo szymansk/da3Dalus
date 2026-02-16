@@ -7,12 +7,14 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.v2.endpoints.aeroplane.wings import (
     create_aeroplane_wing,
+    create_aeroplane_wing_from_wingconfig,
     update_aeroplane_wing,
     get_aeroplane_wing,
     delete_aeroplane_wing,
 )
 from app.models.aeroplanemodel import WingModel
 from app import schemas
+from app.schemas.wing import Wing as WingConfigurationSchema
 
 class TestAeroplaneWingEndpoints(unittest.TestCase):
     def setUp(self):
@@ -41,6 +43,24 @@ class TestAeroplaneWingEndpoints(unittest.TestCase):
             )
             # Ensure from_dict was called with the correct parameters
             from_dict.assert_called_once_with(name=self.test_wing_name, data=request_schema.model_dump())
+
+    def test_create_wing_from_wingconfig_success(self):
+        mock_db = MagicMock()
+        request_schema = WingConfigurationSchema.model_construct(segments=[], nose_pnt=[0, 0, 0])
+
+        with patch("app.services.wing_service.create_wing_from_wing_configuration", return_value=None) as create_from_wc:
+            result = asyncio.run(
+                create_aeroplane_wing_from_wingconfig(
+                    aeroplane_id=self.test_plane_id,
+                    wing_name=self.test_wing_name,
+                    request=request_schema,
+                    db=mock_db,
+                )
+            )
+
+        create_from_wc.assert_called_once_with(mock_db, self.test_plane_id, self.test_wing_name, request_schema)
+        self.assertEqual(result.status, "created")
+        self.assertEqual(result.operation, "create_aeroplane_wing_from_wingconfig")
 
     def test_update_wing_not_found_plane(self):
         mock_db = MagicMock()
