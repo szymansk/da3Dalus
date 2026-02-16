@@ -89,6 +89,36 @@ class GenerateOperatingPointSetRequest(BaseModel):
     )
 
 
+class TrimOperatingPointRequest(BaseModel):
+    name: str = Field(
+        "custom_trim_point",
+        description="Name of the operating point to trim.",
+    )
+    config: str = Field(
+        "clean",
+        description="Aircraft configuration label, for example clean/takeoff/landing.",
+    )
+    velocity: float = Field(..., gt=0.0, description="Target velocity in m/s.")
+    altitude: float = Field(0.0, description="Target altitude in meters.")
+    beta_target_deg: float = Field(0.0, description="Target sideslip in degrees.")
+    n_target: float = Field(1.0, gt=0.0, description="Target load factor n.")
+    profile_id_override: Optional[int] = Field(
+        default=None,
+        description="Optional profile ID to use instead of the aircraft-assigned flight profile.",
+    )
+    warnings: list[str] = Field(
+        default_factory=list,
+        description="Optional custom warning tags to carry into the trim output.",
+    )
+
+
+class TrimmedOperatingPointRead(BaseModel):
+    source_flight_profile_id: Optional[int] = None
+    point: StoredOperatingPointCreate
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class GeneratedOperatingPointSetRead(BaseModel):
     id: int
     name: str

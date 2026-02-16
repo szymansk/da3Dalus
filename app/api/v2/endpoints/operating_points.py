@@ -1,9 +1,17 @@
 from typing import Optional
 
-from fastapi import Depends, APIRouter, Query, Path, Body
+from fastapi import Depends, APIRouter, Query, Path, Body, HTTPException, status
 from pydantic import UUID4
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import (
+    ServiceException,
+    NotFoundError,
+    ValidationError,
+    ValidationDomainError,
+    ConflictError,
+    InternalError,
+)
 from app.db.session import get_db
 from app.models.aeroplanemodel import AeroplaneModel
 from app.models.analysismodels import OperatingPointModel, OperatingPointSetModel
@@ -13,10 +21,24 @@ from app.schemas.aeroanalysisschema import (
     OperatingPointSetSchema,
     StoredOperatingPointCreate,
     StoredOperatingPointRead,
+    TrimmedOperatingPointRead,
+    TrimOperatingPointRequest,
 )
 from app.services import operating_point_generator_service
 
 router = APIRouter()
+
+
+def _raise_http_from_domain(exc: ServiceException) -> None:
+    if isinstance(exc, NotFoundError):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+    if isinstance(exc, (ValidationError, ValidationDomainError)):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message) from exc
+    if isinstance(exc, ConflictError):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
+    if isinstance(exc, InternalError):
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message) from exc
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message) from exc
 
 
 def _resolve_aircraft_pk(db: Session, aircraft_uuid: UUID4) -> Optional[int]:
@@ -34,12 +56,45 @@ async def generate_default_operating_point_set(
     request: GenerateOperatingPointSetRequest = Body(default_factory=GenerateOperatingPointSetRequest),
     db: Session = Depends(get_db),
 ) -> GeneratedOperatingPointSetRead:
-    return await operating_point_generator_service.generate_default_set_for_aircraft(
-        db=db,
-        aircraft_uuid=aircraft_id,
-        replace_existing=request.replace_existing,
-        profile_id_override=request.profile_id_override,
-    )
+    try:
+        return await operating_point_generator_service.generate_default_set_for_aircraft(
+            db=db,
+            aircraft_uuid=aircraft_id,
+            replace_existing=request.replace_existing,
+            profile_id_override=request.profile_id_override,
+        )
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error: {exc}",
+        ) from exc
+
+
+@router.post(
+    "/aircraft/{aircraft_id}/operating-points/trim",
+    response_model=TrimmedOperatingPointRead,
+    operation_id="trim_operating_point",
+)
+async def trim_operating_point(
+    aircraft_id: UUID4 = Path(..., description="Aircraft UUID"),
+    request: TrimOperatingPointRequest = Body(...),
+    db: Session = Depends(get_db),
+) -> TrimmedOperatingPointRead:
+    try:
+        return await operating_point_generator_service.trim_operating_point_for_aircraft(
+            db=db,
+            aircraft_uuid=aircraft_id,
+            request=request,
+        )
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error: {exc}",
+        ) from exc
 
 
 @router.post("/operating_points/", response_model=StoredOperatingPointRead, operation_id="create_operating_point")
@@ -77,9 +132,7 @@ def read_operating_point(
 ):
     op = db.query(OperatingPointModel).filter(OperatingPointModel.id == op_id).first()
     if not op:
-        from app.core.exceptions import NotFoundError
-
-        raise NotFoundError(entity="OperatingPoint", resource_id=op_id)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"OperatingPoint {op_id} not found")
     return op
 
 
@@ -91,9 +144,7 @@ def update_operating_point(
 ):
     op = db.query(OperatingPointModel).filter(OperatingPointModel.id == op_id).first()
     if not op:
-        from app.core.exceptions import NotFoundError
-
-        raise NotFoundError(entity="OperatingPoint", resource_id=op_id)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"OperatingPoint {op_id} not found")
     for key, value in op_data.model_dump().items():
         setattr(op, key, value)
     db.commit()
@@ -105,9 +156,7 @@ def update_operating_point(
 def delete_operating_point(op_id: int, db: Session = Depends(get_db)):
     op = db.query(OperatingPointModel).filter(OperatingPointModel.id == op_id).first()
     if not op:
-        from app.core.exceptions import NotFoundError
-
-        raise NotFoundError(entity="OperatingPoint", resource_id=op_id)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"OperatingPoint {op_id} not found")
     db.delete(op)
     db.commit()
     return {"detail": "Operating point deleted"}
@@ -145,9 +194,7 @@ def list_operating_pointsets(
 def read_operating_pointset(opset_id: int, db: Session = Depends(get_db)):
     opset = db.query(OperatingPointSetModel).filter(OperatingPointSetModel.id == opset_id).first()
     if not opset:
-        from app.core.exceptions import NotFoundError
-
-        raise NotFoundError(entity="OperatingPointSet", resource_id=opset_id)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"OperatingPointSet {opset_id} not found")
     return opset
 
 
@@ -155,9 +202,7 @@ def read_operating_pointset(opset_id: int, db: Session = Depends(get_db)):
 def update_operating_pointset(opset_id: int, opset_data: OperatingPointSetSchema, db: Session = Depends(get_db)):
     opset = db.query(OperatingPointSetModel).filter(OperatingPointSetModel.id == opset_id).first()
     if not opset:
-        from app.core.exceptions import NotFoundError
-
-        raise NotFoundError(entity="OperatingPointSet", resource_id=opset_id)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"OperatingPointSet {opset_id} not found")
     for key, value in opset_data.model_dump().items():
         setattr(opset, key, value)
     db.commit()
@@ -169,9 +214,7 @@ def update_operating_pointset(opset_id: int, opset_data: OperatingPointSetSchema
 def delete_operating_pointset(opset_id: int, db: Session = Depends(get_db)):
     opset = db.query(OperatingPointSetModel).filter(OperatingPointSetModel.id == opset_id).first()
     if not opset:
-        from app.core.exceptions import NotFoundError
-
-        raise NotFoundError(entity="OperatingPointSet", resource_id=opset_id)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"OperatingPointSet {opset_id} not found")
     db.delete(opset)
     db.commit()
     return {"detail": "Operating point set deleted"}

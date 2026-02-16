@@ -16,7 +16,10 @@ from app.models.flightprofilemodel import RCFlightProfileModel
 from app.schemas.aeroanalysisschema import (
     GeneratedOperatingPointSetRead,
     OperatingPointStatus,
+    StoredOperatingPointCreate,
     StoredOperatingPointRead,
+    TrimmedOperatingPointRead,
+    TrimOperatingPointRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -598,3 +601,78 @@ async def generate_default_set_for_aircraft(
     except Exception as exc:
         db.rollback()
         raise InternalError(f"Operating-point generation error: {exc}")
+
+
+async def trim_operating_point_for_aircraft(
+    db: Session,
+    aircraft_uuid,
+    request: TrimOperatingPointRequest,
+) -> TrimmedOperatingPointRead:
+    try:
+        aircraft = _get_aircraft_or_raise(db, aircraft_uuid)
+        profile, source_profile_id = _load_effective_flight_profile(
+            db,
+            aircraft,
+            request.profile_id_override,
+        )
+
+        plane_schema = await aeroplaneModelToAeroplaneSchema_async(aircraft)
+        asb_airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
+        capabilities = _detect_control_capabilities(asb_airplane)
+
+        target = {
+            "name": request.name,
+            "config": request.config,
+            "velocity": float(request.velocity),
+            "altitude": float(request.altitude),
+            "beta_target_deg": float(request.beta_target_deg),
+            "n_target": float(request.n_target),
+            "warnings": list(request.warnings),
+        }
+
+        is_supported, missing_required = _validate_target_capability(target, capabilities)
+        if not is_supported:
+            raise ValidationError(
+                message=f"Operating point '{request.name}' cannot be trimmed with the available controls.",
+                details={
+                    "name": request.name,
+                    "missing_required_controls": missing_required,
+                    "available_controls": capabilities.get("available_controls", []),
+                },
+            )
+
+        point = await _trim_or_estimate_point(
+            asb_airplane=asb_airplane,
+            aircraft=aircraft,
+            target=target,
+            constraints=profile.get("constraints", {}),
+            capabilities=capabilities,
+        )
+
+        point_payload = StoredOperatingPointCreate(
+            name=point.name,
+            description=point.description,
+            aircraft_id=aircraft.id,
+            config=point.config,
+            status=point.status,
+            warnings=point.warnings,
+            controls=point.controls,
+            velocity=point.velocity,
+            alpha=point.alpha_rad,
+            beta=point.beta_rad,
+            p=point.p,
+            q=point.q,
+            r=point.r,
+            xyz_ref=[0.0, 0.0, 0.0],
+            altitude=point.altitude,
+        )
+        return TrimmedOperatingPointRead(
+            source_flight_profile_id=source_profile_id,
+            point=point_payload,
+        )
+    except (NotFoundError, ValidationError):
+        raise
+    except SQLAlchemyError as exc:
+        raise InternalError(f"Database error: {exc}")
+    except Exception as exc:
+        raise InternalError(f"Operating-point trim error: {exc}")
