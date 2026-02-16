@@ -7,10 +7,47 @@ from app.schemas.wing import Segment as SegmentModel
 from app.schemas.wing import TrailingEdgeDevice as TrailingEdgeDeviceModel
 from app.schemas.wing import Servo as ServoModel
 from app.schemas.wing import Spare as SpareModel
+from pathlib import Path
+
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _resolve_airfoil_reference(airfoil_reference: str) -> str:
+    if not airfoil_reference or "://" in airfoil_reference:
+        return airfoil_reference
+
+    reference_path = Path(airfoil_reference)
+    if reference_path.is_absolute() and reference_path.exists():
+        return str(reference_path)
+    if reference_path.exists():
+        return str(reference_path.resolve())
+
+    normalized = airfoil_reference.replace("\\", "/")
+    marker = "components/airfoils/"
+    if marker in normalized:
+        marker_suffix = normalized.split(marker, maxsplit=1)[1]
+        candidate = _REPO_ROOT / "components" / "airfoils" / marker_suffix
+        if candidate.exists():
+            return str(candidate)
+
+    app_relative_candidate = (_REPO_ROOT / "app" / airfoil_reference).resolve()
+    if app_relative_candidate.exists():
+        return str(app_relative_candidate)
+
+    repo_relative_candidate = (_REPO_ROOT / airfoil_reference).resolve()
+    if repo_relative_candidate.exists():
+        return str(repo_relative_candidate)
+
+    return airfoil_reference
 
 
 def create_airfoil(airfoil_model: AirfoilModel) -> Airfoil | None:
-    return Airfoil(**airfoil_model.__dict__.copy()) if airfoil_model is not None else None
+    if airfoil_model is None:
+        return None
+    initialization_dict = airfoil_model.__dict__.copy()
+    initialization_dict["airfoil"] = _resolve_airfoil_reference(initialization_dict["airfoil"])
+    return Airfoil(**initialization_dict)
 
 
 def create_servo(servo_model: ServoModel) -> Servo | int | None:

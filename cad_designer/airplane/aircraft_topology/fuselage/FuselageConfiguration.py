@@ -12,15 +12,11 @@ class FuselageConfiguration:
     def __init__(self,
                  name: str):
         self.name: str = name
-        self._asb_fuselage: Optional[asb.Fuselage]  = None
+        self.asb_fuselage: Optional[asb.Fuselage] = None
         self._step_file: Optional[str] = None
         self._step_scale: Optional[float] = None
         self._number_of_slices: Optional[int] = None
         pass
-
-    @property
-    def asb_fuselage(self) -> asb.Fuselage:
-        return self._asb_fuselage
 
     def __getstate__(self):
         """Return a dictionary of serializable attributes for JSON serialization."""
@@ -32,10 +28,10 @@ class FuselageConfiguration:
         }
 
         # If we have an asb_fuselage, we need to serialize its properties
-        if self._asb_fuselage:
+        if self.asb_fuselage:
             data["asb_fuselage"] = {
-                "name": self._asb_fuselage.name,
-                "color": self._asb_fuselage.color,
+                "name": self.asb_fuselage.name,
+                "color": self.asb_fuselage.color,
                 "xsecs": [
                     {
                         "xyz_c": xsec.xyz_c.tolist() if hasattr(xsec.xyz_c, 'tolist') else xsec.xyz_c,
@@ -44,7 +40,7 @@ class FuselageConfiguration:
                         "width": xsec.width,
                         "shape": xsec.shape,
                     }
-                    for xsec in self._asb_fuselage.xsecs
+                    for xsec in self.asb_fuselage.xsecs
                 ]
             }
 
@@ -80,7 +76,7 @@ class FuselageConfiguration:
                 xsecs.append(xsec)
 
             # Create the fuselage
-            fuselage._asb_fuselage = asb.Fuselage(
+            fuselage.asb_fuselage = asb.Fuselage(
                 name=asb_data.get("name", ""),
                 color=asb_data.get("color", ""),
                 xsecs=xsecs
@@ -137,7 +133,7 @@ class FuselageConfiguration:
 
         _name = step_file.split("/")[-1].split(".")[0] if name is None else name
         obj = FuselageConfiguration(name=_name)
-        obj._asb_fuselage = fuselage[0]
+        obj.asb_fuselage = fuselage[0]
         obj._step_file = step_file
         obj._step_scale = scale
         obj._number_of_slices = number_of_slices

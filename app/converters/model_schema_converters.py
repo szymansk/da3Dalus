@@ -6,10 +6,12 @@ from aerosandbox import FuselageXSec
 
 from app import schemas
 from app.models import AeroplaneModel, WingModel
+from app.models.aeroplanemodel import FuselageModel
 from app.schemas import AeroplaneSchema
 from app.schemas.Servo import Servo as ServoSchema
 from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import AirplaneConfiguration
 from cad_designer.airplane.aircraft_topology.components.Servo import Servo as WingServo
+from cad_designer.airplane.aircraft_topology.fuselage.FuselageConfiguration import FuselageConfiguration
 from cad_designer.airplane.aircraft_topology.wing import Spare, TrailingEdgeDevice, WingConfiguration
 
 
@@ -288,6 +290,54 @@ def _asb_wing_xsecs_from_schema(wing: schemas.AsbWingSchema) -> List[asb.WingXSe
     return xsecs
 
 
+def _asb_fuselage_xsecs_from_schema(
+    fuselage: schemas.FuselageSchema,
+) -> List[FuselageXSec]:
+    return [
+        FuselageXSec(
+            xyz_c=[float(value) for value in x_sec.xyz],
+            xyz_normal=[1.0, 0.0, 0.0],
+            radius=None,
+            height=float(x_sec.a),
+            width=float(x_sec.b),
+            shape=float(x_sec.n),
+        )
+        for x_sec in fuselage.x_secs
+    ]
+
+
+def fuselageSchemaToFuselageConfig(
+    fuselage: schemas.FuselageSchema,
+) -> FuselageConfiguration:
+    fuselage_config = FuselageConfiguration(name=fuselage.name)
+    fuselage_config.asb_fuselage = asb.Fuselage(
+        name=fuselage.name,
+        xsecs=_asb_fuselage_xsecs_from_schema(fuselage),
+    )
+    return fuselage_config
+
+
+def fuselageModelToFuselageConfig(
+    fuselage: FuselageModel,
+) -> FuselageConfiguration:
+    fuselage_config = FuselageConfiguration(name=fuselage.name)
+    fuselage_config.asb_fuselage = asb.Fuselage(
+        name=fuselage.name,
+        xsecs=[
+            FuselageXSec(
+                xyz_c=[float(value) for value in x_sec.xyz],
+                xyz_normal=[1.0, 0.0, 0.0],
+                radius=None,
+                height=float(x_sec.a),
+                width=float(x_sec.b),
+                shape=float(x_sec.n),
+            )
+            for x_sec in (fuselage.x_secs or [])
+        ],
+    )
+    return fuselage_config
+
+
 def _hydrate_wing_configuration_details(
     wing_config: WingConfiguration,
     wing_schema: schemas.AsbWingSchema,
@@ -342,19 +392,7 @@ async def aeroplaneSchemaToAsbAirplane_async(plane_schema: AeroplaneSchema) -> "
         fuselages=[
             Fuselage(
                 name=fuselage_name,
-                xsecs=[
-                    FuselageXSec(
-                        xyz_c=None,
-                        xyz_normal=None,  # TODO: Implement normal vector handling
-                        radius=None,
-                        height=x_sec.a,
-                        width=x_sec.b,
-                        shape=x_sec.n,
-                    ).translate(x_sec.xyz)
-                    for x_sec in fuselage.x_secs
-                ]
-                if fuselage.x_secs
-                else None,
+                xsecs=_asb_fuselage_xsecs_from_schema(fuselage) if fuselage.x_secs else None,
             )
             for fuselage_name, fuselage in plane_schema.fuselages.items()
         ]
@@ -377,11 +415,18 @@ async def aeroplaneSchemaToAirplaneConfiguration_async(plane_schema: AeroplaneSc
         _hydrate_wing_configuration_details(wing_config, wing)
         wing_configs.append(wing_config)
 
+    fuselage_configs: Optional[List[FuselageConfiguration]] = None
+    if plane_schema.fuselages:
+        fuselage_configs = [
+            fuselageSchemaToFuselageConfig(fuselage_schema)
+            for fuselage_schema in plane_schema.fuselages.values()
+        ]
+
     return AirplaneConfiguration(
         name=plane_schema.name,
         total_mass_kg=plane_schema.total_mass_kg,
         wings=wing_configs,
-        fuselages=None,
+        fuselages=fuselage_configs,
     )
 
 

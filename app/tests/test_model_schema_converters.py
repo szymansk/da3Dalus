@@ -9,10 +9,12 @@ from app import schemas
 from app.converters.model_schema_converters import (
     aeroplaneSchemaToAirplaneConfiguration_async,
     aeroplaneSchemaToAsbAirplane_async,
+    fuselageModelToFuselageConfig,
     wingConfigToAsbWingSchema,
     wingConfigToWingModel,
     wingModelToWingConfig,
 )
+from app.models.aeroplanemodel import FuselageModel
 from cad_designer.airplane.aircraft_topology.wing import Spare, TrailingEdgeDevice, WingConfiguration
 
 
@@ -58,6 +60,26 @@ def _create_test_wing_config() -> WingConfiguration:
         servo=1,
     )
     return wing_config
+
+
+def _create_test_fuselage_schema() -> schemas.FuselageSchema:
+    return schemas.FuselageSchema(
+        name="test-fuselage",
+        x_secs=[
+            schemas.FuselageXSecSuperEllipseSchema(
+                xyz=[0.0, 0.0, 0.0],
+                a=0.08,
+                b=0.08,
+                n=2.0,
+            ),
+            schemas.FuselageXSecSuperEllipseSchema(
+                xyz=[0.4, 0.0, 0.0],
+                a=0.05,
+                b=0.05,
+                n=2.0,
+            ),
+        ],
+    )
 
 
 def test_wing_config_to_asb_wing_schema():
@@ -206,10 +228,12 @@ def test_aeroplane_schema_to_airplane_configuration_requires_mass():
 def test_aeroplane_schema_to_airplane_configuration_preserves_wing_details():
     wing_config = _create_test_wing_config()
     wing_schema = wingConfigToAsbWingSchema(wing_config=wing_config, wing_name="main-wing")
+    fuselage_schema = _create_test_fuselage_schema()
     plane = schemas.AeroplaneSchema(
         name="test-plane",
         total_mass_kg=3.0,
         wings={"main-wing": wing_schema},
+        fuselages={"test-fuselage": fuselage_schema},
     )
 
     airplane_config = asyncio.run(aeroplaneSchemaToAirplaneConfiguration_async(plane))
@@ -221,3 +245,27 @@ def test_aeroplane_schema_to_airplane_configuration_preserves_wing_details():
     assert len(segment.spare_list) == 1
     assert segment.trailing_edge_device is not None
     assert segment.trailing_edge_device.rel_chord_tip == pytest.approx(0.83)
+    assert airplane_config.fuselages is not None
+    assert len(airplane_config.fuselages) == 1
+    assert airplane_config.fuselages[0].name == "test-fuselage"
+    assert airplane_config.fuselages[0].asb_fuselage is not None
+    assert len(airplane_config.fuselages[0].asb_fuselage.xsecs) == 2
+
+
+def test_fuselage_model_to_fuselage_config():
+    fuselage_model = FuselageModel.from_dict(
+        name="fuselage-a",
+        data={
+            "x_secs": [
+                {"xyz": [0.0, 0.0, 0.0], "a": 0.1, "b": 0.08, "n": 2.0},
+                {"xyz": [0.5, 0.0, 0.0], "a": 0.06, "b": 0.05, "n": 2.0},
+            ]
+        },
+    )
+
+    fuselage_config = fuselageModelToFuselageConfig(fuselage_model)
+
+    assert fuselage_config.name == "fuselage-a"
+    assert fuselage_config.asb_fuselage is not None
+    assert len(fuselage_config.asb_fuselage.xsecs) == 2
+    assert fuselage_config.asb_fuselage.xsecs[1].height == pytest.approx(0.06)

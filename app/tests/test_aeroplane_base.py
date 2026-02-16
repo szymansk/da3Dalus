@@ -6,10 +6,12 @@ from fastapi import HTTPException, Response
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
 
+from app.core.exceptions import NotFoundError, ValidationError
 from app.api.v2.endpoints.aeroplane.base import (
     create_aeroplane,
     get_aeroplanes,
     get_aeroplane,
+    get_aeroplane_airplane_configuration,
     delete_aeroplane,
     get_aeroplane_total_mass_in_kg,
     create_aeroplane_total_mass_kg,
@@ -455,6 +457,64 @@ class TestCreateAeroplaneTotalMass(unittest.TestCase):
 
         self.assertEqual(ctx.exception.status_code, 500)
         self.assertIn("Unexpected error", ctx.exception.detail)
+
+
+class TestGetAirplaneConfiguration(unittest.TestCase):
+    def test_get_airplane_configuration_success(self):
+        test_id = uuid.uuid4()
+        mock_db = MagicMock()
+        mock_payload = {
+            "name": "Test Plane",
+            "total_mass_kg": 2.5,
+            "wings": [
+                {
+                    "nose_pnt": [0, 0, 0],
+                    "segments": [],
+                    "parameters": "relative",
+                    "symmetric": True,
+                }
+            ],
+            "fuselages": None,
+        }
+
+        with patch(
+            "app.api.v2.endpoints.aeroplane.base.aeroplane_service.get_aeroplane_airplane_configuration",
+            return_value=mock_payload,
+        ) as get_config:
+            result = asyncio.run(get_aeroplane_airplane_configuration(aeroplane_id=test_id, db=mock_db))
+
+        get_config.assert_called_once_with(mock_db, test_id)
+        self.assertEqual(result.name, "Test Plane")
+        self.assertEqual(result.total_mass_kg, 2.5)
+        self.assertEqual(len(result.wings), 1)
+
+    def test_get_airplane_configuration_not_found(self):
+        test_id = uuid.uuid4()
+        mock_db = MagicMock()
+
+        with patch(
+            "app.api.v2.endpoints.aeroplane.base.aeroplane_service.get_aeroplane_airplane_configuration",
+            side_effect=NotFoundError(message="Aeroplane not found"),
+        ):
+            with self.assertRaises(HTTPException) as ctx:
+                asyncio.run(get_aeroplane_airplane_configuration(aeroplane_id=test_id, db=mock_db))
+
+        self.assertEqual(ctx.exception.status_code, 404)
+        self.assertIn("Aeroplane not found", ctx.exception.detail)
+
+    def test_get_airplane_configuration_validation_error(self):
+        test_id = uuid.uuid4()
+        mock_db = MagicMock()
+
+        with patch(
+            "app.api.v2.endpoints.aeroplane.base.aeroplane_service.get_aeroplane_airplane_configuration",
+            side_effect=ValidationError(message="mass missing"),
+        ):
+            with self.assertRaises(HTTPException) as ctx:
+                asyncio.run(get_aeroplane_airplane_configuration(aeroplane_id=test_id, db=mock_db))
+
+        self.assertEqual(ctx.exception.status_code, 422)
+        self.assertIn("mass missing", ctx.exception.detail)
 
 if __name__ == "__main__":
     unittest.main()

@@ -20,4 +20,5 @@ from app.schemas.api_responses import (
     CadTaskAcceptedResponse,
     CadTaskStatusResponse,
     ZipAssetResponse,
+    AirplaneConfigurationResponse,
 )

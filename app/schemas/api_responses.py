@@ -33,3 +33,10 @@ class ZipAssetResponse(BaseModel):
     url: str
     filename: str
     mime_type: str
+
+
+class AirplaneConfigurationResponse(BaseModel):
+    name: str
+    total_mass_kg: float
+    wings: list[dict[str, Any]]
+    fuselages: list[dict[str, Any]] | None = None

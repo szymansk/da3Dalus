@@ -9,14 +9,31 @@ import logging
 from datetime import datetime
 from typing import List, OrderedDict
 
+import numpy as np
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app import schemas
-from app.core.exceptions import NotFoundError, InternalError
+from app.core.exceptions import NotFoundError, InternalError, ValidationError
+from app.converters.model_schema_converters import fuselageModelToFuselageConfig, wingModelToWingConfig
 from app.models.aeroplanemodel import AeroplaneModel
+from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import AirplaneConfiguration
 
 logger = logging.getLogger(__name__)
+
+
+def _to_json_compatible(value):
+    if isinstance(value, dict):
+        return {key: _to_json_compatible(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_to_json_compatible(item) for item in value]
+    if isinstance(value, tuple):
+        return [_to_json_compatible(item) for item in value]
+    if isinstance(value, np.ndarray):
+        return [_to_json_compatible(item) for item in value.tolist()]
+    if isinstance(value, np.generic):
+        return value.item()
+    return value
 
 
 def list_all_aeroplanes(db: Session) -> List[AeroplaneModel]:
@@ -186,3 +203,36 @@ def set_aeroplane_mass(db: Session, aeroplane_uuid, total_mass_kg: float) -> boo
     except SQLAlchemyError as e:
         logger.error(f"Database error when setting aeroplane mass: {e}")
         raise InternalError(message=f"Database error: {e}")
+
+
+def get_aeroplane_airplane_configuration(db: Session, aeroplane_uuid) -> dict:
+    """
+    Build and return an AirplaneConfiguration payload for the selected aeroplane.
+
+    Raises:
+        NotFoundError: If the aeroplane does not exist.
+        ValidationError: If required data for configuration export is missing.
+        InternalError: If a database error occurs.
+    """
+    aeroplane = get_aeroplane_by_uuid(db, aeroplane_uuid)
+
+    if aeroplane.total_mass_kg is None:
+        raise ValidationError(
+            message="Aeroplane total_mass_kg must be set to build AirplaneConfiguration.",
+            details={"aeroplane_id": str(aeroplane_uuid)},
+        )
+
+    wing_configurations = [wingModelToWingConfig(wing) for wing in aeroplane.wings]
+    fuselage_configurations = (
+        [fuselageModelToFuselageConfig(fuselage) for fuselage in aeroplane.fuselages]
+        if aeroplane.fuselages
+        else None
+    )
+
+    airplane_configuration = AirplaneConfiguration(
+        name=aeroplane.name,
+        total_mass_kg=aeroplane.total_mass_kg,
+        wings=wing_configurations,
+        fuselages=fuselage_configurations,
+    )
+    return _to_json_compatible(airplane_configuration.to_dict())

@@ -18,7 +18,11 @@ from app.core.exceptions import (
 )
 from app.db.session import get_db
 from app.schemas.AeroplaneRequest import AeroplaneMassRequest
-from app.schemas.api_responses import CreateAeroplaneResponse, OperationStatusResponse
+from app.schemas.api_responses import (
+    AirplaneConfigurationResponse,
+    CreateAeroplaneResponse,
+    OperationStatusResponse,
+)
 from app.services import aeroplane_service
 
 logger = logging.getLogger(__name__)
@@ -181,6 +185,28 @@ async def create_aeroplane_total_mass_kg(
         if response is not None:
             response.status_code = status.HTTP_200_OK
         return OperationStatusResponse(status="ok", operation="set_aeroplane_total_mass")
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Unexpected error: {exc}") from exc
+
+
+@router.get(
+    "/aeroplanes/{aeroplane_id}/airplane_configuration",
+    status_code=status.HTTP_200_OK,
+    response_model=AirplaneConfigurationResponse,
+    tags=["aeroplanes"],
+    operation_id="get_aeroplane_airplane_configuration",
+)
+async def get_aeroplane_airplane_configuration(
+        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+        db: Session = Depends(get_db)
+) -> AirplaneConfigurationResponse:
+    """Returns the full AirplaneConfiguration payload for the aeroplane."""
+    try:
+        payload = aeroplane_service.get_aeroplane_airplane_configuration(db, aeroplane_id)
+        return AirplaneConfigurationResponse.model_validate(payload)
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:  # pragma: no cover - defensive fallback

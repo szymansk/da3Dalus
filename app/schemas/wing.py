@@ -1,5 +1,5 @@
 from typing import List, Optional, Literal, Union
-from pydantic import BaseModel, model_validator, PositiveFloat, NonNegativeFloat, Field
+from pydantic import AliasChoices, BaseModel, model_validator, PositiveFloat, NonNegativeFloat, Field
 
 from app.schemas.Servo import Servo
 
@@ -35,7 +35,9 @@ class TrailingEdgeDevice(BaseModel):
         description="Spacing from the tip edge of the segment in millimeters"
     )
     servo: Optional[Union[Servo, int]] = Field(
-        default=None, 
+        default=None,
+        validation_alias=AliasChoices("servo", "_servo"),
+        serialization_alias="servo",
         description="Servo object or servo index used to actuate the trailing edge device"
     )
     servo_placement: Literal["top", "bottom"] = Field(
@@ -65,6 +67,13 @@ class TrailingEdgeDevice(BaseModel):
     hinge_type: Literal["middle", "top", "top_simple", "round_inside", "round_outside"] = Field(
         default='top', 
         description="Type of hinge mechanism used for the trailing edge device"
+    )
+    symmetric: bool = Field(
+        default=True,
+        description=(
+            "Whether the trailing edge device deflects symmetrically between left/right wings "
+            "(e.g. flaps/elevator) or anti-symmetrically (e.g. aileron)."
+        ),
     )
 
 SpareMode = Literal["normal", "follow", "standard", "standard_backward", "orthogonal_backward"]
