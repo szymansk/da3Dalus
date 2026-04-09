@@ -1,25 +1,103 @@
 {
   "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c \"./.claude/hooks/post-command/log-tool-result.sh 2\u003e/dev/null || true\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c \"./.claude/hooks/post-command/format-code.sh 2\u003e/dev/null || true\""
+          },
+          {
+            "type": "command",
+            "command": "bash -c \"./.claude/hooks/post-command/lint-code.sh 2\u003e/dev/null || true\""
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c \"./.claude/hooks/post-command/format-code.sh 2\u003e/dev/null || true\""
+          },
+          {
+            "type": "command",
+            "command": "bash -c \"./.claude/hooks/post-command/lint-code.sh 2\u003e/dev/null || true\""
+          }
+        ]
+      }
+    ],
     "PreCompact": [
       {
         "hooks": [
           {
-            "command": "bd prime",
-            "type": "command"
+            "type": "command",
+            "command": "bd prime"
           }
-        ],
-        "matcher": ""
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c \"./.claude/hooks/pre-command/log-tool-use.sh 2\u003e/dev/null || true\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ./.claude/hooks/pre-command/check-sensitive-path.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ./.claude/hooks/pre-command/check-sensitive-path.sh"
+          }
+        ]
       }
     ],
     "SessionStart": [
       {
         "hooks": [
           {
-            "command": "bd prime",
-            "type": "command"
+            "type": "command",
+            "command": "bash -c \"if [ -d .beads ]; then bd prime 2\u003e/dev/null || true; fi\""
+          },
+          {
+            "type": "command",
+            "command": "bash -c \"./.claude/hooks/pre-command/check-toolchain.sh 2\u003e/dev/null || true\""
           }
-        ],
-        "matcher": ""
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c \"if [ -d .beads ]; then bd sync 2\u003e/dev/null || true; fi\""
+          }
+        ]
       }
     ]
   }

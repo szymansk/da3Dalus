@@ -1,0 +1,9 @@
+# Personal settings (do not commit)
+settings.local.json
+
+# Local overrides
+*.local.md
+*.local.json
+
+# Session logs (noisy, may contain masked credentials)
+logs/

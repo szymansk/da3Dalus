@@ -237,3 +237,8 @@ components/constructions/configurator-test-wing.root.json
 # Beads / Dolt files (added by bd init)
 .dolt/
 .beads-credential-key
+
+# AI / tooling session logs (noisy, may contain masked credentials)
+.claude/logs/
+.streb/
+!.streb/.gitkeep

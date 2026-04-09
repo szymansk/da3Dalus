@@ -1,0 +1,19 @@
+# Container-use configuration
+# See: https://github.com/dagger/container-use
+
+# Default container image for development. This project is Python;
+# heavy dependencies (CadQuery, Aerosandbox) are better installed via
+# Poetry inside the container or via the repo's own Dockerfile, but a
+# slim Python base is sufficient for generic shell / tooling work.
+image: python:3.12-slim
+
+# Mount the current directory into the container
+mounts:
+  - source: .
+    target: /workspace
+
+# Environment variables
+env:
+  - PYTHONDONTWRITEBYTECODE=1
+  - PYTHONUNBUFFERED=1
+  - POETRY_VIRTUALENVS_IN_PROJECT=1
