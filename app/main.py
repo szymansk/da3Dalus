@@ -1,3 +1,4 @@
+import logging
 import os
 
 from fastapi import FastAPI, Request
@@ -55,7 +56,6 @@ from app.core.exceptions import (
     InternalError,
 )
 from sqlalchemy.exc import IntegrityError
-import logging
 from app.logging_config import setup_logging
 
 from fastapi.middleware.cors import CORSMiddleware
