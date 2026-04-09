@@ -11,8 +11,8 @@ from app.api.v2.endpoints.aeroanalysis import (
     analyze_airplane_simple_sweep,
     analyze_wing_post,
     calculate_streamlines,
-    get_aeroplane_three_view,
-    get_streamlines_three_view,
+    get_aeroplane_three_view_url as get_aeroplane_three_view,
+    get_streamlines_three_view_url as get_streamlines_three_view,
 )
 from app.core.exceptions import NotFoundError
 from app.schemas.AeroplaneRequest import AnalysisToolUrlType, AlphaSweepRequest, SimpleSweepRequest

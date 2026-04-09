@@ -7,10 +7,44 @@ from fastapi.openapi.docs import get_swagger_ui_html, get_swagger_ui_oauth2_redi
 from fastapi.responses import JSONResponse
 
 from app.api.v2.endpoints import aeroplane as aeroplane_v2
-from app.api.v2.endpoints import cad, aeroanalysis, operating_points
 from app.api.v2.endpoints import flight_profiles
-from app.api.v2.endpoints import airfoils
 from app.api.v2.endpoints import health
+from app.core.platform import aerosandbox_available, cad_available
+
+# Heavy routers that transitively import CadQuery / Aerosandbox are loaded
+# behind capability probes. On platforms where those libraries are excluded
+# (linux/aarch64 per pyproject.toml markers) the affected routers are not
+# registered; the service still starts and /health still answers.
+_cad_router = None
+_aeroanalysis_router = None
+_operating_points_router = None
+_airfoils_router = None
+
+if cad_available():
+    try:
+        from app.api.v2.endpoints import cad as _cad_module
+        _cad_router = _cad_module.router
+    except ImportError as exc:
+        logging.getLogger(__name__).warning("cad router unavailable: %s", exc)
+
+if aerosandbox_available():
+    try:
+        from app.api.v2.endpoints import aeroanalysis as _aeroanalysis_module
+        _aeroanalysis_router = _aeroanalysis_module.router
+    except ImportError as exc:
+        logging.getLogger(__name__).warning("aeroanalysis router unavailable: %s", exc)
+
+    try:
+        from app.api.v2.endpoints import operating_points as _operating_points_module
+        _operating_points_router = _operating_points_module.router
+    except ImportError as exc:
+        logging.getLogger(__name__).warning("operating_points router unavailable: %s", exc)
+
+    try:
+        from app.api.v2.endpoints import airfoils as _airfoils_module
+        _airfoils_router = _airfoils_module.router
+    except ImportError as exc:
+        logging.getLogger(__name__).warning("airfoils router unavailable: %s", exc)
 from app.mcp_server import create_mcp_http_app
 from app.core.exceptions import (
     ServiceException,
@@ -44,11 +78,15 @@ def create_app() -> FastAPI:
     )
     app.include_router(health.router, prefix="", tags=["health"])
     app.include_router(aeroplane_v2.router, prefix="", tags=[])
-    app.include_router(cad.router, prefix="", tags=["cad"])
-    app.include_router(aeroanalysis.router, prefix="", tags=[])
-    app.include_router(operating_points.router, prefix="", tags=["operating_points"])
     app.include_router(flight_profiles.router, prefix="", tags=["flight-profiles"])
-    app.include_router(airfoils.router, prefix="", tags=["airfoils"])
+    if _cad_router is not None:
+        app.include_router(_cad_router, prefix="", tags=["cad"])
+    if _aeroanalysis_router is not None:
+        app.include_router(_aeroanalysis_router, prefix="", tags=[])
+    if _operating_points_router is not None:
+        app.include_router(_operating_points_router, prefix="", tags=["operating_points"])
+    if _airfoils_router is not None:
+        app.include_router(_airfoils_router, prefix="", tags=["airfoils"])
 
     app.add_middleware(
         CORSMiddleware,

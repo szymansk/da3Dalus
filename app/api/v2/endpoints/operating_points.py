@@ -47,19 +47,19 @@ def _resolve_aircraft_pk(db: Session, aircraft_uuid: UUID4) -> Optional[int]:
 
 
 @router.post(
-    "/aircraft/{aircraft_id}/operating-pointsets/generate-default",
+    "/aeroplanes/{aeroplane_id}/operating-pointsets/generate-default",
     response_model=GeneratedOperatingPointSetRead,
     operation_id="generate_default_operating_point_set",
 )
 async def generate_default_operating_point_set(
-    aircraft_id: UUID4 = Path(..., description="Aircraft UUID"),
+    aeroplane_id: UUID4 = Path(..., description="Aeroplane UUID"),
     request: GenerateOperatingPointSetRequest = Body(default_factory=GenerateOperatingPointSetRequest),
     db: Session = Depends(get_db),
 ) -> GeneratedOperatingPointSetRead:
     try:
         return await operating_point_generator_service.generate_default_set_for_aircraft(
             db=db,
-            aircraft_uuid=aircraft_id,
+            aircraft_uuid=aeroplane_id,
             replace_existing=request.replace_existing,
             profile_id_override=request.profile_id_override,
         )
@@ -73,19 +73,19 @@ async def generate_default_operating_point_set(
 
 
 @router.post(
-    "/aircraft/{aircraft_id}/operating-points/trim",
+    "/aeroplanes/{aeroplane_id}/operating-points/trim",
     response_model=TrimmedOperatingPointRead,
     operation_id="trim_operating_point",
 )
 async def trim_operating_point(
-    aircraft_id: UUID4 = Path(..., description="Aircraft UUID"),
+    aeroplane_id: UUID4 = Path(..., description="Aeroplane UUID"),
     request: TrimOperatingPointRequest = Body(...),
     db: Session = Depends(get_db),
 ) -> TrimmedOperatingPointRead:
     try:
         return await operating_point_generator_service.trim_operating_point_for_aircraft(
             db=db,
-            aircraft_uuid=aircraft_id,
+            aircraft_uuid=aeroplane_id,
             request=request,
         )
     except ServiceException as exc:

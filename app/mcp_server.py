@@ -1143,7 +1143,7 @@ async def get_streamlines_three_view_tool(
     ctx: Context = None,
 ) -> Any:
     payload = await _call_endpoint(
-        aeroanalysis.get_streamlines_three_view,
+        aeroanalysis.get_streamlines_three_view_url,
         aeroplane_id=aeroplane_id,
         operating_point=operating_point,
         request=None,
@@ -1165,7 +1165,7 @@ async def get_streamlines_three_view_tool(
 )
 async def get_aeroplane_three_view_tool(aeroplane_id: UUID4, ctx: Context = None) -> Any:
     payload = await _call_endpoint(
-        aeroanalysis.get_aeroplane_three_view,
+        aeroanalysis.get_aeroplane_three_view_url,
         aeroplane_id=aeroplane_id,
         request=None,
         settings=get_settings(),
@@ -1368,23 +1368,23 @@ async def delete_flight_profile_tool(profile_id: int) -> Any:
 
 
 @mcp_tool(
-    name="assign_flight_profile_to_aircraft",
-    description="Assign a flight profile to an aircraft UUID, replacing any existing assignment.",
+    name="assign_flight_profile_to_aeroplane",
+    description="Assign a flight profile to an aeroplane UUID, replacing any existing assignment.",
 )
-async def assign_flight_profile_to_aircraft_tool(aircraft_id: UUID4, profile_id: int) -> Any:
+async def assign_flight_profile_to_aeroplane_tool(aeroplane_id: UUID4, profile_id: int) -> Any:
     return await _call_endpoint(
-        flight_profiles.assign_flight_profile_to_aircraft,
-        aircraft_id=aircraft_id,
+        flight_profiles.assign_flight_profile_to_aeroplane,
+        aeroplane_id=aeroplane_id,
         profile_id=profile_id,
     )
 
 
 @mcp_tool(
-    name="detach_flight_profile_from_aircraft",
-    description="Detach the currently assigned flight profile from an aircraft UUID.",
+    name="detach_flight_profile_from_aeroplane",
+    description="Detach the currently assigned flight profile from an aeroplane UUID.",
 )
-async def detach_flight_profile_from_aircraft_tool(aircraft_id: UUID4) -> Any:
-    return await _call_endpoint(flight_profiles.detach_flight_profile_from_aircraft, aircraft_id=aircraft_id)
+async def detach_flight_profile_from_aeroplane_tool(aeroplane_id: UUID4) -> Any:
+    return await _call_endpoint(flight_profiles.detach_flight_profile_from_aeroplane, aeroplane_id=aeroplane_id)
 
 
 MCP_TOOL_NAMES: tuple[str, ...] = tuple(spec.name for spec in TOOL_SPECS)

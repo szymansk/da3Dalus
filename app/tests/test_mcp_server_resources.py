@@ -56,7 +56,7 @@ def test_image_resource_and_public_url(monkeypatch, fastapi_client):
     async def fake_three_view(*, aeroplane_id, db, request=None, settings=None):
         return {"url": "http://unit.test/static/test_assets/three_view.png"}
 
-    monkeypatch.setattr(mcp_server.aeroanalysis, "get_aeroplane_three_view", fake_three_view)
+    monkeypatch.setattr(mcp_server.aeroanalysis, "get_aeroplane_three_view_url", fake_three_view)
 
     server = mcp_server.create_mcp_server()
     payload = _run(mcp_server.get_aeroplane_three_view_tool("00000000-0000-0000-0000-000000000001"))
@@ -86,7 +86,7 @@ def test_image_public_url_uses_mcp_request_port_when_context_is_available(monkey
     async def fake_three_view(*, aeroplane_id, db, request=None, settings=None):
         return {"url": "http://unit.test/static/test_assets/ctx_three_view.png"}
 
-    monkeypatch.setattr(mcp_server.aeroanalysis, "get_aeroplane_three_view", fake_three_view)
+    monkeypatch.setattr(mcp_server.aeroanalysis, "get_aeroplane_three_view_url", fake_three_view)
 
     class DummyRequest:
         def __init__(self, url: str) -> None:
@@ -176,7 +176,7 @@ def test_streamlines_three_view_resource_and_public_url(monkeypatch, fastapi_cli
     async def fake_streamlines_three_view(*, aeroplane_id, operating_point, db, request=None, settings=None):
         return {"url": "http://unit.test/static/test_assets/streamlines_three_view.png"}
 
-    monkeypatch.setattr(mcp_server.aeroanalysis, "get_streamlines_three_view", fake_streamlines_three_view)
+    monkeypatch.setattr(mcp_server.aeroanalysis, "get_streamlines_three_view_url", fake_streamlines_three_view)
 
     server = mcp_server.create_mcp_server()
     payload = _run(

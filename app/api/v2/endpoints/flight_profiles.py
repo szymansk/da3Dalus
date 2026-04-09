@@ -145,31 +145,31 @@ async def delete_flight_profile(
 
 
 @router.put(
-    "/aircraft/{aircraft_id}/flight-profile/{profile_id}",
+    "/aeroplanes/{aeroplane_id}/flight-profile/{profile_id}",
     response_model=AircraftFlightProfileAssignmentRead,
     status_code=status.HTTP_200_OK,
-    operation_id="assign_flight_profile_to_aircraft",
+    operation_id="assign_flight_profile_to_aeroplane",
     tags=["flight-profiles"],
 )
-async def assign_flight_profile_to_aircraft(
-    aircraft_id: AircraftID = Path(..., description="UUID des Aircrafts."),
+async def assign_flight_profile_to_aeroplane(
+    aeroplane_id: AircraftID = Path(..., description="UUID des Aeroplanes."),
     profile_id: int = Path(..., ge=1, description="ID des RC Flight Profiles."),
     db: Session = Depends(get_db),
 ) -> AircraftFlightProfileAssignmentRead:
-    """Weist einem Aircraft ein RC Flight Profile zu und überschreibt eine bestehende Zuweisung."""
-    return _call_service(flight_profile_service.assign_profile_to_aircraft, db, aircraft_id, profile_id)
+    """Weist einem Aeroplane ein RC Flight Profile zu und überschreibt eine bestehende Zuweisung."""
+    return _call_service(flight_profile_service.assign_profile_to_aircraft, db, aeroplane_id, profile_id)
 
 
 @router.delete(
-    "/aircraft/{aircraft_id}/flight-profile",
+    "/aeroplanes/{aeroplane_id}/flight-profile",
     response_model=AircraftFlightProfileAssignmentRead,
     status_code=status.HTTP_200_OK,
-    operation_id="detach_flight_profile_from_aircraft",
+    operation_id="detach_flight_profile_from_aeroplane",
     tags=["flight-profiles"],
 )
-async def detach_flight_profile_from_aircraft(
-    aircraft_id: AircraftID = Path(..., description="UUID des Aircrafts."),
+async def detach_flight_profile_from_aeroplane(
+    aeroplane_id: AircraftID = Path(..., description="UUID des Aeroplanes."),
     db: Session = Depends(get_db),
 ) -> AircraftFlightProfileAssignmentRead:
-    """Entfernt die Profilzuweisung eines Aircrafts und setzt flight_profile_id auf NULL."""
-    return _call_service(flight_profile_service.detach_profile_from_aircraft, db, aircraft_id)
+    """Entfernt die Profilzuweisung eines Aeroplanes und setzt flight_profile_id auf NULL."""
+    return _call_service(flight_profile_service.detach_profile_from_aircraft, db, aeroplane_id)

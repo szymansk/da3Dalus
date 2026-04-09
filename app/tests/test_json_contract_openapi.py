@@ -10,8 +10,6 @@ TARGET_JSON_ENDPOINTS: list[tuple[str, str]] = [
     ("get", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}/zip"),
     ("post", "/aeroplanes/{aeroplane_id}/operating_point/vortex_lattice/streamlines/html_view"),
     ("post", "/aeroplanes/{aeroplane_id}/alpha_sweep/diagram"),
-    ("post", "/aeroplanes/{aeroplane_id}/operating_point/vortex_lattice/streamlines/three_view"),
-    ("get", "/aeroplanes/{aeroplane_id}/three_view"),
     ("get", "/aeroplanes/{aeroplane_id}/three_view/url"),
     ("post", "/aeroplanes/{aeroplane_id}/operating_point/vortex_lattice/streamlines/three_view/url"),
     ("delete", "/aeroplanes/{aeroplane_id}"),
@@ -52,8 +50,6 @@ DTO_MODELED_ENDPOINTS: set[tuple[str, str]] = {
     ("get", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}/zip"),
     ("post", "/aeroplanes/{aeroplane_id}/operating_point/vortex_lattice/streamlines/html_view"),
     ("post", "/aeroplanes/{aeroplane_id}/alpha_sweep/diagram"),
-    ("post", "/aeroplanes/{aeroplane_id}/operating_point/vortex_lattice/streamlines/three_view"),
-    ("get", "/aeroplanes/{aeroplane_id}/three_view"),
     ("get", "/aeroplanes/{aeroplane_id}/three_view/url"),
     ("post", "/aeroplanes/{aeroplane_id}/operating_point/vortex_lattice/streamlines/three_view/url"),
 }

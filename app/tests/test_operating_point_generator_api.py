@@ -48,7 +48,7 @@ def test_generate_default_endpoint_returns_generated_set(client_and_db):
         new=AsyncMock(return_value=mocked_response),
     ):
         response = client.post(
-            f"/aircraft/{aircraft_uuid}/operating-pointsets/generate-default",
+            f"/aeroplanes/{aircraft_uuid}/operating-pointsets/generate-default",
             json={"replace_existing": False},
         )
 
@@ -80,7 +80,7 @@ def test_generate_default_endpoint_handles_skipped_points_response(client_and_db
         new=AsyncMock(return_value=mocked_response),
     ):
         response = client.post(
-            f"/aircraft/{aircraft_uuid}/operating-pointsets/generate-default",
+            f"/aeroplanes/{aircraft_uuid}/operating-pointsets/generate-default",
             json={"replace_existing": False},
         )
 
@@ -124,7 +124,7 @@ def test_trim_operating_point_endpoint_returns_trimmed_point(client_and_db):
         new=AsyncMock(return_value=mocked_response),
     ):
         response = client.post(
-            f"/aircraft/{aircraft_uuid}/operating-points/trim",
+            f"/aeroplanes/{aircraft_uuid}/operating-points/trim",
             json={
                 "name": "custom_trim_point",
                 "config": "clean",

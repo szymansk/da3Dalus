@@ -196,96 +196,16 @@ async def analyze_airplane_simple_sweep(
                             detail=f"Unexpected error: {exc}") from exc
 
 
-@router.get("/aeroplanes/{aeroplane_id}/stability_summary",
-         operation_id="get_aeroplane_stability_summary")
-async def get_stability_summary(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    db: Session = Depends(get_db),
-):
-    """Returns a summary of static stability parameters."""
-    pass
-
-
-@router.get("/aeroplanes/{aeroplane_id}/wings/{wing_name}/lift_distribution",
-         operation_id="get_wing_lift_distribution")
-async def get_lift_distribution(
-    aeroplane_id: AeroPlaneID = Path(...),
-    wing_name: str = Path(...),
-    db: Session = Depends(get_db),
-):
-    """Returns the spanwise lift distribution for a given wing."""
-    pass
-
-#TODO: implement an enpoint that returns a diagramm of the spanwise lift distribution for a given wing over a front view of the wing. The diagramm should be returned as a static URL to a PNG image. The service layer should generate the diagramm using matplotlib, save it under tmp and return the URL to the saved image. The endpoint should be a GET endpoint with the path /aeroplanes/{aeroplane_id}/wings/{wing_name}/lift_distribution/diagram and should return a JSON response with the URL to the diagramm.
-
-
-@router.get("/aeroplanes/{aeroplane_id}/moment_distribution",
-         operation_id="get_aeroplane_moment_distribution")
-async def get_moment_distribution(
-    aeroplane_id: AeroPlaneID = Path(...),
-    db: Session = Depends(get_db),
-):
-    """Returns the pitching moment distribution along the longitudinal axis."""
-    #TODO: Implement this endpoint in the service layer and return the moment distribution as a list of values along the longitudinal axis in a semantic meaningfull JSON response.
-    pass
-
-@router.post("/aeroplanes/{aeroplane_id}/operating_point/vortex_lattice/streamlines/three_view",
-         response_model=StaticUrlResponse,
-         tags=["analysis"],
-         operation_id="get_streamlines_three_view")
-async def get_streamlines_three_view(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    operating_point: OperatingPointSchema = Body(..., description="The operating point of the analysis"),
-    db: Session = Depends(get_db),
-    request: Request = None,
-    settings: Settings = Depends(get_settings),
-) -> StaticUrlResponse:
-    """Generates a four-view diagram of the aeroplane and returns a static URL to the PNG image."""
-    try:
-        img_bytes = await analysis_service.get_streamlines_three_view_image(
-            db, aeroplane_id, operating_point
-        )
-        image_url = _save_png_and_get_static_url(
-            aeroplane_id=aeroplane_id,
-            image_bytes=img_bytes,
-            filename_prefix="streamlines_three_view",
-            request=request,
-            settings=settings,
-        )
-        return StaticUrlResponse(url=image_url)
-    except ServiceException as exc:
-        _raise_http_from_domain(exc)
-    except Exception as exc:  # pragma: no cover - defensive fallback
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Unexpected error: {exc}") from exc
-
-
-@router.get("/aeroplanes/{aeroplane_id}/three_view",
-         response_model=StaticUrlResponse,
-         operation_id="get_aeroplane_three_view",
-         tags=["analysis"])
-async def get_aeroplane_three_view(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    db: Session = Depends(get_db),
-    request: Request = None,
-    settings: Settings = Depends(get_settings),
-) -> StaticUrlResponse:
-    """Generates a three-view diagram and returns a static URL to the PNG image."""
-    try:
-        img_bytes = await analysis_service.get_three_view_image(db, aeroplane_id)
-        image_url = _save_png_and_get_static_url(
-            aeroplane_id=aeroplane_id,
-            image_bytes=img_bytes,
-            filename_prefix="three_view",
-            request=request,
-            settings=settings,
-        )
-        return StaticUrlResponse(url=image_url)
-    except ServiceException as exc:
-        _raise_http_from_domain(exc)
-    except Exception as exc:  # pragma: no cover - defensive fallback
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Unexpected error: {exc}") from exc
+# Stub endpoints (stability_summary, lift_distribution, moment_distribution)
+# were removed — they returned HTTP 200 + null, silently misleading clients.
+# Follow-up implementation tasks: cad-modelling-service-c9r (stability),
+# cad-modelling-service-7va (lift distribution),
+# cad-modelling-service-120 (moment distribution).
+#
+# Duplicate three_view endpoints were removed in favour of the .../url
+# variants below. The raw-bytes POST and GET forms were redundant — the
+# .../url forms match the convention used by alpha_sweep/diagram and
+# streamlines/html_view and are what clients should call.
 
 
 @router.get("/aeroplanes/{aeroplane_id}/three_view/url",

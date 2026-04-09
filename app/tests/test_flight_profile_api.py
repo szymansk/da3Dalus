@@ -74,7 +74,7 @@ def test_delete_profile_with_assignment_returns_409(client_and_db):
         db.add(AeroplaneModel(name="test aircraft", uuid=aircraft_uuid))
         db.commit()
 
-    assign = client.put(f"/aircraft/{aircraft_uuid}/flight-profile/{profile['id']}")
+    assign = client.put(f"/aeroplanes/{aircraft_uuid}/flight-profile/{profile['id']}")
     assert assign.status_code == 200
 
     response = client.delete(f"/flight-profiles/{profile['id']}")
@@ -100,7 +100,7 @@ def test_assign_and_detach_profile_updates_aircraft(client_and_db):
         db.add(AeroplaneModel(name="linked aircraft", uuid=aircraft_uuid))
         db.commit()
 
-    assign = client.put(f"/aircraft/{aircraft_uuid}/flight-profile/{profile['id']}")
+    assign = client.put(f"/aeroplanes/{aircraft_uuid}/flight-profile/{profile['id']}")
     assert assign.status_code == 200
     assert assign.json()["flight_profile_id"] == profile["id"]
 
@@ -108,7 +108,7 @@ def test_assign_and_detach_profile_updates_aircraft(client_and_db):
         aircraft = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aircraft_uuid).first()
         assert aircraft.flight_profile_id == profile["id"]
 
-    detach = client.delete(f"/aircraft/{aircraft_uuid}/flight-profile")
+    detach = client.delete(f"/aeroplanes/{aircraft_uuid}/flight-profile")
     assert detach.status_code == 200
     assert detach.json()["flight_profile_id"] is None
 
