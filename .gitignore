@@ -233,3 +233,7 @@ test/main_wing.json
 
 components/constructions/configurator-test-wing.root.json
 /external/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+.beads-credential-key
