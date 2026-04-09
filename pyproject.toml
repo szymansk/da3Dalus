@@ -44,3 +44,33 @@ nlopt = ">=2.9,<3.0"
 [tool.pytest.ini_options]
 norecursedirs = ["external"]
 addopts = "--ignore=docker_smoke_test.py"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [
+    "external",
+    "Avl",
+    "alembic/versions",
+    "exports",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort (import ordering)
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+]
+# Ignore rules that would be noisy on the existing codebase without
+# a dedicated cleanup pass.
+ignore = [
+    "E501",  # line too long — enforced via formatter, not linter
+    "B008",  # function call in argument default — common FastAPI pattern
+]
+
+[tool.ruff.format]
+# Drop-in Black replacement. Keep the defaults; they match Black's style.
+quote-style = "double"
+indent-style = "space"

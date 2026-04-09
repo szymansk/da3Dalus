@@ -79,6 +79,10 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 poetry run pytest
 ./run_all_tests.sh          # equivalent wrapper
 
+# Lint & format (ruff; config in pyproject.toml)
+poetry run ruff check .
+poetry run ruff format .    # optional: Black-style formatter
+
 # Docker (production-style)
 docker compose build
 docker compose up -d        # service on http://localhost:8086
