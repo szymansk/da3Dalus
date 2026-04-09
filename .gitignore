@@ -242,3 +242,7 @@ components/constructions/configurator-test-wing.root.json
 .claude/logs/
 .streb/
 !.streb/.gitkeep
+
+# Coverage artifacts
+.coverage
+coverage.xml

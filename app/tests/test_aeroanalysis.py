@@ -7,6 +7,7 @@ from fastapi import HTTPException, Request
 
 from app.api.v2.endpoints.aeroanalysis import (
     analyze_airplane_alpha_sweep,
+    analyze_airplane_alpha_sweep_diagram,
     analyze_airplane_post,
     analyze_airplane_simple_sweep,
     analyze_wing_post,
@@ -160,6 +161,78 @@ class TestAeroanalysis(unittest.TestCase):
 
         self.assertEqual(result, {"curve": []})
         mock_sweep.assert_awaited_once_with(mock_db, self.test_plane_id, sweep_request)
+
+    def test_analyze_airplane_alpha_sweep_diagram_returns_static_url(self):
+        """Happy-path coverage for POST /aeroplanes/{id}/alpha_sweep/diagram."""
+        mock_db = MagicMock()
+        mock_request = MagicMock(spec=Request)
+        mock_request.base_url = "http://testserver/"
+        mock_settings = MagicMock(base_url="http://testserver")
+        sweep_request = AlphaSweepRequest.model_construct(
+            altitude=0.0,
+            velocity=20.0,
+            alpha_start=0.0,
+            alpha_end=10.0,
+            alpha_num=5,
+            beta=0.0,
+            p=0.0,
+            q=0.0,
+            r=0.0,
+            xyz_ref=[0.0, 0.0, 0.0],
+        )
+
+        with patch(
+            "app.api.v2.endpoints.aeroanalysis.analysis_service.get_alpha_sweep_diagram_url",
+            new=AsyncMock(return_value="http://testserver/static/fake_alpha_sweep.png"),
+        ) as mock_diag:
+            result = asyncio.run(
+                analyze_airplane_alpha_sweep_diagram(
+                    aeroplane_id=self.test_plane_id,
+                    sweep_request=sweep_request,
+                    db=mock_db,
+                    request=mock_request,
+                    settings=mock_settings,
+                )
+            )
+
+        self.assertIsInstance(result, StaticUrlResponse)
+        self.assertEqual(result.url, "http://testserver/static/fake_alpha_sweep.png")
+        mock_diag.assert_awaited_once()
+
+    def test_analyze_airplane_alpha_sweep_diagram_not_found_maps_to_404(self):
+        """404 propagation for the alpha sweep diagram endpoint."""
+        mock_db = MagicMock()
+        mock_request = MagicMock(spec=Request)
+        mock_request.base_url = "http://testserver/"
+        mock_settings = MagicMock(base_url="http://testserver")
+        sweep_request = AlphaSweepRequest.model_construct(
+            altitude=0.0,
+            velocity=20.0,
+            alpha_start=0.0,
+            alpha_end=10.0,
+            alpha_num=5,
+            beta=0.0,
+            p=0.0,
+            q=0.0,
+            r=0.0,
+            xyz_ref=[0.0, 0.0, 0.0],
+        )
+
+        with patch(
+            "app.api.v2.endpoints.aeroanalysis.analysis_service.get_alpha_sweep_diagram_url",
+            new=AsyncMock(side_effect=NotFoundError("aeroplane not found")),
+        ):
+            with self.assertRaises(HTTPException) as raised:
+                asyncio.run(
+                    analyze_airplane_alpha_sweep_diagram(
+                        aeroplane_id=self.test_plane_id,
+                        sweep_request=sweep_request,
+                        db=mock_db,
+                        request=mock_request,
+                        settings=mock_settings,
+                    )
+                )
+        self.assertEqual(raised.exception.status_code, 404)
 
     def test_analyze_airplane_simple_sweep_success(self):
         mock_db = MagicMock()

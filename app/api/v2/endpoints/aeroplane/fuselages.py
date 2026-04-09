@@ -76,7 +76,10 @@ async def create_aeroplane_fuselage(
                 raise HTTPException(status_code=404, detail="Aeroplane not found")
 
             if any(f.name == fuselage_name for f in plane.fuselages):
-                raise HTTPException(400, "Fuselage name must be unique for this aeroplane")
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Fuselage name must be unique for this aeroplane",
+                )
 
             # Create fuselage from request data
             fuselage = FuselageModel.from_dict(name=fuselage_name, data=request.model_dump())
