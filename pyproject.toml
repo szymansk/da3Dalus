@@ -49,6 +49,9 @@ ruff = "^0.15.10"
 [tool.pytest.ini_options]
 norecursedirs = ["external"]
 addopts = "--ignore=docker_smoke_test.py"
+# Ensure the project root is on sys.path so `from app.*` works in
+# non-installed layouts (poetry package-mode=false).
+pythonpath = ["."]
 markers = [
     "unit: pure unit test, mocked dependencies, no DB or external tooling",
     "integration: uses TestClient + in-memory DB, exercises real endpoints",
