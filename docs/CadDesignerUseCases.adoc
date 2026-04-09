@@ -1,0 +1,100 @@
+= CAD Designer Use-Cases
+
+This document summarizes use-cases derived from analyzing the implementation in the `cad_designer/` package.
+
+[plantuml,"cad_designer_use_cases",svg]
+.Use-case diagram for the `cad_designer` package.
+----
+@startuml
+left to right direction
+
+actor "Aircraft Designer" as Designer
+actor "Manufacturing Engineer" as Manufacturing
+actor "Aerodynamics Engineer" as Aero
+actor "Automation Service" as Automation
+
+rectangle "cad_designer" {
+  usecase "UC1: Define aircraft topology" as UC1
+  usecase "UC2: Execute construction workflow" as UC2
+  usecase "UC3: Generate wing loft geometry" as UC3
+  usecase "UC4: Generate vase-mode wing structures" as UC4
+  usecase "UC5: Re-orient wing segments for printing" as UC5
+  usecase "UC6: Generate fuselage shell and reinforcement" as UC6
+  usecase "UC7: Import STEP/IGES components" as UC7
+  usecase "UC8: Apply CAD boolean and transform operations" as UC8
+  usecase "UC9: Export CAD models (STL/STEP/IGES/3MF)" as UC9
+  usecase "UC10: Convert CAD geometry to AeroSandbox models" as UC10
+  usecase "UC11: Run aerodynamic and stability analysis" as UC11
+}
+
+Designer --> UC1
+Designer --> UC2
+Designer --> UC3
+Designer --> UC4
+Designer --> UC6
+Designer --> UC7
+Designer --> UC8
+
+Manufacturing --> UC5
+Manufacturing --> UC9
+
+Aero --> UC10
+Aero --> UC11
+
+Automation --> UC2
+Automation --> UC9
+Automation --> UC11
+@enduml
+----
+
+== Use-Case Descriptions and Implementation References
+
+[cols="1,3,6",options="header"]
+|===
+|Use-case |Short description |Implementation references
+
+|UC1: Define aircraft topology
+|Define wing, fuselage, and airplane-level parametric configuration data (airfoils, segments, control devices, and aircraft mass context).
+|`cad_designer/airplane/aircraft_topology/wing/WingConfiguration.py`; `cad_designer/airplane/aircraft_topology/wing/WingSegment.py`; `cad_designer/airplane/aircraft_topology/wing/Airfoil.py`; `cad_designer/airplane/aircraft_topology/wing/TrailingEdgeDevice.py`; `cad_designer/airplane/aircraft_topology/fuselage/FuselageConfiguration.py`; `cad_designer/airplane/aircraft_topology/airplane/AirplaneConfiguration.py`
+
+|UC2: Execute construction workflow
+|Build and execute a tree of shape-creator steps, including JSON-driven workflow loading/serialization.
+|`cad_designer/airplane/AbstractShapeCreator.py`; `cad_designer/airplane/ConstructionRootNode.py`; `cad_designer/airplane/ConstructionStepNode.py`; `cad_designer/airplane/JSONStepNode.py`; `cad_designer/airplane/GeneralJSONEncoderDecoder.py`
+
+|UC3: Generate wing loft geometry
+|Create left/right/both wing solids from wing segment definitions and airfoil interpolation.
+|`cad_designer/airplane/creator/wing/WingLoftCreator.py`; `cad_designer/cq_plugins/wing/wing_root_segment.py`; `cad_designer/cq_plugins/wing/wing_segment.py`
+
+|UC4: Generate vase-mode wing structures
+|Generate printable wing internals and shells for vase-mode printing, including ribs, spars, glue supports, and trailing-edge-device cutouts.
+|`cad_designer/airplane/creator/wing/VaseModeWingCreator.py`; `cad_designer/airplane/creator/wing/ted_sketch_creators.py`; `cad_designer/airplane/aircraft_topology/wing/TrailingEdgeDevice.py`
+
+|UC5: Re-orient wing segments for printing
+|Rotate and translate wing segment geometry onto the print surface for manufacturing orientation.
+|`cad_designer/airplane/creator/wing/StandWingSegmentOnPrinterCreator.py`; `cad_designer/airplane/aircraft_topology/printer3d/Printer3dSettings.py`
+
+|UC6: Generate fuselage shell and reinforcement
+|Create fuselage shelling and auxiliary fuselage structures such as engine interfaces, reinforcement cages, wing supports, bolt cutouts, and electronics access cutouts.
+|`cad_designer/airplane/creator/fuselage/FuselageShellShapeCreator.py`; `cad_designer/airplane/creator/fuselage/EngineMountShapeCreator.py`; `cad_designer/airplane/creator/fuselage/EngineCoverAndMountPanelAndFuselageShapeCreator.py`; `cad_designer/airplane/creator/fuselage/EngineCapeShapeCreator.py`; `cad_designer/airplane/creator/fuselage/FuselageReinforcementShapeCreator.py`; `cad_designer/airplane/creator/fuselage/FuselageWingSupportShapeCreator.py`; `cad_designer/airplane/creator/fuselage/WingReinforcementShapeCreator.py`; `cad_designer/airplane/creator/fuselage/WingAttachmentBoltCutoutShapeCreator.py`; `cad_designer/airplane/creator/fuselage/FuselageElectronicsAccessCutOutShapeCreator.py`
+
+|UC7: Import STEP/IGES components
+|Import external STEP/IGES geometry for generic components and servos, then place them via geometric transforms.
+|`cad_designer/airplane/creator/export_import/StepImportCreator.py`; `cad_designer/airplane/creator/export_import/IgesImportCreator.py`; `cad_designer/airplane/creator/components/ComponentImporterCreator.py`; `cad_designer/airplane/creator/components/ServoImporterCreator.py`
+
+|UC8: Apply CAD boolean and transform operations
+|Perform reusable CAD operations such as cut/fuse/intersect/add, offsetting, face repair, and scale/rotate/translate.
+|`cad_designer/airplane/creator/cad_operations/Cut2ShapesCreator.py`; `cad_designer/airplane/creator/cad_operations/CutMultipleShapesCreator.py`; `cad_designer/airplane/creator/cad_operations/Fuse2ShapesCreator.py`; `cad_designer/airplane/creator/cad_operations/FuseMultipleShapesCreator.py`; `cad_designer/airplane/creator/cad_operations/Intersect2ShapesCreator.py`; `cad_designer/airplane/creator/cad_operations/AddMultipleShapesCreator.py`; `cad_designer/airplane/creator/cad_operations/SimpleOffsetShapeCreator.py`; `cad_designer/airplane/creator/cad_operations/RepairFacesShapeCreator.py`; `cad_designer/airplane/creator/cad_operations/ScaleRotateTranslateCreator.py`
+
+|UC9: Export CAD models (STL/STEP/IGES/3MF)
+|Export generated workplane geometry into manufacturing-oriented exchange formats.
+|`cad_designer/airplane/creator/export_import/ExportToStlCreator.py`; `cad_designer/airplane/creator/export_import/ExportToStepCreator.py`; `cad_designer/airplane/creator/export_import/ExportToIgesCreator.py`; `cad_designer/airplane/creator/export_import/ExportTo3mfCreator.py`
+
+|UC10: Convert CAD geometry to AeroSandbox models
+|Convert CAD solids and STEP fuselage shapes into AeroSandbox-compatible model objects via slicing and geometric fitting.
+|`cad_designer/aerosandbox/convert2aerosandbox.py`; `cad_designer/aerosandbox/slicing.py`; `cad_designer/airplane/aircraft_topology/fuselage/FuselageConfiguration.py`; `cad_designer/airplane/aircraft_topology/airplane/AirplaneConfiguration.py`
+
+|UC11: Run aerodynamic and stability analysis
+|Run aircraft analysis workflows and derive performance and stability metrics with classification models.
+|`cad_designer/airplane/aircraft_topology/airplane/AirplaneConfiguration.py`; `cad_designer/aerosandbox/aerodynamic_calculations.py`; `cad_designer/aerosandbox/classification.py`; `cad_designer/airplane/aircraft_topology/models/analysis_model.py`
+
+|===

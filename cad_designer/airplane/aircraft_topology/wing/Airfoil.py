@@ -11,18 +11,21 @@ class Airfoil:
     """
     Represents an airfoil with its geometric and aerodynamic properties.
 
-    The parameters of this class are used to describe a chain of coordinate system transformations.
-    Each set of parameters provides relative values for the transformation from one coordinate system to another.
-    The main parameters for calculating these transformations are dihedral, incidence, and relative rotation point.
+    Used to define the shape and orientation of wing segments. Airfoils are described by Selig-file format,
+    and their parameters are used for coordinate system transformations.
 
     Attributes:
-        airfoil (Optional[str]): The name or identifier of the airfoil.
-        chord (Optional[PositiveFloat]): The chord length of the airfoil.
-        dihedral_as_rotation_in_degrees (DihedralInDegrees): The dihedral angle as a rotation in degrees, relative to the previous airfoil.
-        dihedral_as_translation (float): The dihedral angle as a translation, relative to the previous airfoil.
-        incidence (float): The incidence angle of the airfoil, relative to the previous airfoil.
-        rotation_point_rel_chord (Factor): The relative position of the rotation point along the chord (default is 0.25 and must be 0.25 for aerosandbox).
-        coordinate_system (Optional[CoordinateSystem]): The coordinate system associated with the airfoil.
+        airfoil (Optional[str]): Identifier or path to the airfoil file.
+        chord (Optional[PositiveFloat]): Chord length.
+        dihedral_as_rotation_in_degrees (DihedralInDegrees): Dihedral angle as rotation.
+        dihedral_as_translation (float): Dihedral as translation.
+        incidence (float): Angle of incidence (twist).
+        rotation_point_rel_chord (Factor): Relative rotation point along the chord (default 0.25).
+        coordinate_system (Optional[CoordinateSystem]): Associated coordinate system.
+
+    Note:
+        Only one of dihedral_as_rotation_in_degrees or dihedral_as_translation may be set.
+        If dihedral_as_translation is set, rotation_point_rel_chord must be 0.25.
     """
 
     def __init__(self,

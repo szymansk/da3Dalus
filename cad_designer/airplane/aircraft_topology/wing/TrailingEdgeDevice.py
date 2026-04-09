@@ -10,7 +10,32 @@ ServoPlacement = Literal["top", "bottom"]
 HingeType = Literal["middle", "top", "top_simple", "round_inside", "round_outside"]
 
 class TrailingEdgeDevice:
+    """
+    Represents a trailing edge device (e.g., flap, aileron) attached to a wing segment.
 
+    Attributes:
+        name (str): Name of the device.
+        rel_chord_root (Optional[Factor]): Relative chord position at the root.
+        rel_chord_tip (Optional[Factor]): Relative chord position at the tip.
+        hinge_spacing (Optional[float]): Spacing between hinges.
+        side_spacing_root (Optional[NonNegativeFloat]): Side spacing at the root.
+        side_spacing_tip (Optional[NonNegativeFloat]): Side spacing at the tip.
+        servo (Optional[Servo | int]): Associated servo or its ID.
+        servo_placement (ServoPlacement): Placement of the servo ('top', 'bottom').
+        rel_chord_servo_position (Optional[Factor]): Relative chord position of the servo.
+        rel_length_servo_position (Optional[Factor]): Relative length position of the servo.
+        positive_deflection_deg (NonNegativeFloat): Maximum positive deflection angle.
+        negative_deflection_deg (NonNegativeFloat): Maximum negative deflection angle.
+        trailing_edge_offset_factor (Factor): Offset factor for the trailing edge.
+        hinge_type (HingeType): Type of hinge ('top', 'middle', etc.).
+        symmetric (bool): Whether the device is symmetric.
+
+    Methods:
+        servo(servo_information): Returns the associated servo object.
+
+    Note:
+        Trailing edge devices can be parametrized for aerodynamic and mechanical properties.
+    """
     def servo(self, servo_information: dict[int, ServoInformation]|None) -> Servo | None:
         if self._servo is None:
             return None

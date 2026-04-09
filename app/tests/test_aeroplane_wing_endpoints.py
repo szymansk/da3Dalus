@@ -27,7 +27,7 @@ class TestAeroplaneWingEndpoints(unittest.TestCase):
         plane.wings = []
         mock_db.query.return_value.filter.return_value.first.return_value = plane
 
-        request_schema = schemas.AsbWingSchema.model_construct(name=str(self.test_wing_name))
+        request_schema = schemas.AsbWingGeometryWriteSchema.model_construct(name=str(self.test_wing_name), x_secs=[])
 
         with patch('app.models.aeroplanemodel.WingModel.from_dict', autospec=True) as from_dict:
             # WingModel.from_dict returns an instance
@@ -71,7 +71,7 @@ class TestAeroplaneWingEndpoints(unittest.TestCase):
                 update_aeroplane_wing(
                     aeroplane_id=self.test_plane_id,
                     wing_name=self.test_wing_name,
-                    request=schemas.AsbWingSchema.model_construct(name=str(self.test_wing_name)),
+                    request=schemas.AsbWingGeometryWriteSchema.model_construct(name=str(self.test_wing_name), x_secs=[]),
                     db=mock_db
                 )
             )
@@ -87,8 +87,8 @@ class TestAeroplaneWingEndpoints(unittest.TestCase):
         plane.wings = [wing_model]
         mock_db.query.return_value.filter.return_value.first.return_value = plane
 
-        schema = schemas.AsbWingSchema.model_construct(name=str(self.test_wing_name), x_secs=[{'a':1}, {'b':2}])
-        with patch('app.schemas.AsbWingSchema.model_validate', return_value=schema) as validate:
+        schema = schemas.AsbWingReadSchema.model_construct(name=str(self.test_wing_name), x_secs=[{'a': 1}, {'b': 2}])
+        with patch('app.schemas.AsbWingReadSchema.model_validate', return_value=schema) as validate:
             result = asyncio.run(
                 get_aeroplane_wing(
                     aeroplane_id=self.test_plane_id,

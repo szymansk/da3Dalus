@@ -104,6 +104,18 @@ def get_aeroplane_schema(db: Session, aeroplane_uuid) -> schemas.AeroplaneSchema
         InternalError: If a database error occurs.
     """
     aeroplane = get_aeroplane_by_uuid(db, aeroplane_uuid)
+
+    # Materialize nested wing relations before schema conversion to avoid lazy-load
+    # issues outside of active session scope during response serialization.
+    for wing in aeroplane.wings or []:
+        for x_sec in wing.x_secs or []:
+            detail = x_sec.detail
+            if detail is None:
+                continue
+            _ = list(detail.spares or [])
+            ted = detail.trailing_edge_device
+            if ted is not None:
+                _ = ted.servo_data
     
     wing_map: OrderedDict[str, schemas.AsbWingSchema] = OrderedDict({
         w.name: schemas.AsbWingSchema.model_validate(w, from_attributes=True)

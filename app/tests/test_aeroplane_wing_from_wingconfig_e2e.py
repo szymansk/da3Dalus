@@ -110,6 +110,7 @@ def test_create_wing_from_wingconfig_endpoint_persists_full_details(client_and_d
                 assert ted.rel_chord_root == pytest.approx(0.8)
                 assert x_sec.control_surface is not None
                 assert x_sec.control_surface.hinge_point == pytest.approx(ted.rel_chord_root)
+                assert x_sec.control_surface.deflection == pytest.approx(0.0 if ted.deflection_deg is None else ted.deflection_deg)
 
             # Tip segments (last 5 segment anchors) keep tip_type=flat.
             if index >= 7:

@@ -43,7 +43,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(aeroplane_v2.router, prefix="", tags=[])
     app.include_router(cad.router, prefix="", tags=["cad"])
-    app.include_router(aeroanalysis.router, prefix="", tags=["aeroanalysis"])
+    app.include_router(aeroanalysis.router, prefix="", tags=[])
     app.include_router(operating_points.router, prefix="", tags=["operating_points"])
     app.include_router(flight_profiles.router, prefix="", tags=["flight-profiles"])
     app.include_router(airfoils.router, prefix="", tags=["airfoils"])

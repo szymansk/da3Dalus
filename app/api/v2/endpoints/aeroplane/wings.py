@@ -212,7 +212,10 @@ async def get_aeroplane_wings(
 async def create_aeroplane_wing(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
         wing_name: str = Path(..., description="The ID of the wing"),
-        request: schemas.AsbWingSchema = Body(..., description="The new wing data"),
+        request: schemas.AsbWingGeometryWriteSchema = Body(
+            ...,
+            description="Geometry-only wing definition (ASB minimum).",
+        ),
         db: Session = Depends(get_db)
 ):
     """Create the wing for the aeroplane."""
@@ -255,7 +258,10 @@ async def create_aeroplane_wing_from_wingconfig(
 async def update_aeroplane_wing(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
         wing_name: str = Path(..., description="The ID of the wing"),
-        request: schemas.AsbWingSchema = Body(..., description="The new wing data"),
+        request: schemas.AsbWingGeometryWriteSchema = Body(
+            ...,
+            description="Geometry-only wing definition (ASB minimum).",
+        ),
         db: Session = Depends(get_db),
 ):
     """Overwrite an existing wing with the data in the request."""
@@ -264,14 +270,14 @@ async def update_aeroplane_wing(
 
 
 @router.get("/aeroplanes/{aeroplane_id}/wings/{wing_name}",
-            response_model=schemas.AsbWingSchema,
+            response_model=schemas.AsbWingReadSchema,
             tags=["wings"],
             operation_id="get_aeroplane_wing")
 async def get_aeroplane_wing(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
         wing_name: str = Path(..., description="The ID of the wing"),
         db: Session = Depends(get_db)
-) -> schemas.AsbWingSchema:
+) -> schemas.AsbWingReadSchema:
     """Returns the aeroplane wing."""
     return _call_service(wing_service.get_wing, db, aeroplane_id, wing_name)
 
@@ -298,7 +304,7 @@ async def delete_aeroplane_wing(
 #########################################
 @router.get(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections",
-    response_model=List[schemas.WingXSecSchema],
+    response_model=List[schemas.WingXSecReadSchema],
     status_code=status.HTTP_200_OK,
     tags=["cross-sections"],
     operation_id="get_wing_cross_sections"
@@ -307,7 +313,7 @@ async def get_aeroplane_wing_cross_sections(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
         wing_name: str = Path(..., description="The ID of the wing"),
         db: Session = Depends(get_db)
-) -> List[schemas.WingXSecSchema]:
+) -> List[schemas.WingXSecReadSchema]:
     """Returns the wing's cross-sections as an ordered list."""
     return _call_service(wing_service.get_wing_cross_sections, db, aeroplane_id, wing_name)
 
@@ -331,7 +337,7 @@ async def delete_aeroplane_wing_cross_sections(
 
 @router.get(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}",
-    response_model=schemas.WingXSecSchema,
+    response_model=schemas.WingXSecReadSchema,
     status_code=status.HTTP_200_OK,
     tags=["cross-sections"],
     operation_id="get_wing_cross_section"
@@ -341,7 +347,7 @@ async def get_aeroplane_wing_cross_section(
         wing_name: str = Path(..., description="The ID of the wing"),
         cross_section_index: int = Path(..., description="The index of the cross section"),
         db: Session = Depends(get_db)
-) -> schemas.WingXSecSchema:
+) -> schemas.WingXSecReadSchema:
     """Returns the aeroplane wing cross-sections as a list of names."""
     return _call_service(wing_service.get_cross_section, db, aeroplane_id, wing_name, cross_section_index)
 
@@ -358,7 +364,10 @@ async def create_aeroplane_wing_cross_section(
         wing_name: str = Path(..., description="The ID of the wing"),
         cross_section_index: int = Path(...,
                                         description="The index where it will be spliced into the list of cross sections. (-1 is the end of the list, 0 is the start of the list)"),
-        request: schemas.WingXSecSchema = Body(..., description="Wing cross section request"),
+        request: schemas.WingXSecGeometryWriteSchema = Body(
+            ...,
+            description="Geometry-only wing cross-section definition.",
+        ),
         db: Session = Depends(get_db)
 ):
     """Creates a new cross-section for the wing and splice it into the list of cross-sections."""
@@ -377,7 +386,10 @@ async def update_aeroplane_wing_cross_section(
         aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
         wing_name: str = Path(..., description="The ID of the wing"),
         cross_section_index: int = Path(..., description="The index of the cross section"),
-        request: schemas.WingXSecSchema = Body(...),
+        request: schemas.WingXSecGeometryWriteSchema = Body(
+            ...,
+            description="Geometry-only wing cross-section definition.",
+        ),
         db: Session = Depends(get_db)
 ):
     """Updates the cross-section for the aeroplane."""
@@ -402,47 +414,95 @@ async def delete_aeroplane_wing_cross_section(
 
 
 @router.get(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/spars",
+    response_model=List[schemas.SpareDetailSchema],
+    status_code=status.HTTP_200_OK,
+    tags=["spars"],
+    operation_id="get_wing_cross_section_spars",
+)
+async def get_aeroplane_wing_cross_section_spars(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    wing_name: str = Path(..., description="The ID of the wing"),
+    cross_section_index: int = Path(..., description="The index of the cross section"),
+    db: Session = Depends(get_db),
+) -> List[schemas.SpareDetailSchema]:
+    """Returns the spars assigned to the given cross-section."""
+    return _call_service(wing_service.get_spares, db, aeroplane_id, wing_name, cross_section_index)
+
+
+@router.post(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/spars",
+    response_model=OperationStatusResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["spars"],
+    operation_id="create_wing_cross_section_spar",
+)
+async def create_aeroplane_wing_cross_section_spar(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    wing_name: str = Path(..., description="The ID of the wing"),
+    cross_section_index: int = Path(..., description="The index of the cross section"),
+    request: schemas.SpareDetailSchema = Body(..., description="Spar definition to append"),
+    db: Session = Depends(get_db),
+) -> OperationStatusResponse:
+    """Creates and appends one spar on the selected cross-section."""
+    _call_service(wing_service.create_spare, db, aeroplane_id, wing_name, cross_section_index, request)
+    return OperationStatusResponse(status="created", operation="create_wing_cross_section_spar")
+
+
+@router.get(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface",
     response_model=schemas.ControlSurfaceSchema,
     status_code=status.HTTP_200_OK,
-    tags=["control_surface"],
-    operation_id="get_control_surface"
+    tags=["control-surfaces"],
+    operation_id="get_wing_cross_section_control_surface",
 )
 async def get_aeroplane_wing_cross_section_control_surface(
     aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
     wing_name: str = Path(..., description="The ID of the wing"),
     cross_section_index: int = Path(..., description="The index of the cross section"),
     db: Session = Depends(get_db),
-):
-    """Returns the control surface for the given cross-section."""
-    return _call_service(wing_service.get_control_surface, db, aeroplane_id, wing_name, cross_section_index)
+) -> schemas.ControlSurfaceSchema:
+    """Returns the control-surface analysis view projected from the canonical TED."""
+    return _call_service(
+        wing_service.get_control_surface,
+        db,
+        aeroplane_id,
+        wing_name,
+        cross_section_index,
+    )
 
 
-@router.post(
+@router.patch(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface",
-    response_model=OperationStatusResponse,
+    response_model=schemas.ControlSurfaceSchema,
     status_code=status.HTTP_200_OK,
-    tags=["control_surface"],
-    operation_id="upsert_control_surface"
+    tags=["control-surfaces"],
+    operation_id="patch_wing_cross_section_control_surface",
 )
-async def create_and_update_aeroplane_wing_cross_section_control_surface(
+async def patch_aeroplane_wing_cross_section_control_surface(
     aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
     wing_name: str = Path(..., description="The ID of the wing"),
     cross_section_index: int = Path(..., description="The index of the cross section"),
-    request: schemas.ControlSurfaceSchema = Body(...),
+    request: schemas.ControlSurfacePatchSchema = Body(..., description="Control-surface patch payload."),
     db: Session = Depends(get_db),
-) -> OperationStatusResponse:
-    """Creates a new or updates an existing control surface for the given cross-section."""
-    _call_service(wing_service.upsert_control_surface, db, aeroplane_id, wing_name, cross_section_index, request)
-    return OperationStatusResponse(status="ok", operation="upsert_control_surface")
+) -> schemas.ControlSurfaceSchema:
+    """Upserts the control-surface analysis view by patching the canonical TED."""
+    return _call_service(
+        wing_service.patch_control_surface,
+        db,
+        aeroplane_id,
+        wing_name,
+        cross_section_index,
+        request,
+    )
 
 
 @router.delete(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface",
     response_model=OperationStatusResponse,
     status_code=status.HTTP_200_OK,
-    tags=["control_surface"],
-    operation_id="delete_control_surface"
+    tags=["control-surfaces"],
+    operation_id="delete_wing_cross_section_control_surface",
 )
 async def delete_aeroplane_wing_cross_section_control_surface(
     aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
@@ -450,6 +510,165 @@ async def delete_aeroplane_wing_cross_section_control_surface(
     cross_section_index: int = Path(..., description="The index of the cross section"),
     db: Session = Depends(get_db),
 ) -> OperationStatusResponse:
-    """Deletes the control surface for the given cross-section."""
-    _call_service(wing_service.delete_control_surface, db, aeroplane_id, wing_name, cross_section_index)
-    return OperationStatusResponse(status="ok", operation="delete_control_surface")
+    """Deletes the canonical TED from which control-surface data is projected."""
+    _call_service(
+        wing_service.delete_control_surface,
+        db,
+        aeroplane_id,
+        wing_name,
+        cross_section_index,
+    )
+    return OperationStatusResponse(status="ok", operation="delete_wing_cross_section_control_surface")
+
+
+@router.get(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details",
+    response_model=schemas.ControlSurfaceCadDetailsSchema,
+    status_code=status.HTTP_200_OK,
+    tags=["control-surfaces"],
+    operation_id="get_wing_cross_section_control_surface_cad_details",
+)
+async def get_aeroplane_wing_cross_section_control_surface_cad_details(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    wing_name: str = Path(..., description="The ID of the wing"),
+    cross_section_index: int = Path(..., description="The index of the cross section"),
+    db: Session = Depends(get_db),
+) -> schemas.ControlSurfaceCadDetailsSchema:
+    """Returns the CAD detail extension of an existing control surface."""
+    return _call_service(
+        wing_service.get_control_surface_cad_details,
+        db,
+        aeroplane_id,
+        wing_name,
+        cross_section_index,
+    )
+
+
+@router.patch(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details",
+    response_model=schemas.ControlSurfaceCadDetailsSchema,
+    status_code=status.HTTP_200_OK,
+    tags=["control-surfaces"],
+    operation_id="patch_wing_cross_section_control_surface_cad_details",
+)
+async def patch_aeroplane_wing_cross_section_control_surface_cad_details(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    wing_name: str = Path(..., description="The ID of the wing"),
+    cross_section_index: int = Path(..., description="The index of the cross section"),
+    request: schemas.ControlSurfaceCadDetailsPatchSchema = Body(
+        ...,
+        description="CAD detail patch payload that extends an existing control surface.",
+    ),
+    db: Session = Depends(get_db),
+) -> schemas.ControlSurfaceCadDetailsSchema:
+    """Patches CAD details on an existing control surface without re-entering control-surface core fields."""
+    return _call_service(
+        wing_service.patch_control_surface_cad_details,
+        db,
+        aeroplane_id,
+        wing_name,
+        cross_section_index,
+        request,
+    )
+
+
+@router.delete(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details",
+    response_model=OperationStatusResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["control-surfaces"],
+    operation_id="delete_wing_cross_section_control_surface_cad_details",
+)
+async def delete_aeroplane_wing_cross_section_control_surface_cad_details(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    wing_name: str = Path(..., description="The ID of the wing"),
+    cross_section_index: int = Path(..., description="The index of the cross section"),
+    db: Session = Depends(get_db),
+) -> OperationStatusResponse:
+    """Removes CAD details while keeping the control-surface core definition."""
+    _call_service(
+        wing_service.delete_control_surface_cad_details,
+        db,
+        aeroplane_id,
+        wing_name,
+        cross_section_index,
+    )
+    return OperationStatusResponse(status="ok", operation="delete_wing_cross_section_control_surface_cad_details")
+
+
+@router.get(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details/servo_details",
+    response_model=schemas.ControlSurfaceServoDetailsSchema,
+    status_code=status.HTTP_200_OK,
+    tags=["servos"],
+    operation_id="get_wing_cross_section_control_surface_cad_details_servo_details",
+)
+async def get_aeroplane_wing_cross_section_control_surface_cad_details_servo_details(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    wing_name: str = Path(..., description="The ID of the wing"),
+    cross_section_index: int = Path(..., description="The index of the cross section"),
+    db: Session = Depends(get_db),
+) -> schemas.ControlSurfaceServoDetailsSchema:
+    """Returns servo details of the control-surface CAD extension."""
+    return _call_service(
+        wing_service.get_control_surface_cad_details_servo_details,
+        db,
+        aeroplane_id,
+        wing_name,
+        cross_section_index,
+    )
+
+
+@router.patch(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details/servo_details",
+    response_model=schemas.ControlSurfaceServoDetailsSchema,
+    status_code=status.HTTP_200_OK,
+    tags=["servos"],
+    operation_id="patch_wing_cross_section_control_surface_cad_details_servo_details",
+)
+async def patch_aeroplane_wing_cross_section_control_surface_cad_details_servo_details(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    wing_name: str = Path(..., description="The ID of the wing"),
+    cross_section_index: int = Path(..., description="The index of the cross section"),
+    request: schemas.ControlSurfaceServoDetailsPatchSchema = Body(
+        ...,
+        description="Servo assignment payload (full Servo object or Servo ID reference).",
+    ),
+    db: Session = Depends(get_db),
+) -> schemas.ControlSurfaceServoDetailsSchema:
+    """Assigns or updates servo details of the control-surface CAD extension."""
+    return _call_service(
+        wing_service.patch_control_surface_cad_details_servo_details,
+        db,
+        aeroplane_id,
+        wing_name,
+        cross_section_index,
+        request,
+    )
+
+
+@router.delete(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details/servo_details",
+    response_model=OperationStatusResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["servos"],
+    operation_id="delete_wing_cross_section_control_surface_cad_details_servo_details",
+)
+async def delete_aeroplane_wing_cross_section_control_surface_cad_details_servo_details(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    wing_name: str = Path(..., description="The ID of the wing"),
+    cross_section_index: int = Path(..., description="The index of the cross section"),
+    db: Session = Depends(get_db),
+) -> OperationStatusResponse:
+    """Deletes servo details from the control-surface CAD extension."""
+    _call_service(
+        wing_service.delete_control_surface_cad_details_servo_details,
+        db,
+        aeroplane_id,
+        wing_name,
+        cross_section_index,
+    )
+    return OperationStatusResponse(
+        status="ok",
+        operation="delete_wing_cross_section_control_surface_cad_details_servo_details",
+    )

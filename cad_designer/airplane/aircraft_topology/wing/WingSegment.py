@@ -13,14 +13,24 @@ class WingSegment:
     """
     Represents a segment of a wing with its geometric and structural properties.
 
-    The parameters of this class, along with the Airfoil parameters, are used to describe a chain of 
-    coordinate system transformations. Each set of parameters provides relative values for the 
-    transformation from one coordinate system to another. The main parameters for calculating these 
-    transformations are length, sweep, and the dihedral and incidence angles defined in the root and 
-    tip airfoils.
+    Each segment connects to the previous one via a chain of coordinate system transformations,
+    defined by parameters such as length, sweep, dihedral, and incidence angles in the root and tip airfoils.
 
-    These transformations define how each segment connects to the previous one, creating a complete 
-    wing structure through a series of relative coordinate system transformations.
+    Attributes:
+        root_airfoil (Airfoil): The airfoil at the root of the segment.
+        tip_airfoil (Airfoil): The airfoil at the tip of the segment.
+        length (PositiveFloat): The length of the segment (loft along y-axis).
+        sweep (NonNegativeFloat): The sweep of the segment (x-offset or angle).
+        sweep_is_angle (bool): If True, sweep is interpreted as an angle.
+        spare_list (List[Spare]): List of spares in the segment.
+        trailing_edge_device (Optional[TrailingEdgeDevice]): Trailing edge device attached to the segment.
+        number_interpolation_points (Optional[PositiveInt]): Number of points for airfoil interpolation.
+        tip_type (Optional[TipType]): The type of the tip ('flat', 'round').
+        wing_segment_type (WingSegmentType): The type of the segment ('root', 'segment', 'tip').
+
+    Note:
+        The root airfoil of a segment is equal to the tip airfoil of the previous segment.
+        Tip segments can have a special tip type and do not have spares or trailing edge devices.
     """
     def __init__(self, root_airfoil: Airfoil,
                  length: PositiveFloat,

@@ -1,5 +1,117 @@
-= da3Dalus - Aeroplane Design Processor
 
+= da3Dalus  
+
+*da3Dalus* is a software project that aims to create a tool for designing, analysing, optimizing and 3D-printing radio controlled aeroplanes and Unmanned Aerial Vehicles (UAVs). 
+
+The design process is guided by a LLM based chatbot that interacts with the user to gather requirements and preferences for the aeroplane design. By calling provided mcp-tools, the chatbot can analyze the aerodynamic properties and generate a configuration for the aeroplane design, which is then processed by the Aeroplane Design Processor to produce a 3D printable design.
+
+The design process is iterative, allowing the user to refine the design based on feedback and analysis results guided by the chatbot. The ultimate goal is to create a user-friendly tool that enables hobbyists and enthusiasts to easily design and 3D-print their own custom made aeroplanes and UAVs.
+
+== Design Process
+The design process of da3Dalus follows a structured approach that iterates through several stages to create a custom aeroplane design. 
+
+It is based around the following seven SMART key requirements:
+
+. *Payload:* The payload capacity of the aeroplane in kg.
+    - This is what the aeroplane is designed to carry, such as a camera, sensors, or other equipment. It influences the size and strength of the aeroplane.
+. *Takeoff and Landing*: Length of the landing field in meters.
+    - from this we could derive the take off and landing speed of the aeroplane.
+. *Endurance:* The endurance in minutes.
+    - This is how long the aeroplane needs to stay in the air, which affects the energy capacity and efficiency of the design.
+    - Endurance ≠ Range:
+        • Maximizing endurance → Minimizing power required
+        • Maximizing range → Minimizing energy per distance or maximizing lift-to-drag ratio (L/D)
+. *Performance:* The desired performance characteristics of the aeroplane, such as speed, maneuverability, or stability.
+    - This can include specific performance goals, such as a certain top speed, agility for acrobatic maneuvers, or stability for smooth flight. These requirements will influence the aerodynamic design and control systems of the aeroplane.
+. *OTS:* Off-the-shelf electronic components.
+    - This means that the design should be compatible with commonly available electronic components, such as motors, batteries, and flight controllers, to ensure ease of assembly and maintenance.
+    - A database with common components and their properties (weight, dimensions, power, etc.) would support the design process in terms of sizing and weight estimation.
+. *Remote controlled + autonomous capable*
+    - The design should be suitable for remote control operation, allowing users to pilot the aeroplane manually. Additionally, it should be capable of autonomous flight, enabling it to operate without direct human intervention, which may involve incorporating sensors and programming for navigation and obstacle avoidance.
+    - We do not aim on planes that should carry human passengers, so we can focus on the design of small scale planes. Which reduces the complexity of the design and allows us to focus on the core principles of aerodynamics and structural design.
+. *3D printable design*
+    - The design should be suitable for 3D printing, which involves considerations for material properties, structural integrity, and printability of the components.
+    - The design can be sliced by a api or cli based slicer tool, to estimate the material usage and total weight of the design, which is important for the sizing and weight estimation of the design.
+    - We aim on a design that can be printed in vase mode, which decreases print time and increases strength, but also limits the design to be a single shell without overhangs.
+
+And it follows the following design process:
+
+[mermaid]
+----
+graph TD
+    A[Design Vision] --> B[Mission Definition & Requirement]
+    B --> C[Conceptual Design]
+    C --> D{Mission Satisfied?}
+    D -->|YES| E[Preliminary Design]
+    D -->|NO| B
+    E --> F[Specification Satisfied?]
+    F -->|NO| I[Stop Evaluation]
+    F -->|YES| G[Detailed Design]
+    G --> H[Flight Test]
+----
+
+=== Design Visio:
+In this initial stage, the user asks himself what he wants to build, which kind of aeroplane he wants to design 3D acro, performant glider, long range fpv, etc.. This is the stage where the user gathers inspiration, explores different design ideas, and defines the overall vision for the aeroplane. The user may look at existing designs, research different configurations, and consider the intended use and performance goals for the aeroplane. This stage is crucial for setting the direction of the design process and ensuring that the final design aligns with the user's aspirations and requirements.
+
+*chatbot:*
+
+- *system prompt:* "You sell custom designed rc planes and UAVs. You can build every plane a customer could want. Your job is to provide the customer with inspiration and ideas for their custom made plane. You guide the customer through the process of defining their design vision and help them to gather inspiration. At the end you must summarize the design vision in a few sentences and suggest three names for the design vision. You also provide a sketch of the design vision in the style of an "All-American Ads of the 60s". The design vision should emphasis *wing planforms*, *Number and position of main planes*, *type of propulsion*, *type of tail (e.g. V-, T-, no-tail, etc.)*, and *performance*. The design vision should be clear and concise, and should provide a solid foundation for the next stages of the design process."
+
+*skills:*
+
+*tools:*
+
+=== Mission Definition & Requirement:
+
+In this stage, the user defines the specific mission and requirements for the aeroplane design. This involves identifying the key performance parameters, such as payload capacity, endurance, takeoff and landing requirements, and any other specific features or capabilities that the aeroplane must have. The user may also consider constraints such as budget, available materials, and manufacturing capabilities. This stage is essential for establishing clear goals and criteria that will guide the design process and ensure that the final design meets the intended purpose.
+
+
+=== The Conceptual Sizing Loop (the "feedback loop")
+The conceptual sizing loop involves a broad search space, where many configurations are compared at a high level. Requirements are refined and aligned with stakeholders to ensure consistency. The focus is on configuration, scale, weight, and basic performance metrics. The key output at this stage is the Design Point, which includes gross weight, wing loading, and thrust/power requirements.
+
+It describes the typical process using rough models:
+
+1.	Choose a notional configuration (only roughly: e.g. tractor, twin-boom, fixed gear, etc.)
+2.	Provide three model blocks:
+•	Propulsion model: thrust lapse / power available vs. airspeed, energy/fuel flow
+    - Power required: \[P_{required} = D \cdot V\]
+    - Power available: \[P_{available} = \eta \cdot P_{motor}\]
+    - Thrust required: \[T_{required} = D\]
+•	Aerodynamics: drag polar + lift curve
+    - Drag polar: pass:[\(C_D = C_{D0} + k \cdot C_L^2\)]
+    - Lift curve: pass:[\(C_L = \frac{2W}{\rho V^2 S}\)]
+    - Drag: pass:[\(D = \frac{1}{2} \rho V^2 S C_D\)]
+• Weight model: empty weight from historical regressions or the slicer, plus payload
+    - pass:[\(W_{empty} = f(W_{gross}, \text{historical data}, \text{slicer data})\)]
+3. Energy-based constraint analysis → delivers ratios (T/W and W/S)
+    - Thrust-to-weight ratio: pass:[\(\frac{T}{W}\)]
+    - Wing loading: pass:[\(\frac{W}{S}\)]
+    - Endurance: pass:[\(E = \frac{\eta \cdot P_{available} \cdot t}{W}\)]
+4. Mission analysis → turns these into absolute values \( (W,\; S, T/P)\), because:
+    • Constraints alone only provide ratios, not real sizes
+    • Mission analysis iterates energy required vs. energy available until convergence
+        - Energy required: pass:[\(E_{required} = \int P_{required} \, dt\)]
+        - Energy available: pass:[\(E_{available} = \text{battery_capacity} \text{ or } \text{fuel_mass} \cdot \text{energy_density}\)]
+    • For fuel-burners, weight fractions change over the mission (betas)
+        - pass:[\(W_{final} = W_{initial} \cdot \beta\)]
+    • Weight changes \(C_L\) → Drag → Thrust required → energy use → back again (iterative)
+        - pass:[\(C_L = \frac{2W}{\rho V^2 S}\)]
+        - pass:[\(D = \frac{1}{2} \rho V^2 S C_D\)]
+        - pass:[\(T_{required} = D\)]
+        - Update \(W, C_L, D, T_{required}\) iteratively
+
+Output of the entire loop: a consistent set of takeoff weight, wing area, thrust/power.
+
+=== Preliminary Design:
+The preliminary design phase marks a transition from exploring broad ideas to validating and refining the chosen configuration. At this stage, most major decisions regarding the aircraft's layout and features are largely finalized. The focus shifts towards increasing the fidelity of the design, employing advanced tools such as computational fluid dynamics (CFD), improved weight estimations, stability and control analysis, and subsystem sizing. The outcome of this phase is typically a Go/No-Go decision, where the configuration is "frozen" and prepared for detailed design and further development.
+
+=== Detailed Design:
+In the detailed design phase the design is refined with standard CAD tools for better printability and manufacturability if needed. Best practices is to improve the *Aeroplane Design Processor's* aeroplane building blocks or implement new building blocks, which can be used also for later designs. The design flow is then executed again to produce a new design, which is then refined again with CAD tools if needed. This process is repeated until the design is ready for flight testing.
+
+=== Flight Test:
+In the flight test phase, the aeroplane design is put to the test in real-world conditions. This involves building a prototype of the aeroplane based on the detailed design, and then conducting flight tests to evaluate its performance, handling characteristics, and overall functionality. The flight test phase is crucial for validating the design and identifying any issues or areas for improvement. Based on the results of the flight tests, the design may be further refined and iterated upon to achieve the desired performance and meet the requirements defined in the earlier stages of the design process.
+
+== Aeroplane Design Processor
 The Aeroplane Design Processor's task is to produce a printable aeroplane design based on given configuration input.
 
 Basically the input can be divided into two classes.
@@ -14,10 +126,10 @@ From this we derive two design rules:
 . the _design flow_ consists of building blocks containing inputs that are important for this flow, but independent from the configuration.
 . the _configurations_ contain information that is specific for this plane.
 
-= Configurations
+=== Configurations
 
 include::WingConfiguration.adoc[]
 
-= Code Insights
+=== Code Insights
 
 include::CoreBuildingBlocks.adoc[]

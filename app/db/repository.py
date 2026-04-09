@@ -3,7 +3,11 @@ from sqlalchemy.orm import joinedload
 from app.converters.model_schema_converters import aeroplaneModelToAeroplaneSchema_async
 from app.db.exceptions import NotFoundInDbException
 from app.models import AeroplaneModel, WingModel, WingXSecModel
-from app.models.aeroplanemodel import FuselageModel
+from app.models.aeroplanemodel import (
+    FuselageModel,
+    WingXSecDetailModel,
+    WingXSecTrailingEdgeDeviceModel,
+)
 from app.schemas import AeroplaneSchema, AsbWingSchema
 
 
@@ -11,7 +15,13 @@ async def get_aeroplane_by_id(aeroplane_id, db) -> AeroplaneSchema:
     plane: AeroplaneModel = (db.query(AeroplaneModel)
                              .options(joinedload(AeroplaneModel.wings)
                                       .joinedload(WingModel.x_secs)
-                                      .joinedload(WingXSecModel.control_surface))
+                                      .joinedload(WingXSecModel.detail)
+                                      .joinedload(WingXSecDetailModel.spares))
+                             .options(joinedload(AeroplaneModel.wings)
+                                      .joinedload(WingModel.x_secs)
+                                      .joinedload(WingXSecModel.detail)
+                                      .joinedload(WingXSecDetailModel.trailing_edge_device)
+                                      .joinedload(WingXSecTrailingEdgeDeviceModel.servo_data))
                              .options(joinedload(AeroplaneModel.fuselages)
                                       .joinedload(FuselageModel.x_secs))
                              .filter(AeroplaneModel.uuid == aeroplane_id).first())

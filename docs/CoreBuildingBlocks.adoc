@@ -29,15 +29,26 @@ or cutting of shapes from other shapes. The shapes are returned in a
 dictionary with a string key and a cadquery `+Workplane+` object that
 represents the shape. In this way we can return multiple shapes from one
 creator. E.g. cutting a fuselage into 5 equal parts. By convention the
-dict key should include the `+creator_id.+` Best practice is that if
-only one shape is returned the key is the `+creator_id,+` if multiple
-shapes are returned the keys should begin with the `+creator_id+`
-followed by an underscore ’_’.
+dict key should include the `+creator_id.+` Best practice is:
+
+* one output shape: `+<identifier>+`
+* named output variants: `+<identifier>.<name>+`
+* indexed output variants: `+<identifier>[<index>]+`
 
 The shapes that are used can be referred to by their unique key (same as
 explained before). Shape created with the same key will overwrite the
 first one as all shapes are stored in a single dictionary after they
 have been created.
+
+==== Execution Semantics
+
+The core runtime behavior is defined by `+ConstructionRootNode+`,
+`+ConstructionStepNode+` and `+AbstractShapeCreator+`:
+
+* `+ConstructionRootNode.create_shape()+` traverses root successors in insertion order and calls each with `+input_shapes={}+`.
+* `+ConstructionStepNode+` executes its creator, updates `+kwargs+` (global shape map), and forwards a step-local `+input_shapes+` map to child successors.
+* `+AbstractShapeCreator.return_needed_shapes()+` resolves `+None+` entries in `+shapes_of_interest_keys+` from the most recently produced entries of `+input_shapes+`.
+* `+kwargs+` always contains all previously created shapes; if the same key is produced again, the new value overwrites the old one.
 
 Let’s have a look at a simple shape creator which fuses to shapes A and
 B.
@@ -68,9 +79,10 @@ the framework takes care of providing those shapes to the
 function via the `+shapes_of_interest: dict[str, Workplane]+` parameter.
 Shapes in the shape_of_interest_keys which are `+None+`, will be
 automatically filled with the last shapes produced by the previous
-steps. So if we produced shape A, after that shape B then we call the
-fuse operator without giving the creator_ids for shape_a and shape_b.
-Then the input_shapes dict will be filled with [A, B] as shapes.
+steps in the same branch (via the step-local `+input_shapes+` map). So
+if we produced shape A, after that shape B then we call the fuse
+operator without giving the creator_ids for shape_a and shape_b, the
+input_shapes dict can be resolved as [A, B] in order.
 
 Let’s have a look at the `+_create_shape+` function inherited from the
 abstract base class `+AbstractShapeCreator+`.
@@ -84,7 +96,7 @@ def _create_shape(self, shapes_of_interest: dict[str, Workplane],
     logging.info(f"fusing shapes '{list(shapes_of_interest.keys())[0]}' + '{list(shapes_of_interest.keys())[1]}' --> '{self.identifier}'")
     shape_list = [sh if isinstance(sh, cq.Workplane) else cq.Workplane(obj=sh) for sh in shape_list]
 
-    fused_shape = shape_list[0] + shape_list[1]
+    fused_shape = shape_list[0].union(toUnion=shape_list[1])
 
     fused_shape.display(name=self.identifier, severity=logging.DEBUG)
     return {self.identifier: fused_shape}
@@ -123,7 +135,7 @@ Then we perform the construction, here we just fuse two objects.
 
 [source,python]
 ----
-    fused_shape = shape_list[0] + shape_list[1]
+    fused_shape = shape_list[0].union(toUnion=shape_list[1])
 ----
 
 Finally, we do some obligatory visual logging of the produced shape and
@@ -156,11 +168,23 @@ class Fuse2ShapesCreator(AbstractShapeCreator):
         logging.info(f"fusing shapes '{list(shapes_of_interest.keys())[0]}' + '{list(shapes_of_interest.keys())[1]}' --> '{self.identifier}'")
         shape_list = [sh if isinstance(sh, cq.Workplane) else cq.Workplane(obj=sh) for sh in shape_list]
 
-        fused_shape = shape_list[0] + shape_list[1]
+        fused_shape = shape_list[0].union(toUnion=shape_list[1])
 
         fused_shape.display(name=self.identifier, severity=logging.DEBUG)
         return {self.identifier: fused_shape}
 ----
+
+==== JSON-defined Workflows
+
+Construction trees can be serialized and loaded from JSON:
+
+* `+GeneralJSONEncoder+` stores object data plus `+$TYPE+` as polymorphic class marker.
+* `+GeneralJSONDecoder+` resolves class names and injects matching constructor kwargs.
+* `+JSONStepNode+` loads a JSON workflow and wraps it as a normal `+ConstructionStepNode+`.
+
+This enables runtime injection of context objects (e.g. configuration dictionaries) into decoded creators without changing the JSON schema.
+
+`+AbstractConstructionStep+` is still part of the module API, but the active traversal engine uses `+AbstractShapeCreator+` with `+ConstructionRootNode+` and `+ConstructionStepNode+`.
 
 [mermaid]
 ----
@@ -214,7 +238,7 @@ classDiagram
 [mermaid]
 ----
 graph LR
-    ConstructionRootNode --> WingLoftCreator --> FlapsCreator --> RipsCreator
-    ConstructionRootNode --> FuselageLoftCreator --> EngineHullCreator --> EngineMountCreator
-    FuselageLoftCreator --> CutCreator
+    ConstructionRootNode --> StepImportCreator --> ScaleRotateTranslateCreator --> Fuse2ShapesCreator --> ExportToStlCreator
+    ConstructionRootNode --> WingLoftCreator --> VaseModeWingCreator --> StandWingSegmentOnPrinterCreator --> ExportTo3mfCreator
+    ConstructionRootNode --> FuselageShellShapeCreator --> EngineMountShapeCreator --> FuselageReinforcementShapeCreator --> ExportToStepCreator
 ----

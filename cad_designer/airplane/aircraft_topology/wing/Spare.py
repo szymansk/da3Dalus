@@ -8,6 +8,25 @@ from cad_designer.airplane.types import Factor
 SpareMode = Literal["normal", "follow", "standard", "standard_backward", "orthogonal_backward"]
 
 class Spare:
+    """
+    Represents a structural spare within a wing segment.
+
+    Attributes:
+        spare_support_dimension_width (NonNegativeFloat): Width of the spare support.
+        spare_support_dimension_height (NonNegativeFloat): Height of the spare support.
+        spare_position_factor (Factor): Position factor along the chord.
+        spare_length (NonNegativeFloat): Length of the spare.
+        spare_start (NonNegativeFloat): Start position of the spare.
+        spare_vector (Vector): Direction vector of the spare.
+        spare_origin (Vector): Origin point of the spare.
+        spare_mode (SpareMode): Mode of the spare ('normal', 'follow', 'standard', etc.).
+
+    Methods:
+        from_json_dict(data): Creates a Spare from a JSON dictionary.
+
+    Note:
+        The spare mode determines how the spare is positioned and oriented within the segment.
+    """
     def __init__(self,
                  spare_support_dimension_width: NonNegativeFloat,
                  spare_support_dimension_height: NonNegativeFloat,

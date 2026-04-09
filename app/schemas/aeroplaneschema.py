@@ -54,6 +54,110 @@ class ControlSurfaceSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ControlSurfacePatchSchema(BaseModel):
+    name: Optional[str] = Field(None, description="Control surface name")
+    hinge_point: Optional[float] = Field(
+        None,
+        description="Hinge point location as relative chord factor",
+    )
+    symmetric: Optional[bool] = Field(
+        None,
+        description="Whether the control surface is symmetric between left/right wings",
+    )
+    deflection: Optional[float] = Field(
+        None,
+        description="Current control-surface deflection in degrees",
+    )
+
+    @model_validator(mode="after")
+    def validate_non_empty_patch(self):
+        if all(
+            value is None
+            for value in [self.name, self.hinge_point, self.symmetric, self.deflection]
+        ):
+            raise ValueError("ControlSurfacePatchSchema requires at least one field.")
+        return self
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ControlSurfaceCadDetailsSchema(BaseModel):
+    rel_chord_tip: Optional[float] = Field(None, description="Tip hinge position as relative chord (0.0-1.0)")
+    hinge_spacing: Optional[float] = Field(None, description="Hinge spacing in millimeters")
+    side_spacing_root: Optional[float] = Field(None, description="Root side spacing in millimeters")
+    side_spacing_tip: Optional[float] = Field(None, description="Tip side spacing in millimeters")
+    servo_placement: Optional[Literal["top", "bottom"]] = Field(
+        None,
+        description="Servo placement relative to the wing shell",
+    )
+    rel_chord_servo_position: Optional[float] = Field(
+        None,
+        description="Relative chord position of servo placement",
+    )
+    rel_length_servo_position: Optional[float] = Field(
+        None,
+        description="Relative segment-length position of servo placement",
+    )
+    positive_deflection_deg: Optional[float] = Field(None, description="Maximum positive deflection in degrees")
+    negative_deflection_deg: Optional[float] = Field(None, description="Maximum negative deflection in degrees")
+    trailing_edge_offset_factor: Optional[float] = Field(
+        None,
+        description="Trailing-edge offset factor for printable geometry",
+    )
+    hinge_type: Optional[HingeType] = Field(None, description="Hinge type")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ControlSurfaceCadDetailsPatchSchema(BaseModel):
+    rel_chord_tip: Optional[float] = Field(None, description="Tip hinge position as relative chord (0.0-1.0)")
+    hinge_spacing: Optional[float] = Field(None, description="Hinge spacing in millimeters")
+    side_spacing_root: Optional[float] = Field(None, description="Root side spacing in millimeters")
+    side_spacing_tip: Optional[float] = Field(None, description="Tip side spacing in millimeters")
+    servo_placement: Optional[Literal["top", "bottom"]] = Field(
+        None,
+        description="Servo placement relative to the wing shell",
+    )
+    rel_chord_servo_position: Optional[float] = Field(
+        None,
+        description="Relative chord position of servo placement",
+    )
+    rel_length_servo_position: Optional[float] = Field(
+        None,
+        description="Relative segment-length position of servo placement",
+    )
+    positive_deflection_deg: Optional[float] = Field(None, description="Maximum positive deflection in degrees")
+    negative_deflection_deg: Optional[float] = Field(None, description="Maximum negative deflection in degrees")
+    trailing_edge_offset_factor: Optional[float] = Field(
+        None,
+        description="Trailing-edge offset factor for printable geometry",
+    )
+    hinge_type: Optional[HingeType] = Field(None, description="Hinge type")
+
+    @model_validator(mode="after")
+    def validate_non_empty_patch(self):
+        if all(
+            value is None
+            for value in [
+                self.rel_chord_tip,
+                self.hinge_spacing,
+                self.side_spacing_root,
+                self.side_spacing_tip,
+                self.servo_placement,
+                self.rel_chord_servo_position,
+                self.rel_length_servo_position,
+                self.positive_deflection_deg,
+                self.negative_deflection_deg,
+                self.trailing_edge_offset_factor,
+                self.hinge_type,
+            ]
+        ):
+            raise ValueError("ControlSurfaceCadDetailsPatchSchema requires at least one field.")
+        return self
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class SpareDetailSchema(BaseModel):
     spare_support_dimension_width: float = Field(..., description="Spar support width in millimeters")
     spare_support_dimension_height: float = Field(..., description="Spar support height in millimeters")
@@ -95,6 +199,10 @@ class TrailingEdgeDeviceDetailSchema(BaseModel):
     )
     positive_deflection_deg: Optional[float] = Field(None, description="Maximum positive deflection in degrees")
     negative_deflection_deg: Optional[float] = Field(None, description="Maximum negative deflection in degrees")
+    deflection_deg: Optional[float] = Field(
+        0.0,
+        description="Current trailing-edge device deflection in degrees",
+    )
     trailing_edge_offset_factor: Optional[float] = Field(
         None,
         description="Trailing-edge offset factor for printable geometry",
@@ -109,6 +217,92 @@ class TrailingEdgeDeviceDetailSchema(BaseModel):
     )
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TrailingEdgeDevicePatchSchema(BaseModel):
+    name: Optional[str] = Field(None, description="Trailing-edge device name")
+    rel_chord_root: Optional[float] = Field(None, description="Root hinge position as relative chord (0.0-1.0)")
+    rel_chord_tip: Optional[float] = Field(None, description="Tip hinge position as relative chord (0.0-1.0)")
+    hinge_spacing: Optional[float] = Field(None, description="Hinge spacing in millimeters")
+    side_spacing_root: Optional[float] = Field(None, description="Root side spacing in millimeters")
+    side_spacing_tip: Optional[float] = Field(None, description="Tip side spacing in millimeters")
+    servo_placement: Optional[Literal["top", "bottom"]] = Field(
+        None,
+        description="Servo placement relative to the wing shell",
+    )
+    rel_chord_servo_position: Optional[float] = Field(
+        None,
+        description="Relative chord position of servo placement",
+    )
+    rel_length_servo_position: Optional[float] = Field(
+        None,
+        description="Relative segment-length position of servo placement",
+    )
+    positive_deflection_deg: Optional[float] = Field(None, description="Maximum positive deflection in degrees")
+    negative_deflection_deg: Optional[float] = Field(None, description="Maximum negative deflection in degrees")
+    deflection_deg: Optional[float] = Field(
+        None,
+        description="Current trailing-edge device deflection in degrees",
+    )
+    trailing_edge_offset_factor: Optional[float] = Field(
+        None,
+        description="Trailing-edge offset factor for printable geometry",
+    )
+    hinge_type: Optional[HingeType] = Field(
+        None,
+        description="Hinge type",
+    )
+    symmetric: Optional[bool] = Field(
+        None,
+        description="Whether deflection is symmetric between left/right wing",
+    )
+
+    @model_validator(mode="after")
+    def validate_non_empty_patch(self):
+        if all(
+            value is None
+            for value in [
+                self.name,
+                self.rel_chord_root,
+                self.rel_chord_tip,
+                self.hinge_spacing,
+                self.side_spacing_root,
+                self.side_spacing_tip,
+                self.servo_placement,
+                self.rel_chord_servo_position,
+                self.rel_length_servo_position,
+                self.positive_deflection_deg,
+                self.negative_deflection_deg,
+                self.deflection_deg,
+                self.trailing_edge_offset_factor,
+                self.hinge_type,
+                self.symmetric,
+            ]
+        ):
+            raise ValueError("TrailingEdgeDevicePatchSchema requires at least one field.")
+        return self
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class TrailingEdgeServoSchema(BaseModel):
+    servo: Servo | int = Field(..., description="Servo object data or servo index")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TrailingEdgeServoPatchSchema(BaseModel):
+    servo: Servo | int = Field(..., description="Servo object data or servo index")
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ControlSurfaceServoDetailsSchema(TrailingEdgeServoSchema):
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ControlSurfaceServoDetailsPatchSchema(TrailingEdgeServoPatchSchema):
+    model_config = ConfigDict(extra="forbid")
 
 
 class WingUnitsSchema(BaseModel):
@@ -168,6 +362,31 @@ class WingXSecSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class WingXSecReadSchema(WingXSecSchema):
+    model_config = ConfigDict(from_attributes=True)
+
+
+class WingXSecGeometryWriteSchema(BaseModel):
+    xyz_le: list[float] = Field(
+        ...,
+        description="Coordinates of the leading edge of the cross-section in the local coordinate system",
+    )
+    chord: float = Field(
+        ...,
+        description="Chord length of the cross-section in meters",
+    )
+    twist: float = Field(
+        ...,
+        description="Twist angle of the cross-section in degrees",
+    )
+    airfoil: str | HttpUrl = Field(
+        ...,
+        description="Airfoil dat file location of the cross-section (file or URL)",
+    )
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class AsbWingSchema(BaseModel):
     name: str = Field(..., description="Wing name", examples=["Main Wing", "Horizontal Stabilizer"])
     symmetric: bool = Field(
@@ -202,6 +421,32 @@ class AsbWingSchema(BaseModel):
         return self
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AsbWingReadSchema(AsbWingSchema):
+    x_secs: list[WingXSecReadSchema] = Field(
+        ...,
+        description="List of cross-sections of the wing",
+        min_length=2,
+    )
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AsbWingGeometryWriteSchema(BaseModel):
+    name: str = Field(..., description="Wing name", examples=["Main Wing", "Horizontal Stabilizer"])
+    symmetric: bool = Field(
+        True,
+        description="Is the wing symmetric?",
+        examples=[True, False],
+    )
+    x_secs: list[WingXSecGeometryWriteSchema] = Field(
+        ...,
+        description="List of wing cross-sections containing only ASB-minimum geometry",
+        min_length=2,
+    )
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class FuselageXSecSuperEllipseSchema(BaseModel):

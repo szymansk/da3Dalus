@@ -502,9 +502,13 @@ async def get_aeroplane_wings_tool(aeroplane_id: UUID4) -> Any:
 
 @mcp_tool(
     name="create_aeroplane_wing",
-    description="Create a new wing for an aeroplane using a complete wing definition.",
+    description="Create a new wing for an aeroplane using geometry-only ASB-minimum data.",
 )
-async def create_aeroplane_wing_tool(aeroplane_id: UUID4, wing_name: str, request: schemas.AsbWingSchema) -> Any:
+async def create_aeroplane_wing_tool(
+    aeroplane_id: UUID4,
+    wing_name: str,
+    request: schemas.AsbWingGeometryWriteSchema,
+) -> Any:
     return await _call_endpoint(
         aeroplane_wings.create_aeroplane_wing,
         aeroplane_id=aeroplane_id,
@@ -515,9 +519,13 @@ async def create_aeroplane_wing_tool(aeroplane_id: UUID4, wing_name: str, reques
 
 @mcp_tool(
     name="update_aeroplane_wing",
-    description="Overwrite an existing wing with a full replacement wing definition.",
+    description="Overwrite an existing wing with geometry-only ASB-minimum data.",
 )
-async def update_aeroplane_wing_tool(aeroplane_id: UUID4, wing_name: str, request: schemas.AsbWingSchema) -> Any:
+async def update_aeroplane_wing_tool(
+    aeroplane_id: UUID4,
+    wing_name: str,
+    request: schemas.AsbWingGeometryWriteSchema,
+) -> Any:
     return await _call_endpoint(
         aeroplane_wings.update_aeroplane_wing,
         aeroplane_id=aeroplane_id,
@@ -595,7 +603,7 @@ async def create_wing_cross_section_tool(
     aeroplane_id: UUID4,
     wing_name: str,
     cross_section_index: int,
-    request: schemas.WingXSecSchema,
+    request: schemas.WingXSecGeometryWriteSchema,
 ) -> Any:
     return await _call_endpoint(
         aeroplane_wings.create_aeroplane_wing_cross_section,
@@ -614,7 +622,7 @@ async def update_wing_cross_section_tool(
     aeroplane_id: UUID4,
     wing_name: str,
     cross_section_index: int,
-    request: schemas.WingXSecSchema,
+    request: schemas.WingXSecGeometryWriteSchema,
 ) -> Any:
     return await _call_endpoint(
         aeroplane_wings.update_aeroplane_wing_cross_section,
@@ -639,10 +647,14 @@ async def delete_wing_cross_section_tool(aeroplane_id: UUID4, wing_name: str, cr
 
 
 @mcp_tool(
-    name="get_control_surface",
-    description="Get the control-surface settings for one wing cross-section.",
+    name="get_wing_cross_section_control_surface",
+    description="Get the control-surface analysis view for one wing cross-section.",
 )
-async def get_control_surface_tool(aeroplane_id: UUID4, wing_name: str, cross_section_index: int) -> Any:
+async def get_wing_cross_section_control_surface_tool(
+    aeroplane_id: UUID4,
+    wing_name: str,
+    cross_section_index: int,
+) -> Any:
     return await _call_endpoint(
         aeroplane_wings.get_aeroplane_wing_cross_section_control_surface,
         aeroplane_id=aeroplane_id,
@@ -652,17 +664,17 @@ async def get_control_surface_tool(aeroplane_id: UUID4, wing_name: str, cross_se
 
 
 @mcp_tool(
-    name="upsert_control_surface",
-    description="Create or update the control-surface settings for one wing cross-section.",
+    name="patch_wing_cross_section_control_surface",
+    description="Create or update the control-surface analysis view for one wing cross-section.",
 )
-async def upsert_control_surface_tool(
+async def patch_wing_cross_section_control_surface_tool(
     aeroplane_id: UUID4,
     wing_name: str,
     cross_section_index: int,
-    request: schemas.ControlSurfaceSchema,
+    request: schemas.ControlSurfacePatchSchema,
 ) -> Any:
     return await _call_endpoint(
-        aeroplane_wings.create_and_update_aeroplane_wing_cross_section_control_surface,
+        aeroplane_wings.patch_aeroplane_wing_cross_section_control_surface,
         aeroplane_id=aeroplane_id,
         wing_name=wing_name,
         cross_section_index=cross_section_index,
@@ -671,12 +683,122 @@ async def upsert_control_surface_tool(
 
 
 @mcp_tool(
-    name="delete_control_surface",
-    description="Delete the control-surface settings from one wing cross-section.",
+    name="delete_wing_cross_section_control_surface",
+    description="Delete the canonical trailing-edge device via the control-surface endpoint.",
 )
-async def delete_control_surface_tool(aeroplane_id: UUID4, wing_name: str, cross_section_index: int) -> Any:
+async def delete_wing_cross_section_control_surface_tool(
+    aeroplane_id: UUID4,
+    wing_name: str,
+    cross_section_index: int,
+) -> Any:
     return await _call_endpoint(
         aeroplane_wings.delete_aeroplane_wing_cross_section_control_surface,
+        aeroplane_id=aeroplane_id,
+        wing_name=wing_name,
+        cross_section_index=cross_section_index,
+    )
+
+
+@mcp_tool(
+    name="get_wing_cross_section_control_surface_cad_details",
+    description="Get CAD details that extend an existing control surface on one wing cross-section.",
+)
+async def get_wing_cross_section_control_surface_cad_details_tool(
+    aeroplane_id: UUID4,
+    wing_name: str,
+    cross_section_index: int,
+) -> Any:
+    return await _call_endpoint(
+        aeroplane_wings.get_aeroplane_wing_cross_section_control_surface_cad_details,
+        aeroplane_id=aeroplane_id,
+        wing_name=wing_name,
+        cross_section_index=cross_section_index,
+    )
+
+
+@mcp_tool(
+    name="patch_wing_cross_section_control_surface_cad_details",
+    description="Create or update CAD details for an existing control surface on one wing cross-section.",
+)
+async def patch_wing_cross_section_control_surface_cad_details_tool(
+    aeroplane_id: UUID4,
+    wing_name: str,
+    cross_section_index: int,
+    request: schemas.ControlSurfaceCadDetailsPatchSchema,
+) -> Any:
+    return await _call_endpoint(
+        aeroplane_wings.patch_aeroplane_wing_cross_section_control_surface_cad_details,
+        aeroplane_id=aeroplane_id,
+        wing_name=wing_name,
+        cross_section_index=cross_section_index,
+        request=request,
+    )
+
+
+@mcp_tool(
+    name="delete_wing_cross_section_control_surface_cad_details",
+    description="Delete CAD details while keeping the control surface on one wing cross-section.",
+)
+async def delete_wing_cross_section_control_surface_cad_details_tool(
+    aeroplane_id: UUID4,
+    wing_name: str,
+    cross_section_index: int,
+) -> Any:
+    return await _call_endpoint(
+        aeroplane_wings.delete_aeroplane_wing_cross_section_control_surface_cad_details,
+        aeroplane_id=aeroplane_id,
+        wing_name=wing_name,
+        cross_section_index=cross_section_index,
+    )
+
+
+@mcp_tool(
+    name="get_wing_cross_section_control_surface_cad_details_servo_details",
+    description="Get servo details assigned to control-surface CAD details on one wing cross-section.",
+)
+async def get_wing_cross_section_control_surface_cad_details_servo_details_tool(
+    aeroplane_id: UUID4,
+    wing_name: str,
+    cross_section_index: int,
+) -> Any:
+    return await _call_endpoint(
+        aeroplane_wings.get_aeroplane_wing_cross_section_control_surface_cad_details_servo_details,
+        aeroplane_id=aeroplane_id,
+        wing_name=wing_name,
+        cross_section_index=cross_section_index,
+    )
+
+
+@mcp_tool(
+    name="patch_wing_cross_section_control_surface_cad_details_servo_details",
+    description="Create or update servo details for control-surface CAD details on one wing cross-section.",
+)
+async def patch_wing_cross_section_control_surface_cad_details_servo_details_tool(
+    aeroplane_id: UUID4,
+    wing_name: str,
+    cross_section_index: int,
+    request: schemas.ControlSurfaceServoDetailsPatchSchema,
+) -> Any:
+    return await _call_endpoint(
+        aeroplane_wings.patch_aeroplane_wing_cross_section_control_surface_cad_details_servo_details,
+        aeroplane_id=aeroplane_id,
+        wing_name=wing_name,
+        cross_section_index=cross_section_index,
+        request=request,
+    )
+
+
+@mcp_tool(
+    name="delete_wing_cross_section_control_surface_cad_details_servo_details",
+    description="Delete servo details from control-surface CAD details on one wing cross-section.",
+)
+async def delete_wing_cross_section_control_surface_cad_details_servo_details_tool(
+    aeroplane_id: UUID4,
+    wing_name: str,
+    cross_section_index: int,
+) -> Any:
+    return await _call_endpoint(
+        aeroplane_wings.delete_aeroplane_wing_cross_section_control_surface_cad_details_servo_details,
         aeroplane_id=aeroplane_id,
         wing_name=wing_name,
         cross_section_index=cross_section_index,

@@ -31,9 +31,40 @@ T = TypeVar("T", bound="WingConfiguration")
 @fluent_init
 class WingConfiguration:
     """
-    This class holds the definition of the wing defined by connected segments. The first segment
-    defined by this class is the root segment.
+    Represents the configuration of a wing, defined by a sequence of connected segments.
+
+    The WingConfiguration starts with a root segment and can be extended by additional segments and tip segments.
+    Each segment is defined by its geometric and aerodynamic parameters, including airfoils, length, sweep, dihedral, and incidence.
+
+    Attributes:
+        nose_pnt (tuple[float, float, float]): The nose point of the wing, used as the origin for coordinate systems.
+        segments (list[WingSegment]): Ordered list of wing segments, starting with the root segment.
+        parameters (Literal["relative", "aerosandbox"]): Determines how coordinate systems are calculated.
+        symmetric (bool): Whether the wing is symmetric.
+
+    Methods:
+        add_segment(...): Adds a new segment to the wing.
+        add_tip_segment(...): Adds a tip segment to the wing.
+        get_wing_workplane(...): Returns a workplane for a given segment, optionally ignoring the nose point.
+        _get_relative_segment_coordinate_system(...): Calculates the relative coordinate system for a segment.
+        _get_standard_spare_origin_and_vector(...): Calculates the origin and vector for a spare.
+        _set_standard_spare_origin_vector(...): Sets the standard origin and vector for a spare.
+        _set_follow_spare_origin_vector(...): Sets the origin and vector for a spare that follows another spare.
+
+    Note:
+        The documentation follows the Python implementation as the single point of truth.
+        Nullable dihedral fields are normalized to numeric zeros for geometry calculations.
     """
+
+    @staticmethod
+    def _normalize_airfoil_dihedral_members(airfoil: Airfoil) -> None:
+        """
+        Geometry code expects numeric values. Convert nullable fields to zeros.
+        """
+        if airfoil.dihedral_as_rotation_in_degrees is None:
+            airfoil.dihedral_as_rotation_in_degrees = 0.0
+        if airfoil.dihedral_as_translation is None:
+            airfoil.dihedral_as_translation = 0.0
 
     def __init__(self: T,
                  nose_pnt: tuple[float, float, float],
@@ -51,8 +82,12 @@ class WingConfiguration:
         self.nose_pnt: tuple[float, float, float] = nose_pnt
         self.parameters: Literal["relative", "aerosandbox"] = parameters
 
+        tip_airfoil = tip_airfoil if tip_airfoil is not None else Airfoil()
         if tip_airfoil.airfoil is None:
             tip_airfoil.airfoil = root_airfoil.airfoil
+
+        self._normalize_airfoil_dihedral_members(root_airfoil)
+        self._normalize_airfoil_dihedral_members(tip_airfoil)
 
         root_segment = WingSegment(root_airfoil=root_airfoil, length=length, sweep=sweep, sweep_is_angle=sweep_is_angle,
                                    tip_airfoil=tip_airfoil,
@@ -74,20 +109,44 @@ class WingConfiguration:
 
     @property
     def length(self) -> float:
+        """
+        Returns the length of the root segment.
+
+        Returns:
+            float: The length of the first segment, which defines the spanwise extent of the root segment.
+        """
         return self.segments[0].length if self.segments else 0.0
 
     @length.setter
     def length(self, value: float) -> None:
+        """
+        Sets the length of the root segment.
+
+        Parameters:
+            value (float): The new length for the root segment.
+        """
         if not self.segments:
             raise AttributeError("WingConfiguration has no segments.")
         self.segments[0].length = value
 
     @property
     def sweep(self) -> float:
+        """
+        Returns the sweep of the root segment.
+
+        Returns:
+            float: The sweep value (either distance or angle) for the root segment.
+        """
         return self.segments[0].sweep if self.segments else 0.0
 
     @sweep.setter
     def sweep(self, value: float) -> None:
+        """
+        Sets the sweep of the root segment.
+
+        Parameters:
+            value (float): The new sweep value for the root segment.
+        """
         if not self.segments:
             raise AttributeError("WingConfiguration has no segments.")
         self.segments[0].sweep = value
@@ -130,7 +189,24 @@ class WingConfiguration:
                         tip_airfoil: Optional[Airfoil] = None,
                         number_interpolation_points: Optional[PositiveInt] = None
                         ) -> T:
+        """
+        Adds a tip segment to the wing configuration.
+
+        Parameters:
+            tip_type (TipType): The type of the tip ('flat', 'round').
+            length (PositiveFloat): The length of the tip segment.
+            sweep (NonNegativeFloat): The sweep of the tip segment.
+            tip_airfoil (Optional[Airfoil]): The airfoil at the tip of the segment.
+            number_interpolation_points (Optional[PositiveInt]): Number of points for airfoil interpolation.
+
+        Returns:
+            WingConfiguration: The updated WingConfiguration instance.
+
+        Note:
+            Tip segments are special segments that define the wing tip geometry and do not have spares or trailing edge devices.
+        """
         tip_airfoil = tip_airfoil if tip_airfoil is not None else Airfoil()
+        self._normalize_airfoil_dihedral_members(tip_airfoil)
 
         root_airfoil = Airfoil(airfoil=self.segments[-1].tip_airfoil.airfoil,
                                chord=self.segments[-1].tip_airfoil.chord,
@@ -139,6 +215,7 @@ class WingConfiguration:
                                dihedral_as_translation=self.segments[-1].tip_airfoil.dihedral_as_translation,
                                incidence=self.segments[-1].tip_airfoil.incidence,
                                rotation_point_rel_chord=self.segments[-1].tip_airfoil.rotation_point_rel_chord)
+        self._normalize_airfoil_dihedral_members(root_airfoil)
 
         tip_airfoil.airfoil = tip_airfoil.airfoil if tip_airfoil.airfoil is not None else root_airfoil.airfoil
         tip_airfoil.chord = tip_airfoil.chord if tip_airfoil.chord is not None else self.segments[-1].tip_airfoil.chord
@@ -165,8 +242,29 @@ class WingConfiguration:
                     spare_list: Optional[List[Spare]] = None,
                     trailing_edge_device: Optional[TrailingEdgeDevice] = None
                     ) -> T:
+        """
+        Adds a new segment to the wing configuration.
+
+        Parameters:
+            length (PositiveFloat): The length of the segment.
+            sweep (NonNegativeFloat): The sweep of the segment.
+            sweep_is_angle (bool): If True, sweep is interpreted as an angle.
+            tip_airfoil (Optional[Airfoil]): The airfoil at the tip of the segment.
+            number_interpolation_points (Optional[PositiveInt]): Number of points for airfoil interpolation.
+            spare_list (Optional[List[Spare]]): List of spares for the segment.
+            trailing_edge_device (Optional[TrailingEdgeDevice]): Trailing edge device for the segment.
+
+        Returns:
+            WingConfiguration: The updated WingConfiguration instance.
+
+        Note:
+            Segments are added after the root segment and define the main structure of the wing.
+        """
         if self.segments[-1].wing_segment_type == 'tip':
             raise ValueError(f"The previous wing segment cannot be a '{self.segments[-1].wing_segment_type}'")
+
+        tip_airfoil = tip_airfoil if tip_airfoil is not None else Airfoil()
+        self._normalize_airfoil_dihedral_members(tip_airfoil)
 
         root_airfoil = Airfoil(airfoil=self.segments[-1].tip_airfoil.airfoil,
                                chord=self.segments[-1].tip_airfoil.chord,
@@ -175,6 +273,7 @@ class WingConfiguration:
                                dihedral_as_translation=self.segments[-1].tip_airfoil.dihedral_as_translation,
                                incidence=self.segments[-1].tip_airfoil.incidence,
                                rotation_point_rel_chord=self.segments[-1].tip_airfoil.rotation_point_rel_chord)
+        self._normalize_airfoil_dihedral_members(root_airfoil)
 
         tip_airfoil.airfoil = tip_airfoil.airfoil if tip_airfoil.airfoil is not None else root_airfoil.airfoil
         tip_airfoil.chord = tip_airfoil.chord if tip_airfoil.chord is not None else self.segments[-1].tip_airfoil.chord
@@ -277,19 +376,15 @@ class WingConfiguration:
         """
         Creates a workplane for a specific wing segment.
 
-        The workplane's origin (0-point) is located at the wing's nose point, and the plane is aligned with the wing's geometry.
-        The X-axis points from the nose to the tail, the Y-axis points from the root along the nose to the tip, and the Z-axis points upwards.
-
         Parameters:
             segment (NonNegativeInt): The index of the wing segment for which the workplane is created. Defaults to 0 (root segment).
-            ignore_nose_point (bool): If True, the nose point is ignored when calculating the workplane's origin (no absolute translation of the wing). Defaults to False.
+            ignore_nose_point (bool): If True, the nose point is ignored when calculating the workplane's origin.
 
         Returns:
-            Workplane: A `cadquery.Workplane` object representing the workplane for the specified wing segment.
+            Workplane: A cadquery.Workplane object representing the workplane for the specified segment.
 
-        Remarks:
-            - This method does not account for an incident angle at the wing tip.
-            - The workplane is cached for each segment to improve performance.
+        Note:
+            The workplane is aligned with the segment's geometry and cached for performance.
         """
 
         #if (segment, ignore_nose_point) in self._wing_workplanes.keys():
@@ -409,7 +504,14 @@ class WingConfiguration:
 
     def get_airfoil_points(self: T, segment: NonNegativeInt, isRoot: bool = False) -> list[tuple[float, float]]:
         """
-        Returns the airfoils points as list
+        Returns the airfoil points for a given segment.
+
+        Parameters:
+            segment (NonNegativeInt): The index of the segment.
+            isRoot (bool): If True, returns the root airfoil points; otherwise, returns the tip airfoil points.
+
+        Returns:
+            list[tuple[float, float]]: List of (x, y) points describing the airfoil shape, scaled by chord length.
         """
         # lazy loading
         key = f"{segment}.{isRoot}"
@@ -442,6 +544,17 @@ class WingConfiguration:
 
     def get_camber_y_at_rel_chord(self: T, segment: NonNegativeInt, relative_chord: Factor,
                                   relative_length: float = 0.) -> Tuple[float, float]:
+        """
+        Calculates the camber height and offset at a given relative chord position for a segment.
+
+        Parameters:
+            segment (NonNegativeInt): The index of the segment.
+            relative_chord (Factor): Relative position along the chord (0 to 1).
+            relative_length (float): Relative position along the segment length (0 to 1).
+
+        Returns:
+            Tuple[float, float]: (camber height, offset from lower surface to chord).
+        """
         upper, lower = self.get_points_on_surface(segment, relative_chord=relative_chord,
                                                   relative_length=relative_length)
         up_ar = np.asarray(upper.toTuple())
@@ -463,6 +576,19 @@ class WingConfiguration:
 
     def get_trailing_edge_device_planes(self: T, start_segment: NonNegativeInt, end_segment: NonNegativeInt) -> Tuple[
         Plane, Plane]:
+        """
+        Returns the planes for the trailing edge device between two segments.
+
+        Parameters:
+            start_segment (NonNegativeInt): Index of the starting segment.
+            end_segment (NonNegativeInt): Index of the ending segment.
+
+        Returns:
+            Tuple[Plane, Plane]: Planes at the root and tip for the trailing edge device.
+
+        Note:
+            Returns (None, None) if no trailing edge device is present.
+        """
         start_seg = self.segments[start_segment]
         start_ted = start_seg.trailing_edge_device
         end_seg = self.segments[end_segment]
@@ -485,6 +611,18 @@ class WingConfiguration:
 
     @cache
     def asb_wing(self, scale: float = 1.0) -> asb.Wing:
+        """
+        Converts the WingConfiguration to an Aerosandbox Wing object.
+
+        Parameters:
+            scale (float): Scaling factor for the geometry.
+
+        Returns:
+            asb.Wing: The corresponding Aerosandbox Wing object.
+
+        Note:
+            Only compatible if all airfoil parameters and trailing edge device settings match Aerosandbox requirements.
+        """
         if self._asb_wing is not None:
             return self._asb_wing
         sections = []
@@ -770,10 +908,10 @@ class WingConfiguration:
 
     def save_to_json(self, file_path: str) -> None:
         """
-        Save the WingConfiguration to a JSON file.
+        Saves the WingConfiguration to a JSON file.
 
-        Args:
-            file_path: Path to the JSON file.
+        Parameters:
+            file_path (str): Path to the JSON file.
         """
         import json
         with open(file_path, 'w') as f:
@@ -782,14 +920,14 @@ class WingConfiguration:
     @staticmethod
     def from_asb(xsecs: List[asb.WingXSec], symmetric: bool = True) -> 'WingConfiguration':
         """
-        Create a WingConfiguration from an Aerosandbox WingXSec.
+        Create a WingConfiguration from a list of Aerosandbox WingXSecs.
 
         Args:
-            xsecs: List of WingXSec objects.
-            symmetric: Whether the wing is symmetric.
+            xsecs (List[asb.WingXSec]): List of WingXSec objects.
+            symmetric (bool): Whether the wing is symmetric.
 
         Returns:
-            A new WingConfiguration instance.
+            WingConfiguration: A new WingConfiguration instance.
         """
 
         asb_wing = asb.Wing(xsecs=xsecs, symmetric=symmetric)

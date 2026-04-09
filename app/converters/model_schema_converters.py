@@ -196,6 +196,7 @@ def _trailing_edge_device_to_schema(ted: TrailingEdgeDevice) -> schemas.Trailing
         rel_length_servo_position=ted.rel_length_servo_position,
         positive_deflection_deg=ted.positive_deflection_deg,
         negative_deflection_deg=ted.negative_deflection_deg,
+        deflection_deg=getattr(ted, "deflection_deg", None),
         trailing_edge_offset_factor=ted.trailing_edge_offset_factor,
         hinge_type=ted.hinge_type,
         symmetric=ted.symmetric,
@@ -205,7 +206,7 @@ def _trailing_edge_device_to_schema(ted: TrailingEdgeDevice) -> schemas.Trailing
 def _trailing_edge_device_schema_to_wing_ted(
     ted_schema: schemas.TrailingEdgeDeviceDetailSchema,
 ) -> TrailingEdgeDevice:
-    return TrailingEdgeDevice(
+    ted = TrailingEdgeDevice(
         name=ted_schema.name or "control_surface",
         rel_chord_root=ted_schema.rel_chord_root,
         rel_chord_tip=ted_schema.rel_chord_tip,
@@ -224,20 +225,9 @@ def _trailing_edge_device_schema_to_wing_ted(
         hinge_type="top" if ted_schema.hinge_type is None else ted_schema.hinge_type,
         symmetric=True if ted_schema.symmetric is None else ted_schema.symmetric,
     )
-
-
-def _minimal_ted_from_control_surface(
-    control_surface: schemas.ControlSurfaceSchema,
-) -> schemas.TrailingEdgeDeviceDetailSchema:
-    deflection = abs(float(control_surface.deflection))
-    return schemas.TrailingEdgeDeviceDetailSchema(
-        name=control_surface.name,
-        rel_chord_root=control_surface.hinge_point,
-        rel_chord_tip=control_surface.hinge_point,
-        positive_deflection_deg=deflection,
-        negative_deflection_deg=deflection,
-        symmetric=control_surface.symmetric,
-    )
+    # CAD type has no dedicated field yet; keep value on instance for roundtrip/export use.
+    ted.deflection_deg = 0.0 if ted_schema.deflection_deg is None else float(ted_schema.deflection_deg)
+    return ted
 
 
 def _control_surface_from_ted(
@@ -252,7 +242,11 @@ def _control_surface_from_ted(
             else (fallback.hinge_point if fallback else 0.8)
         ),
         symmetric=ted.symmetric if ted.symmetric is not None else (fallback.symmetric if fallback else True),
-        deflection=fallback.deflection if fallback else 0.0,
+        deflection=(
+            float(ted.deflection_deg)
+            if ted.deflection_deg is not None
+            else (fallback.deflection if fallback else 0.0)
+        ),
     )
 
 
@@ -288,6 +282,27 @@ def _asb_wing_xsecs_from_schema(wing: schemas.AsbWingSchema) -> List[asb.WingXSe
             )
         )
     return xsecs
+
+
+def _scale_asb_wing_geometry_schema(
+    wing: schemas.AsbWingSchema,
+    scale: float,
+) -> schemas.AsbWingSchema:
+    if scale == 1.0:
+        return wing
+
+    scaled_x_secs: List[schemas.WingXSecSchema] = []
+    for x_sec in wing.x_secs:
+        scaled_x_secs.append(
+            x_sec.model_copy(
+                update={
+                    "xyz_le": [float(value) * scale for value in x_sec.xyz_le],
+                    "chord": float(x_sec.chord) * scale,
+                }
+            )
+        )
+
+    return wing.model_copy(update={"x_secs": scaled_x_secs})
 
 
 def _asb_fuselage_xsecs_from_schema(
@@ -346,23 +361,63 @@ def _hydrate_wing_configuration_details(
         if segment_index >= len(wing_schema.x_secs) - 1:
             break
 
-        x_sec = wing_schema.x_secs[segment_index]
-        if x_sec.x_sec_type is not None:
-            segment.wing_segment_type = x_sec.x_sec_type
-        if x_sec.tip_type is not None:
-            segment.tip_type = x_sec.tip_type
-        if x_sec.number_interpolation_points is not None:
-            segment.number_interpolation_points = x_sec.number_interpolation_points
+        # Preserve explicit API/schema airfoil references. `WingConfiguration.from_asb()` only
+        # keeps ASB airfoil names (e.g. "mh32"), which drops local file paths.
+        root_x_sec = wing_schema.x_secs[segment_index]
+        tip_x_sec = wing_schema.x_secs[segment_index + 1]
+        segment.root_airfoil.airfoil = str(root_x_sec.airfoil)
+        segment.tip_airfoil.airfoil = str(tip_x_sec.airfoil)
 
-        if x_sec.spare_list is not None:
-            segment.spare_list = [_spare_schema_to_spare(spare_schema) for spare_schema in x_sec.spare_list]
+        if root_x_sec.x_sec_type is not None:
+            segment.wing_segment_type = root_x_sec.x_sec_type
+        if root_x_sec.tip_type is not None:
+            segment.tip_type = root_x_sec.tip_type
+        if root_x_sec.number_interpolation_points is not None:
+            segment.number_interpolation_points = root_x_sec.number_interpolation_points
 
-        ted_schema = x_sec.trailing_edge_device
-        if ted_schema is None and x_sec.control_surface is not None:
-            ted_schema = _minimal_ted_from_control_surface(x_sec.control_surface)
+        ted_payload = WingModel._merge_ted_with_control_surface(
+            trailing_edge_device=root_x_sec.trailing_edge_device,
+            control_surface=root_x_sec.control_surface,
+        )
+        ted_schema = (
+            schemas.TrailingEdgeDeviceDetailSchema.model_validate(ted_payload)
+            if ted_payload is not None
+            else None
+        )
         segment.trailing_edge_device = (
             _trailing_edge_device_schema_to_wing_ted(ted_schema) if ted_schema is not None else None
         )
+
+        if root_x_sec.spare_list is not None:
+            segment.spare_list = [_spare_schema_to_spare(spare_schema) for spare_schema in root_x_sec.spare_list]
+
+    _resolve_spare_vectors_and_origins(wing_config)
+
+
+def _resolve_spare_vectors_and_origins(wing_config: WingConfiguration) -> None:
+    for segment_index, segment in enumerate(wing_config.segments or []):
+        spare_list = segment.spare_list or []
+        for spare_index, spare in enumerate(spare_list):
+            mode = spare.spare_mode or "standard"
+
+            if mode == "follow":
+                if segment_index == 0:
+                    wing_config._set_standard_spare_origin_vector(segment_index, spare)
+                    continue
+
+                previous_spares = wing_config.segments[segment_index - 1].spare_list or []
+                if (
+                    spare_index < len(previous_spares)
+                    and previous_spares[spare_index].spare_vector is not None
+                    and previous_spares[spare_index].spare_origin is not None
+                ):
+                    wing_config._set_follow_spare_origin_vector(segment_index, spare, spare_index)
+                else:
+                    wing_config._set_standard_spare_origin_vector(segment_index, spare)
+                continue
+
+            if mode in {"standard", "standard_backward", "orthogonal_backward", "normal"}:
+                wing_config._set_standard_spare_origin_vector(segment_index, spare)
 
 
 async def aeroplaneSchemaToAsbAirplane_async(plane_schema: AeroplaneSchema) -> "asb.Airplane":
@@ -430,11 +485,12 @@ async def aeroplaneSchemaToAirplaneConfiguration_async(plane_schema: AeroplaneSc
     )
 
 
-def wingModelToWingConfig(wing: WingModel) -> WingConfiguration:
+def wingModelToWingConfig(wing: WingModel, scale: float = 1.0) -> WingConfiguration:
     asb_wing: schemas.AsbWingSchema = schemas.AsbWingSchema.model_validate(wing, from_attributes=True)
+    geometry_scaled_schema = _scale_asb_wing_geometry_schema(asb_wing, scale=scale)
 
-    xsecs = _asb_wing_xsecs_from_schema(asb_wing)
-    wing_config = WingConfiguration.from_asb(xsecs, asb_wing.symmetric)
+    xsecs = _asb_wing_xsecs_from_schema(geometry_scaled_schema)
+    wing_config = WingConfiguration.from_asb(xsecs, geometry_scaled_schema.symmetric)
     _hydrate_wing_configuration_details(wing_config, asb_wing)
     return wing_config
 
@@ -494,9 +550,14 @@ def wingConfigToAsbWingSchema(
 
             if segment.trailing_edge_device is not None:
                 trailing_edge_device = _trailing_edge_device_to_schema(segment.trailing_edge_device)
+
+            canonical_ted_payload = WingModel._merge_ted_with_control_surface(
+                trailing_edge_device=trailing_edge_device,
+                control_surface=control_surface,
+            )
+            if canonical_ted_payload is not None:
+                trailing_edge_device = schemas.TrailingEdgeDeviceDetailSchema.model_validate(canonical_ted_payload)
                 control_surface = _control_surface_from_ted(trailing_edge_device, fallback=control_surface)
-            elif control_surface is not None:
-                trailing_edge_device = _minimal_ted_from_control_surface(control_surface)
 
             if segment.spare_list is not None:
                 spare_list = [_spare_to_schema(spare) for spare in segment.spare_list]

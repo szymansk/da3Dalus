@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.types import TypeDecorator, CHAR
 from datetime import datetime, timezone
 from sqlalchemy import DateTime, func
-from typing import Any
+from typing import Any, Optional
 
 from app.db.base import Base
 
@@ -45,16 +45,20 @@ class GUID(TypeDecorator):
             return value
 
 
-class ControlSurfaceModel(Base):
-    __tablename__ = "control_surfaces"
-    name = Column(String, nullable=False)
-    hinge_point = Column(Float, default=0.8)
-    symmetric = Column(Boolean, default=True)
-    deflection = Column(Float, default=0.0)
+class ProjectedControlSurface:
+    """ASB-compatible control-surface view projected from a TED."""
 
-    # Relationship with WingXSec
-    wing_xsec_id = Column(Integer, ForeignKey("wing_xsecs.id", ondelete="CASCADE"))
-    wing_xsec = relationship("WingXSecModel", back_populates="control_surface")
+    def __init__(
+        self,
+        name: str,
+        hinge_point: float,
+        symmetric: bool,
+        deflection: float,
+    ) -> None:
+        self.name = name
+        self.hinge_point = hinge_point
+        self.symmetric = symmetric
+        self.deflection = deflection
 
 
 class WingXSecDetailModel(Base):
@@ -109,6 +113,7 @@ class WingXSecTrailingEdgeDeviceModel(Base):
     rel_length_servo_position = Column(Float, nullable=True)
     positive_deflection_deg = Column(Float, nullable=True)
     negative_deflection_deg = Column(Float, nullable=True)
+    deflection_deg = Column(Float, nullable=True)
     trailing_edge_offset_factor = Column(Float, nullable=True)
     hinge_type = Column(String, nullable=True)
     symmetric = Column(Boolean, nullable=True)
@@ -157,8 +162,6 @@ class WingXSecModel(Base):
     wing_id = Column(Integer, ForeignKey("wings.id", ondelete="CASCADE"))
     wing = relationship("WingModel", back_populates="x_secs")
 
-    # Relationship with ControlSurface
-    control_surface = relationship("ControlSurfaceModel", back_populates="wing_xsec", uselist=False)
     detail = relationship(
         "WingXSecDetailModel",
         back_populates="wing_xsec",
@@ -187,6 +190,19 @@ class WingXSecModel(Base):
     @property
     def trailing_edge_device(self):
         return self.detail.trailing_edge_device if self.detail else None
+
+    @property
+    def control_surface(self):
+        ted = self.trailing_edge_device
+        if ted is None:
+            return None
+        projected = WingModel._control_surface_from_ted(ted)
+        return ProjectedControlSurface(
+            name=projected["name"],
+            hinge_point=projected["hinge_point"],
+            symmetric=projected["symmetric"],
+            deflection=projected["deflection"],
+        )
 
 class WingModel(Base):
     __tablename__ = "wings"
@@ -229,15 +245,41 @@ class WingModel(Base):
     def _minimal_ted_from_control_surface(cls, control_surface: Any) -> dict:
         cs = cls._as_payload(control_surface) or {}
         hinge_point = cs.get("hinge_point")
-        deflection = float(cs.get("deflection", 0.0) or 0.0)
         return {
             "name": cs.get("name"),
             "rel_chord_root": hinge_point,
             "rel_chord_tip": hinge_point,
-            "positive_deflection_deg": abs(deflection),
-            "negative_deflection_deg": abs(deflection),
             "symmetric": cs.get("symmetric"),
+            "deflection_deg": float(cs.get("deflection", 0.0) or 0.0),
         }
+
+    @classmethod
+    def _merge_ted_with_control_surface(
+        cls,
+        trailing_edge_device: Any = None,
+        control_surface: Any = None,
+    ) -> Optional[dict]:
+        ted = cls._as_payload(trailing_edge_device)
+        cs = cls._as_payload(control_surface)
+
+        if ted is None and cs is None:
+            return None
+        if ted is None:
+            return cls._minimal_ted_from_control_surface(cs)
+        if cs is None:
+            return ted
+
+        ted = ted.copy()
+        ted.setdefault("name", cs.get("name"))
+        if ted.get("rel_chord_root") is None:
+            ted["rel_chord_root"] = cs.get("hinge_point")
+        if ted.get("rel_chord_tip") is None and cs.get("hinge_point") is not None:
+            ted["rel_chord_tip"] = cs.get("hinge_point")
+        if ted.get("symmetric") is None:
+            ted["symmetric"] = cs.get("symmetric")
+        if ted.get("deflection_deg") is None:
+            ted["deflection_deg"] = float(cs.get("deflection", 0.0) or 0.0)
+        return ted
 
     @classmethod
     def _control_surface_from_ted(cls, trailing_edge_device: Any, fallback: Any = None) -> dict:
@@ -251,7 +293,9 @@ class WingModel(Base):
             "symmetric": ted.get("symmetric")
             if ted.get("symmetric") is not None
             else fallback_cs.get("symmetric", True),
-            "deflection": fallback_cs.get("deflection", 0.0),
+            "deflection": ted.get("deflection_deg")
+            if ted.get("deflection_deg") is not None
+            else fallback_cs.get("deflection", 0.0),
         }
 
     @classmethod
@@ -261,12 +305,20 @@ class WingModel(Base):
             return None
 
         ted_payload = ted_payload.copy()
+        ted_payload.pop("id", None)
+        ted_payload.pop("wing_xsec_detail_id", None)
+        ted_payload.pop("detail", None)
+        ted_payload.pop("servo_data", None)
         servo_payload = cls._as_payload(ted_payload.pop("servo", None))
         ted = WingXSecTrailingEdgeDeviceModel(**ted_payload)
 
         if isinstance(servo_payload, int):
             ted.servo_index = servo_payload
         elif isinstance(servo_payload, dict):
+            servo_payload = servo_payload.copy()
+            servo_payload.pop("id", None)
+            servo_payload.pop("ted_id", None)
+            servo_payload.pop("ted", None)
             ted.servo_data = WingXSecTedServoModel(**servo_payload)
 
         return ted
@@ -285,7 +337,10 @@ class WingModel(Base):
             is_terminal_xsec = index == len(xsec_dicts) - 1
 
             control_surface = cls._as_payload(xsec_payload.pop("control_surface", None))
-            trailing_edge_device = cls._as_payload(xsec_payload.pop("trailing_edge_device", None))
+            trailing_edge_device = cls._merge_ted_with_control_surface(
+                trailing_edge_device=xsec_payload.pop("trailing_edge_device", None),
+                control_surface=control_surface,
+            )
             spare_list = xsec_payload.pop("spare_list", None)
             x_sec_type = xsec_payload.pop("x_sec_type", None)
             tip_type = xsec_payload.pop("tip_type", None)
@@ -297,17 +352,10 @@ class WingModel(Base):
                 x_sec_type = None
                 tip_type = None
                 number_interpolation_points = None
-            elif trailing_edge_device is not None:
-                control_surface = cls._control_surface_from_ted(trailing_edge_device, fallback=control_surface)
-            elif control_surface is not None:
-                trailing_edge_device = cls._minimal_ted_from_control_surface(control_surface)
 
             if "sort_index" not in xsec_payload:
                 xsec_payload["sort_index"] = index
             xsec = WingXSecModel(**xsec_payload)
-
-            if control_surface is not None:
-                xsec.control_surface = ControlSurfaceModel(**control_surface)
 
             detail_required = any(
                 value is not None

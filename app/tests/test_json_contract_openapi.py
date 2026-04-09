@@ -23,8 +23,17 @@ TARGET_JSON_ENDPOINTS: list[tuple[str, str]] = [
     ("post", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}"),
     ("put", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}"),
     ("delete", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}"),
-    ("post", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface"),
+    ("get", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/spars"),
+    ("post", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/spars"),
+    ("get", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface"),
+    ("patch", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface"),
     ("delete", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface"),
+    ("get", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details"),
+    ("patch", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details"),
+    ("delete", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details"),
+    ("get", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details/servo_details"),
+    ("patch", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details/servo_details"),
+    ("delete", "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details/servo_details"),
     ("put", "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}"),
     ("post", "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}"),
     ("delete", "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}"),
@@ -95,3 +104,56 @@ def test_set_total_mass_documents_200_and_201_models() -> None:
         content = responses[status_code]["content"]["application/json"]
         model_schema = content["schema"]
         assert "$ref" in model_schema
+
+
+def test_operations_do_not_mix_analysis_and_aeroanalysis_tags() -> None:
+    with TestClient(create_app()) as client:
+        schema = client.get("/openapi.json").json()
+
+    for path, methods in schema["paths"].items():
+        for _, operation in methods.items():
+            if not isinstance(operation, dict):
+                continue
+            tags = operation.get("tags", [])
+            assert not ("analysis" in tags and "aeroanalysis" in tags), (
+                f"Operation must not carry both analysis and aeroanalysis tags: {path}"
+            )
+
+
+def test_control_surface_endpoints_present_in_openapi() -> None:
+    with TestClient(create_app()) as client:
+        schema = client.get("/openapi.json").json()
+
+    path = "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface"
+    assert path in schema["paths"]
+    assert "get" in schema["paths"][path]
+    assert "patch" in schema["paths"][path]
+    assert "delete" in schema["paths"][path]
+
+    cad_path = "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details"
+    assert cad_path in schema["paths"]
+    assert "get" in schema["paths"][cad_path]
+    assert "patch" in schema["paths"][cad_path]
+    assert "delete" in schema["paths"][cad_path]
+
+
+def test_wing_geometry_write_schemas_exclude_detail_fields() -> None:
+    with TestClient(create_app()) as client:
+        schema = client.get("/openapi.json").json()
+
+    components = schema["components"]["schemas"]
+    wing_write_props = components["AsbWingGeometryWriteSchema"]["properties"]
+    xsec_write_props = components["WingXSecGeometryWriteSchema"]["properties"]
+
+    assert "x_secs" in wing_write_props
+    assert "control_surface" not in wing_write_props
+    assert "trailing_edge_device" not in wing_write_props
+    assert "spare_list" not in wing_write_props
+
+    assert "xyz_le" in xsec_write_props
+    assert "chord" in xsec_write_props
+    assert "twist" in xsec_write_props
+    assert "airfoil" in xsec_write_props
+    assert "control_surface" not in xsec_write_props
+    assert "trailing_edge_device" not in xsec_write_props
+    assert "spare_list" not in xsec_write_props

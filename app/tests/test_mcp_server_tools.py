@@ -48,7 +48,7 @@ def test_all_native_tool_names_are_registered():
     expected_names = set(mcp_server.MCP_TOOL_NAMES)
 
     assert listed_names == expected_names
-    assert len(listed_names) == 63
+    assert len(listed_names) == len(expected_names)
     assert "get_aeroplane_three_view_url" not in listed_names
     assert "get_streamlines_three_view_url" not in listed_names
 

@@ -14,7 +14,7 @@ from app.converters.model_schema_converters import (
     wingConfigToWingModel,
     wingModelToWingConfig,
 )
-from app.models.aeroplanemodel import FuselageModel
+from app.models.aeroplanemodel import FuselageModel, WingModel
 from cad_designer.airplane.aircraft_topology.wing import Spare, TrailingEdgeDevice, WingConfiguration
 
 
@@ -121,6 +121,8 @@ def test_wing_config_to_wing_model_and_back_preserves_details():
     segment = reconstructed.segments[0]
     assert segment.wing_segment_type == "root"
     assert segment.number_interpolation_points == 123
+    assert segment.root_airfoil.airfoil == "./components/airfoils/mh32.dat"
+    assert segment.tip_airfoil.airfoil == "./components/airfoils/mh32.dat"
 
     assert segment.spare_list is not None
     assert len(segment.spare_list) == 1
@@ -132,6 +134,87 @@ def test_wing_config_to_wing_model_and_back_preserves_details():
     assert segment.trailing_edge_device.rel_chord_root == pytest.approx(0.78)
     assert segment.trailing_edge_device.rel_chord_tip == pytest.approx(0.83)
     assert segment.trailing_edge_device.symmetric is False
+
+
+def test_wing_model_to_wing_config_scales_geometry_for_cad():
+    wing_schema = schemas.AsbWingSchema(
+        name="main-wing",
+        symmetric=True,
+        x_secs=[
+            schemas.WingXSecSchema(
+                xyz_le=[0.0, 0.0, 0.0],
+                chord=0.2,
+                twist=0.0,
+                airfoil="./components/airfoils/mh32.dat",
+            ),
+            schemas.WingXSecSchema(
+                xyz_le=[0.01, 0.5, 0.02],
+                chord=0.15,
+                twist=0.0,
+                airfoil="./components/airfoils/mh32.dat",
+            ),
+        ],
+    )
+    wing_model = WingModel.from_dict(name="main-wing", data=wing_schema.model_dump())
+
+    scaled_config = wingModelToWingConfig(wing_model, scale=1000.0)
+
+    assert scaled_config.segments[0].root_airfoil.chord == pytest.approx(200.0)
+    assert scaled_config.segments[0].tip_airfoil.chord == pytest.approx(150.0)
+    assert scaled_config.segments[0].length == pytest.approx(500.0)
+
+
+def test_wing_model_to_wing_config_resolves_sparse_vectors_for_standard_and_follow():
+    wing_schema = schemas.AsbWingSchema(
+        name="main-wing",
+        symmetric=True,
+        x_secs=[
+            schemas.WingXSecSchema(
+                xyz_le=[0.0, 0.0, 0.0],
+                chord=0.2,
+                twist=0.0,
+                airfoil="./components/airfoils/mh32.dat",
+                spare_list=[
+                    schemas.SpareDetailSchema(
+                        spare_support_dimension_width=4.42,
+                        spare_support_dimension_height=4.42,
+                        spare_position_factor=0.25,
+                        spare_mode="standard",
+                    )
+                ],
+            ),
+            schemas.WingXSecSchema(
+                xyz_le=[0.01, 0.4, 0.01],
+                chord=0.16,
+                twist=0.0,
+                airfoil="./components/airfoils/mh32.dat",
+                spare_list=[
+                    schemas.SpareDetailSchema(
+                        spare_support_dimension_width=4.42,
+                        spare_support_dimension_height=4.42,
+                        spare_position_factor=0.25,
+                        spare_mode="follow",
+                    )
+                ],
+            ),
+            schemas.WingXSecSchema(
+                xyz_le=[0.02, 0.7, 0.02],
+                chord=0.12,
+                twist=0.0,
+                airfoil="./components/airfoils/mh32.dat",
+            ),
+        ],
+    )
+    wing_model = WingModel.from_dict(name="main-wing", data=wing_schema.model_dump())
+
+    config = wingModelToWingConfig(wing_model, scale=1000.0)
+
+    assert config.segments[0].spare_list is not None
+    assert config.segments[0].spare_list[0].spare_vector is not None
+    assert config.segments[0].spare_list[0].spare_origin is not None
+    assert config.segments[1].spare_list is not None
+    assert config.segments[1].spare_list[0].spare_vector is not None
+    assert config.segments[1].spare_list[0].spare_origin is not None
 
 
 def test_ted_projection_to_asb_uses_rel_chord_root():
@@ -149,6 +232,7 @@ def test_ted_projection_to_asb_uses_rel_chord_root():
                     rel_chord_root=0.73,
                     rel_chord_tip=0.81,
                     symmetric=False,
+                    deflection_deg=6.0,
                 ),
                 control_surface=schemas.ControlSurfaceSchema(
                     name="aileron",
@@ -174,6 +258,45 @@ def test_ted_projection_to_asb_uses_rel_chord_root():
     asb_airplane = asyncio.run(aeroplaneSchemaToAsbAirplane_async(plane))
     control_surface = asb_airplane.wings[0].xsecs[0].control_surfaces[0]
     assert control_surface.hinge_point == pytest.approx(0.73)
+    assert control_surface.deflection == pytest.approx(6.0)
+
+
+def test_control_surface_only_input_is_persisted_as_ted():
+    wing_schema = schemas.AsbWingSchema(
+        name="main-wing",
+        symmetric=True,
+        x_secs=[
+            schemas.WingXSecSchema(
+                xyz_le=[0.0, 0.0, 0.0],
+                chord=0.2,
+                twist=1.0,
+                airfoil="./components/airfoils/mh32.dat",
+                control_surface=schemas.ControlSurfaceSchema(
+                    name="flap",
+                    hinge_point=0.67,
+                    symmetric=True,
+                    deflection=9.5,
+                ),
+            ),
+            schemas.WingXSecSchema(
+                xyz_le=[0.02, 0.4, 0.01],
+                chord=0.15,
+                twist=0.0,
+                airfoil="./components/airfoils/mh32.dat",
+            ),
+        ],
+    )
+
+    wing_model = WingModel.from_dict(name="main-wing", data=wing_schema.model_dump())
+    ted = wing_model.x_secs[0].detail.trailing_edge_device
+
+    assert ted is not None
+    assert ted.name == "flap"
+    assert ted.rel_chord_root == pytest.approx(0.67)
+    assert ted.rel_chord_tip == pytest.approx(0.67)
+    assert ted.deflection_deg == pytest.approx(9.5)
+    assert wing_model.x_secs[0].control_surface is not None
+    assert wing_model.x_secs[0].control_surface.deflection == pytest.approx(9.5)
 
 
 def test_asb_wing_schema_rejects_segment_details_on_last_xsec():

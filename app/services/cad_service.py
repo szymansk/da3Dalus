@@ -19,7 +19,11 @@ from sqlalchemy.orm import Session, joinedload
 from app.converters.model_schema_converters import wingModelToWingConfig
 from app.core.exceptions import NotFoundError, ValidationError, ConflictError, InternalError
 from app.models import AeroplaneModel, WingModel, WingXSecModel
-from app.models.aeroplanemodel import FuselageModel
+from app.models.aeroplanemodel import (
+    FuselageModel,
+    WingXSecDetailModel,
+    WingXSecTrailingEdgeDeviceModel,
+)
 from app.schemas import FuselageSchema
 from app.schemas.AeroplaneRequest import CreatorUrlType, ExporterUrlType, AeroplaneSettings
 from app.services.create_wing_configuration import create_servo
@@ -48,7 +52,13 @@ def get_aeroplane_with_wings(db: Session, aeroplane_uuid) -> AeroplaneModel:
         plane = (db.query(AeroplaneModel)
                  .options(joinedload(AeroplaneModel.wings)
                           .joinedload(WingModel.x_secs)
-                          .joinedload(WingXSecModel.control_surface))
+                          .joinedload(WingXSecModel.detail)
+                          .joinedload(WingXSecDetailModel.spares))
+                 .options(joinedload(AeroplaneModel.wings)
+                          .joinedload(WingModel.x_secs)
+                          .joinedload(WingXSecModel.detail)
+                          .joinedload(WingXSecDetailModel.trailing_edge_device)
+                          .joinedload(WingXSecTrailingEdgeDeviceModel.servo_data))
                  .options(joinedload(AeroplaneModel.fuselages)
                           .joinedload(FuselageModel.x_secs))
                  .filter(AeroplaneModel.uuid == aeroplane_uuid).first())
@@ -211,6 +221,7 @@ def execute_aeroplane_construction(
         settings = {}
         if request_settings is not None:
             settings = request_settings.__dict__.copy()
+            servo_information = request_settings.servo_information or {}
             settings['servo_information'] = {
                 key: ServoInformation(
                     height=value.height,
@@ -224,11 +235,12 @@ def execute_aeroplane_construction(
                     trans_y=value.trans_y,
                     trans_z=value.trans_z,
                     servo=create_servo(value.servo)
-                ) for key, value in request_settings.servo_information.items()
+                ) for key, value in servo_information.items()
             }
         
+        # REST wing geometry is stored in meters; CAD topology expects millimeters.
         wing_config: Dict[str, WingConfiguration] = {
-            k: wingModelToWingConfig(w) for k, w in (wings or {}).items()
+            k: wingModelToWingConfig(w, scale=1000.0) for k, w in (wings or {}).items()
         }
         
         # Parse blueprint
