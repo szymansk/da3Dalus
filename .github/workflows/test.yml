@@ -5,12 +5,20 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      run_slow:
+        description: "Include tests marked 'slow' (CAD E2E workflows, ~5-10 min extra)"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
-  test:
-    # Target amd64 Linux only. CadQuery and Aerosandbox are intentionally
-    # excluded on linux/aarch64 via environment markers in pyproject.toml,
-    # so an arm64 matrix would fail dependency resolution.
+  fast:
+    # Default job: skips slow tests and tests that need the vendored AVL
+    # binary. Target amd64 Linux only — CadQuery and Aerosandbox are
+    # intentionally excluded on linux/aarch64 via environment markers in
+    # pyproject.toml, so an arm64 matrix would fail dependency resolution.
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -46,7 +54,48 @@ jobs:
       - name: Lint (ruff)
         run: poetry run ruff check .
 
-      - name: Run tests
-        run: poetry run pytest
+      - name: Run fast test suite
+        run: poetry run pytest -m "not slow" --tb=short
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+  slow:
+    # Only runs on manual workflow_dispatch with run_slow=true. Contains
+    # the heavy end-to-end CAD workflow tests that take 3-10 minutes.
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_slow }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        run: |
+          pipx install poetry
+          poetry --version
+
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: poetry-${{ runner.os }}-py${{ matrix.python-version }}-slow-${{ hashFiles('poetry.lock') }}
+
+      - name: Configure Poetry
+        run: poetry config virtualenvs.in-project true
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-root
+
+      - name: Run full suite including slow E2E tests
+        run: poetry run pytest --tb=short
         env:
           QT_QPA_PLATFORM: offscreen

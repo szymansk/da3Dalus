@@ -1,15 +1,8 @@
 import uuid
 
-import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool
-
-from app.db.base import Base
-from app.db.session import get_db
-from app.main import create_app
 from app.models.aeroplanemodel import AeroplaneModel
+
+# The `client_and_db` fixture is provided by app/tests/conftest.py.
 
 
 def valid_profile_payload(name: str = "rc_trainer_balanced") -> dict:
@@ -34,31 +27,6 @@ def valid_profile_payload(name: str = "rc_trainer_balanced") -> dict:
         },
         "constraints": {"max_bank_deg": 60, "max_alpha_deg": 14, "max_beta_deg": 8},
     }
-
-
-@pytest.fixture()
-def client_and_db():
-    app = create_app()
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
-    Base.metadata.create_all(bind=engine)
-
-    def override_get_db():
-        db = TestingSessionLocal()
-        try:
-            yield db
-        finally:
-            db.close()
-
-    app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as client:
-        yield client, TestingSessionLocal
-    app.dependency_overrides.clear()
-    Base.metadata.drop_all(bind=engine)
 
 
 def test_create_profile_returns_201(client_and_db):

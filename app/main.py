@@ -10,6 +10,7 @@ from app.api.v2.endpoints import aeroplane as aeroplane_v2
 from app.api.v2.endpoints import cad, aeroanalysis, operating_points
 from app.api.v2.endpoints import flight_profiles
 from app.api.v2.endpoints import airfoils
+from app.api.v2.endpoints import health
 from app.mcp_server import create_mcp_http_app
 from app.core.exceptions import (
     ServiceException,
@@ -41,6 +42,7 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",            # served at /api/v2/redoc
         lifespan=mcp_app.lifespan,
     )
+    app.include_router(health.router, prefix="", tags=["health"])
     app.include_router(aeroplane_v2.router, prefix="", tags=[])
     app.include_router(cad.router, prefix="", tags=["cad"])
     app.include_router(aeroanalysis.router, prefix="", tags=[])

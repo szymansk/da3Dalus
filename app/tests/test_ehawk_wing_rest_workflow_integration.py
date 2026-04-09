@@ -8,45 +8,27 @@ from zipfile import ZipFile
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from app import schemas
 from app.converters.model_schema_converters import wingConfigToAsbWingSchema
-from app.db.base import Base
-from app.db.session import get_db
-from app.main import create_app
-from app.services import cad_service
 from test.ehawk_workflow_helpers import _build_main_wing
+
+# `client_and_db` fixture is provided by app/tests/conftest.py.
+# The autouse `clean_cad_task_state` fixture (also in conftest.py) takes
+# care of clearing the cad_service.tasks global before and after each test.
 
 
 @pytest.fixture()
-def client():
-    app = create_app()
-    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
-    Base.metadata.create_all(bind=engine)
+def client(client_and_db):
+    """Backwards-compatible alias returning just the TestClient.
 
+    The REST E2E test only needs the TestClient, not the SessionLocal. This
+    thin wrapper keeps the test body unchanged while delegating to the
+    shared conftest fixture.
+    """
+    test_client, _ = client_and_db
     Path("tmp/exports").mkdir(parents=True, exist_ok=True)
-    with cad_service.tasks_lock:
-        cad_service.tasks.clear()
-
-    def override_get_db():
-        db = TestingSessionLocal()
-        try:
-            yield db
-        finally:
-            db.close()
-
-    app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as test_client:
-        yield test_client
-
-    app.dependency_overrides.clear()
-    with cad_service.tasks_lock:
-        cad_service.tasks.clear()
-    Base.metadata.drop_all(bind=engine)
+    yield test_client
 
 
 def _wait_for_task_completion(client: TestClient, aeroplane_id: str, timeout_seconds: float = 240.0) -> dict:
@@ -80,6 +62,9 @@ def _build_full_ehawk_asb_wing_schema() -> schemas.AsbWingSchema:
     )
 
 
+@pytest.mark.slow
+@pytest.mark.requires_cadquery
+@pytest.mark.requires_aerosandbox
 def test_rest_stepwise_wing_vase_mode_step_export_workflow(client: TestClient):
     wing_name = "main_wing"
     asb_wing = _build_full_ehawk_asb_wing_schema()

@@ -1,12 +1,22 @@
 import asyncio
 import os
 
-import aerosandbox as asb
 import pytest
-from pydantic import ValidationError
 
-from app import schemas
-from app.converters.model_schema_converters import (
+# Heavy libraries — skip the whole module cleanly on systems where they
+# are not installed (e.g. linux/aarch64 per pyproject.toml markers).
+asb = pytest.importorskip("aerosandbox")
+pytest.importorskip("cadquery")
+
+pytestmark = [
+    pytest.mark.requires_cadquery,
+    pytest.mark.requires_aerosandbox,
+]
+
+from pydantic import ValidationError  # noqa: E402
+
+from app import schemas  # noqa: E402
+from app.converters.model_schema_converters import (  # noqa: E402
     aeroplaneSchemaToAirplaneConfiguration_async,
     aeroplaneSchemaToAsbAirplane_async,
     fuselageModelToFuselageConfig,
@@ -14,8 +24,12 @@ from app.converters.model_schema_converters import (
     wingConfigToWingModel,
     wingModelToWingConfig,
 )
-from app.models.aeroplanemodel import FuselageModel, WingModel
-from cad_designer.airplane.aircraft_topology.wing import Spare, TrailingEdgeDevice, WingConfiguration
+from app.models.aeroplanemodel import FuselageModel, WingModel  # noqa: E402
+from cad_designer.airplane.aircraft_topology.wing import (  # noqa: E402
+    Spare,
+    TrailingEdgeDevice,
+    WingConfiguration,
+)
 
 
 def _create_test_wing_config() -> WingConfiguration:

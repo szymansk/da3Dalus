@@ -1,39 +1,10 @@
 import uuid
 from unittest.mock import AsyncMock, patch
 
-import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool
-
-from app.db.base import Base
-from app.db.session import get_db
-from app.main import create_app
 from app.models.aeroplanemodel import AeroplaneModel
 from app.models.analysismodels import OperatingPointModel
 
-
-@pytest.fixture()
-def client_and_db():
-    app = create_app()
-    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
-    Base.metadata.create_all(bind=engine)
-
-    def override_get_db():
-        db = TestingSessionLocal()
-        try:
-            yield db
-        finally:
-            db.close()
-
-    app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as client:
-        yield client, TestingSessionLocal
-
-    app.dependency_overrides.clear()
-    Base.metadata.drop_all(bind=engine)
+# The `client_and_db` fixture is provided by app/tests/conftest.py.
 
 
 def test_generate_default_endpoint_returns_generated_set(client_and_db):

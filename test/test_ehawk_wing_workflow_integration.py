@@ -17,6 +17,9 @@ def _assert_non_empty_solid(shape) -> None:
     assert bbox.zlen > 0
 
 
+@pytest.mark.slow
+@pytest.mark.requires_cadquery
+@pytest.mark.requires_aerosandbox
 def test_ehawk_wing_workflow_end_to_end(tmp_path):
     pytest.importorskip("cadquery")
     pytest.importorskip("aerosandbox")

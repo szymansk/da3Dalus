@@ -44,6 +44,14 @@ nlopt = ">=2.9,<3.0"
 [tool.pytest.ini_options]
 norecursedirs = ["external"]
 addopts = "--ignore=docker_smoke_test.py"
+markers = [
+    "unit: pure unit test, mocked dependencies, no DB or external tooling",
+    "integration: uses TestClient + in-memory DB, exercises real endpoints",
+    "slow: takes more than ~10 seconds to run (default runs skip this)",
+    "requires_cadquery: needs a working CadQuery installation",
+    "requires_aerosandbox: needs a working Aerosandbox installation",
+    "requires_avl: needs the vendored AVL binary (Avl/bin/avl)",
+]
 
 [tool.ruff]
 line-length = 100
