@@ -52,6 +52,16 @@ addopts = "--ignore=docker_smoke_test.py"
 # Ensure the project root is on sys.path so `from app.*` works in
 # non-installed layouts (poetry package-mode=false).
 pythonpath = ["."]
+# Per-test wall-clock timeout. Prevents the slow CAD E2E tests from
+# hanging the whole suite indefinitely — when a test exceeds 360s
+# pytest-timeout prints a traceback from every active thread and
+# fails the test. 360s is chosen because the longest legitimate test
+# is test_rest_stepwise_wing_vase_mode_step_export_workflow, which has
+# a 240s internal poll timeout plus ~60s of setup. pytest-timeout's
+# "thread" method is used because signal-based interruption does not
+# work on the ThreadPoolExecutor workers that the CAD service uses.
+timeout = 360
+timeout_method = "thread"
 markers = [
     "unit: pure unit test, mocked dependencies, no DB or external tooling",
     "integration: uses TestClient + in-memory DB, exercises real endpoints",
