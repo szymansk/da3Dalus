@@ -110,6 +110,12 @@ jobs:
         run: poetry install --no-interaction --no-root
 
       - name: Run full suite including slow E2E tests
-        run: poetry run pytest --tb=short
+        # Wrap in GNU coreutils `timeout`: if pytest itself hangs in a
+        # native C extension that neither pytest-timeout's signal nor
+        # thread methods can preempt, this sends SIGKILL after 900s.
+        # -v -s flushes progress so the captured log shows which test
+        # was running at kill time.
+        run: timeout --kill-after=30s 900 poetry run pytest -v -s --tb=short
         env:
           QT_QPA_PLATFORM: offscreen
+          PYTHONUNBUFFERED: "1"
