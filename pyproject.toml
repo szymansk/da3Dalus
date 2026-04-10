@@ -53,15 +53,19 @@ addopts = "--ignore=docker_smoke_test.py"
 # non-installed layouts (poetry package-mode=false).
 pythonpath = ["."]
 # Per-test wall-clock timeout. Prevents the slow CAD E2E tests from
-# hanging the whole suite indefinitely — when a test exceeds 360s
-# pytest-timeout prints a traceback from every active thread and
-# fails the test. 360s is chosen because the longest legitimate test
-# is test_rest_stepwise_wing_vase_mode_step_export_workflow, which has
-# a 240s internal poll timeout plus ~60s of setup. "signal" method
-# (SIGALRM on Unix) is required because the test hangs inside native
-# CadQuery/OCCT code which the "thread" method cannot preempt.
+# hanging the whole suite indefinitely. signal method (SIGALRM on
+# Unix) is required because the test hangs inside native CadQuery/OCCT
+# code which the thread method cannot preempt.
 timeout = 360
 timeout_method = "signal"
+# faulthandler_timeout dumps a traceback of every Python thread to
+# stderr when a test runs longer than this many seconds. Critically,
+# this uses the C-level faulthandler module which CAN interrupt native
+# code to produce the dump — unlike pytest-timeout which runs in
+# Python bytecode. 300s is chosen to fire *before* the pytest-timeout
+# (360s) and GNU timeout (900s) kill the process, so we actually see
+# where the test is stuck.
+faulthandler_timeout = 300
 markers = [
     "unit: pure unit test, mocked dependencies, no DB or external tooling",
     "integration: uses TestClient + in-memory DB, exercises real endpoints",
