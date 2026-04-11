@@ -54,37 +54,29 @@ def single_segment_flat() -> WingConfiguration:
 
 
 def single_segment_with_dihedral() -> WingConfiguration:
-    """One segment with a ~5° dihedral, expressed via ``dihedral_as_translation``.
-
-    ``dihedral_as_rotation_in_degrees`` is *not* used here because that
-    parameter has no clean round-trip through asb: Wing applies an
-    explicit ``R_x`` rotation in its H matrix, while asb derives
-    dihedral from ``yg_local`` (the LE-to-LE span direction). The two
-    representations only agree when dihedral is expressed as a span
-    translation (which reshapes the LE positions), not as an
-    independent airfoil bank. See cad-modelling-service-121.
+    """One segment with +5° dihedral via ``dihedral_as_rotation_in_degrees``
+    on the root airfoil. This is the "natural" wing-with-dihedral
+    design that banks the airfoil around its chord — the same
+    parameterisation the real eHawk main wing uses. After Phase 4
+    (cad-modelling-service-dk4) the roundtrip reconstructs this
+    exactly from asb data by tracking the cumulative R_x through the
+    H chain.
     """
-    import math
-
-    length = 500.0
-    dihedral_deg = 5.0
     return WingConfiguration(
         nose_pnt=(0.0, 0.0, 0.0),
         root_airfoil=Airfoil(
             airfoil=AIRFOIL_PATH,
             chord=200.0,
-            dihedral_as_rotation_in_degrees=0,
-            dihedral_as_translation=length * math.sin(math.radians(dihedral_deg)),
+            dihedral_as_rotation_in_degrees=5,
             incidence=0,
             rotation_point_rel_chord=0.25,
         ),
-        length=length * math.cos(math.radians(dihedral_deg)),
+        length=500.0,
         sweep=0,
         sweep_is_angle=False,
         tip_airfoil=Airfoil(
             chord=200.0,
             dihedral_as_rotation_in_degrees=0,
-            dihedral_as_translation=0,
             incidence=0,
             rotation_point_rel_chord=0.25,
         ),
@@ -181,37 +173,15 @@ def single_segment_with_twist() -> WingConfiguration:
 
 
 def configurator_wing() -> WingConfiguration:
-    """The 3-segment wing from ``test/Test_Configurator_wing.py``,
-    re-expressed with ``dihedral_as_translation`` instead of
-    ``dihedral_as_rotation_in_degrees``.
+    """The 3-segment wing from ``test/Test_Configurator_wing.py``.
 
-    The original test/ file alternates +4°/-4° dihedral using the
-    rotation form on per-segment airfoils. That parameterisation is
-    not asb-roundtrippable (see
-    ``single_segment_with_dihedral`` and
-    cad-modelling-service-121). Here we encode the *equivalent* LE
-    positions via per-segment ``dihedral_as_translation`` +
-    corrected ``length``, preserving the overall wing shape while
-    keeping the roundtrip exact.
-
-    The nose_pnt, sweep, twist and 3-segment topology are kept 1:1
-    from the original so Level 2 / Level 3 still exercise the
-    multi-segment matrix stack with a non-trivial nose.
+    Copied 1:1 (including the non-trivial nose_pnt=(25,50,100) and
+    the alternating positive/negative sweep + dihedral pattern) so
+    that a green result here proves the primary user-visible case.
+    Uses ``dihedral_as_rotation_in_degrees`` (the "natural" Wing
+    parameterisation) — the roundtrip handles it via the
+    cumulative-R_x tracking in ``from_asb``.
     """
-    import math
-
-    # Per-segment dihedral angles from the original configurator_wing:
-    # seg 0 tip was -4°, seg 1 tip was -4°, seg 2 tip was 0°. The
-    # equivalent translation form uses the *trigonometric* decomposition
-    # of each segment's length L into (L*cos(d), L*sin(d)) so the LE
-    # position at the segment tip is preserved.
-    length_seg0 = 500.0
-    length_seg1 = 500.0
-    length_seg2 = 500.0
-    dihedral_0 = -4.0  # seg 0 tip
-    dihedral_1 = -4.0  # seg 1 tip
-    dihedral_2 = 0.0   # seg 2 tip
-
     wc = WingConfiguration(
         nose_pnt=(25, 50, 100),
         symmetric=True,
@@ -219,42 +189,38 @@ def configurator_wing() -> WingConfiguration:
         root_airfoil=Airfoil(
             airfoil=AIRFOIL_PATH,
             chord=200.0,
-            dihedral_as_rotation_in_degrees=0,
-            dihedral_as_translation=length_seg0 * math.sin(math.radians(dihedral_0)),
+            dihedral_as_rotation_in_degrees=4,
             incidence=0,
             rotation_point_rel_chord=0.25,
         ),
-        length=length_seg0 * math.cos(math.radians(dihedral_0)),
+        length=500.0,
         sweep=50,
         sweep_is_angle=False,
         tip_airfoil=Airfoil(
             chord=200.0,
-            dihedral_as_rotation_in_degrees=0,
-            dihedral_as_translation=length_seg1 * math.sin(math.radians(dihedral_1)),
+            dihedral_as_rotation_in_degrees=-4,
             incidence=-10,
             rotation_point_rel_chord=0.25,
         ),
     )
     wc.add_segment(
-        length=length_seg1 * math.cos(math.radians(dihedral_1)),
+        length=500,
         sweep=-50,
         sweep_is_angle=False,
         tip_airfoil=Airfoil(
             chord=150,
-            dihedral_as_rotation_in_degrees=0,
-            dihedral_as_translation=length_seg2 * math.sin(math.radians(dihedral_2)),
+            dihedral_as_rotation_in_degrees=-4,
             incidence=-5,
             rotation_point_rel_chord=0.25,
         ),
     )
     wc.add_segment(
-        length=length_seg2 * math.cos(math.radians(dihedral_2)),
+        length=500,
         sweep=50,
         sweep_is_angle=False,
         tip_airfoil=Airfoil(
             chord=100,
             dihedral_as_rotation_in_degrees=0,
-            dihedral_as_translation=0,
             incidence=0,
             rotation_point_rel_chord=0.25,
         ),

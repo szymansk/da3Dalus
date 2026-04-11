@@ -41,6 +41,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+import numpy as np
+from numpy import ndarray
+
 from cad_designer.aerosandbox.slicing import (
     compute_shape_properties,
     load_step_model,
@@ -411,6 +414,178 @@ def render_wing_loft_to_step(
     return out_path
 
 
+def render_asb_wing_to_stl(
+    wing_config,
+    out_path: Path,
+    *,
+    unit_scale_mm: float = 1.0,
+) -> Path:
+    """Render the asb view of a WingConfiguration as an STL file.
+
+    This is the *aerodynamic* gold standard: it writes the triangle
+    mesh that ``aerosandbox.Wing.mesh_body()`` produces, using the
+    same frame computation (``_compute_frame_of_WingXSec``) that
+    every VLM / AVL / stability analysis inside this service
+    consumes. Anything that aero analysis ever "sees" of the wing
+    is represented in this STL; overlaying it onto the CAD STEP
+    files renders the asb-vs-Wing discrepancy visible.
+
+    Args:
+        wing_config: The source ``WingConfiguration``. This
+            function calls ``asb_wing()`` on it, so the returned
+            cache will be populated.
+        out_path: Destination STL file. Parents are created if
+            needed.
+        unit_scale_mm: Scale factor to apply to the mesh vertices
+            so the output STL is in *millimetres*. The CAD STEP
+            files produced by :func:`render_wing_loft_to_step` are
+            in mm, and the harness factories build
+            ``WingConfiguration``\\s in mm; calling
+            ``wing_config.asb_wing()`` with the default
+            ``scale=1.0`` keeps the asb wing in mm, so the
+            ``unit_scale_mm`` default of ``1.0`` is correct for the
+            in-process harness. If a caller uses
+            ``wing_config.asb_wing(scale=0.001)`` to put asb in
+            SI metres (as the REST pipeline does), pass
+            ``unit_scale_mm=1000.0`` to rescale back to mm for the
+            STL overlay.
+
+    Returns:
+        The resolved STL path for convenience.
+    """
+    import aerosandbox as asb  # noqa: F401 — raise ImportError on aarch64
+
+    out_path = Path(out_path).resolve()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Build (or reuse) the asb wing. ``asb_wing()`` caches on the
+    # instance, so a second call inside the same process is cheap.
+    asb_wing = wing_config.asb_wing()
+
+    # ``mesh_body`` returns (vertices, triangles). ``method='tri'``
+    # yields a triangle mesh ready for STL; the alternative 'quad'
+    # mode would need triangulation.
+    vertices, triangles = asb_wing.mesh_body(method="tri")
+
+    # Apply the unit scale. For the in-process harness this is the
+    # identity; it exists so that downstream REST or SI-unit
+    # callers can convert metres → millimetres without touching the
+    # asb wing itself.
+    if unit_scale_mm != 1.0:
+        vertices = np.asarray(vertices, dtype=float) * unit_scale_mm
+
+    _write_stl_mesh(vertices, triangles, out_path)
+    return out_path
+
+
+def _write_stl_mesh(
+    vertices: ndarray,
+    triangles: ndarray,
+    out_path: Path,
+) -> None:
+    """Write a triangle mesh to an ASCII STL file.
+
+    Computes per-face normals via the right-hand rule on the
+    triangle's vertices and flips each one outward by comparing
+    it to the centroid-to-face direction. This matches the
+    normal-correction heuristic in
+    ``cad_designer/aerosandbox/convert2aerosandbox.asb_mesh_to_stl``
+    but without the hard-coded ``scale=0.1`` factor that legacy
+    helper bakes in.
+    """
+    vertices = np.asarray(vertices, dtype=float)
+    triangles = np.asarray(triangles, dtype=int)
+
+    if vertices.ndim != 2 or vertices.shape[1] != 3:
+        raise ValueError(
+            f"vertices must be (N, 3); got shape {vertices.shape}"
+        )
+    if triangles.ndim != 2 or triangles.shape[1] != 3:
+        raise ValueError(
+            f"triangles must be (M, 3); got shape {triangles.shape}"
+        )
+
+    center = vertices.mean(axis=0)
+
+    def _unit_normal(v1: ndarray, v2: ndarray, v3: ndarray) -> ndarray:
+        n = np.cross(v2 - v1, v3 - v1)
+        m = float(np.linalg.norm(n))
+        return n / m if m > 0.0 else np.zeros(3)
+
+    lines = ["solid asb_wing_mesh"]
+    for tri in triangles:
+        v1, v2, v3 = (vertices[i] for i in tri)
+        normal = _unit_normal(v1, v2, v3)
+        centroid = (v1 + v2 + v3) / 3.0
+        direction = centroid - center
+        if float(np.dot(normal, direction)) < 0.0:
+            # Flip winding so the face points outward.
+            v2, v3 = v3, v2
+            normal = _unit_normal(v1, v2, v3)
+        lines.append(
+            f"  facet normal {normal[0]} {normal[1]} {normal[2]}"
+        )
+        lines.append("    outer loop")
+        lines.append(f"      vertex {v1[0]} {v1[1]} {v1[2]}")
+        lines.append(f"      vertex {v2[0]} {v2[1]} {v2[2]}")
+        lines.append(f"      vertex {v3[0]} {v3[1]} {v3[2]}")
+        lines.append("    endloop")
+        lines.append("  endfacet")
+    lines.append("endsolid asb_wing_mesh")
+
+    out_path.write_text("\n".join(lines))
+
+
+def propagate_cad_metadata(expected, rebuilt) -> None:
+    """Copy CAD-only metadata from the expected wing into the rebuilt wing.
+
+    ``WingConfiguration.from_asb`` reconstructs the *geometric* state
+    from asb data, but asb does not store a handful of CAD-only
+    attributes that the CadQuery loft pipeline nevertheless reads from
+    the ``WingConfiguration``:
+
+    - ``number_interpolation_points`` — how many points the airfoil
+      spline uses when it is sampled onto the workplane. asb has no
+      concept of this because it only runs vortex-lattice analysis.
+    - ``wing_segment_type`` / ``tip_type`` — the Wing-level
+      distinction between regular segments and tip segments (flat,
+      round, …). asb just sees a flat list of cross-sections.
+    - Airfoil file paths on both root and tip airfoils — asb stores
+      only the airfoil *name* (a bare identifier), not the full
+      ``.dat`` path that CadQuery needs to open.
+
+    In the REST/production pipeline this information is restored via
+    the ``AsbWingSchema`` hydration step in
+    ``asbWingSchemaToWingConfig``. In the test harness (which goes
+    directly through ``from_asb`` with no schema), we need to
+    propagate it manually so that the rebuilt wing renders with the
+    same CAD-level settings as the expected one. Without this the
+    loft uses a different airfoil resolution and the Level 3 shape
+    test picks up a ~2 % volume delta that is *purely* a mesh-density
+    artefact, not a geometric roundtrip issue.
+
+    The function mutates ``rebuilt`` in place. Segment counts must
+    match; any mismatch is silently tolerated by iterating over the
+    shorter list.
+    """
+    if expected.segments is None or rebuilt.segments is None:
+        return
+
+    for idx, (exp_seg, reb_seg) in enumerate(zip(expected.segments, rebuilt.segments)):
+        if exp_seg.number_interpolation_points is not None:
+            reb_seg.number_interpolation_points = exp_seg.number_interpolation_points
+        if getattr(exp_seg, "wing_segment_type", None) is not None:
+            reb_seg.wing_segment_type = exp_seg.wing_segment_type
+        if getattr(exp_seg, "tip_type", None) is not None:
+            reb_seg.tip_type = exp_seg.tip_type
+        if exp_seg.root_airfoil is not None and reb_seg.root_airfoil is not None:
+            if exp_seg.root_airfoil.airfoil is not None:
+                reb_seg.root_airfoil.airfoil = exp_seg.root_airfoil.airfoil
+        if exp_seg.tip_airfoil is not None and reb_seg.tip_airfoil is not None:
+            if exp_seg.tip_airfoil.airfoil is not None:
+                reb_seg.tip_airfoil.airfoil = exp_seg.tip_airfoil.airfoil
+
+
 def compare_wing_shapes(step_path_a: Path, step_path_b: Path) -> ShapeCompareResult:
     """Compare two wing shapes exported as STEP files.
 
@@ -487,18 +662,32 @@ def export_roundtrip_pair(
     case_id: str,
     wing_side: str = "RIGHT",
 ) -> Tuple[Path, Path, "ShapeCompareResult"]:
-    """Export an ``expected.step`` / ``actual.step`` pair for one case.
+    """Export a complete comparison bundle for one roundtrip case.
 
-    Renders ``wing_config`` directly as ``<case_id>_expected.step`` and
-    renders the result of ``WingConfiguration.from_asb(wing_config.asb_wing().xsecs)``
-    as ``<case_id>_actual.step``. Both files land in ``out_dir``
-    (created if missing). The corresponding ``ShapeCompareResult`` is
-    returned so the caller can print a summary table.
+    Writes three files to ``out_dir``:
 
-    Using ``wing_side="RIGHT"`` avoids the mirror-and-union step that
-    doubles render cost and obscures per-segment drift during visual
-    comparison. Pass ``wing_side="BOTH"`` explicitly if you want the
-    full mirrored wing.
+    - ``<case_id>_expected.step`` — the CAD render of the
+      *original* ``WingConfiguration`` (through ``WingLoftCreator``).
+    - ``<case_id>_actual.step`` — the CAD render of the
+      ``from_asb``-rebuilt ``WingConfiguration``.
+    - ``<case_id>_asb_goldstandard.stl`` — the *aerodynamic* gold
+      standard: the triangle mesh that aerosandbox produces directly
+      from the source wing via ``asb.Wing.mesh_body()``. All
+      VLM/AVL/stability analyses inside the service consume this
+      exact mesh, so overlaying it onto the STEP files shows where
+      the CAD pipeline diverges from the aero model. It is always a
+      full mirrored mesh (``mesh_body`` does its own mirroring) and
+      is written in millimetres to match the STEP files.
+
+    The ``ShapeCompareResult`` between the two STEP files is
+    returned so the caller can print a summary table. The STL does
+    not participate in the numeric comparison.
+
+    Using ``wing_side="RIGHT"`` for the STEP files avoids the
+    mirror-and-union step that doubles CAD render cost and obscures
+    per-segment drift during visual comparison. Pass
+    ``wing_side="BOTH"`` explicitly if you want the full mirrored
+    wing in the STEP output (the STL is always full-mirrored).
     """
     from cad_designer.airplane.aircraft_topology.wing.WingConfiguration import (
         WingConfiguration,
@@ -515,6 +704,12 @@ def export_roundtrip_pair(
         asb_wing.xsecs,
         symmetric=wing_config.symmetric,
     )
+    # Restore CAD-only metadata (number_interpolation_points,
+    # tip_type, airfoil file paths) that asb cannot represent. In
+    # the production REST pipeline this is done by the schema
+    # hydration step; in this CLI we do it directly from the
+    # expected config.
+    propagate_cad_metadata(wing_config, rebuilt)
 
     expected_path = out_dir / f"{case_id}_expected.step"
     actual_path = out_dir / f"{case_id}_actual.step"
@@ -532,6 +727,18 @@ def export_roundtrip_pair(
         wing_name="main_wing",
         wing_side=wing_side,
         connected=False,
+    )
+
+    # Aerodynamic gold standard: asb mesh of the *original* wing,
+    # exported as STL with the same mm scale as the STEP files.
+    # Any divergence between this STL and the two STEP files is
+    # the geometric gap between the aero model (VLM/AVL input) and
+    # the CAD model (3D-print input).
+    asb_stl_path = out_dir / f"{case_id}_asb_goldstandard.stl"
+    render_asb_wing_to_stl(
+        wing_config,
+        asb_stl_path,
+        unit_scale_mm=1.0,
     )
 
     result = compare_wing_shapes(expected_path, actual_path)
@@ -638,8 +845,12 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
     print("=" * 72)
     print(f"Files written to {out_dir}")
     print(
-        "Open each <case>_expected.step alongside its <case>_actual.step in a "
-        "CAD tool\nto visually evaluate the roundtrip."
+        "For each case three files are produced:\n"
+        "  <case>_expected.step        CAD render of the original WingConfiguration\n"
+        "  <case>_actual.step          CAD render of the from_asb-rebuilt WingConfiguration\n"
+        "  <case>_asb_goldstandard.stl aerosandbox mesh of the *original* wing\n"
+        "                              (the aerodynamic gold standard, same mesh VLM/AVL uses).\n"
+        "All three are in millimetres — overlay them directly in a CAD tool."
     )
     return 0 if all_results else 1
 
