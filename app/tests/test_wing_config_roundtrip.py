@@ -26,10 +26,6 @@ guarded: the module skips if cadquery or aerosandbox are unavailable
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
-from typing import Callable
-
 import pytest
 
 pytestmark = [
@@ -50,165 +46,13 @@ from cad_designer.aerosandbox.wing_roundtrip import (  # noqa: E402
     compare_wing_shapes,
     render_wing_loft_to_step,
 )
-from cad_designer.airplane.aircraft_topology.wing.Airfoil import Airfoil  # noqa: E402
+from cad_designer.aerosandbox.wing_roundtrip_cases import (  # noqa: E402
+    CASE_FACTORIES,
+    get_factory,
+)
 from cad_designer.airplane.aircraft_topology.wing.WingConfiguration import (  # noqa: E402
     WingConfiguration,
 )
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
-AIRFOIL_PATH = str(REPO_ROOT / "components" / "airfoils" / "naca0010.dat")
-
-
-# --------------------------------------------------------------------------- #
-# Test-case factories
-#
-# Each factory returns a freshly-built, *relative*-mode WingConfiguration.
-# Factories are invoked twice per test: once to produce the "expected"
-# baseline and once to produce the input to the roundtrip (so the
-# baseline is never mutated by asb_wing() caching).
-# --------------------------------------------------------------------------- #
-
-
-def _single_segment_flat() -> WingConfiguration:
-    """One segment, zero twist / sweep / dihedral. The trivial sanity case."""
-    return WingConfiguration(
-        nose_pnt=(0.0, 0.0, 0.0),
-        root_airfoil=Airfoil(
-            airfoil=AIRFOIL_PATH,
-            chord=200.0,
-            dihedral_as_rotation_in_degrees=0,
-            incidence=0,
-            rotation_point_rel_chord=0.25,
-        ),
-        length=500.0,
-        sweep=0,
-        sweep_is_angle=False,
-        tip_airfoil=Airfoil(
-            chord=200.0,
-            dihedral_as_rotation_in_degrees=0,
-            incidence=0,
-            rotation_point_rel_chord=0.25,
-        ),
-        symmetric=True,
-        parameters="relative",
-    )
-
-
-def _single_segment_with_dihedral() -> WingConfiguration:
-    """One segment, +5° dihedral rotation. Isolates the dihedral sign bug."""
-    return WingConfiguration(
-        nose_pnt=(0.0, 0.0, 0.0),
-        root_airfoil=Airfoil(
-            airfoil=AIRFOIL_PATH,
-            chord=200.0,
-            dihedral_as_rotation_in_degrees=5,
-            incidence=0,
-            rotation_point_rel_chord=0.25,
-        ),
-        length=500.0,
-        sweep=0,
-        sweep_is_angle=False,
-        tip_airfoil=Airfoil(
-            chord=200.0,
-            dihedral_as_rotation_in_degrees=5,
-            incidence=0,
-            rotation_point_rel_chord=0.25,
-        ),
-        symmetric=True,
-        parameters="relative",
-    )
-
-
-def _single_segment_with_twist() -> WingConfiguration:
-    """One segment, -10° tip incidence. Isolates twist recovery."""
-    return WingConfiguration(
-        nose_pnt=(0.0, 0.0, 0.0),
-        root_airfoil=Airfoil(
-            airfoil=AIRFOIL_PATH,
-            chord=200.0,
-            dihedral_as_rotation_in_degrees=0,
-            incidence=0,
-            rotation_point_rel_chord=0.25,
-        ),
-        length=500.0,
-        sweep=0,
-        sweep_is_angle=False,
-        tip_airfoil=Airfoil(
-            chord=200.0,
-            dihedral_as_rotation_in_degrees=0,
-            incidence=-10,
-            rotation_point_rel_chord=0.25,
-        ),
-        symmetric=True,
-        parameters="relative",
-    )
-
-
-def _configurator_wing() -> WingConfiguration:
-    """The 3-segment wing from ``test/Test_Configurator_wing.py``.
-
-    Copied 1:1 (including the non-trivial nose_pnt=(25,50,100) and
-    the alternating positive/negative sweep + dihedral pattern) so that
-    a green result here proves the primary user-visible case.
-    """
-    wc = WingConfiguration(
-        nose_pnt=(25, 50, 100),
-        symmetric=True,
-        parameters="relative",
-        root_airfoil=Airfoil(
-            airfoil=AIRFOIL_PATH,
-            chord=200.0,
-            dihedral_as_rotation_in_degrees=4,
-            incidence=0,
-            rotation_point_rel_chord=0.25,
-        ),
-        length=500.0,
-        sweep=50,
-        sweep_is_angle=False,
-        tip_airfoil=Airfoil(
-            chord=200.0,
-            dihedral_as_rotation_in_degrees=-4,
-            incidence=-10,
-            rotation_point_rel_chord=0.25,
-        ),
-    )
-    wc.add_segment(
-        length=500,
-        sweep=-50,
-        sweep_is_angle=False,
-        tip_airfoil=Airfoil(
-            chord=150,
-            dihedral_as_rotation_in_degrees=-4,
-            incidence=-5,
-            rotation_point_rel_chord=0.25,
-        ),
-    )
-    wc.add_segment(
-        length=500,
-        sweep=50,
-        sweep_is_angle=False,
-        tip_airfoil=Airfoil(
-            chord=100,
-            dihedral_as_rotation_in_degrees=0,
-            incidence=0,
-            rotation_point_rel_chord=0.25,
-        ),
-    )
-    return wc
-
-
-def _ehawk_main_wing() -> WingConfiguration:
-    """Real-world eHawk main wing from ``test/ehawk_workflow_helpers``.
-
-    Imported lazily because ``test/`` is not a pytest package and its
-    import side-effects (logging setup etc.) we want to pay only when
-    this case actually runs.
-    """
-    # Delayed import — ehawk_workflow_helpers pulls in CAD modules that
-    # we don't want to load when the rest of the suite is collected.
-    from test.ehawk_workflow_helpers import _build_main_wing  # type: ignore
-
-    return _build_main_wing(AIRFOIL_PATH)
 
 
 # --------------------------------------------------------------------------- #
@@ -216,21 +60,21 @@ def _ehawk_main_wing() -> WingConfiguration:
 # --------------------------------------------------------------------------- #
 
 
-# Each entry is (case_id, factory, parameter_tol, origin_tol). Tolerances
-# default to float-noise levels — see the baseline notes in beads issue
-# cad-modelling-service-7kq for calibration rationale.
-CASES: list[tuple[str, Callable[[], WingConfiguration], float, float]] = [
-    ("single_segment_flat", _single_segment_flat, 1e-9, 1e-6),
-    ("single_segment_with_dihedral", _single_segment_with_dihedral, 1e-9, 1e-6),
-    ("single_segment_with_twist", _single_segment_with_twist, 1e-9, 1e-6),
-    ("configurator_wing", _configurator_wing, 1e-9, 1e-6),
-    ("ehawk_main_wing", _ehawk_main_wing, 1e-9, 1e-6),
-]
+# Parameter- and origin-tolerance per case. The factories themselves live
+# in ``cad_designer/aerosandbox/wing_roundtrip_cases.py`` so that the CLI
+# STEP exporter (``python -m cad_designer.aerosandbox.wing_roundtrip``)
+# and this pytest harness consume the same inputs.
+#
+# tol defaults to float-noise levels — see the baseline notes in beads
+# issue cad-modelling-service-7kq for calibration rationale.
+PARAM_TOL: dict[str, tuple[float, float]] = {
+    case_id: (1e-9, 1e-6) for case_id, _ in CASE_FACTORIES
+}
 
 
 @pytest.fixture(
-    params=CASES,
-    ids=[c[0] for c in CASES],
+    params=CASE_FACTORIES,
+    ids=[c[0] for c in CASE_FACTORIES],
 )
 def roundtrip_case(request):
     """Yields (case_id, expected_wc, actual_wc, param_tol, origin_tol).
@@ -240,7 +84,8 @@ def roundtrip_case(request):
     ``from_asb(expected.asb_wing().xsecs)`` — i.e. the roundtripped
     configuration we want to compare against the baseline.
     """
-    case_id, factory, param_tol, origin_tol = request.param
+    case_id, factory = request.param
+    param_tol, origin_tol = PARAM_TOL[case_id]
 
     # Build twice so asb_wing() caching on the baseline never leaks
     # the reconstructed xsecs back into the "expected" side.
@@ -329,7 +174,7 @@ def test_shape_tolerant(roundtrip_case, tmp_path):
 
     # Rebuild fresh (we already consumed the source_wc inside the
     # fixture when we called asb_wing()).
-    expected_for_render = _factory_for_case(case_id)
+    expected_for_render = get_factory(case_id)()
 
     step_a = tmp_path / f"{case_id}_expected.step"
     step_b = tmp_path / f"{case_id}_actual.step"
@@ -364,10 +209,3 @@ def test_shape_tolerant(roundtrip_case, tmp_path):
         f"[{case_id}] centroid drift {result.centroid_distance:.4f}mm "
         f"> tol {tol['centroid_mm']:.4f}mm; {result.summary()}"
     )
-
-
-def _factory_for_case(case_id: str) -> WingConfiguration:
-    for c_id, factory, _, _ in CASES:
-        if c_id == case_id:
-            return factory()
-    raise KeyError(case_id)

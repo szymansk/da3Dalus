@@ -468,3 +468,176 @@ def compare_wing_shapes(step_path_a: Path, step_path_b: Path) -> ShapeCompareRes
         centroid_a=centroid_a,
         centroid_b=centroid_b,
     )
+
+
+# --------------------------------------------------------------------------- #
+# CLI: export STEP pairs for manual visual comparison in a CAD tool
+# --------------------------------------------------------------------------- #
+
+
+def export_roundtrip_pair(
+    wing_config,
+    out_dir: Path,
+    *,
+    case_id: str,
+    wing_side: str = "RIGHT",
+) -> Tuple[Path, Path, "ShapeCompareResult"]:
+    """Export an ``expected.step`` / ``actual.step`` pair for one case.
+
+    Renders ``wing_config`` directly as ``<case_id>_expected.step`` and
+    renders the result of ``WingConfiguration.from_asb(wing_config.asb_wing().xsecs)``
+    as ``<case_id>_actual.step``. Both files land in ``out_dir``
+    (created if missing). The corresponding ``ShapeCompareResult`` is
+    returned so the caller can print a summary table.
+
+    Using ``wing_side="RIGHT"`` avoids the mirror-and-union step that
+    doubles render cost and obscures per-segment drift during visual
+    comparison. Pass ``wing_side="BOTH"`` explicitly if you want the
+    full mirrored wing.
+    """
+    from cad_designer.airplane.aircraft_topology.wing.WingConfiguration import (
+        WingConfiguration,
+    )
+
+    out_dir = Path(out_dir).resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Build the baseline asb wing from a *fresh* copy — asb_wing() caches
+    # on the instance, so we feed a second factory result into the
+    # roundtrip path and leave the original untouched for rendering.
+    asb_wing = wing_config.asb_wing()
+    rebuilt = WingConfiguration.from_asb(
+        asb_wing.xsecs,
+        symmetric=wing_config.symmetric,
+    )
+
+    expected_path = out_dir / f"{case_id}_expected.step"
+    actual_path = out_dir / f"{case_id}_actual.step"
+
+    render_wing_loft_to_step(
+        wing_config,
+        expected_path,
+        wing_name="main_wing",
+        wing_side=wing_side,
+        connected=False,
+    )
+    render_wing_loft_to_step(
+        rebuilt,
+        actual_path,
+        wing_name="main_wing",
+        wing_side=wing_side,
+        connected=False,
+    )
+
+    result = compare_wing_shapes(expected_path, actual_path)
+    return expected_path, actual_path, result
+
+
+def _main(argv: Optional[Sequence[str]] = None) -> int:
+    """CLI entry: export STEP pairs for every registered roundtrip case.
+
+    Usage::
+
+        poetry run python -m cad_designer.aerosandbox.wing_roundtrip \\
+            [--out-dir exports/wing_roundtrip] \\
+            [--case <case_id> ...] \\
+            [--wing-side RIGHT|BOTH]
+
+    The default output location is ``<repo-root>/exports/wing_roundtrip``.
+    Open the pairs side-by-side (or overlaid) in FreeCAD / Fusion /
+    CadQuery-Gateway. Since both sides of a perfect roundtrip would
+    render identical shapes, any visible deviation is the geometric
+    manifestation of a ``from_asb()`` bug.
+    """
+    import argparse
+    import logging
+
+    from cad_designer.aerosandbox.wing_roundtrip_cases import (
+        CASE_FACTORIES,
+        get_factory,
+    )
+
+    parser = argparse.ArgumentParser(
+        description="Export WingConfiguration roundtrip STEP pairs.",
+    )
+    parser.add_argument(
+        "--out-dir",
+        default=None,
+        help="Output directory (default: <repo>/exports/wing_roundtrip)",
+    )
+    parser.add_argument(
+        "--case",
+        action="append",
+        default=None,
+        help="Limit to one or more case ids (default: all). Repeatable.",
+    )
+    parser.add_argument(
+        "--wing-side",
+        default="RIGHT",
+        choices=["RIGHT", "LEFT", "BOTH"],
+        help="Which wing half to render (default: RIGHT)",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable INFO-level logging from the CAD pipeline.",
+    )
+    args = parser.parse_args(argv)
+
+    logging.basicConfig(
+        level=logging.INFO if args.verbose else logging.WARNING,
+        format="%(levelname)s %(name)s: %(message)s",
+    )
+
+    # Default out-dir: <repo>/exports/wing_roundtrip. The helper module
+    # wing_roundtrip_cases already computes REPO_ROOT relative to its
+    # own location, so we reuse it for consistency.
+    from cad_designer.aerosandbox.wing_roundtrip_cases import REPO_ROOT
+
+    out_dir = Path(args.out_dir) if args.out_dir else REPO_ROOT / "exports" / "wing_roundtrip"
+
+    if args.case:
+        cases = [(cid, get_factory(cid)) for cid in args.case]
+    else:
+        cases = list(CASE_FACTORIES)
+
+    print(f"Exporting {len(cases)} roundtrip STEP pair(s) to {out_dir}")
+    print("=" * 72)
+
+    header = f"{'case':<32}{'vol Δ':>10}{'surf Δ':>10}{'centroid Δ mm':>18}"
+    print(header)
+    print("-" * len(header))
+
+    all_results: list[tuple[str, "ShapeCompareResult"]] = []
+    for case_id, factory in cases:
+        wc = factory()
+        try:
+            _, _, result = export_roundtrip_pair(
+                wc,
+                out_dir,
+                case_id=case_id,
+                wing_side=args.wing_side,
+            )
+        except Exception as exc:  # pragma: no cover - CLI diagnostics path
+            print(f"{case_id:<32}  FAILED: {exc}")
+            continue
+        all_results.append((case_id, result))
+        print(
+            f"{case_id:<32}"
+            f"{result.volume_rel_delta:>9.4%}"
+            f"{result.surface_rel_delta:>10.4%}"
+            f"{result.centroid_distance:>18.4f}"
+        )
+
+    print("=" * 72)
+    print(f"Files written to {out_dir}")
+    print(
+        "Open each <case>_expected.step alongside its <case>_actual.step in a "
+        "CAD tool\nto visually evaluate the roundtrip."
+    )
+    return 0 if all_results else 1
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(_main())
