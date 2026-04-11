@@ -411,9 +411,29 @@ def _build_cross_section_model(
 ) -> WingXSecModel:
     data = xsec_data.model_dump()
 
+    # The three segment-metadata fields live on ``WingXSecDetailModel``,
+    # not directly on ``WingXSecModel``. Pop them before constructing
+    # the xsec model, then attach a detail row if any were set.
+    x_sec_type = data.pop("x_sec_type", None)
+    tip_type = data.pop("tip_type", None)
+    number_interpolation_points = data.pop("number_interpolation_points", None)
+
     new_xsec = WingXSecModel(sort_index=sort_index, **data)
+
     if is_terminal_xsec:
+        # Terminal x_sec does not carry segment metadata by
+        # design; silently drop to match the AsbWingSchema invariant.
         return new_xsec
+
+    if any(
+        value is not None
+        for value in (x_sec_type, tip_type, number_interpolation_points)
+    ):
+        new_xsec.detail = WingXSecDetailModel(
+            x_sec_type=x_sec_type,
+            tip_type=tip_type,
+            number_interpolation_points=number_interpolation_points,
+        )
 
     return new_xsec
 
@@ -476,9 +496,20 @@ def update_cross_section(
 ) -> None:
     """
     Update an existing cross-section.
-    
+
+    Writes the four ASB-minimum fields (``xyz_le``, ``chord``,
+    ``twist``, ``airfoil``) unconditionally. The three optional
+    segment-metadata fields (``wing_segment_type``, ``tip_type``,
+    ``number_interpolation_points``) are only written when the
+    payload provides a non-``None`` value so that partial updates
+    do not accidentally clear an existing detail. The terminal
+    x_sec is special-cased: per the ``AsbWingSchema`` invariant,
+    segment-level metadata is not allowed on the last x_sec and
+    is silently dropped here too.
+
     Raises:
         NotFoundError: If the aeroplane, wing, or cross-section does not exist.
+        ValidationError: If the payload tries to set segment metadata on the terminal x_sec.
         InternalError: If a database error occurs.
     """
     try:
@@ -486,7 +517,7 @@ def update_cross_section(
             aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
             wing = get_wing_or_raise(aeroplane, wing_name)
             x_secs = wing.x_secs
-            
+
             if index < 0 or index >= len(x_secs):
                 raise NotFoundError(
                     message="Cross-section not found",
@@ -497,8 +528,42 @@ def update_cross_section(
             xsec.chord = xsec_data.chord
             xsec.twist = xsec_data.twist
             xsec.airfoil = str(xsec_data.airfoil)
+
+            # Optional segment metadata — only write if the client
+            # sent something, so that a geometry-only PUT doesn't
+            # wipe previously-set fields.
+            has_metadata = any(
+                value is not None
+                for value in (
+                    xsec_data.x_sec_type,
+                    xsec_data.tip_type,
+                    xsec_data.number_interpolation_points,
+                )
+            )
+            if has_metadata:
+                is_terminal = index == len(x_secs) - 1
+                if is_terminal:
+                    raise ValidationError(
+                        message=(
+                            "Segment-specific fields (x_sec_type, "
+                            "tip_type, number_interpolation_points) are not "
+                            "allowed on the last cross-section."
+                        ),
+                        details={"index": index},
+                    )
+                if xsec.detail is None:
+                    xsec.detail = WingXSecDetailModel()
+                if xsec_data.x_sec_type is not None:
+                    xsec.detail.x_sec_type = xsec_data.x_sec_type
+                if xsec_data.tip_type is not None:
+                    xsec.detail.tip_type = xsec_data.tip_type
+                if xsec_data.number_interpolation_points is not None:
+                    xsec.detail.number_interpolation_points = (
+                        xsec_data.number_interpolation_points
+                    )
+
             aeroplane.updated_at = datetime.now()
-    except NotFoundError:
+    except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
         logger.error(f"Database error when updating cross-section: {e}")
