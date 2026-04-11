@@ -162,18 +162,36 @@ docs/gh-27-rest-api-naming-guide
 4. **Commit often.** Each commit references the issue ID in the body
    or footer (e.g. `Relates to cad-modelling-service-7em.`) so the
    history is navigable later.
-5. **Push the branch** to `github` explicitly:
+5. **Run the pre-PR gate locally.** This is **mandatory** before
+   pushing a branch and opening a PR — the exact commands CI runs,
+   in the exact order, so a PR is never opened with a red CI
+   signature that the agent could have caught in seconds:
+   ```bash
+   poetry run ruff check .
+   poetry run pytest -m "not slow"
+   ```
+   If either fails, fix the issue *before* committing and pushing.
+   Do not rely on "the CI will tell us" — the CI tells the user,
+   and the user has to wait 2 minutes, review a failing PR, and
+   ask the agent to go back. This costs several minutes per round
+   and is avoidable with a 20-second local check. If the change
+   touches any slow test (``@pytest.mark.slow``), run that test
+   specifically as well:
+   ```bash
+   poetry run pytest app/tests/test_<the_relevant_slow_test>.py
+   ```
+6. **Push the branch** to `github` explicitly:
    ```bash
    git push -u github HEAD
    ```
-6. **Open a Pull Request** via
+7. **Open a Pull Request** via
    `gh pr create --base main --head <branch>` with a body that links
    the issue, summarises the change, and includes a test plan. Title
    uses the same conventional-commits prefix as the branch type.
-7. **Update the beads issue** — add a note with the PR URL. Do NOT
+8. **Update the beads issue** — add a note with the PR URL. Do NOT
    mark the issue `closed` yet; closure happens when the PR is
    merged. The beads status stays `in_progress`.
-8. **Do NOT self-merge.** Merging is the user's checkpoint.
+9. **Do NOT self-merge.** Merging is the user's checkpoint.
    A session ends at "branch pushed, PR opened, issue updated".
 
 ### Overnight / unattended agentic sessions
