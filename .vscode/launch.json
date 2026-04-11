@@ -80,6 +80,22 @@
             },
             "justMyCode": false,
             "preLaunchTask": ""
-        }
+        },
+        {
+            "name": "Configurator Wing (run)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/test/Test_Configurator_wing.py",
+            "cwd": "${workspaceFolder}/test",
+            "console": "integratedTerminal",
+            "env": {
+                "DISPLAY_CONSTRUCTION_STEP": "FALSE",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONFAULTHANDLER": "1",
+                "QT_QPA_PLATFORM": "offscreen",
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "justMyCode": false
+        },
     ]
 }
