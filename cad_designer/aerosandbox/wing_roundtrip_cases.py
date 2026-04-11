@@ -78,6 +78,37 @@ def single_segment_with_dihedral() -> WingConfiguration:
     )
 
 
+def single_segment_with_nose_pnt() -> WingConfiguration:
+    """One segment at non-zero ``nose_pnt``. Guards against regression
+    of the ``_get_relative_segment_coordinate_system`` inverted-``if``
+    bug (cad-modelling-service-tda): a 1-segment wing is the simplest
+    topology that still surfaces the nose_pnt double-counting, and
+    avoids the other parameter-drift noise that multi-segment cases
+    add on top of it.
+    """
+    return WingConfiguration(
+        nose_pnt=(25.0, 50.0, 100.0),
+        root_airfoil=Airfoil(
+            airfoil=AIRFOIL_PATH,
+            chord=200.0,
+            dihedral_as_rotation_in_degrees=0,
+            incidence=0,
+            rotation_point_rel_chord=0.25,
+        ),
+        length=500.0,
+        sweep=0,
+        sweep_is_angle=False,
+        tip_airfoil=Airfoil(
+            chord=200.0,
+            dihedral_as_rotation_in_degrees=0,
+            incidence=0,
+            rotation_point_rel_chord=0.25,
+        ),
+        symmetric=True,
+        parameters="relative",
+    )
+
+
 def single_segment_with_twist() -> WingConfiguration:
     """One segment, -10° tip incidence. Isolates twist recovery."""
     return WingConfiguration(
@@ -169,6 +200,7 @@ def ehawk_main_wing() -> WingConfiguration:
 # and the CLI exporter. Tests add their own tolerance columns on top.
 CASE_FACTORIES: List[Tuple[str, Callable[[], WingConfiguration]]] = [
     ("single_segment_flat", single_segment_flat),
+    ("single_segment_with_nose_pnt", single_segment_with_nose_pnt),
     ("single_segment_with_dihedral", single_segment_with_dihedral),
     ("single_segment_with_twist", single_segment_with_twist),
     ("configurator_wing", configurator_wing),
