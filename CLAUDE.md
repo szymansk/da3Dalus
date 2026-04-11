@@ -65,6 +65,100 @@ bd close <id>         # Complete work
 - If push fails, resolve and retry until it succeeds
 <!-- END BEADS INTEGRATION -->
 
+## Issue Workflow & Branch Strategy
+
+**Every issue (beads or GitHub) is worked on in its own local branch.**
+The default branch `main` on GitHub (and `streb` locally, tracking
+`github/main`) must stay review-ready at all times. All implementation
+work — code, tests, docs for a specific issue — goes through a dedicated
+branch and is merged via Pull Request so the user can review the diff
+before it lands on `main`.
+
+### Branch naming
+
+Branches are named `<type>/<issue-id>-<short-slug>` where:
+
+- `<type>` is one of: `feat`, `fix`, `refactor`, `chore`, `docs`, `test`
+  (mirrors the conventional-commits vocabulary used in commit messages).
+- `<issue-id>` is the full beads ID (`cad-modelling-service-7em`) or
+  the GitHub issue number prefixed with `gh-` (`gh-42`).
+- `<short-slug>` is 2–5 lowercase words separated by hyphens that hint
+  at the work.
+
+Examples:
+```
+fix/cad-modelling-service-7em-wing-roundtrip-dihedral-sign
+feat/gh-18-operating-points-pagination
+refactor/cad-modelling-service-0es-cad-service-registry
+docs/gh-27-rest-api-naming-guide
+```
+
+### Mandatory workflow per issue
+
+1. **Claim the issue first.** `bd update <id> --claim` (for beads) or
+   assign yourself on GitHub. Do not start coding before the issue is
+   in the `in_progress` state — that is the record that work has begun.
+2. **Start from an up-to-date default branch.**
+   ```bash
+   git switch streb
+   git pull --rebase github main
+   ```
+3. **Create the branch.**
+   ```bash
+   git switch -c <type>/<issue-id>-<short-slug>
+   ```
+4. **Commit often on the branch.** Each commit must reference the
+   issue ID in the message body or footer (e.g.
+   `Relates to cad-modelling-service-7em.`) so the history is
+   navigable later.
+5. **Push the branch** to the `github` remote explicitly:
+   ```bash
+   git push -u github HEAD
+   ```
+   Never push directly to `main`. If you accidentally made the
+   change on `streb` / `main`, reset and move the commits to a
+   feature branch before pushing.
+6. **Open a Pull Request** via `gh pr create --base main --head
+   <branch>` with a body that links the issue and summarises the
+   change plus the test plan. The PR title follows the same
+   conventional-commit format as the branch type.
+7. **Close or update the beads issue** only after the PR is open.
+   Do not mark the issue closed until the PR is merged — until
+   then the work is still in review.
+8. **Do NOT merge the PR yourself.** Merging is the user's checkpoint.
+   Your session ends at "branch pushed, PR opened, issue updated".
+
+### Exceptions (direct-to-`main` is allowed only for)
+
+- Session-housekeeping that does NOT correspond to an issue:
+  `bd dolt push`, pushing a beads data update, trivial `.gitignore`
+  tweaks that unblock tooling.
+- Reverting a broken commit on `main` (revert commit only; the fix
+  that follows still goes through a branch + PR).
+- Emergency CI unblock (lock file repair, missing dev dep) where a PR
+  roundtrip would block everyone — document after the fact in a
+  `chore:` commit.
+
+All other changes — including "just a one-line fix" and
+"just a test addition" — go through the branch + PR flow.
+
+### Interaction with Session Completion
+
+The Session Completion protocol above still applies, but the push
+target is **the feature branch**, not `main`. The final state of a
+session working on an issue is:
+
+```
+branch      <feat|fix|refactor>/<id>-<slug> pushed to github
+PR          #N opened, linked to <id>
+beads       <id> in_progress with notes pointing at the PR URL
+```
+
+`git status` should show `up to date with github/<branch>`, not
+with `github/main`.
+
+<!-- END ISSUE WORKFLOW -->
+
 ## Build & Test
 
 Language: **Python 3.11–3.13**, managed with **Poetry 2.x**.
