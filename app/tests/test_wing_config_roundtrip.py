@@ -155,6 +155,7 @@ def test_segment_origins_strict(roundtrip_case):
 # in mm (wing_config units).
 SHAPE_TOL = {
     "single_segment_flat": dict(vol_rel=1e-3, surf_rel=1e-3, centroid_mm=1e-2),
+    "single_segment_with_nose_pnt": dict(vol_rel=1e-3, surf_rel=1e-3, centroid_mm=1e-2),
     "single_segment_with_dihedral": dict(vol_rel=5e-2, surf_rel=5e-2, centroid_mm=5.0),
     "single_segment_with_twist": dict(vol_rel=5e-2, surf_rel=5e-2, centroid_mm=5.0),
     "configurator_wing": dict(vol_rel=2e-1, surf_rel=2e-1, centroid_mm=20.0),

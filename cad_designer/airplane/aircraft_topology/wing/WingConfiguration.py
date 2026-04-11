@@ -447,8 +447,17 @@ class WingConfiguration:
         r_neg_rel_chord[0, 3] = -self.segments[seg].root_airfoil.rotation_point_rel_chord * self.segments[
             seg].root_airfoil.chord
 
+        # ``ignore_nose_point=True`` means "give me the segment frame WITHOUT
+        # the nose_pnt offset"; the absolute branch just below already
+        # follows this convention and asb_wing() relies on it (it passes
+        # ignore_nose_point=True and then applies .translate(nose_pnt)
+        # itself). The condition here was historically inverted, which
+        # caused nose_pnt to leak into asb_wing()'s per-segment frames and
+        # then be applied a second time by .translate(), producing a
+        # 2 × nose_pnt offset in the from_asb() roundtrip. See issue
+        # cad-modelling-service-tda.
         nose_point_trans = np.eye(4)
-        if ignore_nose_point:
+        if not ignore_nose_point:
             nose_point_trans[:3, 3] = self.nose_pnt
 
         # apply the transformations in reverse order
