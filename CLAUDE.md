@@ -67,12 +67,62 @@ bd close <id>         # Complete work
 
 ## Issue Workflow & Branch Strategy
 
-**Every issue (beads or GitHub) is worked on in its own local branch.**
-The default branch `main` on GitHub (and `streb` locally, tracking
-`github/main`) must stay review-ready at all times. All implementation
-work — code, tests, docs for a specific issue — goes through a dedicated
-branch and is merged via Pull Request so the user can review the diff
-before it lands on `main`.
+**Substantial issue work goes through a dedicated branch and a Pull
+Request so the user can review the diff before it lands on `main`.**
+Trivial changes ship directly on `main` so the cycle stays fast.
+Overnight/unattended agentic sessions may stack multiple branches in a
+single run; the user merges them as a batch in the morning.
+
+This project has a single human maintainer who is also the only
+reviewer. The rules below are tuned for that constellation, not for a
+team workflow. The goal is to maximise PR review value on work that
+actually benefits from review, while keeping the small stuff and the
+autonomous sessions fluid.
+
+### What goes through a branch + PR
+
+Branch + PR is **required** for any change that matches *one or more*
+of the following:
+
+- Modifies anything under `app/services/`, `app/api/`, `app/models/`,
+  `app/core/`, `app/schemas/`, `app/converters/`, or `cad_designer/`.
+- Changes the database schema (`alembic/versions/*`).
+- Adds or changes more than ~50 net lines of production code
+  (anything under `app/` that is not a test).
+- Touches `pyproject.toml` in a way that affects runtime dependencies
+  or pytest configuration.
+- Changes the public REST surface, the MCP tool list, or the
+  serialisation contracts.
+- Introduces a new third-party dependency.
+- Corresponds to a beads issue of type `feature` or `bug` at priority
+  0, 1, or 2 — regardless of size.
+
+### What may land directly on `main`
+
+Low-risk, low-review-value changes may be committed straight to the
+default branch (`streb` locally, pushed to `github:main`) without a
+PR. The allowed categories:
+
+- **Docs-only** changes (`CLAUDE.md`, `README.md`, `docs/*.adoc`,
+  inline docstrings) up to ~100 net lines.
+- **Tests-only** changes under `app/tests/` or `test/` that add new
+  cases or adjust fixtures, up to ~100 net lines, with no production
+  code modified.
+- **Lint / format** auto-fixes that change no semantics
+  (`ruff format`, `ruff check --fix` where the fix is purely
+  stylistic).
+- **Chore** changes: `.gitignore`, `.vscode/*`, `.github/workflows/*`
+  up to ~50 net lines, toolchain files, beads database updates, MIT
+  housekeeping.
+- **Comments, typos, whitespace** — trivially.
+- **Revert commits** that undo a broken change (the subsequent fix
+  still goes through a branch + PR).
+- **Emergency CI unblock** (poetry.lock repair, missing dev
+  dependency). Document after the fact in a `chore:` commit.
+- **This CLAUDE.md section itself** and any meta-rule revision.
+
+If a change straddles categories (e.g. docs + production code), the
+stricter rule wins and it takes the branch + PR path.
 
 ### Branch naming
 
@@ -81,7 +131,9 @@ Branches are named `<type>/<issue-id>-<short-slug>` where:
 - `<type>` is one of: `feat`, `fix`, `refactor`, `chore`, `docs`, `test`
   (mirrors the conventional-commits vocabulary used in commit messages).
 - `<issue-id>` is the full beads ID (`cad-modelling-service-7em`) or
-  the GitHub issue number prefixed with `gh-` (`gh-42`).
+  the GitHub issue number prefixed with `gh-` (`gh-42`). Work that
+  has no issue still goes under a `scratch/` prefix, e.g.
+  `scratch/investigate-occt-memory`.
 - `<short-slug>` is 2–5 lowercase words separated by hyphens that hint
   at the work.
 
@@ -93,11 +145,11 @@ refactor/cad-modelling-service-0es-cad-service-registry
 docs/gh-27-rest-api-naming-guide
 ```
 
-### Mandatory workflow per issue
+### Workflow for a branch-based change
 
-1. **Claim the issue first.** `bd update <id> --claim` (for beads) or
+1. **Claim the issue first.** `bd update <id> --claim` for beads or
    assign yourself on GitHub. Do not start coding before the issue is
-   in the `in_progress` state — that is the record that work has begun.
+   `in_progress` — that is the record that work has begun.
 2. **Start from an up-to-date default branch.**
    ```bash
    git switch streb
@@ -107,55 +159,94 @@ docs/gh-27-rest-api-naming-guide
    ```bash
    git switch -c <type>/<issue-id>-<short-slug>
    ```
-4. **Commit often on the branch.** Each commit must reference the
-   issue ID in the message body or footer (e.g.
-   `Relates to cad-modelling-service-7em.`) so the history is
-   navigable later.
-5. **Push the branch** to the `github` remote explicitly:
+4. **Commit often.** Each commit references the issue ID in the body
+   or footer (e.g. `Relates to cad-modelling-service-7em.`) so the
+   history is navigable later.
+5. **Push the branch** to `github` explicitly:
    ```bash
    git push -u github HEAD
    ```
-   Never push directly to `main`. If you accidentally made the
-   change on `streb` / `main`, reset and move the commits to a
-   feature branch before pushing.
-6. **Open a Pull Request** via `gh pr create --base main --head
-   <branch>` with a body that links the issue and summarises the
-   change plus the test plan. The PR title follows the same
-   conventional-commit format as the branch type.
-7. **Close or update the beads issue** only after the PR is open.
-   Do not mark the issue closed until the PR is merged — until
-   then the work is still in review.
-8. **Do NOT merge the PR yourself.** Merging is the user's checkpoint.
-   Your session ends at "branch pushed, PR opened, issue updated".
+6. **Open a Pull Request** via
+   `gh pr create --base main --head <branch>` with a body that links
+   the issue, summarises the change, and includes a test plan. Title
+   uses the same conventional-commits prefix as the branch type.
+7. **Update the beads issue** — add a note with the PR URL. Do NOT
+   mark the issue `closed` yet; closure happens when the PR is
+   merged. The beads status stays `in_progress`.
+8. **Do NOT self-merge.** Merging is the user's checkpoint.
+   A session ends at "branch pushed, PR opened, issue updated".
 
-### Exceptions (direct-to-`main` is allowed only for)
+### Overnight / unattended agentic sessions
 
-- Session-housekeeping that does NOT correspond to an issue:
-  `bd dolt push`, pushing a beads data update, trivial `.gitignore`
-  tweaks that unblock tooling.
-- Reverting a broken commit on `main` (revert commit only; the fix
-  that follows still goes through a branch + PR).
-- Emergency CI unblock (lock file repair, missing dev dep) where a PR
-  roundtrip would block everyone — document after the fact in a
-  `chore:` commit.
+When the user launches a session with "work through the queue while I
+sleep", the single-branch-per-issue rule is lifted to a **linear
+branch chain** so the session is not blocked on merges the user has
+not yet performed. Rules:
 
-All other changes — including "just a one-line fix" and
-"just a test addition" — go through the branch + PR flow.
+1. **Pick independent issues first.** Use `bd ready` and prefer
+   issues that do not touch the same files. Independent issues each
+   get their own branch off `main` and become parallel PRs the user
+   can merge in any order.
+2. **Sequential chains are allowed** when issues depend on each
+   other. The second issue's branch starts from the first issue's
+   branch, not from `main`. The PR for the second issue is still
+   opened against `main`, with the body noting
+   `Depends on #<first-pr>.` The user merges them in dependency
+   order. GitHub auto-rebases the second PR after the first is
+   merged.
+3. **Never chain more than 3 deep.** If a session would need a
+   4-deep stack, stop and leave a note in the last issue explaining
+   why. Deep stacks become unmanageable during morning review.
+4. **Every PR must pass the fast CI job** before the session closes.
+   If a PR is red, leave it `draft` and put the failure in the
+   beads notes so the user can pick it up.
+5. **Session handoff note.** When the overnight session ends, append
+   a summary comment on the beads issue of the most recent branch
+   listing every PR opened in that session with its dependency
+   chain, e.g. `Stack: #41 ← #42 ← #43 (merge in order).`
+
+### Morning review loop (for the maintainer)
+
+The user-facing counterpart to overnight agentic work:
+
+```bash
+gh pr list --state open --search "sort:created-asc"
+gh pr diff <N>                  # inspect
+gh pr merge <N> --squash --delete-branch
+```
+
+A suggested one-shot "merge everything that is green and approved":
+
+```bash
+gh pr list --state open --json number,statusCheckRollup,reviewDecision \
+  --jq '.[] | select(.statusCheckRollup | all(.conclusion == "SUCCESS")) | .number' \
+  | xargs -I {} gh pr merge {} --squash --delete-branch
+```
+
+Optional: enable `Settings → General → Pull Requests → Automatically
+delete head branches` on the GitHub repo so merged branches clean
+themselves up.
 
 ### Interaction with Session Completion
 
-The Session Completion protocol above still applies, but the push
-target is **the feature branch**, not `main`. The final state of a
-session working on an issue is:
+The Session Completion protocol still applies, with one adjustment:
+the push target depends on the change category.
 
-```
-branch      <feat|fix|refactor>/<id>-<slug> pushed to github
-PR          #N opened, linked to <id>
-beads       <id> in_progress with notes pointing at the PR URL
-```
+- For **branch-based** work the final state is:
+  ```
+  branch      <feat|fix|...>/<id>-<slug> pushed to github
+  PR          #N opened (or draft if CI red), linked to <id>
+  beads       <id> in_progress, notes point at the PR URL
+  ```
+  `git status` should show `up to date with github/<branch>`.
 
-`git status` should show `up to date with github/<branch>`, not
-with `github/main`.
+- For **direct-to-`main`** changes the state is:
+  ```
+  branch      streb pushed to github:main
+  beads       <id> closed (if the change was tracked)
+  ```
+  `git status` shows `up to date with github/main`. The legacy
+  `git push github streb:main` pattern still applies here.
 
 <!-- END ISSUE WORKFLOW -->
 
