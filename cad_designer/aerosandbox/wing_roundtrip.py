@@ -411,6 +411,56 @@ def render_wing_loft_to_step(
     return out_path
 
 
+def propagate_cad_metadata(expected, rebuilt) -> None:
+    """Copy CAD-only metadata from the expected wing into the rebuilt wing.
+
+    ``WingConfiguration.from_asb`` reconstructs the *geometric* state
+    from asb data, but asb does not store a handful of CAD-only
+    attributes that the CadQuery loft pipeline nevertheless reads from
+    the ``WingConfiguration``:
+
+    - ``number_interpolation_points`` — how many points the airfoil
+      spline uses when it is sampled onto the workplane. asb has no
+      concept of this because it only runs vortex-lattice analysis.
+    - ``wing_segment_type`` / ``tip_type`` — the Wing-level
+      distinction between regular segments and tip segments (flat,
+      round, …). asb just sees a flat list of cross-sections.
+    - Airfoil file paths on both root and tip airfoils — asb stores
+      only the airfoil *name* (a bare identifier), not the full
+      ``.dat`` path that CadQuery needs to open.
+
+    In the REST/production pipeline this information is restored via
+    the ``AsbWingSchema`` hydration step in
+    ``asbWingSchemaToWingConfig``. In the test harness (which goes
+    directly through ``from_asb`` with no schema), we need to
+    propagate it manually so that the rebuilt wing renders with the
+    same CAD-level settings as the expected one. Without this the
+    loft uses a different airfoil resolution and the Level 3 shape
+    test picks up a ~2 % volume delta that is *purely* a mesh-density
+    artefact, not a geometric roundtrip issue.
+
+    The function mutates ``rebuilt`` in place. Segment counts must
+    match; any mismatch is silently tolerated by iterating over the
+    shorter list.
+    """
+    if expected.segments is None or rebuilt.segments is None:
+        return
+
+    for idx, (exp_seg, reb_seg) in enumerate(zip(expected.segments, rebuilt.segments)):
+        if exp_seg.number_interpolation_points is not None:
+            reb_seg.number_interpolation_points = exp_seg.number_interpolation_points
+        if getattr(exp_seg, "wing_segment_type", None) is not None:
+            reb_seg.wing_segment_type = exp_seg.wing_segment_type
+        if getattr(exp_seg, "tip_type", None) is not None:
+            reb_seg.tip_type = exp_seg.tip_type
+        if exp_seg.root_airfoil is not None and reb_seg.root_airfoil is not None:
+            if exp_seg.root_airfoil.airfoil is not None:
+                reb_seg.root_airfoil.airfoil = exp_seg.root_airfoil.airfoil
+        if exp_seg.tip_airfoil is not None and reb_seg.tip_airfoil is not None:
+            if exp_seg.tip_airfoil.airfoil is not None:
+                reb_seg.tip_airfoil.airfoil = exp_seg.tip_airfoil.airfoil
+
+
 def compare_wing_shapes(step_path_a: Path, step_path_b: Path) -> ShapeCompareResult:
     """Compare two wing shapes exported as STEP files.
 
@@ -515,6 +565,12 @@ def export_roundtrip_pair(
         asb_wing.xsecs,
         symmetric=wing_config.symmetric,
     )
+    # Restore CAD-only metadata (number_interpolation_points,
+    # tip_type, airfoil file paths) that asb cannot represent. In
+    # the production REST pipeline this is done by the schema
+    # hydration step; in this CLI we do it directly from the
+    # expected config.
+    propagate_cad_metadata(wing_config, rebuilt)
 
     expected_path = out_dir / f"{case_id}_expected.step"
     actual_path = out_dir / f"{case_id}_actual.step"

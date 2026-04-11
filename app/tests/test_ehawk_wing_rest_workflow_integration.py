@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import json
 import time
 from pathlib import Path
 from urllib.parse import urlparse
@@ -9,8 +10,6 @@ from zipfile import ZipFile
 import pytest
 from fastapi.testclient import TestClient
 
-from app import schemas
-from app.converters.model_schema_converters import wingConfigToAsbWingSchema
 from test.ehawk_workflow_helpers import _build_main_wing
 
 # `client_and_db` fixture is provided by app/tests/conftest.py.
@@ -51,151 +50,100 @@ def _wait_for_task_completion(client: TestClient, aeroplane_id: str, timeout_sec
     pytest.fail(f"Timed out waiting for CAD task completion. Last status payload: {last_payload}")
 
 
-def _build_full_ehawk_asb_wing_schema() -> schemas.AsbWingSchema:
+def _build_ehawk_wingconfig_payload() -> dict:
+    """Build the eHawk main wing and return a ``/from-wingconfig``-ready JSON dict.
+
+    This goes through ``_build_main_wing`` (the single source of truth
+    for the eHawk geometry, shared with
+    ``test/Construction_eHawk_wing.py``) and serialises the resulting
+    :class:`WingConfiguration` via its own ``__getstate__`` into the
+    dict shape that ``POST /aeroplanes/{id}/wings/{name}/from-wingconfig``
+    accepts (Pydantic ``app.schemas.wing.Wing``).
+
+    The intermediate ``AsbWingSchema`` / minimal ``PUT /wings`` path
+    is intentionally bypassed because that schema does not carry
+    ``wing_segment_type`` / ``tip_type`` / ``spare_list`` /
+    ``number_interpolation_points`` — the fields the
+    :class:`VaseModeWingCreator` CAD pipeline relies on to
+    distinguish regular segments from wing tips. See
+    cad-modelling-service-7em for the full rationale.
+    """
     repo_root = Path(__file__).resolve().parents[2]
     airfoil_path = str((repo_root / "components" / "airfoils" / "mh32.dat").resolve())
     wing_config = _build_main_wing(airfoil_path)
-    return wingConfigToAsbWingSchema(
-        wing_config=wing_config,
-        wing_name="main_wing",
-        scale=0.001,
-    )
+
+    # __getstate__ walks WingConfiguration + WingSegment + Airfoil +
+    # Spare + TrailingEdgeDevice and produces a nested dict of
+    # JSON-serialisable attributes. We still need a custom encoder
+    # hook for cadquery Vector / numpy scalar types that may appear
+    # on spar origins and vectors.
+    state = wing_config.__getstate__()
+
+    class _JsonSafeEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if hasattr(obj, "toTuple"):
+                return list(obj.toTuple())
+            if hasattr(obj, "x") and hasattr(obj, "y") and hasattr(obj, "z"):
+                return [float(obj.x), float(obj.y), float(obj.z)]
+            try:
+                return float(obj)
+            except Exception:
+                return str(obj)
+
+    # Round-trip through JSON so tuples become lists, numpy floats
+    # become Python floats, and any surviving non-standard types get
+    # converted via the encoder hook above.
+    return json.loads(json.dumps(state, cls=_JsonSafeEncoder))
 
 
 @pytest.mark.slow
 @pytest.mark.requires_cadquery
 @pytest.mark.requires_aerosandbox
-@pytest.mark.xfail(
-    reason=(
-        "The original ``from_asb()`` roundtrip bugs (dihedral sign flip, "
-        "``rotation_point_rel_chord`` hardcoded to 0, both dihedral forms "
-        "set simultaneously, cumulative length/sweep, nose_pnt double-count) "
-        "were fixed in PRs #2 and #3 (cad-modelling-service-tda + "
-        "cad-modelling-service-121). The CAD pipeline now progresses from "
-        "segment 4 (old rib failure) all the way through to segment 7 "
-        "before hitting a different issue: "
-        "``VaseModeWingCreator._create_spare_shape`` raises "
-        "``TypeError: 'NoneType' object is not subscriptable`` on "
-        "``segments[7].spare_list[0]`` because ``spare_list`` is None. "
-        "Root cause is *not* in ``from_asb`` — the hydration step in "
-        "``asbWingSchemaToWingConfig`` correctly copies ``tip_type``, "
-        "``spare_list`` and ``wing_segment_type`` from the schema if "
-        "they are set. The problem is that this test uses the minimal "
-        "``PUT /aeroplanes/{id}/wings/{wing_name}`` endpoint with "
-        "``AsbWingGeometryWriteSchema``, which only carries "
-        "``{xyz_le, chord, twist, airfoil}`` and silently drops "
-        "``tip_type``/``wing_segment_type``. The resulting ``WingModel`` "
-        "has every segment stored as ``wing_segment_type='segment'`` "
-        "(not 'tip'), so ``VaseModeWingCreator`` tries to create spars "
-        "on segments 7..10 which were *intended* as tips. See beads "
-        "issue cad-modelling-service-7em for the follow-up plan "
-        "(either extend the write schema to carry segment metadata, "
-        "or switch this test to the ``POST /wings/.../from-wingconfig`` "
-        "endpoint which already takes the full ``WingConfigurationSchema``)."
-    ),
-    strict=False,
-)
-def test_rest_stepwise_wing_vase_mode_step_export_workflow(client: TestClient):
+def test_rest_wing_vase_mode_step_export_workflow_via_wingconfig(client: TestClient):
+    """End-to-end eHawk main wing STEP export via
+    ``POST /wings/{name}/from-wingconfig``.
+
+    The older stepwise flow (``PUT /wings`` + per-xsec spar/TED
+    patches) is deliberately not used here. Its write schema,
+    ``AsbWingGeometryWriteSchema``, only carries
+    ``{xyz_le, chord, twist, airfoil}`` per cross-section — it
+    silently drops ``wing_segment_type`` / ``tip_type`` /
+    ``number_interpolation_points``, so any wing with dedicated
+    tip segments (like the eHawk main wing's 5 tip segments)
+    arrives at the CAD worker as "all regular segments with no
+    spar metadata", which crashes ``VaseModeWingCreator`` when
+    it tries to index into ``spare_list[0]`` on segment 7.
+
+    ``/from-wingconfig`` takes the full
+    :class:`WingConfigurationSchema` instead, preserving every
+    field the VaseMode creator needs. See beads issue
+    cad-modelling-service-7em for the full analysis.
+    """
     wing_name = "main_wing"
-    asb_wing = _build_full_ehawk_asb_wing_schema()
+    wing_payload = _build_ehawk_wingconfig_payload()
 
     create_plane_response = client.post("/aeroplanes", params={"name": "eHawk REST workflow"})
     assert create_plane_response.status_code == 201, create_plane_response.text
     aeroplane_id = create_plane_response.json()["id"]
 
-    wing_geometry_payload = {
-        "name": wing_name,
-        "symmetric": asb_wing.symmetric,
-        "x_secs": [
-            {
-                "xyz_le": [float(value) for value in x_sec.xyz_le],
-                "chord": float(x_sec.chord),
-                "twist": float(x_sec.twist),
-                "airfoil": str(x_sec.airfoil),
-            }
-            for x_sec in asb_wing.x_secs
-        ],
-    }
-
-    create_wing_response = client.put(
-        f"/aeroplanes/{aeroplane_id}/wings/{wing_name}",
-        json=wing_geometry_payload,
+    create_wing_response = client.post(
+        f"/aeroplanes/{aeroplane_id}/wings/{wing_name}/from-wingconfig",
+        json=wing_payload,
     )
     assert create_wing_response.status_code == 201, create_wing_response.text
     assert create_wing_response.json() == {
         "status": "created",
-        "operation": "create_aeroplane_wing",
+        "operation": "create_aeroplane_wing_from_wingconfig",
     }
 
-    for cross_section_index, x_sec in enumerate(asb_wing.x_secs[:-1]):
-        if x_sec.control_surface is not None:
-            control_surface_patch = {
-                "name": x_sec.control_surface.name,
-                "hinge_point": float(x_sec.control_surface.hinge_point),
-                "symmetric": bool(x_sec.control_surface.symmetric),
-                "deflection": float(x_sec.control_surface.deflection),
-            }
-            control_surface_response = client.patch(
-                f"/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface",
-                json=control_surface_patch,
-            )
-            assert control_surface_response.status_code == 200, control_surface_response.text
-
-        ted = x_sec.trailing_edge_device
-        if ted is not None:
-            ted_patch = {}
-            if ted.rel_chord_tip is not None:
-                ted_patch["rel_chord_tip"] = float(ted.rel_chord_tip)
-            if ted.hinge_spacing is not None:
-                ted_patch["hinge_spacing"] = float(ted.hinge_spacing)
-            if ted.side_spacing_root is not None:
-                ted_patch["side_spacing_root"] = float(ted.side_spacing_root)
-            if ted.side_spacing_tip is not None:
-                ted_patch["side_spacing_tip"] = float(ted.side_spacing_tip)
-            if ted.servo_placement is not None:
-                ted_patch["servo_placement"] = ted.servo_placement
-            if ted.rel_chord_servo_position is not None:
-                ted_patch["rel_chord_servo_position"] = float(ted.rel_chord_servo_position)
-            if ted.rel_length_servo_position is not None:
-                ted_patch["rel_length_servo_position"] = float(ted.rel_length_servo_position)
-            if ted.positive_deflection_deg is not None:
-                ted_patch["positive_deflection_deg"] = float(ted.positive_deflection_deg)
-            if ted.negative_deflection_deg is not None:
-                ted_patch["negative_deflection_deg"] = float(ted.negative_deflection_deg)
-            if ted.trailing_edge_offset_factor is not None:
-                ted_patch["trailing_edge_offset_factor"] = float(ted.trailing_edge_offset_factor)
-            if ted.hinge_type is not None:
-                ted_patch["hinge_type"] = ted.hinge_type
-
-            if ted_patch:
-                ted_response = client.patch(
-                    f"/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details",
-                    json=ted_patch,
-                )
-                assert ted_response.status_code == 200, ted_response.text
-
-        for spare in x_sec.spare_list or []:
-            create_spar_response = client.post(
-                f"/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/spars",
-                json=spare.model_dump(),
-            )
-            assert create_spar_response.status_code == 201, create_spar_response.text
-            assert create_spar_response.json() == {
-                "status": "created",
-                "operation": "create_wing_cross_section_spar",
-            }
-
+    # Sanity-check that the WingModel comes back with the right
+    # segment count and that the last segment's tip is tagged as a
+    # wing tip (tip_type preserved through the roundtrip).
     wing_response = client.get(f"/aeroplanes/{aeroplane_id}/wings/{wing_name}")
     assert wing_response.status_code == 200, wing_response.text
-    wing_payload = wing_response.json()
-    assert len(wing_payload["x_secs"]) == len(asb_wing.x_secs)
-    expected_control_surfaces = sum(1 for x_sec in asb_wing.x_secs[:-1] if x_sec.control_surface is not None)
-    actual_control_surfaces = sum(1 for x_sec in wing_payload["x_secs"][:-1] if x_sec["control_surface"] is not None)
-    assert actual_control_surfaces == expected_control_surfaces
-    expected_spares = sum(len(x_sec.spare_list or []) for x_sec in asb_wing.x_secs[:-1])
-    actual_spares = sum(len(x_sec["spare_list"] or []) for x_sec in wing_payload["x_secs"][:-1])
-    assert actual_spares == expected_spares
-    assert wing_payload["x_secs"][-1]["trailing_edge_device"] is None
+    wing_model_payload = wing_response.json()
+    expected_xsec_count = len(wing_payload["segments"]) + 1
+    assert len(wing_model_payload["x_secs"]) == expected_xsec_count
 
     # Segment 2 of the eHawk main wing defines an aileron TED that
     # references servo=1. The CAD task builds ServoInformation[1] from

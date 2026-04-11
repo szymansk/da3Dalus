@@ -151,6 +151,20 @@ def test_wing_config_to_wing_model_and_back_preserves_details():
 
 
 def test_wing_model_to_wing_config_scales_geometry_for_cad():
+    """Unit-conversion (m → mm) regression test.
+
+    Uses a purely planar wing (``z = 0`` on the tip xsec) so that
+    the segment length recovered by ``WingConfiguration.from_asb``
+    is exactly the y-component of the LE delta. A non-planar tip
+    would trigger the ``from_asb`` cumulative-R_x heuristic (which
+    interprets the z-offset as a dihedral rotation, by the
+    convention that matches Case B / eHawk-style winglets) and
+    report ``length = sqrt(dy² + dz²)`` with a corresponding
+    non-zero ``dihedral_as_rotation_in_degrees``. That behaviour is
+    exercised by the roundtrip harness in
+    ``app/tests/test_wing_config_roundtrip.py``; this test focuses
+    on the plain unit conversion.
+    """
     wing_schema = schemas.AsbWingSchema(
         name="main-wing",
         symmetric=True,
@@ -162,7 +176,7 @@ def test_wing_model_to_wing_config_scales_geometry_for_cad():
                 airfoil="./components/airfoils/mh32.dat",
             ),
             schemas.WingXSecSchema(
-                xyz_le=[0.01, 0.5, 0.02],
+                xyz_le=[0.01, 0.5, 0.0],
                 chord=0.15,
                 twist=0.0,
                 airfoil="./components/airfoils/mh32.dat",
