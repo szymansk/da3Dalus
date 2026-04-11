@@ -109,16 +109,16 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction --no-root
 
-      - name: Run slow-marked tests only
-        # The fast job already validates the non-slow suite. This step
-        # runs only the two @pytest.mark.slow tests, isolated from the
-        # rest, with maximum diagnostic output. Wall-clock SIGKILL
-        # after 900s as a final safety net.
+      - name: Run full suite including slow E2E tests
+        # Runs the full pytest suite (fast + slow marked). After the
+        # cad_service.py ProcessPoolExecutor refactor, the previously
+        # hanging CAD E2E test should complete within ~3 minutes.
+        # Wall-clock SIGKILL after 900s remains as a safety net.
+        # Verbose + unbuffered output + faulthandler stay in place for
+        # future diagnostic value at basically zero cost.
         run: |
           timeout --kill-after=30s 900 \
-            poetry run pytest -v -s --capture=no --tb=long \
-              -m slow \
-              --log-cli-level=DEBUG
+            poetry run pytest -v -s --capture=no --tb=short
         env:
           QT_QPA_PLATFORM: offscreen
           PYTHONUNBUFFERED: "1"

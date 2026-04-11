@@ -485,14 +485,56 @@ async def aeroplaneSchemaToAirplaneConfiguration_async(plane_schema: AeroplaneSc
     )
 
 
-def wingModelToWingConfig(wing: WingModel, scale: float = 1.0) -> WingConfiguration:
-    asb_wing: schemas.AsbWingSchema = schemas.AsbWingSchema.model_validate(wing, from_attributes=True)
-    geometry_scaled_schema = _scale_asb_wing_geometry_schema(asb_wing, scale=scale)
+def wingModelToAsbWingSchema(wing: WingModel) -> schemas.AsbWingSchema:
+    """Convert a SQLAlchemy ``WingModel`` to its Pydantic
+    ``AsbWingSchema`` representation.
 
+    Split out from :func:`wingModelToWingConfig` so that callers that
+    need to cross a process boundary (e.g. the CAD ProcessPoolExecutor
+    in ``app.services.cad_service``) can pickle the schema, which is
+    picklable, instead of the final :class:`WingConfiguration`, which
+    contains ``cq.Vector`` / OCCT ``gp_Vec`` objects that are not.
+    """
+    return schemas.AsbWingSchema.model_validate(wing, from_attributes=True)
+
+
+def asbWingSchemaToWingConfig(
+    asb_wing: schemas.AsbWingSchema,
+    scale: float = 1.0,
+) -> WingConfiguration:
+    """Convert a ``AsbWingSchema`` to a live ``WingConfiguration``.
+
+    This is the second half of :func:`wingModelToWingConfig` and is
+    suitable for calling inside a worker process after the schema has
+    been transported via pickle.
+    """
+    geometry_scaled_schema = _scale_asb_wing_geometry_schema(asb_wing, scale=scale)
     xsecs = _asb_wing_xsecs_from_schema(geometry_scaled_schema)
     wing_config = WingConfiguration.from_asb(xsecs, geometry_scaled_schema.symmetric)
     _hydrate_wing_configuration_details(wing_config, asb_wing)
+    # from_asb() leaves every segment's airfoils with
+    # rotation_point_rel_chord=0.0, but the rest of the pipeline
+    # (WingConfiguration.asb_wing() AND the VaseModeWingCreator CAD
+    # pipeline) expects the default 0.25 quarter-chord rotation point.
+    # Without this normalisation the resulting wing geometry is
+    # rotated around the leading edge instead of the quarter-chord,
+    # producing degenerate intersect shapes that hang / crash OCCT
+    # further down. See the matching call inside
+    # wingConfigToAsbWingSchema().
+    _prepare_wing_config_for_asb(wing_config)
     return wing_config
+
+
+def wingModelToWingConfig(wing: WingModel, scale: float = 1.0) -> WingConfiguration:
+    """Convert a SQLAlchemy ``WingModel`` to a live ``WingConfiguration``.
+
+    Convenience wrapper around :func:`wingModelToAsbWingSchema` and
+    :func:`asbWingSchemaToWingConfig` for in-process callers. For
+    cross-process transports prefer calling the two halves explicitly
+    so the schema (not the config) crosses the process boundary.
+    """
+    asb_wing = wingModelToAsbWingSchema(wing)
+    return asbWingSchemaToWingConfig(asb_wing, scale=scale)
 
 
 def wingConfigToAsbWingSchema(

@@ -3,20 +3,41 @@ CAD Service - Business logic for CAD export operations.
 
 This module contains the core logic for CAD model creation and export,
 separated from HTTP concerns for better testability and reusability.
+
+Execution model
+---------------
+CAD tasks run in a ProcessPoolExecutor, NOT a ThreadPoolExecutor. OCCT
+(the C++ backend behind CadQuery) is not thread-safe: the same
+`.intersect().clean()` call that completes in ~100ms in the main thread
+hangs indefinitely when invoked from a worker thread because OCCT holds
+global state (BRepCheck messaging, memory pools, interrupt handlers)
+that gets into a blocking state under thread concurrency.
+
+Process isolation fixes this: each worker has its own Python interpreter,
+its own main thread, and its own fresh OCCT state. `spawn` context is
+used for platform-consistent behaviour (macOS defaults to spawn; Linux
+would default to fork which is unsafe with already-loaded OCCT
+bindings).
 """
 
 import json
 import logging
+import multiprocessing
 import os
+import pickle
+import traceback
+from concurrent.futures import Future, ProcessPoolExecutor
 from threading import Lock
-from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, Optional, Union
 from zipfile import ZipFile
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
-from app.converters.model_schema_converters import wingModelToWingConfig
+from app.converters.model_schema_converters import (
+    asbWingSchemaToWingConfig,
+    wingModelToAsbWingSchema,
+)
 from app.core.exceptions import NotFoundError, ValidationError, ConflictError, InternalError
 from app.models import AeroplaneModel, WingModel, WingXSecModel
 from app.models.aeroplanemodel import (
@@ -34,10 +55,41 @@ from cad_designer.airplane.aircraft_topology.wing import WingConfiguration
 
 logger = logging.getLogger(__name__)
 
-# In-Memory task management
+# In-memory task management (parent-process state only)
 tasks: Dict[str, Dict[str, Any]] = {}
 tasks_lock = Lock()
-executor = ThreadPoolExecutor(max_workers=4)
+
+# Lazy-initialised process pool. Created on first CAD submit; torn down
+# on FastAPI lifespan shutdown and between tests (see conftest fixture).
+_mp_context = multiprocessing.get_context("spawn")
+_executor: Optional[ProcessPoolExecutor] = None
+_executor_lock = Lock()
+
+
+def _get_executor() -> ProcessPoolExecutor:
+    """Return the CAD process pool, creating it on first use."""
+    global _executor
+    with _executor_lock:
+        if _executor is None:
+            _executor = ProcessPoolExecutor(max_workers=4, mp_context=_mp_context)
+    return _executor
+
+
+def shutdown_executor() -> None:
+    """Tear down the CAD process pool.
+
+    Called from the FastAPI lifespan shutdown hook and from the
+    `clean_cad_task_state` test fixture so that worker processes do not
+    leak between tests.
+    """
+    global _executor
+    with _executor_lock:
+        if _executor is not None:
+            try:
+                _executor.shutdown(wait=False, cancel_futures=True)
+            except Exception as exc:
+                logger.warning("Error shutting down cad executor: %s", exc)
+            _executor = None
 
 
 def get_aeroplane_with_wings(db: Session, aeroplane_uuid) -> AeroplaneModel:
@@ -203,105 +255,130 @@ def build_wing_blueprint(
     return blueprint
 
 
-def execute_aeroplane_construction(
+def _run_construction_worker(
     aeroplane_id: str,
-    blueprint: Union[Dict, str],
-    wings: Optional[Dict[str, WingModel]] = None,
-    fuselages: Optional[Dict[str, FuselageSchema]] = None,
-    request_settings: Optional[AeroplaneSettings] = None,
-) -> None:
+    blueprint_dict: Dict[str, Any],
+    wing_schemas_pickle: bytes,
+    wing_scale: float,
+    fuselages_pickle: Optional[bytes],
+    servo_settings_dumps: Dict[int, Dict[str, Any]],
+    printer_settings_pickle: Optional[bytes],
+) -> Dict[str, Any]:
+    """Top-level worker function executed inside a ProcessPoolExecutor.
+
+    This function MUST NOT touch the parent-process ``tasks`` dict — it
+    cannot see it. Instead it returns a result dict which the parent
+    stores via a ``future.add_done_callback``.
+
+    All arguments are picklable. The parent is responsible for building
+    the real ``ServoInformation`` / ``Printer3dSettings`` / ``WingConfiguration``
+    objects and pickling them, so the worker only has to deserialize and
+    hand them to the ``GeneralJSONDecoder``.
     """
-    Execute the CAD construction task in background.
-    
-    This function is run in a thread pool and updates task status.
-    """
+    # Reconfigure logging in the worker — spawn does not inherit the
+    # parent's logging setup.
+    import logging as _logging
+    _logging.basicConfig(
+        level=_logging.INFO,
+        format="%(asctime)s [%(levelname)s] [%(name)s] [worker] %(message)s",
+    )
+    _logger = _logging.getLogger(__name__)
+
     try:
-        logger.info(f"Starting aeroplane construction: {aeroplane_id}")
-        
-        settings = {}
-        if request_settings is not None:
-            settings = request_settings.__dict__.copy()
-            servo_information = request_settings.servo_information or {}
-            settings['servo_information'] = {
-                key: ServoInformation(
-                    height=value.height,
-                    width=value.width,
-                    length=value.length,
-                    lever_length=value.lever_length,
-                    rot_x=value.rot_x,
-                    rot_y=value.rot_y,
-                    rot_z=value.rot_z,
-                    trans_x=value.trans_x,
-                    trans_y=value.trans_y,
-                    trans_z=value.trans_z,
-                    servo=create_servo(value.servo)
-                ) for key, value in servo_information.items()
-            }
-        
-        # REST wing geometry is stored in meters; CAD topology expects millimeters.
+        _logger.info("Starting aeroplane construction: %s", aeroplane_id)
+
+        # Re-hydrate all the pickled dependency objects. Wings cross the
+        # process boundary as AsbWingSchema (Pydantic, picklable) and
+        # are rebuilt into WingConfiguration here in the worker because
+        # WingConfiguration holds cq.Vector / OCCT gp_Vec instances that
+        # cannot be pickled.
+        wing_schemas: Dict[str, Any] = pickle.loads(wing_schemas_pickle)
         wing_config: Dict[str, WingConfiguration] = {
-            k: wingModelToWingConfig(w, scale=1000.0) for k, w in (wings or {}).items()
+            name: asbWingSchemaToWingConfig(schema, scale=wing_scale)
+            for name, schema in wing_schemas.items()
         }
-        
-        # Parse blueprint
-        if isinstance(blueprint, dict):
-            try:
-                blue_print: ConstructionStepNode = json.loads(
-                    json.dumps(blueprint),
-                    cls=GeneralJSONDecoder,
-                    wing_config=wing_config,
-                    fuselage_config=fuselages,
-                    **settings
-                )
-            except (TypeError, ValueError) as e:
-                raise ValueError(f"Error processing the JSON object: {e}")
-        elif isinstance(blueprint, str) and os.path.isfile(blueprint):
-            try:
-                with open(blueprint, "r") as json_file:
-                    blue_print: ConstructionStepNode = json.load(
-                        json_file,
-                        cls=GeneralJSONDecoder,
-                        wing_config=wing_config,
-                        fuselage_config=fuselages,
-                        **settings
-                    )
-            except FileNotFoundError:
-                raise FileNotFoundError(f"Blueprint file not found: {blueprint}")
-            except (TypeError, ValueError) as e:
-                raise ValueError(f"Error loading the blueprint file: {e}")
-            except OSError as e:
-                raise OSError(f"Error opening the blueprint file: {e}")
-        else:
-            raise TypeError("Blueprint must be either a JSON object (dict) or a valid file path.")
-        
-        # Execute construction
+        fuselages: Optional[Dict[str, FuselageSchema]] = (
+            pickle.loads(fuselages_pickle) if fuselages_pickle else None
+        )
+        printer_settings = (
+            pickle.loads(printer_settings_pickle) if printer_settings_pickle else None
+        )
+
+        # Re-hydrate servo_information in the worker. The cad_designer
+        # ServoInformation class internally holds cq.Vector / gp_Vec
+        # instances that are not picklable, so we cannot build it in
+        # the parent and ship it over. Instead we ship the raw dict
+        # (from ServoSettings.model_dump()) and reconstruct both the
+        # Servo pydantic schema and the ServoInformation here.
+        from app.schemas.Servo import Servo as _ServoSchema
+        servo_information: Dict[int, ServoInformation] = {}
+        for key, value in (servo_settings_dumps or {}).items():
+            servo_dict = value.get("servo")
+            if isinstance(servo_dict, dict):
+                servo_schema: Any = _ServoSchema(**servo_dict)
+            else:
+                servo_schema = servo_dict  # None or already int
+            servo_information[int(key)] = ServoInformation(
+                height=value.get("height", 0),
+                width=value.get("width", 0),
+                length=value.get("length", 0),
+                lever_length=value.get("lever_length", 0),
+                rot_x=value.get("rot_x", 0.0),
+                rot_y=value.get("rot_y", 0.0),
+                rot_z=value.get("rot_z", 0.0),
+                trans_x=value.get("trans_x", 0.0),
+                trans_y=value.get("trans_y", 0.0),
+                trans_z=value.get("trans_z", 0.0),
+                servo=create_servo(servo_schema),
+            )
+
+        # Parse blueprint into a live ConstructionStepNode tree, with
+        # wing_config / servo_information / fuselages / printer_settings
+        # passed through the decoder kwargs (same pattern as
+        # test/Construction_eHawk_wing.py).
+        decoder_kwargs: Dict[str, Any] = {
+            "wing_config": wing_config,
+            "fuselage_config": fuselages,
+            "servo_information": servo_information,
+        }
+        if printer_settings is not None:
+            decoder_kwargs["printer_settings"] = printer_settings
+
+        blue_print: ConstructionStepNode = json.loads(
+            json.dumps(blueprint_dict),
+            cls=GeneralJSONDecoder,
+            **decoder_kwargs,
+        )
+
+        # Execute construction. This is the call that used to hang in
+        # a ThreadPoolExecutor worker because of OCCT thread-unsafety.
         blue_print.create_shape()
-        
-        logger.info(f"Finished aeroplane construction: {aeroplane_id}")
-        
-        # Create zip file
+        _logger.info("Finished aeroplane construction: %s", aeroplane_id)
+
+        # Create the result zip file
         zipfile_path = f"./tmp/{aeroplane_id}.zip"
         exports_dir = "./tmp/exports"
-        
-        with ZipFile(zipfile_path, 'w') as zipf:
-            logger.info(f"Zipping files for: {aeroplane_id}")
+
+        with ZipFile(zipfile_path, "w") as zipf:
+            _logger.info("Zipping files for: %s", aeroplane_id)
             for file in os.scandir(exports_dir):
                 zipf.write(file.path)
-        
-        # Cleanup export files
+
         for file in os.scandir(exports_dir):
             os.unlink(file.path)
-        
-        # Update task status
-        with tasks_lock:
-            tasks[aeroplane_id]['status'] = 'SUCCESS'
-            tasks[aeroplane_id]['result'] = {"zipfile": zipfile_path}
-            
+
+        return {
+            "status": "SUCCESS",
+            "result": {"zipfile": zipfile_path},
+        }
+
     except Exception as err:
-        logger.error(f"Construction failed for {aeroplane_id}: {err}")
-        with tasks_lock:
-            tasks[aeroplane_id]['status'] = 'FAILURE'
-            tasks[aeroplane_id]['error'] = str(err)
+        _logger.error("Construction failed for %s: %s", aeroplane_id, err, exc_info=True)
+        return {
+            "status": "FAILURE",
+            "error": f"{type(err).__name__}: {err}",
+            "traceback": traceback.format_exc(),
+        }
 
 
 def start_wing_export_task(
@@ -315,24 +392,19 @@ def start_wing_export_task(
     aeroplane_settings: Optional[AeroplaneSettings],
 ) -> None:
     """
-    Start a background task for wing export.
-    
+    Start a background CAD task in a dedicated worker process.
+
     Raises:
-        ConflictError: If another task is already running.
+        ConflictError: If another task is already running for this aeroplane.
         ValidationError: If the exporter type is not supported.
     """
     aeroplane_id_str = str(aeroplane_id)
-    
-    # Check if task slot is available
+
     check_task_available(aeroplane_id_str)
-    
-    # Register pending task
     register_pending_task(aeroplane_id_str)
-    
-    # Get exporter class
+
     exporter_class = map_exporter_type(exporter_url_type)
-    
-    # Build blueprint
+
     blueprint = build_wing_blueprint(
         wing_name=wing_name,
         creator_url_type=creator_url_type,
@@ -340,19 +412,93 @@ def start_wing_export_task(
         leading_edge_offset_factor=leading_edge_offset_factor,
         trailing_edge_offset_factor=trailing_edge_offset_factor,
     )
-    
-    # Submit task
-    future = executor.submit(
-        execute_aeroplane_construction,
+
+    # WingModel → AsbWingSchema conversion needs the live SQLAlchemy
+    # relationship graph, so it must run in the parent process. The
+    # final WingModel → WingConfiguration conversion (which creates
+    # unpicklable cq.Vector instances) happens in the worker via
+    # asbWingSchemaToWingConfig. Scale metres → millimetres is applied
+    # inside the worker, so the scalar factor crosses the boundary too.
+    wing_schemas: Dict[str, Any] = {
+        wing_name: wingModelToAsbWingSchema(wing),
+    }
+    try:
+        wing_schemas_pickle = pickle.dumps(wing_schemas)
+    except Exception as exc:
+        logger.error(
+            "Failed to pickle wing schema for %s: %s; keys=%s",
+            aeroplane_id_str,
+            exc,
+            list(wing_schemas[wing_name].model_dump().keys()) if wing_schemas.get(wing_name) else [],
+        )
+        raise
+    wing_scale = 1000.0
+
+    # ``ServoInformation`` holds cq.Vector / gp_Vec internally and
+    # therefore cannot be pickled, so we transport the raw
+    # ``ServoSettings.model_dump()`` dict and rebuild the real object
+    # in the worker. ``Printer3dSettings`` is a plain Pydantic model
+    # and is picklable directly.
+    servo_settings_dumps: Dict[int, Dict[str, Any]] = {}
+    printer_settings_obj = None
+    if aeroplane_settings is not None:
+        if aeroplane_settings.servo_information:
+            for key, value in aeroplane_settings.servo_information.items():
+                if hasattr(value, "model_dump"):
+                    servo_settings_dumps[int(key)] = value.model_dump()
+                else:
+                    servo_settings_dumps[int(key)] = dict(value)
+        printer_settings_obj = aeroplane_settings.printer_settings
+
+    printer_settings_pickle = (
+        pickle.dumps(printer_settings_obj) if printer_settings_obj is not None else None
+    )
+
+    future = _get_executor().submit(
+        _run_construction_worker,
         aeroplane_id_str,
         blueprint,
-        {wing_name: wing},
-        None,  # fuselages
-        aeroplane_settings,
+        wing_schemas_pickle,
+        wing_scale,
+        None,  # fuselages — not yet routed through the REST path
+        servo_settings_dumps,
+        printer_settings_pickle,
     )
-    
+
+    def _on_task_done(fut: "Future[Dict[str, Any]]") -> None:
+        """Parent-side callback: pull the worker result into the tasks dict."""
+        try:
+            result = fut.result()
+        except Exception as exc:  # worker crashed (segfault, OOM, etc.)
+            logger.error(
+                "Worker process crashed for %s: %s",
+                aeroplane_id_str,
+                exc,
+                exc_info=True,
+            )
+            with tasks_lock:
+                if aeroplane_id_str in tasks:
+                    tasks[aeroplane_id_str]["status"] = "FAILURE"
+                    tasks[aeroplane_id_str]["error"] = (
+                        f"Worker crashed: {type(exc).__name__}: {exc}"
+                    )
+            return
+
+        with tasks_lock:
+            if aeroplane_id_str in tasks:
+                task = tasks[aeroplane_id_str]
+                task["status"] = result.get("status", "FAILURE")
+                if "result" in result:
+                    task["result"] = result["result"]
+                if "error" in result:
+                    task["error"] = result["error"]
+                if "traceback" in result:
+                    task["traceback"] = result["traceback"]
+
+    future.add_done_callback(_on_task_done)
+
     with tasks_lock:
-        tasks[aeroplane_id_str]['future'] = future
+        tasks[aeroplane_id_str]["future"] = future
 
 
 def get_task_result(aeroplane_id: str) -> Dict[str, Any]:

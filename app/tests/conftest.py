@@ -78,18 +78,25 @@ def client_and_db() -> Tuple[TestClient, sessionmaker]:
 
 @pytest.fixture(autouse=True)
 def clean_cad_task_state():
-    """Clear the process-global cad_service.tasks dict around every test.
+    """Clear cad_service task state + process pool around every test.
 
     cad_service keeps task state in a module-level dict guarded by a Lock.
     Without this fixture, tasks from one test leak into the next and
-    polling-based assertions become flaky. This is a minimal fix — the
-    proper refactor to a DI-bable registry is tracked as a follow-up.
+    polling-based assertions become flaky.
+
+    We also shut down the ProcessPoolExecutor both before and after each
+    test so that no worker process outlives its test. The executor is
+    lazily re-created by ``_get_executor`` when the next test actually
+    submits CAD work, so tests that never touch the CAD path pay no
+    spawn cost.
     """
     with cad_service.tasks_lock:
         cad_service.tasks.clear()
+    cad_service.shutdown_executor()
     yield
     with cad_service.tasks_lock:
         cad_service.tasks.clear()
+    cad_service.shutdown_executor()
 
 
 # --------------------------------------------------------------------------- #

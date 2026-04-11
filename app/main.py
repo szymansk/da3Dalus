@@ -1,5 +1,6 @@
 import logging
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
@@ -68,13 +69,26 @@ setup_logging()
 def create_app() -> FastAPI:
     mcp_app = create_mcp_http_app(path="/")
 
+    # Compose the FastAPI lifespan from the MCP app's own lifespan and
+    # a guaranteed teardown of the CAD ProcessPoolExecutor so that
+    # worker processes do not outlive the server (or test run).
+    @asynccontextmanager
+    async def _combined_lifespan(app: "FastAPI"):
+        from app.services import cad_service as _cad_service
+
+        async with mcp_app.lifespan(app):
+            try:
+                yield
+            finally:
+                _cad_service.shutdown_executor()
+
     app = FastAPI(
         title="da3dalus Model Context Protocol (v2)",
         version="2.0.0",
         openapi_url="/openapi.json",   # served at /api/v2/openapi.json
         docs_url=None,                 # custom route below with custom favicon
         redoc_url="/redoc",            # served at /api/v2/redoc
-        lifespan=mcp_app.lifespan,
+        lifespan=_combined_lifespan,
     )
     app.include_router(health.router, prefix="", tags=["health"])
     app.include_router(aeroplane_v2.router, prefix="", tags=[])
