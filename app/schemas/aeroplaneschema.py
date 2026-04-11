@@ -383,6 +383,38 @@ class WingXSecGeometryWriteSchema(BaseModel):
         ...,
         description="Airfoil dat file location of the cross-section (file or URL)",
     )
+    x_sec_type: Optional[WingXSecType] = Field(
+        default=None,
+        description=(
+            "Optional Wing-level segment classification. ``root`` is the "
+            "first segment, ``segment`` is a regular middle segment, and "
+            "``tip`` marks a wing tip that must also provide ``tip_type``. "
+            "Leaving this ``None`` is fine for bare-aero wings; the CAD "
+            "pipeline only looks at it for the VaseMode creator. The "
+            "name matches ``x_sec_type`` on the read-side ``WingXSecSchema`` "
+            "and the DB column; the legacy CAD code refers to the same "
+            "concept as ``wing_segment_type`` in the Wing-side model."
+        ),
+    )
+    tip_type: Optional[TipType] = Field(
+        default=None,
+        description=(
+            "Optional wing-tip geometry. Only meaningful when "
+            "``wing_segment_type='tip'``. ``flat`` closes the tip with a "
+            "flat wall; ``round`` attempts a rounded fillet. Ignored on "
+            "regular segments."
+        ),
+    )
+    number_interpolation_points: Optional[int] = Field(
+        default=None,
+        description=(
+            "Optional override for the number of points the airfoil spline "
+            "is sampled at when the loft is built by the CAD pipeline. "
+            "Higher values produce smoother lofts at the cost of CAD "
+            "runtime; 201 is typical for production prints. Ignored by "
+            "aerodynamic analysis."
+        ),
+    )
 
     model_config = ConfigDict(extra="forbid")
 
