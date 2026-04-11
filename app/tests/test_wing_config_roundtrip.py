@@ -153,13 +153,27 @@ def test_segment_origins_strict(roundtrip_case):
 # Initial sehr grosszuegig, damit wir die *gemessenen* Werte sehen statt
 # in eine fixe Zahl zu rennen. Volumen und Oberflaeche in Prozent; Centroid
 # in mm (wing_config units).
+# Strict (1e-3) Toleranz für alle Cases, die den asb-kompatiblen
+# Parameter-Subraum verwenden (rc beliebig, dihedral_as_translation
+# statt dihedral_as_rotation_in_degrees). Der ehawk_main_wing Case
+# kommt aus ``test/ehawk_workflow_helpers._build_main_wing`` und setzt
+# ``dihedral_as_rotation_in_degrees=1`` auf dem Root-Airfoil — eine
+# Bank-Rotation, die aerosandbox nicht darstellen kann (asb leitet
+# dihedral ausschließlich aus der yg_local-Richtung zwischen LE-
+# Positionen ab). Das Residuum von ~2% volume / 1% surface ist die
+# heutige Obergrenze für "real-world Wing mit latentem
+# dihedral_as_rotation_in_degrees". Ein vollständiger Fix bräuchte
+# cumulative-rotation tracking in ``from_asb`` + koordinierte R_x-
+# Rotationen pro Segment — siehe Follow-up Issue auf
+# cad-modelling-service-121.
 SHAPE_TOL = {
     "single_segment_flat": dict(vol_rel=1e-3, surf_rel=1e-3, centroid_mm=1e-2),
     "single_segment_with_nose_pnt": dict(vol_rel=1e-3, surf_rel=1e-3, centroid_mm=1e-2),
-    "single_segment_with_dihedral": dict(vol_rel=5e-2, surf_rel=5e-2, centroid_mm=5.0),
-    "single_segment_with_twist": dict(vol_rel=5e-2, surf_rel=5e-2, centroid_mm=5.0),
-    "configurator_wing": dict(vol_rel=2e-1, surf_rel=2e-1, centroid_mm=20.0),
-    "ehawk_main_wing": dict(vol_rel=2e-1, surf_rel=2e-1, centroid_mm=20.0),
+    "single_segment_with_dihedral": dict(vol_rel=1e-3, surf_rel=1e-3, centroid_mm=1e-2),
+    "single_segment_with_twist": dict(vol_rel=1e-3, surf_rel=1e-3, centroid_mm=1e-2),
+    "single_segment_with_rc_0_5": dict(vol_rel=1e-3, surf_rel=1e-3, centroid_mm=1e-2),
+    "configurator_wing": dict(vol_rel=1e-3, surf_rel=1e-3, centroid_mm=1e-2),
+    "ehawk_main_wing": dict(vol_rel=3e-2, surf_rel=2e-2, centroid_mm=5e-1),
 }
 
 
