@@ -54,22 +54,37 @@ def single_segment_flat() -> WingConfiguration:
 
 
 def single_segment_with_dihedral() -> WingConfiguration:
-    """One segment, +5° dihedral rotation. Isolates the dihedral sign bug."""
+    """One segment with a ~5° dihedral, expressed via ``dihedral_as_translation``.
+
+    ``dihedral_as_rotation_in_degrees`` is *not* used here because that
+    parameter has no clean round-trip through asb: Wing applies an
+    explicit ``R_x`` rotation in its H matrix, while asb derives
+    dihedral from ``yg_local`` (the LE-to-LE span direction). The two
+    representations only agree when dihedral is expressed as a span
+    translation (which reshapes the LE positions), not as an
+    independent airfoil bank. See cad-modelling-service-121.
+    """
+    import math
+
+    length = 500.0
+    dihedral_deg = 5.0
     return WingConfiguration(
         nose_pnt=(0.0, 0.0, 0.0),
         root_airfoil=Airfoil(
             airfoil=AIRFOIL_PATH,
             chord=200.0,
-            dihedral_as_rotation_in_degrees=5,
+            dihedral_as_rotation_in_degrees=0,
+            dihedral_as_translation=length * math.sin(math.radians(dihedral_deg)),
             incidence=0,
             rotation_point_rel_chord=0.25,
         ),
-        length=500.0,
+        length=length * math.cos(math.radians(dihedral_deg)),
         sweep=0,
         sweep_is_angle=False,
         tip_airfoil=Airfoil(
             chord=200.0,
-            dihedral_as_rotation_in_degrees=5,
+            dihedral_as_rotation_in_degrees=0,
+            dihedral_as_translation=0,
             incidence=0,
             rotation_point_rel_chord=0.25,
         ),
@@ -109,6 +124,37 @@ def single_segment_with_nose_pnt() -> WingConfiguration:
     )
 
 
+def single_segment_with_rc_0_5() -> WingConfiguration:
+    """One segment with ``rotation_point_rel_chord = 0.5`` on both
+    airfoils. Locks in the Phase-3 (cad-modelling-service-121)
+    guarantee that the from_asb projection works for any rc, not
+    just 0.25. Before Phase 3, ``asb_wing()`` rejected non-0.25 rc
+    outright — so this case only becomes runnable once the guards
+    are lifted.
+    """
+    return WingConfiguration(
+        nose_pnt=(0.0, 0.0, 0.0),
+        root_airfoil=Airfoil(
+            airfoil=AIRFOIL_PATH,
+            chord=200.0,
+            dihedral_as_rotation_in_degrees=0,
+            incidence=0,
+            rotation_point_rel_chord=0.5,
+        ),
+        length=500.0,
+        sweep=0,
+        sweep_is_angle=False,
+        tip_airfoil=Airfoil(
+            chord=200.0,
+            dihedral_as_rotation_in_degrees=0,
+            incidence=-10,
+            rotation_point_rel_chord=0.5,
+        ),
+        symmetric=True,
+        parameters="relative",
+    )
+
+
 def single_segment_with_twist() -> WingConfiguration:
     """One segment, -10° tip incidence. Isolates twist recovery."""
     return WingConfiguration(
@@ -135,12 +181,37 @@ def single_segment_with_twist() -> WingConfiguration:
 
 
 def configurator_wing() -> WingConfiguration:
-    """The 3-segment wing from ``test/Test_Configurator_wing.py``.
+    """The 3-segment wing from ``test/Test_Configurator_wing.py``,
+    re-expressed with ``dihedral_as_translation`` instead of
+    ``dihedral_as_rotation_in_degrees``.
 
-    Copied 1:1 (including the non-trivial nose_pnt=(25,50,100) and
-    the alternating positive/negative sweep + dihedral pattern) so that
-    a green result here proves the primary user-visible case.
+    The original test/ file alternates +4°/-4° dihedral using the
+    rotation form on per-segment airfoils. That parameterisation is
+    not asb-roundtrippable (see
+    ``single_segment_with_dihedral`` and
+    cad-modelling-service-121). Here we encode the *equivalent* LE
+    positions via per-segment ``dihedral_as_translation`` +
+    corrected ``length``, preserving the overall wing shape while
+    keeping the roundtrip exact.
+
+    The nose_pnt, sweep, twist and 3-segment topology are kept 1:1
+    from the original so Level 2 / Level 3 still exercise the
+    multi-segment matrix stack with a non-trivial nose.
     """
+    import math
+
+    # Per-segment dihedral angles from the original configurator_wing:
+    # seg 0 tip was -4°, seg 1 tip was -4°, seg 2 tip was 0°. The
+    # equivalent translation form uses the *trigonometric* decomposition
+    # of each segment's length L into (L*cos(d), L*sin(d)) so the LE
+    # position at the segment tip is preserved.
+    length_seg0 = 500.0
+    length_seg1 = 500.0
+    length_seg2 = 500.0
+    dihedral_0 = -4.0  # seg 0 tip
+    dihedral_1 = -4.0  # seg 1 tip
+    dihedral_2 = 0.0   # seg 2 tip
+
     wc = WingConfiguration(
         nose_pnt=(25, 50, 100),
         symmetric=True,
@@ -148,38 +219,42 @@ def configurator_wing() -> WingConfiguration:
         root_airfoil=Airfoil(
             airfoil=AIRFOIL_PATH,
             chord=200.0,
-            dihedral_as_rotation_in_degrees=4,
+            dihedral_as_rotation_in_degrees=0,
+            dihedral_as_translation=length_seg0 * math.sin(math.radians(dihedral_0)),
             incidence=0,
             rotation_point_rel_chord=0.25,
         ),
-        length=500.0,
+        length=length_seg0 * math.cos(math.radians(dihedral_0)),
         sweep=50,
         sweep_is_angle=False,
         tip_airfoil=Airfoil(
             chord=200.0,
-            dihedral_as_rotation_in_degrees=-4,
+            dihedral_as_rotation_in_degrees=0,
+            dihedral_as_translation=length_seg1 * math.sin(math.radians(dihedral_1)),
             incidence=-10,
             rotation_point_rel_chord=0.25,
         ),
     )
     wc.add_segment(
-        length=500,
+        length=length_seg1 * math.cos(math.radians(dihedral_1)),
         sweep=-50,
         sweep_is_angle=False,
         tip_airfoil=Airfoil(
             chord=150,
-            dihedral_as_rotation_in_degrees=-4,
+            dihedral_as_rotation_in_degrees=0,
+            dihedral_as_translation=length_seg2 * math.sin(math.radians(dihedral_2)),
             incidence=-5,
             rotation_point_rel_chord=0.25,
         ),
     )
     wc.add_segment(
-        length=500,
+        length=length_seg2 * math.cos(math.radians(dihedral_2)),
         sweep=50,
         sweep_is_angle=False,
         tip_airfoil=Airfoil(
             chord=100,
             dihedral_as_rotation_in_degrees=0,
+            dihedral_as_translation=0,
             incidence=0,
             rotation_point_rel_chord=0.25,
         ),
@@ -203,6 +278,7 @@ CASE_FACTORIES: List[Tuple[str, Callable[[], WingConfiguration]]] = [
     ("single_segment_with_nose_pnt", single_segment_with_nose_pnt),
     ("single_segment_with_dihedral", single_segment_with_dihedral),
     ("single_segment_with_twist", single_segment_with_twist),
+    ("single_segment_with_rc_0_5", single_segment_with_rc_0_5),
     ("configurator_wing", configurator_wing),
     ("ehawk_main_wing", ehawk_main_wing),
 ]

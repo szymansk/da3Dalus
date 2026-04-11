@@ -182,11 +182,12 @@ Before lofting the segments airfoils they can be rotated around the _chord line_
 
 A dihedral can also be obtained by translating the tip airfoil by _dihedral_as_translation_ latexmath:[D_{i}]). We bound this parameter to the root airfoil, which is not correct, as it does not change the segments root airfoil. However, we did it in alignment  to the _dihedral_as_rotation_in_degrees_ parameter.
 
-For some we put some constraints on those two parameters. We can only use one at a time. If we use _dihedral_as_translation_ then latexmath:[rc_{i} = 0.25].
+Both forms can be mixed, but they have different semantics that you should be aware of when building a wing:
 
-_Why do we constrain them?_ As we use CPACS we need to be able to recalculate the set of parameters from a transformation matrix. They are only unique if we constrain them like this.
+* *Rotational dihedral* (latexmath:[\delta_i]) applies an latexmath:[R_x] rotation in the H matrix. It rotates the airfoil plane (banks it around the chord). This is very useful to design winglets — the airfoil at the tip tilts with the wing.
+* *Translational dihedral* (latexmath:[D_i]) applies a pure z-offset in the H matrix. It shifts the leading edge upward without tilting the airfoil plane. The airfoil stays parallel to the xz-plane, which is required for some aerodynamic calculations.
 
-_Why do we need both?_ The rotational dihedral rotates the airfoils plane. This is very useful to design winglets. The translational dihedral keeps the airfoil plane unrotated. This keeps the airfoil as a true cut through the wing parallel to the xz-plane, which is needed for some aerodynamic calculations (e.g. as in aerosandbox).
+NOTE: _Aerosandbox roundtrip._ ``WingConfiguration.from_asb()`` projects the rebuilt configuration onto a canonical form with ``dihedral_as_rotation_in_degrees = 0`` on every airfoil, encoding all dihedral through ``dihedral_as_translation`` + the pre-rotated segment translations. This is an information-losing projection for wings whose original used non-zero ``dihedral_as_rotation_in_degrees`` as an *independent* airfoil bank — aerosandbox derives dihedral purely from LE-to-LE span differences and has no way to encode a chord-axis bank that does not also shift the LE. See the "Roundtrip Contract" section below for the full list of projection rules.
 
 #### incidence angle or twist
 It can be rotated around a _rotation point (defined) relative (to the) chord (length)_, which is called the _angle of incidence (AoI)_ denoted with latexmath:[\iota_{i}]. We denote the chord length with latexmath:[C_{i}] and the relative chord factor with latexmath:[rc_{i} \in (0,1)]. In some applications this also called twist.
@@ -277,113 +278,157 @@ R_y(\iota_i)=
     0 & 0 & 0 & 1 \\
   \end{bmatrix} ]
 
+The ``nose_pnt`` offset is applied as a final left-most translation only when the caller passes ``ignore_nose_point=False`` (the default). Callers that want the segment frame expressed relative to the wing root — most notably ``asb_wing()``, which applies its own ``.translate(nose_pnt)`` later — pass ``ignore_nose_point=True`` to suppress it.
 
-==== How calculate the Parameters from given global Coordinate Systems
 
-If we perform the calculation of a single local coordinate system, we get the following homogeneours Transformation Matrix:
+==== Aerosandbox roundtrip contract
 
-latexmath:[C_N = \left[
-\begin{matrix}
-\cos{\left(\iota_i \right)} & 0 &\sin{\left(\iota_i \right)}  & - c_i \tau_i \cos{\left(\iota_i \right)} + c_i \tau_i + S_{i-1}\\
-\sin{\left(\delta_i \right)} \sin{\left(\iota_i \right)} & \cos{\left(\delta_i \right)} & - \sin{\left(\delta_i \right)} \cos{\left(\iota_i \right)} & - c_i \tau_i \sin{\left(\delta_i \right)} \sin{\left(\iota_i \right)} + L_{i-1}\\
-- \sin{\left(\iota_i \right)} \cos{\left(\delta_i \right)} & \sin{\left(\delta_i \right)} & \cos{\left(\delta_i \right)} \cos{\left(\iota_i \right)} & c_i \tau_i \sin{\left(\iota_i \right)} \cos{\left(\delta_i \right) + D_{i-1}}\\
-0 & 0 & 0 & 1
-\end{matrix}
-\right\]]
+The pair ``WingConfiguration.asb_wing()`` / ``WingConfiguration.from_asb()`` converts a Wing between the two representations. It is *not* an identity transform — aerosandbox's internal model is strictly narrower than Wing's, so the roundtrip is a **projection onto an asb-compatible canonical form**. This section defines that form and proves the geometric invariants that do roundtrip exactly.
 
-Usually we only have the global coordinate systems, which we get from CPACS-files for instance. To transform the globale coordinate
-systems to local We can do the following. If we have the current global coordinate system latexmath:[C_N] and the previous global coordinate system latexmath:[C_{N-1}] we can derive:
+===== Aerosandbox's rotation convention
 
-latexmath:[C_N = (H_0\cdot\prod^{N-1}_{n=1}H_n)\cdot H_N]
+Reading ``aerosandbox/geometry/wing.py`` (``_compute_frame_of_WingXSec``, ``_compute_xyz_of_WingXSec``), each cross-section is anchored at its stored ``xyz_le`` and the chord direction is computed as
 
-latexmath:[H_N = (H_0\cdot\prod^{N-1}_{n=1}H_n)^-\cdot C_N]
+[stem]
+++++
+\mathbf{x}_{g,\text{asb}} = R_{\mathbf{y}_g}(\theta_i)\,[1,0,0]^\top
+++++
 
-latexmath:[H_N = C_{N-1}^-\cdot C_N ]
+where latexmath:[\mathbf{y}_g] is the span direction (LE-to-LE difference projected onto the YZ plane, normalised) and latexmath:[\theta_i] is the absolute twist of xsec latexmath:[i]. The rotation axis passes through ``xyz_le`` — i.e. the *effective* rotation-point-relative-to-chord in aerosandbox is
 
-From this we can calculate the parameters, by utilizing matrix latexmath:[H_i].
+[stem]
+++++
+rc_\text{asb} = 0.0
+++++
 
-Incident angle in radians:
+Aerosandbox has no knowledge of an independent chord-axis bank that does not also move the LE. This is the single most important semantic constraint on the roundtrip.
 
-latexmath:[ \iota_i = \operatorname{atan2}(\sin(\iota_i), \cos(\iota_i)) = \operatorname{atan2}(H_i[0,2\], H_i[0,0\])]
+===== Forward direction: ``asb_wing()``
 
-The _dihedral_ can be given as a rotation around the x-axis latexmath:[\delta_i] or (exclusive or) a translation along the z-axis latexmath:[D_i]  (aerosandbox style)
+``WingConfiguration.asb_wing()`` builds one ``asb.WingXSec`` per Wing xsec by reading the corresponding ``get_wing_workplane(i, ignore_nose_point=True).plane.origin`` (that is the LE of the rotated airfoil in Wing's frame, including any ``dihedral_as_rotation_in_degrees`` contribution) and storing it as ``xyz_le``, then translating the whole ``asb.Wing`` by ``nose_pnt`` at the end. There is *no* constraint on ``rotation_point_rel_chord`` — any rc produces a valid asb output because Wing's workplane origin already encodes the pivot shift.
 
-Case A: dihedral in radians as rotation around the x-axis latexmath:[D_{i-1}=0 \wedge \delta_i \neq 0]:
+The asb-side ``twist`` is the cumulative sum of Wing's incidences up to that xsec:
 
-latexmath:[ \delta_i = \operatorname{atan2}(\sin(\delta_i), \cos(\delta_i)) = \operatorname{atan2}(H_i[2,1\], H_i[1,1\])]
+[stem]
+++++
+\text{xsec}_i.\text{twist} = \sum_{k \le i} \iota_k
+++++
 
-From this we can derive the relative chord rotation point of incidence angle:
-latexmath:[ \tau_i = H_i[2,3\]/\left(c_i \sin{\left(\iota_i \right)} \cos{\left(\delta_i \right)}\right)]
+Information lost in the forward direction: ``dihedral_as_rotation_in_degrees``. If Wing's airfoil has a chord-axis bank that is not matched by a corresponding LE shift, asb cannot see it — the yg_local computed from LE-to-LE differences does not capture it.
 
-Case B: dihedral in length as translation along the z-axis latexmath:[D_{i-1} \neq 0 \wedge \delta_i = 0 \wedge \tau_i=0.25] (quater chord)
+===== Reverse direction: ``from_asb()``
 
-_We need to set the incidence rotation point to a fixed value as it is not distinguishable if the z translation of the final transformation comes from the dihedral rotation around the x axis or  a dihedral translation._
+``WingConfiguration.from_asb(xsecs)`` projects the asb data onto a *canonical relative-mode* Wing with
 
-latexmath:[D_{i-1} = H_i[2,3\] - 0.25 \cdot c_i \sin{\left(\iota_i \right)}]
+* ``parameters = "relative"``
+* ``rotation_point_rel_chord = 0`` on every airfoil
+* ``dihedral_as_rotation_in_degrees = 0`` on every airfoil
+* ``nose_pnt = xyz_le[0]``
+* per-segment ``(sweep, length, dihedral_as_translation)`` = the pre-rotated LE delta
+* ``segments[0].root_airfoil.incidence = \text{twist}[0]`` (absolute root twist)
+* ``segments[i].tip_airfoil.incidence = \text{twist}[i+1] - \text{twist}[i]`` (per-segment delta)
 
-latexmath:[ \tau_i = 0.25]
+The per-segment translation is *pre-rotated* by the cumulative twist because Wing's relative-mode H chain applies an latexmath:[R_y(\iota)] at each segment boundary that would otherwise rotate the subsequent translation away from the asb LE position. The exact formula is
 
-Segment length in length units:
+[stem]
+++++
+\mathbf{T}_i = R_y(-\text{twist}[i])\cdot (\mathbf{xyz\_le}[i+1] - \mathbf{xyz\_le}[i])
+++++
 
-latexmath:[ L_{i-1}  = H_i[1,3\] + c_i \tau_i \sin{\left(\delta_i \right)} \sin{\left(\iota_i \right)} = H_i[1,3\] + c_i \tau_i H_i[1,0\]]
+*Proof that this reproduces asb's LE positions.* The rebuilt relative-mode H for segment latexmath:[k] with latexmath:[rc=0] and latexmath:[\delta=0] reduces to a chain of alternating translations and latexmath:[R_y] rotations. Applying the H chain to the local origin latexmath:[(0,0,0,1)^\top], using latexmath:[R_y(a)\cdot R_y(b) = R_y(a+b)], gives
 
-Sweep in length units:
+[stem]
+++++
+\text{LE}_\text{rebuilt}[k] = \mathbf{xyz\_le}[0] + \sum_{i=0}^{k-1} R_y\!\left(\text{twist}[i]\right)\cdot \mathbf{T}_i
+++++
 
-latexmath:[ S_{i-1} = H_i[0,3\] + c_i \tau_i \left(\cos{\left(\iota_i \right)} - 1\right) =  H_i[0,3\] + c_i \tau_i \left(H_i[0,0\] - 1\right)]
+Substituting the definition of latexmath:[\mathbf{T}_i] collapses the sum to a telescoping sum of LE differences that equals latexmath:[\mathbf{xyz\_le}[k] - \mathbf{xyz\_le}[0]]. Therefore latexmath:[\text{LE}_\text{rebuilt}[k] = \mathbf{xyz\_le}[k]] for every latexmath:[k]. The Level 2 test (``compare_segment_origins``) verifies this at latexmath:[10^{-6}] mm tolerance on all parametrised test cases.
 
-And from this the sweep in radians:
+===== What roundtrips exactly vs. what is lossy
 
-latexmath:[s_{i-1} = \operatorname{atan2}\left({S_{i-1}, L_{i-1}}\right)]
+|===
+| Input property | Forward (Wing → asb) | Reverse (asb → Wing) | Exact?
 
-==== How to calculate the WingSegment and Airfoil Parameters from aerosandbox
+| ``nose_pnt``
+| stored as ``xyz_le[0]`` (after ``.translate(nose_pnt)``)
+| recovered from ``xyz_le[0]``
+| yes — bit-exact modulo float round-tripping through numpy
 
-aerosandbox defines a Wing by defining the crossections as WingXSec objects. The WingXSec class has as attributes:
+| Segment count / topology
+| one WingXSec per Wing xsec
+| rebuilt with same count
+| yes
 
-xyz_le:: the origin vector latexmath:[o_{i}] of the trailing edge point (nose point of the airfoil) in the standard global coordinate system (x-axis pointing to the tail, z-axis up and y-axis along the right wing).
+| LE position of every xsec in global space
+| stored as ``xyz_le``
+| reproduced via pre-rotated ``T_i``
+| yes — latexmath:[< 10^{-6}] mm
 
-twist :: the twist angle latexmath:[\theta_i] also globally defined as angle between center chord line to the x-axis, with a fixed rotation point  latexmath:[\tau_i = 0.25].
+| ``chord`` and airfoil file name
+| passed through
+| passed through
+| yes
 
-chord :: the chord length latexmath:[c_i]
+| Absolute twist at every xsec
+| cumulative sum of Wing's ``incidence`` values
+| stored as per-segment delta, summing back to the same absolute
+| yes
 
-latexmath:[R_N] :: aerosandbox provides the rotation matrix for the leading edge of a cross section which gives together with latexmath:[o_{i}] the homogeneous transformation matrix latexmath:[C_N].
+| ``rotation_point_rel_chord``
+| consumed by Wing's H matrix before asb sees anything
+| reset to 0
+| *no* — rc is not a parameter asb stores; it is a representation choice for the same rigid-body rotation. The rebuilt wing renders to the same shape, but the field value differs from the original.
 
-The global homogeneous transformation matrix latexmath:[C_N] for aerosandbox is:
+| ``dihedral_as_rotation_in_degrees`` when it *coincides* with an LE tilt (``dihedral_as_translation`` set to latexmath:[L_i \sin(\delta_i)] etc.)
+| encoded in ``xyz_le`` positions
+| recovered as ``dihedral_as_translation`` on the rebuilt wing
+| yes — rendered shape is bit-exact
 
-latexmath:[C_N =  T(S_{i-1}, L_{i-1}, D_{i-1}) \cdot T(C_{i} rc_{i}, 0, 0)\cdot R^-_y(\iota_i) \cdot T(-C_{i} rc_{i}, 0,0) \cdot R_x(\delta_i) ]
+| ``dihedral_as_rotation_in_degrees`` *without* a matching LE tilt (pure chord-bank)
+| invisible to asb
+| not recoverable
+| *no* — this is the fundamental limit of the asb model. The residual is latexmath:[O(\delta_i)] per segment and accumulates over multi-segment wings with small bank angles.
+|===
 
-with latexmath:[
-R^-_y(\iota_i)=
-  \begin{bmatrix}
-    \cos(\iota_i) & 0 & -\sin(\iota_i) & 0\\
-    0 & 1 & 0 & 0 \\
-    \sin(\iota_i) & 0 & \cos(\iota_i) & 0 \\
-    0 & 0 & 0 & 1 \\
-  \end{bmatrix} ],
+===== Test coverage
 
-as aerosandbox seems to rotate in the wrong direction.
+``app/tests/test_wing_config_roundtrip.py`` runs seven parametrised cases through the harness defined in ``cad_designer/aerosandbox/wing_roundtrip.py``:
 
-latexmath:[C_N = \left[
-\begin{matrix}
-\cos{\left(\iota_{i} \right)} & \sin{\left(\delta_{i} \right)} \sin{\left(\iota_{i} \right)} & \sin{\left(\iota_{i} \right)} \cos{\left(\delta_{i} \right)} & - Ci rc_{i} \cos{\left(\iota_{i} \right)} + Ci rc_{i} + S_{prev}\\
-0 & \cos{\left(\delta_{i} \right)} & - \sin{\left(\delta_{i} \right)} & L_{prev}\\
-\sin{\left(\iota_{i} \right)} & \sin{\left(\delta_{i} \right)} \cos{\left(\iota_{i} \right)} & \cos{\left(\delta_{i} \right)} \cos{\left(\iota_{i} \right)} & -Ci rc_{i} \sin{\left(\iota_{i} \right)} + D_{prev}
-\\0 & 0 & 0 & 1
-\end{matrix}
-\right \] ]
+* ``single_segment_flat`` — baseline
+* ``single_segment_with_nose_pnt`` — non-zero nose_pnt (pre-tda regression)
+* ``single_segment_with_twist`` — isolates incidence recovery
+* ``single_segment_with_dihedral`` — isolates span-dihedral recovery (uses ``dihedral_as_translation``)
+* ``single_segment_with_rc_0_5`` — isolates the rc projection
+* ``configurator_wing`` — 3-segment wing with non-trivial ``nose_pnt``
+* ``ehawk_main_wing`` — real-world production wing with latent ``dihedral_as_rotation_in_degrees=1`` on its root airfoil; passes at a relaxed tolerance documenting the lossy projection
 
-From this we can derive:
+The first six cases pass at latexmath:[10^{-3}] volume / surface / centroid tolerance. ``ehawk_main_wing`` passes at latexmath:[3\cdot 10^{-2}] and will tighten once the cumulative R_x tracking (beads issue ``cad-modelling-service-dk4``) lands.
 
-latexmath:[\iota_i = \operatorname{atan2}(C_N[2,0\], C_N[0,0\])]
+==== Debugging: manual parameter inversion from a homogeneous transform
 
-latexmath:[\delta_i = \operatorname{atan2}(-C_N[1,2\], C_N[1,1\])]
+If you ever need to invert a single local coordinate system latexmath:[H_i] (e.g. coming from CPACS) back into Wing parameters with a *specific* ``rotation_point_rel_chord``, the closed-form relations on the relative-mode H matrix are
 
-latexmath:[S_i = C_N[0,3\]+c_i\tau_iC_N[0,0\] - c_i\tau_i]
+[stem]
+++++
+\iota_i = \operatorname{atan2}(H_i[0,2], H_i[0,0])
+++++
 
-latexmath:[L_i=C_N[1,3\]]
+[stem]
+++++
+\delta_i = \operatorname{atan2}(H_i[2,1], H_i[1,1])
+++++
 
-latexmath:[D_i=C_N[2,3\]-c_i\tau_i + C_N[2,0\]]
+[stem]
+++++
+L_{i-1} = H_i[1,3] + c_i\,\tau_i\,H_i[1,0]
+++++
 
-To enable the aerosandbox mode we need to set WingConfiguration.parameters = "aerosandbox".
+[stem]
+++++
+S_{i-1} = H_i[0,3] + c_i\,\tau_i\,(H_i[0,0] - 1)
+++++
+
+These are the formulas the older ``from_asb`` implementation used before Phase 3 (cad-modelling-service-121). They are still correct *for inverting a single H matrix with a known rc*, but they do not directly apply to the asb roundtrip because asb does not give you the raw H matrix — it gives you ``xyz_le`` + ``twist`` and expects you to recompute everything through its own frame convention. Use the new ``from_asb`` code path for anything asb-related.
 
 ==== Spar
 .The main spar.
@@ -468,11 +513,12 @@ NOTE: (to be implemented) If the servo position given as 'None' the system itsel
 |Wing.symmetric | WingConfiguration.symmetric  |
 |Wing.translate | WingConfiguration.nose_point |
 |Wing.xsecs | WingSegment + Airfoil |
-|Wing.xsecs[0].xyz_le |  |
+|Wing.xsecs[0].xyz_le | get_wing_workplane(0, ignore_nose_point=True).plane.origin | Set by ``asb_wing()``; shifted by ``nose_pnt`` via the final ``.translate(nose_pnt)`` on the asb wing.
 |Wing.xsecs[0].chord | WingConfiguration.segments[0].root_airfoil.chord |
 |Wing.xsecs[0].twist | WingConfiguration.segments[0].root_airfoil.incidence |
 |Wing.xsecs[0].airfoil | WingConfiguration.segments[0].root_airfoil.airfoil |
-| fixed = 0.25| WingConfiguration.segments[0].root_airfoil.rotation_point_rel_chord |
+| any in forward / 0 in rebuilt | WingConfiguration.segments[0].root_airfoil.rotation_point_rel_chord | ``asb_wing()`` accepts any rc; ``from_asb()`` produces rc=0 because asb's effective pivot is the LE.
+
 
 |Wing.xsecs[0].control_surfaces.name |  WingConfiguration.segments[0].trailing_edge_device.name |
 |Wing.xsecs[0].control_surfaces.symmetric |WingConfiguration.segments[0].trailing_edge_device.symmetrix  |
@@ -509,7 +555,7 @@ NOTE: (to be implemented) If the servo position given as 'None' the system itsel
 |segment[0].root_airfoil.incidence + Summe(segment[i].tip_airfoil.incidence) for i > 0 else
 segment[0].root_airfoil.incidence for i = 0
 |xsecs[i].twist
-|Our incidence angle is relative to the local x-axis of the previous cross-section. The twist is relative to the global x-axis. The point of rotation is fixed at 0.25 chord.
+|Our incidence angle is relative to the local x-axis of the previous cross-section; asb's ``twist`` is the cumulative absolute twist at that xsec. The round-trip stores the per-segment *delta* on each ``tip_airfoil.incidence`` (and the absolute root twist on ``segments[0].root_airfoil.incidence``), so the cumulative sum in the forward direction reproduces asb's values exactly.
 
 |airfoil.airfoil (Path)
 |asb.Airfoil(name=os.path.abspath(...))

@@ -647,8 +647,12 @@ class WingConfiguration:
                 root_plane = self.get_wing_workplane(i, ignore_nose_point=ignore_nose_point).plane
                 root_af = segment.root_airfoil
 
-                if root_af.rotation_point_rel_chord != 0.25:
-                    raise ValueError(f"WingXSec: {i} --> rotation_point_rel_chord must be 0.25 for aerosandbox")
+                # Note: no rc=0.25 guard. ``root_plane.origin`` is the
+                # rotated LE position of the root airfoil in Wing's
+                # frame regardless of rc — asb stores that as
+                # ``xyz_le`` and uses the LE as its twist pivot
+                # (rc_asb = 0). Any Wing rc value therefore converts
+                # cleanly; see cad-modelling-service-121.
 
                 if segment.trailing_edge_device is not None:
                     if segment.trailing_edge_device.rel_chord_root != segment.trailing_edge_device.rel_chord_tip:
@@ -693,8 +697,8 @@ class WingConfiguration:
             tip_plane = self.get_wing_workplane(i + 1, ignore_nose_point=ignore_nose_point).plane
             tip_af = segment.tip_airfoil
 
-            if tip_af.rotation_point_rel_chord != 0.25:
-                raise ValueError(f"WingXSec: {i + 1} --> rotation_point_rel_chord must be 0.25 for aerosandbox")
+            # Note: no rc=0.25 guard on the tip either — same reason
+            # as the root above. See cad-modelling-service-121.
 
             control_surface = asb.ControlSurface(
                 name=segment.trailing_edge_device.name,
@@ -931,80 +935,136 @@ class WingConfiguration:
         """
         Create a WingConfiguration from a list of Aerosandbox WingXSecs.
 
+        The rebuilt configuration is a *projection* of the asb
+        representation onto a canonical form:
+
+        - ``rotation_point_rel_chord = 0``  (matches asb's LE-pivot
+          convention — see aerosandbox/geometry/wing.py
+          ``_compute_frame_of_WingXSec``, which anchors every xsec at
+          ``xyz_le`` and rotates the chord about ``yg_local`` through
+          that LE)
+        - ``dihedral_as_rotation_in_degrees = 0``  (dihedral is
+          captured entirely by ``dihedral_as_translation``, the
+          z-component of each segment's LE-to-LE delta)
+        - per-segment incidence is the *delta* ``twist[i+1] - twist[i]``;
+          only the root airfoil carries the absolute root twist
+
+        The per-segment (sweep, length, d_trans) are rotated *backward*
+        by the cumulative twist up to the start of the segment so that
+        the relative-mode H-matrix stack (which applies a cumulative
+        ``R_y`` to each translation) reconstructs the original asb LE
+        positions exactly.
+
+        Derivation (single-axis rotation around Y, rc=0, d_rot=0):
+        let ``T_i`` be the rebuilt segment-i translation, and let
+        ``tw_i = asb.xsecs[i].twist``. Then Wing's relative H yields
+        ``xyz_le_rebuilt[k] = xyz_le_rebuilt[k-1] + R_y(tw_{k-1}) · T_{k-1}``,
+        so for this to equal ``asb.xyz_le[k]`` we need
+        ``T_i = R_y(-tw_i) · (asb.xyz_le[i+1] - asb.xyz_le[i])``.
+
         Args:
             xsecs (List[asb.WingXSec]): List of WingXSec objects.
             symmetric (bool): Whether the wing is symmetric.
 
         Returns:
-            WingConfiguration: A new WingConfiguration instance.
+            WingConfiguration: A new WingConfiguration instance in
+            *relative* mode, with ``rotation_point_rel_chord=0`` on
+            every airfoil.
         """
-
         asb_wing = asb.Wing(xsecs=xsecs, symmetric=symmetric)
-        nose_pnt = asb_wing._compute_xyz_le_of_WingXSec(0)
-        rotation_point_rel_chord = 0.0
+        n = len(asb_wing.xsecs)
+        if n < 2:
+            raise ValueError(
+                "WingConfiguration.from_asb requires at least 2 xsecs (one segment)."
+            )
 
-        parameter = []
-        for idx, xsec in enumerate(asb_wing.xsecs):
-            R = asb_wing._compute_frame_of_WingXSec(idx)
-            T = asb_wing._compute_xyz_le_of_WingXSec(idx) - nose_pnt
-            C = np.hstack((R, T.reshape(-1, 1)))
+        def R_y(angle_deg: float) -> ndarray:
+            """Right-hand rotation around +Y, matching ``_create_homogeneous_rotation_matrix('y', ...)``."""
+            c = math.cos(math.radians(angle_deg))
+            s = math.sin(math.radians(angle_deg))
+            return np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]])
 
-            incidence = math.degrees(math.atan2(C[2, 0], C[0, 0]))
-            dihedral_deg = math.degrees(math.atan2(-C[1, 2], C[1, 1]))
-            sweep = C[0, 3] + xsec.chord * rotation_point_rel_chord * C[0, 0] - xsec.chord * rotation_point_rel_chord
-            span = C[1, 3]
-            dihedral = C[2, 3] + xsec.chord * rotation_point_rel_chord * C[2, 0]
-            logger.info(
-                f"i:{incidence}, d: {(dihedral_deg)}, sweep: {sweep}, L: {span}, D:{dihedral}, c: {xsec.chord}, rci: {rotation_point_rel_chord}")
-            parameter.append(SimpleNamespace(
-                **{"dihedral_deg": dihedral_deg, "dihedral": dihedral, "incidence": incidence, "length": span,
-                   "sweep": sweep, "chord": xsec.chord, "airfoil": xsec.airfoil}))
-            pass
+        # Segment translations, pre-rotated by the cumulative twist up
+        # to the segment's starting xsec. T_i is a 3-vector.
+        T: List[ndarray] = []
+        for i in range(n - 1):
+            delta = (
+                np.asarray(asb_wing.xsecs[i + 1].xyz_le, dtype=float)
+                - np.asarray(asb_wing.xsecs[i].xyz_le, dtype=float)
+            )
+            T_i = R_y(-float(asb_wing.xsecs[i].twist)) @ delta
+            T.append(T_i)
 
-        param_prev = None
-        for i, param in enumerate(parameter):
-            if i == 0:
-                param_prev = param
-            elif i == 1:
-                wc = WingConfiguration(
-                    nose_pnt=nose_pnt,
-                    root_airfoil=Airfoil(
-                        airfoil=param_prev.airfoil.name,
-                        chord=param_prev.chord,
-                        dihedral_as_rotation_in_degrees=param_prev.dihedral_deg,
-                        dihedral_as_translation=param_prev.dihedral,
-                        incidence=param_prev.incidence,
-                        rotation_point_rel_chord=rotation_point_rel_chord,
-                    ),
-                    length=param.length,
-                    sweep=param.sweep,
-                    sweep_is_angle=False,
-                    tip_airfoil=Airfoil(
-                        airfoil=param.airfoil.name,
-                        chord=param.chord,
-                        dihedral_as_rotation_in_degrees=param.dihedral_deg,
-                        dihedral_as_translation=param.dihedral,
-                        incidence=param.incidence,
-                        rotation_point_rel_chord=rotation_point_rel_chord,
-                    ),
-                    symmetric=symmetric,
-                    parameters="aerosandbox",
-                    spare_list=None
-                )
-            else:
-                wc.add_segment(
-                    length=param.length,
-                    sweep=param.sweep,
-                    sweep_is_angle=False,
-                    tip_airfoil=Airfoil(
-                        airfoil=param.airfoil.name,
-                        chord=param.chord,
-                        dihedral_as_rotation_in_degrees=param.dihedral_deg,
-                        dihedral_as_translation=param.dihedral,
-                        incidence=param.incidence,
-                        rotation_point_rel_chord=rotation_point_rel_chord,
-                    ),
-                    spare_list=None
-                )
+        nose_pnt_arr = np.asarray(asb_wing.xsecs[0].xyz_le, dtype=float)
+        nose_pnt = (float(nose_pnt_arr[0]), float(nose_pnt_arr[1]), float(nose_pnt_arr[2]))
+
+        def _airfoil_name(xsec: asb.WingXSec) -> Optional[str]:
+            af = xsec.airfoil
+            return af.name if af is not None else None
+
+        def _segment_z_delta(seg_idx: int) -> float:
+            """Z component of the translation FROM segment seg_idx, stored on
+            the root airfoil of that segment per the H-loop convention."""
+            return float(T[seg_idx][2]) if seg_idx < len(T) else 0.0
+
+        # Segment 0 root airfoil = xsec[0]. Carries the absolute root
+        # twist (so the rebuilt chord direction at xsec[0] matches
+        # asb's xsec[0].twist) and T[0].z as dihedral_as_translation
+        # (consumed by the H loop when processing segment=1).
+        root_airfoil = Airfoil(
+            airfoil=_airfoil_name(asb_wing.xsecs[0]),
+            chord=float(asb_wing.xsecs[0].chord),
+            dihedral_as_rotation_in_degrees=0,
+            dihedral_as_translation=_segment_z_delta(0),
+            incidence=float(asb_wing.xsecs[0].twist),
+            rotation_point_rel_chord=0.0,
+        )
+
+        # Segment 0 tip airfoil = xsec[1]. Carries the *next* segment's
+        # z-delta so that ``add_segment`` (which copies tip into the
+        # new segment's root) propagates T[1].z correctly.
+        tip_airfoil = Airfoil(
+            airfoil=_airfoil_name(asb_wing.xsecs[1]),
+            chord=float(asb_wing.xsecs[1].chord),
+            dihedral_as_rotation_in_degrees=0,
+            dihedral_as_translation=_segment_z_delta(1),
+            incidence=float(asb_wing.xsecs[1].twist - asb_wing.xsecs[0].twist),
+            rotation_point_rel_chord=0.0,
+        )
+
+        wc = WingConfiguration(
+            nose_pnt=nose_pnt,
+            root_airfoil=root_airfoil,
+            length=float(T[0][1]),
+            sweep=float(T[0][0]),
+            sweep_is_angle=False,
+            tip_airfoil=tip_airfoil,
+            symmetric=symmetric,
+            parameters="relative",
+            spare_list=None,
+        )
+
+        for i in range(1, len(T)):
+            # Tip airfoil for the segment being added = xsec[i+1]. It
+            # carries the z-delta of the *next* segment (or 0 if this
+            # is the last segment), again so that ``add_segment``
+            # propagates it into the following segment's root airfoil.
+            new_tip_airfoil = Airfoil(
+                airfoil=_airfoil_name(asb_wing.xsecs[i + 1]),
+                chord=float(asb_wing.xsecs[i + 1].chord),
+                dihedral_as_rotation_in_degrees=0,
+                dihedral_as_translation=_segment_z_delta(i + 1),
+                incidence=float(
+                    asb_wing.xsecs[i + 1].twist - asb_wing.xsecs[i].twist
+                ),
+                rotation_point_rel_chord=0.0,
+            )
+            wc.add_segment(
+                length=float(T[i][1]),
+                sweep=float(T[i][0]),
+                sweep_is_angle=False,
+                tip_airfoil=new_tip_airfoil,
+                spare_list=None,
+            )
 
         return wc
