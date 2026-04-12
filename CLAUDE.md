@@ -65,6 +65,28 @@ bd close <id>         # Complete work
 - If push fails, resolve and retry until it succeeds
 <!-- END BEADS INTEGRATION -->
 
+## Testing Philosophy — TDD
+
+**Failing tests are correct. Fix the code, not the tests.**
+
+When a test fails, the test is doing its job — it found a bug or
+a missing implementation. The correct response is:
+
+1. **Read the test** to understand the expected behavior
+2. **Fix the production code** to make the test pass
+3. **NEVER weaken assertions** to make a failing test green
+4. **NEVER delete or skip tests** because the code doesn't match yet
+
+Anti-patterns that are **strictly forbidden:**
+- Changing `expect(count).toBe(12)` to `toBe(13)` because the code returns 13
+- Replacing `"all items have no spars"` with `"at least 1 item has spars"` because spars exist
+- Adding `@skip` tags to tests that the code can't pass yet
+- Rewriting step definitions to call the API directly instead of going through the UI
+
+If a test describes the correct behavior and the code doesn't
+implement it yet, the test MUST stay red until the code is fixed.
+A green test suite achieved by weakening tests is worthless.
+
 ## Issue Workflow & Branch Strategy
 
 **Substantial issue work goes through a dedicated branch and a Pull
