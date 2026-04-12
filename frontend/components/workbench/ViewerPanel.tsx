@@ -1,21 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import dynamic from "next/dynamic";
+import { useState, lazy, Suspense } from "react";
 import { Box, Loader, RefreshCw } from "lucide-react";
 import { useAeroplaneContext } from "./AeroplaneContext";
 import { useTessellation } from "@/hooks/useTessellation";
 
-const CadViewer = dynamic(() => import("./CadViewer").then((m) => m.CadViewer), {
-  ssr: false,
-  loading: () => (
-    <div className="flex flex-1 items-center justify-center">
-      <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
-        Loading 3D viewer…
-      </span>
-    </div>
-  ),
-});
+// lazy() instead of next/dynamic — avoids Turbopack prefetching
+// the massive three-cad-viewer bundle on initial page load.
+// The chunk is only fetched when CadViewer actually renders.
+const CadViewer = lazy(() => import("./CadViewer").then((m) => ({ default: m.CadViewer })));
 
 const STAGES = ["Bare Aero", "+TEDs", "+Spars", "Final Print"] as const;
 type Stage = (typeof STAGES)[number];
@@ -76,7 +69,15 @@ export function ViewerPanel() {
       {/* Viewer Body */}
       <div className="flex flex-1 flex-col bg-card-muted">
         {data ? (
-          <CadViewer data={data as unknown as Record<string, unknown>} />
+          <Suspense fallback={
+            <div className="flex flex-1 items-center justify-center">
+              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
+                Loading 3D viewer…
+              </span>
+            </div>
+          }>
+            <CadViewer data={data as unknown as Record<string, unknown>} />
+          </Suspense>
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6">
             <Box size={72} className="text-subtle-foreground" />
