@@ -155,7 +155,7 @@ def start_tessellation_task(
     aeroplane_id: str,
     wing_name: str,
     wing_schema_pickle: bytes,
-    wing_scale: float = 0.001,
+    wing_scale: float = 1000.0,
 ) -> None:
     """Submit a tessellation task to the process pool."""
     register_pending_task(aeroplane_id)
