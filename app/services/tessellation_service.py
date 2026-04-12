@@ -164,9 +164,14 @@ def start_tessellation_task(
     aeroplane_id: str,
     wing_name: str,
     wing_schema_pickle: bytes,
+    geometry_hash: str = "",
     wing_scale: float = 1000.0,
 ) -> None:
-    """Submit a tessellation task to the process pool."""
+    """Submit a tessellation task to the process pool.
+
+    On success, the result is also persisted in the DB cache
+    so that GET /tessellation can serve it immediately.
+    """
     register_pending_task(f"{aeroplane_id}:tessellation")
 
     future = _get_executor().submit(
@@ -188,6 +193,30 @@ def start_tessellation_task(
             }
         with tasks_lock:
             tasks[f"{aeroplane_id}:tessellation"] = worker_result
+
+        # Persist to DB cache on success
+        if worker_result.get("status") == "SUCCESS":
+            try:
+                from app.db.session import SessionLocal
+                from app.models.aeroplanemodel import AeroplaneModel
+                from app.services import tessellation_cache_service as cache_svc
+
+                db = SessionLocal()
+                try:
+                    aeroplane = db.query(AeroplaneModel).filter(
+                        AeroplaneModel.uuid == aeroplane_id
+                    ).first()
+                    if aeroplane:
+                        cache_svc.cache_tessellation(
+                            db, aeroplane.id, "wing", wing_name,
+                            geometry_hash or "manual",
+                            worker_result["result"],
+                        )
+                        logger.info("Cached tessellation for %s/%s", aeroplane_id, wing_name)
+                finally:
+                    db.close()
+            except Exception:
+                logger.exception("Failed to cache tessellation result")
 
     future.add_done_callback(_on_done)
 
