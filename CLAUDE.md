@@ -87,6 +87,12 @@ If a test describes the correct behavior and the code doesn't
 implement it yet, the test MUST stay red until the code is fixed.
 A green test suite achieved by weakening tests is worthless.
 
+## Pre-PR Review Gate
+
+Before opening any GitHub PR, you MUST run `/review` (the review
+skill) on your changes. Fix all findings before creating the PR.
+This is mandatory — no exceptions.
+
 ## Issue Workflow & Branch Strategy
 
 **Substantial issue work goes through a dedicated branch and a Pull
