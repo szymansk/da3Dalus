@@ -79,15 +79,20 @@ function xsecsToWingConfig(
   const dx = (tip.xyz_le[0] - root.xyz_le[0]) * 1000;
   const dy = (tip.xyz_le[1] - root.xyz_le[1]) * 1000;
 
+  // Estimate dihedral from z-component of leading-edge delta
+  const segLength = Math.sqrt(dx * dx + dy * dy);
+  const dz = (tip.xyz_le[2] - root.xyz_le[2]) * 1000;
+  const dihedralDeg = segLength > 0 ? Math.atan2(dz, Math.abs(dy)) * (180 / Math.PI) : 0;
+
   return {
     root_airfoil: airfoilShortName(root.airfoil),
     root_chord: rootChord,
-    root_dihedral: 0, // cannot reverse-compute from xyz_le without full context
+    root_dihedral: Math.round(dihedralDeg * 100) / 100,
     root_incidence: root.twist,
     root_rotation_point: 0.25,
     tip_airfoil: airfoilShortName(tip.airfoil),
     tip_chord: tipChord,
-    tip_dihedral: 0,
+    tip_dihedral: Math.round(dihedralDeg * 100) / 100,
     tip_incidence: tip.twist,
     tip_rotation_point: 0.25,
     length: Math.abs(dy),
