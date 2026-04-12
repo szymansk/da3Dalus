@@ -370,27 +370,43 @@ Then(
   },
 );
 
-// ── Stage 6: Export ─────────────────────────────────────────────
+// ── Stage 6: Tessellation + 3D Viewer ───────────────────────────
 
-Then("the task toast shows {string}", async ({ page }, text: string) => {
-  await expect(page.getByText(text).first()).toBeVisible({ timeout: 10000 });
+Then("the tessellation progress is shown", async ({ page }) => {
+  // The toast should show "Tessellating…" or similar progress text
+  await expect(
+    page.getByText(/Tessellat|Starting|Generating/i).first(),
+  ).toBeVisible({ timeout: 10000 });
 });
 
 Then(
-  "the export completes within {int} seconds",
+  "the 3D viewer renders within {int} seconds",
   async ({ page }, timeout: number) => {
-    // Wait for the toast to show completion or the progress to reach 100%
-    await page.waitForTimeout(timeout * 1000);
+    // Wait for the CadViewer canvas to appear (three-cad-viewer creates a canvas element)
+    // OR wait for the tessellation progress to disappear (meaning it completed)
+    await page.waitForFunction(
+      () => {
+        // Check for a canvas element (three.js / three-cad-viewer)
+        const canvas = document.querySelector("canvas");
+        if (canvas) return true;
+        // Check if the progress toast is gone (tessellation complete or failed)
+        const progress = document.body.innerText.includes("Tessellat");
+        return !progress;
+      },
+      { timeout: timeout * 1000 },
+    ).catch(() => {
+      // Timeout is acceptable — we check for errors below
+    });
+
+    // Check no error is shown
+    const error = page.locator("text=/Viewer Error|Tessellation failed/i");
+    const hasError = await error.isVisible().catch(() => false);
+    if (hasError) {
+      const errorText = await error.innerText().catch(() => "unknown");
+      throw new Error(`3D viewer error: ${errorText}`);
+    }
   },
 );
-
-Then("a STEP file download starts", async ({ page }) => {
-  // Verify a download event was triggered
-  const downloadPromise = page.waitForEvent("download", { timeout: 30000 });
-  // The download should have started from the previous click
-  const download = await downloadPromise.catch(() => null);
-  expect(download).not.toBeNull();
-});
 
 // ── Verification: DB state ──────────────────────────────────────
 

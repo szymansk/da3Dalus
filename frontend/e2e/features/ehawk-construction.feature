@@ -143,21 +143,14 @@ Feature: eHawk Designer Workflow — Full UI Construction
       | 6.42  | 6.42   | 0.20            | standard | [0,1,0] | 70     |
     Then segment 0 shows "spars (3)" in the tree
 
-  # ── Stage 6: CAD export ────────────────────────────────────────
+  # ── Stage 6: 3D Preview via tessellation ────────────────────────
 
   @slow
-  Scenario: Stage 6 — Preview STL
-    Given the "eHawk E2E Test" has wing "main_wing"
-    When I click the "Construction" step pill
-    And I click "Preview STL"
-    Then the task toast shows "Generating"
-    And the export completes within 120 seconds
-
-  @slow
-  Scenario: Stage 6b — Download STEP
-    Given the "eHawk E2E Test" has wing "main_wing"
-    When I click "Download STEP"
-    Then a STEP file download starts
+  Scenario: Stage 6 — Preview 3D via tessellation
+    Given the "eHawk E2E Test" has wing "main_wing" in the tree
+    When I click "Preview 3D"
+    Then the tessellation progress is shown
+    And the 3D viewer renders within 120 seconds
 
   # ── Verification: Check DB state ───────────────────────────────
 

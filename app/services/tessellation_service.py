@@ -65,32 +65,58 @@ def _run_tessellation_worker(
 
         from app.converters.model_schema_converters import asbWingSchemaToWingConfig
         from cad_designer.airplane.creator.wing import WingLoftCreator
+        from cadquery import Workplane
 
         # Rebuild WingConfiguration in the worker (CadQuery types not picklable)
         wing_schema = pickle.loads(wing_schema_pickle)
         wing_config = asbWingSchemaToWingConfig(wing_schema, scale=wing_scale)
 
-        # Create the wing loft geometry
+        # Create the wing loft geometry via WingLoftCreator
         creator = WingLoftCreator(
             creator_id="tessellation",
             wing_index=wing_name,
             wing_side="BOTH",
+            wing_config={wing_name: wing_config},
         )
-        shape = creator.create(wing_config={wing_name: wing_config})
+        result_shapes = creator._create_shape(
+            shapes_of_interest={},
+            input_shapes={},
+        )
+        # Get the first result shape (the wing workplane)
+        shape = next(iter(result_shapes.values())) if result_shapes else Workplane()
 
         _logger.info("Wing geometry created, starting tessellation")
 
-        # Use ocp_vscode's _tessellate to get raw Python objects
-        # (not numpy_to_buffer_json which produces base64 strings)
-        from ocp_vscode.show import _tessellate
-        instances, shapes, config, count_shapes, _mapping = _tessellate(
+        # Use ocp_tessellate directly (not ocp_vscode.show._tessellate
+        # which requires a running OCP Viewer connection)
+        from ocp_tessellate.convert import to_ocpgroup, tessellate_group, combined_bb
+
+        # Wrap the CadQuery object for tessellation
+        part_group, instances = to_ocpgroup(
             shape,
             names=[wing_name],
-            deviation=0.1,
-            angular_tolerance=0.2,
-            default_color="#FF8400",
-            theme="dark",
+            colors=["#FF8400"],
+            alphas=[1.0],
         )
+
+        # Tessellate with quality parameters
+        params = {"deviation": 0.1, "angular_tolerance": 0.2}
+        instances, shapes, _mapping = tessellate_group(
+            part_group, instances, params, progress=None,
+        )
+
+        # Add bounding box
+        bb = combined_bb(shapes)
+        if bb is not None:
+            shapes["bb"] = bb.to_dict()
+        else:
+            shapes["bb"] = {"xmin": 0, "ymin": 0, "zmin": 0, "xmax": 1, "ymax": 1, "zmax": 1}
+
+        count_shapes = part_group.count_shapes()
+        config = {
+            "theme": "dark",
+            "control": "orbit",
+        }
 
         _logger.info("Tessellation complete (%d shapes), serializing", count_shapes)
 
