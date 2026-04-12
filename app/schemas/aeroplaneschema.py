@@ -1,6 +1,6 @@
 from typing import Literal, Optional, OrderedDict
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
 from app.schemas.Servo import Servo
 
@@ -189,6 +189,12 @@ class TrailingEdgeDeviceDetailSchema(BaseModel):
         "top",
         description="Servo placement relative to the wing shell",
     )
+
+    @field_validator("servo_placement", mode="before")
+    @classmethod
+    def _default_servo_placement(cls, v):
+        """DB column is nullable — coerce None to the default."""
+        return v if v is not None else "top"
     rel_chord_servo_position: Optional[float] = Field(
         None,
         description="Relative chord position of servo placement",

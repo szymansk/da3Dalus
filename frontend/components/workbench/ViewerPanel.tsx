@@ -1,10 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { Box, Loader, RefreshCw } from "lucide-react";
 import { useAeroplaneContext } from "./AeroplaneContext";
-import { CadViewer } from "./CadViewer";
 import { useTessellation } from "@/hooks/useTessellation";
+
+const CadViewer = dynamic(() => import("./CadViewer").then((m) => m.CadViewer), {
+  ssr: false,
+  loading: () => (
+    <div className="flex flex-1 items-center justify-center">
+      <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
+        Loading 3D viewer…
+      </span>
+    </div>
+  ),
+});
 
 const STAGES = ["Bare Aero", "+TEDs", "+Spars", "Final Print"] as const;
 type Stage = (typeof STAGES)[number];

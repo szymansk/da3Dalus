@@ -494,8 +494,39 @@ def wingModelToAsbWingSchema(wing: WingModel) -> schemas.AsbWingSchema:
     in ``app.services.cad_service``) can pickle the schema, which is
     picklable, instead of the final :class:`WingConfiguration`, which
     contains ``cq.Vector`` / OCCT ``gp_Vec`` objects that are not.
+
+    The last x-section is a terminal boundary — segment-specific fields
+    (TED, spars, x_sec_type, tip_type) are stripped if present in the
+    DB to avoid validation errors from legacy data.
     """
-    return schemas.AsbWingSchema.model_validate(wing, from_attributes=True)
+    # Build via model_validate, but strip segment-specific fields from
+    # the last x-section first to handle legacy DB rows gracefully.
+    raw = schemas.AsbWingSchema.model_construct(
+        name=wing.name,
+        symmetric=wing.symmetric,
+        x_secs=[],
+    )
+    # Use the read schema (no validation) to extract x_sec dicts
+    xsec_dicts = []
+    for xs in wing.x_secs:
+        xsec_dicts.append(schemas.WingXSecSchema.model_validate(
+            xs, from_attributes=True,
+        ).model_dump())
+
+    # Strip segment-specific fields from last x-section
+    if xsec_dicts:
+        last = xsec_dicts[-1]
+        last["trailing_edge_device"] = None
+        last["spare_list"] = None
+        last["x_sec_type"] = None
+        last["tip_type"] = None
+        last["number_interpolation_points"] = None
+
+    return schemas.AsbWingSchema.model_validate({
+        "name": wing.name,
+        "symmetric": wing.symmetric,
+        "x_secs": xsec_dicts,
+    })
 
 
 def asbWingSchemaToWingConfig(

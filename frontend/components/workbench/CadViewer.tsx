@@ -7,9 +7,33 @@ interface CadViewerProps {
   data: Record<string, unknown> | null;
 }
 
+// Resolve instance references: ocp_tessellate uses {ref: N} in shapes
+// pointing to instances[N]. three-cad-viewer expects inline geometry.
+function resolveRefs(
+  node: Record<string, unknown>,
+  instances: Record<string, unknown>[],
+) {
+  if (node.shape && typeof node.shape === "object") {
+    const shapeObj = node.shape as Record<string, unknown>;
+    if ("ref" in shapeObj && typeof shapeObj.ref === "number") {
+      node.shape = instances[shapeObj.ref as number];
+    }
+  }
+  if (Array.isArray(node.parts)) {
+    for (const part of node.parts) {
+      if (part && typeof part === "object") {
+        resolveRefs(part as Record<string, unknown>, instances);
+      }
+    }
+  }
+}
+
 /**
  * Wraps the three-cad-viewer library to render tessellated CAD geometry.
  * Uses the same viewer as the VS Code OCP CAD Viewer extension.
+ *
+ * MUST be loaded with next/dynamic ssr:false — three-cad-viewer requires
+ * a browser environment (WebGL, DOM).
  */
 export function CadViewer({ data }: CadViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -26,7 +50,8 @@ export function CadViewer({ data }: CadViewerProps) {
         setLoading(true);
         setError(null);
 
-        const tcv = await import("three-cad-viewer");
+        // Dynamic import — only runs client-side (ssr:false via next/dynamic)
+        const { Display, Viewer } = await import("three-cad-viewer");
         if (disposed || !containerRef.current) return;
 
         const container = containerRef.current;
@@ -42,30 +67,24 @@ export function CadViewer({ data }: CadViewerProps) {
         const w = container.clientWidth || 800;
         const h = container.clientHeight || 500;
 
-        // Create Display (layout container)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const display = new tcv.Display(container, {
+        // Create Display (layout container) — see three-cad-viewer README
+        /* eslint-disable @typescript-eslint/no-explicit-any */
+        const display = new Display(container, {
           cadWidth: w,
           height: h,
           treeWidth: 0,
           theme: "dark",
-          glass: false,
-          tools: false,
         } as any);
 
+        const viewerOptions = { target: [0, 0, 0], up: "Z" };
+
         // Create Viewer (3D renderer)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const viewer = new (tcv as any).Viewer(
-          display,
-          { target: [0, 0, 0], up: "Z" },
-          () => {},
-        );
+        const viewer = new Viewer(display, viewerOptions as any, () => {});
         viewerRef.current = viewer;
 
         // Extract shapes from the tessellation data
         const tessData = data as {
           data?: { shapes?: Record<string, unknown>; instances?: Record<string, unknown>[] };
-          config?: Record<string, unknown>;
         };
 
         const shapes = tessData?.data?.shapes;
@@ -74,31 +93,14 @@ export function CadViewer({ data }: CadViewerProps) {
           throw new Error("No shape data in tessellation result");
         }
 
-        // Resolve instance references: shapes may have {ref: N} instead
-        // of inline geometry. Replace refs with actual instance data.
+        // Resolve instance refs before rendering
         if (instances && Array.isArray(instances)) {
-          const inst = instances; // narrow for closure
-          function resolveRefs(node: Record<string, unknown>) {
-            if (node.shape && typeof node.shape === "object") {
-              const shapeObj = node.shape as Record<string, unknown>;
-              if ("ref" in shapeObj && typeof shapeObj.ref === "number") {
-                node.shape = inst[shapeObj.ref as number];
-              }
-            }
-            if (Array.isArray(node.parts)) {
-              for (const part of node.parts) {
-                if (part && typeof part === "object") {
-                  resolveRefs(part as Record<string, unknown>);
-                }
-              }
-            }
-          }
-          resolveRefs(shapes);
+          resolveRefs(shapes, instances);
         }
 
-        // Render the shapes
+        // Render — signature: render(shapes, renderOptions, viewerOptions)
         viewer.render(
-          shapes,
+          shapes as any,
           {
             ambientIntensity: 1.0,
             directIntensity: 1.1,
@@ -106,9 +108,10 @@ export function CadViewer({ data }: CadViewerProps) {
             roughness: 0.65,
             edgeColor: 0x707070,
             defaultOpacity: 1.0,
-          },
-          {},
+          } as any,
+          viewerOptions as any,
         );
+        /* eslint-enable @typescript-eslint/no-explicit-any */
 
         setLoading(false);
       } catch (err) {
