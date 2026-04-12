@@ -1,80 +1,75 @@
 import { createBdd } from "playwright-bdd";
 import { expect } from "@playwright/test";
+import * as fs from "fs";
+import * as path from "path";
 
 const { Given, When, Then } = createBdd();
 
-// ── Navigation ──────────────────────────────────────────────
+const API =
+  process.env.API_URL ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  "http://localhost:8001";
 
-Given("I am on the workbench", async ({ page }) => {
-  await page.goto("/workbench");
-  await expect(page.locator("header")).toBeVisible();
+const STATE_FILE = path.join(__dirname, "..", ".ehawk-state.json");
+
+// ── Navigation ──────────────────────────────────────────────────
+
+When("I open the app at {string}", async ({ page }, url: string) => {
+  await page.goto(url);
+  await page.waitForLoadState("networkidle");
 });
 
-Given("I am on the mission page", async ({ page }) => {
-  await page.goto("/workbench/mission");
-  await expect(page.getByRole("heading", { name: "Mission Objectives" })).toBeVisible();
-});
-
-Given("I am on the analysis page", async ({ page }) => {
-  await page.goto("/workbench/analysis");
-  await expect(page.getByText("Aerodynamic Analysis")).toBeVisible();
-});
-
-Given("I am on the components page", async ({ page }) => {
-  await page.goto("/workbench/components");
-  await expect(page.getByText("Component Library")).toBeVisible();
-});
-
-Given("I am on the weight page", async ({ page }) => {
-  await page.goto("/workbench/weight");
-  await expect(page.getByText("Weight Items")).toBeVisible();
-});
-
-Given("I am on {string}", async ({ page }, path: string) => {
-  await page.goto(path);
-});
-
-When("I navigate to {string}", async ({ page }, path: string) => {
-  await page.goto(path);
-});
-
-When("I click the {string} step pill", async ({ page }, label: string) => {
-  await page.getByRole("link", { name: new RegExp(label) }).click();
-});
-
-Then("I see the {string} page", async ({ page }, heading: string) => {
-  // Try heading first, fall back to any visible text
-  const h = page.getByRole("heading", { name: heading });
-  if (await h.count() > 0) {
-    await expect(h.first()).toBeVisible();
-  } else {
-    await expect(page.getByText(heading).first()).toBeVisible();
-  }
-});
-
-Then("I am redirected to {string}", async ({ page }, path: string) => {
-  await page.waitForURL(new RegExp(path), { timeout: 10000 });
+Then("the URL contains {string}", async ({ page }, path: string) => {
   await expect(page).toHaveURL(new RegExp(path));
 });
 
-// ── UI state ────────────────────────────────────────────────
+Given("I am on the workbench with an aeroplane", async ({ page }) => {
+  await page.goto("/workbench");
+  await page.waitForLoadState("networkidle");
 
-Then(
-  "the {string} pill is highlighted in orange",
+  // If the selector dialog appears, create or pick an aeroplane
+  const selectorVisible = await page
+    .getByText("Select Aeroplane")
+    .isVisible()
+    .catch(() => false);
+
+  if (selectorVisible) {
+    // Check if there are existing aeroplanes to pick
+    const existingButton = page
+      .locator("button")
+      .filter({ hasText: /^(?!.*Create)/ })
+      .first();
+    const hasExisting = await existingButton.isVisible().catch(() => false);
+
+    if (hasExisting) {
+      await existingButton.click();
+    } else {
+      page.once("dialog", async (dialog) => {
+        await dialog.accept("Nav Test Aeroplane");
+      });
+      await page.getByRole("button", { name: "Create New" }).click();
+    }
+    await page.waitForSelector('text="Aeroplane Tree"', { timeout: 10000 });
+  }
+});
+
+When(
+  "I click the {string} step pill",
   async ({ page }, label: string) => {
-    const pill = page.getByRole("link", { name: new RegExp(label) });
-    await expect(pill).toHaveClass(/bg-primary/);
+    await page.getByRole("link", { name: new RegExp(label) }).click();
+    await page.waitForLoadState("networkidle");
   },
 );
 
-Then("the other pills are not highlighted", async ({ page }) => {
-  const inactivePills = page.locator("nav a.bg-card-muted");
-  await expect(inactivePills).not.toHaveCount(0);
+Then("I see {string} on the page", async ({ page }, text: string) => {
+  await expect(page.getByText(text).first()).toBeVisible({ timeout: 5000 });
 });
 
 Then(
-  "I see an alert banner with {string}",
-  async ({ page }, text: string) => {
-    await expect(page.getByText(text)).toBeVisible();
+  "the {string} pill has the active style",
+  async ({ page }, label: string) => {
+    const pill = page.getByRole("link", { name: new RegExp(label) });
+    // Active pills have bg-primary class (orange background)
+    await expect(pill).toHaveCSS("background-color", /rgb\(255, 132, 0\)/);
   },
 );
