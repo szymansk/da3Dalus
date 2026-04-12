@@ -149,10 +149,13 @@ async def get_aeroplane_tessellation(
             tess = entry.tessellation_json
             data = tess.get("data", {})
 
-            # Accumulate shapes
+            # Accumulate shapes with color per component type
             shapes = data.get("shapes")
             if shapes:
-                parts.append(shapes)
+                # Color by component type: wings orange, fuselages grey
+                color = "#FF8400" if entry.component_type == "wing" else "#888888"
+                shapes_copy = {**shapes, "color": color}
+                parts.append(shapes_copy)
 
             # Accumulate instances
             instances = data.get("instances", [])
