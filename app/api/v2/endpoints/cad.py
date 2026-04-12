@@ -27,6 +27,7 @@ from app.schemas.api_responses import (
     ZipAssetResponse,
 )
 from app.services import cad_service
+from app.services import tessellation_service
 from app.settings import Settings, get_settings
 
 router = APIRouter()
@@ -66,6 +67,49 @@ def _ensure_file_under_tmp(file_path: str, aeroplane_id: str) -> FilePath:
     target_path = (target_dir / source_path.name).resolve()
     shutil.copy2(source_path, target_path)
     return target_path
+
+
+@router.post(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/tessellation",
+    response_model=CadTaskAcceptedResponse,
+    status_code=http.HTTPStatus.ACCEPTED,
+    tags=["cad"],
+    operation_id="start_wing_tessellation",
+)
+async def start_wing_tessellation(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    wing_name: str = Path(..., description="The name of the wing"),
+    db: Session = Depends(get_db),
+) -> CadTaskAcceptedResponse:
+    """Start async tessellation of a wing for 3D viewer rendering.
+
+    The tessellation result can be retrieved via GET /status once complete.
+    The result is in three-cad-viewer JSON format (instances + shapes).
+    """
+    try:
+        import pickle
+        aeroplane_id_str = str(aeroplane_id)
+        aeroplane = cad_service.get_aeroplane_with_wings(db, aeroplane_id)
+        wing = cad_service.get_wing_from_aeroplane(aeroplane, wing_name)
+
+        from app.converters.model_schema_converters import wingModelToAsbWingSchema
+        wing_schema = wingModelToAsbWingSchema(wing)
+        wing_schema_pickle = pickle.dumps(wing_schema)
+
+        tessellation_service.start_tessellation_task(
+            aeroplane_id=aeroplane_id_str,
+            wing_name=wing_name,
+            wing_schema_pickle=wing_schema_pickle,
+        )
+
+        return CadTaskAcceptedResponse(
+            aeroplane_id=aeroplane_id_str,
+            href=f"/aeroplanes/{aeroplane_id_str}",
+        )
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {exc}") from exc
 
 
 @router.post("/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}",
@@ -117,11 +161,15 @@ async def create_wing_loft(aeroplane_id: AeroPlaneID = Path(..., description="Th
          response_model=CadTaskStatusResponse,
          response_model_exclude_none=True,
          operation_id="get_aeroplane_task_status")
-async def get_aeroplane_task_status(aeroplane_id: str) -> CadTaskStatusResponse:
-    """Get the status of an aeroplane export task."""
+async def get_aeroplane_task_status(
+    aeroplane_id: str,
+    task_type: Optional[str] = Query(None, description="Task type: 'tessellation' or None for CAD export"),
+) -> CadTaskStatusResponse:
+    """Get the status of an aeroplane export or tessellation task."""
     try:
-        logger.info(f"Getting task status for aeroplane_id: {aeroplane_id}")
-        task_result = cad_service.get_task_result(aeroplane_id)
+        task_key = f"{aeroplane_id}:{task_type}" if task_type else aeroplane_id
+        logger.info(f"Getting task status for: {task_key}")
+        task_result = cad_service.get_task_result(task_key)
 
         message: str | None = None
         result: dict | None = None

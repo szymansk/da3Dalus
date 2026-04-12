@@ -1,5 +1,23 @@
 # Agent Instructions
 
+<!-- BEGIN:nextjs-agent-rules -->
+
+## Next.js: ALWAYS read docs before coding
+
+Before any Next.js work, find and read the relevant doc in
+`frontend/node_modules/next/dist/docs/`. Your training data is outdated —
+the docs are the source of truth.
+
+<!-- END:nextjs-agent-rules -->
+
+## Project structure
+
+- `app/` — Python FastAPI Backend (port 8000)
+- `frontend/` — Next.js Frontend (port 3000)
+- Backend REST API: http://localhost:8000
+- Swagger UI: http://localhost:8000/docs
+- Frontend dev server: http://localhost:3000
+
 This project uses **bd** (beads) for issue tracking. Run `bd prime` for full workflow context.
 
 ## Quick Reference

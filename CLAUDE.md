@@ -65,6 +65,136 @@ bd close <id>         # Complete work
 - If push fails, resolve and retry until it succeeds
 <!-- END BEADS INTEGRATION -->
 
+## Testing Philosophy — TDD
+
+**Failing tests are correct. Fix the code, not the tests.**
+
+When a test fails, the test is doing its job — it found a bug or
+a missing implementation. The correct response is:
+
+1. **Read the test** to understand the expected behavior
+2. **Fix the production code** to make the test pass
+3. **NEVER weaken assertions** to make a failing test green
+4. **NEVER delete or skip tests** because the code doesn't match yet
+
+Anti-patterns that are **strictly forbidden:**
+- Changing `expect(count).toBe(12)` to `toBe(13)` because the code returns 13
+- Replacing `"all items have no spars"` with `"at least 1 item has spars"` because spars exist
+- Adding `@skip` tags to tests that the code can't pass yet
+- Rewriting step definitions to call the API directly instead of going through the UI
+
+If a test describes the correct behavior and the code doesn't
+implement it yet, the test MUST stay red until the code is fixed.
+A green test suite achieved by weakening tests is worthless.
+
+## Frontend Design Workflow — Pencil First
+
+**ALL frontend UI changes MUST go through the pencil.dev wireframe
+(`da3Dalus.pen`) first.** No exceptions.
+
+Workflow:
+1. Design the UI change in `da3Dalus.pen` via pencil MCP tools
+2. Verify with `get_screenshot` that the wireframe is correct
+3. Then implement the React component to match the wireframe
+4. Compare the rendered component against the pencil screenshot
+
+This applies to:
+- New components and screens
+- Layout changes to existing components
+- New form fields, dialogs, or modals
+- Any visual change the user will see
+
+This does NOT apply to:
+- Pure logic changes (hooks, API calls, state management)
+- Bug fixes that don't change the visual design
+- Test files
+
+## Test Coverage Requirement
+
+**Target: 70–80% coverage.** Writing tests for implemented code is
+mandatory, not optional. Every feature, bugfix, and refactor must
+include tests.
+
+### Skills for writing tests
+
+Use these skills when writing tests — they contain patterns and
+best practices:
+
+| Skill | When to use |
+|-------|-------------|
+| `/skill tdd` | Starting any feature — write tests FIRST |
+| `/skill python-testing-patterns` | Writing pytest unit/integration tests for the Python backend |
+| `/skill pytest-coverage` | Measuring + improving pytest coverage toward 70–80% target |
+| `/skill webapp-testing` | Frontend component + integration tests (React/Next.js) |
+| `/skill playwright-best-practices` | E2E tests with Playwright (locators, assertions, patterns) |
+| `/skill e2e-testing-patterns` | Structuring E2E test suites, fixtures, data management |
+
+### Workflow for every code change
+
+1. **Before coding:** Invoke `/skill tdd` — write failing tests first
+2. **During coding:** Run tests continuously, fix code until green
+3. **After coding:** Check coverage with `poetry run pytest --cov=app`
+   (backend) or equivalent frontend command
+4. **Before PR:** Run `/review`, then verify coverage ≥ 70%
+
+### Test types per layer
+
+| Layer | Framework | Location | Command |
+|-------|-----------|----------|---------|
+| Backend unit | pytest | `app/tests/test_*.py` | `poetry run pytest` |
+| Backend integration | pytest | `app/tests/test_*_integration.py` | `poetry run pytest -m "not slow"` |
+| Backend slow/CAD | pytest | `app/tests/test_*_integration.py` | `poetry run pytest -m slow` |
+| Frontend E2E | playwright-bdd | `frontend/e2e/features/*.feature` | `cd frontend && npm run test:e2e` |
+
+## Issue Tracking — GitHub Issues + Beads
+
+This project uses a two-tier issue tracking system:
+
+### GitHub Issues — what to build
+
+GitHub Issues are the **user-facing** tracker for features, bugs,
+and design decisions. They are visible to stakeholders, linked to
+PRs, and closed when the PR merges.
+
+- **Feature requests:** Use the `feature.md` template in `.github/ISSUE_TEMPLATE/`
+- **Bug reports:** Use the `bug.md` template
+- **Technical tasks:** Use the `task.md` template
+- Templates ensure consistent structure — always use them
+- The agent MAY create GitHub Issues when discovering missing
+  features, improvements, or bugs during implementation
+- PRs reference the GitHub Issue: `Closes #N`
+
+### Beads — how to build it
+
+Beads tickets are the **technical implementation plan**. One GitHub
+Issue maps to 1–N Beads tickets that break the work into parallel,
+dependency-tracked units.
+
+- Every Beads ticket MUST reference its GitHub Issue via the
+  `--notes` field: `bd create --notes="Implements gh#N" ...`
+- Beads tickets are for agent orchestration (dependencies, claims,
+  parallel execution) — they don't appear on GitHub
+- Close Beads tickets when the implementation is done
+- The GitHub Issue stays open until the PR is merged
+
+### Workflow
+
+```
+1. GitHub Issue created (by human or agent)
+2. Agent breaks GH Issue into N Beads tickets with deps
+   bd create --title="..." --notes="Implements gh#N" ...
+3. Agent works through Beads tickets (claim → implement → close)
+4. Agent runs /review on the diff
+5. Agent opens PR referencing the GH Issue (Closes #N)
+6. Human reviews + merges PR → GH Issue auto-closes
+```
+
+## Pre-PR Review Gate
+
+Before opening any GitHub PR, you MUST run `/review` (the review
+skill) on your changes. Fix all findings before creating the PR.
+This is mandatory — no exceptions.
+
 ## Issue Workflow & Branch Strategy
 
 **Substantial issue work goes through a dedicated branch and a Pull

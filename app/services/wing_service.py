@@ -26,7 +26,7 @@ from app.models.aeroplanemodel import (
 from app.schemas.Servo import Servo as ServoSchema
 from app.schemas.wing import Wing as WingConfigurationSchema
 from app.services.create_wing_configuration import create_wing_configuration
-from app.converters.model_schema_converters import wingConfigToWingModel
+from app.converters.model_schema_converters import wingConfigToWingModel, wingModelToWingConfig
 
 logger = logging.getLogger(__name__)
 
@@ -255,6 +255,90 @@ def create_wing_from_wing_configuration(
         raise ValidationError(message=f"Invalid WingConfiguration payload: {e}")
     except SQLAlchemyError as e:
         logger.error(f"Database error when creating wing from WingConfiguration: {e}")
+        raise InternalError(message=f"Database error: {e}")
+
+
+def get_wing_as_wingconfig(db: Session, aeroplane_uuid, wing_name: str) -> dict:
+    """Return the wing converted back to WingConfiguration format.
+
+    Uses the roundtrip converter wingModelToWingConfig to produce
+    the segment-based representation with root/tip airfoils,
+    length, sweep, dihedral — without any estimation or loss.
+    """
+    aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+    wing = get_wing_or_raise(aeroplane, wing_name)
+    wing_config = wingModelToWingConfig(wing, scale=1000.0)
+    return _wing_config_to_dict(wing_config)
+
+
+def _wing_config_to_dict(wc) -> dict:
+    """Serialize a cad_designer WingConfiguration to a JSON-safe dict."""
+    segments = []
+    for seg in wc.segments:
+        segments.append({
+            "root_airfoil": {
+                "airfoil": seg.root_airfoil.airfoil,
+                "chord": seg.root_airfoil.chord,
+                "dihedral_as_rotation_in_degrees": seg.root_airfoil.dihedral_as_rotation_in_degrees or 0,
+                "incidence": seg.root_airfoil.incidence or 0,
+                "rotation_point_rel_chord": seg.root_airfoil.rotation_point_rel_chord or 0.25,
+            },
+            "tip_airfoil": {
+                "airfoil": seg.tip_airfoil.airfoil,
+                "chord": seg.tip_airfoil.chord,
+                "dihedral_as_rotation_in_degrees": seg.tip_airfoil.dihedral_as_rotation_in_degrees or 0,
+                "incidence": seg.tip_airfoil.incidence or 0,
+                "rotation_point_rel_chord": seg.tip_airfoil.rotation_point_rel_chord or 0.25,
+            },
+            "length": seg.length,
+            "sweep": seg.sweep,
+            "number_interpolation_points": seg.number_interpolation_points,
+            "tip_type": getattr(seg, 'tip_type', None),
+        })
+    return {
+        "segments": segments,
+        "nose_pnt": list(wc.nose_pnt) if wc.nose_pnt else [0, 0, 0],
+        "symmetric": wc.symmetric,
+        "parameters": wc.parameters if hasattr(wc, 'parameters') else "relative",
+    }
+
+
+def put_wing_as_wingconfig(
+    db: Session,
+    aeroplane_uuid,
+    wing_name: str,
+    wing_config_data: WingConfigurationSchema,
+    scale: float = 0.001,
+) -> None:
+    """Replace an existing wing from WingConfiguration JSON.
+
+    Unlike create_wing_from_wing_configuration, this deletes
+    the existing wing first (idempotent PUT semantics).
+    """
+    try:
+        with db.begin():
+            plane = get_aeroplane_or_raise(db, aeroplane_uuid)
+            # Remove existing wing if present
+            existing = next((w for w in plane.wings if w.name == wing_name), None)
+            if existing:
+                db.delete(existing)
+                db.flush()
+
+            wing_configuration = create_wing_configuration(wing_config_data)
+            wing_model = wingConfigToWingModel(
+                wing_config=wing_configuration,
+                wing_name=wing_name,
+                scale=scale,
+            )
+            plane.wings.append(wing_model)
+            db.add(wing_model)
+            plane.updated_at = datetime.now()
+    except (NotFoundError, ValidationError):
+        raise
+    except (ValueError, TypeError) as e:
+        raise ValidationError(message=f"Invalid WingConfiguration payload: {e}")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error in put_wing_as_wingconfig: {e}")
         raise InternalError(message=f"Database error: {e}")
 
 

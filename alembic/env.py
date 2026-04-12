@@ -31,6 +31,7 @@ if config.config_file_name is not None:
 from app.db.base import Base
 import app.models.aeroplanemodel       # this module imports Base and defines tables
 import app.models.flightprofilemodel
+import app.models.component
 
 target_metadata = Base.metadata
 
