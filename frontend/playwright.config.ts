@@ -25,5 +25,8 @@ export default defineConfig({
     command: "npm run dev",
     port: 3000,
     reuseExistingServer: true,
+    env: {
+      NEXT_PUBLIC_API_URL: process.env.API_URL ?? "http://localhost:8001",
+    },
   },
 });
