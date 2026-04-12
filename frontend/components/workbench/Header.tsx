@@ -7,10 +7,10 @@ import {
   ChevronDown,
   Save,
   Settings,
+  ArrowLeftRight,
 } from "lucide-react";
 import { useAeroplaneContext } from "./AeroplaneContext";
 import { useAeroplanes } from "@/hooks/useAeroplanes";
-import { useWings } from "@/hooks/useWings";
 
 const STEPS = [
   { num: 1, label: "Mission", href: "/workbench/mission" },
@@ -27,7 +27,7 @@ function isActive(href: string, pathname: string) {
 
 export function Header() {
   const pathname = usePathname();
-  const { aeroplaneId, selectedWing } = useAeroplaneContext();
+  const { aeroplaneId, selectedWing, setAeroplaneId } = useAeroplaneContext();
   const { aeroplanes } = useAeroplanes();
   const aeroplaneName = aeroplanes.find((a) => a.id === aeroplaneId)?.name ?? "da3Dalus";
 
@@ -35,9 +35,14 @@ export function Header() {
     <header className="flex h-16 shrink-0 items-center gap-6 border-b border-border bg-card px-6">
       {/* Left cluster */}
       <div className="flex items-center gap-3">
-        <span className="rounded-[--radius-pill] bg-sidebar-accent px-3 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
+        <button
+          onClick={() => setAeroplaneId(null)}
+          className="flex items-center gap-2 rounded-[--radius-pill] bg-sidebar-accent px-3 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground hover:bg-sidebar-accent/80"
+          title="Switch aeroplane"
+        >
           {aeroplaneName}
-        </span>
+          <ArrowLeftRight size={12} className="text-muted-foreground" />
+        </button>
         <span className="text-sm text-muted-foreground">/</span>
         <span className="text-sm text-muted-foreground">{selectedWing ?? "\u2014"}</span>
       </div>
