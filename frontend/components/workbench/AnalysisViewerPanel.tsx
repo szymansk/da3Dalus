@@ -7,77 +7,157 @@ import type { AnalysisResult } from "@/hooks/useAnalysis";
 const TABS = ["Polar", "Three-View", "Streamlines", "Diagrams"] as const;
 type Tab = (typeof TABS)[number];
 
-const BAR_HEIGHTS = [
-  14, 20, 30, 42, 56, 72, 88, 104, 120, 138, 156, 168, 176, 180, 182, 182,
-];
-
-const MAX_BAR_HEIGHT = 180;
-
 interface Props {
   result: AnalysisResult | null;
 }
 
+// ── SVG Line Chart ──────────────────────────────────────────────
+
+function LineChart({
+  xData,
+  yData,
+  xLabel,
+  yLabel,
+  title,
+  annotation,
+  color = "var(--color-primary)",
+  xFormat,
+}: {
+  xData: number[];
+  yData: number[];
+  xLabel: string;
+  yLabel: string;
+  title: string;
+  annotation?: string;
+  color?: string;
+  xFormat?: (v: number) => string;
+}) {
+  const W = 400;
+  const H = 200;
+  const PAD = { top: 10, right: 15, bottom: 30, left: 45 };
+  const plotW = W - PAD.left - PAD.right;
+  const plotH = H - PAD.top - PAD.bottom;
+
+  if (xData.length === 0 || yData.length === 0) {
+    return (
+      <div className="flex flex-1 items-center justify-center rounded-[--radius-s] border border-border bg-card p-4">
+        <span className="text-[12px] text-muted-foreground">No data</span>
+      </div>
+    );
+  }
+
+  const xMin = Math.min(...xData);
+  const xMax = Math.max(...xData);
+  const yMin = Math.min(...yData);
+  const yMax = Math.max(...yData);
+  const xRange = xMax - xMin || 1;
+  const yRange = yMax - yMin || 1;
+
+  function sx(v: number) { return PAD.left + ((v - xMin) / xRange) * plotW; }
+  function sy(v: number) { return PAD.top + plotH - ((v - yMin) / yRange) * plotH; }
+
+  const pathD = xData.map((x, i) => `${i === 0 ? "M" : "L"}${sx(x).toFixed(1)},${sy(yData[i]).toFixed(1)}`).join(" ");
+
+  // Y-axis ticks (5 ticks)
+  const yTicks = Array.from({ length: 5 }, (_, i) => yMin + (yRange * i) / 4);
+  // X-axis ticks (5 ticks)
+  const xTicks = Array.from({ length: 5 }, (_, i) => xMin + (xRange * i) / 4);
+
+  return (
+    <div className="flex flex-1 flex-col gap-1">
+      <div className="flex items-center gap-2">
+        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground">{title}</span>
+        {annotation && (
+          <>
+            <span className="flex-1" />
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground">{annotation}</span>
+          </>
+        )}
+      </div>
+      <div className="rounded-[--radius-s] border border-border bg-card p-2">
+        <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full" preserveAspectRatio="xMidYMid meet">
+          {/* Grid lines */}
+          {yTicks.map((v, i) => (
+            <line key={`yg${i}`} x1={PAD.left} x2={W - PAD.right} y1={sy(v)} y2={sy(v)}
+              stroke="var(--color-border)" strokeWidth="0.5" />
+          ))}
+          {xTicks.map((v, i) => (
+            <line key={`xg${i}`} x1={sx(v)} x2={sx(v)} y1={PAD.top} y2={PAD.top + plotH}
+              stroke="var(--color-border)" strokeWidth="0.5" />
+          ))}
+
+          {/* Axes */}
+          <line x1={PAD.left} x2={PAD.left} y1={PAD.top} y2={PAD.top + plotH}
+            stroke="var(--color-muted-foreground)" strokeWidth="1" />
+          <line x1={PAD.left} x2={W - PAD.right} y1={PAD.top + plotH} y2={PAD.top + plotH}
+            stroke="var(--color-muted-foreground)" strokeWidth="1" />
+
+          {/* Y-axis labels */}
+          {yTicks.map((v, i) => (
+            <text key={`yl${i}`} x={PAD.left - 5} y={sy(v) + 3}
+              textAnchor="end" fontSize="8" fill="var(--color-muted-foreground)"
+              fontFamily="var(--font-jetbrains-mono)">
+              {v.toFixed(2)}
+            </text>
+          ))}
+
+          {/* X-axis labels */}
+          {xTicks.map((v, i) => (
+            <text key={`xl${i}`} x={sx(v)} y={PAD.top + plotH + 14}
+              textAnchor="middle" fontSize="8" fill="var(--color-muted-foreground)"
+              fontFamily="var(--font-jetbrains-mono)">
+              {xFormat ? xFormat(v) : `${v.toFixed(0)}°`}
+            </text>
+          ))}
+
+          {/* Axis titles */}
+          <text x={W / 2} y={H - 3} textAnchor="middle" fontSize="9"
+            fill="var(--color-muted-foreground)" fontFamily="var(--font-jetbrains-mono)">
+            {xLabel}
+          </text>
+          <text x={12} y={H / 2} textAnchor="middle" fontSize="9"
+            fill="var(--color-muted-foreground)" fontFamily="var(--font-jetbrains-mono)"
+            transform={`rotate(-90, 12, ${H / 2})`}>
+            {yLabel}
+          </text>
+
+          {/* Data line */}
+          <path d={pathD} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Component ──────────────────────────────────────────────
+
 export function AnalysisViewerPanel({ result }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("Polar");
 
-  const chartData = useMemo(() => {
+  const charts = useMemo(() => {
     if (!result || !result.CL || result.CL.length === 0) return null;
 
-    const { CL, alpha } = result;
-    const minCL = Math.min(...CL);
-    const maxCL = Math.max(...CL);
-    const range = maxCL - minCL;
+    const { CL, CD, alpha } = result;
+    const clOverCd = CL.map((cl, i) => CD[i] !== 0 ? cl / CD[i] : 0);
 
-    const barHeights = CL.map((cl) =>
-      range > 0
-        ? ((cl - minCL) / range) * MAX_BAR_HEIGHT
-        : MAX_BAR_HEIGHT / 2
-    );
-
-    // Find stall index: last index where CL starts to drop
-    let stallIndex = -1;
-    for (let i = 1; i < CL.length; i++) {
-      if (CL[i] < CL[i - 1]) {
-        stallIndex = i;
-        break;
-      }
-    }
-
-    // CL_max is at the index just before stall (or the peak)
-    const clMaxIndex = stallIndex > 0 ? stallIndex - 1 : CL.indexOf(maxCL);
-    const clMax = CL[clMaxIndex];
-    const alphaStall = alpha[clMaxIndex];
-
-    // X-axis labels: first, quarter, middle, three-quarter, last
-    const first = alpha[0];
-    const last = alpha[alpha.length - 1];
-    const mid = alpha[Math.floor(alpha.length / 2)];
-    const q1 = alpha[Math.floor(alpha.length / 4)];
-    const q3 = alpha[Math.floor((3 * alpha.length) / 4)];
+    const maxCLIdx = CL.indexOf(Math.max(...CL));
+    const maxLDIdx = clOverCd.indexOf(Math.max(...clOverCd));
 
     return {
-      barHeights,
-      stallIndex,
-      clMax,
-      alphaStall,
-      xLabels: [first, q1, mid, q3, last],
+      alpha,
+      CL,
+      CD,
+      clOverCd,
+      clMax: CL[maxCLIdx],
+      alphaClMax: alpha[maxCLIdx],
+      ldMax: clOverCd[maxLDIdx],
+      alphaLdMax: alpha[maxLDIdx],
     };
   }, [result]);
 
-  const bars = chartData ? chartData.barHeights : BAR_HEIGHTS;
-  const stallIdx = chartData ? chartData.stallIndex : -1;
-
-  const titleAnnotation = chartData
-    ? `\u03B1_stall \u2248 ${chartData.alphaStall.toFixed(0)}\u00B0 \u00B7 C_L,max \u2248 ${chartData.clMax.toFixed(2)}`
-    : "\u03B1_stall \u2248 12\u00B0 \u00B7 C_L,max \u2248 1.1";
-
-  const xLabels = chartData
-    ? chartData.xLabels.map((v) => `${v.toFixed(0)}\u00B0`)
-    : ["-5\u00B0", "0\u00B0", "5\u00B0", "10\u00B0", "15\u00B0"];
-
   return (
     <div className="flex flex-1 flex-col overflow-hidden rounded-[--radius-m] border border-border">
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="flex items-center gap-2 border-b border-border bg-card px-4 py-3">
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
           Aerodynamic Analysis
@@ -100,55 +180,51 @@ export function AnalysisViewerPanel({ result }: Props) {
         </div>
       </div>
 
-      {/* ── Chart Body ── */}
-      <div className="flex flex-1 flex-col gap-3 border border-border bg-card-muted p-8">
-        {/* Title row */}
-        <div className="flex items-center">
-          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-foreground">
-            C_L vs &alpha;
-          </span>
-          <div className="flex-1" />
-          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
-            {titleAnnotation}
-          </span>
-        </div>
-
-        {/* Chart area */}
-        <div className="flex flex-1 items-end gap-1.5 rounded-[--radius-s] border border-border bg-card p-4">
-          {bars.map((h, i) => (
-            <div
-              key={i}
-              className={`flex-1 rounded-sm ${
-                stallIdx >= 0 && i >= stallIdx ? "bg-destructive" : "bg-primary"
-              }`}
-              style={{ height: `${h}px` }}
+      {/* Chart Body — 2x2 grid of line plots */}
+      <div className="flex flex-1 flex-col gap-4 overflow-auto bg-card-muted p-6">
+        {charts ? (
+          <div className="grid grid-cols-2 gap-4">
+            <LineChart
+              xData={charts.alpha} yData={charts.CL}
+              xLabel="α [°]" yLabel="C_L"
+              title="C_L vs α"
+              annotation={`C_L,max ≈ ${charts.clMax.toFixed(2)} @ ${charts.alphaClMax.toFixed(0)}°`}
+              color="var(--color-primary)"
             />
-          ))}
-          {/* Stall line marker (only when there is no dynamic stall detection) */}
-          {stallIdx < 0 && <div className="h-full w-0.5 bg-destructive" />}
-        </div>
-
-        {/* X-axis labels */}
-        <div className="flex justify-between pt-2">
-          {xLabels.map((label, i) => (
-            <span
-              key={i}
-              className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground"
-            >
-              {label}
+            <LineChart
+              xData={charts.alpha} yData={charts.CD}
+              xLabel="α [°]" yLabel="C_D"
+              title="C_D vs α"
+              color="var(--color-destructive)"
+            />
+            <LineChart
+              xData={charts.alpha} yData={charts.clOverCd}
+              xLabel="α [°]" yLabel="C_L / C_D"
+              title="C_L / C_D vs α"
+              annotation={`L/D,max ≈ ${charts.ldMax.toFixed(1)} @ ${charts.alphaLdMax.toFixed(0)}°`}
+              color="var(--color-success)"
+            />
+            <LineChart
+              xData={charts.CD} yData={charts.CL}
+              xLabel="C_D" yLabel="C_L"
+              title="C_L vs C_D (drag polar)"
+              color="var(--color-primary)"
+              xFormat={(v) => v.toFixed(3)}
+            />
+          </div>
+        ) : (
+          <div className="flex flex-1 flex-col items-center justify-center gap-4">
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-muted-foreground">
+              Run an analysis to see results
             </span>
-          ))}
-        </div>
-
-        {/* X-axis title */}
-        <div className="text-center">
-          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
-            &alpha; [&deg;]
-          </span>
-        </div>
+            <span className="text-[12px] text-subtle-foreground">
+              Configure parameters on the right and click &ldquo;Run Analysis&rdquo;
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* ── Info Chip Row ── */}
+      {/* Info Chip Row */}
       <div className="flex items-center gap-2 border-t border-border bg-card px-4 py-3">
         <div className="flex items-center gap-1.5 rounded-[--radius-pill] bg-card-muted px-3 py-1.5">
           <Wind size={12} className="text-muted-foreground" />
@@ -170,7 +246,7 @@ export function AnalysisViewerPanel({ result }: Props) {
         </div>
         <div className="flex-1" />
         <span className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
-          Last run: 11:42 &middot; 820 ms
+          {charts ? `${charts.alpha.length} points` : "No data"}
         </span>
       </div>
     </div>
