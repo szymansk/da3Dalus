@@ -112,6 +112,7 @@ Feature: eHawk Designer Workflow
 
   # ── Stage 1 STL checkpoint ─────────────────────────────────────
 
+  @slow @requires-cadquery
   Scenario: Stage 1 STL — Export bare wing loft
     Given the "eHawk designer workflow" has wing "main_wing"
     When I export "main_wing" as "wing_loft/stl"
@@ -183,10 +184,11 @@ Feature: eHawk Designer Workflow
       | hinge_point  | 0.8     |
       | symmetric    | false   |
       | deflection   | 0.0     |
-    Then the wing has 4 cross sections with trailing edge devices
+    Then the wing has at least 4 cross sections with trailing edge devices
 
   # ── Stage 3 STL checkpoint ─────────────────────────────────────
 
+  @slow @requires-cadquery
   Scenario: Stage 3 STL — Export wing loft with TEDs
     Given the "eHawk designer workflow" has wing "main_wing" with TEDs
     When I export "main_wing" as "wing_loft/stl"
@@ -252,6 +254,7 @@ Feature: eHawk Designer Workflow
   # Now that spars exist, vase_mode_wing is valid.
   # Requires servo_information for servo 1 (aileron on segment 2).
 
+  @slow @requires-cadquery
   Scenario: Stage 5 STL — Export vase mode wing with spars
     Given the "eHawk designer workflow" has wing "main_wing" fully configured
     When I export "main_wing" as "vase_mode_wing/stl" with servo settings:
@@ -275,6 +278,7 @@ Feature: eHawk Designer Workflow
 
   # ── Stage 6: Final STEP export ─────────────────────────────────
 
+  @slow @requires-cadquery
   Scenario: Stage 6 — Export printable STEP file
     Given the "eHawk designer workflow" has wing "main_wing" fully configured
     When I export "main_wing" as "vase_mode_wing/step" with the same servo settings

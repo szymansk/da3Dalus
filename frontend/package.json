@@ -7,9 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:e2e": "npx -p playwright-bdd bddgen && npx playwright test",
+    "test:e2e": "npx -p playwright-bdd bddgen && npx playwright test --grep-invert @slow",
+    "test:e2e:slow": "npx -p playwright-bdd bddgen && npx playwright test",
     "test:e2e:ui": "npx -p playwright-bdd bddgen && npx playwright test --ui",
-    "test:e2e:headed": "npx -p playwright-bdd bddgen && npx playwright test --headed"
+    "test:e2e:headed": "npx -p playwright-bdd bddgen && npx playwright test --headed --grep-invert @slow"
   },
   "dependencies": {
     "lucide-react": "^1.8.0",

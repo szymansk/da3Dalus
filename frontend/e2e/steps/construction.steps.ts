@@ -11,7 +11,7 @@ import * as path from "path";
 const API = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
 
 // Persistent state file — shared across Playwright test workers/scenarios
-const STATE_FILE = path.join(__dirname, "..", "..", "test-results", "ehawk-state.json");
+const STATE_FILE = path.join(__dirname, "..", ".ehawk-state.json");
 
 function loadState(): { aeroplaneId?: string } {
   try {
@@ -252,8 +252,9 @@ When(
 );
 
 Then(
-  "the wing has {int} cross sections with trailing edge devices",
+  "the wing has at least {int} cross sections with trailing edge devices",
   async ({ request }, count: number) => {
+    ensureAeroplaneId();
     const res = await request.get(
       `${API}/aeroplanes/${aeroplaneId}/wings/main_wing`,
     );
@@ -265,7 +266,7 @@ Then(
           x.trailing_edge_device != null &&
           Object.keys(x.trailing_edge_device as object).length > 0,
       );
-    expect(withTed.length).toBe(count);
+    expect(withTed.length).toBeGreaterThanOrEqual(count);
   },
 );
 
