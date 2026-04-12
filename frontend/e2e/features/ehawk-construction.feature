@@ -115,7 +115,7 @@ Feature: eHawk Designer Workflow — Full UI Construction
       | servo_placement             | top     |
       | positive_deflection_deg     | 35      |
       | negative_deflection_deg     | 35      |
-    And I click "Save"
+    And I click "Save TED"
     Then segment 2 shows an "AILERON" chip in the tree
 
   # ── Stage 4: Aero check with TEDs ─────────────────────────────

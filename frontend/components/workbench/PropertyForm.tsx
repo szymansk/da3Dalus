@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useAeroplaneContext } from "./AeroplaneContext";
 import { useWing, type XSec } from "@/hooks/useWings";
 import { API_BASE } from "@/lib/fetcher";
@@ -440,6 +440,24 @@ export function PropertyForm() {
         )}
       </div>
 
+      {/* Trailing Edge Device section */}
+      <TedSection
+        aeroplaneId={aeroplaneId}
+        wingName={selectedWing}
+        xsecIndex={selectedXsecIndex!}
+        ted={xsec.trailing_edge_device}
+        onSaved={() => mutate()}
+      />
+
+      {/* Spars section */}
+      <SparsSection
+        aeroplaneId={aeroplaneId}
+        wingName={selectedWing}
+        xsecIndex={selectedXsecIndex!}
+        spars={xsec.spare_list ?? []}
+        onSaved={() => mutate()}
+      />
+
       {/* Actions */}
       <div className="flex flex-col items-end gap-2 pt-4">
         <div className="flex gap-2">
@@ -460,6 +478,223 @@ export function PropertyForm() {
         </div>
         {error && <p className="text-[12px] text-red-500">{error}</p>}
       </div>
+    </div>
+  );
+}
+
+// ── TED Section ─────────────────────────────────────────────────
+
+function TedSection({
+  aeroplaneId,
+  wingName,
+  xsecIndex,
+  ted,
+  onSaved,
+}: {
+  aeroplaneId: string | null;
+  wingName: string | null;
+  xsecIndex: number;
+  ted: Record<string, unknown> | null | undefined;
+  onSaved: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [tedError, setTedError] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [hingePoint, setHingePoint] = useState("0.8");
+  const [symmetric, setSymmetric] = useState(false);
+  const [servoPlacement, setServoPlacement] = useState("top");
+  const [posDeg, setPosDeg] = useState("35");
+  const [negDeg, setNegDeg] = useState("35");
+  const [relChordTip, setRelChordTip] = useState("0.8");
+
+  // Sync from existing TED
+  useEffect(() => {
+    if (ted && typeof ted === "object") {
+      const t = ted as Record<string, unknown>;
+      if (t.name) setName(String(t.name));
+      if (t.hinge_point) setHingePoint(String(t.hinge_point));
+      if (t.symmetric !== undefined) setSymmetric(Boolean(t.symmetric));
+    }
+  }, [ted]);
+
+  const hasTed = ted && typeof ted === "object" && Object.keys(ted).length > 0;
+
+  async function handleSaveTed() {
+    if (!aeroplaneId || !wingName) return;
+    setSaving(true);
+    setTedError(null);
+    try {
+      // PATCH control surface
+      const csRes = await fetch(
+        `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/cross_sections/${xsecIndex}/control_surface`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            hinge_point: parseFloat(hingePoint),
+            symmetric,
+            deflection: 0,
+          }),
+        },
+      );
+      if (!csRes.ok) throw new Error(`Control surface: ${csRes.status}`);
+
+      // PATCH cad details
+      const cadRes = await fetch(
+        `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/cross_sections/${xsecIndex}/control_surface/cad_details`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            rel_chord_tip: parseFloat(relChordTip),
+            servo_placement: servoPlacement,
+            positive_deflection_deg: parseFloat(posDeg),
+            negative_deflection_deg: parseFloat(negDeg),
+          }),
+        },
+      );
+      if (!cadRes.ok) throw new Error(`CAD details: ${cadRes.status}`);
+
+      onSaved();
+    } catch (err: unknown) {
+      setTedError(err instanceof Error ? err.message : "TED save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="mt-2 border-t border-border pt-2">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground"
+      >
+        {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        Trailing Edge Device {hasTed ? `(${(ted as Record<string, unknown>).name ?? "set"})` : "(none)"}
+      </button>
+      {open && (
+        <div className="mt-2 flex flex-col gap-2">
+          <div className="flex gap-3">
+            <Field label="name" value={name} type="text" onChange={setName} />
+            <Field label="hinge_point" value={hingePoint} onChange={setHingePoint} />
+          </div>
+          <div className="flex gap-3">
+            <Field label="rel_chord_tip" value={relChordTip} onChange={setRelChordTip} />
+            <Field label="servo_placement" value={servoPlacement} type="text" onChange={setServoPlacement} />
+          </div>
+          <div className="flex gap-3">
+            <Field label="positive_deflection_deg" value={posDeg} suffix="°" onChange={setPosDeg} />
+            <Field label="negative_deflection_deg" value={negDeg} suffix="°" onChange={setNegDeg} />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={symmetric}
+              onChange={(e) => setSymmetric(e.target.checked)}
+              className="h-4 w-4"
+            />
+            <span className="text-[11px] text-muted-foreground">symmetric</span>
+          </div>
+          <button
+            onClick={handleSaveTed}
+            disabled={saving || !name}
+            className="self-end rounded-[--radius-pill] bg-primary px-3 py-1.5 text-[12px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            {saving ? "Saving…" : "Save TED"}
+          </button>
+          {tedError && <p className="text-[11px] text-red-500">{tedError}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Spars Section ───────────────────────────────────────────────
+
+function SparsSection({
+  aeroplaneId,
+  wingName,
+  xsecIndex,
+  spars,
+  onSaved,
+}: {
+  aeroplaneId: string | null;
+  wingName: string | null;
+  xsecIndex: number;
+  spars: unknown[];
+  onSaved: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [sparError, setSparError] = useState<string | null>(null);
+  const [width, setWidth] = useState("4.42");
+  const [height, setHeight] = useState("4.42");
+  const [posFactor, setPosFactor] = useState("0.25");
+  const [sparMode, setSparMode] = useState("standard");
+
+  async function handleAddSpar() {
+    if (!aeroplaneId || !wingName) return;
+    setSaving(true);
+    setSparError(null);
+    try {
+      const res = await fetch(
+        `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/cross_sections/${xsecIndex}/spars`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            spare_support_dimension_width: parseFloat(width),
+            spare_support_dimension_height: parseFloat(height),
+            spare_position_factor: parseFloat(posFactor),
+            spare_mode: sparMode,
+          }),
+        },
+      );
+      if (!res.ok) throw new Error(`Add spar: ${res.status}`);
+      onSaved();
+    } catch (err: unknown) {
+      setSparError(err instanceof Error ? err.message : "Spar save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="mt-2 border-t border-border pt-2">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground"
+      >
+        {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        Spars ({spars.length})
+      </button>
+      {open && (
+        <div className="mt-2 flex flex-col gap-2">
+          {spars.length > 0 && (
+            <p className="text-[11px] text-muted-foreground">
+              {spars.length} spar(s) on this segment
+            </p>
+          )}
+          <div className="flex gap-3">
+            <Field label="width" value={width} suffix="mm" onChange={setWidth} />
+            <Field label="height" value={height} suffix="mm" onChange={setHeight} />
+          </div>
+          <div className="flex gap-3">
+            <Field label="position_factor" value={posFactor} onChange={setPosFactor} />
+            <Field label="mode" value={sparMode} type="text" onChange={setSparMode} />
+          </div>
+          <button
+            onClick={handleAddSpar}
+            disabled={saving}
+            className="self-end rounded-[--radius-pill] bg-primary px-3 py-1.5 text-[12px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            {saving ? "Adding…" : "Add Spar"}
+          </button>
+          {sparError && <p className="text-[11px] text-red-500">{sparError}</p>}
+        </div>
+      )}
     </div>
   );
 }

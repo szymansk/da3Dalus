@@ -188,8 +188,10 @@ When("the property form is in {string} mode", async ({ page }, mode: string) => 
 });
 
 When("I set the following WingConfig fields:", async ({ page }, table: DataTable) => {
+  // Wait for the Save button to confirm the form is visible
+  await page.getByRole("button", { name: "Save" }).waitFor({ state: "visible", timeout: 10000 });
+
   for (const [field, value] of table.rows()) {
-    // Find the label, then the input in the same container
     const label = page.locator(`label:text("${field}"), span:text("${field}")`).first();
     const container = label.locator("..");
     const input = container.locator("input").first();
@@ -217,11 +219,17 @@ Then("the save completes without error", async ({ page }) => {
 
 When(
   "I click {string} on {string}",
-  async ({ page }, action: string, _target: string) => {
-    // "+ segment" ghost text in the tree — click it to add a segment
+  async ({ page }, action: string, target: string) => {
     const side = sidebar(page);
-    const ghost = side.getByText(action).first();
-    await ghost.click({ timeout: 5000 });
+    // Ensure the wing is expanded first
+    const wingNode = side.getByText(target).first();
+    await wingNode.click();
+    // Wait for the "+ segment" button to appear (wing must be expanded)
+    const btn = side.getByRole("button", { name: action });
+    await btn.first().waitFor({ state: "visible", timeout: 15000 });
+    await btn.first().click();
+    // Wait for the new segment to appear in the tree
+    await page.waitForTimeout(1000);
   },
 );
 
@@ -272,18 +280,39 @@ Then("the chart annotation shows a CL_max value", async ({ page }) => {
 // ── Stage 3: TEDs ───────────────────────────────────────────────
 
 When("I open the {string} section", async ({ page }, sectionName: string) => {
-  // Click on a collapsible section header
-  const header = page.getByText(sectionName).first();
-  await header.click();
+  // The section buttons are in the complementary/sidebar area, not the viewer
+  const side = sidebar(page);
+  const btn = side.getByRole("button", { name: new RegExp(sectionName) }).first();
+  await btn.waitFor({ state: "visible", timeout: 10000 });
+  await btn.click();
+  await page.waitForTimeout(500);
 });
 
 When("I set the following TED fields:", async ({ page }, table: DataTable) => {
+  // TED fields are inside the TED section — wait for it to be visible
+  await page.waitForTimeout(500);
+
   for (const [field, value] of table.rows()) {
-    const label = page.locator(`label:text("${field}"), span:text("${field}")`).first();
-    const container = label.locator("..");
-    const input = container.locator("input").first();
-    if (await input.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await input.fill(value);
+    if (field === "symmetric") {
+      const checkbox = page.locator('input[type="checkbox"]').first();
+      const shouldCheck = value === "true";
+      if (shouldCheck) await checkbox.check();
+      else await checkbox.uncheck();
+      continue;
+    }
+
+    // Find the input by the label text — get ALL matching labels then use the
+    // one that is inside the TED section (near "Save TED" button)
+    const labels = page.locator(`label, span`).filter({ hasText: new RegExp(`^${field}$`) });
+    const count = await labels.count();
+    for (let i = 0; i < count; i++) {
+      const label = labels.nth(i);
+      const input = label.locator("..").locator("input").first();
+      if (await input.isVisible({ timeout: 500 }).catch(() => false)) {
+        await input.clear();
+        await input.fill(value);
+        break;
+      }
     }
   }
 });
@@ -300,15 +329,18 @@ Then(
 // ── Stage 5: Spars ──────────────────────────────────────────────
 
 When("I add a spar with:", async ({ page }, table: DataTable) => {
-  // Click "Add Spar" button, then fill fields
-  await page.getByRole("button", { name: /add spar/i }).click();
+  // Fill the spar fields first, then click "Add Spar"
   for (const [field, value] of table.rows()) {
     const label = page.locator(`label:text("${field}"), span:text("${field}")`).first();
     const input = label.locator("..").locator("input").first();
     if (await input.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await input.clear();
       await input.fill(value);
     }
   }
+  // Click "Add Spar" to submit
+  await page.getByRole("button", { name: /add spar/i }).click();
+  await page.waitForTimeout(1000); // Wait for API + refresh
 });
 
 Then(
