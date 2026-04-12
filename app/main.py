@@ -9,6 +9,7 @@ from fastapi.openapi.docs import get_swagger_ui_html, get_swagger_ui_oauth2_redi
 from fastapi.responses import JSONResponse
 
 from app.api.v2.endpoints import aeroplane as aeroplane_v2
+from app.api.v2.endpoints import components
 from app.api.v2.endpoints import flight_profiles
 from app.api.v2.endpoints import health
 from app.core.platform import aerosandbox_available, cad_available
@@ -92,6 +93,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(health.router, prefix="", tags=["health"])
     app.include_router(aeroplane_v2.router, prefix="", tags=[])
+    app.include_router(components.router, prefix="", tags=["components"])
     app.include_router(flight_profiles.router, prefix="", tags=["flight-profiles"])
     if _cad_router is not None:
         app.include_router(_cad_router, prefix="", tags=["cad"])

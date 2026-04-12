@@ -459,3 +459,106 @@ class AeroplaneModel(Base):
         back_populates="aeroplane",
         cascade="all, delete-orphan")
     flight_profile = relationship("RCFlightProfileModel", back_populates="aircraft")
+    mission_objectives = relationship(
+        "MissionObjectivesModel",
+        back_populates="aeroplane",
+        uselist=False,
+        cascade="all, delete-orphan")
+    weight_items = relationship(
+        "WeightItemModel",
+        back_populates="aeroplane",
+        cascade="all, delete-orphan",
+        order_by="WeightItemModel.id")
+    copilot_messages = relationship(
+        "CopilotMessageModel",
+        back_populates="aeroplane",
+        cascade="all, delete-orphan",
+        order_by="CopilotMessageModel.sort_index")
+    design_versions = relationship(
+        "DesignVersionModel",
+        back_populates="aeroplane",
+        cascade="all, delete-orphan",
+        order_by="DesignVersionModel.id.desc()")
+
+
+class MissionObjectivesModel(Base):
+    __tablename__ = "mission_objectives"
+
+    aeroplane_id = Column(
+        Integer, ForeignKey("aeroplanes.id", ondelete="CASCADE"),
+        nullable=False, unique=True, index=True,
+    )
+    payload_kg = Column(Float, nullable=True)
+    target_flight_time_min = Column(Float, nullable=True)
+    maneuverability_class = Column(String, nullable=True)
+    size_envelope_length_mm = Column(Float, nullable=True)
+    size_envelope_width_mm = Column(Float, nullable=True)
+    size_envelope_height_mm = Column(Float, nullable=True)
+    engine_type = Column(String, nullable=True)
+    target_stall_speed_ms = Column(Float, nullable=True)
+    target_cruise_speed_ms = Column(Float, nullable=True)
+    target_top_speed_ms = Column(Float, nullable=True)
+
+    aeroplane = relationship("AeroplaneModel", back_populates="mission_objectives")
+
+
+class WeightItemModel(Base):
+    __tablename__ = "weight_items"
+
+    aeroplane_id = Column(
+        Integer, ForeignKey("aeroplanes.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    name = Column(String, nullable=False)
+    mass_kg = Column(Float, nullable=False)
+    x_m = Column(Float, nullable=False, default=0.0)
+    y_m = Column(Float, nullable=False, default=0.0)
+    z_m = Column(Float, nullable=False, default=0.0)
+    description = Column(String, nullable=True)
+    category = Column(String, nullable=False, default="other")
+
+    aeroplane = relationship("AeroplaneModel", back_populates="weight_items")
+
+
+class CopilotMessageModel(Base):
+    __tablename__ = "copilot_messages"
+
+    aeroplane_id = Column(
+        Integer, ForeignKey("aeroplanes.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    sort_index = Column(Integer, nullable=False, default=0)
+    role = Column(String, nullable=False)  # user | assistant | tool
+    content = Column(String, nullable=False, default="")
+    tool_calls = Column(JSON, nullable=True)
+    tool_results = Column(JSON, nullable=True)
+    parent_id = Column(Integer, nullable=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    aeroplane = relationship("AeroplaneModel", back_populates="copilot_messages")
+
+
+class DesignVersionModel(Base):
+    __tablename__ = "design_versions"
+
+    aeroplane_id = Column(
+        Integer, ForeignKey("aeroplanes.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    label = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    parent_version_id = Column(Integer, nullable=True)
+    snapshot = Column(JSON, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    aeroplane = relationship("AeroplaneModel", back_populates="design_versions")
