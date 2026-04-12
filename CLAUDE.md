@@ -124,6 +124,49 @@ best practices:
 | Backend slow/CAD | pytest | `app/tests/test_*_integration.py` | `poetry run pytest -m slow` |
 | Frontend E2E | playwright-bdd | `frontend/e2e/features/*.feature` | `cd frontend && npm run test:e2e` |
 
+## Issue Tracking — GitHub Issues + Beads
+
+This project uses a two-tier issue tracking system:
+
+### GitHub Issues — what to build
+
+GitHub Issues are the **user-facing** tracker for features, bugs,
+and design decisions. They are visible to stakeholders, linked to
+PRs, and closed when the PR merges.
+
+- **Feature requests:** Use the `feature.md` template in `.github/ISSUE_TEMPLATE/`
+- **Bug reports:** Use the `bug.md` template
+- **Technical tasks:** Use the `task.md` template
+- Templates ensure consistent structure — always use them
+- The agent MAY create GitHub Issues when discovering missing
+  features, improvements, or bugs during implementation
+- PRs reference the GitHub Issue: `Closes #N`
+
+### Beads — how to build it
+
+Beads tickets are the **technical implementation plan**. One GitHub
+Issue maps to 1–N Beads tickets that break the work into parallel,
+dependency-tracked units.
+
+- Every Beads ticket MUST reference its GitHub Issue via the
+  `--notes` field: `bd create --notes="Implements gh#N" ...`
+- Beads tickets are for agent orchestration (dependencies, claims,
+  parallel execution) — they don't appear on GitHub
+- Close Beads tickets when the implementation is done
+- The GitHub Issue stays open until the PR is merged
+
+### Workflow
+
+```
+1. GitHub Issue created (by human or agent)
+2. Agent breaks GH Issue into N Beads tickets with deps
+   bd create --title="..." --notes="Implements gh#N" ...
+3. Agent works through Beads tickets (claim → implement → close)
+4. Agent runs /review on the diff
+5. Agent opens PR referencing the GH Issue (Closes #N)
+6. Human reviews + merges PR → GH Issue auto-closes
+```
+
 ## Pre-PR Review Gate
 
 Before opening any GitHub PR, you MUST run `/review` (the review
