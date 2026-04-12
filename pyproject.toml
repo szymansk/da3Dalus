@@ -91,6 +91,7 @@ extend-exclude = [
     "test",
     "exports",
     "docker_smoke_test.py",
+    ".claude",
 ]
 
 [tool.ruff.lint]
