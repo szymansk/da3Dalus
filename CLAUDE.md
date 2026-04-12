@@ -87,6 +87,43 @@ If a test describes the correct behavior and the code doesn't
 implement it yet, the test MUST stay red until the code is fixed.
 A green test suite achieved by weakening tests is worthless.
 
+## Test Coverage Requirement
+
+**Target: 70–80% coverage.** Writing tests for implemented code is
+mandatory, not optional. Every feature, bugfix, and refactor must
+include tests.
+
+### Skills for writing tests
+
+Use these skills when writing tests — they contain patterns and
+best practices:
+
+| Skill | When to use |
+|-------|-------------|
+| `/skill tdd` | Starting any feature — write tests FIRST |
+| `/skill python-testing-patterns` | Writing pytest unit/integration tests for the Python backend |
+| `/skill pytest-coverage` | Measuring + improving pytest coverage toward 70–80% target |
+| `/skill webapp-testing` | Frontend component + integration tests (React/Next.js) |
+| `/skill playwright-best-practices` | E2E tests with Playwright (locators, assertions, patterns) |
+| `/skill e2e-testing-patterns` | Structuring E2E test suites, fixtures, data management |
+
+### Workflow for every code change
+
+1. **Before coding:** Invoke `/skill tdd` — write failing tests first
+2. **During coding:** Run tests continuously, fix code until green
+3. **After coding:** Check coverage with `poetry run pytest --cov=app`
+   (backend) or equivalent frontend command
+4. **Before PR:** Run `/review`, then verify coverage ≥ 70%
+
+### Test types per layer
+
+| Layer | Framework | Location | Command |
+|-------|-----------|----------|---------|
+| Backend unit | pytest | `app/tests/test_*.py` | `poetry run pytest` |
+| Backend integration | pytest | `app/tests/test_*_integration.py` | `poetry run pytest -m "not slow"` |
+| Backend slow/CAD | pytest | `app/tests/test_*_integration.py` | `poetry run pytest -m slow` |
+| Frontend E2E | playwright-bdd | `frontend/e2e/features/*.feature` | `cd frontend && npm run test:e2e` |
+
 ## Pre-PR Review Gate
 
 Before opening any GitHub PR, you MUST run `/review` (the review
