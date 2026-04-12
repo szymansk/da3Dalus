@@ -11,13 +11,17 @@ export interface Aeroplane {
   updated_at: string;
 }
 
+interface AeroplanesResponse {
+  aeroplanes: Aeroplane[];
+}
+
 export function useAeroplanes() {
-  const { data, error, isLoading, mutate } = useSWR<Aeroplane[]>(
+  const { data, error, isLoading, mutate } = useSWR<AeroplanesResponse>(
     "/aeroplanes",
     fetcher,
   );
 
-  async function createAeroplane(name: string): Promise<Aeroplane> {
+  async function createAeroplane(name: string): Promise<{ id: string }> {
     const res = await fetch(
       `${API_BASE}/aeroplanes?name=${encodeURIComponent(name)}`,
       { method: "POST" },
@@ -37,7 +41,7 @@ export function useAeroplanes() {
   }
 
   return {
-    aeroplanes: data ?? [],
+    aeroplanes: data?.aeroplanes ?? [],
     error,
     isLoading,
     mutate,
