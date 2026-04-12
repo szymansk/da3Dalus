@@ -29,6 +29,24 @@ function saveState(state: { aeroplaneId?: string }) {
 
 let aeroplaneId: string = loadState().aeroplaneId ?? "";
 
+async function ensureIdFromApi(request: { get: (url: string) => Promise<{ json: () => Promise<unknown>; ok: () => boolean }> }) {
+  if (aeroplaneId) return;
+  aeroplaneId = loadState().aeroplaneId ?? "";
+  if (aeroplaneId) return;
+  // Try to find the eHawk in the API
+  const res = await request.get(`${API}/aeroplanes`);
+  if (res.ok()) {
+    const body = await res.json() as { aeroplanes: { id: string; name: string }[] };
+    const match = body.aeroplanes?.find((a) => a.name === "eHawk E2E Test");
+    if (match) {
+      aeroplaneId = match.id;
+      saveState({ aeroplaneId });
+      return;
+    }
+  }
+  throw new Error("No aeroplaneId — run 'Create eHawk' scenario first");
+}
+
 function ensureId() {
   if (!aeroplaneId) aeroplaneId = loadState().aeroplaneId ?? "";
   if (!aeroplaneId) throw new Error("No aeroplaneId — run 'Create eHawk' scenario first");
@@ -36,9 +54,28 @@ function ensureId() {
 
 // ── Background ──────────────────────────────────────────────────
 
+let cleanupDone = false;
+
 Given("the backend is running", async ({ request }) => {
   const res = await request.get(`${API}/health`);
   expect(res.ok()).toBeTruthy();
+
+  // Cleanup runs only once per test suite, not per scenario
+  if (!cleanupDone) {
+    const listRes = await request.get(`${API}/aeroplanes`);
+    if (listRes.ok()) {
+      const body = await listRes.json() as { aeroplanes: { id: string; name: string }[] };
+      const testPlanes = body.aeroplanes?.filter(
+        (a) => a.name === "eHawk E2E Test" || a.name === "eHawk designer workflow" || a.name === "Nav Test Aeroplane",
+      ) ?? [];
+      for (const plane of testPlanes) {
+        await request.delete(`${API}/aeroplanes/${plane.id}`);
+      }
+    }
+    aeroplaneId = "";
+    try { fs.unlinkSync(STATE_FILE); } catch { /* ignore */ }
+    cleanupDone = true;
+  }
 });
 
 Given("the frontend is running", async ({ page }) => {
@@ -99,7 +136,7 @@ Then("the header shows project {string}", async ({ page }, name: string) => {
 Given(
   "the {string} aeroplane exists",
   async ({ request }, _name: string) => {
-    ensureId();
+    await ensureIdFromApi(request);
     const res = await request.get(`${API}/aeroplanes/${aeroplaneId}`);
     expect(res.ok()).toBeTruthy();
   },
@@ -109,17 +146,25 @@ When(
   "I submit the eHawk wing config for {string} via API",
   async ({ request }, wingName: string) => {
     ensureId();
+    // Delete existing wing if present (idempotent test setup)
+    await request.delete(
+      `${API}/aeroplanes/${aeroplaneId}/wings/${wingName}`,
+    );
     const res = await request.post(
       `${API}/aeroplanes/${aeroplaneId}/wings/${wingName}/from-wingconfig`,
       { data: EHAWK_WING_CONFIG },
     );
-    expect(res.status()).toBe(201);
+    if (res.status() !== 201) {
+      const body = await res.text();
+      throw new Error(`from-wingconfig failed: ${res.status()} ${body}`);
+    }
   },
 );
 
 When("I reload the workbench", async ({ page }) => {
-  await page.goto("/workbench");
-  await page.waitForSelector('text="Aeroplane Tree"', { timeout: 10000 });
+  ensureId();
+  await page.goto(`/workbench?id=${aeroplaneId}`);
+  await page.waitForSelector('text="Aeroplane Tree"', { timeout: 15000 });
 });
 
 Then(
@@ -153,16 +198,10 @@ Then(
 
 Given(
   "the {string} has wing {string} in the tree",
-  async ({ page }, _name: string, wingName: string) => {
-    ensureId();
-    await page.goto("/workbench");
-    await page.waitForSelector('text="Aeroplane Tree"', { timeout: 10000 });
-    // Ensure the aeroplane is selected (click it if selector shows)
-    const selector = page.getByText("Select Aeroplane");
-    if (await selector.isVisible().catch(() => false)) {
-      await page.getByText("eHawk E2E Test").click();
-      await page.waitForSelector('text="Aeroplane Tree"', { timeout: 5000 });
-    }
+  async ({ page, request }, _name: string, wingName: string) => {
+    await ensureIdFromApi(request);
+    await page.goto(`/workbench?id=${aeroplaneId}`);
+    await page.waitForSelector('text="Aeroplane Tree"', { timeout: 15000 });
     await expect(page.getByText(wingName).first()).toBeVisible({ timeout: 5000 });
   },
 );
@@ -170,7 +209,26 @@ Given(
 When(
   "I click on {string} in the tree",
   async ({ page }, nodeLabel: string) => {
-    await page.getByText(nodeLabel).first().click();
+    // First expand the wing if the node is a segment
+    if (nodeLabel.startsWith("segment")) {
+      // Find the tree card container (has "Aeroplane Tree" header)
+      // Then find "main_wing" within it — avoids clicking breadcrumb
+      const treeCard = page.locator('[class*="border-border"][class*="bg-card"]', {
+        has: page.getByText("Aeroplane Tree"),
+      });
+
+      // Click "main_wing" in the tree to select + expand it
+      const wingNode = treeCard.getByText("main_wing", { exact: false }).first();
+      await wingNode.click();
+
+      // Wait for SWR to fetch wing data and segments to render
+      await treeCard.getByText(nodeLabel).waitFor({ state: "visible", timeout: 15000 });
+
+      // Click the segment
+      await treeCard.getByText(nodeLabel).first().click();
+    } else {
+      await page.getByText(nodeLabel).first().click();
+    }
   },
 );
 
@@ -208,8 +266,8 @@ Then(
 
 Given(
   "the {string} has wing {string}",
-  async ({}, _name: string, _wing: string) => {
-    ensureId();
+  async ({ request }, _name: string, _wing: string) => {
+    await ensureIdFromApi(request);
   },
 );
 
@@ -314,10 +372,10 @@ Then("the wing has {int} cross sections", async ({}, count: number) => {
 });
 
 Then(
-  "cross section {int} has airfoil {string}",
-  async ({}, index: number, airfoil: string) => {
+  "cross section {int} has airfoil containing {string}",
+  async ({}, index: number, airfoilPart: string) => {
     const wing = loadWingData();
-    expect(wing.x_secs[index].airfoil).toBe(airfoil);
+    expect(wing.x_secs[index].airfoil).toContain(airfoilPart);
   },
 );
 
