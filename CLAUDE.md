@@ -87,6 +87,28 @@ If a test describes the correct behavior and the code doesn't
 implement it yet, the test MUST stay red until the code is fixed.
 A green test suite achieved by weakening tests is worthless.
 
+## Frontend Design Workflow — Pencil First
+
+**ALL frontend UI changes MUST go through the pencil.dev wireframe
+(`da3Dalus.pen`) first.** No exceptions.
+
+Workflow:
+1. Design the UI change in `da3Dalus.pen` via pencil MCP tools
+2. Verify with `get_screenshot` that the wireframe is correct
+3. Then implement the React component to match the wireframe
+4. Compare the rendered component against the pencil screenshot
+
+This applies to:
+- New components and screens
+- Layout changes to existing components
+- New form fields, dialogs, or modals
+- Any visual change the user will see
+
+This does NOT apply to:
+- Pure logic changes (hooks, API calls, state management)
+- Bug fixes that don't change the visual design
+- Test files
+
 ## Test Coverage Requirement
 
 **Target: 70–80% coverage.** Writing tests for implemented code is
