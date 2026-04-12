@@ -1,4 +1,4 @@
-"""Tests for the tessellation cache service."""
+"""Tests for the tessellation cache service and endpoint."""
 
 import pytest
 
@@ -29,6 +29,23 @@ def aeroplane_id(client_and_db):
     ).first()
     yield aeroplane.id
     session.close()
+
+
+@pytest.fixture()
+def aeroplane_uuid_and_id(client_and_db):
+    """Create a test aeroplane and return (uuid, internal_id)."""
+    client, SessionLocal = client_and_db
+    resp = client.post("/aeroplanes", params={"name": "tess_endpoint_test"})
+    assert resp.status_code == 201
+    aeroplane_uuid = resp.json()["id"]
+    from app.models.aeroplanemodel import AeroplaneModel
+    session = SessionLocal()
+    aeroplane = session.query(AeroplaneModel).filter(
+        AeroplaneModel.uuid == aeroplane_uuid
+    ).first()
+    result = (aeroplane_uuid, aeroplane.id)
+    session.close()
+    return result
 
 
 class TestGeometryHash:
@@ -121,3 +138,119 @@ class TestHashCurrent:
 
     def test_hash_current_when_no_cache(self, db_session, aeroplane_id):
         assert cache_svc.is_hash_current(db_session, aeroplane_id, "wing", "w1", "any") is True
+
+
+class TestAeroplaneTessellationEndpoint:
+    """Tests for GET /aeroplanes/{id}/tessellation."""
+
+    def test_returns_404_when_no_cache(self, client_and_db):
+        """GET tessellation with no cached entries returns 404."""
+        client, SessionLocal = client_and_db
+        resp = client.post("/aeroplanes", params={"name": "no_cache_plane"})
+        assert resp.status_code == 201
+        aeroplane_uuid = resp.json()["id"]
+
+        resp = client.get(f"/aeroplanes/{aeroplane_uuid}/tessellation")
+        assert resp.status_code == 404
+        assert "No cached tessellations" in resp.json()["detail"]
+
+    def test_returns_assembled_scene(self, client_and_db, aeroplane_uuid_and_id):
+        """GET tessellation assembles cached entries into a three-cad-viewer scene."""
+        client, SessionLocal = client_and_db
+        aeroplane_uuid, aeroplane_internal_id = aeroplane_uuid_and_id
+
+        session = SessionLocal()
+        # Cache two wing tessellations
+        wing_tess = {
+            "data": {
+                "shapes": {
+                    "version": 3,
+                    "name": "main_wing",
+                    "id": "/main_wing",
+                    "parts": [],
+                    "loc": [[0, 0, 0], [0, 0, 0, 1]],
+                    "bb": {"min": [-1, -2, -3], "max": [1, 2, 3]},
+                },
+                "instances": [{"id": "/main_wing", "shape": "/main_wing"}],
+            },
+            "type": "data",
+            "count": 42,
+        }
+        cache_svc.cache_tessellation(
+            session, aeroplane_internal_id,
+            "wing", "main_wing", "hash_mw", wing_tess,
+        )
+
+        tail_tess = {
+            "data": {
+                "shapes": {
+                    "version": 3,
+                    "name": "tail",
+                    "id": "/tail",
+                    "parts": [],
+                    "loc": [[0, 0, 0], [0, 0, 0, 1]],
+                    "bb": {"min": [5, -1, 0], "max": [7, 1, 1]},
+                },
+                "instances": [{"id": "/tail", "shape": "/tail"}],
+            },
+            "type": "data",
+            "count": 18,
+        }
+        cache_svc.cache_tessellation(
+            session, aeroplane_internal_id,
+            "wing", "tail", "hash_tail", tail_tess,
+        )
+        session.close()
+
+        resp = client.get(f"/aeroplanes/{aeroplane_uuid}/tessellation")
+        assert resp.status_code == 200
+
+        body = resp.json()
+        assert body["type"] == "data"
+        assert body["count"] == 60  # 42 + 18
+        assert body["is_stale"] is False
+        assert body["config"] == {"theme": "dark"}
+
+        shapes = body["data"]["shapes"]
+        assert shapes["version"] == 3
+        assert shapes["name"] == "tess_endpoint_test"
+        assert len(shapes["parts"]) == 2
+
+        # Combined bounding box
+        bb = shapes["bb"]
+        assert bb["min"] == [-1, -2, -3]
+        assert bb["max"] == [7, 2, 3]
+
+        # Combined instances
+        assert len(body["data"]["instances"]) == 2
+
+    def test_is_stale_flag_propagates(self, client_and_db, aeroplane_uuid_and_id):
+        """is_stale is True when any cached entry is stale."""
+        client, SessionLocal = client_and_db
+        aeroplane_uuid, aeroplane_internal_id = aeroplane_uuid_and_id
+
+        session = SessionLocal()
+        tess = {
+            "data": {
+                "shapes": {"version": 3, "bb": {"min": [0, 0, 0], "max": [1, 1, 1]}},
+                "instances": [],
+            },
+            "type": "data",
+            "count": 5,
+        }
+        cache_svc.cache_tessellation(
+            session, aeroplane_internal_id, "wing", "w1", "h1", tess,
+        )
+        cache_svc.cache_tessellation(
+            session, aeroplane_internal_id, "wing", "w2", "h2", tess,
+        )
+        # Mark one stale
+        cache_svc.invalidate(
+            session, aeroplane_internal_id,
+            component_type="wing", component_name="w1",
+        )
+        session.close()
+
+        resp = client.get(f"/aeroplanes/{aeroplane_uuid}/tessellation")
+        assert resp.status_code == 200
+        assert resp.json()["is_stale"] is True
