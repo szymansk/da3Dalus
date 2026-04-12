@@ -12,8 +12,15 @@ type Stage = (typeof STAGES)[number];
 export function ViewerPanel() {
   const [activeStage, setActiveStage] = useState<Stage>("Bare Aero");
   const { aeroplaneId, selectedWing } = useAeroplaneContext();
-  const { data, isTessellating, progress, error, triggerTessellation } =
-    useTessellation(aeroplaneId, selectedWing);
+  const {
+    data,
+    isTessellating,
+    progress,
+    error,
+    isStale,
+    hasCachedData,
+    triggerTessellation,
+  } = useTessellation(aeroplaneId);
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden rounded-[--radius-m] border border-border">
@@ -22,9 +29,14 @@ export function ViewerPanel() {
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
           CAD Viewer
         </span>
-        {data && !isTessellating && (
+        {isStale && !isTessellating && (
+          <span className="rounded-[--radius-pill] bg-sidebar-accent px-2 py-0.5 text-[10px] text-muted-foreground">
+            Updating…
+          </span>
+        )}
+        {hasCachedData && !isTessellating && (
           <button
-            onClick={triggerTessellation}
+            onClick={() => selectedWing && triggerTessellation(selectedWing)}
             className="flex items-center gap-1 rounded-[--radius-s] border border-border bg-card-muted px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
             title="Re-tessellate"
           >
@@ -53,7 +65,7 @@ export function ViewerPanel() {
       {/* Viewer Body */}
       <div className="flex flex-1 flex-col bg-card-muted">
         {data ? (
-          <CadViewer data={data} />
+          <CadViewer data={data as unknown as Record<string, unknown>} />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6">
             <Box size={72} className="text-subtle-foreground" />
@@ -64,7 +76,7 @@ export function ViewerPanel() {
             </span>
             {selectedWing && (
               <button
-                onClick={triggerTessellation}
+                onClick={() => triggerTessellation(selectedWing)}
                 disabled={isTessellating}
                 className="rounded-[--radius-pill] bg-primary px-4 py-2.5 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
               >
