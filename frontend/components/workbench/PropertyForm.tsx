@@ -147,11 +147,12 @@ function Field({
 // ── Main Component ──────────────────────────────────────────────
 
 export function PropertyForm() {
-  const { aeroplaneId, selectedWing, selectedXsecIndex } =
+  const { aeroplaneId, selectedWing, selectedXsecIndex, treeMode } =
     useAeroplaneContext();
   const { wing, updateXSec, mutate } = useWing(aeroplaneId, selectedWing);
 
-  const [mode, setMode] = useState<Mode>("wingconfig");
+  // Mode is driven by tree toggle, not local state
+  const mode: Mode = treeMode;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -286,34 +287,11 @@ export function PropertyForm() {
 
   return (
     <div className="rounded-[--radius-m] border border-border bg-card p-2.5 px-4">
-      {/* Header with mode toggle */}
-      <div className="mb-3 flex items-center gap-2">
+      {/* Header */}
+      <div className="mb-3">
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
-          segment {selectedXsecIndex} &middot; Properties
+          {mode === "wingconfig" ? `segment ${selectedXsecIndex}` : `x_sec ${selectedXsecIndex}`} &middot; Properties
         </span>
-        <div className="flex-1" />
-        <div className="flex overflow-hidden rounded-[--radius-s] border border-border">
-          <button
-            onClick={() => setMode("wingconfig")}
-            className={`px-2.5 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px] ${
-              mode === "wingconfig"
-                ? "bg-primary text-primary-foreground"
-                : "bg-card-muted text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            WingConfig
-          </button>
-          <button
-            onClick={() => setMode("asb")}
-            className={`px-2.5 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px] ${
-              mode === "asb"
-                ? "bg-primary text-primary-foreground"
-                : "bg-card-muted text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            ASB
-          </button>
-        </div>
       </div>
 
       {/* Field grid */}

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useWing } from "@/hooks/useWings";
 import type { XSec } from "@/hooks/useWings";
 import { API_BASE } from "@/lib/fetcher";
+
+// ── Types ───────────────────────────────────────────────────────
 
 interface TreeNode {
   id: string;
@@ -17,62 +19,79 @@ interface TreeNode {
   mono?: boolean;
   muted?: boolean;
   chip?: string;
-  ghost?: string;
-  onGhostClick?: () => void;
   onClick?: () => void;
+  onDelete?: () => void;
+  isInsertPoint?: boolean;
+  onInsert?: () => void;
 }
 
-function buildWingNodes(
+// ── Build nodes for WingConfig mode (segments) ──────────────────
+
+function buildSegmentNodes(
   wingName: string,
   wing: { name: string; symmetric: boolean; x_secs: XSec[] } | null,
   selectedWing: string | null,
   selectedXsecIndex: number | null,
   expandedSet: Set<string>,
-  selectWing: (name: string | null) => void,
-  selectXsec: (index: number | null) => void,
-  onAddSegment?: (wingName: string) => void,
+  selectWing: (n: string | null) => void,
+  selectXsec: (i: number | null) => void,
+  onAddSegment: (wn: string) => void,
+  onDeleteXsec: (wn: string, i: number) => void,
+  onInsertXsec: (wn: string, i: number) => void,
 ): TreeNode[] {
   const nodes: TreeNode[] = [];
-
   const wingExpanded = expandedSet.has(`wing-${wingName}`);
+
   nodes.push({
     id: `wing-${wingName}`,
     label: wingName,
     level: 1,
     expanded: wingExpanded,
-    ghost: "+ segment",
-    onGhostClick: () => onAddSegment?.(wingName),
     onClick: () => selectWing(wingName),
+    onDelete: () => {
+      if (confirm(`Delete wing "${wingName}"?`)) {
+        onDeleteXsec(wingName, -1); // -1 signals delete wing
+      }
+    },
   });
 
   if (!wingExpanded) return nodes;
-
-  // Wing is expanded but data not loaded yet (SWR fetching)
   if (!wing || wing.name !== wingName) {
-    nodes.push({
-      id: `${wingName}-loading`,
-      label: "Loading segments…",
-      level: 2,
-      leaf: true,
-      muted: true,
-    });
+    nodes.push({ id: `${wingName}-loading`, label: "Loading…", level: 2, leaf: true, muted: true });
     return nodes;
   }
 
-  wing.x_secs.forEach((xsec: XSec, i: number) => {
+  // nose_pnt row
+  const nosePnt = wing.x_secs[0]?.xyz_le;
+  if (nosePnt) {
+    nodes.push({
+      id: `${wingName}-nosepnt`,
+      label: `nose_pnt [${nosePnt.map((v: number) => (v * 1000).toFixed(0)).join(", ")}] mm`,
+      level: 2, leaf: true, muted: true, mono: true,
+    });
+  }
+
+  // Segments (each segment = pair of consecutive x_secs)
+  const segCount = wing.x_secs.length - 1;
+  for (let i = 0; i < segCount; i++) {
+    const root = wing.x_secs[i];
+    const tip = wing.x_secs[i + 1];
     const segId = `${wingName}-seg${i}`;
     const isSelected = selectedWing === wingName && selectedXsecIndex === i;
     const segExpanded = expandedSet.has(segId);
-    const chipLabel =
-      xsec.trailing_edge_device &&
-      typeof xsec.trailing_edge_device === "object" &&
-      "name" in xsec.trailing_edge_device
-        ? String(xsec.trailing_edge_device.name).toUpperCase()
-        : xsec.control_surface &&
-            typeof xsec.control_surface === "object" &&
-            "name" in xsec.control_surface
-          ? String(xsec.control_surface.name).toUpperCase()
-          : undefined;
+
+    // Insert point before this segment (except before first)
+    if (i > 0) {
+      nodes.push({
+        id: `${wingName}-ins-${i}`,
+        label: "insert",
+        level: 2,
+        isInsertPoint: true,
+        onInsert: () => onInsertXsec(wingName, i),
+      });
+    }
+
+    const chipLabel = getChipLabel(root);
 
     nodes.push({
       id: segId,
@@ -81,52 +100,111 @@ function buildWingNodes(
       expanded: segExpanded,
       selected: isSelected,
       chip: chipLabel,
-      onClick: () => {
-        selectWing(wingName);
-        selectXsec(i);
+      onClick: () => { selectWing(wingName); selectXsec(i); },
+      onDelete: () => {
+        if (confirm(`Delete segment ${i}?`)) onDeleteXsec(wingName, i);
       },
     });
 
+    // Expanded segment details
     if (segExpanded) {
+      const rootChord = (root.chord * 1000).toFixed(1);
+      const tipChord = (tip.chord * 1000).toFixed(1);
+      const length = (Math.abs(tip.xyz_le[1] - root.xyz_le[1]) * 1000).toFixed(1);
+      const sweep = ((tip.xyz_le[0] - root.xyz_le[0]) * 1000).toFixed(1);
+
       nodes.push({
-        id: `${segId}-airfoil`,
-        label: `airfoil \u00b7 ${xsec.airfoil}`,
-        level: 3,
-        leaf: true,
-        muted: true,
+        id: `${segId}-root`, label: `root: ${airfoilShort(root.airfoil)} · ${rootChord} mm`,
+        level: 3, leaf: true, muted: true,
       });
       nodes.push({
-        id: `${segId}-chord`,
-        label: `chord ${xsec.chord}`,
-        level: 3,
-        leaf: true,
-        muted: true,
-        mono: true,
+        id: `${segId}-tip`, label: `tip: ${airfoilShort(tip.airfoil)} · ${tipChord} mm`,
+        level: 3, leaf: true, muted: true,
       });
       nodes.push({
-        id: `${segId}-twist`,
-        label: `twist ${xsec.twist}\u00b0`,
-        level: 3,
-        leaf: true,
-        muted: true,
-        mono: true,
+        id: `${segId}-dims`, label: `length ${length} mm · sweep ${sweep} mm`,
+        level: 3, leaf: true, muted: true, mono: true,
       });
-      const spareCount = Array.isArray(xsec.spare_list)
-        ? xsec.spare_list.length
-        : 0;
+      const spareCount = Array.isArray(root.spare_list) ? root.spare_list.length : 0;
       if (spareCount > 0) {
-        nodes.push({
-          id: `${segId}-spars`,
-          label: `spars (${spareCount})`,
-          level: 3,
-          expanded: false,
-        });
+        nodes.push({ id: `${segId}-spars`, label: `spars (${spareCount})`, level: 3, expanded: false });
       }
     }
+  }
+
+  // "+ segment" at the end
+  nodes.push({
+    id: `${wingName}-add`,
+    label: "+ segment",
+    level: 2, leaf: true, muted: true,
+    onClick: () => onAddSegment(wingName),
   });
 
   return nodes;
 }
+
+// ── Build nodes for ASB mode (x_secs) ───────────────────────────
+
+function buildXsecNodes(
+  wingName: string,
+  wing: { name: string; symmetric: boolean; x_secs: XSec[] } | null,
+  selectedWing: string | null,
+  selectedXsecIndex: number | null,
+  expandedSet: Set<string>,
+  selectWing: (n: string | null) => void,
+  selectXsec: (i: number | null) => void,
+  onDeleteXsec: (wn: string, i: number) => void,
+): TreeNode[] {
+  const nodes: TreeNode[] = [];
+  const wingExpanded = expandedSet.has(`wing-${wingName}`);
+
+  nodes.push({
+    id: `wing-${wingName}`,
+    label: wingName,
+    level: 1,
+    expanded: wingExpanded,
+    onClick: () => selectWing(wingName),
+  });
+
+  if (!wingExpanded) return nodes;
+  if (!wing || wing.name !== wingName) {
+    nodes.push({ id: `${wingName}-loading`, label: "Loading…", level: 2, leaf: true, muted: true });
+    return nodes;
+  }
+
+  wing.x_secs.forEach((xsec, i) => {
+    const isSelected = selectedWing === wingName && selectedXsecIndex === i;
+    nodes.push({
+      id: `${wingName}-xsec${i}`,
+      label: `x_sec ${i}`,
+      level: 2,
+      selected: isSelected,
+      chip: getChipLabel(xsec),
+      onClick: () => { selectWing(wingName); selectXsec(i); },
+      onDelete: () => {
+        if (confirm(`Delete x_sec ${i}?`)) onDeleteXsec(wingName, i);
+      },
+    });
+  });
+
+  return nodes;
+}
+
+// ── Helpers ──────────────────────────────────────────────────────
+
+function airfoilShort(raw: string): string {
+  return (raw.split("/").pop() ?? raw).replace(/\.dat$/i, "");
+}
+
+function getChipLabel(xsec: XSec): string | undefined {
+  const ted = xsec.trailing_edge_device;
+  if (ted && typeof ted === "object" && "name" in ted) return String(ted.name).toUpperCase();
+  const cs = xsec.control_surface;
+  if (cs && typeof cs === "object" && "name" in cs) return String(cs.name).toUpperCase();
+  return undefined;
+}
+
+// ── Props ───────────────────────────────────────────────────────
 
 interface AeroplaneTreeProps {
   aeroplaneId: string | null;
@@ -134,45 +212,12 @@ interface AeroplaneTreeProps {
   aeroplaneName?: string;
 }
 
-export function AeroplaneTree({
-  aeroplaneId,
-  wingNames,
-  aeroplaneName,
-}: AeroplaneTreeProps) {
-  const { selectedWing, selectedXsecIndex, selectWing, selectXsec } =
+// ── Component ───────────────────────────────────────────────────
+
+export function AeroplaneTree({ aeroplaneId, wingNames, aeroplaneName }: AeroplaneTreeProps) {
+  const { selectedWing, selectedXsecIndex, selectWing, selectXsec, treeMode, setTreeMode } =
     useAeroplaneContext();
   const { wing, isLoading, mutate: mutateWing } = useWing(aeroplaneId, selectedWing);
-
-  async function handleAddSegment(wingName: string) {
-    if (!aeroplaneId) return;
-    // Add a new x_sec at the end of the wing
-    const xsecCount = wing?.x_secs.length ?? 0;
-    const lastXsec = wing?.x_secs[xsecCount - 1];
-    const newXsec = {
-      xyz_le: [
-        (lastXsec?.xyz_le[0] ?? 0),
-        (lastXsec?.xyz_le[1] ?? 0) + 0.1,
-        (lastXsec?.xyz_le[2] ?? 0),
-      ],
-      chord: lastXsec?.chord ?? 0.1,
-      twist: 0,
-      airfoil: lastXsec?.airfoil ?? "naca0012",
-    };
-    const res = await fetch(
-      `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/cross_sections/${xsecCount}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newXsec),
-      },
-    );
-    if (res.ok) {
-      await mutateWing();
-      // Select the new segment (second-to-last x_sec, since the new
-      // x_sec is the terminal and the segment before it is the new one)
-      selectXsec(xsecCount - 1);
-    }
-  }
 
   const [expandedSet, setExpandedSet] = useState<Set<string>>(() => {
     const s = new Set<string>();
@@ -184,50 +229,115 @@ export function AeroplaneTree({
   function toggleExpand(nodeId: string) {
     setExpandedSet((prev) => {
       const next = new Set(prev);
-      if (next.has(nodeId)) {
-        next.delete(nodeId);
-      } else {
-        next.add(nodeId);
-      }
+      if (next.has(nodeId)) next.delete(nodeId);
+      else next.add(nodeId);
       return next;
     });
   }
 
-  const treeData: TreeNode[] = [];
+  async function handleAddSegment(wingName: string) {
+    if (!aeroplaneId) return;
+    const xsecCount = wing?.x_secs.length ?? 0;
+    const lastXsec = wing?.x_secs[xsecCount - 1];
+    const newXsec = {
+      xyz_le: [(lastXsec?.xyz_le[0] ?? 0), (lastXsec?.xyz_le[1] ?? 0) + 0.1, (lastXsec?.xyz_le[2] ?? 0)],
+      chord: lastXsec?.chord ?? 0.1,
+      twist: 0,
+      airfoil: lastXsec?.airfoil ?? "naca0012",
+    };
+    const res = await fetch(
+      `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/cross_sections/${xsecCount}`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newXsec) },
+    );
+    if (res.ok) {
+      await mutateWing();
+      selectXsec(xsecCount - 1);
+    }
+  }
 
-  // Root node
+  async function handleDeleteXsec(wingName: string, index: number) {
+    if (!aeroplaneId) return;
+    if (index === -1) {
+      // Delete entire wing
+      await fetch(`${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}`, { method: "DELETE" });
+      selectWing(null);
+    } else {
+      await fetch(
+        `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/cross_sections/${index}`,
+        { method: "DELETE" },
+      );
+    }
+    await mutateWing();
+  }
+
+  async function handleInsertXsec(wingName: string, atIndex: number) {
+    if (!aeroplaneId || !wing) return;
+    const before = wing.x_secs[atIndex - 1];
+    const after = wing.x_secs[atIndex];
+    const newXsec = {
+      xyz_le: [
+        (before.xyz_le[0] + after.xyz_le[0]) / 2,
+        (before.xyz_le[1] + after.xyz_le[1]) / 2,
+        (before.xyz_le[2] + after.xyz_le[2]) / 2,
+      ],
+      chord: (before.chord + after.chord) / 2,
+      twist: (before.twist + after.twist) / 2,
+      airfoil: before.airfoil,
+    };
+    const res = await fetch(
+      `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/cross_sections/${atIndex}`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newXsec) },
+    );
+    if (res.ok) {
+      await mutateWing();
+      selectXsec(atIndex);
+    }
+  }
+
+  // Build tree data
+  const treeData: TreeNode[] = [];
   const rootExpanded = expandedSet.has("root");
-  treeData.push({
-    id: "root",
-    label: aeroplaneName ?? "Aeroplane",
-    level: 0,
-    expanded: rootExpanded,
-  });
+  treeData.push({ id: "root", label: aeroplaneName ?? "Aeroplane", level: 0, expanded: rootExpanded });
 
   if (rootExpanded) {
     for (const wn of wingNames) {
-      const wingNodes = buildWingNodes(
-        wn,
-        wing,
-        selectedWing,
-        selectedXsecIndex,
-        expandedSet,
-        selectWing,
-        selectXsec,
-        handleAddSegment,
-      );
-      treeData.push(...wingNodes);
+      const nodes = treeMode === "wingconfig"
+        ? buildSegmentNodes(wn, wing, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec, handleAddSegment, handleDeleteXsec, handleInsertXsec)
+        : buildXsecNodes(wn, wing, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec, handleDeleteXsec);
+      treeData.push(...nodes);
     }
   }
 
   return (
     <div className="rounded-[--radius-m] border border-border bg-card p-3 px-4">
-      {/* Header */}
-      <div className="mb-2 flex items-center">
+      {/* Header with mode toggle */}
+      <div className="mb-2 flex items-center gap-2">
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
           Aeroplane Tree
         </span>
         <div className="flex-1" />
+        <div className="flex overflow-hidden rounded-[--radius-s] border border-border">
+          <button
+            onClick={() => setTreeMode("wingconfig")}
+            className={`px-2.5 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px] ${
+              treeMode === "wingconfig"
+                ? "bg-primary text-primary-foreground"
+                : "bg-card-muted text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Segments
+          </button>
+          <button
+            onClick={() => setTreeMode("asb")}
+            className={`px-2.5 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px] ${
+              treeMode === "asb"
+                ? "bg-primary text-primary-foreground"
+                : "bg-card-muted text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            X-Secs
+          </button>
+        </div>
         <button className="flex h-6 w-6 items-center justify-center rounded-[--radius-s] text-muted-foreground hover:bg-sidebar-accent">
           <Plus size={14} />
         </button>
@@ -239,11 +349,7 @@ export function AeroplaneTree({
           <span className="text-[13px] text-muted-foreground">Loading...</span>
         ) : (
           treeData.map((node) => (
-            <TreeRow
-              key={node.id}
-              node={node}
-              onToggle={() => toggleExpand(node.id)}
-            />
+            <TreeRow key={node.id} node={node} onToggle={() => toggleExpand(node.id)} />
           ))
         )}
       </div>
@@ -251,26 +357,39 @@ export function AeroplaneTree({
   );
 }
 
-function TreeRow({
-  node,
-  onToggle,
-}: {
-  node: TreeNode;
-  onToggle: () => void;
-}) {
+// ── TreeRow ─────────────────────────────────────────────────────
+
+function TreeRow({ node, onToggle }: { node: TreeNode; onToggle: () => void }) {
+  if (node.isInsertPoint) {
+    return (
+      <div
+        className="flex items-center gap-1 py-0.5 opacity-30 hover:opacity-100"
+        style={{ paddingLeft: `${node.level * 20}px` }}
+      >
+        <div className="h-px flex-1 bg-border" />
+        <button
+          onClick={() => node.onInsert?.()}
+          className="flex items-center gap-1 rounded-[--radius-pill] px-2 py-0.5 text-[9px] text-muted-foreground hover:text-primary"
+        >
+          <Plus size={10} />
+          insert
+        </button>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+    );
+  }
+
   const indent = node.level * 20;
   const isLeaf = node.leaf;
 
   function handleClick() {
-    if (!isLeaf) {
-      onToggle();
-    }
+    if (!isLeaf) onToggle();
     node.onClick?.();
   }
 
   return (
     <div
-      className={`flex items-center gap-2 rounded-[--radius-s] py-1.5 hover:bg-sidebar-accent ${
+      className={`group flex items-center gap-2 rounded-[--radius-s] py-1.5 hover:bg-sidebar-accent ${
         node.selected ? "bg-sidebar-accent font-semibold" : ""
       }`}
       style={{ paddingLeft: `${indent}px`, cursor: "pointer" }}
@@ -278,22 +397,14 @@ function TreeRow({
     >
       {!isLeaf && (
         <span className="flex h-3 w-3 shrink-0 items-center justify-center text-muted-foreground">
-          {node.expanded ? (
-            <ChevronDown size={12} />
-          ) : (
-            <ChevronRight size={12} />
-          )}
+          {node.expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         </span>
       )}
       {isLeaf && <span className="w-3 shrink-0" />}
 
-      <span
-        className={`text-[13px] ${
-          node.muted
-            ? "text-[12px] text-muted-foreground"
-            : "text-foreground"
-        } ${node.mono ? "font-[family-name:var(--font-jetbrains-mono)]" : ""}`}
-      >
+      <span className={`text-[13px] ${
+        node.muted ? "text-[12px] text-muted-foreground" : "text-foreground"
+      } ${node.mono ? "font-[family-name:var(--font-jetbrains-mono)]" : ""}`}>
         {node.label}
       </span>
 
@@ -303,14 +414,14 @@ function TreeRow({
         </span>
       )}
 
-      {node.ghost && (
+      <span className="flex-1" />
+
+      {node.onDelete && (
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            node.onGhostClick?.();
-          }}
-          className="text-[12px] text-muted-foreground opacity-50 hover:opacity-100 hover:text-primary">
-          {node.ghost}
+          onClick={(e) => { e.stopPropagation(); node.onDelete?.(); }}
+          className="hidden h-5 w-5 items-center justify-center rounded-[--radius-s] group-hover:flex"
+        >
+          <Trash2 size={12} className="text-destructive" />
         </button>
       )}
     </div>

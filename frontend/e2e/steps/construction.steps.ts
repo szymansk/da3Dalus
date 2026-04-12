@@ -224,11 +224,11 @@ When(
     // Ensure the wing is expanded first
     const wingNode = side.getByText(target).first();
     await wingNode.click();
-    // Wait for the "+ segment" button to appear (wing must be expanded)
-    const btn = side.getByRole("button", { name: action });
-    await btn.first().waitFor({ state: "visible", timeout: 15000 });
-    await btn.first().click();
-    // Wait for the new segment to appear in the tree
+    // Wait for the action text to appear (could be button or clickable div)
+    const actionEl = side.getByText(action, { exact: true }).first();
+    await actionEl.waitFor({ state: "visible", timeout: 15000 });
+    await actionEl.click();
+    // Wait for the tree to refresh
     await page.waitForTimeout(1000);
   },
 );

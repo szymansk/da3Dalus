@@ -10,13 +10,17 @@ import {
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+export type TreeMode = "wingconfig" | "asb";
+
 interface AeroplaneContextValue {
   aeroplaneId: string | null;
   selectedWing: string | null;
   selectedXsecIndex: number | null;
+  treeMode: TreeMode;
   setAeroplaneId: (id: string | null) => void;
   selectWing: (name: string | null) => void;
   selectXsec: (index: number | null) => void;
+  setTreeMode: (mode: TreeMode) => void;
 }
 
 const Ctx = createContext<AeroplaneContextValue | null>(null);
@@ -41,6 +45,7 @@ export function AeroplaneProvider({ children }: { children: ReactNode }) {
   const [selectedXsecIndex, setSelectedXsecIndex] = useState<number | null>(
     null,
   );
+  const [treeMode, setTreeMode] = useState<TreeMode>("wingconfig");
 
   const setAeroplaneId = useCallback(
     (id: string | null) => {
@@ -82,9 +87,11 @@ export function AeroplaneProvider({ children }: { children: ReactNode }) {
         aeroplaneId,
         selectedWing,
         selectedXsecIndex,
+        treeMode,
         setAeroplaneId,
         selectWing,
         selectXsec,
+        setTreeMode,
       }}
     >
       {children}
