@@ -64,13 +64,36 @@ export function CadViewer({ data }: CadViewerProps) {
 
         // Extract shapes from the tessellation data
         const tessData = data as {
-          data?: { shapes?: unknown; instances?: unknown };
+          data?: { shapes?: Record<string, unknown>; instances?: Record<string, unknown>[] };
           config?: Record<string, unknown>;
         };
 
         const shapes = tessData?.data?.shapes;
+        const instances = tessData?.data?.instances;
         if (!shapes) {
           throw new Error("No shape data in tessellation result");
+        }
+
+        // Resolve instance references: shapes may have {ref: N} instead
+        // of inline geometry. Replace refs with actual instance data.
+        if (instances && Array.isArray(instances)) {
+          const inst = instances; // narrow for closure
+          function resolveRefs(node: Record<string, unknown>) {
+            if (node.shape && typeof node.shape === "object") {
+              const shapeObj = node.shape as Record<string, unknown>;
+              if ("ref" in shapeObj && typeof shapeObj.ref === "number") {
+                node.shape = inst[shapeObj.ref as number];
+              }
+            }
+            if (Array.isArray(node.parts)) {
+              for (const part of node.parts) {
+                if (part && typeof part === "object") {
+                  resolveRefs(part as Record<string, unknown>);
+                }
+              }
+            }
+          }
+          resolveRefs(shapes);
         }
 
         // Render the shapes
