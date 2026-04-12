@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useWing } from "@/hooks/useWings";
 import type { XSec } from "@/hooks/useWings";
+import { API_BASE } from "@/lib/fetcher";
 
 interface TreeNode {
   id: string;
@@ -17,6 +18,7 @@ interface TreeNode {
   muted?: boolean;
   chip?: string;
   ghost?: string;
+  onGhostClick?: () => void;
   onClick?: () => void;
 }
 
@@ -28,6 +30,7 @@ function buildWingNodes(
   expandedSet: Set<string>,
   selectWing: (name: string | null) => void,
   selectXsec: (index: number | null) => void,
+  onAddSegment?: (wingName: string) => void,
 ): TreeNode[] {
   const nodes: TreeNode[] = [];
 
@@ -38,6 +41,7 @@ function buildWingNodes(
     level: 1,
     expanded: wingExpanded,
     ghost: "+ segment",
+    onGhostClick: () => onAddSegment?.(wingName),
     onClick: () => selectWing(wingName),
   });
 
@@ -137,7 +141,36 @@ export function AeroplaneTree({
 }: AeroplaneTreeProps) {
   const { selectedWing, selectedXsecIndex, selectWing, selectXsec } =
     useAeroplaneContext();
-  const { wing, isLoading } = useWing(aeroplaneId, selectedWing);
+  const { wing, isLoading, mutate: mutateWing } = useWing(aeroplaneId, selectedWing);
+
+  async function handleAddSegment(wingName: string) {
+    if (!aeroplaneId) return;
+    // Add a new x_sec at the end of the wing
+    const xsecCount = wing?.x_secs.length ?? 0;
+    const lastXsec = wing?.x_secs[xsecCount - 1];
+    const newXsec = {
+      xyz_le: [
+        (lastXsec?.xyz_le[0] ?? 0),
+        (lastXsec?.xyz_le[1] ?? 0) + 0.1,
+        (lastXsec?.xyz_le[2] ?? 0),
+      ],
+      chord: lastXsec?.chord ?? 0.1,
+      twist: 0,
+      airfoil: lastXsec?.airfoil ?? "naca0012",
+    };
+    const res = await fetch(
+      `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/cross_sections/${xsecCount}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newXsec),
+      },
+    );
+    if (res.ok) {
+      await mutateWing();
+      selectXsec(xsecCount);
+    }
+  }
 
   const [expandedSet, setExpandedSet] = useState<Set<string>>(() => {
     const s = new Set<string>();
@@ -179,6 +212,7 @@ export function AeroplaneTree({
         expandedSet,
         selectWing,
         selectXsec,
+        handleAddSegment,
       );
       treeData.push(...wingNodes);
     }
@@ -268,9 +302,14 @@ function TreeRow({
       )}
 
       {node.ghost && (
-        <span className="text-[12px] text-muted-foreground opacity-50">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            node.onGhostClick?.();
+          }}
+          className="text-[12px] text-muted-foreground opacity-50 hover:opacity-100 hover:text-primary">
           {node.ghost}
-        </span>
+        </button>
       )}
     </div>
   );

@@ -38,7 +38,7 @@ Feature: eHawk Designer Workflow — Full UI Construction
 
   Scenario: Stage 1a — Create wing via UI
     Given the "eHawk E2E Test" aeroplane is selected
-    When I click the "+ Wing" button and enter name "main_wing"
+    When I click the "Wing" button and enter name "main_wing"
     Then the tree shows "main_wing"
 
   Scenario: Stage 1b — Configure root segment in WingConfig mode
