@@ -38,7 +38,7 @@ interface AsbState {
 
 function xsecToAsb(xsec: XSec): AsbState {
   return {
-    airfoil: xsec.airfoil,
+    airfoil: airfoilShortName(xsec.airfoil),
     chord: xsec.chord * 1000,
     twist: xsec.twist,
     xyz_le: [xsec.xyz_le[0], xsec.xyz_le[1], xsec.xyz_le[2]],
@@ -54,6 +54,12 @@ function asbToPayload(asb: AsbState): Partial<XSec> {
   };
 }
 
+/** Extract short airfoil name from path like "./components/airfoils/mh32.dat" → "mh32" */
+function airfoilShortName(raw: string): string {
+  const basename = raw.split("/").pop() ?? raw;
+  return basename.replace(/\.dat$/i, "");
+}
+
 function xsecsToWingConfig(
   xsecs: XSec[],
   segIndex: number,
@@ -67,12 +73,12 @@ function xsecsToWingConfig(
   const dy = (tip.xyz_le[1] - root.xyz_le[1]) * 1000;
 
   return {
-    root_airfoil: root.airfoil,
+    root_airfoil: airfoilShortName(root.airfoil),
     root_chord: rootChord,
     root_dihedral: 0, // cannot reverse-compute from xyz_le without full context
     root_incidence: root.twist,
     root_rotation_point: 0.25,
-    tip_airfoil: tip.airfoil,
+    tip_airfoil: airfoilShortName(tip.airfoil),
     tip_chord: tipChord,
     tip_dihedral: 0,
     tip_incidence: tip.twist,

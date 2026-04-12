@@ -41,7 +41,19 @@ function buildWingNodes(
     onClick: () => selectWing(wingName),
   });
 
-  if (!wingExpanded || !wing || wing.name !== wingName) return nodes;
+  if (!wingExpanded) return nodes;
+
+  // Wing is expanded but data not loaded yet (SWR fetching)
+  if (!wing || wing.name !== wingName) {
+    nodes.push({
+      id: `${wingName}-loading`,
+      label: "Loading segments…",
+      level: 2,
+      leaf: true,
+      muted: true,
+    });
+    return nodes;
+  }
 
   wing.x_secs.forEach((xsec: XSec, i: number) => {
     const segId = `${wingName}-seg${i}`;

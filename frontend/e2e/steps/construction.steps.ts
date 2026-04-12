@@ -54,13 +54,16 @@ function ensureId() {
 
 // ── Background ──────────────────────────────────────────────────
 
-let cleanupDone = false;
+const CLEANUP_FILE = path.join(__dirname, "..", ".cleanup-done");
 
 Given("the backend is running", async ({ request }) => {
   const res = await request.get(`${API}/health`);
   expect(res.ok()).toBeTruthy();
 
-  // Cleanup runs only once per test suite, not per scenario
+  // Cleanup runs only once per test suite run
+  let cleanupDone = false;
+  try { cleanupDone = fs.existsSync(CLEANUP_FILE); } catch { /* ignore */ }
+
   if (!cleanupDone) {
     const listRes = await request.get(`${API}/aeroplanes`);
     if (listRes.ok()) {
@@ -74,7 +77,7 @@ Given("the backend is running", async ({ request }) => {
     }
     aeroplaneId = "";
     try { fs.unlinkSync(STATE_FILE); } catch { /* ignore */ }
-    cleanupDone = true;
+    fs.writeFileSync(CLEANUP_FILE, new Date().toISOString());
   }
 });
 
@@ -210,24 +213,22 @@ When(
   "I click on {string} in the tree",
   async ({ page }, nodeLabel: string) => {
     // First expand the wing if the node is a segment
-    if (nodeLabel.startsWith("segment")) {
-      // Find the tree card container (has "Aeroplane Tree" header)
-      // Then find "main_wing" within it — avoids clicking breadcrumb
-      const treeCard = page.locator('[class*="border-border"][class*="bg-card"]', {
-        has: page.getByText("Aeroplane Tree"),
-      });
+    // Use the complementary (aside) region to scope tree clicks,
+    // avoiding the breadcrumb "main_wing" in the header
+    const sidebar = page.locator("aside, [role=complementary]").first();
 
+    if (nodeLabel.startsWith("segment")) {
       // Click "main_wing" in the tree to select + expand it
-      const wingNode = treeCard.getByText("main_wing", { exact: false }).first();
+      const wingNode = sidebar.getByText("main_wing").first();
       await wingNode.click();
 
       // Wait for SWR to fetch wing data and segments to render
-      await treeCard.getByText(nodeLabel).waitFor({ state: "visible", timeout: 15000 });
+      await sidebar.getByText(nodeLabel).waitFor({ state: "visible", timeout: 15000 });
 
       // Click the segment
-      await treeCard.getByText(nodeLabel).first().click();
+      await sidebar.getByText(nodeLabel).first().click();
     } else {
-      await page.getByText(nodeLabel).first().click();
+      await sidebar.getByText(nodeLabel).first().click();
     }
   },
 );
