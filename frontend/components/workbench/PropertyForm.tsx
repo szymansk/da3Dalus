@@ -249,6 +249,12 @@ export function PropertyForm() {
         symmetric: wing.symmetric,
       };
 
+      // Delete the existing wing first — from-wingconfig creates a new one
+      await fetch(
+        `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${selectedWing}`,
+        { method: "DELETE" },
+      );
+
       const res = await fetch(
         `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${selectedWing}/from-wingconfig`,
         {
