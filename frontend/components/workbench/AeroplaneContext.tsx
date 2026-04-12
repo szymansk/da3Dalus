@@ -32,15 +32,9 @@ export function AeroplaneProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Initialize from URL param > localStorage > null
-  const [aeroplaneId, setAeroplaneIdRaw] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return (
-      searchParams.get("id") ??
-      localStorage.getItem(STORAGE_KEY) ??
-      null
-    );
-  });
+  // Start with null on both server and client to avoid hydration mismatch.
+  // Restore from URL/localStorage in useEffect (client-only).
+  const [aeroplaneId, setAeroplaneIdRaw] = useState<string | null>(null);
   const [selectedWing, setSelectedWing] = useState<string | null>(null);
   const [selectedXsecIndex, setSelectedXsecIndex] = useState<number | null>(
     null,
@@ -63,12 +57,14 @@ export function AeroplaneProvider({ children }: { children: ReactNode }) {
     [searchParams, router, pathname],
   );
 
-  // Sync from URL on mount / URL change
+  // Restore aeroplaneId from URL or localStorage on mount (client-only)
   useEffect(() => {
     const urlId = searchParams.get("id");
-    if (urlId && urlId !== aeroplaneId) {
-      setAeroplaneIdRaw(urlId);
-      localStorage.setItem(STORAGE_KEY, urlId);
+    const storedId = localStorage.getItem(STORAGE_KEY);
+    const resolved = urlId ?? storedId ?? null;
+    if (resolved && resolved !== aeroplaneId) {
+      setAeroplaneIdRaw(resolved);
+      if (resolved) localStorage.setItem(STORAGE_KEY, resolved);
     }
   }, [searchParams, aeroplaneId]);
 
