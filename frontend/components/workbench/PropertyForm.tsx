@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useAeroplaneContext } from "./AeroplaneContext";
 import { useWing, type XSec } from "@/hooks/useWings";
+import { useWingConfig } from "@/hooks/useWingConfig";
+import type { WingConfigSegment } from "@/hooks/useWingConfig";
 import { API_BASE } from "@/lib/fetcher";
 
 /** Parse a number input string, allowing empty/partial input during editing */
@@ -67,6 +69,26 @@ function airfoilShortName(raw: string): string {
   return basename.replace(/\.dat$/i, "");
 }
 
+function segmentToWcState(seg: WingConfigSegment): WingConfigState {
+  return {
+    root_airfoil: airfoilShortName(seg.root_airfoil.airfoil),
+    root_chord: seg.root_airfoil.chord,
+    root_dihedral: seg.root_airfoil.dihedral_as_rotation_in_degrees ?? 0,
+    root_incidence: seg.root_airfoil.incidence ?? 0,
+    root_rotation_point: seg.root_airfoil.rotation_point_rel_chord ?? 0.25,
+    tip_airfoil: airfoilShortName(seg.tip_airfoil.airfoil),
+    tip_chord: seg.tip_airfoil.chord,
+    tip_dihedral: seg.tip_airfoil.dihedral_as_rotation_in_degrees ?? 0,
+    tip_incidence: seg.tip_airfoil.incidence ?? 0,
+    tip_rotation_point: seg.tip_airfoil.rotation_point_rel_chord ?? 0.25,
+    length: seg.length,
+    sweep: seg.sweep,
+    number_interpolation_points: seg.number_interpolation_points ?? 201,
+    tip_type: seg.tip_type ?? "",
+  };
+}
+
+/** @deprecated — kept for reference, replaced by segmentToWcState + useWingConfig */
 function xsecsToWingConfig(
   xsecs: XSec[],
   segIndex: number,
@@ -155,6 +177,10 @@ export function PropertyForm() {
   const { aeroplaneId, selectedWing, selectedXsecIndex, treeMode } =
     useAeroplaneContext();
   const { wing, updateXSec, mutate } = useWing(aeroplaneId, selectedWing);
+  const { wingConfig, saveWingConfig, mutate: mutateWc } = useWingConfig(
+    aeroplaneId,
+    treeMode === "wingconfig" ? selectedWing : null,
+  );
 
   // Mode is driven by tree toggle, not local state
   const mode: Mode = treeMode;
@@ -168,23 +194,28 @@ export function PropertyForm() {
       : null;
   const [asb, setAsb] = useState<AsbState | null>(null);
 
-  // WingConfig state
+  // WingConfig state — loaded from the backend /wingconfig endpoint
   const [wc, setWc] = useState<WingConfigState | null>(null);
 
-  // Sync state when selection changes
+  // Sync ASB state when selection changes
   useEffect(() => {
     if (xsec) {
       setAsb(xsecToAsb(xsec));
     } else {
       setAsb(null);
     }
-    if (wing && selectedXsecIndex !== null) {
-      setWc(xsecsToWingConfig(wing.x_secs, selectedXsecIndex));
+    setError(null);
+  }, [xsec?.airfoil, xsec?.chord, xsec?.twist, selectedXsecIndex]);
+
+  // Sync WingConfig state from API response
+  useEffect(() => {
+    if (wingConfig && selectedXsecIndex !== null && selectedXsecIndex < wingConfig.segments.length) {
+      const seg = wingConfig.segments[selectedXsecIndex];
+      setWc(segmentToWcState(seg));
     } else {
       setWc(null);
     }
-    setError(null);
-  }, [xsec?.airfoil, xsec?.chord, xsec?.twist, selectedXsecIndex, wing]);
+  }, [wingConfig, selectedXsecIndex]);
 
   // No segment selected
   if (selectedXsecIndex === null || !xsec) {
@@ -219,68 +250,42 @@ export function PropertyForm() {
   }
 
   async function handleSaveWingConfig() {
-    if (!wc || !aeroplaneId || !selectedWing || !wing) return;
+    if (!wc || !wingConfig || selectedXsecIndex === null) return;
     setSaving(true);
     setError(null);
     try {
-      // Build a WingConfiguration JSON from the current wing + edited segment
-      const segments = wing.x_secs.slice(0, -1).map((rootXsec, i) => {
-        const tipXsec = wing.x_secs[i + 1];
-        const isEdited = i === selectedXsecIndex;
-        const src = isEdited ? wc : null;
-
+      // Build updated WingConfig: replace the edited segment, keep others
+      const updatedSegments = wingConfig.segments.map((seg, i) => {
+        if (i !== selectedXsecIndex) return seg;
         return {
+          ...seg,
           root_airfoil: {
-            airfoil: src?.root_airfoil ?? rootXsec.airfoil,
-            chord: src?.root_chord ?? rootXsec.chord * 1000,
-            dihedral_as_rotation_in_degrees: src?.root_dihedral ?? 0,
-            incidence: src?.root_incidence ?? rootXsec.twist,
-            rotation_point_rel_chord: src?.root_rotation_point ?? 0.25,
+            airfoil: wc.root_airfoil,
+            chord: wc.root_chord,
+            dihedral_as_rotation_in_degrees: wc.root_dihedral,
+            incidence: wc.root_incidence,
+            rotation_point_rel_chord: wc.root_rotation_point,
           },
           tip_airfoil: {
-            airfoil: src?.tip_airfoil ?? tipXsec.airfoil,
-            chord: src?.tip_chord ?? tipXsec.chord * 1000,
-            dihedral_as_rotation_in_degrees: src?.tip_dihedral ?? 0,
-            incidence: src?.tip_incidence ?? tipXsec.twist,
-            rotation_point_rel_chord: src?.tip_rotation_point ?? 0.25,
+            airfoil: wc.tip_airfoil,
+            chord: wc.tip_chord,
+            dihedral_as_rotation_in_degrees: wc.tip_dihedral,
+            incidence: wc.tip_incidence,
+            rotation_point_rel_chord: wc.tip_rotation_point,
           },
-          length: src?.length ?? Math.abs((tipXsec.xyz_le[1] - rootXsec.xyz_le[1]) * 1000),
-          sweep: src?.sweep ?? (tipXsec.xyz_le[0] - rootXsec.xyz_le[0]) * 1000,
-          number_interpolation_points: src?.number_interpolation_points ?? rootXsec.number_interpolation_points ?? 201,
-          tip_type: src?.tip_type || rootXsec.tip_type || undefined,
+          length: wc.length,
+          sweep: wc.sweep,
+          number_interpolation_points: wc.number_interpolation_points,
+          tip_type: wc.tip_type || undefined,
         };
       });
 
-      const wingConfig = {
-        segments,
-        nose_pnt: [
-          wing.x_secs[0].xyz_le[0] * 1000,
-          wing.x_secs[0].xyz_le[1] * 1000,
-          wing.x_secs[0].xyz_le[2] * 1000,
-        ],
-        parameters: "relative",
-        symmetric: wing.symmetric,
-      };
-
-      // Delete the existing wing first — from-wingconfig creates a new one
-      await fetch(
-        `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${selectedWing}`,
-        { method: "DELETE" },
-      );
-
-      const res = await fetch(
-        `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${selectedWing}/from-wingconfig`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(wingConfig),
-        },
-      );
-      if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`Save failed: ${res.status} ${body}`);
-      }
+      await saveWingConfig({
+        ...wingConfig,
+        segments: updatedSegments,
+      });
       await mutate();
+      await mutateWc();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Save failed");
     } finally {

@@ -248,6 +248,42 @@ async def create_aeroplane_wing_from_wingconfig(
     return OperationStatusResponse(status="created", operation="create_aeroplane_wing_from_wingconfig")
 
 
+@router.get(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/wingconfig",
+    status_code=status.HTTP_200_OK,
+    tags=["wings"],
+    operation_id="get_wing_as_wingconfig",
+)
+async def get_wing_as_wingconfig(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    wing_name: str = Path(..., description="The name of the wing"),
+    db: Session = Depends(get_db),
+):
+    """Return the wing in WingConfiguration format (segments with root/tip airfoils, length, sweep, dihedral)."""
+    return _call_service(wing_service.get_wing_as_wingconfig, db, aeroplane_id, wing_name)
+
+
+@router.put(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/wingconfig",
+    status_code=status.HTTP_200_OK,
+    response_model=OperationStatusResponse,
+    tags=["wings"],
+    operation_id="put_wing_as_wingconfig",
+)
+async def put_wing_as_wingconfig(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    wing_name: str = Path(..., description="The name of the wing"),
+    request: WingConfigurationSchema = Body(
+        ...,
+        description="WingConfiguration JSON (mm). Replaces the existing wing.",
+    ),
+    db: Session = Depends(get_db),
+):
+    """Replace a wing from WingConfiguration JSON (idempotent PUT)."""
+    _call_service(wing_service.put_wing_as_wingconfig, db, aeroplane_id, wing_name, request)
+    return OperationStatusResponse(status="updated", operation="put_wing_as_wingconfig")
+
+
 @router.post(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}",
     response_model=OperationStatusResponse,
