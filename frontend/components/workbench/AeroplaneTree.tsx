@@ -173,11 +173,15 @@ function buildXsecNodes(
   }
 
   wing.x_secs.forEach((xsec, i) => {
+    const xsecId = `${wingName}-xsec${i}`;
     const isSelected = selectedWing === wingName && selectedXsecIndex === i;
+    const xsecExpanded = expandedSet.has(xsecId);
+
     nodes.push({
-      id: `${wingName}-xsec${i}`,
+      id: xsecId,
       label: `x_sec ${i}`,
       level: 2,
+      expanded: xsecExpanded,
       selected: isSelected,
       chip: getChipLabel(xsec),
       onClick: () => { selectWing(wingName); selectXsec(i); },
@@ -185,6 +189,33 @@ function buildXsecNodes(
         if (confirm(`Delete x_sec ${i}?`)) onDeleteXsec(wingName, i);
       },
     });
+
+    if (xsecExpanded) {
+      nodes.push({
+        id: `${xsecId}-airfoil`,
+        label: `airfoil · ${airfoilShort(xsec.airfoil)}`,
+        level: 3, leaf: true, muted: true,
+      });
+      nodes.push({
+        id: `${xsecId}-chord`,
+        label: `chord ${xsec.chord}`,
+        level: 3, leaf: true, muted: true, mono: true,
+      });
+      nodes.push({
+        id: `${xsecId}-twist`,
+        label: `twist ${xsec.twist}°`,
+        level: 3, leaf: true, muted: true, mono: true,
+      });
+      nodes.push({
+        id: `${xsecId}-xyz`,
+        label: `xyz_le [${xsec.xyz_le.map((v: number) => v.toFixed(4)).join(", ")}]`,
+        level: 3, leaf: true, muted: true, mono: true,
+      });
+      const spareCount = Array.isArray(xsec.spare_list) ? xsec.spare_list.length : 0;
+      if (spareCount > 0) {
+        nodes.push({ id: `${xsecId}-spars`, label: `spars (${spareCount})`, level: 3, expanded: false });
+      }
+    }
   });
 
   return nodes;
