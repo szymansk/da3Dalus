@@ -144,10 +144,10 @@ def _run_tessellation_worker(
 
     except Exception as err:
         _logger.error("Tessellation failed: %s", err, exc_info=True)
+        _logger.error("Full traceback:\n%s", traceback.format_exc())
         return {
             "status": "FAILURE",
-            "error": f"{type(err).__name__}: {err}",
-            "traceback": traceback.format_exc(),
+            "error": f"Tessellation failed: {type(err).__name__}",
         }
 
 
@@ -158,7 +158,7 @@ def start_tessellation_task(
     wing_scale: float = 1000.0,
 ) -> None:
     """Submit a tessellation task to the process pool."""
-    register_pending_task(aeroplane_id)
+    register_pending_task(f"{aeroplane_id}:tessellation")
 
     future = _get_executor().submit(
         _run_tessellation_worker,
@@ -178,6 +178,6 @@ def start_tessellation_task(
                 "traceback": traceback.format_exc(),
             }
         with tasks_lock:
-            tasks[aeroplane_id] = worker_result
+            tasks[f"{aeroplane_id}:tessellation"] = worker_result
 
     future.add_done_callback(_on_done)

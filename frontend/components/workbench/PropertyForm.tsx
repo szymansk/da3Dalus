@@ -205,7 +205,7 @@ export function PropertyForm() {
       setAsb(null);
     }
     setError(null);
-  }, [xsec?.airfoil, xsec?.chord, xsec?.twist, selectedXsecIndex]);
+  }, [xsec?.airfoil, xsec?.chord, xsec?.twist, xsec?.xyz_le?.[0], xsec?.xyz_le?.[1], xsec?.xyz_le?.[2], selectedXsecIndex]);
 
   // Sync WingConfig state from API response
   useEffect(() => {

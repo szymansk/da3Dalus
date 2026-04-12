@@ -289,14 +289,15 @@ export function AeroplaneTree({ aeroplaneId, wingNames, aeroplaneName }: Aeropla
   async function handleDeleteXsec(wingName: string, index: number) {
     if (!aeroplaneId) return;
     if (index === -1) {
-      // Delete entire wing
-      await fetch(`${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}`, { method: "DELETE" });
+      const res = await fetch(`${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}`, { method: "DELETE" });
+      if (!res.ok) { alert(`Delete wing failed: ${res.status}`); return; }
       selectWing(null);
     } else {
-      await fetch(
+      const res = await fetch(
         `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/cross_sections/${index}`,
         { method: "DELETE" },
       );
+      if (!res.ok) { alert(`Delete failed: ${res.status}`); return; }
     }
     await mutateWing();
   }

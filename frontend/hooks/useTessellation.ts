@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { API_BASE } from "@/lib/fetcher";
 
 interface TessellationState {
@@ -32,6 +32,7 @@ export function useTessellation(aeroplaneId: string | null, wingName: string | n
     error: null,
   });
   const lastKeyRef = useRef<string>("");
+  const abortRef = useRef<AbortController | null>(null);
 
   // Auto-load from cache when aeroplaneId/wingName change
   useEffect(() => {
@@ -72,13 +73,19 @@ export function useTessellation(aeroplaneId: string | null, wingName: string | n
   const triggerTessellation = useCallback(async () => {
     if (!aeroplaneId || !wingName) return;
 
+    // Cancel any in-flight polling
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const signal = controller.signal;
+
     setState({ data: null, isTessellating: true, progress: "Starting tessellation…", error: null });
 
     try {
       const encodedWing = encodeURIComponent(wingName);
 
       // Get current updated_at for cache validation
-      const aeroplaneRes = await fetch(`${API_BASE}/aeroplanes/${aeroplaneId}`);
+      const aeroplaneRes = await fetch(`${API_BASE}/aeroplanes/${aeroplaneId}`, { signal });
       const aeroplane = aeroplaneRes.ok ? await aeroplaneRes.json() : null;
       const updatedAt = aeroplane?.updated_at ?? "";
 
@@ -93,7 +100,7 @@ export function useTessellation(aeroplaneId: string | null, wingName: string | n
       // Trigger tessellation
       const postRes = await fetch(
         `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${encodedWing}/tessellation`,
-        { method: "POST" },
+        { method: "POST", signal },
       );
       if (!postRes.ok) {
         const body = await postRes.text();
@@ -104,7 +111,8 @@ export function useTessellation(aeroplaneId: string | null, wingName: string | n
       setState((s) => ({ ...s, progress: "Tessellating geometry…" }));
       const deadline = Date.now() + 120_000;
       while (Date.now() < deadline) {
-        const statusRes = await fetch(`${API_BASE}/aeroplanes/${aeroplaneId}/status`);
+        if (signal.aborted) return;
+        const statusRes = await fetch(`${API_BASE}/aeroplanes/${aeroplaneId}/status?task_type=tessellation`, { signal });
         if (!statusRes.ok) throw new Error(`Status check failed: ${statusRes.status}`);
         const statusData = await statusRes.json();
 
