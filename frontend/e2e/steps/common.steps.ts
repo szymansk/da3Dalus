@@ -12,7 +12,7 @@ Given("I am on the workbench", async ({ page }) => {
 
 Given("I am on the mission page", async ({ page }) => {
   await page.goto("/workbench/mission");
-  await expect(page.getByText("Mission Objectives")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mission Objectives" })).toBeVisible();
 });
 
 Given("I am on the analysis page", async ({ page }) => {
@@ -43,7 +43,13 @@ When("I click the {string} step pill", async ({ page }, label: string) => {
 });
 
 Then("I see the {string} page", async ({ page }, heading: string) => {
-  await expect(page.getByText(heading)).toBeVisible();
+  // Try heading first, fall back to any visible text
+  const h = page.getByRole("heading", { name: heading });
+  if (await h.count() > 0) {
+    await expect(h.first()).toBeVisible();
+  } else {
+    await expect(page.getByText(heading).first()).toBeVisible();
+  }
 });
 
 Then("I am redirected to {string}", async ({ page }, path: string) => {
