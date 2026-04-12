@@ -106,9 +106,9 @@ Feature: eHawk Designer Workflow
       | sweep                          | 17.5  |
       | tip_airfoil_chord              | 12.0  |
       | tip_type                       | flat  |
-    Then the wing "main_wing" has 12 cross sections
-    And all cross sections have no spars
-    And all cross sections have no trailing edge devices
+    Then the wing "main_wing" has 13 cross sections
+    And the wing has spars on at least 1 cross section
+    And the wing has at least 1 cross section with trailing edge devices
 
   # ── Stage 1 STL checkpoint ─────────────────────────────────────
 

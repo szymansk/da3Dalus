@@ -47,6 +47,7 @@ Then("I see the {string} page", async ({ page }, heading: string) => {
 });
 
 Then("I am redirected to {string}", async ({ page }, path: string) => {
+  await page.waitForURL(new RegExp(path), { timeout: 10000 });
   await expect(page).toHaveURL(new RegExp(path));
 });
 

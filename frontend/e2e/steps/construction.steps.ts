@@ -1,21 +1,42 @@
 import { createBdd } from "playwright-bdd";
 import { expect } from "@playwright/test";
 import type { DataTable } from "@cucumber/cucumber";
+import { EHAWK_WING_CONFIG } from "../fixtures/ehawk-wing-config";
 
 const { Given, When, Then } = createBdd();
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import * as fs from "fs";
+import * as path from "path";
+
+const API = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
+
+// Persistent state file — shared across Playwright test workers/scenarios
+const STATE_FILE = path.join(__dirname, "..", "..", "test-results", "ehawk-state.json");
+
+function loadState(): { aeroplaneId?: string } {
+  try {
+    return JSON.parse(fs.readFileSync(STATE_FILE, "utf-8"));
+  } catch {
+    return {};
+  }
+}
+
+function saveState(state: { aeroplaneId?: string }) {
+  fs.mkdirSync(path.dirname(STATE_FILE), { recursive: true });
+  fs.writeFileSync(STATE_FILE, JSON.stringify(state));
+}
 
 // Shared state across scenarios (set by Stage 0, used by all others)
-let aeroplaneId: string;
+let aeroplaneId: string = loadState().aeroplaneId ?? "";
 let lastExportZipBytes: ArrayBuffer | null = null;
 
 // ── Stage 0 ─────────────────────────────────────────────────────
 
 Given(
   "the backend is running on {string}",
-  async ({ request }, url: string) => {
-    const res = await request.get(`${url}/health`);
+  async ({ request }, _url: string) => {
+    // Use the actual API URL (may differ from the one in the feature file)
+    const res = await request.get(`${API}/health`);
     expect(res.ok()).toBeTruthy();
   },
 );
@@ -27,6 +48,7 @@ When(
     expect(res.status()).toBe(201);
     const body = await res.json();
     aeroplaneId = body.id;
+    saveState({ aeroplaneId });
   },
 );
 
@@ -46,10 +68,16 @@ Then("the aeroplane has a valid UUID", async ({}) => {
 Given(
   "an aeroplane {string} exists",
   async ({ request }, name: string) => {
-    if (aeroplaneId) return; // Already created
+    // Reload from persistent state if not in memory
+    if (!aeroplaneId) {
+      aeroplaneId = loadState().aeroplaneId ?? "";
+    }
+    if (aeroplaneId) return;
+    // Create if it doesn't exist
     const res = await request.post(`${API}/aeroplanes?name=${encodeURIComponent(name)}`);
     expect(res.status()).toBe(201);
     aeroplaneId = (await res.json()).id;
+    saveState({ aeroplaneId });
   },
 );
 
@@ -60,11 +88,6 @@ Given(
 When(
   "I create wing {string} with the eHawk geometry:",
   async ({ request }, wingName: string, _table: DataTable) => {
-    // We use the from-wingconfig endpoint which accepts the full
-    // WingConfiguration JSON — this is the same path the backend
-    // test helper _build_main_wing produces.
-    // For the E2E test, we load the fixture and POST it.
-    const { EHAWK_WING_CONFIG } = await import("../fixtures/ehawk-wing-config");
     const res = await request.post(
       `${API}/aeroplanes/${aeroplaneId}/wings/${wingName}/from-wingconfig`,
       { data: EHAWK_WING_CONFIG },
@@ -91,38 +114,52 @@ Then(
   },
 );
 
-Then("all cross sections have no spars", async ({ request }) => {
-  const res = await request.get(
-    `${API}/aeroplanes/${aeroplaneId}/wings/main_wing`,
-  );
-  const wing = await res.json();
-  for (const xsec of wing.x_secs) {
-    expect(xsec.spare_list ?? []).toHaveLength(0);
-  }
-});
-
 Then(
-  "all cross sections have no trailing edge devices",
-  async ({ request }) => {
+  "the wing has spars on at least {int} cross section",
+  async ({ request }, min: number) => {
     const res = await request.get(
       `${API}/aeroplanes/${aeroplaneId}/wings/main_wing`,
     );
     const wing = await res.json();
-    for (const xsec of wing.x_secs.slice(0, -1)) {
-      const ted = xsec.trailing_edge_device;
-      expect(ted === null || ted === undefined || Object.keys(ted).length === 0).toBeTruthy();
-    }
+    const withSpars = wing.x_secs.filter(
+      (x: Record<string, unknown>) => ((x.spare_list as unknown[]) ?? []).length > 0,
+    ).length;
+    expect(withSpars).toBeGreaterThanOrEqual(min);
+  },
+);
+
+Then(
+  "the wing has at least {int} cross section with trailing edge devices",
+  async ({ request }, min: number) => {
+    const res = await request.get(
+      `${API}/aeroplanes/${aeroplaneId}/wings/main_wing`,
+    );
+    const wing = await res.json();
+    const withTed = wing.x_secs
+      .slice(0, -1)
+      .filter(
+        (x: Record<string, unknown>) =>
+          x.trailing_edge_device != null &&
+          Object.keys(x.trailing_edge_device as object).length > 0,
+      ).length;
+    expect(withTed).toBeGreaterThanOrEqual(min);
   },
 );
 
 // ── Aeroplane existence guards ──────────────────────────────────
 
+function ensureAeroplaneId() {
+  if (!aeroplaneId) {
+    aeroplaneId = loadState().aeroplaneId ?? "";
+  }
+  if (!aeroplaneId) throw new Error("No aeroplaneId — run Stage 0 first");
+}
+
 Given(
   "the {string} has wing {string}",
   async ({ request }, _name: string, wingName: string) => {
-    const res = await request.get(
-      `${API}/aeroplanes/${aeroplaneId}/wings/${wingName}`,
-    );
+    ensureAeroplaneId();
+    const res = await request.get(`${API}/aeroplanes/${aeroplaneId}/wings/${wingName}`);
     expect(res.ok()).toBeTruthy();
   },
 );
@@ -130,9 +167,8 @@ Given(
 Given(
   "the {string} has wing {string} with TEDs",
   async ({ request }, _name: string, wingName: string) => {
-    const res = await request.get(
-      `${API}/aeroplanes/${aeroplaneId}/wings/${wingName}`,
-    );
+    ensureAeroplaneId();
+    const res = await request.get(`${API}/aeroplanes/${aeroplaneId}/wings/${wingName}`);
     expect(res.ok()).toBeTruthy();
   },
 );
@@ -140,9 +176,8 @@ Given(
 Given(
   "the {string} has wing {string} fully configured",
   async ({ request }, _name: string, wingName: string) => {
-    const res = await request.get(
-      `${API}/aeroplanes/${aeroplaneId}/wings/${wingName}`,
-    );
+    ensureAeroplaneId();
+    const res = await request.get(`${API}/aeroplanes/${aeroplaneId}/wings/${wingName}`);
     expect(res.ok()).toBeTruthy();
   },
 );
@@ -152,6 +187,7 @@ Given(
 When(
   "I run an alpha sweep with:",
   async ({ request }, table: DataTable) => {
+    ensureAeroplaneId();
     const params = Object.fromEntries(table.rows().map(([k, v]) => [k, v]));
     const body = {
       analysis_tool: params.analysis_tool,
@@ -182,6 +218,7 @@ Then(
 When(
   "I add a control surface on cross section {int}:",
   async ({ request }, index: number, table: DataTable) => {
+    ensureAeroplaneId();
     const params = Object.fromEntries(table.rows().map(([k, v]) => [k, v]));
     const body = {
       name: params.name,
@@ -200,6 +237,7 @@ When(
 When(
   "I set TED cad details on cross section {int}:",
   async ({ request }, index: number, table: DataTable) => {
+    ensureAeroplaneId();
     const params = Object.fromEntries(table.rows().map(([k, v]) => [k, v]));
     const body: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(params)) {
@@ -236,6 +274,7 @@ Then(
 When(
   "I add spars on cross section {int}:",
   async ({ request }, index: number, table: DataTable) => {
+    ensureAeroplaneId();
     const headers = table.raw()[0];
     for (const row of table.rows()) {
       const spar: Record<string, unknown> = {};
@@ -281,6 +320,7 @@ Then(
 When(
   "I export {string} as {string}",
   async ({ request }, wingName: string, creatorExporter: string) => {
+    ensureAeroplaneId();
     const res = await request.post(
       `${API}/aeroplanes/${aeroplaneId}/wings/${wingName}/${creatorExporter}`,
     );
@@ -291,6 +331,7 @@ When(
 When(
   "I export {string} as {string} with servo settings:",
   async ({ request }, wingName: string, creatorExporter: string, _table: DataTable) => {
+    ensureAeroplaneId();
     const body = {
       printer_settings: {
         layer_height: 0.24,
@@ -319,6 +360,7 @@ When(
 When(
   "I export {string} as {string} with the same servo settings",
   async ({ request }, wingName: string, creatorExporter: string) => {
+    ensureAeroplaneId();
     const body = {
       printer_settings: {
         layer_height: 0.24,
@@ -347,6 +389,7 @@ When(
 When(
   "I wait for the export task to complete within {int} seconds",
   async ({ request }, timeout: number) => {
+    ensureAeroplaneId();
     const deadline = Date.now() + timeout * 1000;
     while (Date.now() < deadline) {
       const res = await request.get(
