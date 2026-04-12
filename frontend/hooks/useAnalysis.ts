@@ -20,6 +20,23 @@ export interface AnalysisResult {
   [key: string]: unknown;
 }
 
+/**
+ * Extract CL/CD/alpha from the nested API response.
+ * API returns: { analysis: { coefficients: { CL, CD }, flight_condition: { alpha } } }
+ * We flatten to: { CL, CD, alpha }
+ */
+function extractResult(data: Record<string, unknown>): AnalysisResult {
+  const analysis = data.analysis as Record<string, unknown> | undefined;
+  const coefficients = analysis?.coefficients as Record<string, number[]> | undefined;
+  const flightCondition = analysis?.flight_condition as Record<string, number[]> | undefined;
+
+  return {
+    CL: coefficients?.CL ?? [],
+    CD: coefficients?.CD ?? [],
+    alpha: flightCondition?.alpha ?? [],
+  };
+}
+
 export function useAnalysis(aeroplaneId: string | null) {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -45,7 +62,7 @@ export function useAnalysis(aeroplaneId: string | null) {
           throw new Error(`Analysis failed: ${res.status} ${body}`);
         }
         const data = await res.json();
-        setResult(data);
+        setResult(extractResult(data));
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       } finally {

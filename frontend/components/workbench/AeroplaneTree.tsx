@@ -168,7 +168,9 @@ export function AeroplaneTree({
     );
     if (res.ok) {
       await mutateWing();
-      selectXsec(xsecCount);
+      // Select the new segment (second-to-last x_sec, since the new
+      // x_sec is the terminal and the segment before it is the new one)
+      selectXsec(xsecCount - 1);
     }
   }
 

@@ -120,7 +120,7 @@ Then("I see the construction workbench", async ({ page }) => {
 });
 
 Then("the header shows project {string}", async ({ page }, name: string) => {
-  await expect(page.getByText(name)).toBeVisible();
+  await expect(page.getByRole("banner").getByText(name)).toBeVisible();
 });
 
 // ── Stage 1a: Create wing ───────────────────────────────────────

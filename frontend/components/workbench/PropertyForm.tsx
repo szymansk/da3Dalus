@@ -6,6 +6,13 @@ import { useAeroplaneContext } from "./AeroplaneContext";
 import { useWing, type XSec } from "@/hooks/useWings";
 import { API_BASE } from "@/lib/fetcher";
 
+/** Parse a number input string, allowing empty/partial input during editing */
+function num(v: string, fallback = 0): number {
+  if (v === "" || v === "-" || v === ".") return fallback;
+  const n = parseFloat(v);
+  return isNaN(n) ? fallback : n;
+}
+
 // ── Types ───────────────────────────────────────────────────────
 
 type Mode = "wingconfig" | "asb";
@@ -336,13 +343,13 @@ export function PropertyForm() {
                 label="root_chord"
                 value={wc.root_chord}
                 suffix="mm"
-                onChange={(v) => setWc({ ...wc, root_chord: parseFloat(v) || 0 })}
+                onChange={(v) => setWc({ ...wc, root_chord: num(v) })}
               />
               <Field
                 label="tip_chord"
                 value={wc.tip_chord}
                 suffix="mm"
-                onChange={(v) => setWc({ ...wc, tip_chord: parseFloat(v) || 0 })}
+                onChange={(v) => setWc({ ...wc, tip_chord: num(v) })}
               />
             </div>
             {/* Row 3: length | sweep */}
@@ -351,13 +358,13 @@ export function PropertyForm() {
                 label="length"
                 value={wc.length}
                 suffix="mm"
-                onChange={(v) => setWc({ ...wc, length: parseFloat(v) || 0 })}
+                onChange={(v) => setWc({ ...wc, length: num(v) })}
               />
               <Field
                 label="sweep"
                 value={wc.sweep}
                 suffix="mm"
-                onChange={(v) => setWc({ ...wc, sweep: parseFloat(v) || 0 })}
+                onChange={(v) => setWc({ ...wc, sweep: num(v) })}
               />
             </div>
             {/* Row 4: dihedral | incidence */}
@@ -366,13 +373,13 @@ export function PropertyForm() {
                 label="dihedral"
                 value={wc.root_dihedral}
                 suffix="°"
-                onChange={(v) => setWc({ ...wc, root_dihedral: parseFloat(v) || 0 })}
+                onChange={(v) => setWc({ ...wc, root_dihedral: num(v) })}
               />
               <Field
                 label="incidence"
                 value={wc.root_incidence}
                 suffix="°"
-                onChange={(v) => setWc({ ...wc, root_incidence: parseFloat(v) || 0 })}
+                onChange={(v) => setWc({ ...wc, root_incidence: num(v) })}
               />
             </div>
             {/* Row 5: rotation_point | interpolation_pts */}
@@ -380,12 +387,12 @@ export function PropertyForm() {
               <Field
                 label="rotation_point"
                 value={wc.root_rotation_point}
-                onChange={(v) => setWc({ ...wc, root_rotation_point: parseFloat(v) || 0.25 })}
+                onChange={(v) => setWc({ ...wc, root_rotation_point: num(v, 0.25) })}
               />
               <Field
                 label="interpolation_pts"
                 value={wc.number_interpolation_points}
-                onChange={(v) => setWc({ ...wc, number_interpolation_points: parseInt(v) || 201 })}
+                onChange={(v) => setWc({ ...wc, number_interpolation_points: num(v, 201) })}
               />
             </div>
           </>
@@ -403,7 +410,7 @@ export function PropertyForm() {
                 label="chord"
                 value={asb.chord}
                 suffix="mm"
-                onChange={(v) => setAsb({ ...asb, chord: parseFloat(v) || 0 })}
+                onChange={(v) => setAsb({ ...asb, chord: num(v) })}
               />
             </div>
             {/* twist | x_sec_type */}
@@ -412,7 +419,7 @@ export function PropertyForm() {
                 label="twist"
                 value={asb.twist}
                 suffix="°"
-                onChange={(v) => setAsb({ ...asb, twist: parseFloat(v) || 0 })}
+                onChange={(v) => setAsb({ ...asb, twist: num(v) })}
               />
               <Field
                 label="x_sec_type"
@@ -430,7 +437,7 @@ export function PropertyForm() {
                   suffix="m"
                   onChange={(v) => {
                     const next: [number, number, number] = [...asb.xyz_le];
-                    next[i] = parseFloat(v) || 0;
+                    next[i] = num(v);
                     setAsb({ ...asb, xyz_le: next });
                   }}
                 />
