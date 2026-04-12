@@ -24,9 +24,11 @@ export function useStlExport(aeroplaneId: string | null, wingName: string | null
     setState({ stlUrl: null, isExporting: true, progress: "Starting export…", error: null });
 
     try {
+      console.log("[useStlExport] Starting export for", wingName);
       // 1. Trigger the STL export task
+      const encodedWing = encodeURIComponent(wingName);
       const postRes = await fetch(
-        `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/wing_loft/stl`,
+        `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${encodedWing}/wing_loft/stl`,
         { method: "POST" },
       );
       if (!postRes.ok) {
@@ -44,7 +46,7 @@ export function useStlExport(aeroplaneId: string | null, wingName: string | null
         if (statusData.status === "SUCCESS") {
           // 3. Get the ZIP URL
           const zipRes = await fetch(
-            `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/wing_loft/stl/zip`,
+            `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${encodedWing}/wing_loft/stl/zip`,
           );
           if (!zipRes.ok) throw new Error(`ZIP metadata failed: ${zipRes.status}`);
           const zipMeta = await zipRes.json();
@@ -87,12 +89,13 @@ export function useStlExport(aeroplaneId: string | null, wingName: string | null
 
       throw new Error("Export timed out after 2 minutes");
     } catch (err) {
-      setState((s) => ({
-        ...s,
+      console.error("[useStlExport] Error:", err);
+      setState({
+        stlUrl: null,
         isExporting: false,
         progress: "",
         error: err instanceof Error ? err.message : String(err),
-      }));
+      });
     }
   }, [aeroplaneId, wingName]);
 
