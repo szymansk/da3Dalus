@@ -3,6 +3,9 @@ Tessellation Service — converts CadQuery geometry to three-cad-viewer JSON.
 
 Uses the same ocp_tessellate pipeline that powers the OCP CAD Viewer
 VS Code extension, ensuring identical rendering quality.
+
+The result is a plain JSON object (no base64 buffers) that can be
+sent directly to the three-cad-viewer Viewer.render() method.
 """
 
 import logging
@@ -21,6 +24,23 @@ from app.services.cad_service import (
 logger = logging.getLogger(__name__)
 
 
+def _numpy_to_list(obj):
+    """Recursively convert NumPy arrays to Python lists for JSON serialization."""
+    import numpy as np
+
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    if isinstance(obj, np.integer):
+        return int(obj)
+    if isinstance(obj, np.floating):
+        return float(obj)
+    if isinstance(obj, dict):
+        return {k: _numpy_to_list(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_numpy_to_list(item) for item in obj]
+    return obj
+
+
 def _run_tessellation_worker(
     aeroplane_id: str,
     wing_schema_pickle: bytes,
@@ -30,7 +50,8 @@ def _run_tessellation_worker(
     """Worker function for tessellation in a subprocess.
 
     Builds the wing geometry from the ASB schema, then tessellates
-    it using ocp_tessellate — the same pipeline as OCP CAD Viewer.
+    it using ocp_tessellate. Returns plain JSON (no base64 buffers)
+    compatible with three-cad-viewer's Viewer.render() method.
     """
     import logging as _logging
     _logging.basicConfig(
@@ -59,19 +80,36 @@ def _run_tessellation_worker(
 
         _logger.info("Wing geometry created, starting tessellation")
 
-        # Tessellate using ocp_vscode's _convert function
-        from ocp_vscode.show import _convert
-        result, _mapping = _convert(
+        # Use ocp_vscode's _tessellate to get raw Python objects
+        # (not numpy_to_buffer_json which produces base64 strings)
+        from ocp_vscode.show import _tessellate
+        instances, shapes, config, count_shapes, _mapping = _tessellate(
             shape,
             names=[wing_name],
             deviation=0.1,
             angular_tolerance=0.2,
             default_color="#FF8400",
             theme="dark",
-            control="orbit",
         )
 
-        _logger.info("Tessellation complete for %s / %s", aeroplane_id, wing_name)
+        _logger.info("Tessellation complete (%d shapes), serializing", count_shapes)
+
+        # Convert NumPy arrays to plain Python lists for JSON serialization
+        import numpy as np
+        shapes_json = _numpy_to_list(shapes)
+        instances_json = _numpy_to_list(instances)
+
+        result = {
+            "data": {
+                "instances": instances_json,
+                "shapes": shapes_json,
+            },
+            "type": "data",
+            "config": _numpy_to_list(config),
+            "count": int(count_shapes),
+        }
+
+        _logger.info("Serialization complete for %s / %s", aeroplane_id, wing_name)
 
         return {
             "status": "SUCCESS",

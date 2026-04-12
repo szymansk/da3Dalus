@@ -1,135 +1,95 @@
 "use client";
-// @ts-nocheck — three.js types conflict with Next.js globals
 
 import { useEffect, useRef, useState } from "react";
-import * as THREE from "three";
 
 interface CadViewerProps {
-  /** URL to an STL file to render */
-  stlUrl: string | null;
+  /** Tessellation data in three-cad-viewer format: {data:{instances,shapes}, config, count} */
+  data: Record<string, unknown> | null;
 }
 
 /**
- * Renders an STL file using three.js.
- * MVP viewer — will be upgraded to three-cad-viewer later.
+ * Wraps the three-cad-viewer library to render tessellated CAD geometry.
+ * Uses the same viewer as the VS Code OCP CAD Viewer extension.
  */
-export function CadViewer({ stlUrl }: CadViewerProps) {
+export function CadViewer({ data }: CadViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const viewerRef = useRef<unknown>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!containerRef.current || !stlUrl) return;
-    const url = stlUrl; // narrow type for closure
+    if (!containerRef.current || !data) return;
     let disposed = false;
 
-    async function loadAndRender() {
-      setLoading(true);
-      setError(null);
-
+    async function init() {
       try {
-        const { STLLoader } = await import("three/examples/jsm/loaders/STLLoader.js");
-        const { OrbitControls } = await import("three/examples/jsm/controls/OrbitControls.js");
+        setLoading(true);
+        setError(null);
 
+        const tcv = await import("three-cad-viewer");
         if (disposed || !containerRef.current) return;
 
         const container = containerRef.current;
-        const w = container.clientWidth;
-        const h = container.clientHeight;
 
-        // Cleanup previous renderer
-        if (rendererRef.current) {
-          rendererRef.current.dispose();
-          container.innerHTML = "";
+        // Cleanup previous viewer
+        if (viewerRef.current) {
+          try {
+            (viewerRef.current as { dispose?: () => void }).dispose?.();
+          } catch { /* ignore */ }
         }
+        container.innerHTML = "";
 
-        // Scene
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x17171a); // --card-muted
+        const w = container.clientWidth || 800;
+        const h = container.clientHeight || 500;
 
-        // Camera
-        const camera = new THREE.PerspectiveCamera(45, w / h, 0.01, 1000);
+        // Create Display (layout container)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const display = new tcv.Display(container, {
+          cadWidth: w,
+          height: h,
+          treeWidth: 0,
+          theme: "dark",
+          glass: false,
+          tools: false,
+        } as any);
 
-        // Renderer
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(w, h);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        container.appendChild(renderer.domElement);
-        rendererRef.current = renderer;
-
-        // Lights
-        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(1, 2, 3);
-        scene.add(dirLight);
-
-        // Controls
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-
-        // Load STL
-        const loader = new STLLoader();
-        const response = await globalThis.fetch(url);
-        if (!response.ok) throw new Error(`STL fetch failed: ${response.status}`);
-        const buffer = await response.arrayBuffer();
-        const geometry = loader.parse(buffer);
-
-        if (disposed) return;
-
-        // Material
-        const material = new THREE.MeshStandardMaterial({
-          color: 0xff8400, // --primary
-          metalness: 0.1,
-          roughness: 0.6,
-        });
-        const mesh = new THREE.Mesh(geometry, material);
-        scene.add(mesh);
-
-        // Auto-fit camera
-        geometry.computeBoundingBox();
-        const box = geometry.boundingBox!;
-        const center = new THREE.Vector3();
-        box.getCenter(center);
-        const size = new THREE.Vector3();
-        box.getSize(size);
-        const maxDim = Math.max(size.x, size.y, size.z);
-
-        camera.position.set(
-          center.x + maxDim,
-          center.y + maxDim * 0.7,
-          center.z + maxDim,
+        // Create Viewer (3D renderer)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const viewer = new (tcv as any).Viewer(
+          display,
+          { target: [0, 0, 0], up: "Z" },
+          () => {},
         );
-        camera.lookAt(center);
-        controls.target.copy(center);
-        controls.update();
+        viewerRef.current = viewer;
 
-        // Render loop
-        function animate() {
-          if (disposed) return;
-          requestAnimationFrame(animate);
-          controls.update();
-          renderer.render(scene, camera);
-        }
-        animate();
-
-        // Resize handler
-        const onResize = () => {
-          if (!container || disposed) return;
-          const nw = container.clientWidth;
-          const nh = container.clientHeight;
-          camera.aspect = nw / nh;
-          camera.updateProjectionMatrix();
-          renderer.setSize(nw, nh);
+        // Extract shapes from the tessellation data
+        const tessData = data as {
+          data?: { shapes?: unknown; instances?: unknown };
+          config?: Record<string, unknown>;
         };
-        window.addEventListener("resize", onResize);
+
+        const shapes = tessData?.data?.shapes;
+        if (!shapes) {
+          throw new Error("No shape data in tessellation result");
+        }
+
+        // Render the shapes
+        viewer.render(
+          shapes,
+          {
+            ambientIntensity: 1.0,
+            directIntensity: 1.1,
+            metalness: 0.3,
+            roughness: 0.65,
+            edgeColor: 0x707070,
+            defaultOpacity: 1.0,
+          },
+          {},
+        );
 
         setLoading(false);
-
-        return () => {
-          window.removeEventListener("resize", onResize);
-        };
       } catch (err) {
+        console.error("[CadViewer] Error:", err);
         if (!disposed) {
           setError(err instanceof Error ? err.message : String(err));
           setLoading(false);
@@ -137,32 +97,30 @@ export function CadViewer({ stlUrl }: CadViewerProps) {
       }
     }
 
-    loadAndRender();
+    init();
 
     return () => {
       disposed = true;
-      if (rendererRef.current) {
-        rendererRef.current.dispose();
-        rendererRef.current = null;
+      if (viewerRef.current) {
+        try {
+          (viewerRef.current as { dispose?: () => void }).dispose?.();
+        } catch { /* ignore */ }
+        viewerRef.current = null;
       }
       if (containerRef.current) {
         containerRef.current.innerHTML = "";
       }
     };
-  }, [stlUrl]);
-
-  if (!stlUrl) {
-    return null;
-  }
+  }, [data]);
 
   if (error) {
     return (
-      <div className="flex h-full items-center justify-center">
+      <div className="flex h-full items-center justify-center p-6">
         <div className="flex flex-col items-center gap-2">
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-destructive">
             Viewer Error
           </span>
-          <span className="text-[12px] text-muted-foreground">{error}</span>
+          <span className="max-w-md text-center text-[12px] text-muted-foreground">{error}</span>
         </div>
       </div>
     );
@@ -173,7 +131,7 @@ export function CadViewer({ stlUrl }: CadViewerProps) {
       {loading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-card-muted/80">
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
-            Loading 3D model…
+            Initializing 3D viewer…
           </span>
         </div>
       )}

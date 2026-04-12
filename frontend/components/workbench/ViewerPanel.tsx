@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Box, Loader } from "lucide-react";
 import { useAeroplaneContext } from "./AeroplaneContext";
 import { CadViewer } from "./CadViewer";
-import { useStlExport } from "@/hooks/useStlExport";
+import { useTessellation } from "@/hooks/useTessellation";
 
 const STAGES = ["Bare Aero", "+TEDs", "+Spars", "Final Print"] as const;
 type Stage = (typeof STAGES)[number];
@@ -12,10 +12,8 @@ type Stage = (typeof STAGES)[number];
 export function ViewerPanel() {
   const [activeStage, setActiveStage] = useState<Stage>("Bare Aero");
   const { aeroplaneId, selectedWing } = useAeroplaneContext();
-  const { stlUrl, isExporting, progress, error, triggerExport } = useStlExport(
-    aeroplaneId,
-    selectedWing,
-  );
+  const { data, isTessellating, progress, error, triggerTessellation } =
+    useTessellation(aeroplaneId, selectedWing);
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden rounded-[--radius-m] border border-border">
@@ -44,8 +42,8 @@ export function ViewerPanel() {
 
       {/* Viewer Body */}
       <div className="flex flex-1 flex-col bg-card-muted">
-        {stlUrl ? (
-          <CadViewer stlUrl={stlUrl} />
+        {data ? (
+          <CadViewer data={data} />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6">
             <Box size={72} className="text-subtle-foreground" />
@@ -56,22 +54,22 @@ export function ViewerPanel() {
             </span>
             {selectedWing && (
               <button
-                onClick={triggerExport}
-                disabled={isExporting}
+                onClick={triggerTessellation}
+                disabled={isTessellating}
                 className="rounded-[--radius-pill] bg-primary px-4 py-2.5 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
               >
-                {isExporting ? "Exporting…" : "Preview 3D"}
+                {isTessellating ? "Tessellating…" : "Preview 3D"}
               </button>
             )}
             {error && (
-              <span className="text-[12px] text-destructive">{error}</span>
+              <span className="max-w-md text-center text-[12px] text-destructive">{error}</span>
             )}
           </div>
         )}
       </div>
 
       {/* Task Toast */}
-      {isExporting && (
+      {isTessellating && (
         <div className="flex items-center gap-3 border-t border-border bg-card px-4 py-3">
           <Loader size={14} className="animate-spin text-primary" />
           <span className="font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground">
