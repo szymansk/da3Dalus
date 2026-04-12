@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Box, Loader } from "lucide-react";
+import { Box, Loader, RefreshCw } from "lucide-react";
 import { useAeroplaneContext } from "./AeroplaneContext";
 import { CadViewer } from "./CadViewer";
 import { useTessellation } from "@/hooks/useTessellation";
@@ -22,6 +22,16 @@ export function ViewerPanel() {
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
           CAD Viewer
         </span>
+        {data && !isTessellating && (
+          <button
+            onClick={triggerTessellation}
+            className="flex items-center gap-1 rounded-[--radius-s] border border-border bg-card-muted px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
+            title="Re-tessellate"
+          >
+            <RefreshCw size={11} />
+            Refresh
+          </button>
+        )}
         <div className="flex-1" />
         <div className="flex items-center gap-1">
           {STAGES.map((stage) => (

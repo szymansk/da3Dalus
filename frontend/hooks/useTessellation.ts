@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { API_BASE } from "@/lib/fetcher";
 
 interface TessellationState {
@@ -10,6 +10,20 @@ interface TessellationState {
   error: string | null;
 }
 
+interface CacheEntry {
+  aeroplaneId: string;
+  wingName: string;
+  updatedAt: string;
+  data: Record<string, unknown>;
+}
+
+/** In-memory cache keyed by aeroplaneId+wingName+updatedAt */
+const tessellationCache = new Map<string, CacheEntry>();
+
+function cacheKey(aeroplaneId: string, wingName: string): string {
+  return `${aeroplaneId}/${wingName}`;
+}
+
 export function useTessellation(aeroplaneId: string | null, wingName: string | null) {
   const [state, setState] = useState<TessellationState>({
     data: null,
@@ -17,6 +31,43 @@ export function useTessellation(aeroplaneId: string | null, wingName: string | n
     progress: "",
     error: null,
   });
+  const lastKeyRef = useRef<string>("");
+
+  // Auto-load from cache when aeroplaneId/wingName change
+  useEffect(() => {
+    if (!aeroplaneId || !wingName) {
+      setState({ data: null, isTessellating: false, progress: "", error: null });
+      return;
+    }
+
+    const key = cacheKey(aeroplaneId, wingName);
+    if (key === lastKeyRef.current && state.data) return; // same wing, already showing
+    lastKeyRef.current = key;
+
+    const cached = tessellationCache.get(key);
+    if (cached) {
+      // Check if still valid by comparing updatedAt with the API
+      setState({ data: cached.data, isTessellating: false, progress: "", error: null });
+
+      // Validate in background — if aeroplane updated_at changed, invalidate
+      fetch(`${API_BASE}/aeroplanes/${aeroplaneId}`)
+        .then((r) => r.json())
+        .then((aeroplane) => {
+          if (aeroplane.updated_at !== cached.updatedAt) {
+            // Geometry changed — clear cache, user needs to re-preview
+            tessellationCache.delete(key);
+            setState((s) =>
+              s.data === cached.data
+                ? { data: null, isTessellating: false, progress: "", error: null }
+                : s,
+            );
+          }
+        })
+        .catch(() => {});
+    } else {
+      setState({ data: null, isTessellating: false, progress: "", error: null });
+    }
+  }, [aeroplaneId, wingName]);
 
   const triggerTessellation = useCallback(async () => {
     if (!aeroplaneId || !wingName) return;
@@ -26,7 +77,20 @@ export function useTessellation(aeroplaneId: string | null, wingName: string | n
     try {
       const encodedWing = encodeURIComponent(wingName);
 
-      // 1. Trigger the tessellation task
+      // Get current updated_at for cache validation
+      const aeroplaneRes = await fetch(`${API_BASE}/aeroplanes/${aeroplaneId}`);
+      const aeroplane = aeroplaneRes.ok ? await aeroplaneRes.json() : null;
+      const updatedAt = aeroplane?.updated_at ?? "";
+
+      // Check cache with current updatedAt
+      const key = cacheKey(aeroplaneId, wingName);
+      const cached = tessellationCache.get(key);
+      if (cached && cached.updatedAt === updatedAt) {
+        setState({ data: cached.data, isTessellating: false, progress: "", error: null });
+        return;
+      }
+
+      // Trigger tessellation
       const postRes = await fetch(
         `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${encodedWing}/tessellation`,
         { method: "POST" },
@@ -36,7 +100,7 @@ export function useTessellation(aeroplaneId: string | null, wingName: string | n
         throw new Error(`Tessellation trigger failed: ${postRes.status} ${body}`);
       }
 
-      // 2. Poll for completion
+      // Poll for completion
       setState((s) => ({ ...s, progress: "Tessellating geometry…" }));
       const deadline = Date.now() + 120_000;
       while (Date.now() < deadline) {
@@ -45,11 +109,18 @@ export function useTessellation(aeroplaneId: string | null, wingName: string | n
         const statusData = await statusRes.json();
 
         if (statusData.status === "SUCCESS") {
-          // The result contains the three-cad-viewer JSON directly
           const tessResult = statusData.result;
           if (!tessResult || !tessResult.data) {
             throw new Error("Tessellation result has no data");
           }
+
+          // Store in cache
+          tessellationCache.set(key, {
+            aeroplaneId,
+            wingName,
+            updatedAt,
+            data: tessResult,
+          });
 
           setState({ data: tessResult, isTessellating: false, progress: "", error: null });
           return;
