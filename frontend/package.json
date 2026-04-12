@@ -13,11 +13,14 @@
     "test:e2e:headed": "npx -p playwright-bdd bddgen && npx playwright test --headed --grep-invert @slow"
   },
   "dependencies": {
+    "@types/three": "^0.183.1",
     "lucide-react": "^1.8.0",
     "next": "16.2.1-canary.33",
     "react": "19.2.5",
     "react-dom": "19.2.5",
-    "swr": "^2.4.1"
+    "swr": "^2.4.1",
+    "three": "^0.183.2",
+    "three-cad-viewer": "^4.3.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
