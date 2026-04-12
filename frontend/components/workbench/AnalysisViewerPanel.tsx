@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Wind, SlidersHorizontal, Activity } from "lucide-react";
+import type { AnalysisResult } from "@/hooks/useAnalysis";
 
 const TABS = ["Polar", "Three-View", "Streamlines", "Diagrams"] as const;
 type Tab = (typeof TABS)[number];
@@ -10,8 +11,69 @@ const BAR_HEIGHTS = [
   14, 20, 30, 42, 56, 72, 88, 104, 120, 138, 156, 168, 176, 180, 182, 182,
 ];
 
-export function AnalysisViewerPanel() {
+const MAX_BAR_HEIGHT = 180;
+
+interface Props {
+  result: AnalysisResult | null;
+}
+
+export function AnalysisViewerPanel({ result }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("Polar");
+
+  const chartData = useMemo(() => {
+    if (!result || !result.CL || result.CL.length === 0) return null;
+
+    const { CL, alpha } = result;
+    const minCL = Math.min(...CL);
+    const maxCL = Math.max(...CL);
+    const range = maxCL - minCL;
+
+    const barHeights = CL.map((cl) =>
+      range > 0
+        ? ((cl - minCL) / range) * MAX_BAR_HEIGHT
+        : MAX_BAR_HEIGHT / 2
+    );
+
+    // Find stall index: last index where CL starts to drop
+    let stallIndex = -1;
+    for (let i = 1; i < CL.length; i++) {
+      if (CL[i] < CL[i - 1]) {
+        stallIndex = i;
+        break;
+      }
+    }
+
+    // CL_max is at the index just before stall (or the peak)
+    const clMaxIndex = stallIndex > 0 ? stallIndex - 1 : CL.indexOf(maxCL);
+    const clMax = CL[clMaxIndex];
+    const alphaStall = alpha[clMaxIndex];
+
+    // X-axis labels: first, quarter, middle, three-quarter, last
+    const first = alpha[0];
+    const last = alpha[alpha.length - 1];
+    const mid = alpha[Math.floor(alpha.length / 2)];
+    const q1 = alpha[Math.floor(alpha.length / 4)];
+    const q3 = alpha[Math.floor((3 * alpha.length) / 4)];
+
+    return {
+      barHeights,
+      stallIndex,
+      clMax,
+      alphaStall,
+      xLabels: [first, q1, mid, q3, last],
+    };
+  }, [result]);
+
+  const bars = chartData ? chartData.barHeights : BAR_HEIGHTS;
+  const stallIdx = chartData ? chartData.stallIndex : -1;
+
+  const titleAnnotation = chartData
+    ? `\u03B1_stall \u2248 ${chartData.alphaStall.toFixed(0)}\u00B0 \u00B7 C_L,max \u2248 ${chartData.clMax.toFixed(2)}`
+    : "\u03B1_stall \u2248 12\u00B0 \u00B7 C_L,max \u2248 1.1";
+
+  const xLabels = chartData
+    ? chartData.xLabels.map((v) => `${v.toFixed(0)}\u00B0`)
+    : ["-5\u00B0", "0\u00B0", "5\u00B0", "10\u00B0", "15\u00B0"];
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden rounded-[--radius-m] border border-border">
@@ -47,40 +109,35 @@ export function AnalysisViewerPanel() {
           </span>
           <div className="flex-1" />
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
-            &alpha;_stall &asymp; 12&deg; &middot; C_L,max &asymp; 1.1
+            {titleAnnotation}
           </span>
         </div>
 
         {/* Chart area */}
         <div className="flex flex-1 items-end gap-1.5 rounded-[--radius-s] border border-border bg-card p-4">
-          {BAR_HEIGHTS.map((h, i) => (
+          {bars.map((h, i) => (
             <div
               key={i}
-              className="flex-1 rounded-sm bg-primary"
+              className={`flex-1 rounded-sm ${
+                stallIdx >= 0 && i >= stallIdx ? "bg-destructive" : "bg-primary"
+              }`}
               style={{ height: `${h}px` }}
             />
           ))}
-          {/* Stall line marker */}
-          <div className="h-full w-0.5 bg-destructive" />
+          {/* Stall line marker (only when there is no dynamic stall detection) */}
+          {stallIdx < 0 && <div className="h-full w-0.5 bg-destructive" />}
         </div>
 
         {/* X-axis labels */}
         <div className="flex justify-between pt-2">
-          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
-            -5&deg;
-          </span>
-          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
-            0&deg;
-          </span>
-          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
-            5&deg;
-          </span>
-          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
-            10&deg;
-          </span>
-          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
-            15&deg;
-          </span>
+          {xLabels.map((label, i) => (
+            <span
+              key={i}
+              className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground"
+            >
+              {label}
+            </span>
+          ))}
         </div>
 
         {/* X-axis title */}
