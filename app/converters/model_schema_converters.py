@@ -42,18 +42,34 @@ def _build_asb_airfoil(airfoil_ref) -> asb.Airfoil:
 
 
 def _normalize_airfoil_reference_for_schema(airfoil_ref: asb.Airfoil | str) -> str:
-    """Return a stable airfoil reference string for API/database schemas."""
+    """Return a stable airfoil reference string for API/database schemas.
+
+    Converts absolute paths, bare names ("ag10"), and names with extension
+    ("ag10.dat") into portable relative paths like "./components/airfoils/ag10.dat"
+    so that worker subprocesses with a different CWD can resolve them.
+    """
     raw_reference = str(getattr(airfoil_ref, "name", airfoil_ref) or "")
     if not raw_reference:
         return raw_reference
 
-    # Convert absolute paths inside ".../components/airfoils/..." back to a portable relative path.
+    # Already a portable relative path -- keep as-is.
     normalized = raw_reference.replace("\\", "/")
+    if normalized.startswith("./components/airfoils/"):
+        return raw_reference
+
+    # Convert absolute paths inside ".../components/airfoils/..." back to a portable relative path.
     parts = [part for part in normalized.split("/") if part]
     for index in range(len(parts) - 1):
         if parts[index].lower() == "components" and parts[index + 1].lower() == "airfoils":
             relative = "/".join(parts[index:])
             return f"./{relative}"
+
+    # Bare name or name.dat -- try to resolve via case-insensitive lookup.
+    from app.services.create_wing_configuration import _find_airfoil_case_insensitive
+
+    found = _find_airfoil_case_insensitive(raw_reference)
+    if found:
+        return f"./components/airfoils/{found.name}"
 
     return raw_reference
 
