@@ -37,8 +37,8 @@ export function usePreviewState(aeroplaneId: string | null) {
       .map((p) => p.data!);
   }, [previews]);
 
-  const isAnyLoading = Object.values(previews).some((p) => p.loading);
-  const loadingWing = Object.entries(previews).find(([, p]) => p.loading)?.[0] ?? null;
+  const isAnyLoading = useMemo(() => Object.values(previews).some((p) => p.loading), [previews]);
+  const loadingWing = useMemo(() => Object.entries(previews).find(([, p]) => p.loading)?.[0] ?? null, [previews]);
 
   /** Tessellate a single wing and store the result. */
   const tessellateWing = useCallback(
@@ -101,77 +101,79 @@ export function usePreviewState(aeroplaneId: string | null) {
     [aeroplaneId],
   );
 
-  // Fix #1: Stale closure — decide inside setPreviews updater, trigger side-effect via flag
+  /** Toggle preview on/off. Reads current state before updating to avoid
+   *  stale-closure issues with React 19 automatic batching. */
   const toggleWing = useCallback(
     (wingName: string) => {
-      let needsTessellation = false;
-      setPreviews((prev) => {
-        const existing = prev[wingName];
-        if (existing?.visible) {
-          return { ...prev, [wingName]: { ...existing, visible: false } };
-        }
-        if (existing?.data) {
-          return { ...prev, [wingName]: { ...existing, visible: true } };
-        }
-        needsTessellation = true;
-        return {
+      const existing = previews[wingName];
+      if (existing?.visible) {
+        setPreviews((prev) => ({ ...prev, [wingName]: { ...prev[wingName], visible: false } }));
+      } else if (existing?.data) {
+        setPreviews((prev) => ({ ...prev, [wingName]: { ...prev[wingName], visible: true } }));
+      } else {
+        setPreviews((prev) => ({
           ...prev,
           [wingName]: { visible: true, data: null, loading: false, error: null },
-        };
-      });
-      if (needsTessellation) {
+        }));
         tessellateWing(wingName);
       }
     },
-    [tessellateWing],
+    [previews, tessellateWing],
   );
 
   /** Toggle all wings at once — one atomic state update, then tessellate uncached. */
   const toggleAllWings = useCallback(
     (wingNames: string[]) => {
+      const anyVisible = wingNames.some((wn) => previews[wn]?.visible);
       const toTessellate: string[] = [];
-      setPreviews((prev) => {
-        const anyVisible = wingNames.some((wn) => prev[wn]?.visible);
-        const next = { ...prev };
+
+      if (anyVisible) {
+        // Hide all
+        setPreviews((prev) => {
+          const next = { ...prev };
+          for (const wn of wingNames) {
+            if (next[wn]) next[wn] = { ...next[wn], visible: false };
+          }
+          return next;
+        });
+      } else {
+        // Show all — determine which need tessellation before updating state
         for (const wn of wingNames) {
-          const existing = next[wn];
-          if (anyVisible) {
-            // Hide all
-            if (existing) next[wn] = { ...existing, visible: false };
-          } else {
-            // Show all
-            if (existing?.data) {
-              next[wn] = { ...existing, visible: true };
+          if (!previews[wn]?.data) toTessellate.push(wn);
+        }
+        setPreviews((prev) => {
+          const next = { ...prev };
+          for (const wn of wingNames) {
+            if (prev[wn]?.data) {
+              next[wn] = { ...prev[wn], visible: true };
             } else {
-              toTessellate.push(wn);
               next[wn] = { visible: true, data: null, loading: false, error: null };
             }
           }
+          return next;
+        });
+        for (const wn of toTessellate) {
+          tessellateWing(wn);
         }
-        return next;
-      });
-      for (const wn of toTessellate) {
-        tessellateWing(wn);
       }
     },
-    [tessellateWing],
+    [previews, tessellateWing],
   );
 
-  // Fix #2: Stale closure — decide inside setPreviews updater
+  /** Invalidate cache for a wing. If visible, re-tessellate. */
   const invalidateWing = useCallback(
     (wingName: string) => {
-      let wasVisible = false;
+      const wasVisible = previews[wingName]?.visible ?? false;
       setPreviews((prev) => {
         const existing = prev[wingName];
         if (!existing) return prev;
-        wasVisible = existing.visible;
         return { ...prev, [wingName]: { ...existing, data: null } };
       });
       if (wasVisible) {
         tessellateWing(wingName);
       }
     },
-    [tessellateWing],
+    [previews, tessellateWing],
   );
 
   const isWingVisible = useCallback(

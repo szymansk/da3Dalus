@@ -285,7 +285,7 @@ async def get_aeroplane_task_status(
             task_key = f"{aeroplane_id}:{task_type}"
         else:
             task_key = aeroplane_id
-        logger.info(f"Getting task status for: {task_key}")
+        logger.info("Getting task status for: %s", task_key)
         task_result = cad_service.get_task_result(task_key)
 
         message: str | None = None
@@ -324,7 +324,7 @@ async def download_aeroplane_zip(
 ) -> ZipAssetResponse:
     """Return the static URL for the completed export zip file."""
     try:
-        logger.info(f"Download request for aeroplane_id: {aeroplane_id}")
+        logger.info("Download request for aeroplane_id: %s", aeroplane_id)
 
         file_path = cad_service.get_export_file_path(aeroplane_id)
         static_file_path = _ensure_file_under_tmp(file_path, aeroplane_id)
