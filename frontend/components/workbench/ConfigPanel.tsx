@@ -17,14 +17,18 @@ export function ConfigPanel({ aeroplaneId }: ConfigPanelProps) {
     aeroplanes.find((a) => a.id === aeroplaneId)?.name ?? "Aeroplane";
 
   return (
-    <aside className="flex w-[556px] shrink-0 flex-col gap-4 overflow-y-auto p-4">
+    <aside className="flex w-[556px] shrink-0 flex-col gap-4 p-4">
       <ActionRow aeroplaneId={aeroplaneId} onWingCreated={() => mutateWings()} />
-      <AeroplaneTree
-        aeroplaneId={aeroplaneId}
-        wingNames={wingNames}
-        aeroplaneName={aeroplaneName}
-      />
-      <PropertyForm />
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <AeroplaneTree
+          aeroplaneId={aeroplaneId}
+          wingNames={wingNames}
+          aeroplaneName={aeroplaneName}
+        />
+      </div>
+      <div className="shrink-0">
+        <PropertyForm />
+      </div>
     </aside>
   );
 }
