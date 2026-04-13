@@ -11,7 +11,6 @@ from app.api.v2.endpoints.aeroanalysis import (
     analyze_airplane_post,
     analyze_airplane_simple_sweep,
     analyze_wing_post,
-    calculate_streamlines,
     get_aeroplane_three_view_url as get_aeroplane_three_view,
     get_streamlines_three_view_url as get_streamlines_three_view,
 )
@@ -100,36 +99,6 @@ class TestAeroanalysis(unittest.TestCase):
             self.test_plane_id,
             self.test_operating_point,
             AnalysisToolUrlType.VORTEX_LATTICE,
-        )
-
-    def test_calculate_streamlines_success(self):
-        mock_db = MagicMock()
-        mock_request = MagicMock(spec=Request)
-        mock_request.base_url = "http://example.com/"
-        mock_settings = MagicMock()
-        mock_settings.base_url = "http://example.com"
-
-        with patch(
-            "app.api.v2.endpoints.aeroanalysis.analysis_service.calculate_streamlines_html",
-            new=AsyncMock(return_value="http://example.com/static/foo.html"),
-        ) as mock_calc:
-            result = asyncio.run(
-                calculate_streamlines(
-                    aeroplane_id=self.test_plane_id,
-                    operating_point=self.test_operating_point,
-                    db=mock_db,
-                    request=mock_request,
-                    settings=mock_settings,
-                )
-            )
-
-        self.assertIsInstance(result, StaticUrlResponse)
-        self.assertEqual(result.url, "http://example.com/static/foo.html")
-        mock_calc.assert_awaited_once_with(
-            mock_db,
-            self.test_plane_id,
-            self.test_operating_point,
-            "http://example.com",
         )
 
     def test_analyze_airplane_alpha_sweep_success(self):

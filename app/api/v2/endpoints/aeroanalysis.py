@@ -107,35 +107,6 @@ async def analyze_airplane_post(
                             detail=f"Unexpected error: {exc}") from exc
 
 
-@router.post("/aeroplanes/{aeroplane_id}/operating_point/vortex_lattice/streamlines/html_view",
-             tags=["analysis"],
-             response_model=StaticUrlResponse,
-             operation_id="get_streamlines_as_html")
-async def calculate_streamlines(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    operating_point: OperatingPointSchema = Body(..., description="The operating point of the analysis"),
-    db: Session = Depends(get_db),
-    request: Request = None,
-    settings: Settings = Depends(get_settings)
-) -> StaticUrlResponse:
-    """
-    Calculates streamlines for an airplane using the Vortex Lattice Method (VLM).
-    Returns the full URL to the served HTML file.
-    """
-    base_url = _resolve_base_url(request, settings)
-
-    try:
-        full_url = await analysis_service.calculate_streamlines_html(
-            db, aeroplane_id, operating_point, base_url
-        )
-        return StaticUrlResponse(url=full_url)
-    except ServiceException as exc:
-        _raise_http_from_domain(exc)
-    except Exception as exc:  # pragma: no cover - defensive fallback
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Unexpected error: {exc}") from exc
-
-
 @router.post("/aeroplanes/{aeroplane_id}/streamlines",
              tags=["analysis"],
              operation_id="get_streamlines_json")
@@ -225,7 +196,7 @@ async def analyze_airplane_simple_sweep(
 # Duplicate three_view endpoints were removed in favour of the .../url
 # variants below. The raw-bytes POST and GET forms were redundant — the
 # .../url forms match the convention used by alpha_sweep/diagram and
-# streamlines/html_view and are what clients should call.
+# streamlines/three_view/url and are what clients should call.
 
 
 @router.get("/aeroplanes/{aeroplane_id}/three_view/url",

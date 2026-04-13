@@ -1058,32 +1058,6 @@ async def analyze_airplane_at_operating_point_tool(
 
 
 @mcp_tool(
-    name="get_streamlines_as_html",
-    description="Generate VLM streamlines as HTML resource URI and public URL.",
-)
-async def get_streamlines_as_html_tool(
-    aeroplane_id: UUID4,
-    operating_point: OperatingPointSchema,
-    ctx: Context = None,
-) -> Any:
-    payload = await _call_endpoint(
-        aeroanalysis.calculate_streamlines,
-        aeroplane_id=aeroplane_id,
-        operating_point=operating_point,
-        request=None,
-        settings=get_settings(),
-    )
-    html_path = resolve_tmp_path_from_known_output(payload)
-    entry = register_file_asset(
-        html_path,
-        mime_type="text/html",
-        kind="data",
-        base_url=resolve_public_base_url(ctx),
-    )
-    return _asset_payload(entry)
-
-
-@mcp_tool(
     name="analyze_alpha_sweep",
     description="Run an angle-of-attack sweep analysis for one aeroplane.",
 )
@@ -1131,32 +1105,6 @@ async def analyze_parameter_sweep_tool(aeroplane_id: UUID4, sweep_request: Simpl
         aeroplane_id=aeroplane_id,
         sweep_request=sweep_request,
     )
-
-
-@mcp_tool(
-    name="get_streamlines_three_view",
-    description="Generate a streamlines-based three-view image as resource URI and public URL.",
-)
-async def get_streamlines_three_view_tool(
-    aeroplane_id: UUID4,
-    operating_point: OperatingPointSchema,
-    ctx: Context = None,
-) -> Any:
-    payload = await _call_endpoint(
-        aeroanalysis.get_streamlines_three_view_url,
-        aeroplane_id=aeroplane_id,
-        operating_point=operating_point,
-        request=None,
-        settings=get_settings(),
-    )
-    image_path = resolve_tmp_path_from_known_output(payload)
-    entry = register_file_asset(
-        image_path,
-        mime_type=payload.get("mime_type", "image/png") if isinstance(payload, dict) else "image/png",
-        kind="img",
-        base_url=resolve_public_base_url(ctx),
-    )
-    return _asset_payload(entry)
 
 
 @mcp_tool(
