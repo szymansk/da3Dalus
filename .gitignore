@@ -247,3 +247,17 @@ components/constructions/configurator-test-wing.root.json
 # Coverage artifacts
 .coverage
 coverage.xml
+
+# Next.js build output (frontend uses frontend/.next via its own .gitignore)
+/.next/
+
+# Playwright MCP session artifacts
+.playwright-mcp/
+
+# Root-level npm (tooling only — the real frontend is in frontend/)
+/node_modules/
+/package.json
+/package-lock.json
+
+# Claude Code skills lock
+skills-lock.json
