@@ -1,13 +1,16 @@
 "use client";
 
+import { Group, Panel, Separator } from "react-resizable-panels";
 import { ViewerPanel } from "@/components/workbench/ViewerPanel";
 import { ConfigPanel } from "@/components/workbench/ConfigPanel";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAeroplanes } from "@/hooks/useAeroplanes";
+import { usePreviewState } from "@/hooks/usePreviewState";
 
 export default function WorkbenchPage() {
   const { aeroplaneId, setAeroplaneId } = useAeroplaneContext();
   const { aeroplanes, isLoading, createAeroplane } = useAeroplanes();
+  const preview = usePreviewState(aeroplaneId);
 
   if (!aeroplaneId) {
     return <AeroplaneSelector
@@ -22,10 +25,26 @@ export default function WorkbenchPage() {
   }
 
   return (
-    <>
-      <ViewerPanel />
-      <ConfigPanel aeroplaneId={aeroplaneId} />
-    </>
+    <Group orientation="horizontal" className="flex-1">
+      <Panel defaultSize={55} minSize={20}>
+        <ViewerPanel
+          visibleParts={preview.visibleParts}
+          isAnyLoading={preview.isAnyLoading}
+          loadingWing={preview.loadingWing}
+        />
+      </Panel>
+      <Separator className="w-1.5 bg-border hover:bg-primary/50 transition-colors cursor-col-resize" />
+      <Panel defaultSize={45} minSize={30}>
+        <ConfigPanel
+          aeroplaneId={aeroplaneId}
+          isWingVisible={preview.isWingVisible}
+          isWingLoading={(wn) => preview.previews[wn]?.loading ?? false}
+          onTogglePreview={preview.toggleWing}
+          onToggleAllPreview={preview.toggleAllWings}
+          onGeometryChanged={preview.invalidateWing}
+        />
+      </Panel>
+    </Group>
   );
 }
 

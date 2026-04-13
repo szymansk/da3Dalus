@@ -353,6 +353,12 @@ class WingModel(Base):
                 tip_type = None
                 number_interpolation_points = None
 
+            # Normalize bare airfoil names (e.g. "ag10") to portable relative paths
+            # so that worker subprocesses with a different CWD can resolve them.
+            if "airfoil" in xsec_payload:
+                from app.converters.model_schema_converters import _normalize_airfoil_reference_for_schema
+                xsec_payload["airfoil"] = _normalize_airfoil_reference_for_schema(xsec_payload["airfoil"])
+
             if "sort_index" not in xsec_payload:
                 xsec_payload["sort_index"] = index
             xsec = WingXSecModel(**xsec_payload)

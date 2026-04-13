@@ -32,6 +32,7 @@ from app.db.base import Base
 import app.models.aeroplanemodel       # this module imports Base and defines tables
 import app.models.flightprofilemodel
 import app.models.component
+import app.models.tessellation_cache
 
 target_metadata = Base.metadata
 

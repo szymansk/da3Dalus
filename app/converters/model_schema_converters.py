@@ -24,38 +24,52 @@ async def aeroplaneModelToAeroplaneSchema_async(plane: AeroplaneModel) -> Aeropl
 
 
 def _build_asb_airfoil(airfoil_ref) -> asb.Airfoil:
-    airfoil_ref_str = str(airfoil_ref)
-    absolute_ref = os.path.abspath(airfoil_ref_str) if not os.path.isabs(airfoil_ref_str) else airfoil_ref_str
+    from app.services.create_wing_configuration import _resolve_airfoil_reference
 
-    if os.path.isfile(absolute_ref):
-        # If a local .dat path is available, load coordinates explicitly.
+    airfoil_ref_str = str(airfoil_ref)
+
+    # Use the central resolver (handles case-insensitive lookup, bare names, paths)
+    resolved = _resolve_airfoil_reference(airfoil_ref_str)
+    if os.path.isfile(resolved):
         return asb.Airfoil(
-            name=os.path.splitext(os.path.basename(absolute_ref))[0],
-            coordinates=absolute_ref,
+            name=os.path.splitext(os.path.basename(resolved))[0],
+            coordinates=resolved,
         )
 
-    # If this looks like a file path but the file is unavailable, try the stem as an airfoil name.
-    airfoil_name_from_stem = os.path.splitext(os.path.basename(airfoil_ref_str))[0]
-    if airfoil_name_from_stem and airfoil_name_from_stem != airfoil_ref_str:
-        return asb.Airfoil(name=airfoil_name_from_stem)
-
     # Fall back to ASB name-based lookup (e.g. "naca2412", "sd7037", UIUC names).
-    return asb.Airfoil(name=airfoil_ref_str)
+    airfoil_name = os.path.splitext(os.path.basename(airfoil_ref_str))[0] or airfoil_ref_str
+    return asb.Airfoil(name=airfoil_name)
 
 
 def _normalize_airfoil_reference_for_schema(airfoil_ref: asb.Airfoil | str) -> str:
-    """Return a stable airfoil reference string for API/database schemas."""
+    """Return a stable airfoil reference string for API/database schemas.
+
+    Converts absolute paths, bare names ("ag10"), and names with extension
+    ("ag10.dat") into portable relative paths like "./components/airfoils/ag10.dat"
+    so that worker subprocesses with a different CWD can resolve them.
+    """
     raw_reference = str(getattr(airfoil_ref, "name", airfoil_ref) or "")
     if not raw_reference:
         return raw_reference
 
-    # Convert absolute paths inside ".../components/airfoils/..." back to a portable relative path.
+    # Already a portable relative path -- keep as-is.
     normalized = raw_reference.replace("\\", "/")
+    if normalized.startswith("./components/airfoils/"):
+        return raw_reference
+
+    # Convert absolute paths inside ".../components/airfoils/..." back to a portable relative path.
     parts = [part for part in normalized.split("/") if part]
     for index in range(len(parts) - 1):
         if parts[index].lower() == "components" and parts[index + 1].lower() == "airfoils":
             relative = "/".join(parts[index:])
             return f"./{relative}"
+
+    # Bare name or name.dat -- try to resolve via case-insensitive lookup.
+    from app.services.create_wing_configuration import _find_airfoil_case_insensitive
+
+    found = _find_airfoil_case_insensitive(raw_reference)
+    if found:
+        return f"./components/airfoils/{found.name}"
 
     return raw_reference
 
@@ -494,8 +508,33 @@ def wingModelToAsbWingSchema(wing: WingModel) -> schemas.AsbWingSchema:
     in ``app.services.cad_service``) can pickle the schema, which is
     picklable, instead of the final :class:`WingConfiguration`, which
     contains ``cq.Vector`` / OCCT ``gp_Vec`` objects that are not.
+
+    The last x-section is a terminal boundary — segment-specific fields
+    (TED, spars, x_sec_type, tip_type) are stripped if present in the
+    DB to avoid validation errors from legacy data.
     """
-    return schemas.AsbWingSchema.model_validate(wing, from_attributes=True)
+    # Strip segment-specific fields from the last x-section to handle
+    # legacy DB rows that have TED/spars on the terminal x-section.
+    xsec_dicts = []
+    for xs in wing.x_secs:
+        xsec_dicts.append(schemas.WingXSecSchema.model_validate(
+            xs, from_attributes=True,
+        ).model_dump())
+
+    # Strip segment-specific fields from last x-section
+    if xsec_dicts:
+        last = xsec_dicts[-1]
+        last["trailing_edge_device"] = None
+        last["spare_list"] = None
+        last["x_sec_type"] = None
+        last["tip_type"] = None
+        last["number_interpolation_points"] = None
+
+    return schemas.AsbWingSchema.model_validate({
+        "name": wing.name,
+        "symmetric": wing.symmetric,
+        "x_secs": xsec_dicts,
+    })
 
 
 def asbWingSchemaToWingConfig(

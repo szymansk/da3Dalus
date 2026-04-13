@@ -3,22 +3,44 @@
 import { useEffect, useRef, useState } from "react";
 
 interface CadViewerProps {
-  /** Tessellation data in three-cad-viewer format: {data:{instances,shapes}, config, count} */
-  data: Record<string, unknown> | null;
+  /** One or more tessellation results to render. Each is a single-wing
+   *  tessellation in three-cad-viewer format: {data:{instances,shapes}, ...} */
+  parts: Record<string, unknown>[];
+}
+
+function resolveRefs(
+  node: Record<string, unknown>,
+  instances: Record<string, unknown>[],
+) {
+  if (node.shape && typeof node.shape === "object") {
+    const s = node.shape as Record<string, unknown>;
+    if ("ref" in s && typeof s.ref === "number") {
+      node.shape = instances[s.ref as number];
+    }
+  }
+  if (Array.isArray(node.parts)) {
+    for (const part of node.parts) {
+      if (part && typeof part === "object") {
+        resolveRefs(part as Record<string, unknown>, instances);
+      }
+    }
+  }
 }
 
 /**
  * Wraps the three-cad-viewer library to render tessellated CAD geometry.
- * Uses the same viewer as the VS Code OCP CAD Viewer extension.
+ *
+ * Supports multiple parts via viewer.addPart() — each wing is added
+ * incrementally instead of assembling one giant JSON payload.
  */
-export function CadViewer({ data }: CadViewerProps) {
+export function CadViewer({ parts }: CadViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<unknown>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!containerRef.current || !data) return;
+    if (!containerRef.current || parts.length === 0) return;
     let disposed = false;
 
     async function init() {
@@ -26,24 +48,21 @@ export function CadViewer({ data }: CadViewerProps) {
         setLoading(true);
         setError(null);
 
-        const tcv = await import("three-cad-viewer");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const tcv = await import("three-cad-viewer") as any;
         if (disposed || !containerRef.current) return;
 
         const container = containerRef.current;
 
         // Cleanup previous viewer
         if (viewerRef.current) {
-          try {
-            (viewerRef.current as { dispose?: () => void }).dispose?.();
-          } catch { /* ignore */ }
+          try { (viewerRef.current as any).dispose?.(); } catch { /* ok */ }
         }
         container.innerHTML = "";
 
         const w = container.clientWidth || 800;
         const h = container.clientHeight || 500;
 
-        // Create Display (layout container)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const display = new tcv.Display(container, {
           cadWidth: w,
           height: h,
@@ -51,64 +70,63 @@ export function CadViewer({ data }: CadViewerProps) {
           theme: "dark",
           glass: false,
           tools: false,
-        } as any);
+        });
 
-        // Create Viewer (3D renderer)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const viewer = new (tcv as any).Viewer(
-          display,
-          { target: [0, 0, 0], up: "Z" },
-          () => {},
-        );
+        const viewerOptions = { target: [0, 0, 0], up: "Z" };
+        const viewer = new tcv.Viewer(display, viewerOptions, () => {});
         viewerRef.current = viewer;
 
-        // Extract shapes from the tessellation data
-        const tessData = data as {
-          data?: { shapes?: Record<string, unknown>; instances?: Record<string, unknown>[] };
-          config?: Record<string, unknown>;
+        const renderOptions = {
+          ambientIntensity: 1.0,
+          directIntensity: 1.1,
+          metalness: 0.3,
+          roughness: 0.65,
+          edgeColor: 0x707070,
+          defaultOpacity: 1.0,
         };
 
-        const shapes = tessData?.data?.shapes;
-        const instances = tessData?.data?.instances;
-        if (!shapes) {
-          throw new Error("No shape data in tessellation result");
+        // Extract shapes from the first part and render it (initializes the scene)
+        const first = parts[0] as {
+          data?: { shapes?: Record<string, unknown>; instances?: Record<string, unknown>[] };
+        };
+        const firstShapes = first?.data?.shapes;
+        const firstInstances = first?.data?.instances;
+        if (!firstShapes) throw new Error("No shape data in tessellation result");
+
+        // Deep-clone before resolving refs — never mutate cached state
+        const firstShapesCopy = JSON.parse(JSON.stringify(firstShapes));
+        if (firstInstances && Array.isArray(firstInstances)) {
+          resolveRefs(firstShapesCopy, firstInstances);
         }
 
-        // Resolve instance references: shapes may have {ref: N} instead
-        // of inline geometry. Replace refs with actual instance data.
-        if (instances && Array.isArray(instances)) {
-          const inst = instances; // narrow for closure
-          function resolveRefs(node: Record<string, unknown>) {
-            if (node.shape && typeof node.shape === "object") {
-              const shapeObj = node.shape as Record<string, unknown>;
-              if ("ref" in shapeObj && typeof shapeObj.ref === "number") {
-                node.shape = inst[shapeObj.ref as number];
-              }
-            }
-            if (Array.isArray(node.parts)) {
-              for (const part of node.parts) {
-                if (part && typeof part === "object") {
-                  resolveRefs(part as Record<string, unknown>);
-                }
-              }
-            }
+        viewer.render(firstShapesCopy, renderOptions, viewerOptions);
+
+        // Add remaining parts incrementally via addPart()
+        for (let i = 1; i < parts.length; i++) {
+          const part = parts[i] as {
+            data?: { shapes?: Record<string, unknown>; instances?: Record<string, unknown>[] };
+          };
+          const shapes = part?.data?.shapes;
+          const instances = part?.data?.instances;
+          if (!shapes) continue;
+
+          const shapesCopy = JSON.parse(JSON.stringify(shapes));
+          if (instances && Array.isArray(instances)) {
+            resolveRefs(shapesCopy, instances);
           }
-          resolveRefs(shapes);
+
+          try {
+            const rootId = (firstShapesCopy as any).id || "/Group";
+            viewer.addPart(rootId, shapesCopy, { skipBounds: true });
+          } catch (err) {
+            console.warn(`[CadViewer] addPart for part ${i} failed:`, err);
+          }
         }
 
-        // Render the shapes
-        viewer.render(
-          shapes,
-          {
-            ambientIntensity: 1.0,
-            directIntensity: 1.1,
-            metalness: 0.3,
-            roughness: 0.65,
-            edgeColor: 0x707070,
-            defaultOpacity: 1.0,
-          },
-          {},
-        );
+        // Recompute bounds once after all parts are added
+        if (parts.length > 1) {
+          try { viewer.updateBounds(); } catch { /* ok */ }
+        }
 
         setLoading(false);
       } catch (err) {
@@ -125,16 +143,14 @@ export function CadViewer({ data }: CadViewerProps) {
     return () => {
       disposed = true;
       if (viewerRef.current) {
-        try {
-          (viewerRef.current as { dispose?: () => void }).dispose?.();
-        } catch { /* ignore */ }
+        try { (viewerRef.current as { dispose?: () => void }).dispose?.(); } catch { /* ok */ }
         viewerRef.current = null;
       }
       if (containerRef.current) {
         containerRef.current.innerHTML = "";
       }
     };
-  }, [data]);
+  }, [parts]);
 
   if (error) {
     return (

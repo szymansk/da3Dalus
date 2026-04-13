@@ -267,7 +267,13 @@ def get_wing_as_wingconfig(db: Session, aeroplane_uuid, wing_name: str) -> dict:
     """
     aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
     wing = get_wing_or_raise(aeroplane, wing_name)
-    wing_config = wingModelToWingConfig(wing, scale=1000.0)
+    try:
+        wing_config = wingModelToWingConfig(wing, scale=1000.0)
+    except Exception as exc:
+        logger.error("Failed to convert wing %s to WingConfig: %s", wing_name, exc)
+        raise InternalError(
+            message=f"Wing conversion failed for '{wing_name}': {exc}",
+        )
     return _wing_config_to_dict(wing_config)
 
 
@@ -389,6 +395,9 @@ def get_wing(db: Session, aeroplane_uuid, wing_name: str) -> schemas.AsbWingRead
     except SQLAlchemyError as e:
         logger.error(f"Database error when getting wing: {e}")
         raise InternalError(message=f"Database error: {e}")
+    except Exception as exc:
+        logger.error("Failed to serialize wing %s: %s", wing_name, exc)
+        raise InternalError(message=f"Wing data conversion failed for '{wing_name}': {exc}")
 
 
 def delete_wing(db: Session, aeroplane_uuid, wing_name: str) -> None:

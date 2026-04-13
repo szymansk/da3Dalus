@@ -419,9 +419,19 @@ def start_wing_export_task(
     # unpicklable cq.Vector instances) happens in the worker via
     # asbWingSchemaToWingConfig. Scale metres → millimetres is applied
     # inside the worker, so the scalar factor crosses the boundary too.
-    wing_schemas: Dict[str, Any] = {
-        wing_name: wingModelToAsbWingSchema(wing),
-    }
+    try:
+        wing_schemas: Dict[str, Any] = {
+            wing_name: wingModelToAsbWingSchema(wing),
+        }
+    except Exception as exc:
+        logger.error(
+            "Failed to convert wing %s to schema: %s",
+            wing_name,
+            exc,
+        )
+        raise InternalError(
+            message=f"Wing data conversion failed for '{wing_name}': {exc}",
+        )
     try:
         wing_schemas_pickle = pickle.dumps(wing_schemas)
     except Exception as exc:
@@ -431,7 +441,9 @@ def start_wing_export_task(
             exc,
             list(wing_schemas[wing_name].model_dump().keys()) if wing_schemas.get(wing_name) else [],
         )
-        raise
+        raise InternalError(
+            message=f"Failed to prepare wing data for '{wing_name}': {exc}",
+        )
     wing_scale = 1000.0
 
     # ``ServoInformation`` holds cq.Vector / gp_Vec internally and

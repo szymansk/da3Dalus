@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { AirfoilSelector } from "./AirfoilSelector";
 import { useAeroplaneContext } from "./AeroplaneContext";
 import { useWing, type XSec } from "@/hooks/useWings";
 import { useWingConfig } from "@/hooks/useWingConfig";
@@ -143,6 +144,14 @@ function Field({
   readOnly?: boolean;
   isSelect?: boolean;
 }) {
+  const [localValue, setLocalValue] = useState(String(value));
+  const [editing, setEditing] = useState(false);
+
+  // Sync from parent when not actively editing
+  useEffect(() => {
+    if (!editing) setLocalValue(String(value));
+  }, [value, editing]);
+
   return (
     <div className="flex flex-1 flex-col gap-1">
       <label className="text-[11px] text-muted-foreground">{label}</label>
@@ -153,8 +162,17 @@ function Field({
           <input
             type={type}
             step="any"
-            value={value}
-            onChange={(e) => onChange?.(e.target.value)}
+            value={editing ? localValue : String(value)}
+            onFocus={() => setEditing(true)}
+            onChange={(e) => {
+              setLocalValue(e.target.value);
+              // For text fields, propagate immediately
+              if (type === "text") onChange?.(e.target.value);
+            }}
+            onBlur={() => {
+              setEditing(false);
+              if (type !== "text") onChange?.(localValue);
+            }}
             className="w-full bg-transparent text-[13px] text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
         )}
@@ -173,7 +191,7 @@ function Field({
 
 // ── Main Component ──────────────────────────────────────────────
 
-export function PropertyForm() {
+export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingName: string) => void }) {
   const { aeroplaneId, selectedWing, selectedXsecIndex, treeMode } =
     useAeroplaneContext();
   const { wing, updateXSec, mutate } = useWing(aeroplaneId, selectedWing);
@@ -208,12 +226,18 @@ export function PropertyForm() {
   }, [xsec?.airfoil, xsec?.chord, xsec?.twist, xsec?.xyz_le?.[0], xsec?.xyz_le?.[1], xsec?.xyz_le?.[2], selectedXsecIndex]);
 
   // Sync WingConfig state from API response
+  // nose_pnt state (mm) — only editable on segment 0
+  const [nosePnt, setNosePnt] = useState<[number, number, number]>([0, 0, 0]);
+
   useEffect(() => {
     if (wingConfig && selectedXsecIndex !== null && selectedXsecIndex < wingConfig.segments.length) {
       const seg = wingConfig.segments[selectedXsecIndex];
       setWc(segmentToWcState(seg));
     } else {
       setWc(null);
+    }
+    if (wingConfig?.nose_pnt) {
+      setNosePnt(wingConfig.nose_pnt.map((v) => v * 1000) as [number, number, number]);
     }
   }, [wingConfig, selectedXsecIndex]);
 
@@ -242,6 +266,7 @@ export function PropertyForm() {
     try {
       await updateXSec(selectedXsecIndex!, asbToPayload(asb));
       await mutate();
+      if (selectedWing) onGeometryChanged?.(selectedWing);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -282,10 +307,12 @@ export function PropertyForm() {
 
       await saveWingConfig({
         ...wingConfig,
+        nose_pnt: nosePnt.map((v) => v / 1000),
         segments: updatedSegments,
       });
       await mutate();
       await mutateWc();
+      if (selectedWing) onGeometryChanged?.(selectedWing);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -308,20 +335,27 @@ export function PropertyForm() {
       <div className="flex flex-col gap-3">
         {mode === "wingconfig" && wc ? (
           <>
+            {/* nose_pnt — only on segment 0 */}
+            {selectedXsecIndex === 0 && (
+              <div className="flex gap-3">
+                <Field label="nose x" value={nosePnt[0]} suffix="mm"
+                  onChange={(v) => setNosePnt([num(v), nosePnt[1], nosePnt[2]])} />
+                <Field label="nose y" value={nosePnt[1]} suffix="mm"
+                  onChange={(v) => setNosePnt([nosePnt[0], num(v), nosePnt[2]])} />
+                <Field label="nose z" value={nosePnt[2]} suffix="mm"
+                  onChange={(v) => setNosePnt([nosePnt[0], nosePnt[1], num(v)])} />
+              </div>
+            )}
             {/* Row 1: root_airfoil | tip_airfoil */}
             <div className="flex gap-3">
-              <Field
+              <AirfoilSelector
                 label="root_airfoil"
                 value={wc.root_airfoil}
-                type="text"
-                isSelect
                 onChange={(v) => setWc({ ...wc, root_airfoil: v })}
               />
-              <Field
+              <AirfoilSelector
                 label="tip_airfoil"
                 value={wc.tip_airfoil}
-                type="text"
-                isSelect
                 onChange={(v) => setWc({ ...wc, tip_airfoil: v })}
               />
             </div>
@@ -388,10 +422,9 @@ export function PropertyForm() {
           <>
             {/* ASB mode: airfoil | chord */}
             <div className="flex gap-3">
-              <Field
+              <AirfoilSelector
                 label="airfoil"
                 value={asb.airfoil}
-                type="text"
                 onChange={(v) => setAsb({ ...asb, airfoil: v })}
               />
               <Field

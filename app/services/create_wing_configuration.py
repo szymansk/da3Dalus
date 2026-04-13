@@ -11,33 +11,66 @@ from pathlib import Path
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
+_AIRFOILS_DIR = _REPO_ROOT / "components" / "airfoils"
+
+
+_airfoil_map: dict[str, Path] | None = None
+
+
+def _get_airfoil_map() -> dict[str, Path]:
+    """Build a lowercase→Path lookup map for components/airfoils/ (cached)."""
+    global _airfoil_map
+    if _airfoil_map is None:
+        if _AIRFOILS_DIR.is_dir():
+            _airfoil_map = {
+                e.name.lower(): e
+                for e in _AIRFOILS_DIR.iterdir()
+                if e.is_file() and e.suffix.lower() == ".dat"
+            }
+        else:
+            _airfoil_map = {}
+    return _airfoil_map
+
+
+def _find_airfoil_case_insensitive(name: str) -> Path | None:
+    """Find an airfoil .dat file by name, case-insensitive.
+
+    Accepts bare names ("mh32", "MH32"), names with extension
+    ("mh32.dat", "MH32.DAT"), or paths containing "components/airfoils/".
+    """
+    if not name.lower().endswith(".dat"):
+        name = f"{name}.dat"
+    return _get_airfoil_map().get(name.lower())
 
 
 def _resolve_airfoil_reference(airfoil_reference: str) -> str:
     if not airfoil_reference or "://" in airfoil_reference:
         return airfoil_reference
 
+    # 1. Exact path exists (absolute or relative)
     reference_path = Path(airfoil_reference)
     if reference_path.is_absolute() and reference_path.exists():
         return str(reference_path)
     if reference_path.exists():
         return str(reference_path.resolve())
 
+    # 2. Extract filename from paths like "./components/airfoils/mh32.dat"
     normalized = airfoil_reference.replace("\\", "/")
     marker = "components/airfoils/"
     if marker in normalized:
-        marker_suffix = normalized.split(marker, maxsplit=1)[1]
-        candidate = _REPO_ROOT / "components" / "airfoils" / marker_suffix
-        if candidate.exists():
-            return str(candidate)
+        bare_name = normalized.split(marker, maxsplit=1)[1]
+    else:
+        bare_name = Path(normalized).name
 
-    app_relative_candidate = (_REPO_ROOT / "app" / airfoil_reference).resolve()
-    if app_relative_candidate.exists():
-        return str(app_relative_candidate)
+    # 3. Case-insensitive lookup in components/airfoils/
+    found = _find_airfoil_case_insensitive(bare_name)
+    if found:
+        return str(found)
 
-    repo_relative_candidate = (_REPO_ROOT / airfoil_reference).resolve()
-    if repo_relative_candidate.exists():
-        return str(repo_relative_candidate)
+    # 4. Try repo-relative path
+    repo_relative = (_REPO_ROOT / airfoil_reference).resolve()
+    if repo_relative.exists():
+        return str(repo_relative)
 
     return airfoil_reference
 

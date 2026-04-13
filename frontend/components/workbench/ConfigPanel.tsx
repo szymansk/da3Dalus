@@ -8,23 +8,36 @@ import { useAeroplanes } from "@/hooks/useAeroplanes";
 
 interface ConfigPanelProps {
   aeroplaneId: string;
+  isWingVisible?: (wingName: string) => boolean;
+  isWingLoading?: (wingName: string) => boolean;
+  onTogglePreview?: (wingName: string) => void;
+  onToggleAllPreview?: (wingNames: string[]) => void;
+  onGeometryChanged?: (wingName: string) => void;
 }
 
-export function ConfigPanel({ aeroplaneId }: ConfigPanelProps) {
+export function ConfigPanel({ aeroplaneId, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, onGeometryChanged }: ConfigPanelProps) {
   const { wingNames, mutate: mutateWings } = useWings(aeroplaneId);
   const { aeroplanes } = useAeroplanes();
   const aeroplaneName =
     aeroplanes.find((a) => a.id === aeroplaneId)?.name ?? "Aeroplane";
 
   return (
-    <aside className="flex w-[556px] shrink-0 flex-col gap-4 overflow-y-auto p-4">
+    <aside className="flex h-full flex-col gap-4 p-4">
       <ActionRow aeroplaneId={aeroplaneId} onWingCreated={() => mutateWings()} />
-      <AeroplaneTree
-        aeroplaneId={aeroplaneId}
-        wingNames={wingNames}
-        aeroplaneName={aeroplaneName}
-      />
-      <PropertyForm />
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <AeroplaneTree
+          aeroplaneId={aeroplaneId}
+          wingNames={wingNames}
+          aeroplaneName={aeroplaneName}
+          isWingVisible={isWingVisible}
+          isWingLoading={isWingLoading}
+          onTogglePreview={onTogglePreview}
+          onToggleAllPreview={onToggleAllPreview}
+        />
+      </div>
+      <div className="shrink-0">
+        <PropertyForm onGeometryChanged={onGeometryChanged} />
+      </div>
     </aside>
   );
 }

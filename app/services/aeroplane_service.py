@@ -234,12 +234,24 @@ def get_aeroplane_airplane_configuration(db: Session, aeroplane_uuid) -> dict:
             details={"aeroplane_id": str(aeroplane_uuid)},
         )
 
-    wing_configurations = [wingModelToWingConfig(wing) for wing in aeroplane.wings]
-    fuselage_configurations = (
-        [fuselageModelToFuselageConfig(fuselage) for fuselage in aeroplane.fuselages]
-        if aeroplane.fuselages
-        else None
-    )
+    try:
+        wing_configurations = [wingModelToWingConfig(wing) for wing in aeroplane.wings]
+    except Exception as exc:
+        logger.error("Failed to convert wings for aeroplane %s: %s", aeroplane_uuid, exc)
+        raise InternalError(
+            message=f"Wing data conversion failed: {exc}",
+        )
+    try:
+        fuselage_configurations = (
+            [fuselageModelToFuselageConfig(fuselage) for fuselage in aeroplane.fuselages]
+            if aeroplane.fuselages
+            else None
+        )
+    except Exception as exc:
+        logger.error("Failed to convert fuselages for aeroplane %s: %s", aeroplane_uuid, exc)
+        raise InternalError(
+            message=f"Fuselage data conversion failed: {exc}",
+        )
 
     airplane_configuration = AirplaneConfiguration(
         name=aeroplane.name,
