@@ -62,11 +62,12 @@ export function AeroplaneProvider({ children }: { children: ReactNode }) {
     const urlId = searchParams.get("id");
     const storedId = localStorage.getItem(STORAGE_KEY);
     const resolved = urlId ?? storedId ?? null;
-    if (resolved && resolved !== aeroplaneId) {
+    if (resolved) {
       setAeroplaneIdRaw(resolved);
-      if (resolved) localStorage.setItem(STORAGE_KEY, resolved);
+      localStorage.setItem(STORAGE_KEY, resolved);
     }
-  }, [searchParams, aeroplaneId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only on mount
 
   const selectWing = useCallback((name: string | null) => {
     setSelectedWing(name);
