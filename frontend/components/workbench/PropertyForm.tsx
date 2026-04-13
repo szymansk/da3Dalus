@@ -8,6 +8,7 @@ import { useWing, type XSec } from "@/hooks/useWings";
 import { useWingConfig } from "@/hooks/useWingConfig";
 import type { WingConfigSegment } from "@/hooks/useWingConfig";
 import { API_BASE } from "@/lib/fetcher";
+import { invalidateTessellationCache } from "@/hooks/useTessellation";
 
 /** Parse a number input string, allowing empty/partial input during editing */
 function num(v: string, fallback = 0): number {
@@ -260,6 +261,7 @@ export function PropertyForm() {
     try {
       await updateXSec(selectedXsecIndex!, asbToPayload(asb));
       await mutate();
+      if (aeroplaneId && selectedWing) invalidateTessellationCache(aeroplaneId, selectedWing);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -304,6 +306,7 @@ export function PropertyForm() {
       });
       await mutate();
       await mutateWc();
+      if (aeroplaneId && selectedWing) invalidateTessellationCache(aeroplaneId, selectedWing);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Save failed");
     } finally {

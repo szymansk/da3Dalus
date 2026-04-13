@@ -24,6 +24,12 @@ function cacheKey(aeroplaneId: string, wingName: string): string {
   return `${aeroplaneId}/${wingName}`;
 }
 
+/** Clear the in-memory tessellation cache for a specific wing.
+ *  Call after saving geometry changes so "Preview 3D" re-appears. */
+export function invalidateTessellationCache(aeroplaneId: string, wingName: string): void {
+  tessellationCache.delete(cacheKey(aeroplaneId, wingName));
+}
+
 export function useTessellation(aeroplaneId: string | null, wingName: string | null) {
   const [state, setState] = useState<TessellationState>({
     data: null,
@@ -153,5 +159,12 @@ export function useTessellation(aeroplaneId: string | null, wingName: string | n
     }
   }, [aeroplaneId, wingName]);
 
-  return { ...state, triggerTessellation };
+  const clearCache = useCallback(() => {
+    if (aeroplaneId && wingName) {
+      tessellationCache.delete(cacheKey(aeroplaneId, wingName));
+      setState({ data: null, isTessellating: false, progress: "", error: null });
+    }
+  }, [aeroplaneId, wingName]);
+
+  return { ...state, triggerTessellation, clearCache };
 }
