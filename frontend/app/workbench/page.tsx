@@ -5,6 +5,7 @@ import { ViewerPanel } from "@/components/workbench/ViewerPanel";
 import { ConfigPanel } from "@/components/workbench/ConfigPanel";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAeroplanes } from "@/hooks/useAeroplanes";
+import { usePreviewState } from "@/hooks/usePreviewState";
 
 export default function WorkbenchPage() {
   const { aeroplaneId, setAeroplaneId } = useAeroplaneContext();
@@ -22,14 +23,26 @@ export default function WorkbenchPage() {
     />;
   }
 
+  const preview = usePreviewState(aeroplaneId);
+
   return (
     <Group orientation="horizontal" className="flex-1">
       <Panel defaultSize={55} minSize={20}>
-        <ViewerPanel />
+        <ViewerPanel
+          visibleParts={preview.getVisibleParts()}
+          isAnyLoading={preview.isAnyLoading}
+          loadingWing={preview.loadingWing}
+        />
       </Panel>
       <Separator className="w-1.5 bg-border hover:bg-primary/50 transition-colors cursor-col-resize" />
       <Panel defaultSize={45} minSize={30}>
-        <ConfigPanel aeroplaneId={aeroplaneId} />
+        <ConfigPanel
+          aeroplaneId={aeroplaneId}
+          isWingVisible={preview.isWingVisible}
+          isWingLoading={(wn) => preview.previews[wn]?.loading ?? false}
+          onTogglePreview={preview.toggleWing}
+          onGeometryChanged={preview.invalidateWing}
+        />
       </Panel>
     </Group>
   );

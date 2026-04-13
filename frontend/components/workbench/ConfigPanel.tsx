@@ -8,9 +8,13 @@ import { useAeroplanes } from "@/hooks/useAeroplanes";
 
 interface ConfigPanelProps {
   aeroplaneId: string;
+  isWingVisible?: (wingName: string) => boolean;
+  isWingLoading?: (wingName: string) => boolean;
+  onTogglePreview?: (wingName: string) => void;
+  onGeometryChanged?: (wingName: string) => void;
 }
 
-export function ConfigPanel({ aeroplaneId }: ConfigPanelProps) {
+export function ConfigPanel({ aeroplaneId, isWingVisible, isWingLoading, onTogglePreview, onGeometryChanged }: ConfigPanelProps) {
   const { wingNames, mutate: mutateWings } = useWings(aeroplaneId);
   const { aeroplanes } = useAeroplanes();
   const aeroplaneName =
@@ -24,10 +28,13 @@ export function ConfigPanel({ aeroplaneId }: ConfigPanelProps) {
           aeroplaneId={aeroplaneId}
           wingNames={wingNames}
           aeroplaneName={aeroplaneName}
+          isWingVisible={isWingVisible}
+          isWingLoading={isWingLoading}
+          onTogglePreview={onTogglePreview}
         />
       </div>
       <div className="shrink-0">
-        <PropertyForm />
+        <PropertyForm onGeometryChanged={onGeometryChanged} />
       </div>
     </aside>
   );

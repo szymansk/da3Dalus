@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2, Eye, EyeOff, Loader } from "lucide-react";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useWing } from "@/hooks/useWings";
 import type { XSec } from "@/hooks/useWings";
@@ -23,6 +23,9 @@ interface TreeNode {
   onDelete?: () => void;
   isInsertPoint?: boolean;
   onInsert?: () => void;
+  previewVisible?: boolean;
+  previewLoading?: boolean;
+  onPreviewToggle?: () => void;
 }
 
 // ── Build nodes for WingConfig mode (segments) ──────────────────
@@ -241,11 +244,14 @@ interface AeroplaneTreeProps {
   aeroplaneId: string | null;
   wingNames: string[];
   aeroplaneName?: string;
+  isWingVisible?: (wingName: string) => boolean;
+  isWingLoading?: (wingName: string) => boolean;
+  onTogglePreview?: (wingName: string) => void;
 }
 
 // ── Component ───────────────────────────────────────────────────
 
-export function AeroplaneTree({ aeroplaneId, wingNames, aeroplaneName }: AeroplaneTreeProps) {
+export function AeroplaneTree({ aeroplaneId, wingNames, aeroplaneName, isWingVisible, isWingLoading, onTogglePreview }: AeroplaneTreeProps) {
   const { selectedWing, selectedXsecIndex, selectWing, selectXsec, treeMode, setTreeMode } =
     useAeroplaneContext();
   const { wing, isLoading, mutate: mutateWing } = useWing(aeroplaneId, selectedWing);
@@ -336,6 +342,12 @@ export function AeroplaneTree({ aeroplaneId, wingNames, aeroplaneName }: Aeropla
       const nodes = treeMode === "wingconfig"
         ? buildSegmentNodes(wn, wing, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec, handleAddSegment, handleDeleteXsec, handleInsertXsec)
         : buildXsecNodes(wn, wing, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec, handleDeleteXsec);
+      // Attach preview toggle to the wing root node
+      if (nodes.length > 0 && onTogglePreview) {
+        nodes[0].previewVisible = isWingVisible?.(wn) ?? false;
+        nodes[0].previewLoading = isWingLoading?.(wn) ?? false;
+        nodes[0].onPreviewToggle = () => onTogglePreview(wn);
+      }
       treeData.push(...nodes);
     }
   }
@@ -447,6 +459,24 @@ function TreeRow({ node, onToggle }: { node: TreeNode; onToggle: () => void }) {
       )}
 
       <span className="flex-1" />
+
+      {node.onPreviewToggle && (
+        <button
+          onClick={(e) => { e.stopPropagation(); node.onPreviewToggle?.(); }}
+          className={`flex h-5 w-5 items-center justify-center rounded-[--radius-s] ${
+            node.previewVisible ? "text-primary" : "text-muted-foreground opacity-40 group-hover:opacity-100"
+          }`}
+          title={node.previewVisible ? "Hide 3D preview" : "Show 3D preview"}
+        >
+          {node.previewLoading ? (
+            <Loader size={12} className="animate-spin" />
+          ) : node.previewVisible ? (
+            <Eye size={12} />
+          ) : (
+            <EyeOff size={12} />
+          )}
+        </button>
+      )}
 
       {node.onDelete && (
         <button
