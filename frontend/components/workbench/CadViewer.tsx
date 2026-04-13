@@ -74,6 +74,8 @@ export function CadViewer({ data }: CadViewerProps) {
           height: h,
           treeWidth: 0,
           theme: "dark",
+          glass: false,
+          tools: false,
         } as any);
 
         const viewerOptions = { target: [0, 0, 0], up: "Z" };
