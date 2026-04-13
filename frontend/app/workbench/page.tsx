@@ -24,11 +24,11 @@ export default function WorkbenchPage() {
 
   return (
     <Group orientation="horizontal" className="flex-1">
-      <Panel defaultSize={60} minSize={30}>
+      <Panel defaultSize={55} minSize={20}>
         <ViewerPanel />
       </Panel>
       <Separator className="w-1.5 bg-border hover:bg-primary/50 transition-colors cursor-col-resize" />
-      <Panel defaultSize={40} minSize={20} maxSize={60}>
+      <Panel defaultSize={45} minSize={30}>
         <ConfigPanel aeroplaneId={aeroplaneId} />
       </Panel>
     </Group>
