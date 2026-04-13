@@ -1,5 +1,6 @@
 "use client";
 
+import { Group, Panel, Separator } from "react-resizable-panels";
 import { ViewerPanel } from "@/components/workbench/ViewerPanel";
 import { ConfigPanel } from "@/components/workbench/ConfigPanel";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
@@ -22,10 +23,15 @@ export default function WorkbenchPage() {
   }
 
   return (
-    <>
-      <ViewerPanel />
-      <ConfigPanel aeroplaneId={aeroplaneId} />
-    </>
+    <Group orientation="horizontal" className="flex-1">
+      <Panel defaultSize={60} minSize={30}>
+        <ViewerPanel />
+      </Panel>
+      <Separator className="w-1.5 bg-border hover:bg-primary/50 transition-colors cursor-col-resize" />
+      <Panel defaultSize={40} minSize={20} maxSize={60}>
+        <ConfigPanel aeroplaneId={aeroplaneId} />
+      </Panel>
+    </Group>
   );
 }
 

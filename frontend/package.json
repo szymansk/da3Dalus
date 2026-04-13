@@ -19,6 +19,7 @@
     "next": "16.2.1-canary.33",
     "react": "19.2.5",
     "react-dom": "19.2.5",
+    "react-resizable-panels": "^4.10.0",
     "swr": "^2.4.1",
     "three": "^0.183.2",
     "three-cad-viewer": "^4.3.7"

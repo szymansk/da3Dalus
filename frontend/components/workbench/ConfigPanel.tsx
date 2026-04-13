@@ -17,7 +17,7 @@ export function ConfigPanel({ aeroplaneId }: ConfigPanelProps) {
     aeroplanes.find((a) => a.id === aeroplaneId)?.name ?? "Aeroplane";
 
   return (
-    <aside className="flex w-[556px] shrink-0 flex-col gap-4 p-4">
+    <aside className="flex h-full flex-col gap-4 p-4">
       <ActionRow aeroplaneId={aeroplaneId} onWingCreated={() => mutateWings()} />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <AeroplaneTree
