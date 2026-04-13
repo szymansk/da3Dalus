@@ -306,6 +306,38 @@ async def calculate_streamlines_html(
         raise InternalError(message=f"Analysis error: {e}")
 
 
+async def calculate_streamlines_json(
+    db: Session,
+    aeroplane_uuid,
+    operating_point: OperatingPointSchema,
+) -> dict:
+    """Calculate streamlines and return Plotly figure as JSON dict.
+
+    Returns:
+        dict: Plotly figure JSON with 'data' and 'layout' keys.
+
+    Raises:
+        NotFoundError: If the aeroplane does not exist.
+        InternalError: If an analysis error occurs.
+    """
+    import json as _json
+
+    plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
+
+    try:
+        asb_airplane: Airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
+        _, figure = await analyse_aerodynamics(
+            AnalysisToolUrlType.VORTEX_LATTICE,
+            operating_point,
+            asb_airplane,
+            draw_streamlines=True,
+        )
+        return _json.loads(figure.to_json())
+    except Exception as e:
+        logger.error("Error calculating streamlines: %s", e)
+        raise InternalError(message=f"Analysis error: {e}")
+
+
 async def analyze_alpha_sweep(
     db: Session,
     aeroplane_uuid,

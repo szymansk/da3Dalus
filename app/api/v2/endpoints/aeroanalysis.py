@@ -136,6 +136,26 @@ async def calculate_streamlines(
                             detail=f"Unexpected error: {exc}") from exc
 
 
+@router.post("/aeroplanes/{aeroplane_id}/streamlines",
+             tags=["analysis"],
+             operation_id="get_streamlines_json")
+async def calculate_streamlines_json(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    operating_point: OperatingPointSchema = Body(..., description="The operating point"),
+    db: Session = Depends(get_db),
+):
+    """Calculate VLM streamlines and return Plotly figure as JSON."""
+    try:
+        return await analysis_service.calculate_streamlines_json(
+            db, aeroplane_id, operating_point,
+        )
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Unexpected error: {exc}") from exc
+
+
 @router.post("/aeroplanes/{aeroplane_id}/alpha_sweep",
              tags=["analysis"],
              operation_id="analyze_alpha_sweep")

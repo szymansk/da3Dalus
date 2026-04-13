@@ -318,6 +318,61 @@ class TestAeroanalysis(unittest.TestCase):
         self.assertTrue(result.url.endswith(f"/static/{self.test_plane_id}/png/three_view_def456.png"))
         mock_image.assert_awaited_once_with(mock_db, self.test_plane_id)
 
+    def test_calculate_streamlines_json_success(self):
+        """Happy-path: POST streamlines returns Plotly figure JSON."""
+        from app.api.v2.endpoints.aeroanalysis import calculate_streamlines_json
+
+        mock_db = MagicMock()
+        plotly_figure = {
+            "data": [{"type": "mesh3d", "x": [], "y": [], "z": []}],
+            "layout": {"scene": {}},
+        }
+
+        with patch(
+            "app.api.v2.endpoints.aeroanalysis.analysis_service.calculate_streamlines_json",
+            new=AsyncMock(return_value=plotly_figure),
+        ) as mock_calc:
+            result = asyncio.run(
+                calculate_streamlines_json(
+                    aeroplane_id=self.test_plane_id,
+                    operating_point=self.test_operating_point,
+                    db=mock_db,
+                )
+            )
+
+        self.assertIsInstance(result, dict)
+        self.assertIn("data", result)
+        self.assertIsInstance(result["data"], list)
+        self.assertIn("layout", result)
+        self.assertIsInstance(result["layout"], dict)
+        mock_calc.assert_awaited_once_with(
+            mock_db,
+            self.test_plane_id,
+            self.test_operating_point,
+        )
+
+    def test_calculate_streamlines_json_not_found(self):
+        """404 propagation when aeroplane does not exist."""
+        from app.api.v2.endpoints.aeroanalysis import calculate_streamlines_json
+
+        mock_db = MagicMock()
+
+        with patch(
+            "app.api.v2.endpoints.aeroanalysis.analysis_service.calculate_streamlines_json",
+            new=AsyncMock(side_effect=NotFoundError("Aeroplane not found")),
+        ):
+            with self.assertRaises(HTTPException) as ctx:
+                asyncio.run(
+                    calculate_streamlines_json(
+                        aeroplane_id=self.test_plane_id,
+                        operating_point=self.test_operating_point,
+                        db=mock_db,
+                    )
+                )
+
+        self.assertEqual(ctx.exception.status_code, 404)
+        self.assertIn("Aeroplane not found", str(ctx.exception.detail))
+
 
 if __name__ == "__main__":
     unittest.main()
