@@ -474,6 +474,15 @@ function TreeRow({ node, onToggle }: { node: TreeNode; onToggle: () => void }) {
 
       <span className="flex-1" />
 
+      {node.onDelete && (
+        <button
+          onClick={(e) => { e.stopPropagation(); node.onDelete?.(); }}
+          className="hidden h-5 w-5 items-center justify-center rounded-[--radius-s] group-hover:flex"
+        >
+          <Trash2 size={12} className="text-destructive" />
+        </button>
+      )}
+
       {node.onPreviewToggle && (
         <button
           onClick={(e) => { e.stopPropagation(); node.onPreviewToggle?.(); }}
@@ -489,15 +498,6 @@ function TreeRow({ node, onToggle }: { node: TreeNode; onToggle: () => void }) {
           ) : (
             <EyeOff size={12} />
           )}
-        </button>
-      )}
-
-      {node.onDelete && (
-        <button
-          onClick={(e) => { e.stopPropagation(); node.onDelete?.(); }}
-          className="hidden h-5 w-5 items-center justify-center rounded-[--radius-s] group-hover:flex"
-        >
-          <Trash2 size={12} className="text-destructive" />
         </button>
       )}
     </div>
