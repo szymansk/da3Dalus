@@ -144,6 +144,14 @@ function Field({
   readOnly?: boolean;
   isSelect?: boolean;
 }) {
+  const [localValue, setLocalValue] = useState(String(value));
+  const [editing, setEditing] = useState(false);
+
+  // Sync from parent when not actively editing
+  useEffect(() => {
+    if (!editing) setLocalValue(String(value));
+  }, [value, editing]);
+
   return (
     <div className="flex flex-1 flex-col gap-1">
       <label className="text-[11px] text-muted-foreground">{label}</label>
@@ -154,8 +162,17 @@ function Field({
           <input
             type={type}
             step="any"
-            value={value}
-            onChange={(e) => onChange?.(e.target.value)}
+            value={editing ? localValue : String(value)}
+            onFocus={() => setEditing(true)}
+            onChange={(e) => {
+              setLocalValue(e.target.value);
+              // For text fields, propagate immediately
+              if (type === "text") onChange?.(e.target.value);
+            }}
+            onBlur={() => {
+              setEditing(false);
+              if (type !== "text") onChange?.(localValue);
+            }}
             className="w-full bg-transparent text-[13px] text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
         )}
