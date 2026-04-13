@@ -138,27 +138,44 @@ async def get_aeroplane_tessellation(
                 detail=f"No cached tessellations for aeroplane {aeroplane_id}",
             )
 
-        # Collect parts and instances from each cached entry
+        # Collect parts and instances from each cached entry.
+        # Instance refs ({ref: N}) are local to each component's instance
+        # array, so we offset them when merging into the combined array.
         parts = []
         combined_instances = []
         total_count = 0
         bb_min = [float("inf")] * 3
         bb_max = [float("-inf")] * 3
 
+        def _offset_refs(node, offset):
+            """Recursively offset {ref: N} values in shapes by offset."""
+            if isinstance(node, dict):
+                if "ref" in node and isinstance(node["ref"], (int, float)):
+                    node["ref"] = int(node["ref"]) + offset
+                for v in node.values():
+                    _offset_refs(v, offset)
+            elif isinstance(node, list):
+                for item in node:
+                    _offset_refs(item, offset)
+
         for entry in cached_entries:
             tess = entry.tessellation_json
             data = tess.get("data", {})
 
+            instances = data.get("instances", [])
+            instance_offset = len(combined_instances)
+
             # Accumulate shapes with color per component type
             shapes = data.get("shapes")
             if shapes:
-                # Color by component type: wings orange, fuselages grey
-                color = "#FF8400" if entry.component_type == "wing" else "#888888"
-                shapes_copy = {**shapes, "color": color}
+                import copy
+                shapes_copy = copy.deepcopy(shapes)
+                shapes_copy["color"] = "#FF8400" if entry.component_type == "wing" else "#888888"
+                if instance_offset > 0:
+                    _offset_refs(shapes_copy, instance_offset)
                 parts.append(shapes_copy)
 
             # Accumulate instances
-            instances = data.get("instances", [])
             combined_instances.extend(instances)
 
             # Accumulate count
