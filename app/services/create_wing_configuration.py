@@ -14,24 +14,33 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 _AIRFOILS_DIR = _REPO_ROOT / "components" / "airfoils"
 
 
+_airfoil_map: dict[str, Path] | None = None
+
+
+def _get_airfoil_map() -> dict[str, Path]:
+    """Build a lowercase→Path lookup map for components/airfoils/ (cached)."""
+    global _airfoil_map
+    if _airfoil_map is None:
+        if _AIRFOILS_DIR.is_dir():
+            _airfoil_map = {
+                e.name.lower(): e
+                for e in _AIRFOILS_DIR.iterdir()
+                if e.is_file() and e.suffix.lower() == ".dat"
+            }
+        else:
+            _airfoil_map = {}
+    return _airfoil_map
+
+
 def _find_airfoil_case_insensitive(name: str) -> Path | None:
     """Find an airfoil .dat file by name, case-insensitive.
 
     Accepts bare names ("mh32", "MH32"), names with extension
     ("mh32.dat", "MH32.DAT"), or paths containing "components/airfoils/".
     """
-    # Ensure .dat extension
     if not name.lower().endswith(".dat"):
         name = f"{name}.dat"
-
-    wanted = name.lower()
-    if not _AIRFOILS_DIR.is_dir():
-        return None
-
-    for entry in _AIRFOILS_DIR.iterdir():
-        if entry.is_file() and entry.name.lower() == wanted:
-            return entry
-    return None
+    return _get_airfoil_map().get(name.lower())
 
 
 def _resolve_airfoil_reference(airfoil_reference: str) -> str:

@@ -497,14 +497,8 @@ def wingModelToAsbWingSchema(wing: WingModel) -> schemas.AsbWingSchema:
     (TED, spars, x_sec_type, tip_type) are stripped if present in the
     DB to avoid validation errors from legacy data.
     """
-    # Build via model_validate, but strip segment-specific fields from
-    # the last x-section first to handle legacy DB rows gracefully.
-    raw = schemas.AsbWingSchema.model_construct(
-        name=wing.name,
-        symmetric=wing.symmetric,
-        x_secs=[],
-    )
-    # Use the read schema (no validation) to extract x_sec dicts
+    # Strip segment-specific fields from the last x-section to handle
+    # legacy DB rows that have TED/spars on the terminal x-section.
     xsec_dicts = []
     for xs in wing.x_secs:
         xsec_dicts.append(schemas.WingXSecSchema.model_validate(

@@ -195,6 +195,7 @@ class TrailingEdgeDeviceDetailSchema(BaseModel):
     def _default_servo_placement(cls, v):
         """DB column is nullable — coerce None to the default."""
         return v if v is not None else "top"
+
     rel_chord_servo_position: Optional[float] = Field(
         None,
         description="Relative chord position of servo placement",
