@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { AirfoilSelector } from "./AirfoilSelector";
 import { useAeroplaneContext } from "./AeroplaneContext";
 import { useWing, type XSec } from "@/hooks/useWings";
 import { useWingConfig } from "@/hooks/useWingConfig";
@@ -310,18 +311,14 @@ export function PropertyForm() {
           <>
             {/* Row 1: root_airfoil | tip_airfoil */}
             <div className="flex gap-3">
-              <Field
+              <AirfoilSelector
                 label="root_airfoil"
                 value={wc.root_airfoil}
-                type="text"
-                isSelect
                 onChange={(v) => setWc({ ...wc, root_airfoil: v })}
               />
-              <Field
+              <AirfoilSelector
                 label="tip_airfoil"
                 value={wc.tip_airfoil}
-                type="text"
-                isSelect
                 onChange={(v) => setWc({ ...wc, tip_airfoil: v })}
               />
             </div>
@@ -388,10 +385,9 @@ export function PropertyForm() {
           <>
             {/* ASB mode: airfoil | chord */}
             <div className="flex gap-3">
-              <Field
+              <AirfoilSelector
                 label="airfoil"
                 value={asb.airfoil}
-                type="text"
                 onChange={(v) => setAsb({ ...asb, airfoil: v })}
               />
               <Field

@@ -24,23 +24,21 @@ async def aeroplaneModelToAeroplaneSchema_async(plane: AeroplaneModel) -> Aeropl
 
 
 def _build_asb_airfoil(airfoil_ref) -> asb.Airfoil:
-    airfoil_ref_str = str(airfoil_ref)
-    absolute_ref = os.path.abspath(airfoil_ref_str) if not os.path.isabs(airfoil_ref_str) else airfoil_ref_str
+    from app.services.create_wing_configuration import _resolve_airfoil_reference
 
-    if os.path.isfile(absolute_ref):
-        # If a local .dat path is available, load coordinates explicitly.
+    airfoil_ref_str = str(airfoil_ref)
+
+    # Use the central resolver (handles case-insensitive lookup, bare names, paths)
+    resolved = _resolve_airfoil_reference(airfoil_ref_str)
+    if os.path.isfile(resolved):
         return asb.Airfoil(
-            name=os.path.splitext(os.path.basename(absolute_ref))[0],
-            coordinates=absolute_ref,
+            name=os.path.splitext(os.path.basename(resolved))[0],
+            coordinates=resolved,
         )
 
-    # If this looks like a file path but the file is unavailable, try the stem as an airfoil name.
-    airfoil_name_from_stem = os.path.splitext(os.path.basename(airfoil_ref_str))[0]
-    if airfoil_name_from_stem and airfoil_name_from_stem != airfoil_ref_str:
-        return asb.Airfoil(name=airfoil_name_from_stem)
-
     # Fall back to ASB name-based lookup (e.g. "naca2412", "sd7037", UIUC names).
-    return asb.Airfoil(name=airfoil_ref_str)
+    airfoil_name = os.path.splitext(os.path.basename(airfoil_ref_str))[0] or airfoil_ref_str
+    return asb.Airfoil(name=airfoil_name)
 
 
 def _normalize_airfoil_reference_for_schema(airfoil_ref: asb.Airfoil | str) -> str:
