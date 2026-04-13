@@ -10,6 +10,7 @@ import { usePreviewState } from "@/hooks/usePreviewState";
 export default function WorkbenchPage() {
   const { aeroplaneId, setAeroplaneId } = useAeroplaneContext();
   const { aeroplanes, isLoading, createAeroplane } = useAeroplanes();
+  const preview = usePreviewState(aeroplaneId);
 
   if (!aeroplaneId) {
     return <AeroplaneSelector
@@ -22,8 +23,6 @@ export default function WorkbenchPage() {
       }}
     />;
   }
-
-  const preview = usePreviewState(aeroplaneId);
 
   return (
     <Group orientation="horizontal" className="flex-1">
