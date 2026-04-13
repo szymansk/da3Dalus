@@ -172,7 +172,7 @@ def start_tessellation_task(
     On success, the result is also persisted in the DB cache
     so that GET /tessellation can serve it immediately.
     """
-    register_pending_task(f"{aeroplane_id}:tessellation")
+    register_pending_task(f"{aeroplane_id}:tessellation:{wing_name}")
 
     future = _get_executor().submit(
         _run_tessellation_worker,
@@ -192,7 +192,7 @@ def start_tessellation_task(
                 "traceback": traceback.format_exc(),
             }
         with tasks_lock:
-            tasks[f"{aeroplane_id}:tessellation"] = worker_result
+            tasks[f"{aeroplane_id}:tessellation:{wing_name}"] = worker_result
 
         # Persist to DB cache on success
         if worker_result.get("status") == "SUCCESS":

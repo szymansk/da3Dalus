@@ -118,7 +118,7 @@ export function useTessellation(aeroplaneId: string | null, wingName: string | n
       const deadline = Date.now() + 120_000;
       while (Date.now() < deadline) {
         if (signal.aborted) return;
-        const statusRes = await fetch(`${API_BASE}/aeroplanes/${aeroplaneId}/status?task_type=tessellation`, { signal });
+        const statusRes = await fetch(`${API_BASE}/aeroplanes/${aeroplaneId}/status?task_type=tessellation&wing_name=${encodedWing}`, { signal });
         if (!statusRes.ok) throw new Error(`Status check failed: ${statusRes.status}`);
         const statusData = await statusRes.json();
 

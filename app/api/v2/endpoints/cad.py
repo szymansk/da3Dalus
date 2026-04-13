@@ -258,10 +258,16 @@ async def create_wing_loft(aeroplane_id: AeroPlaneID = Path(..., description="Th
 async def get_aeroplane_task_status(
     aeroplane_id: str,
     task_type: Optional[str] = Query(None, description="Task type: 'tessellation' or None for CAD export"),
+    wing_name: Optional[str] = Query(None, description="Wing name (required for tessellation tasks)"),
 ) -> CadTaskStatusResponse:
     """Get the status of an aeroplane export or tessellation task."""
     try:
-        task_key = f"{aeroplane_id}:{task_type}" if task_type else aeroplane_id
+        if task_type == "tessellation" and wing_name:
+            task_key = f"{aeroplane_id}:tessellation:{wing_name}"
+        elif task_type:
+            task_key = f"{aeroplane_id}:{task_type}"
+        else:
+            task_key = aeroplane_id
         logger.info(f"Getting task status for: {task_key}")
         task_result = cad_service.get_task_result(task_key)
 

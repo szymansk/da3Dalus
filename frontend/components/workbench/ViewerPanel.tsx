@@ -40,7 +40,7 @@ export function ViewerPanel() {
         // Poll until done
         const deadline = Date.now() + 120_000;
         while (Date.now() < deadline) {
-          const r = await fetch(`${API_BASE}/aeroplanes/${aeroplaneId}/status?task_type=tessellation`);
+          const r = await fetch(`${API_BASE}/aeroplanes/${aeroplaneId}/status?task_type=tessellation&wing_name=${encodeURIComponent(wn)}`);
           const s = await r.json();
           if (s.status === "SUCCESS") break;
           if (s.status === "FAILURE") break;
