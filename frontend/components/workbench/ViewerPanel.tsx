@@ -18,14 +18,15 @@ export function ViewerPanel() {
     useTessellation(aeroplaneId, selectedWing);
   const { wingNames } = useWings(aeroplaneId);
 
-  // "Preview All" — tessellate each wing sequentially, then load assembled scene
+  // "Preview All" — tessellate each wing, collect results directly
   const [allProgress, setAllProgress] = useState("");
-  const [allData, setAllData] = useState<Record<string, unknown> | null>(null);
+  const [allParts, setAllParts] = useState<Record<string, unknown>[]>([]);
   const isTessellatingAll = !!allProgress;
 
   const triggerAllTessellation = useCallback(async () => {
     if (!aeroplaneId || wingNames.length === 0) return;
-    setAllData(null);
+    setAllParts([]);
+    const collected: Record<string, unknown>[] = [];
 
     for (let i = 0; i < wingNames.length; i++) {
       const wn = wingNames[i];
@@ -37,30 +38,30 @@ export function ViewerPanel() {
         );
         if (!postRes.ok) continue;
 
-        // Poll until done
+        // Poll until done, grab the result directly from status
         const deadline = Date.now() + 120_000;
         while (Date.now() < deadline) {
-          const r = await fetch(`${API_BASE}/aeroplanes/${aeroplaneId}/status?task_type=tessellation&wing_name=${encodeURIComponent(wn)}`);
+          const r = await fetch(
+            `${API_BASE}/aeroplanes/${aeroplaneId}/status?task_type=tessellation&wing_name=${encodeURIComponent(wn)}`,
+          );
           const s = await r.json();
-          if (s.status === "SUCCESS") break;
+          if (s.status === "SUCCESS" && s.result?.data) {
+            collected.push(s.result);
+            break;
+          }
           if (s.status === "FAILURE") break;
           await new Promise((resolve) => setTimeout(resolve, 500));
         }
       } catch { /* continue with next wing */ }
     }
 
-    // Load assembled scene
-    setAllProgress("Loading assembled scene…");
-    try {
-      const res = await fetch(`${API_BASE}/aeroplanes/${aeroplaneId}/tessellation`);
-      if (res.ok) {
-        setAllData(await res.json());
-      }
-    } catch { /* ignore */ }
+    setAllParts(collected);
     setAllProgress("");
   }, [aeroplaneId, wingNames]);
 
-  const viewerData = allData ?? data;
+  // Build the parts array for CadViewer
+  const viewerParts: Record<string, unknown>[] =
+    allParts.length > 0 ? allParts : data ? [data] : [];
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden rounded-[--radius-m] border border-border">
@@ -69,7 +70,7 @@ export function ViewerPanel() {
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
           CAD Viewer
         </span>
-        {viewerData && !isTessellating && !isTessellatingAll && (
+        {viewerParts.length > 0 && !isTessellating && !isTessellatingAll && (
           <button
             onClick={selectedWing ? triggerTessellation : triggerAllTessellation}
             className="flex items-center gap-1 rounded-[--radius-s] border border-border bg-card-muted px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
@@ -99,8 +100,8 @@ export function ViewerPanel() {
 
       {/* Viewer Body */}
       <div className="flex flex-1 flex-col bg-card-muted">
-        {viewerData ? (
-          <CadViewer data={viewerData} />
+        {viewerParts.length > 0 ? (
+          <CadViewer parts={viewerParts} />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6">
             <Box size={72} className="text-subtle-foreground" />

@@ -85,7 +85,7 @@ describe("CadViewer", () => {
 
   it("passes glass:false and tools:false to Display constructor", async () => {
     await act(async () => {
-      render(<CadViewer data={SAMPLE_SHAPES as unknown as Record<string, unknown>} />);
+      render(<CadViewer parts={[SAMPLE_SHAPES as unknown as Record<string, unknown>]} />);
     });
     // Wait for dynamic import + init
     await act(async () => {
@@ -99,7 +99,7 @@ describe("CadViewer", () => {
 
   it("passes theme:dark and treeWidth:0 to Display", async () => {
     await act(async () => {
-      render(<CadViewer data={SAMPLE_SHAPES as unknown as Record<string, unknown>} />);
+      render(<CadViewer parts={[SAMPLE_SHAPES as unknown as Record<string, unknown>]} />);
     });
     await act(async () => {
       await new Promise((r) => setTimeout(r, 50));
@@ -111,7 +111,7 @@ describe("CadViewer", () => {
 
   it("passes target and up to Viewer constructor", async () => {
     await act(async () => {
-      render(<CadViewer data={SAMPLE_SHAPES as unknown as Record<string, unknown>} />);
+      render(<CadViewer parts={[SAMPLE_SHAPES as unknown as Record<string, unknown>]} />);
     });
     await act(async () => {
       await new Promise((r) => setTimeout(r, 50));
@@ -124,7 +124,7 @@ describe("CadViewer", () => {
 
   it("calls viewer.render() with shapes data", async () => {
     await act(async () => {
-      render(<CadViewer data={SAMPLE_SHAPES as unknown as Record<string, unknown>} />);
+      render(<CadViewer parts={[SAMPLE_SHAPES as unknown as Record<string, unknown>]} />);
     });
     await act(async () => {
       await new Promise((r) => setTimeout(r, 50));
@@ -138,9 +138,9 @@ describe("CadViewer", () => {
     expect(renderOpts.edgeColor).toBe(0x707070);
   });
 
-  it("does not render when data is null", async () => {
+  it("does not render when parts is empty", async () => {
     await act(async () => {
-      render(<CadViewer data={null} />);
+      render(<CadViewer parts={[]} />);
     });
     await act(async () => {
       await new Promise((r) => setTimeout(r, 50));
