@@ -126,6 +126,37 @@ export function usePreviewState(aeroplaneId: string | null) {
     [tessellateWing],
   );
 
+  /** Toggle all wings at once — one atomic state update, then tessellate uncached. */
+  const toggleAllWings = useCallback(
+    (wingNames: string[]) => {
+      const toTessellate: string[] = [];
+      setPreviews((prev) => {
+        const anyVisible = wingNames.some((wn) => prev[wn]?.visible);
+        const next = { ...prev };
+        for (const wn of wingNames) {
+          const existing = next[wn];
+          if (anyVisible) {
+            // Hide all
+            if (existing) next[wn] = { ...existing, visible: false };
+          } else {
+            // Show all
+            if (existing?.data) {
+              next[wn] = { ...existing, visible: true };
+            } else {
+              toTessellate.push(wn);
+              next[wn] = { visible: true, data: null, loading: false, error: null };
+            }
+          }
+        }
+        return next;
+      });
+      for (const wn of toTessellate) {
+        tessellateWing(wn);
+      }
+    },
+    [tessellateWing],
+  );
+
   // Fix #2: Stale closure — decide inside setPreviews updater
   const invalidateWing = useCallback(
     (wingName: string) => {
@@ -152,6 +183,7 @@ export function usePreviewState(aeroplaneId: string | null) {
     previews,
     visibleParts,
     toggleWing,
+    toggleAllWings,
     invalidateWing,
     isWingVisible,
     isAnyLoading,

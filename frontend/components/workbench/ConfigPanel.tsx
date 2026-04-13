@@ -11,10 +11,11 @@ interface ConfigPanelProps {
   isWingVisible?: (wingName: string) => boolean;
   isWingLoading?: (wingName: string) => boolean;
   onTogglePreview?: (wingName: string) => void;
+  onToggleAllPreview?: (wingNames: string[]) => void;
   onGeometryChanged?: (wingName: string) => void;
 }
 
-export function ConfigPanel({ aeroplaneId, isWingVisible, isWingLoading, onTogglePreview, onGeometryChanged }: ConfigPanelProps) {
+export function ConfigPanel({ aeroplaneId, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, onGeometryChanged }: ConfigPanelProps) {
   const { wingNames, mutate: mutateWings } = useWings(aeroplaneId);
   const { aeroplanes } = useAeroplanes();
   const aeroplaneName =
@@ -31,6 +32,7 @@ export function ConfigPanel({ aeroplaneId, isWingVisible, isWingLoading, onToggl
           isWingVisible={isWingVisible}
           isWingLoading={isWingLoading}
           onTogglePreview={onTogglePreview}
+          onToggleAllPreview={onToggleAllPreview}
         />
       </div>
       <div className="shrink-0">

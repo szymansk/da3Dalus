@@ -247,11 +247,12 @@ interface AeroplaneTreeProps {
   isWingVisible?: (wingName: string) => boolean;
   isWingLoading?: (wingName: string) => boolean;
   onTogglePreview?: (wingName: string) => void;
+  onToggleAllPreview?: (wingNames: string[]) => void;
 }
 
 // ── Component ───────────────────────────────────────────────────
 
-export function AeroplaneTree({ aeroplaneId, wingNames, aeroplaneName, isWingVisible, isWingLoading, onTogglePreview }: AeroplaneTreeProps) {
+export function AeroplaneTree({ aeroplaneId, wingNames, aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview }: AeroplaneTreeProps) {
   const { selectedWing, selectedXsecIndex, selectWing, selectXsec, treeMode, setTreeMode } =
     useAeroplaneContext();
   const { wing, isLoading, mutate: mutateWing } = useWing(aeroplaneId, selectedWing);
@@ -345,15 +346,8 @@ export function AeroplaneTree({ aeroplaneId, wingNames, aeroplaneName, isWingVis
     expanded: rootExpanded,
     previewVisible: anyWingVisible,
     previewLoading: anyWingLoading,
-    onPreviewToggle: onTogglePreview
-      ? () => {
-          // Toggle all wings: if any visible → hide all, otherwise → show all
-          for (const wn of wingNames) {
-            const vis = isWingVisible?.(wn) ?? false;
-            if (anyWingVisible && vis) onTogglePreview(wn);       // hide
-            if (!anyWingVisible && !vis) onTogglePreview(wn);     // show
-          }
-        }
+    onPreviewToggle: onToggleAllPreview
+      ? () => onToggleAllPreview(wingNames)
       : undefined,
   });
 

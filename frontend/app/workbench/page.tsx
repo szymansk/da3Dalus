@@ -40,6 +40,7 @@ export default function WorkbenchPage() {
           isWingVisible={preview.isWingVisible}
           isWingLoading={(wn) => preview.previews[wn]?.loading ?? false}
           onTogglePreview={preview.toggleWing}
+          onToggleAllPreview={preview.toggleAllWings}
           onGeometryChanged={preview.invalidateWing}
         />
       </Panel>
