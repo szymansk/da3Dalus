@@ -39,13 +39,15 @@ export function useTessellation(aeroplaneId: string | null) {
 
   const abortRef = useRef<AbortController | null>(null);
 
-  // SWR: auto-fetch assembled scene from server cache
+  // SWR key is null initially — no auto-fetch of the large tessellation
+  // payload on page load. Data is loaded only after triggerTessellation
+  // succeeds or when the user explicitly requests it.
+  const [swrKey, setSwrKey] = useState<string | null>(null);
   const { data: cached, error: fetchError, mutate } = useSWR<AssembledScene>(
-    aeroplaneId ? `/aeroplanes/${aeroplaneId}/tessellation` : null,
+    swrKey,
     fetcher,
     {
       refreshInterval: (data) => {
-        // Poll every 3s if stale, otherwise stop polling
         if (data?.is_stale) return 3000;
         return 0;
       },
@@ -90,7 +92,9 @@ export function useTessellation(aeroplaneId: string | null) {
           const statusData = await statusRes.json();
 
           if (statusData.status === "SUCCESS") {
-            // Revalidate the SWR cache — the server now has fresh data
+            // Enable SWR key and fetch the cached tessellation
+            const key = `/aeroplanes/${aeroplaneId}/tessellation`;
+            setSwrKey(key);
             await mutate();
             setManualState({ isTessellating: false, progress: "", error: null });
             return;
