@@ -335,7 +335,27 @@ export function AeroplaneTree({ aeroplaneId, wingNames, aeroplaneName, isWingVis
   // Build tree data
   const treeData: TreeNode[] = [];
   const rootExpanded = expandedSet.has("root");
-  treeData.push({ id: "root", label: aeroplaneName ?? "Aeroplane", level: 0, expanded: rootExpanded });
+  const anyWingVisible = onTogglePreview ? wingNames.some((wn) => isWingVisible?.(wn)) : false;
+  const anyWingLoading = onTogglePreview ? wingNames.some((wn) => isWingLoading?.(wn)) : false;
+
+  treeData.push({
+    id: "root",
+    label: aeroplaneName ?? "Aeroplane",
+    level: 0,
+    expanded: rootExpanded,
+    previewVisible: anyWingVisible,
+    previewLoading: anyWingLoading,
+    onPreviewToggle: onTogglePreview
+      ? () => {
+          // Toggle all wings: if any visible → hide all, otherwise → show all
+          for (const wn of wingNames) {
+            const vis = isWingVisible?.(wn) ?? false;
+            if (anyWingVisible && vis) onTogglePreview(wn);       // hide
+            if (!anyWingVisible && !vis) onTogglePreview(wn);     // show
+          }
+        }
+      : undefined,
+  });
 
   if (rootExpanded) {
     for (const wn of wingNames) {
