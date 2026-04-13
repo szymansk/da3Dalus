@@ -50,6 +50,9 @@ export function StreamlinesViewer({ aeroplaneId }: { aeroplaneId: string | null 
 
     return () => {
       disposed = true;
+      if (plotContainerRef.current) {
+        import("plotly.js-gl3d-dist-min").then((P) => P.default.purge(plotContainerRef.current!)).catch(() => {});
+      }
     };
   }, [figure]);
 
