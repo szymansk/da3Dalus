@@ -11,7 +11,7 @@ export default function AnalysisPage() {
 
   return (
     <>
-      <AnalysisViewerPanel result={analysis.result} />
+      <AnalysisViewerPanel result={analysis.result} aeroplaneId={aeroplaneId} />
       <AnalysisConfigPanel analysis={analysis} />
     </>
   );

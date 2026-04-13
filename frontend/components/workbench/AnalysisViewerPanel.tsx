@@ -3,12 +3,14 @@
 import { useState, useMemo } from "react";
 import { Wind, SlidersHorizontal, Activity } from "lucide-react";
 import type { AnalysisResult } from "@/hooks/useAnalysis";
+import { StreamlinesViewer } from "@/components/workbench/StreamlinesViewer";
 
 const TABS = ["Polar", "Three-View", "Streamlines", "Diagrams"] as const;
 type Tab = (typeof TABS)[number];
 
 interface Props {
   result: AnalysisResult | null;
+  aeroplaneId: string | null;
 }
 
 // ── SVG Line Chart ──────────────────────────────────────────────
@@ -131,7 +133,7 @@ function LineChart({
 
 // ── Main Component ──────────────────────────────────────────────
 
-export function AnalysisViewerPanel({ result }: Props) {
+export function AnalysisViewerPanel({ result, aeroplaneId }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("Polar");
 
   const charts = useMemo(() => {
@@ -180,49 +182,68 @@ export function AnalysisViewerPanel({ result }: Props) {
         </div>
       </div>
 
-      {/* Chart Body — 2x2 grid of line plots */}
-      <div className="flex flex-1 flex-col gap-4 overflow-auto bg-card-muted p-6">
-        {charts ? (
-          <div className="grid grid-cols-2 gap-4">
-            <LineChart
-              xData={charts.alpha} yData={charts.CL}
-              xLabel="α [°]" yLabel="C_L"
-              title="C_L vs α"
-              annotation={`C_L,max ≈ ${charts.clMax.toFixed(2)} @ ${charts.alphaClMax.toFixed(0)}°`}
-              color="var(--color-primary)"
-            />
-            <LineChart
-              xData={charts.alpha} yData={charts.CD}
-              xLabel="α [°]" yLabel="C_D"
-              title="C_D vs α"
-              color="var(--color-destructive)"
-            />
-            <LineChart
-              xData={charts.alpha} yData={charts.clOverCd}
-              xLabel="α [°]" yLabel="C_L / C_D"
-              title="C_L / C_D vs α"
-              annotation={`L/D,max ≈ ${charts.ldMax.toFixed(1)} @ ${charts.alphaLdMax.toFixed(0)}°`}
-              color="var(--color-success)"
-            />
-            <LineChart
-              xData={charts.CD} yData={charts.CL}
-              xLabel="C_D" yLabel="C_L"
-              title="C_L vs C_D (drag polar)"
-              color="var(--color-primary)"
-              xFormat={(v) => v.toFixed(3)}
-            />
-          </div>
-        ) : (
-          <div className="flex flex-1 flex-col items-center justify-center gap-4">
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-muted-foreground">
-              Run an analysis to see results
-            </span>
-            <span className="text-[12px] text-subtle-foreground">
-              Configure parameters on the right and click &ldquo;Run Analysis&rdquo;
-            </span>
-          </div>
-        )}
-      </div>
+      {/* Tab Body */}
+      {activeTab === "Polar" && (
+        <div className="flex flex-1 flex-col gap-4 overflow-auto bg-card-muted p-6">
+          {charts ? (
+            <div className="grid grid-cols-2 gap-4">
+              <LineChart
+                xData={charts.alpha} yData={charts.CL}
+                xLabel="α [°]" yLabel="C_L"
+                title="C_L vs α"
+                annotation={`C_L,max ≈ ${charts.clMax.toFixed(2)} @ ${charts.alphaClMax.toFixed(0)}°`}
+                color="var(--color-primary)"
+              />
+              <LineChart
+                xData={charts.alpha} yData={charts.CD}
+                xLabel="α [°]" yLabel="C_D"
+                title="C_D vs α"
+                color="var(--color-destructive)"
+              />
+              <LineChart
+                xData={charts.alpha} yData={charts.clOverCd}
+                xLabel="α [°]" yLabel="C_L / C_D"
+                title="C_L / C_D vs α"
+                annotation={`L/D,max ≈ ${charts.ldMax.toFixed(1)} @ ${charts.alphaLdMax.toFixed(0)}°`}
+                color="var(--color-success)"
+              />
+              <LineChart
+                xData={charts.CD} yData={charts.CL}
+                xLabel="C_D" yLabel="C_L"
+                title="C_L vs C_D (drag polar)"
+                color="var(--color-primary)"
+                xFormat={(v) => v.toFixed(3)}
+              />
+            </div>
+          ) : (
+            <div className="flex flex-1 flex-col items-center justify-center gap-4">
+              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-muted-foreground">
+                Run an analysis to see results
+              </span>
+              <span className="text-[12px] text-subtle-foreground">
+                Configure parameters on the right and click &ldquo;Run Analysis&rdquo;
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+      {activeTab === "Streamlines" && (
+        <StreamlinesViewer aeroplaneId={aeroplaneId} />
+      )}
+      {activeTab === "Three-View" && (
+        <div className="flex flex-1 items-center justify-center bg-card-muted">
+          <span className="font-[family-name:var(--font-geist-sans)] text-[13px] text-muted-foreground">
+            Coming soon
+          </span>
+        </div>
+      )}
+      {activeTab === "Diagrams" && (
+        <div className="flex flex-1 items-center justify-center bg-card-muted">
+          <span className="font-[family-name:var(--font-geist-sans)] text-[13px] text-muted-foreground">
+            Coming soon
+          </span>
+        </div>
+      )}
 
       {/* Info Chip Row */}
       <div className="flex items-center gap-2 border-t border-border bg-card px-4 py-3">
