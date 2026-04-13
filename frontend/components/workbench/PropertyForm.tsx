@@ -226,12 +226,18 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
   }, [xsec?.airfoil, xsec?.chord, xsec?.twist, xsec?.xyz_le?.[0], xsec?.xyz_le?.[1], xsec?.xyz_le?.[2], selectedXsecIndex]);
 
   // Sync WingConfig state from API response
+  // nose_pnt state (mm) — only editable on segment 0
+  const [nosePnt, setNosePnt] = useState<[number, number, number]>([0, 0, 0]);
+
   useEffect(() => {
     if (wingConfig && selectedXsecIndex !== null && selectedXsecIndex < wingConfig.segments.length) {
       const seg = wingConfig.segments[selectedXsecIndex];
       setWc(segmentToWcState(seg));
     } else {
       setWc(null);
+    }
+    if (wingConfig?.nose_pnt) {
+      setNosePnt(wingConfig.nose_pnt.map((v) => v * 1000) as [number, number, number]);
     }
   }, [wingConfig, selectedXsecIndex]);
 
@@ -301,6 +307,7 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
 
       await saveWingConfig({
         ...wingConfig,
+        nose_pnt: nosePnt.map((v) => v / 1000),
         segments: updatedSegments,
       });
       await mutate();
@@ -328,6 +335,17 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
       <div className="flex flex-col gap-3">
         {mode === "wingconfig" && wc ? (
           <>
+            {/* nose_pnt — only on segment 0 */}
+            {selectedXsecIndex === 0 && (
+              <div className="flex gap-3">
+                <Field label="nose x" value={nosePnt[0]} suffix="mm"
+                  onChange={(v) => setNosePnt([num(v), nosePnt[1], nosePnt[2]])} />
+                <Field label="nose y" value={nosePnt[1]} suffix="mm"
+                  onChange={(v) => setNosePnt([nosePnt[0], num(v), nosePnt[2]])} />
+                <Field label="nose z" value={nosePnt[2]} suffix="mm"
+                  onChange={(v) => setNosePnt([nosePnt[0], nosePnt[1], num(v)])} />
+              </div>
+            )}
             {/* Row 1: root_airfoil | tip_airfoil */}
             <div className="flex gap-3">
               <AirfoilSelector
