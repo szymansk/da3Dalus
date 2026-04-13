@@ -93,11 +93,13 @@ export function CadViewer({ parts }: CadViewerProps) {
         const firstInstances = first?.data?.instances;
         if (!firstShapes) throw new Error("No shape data in tessellation result");
 
+        // Deep-clone before resolving refs — never mutate cached state
+        const firstShapesCopy = JSON.parse(JSON.stringify(firstShapes));
         if (firstInstances && Array.isArray(firstInstances)) {
-          resolveRefs(firstShapes, firstInstances);
+          resolveRefs(firstShapesCopy, firstInstances);
         }
 
-        viewer.render(firstShapes, renderOptions, viewerOptions);
+        viewer.render(firstShapesCopy, renderOptions, viewerOptions);
 
         // Add remaining parts incrementally via addPart()
         for (let i = 1; i < parts.length; i++) {
@@ -108,14 +110,14 @@ export function CadViewer({ parts }: CadViewerProps) {
           const instances = part?.data?.instances;
           if (!shapes) continue;
 
+          const shapesCopy = JSON.parse(JSON.stringify(shapes));
           if (instances && Array.isArray(instances)) {
-            resolveRefs(shapes, instances);
+            resolveRefs(shapesCopy, instances);
           }
 
           try {
-            // addPart requires a parent path — use the root of the first shape
-            const rootId = (firstShapes as any).id || "/Group";
-            viewer.addPart(rootId, shapes, { skipBounds: true });
+            const rootId = (firstShapesCopy as any).id || "/Group";
+            viewer.addPart(rootId, shapesCopy, { skipBounds: true });
           } catch (err) {
             console.warn(`[CadViewer] addPart for part ${i} failed:`, err);
           }

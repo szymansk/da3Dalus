@@ -28,7 +28,7 @@ export default function WorkbenchPage() {
     <Group orientation="horizontal" className="flex-1">
       <Panel defaultSize={55} minSize={20}>
         <ViewerPanel
-          visibleParts={preview.getVisibleParts()}
+          visibleParts={preview.visibleParts}
           isAnyLoading={preview.isAnyLoading}
           loadingWing={preview.loadingWing}
         />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { API_BASE } from "@/lib/fetcher";
 
 interface WingPreview {
@@ -8,8 +8,6 @@ interface WingPreview {
   data: Record<string, unknown> | null;
   loading: boolean;
   error: string | null;
-  /** geometry hash — set after tessellation to detect staleness */
-  hash: string;
 }
 
 type PreviewMap = Record<string, WingPreview>;
@@ -25,7 +23,15 @@ export function usePreviewState(aeroplaneId: string | null) {
   const [previews, setPreviews] = useState<PreviewMap>({});
   const abortControllers = useRef<Record<string, AbortController>>({});
 
-  const getVisibleParts = useCallback((): Record<string, unknown>[] => {
+  // Fix #5: Reset state + abort in-flight requests when aeroplane changes
+  useEffect(() => {
+    setPreviews({});
+    Object.values(abortControllers.current).forEach((c) => c.abort());
+    abortControllers.current = {};
+  }, [aeroplaneId]);
+
+  // Fix #3: Memoize visible parts by comparing data references, not array identity
+  const visibleParts = useMemo((): Record<string, unknown>[] => {
     return Object.values(previews)
       .filter((p) => p.visible && p.data)
       .map((p) => p.data!);
@@ -39,7 +45,6 @@ export function usePreviewState(aeroplaneId: string | null) {
     async (wingName: string) => {
       if (!aeroplaneId) return;
 
-      // Cancel any running tessellation for this wing
       abortControllers.current[wingName]?.abort();
       const controller = new AbortController();
       abortControllers.current[wingName] = controller;
@@ -59,7 +64,6 @@ export function usePreviewState(aeroplaneId: string | null) {
         );
         if (!postRes.ok) throw new Error(`Tessellation failed: ${postRes.status}`);
 
-        // Poll for completion
         const deadline = Date.now() + 120_000;
         while (Date.now() < deadline) {
           if (signal.aborted) return;
@@ -72,13 +76,7 @@ export function usePreviewState(aeroplaneId: string | null) {
           if (s.status === "SUCCESS" && s.result?.data) {
             setPreviews((prev) => ({
               ...prev,
-              [wingName]: {
-                visible: true,
-                data: s.result,
-                loading: false,
-                error: null,
-                hash: s.result?.data?.shapes?.bb ? JSON.stringify(s.result.data.shapes.bb) : "",
-              },
+              [wingName]: { visible: true, data: s.result, loading: false, error: null },
             }));
             return;
           }
@@ -103,54 +101,48 @@ export function usePreviewState(aeroplaneId: string | null) {
     [aeroplaneId],
   );
 
-  /** Toggle preview on/off for a wing. If toggling on and no cache, tessellate. */
+  // Fix #1: Stale closure — decide inside setPreviews updater, trigger side-effect via flag
   const toggleWing = useCallback(
     (wingName: string) => {
+      let needsTessellation = false;
       setPreviews((prev) => {
         const existing = prev[wingName];
         if (existing?.visible) {
-          // Toggle off — keep cache, just hide
           return { ...prev, [wingName]: { ...existing, visible: false } };
         }
-        // Toggle on
         if (existing?.data) {
-          // Cache hit — just show
           return { ...prev, [wingName]: { ...existing, visible: true } };
         }
-        // No cache — mark visible, tessellation will be triggered below
+        needsTessellation = true;
         return {
           ...prev,
-          [wingName]: { visible: true, data: null, loading: false, error: null, hash: "" },
+          [wingName]: { visible: true, data: null, loading: false, error: null },
         };
       });
-
-      // If no cached data, trigger tessellation (outside setState)
-      const existing = previews[wingName];
-      if (!existing?.visible && !existing?.data) {
+      if (needsTessellation) {
         tessellateWing(wingName);
       }
     },
-    [previews, tessellateWing],
+    [tessellateWing],
   );
 
-  /** Invalidate cache for a wing. If visible, re-tessellate. */
+  // Fix #2: Stale closure — decide inside setPreviews updater
   const invalidateWing = useCallback(
     (wingName: string) => {
+      let wasVisible = false;
       setPreviews((prev) => {
         const existing = prev[wingName];
         if (!existing) return prev;
-        const updated = { ...existing, data: null, hash: "" };
-        return { ...prev, [wingName]: updated };
+        wasVisible = existing.visible;
+        return { ...prev, [wingName]: { ...existing, data: null } };
       });
-      // If wing was visible, re-tessellate
-      if (previews[wingName]?.visible) {
+      if (wasVisible) {
         tessellateWing(wingName);
       }
     },
-    [previews, tessellateWing],
+    [tessellateWing],
   );
 
-  /** Check if a wing's preview is toggled on. */
   const isWingVisible = useCallback(
     (wingName: string): boolean => previews[wingName]?.visible ?? false,
     [previews],
@@ -158,7 +150,7 @@ export function usePreviewState(aeroplaneId: string | null) {
 
   return {
     previews,
-    getVisibleParts,
+    visibleParts,
     toggleWing,
     invalidateWing,
     isWingVisible,
