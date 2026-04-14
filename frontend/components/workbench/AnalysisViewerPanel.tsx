@@ -141,7 +141,7 @@ export function AnalysisViewerPanel({ result, aeroplaneId, lastRunTime, lastRunD
   const charts = useMemo(() => {
     if (!result || !result.CL || result.CL.length === 0) return null;
 
-    const { CL, CD, alpha } = result;
+    const { CL, CD, Cm, alpha } = result;
     const clOverCd = CL.map((cl, i) => CD[i] !== 0 ? cl / CD[i] : 0);
 
     const maxCLIdx = CL.indexOf(Math.max(...CL));
@@ -151,6 +151,7 @@ export function AnalysisViewerPanel({ result, aeroplaneId, lastRunTime, lastRunD
       alpha,
       CL,
       CD,
+      Cm: Cm.length > 0 ? Cm : null,
       clOverCd,
       clMax: CL[maxCLIdx],
       alphaClMax: alpha[maxCLIdx],
@@ -188,34 +189,52 @@ export function AnalysisViewerPanel({ result, aeroplaneId, lastRunTime, lastRunD
       {activeTab === "Polar" && (
         <div className="flex flex-1 flex-col gap-4 overflow-auto bg-card-muted p-6">
           {charts ? (
-            <div className="grid grid-cols-2 gap-4">
-              <LineChart
-                xData={charts.alpha} yData={charts.CL}
-                xLabel="α [°]" yLabel="C_L"
-                title="C_L vs α"
-                annotation={`C_L,max ≈ ${charts.clMax.toFixed(2)} @ ${charts.alphaClMax.toFixed(0)}°`}
-                color="var(--color-primary)"
-              />
-              <LineChart
-                xData={charts.alpha} yData={charts.CD}
-                xLabel="α [°]" yLabel="C_D"
-                title="C_D vs α"
-                color="var(--color-destructive)"
-              />
-              <LineChart
-                xData={charts.alpha} yData={charts.clOverCd}
-                xLabel="α [°]" yLabel="C_L / C_D"
-                title="C_L / C_D vs α"
-                annotation={`L/D,max ≈ ${charts.ldMax.toFixed(1)} @ ${charts.alphaLdMax.toFixed(0)}°`}
-                color="var(--color-success)"
-              />
-              <LineChart
-                xData={charts.CD} yData={charts.CL}
-                xLabel="C_D" yLabel="C_L"
-                title="C_L vs C_D (drag polar)"
-                color="var(--color-primary)"
-                xFormat={(v) => v.toFixed(3)}
-              />
+            <div className="flex flex-col gap-4">
+              {/* Row 1: CL vs α, CD vs α, CL/CD vs α */}
+              <div className="grid grid-cols-3 gap-4">
+                <LineChart
+                  xData={charts.alpha} yData={charts.CL}
+                  xLabel="α [°]" yLabel="C_L"
+                  title="C_L vs α"
+                  annotation={`C_L,max ≈ ${charts.clMax.toFixed(2)} @ ${charts.alphaClMax.toFixed(0)}°`}
+                  color="var(--color-primary)"
+                />
+                <LineChart
+                  xData={charts.alpha} yData={charts.CD}
+                  xLabel="α [°]" yLabel="C_D"
+                  title="C_D vs α"
+                  color="var(--color-destructive)"
+                />
+                <LineChart
+                  xData={charts.alpha} yData={charts.clOverCd}
+                  xLabel="α [°]" yLabel="C_L / C_D"
+                  title="C_L / C_D vs α"
+                  annotation={`L/D,max ≈ ${charts.ldMax.toFixed(1)} @ ${charts.alphaLdMax.toFixed(0)}°`}
+                  color="var(--color-success)"
+                />
+              </div>
+              {/* Row 2: CL vs CD (drag polar), CM vs α */}
+              <div className="grid grid-cols-2 gap-4">
+                <LineChart
+                  xData={charts.CD} yData={charts.CL}
+                  xLabel="C_D" yLabel="C_L"
+                  title="C_L vs C_D (drag polar)"
+                  color="var(--color-primary)"
+                  xFormat={(v) => v.toFixed(3)}
+                />
+                {charts.Cm ? (
+                  <LineChart
+                    xData={charts.alpha} yData={charts.Cm}
+                    xLabel="α [°]" yLabel="C_m"
+                    title="C_m vs α"
+                    color="#A78BFA"
+                  />
+                ) : (
+                  <div className="flex flex-1 items-center justify-center rounded-[--radius-s] border border-border bg-card p-4">
+                    <span className="text-[12px] text-muted-foreground">C_m data not available</span>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-4">

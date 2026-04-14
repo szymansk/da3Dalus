@@ -23,17 +23,19 @@ function LineChart({
   yData,
   xLabel,
   yLabel,
+  xFormat,
   title,
   annotation,
   color = "var(--color-primary)",
 }: {
-  xData: number[];
+  xData: (number | null)[];
   yData: (number | null)[];
   xLabel: string;
   yLabel: string;
   title: string;
   annotation?: string;
   color?: string;
+  xFormat?: (v: number) => string;
 }) {
   const W = 400;
   const H = 200;
@@ -45,8 +47,9 @@ function LineChart({
   const valid = useMemo(() => {
     const pairs: { x: number; y: number }[] = [];
     for (let i = 0; i < xData.length; i++) {
+      const x = xData[i];
       const y = yData[i];
-      if (y != null && isFinite(y)) pairs.push({ x: xData[i], y });
+      if (x != null && isFinite(x) && y != null && isFinite(y)) pairs.push({ x, y });
     }
     return pairs;
   }, [xData, yData]);
@@ -172,7 +175,7 @@ function LineChart({
               fill="var(--color-muted-foreground)"
               fontFamily="var(--font-jetbrains-mono)"
             >
-              {`${v.toFixed(0)}\u00B0`}
+              {xFormat ? xFormat(v) : `${v.toFixed(0)}\u00B0`}
             </text>
           ))}
 
@@ -445,9 +448,10 @@ export function AirfoilPreviewViewerPanel({
       </div>
 
       {/* Polars Section */}
-      <div className="flex gap-4">
-        {analysisResult ? (
-          <>
+      {analysisResult ? (
+        <div className="flex flex-col gap-4">
+          {/* Row 1: CL vs α, CD vs α, CL/CD vs α */}
+          <div className="grid grid-cols-3 gap-4">
             <LineChart
               xData={analysisResult.alphaDeg}
               yData={analysisResult.cl}
@@ -463,6 +467,14 @@ export function AirfoilPreviewViewerPanel({
             />
             <LineChart
               xData={analysisResult.alphaDeg}
+              yData={analysisResult.cd}
+              xLabel={"\u03B1 [\u00B0]"}
+              yLabel="C_D"
+              title="C_D vs \u03B1"
+              color="var(--color-destructive)"
+            />
+            <LineChart
+              xData={analysisResult.alphaDeg}
               yData={analysisResult.clOverCd}
               xLabel={"\u03B1 [\u00B0]"}
               yLabel="C_L / C_D"
@@ -474,15 +486,35 @@ export function AirfoilPreviewViewerPanel({
               }
               color="var(--color-success)"
             />
-          </>
-        ) : (
-          <div className="flex flex-1 items-center justify-center rounded-[--radius-m] border border-border bg-card p-8">
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
-              Run Analysis to see polars
-            </span>
           </div>
-        )}
-      </div>
+          {/* Row 2: CL vs CD (drag polar), CM vs α */}
+          <div className="grid grid-cols-2 gap-4">
+            <LineChart
+              xData={analysisResult.cd}
+              yData={analysisResult.cl}
+              xLabel="C_D"
+              yLabel="C_L"
+              title="C_L vs C_D (drag polar)"
+              color="var(--color-primary)"
+              xFormat={(v: number) => v.toFixed(3)}
+            />
+            <LineChart
+              xData={analysisResult.alphaDeg}
+              yData={analysisResult.cm}
+              xLabel={"\u03B1 [\u00B0]"}
+              yLabel="C_m"
+              title="C_m vs \u03B1"
+              color="#A78BFA"
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-1 items-center justify-center rounded-[--radius-m] border border-border bg-card p-8">
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
+            Run Analysis to see polars
+          </span>
+        </div>
+      )}
     </div>
   );
 }

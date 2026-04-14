@@ -8,6 +8,7 @@ export interface AirfoilAnalysisResult {
   alphaDeg: number[];
   cl: (number | null)[];
   cd: (number | null)[];
+  cm: (number | null)[];
   clOverCd: (number | null)[];
   clMax: number | null;
   alphaAtClMax: number | null;
@@ -63,6 +64,7 @@ export function useAirfoilAnalysis() {
           alphaDeg: data.alpha_deg ?? [],
           cl: rr.cl ?? [],
           cd: rr.cd ?? [],
+          cm: rr.cm ?? [],
           clOverCd,
           clMax: rr.cl_max ?? null,
           alphaAtClMax: rr.alpha_at_cl_max_deg ?? null,
