@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Info, ArrowLeft, Save, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Info, ArrowLeft, Save, Loader2, ChevronLeft, ChevronRight, Undo2 } from "lucide-react";
 import { AirfoilSelector } from "./AirfoilSelector";
 
 interface AirfoilPreviewConfigPanelProps {
@@ -32,6 +32,7 @@ interface AirfoilPreviewConfigPanelProps {
   isDirty: boolean;
   isSaving: boolean;
   onSave: () => void;
+  onRevert: () => void;
   onBack: () => void;
 }
 
@@ -132,6 +133,7 @@ export function AirfoilPreviewConfigPanel({
   isDirty,
   isSaving,
   onSave,
+  onRevert,
   onBack,
 }: AirfoilPreviewConfigPanelProps) {
   const [showReInfo, setShowReInfo] = useState(false);
@@ -164,14 +166,24 @@ export function AirfoilPreviewConfigPanel({
         </button>
         <span className="flex-1" />
         {isDirty && (
-          <button
-            onClick={onSave}
-            disabled={isSaving}
-            className="flex items-center gap-1.5 rounded-[--radius-pill] bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
-          >
-            {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-            {isSaving ? "Saving\u2026" : "Save Airfoils"}
-          </button>
+          <>
+            <button
+              onClick={onRevert}
+              className="flex items-center gap-1.5 rounded-[--radius-pill] border border-border px-3 py-2 text-[13px] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+              title="Revert to saved airfoils"
+            >
+              <Undo2 size={14} />
+              Revert
+            </button>
+            <button
+              onClick={onSave}
+              disabled={isSaving}
+              className="flex items-center gap-1.5 rounded-[--radius-pill] bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
+            >
+              {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              {isSaving ? "Saving\u2026" : "Save"}
+            </button>
+          </>
         )}
       </div>
 

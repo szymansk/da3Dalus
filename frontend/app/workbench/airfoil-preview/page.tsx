@@ -99,6 +99,16 @@ export default function AirfoilPreviewPage() {
   const savedTip = segment ? airfoilShortName(segment.tip_airfoil?.airfoil ?? segment.root_airfoil?.airfoil ?? "naca0012") : "naca0012";
   const isDirty = rootAirfoil !== savedRoot || tipAirfoil !== savedTip;
 
+  const handleRevert = useCallback(() => {
+    setRootAirfoil(savedRoot);
+    setTipAirfoil(savedTip);
+    setRootReOverride(null);
+    setTipReOverride(null);
+    rootAnalysis.clear();
+    tipAnalysis.clear();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedRoot, savedTip]);
+
   const handleSave = useCallback(async () => {
     if (!wingConfig || !segment) return;
     setIsSaving(true);
@@ -168,6 +178,7 @@ export default function AirfoilPreviewPage() {
           isDirty={isDirty}
           isSaving={isSaving}
           onSave={handleSave}
+          onRevert={handleRevert}
           onBack={handleBack}
         />
       </div>
