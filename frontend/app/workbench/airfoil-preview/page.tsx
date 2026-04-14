@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useWingConfig } from "@/hooks/useWingConfig";
 import { useAirfoilGeometry } from "@/hooks/useAirfoilGeometry";
@@ -8,14 +8,15 @@ import { useAirfoilAnalysis } from "@/hooks/useAirfoilAnalysis";
 import { AirfoilPreviewViewerPanel } from "@/components/workbench/AirfoilPreviewViewerPanel";
 import { AirfoilPreviewConfigPanel } from "@/components/workbench/AirfoilPreviewConfigPanel";
 
-/** Extract short airfoil name from path like "./components/airfoils/mh32.dat" */
 function airfoilShortName(raw: string): string {
   return (raw.split("/").pop() ?? raw).replace(/\.dat$/i, "");
 }
 
-// Reynolds: Re = V * c / ν
-const NU_AIR = 1.46e-5; // kinematic viscosity [m²/s] at 15°C
-const V_CRUISE = 14; // typical model aircraft cruise speed [m/s]
+const NU_AIR = 1.46e-5; // kinematic viscosity [m\u00B2/s] at 15\u00B0C
+
+export function computeRe(velocityMs: number, chordMm: number): number {
+  return Math.round((velocityMs * (chordMm / 1000)) / NU_AIR);
+}
 
 export default function AirfoilPreviewPage() {
   const { aeroplaneId, selectedWing, selectedXsecIndex } =
@@ -32,16 +33,23 @@ export default function AirfoilPreviewPage() {
 
   const [rootAirfoil, setRootAirfoil] = useState(initialRoot);
   const [tipAirfoil, setTipAirfoil] = useState(initialTip);
+  const [velocity, setVelocity] = useState(14); // m/s — typical model aircraft cruise
   const [ma, setMa] = useState(0.0);
 
-  // Separate Re per x-section — chord differs between root and tip
-  function chordToRe(chordMm: number) {
-    return Math.round((V_CRUISE * (chordMm / 1000)) / NU_AIR);
-  }
+  // Re computed reactively from velocity + chord
   const rootChordMm = segment?.root_airfoil?.chord ?? 200;
   const tipChordMm = segment?.tip_airfoil?.chord ?? rootChordMm;
-  const [rootRe, setRootRe] = useState(chordToRe(rootChordMm));
-  const [tipRe, setTipRe] = useState(chordToRe(tipChordMm));
+  const [rootReOverride, setRootReOverride] = useState<number | null>(null);
+  const [tipReOverride, setTipReOverride] = useState<number | null>(null);
+
+  const rootRe = rootReOverride ?? computeRe(velocity, rootChordMm);
+  const tipRe = tipReOverride ?? computeRe(velocity, tipChordMm);
+
+  // Reset overrides when velocity changes (recalculate from velocity)
+  useEffect(() => {
+    setRootReOverride(null);
+    setTipReOverride(null);
+  }, [velocity]);
 
   // Sync from wing config when it loads
   useEffect(() => {
@@ -56,22 +64,21 @@ export default function AirfoilPreviewPage() {
             "naca0012",
         ),
       );
-      setRootRe(chordToRe(segment.root_airfoil?.chord ?? 200));
-      setTipRe(chordToRe(segment.tip_airfoil?.chord ?? segment.root_airfoil?.chord ?? 200));
+      setRootReOverride(null);
+      setTipReOverride(null);
     }
   }, [segment]);
 
-  // Geometry for both airfoils
   const rootGeo = useAirfoilGeometry(rootAirfoil);
   const tipGeo = useAirfoilGeometry(tipAirfoil !== rootAirfoil ? tipAirfoil : null);
-
-  // Analysis for both airfoils (triggered by Run Analysis button)
   const rootAnalysis = useAirfoilAnalysis();
   const tipAnalysis = useAirfoilAnalysis();
 
+  const hasTip = tipAirfoil !== rootAirfoil;
+
   const handleRunAnalysis = () => {
     rootAnalysis.run(rootAirfoil, rootRe, ma);
-    if (tipAirfoil !== rootAirfoil) {
+    if (hasTip) {
       tipAnalysis.run(tipAirfoil, tipRe, ma);
     }
   };
@@ -81,24 +88,20 @@ export default function AirfoilPreviewPage() {
     tipAnalysis.clear();
   };
 
-  const segmentLabel = `segment ${selectedXsecIndex ?? 0}`;
-
   return (
     <div className="flex flex-1 gap-4 overflow-hidden">
       <div className="flex-1 overflow-hidden">
         <AirfoilPreviewViewerPanel
           rootAirfoilName={rootAirfoil}
-          tipAirfoilName={tipAirfoil !== rootAirfoil ? tipAirfoil : null}
+          tipAirfoilName={hasTip ? tipAirfoil : null}
           rootGeometry={rootGeo.geometry}
           tipGeometry={tipGeo.geometry}
           geometryLoading={rootGeo.isLoading || tipGeo.isLoading}
           rootAnalysisResult={rootAnalysis.result}
-          tipAnalysisResult={tipAirfoil !== rootAirfoil ? tipAnalysis.result : null}
+          tipAnalysisResult={hasTip ? tipAnalysis.result : null}
           rootRe={rootRe}
-          tipRe={tipAirfoil !== rootAirfoil ? tipRe : null}
+          tipRe={hasTip ? tipRe : null}
           ma={ma}
-          onRootReChange={setRootRe}
-          onTipReChange={setTipRe}
           onMaChange={setMa}
         />
       </div>
@@ -106,25 +109,26 @@ export default function AirfoilPreviewPage() {
         <AirfoilPreviewConfigPanel
           rootAirfoil={rootAirfoil}
           tipAirfoil={tipAirfoil}
-          onRootAirfoilChange={(name) => {
-            setRootAirfoil(name);
-            rootAnalysis.clear();
-          }}
-          onTipAirfoilChange={(name) => {
-            setTipAirfoil(name);
-            tipAnalysis.clear();
-          }}
+          onRootAirfoilChange={(name) => { setRootAirfoil(name); rootAnalysis.clear(); }}
+          onTipAirfoilChange={(name) => { setTipAirfoil(name); tipAnalysis.clear(); }}
           onRunAnalysis={handleRunAnalysis}
           onClearResults={handleClear}
           isRunning={rootAnalysis.isRunning || tipAnalysis.isRunning}
-          segmentLabel={segmentLabel}
+          segmentLabel={`segment ${selectedXsecIndex ?? 0}`}
           segmentProps={{
             length: segment?.length,
             sweep: segment?.sweep,
-            dihedral:
-              segment?.root_airfoil?.dihedral_as_rotation_in_degrees,
+            dihedral: segment?.root_airfoil?.dihedral_as_rotation_in_degrees,
             incidence: segment?.root_airfoil?.incidence,
           }}
+          velocity={velocity}
+          onVelocityChange={setVelocity}
+          rootRe={rootRe}
+          tipRe={tipRe}
+          onRootReChange={setRootReOverride}
+          onTipReChange={setTipReOverride}
+          rootChordMm={rootChordMm}
+          tipChordMm={tipChordMm}
         />
       </div>
     </div>
