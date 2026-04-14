@@ -19,6 +19,10 @@ class ComponentModel(Base):
     manufacturer = Column(String, nullable=True)
     description = Column(String, nullable=True)
     mass_g = Column(Float, nullable=True)
+    bbox_x_mm = Column(Float, nullable=True)
+    bbox_y_mm = Column(Float, nullable=True)
+    bbox_z_mm = Column(Float, nullable=True)
+    model_ref = Column(String, nullable=True)
     specs = Column(JSON, nullable=False, default=dict)
     created_at = Column(
         DateTime(timezone=True),

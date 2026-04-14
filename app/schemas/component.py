@@ -13,6 +13,21 @@ COMPONENT_TYPES = Literal[
     "battery",
     "receiver",
     "flight_controller",
+    "material",
+    "propeller",
+    "generic",
+]
+
+COMPONENT_TYPE_LIST: list[str] = [
+    "servo",
+    "brushless_motor",
+    "esc",
+    "battery",
+    "receiver",
+    "flight_controller",
+    "material",
+    "propeller",
+    "generic",
 ]
 
 
@@ -22,9 +37,13 @@ class ComponentWrite(BaseModel):
     manufacturer: Optional[str] = Field(None, description="Manufacturer name")
     description: Optional[str] = Field(None, description="Free-text description")
     mass_g: Optional[float] = Field(None, ge=0, description="Mass in grams")
+    bbox_x_mm: Optional[float] = Field(None, ge=0, description="Bounding box X dimension in mm")
+    bbox_y_mm: Optional[float] = Field(None, ge=0, description="Bounding box Y dimension in mm")
+    bbox_z_mm: Optional[float] = Field(None, ge=0, description="Bounding box Z dimension in mm")
+    model_ref: Optional[str] = Field(None, description="Reference to STEP/STL 3D model file")
     specs: dict[str, Any] = Field(
         default_factory=dict,
-        description="Type-specific specifications (e.g. kv, capacity_mah, voltage_range)",
+        description="Type-specific specifications (e.g. kv, capacity_mah, voltage_range, density_kg_m3)",
     )
 
 
@@ -37,3 +56,7 @@ class ComponentRead(ComponentWrite):
 class ComponentList(BaseModel):
     items: list[ComponentRead] = Field(default_factory=list)
     total: int = Field(0, description="Total number of matching components")
+
+
+class ComponentTypesResponse(BaseModel):
+    types: list[str] = Field(..., description="List of all available component types")
