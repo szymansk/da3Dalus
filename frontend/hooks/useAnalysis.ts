@@ -37,16 +37,28 @@ function extractResult(data: Record<string, unknown>): AnalysisResult {
   };
 }
 
-export function useAnalysis(aeroplaneId: string | null) {
+export interface UseAnalysisReturn {
+  result: AnalysisResult | null;
+  isRunning: boolean;
+  error: string | null;
+  lastRunTime: Date | null;
+  lastRunDurationMs: number | null;
+  runAlphaSweep: (params: AlphaSweepParams) => Promise<void>;
+}
+
+export function useAnalysis(aeroplaneId: string | null): UseAnalysisReturn {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastRunTime, setLastRunTime] = useState<Date | null>(null);
+  const [lastRunDurationMs, setLastRunDurationMs] = useState<number | null>(null);
 
   const runAlphaSweep = useCallback(
     async (params: AlphaSweepParams) => {
       if (!aeroplaneId) return;
       setIsRunning(true);
       setError(null);
+      const t0 = Date.now();
 
       try {
         const res = await fetch(
@@ -63,6 +75,8 @@ export function useAnalysis(aeroplaneId: string | null) {
         }
         const data = await res.json();
         setResult(extractResult(data));
+        setLastRunTime(new Date());
+        setLastRunDurationMs(Date.now() - t0);
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       } finally {
@@ -72,5 +86,5 @@ export function useAnalysis(aeroplaneId: string | null) {
     [aeroplaneId],
   );
 
-  return { result, isRunning, error, runAlphaSweep };
+  return { result, isRunning, error, lastRunTime, lastRunDurationMs, runAlphaSweep };
 }

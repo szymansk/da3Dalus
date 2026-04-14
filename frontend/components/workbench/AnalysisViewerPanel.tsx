@@ -11,6 +11,8 @@ type Tab = (typeof TABS)[number];
 interface Props {
   result: AnalysisResult | null;
   aeroplaneId: string | null;
+  lastRunTime?: Date | null;
+  lastRunDurationMs?: number | null;
 }
 
 // ── SVG Line Chart ──────────────────────────────────────────────
@@ -133,7 +135,7 @@ function LineChart({
 
 // ── Main Component ──────────────────────────────────────────────
 
-export function AnalysisViewerPanel({ result, aeroplaneId }: Props) {
+export function AnalysisViewerPanel({ result, aeroplaneId, lastRunTime, lastRunDurationMs }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("Polar");
 
   const charts = useMemo(() => {
@@ -268,6 +270,9 @@ export function AnalysisViewerPanel({ result, aeroplaneId }: Props) {
         <div className="flex-1" />
         <span className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
           {charts ? `${charts.alpha.length} points` : "No data"}
+          {lastRunTime && lastRunDurationMs != null && (
+            <> &middot; Last run: {lastRunTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })} &middot; {lastRunDurationMs} ms</>
+          )}
         </span>
       </div>
     </div>
