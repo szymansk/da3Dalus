@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Wind, SlidersHorizontal, Activity } from "lucide-react";
+import { Wind, SlidersHorizontal, Activity, Maximize2, Minimize2 } from "lucide-react";
 import type { AnalysisResult } from "@/hooks/useAnalysis";
 import { StreamlinesViewer } from "@/components/workbench/StreamlinesViewer";
 
@@ -26,6 +26,8 @@ function LineChart({
   annotation,
   color = "var(--color-primary)",
   xFormat,
+  onToggleMaximize,
+  isMaximized,
 }: {
   xData: number[];
   yData: number[];
@@ -35,6 +37,8 @@ function LineChart({
   annotation?: string;
   color?: string;
   xFormat?: (v: number) => string;
+  onToggleMaximize?: () => void;
+  isMaximized?: boolean;
 }) {
   const W = 400;
   const H = 200;
@@ -68,14 +72,21 @@ function LineChart({
   const xTicks = Array.from({ length: 5 }, (_, i) => xMin + (xRange * i) / 4);
 
   return (
-    <div className="flex flex-1 flex-col gap-1">
+    <div className="group/chart flex flex-1 flex-col gap-1">
       <div className="flex items-center gap-2">
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground">{title}</span>
         {annotation && (
-          <>
-            <span className="flex-1" />
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground">{annotation}</span>
-          </>
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground">{annotation}</span>
+        )}
+        <span className="flex-1" />
+        {onToggleMaximize && (
+          <button
+            onClick={onToggleMaximize}
+            className="flex size-5 items-center justify-center rounded-[2px] text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/chart:opacity-100"
+            title={isMaximized ? "Restore" : "Maximize"}
+          >
+            {isMaximized ? <Minimize2 size={10} /> : <Maximize2 size={10} />}
+          </button>
         )}
       </div>
       <div className="rounded-[--radius-s] border border-border bg-card p-2">
@@ -137,6 +148,11 @@ function LineChart({
 
 export function AnalysisViewerPanel({ result, aeroplaneId, lastRunTime, lastRunDurationMs }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("Polar");
+  const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
+
+  function toggleChart(id: string) {
+    setMaximizedChart((prev) => (prev === id ? null : id));
+  }
 
   const charts = useMemo(() => {
     if (!result || !result.CL || result.CL.length === 0) return null;
@@ -189,53 +205,38 @@ export function AnalysisViewerPanel({ result, aeroplaneId, lastRunTime, lastRunD
       {activeTab === "Polar" && (
         <div className="flex flex-1 flex-col gap-4 overflow-auto bg-card-muted p-6">
           {charts ? (
-            <div className="flex flex-col gap-4">
-              {/* Row 1: CL vs α, CD vs α, CL/CD vs α */}
-              <div className="grid grid-cols-3 gap-4">
-                <LineChart
-                  xData={charts.alpha} yData={charts.CL}
-                  xLabel="α [°]" yLabel="C_L"
-                  title="C_L vs α"
-                  annotation={`C_L,max ≈ ${charts.clMax.toFixed(2)} @ ${charts.alphaClMax.toFixed(0)}°`}
-                  color="var(--color-primary)"
-                />
-                <LineChart
-                  xData={charts.alpha} yData={charts.CD}
-                  xLabel="α [°]" yLabel="C_D"
-                  title="C_D vs α"
-                  color="var(--color-destructive)"
-                />
-                <LineChart
-                  xData={charts.alpha} yData={charts.clOverCd}
-                  xLabel="α [°]" yLabel="C_L / C_D"
-                  title="C_L / C_D vs α"
-                  annotation={`L/D,max ≈ ${charts.ldMax.toFixed(1)} @ ${charts.alphaLdMax.toFixed(0)}°`}
-                  color="var(--color-success)"
-                />
-              </div>
-              {/* Row 2: CL vs CD (drag polar), CM vs α */}
-              <div className="grid grid-cols-2 gap-4">
-                <LineChart
-                  xData={charts.CD} yData={charts.CL}
-                  xLabel="C_D" yLabel="C_L"
-                  title="C_L vs C_D (drag polar)"
-                  color="var(--color-primary)"
-                  xFormat={(v) => v.toFixed(3)}
-                />
-                {charts.Cm ? (
-                  <LineChart
-                    xData={charts.alpha} yData={charts.Cm}
-                    xLabel="α [°]" yLabel="C_m"
-                    title="C_m vs α"
-                    color="#A78BFA"
-                  />
-                ) : (
-                  <div className="flex flex-1 items-center justify-center rounded-[--radius-s] border border-border bg-card p-4">
-                    <span className="text-[12px] text-muted-foreground">C_m data not available</span>
+            (() => {
+              const allCharts = [
+                { id: "cl", xData: charts.alpha, yData: charts.CL, xLabel: "α [°]", yLabel: "C_L", title: "C_L vs α", annotation: `C_L,max ≈ ${charts.clMax.toFixed(2)} @ ${charts.alphaClMax.toFixed(0)}°`, color: "var(--color-primary)" },
+                { id: "cd", xData: charts.alpha, yData: charts.CD, xLabel: "α [°]", yLabel: "C_D", title: "C_D vs α", color: "var(--color-destructive)" },
+                { id: "ld", xData: charts.alpha, yData: charts.clOverCd, xLabel: "α [°]", yLabel: "C_L / C_D", title: "C_L / C_D vs α", annotation: `L/D,max ≈ ${charts.ldMax.toFixed(1)} @ ${charts.alphaLdMax.toFixed(0)}°`, color: "var(--color-success)" },
+                { id: "polar", xData: charts.CD, yData: charts.CL, xLabel: "C_D", yLabel: "C_L", title: "C_L vs C_D (drag polar)", color: "var(--color-primary)", xFormat: (v: number) => v.toFixed(3) },
+                ...(charts.Cm ? [{ id: "cm", xData: charts.alpha, yData: charts.Cm, xLabel: "α [°]", yLabel: "C_m", title: "C_m vs α", color: "#A78BFA" }] : []),
+              ];
+              if (maximizedChart) {
+                const chart = allCharts.find((c) => c.id === maximizedChart);
+                if (!chart) return null;
+                return (
+                  <div className="flex flex-1">
+                    <LineChart {...chart} onToggleMaximize={() => toggleChart(chart.id)} isMaximized />
                   </div>
-                )}
-              </div>
-            </div>
+                );
+              }
+              return (
+                <div className="flex flex-col gap-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    {allCharts.slice(0, 3).map((c) => (
+                      <LineChart key={c.id} {...c} onToggleMaximize={() => toggleChart(c.id)} />
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {allCharts.slice(3).map((c) => (
+                      <LineChart key={c.id} {...c} onToggleMaximize={() => toggleChart(c.id)} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })()
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-4">
               <span className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-muted-foreground">

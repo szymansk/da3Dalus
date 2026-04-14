@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
+import { Maximize2, Minimize2 } from "lucide-react";
 import type { AirfoilGeometry } from "@/hooks/useAirfoilGeometry";
 import type { AirfoilAnalysisResult } from "@/hooks/useAirfoilAnalysis";
 import { interpolateY } from "@/hooks/useAirfoilGeometry";
@@ -27,6 +28,8 @@ function LineChart({
   title,
   annotation,
   color = "var(--color-primary)",
+  onToggleMaximize,
+  isMaximized,
 }: {
   xData: (number | null)[];
   yData: (number | null)[];
@@ -36,6 +39,8 @@ function LineChart({
   annotation?: string;
   color?: string;
   xFormat?: (v: number) => string;
+  onToggleMaximize?: () => void;
+  isMaximized?: boolean;
 }) {
   const W = 400;
   const H = 200;
@@ -87,18 +92,25 @@ function LineChart({
   const xTicks = Array.from({ length: 5 }, (_, i) => xMin + (xRange * i) / 4);
 
   return (
-    <div className="flex flex-1 flex-col gap-1">
+    <div className="group/chart flex flex-1 flex-col gap-1">
       <div className="flex items-center gap-2">
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground">
           {title}
         </span>
         {annotation && (
-          <>
-            <span className="flex-1" />
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground">
-              {annotation}
-            </span>
-          </>
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground">
+            {annotation}
+          </span>
+        )}
+        <span className="flex-1" />
+        {onToggleMaximize && (
+          <button
+            onClick={onToggleMaximize}
+            className="flex size-5 items-center justify-center rounded-[2px] text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/chart:opacity-100"
+            title={isMaximized ? "Restore" : "Maximize"}
+          >
+            {isMaximized ? <Minimize2 size={10} /> : <Maximize2 size={10} />}
+          </button>
         )}
       </div>
       <div className="rounded-[--radius-s] border border-border bg-card p-2">
@@ -369,6 +381,12 @@ export function AirfoilPreviewViewerPanel({
   onReChange,
   onMaChange,
 }: AirfoilPreviewViewerPanelProps) {
+  const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
+
+  function toggleChart(id: string) {
+    setMaximizedChart((prev) => (prev === id ? null : id));
+  }
+
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-hidden p-4">
       {/* Header Row */}
@@ -449,65 +467,38 @@ export function AirfoilPreviewViewerPanel({
 
       {/* Polars Section */}
       {analysisResult ? (
-        <div className="flex flex-col gap-4">
-          {/* Row 1: CL vs α, CD vs α, CL/CD vs α */}
-          <div className="grid grid-cols-3 gap-4">
-            <LineChart
-              xData={analysisResult.alphaDeg}
-              yData={analysisResult.cl}
-              xLabel={"\u03B1 [\u00B0]"}
-              yLabel="C_L"
-              title="C_L vs \u03B1"
-              annotation={
-                analysisResult.clMax != null && analysisResult.alphaAtClMax != null
-                  ? `C_L,max \u2248 ${analysisResult.clMax.toFixed(2)} @ ${analysisResult.alphaAtClMax.toFixed(0)}\u00B0`
-                  : undefined
-              }
-              color="var(--color-primary)"
-            />
-            <LineChart
-              xData={analysisResult.alphaDeg}
-              yData={analysisResult.cd}
-              xLabel={"\u03B1 [\u00B0]"}
-              yLabel="C_D"
-              title="C_D vs \u03B1"
-              color="var(--color-destructive)"
-            />
-            <LineChart
-              xData={analysisResult.alphaDeg}
-              yData={analysisResult.clOverCd}
-              xLabel={"\u03B1 [\u00B0]"}
-              yLabel="C_L / C_D"
-              title="C_L / C_D vs \u03B1"
-              annotation={
-                analysisResult.ldMax != null && analysisResult.alphaAtLdMax != null
-                  ? `L/D,max \u2248 ${analysisResult.ldMax.toFixed(1)} @ ${analysisResult.alphaAtLdMax.toFixed(0)}\u00B0`
-                  : undefined
-              }
-              color="var(--color-success)"
-            />
-          </div>
-          {/* Row 2: CL vs CD (drag polar), CM vs α */}
-          <div className="grid grid-cols-2 gap-4">
-            <LineChart
-              xData={analysisResult.cd}
-              yData={analysisResult.cl}
-              xLabel="C_D"
-              yLabel="C_L"
-              title="C_L vs C_D (drag polar)"
-              color="var(--color-primary)"
-              xFormat={(v: number) => v.toFixed(3)}
-            />
-            <LineChart
-              xData={analysisResult.alphaDeg}
-              yData={analysisResult.cm}
-              xLabel={"\u03B1 [\u00B0]"}
-              yLabel="C_m"
-              title="C_m vs \u03B1"
-              color="#A78BFA"
-            />
-          </div>
-        </div>
+        (() => {
+          const allCharts = [
+            { id: "cl", xData: analysisResult.alphaDeg, yData: analysisResult.cl, xLabel: "\u03B1 [\u00B0]", yLabel: "C_L", title: "C_L vs \u03B1", annotation: analysisResult.clMax != null && analysisResult.alphaAtClMax != null ? `C_L,max \u2248 ${analysisResult.clMax.toFixed(2)} @ ${analysisResult.alphaAtClMax.toFixed(0)}\u00B0` : undefined, color: "var(--color-primary)" },
+            { id: "cd", xData: analysisResult.alphaDeg, yData: analysisResult.cd, xLabel: "\u03B1 [\u00B0]", yLabel: "C_D", title: "C_D vs \u03B1", color: "var(--color-destructive)" },
+            { id: "ld", xData: analysisResult.alphaDeg, yData: analysisResult.clOverCd, xLabel: "\u03B1 [\u00B0]", yLabel: "C_L / C_D", title: "C_L / C_D vs \u03B1", annotation: analysisResult.ldMax != null && analysisResult.alphaAtLdMax != null ? `L/D,max \u2248 ${analysisResult.ldMax.toFixed(1)} @ ${analysisResult.alphaAtLdMax.toFixed(0)}\u00B0` : undefined, color: "var(--color-success)" },
+            { id: "polar", xData: analysisResult.cd, yData: analysisResult.cl, xLabel: "C_D", yLabel: "C_L", title: "C_L vs C_D (drag polar)", color: "var(--color-primary)", xFormat: (v: number) => v.toFixed(3) },
+            { id: "cm", xData: analysisResult.alphaDeg, yData: analysisResult.cm, xLabel: "\u03B1 [\u00B0]", yLabel: "C_m", title: "C_m vs \u03B1", color: "#A78BFA" },
+          ];
+          if (maximizedChart) {
+            const chart = allCharts.find((c) => c.id === maximizedChart);
+            if (!chart) return null;
+            return (
+              <div className="flex flex-1">
+                <LineChart {...chart} onToggleMaximize={() => toggleChart(chart.id)} isMaximized />
+              </div>
+            );
+          }
+          return (
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-3 gap-4">
+                {allCharts.slice(0, 3).map((c) => (
+                  <LineChart key={c.id} {...c} onToggleMaximize={() => toggleChart(c.id)} />
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {allCharts.slice(3).map((c) => (
+                  <LineChart key={c.id} {...c} onToggleMaximize={() => toggleChart(c.id)} />
+                ))}
+              </div>
+            </div>
+          );
+        })()
       ) : (
         <div className="flex flex-1 items-center justify-center rounded-[--radius-m] border border-border bg-card p-8">
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
