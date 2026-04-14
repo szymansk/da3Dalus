@@ -41,7 +41,7 @@ function Field({
   return (
     <div className="flex flex-1 flex-col gap-1">
       <span className="text-[11px] text-muted-foreground">{label}</span>
-      <div className="flex items-center gap-2 rounded-[--radius-s] border border-border bg-input px-3 py-2">
+      <div className="flex items-center gap-2 rounded-xl border border-border bg-input px-3 py-2">
         <span className="text-[13px] text-foreground">{value}</span>
         <span className="flex-1" />
         {isSelect ? (

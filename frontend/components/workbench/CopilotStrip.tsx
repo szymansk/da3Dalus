@@ -9,10 +9,10 @@ export function CopilotStrip() {
         Ask the copilot…
       </span>
       <div className="flex-1" />
-      <button className="flex h-7 w-7 items-center justify-center rounded-[--radius-s] border border-border bg-card-muted hover:bg-sidebar-accent">
+      <button className="flex h-7 w-7 items-center justify-center rounded-xl border border-border bg-card-muted hover:bg-sidebar-accent">
         <Send size={14} className="text-muted-foreground" />
       </button>
-      <button className="flex h-7 w-7 items-center justify-center rounded-[--radius-s] border border-border bg-card-muted hover:bg-sidebar-accent">
+      <button className="flex h-7 w-7 items-center justify-center rounded-xl border border-border bg-card-muted hover:bg-sidebar-accent">
         <ChevronUp size={14} className="text-muted-foreground" />
       </button>
     </footer>

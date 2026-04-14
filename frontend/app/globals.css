@@ -18,10 +18,18 @@
   --color-sidebar-accent: #2A2A30;
   --color-input: #1C1C20;
 
-  /* Radii */
-  --radius-s: 8px;
-  --radius-m: 12px;
-  --radius-l: 16px;
+  /* Radii — override Tailwind defaults to match da3Dalus.pen design */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+
+  /* Semantic aliases */
+  --radius-s: 12px;
+  --radius-m: 16px;
+  --radius-l: 20px;
   --radius-pill: 999px;
 
   /* Fonts */

@@ -28,7 +28,7 @@ export function ViewerPanel({ visibleParts, isAnyLoading, loadingWing, isMaximiz
         {isTreeCollapsed && onExpandTree && (
           <button
             onClick={onExpandTree}
-            className="flex size-6 items-center justify-center rounded-[--radius-s] text-muted-foreground hover:bg-sidebar-accent"
+            className="flex size-6 items-center justify-center rounded-xl text-muted-foreground hover:bg-sidebar-accent"
             title="Show tree panel"
           >
             <PanelLeftOpen size={14} />
@@ -57,7 +57,7 @@ export function ViewerPanel({ visibleParts, isAnyLoading, loadingWing, isMaximiz
         {onToggleMaximize && (
           <button
             onClick={onToggleMaximize}
-            className="flex size-8 items-center justify-center rounded-[--radius-s] border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent"
+            className="flex size-8 items-center justify-center rounded-xl border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent"
             title={isMaximized ? "Restore panels" : "Maximize viewer"}
           >
             {isMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}

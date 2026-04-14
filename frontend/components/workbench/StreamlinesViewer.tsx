@@ -68,7 +68,7 @@ export function StreamlinesViewer({ aeroplaneId }: { aeroplaneId: string | null 
             type="number"
             value={params.velocity}
             onChange={(e) => setParams((p) => ({ ...p, velocity: parseFloat(e.target.value) || 0 }))}
-            className="w-24 rounded-[--radius-s] border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
+            className="w-24 rounded-xl border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -79,7 +79,7 @@ export function StreamlinesViewer({ aeroplaneId }: { aeroplaneId: string | null 
             type="number"
             value={params.alpha}
             onChange={(e) => setParams((p) => ({ ...p, alpha: parseFloat(e.target.value) || 0 }))}
-            className="w-20 rounded-[--radius-s] border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
+            className="w-20 rounded-xl border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -90,7 +90,7 @@ export function StreamlinesViewer({ aeroplaneId }: { aeroplaneId: string | null 
             type="number"
             value={params.beta}
             onChange={(e) => setParams((p) => ({ ...p, beta: parseFloat(e.target.value) || 0 }))}
-            className="w-20 rounded-[--radius-s] border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
+            className="w-20 rounded-xl border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -101,7 +101,7 @@ export function StreamlinesViewer({ aeroplaneId }: { aeroplaneId: string | null 
             type="number"
             value={params.altitude}
             onChange={(e) => setParams((p) => ({ ...p, altitude: parseFloat(e.target.value) || 0 }))}
-            className="w-24 rounded-[--radius-s] border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
+            className="w-24 rounded-xl border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
           />
         </div>
         <button

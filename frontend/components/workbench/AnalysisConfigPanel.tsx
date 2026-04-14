@@ -86,7 +86,7 @@ export function AnalysisConfigPanel({ analysis }: { analysis: UseAnalysisReturn 
 
       {/* ── Error display ── */}
       {analysis.error && (
-        <p className="rounded-[--radius-s] border border-destructive bg-destructive/10 px-3 py-2 font-[family-name:var(--font-geist-sans)] text-[12px] text-destructive">
+        <p className="rounded-xl border border-destructive bg-destructive/10 px-3 py-2 font-[family-name:var(--font-geist-sans)] text-[12px] text-destructive">
           {analysis.error}
         </p>
       )}
@@ -140,7 +140,7 @@ export function AnalysisConfigPanel({ analysis }: { analysis: UseAnalysisReturn 
                 sweep_var
               </label>
               <div className="relative">
-                <select className="w-full appearance-none rounded-[--radius-s] border border-border bg-input px-3 py-2 pr-8 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground">
+                <select className="w-full appearance-none rounded-xl border border-border bg-input px-3 py-2 pr-8 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground">
                   <option>alpha</option>
                   <option>beta</option>
                   <option>velocity</option>
@@ -162,7 +162,7 @@ export function AnalysisConfigPanel({ analysis }: { analysis: UseAnalysisReturn 
                   type="text"
                   value={alphaStart}
                   onChange={(e) => setAlphaStart(e.target.value)}
-                  className="rounded-[--radius-s] border border-border bg-input px-3 py-2 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
+                  className="rounded-xl border border-border bg-input px-3 py-2 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -173,7 +173,7 @@ export function AnalysisConfigPanel({ analysis }: { analysis: UseAnalysisReturn 
                   type="text"
                   value={alphaEnd}
                   onChange={(e) => setAlphaEnd(e.target.value)}
-                  className="rounded-[--radius-s] border border-border bg-input px-3 py-2 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
+                  className="rounded-xl border border-border bg-input px-3 py-2 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -184,7 +184,7 @@ export function AnalysisConfigPanel({ analysis }: { analysis: UseAnalysisReturn 
                   type="text"
                   value={alphaStep}
                   onChange={(e) => setAlphaStep(e.target.value)}
-                  className="rounded-[--radius-s] border border-border bg-input px-3 py-2 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
+                  className="rounded-xl border border-border bg-input px-3 py-2 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
                 />
               </div>
             </div>
@@ -209,7 +209,7 @@ export function AnalysisConfigPanel({ analysis }: { analysis: UseAnalysisReturn 
                     type="text"
                     value={velocity}
                     onChange={(e) => setVelocity(e.target.value)}
-                    className="w-full rounded-[--radius-s] border border-border bg-input px-3 py-2 pr-10 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
+                    className="w-full rounded-xl border border-border bg-input px-3 py-2 pr-10 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
                   />
                   <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
                     m/s
@@ -225,7 +225,7 @@ export function AnalysisConfigPanel({ analysis }: { analysis: UseAnalysisReturn 
                     type="text"
                     value={altitude}
                     onChange={(e) => setAltitude(e.target.value)}
-                    className="w-full rounded-[--radius-s] border border-border bg-input px-3 py-2 pr-8 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
+                    className="w-full rounded-xl border border-border bg-input px-3 py-2 pr-8 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
                   />
                   <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
                     m
@@ -244,7 +244,7 @@ export function AnalysisConfigPanel({ analysis }: { analysis: UseAnalysisReturn 
                   type="text"
                   value={beta}
                   onChange={(e) => setBeta(e.target.value)}
-                  className="w-full rounded-[--radius-s] border border-border bg-input px-3 py-2 pr-8 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
+                  className="w-full rounded-xl border border-border bg-input px-3 py-2 pr-8 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
                 />
                 <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
                   &deg;
@@ -278,7 +278,7 @@ export function AnalysisConfigPanel({ analysis }: { analysis: UseAnalysisReturn 
                           <input
                             type="text"
                             defaultValue="0.0"
-                            className="w-full rounded-[--radius-s] border border-border bg-input px-3 py-2 pr-12 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
+                            className="w-full rounded-xl border border-border bg-input px-3 py-2 pr-12 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
                           />
                           <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
                             rad/s
@@ -297,7 +297,7 @@ export function AnalysisConfigPanel({ analysis }: { analysis: UseAnalysisReturn 
                         type="text"
                         value={xyzRef}
                         onChange={(e) => setXyzRef(e.target.value)}
-                        className="w-full rounded-[--radius-s] border border-border bg-input px-3 py-2 pr-8 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
+                        className="w-full rounded-xl border border-border bg-input px-3 py-2 pr-8 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
                       />
                       <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
                         m
@@ -322,7 +322,7 @@ export function AnalysisConfigPanel({ analysis }: { analysis: UseAnalysisReturn 
           <select
             value={analysisTool}
             onChange={(e) => setAnalysisTool(e.target.value)}
-            className="w-full appearance-none rounded-[--radius-s] border border-border bg-input px-3 py-2 pr-8 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
+            className="w-full appearance-none rounded-xl border border-border bg-input px-3 py-2 pr-8 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
           >
             <option value="aero_buildup">aerobuildup</option>
             <option value="avl">avl</option>
@@ -350,7 +350,7 @@ export function AnalysisConfigPanel({ analysis }: { analysis: UseAnalysisReturn 
             Flight profile
           </label>
           <div className="relative">
-            <select className="w-full appearance-none rounded-[--radius-s] border border-border bg-input px-3 py-2 pr-8 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground">
+            <select className="w-full appearance-none rounded-xl border border-border bg-input px-3 py-2 pr-8 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground">
               <option>cruise</option>
               <option>takeoff</option>
               <option>landing</option>

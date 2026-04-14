@@ -374,7 +374,7 @@ export function AeroplaneTree({ aeroplaneId, wingNames, aeroplaneName, isWingVis
         {onCollapseTree && (
           <button
             onClick={onCollapseTree}
-            className="flex size-6 items-center justify-center rounded-[--radius-s] text-muted-foreground hover:bg-sidebar-accent"
+            className="flex size-6 items-center justify-center rounded-xl text-muted-foreground hover:bg-sidebar-accent"
             title="Collapse tree panel"
           >
             <PanelLeftClose size={14} />
@@ -384,7 +384,7 @@ export function AeroplaneTree({ aeroplaneId, wingNames, aeroplaneName, isWingVis
           Aeroplane Tree
         </span>
         <div className="flex-1" />
-        <div className="flex overflow-hidden rounded-[--radius-s] border border-border">
+        <div className="flex overflow-hidden rounded-xl border border-border">
           <button
             onClick={() => setTreeMode("wingconfig")}
             className={`px-2.5 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px] ${
@@ -406,7 +406,7 @@ export function AeroplaneTree({ aeroplaneId, wingNames, aeroplaneName, isWingVis
             X-Secs
           </button>
         </div>
-        <button className="flex h-6 w-6 items-center justify-center rounded-[--radius-s] text-muted-foreground hover:bg-sidebar-accent">
+        <button className="flex h-6 w-6 items-center justify-center rounded-xl text-muted-foreground hover:bg-sidebar-accent">
           <Plus size={14} />
         </button>
       </div>
@@ -457,7 +457,7 @@ function TreeRow({ node, onToggle }: { node: TreeNode; onToggle: () => void }) {
 
   return (
     <div
-      className={`group flex items-center gap-2 rounded-[--radius-s] py-1.5 hover:bg-sidebar-accent ${
+      className={`group flex items-center gap-2 rounded-xl py-1.5 hover:bg-sidebar-accent ${
         node.selected ? "bg-sidebar-accent font-semibold" : ""
       }`}
       style={{ paddingLeft: `${indent}px`, cursor: "pointer" }}
@@ -487,7 +487,7 @@ function TreeRow({ node, onToggle }: { node: TreeNode; onToggle: () => void }) {
       {node.onDelete && (
         <button
           onClick={(e) => { e.stopPropagation(); node.onDelete?.(); }}
-          className="hidden h-5 w-5 items-center justify-center rounded-[--radius-s] group-hover:flex"
+          className="hidden h-5 w-5 items-center justify-center rounded-xl group-hover:flex"
         >
           <Trash2 size={12} className="text-destructive" />
         </button>
@@ -496,7 +496,7 @@ function TreeRow({ node, onToggle }: { node: TreeNode; onToggle: () => void }) {
       {node.onPreviewToggle && (
         <button
           onClick={(e) => { e.stopPropagation(); node.onPreviewToggle?.(); }}
-          className={`flex h-5 w-5 items-center justify-center rounded-[--radius-s] ${
+          className={`flex h-5 w-5 items-center justify-center rounded-xl ${
             node.previewVisible ? "text-primary" : "text-muted-foreground opacity-40 group-hover:opacity-100"
           }`}
           title={node.previewVisible ? "Hide 3D preview" : "Show 3D preview"}

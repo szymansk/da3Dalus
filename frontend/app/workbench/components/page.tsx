@@ -98,7 +98,7 @@ export default function ComponentsPage() {
             Component Library
           </h1>
           <span className="flex-1" />
-          <div className="flex w-60 items-center gap-2 rounded-[--radius-s] border border-border bg-input px-3 py-2">
+          <div className="flex w-60 items-center gap-2 rounded-xl border border-border bg-input px-3 py-2">
             <Search className="size-3.5 text-muted-foreground" />
             <span className="text-[12px] text-subtle-foreground">
               Search components...
@@ -131,7 +131,7 @@ export default function ComponentsPage() {
               >
                 {/* Card header */}
                 <div className="flex items-center">
-                  <div className="flex size-8 items-center justify-center rounded-[--radius-s] bg-card-muted">
+                  <div className="flex size-8 items-center justify-center rounded-xl bg-card-muted">
                     <Icon className="size-4 text-primary" />
                   </div>
                   <span className="flex-1" />

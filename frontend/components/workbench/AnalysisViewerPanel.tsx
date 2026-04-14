@@ -44,7 +44,7 @@ function LineChart({
 
   if (xData.length === 0 || yData.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center rounded-[--radius-s] border border-border bg-card p-4">
+      <div className="flex flex-1 items-center justify-center rounded-xl border border-border bg-card p-4">
         <span className="text-[12px] text-muted-foreground">No data</span>
       </div>
     );
@@ -78,7 +78,7 @@ function LineChart({
           </>
         )}
       </div>
-      <div className="rounded-[--radius-s] border border-border bg-card p-2">
+      <div className="rounded-xl border border-border bg-card p-2">
         <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full" preserveAspectRatio="xMidYMid meet">
           {/* Grid lines */}
           {yTicks.map((v, i) => (

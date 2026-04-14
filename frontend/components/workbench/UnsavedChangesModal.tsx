@@ -31,21 +31,21 @@ export function UnsavedChangesModal() {
           <button
             onClick={confirmDiscard}
             disabled={isSaving}
-            className="rounded-[--radius-s] border border-destructive px-5 py-2.5 text-[14px] font-medium text-destructive disabled:opacity-50"
+            className="rounded-xl border border-destructive px-5 py-2.5 text-[14px] font-medium text-destructive disabled:opacity-50"
           >
             Discard
           </button>
           <button
             onClick={cancelNavigation}
             disabled={isSaving}
-            className="rounded-[--radius-s] bg-sidebar-accent px-5 py-2.5 text-[14px] font-medium text-muted-foreground disabled:opacity-50"
+            className="rounded-xl bg-sidebar-accent px-5 py-2.5 text-[14px] font-medium text-muted-foreground disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={confirmSave}
             disabled={isSaving}
-            className="rounded-[--radius-s] bg-primary px-5 py-2.5 text-[14px] font-medium text-primary-foreground disabled:opacity-50"
+            className="rounded-xl bg-primary px-5 py-2.5 text-[14px] font-medium text-primary-foreground disabled:opacity-50"
           >
             {isSaving ? "Saving\u2026" : "Save & Continue"}
           </button>

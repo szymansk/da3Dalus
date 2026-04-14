@@ -74,15 +74,15 @@ export function Header() {
 
       {/* Right cluster */}
       <div className="flex items-center gap-3">
-        <button className="flex items-center gap-1.5 rounded-[--radius-s] border border-border bg-card-muted px-3 py-2 text-[13px] text-foreground hover:bg-sidebar-accent">
+        <button className="flex items-center gap-1.5 rounded-xl border border-border bg-card-muted px-3 py-2 text-[13px] text-foreground hover:bg-sidebar-accent">
           <History size={14} />
           <span className="font-[family-name:var(--font-geist-sans)]">v3</span>
           <ChevronDown size={12} className="text-muted-foreground" />
         </button>
-        <button className="flex h-8 w-8 items-center justify-center rounded-[--radius-s] border border-border bg-card-muted hover:bg-sidebar-accent">
+        <button className="flex h-8 w-8 items-center justify-center rounded-xl border border-border bg-card-muted hover:bg-sidebar-accent">
           <Save size={16} />
         </button>
-        <button className="flex h-8 w-8 items-center justify-center rounded-[--radius-s] border border-border bg-card-muted hover:bg-sidebar-accent">
+        <button className="flex h-8 w-8 items-center justify-center rounded-xl border border-border bg-card-muted hover:bg-sidebar-accent">
           <Settings size={16} />
         </button>
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary font-[family-name:var(--font-jetbrains-mono)] text-xs text-primary-foreground">
