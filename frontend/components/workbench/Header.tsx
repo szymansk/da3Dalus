@@ -21,13 +21,17 @@ const STEPS = [
 ] as const;
 
 function isActive(href: string, pathname: string) {
-  if (href === "/workbench") return pathname === "/workbench";
+  if (href === "/workbench")
+    return (
+      pathname === "/workbench" ||
+      pathname === "/workbench/airfoil-preview"
+    );
   return pathname.startsWith(href);
 }
 
 export function Header() {
   const pathname = usePathname();
-  const { aeroplaneId, selectedWing, setAeroplaneId } = useAeroplaneContext();
+  const { aeroplaneId, selectedWing, selectedXsecIndex, setAeroplaneId } = useAeroplaneContext();
   const { aeroplanes } = useAeroplanes();
   const aeroplaneName = aeroplanes.find((a) => a.id === aeroplaneId)?.name ?? "da3Dalus";
 
@@ -44,7 +48,12 @@ export function Header() {
           <ArrowLeftRight size={12} className="text-muted-foreground" />
         </button>
         <span className="text-sm text-muted-foreground">/</span>
-        <span className="text-sm text-muted-foreground">{selectedWing ?? "\u2014"}</span>
+        <span className="text-sm text-muted-foreground">
+          {selectedWing ?? "\u2014"}
+          {pathname === "/workbench/airfoil-preview" && selectedXsecIndex != null && (
+            <> / segment {selectedXsecIndex}</>
+          )}
+        </span>
       </div>
 
       {/* Step pills */}
@@ -74,15 +83,15 @@ export function Header() {
 
       {/* Right cluster */}
       <div className="flex items-center gap-3">
-        <button className="flex items-center gap-1.5 rounded-xl border border-border bg-card-muted px-3 py-2 text-[13px] text-foreground hover:bg-sidebar-accent">
+        <button className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3 py-2 text-[13px] text-foreground hover:bg-sidebar-accent">
           <History size={14} />
           <span className="font-[family-name:var(--font-geist-sans)]">v3</span>
           <ChevronDown size={12} className="text-muted-foreground" />
         </button>
-        <button className="flex h-8 w-8 items-center justify-center rounded-xl border border-border bg-card-muted hover:bg-sidebar-accent">
+        <button className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card-muted hover:bg-sidebar-accent">
           <Save size={16} />
         </button>
-        <button className="flex h-8 w-8 items-center justify-center rounded-xl border border-border bg-card-muted hover:bg-sidebar-accent">
+        <button className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card-muted hover:bg-sidebar-accent">
           <Settings size={16} />
         </button>
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary font-[family-name:var(--font-jetbrains-mono)] text-xs text-primary-foreground">

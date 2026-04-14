@@ -15,6 +15,7 @@ interface AirfoilSelectorProps {
   value: string;
   onChange?: (value: string) => void;
   onPreviewToggle?: (active: boolean) => void;
+  stats?: Record<string, string>;
 }
 
 const MAX_VISIBLE = 50;
@@ -24,6 +25,7 @@ export function AirfoilSelector({
   value,
   onChange,
   onPreviewToggle,
+  stats,
 }: AirfoilSelectorProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -141,6 +143,14 @@ export function AirfoilSelector({
                   <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
                     {name}
                   </span>
+                  {stats?.[name] && (
+                    <>
+                      <span className="flex-1" />
+                      <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
+                        {stats[name]}
+                      </span>
+                    </>
+                  )}
                 </button>
               ))
             )}

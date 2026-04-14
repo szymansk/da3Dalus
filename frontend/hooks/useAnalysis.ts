@@ -16,14 +16,14 @@ export interface AlphaSweepParams {
 export interface AnalysisResult {
   CL: number[];
   CD: number[];
+  Cm: number[];
   alpha: number[];
   [key: string]: unknown;
 }
 
 /**
- * Extract CL/CD/alpha from the nested API response.
- * API returns: { analysis: { coefficients: { CL, CD }, flight_condition: { alpha } } }
- * We flatten to: { CL, CD, alpha }
+ * Extract CL/CD/Cm/alpha from the nested API response.
+ * API returns: { analysis: { coefficients: { CL, CD, Cm }, flight_condition: { alpha } } }
  */
 function extractResult(data: Record<string, unknown>): AnalysisResult {
   const analysis = data.analysis as Record<string, unknown> | undefined;
@@ -33,6 +33,7 @@ function extractResult(data: Record<string, unknown>): AnalysisResult {
   return {
     CL: coefficients?.CL ?? [],
     CD: coefficients?.CD ?? [],
+    Cm: coefficients?.Cm ?? [],
     alpha: flightCondition?.alpha ?? [],
   };
 }
