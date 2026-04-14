@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { GuardedLink } from "./GuardedLink";
 import {
   History,
   ChevronDown,
@@ -52,7 +52,7 @@ export function Header() {
         {STEPS.map((step) => {
           const active = isActive(step.href, pathname);
           return (
-            <Link
+            <GuardedLink
               key={step.num}
               href={step.href}
               className={`flex items-center gap-2 rounded-[--radius-pill] px-4 py-2 text-[13px] transition-colors ${
@@ -67,7 +67,7 @@ export function Header() {
               <span className="font-[family-name:var(--font-geist-sans)]">
                 {step.label}
               </span>
-            </Link>
+            </GuardedLink>
           );
         })}
       </nav>
