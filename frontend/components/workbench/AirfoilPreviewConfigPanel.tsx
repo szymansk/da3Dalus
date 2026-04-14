@@ -10,7 +10,6 @@ interface AirfoilPreviewConfigPanelProps {
   onRootAirfoilChange: (name: string) => void;
   onTipAirfoilChange: (name: string) => void;
   onRunAnalysis: () => void;
-  onClearResults: () => void;
   isRunning: boolean;
   segmentIndex: number;
   segmentCount: number;
@@ -116,7 +115,6 @@ export function AirfoilPreviewConfigPanel({
   onRootAirfoilChange,
   onTipAirfoilChange,
   onRunAnalysis,
-  onClearResults,
   isRunning,
   segmentIndex,
   segmentCount,
@@ -156,13 +154,6 @@ export function AirfoilPreviewConfigPanel({
           className="rounded-[--radius-pill] bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
         >
           {isRunning ? "Running\u2026" : "Run Analysis"}
-        </button>
-        <button
-          onClick={onClearResults}
-          disabled={isRunning}
-          className="rounded-[--radius-pill] border border-border-strong bg-background px-3.5 py-2 text-[13px] text-foreground hover:bg-sidebar-accent disabled:opacity-50"
-        >
-          Clear Results
         </button>
         <span className="flex-1" />
         {isDirty && (

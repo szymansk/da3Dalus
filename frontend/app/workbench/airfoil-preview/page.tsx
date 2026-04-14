@@ -101,11 +101,6 @@ export default function AirfoilPreviewPage() {
     }
   };
 
-  const handleClear = () => {
-    rootAnalysis.clear();
-    tipAnalysis.clear();
-  };
-
   // Detect if airfoils changed vs. saved state
   const savedRoot = segment ? airfoilShortName(segment.root_airfoil?.airfoil ?? "naca0012") : "naca0012";
   const savedTip = segment ? airfoilShortName(segment.tip_airfoil?.airfoil ?? segment.root_airfoil?.airfoil ?? "naca0012") : "naca0012";
@@ -166,7 +161,6 @@ export default function AirfoilPreviewPage() {
           onRootAirfoilChange={setRootAirfoil}
           onTipAirfoilChange={setTipAirfoil}
           onRunAnalysis={handleRunAnalysis}
-          onClearResults={handleClear}
           isRunning={rootAnalysis.isRunning || tipAnalysis.isRunning}
           segmentIndex={selectedXsecIndex ?? 0}
           segmentCount={wingConfig?.segments?.length ?? 1}
