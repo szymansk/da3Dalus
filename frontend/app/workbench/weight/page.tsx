@@ -114,10 +114,10 @@ export default function WeightPage() {
                 </span>
               ))}
               <div className="flex w-16 justify-end gap-1.5">
-                <button className="flex size-6 items-center justify-center rounded-lg border border-border bg-card-muted">
+                <button className="flex size-6 items-center justify-center rounded-full border border-border bg-card-muted">
                   <Settings className="size-3 text-muted-foreground" />
                 </button>
-                <button className="flex size-6 items-center justify-center rounded-lg border border-border bg-card-muted">
+                <button className="flex size-6 items-center justify-center rounded-full border border-border bg-card-muted">
                   <X className="size-3 text-muted-foreground" />
                 </button>
               </div>

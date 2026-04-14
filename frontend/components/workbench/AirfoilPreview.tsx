@@ -41,7 +41,7 @@ export function AirfoilPreview({ airfoilName, onClose }: AirfoilPreviewProps) {
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
             Re
           </span>
-          <div className="rounded-lg border border-border bg-input px-2 py-1">
+          <div className="rounded-full border border-border bg-input px-2 py-1">
             <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground">
               200k
             </span>
@@ -53,7 +53,7 @@ export function AirfoilPreview({ airfoilName, onClose }: AirfoilPreviewProps) {
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
             Ma
           </span>
-          <div className="rounded-lg border border-border bg-input px-2 py-1">
+          <div className="rounded-full border border-border bg-input px-2 py-1">
             <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground">
               0.0
             </span>

@@ -93,7 +93,7 @@ export function AirfoilSelector({
       {/* Trigger */}
       <button
         onClick={toggle}
-        className={`flex items-center gap-2 rounded-lg px-3 py-2 transition-colors ${
+        className={`flex items-center gap-2 rounded-full px-3 py-2 transition-colors ${
           open ? "border-2 border-primary bg-input" : "border border-border bg-input"
         }`}
       >
