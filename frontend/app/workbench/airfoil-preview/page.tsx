@@ -13,6 +13,10 @@ function airfoilShortName(raw: string): string {
   return (raw.split("/").pop() ?? raw).replace(/\.dat$/i, "");
 }
 
+// Reynolds: Re = V * c / ν
+const NU_AIR = 1.46e-5; // kinematic viscosity [m²/s] at 15°C
+const V_CRUISE = 14; // typical model aircraft cruise speed [m/s]
+
 export default function AirfoilPreviewPage() {
   const { aeroplaneId, selectedWing, selectedXsecIndex } =
     useAeroplaneContext();
@@ -28,8 +32,11 @@ export default function AirfoilPreviewPage() {
 
   const [rootAirfoil, setRootAirfoil] = useState(initialRoot);
   const [tipAirfoil, setTipAirfoil] = useState(initialTip);
-  const [re, setRe] = useState(200000);
   const [ma, setMa] = useState(0.0);
+
+  const chordM = (segment?.root_airfoil?.chord ?? 200) / 1000;
+  const defaultRe = Math.round((V_CRUISE * chordM) / NU_AIR);
+  const [re, setRe] = useState(defaultRe);
 
   // Sync from wing config when it loads
   useEffect(() => {
@@ -44,12 +51,30 @@ export default function AirfoilPreviewPage() {
             "naca0012",
         ),
       );
+      const c = (segment.root_airfoil?.chord ?? 200) / 1000;
+      setRe(Math.round((V_CRUISE * c) / NU_AIR));
     }
   }, [segment]);
 
-  // The displayed airfoil is root_airfoil (primary selection)
-  const { geometry, isLoading: geoLoading } = useAirfoilGeometry(rootAirfoil);
-  const analysis = useAirfoilAnalysis();
+  // Geometry for both airfoils
+  const rootGeo = useAirfoilGeometry(rootAirfoil);
+  const tipGeo = useAirfoilGeometry(tipAirfoil !== rootAirfoil ? tipAirfoil : null);
+
+  // Analysis for both airfoils (triggered by Run Analysis button)
+  const rootAnalysis = useAirfoilAnalysis();
+  const tipAnalysis = useAirfoilAnalysis();
+
+  const handleRunAnalysis = () => {
+    rootAnalysis.run(rootAirfoil, re, ma);
+    if (tipAirfoil !== rootAirfoil) {
+      tipAnalysis.run(tipAirfoil, re, ma);
+    }
+  };
+
+  const handleClear = () => {
+    rootAnalysis.clear();
+    tipAnalysis.clear();
+  };
 
   const segmentLabel = `segment ${selectedXsecIndex ?? 0}`;
 
@@ -57,10 +82,13 @@ export default function AirfoilPreviewPage() {
     <div className="flex flex-1 gap-4 overflow-hidden">
       <div className="flex-1 overflow-hidden">
         <AirfoilPreviewViewerPanel
-          airfoilName={rootAirfoil}
-          geometry={geometry}
-          geometryLoading={geoLoading}
-          analysisResult={analysis.result}
+          rootAirfoilName={rootAirfoil}
+          tipAirfoilName={tipAirfoil !== rootAirfoil ? tipAirfoil : null}
+          rootGeometry={rootGeo.geometry}
+          tipGeometry={tipGeo.geometry}
+          geometryLoading={rootGeo.isLoading || tipGeo.isLoading}
+          rootAnalysisResult={rootAnalysis.result}
+          tipAnalysisResult={tipAirfoil !== rootAirfoil ? tipAnalysis.result : null}
           re={re}
           ma={ma}
           onReChange={setRe}
@@ -73,12 +101,15 @@ export default function AirfoilPreviewPage() {
           tipAirfoil={tipAirfoil}
           onRootAirfoilChange={(name) => {
             setRootAirfoil(name);
-            analysis.clear();
+            rootAnalysis.clear();
           }}
-          onTipAirfoilChange={setTipAirfoil}
-          onRunAnalysis={() => analysis.run(rootAirfoil, re, ma)}
-          onClearResults={analysis.clear}
-          isRunning={analysis.isRunning}
+          onTipAirfoilChange={(name) => {
+            setTipAirfoil(name);
+            tipAnalysis.clear();
+          }}
+          onRunAnalysis={handleRunAnalysis}
+          onClearResults={handleClear}
+          isRunning={rootAnalysis.isRunning || tipAnalysis.isRunning}
           segmentLabel={segmentLabel}
           segmentProps={{
             length: segment?.length,

@@ -243,7 +243,7 @@ export function AnalysisViewerPanel({ result, aeroplaneId, lastRunTime, lastRunD
                 Run an analysis to see results
               </span>
               <span className="text-[12px] text-subtle-foreground">
-                Configure parameters on the right and click &ldquo;Run Analysis&rdquo;
+                Configure parameters on the right and click {"\u201C"}Run Analysis{"\u201D"}
               </span>
             </div>
           )}
@@ -278,20 +278,20 @@ export function AnalysisViewerPanel({ result, aeroplaneId, lastRunTime, lastRunD
         <div className="flex items-center gap-1.5 rounded-[--radius-pill] bg-card-muted px-3 py-1.5">
           <SlidersHorizontal size={12} className="text-muted-foreground" />
           <span className="font-[family-name:var(--font-geist-sans)] text-[12px] text-foreground">
-            Trim: elevator &minus;2.1&deg;
+            Trim: elevator {"\u2212"}2.1{"\u00B0"}
           </span>
         </div>
         <div className="flex items-center gap-1.5 rounded-[--radius-pill] bg-card-muted px-3 py-1.5">
           <Activity size={12} className="text-muted-foreground" />
           <span className="font-[family-name:var(--font-geist-sans)] text-[12px] text-foreground">
-            Re &asymp; 4.2e5
+            Re {"\u2248"} 4.2e5
           </span>
         </div>
         <div className="flex-1" />
         <span className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
           {charts ? `${charts.alpha.length} points` : "No data"}
           {lastRunTime && lastRunDurationMs != null && (
-            <> &middot; Last run: {lastRunTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })} &middot; {lastRunDurationMs} ms</>
+            <> {"\u00B7"} Last run: {lastRunTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })} {"\u00B7"} {lastRunDurationMs} ms</>
           )}
         </span>
       </div>

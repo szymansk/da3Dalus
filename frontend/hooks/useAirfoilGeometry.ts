@@ -27,13 +27,21 @@ export function useAirfoilGeometry(airfoilName: string | null) {
 
     (async () => {
       try {
-        const res = await fetch(
+        // Step 1: Get download URL from backend
+        const metaRes = await fetch(
           `${API_BASE}/airfoils/${encodeURIComponent(airfoilName)}/datfile`,
         );
-        if (!res.ok) throw new Error(`Failed to load airfoil: ${res.status}`);
-        const data = await res.json();
-        // data has: { airfoil_name, file_name, datfile_content: string }
-        const parsed = parseSeligDat(data.datfile_content);
+        if (!metaRes.ok) throw new Error(`Failed to load airfoil: ${metaRes.status}`);
+        const meta = await metaRes.json();
+        // meta has: { url, airfoil_name, file_name, ... }
+
+        // Step 2: Fetch actual .dat content from the URL
+        const datUrl = meta.url.startsWith("http") ? meta.url : `${API_BASE}${meta.url}`;
+        const datRes = await fetch(datUrl);
+        if (!datRes.ok) throw new Error(`Failed to download .dat file: ${datRes.status}`);
+        const datContent = await datRes.text();
+
+        const parsed = parseSeligDat(datContent);
         if (!cancelled) setGeometry(parsed);
       } catch (err) {
         if (!cancelled)

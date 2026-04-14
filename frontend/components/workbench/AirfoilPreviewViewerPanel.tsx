@@ -7,21 +7,32 @@ import type { AirfoilAnalysisResult } from "@/hooks/useAirfoilAnalysis";
 import { interpolateY } from "@/hooks/useAirfoilGeometry";
 
 interface AirfoilPreviewViewerPanelProps {
-  airfoilName: string;
-  geometry: AirfoilGeometry | null;
+  rootAirfoilName: string;
+  tipAirfoilName: string | null; // null when same as root
+  rootGeometry: AirfoilGeometry | null;
+  tipGeometry: AirfoilGeometry | null;
   geometryLoading: boolean;
-  analysisResult: AirfoilAnalysisResult | null;
+  rootAnalysisResult: AirfoilAnalysisResult | null;
+  tipAnalysisResult: AirfoilAnalysisResult | null;
   re: number;
   ma: number;
   onReChange: (re: number) => void;
   onMaChange: (ma: number) => void;
 }
 
+const COLOR_ROOT = "#FF8400";
+const COLOR_TIP = "#22D3EE";
+
 // ── SVG Line Chart (follows AnalysisViewerPanel pattern) ────────
 
 function LineChart({
   xData,
   yData,
+  xData2,
+  yData2,
+  color2,
+  label,
+  label2,
   xLabel,
   yLabel,
   xFormat,
@@ -33,6 +44,11 @@ function LineChart({
 }: {
   xData: (number | null)[];
   yData: (number | null)[];
+  xData2?: (number | null)[];
+  yData2?: (number | null)[];
+  color2?: string;
+  label?: string;
+  label2?: string;
   xLabel: string;
   yLabel: string;
   title: string;
@@ -59,7 +75,18 @@ function LineChart({
     return pairs;
   }, [xData, yData]);
 
-  if (valid.length === 0) {
+  const valid2 = useMemo(() => {
+    if (!xData2 || !yData2) return [];
+    const pairs: { x: number; y: number }[] = [];
+    for (let i = 0; i < xData2.length; i++) {
+      const x = xData2[i];
+      const y = yData2[i];
+      if (x != null && isFinite(x) && y != null && isFinite(y)) pairs.push({ x, y });
+    }
+    return pairs;
+  }, [xData2, yData2]);
+
+  if (valid.length === 0 && valid2.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center rounded-[--radius-s] border border-border bg-card p-4">
         <span className="text-[12px] text-muted-foreground">No data</span>
@@ -67,10 +94,11 @@ function LineChart({
     );
   }
 
-  const xMin = Math.min(...valid.map((p) => p.x));
-  const xMax = Math.max(...valid.map((p) => p.x));
-  const yMin = Math.min(...valid.map((p) => p.y));
-  const yMax = Math.max(...valid.map((p) => p.y));
+  const allPoints = [...valid, ...valid2];
+  const xMin = Math.min(...allPoints.map((p) => p.x));
+  const xMax = Math.max(...allPoints.map((p) => p.x));
+  const yMin = Math.min(...allPoints.map((p) => p.y));
+  const yMax = Math.max(...allPoints.map((p) => p.y));
   const xRange = xMax - xMin || 1;
   const yRange = yMax - yMin || 1;
 
@@ -81,15 +109,22 @@ function LineChart({
     return PAD.top + plotH - ((v - yMin) / yRange) * plotH;
   }
 
-  const pathD = valid
-    .map(
-      (p, i) =>
-        `${i === 0 ? "M" : "L"}${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`,
-    )
-    .join(" ");
+  function buildPath(pts: { x: number; y: number }[]) {
+    return pts
+      .map(
+        (p, i) =>
+          `${i === 0 ? "M" : "L"}${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`,
+      )
+      .join(" ");
+  }
+
+  const pathD = buildPath(valid);
+  const pathD2 = valid2.length > 0 ? buildPath(valid2) : null;
 
   const yTicks = Array.from({ length: 5 }, (_, i) => yMin + (yRange * i) / 4);
   const xTicks = Array.from({ length: 5 }, (_, i) => xMin + (xRange * i) / 4);
+
+  const hasLegend = label && label2 && valid2.length > 0;
 
   return (
     <div className="group/chart flex flex-1 flex-col gap-1">
@@ -101,6 +136,24 @@ function LineChart({
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground">
             {annotation}
           </span>
+        )}
+        {hasLegend && (
+          <>
+            <span className="ml-1 flex items-center gap-1 font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground">
+              <span
+                className="inline-block size-[6px] rounded-full"
+                style={{ backgroundColor: color }}
+              />
+              {label}
+            </span>
+            <span className="flex items-center gap-1 font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground">
+              <span
+                className="inline-block size-[6px] rounded-full"
+                style={{ backgroundColor: color2 }}
+              />
+              {label2}
+            </span>
+          </>
         )}
         <span className="flex-1" />
         {onToggleMaximize && (
@@ -214,14 +267,28 @@ function LineChart({
             {yLabel}
           </text>
 
-          {/* Data line */}
-          <path
-            d={pathD}
-            fill="none"
-            stroke={color}
-            strokeWidth="2"
-            strokeLinejoin="round"
-          />
+          {/* Secondary data line (behind primary) */}
+          {pathD2 && (
+            <path
+              d={pathD2}
+              fill="none"
+              stroke={color2 ?? COLOR_TIP}
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+              strokeDasharray="6 3"
+            />
+          )}
+
+          {/* Primary data line */}
+          {valid.length > 0 && (
+            <path
+              d={pathD}
+              fill="none"
+              stroke={color}
+              strokeWidth="2"
+              strokeLinejoin="round"
+            />
+          )}
         </svg>
       </div>
     </div>
@@ -230,14 +297,22 @@ function LineChart({
 
 // ── Airfoil SVG ─────────────────────────────────────────────────
 
-function AirfoilSvg({ geometry }: { geometry: AirfoilGeometry }) {
-  const { upper, lower, maxThicknessPct, maxCamberPct, maxThicknessX } =
-    geometry;
+function AirfoilSvg({
+  rootGeometry,
+  tipGeometry,
+}: {
+  rootGeometry: AirfoilGeometry;
+  tipGeometry: AirfoilGeometry | null;
+}) {
+  const { upper, lower, maxThicknessX } = rootGeometry;
 
-  // Build SVG paths from coordinate arrays
-  // Scale: x in [0,1], y typically [-0.1, 0.1] range
-  // We use viewBox that accommodates the airfoil shape
-  const allY = [...upper.map((p) => p[1]), ...lower.map((p) => p[1])];
+  // Compute viewbox from all geometries
+  const allY = [
+    ...upper.map((p) => p[1]),
+    ...lower.map((p) => p[1]),
+    ...(tipGeometry ? tipGeometry.upper.map((p) => p[1]) : []),
+    ...(tipGeometry ? tipGeometry.lower.map((p) => p[1]) : []),
+  ];
   const yMin = Math.min(...allY);
   const yMax = Math.max(...allY);
   const yPad = (yMax - yMin) * 0.2;
@@ -254,7 +329,7 @@ function AirfoilSvg({ geometry }: { geometry: AirfoilGeometry }) {
       .join(" ");
   }
 
-  // Build camber line by interpolating at sample points
+  // Build camber line for root only
   const camberPoints: [number, number][] = [];
   const sampleXs = Array.from({ length: 40 }, (_, i) => i / 39);
   for (const x of sampleXs) {
@@ -266,7 +341,7 @@ function AirfoilSvg({ geometry }: { geometry: AirfoilGeometry }) {
   }
   const camberPath = pathFromCoords(camberPoints);
 
-  // Max thickness y-values at maxThicknessX
+  // Max thickness y-values at maxThicknessX (root only)
   const yUpperAtMax = interpolateY(upper, maxThicknessX);
   const yLowerAtMax = interpolateY(lower, maxThicknessX);
 
@@ -288,25 +363,47 @@ function AirfoilSvg({ geometry }: { geometry: AirfoilGeometry }) {
         strokeDasharray={`${vbW * 0.018} ${vbW * 0.009}`}
       />
 
-      {/* Upper surface */}
+      {/* Tip airfoil (rendered behind root) */}
+      {tipGeometry && (
+        <>
+          <path
+            d={pathFromCoords(tipGeometry.upper)}
+            fill="rgba(34, 211, 238, 0.06)"
+            stroke={COLOR_TIP}
+            strokeWidth={vbH * 0.012}
+            strokeLinejoin="round"
+            strokeDasharray={`${vbH * 0.04} ${vbH * 0.02}`}
+          />
+          <path
+            d={pathFromCoords(tipGeometry.lower)}
+            fill="rgba(34, 211, 238, 0.06)"
+            stroke={COLOR_TIP}
+            strokeWidth={vbH * 0.012}
+            strokeLinejoin="round"
+            strokeDasharray={`${vbH * 0.04} ${vbH * 0.02}`}
+          />
+        </>
+      )}
+
+      {/* Root upper surface */}
       <path
         d={pathFromCoords(upper)}
         fill="rgba(255, 132, 0, 0.12)"
-        stroke="#FF8400"
+        stroke={COLOR_ROOT}
         strokeWidth={vbH * 0.015}
         strokeLinejoin="round"
       />
 
-      {/* Lower surface */}
+      {/* Root lower surface */}
       <path
         d={pathFromCoords(lower)}
         fill="rgba(255, 132, 0, 0.12)"
-        stroke="#FF8400"
+        stroke={COLOR_ROOT}
         strokeWidth={vbH * 0.015}
         strokeLinejoin="round"
       />
 
-      {/* Camber line */}
+      {/* Camber line (root only) */}
       {camberPath && (
         <path
           d={camberPath}
@@ -318,7 +415,7 @@ function AirfoilSvg({ geometry }: { geometry: AirfoilGeometry }) {
         />
       )}
 
-      {/* Max t/c annotation line */}
+      {/* Max t/c annotation line (root) */}
       {yUpperAtMax !== null && yLowerAtMax !== null && (
         <>
           <line
@@ -372,10 +469,13 @@ function AirfoilSvg({ geometry }: { geometry: AirfoilGeometry }) {
 // ── Main Panel ──────────────────────────────────────────────────
 
 export function AirfoilPreviewViewerPanel({
-  airfoilName,
-  geometry,
+  rootAirfoilName,
+  tipAirfoilName,
+  rootGeometry,
+  tipGeometry,
   geometryLoading,
-  analysisResult,
+  rootAnalysisResult,
+  tipAnalysisResult,
   re,
   ma,
   onReChange,
@@ -387,6 +487,25 @@ export function AirfoilPreviewViewerPanel({
     setMaximizedChart((prev) => (prev === id ? null : id));
   }
 
+  const hasTip = tipAirfoilName !== null && tipAirfoilName !== rootAirfoilName;
+
+  // Build geometry stats string
+  const geoStats = useMemo(() => {
+    const parts: string[] = [];
+    if (rootGeometry) {
+      const prefix = hasTip ? "root: " : "";
+      parts.push(
+        `${prefix}t/c = ${rootGeometry.maxThicknessPct}% \u00B7 camber = ${rootGeometry.maxCamberPct}%`,
+      );
+    }
+    if (hasTip && tipGeometry) {
+      parts.push(
+        `tip: t/c = ${tipGeometry.maxThicknessPct}% \u00B7 camber = ${tipGeometry.maxCamberPct}%`,
+      );
+    }
+    return parts.join("  |  ");
+  }, [rootGeometry, tipGeometry, hasTip]);
+
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-hidden p-4">
       {/* Header Row */}
@@ -395,9 +514,19 @@ export function AirfoilPreviewViewerPanel({
           Airfoil Preview
         </span>
         <div className="flex-1" />
-        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-primary">
-          {airfoilName}
+        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px]" style={{ color: COLOR_ROOT }}>
+          {rootAirfoilName}
         </span>
+        {hasTip && (
+          <>
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
+              /
+            </span>
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px]" style={{ color: COLOR_TIP }}>
+              {tipAirfoilName}
+            </span>
+          </>
+        )}
 
         {/* Re input */}
         <div className="flex items-center gap-1.5">
@@ -438,13 +567,19 @@ export function AirfoilPreviewViewerPanel({
         {/* Geometry header */}
         <div className="mb-3 flex items-center gap-2">
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground">
-            Airfoil Geometry &mdash; {airfoilName}
+            Airfoil Geometry {"\u2014"}{" "}
+            <span style={{ color: COLOR_ROOT }}>{rootAirfoilName}</span>
+            {hasTip && (
+              <>
+                {" / "}
+                <span style={{ color: COLOR_TIP }}>{tipAirfoilName}</span>
+              </>
+            )}
           </span>
           <div className="flex-1" />
-          {geometry && (
+          {geoStats && (
             <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
-              t/c = {geometry.maxThicknessPct}% &middot; camber ={" "}
-              {geometry.maxCamberPct}%
+              {geoStats}
             </span>
           )}
         </div>
@@ -453,10 +588,13 @@ export function AirfoilPreviewViewerPanel({
         <div className="flex flex-1 items-center justify-center">
           {geometryLoading ? (
             <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
-              Loading&hellip;
+              Loading{"\u2026"}
             </span>
-          ) : geometry ? (
-            <AirfoilSvg geometry={geometry} />
+          ) : rootGeometry ? (
+            <AirfoilSvg
+              rootGeometry={rootGeometry}
+              tipGeometry={hasTip ? tipGeometry : null}
+            />
           ) : (
             <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
               No airfoil selected
@@ -466,14 +604,92 @@ export function AirfoilPreviewViewerPanel({
       </div>
 
       {/* Polars Section */}
-      {analysisResult ? (
+      {rootAnalysisResult ? (
         (() => {
+          const tip = hasTip ? tipAnalysisResult : null;
+          const seriesLabel = hasTip ? "root" : undefined;
+          const seriesLabel2 = hasTip ? "tip" : undefined;
+
           const allCharts = [
-            { id: "cl", xData: analysisResult.alphaDeg, yData: analysisResult.cl, xLabel: "\u03B1 [\u00B0]", yLabel: "C_L", title: "C_L vs \u03B1", annotation: analysisResult.clMax != null && analysisResult.alphaAtClMax != null ? `C_L,max \u2248 ${analysisResult.clMax.toFixed(2)} @ ${analysisResult.alphaAtClMax.toFixed(0)}\u00B0` : undefined, color: "var(--color-primary)" },
-            { id: "cd", xData: analysisResult.alphaDeg, yData: analysisResult.cd, xLabel: "\u03B1 [\u00B0]", yLabel: "C_D", title: "C_D vs \u03B1", color: "var(--color-destructive)" },
-            { id: "ld", xData: analysisResult.alphaDeg, yData: analysisResult.clOverCd, xLabel: "\u03B1 [\u00B0]", yLabel: "C_L / C_D", title: "C_L / C_D vs \u03B1", annotation: analysisResult.ldMax != null && analysisResult.alphaAtLdMax != null ? `L/D,max \u2248 ${analysisResult.ldMax.toFixed(1)} @ ${analysisResult.alphaAtLdMax.toFixed(0)}\u00B0` : undefined, color: "var(--color-success)" },
-            { id: "polar", xData: analysisResult.cd, yData: analysisResult.cl, xLabel: "C_D", yLabel: "C_L", title: "C_L vs C_D (drag polar)", color: "var(--color-primary)", xFormat: (v: number) => v.toFixed(3) },
-            { id: "cm", xData: analysisResult.alphaDeg, yData: analysisResult.cm, xLabel: "\u03B1 [\u00B0]", yLabel: "C_m", title: "C_m vs \u03B1", color: "#A78BFA" },
+            {
+              id: "cl",
+              xData: rootAnalysisResult.alphaDeg,
+              yData: rootAnalysisResult.cl,
+              xData2: tip?.alphaDeg,
+              yData2: tip?.cl,
+              xLabel: "\u03B1 [\u00B0]",
+              yLabel: "C_L",
+              title: "C_L vs \u03B1",
+              annotation:
+                rootAnalysisResult.clMax != null && rootAnalysisResult.alphaAtClMax != null
+                  ? `C_L,max \u2248 ${rootAnalysisResult.clMax.toFixed(2)} @ ${rootAnalysisResult.alphaAtClMax.toFixed(0)}\u00B0`
+                  : undefined,
+              color: COLOR_ROOT,
+              color2: COLOR_TIP,
+              label: seriesLabel,
+              label2: seriesLabel2,
+            },
+            {
+              id: "cd",
+              xData: rootAnalysisResult.alphaDeg,
+              yData: rootAnalysisResult.cd,
+              xData2: tip?.alphaDeg,
+              yData2: tip?.cd,
+              xLabel: "\u03B1 [\u00B0]",
+              yLabel: "C_D",
+              title: "C_D vs \u03B1",
+              color: "var(--color-destructive)",
+              color2: COLOR_TIP,
+              label: seriesLabel,
+              label2: seriesLabel2,
+            },
+            {
+              id: "ld",
+              xData: rootAnalysisResult.alphaDeg,
+              yData: rootAnalysisResult.clOverCd,
+              xData2: tip?.alphaDeg,
+              yData2: tip?.clOverCd,
+              xLabel: "\u03B1 [\u00B0]",
+              yLabel: "C_L / C_D",
+              title: "C_L / C_D vs \u03B1",
+              annotation:
+                rootAnalysisResult.ldMax != null && rootAnalysisResult.alphaAtLdMax != null
+                  ? `L/D,max \u2248 ${rootAnalysisResult.ldMax.toFixed(1)} @ ${rootAnalysisResult.alphaAtLdMax.toFixed(0)}\u00B0`
+                  : undefined,
+              color: "var(--color-success)",
+              color2: COLOR_TIP,
+              label: seriesLabel,
+              label2: seriesLabel2,
+            },
+            {
+              id: "polar",
+              xData: rootAnalysisResult.cd,
+              yData: rootAnalysisResult.cl,
+              xData2: tip?.cd,
+              yData2: tip?.cl,
+              xLabel: "C_D",
+              yLabel: "C_L",
+              title: "C_L vs C_D (drag polar)",
+              color: COLOR_ROOT,
+              color2: COLOR_TIP,
+              label: seriesLabel,
+              label2: seriesLabel2,
+              xFormat: (v: number) => v.toFixed(3),
+            },
+            {
+              id: "cm",
+              xData: rootAnalysisResult.alphaDeg,
+              yData: rootAnalysisResult.cm,
+              xData2: tip?.alphaDeg,
+              yData2: tip?.cm,
+              xLabel: "\u03B1 [\u00B0]",
+              yLabel: "C_m",
+              title: "C_m vs \u03B1",
+              color: "#A78BFA",
+              color2: COLOR_TIP,
+              label: seriesLabel,
+              label2: seriesLabel2,
+            },
           ];
           if (maximizedChart) {
             const chart = allCharts.find((c) => c.id === maximizedChart);
