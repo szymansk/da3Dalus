@@ -14,9 +14,11 @@ interface AirfoilPreviewViewerPanelProps {
   geometryLoading: boolean;
   rootAnalysisResult: AirfoilAnalysisResult | null;
   tipAnalysisResult: AirfoilAnalysisResult | null;
-  re: number;
+  rootRe: number;
+  tipRe: number | null;
   ma: number;
-  onReChange: (re: number) => void;
+  onRootReChange: (re: number) => void;
+  onTipReChange: (re: number) => void;
   onMaChange: (ma: number) => void;
 }
 
@@ -476,9 +478,11 @@ export function AirfoilPreviewViewerPanel({
   geometryLoading,
   rootAnalysisResult,
   tipAnalysisResult,
-  re,
+  rootRe,
+  tipRe,
   ma,
-  onReChange,
+  onRootReChange,
+  onTipReChange,
   onMaChange,
 }: AirfoilPreviewViewerPanelProps) {
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
@@ -528,21 +532,37 @@ export function AirfoilPreviewViewerPanel({
           </>
         )}
 
-        {/* Re input */}
+        {/* Re inputs — separate for root and tip */}
         <div className="flex items-center gap-1.5">
-          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
-            Re
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px]" style={{ color: COLOR_ROOT }}>
+            Re{hasTip ? "\u2099" : ""}
           </span>
           <input
             type="number"
-            value={re}
+            value={rootRe}
             onChange={(e) => {
               const v = parseInt(e.target.value, 10);
-              if (!isNaN(v)) onReChange(v);
+              if (!isNaN(v)) onRootReChange(v);
             }}
             className="w-20 rounded-[--radius-s] border border-border bg-input px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
         </div>
+        {hasTip && tipRe != null && (
+          <div className="flex items-center gap-1.5">
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px]" style={{ color: COLOR_TIP }}>
+              Re{"\u209C"}
+            </span>
+            <input
+              type="number"
+              value={tipRe}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                if (!isNaN(v)) onTipReChange(v);
+              }}
+              className="w-20 rounded-[--radius-s] border border-border bg-input px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+          </div>
+        )}
 
         {/* Ma input */}
         <div className="flex items-center gap-1.5">

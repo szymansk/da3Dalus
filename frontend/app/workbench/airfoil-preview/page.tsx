@@ -34,9 +34,14 @@ export default function AirfoilPreviewPage() {
   const [tipAirfoil, setTipAirfoil] = useState(initialTip);
   const [ma, setMa] = useState(0.0);
 
-  const chordM = (segment?.root_airfoil?.chord ?? 200) / 1000;
-  const defaultRe = Math.round((V_CRUISE * chordM) / NU_AIR);
-  const [re, setRe] = useState(defaultRe);
+  // Separate Re per x-section — chord differs between root and tip
+  function chordToRe(chordMm: number) {
+    return Math.round((V_CRUISE * (chordMm / 1000)) / NU_AIR);
+  }
+  const rootChordMm = segment?.root_airfoil?.chord ?? 200;
+  const tipChordMm = segment?.tip_airfoil?.chord ?? rootChordMm;
+  const [rootRe, setRootRe] = useState(chordToRe(rootChordMm));
+  const [tipRe, setTipRe] = useState(chordToRe(tipChordMm));
 
   // Sync from wing config when it loads
   useEffect(() => {
@@ -51,8 +56,8 @@ export default function AirfoilPreviewPage() {
             "naca0012",
         ),
       );
-      const c = (segment.root_airfoil?.chord ?? 200) / 1000;
-      setRe(Math.round((V_CRUISE * c) / NU_AIR));
+      setRootRe(chordToRe(segment.root_airfoil?.chord ?? 200));
+      setTipRe(chordToRe(segment.tip_airfoil?.chord ?? segment.root_airfoil?.chord ?? 200));
     }
   }, [segment]);
 
@@ -65,9 +70,9 @@ export default function AirfoilPreviewPage() {
   const tipAnalysis = useAirfoilAnalysis();
 
   const handleRunAnalysis = () => {
-    rootAnalysis.run(rootAirfoil, re, ma);
+    rootAnalysis.run(rootAirfoil, rootRe, ma);
     if (tipAirfoil !== rootAirfoil) {
-      tipAnalysis.run(tipAirfoil, re, ma);
+      tipAnalysis.run(tipAirfoil, tipRe, ma);
     }
   };
 
@@ -89,9 +94,11 @@ export default function AirfoilPreviewPage() {
           geometryLoading={rootGeo.isLoading || tipGeo.isLoading}
           rootAnalysisResult={rootAnalysis.result}
           tipAnalysisResult={tipAirfoil !== rootAirfoil ? tipAnalysis.result : null}
-          re={re}
+          rootRe={rootRe}
+          tipRe={tipAirfoil !== rootAirfoil ? tipRe : null}
           ma={ma}
-          onReChange={setRe}
+          onRootReChange={setRootRe}
+          onTipReChange={setTipRe}
           onMaChange={setMa}
         />
       </div>
