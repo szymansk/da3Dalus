@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Info, ArrowLeft, Save, Loader2 } from "lucide-react";
+import { Info, ArrowLeft, Save, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { AirfoilSelector } from "./AirfoilSelector";
 
 interface AirfoilPreviewConfigPanelProps {
@@ -12,7 +12,9 @@ interface AirfoilPreviewConfigPanelProps {
   onRunAnalysis: () => void;
   onClearResults: () => void;
   isRunning: boolean;
-  segmentLabel: string;
+  segmentIndex: number;
+  segmentCount: number;
+  onSegmentChange: (index: number) => void;
   segmentProps: {
     length?: number;
     sweep?: number;
@@ -115,7 +117,9 @@ export function AirfoilPreviewConfigPanel({
   onRunAnalysis,
   onClearResults,
   isRunning,
-  segmentLabel,
+  segmentIndex,
+  segmentCount,
+  onSegmentChange,
   segmentProps,
   velocity,
   onVelocityChange,
@@ -171,10 +175,31 @@ export function AirfoilPreviewConfigPanel({
         )}
       </div>
 
-      {/* Section header */}
-      <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
-        {segmentLabel} {"\u00B7"} Properties
-      </span>
+      {/* Segment navigation */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onSegmentChange(segmentIndex - 1)}
+          disabled={segmentIndex <= 0}
+          className="flex size-6 items-center justify-center rounded-[--radius-s] border border-border text-muted-foreground hover:bg-sidebar-accent hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
+          title="Previous segment"
+        >
+          <ChevronLeft size={14} />
+        </button>
+        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
+          segment {segmentIndex} {"\u00B7"} Properties
+        </span>
+        <button
+          onClick={() => onSegmentChange(segmentIndex + 1)}
+          disabled={segmentIndex >= segmentCount - 1}
+          className="flex size-6 items-center justify-center rounded-[--radius-s] border border-border text-muted-foreground hover:bg-sidebar-accent hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
+          title="Next segment"
+        >
+          <ChevronRight size={14} />
+        </button>
+        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-subtle-foreground">
+          {segmentIndex + 1}/{segmentCount}
+        </span>
+      </div>
 
       {/* Form Card */}
       <div className="flex flex-1 flex-col gap-3 overflow-y-auto rounded-[--radius-m] border border-border bg-card p-4">

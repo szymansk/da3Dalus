@@ -21,7 +21,7 @@ export function computeRe(velocityMs: number, chordMm: number): number {
 
 export default function AirfoilPreviewPage() {
   const router = useRouter();
-  const { aeroplaneId, selectedWing, selectedXsecIndex } =
+  const { aeroplaneId, selectedWing, selectedXsecIndex, selectXsec } =
     useAeroplaneContext();
   const { wingConfig, saveWingConfig } = useWingConfig(aeroplaneId, selectedWing);
   const [isSaving, setIsSaving] = useState(false);
@@ -145,7 +145,9 @@ export default function AirfoilPreviewPage() {
           onRunAnalysis={handleRunAnalysis}
           onClearResults={handleClear}
           isRunning={rootAnalysis.isRunning || tipAnalysis.isRunning}
-          segmentLabel={`segment ${selectedXsecIndex ?? 0}`}
+          segmentIndex={selectedXsecIndex ?? 0}
+          segmentCount={wingConfig?.segments?.length ?? 1}
+          onSegmentChange={selectXsec}
           segmentProps={{
             length: segment?.length,
             sweep: segment?.sweep,
