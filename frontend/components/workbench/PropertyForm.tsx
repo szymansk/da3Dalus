@@ -157,7 +157,7 @@ function Field({
   return (
     <div className="flex flex-1 flex-col gap-1">
       <label className="text-[11px] text-muted-foreground">{label}</label>
-      <div className="flex items-center gap-2 rounded-[--radius-s] border border-border bg-input px-3 py-2">
+      <div className="flex items-center gap-2 rounded-lg border border-border bg-input px-3 py-2">
         {readOnly ? (
           <span className="text-[13px] text-foreground">{value}</span>
         ) : (
@@ -366,7 +366,7 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
                 </div>
                 <button
                   onClick={() => router.push("/workbench/airfoil-preview")}
-                  className="mb-0.5 flex size-8 shrink-0 items-center justify-center rounded-[--radius-s] border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent"
+                  className="mb-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent"
                   title="Preview airfoil"
                 >
                   <Eye size={14} />
@@ -382,7 +382,7 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
                 </div>
                 <button
                   onClick={() => router.push("/workbench/airfoil-preview")}
-                  className="mb-0.5 flex size-8 shrink-0 items-center justify-center rounded-[--radius-s] border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent"
+                  className="mb-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent"
                   title="Preview airfoil"
                 >
                   <Eye size={14} />

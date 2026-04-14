@@ -88,7 +88,7 @@ function LineChart({
 
   if (valid.length === 0 && valid2.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center rounded-[--radius-s] border border-border bg-card p-4">
+      <div className="flex flex-1 items-center justify-center rounded-lg border border-border bg-card p-4">
         <span className="text-[12px] text-muted-foreground">No data</span>
       </div>
     );
@@ -166,7 +166,7 @@ function LineChart({
           </button>
         )}
       </div>
-      <div className="rounded-[--radius-s] border border-border bg-card p-2">
+      <div className="rounded-lg border border-border bg-card p-2">
         <svg
           viewBox={`0 0 ${W} ${H}`}
           className="h-full w-full"
@@ -549,7 +549,7 @@ export function AirfoilPreviewViewerPanel({
               const v = parseFloat(e.target.value);
               if (!isNaN(v)) onMaChange(v);
             }}
-            className="w-16 rounded-[--radius-s] border border-border bg-input px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            className="w-16 rounded-lg border border-border bg-input px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
         </div>
       </div>

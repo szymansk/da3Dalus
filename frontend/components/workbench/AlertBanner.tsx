@@ -10,7 +10,7 @@ export function AlertBanner({
   children,
 }: AlertBannerProps) {
   return (
-    <div className="flex items-start gap-3 rounded-[--radius-s] border border-primary bg-[#2A1F10] p-4">
+    <div className="flex items-start gap-3 rounded-lg border border-primary bg-[#2A1F10] p-4">
       <Info className="size-4 shrink-0 text-primary" />
       <div className="flex flex-col gap-0.5">
         <span className="text-[13px] font-semibold text-foreground">

@@ -47,7 +47,7 @@ function ReadOnlyField({
   return (
     <div className="flex flex-1 flex-col gap-1">
       <label className="text-[11px] text-muted-foreground">{label}</label>
-      <div className="flex items-center gap-2 rounded-[--radius-s] border border-border bg-input px-3 py-2">
+      <div className="flex items-center gap-2 rounded-lg border border-border bg-input px-3 py-2">
         <span className="text-[13px] text-foreground">{display}</span>
         {suffix && (
           <span className="flex-shrink-0 text-[11px] text-muted-foreground">
@@ -231,7 +231,7 @@ export function AirfoilPreviewConfigPanel({
 
         {/* Re info tooltip */}
         {showReInfo && (
-          <div className="rounded-[--radius-s] border border-border bg-card-muted p-3">
+          <div className="rounded-lg border border-border bg-card-muted p-3">
             <pre className="whitespace-pre-wrap font-[family-name:var(--font-jetbrains-mono)] text-[10px] leading-relaxed text-muted-foreground">
               {RE_INFO_TEXT}
             </pre>
