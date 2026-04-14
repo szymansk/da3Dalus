@@ -54,28 +54,31 @@ export default function AirfoilPreviewPage() {
     setTipReOverride(null);
   }, [velocity]);
 
-  // Sync from wing config when it loads
-  useEffect(() => {
-    if (segment) {
-      setRootAirfoil(
-        airfoilShortName(segment.root_airfoil?.airfoil ?? "naca0012"),
-      );
-      setTipAirfoil(
-        airfoilShortName(
-          segment.tip_airfoil?.airfoil ??
-            segment.root_airfoil?.airfoil ??
-            "naca0012",
-        ),
-      );
-      setRootReOverride(null);
-      setTipReOverride(null);
-    }
-  }, [segment]);
-
   const rootGeo = useAirfoilGeometry(rootAirfoil);
   const tipGeo = useAirfoilGeometry(tipAirfoil !== rootAirfoil ? tipAirfoil : null);
   const rootAnalysis = useAirfoilAnalysis();
   const tipAnalysis = useAirfoilAnalysis();
+
+  // Sync airfoils from segment when index or wingConfig changes
+  useEffect(() => {
+    const seg = wingConfig?.segments?.[selectedXsecIndex ?? 0];
+    if (!seg) return;
+    setRootAirfoil(
+      airfoilShortName(seg.root_airfoil?.airfoil ?? "naca0012"),
+    );
+    setTipAirfoil(
+      airfoilShortName(
+        seg.tip_airfoil?.airfoil ??
+          seg.root_airfoil?.airfoil ??
+          "naca0012",
+      ),
+    );
+    setRootReOverride(null);
+    setTipReOverride(null);
+    rootAnalysis.clear();
+    tipAnalysis.clear();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedXsecIndex, wingConfig]);
 
   const hasTip = tipAirfoil !== rootAirfoil;
 
