@@ -368,7 +368,7 @@ export function AeroplaneTree({ aeroplaneId, wingNames, aeroplaneName, isWingVis
   }
 
   return (
-    <div className="rounded-[--radius-m] border border-border bg-card p-3 px-4">
+    <div className="rounded-xl border border-border bg-card p-3 px-4">
       {/* Header with collapse + mode toggle */}
       <div className="mb-2 flex items-center gap-2">
         {onCollapseTree && (
@@ -437,7 +437,7 @@ function TreeRow({ node, onToggle }: { node: TreeNode; onToggle: () => void }) {
         <div className="h-px flex-1 bg-border" />
         <button
           onClick={() => node.onInsert?.()}
-          className="flex items-center gap-1 rounded-[--radius-pill] px-2 py-0.5 text-[9px] text-muted-foreground hover:text-primary"
+          className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] text-muted-foreground hover:text-primary"
         >
           <Plus size={10} />
           insert

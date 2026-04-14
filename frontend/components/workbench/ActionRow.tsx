@@ -78,28 +78,28 @@ export function ActionRow({ aeroplaneId, onWingCreated }: ActionRowProps) {
     <div className="flex items-center gap-2">
       <button
         onClick={handlePreviewSTL}
-        className="flex items-center gap-2 rounded-[--radius-pill] bg-primary px-4 py-2.5 text-[13px] text-primary-foreground hover:opacity-90"
+        className="flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-[13px] text-primary-foreground hover:opacity-90"
       >
         <Play size={14} />
         <span>Preview STL</span>
       </button>
       <button
         onClick={handleAddWing}
-        className="flex items-center gap-1.5 rounded-[--radius-pill] border border-border bg-card-muted px-3.5 py-2.5 text-[13px] text-foreground hover:bg-sidebar-accent"
+        className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3.5 py-2.5 text-[13px] text-foreground hover:bg-sidebar-accent"
       >
         <Plus size={14} />
         <span>Wing</span>
       </button>
       <button
         onClick={handleAddFuselage}
-        className="flex items-center gap-1.5 rounded-[--radius-pill] border border-border bg-card-muted px-3.5 py-2.5 text-[13px] text-foreground hover:bg-sidebar-accent"
+        className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3.5 py-2.5 text-[13px] text-foreground hover:bg-sidebar-accent"
       >
         <Plus size={14} />
         <span>Fuselage</span>
       </button>
       <button
         onClick={handleDownloadSTEP}
-        className="flex items-center gap-1.5 rounded-[--radius-pill] border border-border-strong bg-background px-3.5 py-2.5 text-[13px] text-foreground hover:bg-sidebar-accent"
+        className="flex items-center gap-1.5 rounded-full border border-border-strong bg-background px-3.5 py-2.5 text-[13px] text-foreground hover:bg-sidebar-accent"
       >
         <Download size={14} />
         <span>Download STEP</span>

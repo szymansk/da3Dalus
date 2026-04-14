@@ -71,7 +71,7 @@ export function AirfoilPreview({ airfoilName, onClose }: AirfoilPreviewProps) {
       </div>
 
       {/* ── Geometry Section ── */}
-      <div className="flex flex-1 flex-col rounded-[--radius-m] border border-border bg-card p-4">
+      <div className="flex flex-1 flex-col rounded-xl border border-border bg-card p-4">
         {/* Geometry header */}
         <div className="mb-3 flex items-center gap-2">
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground">
@@ -148,7 +148,7 @@ export function AirfoilPreview({ airfoilName, onClose }: AirfoilPreviewProps) {
       {/* ── Polars Section ── */}
       <div className="flex gap-4">
         {/* CL vs alpha */}
-        <div className="flex flex-1 flex-col rounded-[--radius-m] border border-border bg-card p-4">
+        <div className="flex flex-1 flex-col rounded-xl border border-border bg-card p-4">
           <div className="mb-1 flex items-center gap-2">
             <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground">
               C<sub>L</sub> vs &alpha;
@@ -194,7 +194,7 @@ export function AirfoilPreview({ airfoilName, onClose }: AirfoilPreviewProps) {
         </div>
 
         {/* CL/CD vs alpha */}
-        <div className="flex flex-1 flex-col rounded-[--radius-m] border border-border bg-card p-4">
+        <div className="flex flex-1 flex-col rounded-xl border border-border bg-card p-4">
           <div className="mb-1 flex items-center gap-2">
             <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground">
               C<sub>L</sub> / C<sub>D</sub> vs &alpha;

@@ -37,7 +37,7 @@ export function Header() {
       <div className="flex items-center gap-3">
         <button
           onClick={() => setAeroplaneId(null)}
-          className="flex items-center gap-2 rounded-[--radius-pill] bg-sidebar-accent px-3 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground hover:bg-sidebar-accent/80"
+          className="flex items-center gap-2 rounded-full bg-sidebar-accent px-3 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground hover:bg-sidebar-accent/80"
           title="Switch aeroplane"
         >
           {aeroplaneName}
@@ -55,7 +55,7 @@ export function Header() {
             <GuardedLink
               key={step.num}
               href={step.href}
-              className={`flex items-center gap-2 rounded-[--radius-pill] px-4 py-2 text-[13px] transition-colors ${
+              className={`flex items-center gap-2 rounded-full px-4 py-2 text-[13px] transition-colors ${
                 active
                   ? "bg-primary text-primary-foreground"
                   : "bg-card-muted text-muted-foreground hover:bg-sidebar-accent"

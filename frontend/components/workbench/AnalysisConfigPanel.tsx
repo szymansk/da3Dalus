@@ -55,7 +55,7 @@ export function AnalysisConfigPanel({ analysis }: { analysis: UseAnalysisReturn 
         <button
           onClick={handleRun}
           disabled={analysis.isRunning}
-          className="flex items-center gap-2 rounded-[--radius-pill] bg-primary px-4 py-2.5 font-[family-name:var(--font-geist-sans)] text-[13px] text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-60"
+          className="flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 font-[family-name:var(--font-geist-sans)] text-[13px] text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-60"
         >
           {analysis.isRunning ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
           {analysis.isRunning ? "Running\u2026" : "Run Analysis"}
@@ -64,14 +64,14 @@ export function AnalysisConfigPanel({ analysis }: { analysis: UseAnalysisReturn 
           onClick={() => {
             /* result is managed by the hook; parent can extend with clearResult */
           }}
-          className="flex items-center gap-1.5 rounded-[--radius-pill] border border-border bg-card-muted px-3.5 py-2.5 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground transition-colors hover:bg-sidebar-accent"
+          className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3.5 py-2.5 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground transition-colors hover:bg-sidebar-accent"
         >
           <RefreshCw size={14} />
           Clear Results
         </button>
         <button
           disabled
-          className="rounded-[--radius-pill] border border-border-strong bg-background px-3.5 py-2.5 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground transition-colors hover:bg-sidebar-accent disabled:opacity-40 disabled:cursor-not-allowed"
+          className="rounded-full border border-border-strong bg-background px-3.5 py-2.5 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground transition-colors hover:bg-sidebar-accent disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Load OP set&hellip;
         </button>
@@ -92,7 +92,7 @@ export function AnalysisConfigPanel({ analysis }: { analysis: UseAnalysisReturn 
       )}
 
       {/* ── Operating Point Card ── */}
-      <div className="flex flex-col gap-3 rounded-[--radius-m] border border-border bg-card p-4">
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
           Operating Point
         </span>
@@ -312,7 +312,7 @@ export function AnalysisConfigPanel({ analysis }: { analysis: UseAnalysisReturn 
       </div>
 
       {/* ── Analysis Tool Card ── */}
-      <div className="flex flex-col gap-3 rounded-[--radius-m] border border-border bg-card p-4">
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
           Analysis Tool
         </span>
@@ -336,10 +336,10 @@ export function AnalysisConfigPanel({ analysis }: { analysis: UseAnalysisReturn 
 
         {/* Tool chips */}
         <div className="flex items-center gap-2">
-          <span className="rounded-[--radius-pill] border border-border bg-card-muted px-2.5 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
+          <span className="rounded-full border border-border bg-card-muted px-2.5 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
             avl
           </span>
-          <span className="rounded-[--radius-pill] border border-border bg-card-muted px-2.5 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
+          <span className="rounded-full border border-border bg-card-muted px-2.5 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
             vortex_lattice
           </span>
         </div>

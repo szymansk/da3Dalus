@@ -62,7 +62,7 @@ export default function MissionPage() {
   return (
     <WorkbenchTwoPanel leftWidth={480}>
       {/* Left: Radar Chart Card */}
-      <div className="flex h-full flex-col gap-4 rounded-[--radius-l] border border-border bg-card p-6">
+      <div className="flex h-full flex-col gap-4 rounded-2xl border border-border bg-card p-6">
         <div className="flex items-center gap-3">
           <Radar className="size-5 text-primary" />
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[18px] text-foreground">
@@ -93,7 +93,7 @@ export default function MissionPage() {
       </div>
 
       {/* Right: Mission Objectives Card */}
-      <div className="flex flex-col gap-6 rounded-[--radius-l] border border-border bg-card p-8">
+      <div className="flex flex-col gap-6 rounded-2xl border border-border bg-card p-8">
         <div className="flex items-center gap-3">
           <Target className="size-5 text-primary" />
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[20px] text-foreground">
@@ -122,10 +122,10 @@ export default function MissionPage() {
         </div>
 
         <div className="flex justify-end gap-2">
-          <button className="rounded-[--radius-pill] border border-border-strong bg-background px-3.5 py-2 text-[13px] text-muted-foreground">
+          <button className="rounded-full border border-border-strong bg-background px-3.5 py-2 text-[13px] text-muted-foreground">
             Cancel
           </button>
-          <button className="rounded-[--radius-pill] border border-border bg-card-muted px-4 py-2 text-[13px] text-subtle-foreground">
+          <button className="rounded-full border border-border bg-card-muted px-4 py-2 text-[13px] text-subtle-foreground">
             Save
           </button>
         </div>

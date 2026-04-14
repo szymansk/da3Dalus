@@ -106,7 +106,7 @@ export function AirfoilSelector({
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute top-full z-50 mt-1 w-full rounded-[--radius-m] border border-border bg-card shadow-lg">
+        <div className="absolute top-full z-50 mt-1 w-full rounded-xl border border-border bg-card shadow-lg">
           {/* Search */}
           <div className="flex items-center gap-2 border-b border-border px-3 py-2">
             <Search size={13} className="text-muted-foreground" />

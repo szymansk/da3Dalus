@@ -95,7 +95,7 @@ function AeroplaneSelector({
 
   return (
     <div className="flex flex-1 items-center justify-center">
-      <div className="flex w-[400px] flex-col gap-4 rounded-[--radius-m] border border-border bg-card p-6">
+      <div className="flex w-[400px] flex-col gap-4 rounded-xl border border-border bg-card p-6">
         <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-foreground">
           Select Aeroplane
         </h2>
@@ -125,7 +125,7 @@ function AeroplaneSelector({
 
         <button
           onClick={handleCreate}
-          className="rounded-[--radius-pill] bg-primary px-4 py-2.5 text-[13px] text-primary-foreground hover:opacity-90"
+          className="rounded-full bg-primary px-4 py-2.5 text-[13px] text-primary-foreground hover:opacity-90"
         >
           + Create New
         </button>

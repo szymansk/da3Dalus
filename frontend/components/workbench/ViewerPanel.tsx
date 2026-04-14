@@ -21,7 +21,7 @@ export function ViewerPanel({ visibleParts, isAnyLoading, loadingWing, isMaximiz
   const [activeStage, setActiveStage] = useState<Stage>("Bare Aero");
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden rounded-[--radius-m] border border-border">
+    <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-border">
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-border bg-card px-4 py-3">
         {/* Tree expand button — shown when tree is collapsed */}
@@ -43,7 +43,7 @@ export function ViewerPanel({ visibleParts, isAnyLoading, loadingWing, isMaximiz
             <button
               key={stage}
               onClick={() => setActiveStage(stage)}
-              className={`rounded-[--radius-pill] px-3 py-1.5 font-[family-name:var(--font-geist-sans)] text-[12px] transition-colors ${
+              className={`rounded-full px-3 py-1.5 font-[family-name:var(--font-geist-sans)] text-[12px] transition-colors ${
                 stage === activeStage
                   ? "bg-primary text-primary-foreground"
                   : "bg-card-muted text-muted-foreground hover:bg-sidebar-accent"

@@ -160,7 +160,7 @@ export function AnalysisViewerPanel({ result, aeroplaneId, lastRunTime, lastRunD
   }, [result]);
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden rounded-[--radius-m] border border-border">
+    <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-border">
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-border bg-card px-4 py-3">
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
@@ -172,7 +172,7 @@ export function AnalysisViewerPanel({ result, aeroplaneId, lastRunTime, lastRunD
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`rounded-[--radius-pill] px-3 py-1.5 font-[family-name:var(--font-geist-sans)] text-[12px] transition-colors ${
+              className={`rounded-full px-3 py-1.5 font-[family-name:var(--font-geist-sans)] text-[12px] transition-colors ${
                 tab === activeTab
                   ? "bg-primary text-primary-foreground"
                   : "bg-card-muted text-muted-foreground hover:bg-sidebar-accent"
@@ -249,19 +249,19 @@ export function AnalysisViewerPanel({ result, aeroplaneId, lastRunTime, lastRunD
 
       {/* Info Chip Row */}
       <div className="flex items-center gap-2 border-t border-border bg-card px-4 py-3">
-        <div className="flex items-center gap-1.5 rounded-[--radius-pill] bg-card-muted px-3 py-1.5">
+        <div className="flex items-center gap-1.5 rounded-full bg-card-muted px-3 py-1.5">
           <Wind size={12} className="text-muted-foreground" />
           <span className="font-[family-name:var(--font-geist-sans)] text-[12px] text-foreground">
             Flight profile: cruise
           </span>
         </div>
-        <div className="flex items-center gap-1.5 rounded-[--radius-pill] bg-card-muted px-3 py-1.5">
+        <div className="flex items-center gap-1.5 rounded-full bg-card-muted px-3 py-1.5">
           <SlidersHorizontal size={12} className="text-muted-foreground" />
           <span className="font-[family-name:var(--font-geist-sans)] text-[12px] text-foreground">
             Trim: elevator &minus;2.1&deg;
           </span>
         </div>
-        <div className="flex items-center gap-1.5 rounded-[--radius-pill] bg-card-muted px-3 py-1.5">
+        <div className="flex items-center gap-1.5 rounded-full bg-card-muted px-3 py-1.5">
           <Activity size={12} className="text-muted-foreground" />
           <span className="font-[family-name:var(--font-geist-sans)] text-[12px] text-foreground">
             Re &asymp; 4.2e5

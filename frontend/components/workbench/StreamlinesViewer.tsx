@@ -107,7 +107,7 @@ export function StreamlinesViewer({ aeroplaneId }: { aeroplaneId: string | null 
         <button
           onClick={() => computeStreamlines(params)}
           disabled={isComputing || !aeroplaneId}
-          className="flex items-center gap-1.5 rounded-[--radius-pill] bg-primary px-4 py-2 font-[family-name:var(--font-geist-sans)] text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 font-[family-name:var(--font-geist-sans)] text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
         >
           {isComputing ? <Loader2 size={14} className="animate-spin" /> : null}
           {isComputing ? "Computing\u2026" : "Compute"}

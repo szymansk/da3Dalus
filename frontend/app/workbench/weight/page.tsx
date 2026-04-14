@@ -62,7 +62,7 @@ export default function WeightPage() {
             Weight Items
           </h1>
           <span className="flex-1" />
-          <button className="flex items-center gap-1.5 rounded-[--radius-pill] bg-primary px-3.5 py-2 text-[13px] text-primary-foreground">
+          <button className="flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-2 text-[13px] text-primary-foreground">
             <Plus className="size-3.5" />+ Item
           </button>
         </div>
@@ -74,7 +74,7 @@ export default function WeightPage() {
         </AlertBanner>
 
         {/* Weight table */}
-        <div className="overflow-hidden rounded-[--radius-m] border border-border bg-card">
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
           {/* Header row */}
           <div className="flex items-center rounded-t-[--radius-m] border-b border-border bg-card-muted px-4 py-3">
             <span className="flex-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] uppercase tracking-wide text-muted-foreground">

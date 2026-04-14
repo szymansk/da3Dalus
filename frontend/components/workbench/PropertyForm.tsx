@@ -247,7 +247,7 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
   // No segment selected
   if (selectedXsecIndex === null || !xsec) {
     return (
-      <div className="rounded-[--radius-m] border border-border bg-card p-2.5 px-4">
+      <div className="rounded-xl border border-border bg-card p-2.5 px-4">
         <p className="py-6 text-center text-[12px] text-muted-foreground">
           Select a segment in the tree
         </p>
@@ -329,7 +329,7 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
   const handleSave = mode === "wingconfig" ? handleSaveWingConfig : handleSaveAsb;
 
   return (
-    <div className="rounded-[--radius-m] border border-border bg-card p-2.5 px-4">
+    <div className="rounded-xl border border-border bg-card p-2.5 px-4">
       {/* Header */}
       <div className="mb-3">
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
@@ -505,14 +505,14 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
           <button
             onClick={handleCancel}
             disabled={saving}
-            className="rounded-[--radius-pill] border border-border-strong bg-background px-3.5 py-2 text-[13px] text-foreground hover:bg-sidebar-accent disabled:opacity-50"
+            className="rounded-full border border-border-strong bg-background px-3.5 py-2 text-[13px] text-foreground hover:bg-sidebar-accent disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="rounded-[--radius-pill] bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
+            className="rounded-full bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
           >
             {saving ? "Saving\u2026" : "Save"}
           </button>
@@ -641,7 +641,7 @@ function TedSection({
           <button
             onClick={handleSaveTed}
             disabled={saving || !name}
-            className="self-end rounded-[--radius-pill] bg-primary px-3 py-1.5 text-[12px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
+            className="self-end rounded-full bg-primary px-3 py-1.5 text-[12px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save TED"}
           </button>
@@ -729,7 +729,7 @@ function SparsSection({
           <button
             onClick={handleAddSpar}
             disabled={saving}
-            className="self-end rounded-[--radius-pill] bg-primary px-3 py-1.5 text-[12px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
+            className="self-end rounded-full bg-primary px-3 py-1.5 text-[12px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
           >
             {saving ? "Adding…" : "Add Spar"}
           </button>

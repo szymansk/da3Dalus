@@ -127,7 +127,7 @@ export default function ComponentsPage() {
             return (
               <div
                 key={comp.chip}
-                className="flex flex-col gap-3 rounded-[--radius-m] border border-border bg-card p-4"
+                className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4"
               >
                 {/* Card header */}
                 <div className="flex items-center">
@@ -135,7 +135,7 @@ export default function ComponentsPage() {
                     <Icon className="size-4 text-primary" />
                   </div>
                   <span className="flex-1" />
-                  <span className="rounded-[--radius-pill] bg-sidebar-accent px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
+                  <span className="rounded-full bg-sidebar-accent px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
                     {comp.chip}
                   </span>
                 </div>
