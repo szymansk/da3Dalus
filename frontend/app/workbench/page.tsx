@@ -1,16 +1,22 @@
 "use client";
 
-import { Group, Panel, Separator } from "react-resizable-panels";
+import { Group, Panel } from "react-resizable-panels";
 import { ViewerPanel } from "@/components/workbench/ViewerPanel";
 import { ConfigPanel } from "@/components/workbench/ConfigPanel";
+import { AeroplaneTree } from "@/components/workbench/AeroplaneTree";
+import { SplitHandle } from "@/components/workbench/SplitHandle";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAeroplanes } from "@/hooks/useAeroplanes";
+import { useWings } from "@/hooks/useWings";
 import { usePreviewState } from "@/hooks/usePreviewState";
 
 export default function WorkbenchPage() {
   const { aeroplaneId, setAeroplaneId } = useAeroplaneContext();
   const { aeroplanes, isLoading, createAeroplane } = useAeroplanes();
+  const { wingNames } = useWings(aeroplaneId);
   const preview = usePreviewState(aeroplaneId);
+  const aeroplaneName =
+    aeroplanes.find((a) => a.id === aeroplaneId)?.name ?? "Aeroplane";
 
   if (!aeroplaneId) {
     return <AeroplaneSelector
@@ -26,21 +32,31 @@ export default function WorkbenchPage() {
 
   return (
     <Group orientation="horizontal" className="flex-1">
-      <Panel defaultSize={55} minSize={20}>
+      <Panel defaultSize={20} minSize={15} maxSize={30}>
+        <div className="h-full overflow-y-auto p-4">
+          <AeroplaneTree
+            aeroplaneId={aeroplaneId}
+            wingNames={wingNames}
+            aeroplaneName={aeroplaneName}
+            isWingVisible={preview.isWingVisible}
+            isWingLoading={(wn) => preview.previews[wn]?.loading ?? false}
+            onTogglePreview={preview.toggleWing}
+            onToggleAllPreview={preview.toggleAllWings}
+          />
+        </div>
+      </Panel>
+      <SplitHandle />
+      <Panel defaultSize={45} minSize={20}>
         <ViewerPanel
           visibleParts={preview.visibleParts}
           isAnyLoading={preview.isAnyLoading}
           loadingWing={preview.loadingWing}
         />
       </Panel>
-      <Separator className="w-1.5 bg-border hover:bg-primary/50 transition-colors cursor-col-resize" />
-      <Panel defaultSize={45} minSize={30}>
+      <SplitHandle />
+      <Panel defaultSize={35} minSize={20}>
         <ConfigPanel
           aeroplaneId={aeroplaneId}
-          isWingVisible={preview.isWingVisible}
-          isWingLoading={(wn) => preview.previews[wn]?.loading ?? false}
-          onTogglePreview={preview.toggleWing}
-          onToggleAllPreview={preview.toggleAllWings}
           onGeometryChanged={preview.invalidateWing}
         />
       </Panel>
