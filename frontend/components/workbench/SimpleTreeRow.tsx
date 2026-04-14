@@ -25,7 +25,7 @@ export function SimpleTreeRow({ node, onToggle }: SimpleTreeRowProps) {
     <button
       onClick={onToggle}
       style={{ paddingLeft: indent }}
-      className="flex w-full items-center gap-1.5 rounded-full py-1.5 pr-2 text-left hover:bg-sidebar-accent"
+      className="flex w-full items-center gap-1.5 rounded-xl py-1.5 pr-2 text-left hover:bg-sidebar-accent"
     >
       {!node.leaf ? (
         node.expanded ? (

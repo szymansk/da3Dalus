@@ -112,7 +112,7 @@ function AeroplaneSelector({
               <button
                 key={a.id}
                 onClick={() => onSelect(a.id)}
-                className="flex items-center justify-between rounded-full px-3 py-2.5 text-left hover:bg-sidebar-accent"
+                className="flex items-center justify-between rounded-xl px-3 py-2.5 text-left hover:bg-sidebar-accent"
               >
                 <span className="text-[13px] text-foreground">{a.name}</span>
                 <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">

@@ -457,7 +457,7 @@ function TreeRow({ node, onToggle }: { node: TreeNode; onToggle: () => void }) {
 
   return (
     <div
-      className={`group flex items-center gap-2 rounded-full py-1.5 hover:bg-sidebar-accent ${
+      className={`group flex items-center gap-2 rounded-xl py-1.5 hover:bg-sidebar-accent ${
         node.selected ? "bg-sidebar-accent font-semibold" : ""
       }`}
       style={{ paddingLeft: `${indent}px`, cursor: "pointer" }}

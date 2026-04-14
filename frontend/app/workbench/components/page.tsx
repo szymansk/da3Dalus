@@ -98,7 +98,7 @@ export default function ComponentsPage() {
             Component Library
           </h1>
           <span className="flex-1" />
-          <div className="flex w-60 items-center gap-2 rounded-full border border-border bg-input px-3 py-2">
+          <div className="flex w-60 items-center gap-2 rounded-xl border border-border bg-input px-3 py-2">
             <Search className="size-3.5 text-muted-foreground" />
             <span className="text-[12px] text-subtle-foreground">
               Search components...
