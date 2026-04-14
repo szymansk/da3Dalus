@@ -18,19 +18,19 @@
   --color-sidebar-accent: #2A2A30;
   --color-input: #1C1C20;
 
-  /* Radii — override Tailwind defaults so rounded-sm/md/lg/xl/2xl use our values */
-  --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
-  --radius-2xl: 16px;
+  /* Radii — scaled up from wireframe values for better visual match at 1:1 browser scale */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
 
-  /* Semantic aliases matching da3Dalus.pen wireframe */
-  --radius-s: 8px;      /* InputField, SelectField, icon buttons (cornerRadius: 8) */
-  --radius-m: 12px;     /* Cards, panels (cornerRadius: 12) */
-  --radius-l: 16px;     /* Large cards, modals (cornerRadius: 16) */
-  --radius-pill: 999px; /* Text buttons, step pills (cornerRadius: 999) */
+  /* Semantic aliases */
+  --radius-s: 12px;     /* InputField, SelectField, icon buttons */
+  --radius-m: 16px;     /* Cards, panels */
+  --radius-l: 20px;     /* Large cards, modals */
+  --radius-pill: 999px; /* Text buttons, step pills */
 
   /* Fonts */
   --font-sans: var(--font-geist-sans);
