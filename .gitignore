@@ -261,3 +261,4 @@ coverage.xml
 
 # Claude Code skills lock
 skills-lock.json
+.claude/worktrees/
