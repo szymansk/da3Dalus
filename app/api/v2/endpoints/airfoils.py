@@ -64,6 +64,22 @@ class AirfoilDatDownloadResponse(BaseModel):
     size_bytes: int
 
 
+class AirfoilGeometryStatsResponse(BaseModel):
+    airfoil_name: str = Field(..., description="Name of the airfoil (without .dat extension).")
+    max_thickness_pct: float = Field(
+        ..., description="Maximum thickness as percentage of chord (upper_y - lower_y)."
+    )
+    max_thickness_x: float = Field(
+        ..., description="Chordwise position of maximum thickness (0..1)."
+    )
+    max_camber_pct: float = Field(
+        ..., description="Maximum camber-line deviation as percentage of chord."
+    )
+    max_camber_x: float = Field(
+        ..., description="Chordwise position of maximum camber (0..1)."
+    )
+
+
 class AirfoilNeuralFoilRequest(BaseModel):
     reynolds_numbers: list[PositiveFloat] = Field(
         default_factory=lambda: [10000.0, 30000, 50000.0, 100000.0, 200000.0, 500000.0],
@@ -177,6 +193,62 @@ def _resolve_airfoil_file(airfoil_name: str) -> tuple[str, Path]:
             details={"file_name": known_file_name},
         )
     return known_file_name, file_path
+
+
+def _parse_selig_dat(file_path: Path) -> tuple[np.ndarray, np.ndarray]:
+    """Parse a Selig-format .dat file and return (upper_coords, lower_coords).
+
+    Each array has shape (N, 2) with columns [x, y].  Upper surface runs from
+    TE (x~1) to LE (x~0); lower surface from LE (x~0) to TE (x~1).
+    """
+    lines = file_path.read_text().splitlines()
+    coords: list[tuple[float, float]] = []
+    for line in lines[1:]:  # skip header
+        parts = line.split()
+        if len(parts) >= 2:
+            try:
+                coords.append((float(parts[0]), float(parts[1])))
+            except ValueError:
+                continue
+    if len(coords) < 4:
+        raise ValidationError(
+            message="Die DAT-Datei enthält zu wenige Koordinaten.",
+            details={"file_name": file_path.name, "coordinate_count": len(coords)},
+        )
+    arr = np.array(coords)
+    le_idx = int(np.argmin(arr[:, 0]))
+    upper = arr[: le_idx + 1]  # TE -> LE (x descending)
+    lower = arr[le_idx:]       # LE -> TE (x ascending)
+    return upper, lower
+
+
+def _compute_geometry_stats(
+    upper: np.ndarray, lower: np.ndarray,
+) -> tuple[float, float, float, float]:
+    """Return (max_thickness_pct, thickness_x, max_camber_pct, camber_x)."""
+    # Flip upper so x is ascending for interpolation
+    upper_sorted = upper[np.argsort(upper[:, 0])]
+    lower_sorted = lower[np.argsort(lower[:, 0])]
+
+    x_min = max(upper_sorted[0, 0], lower_sorted[0, 0])
+    x_max = min(upper_sorted[-1, 0], lower_sorted[-1, 0])
+    x_eval = np.linspace(x_min, x_max, 200)
+
+    y_upper = np.interp(x_eval, upper_sorted[:, 0], upper_sorted[:, 1])
+    y_lower = np.interp(x_eval, lower_sorted[:, 0], lower_sorted[:, 1])
+
+    thickness = y_upper - y_lower
+    camber = (y_upper + y_lower) / 2.0
+
+    idx_t = int(np.argmax(thickness))
+    idx_c = int(np.argmax(np.abs(camber)))
+
+    return (
+        float(thickness[idx_t]) * 100.0,
+        float(x_eval[idx_t]),
+        float(camber[idx_c]) * 100.0,
+        float(x_eval[idx_c]),
+    )
 
 
 def _list_available_airfoil_files() -> list[Path]:
@@ -488,6 +560,36 @@ async def download_airfoil_datfile(
             url=_build_static_url_from_tmp_path(target_file, request, settings),
             mime_type="text/plain",
             size_bytes=source_path.stat().st_size,
+        )
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error: {exc}",
+        ) from exc
+
+
+@router.get(
+    "/airfoils/{airfoil_name}/geometry-stats",
+    response_model=AirfoilGeometryStatsResponse,
+    status_code=status.HTTP_200_OK,
+    operation_id="get_airfoil_geometry_stats",
+    tags=["airfoils"],
+    summary="Get airfoil geometry statistics (thickness, camber).",
+)
+async def get_airfoil_geometry_stats(airfoil_name: str) -> AirfoilGeometryStatsResponse:
+    """Compute max thickness and max camber from the .dat file coordinates."""
+    try:
+        file_name, file_path = _resolve_airfoil_file(airfoil_name)
+        upper, lower = _parse_selig_dat(file_path)
+        t_pct, t_x, c_pct, c_x = _compute_geometry_stats(upper, lower)
+        return AirfoilGeometryStatsResponse(
+            airfoil_name=Path(file_name).stem,
+            max_thickness_pct=round(t_pct, 4),
+            max_thickness_x=round(t_x, 4),
+            max_camber_pct=round(c_pct, 4),
+            max_camber_x=round(c_x, 4),
         )
     except ServiceException as exc:
         _raise_http_from_domain(exc)

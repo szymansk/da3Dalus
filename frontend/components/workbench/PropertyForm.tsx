@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ChevronDown, ChevronRight, Eye } from "lucide-react";
 import { AirfoilSelector } from "./AirfoilSelector";
 import { useAeroplaneContext } from "./AeroplaneContext";
 import { useUnsavedChanges } from "./UnsavedChangesContext";
@@ -202,6 +203,7 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
   );
 
   const { setDirty } = useUnsavedChanges();
+  const router = useRouter();
 
   // Mode is driven by tree toggle, not local state
   const mode: Mode = treeMode;
@@ -354,16 +356,38 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
             )}
             {/* Row 1: root_airfoil | tip_airfoil */}
             <div className="flex gap-3">
-              <AirfoilSelector
-                label="root_airfoil"
-                value={wc.root_airfoil}
-                onChange={(v) => { setDirty(true); setWc({ ...wc, root_airfoil: v }); }}
-              />
-              <AirfoilSelector
-                label="tip_airfoil"
-                value={wc.tip_airfoil}
-                onChange={(v) => { setDirty(true); setWc({ ...wc, tip_airfoil: v }); }}
-              />
+              <div className="flex flex-1 items-end gap-1.5">
+                <div className="flex-1">
+                  <AirfoilSelector
+                    label="root_airfoil"
+                    value={wc.root_airfoil}
+                    onChange={(v) => { setDirty(true); setWc({ ...wc, root_airfoil: v }); }}
+                  />
+                </div>
+                <button
+                  onClick={() => router.push("/workbench/airfoil-preview")}
+                  className="mb-0.5 flex size-8 shrink-0 items-center justify-center rounded-[--radius-s] border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent"
+                  title="Preview airfoil"
+                >
+                  <Eye size={14} />
+                </button>
+              </div>
+              <div className="flex flex-1 items-end gap-1.5">
+                <div className="flex-1">
+                  <AirfoilSelector
+                    label="tip_airfoil"
+                    value={wc.tip_airfoil}
+                    onChange={(v) => { setDirty(true); setWc({ ...wc, tip_airfoil: v }); }}
+                  />
+                </div>
+                <button
+                  onClick={() => router.push("/workbench/airfoil-preview")}
+                  className="mb-0.5 flex size-8 shrink-0 items-center justify-center rounded-[--radius-s] border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent"
+                  title="Preview airfoil"
+                >
+                  <Eye size={14} />
+                </button>
+              </div>
             </div>
             {/* Row 2: root_chord | tip_chord */}
             <div className="flex gap-3">

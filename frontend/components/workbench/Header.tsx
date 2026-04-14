@@ -21,13 +21,17 @@ const STEPS = [
 ] as const;
 
 function isActive(href: string, pathname: string) {
-  if (href === "/workbench") return pathname === "/workbench";
+  if (href === "/workbench")
+    return (
+      pathname === "/workbench" ||
+      pathname === "/workbench/airfoil-preview"
+    );
   return pathname.startsWith(href);
 }
 
 export function Header() {
   const pathname = usePathname();
-  const { aeroplaneId, selectedWing, setAeroplaneId } = useAeroplaneContext();
+  const { aeroplaneId, selectedWing, selectedXsecIndex, setAeroplaneId } = useAeroplaneContext();
   const { aeroplanes } = useAeroplanes();
   const aeroplaneName = aeroplanes.find((a) => a.id === aeroplaneId)?.name ?? "da3Dalus";
 
@@ -44,7 +48,12 @@ export function Header() {
           <ArrowLeftRight size={12} className="text-muted-foreground" />
         </button>
         <span className="text-sm text-muted-foreground">/</span>
-        <span className="text-sm text-muted-foreground">{selectedWing ?? "\u2014"}</span>
+        <span className="text-sm text-muted-foreground">
+          {selectedWing ?? "\u2014"}
+          {pathname === "/workbench/airfoil-preview" && selectedXsecIndex != null && (
+            <> / segment {selectedXsecIndex}</>
+          )}
+        </span>
       </div>
 
       {/* Step pills */}
