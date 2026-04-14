@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Info } from "lucide-react";
+import { Info, ArrowLeft, Save, Loader2 } from "lucide-react";
 import { AirfoilSelector } from "./AirfoilSelector";
 
 interface AirfoilPreviewConfigPanelProps {
@@ -27,6 +27,10 @@ interface AirfoilPreviewConfigPanelProps {
   onTipReChange: (re: number) => void;
   rootChordMm: number;
   tipChordMm: number;
+  isDirty: boolean;
+  isSaving: boolean;
+  onSave: () => void;
+  onBack: () => void;
 }
 
 function ReadOnlyField({
@@ -121,14 +125,25 @@ export function AirfoilPreviewConfigPanel({
   onTipReChange,
   rootChordMm,
   tipChordMm,
+  isDirty,
+  isSaving,
+  onSave,
+  onBack,
 }: AirfoilPreviewConfigPanelProps) {
   const [showReInfo, setShowReInfo] = useState(false);
   const hasTip = tipAirfoil !== rootAirfoil;
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-hidden p-4">
-      {/* Action Row */}
-      <div className="flex gap-2">
+      {/* Back + Action Row */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onBack}
+          className="flex size-8 shrink-0 items-center justify-center rounded-[--radius-s] border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+          title="Back to Construction"
+        >
+          <ArrowLeft size={14} />
+        </button>
         <button
           onClick={onRunAnalysis}
           disabled={isRunning}
@@ -143,6 +158,17 @@ export function AirfoilPreviewConfigPanel({
         >
           Clear Results
         </button>
+        <span className="flex-1" />
+        {isDirty && (
+          <button
+            onClick={onSave}
+            disabled={isSaving}
+            className="flex items-center gap-1.5 rounded-[--radius-pill] bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+            {isSaving ? "Saving\u2026" : "Save Airfoils"}
+          </button>
+        )}
       </div>
 
       {/* Section header */}
@@ -168,7 +194,7 @@ export function AirfoilPreviewConfigPanel({
             className="w-16 rounded-[--radius-s] border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
-            m/s
+            m/s ({(velocity * 3.6).toFixed(1)} km/h)
           </span>
           <span className="flex-1" />
           <button

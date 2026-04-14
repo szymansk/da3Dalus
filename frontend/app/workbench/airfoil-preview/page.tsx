@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useWingConfig } from "@/hooks/useWingConfig";
 import { useAirfoilGeometry } from "@/hooks/useAirfoilGeometry";
@@ -19,9 +20,11 @@ export function computeRe(velocityMs: number, chordMm: number): number {
 }
 
 export default function AirfoilPreviewPage() {
+  const router = useRouter();
   const { aeroplaneId, selectedWing, selectedXsecIndex } =
     useAeroplaneContext();
-  const { wingConfig } = useWingConfig(aeroplaneId, selectedWing);
+  const { wingConfig, saveWingConfig } = useWingConfig(aeroplaneId, selectedWing);
+  const [isSaving, setIsSaving] = useState(false);
 
   const segment = wingConfig?.segments?.[selectedXsecIndex ?? 0];
   const initialRoot = segment
@@ -88,6 +91,34 @@ export default function AirfoilPreviewPage() {
     tipAnalysis.clear();
   };
 
+  // Detect if airfoils changed vs. saved state
+  const savedRoot = segment ? airfoilShortName(segment.root_airfoil?.airfoil ?? "naca0012") : "naca0012";
+  const savedTip = segment ? airfoilShortName(segment.tip_airfoil?.airfoil ?? segment.root_airfoil?.airfoil ?? "naca0012") : "naca0012";
+  const isDirty = rootAirfoil !== savedRoot || tipAirfoil !== savedTip;
+
+  const handleSave = useCallback(async () => {
+    if (!wingConfig || !segment) return;
+    setIsSaving(true);
+    try {
+      const idx = selectedXsecIndex ?? 0;
+      const updatedSegments = wingConfig.segments.map((seg, i) => {
+        if (i !== idx) return seg;
+        return {
+          ...seg,
+          root_airfoil: { ...seg.root_airfoil, airfoil: rootAirfoil },
+          tip_airfoil: { ...seg.tip_airfoil, airfoil: tipAirfoil },
+        };
+      });
+      await saveWingConfig({ ...wingConfig, segments: updatedSegments });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [wingConfig, segment, selectedXsecIndex, rootAirfoil, tipAirfoil, saveWingConfig]);
+
+  const handleBack = () => {
+    router.push("/workbench");
+  };
+
   return (
     <div className="flex flex-1 gap-4 overflow-hidden">
       <div className="flex-1 overflow-hidden">
@@ -129,6 +160,10 @@ export default function AirfoilPreviewPage() {
           onTipReChange={setTipReOverride}
           rootChordMm={rootChordMm}
           tipChordMm={tipChordMm}
+          isDirty={isDirty}
+          isSaving={isSaving}
+          onSave={handleSave}
+          onBack={handleBack}
         />
       </div>
     </div>
