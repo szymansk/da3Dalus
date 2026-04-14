@@ -87,7 +87,7 @@ function ReynoldsField({
           const v = parseInt(e.target.value, 10);
           if (!isNaN(v) && v > 0) onReChange(v);
         }}
-        className="w-24 rounded-[--radius-s] border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className="w-24 rounded-[--radius-m] border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />
       <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
         c={chordMm}mm
@@ -150,7 +150,7 @@ export function AirfoilPreviewConfigPanel({
       <div className="flex items-center gap-2">
         <button
           onClick={onBack}
-          className="flex size-7 shrink-0 items-center justify-center rounded-[--radius-s] border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+          className="flex size-7 shrink-0 items-center justify-center rounded-full border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
           title="Back to Construction"
         >
           <ArrowLeft size={14} />
@@ -158,7 +158,7 @@ export function AirfoilPreviewConfigPanel({
         <button
           onClick={() => onSegmentChange(segmentIndex - 1)}
           disabled={segmentIndex <= 0}
-          className="flex size-6 items-center justify-center rounded-[--radius-s] border border-border text-muted-foreground hover:bg-sidebar-accent hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
+          className="flex size-6 items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-sidebar-accent hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
           title="Previous segment"
         >
           <ChevronLeft size={14} />
@@ -169,7 +169,7 @@ export function AirfoilPreviewConfigPanel({
         <button
           onClick={() => onSegmentChange(segmentIndex + 1)}
           disabled={segmentIndex >= segmentCount - 1}
-          className="flex size-6 items-center justify-center rounded-[--radius-s] border border-border text-muted-foreground hover:bg-sidebar-accent hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
+          className="flex size-6 items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-sidebar-accent hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
           title="Next segment"
         >
           <ChevronRight size={14} />
@@ -214,7 +214,7 @@ export function AirfoilPreviewConfigPanel({
             onChange={(e) => setVelocityDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") commitVelocity(); }}
             onBlur={commitVelocity}
-            className="w-16 rounded-[--radius-s] border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            className="w-16 rounded-[--radius-m] border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
             m/s ({(velocity * 3.6).toFixed(1)} km/h)
