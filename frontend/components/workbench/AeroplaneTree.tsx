@@ -282,7 +282,7 @@ export function AeroplaneTree({ aeroplaneId, wingNames, aeroplaneName, isWingVis
       xyz_le: [(lastXsec?.xyz_le[0] ?? 0), (lastXsec?.xyz_le[1] ?? 0) + 0.1, (lastXsec?.xyz_le[2] ?? 0)],
       chord: lastXsec?.chord ?? 0.1,
       twist: 0,
-      airfoil: lastXsec?.airfoil ?? "naca0012",
+      airfoil: lastXsec?.airfoil ?? "naca0015",
     };
     const res = await fetch(
       `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/cross_sections/${xsecCount}`,

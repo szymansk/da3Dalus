@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Info, ArrowLeft, Save, Loader2, ChevronLeft, ChevronRight, Undo2 } from "lucide-react";
 import { AirfoilSelector } from "./AirfoilSelector";
 
@@ -9,7 +9,6 @@ interface AirfoilPreviewConfigPanelProps {
   tipAirfoil: string;
   onRootAirfoilChange: (name: string) => void;
   onTipAirfoilChange: (name: string) => void;
-  onRunAnalysis: () => void;
   isRunning: boolean;
   segmentIndex: number;
   segmentCount: number;
@@ -114,7 +113,6 @@ export function AirfoilPreviewConfigPanel({
   tipAirfoil,
   onRootAirfoilChange,
   onTipAirfoilChange,
-  onRunAnalysis,
   isRunning,
   segmentIndex,
   segmentCount,
@@ -135,51 +133,28 @@ export function AirfoilPreviewConfigPanel({
   onBack,
 }: AirfoilPreviewConfigPanelProps) {
   const [showReInfo, setShowReInfo] = useState(false);
+  const [velocityDraft, setVelocityDraft] = useState(String(velocity));
   const hasTip = tipAirfoil !== rootAirfoil;
+
+  useEffect(() => { setVelocityDraft(String(velocity)); }, [velocity]);
+
+  function commitVelocity() {
+    const v = parseFloat(velocityDraft);
+    if (!isNaN(v) && v > 0) onVelocityChange(v);
+    else setVelocityDraft(String(velocity));
+  }
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-hidden p-4">
-      {/* Back + Action Row */}
+      {/* Back + Segment navigation + Save/Revert */}
       <div className="flex items-center gap-2">
         <button
           onClick={onBack}
-          className="flex size-8 shrink-0 items-center justify-center rounded-[--radius-s] border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+          className="flex size-7 shrink-0 items-center justify-center rounded-[--radius-s] border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
           title="Back to Construction"
         >
           <ArrowLeft size={14} />
         </button>
-        <button
-          onClick={onRunAnalysis}
-          disabled={isRunning}
-          className="rounded-[--radius-pill] bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
-        >
-          {isRunning ? "Running\u2026" : "Run Analysis"}
-        </button>
-        <span className="flex-1" />
-        {isDirty && (
-          <>
-            <button
-              onClick={onRevert}
-              className="flex items-center gap-1.5 rounded-[--radius-pill] border border-border px-3 py-2 text-[13px] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-              title="Revert to saved airfoils"
-            >
-              <Undo2 size={14} />
-              Revert
-            </button>
-            <button
-              onClick={onSave}
-              disabled={isSaving}
-              className="flex items-center gap-1.5 rounded-[--radius-pill] bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
-            >
-              {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-              {isSaving ? "Saving\u2026" : "Save"}
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* Segment navigation */}
-      <div className="flex items-center gap-2">
         <button
           onClick={() => onSegmentChange(segmentIndex - 1)}
           disabled={segmentIndex <= 0}
@@ -189,7 +164,7 @@ export function AirfoilPreviewConfigPanel({
           <ChevronLeft size={14} />
         </button>
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
-          segment {segmentIndex} {"\u00B7"} Properties
+          segment {segmentIndex}
         </span>
         <button
           onClick={() => onSegmentChange(segmentIndex + 1)}
@@ -202,6 +177,27 @@ export function AirfoilPreviewConfigPanel({
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-subtle-foreground">
           {segmentIndex + 1}/{segmentCount}
         </span>
+        <span className="flex-1" />
+        {isDirty && (
+          <>
+            <button
+              onClick={onRevert}
+              className="flex items-center gap-1.5 rounded-[--radius-pill] border border-border px-3 py-1.5 text-[12px] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+              title="Revert to saved airfoils"
+            >
+              <Undo2 size={12} />
+              Revert
+            </button>
+            <button
+              onClick={onSave}
+              disabled={isSaving}
+              className="flex items-center gap-1.5 rounded-[--radius-pill] bg-primary px-3 py-1.5 text-[12px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
+            >
+              {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+              {isSaving ? "Saving\u2026" : "Save"}
+            </button>
+          </>
+        )}
       </div>
 
       {/* Form Card */}
@@ -214,11 +210,10 @@ export function AirfoilPreviewConfigPanel({
           <input
             type="number"
             step="0.5"
-            value={velocity}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              if (!isNaN(v) && v > 0) onVelocityChange(v);
-            }}
+            value={velocityDraft}
+            onChange={(e) => setVelocityDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") commitVelocity(); }}
+            onBlur={commitVelocity}
             className="w-16 rounded-[--radius-s] border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">

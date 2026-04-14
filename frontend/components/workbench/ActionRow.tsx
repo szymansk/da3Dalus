@@ -24,13 +24,13 @@ export function ActionRow({ aeroplaneId, onWingCreated }: ActionRowProps) {
       xyz_le: [0, 0, 0],
       chord: 0.15,
       twist: 0,
-      airfoil: "naca0012",
+      airfoil: "naca0015",
     };
     const tipXSec = {
       xyz_le: [0, 0.5, 0],
       chord: 0.12,
       twist: 0,
-      airfoil: "naca0012",
+      airfoil: "naca0015",
     };
 
     const res = await fetch(

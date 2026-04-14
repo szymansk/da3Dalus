@@ -28,8 +28,8 @@ export default function AirfoilPreviewPage() {
 
   const segment = wingConfig?.segments?.[selectedXsecIndex ?? 0];
   const initialRoot = segment
-    ? airfoilShortName(segment.root_airfoil?.airfoil ?? "naca0012")
-    : "naca0012";
+    ? airfoilShortName(segment.root_airfoil?.airfoil ?? "naca0015")
+    : "naca0015";
   const initialTip = segment
     ? airfoilShortName(segment.tip_airfoil?.airfoil ?? initialRoot)
     : initialRoot;
@@ -64,13 +64,13 @@ export default function AirfoilPreviewPage() {
     const seg = wingConfig?.segments?.[selectedXsecIndex ?? 0];
     if (!seg) return;
     setRootAirfoil(
-      airfoilShortName(seg.root_airfoil?.airfoil ?? "naca0012"),
+      airfoilShortName(seg.root_airfoil?.airfoil ?? "naca0015"),
     );
     setTipAirfoil(
       airfoilShortName(
         seg.tip_airfoil?.airfoil ??
           seg.root_airfoil?.airfoil ??
-          "naca0012",
+          "naca0015",
       ),
     );
     setRootReOverride(null);
@@ -94,16 +94,9 @@ export default function AirfoilPreviewPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipAirfoil, tipRe, ma, hasTip]);
 
-  const handleRunAnalysis = () => {
-    rootAnalysis.run(rootAirfoil, rootRe, ma);
-    if (hasTip) {
-      tipAnalysis.run(tipAirfoil, tipRe, ma);
-    }
-  };
-
   // Detect if airfoils changed vs. saved state
-  const savedRoot = segment ? airfoilShortName(segment.root_airfoil?.airfoil ?? "naca0012") : "naca0012";
-  const savedTip = segment ? airfoilShortName(segment.tip_airfoil?.airfoil ?? segment.root_airfoil?.airfoil ?? "naca0012") : "naca0012";
+  const savedRoot = segment ? airfoilShortName(segment.root_airfoil?.airfoil ?? "naca0015") : "naca0015";
+  const savedTip = segment ? airfoilShortName(segment.tip_airfoil?.airfoil ?? segment.root_airfoil?.airfoil ?? "naca0015") : "naca0015";
   const isDirty = rootAirfoil !== savedRoot || tipAirfoil !== savedTip;
 
   const handleRevert = useCallback(() => {
@@ -160,7 +153,6 @@ export default function AirfoilPreviewPage() {
           tipAirfoil={tipAirfoil}
           onRootAirfoilChange={setRootAirfoil}
           onTipAirfoilChange={setTipAirfoil}
-          onRunAnalysis={handleRunAnalysis}
           isRunning={rootAnalysis.isRunning || tipAnalysis.isRunning}
           segmentIndex={selectedXsecIndex ?? 0}
           segmentCount={wingConfig?.segments?.length ?? 1}
