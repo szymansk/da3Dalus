@@ -80,11 +80,9 @@ def test_all_tool_handlers_delegate_through_call_endpoint(monkeypatch):
                 "filename": "fake.zip",
                 "mime_type": "application/zip",
             }
-        if endpoint_fn.__name__ == "calculate_streamlines":
-            return {"url": "http://unit.test/static/fake.html"}
         if endpoint_fn.__name__ == "analyze_airplane_alpha_sweep_diagram":
             return {"url": "http://unit.test/static/fake.png"}
-        if endpoint_fn.__name__ in {"get_streamlines_three_view_url", "get_aeroplane_three_view_url"}:
+        if endpoint_fn.__name__ == "get_aeroplane_three_view_url":
             return {"url": "http://unit.test/static/fake.png", "mime_type": "image/png"}
         return {"endpoint": endpoint_fn.__name__, "kwargs": kwargs}
 

@@ -11,7 +11,6 @@ from app.api.v2.endpoints.aeroanalysis import (
     analyze_airplane_post,
     analyze_airplane_simple_sweep,
     analyze_wing_post,
-    calculate_streamlines,
     get_aeroplane_three_view_url as get_aeroplane_three_view,
     get_streamlines_three_view_url as get_streamlines_three_view,
 )
@@ -100,36 +99,6 @@ class TestAeroanalysis(unittest.TestCase):
             self.test_plane_id,
             self.test_operating_point,
             AnalysisToolUrlType.VORTEX_LATTICE,
-        )
-
-    def test_calculate_streamlines_success(self):
-        mock_db = MagicMock()
-        mock_request = MagicMock(spec=Request)
-        mock_request.base_url = "http://example.com/"
-        mock_settings = MagicMock()
-        mock_settings.base_url = "http://example.com"
-
-        with patch(
-            "app.api.v2.endpoints.aeroanalysis.analysis_service.calculate_streamlines_html",
-            new=AsyncMock(return_value="http://example.com/static/foo.html"),
-        ) as mock_calc:
-            result = asyncio.run(
-                calculate_streamlines(
-                    aeroplane_id=self.test_plane_id,
-                    operating_point=self.test_operating_point,
-                    db=mock_db,
-                    request=mock_request,
-                    settings=mock_settings,
-                )
-            )
-
-        self.assertIsInstance(result, StaticUrlResponse)
-        self.assertEqual(result.url, "http://example.com/static/foo.html")
-        mock_calc.assert_awaited_once_with(
-            mock_db,
-            self.test_plane_id,
-            self.test_operating_point,
-            "http://example.com",
         )
 
     def test_analyze_airplane_alpha_sweep_success(self):
@@ -317,6 +286,61 @@ class TestAeroanalysis(unittest.TestCase):
         self.assertIsInstance(result, StaticUrlResponse)
         self.assertTrue(result.url.endswith(f"/static/{self.test_plane_id}/png/three_view_def456.png"))
         mock_image.assert_awaited_once_with(mock_db, self.test_plane_id)
+
+    def test_calculate_streamlines_json_success(self):
+        """Happy-path: POST streamlines returns Plotly figure JSON."""
+        from app.api.v2.endpoints.aeroanalysis import calculate_streamlines_json
+
+        mock_db = MagicMock()
+        plotly_figure = {
+            "data": [{"type": "mesh3d", "x": [], "y": [], "z": []}],
+            "layout": {"scene": {}},
+        }
+
+        with patch(
+            "app.api.v2.endpoints.aeroanalysis.analysis_service.calculate_streamlines_json",
+            new=AsyncMock(return_value=plotly_figure),
+        ) as mock_calc:
+            result = asyncio.run(
+                calculate_streamlines_json(
+                    aeroplane_id=self.test_plane_id,
+                    operating_point=self.test_operating_point,
+                    db=mock_db,
+                )
+            )
+
+        self.assertIsInstance(result, dict)
+        self.assertIn("data", result)
+        self.assertIsInstance(result["data"], list)
+        self.assertIn("layout", result)
+        self.assertIsInstance(result["layout"], dict)
+        mock_calc.assert_awaited_once_with(
+            mock_db,
+            self.test_plane_id,
+            self.test_operating_point,
+        )
+
+    def test_calculate_streamlines_json_not_found(self):
+        """404 propagation when aeroplane does not exist."""
+        from app.api.v2.endpoints.aeroanalysis import calculate_streamlines_json
+
+        mock_db = MagicMock()
+
+        with patch(
+            "app.api.v2.endpoints.aeroanalysis.analysis_service.calculate_streamlines_json",
+            new=AsyncMock(side_effect=NotFoundError("Aeroplane not found")),
+        ):
+            with self.assertRaises(HTTPException) as ctx:
+                asyncio.run(
+                    calculate_streamlines_json(
+                        aeroplane_id=self.test_plane_id,
+                        operating_point=self.test_operating_point,
+                        db=mock_db,
+                    )
+                )
+
+        self.assertEqual(ctx.exception.status_code, 404)
+        self.assertIn("Aeroplane not found", str(ctx.exception.detail))
 
 
 if __name__ == "__main__":

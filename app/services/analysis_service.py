@@ -20,7 +20,7 @@ from aerosandbox import Airplane
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.api.utils import analyse_aerodynamics, compile_four_view_figure, save_content_and_get_static_url
+from app.api.utils import analyse_aerodynamics, compile_four_view_figure
 from app.converters.model_schema_converters import aeroplaneSchemaToAsbAirplane_async
 from app.core.exceptions import NotFoundError, InternalError
 from app.db.exceptions import NotFoundInDbException
@@ -267,42 +267,35 @@ async def analyze_airplane(
         raise InternalError(message=f"Analysis error: {e}")
 
 
-async def calculate_streamlines_html(
+async def calculate_streamlines_json(
     db: Session,
     aeroplane_uuid,
     operating_point: OperatingPointSchema,
-    base_url: str
-) -> str:
-    """
-    Calculate streamlines and save as HTML.
-    
+) -> dict:
+    """Calculate streamlines and return Plotly figure as JSON dict.
+
     Returns:
-        str: URL to the saved HTML file.
-    
+        dict: Plotly figure JSON with 'data' and 'layout' keys.
+
     Raises:
         NotFoundError: If the aeroplane does not exist.
         InternalError: If an analysis error occurs.
     """
+    import json as _json
+
     plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
-    
+
     try:
         asb_airplane: Airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
-        result, figure = await analyse_aerodynamics(
+        _, figure = await analyse_aerodynamics(
             AnalysisToolUrlType.VORTEX_LATTICE,
             operating_point,
             asb_airplane,
-            draw_streamlines=True
+            draw_streamlines=True,
         )
-        
-        content = figure.to_html()
-        filename = f"streamlines_{operating_point.velocity}_{operating_point.alpha}_{operating_point.beta}.html"
-        
-        full_url = await save_content_and_get_static_url(
-            aeroplane_uuid, base_url, content, "html", filename
-        )
-        return full_url
+        return _json.loads(figure.to_json())
     except Exception as e:
-        logger.error(f"Error calculating streamlines: {e}")
+        logger.error("Error calculating streamlines: %s", e)
         raise InternalError(message=f"Analysis error: {e}")
 
 
