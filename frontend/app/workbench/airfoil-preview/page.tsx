@@ -75,12 +75,24 @@ export default function AirfoilPreviewPage() {
     );
     setRootReOverride(null);
     setTipReOverride(null);
-    rootAnalysis.clear();
-    tipAnalysis.clear();
+    // Analysis will auto-run via the effect below
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedXsecIndex, wingConfig]);
 
   const hasTip = tipAirfoil !== rootAirfoil;
+
+  // Auto-run analysis whenever airfoil, Re, or Ma changes
+  useEffect(() => {
+    if (!rootAirfoil) return;
+    rootAnalysis.run(rootAirfoil, rootRe, ma);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rootAirfoil, rootRe, ma]);
+
+  useEffect(() => {
+    if (!hasTip || !tipAirfoil) { tipAnalysis.clear(); return; }
+    tipAnalysis.run(tipAirfoil, tipRe, ma);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipAirfoil, tipRe, ma, hasTip]);
 
   const handleRunAnalysis = () => {
     rootAnalysis.run(rootAirfoil, rootRe, ma);
@@ -104,9 +116,7 @@ export default function AirfoilPreviewPage() {
     setTipAirfoil(savedTip);
     setRootReOverride(null);
     setTipReOverride(null);
-    rootAnalysis.clear();
-    tipAnalysis.clear();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Analysis auto-re-runs via effects
   }, [savedRoot, savedTip]);
 
   const handleSave = useCallback(async () => {
@@ -153,8 +163,8 @@ export default function AirfoilPreviewPage() {
         <AirfoilPreviewConfigPanel
           rootAirfoil={rootAirfoil}
           tipAirfoil={tipAirfoil}
-          onRootAirfoilChange={(name) => { setRootAirfoil(name); rootAnalysis.clear(); }}
-          onTipAirfoilChange={(name) => { setTipAirfoil(name); tipAnalysis.clear(); }}
+          onRootAirfoilChange={setRootAirfoil}
+          onTipAirfoilChange={setTipAirfoil}
           onRunAnalysis={handleRunAnalysis}
           onClearResults={handleClear}
           isRunning={rootAnalysis.isRunning || tipAnalysis.isRunning}
