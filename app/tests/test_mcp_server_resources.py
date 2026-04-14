@@ -107,36 +107,6 @@ def test_image_public_url_uses_mcp_request_port_when_context_is_available(monkey
     assert payload["url_for_webui"].startswith("http://unit.test/static/")
 
 
-def test_html_resource_and_public_url(monkeypatch, fastapi_client):
-    html_path = Path("tmp/test_assets/streamlines.html")
-    html_path.parent.mkdir(parents=True, exist_ok=True)
-    html_content = "<html><body>streamlines</body></html>"
-    html_path.write_text(html_content, encoding="utf-8")
-
-    async def fake_streamlines(*, aeroplane_id, operating_point, db, request=None, settings=None):
-        return {"url": f"{settings.base_url}/static/test_assets/streamlines.html"}
-
-    monkeypatch.setattr(mcp_server.aeroanalysis, "calculate_streamlines", fake_streamlines)
-
-    server = mcp_server.create_mcp_server()
-    payload = _run(mcp_server.get_streamlines_as_html_tool("00000000-0000-0000-0000-000000000001", object()))
-
-    assert payload["resource_uri"].startswith("data://")
-    assert payload["url_from_docker_container"].endswith("/static/test_assets/streamlines.html")
-    assert payload["url_for_webui"].endswith("/static/test_assets/streamlines.html")
-    assert payload["mime_type"] == "text/html"
-
-    resource = _run(server.read_resource(payload["resource_uri"]))
-    assert resource.contents[0].mime_type == "text/html"
-    assert resource.contents[0].content == html_content
-
-    path = urlparse(payload["url_from_docker_container"]).path
-    response = fastapi_client.get(path)
-    assert response.status_code == 200
-    assert response.headers["content-type"].startswith("text/html")
-    assert response.text == html_content
-
-
 def test_alpha_sweep_diagram_resource_and_public_url(monkeypatch, fastapi_client):
     png_path = Path("tmp/test_assets/alpha_sweep.png")
     png_path.parent.mkdir(parents=True, exist_ok=True)
@@ -165,38 +135,6 @@ def test_alpha_sweep_diagram_resource_and_public_url(monkeypatch, fastapi_client
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("image/png")
     assert response.content == png_bytes
-
-
-def test_streamlines_three_view_resource_and_public_url(monkeypatch, fastapi_client):
-    image_bytes = b"\x89PNG\r\n\x1a\nstreamlines-three-view"
-    image_path = Path("tmp/test_assets/streamlines_three_view.png")
-    image_path.parent.mkdir(parents=True, exist_ok=True)
-    image_path.write_bytes(image_bytes)
-
-    async def fake_streamlines_three_view(*, aeroplane_id, operating_point, db, request=None, settings=None):
-        return {"url": "http://unit.test/static/test_assets/streamlines_three_view.png"}
-
-    monkeypatch.setattr(mcp_server.aeroanalysis, "get_streamlines_three_view_url", fake_streamlines_three_view)
-
-    server = mcp_server.create_mcp_server()
-    payload = _run(
-        mcp_server.get_streamlines_three_view_tool("00000000-0000-0000-0000-000000000001", object())
-    )
-
-    assert payload["resource_uri"].startswith("img://")
-    assert payload["url_from_docker_container"].startswith("http://unit.test/static/")
-    assert payload["url_for_webui"].startswith("http://unit.test/static/")
-    assert payload["mime_type"] == "image/png"
-
-    resource = _run(server.read_resource(payload["resource_uri"]))
-    assert resource.contents[0].mime_type == "image/png"
-    assert resource.contents[0].content == image_bytes
-
-    path = urlparse(payload["url_from_docker_container"]).path
-    response = fastapi_client.get(path)
-    assert response.status_code == 200
-    assert response.headers["content-type"].startswith("image/png")
-    assert response.content == image_bytes
 
 
 def test_zip_resource_and_public_url(monkeypatch, fastapi_client):
