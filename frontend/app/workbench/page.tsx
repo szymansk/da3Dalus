@@ -1,16 +1,24 @@
 "use client";
 
-import { Group, Panel, Separator } from "react-resizable-panels";
+import { useState } from "react";
 import { ViewerPanel } from "@/components/workbench/ViewerPanel";
 import { ConfigPanel } from "@/components/workbench/ConfigPanel";
+import { AeroplaneTree } from "@/components/workbench/AeroplaneTree";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAeroplanes } from "@/hooks/useAeroplanes";
+import { useWings } from "@/hooks/useWings";
 import { usePreviewState } from "@/hooks/usePreviewState";
 
 export default function WorkbenchPage() {
   const { aeroplaneId, setAeroplaneId } = useAeroplaneContext();
   const { aeroplanes, isLoading, createAeroplane } = useAeroplanes();
+  const { wingNames } = useWings(aeroplaneId);
   const preview = usePreviewState(aeroplaneId);
+  const aeroplaneName =
+    aeroplanes.find((a) => a.id === aeroplaneId)?.name ?? "Aeroplane";
+
+  const [treeOpen, setTreeOpen] = useState(true);
+  const [viewerMaximized, setViewerMaximized] = useState(false);
 
   if (!aeroplaneId) {
     return <AeroplaneSelector
@@ -25,26 +33,46 @@ export default function WorkbenchPage() {
   }
 
   return (
-    <Group orientation="horizontal" className="flex-1">
-      <Panel defaultSize={55} minSize={20}>
+    <div className="flex flex-1 gap-4 overflow-hidden">
+      {/* Tree Panel — collapsible */}
+      {treeOpen && !viewerMaximized && (
+        <div className="h-full shrink-0 overflow-y-auto" style={{ width: 320 }}>
+          <AeroplaneTree
+            aeroplaneId={aeroplaneId}
+            wingNames={wingNames}
+            aeroplaneName={aeroplaneName}
+            isWingVisible={preview.isWingVisible}
+            isWingLoading={(wn) => preview.previews[wn]?.loading ?? false}
+            onTogglePreview={preview.toggleWing}
+            onToggleAllPreview={preview.toggleAllWings}
+            onCollapseTree={() => setTreeOpen(false)}
+          />
+        </div>
+      )}
+
+      {/* Viewer Panel — can maximize to fill all space */}
+      <div className="flex-1 overflow-hidden">
         <ViewerPanel
           visibleParts={preview.visibleParts}
           isAnyLoading={preview.isAnyLoading}
           loadingWing={preview.loadingWing}
+          isMaximized={viewerMaximized}
+          onToggleMaximize={() => setViewerMaximized((m) => !m)}
+          isTreeCollapsed={!treeOpen}
+          onExpandTree={() => setTreeOpen(true)}
         />
-      </Panel>
-      <Separator className="w-1.5 bg-border hover:bg-primary/50 transition-colors cursor-col-resize" />
-      <Panel defaultSize={45} minSize={30}>
-        <ConfigPanel
-          aeroplaneId={aeroplaneId}
-          isWingVisible={preview.isWingVisible}
-          isWingLoading={(wn) => preview.previews[wn]?.loading ?? false}
-          onTogglePreview={preview.toggleWing}
-          onToggleAllPreview={preview.toggleAllWings}
-          onGeometryChanged={preview.invalidateWing}
-        />
-      </Panel>
-    </Group>
+      </div>
+
+      {/* Config Panel — hidden when viewer maximized */}
+      {!viewerMaximized && (
+        <div className="h-full shrink-0 overflow-hidden" style={{ width: 556 }}>
+          <ConfigPanel
+            aeroplaneId={aeroplaneId}
+            onGeometryChanged={preview.invalidateWing}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 

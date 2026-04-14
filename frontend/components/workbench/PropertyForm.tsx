@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { AirfoilSelector } from "./AirfoilSelector";
 import { useAeroplaneContext } from "./AeroplaneContext";
+import { useUnsavedChanges } from "./UnsavedChangesContext";
 import { useWing, type XSec } from "@/hooks/useWings";
 import { useWingConfig } from "@/hooks/useWingConfig";
 import type { WingConfigSegment } from "@/hooks/useWingConfig";
@@ -200,6 +201,8 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
     treeMode === "wingconfig" ? selectedWing : null,
   );
 
+  const { setDirty } = useUnsavedChanges();
+
   // Mode is driven by tree toggle, not local state
   const mode: Mode = treeMode;
   const [saving, setSaving] = useState(false);
@@ -257,6 +260,7 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
     if (wing && selectedXsecIndex !== null)
       setWc(xsecsToWingConfig(wing.x_secs, selectedXsecIndex));
     setError(null);
+    setDirty(false);
   }
 
   async function handleSaveAsb() {
@@ -267,6 +271,7 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
       await updateXSec(selectedXsecIndex!, asbToPayload(asb));
       await mutate();
       if (selectedWing) onGeometryChanged?.(selectedWing);
+      setDirty(false);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -313,6 +318,7 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
       await mutate();
       await mutateWc();
       if (selectedWing) onGeometryChanged?.(selectedWing);
+      setDirty(false);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -339,11 +345,11 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
             {selectedXsecIndex === 0 && (
               <div className="flex gap-3">
                 <Field label="nose x" value={nosePnt[0]} suffix="mm"
-                  onChange={(v) => setNosePnt([num(v), nosePnt[1], nosePnt[2]])} />
+                  onChange={(v) => { setDirty(true); setNosePnt([num(v), nosePnt[1], nosePnt[2]]); }} />
                 <Field label="nose y" value={nosePnt[1]} suffix="mm"
-                  onChange={(v) => setNosePnt([nosePnt[0], num(v), nosePnt[2]])} />
+                  onChange={(v) => { setDirty(true); setNosePnt([nosePnt[0], num(v), nosePnt[2]]); }} />
                 <Field label="nose z" value={nosePnt[2]} suffix="mm"
-                  onChange={(v) => setNosePnt([nosePnt[0], nosePnt[1], num(v)])} />
+                  onChange={(v) => { setDirty(true); setNosePnt([nosePnt[0], nosePnt[1], num(v)]); }} />
               </div>
             )}
             {/* Row 1: root_airfoil | tip_airfoil */}
@@ -351,12 +357,12 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
               <AirfoilSelector
                 label="root_airfoil"
                 value={wc.root_airfoil}
-                onChange={(v) => setWc({ ...wc, root_airfoil: v })}
+                onChange={(v) => { setDirty(true); setWc({ ...wc, root_airfoil: v }); }}
               />
               <AirfoilSelector
                 label="tip_airfoil"
                 value={wc.tip_airfoil}
-                onChange={(v) => setWc({ ...wc, tip_airfoil: v })}
+                onChange={(v) => { setDirty(true); setWc({ ...wc, tip_airfoil: v }); }}
               />
             </div>
             {/* Row 2: root_chord | tip_chord */}
@@ -365,13 +371,13 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
                 label="root_chord"
                 value={wc.root_chord}
                 suffix="mm"
-                onChange={(v) => setWc({ ...wc, root_chord: num(v) })}
+                onChange={(v) => { setDirty(true); setWc({ ...wc, root_chord: num(v) }); }}
               />
               <Field
                 label="tip_chord"
                 value={wc.tip_chord}
                 suffix="mm"
-                onChange={(v) => setWc({ ...wc, tip_chord: num(v) })}
+                onChange={(v) => { setDirty(true); setWc({ ...wc, tip_chord: num(v) }); }}
               />
             </div>
             {/* Row 3: length | sweep */}
@@ -380,13 +386,13 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
                 label="length"
                 value={wc.length}
                 suffix="mm"
-                onChange={(v) => setWc({ ...wc, length: num(v) })}
+                onChange={(v) => { setDirty(true); setWc({ ...wc, length: num(v) }); }}
               />
               <Field
                 label="sweep"
                 value={wc.sweep}
                 suffix="mm"
-                onChange={(v) => setWc({ ...wc, sweep: num(v) })}
+                onChange={(v) => { setDirty(true); setWc({ ...wc, sweep: num(v) }); }}
               />
             </div>
             {/* Row 4: dihedral | incidence */}
@@ -395,13 +401,13 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
                 label="dihedral"
                 value={wc.root_dihedral}
                 suffix="°"
-                onChange={(v) => setWc({ ...wc, root_dihedral: num(v) })}
+                onChange={(v) => { setDirty(true); setWc({ ...wc, root_dihedral: num(v) }); }}
               />
               <Field
                 label="incidence"
                 value={wc.root_incidence}
                 suffix="°"
-                onChange={(v) => setWc({ ...wc, root_incidence: num(v) })}
+                onChange={(v) => { setDirty(true); setWc({ ...wc, root_incidence: num(v) }); }}
               />
             </div>
             {/* Row 5: rotation_point | interpolation_pts */}
@@ -409,12 +415,12 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
               <Field
                 label="rotation_point"
                 value={wc.root_rotation_point}
-                onChange={(v) => setWc({ ...wc, root_rotation_point: num(v, 0.25) })}
+                onChange={(v) => { setDirty(true); setWc({ ...wc, root_rotation_point: num(v, 0.25) }); }}
               />
               <Field
                 label="interpolation_pts"
                 value={wc.number_interpolation_points}
-                onChange={(v) => setWc({ ...wc, number_interpolation_points: num(v, 201) })}
+                onChange={(v) => { setDirty(true); setWc({ ...wc, number_interpolation_points: num(v, 201) }); }}
               />
             </div>
           </>
@@ -425,13 +431,13 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
               <AirfoilSelector
                 label="airfoil"
                 value={asb.airfoil}
-                onChange={(v) => setAsb({ ...asb, airfoil: v })}
+                onChange={(v) => { setDirty(true); setAsb({ ...asb, airfoil: v }); }}
               />
               <Field
                 label="chord"
                 value={asb.chord}
                 suffix="mm"
-                onChange={(v) => setAsb({ ...asb, chord: num(v) })}
+                onChange={(v) => { setDirty(true); setAsb({ ...asb, chord: num(v) }); }}
               />
             </div>
             {/* twist | x_sec_type */}
@@ -440,7 +446,7 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
                 label="twist"
                 value={asb.twist}
                 suffix="°"
-                onChange={(v) => setAsb({ ...asb, twist: num(v) })}
+                onChange={(v) => { setDirty(true); setAsb({ ...asb, twist: num(v) }); }}
               />
               <Field
                 label="x_sec_type"
@@ -457,6 +463,7 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
                   value={asb.xyz_le[i]}
                   suffix="m"
                   onChange={(v) => {
+                    setDirty(true);
                     const next: [number, number, number] = [...asb.xyz_le];
                     next[i] = num(v);
                     setAsb({ ...asb, xyz_le: next });

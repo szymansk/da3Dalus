@@ -1,4 +1,9 @@
-import { Scale, Plus, Info, Settings, X } from "lucide-react";
+"use client";
+
+import { Scale, Plus, Settings, X } from "lucide-react";
+import { WorkbenchTwoPanel } from "@/components/workbench/WorkbenchTwoPanel";
+import { AlertBanner } from "@/components/workbench/AlertBanner";
+import { WeightTree } from "@/components/workbench/WeightTree";
 
 const WEIGHT_ITEMS = [
   {
@@ -35,103 +40,105 @@ const WEIGHT_ITEMS = [
   },
 ];
 
-const COLUMN_HEADERS = ["NAME", "MASS_KG", "X [M]", "Y [M]", "Z [M]", "ACTIONS"];
+const COLUMN_HEADERS = [
+  "NAME",
+  "MASS_KG",
+  "X [M]",
+  "Y [M]",
+  "Z [M]",
+  "ACTIONS",
+];
 
 export default function WeightPage() {
   return (
-    <div className="flex w-full flex-col gap-6">
-      {/* Header */}
-      <div className="flex items-center gap-2.5">
-        <Scale className="size-5 text-primary" />
-        <h1 className="font-[family-name:var(--font-jetbrains-mono)] text-[20px] text-foreground">
-          Weight Items
-        </h1>
-        <span className="flex-1" />
-        <button className="flex items-center gap-1.5 rounded-[--radius-pill] bg-primary px-3.5 py-2 text-[13px] text-primary-foreground">
-          <Plus className="size-3.5" />
-          + Item
-        </button>
-      </div>
+    <WorkbenchTwoPanel>
+      <WeightTree />
 
-      {/* Alert banner */}
-      <div className="flex items-start gap-3 rounded-[--radius-s] border border-primary bg-[#2A1F10] p-4">
-        <Info className="size-4 shrink-0 text-primary" />
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[13px] font-semibold text-foreground">
-            Coming soon — backend wiring in progress
-          </span>
-          <span className="text-[12px] text-muted-foreground">
-            Weight Items needs backend resource. The table below writes to
-            browser state until the resource lands.
-          </span>
+      <div className="flex w-full flex-col gap-6 overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center gap-2.5">
+          <Scale className="size-5 text-primary" />
+          <h1 className="font-[family-name:var(--font-jetbrains-mono)] text-[20px] text-foreground">
+            Weight Items
+          </h1>
+          <span className="flex-1" />
+          <button className="flex items-center gap-1.5 rounded-[--radius-pill] bg-primary px-3.5 py-2 text-[13px] text-primary-foreground">
+            <Plus className="size-3.5" />+ Item
+          </button>
         </div>
-      </div>
 
-      {/* Weight table */}
-      <div className="overflow-hidden rounded-[--radius-m] border border-border bg-card">
-        {/* Header row */}
-        <div className="flex items-center rounded-t-[--radius-m] border-b border-border bg-card-muted px-4 py-3">
-          <span className="flex-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] uppercase tracking-wide text-muted-foreground">
-            {COLUMN_HEADERS[0]}
-          </span>
-          {COLUMN_HEADERS.slice(1, 5).map((h) => (
-            <span
-              key={h}
-              className="w-24 text-right font-[family-name:var(--font-jetbrains-mono)] text-[11px] uppercase tracking-wide text-muted-foreground"
-            >
-              {h}
+        {/* Alert banner */}
+        <AlertBanner>
+          Weight Items needs backend resource. The table below writes to browser
+          state until the resource lands.
+        </AlertBanner>
+
+        {/* Weight table */}
+        <div className="overflow-hidden rounded-[--radius-m] border border-border bg-card">
+          {/* Header row */}
+          <div className="flex items-center rounded-t-[--radius-m] border-b border-border bg-card-muted px-4 py-3">
+            <span className="flex-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] uppercase tracking-wide text-muted-foreground">
+              {COLUMN_HEADERS[0]}
             </span>
-          ))}
-          <span className="w-16 text-right font-[family-name:var(--font-jetbrains-mono)] text-[11px] uppercase tracking-wide text-muted-foreground">
-            {COLUMN_HEADERS[5]}
-          </span>
-        </div>
-
-        {/* Data rows */}
-        {WEIGHT_ITEMS.map((item) => (
-          <div
-            key={item.name}
-            className="flex items-center border-t border-border px-4 py-3"
-          >
-            <div className="flex flex-1 flex-col">
-              <span className="text-[13px] text-foreground">{item.name}</span>
-              <span className="text-[11px] text-muted-foreground">
-                {item.category}
-              </span>
-            </div>
-            {[item.mass, item.x, item.y, item.z].map((val, i) => (
+            {COLUMN_HEADERS.slice(1, 5).map((h) => (
               <span
-                key={i}
-                className="w-24 text-right font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground"
+                key={h}
+                className="w-24 text-right font-[family-name:var(--font-jetbrains-mono)] text-[11px] uppercase tracking-wide text-muted-foreground"
               >
-                {val}
+                {h}
               </span>
             ))}
-            <div className="flex w-16 justify-end gap-1.5">
-              <button className="flex size-6 items-center justify-center rounded-[--radius-s] border border-border bg-card-muted">
-                <Settings className="size-3 text-muted-foreground" />
-              </button>
-              <button className="flex size-6 items-center justify-center rounded-[--radius-s] border border-border bg-card-muted">
-                <X className="size-3 text-muted-foreground" />
-              </button>
-            </div>
+            <span className="w-16 text-right font-[family-name:var(--font-jetbrains-mono)] text-[11px] uppercase tracking-wide text-muted-foreground">
+              {COLUMN_HEADERS[5]}
+            </span>
           </div>
-        ))}
 
-        {/* Totals row */}
-        <div className="flex items-center rounded-b-[--radius-m] border-t border-border bg-sidebar-accent px-4 py-3">
-          <span className="flex-1 font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
-            {"\u03A3"} TOTAL
-          </span>
-          <span className="w-24 text-right font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-primary">
-            1.177
-          </span>
-          <span className="w-24" />
-          <span className="w-24" />
-          <span className="w-24" />
-          <span className="w-16" />
+          {/* Data rows */}
+          {WEIGHT_ITEMS.map((item) => (
+            <div
+              key={item.name}
+              className="flex items-center border-t border-border px-4 py-3"
+            >
+              <div className="flex flex-1 flex-col">
+                <span className="text-[13px] text-foreground">{item.name}</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {item.category}
+                </span>
+              </div>
+              {[item.mass, item.x, item.y, item.z].map((val, i) => (
+                <span
+                  key={i}
+                  className="w-24 text-right font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground"
+                >
+                  {val}
+                </span>
+              ))}
+              <div className="flex w-16 justify-end gap-1.5">
+                <button className="flex size-6 items-center justify-center rounded-[--radius-s] border border-border bg-card-muted">
+                  <Settings className="size-3 text-muted-foreground" />
+                </button>
+                <button className="flex size-6 items-center justify-center rounded-[--radius-s] border border-border bg-card-muted">
+                  <X className="size-3 text-muted-foreground" />
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {/* Totals row */}
+          <div className="flex items-center rounded-b-[--radius-m] border-t border-border bg-sidebar-accent px-4 py-3">
+            <span className="flex-1 font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
+              {"\u03A3"} TOTAL
+            </span>
+            <span className="w-24 text-right font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-primary">
+              1.177
+            </span>
+            <span className="w-24" />
+            <span className="w-24" />
+            <span className="w-24" />
+            <span className="w-16" />
+          </div>
         </div>
       </div>
-    </div>
+    </WorkbenchTwoPanel>
   );
 }

@@ -2,18 +2,11 @@
 
 import { useState } from "react";
 import { Play, RefreshCw, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
-import type { AnalysisResult, AlphaSweepParams } from "@/hooks/useAnalysis";
+import type { UseAnalysisReturn } from "@/hooks/useAnalysis";
 
 type Mode = "single" | "sweep";
 
-interface AnalysisHandle {
-  result: AnalysisResult | null;
-  isRunning: boolean;
-  error: string | null;
-  runAlphaSweep: (params: AlphaSweepParams) => Promise<void>;
-}
-
-export function AnalysisConfigPanel({ analysis }: { analysis: AnalysisHandle }) {
+export function AnalysisConfigPanel({ analysis }: { analysis: UseAnalysisReturn }) {
   const [mode, setMode] = useState<Mode>("sweep");
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
@@ -56,7 +49,7 @@ export function AnalysisConfigPanel({ analysis }: { analysis: AnalysisHandle }) 
   };
 
   return (
-    <div className="flex w-[556px] shrink-0 flex-col gap-4 overflow-y-auto">
+    <div className="flex w-full flex-col gap-4 overflow-y-auto">
       {/* ── Action Row ── */}
       <div className="flex items-center gap-2">
         <button
@@ -76,7 +69,10 @@ export function AnalysisConfigPanel({ analysis }: { analysis: AnalysisHandle }) 
           <RefreshCw size={14} />
           Clear Results
         </button>
-        <button className="rounded-[--radius-pill] border border-border-strong bg-background px-3.5 py-2.5 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground transition-colors hover:bg-sidebar-accent">
+        <button
+          disabled
+          className="rounded-[--radius-pill] border border-border-strong bg-background px-3.5 py-2.5 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground transition-colors hover:bg-sidebar-accent disabled:opacity-40 disabled:cursor-not-allowed"
+        >
           Load OP set&hellip;
         </button>
         <div className="flex-1" />

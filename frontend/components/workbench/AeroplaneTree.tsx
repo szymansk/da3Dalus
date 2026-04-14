@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Trash2, Eye, EyeOff, Loader } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2, Eye, EyeOff, Loader, PanelLeftClose } from "lucide-react";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useWing } from "@/hooks/useWings";
 import type { XSec } from "@/hooks/useWings";
@@ -248,11 +248,12 @@ interface AeroplaneTreeProps {
   isWingLoading?: (wingName: string) => boolean;
   onTogglePreview?: (wingName: string) => void;
   onToggleAllPreview?: (wingNames: string[]) => void;
+  onCollapseTree?: () => void;
 }
 
 // ── Component ───────────────────────────────────────────────────
 
-export function AeroplaneTree({ aeroplaneId, wingNames, aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview }: AeroplaneTreeProps) {
+export function AeroplaneTree({ aeroplaneId, wingNames, aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, onCollapseTree }: AeroplaneTreeProps) {
   const { selectedWing, selectedXsecIndex, selectWing, selectXsec, treeMode, setTreeMode } =
     useAeroplaneContext();
   const { wing, isLoading, mutate: mutateWing } = useWing(aeroplaneId, selectedWing);
@@ -368,8 +369,17 @@ export function AeroplaneTree({ aeroplaneId, wingNames, aeroplaneName, isWingVis
 
   return (
     <div className="rounded-[--radius-m] border border-border bg-card p-3 px-4">
-      {/* Header with mode toggle */}
+      {/* Header with collapse + mode toggle */}
       <div className="mb-2 flex items-center gap-2">
+        {onCollapseTree && (
+          <button
+            onClick={onCollapseTree}
+            className="flex size-6 items-center justify-center rounded-[--radius-s] text-muted-foreground hover:bg-sidebar-accent"
+            title="Collapse tree panel"
+          >
+            <PanelLeftClose size={14} />
+          </button>
+        )}
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
           Aeroplane Tree
         </span>
