@@ -2,20 +2,13 @@
 
 import { useState } from "react";
 import { Upload, X, Check, Loader2, AlertTriangle, Maximize2, Minimize2 } from "lucide-react";
-
-/**
- * MOCK — Import Fuselage Dialog
- *
- * This is a UI mock for user approval. It does NOT call the real
- * POST /fuselages/slice endpoint. All data is static/dummy.
- *
- * After approval, cad-modelling-service-hvi will wire real backend calls.
- */
+import { API_BASE } from "@/lib/fetcher";
 
 interface ImportFuselageDialogProps {
   open: boolean;
   onClose: () => void;
-  onAccept?: (fuselageName: string) => void;
+  aeroplaneId: string | null;
+  onSaved?: () => void;
 }
 
 interface XSec {
@@ -33,14 +26,13 @@ const INITIAL_XSECS: XSec[] = Array.from({ length: 50 }, (_, i) => ({
   n: 2.0 + 0.5 * Math.sin((i / 49) * Math.PI),
 }));
 
-const MOCK_FIDELITY = { volume_ratio: 0.974, area_ratio: 0.983 };
-
 type Phase = "upload" | "processing" | "preview";
 
 export function ImportFuselageDialog({
   open,
   onClose,
-  onAccept,
+  aeroplaneId,
+  onSaved,
 }: ImportFuselageDialogProps) {
   const [phase, setPhase] = useState<Phase>("upload");
   const [fileName, setFileName] = useState<string | null>(null);
@@ -52,21 +44,77 @@ export function ImportFuselageDialog({
   const [xsecs, setXsecs] = useState<XSec[]>(INITIAL_XSECS);
   const [selectedXsec, setSelectedXsec] = useState<number | null>(null);
   const [zoomScale, setZoomScale] = useState<number | null>(null); // null = auto-fit selected
+  const [file, setFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [fidelity, setFidelity] = useState<{ volume_ratio: number; area_ratio: number } | null>(null);
+  const [saving, setSaving] = useState(false);
 
   if (!open) return null;
 
-  const handleFileSelect = () => {
-    // Mock: simulate file selection
-    setFileName("e-Hawk Rumpf v29.step");
+  const handleFileSelect = (selectedFile: File) => {
+    setFile(selectedFile);
+    setFileName(selectedFile.name);
+    setError(null);
     setPhase("processing");
-    // Simulate processing delay
-    setTimeout(() => setPhase("preview"), 2000);
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    formData.append("number_of_slices", String(slices));
+    formData.append("points_per_slice", "30");
+    formData.append("slice_axis", axis);
+    formData.append("fuselage_name", fuselageName);
+
+    fetch(`${API_BASE}/fuselages/slice`, { method: "POST", body: formData })
+      .then(async (res) => {
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(`Slicing failed: ${res.status} ${body}`);
+        }
+        return res.json();
+      })
+      .then((data) => {
+        const newXsecs: XSec[] = (data.fuselage?.x_secs ?? []).map((xs: any) => ({
+          xyz: xs.xyz,
+          a: xs.a,
+          b: xs.b,
+          n: xs.n,
+        }));
+        setXsecs(newXsecs.length > 0 ? newXsecs : INITIAL_XSECS);
+        setFidelity(data.fidelity ?? null);
+        setFuselageName(data.fuselage?.name ?? fuselageName);
+        setPhase("preview");
+      })
+      .catch((err) => {
+        setError(err.message);
+        setPhase("upload");
+      });
   };
 
-  const handleAccept = () => {
-    onAccept?.(fuselageName);
-    handleReset();
-    onClose();
+  const handleAccept = async () => {
+    if (!aeroplaneId) { setError("No aeroplane selected"); return; }
+    setSaving(true);
+    setError(null);
+    try {
+      // First create the fuselage if it doesn't exist
+      await fetch(
+        `${API_BASE}/aeroplanes/${aeroplaneId}/fuselages/${encodeURIComponent(fuselageName)}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: fuselageName,
+            x_secs: xsecs.map((xs) => ({ xyz: xs.xyz, a: xs.a, b: xs.b, n: xs.n })),
+          }),
+        },
+      );
+      onSaved?.();
+      handleReset();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleReset = () => {
@@ -80,6 +128,10 @@ export function ImportFuselageDialog({
     setZoomScale(null);
     setXsecsMaximized(false);
     setViewerMaximized(false);
+    setFile(null);
+    setError(null);
+    setFidelity(null);
+    setSaving(false);
   };
 
   return (
@@ -115,10 +167,7 @@ export function ImportFuselageDialog({
           {phase === "upload" && (
             <div className="flex flex-col gap-5">
               {/* File drop zone */}
-              <button
-                onClick={handleFileSelect}
-                className="flex h-40 flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border bg-card-muted hover:border-primary hover:bg-card-muted/80 transition-colors"
-              >
+              <label className="flex h-40 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border bg-card-muted hover:border-primary hover:bg-card-muted/80 transition-colors">
                 <Upload size={32} className="text-muted-foreground" />
                 <span className="text-[14px] text-muted-foreground">
                   Click to select a STEP file
@@ -126,7 +175,21 @@ export function ImportFuselageDialog({
                 <span className="text-[11px] text-subtle-foreground">
                   Supported: .step, .stp
                 </span>
-              </button>
+                <input
+                  type="file"
+                  accept=".step,.stp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleFileSelect(f);
+                  }}
+                />
+              </label>
+              {error && (
+                <div className="rounded-xl border border-destructive bg-destructive/10 p-3 text-[12px] text-destructive">
+                  {error}
+                </div>
+              )}
 
               {/* Parameters */}
               <div className="flex gap-4">
@@ -231,14 +294,14 @@ export function ImportFuselageDialog({
                   <span className="text-[12px] text-muted-foreground">Volume Fidelity</span>
                   <span className="flex-1" />
                   <span className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
-                    {(MOCK_FIDELITY.volume_ratio * 100).toFixed(1)}%
+                    {((fidelity?.volume_ratio ?? 0) * 100).toFixed(1)}%
                   </span>
                 </div>
                 <div className="flex flex-1 items-center gap-3 rounded-xl border border-border bg-card-muted p-4">
                   <span className="text-[12px] text-muted-foreground">Area Fidelity</span>
                   <span className="flex-1" />
                   <span className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
-                    {(MOCK_FIDELITY.area_ratio * 100).toFixed(1)}%
+                    {((fidelity?.area_ratio ?? 0) * 100).toFixed(1)}%
                   </span>
                 </div>
               </div>
@@ -473,10 +536,11 @@ export function ImportFuselageDialog({
           {phase === "preview" && (
             <button
               onClick={handleAccept}
-              className="flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-[13px] text-primary-foreground hover:opacity-90"
+              disabled={saving || !aeroplaneId}
+              className="flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
             >
-              <Check size={14} />
-              Accept & Save
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+              {saving ? "Saving\u2026" : "Accept & Save"}
             </button>
           )}
         </div>

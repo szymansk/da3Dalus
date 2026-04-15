@@ -118,9 +118,9 @@ export function ActionRow({ aeroplaneId, onWingCreated }: ActionRowProps) {
       <ImportFuselageDialog
         open={importDialogOpen}
         onClose={() => setImportDialogOpen(false)}
-        onAccept={(name) => {
-          // Mock: just log for now, real integration in cad-modelling-service-hvi
-          console.log(`[MOCK] Would save fuselage "${name}" to backend`);
+        aeroplaneId={aeroplaneId}
+        onSaved={() => {
+          mutateWings(); // refresh tree to show new fuselage
         }}
       />
     </div>
