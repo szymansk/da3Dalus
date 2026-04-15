@@ -20,7 +20,9 @@ from app.db.session import get_db
 from app.schemas.AeroplaneRequest import AnalysisToolUrlType, AlphaSweepRequest, SimpleSweepRequest
 from app.schemas.api_responses import StaticUrlResponse
 from app.schemas.aeroanalysisschema import OperatingPointSchema
+from app.schemas.stability import StabilitySummaryResponse
 from app.services import analysis_service
+from app.services import stability_service
 from app.settings import Settings, get_settings
 
 router = APIRouter()
@@ -82,6 +84,28 @@ async def analyze_wing_post(
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:  # pragma: no cover - defensive fallback
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Unexpected error: {exc}") from exc
+
+
+@router.post("/aeroplanes/{aeroplane_id}/stability_summary/{analysis_tool}",
+             tags=["analysis"],
+             operation_id="get_stability_summary",
+             response_model=StabilitySummaryResponse)
+async def get_stability_summary(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    operating_point: OperatingPointSchema = Body(..., description="The operating point for the analysis"),
+    analysis_tool: AnalysisToolUrlType = Path(..., description="The analysis tool to use"),
+    db: Session = Depends(get_db)
+) -> StabilitySummaryResponse:
+    """Get static stability summary (neutral point, static margin, stability derivatives)."""
+    try:
+        return await stability_service.get_stability_summary(
+            db, aeroplane_id, operating_point, analysis_tool
+        )
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
+    except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail=f"Unexpected error: {exc}") from exc
 
