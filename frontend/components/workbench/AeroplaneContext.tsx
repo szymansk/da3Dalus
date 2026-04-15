@@ -74,7 +74,7 @@ export function AeroplaneProvider({ children }: { children: ReactNode }) {
     setSelectedWing(name);
     setSelectedXsecIndex(null);
     if (name) {
-      setSelectedFuselage(null);
+      // Clear fuselage xsec selection but keep selectedFuselage for tree expand
       setSelectedFuselageXsecIndex(null);
       setTreeMode((m) => m === "fuselage" ? "wingconfig" : m);
     }
@@ -88,7 +88,8 @@ export function AeroplaneProvider({ children }: { children: ReactNode }) {
     setSelectedFuselage(name);
     setSelectedFuselageXsecIndex(null);
     if (name) {
-      setSelectedWing(null);
+      // Clear wing xsec selection (PropertyForm switches to fuselage mode)
+      // but keep selectedWing so the tree can still show expanded wing data
       setSelectedXsecIndex(null);
       setTreeMode("fuselage");
     }
