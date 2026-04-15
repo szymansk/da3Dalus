@@ -1,9 +1,11 @@
 "use client";
 
-import { Play, Plus, Download } from "lucide-react";
+import { useState } from "react";
+import { Play, Plus, Download, Upload } from "lucide-react";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useWings } from "@/hooks/useWings";
 import { API_BASE } from "@/lib/fetcher";
+import { ImportFuselageDialog } from "./ImportFuselageDialog";
 
 interface ActionRowProps {
   aeroplaneId: string | null;
@@ -13,6 +15,7 @@ interface ActionRowProps {
 export function ActionRow({ aeroplaneId, onWingCreated }: ActionRowProps) {
   const ctx = useAeroplaneContext();
   const { mutate: mutateWings } = useWings(aeroplaneId);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   async function handleAddWing() {
     if (!aeroplaneId) return;
@@ -98,12 +101,28 @@ export function ActionRow({ aeroplaneId, onWingCreated }: ActionRowProps) {
         <span>Fuselage</span>
       </button>
       <button
+        onClick={() => setImportDialogOpen(true)}
+        className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3.5 py-2.5 text-[13px] text-foreground hover:bg-sidebar-accent"
+      >
+        <Upload size={14} />
+        <span>Import Fuselage</span>
+      </button>
+      <button
         onClick={handleDownloadSTEP}
         className="flex items-center gap-1.5 rounded-full border border-border-strong bg-background px-3.5 py-2.5 text-[13px] text-foreground hover:bg-sidebar-accent"
       >
         <Download size={14} />
         <span>Download STEP</span>
       </button>
+
+      <ImportFuselageDialog
+        open={importDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
+        onAccept={(name) => {
+          // Mock: just log for now, real integration in cad-modelling-service-hvi
+          console.log(`[MOCK] Would save fuselage "${name}" to backend`);
+        }}
+      />
     </div>
   );
 }
