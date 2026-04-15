@@ -10,9 +10,10 @@ import { ImportFuselageDialog } from "./ImportFuselageDialog";
 interface ActionRowProps {
   aeroplaneId: string | null;
   onWingCreated?: () => void;
+  onFuselageSaved?: () => void;
 }
 
-export function ActionRow({ aeroplaneId, onWingCreated }: ActionRowProps) {
+export function ActionRow({ aeroplaneId, onWingCreated, onFuselageSaved }: ActionRowProps) {
   const ctx = useAeroplaneContext();
   const { mutate: mutateWings } = useWings(aeroplaneId);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -120,7 +121,7 @@ export function ActionRow({ aeroplaneId, onWingCreated }: ActionRowProps) {
         onClose={() => setImportDialogOpen(false)}
         aeroplaneId={aeroplaneId}
         onSaved={() => {
-          mutateWings(); // refresh tree to show new fuselage
+          onFuselageSaved?.();
         }}
       />
     </div>

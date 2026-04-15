@@ -8,11 +8,13 @@ import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAeroplanes } from "@/hooks/useAeroplanes";
 import { useWings } from "@/hooks/useWings";
 import { usePreviewState } from "@/hooks/usePreviewState";
+import { useFuselages } from "@/hooks/useFuselages";
 
 export default function WorkbenchPage() {
   const { aeroplaneId, setAeroplaneId } = useAeroplaneContext();
   const { aeroplanes, isLoading, createAeroplane } = useAeroplanes();
   const { wingNames } = useWings(aeroplaneId);
+  const { fuselageNames, mutate: mutateFuselages } = useFuselages(aeroplaneId);
   const preview = usePreviewState(aeroplaneId);
   const aeroplaneName =
     aeroplanes.find((a) => a.id === aeroplaneId)?.name ?? "Aeroplane";
@@ -40,6 +42,7 @@ export default function WorkbenchPage() {
           <AeroplaneTree
             aeroplaneId={aeroplaneId}
             wingNames={wingNames}
+            fuselageNames={fuselageNames}
             aeroplaneName={aeroplaneName}
             isWingVisible={preview.isWingVisible}
             isWingLoading={(wn) => preview.previews[wn]?.loading ?? false}
@@ -69,6 +72,7 @@ export default function WorkbenchPage() {
           <ConfigPanel
             aeroplaneId={aeroplaneId}
             onGeometryChanged={preview.invalidateWing}
+            onFuselageSaved={() => mutateFuselages()}
           />
         </div>
       )}

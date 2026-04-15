@@ -243,6 +243,7 @@ function getChipLabel(xsec: XSec): string | undefined {
 interface AeroplaneTreeProps {
   aeroplaneId: string | null;
   wingNames: string[];
+  fuselageNames?: string[];
   aeroplaneName?: string;
   isWingVisible?: (wingName: string) => boolean;
   isWingLoading?: (wingName: string) => boolean;
@@ -253,7 +254,7 @@ interface AeroplaneTreeProps {
 
 // ── Component ───────────────────────────────────────────────────
 
-export function AeroplaneTree({ aeroplaneId, wingNames, aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, onCollapseTree }: AeroplaneTreeProps) {
+export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, onCollapseTree }: AeroplaneTreeProps) {
   const { selectedWing, selectedXsecIndex, selectWing, selectXsec, treeMode, setTreeMode } =
     useAeroplaneContext();
   const { wing, isLoading, mutate: mutateWing } = useWing(aeroplaneId, selectedWing);
@@ -364,6 +365,18 @@ export function AeroplaneTree({ aeroplaneId, wingNames, aeroplaneName, isWingVis
         nodes[0].onPreviewToggle = () => onTogglePreview(wn);
       }
       treeData.push(...nodes);
+    }
+
+    // Fuselage nodes (leaf nodes, no expand/collapse)
+    for (const fn of fuselageNames) {
+      treeData.push({
+        id: `fuselage-${fn}`,
+        label: fn,
+        level: 1,
+        expanded: false,
+        leaf: true,
+        chip: "FUSELAGE",
+      });
     }
   }
 

@@ -290,18 +290,26 @@ export function ImportFuselageDialog({
     setSaving(true);
     setError(null);
     try {
-      // First create the fuselage if it doesn't exist
-      await fetch(
+      const body = JSON.stringify({
+        name: fuselageName,
+        x_secs: xsecs.map((xs) => ({ xyz: xs.xyz, a: xs.a, b: xs.b, n: xs.n })),
+      });
+
+      // Try PUT (create). If 409 conflict (already exists), try POST (update).
+      let res = await fetch(
         `${API_BASE}/aeroplanes/${aeroplaneId}/fuselages/${encodeURIComponent(fuselageName)}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: fuselageName,
-            x_secs: xsecs.map((xs) => ({ xyz: xs.xyz, a: xs.a, b: xs.b, n: xs.n })),
-          }),
-        },
+        { method: "PUT", headers: { "Content-Type": "application/json" }, body },
       );
+      if (res.status === 409) {
+        res = await fetch(
+          `${API_BASE}/aeroplanes/${aeroplaneId}/fuselages/${encodeURIComponent(fuselageName)}`,
+          { method: "POST", headers: { "Content-Type": "application/json" }, body },
+        );
+      }
+      if (!res.ok) {
+        const detail = await res.text();
+        throw new Error(`Save failed: ${res.status} ${detail}`);
+      }
       onSaved?.();
       handleReset();
       onClose();
