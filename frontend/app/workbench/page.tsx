@@ -38,7 +38,7 @@ export default function WorkbenchPage() {
     <div className="flex flex-1 gap-4 overflow-hidden">
       {/* Tree Panel — collapsible */}
       {treeOpen && !viewerMaximized && (
-        <div className="h-full shrink-0 overflow-y-auto" style={{ width: 320 }}>
+        <div className="h-full shrink-0 overflow-hidden" style={{ width: 320 }}>
           <AeroplaneTree
             aeroplaneId={aeroplaneId}
             wingNames={wingNames}
