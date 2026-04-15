@@ -7,6 +7,7 @@ import { useWing } from "@/hooks/useWings";
 import type { XSec } from "@/hooks/useWings";
 import { API_BASE } from "@/lib/fetcher";
 import { useFuselage } from "@/hooks/useFuselage";
+import { useFuselages } from "@/hooks/useFuselages";
 
 // ── Types ───────────────────────────────────────────────────────
 
@@ -269,7 +270,8 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
   });
 
   // Load data for the selected fuselage (set by clicking a fuselage node)
-  const { fuselage } = useFuselage(aeroplaneId, selectedFuselage);
+  const { fuselage, mutate: mutateFuselage } = useFuselage(aeroplaneId, selectedFuselage);
+  const { mutate: mutateFuselageList } = useFuselages(aeroplaneId);
 
   function toggleExpand(nodeId: string) {
     setExpandedSet((prev) => {
@@ -340,6 +342,31 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
     }
   }
 
+  async function handleDeleteFuselage(fusName: string) {
+    if (!aeroplaneId) return;
+    if (!confirm(`Delete fuselage "${fusName}"?`)) return;
+    const res = await fetch(
+      `${API_BASE}/aeroplanes/${aeroplaneId}/fuselages/${encodeURIComponent(fusName)}`,
+      { method: "DELETE" },
+    );
+    if (!res.ok) { alert(`Delete fuselage failed: ${res.status}`); return; }
+    if (selectedFuselage === fusName) selectFuselage(null);
+    await mutateFuselageList();
+  }
+
+  async function handleDeleteFuselageXsec(fusName: string, index: number) {
+    if (!aeroplaneId) return;
+    const res = await fetch(
+      `${API_BASE}/aeroplanes/${aeroplaneId}/fuselages/${encodeURIComponent(fusName)}/cross_sections/${index}`,
+      { method: "DELETE" },
+    );
+    if (!res.ok) { alert(`Delete xsec failed: ${res.status}`); return; }
+    await mutateFuselage();
+    if (selectedFuselageXsecIndex !== null && selectedFuselageXsecIndex >= index) {
+      selectFuselageXsec(Math.max(0, selectedFuselageXsecIndex - 1));
+    }
+  }
+
   // Build tree data
   const treeData: TreeNode[] = [];
   const rootExpanded = expandedSet.has("root");
@@ -384,14 +411,18 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
         chip: "FUSELAGE",
         onClick: () => {
           selectFuselage(fn);
-          // Note: toggleExpand is handled by TreeRow's onToggle for non-leaf nodes
+        },
+        onDelete: () => handleDeleteFuselage(fn),
+        // Eye icon placeholder for future 3D preview
+        previewVisible: false,
+        onPreviewToggle: () => {
+          // TODO: wire fuselage 3D preview
         },
       });
 
       if (fusExpanded) {
         const hasFusData = fuselage && selectedFuselage === fn && fuselage.x_secs;
         if (!hasFusData) {
-          // Loading state — SWR is fetching
           treeData.push({
             id: `fuselage-${fn}-loading`,
             label: "loading\u2026",
@@ -415,6 +446,7 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
                 selectFuselage(fn);
                 selectFuselageXsec(i);
               },
+              onDelete: () => handleDeleteFuselageXsec(fn, i),
             });
           }
         }
