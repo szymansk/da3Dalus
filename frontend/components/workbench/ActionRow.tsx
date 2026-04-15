@@ -95,18 +95,11 @@ export function ActionRow({ aeroplaneId, onWingCreated, onFuselageSaved }: Actio
         <span>Wing</span>
       </button>
       <button
-        onClick={handleAddFuselage}
+        onClick={() => setImportDialogOpen(true)}
         className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3.5 py-2.5 text-[13px] text-foreground hover:bg-sidebar-accent"
       >
         <Plus size={14} />
         <span>Fuselage</span>
-      </button>
-      <button
-        onClick={() => setImportDialogOpen(true)}
-        className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3.5 py-2.5 text-[13px] text-foreground hover:bg-sidebar-accent"
-      >
-        <Upload size={14} />
-        <span>Import Fuselage</span>
       </button>
       <button
         onClick={handleDownloadSTEP}

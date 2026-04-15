@@ -320,6 +320,20 @@ export function ImportFuselageDialog({
     }
   };
 
+  const handleCreateEmpty = () => {
+    const defaultXsecs: XSec[] = [
+      { xyz: [0, 0, 0], a: 0.01, b: 0.01, n: 2.0 },
+      { xyz: [0.1, 0, 0], a: 0.05, b: 0.04, n: 2.0 },
+      { xyz: [0.3, 0, 0], a: 0.05, b: 0.04, n: 2.0 },
+      { xyz: [0.4, 0, 0], a: 0.01, b: 0.01, n: 2.0 },
+    ];
+    setXsecs(defaultXsecs);
+    setFileName(null);
+    setFidelity(null);
+    setSelectedXsec(0);
+    setPhase("preview");
+  };
+
   const handleReset = () => {
     setPhase("upload");
     setFileName(null);
@@ -354,7 +368,7 @@ export function ImportFuselageDialog({
         <div className="flex items-center gap-3 border-b border-border px-6 py-4">
           <Upload size={20} className="text-primary" />
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
-            Import Fuselage from STEP
+            New Fuselage
           </span>
           <span className="flex-1" />
           <button
@@ -369,25 +383,42 @@ export function ImportFuselageDialog({
         <div className="flex-1 flex flex-col overflow-hidden px-6 py-5">
           {phase === "upload" && (
             <div className="flex flex-col gap-5">
-              {/* File drop zone */}
-              <label className="flex h-40 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border bg-card-muted hover:border-primary hover:bg-card-muted/80 transition-colors">
-                <Upload size={32} className="text-muted-foreground" />
-                <span className="text-[14px] text-muted-foreground">
-                  Click to select a STEP file
-                </span>
-                <span className="text-[11px] text-subtle-foreground">
-                  Supported: .step, .stp
-                </span>
-                <input
-                  type="file"
-                  accept=".step,.stp"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleFileSelect(f);
-                  }}
-                />
-              </label>
+              {/* Two options: import or create */}
+              <div className="flex gap-4">
+                {/* Option 1: Import from STEP */}
+                <label className="flex flex-1 h-40 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border bg-card-muted hover:border-primary hover:bg-card-muted/80 transition-colors">
+                  <Upload size={28} className="text-muted-foreground" />
+                  <span className="text-[13px] text-muted-foreground">
+                    Import from STEP file
+                  </span>
+                  <span className="text-[10px] text-subtle-foreground">
+                    .step, .stp
+                  </span>
+                  <input
+                    type="file"
+                    accept=".step,.stp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleFileSelect(f);
+                    }}
+                  />
+                </label>
+
+                {/* Option 2: Create empty */}
+                <button
+                  onClick={handleCreateEmpty}
+                  className="flex flex-1 h-40 flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border bg-card-muted hover:border-primary hover:bg-card-muted/80 transition-colors"
+                >
+                  <Plus size={28} className="text-muted-foreground" />
+                  <span className="text-[13px] text-muted-foreground">
+                    Create manually
+                  </span>
+                  <span className="text-[10px] text-subtle-foreground">
+                    Start with 4 default sections
+                  </span>
+                </button>
+              </div>
               {error && (
                 <div className="rounded-xl border border-destructive bg-destructive/10 p-3 text-[12px] text-destructive">
                   {error}
