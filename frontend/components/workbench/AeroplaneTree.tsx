@@ -386,23 +386,34 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
         },
       });
 
-      if (fusExpanded && isFusSelected && fuselage && fuselage.x_secs) {
-        for (let i = 0; i < fuselage.x_secs.length; i++) {
-          const xs = fuselage.x_secs[i];
-          const isXsSelected = selectedFuselageXsecIndex === i;
+      if (fusExpanded && isFusSelected) {
+        if (!fuselage?.x_secs) {
+          // Loading state — SWR is fetching
           treeData.push({
-            id: `fuselage-${fn}-xsec-${i}`,
-            label: `xsec ${i}`,
+            id: `fuselage-${fn}-loading`,
+            label: "loading\u2026",
             level: 2,
-            expanded: false,
             leaf: true,
-            selected: isXsSelected,
-            detail: `a=${xs.a.toFixed(3)} b=${xs.b.toFixed(3)} n=${xs.n.toFixed(1)}`,
-            onClick: () => {
-              selectFuselage(fn);
-              selectFuselageXsec(i);
-            },
+            muted: true,
           });
+        } else {
+          for (let i = 0; i < fuselage.x_secs.length; i++) {
+            const xs = fuselage.x_secs[i];
+            const isXsSelected = selectedFuselageXsecIndex === i;
+            treeData.push({
+              id: `fuselage-${fn}-xsec-${i}`,
+              label: `xsec ${i}`,
+              level: 2,
+              expanded: false,
+              leaf: true,
+              selected: isXsSelected,
+              detail: `a=${xs.a.toFixed(3)} b=${xs.b.toFixed(3)} n=${xs.n.toFixed(1)}`,
+              onClick: () => {
+                selectFuselage(fn);
+                selectFuselageXsec(i);
+              },
+            });
+          }
         }
       }
     }
