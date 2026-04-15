@@ -51,6 +51,7 @@ export function ImportFuselageDialog({
   const [xsecsMaximized, setXsecsMaximized] = useState(false);
   const [xsecs, setXsecs] = useState<XSec[]>(INITIAL_XSECS);
   const [selectedXsec, setSelectedXsec] = useState<number | null>(null);
+  const [zoomScale, setZoomScale] = useState<number | null>(null); // null = auto-fit selected
 
   if (!open) return null;
 
@@ -76,6 +77,7 @@ export function ImportFuselageDialog({
     setFuselageName("Imported Fuselage");
     setXsecs(INITIAL_XSECS);
     setSelectedXsec(null);
+    setZoomScale(null);
     setXsecsMaximized(false);
     setViewerMaximized(false);
   };
@@ -267,21 +269,67 @@ export function ImportFuselageDialog({
                   </span>
                 </div>
 
+                {/* Zoom controls — only in maximized mode */}
+                {xsecsMaximized && (
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] text-muted-foreground">Zoom:</span>
+                    <input
+                      type="range"
+                      min="200"
+                      max="8000"
+                      step="100"
+                      value={(() => {
+                        if (zoomScale !== null) return zoomScale;
+                        // Auto-fit: scale so selected (or largest) section fills ~80% height
+                        const ref = selectedXsec !== null ? xsecs[selectedXsec] : null;
+                        const maxDim = ref ? Math.max(ref.a, ref.b) : Math.max(...xsecs.map((x) => Math.max(x.a, x.b)));
+                        return maxDim > 0 ? Math.min(8000, Math.round(150 / maxDim)) : 2000;
+                      })()}
+                      onChange={(e) => setZoomScale(parseInt(e.target.value))}
+                      className="w-32 accent-primary"
+                    />
+                    <button
+                      onClick={() => setZoomScale(null)}
+                      className="rounded-full border border-border px-2 py-0.5 text-[9px] text-muted-foreground hover:text-foreground"
+                    >
+                      Fit
+                    </button>
+                    <span className="text-[9px] text-subtle-foreground">
+                      {(() => {
+                        if (zoomScale !== null) return `${zoomScale}x`;
+                        const ref = selectedXsec !== null ? xsecs[selectedXsec] : null;
+                        const maxDim = ref ? Math.max(ref.a, ref.b) : Math.max(...xsecs.map((x) => Math.max(x.a, x.b)));
+                        return maxDim > 0 ? `${Math.min(8000, Math.round(150 / maxDim))}x (auto)` : "auto";
+                      })()}
+                    </span>
+                  </div>
+                )}
+
                 {/* Cross-section ellipses strip */}
-                <div className={`flex items-end gap-2 overflow-x-auto pb-2 ${xsecsMaximized ? "flex-1 min-h-[120px]" : ""}`}>
+                <div className={`flex items-end gap-2 overflow-x-auto overflow-y-hidden pb-2 ${xsecsMaximized ? "flex-1 min-h-[80px]" : ""}`}>
                   {(() => {
-                    const scale = xsecsMaximized ? 2000 : 600;
+                    let scale: number;
+                    if (!xsecsMaximized) {
+                      scale = 600;
+                    } else if (zoomScale !== null) {
+                      scale = zoomScale;
+                    } else {
+                      // Auto-fit: selected section (or largest) fills available space
+                      const ref = selectedXsec !== null ? xsecs[selectedXsec] : null;
+                      const maxDim = ref ? Math.max(ref.a, ref.b) : Math.max(...xsecs.map((x) => Math.max(x.a, x.b)));
+                      scale = maxDim > 0 ? Math.min(8000, Math.round(150 / maxDim)) : 2000;
+                    }
                     return xsecs.map((xsec, i) => {
                       const isSelected = selectedXsec === i;
                       return (
                         <button
                           key={i}
-                          onClick={() => xsecsMaximized && setSelectedXsec(isSelected ? null : i)}
-                          className={`flex shrink-0 flex-col items-center gap-0.5 ${xsecsMaximized ? "cursor-pointer" : "cursor-default"}`}
+                          onClick={() => { if (xsecsMaximized) { setSelectedXsec(isSelected ? null : i); setZoomScale(null); } }}
+                          className={`flex shrink-0 flex-col items-center justify-end gap-0.5 ${xsecsMaximized ? "cursor-pointer" : "cursor-default"}`}
                           title={`x=${xsec.xyz[0].toFixed(3)} a=${xsec.a.toFixed(3)} b=${xsec.b.toFixed(3)} n=${xsec.n.toFixed(1)}`}
                         >
                           <div
-                            className={`rounded-full border-2 transition-colors ${
+                            className={`rounded-full border-2 transition-all ${
                               isSelected
                                 ? "border-primary bg-primary/20"
                                 : "border-primary/30 bg-primary/10"
@@ -291,7 +339,7 @@ export function ImportFuselageDialog({
                               height: Math.max(6, xsec.b * scale),
                             }}
                           />
-                          <span className={`text-[8px] ${isSelected ? "text-primary font-bold" : "text-subtle-foreground"}`}>
+                          <span className={`shrink-0 text-[8px] ${isSelected ? "text-primary font-bold" : "text-subtle-foreground"}`}>
                             {i}
                           </span>
                         </button>
