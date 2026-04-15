@@ -398,7 +398,7 @@ export function ImportFuselageDialog({
                 >
                   {viewerMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                 </button>
-                <div className="flex-1 min-h-[150px] max-h-[50vh] rounded-xl border border-border bg-[#17171A] overflow-hidden">
+                <div className="min-h-[150px] max-h-[35vh] rounded-xl border border-border bg-[#17171A] overflow-hidden">
                   <FuselagePreview3D xsecs={xsecs} selectedXsec={selectedXsec} />
                 </div>
               </div>}
@@ -406,14 +406,14 @@ export function ImportFuselageDialog({
               {/* Fidelity metrics — hidden when either view is maximized */}
               {!viewerMaximized && !xsecsMaximized && (
               <div className="flex gap-4">
-                <div className="flex flex-1 items-center gap-3 rounded-xl border border-border bg-card-muted p-4">
+                <div className="flex flex-1 items-center gap-3 rounded-xl border border-border bg-card-muted px-4 py-2">
                   <span className="text-[12px] text-muted-foreground">Volume Fidelity</span>
                   <span className="flex-1" />
                   <span className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
                     {((fidelity?.volume_ratio ?? 0) * 100).toFixed(1)}%
                   </span>
                 </div>
-                <div className="flex flex-1 items-center gap-3 rounded-xl border border-border bg-card-muted p-4">
+                <div className="flex flex-1 items-center gap-3 rounded-xl border border-border bg-card-muted px-4 py-2">
                   <span className="text-[12px] text-muted-foreground">Area Fidelity</span>
                   <span className="flex-1" />
                   <span className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
@@ -425,7 +425,7 @@ export function ImportFuselageDialog({
 
               {/* Cross-section viewer — single section with slider + params */}
               {!viewerMaximized && (
-              <div className={`relative flex rounded-xl border border-border bg-card-muted ${xsecsMaximized ? "flex-1 min-h-0" : "h-[200px] shrink-0"}`}>
+              <div className={`relative flex rounded-xl border border-border bg-card-muted ${xsecsMaximized ? "flex-1 min-h-0" : "h-[220px] shrink-0"}`}>
                 <button
                   onClick={() => { setXsecsMaximized((m) => !m); }}
                   className="absolute right-2 top-2 z-10 flex size-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
