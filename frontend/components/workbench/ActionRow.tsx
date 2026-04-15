@@ -1,18 +1,22 @@
 "use client";
 
-import { Play, Plus, Download } from "lucide-react";
+import { useState } from "react";
+import { Play, Plus, Download, Upload } from "lucide-react";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useWings } from "@/hooks/useWings";
 import { API_BASE } from "@/lib/fetcher";
+import { ImportFuselageDialog } from "./ImportFuselageDialog";
 
 interface ActionRowProps {
   aeroplaneId: string | null;
   onWingCreated?: () => void;
+  onFuselageSaved?: () => void;
 }
 
-export function ActionRow({ aeroplaneId, onWingCreated }: ActionRowProps) {
+export function ActionRow({ aeroplaneId, onWingCreated, onFuselageSaved }: ActionRowProps) {
   const ctx = useAeroplaneContext();
   const { mutate: mutateWings } = useWings(aeroplaneId);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   async function handleAddWing() {
     if (!aeroplaneId) return;
@@ -91,7 +95,7 @@ export function ActionRow({ aeroplaneId, onWingCreated }: ActionRowProps) {
         <span>Wing</span>
       </button>
       <button
-        onClick={handleAddFuselage}
+        onClick={() => setImportDialogOpen(true)}
         className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3.5 py-2.5 text-[13px] text-foreground hover:bg-sidebar-accent"
       >
         <Plus size={14} />
@@ -104,6 +108,15 @@ export function ActionRow({ aeroplaneId, onWingCreated }: ActionRowProps) {
         <Download size={14} />
         <span>Download STEP</span>
       </button>
+
+      <ImportFuselageDialog
+        open={importDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
+        aeroplaneId={aeroplaneId}
+        onSaved={() => {
+          onFuselageSaved?.();
+        }}
+      />
     </div>
   );
 }

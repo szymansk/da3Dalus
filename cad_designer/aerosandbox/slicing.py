@@ -46,36 +46,80 @@ def get_x_bounds(shape: cq.Shape) -> tuple[float, float]:
     bb = shape.BoundingBox()
     return bb.xmin, bb.xmax
 
-def slice_model_along_x(shape: cq.Workplane, spacing: float = 0.1, number_of_slices: int = None, points_per_slice: int = 30) -> list[list[tuple[float, float, float]]]:
+def get_bounding_box_dims(shape: cq.Shape) -> dict[str, float]:
+    """Return bounding box dimensions per axis."""
+    bb = shape.BoundingBox()
+    return {
+        "x": bb.xmax - bb.xmin,
+        "y": bb.ymax - bb.ymin,
+        "z": bb.zmax - bb.zmin,
+    }
+
+
+def detect_longest_axis(shape: cq.Shape) -> str:
+    """Detect the longest bounding box axis (x, y, or z)."""
+    dims = get_bounding_box_dims(shape)
+    return max(dims, key=dims.get)
+
+
+def slice_model_along_x(
+    shape: cq.Workplane,
+    spacing: float = 0.1,
+    number_of_slices: int = None,
+    points_per_slice: int = 30,
+) -> list[list[tuple[float, float, float]]]:
+    """Slice a model along the X axis into cross-section wire points.
+
+    Bug fixes applied:
+    - Starts at xmin (not x=0)
+    - Terminates at xmax (not on identical-slice heuristic)
+    """
+    xmin, xmax = get_x_bounds(shape.val())
+
     if number_of_slices is not None:
-        if number_of_slices < 2:
-            number_of_slices = 2
-        xmin, xmax = get_x_bounds(shape.val())
-        spacing = (xmax - xmin) / (number_of_slices-1)
-        logger.info(f"Slicing with {number_of_slices} slices set spacing = {spacing:.5f}")
+        number_of_slices = max(number_of_slices, 2)
+        spacing = (xmax - xmin) / (number_of_slices - 1)
+        logger.info(f"Slicing with {number_of_slices} slices, spacing = {spacing:.5f}")
+
     slices = []
-    x = 0
-    # getting all wires on the first X plane
-    wires = shape.faces("<X").wires().all()
-    while True:
-        # getting all wires on the first X plane
-        slice = []
+    x = xmin
+    max_iterations = int((xmax - xmin) / spacing) + 2 if spacing > 0 else 1000
+
+    for _ in range(max_iterations):
+        if x > xmax + spacing * 0.01:
+            break
+
+        try:
+            offset_from_min_face = x - xmin
+            if offset_from_min_face < 1e-9:
+                wires = shape.faces("<X").wires().all()
+            else:
+                wires = (
+                    shape.faces("<X")
+                    .workplane(offset=-offset_from_min_face)
+                    .split(keepTop=True)
+                    .faces(">X")
+                    .wires()
+                    .all()
+                )
+        except Exception as exc:
+            logger.warning(f"Slicing failed at x={x:.5f}: {exc}")
+            x += spacing
+            continue
+
+        wire_slice = []
         for wire in wires:
             points = discretize_wire(wire.toOCC(), points_per_slice)
-            tuple_points = [(point.X(), point.Y(), point.Z()) for point in points]
-            slice.append(tuple_points)
-        logger.debug(f"Slice at x={x}: {slice}")
+            tuple_points = [(pt.X(), pt.Y(), pt.Z()) for pt in points]
+            wire_slice.append(tuple_points)
 
-        if len(slices) > 0 and slice == slices[-1]:
-            logger.info(f"Slice at x={x} is identical to the previous slice, skipping.")
-            break
-        slices.append(slice)
+        if wire_slice:
+            slices.append(wire_slice)
+            logger.debug(f"Slice at x={x:.5f}: {len(wire_slice)} wire(s)")
 
-        # Perform the section split
         x += spacing
-        #TODO if the face is not parallel to YZ pane, this not allong the X axis
-        wires = shape.faces("<X").workplane(offset=-x).split(keepTop=True).faces(">X").wires().all()
 
+    logger.info(f"Slicing complete: {len(slices)} slices from x={xmin:.4f} to x={xmax:.4f}")
     return slices
 
 def to_superellipse(
@@ -332,65 +376,122 @@ def compute_shape_properties(shape):
         "surface_area": surface_area,
     }
 
-if __name__ == "__main__":
-    import sys
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s [%(levelname)s] [%(name)s] %(message)s",
-        handlers=[
-            logging.StreamHandler(sys.stdout)
-        ]
-    )
+def slice_step_to_fuselage(
+    step_path: str,
+    number_of_slices: int = 50,
+    points_per_slice: int = 30,
+    slice_axis: str = "auto",
+    fuselage_name: str = "Imported Fuselage",
+) -> tuple[list[dict], dict]:
+    """Load STEP file, slice along longitudinal axis, fit symmetric
+    superellipses, and return FuselageXSec dicts + fidelity metrics.
 
-    # Replace with your actual STEP file path
-    #step_path = "../../components/aircraft/RV-7/fuselage.step"
-    step_path = "../../components/aircraft/eHawk/e-Hawk Rumpf v29.step"
+    The pipeline:
+    1. load_step_model(step_path)
+    2. Auto-detect or apply specified slice_axis
+    3. slice_model_along_x(model, number_of_slices, points_per_slice)
+    4. For each slice: fit_shape_area_superellipse(points_2d)
+    5. Convert fitted params to FuselageXSec format (xyz, a, b, n)
+    6. Compute volume/area for original and reconstructed geometry
 
-    # Load model
+    Args:
+        step_path: Path to STEP file.
+        number_of_slices: Number of cross-sections to cut.
+        points_per_slice: Points per wire discretization.
+        slice_axis: "x", "y", "z", or "auto" (longest bounding box axis).
+        fuselage_name: Name for the resulting fuselage.
+
+    Returns:
+        (xsec_dicts, metrics) where xsec_dicts is a list of
+        {"xyz": [x,y,z], "a": float, "b": float, "n": float} dicts
+        and metrics contains volume/area comparison.
+    """
     model = load_step_model(step_path)
 
-    surface_volume = compute_shape_properties(model.solids().first().toOCC())
+    # Auto-detect or validate slice axis
+    if slice_axis == "auto":
+        slice_axis = detect_longest_axis(model.val())
+        logger.info(f"Auto-detected slice axis: {slice_axis}")
 
-    # Perform slicing
-    wire_slices = slice_model_along_x(model, spacing=0.1, number_of_slices=100)
+    # Rotate model so slicing always happens along X
+    if slice_axis == "y":
+        model = model.rotateAboutCenter((0, 0, 1), 90)
+        logger.info("Rotated model: Y → X")
+    elif slice_axis == "z":
+        model = model.rotateAboutCenter((0, 1, 0), -90)
+        logger.info("Rotated model: Z → X")
+    elif slice_axis != "x":
+        raise ValueError(f"Invalid slice_axis: {slice_axis}. Must be 'x', 'y', 'z', or 'auto'.")
 
-    ellipse_slices = []
-    for wires in wire_slices:
-        for points in wires:
-            points_2d = np.array([(y, z) for (_, y, z) in points])
-            result = fit_shape_area_superellipse(points_2d)
-            logger.debug(f"Fitted parameters: {result}")
-            plot_superellipse_fit(points_3d= np.array(points), fit_result=result, num_samples = 200)
-            result['center'] = np.array([points[0][0], result['center'][0], result['center'][1]])
-            ellipse_slices.append(result)
-            #break # only take one wire per slice
+    # Compute original geometry properties
+    original_props = compute_shape_properties(model.solids().first().toOCC())
 
-    # convert ellipse_slices to FuselageXSec
-    fuselage_xsecs = []
-    for i, ellipse in enumerate(ellipse_slices):
-        fuselage_xsec = asb.FuselageXSec(
-            xyz_c = ellipse['center'],
-            xyz_normal = np.array([1.0, 0.0, 0.0]),
-            radius = None,
-            width = 2. * ellipse['a'],
-            height = 2. * ellipse['b'],
-            shape = ellipse['n'],
-            analysis_specific_options = None,
-        )
-
-        fuselage_xsecs.append(fuselage_xsec)
-
-    asb_fuselage = asb.Fuselage(
-        name="Fuselage",
-        xsecs=fuselage_xsecs,
-        color = None, #: Optional[Union[str, Tuple[float]]] = None,
-        analysis_specific_options = None #: Optional[Dict[type, Dict[str, Any]]] = None,
+    # Slice
+    wire_slices = slice_model_along_x(
+        model, number_of_slices=number_of_slices, points_per_slice=points_per_slice
     )
 
-    asb_fuselage.draw(backend="plotly", show=True)
-    logger.info(f"Fuselage surface area >> initial: {surface_volume['surface_area']}; transformed: {asb_fuselage.area_wetted()}; transformed/initial = {surface_volume['surface_area']/asb_fuselage.area_wetted()}\n"
-                f"Fuselage volume       >> initial: {surface_volume['volume']}; transformed: {asb_fuselage.volume()}; transformed/initial = {surface_volume['volume']/asb_fuselage.volume()}")
+    # Fit superellipses and build xsec dicts
+    xsec_dicts = []
+    prev_params = None
+    for wire_set in wire_slices:
+        for points in wire_set:
+            points_2d = np.array([(y, z) for (_, y, z) in points])
+            fit = fit_shape_area_superellipse(points_2d, prev_params=prev_params)
+            xyz = [float(points[0][0]), float(fit["center"][0]), float(fit["center"][1])]
+            xsec_dicts.append({
+                "xyz": xyz,
+                "a": float(fit["a"]),
+                "b": float(fit["b"]),
+                "n": float(np.clip(fit["n"], 0.5, 10.0)),
+            })
+            prev_params = fit
+            break  # take first wire per slice (outermost contour)
+
+    # Reconstruct as asb.Fuselage for fidelity comparison
+    fuselage_xsecs = []
+    for xsec in xsec_dicts:
+        fuselage_xsecs.append(asb.FuselageXSec(
+            xyz_c=xsec["xyz"],
+            xyz_normal=np.array([1.0, 0.0, 0.0]),
+            radius=None,
+            width=2.0 * xsec["a"],
+            height=2.0 * xsec["b"],
+            shape=xsec["n"],
+        ))
+
+    asb_fuselage = asb.Fuselage(name=fuselage_name, xsecs=fuselage_xsecs)
+
+    reconstructed_volume = asb_fuselage.volume()
+    reconstructed_area = asb_fuselage.area_wetted()
+
+    metrics = {
+        "original_volume": original_props["volume"],
+        "original_area": original_props["surface_area"],
+        "reconstructed_volume": reconstructed_volume,
+        "reconstructed_area": reconstructed_area,
+        "volume_ratio": reconstructed_volume / original_props["volume"] if original_props["volume"] > 0 else 0,
+        "area_ratio": reconstructed_area / original_props["surface_area"] if original_props["surface_area"] > 0 else 0,
+    }
+
+    logger.info(
+        f"Fuselage '{fuselage_name}': {len(xsec_dicts)} sections, "
+        f"volume ratio={metrics['volume_ratio']:.3f}, area ratio={metrics['area_ratio']:.3f}"
+    )
+
+    return xsec_dicts, metrics
 
 
-    pass
+if __name__ == "__main__":
+    import sys
+    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(message)s",
+                        handlers=[logging.StreamHandler(sys.stdout)])
+
+    step_path = "../../components/aircraft/eHawk/e-Hawk Rumpf v29.step"
+    xsecs, metrics = slice_step_to_fuselage(step_path, number_of_slices=50)
+
+    print(f"\n{'='*60}")
+    print(f"Sections: {len(xsecs)}")
+    print(f"Volume:   original={metrics['original_volume']:.6f}  reconstructed={metrics['reconstructed_volume']:.6f}  ratio={metrics['volume_ratio']:.3f}")
+    print(f"Area:     original={metrics['original_area']:.6f}  reconstructed={metrics['reconstructed_area']:.6f}  ratio={metrics['area_ratio']:.3f}")
 
