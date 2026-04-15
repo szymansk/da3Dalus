@@ -261,16 +261,16 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
     useAeroplaneContext();
   const { wing, isLoading, mutate: mutateWing } = useWing(aeroplaneId, selectedWing);
 
-  // Find the first expanded fuselage to load its data
-  const expandedFuselageName = fuselageNames.find((fn) => expandedSet.has(`fuselage-${fn}`)) ?? selectedFuselage;
-  const { fuselage } = useFuselage(aeroplaneId, expandedFuselageName);
-
   const [expandedSet, setExpandedSet] = useState<Set<string>>(() => {
     const s = new Set<string>();
     s.add("root");
     if (wingNames.length > 0) s.add(`wing-${wingNames[0]}`);
     return s;
   });
+
+  // Load data for the first expanded fuselage (or selected one)
+  const expandedFuselageName = fuselageNames.find((fn) => expandedSet.has(`fuselage-${fn}`)) ?? selectedFuselage;
+  const { fuselage } = useFuselage(aeroplaneId, expandedFuselageName);
 
   function toggleExpand(nodeId: string) {
     setExpandedSet((prev) => {
@@ -385,7 +385,7 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
         chip: "FUSELAGE",
         onClick: () => {
           selectFuselage(fn);
-          toggleExpand(`fuselage-${fn}`);
+          // Note: toggleExpand is handled by TreeRow's onToggle for non-leaf nodes
         },
       });
 
