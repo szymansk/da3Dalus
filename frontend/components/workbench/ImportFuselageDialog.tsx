@@ -50,7 +50,7 @@ function buildFuselageSurface(
 }
 
 /** Plotly 3D preview of fuselage from xsecs — lazy loaded */
-function FuselagePreview3D({ xsecs }: { xsecs: XSec[] }) {
+function FuselagePreview3D({ xsecs, selectedXsec }: { xsecs: XSec[]; selectedXsec: number | null }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -61,7 +61,36 @@ function FuselagePreview3D({ xsecs }: { xsecs: XSec[] }) {
       const Plotly = await import("plotly.js-gl3d-dist-min");
       if (disposed || !containerRef.current) return;
 
-      const trace = buildFuselageSurface(xsecs, "#FF8400", 0.7, "Reconstructed", 32);
+      const surfaceTrace = buildFuselageSurface(xsecs, "#FF8400", 0.7, "Reconstructed", 32);
+
+      // Add cross-section outlines as Scatter3d lines
+      const xsecTraces = xsecs.map((xsec, idx) => {
+        const pts = 48;
+        const xs: number[] = [];
+        const ys: number[] = [];
+        const zs: number[] = [];
+        for (let j = 0; j <= pts; j++) {
+          const t = (j / pts) * 2 * Math.PI;
+          const cosT = Math.cos(t);
+          const sinT = Math.sin(t);
+          const r = Math.pow(
+            Math.pow(Math.abs(cosT), xsec.n) + Math.pow(Math.abs(sinT), xsec.n),
+            -1 / xsec.n,
+          );
+          xs.push(xsec.xyz[0]);
+          ys.push(xsec.xyz[1] + xsec.a * r * cosT);
+          zs.push(xsec.xyz[2] + xsec.b * r * sinT);
+        }
+        return {
+          x: xs, y: ys, z: zs,
+          type: "scatter3d",
+          mode: "lines",
+          line: { color: selectedXsec === idx ? "#FF8400" : "#B8B9B6", width: selectedXsec === idx ? 4 : 1.5 },
+          showlegend: false,
+          hoverinfo: "text",
+          text: `Section ${idx}`,
+        };
+      });
 
       const layout = {
         paper_bgcolor: "rgba(0,0,0,0)",
@@ -77,7 +106,7 @@ function FuselagePreview3D({ xsecs }: { xsecs: XSec[] }) {
         },
       };
 
-      Plotly.default.react(containerRef.current, [trace as any], layout, {
+      Plotly.default.react(containerRef.current, [surfaceTrace as any, ...xsecTraces as any[]], layout, {
         responsive: true,
         displayModeBar: true,
         modeBarButtonsToRemove: ["toImage", "sendDataToCloud"] as any[],
@@ -92,7 +121,7 @@ function FuselagePreview3D({ xsecs }: { xsecs: XSec[] }) {
           .catch(() => {});
       }
     };
-  }, [xsecs]);
+  }, [xsecs, selectedXsec]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 }
@@ -369,7 +398,7 @@ export function ImportFuselageDialog({
                   {viewerMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                 </button>
                 <div className="flex-1 min-h-[200px] rounded-xl border border-border bg-[#17171A] overflow-hidden">
-                  <FuselagePreview3D xsecs={xsecs} />
+                  <FuselagePreview3D xsecs={xsecs} selectedXsec={selectedXsec} />
                 </div>
               </div>}
 
@@ -393,198 +422,135 @@ export function ImportFuselageDialog({
               </div>
               )}
 
-              {/* Cross-section summary — always visible (has own maximize) */}
+              {/* Cross-section viewer — single section with slider + params */}
               {!viewerMaximized && (
-              <div className={`relative flex flex-col rounded-xl border border-border bg-card-muted p-4 ${xsecsMaximized ? "flex-1 min-h-0" : "h-[140px] shrink-0"}`}>
+              <div className={`relative flex rounded-xl border border-border bg-card-muted ${xsecsMaximized ? "flex-1 min-h-0" : "h-[180px] shrink-0"}`}>
                 <button
-                  onClick={() => { setXsecsMaximized((m) => !m); if (xsecsMaximized) setSelectedXsec(null); }}
+                  onClick={() => { setXsecsMaximized((m) => !m); }}
                   className="absolute right-2 top-2 z-10 flex size-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
                   title={xsecsMaximized ? "Restore size" : "Maximize cross-sections"}
                 >
                   {xsecsMaximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
                 </button>
-                <div className="flex items-center gap-2 mb-2 pr-8">
-                  <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
-                    Cross-sections: {xsecs.length}
-                  </span>
-                  {selectedXsec !== null && (
-                    <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-primary">
-                      {"\u00B7"} selected: {selectedXsec}
-                    </span>
-                  )}
-                  <span className="flex-1" />
-                  <span className="text-[11px] text-subtle-foreground">
-                    {fileName}
-                  </span>
-                </div>
 
-                {/* Zoom controls — only in maximized mode */}
-                {xsecsMaximized && (
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[10px] text-muted-foreground">Zoom:</span>
-                    <input
-                      type="range"
-                      min="200"
-                      max="8000"
-                      step="100"
-                      value={(() => {
-                        if (zoomScale !== null) return zoomScale;
-                        // Auto-fit: scale so selected (or largest) section fills ~80% height
-                        const ref = selectedXsec !== null ? xsecs[selectedXsec] : null;
-                        const maxDim = ref ? Math.max(ref.a, ref.b) : Math.max(...xsecs.map((x) => Math.max(x.a, x.b)));
-                        return maxDim > 0 ? Math.min(8000, Math.round(150 / maxDim)) : 2000;
-                      })()}
-                      onChange={(e) => setZoomScale(parseInt(e.target.value))}
-                      className="w-32 accent-primary"
-                    />
-                    <button
-                      onClick={() => setZoomScale(null)}
-                      className="rounded-full border border-border px-2 py-0.5 text-[9px] text-muted-foreground hover:text-foreground"
-                    >
-                      Fit
-                    </button>
-                    <span className="text-[9px] text-subtle-foreground">
-                      {(() => {
-                        if (zoomScale !== null) return `${zoomScale}x`;
-                        const ref = selectedXsec !== null ? xsecs[selectedXsec] : null;
-                        const maxDim = ref ? Math.max(ref.a, ref.b) : Math.max(...xsecs.map((x) => Math.max(x.a, x.b)));
-                        return maxDim > 0 ? `${Math.min(8000, Math.round(150 / maxDim))}x (auto)` : "auto";
-                      })()}
-                    </span>
-                  </div>
-                )}
-
-                {/* Cross-section ellipses strip */}
-                <div className={`flex items-end gap-2 overflow-x-auto overflow-y-hidden pb-2 ${xsecsMaximized ? "flex-1 min-h-0" : "flex-1"}`}>
+                {/* Left: single SVG cross-section + slider */}
+                <div className="flex flex-1 flex-col items-center justify-center gap-2 p-4">
                   {(() => {
-                    let scale: number;
-                    if (!xsecsMaximized) {
-                      scale = 600;
-                    } else if (zoomScale !== null) {
-                      scale = zoomScale;
-                    } else {
-                      // Auto-fit: selected section (or largest) fills available space
-                      const ref = selectedXsec !== null ? xsecs[selectedXsec] : null;
-                      const maxDim = ref ? Math.max(ref.a, ref.b) : Math.max(...xsecs.map((x) => Math.max(x.a, x.b)));
-                      scale = maxDim > 0 ? Math.min(8000, Math.round(150 / maxDim)) : 2000;
-                    }
-                    return xsecs.map((xsec, i) => {
-                      const isSelected = selectedXsec === i;
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => { if (xsecsMaximized) { setSelectedXsec(isSelected ? null : i); setZoomScale(null); } }}
-                          className={`flex shrink-0 flex-col items-center justify-end gap-0.5 ${xsecsMaximized ? "cursor-pointer" : "cursor-default"}`}
-                          title={`x=${xsec.xyz[0].toFixed(3)} a=${xsec.a.toFixed(3)} b=${xsec.b.toFixed(3)} n=${xsec.n.toFixed(1)}`}
+                    const idx = selectedXsec ?? 0;
+                    const xsec = xsecs[idx];
+                    if (!xsec) return null;
+                    const maxDim = Math.max(xsec.a, xsec.b, 0.001);
+                    const viewSize = 1.2 * maxDim;
+                    return (
+                      <>
+                        <svg
+                          viewBox={`${-viewSize} ${-viewSize} ${viewSize * 2} ${viewSize * 2}`}
+                          className="flex-1 w-full"
+                          preserveAspectRatio="xMidYMid meet"
                         >
-                          <svg
-                            width={Math.max(6, xsec.a * scale * 2)}
-                            height={Math.max(6, xsec.b * scale * 2)}
-                            viewBox={`${-xsec.a * scale} ${-xsec.b * scale} ${xsec.a * scale * 2} ${xsec.b * scale * 2}`}
-                            className="shrink-0"
-                          >
-                            <path
-                              d={superellipsePath(xsec.a * scale, xsec.b * scale, xsec.n)}
-                              fill={isSelected ? "rgba(255,132,0,0.2)" : "rgba(255,132,0,0.1)"}
-                              stroke={isSelected ? "#FF8400" : "rgba(255,132,0,0.4)"}
-                              strokeWidth={isSelected ? 2 : 1}
-                            />
-                          </svg>
-                          <span className={`shrink-0 text-[8px] ${isSelected ? "text-primary font-bold" : "text-subtle-foreground"}`}>
-                            {i}
+                          {/* Grid */}
+                          <line x1={-viewSize} y1={0} x2={viewSize} y2={0} stroke="#2E2E2E" strokeWidth={viewSize * 0.005} />
+                          <line x1={0} y1={-viewSize} x2={0} y2={viewSize} stroke="#2E2E2E" strokeWidth={viewSize * 0.005} />
+                          {/* Superellipse */}
+                          <path
+                            d={superellipsePath(xsec.a, xsec.b, xsec.n)}
+                            fill="rgba(255,132,0,0.15)"
+                            stroke="#FF8400"
+                            strokeWidth={viewSize * 0.01}
+                          />
+                          {/* Dimension labels */}
+                          <text x={xsec.a * 0.5} y={-viewSize * 0.85} fill="#B8B9B6" fontSize={viewSize * 0.08} textAnchor="middle">
+                            a={xsec.a.toFixed(4)}
+                          </text>
+                          <text x={viewSize * 0.85} y={xsec.b * 0.5} fill="#B8B9B6" fontSize={viewSize * 0.08} textAnchor="end">
+                            b={xsec.b.toFixed(4)}
+                          </text>
+                        </svg>
+                        {/* Slider + nav */}
+                        <div className="flex w-full items-center gap-2">
+                          <button
+                            onClick={() => setSelectedXsec(Math.max(0, idx - 1))}
+                            disabled={idx <= 0}
+                            className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-foreground disabled:opacity-30"
+                          >{"<"}</button>
+                          <input
+                            type="range"
+                            min={0}
+                            max={xsecs.length - 1}
+                            value={idx}
+                            onChange={(e) => setSelectedXsec(parseInt(e.target.value))}
+                            className="flex-1 accent-primary"
+                          />
+                          <button
+                            onClick={() => setSelectedXsec(Math.min(xsecs.length - 1, idx + 1))}
+                            disabled={idx >= xsecs.length - 1}
+                            className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-foreground disabled:opacity-30"
+                          >{">"}</button>
+                          <span className="shrink-0 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground w-12 text-right">
+                            {idx + 1}/{xsecs.length}
                           </span>
-                        </button>
-                      );
-                    });
+                        </div>
+                      </>
+                    );
                   })()}
                 </div>
 
-                {/* Parameter editor — only in maximized mode with selection */}
-                {xsecsMaximized && selectedXsec !== null && (() => {
-                  const xsec = xsecs[selectedXsec];
-                  const update = (field: keyof XSec, value: number, subIdx?: number) => {
-                    setXsecs((prev) => prev.map((xs, i) => {
-                      if (i !== selectedXsec) return xs;
-                      if (field === "xyz" && subIdx !== undefined) {
-                        const newXyz = [...xs.xyz];
-                        newXyz[subIdx] = value;
-                        return { ...xs, xyz: newXyz };
-                      }
-                      return { ...xs, [field]: value };
-                    }));
-                  };
-                  return (
-                    <div className="mt-3 border-t border-border pt-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-primary">
-                          Section {selectedXsec} Parameters
-                        </span>
-                        <span className="flex-1" />
-                        <button
-                          onClick={() => setSelectedXsec(selectedXsec > 0 ? selectedXsec - 1 : null)}
-                          disabled={selectedXsec <= 0}
-                          className="flex size-6 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-foreground disabled:opacity-30"
-                        >
-                          {"<"}
-                        </button>
-                        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
-                          {selectedXsec + 1}/{xsecs.length}
-                        </span>
-                        <button
-                          onClick={() => setSelectedXsec(selectedXsec < xsecs.length - 1 ? selectedXsec + 1 : null)}
-                          disabled={selectedXsec >= xsecs.length - 1}
-                          className="flex size-6 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-foreground disabled:opacity-30"
-                        >
-                          {">"}
-                        </button>
-                      </div>
-                      <div className="flex gap-3">
-                        {(["x", "y", "z"] as const).map((axis, idx) => (
-                          <div key={axis} className="flex flex-col gap-1">
-                            <label className="text-[10px] text-muted-foreground">xyz[{axis}]</label>
-                            <input
-                              type="number"
-                              step="0.001"
-                              value={xsec.xyz[idx]}
-                              onChange={(e) => update("xyz", parseFloat(e.target.value) || 0, idx)}
-                              className="w-24 rounded-xl border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground"
-                            />
+                {/* Right: parameter editor */}
+                <div className="flex w-[280px] shrink-0 flex-col gap-2 border-l border-border p-4 overflow-y-auto">
+                  <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-primary">
+                    Section {selectedXsec ?? 0} Parameters
+                  </span>
+                  {(() => {
+                    const idx = selectedXsec ?? 0;
+                    const xsec = xsecs[idx];
+                    if (!xsec) return null;
+                    const update = (field: keyof XSec, value: number, subIdx?: number) => {
+                      setXsecs((prev) => prev.map((xs, i) => {
+                        if (i !== idx) return xs;
+                        if (field === "xyz" && subIdx !== undefined) {
+                          const newXyz = [...xs.xyz];
+                          newXyz[subIdx] = value;
+                          return { ...xs, xyz: newXyz };
+                        }
+                        return { ...xs, [field]: value };
+                      }));
+                    };
+                    return (
+                      <>
+                        <div className="grid grid-cols-3 gap-2">
+                          {(["x", "y", "z"] as const).map((ax, i) => (
+                            <div key={ax} className="flex flex-col gap-0.5">
+                              <label className="text-[9px] text-muted-foreground">xyz[{ax}]</label>
+                              <input type="number" step="0.001" value={xsec.xyz[i]}
+                                onChange={(e) => update("xyz", parseFloat(e.target.value) || 0, i)}
+                                className="w-full rounded-xl border border-border bg-input px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground" />
+                            </div>
+                          ))}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="flex flex-col gap-0.5">
+                            <label className="text-[9px] text-muted-foreground">a (width/2)</label>
+                            <input type="number" step="0.001" value={xsec.a}
+                              onChange={(e) => update("a", parseFloat(e.target.value) || 0.001)}
+                              className="w-full rounded-xl border border-border bg-input px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground" />
                           </div>
-                        ))}
-                        <div className="flex flex-col gap-1">
-                          <label className="text-[10px] text-muted-foreground">a (semi-width)</label>
-                          <input
-                            type="number"
-                            step="0.001"
-                            value={xsec.a}
-                            onChange={(e) => update("a", parseFloat(e.target.value) || 0.001)}
-                            className="w-24 rounded-xl border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground"
-                          />
+                          <div className="flex flex-col gap-0.5">
+                            <label className="text-[9px] text-muted-foreground">b (height/2)</label>
+                            <input type="number" step="0.001" value={xsec.b}
+                              onChange={(e) => update("b", parseFloat(e.target.value) || 0.001)}
+                              className="w-full rounded-xl border border-border bg-input px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground" />
+                          </div>
                         </div>
-                        <div className="flex flex-col gap-1">
-                          <label className="text-[10px] text-muted-foreground">b (semi-height)</label>
-                          <input
-                            type="number"
-                            step="0.001"
-                            value={xsec.b}
-                            onChange={(e) => update("b", parseFloat(e.target.value) || 0.001)}
-                            className="w-24 rounded-xl border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground"
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <label className="text-[10px] text-muted-foreground">n (exponent)</label>
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={xsec.n}
+                        <div className="flex flex-col gap-0.5">
+                          <label className="text-[9px] text-muted-foreground">n (exponent)</label>
+                          <input type="number" step="0.1" value={xsec.n}
                             onChange={(e) => update("n", Math.max(0.5, Math.min(10, parseFloat(e.target.value) || 2)))}
-                            className="w-24 rounded-xl border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground"
-                          />
+                            className="w-full rounded-xl border border-border bg-input px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground" />
                         </div>
-                      </div>
-                    </div>
-                  );
-                })()}
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
               )}
 
