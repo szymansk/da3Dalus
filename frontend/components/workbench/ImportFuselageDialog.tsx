@@ -85,7 +85,7 @@ function FuselagePreview3D({ xsecs, selectedXsec }: { xsecs: XSec[]; selectedXse
           x: xs, y: ys, z: zs,
           type: "scatter3d",
           mode: "lines",
-          line: { color: selectedXsec === idx ? "#FF8400" : "#B8B9B6", width: selectedXsec === idx ? 4 : 1.5 },
+          line: { color: selectedXsec === idx ? "#E5484D" : "#B8B9B6", width: selectedXsec === idx ? 5 : 1.5 },
           showlegend: false,
           hoverinfo: "text",
           text: `Section ${idx}`,
@@ -222,6 +222,7 @@ export function ImportFuselageDialog({
         setXsecs(newXsecs.length > 0 ? newXsecs : INITIAL_XSECS);
         setFidelity(data.fidelity ?? null);
         setFuselageName(data.fuselage?.name ?? fuselageName);
+        setSelectedXsec(0);
         setPhase("preview");
       })
       .catch((err) => {
