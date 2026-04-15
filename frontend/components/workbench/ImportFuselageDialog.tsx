@@ -41,6 +41,7 @@ export function ImportFuselageDialog({
   const [axis, setAxis] = useState("auto");
   const [fuselageName, setFuselageName] = useState("Imported Fuselage");
   const [viewerMaximized, setViewerMaximized] = useState(false);
+  const [xsecsMaximized, setXsecsMaximized] = useState(false);
 
   if (!open) return null;
 
@@ -73,7 +74,7 @@ export function ImportFuselageDialog({
     >
       <div
         className={`flex flex-col rounded-2xl border border-border bg-card shadow-2xl transition-all ${
-          viewerMaximized
+          viewerMaximized || xsecsMaximized
             ? "fixed inset-4 z-50 max-h-none w-auto"
             : "w-[900px] max-h-[80vh]"
         }`}
@@ -169,8 +170,8 @@ export function ImportFuselageDialog({
 
           {phase === "preview" && (
             <div className="flex flex-col gap-5">
-              {/* Combined 3D viewer — both fuselages overlaid */}
-              <div className="relative">
+              {/* Combined 3D viewer — hidden when cross-sections maximized */}
+              {!xsecsMaximized && <div className="relative">
                 <button
                   onClick={() => setViewerMaximized((m) => !m)}
                   className="absolute right-2 top-2 z-10 flex size-8 items-center justify-center rounded-full border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
@@ -206,10 +207,10 @@ export function ImportFuselageDialog({
                     </div>
                   </div>
                 </div>
-              </div>
+              </div>}
 
               {/* Below elements hidden when viewer is maximized */}
-              {!viewerMaximized && <>
+              {!viewerMaximized && !xsecsMaximized && <>
 
               {/* Fidelity metrics */}
               <div className="flex gap-4">
@@ -230,8 +231,15 @@ export function ImportFuselageDialog({
               </div>
 
               {/* Cross-section summary */}
-              <div className="rounded-xl border border-border bg-card-muted p-4">
-                <div className="flex items-center gap-2 mb-2">
+              <div className={`relative rounded-xl border border-border bg-card-muted p-4 ${xsecsMaximized ? "flex-1" : ""}`}>
+                <button
+                  onClick={() => setXsecsMaximized((m) => !m)}
+                  className="absolute right-2 top-2 z-10 flex size-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                  title={xsecsMaximized ? "Restore size" : "Maximize cross-sections"}
+                >
+                  {xsecsMaximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                </button>
+                <div className="flex items-center gap-2 mb-2 pr-8">
                   <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
                     Cross-sections: {MOCK_XSECS.length}
                   </span>
@@ -240,26 +248,29 @@ export function ImportFuselageDialog({
                     {fileName}
                   </span>
                 </div>
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {MOCK_XSECS.map((xsec, i) => (
-                    <div
-                      key={i}
-                      className="flex shrink-0 flex-col items-center gap-0.5"
-                      title={`x=${xsec.xyz[0].toFixed(3)} a=${xsec.a.toFixed(3)} b=${xsec.b.toFixed(3)} n=${xsec.n.toFixed(1)}`}
-                    >
+                <div className={`flex items-end gap-2 overflow-x-auto pb-2 ${xsecsMaximized ? "h-[50vh]" : ""}`}>
+                  {(() => {
+                    const scale = xsecsMaximized ? 2000 : 600;
+                    return MOCK_XSECS.map((xsec, i) => (
                       <div
-                        className="rounded-full border border-primary/40"
-                        style={{
-                          width: Math.max(4, xsec.a * 600),
-                          height: Math.max(4, xsec.b * 600),
-                          backgroundColor: "rgba(255, 132, 0, 0.15)",
-                        }}
-                      />
-                      <span className="text-[8px] text-subtle-foreground">
-                        {i}
-                      </span>
-                    </div>
-                  ))}
+                        key={i}
+                        className="flex shrink-0 flex-col items-center gap-0.5"
+                        title={`x=${xsec.xyz[0].toFixed(3)} a=${xsec.a.toFixed(3)} b=${xsec.b.toFixed(3)} n=${xsec.n.toFixed(1)}`}
+                      >
+                        <div
+                          className="rounded-full border border-primary/40"
+                          style={{
+                            width: Math.max(4, xsec.a * scale),
+                            height: Math.max(4, xsec.b * scale),
+                            backgroundColor: "rgba(255, 132, 0, 0.15)",
+                          }}
+                        />
+                        <span className="text-[8px] text-subtle-foreground">
+                          {i}
+                        </span>
+                      </div>
+                    ));
+                  })()}
                 </div>
               </div>
 
