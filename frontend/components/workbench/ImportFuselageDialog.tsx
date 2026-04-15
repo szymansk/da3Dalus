@@ -240,7 +240,7 @@ export function ImportFuselageDialog({
                     {fileName}
                   </span>
                 </div>
-                <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: "thin" }}>
+                <div className="flex gap-2 overflow-x-auto pb-2">
                   {MOCK_XSECS.map((xsec, i) => (
                     <div
                       key={i}
