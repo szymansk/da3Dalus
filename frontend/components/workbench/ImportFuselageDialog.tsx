@@ -19,11 +19,11 @@ interface ImportFuselageDialogProps {
 }
 
 // Dummy data for the mock
-const MOCK_XSECS = Array.from({ length: 12 }, (_, i) => ({
-  xyz: [i * 0.03, 0, 0],
-  a: 0.01 + 0.04 * Math.sin((i / 11) * Math.PI),
-  b: 0.01 + 0.03 * Math.sin((i / 11) * Math.PI),
-  n: 2.0 + 0.5 * Math.sin((i / 11) * Math.PI),
+const MOCK_XSECS = Array.from({ length: 50 }, (_, i) => ({
+  xyz: [i * 0.008, 0, 0],
+  a: 0.005 + 0.04 * Math.sin((i / 49) * Math.PI),
+  b: 0.005 + 0.03 * Math.sin((i / 49) * Math.PI),
+  n: 2.0 + 0.5 * Math.sin((i / 49) * Math.PI),
 }));
 
 const MOCK_FIDELITY = { volume_ratio: 0.974, area_ratio: 0.983 };
@@ -240,7 +240,7 @@ export function ImportFuselageDialog({
                     {fileName}
                   </span>
                 </div>
-                <div className="flex gap-1 overflow-x-auto">
+                <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: "thin" }}>
                   {MOCK_XSECS.map((xsec, i) => (
                     <div
                       key={i}
