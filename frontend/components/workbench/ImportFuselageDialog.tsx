@@ -188,6 +188,10 @@ interface ImportFuselageDialogProps {
   onClose: () => void;
   aeroplaneId: string | null;
   onSaved?: () => void;
+  /** Pre-load with existing fuselage data — skips upload phase, goes straight to preview */
+  initialXsecs?: XSec[];
+  initialName?: string;
+  initialSelectedIndex?: number;
 }
 
 interface XSec {
@@ -212,16 +216,20 @@ export function ImportFuselageDialog({
   onClose,
   aeroplaneId,
   onSaved,
+  initialXsecs,
+  initialName,
+  initialSelectedIndex,
 }: ImportFuselageDialogProps) {
-  const [phase, setPhase] = useState<Phase>("upload");
+  const editMode = !!initialXsecs;
+  const [phase, setPhase] = useState<Phase>(editMode ? "preview" : "upload");
   const [fileName, setFileName] = useState<string | null>(null);
   const [slices, setSlices] = useState(50);
   const [axis, setAxis] = useState("auto");
-  const [fuselageName, setFuselageName] = useState("Imported Fuselage");
+  const [fuselageName, setFuselageName] = useState(initialName ?? "Imported Fuselage");
   const [viewerMaximized, setViewerMaximized] = useState(false);
   const [xsecsMaximized, setXsecsMaximized] = useState(false);
-  const [xsecs, setXsecs] = useState<XSec[]>(INITIAL_XSECS);
-  const [selectedXsec, setSelectedXsec] = useState<number | null>(null);
+  const [xsecs, setXsecs] = useState<XSec[]>(initialXsecs ?? INITIAL_XSECS);
+  const [selectedXsec, setSelectedXsec] = useState<number | null>(initialSelectedIndex ?? (editMode ? 0 : null));
   const [zoomScale, setZoomScale] = useState<number | null>(null); // null = auto-fit selected
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -335,13 +343,13 @@ export function ImportFuselageDialog({
   };
 
   const handleReset = () => {
-    setPhase("upload");
+    setPhase(editMode ? "preview" : "upload");
     setFileName(null);
     setSlices(50);
     setAxis("auto");
-    setFuselageName("Imported Fuselage");
-    setXsecs(INITIAL_XSECS);
-    setSelectedXsec(null);
+    setFuselageName(initialName ?? "Imported Fuselage");
+    setXsecs(initialXsecs ?? INITIAL_XSECS);
+    setSelectedXsec(initialSelectedIndex ?? (editMode ? 0 : null));
     setZoomScale(null);
     setXsecsMaximized(false);
     setViewerMaximized(false);

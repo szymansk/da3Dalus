@@ -6,6 +6,8 @@ import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useWing } from "@/hooks/useWings";
 import type { XSec } from "@/hooks/useWings";
 import { API_BASE } from "@/lib/fetcher";
+import { useFuselage } from "@/hooks/useFuselage";
+import { useFuselages } from "@/hooks/useFuselages";
 
 // ── Types ───────────────────────────────────────────────────────
 
@@ -19,6 +21,7 @@ interface TreeNode {
   mono?: boolean;
   muted?: boolean;
   chip?: string;
+  detail?: string;
   onClick?: () => void;
   onDelete?: () => void;
   isInsertPoint?: boolean;
@@ -50,10 +53,11 @@ function buildSegmentNodes(
     label: wingName,
     level: 1,
     expanded: wingExpanded,
+    chip: "WING",
     onClick: () => selectWing(wingName),
     onDelete: () => {
       if (confirm(`Delete wing "${wingName}"?`)) {
-        onDeleteXsec(wingName, -1); // -1 signals delete wing
+        onDeleteXsec(wingName, -1);
       }
     },
   });
@@ -166,6 +170,7 @@ function buildXsecNodes(
     label: wingName,
     level: 1,
     expanded: wingExpanded,
+    chip: "WING",
     onClick: () => selectWing(wingName),
   });
 
@@ -255,7 +260,7 @@ interface AeroplaneTreeProps {
 // ── Component ───────────────────────────────────────────────────
 
 export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, onCollapseTree }: AeroplaneTreeProps) {
-  const { selectedWing, selectedXsecIndex, selectWing, selectXsec, treeMode, setTreeMode } =
+  const { selectedWing, selectedXsecIndex, selectWing, selectXsec, selectedFuselage, selectedFuselageXsecIndex, selectFuselage, selectFuselageXsec, treeMode, setTreeMode } =
     useAeroplaneContext();
   const { wing, isLoading, mutate: mutateWing } = useWing(aeroplaneId, selectedWing);
 
@@ -265,6 +270,10 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
     if (wingNames.length > 0) s.add(`wing-${wingNames[0]}`);
     return s;
   });
+
+  // Load data for the selected fuselage (set by clicking a fuselage node)
+  const { fuselage, mutate: mutateFuselage } = useFuselage(aeroplaneId, selectedFuselage);
+  const { mutate: mutateFuselageList } = useFuselages(aeroplaneId);
 
   function toggleExpand(nodeId: string) {
     setExpandedSet((prev) => {
@@ -335,6 +344,31 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
     }
   }
 
+  async function handleDeleteFuselage(fusName: string) {
+    if (!aeroplaneId) return;
+    if (!confirm(`Delete fuselage "${fusName}"?`)) return;
+    const res = await fetch(
+      `${API_BASE}/aeroplanes/${aeroplaneId}/fuselages/${encodeURIComponent(fusName)}`,
+      { method: "DELETE" },
+    );
+    if (!res.ok) { alert(`Delete fuselage failed: ${res.status}`); return; }
+    if (selectedFuselage === fusName) selectFuselage(null);
+    await mutateFuselageList();
+  }
+
+  async function handleDeleteFuselageXsec(fusName: string, index: number) {
+    if (!aeroplaneId) return;
+    const res = await fetch(
+      `${API_BASE}/aeroplanes/${aeroplaneId}/fuselages/${encodeURIComponent(fusName)}/cross_sections/${index}`,
+      { method: "DELETE" },
+    );
+    if (!res.ok) { alert(`Delete xsec failed: ${res.status}`); return; }
+    await mutateFuselage();
+    if (selectedFuselageXsecIndex !== null && selectedFuselageXsecIndex >= index) {
+      selectFuselageXsec(Math.max(0, selectedFuselageXsecIndex - 1));
+    }
+  }
+
   // Build tree data
   const treeData: TreeNode[] = [];
   const rootExpanded = expandedSet.has("root");
@@ -367,21 +401,63 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
       treeData.push(...nodes);
     }
 
-    // Fuselage nodes (leaf nodes, no expand/collapse)
+    // Fuselage nodes (expandable with cross-sections)
     for (const fn of fuselageNames) {
+      const fusExpanded = expandedSet.has(`fuselage-${fn}`);
+      const isFusSelected = selectedFuselage === fn;
       treeData.push({
         id: `fuselage-${fn}`,
         label: fn,
         level: 1,
-        expanded: false,
-        leaf: true,
+        expanded: fusExpanded,
         chip: "FUSELAGE",
+        onClick: () => {
+          selectFuselage(fn);
+        },
+        onDelete: () => handleDeleteFuselage(fn),
+        // Eye icon placeholder for future 3D preview
+        previewVisible: false,
+        onPreviewToggle: () => {
+          // TODO: wire fuselage 3D preview
+        },
       });
+
+      if (fusExpanded) {
+        const hasFusData = fuselage && selectedFuselage === fn && fuselage.x_secs;
+        if (!hasFusData) {
+          treeData.push({
+            id: `fuselage-${fn}-loading`,
+            label: "loading\u2026",
+            level: 2,
+            leaf: true,
+            muted: true,
+          });
+        } else {
+          for (let i = 0; i < fuselage.x_secs.length; i++) {
+            const xs = fuselage.x_secs[i];
+            const isXsSelected = selectedFuselageXsecIndex === i;
+            treeData.push({
+              id: `fuselage-${fn}-xsec-${i}`,
+              label: `xsec ${i}`,
+              level: 2,
+              expanded: false,
+              leaf: true,
+              selected: isXsSelected,
+              detail: `a=${xs.a.toFixed(3)} b=${xs.b.toFixed(3)} n=${xs.n.toFixed(1)}`,
+              onClick: () => {
+                selectFuselage(fn);
+                selectFuselageXsec(i);
+              },
+              onDelete: () => handleDeleteFuselageXsec(fn, i),
+            });
+          }
+        }
+      }
     }
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card p-3 px-4">
+    <div className="flex h-full min-h-0 flex-col rounded-xl border border-border bg-card p-3 px-4 overflow-hidden">
       {/* Header with collapse + mode toggle */}
       <div className="mb-2 flex items-center gap-2">
         {onCollapseTree && (
@@ -411,7 +487,7 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
           <button
             onClick={() => setTreeMode("asb")}
             className={`px-2.5 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px] ${
-              treeMode === "asb"
+              treeMode === "asb" || treeMode === "fuselage"
                 ? "bg-primary text-primary-foreground"
                 : "bg-card-muted text-muted-foreground hover:text-foreground"
             }`}
@@ -425,7 +501,7 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
       </div>
 
       {/* Tree rows */}
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto">
         {isLoading && wingNames.length === 0 ? (
           <span className="text-[13px] text-muted-foreground">Loading...</span>
         ) : (
@@ -492,6 +568,12 @@ function TreeRow({ node, onToggle }: { node: TreeNode; onToggle: () => void }) {
       {node.chip && (
         <span className="rounded bg-card-muted px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-primary">
           {node.chip}
+        </span>
+      )}
+
+      {node.detail && (
+        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground">
+          {node.detail}
         </span>
       )}
 

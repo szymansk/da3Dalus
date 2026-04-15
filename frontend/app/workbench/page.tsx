@@ -35,10 +35,10 @@ export default function WorkbenchPage() {
   }
 
   return (
-    <div className="flex flex-1 gap-4 overflow-hidden">
-      {/* Tree Panel — collapsible */}
+    <div className="flex h-full min-h-0 flex-1 gap-4 overflow-hidden">
+      {/* Tree Panel — collapsible, fixed width, scrollable */}
       {treeOpen && !viewerMaximized && (
-        <div className="h-full shrink-0 overflow-y-auto" style={{ width: 320 }}>
+        <div className="flex h-full min-h-0 w-[320px] shrink-0 flex-col overflow-hidden">
           <AeroplaneTree
             aeroplaneId={aeroplaneId}
             wingNames={wingNames}
@@ -53,8 +53,8 @@ export default function WorkbenchPage() {
         </div>
       )}
 
-      {/* Viewer Panel — can maximize to fill all space */}
-      <div className="flex-1 overflow-hidden">
+      {/* Viewer Panel — fills remaining space */}
+      <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
         <ViewerPanel
           visibleParts={preview.visibleParts}
           isAnyLoading={preview.isAnyLoading}
@@ -66,9 +66,9 @@ export default function WorkbenchPage() {
         />
       </div>
 
-      {/* Config Panel — hidden when viewer maximized */}
+      {/* Config Panel — shrinks to content, max 420px */}
       {!viewerMaximized && (
-        <div className="h-full shrink-0 overflow-hidden" style={{ width: 556 }}>
+        <div className="flex h-full min-h-0 w-[380px] shrink-0 flex-col overflow-hidden">
           <ConfigPanel
             aeroplaneId={aeroplaneId}
             onGeometryChanged={preview.invalidateWing}
