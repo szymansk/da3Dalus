@@ -268,28 +268,16 @@ export function ImportFuselageDialog({
                 </div>
 
                 {/* Cross-section ellipses strip */}
-                <div className={`flex items-end gap-2 overflow-x-auto pb-2 ${xsecsMaximized ? "flex-1 overflow-y-hidden" : ""}`}>
+                <div className={`flex items-end gap-2 overflow-x-auto pb-2 ${xsecsMaximized ? "flex-1 min-h-[120px]" : ""}`}>
                   {(() => {
-                    const maxA = Math.max(...xsecs.map((x) => x.a), 0.001);
-                    const maxB = Math.max(...xsecs.map((x) => x.b), 0.001);
+                    const scale = xsecsMaximized ? 2000 : 600;
                     return xsecs.map((xsec, i) => {
                       const isSelected = selectedXsec === i;
-                      // In maximized mode: scale relative to container (percentage-like)
-                      // In normal mode: fixed pixel scale
-                      const w = xsecsMaximized
-                        ? `${(xsec.a / maxA) * 90}%`
-                        : `${Math.max(4, xsec.a * 600)}px`;
-                      const h = xsecsMaximized
-                        ? `${(xsec.b / maxB) * 90}%`
-                        : `${Math.max(4, xsec.b * 600)}px`;
                       return (
                         <button
                           key={i}
                           onClick={() => xsecsMaximized && setSelectedXsec(isSelected ? null : i)}
-                          className={`flex shrink-0 flex-col items-center justify-end gap-0.5 ${
-                            xsecsMaximized ? "cursor-pointer h-full" : "cursor-default"
-                          }`}
-                          style={xsecsMaximized ? { minWidth: 24 } : undefined}
+                          className={`flex shrink-0 flex-col items-center gap-0.5 ${xsecsMaximized ? "cursor-pointer" : "cursor-default"}`}
                           title={`x=${xsec.xyz[0].toFixed(3)} a=${xsec.a.toFixed(3)} b=${xsec.b.toFixed(3)} n=${xsec.n.toFixed(1)}`}
                         >
                           <div
@@ -298,9 +286,12 @@ export function ImportFuselageDialog({
                                 ? "border-primary bg-primary/20"
                                 : "border-primary/30 bg-primary/10"
                             }`}
-                            style={{ width: w, height: h, minWidth: 6, minHeight: 6 }}
+                            style={{
+                              width: Math.max(6, xsec.a * scale),
+                              height: Math.max(6, xsec.b * scale),
+                            }}
                           />
-                          <span className={`shrink-0 text-[8px] ${isSelected ? "text-primary font-bold" : "text-subtle-foreground"}`}>
+                          <span className={`text-[8px] ${isSelected ? "text-primary font-bold" : "text-subtle-foreground"}`}>
                             {i}
                           </span>
                         </button>
