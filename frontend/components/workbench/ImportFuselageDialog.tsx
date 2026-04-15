@@ -209,10 +209,8 @@ export function ImportFuselageDialog({
                 </div>
               </div>}
 
-              {/* Below elements hidden when viewer is maximized */}
-              {!viewerMaximized && !xsecsMaximized && <>
-
-              {/* Fidelity metrics */}
+              {/* Fidelity metrics — hidden when either view is maximized */}
+              {!viewerMaximized && !xsecsMaximized && (
               <div className="flex gap-4">
                 <div className="flex flex-1 items-center gap-3 rounded-xl border border-border bg-card-muted p-4">
                   <span className="text-[12px] text-muted-foreground">Volume Fidelity</span>
@@ -229,8 +227,10 @@ export function ImportFuselageDialog({
                   </span>
                 </div>
               </div>
+              )}
 
-              {/* Cross-section summary */}
+              {/* Cross-section summary — always visible (has own maximize) */}
+              {!viewerMaximized && (
               <div className={`relative rounded-xl border border-border bg-card-muted p-4 ${xsecsMaximized ? "flex-1" : ""}`}>
                 <button
                   onClick={() => setXsecsMaximized((m) => !m)}
@@ -273,8 +273,10 @@ export function ImportFuselageDialog({
                   })()}
                 </div>
               </div>
+              )}
 
-              {/* Fuselage name (editable) */}
+              {/* Fuselage name (editable) — hidden when either view maximized */}
+              {!viewerMaximized && !xsecsMaximized && (
               <div className="flex items-center gap-3">
                 <label className="text-[11px] text-muted-foreground">Save as:</label>
                 <input
@@ -284,7 +286,7 @@ export function ImportFuselageDialog({
                   className="flex-1 rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
                 />
               </div>
-              </>}
+              )}
             </div>
           )}
         </div>
