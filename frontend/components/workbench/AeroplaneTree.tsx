@@ -53,10 +53,11 @@ function buildSegmentNodes(
     label: wingName,
     level: 1,
     expanded: wingExpanded,
+    chip: "WING",
     onClick: () => selectWing(wingName),
     onDelete: () => {
       if (confirm(`Delete wing "${wingName}"?`)) {
-        onDeleteXsec(wingName, -1); // -1 signals delete wing
+        onDeleteXsec(wingName, -1);
       }
     },
   });
@@ -169,6 +170,7 @@ function buildXsecNodes(
     label: wingName,
     level: 1,
     expanded: wingExpanded,
+    chip: "WING",
     onClick: () => selectWing(wingName),
   });
 
