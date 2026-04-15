@@ -109,7 +109,7 @@ export function ImportFuselageDialog({
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className={`flex-1 px-6 py-5 ${viewerMaximized || xsecsMaximized ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}>
           {phase === "upload" && (
             <div className="flex flex-col gap-5">
               {/* File drop zone */}
@@ -182,7 +182,7 @@ export function ImportFuselageDialog({
           )}
 
           {phase === "preview" && (
-            <div className="flex flex-col gap-5">
+            <div className={`flex flex-col gap-5 ${viewerMaximized || xsecsMaximized ? "flex-1 min-h-0" : ""}`}>
               {/* Combined 3D viewer — hidden when cross-sections maximized */}
               {!xsecsMaximized && <div className="relative">
                 <button
