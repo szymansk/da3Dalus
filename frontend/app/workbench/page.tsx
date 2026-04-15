@@ -35,7 +35,7 @@ export default function WorkbenchPage() {
   }
 
   return (
-    <div className="flex flex-1 gap-4 overflow-hidden">
+    <div className="flex h-full flex-1 gap-4 overflow-hidden">
       {/* Tree Panel — collapsible */}
       {treeOpen && !viewerMaximized && (
         <div className="h-full min-h-0 shrink-0 overflow-hidden" style={{ width: 320 }}>
@@ -68,7 +68,7 @@ export default function WorkbenchPage() {
 
       {/* Config Panel — hidden when viewer maximized */}
       {!viewerMaximized && (
-        <div className="h-full shrink-0 overflow-hidden" style={{ width: 556 }}>
+        <div className="h-full shrink-0 overflow-hidden" style={{ width: 420 }}>
           <ConfigPanel
             aeroplaneId={aeroplaneId}
             onGeometryChanged={preview.invalidateWing}

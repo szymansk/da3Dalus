@@ -273,18 +273,13 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
 
   // No segment/xsec selected — show placeholder
   if (selectedXsecIndex === null || !xsec) {
-    if (mode === "fuselage") {
-      // Fuselage mode but no fuselage xsec selected — still show placeholder
-      return (
-        <p className="py-4 text-center text-[12px] text-muted-foreground">
-          Select a cross-section in the tree
-        </p>
-      );
-    }
+    const msg = mode === "fuselage"
+      ? "Select a cross-section in the tree"
+      : "Select a segment in the tree";
     return (
-      <p className="py-4 text-center text-[12px] text-muted-foreground">
-        Select a segment in the tree
-      </p>
+      <div className="rounded-xl border border-border bg-card p-4">
+        <p className="py-2 text-center text-[12px] text-muted-foreground">{msg}</p>
+      </div>
     );
   }
 

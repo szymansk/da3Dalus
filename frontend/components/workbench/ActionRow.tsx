@@ -79,7 +79,7 @@ export function ActionRow({ aeroplaneId, onWingCreated, onFuselageSaved }: Actio
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <button
         onClick={handleAddWing}
         className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3.5 py-2.5 text-[13px] text-foreground hover:bg-sidebar-accent"
