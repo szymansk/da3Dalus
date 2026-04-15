@@ -278,7 +278,7 @@ export function ImportFuselageDialog({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      onClick={onClose}
+      onClick={() => { handleReset(); onClose(); }}
     >
       <div
         className={`flex flex-col rounded-2xl border border-border bg-card shadow-2xl transition-all ${
@@ -296,7 +296,7 @@ export function ImportFuselageDialog({
           </span>
           <span className="flex-1" />
           <button
-            onClick={onClose}
+            onClick={() => { handleReset(); onClose(); }}
             className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
           >
             <X size={16} />
@@ -583,7 +583,7 @@ export function ImportFuselageDialog({
           )}
           <span className="flex-1" />
           <button
-            onClick={onClose}
+            onClick={() => { handleReset(); onClose(); }}
             className="rounded-full border border-border px-4 py-2 text-[13px] text-muted-foreground hover:bg-sidebar-accent"
           >
             Cancel
