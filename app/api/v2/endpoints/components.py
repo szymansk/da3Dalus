@@ -1,7 +1,11 @@
 import logging
+import shutil
+from pathlib import Path as FilePath
 from typing import Optional
+from uuid import uuid4
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, UploadFile, File, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import (
@@ -12,7 +16,13 @@ from app.core.exceptions import (
     ValidationError,
 )
 from app.db.session import get_db
-from app.schemas.component import ComponentList, ComponentRead, ComponentWrite
+from app.schemas.component import (
+    ComponentList,
+    ComponentRead,
+    ComponentTypesResponse,
+    ComponentWrite,
+    COMPONENT_TYPE_LIST,
+)
 from app.services import component_service as svc
 
 logger = logging.getLogger(__name__)
@@ -52,6 +62,17 @@ async def list_components(
 ) -> ComponentList:
     """List all components, optionally filtered by type or name search."""
     return _call(svc.list_components, db, component_type, q)
+
+
+@router.get(
+    "/types",
+    status_code=status.HTTP_200_OK,
+    response_model=ComponentTypesResponse,
+    operation_id="list_component_types",
+)
+async def list_component_types() -> ComponentTypesResponse:
+    """List all available component types."""
+    return ComponentTypesResponse(types=COMPONENT_TYPE_LIST)
 
 
 @router.post(
@@ -108,3 +129,74 @@ async def delete_component(
 ) -> None:
     """Delete a component from the library."""
     _call(svc.delete_component, db, component_id)
+
+
+# ── 3D Model Upload / Download ──────────────────────────────────
+
+MODELS_DIR = FilePath("tmp") / "component_models"
+
+
+@router.post(
+    "/{component_id}/model",
+    status_code=status.HTTP_200_OK,
+    response_model=ComponentRead,
+    operation_id="upload_component_model",
+)
+async def upload_component_model(
+    component_id: int = Path(..., description="The component ID"),
+    file: UploadFile = File(..., description="STEP or STL file"),
+    db: Session = Depends(get_db),
+) -> ComponentRead:
+    """Upload a STEP or STL 3D model file for a component."""
+    comp = _call(svc.get_component, db, component_id)
+
+    suffix = FilePath(file.filename or "model.step").suffix.lower()
+    if suffix not in (".step", ".stp", ".stl"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Unsupported file type: {suffix}. Must be .step, .stp, or .stl",
+        )
+
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    dest = MODELS_DIR / f"{component_id}_{uuid4().hex[:8]}{suffix}"
+    with dest.open("wb") as out:
+        shutil.copyfileobj(file.file, out)
+
+    return _call(svc.update_component, db, component_id, ComponentWrite(
+        name=comp.name,
+        component_type=comp.component_type,
+        manufacturer=comp.manufacturer,
+        description=comp.description,
+        mass_g=comp.mass_g,
+        bbox_x_mm=comp.bbox_x_mm,
+        bbox_y_mm=comp.bbox_y_mm,
+        bbox_z_mm=comp.bbox_z_mm,
+        model_ref=str(dest),
+        specs=comp.specs,
+    ))
+
+
+@router.get(
+    "/{component_id}/model",
+    status_code=status.HTTP_200_OK,
+    operation_id="download_component_model",
+)
+async def download_component_model(
+    component_id: int = Path(..., description="The component ID"),
+    db: Session = Depends(get_db),
+) -> FileResponse:
+    """Download the 3D model file (STEP/STL) for a component."""
+    comp = _call(svc.get_component, db, component_id)
+    if not comp.model_ref:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Component {component_id} has no 3D model uploaded",
+        )
+    path = FilePath(comp.model_ref)
+    if not path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Model file not found on disk: {path.name}",
+        )
+    media_type = "application/sla" if path.suffix.lower() == ".stl" else "application/step"
+    return FileResponse(path, media_type=media_type, filename=path.name)

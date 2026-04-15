@@ -21,6 +21,10 @@ def _to_schema(m: ComponentModel) -> ComponentRead:
         manufacturer=m.manufacturer,
         description=m.description,
         mass_g=m.mass_g,
+        bbox_x_mm=m.bbox_x_mm,
+        bbox_y_mm=m.bbox_y_mm,
+        bbox_z_mm=m.bbox_z_mm,
+        model_ref=m.model_ref,
         specs=m.specs or {},
         created_at=m.created_at,
         updated_at=m.updated_at,
@@ -36,7 +40,9 @@ def list_components(
     if component_type:
         query = query.filter(ComponentModel.component_type == component_type)
     if q:
-        query = query.filter(ComponentModel.name.ilike(f"%{q}%"))
+        query = query.filter(
+            ComponentModel.name.ilike(f"%{q}%") | ComponentModel.manufacturer.ilike(f"%{q}%")
+        )
     query = query.order_by(ComponentModel.component_type, ComponentModel.name)
     rows = query.all()
     return ComponentList(
