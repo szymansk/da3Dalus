@@ -6,6 +6,7 @@ import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useWing } from "@/hooks/useWings";
 import type { XSec } from "@/hooks/useWings";
 import { API_BASE } from "@/lib/fetcher";
+import { useFuselage } from "@/hooks/useFuselage";
 
 // ── Types ───────────────────────────────────────────────────────
 
@@ -19,6 +20,7 @@ interface TreeNode {
   mono?: boolean;
   muted?: boolean;
   chip?: string;
+  detail?: string;
   onClick?: () => void;
   onDelete?: () => void;
   isInsertPoint?: boolean;
@@ -255,9 +257,10 @@ interface AeroplaneTreeProps {
 // ── Component ───────────────────────────────────────────────────
 
 export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, onCollapseTree }: AeroplaneTreeProps) {
-  const { selectedWing, selectedXsecIndex, selectWing, selectXsec, treeMode, setTreeMode } =
+  const { selectedWing, selectedXsecIndex, selectWing, selectXsec, selectedFuselage, selectedFuselageXsecIndex, selectFuselage, selectFuselageXsec, treeMode, setTreeMode } =
     useAeroplaneContext();
   const { wing, isLoading, mutate: mutateWing } = useWing(aeroplaneId, selectedWing);
+  const { fuselage } = useFuselage(aeroplaneId, selectedFuselage);
 
   const [expandedSet, setExpandedSet] = useState<Set<string>>(() => {
     const s = new Set<string>();
@@ -367,16 +370,41 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
       treeData.push(...nodes);
     }
 
-    // Fuselage nodes (leaf nodes, no expand/collapse)
+    // Fuselage nodes (expandable with cross-sections)
     for (const fn of fuselageNames) {
+      const fusExpanded = expandedSet.has(`fuselage-${fn}`);
+      const isFusSelected = selectedFuselage === fn;
       treeData.push({
         id: `fuselage-${fn}`,
         label: fn,
         level: 1,
-        expanded: false,
-        leaf: true,
+        expanded: fusExpanded,
         chip: "FUSELAGE",
+        onClick: () => {
+          selectFuselage(fn);
+          toggleExpand(`fuselage-${fn}`);
+        },
       });
+
+      if (fusExpanded && isFusSelected && fuselage && fuselage.x_secs) {
+        for (let i = 0; i < fuselage.x_secs.length; i++) {
+          const xs = fuselage.x_secs[i];
+          const isXsSelected = selectedFuselageXsecIndex === i;
+          treeData.push({
+            id: `fuselage-${fn}-xsec-${i}`,
+            label: `xsec ${i}`,
+            level: 2,
+            expanded: false,
+            leaf: true,
+            selected: isXsSelected,
+            detail: `a=${xs.a.toFixed(3)} b=${xs.b.toFixed(3)} n=${xs.n.toFixed(1)}`,
+            onClick: () => {
+              selectFuselage(fn);
+              selectFuselageXsec(i);
+            },
+          });
+        }
+      }
     }
   }
 
@@ -492,6 +520,12 @@ function TreeRow({ node, onToggle }: { node: TreeNode; onToggle: () => void }) {
       {node.chip && (
         <span className="rounded bg-card-muted px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-primary">
           {node.chip}
+        </span>
+      )}
+
+      {node.detail && (
+        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground">
+          {node.detail}
         </span>
       )}
 

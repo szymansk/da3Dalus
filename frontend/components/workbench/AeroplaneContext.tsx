@@ -10,16 +10,20 @@ import {
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
-export type TreeMode = "wingconfig" | "asb";
+export type TreeMode = "wingconfig" | "asb" | "fuselage";
 
 interface AeroplaneContextValue {
   aeroplaneId: string | null;
   selectedWing: string | null;
   selectedXsecIndex: number | null;
+  selectedFuselage: string | null;
+  selectedFuselageXsecIndex: number | null;
   treeMode: TreeMode;
   setAeroplaneId: (id: string | null) => void;
   selectWing: (name: string | null) => void;
   selectXsec: (index: number | null) => void;
+  selectFuselage: (name: string | null) => void;
+  selectFuselageXsec: (index: number | null) => void;
   setTreeMode: (mode: TreeMode) => void;
 }
 
@@ -32,13 +36,11 @@ export function AeroplaneProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Start with null on both server and client to avoid hydration mismatch.
-  // Restore from URL/localStorage in useEffect (client-only).
   const [aeroplaneId, setAeroplaneIdRaw] = useState<string | null>(null);
   const [selectedWing, setSelectedWing] = useState<string | null>(null);
-  const [selectedXsecIndex, setSelectedXsecIndex] = useState<number | null>(
-    null,
-  );
+  const [selectedXsecIndex, setSelectedXsecIndex] = useState<number | null>(null);
+  const [selectedFuselage, setSelectedFuselage] = useState<string | null>(null);
+  const [selectedFuselageXsecIndex, setSelectedFuselageXsecIndex] = useState<number | null>(null);
   const [treeMode, setTreeMode] = useState<TreeMode>("wingconfig");
 
   const setAeroplaneId = useCallback(
@@ -46,7 +48,6 @@ export function AeroplaneProvider({ children }: { children: ReactNode }) {
       setAeroplaneIdRaw(id);
       if (id) {
         localStorage.setItem(STORAGE_KEY, id);
-        // Update URL search param without full navigation
         const params = new URLSearchParams(searchParams.toString());
         params.set("id", id);
         router.replace(`${pathname}?${params.toString()}`);
@@ -57,7 +58,6 @@ export function AeroplaneProvider({ children }: { children: ReactNode }) {
     [searchParams, router, pathname],
   );
 
-  // Restore aeroplaneId from URL or localStorage on mount (client-only)
   useEffect(() => {
     const urlId = searchParams.get("id");
     const storedId = localStorage.getItem(STORAGE_KEY);
@@ -67,15 +67,35 @@ export function AeroplaneProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(STORAGE_KEY, resolved);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only on mount
+  }, []);
 
+  // Selecting a wing clears fuselage selection and vice versa
   const selectWing = useCallback((name: string | null) => {
     setSelectedWing(name);
     setSelectedXsecIndex(null);
+    if (name) {
+      setSelectedFuselage(null);
+      setSelectedFuselageXsecIndex(null);
+      setTreeMode((m) => m === "fuselage" ? "wingconfig" : m);
+    }
   }, []);
 
   const selectXsec = useCallback((index: number | null) => {
     setSelectedXsecIndex(index);
+  }, []);
+
+  const selectFuselage = useCallback((name: string | null) => {
+    setSelectedFuselage(name);
+    setSelectedFuselageXsecIndex(null);
+    if (name) {
+      setSelectedWing(null);
+      setSelectedXsecIndex(null);
+      setTreeMode("fuselage");
+    }
+  }, []);
+
+  const selectFuselageXsec = useCallback((index: number | null) => {
+    setSelectedFuselageXsecIndex(index);
   }, []);
 
   return (
@@ -84,10 +104,14 @@ export function AeroplaneProvider({ children }: { children: ReactNode }) {
         aeroplaneId,
         selectedWing,
         selectedXsecIndex,
+        selectedFuselage,
+        selectedFuselageXsecIndex,
         treeMode,
         setAeroplaneId,
         selectWing,
         selectXsec,
+        selectFuselage,
+        selectFuselageXsec,
         setTreeMode,
       }}
     >
