@@ -455,7 +455,7 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
   }
 
   return (
-    <div className="flex h-full flex-col rounded-xl border border-border bg-card p-3 px-4">
+    <div className="flex h-full min-h-0 flex-col rounded-xl border border-border bg-card p-3 px-4 overflow-hidden">
       {/* Header with collapse + mode toggle */}
       <div className="mb-2 flex items-center gap-2">
         {onCollapseTree && (
