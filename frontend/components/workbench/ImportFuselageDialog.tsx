@@ -108,6 +108,13 @@ function FuselagePreview3D({ xsecs, selectedXsec }: { xsecs: XSec[]; selectedXse
         },
       };
 
+      // Preserve camera if plot already exists
+      const existingLayout = (containerRef.current as any)?.layout;
+      const savedCamera = existingLayout?.scene?.camera;
+      if (savedCamera) {
+        layout.scene = { ...layout.scene, camera: savedCamera } as any;
+      }
+
       Plotly.default.react(containerRef.current, [surfaceTrace as any, ...xsecTraces as any[]], layout, {
         responsive: true,
         displayModeBar: true,
