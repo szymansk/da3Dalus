@@ -398,7 +398,7 @@ export function ImportFuselageDialog({
                 >
                   {viewerMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                 </button>
-                <div className="flex-1 min-h-[200px] rounded-xl border border-border bg-[#17171A] overflow-hidden">
+                <div className="flex-1 min-h-[150px] max-h-[50vh] rounded-xl border border-border bg-[#17171A] overflow-hidden">
                   <FuselagePreview3D xsecs={xsecs} selectedXsec={selectedXsec} />
                 </div>
               </div>}
@@ -425,7 +425,7 @@ export function ImportFuselageDialog({
 
               {/* Cross-section viewer — single section with slider + params */}
               {!viewerMaximized && (
-              <div className={`relative flex rounded-xl border border-border bg-card-muted ${xsecsMaximized ? "flex-1 min-h-0" : "h-[180px] shrink-0"}`}>
+              <div className={`relative flex rounded-xl border border-border bg-card-muted ${xsecsMaximized ? "flex-1 min-h-0" : "h-[200px] shrink-0"}`}>
                 <button
                   onClick={() => { setXsecsMaximized((m) => !m); }}
                   className="absolute right-2 top-2 z-10 flex size-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
