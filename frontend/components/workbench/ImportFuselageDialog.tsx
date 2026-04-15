@@ -253,8 +253,8 @@ export function ImportFuselageDialog({
       <div
         className={`flex flex-col rounded-2xl border border-border bg-card shadow-2xl transition-all ${
           viewerMaximized || xsecsMaximized
-            ? "fixed inset-4 z-50 max-h-none w-auto"
-            : "w-[900px] max-h-[80vh]"
+            ? "fixed inset-4 z-50 w-auto"
+            : "w-[900px] h-[80vh]"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -274,7 +274,7 @@ export function ImportFuselageDialog({
         </div>
 
         {/* Body */}
-        <div className={`flex-1 px-6 py-5 ${viewerMaximized || xsecsMaximized ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}>
+        <div className="flex-1 flex flex-col overflow-hidden px-6 py-5">
           {phase === "upload" && (
             <div className="flex flex-col gap-5">
               {/* File drop zone */}
@@ -358,7 +358,7 @@ export function ImportFuselageDialog({
           )}
 
           {phase === "preview" && (
-            <div className={`flex flex-col gap-5 ${viewerMaximized || xsecsMaximized ? "flex-1 min-h-0" : ""}`}>
+            <div className="flex flex-1 flex-col gap-4 min-h-0">
               {/* Combined 3D viewer — hidden when cross-sections maximized */}
               {!xsecsMaximized && <div className="relative">
                 <button
@@ -368,7 +368,7 @@ export function ImportFuselageDialog({
                 >
                   {viewerMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                 </button>
-                <div className={`rounded-xl border border-border bg-[#17171A] overflow-hidden ${viewerMaximized ? "flex-1" : "h-64"}`}>
+                <div className="flex-1 min-h-[200px] rounded-xl border border-border bg-[#17171A] overflow-hidden">
                   <FuselagePreview3D xsecs={xsecs} />
                 </div>
               </div>}
@@ -395,7 +395,7 @@ export function ImportFuselageDialog({
 
               {/* Cross-section summary — always visible (has own maximize) */}
               {!viewerMaximized && (
-              <div className={`relative flex flex-col rounded-xl border border-border bg-card-muted p-4 ${xsecsMaximized ? "flex-1 min-h-0" : ""}`}>
+              <div className={`relative flex flex-col rounded-xl border border-border bg-card-muted p-4 ${xsecsMaximized ? "flex-1 min-h-0" : "h-[140px] shrink-0"}`}>
                 <button
                   onClick={() => { setXsecsMaximized((m) => !m); if (xsecsMaximized) setSelectedXsec(null); }}
                   className="absolute right-2 top-2 z-10 flex size-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
@@ -455,7 +455,7 @@ export function ImportFuselageDialog({
                 )}
 
                 {/* Cross-section ellipses strip */}
-                <div className={`flex items-end gap-2 overflow-x-auto overflow-y-hidden pb-2 ${xsecsMaximized ? "flex-1 min-h-[80px]" : ""}`}>
+                <div className={`flex items-end gap-2 overflow-x-auto overflow-y-hidden pb-2 ${xsecsMaximized ? "flex-1 min-h-0" : "flex-1"}`}>
                   {(() => {
                     let scale: number;
                     if (!xsecsMaximized) {
