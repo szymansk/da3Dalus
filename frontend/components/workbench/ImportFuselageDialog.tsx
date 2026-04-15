@@ -18,8 +18,15 @@ interface ImportFuselageDialogProps {
   onAccept?: (fuselageName: string) => void;
 }
 
+interface XSec {
+  xyz: number[];
+  a: number;
+  b: number;
+  n: number;
+}
+
 // Dummy data for the mock
-const MOCK_XSECS = Array.from({ length: 50 }, (_, i) => ({
+const INITIAL_XSECS: XSec[] = Array.from({ length: 50 }, (_, i) => ({
   xyz: [i * 0.008, 0, 0],
   a: 0.005 + 0.04 * Math.sin((i / 49) * Math.PI),
   b: 0.005 + 0.03 * Math.sin((i / 49) * Math.PI),
@@ -42,6 +49,8 @@ export function ImportFuselageDialog({
   const [fuselageName, setFuselageName] = useState("Imported Fuselage");
   const [viewerMaximized, setViewerMaximized] = useState(false);
   const [xsecsMaximized, setXsecsMaximized] = useState(false);
+  const [xsecs, setXsecs] = useState<XSec[]>(INITIAL_XSECS);
+  const [selectedXsec, setSelectedXsec] = useState<number | null>(null);
 
   if (!open) return null;
 
@@ -65,6 +74,10 @@ export function ImportFuselageDialog({
     setSlices(50);
     setAxis("auto");
     setFuselageName("Imported Fuselage");
+    setXsecs(INITIAL_XSECS);
+    setSelectedXsec(null);
+    setXsecsMaximized(false);
+    setViewerMaximized(false);
   };
 
   return (
@@ -231,9 +244,9 @@ export function ImportFuselageDialog({
 
               {/* Cross-section summary — always visible (has own maximize) */}
               {!viewerMaximized && (
-              <div className={`relative rounded-xl border border-border bg-card-muted p-4 ${xsecsMaximized ? "flex-1" : ""}`}>
+              <div className={`relative flex flex-col rounded-xl border border-border bg-card-muted p-4 ${xsecsMaximized ? "flex-1 min-h-0" : ""}`}>
                 <button
-                  onClick={() => setXsecsMaximized((m) => !m)}
+                  onClick={() => { setXsecsMaximized((m) => !m); if (xsecsMaximized) setSelectedXsec(null); }}
                   className="absolute right-2 top-2 z-10 flex size-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
                   title={xsecsMaximized ? "Restore size" : "Maximize cross-sections"}
                 >
@@ -241,37 +254,138 @@ export function ImportFuselageDialog({
                 </button>
                 <div className="flex items-center gap-2 mb-2 pr-8">
                   <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
-                    Cross-sections: {MOCK_XSECS.length}
+                    Cross-sections: {xsecs.length}
                   </span>
+                  {selectedXsec !== null && (
+                    <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-primary">
+                      {"\u00B7"} selected: {selectedXsec}
+                    </span>
+                  )}
                   <span className="flex-1" />
                   <span className="text-[11px] text-subtle-foreground">
                     {fileName}
                   </span>
                 </div>
-                <div className={`flex items-end gap-2 overflow-x-auto pb-2 ${xsecsMaximized ? "h-[50vh]" : ""}`}>
+
+                {/* Cross-section ellipses strip */}
+                <div className={`flex items-end gap-2 overflow-x-auto pb-2 ${xsecsMaximized ? "flex-1 min-h-[120px]" : ""}`}>
                   {(() => {
                     const scale = xsecsMaximized ? 2000 : 600;
-                    return MOCK_XSECS.map((xsec, i) => (
-                      <div
-                        key={i}
-                        className="flex shrink-0 flex-col items-center gap-0.5"
-                        title={`x=${xsec.xyz[0].toFixed(3)} a=${xsec.a.toFixed(3)} b=${xsec.b.toFixed(3)} n=${xsec.n.toFixed(1)}`}
-                      >
-                        <div
-                          className="rounded-full border border-primary/40"
-                          style={{
-                            width: Math.max(4, xsec.a * scale),
-                            height: Math.max(4, xsec.b * scale),
-                            backgroundColor: "rgba(255, 132, 0, 0.15)",
-                          }}
-                        />
-                        <span className="text-[8px] text-subtle-foreground">
-                          {i}
-                        </span>
-                      </div>
-                    ));
+                    return xsecs.map((xsec, i) => {
+                      const isSelected = selectedXsec === i;
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => xsecsMaximized && setSelectedXsec(isSelected ? null : i)}
+                          className={`flex shrink-0 flex-col items-center gap-0.5 ${xsecsMaximized ? "cursor-pointer" : "cursor-default"}`}
+                          title={`x=${xsec.xyz[0].toFixed(3)} a=${xsec.a.toFixed(3)} b=${xsec.b.toFixed(3)} n=${xsec.n.toFixed(1)}`}
+                        >
+                          <div
+                            className={`rounded-full border-2 transition-colors ${
+                              isSelected
+                                ? "border-primary bg-primary/20"
+                                : "border-primary/30 bg-primary/10"
+                            }`}
+                            style={{
+                              width: Math.max(6, xsec.a * scale),
+                              height: Math.max(6, xsec.b * scale),
+                            }}
+                          />
+                          <span className={`text-[8px] ${isSelected ? "text-primary font-bold" : "text-subtle-foreground"}`}>
+                            {i}
+                          </span>
+                        </button>
+                      );
+                    });
                   })()}
                 </div>
+
+                {/* Parameter editor — only in maximized mode with selection */}
+                {xsecsMaximized && selectedXsec !== null && (() => {
+                  const xsec = xsecs[selectedXsec];
+                  const update = (field: keyof XSec, value: number, subIdx?: number) => {
+                    setXsecs((prev) => prev.map((xs, i) => {
+                      if (i !== selectedXsec) return xs;
+                      if (field === "xyz" && subIdx !== undefined) {
+                        const newXyz = [...xs.xyz];
+                        newXyz[subIdx] = value;
+                        return { ...xs, xyz: newXyz };
+                      }
+                      return { ...xs, [field]: value };
+                    }));
+                  };
+                  return (
+                    <div className="mt-3 border-t border-border pt-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-primary">
+                          Section {selectedXsec} Parameters
+                        </span>
+                        <span className="flex-1" />
+                        <button
+                          onClick={() => setSelectedXsec(selectedXsec > 0 ? selectedXsec - 1 : null)}
+                          disabled={selectedXsec <= 0}
+                          className="flex size-6 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-foreground disabled:opacity-30"
+                        >
+                          {"<"}
+                        </button>
+                        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
+                          {selectedXsec + 1}/{xsecs.length}
+                        </span>
+                        <button
+                          onClick={() => setSelectedXsec(selectedXsec < xsecs.length - 1 ? selectedXsec + 1 : null)}
+                          disabled={selectedXsec >= xsecs.length - 1}
+                          className="flex size-6 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-foreground disabled:opacity-30"
+                        >
+                          {">"}
+                        </button>
+                      </div>
+                      <div className="flex gap-3">
+                        {(["x", "y", "z"] as const).map((axis, idx) => (
+                          <div key={axis} className="flex flex-col gap-1">
+                            <label className="text-[10px] text-muted-foreground">xyz[{axis}]</label>
+                            <input
+                              type="number"
+                              step="0.001"
+                              value={xsec.xyz[idx]}
+                              onChange={(e) => update("xyz", parseFloat(e.target.value) || 0, idx)}
+                              className="w-24 rounded-xl border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground"
+                            />
+                          </div>
+                        ))}
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] text-muted-foreground">a (semi-width)</label>
+                          <input
+                            type="number"
+                            step="0.001"
+                            value={xsec.a}
+                            onChange={(e) => update("a", parseFloat(e.target.value) || 0.001)}
+                            className="w-24 rounded-xl border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] text-muted-foreground">b (semi-height)</label>
+                          <input
+                            type="number"
+                            step="0.001"
+                            value={xsec.b}
+                            onChange={(e) => update("b", parseFloat(e.target.value) || 0.001)}
+                            className="w-24 rounded-xl border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] text-muted-foreground">n (exponent)</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={xsec.n}
+                            onChange={(e) => update("n", Math.max(0.5, Math.min(10, parseFloat(e.target.value) || 2)))}
+                            className="w-24 rounded-xl border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
               )}
 
