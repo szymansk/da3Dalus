@@ -1,8 +1,119 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Upload, X, Check, Loader2, AlertTriangle, Maximize2, Minimize2 } from "lucide-react";
 import { API_BASE } from "@/lib/fetcher";
+
+/** Build Plotly Surface3d traces for a fuselage from xsec dicts */
+function buildFuselageSurface(
+  xsecs: XSec[],
+  color: string,
+  opacity: number,
+  name: string,
+  samples: number = 24,
+): { x: number[][]; y: number[][]; z: number[][]; type: string; colorscale: [number, string][]; showscale: boolean; opacity: number; name: string } {
+  const xGrid: number[][] = [];
+  const yGrid: number[][] = [];
+  const zGrid: number[][] = [];
+
+  for (const xsec of xsecs) {
+    const xRow: number[] = [];
+    const yRow: number[] = [];
+    const zRow: number[] = [];
+    for (let j = 0; j <= samples; j++) {
+      const t = (j / samples) * 2 * Math.PI;
+      const cosT = Math.cos(t);
+      const sinT = Math.sin(t);
+      const r = Math.pow(
+        Math.pow(Math.abs(cosT), xsec.n) + Math.pow(Math.abs(sinT), xsec.n),
+        -1 / xsec.n,
+      );
+      xRow.push(xsec.xyz[0]);
+      yRow.push(xsec.xyz[1] + xsec.a * r * cosT);
+      zRow.push(xsec.xyz[2] + xsec.b * r * sinT);
+    }
+    xGrid.push(xRow);
+    yGrid.push(yRow);
+    zGrid.push(zRow);
+  }
+
+  return {
+    x: xGrid,
+    y: yGrid,
+    z: zGrid,
+    type: "surface",
+    colorscale: [[0, color], [1, color]],
+    showscale: false,
+    opacity,
+    name,
+  };
+}
+
+/** Plotly 3D preview of fuselage from xsecs — lazy loaded */
+function FuselagePreview3D({ xsecs }: { xsecs: XSec[] }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current || xsecs.length < 2) return;
+    let disposed = false;
+
+    (async () => {
+      const Plotly = await import("plotly.js-gl3d-dist-min");
+      if (disposed || !containerRef.current) return;
+
+      const trace = buildFuselageSurface(xsecs, "#FF8400", 0.7, "Reconstructed", 32);
+
+      const layout = {
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
+        font: { color: "#B8B9B6" },
+        margin: { l: 0, r: 0, t: 0, b: 0 },
+        scene: {
+          bgcolor: "#17171A",
+          aspectmode: "data" as const,
+          xaxis: { showgrid: true, gridcolor: "#2E2E2E", zerolinecolor: "#3A3A3A" },
+          yaxis: { showgrid: true, gridcolor: "#2E2E2E", zerolinecolor: "#3A3A3A" },
+          zaxis: { showgrid: true, gridcolor: "#2E2E2E", zerolinecolor: "#3A3A3A" },
+        },
+      };
+
+      Plotly.default.react(containerRef.current, [trace as any], layout, {
+        responsive: true,
+        displayModeBar: true,
+        modeBarButtonsToRemove: ["toImage", "sendDataToCloud"] as any[],
+      });
+    })();
+
+    return () => {
+      disposed = true;
+      if (containerRef.current) {
+        import("plotly.js-gl3d-dist-min")
+          .then((P) => P.default.purge(containerRef.current!))
+          .catch(() => {});
+      }
+    };
+  }, [xsecs]);
+
+  return <div ref={containerRef} className="h-full w-full" />;
+}
+
+/** Generate SVG path for a superellipse |x/a|^n + |y/b|^n = 1 */
+function superellipsePath(a: number, b: number, n: number, samples: number = 64): string {
+  const points: string[] = [];
+  for (let i = 0; i <= samples; i++) {
+    const t = (i / samples) * 2 * Math.PI;
+    const cosT = Math.cos(t);
+    const sinT = Math.sin(t);
+    const r = Math.pow(
+      Math.pow(Math.abs(cosT), n) + Math.pow(Math.abs(sinT), n),
+      -1 / n,
+    );
+    const px = a * r * cosT;
+    const py = b * r * sinT;
+    points.push(`${i === 0 ? "M" : "L"}${px.toFixed(3)},${py.toFixed(3)}`);
+  }
+  return points.join(" ") + "Z";
+}
 
 interface ImportFuselageDialogProps {
   open: boolean;
@@ -257,33 +368,8 @@ export function ImportFuselageDialog({
                 >
                   {viewerMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                 </button>
-                <div className={`relative flex items-center justify-center rounded-xl border border-border bg-[#17171A] ${viewerMaximized ? "h-[70vh]" : "h-64"}`}>
-                  {/* Mock: overlaid fuselage shapes */}
-                  <div className="relative">
-                    <div
-                      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[50%] opacity-30"
-                      style={{ backgroundColor: "#3B82F6", width: 200, height: 80 }}
-                    />
-                    <div
-                      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[50%] opacity-30"
-                      style={{ backgroundColor: "#FF8400", width: 190, height: 76 }}
-                    />
-                    <div className="relative flex flex-col items-center gap-1 pt-16">
-                      <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
-                        3D Viewer Placeholder
-                      </span>
-                      <div className="flex items-center gap-4 mt-2">
-                        <div className="flex items-center gap-1.5">
-                          <div className="size-2.5 rounded-full" style={{ backgroundColor: "#3B82F6" }} />
-                          <span className="text-[10px] text-muted-foreground">Original (STEP)</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="size-2.5 rounded-full" style={{ backgroundColor: "#FF8400" }} />
-                          <span className="text-[10px] text-muted-foreground">Reconstructed</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                <div className={`rounded-xl border border-border bg-[#17171A] overflow-hidden ${viewerMaximized ? "flex-1" : "h-64"}`}>
+                  <FuselagePreview3D xsecs={xsecs} />
                 </div>
               </div>}
 
@@ -391,17 +477,19 @@ export function ImportFuselageDialog({
                           className={`flex shrink-0 flex-col items-center justify-end gap-0.5 ${xsecsMaximized ? "cursor-pointer" : "cursor-default"}`}
                           title={`x=${xsec.xyz[0].toFixed(3)} a=${xsec.a.toFixed(3)} b=${xsec.b.toFixed(3)} n=${xsec.n.toFixed(1)}`}
                         >
-                          <div
-                            className={`rounded-full border-2 transition-all ${
-                              isSelected
-                                ? "border-primary bg-primary/20"
-                                : "border-primary/30 bg-primary/10"
-                            }`}
-                            style={{
-                              width: Math.max(6, xsec.a * scale),
-                              height: Math.max(6, xsec.b * scale),
-                            }}
-                          />
+                          <svg
+                            width={Math.max(6, xsec.a * scale * 2)}
+                            height={Math.max(6, xsec.b * scale * 2)}
+                            viewBox={`${-xsec.a * scale} ${-xsec.b * scale} ${xsec.a * scale * 2} ${xsec.b * scale * 2}`}
+                            className="shrink-0"
+                          >
+                            <path
+                              d={superellipsePath(xsec.a * scale, xsec.b * scale, xsec.n)}
+                              fill={isSelected ? "rgba(255,132,0,0.2)" : "rgba(255,132,0,0.1)"}
+                              stroke={isSelected ? "#FF8400" : "rgba(255,132,0,0.4)"}
+                              strokeWidth={isSelected ? 2 : 1}
+                            />
+                          </svg>
                           <span className={`shrink-0 text-[8px] ${isSelected ? "text-primary font-bold" : "text-subtle-foreground"}`}>
                             {i}
                           </span>
