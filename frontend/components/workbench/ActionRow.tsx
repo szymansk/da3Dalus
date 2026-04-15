@@ -81,13 +81,6 @@ export function ActionRow({ aeroplaneId, onWingCreated, onFuselageSaved }: Actio
   return (
     <div className="flex items-center gap-2">
       <button
-        onClick={handlePreviewSTL}
-        className="flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-[13px] text-primary-foreground hover:opacity-90"
-      >
-        <Play size={14} />
-        <span>Preview STL</span>
-      </button>
-      <button
         onClick={handleAddWing}
         className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3.5 py-2.5 text-[13px] text-foreground hover:bg-sidebar-accent"
       >

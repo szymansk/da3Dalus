@@ -485,7 +485,7 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
           <button
             onClick={() => setTreeMode("asb")}
             className={`px-2.5 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px] ${
-              treeMode === "asb"
+              treeMode === "asb" || treeMode === "fuselage"
                 ? "bg-primary text-primary-foreground"
                 : "bg-card-muted text-muted-foreground hover:text-foreground"
             }`}
