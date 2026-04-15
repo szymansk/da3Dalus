@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Trash2 } from "lucide-react";
 
 export interface SimpleTreeNode {
   id: string;
@@ -9,9 +9,12 @@ export interface SimpleTreeNode {
   expanded?: boolean;
   leaf?: boolean;
   muted?: boolean;
+  selected?: boolean;
   chip?: string;
   annotation?: string;
   annotationPrimary?: boolean;
+  onClick?: () => void;
+  onDelete?: () => void;
 }
 
 interface SimpleTreeRowProps {
@@ -21,11 +24,19 @@ interface SimpleTreeRowProps {
 
 export function SimpleTreeRow({ node, onToggle }: SimpleTreeRowProps) {
   const indent = node.level * 20;
+
+  function handleClick() {
+    if (!node.leaf) onToggle();
+    node.onClick?.();
+  }
+
   return (
-    <button
-      onClick={onToggle}
+    <div
+      className={`group flex w-full items-center gap-1.5 rounded-xl py-1.5 pr-2 hover:bg-sidebar-accent cursor-pointer ${
+        node.selected ? "bg-sidebar-accent font-semibold" : ""
+      }`}
       style={{ paddingLeft: indent }}
-      className="flex w-full items-center gap-1.5 rounded-xl py-1.5 pr-2 text-left hover:bg-sidebar-accent"
+      onClick={handleClick}
     >
       {!node.leaf ? (
         node.expanded ? (
@@ -54,6 +65,14 @@ export function SimpleTreeRow({ node, onToggle }: SimpleTreeRowProps) {
           {node.annotation}
         </span>
       )}
-    </button>
+      {node.onDelete && (
+        <button
+          onClick={(e) => { e.stopPropagation(); node.onDelete?.(); }}
+          className="hidden size-5 items-center justify-center rounded-full text-destructive group-hover:flex"
+        >
+          <Trash2 size={10} />
+        </button>
+      )}
+    </div>
   );
 }
