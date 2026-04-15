@@ -125,21 +125,20 @@ function FuselagePreview3D({ xsecs, selectedXsec }: { xsecs: XSec[]; selectedXse
     };
   }, [xsecs]);
 
-  // Selection highlight — restyle only, no layout change, preserves camera
+  // Selection highlight — single batch restyle, preserves camera
   useEffect(() => {
     if (!containerRef.current || !plotlyRef.current || xsecs.length < 2) return;
     const Plotly = plotlyRef.current;
 
-    // Traces: index 0 = surface, 1..N = cross-section lines
+    // Batch: update all cross-section traces (indices 1..N) in one call
+    const traceIndices = xsecs.map((_, i) => i + 1); // skip index 0 (surface)
     const colors = xsecs.map((_, idx) => selectedXsec === idx ? "#E5484D" : "#B8B9B6");
     const widths = xsecs.map((_, idx) => selectedXsec === idx ? 5 : 1.5);
 
-    for (let i = 0; i < xsecs.length; i++) {
-      Plotly.restyle(containerRef.current, {
-        "line.color": [colors[i]],
-        "line.width": [widths[i]],
-      }, [i + 1]); // trace index i+1 (0 is surface)
-    }
+    Plotly.restyle(containerRef.current, {
+      "line.color": colors,
+      "line.width": widths,
+    }, traceIndices);
   }, [selectedXsec, xsecs.length]);
 
   return <div ref={containerRef} className="h-full w-full" />;
