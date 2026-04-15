@@ -268,9 +268,8 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
     return s;
   });
 
-  // Load data for the first expanded fuselage (or selected one)
-  const expandedFuselageName = fuselageNames.find((fn) => expandedSet.has(`fuselage-${fn}`)) ?? selectedFuselage;
-  const { fuselage } = useFuselage(aeroplaneId, expandedFuselageName);
+  // Load data for the selected fuselage (set by clicking a fuselage node)
+  const { fuselage } = useFuselage(aeroplaneId, selectedFuselage);
 
   function toggleExpand(nodeId: string) {
     setExpandedSet((prev) => {
@@ -390,7 +389,7 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
       });
 
       if (fusExpanded) {
-        const hasFusData = fuselage && expandedFuselageName === fn && fuselage.x_secs;
+        const hasFusData = fuselage && selectedFuselage === fn && fuselage.x_secs;
         if (!hasFusData) {
           // Loading state — SWR is fetching
           treeData.push({

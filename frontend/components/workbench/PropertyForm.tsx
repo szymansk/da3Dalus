@@ -10,6 +10,8 @@ import { useWing, type XSec } from "@/hooks/useWings";
 import { useWingConfig } from "@/hooks/useWingConfig";
 import type { WingConfigSegment } from "@/hooks/useWingConfig";
 import { useFuselage, type FuselageXSec } from "@/hooks/useFuselage";
+import { ImportFuselageDialog } from "./ImportFuselageDialog";
+import { Box } from "lucide-react";
 import { API_BASE } from "@/lib/fetcher";
 
 /** Parse a number input string, allowing empty/partial input during editing */
@@ -811,7 +813,11 @@ function FuselageXSecForm({
   const [n, setN] = useState(String(xsec.n));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [show3DEditor, setShow3DEditor] = useState(false);
   const { setDirty } = useUnsavedChanges();
+
+  // Get full fuselage data for 3D editor
+  const { fuselage, mutate: mutateFuselage } = useFuselage(aeroplaneId, fuselageName);
 
   useEffect(() => {
     setXyz0(String(xsec.xyz[0]));
@@ -855,9 +861,32 @@ function FuselageXSecForm({
 
   return (
     <div className="rounded-xl border border-border bg-card p-2.5 px-4">
-      <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
-        {fuselageName} {"\u00B7"} xsec {xsecIndex} Properties
-      </span>
+      <div className="flex items-center gap-2">
+        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
+          {fuselageName} {"\u00B7"} xsec {xsecIndex} Properties
+        </span>
+        <span className="flex-1" />
+        <button
+          onClick={() => setShow3DEditor(true)}
+          className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-[11px] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+          title="Edit in 3D viewer"
+        >
+          <Box size={12} />
+          3D Edit
+        </button>
+      </div>
+
+      {show3DEditor && fuselage && (
+        <ImportFuselageDialog
+          open={show3DEditor}
+          onClose={() => { setShow3DEditor(false); mutateFuselage(); }}
+          aeroplaneId={aeroplaneId}
+          onSaved={() => { setShow3DEditor(false); mutateFuselage(); }}
+          initialXsecs={fuselage.x_secs}
+          initialName={fuselageName}
+          initialSelectedIndex={xsecIndex}
+        />
+      )}
 
       <div className="mt-3 flex flex-col gap-3">
         <div className="flex gap-3">
