@@ -120,6 +120,14 @@ function FuselagePreview3D({ xsecs, selectedXsec }: { xsecs: XSec[]; selectedXse
         modeBarButtonsToRemove: ["toImage", "sendDataToCloud"] as any[],
       });
 
+      // Apply selection highlight immediately after render
+      if (selectedXsec !== null && xsecs.length > 0) {
+        const traceIndices = xsecs.map((_, i) => i + 1);
+        const colors = xsecs.map((_, idx) => selectedXsec === idx ? "#E5484D" : "#B8B9B6");
+        const widths = xsecs.map((_, idx) => selectedXsec === idx ? 5 : 1.5);
+        (Plotly.default as any).restyle(containerRef.current, { "line.color": colors, "line.width": widths }, traceIndices);
+      }
+
       // Listen for camera changes and save them
       (containerRef.current as any).on?.("plotly_relayout", (update: any) => {
         if (update?.["scene.camera"]) {
