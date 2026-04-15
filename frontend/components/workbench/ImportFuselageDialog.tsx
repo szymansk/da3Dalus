@@ -53,6 +53,7 @@ function buildFuselageSurface(
 function FuselagePreview3D({ xsecs, selectedXsec }: { xsecs: XSec[]; selectedXsec: number | null }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const plotlyRef = useRef<any>(null);
+  const cameraRef = useRef<any>(null);
 
   // Initial plot + full rebuild when xsecs change
   useEffect(() => {
@@ -108,17 +109,22 @@ function FuselagePreview3D({ xsecs, selectedXsec }: { xsecs: XSec[]; selectedXse
         },
       };
 
-      // Preserve camera if plot already exists
-      const existingLayout = (containerRef.current as any)?.layout;
-      const savedCamera = existingLayout?.scene?.camera;
-      if (savedCamera) {
-        layout.scene = { ...layout.scene, camera: savedCamera } as any;
+      // Restore saved camera position (preserved across re-renders)
+      if (cameraRef.current) {
+        layout.scene = { ...layout.scene, camera: cameraRef.current } as any;
       }
 
-      Plotly.default.react(containerRef.current, [surfaceTrace as any, ...xsecTraces as any[]], layout, {
+      await Plotly.default.react(containerRef.current, [surfaceTrace as any, ...xsecTraces as any[]], layout, {
         responsive: true,
         displayModeBar: true,
         modeBarButtonsToRemove: ["toImage", "sendDataToCloud"] as any[],
+      });
+
+      // Listen for camera changes and save them
+      (containerRef.current as any).on?.("plotly_relayout", (update: any) => {
+        if (update?.["scene.camera"]) {
+          cameraRef.current = update["scene.camera"];
+        }
       });
     })();
 
