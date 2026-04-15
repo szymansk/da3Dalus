@@ -260,7 +260,10 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
   const { selectedWing, selectedXsecIndex, selectWing, selectXsec, selectedFuselage, selectedFuselageXsecIndex, selectFuselage, selectFuselageXsec, treeMode, setTreeMode } =
     useAeroplaneContext();
   const { wing, isLoading, mutate: mutateWing } = useWing(aeroplaneId, selectedWing);
-  const { fuselage } = useFuselage(aeroplaneId, selectedFuselage);
+
+  // Find the first expanded fuselage to load its data
+  const expandedFuselageName = fuselageNames.find((fn) => expandedSet.has(`fuselage-${fn}`)) ?? selectedFuselage;
+  const { fuselage } = useFuselage(aeroplaneId, expandedFuselageName);
 
   const [expandedSet, setExpandedSet] = useState<Set<string>>(() => {
     const s = new Set<string>();
@@ -386,8 +389,9 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
         },
       });
 
-      if (fusExpanded && isFusSelected) {
-        if (!fuselage?.x_secs) {
+      if (fusExpanded) {
+        const hasFusData = fuselage && expandedFuselageName === fn && fuselage.x_secs;
+        if (!hasFusData) {
           // Loading state — SWR is fetching
           treeData.push({
             id: `fuselage-${fn}-loading`,
