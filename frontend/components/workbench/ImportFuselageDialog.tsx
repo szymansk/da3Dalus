@@ -52,7 +52,9 @@ function buildFuselageSurface(
 /** Plotly 3D preview of fuselage from xsecs — lazy loaded */
 function FuselagePreview3D({ xsecs, selectedXsec }: { xsecs: XSec[]; selectedXsec: number | null }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const plotlyRef = useRef<any>(null);
 
+  // Initial plot + full rebuild when xsecs change
   useEffect(() => {
     if (!containerRef.current || xsecs.length < 2) return;
     let disposed = false;
@@ -60,15 +62,15 @@ function FuselagePreview3D({ xsecs, selectedXsec }: { xsecs: XSec[]; selectedXse
     (async () => {
       const Plotly = await import("plotly.js-gl3d-dist-min");
       if (disposed || !containerRef.current) return;
+      plotlyRef.current = Plotly.default;
 
       const surfaceTrace = buildFuselageSurface(xsecs, "#FF8400", 0.7, "Reconstructed", 32);
 
-      // Add cross-section outlines as Scatter3d lines
       const xsecTraces = xsecs.map((xsec, idx) => {
         const pts = 48;
-        const xs: number[] = [];
-        const ys: number[] = [];
-        const zs: number[] = [];
+        const x: number[] = [];
+        const y: number[] = [];
+        const z: number[] = [];
         for (let j = 0; j <= pts; j++) {
           const t = (j / pts) * 2 * Math.PI;
           const cosT = Math.cos(t);
@@ -77,15 +79,15 @@ function FuselagePreview3D({ xsecs, selectedXsec }: { xsecs: XSec[]; selectedXse
             Math.pow(Math.abs(cosT), xsec.n) + Math.pow(Math.abs(sinT), xsec.n),
             -1 / xsec.n,
           );
-          xs.push(xsec.xyz[0]);
-          ys.push(xsec.xyz[1] + xsec.a * r * cosT);
-          zs.push(xsec.xyz[2] + xsec.b * r * sinT);
+          x.push(xsec.xyz[0]);
+          y.push(xsec.xyz[1] + xsec.a * r * cosT);
+          z.push(xsec.xyz[2] + xsec.b * r * sinT);
         }
         return {
-          x: xs, y: ys, z: zs,
+          x, y, z,
           type: "scatter3d",
           mode: "lines",
-          line: { color: selectedXsec === idx ? "#E5484D" : "#B8B9B6", width: selectedXsec === idx ? 5 : 1.5 },
+          line: { color: "#B8B9B6", width: 1.5 },
           showlegend: false,
           hoverinfo: "text",
           text: `Section ${idx}`,
@@ -121,7 +123,24 @@ function FuselagePreview3D({ xsecs, selectedXsec }: { xsecs: XSec[]; selectedXse
           .catch(() => {});
       }
     };
-  }, [xsecs, selectedXsec]);
+  }, [xsecs]);
+
+  // Selection highlight — restyle only, no layout change, preserves camera
+  useEffect(() => {
+    if (!containerRef.current || !plotlyRef.current || xsecs.length < 2) return;
+    const Plotly = plotlyRef.current;
+
+    // Traces: index 0 = surface, 1..N = cross-section lines
+    const colors = xsecs.map((_, idx) => selectedXsec === idx ? "#E5484D" : "#B8B9B6");
+    const widths = xsecs.map((_, idx) => selectedXsec === idx ? 5 : 1.5);
+
+    for (let i = 0; i < xsecs.length; i++) {
+      Plotly.restyle(containerRef.current, {
+        "line.color": [colors[i]],
+        "line.width": [widths[i]],
+      }, [i + 1]); // trace index i+1 (0 is surface)
+    }
+  }, [selectedXsec, xsecs.length]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 }
@@ -220,7 +239,22 @@ export function ImportFuselageDialog({
           n: xs.n,
         }));
         setXsecs(newXsecs.length > 0 ? newXsecs : INITIAL_XSECS);
-        setFidelity(data.fidelity ?? null);
+        // Extract fidelity — try direct field first, then compute from properties
+        const f = data.fidelity;
+        if (f && (f.volume_ratio || f.area_ratio)) {
+          setFidelity(f);
+        } else if (data.original_properties && data.reconstructed_properties) {
+          const ov = data.original_properties.volume_m3;
+          const rv = data.reconstructed_properties.volume_m3;
+          const oa = data.original_properties.surface_area_m2;
+          const ra = data.reconstructed_properties.surface_area_m2;
+          setFidelity({
+            volume_ratio: ov > 0 ? rv / ov : 0,
+            area_ratio: oa > 0 ? ra / oa : 0,
+          });
+        } else {
+          setFidelity(null);
+        }
         setFuselageName(data.fuselage?.name ?? fuselageName);
         setSelectedXsec(0);
         setPhase("preview");
