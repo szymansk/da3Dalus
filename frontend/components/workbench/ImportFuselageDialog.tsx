@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Upload, X, Check, Loader2, AlertTriangle, Maximize2, Minimize2 } from "lucide-react";
+import { Upload, X, Check, Loader2, AlertTriangle, Maximize2, Minimize2, Plus, Trash2 } from "lucide-react";
 import { API_BASE } from "@/lib/fetcher";
 
 /** Build Plotly Surface3d traces for a fuselage from xsec dicts */
@@ -501,8 +501,8 @@ export function ImportFuselageDialog({
                             b={xsec.b.toFixed(4)}
                           </text>
                         </svg>
-                        {/* Slider + nav */}
-                        <div className="flex w-full items-center gap-2">
+                        {/* Slider + nav + add/delete */}
+                        <div className="flex w-full items-center gap-1.5">
                           <button
                             onClick={() => setSelectedXsec(Math.max(0, idx - 1))}
                             disabled={idx <= 0}
@@ -521,9 +521,43 @@ export function ImportFuselageDialog({
                             disabled={idx >= xsecs.length - 1}
                             className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-foreground disabled:opacity-30"
                           >{">"}</button>
-                          <span className="shrink-0 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground w-12 text-right">
+                          <span className="shrink-0 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground w-12 text-center">
                             {idx + 1}/{xsecs.length}
                           </span>
+                          <button
+                            onClick={() => {
+                              // Insert new section between current and next (interpolated)
+                              const next = xsecs[Math.min(idx + 1, xsecs.length - 1)];
+                              const newXsec: XSec = {
+                                xyz: xsec.xyz.map((v, j) => (v + next.xyz[j]) / 2),
+                                a: (xsec.a + next.a) / 2,
+                                b: (xsec.b + next.b) / 2,
+                                n: (xsec.n + next.n) / 2,
+                              };
+                              setXsecs((prev) => [
+                                ...prev.slice(0, idx + 1),
+                                newXsec,
+                                ...prev.slice(idx + 1),
+                              ]);
+                              setSelectedXsec(idx + 1);
+                            }}
+                            className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border text-success hover:bg-success/20"
+                            title="Insert section after current (interpolated)"
+                          >
+                            <Plus size={12} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (xsecs.length <= 2) return; // need at least 2
+                              setXsecs((prev) => prev.filter((_, i) => i !== idx));
+                              setSelectedXsec(Math.min(idx, xsecs.length - 2));
+                            }}
+                            disabled={xsecs.length <= 2}
+                            className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border text-destructive hover:bg-destructive/20 disabled:opacity-30"
+                            title="Delete current section"
+                          >
+                            <Trash2 size={12} />
+                          </button>
                         </div>
                       </>
                     );
