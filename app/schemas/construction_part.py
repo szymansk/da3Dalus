@@ -38,8 +38,23 @@ class ConstructionPartRead(BaseModel):
 
     thumbnail_url: Optional[str] = Field(None, description="Optional preview image URL")
 
+    file_path: Optional[str] = Field(
+        None, description="Local storage path of the uploaded CAD file"
+    )
+    file_format: Optional[str] = Field(
+        None, description="Source file format: 'step' or 'stl'"
+    )
+
     created_at: datetime
     updated_at: datetime
+
+
+class ConstructionPartUpdate(BaseModel):
+    """Metadata-only update payload (PUT). File and geometry are untouched."""
+
+    name: Optional[str] = Field(None, min_length=1)
+    material_component_id: Optional[int] = Field(None)
+    thumbnail_url: Optional[str] = Field(None)
 
 
 class ConstructionPartList(BaseModel):
