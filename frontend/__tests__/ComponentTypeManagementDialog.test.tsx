@@ -23,10 +23,11 @@ let typesReturn: {
   types: Array<Record<string, unknown>>;
   isLoading: boolean;
   mutate: () => void;
+  error?: Error | null;
 } = { types: [], isLoading: false, mutate: vi.fn() };
 
 vi.mock("@/hooks/useComponentTypes", () => ({
-  useComponentTypes: () => ({ ...typesReturn, error: null }),
+  useComponentTypes: () => ({ error: null, ...typesReturn }),
   createComponentType: vi.fn().mockResolvedValue({}),
   updateComponentType: vi.fn().mockResolvedValue({}),
   deleteComponentType: vi.fn().mockResolvedValue(undefined),
@@ -131,6 +132,22 @@ describe("ComponentTypeManagementDialog", () => {
     render(<ComponentTypeManagementDialog open={true} onClose={vi.fn()} />);
     fireEvent.click(screen.getByTitle(/Edit Material/i));
     expect(screen.getByText(/Edit Type: Material/i)).toBeDefined();
+  });
+
+  it("shows a visible error when the GET /component-types fetch fails", () => {
+    // Regression for the 2026-04-16 bug report: both the Mgmt dialog list
+    // and the New-Component dropdown were empty, but the user had no visible
+    // feedback because the hook swallowed the error. With this fix, any SWR
+    // error surfaces in the dialog.
+    typesReturn = {
+      types: [],
+      isLoading: false,
+      mutate: vi.fn(),
+      error: new Error("404 Not Found: /component-types"),
+    };
+    render(<ComponentTypeManagementDialog open={true} onClose={vi.fn()} />);
+    expect(screen.getByText(/Failed to load types/i)).toBeDefined();
+    expect(screen.getByText(/404/)).toBeDefined();
   });
 
   it("Close button calls onClose", () => {
