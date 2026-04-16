@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Check, X } from "lucide-react";
+import { Plus, Check, Scale, X } from "lucide-react";
 import {
   DndContext,
   PointerSensor,
@@ -85,6 +85,36 @@ interface FlattenCallbacks {
   onEdit: (node: ComponentTreeNode) => void;
 }
 
+function weightTooltip(node: ComponentTreeNode): string {
+  const source = node.own_weight_source ?? "none";
+  const own = node.own_weight_g;
+  const total = node.total_weight_g ?? 0;
+  const status = node.weight_status ?? "invalid";
+  const ownStr = own != null ? `${own.toFixed(1)}g` : "—";
+  const sourceLabel: Record<string, string> = {
+    override: "manual override",
+    cots: "from COTS catalog",
+    calculated: "calculated from volume + material",
+    none: "no own weight",
+  };
+  if (status === "invalid") {
+    return "Weight unknown — neither weight_override_g is set nor can it be calculated from material + volume (or COTS mass).";
+  }
+  return `Own: ${ownStr} (${sourceLabel[source]}). Total (with children): ${total.toFixed(1)}g.`;
+}
+
+/** Aggregate weight status for the root-level indicator next to the tree title. */
+function aggregateRootStatus(
+  roots: ComponentTreeNode[],
+): { status: "valid" | "partial" | "invalid"; total: number } {
+  if (roots.length === 0) return { status: "invalid", total: 0 };
+  const total = roots.reduce((sum, r) => sum + (r.total_weight_g ?? 0), 0);
+  const statuses = roots.map((r) => r.weight_status ?? "invalid");
+  if (statuses.every((s) => s === "valid")) return { status: "valid", total };
+  if (statuses.every((s) => s === "invalid")) return { status: "invalid", total };
+  return { status: "partial", total };
+}
+
 function flattenTree(
   nodes: ComponentTreeNode[],
   level: number,
@@ -97,6 +127,16 @@ function flattenTree(
     const hasChildren = node.children && node.children.length > 0;
     const isExpanded = expanded.has(String(node.id));
     const isGroup = node.node_type === "group";
+    // Use total_weight_g from the backend enrichment (gh#78). Fall back to
+    // weight_override_g for backward compatibility with older responses.
+    const totalG = node.total_weight_g;
+    const annotation =
+      totalG != null && totalG > 0
+        ? `${totalG.toFixed(1)}g`
+        : node.weight_override_g != null
+        ? `${node.weight_override_g}g`
+        : undefined;
+
     result.push({
       id: String(node.id),
       label: node.name,
@@ -105,13 +145,15 @@ function flattenTree(
       leaf: !hasChildren,
       selected: node.id === selectedId,
       chip: node.node_type === "cots" ? "COTS" : node.node_type === "cad_shape" ? "CAD" : undefined,
-      annotation: node.weight_override_g != null ? `${node.weight_override_g}g` : undefined,
+      annotation,
       onClick: () => cb.onSelect(node),
       onDelete: () => cb.onDelete(node),
       onAdd: isGroup ? () => cb.onAdd(node) : undefined,
       addTitle: isGroup ? `Add to ${node.name}` : undefined,
       onEdit: () => cb.onEdit(node),
       editTitle: `Edit ${node.name}`,
+      weightStatus: node.weight_status,
+      weightTooltip: weightTooltip(node),
     });
     if (hasChildren && isExpanded) {
       result.push(...flattenTree(node.children, level + 1, expanded, cb, selectedId));
@@ -317,18 +359,43 @@ export function ComponentTree({
     selectedNodeId,
   );
 
+  const rootAgg = aggregateRootStatus(tree);
+
   return (
     <>
       <TreeCard
         title="Component Tree"
+        badge={rootAgg.total > 0 ? `${rootAgg.total.toFixed(1)}g` : undefined}
+        badgeVariant="primary"
         actions={
-          <button
-            onClick={openRootAddMenu}
-            className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-            title="Add to root"
-          >
-            <Plus size={14} />
-          </button>
+          <>
+            <span
+              title={
+                rootAgg.status === "valid"
+                  ? "All nodes have a valid weight"
+                  : rootAgg.status === "partial"
+                  ? "Some nodes have no weight and are counted as 0"
+                  : "No node in the tree has a valid weight"
+              }
+              className={
+                rootAgg.status === "valid"
+                  ? "text-emerald-500"
+                  : rootAgg.status === "partial"
+                  ? "text-amber-500"
+                  : "text-red-500"
+              }
+              data-root-weight-status={rootAgg.status}
+            >
+              <Scale size={13} />
+            </span>
+            <button
+              onClick={openRootAddMenu}
+              className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+              title="Add to root"
+            >
+              <Plus size={14} />
+            </button>
+          </>
         }
       >
         <DndContext sensors={sensors} onDragEnd={onDragEnd}>

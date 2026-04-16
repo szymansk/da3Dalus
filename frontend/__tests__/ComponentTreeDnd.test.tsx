@@ -17,7 +17,7 @@ vi.mock("lucide-react", () => {
     Plus: icon, Trash2: icon, X: icon, Check: icon,
     ChevronDown: icon, ChevronRight: icon,
     FolderPlus: icon, Package: icon, Box: icon,
-    Search: icon, Loader2: icon, GripVertical: icon, Pencil: icon,
+    Search: icon, Loader2: icon, GripVertical: icon, Pencil: icon, Scale: icon,
   };
 });
 

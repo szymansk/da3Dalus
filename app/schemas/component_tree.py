@@ -51,12 +51,32 @@ class ComponentTreeNodeWrite(BaseModel):
     scale_factor: float = Field(1.0, gt=0, description="Weight scaling factor (empirical)")
 
 
+WeightStatus = Literal["valid", "partial", "invalid"]
+WeightSource = Literal["override", "cots", "calculated", "none"]
+
+
 class ComponentTreeNodeRead(ComponentTreeNodeWrite):
     id: int
     aeroplane_id: str
     synced_from: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+
+    # Weight enrichment — populated by the service on read (gh#78). Optional
+    # so older callers / tools that construct ComponentTreeNodeRead manually
+    # still work.
+    own_weight_g: Optional[float] = Field(
+        None, description="Own weight of this node in grams; null if not derivable."
+    )
+    own_weight_source: WeightSource = Field(
+        "none", description="Where own_weight_g came from."
+    )
+    total_weight_g: float = Field(
+        0.0, description="Own weight plus total weight of every descendant."
+    )
+    weight_status: WeightStatus = Field(
+        "invalid", description="Ampel status: valid / partial / invalid."
+    )
 
 
 class ComponentTreeNodeWithChildren(ComponentTreeNodeRead):

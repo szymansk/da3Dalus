@@ -76,8 +76,49 @@ def _build_tree(
     return roots
 
 
+def _roll_up_weights(
+    node: ComponentTreeNodeWithChildren,
+    own_weights: dict[int, tuple[Optional[float], str]],
+) -> None:
+    """Populate own_weight_g / own_weight_source / total_weight_g / weight_status
+    on `node` and all its descendants (post-order traversal).
+
+    Logic (gh#78):
+      * Own source comes from `own_weights[node_id]` (computed elsewhere).
+      * Leaf: status = valid if has_own else invalid.
+      * Non-leaf:
+          - all children valid → valid
+          - all children invalid → invalid when own is absent, else partial
+          - mixed → partial
+      * total_weight_g = (own_weight_g or 0) + sum(child.total_weight_g).
+    """
+    for child in node.children:
+        _roll_up_weights(child, own_weights)
+
+    own, source = own_weights.get(node.id, (None, "none"))
+    has_own = source != "none"
+
+    node.own_weight_g = own
+    node.own_weight_source = source  # type: ignore[assignment]
+    node.total_weight_g = (own or 0.0) + sum(c.total_weight_g for c in node.children)
+
+    if not node.children:
+        node.weight_status = "valid" if has_own else "invalid"  # type: ignore[assignment]
+        return
+
+    child_statuses = [c.weight_status for c in node.children]
+    all_valid = all(s == "valid" for s in child_statuses)
+    all_invalid = all(s == "invalid" for s in child_statuses)
+    if all_valid:
+        node.weight_status = "valid"  # type: ignore[assignment]
+    elif all_invalid:
+        node.weight_status = "partial" if has_own else "invalid"  # type: ignore[assignment]
+    else:
+        node.weight_status = "partial"  # type: ignore[assignment]
+
+
 def get_tree(db: Session, aeroplane_id: str) -> ComponentTreeResponse:
-    """Get the full component tree for an aeroplane."""
+    """Get the full component tree for an aeroplane (with weight enrichment per gh#78)."""
     nodes = (
         db.query(ComponentTreeNodeModel)
         .filter(ComponentTreeNodeModel.aeroplane_id == aeroplane_id)
@@ -85,6 +126,15 @@ def get_tree(db: Session, aeroplane_id: str) -> ComponentTreeResponse:
         .all()
     )
     tree = _build_tree(nodes)
+
+    # Pre-compute own weight + source for every node once, so the recursion
+    # below doesn't re-hit the DB N times.
+    own_weights: dict[int, tuple[Optional[float], str]] = {
+        n.id: _calculate_own_weight(db, n) for n in nodes
+    }
+    for root in tree:
+        _roll_up_weights(root, own_weights)
+
     return ComponentTreeResponse(
         aeroplane_id=aeroplane_id,
         root_nodes=tree,
