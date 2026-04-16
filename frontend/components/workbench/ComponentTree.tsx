@@ -1,11 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Check, X } from "lucide-react";
 import { TreeCard } from "@/components/workbench/TreeCard";
 import { SimpleTreeRow, type SimpleTreeNode } from "@/components/workbench/SimpleTreeRow";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
-import { useComponentTree, addTreeNode, deleteTreeNode, type ComponentTreeNode } from "@/hooks/useComponentTree";
+import {
+  useComponentTree,
+  addTreeNode,
+  deleteTreeNode,
+  type ComponentTreeNode,
+} from "@/hooks/useComponentTree";
+import { GroupAddMenu } from "@/components/workbench/GroupAddMenu";
+import { CotsPickerDialog } from "@/components/workbench/CotsPickerDialog";
+import type { Component } from "@/hooks/useComponents";
+
+type AddFlowStage =
+  | { kind: "idle" }
+  | { kind: "menu"; parentId: number | null; parentName: string }
+  | { kind: "newGroup"; parentId: number | null; parentName: string }
+  | { kind: "cotsPicker"; parentId: number | null; parentName: string };
 
 function flattenTree(
   nodes: ComponentTreeNode[],
@@ -13,12 +27,14 @@ function flattenTree(
   expanded: Set<string>,
   onSelect: (node: ComponentTreeNode) => void,
   onDelete: (node: ComponentTreeNode) => void,
+  onAdd: (node: ComponentTreeNode) => void,
   selectedId: number | null,
 ): SimpleTreeNode[] {
   const result: SimpleTreeNode[] = [];
   for (const node of nodes) {
     const hasChildren = node.children && node.children.length > 0;
     const isExpanded = expanded.has(String(node.id));
+    const isGroup = node.node_type === "group";
     result.push({
       id: String(node.id),
       label: node.name,
@@ -30,12 +46,62 @@ function flattenTree(
       annotation: node.weight_override_g != null ? `${node.weight_override_g}g` : undefined,
       onClick: () => onSelect(node),
       onDelete: () => onDelete(node),
+      onAdd: isGroup ? () => onAdd(node) : undefined,
+      addTitle: isGroup ? `Add to ${node.name}` : undefined,
     });
     if (hasChildren && isExpanded) {
-      result.push(...flattenTree(node.children, level + 1, expanded, onSelect, onDelete, selectedId));
+      result.push(
+        ...flattenTree(node.children, level + 1, expanded, onSelect, onDelete, onAdd, selectedId),
+      );
     }
   }
   return result;
+}
+
+interface NewGroupInputProps {
+  onSubmit: (name: string) => void;
+  onCancel: () => void;
+}
+
+function NewGroupInput({ onSubmit, onCancel }: NewGroupInputProps) {
+  const [value, setValue] = useState("");
+
+  function trySubmit() {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    onSubmit(trimmed);
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 rounded-xl border border-primary bg-card px-2 py-1.5">
+      <input
+        autoFocus
+        type="text"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") trySubmit();
+          if (e.key === "Escape") onCancel();
+        }}
+        placeholder="Group name..."
+        className="flex-1 bg-transparent text-[12px] text-foreground outline-none placeholder:text-subtle-foreground"
+      />
+      <button
+        onClick={trySubmit}
+        className="flex size-5 items-center justify-center rounded-full text-primary hover:bg-sidebar-accent"
+        aria-label="Create group"
+      >
+        <Check size={12} />
+      </button>
+      <button
+        onClick={onCancel}
+        className="flex size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent"
+        aria-label="Cancel"
+      >
+        <X size={12} />
+      </button>
+    </div>
+  );
 }
 
 export function ComponentTree() {
@@ -43,11 +109,13 @@ export function ComponentTree() {
   const { tree, mutate } = useComponentTree(aeroplaneId);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
+  const [addFlow, setAddFlow] = useState<AddFlowStage>({ kind: "idle" });
 
   const toggle = (id: string) => {
     setExpanded((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -68,44 +136,140 @@ export function ComponentTree() {
     }
   };
 
-  const handleAddGroup = async () => {
+  const openAddMenu = (node: ComponentTreeNode) => {
+    // Auto-expand the target group so a newly created child is visible right away.
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.add(String(node.id));
+      return next;
+    });
+    setAddFlow({ kind: "menu", parentId: node.id, parentName: node.name });
+  };
+
+  const openRootAddMenu = () => {
+    setAddFlow({ kind: "menu", parentId: null, parentName: "root" });
+  };
+
+  const handleCreateGroup = async (name: string) => {
     if (!aeroplaneId) return;
-    const name = prompt("Group name?");
-    if (!name) return;
+    const parentId = addFlow.kind === "newGroup" ? addFlow.parentId : null;
     try {
-      await addTreeNode(aeroplaneId, { node_type: "group", name });
+      await addTreeNode(aeroplaneId, {
+        parent_id: parentId,
+        node_type: "group",
+        name,
+      });
       mutate();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Add failed");
+    } finally {
+      setAddFlow({ kind: "idle" });
     }
   };
 
-  const rows = flattenTree(tree, 0, expanded, handleSelect, handleDelete, selectedNodeId);
+  const handleAssignCots = async (component: Component) => {
+    if (!aeroplaneId) return;
+    const parentId = addFlow.kind === "cotsPicker" ? addFlow.parentId : null;
+    try {
+      await addTreeNode(aeroplaneId, {
+        parent_id: parentId,
+        node_type: "cots",
+        name: component.name,
+        component_id: component.id,
+        quantity: 1,
+      });
+      mutate();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Assign failed");
+    } finally {
+      setAddFlow({ kind: "idle" });
+    }
+  };
+
+  const rows = flattenTree(
+    tree,
+    0,
+    expanded,
+    handleSelect,
+    handleDelete,
+    openAddMenu,
+    selectedNodeId,
+  );
 
   return (
-    <TreeCard
-      title="Component Tree"
-      actions={
-        <button
-          onClick={handleAddGroup}
-          className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-          title="Add group"
+    <>
+      <TreeCard
+        title="Component Tree"
+        actions={
+          <button
+            onClick={openRootAddMenu}
+            className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+            title="Add to root"
+          >
+            <Plus size={14} />
+          </button>
+        }
+      >
+        <div className="flex flex-col gap-0.5">
+          {rows.length === 0 ? (
+            <p className="py-4 text-center text-[11px] text-muted-foreground">
+              No components yet. Add a group or assign a component.
+            </p>
+          ) : (
+            rows.map((node) => (
+              <SimpleTreeRow key={node.id} node={node} onToggle={() => toggle(node.id)} />
+            ))
+          )}
+
+          {addFlow.kind === "newGroup" && (
+            <div className="px-1 py-1">
+              <NewGroupInput
+                onSubmit={handleCreateGroup}
+                onCancel={() => setAddFlow({ kind: "idle" })}
+              />
+            </div>
+          )}
+        </div>
+      </TreeCard>
+
+      {addFlow.kind === "menu" && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40"
+          onClick={() => setAddFlow({ kind: "idle" })}
         >
-          <Plus size={14} />
-        </button>
-      }
-    >
-      <div className="flex flex-col gap-0.5">
-        {rows.length === 0 ? (
-          <p className="py-4 text-center text-[11px] text-muted-foreground">
-            No components yet. Add a group or assign COTS parts.
-          </p>
-        ) : (
-          rows.map((node) => (
-            <SimpleTreeRow key={node.id} node={node} onToggle={() => toggle(node.id)} />
-          ))
-        )}
-      </div>
-    </TreeCard>
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <GroupAddMenu
+              groupName={addFlow.parentName}
+              onNewGroup={() =>
+                setAddFlow({
+                  kind: "newGroup",
+                  parentId: addFlow.parentId,
+                  parentName: addFlow.parentName,
+                })
+              }
+              onAssignCots={() =>
+                setAddFlow({
+                  kind: "cotsPicker",
+                  parentId: addFlow.parentId,
+                  parentName: addFlow.parentName,
+                })
+              }
+              onAssignConstructionPart={() => {
+                /* gh#57-wvg: wired when the Construction-Parts picker ships. */
+              }}
+              onClose={() => setAddFlow({ kind: "idle" })}
+              constructionPartsEnabled={false}
+            />
+          </div>
+        </div>
+      )}
+
+      <CotsPickerDialog
+        open={addFlow.kind === "cotsPicker"}
+        onClose={() => setAddFlow({ kind: "idle" })}
+        onSelect={handleAssignCots}
+        targetGroupName={addFlow.kind === "cotsPicker" ? addFlow.parentName : undefined}
+      />
+    </>
   );
 }
