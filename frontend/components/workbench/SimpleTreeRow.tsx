@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronRight, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 
 export interface SimpleTreeNode {
   id: string;
@@ -15,6 +15,10 @@ export interface SimpleTreeNode {
   annotationPrimary?: boolean;
   onClick?: () => void;
   onDelete?: () => void;
+  /** Optional per-row add action. Rendered only when provided (typically group rows only). */
+  onAdd?: () => void;
+  /** Tooltip for the add button; also used as a test hook via title="…". */
+  addTitle?: string;
 }
 
 interface SimpleTreeRowProps {
@@ -64,6 +68,15 @@ export function SimpleTreeRow({ node, onToggle }: SimpleTreeRowProps) {
         >
           {node.annotation}
         </span>
+      )}
+      {node.onAdd && (
+        <button
+          onClick={(e) => { e.stopPropagation(); node.onAdd?.(); }}
+          title={node.addTitle ?? "Add"}
+          className="hidden size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground group-hover:flex"
+        >
+          <Plus size={10} />
+        </button>
       )}
       {node.onDelete && (
         <button
