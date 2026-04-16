@@ -1,7 +1,9 @@
 "use client";
 
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Plus, Scale, Trash2 } from "lucide-react";
+
+export type SimpleTreeWeightStatus = "valid" | "partial" | "invalid";
 
 export interface SimpleTreeNode {
   id: string;
@@ -24,6 +26,10 @@ export interface SimpleTreeNode {
   onEdit?: () => void;
   /** Tooltip/test hook for the edit button. Defaults to "Edit {label}". */
   editTitle?: string;
+  /** Weight status (gh#78). Renders a colored scale icon when set. */
+  weightStatus?: SimpleTreeWeightStatus;
+  /** Tooltip text for the weight icon. */
+  weightTooltip?: string;
 }
 
 interface SimpleTreeRowProps {
@@ -85,6 +91,21 @@ export function SimpleTreeRow({ node, onToggle }: SimpleTreeRowProps) {
         </span>
       )}
       <span className="flex-1" />
+      {node.weightStatus && (
+        <span
+          title={node.weightTooltip ?? `Weight: ${node.weightStatus}`}
+          className={
+            node.weightStatus === "valid"
+              ? "text-emerald-500"
+              : node.weightStatus === "partial"
+              ? "text-amber-500"
+              : "text-red-500"
+          }
+          data-weight-status={node.weightStatus}
+        >
+          <Scale size={11} />
+        </span>
+      )}
       {node.annotation && (
         <span
           className={`font-[family-name:var(--font-jetbrains-mono)] text-[11px] ${node.annotationPrimary ? "text-primary" : "text-muted-foreground"}`}

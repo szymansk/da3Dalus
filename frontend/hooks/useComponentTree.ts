@@ -3,6 +3,9 @@
 import useSWR from "swr";
 import { fetcher, API_BASE } from "@/lib/fetcher";
 
+export type WeightStatus = "valid" | "partial" | "invalid";
+export type WeightSource = "override" | "cots" | "calculated" | "none";
+
 export interface ComponentTreeNode {
   id: number;
   aeroplane_id: string;
@@ -30,6 +33,11 @@ export interface ComponentTreeNode {
   material_id?: number | null;
   print_type?: string | null;
   scale_factor?: number;
+  // Weight enrichment (gh#78)
+  own_weight_g?: number | null;
+  own_weight_source?: WeightSource;
+  total_weight_g?: number;
+  weight_status?: WeightStatus;
   children: ComponentTreeNode[];
 }
 
