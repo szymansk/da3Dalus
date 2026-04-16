@@ -27,6 +27,15 @@ class ComponentTreeNodeWrite(BaseModel):
     component_id: Optional[int] = Field(None, description="Reference to components table")
     quantity: int = Field(1, ge=1, description="Quantity of this component")
 
+    # cad_shape — manually uploaded source. When set on create, the service
+    # snapshots volume_mm3 / area_mm2 / material_id from the referenced part
+    # (unless those fields are also explicitly provided in the request).
+    construction_part_id: Optional[int] = Field(
+        None,
+        description="Reference to construction_parts table (gh#57). Mutually "
+                    "compatible with shape_key (Creator pipeline source).",
+    )
+
     # Position / Orientation
     pos_x: float = Field(0, description="X position in mm")
     pos_y: float = Field(0, description="Y position in mm")
