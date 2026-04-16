@@ -13,6 +13,7 @@ export interface ComponentTreeNode {
   component_id: number | null;
   quantity: number;
   weight_override_g: number | null;
+  synced_from?: string | null;
   children: ComponentTreeNode[];
 }
 
@@ -58,4 +59,24 @@ export async function deleteTreeNode(aeroplaneId: string, nodeId: number): Promi
     const detail = await res.text();
     throw new Error(`Delete failed: ${res.status} ${detail}`);
   }
+}
+
+export async function moveTreeNode(
+  aeroplaneId: string,
+  nodeId: number,
+  body: { new_parent_id: number | null; sort_index: number },
+): Promise<ComponentTreeNode> {
+  const res = await fetch(
+    `${API_BASE}/aeroplanes/${aeroplaneId}/component-tree/${nodeId}/move`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Move failed: ${res.status} ${detail}`);
+  }
+  return res.json();
 }

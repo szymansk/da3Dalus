@@ -1,5 +1,6 @@
 "use client";
 
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 
 export interface SimpleTreeNode {
@@ -29,6 +30,20 @@ interface SimpleTreeRowProps {
 export function SimpleTreeRow({ node, onToggle }: SimpleTreeRowProps) {
   const indent = node.level * 20;
 
+  // dnd-kit hooks: each row is BOTH draggable (source) and droppable (target).
+  // We share the same id space so the parent's onDragEnd can resolve the move
+  // through the existing tree data.
+  const dndId = `node-${node.id}`;
+  const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
+    id: dndId,
+  });
+  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: dndId });
+
+  function setRefs(el: HTMLDivElement | null) {
+    setDragRef(el);
+    setDropRef(el);
+  }
+
   function handleClick() {
     if (!node.leaf) onToggle();
     node.onClick?.();
@@ -36,9 +51,13 @@ export function SimpleTreeRow({ node, onToggle }: SimpleTreeRowProps) {
 
   return (
     <div
+      ref={setRefs}
+      {...attributes}
+      {...listeners}
+      aria-roledescription="sortable"
       className={`group flex w-full items-center gap-1.5 rounded-xl py-1.5 pr-2 hover:bg-sidebar-accent cursor-pointer ${
         node.selected ? "bg-sidebar-accent font-semibold" : ""
-      }`}
+      } ${isOver ? "ring-2 ring-primary" : ""} ${isDragging ? "opacity-40" : ""}`}
       style={{ paddingLeft: indent }}
       onClick={handleClick}
     >

@@ -2,6 +2,14 @@
 
 import { useState } from "react";
 import { Plus, Check, X } from "lucide-react";
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
 import { TreeCard } from "@/components/workbench/TreeCard";
 import { SimpleTreeRow, type SimpleTreeNode } from "@/components/workbench/SimpleTreeRow";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
@@ -9,11 +17,57 @@ import {
   useComponentTree,
   addTreeNode,
   deleteTreeNode,
+  moveTreeNode,
   type ComponentTreeNode,
 } from "@/hooks/useComponentTree";
 import { GroupAddMenu } from "@/components/workbench/GroupAddMenu";
 import { CotsPickerDialog } from "@/components/workbench/CotsPickerDialog";
 import type { Component } from "@/hooks/useComponents";
+import { computeMoveResult } from "@/lib/treeDnd";
+
+/**
+ * Pure drop handler — separated so it can be unit-tested without simulating
+ * mouse events. Returns silently on invalid drops (cycle, leaf-as-target,
+ * drop-on-self, drop-outside). On success: optimistic mutate + API call +
+ * rollback mutate on failure.
+ */
+export interface HandleDragEndArgs {
+  activeId: number;
+  overId: number | null;
+  tree: ComponentTreeNode[];
+  aeroplaneId: string;
+  moveFn: typeof moveTreeNode;
+  mutateFn: () => void;
+}
+
+export async function handleDragEnd({
+  activeId,
+  overId,
+  tree,
+  aeroplaneId,
+  moveFn,
+  mutateFn,
+}: HandleDragEndArgs): Promise<void> {
+  if (overId == null) return;
+  const result = computeMoveResult(tree, activeId, overId, "into");
+  if (!result) return;
+
+  // Optimistic refetch trigger (UI updates after the server confirms).
+  mutateFn();
+  try {
+    await moveFn(aeroplaneId, activeId, {
+      new_parent_id: result.newParentId,
+      sort_index: result.sortIndex,
+    });
+    mutateFn();
+  } catch (err) {
+    // Rollback: refetch from server to discard any client-side optimistic state.
+    mutateFn();
+    if (typeof window !== "undefined") {
+      alert(err instanceof Error ? err.message : "Move failed");
+    }
+  }
+}
 
 type AddFlowStage =
   | { kind: "idle" }
@@ -110,6 +164,29 @@ export function ComponentTree() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
   const [addFlow, setAddFlow] = useState<AddFlowStage>({ kind: "idle" });
+
+  // Pointer sensor with a small activation distance avoids hijacking simple
+  // clicks (open menu, select node) for drags. Touch sensor brings drag-and-
+  // drop to mobile.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+  );
+
+  function onDragEnd(event: DragEndEvent) {
+    if (!aeroplaneId) return;
+    const activeId = Number(String(event.active.id).replace(/^node-/, ""));
+    const overId = event.over ? Number(String(event.over.id).replace(/^node-/, "")) : null;
+    if (Number.isNaN(activeId)) return;
+    void handleDragEnd({
+      activeId,
+      overId,
+      tree,
+      aeroplaneId,
+      moveFn: moveTreeNode,
+      mutateFn: mutate,
+    });
+  }
 
   const toggle = (id: string) => {
     setExpanded((prev) => {
@@ -210,6 +287,7 @@ export function ComponentTree() {
           </button>
         }
       >
+        <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div className="flex flex-col gap-0.5">
           {rows.length === 0 ? (
             <p className="py-4 text-center text-[11px] text-muted-foreground">
@@ -230,6 +308,7 @@ export function ComponentTree() {
             </div>
           )}
         </div>
+        </DndContext>
       </TreeCard>
 
       {addFlow.kind === "menu" && (
