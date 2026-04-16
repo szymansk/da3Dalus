@@ -1,11 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Package, Search, Plus, Settings, Trash2 } from "lucide-react";
+import { Package, Search, Plus, Settings, Trash2, Box } from "lucide-react";
 import { WorkbenchTwoPanel } from "@/components/workbench/WorkbenchTwoPanel";
 import { ComponentTree } from "@/components/workbench/ComponentTree";
 import { ComponentEditDialog } from "@/components/workbench/ComponentEditDialog";
+import { ConstructionPartsGrid } from "@/components/workbench/ConstructionPartsGrid";
+import { ConstructionPartUploadDialog } from "@/components/workbench/ConstructionPartUploadDialog";
+import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useComponents, deleteComponent, type Component } from "@/hooks/useComponents";
+import { useConstructionParts } from "@/hooks/useConstructionParts";
+
+type View = "library" | "construction";
 
 const TYPE_ICONS: Record<string, string> = {
   servo: "\u2699",
@@ -20,10 +26,14 @@ const TYPE_ICONS: Record<string, string> = {
 };
 
 export default function ComponentsPage() {
+  const { aeroplaneId } = useAeroplaneContext();
+  const [view, setView] = useState<View>("library");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("");
   const { components, total, isLoading, mutate } = useComponents(typeFilter || undefined, search || undefined);
   const [editDialog, setEditDialog] = useState<{ open: boolean; component: Component | null }>({ open: false, component: null });
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const { mutate: mutateParts } = useConstructionParts(aeroplaneId);
 
   const handleDelete = async (comp: Component) => {
     if (!confirm(`Delete "${comp.name}"?`)) return;
@@ -41,6 +51,45 @@ export default function ComponentsPage() {
       <ComponentTree />
 
       <div className="flex w-full flex-col gap-4 overflow-y-auto">
+        {/* View Toggle */}
+        <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1 self-start">
+          <button
+            onClick={() => setView("library")}
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] ${
+              view === "library"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Package size={12} />
+            Library
+          </button>
+          <button
+            onClick={() => setView("construction")}
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] ${
+              view === "construction"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Box size={12} />
+            Construction Parts
+          </button>
+        </div>
+
+        {view === "construction" ? (
+          aeroplaneId ? (
+            <ConstructionPartsGrid
+              aeroplaneId={aeroplaneId}
+              onRequestUpload={() => setUploadOpen(true)}
+            />
+          ) : (
+            <p className="py-8 text-center text-[13px] text-muted-foreground">
+              Select an aeroplane first.
+            </p>
+          )
+        ) : (
+        <>
         {/* Header */}
         <div className="flex items-center gap-2.5">
           <Package className="size-5 text-primary" />
@@ -169,6 +218,8 @@ export default function ComponentsPage() {
             ))}
           </div>
         )}
+        </>
+        )}
       </div>
     </WorkbenchTwoPanel>
 
@@ -183,6 +234,15 @@ export default function ComponentsPage() {
         onClose={() => setEditDialog({ open: false, component: null })}
         onSaved={() => mutate()}
         component={editDialog.component}
+      />
+    )}
+
+    {uploadOpen && aeroplaneId && (
+      <ConstructionPartUploadDialog
+        open={uploadOpen}
+        aeroplaneId={aeroplaneId}
+        onClose={() => setUploadOpen(false)}
+        onSaved={() => mutateParts()}
       />
     )}
     </>

@@ -20,6 +20,8 @@ vi.mock("lucide-react", () => {
   return {
     Package: icon, Search: icon, Plus: icon, Settings: icon, Trash2: icon,
     X: icon, Loader2: icon, ChevronDown: icon, ChevronRight: icon,
+    Box: icon, Lock: icon, Unlock: icon, Upload: icon,
+    FolderPlus: icon, Check: icon, GripVertical: icon,
   };
 });
 
@@ -48,6 +50,22 @@ vi.mock("@/hooks/useComponentTree", () => ({
   }),
   addTreeNode: vi.fn().mockResolvedValue({}),
   deleteTreeNode: vi.fn().mockResolvedValue(undefined),
+  moveTreeNode: vi.fn().mockResolvedValue({}),
+}));
+
+vi.mock("@/hooks/useConstructionParts", () => ({
+  useConstructionParts: () => ({
+    parts: [],
+    total: 0,
+    error: null,
+    isLoading: false,
+    mutate: vi.fn(),
+  }),
+  uploadConstructionPart: vi.fn().mockResolvedValue({}),
+  deleteConstructionPart: vi.fn().mockResolvedValue(undefined),
+  updateConstructionPart: vi.fn().mockResolvedValue({}),
+  lockConstructionPart: vi.fn().mockResolvedValue({}),
+  unlockConstructionPart: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock("@/components/workbench/AeroplaneContext", () => ({
