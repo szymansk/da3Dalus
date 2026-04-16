@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import InternalError, NotFoundError, ValidationError
 from app.models.component_tree import ComponentTreeNodeModel
 from app.models.component import ComponentModel
+from app.models.construction_part import ConstructionPartModel
 from app.schemas.component_tree import (
     ComponentTreeNodeRead,
     ComponentTreeNodeWithChildren,
@@ -34,6 +35,7 @@ def _to_schema(m: ComponentTreeNodeModel) -> ComponentTreeNodeRead:
         area_mm2=m.area_mm2,
         component_id=m.component_id,
         quantity=m.quantity,
+        construction_part_id=m.construction_part_id,
         pos_x=m.pos_x,
         pos_y=m.pos_y,
         pos_z=m.pos_z,
@@ -93,7 +95,13 @@ def get_tree(db: Session, aeroplane_id: str) -> ComponentTreeResponse:
 def add_node(
     db: Session, aeroplane_id: str, data: ComponentTreeNodeWrite
 ) -> ComponentTreeNodeRead:
-    """Add a node to the tree."""
+    """Add a node to the tree.
+
+    When `construction_part_id` is set, the referenced part is loaded and its
+    `volume_mm3`, `area_mm2`, and `material_component_id` are snapshotted onto
+    the new node — but only for fields the caller did NOT explicitly pass
+    (explicit values always win).
+    """
     try:
         if data.parent_id:
             parent = db.query(ComponentTreeNodeModel).filter(
@@ -103,15 +111,39 @@ def add_node(
             if not parent:
                 raise NotFoundError(entity="Parent node", resource_id=data.parent_id)
 
-        node = ComponentTreeNodeModel(
-            aeroplane_id=aeroplane_id,
-            **data.model_dump(),
-        )
+        payload = data.model_dump()
+
+        if data.construction_part_id is not None:
+            part = (
+                db.query(ConstructionPartModel)
+                .filter(
+                    ConstructionPartModel.id == data.construction_part_id,
+                    ConstructionPartModel.aeroplane_id == aeroplane_id,
+                )
+                .first()
+            )
+            if part is None:
+                raise ValidationError(
+                    message=(
+                        f"construction_part_id={data.construction_part_id} does not "
+                        f"exist for aeroplane '{aeroplane_id}'."
+                    ),
+                )
+            # Snapshot — only fill fields the caller didn't explicitly set.
+            explicit = data.model_dump(exclude_unset=True)
+            if "volume_mm3" not in explicit and part.volume_mm3 is not None:
+                payload["volume_mm3"] = part.volume_mm3
+            if "area_mm2" not in explicit and part.area_mm2 is not None:
+                payload["area_mm2"] = part.area_mm2
+            if "material_id" not in explicit and part.material_component_id is not None:
+                payload["material_id"] = part.material_component_id
+
+        node = ComponentTreeNodeModel(aeroplane_id=aeroplane_id, **payload)
         db.add(node)
         db.commit()
         db.refresh(node)
         return _to_schema(node)
-    except NotFoundError:
+    except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as exc:
         db.rollback()

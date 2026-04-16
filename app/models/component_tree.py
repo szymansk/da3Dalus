@@ -34,6 +34,17 @@ class ComponentTreeNodeModel(Base):
     component_id = Column(Integer, ForeignKey("components.id"), nullable=True)
     quantity = Column(Integer, default=1)
 
+    # For node_type = "cad_shape" with a manually uploaded source — references a
+    # row in `construction_parts` (gh#57-g4h). When set, the service snapshots
+    # volume_mm3 / area_mm2 / material_id from the referenced part on create.
+    # Mutually compatible with `shape_key` (Creator-pipeline source); both fields
+    # may exist on different nodes, but typically only one of them is set per node.
+    construction_part_id = Column(
+        Integer,
+        ForeignKey("construction_parts.id"),
+        nullable=True,
+    )
+
     # Position / Orientation (6-DOF)
     pos_x = Column(Float, default=0)
     pos_y = Column(Float, default=0)
