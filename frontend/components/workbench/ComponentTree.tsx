@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Check, Scale, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import {
   DndContext,
   PointerSensor,
@@ -13,6 +13,7 @@ import {
 import { TreeCard } from "@/components/workbench/TreeCard";
 import { SimpleTreeRow, type SimpleTreeNode } from "@/components/workbench/SimpleTreeRow";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
+import { useAeroplanes } from "@/hooks/useAeroplanes";
 import {
   useComponentTree,
   addTreeNode,
@@ -77,6 +78,16 @@ type AddFlowStage =
   | { kind: "newGroup"; parentId: number | null; parentName: string }
   | { kind: "cotsPicker"; parentId: number | null; parentName: string }
   | { kind: "constructionPartsPicker"; parentId: number | null; parentName: string };
+
+/**
+ * Sentinel ID for the synthesised root row (labelled with the aeroplane's
+ * name). This row does not exist in the backend `component_tree` table — it
+ * is a purely visual container so all real roots (`wing`, user groups, etc.)
+ * nest under a single aeroplane-named node instead of floating loose. A
+ * non-numeric string keeps it out of the way of real numeric node IDs in
+ * dnd-kit ids and the `expanded` Set.
+ */
+export const VIRTUAL_ROOT_ID = "__root__";
 
 interface FlattenCallbacks {
   onSelect: (node: ComponentTreeNode) => void;
@@ -221,9 +232,18 @@ export function ComponentTree({
 }: ComponentTreeProps = {}) {
   const { aeroplaneId } = useAeroplaneContext();
   const { tree, mutate } = useComponentTree(aeroplaneId);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const { aeroplanes } = useAeroplanes();
+  // Virtual root starts expanded by default so all real tree rows remain
+  // visible on first render. Users can collapse it to hide everything — the
+  // root row itself (with label + aggregated weight) always stays visible.
+  const [expanded, setExpanded] = useState<Set<string>>(
+    () => new Set([VIRTUAL_ROOT_ID]),
+  );
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
   const [addFlow, setAddFlow] = useState<AddFlowStage>({ kind: "idle" });
+
+  const aeroplaneName =
+    aeroplanes.find((a) => a.id === aeroplaneId)?.name ?? "Aeroplane";
 
   // Pointer sensor with a small activation distance avoids hijacking simple
   // clicks (open menu, select node) for drags. Touch sensor brings drag-and-
@@ -235,9 +255,40 @@ export function ComponentTree({
 
   function onDragEnd(event: DragEndEvent) {
     if (!aeroplaneId) return;
-    const activeId = Number(String(event.active.id).replace(/^node-/, ""));
-    const overId = event.over ? Number(String(event.over.id).replace(/^node-/, "")) : null;
+    const activeStr = String(event.active.id).replace(/^node-/, "");
+    const overStr = event.over
+      ? String(event.over.id).replace(/^node-/, "")
+      : null;
+
+    // The virtual root is display-only — it can never be the drag source.
+    if (activeStr === VIRTUAL_ROOT_ID) return;
+
+    const activeId = Number(activeStr);
     if (Number.isNaN(activeId)) return;
+
+    // Dropping onto the virtual root == reparent to top level. Issues the
+    // move directly (computeMoveResult expects real node IDs on both sides).
+    if (overStr === VIRTUAL_ROOT_ID) {
+      void (async () => {
+        mutate();
+        try {
+          await moveTreeNode(aeroplaneId, activeId, {
+            new_parent_id: null,
+            sort_index: tree.length,
+          });
+          mutate();
+        } catch (err) {
+          mutate();
+          if (typeof window !== "undefined") {
+            alert(err instanceof Error ? err.message : "Move failed");
+          }
+        }
+      })();
+      return;
+    }
+
+    const overId = overStr ? Number(overStr) : null;
+    if (overId !== null && Number.isNaN(overId)) return;
     void handleDragEnd({
       activeId,
       overId,
@@ -346,68 +397,66 @@ export function ComponentTree({
     }
   };
 
-  const rows = flattenTree(
-    tree,
-    0,
-    expanded,
-    {
-      onSelect: handleSelect,
-      onDelete: handleDelete,
-      onAdd: openAddMenu,
-      onEdit: (n) => onNodeEditRequested?.(n),
-    },
-    selectedNodeId,
-  );
-
   const rootAgg = aggregateRootStatus(tree);
+  const virtualExpanded = expanded.has(VIRTUAL_ROOT_ID);
+
+  // Real tree rows are indented one level deeper so they nest visually under
+  // the virtual root. They are only materialised when the virtual root is
+  // expanded — collapsing the root hides the whole tree (native tree UX).
+  const childRows = virtualExpanded
+    ? flattenTree(
+        tree,
+        1,
+        expanded,
+        {
+          onSelect: handleSelect,
+          onDelete: handleDelete,
+          onAdd: openAddMenu,
+          onEdit: (n) => onNodeEditRequested?.(n),
+        },
+        selectedNodeId,
+      )
+    : [];
+
+  const virtualRootRow: SimpleTreeNode = {
+    id: VIRTUAL_ROOT_ID,
+    label: aeroplaneName,
+    level: 0,
+    expanded: virtualExpanded,
+    leaf: false,
+    // No onDelete / onEdit / onClick — the row is a display container. The
+    // chevron-toggle is handled by SimpleTreeRow's built-in `!leaf` click
+    // behaviour. `onAdd` keeps the "+ to root" entry point available on
+    // hover, now attached to the root row instead of the panel header.
+    onAdd: openRootAddMenu,
+    addTitle: `Add to ${aeroplaneName}`,
+    weightStatus: rootAgg.status,
+    weightTooltip:
+      rootAgg.status === "valid"
+        ? "All nodes have a valid weight"
+        : rootAgg.status === "partial"
+        ? "Some nodes have no weight and are counted as 0"
+        : "No node in the tree has a valid weight",
+    annotation:
+      rootAgg.total > 0 ? `${rootAgg.total.toFixed(1)}g` : undefined,
+    annotationPrimary: true,
+  };
+
+  const rows: SimpleTreeNode[] = [virtualRootRow, ...childRows];
 
   return (
     <>
-      <TreeCard
-        title="Component Tree"
-        badge={rootAgg.total > 0 ? `${rootAgg.total.toFixed(1)}g` : undefined}
-        badgeVariant="primary"
-        actions={
-          <>
-            <span
-              title={
-                rootAgg.status === "valid"
-                  ? "All nodes have a valid weight"
-                  : rootAgg.status === "partial"
-                  ? "Some nodes have no weight and are counted as 0"
-                  : "No node in the tree has a valid weight"
-              }
-              className={
-                rootAgg.status === "valid"
-                  ? "text-emerald-500"
-                  : rootAgg.status === "partial"
-                  ? "text-amber-500"
-                  : "text-red-500"
-              }
-              data-root-weight-status={rootAgg.status}
-            >
-              <Scale size={13} />
-            </span>
-            <button
-              onClick={openRootAddMenu}
-              className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-              title="Add to root"
-            >
-              <Plus size={14} />
-            </button>
-          </>
-        }
-      >
+      <TreeCard title="Component Tree">
         <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div className="flex flex-col gap-0.5">
-          {rows.length === 0 ? (
+          {rows.map((node) => (
+            <SimpleTreeRow key={node.id} node={node} onToggle={() => toggle(node.id)} />
+          ))}
+
+          {virtualExpanded && tree.length === 0 && (
             <p className="py-4 text-center text-[11px] text-muted-foreground">
               No components yet. Add a group or assign a component.
             </p>
-          ) : (
-            rows.map((node) => (
-              <SimpleTreeRow key={node.id} node={node} onToggle={() => toggle(node.id)} />
-            ))
           )}
 
           {addFlow.kind === "newGroup" && (
