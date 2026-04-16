@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, ChevronRight, Loader2, X } from "lucide-react";
 import type { Component } from "@/hooks/useComponents";
 import { createComponent, updateComponent } from "@/hooks/useComponents";
-import { useComponentTypes } from "@/hooks/useComponentTypes";
+import {
+  useComponentTypes,
+  type PropertyDefinition,
+} from "@/hooks/useComponentTypes";
 
 interface ComponentEditDialogProps {
   open: boolean;
@@ -13,39 +16,135 @@ interface ComponentEditDialogProps {
   component?: Component | null; // null = create new
 }
 
-export function ComponentEditDialog({ open, onClose, onSaved, component }: ComponentEditDialogProps) {
+/** Default value inserted when a type is selected and specs don't already have the key. */
+function defaultForProp(prop: PropertyDefinition): unknown {
+  if (prop.default != null) return prop.default;
+  if (prop.type === "boolean") return false;
+  return "";
+}
+
+/** Parse a user-entered string back into the property's declared type. */
+function parseValue(prop: PropertyDefinition, raw: unknown): unknown {
+  if (raw === "" || raw == null) return undefined;
+  if (prop.type === "number") {
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : undefined;
+  }
+  if (prop.type === "boolean") {
+    if (typeof raw === "boolean") return raw;
+    return raw === "true" || raw === true;
+  }
+  return String(raw);
+}
+
+function validate(
+  schema: PropertyDefinition[],
+  specs: Record<string, unknown>,
+): { ok: true } | { ok: false; property: string; message: string } {
+  for (const prop of schema) {
+    const raw = specs[prop.name];
+    const parsed = parseValue(prop, raw);
+    if (prop.required && (parsed === undefined || parsed === "")) {
+      return {
+        ok: false, property: prop.name,
+        message: `${prop.label} (${prop.name}) is required.`,
+      };
+    }
+    if (parsed === undefined) continue;
+    if (prop.type === "number") {
+      const n = parsed as number;
+      if (prop.min != null && n < prop.min) {
+        return {
+          ok: false, property: prop.name,
+          message: `${prop.label}: expected ≥ ${prop.min}, got ${n}.`,
+        };
+      }
+      if (prop.max != null && n > prop.max) {
+        return {
+          ok: false, property: prop.name,
+          message: `${prop.label}: expected ≤ ${prop.max}, got ${n}.`,
+        };
+      }
+    }
+    if (prop.type === "enum" && prop.options && !prop.options.includes(String(parsed))) {
+      return {
+        ok: false, property: prop.name,
+        message: `${prop.label}: value '${parsed}' is not in ${JSON.stringify(prop.options)}.`,
+      };
+    }
+  }
+  return { ok: true };
+}
+
+export function ComponentEditDialog({
+  open, onClose, onSaved, component,
+}: ComponentEditDialogProps) {
   const { types } = useComponentTypes();
   const isEdit = !!component;
 
-  const [name, setName] = useState("");
-  const [componentType, setComponentType] = useState("generic");
-  const [manufacturer, setManufacturer] = useState("");
-  const [description, setDescription] = useState("");
-  const [massG, setMassG] = useState("");
+  // All state is seeded once on mount — parent is responsible for mounting/
+  // unmounting us conditionally so that reopening seeds from fresh props.
+  const [name, setName] = useState(component?.name ?? "");
+  const [componentType, setComponentType] = useState(
+    component?.component_type ?? "generic",
+  );
+  const [manufacturer, setManufacturer] = useState(component?.manufacturer ?? "");
+  const [description, setDescription] = useState(component?.description ?? "");
+  const [massG, setMassG] = useState(
+    component?.mass_g != null ? String(component.mass_g) : "",
+  );
+  const [specs, setSpecs] = useState<Record<string, unknown>>(
+    { ...(component?.specs ?? {}) },
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (component) {
-      setName(component.name);
-      setComponentType(component.component_type);
-      setManufacturer(component.manufacturer ?? "");
-      setDescription(component.description ?? "");
-      setMassG(component.mass_g != null ? String(component.mass_g) : "");
-    } else {
-      setName("");
-      setComponentType("generic");
-      setManufacturer("");
-      setDescription("");
-      setMassG("");
-    }
-    setError(null);
-  }, [component, open]);
+  const [showUnknown, setShowUnknown] = useState(false);
 
   if (!open) return null;
 
-  const handleSave = async () => {
+  const currentType = types.find((t) => t.name === componentType);
+  const schema: PropertyDefinition[] = currentType?.schema ?? [];
+  const schemaKeys = new Set(schema.map((p) => p.name));
+  const unknownKeys = Object.keys(specs).filter((k) => !schemaKeys.has(k));
+
+  function handleTypeChange(newType: string) {
+    setComponentType(newType);
+    // Defaults for keys that are new in the target schema get seeded from
+    // the property's `default`; keys that were already set stay; keys that
+    // aren't in the new schema remain in `specs` (tolerant mode) but aren't
+    // rendered.
+    const newSchema =
+      types.find((t) => t.name === newType)?.schema ?? [];
+    setSpecs((prev) => {
+      const next = { ...prev };
+      for (const prop of newSchema) {
+        if (!(prop.name in next)) next[prop.name] = defaultForProp(prop);
+      }
+      return next;
+    });
+  }
+
+  function setSpec(propName: string, value: unknown) {
+    setSpecs((prev) => ({ ...prev, [propName]: value }));
+  }
+
+  async function handleSave() {
     if (!name.trim()) { setError("Name is required"); return; }
+    const result = validate(schema, specs);
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
+    // Parse known specs to their declared types; keep unknown keys raw.
+    const outSpecs: Record<string, unknown> = {};
+    for (const prop of schema) {
+      const parsed = parseValue(prop, specs[prop.name]);
+      if (parsed !== undefined) outSpecs[prop.name] = parsed;
+    }
+    for (const key of unknownKeys) {
+      outSpecs[key] = specs[key];
+    }
+
     setSaving(true);
     setError(null);
     try {
@@ -59,12 +158,12 @@ export function ComponentEditDialog({ open, onClose, onSaved, component }: Compo
         bbox_y_mm: null,
         bbox_z_mm: null,
         model_ref: null,
-        specs: {},
+        specs: outSpecs,
       };
       if (isEdit && component) {
-        await updateComponent(component.id, data as any);
+        await updateComponent(component.id, data as unknown as Component);
       } else {
-        await createComponent(data as any);
+        await createComponent(data as unknown as Component);
       }
       onSaved();
       onClose();
@@ -73,26 +172,37 @@ export function ComponentEditDialog({ open, onClose, onSaved, component }: Compo
     } finally {
       setSaving(false);
     }
-  };
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
-      <div className="flex w-[500px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[85vh] w-[520px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center gap-3">
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
             {isEdit ? "Edit Component" : "New Component"}
           </span>
           <span className="flex-1" />
-          <button onClick={onClose} className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent">
+          <button
+            onClick={onClose}
+            className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent"
+          >
             <X size={16} />
           </button>
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 overflow-y-auto">
           <div className="flex flex-col gap-1">
             <label className="text-[11px] text-muted-foreground">Name *</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-              className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground" />
+            <input
+              type="text" value={name} onChange={(e) => setName(e.target.value)}
+              className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+            />
           </div>
           {/*
            * `min-w-0` on the flex items + `w-full` on the controls — same
@@ -105,45 +215,172 @@ export function ComponentEditDialog({ open, onClose, onSaved, component }: Compo
           <div className="flex gap-3">
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label className="text-[11px] text-muted-foreground">Type</label>
-              <select value={componentType} onChange={(e) => setComponentType(e.target.value)}
-                className="w-full truncate rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground">
-                {types.map((t) => <option key={t.id} value={t.name}>{t.label}</option>)}
+              <select
+                value={componentType}
+                onChange={(e) => handleTypeChange(e.target.value)}
+                className="w-full truncate rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+              >
+                {types.map((t) => (
+                  <option key={t.id} value={t.name}>{t.label}</option>
+                ))}
               </select>
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label className="text-[11px] text-muted-foreground">Mass (g)</label>
-              <input type="number" value={massG} onChange={(e) => setMassG(e.target.value)}
-                className="w-full rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground" />
+              <input
+                type="number" value={massG} onChange={(e) => setMassG(e.target.value)}
+                className="w-full rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+              />
             </div>
           </div>
+
           <div className="flex flex-col gap-1">
             <label className="text-[11px] text-muted-foreground">Manufacturer</label>
-            <input type="text" value={manufacturer} onChange={(e) => setManufacturer(e.target.value)}
-              className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground" />
+            <input
+              type="text" value={manufacturer}
+              onChange={(e) => setManufacturer(e.target.value)}
+              className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+            />
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-[11px] text-muted-foreground">Description</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
-              className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground resize-none" />
+            <textarea
+              value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
+              className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground resize-none"
+            />
           </div>
+
+          {schema.length > 0 && (
+            <>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground uppercase tracking-wide">
+                  {currentType?.label} properties
+                </span>
+              </div>
+              {schema.map((prop) => (
+                <SpecField
+                  key={prop.name}
+                  prop={prop}
+                  value={specs[prop.name]}
+                  onChange={(v) => setSpec(prop.name, v)}
+                />
+              ))}
+            </>
+          )}
+
+          {unknownKeys.length > 0 && (
+            <div className="mt-2 rounded-xl border border-border bg-card-muted px-3 py-2">
+              <button
+                onClick={() => setShowUnknown((v) => !v)}
+                className="flex w-full items-center gap-1 text-[11px] text-muted-foreground"
+              >
+                {showUnknown ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                Unknown properties ({unknownKeys.length})
+              </button>
+              {showUnknown && (
+                <ul className="mt-2 flex flex-col gap-1 pl-4">
+                  {unknownKeys.map((k) => (
+                    <li key={k} className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-subtle-foreground">
+                      {k}: {String(specs[k])}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
 
         {error && (
-          <div className="rounded-xl border border-destructive bg-destructive/10 p-3 text-[12px] text-destructive">{error}</div>
+          <div className="rounded-xl border border-destructive bg-destructive/10 p-3 text-[12px] text-destructive">
+            {error}
+          </div>
         )}
 
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} disabled={saving}
-            className="rounded-full border border-border px-4 py-2 text-[13px] text-muted-foreground hover:bg-sidebar-accent">
+          <button
+            onClick={onClose} disabled={saving}
+            className="rounded-full border border-border px-4 py-2 text-[13px] text-muted-foreground hover:bg-sidebar-accent"
+          >
             Cancel
           </button>
-          <button onClick={handleSave} disabled={saving}
-            className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50">
+          <button
+            onClick={handleSave} disabled={saving}
+            className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          >
             {saving && <Loader2 size={14} className="animate-spin" />}
             {saving ? "Saving\u2026" : isEdit ? "Update" : "Create"}
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------- //
+// SpecField — renders a single property-schema entry as the right input type.
+// --------------------------------------------------------------------------- //
+
+interface SpecFieldProps {
+  prop: PropertyDefinition;
+  value: unknown;
+  onChange: (v: unknown) => void;
+}
+
+function SpecField({ prop, value, onChange }: SpecFieldProps) {
+  const labelText = `${prop.label}${prop.required ? " *" : ""}${prop.unit ? ` (${prop.unit})` : ""}`;
+
+  if (prop.type === "boolean") {
+    return (
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          data-spec={prop.name}
+          checked={!!value}
+          onChange={(e) => onChange(e.target.checked)}
+          id={`spec-${prop.name}`}
+        />
+        <label htmlFor={`spec-${prop.name}`} className="text-[12px] text-foreground">
+          {labelText}
+        </label>
+      </div>
+    );
+  }
+
+  if (prop.type === "enum") {
+    return (
+      <div className="flex flex-col gap-1">
+        <label className="text-[11px] text-muted-foreground">{labelText}</label>
+        <select
+          data-spec={prop.name}
+          value={value == null ? "" : String(value)}
+          onChange={(e) => onChange(e.target.value)}
+          className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+        >
+          <option value=""></option>
+          {(prop.options ?? []).map((o) => (
+            <option key={o} value={o}>{o}</option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+
+  // number or string
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-[11px] text-muted-foreground">{labelText}</label>
+      <input
+        data-spec={prop.name}
+        type={prop.type === "number" ? "number" : "text"}
+        value={value == null ? "" : String(value)}
+        onChange={(e) => onChange(e.target.value)}
+        min={prop.min ?? undefined}
+        max={prop.max ?? undefined}
+        className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+      />
+      {prop.description && (
+        <span className="text-[10px] text-subtle-foreground">{prop.description}</span>
+      )}
     </div>
   );
 }
