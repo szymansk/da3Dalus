@@ -80,6 +80,23 @@ def create_app() -> FastAPI:
     @asynccontextmanager
     async def _combined_lifespan(app: "FastAPI"):
         from app.services import cad_service as _cad_service
+        from app.services.component_type_service import seed_default_types
+        from app.db.session import SessionLocal
+
+        # Idempotent safety net (gh#83): ensure the 9 default component types
+        # exist. Doesn't touch user-added types — only inserts rows whose
+        # `name` isn't already present. Recovers from cases where the
+        # component_types table was accidentally emptied.
+        try:
+            _seed_session = SessionLocal()
+            try:
+                seed_default_types(_seed_session)
+            finally:
+                _seed_session.close()
+        except Exception as exc:  # noqa: BLE001 — never block startup on this
+            logging.getLogger(__name__).warning(
+                "seed_default_types at startup failed: %s", exc,
+            )
 
         async with mcp_app.lifespan(app):
             try:
