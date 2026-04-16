@@ -161,7 +161,12 @@ function NewGroupInput({ onSubmit, onCancel }: NewGroupInputProps) {
   );
 }
 
-export function ComponentTree() {
+interface ComponentTreeProps {
+  /** Invoked whenever the selection changes — null when a node is deselected. */
+  onNodeSelected?: (node: ComponentTreeNode | null) => void;
+}
+
+export function ComponentTree({ onNodeSelected }: ComponentTreeProps = {}) {
   const { aeroplaneId } = useAeroplaneContext();
   const { tree, mutate } = useComponentTree(aeroplaneId);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -202,6 +207,7 @@ export function ComponentTree() {
 
   const handleSelect = (node: ComponentTreeNode) => {
     setSelectedNodeId(node.id);
+    onNodeSelected?.(node);
   };
 
   const handleDelete = async (node: ComponentTreeNode) => {

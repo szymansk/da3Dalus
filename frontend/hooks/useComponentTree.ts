@@ -14,6 +14,22 @@ export interface ComponentTreeNode {
   quantity: number;
   weight_override_g: number | null;
   synced_from?: string | null;
+  // Extended fields surfaced by the backend — optional because the list
+  // response and the property panel both use the same type.
+  construction_part_id?: number | null;
+  shape_key?: string | null;
+  shape_hash?: string | null;
+  volume_mm3?: number | null;
+  area_mm2?: number | null;
+  pos_x?: number;
+  pos_y?: number;
+  pos_z?: number;
+  rot_x?: number;
+  rot_y?: number;
+  rot_z?: number;
+  material_id?: number | null;
+  print_type?: string | null;
+  scale_factor?: number;
   children: ComponentTreeNode[];
 }
 
@@ -55,6 +71,55 @@ export async function addTreeNode(
     body: JSON.stringify(node),
   });
   if (!res.ok) throw new Error(`Add node failed: ${res.status}`);
+  return res.json();
+}
+
+/**
+ * Fields accepted by `PUT /component-tree/{id}`. Mirrors the backend's
+ * ComponentTreeNodeWrite schema; callers pass the full node shape (the
+ * backend overwrites every field on update).
+ */
+export interface ComponentTreeNodeUpdate {
+  parent_id?: number | null;
+  sort_index?: number;
+  node_type: string;
+  name: string;
+  shape_key?: string | null;
+  shape_hash?: string | null;
+  volume_mm3?: number | null;
+  area_mm2?: number | null;
+  component_id?: number | null;
+  quantity?: number;
+  construction_part_id?: number | null;
+  pos_x?: number;
+  pos_y?: number;
+  pos_z?: number;
+  rot_x?: number;
+  rot_y?: number;
+  rot_z?: number;
+  material_id?: number | null;
+  weight_override_g?: number | null;
+  print_type?: string | null;
+  scale_factor?: number;
+}
+
+export async function updateTreeNode(
+  aeroplaneId: string,
+  nodeId: number,
+  body: ComponentTreeNodeUpdate,
+): Promise<ComponentTreeNode> {
+  const res = await fetch(
+    `${API_BASE}/aeroplanes/${aeroplaneId}/component-tree/${nodeId}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Update failed: ${res.status} ${detail}`);
+  }
   return res.json();
 }
 
