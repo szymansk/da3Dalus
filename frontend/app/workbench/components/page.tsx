@@ -8,6 +8,7 @@ import { ComponentEditDialog } from "@/components/workbench/ComponentEditDialog"
 import { ConstructionPartsGrid } from "@/components/workbench/ConstructionPartsGrid";
 import { ConstructionPartUploadDialog } from "@/components/workbench/ConstructionPartUploadDialog";
 import { NodePropertyPanel } from "@/components/workbench/NodePropertyPanel";
+import { ComponentTypeManagementDialog } from "@/components/workbench/ComponentTypeManagementDialog";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useComponents, deleteComponent, type Component } from "@/hooks/useComponents";
 import {
@@ -38,6 +39,7 @@ export default function ComponentsPage() {
   const [typeFilter, setTypeFilter] = useState<string>("");
   const { components, total, isLoading, mutate } = useComponents(typeFilter || undefined, search || undefined);
   const [editDialog, setEditDialog] = useState<{ open: boolean; component: Component | null }>({ open: false, component: null });
+  const [typesDialog, setTypesDialog] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const { mutate: mutateParts } = useConstructionParts(aeroplaneId);
 
@@ -115,6 +117,14 @@ export default function ComponentsPage() {
             {total} items
           </span>
           <span className="flex-1" />
+          <button
+            onClick={() => setTypesDialog(true)}
+            className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3 py-2 text-[13px] text-foreground hover:bg-sidebar-accent"
+            title="Manage component types"
+          >
+            <Settings size={14} />
+            Manage Types
+          </button>
           <button
             onClick={() => setEditDialog({ open: true, component: null })}
             className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90"
@@ -269,6 +279,11 @@ export default function ComponentsPage() {
         onClose={() => setEditingNodeId(null)}
       />
     )}
+
+    <ComponentTypeManagementDialog
+      open={typesDialog}
+      onClose={() => setTypesDialog(false)}
+    />
     </>
   );
 }

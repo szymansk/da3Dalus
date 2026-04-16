@@ -42,10 +42,10 @@ export function useComponents(componentType?: string, search?: string) {
   };
 }
 
-export function useComponentTypes() {
-  const { data } = useSWR<{ types: string[] }>("/components/types", fetcher);
-  return data?.types ?? [];
-}
+// NOTE: the old string-based `useComponentTypes()` moved to
+// `@/hooks/useComponentTypes.ts` with a richer shape (full ComponentType
+// objects including schema / reference_count / deletable). Migrate imports
+// there.
 
 export async function createComponent(comp: Omit<Component, "id" | "created_at" | "updated_at">): Promise<Component> {
   const res = await fetch(`${API_BASE}/components`, {
