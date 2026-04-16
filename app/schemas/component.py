@@ -1,39 +1,16 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
 
-COMPONENT_TYPES = Literal[
-    "servo",
-    "brushless_motor",
-    "esc",
-    "battery",
-    "receiver",
-    "flight_controller",
-    "material",
-    "propeller",
-    "generic",
-]
-
-COMPONENT_TYPE_LIST: list[str] = [
-    "servo",
-    "brushless_motor",
-    "esc",
-    "battery",
-    "receiver",
-    "flight_controller",
-    "material",
-    "propeller",
-    "generic",
-]
-
-
 class ComponentWrite(BaseModel):
     name: str = Field(..., min_length=1, description="Component name / model number")
-    component_type: COMPONENT_TYPES = Field(..., description="Hardware category")
+    # gh#83: component_type is now a free string; validation happens at the
+    # service layer against the dynamic `component_types` registry.
+    component_type: str = Field(..., min_length=1, description="Type name (see GET /component-types)")
     manufacturer: Optional[str] = Field(None, description="Manufacturer name")
     description: Optional[str] = Field(None, description="Free-text description")
     mass_g: Optional[float] = Field(None, ge=0, description="Mass in grams")
@@ -43,7 +20,7 @@ class ComponentWrite(BaseModel):
     model_ref: Optional[str] = Field(None, description="Reference to STEP/STL 3D model file")
     specs: dict[str, Any] = Field(
         default_factory=dict,
-        description="Type-specific specifications (e.g. kv, capacity_mah, voltage_range, density_kg_m3)",
+        description="Type-specific specifications — validated against the type's schema.",
     )
 
 
@@ -59,4 +36,4 @@ class ComponentList(BaseModel):
 
 
 class ComponentTypesResponse(BaseModel):
-    types: list[str] = Field(..., description="List of all available component types")
+    types: list[str] = Field(..., description="List of all available component type names")

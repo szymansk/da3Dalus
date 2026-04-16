@@ -28,7 +28,8 @@ MOTOR_PAYLOAD = {
     "name": "Motor X",
     "component_type": "brushless_motor",
     "mass_g": 130,
-    "specs": {"kv": 880},
+    # brushless_motor seed schema requires kv_rpm_per_volt (gh#83)
+    "specs": {"kv_rpm_per_volt": 880},
 }
 
 
@@ -42,7 +43,7 @@ class TestComponentLibraryCRUD:
         assert body["name"] == "Motor X"
         assert body["component_type"] == "brushless_motor"
         assert body["mass_g"] == 130
-        assert body["specs"] == {"kv": 880}
+        assert body["specs"] == {"kv_rpm_per_volt": 880}
         assert "id" in body
 
     def test_list_components(self, client: TestClient):

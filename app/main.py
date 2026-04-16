@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.v2.endpoints import aeroplane as aeroplane_v2
 from app.api.v2.endpoints import components
+from app.api.v2.endpoints import component_types
 from app.api.v2.endpoints.aeroplane import component_tree
 from app.api.v2.endpoints.aeroplane import construction_parts
 from app.api.v2.endpoints import flight_profiles
@@ -79,6 +80,23 @@ def create_app() -> FastAPI:
     @asynccontextmanager
     async def _combined_lifespan(app: "FastAPI"):
         from app.services import cad_service as _cad_service
+        from app.services.component_type_service import seed_default_types
+        from app.db.session import SessionLocal
+
+        # Idempotent safety net (gh#83): ensure the 9 default component types
+        # exist. Doesn't touch user-added types — only inserts rows whose
+        # `name` isn't already present. Recovers from cases where the
+        # component_types table was accidentally emptied.
+        try:
+            _seed_session = SessionLocal()
+            try:
+                seed_default_types(_seed_session)
+            finally:
+                _seed_session.close()
+        except Exception as exc:  # noqa: BLE001 — never block startup on this
+            logging.getLogger(__name__).warning(
+                "seed_default_types at startup failed: %s", exc,
+            )
 
         async with mcp_app.lifespan(app):
             try:
@@ -97,6 +115,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix="", tags=["health"])
     app.include_router(aeroplane_v2.router, prefix="", tags=[])
     app.include_router(components.router, prefix="", tags=["components"])
+    app.include_router(component_types.router, prefix="", tags=["component-types"])
     app.include_router(component_tree.router, prefix="", tags=["component-tree"])
     app.include_router(construction_parts.router, prefix="", tags=["construction-parts"])
     app.include_router(flight_profiles.router, prefix="", tags=["flight-profiles"])

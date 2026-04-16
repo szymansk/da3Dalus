@@ -121,7 +121,9 @@ class TestWeightCalculation:
         client, _ = client_and_db
         comp = client.post("/components", json={
             "name": "WtMotor", "component_type": "brushless_motor",
-            "mass_g": 50.0, "specs": {},
+            "mass_g": 50.0,
+            # brushless_motor seed schema requires kv_rpm_per_volt (gh#83)
+            "specs": {"kv_rpm_per_volt": 900},
         }).json()
         node = client.post("/aeroplanes/w1/component-tree", json={
             "node_type": "cots", "name": "motor",

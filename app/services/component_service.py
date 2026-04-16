@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import InternalError, NotFoundError
 from app.models.component import ComponentModel
 from app.schemas.component import ComponentList, ComponentRead, ComponentWrite
+from app.services import component_type_service as type_svc
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,8 @@ def list_components(
 
 
 def create_component(db: Session, data: ComponentWrite) -> ComponentRead:
+    # gh#83: validate specs against the dynamic type schema before inserting.
+    type_svc.validate_specs(db, data.component_type, data.specs)
     try:
         comp = ComponentModel(**data.model_dump())
         db.add(comp)
@@ -74,6 +77,8 @@ def get_component(db: Session, component_id: int) -> ComponentRead:
 def update_component(
     db: Session, component_id: int, data: ComponentWrite
 ) -> ComponentRead:
+    # gh#83: validate specs against the dynamic type schema before updating.
+    type_svc.validate_specs(db, data.component_type, data.specs)
     try:
         comp = db.query(ComponentModel).filter(ComponentModel.id == component_id).first()
         if comp is None:

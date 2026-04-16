@@ -96,7 +96,8 @@ class TestComponentSearch:
             "name": "Test Motor",
             "component_type": "brushless_motor",
             "manufacturer": "UniqueManufacturerXYZ",
-            "specs": {},
+            # brushless_motor seed schema requires kv_rpm_per_volt (gh#83)
+            "specs": {"kv_rpm_per_volt": 880},
         })
         res = client.get("/components", params={"q": "UniqueManufacturer"})
         assert res.status_code == 200
