@@ -1,27 +1,48 @@
 "use client";
 
 import { useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
 import { TreeCard } from "@/components/workbench/TreeCard";
-import {
-  SimpleTreeRow,
-  type SimpleTreeNode,
-} from "@/components/workbench/SimpleTreeRow";
+import { SimpleTreeRow, type SimpleTreeNode } from "@/components/workbench/SimpleTreeRow";
+import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
+import { useComponentTree, addTreeNode, deleteTreeNode, type ComponentTreeNode } from "@/hooks/useComponentTree";
 
-const STATIC_NODES: SimpleTreeNode[] = [
-  { id: "root", label: "eHawk", level: 0 },
-  { id: "mw", label: "main_wing", level: 1 },
-  { id: "s0", label: "segment 0 (root)", level: 2 },
-  { id: "s1", label: "segment 1", level: 2 },
-  { id: "s2", label: "segment 2 \u00b7 aileron", level: 2, chip: "AILERON" },
-  { id: "s3", label: "segment 3 \u00b7 aileron", level: 2 },
-  { id: "ew", label: "elevator_wing", level: 1 },
-  { id: "fuse", label: "fuselage", level: 1, leaf: true },
-];
+function flattenTree(
+  nodes: ComponentTreeNode[],
+  level: number,
+  expanded: Set<string>,
+  onSelect: (node: ComponentTreeNode) => void,
+  onDelete: (node: ComponentTreeNode) => void,
+  selectedId: number | null,
+): SimpleTreeNode[] {
+  const result: SimpleTreeNode[] = [];
+  for (const node of nodes) {
+    const hasChildren = node.children && node.children.length > 0;
+    const isExpanded = expanded.has(String(node.id));
+    result.push({
+      id: String(node.id),
+      label: node.name,
+      level,
+      expanded: hasChildren ? isExpanded : undefined,
+      leaf: !hasChildren,
+      selected: node.id === selectedId,
+      chip: node.node_type === "cots" ? "COTS" : node.node_type === "cad_shape" ? "CAD" : undefined,
+      annotation: node.weight_override_g != null ? `${node.weight_override_g}g` : undefined,
+      onClick: () => onSelect(node),
+      onDelete: () => onDelete(node),
+    });
+    if (hasChildren && isExpanded) {
+      result.push(...flattenTree(node.children, level + 1, expanded, onSelect, onDelete, selectedId));
+    }
+  }
+  return result;
+}
 
 export function ComponentTree() {
-  const [expanded, setExpanded] = useState<Set<string>>(
-    new Set(["root", "mw"]),
-  );
+  const { aeroplaneId } = useAeroplaneContext();
+  const { tree, mutate } = useComponentTree(aeroplaneId);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
 
   const toggle = (id: string) => {
     setExpanded((prev) => {
@@ -31,34 +52,59 @@ export function ComponentTree() {
     });
   };
 
-  const visible = STATIC_NODES.filter((node) => {
-    if (node.level === 0) return true;
-    if (node.level === 1) return expanded.has("root");
-    if (node.level === 2) {
-      if (!expanded.has("root")) return false;
-      const idx = STATIC_NODES.indexOf(node);
-      for (let i = idx - 1; i >= 0; i--) {
-        if (STATIC_NODES[i].level === 1)
-          return expanded.has(STATIC_NODES[i].id);
-      }
+  const handleSelect = (node: ComponentTreeNode) => {
+    setSelectedNodeId(node.id);
+  };
+
+  const handleDelete = async (node: ComponentTreeNode) => {
+    if (!aeroplaneId) return;
+    if (!confirm(`Delete "${node.name}"?`)) return;
+    try {
+      await deleteTreeNode(aeroplaneId, node.id);
+      mutate();
+      if (selectedNodeId === node.id) setSelectedNodeId(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Delete failed");
     }
-    return true;
-  });
+  };
+
+  const handleAddGroup = async () => {
+    if (!aeroplaneId) return;
+    const name = prompt("Group name?");
+    if (!name) return;
+    try {
+      await addTreeNode(aeroplaneId, { node_type: "group", name });
+      mutate();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Add failed");
+    }
+  };
+
+  const rows = flattenTree(tree, 0, expanded, handleSelect, handleDelete, selectedNodeId);
 
   return (
-    <TreeCard title="Component Tree">
+    <TreeCard
+      title="Component Tree"
+      actions={
+        <button
+          onClick={handleAddGroup}
+          className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+          title="Add group"
+        >
+          <Plus size={14} />
+        </button>
+      }
+    >
       <div className="flex flex-col gap-0.5">
-        {visible.map((node) => (
-          <SimpleTreeRow
-            key={node.id}
-            node={{
-              ...node,
-              expanded: expanded.has(node.id),
-              leaf: node.leaf ?? node.level === 2,
-            }}
-            onToggle={() => toggle(node.id)}
-          />
-        ))}
+        {rows.length === 0 ? (
+          <p className="py-4 text-center text-[11px] text-muted-foreground">
+            No components yet. Add a group or assign COTS parts.
+          </p>
+        ) : (
+          rows.map((node) => (
+            <SimpleTreeRow key={node.id} node={node} onToggle={() => toggle(node.id)} />
+          ))
+        )}
       </div>
     </TreeCard>
   );

@@ -1,172 +1,190 @@
 "use client";
 
-import {
-  Package,
-  Search,
-  ArrowLeft,
-  Cpu,
-  BatteryMedium,
-  Wind,
-  Wifi,
-  Camera,
-  Layers,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { useState } from "react";
+import { Package, Search, Plus, Settings, Trash2 } from "lucide-react";
 import { WorkbenchTwoPanel } from "@/components/workbench/WorkbenchTwoPanel";
-import { AlertBanner } from "@/components/workbench/AlertBanner";
 import { ComponentTree } from "@/components/workbench/ComponentTree";
+import { ComponentEditDialog } from "@/components/workbench/ComponentEditDialog";
+import { useComponents, deleteComponent, type Component } from "@/hooks/useComponents";
 
-const COMPONENTS: {
-  icon: LucideIcon;
-  chip: string;
-  title: string;
-  subtitle: string;
-  specs: [string, string][];
-}[] = [
-  {
-    icon: Cpu,
-    chip: "flight_controller",
-    title: "FC-4 Pix32",
-    subtitle: "Pixhawk-class autopilot",
-    specs: [
-      ["mass", "38 g"],
-      ["v", "7.4\u201326.4 V"],
-    ],
-  },
-  {
-    icon: BatteryMedium,
-    chip: "battery",
-    title: "LiPo 4S 5200",
-    subtitle: "14.8 V 5200 mAh",
-    specs: [
-      ["mass", "560 g"],
-      ["cap", "77 Wh"],
-    ],
-  },
-  {
-    icon: Wind,
-    chip: "motor",
-    title: "T-Motor AT2820",
-    subtitle: "880 KV outrunner",
-    specs: [
-      ["mass", "132 g"],
-      ["kv", "880"],
-    ],
-  },
-  {
-    icon: Wifi,
-    chip: "telemetry",
-    title: "RFD900x",
-    subtitle: "868/915 MHz modem",
-    specs: [
-      ["mass", "14 g"],
-      ["range", "40 km"],
-    ],
-  },
-  {
-    icon: Camera,
-    chip: "payload",
-    title: "Sony RX1R II",
-    subtitle: "42 MP full-frame",
-    specs: [
-      ["mass", "507 g"],
-      ["vol", "1.2 L"],
-    ],
-  },
-  {
-    icon: Layers,
-    chip: "structure",
-    title: "CF spar D10",
-    subtitle: "Carbon fibre tube",
-    specs: [
-      ["mass", "18 g/m"],
-      ["d", "10 mm"],
-    ],
-  },
-];
+const TYPE_ICONS: Record<string, string> = {
+  servo: "\u2699",
+  brushless_motor: "\u26A1",
+  esc: "\u26A1",
+  battery: "\uD83D\uDD0B",
+  receiver: "\uD83D\uDCE1",
+  flight_controller: "\uD83D\uDDA5",
+  material: "\uD83E\uDDF1",
+  propeller: "\uD83D\uDCA8",
+  generic: "\uD83D\uDCE6",
+};
 
 export default function ComponentsPage() {
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string>("");
+  const { components, total, isLoading, mutate } = useComponents(typeFilter || undefined, search || undefined);
+  const [editDialog, setEditDialog] = useState<{ open: boolean; component: Component | null }>({ open: false, component: null });
+
+  const handleDelete = async (comp: Component) => {
+    if (!confirm(`Delete "${comp.name}"?`)) return;
+    try {
+      await deleteComponent(comp.id);
+      mutate();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Delete failed");
+    }
+  };
+
   return (
+    <>
     <WorkbenchTwoPanel>
       <ComponentTree />
 
-      <div className="flex w-full flex-col gap-6 overflow-y-auto">
+      <div className="flex w-full flex-col gap-4 overflow-y-auto">
         {/* Header */}
         <div className="flex items-center gap-2.5">
           <Package className="size-5 text-primary" />
           <h1 className="font-[family-name:var(--font-jetbrains-mono)] text-[20px] text-foreground">
             Component Library
           </h1>
-          <span className="flex-1" />
-          <div className="flex w-60 items-center gap-2 rounded-xl border border-border bg-input px-3 py-2">
-            <Search className="size-3.5 text-muted-foreground" />
-            <span className="text-[12px] text-subtle-foreground">
-              Search components...
-            </span>
-          </div>
-        </div>
-
-        {/* Alert banner */}
-        <AlertBanner>
-          Component Library needs backend resource. The card grid below is a
-          static preview.
-        </AlertBanner>
-
-        {/* Drag hint */}
-        <div className="flex items-center gap-1.5">
-          <ArrowLeft size={12} className="text-subtle-foreground" />
-          <span className="text-[11px] text-subtle-foreground">
-            Drag components to the Aeroplane Tree to add them
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
+            {total} items
           </span>
+          <span className="flex-1" />
+          <button
+            onClick={() => setEditDialog({ open: true, component: null })}
+            className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90"
+          >
+            <Plus size={14} />
+            New Component
+          </button>
         </div>
 
-        {/* Card grid */}
-        <div className="grid grid-cols-3 gap-4">
-          {COMPONENTS.map((comp) => {
-            const Icon = comp.icon;
-            return (
+        {/* Search + Filter */}
+        <div className="flex gap-3">
+          <div className="flex flex-1 items-center gap-2 rounded-xl border border-border bg-input px-3 py-2">
+            <Search className="size-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search components..."
+              className="flex-1 bg-transparent text-[12px] text-foreground outline-none placeholder:text-subtle-foreground"
+            />
+          </div>
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="rounded-xl border border-border bg-input px-3 py-2 text-[12px] text-foreground"
+          >
+            <option value="">All types</option>
+            <option value="servo">Servo</option>
+            <option value="brushless_motor">Motor</option>
+            <option value="esc">ESC</option>
+            <option value="battery">Battery</option>
+            <option value="receiver">Receiver</option>
+            <option value="flight_controller">Flight Controller</option>
+            <option value="material">Material</option>
+            <option value="propeller">Propeller</option>
+            <option value="generic">Generic</option>
+          </select>
+        </div>
+
+        {/* Component Cards */}
+        {isLoading ? (
+          <p className="py-8 text-center text-[13px] text-muted-foreground">Loading components...</p>
+        ) : components.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-12">
+            <Package className="size-12 text-subtle-foreground" />
+            <p className="text-[13px] text-muted-foreground">
+              {search || typeFilter ? "No components match your filter" : "No components yet. Create one to get started."}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {components.map((comp) => (
               <div
-                key={comp.chip}
-                className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4"
+                key={comp.id}
+                className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4"
               >
-                {/* Card header */}
-                <div className="flex items-center">
-                  <div className="flex size-8 items-center justify-center rounded-xl bg-card-muted">
-                    <Icon className="size-4 text-primary" />
-                  </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[16px]">{TYPE_ICONS[comp.component_type] ?? "\uD83D\uDCE6"}</span>
+                  <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
+                    {comp.name}
+                  </span>
                   <span className="flex-1" />
-                  <span className="rounded-full bg-sidebar-accent px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
-                    {comp.chip}
+                  <span className="rounded-full bg-sidebar-accent px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground">
+                    {comp.component_type}
                   </span>
                 </div>
 
-                {/* Title + subtitle */}
-                <div className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-foreground">
-                  {comp.title}
-                </div>
-                <div className="text-[12px] text-muted-foreground">
-                  {comp.subtitle}
+                {comp.manufacturer && (
+                  <span className="text-[11px] text-muted-foreground">{comp.manufacturer}</span>
+                )}
+                {comp.description && (
+                  <span className="text-[11px] text-subtle-foreground">{comp.description}</span>
+                )}
+
+                <div className="flex items-center gap-3 text-[11px]">
+                  {comp.mass_g != null && (
+                    <span className="font-[family-name:var(--font-jetbrains-mono)] text-foreground">
+                      {comp.mass_g}g
+                    </span>
+                  )}
+                  {comp.bbox_x_mm != null && (
+                    <span className="text-muted-foreground">
+                      {comp.bbox_x_mm}×{comp.bbox_y_mm}×{comp.bbox_z_mm}mm
+                    </span>
+                  )}
                 </div>
 
                 {/* Specs */}
-                <div className="flex flex-col gap-1">
-                  {comp.specs.map(([key, val]) => (
-                    <div key={key} className="flex items-center">
-                      <span className="text-[11px] text-muted-foreground">
-                        {key}
+                {Object.keys(comp.specs).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(comp.specs).slice(0, 4).map(([key, val]) => (
+                      <span key={key} className="rounded-full bg-card-muted px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground">
+                        {key}: {String(val)}
                       </span>
-                      <span className="flex-1" />
-                      <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground">
-                        {val}
-                      </span>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-1.5">
+                  <button
+                    onClick={() => setEditDialog({ open: true, component: comp })}
+                    className="flex size-7 items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                    title="Edit"
+                  >
+                    <Settings size={12} />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(comp)}
+                    className="flex size-7 items-center justify-center rounded-full border border-border text-destructive hover:bg-destructive/20"
+                    title="Delete"
+                  >
+                    <Trash2 size={12} />
+                  </button>
                 </div>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </WorkbenchTwoPanel>
+
+    {/*
+     * Dialog must render as a sibling of <WorkbenchTwoPanel/>, not as a
+     * child — WorkbenchTwoPanel only renders its first two children and
+     * silently drops the rest. See gh#57-fav regression tests.
+     */}
+    {editDialog.open && (
+      <ComponentEditDialog
+        open={editDialog.open}
+        onClose={() => setEditDialog({ open: false, component: null })}
+        onSaved={() => mutate()}
+        component={editDialog.component}
+      />
+    )}
+    </>
   );
 }
