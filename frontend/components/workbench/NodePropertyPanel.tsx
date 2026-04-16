@@ -315,7 +315,16 @@ export function NodePropertyPanel({
   const lockTitle = "Lock part";
 
   return (
-    <div className="flex h-full w-[320px] shrink-0 flex-col gap-4 rounded-2xl border border-border bg-card p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      onClick={onClose}
+      role="dialog"
+      aria-label="Edit tree node"
+    >
+    <div
+      className="flex max-h-[85vh] w-[480px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
+      onClick={(e) => e.stopPropagation()}
+    >
       <div className="flex items-center gap-2">
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-foreground">
           {node.name}
@@ -446,6 +455,7 @@ export function NodePropertyPanel({
           onCancel={() => setPendingDelete(false)}
         />
       )}
+    </div>
     </div>
   );
 }

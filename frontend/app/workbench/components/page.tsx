@@ -41,11 +41,12 @@ export default function ComponentsPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const { mutate: mutateParts } = useConstructionParts(aeroplaneId);
 
-  // Selected tree node — we track only the ID so the panel re-renders with
-  // fresh data whenever the tree refetches (mutate after save / move).
-  const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
+  // The pencil icon on each tree row opens a property-edit modal. We keep
+  // only the node ID so the modal re-reads fresh data from the SWR tree
+  // snapshot after every mutate (save / delete / lock / move).
+  const [editingNodeId, setEditingNodeId] = useState<number | null>(null);
   const { tree, mutate: mutateTree } = useComponentTree(aeroplaneId);
-  const selectedNode = selectedNodeId != null ? findNode(tree, selectedNodeId) : null;
+  const editingNode = editingNodeId != null ? findNode(tree, editingNodeId) : null;
 
   const handleDelete = async (comp: Component) => {
     if (!confirm(`Delete "${comp.name}"?`)) return;
@@ -61,22 +62,10 @@ export default function ComponentsPage() {
     <>
     <WorkbenchTwoPanel>
       <ComponentTree
-        onNodeSelected={(n: ComponentTreeNode | null) =>
-          setSelectedNodeId(n ? n.id : null)
-        }
+        onNodeEditRequested={(n: ComponentTreeNode) => setEditingNodeId(n.id)}
       />
 
-      <div className="flex w-full gap-4 overflow-hidden">
-      {selectedNode && aeroplaneId && (
-        <NodePropertyPanel
-          node={selectedNode}
-          aeroplaneId={aeroplaneId}
-          onMutate={() => mutateTree()}
-          onClose={() => setSelectedNodeId(null)}
-        />
-      )}
-
-      <div className="flex flex-1 flex-col gap-4 overflow-y-auto">
+      <div className="flex w-full flex-col gap-4 overflow-y-auto">
         {/* View Toggle */}
         <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1 self-start">
           <button
@@ -247,7 +236,6 @@ export default function ComponentsPage() {
         </>
         )}
       </div>
-      </div>
     </WorkbenchTwoPanel>
 
     {/*
@@ -270,6 +258,15 @@ export default function ComponentsPage() {
         aeroplaneId={aeroplaneId}
         onClose={() => setUploadOpen(false)}
         onSaved={() => mutateParts()}
+      />
+    )}
+
+    {editingNode && aeroplaneId && (
+      <NodePropertyPanel
+        node={editingNode}
+        aeroplaneId={aeroplaneId}
+        onMutate={() => mutateTree()}
+        onClose={() => setEditingNodeId(null)}
       />
     )}
     </>
