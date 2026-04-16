@@ -78,13 +78,18 @@ type AddFlowStage =
   | { kind: "cotsPicker"; parentId: number | null; parentName: string }
   | { kind: "constructionPartsPicker"; parentId: number | null; parentName: string };
 
+interface FlattenCallbacks {
+  onSelect: (node: ComponentTreeNode) => void;
+  onDelete: (node: ComponentTreeNode) => void;
+  onAdd: (node: ComponentTreeNode) => void;
+  onEdit: (node: ComponentTreeNode) => void;
+}
+
 function flattenTree(
   nodes: ComponentTreeNode[],
   level: number,
   expanded: Set<string>,
-  onSelect: (node: ComponentTreeNode) => void,
-  onDelete: (node: ComponentTreeNode) => void,
-  onAdd: (node: ComponentTreeNode) => void,
+  cb: FlattenCallbacks,
   selectedId: number | null,
 ): SimpleTreeNode[] {
   const result: SimpleTreeNode[] = [];
@@ -101,15 +106,15 @@ function flattenTree(
       selected: node.id === selectedId,
       chip: node.node_type === "cots" ? "COTS" : node.node_type === "cad_shape" ? "CAD" : undefined,
       annotation: node.weight_override_g != null ? `${node.weight_override_g}g` : undefined,
-      onClick: () => onSelect(node),
-      onDelete: () => onDelete(node),
-      onAdd: isGroup ? () => onAdd(node) : undefined,
+      onClick: () => cb.onSelect(node),
+      onDelete: () => cb.onDelete(node),
+      onAdd: isGroup ? () => cb.onAdd(node) : undefined,
       addTitle: isGroup ? `Add to ${node.name}` : undefined,
+      onEdit: () => cb.onEdit(node),
+      editTitle: `Edit ${node.name}`,
     });
     if (hasChildren && isExpanded) {
-      result.push(
-        ...flattenTree(node.children, level + 1, expanded, onSelect, onDelete, onAdd, selectedId),
-      );
+      result.push(...flattenTree(node.children, level + 1, expanded, cb, selectedId));
     }
   }
   return result;
@@ -161,7 +166,17 @@ function NewGroupInput({ onSubmit, onCancel }: NewGroupInputProps) {
   );
 }
 
-export function ComponentTree() {
+interface ComponentTreeProps {
+  /** Invoked whenever the selection changes — null when a node is deselected. */
+  onNodeSelected?: (node: ComponentTreeNode | null) => void;
+  /** Invoked when the user clicks the pencil icon on a row; opens a property modal. */
+  onNodeEditRequested?: (node: ComponentTreeNode) => void;
+}
+
+export function ComponentTree({
+  onNodeSelected,
+  onNodeEditRequested,
+}: ComponentTreeProps = {}) {
   const { aeroplaneId } = useAeroplaneContext();
   const { tree, mutate } = useComponentTree(aeroplaneId);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -202,6 +217,7 @@ export function ComponentTree() {
 
   const handleSelect = (node: ComponentTreeNode) => {
     setSelectedNodeId(node.id);
+    onNodeSelected?.(node);
   };
 
   const handleDelete = async (node: ComponentTreeNode) => {
@@ -292,9 +308,12 @@ export function ComponentTree() {
     tree,
     0,
     expanded,
-    handleSelect,
-    handleDelete,
-    openAddMenu,
+    {
+      onSelect: handleSelect,
+      onDelete: handleDelete,
+      onAdd: openAddMenu,
+      onEdit: (n) => onNodeEditRequested?.(n),
+    },
     selectedNodeId,
   );
 

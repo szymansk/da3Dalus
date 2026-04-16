@@ -15,7 +15,7 @@ vi.mock("lucide-react", () => {
     Plus: icon, Trash2: icon, X: icon, Check: icon,
     ChevronDown: icon, ChevronRight: icon,
     FolderPlus: icon, Package: icon, Box: icon,
-    Search: icon, Loader2: icon, Settings: icon,
+    Search: icon, Loader2: icon, Settings: icon, Pencil: icon,
   };
 });
 
@@ -189,6 +189,18 @@ describe("ComponentTree — per-group add flow", () => {
     fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
 
     expect(mockAddTreeNode).not.toHaveBeenCalled();
+  });
+
+  it("pencil icon per row fires onNodeEditRequested with the correct node", () => {
+    const onEdit = vi.fn();
+    render(<ComponentTree onNodeEditRequested={onEdit} />);
+
+    // Click the pencil icon on the root "eHawk" row.
+    fireEvent.click(screen.getByTitle("Edit eHawk"));
+    expect(onEdit).toHaveBeenCalledTimes(1);
+    expect(onEdit.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ id: 10, name: "eHawk" }),
+    );
   });
 
   it("opens the COTS picker and creates a cots node on selection", async () => {

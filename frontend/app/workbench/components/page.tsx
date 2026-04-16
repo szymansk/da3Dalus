@@ -7,9 +7,15 @@ import { ComponentTree } from "@/components/workbench/ComponentTree";
 import { ComponentEditDialog } from "@/components/workbench/ComponentEditDialog";
 import { ConstructionPartsGrid } from "@/components/workbench/ConstructionPartsGrid";
 import { ConstructionPartUploadDialog } from "@/components/workbench/ConstructionPartUploadDialog";
+import { NodePropertyPanel } from "@/components/workbench/NodePropertyPanel";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useComponents, deleteComponent, type Component } from "@/hooks/useComponents";
+import {
+  useComponentTree,
+  type ComponentTreeNode,
+} from "@/hooks/useComponentTree";
 import { useConstructionParts } from "@/hooks/useConstructionParts";
+import { findNode } from "@/lib/treeDnd";
 
 type View = "library" | "construction";
 
@@ -35,6 +41,13 @@ export default function ComponentsPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const { mutate: mutateParts } = useConstructionParts(aeroplaneId);
 
+  // The pencil icon on each tree row opens a property-edit modal. We keep
+  // only the node ID so the modal re-reads fresh data from the SWR tree
+  // snapshot after every mutate (save / delete / lock / move).
+  const [editingNodeId, setEditingNodeId] = useState<number | null>(null);
+  const { tree, mutate: mutateTree } = useComponentTree(aeroplaneId);
+  const editingNode = editingNodeId != null ? findNode(tree, editingNodeId) : null;
+
   const handleDelete = async (comp: Component) => {
     if (!confirm(`Delete "${comp.name}"?`)) return;
     try {
@@ -48,7 +61,9 @@ export default function ComponentsPage() {
   return (
     <>
     <WorkbenchTwoPanel>
-      <ComponentTree />
+      <ComponentTree
+        onNodeEditRequested={(n: ComponentTreeNode) => setEditingNodeId(n.id)}
+      />
 
       <div className="flex w-full flex-col gap-4 overflow-y-auto">
         {/* View Toggle */}
@@ -243,6 +258,15 @@ export default function ComponentsPage() {
         aeroplaneId={aeroplaneId}
         onClose={() => setUploadOpen(false)}
         onSaved={() => mutateParts()}
+      />
+    )}
+
+    {editingNode && aeroplaneId && (
+      <NodePropertyPanel
+        node={editingNode}
+        aeroplaneId={aeroplaneId}
+        onMutate={() => mutateTree()}
+        onClose={() => setEditingNodeId(null)}
       />
     )}
     </>

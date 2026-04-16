@@ -1,7 +1,7 @@
 "use client";
 
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
 
 export interface SimpleTreeNode {
   id: string;
@@ -20,6 +20,10 @@ export interface SimpleTreeNode {
   onAdd?: () => void;
   /** Tooltip for the add button; also used as a test hook via title="…". */
   addTitle?: string;
+  /** Optional per-row edit action — opens a property modal. Rendered only when provided. */
+  onEdit?: () => void;
+  /** Tooltip/test hook for the edit button. Defaults to "Edit {label}". */
+  editTitle?: string;
 }
 
 interface SimpleTreeRowProps {
@@ -95,6 +99,15 @@ export function SimpleTreeRow({ node, onToggle }: SimpleTreeRowProps) {
           className="hidden size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground group-hover:flex"
         >
           <Plus size={10} />
+        </button>
+      )}
+      {node.onEdit && (
+        <button
+          onClick={(e) => { e.stopPropagation(); node.onEdit?.(); }}
+          title={node.editTitle ?? `Edit ${node.label}`}
+          className="hidden size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground group-hover:flex"
+        >
+          <Pencil size={10} />
         </button>
       )}
       {node.onDelete && (
