@@ -94,18 +94,26 @@ export function ComponentEditDialog({ open, onClose, onSaved, component }: Compo
             <input type="text" value={name} onChange={(e) => setName(e.target.value)}
               className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground" />
           </div>
+          {/*
+           * `min-w-0` on the flex items + `w-full` on the controls — same
+           * pattern as the PropertyEditDialog Min/Max/Default fix. Without
+           * it, a <select> element sizes to fit its longest option, which
+           * can push the row wider than the modal when a user-added type
+           * has a very long name. Reported 2026-04-16 for a garbage type
+           * name of ~60 characters.
+           */}
           <div className="flex gap-3">
-            <div className="flex flex-1 flex-col gap-1">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label className="text-[11px] text-muted-foreground">Type</label>
               <select value={componentType} onChange={(e) => setComponentType(e.target.value)}
-                className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground">
+                className="w-full truncate rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground">
                 {types.map((t) => <option key={t.id} value={t.name}>{t.label}</option>)}
               </select>
             </div>
-            <div className="flex flex-1 flex-col gap-1">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label className="text-[11px] text-muted-foreground">Mass (g)</label>
               <input type="number" value={massG} onChange={(e) => setMassG(e.target.value)}
-                className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground" />
+                className="w-full rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground" />
             </div>
           </div>
           <div className="flex flex-col gap-1">
