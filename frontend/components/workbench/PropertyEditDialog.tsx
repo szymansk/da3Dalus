@@ -197,32 +197,37 @@ export function PropertyEditDialog({
           </div>
 
           {form.type === "number" && (
+            // `min-w-0` on flex items + `w-full` on the inputs is required —
+            // <input type="number"> has an intrinsic min-width that otherwise
+            // keeps the items wider than 1/3 of the row and overflows the
+            // modal. Reported visually on Apr-16 for a tube property with a
+            // 4-digit default value.
             <div className="flex gap-2">
-              <div className="flex flex-1 flex-col gap-1">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <label className="text-[11px] text-muted-foreground">Min</label>
                 <input
                   type="number"
                   value={form.min}
                   onChange={(e) => update({ min: e.target.value })}
-                  className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+                  className="w-full rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
                 />
               </div>
-              <div className="flex flex-1 flex-col gap-1">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <label className="text-[11px] text-muted-foreground">Max</label>
                 <input
                   type="number"
                   value={form.max}
                   onChange={(e) => update({ max: e.target.value })}
-                  className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+                  className="w-full rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
                 />
               </div>
-              <div className="flex flex-1 flex-col gap-1">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <label className="text-[11px] text-muted-foreground">Default</label>
                 <input
                   type="number"
                   value={form.defaultStr}
                   onChange={(e) => update({ defaultStr: e.target.value })}
-                  className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+                  className="w-full rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
                 />
               </div>
             </div>

@@ -147,6 +147,33 @@ describe("PropertyEditDialog", () => {
     );
   });
 
+  it("Min/Max/Default row allows its inputs to shrink below intrinsic width", () => {
+    // Regression test: <input type="number"> has an intrinsic min-width that,
+    // without `min-w-0` on the flex items and `w-full` on the inputs, causes
+    // the third input (Default, with a multi-digit value) to overflow the
+    // modal. Captured visually on 2026-04-16 with a 4-digit default.
+    const { container } = render(
+      <PropertyEditDialog
+        open={true}
+        initial={{ name: "x", label: "X", type: "number", min: 1, max: 3000, default: 1000 }}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    // Each of the three number inputs must be in a wrapper that CAN shrink
+    // (min-w-0 present), and the input itself carries w-full so the wrapper
+    // drives its width.
+    const numberInputs = container.querySelectorAll<HTMLInputElement>(
+      'input[type="number"]',
+    );
+    expect(numberInputs.length).toBe(3);
+    for (const input of Array.from(numberInputs)) {
+      const wrapper = input.closest("div") as HTMLElement;
+      expect(wrapper.className).toMatch(/min-w-0/);
+      expect(input.className).toMatch(/w-full/);
+    }
+  });
+
   it("Cancel calls onCancel without onSave", () => {
     const onSave = vi.fn();
     const onCancel = vi.fn();
