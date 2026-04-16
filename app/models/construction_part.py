@@ -45,6 +45,12 @@ class ConstructionPartModel(Base):
 
     thumbnail_url = Column(String, nullable=True)
 
+    # Local storage path for the uploaded CAD file (relative to cwd) and the
+    # source format. Populated by the upload endpoint (gh#57-9uk). NULL until
+    # a file has been uploaded.
+    file_path = Column(String, nullable=True)
+    file_format = Column(String, nullable=True)  # "step" or "stl"
+
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
