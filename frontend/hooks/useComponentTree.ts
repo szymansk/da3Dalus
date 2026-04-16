@@ -40,7 +40,14 @@ export function useComponentTree(aeroplaneId: string | null) {
 
 export async function addTreeNode(
   aeroplaneId: string,
-  node: { parent_id?: number | null; node_type: string; name: string; component_id?: number; quantity?: number },
+  node: {
+    parent_id?: number | null;
+    node_type: string;
+    name: string;
+    component_id?: number;
+    quantity?: number;
+    construction_part_id?: number;
+  },
 ): Promise<ComponentTreeNode> {
   const res = await fetch(`${API_BASE}/aeroplanes/${aeroplaneId}/component-tree`, {
     method: "POST",

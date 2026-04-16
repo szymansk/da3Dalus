@@ -34,7 +34,9 @@ def test_alembic_downgrade_removes_construction_part_id_column(tmp_path):
     alembic_cfg.set_main_option("sqlalchemy.url", db_url)
 
     command.upgrade(alembic_cfg, "head")
-    command.downgrade(alembic_cfg, "-1")
+    # Target the parent of this migration explicitly — `-1` ambiguates once
+    # the history contains merge points.
+    command.downgrade(alembic_cfg, "4a9c81984e86")
 
     engine = create_engine(db_url)
     inspector = inspect(engine)
