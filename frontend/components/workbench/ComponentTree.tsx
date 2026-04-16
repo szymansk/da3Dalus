@@ -22,7 +22,9 @@ import {
 } from "@/hooks/useComponentTree";
 import { GroupAddMenu } from "@/components/workbench/GroupAddMenu";
 import { CotsPickerDialog } from "@/components/workbench/CotsPickerDialog";
+import { ConstructionPartPickerDialog } from "@/components/workbench/ConstructionPartPickerDialog";
 import type { Component } from "@/hooks/useComponents";
+import type { ConstructionPart } from "@/hooks/useConstructionParts";
 import { computeMoveResult } from "@/lib/treeDnd";
 
 /**
@@ -73,7 +75,8 @@ type AddFlowStage =
   | { kind: "idle" }
   | { kind: "menu"; parentId: number | null; parentName: string }
   | { kind: "newGroup"; parentId: number | null; parentName: string }
-  | { kind: "cotsPicker"; parentId: number | null; parentName: string };
+  | { kind: "cotsPicker"; parentId: number | null; parentName: string }
+  | { kind: "constructionPartsPicker"; parentId: number | null; parentName: string };
 
 function flattenTree(
   nodes: ComponentTreeNode[],
@@ -263,6 +266,28 @@ export function ComponentTree() {
     }
   };
 
+  const handleAssignConstructionPart = async (part: ConstructionPart) => {
+    if (!aeroplaneId) return;
+    const parentId =
+      addFlow.kind === "constructionPartsPicker" ? addFlow.parentId : null;
+    try {
+      // Backend's add_node (N1 snapshot logic) copies volume/area/material
+      // from the referenced part when construction_part_id is set and the
+      // corresponding fields are not explicitly passed.
+      await addTreeNode(aeroplaneId, {
+        parent_id: parentId,
+        node_type: "cad_shape",
+        name: part.name,
+        construction_part_id: part.id,
+      });
+      mutate();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Assign failed");
+    } finally {
+      setAddFlow({ kind: "idle" });
+    }
+  };
+
   const rows = flattenTree(
     tree,
     0,
@@ -333,11 +358,15 @@ export function ComponentTree() {
                   parentName: addFlow.parentName,
                 })
               }
-              onAssignConstructionPart={() => {
-                /* gh#57-wvg: wired when the Construction-Parts picker ships. */
-              }}
+              onAssignConstructionPart={() =>
+                setAddFlow({
+                  kind: "constructionPartsPicker",
+                  parentId: addFlow.parentId,
+                  parentName: addFlow.parentName,
+                })
+              }
               onClose={() => setAddFlow({ kind: "idle" })}
-              constructionPartsEnabled={false}
+              constructionPartsEnabled={true}
             />
           </div>
         </div>
@@ -348,6 +377,16 @@ export function ComponentTree() {
         onClose={() => setAddFlow({ kind: "idle" })}
         onSelect={handleAssignCots}
         targetGroupName={addFlow.kind === "cotsPicker" ? addFlow.parentName : undefined}
+      />
+
+      <ConstructionPartPickerDialog
+        open={addFlow.kind === "constructionPartsPicker"}
+        aeroplaneId={aeroplaneId ?? ""}
+        onClose={() => setAddFlow({ kind: "idle" })}
+        onSelect={handleAssignConstructionPart}
+        targetGroupName={
+          addFlow.kind === "constructionPartsPicker" ? addFlow.parentName : undefined
+        }
       />
     </>
   );
