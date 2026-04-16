@@ -36,6 +36,7 @@ export default function ComponentsPage() {
   };
 
   return (
+    <>
     <WorkbenchTwoPanel>
       <ComponentTree />
 
@@ -169,15 +170,21 @@ export default function ComponentsPage() {
           </div>
         )}
       </div>
-
-      {editDialog.open && (
-        <ComponentEditDialog
-          open={editDialog.open}
-          onClose={() => setEditDialog({ open: false, component: null })}
-          onSaved={() => mutate()}
-          component={editDialog.component}
-        />
-      )}
     </WorkbenchTwoPanel>
+
+    {/*
+     * Dialog must render as a sibling of <WorkbenchTwoPanel/>, not as a
+     * child — WorkbenchTwoPanel only renders its first two children and
+     * silently drops the rest. See gh#57-fav regression tests.
+     */}
+    {editDialog.open && (
+      <ComponentEditDialog
+        open={editDialog.open}
+        onClose={() => setEditDialog({ open: false, component: null })}
+        onSaved={() => mutate()}
+        component={editDialog.component}
+      />
+    )}
+    </>
   );
 }
