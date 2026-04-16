@@ -150,7 +150,6 @@ def upgrade() -> None:
         ),
     )
 
-    import json
     component_types = sa.table(
         "component_types",
         sa.column("name", sa.String),
@@ -166,8 +165,11 @@ def upgrade() -> None:
                 "name": t["name"],
                 "label": t["label"],
                 "description": t["description"],
-                # Some DB dialects persist JSON as string — dump explicitly for safety.
-                "schema": json.dumps(t["schema"]),
+                # SQLAlchemy's JSON type serialises Python objects itself —
+                # passing a list (not json.dumps(list)) avoids the
+                # double-encoding bug caught by
+                # test_component_types_schema_json_bug.py.
+                "schema": t["schema"],
                 "deletable": False,
             }
             for t in SEED_TYPES

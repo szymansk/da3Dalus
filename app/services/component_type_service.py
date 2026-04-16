@@ -7,6 +7,7 @@ type/required/min/max/options rules.
 """
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
@@ -30,6 +31,40 @@ from app.schemas.component_type import (
 logger = logging.getLogger(__name__)
 
 
+def _normalize_schema(raw: Any) -> list[dict[str, Any]]:
+    """Tolerantly coerce the `schema_def` column value to a list of dicts.
+
+    The original seed migration (28a13fbeac90) stored schemas as
+    ``json.dumps(list)`` — SQLAlchemy's JSON type then json.dumps()ed the
+    already-serialised string, producing a double-encoded scalar. On read,
+    one layer of unwrapping returns a STRING instead of a list, which
+    Pydantic (correctly) rejects. This helper unwraps the remaining layer
+    when needed, so existing dev databases don't need to be rebuilt.
+
+    Accepts: list (happy path), string (legacy double-encoded), None.
+    """
+    if raw is None:
+        return []
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            logger.warning("schema_def is non-JSON string; treating as empty list")
+            return []
+        if isinstance(parsed, list):
+            return parsed
+        logger.warning(
+            "schema_def parsed to %s; treating as empty list",
+            type(parsed).__name__,
+        )
+        return []
+    # Unexpected type — coerce to empty to avoid 500s.
+    logger.warning("schema_def has unexpected type %s; treating as empty list", type(raw).__name__)
+    return []
+
+
 # --------------------------------------------------------------------------- #
 # Helpers
 # --------------------------------------------------------------------------- #
@@ -50,7 +85,7 @@ def _to_schema(db: Session, m: ComponentTypeModel) -> ComponentTypeRead:
             "name": m.name,
             "label": m.label,
             "description": m.description,
-            "schema": m.schema_def or [],
+            "schema": _normalize_schema(m.schema_def),
             "deletable": m.deletable,
             "reference_count": _reference_count(db, m.name),
             "created_at": m.created_at,
@@ -181,7 +216,7 @@ def validate_specs(
             details={"component_type": component_type_name},
         )
 
-    for raw in row.schema_def or []:
+    for raw in _normalize_schema(row.schema_def):
         prop = PropertyDefinition.model_validate(raw)
         value = specs.get(prop.name, None)
 
