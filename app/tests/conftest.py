@@ -31,6 +31,7 @@ from app.main import create_app
 from app.models.aeroplanemodel import AeroplaneModel, FuselageModel, WingModel
 from app.models.analysismodels import OperatingPointModel
 from app.services import cad_service
+from app.services.component_type_service import seed_default_types
 
 
 # --------------------------------------------------------------------------- #
@@ -60,6 +61,14 @@ def client_and_db() -> Tuple[TestClient, sessionmaker]:
         class_=Session,
     )
     Base.metadata.create_all(bind=engine)
+
+    # gh#83: seed the default component types so tests see the same registry
+    # shape that a migrated prod DB would have.
+    _seed_session = TestingSessionLocal()
+    try:
+        seed_default_types(_seed_session)
+    finally:
+        _seed_session.close()
 
     def override_get_db():
         db = TestingSessionLocal()

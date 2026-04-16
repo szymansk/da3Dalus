@@ -21,9 +21,9 @@ from app.schemas.component import (
     ComponentRead,
     ComponentTypesResponse,
     ComponentWrite,
-    COMPONENT_TYPE_LIST,
 )
 from app.services import component_service as svc
+from app.services import component_type_service as type_svc
 
 logger = logging.getLogger(__name__)
 
@@ -70,9 +70,15 @@ async def list_components(
     response_model=ComponentTypesResponse,
     operation_id="list_component_types",
 )
-async def list_component_types() -> ComponentTypesResponse:
-    """List all available component types."""
-    return ComponentTypesResponse(types=COMPONENT_TYPE_LIST)
+async def list_component_types(
+    db: Session = Depends(get_db),
+) -> ComponentTypesResponse:
+    """List the *names* of all registered component types.
+
+    Backward-compatible shape. Prefer GET /component-types for full metadata
+    (schema, reference_count, etc.).
+    """
+    return ComponentTypesResponse(types=type_svc.list_type_names(db))
 
 
 @router.post(
