@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { X, Loader2 } from "lucide-react";
 import type { Component } from "@/hooks/useComponents";
-import { createComponent, updateComponent, useComponentTypes } from "@/hooks/useComponents";
+import { createComponent, updateComponent } from "@/hooks/useComponents";
+import { useComponentTypes } from "@/hooks/useComponentTypes";
 
 interface ComponentEditDialogProps {
   open: boolean;
@@ -13,7 +14,7 @@ interface ComponentEditDialogProps {
 }
 
 export function ComponentEditDialog({ open, onClose, onSaved, component }: ComponentEditDialogProps) {
-  const types = useComponentTypes();
+  const { types } = useComponentTypes();
   const isEdit = !!component;
 
   const [name, setName] = useState("");
@@ -98,7 +99,7 @@ export function ComponentEditDialog({ open, onClose, onSaved, component }: Compo
               <label className="text-[11px] text-muted-foreground">Type</label>
               <select value={componentType} onChange={(e) => setComponentType(e.target.value)}
                 className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground">
-                {types.map((t) => <option key={t} value={t}>{t}</option>)}
+                {types.map((t) => <option key={t.id} value={t.name}>{t.label}</option>)}
               </select>
             </div>
             <div className="flex flex-1 flex-col gap-1">
