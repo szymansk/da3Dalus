@@ -113,6 +113,97 @@ describe("ConstructionPartUploadDialog", () => {
     expect(mockUpload.mock.calls[0][1]).toBeInstanceOf(FormData);
   });
 
+  it("auto-fills the Name field from the filename (without suffix) when Name is empty", () => {
+    const { container } = render(
+      <ConstructionPartUploadDialog
+        open={true}
+        aeroplaneId="a"
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    const nameInput = container.querySelector('input[type="text"]') as HTMLInputElement;
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    expect(nameInput.value).toBe("");
+
+    const file = new File([new Uint8Array([1, 2, 3])], "Bulkhead-A.step", { type: "application/octet-stream" });
+    Object.defineProperty(fileInput, "files", { value: [file] });
+    fireEvent.change(fileInput);
+
+    expect(nameInput.value).toBe("Bulkhead-A");
+  });
+
+  it("auto-fill strips a double extension only to the last suffix", () => {
+    const { container } = render(
+      <ConstructionPartUploadDialog
+        open={true}
+        aeroplaneId="a"
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+    const nameInput = container.querySelector('input[type="text"]') as HTMLInputElement;
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    const file = new File([new Uint8Array([1])], "part.v2.stl", { type: "application/octet-stream" });
+    Object.defineProperty(fileInput, "files", { value: [file] });
+    fireEvent.change(fileInput);
+
+    expect(nameInput.value).toBe("part.v2");
+  });
+
+  it("does NOT overwrite the Name field when the user has already typed something", () => {
+    const { container } = render(
+      <ConstructionPartUploadDialog
+        open={true}
+        aeroplaneId="a"
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+    const nameInput = container.querySelector('input[type="text"]') as HTMLInputElement;
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    // User types a custom name first.
+    fireEvent.change(nameInput, { target: { value: "MyCustomName" } });
+    expect(nameInput.value).toBe("MyCustomName");
+
+    // Then picks a file — the custom name must be preserved.
+    const file = new File([new Uint8Array([1])], "some-file.step", { type: "application/octet-stream" });
+    Object.defineProperty(fileInput, "files", { value: [file] });
+    fireEvent.change(fileInput);
+
+    expect(nameInput.value).toBe("MyCustomName");
+  });
+
+  it("auto-fill re-engages if the user clears the Name and then picks another file", () => {
+    const { container } = render(
+      <ConstructionPartUploadDialog
+        open={true}
+        aeroplaneId="a"
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+    const nameInput = container.querySelector('input[type="text"]') as HTMLInputElement;
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    // First file -> auto-fill "First".
+    const f1 = new File([new Uint8Array([1])], "First.step");
+    Object.defineProperty(fileInput, "files", { value: [f1], configurable: true });
+    fireEvent.change(fileInput);
+    expect(nameInput.value).toBe("First");
+
+    // User wipes the name, then picks another file.
+    fireEvent.change(nameInput, { target: { value: "" } });
+    const f2 = new File([new Uint8Array([1])], "Second.stl");
+    Object.defineProperty(fileInput, "files", { value: [f2], configurable: true });
+    fireEvent.change(fileInput);
+    expect(nameInput.value).toBe("Second");
+  });
+
   it("closes on Cancel", () => {
     const onClose = vi.fn();
     render(

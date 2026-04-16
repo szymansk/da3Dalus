@@ -106,7 +106,17 @@ export function ConstructionPartUploadDialog({
               ref={fileRef}
               type="file"
               accept=".step,.stp,.stl"
-              onChange={(e) => setFileName(e.target.files?.[0]?.name ?? "")}
+              onChange={(e) => {
+                const picked = e.target.files?.[0]?.name ?? "";
+                setFileName(picked);
+                // Convenience: seed the Name field from the filename (last
+                // suffix stripped) only while the user hasn't typed a name.
+                // We don't overwrite user-entered names.
+                if (!name && picked) {
+                  const dot = picked.lastIndexOf(".");
+                  setName(dot > 0 ? picked.slice(0, dot) : picked);
+                }
+              }}
               className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground file:mr-3 file:rounded-full file:border-0 file:bg-sidebar-accent file:px-3 file:py-1 file:text-[12px]"
             />
             {fileName && (
