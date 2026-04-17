@@ -213,6 +213,10 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
   const { setDirty } = useUnsavedChanges();
   const router = useRouter();
 
+  // TedSection registers its save function here so the main Save button
+  // can trigger it — no separate "Save TED" button needed.
+  const tedSaveRef = useRef<(() => Promise<void>) | null>(null);
+
   // Mode is driven by tree toggle, not local state
   const mode: Mode = treeMode;
   const [saving, setSaving] = useState(false);
@@ -344,6 +348,8 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
         nose_pnt: nosePnt.map((v) => v / 1000),
         segments: updatedSegments,
       });
+      // Save TED fields if any were edited (registered by TedSection)
+      if (tedSaveRef.current) await tedSaveRef.current();
       await mutate();
       await mutateWc();
       if (selectedWing) onGeometryChanged?.(selectedWing);
@@ -573,6 +579,7 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
         xsecIndex={selectedXsecIndex!}
         ted={xsec.trailing_edge_device}
         onSaved={() => mutate()}
+        registerSave={(fn) => { tedSaveRef.current = fn; }}
       />
 
       {/* Spars section */}
@@ -914,12 +921,14 @@ function TedSection({
   xsecIndex,
   ted,
   onSaved,
+  registerSave,
 }: {
   aeroplaneId: string | null;
   wingName: string | null;
   xsecIndex: number;
   ted: Record<string, unknown> | null | undefined;
   onSaved: () => void;
+  registerSave?: (fn: () => Promise<void>) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1032,6 +1041,15 @@ function TedSection({
     }
   }
 
+  // Register save function so the parent's main Save button can call it
+  useEffect(() => {
+    if (registerSave && name) {
+      registerSave(handleSaveTed);
+    } else if (registerSave) {
+      registerSave(async () => {});
+    }
+  });
+
   return (
     <div className="mt-2 border-t border-border pt-2">
       <button
@@ -1138,13 +1156,6 @@ function TedSection({
             />
             <span className="text-[11px] text-muted-foreground">symmetric</span>
           </div>
-          <button
-            onClick={handleSaveTed}
-            disabled={saving || !name}
-            className="self-end rounded-full bg-primary px-3 py-1.5 text-[12px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
-          >
-            {saving ? "Saving…" : "Save TED"}
-          </button>
           {tedError && <p className="text-[11px] text-red-500">{tedError}</p>}
         </div>
       )}
