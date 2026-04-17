@@ -230,6 +230,10 @@ class Wing(BaseModel):
     nose_pnt: List[float] = Field(
         description="3D coordinates [x, y, z] of the wing's nose point in the aircraft coordinate system"
     )
+    symmetric: bool = Field(
+        default=True,
+        description="Whether the wing is mirrored along the aircraft's symmetry plane",
+    )
 
     model_config = {
         "json_schema_extra": {

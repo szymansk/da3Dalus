@@ -161,6 +161,7 @@ def create_root_segment(wing_model: WingModel) -> dict:
         wing_model.nose_pnt[1],
         wing_model.nose_pnt[2]
     )
+    initialization_dict['symmetric'] = getattr(wing_model, 'symmetric', True)
     initialization_dict['sweep_is_angle'] = False
     initialization_dict['root_airfoil'] = create_airfoil(root_segment.root_airfoil)
     initialization_dict['tip_airfoil'] = create_airfoil(root_segment.tip_airfoil)
