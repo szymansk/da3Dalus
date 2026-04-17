@@ -663,42 +663,21 @@ function TipOverrideSection({
 
 // ── Servo Picker (gh#99) ────────────────────────────────────────
 
-/** Maps a Component's specs to the Servo CAD object expected by the API.
- *  Returns null + error message if required CAD dimensions are missing. */
-function componentToServoPayload(
-  comp: Component,
-): { ok: true; payload: Record<string, number> } | { ok: false; error: string } {
+/** Maps a Component's specs to the Servo CAD object expected by the API. */
+function componentToServoPayload(comp: Component): Record<string, number> {
   const s = comp.specs;
-  const length = Number(s.servo_length ?? 0);
-  const width = Number(s.servo_width ?? 0);
-  const height = Number(s.servo_height ?? 0);
-
-  if (!length || !width || !height) {
-    const missing: string[] = [];
-    if (!length) missing.push("servo_length");
-    if (!width) missing.push("servo_width");
-    if (!height) missing.push("servo_height");
-    return {
-      ok: false,
-      error: `"${comp.name}" fehlen CAD-Maße: ${missing.join(", ")}. Bitte im Component-Library-Eintrag ergänzen.`,
-    };
-  }
-
   return {
-    ok: true,
-    payload: {
-      length,
-      width,
-      height,
-      leading_length: Number(s.leading_length ?? 0),
-      latch_z: Number(s.latch_z ?? 0),
-      latch_x: Number(s.latch_x ?? 0),
-      latch_thickness: Number(s.latch_thickness ?? 0),
-      latch_length: Number(s.latch_length ?? 0),
-      cable_z: Number(s.cable_z ?? 0),
-      screw_hole_lx: Number(s.screw_hole_lx ?? 0),
-      screw_hole_d: Number(s.screw_hole_d ?? 0),
-    },
+    length: Number(s.servo_length ?? 0),
+    width: Number(s.servo_width ?? 0),
+    height: Number(s.servo_height ?? 0),
+    leading_length: Number(s.leading_length ?? 0),
+    latch_z: Number(s.latch_z ?? 0),
+    latch_x: Number(s.latch_x ?? 0),
+    latch_thickness: Number(s.latch_thickness ?? 0),
+    latch_length: Number(s.latch_length ?? 0),
+    cable_z: Number(s.cable_z ?? 0),
+    screw_hole_lx: Number(s.screw_hole_lx ?? 0),
+    screw_hole_d: Number(s.screw_hole_d ?? 0),
   };
 }
 
@@ -756,20 +735,16 @@ function ServoPickerInline({
       setServoError("No aeroplane/wing selected");
       return;
     }
-    const result = componentToServoPayload(comp);
-    if (!result.ok) {
-      setServoError(result.error);
-      return;
-    }
     setAssigning(true);
     setServoError(null);
     try {
+      const payload = componentToServoPayload(comp);
       const res = await fetch(
         `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/cross_sections/${xsecIndex}/control_surface/cad_details/servo_details`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ servo: result.payload }),
+          body: JSON.stringify({ servo: payload }),
         },
       );
       if (!res.ok) {
@@ -869,40 +844,34 @@ function ServoPickerInline({
                 No servos found
               </div>
             )}
-            {filtered.map((s) => {
-              const hasCAD = !!(s.specs.servo_length && s.specs.servo_width && s.specs.servo_height);
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => assignServo(s)}
-                  disabled={assigning}
-                  className={`flex w-full items-center gap-2 px-3 py-1.5 hover:bg-sidebar-accent disabled:opacity-50 ${!hasCAD ? "opacity-50" : ""}`}
-                >
-                  {s.name === currentServoName ? (
-                    <Check size={12} className="text-primary" />
-                  ) : (
-                    <div className="w-3" />
-                  )}
-                  <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
-                    {s.name}
+            {filtered.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => assignServo(s)}
+                disabled={assigning}
+                className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-sidebar-accent disabled:opacity-50"
+              >
+                {s.name === currentServoName ? (
+                  <Check size={12} className="text-primary" />
+                ) : (
+                  <div className="w-3" />
+                )}
+                <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
+                  {s.name}
+                </span>
+                {s.manufacturer && (
+                  <span className="text-[12px] text-muted-foreground">
+                    ({s.manufacturer})
                   </span>
-                  {s.manufacturer && (
-                    <span className="text-[12px] text-muted-foreground">
-                      ({s.manufacturer})
-                    </span>
-                  )}
-                  {!hasCAD && (
-                    <span className="text-[10px] text-amber-500">no CAD</span>
-                  )}
-                  {s.mass_g != null && (
-                    <>
-                      <span className="flex-1" />
-                      <span className="text-[10px] text-subtle-foreground">{s.mass_g}g</span>
-                    </>
-                  )}
-                </button>
-              );
-            })}
+                )}
+                {s.mass_g != null && (
+                  <>
+                    <span className="flex-1" />
+                    <span className="text-[10px] text-subtle-foreground">{s.mass_g}g</span>
+                  </>
+                )}
+              </button>
+            ))}
           </div>
 
           {servos.length > 20 && !search && (
