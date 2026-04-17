@@ -1073,11 +1073,10 @@ function TedSection({
                 <option value="bottom">bottom</option>
               </select>
             </div>
-            <Field label="servo_chord_pos" value={servoChordPos} onChange={setServoChordPos} />
           </div>
           <div className="flex gap-3">
-            <Field label="servo_length_pos" value={servoLengthPos} onChange={setServoLengthPos} />
-            <div className="flex-1" />
+            <Field label="servo_chord_pos (0–1)" value={servoChordPos} onChange={setServoChordPos} />
+            <Field label="servo_length_pos (0–1)" value={servoLengthPos} onChange={setServoLengthPos} />
           </div>
           {/* Symmetric checkbox */}
           <div className="flex items-center gap-2">
