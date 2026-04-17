@@ -1077,14 +1077,21 @@ function TedSection({
             <Field label="side_spacing_root" value={sideSpacingRoot} suffix="mm" onChange={setSideSpacingRoot} />
             <Field label="side_spacing_tip" value={sideSpacingTip} suffix="mm" onChange={setSideSpacingTip} />
           </div>
-          {/* Servo assignment from component library (gh#99) */}
-          <ServoPickerInline
-            aeroplaneId={aeroplaneId}
-            wingName={wingName}
-            xsecIndex={xsecIndex}
-            ted={ted}
-            onAssigned={onSaved}
-          />
+          {/* Servo assignment from component library (gh#99) —
+              only available after the TED has been saved at least once */}
+          {hasTed ? (
+            <ServoPickerInline
+              aeroplaneId={aeroplaneId}
+              wingName={wingName}
+              xsecIndex={xsecIndex}
+              ted={ted}
+              onAssigned={onSaved}
+            />
+          ) : (
+            <p className="text-[11px] text-muted-foreground italic">
+              Save the TED first to assign a servo.
+            </p>
+          )}
           {/* Servo positioning */}
           <div className="flex gap-3">
             <div className="flex flex-1 flex-col gap-1">
