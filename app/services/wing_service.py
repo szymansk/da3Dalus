@@ -755,6 +755,70 @@ def create_spare(
         raise InternalError(message=f"Database error: {e}")
 
 
+def update_spare(
+    db: Session,
+    aeroplane_uuid,
+    wing_name: str,
+    xsec_index: int,
+    spar_index: int,
+    spare_data: schemas.SpareDetailSchema,
+) -> None:
+    """Replace a spar at the given index on a wing cross-section."""
+    try:
+        with db.begin():
+            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+            wing = get_wing_or_raise(aeroplane, wing_name)
+            x_sec = _get_xsec_or_raise(wing, xsec_index)
+            detail = _ensure_segment_detail_or_raise(x_sec, xsec_index, len(wing.x_secs))
+            if spar_index < 0 or spar_index >= len(detail.spares):
+                raise NotFoundError(
+                    message=f"Spar index {spar_index} out of range (0..{len(detail.spares) - 1}).",
+                    details={"spar_index": spar_index},
+                )
+            spare = detail.spares[spar_index]
+            for key, value in spare_data.model_dump().items():
+                setattr(spare, key, value)
+            aeroplane.updated_at = datetime.now()
+    except (NotFoundError, ValidationError):
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when updating spar: {e}")
+        raise InternalError(message=f"Database error: {e}")
+
+
+def delete_spare(
+    db: Session,
+    aeroplane_uuid,
+    wing_name: str,
+    xsec_index: int,
+    spar_index: int,
+) -> None:
+    """Delete a spar at the given index on a wing cross-section."""
+    try:
+        with db.begin():
+            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+            wing = get_wing_or_raise(aeroplane, wing_name)
+            x_sec = _get_xsec_or_raise(wing, xsec_index)
+            detail = _ensure_segment_detail_or_raise(x_sec, xsec_index, len(wing.x_secs))
+            if spar_index < 0 or spar_index >= len(detail.spares):
+                raise NotFoundError(
+                    message=f"Spar index {spar_index} out of range (0..{len(detail.spares) - 1}).",
+                    details={"spar_index": spar_index},
+                )
+            spare = detail.spares[spar_index]
+            db.delete(spare)
+            # Re-index remaining spares
+            for i, s in enumerate(detail.spares):
+                if s is not spare:
+                    s.sort_index = i if i < spar_index else i - 1
+            aeroplane.updated_at = datetime.now()
+    except (NotFoundError, ValidationError):
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error when deleting spar: {e}")
+        raise InternalError(message=f"Database error: {e}")
+
+
 def get_control_surface(
     db: Session,
     aeroplane_uuid,
