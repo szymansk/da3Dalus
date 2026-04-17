@@ -1,13 +1,21 @@
+from typing import Optional
+
 from pydantic import BaseModel, NonNegativeFloat, Field
 
 
 class Servo(BaseModel):
     """Physical dimensions of a servo actuator.
 
-    All fields are required. Values of 0 are accepted (e.g. when CAD
-    dimensions are not yet known); the topology layer tolerates them.
+    All dimension fields are required. Values of 0 are accepted (e.g. when
+    CAD dimensions are not yet known); the topology layer tolerates them.
+    ``component_id`` is an optional FK back to the Component Library entry
+    the servo was selected from — used by the frontend to display the name.
     """
 
+    component_id: Optional[int] = Field(
+        default=None,
+        description="FK to components table — identifies which library servo was selected",
+    )
     length: NonNegativeFloat = Field(description="X-dimension of the servo body (mm)")
     width: NonNegativeFloat = Field(description="Y-dimension of the servo body (mm)")
     height: NonNegativeFloat = Field(description="Z-dimension of the servo body (mm)")

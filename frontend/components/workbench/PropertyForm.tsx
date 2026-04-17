@@ -663,10 +663,12 @@ function TipOverrideSection({
 
 // ── Servo Picker (gh#99) ────────────────────────────────────────
 
-/** Maps a Component's specs to the Servo CAD object expected by the API. */
-function componentToServoPayload(comp: Component): Record<string, number> {
+/** Maps a Component's specs to the Servo CAD object expected by the API.
+ *  Includes component_id so the backend can link back to the library entry. */
+function componentToServoPayload(comp: Component): Record<string, unknown> {
   const s = comp.specs;
   return {
+    component_id: comp.id,
     length: Number(s.servo_length ?? 0),
     width: Number(s.servo_width ?? 0),
     height: Number(s.servo_height ?? 0),
@@ -685,16 +687,27 @@ function ServoPickerInline({
   aeroplaneId,
   wingName,
   xsecIndex,
-  currentServoName,
+  ted,
   onAssigned,
 }: {
   aeroplaneId: string | null;
   wingName: string | null;
   xsecIndex: number;
-  currentServoName?: string | null;
+  ted: Record<string, unknown> | null | undefined;
   onAssigned: () => void;
 }) {
   const { components: servos } = useComponents("servo");
+
+  // Resolve the currently assigned servo name via component_id in the TED's servo data
+  const servoData = ted && typeof ted === "object"
+    ? (ted as Record<string, unknown>).servo as Record<string, unknown> | null | undefined
+    : null;
+  const assignedComponentId = servoData && typeof servoData === "object"
+    ? (servoData as Record<string, unknown>).component_id as number | null | undefined
+    : null;
+  const currentServoName = assignedComponentId
+    ? servos.find((s) => s.id === assignedComponentId)?.name ?? `Servo #${assignedComponentId}`
+    : servoData ? "Servo (unknown)" : null;
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [assigning, setAssigning] = useState(false);
@@ -1069,11 +1082,7 @@ function TedSection({
             aeroplaneId={aeroplaneId}
             wingName={wingName}
             xsecIndex={xsecIndex}
-            currentServoName={
-              ted && typeof ted === "object" && (ted as Record<string, unknown>).servo
-                ? "Servo assigned"
-                : null
-            }
+            ted={ted}
             onAssigned={onSaved}
           />
           {/* Servo positioning */}

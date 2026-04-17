@@ -137,6 +137,7 @@ class WingXSecTrailingEdgeDeviceModel(Base):
 class WingXSecTedServoModel(Base):
     __tablename__ = "wing_xsec_ted_servos"
     ted_id = Column(Integer, ForeignKey("wing_xsec_trailing_edge_devices.id", ondelete="CASCADE"), nullable=False, unique=True)
+    component_id = Column(Integer, ForeignKey("components.id"), nullable=True)
     length = Column(Float, nullable=True)
     width = Column(Float, nullable=True)
     height = Column(Float, nullable=True)
