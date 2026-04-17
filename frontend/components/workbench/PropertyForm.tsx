@@ -369,16 +369,32 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
       <div className="flex flex-col gap-3">
         {mode === "wingconfig" && wc ? (
           <>
-            {/* nose_pnt — only on segment 0 */}
+            {/* Wing-level: symmetric + nose_pnt — only on segment 0 */}
             {selectedXsecIndex === 0 && (
-              <div className="flex gap-3">
-                <Field label="nose x" value={nosePnt[0]} suffix="mm"
-                  onChange={(v) => { setDirty(true); setNosePnt([num(v), nosePnt[1], nosePnt[2]]); }} />
-                <Field label="nose y" value={nosePnt[1]} suffix="mm"
-                  onChange={(v) => { setDirty(true); setNosePnt([nosePnt[0], num(v), nosePnt[2]]); }} />
-                <Field label="nose z" value={nosePnt[2]} suffix="mm"
-                  onChange={(v) => { setDirty(true); setNosePnt([nosePnt[0], nosePnt[1], num(v)]); }} />
-              </div>
+              <>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={wingConfig?.symmetric ?? true}
+                    onChange={(e) => {
+                      setDirty(true);
+                      if (wingConfig) wingConfig.symmetric = e.target.checked;
+                      // Force re-render via state toggle
+                      setWc({ ...wc });
+                    }}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-[11px] text-muted-foreground">symmetric wing</span>
+                </div>
+                <div className="flex gap-3">
+                  <Field label="nose x" value={nosePnt[0]} suffix="mm"
+                    onChange={(v) => { setDirty(true); setNosePnt([num(v), nosePnt[1], nosePnt[2]]); }} />
+                  <Field label="nose y" value={nosePnt[1]} suffix="mm"
+                    onChange={(v) => { setDirty(true); setNosePnt([nosePnt[0], num(v), nosePnt[2]]); }} />
+                  <Field label="nose z" value={nosePnt[2]} suffix="mm"
+                    onChange={(v) => { setDirty(true); setNosePnt([nosePnt[0], nosePnt[1], num(v)]); }} />
+                </div>
+              </>
             )}
             {/* Row 1: root_airfoil | tip_airfoil */}
             <div className="flex gap-3">
@@ -473,6 +489,24 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
                 onChange={(v) => { setDirty(true); setWc({ ...wc, number_interpolation_points: num(v, 201) }); }}
               />
             </div>
+            {/* Row 6: tip_type */}
+            <div className="flex gap-3">
+              <div className="flex flex-1 flex-col gap-1">
+                <label className="text-[11px] text-muted-foreground">tip_type</label>
+                <select
+                  value={wc.tip_type}
+                  onChange={(e) => { setDirty(true); setWc({ ...wc, tip_type: e.target.value }); }}
+                  className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+                >
+                  <option value="">none</option>
+                  <option value="flat">flat</option>
+                  <option value="round">round</option>
+                </select>
+              </div>
+              <div className="flex-1" />
+            </div>
+            {/* Tip airfoil overrides (collapsible) */}
+            <TipOverrideSection wc={wc} setWc={setWc} setDirty={setDirty} />
           </>
         ) : asb ? (
           <>
@@ -572,6 +606,59 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
     </div>
   );
 }
+
+// ── Tip Override Section ────────────────────────────────────────
+
+function TipOverrideSection({
+  wc,
+  setWc,
+  setDirty,
+}: {
+  wc: WingConfigState;
+  setWc: (wc: WingConfigState) => void;
+  setDirty: (dirty: boolean) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="mt-1 border-t border-border pt-2">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground"
+      >
+        {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        Tip Airfoil Overrides
+      </button>
+      {open && (
+        <div className="mt-2 flex flex-col gap-2">
+          <div className="flex gap-3">
+            <Field
+              label="tip_dihedral"
+              value={wc.tip_dihedral}
+              suffix="°"
+              onChange={(v) => { setDirty(true); setWc({ ...wc, tip_dihedral: num(v) }); }}
+            />
+            <Field
+              label="tip_incidence"
+              value={wc.tip_incidence}
+              suffix="°"
+              onChange={(v) => { setDirty(true); setWc({ ...wc, tip_incidence: num(v) }); }}
+            />
+          </div>
+          <div className="flex gap-3">
+            <Field
+              label="tip_rotation_point"
+              value={wc.tip_rotation_point}
+              onChange={(v) => { setDirty(true); setWc({ ...wc, tip_rotation_point: num(v, 0.25) }); }}
+            />
+            <div className="flex-1" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 // ── TED Section ─────────────────────────────────────────────────
 
