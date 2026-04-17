@@ -772,7 +772,7 @@ function ServoPickerInline({
   }
 
   return (
-    <div ref={containerRef} className="relative flex flex-col gap-1">
+    <div ref={containerRef} className={`relative flex flex-col gap-1 ${open ? "z-40" : ""}`}>
       <label className="text-[11px] text-muted-foreground">Servo</label>
 
       {/* Trigger button */}
