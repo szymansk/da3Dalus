@@ -575,6 +575,8 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
 
 // ── TED Section ─────────────────────────────────────────────────
 
+const HINGE_TYPES = ["middle", "top", "top_simple", "round_inside", "round_outside"] as const;
+
 function TedSection({
   aeroplaneId,
   wingName,
@@ -591,13 +593,24 @@ function TedSection({
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [tedError, setTedError] = useState<string | null>(null);
+  // Core fields
   const [name, setName] = useState("");
   const [hingePoint, setHingePoint] = useState("0.8");
   const [symmetric, setSymmetric] = useState(false);
-  const [servoPlacement, setServoPlacement] = useState("top");
+  const [relChordTip, setRelChordTip] = useState("0.8");
+  // Deflection
   const [posDeg, setPosDeg] = useState("35");
   const [negDeg, setNegDeg] = useState("35");
-  const [relChordTip, setRelChordTip] = useState("0.8");
+  // Spacing / geometry (gh#95)
+  const [hingeSpacing, setHingeSpacing] = useState("");
+  const [sideSpacingRoot, setSideSpacingRoot] = useState("");
+  const [sideSpacingTip, setSideSpacingTip] = useState("");
+  const [teOffsetFactor, setTeOffsetFactor] = useState("1.0");
+  const [hingeType, setHingeType] = useState("top");
+  // Servo (gh#95)
+  const [servoPlacement, setServoPlacement] = useState("top");
+  const [servoChordPos, setServoChordPos] = useState("");
+  const [servoLengthPos, setServoLengthPos] = useState("");
 
   // Sync from existing TED
   useEffect(() => {
@@ -606,17 +619,35 @@ function TedSection({
       if (t.name) setName(String(t.name));
       if (t.hinge_point) setHingePoint(String(t.hinge_point));
       if (t.symmetric !== undefined) setSymmetric(Boolean(t.symmetric));
+      if (t.rel_chord_tip != null) setRelChordTip(String(t.rel_chord_tip));
+      if (t.positive_deflection_deg != null) setPosDeg(String(t.positive_deflection_deg));
+      if (t.negative_deflection_deg != null) setNegDeg(String(t.negative_deflection_deg));
+      if (t.hinge_spacing != null) setHingeSpacing(String(t.hinge_spacing));
+      if (t.side_spacing_root != null) setSideSpacingRoot(String(t.side_spacing_root));
+      if (t.side_spacing_tip != null) setSideSpacingTip(String(t.side_spacing_tip));
+      if (t.trailing_edge_offset_factor != null) setTeOffsetFactor(String(t.trailing_edge_offset_factor));
+      if (t.hinge_type) setHingeType(String(t.hinge_type));
+      if (t.servo_placement) setServoPlacement(String(t.servo_placement));
+      if (t.rel_chord_servo_position != null) setServoChordPos(String(t.rel_chord_servo_position));
+      if (t.rel_length_servo_position != null) setServoLengthPos(String(t.rel_length_servo_position));
     }
   }, [ted]);
 
   const hasTed = ted && typeof ted === "object" && Object.keys(ted).length > 0;
+
+  function optFloat(v: string): number | undefined {
+    const trimmed = v.trim();
+    if (!trimmed) return undefined;
+    const n = parseFloat(trimmed);
+    return Number.isFinite(n) ? n : undefined;
+  }
 
   async function handleSaveTed() {
     if (!aeroplaneId || !wingName) return;
     setSaving(true);
     setTedError(null);
     try {
-      // PATCH control surface
+      // PATCH control surface (core ASB fields)
       const csRes = await fetch(
         `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/cross_sections/${xsecIndex}/control_surface`,
         {
@@ -632,18 +663,32 @@ function TedSection({
       );
       if (!csRes.ok) throw new Error(`Control surface: ${csRes.status}`);
 
-      // PATCH cad details
+      // PATCH cad details (all geometry + servo positioning)
+      const cadPayload: Record<string, unknown> = {
+        rel_chord_tip: parseFloat(relChordTip),
+        servo_placement: servoPlacement,
+        positive_deflection_deg: parseFloat(posDeg),
+        negative_deflection_deg: parseFloat(negDeg),
+        trailing_edge_offset_factor: optFloat(teOffsetFactor),
+        hinge_type: hingeType,
+      };
+      const hs = optFloat(hingeSpacing);
+      if (hs !== undefined) cadPayload.hinge_spacing = hs;
+      const ssr = optFloat(sideSpacingRoot);
+      if (ssr !== undefined) cadPayload.side_spacing_root = ssr;
+      const sst = optFloat(sideSpacingTip);
+      if (sst !== undefined) cadPayload.side_spacing_tip = sst;
+      const scp = optFloat(servoChordPos);
+      if (scp !== undefined) cadPayload.rel_chord_servo_position = scp;
+      const slp = optFloat(servoLengthPos);
+      if (slp !== undefined) cadPayload.rel_length_servo_position = slp;
+
       const cadRes = await fetch(
         `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/cross_sections/${xsecIndex}/control_surface/cad_details`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            rel_chord_tip: parseFloat(relChordTip),
-            servo_placement: servoPlacement,
-            positive_deflection_deg: parseFloat(posDeg),
-            negative_deflection_deg: parseFloat(negDeg),
-          }),
+          body: JSON.stringify(cadPayload),
         },
       );
       if (!cadRes.ok) throw new Error(`CAD details: ${cadRes.status}`);
@@ -667,18 +712,60 @@ function TedSection({
       </button>
       {open && (
         <div className="mt-2 flex flex-col gap-2">
+          {/* Core fields */}
           <div className="flex gap-3">
             <Field label="name" value={name} type="text" onChange={setName} />
             <Field label="hinge_point" value={hingePoint} onChange={setHingePoint} />
           </div>
           <div className="flex gap-3">
             <Field label="rel_chord_tip" value={relChordTip} onChange={setRelChordTip} />
-            <Field label="servo_placement" value={servoPlacement} type="text" onChange={setServoPlacement} />
+            <div className="flex flex-1 flex-col gap-1">
+              <label className="text-[11px] text-muted-foreground">hinge_type</label>
+              <select
+                value={hingeType}
+                onChange={(e) => setHingeType(e.target.value)}
+                className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+              >
+                {HINGE_TYPES.map((h) => (
+                  <option key={h} value={h}>{h}</option>
+                ))}
+              </select>
+            </div>
           </div>
+          {/* Deflection */}
           <div className="flex gap-3">
             <Field label="positive_deflection_deg" value={posDeg} suffix="°" onChange={setPosDeg} />
             <Field label="negative_deflection_deg" value={negDeg} suffix="°" onChange={setNegDeg} />
           </div>
+          {/* Spacing / geometry */}
+          <div className="flex gap-3">
+            <Field label="hinge_spacing" value={hingeSpacing} suffix="mm" onChange={setHingeSpacing} />
+            <Field label="TE_offset_factor" value={teOffsetFactor} onChange={setTeOffsetFactor} />
+          </div>
+          <div className="flex gap-3">
+            <Field label="side_spacing_root" value={sideSpacingRoot} suffix="mm" onChange={setSideSpacingRoot} />
+            <Field label="side_spacing_tip" value={sideSpacingTip} suffix="mm" onChange={setSideSpacingTip} />
+          </div>
+          {/* Servo positioning */}
+          <div className="flex gap-3">
+            <div className="flex flex-1 flex-col gap-1">
+              <label className="text-[11px] text-muted-foreground">servo_placement</label>
+              <select
+                value={servoPlacement}
+                onChange={(e) => setServoPlacement(e.target.value)}
+                className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+              >
+                <option value="top">top</option>
+                <option value="bottom">bottom</option>
+              </select>
+            </div>
+            <Field label="servo_chord_pos" value={servoChordPos} onChange={setServoChordPos} />
+          </div>
+          <div className="flex gap-3">
+            <Field label="servo_length_pos" value={servoLengthPos} onChange={setServoLengthPos} />
+            <div className="flex-1" />
+          </div>
+          {/* Symmetric checkbox */}
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -704,6 +791,8 @@ function TedSection({
 
 // ── Spars Section ───────────────────────────────────────────────
 
+const SPAR_MODES = ["standard", "follow", "normal", "standard_backward", "orthogonal_backward"] as const;
+
 function SparsSection({
   aeroplaneId,
   wingName,
@@ -724,23 +813,41 @@ function SparsSection({
   const [height, setHeight] = useState("4.42");
   const [posFactor, setPosFactor] = useState("0.25");
   const [sparMode, setSparMode] = useState("standard");
+  const [sparLength, setSparLength] = useState("");
+  const [sparStart, setSparStart] = useState("0");
+  const [vecX, setVecX] = useState("");
+  const [vecY, setVecY] = useState("");
+  const [vecZ, setVecZ] = useState("");
 
   async function handleAddSpar() {
     if (!aeroplaneId || !wingName) return;
     setSaving(true);
     setSparError(null);
     try {
+      const hasVector = vecX.trim() || vecY.trim() || vecZ.trim();
+      const payload: Record<string, unknown> = {
+        spare_support_dimension_width: parseFloat(width),
+        spare_support_dimension_height: parseFloat(height),
+        spare_position_factor: parseFloat(posFactor),
+        spare_mode: sparMode,
+        spare_start: sparStart.trim() ? parseFloat(sparStart) : 0,
+      };
+      if (sparLength.trim()) {
+        payload.spare_length = parseFloat(sparLength);
+      }
+      if (hasVector) {
+        payload.spare_vector = [
+          parseFloat(vecX) || 0,
+          parseFloat(vecY) || 0,
+          parseFloat(vecZ) || 0,
+        ];
+      }
       const res = await fetch(
         `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/cross_sections/${xsecIndex}/spars`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            spare_support_dimension_width: parseFloat(width),
-            spare_support_dimension_height: parseFloat(height),
-            spare_position_factor: parseFloat(posFactor),
-            spare_mode: sparMode,
-          }),
+          body: JSON.stringify(payload),
         },
       );
       if (!res.ok) throw new Error(`Add spar: ${res.status}`);
@@ -774,7 +881,44 @@ function SparsSection({
           </div>
           <div className="flex gap-3">
             <Field label="position_factor" value={posFactor} onChange={setPosFactor} />
-            <Field label="mode" value={sparMode} type="text" onChange={setSparMode} />
+            <div className="flex flex-1 flex-col gap-1">
+              <label className="text-[11px] text-muted-foreground">mode</label>
+              <select
+                value={sparMode}
+                onChange={(e) => setSparMode(e.target.value)}
+                className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+              >
+                {SPAR_MODES.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Field label="length" value={sparLength} suffix="mm" onChange={setSparLength} />
+            <Field label="start" value={sparStart} suffix="mm" onChange={setSparStart} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] text-muted-foreground">
+              direction (x, y, z) — empty = follow wing
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="number" step="any" placeholder="x" value={vecX}
+                onChange={(e) => setVecX(e.target.value)}
+                className="w-full rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+              <input
+                type="number" step="any" placeholder="y" value={vecY}
+                onChange={(e) => setVecY(e.target.value)}
+                className="w-full rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+              <input
+                type="number" step="any" placeholder="z" value={vecZ}
+                onChange={(e) => setVecZ(e.target.value)}
+                className="w-full rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+            </div>
           </div>
           <button
             onClick={handleAddSpar}
