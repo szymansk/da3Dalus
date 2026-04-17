@@ -183,3 +183,49 @@ def test_servo_with_all_fields_accepted(client):
         json=wc,
     )
     assert resp.status_code == 201, resp.text
+
+
+def test_wingconfig_roundtrip_preserves_ted_and_spars(client):
+    """GET wingconfig → PUT wingconfig must not lose TED or spars (gh#107)."""
+    wc = _make_wingconfig()
+    wc["segments"][0]["trailing_edge_device"] = {
+        "name": "aileron",
+        "rel_chord_root": 0.8,
+        "symmetric": False,
+    }
+    wc["segments"][0]["spare_list"] = [
+        {
+            "spare_support_dimension_width": 5,
+            "spare_support_dimension_height": 5,
+            "spare_position_factor": 0.25,
+            "spare_start": 0,
+            "spare_mode": "standard",
+            "spare_vector": [0, 1, 0],
+            "spare_origin": [0, 0, 0],
+        }
+    ]
+    aeroplane_id = _create_aeroplane_and_wing(client, wc)
+
+    # GET wingconfig — TED + spars must be present
+    resp = client.get(f"/aeroplanes/{aeroplane_id}/wings/test_wing/wingconfig")
+    assert resp.status_code == 200
+    body = resp.json()
+    seg = body["segments"][0]
+    assert seg["trailing_edge_device"] is not None
+    assert seg["trailing_edge_device"]["name"] == "aileron"
+    assert len(seg.get("spare_list", [])) >= 1
+
+    # PUT wingconfig back — roundtrip
+    resp = client.put(
+        f"/aeroplanes/{aeroplane_id}/wings/test_wing/wingconfig",
+        json=body,
+    )
+    assert resp.status_code == 200, resp.text
+
+    # Verify TED + spars survived the roundtrip
+    resp = client.get(f"/aeroplanes/{aeroplane_id}/wings/test_wing")
+    wing = resp.json()
+    xsec0 = wing["x_secs"][0]
+    assert xsec0["trailing_edge_device"]["name"] == "aileron"
+    assert xsec0["control_surface"]["name"] == "aileron"
+    assert len(xsec0.get("spare_list", [])) >= 1

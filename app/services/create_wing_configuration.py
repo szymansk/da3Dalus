@@ -88,7 +88,9 @@ def create_servo(servo_model: ServoModel) -> Servo | int | None:
         return servo_model
     elif servo_model is None:
         return None
-    return Servo(**servo_model.__dict__.copy())
+    d = servo_model.__dict__.copy()
+    d.pop("component_id", None)  # API-only field, not in topology Servo
+    return Servo(**d)
 
 
 def create_trailing_edge_device(ted_model: TrailingEdgeDeviceModel) -> TrailingEdgeDevice | None:

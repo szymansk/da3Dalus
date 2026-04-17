@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronRight, Eye } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, ChevronUp, Eye, Search } from "lucide-react";
 import { AirfoilSelector } from "./AirfoilSelector";
 import { useAeroplaneContext } from "./AeroplaneContext";
 import { useUnsavedChanges } from "./UnsavedChangesContext";
@@ -13,6 +13,7 @@ import { useFuselage, type FuselageXSec } from "@/hooks/useFuselage";
 import { ImportFuselageDialog } from "./ImportFuselageDialog";
 import { Box } from "lucide-react";
 import { API_BASE } from "@/lib/fetcher";
+import { useComponents, type Component } from "@/hooks/useComponents";
 
 /** Parse a number input string, allowing empty/partial input during editing */
 function num(v: string, fallback = 0): number {
@@ -212,6 +213,10 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
   const { setDirty } = useUnsavedChanges();
   const router = useRouter();
 
+  // TedSection registers its save function here so the main Save button
+  // can trigger it — no separate "Save TED" button needed.
+  const tedSaveRef = useRef<(() => Promise<void>) | null>(null);
+
   // Mode is driven by tree toggle, not local state
   const mode: Mode = treeMode;
   const [saving, setSaving] = useState(false);
@@ -343,6 +348,8 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
         nose_pnt: nosePnt.map((v) => v / 1000),
         segments: updatedSegments,
       });
+      // Save TED fields if any were edited (registered by TedSection)
+      if (tedSaveRef.current) await tedSaveRef.current();
       await mutate();
       await mutateWc();
       if (selectedWing) onGeometryChanged?.(selectedWing);
@@ -572,6 +579,7 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
         xsecIndex={selectedXsecIndex!}
         ted={xsec.trailing_edge_device}
         onSaved={() => mutate()}
+        registerSave={(fn) => { tedSaveRef.current = fn; }}
       />
 
       {/* Spars section */}
@@ -660,6 +668,249 @@ function TipOverrideSection({
 }
 
 
+// ── Servo Picker (gh#99) ────────────────────────────────────────
+
+/** Maps a Component's specs to the Servo CAD object expected by the API.
+ *  Includes component_id so the backend can link back to the library entry. */
+function componentToServoPayload(comp: Component): Record<string, unknown> {
+  const s = comp.specs;
+  return {
+    component_id: comp.id,
+    length: Number(s.servo_length ?? 0),
+    width: Number(s.servo_width ?? 0),
+    height: Number(s.servo_height ?? 0),
+    leading_length: Number(s.leading_length ?? 0),
+    latch_z: Number(s.latch_z ?? 0),
+    latch_x: Number(s.latch_x ?? 0),
+    latch_thickness: Number(s.latch_thickness ?? 0),
+    latch_length: Number(s.latch_length ?? 0),
+    cable_z: Number(s.cable_z ?? 0),
+    screw_hole_lx: Number(s.screw_hole_lx ?? 0),
+    screw_hole_d: Number(s.screw_hole_d ?? 0),
+  };
+}
+
+function ServoPickerInline({
+  aeroplaneId,
+  wingName,
+  xsecIndex,
+  ted,
+  onAssigned,
+}: {
+  aeroplaneId: string | null;
+  wingName: string | null;
+  xsecIndex: number;
+  ted: Record<string, unknown> | null | undefined;
+  onAssigned: () => void;
+}) {
+  const { components: servos } = useComponents("servo");
+
+  // Resolve the currently assigned servo name via component_id in the TED's servo data
+  const servoData = ted && typeof ted === "object"
+    ? (ted as Record<string, unknown>).servo as Record<string, unknown> | null | undefined
+    : null;
+  const assignedComponentId = servoData && typeof servoData === "object"
+    ? (servoData as Record<string, unknown>).component_id as number | null | undefined
+    : null;
+  const currentServoName = assignedComponentId
+    ? servos.find((s) => s.id === assignedComponentId)?.name ?? `Servo #${assignedComponentId}`
+    : servoData ? "Servo (unknown)" : null;
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [assigning, setAssigning] = useState(false);
+  const [servoError, setServoError] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    const list = q ? servos.filter((s) => s.name.toLowerCase().includes(q)) : servos;
+    return list.slice(0, 20);
+  }, [servos, search]);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  // Auto-focus search on open
+  useEffect(() => {
+    if (open) searchRef.current?.focus();
+  }, [open]);
+
+  function toggle() {
+    setOpen((v) => !v);
+    if (open) setSearch("");
+  }
+
+  async function assignServo(comp: Component) {
+    if (!aeroplaneId || !wingName) {
+      setServoError("No aeroplane/wing selected");
+      return;
+    }
+    setAssigning(true);
+    setServoError(null);
+    try {
+      const payload = componentToServoPayload(comp);
+      const res = await fetch(
+        `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/cross_sections/${xsecIndex}/control_surface/cad_details/servo_details`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ servo: payload }),
+        },
+      );
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`${res.status}: ${text}`);
+      }
+      setOpen(false);
+      setSearch("");
+      onAssigned();
+    } catch (err) {
+      setServoError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAssigning(false);
+    }
+  }
+
+  async function removeServo() {
+    if (!aeroplaneId || !wingName) return;
+    setAssigning(true);
+    setServoError(null);
+    try {
+      const res = await fetch(
+        `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/cross_sections/${xsecIndex}/control_surface/cad_details/servo_details`,
+        { method: "DELETE" },
+      );
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`${res.status}: ${text}`);
+      }
+      setOpen(false);
+      setSearch("");
+      onAssigned();
+    } catch (err) {
+      setServoError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAssigning(false);
+    }
+  }
+
+  return (
+    <div ref={containerRef} className={`relative flex flex-col gap-1 ${open ? "z-[100]" : ""}`}>
+      <label className="text-[11px] text-muted-foreground">Servo</label>
+
+      {/* Trigger button */}
+      <button
+        onClick={toggle}
+        disabled={assigning}
+        className={`flex items-center gap-2 rounded-xl px-3 py-2 transition-colors ${
+          open ? "border-2 border-primary bg-input" : "border border-border bg-input"
+        } disabled:opacity-50`}
+      >
+        <span className="text-[13px] text-foreground">
+          {currentServoName || "None"}
+        </span>
+        <div className="flex-1" />
+        {open ? (
+          <ChevronUp size={12} className="text-primary" />
+        ) : (
+          <ChevronDown size={12} className="text-muted-foreground" />
+        )}
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute top-full z-50 mt-1 w-full rounded-xl border border-border bg-card shadow-lg">
+          {/* Search */}
+          <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+            <Search size={13} className="text-muted-foreground" />
+            <input
+              ref={searchRef}
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search servos…"
+              className="flex-1 bg-transparent text-[13px] text-foreground placeholder:text-subtle-foreground outline-none"
+            />
+          </div>
+
+          {/* List */}
+          <div className="max-h-[200px] overflow-y-auto py-1">
+            {/* None option — always first */}
+            <button
+              onClick={removeServo}
+              disabled={assigning}
+              className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-sidebar-accent disabled:opacity-50"
+            >
+              {!currentServoName ? (
+                <Check size={12} className="text-primary" />
+              ) : (
+                <div className="w-3" />
+              )}
+              <span className="text-[13px] text-muted-foreground italic">None</span>
+            </button>
+
+            {filtered.length === 0 && (
+              <div className="px-3 py-3 text-center text-[12px] text-muted-foreground">
+                No servos found
+              </div>
+            )}
+            {filtered.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => assignServo(s)}
+                disabled={assigning}
+                className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-sidebar-accent disabled:opacity-50"
+              >
+                {s.name === currentServoName ? (
+                  <Check size={12} className="text-primary" />
+                ) : (
+                  <div className="w-3" />
+                )}
+                <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
+                  {s.name}
+                </span>
+                {s.manufacturer && (
+                  <span className="text-[12px] text-muted-foreground">
+                    ({s.manufacturer})
+                  </span>
+                )}
+                {s.mass_g != null && (
+                  <>
+                    <span className="flex-1" />
+                    <span className="text-[10px] text-subtle-foreground">{s.mass_g}g</span>
+                  </>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {servos.length > 20 && !search && (
+            <div className="border-t border-border px-3 py-2 text-center">
+              <span className="text-[11px] text-subtle-foreground">
+                {servos.length - 20} more — type to narrow
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+      {servoError && (
+        <p className="mt-1 text-[11px] text-red-500">{servoError}</p>
+      )}
+    </div>
+  );
+}
+
+
 // ── TED Section ─────────────────────────────────────────────────
 
 const HINGE_TYPES = ["middle", "top", "top_simple", "round_inside", "round_outside"] as const;
@@ -670,12 +921,14 @@ function TedSection({
   xsecIndex,
   ted,
   onSaved,
+  registerSave,
 }: {
   aeroplaneId: string | null;
   wingName: string | null;
   xsecIndex: number;
   ted: Record<string, unknown> | null | undefined;
   onSaved: () => void;
+  registerSave?: (fn: () => Promise<void>) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -788,6 +1041,15 @@ function TedSection({
     }
   }
 
+  // Register save function so the parent's main Save button can call it
+  useEffect(() => {
+    if (registerSave && name) {
+      registerSave(handleSaveTed);
+    } else if (registerSave) {
+      registerSave(async () => {});
+    }
+  });
+
   return (
     <div className="mt-2 border-t border-border pt-2">
       <button
@@ -833,6 +1095,21 @@ function TedSection({
             <Field label="side_spacing_root" value={sideSpacingRoot} suffix="mm" onChange={setSideSpacingRoot} />
             <Field label="side_spacing_tip" value={sideSpacingTip} suffix="mm" onChange={setSideSpacingTip} />
           </div>
+          {/* Servo assignment from component library (gh#99) —
+              only available after the TED has been saved at least once */}
+          {hasTed ? (
+            <ServoPickerInline
+              aeroplaneId={aeroplaneId}
+              wingName={wingName}
+              xsecIndex={xsecIndex}
+              ted={ted}
+              onAssigned={onSaved}
+            />
+          ) : (
+            <p className="text-[11px] text-muted-foreground italic">
+              Save the TED first to assign a servo.
+            </p>
+          )}
           {/* Servo positioning */}
           <div className="flex gap-3">
             <div className="flex flex-1 flex-col gap-1">
@@ -846,11 +1123,28 @@ function TedSection({
                 <option value="bottom">bottom</option>
               </select>
             </div>
-            <Field label="servo_chord_pos" value={servoChordPos} onChange={setServoChordPos} />
           </div>
           <div className="flex gap-3">
-            <Field label="servo_length_pos" value={servoLengthPos} onChange={setServoLengthPos} />
-            <div className="flex-1" />
+            <div className="flex flex-1 flex-col gap-1">
+              <label className="text-[11px] text-muted-foreground">servo_chord_pos</label>
+              <input
+                type="number" min="0" max="1" step="0.01"
+                value={servoChordPos}
+                onChange={(e) => setServoChordPos(e.target.value)}
+                placeholder="0.0 – 1.0"
+                className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+            </div>
+            <div className="flex flex-1 flex-col gap-1">
+              <label className="text-[11px] text-muted-foreground">servo_length_pos</label>
+              <input
+                type="number" min="0" max="1" step="0.01"
+                value={servoLengthPos}
+                onChange={(e) => setServoLengthPos(e.target.value)}
+                placeholder="0.0 – 1.0"
+                className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+            </div>
           </div>
           {/* Symmetric checkbox */}
           <div className="flex items-center gap-2">
@@ -862,13 +1156,6 @@ function TedSection({
             />
             <span className="text-[11px] text-muted-foreground">symmetric</span>
           </div>
-          <button
-            onClick={handleSaveTed}
-            disabled={saving || !name}
-            className="self-end rounded-full bg-primary px-3 py-1.5 text-[12px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
-          >
-            {saving ? "Saving…" : "Save TED"}
-          </button>
           {tedError && <p className="text-[11px] text-red-500">{tedError}</p>}
         </div>
       )}

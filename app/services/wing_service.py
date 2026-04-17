@@ -279,9 +279,14 @@ def get_wing_as_wingconfig(db: Session, aeroplane_uuid, wing_name: str) -> dict:
 
 def _wing_config_to_dict(wc) -> dict:
     """Serialize a cad_designer WingConfiguration to a JSON-safe dict."""
+    from app.converters.model_schema_converters import (
+        _trailing_edge_device_to_schema,
+        _spare_to_schema,
+    )
+
     segments = []
     for seg in wc.segments:
-        segments.append({
+        seg_dict: dict = {
             "root_airfoil": {
                 "airfoil": seg.root_airfoil.airfoil,
                 "chord": seg.root_airfoil.chord,
@@ -300,7 +305,22 @@ def _wing_config_to_dict(wc) -> dict:
             "sweep": seg.sweep,
             "number_interpolation_points": seg.number_interpolation_points,
             "tip_type": getattr(seg, 'tip_type', None),
-        })
+        }
+
+        # Preserve spars (gh#107)
+        if seg.spare_list:
+            seg_dict["spare_list"] = [
+                _spare_to_schema(spare).model_dump() for spare in seg.spare_list
+            ]
+
+        # Preserve TED (gh#107)
+        if seg.trailing_edge_device is not None:
+            seg_dict["trailing_edge_device"] = _trailing_edge_device_to_schema(
+                seg.trailing_edge_device,
+            ).model_dump()
+
+        segments.append(seg_dict)
+
     return {
         "segments": segments,
         "nose_pnt": list(wc.nose_pnt) if wc.nose_pnt else [0, 0, 0],
