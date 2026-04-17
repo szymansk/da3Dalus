@@ -391,6 +391,18 @@ DEFAULT_SEED_TYPES: list[dict[str, Any]] = [
         ],
     },
     {
+        "name": "printer_settings", "label": "3D-Drucker Einstellungen",
+        "description": "Druckparameter für Vase-Mode-Flügel (VaseModeWingCreator)",
+        "schema": [
+            {"name": "layer_height", "label": "Schichthöhe", "type": "number",
+             "unit": "mm", "required": True, "min": 0.05, "max": 1.0, "default": 0.24},
+            {"name": "wall_thickness", "label": "Wandstärke", "type": "number",
+             "unit": "mm", "required": True, "min": 0.1, "max": 5.0, "default": 0.42},
+            {"name": "rel_gap_wall_thickness", "label": "Spalt-Wandstärke (rel.)", "type": "number",
+             "required": True, "min": 0.01, "max": 0.5, "default": 0.075},
+        ],
+    },
+    {
         "name": "generic", "label": "Generic",
         "description": "Free-form type with no structured schema",
         "schema": [],
