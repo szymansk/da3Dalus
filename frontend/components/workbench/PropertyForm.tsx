@@ -698,6 +698,7 @@ function ServoPickerInline({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [assigning, setAssigning] = useState(false);
+  const [servoError, setServoError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -730,23 +731,31 @@ function ServoPickerInline({
   }
 
   async function assignServo(comp: Component) {
-    if (!aeroplaneId || !wingName) return;
+    if (!aeroplaneId || !wingName) {
+      setServoError("No aeroplane/wing selected");
+      return;
+    }
     setAssigning(true);
+    setServoError(null);
     try {
+      const payload = componentToServoPayload(comp);
       const res = await fetch(
         `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/cross_sections/${xsecIndex}/control_surface/cad_details/servo_details`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ servo: componentToServoPayload(comp) }),
+          body: JSON.stringify({ servo: payload }),
         },
       );
-      if (!res.ok) throw new Error(`Assign servo: ${res.status}`);
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`${res.status}: ${text}`);
+      }
       setOpen(false);
       setSearch("");
       onAssigned();
-    } catch {
-      // Non-blocking — user can retry
+    } catch (err) {
+      setServoError(err instanceof Error ? err.message : String(err));
     } finally {
       setAssigning(false);
     }
@@ -755,24 +764,28 @@ function ServoPickerInline({
   async function removeServo() {
     if (!aeroplaneId || !wingName) return;
     setAssigning(true);
+    setServoError(null);
     try {
       const res = await fetch(
         `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/cross_sections/${xsecIndex}/control_surface/cad_details/servo_details`,
         { method: "DELETE" },
       );
-      if (!res.ok) throw new Error(`Remove servo: ${res.status}`);
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`${res.status}: ${text}`);
+      }
       setOpen(false);
       setSearch("");
       onAssigned();
-    } catch {
-      // Non-blocking
+    } catch (err) {
+      setServoError(err instanceof Error ? err.message : String(err));
     } finally {
       setAssigning(false);
     }
   }
 
   return (
-    <div ref={containerRef} className={`relative flex flex-col gap-1 ${open ? "z-40" : ""}`}>
+    <div ref={containerRef} className={`relative flex flex-col gap-1 ${open ? "z-[100]" : ""}`}>
       <label className="text-[11px] text-muted-foreground">Servo</label>
 
       {/* Trigger button */}
@@ -869,6 +882,9 @@ function ServoPickerInline({
             </div>
           )}
         </div>
+      )}
+      {servoError && (
+        <p className="mt-1 text-[11px] text-red-500">{servoError}</p>
       )}
     </div>
   );
@@ -1075,8 +1091,26 @@ function TedSection({
             </div>
           </div>
           <div className="flex gap-3">
-            <Field label="servo_chord_pos (0–1)" value={servoChordPos} onChange={setServoChordPos} />
-            <Field label="servo_length_pos (0–1)" value={servoLengthPos} onChange={setServoLengthPos} />
+            <div className="flex flex-1 flex-col gap-1">
+              <label className="text-[11px] text-muted-foreground">servo_chord_pos</label>
+              <input
+                type="number" min="0" max="1" step="0.01"
+                value={servoChordPos}
+                onChange={(e) => setServoChordPos(e.target.value)}
+                placeholder="0.0 – 1.0"
+                className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+            </div>
+            <div className="flex flex-1 flex-col gap-1">
+              <label className="text-[11px] text-muted-foreground">servo_length_pos</label>
+              <input
+                type="number" min="0" max="1" step="0.01"
+                value={servoLengthPos}
+                onChange={(e) => setServoLengthPos(e.target.value)}
+                placeholder="0.0 – 1.0"
+                className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+            </div>
           </div>
           {/* Symmetric checkbox */}
           <div className="flex items-center gap-2">
