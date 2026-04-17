@@ -494,6 +494,164 @@ async def create_aeroplane_wing_cross_section_spar(
     return OperationStatusResponse(status="created", operation="create_wing_cross_section_spar")
 
 
+@router.put(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/spars/{spar_index}",
+    response_model=OperationStatusResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["spars"],
+    operation_id="update_wing_cross_section_spar",
+)
+async def update_aeroplane_wing_cross_section_spar(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    wing_name: str = Path(..., description="The name of the wing"),
+    cross_section_index: int = Path(..., description="The index of the cross section"),
+    spar_index: int = Path(..., description="The index of the spar to replace"),
+    request: schemas.SpareDetailSchema = Body(..., description="Updated spar definition"),
+    db: Session = Depends(get_db),
+) -> OperationStatusResponse:
+    """Replaces the spar at the given index on the selected cross-section."""
+    _call_service(wing_service.update_spare, db, aeroplane_id, wing_name, cross_section_index, spar_index, request)
+    on_wing_changed(db, aeroplane_id, wing_name)
+    return OperationStatusResponse(status="updated", operation="update_wing_cross_section_spar")
+
+
+@router.delete(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/spars/{spar_index}",
+    response_model=OperationStatusResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["spars"],
+    operation_id="delete_wing_cross_section_spar",
+)
+async def delete_aeroplane_wing_cross_section_spar(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    wing_name: str = Path(..., description="The name of the wing"),
+    cross_section_index: int = Path(..., description="The index of the cross section"),
+    spar_index: int = Path(..., description="The index of the spar to delete"),
+    db: Session = Depends(get_db),
+) -> OperationStatusResponse:
+    """Deletes the spar at the given index on the selected cross-section."""
+    _call_service(wing_service.delete_spare, db, aeroplane_id, wing_name, cross_section_index, spar_index)
+    on_wing_changed(db, aeroplane_id, wing_name)
+    return OperationStatusResponse(status="deleted", operation="delete_wing_cross_section_spar")
+
+
+# ── TED direct-access endpoints (gh#97) ─────────────────────────
+# These expose the full TrailingEdgeDeviceDetailSchema, bypassing the
+# ControlSurface ASB-view wrapper. Service functions already existed
+# in wing_service.py but had no HTTP routes until now.
+
+@router.get(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/trailing_edge_device",
+    response_model=schemas.TrailingEdgeDeviceDetailSchema,
+    status_code=status.HTTP_200_OK,
+    tags=["trailing-edge-devices"],
+    operation_id="get_wing_trailing_edge_device",
+)
+async def get_wing_trailing_edge_device(
+    aeroplane_id: AeroPlaneID = Path(...),
+    wing_name: str = Path(...),
+    cross_section_index: int = Path(...),
+    db: Session = Depends(get_db),
+) -> schemas.TrailingEdgeDeviceDetailSchema:
+    """Returns the full TED with all geometry and spacing fields."""
+    return _call_service(wing_service.get_trailing_edge_device, db, aeroplane_id, wing_name, cross_section_index)
+
+
+@router.patch(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/trailing_edge_device",
+    response_model=schemas.TrailingEdgeDeviceDetailSchema,
+    status_code=status.HTTP_200_OK,
+    tags=["trailing-edge-devices"],
+    operation_id="patch_wing_trailing_edge_device",
+)
+async def patch_wing_trailing_edge_device(
+    aeroplane_id: AeroPlaneID = Path(...),
+    wing_name: str = Path(...),
+    cross_section_index: int = Path(...),
+    request: schemas.TrailingEdgeDevicePatchSchema = Body(...),
+    db: Session = Depends(get_db),
+) -> schemas.TrailingEdgeDeviceDetailSchema:
+    """Upsert TED fields directly (not through the ControlSurface wrapper)."""
+    result = _call_service(wing_service.patch_trailing_edge_device, db, aeroplane_id, wing_name, cross_section_index, request)
+    on_wing_changed(db, aeroplane_id, wing_name)
+    return result
+
+
+@router.delete(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/trailing_edge_device",
+    response_model=OperationStatusResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["trailing-edge-devices"],
+    operation_id="delete_wing_trailing_edge_device",
+)
+async def delete_wing_trailing_edge_device(
+    aeroplane_id: AeroPlaneID = Path(...),
+    wing_name: str = Path(...),
+    cross_section_index: int = Path(...),
+    db: Session = Depends(get_db),
+) -> OperationStatusResponse:
+    """Deletes the TED on the selected cross-section."""
+    _call_service(wing_service.delete_trailing_edge_device, db, aeroplane_id, wing_name, cross_section_index)
+    on_wing_changed(db, aeroplane_id, wing_name)
+    return OperationStatusResponse(status="deleted", operation="delete_wing_trailing_edge_device")
+
+
+@router.get(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/trailing_edge_device/servo",
+    response_model=schemas.ControlSurfaceServoDetailsSchema,
+    status_code=status.HTTP_200_OK,
+    tags=["trailing-edge-devices"],
+    operation_id="get_wing_trailing_edge_servo",
+)
+async def get_wing_trailing_edge_servo(
+    aeroplane_id: AeroPlaneID = Path(...),
+    wing_name: str = Path(...),
+    cross_section_index: int = Path(...),
+    db: Session = Depends(get_db),
+) -> schemas.ControlSurfaceServoDetailsSchema:
+    """Returns the servo assignment on the TED."""
+    return _call_service(wing_service.get_trailing_edge_servo, db, aeroplane_id, wing_name, cross_section_index)
+
+
+@router.patch(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/trailing_edge_device/servo",
+    response_model=schemas.ControlSurfaceServoDetailsSchema,
+    status_code=status.HTTP_200_OK,
+    tags=["trailing-edge-devices"],
+    operation_id="patch_wing_trailing_edge_servo",
+)
+async def patch_wing_trailing_edge_servo(
+    aeroplane_id: AeroPlaneID = Path(...),
+    wing_name: str = Path(...),
+    cross_section_index: int = Path(...),
+    request: schemas.ControlSurfaceServoDetailsPatchSchema = Body(...),
+    db: Session = Depends(get_db),
+) -> schemas.ControlSurfaceServoDetailsSchema:
+    """Assign or update the servo on the TED."""
+    result = _call_service(wing_service.patch_trailing_edge_servo, db, aeroplane_id, wing_name, cross_section_index, request)
+    on_wing_changed(db, aeroplane_id, wing_name)
+    return result
+
+
+@router.delete(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/trailing_edge_device/servo",
+    response_model=OperationStatusResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["trailing-edge-devices"],
+    operation_id="delete_wing_trailing_edge_servo",
+)
+async def delete_wing_trailing_edge_servo(
+    aeroplane_id: AeroPlaneID = Path(...),
+    wing_name: str = Path(...),
+    cross_section_index: int = Path(...),
+    db: Session = Depends(get_db),
+) -> OperationStatusResponse:
+    """Remove the servo assignment from the TED."""
+    _call_service(wing_service.delete_trailing_edge_servo, db, aeroplane_id, wing_name, cross_section_index)
+    on_wing_changed(db, aeroplane_id, wing_name)
+    return OperationStatusResponse(status="deleted", operation="delete_wing_trailing_edge_servo")
+
+
 @router.get(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface",
     response_model=schemas.ControlSurfaceSchema,
