@@ -307,13 +307,31 @@ DEFAULT_SEED_TYPES: list[dict[str, Any]] = [
         ],
     },
     {
-        "name": "servo", "label": "Servo", "description": None,
+        "name": "servo", "label": "Servo",
+        "description": "Servo actuator with electrical specs and CAD dimensions for wing pocket cutout",
         "schema": [
+            # Electrical (existing)
             {"name": "torque_kg_cm", "label": "Drehmoment", "type": "number", "unit": "kg·cm"},
             {"name": "speed_s_per_60deg", "label": "Geschwindigkeit", "type": "number", "unit": "s/60°"},
             {"name": "voltage_v", "label": "Spannung", "type": "number", "unit": "V"},
             {"name": "connector", "label": "Anschluss", "type": "enum",
              "options": ["jr", "futaba", "universal"]},
+            # CAD dimensions (gh#99) — used by VaseModeWingCreator for servo pocket
+            {"name": "servo_length", "label": "Länge", "type": "number", "unit": "mm", "required": True,
+             "description": "X-Dimension des Servo-Körpers"},
+            {"name": "servo_width", "label": "Breite", "type": "number", "unit": "mm", "required": True,
+             "description": "Y-Dimension des Servo-Körpers"},
+            {"name": "servo_height", "label": "Höhe", "type": "number", "unit": "mm", "required": True,
+             "description": "Z-Dimension des Servo-Körpers"},
+            {"name": "leading_length", "label": "Vorderkante→Achse", "type": "number", "unit": "mm",
+             "description": "X von Vorderkante bis Rotationsachse"},
+            {"name": "latch_z", "label": "Halterung Z", "type": "number", "unit": "mm"},
+            {"name": "latch_x", "label": "Halterung X", "type": "number", "unit": "mm"},
+            {"name": "latch_thickness", "label": "Halterungsdicke", "type": "number", "unit": "mm"},
+            {"name": "latch_length", "label": "Halterungslänge", "type": "number", "unit": "mm"},
+            {"name": "cable_z", "label": "Kabelausgang Z", "type": "number", "unit": "mm"},
+            {"name": "screw_hole_lx", "label": "Schraubloch X-Abstand", "type": "number", "unit": "mm"},
+            {"name": "screw_hole_d", "label": "Schraubloch-Ø", "type": "number", "unit": "mm"},
         ],
     },
     {

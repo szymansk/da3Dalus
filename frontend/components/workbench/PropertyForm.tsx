@@ -13,6 +13,7 @@ import { useFuselage, type FuselageXSec } from "@/hooks/useFuselage";
 import { ImportFuselageDialog } from "./ImportFuselageDialog";
 import { Box } from "lucide-react";
 import { API_BASE } from "@/lib/fetcher";
+import { useComponents, type Component } from "@/hooks/useComponents";
 
 /** Parse a number input string, allowing empty/partial input during editing */
 function num(v: string, fallback = 0): number {
@@ -660,6 +661,110 @@ function TipOverrideSection({
 }
 
 
+// ── Servo Picker (gh#99) ────────────────────────────────────────
+
+/** Maps a Component's specs to the Servo CAD object expected by the API. */
+function componentToServoPayload(comp: Component): Record<string, number> {
+  const s = comp.specs;
+  return {
+    length: Number(s.servo_length ?? s.length ?? 0),
+    width: Number(s.servo_width ?? s.width ?? 0),
+    height: Number(s.servo_height ?? s.height ?? 0),
+    leading_length: Number(s.leading_length ?? 0),
+    latch_z: Number(s.latch_z ?? 0),
+    latch_x: Number(s.latch_x ?? 0),
+    latch_thickness: Number(s.latch_thickness ?? 0),
+    latch_length: Number(s.latch_length ?? 0),
+    cable_z: Number(s.cable_z ?? 0),
+    screw_hole_lx: Number(s.screw_hole_lx ?? 0),
+    screw_hole_d: Number(s.screw_hole_d ?? 0),
+  };
+}
+
+function ServoPickerInline({
+  aeroplaneId,
+  wingName,
+  xsecIndex,
+  onAssigned,
+}: {
+  aeroplaneId: string | null;
+  wingName: string | null;
+  xsecIndex: number;
+  onAssigned: () => void;
+}) {
+  const { components: servos } = useComponents("servo");
+  const [search, setSearch] = useState("");
+  const [assigning, setAssigning] = useState(false);
+
+  const filtered = servos.filter(
+    (s) => s.name.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  async function assignServo(comp: Component) {
+    if (!aeroplaneId || !wingName) return;
+    setAssigning(true);
+    try {
+      const res = await fetch(
+        `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/cross_sections/${xsecIndex}/control_surface/cad_details/servo_details`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ servo: componentToServoPayload(comp) }),
+        },
+      );
+      if (!res.ok) throw new Error(`Assign servo: ${res.status}`);
+      onAssigned();
+    } catch {
+      // Error is non-blocking — user can retry
+    } finally {
+      setAssigning(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-[11px] text-muted-foreground">
+        Servo (from library)
+      </label>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          placeholder="Search servos…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground placeholder:text-subtle-foreground"
+        />
+      </div>
+      {search && filtered.length > 0 && (
+        <div className="flex max-h-[120px] flex-col gap-0.5 overflow-y-auto rounded-xl border border-border bg-card-muted p-1">
+          {filtered.slice(0, 10).map((s) => (
+            <button
+              key={s.id}
+              disabled={assigning}
+              onClick={() => assignServo(s)}
+              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12px] hover:bg-sidebar-accent disabled:opacity-50"
+            >
+              <span className="font-[family-name:var(--font-jetbrains-mono)] text-foreground">
+                {s.name}
+              </span>
+              {s.manufacturer && (
+                <span className="text-muted-foreground">({s.manufacturer})</span>
+              )}
+              {s.mass_g != null && (
+                <span className="text-[10px] text-subtle-foreground">{s.mass_g}g</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+      {search && filtered.length === 0 && (
+        <p className="py-1 text-[11px] text-muted-foreground">No servos found</p>
+      )}
+    </div>
+  );
+}
+
+
 // ── TED Section ─────────────────────────────────────────────────
 
 const HINGE_TYPES = ["middle", "top", "top_simple", "round_inside", "round_outside"] as const;
@@ -833,6 +938,13 @@ function TedSection({
             <Field label="side_spacing_root" value={sideSpacingRoot} suffix="mm" onChange={setSideSpacingRoot} />
             <Field label="side_spacing_tip" value={sideSpacingTip} suffix="mm" onChange={setSideSpacingTip} />
           </div>
+          {/* Servo assignment from component library (gh#99) */}
+          <ServoPickerInline
+            aeroplaneId={aeroplaneId}
+            wingName={wingName}
+            xsecIndex={xsecIndex}
+            onAssigned={onSaved}
+          />
           {/* Servo positioning */}
           <div className="flex gap-3">
             <div className="flex flex-1 flex-col gap-1">
