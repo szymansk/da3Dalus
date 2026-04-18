@@ -30,6 +30,7 @@ interface TreeNode {
   previewVisible?: boolean;
   previewLoading?: boolean;
   onPreviewToggle?: () => void;
+  onAdd?: () => void;
 }
 
 // ── Build nodes for WingConfig mode (segments) ──────────────────
@@ -420,6 +421,7 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
     onPreviewToggle: onToggleAllPreview
       ? () => onToggleAllPreview(wingNames)
       : undefined,
+    onAdd: () => setAddMenuOpen((v) => !v),
   });
 
   if (rootExpanded) {
@@ -507,36 +509,6 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
           Aeroplane Tree
         </span>
-        <div className="relative">
-          <button
-            onClick={() => setAddMenuOpen((v) => !v)}
-            className="flex h-6 w-6 items-center justify-center rounded-xl text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-            title="Add wing or fuselage"
-          >
-            <Plus size={14} />
-          </button>
-          {addMenuOpen && (
-            <>
-              <div className="fixed inset-0 z-30" onClick={() => setAddMenuOpen(false)} />
-              <div className="absolute left-0 top-full z-40 mt-1 w-48 rounded-xl border border-border bg-card shadow-lg">
-                <button
-                  onClick={() => { setAddMenuOpen(false); handleAddWing(); }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-[12px] text-foreground hover:bg-sidebar-accent rounded-t-xl"
-                >
-                  <Plus size={12} />
-                  Wing
-                </button>
-                <button
-                  onClick={() => { setAddMenuOpen(false); setImportFuselageOpen(true); }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-[12px] text-foreground hover:bg-sidebar-accent rounded-b-xl"
-                >
-                  <Plus size={12} />
-                  Fuselage
-                </button>
-              </div>
-            </>
-          )}
-        </div>
         <div className="flex-1" />
         <div className="flex overflow-hidden rounded-xl border border-border">
           <button
@@ -563,13 +535,34 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
       </div>
 
       {/* Tree rows */}
-      <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto">
+      <div className="relative flex flex-1 flex-col gap-0.5 overflow-y-auto">
         {isLoading && wingNames.length === 0 ? (
           <span className="text-[13px] text-muted-foreground">Loading...</span>
         ) : (
           treeData.map((node) => (
             <TreeRow key={node.id} node={node} onToggle={() => toggleExpand(node.id)} onNodeEdit={onNodeEdit} />
           ))
+        )}
+        {addMenuOpen && (
+          <>
+            <div className="fixed inset-0 z-30" onClick={() => setAddMenuOpen(false)} />
+            <div className="absolute right-2 top-1 z-40 w-44 rounded-xl border border-border bg-card shadow-lg">
+              <button
+                onClick={() => { setAddMenuOpen(false); handleAddWing(); }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-[12px] text-foreground hover:bg-sidebar-accent rounded-t-xl"
+              >
+                <Plus size={12} />
+                Wing
+              </button>
+              <button
+                onClick={() => { setAddMenuOpen(false); setImportFuselageOpen(true); }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-[12px] text-foreground hover:bg-sidebar-accent rounded-b-xl"
+              >
+                <Plus size={12} />
+                Fuselage
+              </button>
+            </div>
+          </>
         )}
       </div>
 
@@ -658,6 +651,16 @@ function TreeRow({ node, onToggle, onNodeEdit }: { node: TreeNode; onToggle: () 
           className="hidden h-5 w-5 items-center justify-center rounded-xl group-hover:flex"
         >
           <Trash2 size={12} className="text-destructive" />
+        </button>
+      )}
+
+      {node.onAdd && (
+        <button
+          onClick={(e) => { e.stopPropagation(); node.onAdd?.(); }}
+          className="flex h-5 w-5 items-center justify-center rounded-xl text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+          title="Add"
+        >
+          <Plus size={12} />
         </button>
       )}
 
