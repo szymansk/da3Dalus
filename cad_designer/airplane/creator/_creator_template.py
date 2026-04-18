@@ -71,6 +71,7 @@ class MyCreator(AbstractShapeCreator):
     """
 
     suggested_creator_id = "{input_shape}.my_creator"
+
     def __init__(
         self,
         creator_id: str,

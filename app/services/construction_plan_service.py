@@ -4,6 +4,7 @@ from __future__ import annotations
 import inspect
 import json
 import logging
+import re
 import time
 from typing import Any
 
@@ -170,8 +171,6 @@ def _parse_docstring_attributes(docstring: str) -> dict[str, str]:
         param_name (type): Description text here.
     Returns a dict mapping param_name → description.
     """
-    import re
-
     result: dict[str, str] = {}
     in_attributes = False
     current_name: str | None = None
@@ -226,8 +225,6 @@ def _parse_docstring_returns(docstring: str) -> list[CreatorOutput]:
         {id} (Workplane): The fused result shape.
     Returns a list of CreatorOutput.
     """
-    import re
-
     outputs: list[CreatorOutput] = []
     in_returns = False
 

@@ -1,8 +1,5 @@
 # Project Instructions for AI Agents
 
-This file provides instructions and context for AI coding agents working on
-this project.
-
 ## What this project is
 
 **cad-modelling-service** is the Python backend of the **da3Dalus** aircraft
@@ -18,385 +15,236 @@ design toolchain. It is a FastAPI service that:
   **Model Context Protocol (MCP)** server for AI-agent integration
   (via `FastMCP`).
 
-<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
-## Beads Issue Tracker
 
-This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
+## Development Workflow
 
-### Quick Reference
+Every non-trivial task follows this phased workflow using the
+superpowers skill system. **If there is even a 1% chance a skill
+applies, invoke it before proceeding.**
 
-```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --claim  # Claim work
-bd close <id>         # Complete work
-```
+### Phase 1: Design
 
-### Rules
+Invoke `/brainstorming` before any creative work — new features,
+components, UI changes, or architectural decisions.
 
-- Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
-- Run `bd prime` for detailed command reference and session close protocol
-- Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
+- Explore project context and ask clarifying questions
+- Propose 2–3 approaches with tradeoffs
+- Present design for user approval
+- **No implementation until design is approved**
 
-## Session Completion
+### Phase 2: Planning
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+Invoke `/writing-plans` after design approval.
 
-**MANDATORY WORKFLOW:**
+- Create a detailed implementation plan with exact file paths
+- Document dependencies between tasks
+- Offer execution model: subagent-driven or inline
 
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git pull --rebase
-   bd dolt push
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
+### Phase 3: Implementation
 
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
-<!-- END BEADS INTEGRATION -->
+**Test-driven.** Write a failing test first, then make it pass,
+then refactor. No production code without a failing test.
 
-## Testing Philosophy — TDD
+| Skill | When |
+|-------|------|
+| `/test-driven-development` | **Every** feature or bugfix — RED → GREEN → REFACTOR |
+| `/systematic-debugging` | When encountering any bug or test failure |
+| `/subagent-driven-development` | Multi-task parallel execution (optional) |
 
-**Failing tests are correct. Fix the code, not the tests.**
+**Backend (Python):**
 
-When a test fails, the test is doing its job — it found a bug or
-a missing implementation. The correct response is:
+| Skill | When |
+|-------|------|
+| `/python-testing-patterns` | pytest fixtures, mocking, parametrize, test strategies |
+| `/pytest-coverage` | Measuring + improving coverage toward 70–80% target |
+| `/security-review` | Security analysis (OWASP, auth, injection) |
 
-1. **Read the test** to understand the expected behavior
-2. **Fix the production code** to make the test pass
-3. **NEVER weaken assertions** to make a failing test green
-4. **NEVER delete or skip tests** because the code doesn't match yet
+**Frontend (React / Next.js):**
 
-Anti-patterns that are **strictly forbidden:**
-- Changing `expect(count).toBe(12)` to `toBe(13)` because the code returns 13
-- Replacing `"all items have no spars"` with `"at least 1 item has spars"` because spars exist
-- Adding `@skip` tags to tests that the code can't pass yet
-- Rewriting step definitions to call the API directly instead of going through the UI
+| Skill | When |
+|-------|------|
+| `/vercel-react-best-practices` | Performance, data fetching, bundle size |
+| `/vercel-composition-patterns` | Component API design, compound components |
+| `/nextjs-app-router-patterns` | Server Components, streaming, App Router |
+| `/webapp-testing` | Component + integration tests |
+| `/playwright-best-practices` | E2E tests, Page Object Model, flaky tests |
+| `/web-design-guidelines` | UI review, accessibility, UX compliance |
 
-If a test describes the correct behavior and the code doesn't
-implement it yet, the test MUST stay red until the code is fixed.
-A green test suite achieved by weakening tests is worthless.
+### Phase 4: Quality
 
-## Frontend Design Workflow — Pencil First
+| Skill | When |
+|-------|------|
+| `/verification-before-completion` | Before claiming work is done — run tests, show evidence |
+| `/requesting-code-review` | After completing tasks — dispatch review agent on diff |
 
-**ALL frontend UI changes MUST go through the pencil.dev wireframe
-(`da3Dalus.pen`) first.** No exceptions.
+Before opening any PR, you MUST run `/requesting-code-review` (or
+`/review`). Fix all findings before creating the PR. No exceptions.
 
-Workflow:
-1. Design the UI change in `da3Dalus.pen` via pencil MCP tools
-2. Verify with `get_screenshot` that the wireframe is correct
-3. Then implement the React component to match the wireframe
-4. Compare the rendered component against the pencil screenshot
+### Phase 5: Completion
 
-This applies to:
-- New components and screens
-- Layout changes to existing components
-- New form fields, dialogs, or modals
-- Any visual change the user will see
+Invoke `/finishing-a-development-branch` when all tasks pass.
 
-This does NOT apply to:
-- Pure logic changes (hooks, API calls, state management)
-- Bug fixes that don't change the visual design
-- Test files
+- Verify tests pass
+- Push branch + open PR (or merge locally for trivial changes)
+- Clean up worktree
 
-## Test Coverage Requirement
+### Iron Laws
 
-**Target: 70–80% coverage.** Writing tests for implemented code is
-mandatory, not optional. Every feature, bugfix, and refactor must
-include tests.
+1. **No production code without a failing test first**
+2. **No completion claims without fresh verification evidence**
+3. **No fixes without root cause investigation**
+4. **Fix the code, not the tests** — if a test fails, the test found
+   a bug. Fix the production code. NEVER weaken assertions, delete
+   tests, add `@skip`, or rewrite step definitions to bypass the UI.
+   A green suite from weakened tests is worthless.
 
-### Skills for writing tests
+### Test coverage target: 70–80%
 
-Use these skills when writing tests — they contain patterns and
-best practices:
-
-| Skill | When to use |
-|-------|-------------|
-| `/skill tdd` | Starting any feature — write tests FIRST |
-| `/skill python-testing-patterns` | Writing pytest unit/integration tests for the Python backend |
-| `/skill pytest-coverage` | Measuring + improving pytest coverage toward 70–80% target |
-| `/skill webapp-testing` | Frontend component + integration tests (React/Next.js) |
-| `/skill playwright-best-practices` | E2E tests with Playwright (locators, assertions, patterns) |
-| `/skill e2e-testing-patterns` | Structuring E2E test suites, fixtures, data management |
-
-### Workflow for every code change
-
-1. **Before coding:** Invoke `/skill tdd` — write failing tests first
-2. **During coding:** Run tests continuously, fix code until green
-3. **After coding:** Check coverage with `poetry run pytest --cov=app`
-   (backend) or equivalent frontend command
-4. **Before PR:** Run `/review`, then verify coverage ≥ 70%
-
-### Test types per layer
+Every feature, bugfix, and refactor must include tests. Check
+coverage with `poetry run pytest --cov=app` (backend) or the
+equivalent frontend command.
 
 | Layer | Framework | Location | Command |
 |-------|-----------|----------|---------|
 | Backend unit | pytest | `app/tests/test_*.py` | `poetry run pytest` |
 | Backend integration | pytest | `app/tests/test_*_integration.py` | `poetry run pytest -m "not slow"` |
 | Backend slow/CAD | pytest | `app/tests/test_*_integration.py` | `poetry run pytest -m slow` |
+| Frontend unit | vitest | `frontend/__tests__/` | `cd frontend && npm run test:unit` |
 | Frontend E2E | playwright-bdd | `frontend/e2e/features/*.feature` | `cd frontend && npm run test:e2e` |
 
-## Issue Tracking — GitHub Issues + Beads
 
-This project uses a two-tier issue tracking system:
+## Frontend Design Rules
 
-### GitHub Issues — what to build
+### Reuse before creating
 
-GitHub Issues are the **user-facing** tracker for features, bugs,
-and design decisions. They are visible to stakeholders, linked to
-PRs, and closed when the PR merges.
+Before building a new component, **search the existing frontend**
+for patterns that match. This project has battle-tested components:
 
-- **Feature requests:** Use the `feature.md` template in `.github/ISSUE_TEMPLATE/`
-- **Bug reports:** Use the `bug.md` template
-- **Technical tasks:** Use the `task.md` template
-- Templates ensure consistent structure — always use them
-- The agent MAY create GitHub Issues when discovering missing
-  features, improvements, or bugs during implementation
-- PRs reference the GitHub Issue: `Closes #N`
+- `TreeCard` + `SimpleTreeRow` — collapsible tree panels with DnD
+- `AirfoilSelector` — searchable dropdown (reuse for any picker)
+- `Field` — labeled number/text input with suffix
+- `GroupAddMenu` — contextual add-action popover
+- Collapsible sections (`ChevronDown`/`ChevronRight` toggle)
+- Modal dialogs (`fixed inset-0 z-50` backdrop + card)
+- SWR hooks (`useWing`, `useComponents`, `useComponentTypes`, etc.)
 
-### Beads — how to build it
+Check `frontend/components/workbench/` and `frontend/hooks/` first.
+Only create new components when no existing pattern fits.
 
-Beads tickets are the **technical implementation plan**. One GitHub
-Issue maps to 1–N Beads tickets that break the work into parallel,
-dependency-tracked units.
+### Click-dummy for large UI changes
 
-- Every Beads ticket MUST reference its GitHub Issue via the
-  `--notes` field: `bd create --notes="Implements gh#N" ...`
-- Beads tickets are for agent orchestration (dependencies, claims,
-  parallel execution) — they don't appear on GitHub
-- Close Beads tickets when the implementation is done
-- The GitHub Issue stays open until the PR is merged
+For new screens, major layout changes, or complex interactions:
+build a **click-dummy** (functional prototype with hardcoded data)
+and review it with the user before implementing the real logic.
+Small additions (new form fields, extra buttons) that follow
+existing patterns don't need a click-dummy.
 
-### Workflow
+### Other rules
+
+- **App Router** (not Pages Router) — see `frontend/AGENTS.md`
+- **Dark theme** with orange accent (`#FF8400`), fonts: JetBrains
+  Mono + Geist
+- All API calls go through the backend (no direct CORS calls)
+
+
+## Issue Tracking — GitHub Issues
+
+GitHub Issues are the **single source of truth** for all ticket
+management: features, bugs, epics, and technical tasks.
+
+- **Feature requests:** `.github/ISSUE_TEMPLATE/feature.md`
+- **Bug reports:** `.github/ISSUE_TEMPLATE/bug.md`
+- **Technical tasks:** `.github/ISSUE_TEMPLATE/task.md`
+- Always use templates — they ensure consistent structure
+- The agent MAY create GitHub Issues for discovered improvements
+- PRs reference the issue: `Closes #N`
+- Epics are GH Issues with sub-ticket links in comments
+
+### End-to-end workflow
 
 ```
 1. GitHub Issue created (by human or agent)
-2. Agent breaks GH Issue into N Beads tickets with deps
-   bd create --title="..." --notes="Implements gh#N" ...
-3. Agent works through Beads tickets (claim → implement → close)
-4. Agent runs /review on the diff
-5. Agent opens PR referencing the GH Issue (Closes #N)
-6. Human reviews + merges PR → GH Issue auto-closes
+2. Agent runs /brainstorming → /writing-plans (non-trivial work)
+3. Agent implements with /test-driven-development
+4. Agent runs /verification-before-completion
+5. Agent runs /requesting-code-review on the diff
+6. Agent opens PR referencing the GH Issue (Closes #N)
+7. Human reviews + merges PR → GH Issue auto-closes
 ```
 
-## Pre-PR Review Gate
 
-Before opening any GitHub PR, you MUST run `/review` (the review
-skill) on your changes. Fix all findings before creating the PR.
-This is mandatory — no exceptions.
+## Branch Strategy
 
-## Issue Workflow & Branch Strategy
+Substantial work goes through a **branch + PR**. Trivial changes
+ship directly on `main`. Single human maintainer; rules tuned for
+that constellation.
 
-**Substantial issue work goes through a dedicated branch and a Pull
-Request so the user can review the diff before it lands on `main`.**
-Trivial changes ship directly on `main` so the cycle stays fast.
-Overnight/unattended agentic sessions may stack multiple branches in a
-single run; the user merges them as a batch in the morning.
+### What requires a branch + PR
 
-This project has a single human maintainer who is also the only
-reviewer. The rules below are tuned for that constellation, not for a
-team workflow. The goal is to maximise PR review value on work that
-actually benefits from review, while keeping the small stuff and the
-autonomous sessions fluid.
-
-### What goes through a branch + PR
-
-Branch + PR is **required** for any change that matches *one or more*
-of the following:
-
-- Modifies anything under `app/services/`, `app/api/`, `app/models/`,
-  `app/core/`, `app/schemas/`, `app/converters/`, or `cad_designer/`.
-- Changes the database schema (`alembic/versions/*`).
-- Adds or changes more than ~50 net lines of production code
-  (anything under `app/` that is not a test).
-- Touches `pyproject.toml` in a way that affects runtime dependencies
-  or pytest configuration.
-- Changes the public REST surface, the MCP tool list, or the
-  serialisation contracts.
-- Introduces a new third-party dependency.
-- Corresponds to a beads issue of type `feature` or `bug` at priority
-  0, 1, or 2 — regardless of size.
+- Modifies `app/services/`, `app/api/`, `app/models/`, `app/core/`,
+  `app/schemas/`, `app/converters/`, or `cad_designer/`
+- Changes the database schema (`alembic/versions/*`)
+- Adds/changes > ~50 net lines of production code
+- Changes `pyproject.toml` runtime deps or pytest config
+- Changes the public REST surface, MCP tools, or serialisation
+- Introduces a new third-party dependency
+- Corresponds to a GitHub Issue of type `feature` or `bug`
 
 ### What may land directly on `main`
 
-Low-risk, low-review-value changes may be committed straight to the
-default branch (`streb` locally, pushed to `github:main`) without a
-PR. The allowed categories:
-
-- **Docs-only** changes (`CLAUDE.md`, `README.md`, `docs/*.adoc`,
-  inline docstrings) up to ~100 net lines.
-- **Tests-only** changes under `app/tests/` or `test/` that add new
-  cases or adjust fixtures, up to ~100 net lines, with no production
-  code modified.
-- **Lint / format** auto-fixes that change no semantics
-  (`ruff format`, `ruff check --fix` where the fix is purely
-  stylistic).
-- **Chore** changes: `.gitignore`, `.vscode/*`, `.github/workflows/*`
-  up to ~50 net lines, toolchain files, beads database updates, MIT
-  housekeeping.
-- **Comments, typos, whitespace** — trivially.
-- **Revert commits** that undo a broken change (the subsequent fix
-  still goes through a branch + PR).
-- **Emergency CI unblock** (poetry.lock repair, missing dev
-  dependency). Document after the fact in a `chore:` commit.
-- **This CLAUDE.md section itself** and any meta-rule revision.
-
-If a change straddles categories (e.g. docs + production code), the
-stricter rule wins and it takes the branch + PR path.
+Docs-only (≤100 lines), tests-only (≤100 lines), lint/format
+auto-fixes, chore files (≤50 lines), comments/typos, reverts,
+emergency CI unblock, or this CLAUDE.md itself.
 
 ### Branch naming
 
-Branches are named `<type>/<issue-id>-<short-slug>` where:
+`<type>/gh-<N>-<short-slug>` — e.g. `feat/gh-101-construction-plans`
 
-- `<type>` is one of: `feat`, `fix`, `refactor`, `chore`, `docs`, `test`
-  (mirrors the conventional-commits vocabulary used in commit messages).
-- `<issue-id>` is the full beads ID (`cad-modelling-service-7em`) or
-  the GitHub issue number prefixed with `gh-` (`gh-42`). Work that
-  has no issue still goes under a `scratch/` prefix, e.g.
-  `scratch/investigate-occt-memory`.
-- `<short-slug>` is 2–5 lowercase words separated by hyphens that hint
-  at the work.
+Types: `feat`, `fix`, `refactor`, `chore`, `docs`, `test`
 
-Examples:
-```
-fix/cad-modelling-service-7em-wing-roundtrip-dihedral-sign
-feat/gh-18-operating-points-pagination
-refactor/cad-modelling-service-0es-cad-service-registry
-docs/gh-27-rest-api-naming-guide
-```
+### Branch workflow
 
-### Workflow for a branch-based change
-
-1. **Claim the issue first.** `bd update <id> --claim` for beads or
-   assign yourself on GitHub. Do not start coding before the issue is
-   `in_progress` — that is the record that work has begun.
-2. **Start from an up-to-date default branch.**
-   ```bash
-   git switch streb
-   git pull --rebase github main
-   ```
-3. **Create the branch.**
-   ```bash
-   git switch -c <type>/<issue-id>-<short-slug>
-   ```
-4. **Commit often.** Each commit references the issue ID in the body
-   or footer (e.g. `Relates to cad-modelling-service-7em.`) so the
-   history is navigable later.
-5. **Run the pre-PR gate locally.** This is **mandatory** before
-   pushing a branch and opening a PR — the exact commands CI runs,
-   in the exact order, so a PR is never opened with a red CI
-   signature that the agent could have caught in seconds:
+1. Assign yourself on the GitHub Issue
+2. `git switch main && git pull --rebase github main`
+3. `git switch -c <type>/gh-<N>-<slug>`
+4. Commit often; reference issue in commit body
+5. **Pre-PR gate** (mandatory before push):
    ```bash
    poetry run ruff check .
    poetry run pytest -m "not slow"
    ```
-   If either fails, fix the issue *before* committing and pushing.
-   Do not rely on "the CI will tell us" — the CI tells the user,
-   and the user has to wait 2 minutes, review a failing PR, and
-   ask the agent to go back. This costs several minutes per round
-   and is avoidable with a 20-second local check. If the change
-   touches any slow test (``@pytest.mark.slow``), run that test
-   specifically as well:
+6. `git push -u github HEAD`
+7. `gh pr create --base main --head <branch>` with issue link + test plan
+8. **Do NOT self-merge.** Session ends at "PR opened, GH Issue linked."
+
+### Overnight sessions
+
+When working unattended: pick independent issues first, create
+parallel branches off `main`. Sequential chains allowed (max 3 deep).
+Every PR must pass CI. Leave a handoff comment listing all PRs with
+dependency chain: `Stack: #41 ← #42 ← #43 (merge in order).`
+
+
+## Session Completion
+
+**Work is NOT complete until `git push` succeeds.**
+
+1. File GH Issues for remaining work
+2. Run quality gates (tests, linters)
+3. Close finished GH Issues
+4. **PUSH TO REMOTE:**
    ```bash
-   poetry run pytest app/tests/test_<the_relevant_slow_test>.py
+   git pull --rebase
+   git push
+   git status  # MUST show "up to date with origin"
    ```
-6. **Push the branch** to `github` explicitly:
-   ```bash
-   git push -u github HEAD
-   ```
-7. **Open a Pull Request** via
-   `gh pr create --base main --head <branch>` with a body that links
-   the issue, summarises the change, and includes a test plan. Title
-   uses the same conventional-commits prefix as the branch type.
-8. **Update the beads issue** — add a note with the PR URL. Do NOT
-   mark the issue `closed` yet; closure happens when the PR is
-   merged. The beads status stays `in_progress`.
-9. **Do NOT self-merge.** Merging is the user's checkpoint.
-   A session ends at "branch pushed, PR opened, issue updated".
+5. Clean up stashes, prune remote branches
+6. Verify all changes committed AND pushed
+7. Provide handoff context for next session
 
-### Overnight / unattended agentic sessions
+**NEVER** stop before pushing. **NEVER** say "ready to push when you
+are" — YOU must push. If push fails, resolve and retry.
 
-When the user launches a session with "work through the queue while I
-sleep", the single-branch-per-issue rule is lifted to a **linear
-branch chain** so the session is not blocked on merges the user has
-not yet performed. Rules:
-
-1. **Pick independent issues first.** Use `bd ready` and prefer
-   issues that do not touch the same files. Independent issues each
-   get their own branch off `main` and become parallel PRs the user
-   can merge in any order.
-2. **Sequential chains are allowed** when issues depend on each
-   other. The second issue's branch starts from the first issue's
-   branch, not from `main`. The PR for the second issue is still
-   opened against `main`, with the body noting
-   `Depends on #<first-pr>.` The user merges them in dependency
-   order. GitHub auto-rebases the second PR after the first is
-   merged.
-3. **Never chain more than 3 deep.** If a session would need a
-   4-deep stack, stop and leave a note in the last issue explaining
-   why. Deep stacks become unmanageable during morning review.
-4. **Every PR must pass the fast CI job** before the session closes.
-   If a PR is red, leave it `draft` and put the failure in the
-   beads notes so the user can pick it up.
-5. **Session handoff note.** When the overnight session ends, append
-   a summary comment on the beads issue of the most recent branch
-   listing every PR opened in that session with its dependency
-   chain, e.g. `Stack: #41 ← #42 ← #43 (merge in order).`
-
-### Morning review loop (for the maintainer)
-
-The user-facing counterpart to overnight agentic work:
-
-```bash
-gh pr list --state open --search "sort:created-asc"
-gh pr diff <N>                  # inspect
-gh pr merge <N> --squash --delete-branch
-```
-
-A suggested one-shot "merge everything that is green and approved":
-
-```bash
-gh pr list --state open --json number,statusCheckRollup,reviewDecision \
-  --jq '.[] | select(.statusCheckRollup | all(.conclusion == "SUCCESS")) | .number' \
-  | xargs -I {} gh pr merge {} --squash --delete-branch
-```
-
-Optional: enable `Settings → General → Pull Requests → Automatically
-delete head branches` on the GitHub repo so merged branches clean
-themselves up.
-
-### Interaction with Session Completion
-
-The Session Completion protocol still applies, with one adjustment:
-the push target depends on the change category.
-
-- For **branch-based** work the final state is:
-  ```
-  branch      <feat|fix|...>/<id>-<slug> pushed to github
-  PR          #N opened (or draft if CI red), linked to <id>
-  beads       <id> in_progress, notes point at the PR URL
-  ```
-  `git status` should show `up to date with github/<branch>`.
-
-- For **direct-to-`main`** changes the state is:
-  ```
-  branch      streb pushed to github:main
-  beads       <id> closed (if the change was tracked)
-  ```
-  `git status` shows `up to date with github/main`. The legacy
-  `git push github streb:main` pattern still applies here.
-
-<!-- END ISSUE WORKFLOW -->
 
 ## Build & Test
 
@@ -404,97 +252,103 @@ Language: **Python 3.11–3.13**, managed with **Poetry 2.x**.
 
 ```bash
 # Local development (hot reload)
-poetry install
-poetry shell
+poetry install && poetry shell
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-# Tests (pytest, under app/tests/)
-poetry run pytest
-./run_all_tests.sh          # equivalent wrapper
+# Tests
+poetry run pytest                    # all fast tests
+poetry run pytest -m slow            # CAD/aero tests
+cd frontend && npm run test:unit     # frontend unit
+cd frontend && npm run test:e2e      # frontend E2E
 
-# Lint & format (ruff; config in pyproject.toml)
+# Lint
 poetry run ruff check .
-poetry run ruff format .    # optional: Black-style formatter
+poetry run ruff format .
 
-# Docker (production-style)
-docker compose build
-docker compose up -d        # service on http://localhost:8086
-docker compose logs -f aero-cad-service
-docker compose down
-
-# Documentation (AsciiDoctor, via Docker)
-make doc                    # output in docs/html/
+# Docker
+docker compose build && docker compose up -d  # port 8086
 ```
 
-**Runtime endpoints** (when launched via `uvicorn`):
+**Runtime endpoints:**
 
-- REST API: `http://localhost:8000`
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
-- OpenAPI schema: `http://localhost:8000/openapi.json`
-- MCP (Streamable HTTP): `http://localhost:8000/mcp`
+| URL | What |
+|-----|------|
+| `http://localhost:8000` | REST API |
+| `http://localhost:8000/docs` | Swagger UI |
+| `http://localhost:8000/redoc` | ReDoc |
+| `http://localhost:8000/openapi.json` | OpenAPI schema |
+| `http://localhost:8000/mcp` | MCP (Streamable HTTP) |
 
-## Architecture Overview
 
-Layered FastAPI application. Request flow: **endpoint → service → model /
-schema / converter**.
+## Architecture
+
+Layered FastAPI application. Request flow: **endpoint → service →
+model / schema / converter**.
 
 ```
 app/
-├── main.py                  # FastAPI app entrypoint + router wiring
-├── mcp_server.py            # FastMCP server mounted into the same app
-├── logging_config.py
-├── api/
-│   ├── v1/                  # Legacy API (kept for compatibility)
-│   └── v2/
-│       └── endpoints/       # Current API, grouped by domain
-│                            # (aeroplane, wings, fuselages, cad, aeroanalysis)
-├── services/                # Business logic, external tool orchestration
+├── main.py                  # FastAPI entrypoint + router wiring
+├── mcp_server.py            # FastMCP server (same host/port)
+├── api/v2/endpoints/        # Current API, grouped by domain
+├── services/                # Business logic, CAD orchestration
 ├── models/                  # SQLAlchemy ORM models
 ├── schemas/                 # Pydantic request/response DTOs
-├── converters/              # Transforms between schema ⇄ model ⇄ CAD
-├── core/                    # Config, logging, exceptions, security
-├── db/                      # SQLAlchemy session + engine setup
+├── converters/              # schema ⇄ model ⇄ CAD transforms
+├── core/                    # Config, logging, exceptions
+├── db/                      # SQLAlchemy session + engine
 └── tests/                   # pytest test modules
 
-alembic/                     # DB migrations (versions/ holds the scripts)
-cad_designer/                # CadQuery modelling primitives, plugins, decorators
-components/                  # Airfoils, servos, construction templates (data, not code)
-Avl/                         # Vendored AVL binary + sources (used by Aerosandbox)
-docs/                        # AsciiDoctor documentation sources
+alembic/                     # DB migrations
+cad_designer/                # CadQuery primitives, plugins, decorators
+components/                  # Airfoils, servos, templates (data)
 ```
 
-**API versioning.** `v2` is current; `v1` is legacy and kept only for
-backward compatibility. Put new endpoints in `app/api/v2/endpoints/`.
+- `v2` is current; `v1` is legacy. New endpoints → `app/api/v2/endpoints/`
+- MCP via FastMCP 3.x on the same host/port as REST
 
-**MCP integration.** `app/mcp_server.py` uses FastMCP 3.x to expose
-selected v2 endpoints as MCP tools on the same host/port as the REST API.
-See `README.md` for MCP Inspector testing.
 
 ## Conventions & Patterns
 
-- **Endpoints stay thin.** Validate input → delegate to a service →
-  return a Pydantic response. No business logic in endpoints.
-- **Pydantic at every boundary.** Request and response bodies are Pydantic
-  models, never raw `dict`. Put them in `app/schemas/`.
-- **SQLAlchemy models live in `app/models/`.** Alembic migrations in
-  `alembic/versions/`. Always add a migration when you change a model.
-- **Reuse before reinventing.** Check `app/converters/`, `app/services/`,
-  and `cad_designer/` (including `cad_designer/decorators/` and
-  `cad_designer/cq_plugins/`) before writing new transforms or CAD
-  primitives.
-- **CPU-bound CAD work belongs in services**, not endpoints. Endpoints
-  should stay responsive.
-- **Tests.** `app/tests/test_*.py`. Run with `poetry run pytest`. Pytest
-  config in `pyproject.toml` already ignores `external/` and
-  `docker_smoke_test.py`.
-- **Platform guard.** On `linux/aarch64`, `cadquery` and `aerosandbox` are
-  intentionally excluded from dependencies (see `pyproject.toml`
-  environment markers). Code that imports them must tolerate being
-  unavailable on that platform — either with a conditional import or by
-  living in a module that is only loaded on supported platforms.
-- **Secrets in `.env`, never in git.** `.env` is already gitignored.
-  Document new variables in `.env.example` with placeholder values.
-- **Chromium rendering.** Some visualisation flows shell out to a headless
-  Chromium via `BROWSER_PATH` and require `QT_QPA_PLATFORM=offscreen`.
-  Keep those requirements behind env vars, not hardcoded paths.
+- **`cad_designer/` — existing code is read-only, new Creators are
+  allowed.** Never modify topology classes (`Airfoil`, `WingSegment`,
+  `Spare`, `TrailingEdgeDevice`, `Servo`, `WingConfiguration`, etc.)
+  or the `GeneralJSONEncoder/Decoder`. Validation and constraints
+  are enforced **above** this layer — in Pydantic schemas
+  (`app/schemas/`) and frontend UX.
+  **New Creators** (subclasses of `AbstractShapeCreator`) may be
+  added. Use `cad_designer/airplane/creator/_creator_template.py`
+  as the starting point — it documents the constructor pattern,
+  `shapes_of_interest_keys`, `_create_shape()` contract, logging,
+  and output key conventions.
+- **Units: mm in WingConfig, meters in DB/ASB.** The WingConfig
+  schemas and topology classes use **millimetres**. The database and
+  Aerosandbox integration use **metres**. Conversion happens in the
+  converters via `scale=0.001` (mm→m) and `scale=1000.0` (m→mm).
+  Always be explicit about which unit context you're in.
+- **Endpoints stay thin.** Validate → delegate to service → return
+  Pydantic response. No business logic in endpoints.
+- **Pydantic at every boundary.** Never pass raw `dict`.
+- **SQLAlchemy models in `app/models/`.** Always add an Alembic
+  migration when changing a model.
+- **Reuse before reinventing.** Check `app/converters/`,
+  `app/services/`, `cad_designer/decorators/`, `cad_designer/cq_plugins/`.
+- **CPU-bound CAD in services**, not endpoints.
+- **Platform guard.** On `linux/aarch64`, `cadquery` and `aerosandbox`
+  are excluded. Code that imports them must tolerate `ImportError`.
+- **Secrets in `.env`**, never in git. Document in `.env.example`.
+
+
+<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
+## Beads — Local Work Distribution (Optional)
+
+Beads (`bd`) is available as an **optional local work queue** during
+sessions. Use it to break a GH Issue into parallel sub-tasks, track
+claims, and manage dependencies. **GitHub Issues remain the primary
+tracker.**
+
+```bash
+bd ready              # Find available local work
+bd close <id>         # Complete work
+bd remember "insight" # Persist knowledge across sessions
+```
+<!-- END BEADS INTEGRATION -->

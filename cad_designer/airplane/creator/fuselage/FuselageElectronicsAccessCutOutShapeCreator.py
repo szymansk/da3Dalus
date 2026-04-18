@@ -20,6 +20,7 @@ class FuselageElectronicsAccessCutOutShapeCreator(AbstractShapeCreator):
     """
 
     suggested_creator_id = "{fuselage_loft}.electronics_cutout"
+
     def __init__(self, creator_id: str, ribcage_factor: float, length_factor, fuselage_loft, full_wing_loft,
                  wing_position: str = None, loglevel=logging.INFO):
         """

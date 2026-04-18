@@ -23,6 +23,7 @@ class EngineCapeShapeCreator(AbstractShapeCreator):
     """
 
     suggested_creator_id = "engine[{engine_index}].cape"
+
     def __init__(self, creator_id: str, engine_index: int, mount_plate_thickness: float,
                  engine_mount_box_length: float = None, engine_total_cover_length: float = None,
                  full_fuselage_loft: str = None, engine_information: dict[int, EngineInformation] = None,

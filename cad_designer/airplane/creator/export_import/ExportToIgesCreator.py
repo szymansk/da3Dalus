@@ -20,6 +20,7 @@ class ExportToIgesCreator(AbstractShapeCreator):
     """
 
     suggested_creator_id = "export_iges"
+
     def __init__(self, creator_id: str, file_path: str, shapes_to_export: list[str] = None, loglevel=logging.INFO):
         self.file_path: str = file_path
         self.shapes_to_export: list[str] = shapes_to_export

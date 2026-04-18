@@ -19,6 +19,7 @@ class WingAttachmentBoltCutoutShapeCreator(AbstractShapeCreator):
     """
 
     suggested_creator_id = "bolt_cutout"
+
     def __init__(self, creator_id: str, fuselage_loft: str, full_wing_loft: str, bolt_diameter: float, loglevel=logging.INFO):
         self.bolt_diameter = bolt_diameter
         self.full_wing_loft = full_wing_loft

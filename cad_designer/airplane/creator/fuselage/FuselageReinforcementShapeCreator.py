@@ -25,6 +25,7 @@ class FuselageReinforcementShapeCreator(AbstractShapeCreator):
     """
 
     suggested_creator_id = "{fuselage_loft}.reinforcement"
+
     def __init__(self, creator_id: str, rib_width: float, rib_spacing, ribcage_factor: float,
                  reinforcement_pipes_diameter: float, print_resolution: float, fuselage_loft: str, full_wing_loft,
                  loglevel=logging.INFO):

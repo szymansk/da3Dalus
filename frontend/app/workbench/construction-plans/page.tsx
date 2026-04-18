@@ -251,7 +251,27 @@ export default function ConstructionPlansPage() {
     const fromNode = getStepAtPath(treeJson, fromPath);
     if (!fromNode) return;
     const withoutFrom = deleteStepAtPath(treeJson, fromPath);
-    const updated = insertStepAtPath(withoutFrom, toPath, fromNode);
+
+    // Adjust toPath when dragging forward in the same parent:
+    // after removing fromPath, indices shift down by 1
+    let adjustedToPath = toPath;
+    const fromParts = fromPath.replace("root.", "").split(".");
+    const toParts = toPath.replace("root.", "").split(".");
+    if (fromParts.length === toParts.length) {
+      const fromParent = fromParts.slice(0, -1).join(".");
+      const toParent = toParts.slice(0, -1).join(".");
+      if (fromParent === toParent) {
+        const fromIdx = parseInt(fromParts[fromParts.length - 1], 10);
+        const toIdx = parseInt(toParts[toParts.length - 1], 10);
+        if (fromIdx < toIdx) {
+          const adjusted = [...toParts];
+          adjusted[adjusted.length - 1] = String(toIdx - 1);
+          adjustedToPath = "root." + adjusted.join(".");
+        }
+      }
+    }
+
+    const updated = insertStepAtPath(withoutFrom, adjustedToPath, fromNode);
 
     updatePlan(selectedPlanId, {
       name: plan.name,

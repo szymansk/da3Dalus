@@ -23,6 +23,7 @@ class WingLoftCreator(AbstractShapeCreator):
     """
 
     suggested_creator_id = "{wing_index}.loft"
+
     def __init__(self, creator_id: str, wing_index: Union[str, int], offset: float = 0,
                  wing_config: Optional[dict[NonNegativeInt, WingConfiguration]] = None,
                  wing_side: Optional[WingSides] = None, connected:bool=True, loglevel=logging.INFO):

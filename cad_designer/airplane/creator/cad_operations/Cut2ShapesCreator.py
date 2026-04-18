@@ -17,6 +17,7 @@ class Cut2ShapesCreator(AbstractShapeCreator):
     """
 
     suggested_creator_id = "cut.{minuend}"
+
     def __init__(self, creator_id: str,
                  minuend: str = None,
                  subtrahend: str = None, loglevel=logging.INFO):

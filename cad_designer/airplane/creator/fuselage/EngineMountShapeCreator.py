@@ -29,6 +29,7 @@ class EngineMountShapeCreator(AbstractShapeCreator):
     """
 
     suggested_creator_id = "engine[{engine_index}].mount"
+
     def __init__(self, creator_id: str, engine_index: int, mount_plate_thickness: float, cutout_thickness,
                  engine_screw_hole_circle: float = None, engine_mount_box_length: float = None,
                  engine_screw_din_diameter: float = None, engine_screw_length: float = None,

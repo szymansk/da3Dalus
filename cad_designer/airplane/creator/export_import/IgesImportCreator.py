@@ -30,6 +30,7 @@ class IgesImportCreator(AbstractShapeCreator):
     """
 
     suggested_creator_id = "import_iges"
+
     def __init__(self, creator_id: str, iges_file: str, trans_x: float = .0, trans_y: float = .0, trans_z: float = .0,
                  rot_x: float = .0, rot_y: float = .0, rot_z: float = .0, scale: float = 1.0, scale_x=1.0, scale_y=1.0,
                  scale_z=1.0, loglevel=logging.INFO):

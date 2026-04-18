@@ -22,6 +22,7 @@ class ComponentImporterCreator(AbstractShapeCreator):
     """
 
     suggested_creator_id = "component.{component_idx}"
+
     def __init__(self,
                  creator_id: str,
                  component_idx: str,

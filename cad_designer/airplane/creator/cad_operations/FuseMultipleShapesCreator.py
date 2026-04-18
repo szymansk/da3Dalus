@@ -16,6 +16,7 @@ class FuseMultipleShapesCreator(AbstractShapeCreator):
     """
 
     suggested_creator_id = "fuse_all"
+
     def __init__(self, creator_id: str, shapes: list[str], loglevel=logging.INFO):
         self.shapes = shapes
         super().__init__(creator_id, shapes_of_interest_keys=shapes, loglevel=loglevel)
