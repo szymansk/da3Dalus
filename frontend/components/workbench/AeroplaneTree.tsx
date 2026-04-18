@@ -507,6 +507,36 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
           Aeroplane Tree
         </span>
+        <div className="relative">
+          <button
+            onClick={() => setAddMenuOpen((v) => !v)}
+            className="flex h-6 w-6 items-center justify-center rounded-xl text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+            title="Add wing or fuselage"
+          >
+            <Plus size={14} />
+          </button>
+          {addMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setAddMenuOpen(false)} />
+              <div className="absolute left-0 top-full z-40 mt-1 w-48 rounded-xl border border-border bg-card shadow-lg">
+                <button
+                  onClick={() => { setAddMenuOpen(false); handleAddWing(); }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-[12px] text-foreground hover:bg-sidebar-accent rounded-t-xl"
+                >
+                  <Plus size={12} />
+                  Wing
+                </button>
+                <button
+                  onClick={() => { setAddMenuOpen(false); setImportFuselageOpen(true); }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-[12px] text-foreground hover:bg-sidebar-accent rounded-b-xl"
+                >
+                  <Plus size={12} />
+                  Fuselage
+                </button>
+              </div>
+            </>
+          )}
+        </div>
         <div className="flex-1" />
         <div className="flex overflow-hidden rounded-xl border border-border">
           <button
@@ -529,33 +559,6 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
           >
             X-Secs
           </button>
-        </div>
-        <div className="relative">
-          <button
-            onClick={() => setAddMenuOpen((v) => !v)}
-            className="flex h-6 w-6 items-center justify-center rounded-xl text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-            title="Add wing or fuselage"
-          >
-            <Plus size={14} />
-          </button>
-          {addMenuOpen && (
-            <div className="absolute right-0 top-full z-40 mt-1 w-48 rounded-xl border border-border bg-card shadow-lg">
-              <button
-                onClick={handleAddWing}
-                className="flex w-full items-center gap-2 px-3 py-2 text-[12px] text-foreground hover:bg-sidebar-accent rounded-t-xl"
-              >
-                <Plus size={12} />
-                Wing
-              </button>
-              <button
-                onClick={() => { setImportFuselageOpen(true); setAddMenuOpen(false); }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-[12px] text-foreground hover:bg-sidebar-accent rounded-b-xl"
-              >
-                <Plus size={12} />
-                Fuselage
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
