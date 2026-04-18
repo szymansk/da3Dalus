@@ -51,6 +51,7 @@ class CreatorParam(BaseModel):
     default: Optional[Any] = None
     required: bool
     description: Optional[str] = Field(None, description="Human-readable parameter description")
+    options: Optional[list[str]] = Field(None, description="Allowed values for Literal/enum params")
 
 
 class CreatorOutput(BaseModel):

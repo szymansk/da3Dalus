@@ -281,6 +281,47 @@ def _type_to_str(annotation: Any) -> str:
     return str(annotation).replace("typing.", "")
 
 
+def _extract_literal_values(annotation: Any) -> list[str] | None:
+    """Extract allowed values from Literal type annotations.
+
+    Handles: Literal["A", "B"], Optional[Literal[...]], Annotated[Literal[...], ...].
+    Returns None if not a Literal type.
+    """
+    import typing
+
+    if annotation is inspect.Parameter.empty:
+        return None
+
+    origin = getattr(annotation, "__origin__", None)
+
+    # Direct Literal
+    if origin is typing.Literal:
+        return [str(v) for v in annotation.__args__]
+
+    # Union / Optional — check each branch
+    if origin is typing.Union:
+        for arg in annotation.__args__:
+            if arg is type(None):
+                continue
+            vals = _extract_literal_values(arg)
+            if vals:
+                return vals
+
+    # Annotated — unwrap and recurse
+    if hasattr(annotation, "__metadata__") and hasattr(annotation, "__origin__"):
+        return _extract_literal_values(annotation.__origin__)
+
+    # Nested args (e.g. Optional[Annotated[Literal[...], ...]])
+    for arg in getattr(annotation, "__args__", ()):
+        if arg is type(None):
+            continue
+        vals = _extract_literal_values(arg)
+        if vals:
+            return vals
+
+    return None
+
+
 def list_creators() -> list[CreatorInfo]:
     """Reflect over all AbstractShapeCreator subclasses and return metadata."""
     try:
@@ -329,6 +370,7 @@ def _collect_creators(cls: type, result: list[CreatorInfo], seen: set[str]) -> N
             default=param.default if param.default is not inspect.Parameter.empty else None,
             required=param.default is inspect.Parameter.empty,
             description=param_descriptions.get(pname),
+            options=_extract_literal_values(param.annotation),
         ))
 
     docstring = (cls.__doc__ or "").strip().split("\n")[0] if cls.__doc__ else None
