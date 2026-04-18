@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, String, DateTime, func
+from sqlalchemy import Column, ForeignKey, String, DateTime, func
 from sqlalchemy.types import JSON
 
 from app.db.base import Base
@@ -23,6 +23,8 @@ class ConstructionPlanModel(Base):
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     tree_json = Column(JSON, nullable=False)
+    plan_type = Column(String, nullable=False, default="template")
+    aeroplane_id = Column(String, ForeignKey("aeroplanes.id"), nullable=True)
 
     created_at = Column(
         DateTime(timezone=True),
