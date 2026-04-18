@@ -11,6 +11,9 @@ class RepairFacesShapeCreator(AbstractShapeCreator):
     Attributes:
         shape (str): Key of the shape to repair.
         repair_tool (str): Key of a reference shape used to determine correct normal orientation.
+
+    Returns:
+        {id} (Workplane): Shape with repaired face normals.
     """
 
     def __init__(self, creator_id: str,

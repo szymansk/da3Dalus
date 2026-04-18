@@ -24,6 +24,9 @@ class IgesImportCreator(AbstractShapeCreator):
         scale_x (float): Scale factor along X axis.
         scale_y (float): Scale factor along Y axis.
         scale_z (float): Scale factor along Z axis.
+
+    Returns:
+        {id} (Workplane): Imported IGES geometry with applied transforms.
     """
 
     def __init__(self, creator_id: str, iges_file: str, trans_x: float = .0, trans_y: float = .0, trans_z: float = .0,

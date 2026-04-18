@@ -9,6 +9,9 @@ class AddMultipleShapesCreator(AbstractShapeCreator):
 
     Attributes:
         shapes (list[str]): List of shape keys to add together.
+
+    Returns:
+        {id} (Compound): Non-fused compound of all input shapes.
     """
 
     def __init__(self, creator_id: str, shapes: list[str], loglevel=logging.INFO):

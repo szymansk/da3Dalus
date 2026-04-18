@@ -21,6 +21,9 @@ class StepImportCreator(AbstractShapeCreator):
         scale_x (float): Scale factor along X axis.
         scale_y (float): Scale factor along Y axis.
         scale_z (float): Scale factor along Z axis.
+
+    Returns:
+        {id} (Workplane): Imported STEP geometry with applied transforms.
     """
 
     def __init__(self, creator_id: str, step_file: str,

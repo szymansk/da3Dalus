@@ -10,6 +10,9 @@ class SimpleOffsetShapeCreator(AbstractShapeCreator):
     Attributes:
         offset (float): Offset distance in mm (positive = enlarge, negative = shrink).
         shape (str): Key of the shape to offset.
+
+    Returns:
+        {id} (Workplane): Shape offset by the specified distance.
     """
 
     def __init__(self, creator_id: str,

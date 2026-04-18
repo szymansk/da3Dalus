@@ -12,6 +12,9 @@ class Fuse2ShapesCreator(AbstractShapeCreator):
     Attributes:
         shape_a (str): Key of the first shape (base).
         shape_b (str): Key of the second shape to fuse into shape_a.
+
+    Returns:
+        {id} (Workplane): Boolean union of shape_a and shape_b.
     """
 
     def __init__(self, creator_id: str, shape_a: str = None, shape_b: str = None, loglevel=logging.INFO):

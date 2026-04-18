@@ -14,6 +14,9 @@ class ExportTo3mfCreator(AbstractShapeCreator):
         shapes_to_export (list[str]): List of shape keys to export.
         tolerance (float): Tessellation chord tolerance in mm.
         angular_tolerance (float): Tessellation angular tolerance in radians.
+
+    Returns:
+        {id} (pass-through): Exports files and returns input shapes unchanged.
     """
 
     def __init__(self, creator_id: str, file_path: str, shapes_to_export: list[str],

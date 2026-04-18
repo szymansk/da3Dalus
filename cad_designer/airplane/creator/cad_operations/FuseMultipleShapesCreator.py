@@ -10,6 +10,9 @@ class FuseMultipleShapesCreator(AbstractShapeCreator):
 
     Attributes:
         shapes (list[str]): List of shape keys to fuse together.
+
+    Returns:
+        {id} (Workplane): Boolean union of all input shapes.
     """
 
     def __init__(self, creator_id: str, shapes: list[str], loglevel=logging.INFO):

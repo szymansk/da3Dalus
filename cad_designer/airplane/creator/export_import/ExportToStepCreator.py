@@ -13,6 +13,9 @@ class ExportToStepCreator(AbstractShapeCreator):
     Attributes:
         file_path (str): Directory path where STEP files will be written.
         shapes_to_export (list[str]): List of shape keys to export.
+
+    Returns:
+        {id} (pass-through): Exports files and returns input shapes unchanged.
     """
 
     def __init__(self, creator_id: str, file_path: str, shapes_to_export: list[str] = None, loglevel=logging.INFO):

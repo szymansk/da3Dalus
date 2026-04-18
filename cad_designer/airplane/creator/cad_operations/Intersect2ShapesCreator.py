@@ -11,6 +11,9 @@ class Intersect2ShapesCreator(AbstractShapeCreator):
     Attributes:
         shape_a (str): Key of the first shape.
         shape_b (str): Key of the second shape to intersect with.
+
+    Returns:
+        {id} (Workplane): Boolean intersection of shape_a and shape_b.
     """
 
     def __init__(self, creator_id: str, shape_a: str = None, shape_b: str = None, loglevel=logging.INFO):

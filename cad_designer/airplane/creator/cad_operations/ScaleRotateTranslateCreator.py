@@ -21,6 +21,9 @@ class ScaleRotateTranslateCreator(AbstractShapeCreator):
         scale_y (float): Scale factor along Y axis.
         scale_z (float): Scale factor along Z axis.
         mirroring (str): Mirror plane: xy, xz, yz, or empty for none.
+
+    Returns:
+        {id} (Workplane): Transformed shape after scale, rotation, and translation.
     """
 
     def __init__(self, creator_id: str, shape_id: str, scale: float = 1.0, rot_x: float = .0, rot_y: float = .0,

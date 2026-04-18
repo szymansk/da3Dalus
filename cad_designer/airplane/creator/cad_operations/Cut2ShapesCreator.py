@@ -11,6 +11,9 @@ class Cut2ShapesCreator(AbstractShapeCreator):
     Attributes:
         minuend (str): Key of the base shape to cut from.
         subtrahend (str): Key of the shape to subtract.
+
+    Returns:
+        {id} (Workplane): Result of subtracting subtrahend from minuend.
     """
 
     def __init__(self, creator_id: str,

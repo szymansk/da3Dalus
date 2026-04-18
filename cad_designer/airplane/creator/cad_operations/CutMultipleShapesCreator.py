@@ -11,6 +11,9 @@ class CutMultipleShapesCreator(AbstractShapeCreator):
     Attributes:
         subtrahends (list[str]): List of shape keys to subtract from the minuend.
         minuend (str): Key of the base shape to cut from.
+
+    Returns:
+        {id} (Workplane): Result of subtracting all subtrahends from minuend.
     """
 
     def __init__(self, creator_id: str, subtrahends: list[str], minuend: str = None, loglevel=logging.INFO):
