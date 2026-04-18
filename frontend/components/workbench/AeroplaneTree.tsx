@@ -255,11 +255,13 @@ interface AeroplaneTreeProps {
   onTogglePreview?: (wingName: string) => void;
   onToggleAllPreview?: (wingNames: string[]) => void;
   onCollapseTree?: () => void;
+  onNodeEdit?: () => void;
+  actionSlot?: React.ReactNode;
 }
 
 // ── Component ───────────────────────────────────────────────────
 
-export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, onCollapseTree }: AeroplaneTreeProps) {
+export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, onCollapseTree, onNodeEdit, actionSlot }: AeroplaneTreeProps) {
   const { selectedWing, selectedXsecIndex, selectWing, selectXsec, selectedFuselage, selectedFuselageXsecIndex, selectFuselage, selectFuselageXsec, treeMode, setTreeMode } =
     useAeroplaneContext();
   const { wing, isLoading, mutate: mutateWing } = useWing(aeroplaneId, selectedWing);
@@ -500,13 +502,20 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
         </button>
       </div>
 
+      {/* Action slot (add wing / fuselage buttons) */}
+      {actionSlot && (
+        <div className="mb-2">
+          {actionSlot}
+        </div>
+      )}
+
       {/* Tree rows */}
       <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto">
         {isLoading && wingNames.length === 0 ? (
           <span className="text-[13px] text-muted-foreground">Loading...</span>
         ) : (
           treeData.map((node) => (
-            <TreeRow key={node.id} node={node} onToggle={() => toggleExpand(node.id)} />
+            <TreeRow key={node.id} node={node} onToggle={() => toggleExpand(node.id)} onNodeEdit={onNodeEdit} />
           ))
         )}
       </div>
@@ -516,7 +525,7 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
 
 // ── TreeRow ─────────────────────────────────────────────────────
 
-function TreeRow({ node, onToggle }: { node: TreeNode; onToggle: () => void }) {
+function TreeRow({ node, onToggle, onNodeEdit }: { node: TreeNode; onToggle: () => void; onNodeEdit?: () => void }) {
   if (node.isInsertPoint) {
     return (
       <div
@@ -542,6 +551,7 @@ function TreeRow({ node, onToggle }: { node: TreeNode; onToggle: () => void }) {
   function handleClick() {
     if (!isLeaf) onToggle();
     node.onClick?.();
+    if (node.onClick && onNodeEdit) onNodeEdit();
   }
 
   return (
