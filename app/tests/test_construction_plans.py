@@ -161,9 +161,9 @@ class TestCreatorCatalog:
         creators = client.get("/construction-plans/creators").json()
         vase = next(c for c in creators if c["class_name"] == "VaseModeWingCreator")
         param_names = {p["name"] for p in vase["parameters"]}
-        assert "creator_id" in param_names
         assert "wing_index" in param_names
         assert "leading_edge_offset_factor" in param_names
+        assert "creator_id" not in param_names  # internal, filtered out
 
     def test_creator_categories(self, client):
         """All 5 categories present."""
@@ -172,11 +172,13 @@ class TestCreatorCatalog:
         assert categories >= {"wing", "fuselage", "cad_operations", "export_import", "components"}
 
     def test_excludes_internal_params(self, client):
-        """self, loglevel, kwargs not in parameters."""
+        """Internal and runtime-injected params not in parameters."""
         for c in client.get("/construction-plans/creators").json():
             param_names = {p["name"] for p in c["parameters"]}
-            assert "self" not in param_names
-            assert "loglevel" not in param_names
+            for internal in ("self", "loglevel", "creator_id", "wing_config",
+                             "printer_settings", "servo_information",
+                             "engine_information", "component_information"):
+                assert internal not in param_names, f"{c['class_name']} exposes {internal}"
 
     def test_excludes_infrastructure_classes(self, client):
         """ConstructionRootNode, ConstructionStepNode, JSONStepNode not listed."""

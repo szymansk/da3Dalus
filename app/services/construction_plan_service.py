@@ -153,7 +153,13 @@ def delete_plan(db: Session, plan_id: int) -> None:
 # ── Creator Catalog ─────────────────────────────────────────────
 
 
-_INTERNAL_PARAMS = {"self", "loglevel", "kwargs"}
+_INTERNAL_PARAMS = {
+    "self", "loglevel", "kwargs",
+    "creator_id",
+    # Runtime-injected config (passed by GeneralJSONDecoder, not user-facing)
+    "wing_config", "printer_settings", "servo_information",
+    "engine_information", "component_information",
+}
 
 
 def _parse_docstring_attributes(docstring: str) -> dict[str, str]:
