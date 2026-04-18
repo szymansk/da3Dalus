@@ -44,6 +44,7 @@ body {
 
 /* Dark scrollbars */
 * {
+  scrollbar-width: thin;
   scrollbar-color: var(--color-border-strong) transparent;
 }
 *::-webkit-scrollbar {
