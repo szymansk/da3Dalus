@@ -9,6 +9,7 @@ export interface CreatorParam {
   default: unknown;
   required: boolean;
   description: string | null;
+  options: string[] | null;
 }
 
 export interface CreatorOutput {

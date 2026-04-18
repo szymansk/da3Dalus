@@ -24,9 +24,9 @@ const MOCK_CREATORS: CreatorInfo[] = [
     category: "wing",
     description: "Vase-mode wing with ribs, spars, TEDs",
     parameters: [
-      { name: "wing_index", type: "str", default: null, required: true, description: "Index of the wing" },
+      { name: "wing_index", type: "str", default: null, required: true, description: "Index of the wing", options: null },
     ],
-    outputs: [{ key: "{id}", description: "Complete wing assembly" }],
+    outputs: [{ key: "{id}", description: "Complete wing assembly", options: null }],
     suggested_id: "{wing_index}.vase_wing",
   },
   {
@@ -34,8 +34,8 @@ const MOCK_CREATORS: CreatorInfo[] = [
     category: "export_import",
     description: "Export shape to STEP file",
     parameters: [
-      { name: "file_path", type: "str", default: null, required: true, description: null },
-      { name: "shape_key", type: "str", default: null, required: true, description: null },
+      { name: "file_path", type: "str", default: null, required: true, description: null, options: null },
+      { name: "shape_key", type: "str", default: null, required: true, description: null, options: null },
     ],
     outputs: [],
     suggested_id: "export_step",
@@ -45,10 +45,10 @@ const MOCK_CREATORS: CreatorInfo[] = [
     category: "cad_operations",
     description: "Boolean union of two shapes",
     parameters: [
-      { name: "shape_key_a", type: "str", default: null, required: true, description: null },
-      { name: "shape_key_b", type: "str", default: null, required: true, description: null },
+      { name: "shape_key_a", type: "str", default: null, required: true, description: null, options: null },
+      { name: "shape_key_b", type: "str", default: null, required: true, description: null, options: null },
     ],
-    outputs: [{ key: "{id}", description: "Boolean union result" }],
+    outputs: [{ key: "{id}", description: "Boolean union result", options: null }],
     suggested_id: "fuse.{shape_key_a}.{shape_key_b}",
   },
 ];

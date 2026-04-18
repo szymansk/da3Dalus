@@ -43,7 +43,18 @@ export function CreatorParameterForm({
                 <InfoTooltip text={param.description} size={10} />
               )}
             </span>
-            {param.type === "bool" ? (
+            {param.options && param.options.length > 0 ? (
+              <select
+                value={String(values[param.name] ?? param.default ?? "")}
+                onChange={(e) => onChange(param.name, e.target.value)}
+                className="rounded-lg border border-border bg-input px-3 py-1.5 text-[12px] text-foreground outline-none"
+              >
+                {!param.required && <option value="">—</option>}
+                {param.options.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            ) : param.type === "bool" ? (
               <input
                 type="checkbox"
                 checked={Boolean(values[param.name] ?? param.default ?? false)}
