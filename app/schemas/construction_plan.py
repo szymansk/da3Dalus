@@ -16,6 +16,8 @@ class PlanCreate(BaseModel):
         ...,
         description="Serialised ConstructionRootNode tree (GeneralJSONEncoder format)",
     )
+    plan_type: str = Field("template", description="'template' or 'plan'")
+    aeroplane_id: Optional[str] = Field(None, description="Aeroplane ID (required for plan_type='plan')")
 
 
 class PlanRead(PlanCreate):
@@ -35,9 +37,26 @@ class PlanSummary(BaseModel):
     name: str
     description: Optional[str] = None
     step_count: int = Field(0, description="Number of steps in the tree")
+    plan_type: str
+    aeroplane_id: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# ── Template / Plan duality schemas ─────────────────────────────
+
+
+class InstantiateRequest(BaseModel):
+    """Request to create a plan from a template."""
+
+    name: Optional[str] = Field(None, description="Optional name override")
+
+
+class ToTemplateRequest(BaseModel):
+    """Request to create a template from a plan."""
+
+    name: Optional[str] = Field(None, description="Optional name override")
 
 
 # ── Creator reflection schemas ──────────────────────────────────

@@ -46,11 +46,17 @@ TREE_3_STEPS = {
 }
 
 
-def _create_plan(client: TestClient, name: str, tree: dict = None) -> dict:
-    resp = client.post(
-        "/construction-plans",
-        json={"name": name, "tree_json": tree or SAMPLE_TREE},
-    )
+def _create_plan(
+    client: TestClient,
+    name: str,
+    tree: dict = None,
+    plan_type: str = "template",
+    aeroplane_id: str | None = None,
+) -> dict:
+    body: dict = {"name": name, "tree_json": tree or SAMPLE_TREE, "plan_type": plan_type}
+    if aeroplane_id:
+        body["aeroplane_id"] = aeroplane_id
+    resp = client.post("/construction-plans", json=body)
     assert resp.status_code == 201, resp.text
     return resp.json()
 
@@ -203,12 +209,21 @@ class TestPlanExecution:
 
     def test_execute_nonexistent_aeroplane(self, client):
         """POST execute with unknown aeroplane → 404."""
-        plan = _create_plan(client, "exec_404")
+        plan = _create_plan(client, "exec_404", plan_type="plan")
         resp = client.post(
             f"/construction-plans/{plan['id']}/execute",
             json={"aeroplane_id": "00000000-0000-0000-0000-000000000000"},
         )
         assert resp.status_code == 404
+
+    def test_execute_template_rejected(self, client):
+        """POST execute on a template → 422."""
+        plan = _create_plan(client, "tmpl_no_exec", plan_type="template")
+        resp = client.post(
+            f"/construction-plans/{plan['id']}/execute",
+            json={"aeroplane_id": "00000000-0000-0000-0000-000000000000"},
+        )
+        assert resp.status_code == 422
 
     def test_execute_plan_with_invalid_creator_returns_error(self, client):
         """Plan with unknown creator type → decode error → 422."""
@@ -223,7 +238,7 @@ class TestPlanExecution:
                 }
             },
         }
-        plan = _create_plan(client, "bad_plan", bad_tree)
+        plan = _create_plan(client, "bad_plan", bad_tree, plan_type="plan")
         # Need an aeroplane
         resp = client.post("/aeroplanes", params={"name": "exec_test"})
         assert resp.status_code == 201
@@ -234,6 +249,135 @@ class TestPlanExecution:
             json={"aeroplane_id": aid},
         )
         assert resp.status_code == 422
+
+
+# ── Template / Plan Duality Tests (#126) ───────────────────────
+
+
+def _create_aeroplane(client: TestClient, name: str = "test_plane") -> str:
+    """Create an aeroplane and return its ID."""
+    resp = client.post("/aeroplanes", params={"name": name})
+    assert resp.status_code == 201, resp.text
+    return resp.json()["id"]
+
+
+class TestTemplatePlanDuality:
+    def test_list_templates_only(self, client):
+        """GET /construction-templates returns only templates."""
+        _create_plan(client, "Tmpl A", plan_type="template")
+        aid = _create_aeroplane(client)
+        _create_plan(client, "Plan A", plan_type="plan", aeroplane_id=aid)
+        resp = client.get("/construction-templates")
+        assert resp.status_code == 200
+        templates = resp.json()
+        assert all(t["plan_type"] == "template" for t in templates)
+        names = {t["name"] for t in templates}
+        assert "Tmpl A" in names
+        assert "Plan A" not in names
+
+    def test_create_template_via_templates_endpoint(self, client):
+        """POST /construction-templates forces plan_type=template."""
+        resp = client.post(
+            "/construction-templates",
+            json={
+                "name": "Forced Template",
+                "tree_json": SAMPLE_TREE,
+                "plan_type": "plan",  # should be overridden
+            },
+        )
+        assert resp.status_code == 201
+        assert resp.json()["plan_type"] == "template"
+        assert resp.json()["aeroplane_id"] is None
+
+    def test_list_plans_filter_by_type(self, client):
+        """GET /construction-plans?plan_type=template filters correctly."""
+        _create_plan(client, "FilterTmpl", plan_type="template")
+        aid = _create_aeroplane(client)
+        _create_plan(client, "FilterPlan", plan_type="plan", aeroplane_id=aid)
+        resp = client.get("/construction-plans", params={"plan_type": "template"})
+        assert resp.status_code == 200
+        assert all(p["plan_type"] == "template" for p in resp.json())
+
+    def test_instantiate_template(self, client):
+        """POST from-template creates a plan bound to aeroplane."""
+        tmpl = _create_plan(client, "Base Template")
+        aid = _create_aeroplane(client)
+        resp = client.post(
+            f"/aeroplanes/{aid}/construction-plans/from-template/{tmpl['id']}",
+        )
+        assert resp.status_code == 201
+        plan = resp.json()
+        assert plan["plan_type"] == "plan"
+        assert plan["aeroplane_id"] == aid
+        assert plan["tree_json"] == SAMPLE_TREE
+
+    def test_instantiate_template_custom_name(self, client):
+        """Instantiate with custom name override."""
+        tmpl = _create_plan(client, "Named Template")
+        aid = _create_aeroplane(client)
+        resp = client.post(
+            f"/aeroplanes/{aid}/construction-plans/from-template/{tmpl['id']}",
+            json={"name": "Custom Plan Name"},
+        )
+        assert resp.status_code == 201
+        assert resp.json()["name"] == "Custom Plan Name"
+
+    def test_instantiate_non_template_rejected(self, client):
+        """Instantiating a plan (not template) returns 422."""
+        aid = _create_aeroplane(client)
+        plan = _create_plan(client, "A Plan", plan_type="plan", aeroplane_id=aid)
+        resp = client.post(
+            f"/aeroplanes/{aid}/construction-plans/from-template/{plan['id']}",
+        )
+        assert resp.status_code == 422
+
+    def test_plan_to_template(self, client):
+        """POST to-template creates a template from a plan."""
+        aid = _create_aeroplane(client)
+        plan = _create_plan(client, "My Plan", plan_type="plan", aeroplane_id=aid)
+        resp = client.post(
+            f"/aeroplanes/{aid}/construction-plans/{plan['id']}/to-template",
+        )
+        assert resp.status_code == 201
+        tmpl = resp.json()
+        assert tmpl["plan_type"] == "template"
+        assert tmpl["aeroplane_id"] is None
+        assert tmpl["tree_json"] == SAMPLE_TREE
+
+    def test_plan_to_template_custom_name(self, client):
+        """to-template with custom name override."""
+        aid = _create_aeroplane(client)
+        plan = _create_plan(client, "Source", plan_type="plan", aeroplane_id=aid)
+        resp = client.post(
+            f"/aeroplanes/{aid}/construction-plans/{plan['id']}/to-template",
+            json={"name": "My Custom Template"},
+        )
+        assert resp.status_code == 201
+        assert resp.json()["name"] == "My Custom Template"
+
+    def test_list_aeroplane_plans(self, client):
+        """GET /aeroplanes/{id}/construction-plans returns plans for that aeroplane."""
+        aid1 = _create_aeroplane(client, "plane1")
+        aid2 = _create_aeroplane(client, "plane2")
+        _create_plan(client, "P1", plan_type="plan", aeroplane_id=aid1)
+        _create_plan(client, "P2", plan_type="plan", aeroplane_id=aid2)
+        resp = client.get(f"/aeroplanes/{aid1}/construction-plans")
+        assert resp.status_code == 200
+        plans = resp.json()
+        assert all(p["aeroplane_id"] == aid1 for p in plans)
+        names = {p["name"] for p in plans}
+        assert "P1" in names
+        assert "P2" not in names
+
+    def test_plan_summary_includes_plan_type(self, client):
+        """PlanSummary includes plan_type and aeroplane_id."""
+        aid = _create_aeroplane(client)
+        _create_plan(client, "Typed Plan", plan_type="plan", aeroplane_id=aid)
+        resp = client.get("/construction-plans")
+        assert resp.status_code == 200
+        plan = next(p for p in resp.json() if p["name"] == "Typed Plan")
+        assert plan["plan_type"] == "plan"
+        assert plan["aeroplane_id"] == aid
 
 
 # ── Printer Settings Seed (#115) ────────────────────────────────

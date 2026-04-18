@@ -8,6 +8,8 @@ export interface PlanSummary {
   name: string;
   description: string | null;
   step_count: number;
+  plan_type: string;
+  aeroplane_id: string | null;
   created_at: string;
 }
 
@@ -16,6 +18,8 @@ export interface PlanRead {
   name: string;
   description: string | null;
   tree_json: Record<string, unknown>;
+  plan_type: string;
+  aeroplane_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -28,9 +32,12 @@ export interface ExecutionResult {
   duration_ms: number;
 }
 
-export function useConstructionPlans() {
+export function useConstructionPlans(planType?: string) {
+  const path = planType
+    ? `/construction-plans?plan_type=${planType}`
+    : "/construction-plans";
   const { data, error, isLoading, mutate } = useSWR<PlanSummary[]>(
-    "/construction-plans",
+    path,
     fetcher,
   );
 
@@ -40,6 +47,14 @@ export function useConstructionPlans() {
     isLoading,
     mutate,
   };
+}
+
+export function useAeroplanePlans(aeroplaneId: string | null) {
+  const { data, error, isLoading, mutate } = useSWR<PlanSummary[]>(
+    aeroplaneId ? `/aeroplanes/${aeroplaneId}/construction-plans` : null,
+    fetcher,
+  );
+  return { plans: data ?? [], error, isLoading, mutate };
 }
 
 export function useConstructionPlan(id: number | null) {
@@ -57,7 +72,7 @@ export function useConstructionPlan(id: number | null) {
 }
 
 export async function createPlan(
-  body: { name: string; description?: string; tree_json: Record<string, unknown> },
+  body: { name: string; description?: string; tree_json: Record<string, unknown>; plan_type?: string; aeroplane_id?: string },
 ): Promise<PlanRead> {
   const res = await fetch(`${API_BASE}/construction-plans`, {
     method: "POST",
@@ -98,17 +113,57 @@ export async function deletePlan(id: number): Promise<void> {
 }
 
 export async function executePlan(
-  id: number,
   aeroplaneId: string,
+  planId: number,
 ): Promise<ExecutionResult> {
-  const res = await fetch(`${API_BASE}/construction-plans/${id}/execute`, {
+  const res = await fetch(`${API_BASE}/aeroplanes/${aeroplaneId}/construction-plans/${planId}/execute`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ aeroplane_id: aeroplaneId }),
+    body: "{}",
   });
   if (!res.ok) {
     const detail = await res.text();
     throw new Error(`Execute plan failed: ${res.status} ${detail}`);
+  }
+  return res.json();
+}
+
+export async function instantiateTemplate(
+  aeroplaneId: string,
+  templateId: number,
+  name?: string,
+): Promise<PlanRead> {
+  const res = await fetch(
+    `${API_BASE}/aeroplanes/${aeroplaneId}/construction-plans/from-template/${templateId}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: name ? JSON.stringify({ name }) : "{}",
+    },
+  );
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Instantiate failed: ${res.status} ${detail}`);
+  }
+  return res.json();
+}
+
+export async function toTemplate(
+  aeroplaneId: string,
+  planId: number,
+  name?: string,
+): Promise<PlanRead> {
+  const res = await fetch(
+    `${API_BASE}/aeroplanes/${aeroplaneId}/construction-plans/${planId}/to-template`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: name ? JSON.stringify({ name }) : "{}",
+    },
+  );
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`To template failed: ${res.status} ${detail}`);
   }
   return res.json();
 }

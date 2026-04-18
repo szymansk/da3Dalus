@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { Hammer, Plus, Trash2, Play, Loader2 } from "lucide-react";
+import { Hammer, Plus, Trash2, Play, Loader2, BookTemplate, Copy } from "lucide-react";
 import { WorkbenchTwoPanel } from "@/components/workbench/WorkbenchTwoPanel";
 import { PlanTree, type PlanStepNode } from "@/components/workbench/PlanTree";
 import { CreatorGallery } from "@/components/workbench/CreatorGallery";
@@ -12,10 +12,13 @@ import { useAeroplanes } from "@/hooks/useAeroplanes";
 import {
   useConstructionPlans,
   useConstructionPlan,
+  useAeroplanePlans,
   createPlan,
   updatePlan,
   deletePlan,
   executePlan,
+  instantiateTemplate,
+  toTemplate,
   type ExecutionResult,
 } from "@/hooks/useConstructionPlans";
 import { useCreators, type CreatorInfo } from "@/hooks/useCreators";
@@ -25,8 +28,13 @@ type RightPanel = "gallery" | "detail" | "params";
 export default function ConstructionPlansPage() {
   const { aeroplaneId } = useAeroplaneContext();
   const { aeroplanes } = useAeroplanes();
-  const { plans, mutate: mutatePlans } = useConstructionPlans();
   const { creators } = useCreators();
+
+  const [viewMode, setViewMode] = useState<"templates" | "plans">("templates");
+  const { plans: templates, mutate: mutateTemplates } = useConstructionPlans("template");
+  const { plans: aeroplanePlans, mutate: mutateAeroplanePlans } = useAeroplanePlans(aeroplaneId);
+  const activePlans = viewMode === "templates" ? templates : aeroplanePlans;
+  const activeMutate = viewMode === "templates" ? mutateTemplates : mutateAeroplanePlans;
 
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const { plan, mutate: mutatePlan } = useConstructionPlan(selectedPlanId);
@@ -106,8 +114,10 @@ export default function ConstructionPlansPage() {
       const created = await createPlan({
         name: name.trim(),
         tree_json: { $TYPE: "ConstructionRootNode", creator_id: "root", successors: [] },
+        plan_type: viewMode === "templates" ? "template" : "plan",
+        aeroplane_id: viewMode === "plans" ? aeroplaneId ?? undefined : undefined,
       });
-      mutatePlans();
+      activeMutate();
       setSelectedPlanId(created.id);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to create plan");
@@ -122,7 +132,7 @@ export default function ConstructionPlansPage() {
       setSelectedPlanId(null);
       setSelectedStepPath(null);
       setSelectedStepNode(null);
-      mutatePlans();
+      activeMutate();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to delete plan");
     }
@@ -171,7 +181,7 @@ export default function ConstructionPlansPage() {
         tree_json: updated as unknown as Record<string, unknown>,
       });
       mutatePlan();
-      mutatePlans();
+      activeMutate();
       if (selectedStepPath === path) {
         setSelectedStepPath(null);
         setSelectedStepNode(null);
@@ -202,7 +212,7 @@ export default function ConstructionPlansPage() {
         tree_json: updatedTree as unknown as Record<string, unknown>,
       });
       mutatePlan();
-      mutatePlans();
+      activeMutate();
       setAddDialogOpen(false);
       setAddingCreator(null);
     } catch (err) {
@@ -306,7 +316,7 @@ export default function ConstructionPlansPage() {
     })
       .then(() => {
         mutatePlan();
-        mutatePlans();
+        activeMutate();
       })
       .catch((err) => alert(err instanceof Error ? err.message : "Failed to reorder"));
   }
@@ -318,7 +328,7 @@ export default function ConstructionPlansPage() {
     setExecuting(true);
     setExecuteResult(null);
     try {
-      const result = await executePlan(selectedPlanId, executeAeroplaneId);
+      const result = await executePlan(executeAeroplaneId, selectedPlanId);
       setExecuteResult(result);
     } catch (err) {
       setExecuteResult({
@@ -333,6 +343,31 @@ export default function ConstructionPlansPage() {
     }
   }
 
+  // ── Template / Plan conversion ──────────────────────────────────
+
+  async function handleInstantiateTemplate() {
+    if (!selectedPlanId || !aeroplaneId) return;
+    try {
+      const created = await instantiateTemplate(aeroplaneId, selectedPlanId);
+      mutateAeroplanePlans();
+      setViewMode("plans");
+      setSelectedPlanId(created.id);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to create plan");
+    }
+  }
+
+  async function handleSaveAsTemplate() {
+    if (!selectedPlanId || !aeroplaneId) return;
+    try {
+      await toTemplate(aeroplaneId, selectedPlanId);
+      mutateTemplates();
+      alert("Template created successfully");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save as template");
+    }
+  }
+
   // ── Render ──────────────────────────────────────────────────────
 
   const treeJson = plan?.tree_json as unknown as PlanStepNode | null;
@@ -344,8 +379,46 @@ export default function ConstructionPlansPage() {
   return (
     <>
       <WorkbenchTwoPanel>
-        {/* Left panel: plan selector + tree */}
+        {/* Left panel: toggle + plan selector + tree */}
         <div className="flex h-full flex-col gap-3 overflow-hidden">
+          {/* Template / Plans toggle */}
+          <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1 self-start">
+            <button
+              onClick={() => {
+                setViewMode("templates");
+                setSelectedPlanId(null);
+                setSelectedStepPath(null);
+                setSelectedStepNode(null);
+                setRightPanel("gallery");
+              }}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] ${
+                viewMode === "templates"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <BookTemplate size={12} />
+              Templates
+            </button>
+            <button
+              onClick={() => {
+                setViewMode("plans");
+                setSelectedPlanId(null);
+                setSelectedStepPath(null);
+                setSelectedStepNode(null);
+                setRightPanel("gallery");
+              }}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] ${
+                viewMode === "plans"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Hammer size={12} />
+              Plans
+            </button>
+          </div>
+
           {/* Plan selector */}
           <div className="flex items-center gap-2">
             <select
@@ -359,8 +432,10 @@ export default function ConstructionPlansPage() {
               }}
               className="flex-1 rounded-xl border border-border bg-input px-3 py-2 text-[12px] text-foreground"
             >
-              <option value="">Select a plan...</option>
-              {plans.map((p) => (
+              <option value="">
+                {viewMode === "templates" ? "Select a template..." : "Select a plan..."}
+              </option>
+              {activePlans.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name} ({p.step_count} steps)
                 </option>
@@ -368,7 +443,7 @@ export default function ConstructionPlansPage() {
             </select>
             <button
               onClick={handleNewPlan}
-              title="New plan"
+              title={viewMode === "templates" ? "New template" : "New plan"}
               className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground hover:opacity-90"
             >
               <Plus size={14} />
@@ -378,22 +453,42 @@ export default function ConstructionPlansPage() {
           {/* Action buttons */}
           {selectedPlanId && plan && (
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  setExecuteAeroplaneId(aeroplaneId ?? "");
-                  setExecuteDialogOpen(true);
-                  setExecuteResult(null);
-                }}
-                className="flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-[12px] text-primary-foreground hover:opacity-90"
-              >
-                <Play size={12} />
-                Execute
-              </button>
+              {viewMode === "plans" && (
+                <button
+                  onClick={() => {
+                    setExecuteAeroplaneId(aeroplaneId ?? "");
+                    setExecuteDialogOpen(true);
+                    setExecuteResult(null);
+                  }}
+                  className="flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-[12px] text-primary-foreground hover:opacity-90"
+                >
+                  <Play size={12} />
+                  Execute
+                </button>
+              )}
+              {viewMode === "templates" && aeroplaneId && (
+                <button
+                  onClick={handleInstantiateTemplate}
+                  className="flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-[12px] text-primary-foreground hover:opacity-90"
+                >
+                  <Copy size={12} />
+                  Create Plan
+                </button>
+              )}
+              {viewMode === "plans" && aeroplaneId && (
+                <button
+                  onClick={handleSaveAsTemplate}
+                  className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12px] text-muted-foreground hover:bg-sidebar-accent"
+                >
+                  <BookTemplate size={12} />
+                  Save as Template
+                </button>
+              )}
               <span className="flex-1" />
               <button
                 onClick={handleDeletePlan}
                 className="flex size-7 items-center justify-center rounded-full border border-border text-destructive hover:bg-destructive/20"
-                title="Delete plan"
+                title={viewMode === "templates" ? "Delete template" : "Delete plan"}
               >
                 <Trash2 size={12} />
               </button>
@@ -415,7 +510,9 @@ export default function ConstructionPlansPage() {
           ) : (
             <div className="flex flex-1 items-center justify-center">
               <p className="text-[13px] text-muted-foreground">
-                Select or create a plan
+                {viewMode === "templates"
+                  ? "Select or create a template"
+                  : "Select or create a plan"}
               </p>
             </div>
           )}
@@ -453,6 +550,18 @@ export default function ConstructionPlansPage() {
                 onChange={handleParamChange}
                 availableShapeKeys={collectAvailableShapeKeys(treeJson, selectedStepPath)}
               />
+              <label className="flex flex-col gap-1 mt-2">
+                <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
+                  Comment
+                </span>
+                <textarea
+                  value={String(selectedStepNode?._comment ?? "")}
+                  onChange={(e) => handleParamChange("_comment", e.target.value)}
+                  placeholder="Notes about this step..."
+                  rows={3}
+                  className="rounded-lg border border-border bg-input px-3 py-1.5 text-[12px] text-foreground outline-none resize-none"
+                />
+              </label>
             </div>
           ) : rightPanel === "detail" && browsingCreator ? (
             <CreatorDetailView

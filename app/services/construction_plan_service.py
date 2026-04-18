@@ -54,6 +54,8 @@ def _to_summary(plan: ConstructionPlanModel) -> PlanSummary:
         name=plan.name,
         description=plan.description,
         step_count=_count_steps(plan.tree_json or {}),
+        plan_type=plan.plan_type,
+        aeroplane_id=plan.aeroplane_id,
         created_at=plan.created_at,
     )
 
@@ -74,12 +76,29 @@ def _validate_tree_json(tree_json: dict) -> None:
         )
 
 
+def _get_plan_or_raise(db: Session, plan_id: int) -> ConstructionPlanModel:
+    """Load a plan by ID or raise NotFoundError."""
+    plan = db.get(ConstructionPlanModel, plan_id)
+    if plan is None:
+        raise NotFoundError(entity="Construction plan", resource_id=plan_id)
+    return plan
+
+
 # ── CRUD ────────────────────────────────────────────────────────
 
 
-def list_plans(db: Session) -> list[PlanSummary]:
+def list_plans(
+    db: Session,
+    plan_type: str | None = None,
+    aeroplane_id: str | None = None,
+) -> list[PlanSummary]:
     try:
-        plans = db.query(ConstructionPlanModel).order_by(ConstructionPlanModel.id).all()
+        query = db.query(ConstructionPlanModel)
+        if plan_type:
+            query = query.filter(ConstructionPlanModel.plan_type == plan_type)
+        if aeroplane_id:
+            query = query.filter(ConstructionPlanModel.aeroplane_id == aeroplane_id)
+        plans = query.order_by(ConstructionPlanModel.name).all()
         return [_to_summary(p) for p in plans]
     except SQLAlchemyError as e:
         logger.error("DB error listing plans: %s", e)
@@ -106,6 +125,8 @@ def create_plan(db: Session, data: PlanCreate) -> PlanRead:
             name=data.name,
             description=data.description,
             tree_json=data.tree_json,
+            plan_type=data.plan_type,
+            aeroplane_id=data.aeroplane_id,
         )
         db.add(plan)
         db.commit()
@@ -126,6 +147,8 @@ def update_plan(db: Session, plan_id: int, data: PlanCreate) -> PlanRead:
         plan.name = data.name
         plan.description = data.description
         plan.tree_json = data.tree_json
+        plan.plan_type = data.plan_type
+        plan.aeroplane_id = data.aeroplane_id
         db.commit()
         db.refresh(plan)
         return _to_read(plan)
@@ -150,6 +173,56 @@ def delete_plan(db: Session, plan_id: int) -> None:
         db.rollback()
         logger.error("DB error deleting plan %s: %s", plan_id, e)
         raise InternalError(message=f"Database error: {e}")
+
+
+# ── Template / Plan duality ────────────────────────────────────
+
+
+def instantiate_template(
+    db: Session,
+    template_id: int,
+    aeroplane_id: str,
+    name: str | None = None,
+) -> PlanRead:
+    """Clone a template into a concrete plan bound to an aeroplane."""
+    import copy
+
+    template = _get_plan_or_raise(db, template_id)
+    if template.plan_type != "template":
+        raise ValidationError(message="Only templates can be instantiated")
+
+    # Verify aeroplane exists
+    from app.services.wing_service import get_aeroplane_or_raise
+
+    get_aeroplane_or_raise(db, aeroplane_id)
+
+    plan_data = PlanCreate(
+        name=name or f"{template.name} \u2014 Plan",
+        description=template.description,
+        tree_json=copy.deepcopy(template.tree_json),
+        plan_type="plan",
+        aeroplane_id=aeroplane_id,
+    )
+    return create_plan(db, plan_data)
+
+
+def to_template(
+    db: Session,
+    plan_id: int,
+    name: str | None = None,
+) -> PlanRead:
+    """Create a new template from an existing plan."""
+    import copy
+
+    plan = _get_plan_or_raise(db, plan_id)
+
+    template_data = PlanCreate(
+        name=name or f"{plan.name} \u2014 Template",
+        description=plan.description,
+        tree_json=copy.deepcopy(plan.tree_json),
+        plan_type="template",
+    )
+    return create_plan(db, template_data)
 
 
 # ── Creator Catalog ─────────────────────────────────────────────
@@ -436,12 +509,15 @@ def execute_plan(
     from app.converters.model_schema_converters import wingModelToWingConfig
 
     # Load plan
-    plan = db.get(ConstructionPlanModel, plan_id)
-    if plan is None:
-        raise NotFoundError(entity="Construction plan", resource_id=plan_id)
+    plan = _get_plan_or_raise(db, plan_id)
+    if plan.plan_type == "template":
+        raise ValidationError(
+            message="Templates cannot be executed. Instantiate as a plan first.",
+        )
 
-    # Load aeroplane
-    aeroplane = get_aeroplane_or_raise(db, request.aeroplane_id)
+    # Load aeroplane (prefer stored aeroplane_id, fall back to request)
+    effective_aeroplane_id = plan.aeroplane_id or request.aeroplane_id
+    aeroplane = get_aeroplane_or_raise(db, effective_aeroplane_id)
 
     # Build wing_config map: all wings
     wing_config: dict = {}
