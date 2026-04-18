@@ -6,6 +6,7 @@ import { WorkbenchTwoPanel } from "@/components/workbench/WorkbenchTwoPanel";
 import { PlanTree, type PlanStepNode } from "@/components/workbench/PlanTree";
 import { CreatorGallery } from "@/components/workbench/CreatorGallery";
 import { CreatorParameterForm } from "@/components/workbench/CreatorParameterForm";
+import { CreatorDetailView } from "@/components/workbench/CreatorDetailView";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAeroplanes } from "@/hooks/useAeroplanes";
 import {
@@ -19,7 +20,7 @@ import {
 } from "@/hooks/useConstructionPlans";
 import { useCreators, type CreatorInfo } from "@/hooks/useCreators";
 
-type RightPanel = "gallery" | "params";
+type RightPanel = "gallery" | "detail" | "params";
 
 export default function ConstructionPlansPage() {
   const { aeroplaneId } = useAeroplaneContext();
@@ -33,6 +34,7 @@ export default function ConstructionPlansPage() {
   const [rightPanel, setRightPanel] = useState<RightPanel>("gallery");
   const [selectedStepPath, setSelectedStepPath] = useState<string | null>(null);
   const [selectedStepNode, setSelectedStepNode] = useState<PlanStepNode | null>(null);
+  const [browsingCreator, setBrowsingCreator] = useState<CreatorInfo | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
 
   // Debounce timer for parameter saves
@@ -370,13 +372,15 @@ export default function ConstructionPlansPage() {
           )}
         </div>
 
-        {/* Right panel: gallery or params */}
+        {/* Right panel: gallery, detail view, or param editor */}
         <div className="flex w-full flex-col gap-4 overflow-y-auto">
           <div className="flex items-center gap-2.5">
             <Hammer className="size-5 text-primary" />
             <h1 className="font-[family-name:var(--font-jetbrains-mono)] text-[20px] text-foreground">
               {rightPanel === "params" && creatorForSelected
                 ? "Parameters"
+                : rightPanel === "detail" && browsingCreator
+                ? "Creator Info"
                 : "Creator Catalog"}
             </h1>
             <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
@@ -400,19 +404,20 @@ export default function ConstructionPlansPage() {
                 onChange={handleParamChange}
               />
             </div>
+          ) : rightPanel === "detail" && browsingCreator ? (
+            <CreatorDetailView
+              creator={browsingCreator}
+              onBack={() => {
+                setBrowsingCreator(null);
+                setRightPanel("gallery");
+              }}
+            />
           ) : (
             <CreatorGallery
               creators={creators}
               onSelect={(creator) => {
-                // Right panel gallery is for browsing — show params preview
-                // Steps are added via the + button / Add Step dialog
-                setSelectedStepNode({
-                  $TYPE: creator.class_name,
-                  creator_id: creator.class_name,
-                  successors: [],
-                });
-                setSelectedStepPath(null);
-                setRightPanel("params");
+                setBrowsingCreator(creator);
+                setRightPanel("detail");
               }}
             />
           )}
