@@ -10,7 +10,7 @@ vi.mock("lucide-react", () => {
   return {
     Hammer: icon, Plus: icon, Trash2: icon, Play: icon, Loader2: icon,
     Search: icon, ChevronDown: icon, ChevronRight: icon, Pencil: icon,
-    Scale: icon, Info: icon,
+    Scale: icon, Info: icon, BookTemplate: icon, Copy: icon,
   };
 });
 
@@ -26,14 +26,26 @@ const mockExecutePlan = vi.fn().mockResolvedValue({
   duration_ms: 1234,
 });
 
+const mockMutateAeroplanePlans = vi.fn();
+const mockInstantiateTemplate = vi.fn().mockResolvedValue({ id: 10, name: "Instantiated" });
+const mockToTemplate = vi.fn().mockResolvedValue({ id: 11, name: "Saved Template" });
+
 vi.mock("@/hooks/useConstructionPlans", () => ({
   useConstructionPlans: () => ({
     plans: [
-      { id: 1, name: "eHawk Wing", description: null, step_count: 3, created_at: "2026-01-01" },
+      { id: 1, name: "eHawk Wing", description: null, step_count: 3, plan_type: "template", aeroplane_id: null, created_at: "2026-01-01" },
     ],
     error: null,
     isLoading: false,
     mutate: mockMutatePlans,
+  }),
+  useAeroplanePlans: () => ({
+    plans: [
+      { id: 2, name: "eHawk Build", description: null, step_count: 2, plan_type: "plan", aeroplane_id: "aero-1", created_at: "2026-01-01" },
+    ],
+    error: null,
+    isLoading: false,
+    mutate: mockMutateAeroplanePlans,
   }),
   useConstructionPlan: (id: number | null) => ({
     plan: id === 1
@@ -48,6 +60,25 @@ vi.mock("@/hooks/useConstructionPlans", () => ({
               { $TYPE: "VaseModeWingCreator", creator_id: "VaseModeWingCreator", wing_index: "main_wing", successors: [] },
             ],
           },
+          plan_type: "template",
+          aeroplane_id: null,
+          created_at: "2026-01-01",
+          updated_at: "2026-01-01",
+        }
+      : id === 2
+      ? {
+          id: 2,
+          name: "eHawk Build",
+          description: null,
+          tree_json: {
+            $TYPE: "ConstructionRootNode",
+            creator_id: "root",
+            successors: [
+              { $TYPE: "VaseModeWingCreator", creator_id: "VaseModeWingCreator", wing_index: "main_wing", successors: [] },
+            ],
+          },
+          plan_type: "plan",
+          aeroplane_id: "aero-1",
           created_at: "2026-01-01",
           updated_at: "2026-01-01",
         }
@@ -60,6 +91,8 @@ vi.mock("@/hooks/useConstructionPlans", () => ({
   updatePlan: vi.fn().mockResolvedValue({}),
   deletePlan: (...args: unknown[]) => mockDeletePlan(...args),
   executePlan: (...args: unknown[]) => mockExecutePlan(...args),
+  instantiateTemplate: (...args: unknown[]) => mockInstantiateTemplate(...args),
+  toTemplate: (...args: unknown[]) => mockToTemplate(...args),
 }));
 
 vi.mock("@/hooks/useCreators", () => ({
@@ -124,12 +157,18 @@ beforeEach(() => {
 });
 
 describe("ConstructionPlansPage", () => {
-  it("renders the plan selector with existing plans", () => {
+  it("renders the template/plans toggle", () => {
+    render(<ConstructionPlansPage />);
+    expect(screen.getByText("Templates")).toBeDefined();
+    expect(screen.getByText("Plans")).toBeDefined();
+  });
+
+  it("renders the plan selector with templates by default", () => {
     render(<ConstructionPlansPage />);
     expect(screen.getByText("eHawk Wing (3 steps)")).toBeDefined();
   });
 
-  it("shows plan tree when a plan is selected", () => {
+  it("shows plan tree when a template is selected", () => {
     render(<ConstructionPlansPage />);
     const select = screen.getByRole("combobox") as HTMLSelectElement;
     fireEvent.change(select, { target: { value: "1" } });
@@ -138,26 +177,38 @@ describe("ConstructionPlansPage", () => {
     expect(matches.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("shows Execute and Delete buttons when a plan is selected", () => {
+  it("shows Create Plan button (not Execute) in template mode", () => {
     render(<ConstructionPlansPage />);
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "1" } });
+    expect(screen.getByText("Create Plan")).toBeDefined();
+    // Execute should not be visible in template mode
+    const executeButtons = screen.queryAllByText("Execute");
+    // The only "Execute" is inside the dialog trigger which is hidden in template mode
+    expect(executeButtons.length).toBe(0);
+  });
+
+  it("shows Execute button in plans mode", () => {
+    render(<ConstructionPlansPage />);
+    fireEvent.click(screen.getByText("Plans"));
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "2" } });
     expect(screen.getByText("Execute")).toBeDefined();
   });
 
-  it("creates a new plan via prompt", async () => {
+  it("creates a new template via prompt", async () => {
     render(<ConstructionPlansPage />);
-    const buttons = screen.getAllByTitle("New plan");
+    const buttons = screen.getAllByTitle("New template");
     fireEvent.click(buttons[0]);
     await waitFor(() => {
       expect(mockCreatePlan).toHaveBeenCalledWith(
-        expect.objectContaining({ name: "Test Plan" }),
+        expect.objectContaining({ name: "Test Plan", plan_type: "template" }),
       );
     });
   });
 
-  it("opens execute dialog and shows aeroplane selector", () => {
+  it("opens execute dialog and shows aeroplane selector in plans mode", () => {
     render(<ConstructionPlansPage />);
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "1" } });
+    fireEvent.click(screen.getByText("Plans"));
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "2" } });
     fireEvent.click(screen.getByText("Execute"));
     expect(screen.getByText("Execute Plan")).toBeDefined();
     expect(screen.getByText("eHawk")).toBeDefined();
@@ -166,5 +217,12 @@ describe("ConstructionPlansPage", () => {
   it("shows creator catalog on the right panel", () => {
     render(<ConstructionPlansPage />);
     expect(screen.getByText("Creator Catalog")).toBeDefined();
+  });
+
+  it("shows Save as Template button in plans mode", () => {
+    render(<ConstructionPlansPage />);
+    fireEvent.click(screen.getByText("Plans"));
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "2" } });
+    expect(screen.getByText("Save as Template")).toBeDefined();
   });
 });

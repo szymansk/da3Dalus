@@ -50,7 +50,6 @@ class PlanSummary(BaseModel):
 class InstantiateRequest(BaseModel):
     """Request to create a plan from a template."""
 
-    aeroplane_id: str = Field(..., description="Aeroplane to bind the plan to")
     name: Optional[str] = Field(None, description="Optional name override")
 
 

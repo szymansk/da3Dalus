@@ -16,24 +16,23 @@ depends_on: Union[str, None] = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "construction_plans",
-        sa.Column("plan_type", sa.String(), nullable=False, server_default="template"),
-    )
-    op.add_column(
-        "construction_plans",
-        sa.Column("aeroplane_id", sa.String(), nullable=True),
-    )
-    op.create_foreign_key(
-        "fk_construction_plans_aeroplane_id",
-        "construction_plans",
-        "aeroplanes",
-        ["aeroplane_id"],
-        ["id"],
-    )
+    with op.batch_alter_table("construction_plans") as batch_op:
+        batch_op.add_column(
+            sa.Column("plan_type", sa.String(), nullable=False, server_default="template"),
+        )
+        batch_op.add_column(
+            sa.Column("aeroplane_id", sa.String(), nullable=True),
+        )
+        batch_op.create_foreign_key(
+            "fk_construction_plans_aeroplane_id",
+            "aeroplanes",
+            ["aeroplane_id"],
+            ["id"],
+        )
 
 
 def downgrade() -> None:
-    op.drop_constraint("fk_construction_plans_aeroplane_id", "construction_plans", type_="foreignkey")
-    op.drop_column("construction_plans", "aeroplane_id")
-    op.drop_column("construction_plans", "plan_type")
+    with op.batch_alter_table("construction_plans") as batch_op:
+        batch_op.drop_constraint("fk_construction_plans_aeroplane_id", type_="foreignkey")
+        batch_op.drop_column("aeroplane_id")
+        batch_op.drop_column("plan_type")

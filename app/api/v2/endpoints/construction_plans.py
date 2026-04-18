@@ -68,10 +68,13 @@ async def list_creators() -> List[CreatorInfo]:
     tags=["construction-plans"],
     operation_id="list_construction_plans",
 )
-async def list_plans(db: Session = Depends(get_db)) -> List[PlanSummary]:
-    """List all construction plans."""
+async def list_plans(
+    plan_type: str | None = None,
+    db: Session = Depends(get_db),
+) -> List[PlanSummary]:
+    """List all construction plans, optionally filtered by plan_type."""
     try:
-        return svc.list_plans(db)
+        return svc.list_plans(db, plan_type=plan_type)
     except ServiceException as exc:
         _handle_service_error(exc)
 
