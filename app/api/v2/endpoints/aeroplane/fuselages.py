@@ -87,6 +87,10 @@ async def create_aeroplane_fuselage(
             plane.fuselages.append(fuselage)
             db.add(fuselage)
             plane.updated_at = datetime.now()
+
+            # Auto-sync: create group in component tree (gh#108)
+            from app.services.component_tree_service import sync_group_for_fuselage
+            sync_group_for_fuselage(db, str(aeroplane_id), fuselage_name)
         return OperationStatusResponse(status="created", operation="create_aeroplane_fuselage")
     except SQLAlchemyError as e:
         logger.error(f"Database error when creating aeroplane fuselage: {e}")
@@ -203,6 +207,10 @@ async def delete_aeroplane_fuselage(
                 raise HTTPException(status_code=404, detail="Fuselage not found")
             db.delete(fuselage)
             plane.updated_at = datetime.now()
+
+            # Auto-sync: remove fuselage group from component tree (gh#108)
+            from app.services.component_tree_service import delete_synced_nodes
+            delete_synced_nodes(db, str(aeroplane_id), f"fuselage:{fuselage_name}")
         return OperationStatusResponse(status="ok", operation="delete_aeroplane_fuselage")
     except SQLAlchemyError as e:
         logger.error(f"Database error when deleting aeroplane fuselage: {e}")

@@ -205,6 +205,10 @@ def create_wing(
             plane.wings.append(wing)
             db.add(wing)
             plane.updated_at = datetime.now()
+
+            # Auto-sync: create group in component tree (gh#108)
+            from app.services.component_tree_service import sync_group_for_wing
+            sync_group_for_wing(db, str(aeroplane_uuid), wing_name)
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -249,6 +253,10 @@ def create_wing_from_wing_configuration(
             plane.wings.append(wing_model)
             db.add(wing_model)
             plane.updated_at = datetime.now()
+
+            # Auto-sync: create group in component tree (gh#108)
+            from app.services.component_tree_service import sync_group_for_wing
+            sync_group_for_wing(db, str(aeroplane_uuid), wing_name)
     except (NotFoundError, ValidationError):
         raise
     except (ValueError, TypeError) as e:
@@ -359,6 +367,10 @@ def put_wing_as_wingconfig(
             plane.wings.append(wing_model)
             db.add(wing_model)
             plane.updated_at = datetime.now()
+
+            # Auto-sync: ensure group in component tree (gh#108)
+            from app.services.component_tree_service import sync_group_for_wing
+            sync_group_for_wing(db, str(aeroplane_uuid), wing_name)
     except (NotFoundError, ValidationError):
         raise
     except (ValueError, TypeError) as e:
@@ -434,6 +446,11 @@ def delete_wing(db: Session, aeroplane_uuid, wing_name: str) -> None:
             wing = get_wing_or_raise(plane, wing_name)
             db.delete(wing)
             plane.updated_at = datetime.now()
+
+            # Auto-sync: remove wing group + servos from component tree (gh#108)
+            from app.services.component_tree_service import delete_synced_nodes
+            delete_synced_nodes(db, str(aeroplane_uuid), f"wing:{wing_name}")
+            delete_synced_nodes(db, str(aeroplane_uuid), f"servo:{wing_name}:")
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
@@ -1161,6 +1178,18 @@ def patch_control_surface_cad_details_servo_details(
 
             db.add(ted)
             aeroplane.updated_at = datetime.now()
+
+            # Auto-sync: upsert servo node in component tree (gh#108)
+            from app.services.component_tree_service import upsert_synced_servo
+            comp_id = None
+            if not isinstance(servo_payload, int) and ted.servo_data:
+                comp_id = ted.servo_data.component_id
+            upsert_synced_servo(
+                db, str(aeroplane_uuid), wing_name, xsec_index,
+                component_id=comp_id,
+                symmetric=wing.symmetric if hasattr(wing, "symmetric") else False,
+            )
+
             return _control_surface_servo_details_schema_from_ted(ted)
     except (NotFoundError, ValidationError):
         raise
