@@ -20,7 +20,7 @@ class TestDeleteDoesNotCascade:
         # Baseline: 9 seeded types
         before = client.get("/component-types").json()
         seeded_ids = {t["id"] for t in before}
-        assert len(seeded_ids) == 9
+        assert len(seeded_ids) == 10
 
         # Create two user types
         ut1 = client.post("/component-types", json={
@@ -31,7 +31,7 @@ class TestDeleteDoesNotCascade:
         }).json()
 
         mid = client.get("/component-types").json()
-        assert len(mid) == 11
+        assert len(mid) == 12
 
         # Delete the second user type
         res = client.delete(f"/component-types/{ut2['id']}")
@@ -41,8 +41,8 @@ class TestDeleteDoesNotCascade:
         after = client.get("/component-types").json()
         remaining_ids = {t["id"] for t in after}
 
-        assert len(after) == 10, (
-            f"Expected 10 types after deleting one, got {len(after)}. "
+        assert len(after) == 11, (
+            f"Expected 11 types after deleting one, got {len(after)}. "
             f"Remaining: {[t['name'] for t in after]}"
         )
         assert ut1["id"] in remaining_ids

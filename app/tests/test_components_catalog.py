@@ -17,7 +17,7 @@ class TestComponentTypes:
         assert "material" in types
         assert "propeller" in types
         assert "generic" in types
-        assert len(types) == 9
+        assert len(types) == 10
 
 
 class TestComponentCRUDExtended:

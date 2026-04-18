@@ -13,6 +13,7 @@ from app.api.v2.endpoints import components
 from app.api.v2.endpoints import component_types
 from app.api.v2.endpoints.aeroplane import component_tree
 from app.api.v2.endpoints.aeroplane import construction_parts
+from app.api.v2.endpoints import construction_plans
 from app.api.v2.endpoints import flight_profiles
 from app.api.v2.endpoints import fuselage_slice
 from app.api.v2.endpoints import health
@@ -118,6 +119,7 @@ def create_app() -> FastAPI:
     app.include_router(component_types.router, prefix="", tags=["component-types"])
     app.include_router(component_tree.router, prefix="", tags=["component-tree"])
     app.include_router(construction_parts.router, prefix="", tags=["construction-parts"])
+    app.include_router(construction_plans.router, prefix="", tags=["construction-plans"])
     app.include_router(flight_profiles.router, prefix="", tags=["flight-profiles"])
     app.include_router(fuselage_slice.router, prefix="", tags=["fuselages"])
     if _cad_router is not None:
