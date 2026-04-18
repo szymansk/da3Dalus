@@ -384,3 +384,116 @@ def _calculate_children_weight(db: Session, aeroplane_id: str, parent_id: int) -
         children_sum = _calculate_children_weight(db, aeroplane_id, child.id)
         total += (own or 0) + children_sum
     return total
+
+
+# ── Auto-Sync (gh#108) ────────────────────────────────────────────
+
+
+def sync_group_for_wing(db: Session, aeroplane_id: str, wing_name: str) -> None:
+    """Ensure a synced group exists in the component tree for a wing."""
+    synced_from = f"wing:{wing_name}"
+    existing = db.query(ComponentTreeNodeModel).filter(
+        ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+        ComponentTreeNodeModel.synced_from == synced_from,
+    ).first()
+    if existing:
+        return  # already exists
+    node = ComponentTreeNodeModel(
+        aeroplane_id=aeroplane_id,
+        parent_id=None,
+        sort_index=0,
+        node_type="group",
+        name=wing_name,
+        synced_from=synced_from,
+    )
+    db.add(node)
+    db.flush()
+
+
+def sync_group_for_fuselage(db: Session, aeroplane_id: str, fuselage_name: str) -> None:
+    """Ensure a synced group exists in the component tree for a fuselage."""
+    synced_from = f"fuselage:{fuselage_name}"
+    existing = db.query(ComponentTreeNodeModel).filter(
+        ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+        ComponentTreeNodeModel.synced_from == synced_from,
+    ).first()
+    if existing:
+        return
+    node = ComponentTreeNodeModel(
+        aeroplane_id=aeroplane_id,
+        parent_id=None,
+        sort_index=0,
+        node_type="group",
+        name=fuselage_name,
+        synced_from=synced_from,
+    )
+    db.add(node)
+    db.flush()
+
+
+def delete_synced_nodes(db: Session, aeroplane_id: str, synced_from_prefix: str) -> None:
+    """Delete all synced nodes (and their children) matching a prefix."""
+    nodes = db.query(ComponentTreeNodeModel).filter(
+        ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+        ComponentTreeNodeModel.synced_from.like(f"{synced_from_prefix}%"),
+    ).all()
+    for node in nodes:
+        _delete_subtree(db, aeroplane_id, node.id)
+        db.delete(node)
+    db.flush()
+
+
+def upsert_synced_servo(
+    db: Session,
+    aeroplane_id: str,
+    wing_name: str,
+    xsec_index: int,
+    component_id: int | None,
+    symmetric: bool = False,
+) -> None:
+    """Create or update a synced servo COTS node under the wing group."""
+    synced_from = f"servo:{wing_name}:{xsec_index}"
+
+    # Find or create the wing group
+    wing_group = db.query(ComponentTreeNodeModel).filter(
+        ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+        ComponentTreeNodeModel.synced_from == f"wing:{wing_name}",
+    ).first()
+
+    if component_id is None:
+        # Servo removed — delete synced node if it exists
+        existing = db.query(ComponentTreeNodeModel).filter(
+            ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+            ComponentTreeNodeModel.synced_from == synced_from,
+        ).first()
+        if existing:
+            db.delete(existing)
+            db.flush()
+        return
+
+    # Resolve component name
+    comp = db.query(ComponentModel).filter(ComponentModel.id == component_id).first()
+    comp_name = comp.name if comp else f"Servo #{component_id}"
+
+    existing = db.query(ComponentTreeNodeModel).filter(
+        ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+        ComponentTreeNodeModel.synced_from == synced_from,
+    ).first()
+
+    if existing:
+        existing.component_id = component_id
+        existing.name = comp_name
+        existing.quantity = 2 if symmetric else 1
+    else:
+        node = ComponentTreeNodeModel(
+            aeroplane_id=aeroplane_id,
+            parent_id=wing_group.id if wing_group else None,
+            sort_index=xsec_index,
+            node_type="cots",
+            name=comp_name,
+            component_id=component_id,
+            quantity=2 if symmetric else 1,
+            synced_from=synced_from,
+        )
+        db.add(node)
+    db.flush()
