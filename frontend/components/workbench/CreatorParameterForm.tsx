@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { CreatorParam } from "@/hooks/useCreators";
 import { InfoTooltip } from "./InfoTooltip";
 
@@ -9,6 +10,7 @@ interface CreatorParameterFormProps {
   params: CreatorParam[];
   values: Record<string, unknown>;
   onChange: (key: string, value: unknown) => void;
+  availableShapeKeys?: string[];
 }
 
 export function CreatorParameterForm({
@@ -17,17 +19,20 @@ export function CreatorParameterForm({
   params,
   values,
   onChange,
+  availableShapeKeys = [],
 }: CreatorParameterFormProps) {
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <h3 className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
-          {creatorName}
-        </h3>
-        {creatorDescription && (
-          <InfoTooltip text={creatorDescription} size={13} />
-        )}
-      </div>
+      {creatorName && (
+        <div className="flex items-center gap-2">
+          <h3 className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
+            {creatorName}
+          </h3>
+          {creatorDescription && (
+            <InfoTooltip text={creatorDescription} size={13} />
+          )}
+        </div>
+      )}
       {params.length === 0 ? (
         <p className="text-[12px] text-muted-foreground">No parameters</p>
       ) : (
@@ -43,7 +48,14 @@ export function CreatorParameterForm({
                 <InfoTooltip text={param.description} size={10} />
               )}
             </span>
-            {param.options && param.options.length > 0 ? (
+            {param.is_shape_ref && availableShapeKeys.length > 0 ? (
+              <ShapeRefInput
+                value={String(values[param.name] ?? param.default ?? "")}
+                onChange={(v) => onChange(param.name, v)}
+                shapeKeys={availableShapeKeys}
+                required={param.required}
+              />
+            ) : param.options && param.options.length > 0 ? (
               <select
                 value={String(values[param.name] ?? param.default ?? "")}
                 onChange={(e) => onChange(param.name, e.target.value)}
@@ -84,6 +96,69 @@ export function CreatorParameterForm({
             )}
           </label>
         ))
+      )}
+    </div>
+  );
+}
+
+/**
+ * Searchable combo input for shape-ref parameters.
+ * Shows a dropdown of available shape keys with text filtering,
+ * but also allows free-text input for kwargs references.
+ */
+function ShapeRefInput({
+  value,
+  onChange,
+  shapeKeys,
+  required,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  shapeKeys: string[];
+  required: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filtered = shapeKeys.filter((k) =>
+    k.toLowerCase().includes((search || value).toLowerCase()),
+  );
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setSearch(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder={required ? "Select shape key..." : "— (optional)"}
+        className="w-full rounded-lg border border-border bg-input px-3 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground outline-none"
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute left-0 top-full z-50 mt-1 max-h-[160px] w-full overflow-y-auto rounded-lg border border-border bg-card shadow-lg">
+          {filtered.map((key) => (
+            <button
+              key={key}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onChange(key);
+                setSearch("");
+                setOpen(false);
+              }}
+              className={`block w-full px-3 py-1.5 text-left font-[family-name:var(--font-jetbrains-mono)] text-[11px] hover:bg-sidebar-accent ${
+                key === value ? "bg-sidebar-accent text-primary" : "text-foreground"
+              }`}
+            >
+              {key}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );

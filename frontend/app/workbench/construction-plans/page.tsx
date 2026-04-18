@@ -38,6 +38,8 @@ export default function ConstructionPlansPage() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addingCreator, setAddingCreator] = useState<CreatorInfo | null>(null);
   const [addCreatorId, setAddCreatorId] = useState("");
+  const [addCreatorIdManual, setAddCreatorIdManual] = useState(false);
+  const [addStepParams, setAddStepParams] = useState<Record<string, unknown>>({});
 
   // Debounce timer for parameter saves
   const paramSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -64,6 +66,35 @@ export default function ConstructionPlansPage() {
 
   function findCreatorForStep(step: PlanStepNode): CreatorInfo | undefined {
     return creators.find((c) => c.class_name === step.creator_id || c.class_name === step.$TYPE);
+  }
+
+  /** Collect shape keys produced by all steps before `stopPath` in the tree. */
+  function collectAvailableShapeKeys(tree: PlanStepNode | null, stopPath?: string | null): string[] {
+    if (!tree) return [];
+    const keys: string[] = [];
+    const successors = tree.successors ?? [];
+    for (let i = 0; i < successors.length; i++) {
+      const stepPath = `root.${i}`;
+      if (stopPath && stepPath === stopPath) break;
+      const step = successors[i];
+      const stepId = step.creator_id ?? step.$TYPE ?? "step";
+      const creator = creators.find((c) => c.class_name === step.$TYPE || c.class_name === step.creator_id);
+      if (creator?.outputs.length) {
+        for (const out of creator.outputs) {
+          keys.push(out.key.replace(/\{id\}/g, stepId));
+        }
+      } else {
+        keys.push(stepId);
+      }
+    }
+    return keys;
+  }
+
+  function resolveIdTemplate(template: string, params: Record<string, unknown>): string {
+    return template.replace(/\{(\w+)\}/g, (match, key) => {
+      const val = params[key];
+      return val != null && val !== "" ? String(val) : match;
+    });
   }
 
   // ── Plan CRUD ───────────────────────────────────────────────────
@@ -157,14 +188,9 @@ export default function ConstructionPlansPage() {
     const newStep: PlanStepNode = {
       $TYPE: creator.class_name,
       creator_id: creatorId || creator.suggested_id || creator.class_name,
+      ...addStepParams,
       successors: [],
     };
-    // Add default values for required params
-    for (const param of creator.parameters) {
-      if (param.default != null) {
-        newStep[param.name] = param.default;
-      }
-    }
     const updatedTree: PlanStepNode = {
       ...treeJson,
       successors: [...(treeJson.successors ?? []), newStep],
@@ -425,6 +451,7 @@ export default function ConstructionPlansPage() {
                 params={creatorForSelected.parameters}
                 values={selectedStepNode as unknown as Record<string, unknown>}
                 onChange={handleParamChange}
+                availableShapeKeys={collectAvailableShapeKeys(treeJson, selectedStepPath)}
               />
             </div>
           ) : rightPanel === "detail" && browsingCreator ? (
@@ -462,28 +489,64 @@ export default function ConstructionPlansPage() {
                 <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
                   Add {addingCreator.class_name}
                 </h2>
-                {/* Creator ID input */}
+                {/* Creator ID input with auto-substitution */}
                 <label className="flex flex-col gap-1">
-                  <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
+                  <span className="flex items-center gap-2 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
                     Step ID (creator_id)
+                    {addCreatorIdManual && addingCreator.suggested_id && (
+                      <button
+                        onClick={() => {
+                          setAddCreatorIdManual(false);
+                          setAddCreatorId(resolveIdTemplate(addingCreator.suggested_id!, addStepParams));
+                        }}
+                        className="text-[9px] text-primary hover:underline"
+                      >
+                        Reset
+                      </button>
+                    )}
                   </span>
                   <input
                     type="text"
                     value={addCreatorId}
-                    onChange={(e) => setAddCreatorId(e.target.value)}
+                    onChange={(e) => {
+                      setAddCreatorId(e.target.value);
+                      setAddCreatorIdManual(true);
+                    }}
                     placeholder={addingCreator.suggested_id ?? addingCreator.class_name}
                     className="rounded-lg border border-border bg-input px-3 py-2 font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground outline-none"
-                    autoFocus
                   />
                   <span className="text-[9px] text-subtle-foreground">
                     This ID is used to reference this step&apos;s output shapes in subsequent steps.
                   </span>
                 </label>
-                {/* Creator detail info */}
-                <CreatorDetailView
-                  creator={addingCreator}
-                  onBack={() => setAddingCreator(null)}
-                />
+                {/* Parameter inputs */}
+                {addingCreator.parameters.length > 0 && (
+                  <CreatorParameterForm
+                    creatorName=""
+                    params={addingCreator.parameters}
+                    values={addStepParams}
+                    onChange={(key, value) => {
+                      const next = { ...addStepParams, [key]: value };
+                      setAddStepParams(next);
+                      if (!addCreatorIdManual && addingCreator.suggested_id) {
+                        setAddCreatorId(resolveIdTemplate(addingCreator.suggested_id, next));
+                      }
+                    }}
+                    availableShapeKeys={collectAvailableShapeKeys(treeJson)}
+                  />
+                )}
+                {/* Creator detail info (collapsed) */}
+                <details className="rounded-xl border border-border">
+                  <summary className="cursor-pointer px-3 py-2 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
+                    Creator Info
+                  </summary>
+                  <div className="px-3 pb-3">
+                    <CreatorDetailView
+                      creator={addingCreator}
+                      onBack={() => setAddingCreator(null)}
+                    />
+                  </div>
+                </details>
                 {/* Confirm */}
                 <div className="flex justify-end gap-2">
                   <button
@@ -511,8 +574,19 @@ export default function ConstructionPlansPage() {
                 <CreatorGallery
                   creators={creators}
                   onSelect={(creator) => {
+                    // Build default params from creator defaults
+                    const defaults: Record<string, unknown> = {};
+                    for (const p of creator.parameters) {
+                      if (p.default != null) defaults[p.name] = p.default;
+                    }
+                    setAddStepParams(defaults);
                     setAddingCreator(creator);
-                    setAddCreatorId(creator.suggested_id ?? creator.class_name);
+                    setAddCreatorIdManual(false);
+                    setAddCreatorId(
+                      creator.suggested_id
+                        ? resolveIdTemplate(creator.suggested_id, defaults)
+                        : creator.class_name,
+                    );
                   }}
                 />
               </>
