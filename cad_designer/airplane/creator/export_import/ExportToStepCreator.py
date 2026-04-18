@@ -8,6 +8,12 @@ from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 
 
 class ExportToStepCreator(AbstractShapeCreator):
+    """Exports shapes to STEP files and a combined assembly in a directory.
+
+    Attributes:
+        file_path (str): Directory path where STEP files will be written.
+        shapes_to_export (list[str]): List of shape keys to export.
+    """
 
     def __init__(self, creator_id: str, file_path: str, shapes_to_export: list[str] = None, loglevel=logging.INFO):
         self.file_path: str = file_path
