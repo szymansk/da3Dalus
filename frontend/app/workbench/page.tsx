@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { X } from "lucide-react";
 import { ViewerPanel } from "@/components/workbench/ViewerPanel";
-import { ConfigPanel } from "@/components/workbench/ConfigPanel";
+import { PropertyForm } from "@/components/workbench/PropertyForm";
+import { ActionRow } from "@/components/workbench/ActionRow";
 import { AeroplaneTree } from "@/components/workbench/AeroplaneTree";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAeroplanes } from "@/hooks/useAeroplanes";
@@ -21,6 +23,7 @@ export default function WorkbenchPage() {
 
   const [treeOpen, setTreeOpen] = useState(true);
   const [viewerMaximized, setViewerMaximized] = useState(false);
+  const [configOpen, setConfigOpen] = useState(false);
 
   if (!aeroplaneId) {
     return <AeroplaneSelector
@@ -35,48 +38,72 @@ export default function WorkbenchPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-1 gap-4 overflow-hidden">
-      {/* Tree Panel — collapsible, fixed width, scrollable */}
-      {treeOpen && !viewerMaximized && (
-        <div className="flex h-full min-h-0 w-[320px] shrink-0 flex-col overflow-hidden">
-          <AeroplaneTree
-            aeroplaneId={aeroplaneId}
-            wingNames={wingNames}
-            fuselageNames={fuselageNames}
-            aeroplaneName={aeroplaneName}
-            isWingVisible={preview.isWingVisible}
-            isWingLoading={(wn) => preview.previews[wn]?.loading ?? false}
-            onTogglePreview={preview.toggleWing}
-            onToggleAllPreview={preview.toggleAllWings}
-            onCollapseTree={() => setTreeOpen(false)}
+    <>
+      <div className="flex h-full min-h-0 flex-1 gap-4 overflow-hidden">
+        {/* Tree Panel — collapsible, fixed width, scrollable */}
+        {treeOpen && !viewerMaximized && (
+          <div className="flex h-full min-h-0 w-[320px] shrink-0 flex-col overflow-hidden">
+            <AeroplaneTree
+              aeroplaneId={aeroplaneId}
+              wingNames={wingNames}
+              fuselageNames={fuselageNames}
+              aeroplaneName={aeroplaneName}
+              isWingVisible={preview.isWingVisible}
+              isWingLoading={(wn) => preview.previews[wn]?.loading ?? false}
+              onTogglePreview={preview.toggleWing}
+              onToggleAllPreview={preview.toggleAllWings}
+              onCollapseTree={() => setTreeOpen(false)}
+              onNodeEdit={() => setConfigOpen(true)}
+              actionSlot={
+                <ActionRow
+                  aeroplaneId={aeroplaneId}
+                  onFuselageSaved={() => mutateFuselages()}
+                />
+              }
+            />
+          </div>
+        )}
+
+        {/* Viewer Panel — fills remaining space */}
+        <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
+          <ViewerPanel
+            visibleParts={preview.visibleParts}
+            isAnyLoading={preview.isAnyLoading}
+            loadingWing={preview.loadingWing}
+            isMaximized={viewerMaximized}
+            onToggleMaximize={() => setViewerMaximized((m) => !m)}
+            isTreeCollapsed={!treeOpen}
+            onExpandTree={() => setTreeOpen(true)}
           />
         </div>
-      )}
-
-      {/* Viewer Panel — fills remaining space */}
-      <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-        <ViewerPanel
-          visibleParts={preview.visibleParts}
-          isAnyLoading={preview.isAnyLoading}
-          loadingWing={preview.loadingWing}
-          isMaximized={viewerMaximized}
-          onToggleMaximize={() => setViewerMaximized((m) => !m)}
-          isTreeCollapsed={!treeOpen}
-          onExpandTree={() => setTreeOpen(true)}
-        />
       </div>
 
-      {/* Config Panel — shrinks to content, max 420px */}
-      {!viewerMaximized && (
-        <div className="flex h-full min-h-0 w-[340px] shrink-0 flex-col overflow-hidden">
-          <ConfigPanel
-            aeroplaneId={aeroplaneId}
-            onGeometryChanged={preview.invalidateWing}
-            onFuselageSaved={() => mutateFuselages()}
-          />
+      {/* Configuration Modal */}
+      {configOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={() => setConfigOpen(false)}
+        >
+          <div
+            className="flex max-h-[85vh] w-[480px] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
+                Configuration
+              </h2>
+              <button
+                onClick={() => setConfigOpen(false)}
+                className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <PropertyForm onGeometryChanged={preview.invalidateWing} />
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
