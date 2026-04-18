@@ -29,11 +29,20 @@ logger = logging.getLogger(__name__)
 
 
 def _count_steps(tree_json: dict) -> int:
-    """Recursively count ConstructionStepNode entries in a tree."""
+    """Recursively count ConstructionStepNode entries in a tree.
+
+    Handles both dict-keyed successors (GeneralJSONEncoder format)
+    and list successors (frontend simplified format).
+    """
+    successors = tree_json.get("successors")
+    if not successors:
+        return 0
     count = 0
-    for node in (tree_json.get("successors") or {}).values():
-        count += 1
-        count += _count_steps(node)
+    nodes = successors.values() if isinstance(successors, dict) else successors
+    for node in nodes:
+        if isinstance(node, dict):
+            count += 1
+            count += _count_steps(node)
     return count
 
 
