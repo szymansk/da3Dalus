@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Hammer, Plus, Trash2, Play, Loader2 } from "lucide-react";
 import { WorkbenchTwoPanel } from "@/components/workbench/WorkbenchTwoPanel";
 import { PlanTree, type PlanStepNode } from "@/components/workbench/PlanTree";
@@ -34,6 +34,9 @@ export default function ConstructionPlansPage() {
   const [selectedStepPath, setSelectedStepPath] = useState<string | null>(null);
   const [selectedStepNode, setSelectedStepNode] = useState<PlanStepNode | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+
+  // Debounce timer for parameter saves
+  const paramSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Execute state
   const [executing, setExecuting] = useState(false);
@@ -180,28 +183,61 @@ export default function ConstructionPlansPage() {
     if (!plan || !selectedPlanId || !selectedStepPath || !selectedStepNode) return;
     const updatedNode = { ...selectedStepNode, [key]: value };
     setSelectedStepNode(updatedNode);
-    const treeJson = plan.tree_json as unknown as PlanStepNode;
 
-    function updateNodeAtPath(node: PlanStepNode, path: string): PlanStepNode {
-      if (path === "root") return updatedNode;
-      const parts = path.replace("root.", "").split(".");
-      const idx = parseInt(parts[0], 10);
-      const rest = parts.slice(1).join(".");
+    // Debounce the API call to avoid flooding on every keystroke
+    if (paramSaveTimer.current) clearTimeout(paramSaveTimer.current);
+    paramSaveTimer.current = setTimeout(() => {
+      const treeJson = plan.tree_json as unknown as PlanStepNode;
+
+      function updateNodeAtPath(node: PlanStepNode, path: string): PlanStepNode {
+        if (path === "root") return updatedNode;
+        const parts = path.replace("root.", "").split(".");
+        const idx = parseInt(parts[0], 10);
+        const rest = parts.slice(1).join(".");
+        const newSuccessors = [...(node.successors ?? [])];
+        newSuccessors[idx] = rest
+          ? updateNodeAtPath(newSuccessors[idx], rest)
+          : updatedNode;
+        return { ...node, successors: newSuccessors };
+      }
+
+      const updated = updateNodeAtPath(treeJson, selectedStepPath);
+      updatePlan(selectedPlanId, {
+        name: plan.name,
+        description: plan.description ?? undefined,
+        tree_json: updated as unknown as Record<string, unknown>,
+      })
+        .then(() => mutatePlan())
+        .catch((err) => alert(err instanceof Error ? err.message : "Failed to save parameter"));
+    }, 400);
+  }
+
+  function insertStepAtPath(
+    tree: PlanStepNode,
+    path: string,
+    step: PlanStepNode,
+  ): PlanStepNode {
+    // Insert step after the node at `path` within the same parent
+    if (path === "root") {
+      return { ...tree, successors: [...(tree.successors ?? []), step] };
+    }
+    const parts = path.replace("root.", "").split(".");
+    const insertIdx = parseInt(parts[parts.length - 1], 10) + 1;
+    const parentParts = parts.slice(0, -1);
+
+    function navigate(node: PlanStepNode, remaining: string[]): PlanStepNode {
+      if (remaining.length === 0) {
+        const newSuccessors = [...(node.successors ?? [])];
+        newSuccessors.splice(insertIdx, 0, step);
+        return { ...node, successors: newSuccessors };
+      }
+      const idx = parseInt(remaining[0], 10);
       const newSuccessors = [...(node.successors ?? [])];
-      newSuccessors[idx] = rest
-        ? updateNodeAtPath(newSuccessors[idx], rest)
-        : updatedNode;
+      newSuccessors[idx] = navigate(newSuccessors[idx], remaining.slice(1));
       return { ...node, successors: newSuccessors };
     }
 
-    const updated = updateNodeAtPath(treeJson, selectedStepPath);
-    updatePlan(selectedPlanId, {
-      name: plan.name,
-      description: plan.description ?? undefined,
-      tree_json: updated as unknown as Record<string, unknown>,
-    }).then(() => {
-      mutatePlan();
-    });
+    return navigate(tree, parentParts);
   }
 
   function handleReorder(fromPath: string, toPath: string) {
@@ -210,19 +246,18 @@ export default function ConstructionPlansPage() {
     const fromNode = getStepAtPath(treeJson, fromPath);
     if (!fromNode) return;
     const withoutFrom = deleteStepAtPath(treeJson, fromPath);
-    const toIdx = parseInt(toPath.replace("root.", ""), 10);
-    const newSuccessors = [...(withoutFrom.successors ?? [])];
-    newSuccessors.splice(isNaN(toIdx) ? newSuccessors.length : toIdx + 1, 0, fromNode);
-    const updated = { ...withoutFrom, successors: newSuccessors };
+    const updated = insertStepAtPath(withoutFrom, toPath, fromNode);
 
     updatePlan(selectedPlanId, {
       name: plan.name,
       description: plan.description ?? undefined,
       tree_json: updated as unknown as Record<string, unknown>,
-    }).then(() => {
-      mutatePlan();
-      mutatePlans();
-    });
+    })
+      .then(() => {
+        mutatePlan();
+        mutatePlans();
+      })
+      .catch((err) => alert(err instanceof Error ? err.message : "Failed to reorder"));
   }
 
   // ── Execute ─────────────────────────────────────────────────────
@@ -368,9 +403,15 @@ export default function ConstructionPlansPage() {
             <CreatorGallery
               creators={creators}
               onSelect={(creator) => {
-                if (selectedPlanId && plan) {
-                  handleAddCreator(creator);
-                }
+                // Right panel gallery is for browsing — show params preview
+                // Steps are added via the + button / Add Step dialog
+                setSelectedStepNode({
+                  $TYPE: creator.class_name,
+                  creator_id: creator.class_name,
+                  successors: [],
+                });
+                setSelectedStepPath(null);
+                setRightPanel("params");
               }}
             />
           )}
