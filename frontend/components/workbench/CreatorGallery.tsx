@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Info, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import type { CreatorInfo, CreatorCategory } from "@/hooks/useCreators";
 import { CREATOR_CATEGORIES } from "@/hooks/useCreators";
+import { InfoTooltip } from "./InfoTooltip";
 
 const CATEGORY_LABELS: Record<CreatorCategory, string> = {
   wing: "Wing",
@@ -88,12 +89,7 @@ export function CreatorGallery({ creators, onSelect }: CreatorGalleryProps) {
                   {creator.class_name}
                 </span>
                 {creator.description && (
-                  <span
-                    className="relative shrink-0 text-muted-foreground hover:text-primary"
-                    title={creator.description}
-                  >
-                    <Info size={11} />
-                  </span>
+                  <InfoTooltip text={creator.description} />
                 )}
               </span>
               <span className="rounded-full bg-card-muted px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground self-start">

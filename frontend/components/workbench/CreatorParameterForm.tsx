@@ -1,7 +1,7 @@
 "use client";
 
-import { Info } from "lucide-react";
 import type { CreatorParam } from "@/hooks/useCreators";
+import { InfoTooltip } from "./InfoTooltip";
 
 interface CreatorParameterFormProps {
   creatorName: string;
@@ -25,12 +25,7 @@ export function CreatorParameterForm({
           {creatorName}
         </h3>
         {creatorDescription && (
-          <span
-            className="shrink-0 text-muted-foreground hover:text-primary"
-            title={creatorDescription}
-          >
-            <Info size={13} />
-          </span>
+          <InfoTooltip text={creatorDescription} size={13} />
         )}
       </div>
       {params.length === 0 ? (
@@ -45,12 +40,7 @@ export function CreatorParameterForm({
                 ({param.type})
               </span>
               {param.description && (
-                <span
-                  className="shrink-0 text-muted-foreground hover:text-primary"
-                  title={param.description}
-                >
-                  <Info size={10} />
-                </span>
+                <InfoTooltip text={param.description} size={10} />
               )}
             </span>
             {param.type === "bool" ? (
