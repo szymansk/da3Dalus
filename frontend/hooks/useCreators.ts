@@ -11,11 +11,17 @@ export interface CreatorParam {
   description: string | null;
 }
 
+export interface CreatorOutput {
+  key: string;
+  description: string;
+}
+
 export interface CreatorInfo {
   class_name: string;
   category: string;
   description: string | null;
   parameters: CreatorParam[];
+  outputs: CreatorOutput[];
 }
 
 export const CREATOR_CATEGORIES = [

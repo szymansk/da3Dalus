@@ -100,13 +100,36 @@ export function CreatorDetailView({ creator, onBack }: CreatorDetailViewProps) {
       </div>
 
       {/* Output */}
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2">
         <h4 className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
           Output
+          {creator.outputs.length > 0 && (
+            <span className="ml-1.5 text-[10px] text-subtle-foreground">
+              ({creator.outputs.length} {creator.outputs.length === 1 ? "shape" : "shapes"})
+            </span>
+          )}
         </h4>
-        <p className="text-[11px] text-subtle-foreground">
-          Produces shape keys prefixed with the step&apos;s <code className="rounded bg-card-muted px-1 py-0.5 text-[10px]">creator_id</code>.
-        </p>
+        {creator.outputs.length === 0 ? (
+          <p className="text-[11px] text-subtle-foreground">
+            Produces shape keys prefixed with the step&apos;s <code className="rounded bg-card-muted px-1 py-0.5 text-[10px]">creator_id</code>.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-1">
+            {creator.outputs.map((output) => (
+              <div
+                key={output.key}
+                className="flex flex-col gap-0.5 rounded-lg border border-border bg-card p-2.5"
+              >
+                <code className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-primary">
+                  {output.key}
+                </code>
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  {output.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

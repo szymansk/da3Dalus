@@ -14,6 +14,7 @@ from app.core.exceptions import InternalError, NotFoundError, ValidationError
 from app.models.construction_plan import ConstructionPlanModel
 from app.schemas.construction_plan import (
     CreatorInfo,
+    CreatorOutput,
     CreatorParam,
     ExecuteRequest,
     ExecutionResult,
@@ -217,6 +218,47 @@ def _parse_docstring_attributes(docstring: str) -> dict[str, str]:
 
     return result
 
+
+def _parse_docstring_returns(docstring: str) -> list[CreatorOutput]:
+    """Extract output descriptions from a docstring's Returns section.
+
+    Parses lines like:
+        {id} (Workplane): The fused result shape.
+    Returns a list of CreatorOutput.
+    """
+    import re
+
+    outputs: list[CreatorOutput] = []
+    in_returns = False
+
+    for line in docstring.split("\n"):
+        stripped = line.strip()
+
+        if stripped.lower().startswith("returns:"):
+            in_returns = True
+            continue
+
+        if not in_returns:
+            continue
+
+        # End on next section header
+        if stripped and not stripped.startswith("{") and stripped.endswith(":") and "(" not in stripped:
+            break
+
+        # Output line: "{id}.name (type): Description"
+        match = re.match(r"(\{[^}]*\}[^\s]*)\s*(?:\([^)]*\))?\s*:\s*(.*)", stripped)
+        if match:
+            outputs.append(CreatorOutput(
+                key=match.group(1),
+                description=match.group(2).strip(),
+            ))
+        elif not stripped:
+            if outputs:
+                break  # Empty line after outputs ends section
+
+    return outputs
+
+
 _CATEGORY_MAP = {
     "wing": "wing",
     "fuselage": "fuselage",
@@ -294,11 +336,14 @@ def _collect_creators(cls: type, result: list[CreatorInfo], seen: set[str]) -> N
 
     docstring = (cls.__doc__ or "").strip().split("\n")[0] if cls.__doc__ else None
 
+    outputs = _parse_docstring_returns(cls.__doc__ or "")
+
     result.append(CreatorInfo(
         class_name=name,
         category=_get_category(cls),
         description=docstring,
         parameters=params,
+        outputs=outputs,
     ))
 
     for sub in cls.__subclasses__():

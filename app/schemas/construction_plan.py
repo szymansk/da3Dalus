@@ -53,6 +53,13 @@ class CreatorParam(BaseModel):
     description: Optional[str] = Field(None, description="Human-readable parameter description")
 
 
+class CreatorOutput(BaseModel):
+    """A single output shape key produced by a Creator."""
+
+    key: str = Field(description="Shape key pattern, e.g. '{id}' or '{id}.cape'")
+    description: str
+
+
 class CreatorInfo(BaseModel):
     """Metadata for one AbstractShapeCreator subclass."""
 
@@ -60,6 +67,7 @@ class CreatorInfo(BaseModel):
     category: str = Field(description="Module category: wing, fuselage, cad_operations, export_import, components")
     description: Optional[str] = None
     parameters: list[CreatorParam]
+    outputs: list[CreatorOutput] = Field(default_factory=list, description="Shape keys this creator produces")
 
 
 # ── Execute schemas ─────────────────────────────────────────────
