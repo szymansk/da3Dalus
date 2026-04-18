@@ -8,6 +8,7 @@ import type { XSec } from "@/hooks/useWings";
 import { API_BASE } from "@/lib/fetcher";
 import { useFuselage } from "@/hooks/useFuselage";
 import { useFuselages } from "@/hooks/useFuselages";
+import { ImportFuselageDialog } from "./ImportFuselageDialog";
 
 // ── Types ───────────────────────────────────────────────────────
 
@@ -256,12 +257,12 @@ interface AeroplaneTreeProps {
   onToggleAllPreview?: (wingNames: string[]) => void;
   onCollapseTree?: () => void;
   onNodeEdit?: () => void;
-  actionSlot?: React.ReactNode;
+  onFuselageSaved?: () => void;
 }
 
 // ── Component ───────────────────────────────────────────────────
 
-export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, onCollapseTree, onNodeEdit, actionSlot }: AeroplaneTreeProps) {
+export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, onCollapseTree, onNodeEdit, onFuselageSaved }: AeroplaneTreeProps) {
   const { selectedWing, selectedXsecIndex, selectWing, selectXsec, selectedFuselage, selectedFuselageXsecIndex, selectFuselage, selectFuselageXsec, treeMode, setTreeMode } =
     useAeroplaneContext();
   const { wing, isLoading, mutate: mutateWing } = useWing(aeroplaneId, selectedWing);
@@ -276,6 +277,38 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
   // Load data for the selected fuselage (set by clicking a fuselage node)
   const { fuselage, mutate: mutateFuselage } = useFuselage(aeroplaneId, selectedFuselage);
   const { mutate: mutateFuselageList } = useFuselages(aeroplaneId);
+
+  // Add menu state
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [importFuselageOpen, setImportFuselageOpen] = useState(false);
+
+  async function handleAddWing() {
+    if (!aeroplaneId) return;
+    const name = prompt("Wing name?");
+    if (!name) return;
+    const res = await fetch(
+      `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${encodeURIComponent(name)}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          symmetric: true,
+          x_secs: [
+            { xyz_le: [0, 0, 0], chord: 0.15, twist: 0, airfoil: "naca0015" },
+            { xyz_le: [0, 0.5, 0], chord: 0.12, twist: 0, airfoil: "naca0015" },
+          ],
+        }),
+      },
+    );
+    if (!res.ok) {
+      alert(`Failed to create wing: ${res.status}`);
+      return;
+    }
+    mutateWing();
+    selectWing(name);
+    setAddMenuOpen(false);
+  }
 
   function toggleExpand(nodeId: string) {
     setExpandedSet((prev) => {
@@ -497,17 +530,34 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
             X-Secs
           </button>
         </div>
-        <button className="flex h-6 w-6 items-center justify-center rounded-xl text-muted-foreground hover:bg-sidebar-accent">
-          <Plus size={14} />
-        </button>
-      </div>
-
-      {/* Action slot (add wing / fuselage buttons) */}
-      {actionSlot && (
-        <div className="mb-2">
-          {actionSlot}
+        <div className="relative">
+          <button
+            onClick={() => setAddMenuOpen((v) => !v)}
+            className="flex h-6 w-6 items-center justify-center rounded-xl text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+            title="Add wing or fuselage"
+          >
+            <Plus size={14} />
+          </button>
+          {addMenuOpen && (
+            <div className="absolute right-0 top-full z-40 mt-1 w-48 rounded-xl border border-border bg-card shadow-lg">
+              <button
+                onClick={handleAddWing}
+                className="flex w-full items-center gap-2 px-3 py-2 text-[12px] text-foreground hover:bg-sidebar-accent rounded-t-xl"
+              >
+                <Plus size={12} />
+                Wing
+              </button>
+              <button
+                onClick={() => { setImportFuselageOpen(true); setAddMenuOpen(false); }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-[12px] text-foreground hover:bg-sidebar-accent rounded-b-xl"
+              >
+                <Plus size={12} />
+                Fuselage
+              </button>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Tree rows */}
       <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto">
@@ -519,6 +569,16 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
           ))
         )}
       </div>
+
+      <ImportFuselageDialog
+        open={importFuselageOpen}
+        onClose={() => setImportFuselageOpen(false)}
+        aeroplaneId={aeroplaneId}
+        onSaved={() => {
+          mutateFuselageList();
+          onFuselageSaved?.();
+        }}
+      />
     </div>
   );
 }

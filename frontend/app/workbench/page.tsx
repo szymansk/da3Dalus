@@ -4,7 +4,6 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { ViewerPanel } from "@/components/workbench/ViewerPanel";
 import { PropertyForm } from "@/components/workbench/PropertyForm";
-import { ActionRow } from "@/components/workbench/ActionRow";
 import { AeroplaneTree } from "@/components/workbench/AeroplaneTree";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAeroplanes } from "@/hooks/useAeroplanes";
@@ -54,12 +53,7 @@ export default function WorkbenchPage() {
               onToggleAllPreview={preview.toggleAllWings}
               onCollapseTree={() => setTreeOpen(false)}
               onNodeEdit={() => setConfigOpen(true)}
-              actionSlot={
-                <ActionRow
-                  aeroplaneId={aeroplaneId}
-                  onFuselageSaved={() => mutateFuselages()}
-                />
-              }
+              onFuselageSaved={() => mutateFuselages()}
             />
           </div>
         )}
