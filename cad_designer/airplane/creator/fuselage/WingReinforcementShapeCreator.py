@@ -8,9 +8,11 @@ from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 
 
 class WingReinforcementShapeCreator(AbstractShapeCreator):
-    """
-    Create two bolts along the roll-axis through the fuselage,
-    to hold some rubber band.
+    """Creates wing reinforcement ribs inside the fuselage.
+
+    Attributes:
+        fuselage_loft (str): Key of the fuselage loft shape to reinforce.
+        full_wing_loft (str): Key of the full wing loft for overlap calculation.
     """
 
     def __init__(self,

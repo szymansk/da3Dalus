@@ -7,9 +7,11 @@ from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 
 
 class FuselageShellShapeCreator(AbstractShapeCreator):
-    """
-    Creates a simple offset shape from given shape or the take the first input_shape,
-    which is bigger(+)/smaller(-) bei the given <offset>[m].
+    """Creates a hollow shell from a fuselage loft by offsetting inward.
+
+    Attributes:
+        thickness (float): Shell wall thickness in mm.
+        fuselage (str): Key of the fuselage loft shape to shell.
     """
 
     def __init__(self, creator_id: str,
