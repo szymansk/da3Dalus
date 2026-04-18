@@ -15,6 +15,7 @@ class SimpleOffsetShapeCreator(AbstractShapeCreator):
         {id} (Workplane): Shape offset by the specified distance.
     """
 
+    suggested_creator_id = "offset.{shape}"
     def __init__(self, creator_id: str,
                  offset: float,
                  shape: str = None,

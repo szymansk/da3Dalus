@@ -17,6 +17,7 @@ class FuselageShellShapeCreator(AbstractShapeCreator):
         {id} (Workplane): Hollow fuselage shell.
     """
 
+    suggested_creator_id = "{fuselage}.shell"
     def __init__(self, creator_id: str,
                  thickness: float,
                  fuselage: str = None,

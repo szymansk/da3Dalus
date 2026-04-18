@@ -66,6 +66,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
         _construct_spare_sketch(...): Constructs a sketch for a spar, considering gaps for vase mode printing.
     """
 
+    suggested_creator_id = "{wing_index}.vase_wing"
     def __init__(self, creator_id: str, wing_index: Union[str, NonNegativeInt], leading_edge_offset_factor: Factor,
                  trailing_edge_offset_factor: Factor,
                  minimum_rib_angle: Annotated[float, Field(ge=45.0, default=45)] = 45,

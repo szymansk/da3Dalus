@@ -68,6 +68,7 @@ class CreatorInfo(BaseModel):
     description: Optional[str] = None
     parameters: list[CreatorParam]
     outputs: list[CreatorOutput] = Field(default_factory=list, description="Shape keys this creator produces")
+    suggested_id: Optional[str] = Field(None, description="Template for creator_id, e.g. '{wing_index}.vase_wing'")
 
 
 # ── Execute schemas ─────────────────────────────────────────────

@@ -52,6 +52,18 @@ export function CreatorDetailView({ creator, onBack }: CreatorDetailViewProps) {
         </div>
       )}
 
+      {/* Suggested ID */}
+      {creator.suggested_id && (
+        <div className="flex items-center gap-2">
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
+            Suggested ID:
+          </span>
+          <code className="rounded bg-card-muted px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-primary">
+            {creator.suggested_id}
+          </code>
+        </div>
+      )}
+
       {/* Parameters */}
       <div className="flex flex-col gap-2">
         <h4 className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">

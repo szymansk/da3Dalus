@@ -29,6 +29,7 @@ class ServoImporterCreator(AbstractShapeCreator):
         {id}.model (Workplane): Full servo 3D model.
     """
 
+    suggested_creator_id = "servo[{servo_idx}]"
     def __init__(self, creator_id: str, servo_feature: str, servo_stamp: str, servo_filling: str, servo_model: str,
                  servo_idx: int, reverse_model=False, servo_information: dict[int, ServoInformation] = None,
                  mirror_model_by_plane="", loglevel=logging.INFO):

@@ -16,6 +16,7 @@ class RepairFacesShapeCreator(AbstractShapeCreator):
         {id} (Workplane): Shape with repaired face normals.
     """
 
+    suggested_creator_id = "repair.{shape}"
     def __init__(self, creator_id: str,
                  shape: str = None,
                  repair_tool: str = None,

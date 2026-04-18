@@ -20,6 +20,7 @@ class StandWingSegmentOnPrinterCreator(AbstractShapeCreator):
     Returns:
         {input_key}.print (Workplane): Wing segment rotated to stand on the print bed (per segment).
     """
+    suggested_creator_id = "{wing_index}.print_orientation"
     def __init__(self, creator_id: str,
                  shape_dict: dict[NonNegativeInt, str],
                  wing_index: Union[str, NonNegativeInt],

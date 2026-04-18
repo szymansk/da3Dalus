@@ -21,6 +21,7 @@ class FuselageWingSupportShapeCreator(AbstractShapeCreator):
         {id} (Workplane): Wing support ribs inside the fuselage.
     """
 
+    suggested_creator_id = "wing_support"
     def __init__(self, creator_id: str, rib_quantity: int, rib_width: float, rib_height_factor: float, rib_z_offset,
                  fuselage_loft: str, full_wing_loft, loglevel=logging.INFO):
         self.rib_z_offset = rib_z_offset

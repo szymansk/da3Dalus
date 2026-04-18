@@ -22,6 +22,7 @@ export interface CreatorInfo {
   description: string | null;
   parameters: CreatorParam[];
   outputs: CreatorOutput[];
+  suggested_id: string | null;
 }
 
 export const CREATOR_CATEGORIES = [

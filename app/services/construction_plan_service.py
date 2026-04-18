@@ -337,6 +337,7 @@ def _collect_creators(cls: type, result: list[CreatorInfo], seen: set[str]) -> N
     docstring = (cls.__doc__ or "").strip().split("\n")[0] if cls.__doc__ else None
 
     outputs = _parse_docstring_returns(cls.__doc__ or "")
+    suggested_id = getattr(cls, "suggested_creator_id", None)
 
     result.append(CreatorInfo(
         class_name=name,
@@ -344,6 +345,7 @@ def _collect_creators(cls: type, result: list[CreatorInfo], seen: set[str]) -> N
         description=docstring,
         parameters=params,
         outputs=outputs,
+        suggested_id=suggested_id,
     ))
 
     for sub in cls.__subclasses__():

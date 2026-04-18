@@ -26,6 +26,7 @@ class StepImportCreator(AbstractShapeCreator):
         {id} (Workplane): Imported STEP geometry with applied transforms.
     """
 
+    suggested_creator_id = "import_step"
     def __init__(self, creator_id: str, step_file: str,
                  trans_x: float = .0,
                  trans_y: float = .0,

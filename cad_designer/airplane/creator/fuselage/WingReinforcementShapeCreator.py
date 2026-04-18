@@ -18,6 +18,7 @@ class WingReinforcementShapeCreator(AbstractShapeCreator):
         {id} (Workplane): Wing reinforcement ribs.
     """
 
+    suggested_creator_id = "wing_reinforcement"
     def __init__(self,
                  creator_id: str,
                  fuselage_loft: str,

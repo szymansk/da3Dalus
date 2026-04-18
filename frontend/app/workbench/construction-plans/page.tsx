@@ -36,6 +36,8 @@ export default function ConstructionPlansPage() {
   const [selectedStepNode, setSelectedStepNode] = useState<PlanStepNode | null>(null);
   const [browsingCreator, setBrowsingCreator] = useState<CreatorInfo | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [addingCreator, setAddingCreator] = useState<CreatorInfo | null>(null);
+  const [addCreatorId, setAddCreatorId] = useState("");
 
   // Debounce timer for parameter saves
   const paramSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -149,12 +151,12 @@ export default function ConstructionPlansPage() {
     }
   }
 
-  async function handleAddCreator(creator: CreatorInfo) {
+  async function handleAddCreator(creator: CreatorInfo, creatorId?: string) {
     if (!plan || !selectedPlanId) return;
     const treeJson = plan.tree_json as unknown as PlanStepNode;
     const newStep: PlanStepNode = {
       $TYPE: creator.class_name,
-      creator_id: creator.class_name,
+      creator_id: creatorId || creator.suggested_id || creator.class_name,
       successors: [],
     };
     // Add default values for required params
@@ -176,6 +178,7 @@ export default function ConstructionPlansPage() {
       mutatePlan();
       mutatePlans();
       setAddDialogOpen(false);
+      setAddingCreator(null);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to add step");
     }
@@ -424,23 +427,76 @@ export default function ConstructionPlansPage() {
         </div>
       </WorkbenchTwoPanel>
 
-      {/* Add Step Dialog */}
+      {/* Add Step Dialog — Phase 1: pick creator, Phase 2: confirm with creator_id */}
       {addDialogOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => setAddDialogOpen(false)}
+          onClick={() => { setAddDialogOpen(false); setAddingCreator(null); }}
         >
           <div
             className="flex max-h-[85vh] w-[600px] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
-              Add Step
-            </h2>
-            <CreatorGallery
-              creators={creators}
-              onSelect={handleAddCreator}
-            />
+            {addingCreator ? (
+              <>
+                <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
+                  Add {addingCreator.class_name}
+                </h2>
+                {/* Creator ID input */}
+                <label className="flex flex-col gap-1">
+                  <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
+                    Step ID (creator_id)
+                  </span>
+                  <input
+                    type="text"
+                    value={addCreatorId}
+                    onChange={(e) => setAddCreatorId(e.target.value)}
+                    placeholder={addingCreator.suggested_id ?? addingCreator.class_name}
+                    className="rounded-lg border border-border bg-input px-3 py-2 font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground outline-none"
+                    autoFocus
+                  />
+                  <span className="text-[9px] text-subtle-foreground">
+                    This ID is used to reference this step&apos;s output shapes in subsequent steps.
+                  </span>
+                </label>
+                {/* Creator detail info */}
+                <CreatorDetailView
+                  creator={addingCreator}
+                  onBack={() => setAddingCreator(null)}
+                />
+                {/* Confirm */}
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setAddingCreator(null)}
+                    className="rounded-full border border-border px-4 py-2 text-[12px] text-muted-foreground hover:bg-sidebar-accent"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={() => {
+                      const id = addCreatorId.trim() || addingCreator.suggested_id || addingCreator.class_name;
+                      handleAddCreator({ ...addingCreator } as CreatorInfo, id);
+                    }}
+                    className="rounded-full bg-primary px-4 py-2 text-[12px] text-primary-foreground hover:opacity-90"
+                  >
+                    Add Step
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
+                  Add Step
+                </h2>
+                <CreatorGallery
+                  creators={creators}
+                  onSelect={(creator) => {
+                    setAddingCreator(creator);
+                    setAddCreatorId(creator.suggested_id ?? creator.class_name);
+                  }}
+                />
+              </>
+            )}
           </div>
         </div>
       )}

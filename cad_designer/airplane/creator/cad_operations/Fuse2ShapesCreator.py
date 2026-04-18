@@ -17,6 +17,7 @@ class Fuse2ShapesCreator(AbstractShapeCreator):
         {id} (Workplane): Boolean union of shape_a and shape_b.
     """
 
+    suggested_creator_id = "fuse.{shape_a}.{shape_b}"
     def __init__(self, creator_id: str, shape_a: str = None, shape_b: str = None, loglevel=logging.INFO):
         self.shape_a = shape_a
         self.shape_b = shape_b

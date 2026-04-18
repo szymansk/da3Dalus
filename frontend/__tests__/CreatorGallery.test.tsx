@@ -27,6 +27,7 @@ const MOCK_CREATORS: CreatorInfo[] = [
       { name: "wing_index", type: "str", default: null, required: true, description: "Index of the wing" },
     ],
     outputs: [{ key: "{id}", description: "Complete wing assembly" }],
+    suggested_id: "{wing_index}.vase_wing",
   },
   {
     class_name: "ExportToStepCreator",
@@ -37,6 +38,7 @@ const MOCK_CREATORS: CreatorInfo[] = [
       { name: "shape_key", type: "str", default: null, required: true, description: null },
     ],
     outputs: [],
+    suggested_id: "export_step",
   },
   {
     class_name: "Fuse2ShapesCreator",
@@ -47,6 +49,7 @@ const MOCK_CREATORS: CreatorInfo[] = [
       { name: "shape_key_b", type: "str", default: null, required: true, description: null },
     ],
     outputs: [{ key: "{id}", description: "Boolean union result" }],
+    suggested_id: "fuse.{shape_key_a}.{shape_key_b}",
   },
 ];
 

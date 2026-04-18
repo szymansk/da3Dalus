@@ -71,6 +71,7 @@ vi.mock("@/hooks/useCreators", () => ({
         description: "Vase-mode wing",
         parameters: [{ name: "wing_index", type: "str", default: null, required: true, description: "Index of the wing" }],
         outputs: [{ key: "{id}", description: "Complete wing assembly" }],
+        suggested_id: "{wing_index}.vase_wing",
       },
     ],
     error: null,

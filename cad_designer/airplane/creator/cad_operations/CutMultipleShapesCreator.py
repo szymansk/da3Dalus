@@ -16,6 +16,7 @@ class CutMultipleShapesCreator(AbstractShapeCreator):
         {id} (Workplane): Result of subtracting all subtrahends from minuend.
     """
 
+    suggested_creator_id = "cut_all.{minuend}"
     def __init__(self, creator_id: str, subtrahends: list[str], minuend: str = None, loglevel=logging.INFO):
         self.subtrahends = subtrahends
         self.minuend = minuend

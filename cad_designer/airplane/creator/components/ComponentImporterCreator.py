@@ -21,6 +21,7 @@ class ComponentImporterCreator(AbstractShapeCreator):
         {id} (Workplane): Imported and positioned component geometry.
     """
 
+    suggested_creator_id = "component.{component_idx}"
     def __init__(self,
                  creator_id: str,
                  component_idx: str,
