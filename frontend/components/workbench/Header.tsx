@@ -17,6 +17,7 @@ const STEPS = [
   { num: 2, label: "Construction", href: "/workbench" },
   { num: 3, label: "Analysis", href: "/workbench/analysis" },
   { num: 4, label: "Components", href: "/workbench/components" },
+  { num: 5, label: "Plans", href: "/workbench/construction-plans" },
 ] as const;
 
 function isActive(href: string, pathname: string) {
