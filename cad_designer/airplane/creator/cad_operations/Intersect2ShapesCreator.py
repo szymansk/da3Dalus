@@ -6,8 +6,11 @@ from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 
 
 class Intersect2ShapesCreator(AbstractShapeCreator):
-    """
-    Intersect the shape A with shape B (minuend / subtrahend = new_shape).
+    """Computes the boolean intersection of two shapes, keeping only overlapping volume.
+
+    Attributes:
+        shape_a (str): Key of the first shape.
+        shape_b (str): Key of the second shape to intersect with.
     """
 
     def __init__(self, creator_id: str, shape_a: str = None, shape_b: str = None, loglevel=logging.INFO):

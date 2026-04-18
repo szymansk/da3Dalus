@@ -6,8 +6,11 @@ from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 
 
 class CutMultipleShapesCreator(AbstractShapeCreator):
-    """
-    Fusing shape B with shape A.
+    """Cuts multiple shapes from a single base shape using boolean subtraction.
+
+    Attributes:
+        subtrahends (list[str]): List of shape keys to subtract from the minuend.
+        minuend (str): Key of the base shape to cut from.
     """
 
     def __init__(self, creator_id: str, subtrahends: list[str], minuend: str = None, loglevel=logging.INFO):

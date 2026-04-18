@@ -5,8 +5,10 @@ from cadquery import Workplane
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 
 class AddMultipleShapesCreator(AbstractShapeCreator):
-    """
-    Add shape B to shape A. This is not a fuse operation.
+    """Adds multiple shapes together as a compound without boolean fusion.
+
+    Attributes:
+        shapes (list[str]): List of shape keys to add together.
     """
 
     def __init__(self, creator_id: str, shapes: list[str], loglevel=logging.INFO):

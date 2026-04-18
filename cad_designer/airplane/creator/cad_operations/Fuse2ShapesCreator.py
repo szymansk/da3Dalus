@@ -7,8 +7,11 @@ from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 
 
 class Fuse2ShapesCreator(AbstractShapeCreator):
-    """
-    Fusing shape B with shape A.
+    """Fuses two shapes into a single solid using boolean union.
+
+    Attributes:
+        shape_a (str): Key of the first shape (base).
+        shape_b (str): Key of the second shape to fuse into shape_a.
     """
 
     def __init__(self, creator_id: str, shape_a: str = None, shape_b: str = None, loglevel=logging.INFO):

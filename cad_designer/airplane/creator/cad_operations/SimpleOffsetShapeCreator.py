@@ -5,9 +5,11 @@ from cadquery import Workplane
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 
 class SimpleOffsetShapeCreator(AbstractShapeCreator):
-    """
-    Creates a simple offset shape from given shape or the take the first input_shape,
-    which is bigger(+)/smaller(-) bei the given <offset>[m].
+    """Creates a uniformly offset version of a shape, enlarging or shrinking it.
+
+    Attributes:
+        offset (float): Offset distance in mm (positive = enlarge, negative = shrink).
+        shape (str): Key of the shape to offset.
     """
 
     def __init__(self, creator_id: str,
