@@ -422,7 +422,7 @@ export default function ConstructionPlansPage() {
         </div>
 
         {/* Right panel: gallery, detail view, or param editor */}
-        <div className="flex w-full flex-col gap-4 overflow-y-auto">
+        <div className="flex min-h-0 w-full flex-1 flex-col gap-4 overflow-y-auto">
           <div className="flex items-center gap-2.5">
             <Hammer className="size-5 text-primary" />
             <h1 className="font-[family-name:var(--font-jetbrains-mono)] text-[20px] text-foreground">

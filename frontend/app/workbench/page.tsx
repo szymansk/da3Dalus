@@ -68,7 +68,7 @@ export default function WorkbenchPage() {
 
       {/* Config Panel — shrinks to content, max 420px */}
       {!viewerMaximized && (
-        <div className="flex h-full min-h-0 w-[380px] shrink-0 flex-col overflow-hidden">
+        <div className="flex h-full min-h-0 w-[340px] shrink-0 flex-col overflow-hidden">
           <ConfigPanel
             aeroplaneId={aeroplaneId}
             onGeometryChanged={preview.invalidateWing}

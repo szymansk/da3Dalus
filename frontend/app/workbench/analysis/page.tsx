@@ -12,7 +12,7 @@ export default function AnalysisPage() {
   const analysis = useAnalysis(aeroplaneId);
 
   return (
-    <Group orientation="horizontal" className="flex-1">
+    <Group orientation="horizontal" className="h-full min-h-0 flex-1">
       <Panel defaultSize={55} minSize={20}>
         <AnalysisViewerPanel
           result={analysis.result}
