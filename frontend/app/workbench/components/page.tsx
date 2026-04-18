@@ -67,7 +67,7 @@ export default function ComponentsPage() {
         onNodeEditRequested={(n: ComponentTreeNode) => setEditingNodeId(n.id)}
       />
 
-      <div className="flex w-full flex-col gap-4 overflow-y-auto">
+      <div className="flex min-h-0 w-full flex-1 flex-col gap-4 overflow-y-auto">
         {/* View Toggle */}
         <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1 self-start">
           <button
