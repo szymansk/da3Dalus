@@ -13,6 +13,9 @@ class WingReinforcementShapeCreator(AbstractShapeCreator):
     Attributes:
         fuselage_loft (str): Key of the fuselage loft shape to reinforce.
         full_wing_loft (str): Key of the full wing loft for overlap calculation.
+
+    Returns:
+        {id} (Workplane): Wing reinforcement ribs.
     """
 
     def __init__(self,

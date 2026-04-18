@@ -18,6 +18,10 @@ class FuselageReinforcementShapeCreator(AbstractShapeCreator):
         print_resolution (float): 3D printer resolution in mm.
         fuselage_loft (str): Key of the fuselage loft to reinforce.
         full_wing_loft (str): Key of the full wing loft for dimension calculation.
+
+    Returns:
+        {id} (Workplane): Cage-like reinforcement structure.
+        {id}.rods (Workplane): CFRP rod channel passages.
     """
 
     def __init__(self, creator_id: str, rib_width: float, rib_spacing, ribcage_factor: float,

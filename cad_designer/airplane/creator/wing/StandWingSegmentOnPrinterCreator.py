@@ -16,6 +16,9 @@ class StandWingSegmentOnPrinterCreator(AbstractShapeCreator):
     Attributes:
         shape_dict (dict): Mapping of segment index to shape key for each segment to transform.
         wing_index (Union[str, int]): Index or identifier of the wing in the configuration.
+
+    Returns:
+        {input_key}.print (Workplane): Wing segment rotated to stand on the print bed (per segment).
     """
     def __init__(self, creator_id: str,
                  shape_dict: dict[NonNegativeInt, str],

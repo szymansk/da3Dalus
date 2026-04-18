@@ -44,6 +44,12 @@ class VaseModeWingCreator(AbstractShapeCreator):
         symmetric (bool): Whether to mirror the wing to create both sides.
         connected (bool): Whether to fill the gap between left and right wing halves when dihedral is non-zero.
 
+    Returns:
+        {id} (Workplane): Complete wing assembly.
+        {id}[n] (Workplane): Individual wing segment shapes (per segment index).
+        {id}.ted_name[n] (Workplane): Trailing edge device shapes (per TED and segment).
+        {id}[n].servo_mount (Workplane): Servo mount shapes (per segment with TED).
+
     Methods:
         __init__(...): Initializes the `VaseModeWingCreator` with the required parameters.
         _create_shape(...): Creates the complete wing structure, including all segments and components.

@@ -22,6 +22,10 @@ class EngineMountShapeCreator(AbstractShapeCreator):
         engine_total_cover_length (float): Total engine cover length in mm.
         engine_down_thrust_deg (float): Down thrust angle in degrees.
         engine_side_thrust_deg (float): Side thrust angle in degrees.
+
+    Returns:
+        {id} (Workplane): Engine mount plate with screw holes.
+        {id}.cutout (Workplane): Cutout shape for cabling access.
     """
 
     def __init__(self, creator_id: str, engine_index: int, mount_plate_thickness: float, cutout_thickness,

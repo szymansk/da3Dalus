@@ -16,6 +16,10 @@ class EngineCapeShapeCreator(AbstractShapeCreator):
         engine_mount_box_length (float): Length of the engine mount box in mm.
         engine_total_cover_length (float): Total length the engine cover extends in mm.
         full_fuselage_loft (str): Key of the full fuselage loft shape to slice.
+
+    Returns:
+        {id}.cape (Workplane): Detachable engine cover section.
+        {id}.loft (Workplane): Remaining fuselage loft without the cape.
     """
 
     def __init__(self, creator_id: str, engine_index: int, mount_plate_thickness: float,

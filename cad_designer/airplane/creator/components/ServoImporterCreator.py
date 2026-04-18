@@ -21,6 +21,12 @@ class ServoImporterCreator(AbstractShapeCreator):
         servo_idx (int): Index of the servo in the servo information dictionary.
         reverse_model (bool): Whether to reverse the servo model orientation.
         mirror_model_by_plane (str): Mirror plane: xy, xz, yz, or empty for none.
+
+    Returns:
+        {id}.stamp (Workplane): Servo stamp geometry for cutout.
+        {id}.filling (Workplane): Servo filling geometry.
+        {id}.feature (Workplane): Servo feature geometry for slot.
+        {id}.model (Workplane): Full servo 3D model.
     """
 
     def __init__(self, creator_id: str, servo_feature: str, servo_stamp: str, servo_filling: str, servo_model: str,

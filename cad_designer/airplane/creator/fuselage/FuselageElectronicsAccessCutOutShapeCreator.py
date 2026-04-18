@@ -14,6 +14,9 @@ class FuselageElectronicsAccessCutOutShapeCreator(AbstractShapeCreator):
         fuselage_loft (str): Key of the fuselage loft shape.
         full_wing_loft (str): Key of the full wing loft for dimension calculation.
         wing_position (str): Wing position on fuselage: top, middle, or bottom.
+
+    Returns:
+        {id} (Workplane): Cutout shape for electronics access.
     """
 
     def __init__(self, creator_id: str, ribcage_factor: float, length_factor, fuselage_loft, full_wing_loft,

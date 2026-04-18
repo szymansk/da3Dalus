@@ -13,6 +13,9 @@ class WingAttachmentBoltCutoutShapeCreator(AbstractShapeCreator):
         fuselage_loft (str): Key of the fuselage loft shape.
         full_wing_loft (str): Key of the full wing loft for overlap calculation.
         bolt_diameter (float): Diameter of the attachment bolts in mm.
+
+    Returns:
+        {id} (Workplane): Cylindrical bolt cutouts for wing attachment.
     """
 
     def __init__(self, creator_id: str, fuselage_loft: str, full_wing_loft: str, bolt_diameter: float, loglevel=logging.INFO):

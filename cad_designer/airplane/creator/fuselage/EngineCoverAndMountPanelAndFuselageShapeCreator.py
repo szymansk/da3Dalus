@@ -20,6 +20,9 @@ class EngineCoverAndMountPanelAndFuselageShapeCreator(AbstractShapeCreator):
         engine_side_thrust_deg (float): Side thrust angle in degrees.
         engine_down_thrust_deg (float): Down thrust angle in degrees.
         full_fuselage_loft (str): Key of the full fuselage loft shape.
+
+    Returns:
+        {id} (Workplane): Engine mount backplate sliced from fuselage.
     """
 
     def __init__(self, creator_id: str, engine_index: int, mount_plate_thickness: float,

@@ -16,6 +16,9 @@ class FuselageWingSupportShapeCreator(AbstractShapeCreator):
         rib_z_offset (float): Vertical offset of the rib center in mm.
         fuselage_loft (str): Key of the fuselage loft shape.
         full_wing_loft (str): Key of the full wing loft for overlap calculation.
+
+    Returns:
+        {id} (Workplane): Wing support ribs inside the fuselage.
     """
 
     def __init__(self, creator_id: str, rib_quantity: int, rib_width: float, rib_height_factor: float, rib_z_offset,

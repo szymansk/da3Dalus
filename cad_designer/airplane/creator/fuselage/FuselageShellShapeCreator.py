@@ -12,6 +12,9 @@ class FuselageShellShapeCreator(AbstractShapeCreator):
     Attributes:
         thickness (float): Shell wall thickness in mm.
         fuselage (str): Key of the fuselage loft shape to shell.
+
+    Returns:
+        {id} (Workplane): Hollow fuselage shell.
     """
 
     def __init__(self, creator_id: str,

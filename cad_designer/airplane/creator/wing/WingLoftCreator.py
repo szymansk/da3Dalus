@@ -17,6 +17,9 @@ class WingLoftCreator(AbstractShapeCreator):
         offset (float): Inward offset applied to the wing surface in mm.
         wing_side (str): Which side to create: LEFT, RIGHT, or BOTH.
         connected (bool): Whether to fill the gap between wing halves when dihedral is non-zero.
+
+    Returns:
+        {id} (Workplane): Solid wing loft shape.
     """
 
     def __init__(self, creator_id: str, wing_index: Union[str, int], offset: float = 0,
