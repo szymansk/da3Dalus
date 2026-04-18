@@ -8,6 +8,24 @@ from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 
 
 class FuselageReinforcementShapeCreator(AbstractShapeCreator):
+    """Creates a cage-like fuselage reinforcement with CFRP rod channels.
+
+    Attributes:
+        rib_width (float): Width of the reinforcement rib wall-to-wall in mm.
+        rib_spacing (float): Minimum spacing between wing and reinforcement in mm.
+        ribcage_factor (float): Ribcage width as a factor of fuselage width.
+        reinforcement_pipes_diameter (float): Diameter of CFRP rod channels in mm.
+        print_resolution (float): 3D printer resolution in mm.
+        fuselage_loft (str): Key of the fuselage loft to reinforce.
+        full_wing_loft (str): Key of the full wing loft for dimension calculation.
+
+    Returns:
+        {id} (Workplane): Cage-like reinforcement structure.
+        {id}.rods (Workplane): CFRP rod channel passages.
+    """
+
+    suggested_creator_id = "{fuselage_loft}.reinforcement"
+
     def __init__(self, creator_id: str, rib_width: float, rib_spacing, ribcage_factor: float,
                  reinforcement_pipes_diameter: float, print_resolution: float, fuselage_loft: str, full_wing_loft,
                  loglevel=logging.INFO):

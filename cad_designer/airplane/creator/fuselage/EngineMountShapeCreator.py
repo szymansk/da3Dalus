@@ -9,6 +9,27 @@ from cad_designer.airplane.aircraft_topology.components.EngineInformation import
 
 
 class EngineMountShapeCreator(AbstractShapeCreator):
+    """Creates a parametric engine mount with screw holes and mounting cutout.
+
+    Attributes:
+        engine_index (int): Index of the engine in the engine information dictionary.
+        mount_plate_thickness (float): Thickness of the mount backplate in mm.
+        cutout_thickness (float): Thickness of the mount plate cutout in mm.
+        engine_screw_hole_circle (float): Diameter of the screw hole circle in mm.
+        engine_mount_box_length (float): Length of the engine mount box in mm.
+        engine_screw_din_diameter (float): DIN diameter of engine screws (e.g. 4 for M4).
+        engine_screw_length (float): Length of the engine mounting screws in mm.
+        engine_total_cover_length (float): Total engine cover length in mm.
+        engine_down_thrust_deg (float): Down thrust angle in degrees.
+        engine_side_thrust_deg (float): Side thrust angle in degrees.
+
+    Returns:
+        {id} (Workplane): Engine mount plate with screw holes.
+        {id}.cutout (Workplane): Cutout shape for cabling access.
+    """
+
+    suggested_creator_id = "engine[{engine_index}].mount"
+
     def __init__(self, creator_id: str, engine_index: int, mount_plate_thickness: float, cutout_thickness,
                  engine_screw_hole_circle: float = None, engine_mount_box_length: float = None,
                  engine_screw_din_diameter: float = None, engine_screw_length: float = None,

@@ -41,6 +41,14 @@ class VaseModeWingCreator(AbstractShapeCreator):
         _wing_config (dict[int, WingConfiguration]): Configuration of the wing segments.
         _printer_settings (Printer3dSettings): Printer settings for 3D printing.
         _servo_information (dict[int, ServoInformation]): Information about servo placements.
+        symmetric (bool): Whether to mirror the wing to create both sides.
+        connected (bool): Whether to fill the gap between left and right wing halves when dihedral is non-zero.
+
+    Returns:
+        {id} (Workplane): Complete wing assembly.
+        {id}[n] (Workplane): Individual wing segment shapes (per segment index).
+        {id}.ted_name[n] (Workplane): Trailing edge device shapes (per TED and segment).
+        {id}[n].servo_mount (Workplane): Servo mount shapes (per segment with TED).
 
     Methods:
         __init__(...): Initializes the `VaseModeWingCreator` with the required parameters.
@@ -57,6 +65,8 @@ class VaseModeWingCreator(AbstractShapeCreator):
         _calculate_wing_construction_points(...): Calculates construction points for the wing based on its configuration.
         _construct_spare_sketch(...): Constructs a sketch for a spar, considering gaps for vase mode printing.
     """
+
+    suggested_creator_id = "{wing_index}.vase_wing"
 
     def __init__(self, creator_id: str, wing_index: Union[str, NonNegativeInt], leading_edge_offset_factor: Factor,
                  trailing_edge_offset_factor: Factor,

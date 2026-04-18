@@ -6,10 +6,17 @@ from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 
 
 class RepairFacesShapeCreator(AbstractShapeCreator):
+    """Attempts to repair face normals of poorly imported shapes to point outward.
+
+    Attributes:
+        shape (str): Key of the shape to repair.
+        repair_tool (str): Key of a reference shape used to determine correct normal orientation.
+
+    Returns:
+        {id} (Workplane): Shape with repaired face normals.
     """
-    Creates a simple offset shape from given shape or the take the first input_shape,
-    which is bigger(+)/smaller(-) bei the given <offset>[m].
-    """
+
+    suggested_creator_id = "repair.{shape}"
 
     def __init__(self, creator_id: str,
                  shape: str = None,

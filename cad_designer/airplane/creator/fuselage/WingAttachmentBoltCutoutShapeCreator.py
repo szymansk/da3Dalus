@@ -7,10 +7,18 @@ from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 
 
 class WingAttachmentBoltCutoutShapeCreator(AbstractShapeCreator):
+    """Creates bolt cutouts along the roll-axis for wing attachment rubber bands.
+
+    Attributes:
+        fuselage_loft (str): Key of the fuselage loft shape.
+        full_wing_loft (str): Key of the full wing loft for overlap calculation.
+        bolt_diameter (float): Diameter of the attachment bolts in mm.
+
+    Returns:
+        {id} (Workplane): Cylindrical bolt cutouts for wing attachment.
     """
-    Create two bolts along the roll-axis through the fuselage,
-    to hold some rubber band.
-    """
+
+    suggested_creator_id = "bolt_cutout"
 
     def __init__(self, creator_id: str, fuselage_loft: str, full_wing_loft: str, bolt_diameter: float, loglevel=logging.INFO):
         self.bolt_diameter = bolt_diameter

@@ -6,6 +6,20 @@ import cadquery as cq
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 
 class FuselageElectronicsAccessCutOutShapeCreator(AbstractShapeCreator):
+    """Creates a cutout in the fuselage for electronics access.
+
+    Attributes:
+        ribcage_factor (float): Ribcage width as a factor of fuselage width.
+        length_factor (float): Cutout length as a factor of root chord.
+        fuselage_loft (str): Key of the fuselage loft shape.
+        full_wing_loft (str): Key of the full wing loft for dimension calculation.
+        wing_position (str): Wing position on fuselage: top, middle, or bottom.
+
+    Returns:
+        {id} (Workplane): Cutout shape for electronics access.
+    """
+
+    suggested_creator_id = "{fuselage_loft}.electronics_cutout"
 
     def __init__(self, creator_id: str, ribcage_factor: float, length_factor, fuselage_loft, full_wing_loft,
                  wing_position: str = None, loglevel=logging.INFO):

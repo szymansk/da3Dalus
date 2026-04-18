@@ -8,10 +8,21 @@ from cad_designer.airplane.creator.fuselage.EngineCoverAndMountPanelAndFuselageS
 
 
 class EngineCapeShapeCreator(AbstractShapeCreator):
+    """Creates an engine cape and the remaining fuselage loft without the cape section.
+
+    Attributes:
+        engine_index (int): Index of the engine in the engine information dictionary.
+        mount_plate_thickness (float): Thickness of the engine mount backplate in mm.
+        engine_mount_box_length (float): Length of the engine mount box in mm.
+        engine_total_cover_length (float): Total length the engine cover extends in mm.
+        full_fuselage_loft (str): Key of the full fuselage loft shape to slice.
+
+    Returns:
+        {id}.cape (Workplane): Detachable engine cover section.
+        {id}.loft (Workplane): Remaining fuselage loft without the cape.
     """
-    Creates an engine cape <identifier>.cape and fuselage loft without the cape <identifier>.loft, by cutting the cape
-    of the full fuselage loft.
-    """
+
+    suggested_creator_id = "engine[{engine_index}].cape"
 
     def __init__(self, creator_id: str, engine_index: int, mount_plate_thickness: float,
                  engine_mount_box_length: float = None, engine_total_cover_length: float = None,

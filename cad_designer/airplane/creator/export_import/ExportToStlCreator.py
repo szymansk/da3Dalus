@@ -7,6 +7,20 @@ from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 
 
 class ExportToStlCreator(AbstractShapeCreator):
+    """Exports shapes to STL files with configurable tessellation quality.
+
+    Attributes:
+        file_path (str): Directory path where STL files will be written.
+        shapes_to_export (list[str]): List of shape keys to export.
+        tolerance (float): Tessellation chord tolerance in mm.
+        angular_tolerance (float): Tessellation angular tolerance in radians.
+
+    Returns:
+        {id} (pass-through): Exports files and returns input shapes unchanged.
+    """
+
+    suggested_creator_id = "export_stl"
+
     def __init__(self, creator_id: str, file_path: str, shapes_to_export: list[str] = None,
                  tolerance: float = 0.1, angular_tolerance: float = 0.1, loglevel=logging.INFO):
         self.file_path: str = file_path

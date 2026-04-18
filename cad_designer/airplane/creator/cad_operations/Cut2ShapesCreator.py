@@ -6,9 +6,17 @@ from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 
 
 class Cut2ShapesCreator(AbstractShapeCreator):
+    """Cuts one shape from another using boolean subtraction (minuend - subtrahend).
+
+    Attributes:
+        minuend (str): Key of the base shape to cut from.
+        subtrahend (str): Key of the shape to subtract.
+
+    Returns:
+        {id} (Workplane): Result of subtracting subtrahend from minuend.
     """
-    Cut the subtrahend from the minuend (minuend - subtrahend = new_shape).
-    """
+
+    suggested_creator_id = "cut.{minuend}"
 
     def __init__(self, creator_id: str,
                  minuend: str = None,

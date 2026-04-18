@@ -10,9 +10,26 @@ from cad_designer.airplane.creator.cad_operations import ScaleRotateTranslateCre
 
 
 class IgesImportCreator(AbstractShapeCreator):
+    """Imports an IGES file as a shape with optional transform.
+
+    Attributes:
+        iges_file (str): Path to the IGES file to import.
+        trans_x (float): Translation along X axis in mm.
+        trans_y (float): Translation along Y axis in mm.
+        trans_z (float): Translation along Z axis in mm.
+        rot_x (float): Rotation around X axis in degrees.
+        rot_y (float): Rotation around Y axis in degrees.
+        rot_z (float): Rotation around Z axis in degrees.
+        scale (float): Uniform scale factor applied before per-axis scaling.
+        scale_x (float): Scale factor along X axis.
+        scale_y (float): Scale factor along Y axis.
+        scale_z (float): Scale factor along Z axis.
+
+    Returns:
+        {id} (Workplane): Imported IGES geometry with applied transforms.
     """
-    Import an iges file as a shape.
-    """
+
+    suggested_creator_id = "import_iges"
 
     def __init__(self, creator_id: str, iges_file: str, trans_x: float = .0, trans_y: float = .0, trans_z: float = .0,
                  rot_x: float = .0, rot_y: float = .0, rot_z: float = .0, scale: float = 1.0, scale_x=1.0, scale_y=1.0,

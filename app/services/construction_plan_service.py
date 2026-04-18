@@ -4,6 +4,7 @@ from __future__ import annotations
 import inspect
 import json
 import logging
+import re
 import time
 from typing import Any
 
@@ -14,6 +15,7 @@ from app.core.exceptions import InternalError, NotFoundError, ValidationError
 from app.models.construction_plan import ConstructionPlanModel
 from app.schemas.construction_plan import (
     CreatorInfo,
+    CreatorOutput,
     CreatorParam,
     ExecuteRequest,
     ExecutionResult,
@@ -29,11 +31,20 @@ logger = logging.getLogger(__name__)
 
 
 def _count_steps(tree_json: dict) -> int:
-    """Recursively count ConstructionStepNode entries in a tree."""
+    """Recursively count ConstructionStepNode entries in a tree.
+
+    Handles both dict-keyed successors (GeneralJSONEncoder format)
+    and list successors (frontend simplified format).
+    """
+    successors = tree_json.get("successors")
+    if not successors:
+        return 0
     count = 0
-    for node in (tree_json.get("successors") or {}).values():
-        count += 1
-        count += _count_steps(node)
+    nodes = successors.values() if isinstance(successors, dict) else successors
+    for node in nodes:
+        if isinstance(node, dict):
+            count += 1
+            count += _count_steps(node)
     return count
 
 
@@ -144,7 +155,106 @@ def delete_plan(db: Session, plan_id: int) -> None:
 # ── Creator Catalog ─────────────────────────────────────────────
 
 
-_INTERNAL_PARAMS = {"self", "loglevel", "kwargs"}
+_INTERNAL_PARAMS = {
+    "self", "loglevel", "kwargs",
+    "creator_id",
+    # Runtime-injected config (passed by GeneralJSONDecoder, not user-facing)
+    "wing_config", "printer_settings", "servo_information",
+    "engine_information", "component_information",
+}
+
+
+def _parse_docstring_attributes(docstring: str) -> dict[str, str]:
+    """Extract parameter descriptions from a docstring's Attributes section.
+
+    Parses lines like:
+        param_name (type): Description text here.
+    Returns a dict mapping param_name → description.
+    """
+    result: dict[str, str] = {}
+    in_attributes = False
+    current_name: str | None = None
+    current_desc: list[str] = []
+
+    for line in docstring.split("\n"):
+        stripped = line.strip()
+
+        if stripped.lower().startswith("attributes:"):
+            in_attributes = True
+            continue
+
+        if not in_attributes:
+            continue
+
+        # End of Attributes section on next section header
+        if stripped and not stripped.startswith("_") and stripped.endswith(":") and "(" not in stripped:
+            # Flush last param
+            if current_name and current_desc:
+                result[current_name] = " ".join(current_desc).strip()
+            break
+
+        # New attribute line: "name (type): description"
+        match = re.match(r"(\w+)\s*\([^)]*\)\s*:\s*(.*)", stripped)
+        if match:
+            # Flush previous
+            if current_name and current_desc:
+                result[current_name] = " ".join(current_desc).strip()
+            current_name = match.group(1)
+            current_desc = [match.group(2)] if match.group(2) else []
+        elif current_name and stripped:
+            # Continuation line
+            current_desc.append(stripped)
+        elif not stripped and current_name:
+            # Empty line ends current param
+            if current_desc:
+                result[current_name] = " ".join(current_desc).strip()
+            current_name = None
+            current_desc = []
+
+    # Flush final param
+    if current_name and current_desc:
+        result[current_name] = " ".join(current_desc).strip()
+
+    return result
+
+
+def _parse_docstring_returns(docstring: str) -> list[CreatorOutput]:
+    """Extract output descriptions from a docstring's Returns section.
+
+    Parses lines like:
+        {id} (Workplane): The fused result shape.
+    Returns a list of CreatorOutput.
+    """
+    outputs: list[CreatorOutput] = []
+    in_returns = False
+
+    for line in docstring.split("\n"):
+        stripped = line.strip()
+
+        if stripped.lower().startswith("returns:"):
+            in_returns = True
+            continue
+
+        if not in_returns:
+            continue
+
+        # End on next section header
+        if stripped and not stripped.startswith("{") and stripped.endswith(":") and "(" not in stripped:
+            break
+
+        # Output line: "{id}.name (type): Description"
+        match = re.match(r"(\{[^}]*\}[^\s]*)\s*(?:\([^)]*\))?\s*:\s*(.*)", stripped)
+        if match:
+            outputs.append(CreatorOutput(
+                key=match.group(1),
+                description=match.group(2).strip(),
+            ))
+        elif not stripped:
+            if outputs:
+                break  # Empty line after outputs ends section
+
+    return outputs
+
 
 _CATEGORY_MAP = {
     "wing": "wing",
@@ -208,6 +318,7 @@ def _collect_creators(cls: type, result: list[CreatorInfo], seen: set[str]) -> N
     seen.add(name)
 
     sig = inspect.signature(cls.__init__)
+    param_descriptions = _parse_docstring_attributes(cls.__doc__ or "")
     params: list[CreatorParam] = []
     for pname, param in sig.parameters.items():
         if pname in _INTERNAL_PARAMS:
@@ -217,15 +328,21 @@ def _collect_creators(cls: type, result: list[CreatorInfo], seen: set[str]) -> N
             type=_type_to_str(param.annotation),
             default=param.default if param.default is not inspect.Parameter.empty else None,
             required=param.default is inspect.Parameter.empty,
+            description=param_descriptions.get(pname),
         ))
 
     docstring = (cls.__doc__ or "").strip().split("\n")[0] if cls.__doc__ else None
+
+    outputs = _parse_docstring_returns(cls.__doc__ or "")
+    suggested_id = getattr(cls, "suggested_creator_id", None)
 
     result.append(CreatorInfo(
         class_name=name,
         category=_get_category(cls),
         description=docstring,
         parameters=params,
+        outputs=outputs,
+        suggested_id=suggested_id,
     ))
 
     for sub in cls.__subclasses__():

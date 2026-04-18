@@ -6,9 +6,16 @@ from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 
 
 class FuseMultipleShapesCreator(AbstractShapeCreator):
+    """Fuses multiple shapes into a single solid using boolean union.
+
+    Attributes:
+        shapes (list[str]): List of shape keys to fuse together.
+
+    Returns:
+        {id} (Workplane): Boolean union of all input shapes.
     """
-    Fusing shape B with shape A.
-    """
+
+    suggested_creator_id = "fuse_all"
 
     def __init__(self, creator_id: str, shapes: list[str], loglevel=logging.INFO):
         self.shapes = shapes

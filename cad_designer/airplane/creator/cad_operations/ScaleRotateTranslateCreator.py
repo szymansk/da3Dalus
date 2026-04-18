@@ -6,9 +6,27 @@ from cadquery import Workplane
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 
 class ScaleRotateTranslateCreator(AbstractShapeCreator):
+    """Applies scale, rotation, and translation transforms to a shape.
+
+    Attributes:
+        shape_id (str): Key of the shape to transform.
+        scale (float): Uniform scale factor applied before per-axis scaling.
+        rot_x (float): Rotation around X axis in degrees.
+        rot_y (float): Rotation around Y axis in degrees.
+        rot_z (float): Rotation around Z axis in degrees.
+        trans_x (float): Translation along X axis in mm.
+        trans_y (float): Translation along Y axis in mm.
+        trans_z (float): Translation along Z axis in mm.
+        scale_x (float): Scale factor along X axis.
+        scale_y (float): Scale factor along Y axis.
+        scale_z (float): Scale factor along Z axis.
+        mirroring (str): Mirror plane: xy, xz, yz, or empty for none.
+
+    Returns:
+        {id} (Workplane): Transformed shape after scale, rotation, and translation.
     """
-    Scale, rotate (x,y,z) and then translate the shape.
-    """
+
+    suggested_creator_id = "transform.{shape_id}"
 
     def __init__(self, creator_id: str, shape_id: str, scale: float = 1.0, rot_x: float = .0, rot_y: float = .0,
                  rot_z: float = .0, trans_x: float = .0, trans_y: float = .0, trans_z: float = .0, scale_x=1.0,

@@ -11,6 +11,25 @@ from cad_designer.airplane.creator.cad_operations import ScaleRotateTranslateCre
 
 
 class ServoImporterCreator(AbstractShapeCreator):
+    """Imports servo geometry files and positions them based on servo information.
+
+    Attributes:
+        servo_feature (str): File path to the servo feature geometry.
+        servo_stamp (str): File path to the servo stamp geometry.
+        servo_filling (str): File path to the servo filling geometry.
+        servo_model (str): File path to the servo 3D model.
+        servo_idx (int): Index of the servo in the servo information dictionary.
+        reverse_model (bool): Whether to reverse the servo model orientation.
+        mirror_model_by_plane (str): Mirror plane: xy, xz, yz, or empty for none.
+
+    Returns:
+        {id}.stamp (Workplane): Servo stamp geometry for cutout.
+        {id}.filling (Workplane): Servo filling geometry.
+        {id}.feature (Workplane): Servo feature geometry for slot.
+        {id}.model (Workplane): Full servo 3D model.
+    """
+
+    suggested_creator_id = "servo[{servo_idx}]"
 
     def __init__(self, creator_id: str, servo_feature: str, servo_stamp: str, servo_filling: str, servo_model: str,
                  servo_idx: int, reverse_model=False, servo_information: dict[int, ServoInformation] = None,

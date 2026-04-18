@@ -7,8 +7,21 @@ import cadquery as cq
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 
 class FuselageWingSupportShapeCreator(AbstractShapeCreator):
-    """    Creates wing support by using vertical cube shaped ribs.
+    """Creates wing support using vertical cube-shaped ribs inside the fuselage.
+
+    Attributes:
+        rib_quantity (int): Number of support ribs to create.
+        rib_width (float): Width of each support rib in mm.
+        rib_height_factor (float): Factor of overlap height used for rib height.
+        rib_z_offset (float): Vertical offset of the rib center in mm.
+        fuselage_loft (str): Key of the fuselage loft shape.
+        full_wing_loft (str): Key of the full wing loft for overlap calculation.
+
+    Returns:
+        {id} (Workplane): Wing support ribs inside the fuselage.
     """
+
+    suggested_creator_id = "wing_support"
 
     def __init__(self, creator_id: str, rib_quantity: int, rib_width: float, rib_height_factor: float, rib_z_offset,
                  fuselage_loft: str, full_wing_loft, loglevel=logging.INFO):

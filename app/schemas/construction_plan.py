@@ -50,6 +50,14 @@ class CreatorParam(BaseModel):
     type: str = Field(description="Python type annotation as string")
     default: Optional[Any] = None
     required: bool
+    description: Optional[str] = Field(None, description="Human-readable parameter description")
+
+
+class CreatorOutput(BaseModel):
+    """A single output shape key produced by a Creator."""
+
+    key: str = Field(description="Shape key pattern, e.g. '{id}' or '{id}.cape'")
+    description: str
 
 
 class CreatorInfo(BaseModel):
@@ -59,6 +67,8 @@ class CreatorInfo(BaseModel):
     category: str = Field(description="Module category: wing, fuselage, cad_operations, export_import, components")
     description: Optional[str] = None
     parameters: list[CreatorParam]
+    outputs: list[CreatorOutput] = Field(default_factory=list, description="Shape keys this creator produces")
+    suggested_id: Optional[str] = Field(None, description="Template for creator_id, e.g. '{wing_index}.vase_wing'")
 
 
 # ── Execute schemas ─────────────────────────────────────────────
