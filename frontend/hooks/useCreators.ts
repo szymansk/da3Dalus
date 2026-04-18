@@ -10,6 +10,7 @@ export interface CreatorParam {
   required: boolean;
   description: string | null;
   options: string[] | null;
+  is_shape_ref: boolean;
 }
 
 export interface CreatorOutput {
