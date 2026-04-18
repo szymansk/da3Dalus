@@ -1,9 +1,11 @@
 "use client";
 
+import { Info } from "lucide-react";
 import type { CreatorParam } from "@/hooks/useCreators";
 
 interface CreatorParameterFormProps {
   creatorName: string;
+  creatorDescription?: string | null;
   params: CreatorParam[];
   values: Record<string, unknown>;
   onChange: (key: string, value: unknown) => void;
@@ -11,26 +13,45 @@ interface CreatorParameterFormProps {
 
 export function CreatorParameterForm({
   creatorName,
+  creatorDescription,
   params,
   values,
   onChange,
 }: CreatorParameterFormProps) {
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
-        {creatorName}
-      </h3>
+      <div className="flex items-center gap-2">
+        <h3 className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
+          {creatorName}
+        </h3>
+        {creatorDescription && (
+          <span
+            className="shrink-0 text-muted-foreground hover:text-primary"
+            title={creatorDescription}
+          >
+            <Info size={13} />
+          </span>
+        )}
+      </div>
       {params.length === 0 ? (
         <p className="text-[12px] text-muted-foreground">No parameters</p>
       ) : (
         params.map((param) => (
           <label key={param.name} className="flex flex-col gap-1">
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
               {param.name}
               {param.required && <span className="text-primary"> *</span>}
-              <span className="ml-1 text-[9px] text-subtle-foreground">
+              <span className="text-[9px] text-subtle-foreground">
                 ({param.type})
               </span>
+              {param.description && (
+                <span
+                  className="shrink-0 text-muted-foreground hover:text-primary"
+                  title={param.description}
+                >
+                  <Info size={10} />
+                </span>
+              )}
             </span>
             {param.type === "bool" ? (
               <input

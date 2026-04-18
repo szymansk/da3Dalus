@@ -10,7 +10,7 @@ vi.mock("lucide-react", () => {
   return {
     Hammer: icon, Plus: icon, Trash2: icon, Play: icon, Loader2: icon,
     Search: icon, ChevronDown: icon, ChevronRight: icon, Pencil: icon,
-    Scale: icon,
+    Scale: icon, Info: icon,
   };
 });
 
@@ -69,7 +69,7 @@ vi.mock("@/hooks/useCreators", () => ({
         class_name: "VaseModeWingCreator",
         category: "wing",
         description: "Vase-mode wing",
-        parameters: [{ name: "wing_index", type: "str", default: null, required: true }],
+        parameters: [{ name: "wing_index", type: "str", default: null, required: true, description: "Index of the wing" }],
       },
     ],
     error: null,

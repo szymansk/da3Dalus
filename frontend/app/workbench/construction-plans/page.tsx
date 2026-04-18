@@ -394,6 +394,7 @@ export default function ConstructionPlansPage() {
               </button>
               <CreatorParameterForm
                 creatorName={creatorForSelected.class_name}
+                creatorDescription={creatorForSelected.description}
                 params={creatorForSelected.parameters}
                 values={selectedStepNode as unknown as Record<string, unknown>}
                 onChange={handleParamChange}

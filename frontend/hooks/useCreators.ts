@@ -8,6 +8,7 @@ export interface CreatorParam {
   type: string;
   default: unknown;
   required: boolean;
+  description: string | null;
 }
 
 export interface CreatorInfo {

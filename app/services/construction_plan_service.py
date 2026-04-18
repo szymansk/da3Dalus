@@ -155,6 +155,62 @@ def delete_plan(db: Session, plan_id: int) -> None:
 
 _INTERNAL_PARAMS = {"self", "loglevel", "kwargs"}
 
+
+def _parse_docstring_attributes(docstring: str) -> dict[str, str]:
+    """Extract parameter descriptions from a docstring's Attributes section.
+
+    Parses lines like:
+        param_name (type): Description text here.
+    Returns a dict mapping param_name → description.
+    """
+    import re
+
+    result: dict[str, str] = {}
+    in_attributes = False
+    current_name: str | None = None
+    current_desc: list[str] = []
+
+    for line in docstring.split("\n"):
+        stripped = line.strip()
+
+        if stripped.lower().startswith("attributes:"):
+            in_attributes = True
+            continue
+
+        if not in_attributes:
+            continue
+
+        # End of Attributes section on next section header
+        if stripped and not stripped.startswith("_") and stripped.endswith(":") and "(" not in stripped:
+            # Flush last param
+            if current_name and current_desc:
+                result[current_name] = " ".join(current_desc).strip()
+            break
+
+        # New attribute line: "name (type): description"
+        match = re.match(r"(\w+)\s*\([^)]*\)\s*:\s*(.*)", stripped)
+        if match:
+            # Flush previous
+            if current_name and current_desc:
+                result[current_name] = " ".join(current_desc).strip()
+            current_name = match.group(1)
+            current_desc = [match.group(2)] if match.group(2) else []
+        elif current_name and stripped:
+            # Continuation line
+            current_desc.append(stripped)
+        elif not stripped and current_name:
+            # Empty line ends current param
+            if current_desc:
+                result[current_name] = " ".join(current_desc).strip()
+            current_name = None
+            current_desc = []
+
+    # Flush final param
+    if current_name and current_desc:
+        result[current_name] = " ".join(current_desc).strip()
+
+    return result
+
 _CATEGORY_MAP = {
     "wing": "wing",
     "fuselage": "fuselage",
@@ -217,6 +273,7 @@ def _collect_creators(cls: type, result: list[CreatorInfo], seen: set[str]) -> N
     seen.add(name)
 
     sig = inspect.signature(cls.__init__)
+    param_descriptions = _parse_docstring_attributes(cls.__doc__ or "")
     params: list[CreatorParam] = []
     for pname, param in sig.parameters.items():
         if pname in _INTERNAL_PARAMS:
@@ -226,6 +283,7 @@ def _collect_creators(cls: type, result: list[CreatorInfo], seen: set[str]) -> N
             type=_type_to_str(param.annotation),
             default=param.default if param.default is not inspect.Parameter.empty else None,
             required=param.default is inspect.Parameter.empty,
+            description=param_descriptions.get(pname),
         ))
 
     docstring = (cls.__doc__ or "").strip().split("\n")[0] if cls.__doc__ else None

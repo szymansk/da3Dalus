@@ -6,7 +6,7 @@ vi.mock("lucide-react", () => {
   const icon = (props: Record<string, unknown>) =>
     React.createElement("span", props);
   return {
-    Search: icon, Plus: icon, ChevronDown: icon, ChevronRight: icon,
+    Search: icon, Plus: icon, ChevronDown: icon, ChevronRight: icon, Info: icon,
   };
 });
 
@@ -24,7 +24,7 @@ const MOCK_CREATORS: CreatorInfo[] = [
     category: "wing",
     description: "Vase-mode wing with ribs, spars, TEDs",
     parameters: [
-      { name: "wing_index", type: "str", default: null, required: true },
+      { name: "wing_index", type: "str", default: null, required: true, description: "Index of the wing" },
     ],
   },
   {
@@ -32,8 +32,8 @@ const MOCK_CREATORS: CreatorInfo[] = [
     category: "export_import",
     description: "Export shape to STEP file",
     parameters: [
-      { name: "file_path", type: "str", default: null, required: true },
-      { name: "shape_key", type: "str", default: null, required: true },
+      { name: "file_path", type: "str", default: null, required: true, description: null },
+      { name: "shape_key", type: "str", default: null, required: true, description: null },
     ],
   },
   {
@@ -41,8 +41,8 @@ const MOCK_CREATORS: CreatorInfo[] = [
     category: "cad_operations",
     description: "Boolean union of two shapes",
     parameters: [
-      { name: "shape_key_a", type: "str", default: null, required: true },
-      { name: "shape_key_b", type: "str", default: null, required: true },
+      { name: "shape_key_a", type: "str", default: null, required: true, description: null },
+      { name: "shape_key_b", type: "str", default: null, required: true, description: null },
     ],
   },
 ];

@@ -50,6 +50,7 @@ class CreatorParam(BaseModel):
     type: str = Field(description="Python type annotation as string")
     default: Optional[Any] = None
     required: bool
+    description: Optional[str] = Field(None, description="Human-readable parameter description")
 
 
 class CreatorInfo(BaseModel):

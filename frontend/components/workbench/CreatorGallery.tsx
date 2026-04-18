@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search } from "lucide-react";
+import { Info, Search } from "lucide-react";
 import type { CreatorInfo, CreatorCategory } from "@/hooks/useCreators";
 import { CREATOR_CATEGORIES } from "@/hooks/useCreators";
 
@@ -81,10 +81,20 @@ export function CreatorGallery({ creators, onSelect }: CreatorGalleryProps) {
             <button
               key={creator.class_name}
               onClick={() => onSelect(creator)}
-              className="flex flex-col gap-1 rounded-xl border border-border bg-card p-3 text-left hover:border-primary/50 hover:bg-sidebar-accent"
+              className="group/card flex flex-col gap-1 rounded-xl border border-border bg-card p-3 text-left hover:border-primary/50 hover:bg-sidebar-accent"
             >
-              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground">
-                {creator.class_name}
+              <span className="flex items-center gap-1.5">
+                <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground">
+                  {creator.class_name}
+                </span>
+                {creator.description && (
+                  <span
+                    className="relative shrink-0 text-muted-foreground hover:text-primary"
+                    title={creator.description}
+                  >
+                    <Info size={11} />
+                  </span>
+                )}
               </span>
               <span className="rounded-full bg-card-muted px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground self-start">
                 {CATEGORY_LABELS[creator.category as CreatorCategory] ?? creator.category}
