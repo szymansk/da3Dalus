@@ -10,6 +10,13 @@ from cad_designer.airplane.creator.cad_operations import ScaleRotateTranslateCre
 
 
 class ComponentImporterCreator(AbstractShapeCreator):
+    """Imports a component geometry file with positioning from component information.
+
+    Attributes:
+        component_idx (str): Identifier of the component in the component information.
+        component_file (str): Path to the component geometry file (STEP or IGES).
+        mirror_model_by_plane (str): Mirror plane: xy, xz, yz, or empty for none.
+    """
 
     def __init__(self,
                  creator_id: str,

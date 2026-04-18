@@ -10,6 +10,15 @@ from cad_designer.airplane.types import WingSides
 
 
 class WingLoftCreator(AbstractShapeCreator):
+    """Creates a solid loft shape of the full wing from wing configuration segments.
+
+    Attributes:
+        wing_index (Union[str, int]): Index or identifier of the wing in the configuration.
+        offset (float): Inward offset applied to the wing surface in mm.
+        wing_side (str): Which side to create: LEFT, RIGHT, or BOTH.
+        connected (bool): Whether to fill the gap between wing halves when dihedral is non-zero.
+    """
+
     def __init__(self, creator_id: str, wing_index: Union[str, int], offset: float = 0,
                  wing_config: Optional[dict[NonNegativeInt, WingConfiguration]] = None,
                  wing_side: Optional[WingSides] = None, connected:bool=True, loglevel=logging.INFO):

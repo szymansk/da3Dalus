@@ -11,8 +11,11 @@ from cad_designer.airplane.aircraft_topology.wing.WingConfiguration import WingC
 
 
 class StandWingSegmentOnPrinterCreator(AbstractShapeCreator):
-    """
-    Transforms the given segment shape to stand on the XY-plane
+    """Transforms wing segment shapes to stand on the XY-plane for 3D printing.
+
+    Attributes:
+        shape_dict (dict): Mapping of segment index to shape key for each segment to transform.
+        wing_index (Union[str, int]): Index or identifier of the wing in the configuration.
     """
     def __init__(self, creator_id: str,
                  shape_dict: dict[NonNegativeInt, str],

@@ -41,6 +41,8 @@ class VaseModeWingCreator(AbstractShapeCreator):
         _wing_config (dict[int, WingConfiguration]): Configuration of the wing segments.
         _printer_settings (Printer3dSettings): Printer settings for 3D printing.
         _servo_information (dict[int, ServoInformation]): Information about servo placements.
+        symmetric (bool): Whether to mirror the wing to create both sides.
+        connected (bool): Whether to fill the gap between left and right wing halves when dihedral is non-zero.
 
     Methods:
         __init__(...): Initializes the `VaseModeWingCreator` with the required parameters.
