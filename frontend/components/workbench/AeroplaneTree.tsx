@@ -657,7 +657,7 @@ function TreeRow({ node, onToggle, onNodeEdit }: { node: TreeNode; onToggle: () 
       {node.onAdd && (
         <button
           onClick={(e) => { e.stopPropagation(); node.onAdd?.(); }}
-          className="flex h-5 w-5 items-center justify-center rounded-xl text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+          className="hidden h-5 w-5 items-center justify-center rounded-xl text-muted-foreground hover:bg-sidebar-accent hover:text-foreground group-hover:flex"
           title="Add"
         >
           <Plus size={12} />
