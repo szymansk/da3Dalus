@@ -12,7 +12,7 @@ vi.mock("lucide-react", () => {
     React.createElement("span", props);
   return {
     ChevronDown: icon, ChevronRight: icon, Plus: icon, Trash2: icon,
-    Eye: icon, EyeOff: icon, Loader: icon, PanelLeftClose: icon,
+    Eye: icon, EyeOff: icon, Loader: icon, PanelLeftClose: icon, Pencil: icon,
   };
 });
 

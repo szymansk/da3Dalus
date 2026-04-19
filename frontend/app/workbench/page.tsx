@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { PanelLeftOpen, Maximize2, Minimize2 } from "lucide-react";
+import { PanelLeftOpen, Maximize2, Minimize2, X } from "lucide-react";
+import { PropertyForm } from "@/components/workbench/PropertyForm";
 import { AeroplaneTree } from "@/components/workbench/AeroplaneTree";
 import { WingOutlineViewer } from "@/components/workbench/WingOutlineViewer";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
@@ -20,7 +21,7 @@ export default function WorkbenchPage() {
 
   const [treeOpen, setTreeOpen] = useState(true);
   const [viewerMaximized, setViewerMaximized] = useState(false);
-  // Config modal removed — PropertyForm opens via tree node edit icon
+  const [configOpen, setConfigOpen] = useState(false);
 
   // Visibility: all wings/fuselages visible by default
   const [visibleWings, setVisibleWings] = useState<Set<string>>(new Set());
@@ -141,6 +142,7 @@ export default function WorkbenchPage() {
               isFuselageVisible={(fn) => effectiveVisibleFuselages.has(fn)}
               onToggleFuselagePreview={toggleFuselageVisibility}
               onCollapseTree={() => setTreeOpen(false)}
+              onNodeEdit={() => setConfigOpen(true)}
               onFuselageSaved={() => mutateFuselages()}
             />
           </div>
@@ -183,7 +185,31 @@ export default function WorkbenchPage() {
         </div>
       </div>
 
-      {/* Configuration modal removed — editing via tree node edit icons */}
+      {/* Configuration Modal — opens via pencil icon on segments/xsecs */}
+      {configOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={() => setConfigOpen(false)}
+        >
+          <div
+            className="flex max-h-[85vh] w-[480px] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
+                Configuration
+              </h2>
+              <button
+                onClick={() => setConfigOpen(false)}
+                className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <PropertyForm />
+          </div>
+        </div>
+      )}
     </>
   );
 }

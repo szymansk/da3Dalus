@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Trash2, Eye, EyeOff, Loader, PanelLeftClose } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2, Eye, EyeOff, Loader, PanelLeftClose, Pencil } from "lucide-react";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useWing } from "@/hooks/useWings";
 import type { XSec } from "@/hooks/useWings";
@@ -31,6 +31,7 @@ interface TreeNode {
   previewLoading?: boolean;
   onPreviewToggle?: () => void;
   onAdd?: () => void;
+  onEdit?: () => void;
 }
 
 // ── Build nodes for WingConfig mode (segments) ──────────────────
@@ -46,6 +47,7 @@ function buildSegmentNodes(
   onAddSegment: (wn: string) => void,
   onDeleteXsec: (wn: string, i: number) => void,
   onInsertXsec: (wn: string, i: number) => void,
+  onEditNode?: () => void,
 ): TreeNode[] {
   const nodes: TreeNode[] = [];
   const wingExpanded = expandedSet.has(`wing-${wingName}`);
@@ -110,6 +112,7 @@ function buildSegmentNodes(
       selected: isSelected,
       chip: chipLabel,
       onClick: () => { selectWing(wingName); selectXsec(i); },
+      onEdit: () => { selectWing(wingName); selectXsec(i); onEditNode?.(); },
       onDelete: () => {
         if (confirm(`Delete segment ${i}?`)) onDeleteXsec(wingName, i);
       },
@@ -163,6 +166,7 @@ function buildXsecNodes(
   selectWing: (n: string | null) => void,
   selectXsec: (i: number | null) => void,
   onDeleteXsec: (wn: string, i: number) => void,
+  onEditNode?: () => void,
 ): TreeNode[] {
   const nodes: TreeNode[] = [];
   const wingExpanded = expandedSet.has(`wing-${wingName}`);
@@ -195,6 +199,7 @@ function buildXsecNodes(
       selected: isSelected,
       chip: getChipLabel(xsec),
       onClick: () => { selectWing(wingName); selectXsec(i); },
+      onEdit: () => { selectWing(wingName); selectXsec(i); onEditNode?.(); },
       onDelete: () => {
         if (confirm(`Delete x_sec ${i}?`)) onDeleteXsec(wingName, i);
       },
@@ -429,8 +434,8 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
   if (rootExpanded) {
     for (const wn of wingNames) {
       const nodes = treeMode === "wingconfig"
-        ? buildSegmentNodes(wn, wing, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec, handleAddSegment, handleDeleteXsec, handleInsertXsec)
-        : buildXsecNodes(wn, wing, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec, handleDeleteXsec);
+        ? buildSegmentNodes(wn, wing, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec, handleAddSegment, handleDeleteXsec, handleInsertXsec, onNodeEdit)
+        : buildXsecNodes(wn, wing, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec, handleDeleteXsec, onNodeEdit);
       // Attach preview toggle to the wing root node
       if (nodes.length > 0 && onTogglePreview) {
         nodes[0].previewVisible = isWingVisible?.(wn) ?? false;
@@ -485,6 +490,11 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
               onClick: () => {
                 selectFuselage(fn);
                 selectFuselageXsec(i);
+              },
+              onEdit: () => {
+                selectFuselage(fn);
+                selectFuselageXsec(i);
+                onNodeEdit?.();
               },
               onDelete: () => handleDeleteFuselageXsec(fn, i),
             });
@@ -645,6 +655,16 @@ function TreeRow({ node, onToggle, onNodeEdit }: { node: TreeNode; onToggle: () 
       )}
 
       <span className="flex-1" />
+
+      {node.onEdit && (
+        <button
+          onClick={(e) => { e.stopPropagation(); node.onEdit?.(); }}
+          className="hidden h-5 w-5 items-center justify-center rounded-xl text-muted-foreground hover:bg-sidebar-accent hover:text-foreground group-hover:flex"
+          title="Edit"
+        >
+          <Pencil size={10} />
+        </button>
+      )}
 
       {node.onDelete && (
         <button

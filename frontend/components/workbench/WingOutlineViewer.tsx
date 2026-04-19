@@ -123,12 +123,12 @@ function lerpStation(a: XSec, b: XSec, t: number): { xyz_le: number[]; chord: nu
 type PlotlyData = any;
 
 const COLOR_WING = "#FF8400";
-const COLOR_ROOT_TIP = "#E5484D";
+const COLOR_BOUNDARY = "#FF8400";  // segment boundaries: orange, thick
 const COLOR_INTERP = "#FF840040";
 const COLOR_CAMBER = "#7A7B78";
 const COLOR_QC = "#30A46C";
 const COLOR_SPANWISE = "#FF840060";
-const COLOR_SELECTED = "#FFFFFF";
+const COLOR_SELECTED = "#E5484D";  // selected xsec: red
 const COLOR_TED = "#30A46C";
 
 async function buildAllWingTraces(
@@ -152,9 +152,9 @@ async function buildAllWingTraces(
     const xs = xsecs[i];
     const af = airfoils[i];
     const isSelected = selectedIdx === i;
-    const isRootOrTip = i === 0 || i === xsecs.length - 1;
-    const profileColor = isSelected ? COLOR_SELECTED : isRootOrTip ? COLOR_ROOT_TIP : COLOR_WING;
-    const profileWidth = isSelected ? 3 : isRootOrTip ? 2.5 : 1.5;
+    const isBoundary = i === 0 || i === xsecs.length - 1;
+    const profileColor = isSelected ? COLOR_SELECTED : isBoundary ? COLOR_BOUNDARY : COLOR_WING;
+    const profileWidth = isSelected ? 3.5 : isBoundary ? 2.5 : 1.2;
 
     if (af) {
       // Full airfoil contour
