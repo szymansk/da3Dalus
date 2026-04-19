@@ -15,7 +15,7 @@ import { useFuselage, type Fuselage } from "@/hooks/useFuselage";
 import { API_BASE } from "@/lib/fetcher";
 
 export default function WorkbenchPage() {
-  const { aeroplaneId, setAeroplaneId, selectedWing, selectedXsecIndex } = useAeroplaneContext();
+  const { aeroplaneId, setAeroplaneId, selectedWing, selectedXsecIndex, selectedFuselage, selectedFuselageXsecIndex } = useAeroplaneContext();
   const { aeroplanes, isLoading, createAeroplane } = useAeroplanes();
   const { wingNames } = useWings(aeroplaneId);
   const { fuselageNames, mutate: mutateFuselages } = useFuselages(aeroplaneId);
@@ -212,6 +212,8 @@ export default function WorkbenchPage() {
               visibleFuselages={effectiveVisibleFuselages}
               selectedWing={selectedWing}
               selectedXsecIndex={selectedXsecIndex}
+              selectedFuselage={selectedFuselage}
+              selectedFuselageXsecIndex={selectedFuselageXsecIndex}
             />
           </div>
         </div>

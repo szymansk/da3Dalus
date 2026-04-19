@@ -12,6 +12,8 @@ interface WingOutlineViewerProps {
   visibleFuselages: Set<string>;
   selectedXsecIndex?: number | null;
   selectedWing?: string | null;
+  selectedFuselage?: string | null;
+  selectedFuselageXsecIndex?: number | null;
 }
 
 // ── Airfoil coordinate cache ─────────────────────────────────────
@@ -381,7 +383,9 @@ async function buildAllWingTraces(
 }
 
 /** Build superellipse cross-section traces for a fuselage. */
-function buildFuselageTraces(fuselage: Fuselage, color: string) {
+const COLOR_FUSELAGE_HIGHLIGHT = "#FACC15"; // yellow for selected fuselage xsec
+
+function buildFuselageTraces(fuselage: Fuselage, color: string, selectedIdx: number | null = null) {
   const traces: PlotlyData[] = [];
   const xsecs = fuselage.x_secs;
   if (xsecs.length < 2) return traces;
@@ -396,7 +400,11 @@ function buildFuselageTraces(fuselage: Fuselage, color: string) {
 
   // Cross-section outlines
   const nPts = 32;
-  for (const xs of xsecs) {
+  for (let idx = 0; idx < xsecs.length; idx++) {
+    const xs = xsecs[idx];
+    const isSelected = selectedIdx === idx;
+    const xsecColor = isSelected ? COLOR_FUSELAGE_HIGHLIGHT : color;
+    const xsecWidth = isSelected ? 3 : 1.5;
     const cx: number[] = [], cy: number[] = [], cz: number[] = [];
     for (let j = 0; j <= nPts; j++) {
       const theta = (2 * Math.PI * j) / nPts;
@@ -408,7 +416,7 @@ function buildFuselageTraces(fuselage: Fuselage, color: string) {
       cy.push(xs.xyz[1] + r_y);
       cz.push(xs.xyz[2] + r_z);
     }
-    traces.push(scatter3d(cx, cy, cz, color, 1.5));
+    traces.push(scatter3d(cx, cy, cz, xsecColor, xsecWidth));
   }
 
   // Longitudinal lines (solid, along top/bottom/sides)
@@ -449,6 +457,7 @@ function scatter3d(
 export function WingOutlineViewer({
   wings, fuselages, visibleWings, visibleFuselages,
   selectedXsecIndex = null, selectedWing = null,
+  selectedFuselage = null, selectedFuselageXsecIndex = null,
 }: WingOutlineViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -477,7 +486,8 @@ export function WingOutlineViewer({
 
       for (const fuse of fuselages) {
         if (!visibleFuselages.has(fuse.name)) continue;
-        traces.push(...buildFuselageTraces(fuse, "#3B82F6"));
+        const fuseSelIdx = selectedFuselage === fuse.name ? selectedFuselageXsecIndex : null;
+        traces.push(...buildFuselageTraces(fuse, "#3B82F6", fuseSelIdx));
       }
 
       const layout = {
@@ -560,7 +570,7 @@ export function WingOutlineViewer({
         try { plotlyRef.current.purge(containerRef.current); } catch { /* ok */ }
       }
     };
-  }, [wings, fuselages, visibleWings, visibleFuselages, selectedXsecIndex, selectedWing]);
+  }, [wings, fuselages, visibleWings, visibleFuselages, selectedXsecIndex, selectedWing, selectedFuselage, selectedFuselageXsecIndex]);
 
   return (
     <div className="relative h-full w-full">
