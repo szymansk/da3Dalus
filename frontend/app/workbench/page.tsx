@@ -1,28 +1,103 @@
 "use client";
 
-import { useState } from "react";
-import { X } from "lucide-react";
-import { ViewerPanel } from "@/components/workbench/ViewerPanel";
+import { useState, useMemo } from "react";
+import { X, PanelLeftOpen, Maximize2, Minimize2 } from "lucide-react";
 import { PropertyForm } from "@/components/workbench/PropertyForm";
 import { AeroplaneTree } from "@/components/workbench/AeroplaneTree";
+import { WingOutlineViewer } from "@/components/workbench/WingOutlineViewer";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAeroplanes } from "@/hooks/useAeroplanes";
-import { useWings } from "@/hooks/useWings";
-import { usePreviewState } from "@/hooks/usePreviewState";
+import { useWings, useWing, type Wing } from "@/hooks/useWings";
 import { useFuselages } from "@/hooks/useFuselages";
+import { useFuselage, type Fuselage } from "@/hooks/useFuselage";
 
 export default function WorkbenchPage() {
   const { aeroplaneId, setAeroplaneId } = useAeroplaneContext();
   const { aeroplanes, isLoading, createAeroplane } = useAeroplanes();
   const { wingNames } = useWings(aeroplaneId);
   const { fuselageNames, mutate: mutateFuselages } = useFuselages(aeroplaneId);
-  const preview = usePreviewState(aeroplaneId);
   const aeroplaneName =
     aeroplanes.find((a) => a.id === aeroplaneId)?.name ?? "Aeroplane";
 
   const [treeOpen, setTreeOpen] = useState(true);
   const [viewerMaximized, setViewerMaximized] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
+
+  // Visibility: all wings/fuselages visible by default
+  const [visibleWings, setVisibleWings] = useState<Set<string>>(new Set());
+  const [visibleFuselages, setVisibleFuselages] = useState<Set<string>>(new Set());
+
+  // Auto-add new wings/fuselages to visible set
+  const effectiveVisibleWings = useMemo(() => {
+    const s = new Set(visibleWings);
+    for (const wn of wingNames) {
+      if (!visibleWings.has(wn) && !visibleWings.has(`_hidden_${wn}`)) s.add(wn);
+    }
+    return s;
+  }, [wingNames, visibleWings]);
+
+  const effectiveVisibleFuselages = useMemo(() => {
+    const s = new Set(visibleFuselages);
+    for (const fn of fuselageNames) {
+      if (!visibleFuselages.has(fn) && !visibleFuselages.has(`_hidden_${fn}`)) s.add(fn);
+    }
+    return s;
+  }, [fuselageNames, visibleFuselages]);
+
+  function toggleWingVisibility(name: string) {
+    setVisibleWings((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) {
+        next.delete(name);
+        next.add(`_hidden_${name}`);
+      } else {
+        next.add(name);
+        next.delete(`_hidden_${name}`);
+      }
+      return next;
+    });
+  }
+
+  function toggleAllWings(names: string[]) {
+    const allVisible = names.every((n) => effectiveVisibleWings.has(n));
+    setVisibleWings((prev) => {
+      const next = new Set(prev);
+      for (const n of names) {
+        if (allVisible) {
+          next.delete(n);
+          next.add(`_hidden_${n}`);
+        } else {
+          next.add(n);
+          next.delete(`_hidden_${n}`);
+        }
+      }
+      return next;
+    });
+  }
+
+  // Load wing/fuselage data for visible items
+  // Note: hooks can't be called conditionally, so we load the first wing/fuselage
+  // For multiple wings, we'd need a bulk hook — for now use the selected wing
+  const { wing: firstWing } = useWing(aeroplaneId, wingNames[0] ?? null);
+  const { wing: secondWing } = useWing(aeroplaneId, wingNames[1] ?? null);
+  const { wing: thirdWing } = useWing(aeroplaneId, wingNames[2] ?? null);
+  const { fuselage: firstFuselage } = useFuselage(aeroplaneId, fuselageNames[0] ?? null);
+  const { fuselage: secondFuselage } = useFuselage(aeroplaneId, fuselageNames[1] ?? null);
+
+  const allWings: Wing[] = useMemo(() => {
+    const wings: Wing[] = [];
+    if (firstWing) wings.push(firstWing);
+    if (secondWing) wings.push(secondWing);
+    if (thirdWing) wings.push(thirdWing);
+    return wings;
+  }, [firstWing, secondWing, thirdWing]);
+
+  const allFuselages: Fuselage[] = useMemo(() => {
+    const fuses: Fuselage[] = [];
+    if (firstFuselage) fuses.push(firstFuselage);
+    if (secondFuselage) fuses.push(secondFuselage);
+    return fuses;
+  }, [firstFuselage, secondFuselage]);
 
   if (!aeroplaneId) {
     return <AeroplaneSelector
@@ -47,10 +122,9 @@ export default function WorkbenchPage() {
               wingNames={wingNames}
               fuselageNames={fuselageNames}
               aeroplaneName={aeroplaneName}
-              isWingVisible={preview.isWingVisible}
-              isWingLoading={(wn) => preview.previews[wn]?.loading ?? false}
-              onTogglePreview={preview.toggleWing}
-              onToggleAllPreview={preview.toggleAllWings}
+              isWingVisible={(wn) => effectiveVisibleWings.has(wn)}
+              onTogglePreview={toggleWingVisibility}
+              onToggleAllPreview={toggleAllWings}
               onCollapseTree={() => setTreeOpen(false)}
               onNodeEdit={() => setConfigOpen(true)}
               onFuselageSaved={() => mutateFuselages()}
@@ -58,17 +132,38 @@ export default function WorkbenchPage() {
           </div>
         )}
 
-        {/* Viewer Panel — fills remaining space */}
-        <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-          <ViewerPanel
-            visibleParts={preview.visibleParts}
-            isAnyLoading={preview.isAnyLoading}
-            loadingWing={preview.loadingWing}
-            isMaximized={viewerMaximized}
-            onToggleMaximize={() => setViewerMaximized((m) => !m)}
-            isTreeCollapsed={!treeOpen}
-            onExpandTree={() => setTreeOpen(true)}
-          />
+        {/* Plotly Wireframe Viewer — fills remaining space */}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border">
+          <div className="flex shrink-0 items-center gap-2 border-b border-border bg-card px-4 py-3">
+            {!treeOpen && (
+              <button
+                onClick={() => setTreeOpen(true)}
+                className="flex size-6 items-center justify-center rounded-xl text-muted-foreground hover:bg-sidebar-accent"
+                title="Show tree panel"
+              >
+                <PanelLeftOpen size={14} />
+              </button>
+            )}
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
+              Preview
+            </span>
+            <div className="flex-1" />
+            <button
+              onClick={() => setViewerMaximized((m) => !m)}
+              className="flex size-8 items-center justify-center rounded-xl border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent"
+              title={viewerMaximized ? "Restore panels" : "Maximize viewer"}
+            >
+              {viewerMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
+          </div>
+          <div className="min-h-0 flex-1">
+            <WingOutlineViewer
+              wings={allWings}
+              fuselages={allFuselages}
+              visibleWings={effectiveVisibleWings}
+              visibleFuselages={effectiveVisibleFuselages}
+            />
+          </div>
         </div>
       </div>
 
@@ -93,7 +188,7 @@ export default function WorkbenchPage() {
                 <X size={14} />
               </button>
             </div>
-            <PropertyForm onGeometryChanged={preview.invalidateWing} />
+            <PropertyForm />
           </div>
         </div>
       )}
