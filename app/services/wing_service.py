@@ -737,9 +737,14 @@ def delete_cross_section(
 
 def _recompute_spare_vectors(wing: WingModel) -> None:
     """Rebuild WingConfiguration to compute spare_vector/spare_origin for all spars,
-    then persist the computed values back to the DB spar records."""
+    then persist the computed values back to the DB spar records.
+
+    Uses ``scale=1.0`` intentionally — the DB stores metres and the frontend
+    consumes metres, so the computed origin coordinates must stay in metres.
+    (The CAD call-site uses ``scale=1000.0`` because CadQuery works in mm.)
+    """
     try:
-        wing_config = wingModelToWingConfig(wing)
+        wing_config = wingModelToWingConfig(wing, scale=1.0)
 
         for seg_idx, segment in enumerate(wing_config.segments or []):
             if seg_idx >= len(wing.x_secs) - 1:
@@ -759,8 +764,6 @@ def _recompute_spare_vectors(wing: WingModel) -> None:
                     db_spare.spare_origin = [float(v) for v in orig]
     except ImportError:
         logger.debug("CadQuery not available — skipping spare vector computation")
-    except Exception:
-        logger.warning("Failed to recompute spare vectors", exc_info=True)
 
 
 def get_spares(

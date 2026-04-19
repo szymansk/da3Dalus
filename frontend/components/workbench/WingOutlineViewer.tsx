@@ -365,7 +365,7 @@ async function buildAllWingTraces(
     const lower = interpSurface(afA.lower_x, afA.lower_y, afB.lower_x, afB.lower_y);
     const camber = interpSurface(afA.camber_x, afA.camber_y, afB.camber_x, afB.camber_y);
     return {
-      x: upper.x, y: upper.y,
+      x: upper.x, y: upper.y, // required by AirfoilCoords interface
       upper_x: upper.x, upper_y: upper.y,
       lower_x: lower.x, lower_y: lower.y,
       camber_x: camber.x, camber_y: camber.y,

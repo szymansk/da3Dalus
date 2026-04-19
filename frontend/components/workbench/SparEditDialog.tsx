@@ -80,8 +80,12 @@ export function SparEditDialog({
       setSparMode("standard");
       setSparStart("0");
       setSparLength("");
-      setVecX(""); setVecY(""); setVecZ("");
-      setOrigX(""); setOrigY(""); setOrigZ("");
+      setVecX("");
+      setVecY("");
+      setVecZ("");
+      setOrigX("");
+      setOrigY("");
+      setOrigZ("");
     }
     setError(null);
   }, [initialData, open]);
