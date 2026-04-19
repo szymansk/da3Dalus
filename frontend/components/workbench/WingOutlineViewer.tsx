@@ -290,23 +290,10 @@ function buildFuselageTraces(fuselage: Fuselage, color: string) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Plotly = any;
 
-const CAMERA_VIEWS: Record<string, { eye: { x: number; y: number; z: number }; up: { x: number; y: number; z: number } }> = {
-  top:   { eye: { x: 0, y: 0, z: 2 },  up: { x: -1, y: 0, z: 0 } },
-  front: { eye: { x: -2, y: 0, z: 0 }, up: { x: 0, y: 0, z: 1 } },
-  side:  { eye: { x: 0, y: -2, z: 0 }, up: { x: 0, y: 0, z: 1 } },
-};
-
 export function WingOutlineViewer({ wings, fuselages, visibleWings, visibleFuselages }: WingOutlineViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const plotlyRef = useRef<Plotly>(null);
   const [loading, setLoading] = useState(true);
-
-  function setCamera(view: keyof typeof CAMERA_VIEWS) {
-    if (!containerRef.current || !plotlyRef.current) return;
-    plotlyRef.current.relayout(containerRef.current, {
-      "scene.camera": CAMERA_VIEWS[view],
-    });
-  }
 
   useEffect(() => {
     let disposed = false;
@@ -344,8 +331,37 @@ export function WingOutlineViewer({ wings, fuselages, visibleWings, visibleFusel
           aspectmode: "data",
           bgcolor: "#17171A",
         },
-        margin: { l: 0, r: 0, t: 0, b: 0 },
+        margin: { l: 0, r: 0, t: 32, b: 0 },
         showlegend: false,
+        updatemenus: [{
+          type: "buttons",
+          direction: "left",
+          x: 1.0,
+          y: 1.05,
+          xanchor: "right",
+          yanchor: "bottom",
+          bgcolor: "#1A1A1A",
+          bordercolor: "#2E2E2E",
+          borderwidth: 1,
+          font: { color: "#B8B9B6", size: 10, family: "JetBrains Mono, monospace" },
+          buttons: [
+            {
+              label: "Top",
+              method: "relayout",
+              args: [{ "scene.camera": { eye: { x: 0, y: 0, z: 2 }, up: { x: -1, y: 0, z: 0 } } }],
+            },
+            {
+              label: "Front",
+              method: "relayout",
+              args: [{ "scene.camera": { eye: { x: -2, y: 0, z: 0 }, up: { x: 0, y: 0, z: 1 } } }],
+            },
+            {
+              label: "Side",
+              method: "relayout",
+              args: [{ "scene.camera": { eye: { x: 0, y: -2, z: 0 }, up: { x: 0, y: 0, z: 1 } } }],
+            },
+          ],
+        }],
       };
 
       const config = { displayModeBar: false, responsive: true };
@@ -373,18 +389,6 @@ export function WingOutlineViewer({ wings, fuselages, visibleWings, visibleFusel
           </span>
         </div>
       )}
-      {/* Camera view buttons */}
-      <div className="absolute right-3 top-3 z-20 flex gap-1">
-        {(["top", "front", "side"] as const).map((view) => (
-          <button
-            key={view}
-            onClick={() => setCamera(view)}
-            className="rounded-lg border border-border bg-card/80 px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground backdrop-blur-sm hover:bg-sidebar-accent hover:text-foreground"
-          >
-            {view.charAt(0).toUpperCase() + view.slice(1)}
-          </button>
-        ))}
-      </div>
       <div ref={containerRef} className="h-full w-full" />
     </div>
   );
