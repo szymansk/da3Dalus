@@ -226,6 +226,8 @@ export function ImportFuselageDialog({
   const [slices, setSlices] = useState(50);
   const [axis, setAxis] = useState("auto");
   const [scaleFactor, setScaleFactor] = useState(1.0);
+  const [scaleInput, setScaleInput] = useState("1");
+  const [flipX, setFlipX] = useState(false);
   const [fuselageName, setFuselageName] = useState(initialName ?? "Imported Fuselage");
   const [viewerMaximized, setViewerMaximized] = useState(false);
   const [xsecsMaximized, setXsecsMaximized] = useState(false);
@@ -261,8 +263,9 @@ export function ImportFuselageDialog({
         return res.json();
       })
       .then((data) => {
+        const xFlip = flipX ? -1 : 1;
         const newXsecs: XSec[] = (data.fuselage?.x_secs ?? []).map((xs: any) => ({
-          xyz: xs.xyz.map((v: number) => v * scaleFactor),
+          xyz: xs.xyz.map((v: number, idx: number) => v * scaleFactor * (idx === 0 ? xFlip : 1)),
           a: xs.a * scaleFactor,
           b: xs.b * scaleFactor,
           n: xs.n,
@@ -337,7 +340,7 @@ export function ImportFuselageDialog({
       { xyz: [0.4, 0, 0], a: 0.01, b: 0.01, n: 2.0 },
     ].map(xs => ({
       ...xs,
-      xyz: xs.xyz.map(v => v * scaleFactor),
+      xyz: xs.xyz.map((v, idx) => v * scaleFactor * (idx === 0 && flipX ? -1 : 1)),
       a: xs.a * scaleFactor,
       b: xs.b * scaleFactor,
     }));
@@ -354,6 +357,8 @@ export function ImportFuselageDialog({
     setSlices(50);
     setAxis("auto");
     setScaleFactor(1.0);
+    setScaleInput("1");
+    setFlipX(false);
     setFuselageName(initialName ?? "Imported Fuselage");
     setXsecs(initialXsecs ?? INITIAL_XSECS);
     setSelectedXsec(initialSelectedIndex ?? (editMode ? 0 : null));
@@ -457,29 +462,42 @@ export function ImportFuselageDialog({
                   <label className="text-[11px] text-muted-foreground">Scale Factor</label>
                   <div className="flex items-center gap-2">
                     <input
-                      type="number"
-                      value={scaleFactor}
-                      step="any"
-                      onChange={(e) => setScaleFactor(parseFloat(e.target.value) || 1)}
-                      className="w-24 rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+                      type="text"
+                      inputMode="decimal"
+                      value={scaleInput}
+                      onChange={(e) => {
+                        setScaleInput(e.target.value);
+                        const v = parseFloat(e.target.value);
+                        if (!isNaN(v) && v > 0) setScaleFactor(v);
+                      }}
+                      onBlur={() => setScaleInput(String(scaleFactor))}
+                      className="w-24 rounded-xl border border-border bg-input px-3 py-2 font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground"
                     />
                     <button
-                      onClick={() => setScaleFactor(0.001)}
+                      onClick={() => { setScaleFactor(0.001); setScaleInput("0.001"); }}
                       className={`rounded-full px-2 py-1 text-[10px] ${scaleFactor === 0.001 ? "bg-primary text-primary-foreground" : "bg-card-muted text-muted-foreground hover:text-foreground"}`}
                     >
                       mm→m
                     </button>
                     <button
-                      onClick={() => setScaleFactor(0.01)}
+                      onClick={() => { setScaleFactor(0.01); setScaleInput("0.01"); }}
                       className={`rounded-full px-2 py-1 text-[10px] ${scaleFactor === 0.01 ? "bg-primary text-primary-foreground" : "bg-card-muted text-muted-foreground hover:text-foreground"}`}
                     >
                       cm→m
                     </button>
                     <button
-                      onClick={() => setScaleFactor(1)}
+                      onClick={() => { setScaleFactor(1); setScaleInput("1"); }}
                       className={`rounded-full px-2 py-1 text-[10px] ${scaleFactor === 1 ? "bg-primary text-primary-foreground" : "bg-card-muted text-muted-foreground hover:text-foreground"}`}
                     >
                       1:1
+                    </button>
+                    <span className="mx-1 text-[9px] text-subtle-foreground">|</span>
+                    <button
+                      onClick={() => setFlipX((v) => !v)}
+                      className={`rounded-full px-2 py-1 text-[10px] ${flipX ? "bg-primary text-primary-foreground" : "bg-card-muted text-muted-foreground hover:text-foreground"}`}
+                      title="Flip X axis (reverse nose direction)"
+                    >
+                      Flip X
                     </button>
                   </div>
                 </div>
