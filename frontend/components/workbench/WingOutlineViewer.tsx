@@ -170,7 +170,7 @@ async function buildAllWingTraces(
     if (!afA || !afB) continue;
 
     // If selectedIdx is one of the two bounding stations, highlight interpolated too
-    const segSelected = selectedIdx === i || selectedIdx === i + 1;
+    const segSelected = selectedIdx === i;
 
     for (let k = 1; k <= nInterp; k++) {
       const t = k / (nInterp + 1);
@@ -221,7 +221,7 @@ async function buildAllWingTraces(
 
   // ── Leading + trailing edge lines (per segment for highlighting) ──
   for (let i = 0; i < xsecs.length - 1; i++) {
-    const segSelected = selectedIdx === i || selectedIdx === i + 1;
+    const segSelected = selectedIdx === i;
     const color = segSelected ? COLOR_SELECTED : COLOR_AIRFOIL;
     const width = segSelected ? 3 : 2;
 
