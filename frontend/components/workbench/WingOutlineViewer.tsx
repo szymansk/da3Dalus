@@ -302,102 +302,229 @@ async function buildAllWingTraces(
   const COLOR_SPAR = "#6E56CF"; // purple
   const nCirclePts = 16;
 
+  /** Draw a spar cross-section (circle or rectangle) at a 3D center point. */
+  function drawSparCrossSection(
+    center: { x: number[]; y: number[]; z: number[] },
+    sparW: number, sparH: number, twist: number, color: string,
+  ) {
+    if (sparW <= 0 || sparH <= 0) return;
+    const cx: number[] = [], cy: number[] = [], cz: number[] = [];
+    const isCircle = Math.abs(sparW - sparH) < 0.0001;
+    if (isCircle) {
+      const r = sparW / 2;
+      for (let j = 0; j <= nCirclePts; j++) {
+        const theta = (2 * Math.PI * j) / nCirclePts;
+        cx.push(center.x[0] + r * Math.cos(theta) * Math.cos(twist * Math.PI / 180));
+        cy.push(center.y[0]);
+        cz.push(center.z[0] + r * Math.sin(theta));
+      }
+    } else {
+      const hw = sparW / 2, hh = sparH / 2;
+      const twistRad = (twist ?? 0) * Math.PI / 180;
+      const cosT = Math.cos(twistRad);
+      const corners = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh], [-hw, -hh]];
+      for (const [dx, dz] of corners) {
+        cx.push(center.x[0] + dx * cosT);
+        cy.push(center.y[0]);
+        cz.push(center.z[0] + dz);
+      }
+    }
+    traces.push(scatter3d(cx, cy, cz, color, 1.5));
+  }
+
+  /** Interpolate xsec properties at spanwise fraction t (0=root, 1=tip). */
+  function lerpXSec(rootIdx: number, tipIdx: number, t: number) {
+    const r = xsecs[rootIdx], tip = xsecs[tipIdx];
+    return {
+      chord: r.chord * (1 - t) + tip.chord * t,
+      twist: r.twist * (1 - t) + tip.twist * t,
+      xyz_le: r.xyz_le.map((v, k) => v * (1 - t) + tip.xyz_le[k] * t),
+      dihedral: dihedrals[rootIdx] * (1 - t) + dihedrals[tipIdx] * t,
+    };
+  }
+
+  /** Interpolate airfoil coordinates at spanwise fraction t. */
+  function lerpAf(rootIdx: number, tipIdx: number, t: number): AirfoilCoords | null {
+    const afA = airfoils[rootIdx], afB = airfoils[tipIdx];
+    if (!afA && !afB) return null;
+    if (!afA) return afB;
+    if (!afB) return afA;
+    const nPts = 60;
+    const interpSurface = (
+      axArr: number[], ayArr: number[], bxArr: number[], byArr: number[],
+    ) => {
+      const xs: number[] = [], ys: number[] = [];
+      for (let j = 0; j <= nPts; j++) {
+        const xNorm = j / nPts;
+        xs.push(xNorm);
+        ys.push(lerpLookup(axArr, ayArr, xNorm) * (1 - t) + lerpLookup(bxArr, byArr, xNorm) * t);
+      }
+      return { x: xs, y: ys };
+    };
+    const upper = interpSurface(afA.upper_x, afA.upper_y, afB.upper_x, afB.upper_y);
+    const lower = interpSurface(afA.lower_x, afA.lower_y, afB.lower_x, afB.lower_y);
+    const camber = interpSurface(afA.camber_x, afA.camber_y, afB.camber_x, afB.camber_y);
+    return {
+      x: upper.x, y: upper.y,
+      upper_x: upper.x, upper_y: upper.y,
+      lower_x: lower.x, lower_y: lower.y,
+      camber_x: camber.x, camber_y: camber.y,
+    };
+  }
+
   for (let i = 0; i < xsecs.length; i++) {
     const spars = xsecs[i].spare_list as Array<Record<string, unknown>> | undefined;
     if (!spars || spars.length === 0) continue;
-    const af = airfoils[i];
-    if (!af) console.warn(`[Spar] xsec ${i} has ${spars.length} spars but no airfoil data`);
+    if (i >= xsecs.length - 1) continue; // terminal xsec has no outgoing segment
     const sparColor = selectedIdx === i ? COLOR_SELECTED : COLOR_SPAR;
+
+    // Segment span length in meters (euclidean distance between LE points)
+    const dx = xsecs[i + 1].xyz_le[0] - xsecs[i].xyz_le[0];
+    const dy = xsecs[i + 1].xyz_le[1] - xsecs[i].xyz_le[1];
+    const dz = xsecs[i + 1].xyz_le[2] - xsecs[i].xyz_le[2];
+    const segmentSpan = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
     for (const spar of spars) {
       const posFactor = spar.spare_position_factor as number | undefined;
       if (posFactor == null) continue;
       const sparW = (spar.spare_support_dimension_width as number ?? 0) * 0.001; // mm → m
       const sparH = (spar.spare_support_dimension_height as number ?? 0) * 0.001;
+      const sparStartMm = spar.spare_start as number ?? 0;
+      const sparLengthMm = spar.spare_length as number | undefined;
 
-      if (af) {
-        // Vertical line from upper to lower surface
-        const upperY = lerpLookup(af.upper_x, af.upper_y, posFactor);
-        const lowerY = lerpLookup(af.lower_x, af.lower_y, posFactor);
-        const top = transformProfile([posFactor], [upperY], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
-        const bot = transformProfile([posFactor], [lowerY], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
+      const tStart = segmentSpan > 0 ? (sparStartMm * 0.001) / segmentSpan : 0;
+      const tEnd = (sparLengthMm != null && segmentSpan > 0)
+        ? Math.min((sparStartMm + sparLengthMm) * 0.001 / segmentSpan, 1)
+        : 1;
+
+      // Interpolated station at spar start
+      const startStation = lerpXSec(i, i + 1, tStart);
+      const startAf = lerpAf(i, i + 1, tStart);
+      // Interpolated station at spar end
+      const endStation = lerpXSec(i, i + 1, tEnd);
+      const endAf = lerpAf(i, i + 1, tEnd);
+
+      // -- Compute spar center points --
+      // Prefer precise spare_origin + spare_vector if available, else fall back to camber line
+      const sparOrigin = spar.spare_origin as number[] | null | undefined;
+      const sparVector = spar.spare_vector as number[] | null | undefined;
+      const hasPrecise = sparOrigin && sparVector && sparOrigin.length === 3 && sparVector.length === 3;
+
+      let startCenter: { x: number[]; y: number[]; z: number[] } | null = null;
+      let endCenter: { x: number[]; y: number[]; z: number[] } | null = null;
+
+      if (hasPrecise) {
+        const startDist = sparStartMm * 0.001;
+        const endDist = (sparLengthMm != null ? (sparStartMm + sparLengthMm) * 0.001 : segmentSpan);
+        startCenter = {
+          x: [sparOrigin[0] + sparVector[0] * startDist],
+          y: [sparOrigin[1] + sparVector[1] * startDist],
+          z: [sparOrigin[2] + sparVector[2] * startDist],
+        };
+        endCenter = {
+          x: [sparOrigin[0] + sparVector[0] * endDist],
+          y: [sparOrigin[1] + sparVector[1] * endDist],
+          z: [sparOrigin[2] + sparVector[2] * endDist],
+        };
+      } else {
+        // Camber-line fallback
+        if (startAf) {
+          const camberY = lerpLookup(startAf.camber_x, startAf.camber_y, posFactor);
+          startCenter = transformProfile([posFactor], [camberY], startStation.chord, startStation.twist, startStation.xyz_le, startStation.dihedral);
+        }
+        if (endAf) {
+          const camberY = lerpLookup(endAf.camber_x, endAf.camber_y, posFactor);
+          endCenter = transformProfile([posFactor], [camberY], endStation.chord, endStation.twist, endStation.xyz_le, endStation.dihedral);
+        }
+      }
+
+      // -- Vertical spar line at start --
+      if (startAf) {
+        const upperY = lerpLookup(startAf.upper_x, startAf.upper_y, posFactor);
+        const lowerY = lerpLookup(startAf.lower_x, startAf.lower_y, posFactor);
+        const top = transformProfile([posFactor], [upperY], startStation.chord, startStation.twist, startStation.xyz_le, startStation.dihedral);
+        const bot = transformProfile([posFactor], [lowerY], startStation.chord, startStation.twist, startStation.xyz_le, startStation.dihedral);
         traces.push(scatter3d(
           [top.x[0], bot.x[0]], [top.y[0], bot.y[0]], [top.z[0], bot.z[0]],
           sparColor, 2,
         ));
-
-        // Cross-section outline (circle or rectangle) at camber position
-        if (sparW > 0 && sparH > 0) {
-          const camberY = lerpLookup(af.camber_x, af.camber_y, posFactor);
-          const center = transformProfile([posFactor], [camberY], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
-          const cx: number[] = [], cy: number[] = [], cz: number[] = [];
-          const isCircle = Math.abs(sparW - sparH) < 0.0001;
-
-          if (isCircle) {
-            const r = sparW / 2;
-            for (let j = 0; j <= nCirclePts; j++) {
-              const theta = (2 * Math.PI * j) / nCirclePts;
-              cx.push(center.x[0] + r * Math.cos(theta) * Math.cos(xsecs[i].twist * Math.PI / 180));
-              cy.push(center.y[0]);
-              cz.push(center.z[0] + r * Math.sin(theta));
-            }
-          } else {
-            // Rectangle: 4 corners in the xz plane at the station
-            const hw = sparW / 2, hh = sparH / 2;
-            const twistRad = (xsecs[i].twist ?? 0) * Math.PI / 180;
-            const cosT = Math.cos(twistRad), sinT = Math.sin(twistRad);
-            const corners = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh], [-hw, -hh]];
-            for (const [dx, dz] of corners) {
-              cx.push(center.x[0] + dx * cosT);
-              cy.push(center.y[0]);
-              cz.push(center.z[0] + dz);
-            }
-          }
-          traces.push(scatter3d(cx, cy, cz, sparColor, 1.5));
-        }
       } else {
-        // Fallback: simple vertical line at chord fraction (no airfoil data)
-        const pt = transformProfile([posFactor], [0], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
-        const ptUp = transformProfile([posFactor], [0.05], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
-        const ptDn = transformProfile([posFactor], [-0.05], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
+        const ptUp = transformProfile([posFactor], [0.05], startStation.chord, startStation.twist, startStation.xyz_le, startStation.dihedral);
+        const ptDn = transformProfile([posFactor], [-0.05], startStation.chord, startStation.twist, startStation.xyz_le, startStation.dihedral);
         traces.push(scatter3d(
           [ptUp.x[0], ptDn.x[0]], [ptUp.y[0], ptDn.y[0]], [ptUp.z[0], ptDn.z[0]],
           sparColor, 2,
         ));
       }
-    }
+      // Cross-section at start
+      if (startCenter) {
+        drawSparCrossSection(startCenter, sparW, sparH, startStation.twist, sparColor);
+      }
 
-    // Spanwise spar connections: upper + lower surface lines to next xsec
-    if (i < xsecs.length - 1) {
-      const nextSpars = xsecs[i + 1].spare_list as Array<Record<string, unknown>> | undefined;
-      const nextAf = airfoils[i + 1];
-      if (nextSpars && nextSpars.length > 0 && nextAf) {
-        const spanColor = selectedIdx === i ? COLOR_SELECTED : COLOR_SPAR;
+      // -- Vertical spar line at end --
+      if (endAf) {
+        const upperY = lerpLookup(endAf.upper_x, endAf.upper_y, posFactor);
+        const lowerY = lerpLookup(endAf.lower_x, endAf.lower_y, posFactor);
+        const top = transformProfile([posFactor], [upperY], endStation.chord, endStation.twist, endStation.xyz_le, endStation.dihedral);
+        const bot = transformProfile([posFactor], [lowerY], endStation.chord, endStation.twist, endStation.xyz_le, endStation.dihedral);
+        traces.push(scatter3d(
+          [top.x[0], bot.x[0]], [top.y[0], bot.y[0]], [top.z[0], bot.z[0]],
+          sparColor, 2,
+        ));
+      } else {
+        const ptUp = transformProfile([posFactor], [0.05], endStation.chord, endStation.twist, endStation.xyz_le, endStation.dihedral);
+        const ptDn = transformProfile([posFactor], [-0.05], endStation.chord, endStation.twist, endStation.xyz_le, endStation.dihedral);
+        traces.push(scatter3d(
+          [ptUp.x[0], ptDn.x[0]], [ptUp.y[0], ptDn.y[0]], [ptUp.z[0], ptDn.z[0]],
+          sparColor, 2,
+        ));
+      }
+      // Cross-section at end
+      if (endCenter) {
+        drawSparCrossSection(endCenter, sparW, sparH, endStation.twist, sparColor);
+      }
 
-        for (const spar of spars) {
-          const posFactor = spar.spare_position_factor as number | undefined;
-          if (posFactor == null) continue;
-          const match = nextSpars.find((s) => s.spare_position_factor === posFactor);
-          if (!match || !af) continue;
+      // -- Spanwise connection lines (upper + lower surface) from start to end --
+      if (startAf && endAf) {
+        const upperY1 = lerpLookup(startAf.upper_x, startAf.upper_y, posFactor);
+        const upperY2 = lerpLookup(endAf.upper_x, endAf.upper_y, posFactor);
+        const up1 = transformProfile([posFactor], [upperY1], startStation.chord, startStation.twist, startStation.xyz_le, startStation.dihedral);
+        const up2 = transformProfile([posFactor], [upperY2], endStation.chord, endStation.twist, endStation.xyz_le, endStation.dihedral);
+        traces.push(scatter3d(
+          [up1.x[0], up2.x[0]], [up1.y[0], up2.y[0]], [up1.z[0], up2.z[0]],
+          sparColor, 1.5,
+        ));
 
-          // Upper surface line
-          const upperY1 = lerpLookup(af.upper_x, af.upper_y, posFactor);
-          const upperY2 = lerpLookup(nextAf.upper_x, nextAf.upper_y, posFactor);
-          const up1 = transformProfile([posFactor], [upperY1], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
-          const up2 = transformProfile([posFactor], [upperY2], xsecs[i + 1].chord, xsecs[i + 1].twist, xsecs[i + 1].xyz_le, dihedrals[i + 1]);
+        const lowerY1 = lerpLookup(startAf.lower_x, startAf.lower_y, posFactor);
+        const lowerY2 = lerpLookup(endAf.lower_x, endAf.lower_y, posFactor);
+        const lo1 = transformProfile([posFactor], [lowerY1], startStation.chord, startStation.twist, startStation.xyz_le, startStation.dihedral);
+        const lo2 = transformProfile([posFactor], [lowerY2], endStation.chord, endStation.twist, endStation.xyz_le, endStation.dihedral);
+        traces.push(scatter3d(
+          [lo1.x[0], lo2.x[0]], [lo1.y[0], lo2.y[0]], [lo1.z[0], lo2.z[0]],
+          sparColor, 1.5,
+        ));
+      }
+
+      // -- Dashed edge lines along spar corners/extremes from start to end --
+      if (startCenter && endCenter && sparW > 0 && sparH > 0) {
+        const isCircle = Math.abs(sparW - sparH) < 0.0001;
+        // offsets: [chordwise, vertical] from center
+        const edgeOffsets: [number, number][] = isCircle
+          ? [[0, sparW / 2], [0, -sparW / 2], [sparW / 2, 0], [-sparW / 2, 0]]  // top, bottom, left, right
+          : [[sparW / 2, sparH / 2], [-sparW / 2, sparH / 2], [-sparW / 2, -sparH / 2], [sparW / 2, -sparH / 2]]; // 4 corners
+
+        for (const [dChord, dVert] of edgeOffsets) {
+          const tw1 = (startStation.twist ?? 0) * Math.PI / 180;
+          const tw2 = (endStation.twist ?? 0) * Math.PI / 180;
+          const e1x = startCenter.x[0] + dChord * Math.cos(tw1);
+          const e1y = startCenter.y[0];
+          const e1z = startCenter.z[0] + dVert;
+          const e2x = endCenter.x[0] + dChord * Math.cos(tw2);
+          const e2y = endCenter.y[0];
+          const e2z = endCenter.z[0] + dVert;
           traces.push(scatter3d(
-            [up1.x[0], up2.x[0]], [up1.y[0], up2.y[0]], [up1.z[0], up2.z[0]],
-            spanColor, 1.5,
-          ));
-
-          // Lower surface line
-          const lowerY1 = lerpLookup(af.lower_x, af.lower_y, posFactor);
-          const lowerY2 = lerpLookup(nextAf.lower_x, nextAf.lower_y, posFactor);
-          const lo1 = transformProfile([posFactor], [lowerY1], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
-          const lo2 = transformProfile([posFactor], [lowerY2], xsecs[i + 1].chord, xsecs[i + 1].twist, xsecs[i + 1].xyz_le, dihedrals[i + 1]);
-          traces.push(scatter3d(
-            [lo1.x[0], lo2.x[0]], [lo1.y[0], lo2.y[0]], [lo1.z[0], lo2.z[0]],
-            spanColor, 1.5,
+            [e1x, e2x], [e1y, e2y], [e1z, e2z],
+            sparColor, 1, "dash",
           ));
         }
       }

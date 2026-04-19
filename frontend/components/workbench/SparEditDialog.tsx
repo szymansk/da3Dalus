@@ -20,6 +20,8 @@ interface SparEditDialogProps {
     spare_mode: string;
     spare_start: number;
     spare_length?: number;
+    spare_vector?: number[] | null;
+    spare_origin?: number[] | null;
   };
   onSaved: () => void;
 }
@@ -48,6 +50,12 @@ export function SparEditDialog({
   const [sparMode, setSparMode] = useState("standard");
   const [sparStart, setSparStart] = useState("0");
   const [sparLength, setSparLength] = useState("");
+  const [vecX, setVecX] = useState("");
+  const [vecY, setVecY] = useState("");
+  const [vecZ, setVecZ] = useState("");
+  const [origX, setOrigX] = useState("");
+  const [origY, setOrigY] = useState("");
+  const [origZ, setOrigZ] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,6 +67,12 @@ export function SparEditDialog({
       setSparMode(initialData.spare_mode ?? "standard");
       setSparStart(String(initialData.spare_start ?? 0));
       setSparLength(initialData.spare_length != null ? String(initialData.spare_length) : "");
+      setVecX(initialData.spare_vector?.[0] != null ? String(initialData.spare_vector[0]) : "");
+      setVecY(initialData.spare_vector?.[1] != null ? String(initialData.spare_vector[1]) : "");
+      setVecZ(initialData.spare_vector?.[2] != null ? String(initialData.spare_vector[2]) : "");
+      setOrigX(initialData.spare_origin?.[0] != null ? String(initialData.spare_origin[0]) : "");
+      setOrigY(initialData.spare_origin?.[1] != null ? String(initialData.spare_origin[1]) : "");
+      setOrigZ(initialData.spare_origin?.[2] != null ? String(initialData.spare_origin[2]) : "");
     } else {
       setPosFactor("25");
       setWidth("4.42");
@@ -66,6 +80,8 @@ export function SparEditDialog({
       setSparMode("standard");
       setSparStart("0");
       setSparLength("");
+      setVecX(""); setVecY(""); setVecZ("");
+      setOrigX(""); setOrigY(""); setOrigZ("");
     }
     setError(null);
   }, [initialData, open]);
@@ -85,6 +101,16 @@ export function SparEditDialog({
       };
       if (sparLength.trim()) {
         payload.spare_length = num(sparLength);
+      }
+      if (vecX.trim() && vecY.trim() && vecZ.trim()) {
+        payload.spare_vector = [num(vecX), num(vecY), num(vecZ)];
+      } else {
+        payload.spare_vector = null;
+      }
+      if (origX.trim() && origY.trim() && origZ.trim()) {
+        payload.spare_origin = [num(origX), num(origY), num(origZ)];
+      } else {
+        payload.spare_origin = null;
       }
 
       const url = isNew
@@ -179,6 +205,18 @@ export function SparEditDialog({
           <div className="flex gap-3">
             <DialogField label="Start" value={sparStart} suffix="mm" onChange={setSparStart} />
             <DialogField label="Length (opt.)" value={sparLength} suffix="mm" onChange={setSparLength} />
+          </div>
+          <label className="pt-1 text-[11px] text-muted-foreground">Vector (opt.)</label>
+          <div className="flex gap-3">
+            <DialogField label="X" value={vecX} onChange={setVecX} />
+            <DialogField label="Y" value={vecY} onChange={setVecY} />
+            <DialogField label="Z" value={vecZ} onChange={setVecZ} />
+          </div>
+          <label className="pt-1 text-[11px] text-muted-foreground">Origin (opt.)</label>
+          <div className="flex gap-3">
+            <DialogField label="X" value={origX} onChange={setOrigX} />
+            <DialogField label="Y" value={origY} onChange={setOrigY} />
+            <DialogField label="Z" value={origZ} onChange={setOrigZ} />
           </div>
         </div>
 

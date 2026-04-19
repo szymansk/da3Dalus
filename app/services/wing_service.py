@@ -735,6 +735,34 @@ def delete_cross_section(
         raise InternalError(message=f"Database error: {e}")
 
 
+def _recompute_spare_vectors(wing: WingModel) -> None:
+    """Rebuild WingConfiguration to compute spare_vector/spare_origin for all spars,
+    then persist the computed values back to the DB spar records."""
+    try:
+        wing_config = wingModelToWingConfig(wing)
+
+        for seg_idx, segment in enumerate(wing_config.segments or []):
+            if seg_idx >= len(wing.x_secs) - 1:
+                break
+            db_xsec = wing.x_secs[seg_idx]
+            if db_xsec.detail is None:
+                continue
+            for spare_idx, spare in enumerate(segment.spare_list or []):
+                if spare_idx >= len(db_xsec.detail.spares):
+                    break
+                db_spare = db_xsec.detail.spares[spare_idx]
+                if spare.spare_vector is not None:
+                    vec = spare.spare_vector.toTuple() if hasattr(spare.spare_vector, "toTuple") else spare.spare_vector
+                    db_spare.spare_vector = [float(v) for v in vec]
+                if spare.spare_origin is not None:
+                    orig = spare.spare_origin.toTuple() if hasattr(spare.spare_origin, "toTuple") else spare.spare_origin
+                    db_spare.spare_origin = [float(v) for v in orig]
+    except ImportError:
+        logger.debug("CadQuery not available — skipping spare vector computation")
+    except Exception:
+        logger.warning("Failed to recompute spare vectors", exc_info=True)
+
+
 def get_spares(
     db: Session,
     aeroplane_uuid,
@@ -784,6 +812,7 @@ def create_spare(
             )
             detail.spares.append(spare)
             db.add(spare)
+            _recompute_spare_vectors(wing)
             aeroplane.updated_at = datetime.now()
     except (NotFoundError, ValidationError):
         raise
@@ -815,6 +844,7 @@ def update_spare(
             spare = detail.spares[spar_index]
             for key, value in spare_data.model_dump().items():
                 setattr(spare, key, value)
+            _recompute_spare_vectors(wing)
             aeroplane.updated_at = datetime.now()
     except (NotFoundError, ValidationError):
         raise
@@ -848,6 +878,8 @@ def delete_spare(
             for i, s in enumerate(detail.spares):
                 if s is not spare:
                     s.sort_index = i if i < spar_index else i - 1
+            db.flush()  # ensure delete is visible before recompute
+            _recompute_spare_vectors(wing)
             aeroplane.updated_at = datetime.now()
     except (NotFoundError, ValidationError):
         raise
