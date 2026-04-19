@@ -138,6 +138,10 @@ async def update_aeroplane_fuselage(
             plane.fuselages.remove(fuselage)
             plane.fuselages.append(new_fuselage)
             plane.updated_at = datetime.now()
+
+            # Auto-sync: ensure group exists in component tree (gh#108)
+            from app.services.component_tree_service import sync_group_for_fuselage
+            sync_group_for_fuselage(db, str(aeroplane_id), fuselage_name)
         return OperationStatusResponse(status="ok", operation="update_aeroplane_fuselage")
     except HTTPException:
         raise
