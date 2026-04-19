@@ -600,6 +600,33 @@ async def get_airfoil_geometry_stats(airfoil_name: str) -> AirfoilGeometryStatsR
         ) from exc
 
 
+@router.get(
+    "/airfoils/{airfoil_name}/coordinates",
+    status_code=status.HTTP_200_OK,
+    operation_id="get_airfoil_coordinates",
+    tags=["airfoils"],
+    summary="Get airfoil profile coordinates as x/y arrays.",
+)
+async def get_airfoil_coordinates(airfoil_name: str):
+    """Return the parsed Selig-format coordinates as a continuous contour."""
+    try:
+        _file_name, file_path = _resolve_airfoil_file(airfoil_name)
+        upper, lower = _parse_selig_dat(file_path)
+        # Concatenate: upper (TE→LE) + lower (LE→TE) = closed contour
+        contour = np.concatenate([upper, lower[1:]], axis=0)
+        return {
+            "x": contour[:, 0].tolist(),
+            "y": contour[:, 1].tolist(),
+        }
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error: {exc}",
+        ) from exc
+
+
 @router.post(
     "/airfoils/{airfoil_name}/neuralfoil/analysis",
     response_model=AirfoilNeuralFoilAnalysisResponse,

@@ -3,12 +3,84 @@
 import { useEffect, useRef, useState } from "react";
 import type { Wing } from "@/hooks/useWings";
 import type { Fuselage } from "@/hooks/useFuselage";
+import { API_BASE } from "@/lib/fetcher";
 
 interface WingOutlineViewerProps {
   wings: Wing[];
   fuselages: Fuselage[];
   visibleWings: Set<string>;
   visibleFuselages: Set<string>;
+}
+
+/** Cache for airfoil coordinate data */
+const airfoilCache: Record<string, { x: number[]; y: number[] } | null> = {};
+
+async function fetchAirfoilCoords(airfoilName: string): Promise<{ x: number[]; y: number[] } | null> {
+  // Normalize: extract filename stem from paths like "/path/to/mh32.dat"
+  const stem = airfoilName.replace(/\.dat$/i, "").split("/").pop() ?? airfoilName;
+  if (stem in airfoilCache) return airfoilCache[stem];
+  try {
+    const res = await fetch(`${API_BASE}/airfoils/${encodeURIComponent(stem)}/coordinates`);
+    if (!res.ok) { airfoilCache[stem] = null; return null; }
+    const data = await res.json();
+    airfoilCache[stem] = data;
+    return data;
+  } catch {
+    airfoilCache[stem] = null;
+    return null;
+  }
+}
+
+/** Build 3D airfoil contour traces at each cross-section station */
+async function buildAirfoilTraces(wing: Wing, color: string): Promise<Plotly.Data[]> {
+  const traces: Plotly.Data[] = [];
+
+  for (const xsec of wing.x_secs) {
+    const coords = await fetchAirfoilCoords(xsec.airfoil);
+    if (!coords) continue;
+
+    const chord = xsec.chord;
+    const [leX, leY, leZ] = xsec.xyz_le;
+    const twistRad = (xsec.twist ?? 0) * Math.PI / 180;
+    const cosT = Math.cos(twistRad);
+    const sinT = Math.sin(twistRad);
+
+    // Transform airfoil coordinates: scale by chord, rotate by twist around LE, translate to LE position
+    const ax: number[] = [];
+    const ay: number[] = [];
+    const az: number[] = [];
+
+    for (let i = 0; i < coords.x.length; i++) {
+      const px = coords.x[i] * chord;  // chordwise (x)
+      const pz = coords.y[i] * chord;  // thickness (z)
+      // Apply twist rotation around LE (in xz plane)
+      const rx = px * cosT + pz * sinT;
+      const rz = -px * sinT + pz * cosT;
+      ax.push(leX + rx);
+      ay.push(leY);
+      az.push(leZ + rz);
+    }
+
+    traces.push({
+      type: "scatter3d",
+      mode: "lines",
+      x: ax, y: ay, z: az,
+      line: { color, width: 1.5 },
+      showlegend: false,
+      hoverinfo: "skip",
+    });
+  }
+
+  // Mirror if symmetric
+  if (wing.symmetric) {
+    const mirrorTraces = traces.map((t) => ({
+      ...t,
+      y: (t.y as number[]).map((v: number) => -v),
+    }));
+    traces.push(...mirrorTraces);
+  }
+
+  return traces;
 }
 
 /** Build leading/trailing edge + cross-section traces for a wing. */
@@ -239,6 +311,9 @@ export function WingOutlineViewer({ wings, fuselages, visibleWings, visibleFusel
       for (const wing of wings) {
         if (!visibleWings.has(wing.name)) continue;
         traces.push(...buildWingTraces(wing, "#FF8400"));
+        // Fetch and render airfoil contours at each xsec station
+        const airfoilTraces = await buildAirfoilTraces(wing, "#FF840080");
+        traces.push(...airfoilTraces);
       }
 
       for (const fuse of fuselages) {
