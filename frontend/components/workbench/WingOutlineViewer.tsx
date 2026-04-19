@@ -44,22 +44,30 @@ async function fetchAirfoilCoords(airfoilName: string): Promise<AirfoilCoords | 
 
 // ── Geometry helpers ─────────────────────────────────────────────
 
-/** Transform normalized airfoil coordinates to 3D position at a station. */
+/** Transform normalized airfoil coordinates to 3D position at a station.
+ *  Applies twist (rotation around Y in XZ plane) and dihedral (rotation around X in YZ plane). */
 function transformProfile(
   profileX: number[], profileY: number[],
   chord: number, twist: number, xyz_le: number[],
+  dihedralRad = 0,
 ): { x: number[]; y: number[]; z: number[] } {
   const twistRad = (twist ?? 0) * Math.PI / 180;
   const cosT = Math.cos(twistRad);
   const sinT = Math.sin(twistRad);
+  const cosD = Math.cos(dihedralRad);
+  const sinD = Math.sin(dihedralRad);
   const [leX, leY, leZ] = xyz_le;
   const ax: number[] = [], ay: number[] = [], az: number[] = [];
   for (let i = 0; i < profileX.length; i++) {
     const px = profileX[i] * chord;
     const pz = profileY[i] * chord;
-    ax.push(leX + px * cosT + pz * sinT);
-    ay.push(leY);
-    az.push(leZ - px * sinT + pz * cosT);
+    // Apply twist (rotate in XZ plane around LE)
+    const rx = px * cosT + pz * sinT;
+    const rz = -px * sinT + pz * cosT;
+    // Apply dihedral (rotate in YZ plane around LE)
+    ax.push(leX + rx);
+    ay.push(leY + rz * (-sinD));
+    az.push(leZ + rz * cosD);
   }
   return { x: ax, y: ay, z: az };
 }
@@ -148,6 +156,20 @@ async function buildAllWingTraces(
 
   const nInterp = 3; // interpolated profiles between stations
 
+  // Compute dihedral angle at each station from span direction (YZ plane)
+  const dihedrals: number[] = [];
+  for (let i = 0; i < xsecs.length; i++) {
+    let dy: number, dz: number;
+    if (i < xsecs.length - 1) {
+      dy = xsecs[i + 1].xyz_le[1] - xsecs[i].xyz_le[1];
+      dz = xsecs[i + 1].xyz_le[2] - xsecs[i].xyz_le[2];
+    } else {
+      dy = xsecs[i].xyz_le[1] - xsecs[i - 1].xyz_le[1];
+      dz = xsecs[i].xyz_le[2] - xsecs[i - 1].xyz_le[2];
+    }
+    dihedrals.push(Math.atan2(dz, dy));
+  }
+
   // ── Per-station: airfoil contour + camber line ──
   for (let i = 0; i < xsecs.length; i++) {
     const xs = xsecs[i];
@@ -155,12 +177,13 @@ async function buildAllWingTraces(
     const isSelected = selectedIdx === i;
     const color = isSelected ? COLOR_SELECTED : COLOR_AIRFOIL;
     const width = isSelected ? 3.5 : 2;
+    const dih = dihedrals[i];
 
     if (af) {
-      const p = transformProfile(af.x, af.y, xs.chord, xs.twist, xs.xyz_le);
+      const p = transformProfile(af.x, af.y, xs.chord, xs.twist, xs.xyz_le, dih);
       traces.push(scatter3d(p.x, p.y, p.z, color, width));
 
-      const c = transformProfile(af.camber_x, af.camber_y, xs.chord, xs.twist, xs.xyz_le);
+      const c = transformProfile(af.camber_x, af.camber_y, xs.chord, xs.twist, xs.xyz_le, dih);
       traces.push(scatter3d(c.x, c.y, c.z, isSelected ? COLOR_SELECTED : COLOR_CAMBER, 1, "dot"));
     }
   }
@@ -177,8 +200,9 @@ async function buildAllWingTraces(
     for (let k = 1; k <= nInterp; k++) {
       const t = k / (nInterp + 1);
       const station = lerpStation(xsecs[i], xsecs[i + 1], t);
+      const interpDih = dihedrals[i] + (dihedrals[i + 1] - dihedrals[i]) * t;
       const profile = lerpProfile(afA, afB, t);
-      const p = transformProfile(profile.x, profile.y, station.chord, station.twist, station.xyz_le);
+      const p = transformProfile(profile.x, profile.y, station.chord, station.twist, station.xyz_le, interpDih);
       traces.push(scatter3d(p.x, p.y, p.z, segSelected ? COLOR_SELECTED : COLOR_INTERP, segSelected ? 1.5 : 1));
     }
   }
@@ -196,21 +220,21 @@ async function buildAllWingTraces(
     if (af) {
       // Quarter chord point on camber
       const camberY = lerpLookup(af.camber_x, af.camber_y, qcFrac);
-      const qc = transformProfile([qcFrac], [camberY], xs.chord, xs.twist, xs.xyz_le);
+      const qc = transformProfile([qcFrac], [camberY], xs.chord, xs.twist, xs.xyz_le, dihedrals[i]);
       qcX.push(qc.x[0]); qcY.push(qc.y[0]); qcZ.push(qc.z[0]);
 
       // Upper surface at quarter chord
       const upperY = lerpLookup(af.upper_x, af.upper_y, qcFrac);
-      const up = transformProfile([qcFrac], [upperY], xs.chord, xs.twist, xs.xyz_le);
+      const up = transformProfile([qcFrac], [upperY], xs.chord, xs.twist, xs.xyz_le, dihedrals[i]);
       upperQcX.push(up.x[0]); upperQcY.push(up.y[0]); upperQcZ.push(up.z[0]);
 
       // Lower surface at quarter chord
       const lowerY = lerpLookup(af.lower_x, af.lower_y, qcFrac);
-      const lo = transformProfile([qcFrac], [lowerY], xs.chord, xs.twist, xs.xyz_le);
+      const lo = transformProfile([qcFrac], [lowerY], xs.chord, xs.twist, xs.xyz_le, dihedrals[i]);
       lowerQcX.push(lo.x[0]); lowerQcY.push(lo.y[0]); lowerQcZ.push(lo.z[0]);
     } else {
       // Fallback: geometric quarter chord
-      const qcPt = transformProfile([qcFrac], [0], xs.chord, xs.twist, xs.xyz_le);
+      const qcPt = transformProfile([qcFrac], [0], xs.chord, xs.twist, xs.xyz_le, dihedrals[i]);
       qcX.push(qcPt.x[0]); qcY.push(qcPt.y[0]); qcZ.push(qcPt.z[0]);
       upperQcX.push(qcPt.x[0]); upperQcY.push(qcPt.y[0]); upperQcZ.push(qcPt.z[0]);
       lowerQcX.push(qcPt.x[0]); lowerQcY.push(qcPt.y[0]); lowerQcZ.push(qcPt.z[0]);
@@ -236,8 +260,8 @@ async function buildAllWingTraces(
     ));
 
     // TE segment
-    const te1 = transformProfile([1], [0], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
-    const te2 = transformProfile([1], [0], xsecs[i + 1].chord, xsecs[i + 1].twist, xsecs[i + 1].xyz_le);
+    const te1 = transformProfile([1], [0], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
+    const te2 = transformProfile([1], [0], xsecs[i + 1].chord, xsecs[i + 1].twist, xsecs[i + 1].xyz_le, dihedrals[i + 1]);
     traces.push(scatter3d(
       [te1.x[0], te2.x[0]],
       [te1.y[0], te2.y[0]],
@@ -259,10 +283,10 @@ async function buildAllWingTraces(
       ? ((nextTed as Record<string, unknown>).rel_chord_tip as number ?? relChord)
       : relChord;
 
-    const h1 = transformProfile([1 - relChord], [0], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
-    const h2 = transformProfile([1 - nextRelChord], [0], xsecs[nextI].chord, xsecs[nextI].twist, xsecs[nextI].xyz_le);
-    const te1 = transformProfile([1], [0], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
-    const te2 = transformProfile([1], [0], xsecs[nextI].chord, xsecs[nextI].twist, xsecs[nextI].xyz_le);
+    const h1 = transformProfile([1 - relChord], [0], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
+    const h2 = transformProfile([1 - nextRelChord], [0], xsecs[nextI].chord, xsecs[nextI].twist, xsecs[nextI].xyz_le, dihedrals[nextI]);
+    const te1 = transformProfile([1], [0], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
+    const te2 = transformProfile([1], [0], xsecs[nextI].chord, xsecs[nextI].twist, xsecs[nextI].xyz_le, dihedrals[nextI]);
 
     // Hinge line
     traces.push(scatter3d([h1.x[0], h2.x[0]], [h1.y[0], h2.y[0]], [h1.z[0], h2.z[0]], COLOR_TED, 3));
@@ -295,8 +319,8 @@ async function buildAllWingTraces(
         // Vertical line from upper to lower surface
         const upperY = lerpLookup(af.upper_x, af.upper_y, posFactor);
         const lowerY = lerpLookup(af.lower_x, af.lower_y, posFactor);
-        const top = transformProfile([posFactor], [upperY], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
-        const bot = transformProfile([posFactor], [lowerY], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
+        const top = transformProfile([posFactor], [upperY], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
+        const bot = transformProfile([posFactor], [lowerY], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
         traces.push(scatter3d(
           [top.x[0], bot.x[0]], [top.y[0], bot.y[0]], [top.z[0], bot.z[0]],
           sparColor, 2,
@@ -305,7 +329,7 @@ async function buildAllWingTraces(
         // Cross-section outline (circle or rectangle) at camber position
         if (sparW > 0 && sparH > 0) {
           const camberY = lerpLookup(af.camber_x, af.camber_y, posFactor);
-          const center = transformProfile([posFactor], [camberY], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
+          const center = transformProfile([posFactor], [camberY], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
           const cx: number[] = [], cy: number[] = [], cz: number[] = [];
           const isCircle = Math.abs(sparW - sparH) < 0.0001;
 
@@ -350,8 +374,8 @@ async function buildAllWingTraces(
         // Upper surface line
         const upperY1 = lerpLookup(af.upper_x, af.upper_y, posFactor);
         const upperY2 = lerpLookup(nextAf.upper_x, nextAf.upper_y, posFactor);
-        const up1 = transformProfile([posFactor], [upperY1], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
-        const up2 = transformProfile([posFactor], [upperY2], xsecs[i + 1].chord, xsecs[i + 1].twist, xsecs[i + 1].xyz_le);
+        const up1 = transformProfile([posFactor], [upperY1], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
+        const up2 = transformProfile([posFactor], [upperY2], xsecs[i + 1].chord, xsecs[i + 1].twist, xsecs[i + 1].xyz_le, dihedrals[i + 1]);
         traces.push(scatter3d(
           [up1.x[0], up2.x[0]], [up1.y[0], up2.y[0]], [up1.z[0], up2.z[0]],
           spanColor, 1.5,
@@ -360,8 +384,8 @@ async function buildAllWingTraces(
         // Lower surface line
         const lowerY1 = lerpLookup(af.lower_x, af.lower_y, posFactor);
         const lowerY2 = lerpLookup(nextAf.lower_x, nextAf.lower_y, posFactor);
-        const lo1 = transformProfile([posFactor], [lowerY1], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
-        const lo2 = transformProfile([posFactor], [lowerY2], xsecs[i + 1].chord, xsecs[i + 1].twist, xsecs[i + 1].xyz_le);
+        const lo1 = transformProfile([posFactor], [lowerY1], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
+        const lo2 = transformProfile([posFactor], [lowerY2], xsecs[i + 1].chord, xsecs[i + 1].twist, xsecs[i + 1].xyz_le, dihedrals[i + 1]);
         traces.push(scatter3d(
           [lo1.x[0], lo2.x[0]], [lo1.y[0], lo2.y[0]], [lo1.z[0], lo2.z[0]],
           spanColor, 1.5,
