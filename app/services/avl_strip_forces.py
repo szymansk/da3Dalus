@@ -7,7 +7,6 @@ import re
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +87,7 @@ def parse_strip_forces_output(stdout: str) -> list[dict]:
             values = stripped.split()
             if len(values) >= len(_STRIP_COLUMNS):
                 row = {}
-                for col_name, val_str in zip(_STRIP_COLUMNS, values, strict=False):
+                for col_name, val_str in zip(_STRIP_COLUMNS, values, ):
                     row[col_name] = int(val_str) if col_name == "j" else float(val_str)
                 current_surface["strips"].append(row)
             continue
@@ -111,17 +110,7 @@ if HAS_AEROSANDBOX:
         output file for the parent's parser.
         """
 
-        def _default_keystroke_file_contents(self) -> List[str]:
-            """Return parent keystrokes with an ``fs`` marker appended.
-
-            The ``fs`` entry signals that :meth:`run` should inject the
-            strip-forces command into the execution sequence.
-            """
-            ks = super()._default_keystroke_file_contents()
-            ks.append("fs")
-            return ks
-
-        def run(self, run_command: str = None) -> dict:
+        def run(self) -> dict:
             """Run AVL with strip-force capture.
 
             Builds the input file via the inherited :meth:`write_avl`, then
@@ -144,13 +133,7 @@ if HAS_AEROSANDBOX:
                 output_filename = "output.txt"
                 self.write_avl(directory / airplane_file)
 
-                # Build setup keystrokes, removing the "fs" marker we added
-                ks = self._default_keystroke_file_contents()
-                if run_command is not None:
-                    ks.append(run_command)
-                ks = [k for k in ks if k != "fs"]
-
-                # Append execution sequence with strip-force capture
+                ks = super()._default_keystroke_file_contents()
                 ks += [
                     "x",                     # execute analysis
                     "st",                    # stability output ...
@@ -172,9 +155,17 @@ if HAS_AEROSANDBOX:
                     stderr=subprocess.PIPE,
                     cwd=str(directory),
                 )
-                stdout_bytes, _ = proc.communicate(
-                    input=input_text.encode(), timeout=self.timeout,
-                )
+                try:
+                    stdout_bytes, _ = proc.communicate(
+                        input=input_text.encode(), timeout=self.timeout,
+                    )
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.communicate()
+                    raise RuntimeError(
+                        f"AVL timed out after {self.timeout}s. "
+                        "Try increasing the timeout parameter."
+                    )
                 stdout_text = stdout_bytes.decode(errors="replace")
 
                 output_path = directory / output_filename

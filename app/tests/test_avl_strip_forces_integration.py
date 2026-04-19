@@ -1,6 +1,6 @@
 """Integration test for AVL strip-force extraction.
 
-Requires the AVL binary at exports/avl and CadQuery.
+Requires the AVL binary at exports/avl.
 """
 import pytest
 from pathlib import Path
