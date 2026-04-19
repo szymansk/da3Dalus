@@ -219,21 +219,30 @@ async function buildAllWingTraces(
   traces.push(scatter3d(upperQcX, upperQcY, upperQcZ, COLOR_SPANWISE, 1.5)); // upper
   traces.push(scatter3d(lowerQcX, lowerQcY, lowerQcZ, COLOR_SPANWISE, 1.5)); // lower
 
-  // ── Leading + trailing edge lines ──
-  const leX = xsecs.map((xs) => xs.xyz_le[0]);
-  const leY = xsecs.map((xs) => xs.xyz_le[1]);
-  const leZ = xsecs.map((xs) => xs.xyz_le[2]);
-  traces.push(scatter3d(leX, leY, leZ, COLOR_AIRFOIL, 2));
+  // ── Leading + trailing edge lines (per segment for highlighting) ──
+  for (let i = 0; i < xsecs.length - 1; i++) {
+    const segSelected = selectedIdx === i || selectedIdx === i + 1;
+    const color = segSelected ? COLOR_SELECTED : COLOR_AIRFOIL;
+    const width = segSelected ? 3 : 2;
 
-  const tePoints = xsecs.map((xs) =>
-    transformProfile([1], [0], xs.chord, xs.twist, xs.xyz_le),
-  );
-  traces.push(scatter3d(
-    tePoints.map((p) => p.x[0]),
-    tePoints.map((p) => p.y[0]),
-    tePoints.map((p) => p.z[0]),
-    COLOR_AIRFOIL, 2,
-  ));
+    // LE segment
+    traces.push(scatter3d(
+      [xsecs[i].xyz_le[0], xsecs[i + 1].xyz_le[0]],
+      [xsecs[i].xyz_le[1], xsecs[i + 1].xyz_le[1]],
+      [xsecs[i].xyz_le[2], xsecs[i + 1].xyz_le[2]],
+      color, width,
+    ));
+
+    // TE segment
+    const te1 = transformProfile([1], [0], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
+    const te2 = transformProfile([1], [0], xsecs[i + 1].chord, xsecs[i + 1].twist, xsecs[i + 1].xyz_le);
+    traces.push(scatter3d(
+      [te1.x[0], te2.x[0]],
+      [te1.y[0], te2.y[0]],
+      [te1.z[0], te2.z[0]],
+      color, width,
+    ));
+  }
 
   // ── TED outlines ──
   for (let i = 0; i < xsecs.length; i++) {
