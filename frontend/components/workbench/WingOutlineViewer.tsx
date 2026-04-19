@@ -417,6 +417,29 @@ export function WingOutlineViewer({
               args: [{ "scene.camera": { eye: { x: 0, y: -2, z: 0 }, up: { x: 0, y: 0, z: 1 } } }],
             },
           ],
+        }, {
+          type: "buttons",
+          direction: "left",
+          x: 0.0,
+          y: 1.05,
+          xanchor: "left",
+          yanchor: "bottom",
+          bgcolor: "#1A1A1A",
+          bordercolor: "#2E2E2E",
+          borderwidth: 1,
+          font: { color: "#B8B9B6", size: 10, family: "JetBrains Mono, monospace" },
+          buttons: [
+            {
+              label: "Perspective",
+              method: "relayout",
+              args: [{ "scene.camera.projection": { type: "perspective" } }],
+            },
+            {
+              label: "Ortho",
+              method: "relayout",
+              args: [{ "scene.camera.projection": { type: "orthographic" } }],
+            },
+          ],
         }],
       };
 
