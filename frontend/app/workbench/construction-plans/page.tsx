@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { Hammer, Plus, Trash2, Play, Loader2, BookTemplate, Copy } from "lucide-react";
+import { Hammer, Plus, Trash2, Play, Loader2, BookTemplate, Copy, X, Maximize2, Minimize2 } from "lucide-react";
+import { CadViewer } from "@/components/workbench/CadViewer";
 import { WorkbenchTwoPanel } from "@/components/workbench/WorkbenchTwoPanel";
 import { PlanTree, type PlanStepNode } from "@/components/workbench/PlanTree";
 import { CreatorGallery } from "@/components/workbench/CreatorGallery";
@@ -57,6 +58,11 @@ export default function ConstructionPlansPage() {
   const [executeResult, setExecuteResult] = useState<ExecutionResult | null>(null);
   const [executeDialogOpen, setExecuteDialogOpen] = useState(false);
   const [executeAeroplaneId, setExecuteAeroplaneId] = useState<string>("");
+
+  // CadViewer modal state
+  const [cadViewerOpen, setCadViewerOpen] = useState(false);
+  const [cadViewerFullscreen, setCadViewerFullscreen] = useState(false);
+  const [cadViewerData, setCadViewerData] = useState<Record<string, unknown> | null>(null);
 
   // ── Helpers ─────────────────────────────────────────────────────
 
@@ -330,6 +336,11 @@ export default function ConstructionPlansPage() {
     try {
       const result = await executePlan(executeAeroplaneId, selectedPlanId);
       setExecuteResult(result);
+      // Open CadViewer modal if tessellation data is available
+      if (result.status === "success" && result.tessellation) {
+        setCadViewerData(result.tessellation);
+        setCadViewerOpen(true);
+      }
     } catch (err) {
       setExecuteResult({
         status: "error",
@@ -337,6 +348,7 @@ export default function ConstructionPlansPage() {
         export_paths: [],
         error: err instanceof Error ? err.message : "Execution failed",
         duration_ms: 0,
+        tessellation: null,
       });
     } finally {
       setExecuting(false);
@@ -778,6 +790,49 @@ export default function ConstructionPlansPage() {
                   </>
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CadViewer Modal — shows tessellated geometry after Execute */}
+      {cadViewerOpen && cadViewerData && (
+        <div
+          className={`fixed inset-0 z-50 flex items-center justify-center ${cadViewerFullscreen ? "" : "bg-black/60"}`}
+          onClick={() => { setCadViewerOpen(false); setCadViewerFullscreen(false); }}
+        >
+          <div
+            className={`flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl ${
+              cadViewerFullscreen ? "h-full w-full rounded-none border-0" : "h-[80vh] w-[80vw]"
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
+              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
+                Execution Result
+              </span>
+              {executeResult && (
+                <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
+                  {executeResult.shape_keys.length} shapes · {executeResult.duration_ms}ms
+                </span>
+              )}
+              <div className="flex-1" />
+              <button
+                onClick={() => setCadViewerFullscreen((v) => !v)}
+                className="flex size-7 items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-sidebar-accent"
+                title={cadViewerFullscreen ? "Exit fullscreen" : "Fullscreen"}
+              >
+                {cadViewerFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+              </button>
+              <button
+                onClick={() => { setCadViewerOpen(false); setCadViewerFullscreen(false); }}
+                className="flex size-7 items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-sidebar-accent"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1">
+              <CadViewer parts={[cadViewerData]} />
             </div>
           </div>
         </div>
