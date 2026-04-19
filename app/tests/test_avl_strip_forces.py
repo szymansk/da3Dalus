@@ -82,3 +82,40 @@ class TestParseStripForcesOutput:
     def test_output_without_strip_section(self):
         result = parse_strip_forces_output("Some random AVL output\nwithout strip data")
         assert result == []
+
+
+class TestAVLWithStripForcesKeystrokes:
+    def test_keystrokes_contain_fs_command(self):
+        """The extended keystroke sequence must include the FS command."""
+        from app.services.avl_strip_forces import AVLWithStripForces
+        import aerosandbox as asb
+
+        airplane = asb.Airplane(
+            name="test",
+            wings=[asb.Wing(name="W", symmetric=True, xsecs=[
+                asb.WingXSec(xyz_le=[0, 0, 0], chord=0.3, airfoil=asb.Airfoil("naca0012")),
+                asb.WingXSec(xyz_le=[0, 0.5, 0], chord=0.2, airfoil=asb.Airfoil("naca0012")),
+            ])],
+        )
+        op = asb.OperatingPoint(velocity=20, alpha=5)
+        avl = AVLWithStripForces(airplane=airplane, op_point=op)
+        ks = avl._default_keystroke_file_contents()
+        assert "fs" in ks, "FS command must be in keystroke sequence"
+
+    def test_keystrokes_preserve_parent_commands(self):
+        """All parent keystroke commands must still be present."""
+        from app.services.avl_strip_forces import AVLWithStripForces
+        import aerosandbox as asb
+
+        airplane = asb.Airplane(
+            name="test",
+            wings=[asb.Wing(name="W", symmetric=True, xsecs=[
+                asb.WingXSec(xyz_le=[0, 0, 0], chord=0.3, airfoil=asb.Airfoil("naca0012")),
+                asb.WingXSec(xyz_le=[0, 0.5, 0], chord=0.2, airfoil=asb.Airfoil("naca0012")),
+            ])],
+        )
+        op = asb.OperatingPoint(velocity=20, alpha=5)
+        avl = AVLWithStripForces(airplane=airplane, op_point=op)
+        ks = avl._default_keystroke_file_contents()
+        assert "plop" in ks
+        assert "oper" in ks
