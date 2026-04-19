@@ -143,6 +143,7 @@ const COLOR_TED = "#30A46C";
 async function buildAllWingTraces(
   wing: Wing,
   selectedIdx: number | null,
+  showQC = false,
 ): Promise<PlotlyData[]> {
   const traces: PlotlyData[] = [];
   const xsecs = wing.x_secs;
@@ -208,42 +209,40 @@ async function buildAllWingTraces(
   }
 
   // ── Spanwise lines: quarter chord (camber-to-camber), upper, lower ──
-  const qcX: number[] = [], qcY: number[] = [], qcZ: number[] = [];
-  const upperQcX: number[] = [], upperQcY: number[] = [], upperQcZ: number[] = [];
-  const lowerQcX: number[] = [], lowerQcY: number[] = [], lowerQcZ: number[] = [];
+  if (showQC) {
+    const qcX: number[] = [], qcY: number[] = [], qcZ: number[] = [];
+    const upperQcX: number[] = [], upperQcY: number[] = [], upperQcZ: number[] = [];
+    const lowerQcX: number[] = [], lowerQcY: number[] = [], lowerQcZ: number[] = [];
 
-  for (let i = 0; i < xsecs.length; i++) {
-    const xs = xsecs[i];
-    const af = airfoils[i];
-    const qcFrac = 0.25;
+    for (let i = 0; i < xsecs.length; i++) {
+      const xs = xsecs[i];
+      const af = airfoils[i];
+      const qcFrac = 0.25;
 
-    if (af) {
-      // Quarter chord point on camber
-      const camberY = lerpLookup(af.camber_x, af.camber_y, qcFrac);
-      const qc = transformProfile([qcFrac], [camberY], xs.chord, xs.twist, xs.xyz_le, dihedrals[i]);
-      qcX.push(qc.x[0]); qcY.push(qc.y[0]); qcZ.push(qc.z[0]);
+      if (af) {
+        const camberY = lerpLookup(af.camber_x, af.camber_y, qcFrac);
+        const qc = transformProfile([qcFrac], [camberY], xs.chord, xs.twist, xs.xyz_le, dihedrals[i]);
+        qcX.push(qc.x[0]); qcY.push(qc.y[0]); qcZ.push(qc.z[0]);
 
-      // Upper surface at quarter chord
-      const upperY = lerpLookup(af.upper_x, af.upper_y, qcFrac);
-      const up = transformProfile([qcFrac], [upperY], xs.chord, xs.twist, xs.xyz_le, dihedrals[i]);
-      upperQcX.push(up.x[0]); upperQcY.push(up.y[0]); upperQcZ.push(up.z[0]);
+        const upperY = lerpLookup(af.upper_x, af.upper_y, qcFrac);
+        const up = transformProfile([qcFrac], [upperY], xs.chord, xs.twist, xs.xyz_le, dihedrals[i]);
+        upperQcX.push(up.x[0]); upperQcY.push(up.y[0]); upperQcZ.push(up.z[0]);
 
-      // Lower surface at quarter chord
-      const lowerY = lerpLookup(af.lower_x, af.lower_y, qcFrac);
-      const lo = transformProfile([qcFrac], [lowerY], xs.chord, xs.twist, xs.xyz_le, dihedrals[i]);
-      lowerQcX.push(lo.x[0]); lowerQcY.push(lo.y[0]); lowerQcZ.push(lo.z[0]);
-    } else {
-      // Fallback: geometric quarter chord
-      const qcPt = transformProfile([qcFrac], [0], xs.chord, xs.twist, xs.xyz_le, dihedrals[i]);
-      qcX.push(qcPt.x[0]); qcY.push(qcPt.y[0]); qcZ.push(qcPt.z[0]);
-      upperQcX.push(qcPt.x[0]); upperQcY.push(qcPt.y[0]); upperQcZ.push(qcPt.z[0]);
-      lowerQcX.push(qcPt.x[0]); lowerQcY.push(qcPt.y[0]); lowerQcZ.push(qcPt.z[0]);
+        const lowerY = lerpLookup(af.lower_x, af.lower_y, qcFrac);
+        const lo = transformProfile([qcFrac], [lowerY], xs.chord, xs.twist, xs.xyz_le, dihedrals[i]);
+        lowerQcX.push(lo.x[0]); lowerQcY.push(lo.y[0]); lowerQcZ.push(lo.z[0]);
+      } else {
+        const qcPt = transformProfile([qcFrac], [0], xs.chord, xs.twist, xs.xyz_le, dihedrals[i]);
+        qcX.push(qcPt.x[0]); qcY.push(qcPt.y[0]); qcZ.push(qcPt.z[0]);
+        upperQcX.push(qcPt.x[0]); upperQcY.push(qcPt.y[0]); upperQcZ.push(qcPt.z[0]);
+        lowerQcX.push(qcPt.x[0]); lowerQcY.push(qcPt.y[0]); lowerQcZ.push(qcPt.z[0]);
+      }
     }
-  }
 
-  traces.push(scatter3d(qcX, qcY, qcZ, COLOR_QC, 2.5));      // quarter chord (camber)
-  traces.push(scatter3d(upperQcX, upperQcY, upperQcZ, COLOR_SPANWISE, 1.5)); // upper
-  traces.push(scatter3d(lowerQcX, lowerQcY, lowerQcZ, COLOR_SPANWISE, 1.5)); // lower
+    traces.push(scatter3d(qcX, qcY, qcZ, COLOR_QC, 2.5));
+    traces.push(scatter3d(upperQcX, upperQcY, upperQcZ, COLOR_SPANWISE, 1.5));
+    traces.push(scatter3d(lowerQcX, lowerQcY, lowerQcZ, COLOR_SPANWISE, 1.5));
+  }
 
   // ── Leading + trailing edge lines (per segment for highlighting) ──
   for (let i = 0; i < xsecs.length - 1; i++) {
@@ -489,6 +488,7 @@ export function WingOutlineViewer({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const savedCamera = useRef<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showQuarterChord, setShowQuarterChord] = useState(false);
 
   useEffect(() => {
     let disposed = false;
@@ -506,7 +506,7 @@ export function WingOutlineViewer({
       for (const wing of wings) {
         if (!visibleWings.has(wing.name)) continue;
         const selIdx = selectedWing === wing.name ? selectedXsecIndex : null;
-        const wingTraces = await buildAllWingTraces(wing, selIdx);
+        const wingTraces = await buildAllWingTraces(wing, selIdx, showQuarterChord);
         traces.push(...wingTraces);
       }
 
@@ -612,7 +612,7 @@ export function WingOutlineViewer({
         try { plotlyRef.current.purge(containerRef.current); } catch { /* ok */ }
       }
     };
-  }, [wings, fuselages, visibleWings, visibleFuselages, selectedXsecIndex, selectedWing, selectedFuselage, selectedFuselageXsecIndex]);
+  }, [wings, fuselages, visibleWings, visibleFuselages, selectedXsecIndex, selectedWing, selectedFuselage, selectedFuselageXsecIndex, showQuarterChord]);
 
   return (
     <div className="relative h-full w-full">
@@ -623,6 +623,19 @@ export function WingOutlineViewer({
           </span>
         </div>
       )}
+      {/* Toggle buttons */}
+      <div className="absolute bottom-3 right-3 z-20 flex gap-1">
+        <button
+          onClick={() => setShowQuarterChord((v) => !v)}
+          className={`rounded-lg border px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px] backdrop-blur-sm ${
+            showQuarterChord
+              ? "border-primary bg-primary/20 text-primary"
+              : "border-border bg-card/80 text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          ¼ Chord
+        </button>
+      </div>
       <div ref={containerRef} className="h-full w-full" />
     </div>
   );
