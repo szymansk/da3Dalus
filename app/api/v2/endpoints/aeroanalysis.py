@@ -21,6 +21,7 @@ from app.schemas.AeroplaneRequest import AnalysisToolUrlType, AlphaSweepRequest,
 from app.schemas.api_responses import StaticUrlResponse
 from app.schemas.aeroanalysisschema import OperatingPointSchema
 from app.schemas.stability import StabilitySummaryResponse
+from app.schemas.strip_forces import StripForcesResponse
 from app.services import analysis_service
 from app.services import stability_service
 from app.settings import Settings, get_settings
@@ -274,6 +275,30 @@ async def get_streamlines_three_view_url(
             settings=settings,
         )
         return StaticUrlResponse(url=image_url)
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Unexpected error: {exc}") from exc
+
+
+@router.post(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/strip_forces",
+    response_model=StripForcesResponse,
+    tags=["analysis"],
+    operation_id="get_wing_strip_forces",
+)
+async def get_wing_strip_forces(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    wing_name: str = Path(..., description="The name of the wing"),
+    operating_point: OperatingPointSchema = Body(..., description="The operating point"),
+    db: Session = Depends(get_db),
+):
+    """Run AVL analysis and return spanwise strip-force distributions."""
+    try:
+        return await analysis_service.analyze_wing_strip_forces(
+            db, aeroplane_id, wing_name, operating_point
+        )
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:  # pragma: no cover - defensive fallback

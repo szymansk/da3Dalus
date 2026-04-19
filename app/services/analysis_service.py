@@ -28,6 +28,7 @@ from app.db.repository import get_wing_by_name_and_aeroplane_id, get_aeroplane_b
 from app.schemas import AeroplaneSchema
 from app.schemas.AeroplaneRequest import AnalysisToolUrlType, AlphaSweepRequest, SimpleSweepRequest
 from app.schemas.aeroanalysisschema import OperatingPointSchema
+from app.schemas.strip_forces import StripForcesResponse, SurfaceStripForces, StripForceEntry
 
 logger = logging.getLogger(__name__)
 
@@ -989,3 +990,82 @@ async def get_three_view_image(db: Session, aeroplane_uuid) -> bytes:
     except Exception as e:
         logger.error(f"Error generating three-view: {e}")
         raise InternalError(message=f"Error generating diagram: {e}")
+
+
+async def analyze_wing_strip_forces(
+    db: Session,
+    aeroplane_uuid,
+    wing_name: str,
+    operating_point: OperatingPointSchema,
+) -> StripForcesResponse:
+    """Run AVL with strip-force capture for a single wing.
+
+    Returns:
+        StripForcesResponse with per-surface spanwise strip-force distributions.
+
+    Raises:
+        NotFoundError: If the aeroplane or wing does not exist.
+        InternalError: If an analysis error occurs.
+    """
+    from pathlib import Path as _Path
+
+    import aerosandbox as asb
+
+    from app.services.avl_strip_forces import AVLWithStripForces
+
+    plane_schema = await get_wing_schema_or_raise(db, aeroplane_uuid, wing_name)
+
+    try:
+        asb_airplane: Airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
+        asb_airplane.xyz_ref = operating_point.xyz_ref
+        asb_airplane.wings = [w for w in asb_airplane.wings if w.name == wing_name]
+        asb_airplane.fuselages = []
+
+        atmosphere = asb.Atmosphere(altitude=operating_point.altitude)
+        op_point = asb.OperatingPoint(
+            velocity=operating_point.velocity,
+            alpha=operating_point.alpha,
+            beta=operating_point.beta,
+            p=operating_point.p,
+            q=operating_point.q,
+            r=operating_point.r,
+            atmosphere=atmosphere,
+        )
+
+        avl_command = str(
+            _Path(__file__).resolve().parents[2] / "exports" / "avl"
+        )
+
+        avl = AVLWithStripForces(
+            airplane=asb_airplane,
+            op_point=op_point,
+            xyz_ref=operating_point.xyz_ref,
+            avl_command=avl_command,
+            timeout=30,
+        )
+        result = avl.run()
+
+        strip_forces_data = result.get("strip_forces", [])
+        surfaces = []
+        for sf in strip_forces_data:
+            strips = [StripForceEntry.model_validate(s) for s in sf["strips"]]
+            surfaces.append(SurfaceStripForces(
+                surface_name=sf["surface_name"],
+                surface_number=sf["surface_number"],
+                n_chordwise=sf["n_chordwise"],
+                n_spanwise=sf["n_spanwise"],
+                surface_area=sf["surface_area"],
+                strips=strips,
+            ))
+
+        return StripForcesResponse(
+            alpha=result.get("alpha", operating_point.alpha),
+            mach=result.get("mach", 0),
+            sref=result.get("Sref", 0),
+            cref=result.get("Cref", 0),
+            bref=result.get("Bref", 0),
+            surfaces=surfaces,
+        )
+    except Exception as e:
+        logger.error(f"Error analyzing wing strip forces: {e}")
+        raise InternalError(message=f"Strip forces analysis error: {e}")
