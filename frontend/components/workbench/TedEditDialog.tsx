@@ -61,9 +61,9 @@ export function TedEditDialog({
     if (initialData && typeof initialData === "object") {
       const t = initialData;
       setName(String(t.name ?? ""));
-      setHingePoint(String(t.hinge_point ?? "0.8"));
+      setHingePoint(String(t.rel_chord_root ?? t.hinge_point ?? "0.8"));
       setSymmetric(Boolean(t.symmetric));
-      setRelChordTip(String(t.rel_chord_tip ?? "0.8"));
+      setRelChordTip(String(t.rel_chord_tip ?? t.rel_chord_root ?? "0.8"));
       setHingeType(String(t.hinge_type ?? "top"));
       setPosDeg(String(t.positive_deflection_deg ?? "35"));
       setNegDeg(String(t.negative_deflection_deg ?? "35"));
@@ -103,21 +103,20 @@ export function TedEditDialog({
     setSaving(true);
     setError(null);
     try {
-      // PATCH control surface (core ASB fields)
-      const csRes = await fetch(
-        `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/cross_sections/${xsecIndex}/control_surface`,
+      // PATCH trailing_edge_device (primary TED fields including rel_chord_root)
+      const tedRes = await fetch(
+        `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}/cross_sections/${xsecIndex}/trailing_edge_device`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name,
-            hinge_point: parseFloat(hingePoint),
+            rel_chord_root: parseFloat(hingePoint),
             symmetric,
-            deflection: 0,
           }),
         },
       );
-      if (!csRes.ok) throw new Error(`Control surface: ${csRes.status}`);
+      if (!tedRes.ok) throw new Error(`TED: ${tedRes.status}`);
 
       // PATCH cad details
       const cadPayload: Record<string, unknown> = {
