@@ -386,12 +386,12 @@ function buildFuselageTraces(fuselage: Fuselage, color: string) {
   const xsecs = fuselage.x_secs;
   if (xsecs.length < 2) return traces;
 
-  // Centerline
+  // Centerline (dashed)
   traces.push(scatter3d(
     xsecs.map((xs) => xs.xyz[0]),
     xsecs.map((xs) => xs.xyz[1]),
     xsecs.map((xs) => xs.xyz[2]),
-    color, 2,
+    color, 1.5, "dash",
   ));
 
   // Cross-section outlines
@@ -411,7 +411,7 @@ function buildFuselageTraces(fuselage: Fuselage, color: string) {
     traces.push(scatter3d(cx, cy, cz, color, 1.5));
   }
 
-  // Longitudinal lines
+  // Longitudinal lines (solid, along top/bottom/sides)
   for (const angle of [0, Math.PI / 2, Math.PI, 3 * Math.PI / 2]) {
     const lx: number[] = [], ly: number[] = [], lz: number[] = [];
     for (const xs of xsecs) {
@@ -423,7 +423,7 @@ function buildFuselageTraces(fuselage: Fuselage, color: string) {
       ly.push(xs.xyz[1] + r_y);
       lz.push(xs.xyz[2] + r_z);
     }
-    traces.push(scatter3d(lx, ly, lz, color, 1, "dot"));
+    traces.push(scatter3d(lx, ly, lz, color, 1.5));
   }
 
   return traces;
@@ -477,7 +477,7 @@ export function WingOutlineViewer({
 
       for (const fuse of fuselages) {
         if (!visibleFuselages.has(fuse.name)) continue;
-        traces.push(...buildFuselageTraces(fuse, "#B8B9B6"));
+        traces.push(...buildFuselageTraces(fuse, "#3B82F6"));
       }
 
       const layout = {
