@@ -4,12 +4,14 @@ import { useState } from "react";
 import { Settings, X } from "lucide-react";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAnalysis } from "@/hooks/useAnalysis";
+import { useStripForces } from "@/hooks/useStripForces";
 import { AnalysisViewerPanel } from "@/components/workbench/AnalysisViewerPanel";
 import { AnalysisConfigPanel } from "@/components/workbench/AnalysisConfigPanel";
 
 export default function AnalysisPage() {
-  const { aeroplaneId } = useAeroplaneContext();
+  const { aeroplaneId, selectedWing } = useAeroplaneContext();
   const analysis = useAnalysis(aeroplaneId);
+  const stripForces = useStripForces(aeroplaneId);
   const [configOpen, setConfigOpen] = useState(false);
 
   return (
@@ -32,6 +34,8 @@ export default function AnalysisPage() {
             aeroplaneId={aeroplaneId}
             lastRunTime={analysis.lastRunTime}
             lastRunDurationMs={analysis.lastRunDurationMs}
+            stripForces={stripForces.result}
+            stripForcesLoading={stripForces.isRunning}
           />
         </div>
       </div>
@@ -57,7 +61,19 @@ export default function AnalysisPage() {
                 <X size={14} />
               </button>
             </div>
-            <AnalysisConfigPanel analysis={analysis} />
+            <AnalysisConfigPanel
+              analysis={analysis}
+              onRunStripForces={selectedWing ? (params) => {
+                stripForces.run({
+                  wing_name: selectedWing,
+                  velocity: params.velocity_m_s,
+                  alpha: (params.alpha_start_deg + params.alpha_end_deg) / 2,
+                  beta: params.beta_deg,
+                  altitude: 100,
+                  xyz_ref: params.xyz_ref_m,
+                });
+              } : undefined}
+            />
           </div>
         </div>
       )}

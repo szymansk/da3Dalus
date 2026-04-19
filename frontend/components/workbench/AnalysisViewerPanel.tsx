@@ -3,9 +3,10 @@
 import { useState, useMemo } from "react";
 import { Wind, SlidersHorizontal, Activity, Maximize2, Minimize2 } from "lucide-react";
 import type { AnalysisResult } from "@/hooks/useAnalysis";
+import type { StripForcesResult } from "@/hooks/useStripForces";
 import { StreamlinesViewer } from "@/components/workbench/StreamlinesViewer";
 
-const TABS = ["Polar", "Three-View", "Streamlines", "Diagrams"] as const;
+const TABS = ["Polar", "Distributions", "Streamlines", "Three-View"] as const;
 type Tab = (typeof TABS)[number];
 
 interface Props {
@@ -13,6 +14,8 @@ interface Props {
   aeroplaneId: string | null;
   lastRunTime?: Date | null;
   lastRunDurationMs?: number | null;
+  stripForces?: StripForcesResult | null;
+  stripForcesLoading?: boolean;
 }
 
 // ── SVG Line Chart ──────────────────────────────────────────────
@@ -146,7 +149,7 @@ function LineChart({
 
 // ── Main Component ──────────────────────────────────────────────
 
-export function AnalysisViewerPanel({ result, aeroplaneId, lastRunTime, lastRunDurationMs }: Props) {
+export function AnalysisViewerPanel({ result, aeroplaneId, lastRunTime, lastRunDurationMs, stripForces, stripForcesLoading }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("Polar");
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
 
@@ -252,14 +255,77 @@ export function AnalysisViewerPanel({ result, aeroplaneId, lastRunTime, lastRunD
       {activeTab === "Streamlines" && (
         <StreamlinesViewer aeroplaneId={aeroplaneId} />
       )}
-      {activeTab === "Three-View" && (
-        <div className="flex flex-1 items-center justify-center bg-card-muted">
-          <span className="font-[family-name:var(--font-geist-sans)] text-[13px] text-muted-foreground">
-            Coming soon
-          </span>
+      {activeTab === "Distributions" && (
+        <div className="flex flex-1 flex-col gap-4 overflow-auto bg-card-muted p-6">
+          {stripForcesLoading ? (
+            <div className="flex flex-1 items-center justify-center">
+              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
+                Running AVL strip-force analysis...
+              </span>
+            </div>
+          ) : stripForces && stripForces.surfaces.length > 0 ? (
+            (() => {
+              // Merge all non-YDUP surfaces for the distribution plot
+              const primary = stripForces.surfaces.filter((s) => !s.surface_name.includes("YDUP"));
+              const allStrips = primary.flatMap((s) => s.strips);
+              if (allStrips.length === 0) return <span className="text-[12px] text-muted-foreground">No strip data</span>;
+
+              const ySpan = allStrips.map((s) => s.Yle);
+              const cl = allStrips.map((s) => s.cl);
+              const cd = allStrips.map((s) => s.cd);
+              const cCl = allStrips.map((s) => s.c_cl);
+              const cmC4 = allStrips.map((s) => s["cm_c/4"]);
+              const ai = allStrips.map((s) => s.ai);
+              const xFmt = (v: number) => v.toFixed(2);
+
+              const distCharts = [
+                { id: "sf-cl", xData: ySpan, yData: cl, xLabel: "y [m]", yLabel: "Cl", title: "Cl vs span", color: "var(--color-primary)", xFormat: xFmt },
+                { id: "sf-ccl", xData: ySpan, yData: cCl, xLabel: "y [m]", yLabel: "c·Cl", title: "c·Cl vs span", color: "#30A46C", xFormat: xFmt },
+                { id: "sf-cd", xData: ySpan, yData: cd, xLabel: "y [m]", yLabel: "Cd", title: "Cd vs span", color: "var(--color-destructive)", xFormat: xFmt },
+                { id: "sf-cm", xData: ySpan, yData: cmC4, xLabel: "y [m]", yLabel: "Cm c/4", title: "Cm c/4 vs span", color: "#A78BFA", xFormat: xFmt },
+                { id: "sf-ai", xData: ySpan, yData: ai, xLabel: "y [m]", yLabel: "αi [rad]", title: "Induced AoA vs span", color: "#E5484D", xFormat: xFmt },
+              ];
+
+              if (maximizedChart) {
+                const chart = distCharts.find((c) => c.id === maximizedChart);
+                if (!chart) return null;
+                return (
+                  <div className="flex flex-1">
+                    <LineChart {...chart} onToggleMaximize={() => toggleChart(chart.id)} isMaximized />
+                  </div>
+                );
+              }
+              return (
+                <div className="flex flex-col gap-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    {distCharts.slice(0, 3).map((c) => (
+                      <LineChart key={c.id} {...c} onToggleMaximize={() => toggleChart(c.id)} />
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {distCharts.slice(3).map((c) => (
+                      <LineChart key={c.id} {...c} onToggleMaximize={() => toggleChart(c.id)} />
+                    ))}
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    α = {stripForces.alpha.toFixed(1)}° · Mach = {stripForces.mach.toFixed(3)} · Sref = {stripForces.sref.toFixed(4)} m² · {primary.map((s) => s.surface_name).join(", ")}
+                  </div>
+                </div>
+              );
+            })()
+          ) : (
+            <div className="flex flex-1 flex-col items-center justify-center gap-4">
+              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-muted-foreground">
+                Run an analysis to see strip-force distributions
+              </span>
+              <span className="text-[12px] text-subtle-foreground">
+                Switch to AVL in the config panel and click {"\u201C"}Run Analysis{"\u201D"}
+              </span>
+            </div>
+          )}
         </div>
       )}
-      {activeTab === "Diagrams" && (
+      {activeTab === "Three-View" && (
         <div className="flex flex-1 items-center justify-center bg-card-muted">
           <span className="font-[family-name:var(--font-geist-sans)] text-[13px] text-muted-foreground">
             Coming soon

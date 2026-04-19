@@ -6,7 +6,9 @@ import type { UseAnalysisReturn } from "@/hooks/useAnalysis";
 
 type Mode = "single" | "sweep";
 
-export function AnalysisConfigPanel({ analysis }: { analysis: UseAnalysisReturn }) {
+import type { AlphaSweepParams } from "@/hooks/useAnalysis";
+
+export function AnalysisConfigPanel({ analysis, onRunStripForces }: { analysis: UseAnalysisReturn; onRunStripForces?: (params: AlphaSweepParams) => void }) {
   const [mode, setMode] = useState<Mode>("sweep");
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
@@ -26,7 +28,7 @@ export function AnalysisConfigPanel({ analysis }: { analysis: UseAnalysisReturn 
       ? xyzParts
       : [0, 0, 0];
 
-    analysis.runAlphaSweep({
+    const params: AlphaSweepParams = {
       analysis_tool: analysisTool,
       velocity_m_s: parseFloat(velocity) || 14.0,
       alpha_start_deg: parseFloat(alphaStart) || -5.0,
@@ -34,7 +36,11 @@ export function AnalysisConfigPanel({ analysis }: { analysis: UseAnalysisReturn 
       alpha_step_deg: parseFloat(alphaStep) || 1.0,
       beta_deg: parseFloat(beta) || 0.0,
       xyz_ref_m: xyz,
-    });
+    };
+    analysis.runAlphaSweep(params);
+    if (analysisTool === "avl" && onRunStripForces) {
+      onRunStripForces(params);
+    }
   };
 
   const handleReset = () => {
