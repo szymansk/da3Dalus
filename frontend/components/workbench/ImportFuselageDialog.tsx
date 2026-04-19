@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Upload, X, Check, Loader2, AlertTriangle, Maximize2, Minimize2, Plus, Trash2 } from "lucide-react";
+import { Upload, X, Check, Loader2, AlertTriangle, Maximize2, Minimize2, Plus, Trash2, Play } from "lucide-react";
 import { API_BASE } from "@/lib/fetcher";
 
 /** Build Plotly Surface3d traces for a fuselage from xsec dicts */
@@ -245,10 +245,16 @@ export function ImportFuselageDialog({
     setFile(selectedFile);
     setFileName(selectedFile.name);
     setError(null);
+    // Stay in upload phase — user clicks "Start Slicing" when ready
+  };
+
+  const handleStartSlicing = () => {
+    if (!file) return;
     setPhase("processing");
+    setError(null);
 
     const formData = new FormData();
-    formData.append("file", selectedFile);
+    formData.append("file", file);
     formData.append("number_of_slices", String(slices));
     formData.append("points_per_slice", "30");
     formData.append("slice_axis", axis);
@@ -406,13 +412,15 @@ export function ImportFuselageDialog({
               {/* Two options: import or create */}
               <div className="flex gap-4">
                 {/* Option 1: Import from STEP */}
-                <label className="flex flex-1 h-40 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border bg-card-muted hover:border-primary hover:bg-card-muted/80 transition-colors">
-                  <Upload size={28} className="text-muted-foreground" />
-                  <span className="text-[13px] text-muted-foreground">
-                    Import from STEP file
+                <label className={`flex flex-1 h-40 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed transition-colors ${
+                  fileName ? "border-primary bg-primary/10" : "border-border bg-card-muted hover:border-primary hover:bg-card-muted/80"
+                }`}>
+                  <Upload size={28} className={fileName ? "text-primary" : "text-muted-foreground"} />
+                  <span className={`text-[13px] ${fileName ? "text-foreground" : "text-muted-foreground"}`}>
+                    {fileName ?? "Import from STEP file"}
                   </span>
                   <span className="text-[10px] text-subtle-foreground">
-                    .step, .stp
+                    {fileName ? "Click to change file" : ".step, .stp"}
                   </span>
                   <input
                     type="file"
@@ -528,6 +536,17 @@ export function ImportFuselageDialog({
                   </select>
                 </div>
               </div>
+
+              {/* Start Slicing button — only shown when file is selected */}
+              {fileName && (
+                <button
+                  onClick={handleStartSlicing}
+                  className="flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-2.5 text-[13px] text-primary-foreground hover:opacity-90 self-end"
+                >
+                  <Play size={14} />
+                  Start Slicing
+                </button>
+              )}
             </div>
           )}
 
