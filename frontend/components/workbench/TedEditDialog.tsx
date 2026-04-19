@@ -207,10 +207,10 @@ export function TedEditDialog({
         <div className="flex flex-col gap-3">
           <div className="flex gap-3">
             <TedField label="Name" value={name} type="text" onChange={setName} />
-            <TedField label="Hinge Point" value={hingePoint} onChange={setHingePoint} />
+            <TedField label="Hinge Point (Root Chord)" value={hingePoint} onChange={setHingePoint} />
           </div>
           <div className="flex gap-3">
-            <TedField label="Tip Chord" value={relChordTip} onChange={setRelChordTip} />
+            <TedField label="Hinge Point (Tip Chord)" value={relChordTip} onChange={setRelChordTip} />
             <div className="flex flex-1 flex-col gap-1">
               <label className="text-[11px] text-muted-foreground">Hinge Type</label>
               <select
