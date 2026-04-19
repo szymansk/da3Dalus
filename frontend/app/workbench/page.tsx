@@ -58,6 +58,20 @@ export default function WorkbenchPage() {
     });
   }
 
+  function toggleFuselageVisibility(name: string) {
+    setVisibleFuselages((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) {
+        next.delete(name);
+        next.add(`_hidden_${name}`);
+      } else {
+        next.add(name);
+        next.delete(`_hidden_${name}`);
+      }
+      return next;
+    });
+  }
+
   function toggleAllWings(names: string[]) {
     const allVisible = names.every((n) => effectiveVisibleWings.has(n));
     setVisibleWings((prev) => {
@@ -125,6 +139,8 @@ export default function WorkbenchPage() {
               isWingVisible={(wn) => effectiveVisibleWings.has(wn)}
               onTogglePreview={toggleWingVisibility}
               onToggleAllPreview={toggleAllWings}
+              isFuselageVisible={(fn) => effectiveVisibleFuselages.has(fn)}
+              onToggleFuselagePreview={toggleFuselageVisibility}
               onCollapseTree={() => setTreeOpen(false)}
               onNodeEdit={() => setConfigOpen(true)}
               onFuselageSaved={() => mutateFuselages()}

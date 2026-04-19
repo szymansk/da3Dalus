@@ -256,6 +256,8 @@ interface AeroplaneTreeProps {
   isWingLoading?: (wingName: string) => boolean;
   onTogglePreview?: (wingName: string) => void;
   onToggleAllPreview?: (wingNames: string[]) => void;
+  isFuselageVisible?: (name: string) => boolean;
+  onToggleFuselagePreview?: (name: string) => void;
   onCollapseTree?: () => void;
   onNodeEdit?: () => void;
   onFuselageSaved?: () => void;
@@ -263,7 +265,7 @@ interface AeroplaneTreeProps {
 
 // ── Component ───────────────────────────────────────────────────
 
-export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, onCollapseTree, onNodeEdit, onFuselageSaved }: AeroplaneTreeProps) {
+export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, isFuselageVisible, onToggleFuselagePreview, onCollapseTree, onNodeEdit, onFuselageSaved }: AeroplaneTreeProps) {
   const { selectedWing, selectedXsecIndex, selectWing, selectXsec, selectedFuselage, selectedFuselageXsecIndex, selectFuselage, selectFuselageXsec, treeMode, setTreeMode } =
     useAeroplaneContext();
   const { wing, isLoading, mutate: mutateWing } = useWing(aeroplaneId, selectedWing);
@@ -452,11 +454,10 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
           selectFuselage(fn);
         },
         onDelete: () => handleDeleteFuselage(fn),
-        // Eye icon placeholder for future 3D preview
-        previewVisible: false,
-        onPreviewToggle: () => {
-          // TODO: wire fuselage 3D preview
-        },
+        previewVisible: isFuselageVisible?.(fn) ?? true,
+        onPreviewToggle: onToggleFuselagePreview
+          ? () => onToggleFuselagePreview(fn)
+          : undefined,
       });
 
       if (fusExpanded) {
