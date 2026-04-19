@@ -122,13 +122,12 @@ function lerpStation(a: XSec, b: XSec, t: number): { xyz_le: number[]; chord: nu
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type PlotlyData = any;
 
-const COLOR_WING = "#FF8400";
-const COLOR_BOUNDARY = "#FF8400";  // segment boundaries: orange, thick
-const COLOR_INTERP = "#FF840040";
+const COLOR_AIRFOIL = "#FF8400";     // all airfoils: orange, thick
+const COLOR_INTERP = "#FF8400";      // interpolated: same orange
 const COLOR_CAMBER = "#7A7B78";
 const COLOR_QC = "#30A46C";
 const COLOR_SPANWISE = "#FF840060";
-const COLOR_SELECTED = "#E5484D";  // selected xsec: red
+const COLOR_SELECTED = "#E5484D";    // selected xsec/segment: red
 const COLOR_TED = "#30A46C";
 
 async function buildAllWingTraces(
@@ -152,18 +151,15 @@ async function buildAllWingTraces(
     const xs = xsecs[i];
     const af = airfoils[i];
     const isSelected = selectedIdx === i;
-    const isBoundary = i === 0 || i === xsecs.length - 1;
-    const profileColor = isSelected ? COLOR_SELECTED : isBoundary ? COLOR_BOUNDARY : COLOR_WING;
-    const profileWidth = isSelected ? 3.5 : isBoundary ? 2.5 : 1.2;
+    const color = isSelected ? COLOR_SELECTED : COLOR_AIRFOIL;
+    const width = isSelected ? 3.5 : 2;
 
     if (af) {
-      // Full airfoil contour
       const p = transformProfile(af.x, af.y, xs.chord, xs.twist, xs.xyz_le);
-      traces.push(scatter3d(p.x, p.y, p.z, profileColor, profileWidth));
+      traces.push(scatter3d(p.x, p.y, p.z, color, width));
 
-      // Camber line
       const c = transformProfile(af.camber_x, af.camber_y, xs.chord, xs.twist, xs.xyz_le);
-      traces.push(scatter3d(c.x, c.y, c.z, COLOR_CAMBER, 1, "dot"));
+      traces.push(scatter3d(c.x, c.y, c.z, isSelected ? COLOR_SELECTED : COLOR_CAMBER, 1, "dot"));
     }
   }
 
@@ -173,12 +169,15 @@ async function buildAllWingTraces(
     const afB = airfoils[i + 1];
     if (!afA || !afB) continue;
 
+    // If selectedIdx is one of the two bounding stations, highlight interpolated too
+    const segSelected = selectedIdx === i || selectedIdx === i + 1;
+
     for (let k = 1; k <= nInterp; k++) {
       const t = k / (nInterp + 1);
       const station = lerpStation(xsecs[i], xsecs[i + 1], t);
       const profile = lerpProfile(afA, afB, t);
       const p = transformProfile(profile.x, profile.y, station.chord, station.twist, station.xyz_le);
-      traces.push(scatter3d(p.x, p.y, p.z, COLOR_INTERP, 0.8));
+      traces.push(scatter3d(p.x, p.y, p.z, segSelected ? COLOR_SELECTED : COLOR_INTERP, segSelected ? 1.5 : 1));
     }
   }
 
@@ -224,7 +223,7 @@ async function buildAllWingTraces(
   const leX = xsecs.map((xs) => xs.xyz_le[0]);
   const leY = xsecs.map((xs) => xs.xyz_le[1]);
   const leZ = xsecs.map((xs) => xs.xyz_le[2]);
-  traces.push(scatter3d(leX, leY, leZ, COLOR_WING, 2));
+  traces.push(scatter3d(leX, leY, leZ, COLOR_AIRFOIL, 2));
 
   const tePoints = xsecs.map((xs) =>
     transformProfile([1], [0], xs.chord, xs.twist, xs.xyz_le),
@@ -233,7 +232,7 @@ async function buildAllWingTraces(
     tePoints.map((p) => p.x[0]),
     tePoints.map((p) => p.y[0]),
     tePoints.map((p) => p.z[0]),
-    COLOR_WING, 2,
+    COLOR_AIRFOIL, 2,
   ));
 
   // ── TED outlines ──
