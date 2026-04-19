@@ -4,24 +4,36 @@ import { useState, useMemo } from "react";
 import { PanelLeftOpen, Maximize2, Minimize2, X } from "lucide-react";
 import { PropertyForm } from "@/components/workbench/PropertyForm";
 import { AeroplaneTree } from "@/components/workbench/AeroplaneTree";
+import { SparEditDialog } from "@/components/workbench/SparEditDialog";
+import { TedEditDialog } from "@/components/workbench/TedEditDialog";
 import { WingOutlineViewer } from "@/components/workbench/WingOutlineViewer";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAeroplanes } from "@/hooks/useAeroplanes";
 import { useWings, useWing, type Wing } from "@/hooks/useWings";
 import { useFuselages } from "@/hooks/useFuselages";
 import { useFuselage, type Fuselage } from "@/hooks/useFuselage";
+import { API_BASE } from "@/lib/fetcher";
 
 export default function WorkbenchPage() {
   const { aeroplaneId, setAeroplaneId, selectedWing, selectedXsecIndex } = useAeroplaneContext();
   const { aeroplanes, isLoading, createAeroplane } = useAeroplanes();
   const { wingNames } = useWings(aeroplaneId);
   const { fuselageNames, mutate: mutateFuselages } = useFuselages(aeroplaneId);
+  const { mutate: mutateSelectedWing } = useWing(aeroplaneId, selectedWing);
   const aeroplaneName =
     aeroplanes.find((a) => a.id === aeroplaneId)?.name ?? "Aeroplane";
 
   const [treeOpen, setTreeOpen] = useState(true);
   const [viewerMaximized, setViewerMaximized] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
+
+  // Spar/TED dialog state
+  const [sparDialog, setSparDialog] = useState<{
+    wingName: string; xsecIndex: number; sparIndex?: number; data?: Record<string, unknown>;
+  } | null>(null);
+  const [tedDialog, setTedDialog] = useState<{
+    wingName: string; xsecIndex: number; isNew: boolean; data?: Record<string, unknown>;
+  } | null>(null);
 
   // Visibility: all wings/fuselages visible by default
   const [visibleWings, setVisibleWings] = useState<Set<string>>(new Set());
@@ -144,6 +156,26 @@ export default function WorkbenchPage() {
               onCollapseTree={() => setTreeOpen(false)}
               onNodeEdit={() => setConfigOpen(true)}
               onFuselageSaved={() => mutateFuselages()}
+              onEditSpar={(wn, xi, si, data) => setSparDialog({ wingName: wn, xsecIndex: xi, sparIndex: si, data })}
+              onDeleteSpar={async (wn, xi, si) => {
+                if (!aeroplaneId) return;
+                const res = await fetch(
+                  `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wn}/cross_sections/${xi}/spars/${si}`,
+                  { method: "DELETE" },
+                );
+                if (res.ok) mutateSelectedWing();
+              }}
+              onEditTed={(wn, xi, data) => setTedDialog({ wingName: wn, xsecIndex: xi, isNew: false, data })}
+              onDeleteTed={async (wn, xi) => {
+                if (!aeroplaneId) return;
+                const res = await fetch(
+                  `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wn}/cross_sections/${xi}/control_surface`,
+                  { method: "DELETE" },
+                );
+                if (res.ok) mutateSelectedWing();
+              }}
+              onAddSpar={(wn, xi) => setSparDialog({ wingName: wn, xsecIndex: xi })}
+              onAddTed={(wn, xi) => setTedDialog({ wingName: wn, xsecIndex: xi, isNew: true })}
             />
           </div>
         )}
@@ -209,6 +241,41 @@ export default function WorkbenchPage() {
             <PropertyForm />
           </div>
         </div>
+      )}
+
+      {/* Spar Edit/Add Dialog */}
+      {sparDialog && aeroplaneId && (
+        <SparEditDialog
+          open
+          onClose={() => setSparDialog(null)}
+          aeroplaneId={aeroplaneId}
+          wingName={sparDialog.wingName}
+          xsecIndex={sparDialog.xsecIndex}
+          sparIndex={sparDialog.sparIndex}
+          initialData={sparDialog.data as {
+            spare_position_factor: number;
+            spare_support_dimension_width: number;
+            spare_support_dimension_height: number;
+            spare_mode: string;
+            spare_start: number;
+            spare_length?: number;
+          }}
+          onSaved={() => mutateSelectedWing()}
+        />
+      )}
+
+      {/* TED Edit/Add Dialog */}
+      {tedDialog && aeroplaneId && (
+        <TedEditDialog
+          open
+          onClose={() => setTedDialog(null)}
+          aeroplaneId={aeroplaneId}
+          wingName={tedDialog.wingName}
+          xsecIndex={tedDialog.xsecIndex}
+          isNew={tedDialog.isNew}
+          initialData={tedDialog.data}
+          onSaved={() => mutateSelectedWing()}
+        />
       )}
     </>
   );

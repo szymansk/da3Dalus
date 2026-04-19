@@ -225,6 +225,7 @@ export function ImportFuselageDialog({
   const [fileName, setFileName] = useState<string | null>(null);
   const [slices, setSlices] = useState(50);
   const [axis, setAxis] = useState("auto");
+  const [scaleFactor, setScaleFactor] = useState(1.0);
   const [fuselageName, setFuselageName] = useState(initialName ?? "Imported Fuselage");
   const [viewerMaximized, setViewerMaximized] = useState(false);
   const [xsecsMaximized, setXsecsMaximized] = useState(false);
@@ -261,9 +262,9 @@ export function ImportFuselageDialog({
       })
       .then((data) => {
         const newXsecs: XSec[] = (data.fuselage?.x_secs ?? []).map((xs: any) => ({
-          xyz: xs.xyz,
-          a: xs.a,
-          b: xs.b,
+          xyz: xs.xyz.map((v: number) => v * scaleFactor),
+          a: xs.a * scaleFactor,
+          b: xs.b * scaleFactor,
           n: xs.n,
         }));
         setXsecs(newXsecs.length > 0 ? newXsecs : INITIAL_XSECS);
@@ -334,7 +335,12 @@ export function ImportFuselageDialog({
       { xyz: [0.1, 0, 0], a: 0.05, b: 0.04, n: 2.0 },
       { xyz: [0.3, 0, 0], a: 0.05, b: 0.04, n: 2.0 },
       { xyz: [0.4, 0, 0], a: 0.01, b: 0.01, n: 2.0 },
-    ];
+    ].map(xs => ({
+      ...xs,
+      xyz: xs.xyz.map(v => v * scaleFactor),
+      a: xs.a * scaleFactor,
+      b: xs.b * scaleFactor,
+    }));
     setXsecs(defaultXsecs);
     setFileName(null);
     setFidelity(null);
@@ -347,6 +353,7 @@ export function ImportFuselageDialog({
     setFileName(null);
     setSlices(50);
     setAxis("auto");
+    setScaleFactor(1.0);
     setFuselageName(initialName ?? "Imported Fuselage");
     setXsecs(initialXsecs ?? INITIAL_XSECS);
     setSelectedXsec(initialSelectedIndex ?? (editMode ? 0 : null));
@@ -445,6 +452,36 @@ export function ImportFuselageDialog({
                     onChange={(e) => setFuselageName(e.target.value)}
                     className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
                   />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] text-muted-foreground">Scale Factor</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={scaleFactor}
+                      step="any"
+                      onChange={(e) => setScaleFactor(parseFloat(e.target.value) || 1)}
+                      className="w-24 rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+                    />
+                    <button
+                      onClick={() => setScaleFactor(0.001)}
+                      className={`rounded-full px-2 py-1 text-[10px] ${scaleFactor === 0.001 ? "bg-primary text-primary-foreground" : "bg-card-muted text-muted-foreground hover:text-foreground"}`}
+                    >
+                      mm→m
+                    </button>
+                    <button
+                      onClick={() => setScaleFactor(0.01)}
+                      className={`rounded-full px-2 py-1 text-[10px] ${scaleFactor === 0.01 ? "bg-primary text-primary-foreground" : "bg-card-muted text-muted-foreground hover:text-foreground"}`}
+                    >
+                      cm→m
+                    </button>
+                    <button
+                      onClick={() => setScaleFactor(1)}
+                      className={`rounded-full px-2 py-1 text-[10px] ${scaleFactor === 1 ? "bg-primary text-primary-foreground" : "bg-card-muted text-muted-foreground hover:text-foreground"}`}
+                    >
+                      1:1
+                    </button>
+                  </div>
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] text-muted-foreground">
