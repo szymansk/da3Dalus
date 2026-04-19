@@ -224,6 +224,7 @@ export function ImportFuselageDialog({
   const [phase, setPhase] = useState<Phase>(editMode ? "preview" : "upload");
   const [fileName, setFileName] = useState<string | null>(null);
   const [slices, setSlices] = useState(50);
+  const [slicesInput, setSlicesInput] = useState("50");
   const [axis, setAxis] = useState("auto");
   const [scaleFactor, setScaleFactor] = useState(1.0);
   const [scaleInput, setScaleInput] = useState("1");
@@ -361,6 +362,7 @@ export function ImportFuselageDialog({
     setPhase(editMode ? "preview" : "upload");
     setFileName(null);
     setSlices(50);
+    setSlicesInput("50");
     setAxis("auto");
     setScaleFactor(1.0);
     setScaleInput("1");
@@ -514,9 +516,15 @@ export function ImportFuselageDialog({
                     Slices
                   </label>
                   <input
-                    type="number"
-                    value={slices}
-                    onChange={(e) => setSlices(parseInt(e.target.value) || 50)}
+                    type="text"
+                    inputMode="numeric"
+                    value={slicesInput}
+                    onChange={(e) => {
+                      setSlicesInput(e.target.value);
+                      const v = parseInt(e.target.value, 10);
+                      if (!isNaN(v) && v >= 2 && v <= 500) setSlices(v);
+                    }}
+                    onBlur={() => setSlicesInput(String(slices))}
                     className="w-20 rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
                   />
                 </div>
