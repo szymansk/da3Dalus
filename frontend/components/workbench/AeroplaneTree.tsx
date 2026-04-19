@@ -137,9 +137,32 @@ function buildSegmentNodes(
         id: `${segId}-dims`, label: `length ${length} mm · sweep ${sweep} mm`,
         level: 3, leaf: true, muted: true, mono: true,
       });
-      const spareCount = Array.isArray(root.spare_list) ? root.spare_list.length : 0;
-      if (spareCount > 0) {
-        nodes.push({ id: `${segId}-spars`, label: `spars (${spareCount})`, level: 3, expanded: false });
+      const spareList = Array.isArray(root.spare_list) ? root.spare_list as Record<string, unknown>[] : [];
+      if (spareList.length > 0) {
+        const sparsExpanded = expandedSet.has(`${segId}-spars`);
+        nodes.push({
+          id: `${segId}-spars`,
+          label: `spars (${spareList.length})`,
+          level: 3,
+          expanded: sparsExpanded,
+        });
+        if (sparsExpanded) {
+          for (let s = 0; s < spareList.length; s++) {
+            const sp = spareList[s];
+            const pos = ((sp.spare_position_factor as number ?? 0) * 100).toFixed(0);
+            const w = (sp.spare_support_dimension_width as number ?? 0).toFixed(1);
+            const h = (sp.spare_support_dimension_height as number ?? 0).toFixed(1);
+            nodes.push({
+              id: `${segId}-spar-${s}`,
+              label: `spar @ ${pos}%`,
+              level: 4,
+              leaf: true,
+              muted: true,
+              mono: true,
+              detail: `${w}×${h} mm`,
+            });
+          }
+        }
       }
     }
   }
@@ -226,9 +249,32 @@ function buildXsecNodes(
         label: `xyz_le [${xsec.xyz_le.map((v: number) => v.toFixed(4)).join(", ")}]`,
         level: 3, leaf: true, muted: true, mono: true,
       });
-      const spareCount = Array.isArray(xsec.spare_list) ? xsec.spare_list.length : 0;
-      if (spareCount > 0) {
-        nodes.push({ id: `${xsecId}-spars`, label: `spars (${spareCount})`, level: 3, expanded: false });
+      const spareList = Array.isArray(xsec.spare_list) ? xsec.spare_list as Record<string, unknown>[] : [];
+      if (spareList.length > 0) {
+        const sparsExpanded = expandedSet.has(`${xsecId}-spars`);
+        nodes.push({
+          id: `${xsecId}-spars`,
+          label: `spars (${spareList.length})`,
+          level: 3,
+          expanded: sparsExpanded,
+        });
+        if (sparsExpanded) {
+          for (let s = 0; s < spareList.length; s++) {
+            const sp = spareList[s];
+            const pos = ((sp.spare_position_factor as number ?? 0) * 100).toFixed(0);
+            const w = (sp.spare_support_dimension_width as number ?? 0).toFixed(1);
+            const h = (sp.spare_support_dimension_height as number ?? 0).toFixed(1);
+            nodes.push({
+              id: `${xsecId}-spar-${s}`,
+              label: `spar @ ${pos}%`,
+              level: 4,
+              leaf: true,
+              muted: true,
+              mono: true,
+              detail: `${w}×${h} mm`,
+            });
+          }
+        }
       }
     }
   });
