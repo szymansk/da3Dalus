@@ -582,7 +582,18 @@ export function WingOutlineViewer({
 
       const config = { displayModeBar: false, responsive: true };
 
+      // Preserve camera state across re-renders
+      const el = containerRef.current as any;
+      const prevCamera = el?._fullLayout?.scene?._scene?.getCamera?.()
+        ?? el?.layout?.scene?.camera;
+
       await Plotly.newPlot(containerRef.current, traces, layout, config);
+
+      // Restore previous camera if available
+      if (prevCamera) {
+        try { Plotly.relayout(containerRef.current, { "scene.camera": prevCamera }); } catch { /* ok */ }
+      }
+
       setLoading(false);
     }
 
