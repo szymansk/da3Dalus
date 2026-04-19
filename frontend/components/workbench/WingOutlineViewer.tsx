@@ -275,55 +275,94 @@ async function buildAllWingTraces(
 
   // ── Spar lines ──
   const COLOR_SPAR = "#6E56CF"; // purple
+  const nCirclePts = 16;
+
   for (let i = 0; i < xsecs.length; i++) {
     const spars = xsecs[i].spare_list as Array<Record<string, unknown>> | undefined;
     if (!spars || spars.length === 0) continue;
     const af = airfoils[i];
+    const sparColor = selectedIdx === i ? COLOR_SELECTED : COLOR_SPAR;
 
     for (const spar of spars) {
       const posFactor = spar.spare_position_factor as number | undefined;
       if (posFactor == null) continue;
+      const sparW = (spar.spare_support_dimension_width as number ?? 0) * 0.001; // mm → m
+      const sparH = (spar.spare_support_dimension_height as number ?? 0) * 0.001;
 
       if (af) {
-        // Draw from upper to lower surface at spar position
+        // Vertical line from upper to lower surface
         const upperY = lerpLookup(af.upper_x, af.upper_y, posFactor);
         const lowerY = lerpLookup(af.lower_x, af.lower_y, posFactor);
         const top = transformProfile([posFactor], [upperY], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
         const bot = transformProfile([posFactor], [lowerY], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
         traces.push(scatter3d(
           [top.x[0], bot.x[0]], [top.y[0], bot.y[0]], [top.z[0], bot.z[0]],
-          selectedIdx === i ? COLOR_SELECTED : COLOR_SPAR, 2,
+          sparColor, 2,
         ));
-      } else {
-        // Fallback: simple vertical line at chord fraction
-        const pt = transformProfile([posFactor], [0], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
-        traces.push(scatter3d(
-          [pt.x[0], pt.x[0]], [pt.y[0], pt.y[0]], [pt.z[0] - 0.005, pt.z[0] + 0.005],
-          selectedIdx === i ? COLOR_SELECTED : COLOR_SPAR, 2,
-        ));
+
+        // Cross-section outline (circle or rectangle) at camber position
+        if (sparW > 0 && sparH > 0) {
+          const camberY = lerpLookup(af.camber_x, af.camber_y, posFactor);
+          const center = transformProfile([posFactor], [camberY], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
+          const cx: number[] = [], cy: number[] = [], cz: number[] = [];
+          const isCircle = Math.abs(sparW - sparH) < 0.0001;
+
+          if (isCircle) {
+            const r = sparW / 2;
+            for (let j = 0; j <= nCirclePts; j++) {
+              const theta = (2 * Math.PI * j) / nCirclePts;
+              cx.push(center.x[0] + r * Math.cos(theta) * Math.cos(xsecs[i].twist * Math.PI / 180));
+              cy.push(center.y[0]);
+              cz.push(center.z[0] + r * Math.sin(theta));
+            }
+          } else {
+            // Rectangle: 4 corners in the xz plane at the station
+            const hw = sparW / 2, hh = sparH / 2;
+            const twistRad = (xsecs[i].twist ?? 0) * Math.PI / 180;
+            const cosT = Math.cos(twistRad), sinT = Math.sin(twistRad);
+            const corners = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh], [-hw, -hh]];
+            for (const [dx, dz] of corners) {
+              cx.push(center.x[0] + dx * cosT);
+              cy.push(center.y[0]);
+              cz.push(center.z[0] + dz);
+            }
+          }
+          traces.push(scatter3d(cx, cy, cz, sparColor, 1.5));
+        }
       }
     }
 
-    // Connect spars spanwise to next xsec (if it also has spars at same position)
+    // Spanwise spar connections: upper + lower surface lines to next xsec
     if (i < xsecs.length - 1) {
       const nextSpars = xsecs[i + 1].spare_list as Array<Record<string, unknown>> | undefined;
       if (!nextSpars) continue;
       const nextAf = airfoils[i + 1];
+      const spanColor = selectedIdx === i ? COLOR_SELECTED : COLOR_SPAR;
 
       for (const spar of spars) {
         const posFactor = spar.spare_position_factor as number | undefined;
         if (posFactor == null) continue;
-        // Find matching spar in next xsec
         const match = nextSpars.find((s) => s.spare_position_factor === posFactor);
         if (!match || !af || !nextAf) continue;
 
-        const camberY = lerpLookup(af.camber_x, af.camber_y, posFactor);
-        const nextCamberY = lerpLookup(nextAf.camber_x, nextAf.camber_y, posFactor);
-        const p1 = transformProfile([posFactor], [camberY], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
-        const p2 = transformProfile([posFactor], [nextCamberY], xsecs[i + 1].chord, xsecs[i + 1].twist, xsecs[i + 1].xyz_le);
+        // Upper surface line
+        const upperY1 = lerpLookup(af.upper_x, af.upper_y, posFactor);
+        const upperY2 = lerpLookup(nextAf.upper_x, nextAf.upper_y, posFactor);
+        const up1 = transformProfile([posFactor], [upperY1], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
+        const up2 = transformProfile([posFactor], [upperY2], xsecs[i + 1].chord, xsecs[i + 1].twist, xsecs[i + 1].xyz_le);
         traces.push(scatter3d(
-          [p1.x[0], p2.x[0]], [p1.y[0], p2.y[0]], [p1.z[0], p2.z[0]],
-          selectedIdx === i ? COLOR_SELECTED : COLOR_SPAR, 1.5, "dash",
+          [up1.x[0], up2.x[0]], [up1.y[0], up2.y[0]], [up1.z[0], up2.z[0]],
+          spanColor, 1.5,
+        ));
+
+        // Lower surface line
+        const lowerY1 = lerpLookup(af.lower_x, af.lower_y, posFactor);
+        const lowerY2 = lerpLookup(nextAf.lower_x, nextAf.lower_y, posFactor);
+        const lo1 = transformProfile([posFactor], [lowerY1], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
+        const lo2 = transformProfile([posFactor], [lowerY2], xsecs[i + 1].chord, xsecs[i + 1].twist, xsecs[i + 1].xyz_le);
+        traces.push(scatter3d(
+          [lo1.x[0], lo2.x[0]], [lo1.y[0], lo2.y[0]], [lo1.z[0], lo2.z[0]],
+          spanColor, 1.5,
         ));
       }
     }
