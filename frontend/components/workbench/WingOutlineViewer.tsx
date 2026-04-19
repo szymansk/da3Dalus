@@ -360,35 +360,36 @@ async function buildAllWingTraces(
     // Spanwise spar connections: upper + lower surface lines to next xsec
     if (i < xsecs.length - 1) {
       const nextSpars = xsecs[i + 1].spare_list as Array<Record<string, unknown>> | undefined;
-      if (!nextSpars || nextSpars.length === 0) continue;
       const nextAf = airfoils[i + 1];
-      const spanColor = selectedIdx === i ? COLOR_SELECTED : COLOR_SPAR;
+      if (nextSpars && nextSpars.length > 0 && nextAf) {
+        const spanColor = selectedIdx === i ? COLOR_SELECTED : COLOR_SPAR;
 
-      for (const spar of spars) {
-        const posFactor = spar.spare_position_factor as number | undefined;
-        if (posFactor == null) continue;
-        const match = nextSpars.find((s) => s.spare_position_factor === posFactor);
-        if (!match || !af || !nextAf) continue;
+        for (const spar of spars) {
+          const posFactor = spar.spare_position_factor as number | undefined;
+          if (posFactor == null) continue;
+          const match = nextSpars.find((s) => s.spare_position_factor === posFactor);
+          if (!match || !af) continue;
 
-        // Upper surface line
-        const upperY1 = lerpLookup(af.upper_x, af.upper_y, posFactor);
-        const upperY2 = lerpLookup(nextAf.upper_x, nextAf.upper_y, posFactor);
-        const up1 = transformProfile([posFactor], [upperY1], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
-        const up2 = transformProfile([posFactor], [upperY2], xsecs[i + 1].chord, xsecs[i + 1].twist, xsecs[i + 1].xyz_le, dihedrals[i + 1]);
-        traces.push(scatter3d(
-          [up1.x[0], up2.x[0]], [up1.y[0], up2.y[0]], [up1.z[0], up2.z[0]],
-          spanColor, 1.5,
-        ));
+          // Upper surface line
+          const upperY1 = lerpLookup(af.upper_x, af.upper_y, posFactor);
+          const upperY2 = lerpLookup(nextAf.upper_x, nextAf.upper_y, posFactor);
+          const up1 = transformProfile([posFactor], [upperY1], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
+          const up2 = transformProfile([posFactor], [upperY2], xsecs[i + 1].chord, xsecs[i + 1].twist, xsecs[i + 1].xyz_le, dihedrals[i + 1]);
+          traces.push(scatter3d(
+            [up1.x[0], up2.x[0]], [up1.y[0], up2.y[0]], [up1.z[0], up2.z[0]],
+            spanColor, 1.5,
+          ));
 
-        // Lower surface line
-        const lowerY1 = lerpLookup(af.lower_x, af.lower_y, posFactor);
-        const lowerY2 = lerpLookup(nextAf.lower_x, nextAf.lower_y, posFactor);
-        const lo1 = transformProfile([posFactor], [lowerY1], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
-        const lo2 = transformProfile([posFactor], [lowerY2], xsecs[i + 1].chord, xsecs[i + 1].twist, xsecs[i + 1].xyz_le, dihedrals[i + 1]);
-        traces.push(scatter3d(
-          [lo1.x[0], lo2.x[0]], [lo1.y[0], lo2.y[0]], [lo1.z[0], lo2.z[0]],
-          spanColor, 1.5,
-        ));
+          // Lower surface line
+          const lowerY1 = lerpLookup(af.lower_x, af.lower_y, posFactor);
+          const lowerY2 = lerpLookup(nextAf.lower_x, nextAf.lower_y, posFactor);
+          const lo1 = transformProfile([posFactor], [lowerY1], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
+          const lo2 = transformProfile([posFactor], [lowerY2], xsecs[i + 1].chord, xsecs[i + 1].twist, xsecs[i + 1].xyz_le, dihedrals[i + 1]);
+          traces.push(scatter3d(
+            [lo1.x[0], lo2.x[0]], [lo1.y[0], lo2.y[0]], [lo1.z[0], lo2.z[0]],
+            spanColor, 1.5,
+          ));
+        }
       }
     }
   }
