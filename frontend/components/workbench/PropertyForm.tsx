@@ -171,12 +171,10 @@ function Field({
             onFocus={() => setEditing(true)}
             onChange={(e) => {
               setLocalValue(e.target.value);
-              // For text fields, propagate immediately
-              if (type === "text") onChange?.(e.target.value);
+              onChange?.(e.target.value);
             }}
             onBlur={() => {
               setEditing(false);
-              if (type !== "text") onChange?.(localValue);
             }}
             className="w-full bg-transparent text-[13px] text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
