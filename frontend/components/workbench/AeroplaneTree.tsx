@@ -618,7 +618,6 @@ function TreeRow({ node, onToggle, onNodeEdit }: { node: TreeNode; onToggle: () 
   function handleClick() {
     if (!isLeaf) onToggle();
     node.onClick?.();
-    if (node.onClick && onNodeEdit) onNodeEdit();
   }
 
   return (
