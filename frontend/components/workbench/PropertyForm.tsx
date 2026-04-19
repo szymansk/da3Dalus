@@ -249,7 +249,7 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
       setWc(null);
     }
     if (wingConfig?.nose_pnt) {
-      setNosePnt(wingConfig.nose_pnt.map((v) => v * 1000) as [number, number, number]);
+      setNosePnt(wingConfig.nose_pnt as [number, number, number]);
     }
   }, [wingConfig, selectedXsecIndex]);
 
@@ -333,7 +333,7 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
 
       await saveWingConfig({
         ...wingConfig,
-        nose_pnt: nosePnt.map((v) => v / 1000),
+        nose_pnt: nosePnt,
         segments: updatedSegments,
       });
       await mutate();

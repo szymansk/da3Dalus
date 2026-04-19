@@ -84,7 +84,7 @@ function buildSegmentNodes(
   if (nosePntMm) {
     nodes.push({
       id: `${wingName}-nosepnt`,
-      label: `nose_pnt [${nosePntMm.map((v: number) => (v * 1000).toFixed(1)).join(", ")}] mm`,
+      label: `nose_pnt [${nosePntMm.map((v: number) => v.toFixed(1)).join(", ")}] mm`,
       level: 2, leaf: true, muted: true, mono: true,
     });
   }
