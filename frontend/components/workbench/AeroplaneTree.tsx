@@ -48,6 +48,12 @@ function buildSegmentNodes(
   onDeleteXsec: (wn: string, i: number) => void,
   onInsertXsec: (wn: string, i: number) => void,
   onEditNode?: () => void,
+  onEditSpar?: (wingName: string, xsecIndex: number, sparIndex: number, data: Record<string, unknown>) => void,
+  onDeleteSpar?: (wingName: string, xsecIndex: number, sparIndex: number) => void,
+  onEditTed?: (wingName: string, xsecIndex: number, data: Record<string, unknown>) => void,
+  onDeleteTed?: (wingName: string, xsecIndex: number) => void,
+  onAddSpar?: (wingName: string, xsecIndex: number) => void,
+  onAddTed?: (wingName: string, xsecIndex: number) => void,
 ): TreeNode[] {
   const nodes: TreeNode[] = [];
   const wingExpanded = expandedSet.has(`wing-${wingName}`);
@@ -104,6 +110,10 @@ function buildSegmentNodes(
 
     const chipLabel = getChipLabel(root);
 
+    // Determine if TED exists for add-menu logic
+    const ted = root.trailing_edge_device ?? root.control_surface;
+    const hasTed = ted && typeof ted === "object" && Object.keys(ted as Record<string, unknown>).length > 0;
+
     nodes.push({
       id: segId,
       label: i === 0 ? `segment ${i} (root)` : `segment ${i}`,
@@ -116,6 +126,7 @@ function buildSegmentNodes(
       onDelete: () => {
         if (confirm(`Delete segment ${i}?`)) onDeleteXsec(wingName, i);
       },
+      onAdd: (onAddSpar || onAddTed) ? () => onAddSpar?.(wingName, i) : undefined,
     });
 
     // Expanded segment details
@@ -137,32 +148,42 @@ function buildSegmentNodes(
         id: `${segId}-dims`, label: `length ${length} mm · sweep ${sweep} mm`,
         level: 3, leaf: true, muted: true, mono: true,
       });
-      const spareList = Array.isArray(root.spare_list) ? root.spare_list as Record<string, unknown>[] : [];
-      if (spareList.length > 0) {
-        const sparsExpanded = expandedSet.has(`${segId}-spars`);
+
+      // TED node (if TED exists)
+      if (hasTed) {
+        const tedObj = ted as Record<string, unknown>;
+        const tedName = (tedObj.name as string) ?? "TED";
         nodes.push({
-          id: `${segId}-spars`,
-          label: `spars (${spareList.length})`,
+          id: `${segId}-ted`,
+          label: `TED: ${tedName}`,
           level: 3,
-          expanded: sparsExpanded,
+          leaf: true,
+          chip: "TED",
+          onEdit: () => onEditTed?.(wingName, i, tedObj),
+          onDelete: () => {
+            if (confirm(`Delete control surface "${tedName}"?`)) onDeleteTed?.(wingName, i);
+          },
         });
-        if (sparsExpanded) {
-          for (let s = 0; s < spareList.length; s++) {
-            const sp = spareList[s];
-            const pos = ((sp.spare_position_factor as number ?? 0) * 100).toFixed(0);
-            const w = (sp.spare_support_dimension_width as number ?? 0).toFixed(1);
-            const h = (sp.spare_support_dimension_height as number ?? 0).toFixed(1);
-            nodes.push({
-              id: `${segId}-spar-${s}`,
-              label: `spar @ ${pos}%`,
-              level: 4,
-              leaf: true,
-              muted: true,
-              mono: true,
-              detail: `${w}×${h} mm`,
-            });
-          }
-        }
+      }
+
+      // Individual spar nodes
+      const spareList = Array.isArray(root.spare_list) ? root.spare_list as Record<string, unknown>[] : [];
+      for (let s = 0; s < spareList.length; s++) {
+        const sp = spareList[s];
+        const pos = ((sp.spare_position_factor as number ?? 0) * 100).toFixed(0);
+        const w = (sp.spare_support_dimension_width as number ?? 0).toFixed(1);
+        const h = (sp.spare_support_dimension_height as number ?? 0).toFixed(1);
+        nodes.push({
+          id: `${segId}-spar-${s}`,
+          label: `spar @ ${pos}%`,
+          level: 3,
+          leaf: true,
+          detail: `${w}x${h} mm`,
+          onEdit: () => onEditSpar?.(wingName, i, s, sp),
+          onDelete: () => {
+            if (confirm(`Delete spar ${s}?`)) onDeleteSpar?.(wingName, i, s);
+          },
+        });
       }
     }
   }
@@ -190,6 +211,12 @@ function buildXsecNodes(
   selectXsec: (i: number | null) => void,
   onDeleteXsec: (wn: string, i: number) => void,
   onEditNode?: () => void,
+  onEditSpar?: (wingName: string, xsecIndex: number, sparIndex: number, data: Record<string, unknown>) => void,
+  onDeleteSpar?: (wingName: string, xsecIndex: number, sparIndex: number) => void,
+  onEditTed?: (wingName: string, xsecIndex: number, data: Record<string, unknown>) => void,
+  onDeleteTed?: (wingName: string, xsecIndex: number) => void,
+  onAddSpar?: (wingName: string, xsecIndex: number) => void,
+  onAddTed?: (wingName: string, xsecIndex: number) => void,
 ): TreeNode[] {
   const nodes: TreeNode[] = [];
   const wingExpanded = expandedSet.has(`wing-${wingName}`);
@@ -226,6 +253,7 @@ function buildXsecNodes(
       onDelete: () => {
         if (confirm(`Delete x_sec ${i}?`)) onDeleteXsec(wingName, i);
       },
+      onAdd: (onAddSpar || onAddTed) ? () => onAddSpar?.(wingName, i) : undefined,
     });
 
     if (xsecExpanded) {
@@ -249,32 +277,44 @@ function buildXsecNodes(
         label: `xyz_le [${xsec.xyz_le.map((v: number) => v.toFixed(4)).join(", ")}]`,
         level: 3, leaf: true, muted: true, mono: true,
       });
-      const spareList = Array.isArray(xsec.spare_list) ? xsec.spare_list as Record<string, unknown>[] : [];
-      if (spareList.length > 0) {
-        const sparsExpanded = expandedSet.has(`${xsecId}-spars`);
+
+      // TED node (if TED exists)
+      const ted = xsec.trailing_edge_device ?? xsec.control_surface;
+      const hasTed = ted && typeof ted === "object" && Object.keys(ted as Record<string, unknown>).length > 0;
+      if (hasTed) {
+        const tedObj = ted as Record<string, unknown>;
+        const tedName = (tedObj.name as string) ?? "TED";
         nodes.push({
-          id: `${xsecId}-spars`,
-          label: `spars (${spareList.length})`,
+          id: `${xsecId}-ted`,
+          label: `TED: ${tedName}`,
           level: 3,
-          expanded: sparsExpanded,
+          leaf: true,
+          chip: "TED",
+          onEdit: () => onEditTed?.(wingName, i, tedObj),
+          onDelete: () => {
+            if (confirm(`Delete control surface "${tedName}"?`)) onDeleteTed?.(wingName, i);
+          },
         });
-        if (sparsExpanded) {
-          for (let s = 0; s < spareList.length; s++) {
-            const sp = spareList[s];
-            const pos = ((sp.spare_position_factor as number ?? 0) * 100).toFixed(0);
-            const w = (sp.spare_support_dimension_width as number ?? 0).toFixed(1);
-            const h = (sp.spare_support_dimension_height as number ?? 0).toFixed(1);
-            nodes.push({
-              id: `${xsecId}-spar-${s}`,
-              label: `spar @ ${pos}%`,
-              level: 4,
-              leaf: true,
-              muted: true,
-              mono: true,
-              detail: `${w}×${h} mm`,
-            });
-          }
-        }
+      }
+
+      // Individual spar nodes
+      const spareList = Array.isArray(xsec.spare_list) ? xsec.spare_list as Record<string, unknown>[] : [];
+      for (let s = 0; s < spareList.length; s++) {
+        const sp = spareList[s];
+        const pos = ((sp.spare_position_factor as number ?? 0) * 100).toFixed(0);
+        const w = (sp.spare_support_dimension_width as number ?? 0).toFixed(1);
+        const h = (sp.spare_support_dimension_height as number ?? 0).toFixed(1);
+        nodes.push({
+          id: `${xsecId}-spar-${s}`,
+          label: `spar @ ${pos}%`,
+          level: 3,
+          leaf: true,
+          detail: `${w}x${h} mm`,
+          onEdit: () => onEditSpar?.(wingName, i, s, sp),
+          onDelete: () => {
+            if (confirm(`Delete spar ${s}?`)) onDeleteSpar?.(wingName, i, s);
+          },
+        });
       }
     }
   });
@@ -312,11 +352,17 @@ interface AeroplaneTreeProps {
   onCollapseTree?: () => void;
   onNodeEdit?: () => void;
   onFuselageSaved?: () => void;
+  onEditSpar?: (wingName: string, xsecIndex: number, sparIndex: number, data: Record<string, unknown>) => void;
+  onDeleteSpar?: (wingName: string, xsecIndex: number, sparIndex: number) => void;
+  onEditTed?: (wingName: string, xsecIndex: number, data: Record<string, unknown>) => void;
+  onDeleteTed?: (wingName: string, xsecIndex: number) => void;
+  onAddSpar?: (wingName: string, xsecIndex: number) => void;
+  onAddTed?: (wingName: string, xsecIndex: number) => void;
 }
 
 // ── Component ───────────────────────────────────────────────────
 
-export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, isFuselageVisible, onToggleFuselagePreview, onCollapseTree, onNodeEdit, onFuselageSaved }: AeroplaneTreeProps) {
+export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, isFuselageVisible, onToggleFuselagePreview, onCollapseTree, onNodeEdit, onFuselageSaved, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed }: AeroplaneTreeProps) {
   const { selectedWing, selectedXsecIndex, selectWing, selectXsec, selectedFuselage, selectedFuselageXsecIndex, selectFuselage, selectFuselageXsec, treeMode, setTreeMode } =
     useAeroplaneContext();
   const { wing, isLoading, mutate: mutateWing } = useWing(aeroplaneId, selectedWing);
@@ -480,8 +526,8 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
   if (rootExpanded) {
     for (const wn of wingNames) {
       const nodes = treeMode === "wingconfig"
-        ? buildSegmentNodes(wn, wing, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec, handleAddSegment, handleDeleteXsec, handleInsertXsec, onNodeEdit)
-        : buildXsecNodes(wn, wing, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec, handleDeleteXsec, onNodeEdit);
+        ? buildSegmentNodes(wn, wing, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec, handleAddSegment, handleDeleteXsec, handleInsertXsec, onNodeEdit, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed)
+        : buildXsecNodes(wn, wing, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec, handleDeleteXsec, onNodeEdit, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed);
       // Attach preview toggle to the wing root node
       if (nodes.length > 0 && onTogglePreview) {
         nodes[0].previewVisible = isWingVisible?.(wn) ?? false;
