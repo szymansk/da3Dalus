@@ -109,3 +109,4 @@ class ExecutionResult(BaseModel):
     export_paths: list[str] = Field(default_factory=list)
     error: Optional[str] = None
     duration_ms: int = 0
+    tessellation: Optional[dict] = Field(None, description="three-cad-viewer compatible tessellation data")

@@ -30,6 +30,7 @@ export interface ExecutionResult {
   export_paths: string[];
   error: string | null;
   duration_ms: number;
+  tessellation: Record<string, unknown> | null;
 }
 
 export function useConstructionPlans(planType?: string) {

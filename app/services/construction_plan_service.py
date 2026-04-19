@@ -565,11 +565,93 @@ def execute_plan(
 
     shape_keys = list(structure.keys()) if isinstance(structure, dict) else []
 
+    # Tessellate shapes for 3D viewer (best-effort, non-blocking)
+    tessellation = _tessellate_shapes(structure) if isinstance(structure, dict) else None
+
     return ExecutionResult(
         status="success",
         shape_keys=shape_keys,
         duration_ms=duration_ms,
+        tessellation=tessellation,
     )
+
+
+def _tessellate_shapes(structure: dict) -> dict | None:
+    """Tessellate CadQuery shapes for three-cad-viewer (best-effort)."""
+    try:
+        from ocp_tessellate.convert import to_ocpgroup, tessellate_group, combined_bb
+        import numpy as np
+
+        # Collect CadQuery Workplane objects from the structure
+        shapes = []
+        names = []
+        for key, val in structure.items():
+            if hasattr(val, "val"):  # CadQuery Workplane
+                shapes.append(val)
+                names.append(key)
+
+        if not shapes:
+            return None
+
+        # Use the first shape for tessellation via compound
+        from cadquery import Workplane, Compound
+        solids = []
+        for s in shapes:
+            try:
+                solids.extend(s.val().Solids())
+            except Exception:
+                pass
+
+        if not solids:
+            return None
+
+        compound = Compound.makeCompound(solids)
+        wp = Workplane().newObject([compound])
+
+        part_group, instances = to_ocpgroup(
+            wp,
+            names=["result"],
+            colors=["#FF8400"],
+            alphas=[1.0],
+        )
+
+        params = {"deviation": 0.1, "angular_tolerance": 0.2}
+        instances, tess_shapes, _mapping = tessellate_group(
+            part_group, instances, params, progress=None,
+        )
+
+        bb = combined_bb(tess_shapes)
+        if bb is not None:
+            tess_shapes["bb"] = bb.to_dict()
+
+        def _numpy_to_list(obj):
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+            if isinstance(obj, dict):
+                return {k: _numpy_to_list(v) for k, v in obj.items()}
+            if isinstance(obj, (list, tuple)):
+                return [_numpy_to_list(i) for i in obj]
+            if isinstance(obj, np.integer):
+                return int(obj)
+            if isinstance(obj, np.floating):
+                return float(obj)
+            return obj
+
+        return {
+            "data": {
+                "instances": _numpy_to_list(instances),
+                "shapes": _numpy_to_list(tess_shapes),
+            },
+            "type": "data",
+            "config": {"theme": "dark", "control": "orbit"},
+            "count": part_group.count_shapes(),
+        }
+    except ImportError:
+        logger.warning("ocp_tessellate not available — skipping tessellation")
+        return None
+    except Exception as exc:
+        logger.warning("Tessellation failed (non-critical): %s", exc)
+        return None
 
 
 def _load_printer_settings(db: Session):
