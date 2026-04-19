@@ -273,6 +273,62 @@ async function buildAllWingTraces(
     ));
   }
 
+  // ── Spar lines ──
+  const COLOR_SPAR = "#6E56CF"; // purple
+  for (let i = 0; i < xsecs.length; i++) {
+    const spars = xsecs[i].spare_list as Array<Record<string, unknown>> | undefined;
+    if (!spars || spars.length === 0) continue;
+    const af = airfoils[i];
+
+    for (const spar of spars) {
+      const posFactor = spar.spare_position_factor as number | undefined;
+      if (posFactor == null) continue;
+
+      if (af) {
+        // Draw from upper to lower surface at spar position
+        const upperY = lerpLookup(af.upper_x, af.upper_y, posFactor);
+        const lowerY = lerpLookup(af.lower_x, af.lower_y, posFactor);
+        const top = transformProfile([posFactor], [upperY], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
+        const bot = transformProfile([posFactor], [lowerY], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
+        traces.push(scatter3d(
+          [top.x[0], bot.x[0]], [top.y[0], bot.y[0]], [top.z[0], bot.z[0]],
+          selectedIdx === i ? COLOR_SELECTED : COLOR_SPAR, 2,
+        ));
+      } else {
+        // Fallback: simple vertical line at chord fraction
+        const pt = transformProfile([posFactor], [0], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
+        traces.push(scatter3d(
+          [pt.x[0], pt.x[0]], [pt.y[0], pt.y[0]], [pt.z[0] - 0.005, pt.z[0] + 0.005],
+          selectedIdx === i ? COLOR_SELECTED : COLOR_SPAR, 2,
+        ));
+      }
+    }
+
+    // Connect spars spanwise to next xsec (if it also has spars at same position)
+    if (i < xsecs.length - 1) {
+      const nextSpars = xsecs[i + 1].spare_list as Array<Record<string, unknown>> | undefined;
+      if (!nextSpars) continue;
+      const nextAf = airfoils[i + 1];
+
+      for (const spar of spars) {
+        const posFactor = spar.spare_position_factor as number | undefined;
+        if (posFactor == null) continue;
+        // Find matching spar in next xsec
+        const match = nextSpars.find((s) => s.spare_position_factor === posFactor);
+        if (!match || !af || !nextAf) continue;
+
+        const camberY = lerpLookup(af.camber_x, af.camber_y, posFactor);
+        const nextCamberY = lerpLookup(nextAf.camber_x, nextAf.camber_y, posFactor);
+        const p1 = transformProfile([posFactor], [camberY], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
+        const p2 = transformProfile([posFactor], [nextCamberY], xsecs[i + 1].chord, xsecs[i + 1].twist, xsecs[i + 1].xyz_le);
+        traces.push(scatter3d(
+          [p1.x[0], p2.x[0]], [p1.y[0], p2.y[0]], [p1.z[0], p2.z[0]],
+          selectedIdx === i ? COLOR_SELECTED : COLOR_SPAR, 1.5, "dash",
+        ));
+      }
+    }
+  }
+
   // ── Mirror for symmetric wings ──
   if (wing.symmetric) {
     const mirror = traces.map((t) => ({
