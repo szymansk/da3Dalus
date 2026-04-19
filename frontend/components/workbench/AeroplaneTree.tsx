@@ -265,7 +265,7 @@ function buildXsecNodes(
       });
       nodes.push({
         id: `${xsecId}-chord`,
-        label: `chord ${xsec.chord}`,
+        label: `chord ${(xsec.chord * 1000).toFixed(1)} mm`,
         level: 3, leaf: true, muted: true, mono: true,
       });
       nodes.push({
@@ -275,7 +275,7 @@ function buildXsecNodes(
       });
       nodes.push({
         id: `${xsecId}-xyz`,
-        label: `xyz_le [${xsec.xyz_le.map((v: number) => v.toFixed(4)).join(", ")}]`,
+        label: `xyz_le [${xsec.xyz_le.map((v: number) => (v * 1000).toFixed(1)).join(", ")}] mm`,
         level: 3, leaf: true, muted: true, mono: true,
       });
 
@@ -580,7 +580,7 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
               expanded: false,
               leaf: true,
               selected: isXsSelected,
-              detail: `a=${xs.a.toFixed(3)} b=${xs.b.toFixed(3)} n=${xs.n.toFixed(1)}`,
+              detail: `a=${(xs.a * 1000).toFixed(1)}mm b=${(xs.b * 1000).toFixed(1)}mm n=${xs.n.toFixed(1)}`,
               onClick: () => {
                 selectFuselage(fn);
                 selectFuselageXsec(i);

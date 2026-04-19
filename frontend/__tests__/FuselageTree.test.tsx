@@ -142,7 +142,7 @@ describe("Fuselage in AeroplaneTree", () => {
     expect(screen.getByText("xsec 2")).toBeDefined();
 
     // Details shown
-    expect(screen.getByText("a=0.050 b=0.040 n=2.3")).toBeDefined();
+    expect(screen.getByText("a=50.0mm b=40.0mm n=2.3")).toBeDefined();
   });
 
   it("calls selectFuselageXsec when clicking an xsec", () => {
