@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { X, PanelLeftOpen, Maximize2, Minimize2 } from "lucide-react";
-import { PropertyForm } from "@/components/workbench/PropertyForm";
+import { PanelLeftOpen, Maximize2, Minimize2 } from "lucide-react";
 import { AeroplaneTree } from "@/components/workbench/AeroplaneTree";
 import { WingOutlineViewer } from "@/components/workbench/WingOutlineViewer";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
@@ -12,7 +11,7 @@ import { useFuselages } from "@/hooks/useFuselages";
 import { useFuselage, type Fuselage } from "@/hooks/useFuselage";
 
 export default function WorkbenchPage() {
-  const { aeroplaneId, setAeroplaneId } = useAeroplaneContext();
+  const { aeroplaneId, setAeroplaneId, selectedWing, selectedXsecIndex } = useAeroplaneContext();
   const { aeroplanes, isLoading, createAeroplane } = useAeroplanes();
   const { wingNames } = useWings(aeroplaneId);
   const { fuselageNames, mutate: mutateFuselages } = useFuselages(aeroplaneId);
@@ -21,7 +20,7 @@ export default function WorkbenchPage() {
 
   const [treeOpen, setTreeOpen] = useState(true);
   const [viewerMaximized, setViewerMaximized] = useState(false);
-  const [configOpen, setConfigOpen] = useState(false);
+  // Config modal removed — PropertyForm opens via tree node edit icon
 
   // Visibility: all wings/fuselages visible by default
   const [visibleWings, setVisibleWings] = useState<Set<string>>(new Set());
@@ -142,7 +141,6 @@ export default function WorkbenchPage() {
               isFuselageVisible={(fn) => effectiveVisibleFuselages.has(fn)}
               onToggleFuselagePreview={toggleFuselageVisibility}
               onCollapseTree={() => setTreeOpen(false)}
-              onNodeEdit={() => setConfigOpen(true)}
               onFuselageSaved={() => mutateFuselages()}
             />
           </div>
@@ -178,36 +176,14 @@ export default function WorkbenchPage() {
               fuselages={allFuselages}
               visibleWings={effectiveVisibleWings}
               visibleFuselages={effectiveVisibleFuselages}
+              selectedWing={selectedWing}
+              selectedXsecIndex={selectedXsecIndex}
             />
           </div>
         </div>
       </div>
 
-      {/* Configuration Modal */}
-      {configOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => setConfigOpen(false)}
-        >
-          <div
-            className="flex max-h-[85vh] w-[480px] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
-                Configuration
-              </h2>
-              <button
-                onClick={() => setConfigOpen(false)}
-                className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent"
-              >
-                <X size={14} />
-              </button>
-            </div>
-            <PropertyForm />
-          </div>
-        </div>
-      )}
+      {/* Configuration modal removed — editing via tree node edit icons */}
     </>
   );
 }

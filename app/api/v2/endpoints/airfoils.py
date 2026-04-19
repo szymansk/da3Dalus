@@ -608,15 +608,32 @@ async def get_airfoil_geometry_stats(airfoil_name: str) -> AirfoilGeometryStatsR
     summary="Get airfoil profile coordinates as x/y arrays.",
 )
 async def get_airfoil_coordinates(airfoil_name: str):
-    """Return the parsed Selig-format coordinates as a continuous contour."""
+    """Return the parsed Selig-format coordinates as contour + upper/lower split."""
     try:
         _file_name, file_path = _resolve_airfoil_file(airfoil_name)
         upper, lower = _parse_selig_dat(file_path)
         # Concatenate: upper (TE→LE) + lower (LE→TE) = closed contour
         contour = np.concatenate([upper, lower[1:]], axis=0)
+
+        # Camber line: interpolate upper/lower to same x stations, average y
+        # Upper runs TE→LE (x descending), lower runs LE→TE (x ascending)
+        upper_sorted = upper[upper[:, 0].argsort()]  # sort by x ascending
+        lower_sorted = lower.copy()  # already LE→TE (x ascending)
+        # Use lower x stations as reference
+        from numpy import interp
+        camber_x = lower_sorted[:, 0]
+        upper_y_interp = interp(camber_x, upper_sorted[:, 0], upper_sorted[:, 1])
+        camber_y = (upper_y_interp + lower_sorted[:, 1]) / 2
+
         return {
             "x": contour[:, 0].tolist(),
             "y": contour[:, 1].tolist(),
+            "upper_x": upper_sorted[:, 0].tolist(),
+            "upper_y": upper_sorted[:, 1].tolist(),
+            "lower_x": lower_sorted[:, 0].tolist(),
+            "lower_y": lower_sorted[:, 1].tolist(),
+            "camber_x": camber_x.tolist(),
+            "camber_y": camber_y.tolist(),
         }
     except ServiceException as exc:
         _raise_http_from_domain(exc)

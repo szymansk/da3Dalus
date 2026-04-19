@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Wing } from "@/hooks/useWings";
+import type { Wing, XSec } from "@/hooks/useWings";
 import type { Fuselage } from "@/hooks/useFuselage";
 import { API_BASE } from "@/lib/fetcher";
 
@@ -10,13 +10,22 @@ interface WingOutlineViewerProps {
   fuselages: Fuselage[];
   visibleWings: Set<string>;
   visibleFuselages: Set<string>;
+  selectedXsecIndex?: number | null;
+  selectedWing?: string | null;
 }
 
-/** Cache for airfoil coordinate data */
-const airfoilCache: Record<string, { x: number[]; y: number[] } | null> = {};
+// ── Airfoil coordinate cache ─────────────────────────────────────
 
-async function fetchAirfoilCoords(airfoilName: string): Promise<{ x: number[]; y: number[] } | null> {
-  // Normalize: extract filename stem from paths like "/path/to/mh32.dat"
+interface AirfoilCoords {
+  x: number[]; y: number[];
+  upper_x: number[]; upper_y: number[];
+  lower_x: number[]; lower_y: number[];
+  camber_x: number[]; camber_y: number[];
+}
+
+const airfoilCache: Record<string, AirfoilCoords | null> = {};
+
+async function fetchAirfoilCoords(airfoilName: string): Promise<AirfoilCoords | null> {
   const stem = airfoilName.replace(/\.dat$/i, "").split("/").pop() ?? airfoilName;
   if (stem in airfoilCache) return airfoilCache[stem];
   try {
@@ -31,185 +40,238 @@ async function fetchAirfoilCoords(airfoilName: string): Promise<{ x: number[]; y
   }
 }
 
-/** Build 3D airfoil contour traces at each cross-section station */
-async function buildAirfoilTraces(wing: Wing, color: string): Promise<Plotly.Data[]> {
-  const traces: Plotly.Data[] = [];
+// ── Geometry helpers ─────────────────────────────────────────────
 
-  for (const xsec of wing.x_secs) {
-    const coords = await fetchAirfoilCoords(xsec.airfoil);
-    if (!coords) continue;
-
-    const chord = xsec.chord;
-    const [leX, leY, leZ] = xsec.xyz_le;
-    const twistRad = (xsec.twist ?? 0) * Math.PI / 180;
-    const cosT = Math.cos(twistRad);
-    const sinT = Math.sin(twistRad);
-
-    // Transform airfoil coordinates: scale by chord, rotate by twist around LE, translate to LE position
-    const ax: number[] = [];
-    const ay: number[] = [];
-    const az: number[] = [];
-
-    for (let i = 0; i < coords.x.length; i++) {
-      const px = coords.x[i] * chord;  // chordwise (x)
-      const pz = coords.y[i] * chord;  // thickness (z)
-      // Apply twist rotation around LE (in xz plane)
-      const rx = px * cosT + pz * sinT;
-      const rz = -px * sinT + pz * cosT;
-      ax.push(leX + rx);
-      ay.push(leY);
-      az.push(leZ + rz);
-    }
-
-    traces.push({
-      type: "scatter3d",
-      mode: "lines",
-      x: ax, y: ay, z: az,
-      line: { color, width: 1.5 },
-      showlegend: false,
-      hoverinfo: "skip",
-    });
+/** Transform normalized airfoil coordinates to 3D position at a station. */
+function transformProfile(
+  profileX: number[], profileY: number[],
+  chord: number, twist: number, xyz_le: number[],
+): { x: number[]; y: number[]; z: number[] } {
+  const twistRad = (twist ?? 0) * Math.PI / 180;
+  const cosT = Math.cos(twistRad);
+  const sinT = Math.sin(twistRad);
+  const [leX, leY, leZ] = xyz_le;
+  const ax: number[] = [], ay: number[] = [], az: number[] = [];
+  for (let i = 0; i < profileX.length; i++) {
+    const px = profileX[i] * chord;
+    const pz = profileY[i] * chord;
+    ax.push(leX + px * cosT + pz * sinT);
+    ay.push(leY);
+    az.push(leZ - px * sinT + pz * cosT);
   }
-
-  // Mirror if symmetric
-  if (wing.symmetric) {
-    const mirrorTraces = traces.map((t) => ({
-      ...t,
-      y: (t.y as number[]).map((v: number) => -v),
-    }));
-    traces.push(...mirrorTraces);
-  }
-
-  return traces;
+  return { x: ax, y: ay, z: az };
 }
 
-/** Build leading/trailing edge + cross-section traces for a wing. */
-function buildWingTraces(wing: Wing, color: string) {
-  const traces: Plotly.Data[] = [];
+/** Interpolate between two airfoil profiles at fraction t (0=a, 1=b).
+ *  Resamples both to nPts stations and lerps y values. */
+function lerpProfile(
+  a: AirfoilCoords, b: AirfoilCoords, t: number, nPts = 60,
+): { x: number[]; y: number[] } {
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (let i = 0; i <= nPts; i++) {
+    const xNorm = i / nPts;
+    xs.push(xNorm);
+    const ya = lerpLookup(a.x, a.y, xNorm);
+    const yb = lerpLookup(b.x, b.y, xNorm);
+    ys.push(ya * (1 - t) + yb * t);
+  }
+  return { x: xs, y: ys };
+}
+
+/** Interpolate camber lines similarly. */
+function lerpCamber(
+  a: AirfoilCoords, b: AirfoilCoords, t: number, nPts = 40,
+): { x: number[]; y: number[] } {
+  const xs: number[] = [], ys: number[] = [];
+  for (let i = 0; i <= nPts; i++) {
+    const xNorm = i / nPts;
+    xs.push(xNorm);
+    const ya = lerpLookup(a.camber_x, a.camber_y, xNorm);
+    const yb = lerpLookup(b.camber_x, b.camber_y, xNorm);
+    ys.push(ya * (1 - t) + yb * t);
+  }
+  return { x: xs, y: ys };
+}
+
+/** Linear interpolation lookup in sorted x/y arrays. */
+function lerpLookup(xs: number[], ys: number[], target: number): number {
+  if (xs.length === 0) return 0;
+  if (target <= xs[0]) return ys[0];
+  if (target >= xs[xs.length - 1]) return ys[ys.length - 1];
+  for (let i = 1; i < xs.length; i++) {
+    if (xs[i] >= target) {
+      const frac = (target - xs[i - 1]) / (xs[i] - xs[i - 1] + 1e-12);
+      return ys[i - 1] + frac * (ys[i] - ys[i - 1]);
+    }
+  }
+  return ys[ys.length - 1];
+}
+
+/** Linearly interpolate two xsec stations at fraction t. */
+function lerpStation(a: XSec, b: XSec, t: number): { xyz_le: number[]; chord: number; twist: number } {
+  return {
+    xyz_le: a.xyz_le.map((v, i) => v + (b.xyz_le[i] - v) * t),
+    chord: a.chord + (b.chord - a.chord) * t,
+    twist: (a.twist ?? 0) + ((b.twist ?? 0) - (a.twist ?? 0)) * t,
+  };
+}
+
+// ── Trace builders ───────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PlotlyData = any;
+
+const COLOR_WING = "#FF8400";
+const COLOR_ROOT_TIP = "#E5484D";
+const COLOR_INTERP = "#FF840040";
+const COLOR_CAMBER = "#7A7B78";
+const COLOR_QC = "#30A46C";
+const COLOR_SPANWISE = "#FF840060";
+const COLOR_SELECTED = "#FFFFFF";
+const COLOR_TED = "#30A46C";
+
+async function buildAllWingTraces(
+  wing: Wing,
+  selectedIdx: number | null,
+): Promise<PlotlyData[]> {
+  const traces: PlotlyData[] = [];
   const xsecs = wing.x_secs;
   if (xsecs.length < 2) return traces;
 
-  // Leading edge line
+  // Fetch all airfoil coordinates
+  const airfoils: (AirfoilCoords | null)[] = [];
+  for (const xs of xsecs) {
+    airfoils.push(await fetchAirfoilCoords(xs.airfoil));
+  }
+
+  const nInterp = 3; // interpolated profiles between stations
+
+  // ── Per-station: airfoil contour + camber line ──
+  for (let i = 0; i < xsecs.length; i++) {
+    const xs = xsecs[i];
+    const af = airfoils[i];
+    const isSelected = selectedIdx === i;
+    const isRootOrTip = i === 0 || i === xsecs.length - 1;
+    const profileColor = isSelected ? COLOR_SELECTED : isRootOrTip ? COLOR_ROOT_TIP : COLOR_WING;
+    const profileWidth = isSelected ? 3 : isRootOrTip ? 2.5 : 1.5;
+
+    if (af) {
+      // Full airfoil contour
+      const p = transformProfile(af.x, af.y, xs.chord, xs.twist, xs.xyz_le);
+      traces.push(scatter3d(p.x, p.y, p.z, profileColor, profileWidth));
+
+      // Camber line
+      const c = transformProfile(af.camber_x, af.camber_y, xs.chord, xs.twist, xs.xyz_le);
+      traces.push(scatter3d(c.x, c.y, c.z, COLOR_CAMBER, 1, "dot"));
+    }
+  }
+
+  // ── Interpolated airfoils between stations ──
+  for (let i = 0; i < xsecs.length - 1; i++) {
+    const afA = airfoils[i];
+    const afB = airfoils[i + 1];
+    if (!afA || !afB) continue;
+
+    for (let k = 1; k <= nInterp; k++) {
+      const t = k / (nInterp + 1);
+      const station = lerpStation(xsecs[i], xsecs[i + 1], t);
+      const profile = lerpProfile(afA, afB, t);
+      const p = transformProfile(profile.x, profile.y, station.chord, station.twist, station.xyz_le);
+      traces.push(scatter3d(p.x, p.y, p.z, COLOR_INTERP, 0.8));
+    }
+  }
+
+  // ── Spanwise lines: quarter chord (camber-to-camber), upper, lower ──
+  const qcX: number[] = [], qcY: number[] = [], qcZ: number[] = [];
+  const upperQcX: number[] = [], upperQcY: number[] = [], upperQcZ: number[] = [];
+  const lowerQcX: number[] = [], lowerQcY: number[] = [], lowerQcZ: number[] = [];
+
+  for (let i = 0; i < xsecs.length; i++) {
+    const xs = xsecs[i];
+    const af = airfoils[i];
+    const qcFrac = 0.25;
+
+    if (af) {
+      // Quarter chord point on camber
+      const camberY = lerpLookup(af.camber_x, af.camber_y, qcFrac);
+      const qc = transformProfile([qcFrac], [camberY], xs.chord, xs.twist, xs.xyz_le);
+      qcX.push(qc.x[0]); qcY.push(qc.y[0]); qcZ.push(qc.z[0]);
+
+      // Upper surface at quarter chord
+      const upperY = lerpLookup(af.upper_x, af.upper_y, qcFrac);
+      const up = transformProfile([qcFrac], [upperY], xs.chord, xs.twist, xs.xyz_le);
+      upperQcX.push(up.x[0]); upperQcY.push(up.y[0]); upperQcZ.push(up.z[0]);
+
+      // Lower surface at quarter chord
+      const lowerY = lerpLookup(af.lower_x, af.lower_y, qcFrac);
+      const lo = transformProfile([qcFrac], [lowerY], xs.chord, xs.twist, xs.xyz_le);
+      lowerQcX.push(lo.x[0]); lowerQcY.push(lo.y[0]); lowerQcZ.push(lo.z[0]);
+    } else {
+      // Fallback: geometric quarter chord
+      const qcPt = transformProfile([qcFrac], [0], xs.chord, xs.twist, xs.xyz_le);
+      qcX.push(qcPt.x[0]); qcY.push(qcPt.y[0]); qcZ.push(qcPt.z[0]);
+      upperQcX.push(qcPt.x[0]); upperQcY.push(qcPt.y[0]); upperQcZ.push(qcPt.z[0]);
+      lowerQcX.push(qcPt.x[0]); lowerQcY.push(qcPt.y[0]); lowerQcZ.push(qcPt.z[0]);
+    }
+  }
+
+  traces.push(scatter3d(qcX, qcY, qcZ, COLOR_QC, 2.5));      // quarter chord (camber)
+  traces.push(scatter3d(upperQcX, upperQcY, upperQcZ, COLOR_SPANWISE, 1.5)); // upper
+  traces.push(scatter3d(lowerQcX, lowerQcY, lowerQcZ, COLOR_SPANWISE, 1.5)); // lower
+
+  // ── Leading + trailing edge lines ──
   const leX = xsecs.map((xs) => xs.xyz_le[0]);
   const leY = xsecs.map((xs) => xs.xyz_le[1]);
   const leZ = xsecs.map((xs) => xs.xyz_le[2]);
+  traces.push(scatter3d(leX, leY, leZ, COLOR_WING, 2));
 
-  // Trailing edge line (LE + chord along x)
-  const teX = xsecs.map((xs) => xs.xyz_le[0] + xs.chord);
-  const teY = xsecs.map((xs) => xs.xyz_le[1]);
-  const teZ = xsecs.map((xs) => xs.xyz_le[2]);
+  const tePoints = xsecs.map((xs) =>
+    transformProfile([1], [0], xs.chord, xs.twist, xs.xyz_le),
+  );
+  traces.push(scatter3d(
+    tePoints.map((p) => p.x[0]),
+    tePoints.map((p) => p.y[0]),
+    tePoints.map((p) => p.z[0]),
+    COLOR_WING, 2,
+  ));
 
-  // Leading edge
-  traces.push({
-    type: "scatter3d",
-    mode: "lines",
-    x: leX, y: leY, z: leZ,
-    line: { color, width: 3 },
-    name: `${wing.name} LE`,
-    showlegend: false,
-    hoverinfo: "skip",
-  });
-
-  // Trailing edge
-  traces.push({
-    type: "scatter3d",
-    mode: "lines",
-    x: teX, y: teY, z: teZ,
-    line: { color, width: 3 },
-    name: `${wing.name} TE`,
-    showlegend: false,
-    hoverinfo: "skip",
-  });
-
-  // Root chord line
-  traces.push({
-    type: "scatter3d",
-    mode: "lines",
-    x: [leX[0], teX[0]],
-    y: [leY[0], teY[0]],
-    z: [leZ[0], teZ[0]],
-    line: { color, width: 2 },
-    showlegend: false,
-    hoverinfo: "skip",
-  });
-
-  // Tip chord line
-  const last = xsecs.length - 1;
-  traces.push({
-    type: "scatter3d",
-    mode: "lines",
-    x: [leX[last], teX[last]],
-    y: [leY[last], teY[last]],
-    z: [leZ[last], teZ[last]],
-    line: { color, width: 2 },
-    showlegend: false,
-    hoverinfo: "skip",
-  });
-
-  // Cross-section lines at each station
-  for (let i = 1; i < xsecs.length - 1; i++) {
-    traces.push({
-      type: "scatter3d",
-      mode: "lines",
-      x: [leX[i], teX[i]],
-      y: [leY[i], teY[i]],
-      z: [leZ[i], teZ[i]],
-      line: { color, width: 1, dash: "dot" },
-      showlegend: false,
-      hoverinfo: "skip",
-    });
-  }
-
-  // TED hinge lines (colored differently)
+  // ── TED outlines ──
   for (let i = 0; i < xsecs.length; i++) {
     const ted = xsecs[i].trailing_edge_device ?? xsecs[i].control_surface;
     if (!ted) continue;
     const relChord = (ted as Record<string, unknown>).rel_chord_root as number | undefined;
     if (relChord == null) continue;
 
-    const hingeX = xsecs[i].xyz_le[0] + xsecs[i].chord * (1 - relChord);
-    const teXi = xsecs[i].xyz_le[0] + xsecs[i].chord;
-
-    // Find the next xsec that also has a TED for the hinge line extent
-    const nextI = i + 1 < xsecs.length ? i + 1 : i;
+    const nextI = Math.min(i + 1, xsecs.length - 1);
     const nextTed = xsecs[nextI]?.trailing_edge_device ?? xsecs[nextI]?.control_surface;
-    const nextRelChord = nextTed ? ((nextTed as Record<string, unknown>).rel_chord_tip as number ?? relChord) : relChord;
-    const nextHingeX = xsecs[nextI].xyz_le[0] + xsecs[nextI].chord * (1 - nextRelChord);
+    const nextRelChord = nextTed
+      ? ((nextTed as Record<string, unknown>).rel_chord_tip as number ?? relChord)
+      : relChord;
+
+    const h1 = transformProfile([1 - relChord], [0], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
+    const h2 = transformProfile([1 - nextRelChord], [0], xsecs[nextI].chord, xsecs[nextI].twist, xsecs[nextI].xyz_le);
+    const te1 = transformProfile([1], [0], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le);
+    const te2 = transformProfile([1], [0], xsecs[nextI].chord, xsecs[nextI].twist, xsecs[nextI].xyz_le);
 
     // Hinge line
-    traces.push({
-      type: "scatter3d",
-      mode: "lines",
-      x: [hingeX, nextHingeX],
-      y: [xsecs[i].xyz_le[1], xsecs[nextI].xyz_le[1]],
-      z: [xsecs[i].xyz_le[2], xsecs[nextI].xyz_le[2]],
-      line: { color: "#30A46C", width: 3 },
-      name: `TED`,
-      showlegend: false,
-      hoverinfo: "skip",
-    });
-
-    // TED area (filled between hinge and TE)
-    traces.push({
-      type: "scatter3d",
-      mode: "lines",
-      x: [hingeX, teXi, xsecs[nextI].xyz_le[0] + xsecs[nextI].chord, nextHingeX, hingeX],
-      y: [xsecs[i].xyz_le[1], xsecs[i].xyz_le[1], xsecs[nextI].xyz_le[1], xsecs[nextI].xyz_le[1], xsecs[i].xyz_le[1]],
-      z: [xsecs[i].xyz_le[2], xsecs[i].xyz_le[2], xsecs[nextI].xyz_le[2], xsecs[nextI].xyz_le[2], xsecs[i].xyz_le[2]],
-      line: { color: "#30A46C", width: 1 },
-      showlegend: false,
-      hoverinfo: "skip",
-    });
+    traces.push(scatter3d([h1.x[0], h2.x[0]], [h1.y[0], h2.y[0]], [h1.z[0], h2.z[0]], COLOR_TED, 3));
+    // TED area outline
+    traces.push(scatter3d(
+      [h1.x[0], te1.x[0], te2.x[0], h2.x[0], h1.x[0]],
+      [h1.y[0], te1.y[0], te2.y[0], h2.y[0], h1.y[0]],
+      [h1.z[0], te1.z[0], te2.z[0], h2.z[0], h1.z[0]],
+      COLOR_TED, 1.5,
+    ));
   }
 
-  // Mirror if symmetric
+  // ── Mirror for symmetric wings ──
   if (wing.symmetric) {
-    const mirrorTraces = traces.map((t) => ({
+    const mirror = traces.map((t) => ({
       ...t,
       y: (t.y as number[]).map((v: number) => -v),
-      name: undefined,
     }));
-    traces.push(...mirrorTraces);
+    traces.push(...mirror);
   }
 
   return traces;
@@ -217,54 +279,38 @@ function buildWingTraces(wing: Wing, color: string) {
 
 /** Build superellipse cross-section traces for a fuselage. */
 function buildFuselageTraces(fuselage: Fuselage, color: string) {
-  const traces: Plotly.Data[] = [];
+  const traces: PlotlyData[] = [];
   const xsecs = fuselage.x_secs;
   if (xsecs.length < 2) return traces;
 
   // Centerline
-  traces.push({
-    type: "scatter3d",
-    mode: "lines",
-    x: xsecs.map((xs) => xs.xyz[0]),
-    y: xsecs.map((xs) => xs.xyz[1]),
-    z: xsecs.map((xs) => xs.xyz[2]),
-    line: { color, width: 2 },
-    showlegend: false,
-    hoverinfo: "skip",
-  });
+  traces.push(scatter3d(
+    xsecs.map((xs) => xs.xyz[0]),
+    xsecs.map((xs) => xs.xyz[1]),
+    xsecs.map((xs) => xs.xyz[2]),
+    color, 2,
+  ));
 
   // Cross-section outlines
   const nPts = 32;
   for (const xs of xsecs) {
-    const cx: number[] = [];
-    const cy: number[] = [];
-    const cz: number[] = [];
+    const cx: number[] = [], cy: number[] = [], cz: number[] = [];
     for (let j = 0; j <= nPts; j++) {
       const theta = (2 * Math.PI * j) / nPts;
       const cosT = Math.cos(theta);
       const sinT = Math.sin(theta);
-      // Superellipse: |y/a|^n + |z/b|^n = 1
       const r_y = xs.a * Math.sign(cosT) * Math.pow(Math.abs(cosT), 2 / xs.n);
       const r_z = xs.b * Math.sign(sinT) * Math.pow(Math.abs(sinT), 2 / xs.n);
       cx.push(xs.xyz[0]);
       cy.push(xs.xyz[1] + r_y);
       cz.push(xs.xyz[2] + r_z);
     }
-    traces.push({
-      type: "scatter3d",
-      mode: "lines",
-      x: cx, y: cy, z: cz,
-      line: { color, width: 1.5 },
-      showlegend: false,
-      hoverinfo: "skip",
-    });
+    traces.push(scatter3d(cx, cy, cz, color, 1.5));
   }
 
-  // Longitudinal lines (top, bottom, sides)
+  // Longitudinal lines
   for (const angle of [0, Math.PI / 2, Math.PI, 3 * Math.PI / 2]) {
-    const lx: number[] = [];
-    const ly: number[] = [];
-    const lz: number[] = [];
+    const lx: number[] = [], ly: number[] = [], lz: number[] = [];
     for (const xs of xsecs) {
       const cosT = Math.cos(angle);
       const sinT = Math.sin(angle);
@@ -274,25 +320,36 @@ function buildFuselageTraces(fuselage: Fuselage, color: string) {
       ly.push(xs.xyz[1] + r_y);
       lz.push(xs.xyz[2] + r_z);
     }
-    traces.push({
-      type: "scatter3d",
-      mode: "lines",
-      x: lx, y: ly, z: lz,
-      line: { color, width: 1, dash: "dot" },
-      showlegend: false,
-      hoverinfo: "skip",
-    });
+    traces.push(scatter3d(lx, ly, lz, color, 1, "dot"));
   }
 
   return traces;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Plotly = any;
+/** Shorthand for a scatter3d trace. */
+function scatter3d(
+  x: number[], y: number[], z: number[],
+  color: string, width: number, dash?: string,
+): PlotlyData {
+  return {
+    type: "scatter3d",
+    mode: "lines",
+    x, y, z,
+    line: { color, width, ...(dash ? { dash } : {}) },
+    showlegend: false,
+    hoverinfo: "skip",
+  };
+}
 
-export function WingOutlineViewer({ wings, fuselages, visibleWings, visibleFuselages }: WingOutlineViewerProps) {
+// ── Component ────────────────────────────────────────────────────
+
+export function WingOutlineViewer({
+  wings, fuselages, visibleWings, visibleFuselages,
+  selectedXsecIndex = null, selectedWing = null,
+}: WingOutlineViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const plotlyRef = useRef<Plotly>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const plotlyRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -306,14 +363,13 @@ export function WingOutlineViewer({ wings, fuselages, visibleWings, visibleFusel
       if (disposed) return;
       plotlyRef.current = Plotly;
 
-      const traces: Plotly.Data[] = [];
+      const traces: PlotlyData[] = [];
 
       for (const wing of wings) {
         if (!visibleWings.has(wing.name)) continue;
-        traces.push(...buildWingTraces(wing, "#FF8400"));
-        // Fetch and render airfoil contours at each xsec station
-        const airfoilTraces = await buildAirfoilTraces(wing, "#FF840080");
-        traces.push(...airfoilTraces);
+        const selIdx = selectedWing === wing.name ? selectedXsecIndex : null;
+        const wingTraces = await buildAllWingTraces(wing, selIdx);
+        traces.push(...wingTraces);
       }
 
       for (const fuse of fuselages) {
@@ -378,7 +434,7 @@ export function WingOutlineViewer({ wings, fuselages, visibleWings, visibleFusel
         try { plotlyRef.current.purge(containerRef.current); } catch { /* ok */ }
       }
     };
-  }, [wings, fuselages, visibleWings, visibleFuselages]);
+  }, [wings, fuselages, visibleWings, visibleFuselages, selectedXsecIndex, selectedWing]);
 
   return (
     <div className="relative h-full w-full">
