@@ -306,6 +306,7 @@ async function buildAllWingTraces(
     const spars = xsecs[i].spare_list as Array<Record<string, unknown>> | undefined;
     if (!spars || spars.length === 0) continue;
     const af = airfoils[i];
+    if (!af) console.warn(`[Spar] xsec ${i} has ${spars.length} spars but no airfoil data`);
     const sparColor = selectedIdx === i ? COLOR_SELECTED : COLOR_SPAR;
 
     for (const spar of spars) {
@@ -354,6 +355,15 @@ async function buildAllWingTraces(
           }
           traces.push(scatter3d(cx, cy, cz, sparColor, 1.5));
         }
+      } else {
+        // Fallback: simple vertical line at chord fraction (no airfoil data)
+        const pt = transformProfile([posFactor], [0], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
+        const ptUp = transformProfile([posFactor], [0.05], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
+        const ptDn = transformProfile([posFactor], [-0.05], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
+        traces.push(scatter3d(
+          [ptUp.x[0], ptDn.x[0]], [ptUp.y[0], ptDn.y[0]], [ptUp.z[0], ptDn.z[0]],
+          sparColor, 2,
+        ));
       }
     }
 
