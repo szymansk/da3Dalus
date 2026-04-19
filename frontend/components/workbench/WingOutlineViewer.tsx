@@ -335,7 +335,7 @@ async function buildAllWingTraces(
     // Spanwise spar connections: upper + lower surface lines to next xsec
     if (i < xsecs.length - 1) {
       const nextSpars = xsecs[i + 1].spare_list as Array<Record<string, unknown>> | undefined;
-      if (!nextSpars) continue;
+      if (!nextSpars || nextSpars.length === 0) continue;
       const nextAf = airfoils[i + 1];
       const spanColor = selectedIdx === i ? COLOR_SELECTED : COLOR_SPAR;
 
