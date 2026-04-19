@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, Plus, Trash2, Eye, EyeOff, Loader, PanelLeft
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useWing } from "@/hooks/useWings";
 import type { XSec } from "@/hooks/useWings";
+import { useWingConfig } from "@/hooks/useWingConfig";
 import { API_BASE } from "@/lib/fetcher";
 import { useFuselage } from "@/hooks/useFuselage";
 import { useFuselages } from "@/hooks/useFuselages";
@@ -39,6 +40,7 @@ interface TreeNode {
 function buildSegmentNodes(
   wingName: string,
   wing: { name: string; symmetric: boolean; x_secs: XSec[] } | null,
+  nosePntMm: number[] | null,
   selectedWing: string | null,
   selectedXsecIndex: number | null,
   expandedSet: Set<string>,
@@ -78,12 +80,11 @@ function buildSegmentNodes(
     return nodes;
   }
 
-  // nose_pnt row
-  const nosePnt = wing.x_secs[0]?.xyz_le;
-  if (nosePnt) {
+  // nose_pnt row — from WingConfig (nose_pnt is in meters, display in mm)
+  if (nosePntMm) {
     nodes.push({
       id: `${wingName}-nosepnt`,
-      label: `nose_pnt [${nosePnt.map((v: number) => (v * 1000).toFixed(0)).join(", ")}] mm`,
+      label: `nose_pnt [${nosePntMm.map((v: number) => (v * 1000).toFixed(1)).join(", ")}] mm`,
       level: 2, leaf: true, muted: true, mono: true,
     });
   }
@@ -366,6 +367,7 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
   const { selectedWing, selectedXsecIndex, selectWing, selectXsec, selectedFuselage, selectedFuselageXsecIndex, selectFuselage, selectFuselageXsec, treeMode, setTreeMode } =
     useAeroplaneContext();
   const { wing, isLoading, mutate: mutateWing } = useWing(aeroplaneId, selectedWing);
+  const { wingConfig } = useWingConfig(aeroplaneId, selectedWing);
 
   const [expandedSet, setExpandedSet] = useState<Set<string>>(() => {
     const s = new Set<string>();
@@ -526,7 +528,7 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
   if (rootExpanded) {
     for (const wn of wingNames) {
       const nodes = treeMode === "wingconfig"
-        ? buildSegmentNodes(wn, wing, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec, handleAddSegment, handleDeleteXsec, handleInsertXsec, onNodeEdit, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed)
+        ? buildSegmentNodes(wn, wing, wingConfig?.nose_pnt ?? null, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec, handleAddSegment, handleDeleteXsec, handleInsertXsec, onNodeEdit, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed)
         : buildXsecNodes(wn, wing, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec, handleDeleteXsec, onNodeEdit, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed);
       // Attach preview toggle to the wing root node
       if (nodes.length > 0 && onTogglePreview) {
