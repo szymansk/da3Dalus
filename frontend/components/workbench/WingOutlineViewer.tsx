@@ -283,8 +283,8 @@ async function buildAllWingTraces(
       ? ((nextTed as Record<string, unknown>).rel_chord_tip as number ?? relChord)
       : relChord;
 
-    const h1 = transformProfile([1 - relChord], [0], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
-    const h2 = transformProfile([1 - nextRelChord], [0], xsecs[nextI].chord, xsecs[nextI].twist, xsecs[nextI].xyz_le, dihedrals[nextI]);
+    const h1 = transformProfile([relChord], [0], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
+    const h2 = transformProfile([nextRelChord], [0], xsecs[nextI].chord, xsecs[nextI].twist, xsecs[nextI].xyz_le, dihedrals[nextI]);
     const te1 = transformProfile([1], [0], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
     const te2 = transformProfile([1], [0], xsecs[nextI].chord, xsecs[nextI].twist, xsecs[nextI].xyz_le, dihedrals[nextI]);
 
