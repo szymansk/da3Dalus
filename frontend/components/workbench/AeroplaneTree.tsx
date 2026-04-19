@@ -56,6 +56,7 @@ function buildSegmentNodes(
   onDeleteTed?: (wingName: string, xsecIndex: number) => void,
   onAddSpar?: (wingName: string, xsecIndex: number) => void,
   onAddTed?: (wingName: string, xsecIndex: number) => void,
+  onAddMenu?: (wingName: string, xsecIndex: number, hasTed: boolean) => void,
 ): TreeNode[] {
   const nodes: TreeNode[] = [];
   const wingExpanded = expandedSet.has(`wing-${wingName}`);
@@ -127,7 +128,15 @@ function buildSegmentNodes(
       onDelete: () => {
         if (confirm(`Delete segment ${i}?`)) onDeleteXsec(wingName, i);
       },
-      onAdd: (onAddSpar || onAddTed) ? () => onAddSpar?.(wingName, i) : undefined,
+      onAdd: (onAddSpar || onAddTed) ? () => {
+        // If TED exists, add spar directly. Otherwise show menu.
+        if (hasTed) {
+          onAddSpar?.(wingName, i);
+        } else {
+          // Signal parent to show add menu with both options
+          onAddMenu?.(wingName, i, !!hasTed);
+        }
+      } : undefined,
     });
 
     // Expanded segment details
@@ -218,6 +227,7 @@ function buildXsecNodes(
   onDeleteTed?: (wingName: string, xsecIndex: number) => void,
   onAddSpar?: (wingName: string, xsecIndex: number) => void,
   onAddTed?: (wingName: string, xsecIndex: number) => void,
+  onAddMenu?: (wingName: string, xsecIndex: number, hasTed: boolean) => void,
 ): TreeNode[] {
   const nodes: TreeNode[] = [];
   const wingExpanded = expandedSet.has(`wing-${wingName}`);
@@ -254,7 +264,15 @@ function buildXsecNodes(
       onDelete: () => {
         if (confirm(`Delete x_sec ${i}?`)) onDeleteXsec(wingName, i);
       },
-      onAdd: (onAddSpar || onAddTed) ? () => onAddSpar?.(wingName, i) : undefined,
+      onAdd: (onAddSpar || onAddTed) ? () => {
+        const ted = xsec.trailing_edge_device ?? xsec.control_surface;
+        const hasTed = ted && typeof ted === "object" && Object.keys(ted as Record<string, unknown>).length > 0;
+        if (hasTed) {
+          onAddSpar?.(wingName, i);
+        } else {
+          onAddMenu?.(wingName, i, !!hasTed);
+        }
+      } : undefined,
     });
 
     if (xsecExpanded) {
@@ -383,6 +401,8 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
   // Add menu state
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [importFuselageOpen, setImportFuselageOpen] = useState(false);
+  // Segment add menu: tracks which segment has an open add menu
+  const [segAddMenu, setSegAddMenu] = useState<{ wingName: string; xsecIndex: number; hasTed: boolean } | null>(null);
 
   async function handleAddWing() {
     if (!aeroplaneId) return;
@@ -528,8 +548,8 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
   if (rootExpanded) {
     for (const wn of wingNames) {
       const nodes = treeMode === "wingconfig"
-        ? buildSegmentNodes(wn, wing, wingConfig?.nose_pnt ?? null, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec, handleAddSegment, handleDeleteXsec, handleInsertXsec, onNodeEdit, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed)
-        : buildXsecNodes(wn, wing, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec, handleDeleteXsec, onNodeEdit, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed);
+        ? buildSegmentNodes(wn, wing, wingConfig?.nose_pnt ?? null, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec, handleAddSegment, handleDeleteXsec, handleInsertXsec, onNodeEdit, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed, (wn2, xi, hasTed) => setSegAddMenu({ wingName: wn2, xsecIndex: xi, hasTed }))
+        : buildXsecNodes(wn, wing, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec, handleDeleteXsec, onNodeEdit, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed, (wn2, xi, hasTed) => setSegAddMenu({ wingName: wn2, xsecIndex: xi, hasTed }));
       // Attach preview toggle to the wing root node
       if (nodes.length > 0 && onTogglePreview) {
         nodes[0].previewVisible = isWingVisible?.(wn) ?? false;
@@ -670,6 +690,31 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
           </>
         )}
       </div>
+
+      {/* Segment add menu (Spar / Control Surface) */}
+      {segAddMenu && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => setSegAddMenu(null)} />
+          <div className="absolute right-2 z-40 w-52 rounded-xl border border-border bg-card shadow-lg" style={{ top: "auto" }}>
+            <button
+              onClick={() => { onAddSpar?.(segAddMenu.wingName, segAddMenu.xsecIndex); setSegAddMenu(null); }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-[12px] text-foreground hover:bg-sidebar-accent rounded-t-xl"
+            >
+              <Plus size={12} />
+              Add Spar
+            </button>
+            {!segAddMenu.hasTed && (
+              <button
+                onClick={() => { onAddTed?.(segAddMenu.wingName, segAddMenu.xsecIndex); setSegAddMenu(null); }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-[12px] text-foreground hover:bg-sidebar-accent rounded-b-xl"
+              >
+                <Plus size={12} />
+                Add Control Surface
+              </button>
+            )}
+          </div>
+        </>
+      )}
 
       <ImportFuselageDialog
         open={importFuselageOpen}
