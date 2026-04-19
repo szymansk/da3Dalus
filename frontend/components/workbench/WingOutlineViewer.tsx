@@ -486,6 +486,8 @@ export function WingOutlineViewer({
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const plotlyRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const savedCamera = useRef<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -582,17 +584,22 @@ export function WingOutlineViewer({
 
       const config = { displayModeBar: false, responsive: true };
 
-      // Preserve camera state across re-renders
+      // Save camera before replot
       const el = containerRef.current as any;
-      const prevCamera = el?._fullLayout?.scene?._scene?.getCamera?.()
-        ?? el?.layout?.scene?.camera;
+      const currentCamera = el?.layout?.scene?.camera;
+      if (currentCamera) savedCamera.current = currentCamera;
 
       await Plotly.newPlot(containerRef.current, traces, layout, config);
 
-      // Restore previous camera if available
-      if (prevCamera) {
-        try { Plotly.relayout(containerRef.current, { "scene.camera": prevCamera }); } catch { /* ok */ }
+      // Restore saved camera
+      if (savedCamera.current) {
+        try { Plotly.relayout(containerRef.current, { "scene.camera": savedCamera.current }); } catch { /* ok */ }
       }
+
+      // Track camera changes from user interaction
+      containerRef.current?.on?.("plotly_relayout", (update: Record<string, unknown>) => {
+        if (update["scene.camera"]) savedCamera.current = update["scene.camera"];
+      });
 
       setLoading(false);
     }
