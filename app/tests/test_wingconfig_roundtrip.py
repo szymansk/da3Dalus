@@ -344,6 +344,146 @@ class TestAirfoilNameRoundtrip:
 # ═══════════════════════════════════════════════════════════════════
 
 
+# ═══════════════════════════════════════════════════════════════════
+# Drift test — repeated roundtrip stability measure
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestRoundtripDrift:
+    """Measures how much parameters drift when the roundtrip is applied
+    repeatedly. This is a stability/quality metric — even if a single
+    roundtrip has small errors, repeated application must not diverge."""
+
+    ITERATIONS = 10
+
+    @staticmethod
+    def _multi_roundtrip(wing_data: Wing, n: int):
+        """Apply the roundtrip n times, return per-iteration snapshots."""
+        from app.converters.model_schema_converters import (
+            wingConfigToAsbWingSchema as to_asb,
+            asbWingSchemaToWingConfig as from_asb,
+        )
+        wc = create_wing_configuration(wing_data)
+        snapshots = []
+
+        for _ in range(n):
+            asb_schema = to_asb(wc, "test", scale=0.001)
+            wc = from_asb(asb_schema, scale=1000.0)
+            snapshot = []
+            for seg in wc.segments:
+                snapshot.append({
+                    "root_incidence": seg.root_airfoil.incidence,
+                    "tip_incidence": seg.tip_airfoil.incidence,
+                    "root_chord": seg.root_airfoil.chord,
+                    "tip_chord": seg.tip_airfoil.chord,
+                    "root_dihedral": seg.root_airfoil.dihedral_as_rotation_in_degrees,
+                    "length": seg.length,
+                    "sweep": seg.sweep,
+                })
+            snapshots.append(snapshot)
+        return snapshots
+
+    def test_drift_realistic_6_segment_wing(self):
+        """6-segment wing with mixed angles — measures drift over 10 iterations.
+
+        This wing has: varying incidence (washout), dihedral on root,
+        sweep on all segments, long spans for maximum lever arm.
+        """
+        wing = _wing(
+            _seg(root_chord=250, tip_chord=230, root_incidence=4, tip_incidence=3,
+                 root_dihedral=3, length=80, sweep=5),
+            _seg(root_chord=230, tip_chord=200, root_incidence=3, tip_incidence=2,
+                 length=400, sweep=10),
+            _seg(root_chord=200, tip_chord=170, root_incidence=2, tip_incidence=1,
+                 length=500, sweep=15),
+            _seg(root_chord=170, tip_chord=130, root_incidence=1, tip_incidence=0,
+                 length=500, sweep=20),
+            _seg(root_chord=130, tip_chord=90, root_incidence=0, tip_incidence=-1,
+                 length=400, sweep=15),
+            _seg(root_chord=90, tip_chord=50, root_incidence=-1, tip_incidence=-3,
+                 length=200, sweep=10),
+        )
+
+        snapshots = self._multi_roundtrip(wing, self.ITERATIONS)
+
+        # Compare first and last iteration — drift should be zero
+        first = snapshots[0]
+        last = snapshots[-1]
+
+        max_incidence_drift = 0.0
+        max_chord_drift = 0.0
+        max_length_drift = 0.0
+
+        for seg_idx in range(len(first)):
+            for key in ["root_incidence", "tip_incidence"]:
+                drift = abs(last[seg_idx][key] - first[seg_idx][key])
+                max_incidence_drift = max(max_incidence_drift, drift)
+            for key in ["root_chord", "tip_chord"]:
+                drift = abs(last[seg_idx][key] - first[seg_idx][key])
+                max_chord_drift = max(max_chord_drift, drift)
+            drift = abs(last[seg_idx]["length"] - first[seg_idx]["length"])
+            max_length_drift = max(max_length_drift, drift)
+
+        # Report drift values for visibility
+        print(f"\n{'='*60}")
+        print(f"DRIFT after {self.ITERATIONS} roundtrips (6-segment wing):")
+        print(f"  max incidence drift: {max_incidence_drift:.6f}°")
+        print(f"  max chord drift:     {max_chord_drift:.6f} mm")
+        print(f"  max length drift:    {max_length_drift:.6f} mm")
+        print(f"{'='*60}")
+
+        # After fix: drift must be zero (idempotent conversion)
+        assert max_incidence_drift < 0.01, (
+            f"Incidence drifted by {max_incidence_drift:.4f}° over "
+            f"{self.ITERATIONS} iterations — conversion is not stable"
+        )
+        assert max_chord_drift < 0.01, (
+            f"Chord drifted by {max_chord_drift:.4f} mm over "
+            f"{self.ITERATIONS} iterations"
+        )
+        assert max_length_drift < 0.01, (
+            f"Length drifted by {max_length_drift:.4f} mm over "
+            f"{self.ITERATIONS} iterations"
+        )
+
+    def test_drift_asymmetric_twist_4_segments(self):
+        """4 segments with non-monotone twist pattern and long lever arms."""
+        wing = _wing(
+            _seg(root_chord=300, tip_chord=260, root_incidence=-2, tip_incidence=3,
+                 root_dihedral=5, length=150, sweep=8),
+            _seg(root_chord=260, tip_chord=200, root_incidence=3, tip_incidence=-1,
+                 length=600, sweep=12),
+            _seg(root_chord=200, tip_chord=140, root_incidence=-1, tip_incidence=4,
+                 length=600, sweep=18),
+            _seg(root_chord=140, tip_chord=60, root_incidence=4, tip_incidence=-3,
+                 length=300, sweep=25),
+        )
+
+        snapshots = self._multi_roundtrip(wing, self.ITERATIONS)
+        first = snapshots[0]
+        last = snapshots[-1]
+
+        max_drift = 0.0
+        for seg_idx in range(len(first)):
+            for key in ["root_incidence", "tip_incidence"]:
+                drift = abs(last[seg_idx][key] - first[seg_idx][key])
+                max_drift = max(max_drift, drift)
+
+        print(f"\n{'='*60}")
+        print(f"DRIFT after {self.ITERATIONS} roundtrips (asymmetric twist):")
+        print(f"  max incidence drift: {max_drift:.6f}°")
+        print(f"{'='*60}")
+
+        # Print per-iteration drift for diagnostics
+        for i, snap in enumerate(snapshots):
+            incidences = [f"{s['root_incidence']:.3f}/{s['tip_incidence']:.3f}" for s in snap]
+            print(f"  iter {i+1}: {' | '.join(incidences)}")
+
+        assert max_drift < 0.01, (
+            f"Incidence drifted by {max_drift:.4f}° — conversion diverges"
+        )
+
+
 class TestSegmentCountRoundtrip:
 
     def test_one_segment(self):
