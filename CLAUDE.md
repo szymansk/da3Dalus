@@ -80,6 +80,10 @@ then refactor. No production code without a failing test.
 Before opening any PR, you MUST run `/requesting-code-review` (or
 `/review`). Fix all findings before creating the PR. No exceptions.
 
+After opening a PR, **check that CI checks pass** (`gh pr checks <N>`).
+If checks fail, fix the issues and push before requesting review or
+merging. A PR with failing checks is not ready.
+
 ### Phase 5: Completion
 
 Invoke `/finishing-a-development-branch` when all tasks pass.
@@ -273,7 +277,7 @@ Language: **Python 3.11–3.13**, managed with **Poetry 2.x**.
 ```bash
 # Local development (hot reload)
 poetry install && poetry shell
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 
 # Tests
 poetry run pytest                    # all fast tests
@@ -293,11 +297,11 @@ docker compose build && docker compose up -d  # port 8086
 
 | URL | What |
 |-----|------|
-| `http://localhost:8000` | REST API |
-| `http://localhost:8000/docs` | Swagger UI |
-| `http://localhost:8000/redoc` | ReDoc |
-| `http://localhost:8000/openapi.json` | OpenAPI schema |
-| `http://localhost:8000/mcp` | MCP (Streamable HTTP) |
+| `http://localhost:8001` | REST API |
+| `http://localhost:8001/docs` | Swagger UI |
+| `http://localhost:8001/redoc` | ReDoc |
+| `http://localhost:8001/openapi.json` | OpenAPI schema |
+| `http://localhost:8001/mcp` | MCP (Streamable HTTP) |
 
 
 ## Architecture
