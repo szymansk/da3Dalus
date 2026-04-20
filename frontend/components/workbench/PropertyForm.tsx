@@ -389,24 +389,50 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
                 </div>
               </>
             )}
-            {/* Row 1: root_airfoil | tip_airfoil */}
-            <div className="flex gap-3">
-              <div className="flex flex-1 items-end gap-1.5">
-                <div className="flex-1">
-                  <AirfoilSelector
-                    label="root_airfoil"
-                    value={wc.root_airfoil}
-                    onChange={(v) => { setDirty(true); setWc({ ...wc, root_airfoil: v }); }}
-                  />
+            {/* ── Root Airfoil (only on segment 0) ── */}
+            {selectedXsecIndex === 0 && (
+              <>
+                <div className="flex items-center gap-2 border-b border-border pb-1">
+                  <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">Root Airfoil</span>
                 </div>
-                <button
-                  onClick={() => router.push("/workbench/airfoil-preview")}
-                  className="mb-0.5 flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent"
-                  title="Preview airfoil"
-                >
-                  <Eye size={14} />
-                </button>
-              </div>
+                <div className="flex gap-3">
+                  <div className="flex flex-1 items-end gap-1.5">
+                    <div className="flex-1">
+                      <AirfoilSelector
+                        label="root_airfoil"
+                        value={wc.root_airfoil}
+                        onChange={(v) => { setDirty(true); setWc({ ...wc, root_airfoil: v }); }}
+                      />
+                    </div>
+                    <button
+                      onClick={() => router.push("/workbench/airfoil-preview")}
+                      className="mb-0.5 flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent"
+                      title="Preview airfoil"
+                    >
+                      <Eye size={14} />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <Field label="root_chord" value={wc.root_chord} suffix="mm"
+                    onChange={(v) => { setDirty(true); setWc({ ...wc, root_chord: num(v) }); }} />
+                  <Field label="dihedral" value={wc.root_dihedral} suffix="°"
+                    onChange={(v) => { setDirty(true); setWc({ ...wc, root_dihedral: num(v) }); }} />
+                </div>
+                <div className="flex gap-3">
+                  <Field label="incidence" value={wc.root_incidence} suffix="°"
+                    onChange={(v) => { setDirty(true); setWc({ ...wc, root_incidence: num(v) }); }} />
+                  <Field label="rotation_point" value={wc.root_rotation_point}
+                    onChange={(v) => { setDirty(true); setWc({ ...wc, root_rotation_point: num(v, 0.25) }); }} />
+                </div>
+              </>
+            )}
+
+            {/* ── Tip Airfoil (always shown) ── */}
+            <div className="flex items-center gap-2 border-b border-border pb-1">
+              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">Tip Airfoil</span>
+            </div>
+            <div className="flex gap-3">
               <div className="flex flex-1 items-end gap-1.5">
                 <div className="flex-1">
                   <AirfoilSelector
@@ -424,66 +450,32 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
                 </button>
               </div>
             </div>
-            {/* Row 2: root_chord | tip_chord */}
             <div className="flex gap-3">
-              <Field
-                label="root_chord"
-                value={wc.root_chord}
-                suffix="mm"
-                onChange={(v) => { setDirty(true); setWc({ ...wc, root_chord: num(v) }); }}
-              />
-              <Field
-                label="tip_chord"
-                value={wc.tip_chord}
-                suffix="mm"
-                onChange={(v) => { setDirty(true); setWc({ ...wc, tip_chord: num(v) }); }}
-              />
+              <Field label="tip_chord" value={wc.tip_chord} suffix="mm"
+                onChange={(v) => { setDirty(true); setWc({ ...wc, tip_chord: num(v) }); }} />
+              <Field label="tip_dihedral" value={wc.tip_dihedral} suffix="°"
+                onChange={(v) => { setDirty(true); setWc({ ...wc, tip_dihedral: num(v) }); }} />
             </div>
-            {/* Row 3: length | sweep */}
             <div className="flex gap-3">
-              <Field
-                label="length"
-                value={wc.length}
-                suffix="mm"
-                onChange={(v) => { setDirty(true); setWc({ ...wc, length: num(v) }); }}
-              />
-              <Field
-                label="sweep"
-                value={wc.sweep}
-                suffix="mm"
-                onChange={(v) => { setDirty(true); setWc({ ...wc, sweep: num(v) }); }}
-              />
+              <Field label="tip_incidence" value={wc.tip_incidence} suffix="°"
+                onChange={(v) => { setDirty(true); setWc({ ...wc, tip_incidence: num(v) }); }} />
+              <Field label="tip_rotation_point" value={wc.tip_rotation_point}
+                onChange={(v) => { setDirty(true); setWc({ ...wc, tip_rotation_point: num(v, 0.25) }); }} />
             </div>
-            {/* Row 4: dihedral | incidence */}
-            <div className="flex gap-3">
-              <Field
-                label="dihedral"
-                value={wc.root_dihedral}
-                suffix="°"
-                onChange={(v) => { setDirty(true); setWc({ ...wc, root_dihedral: num(v) }); }}
-              />
-              <Field
-                label="incidence"
-                value={wc.root_incidence}
-                suffix="°"
-                onChange={(v) => { setDirty(true); setWc({ ...wc, root_incidence: num(v) }); }}
-              />
+
+            {/* ── Segment Parameters (always shown) ── */}
+            <div className="flex items-center gap-2 border-b border-border pb-1">
+              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">Segment</span>
             </div>
-            {/* Row 5: rotation_point | interpolation_pts */}
             <div className="flex gap-3">
-              <Field
-                label="rotation_point"
-                value={wc.root_rotation_point}
-                onChange={(v) => { setDirty(true); setWc({ ...wc, root_rotation_point: num(v, 0.25) }); }}
-              />
-              <Field
-                label="interpolation_pts"
-                value={wc.number_interpolation_points}
-                onChange={(v) => { setDirty(true); setWc({ ...wc, number_interpolation_points: num(v, 201) }); }}
-              />
+              <Field label="length" value={wc.length} suffix="mm"
+                onChange={(v) => { setDirty(true); setWc({ ...wc, length: num(v) }); }} />
+              <Field label="sweep" value={wc.sweep} suffix="mm"
+                onChange={(v) => { setDirty(true); setWc({ ...wc, sweep: num(v) }); }} />
             </div>
-            {/* Row 6: tip_type */}
             <div className="flex gap-3">
+              <Field label="interpolation_pts" value={wc.number_interpolation_points}
+                onChange={(v) => { setDirty(true); setWc({ ...wc, number_interpolation_points: num(v, 201) }); }} />
               <div className="flex flex-1 flex-col gap-1">
                 <label className="text-[11px] text-muted-foreground">tip_type</label>
                 <select
@@ -496,10 +488,7 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
                   <option value="round">round</option>
                 </select>
               </div>
-              <div className="flex-1" />
             </div>
-            {/* Tip airfoil overrides (collapsible) */}
-            <TipOverrideSection wc={wc} setWc={setWc} setDirty={setDirty} />
           </>
         ) : asb ? (
           <>
@@ -582,57 +571,6 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
   );
 }
 
-// ── Tip Override Section ────────────────────────────────────────
-
-function TipOverrideSection({
-  wc,
-  setWc,
-  setDirty,
-}: {
-  wc: WingConfigState;
-  setWc: (wc: WingConfigState) => void;
-  setDirty: (dirty: boolean) => void;
-}) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="mt-1 border-t border-border pt-2">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground"
-      >
-        {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-        Tip Airfoil Overrides
-      </button>
-      {open && (
-        <div className="mt-2 flex flex-col gap-2">
-          <div className="flex gap-3">
-            <Field
-              label="tip_dihedral"
-              value={wc.tip_dihedral}
-              suffix="°"
-              onChange={(v) => { setDirty(true); setWc({ ...wc, tip_dihedral: num(v) }); }}
-            />
-            <Field
-              label="tip_incidence"
-              value={wc.tip_incidence}
-              suffix="°"
-              onChange={(v) => { setDirty(true); setWc({ ...wc, tip_incidence: num(v) }); }}
-            />
-          </div>
-          <div className="flex gap-3">
-            <Field
-              label="tip_rotation_point"
-              value={wc.tip_rotation_point}
-              onChange={(v) => { setDirty(true); setWc({ ...wc, tip_rotation_point: num(v, 0.25) }); }}
-            />
-            <div className="flex-1" />
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 
 // ── Fuselage XSec Form ────────────────────────────────────────
