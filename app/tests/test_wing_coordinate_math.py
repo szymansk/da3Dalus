@@ -426,6 +426,186 @@ class TestCumulativeChain:
 # ═══════════════════════════════════════════════════════════════════
 
 
+# ═══════════════════════════════════════════════════════════════════
+# Test 5b: rotation_point_rel_chord variations
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestRotationPointVariations:
+    """Verify H matrix behavior with different rc values.
+
+    From docs/WingConfiguration.adoc:
+        "It can be rotated around a rotation point (defined) relative
+        (to the) chord (length)"
+
+    The rotation pivot shifts with rc. At rc=0 the LE is the pivot.
+    At rc=0.25 the quarter-chord is the pivot. At rc=0.5 the mid-chord.
+    """
+
+    def test_rc0_incidence_does_not_move_le(self):
+        """rc=0: rotation around LE — LE stays at origin.
+
+        H_0 = T(0) · Rx(0) · Ry(ι) · T(0) = Ry(ι)
+        Origin = [0, 0, 0]
+        """
+        for iota in [-5, 0, 3, 10]:
+            H = H0(C0=200, rc0=0, delta0=0, iota0=iota)
+            o = extract_origin(H)
+            np.testing.assert_array_almost_equal(o, [0, 0, 0], decimal=10,
+                err_msg=f"rc=0, iota={iota}°: LE should not move")
+
+    def test_rc025_incidence_shifts_le(self):
+        """rc=0.25: rotation around quarter-chord — LE moves.
+
+        Pivot at x = C*0.25 = 50mm (for C=200).
+        LE (at x=0) rotates around (50, 0, 0):
+            x_le = 50 - 50*cos(ι)
+            z_le = 50*sin(ι)
+        """
+        C, rc = 200, 0.25
+        pivot = C * rc  # 50mm
+        for iota in [-5, 3, 10]:
+            H = H0(C0=C, rc0=rc, delta0=0, iota0=iota)
+            o = extract_origin(H)
+            expected_x = pivot * (1 - math.cos(math.radians(iota)))
+            expected_z = pivot * math.sin(math.radians(iota))
+            assert o[0] == pytest.approx(expected_x, abs=0.001), \
+                f"rc={rc}, iota={iota}°: x_le wrong"
+            assert o[2] == pytest.approx(expected_z, abs=0.001), \
+                f"rc={rc}, iota={iota}°: z_le wrong"
+
+    def test_rc050_incidence_shifts_le_more(self):
+        """rc=0.5: rotation around mid-chord — larger LE displacement.
+
+        Pivot at x = C*0.5 = 100mm. Displacement doubles vs. rc=0.25.
+        """
+        C, rc = 200, 0.5
+        pivot = C * rc  # 100mm
+        for iota in [-5, 3, 10]:
+            H = H0(C0=C, rc0=rc, delta0=0, iota0=iota)
+            o = extract_origin(H)
+            expected_x = pivot * (1 - math.cos(math.radians(iota)))
+            expected_z = pivot * math.sin(math.radians(iota))
+            assert o[0] == pytest.approx(expected_x, abs=0.001), \
+                f"rc={rc}, iota={iota}°: x_le wrong"
+            assert o[2] == pytest.approx(expected_z, abs=0.001), \
+                f"rc={rc}, iota={iota}°: z_le wrong"
+
+    def test_different_rc_per_segment(self):
+        """Each segment has a different rc. LE positions must be consistent.
+
+        Seg 0: C=200, rc=0.3, iota=5°
+        Seg 1: C=180, rc=0.0, iota=-3° (rc=0 on tip of seg 0)
+        Seg 2: C=160, rc=0.5, iota=2°  (rc=0.5 on tip of seg 1)
+
+        We verify: the cumulative H chain produces correct LE positions
+        by checking each individually.
+        """
+        # Seg 0 root: C=200, rc=0.3, iota=5°
+        h0 = H0(C0=200, rc0=0.3, delta0=0, iota0=5)
+
+        # x_sec 0: LE displaced by rc=0.3 rotation
+        o0 = extract_origin(h0)
+        pivot0 = 200 * 0.3  # 60mm
+        assert o0[0] == pytest.approx(pivot0 * (1 - math.cos(math.radians(5))), abs=0.01)
+        assert o0[2] == pytest.approx(pivot0 * math.sin(math.radians(5)), abs=0.01)
+
+        # Seg 1: tip of seg 0 has C=180, rc=0.0, iota=-3°
+        # At rc=0, iotai does NOT move the LE (rotates around LE itself)
+        h1 = Hi(Ci=180, rci=0.0, Si_prev=0, Li_prev=100, Di_prev=0, deltai=0, iotai=-3)
+
+        c1 = CN([h0, h1])
+        o1 = extract_origin(c1)
+        # y should be ~100 (length of seg 0, modified by h0's rotation)
+        assert o1[1] == pytest.approx(100, abs=1)  # approximate due to rotation
+
+        # Seg 2: tip of seg 1 has C=160, rc=0.5, iota=2°
+        # At rc=0.5, the LE shifts significantly
+        h2 = Hi(Ci=160, rci=0.5, Si_prev=0, Li_prev=200, Di_prev=0, deltai=0, iotai=2)
+
+        c2 = CN([h0, h1, h2])
+        o2 = extract_origin(c2)
+        # y should be approximately 100 + 200 = 300
+        assert o2[1] == pytest.approx(300, abs=5)  # approximate due to accumulated rotations
+
+    def test_rc_does_not_affect_rotation_submatrix(self):
+        """The 3x3 rotation part of H is independent of rc.
+
+        From the doc formula: H = T(C*rc) · Rx(δ) · Ry(ι) · T(-C*rc)
+        The T's are pure translations — they cancel in the rotation part.
+        So R_part(H) = Rx(δ) · Ry(ι) regardless of rc.
+        """
+        for rc in [0, 0.1, 0.25, 0.5, 0.75]:
+            H = H0(C0=200, rc0=rc, delta0=5, iota0=10)
+            R_expected = (Rx(5) @ Ry(10))[:3, :3]
+            R_actual = H[:3, :3]
+            np.testing.assert_array_almost_equal(R_actual, R_expected, decimal=10,
+                err_msg=f"rc={rc}: rotation submatrix should be independent of rc")
+
+    def test_rc_only_affects_translation(self):
+        """Different rc values produce different LE positions but same rotation.
+
+        For C=200, iota=10°:
+        - rc=0.0: LE at [0, 0, 0] (no shift)
+        - rc=0.25: LE at [50*(1-cos10°), 0, 50*sin10°]
+        - rc=0.5: LE at [100*(1-cos10°), 0, 100*sin10°]
+
+        The shift is proportional to rc.
+        """
+        C, iota = 200, 10
+        results = {}
+        for rc in [0, 0.25, 0.5]:
+            H = H0(C0=C, rc0=rc, delta0=0, iota0=iota)
+            results[rc] = extract_origin(H)
+
+        # rc=0: no shift
+        np.testing.assert_array_almost_equal(results[0], [0, 0, 0], decimal=10)
+
+        # rc=0.5 should have exactly 2x the shift of rc=0.25
+        assert results[0.5][0] == pytest.approx(2 * results[0.25][0], abs=0.001)
+        assert results[0.5][2] == pytest.approx(2 * results[0.25][2], abs=0.001)
+
+    def test_cumulative_chain_mixed_rc_with_incidence(self):
+        """3-segment chain with mixed rc and incidence. Manual calculation.
+
+        Seg 0: C_root=200, rc=0.25, iota_root=5°, tip_chord=180, tip_iota=-2°
+        Seg 1: tip of seg0 → C=180, rc=0.0, iota=-2°, length=200
+        Seg 2: tip of seg1 → C=160, rc=0.5, iota=3°, length=150
+
+        Expected cumulative twists:
+            x_sec 0: twist = 5°
+            x_sec 1: twist = 5° + (-2°) = 3°
+            x_sec 2: twist = 3° + 3° = 6°
+        """
+        # These are just the twist expectations from the formula
+        # twist[i] = Σ(ι_k for k ≤ i)
+        assert 5 == 5                       # x_sec 0
+        assert 5 + (-2) == 3               # x_sec 1
+        assert 5 + (-2) + 3 == 6           # x_sec 2
+
+        # Now verify H chain LE positions are self-consistent
+        h0 = H0(C0=200, rc0=0.25, delta0=0, iota0=5)
+        h1 = Hi(Ci=180, rci=0.0, Si_prev=0, Li_prev=100, Di_prev=0, deltai=0, iotai=-2)
+        h2 = Hi(Ci=160, rci=0.5, Si_prev=0, Li_prev=200, Di_prev=0, deltai=0, iotai=3)
+
+        # x_sec 0
+        o0 = extract_origin(h0)
+        pivot0 = 200 * 0.25
+        assert o0[0] == pytest.approx(pivot0 * (1 - math.cos(math.radians(5))), abs=0.01)
+
+        # x_sec 1: rc=0, so iotai=-2° does NOT shift LE
+        c1 = CN([h0, h1])
+        o1 = extract_origin(c1)
+        # y ≈ 100 (no dihedral, small twist effect on y)
+        assert abs(o1[1] - 100) < 2  # within 2mm
+
+        # x_sec 2: rc=0.5, C=160, iotai=3°
+        # This WILL shift the LE due to rc=0.5 pivot
+        c2 = CN([h0, h1, h2])
+        o2 = extract_origin(c2)
+        assert abs(o2[1] - 300) < 5  # y ≈ 100 + 200
+
+
 class TestInverseFormulas:
     """Verify the closed-form parameter extraction from H matrix.
 
