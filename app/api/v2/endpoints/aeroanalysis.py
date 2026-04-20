@@ -68,6 +68,29 @@ def _save_png_and_get_static_url(
 
 
 @router.post(
+    "/aeroplanes/{aeroplane_id}/strip_forces",
+    response_model=StripForcesResponse,
+    tags=["analysis"],
+    operation_id="get_airplane_strip_forces",
+)
+async def get_airplane_strip_forces(
+    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
+    operating_point: OperatingPointSchema = Body(..., description="The operating point"),
+    db: Session = Depends(get_db),
+):
+    """Run AVL analysis for the full airplane and return strip-force distributions for all surfaces."""
+    try:
+        return await analysis_service.analyze_airplane_strip_forces(
+            db, aeroplane_id, operating_point
+        )
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Unexpected error: {exc}") from exc
+
+
+@router.post(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/strip_forces",
     response_model=StripForcesResponse,
     tags=["analysis"],

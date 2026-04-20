@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Play, RefreshCw, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import type { UseAnalysisReturn } from "@/hooks/useAnalysis";
-import type { StripForcesParams } from "@/hooks/useStripForces";
+import type { StripForcesAllParams } from "@/hooks/useStripForces";
 import type { StreamlinesParams } from "@/hooks/useStreamlines";
 import type { Tab } from "@/components/workbench/AnalysisViewerPanel";
 
@@ -16,7 +16,7 @@ interface AnalysisConfigPanelProps {
   // Trefftz Plane
   wingNames: string[];
   selectedWing: string | null;
-  onRunStripForces?: (params: StripForcesParams) => void;
+  onRunStripForces?: (params: StripForcesAllParams) => void;
   stripForcesRunning?: boolean;
   stripForcesError?: string | null;
   // Streamlines
@@ -55,9 +55,6 @@ export function AnalysisConfigPanel({
 
   // Trefftz-specific state
   const [trefftzAlpha, setTrefftzAlpha] = useState("5.0");
-  const [trefftzWing, setTrefftzWing] = useState<string>(
-    selectedWing ?? wingNames[0] ?? "",
-  );
 
   const parseXyzRef = (): number[] => {
     const parts = xyzRef.split(",").map((s) => parseFloat(s.trim()));
@@ -83,7 +80,6 @@ export function AnalysisConfigPanel({
   // ── Trefftz Plane handlers ──
   const handleRunStripForces = () => {
     onRunStripForces?.({
-      wing_name: trefftzWing,
       velocity: parseFloat(velocity) || 14.0,
       alpha: parseFloat(trefftzAlpha) || 5.0,
       beta: parseFloat(beta) || 0.0,
@@ -114,7 +110,6 @@ export function AnalysisConfigPanel({
     setAnalysisTool("aero_buildup");
     setXyzRef("0.0, 0.0, 0.0");
     setTrefftzAlpha("5.0");
-    setTrefftzWing(selectedWing ?? wingNames[0] ?? "");
   };
 
   // Determine running/error state for active tab
@@ -470,30 +465,6 @@ export function AnalysisConfigPanel({
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
             Strip-Force Analysis (AVL)
           </span>
-
-          {/* Wing selector */}
-          <div className="flex flex-col gap-1">
-            <label className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
-              Wing
-            </label>
-            <div className="relative">
-              <select
-                value={trefftzWing}
-                onChange={(e) => setTrefftzWing(e.target.value)}
-                className="w-full appearance-none rounded-xl border border-border bg-input px-3 py-2 pr-8 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
-              >
-                {wingNames.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                size={14}
-                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
-              />
-            </div>
-          </div>
 
           {/* Alpha (single) */}
           <div className="flex flex-col gap-1">

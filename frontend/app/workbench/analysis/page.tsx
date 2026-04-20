@@ -77,7 +77,7 @@ export default function AnalysisPage() {
               wingNames={wingNames}
               selectedWing={selectedWing ?? null}
               onRunStripForces={(params) => {
-                stripForces.run(params);
+                stripForces.runAll(params);
               }}
               stripForcesRunning={stripForces.isRunning}
               stripForcesError={stripForces.error}

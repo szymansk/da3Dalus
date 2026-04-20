@@ -257,44 +257,72 @@ function TrefftzPlaneChart({
       PlotlyRef = await import("plotly.js-gl3d-dist-min");
       if (disposed || !containerRef.current) return;
 
-      // Collect all strips sorted by Yle
-      const allStrips = stripForces.surfaces
-        .flatMap((s) => s.strips)
-        .sort((a, b) => a.Yle - b.Yle);
-
-      const ySpan = allStrips.map((s) => s.Yle);
-      const cl = allStrips.map((s) => s.cl);
-      const clNorm = allStrips.map((s) => s.cl_norm);
-      const cCl = allStrips.map((s) => s.c_cl);
-      const aiDeg = allStrips.map((s) => s.ai * (180 / Math.PI));
-
-      const traces: PlotlyTrace[] = [
-        // Cl — red dashed (left y-axis)
-        {
-          x: ySpan, y: cl, type: "scatter", mode: "lines",
-          name: "Cl", line: { color: "#E5484D", width: 2, dash: "dash" },
-          hovertemplate: "y: %{x:.3f} m<br>Cl: %{y:.4f}<extra></extra>",
-        },
-        // c·Cl — orange dashed (left y-axis)
-        {
-          x: ySpan, y: cCl, type: "scatter", mode: "lines",
-          name: "c\u00B7Cl", line: { color: "#FF8400", width: 2, dash: "dash" },
-          hovertemplate: "y: %{x:.3f} m<br>c\u00B7Cl: %{y:.4f}<extra></extra>",
-        },
-        // Cl·C/Cref — green solid (left y-axis)
-        {
-          x: ySpan, y: clNorm, type: "scatter", mode: "lines",
-          name: "Cl\u00B7C/Cref", line: { color: "#30A46C", width: 2 },
-          hovertemplate: "y: %{x:.3f} m<br>Cl\u00B7C/Cref: %{y:.4f}<extra></extra>",
-        },
-        // αi — blue dotted (right y-axis)
-        {
-          x: ySpan, y: aiDeg, type: "scatter", mode: "lines",
-          name: "\u03B1i", line: { color: "#3B82F6", width: 2, dash: "dot" },
-          yaxis: "y2",
-          hovertemplate: "y: %{x:.3f} m<br>\u03B1i: %{y:.2f}\u00B0<extra></extra>",
-        },
+      // Per-surface color palette
+      const surfaceColors = [
+        { cl: "#E5484D", ccl: "#FF8400", clnorm: "#30A46C", ai: "#3B82F6" },
+        { cl: "#D946EF", ccl: "#F59E0B", clnorm: "#06B6D4", ai: "#8B5CF6" },
+        { cl: "#F97316", ccl: "#EF4444", clnorm: "#10B981", ai: "#6366F1" },
+        { cl: "#EC4899", ccl: "#F59E0B", clnorm: "#14B8A6", ai: "#A78BFA" },
       ];
+
+      const traces: PlotlyTrace[] = [];
+
+      // Group surfaces: merge YDUP with its parent for display
+      const surfaceGroups = new Map<string, { strips: typeof stripForces.surfaces[0]["strips"] }>();
+      for (const surface of stripForces.surfaces) {
+        // Strip "(YDUP)" suffix to group with parent
+        const baseName = surface.surface_name.replace(/\s*\(YDUP\)$/, "");
+        const existing = surfaceGroups.get(baseName);
+        if (existing) {
+          existing.strips = [...existing.strips, ...surface.strips];
+        } else {
+          surfaceGroups.set(baseName, { strips: [...surface.strips] });
+        }
+      }
+
+      let surfIdx = 0;
+      for (const [surfaceName, group] of surfaceGroups) {
+        const sorted = group.strips.sort((a, b) => a.Yle - b.Yle);
+        const ySpan = sorted.map((s) => s.Yle);
+        const cl = sorted.map((s) => s.cl);
+        const clNorm = sorted.map((s) => s.cl_norm);
+        const cCl = sorted.map((s) => s.c_cl);
+        const aiDeg = sorted.map((s) => s.ai * (180 / Math.PI));
+        const colors = surfaceColors[surfIdx % surfaceColors.length];
+        const isFirst = surfIdx === 0;
+
+        traces.push(
+          {
+            x: ySpan, y: cl, type: "scatter", mode: "lines",
+            name: `Cl (${surfaceName})`, legendgroup: surfaceName,
+            line: { color: colors.cl, width: 2, dash: "dash" },
+            showlegend: true, visible: true,
+            hovertemplate: `${surfaceName}<br>y: %{x:.3f} m<br>Cl: %{y:.4f}<extra></extra>`,
+          },
+          {
+            x: ySpan, y: cCl, type: "scatter", mode: "lines",
+            name: `c\u00B7Cl (${surfaceName})`, legendgroup: surfaceName,
+            line: { color: colors.ccl, width: 2, dash: "dash" },
+            showlegend: true, visible: true,
+            hovertemplate: `${surfaceName}<br>y: %{x:.3f} m<br>c\u00B7Cl: %{y:.4f}<extra></extra>`,
+          },
+          {
+            x: ySpan, y: clNorm, type: "scatter", mode: "lines",
+            name: `Cl\u00B7C/Cref (${surfaceName})`, legendgroup: surfaceName,
+            line: { color: colors.clnorm, width: 2 },
+            showlegend: true, visible: true,
+            hovertemplate: `${surfaceName}<br>y: %{x:.3f} m<br>Cl\u00B7C/Cref: %{y:.4f}<extra></extra>`,
+          },
+          {
+            x: ySpan, y: aiDeg, type: "scatter", mode: "lines",
+            name: `\u03B1i (${surfaceName})`, legendgroup: surfaceName,
+            line: { color: colors.ai, width: 2, dash: "dot" },
+            yaxis: "y2", showlegend: true, visible: isFirst ? true : "legendonly",
+            hovertemplate: `${surfaceName}<br>y: %{x:.3f} m<br>\u03B1i: %{y:.2f}\u00B0<extra></extra>`,
+          },
+        );
+        surfIdx++;
+      }
 
       // Segment boundary shapes
       const shapes: PlotlyShape[] = [];

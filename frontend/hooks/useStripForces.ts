@@ -49,6 +49,14 @@ export interface StripForcesParams {
   xyz_ref: number[];
 }
 
+export interface StripForcesAllParams {
+  velocity: number;
+  alpha: number;
+  beta: number;
+  altitude: number;
+  xyz_ref: number[];
+}
+
 export function useStripForces(aeroplaneId: string | null) {
   const [result, setResult] = useState<StripForcesResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -90,5 +98,41 @@ export function useStripForces(aeroplaneId: string | null) {
     [aeroplaneId],
   );
 
-  return { result, isRunning, error, run };
+  const runAll = useCallback(
+    async (params: StripForcesAllParams) => {
+      if (!aeroplaneId) return;
+      setIsRunning(true);
+      setError(null);
+
+      try {
+        const res = await fetch(
+          `${API_BASE}/aeroplanes/${aeroplaneId}/strip_forces`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              velocity: params.velocity,
+              alpha: params.alpha,
+              beta: params.beta,
+              altitude: params.altitude,
+              xyz_ref: params.xyz_ref,
+            }),
+          },
+        );
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(`Strip forces failed: ${res.status} ${body}`);
+        }
+        const data: StripForcesResult = await res.json();
+        setResult(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setIsRunning(false);
+      }
+    },
+    [aeroplaneId],
+  );
+
+  return { result, isRunning, error, run, runAll };
 }
