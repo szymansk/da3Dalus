@@ -327,22 +327,20 @@ function TrefftzPlaneChart({
         surfIdx++;
       }
 
-      // Segment boundary tick marks (short marks at the x-axis)
+      // Segment boundary markers as a scatter trace on the x-axis
       const shapes: PlotlyShape[] = [];
       if (wingXSecs && wingXSecs.length > 0) {
+        const segY: number[] = [];
         for (const xs of wingXSecs) {
-          const yPos = xs.xyz_le[1];
-          shapes.push({
-            type: "line", x0: yPos, x1: yPos, y0: 0, y1: 0.04,
-            yref: "paper", line: { color: "#FF8400", width: 1.5 },
-          });
-          if (wingSymmetric) {
-            shapes.push({
-              type: "line", x0: -yPos, x1: -yPos, y0: 0, y1: 0.04,
-              yref: "paper", line: { color: "#FF8400", width: 1.5 },
-            });
-          }
+          segY.push(xs.xyz_le[1]);
+          if (wingSymmetric) segY.push(-xs.xyz_le[1]);
         }
+        traces.push({
+          x: segY, y: segY.map(() => 0),
+          type: "scatter", mode: "markers",
+          marker: { symbol: "triangle-up", size: 8, color: "#FF8400" },
+          showlegend: false, hoverinfo: "skip",
+        });
       }
 
       // Summary annotation (top-left, like AVL)
