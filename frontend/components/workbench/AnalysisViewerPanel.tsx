@@ -283,13 +283,19 @@ function TrefftzPlaneChart({
       let surfIdx = 0;
       for (const [surfaceName, group] of surfaceGroups) {
         const sorted = group.strips.sort((a, b) => a.Yle - b.Yle);
+
+        // Skip surfaces with no meaningful Y-span (e.g. vertical rudder)
+        const yMin = Math.min(...sorted.map((s) => s.Yle));
+        const yMax = Math.max(...sorted.map((s) => s.Yle));
+        if (Math.abs(yMax - yMin) < 0.001) continue;
+
         const ySpan = sorted.map((s) => s.Yle);
         const cl = sorted.map((s) => s.cl);
         const clNorm = sorted.map((s) => s.cl_norm);
         const cCl = sorted.map((s) => s.c_cl);
         const aiDeg = sorted.map((s) => s.ai * (180 / Math.PI));
         const colors = surfaceColors[surfIdx % surfaceColors.length];
-        // Hide surfaces with negligible lift (e.g. vertical rudder at beta=0)
+        // Hide surfaces with negligible lift (e.g. symmetric surface at beta=0)
         const maxAbsCl = Math.max(...cl.map(Math.abs));
         const isNegligible = maxAbsCl < 0.01;
         const defaultVisible = isNegligible ? "legendonly" as const : true;
