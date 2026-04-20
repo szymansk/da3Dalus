@@ -289,54 +289,57 @@ function TrefftzPlaneChart({
         const cCl = sorted.map((s) => s.c_cl);
         const aiDeg = sorted.map((s) => s.ai * (180 / Math.PI));
         const colors = surfaceColors[surfIdx % surfaceColors.length];
-        const isFirst = surfIdx === 0;
+        // Hide surfaces with negligible loading (e.g. vertical rudder at beta=0)
+        const maxAbsCcl = Math.max(...cCl.map(Math.abs));
+        const isNegligible = maxAbsCcl < 0.001;
+        const defaultVisible = isNegligible ? "legendonly" as const : true;
 
         traces.push(
           {
             x: ySpan, y: cl, type: "scatter", mode: "lines",
             name: `Cl (${surfaceName})`, legendgroup: surfaceName,
             line: { color: colors.cl, width: 2, dash: "dash" },
-            showlegend: true, visible: true,
+            showlegend: true, visible: defaultVisible,
             hovertemplate: `${surfaceName}<br>y: %{x:.3f} m<br>Cl: %{y:.4f}<extra></extra>`,
           },
           {
             x: ySpan, y: cCl, type: "scatter", mode: "lines",
             name: `c\u00B7Cl (${surfaceName})`, legendgroup: surfaceName,
             line: { color: colors.ccl, width: 2, dash: "dash" },
-            showlegend: true, visible: true,
+            showlegend: true, visible: defaultVisible,
             hovertemplate: `${surfaceName}<br>y: %{x:.3f} m<br>c\u00B7Cl: %{y:.4f}<extra></extra>`,
           },
           {
             x: ySpan, y: clNorm, type: "scatter", mode: "lines",
             name: `Cl\u00B7C/Cref (${surfaceName})`, legendgroup: surfaceName,
             line: { color: colors.clnorm, width: 2 },
-            showlegend: true, visible: true,
+            showlegend: true, visible: defaultVisible,
             hovertemplate: `${surfaceName}<br>y: %{x:.3f} m<br>Cl\u00B7C/Cref: %{y:.4f}<extra></extra>`,
           },
           {
             x: ySpan, y: aiDeg, type: "scatter", mode: "lines",
             name: `\u03B1i (${surfaceName})`, legendgroup: surfaceName,
             line: { color: colors.ai, width: 2, dash: "dot" },
-            yaxis: "y2", showlegend: true, visible: isFirst ? true : "legendonly",
+            yaxis: "y2", showlegend: true, visible: isNegligible ? "legendonly" as const : (surfIdx === 0 ? true : "legendonly" as const),
             hovertemplate: `${surfaceName}<br>y: %{x:.3f} m<br>\u03B1i: %{y:.2f}\u00B0<extra></extra>`,
           },
         );
         surfIdx++;
       }
 
-      // Segment boundary shapes
+      // Segment boundary tick marks (short marks at the x-axis)
       const shapes: PlotlyShape[] = [];
       if (wingXSecs && wingXSecs.length > 0) {
         for (const xs of wingXSecs) {
           const yPos = xs.xyz_le[1];
           shapes.push({
-            type: "line", x0: yPos, x1: yPos, y0: 0, y1: 1,
-            yref: "paper", line: { color: "#3F3F46", width: 1, dash: "dash" },
+            type: "line", x0: yPos, x1: yPos, y0: 0, y1: 0.04,
+            yref: "paper", line: { color: "#FF8400", width: 1.5 },
           });
           if (wingSymmetric) {
             shapes.push({
-              type: "line", x0: -yPos, x1: -yPos, y0: 0, y1: 1,
-              yref: "paper", line: { color: "#3F3F46", width: 1, dash: "dash" },
+              type: "line", x0: -yPos, x1: -yPos, y0: 0, y1: 0.04,
+              yref: "paper", line: { color: "#FF8400", width: 1.5 },
             });
           }
         }
