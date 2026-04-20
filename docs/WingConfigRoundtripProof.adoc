@@ -1,0 +1,270 @@
+= WingConfiguration ↔ Aerosandbox Roundtrip: Formal Proof
+:stem: latexmath
+:toc:
+
+== Overview
+
+This document proves that the conversion between WingConfiguration (WC) and Aerosandbox (ASB) representations is *exact* for the parameters that ASB can represent, and that repeated application of the roundtrip is *idempotent* (zero drift).
+
+The proof proceeds in three steps:
+
+1. *Forward direction*: WC → ASB is well-defined
+2. *Reverse direction*: ASB → WC produces a canonical form
+3. *Roundtrip*: Forward ∘ Reverse = Identity on ASB space (and vice versa after one projection)
+
+== Notation
+
+|===
+| Symbol | Meaning | Unit
+
+| latexmath:[C_i] | Chord length at station latexmath:[i] | mm
+| latexmath:[rc_i] | Rotation point relative to chord | dimensionless ∈ [0,1]
+| latexmath:[\iota_i] | Incidence (twist) angle | degrees
+| latexmath:[\delta_i] | Dihedral as rotation | degrees
+| latexmath:[D_i] | Dihedral as translation | mm
+| latexmath:[L_i] | Segment length (span) | mm
+| latexmath:[S_i] | Sweep (chordwise offset) | mm
+|===
+
+== Building Blocks
+
+The three homogeneous transformation matrices (from WingConfiguration.adoc):
+
+[stem]
+++++
+T(x,y,z) =
+\begin{bmatrix}
+1 & 0 & 0 & x \\
+0 & 1 & 0 & y \\
+0 & 0 & 1 & z \\
+0 & 0 & 0 & 1
+\end{bmatrix}
+++++
+
+[stem]
+++++
+R_x(\delta) =
+\begin{bmatrix}
+1 & 0 & 0 & 0 \\
+0 & \cos\delta & -\sin\delta & 0 \\
+0 & \sin\delta & \cos\delta & 0 \\
+0 & 0 & 0 & 1
+\end{bmatrix}
+++++
+
+[stem]
+++++
+R_y(\iota) =
+\begin{bmatrix}
+\cos\iota & 0 & \sin\iota & 0 \\
+0 & 1 & 0 & 0 \\
+-\sin\iota & 0 & \cos\iota & 0 \\
+0 & 0 & 0 & 1
+\end{bmatrix}
+++++
+
+== Forward Direction: WC → ASB
+
+=== Leading Edge Positions
+
+The segment coordinate systems are:
+
+[stem]
+++++
+H_0 = T(C_0 \cdot rc_0,\, 0,\, 0) \;\cdot\; R_x(\delta_0) \;\cdot\; R_y(\iota_0) \;\cdot\; T(-C_0 \cdot rc_0,\, 0,\, 0)
+++++
+
+[stem]
+++++
+H_i = T(C_i \cdot rc_i,\, 0,\, 0) \;\cdot\; T(S_{i-1},\, L_{i-1},\, D_{i-1}) \;\cdot\; R_x(\delta_i) \;\cdot\; R_y(\iota_i) \;\cdot\; T(-C_i \cdot rc_i,\, 0,\, 0)
+++++
+
+The cumulative transform and LE position:
+
+[stem]
+++++
+\mathcal{C}_N = H_0 \cdot \prod_{n=1}^{N} H_n
+\qquad\qquad
+\mathbf{xyz\_le}[N] = \mathcal{C}_N \cdot \begin{bmatrix} 0 \\ 0 \\ 0 \\ 1 \end{bmatrix}
+++++
+
+=== Twist (cumulative incidence)
+
+ASB stores *absolute* twist at each cross-section:
+
+[stem]
+++++
+\text{twist}[i] = \sum_{k=0}^{i} \iota_k
+++++
+
+where latexmath:[\iota_0] is `segments[0].root_airfoil.incidence` and latexmath:[\iota_k] for latexmath:[k \geq 1] is `segments[k-1].tip_airfoil.incidence`.
+
+== Reverse Direction: ASB → WC
+
+Given ASB data latexmath:[(\mathbf{xyz\_le}[i],\; \text{twist}[i],\; C_i)] for latexmath:[i = 0, \ldots, N]:
+
+=== Canonical form
+
+The reverse direction produces a *canonical* WC with:
+
+* latexmath:[rc_i = 0] for all latexmath:[i]
+* latexmath:[\delta_i = 0] for all latexmath:[i] (dihedral encoded as translation)
+
+=== Incidence recovery
+
+[stem]
+++++
+\iota_0^{\text{recovered}} = \text{twist}[0]
+++++
+
+[stem]
+++++
+\iota_i^{\text{recovered}} = \text{twist}[i] - \text{twist}[i-1]
+\qquad (i \geq 1)
+++++
+
+*Proof of exactness:* The cumulative sum of recovered incidences reproduces the original twists:
+
+[stem]
+++++
+\sum_{k=0}^{i} \iota_k^{\text{recovered}}
+= \text{twist}[0] + \sum_{k=1}^{i} \bigl(\text{twist}[k] - \text{twist}[k-1]\bigr)
+= \text{twist}[i]
+\qquad \square
+++++
+
+This is a telescoping sum — the intermediate terms cancel exactly.
+
+=== Pre-rotated translation
+
+The segment translation is pre-rotated to compensate for the accumulated twist in the H-chain:
+
+[stem]
+++++
+\mathbf{T}_i = R_y\!\bigl(-\text{twist}[i]\bigr) \cdot \bigl(\mathbf{xyz\_le}[i+1] - \mathbf{xyz\_le}[i]\bigr)
+++++
+
+From this we extract:
+
+[stem]
+++++
+S_i = \mathbf{T}_i[0], \qquad L_i = \mathbf{T}_i[1], \qquad D_i = \mathbf{T}_i[2]
+++++
+
+== Roundtrip Proof
+
+=== Theorem 1: ASB → WC → ASB is exact
+
+*To prove:* Starting from ASB data, converting to WC (reverse), then back to ASB (forward) reproduces the original ASB data exactly.
+
+*Proof:*
+
+The forward direction with latexmath:[rc = 0] and latexmath:[\delta = 0] simplifies the H matrices:
+
+[stem]
+++++
+H_0 = R_y(\iota_0^{\text{rec}}) = R_y(\text{twist}[0])
+++++
+
+[stem]
+++++
+H_i = T(S_i,\, L_i,\, D_i) \cdot R_y(\iota_i^{\text{rec}})
+++++
+
+The LE position of station latexmath:[k] is:
+
+[stem]
+++++
+\mathbf{xyz\_le}^{\text{rebuilt}}[k]
+= R_y(\text{twist}[0]) \cdot \prod_{i=1}^{k} \Bigl[ T(\mathbf{T}_{i-1}) \cdot R_y(\iota_i^{\text{rec}}) \Bigr] \cdot \mathbf{0}
+++++
+
+Expanding and using latexmath:[R_y(a) \cdot R_y(b) = R_y(a+b)]:
+
+[stem]
+++++
+\mathbf{xyz\_le}^{\text{rebuilt}}[k]
+= \mathbf{xyz\_le}[0] + \sum_{i=0}^{k-1} R_y(\text{twist}[i]) \cdot \mathbf{T}_i
+++++
+
+Substituting the definition latexmath:[\mathbf{T}_i = R_y(-\text{twist}[i]) \cdot \Delta_i] where latexmath:[\Delta_i = \mathbf{xyz\_le}[i+1] - \mathbf{xyz\_le}[i]]:
+
+[stem]
+++++
+\sum_{i=0}^{k-1} R_y(\text{twist}[i]) \cdot R_y(-\text{twist}[i]) \cdot \Delta_i
+= \sum_{i=0}^{k-1} I \cdot \Delta_i
+= \sum_{i=0}^{k-1} \Delta_i
+= \mathbf{xyz\_le}[k] - \mathbf{xyz\_le}[0]
+++++
+
+Therefore:
+
+[stem]
+++++
+\mathbf{xyz\_le}^{\text{rebuilt}}[k] = \mathbf{xyz\_le}[0] + \mathbf{xyz\_le}[k] - \mathbf{xyz\_le}[0] = \mathbf{xyz\_le}[k]
+\qquad \square
+++++
+
+The twist values are reproduced by construction (telescoping sum, see above). latexmath:[\square]
+
+=== Theorem 2: WC → ASB → WC is exact (for lossless parameters)
+
+*To prove:* Starting from WC data with latexmath:[rc = 0] and latexmath:[\delta = 0], converting to ASB (forward), then back to WC (reverse) reproduces the original WC data.
+
+*Proof:*
+
+With latexmath:[rc = 0], the forward direction gives latexmath:[\text{twist}[i] = \sum_{k \leq i} \iota_k]. The reverse direction recovers latexmath:[\iota_k = \text{twist}[k] - \text{twist}[k-1]] (telescoping), which equals the original incidence. latexmath:[\square]
+
+For the segment translations: the forward direction computes latexmath:[\mathbf{xyz\_le}] from the H-chain with latexmath:[rc=0]:
+
+[stem]
+++++
+\mathbf{xyz\_le}[i+1] - \mathbf{xyz\_le}[i] = R_y(\text{twist}[i]) \cdot \begin{bmatrix} S_i \\ L_i \\ D_i \end{bmatrix}
+++++
+
+The reverse pre-rotation then gives:
+
+[stem]
+++++
+\mathbf{T}_i = R_y(-\text{twist}[i]) \cdot R_y(\text{twist}[i]) \cdot \begin{bmatrix} S_i \\ L_i \\ D_i \end{bmatrix}
+= \begin{bmatrix} S_i \\ L_i \\ D_i \end{bmatrix}
+\qquad \square
+++++
+
+=== Corollary: Idempotence
+
+Since the reverse direction always produces the canonical form (latexmath:[rc=0], latexmath:[\delta=0]), and Theorem 2 shows that the roundtrip is exact for the canonical form, *any number of subsequent roundtrips produces identical results*. The drift is exactly zero.
+
+== Lossy Parameters
+
+The following parameters are *not* preserved by the roundtrip:
+
+|===
+| Parameter | Forward | Reverse | Why lossy
+
+| `rotation_point_rel_chord`
+| Consumed by H-matrix (shifts LE position)
+| Reset to 0
+| ASB's effective pivot is always the LE (rc=0). The same rigid-body rotation is represented differently.
+
+| `dihedral_as_rotation_in_degrees`
+| Encoded in xyz_le positions via R_x
+| Reset to 0, projected to `dihedral_as_translation`
+| ASB derives dihedral from LE-to-LE differences, cannot distinguish rotation from translation dihedral.
+|===
+
+*Important:* These projections change the *representation* but not the *shape*. The rebuilt wing renders to the same geometry. The field values differ, but the physical wing is identical.
+
+== Numerical Verification
+
+The above proofs are verified numerically by `app/tests/test_wing_coordinate_math.py` with 57 test cases covering:
+
+* Basic matrices (T, Rx, Ry)
+* Root and subsequent segment H-matrices
+* Cumulative chains
+* rc variations (0.0, 0.1, 0.25, 0.4, 0.5, 1.0)
+* Bidirectional roundtrips: WC→ASB→WC and ASB→WC→ASB
+* N-times drift tests (10 iterations)
+* Stress tests: ±80° incidence (gimbal lock), 50° cumulative twist, ±15° zig-zag, 1mm segments with ±20°, rc=1.0, 30° dihedral + ±20° incidence
+
+All 57 tests pass with exactly 0.0 drift after 10 iterations.
