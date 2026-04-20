@@ -70,8 +70,11 @@ function PlotlyChart({
     if (!containerRef.current || xData.length === 0) return;
     let disposed = false;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let PlotlyRef: any = null;
+
     (async () => {
-      const Plotly = await import("plotly.js-gl3d-dist-min");
+      PlotlyRef = await import("plotly.js-gl3d-dist-min");
       if (disposed || !containerRef.current) return;
 
       const mainTrace: PlotlyTrace = {
@@ -111,7 +114,7 @@ function PlotlyChart({
         layout.shapes = shapes;
       }
 
-      await Plotly.react(containerRef.current, allTraces, layout, {
+      await PlotlyRef.react(containerRef.current, allTraces, layout, {
         responsive: true,
         displayModeBar: false,
       });
@@ -119,6 +122,7 @@ function PlotlyChart({
 
     return () => {
       disposed = true;
+      if (containerRef.current && PlotlyRef) PlotlyRef.purge(containerRef.current);
     };
   }, [xData, yData, xLabel, yLabel, color, xFormat, extraTraces, shapes]);
 
@@ -171,8 +175,11 @@ function StreamlinesRenderer({ figure }: { figure: unknown }) {
     if (!figure || !containerRef.current) return;
     let disposed = false;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let PlotlyRef: any = null;
+
     (async () => {
-      const Plotly = await import("plotly.js-gl3d-dist-min");
+      PlotlyRef = await import("plotly.js-gl3d-dist-min");
       if (disposed || !containerRef.current) return;
 
       const figData = figure as {
@@ -210,8 +217,7 @@ function StreamlinesRenderer({ figure }: { figure: unknown }) {
         autosize: true,
       };
 
-      // @ts-expect-error -- plotly types
-      await Plotly.react(containerRef.current, figData.data || [], layout, {
+      await PlotlyRef.react(containerRef.current, figData.data || [], layout, {
         responsive: true,
         displayModeBar: true,
         modeBarButtonsToRemove: ["toImage", "sendDataToCloud"],
@@ -220,6 +226,7 @@ function StreamlinesRenderer({ figure }: { figure: unknown }) {
 
     return () => {
       disposed = true;
+      if (containerRef.current && PlotlyRef) PlotlyRef.purge(containerRef.current);
     };
   }, [figure]);
 
@@ -243,8 +250,11 @@ function TrefftzPlaneChart({
     if (!containerRef.current || stripForces.surfaces.length === 0) return;
     let disposed = false;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let PlotlyRef: any = null;
+
     (async () => {
-      const Plotly = await import("plotly.js-gl3d-dist-min");
+      PlotlyRef = await import("plotly.js-gl3d-dist-min");
       if (disposed || !containerRef.current) return;
 
       // Collect all strips sorted by Yle
@@ -348,14 +358,17 @@ function TrefftzPlaneChart({
         annotations,
       };
 
-      await Plotly.react(containerRef.current, traces, layout, {
+      await PlotlyRef.react(containerRef.current, traces, layout, {
         responsive: true,
         displayModeBar: true,
         modeBarButtonsToRemove: ["toImage", "sendDataToCloud"] as string[],
       });
     })();
 
-    return () => { disposed = true; };
+    return () => {
+      disposed = true;
+      if (containerRef.current && PlotlyRef) PlotlyRef.purge(containerRef.current);
+    };
   }, [stripForces, wingXSecs, wingSymmetric]);
 
   return (
