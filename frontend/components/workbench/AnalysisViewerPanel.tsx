@@ -9,6 +9,11 @@ const TABS = ["Polar", "Trefftz Plane", "Streamlines"] as const;
 export type Tab = (typeof TABS)[number];
 export { TABS };
 
+interface WingXSec {
+  xyz_le: number[];
+  chord: number;
+}
+
 interface Props {
   result: AnalysisResult | null;
   aeroplaneId: string | null;
@@ -21,9 +26,16 @@ interface Props {
   activeTab: Tab;
   onTabChange: (tab: Tab) => void;
   onConfigureClick?: () => void;
+  wingXSecs?: WingXSec[] | null;
+  wingSymmetric?: boolean;
 }
 
 // -- Plotly Chart (dynamic import) ----------------------------------------
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PlotlyTrace = Record<string, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PlotlyShape = Record<string, any>;
 
 function PlotlyChart({
   xData,
@@ -36,6 +48,8 @@ function PlotlyChart({
   xFormat,
   onToggleMaximize,
   isMaximized,
+  extraTraces,
+  shapes,
 }: {
   xData: number[];
   yData: number[];
@@ -47,6 +61,8 @@ function PlotlyChart({
   xFormat?: (v: number) => string;
   onToggleMaximize?: () => void;
   isMaximized?: boolean;
+  extraTraces?: PlotlyTrace[];
+  shapes?: PlotlyShape[];
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -58,16 +74,18 @@ function PlotlyChart({
       const Plotly = await import("plotly.js-gl3d-dist-min");
       if (disposed || !containerRef.current) return;
 
-      const trace = {
+      const mainTrace: PlotlyTrace = {
         x: xData,
         y: yData,
-        type: "scatter" as const,
-        mode: "lines" as const,
+        type: "scatter",
+        mode: "lines",
         line: { color, width: 2 },
         hovertemplate: `${xLabel}: %{x}<br>${yLabel}: %{y}<extra></extra>`,
       };
 
-      const layout = {
+      const allTraces = [mainTrace, ...(extraTraces || [])];
+
+      const layout: Record<string, unknown> = {
         paper_bgcolor: "transparent",
         plot_bgcolor: "transparent",
         font: { color: "#A1A1AA", family: "JetBrains Mono, monospace", size: 10 },
@@ -76,7 +94,6 @@ function PlotlyChart({
           title: { text: xLabel, font: { size: 11 } },
           gridcolor: "#27272A",
           zerolinecolor: "#3F3F46",
-          tickformat: xFormat ? undefined : undefined,
         },
         yaxis: {
           title: { text: yLabel, font: { size: 11 } },
@@ -85,10 +102,16 @@ function PlotlyChart({
         },
         showlegend: false,
         autosize: true,
+        yaxis2: {
+          overlaying: "y", side: "right",
+          showgrid: false, showticklabels: false, zeroline: false,
+        },
       };
+      if (shapes && shapes.length > 0) {
+        layout.shapes = shapes;
+      }
 
-      // @ts-expect-error -- plotly.js types incomplete for scatter
-      await Plotly.react(containerRef.current, [trace], layout, {
+      await Plotly.react(containerRef.current, allTraces, layout, {
         responsive: true,
         displayModeBar: false,
       });
@@ -97,7 +120,7 @@ function PlotlyChart({
     return () => {
       disposed = true;
     };
-  }, [xData, yData, xLabel, yLabel, color, xFormat]);
+  }, [xData, yData, xLabel, yLabel, color, xFormat, extraTraces, shapes]);
 
   if (xData.length === 0) {
     return (
@@ -203,6 +226,174 @@ function StreamlinesRenderer({ figure }: { figure: unknown }) {
   return <div ref={containerRef} className="h-full w-full" />;
 }
 
+// -- Trefftz Plane Combined Chart -----------------------------------------
+
+function TrefftzPlaneChart({
+  stripForces,
+  wingXSecs,
+  wingSymmetric,
+}: {
+  stripForces: StripForcesResult;
+  wingXSecs?: WingXSec[] | null;
+  wingSymmetric?: boolean;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current || stripForces.surfaces.length === 0) return;
+    let disposed = false;
+
+    (async () => {
+      const Plotly = await import("plotly.js-gl3d-dist-min");
+      if (disposed || !containerRef.current) return;
+
+      // Collect all strips sorted by Yle
+      const allStrips = stripForces.surfaces
+        .flatMap((s) => s.strips)
+        .sort((a, b) => a.Yle - b.Yle);
+
+      const ySpan = allStrips.map((s) => s.Yle);
+      const cl = allStrips.map((s) => s.cl);
+      const clNorm = allStrips.map((s) => s.cl_norm);
+      const cCl = allStrips.map((s) => s.c_cl);
+      const aiDeg = allStrips.map((s) => s.ai * (180 / Math.PI));
+
+      const traces: PlotlyTrace[] = [
+        // Cl — red dashed (left y-axis)
+        {
+          x: ySpan, y: cl, type: "scatter", mode: "lines",
+          name: "Cl", line: { color: "#E5484D", width: 2, dash: "dash" },
+          hovertemplate: "y: %{x:.3f} m<br>Cl: %{y:.4f}<extra></extra>",
+        },
+        // c·Cl — orange dashed (left y-axis)
+        {
+          x: ySpan, y: cCl, type: "scatter", mode: "lines",
+          name: "c\u00B7Cl", line: { color: "#FF8400", width: 2, dash: "dash" },
+          hovertemplate: "y: %{x:.3f} m<br>c\u00B7Cl: %{y:.4f}<extra></extra>",
+        },
+        // Cl·C/Cref — green solid (left y-axis)
+        {
+          x: ySpan, y: clNorm, type: "scatter", mode: "lines",
+          name: "Cl\u00B7C/Cref", line: { color: "#30A46C", width: 2 },
+          hovertemplate: "y: %{x:.3f} m<br>Cl\u00B7C/Cref: %{y:.4f}<extra></extra>",
+        },
+        // αi — blue dotted (right y-axis)
+        {
+          x: ySpan, y: aiDeg, type: "scatter", mode: "lines",
+          name: "\u03B1i", line: { color: "#3B82F6", width: 2, dash: "dot" },
+          yaxis: "y2",
+          hovertemplate: "y: %{x:.3f} m<br>\u03B1i: %{y:.2f}\u00B0<extra></extra>",
+        },
+      ];
+
+      // Wing planform as filled background trace (secondary y-axis 3, hidden)
+      if (wingXSecs && wingXSecs.length >= 2) {
+        const leY = wingXSecs.map((xs) => xs.xyz_le[1]);
+        const leChord = wingXSecs.map((xs) => xs.chord);
+        const polyY = [...leY, ...leY.slice().reverse()];
+        const polyH = [
+          ...leChord.map((c) => c * 0.5),
+          ...leChord.slice().reverse().map((c) => -c * 0.5),
+        ];
+        traces.push({
+          x: polyY, y: polyH, type: "scatter", mode: "lines",
+          fill: "toself", fillcolor: "rgba(255,132,0,0.05)",
+          line: { color: "rgba(255,132,0,0.2)", width: 1 },
+          hoverinfo: "skip", showlegend: false, yaxis: "y3",
+        });
+        if (wingSymmetric) {
+          traces.push({
+            x: polyY.map((v) => -v), y: polyH, type: "scatter", mode: "lines",
+            fill: "toself", fillcolor: "rgba(255,132,0,0.05)",
+            line: { color: "rgba(255,132,0,0.2)", width: 1 },
+            hoverinfo: "skip", showlegend: false, yaxis: "y3",
+          });
+        }
+      }
+
+      // Segment boundary shapes
+      const shapes: PlotlyShape[] = [];
+      if (wingXSecs && wingXSecs.length > 0) {
+        for (const xs of wingXSecs) {
+          const yPos = xs.xyz_le[1];
+          shapes.push({
+            type: "line", x0: yPos, x1: yPos, y0: 0, y1: 1,
+            yref: "paper", line: { color: "#3F3F46", width: 1, dash: "dash" },
+          });
+          if (wingSymmetric) {
+            shapes.push({
+              type: "line", x0: -yPos, x1: -yPos, y0: 0, y1: 1,
+              yref: "paper", line: { color: "#3F3F46", width: 1, dash: "dash" },
+            });
+          }
+        }
+      }
+
+      // Summary annotation (top-left, like AVL)
+      const annotations = [{
+        x: 0.01, y: 0.98, xref: "paper", yref: "paper",
+        xanchor: "left", yanchor: "top", showarrow: false,
+        font: { color: "#71717A", family: "JetBrains Mono, monospace", size: 10 },
+        text: [
+          `\u03B1 = ${stripForces.alpha.toFixed(2)}\u00B0`,
+          `Mach = ${stripForces.mach.toFixed(3)}`,
+          `Sref = ${stripForces.sref.toFixed(4)} m\u00B2`,
+          `Cref = ${stripForces.cref.toFixed(4)} m`,
+          `Bref = ${stripForces.bref.toFixed(4)} m`,
+        ].join("  \u00B7  "),
+      }];
+
+      const layout = {
+        paper_bgcolor: "transparent",
+        plot_bgcolor: "transparent",
+        font: { color: "#A1A1AA", family: "JetBrains Mono, monospace", size: 10 },
+        margin: { l: 55, r: 55, t: 30, b: 45 },
+        xaxis: {
+          title: { text: "Y [m]", font: { size: 11 } },
+          gridcolor: "#27272A", zerolinecolor: "#3F3F46",
+        },
+        yaxis: {
+          title: { text: "Cl, c\u00B7Cl, Cl\u00B7C/Cref", font: { size: 11, color: "#A1A1AA" } },
+          gridcolor: "#27272A", zerolinecolor: "#3F3F46",
+        },
+        yaxis2: {
+          title: { text: "\u03B1i [\u00B0]", font: { size: 11, color: "#3B82F6" } },
+          overlaying: "y", side: "right",
+          gridcolor: "transparent", zerolinecolor: "#3F3F46",
+          tickfont: { color: "#3B82F6" },
+        },
+        yaxis3: {
+          overlaying: "y", side: "right",
+          showgrid: false, showticklabels: false, zeroline: false,
+        },
+        legend: {
+          x: 0.98, y: 0.98, xanchor: "right", yanchor: "top",
+          bgcolor: "rgba(0,0,0,0.4)", bordercolor: "#3F3F46", borderwidth: 1,
+          font: { size: 10, color: "#A1A1AA" },
+        },
+        showlegend: true,
+        autosize: true,
+        shapes,
+        annotations,
+      };
+
+      await Plotly.react(containerRef.current, traces, layout, {
+        responsive: true,
+        displayModeBar: true,
+        modeBarButtonsToRemove: ["toImage", "sendDataToCloud"] as string[],
+      });
+    })();
+
+    return () => { disposed = true; };
+  }, [stripForces, wingXSecs, wingSymmetric]);
+
+  return (
+    <div className="flex flex-1 flex-col overflow-hidden bg-card-muted">
+      <div ref={containerRef} className="min-h-0 flex-1" />
+    </div>
+  );
+}
+
 // -- Main Component -------------------------------------------------------
 
 export function AnalysisViewerPanel({
@@ -217,6 +408,8 @@ export function AnalysisViewerPanel({
   activeTab,
   onTabChange,
   onConfigureClick,
+  wingXSecs,
+  wingSymmetric,
 }: Props) {
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
 
@@ -398,124 +591,11 @@ export function AnalysisViewerPanel({
               </span>
             </div>
           ) : stripForces && stripForces.surfaces.length > 0 ? (
-            (() => {
-              const primary = stripForces.surfaces.filter(
-                (s) => !s.surface_name.includes("YDUP"),
-              );
-              const allStrips = primary.flatMap((s) => s.strips);
-              if (allStrips.length === 0)
-                return (
-                  <span className="text-[12px] text-muted-foreground">
-                    No strip data
-                  </span>
-                );
-
-              const ySpan = allStrips.map((s) => s.Yle);
-              const cl = allStrips.map((s) => s.cl);
-              const cd = allStrips.map((s) => s.cd);
-              const cCl = allStrips.map((s) => s.c_cl);
-              const cmC4 = allStrips.map((s) => s["cm_c/4"]);
-              const ai = allStrips.map((s) => s.ai);
-              const xFmt = (v: number) => v.toFixed(2);
-
-              const distCharts = [
-                {
-                  id: "sf-cl",
-                  xData: ySpan,
-                  yData: cl,
-                  xLabel: "y [m]",
-                  yLabel: "Cl",
-                  title: "Cl vs span",
-                  color: "#FF8400",
-                  xFormat: xFmt,
-                },
-                {
-                  id: "sf-ccl",
-                  xData: ySpan,
-                  yData: cCl,
-                  xLabel: "y [m]",
-                  yLabel: "c\u00B7Cl",
-                  title: "c\u00B7Cl vs span",
-                  color: "#30A46C",
-                  xFormat: xFmt,
-                },
-                {
-                  id: "sf-cd",
-                  xData: ySpan,
-                  yData: cd,
-                  xLabel: "y [m]",
-                  yLabel: "Cd",
-                  title: "Cd vs span",
-                  color: "#E5484D",
-                  xFormat: xFmt,
-                },
-                {
-                  id: "sf-cm",
-                  xData: ySpan,
-                  yData: cmC4,
-                  xLabel: "y [m]",
-                  yLabel: "Cm c/4",
-                  title: "Cm c/4 vs span",
-                  color: "#A78BFA",
-                  xFormat: xFmt,
-                },
-                {
-                  id: "sf-ai",
-                  xData: ySpan,
-                  yData: ai,
-                  xLabel: "y [m]",
-                  yLabel: "\u03B1i [rad]",
-                  title: "Induced AoA vs span",
-                  color: "#F59E0B",
-                  xFormat: xFmt,
-                },
-              ];
-
-              if (maximizedChart) {
-                const chart = distCharts.find(
-                  (c) => c.id === maximizedChart,
-                );
-                if (!chart) return null;
-                return (
-                  <div className="flex flex-1">
-                    <PlotlyChart
-                      {...chart}
-                      onToggleMaximize={() => toggleChart(chart.id)}
-                      isMaximized
-                    />
-                  </div>
-                );
-              }
-              return (
-                <div className="flex flex-col gap-4">
-                  <div className="grid grid-cols-3 gap-4">
-                    {distCharts.slice(0, 3).map((c) => (
-                      <PlotlyChart
-                        key={c.id}
-                        {...c}
-                        onToggleMaximize={() => toggleChart(c.id)}
-                      />
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    {distCharts.slice(3).map((c) => (
-                      <PlotlyChart
-                        key={c.id}
-                        {...c}
-                        onToggleMaximize={() => toggleChart(c.id)}
-                      />
-                    ))}
-                  </div>
-                  <div className="mt-1 text-[11px] text-muted-foreground">
-                    {"\u03B1"} = {stripForces.alpha.toFixed(1)}{"\u00B0"}{" "}
-                    {"\u00B7"} Mach = {stripForces.mach.toFixed(3)}{" "}
-                    {"\u00B7"} Sref = {stripForces.sref.toFixed(4)} m{"\u00B2"}{" "}
-                    {"\u00B7"}{" "}
-                    {primary.map((s) => s.surface_name).join(", ")}
-                  </div>
-                </div>
-              );
-            })()
+            <TrefftzPlaneChart
+              stripForces={stripForces}
+              wingXSecs={wingXSecs}
+              wingSymmetric={wingSymmetric}
+            />
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-4">
               <span className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-muted-foreground">

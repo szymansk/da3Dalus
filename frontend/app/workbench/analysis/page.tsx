@@ -6,7 +6,7 @@ import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAnalysis } from "@/hooks/useAnalysis";
 import { useStripForces } from "@/hooks/useStripForces";
 import { useStreamlines } from "@/hooks/useStreamlines";
-import { useWings } from "@/hooks/useWings";
+import { useWings, useWing } from "@/hooks/useWings";
 import { AnalysisViewerPanel, type Tab } from "@/components/workbench/AnalysisViewerPanel";
 import { AnalysisConfigPanel } from "@/components/workbench/AnalysisConfigPanel";
 
@@ -16,6 +16,7 @@ export default function AnalysisPage() {
   const stripForces = useStripForces(aeroplaneId);
   const streamlines = useStreamlines(aeroplaneId);
   const { wingNames } = useWings(aeroplaneId);
+  const { wing } = useWing(aeroplaneId, selectedWing ?? wingNames[0] ?? null);
   const [configOpen, setConfigOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("Polar");
 
@@ -43,6 +44,8 @@ export default function AnalysisPage() {
             activeTab={activeTab}
             onTabChange={setActiveTab}
             onConfigureClick={() => setConfigOpen(true)}
+            wingXSecs={wing?.x_secs}
+            wingSymmetric={wing?.symmetric}
           />
         </div>
       </div>
