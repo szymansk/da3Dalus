@@ -36,6 +36,34 @@ export function useWings(aeroplaneId: string | null) {
   };
 }
 
+/**
+ * Load full Wing data for ALL wing names in parallel.
+ * Unlike individual useWing() calls, this scales to any number of wings.
+ */
+export function useAllWingData(aeroplaneId: string | null, wingNames: string[]) {
+  const key = aeroplaneId && wingNames.length > 0
+    ? `all-wings:${aeroplaneId}:${wingNames.join(",")}`
+    : null;
+
+  const { data, error, isLoading, mutate } = useSWR<Wing[]>(
+    key,
+    async () => {
+      const results = await Promise.all(
+        wingNames.map(async (name) => {
+          const res = await fetch(
+            `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${encodeURIComponent(name)}`,
+          );
+          if (!res.ok) return null;
+          return res.json() as Promise<Wing>;
+        }),
+      );
+      return results.filter((w): w is Wing => w !== null);
+    },
+  );
+
+  return { wings: data ?? [], error, isLoading, mutate };
+}
+
 export function useWing(aeroplaneId: string | null, wingName: string | null) {
   const { data, error, isLoading, mutate } = useSWR<Wing>(
     aeroplaneId && wingName

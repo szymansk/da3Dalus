@@ -9,9 +9,9 @@ import { TedEditDialog } from "@/components/workbench/TedEditDialog";
 import { WingOutlineViewer } from "@/components/workbench/WingOutlineViewer";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAeroplanes } from "@/hooks/useAeroplanes";
-import { useWings, useWing, type Wing } from "@/hooks/useWings";
+import { useWings, useWing, useAllWingData, type Wing } from "@/hooks/useWings";
 import { useFuselages } from "@/hooks/useFuselages";
-import { useFuselage, type Fuselage } from "@/hooks/useFuselage";
+import { useAllFuselageData, type Fuselage } from "@/hooks/useFuselage";
 import { API_BASE } from "@/lib/fetcher";
 
 export default function WorkbenchPage() {
@@ -101,29 +101,9 @@ export default function WorkbenchPage() {
     });
   }
 
-  // Load wing/fuselage data for visible items
-  // Note: hooks can't be called conditionally, so we load the first wing/fuselage
-  // For multiple wings, we'd need a bulk hook — for now use the selected wing
-  const { wing: firstWing } = useWing(aeroplaneId, wingNames[0] ?? null);
-  const { wing: secondWing } = useWing(aeroplaneId, wingNames[1] ?? null);
-  const { wing: thirdWing } = useWing(aeroplaneId, wingNames[2] ?? null);
-  const { fuselage: firstFuselage } = useFuselage(aeroplaneId, fuselageNames[0] ?? null);
-  const { fuselage: secondFuselage } = useFuselage(aeroplaneId, fuselageNames[1] ?? null);
-
-  const allWings: Wing[] = useMemo(() => {
-    const wings: Wing[] = [];
-    if (firstWing) wings.push(firstWing);
-    if (secondWing) wings.push(secondWing);
-    if (thirdWing) wings.push(thirdWing);
-    return wings;
-  }, [firstWing, secondWing, thirdWing]);
-
-  const allFuselages: Fuselage[] = useMemo(() => {
-    const fuses: Fuselage[] = [];
-    if (firstFuselage) fuses.push(firstFuselage);
-    if (secondFuselage) fuses.push(secondFuselage);
-    return fuses;
-  }, [firstFuselage, secondFuselage]);
+  // Load all wing/fuselage data for the wireframe viewer
+  const { wings: allWings, mutate: mutateAllWings } = useAllWingData(aeroplaneId, wingNames);
+  const { fuselages: allFuselages, mutate: mutateAllFuselages } = useAllFuselageData(aeroplaneId, fuselageNames);
 
   if (!aeroplaneId) {
     return <AeroplaneSelector
@@ -155,8 +135,8 @@ export default function WorkbenchPage() {
               onToggleFuselagePreview={toggleFuselageVisibility}
               onCollapseTree={() => setTreeOpen(false)}
               onNodeEdit={() => setConfigOpen(true)}
-              onWingSaved={() => mutateWingNames()}
-              onFuselageSaved={() => mutateFuselages()}
+              onWingSaved={() => { mutateWingNames(); mutateAllWings(); }}
+              onFuselageSaved={() => { mutateFuselages(); mutateAllFuselages(); }}
               onEditSpar={(wn, xi, si, data) => setSparDialog({ wingName: wn, xsecIndex: xi, sparIndex: si, data })}
               onDeleteSpar={async (wn, xi, si) => {
                 if (!aeroplaneId) return;
