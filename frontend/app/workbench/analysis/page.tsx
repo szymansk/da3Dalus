@@ -1,30 +1,34 @@
 "use client";
 
 import { useState } from "react";
-import { Settings, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAnalysis } from "@/hooks/useAnalysis";
-import { AnalysisViewerPanel } from "@/components/workbench/AnalysisViewerPanel";
+import { useStripForces } from "@/hooks/useStripForces";
+import { useStreamlines } from "@/hooks/useStreamlines";
+import { useWings } from "@/hooks/useWings";
+import { AnalysisViewerPanel, type Tab } from "@/components/workbench/AnalysisViewerPanel";
 import { AnalysisConfigPanel } from "@/components/workbench/AnalysisConfigPanel";
 
 export default function AnalysisPage() {
-  const { aeroplaneId } = useAeroplaneContext();
+  const { aeroplaneId, selectedWing } = useAeroplaneContext();
   const analysis = useAnalysis(aeroplaneId);
+  const stripForces = useStripForces(aeroplaneId);
+  const streamlines = useStreamlines(aeroplaneId);
+  const { wingNames } = useWings(aeroplaneId);
   const [configOpen, setConfigOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>("Polar");
+
+  const modalTitle =
+    activeTab === "Polar"
+      ? "Polar Configuration"
+      : activeTab === "Trefftz Plane"
+        ? "Trefftz Plane Configuration"
+        : "Streamlines Configuration";
 
   return (
     <>
       <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-        {/* Config button */}
-        <div className="flex shrink-0 items-center justify-end px-2 py-1">
-          <button
-            onClick={() => setConfigOpen(true)}
-            className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3 py-1.5 text-[12px] text-foreground hover:bg-sidebar-accent"
-          >
-            <Settings size={12} />
-            Configure & Run
-          </button>
-        </div>
         {/* Viewer fills remaining space */}
         <div className="min-h-0 flex-1 overflow-hidden">
           <AnalysisViewerPanel
@@ -32,6 +36,13 @@ export default function AnalysisPage() {
             aeroplaneId={aeroplaneId}
             lastRunTime={analysis.lastRunTime}
             lastRunDurationMs={analysis.lastRunDurationMs}
+            stripForces={stripForces.result}
+            stripForcesLoading={stripForces.isRunning}
+            streamlinesFigure={streamlines.figure}
+            streamlinesLoading={streamlines.isComputing}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            onConfigureClick={() => setConfigOpen(true)}
           />
         </div>
       </div>
@@ -48,7 +59,7 @@ export default function AnalysisPage() {
           >
             <div className="flex items-center justify-between">
               <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
-                Analysis Configuration
+                {modalTitle}
               </h2>
               <button
                 onClick={() => setConfigOpen(false)}
@@ -57,7 +68,23 @@ export default function AnalysisPage() {
                 <X size={14} />
               </button>
             </div>
-            <AnalysisConfigPanel analysis={analysis} />
+            <AnalysisConfigPanel
+              activeTab={activeTab}
+              analysis={analysis}
+              wingNames={wingNames}
+              selectedWing={selectedWing ?? null}
+              onRunStripForces={(params) => {
+                stripForces.run(params);
+              }}
+              stripForcesRunning={stripForces.isRunning}
+              stripForcesError={stripForces.error}
+              onRunStreamlines={(params) => {
+                streamlines.computeStreamlines(params);
+              }}
+              streamlinesRunning={streamlines.isComputing}
+              streamlinesError={streamlines.error}
+              onClose={() => setConfigOpen(false)}
+            />
           </div>
         </div>
       )}

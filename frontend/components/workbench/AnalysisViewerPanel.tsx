@@ -1,30 +1,38 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Wind, SlidersHorizontal, Activity, Maximize2, Minimize2 } from "lucide-react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { Wind, SlidersHorizontal, Activity, Maximize2, Minimize2, Settings } from "lucide-react";
 import type { AnalysisResult } from "@/hooks/useAnalysis";
-import { StreamlinesViewer } from "@/components/workbench/StreamlinesViewer";
+import type { StripForcesResult } from "@/hooks/useStripForces";
 
-const TABS = ["Polar", "Three-View", "Streamlines", "Diagrams"] as const;
-type Tab = (typeof TABS)[number];
+const TABS = ["Polar", "Trefftz Plane", "Streamlines"] as const;
+export type Tab = (typeof TABS)[number];
+export { TABS };
 
 interface Props {
   result: AnalysisResult | null;
   aeroplaneId: string | null;
   lastRunTime?: Date | null;
   lastRunDurationMs?: number | null;
+  stripForces?: StripForcesResult | null;
+  stripForcesLoading?: boolean;
+  streamlinesFigure?: unknown;
+  streamlinesLoading?: boolean;
+  activeTab: Tab;
+  onTabChange: (tab: Tab) => void;
+  onConfigureClick?: () => void;
 }
 
-// ── SVG Line Chart ──────────────────────────────────────────────
+// -- Plotly Chart (dynamic import) ----------------------------------------
 
-function LineChart({
+function PlotlyChart({
   xData,
   yData,
   xLabel,
   yLabel,
   title,
   annotation,
-  color = "var(--color-primary)",
+  color = "#FF8400",
   xFormat,
   onToggleMaximize,
   isMaximized,
@@ -40,13 +48,58 @@ function LineChart({
   onToggleMaximize?: () => void;
   isMaximized?: boolean;
 }) {
-  const W = 400;
-  const H = 200;
-  const PAD = { top: 10, right: 15, bottom: 30, left: 45 };
-  const plotW = W - PAD.left - PAD.right;
-  const plotH = H - PAD.top - PAD.bottom;
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  if (xData.length === 0 || yData.length === 0) {
+  useEffect(() => {
+    if (!containerRef.current || xData.length === 0) return;
+    let disposed = false;
+
+    (async () => {
+      const Plotly = await import("plotly.js-gl3d-dist-min");
+      if (disposed || !containerRef.current) return;
+
+      const trace = {
+        x: xData,
+        y: yData,
+        type: "scatter" as const,
+        mode: "lines" as const,
+        line: { color, width: 2 },
+        hovertemplate: `${xLabel}: %{x}<br>${yLabel}: %{y}<extra></extra>`,
+      };
+
+      const layout = {
+        paper_bgcolor: "transparent",
+        plot_bgcolor: "transparent",
+        font: { color: "#A1A1AA", family: "JetBrains Mono, monospace", size: 10 },
+        margin: { l: 50, r: 15, t: 5, b: 40 },
+        xaxis: {
+          title: { text: xLabel, font: { size: 11 } },
+          gridcolor: "#27272A",
+          zerolinecolor: "#3F3F46",
+          tickformat: xFormat ? undefined : undefined,
+        },
+        yaxis: {
+          title: { text: yLabel, font: { size: 11 } },
+          gridcolor: "#27272A",
+          zerolinecolor: "#3F3F46",
+        },
+        showlegend: false,
+        autosize: true,
+      };
+
+      // @ts-expect-error -- plotly.js types incomplete for scatter
+      await Plotly.react(containerRef.current, [trace], layout, {
+        responsive: true,
+        displayModeBar: false,
+      });
+    })();
+
+    return () => {
+      disposed = true;
+    };
+  }, [xData, yData, xLabel, yLabel, color, xFormat]);
+
+  if (xData.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center rounded-xl border border-border bg-card p-4">
         <span className="text-[12px] text-muted-foreground">No data</span>
@@ -54,29 +107,16 @@ function LineChart({
     );
   }
 
-  const xMin = Math.min(...xData);
-  const xMax = Math.max(...xData);
-  const yMin = Math.min(...yData);
-  const yMax = Math.max(...yData);
-  const xRange = xMax - xMin || 1;
-  const yRange = yMax - yMin || 1;
-
-  function sx(v: number) { return PAD.left + ((v - xMin) / xRange) * plotW; }
-  function sy(v: number) { return PAD.top + plotH - ((v - yMin) / yRange) * plotH; }
-
-  const pathD = xData.map((x, i) => `${i === 0 ? "M" : "L"}${sx(x).toFixed(1)},${sy(yData[i]).toFixed(1)}`).join(" ");
-
-  // Y-axis ticks (5 ticks)
-  const yTicks = Array.from({ length: 5 }, (_, i) => yMin + (yRange * i) / 4);
-  // X-axis ticks (5 ticks)
-  const xTicks = Array.from({ length: 5 }, (_, i) => xMin + (xRange * i) / 4);
-
   return (
     <div className="group/chart flex flex-1 flex-col gap-1">
       <div className="flex items-center gap-2">
-        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground">{title}</span>
+        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground">
+          {title}
+        </span>
         {annotation && (
-          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground">{annotation}</span>
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground">
+            {annotation}
+          </span>
         )}
         <span className="flex-1" />
         {onToggleMaximize && (
@@ -89,65 +129,95 @@ function LineChart({
           </button>
         )}
       </div>
-      <div className="rounded-xl border border-border bg-card p-2">
-        <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full" preserveAspectRatio="xMidYMid meet">
-          {/* Grid lines */}
-          {yTicks.map((v, i) => (
-            <line key={`yg${i}`} x1={PAD.left} x2={W - PAD.right} y1={sy(v)} y2={sy(v)}
-              stroke="var(--color-border)" strokeWidth="0.5" />
-          ))}
-          {xTicks.map((v, i) => (
-            <line key={`xg${i}`} x1={sx(v)} x2={sx(v)} y1={PAD.top} y2={PAD.top + plotH}
-              stroke="var(--color-border)" strokeWidth="0.5" />
-          ))}
-
-          {/* Axes */}
-          <line x1={PAD.left} x2={PAD.left} y1={PAD.top} y2={PAD.top + plotH}
-            stroke="var(--color-muted-foreground)" strokeWidth="1" />
-          <line x1={PAD.left} x2={W - PAD.right} y1={PAD.top + plotH} y2={PAD.top + plotH}
-            stroke="var(--color-muted-foreground)" strokeWidth="1" />
-
-          {/* Y-axis labels */}
-          {yTicks.map((v, i) => (
-            <text key={`yl${i}`} x={PAD.left - 5} y={sy(v) + 3}
-              textAnchor="end" fontSize="8" fill="var(--color-muted-foreground)"
-              fontFamily="var(--font-jetbrains-mono)">
-              {v.toFixed(2)}
-            </text>
-          ))}
-
-          {/* X-axis labels */}
-          {xTicks.map((v, i) => (
-            <text key={`xl${i}`} x={sx(v)} y={PAD.top + plotH + 14}
-              textAnchor="middle" fontSize="8" fill="var(--color-muted-foreground)"
-              fontFamily="var(--font-jetbrains-mono)">
-              {xFormat ? xFormat(v) : `${v.toFixed(0)}°`}
-            </text>
-          ))}
-
-          {/* Axis titles */}
-          <text x={W / 2} y={H - 3} textAnchor="middle" fontSize="9"
-            fill="var(--color-muted-foreground)" fontFamily="var(--font-jetbrains-mono)">
-            {xLabel}
-          </text>
-          <text x={12} y={H / 2} textAnchor="middle" fontSize="9"
-            fill="var(--color-muted-foreground)" fontFamily="var(--font-jetbrains-mono)"
-            transform={`rotate(-90, 12, ${H / 2})`}>
-            {yLabel}
-          </text>
-
-          {/* Data line */}
-          <path d={pathD} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" />
-        </svg>
+      <div
+        className="rounded-xl border border-border bg-card"
+        style={{ height: isMaximized ? "100%" : 220 }}
+      >
+        <div ref={containerRef} className="h-full w-full" />
       </div>
     </div>
   );
 }
 
-// ── Main Component ──────────────────────────────────────────────
+// -- Streamlines Renderer -------------------------------------------------
 
-export function AnalysisViewerPanel({ result, aeroplaneId, lastRunTime, lastRunDurationMs }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>("Polar");
+function StreamlinesRenderer({ figure }: { figure: unknown }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!figure || !containerRef.current) return;
+    let disposed = false;
+
+    (async () => {
+      const Plotly = await import("plotly.js-gl3d-dist-min");
+      if (disposed || !containerRef.current) return;
+
+      const figData = figure as {
+        data?: unknown[];
+        layout?: Record<string, unknown>;
+      };
+      const sceneFromLayout =
+        (figData.layout?.scene as Record<string, unknown>) || {};
+
+      const layout = {
+        paper_bgcolor: "#09090B",
+        plot_bgcolor: "#09090B",
+        font: { color: "#A1A1AA" },
+        margin: { l: 0, r: 0, t: 0, b: 0 },
+        scene: {
+          ...sceneFromLayout,
+          bgcolor: "#09090B",
+          xaxis: {
+            ...((sceneFromLayout.xaxis as object) || {}),
+            gridcolor: "#27272A",
+            color: "#71717A",
+          },
+          yaxis: {
+            ...((sceneFromLayout.yaxis as object) || {}),
+            gridcolor: "#27272A",
+            color: "#71717A",
+          },
+          zaxis: {
+            ...((sceneFromLayout.zaxis as object) || {}),
+            gridcolor: "#27272A",
+            color: "#71717A",
+          },
+        },
+        showlegend: false,
+        autosize: true,
+      };
+
+      // @ts-expect-error -- plotly types
+      await Plotly.react(containerRef.current, figData.data || [], layout, {
+        responsive: true,
+        displayModeBar: true,
+        modeBarButtonsToRemove: ["toImage", "sendDataToCloud"],
+      });
+    })();
+
+    return () => {
+      disposed = true;
+    };
+  }, [figure]);
+
+  return <div ref={containerRef} className="h-full w-full" />;
+}
+
+// -- Main Component -------------------------------------------------------
+
+export function AnalysisViewerPanel({
+  result,
+  aeroplaneId,
+  lastRunTime,
+  lastRunDurationMs,
+  stripForces,
+  stripForcesLoading,
+  streamlinesFigure,
+  streamlinesLoading,
+  activeTab,
+  onTabChange,
+  onConfigureClick,
+}: Props) {
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
 
   function toggleChart(id: string) {
@@ -158,7 +228,7 @@ export function AnalysisViewerPanel({ result, aeroplaneId, lastRunTime, lastRunD
     if (!result || !result.CL || result.CL.length === 0) return null;
 
     const { CL, CD, Cm, alpha } = result;
-    const clOverCd = CL.map((cl, i) => CD[i] !== 0 ? cl / CD[i] : 0);
+    const clOverCd = CL.map((cl, i) => (CD[i] !== 0 ? cl / CD[i] : 0));
 
     const maxCLIdx = CL.indexOf(Math.max(...CL));
     const maxLDIdx = clOverCd.indexOf(Math.max(...clOverCd));
@@ -184,11 +254,20 @@ export function AnalysisViewerPanel({ result, aeroplaneId, lastRunTime, lastRunD
           Aerodynamic Analysis
         </span>
         <div className="flex-1" />
+        {onConfigureClick && (
+          <button
+            onClick={onConfigureClick}
+            className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3 py-1.5 text-[12px] text-foreground hover:bg-sidebar-accent"
+          >
+            <Settings size={12} />
+            Configure & Run
+          </button>
+        )}
         <div className="flex items-center gap-1">
           {TABS.map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => onTabChange(tab)}
               className={`rounded-full px-3 py-1.5 font-[family-name:var(--font-geist-sans)] text-[12px] transition-colors ${
                 tab === activeTab
                   ? "bg-primary text-primary-foreground"
@@ -207,18 +286,69 @@ export function AnalysisViewerPanel({ result, aeroplaneId, lastRunTime, lastRunD
           {charts ? (
             (() => {
               const allCharts = [
-                { id: "cl", xData: charts.alpha, yData: charts.CL, xLabel: "α [°]", yLabel: "C_L", title: "C_L vs α", annotation: `C_L,max ≈ ${charts.clMax.toFixed(2)} @ ${charts.alphaClMax.toFixed(0)}°`, color: "var(--color-primary)" },
-                { id: "cd", xData: charts.alpha, yData: charts.CD, xLabel: "α [°]", yLabel: "C_D", title: "C_D vs α", color: "var(--color-destructive)" },
-                { id: "ld", xData: charts.alpha, yData: charts.clOverCd, xLabel: "α [°]", yLabel: "C_L / C_D", title: "C_L / C_D vs α", annotation: `L/D,max ≈ ${charts.ldMax.toFixed(1)} @ ${charts.alphaLdMax.toFixed(0)}°`, color: "var(--color-success)" },
-                { id: "polar", xData: charts.CD, yData: charts.CL, xLabel: "C_D", yLabel: "C_L", title: "C_L vs C_D (drag polar)", color: "var(--color-primary)", xFormat: (v: number) => v.toFixed(3) },
-                ...(charts.Cm ? [{ id: "cm", xData: charts.alpha, yData: charts.Cm, xLabel: "α [°]", yLabel: "C_m", title: "C_m vs α", color: "#A78BFA" }] : []),
+                {
+                  id: "cl",
+                  xData: charts.alpha,
+                  yData: charts.CL,
+                  xLabel: "\u03B1 [\u00B0]",
+                  yLabel: "C_L",
+                  title: "C_L vs \u03B1",
+                  annotation: `C_L,max \u2248 ${charts.clMax.toFixed(2)} @ ${charts.alphaClMax.toFixed(0)}\u00B0`,
+                  color: "#FF8400",
+                },
+                {
+                  id: "cd",
+                  xData: charts.alpha,
+                  yData: charts.CD,
+                  xLabel: "\u03B1 [\u00B0]",
+                  yLabel: "C_D",
+                  title: "C_D vs \u03B1",
+                  color: "#E5484D",
+                },
+                {
+                  id: "ld",
+                  xData: charts.alpha,
+                  yData: charts.clOverCd,
+                  xLabel: "\u03B1 [\u00B0]",
+                  yLabel: "C_L / C_D",
+                  title: "C_L / C_D vs \u03B1",
+                  annotation: `L/D,max \u2248 ${charts.ldMax.toFixed(1)} @ ${charts.alphaLdMax.toFixed(0)}\u00B0`,
+                  color: "#30A46C",
+                },
+                {
+                  id: "polar",
+                  xData: charts.CD,
+                  yData: charts.CL,
+                  xLabel: "C_D",
+                  yLabel: "C_L",
+                  title: "C_L vs C_D (drag polar)",
+                  color: "#FF8400",
+                  xFormat: (v: number) => v.toFixed(3),
+                },
+                ...(charts.Cm
+                  ? [
+                      {
+                        id: "cm",
+                        xData: charts.alpha,
+                        yData: charts.Cm,
+                        xLabel: "\u03B1 [\u00B0]",
+                        yLabel: "C_m",
+                        title: "C_m vs \u03B1",
+                        color: "#A78BFA",
+                      },
+                    ]
+                  : []),
               ];
               if (maximizedChart) {
                 const chart = allCharts.find((c) => c.id === maximizedChart);
                 if (!chart) return null;
                 return (
                   <div className="flex flex-1">
-                    <LineChart {...chart} onToggleMaximize={() => toggleChart(chart.id)} isMaximized />
+                    <PlotlyChart
+                      {...chart}
+                      onToggleMaximize={() => toggleChart(chart.id)}
+                      isMaximized
+                    />
                   </div>
                 );
               }
@@ -226,12 +356,20 @@ export function AnalysisViewerPanel({ result, aeroplaneId, lastRunTime, lastRunD
                 <div className="flex flex-col gap-4">
                   <div className="grid grid-cols-3 gap-4">
                     {allCharts.slice(0, 3).map((c) => (
-                      <LineChart key={c.id} {...c} onToggleMaximize={() => toggleChart(c.id)} />
+                      <PlotlyChart
+                        key={c.id}
+                        {...c}
+                        onToggleMaximize={() => toggleChart(c.id)}
+                      />
                     ))}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     {allCharts.slice(3).map((c) => (
-                      <LineChart key={c.id} {...c} onToggleMaximize={() => toggleChart(c.id)} />
+                      <PlotlyChart
+                        key={c.id}
+                        {...c}
+                        onToggleMaximize={() => toggleChart(c.id)}
+                      />
                     ))}
                   </div>
                 </div>
@@ -243,27 +381,168 @@ export function AnalysisViewerPanel({ result, aeroplaneId, lastRunTime, lastRunD
                 Run an analysis to see results
               </span>
               <span className="text-[12px] text-subtle-foreground">
-                Configure parameters on the right and click {"\u201C"}Run Analysis{"\u201D"}
+                Configure parameters on the right and click {"\u201C"}Run
+                Analysis{"\u201D"}
               </span>
             </div>
           )}
         </div>
       )}
-      {activeTab === "Streamlines" && (
-        <StreamlinesViewer aeroplaneId={aeroplaneId} />
-      )}
-      {activeTab === "Three-View" && (
-        <div className="flex flex-1 items-center justify-center bg-card-muted">
-          <span className="font-[family-name:var(--font-geist-sans)] text-[13px] text-muted-foreground">
-            Coming soon
-          </span>
+
+      {activeTab === "Trefftz Plane" && (
+        <div className="flex flex-1 flex-col gap-4 overflow-auto bg-card-muted p-6">
+          {stripForcesLoading ? (
+            <div className="flex flex-1 items-center justify-center">
+              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
+                Running AVL strip-force analysis...
+              </span>
+            </div>
+          ) : stripForces && stripForces.surfaces.length > 0 ? (
+            (() => {
+              const primary = stripForces.surfaces.filter(
+                (s) => !s.surface_name.includes("YDUP"),
+              );
+              const allStrips = primary.flatMap((s) => s.strips);
+              if (allStrips.length === 0)
+                return (
+                  <span className="text-[12px] text-muted-foreground">
+                    No strip data
+                  </span>
+                );
+
+              const ySpan = allStrips.map((s) => s.Yle);
+              const cl = allStrips.map((s) => s.cl);
+              const cd = allStrips.map((s) => s.cd);
+              const cCl = allStrips.map((s) => s.c_cl);
+              const cmC4 = allStrips.map((s) => s["cm_c/4"]);
+              const ai = allStrips.map((s) => s.ai);
+              const xFmt = (v: number) => v.toFixed(2);
+
+              const distCharts = [
+                {
+                  id: "sf-cl",
+                  xData: ySpan,
+                  yData: cl,
+                  xLabel: "y [m]",
+                  yLabel: "Cl",
+                  title: "Cl vs span",
+                  color: "#FF8400",
+                  xFormat: xFmt,
+                },
+                {
+                  id: "sf-ccl",
+                  xData: ySpan,
+                  yData: cCl,
+                  xLabel: "y [m]",
+                  yLabel: "c\u00B7Cl",
+                  title: "c\u00B7Cl vs span",
+                  color: "#30A46C",
+                  xFormat: xFmt,
+                },
+                {
+                  id: "sf-cd",
+                  xData: ySpan,
+                  yData: cd,
+                  xLabel: "y [m]",
+                  yLabel: "Cd",
+                  title: "Cd vs span",
+                  color: "#E5484D",
+                  xFormat: xFmt,
+                },
+                {
+                  id: "sf-cm",
+                  xData: ySpan,
+                  yData: cmC4,
+                  xLabel: "y [m]",
+                  yLabel: "Cm c/4",
+                  title: "Cm c/4 vs span",
+                  color: "#A78BFA",
+                  xFormat: xFmt,
+                },
+                {
+                  id: "sf-ai",
+                  xData: ySpan,
+                  yData: ai,
+                  xLabel: "y [m]",
+                  yLabel: "\u03B1i [rad]",
+                  title: "Induced AoA vs span",
+                  color: "#F59E0B",
+                  xFormat: xFmt,
+                },
+              ];
+
+              if (maximizedChart) {
+                const chart = distCharts.find(
+                  (c) => c.id === maximizedChart,
+                );
+                if (!chart) return null;
+                return (
+                  <div className="flex flex-1">
+                    <PlotlyChart
+                      {...chart}
+                      onToggleMaximize={() => toggleChart(chart.id)}
+                      isMaximized
+                    />
+                  </div>
+                );
+              }
+              return (
+                <div className="flex flex-col gap-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    {distCharts.slice(0, 3).map((c) => (
+                      <PlotlyChart
+                        key={c.id}
+                        {...c}
+                        onToggleMaximize={() => toggleChart(c.id)}
+                      />
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {distCharts.slice(3).map((c) => (
+                      <PlotlyChart
+                        key={c.id}
+                        {...c}
+                        onToggleMaximize={() => toggleChart(c.id)}
+                      />
+                    ))}
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    {"\u03B1"} = {stripForces.alpha.toFixed(1)}{"\u00B0"}{" "}
+                    {"\u00B7"} Mach = {stripForces.mach.toFixed(3)}{" "}
+                    {"\u00B7"} Sref = {stripForces.sref.toFixed(4)} m{"\u00B2"}{" "}
+                    {"\u00B7"}{" "}
+                    {primary.map((s) => s.surface_name).join(", ")}
+                  </div>
+                </div>
+              );
+            })()
+          ) : (
+            <div className="flex flex-1 flex-col items-center justify-center gap-4">
+              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-muted-foreground">
+                Run an analysis to see strip-force distributions
+              </span>
+            </div>
+          )}
         </div>
       )}
-      {activeTab === "Diagrams" && (
-        <div className="flex flex-1 items-center justify-center bg-card-muted">
-          <span className="font-[family-name:var(--font-geist-sans)] text-[13px] text-muted-foreground">
-            Coming soon
-          </span>
+
+      {activeTab === "Streamlines" && (
+        <div className="flex flex-1 overflow-hidden bg-card-muted">
+          {streamlinesLoading ? (
+            <div className="flex flex-1 items-center justify-center">
+              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
+                Computing streamlines...
+              </span>
+            </div>
+          ) : streamlinesFigure ? (
+            <StreamlinesRenderer figure={streamlinesFigure} />
+          ) : (
+            <div className="flex flex-1 items-center justify-center">
+              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-muted-foreground">
+                Run an analysis to see streamlines
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -291,7 +570,16 @@ export function AnalysisViewerPanel({ result, aeroplaneId, lastRunTime, lastRunD
         <span className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
           {charts ? `${charts.alpha.length} points` : "No data"}
           {lastRunTime && lastRunDurationMs != null && (
-            <> {"\u00B7"} Last run: {lastRunTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })} {"\u00B7"} {lastRunDurationMs} ms</>
+            <>
+              {" "}
+              {"\u00B7"} Last run:{" "}
+              {lastRunTime.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+              })}{" "}
+              {"\u00B7"} {lastRunDurationMs} ms
+            </>
           )}
         </span>
       </div>
