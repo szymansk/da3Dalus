@@ -935,7 +935,7 @@ class TestMathRoundtrip:
 
         # Subsequent roundtrips of canonical form must be idempotent
         current = canonical
-        for iteration in range(N):
+        for _ in range(N):
             asb = self._forward(current)
             current = self._reverse(asb)
 
