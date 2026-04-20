@@ -609,12 +609,16 @@ def wingConfigToAsbWingSchema(
                 deflection=float(cs.deflection),
             )
 
+        # Always use the cumulative twist from asb_wing() — it is the
+        # authoritative source.  The local incidence from section_data
+        # is a per-segment delta, NOT the cumulative value ASB expects.
+        # Bug fix for GH #158.
+        section_twist = float(x_sec.twist)
+
         if index < len(section_data):
             section_airfoil, _ = section_data[index]
-            section_twist = float(section_airfoil.incidence)
             section_airfoil_ref = section_airfoil.airfoil
         else:
-            section_twist = float(x_sec.twist)
             section_airfoil_ref = x_sec.airfoil
 
         segment = wing_config.segments[index] if index < len(wing_config.segments) else None
