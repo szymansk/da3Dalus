@@ -28,14 +28,12 @@ type Mode = "wingconfig" | "asb" | "fuselage";
 interface WingConfigState {
   root_airfoil: string;
   root_chord: number;       // mm
-  root_dihedral: number;    // degrees
+  root_dihedral: number;    // mm (dihedral as translation)
   root_incidence: number;   // degrees
-  root_rotation_point: number;
   tip_airfoil: string;
   tip_chord: number;        // mm
-  tip_dihedral: number;
+  tip_dihedral: number;     // mm (dihedral as translation)
   tip_incidence: number;
-  tip_rotation_point: number;
   length: number;           // mm
   sweep: number;            // mm
   number_interpolation_points: number;
@@ -79,14 +77,12 @@ function segmentToWcState(seg: WingConfigSegment): WingConfigState {
   return {
     root_airfoil: airfoilShortName(seg.root_airfoil.airfoil),
     root_chord: seg.root_airfoil.chord,
-    root_dihedral: seg.root_airfoil.dihedral_as_rotation_in_degrees ?? 0,
+    root_dihedral: seg.root_airfoil.dihedral_as_translation ?? 0,
     root_incidence: seg.root_airfoil.incidence ?? 0,
-    root_rotation_point: seg.root_airfoil.rotation_point_rel_chord ?? 0.25,
     tip_airfoil: airfoilShortName(seg.tip_airfoil.airfoil),
     tip_chord: seg.tip_airfoil.chord,
-    tip_dihedral: seg.tip_airfoil.dihedral_as_rotation_in_degrees ?? 0,
+    tip_dihedral: seg.tip_airfoil.dihedral_as_translation ?? 0,
     tip_incidence: seg.tip_airfoil.incidence ?? 0,
-    tip_rotation_point: seg.tip_airfoil.rotation_point_rel_chord ?? 0.25,
     length: seg.length,
     sweep: seg.sweep,
     number_interpolation_points: seg.number_interpolation_points ?? 201,
@@ -107,22 +103,18 @@ function xsecsToWingConfig(
   const dx = (tip.xyz_le[0] - root.xyz_le[0]) * 1000;
   const dy = (tip.xyz_le[1] - root.xyz_le[1]) * 1000;
 
-  // Estimate dihedral from z-component of leading-edge delta
-  const segLength = Math.sqrt(dx * dx + dy * dy);
+  // Dihedral as translation (z-component of LE delta)
   const dz = (tip.xyz_le[2] - root.xyz_le[2]) * 1000;
-  const dihedralDeg = segLength > 0 ? Math.atan2(dz, Math.abs(dy)) * (180 / Math.PI) : 0;
 
   return {
     root_airfoil: airfoilShortName(root.airfoil),
     root_chord: rootChord,
-    root_dihedral: Math.round(dihedralDeg * 100) / 100,
+    root_dihedral: Math.round(dz * 100) / 100,
     root_incidence: root.twist,
-    root_rotation_point: 0.25,
     tip_airfoil: airfoilShortName(tip.airfoil),
     tip_chord: tipChord,
-    tip_dihedral: Math.round(dihedralDeg * 100) / 100,
+    tip_dihedral: Math.round(dz * 100) / 100,
     tip_incidence: tip.twist,
-    tip_rotation_point: 0.25,
     length: Math.abs(dy),
     sweep: dx,
     number_interpolation_points: root.number_interpolation_points ?? 201,
@@ -313,16 +305,18 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
           root_airfoil: {
             airfoil: wc.root_airfoil,
             chord: wc.root_chord,
-            dihedral_as_rotation_in_degrees: wc.root_dihedral,
+            dihedral_as_rotation_in_degrees: 0,
+            dihedral_as_translation: wc.root_dihedral,
             incidence: wc.root_incidence,
-            rotation_point_rel_chord: wc.root_rotation_point,
+            rotation_point_rel_chord: 0,
           },
           tip_airfoil: {
             airfoil: wc.tip_airfoil,
             chord: wc.tip_chord,
-            dihedral_as_rotation_in_degrees: wc.tip_dihedral,
+            dihedral_as_rotation_in_degrees: 0,
+            dihedral_as_translation: wc.tip_dihedral,
             incidence: wc.tip_incidence,
-            rotation_point_rel_chord: wc.tip_rotation_point,
+            rotation_point_rel_chord: 0,
           },
           length: wc.length,
           sweep: wc.sweep,
@@ -416,14 +410,12 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
                 <div className="flex gap-3">
                   <Field label="root_chord" value={wc.root_chord} suffix="mm"
                     onChange={(v) => { setDirty(true); setWc({ ...wc, root_chord: num(v) }); }} />
-                  <Field label="dihedral" value={wc.root_dihedral} suffix="°"
-                    onChange={(v) => { setDirty(true); setWc({ ...wc, root_dihedral: num(v) }); }} />
-                </div>
-                <div className="flex gap-3">
                   <Field label="incidence" value={wc.root_incidence} suffix="°"
                     onChange={(v) => { setDirty(true); setWc({ ...wc, root_incidence: num(v) }); }} />
-                  <Field label="rotation_point" value={wc.root_rotation_point}
-                    onChange={(v) => { setDirty(true); setWc({ ...wc, root_rotation_point: num(v, 0.25) }); }} />
+                </div>
+                <div className="flex gap-3">
+                  <Field label="dihedral" value={wc.root_dihedral} suffix="mm"
+                    onChange={(v) => { setDirty(true); setWc({ ...wc, root_dihedral: num(v) }); }} />
                 </div>
               </>
             )}
@@ -453,14 +445,12 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
             <div className="flex gap-3">
               <Field label="tip_chord" value={wc.tip_chord} suffix="mm"
                 onChange={(v) => { setDirty(true); setWc({ ...wc, tip_chord: num(v) }); }} />
-              <Field label="tip_dihedral" value={wc.tip_dihedral} suffix="°"
-                onChange={(v) => { setDirty(true); setWc({ ...wc, tip_dihedral: num(v) }); }} />
-            </div>
-            <div className="flex gap-3">
               <Field label="tip_incidence" value={wc.tip_incidence} suffix="°"
                 onChange={(v) => { setDirty(true); setWc({ ...wc, tip_incidence: num(v) }); }} />
-              <Field label="tip_rotation_point" value={wc.tip_rotation_point}
-                onChange={(v) => { setDirty(true); setWc({ ...wc, tip_rotation_point: num(v, 0.25) }); }} />
+            </div>
+            <div className="flex gap-3">
+              <Field label="tip_dihedral" value={wc.tip_dihedral} suffix="mm"
+                onChange={(v) => { setDirty(true); setWc({ ...wc, tip_dihedral: num(v) }); }} />
             </div>
 
             {/* ── Segment Parameters (always shown) ── */}

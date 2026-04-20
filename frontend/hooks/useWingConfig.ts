@@ -8,6 +8,7 @@ export interface WingConfigSegment {
     airfoil: string;
     chord: number;
     dihedral_as_rotation_in_degrees?: number;
+    dihedral_as_translation?: number;
     incidence?: number;
     rotation_point_rel_chord?: number;
   };
@@ -15,6 +16,7 @@ export interface WingConfigSegment {
     airfoil: string;
     chord: number;
     dihedral_as_rotation_in_degrees?: number;
+    dihedral_as_translation?: number;
     incidence?: number;
     rotation_point_rel_chord?: number;
   };
