@@ -286,31 +286,6 @@ function TrefftzPlaneChart({
         },
       ];
 
-      // Wing planform as filled background trace (secondary y-axis 3, hidden)
-      if (wingXSecs && wingXSecs.length >= 2) {
-        const leY = wingXSecs.map((xs) => xs.xyz_le[1]);
-        const leChord = wingXSecs.map((xs) => xs.chord);
-        const polyY = [...leY, ...leY.slice().reverse()];
-        const polyH = [
-          ...leChord.map((c) => c * 0.5),
-          ...leChord.slice().reverse().map((c) => -c * 0.5),
-        ];
-        traces.push({
-          x: polyY, y: polyH, type: "scatter", mode: "lines",
-          fill: "toself", fillcolor: "rgba(255,132,0,0.05)",
-          line: { color: "rgba(255,132,0,0.2)", width: 1 },
-          hoverinfo: "skip", showlegend: false, yaxis: "y3",
-        });
-        if (wingSymmetric) {
-          traces.push({
-            x: polyY.map((v) => -v), y: polyH, type: "scatter", mode: "lines",
-            fill: "toself", fillcolor: "rgba(255,132,0,0.05)",
-            line: { color: "rgba(255,132,0,0.2)", width: 1 },
-            hoverinfo: "skip", showlegend: false, yaxis: "y3",
-          });
-        }
-      }
-
       // Segment boundary shapes
       const shapes: PlotlyShape[] = [];
       if (wingXSecs && wingXSecs.length > 0) {
@@ -361,10 +336,6 @@ function TrefftzPlaneChart({
           overlaying: "y", side: "right",
           gridcolor: "transparent", zerolinecolor: "#3F3F46",
           tickfont: { color: "#3B82F6" },
-        },
-        yaxis3: {
-          overlaying: "y", side: "right",
-          showgrid: false, showticklabels: false, zeroline: false,
         },
         legend: {
           x: 0.98, y: 0.98, xanchor: "right", yanchor: "top",
