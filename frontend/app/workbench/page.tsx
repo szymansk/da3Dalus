@@ -17,7 +17,7 @@ import { API_BASE } from "@/lib/fetcher";
 export default function WorkbenchPage() {
   const { aeroplaneId, setAeroplaneId, selectedWing, selectedXsecIndex, selectedFuselage, selectedFuselageXsecIndex } = useAeroplaneContext();
   const { aeroplanes, isLoading, createAeroplane } = useAeroplanes();
-  const { wingNames } = useWings(aeroplaneId);
+  const { wingNames, mutate: mutateWingNames } = useWings(aeroplaneId);
   const { fuselageNames, mutate: mutateFuselages } = useFuselages(aeroplaneId);
   const { mutate: mutateSelectedWing } = useWing(aeroplaneId, selectedWing);
   const aeroplaneName =
@@ -155,6 +155,7 @@ export default function WorkbenchPage() {
               onToggleFuselagePreview={toggleFuselageVisibility}
               onCollapseTree={() => setTreeOpen(false)}
               onNodeEdit={() => setConfigOpen(true)}
+              onWingSaved={() => mutateWingNames()}
               onFuselageSaved={() => mutateFuselages()}
               onEditSpar={(wn, xi, si, data) => setSparDialog({ wingName: wn, xsecIndex: xi, sparIndex: si, data })}
               onDeleteSpar={async (wn, xi, si) => {
