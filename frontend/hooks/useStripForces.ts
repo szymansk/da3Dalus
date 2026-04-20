@@ -67,6 +67,7 @@ export function useStripForces(aeroplaneId: string | null) {
       if (!aeroplaneId) return;
       setIsRunning(true);
       setError(null);
+      setResult(null);
 
       try {
         const res = await fetch(
@@ -103,6 +104,7 @@ export function useStripForces(aeroplaneId: string | null) {
       if (!aeroplaneId) return;
       setIsRunning(true);
       setError(null);
+      setResult(null);
 
       try {
         const res = await fetch(

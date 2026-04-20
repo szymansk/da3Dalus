@@ -11,7 +11,7 @@ class StripForceEntry(BaseModel):
     chord: float = Field(..., alias="Chord", description="Local chord (m)")
     area: float = Field(..., alias="Area", description="Strip area (m²)")
     c_cl: float = Field(..., description="Chord × Cl product")
-    ai: float = Field(..., description="Induced angle of attack (rad)")
+    ai: float = Field(..., description="Induced angle of attack (deg)")
     cl_norm: float = Field(..., description="Normalized Cl (cl × chord / Cref)")
     cl: float = Field(..., description="Local lift coefficient")
     cd: float = Field(..., description="Local drag coefficient")

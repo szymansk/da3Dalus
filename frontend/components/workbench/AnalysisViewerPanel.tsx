@@ -293,7 +293,7 @@ function TrefftzPlaneChart({
         const cl = sorted.map((s) => s.cl);
         const clNorm = sorted.map((s) => s.cl_norm);
         const cCl = sorted.map((s) => s.c_cl);
-        const aiDeg = sorted.map((s) => s.ai * (180 / Math.PI));
+        const aiDeg = sorted.map((s) => s.ai);
         const colors = surfaceColors[surfIdx % surfaceColors.length];
         // Hide surfaces with negligible lift (e.g. symmetric surface at beta=0)
         const maxAbsCl = Math.max(...cl.map(Math.abs));
