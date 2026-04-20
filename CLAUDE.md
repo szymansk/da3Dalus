@@ -80,6 +80,10 @@ then refactor. No production code without a failing test.
 Before opening any PR, you MUST run `/requesting-code-review` (or
 `/review`). Fix all findings before creating the PR. No exceptions.
 
+After opening a PR, **check that CI checks pass** (`gh pr checks <N>`).
+If checks fail, fix the issues and push before requesting review or
+merging. A PR with failing checks is not ready.
+
 ### Phase 5: Completion
 
 Invoke `/finishing-a-development-branch` when all tasks pass.
@@ -138,6 +142,26 @@ build a **click-dummy** (functional prototype with hardcoded data)
 and review it with the user before implementing the real logic.
 Small additions (new form fields, extra buttons) that follow
 existing patterns don't need a click-dummy.
+
+### Adding Analysis Types
+
+Each analysis type is a tab in the Analysis page
+(`frontend/app/workbench/analysis/`) with its own:
+
+1. **Tab entry** in `AnalysisViewerPanel.tsx` TABS array
+2. **Config section** in `AnalysisConfigPanel.tsx` (keyed by
+   `activeTab` prop)
+3. **Hook** in `frontend/hooks/` for the backend endpoint
+4. **Plotly charts** for result visualization
+
+Pattern: Tab selection → "Configure & Run" opens tab-specific
+modal → user sets parameters → Run → results displayed as Plotly
+charts. Future analysis types (e.g. stability/trim with operating
+point) follow the same pattern.
+
+All analysis charts use **Plotly** (dynamic import via
+`import("plotly.js-gl3d-dist-min")`). Dark theme via layout
+props (`paper_bgcolor`, `plot_bgcolor`, `font.color`).
 
 ### Other rules
 
@@ -253,7 +277,7 @@ Language: **Python 3.11–3.13**, managed with **Poetry 2.x**.
 ```bash
 # Local development (hot reload)
 poetry install && poetry shell
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 
 # Tests
 poetry run pytest                    # all fast tests
@@ -273,11 +297,11 @@ docker compose build && docker compose up -d  # port 8086
 
 | URL | What |
 |-----|------|
-| `http://localhost:8000` | REST API |
-| `http://localhost:8000/docs` | Swagger UI |
-| `http://localhost:8000/redoc` | ReDoc |
-| `http://localhost:8000/openapi.json` | OpenAPI schema |
-| `http://localhost:8000/mcp` | MCP (Streamable HTTP) |
+| `http://localhost:8001` | REST API |
+| `http://localhost:8001/docs` | Swagger UI |
+| `http://localhost:8001/redoc` | ReDoc |
+| `http://localhost:8001/openapi.json` | OpenAPI schema |
+| `http://localhost:8001/mcp` | MCP (Streamable HTTP) |
 
 
 ## Architecture

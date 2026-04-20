@@ -368,6 +368,7 @@ interface AeroplaneTreeProps {
   onToggleFuselagePreview?: (name: string) => void;
   onCollapseTree?: () => void;
   onNodeEdit?: () => void;
+  onWingSaved?: () => void;
   onFuselageSaved?: () => void;
   onEditSpar?: (wingName: string, xsecIndex: number, sparIndex: number, data: Record<string, unknown>) => void;
   onDeleteSpar?: (wingName: string, xsecIndex: number, sparIndex: number) => void;
@@ -379,7 +380,7 @@ interface AeroplaneTreeProps {
 
 // ── Component ───────────────────────────────────────────────────
 
-export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, isFuselageVisible, onToggleFuselagePreview, onCollapseTree, onNodeEdit, onFuselageSaved, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed }: AeroplaneTreeProps) {
+export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, isFuselageVisible, onToggleFuselagePreview, onCollapseTree, onNodeEdit, onWingSaved, onFuselageSaved, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed }: AeroplaneTreeProps) {
   const { selectedWing, selectedXsecIndex, selectWing, selectXsec, selectedFuselage, selectedFuselageXsecIndex, selectFuselage, selectFuselageXsec, treeMode, setTreeMode } =
     useAeroplaneContext();
   const { wing, isLoading, mutate: mutateWing } = useWing(aeroplaneId, selectedWing);
@@ -425,6 +426,7 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
       alert(`Failed to create wing: ${res.status}`);
       return;
     }
+    onWingSaved?.();
     mutateWing();
     selectWing(name);
     setAddMenuOpen(false);
@@ -464,6 +466,7 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
     if (index === -1) {
       const res = await fetch(`${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wingName}`, { method: "DELETE" });
       if (!res.ok) { alert(`Delete wing failed: ${res.status}`); return; }
+      onWingSaved?.();
       selectWing(null);
     } else {
       const res = await fetch(
