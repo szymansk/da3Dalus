@@ -405,6 +405,13 @@ def _hydrate_wing_configuration_details(
         if root_x_sec.spare_list is not None:
             segment.spare_list = [_spare_schema_to_spare(spare_schema) for spare_schema in root_x_sec.spare_list]
 
+        # Note: rotation_point_rel_chord and dihedral_as_rotation_in_degrees
+        # are stored in the DB (for display/editing in the frontend) but are
+        # NOT written back to the WingConfiguration here. Writing them back
+        # without also recalculating length/sweep would cause drift because
+        # from_asb() computed length/sweep assuming rc=0 and dihedral=0.
+        # See #159 for the full loss-free solution.
+
     _resolve_spare_vectors_and_origins(wing_config)
 
 
@@ -621,6 +628,14 @@ def wingConfigToAsbWingSchema(
         else:
             section_airfoil_ref = x_sec.airfoil
 
+        # Persist original airfoil detail fields for loss-free roundtrip (#159)
+        rotation_point_rc = None
+        dihedral_rot_deg = None
+        if index < len(section_data):
+            airfoil_obj = section_data[index][0]
+            rotation_point_rc = getattr(airfoil_obj, "rotation_point_rel_chord", None)
+            dihedral_rot_deg = getattr(airfoil_obj, "dihedral_as_rotation_in_degrees", None)
+
         segment = wing_config.segments[index] if index < len(wing_config.segments) else None
         trailing_edge_device = None
         spare_list = None
@@ -659,6 +674,8 @@ def wingConfigToAsbWingSchema(
                 number_interpolation_points=number_interpolation_points,
                 spare_list=spare_list,
                 trailing_edge_device=trailing_edge_device,
+                rotation_point_rel_chord=rotation_point_rc,
+                dihedral_as_rotation_in_degrees=dihedral_rot_deg,
             )
         )
 

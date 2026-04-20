@@ -67,6 +67,8 @@ class WingXSecDetailModel(Base):
     x_sec_type = Column(String, nullable=True)
     tip_type = Column(String, nullable=True)
     number_interpolation_points = Column(Integer, nullable=True)
+    rotation_point_rel_chord = Column(Float, nullable=True)
+    dihedral_as_rotation_in_degrees = Column(Float, nullable=True)
 
     wing_xsec = relationship("WingXSecModel", back_populates="detail")
     spares = relationship(
@@ -183,6 +185,14 @@ class WingXSecModel(Base):
     @property
     def number_interpolation_points(self):
         return self.detail.number_interpolation_points if self.detail else None
+
+    @property
+    def rotation_point_rel_chord(self):
+        return self.detail.rotation_point_rel_chord if self.detail else None
+
+    @property
+    def dihedral_as_rotation_in_degrees(self):
+        return self.detail.dihedral_as_rotation_in_degrees if self.detail else None
 
     @property
     def spare_list(self):
@@ -346,6 +356,8 @@ class WingModel(Base):
             x_sec_type = xsec_payload.pop("x_sec_type", None)
             tip_type = xsec_payload.pop("tip_type", None)
             number_interpolation_points = xsec_payload.pop("number_interpolation_points", None)
+            rotation_point_rel_chord = xsec_payload.pop("rotation_point_rel_chord", None)
+            dihedral_as_rotation_in_degrees = xsec_payload.pop("dihedral_as_rotation_in_degrees", None)
 
             if is_terminal_xsec:
                 trailing_edge_device = None
@@ -353,6 +365,8 @@ class WingModel(Base):
                 x_sec_type = None
                 tip_type = None
                 number_interpolation_points = None
+                rotation_point_rel_chord = None
+                dihedral_as_rotation_in_degrees = None
 
             # Normalize bare airfoil names (e.g. "ag10") to portable relative paths
             # so that worker subprocesses with a different CWD can resolve them.
@@ -372,6 +386,8 @@ class WingModel(Base):
                     number_interpolation_points,
                     trailing_edge_device,
                     spare_list,
+                    rotation_point_rel_chord,
+                    dihedral_as_rotation_in_degrees,
                 ]
             )
             if detail_required:
@@ -379,6 +395,8 @@ class WingModel(Base):
                     x_sec_type=x_sec_type,
                     tip_type=tip_type,
                     number_interpolation_points=number_interpolation_points,
+                    rotation_point_rel_chord=rotation_point_rel_chord,
+                    dihedral_as_rotation_in_degrees=dihedral_as_rotation_in_degrees,
                 )
 
                 for spare_index, spare in enumerate(spare_list or []):

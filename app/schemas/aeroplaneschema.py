@@ -365,6 +365,14 @@ class WingXSecSchema(BaseModel):
         None,
         description="Detailed trailing-edge device definition for the outgoing segment at this x-section",
     )
+    rotation_point_rel_chord: Optional[float] = Field(
+        None,
+        description="Original rotation point relative to chord (0.0-1.0). Persisted for loss-free roundtrip.",
+    )
+    dihedral_as_rotation_in_degrees: Optional[float] = Field(
+        None,
+        description="Original dihedral as rotation in degrees. Persisted for loss-free roundtrip.",
+    )
 
     model_config = ConfigDict(from_attributes=True)
 
