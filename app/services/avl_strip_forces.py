@@ -87,7 +87,7 @@ def parse_strip_forces_output(stdout: str) -> list[dict]:
             values = stripped.split()
             if len(values) >= len(_STRIP_COLUMNS):
                 row = {}
-                for col_name, val_str in zip(_STRIP_COLUMNS, values, ):
+                for col_name, val_str in zip(_STRIP_COLUMNS, values, strict=False):
                     row[col_name] = int(val_str) if col_name == "j" else float(val_str)
                 current_surface["strips"].append(row)
             continue
