@@ -289,9 +289,9 @@ function TrefftzPlaneChart({
         const cCl = sorted.map((s) => s.c_cl);
         const aiDeg = sorted.map((s) => s.ai * (180 / Math.PI));
         const colors = surfaceColors[surfIdx % surfaceColors.length];
-        // Hide surfaces with negligible loading (e.g. vertical rudder at beta=0)
-        const maxAbsCcl = Math.max(...cCl.map(Math.abs));
-        const isNegligible = maxAbsCcl < 0.001;
+        // Hide surfaces with negligible lift (e.g. vertical rudder at beta=0)
+        const maxAbsCl = Math.max(...cl.map(Math.abs));
+        const isNegligible = maxAbsCl < 0.01;
         const defaultVisible = isNegligible ? "legendonly" as const : true;
 
         traces.push(
