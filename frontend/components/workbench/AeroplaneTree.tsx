@@ -639,10 +639,10 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
           Aeroplane Tree
         </span>
         <div className="flex-1" />
-        <div className="flex gap-0.5 rounded-full border border-primary/60 bg-card-muted p-0.5">
+        <div className="flex shrink-0 gap-0.5 rounded-full border border-primary/60 bg-card-muted p-0.5">
           <button
             onClick={() => setTreeMode("wingconfig")}
-            className={`rounded-full px-3 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px] transition-colors ${
+            className={`whitespace-nowrap rounded-full px-3.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] transition-colors ${
               treeMode === "wingconfig"
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground"
@@ -652,7 +652,7 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
           </button>
           <button
             onClick={() => setTreeMode("asb")}
-            className={`rounded-full px-3 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px] transition-colors ${
+            className={`whitespace-nowrap rounded-full px-3.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] transition-colors ${
               treeMode === "asb" || treeMode === "fuselage"
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground"
