@@ -1,4 +1,5 @@
 import logging
+from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, status
 from pydantic import UUID4
@@ -47,13 +48,12 @@ def _call(func, *args, **kwargs):
 @router.get(
     "/aeroplanes/{aeroplane_id}/design-versions",
     status_code=status.HTTP_200_OK,
-    response_model=list[DesignVersionSummary],
     tags=["design-versions"],
     operation_id="list_design_versions",
 )
 async def list_design_versions(
-    aeroplane_id: UUID4 = Path(..., description="The ID of the aeroplane"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> list[DesignVersionSummary]:
     """List all design version snapshots for the aeroplane."""
     return _call(svc.list_versions, db, aeroplane_id)
@@ -62,14 +62,13 @@ async def list_design_versions(
 @router.post(
     "/aeroplanes/{aeroplane_id}/design-versions",
     status_code=status.HTTP_201_CREATED,
-    response_model=DesignVersionSummary,
     tags=["design-versions"],
     operation_id="create_design_version",
 )
 async def create_design_version(
-    aeroplane_id: UUID4 = Path(..., description="The ID of the aeroplane"),
-    body: DesignVersionCreate = Body(..., description="Version metadata"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    body: Annotated[DesignVersionCreate, Body(..., description="Version metadata")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> DesignVersionSummary:
     """Snapshot the current aeroplane state as a new design version."""
     return _call(svc.create_version, db, aeroplane_id, body)
@@ -78,14 +77,13 @@ async def create_design_version(
 @router.get(
     "/aeroplanes/{aeroplane_id}/design-versions/{version_id}",
     status_code=status.HTTP_200_OK,
-    response_model=DesignVersionRead,
     tags=["design-versions"],
     operation_id="get_design_version",
 )
 async def get_design_version(
-    aeroplane_id: UUID4 = Path(..., description="The ID of the aeroplane"),
-    version_id: int = Path(..., description="The version ID"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    version_id: Annotated[int, Path(..., description="The version ID")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> DesignVersionRead:
     """Read a specific design version including the full snapshot."""
     return _call(svc.get_version, db, aeroplane_id, version_id)
@@ -98,9 +96,9 @@ async def get_design_version(
     operation_id="delete_design_version",
 )
 async def delete_design_version(
-    aeroplane_id: UUID4 = Path(..., description="The ID of the aeroplane"),
-    version_id: int = Path(..., description="The version ID"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    version_id: Annotated[int, Path(..., description="The version ID")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> None:
     """Delete a design version snapshot."""
     _call(svc.delete_version, db, aeroplane_id, version_id)
@@ -109,15 +107,14 @@ async def delete_design_version(
 @router.get(
     "/aeroplanes/{aeroplane_id}/design-versions/{version_a}/diff/{version_b}",
     status_code=status.HTTP_200_OK,
-    response_model=DesignVersionDiff,
     tags=["design-versions"],
     operation_id="diff_design_versions",
 )
 async def diff_design_versions(
-    aeroplane_id: UUID4 = Path(..., description="The ID of the aeroplane"),
-    version_a: int = Path(..., description="First version ID"),
-    version_b: int = Path(..., description="Second version ID"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    version_a: Annotated[int, Path(..., description="First version ID")],
+    version_b: Annotated[int, Path(..., description="Second version ID")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> DesignVersionDiff:
     """Compute a structural diff between two design versions."""
     return _call(svc.diff_versions, db, aeroplane_id, version_a, version_b)

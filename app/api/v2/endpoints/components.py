@@ -1,7 +1,7 @@
 import logging
 import shutil
 from pathlib import Path as FilePath
-from typing import Optional
+from typing import Annotated, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, UploadFile, File, status
@@ -52,13 +52,12 @@ def _call(func, *args, **kwargs):
 @router.get(
     "",
     status_code=status.HTTP_200_OK,
-    response_model=ComponentList,
-    operation_id="list_components",
+    operation_id="list_components"
 )
 async def list_components(
-    component_type: Optional[str] = Query(None, description="Filter by component type"),
-    q: Optional[str] = Query(None, description="Search by name"),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    component_type: Annotated[Optional[str], Query(description="Filter by component type")] = None,
+    q: Annotated[Optional[str], Query(description="Search by name")] = None,
 ) -> ComponentList:
     """List all components, optionally filtered by type or name search."""
     return _call(svc.list_components, db, component_type, q)
@@ -67,11 +66,10 @@ async def list_components(
 @router.get(
     "/types",
     status_code=status.HTTP_200_OK,
-    response_model=ComponentTypesResponse,
-    operation_id="list_component_types",
+    operation_id="list_component_types"
 )
 async def list_component_types(
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
 ) -> ComponentTypesResponse:
     """List the *names* of all registered component types.
 
@@ -84,12 +82,11 @@ async def list_component_types(
 @router.post(
     "",
     status_code=status.HTTP_201_CREATED,
-    response_model=ComponentRead,
-    operation_id="create_component",
+    operation_id="create_component"
 )
 async def create_component(
-    body: ComponentWrite = Body(..., description="Component data"),
-    db: Session = Depends(get_db),
+    body: Annotated[ComponentWrite, Body(..., description="Component data")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> ComponentRead:
     """Create a new component in the library."""
     return _call(svc.create_component, db, body)
@@ -98,12 +95,11 @@ async def create_component(
 @router.get(
     "/{component_id}",
     status_code=status.HTTP_200_OK,
-    response_model=ComponentRead,
-    operation_id="get_component",
+    operation_id="get_component"
 )
 async def get_component(
-    component_id: int = Path(..., description="The component ID"),
-    db: Session = Depends(get_db),
+    component_id: Annotated[int, Path(..., description="The component ID")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> ComponentRead:
     """Get a single component by ID."""
     return _call(svc.get_component, db, component_id)
@@ -112,13 +108,12 @@ async def get_component(
 @router.put(
     "/{component_id}",
     status_code=status.HTTP_200_OK,
-    response_model=ComponentRead,
-    operation_id="update_component",
+    operation_id="update_component"
 )
 async def update_component(
-    component_id: int = Path(..., description="The component ID"),
-    body: ComponentWrite = Body(..., description="Component data"),
-    db: Session = Depends(get_db),
+    component_id: Annotated[int, Path(..., description="The component ID")],
+    body: Annotated[ComponentWrite, Body(..., description="Component data")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> ComponentRead:
     """Update an existing component."""
     return _call(svc.update_component, db, component_id, body)
@@ -130,8 +125,8 @@ async def update_component(
     operation_id="delete_component",
 )
 async def delete_component(
-    component_id: int = Path(..., description="The component ID"),
-    db: Session = Depends(get_db),
+    component_id: Annotated[int, Path(..., description="The component ID")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> None:
     """Delete a component from the library."""
     _call(svc.delete_component, db, component_id)
@@ -145,13 +140,12 @@ MODELS_DIR = FilePath("tmp") / "component_models"
 @router.post(
     "/{component_id}/model",
     status_code=status.HTTP_200_OK,
-    response_model=ComponentRead,
-    operation_id="upload_component_model",
+    operation_id="upload_component_model"
 )
 async def upload_component_model(
-    component_id: int = Path(..., description="The component ID"),
-    file: UploadFile = File(..., description="STEP or STL file"),
-    db: Session = Depends(get_db),
+    component_id: Annotated[int, Path(..., description="The component ID")],
+    file: Annotated[UploadFile, File(..., description="STEP or STL file")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> ComponentRead:
     """Upload a STEP or STL 3D model file for a component."""
     comp = _call(svc.get_component, db, component_id)
@@ -188,8 +182,8 @@ async def upload_component_model(
     operation_id="download_component_model",
 )
 async def download_component_model(
-    component_id: int = Path(..., description="The component ID"),
-    db: Session = Depends(get_db),
+    component_id: Annotated[int, Path(..., description="The component ID")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> FileResponse:
     """Download the 3D model file (STEP/STL) for a component."""
     comp = _call(svc.get_component, db, component_id)

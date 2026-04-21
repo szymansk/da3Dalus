@@ -4,7 +4,7 @@ import os
 import shutil
 from pathlib import Path as FilePath
 
-from typing import Optional
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Query, Body, Path, Depends, Request, HTTPException
 from fastapi import status
@@ -72,15 +72,14 @@ def _ensure_file_under_tmp(file_path: str, aeroplane_id: str) -> FilePath:
 
 @router.post(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/tessellation",
-    response_model=CadTaskAcceptedResponse,
     status_code=http.HTTPStatus.ACCEPTED,
     tags=["cad"],
-    operation_id="start_wing_tessellation",
+    operation_id="start_wing_tessellation"
 )
 async def start_wing_tessellation(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    wing_name: str = Path(..., description="The name of the wing"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    wing_name: Annotated[str, Path(..., description="The name of the wing")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> CadTaskAcceptedResponse:
     """Start async tessellation of a wing for 3D viewer rendering.
 
@@ -119,8 +118,8 @@ async def start_wing_tessellation(
     operation_id="get_aeroplane_tessellation",
 )
 async def get_aeroplane_tessellation(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Assemble all cached wing/fuselage tessellations into a single three-cad-viewer scene.
 
@@ -224,19 +223,16 @@ async def get_aeroplane_tessellation(
 
 
 @router.post("/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}",
-         response_model=CadTaskAcceptedResponse,
          status_code=http.HTTPStatus.ACCEPTED,
          operation_id="create_wing_loft_export")
-async def create_wing_loft(aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-                           wing_name: str = Path(..., description="The ID of the wing"),
+async def create_wing_loft(aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+                           wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+                           db: Annotated[Session, Depends(get_db)],
+                           leading_edge_offset_factor: Annotated[float, Query(description="only need for vase mode wing")] = 0.1,
+                           trailing_edge_offset_factor: Annotated[float, Query(description="only need for vase mode wing")] = 0.15,
+                           aeroplane_settings: Annotated[Optional[AeroplaneSettings], Body(description="General settings for the construction, not needed for a simple loft")] = None,
                            creator_url_type: CreatorUrlType = CreatorUrlType.WING_LOFT,
-                           exporter_url_type: ExporterUrlType = ExporterUrlType.STL,
-                           leading_edge_offset_factor: float = Query(0.1, description="only need for vase mode wing"),
-                           trailing_edge_offset_factor: float = Query(0.15, description="only need for vase mode wing"),
-                           aeroplane_settings: Optional[AeroplaneSettings] =
-                           Body(None,
-                                description="General settings for the construction, not needed for a simple loft"),
-                           db: Session = Depends(get_db)) -> CadTaskAcceptedResponse:
+                           exporter_url_type: ExporterUrlType = ExporterUrlType.STL) -> CadTaskAcceptedResponse:
     """Create a wing loft export. Business logic delegated to cad_service."""
     try:
         aeroplane_id_str = str(aeroplane_id)
@@ -269,13 +265,12 @@ async def create_wing_loft(aeroplane_id: AeroPlaneID = Path(..., description="Th
 
 
 @router.get("/aeroplanes/{aeroplane_id}/status",
-         response_model=CadTaskStatusResponse,
          response_model_exclude_none=True,
          operation_id="get_aeroplane_task_status")
 async def get_aeroplane_task_status(
     aeroplane_id: str,
-    task_type: Optional[str] = Query(None, description="Task type: 'tessellation' or None for CAD export"),
-    wing_name: Optional[str] = Query(None, description="Wing name (required for tessellation tasks)"),
+    task_type: Annotated[Optional[str], Query(description="Task type: 'tessellation' or None for CAD export")] = None,
+    wing_name: Annotated[Optional[str], Query(description="Wing name (required for tessellation tasks)")] = None,
 ) -> CadTaskStatusResponse:
     """Get the status of an aeroplane export or tessellation task."""
     try:
@@ -315,12 +310,11 @@ async def get_aeroplane_task_status(
 
 
 @router.get("/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}/zip",
-         response_model=ZipAssetResponse,
          operation_id="download_export_zip")
 async def download_aeroplane_zip(
     aeroplane_id: str,
+    settings: Annotated[Settings, Depends(get_settings)],
     request: Request = None,
-    settings: Settings = Depends(get_settings),
 ) -> ZipAssetResponse:
     """Return the static URL for the completed export zip file."""
     try:

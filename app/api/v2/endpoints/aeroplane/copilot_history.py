@@ -1,4 +1,5 @@
 import logging
+from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, status
 from pydantic import UUID4
@@ -42,13 +43,12 @@ def _call(func, *args, **kwargs):
 @router.get(
     "/aeroplanes/{aeroplane_id}/copilot-history",
     status_code=status.HTTP_200_OK,
-    response_model=CopilotHistory,
     tags=["copilot-history"],
     operation_id="get_copilot_history",
 )
 async def get_copilot_history(
-    aeroplane_id: UUID4 = Path(..., description="The ID of the aeroplane"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> CopilotHistory:
     """Get the full copilot chat history for the aeroplane."""
     return _call(svc.get_history, db, aeroplane_id)
@@ -57,14 +57,13 @@ async def get_copilot_history(
 @router.post(
     "/aeroplanes/{aeroplane_id}/copilot-history",
     status_code=status.HTTP_201_CREATED,
-    response_model=CopilotMessageRead,
     tags=["copilot-history"],
     operation_id="append_copilot_message",
 )
 async def append_copilot_message(
-    aeroplane_id: UUID4 = Path(..., description="The ID of the aeroplane"),
-    body: CopilotMessageWrite = Body(..., description="Message to append"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    body: Annotated[CopilotMessageWrite, Body(..., description="Message to append")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> CopilotMessageRead:
     """Append a new message to the copilot history."""
     return _call(svc.append_message, db, aeroplane_id, body)
@@ -77,8 +76,8 @@ async def append_copilot_message(
     operation_id="clear_copilot_history",
 )
 async def clear_copilot_history(
-    aeroplane_id: UUID4 = Path(..., description="The ID of the aeroplane"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> None:
     """Clear all copilot messages for the aeroplane."""
     _call(svc.clear_history, db, aeroplane_id)
@@ -91,9 +90,9 @@ async def clear_copilot_history(
     operation_id="delete_copilot_message",
 )
 async def delete_copilot_message(
-    aeroplane_id: UUID4 = Path(..., description="The ID of the aeroplane"),
-    message_id: int = Path(..., description="The ID of the message to delete"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    message_id: Annotated[int, Path(..., description="The ID of the message to delete")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> None:
     """Delete a single copilot message."""
     _call(svc.delete_message, db, aeroplane_id, message_id)

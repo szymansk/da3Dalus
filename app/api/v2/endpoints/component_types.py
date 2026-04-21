@@ -1,5 +1,6 @@
 """Endpoints for the Component Types registry (gh#83)."""
 from __future__ import annotations
+from typing import Annotated
 
 import logging
 
@@ -48,11 +49,10 @@ def _call(func, *args, **kwargs):
 @router.get(
     "",
     status_code=status.HTTP_200_OK,
-    response_model=list[ComponentTypeRead],
-    operation_id="list_component_types_v2",
+    operation_id="list_component_types_v2"
 )
 async def list_component_types(
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
 ) -> list[ComponentTypeRead]:
     """List all component types (seeded + user-created) sorted by label."""
     return _call(svc.list_types, db)
@@ -61,12 +61,11 @@ async def list_component_types(
 @router.get(
     "/{type_id}",
     status_code=status.HTTP_200_OK,
-    response_model=ComponentTypeRead,
-    operation_id="get_component_type",
+    operation_id="get_component_type"
 )
 async def get_component_type(
-    type_id: int = Path(...),
-    db: Session = Depends(get_db),
+    type_id: Annotated[int, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> ComponentTypeRead:
     return _call(svc.get_type, db, type_id)
 
@@ -74,12 +73,11 @@ async def get_component_type(
 @router.post(
     "",
     status_code=status.HTTP_201_CREATED,
-    response_model=ComponentTypeRead,
-    operation_id="create_component_type",
+    operation_id="create_component_type"
 )
 async def create_component_type(
-    body: ComponentTypeWrite = Body(...),
-    db: Session = Depends(get_db),
+    body: Annotated[ComponentTypeWrite, Body(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> ComponentTypeRead:
     """Create a user-defined type. `deletable` is forced to True regardless of request."""
     return _call(svc.create_type, db, body)
@@ -88,13 +86,12 @@ async def create_component_type(
 @router.put(
     "/{type_id}",
     status_code=status.HTTP_200_OK,
-    response_model=ComponentTypeRead,
-    operation_id="update_component_type",
+    operation_id="update_component_type"
 )
 async def update_component_type(
-    type_id: int = Path(...),
-    body: ComponentTypeWrite = Body(...),
-    db: Session = Depends(get_db),
+    type_id: Annotated[int, Path(...)],
+    body: Annotated[ComponentTypeWrite, Body(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> ComponentTypeRead:
     """Update label / description / schema. Name and deletable are immutable."""
     return _call(svc.update_type, db, type_id, body)
@@ -106,8 +103,8 @@ async def update_component_type(
     operation_id="delete_component_type",
 )
 async def delete_component_type(
-    type_id: int = Path(...),
-    db: Session = Depends(get_db),
+    type_id: Annotated[int, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> None:
     """Delete a type. 409 if seeded (deletable=False) or referenced by components."""
     _call(svc.delete_type, db, type_id)

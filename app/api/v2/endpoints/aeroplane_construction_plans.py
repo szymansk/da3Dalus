@@ -1,7 +1,7 @@
 """REST endpoints for Aeroplane-bound Construction Plans (gh#126)."""
 from __future__ import annotations
 
-from typing import List
+from typing import Annotated, List
 
 from fastapi import APIRouter, Body, Depends, Path
 from fastapi import status
@@ -37,13 +37,12 @@ def _handle_service_error(exc: ServiceException):
 
 @router.get(
     "/aeroplanes/{aeroplane_id}/construction-plans",
-    response_model=List[PlanSummary],
     tags=["construction-plans"],
-    operation_id="list_aeroplane_construction_plans",
+    operation_id="list_aeroplane_construction_plans"
 )
 async def list_aeroplane_plans(
-    aeroplane_id: str = Path(...),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[str, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> List[PlanSummary]:
     """List construction plans bound to an aeroplane."""
     try:
@@ -54,16 +53,15 @@ async def list_aeroplane_plans(
 
 @router.post(
     "/aeroplanes/{aeroplane_id}/construction-plans/from-template/{template_id}",
-    response_model=PlanRead,
     status_code=status.HTTP_201_CREATED,
     tags=["construction-plans"],
-    operation_id="instantiate_construction_template",
+    operation_id="instantiate_construction_template"
 )
 async def instantiate_template(
-    aeroplane_id: str = Path(...),
-    template_id: int = Path(...),
-    request: InstantiateRequest = Body(None),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[str, Path(...)],
+    template_id: Annotated[int, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
+    request: Annotated[InstantiateRequest, Body()] = None,
 ) -> PlanRead:
     """Create a concrete plan from a template, bound to an aeroplane."""
     try:
@@ -79,14 +77,13 @@ async def instantiate_template(
 
 @router.post(
     "/aeroplanes/{aeroplane_id}/construction-plans/{plan_id}/execute",
-    response_model=ExecutionResult,
     tags=["construction-plans"],
-    operation_id="execute_aeroplane_construction_plan",
+    operation_id="execute_aeroplane_construction_plan"
 )
 async def execute_plan(
-    aeroplane_id: str = Path(...),
-    plan_id: int = Path(...),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[str, Path(...)],
+    plan_id: Annotated[int, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> ExecutionResult:
     """Execute a construction plan against an aeroplane configuration."""
     try:
@@ -97,15 +94,14 @@ async def execute_plan(
 
 @router.post(
     "/aeroplanes/{aeroplane_id}/construction-plans/{plan_id}/to-template",
-    response_model=PlanRead,
     status_code=status.HTTP_201_CREATED,
     tags=["construction-plans"],
-    operation_id="plan_to_template",
+    operation_id="plan_to_template"
 )
 async def plan_to_template(
-    plan_id: int = Path(...),
-    request: ToTemplateRequest = Body(None),
-    db: Session = Depends(get_db),
+    plan_id: Annotated[int, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
+    request: Annotated[ToTemplateRequest, Body()] = None,
 ) -> PlanRead:
     """Create a new template from an existing plan."""
     try:

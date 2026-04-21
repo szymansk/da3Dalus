@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import Annotated, List
 
 from fastapi import APIRouter, Path, Depends, Body, HTTPException
 from fastapi import status
@@ -208,12 +208,11 @@ def _call_service(func, *args, **kwargs):
 
 @router.get("/aeroplanes/{aeroplane_id}/wings",
             status_code=status.HTTP_200_OK,
-            response_model=List[str],
             tags=["wings"],
             operation_id="get_aeroplane_wings")
 async def get_aeroplane_wings(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        db: Session = Depends(get_db)
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        db: Annotated[Session, Depends(get_db)],
 ) -> List[str]:
     """Returns a list of aeroplane's wing names."""
     return _call_service(wing_service.list_wing_names, db, aeroplane_id)
@@ -225,13 +224,13 @@ async def get_aeroplane_wings(
             tags=["wings"],
             operation_id="create_aeroplane_wing")
 async def create_aeroplane_wing(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        wing_name: str = Path(..., description="The ID of the wing"),
-        request: schemas.AsbWingGeometryWriteSchema = Body(
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+        request: Annotated[schemas.AsbWingGeometryWriteSchema, Body(
             ...,
             description="Geometry-only wing definition (ASB minimum).",
-        ),
-        db: Session = Depends(get_db)
+        )],
+        db: Annotated[Session, Depends(get_db)],
 ):
     """Create the wing for the aeroplane."""
     _assert_design_model(db, aeroplane_id, wing_name, "asb")
@@ -248,17 +247,17 @@ async def create_aeroplane_wing(
     operation_id="create_aeroplane_wing_from_wingconfig",
 )
 async def create_aeroplane_wing_from_wingconfig(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    wing_name: str = Path(..., description="The ID of the wing"),
-    request: WingConfigurationSchema = Body(
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+    request: Annotated[WingConfigurationSchema, Body(
         ...,
         description=(
             "WingConfiguration-JSON (typisch in mm). "
             "Wird intern nach ASB konvertiert und als Wing im Flugzeug gespeichert."
         ),
         examples=[_EHAWK_WINGCONFIG_EXAMPLE],
-    ),
-    db: Session = Depends(get_db),
+    )],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Create a wing from WingConfiguration JSON and attach it to the aeroplane."""
     _assert_design_model(db, aeroplane_id, wing_name, "wc")
@@ -274,9 +273,9 @@ async def create_aeroplane_wing_from_wingconfig(
     operation_id="get_wing_as_wingconfig",
 )
 async def get_wing_as_wingconfig(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    wing_name: str = Path(..., description="The name of the wing"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    wing_name: Annotated[str, Path(..., description="The name of the wing")],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Return the wing in WingConfiguration format (segments with root/tip airfoils, length, sweep, dihedral)."""
     return _call_service(wing_service.get_wing_as_wingconfig, db, aeroplane_id, wing_name)
@@ -290,13 +289,13 @@ async def get_wing_as_wingconfig(
     operation_id="put_wing_as_wingconfig",
 )
 async def put_wing_as_wingconfig(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    wing_name: str = Path(..., description="The name of the wing"),
-    request: WingConfigurationSchema = Body(
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    wing_name: Annotated[str, Path(..., description="The name of the wing")],
+    request: Annotated[WingConfigurationSchema, Body(
         ...,
         description="WingConfiguration JSON (mm). Replaces the existing wing.",
-    ),
-    db: Session = Depends(get_db),
+    )],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Replace a wing from WingConfiguration JSON (idempotent PUT)."""
     _assert_design_model(db, aeroplane_id, wing_name, "wc")
@@ -313,13 +312,13 @@ async def put_wing_as_wingconfig(
     operation_id="update_aeroplane_wing"
 )
 async def update_aeroplane_wing(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        wing_name: str = Path(..., description="The ID of the wing"),
-        request: schemas.AsbWingGeometryWriteSchema = Body(
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+        request: Annotated[schemas.AsbWingGeometryWriteSchema, Body(
             ...,
             description="Geometry-only wing definition (ASB minimum).",
-        ),
-        db: Session = Depends(get_db),
+        )],
+        db: Annotated[Session, Depends(get_db)],
 ):
     """Overwrite an existing wing with the data in the request."""
     _assert_design_model(db, aeroplane_id, wing_name, "asb")
@@ -329,13 +328,12 @@ async def update_aeroplane_wing(
 
 
 @router.get("/aeroplanes/{aeroplane_id}/wings/{wing_name}",
-            response_model=schemas.AsbWingReadSchema,
             tags=["wings"],
             operation_id="get_aeroplane_wing")
 async def get_aeroplane_wing(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        wing_name: str = Path(..., description="The ID of the wing"),
-        db: Session = Depends(get_db)
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+        db: Annotated[Session, Depends(get_db)],
 ) -> schemas.AsbWingReadSchema:
     """Returns the aeroplane wing."""
     return _call_service(wing_service.get_wing, db, aeroplane_id, wing_name)
@@ -349,9 +347,9 @@ async def get_aeroplane_wing(
     operation_id="delete_aeroplane_wing"
 )
 async def delete_aeroplane_wing(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        wing_name: str = Path(..., description="The ID of the wing"),
-        db: Session = Depends(get_db)
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+        db: Annotated[Session, Depends(get_db)],
 ):
     """Delete a wing."""
     _call_service(wing_service.delete_wing, db, aeroplane_id, wing_name)
@@ -364,15 +362,14 @@ async def delete_aeroplane_wing(
 #########################################
 @router.get(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections",
-    response_model=List[schemas.WingXSecReadSchema],
     status_code=status.HTTP_200_OK,
     tags=["cross-sections"],
     operation_id="get_wing_cross_sections"
 )
 async def get_aeroplane_wing_cross_sections(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        wing_name: str = Path(..., description="The ID of the wing"),
-        db: Session = Depends(get_db)
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+        db: Annotated[Session, Depends(get_db)],
 ) -> List[schemas.WingXSecReadSchema]:
     """Returns the wing's cross-sections as an ordered list."""
     return _call_service(wing_service.get_wing_cross_sections, db, aeroplane_id, wing_name)
@@ -386,9 +383,9 @@ async def get_aeroplane_wing_cross_sections(
     operation_id="delete_all_wing_cross_sections"
 )
 async def delete_aeroplane_wing_cross_sections(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        wing_name: str = Path(..., description="The ID of the wing"),
-        db: Session = Depends(get_db)
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+        db: Annotated[Session, Depends(get_db)],
 ):
     """Delete all cross-sections of a wing."""
     _assert_design_model(db, aeroplane_id, wing_name, "asb")
@@ -398,16 +395,15 @@ async def delete_aeroplane_wing_cross_sections(
 
 @router.get(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}",
-    response_model=schemas.WingXSecReadSchema,
     status_code=status.HTTP_200_OK,
     tags=["cross-sections"],
     operation_id="get_wing_cross_section"
 )
 async def get_aeroplane_wing_cross_section(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        wing_name: str = Path(..., description="The ID of the wing"),
-        cross_section_index: int = Path(..., description="The index of the cross section"),
-        db: Session = Depends(get_db)
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+        cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+        db: Annotated[Session, Depends(get_db)],
 ) -> schemas.WingXSecReadSchema:
     """Returns the aeroplane wing cross-sections as a list of names."""
     return _call_service(wing_service.get_cross_section, db, aeroplane_id, wing_name, cross_section_index)
@@ -421,15 +417,15 @@ async def get_aeroplane_wing_cross_section(
     operation_id="create_wing_cross_section"
 )
 async def create_aeroplane_wing_cross_section(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        wing_name: str = Path(..., description="The ID of the wing"),
-        cross_section_index: int = Path(...,
-                                        description="The index where it will be spliced into the list of cross sections. (-1 is the end of the list, 0 is the start of the list)"),
-        request: schemas.WingXSecGeometryWriteSchema = Body(
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+        cross_section_index: Annotated[int, Path(...,
+                                        description="The index where it will be spliced into the list of cross sections. (-1 is the end of the list, 0 is the start of the list)")],
+        request: Annotated[schemas.WingXSecGeometryWriteSchema, Body(
             ...,
             description="Geometry-only wing cross-section definition.",
-        ),
-        db: Session = Depends(get_db)
+        )],
+        db: Annotated[Session, Depends(get_db)],
 ):
     """Creates a new cross-section for the wing and splice it into the list of cross-sections."""
     _assert_design_model(db, aeroplane_id, wing_name, "asb")
@@ -446,14 +442,14 @@ async def create_aeroplane_wing_cross_section(
     operation_id="update_wing_cross_section"
 )
 async def update_aeroplane_wing_cross_section(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        wing_name: str = Path(..., description="The ID of the wing"),
-        cross_section_index: int = Path(..., description="The index of the cross section"),
-        request: schemas.WingXSecGeometryWriteSchema = Body(
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+        cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+        request: Annotated[schemas.WingXSecGeometryWriteSchema, Body(
             ...,
             description="Geometry-only wing cross-section definition.",
-        ),
-        db: Session = Depends(get_db)
+        )],
+        db: Annotated[Session, Depends(get_db)],
 ):
     """Updates the cross-section for the aeroplane."""
     _assert_design_model(db, aeroplane_id, wing_name, "asb")
@@ -468,10 +464,10 @@ async def update_aeroplane_wing_cross_section(
                tags=["cross-sections"],
                operation_id="delete_wing_cross_section")
 async def delete_aeroplane_wing_cross_section(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        wing_name: str = Path(..., description="The ID of the wing"),
-        cross_section_index: int = Path(..., description="The index of the cross section"),
-        db: Session = Depends(get_db)
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+        cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+        db: Annotated[Session, Depends(get_db)],
 ):
     """Delete a cross-section."""
     _assert_design_model(db, aeroplane_id, wing_name, "asb")
@@ -482,16 +478,15 @@ async def delete_aeroplane_wing_cross_section(
 
 @router.get(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/spars",
-    response_model=List[schemas.SpareDetailSchema],
     status_code=status.HTTP_200_OK,
     tags=["spars"],
     operation_id="get_wing_cross_section_spars",
 )
 async def get_aeroplane_wing_cross_section_spars(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    wing_name: str = Path(..., description="The ID of the wing"),
-    cross_section_index: int = Path(..., description="The index of the cross section"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> List[schemas.SpareDetailSchema]:
     """Returns the spars assigned to the given cross-section."""
     return _call_service(wing_service.get_spares, db, aeroplane_id, wing_name, cross_section_index)
@@ -499,17 +494,16 @@ async def get_aeroplane_wing_cross_section_spars(
 
 @router.post(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/spars",
-    response_model=OperationStatusResponse,
     status_code=status.HTTP_201_CREATED,
     tags=["spars"],
     operation_id="create_wing_cross_section_spar",
 )
 async def create_aeroplane_wing_cross_section_spar(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    wing_name: str = Path(..., description="The ID of the wing"),
-    cross_section_index: int = Path(..., description="The index of the cross section"),
-    request: schemas.SpareDetailSchema = Body(..., description="Spar definition to append"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    request: Annotated[schemas.SpareDetailSchema, Body(..., description="Spar definition to append")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> OperationStatusResponse:
     """Creates and appends one spar on the selected cross-section."""
     _assert_design_model(db, aeroplane_id, wing_name, "asb")
@@ -519,18 +513,17 @@ async def create_aeroplane_wing_cross_section_spar(
 
 @router.put(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/spars/{spar_index}",
-    response_model=OperationStatusResponse,
     status_code=status.HTTP_200_OK,
     tags=["spars"],
     operation_id="update_wing_cross_section_spar",
 )
 async def update_aeroplane_wing_cross_section_spar(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    wing_name: str = Path(..., description="The name of the wing"),
-    cross_section_index: int = Path(..., description="The index of the cross section"),
-    spar_index: int = Path(..., description="The index of the spar to replace"),
-    request: schemas.SpareDetailSchema = Body(..., description="Updated spar definition"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    wing_name: Annotated[str, Path(..., description="The name of the wing")],
+    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    spar_index: Annotated[int, Path(..., description="The index of the spar to replace")],
+    request: Annotated[schemas.SpareDetailSchema, Body(..., description="Updated spar definition")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> OperationStatusResponse:
     """Replaces the spar at the given index on the selected cross-section."""
     _assert_design_model(db, aeroplane_id, wing_name, "asb")
@@ -541,17 +534,16 @@ async def update_aeroplane_wing_cross_section_spar(
 
 @router.delete(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/spars/{spar_index}",
-    response_model=OperationStatusResponse,
     status_code=status.HTTP_200_OK,
     tags=["spars"],
     operation_id="delete_wing_cross_section_spar",
 )
 async def delete_aeroplane_wing_cross_section_spar(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    wing_name: str = Path(..., description="The name of the wing"),
-    cross_section_index: int = Path(..., description="The index of the cross section"),
-    spar_index: int = Path(..., description="The index of the spar to delete"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    wing_name: Annotated[str, Path(..., description="The name of the wing")],
+    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    spar_index: Annotated[int, Path(..., description="The index of the spar to delete")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> OperationStatusResponse:
     """Deletes the spar at the given index on the selected cross-section."""
     _assert_design_model(db, aeroplane_id, wing_name, "asb")
@@ -567,16 +559,15 @@ async def delete_aeroplane_wing_cross_section_spar(
 
 @router.get(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/trailing_edge_device",
-    response_model=schemas.TrailingEdgeDeviceDetailSchema,
     status_code=status.HTTP_200_OK,
     tags=["trailing-edge-devices"],
     operation_id="get_wing_trailing_edge_device",
 )
 async def get_wing_trailing_edge_device(
-    aeroplane_id: AeroPlaneID = Path(...),
-    wing_name: str = Path(...),
-    cross_section_index: int = Path(...),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(...)],
+    wing_name: Annotated[str, Path(...)],
+    cross_section_index: Annotated[int, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> schemas.TrailingEdgeDeviceDetailSchema:
     """Returns the full TED with all geometry and spacing fields."""
     return _call_service(wing_service.get_trailing_edge_device, db, aeroplane_id, wing_name, cross_section_index)
@@ -584,17 +575,16 @@ async def get_wing_trailing_edge_device(
 
 @router.patch(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/trailing_edge_device",
-    response_model=schemas.TrailingEdgeDeviceDetailSchema,
     status_code=status.HTTP_200_OK,
     tags=["trailing-edge-devices"],
     operation_id="patch_wing_trailing_edge_device",
 )
 async def patch_wing_trailing_edge_device(
-    aeroplane_id: AeroPlaneID = Path(...),
-    wing_name: str = Path(...),
-    cross_section_index: int = Path(...),
-    request: schemas.TrailingEdgeDevicePatchSchema = Body(...),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(...)],
+    wing_name: Annotated[str, Path(...)],
+    cross_section_index: Annotated[int, Path(...)],
+    request: Annotated[schemas.TrailingEdgeDevicePatchSchema, Body(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> schemas.TrailingEdgeDeviceDetailSchema:
     """Upsert TED fields directly (not through the ControlSurface wrapper)."""
     _assert_design_model(db, aeroplane_id, wing_name, "asb")
@@ -605,16 +595,15 @@ async def patch_wing_trailing_edge_device(
 
 @router.delete(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/trailing_edge_device",
-    response_model=OperationStatusResponse,
     status_code=status.HTTP_200_OK,
     tags=["trailing-edge-devices"],
     operation_id="delete_wing_trailing_edge_device",
 )
 async def delete_wing_trailing_edge_device(
-    aeroplane_id: AeroPlaneID = Path(...),
-    wing_name: str = Path(...),
-    cross_section_index: int = Path(...),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(...)],
+    wing_name: Annotated[str, Path(...)],
+    cross_section_index: Annotated[int, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> OperationStatusResponse:
     """Deletes the TED on the selected cross-section."""
     _assert_design_model(db, aeroplane_id, wing_name, "asb")
@@ -625,16 +614,15 @@ async def delete_wing_trailing_edge_device(
 
 @router.get(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/trailing_edge_device/servo",
-    response_model=schemas.ControlSurfaceServoDetailsSchema,
     status_code=status.HTTP_200_OK,
     tags=["trailing-edge-devices"],
     operation_id="get_wing_trailing_edge_servo",
 )
 async def get_wing_trailing_edge_servo(
-    aeroplane_id: AeroPlaneID = Path(...),
-    wing_name: str = Path(...),
-    cross_section_index: int = Path(...),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(...)],
+    wing_name: Annotated[str, Path(...)],
+    cross_section_index: Annotated[int, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> schemas.ControlSurfaceServoDetailsSchema:
     """Returns the servo assignment on the TED."""
     return _call_service(wing_service.get_trailing_edge_servo, db, aeroplane_id, wing_name, cross_section_index)
@@ -642,17 +630,16 @@ async def get_wing_trailing_edge_servo(
 
 @router.patch(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/trailing_edge_device/servo",
-    response_model=schemas.ControlSurfaceServoDetailsSchema,
     status_code=status.HTTP_200_OK,
     tags=["trailing-edge-devices"],
     operation_id="patch_wing_trailing_edge_servo",
 )
 async def patch_wing_trailing_edge_servo(
-    aeroplane_id: AeroPlaneID = Path(...),
-    wing_name: str = Path(...),
-    cross_section_index: int = Path(...),
-    request: schemas.ControlSurfaceServoDetailsPatchSchema = Body(...),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(...)],
+    wing_name: Annotated[str, Path(...)],
+    cross_section_index: Annotated[int, Path(...)],
+    request: Annotated[schemas.ControlSurfaceServoDetailsPatchSchema, Body(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> schemas.ControlSurfaceServoDetailsSchema:
     """Assign or update the servo on the TED."""
     _assert_design_model(db, aeroplane_id, wing_name, "asb")
@@ -663,16 +650,15 @@ async def patch_wing_trailing_edge_servo(
 
 @router.delete(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/trailing_edge_device/servo",
-    response_model=OperationStatusResponse,
     status_code=status.HTTP_200_OK,
     tags=["trailing-edge-devices"],
     operation_id="delete_wing_trailing_edge_servo",
 )
 async def delete_wing_trailing_edge_servo(
-    aeroplane_id: AeroPlaneID = Path(...),
-    wing_name: str = Path(...),
-    cross_section_index: int = Path(...),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(...)],
+    wing_name: Annotated[str, Path(...)],
+    cross_section_index: Annotated[int, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> OperationStatusResponse:
     """Remove the servo assignment from the TED."""
     _assert_design_model(db, aeroplane_id, wing_name, "asb")
@@ -683,16 +669,15 @@ async def delete_wing_trailing_edge_servo(
 
 @router.get(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface",
-    response_model=schemas.ControlSurfaceSchema,
     status_code=status.HTTP_200_OK,
     tags=["control-surfaces"],
     operation_id="get_wing_cross_section_control_surface",
 )
 async def get_aeroplane_wing_cross_section_control_surface(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    wing_name: str = Path(..., description="The ID of the wing"),
-    cross_section_index: int = Path(..., description="The index of the cross section"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> schemas.ControlSurfaceSchema:
     """Returns the control-surface analysis view projected from the canonical TED."""
     return _call_service(
@@ -706,17 +691,16 @@ async def get_aeroplane_wing_cross_section_control_surface(
 
 @router.patch(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface",
-    response_model=schemas.ControlSurfaceSchema,
     status_code=status.HTTP_200_OK,
     tags=["control-surfaces"],
     operation_id="patch_wing_cross_section_control_surface",
 )
 async def patch_aeroplane_wing_cross_section_control_surface(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    wing_name: str = Path(..., description="The ID of the wing"),
-    cross_section_index: int = Path(..., description="The index of the cross section"),
-    request: schemas.ControlSurfacePatchSchema = Body(..., description="Control-surface patch payload."),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    request: Annotated[schemas.ControlSurfacePatchSchema, Body(..., description="Control-surface patch payload.")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> schemas.ControlSurfaceSchema:
     """Upserts the control-surface analysis view by patching the canonical TED."""
     _assert_design_model(db, aeroplane_id, wing_name, "asb")
@@ -732,16 +716,15 @@ async def patch_aeroplane_wing_cross_section_control_surface(
 
 @router.delete(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface",
-    response_model=OperationStatusResponse,
     status_code=status.HTTP_200_OK,
     tags=["control-surfaces"],
     operation_id="delete_wing_cross_section_control_surface",
 )
 async def delete_aeroplane_wing_cross_section_control_surface(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    wing_name: str = Path(..., description="The ID of the wing"),
-    cross_section_index: int = Path(..., description="The index of the cross section"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> OperationStatusResponse:
     """Deletes the canonical TED from which control-surface data is projected."""
     _assert_design_model(db, aeroplane_id, wing_name, "asb")
@@ -757,16 +740,15 @@ async def delete_aeroplane_wing_cross_section_control_surface(
 
 @router.get(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details",
-    response_model=schemas.ControlSurfaceCadDetailsSchema,
     status_code=status.HTTP_200_OK,
     tags=["control-surfaces"],
     operation_id="get_wing_cross_section_control_surface_cad_details",
 )
 async def get_aeroplane_wing_cross_section_control_surface_cad_details(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    wing_name: str = Path(..., description="The ID of the wing"),
-    cross_section_index: int = Path(..., description="The index of the cross section"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> schemas.ControlSurfaceCadDetailsSchema:
     """Returns the CAD detail extension of an existing control surface."""
     return _call_service(
@@ -780,20 +762,19 @@ async def get_aeroplane_wing_cross_section_control_surface_cad_details(
 
 @router.patch(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details",
-    response_model=schemas.ControlSurfaceCadDetailsSchema,
     status_code=status.HTTP_200_OK,
     tags=["control-surfaces"],
     operation_id="patch_wing_cross_section_control_surface_cad_details",
 )
 async def patch_aeroplane_wing_cross_section_control_surface_cad_details(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    wing_name: str = Path(..., description="The ID of the wing"),
-    cross_section_index: int = Path(..., description="The index of the cross section"),
-    request: schemas.ControlSurfaceCadDetailsPatchSchema = Body(
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    request: Annotated[schemas.ControlSurfaceCadDetailsPatchSchema, Body(
         ...,
         description="CAD detail patch payload that extends an existing control surface.",
-    ),
-    db: Session = Depends(get_db),
+    )],
+    db: Annotated[Session, Depends(get_db)],
 ) -> schemas.ControlSurfaceCadDetailsSchema:
     """Patches CAD details on an existing control surface without re-entering control-surface core fields."""
     _assert_design_model(db, aeroplane_id, wing_name, "asb")
@@ -809,16 +790,15 @@ async def patch_aeroplane_wing_cross_section_control_surface_cad_details(
 
 @router.delete(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details",
-    response_model=OperationStatusResponse,
     status_code=status.HTTP_200_OK,
     tags=["control-surfaces"],
     operation_id="delete_wing_cross_section_control_surface_cad_details",
 )
 async def delete_aeroplane_wing_cross_section_control_surface_cad_details(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    wing_name: str = Path(..., description="The ID of the wing"),
-    cross_section_index: int = Path(..., description="The index of the cross section"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> OperationStatusResponse:
     """Removes CAD details while keeping the control-surface core definition."""
     _assert_design_model(db, aeroplane_id, wing_name, "asb")
@@ -834,16 +814,15 @@ async def delete_aeroplane_wing_cross_section_control_surface_cad_details(
 
 @router.get(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details/servo_details",
-    response_model=schemas.ControlSurfaceServoDetailsSchema,
     status_code=status.HTTP_200_OK,
     tags=["servos"],
     operation_id="get_wing_cross_section_control_surface_cad_details_servo_details",
 )
 async def get_aeroplane_wing_cross_section_control_surface_cad_details_servo_details(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    wing_name: str = Path(..., description="The ID of the wing"),
-    cross_section_index: int = Path(..., description="The index of the cross section"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> schemas.ControlSurfaceServoDetailsSchema:
     """Returns servo details of the control-surface CAD extension."""
     return _call_service(
@@ -857,20 +836,19 @@ async def get_aeroplane_wing_cross_section_control_surface_cad_details_servo_det
 
 @router.patch(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details/servo_details",
-    response_model=schemas.ControlSurfaceServoDetailsSchema,
     status_code=status.HTTP_200_OK,
     tags=["servos"],
     operation_id="patch_wing_cross_section_control_surface_cad_details_servo_details",
 )
 async def patch_aeroplane_wing_cross_section_control_surface_cad_details_servo_details(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    wing_name: str = Path(..., description="The ID of the wing"),
-    cross_section_index: int = Path(..., description="The index of the cross section"),
-    request: schemas.ControlSurfaceServoDetailsPatchSchema = Body(
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    request: Annotated[schemas.ControlSurfaceServoDetailsPatchSchema, Body(
         ...,
         description="Servo assignment payload (full Servo object or Servo ID reference).",
-    ),
-    db: Session = Depends(get_db),
+    )],
+    db: Annotated[Session, Depends(get_db)],
 ) -> schemas.ControlSurfaceServoDetailsSchema:
     """Assigns or updates servo details of the control-surface CAD extension."""
     _assert_design_model(db, aeroplane_id, wing_name, "asb")
@@ -886,16 +864,15 @@ async def patch_aeroplane_wing_cross_section_control_surface_cad_details_servo_d
 
 @router.delete(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/cross_sections/{cross_section_index}/control_surface/cad_details/servo_details",
-    response_model=OperationStatusResponse,
     status_code=status.HTTP_200_OK,
     tags=["servos"],
     operation_id="delete_wing_cross_section_control_surface_cad_details_servo_details",
 )
 async def delete_aeroplane_wing_cross_section_control_surface_cad_details_servo_details(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    wing_name: str = Path(..., description="The ID of the wing"),
-    cross_section_index: int = Path(..., description="The index of the cross section"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> OperationStatusResponse:
     """Deletes servo details from the control-surface CAD extension."""
     _assert_design_model(db, aeroplane_id, wing_name, "asb")

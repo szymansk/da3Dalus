@@ -8,6 +8,7 @@ linux/aarch64 where the CAD stack is excluded.
 """
 
 from __future__ import annotations
+from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -34,11 +35,10 @@ class HealthResponse(BaseModel):
 
 @router.get(
     "/health",
-    response_model=HealthResponse,
     tags=["health"],
-    summary="Liveness + database ping",
+    summary="Liveness + database ping"
 )
-def get_health(db: Session = Depends(get_db)) -> HealthResponse:
+def get_health(db: Annotated[Session, Depends(get_db)]) -> HealthResponse:
     """Return service status and a DB reachability flag.
 
     A non-reachable database still returns HTTP 200 with

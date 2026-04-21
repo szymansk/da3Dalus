@@ -1,3 +1,4 @@
+from typing import Annotated
 import logging
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, status
@@ -43,13 +44,12 @@ def _call(func, *args, **kwargs):
 @router.get(
     "/aeroplanes/{aeroplane_id}/weight-items",
     status_code=status.HTTP_200_OK,
-    response_model=WeightSummary,
     tags=["weight-items"],
-    operation_id="list_weight_items",
+    operation_id="list_weight_items"
 )
 async def list_weight_items(
-    aeroplane_id: UUID4 = Path(..., description="The ID of the aeroplane"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> WeightSummary:
     """List all weight items with a total mass summary."""
     return _call(svc.list_weight_items, db, aeroplane_id)
@@ -58,14 +58,13 @@ async def list_weight_items(
 @router.post(
     "/aeroplanes/{aeroplane_id}/weight-items",
     status_code=status.HTTP_201_CREATED,
-    response_model=WeightItemRead,
     tags=["weight-items"],
-    operation_id="create_weight_item",
+    operation_id="create_weight_item"
 )
 async def create_weight_item(
-    aeroplane_id: UUID4 = Path(..., description="The ID of the aeroplane"),
-    body: WeightItemWrite = Body(..., description="Weight item data"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    body: Annotated[WeightItemWrite, Body(..., description="Weight item data")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> WeightItemRead:
     """Add a new weight item to the aeroplane."""
     return _call(svc.create_weight_item, db, aeroplane_id, body)
@@ -74,14 +73,13 @@ async def create_weight_item(
 @router.get(
     "/aeroplanes/{aeroplane_id}/weight-items/{item_id}",
     status_code=status.HTTP_200_OK,
-    response_model=WeightItemRead,
     tags=["weight-items"],
-    operation_id="get_weight_item",
+    operation_id="get_weight_item"
 )
 async def get_weight_item(
-    aeroplane_id: UUID4 = Path(..., description="The ID of the aeroplane"),
-    item_id: int = Path(..., description="The ID of the weight item"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    item_id: Annotated[int, Path(..., description="The ID of the weight item")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> WeightItemRead:
     """Get a single weight item by ID."""
     return _call(svc.get_weight_item, db, aeroplane_id, item_id)
@@ -90,15 +88,14 @@ async def get_weight_item(
 @router.put(
     "/aeroplanes/{aeroplane_id}/weight-items/{item_id}",
     status_code=status.HTTP_200_OK,
-    response_model=WeightItemRead,
     tags=["weight-items"],
-    operation_id="update_weight_item",
+    operation_id="update_weight_item"
 )
 async def update_weight_item(
-    aeroplane_id: UUID4 = Path(..., description="The ID of the aeroplane"),
-    item_id: int = Path(..., description="The ID of the weight item"),
-    body: WeightItemWrite = Body(..., description="Weight item data"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    item_id: Annotated[int, Path(..., description="The ID of the weight item")],
+    body: Annotated[WeightItemWrite, Body(..., description="Weight item data")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> WeightItemRead:
     """Update an existing weight item."""
     return _call(svc.update_weight_item, db, aeroplane_id, item_id, body)
@@ -111,9 +108,9 @@ async def update_weight_item(
     operation_id="delete_weight_item",
 )
 async def delete_weight_item(
-    aeroplane_id: UUID4 = Path(..., description="The ID of the aeroplane"),
-    item_id: int = Path(..., description="The ID of the weight item"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    item_id: Annotated[int, Path(..., description="The ID of the weight item")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> None:
     """Delete a weight item."""
     _call(svc.delete_weight_item, db, aeroplane_id, item_id)
