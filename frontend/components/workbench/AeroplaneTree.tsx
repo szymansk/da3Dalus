@@ -125,10 +125,10 @@ function buildSegmentNodes(
       selected: isSelected,
       chip: chipLabel,
       onClick: () => { selectWing(wingName); selectXsec(i); },
-      onEdit: () => { selectWing(wingName); selectXsec(i); onEditNode?.(); },
-      onDelete: () => {
+      onEdit: onEditNode ? () => { selectWing(wingName); selectXsec(i); onEditNode(); } : undefined,
+      onDelete: onDeleteXsec ? () => {
         if (confirm(`Delete segment ${i}?`)) onDeleteXsec(wingName, i);
-      },
+      } : undefined,
       onAdd: (onAddSpar || onAddTed) ? (e: React.MouseEvent) => {
         if (hasTed) {
           onAddSpar?.(wingName, i);
@@ -168,10 +168,10 @@ function buildSegmentNodes(
           level: 3,
           leaf: true,
           chip: "TED",
-          onEdit: () => onEditTed?.(wingName, i, tedObj),
-          onDelete: () => {
-            if (confirm(`Delete control surface "${tedName}"?`)) onDeleteTed?.(wingName, i);
-          },
+          onEdit: onEditTed ? () => onEditTed(wingName, i, tedObj) : undefined,
+          onDelete: onDeleteTed ? () => {
+            if (confirm(`Delete control surface "${tedName}"?`)) onDeleteTed(wingName, i);
+          } : undefined,
         });
       }
 
@@ -188,10 +188,10 @@ function buildSegmentNodes(
           level: 3,
           leaf: true,
           detail: `${w}x${h} mm`,
-          onEdit: () => onEditSpar?.(wingName, i, s, sp),
-          onDelete: () => {
-            if (confirm(`Delete spar ${s}?`)) onDeleteSpar?.(wingName, i, s);
-          },
+          onEdit: onEditSpar ? () => onEditSpar(wingName, i, s, sp) : undefined,
+          onDelete: onDeleteSpar ? () => {
+            if (confirm(`Delete spar ${s}?`)) onDeleteSpar(wingName, i, s);
+          } : undefined,
         });
       }
     }
@@ -259,10 +259,10 @@ function buildXsecNodes(
       selected: isSelected,
       chip: getChipLabel(xsec),
       onClick: () => { selectWing(wingName); selectXsec(i); },
-      onEdit: () => { selectWing(wingName); selectXsec(i); onEditNode?.(); },
-      onDelete: () => {
+      onEdit: onEditNode ? () => { selectWing(wingName); selectXsec(i); onEditNode(); } : undefined,
+      onDelete: onDeleteXsec ? () => {
         if (confirm(`Delete x_sec ${i}?`)) onDeleteXsec(wingName, i);
-      },
+      } : undefined,
       onAdd: (onAddSpar || onAddTed) ? (e: React.MouseEvent) => {
         const ted = xsec.trailing_edge_device ?? xsec.control_surface;
         const hasTed = ted && typeof ted === "object" && Object.keys(ted as Record<string, unknown>).length > 0;
@@ -308,10 +308,10 @@ function buildXsecNodes(
           level: 3,
           leaf: true,
           chip: "TED",
-          onEdit: () => onEditTed?.(wingName, i, tedObj),
-          onDelete: () => {
-            if (confirm(`Delete control surface "${tedName}"?`)) onDeleteTed?.(wingName, i);
-          },
+          onEdit: onEditTed ? () => onEditTed(wingName, i, tedObj) : undefined,
+          onDelete: onDeleteTed ? () => {
+            if (confirm(`Delete control surface "${tedName}"?`)) onDeleteTed(wingName, i);
+          } : undefined,
         });
       }
 
@@ -328,10 +328,10 @@ function buildXsecNodes(
           level: 3,
           leaf: true,
           detail: `${w}x${h} mm`,
-          onEdit: () => onEditSpar?.(wingName, i, s, sp),
-          onDelete: () => {
-            if (confirm(`Delete spar ${s}?`)) onDeleteSpar?.(wingName, i, s);
-          },
+          onEdit: onEditSpar ? () => onEditSpar(wingName, i, s, sp) : undefined,
+          onDelete: onDeleteSpar ? () => {
+            if (confirm(`Delete spar ${s}?`)) onDeleteSpar(wingName, i, s);
+          } : undefined,
         });
       }
     }
