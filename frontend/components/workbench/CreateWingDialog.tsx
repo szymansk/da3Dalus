@@ -117,7 +117,7 @@ export function CreateWingDialog({
         }
       }
 
-      onCreated?.(trimmed, designModel);
+      await onCreated?.(trimmed, designModel);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

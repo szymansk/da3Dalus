@@ -539,6 +539,11 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
               ))}
             </div>
           </>
+        ) : isReadOnly ? (
+          <p className="py-4 text-center text-[12px] text-muted-foreground">
+            This wing uses the {wing?.design_model === "wc" ? "Segment" : "X-Sec"} design model.
+            Switch to {wing?.design_model === "wc" ? "Segments" : "X-Secs"} view to edit.
+          </p>
         ) : (
           <p className="py-4 text-center text-[12px] text-muted-foreground">
             {mode === "wingconfig"

@@ -543,15 +543,16 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
         (wingDesignModel === "wc" && treeMode === "asb") ||
         (wingDesignModel === "asb" && treeMode === "wingconfig")
       );
+      const noOp = () => {};
       const nodes = treeMode === "wingconfig"
         ? buildSegmentNodes(wn, wing, wingConfig?.nose_pnt ?? null, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec,
-            isCrossModelView ? undefined : handleAddSegment,
-            isCrossModelView ? (() => {}) : handleDeleteXsec,
-            isCrossModelView ? undefined : handleInsertXsec,
+            isCrossModelView ? noOp : handleAddSegment,
+            isCrossModelView ? noOp : handleDeleteXsec,
+            isCrossModelView ? noOp : handleInsertXsec,
             isCrossModelView ? undefined : onNodeEdit,
             isCrossModelView ? undefined : onEditSpar, isCrossModelView ? undefined : onDeleteSpar, isCrossModelView ? undefined : onEditTed, isCrossModelView ? undefined : onDeleteTed, isCrossModelView ? undefined : onAddSpar, isCrossModelView ? undefined : onAddTed, isCrossModelView ? undefined : (wn2, xi, hasTed, cx, cy) => setSegAddMenu({ wingName: wn2, xsecIndex: xi, hasTed, x: cx, y: cy }))
         : buildXsecNodes(wn, wing, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec,
-            isCrossModelView ? (() => {}) : handleDeleteXsec,
+            isCrossModelView ? noOp : handleDeleteXsec,
             isCrossModelView ? undefined : onNodeEdit,
             isCrossModelView ? undefined : onEditSpar, isCrossModelView ? undefined : onDeleteSpar, isCrossModelView ? undefined : onEditTed, isCrossModelView ? undefined : onDeleteTed, isCrossModelView ? undefined : onAddSpar, isCrossModelView ? undefined : onAddTed, isCrossModelView ? undefined : (wn2, xi, hasTed, cx, cy) => setSegAddMenu({ wingName: wn2, xsecIndex: xi, hasTed, x: cx, y: cy }));
       // Attach preview toggle to the wing root node
