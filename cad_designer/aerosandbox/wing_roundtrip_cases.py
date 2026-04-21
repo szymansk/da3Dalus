@@ -37,7 +37,7 @@ def single_segment_flat() -> WingConfiguration:
             chord=200.0,
             dihedral_as_rotation_in_degrees=0,
             incidence=0,
-            rotation_point_rel_chord=0.25,
+
         ),
         length=500.0,
         sweep=0,
@@ -46,7 +46,7 @@ def single_segment_flat() -> WingConfiguration:
             chord=200.0,
             dihedral_as_rotation_in_degrees=0,
             incidence=0,
-            rotation_point_rel_chord=0.25,
+
         ),
         symmetric=True,
         parameters="relative",
@@ -69,7 +69,7 @@ def single_segment_with_dihedral() -> WingConfiguration:
             chord=200.0,
             dihedral_as_rotation_in_degrees=5,
             incidence=0,
-            rotation_point_rel_chord=0.25,
+
         ),
         length=500.0,
         sweep=0,
@@ -78,7 +78,7 @@ def single_segment_with_dihedral() -> WingConfiguration:
             chord=200.0,
             dihedral_as_rotation_in_degrees=0,
             incidence=0,
-            rotation_point_rel_chord=0.25,
+
         ),
         symmetric=True,
         parameters="relative",
@@ -100,7 +100,7 @@ def single_segment_with_nose_pnt() -> WingConfiguration:
             chord=200.0,
             dihedral_as_rotation_in_degrees=0,
             incidence=0,
-            rotation_point_rel_chord=0.25,
+
         ),
         length=500.0,
         sweep=0,
@@ -109,38 +109,7 @@ def single_segment_with_nose_pnt() -> WingConfiguration:
             chord=200.0,
             dihedral_as_rotation_in_degrees=0,
             incidence=0,
-            rotation_point_rel_chord=0.25,
-        ),
-        symmetric=True,
-        parameters="relative",
-    )
 
-
-def single_segment_with_rc_0_5() -> WingConfiguration:
-    """One segment with ``rotation_point_rel_chord = 0.5`` on both
-    airfoils. Locks in the Phase-3 (cad-modelling-service-121)
-    guarantee that the from_asb projection works for any rc, not
-    just 0.25. Before Phase 3, ``asb_wing()`` rejected non-0.25 rc
-    outright — so this case only becomes runnable once the guards
-    are lifted.
-    """
-    return WingConfiguration(
-        nose_pnt=(0.0, 0.0, 0.0),
-        root_airfoil=Airfoil(
-            airfoil=AIRFOIL_PATH,
-            chord=200.0,
-            dihedral_as_rotation_in_degrees=0,
-            incidence=0,
-            rotation_point_rel_chord=0.5,
-        ),
-        length=500.0,
-        sweep=0,
-        sweep_is_angle=False,
-        tip_airfoil=Airfoil(
-            chord=200.0,
-            dihedral_as_rotation_in_degrees=0,
-            incidence=-10,
-            rotation_point_rel_chord=0.5,
         ),
         symmetric=True,
         parameters="relative",
@@ -156,7 +125,7 @@ def single_segment_with_twist() -> WingConfiguration:
             chord=200.0,
             dihedral_as_rotation_in_degrees=0,
             incidence=0,
-            rotation_point_rel_chord=0.25,
+
         ),
         length=500.0,
         sweep=0,
@@ -165,7 +134,33 @@ def single_segment_with_twist() -> WingConfiguration:
             chord=200.0,
             dihedral_as_rotation_in_degrees=0,
             incidence=-10,
-            rotation_point_rel_chord=0.25,
+
+        ),
+        symmetric=True,
+        parameters="relative",
+    )
+
+
+def single_segment_with_twist_and_dihedral() -> WingConfiguration:
+    """One segment with both twist and dihedral. Roundtrips exactly with
+    decoupled frame computation."""
+    return WingConfiguration(
+        nose_pnt=(0.0, 0.0, 0.0),
+        root_airfoil=Airfoil(
+            airfoil=AIRFOIL_PATH,
+            chord=200.0,
+            dihedral_as_rotation_in_degrees=10,
+            incidence=3,
+
+        ),
+        length=500.0,
+        sweep=20,
+        sweep_is_angle=False,
+        tip_airfoil=Airfoil(
+            chord=150.0,
+            dihedral_as_rotation_in_degrees=0,
+            incidence=-5,
+
         ),
         symmetric=True,
         parameters="relative",
@@ -191,7 +186,7 @@ def configurator_wing() -> WingConfiguration:
             chord=200.0,
             dihedral_as_rotation_in_degrees=4,
             incidence=0,
-            rotation_point_rel_chord=0.25,
+
         ),
         length=500.0,
         sweep=50,
@@ -200,7 +195,7 @@ def configurator_wing() -> WingConfiguration:
             chord=200.0,
             dihedral_as_rotation_in_degrees=-4,
             incidence=-10,
-            rotation_point_rel_chord=0.25,
+
         ),
     )
     wc.add_segment(
@@ -211,7 +206,7 @@ def configurator_wing() -> WingConfiguration:
             chord=150,
             dihedral_as_rotation_in_degrees=-4,
             incidence=-5,
-            rotation_point_rel_chord=0.25,
+
         ),
     )
     wc.add_segment(
@@ -222,7 +217,7 @@ def configurator_wing() -> WingConfiguration:
             chord=100,
             dihedral_as_rotation_in_degrees=0,
             incidence=0,
-            rotation_point_rel_chord=0.25,
+
         ),
     )
     return wc
@@ -244,7 +239,7 @@ CASE_FACTORIES: List[Tuple[str, Callable[[], WingConfiguration]]] = [
     ("single_segment_with_nose_pnt", single_segment_with_nose_pnt),
     ("single_segment_with_dihedral", single_segment_with_dihedral),
     ("single_segment_with_twist", single_segment_with_twist),
-    ("single_segment_with_rc_0_5", single_segment_with_rc_0_5),
+    ("single_segment_with_twist_and_dihedral", single_segment_with_twist_and_dihedral),
     ("configurator_wing", configurator_wing),
     ("ehawk_main_wing", ehawk_main_wing),
 ]

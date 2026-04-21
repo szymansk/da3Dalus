@@ -15,6 +15,9 @@ design toolchain. It is a FastAPI service that:
   **Model Context Protocol (MCP)** server for AI-agent integration
   (via `FastMCP`).
 
+## Using Superpowers
+
+Call '/using-superpowers' at start to get a clue about the past steps, current state and the steps to proceed with.
 
 ## Development Workflow
 

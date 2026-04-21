@@ -209,6 +209,7 @@ class WingModel(Base):
     __tablename__ = "wings"
     name = Column(String, nullable=False)
     symmetric = Column(Boolean, default=True)
+    design_model = Column(String, nullable=True, default=None)
 
     # One-to-many to WingXSec, ordered by sort_index
     x_secs = relationship(

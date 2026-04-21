@@ -101,7 +101,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 162.0,
                                     "dihedral_as_rotation_in_degrees": 1,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.3
                                 },
                                 "length": 20.0,
                                 "sweep": 0,
@@ -110,7 +109,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 162.0,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "spare_list": [
                                     {
@@ -172,7 +170,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 162.0,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 200,
                                 "sweep": 2.5,
@@ -181,7 +178,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 157,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "spare_list": [
                                     {
@@ -246,7 +242,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 157,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 250,
                                 "sweep": 8,
@@ -255,7 +250,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 132.88888888888889,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "spare_list": [
                                     {
@@ -300,7 +294,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 132.88888888888889,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 75,
                                 "sweep": 5,
@@ -309,7 +302,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 123.05555555555554,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "spare_list": [
                                     {
@@ -346,7 +338,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 123.05555555555554,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 85,
                                 "sweep": 11,
@@ -355,7 +346,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 105.21777777777777,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "spare_list": [
                                     {
@@ -392,7 +382,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 105.21777777777777,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 40,
                                 "sweep": 12,
@@ -401,7 +390,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 90,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "spare_list": [
                                     {
@@ -438,7 +426,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 90,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 20,
                                 "sweep": 7.5,
@@ -447,7 +434,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 79.5,
                                     "dihedral_as_rotation_in_degrees": 5,
                                     "incidence": -0.5,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "spare_list": [
                                     {
@@ -476,7 +462,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 79.5,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 15,
                                 "sweep": 7.5,
@@ -485,7 +470,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 71.0,
                                     "dihedral_as_rotation_in_degrees": 5,
                                     "incidence": -0.5,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "number_interpolation_points": 201,
                                 "tip_type": "flat",
@@ -496,7 +480,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 71.0,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 15,
                                 "sweep": 10,
@@ -505,7 +488,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 62.0,
                                     "dihedral_as_rotation_in_degrees": 5,
                                     "incidence": -0.5,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "number_interpolation_points": 201,
                                 "tip_type": "flat",
@@ -516,7 +498,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 62.0,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 15,
                                 "sweep": 12.5,
@@ -525,7 +506,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 52.5,
                                     "dihedral_as_rotation_in_degrees": 10,
                                     "incidence": -0.5,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "number_interpolation_points": 201,
                                 "tip_type": "flat",
@@ -536,7 +516,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 52.5,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 10,
                                 "sweep": 15,
@@ -545,7 +524,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 40.5,
                                     "dihedral_as_rotation_in_degrees": 15,
                                     "incidence": -0.5,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "number_interpolation_points": 201,
                                 "tip_type": "flat",
@@ -556,7 +534,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 40.5,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 5,
                                 "sweep": 17.5,
@@ -565,7 +542,6 @@ class CreateWingLoftRequest(BaseModel):
                                     "chord": 24.0,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": -0.5,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "number_interpolation_points": 201,
                                 "tip_type": "flat",
@@ -728,7 +704,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 162.0,
                                     "dihedral_as_rotation_in_degrees": 1,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.3
                                 },
                                 "length": 20.0,
                                 "sweep": 0,
@@ -737,7 +712,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 162.0,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "spare_list": [
                                     {
@@ -799,7 +773,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 162.0,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 200,
                                 "sweep": 2.5,
@@ -808,7 +781,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 157,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "spare_list": [
                                     {
@@ -873,7 +845,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 157,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 250,
                                 "sweep": 8,
@@ -882,7 +853,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 132.88888888888889,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "spare_list": [
                                     {
@@ -927,7 +897,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 132.88888888888889,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 75,
                                 "sweep": 5,
@@ -936,7 +905,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 123.05555555555554,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "spare_list": [
                                     {
@@ -973,7 +941,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 123.05555555555554,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 85,
                                 "sweep": 11,
@@ -982,7 +949,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 105.21777777777777,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "spare_list": [
                                     {
@@ -1019,7 +985,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 105.21777777777777,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 40,
                                 "sweep": 12,
@@ -1028,7 +993,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 90,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "spare_list": [
                                     {
@@ -1065,7 +1029,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 90,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 20,
                                 "sweep": 7.5,
@@ -1074,7 +1037,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 79.5,
                                     "dihedral_as_rotation_in_degrees": 5,
                                     "incidence": -0.5,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "spare_list": [
                                     {
@@ -1103,7 +1065,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 79.5,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 15,
                                 "sweep": 7.5,
@@ -1112,7 +1073,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 71.0,
                                     "dihedral_as_rotation_in_degrees": 5,
                                     "incidence": -0.5,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "number_interpolation_points": 201,
                                 "tip_type": "flat",
@@ -1123,7 +1083,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 71.0,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 15,
                                 "sweep": 10,
@@ -1132,7 +1091,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 62.0,
                                     "dihedral_as_rotation_in_degrees": 5,
                                     "incidence": -0.5,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "number_interpolation_points": 201,
                                 "tip_type": "flat",
@@ -1143,7 +1101,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 62.0,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 15,
                                 "sweep": 12.5,
@@ -1152,7 +1109,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 52.5,
                                     "dihedral_as_rotation_in_degrees": 10,
                                     "incidence": -0.5,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "number_interpolation_points": 201,
                                 "tip_type": "flat",
@@ -1163,7 +1119,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 52.5,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 10,
                                 "sweep": 15,
@@ -1172,7 +1127,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 40.5,
                                     "dihedral_as_rotation_in_degrees": 15,
                                     "incidence": -0.5,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "number_interpolation_points": 201,
                                 "tip_type": "flat",
@@ -1183,7 +1137,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 40.5,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "length": 5,
                                 "sweep": 17.5,
@@ -1192,7 +1145,6 @@ class CreateAeroPlaneRequest(BaseModel):
                                     "chord": 24.0,
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "incidence": -0.5,
-                                    "rotation_point_rel_chord": 0
                                 },
                                 "number_interpolation_points": 201,
                                 "tip_type": "flat",

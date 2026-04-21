@@ -7,8 +7,7 @@ Three comparison levels:
 1. **Parameter-strict**: Walks the ``WingSegment`` / ``Airfoil`` fields
    of two ``WingConfiguration`` objects and reports per-field
    differences. The user has specified that ``nose_pnt``, ``incidence``,
-   ``sweep``, ``dihedral_as_rotation_in_degrees``,
-   ``dihedral_as_translation`` and ``rotation_point_rel_chord`` must be
+   ``sweep``, ``dihedral_as_rotation_in_degrees`` must be
    *exactly equal* after a correct roundtrip. Deviations here indicate
    a bug in ``WingConfiguration.from_asb()`` or in the downstream
    schema-converter path.
@@ -159,9 +158,9 @@ class ShapeCompareResult:
 
 # Fields that are asb-invariant metadata and must roundtrip exactly.
 #
-# NOTE: ``length``, ``sweep``, ``dihedral_as_translation``,
-# ``dihedral_as_rotation_in_degrees``, ``incidence`` and
-# ``rotation_point_rel_chord`` are intentionally NOT in these lists.
+# NOTE: ``length``, ``sweep``,
+# ``dihedral_as_rotation_in_degrees`` and ``incidence``
+# are intentionally NOT in these lists.
 # ``from_asb`` projects the rebuilt configuration onto a canonical
 # form with ``rc = 0`` and all dihedral carried as translations, so
 # those fields will differ by design. The *geometric* equivalence
@@ -204,8 +203,7 @@ def compare_wing_configs(
     """Metadata sanity check between two WingConfigurations.
 
     Post-Phase-3, the rebuilt configuration is a projection onto
-    ``rotation_point_rel_chord=0`` and ``dihedral_as_rotation_in_degrees=0``,
-    with dihedral carried entirely by ``dihedral_as_translation``.
+    ``dihedral_as_rotation_in_degrees`` carrying the dihedral.
     Strict field-for-field equality on the geometric parameters is
     therefore meaningless — the *geometric* equivalence is the job of
     Levels 2 and 3.

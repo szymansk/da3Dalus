@@ -39,9 +39,8 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
                 "airfoil": "../components/airfoils/mh32.dat",
                 "chord": 162.0,
                 "dihedral_as_rotation_in_degrees": 1,
-                "dihedral_as_translation": 0,
+
                 "incidence": 0,
-                "rotation_point_rel_chord": 0.25,
             },
             "length": 20.0,
             "sweep": 0,
@@ -50,9 +49,8 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
                 "airfoil": "../components/airfoils/mh32.dat",
                 "chord": 162.0,
                 "dihedral_as_rotation_in_degrees": 0,
-                "dihedral_as_translation": 0,
+
                 "incidence": 0,
-                "rotation_point_rel_chord": 0.25,
             },
             "spare_list": [
                 {
@@ -76,9 +74,8 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
                 "airfoil": "../components/airfoils/mh32.dat",
                 "chord": 162.0,
                 "dihedral_as_rotation_in_degrees": 0,
-                "dihedral_as_translation": 0,
+
                 "incidence": 0,
-                "rotation_point_rel_chord": 0.25,
             },
             "length": 200,
             "sweep": 2.5,
@@ -87,9 +84,8 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
                 "airfoil": "../components/airfoils/mh32.dat",
                 "chord": 157,
                 "dihedral_as_rotation_in_degrees": 0,
-                "dihedral_as_translation": 0,
+
                 "incidence": 0,
-                "rotation_point_rel_chord": 0.25,
             },
             "spare_list": [
                 {
@@ -113,9 +109,8 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
                 "airfoil": "../components/airfoils/mh32.dat",
                 "chord": 157,
                 "dihedral_as_rotation_in_degrees": 0,
-                "dihedral_as_translation": 0,
+
                 "incidence": 0,
-                "rotation_point_rel_chord": 0.25,
             },
             "length": 250,
             "sweep": 8,
@@ -124,9 +119,8 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
                 "airfoil": "../components/airfoils/mh32.dat",
                 "chord": 132.88888888888889,
                 "dihedral_as_rotation_in_degrees": 0,
-                "dihedral_as_translation": 0,
+
                 "incidence": 0,
-                "rotation_point_rel_chord": 0.25,
             },
             "spare_list": [
                 {
@@ -166,6 +160,26 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
     "parameters": "relative",
     "symmetric": True,
 }
+
+
+def _assert_design_model(
+    db: Session, aeroplane_id: AeroPlaneID, wing_name: str, expected: str,
+) -> None:
+    """Raise 409 Conflict if the wing's design_model doesn't match *expected*.
+
+    Returns silently when the wing does not exist (creation paths) or when
+    design_model is NULL (legacy wings not yet classified).
+    Raises HTTP 404 via _call_service if the aeroplane does not exist.
+    """
+    actual = _call_service(wing_service.get_wing_design_model, db, aeroplane_id, wing_name)
+    if actual is not None and actual != expected:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"This wing uses design_model='{actual}'. "
+                f"This endpoint requires design_model='{expected}'."
+            ),
+        )
 
 
 def _raise_http_from_domain(exc: ServiceException) -> None:
@@ -220,6 +234,7 @@ async def create_aeroplane_wing(
         db: Session = Depends(get_db)
 ):
     """Create the wing for the aeroplane."""
+    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(wing_service.create_wing, db, aeroplane_id, wing_name, request)
     on_wing_changed(db, aeroplane_id, wing_name)
     return OperationStatusResponse(status="created", operation="create_aeroplane_wing")
@@ -246,6 +261,7 @@ async def create_aeroplane_wing_from_wingconfig(
     db: Session = Depends(get_db),
 ):
     """Create a wing from WingConfiguration JSON and attach it to the aeroplane."""
+    _assert_design_model(db, aeroplane_id, wing_name, "wc")
     _call_service(wing_service.create_wing_from_wing_configuration, db, aeroplane_id, wing_name, request)
     on_wing_changed(db, aeroplane_id, wing_name)
     return OperationStatusResponse(status="created", operation="create_aeroplane_wing_from_wingconfig")
@@ -283,6 +299,7 @@ async def put_wing_as_wingconfig(
     db: Session = Depends(get_db),
 ):
     """Replace a wing from WingConfiguration JSON (idempotent PUT)."""
+    _assert_design_model(db, aeroplane_id, wing_name, "wc")
     _call_service(wing_service.put_wing_as_wingconfig, db, aeroplane_id, wing_name, request)
     on_wing_changed(db, aeroplane_id, wing_name)
     return OperationStatusResponse(status="updated", operation="put_wing_as_wingconfig")
@@ -305,6 +322,7 @@ async def update_aeroplane_wing(
         db: Session = Depends(get_db),
 ):
     """Overwrite an existing wing with the data in the request."""
+    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(wing_service.update_wing, db, aeroplane_id, wing_name, request)
     on_wing_changed(db, aeroplane_id, wing_name)
     return OperationStatusResponse(status="ok", operation="update_aeroplane_wing")
@@ -373,6 +391,7 @@ async def delete_aeroplane_wing_cross_sections(
         db: Session = Depends(get_db)
 ):
     """Delete all cross-sections of a wing."""
+    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(wing_service.delete_all_cross_sections, db, aeroplane_id, wing_name)
     return OperationStatusResponse(status="ok", operation="delete_all_wing_cross_sections")
 
@@ -413,6 +432,7 @@ async def create_aeroplane_wing_cross_section(
         db: Session = Depends(get_db)
 ):
     """Creates a new cross-section for the wing and splice it into the list of cross-sections."""
+    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(wing_service.create_cross_section, db, aeroplane_id, wing_name, cross_section_index, request)
     on_wing_changed(db, aeroplane_id, wing_name)
     return OperationStatusResponse(status="created", operation="create_wing_cross_section")
@@ -436,6 +456,7 @@ async def update_aeroplane_wing_cross_section(
         db: Session = Depends(get_db)
 ):
     """Updates the cross-section for the aeroplane."""
+    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(wing_service.update_cross_section, db, aeroplane_id, wing_name, cross_section_index, request)
     on_wing_changed(db, aeroplane_id, wing_name)
     return OperationStatusResponse(status="ok", operation="update_wing_cross_section")
@@ -453,6 +474,7 @@ async def delete_aeroplane_wing_cross_section(
         db: Session = Depends(get_db)
 ):
     """Delete a cross-section."""
+    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(wing_service.delete_cross_section, db, aeroplane_id, wing_name, cross_section_index)
     on_wing_changed(db, aeroplane_id, wing_name)
     return OperationStatusResponse(status="ok", operation="delete_wing_cross_section")
@@ -490,6 +512,7 @@ async def create_aeroplane_wing_cross_section_spar(
     db: Session = Depends(get_db),
 ) -> OperationStatusResponse:
     """Creates and appends one spar on the selected cross-section."""
+    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(wing_service.create_spare, db, aeroplane_id, wing_name, cross_section_index, request)
     return OperationStatusResponse(status="created", operation="create_wing_cross_section_spar")
 
@@ -510,6 +533,7 @@ async def update_aeroplane_wing_cross_section_spar(
     db: Session = Depends(get_db),
 ) -> OperationStatusResponse:
     """Replaces the spar at the given index on the selected cross-section."""
+    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(wing_service.update_spare, db, aeroplane_id, wing_name, cross_section_index, spar_index, request)
     on_wing_changed(db, aeroplane_id, wing_name)
     return OperationStatusResponse(status="updated", operation="update_wing_cross_section_spar")
@@ -530,6 +554,7 @@ async def delete_aeroplane_wing_cross_section_spar(
     db: Session = Depends(get_db),
 ) -> OperationStatusResponse:
     """Deletes the spar at the given index on the selected cross-section."""
+    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(wing_service.delete_spare, db, aeroplane_id, wing_name, cross_section_index, spar_index)
     on_wing_changed(db, aeroplane_id, wing_name)
     return OperationStatusResponse(status="deleted", operation="delete_wing_cross_section_spar")
@@ -572,6 +597,7 @@ async def patch_wing_trailing_edge_device(
     db: Session = Depends(get_db),
 ) -> schemas.TrailingEdgeDeviceDetailSchema:
     """Upsert TED fields directly (not through the ControlSurface wrapper)."""
+    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     result = _call_service(wing_service.patch_trailing_edge_device, db, aeroplane_id, wing_name, cross_section_index, request)
     on_wing_changed(db, aeroplane_id, wing_name)
     return result
@@ -591,6 +617,7 @@ async def delete_wing_trailing_edge_device(
     db: Session = Depends(get_db),
 ) -> OperationStatusResponse:
     """Deletes the TED on the selected cross-section."""
+    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(wing_service.delete_trailing_edge_device, db, aeroplane_id, wing_name, cross_section_index)
     on_wing_changed(db, aeroplane_id, wing_name)
     return OperationStatusResponse(status="deleted", operation="delete_wing_trailing_edge_device")
@@ -628,6 +655,7 @@ async def patch_wing_trailing_edge_servo(
     db: Session = Depends(get_db),
 ) -> schemas.ControlSurfaceServoDetailsSchema:
     """Assign or update the servo on the TED."""
+    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     result = _call_service(wing_service.patch_trailing_edge_servo, db, aeroplane_id, wing_name, cross_section_index, request)
     on_wing_changed(db, aeroplane_id, wing_name)
     return result
@@ -647,6 +675,7 @@ async def delete_wing_trailing_edge_servo(
     db: Session = Depends(get_db),
 ) -> OperationStatusResponse:
     """Remove the servo assignment from the TED."""
+    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(wing_service.delete_trailing_edge_servo, db, aeroplane_id, wing_name, cross_section_index)
     on_wing_changed(db, aeroplane_id, wing_name)
     return OperationStatusResponse(status="deleted", operation="delete_wing_trailing_edge_servo")
@@ -690,6 +719,7 @@ async def patch_aeroplane_wing_cross_section_control_surface(
     db: Session = Depends(get_db),
 ) -> schemas.ControlSurfaceSchema:
     """Upserts the control-surface analysis view by patching the canonical TED."""
+    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     return _call_service(
         wing_service.patch_control_surface,
         db,
@@ -714,6 +744,7 @@ async def delete_aeroplane_wing_cross_section_control_surface(
     db: Session = Depends(get_db),
 ) -> OperationStatusResponse:
     """Deletes the canonical TED from which control-surface data is projected."""
+    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(
         wing_service.delete_control_surface,
         db,
@@ -765,6 +796,7 @@ async def patch_aeroplane_wing_cross_section_control_surface_cad_details(
     db: Session = Depends(get_db),
 ) -> schemas.ControlSurfaceCadDetailsSchema:
     """Patches CAD details on an existing control surface without re-entering control-surface core fields."""
+    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     return _call_service(
         wing_service.patch_control_surface_cad_details,
         db,
@@ -789,6 +821,7 @@ async def delete_aeroplane_wing_cross_section_control_surface_cad_details(
     db: Session = Depends(get_db),
 ) -> OperationStatusResponse:
     """Removes CAD details while keeping the control-surface core definition."""
+    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(
         wing_service.delete_control_surface_cad_details,
         db,
@@ -840,6 +873,7 @@ async def patch_aeroplane_wing_cross_section_control_surface_cad_details_servo_d
     db: Session = Depends(get_db),
 ) -> schemas.ControlSurfaceServoDetailsSchema:
     """Assigns or updates servo details of the control-surface CAD extension."""
+    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     return _call_service(
         wing_service.patch_control_surface_cad_details_servo_details,
         db,
@@ -864,6 +898,7 @@ async def delete_aeroplane_wing_cross_section_control_surface_cad_details_servo_
     db: Session = Depends(get_db),
 ) -> OperationStatusResponse:
     """Deletes servo details from the control-surface CAD extension."""
+    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(
         wing_service.delete_control_surface_cad_details_servo_details,
         db,

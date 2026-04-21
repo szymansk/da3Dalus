@@ -21,7 +21,8 @@ class TestAeroplaneWingEndpoints(unittest.TestCase):
         self.test_plane_id = uuid.uuid4()
         self.test_wing_name = "this is a test wing"
 
-    def test_create_wing_success(self):
+    @patch("app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model", return_value=None)
+    def test_create_wing_success(self, _mock_dm):
         mock_db = MagicMock()
         plane = MagicMock()
         plane.wings = []
@@ -48,7 +49,8 @@ class TestAeroplaneWingEndpoints(unittest.TestCase):
         mock_db = MagicMock()
         request_schema = WingConfigurationSchema.model_construct(segments=[], nose_pnt=[0, 0, 0])
 
-        with patch("app.services.wing_service.create_wing_from_wing_configuration", return_value=None) as create_from_wc:
+        with patch("app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model", return_value=None), \
+             patch("app.services.wing_service.create_wing_from_wing_configuration", return_value=None) as create_from_wc:
             result = asyncio.run(
                 create_aeroplane_wing_from_wingconfig(
                     aeroplane_id=self.test_plane_id,
@@ -62,7 +64,8 @@ class TestAeroplaneWingEndpoints(unittest.TestCase):
         self.assertEqual(result.status, "created")
         self.assertEqual(result.operation, "create_aeroplane_wing_from_wingconfig")
 
-    def test_update_wing_not_found_plane(self):
+    @patch("app.api.v2.endpoints.aeroplane.wings.wing_service.get_wing_design_model", return_value="asb")
+    def test_update_wing_not_found_plane(self, _mock_dm):
         mock_db = MagicMock()
         mock_db.query.return_value.filter.return_value.first.return_value = None
 

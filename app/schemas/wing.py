@@ -1,5 +1,5 @@
 from typing import List, Optional, Literal, Union
-from pydantic import AliasChoices, BaseModel, model_validator, PositiveFloat, NonNegativeFloat, Field
+from pydantic import AliasChoices, BaseModel, PositiveFloat, NonNegativeFloat, Field
 
 from app.schemas.Servo import Servo
 
@@ -137,45 +137,11 @@ class Airfoil(BaseModel):
         default=0,
         description="Dihedral angle in degrees, representing the upward angle of this cross section. Positive is wingtip upwards."
     )
-    dihedral_as_translation: Optional[NonNegativeFloat] = Field(
-        default=0,
-        description="(obsolete) Alternative way to specify dihedral as a vertical translation in millimeters."
-    )
     incidence: Optional[float] = Field(
         default=0,
-        description="Incidence angle in degrees, representing the angle that this cross section is rotated around the rotation point defined by rotation_point_rel_chord. Positiv is leading edge upwards."
-    )
-    rotation_point_rel_chord: Optional[NonNegativeFloat] = Field(
-        default=0.25,
-        description="Relative position of the rotation point along the chord (0.0-1.0), typically 0.25 for quarter-chord."
+        description="Incidence angle in degrees. Positive is leading edge upwards."
     )
 
-    @model_validator(mode='after')
-    def check_dihedral_fields(self):
-        """
-        Validates the dihedral parameters to ensure they are properly specified.
-
-        Rules:
-        1. Exactly one of dihedral_as_rotation_in_degrees or dihedral_as_translation must be zero
-        2. If dihedral_as_translation > 0, then rotation_point_rel_chord must be 0.25 (quarter chord)
-        """
-        dihedral_rotation = self.dihedral_as_rotation_in_degrees
-        dihedral_translation = self.dihedral_as_translation
-        rotation_point_rel_chord = self.rotation_point_rel_chord
-
-        # Ensure that exactly one of the dihedral parameters is zero
-        if dihedral_rotation != 0 and dihedral_translation != 0:
-            raise ValueError(
-                "Exactly one of 'dihedral_as_rotation_in_degrees' or 'dihedral_as_translation' must be zero."
-            )
-
-        # If dihedral_translation > 0, then rotation_point_rel_chord must be 0.25
-        if dihedral_translation > 0 and rotation_point_rel_chord != 0.25:
-            raise ValueError(
-                "When 'dihedral_as_translation' > 0, 'rotation_point_rel_chord' must be 0.25 (quater chord)."
-            )
-
-        return self
 
 
 class Segment(BaseModel):
@@ -245,7 +211,6 @@ class Wing(BaseModel):
                             "chord": 162.0,
                             "dihedral": 1,
                             "incidence": 0,
-                            "rotation_point_rel_chord": 0.3
                         },
                         "length": 20.0,
                         "sweep": 0,
@@ -254,7 +219,6 @@ class Wing(BaseModel):
                             "chord": 162.0,
                             "dihedral": 0,
                             "incidence": 0,
-                            "rotation_point_rel_chord": 0
                         },
                         "spare_list": [
                             {
@@ -316,7 +280,6 @@ class Wing(BaseModel):
                             "chord": 162.0,
                             "dihedral": 0,
                             "incidence": 0,
-                            "rotation_point_rel_chord": 0
                         },
                         "length": 200,
                         "sweep": 2.5,
@@ -325,7 +288,6 @@ class Wing(BaseModel):
                             "chord": 157,
                             "dihedral": 0,
                             "incidence": 0,
-                            "rotation_point_rel_chord": 0
                         },
                         "spare_list": [
                             {
@@ -390,7 +352,6 @@ class Wing(BaseModel):
                             "chord": 157,
                             "dihedral": 0,
                             "incidence": 0,
-                            "rotation_point_rel_chord": 0
                         },
                         "length": 250,
                         "sweep": 8,
@@ -399,7 +360,6 @@ class Wing(BaseModel):
                             "chord": 132.88888888888889,
                             "dihedral": 0,
                             "incidence": 0,
-                            "rotation_point_rel_chord": 0
                         },
                         "spare_list": [
                             {
@@ -444,7 +404,6 @@ class Wing(BaseModel):
                             "chord": 132.88888888888889,
                             "dihedral": 0,
                             "incidence": 0,
-                            "rotation_point_rel_chord": 0
                         },
                         "length": 75,
                         "sweep": 5,
@@ -453,7 +412,6 @@ class Wing(BaseModel):
                             "chord": 123.05555555555554,
                             "dihedral": 0,
                             "incidence": 0,
-                            "rotation_point_rel_chord": 0
                         },
                         "spare_list": [
                             {
@@ -490,7 +448,6 @@ class Wing(BaseModel):
                             "chord": 123.05555555555554,
                             "dihedral": 0,
                             "incidence": 0,
-                            "rotation_point_rel_chord": 0
                         },
                         "length": 85,
                         "sweep": 11,
@@ -499,7 +456,6 @@ class Wing(BaseModel):
                             "chord": 105.21777777777777,
                             "dihedral": 0,
                             "incidence": 0,
-                            "rotation_point_rel_chord": 0
                         },
                         "spare_list": [
                             {
@@ -536,7 +492,6 @@ class Wing(BaseModel):
                             "chord": 105.21777777777777,
                             "dihedral": 0,
                             "incidence": 0,
-                            "rotation_point_rel_chord": 0
                         },
                         "length": 40,
                         "sweep": 12,
@@ -545,7 +500,6 @@ class Wing(BaseModel):
                             "chord": 90,
                             "dihedral": 0,
                             "incidence": 0,
-                            "rotation_point_rel_chord": 0
                         },
                         "spare_list": [
                             {
@@ -582,7 +536,6 @@ class Wing(BaseModel):
                             "chord": 90,
                             "dihedral": 0,
                             "incidence": 0,
-                            "rotation_point_rel_chord": 0
                         },
                         "length": 20,
                         "sweep": 7.5,
@@ -591,7 +544,6 @@ class Wing(BaseModel):
                             "chord": 79.5,
                             "dihedral": 5,
                             "incidence": -0.5,
-                            "rotation_point_rel_chord": 0
                         },
                         "spare_list": [
                             {
@@ -620,7 +572,6 @@ class Wing(BaseModel):
                             "chord": 79.5,
                             "dihedral": 0,
                             "incidence": 0,
-                            "rotation_point_rel_chord": 0
                         },
                         "length": 15,
                         "sweep": 7.5,
@@ -629,7 +580,6 @@ class Wing(BaseModel):
                             "chord": 71.0,
                             "dihedral": 5,
                             "incidence": -0.5,
-                            "rotation_point_rel_chord": 0
                         },
                         "number_interpolation_points": 201,
                         "tip_type": "flat",
@@ -640,7 +590,6 @@ class Wing(BaseModel):
                             "chord": 71.0,
                             "dihedral": 0,
                             "incidence": 0,
-                            "rotation_point_rel_chord": 0
                         },
                         "length": 15,
                         "sweep": 10,
@@ -649,7 +598,6 @@ class Wing(BaseModel):
                             "chord": 62.0,
                             "dihedral": 5,
                             "incidence": -0.5,
-                            "rotation_point_rel_chord": 0
                         },
                         "number_interpolation_points": 201,
                         "tip_type": "flat",
@@ -660,7 +608,6 @@ class Wing(BaseModel):
                             "chord": 62.0,
                             "dihedral": 0,
                             "incidence": 0,
-                            "rotation_point_rel_chord": 0
                         },
                         "length": 15,
                         "sweep": 12.5,
@@ -669,7 +616,6 @@ class Wing(BaseModel):
                             "chord": 52.5,
                             "dihedral": 10,
                             "incidence": -0.5,
-                            "rotation_point_rel_chord": 0
                         },
                         "number_interpolation_points": 201,
                         "tip_type": "flat",
@@ -680,7 +626,6 @@ class Wing(BaseModel):
                             "chord": 52.5,
                             "dihedral": 0,
                             "incidence": 0,
-                            "rotation_point_rel_chord": 0
                         },
                         "length": 10,
                         "sweep": 15,
@@ -689,7 +634,6 @@ class Wing(BaseModel):
                             "chord": 40.5,
                             "dihedral": 15,
                             "incidence": -0.5,
-                            "rotation_point_rel_chord": 0
                         },
                         "number_interpolation_points": 201,
                         "tip_type": "flat",
@@ -700,7 +644,6 @@ class Wing(BaseModel):
                             "chord": 40.5,
                             "dihedral": 0,
                             "incidence": 0,
-                            "rotation_point_rel_chord": 0
                         },
                         "length": 5,
                         "sweep": 17.5,
@@ -709,7 +652,6 @@ class Wing(BaseModel):
                             "chord": 24.0,
                             "dihedral": 0,
                             "incidence": -0.5,
-                            "rotation_point_rel_chord": 0
                         },
                         "number_interpolation_points": 201,
                         "tip_type": "flat",

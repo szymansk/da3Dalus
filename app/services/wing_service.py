@@ -91,6 +91,44 @@ def _assert_non_terminal_xsec_or_raise(xsec_index: int, xsec_count: int) -> None
         )
 
 
+def get_wing_design_model(db: Session, aeroplane_uuid, wing_name: str) -> str | None:
+    """Return the design_model of an existing wing, or None if the wing does not exist.
+
+    Uses a lightweight scalar query and rolls back the implicit transaction
+    so that callers using ``with db.begin():`` are not disrupted.
+    """
+    from sqlalchemy import select
+
+    try:
+        # Verify aeroplane exists
+        plane_exists = db.execute(
+            select(AeroplaneModel.id).filter(AeroplaneModel.uuid == aeroplane_uuid)
+        ).scalar_one_or_none()
+        if plane_exists is None:
+            db.rollback()
+            raise NotFoundError(
+                message="Aeroplane not found",
+                details={"aeroplane_id": str(aeroplane_uuid)},
+            )
+
+        # Get wing design_model via join
+        result = db.execute(
+            select(WingModel.design_model)
+            .join(AeroplaneModel, WingModel.aeroplane_id == AeroplaneModel.id)
+            .filter(AeroplaneModel.uuid == aeroplane_uuid, WingModel.name == wing_name)
+        ).scalar_one_or_none()
+
+        # Roll back the implicit read transaction so db.begin() in service works
+        db.rollback()
+        return result
+    except NotFoundError:
+        raise
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(f"Database error when getting wing design_model: {e}")
+        raise InternalError(message="Failed to query wing design model")
+
+
 def _ensure_segment_detail_or_raise(
     x_sec: WingXSecModel,
     xsec_index: int,
@@ -202,6 +240,7 @@ def create_wing(
                 )
             
             wing = WingModel.from_dict(name=wing_name, data=wing_data.model_dump())
+            wing.design_model = "asb"
             plane.wings.append(wing)
             db.add(wing)
             plane.updated_at = datetime.now()
@@ -250,6 +289,7 @@ def create_wing_from_wing_configuration(
                 wing_name=wing_name,
                 scale=scale,
             )
+            wing_model.design_model = "wc"
             plane.wings.append(wing_model)
             db.add(wing_model)
             plane.updated_at = datetime.now()
@@ -300,14 +340,12 @@ def _wing_config_to_dict(wc) -> dict:
                 "chord": seg.root_airfoil.chord,
                 "dihedral_as_rotation_in_degrees": seg.root_airfoil.dihedral_as_rotation_in_degrees or 0,
                 "incidence": seg.root_airfoil.incidence or 0,
-                "rotation_point_rel_chord": seg.root_airfoil.rotation_point_rel_chord or 0.25,
             },
             "tip_airfoil": {
                 "airfoil": seg.tip_airfoil.airfoil,
                 "chord": seg.tip_airfoil.chord,
                 "dihedral_as_rotation_in_degrees": seg.tip_airfoil.dihedral_as_rotation_in_degrees or 0,
                 "incidence": seg.tip_airfoil.incidence or 0,
-                "rotation_point_rel_chord": seg.tip_airfoil.rotation_point_rel_chord or 0.25,
             },
             "length": seg.length,
             "sweep": seg.sweep,
@@ -364,6 +402,7 @@ def put_wing_as_wingconfig(
                 wing_name=wing_name,
                 scale=scale,
             )
+            wing_model.design_model = "wc"
             plane.wings.append(wing_model)
             db.add(wing_model)
             plane.updated_at = datetime.now()
@@ -399,6 +438,7 @@ def update_wing(
             wing = get_wing_or_raise(plane, wing_name)
             
             new_wing = WingModel.from_dict(name=wing_name, data=wing_data.model_dump())
+            new_wing.design_model = "asb"
             plane.wings.remove(wing)
             plane.wings.append(new_wing)
             plane.updated_at = datetime.now()

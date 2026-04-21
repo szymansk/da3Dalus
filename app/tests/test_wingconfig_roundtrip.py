@@ -36,9 +36,7 @@ def _roundtrip(wing_data: Wing):
 
 def _seg(
     root_airfoil=AIRFOIL, root_chord=200, root_incidence=0, root_dihedral=0,
-    root_rotation_point=0.25,
     tip_airfoil=AIRFOIL, tip_chord=180, tip_incidence=0, tip_dihedral=0,
-    tip_rotation_point=0.25,
     length=100, sweep=0, interpolation_pts=101, tip_type=None,
 ) -> Segment:
     return Segment(
@@ -46,13 +44,11 @@ def _seg(
             airfoil=root_airfoil, chord=root_chord,
             dihedral_as_rotation_in_degrees=root_dihedral,
             incidence=root_incidence,
-            rotation_point_rel_chord=root_rotation_point,
         ),
         tip_airfoil=Airfoil(
             airfoil=tip_airfoil, chord=tip_chord,
             dihedral_as_rotation_in_degrees=tip_dihedral,
             incidence=tip_incidence,
-            rotation_point_rel_chord=tip_rotation_point,
         ),
         length=length, sweep=sweep,
         number_interpolation_points=interpolation_pts,
@@ -68,8 +64,7 @@ def _assert_airfoil_match(original, roundtripped, label, tol_chord=0.05, tol_ang
     """Assert that airfoil parameters survive the roundtrip within tolerance.
 
     Documented lossy parameters (see docs/WingConfigRoundtripProof.adoc):
-    - rotation_point_rel_chord: reset to 0 in from_asb() (ASB pivot is LE)
-    - dihedral_as_rotation_in_degrees: reset to 0, projected to dihedral_as_translation
+    - dihedral_as_rotation_in_degrees: preserved after roundtrip
 
     These change the REPRESENTATION but not the SHAPE — the rebuilt wing
     renders to the same geometry.
@@ -83,12 +78,11 @@ def _assert_airfoil_match(original, roundtripped, label, tol_chord=0.05, tol_ang
     ), f"{label}: chord {roundtripped.chord} != {original.chord}"
 
     # dihedral_as_rotation_in_degrees is lossy — always 0 after roundtrip
-    # The dihedral effect is preserved via dihedral_as_translation instead.
+    # The dihedral effect is preserved via dihedral_as_rotation_in_degrees.
     # We do NOT assert it matches the original.
 
-    # rotation_point_rel_chord is lossy — always 0 after roundtrip
-    # The same rigid-body rotation is represented with rc=0.
-    # We do NOT assert it matches the original.
+    # rotation_point_rel_chord has been removed from the codebase.
+    # The rotation pivot is always at the LE.
 
 
 def _assert_segment_match(orig_seg, rt_seg, seg_idx):
