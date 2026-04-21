@@ -41,7 +41,6 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
                 "dihedral_as_rotation_in_degrees": 1,
                 "dihedral_as_translation": 0,
                 "incidence": 0,
-                "rotation_point_rel_chord": 0.25,
             },
             "length": 20.0,
             "sweep": 0,
@@ -52,7 +51,6 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
                 "dihedral_as_rotation_in_degrees": 0,
                 "dihedral_as_translation": 0,
                 "incidence": 0,
-                "rotation_point_rel_chord": 0.25,
             },
             "spare_list": [
                 {
@@ -78,7 +76,6 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
                 "dihedral_as_rotation_in_degrees": 0,
                 "dihedral_as_translation": 0,
                 "incidence": 0,
-                "rotation_point_rel_chord": 0.25,
             },
             "length": 200,
             "sweep": 2.5,
@@ -89,7 +86,6 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
                 "dihedral_as_rotation_in_degrees": 0,
                 "dihedral_as_translation": 0,
                 "incidence": 0,
-                "rotation_point_rel_chord": 0.25,
             },
             "spare_list": [
                 {
@@ -115,7 +111,6 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
                 "dihedral_as_rotation_in_degrees": 0,
                 "dihedral_as_translation": 0,
                 "incidence": 0,
-                "rotation_point_rel_chord": 0.25,
             },
             "length": 250,
             "sweep": 8,
@@ -126,7 +121,6 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
                 "dihedral_as_rotation_in_degrees": 0,
                 "dihedral_as_translation": 0,
                 "incidence": 0,
-                "rotation_point_rel_chord": 0.25,
             },
             "spare_list": [
                 {

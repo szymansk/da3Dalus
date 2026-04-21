@@ -9,7 +9,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 1,
         "dihedral_as_translation": 0,
         "incidence": 0,
-        "rotation_point_rel_chord": 0.25
       },
       "length": 20.0,
       "sweep": 0,
@@ -20,7 +19,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 0,
         "dihedral_as_translation": 0,
         "incidence": 0,
-        "rotation_point_rel_chord": 0.25
       },
       "spare_list": [
         {
@@ -90,7 +88,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 0,
         "dihedral_as_translation": 0,
         "incidence": 0,
-        "rotation_point_rel_chord": 0.25
       },
       "length": 200,
       "sweep": 2.5,
@@ -101,7 +98,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 0,
         "dihedral_as_translation": 0,
         "incidence": 0,
-        "rotation_point_rel_chord": 0.25
       },
       "spare_list": [
         {
@@ -171,7 +167,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 0,
         "dihedral_as_translation": 0,
         "incidence": 0,
-        "rotation_point_rel_chord": 0.25
       },
       "length": 250,
       "sweep": 8,
@@ -182,7 +177,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 0,
         "dihedral_as_translation": 0,
         "incidence": 0,
-        "rotation_point_rel_chord": 0.25
       },
       "spare_list": [
         {
@@ -232,7 +226,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 0,
         "dihedral_as_translation": 0,
         "incidence": 0,
-        "rotation_point_rel_chord": 0.25
       },
       "length": 75,
       "sweep": 5,
@@ -243,7 +236,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 0,
         "dihedral_as_translation": 0,
         "incidence": 0,
-        "rotation_point_rel_chord": 0.25
       },
       "spare_list": [
         {
@@ -293,7 +285,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 0,
         "dihedral_as_translation": 0,
         "incidence": 0,
-        "rotation_point_rel_chord": 0.25
       },
       "length": 85,
       "sweep": 11,
@@ -304,7 +295,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 0,
         "dihedral_as_translation": 0,
         "incidence": 0,
-        "rotation_point_rel_chord": 0.25
       },
       "spare_list": [
         {
@@ -354,7 +344,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 0,
         "dihedral_as_translation": 0,
         "incidence": 0,
-        "rotation_point_rel_chord": 0.25
       },
       "length": 40,
       "sweep": 12,
@@ -365,7 +354,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 0,
         "dihedral_as_translation": 0,
         "incidence": 0,
-        "rotation_point_rel_chord": 0.25
       },
       "spare_list": [
         {
@@ -415,7 +403,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 0,
         "dihedral_as_translation": 0,
         "incidence": 0,
-        "rotation_point_rel_chord": 0.25
       },
       "length": 20,
       "sweep": 7.5,
@@ -426,7 +413,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 5,
         "dihedral_as_translation": 0,
         "incidence": 0,
-        "rotation_point_rel_chord": 0.25
       },
       "spare_list": [
         {
@@ -460,7 +446,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 5,
         "dihedral_as_translation": 0,
         "incidence": 0,
-        "rotation_point_rel_chord": 0.25
       },
       "length": 15,
       "sweep": 7.5,
@@ -471,7 +456,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 5,
         "dihedral_as_translation": 0,
         "incidence": 0,
-        "rotation_point_rel_chord": 0.25
       },
       "spare_list": null,
       "trailing_edge_device": null,
@@ -486,7 +470,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 5,
         "dihedral_as_translation": 0,
         "incidence": 0,
-        "rotation_point_rel_chord": 0.25
       },
       "length": 15,
       "sweep": 10,
@@ -497,7 +480,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 5,
         "dihedral_as_translation": 0,
         "incidence": 0,
-        "rotation_point_rel_chord": 0.25
       },
       "spare_list": null,
       "trailing_edge_device": null,
@@ -512,7 +494,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 5,
         "dihedral_as_translation": 0,
         "incidence": 0,
-        "rotation_point_rel_chord": 0.25
       },
       "length": 15,
       "sweep": 12.5,
@@ -523,7 +504,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 10,
         "dihedral_as_translation": 0,
         "incidence": -0.0,
-        "rotation_point_rel_chord": 0.25
       },
       "spare_list": null,
       "trailing_edge_device": null,
@@ -538,7 +518,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 10,
         "dihedral_as_translation": 0,
         "incidence": -0.0,
-        "rotation_point_rel_chord": 0.25
       },
       "length": 10,
       "sweep": 15,
@@ -549,7 +528,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 15,
         "dihedral_as_translation": 0,
         "incidence": -0.0,
-        "rotation_point_rel_chord": 0.25
       },
       "spare_list": null,
       "trailing_edge_device": null,
@@ -564,7 +542,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 15,
         "dihedral_as_translation": 0,
         "incidence": -0.0,
-        "rotation_point_rel_chord": 0.25
       },
       "length": 5,
       "sweep": 17.5,
@@ -575,7 +552,6 @@ export const EHAWK_WING_CONFIG = {
         "dihedral_as_rotation_in_degrees": 0,
         "dihedral_as_translation": 0,
         "incidence": -0.0,
-        "rotation_point_rel_chord": 0.25
       },
       "spare_list": null,
       "trailing_edge_device": null,

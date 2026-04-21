@@ -55,7 +55,6 @@ Feature: eHawk Designer Workflow — Full UI Construction
       | sweep                      | 0     |
       | dihedral                   | 1.0   |
       | incidence                  | 0     |
-      | rotation_point             | 0.25  |
       | interpolation_pts          | 201   |
     And I click "Save"
     Then the save completes without error

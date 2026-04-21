@@ -4,7 +4,7 @@ from cadquery import Plane
 from pydantic import PositiveFloat
 
 from cad_designer.airplane.aircraft_topology.wing.CoordinateSystem import CoordinateSystem
-from cad_designer.airplane.types import Factor, DihedralInDegrees
+from cad_designer.airplane.types import DihedralInDegrees
 
 
 class Airfoil:
@@ -20,12 +20,10 @@ class Airfoil:
         dihedral_as_rotation_in_degrees (DihedralInDegrees): Dihedral angle as rotation.
         dihedral_as_translation (float): Dihedral as translation.
         incidence (float): Angle of incidence (twist).
-        rotation_point_rel_chord (Factor): Relative rotation point along the chord (default 0.25).
         coordinate_system (Optional[CoordinateSystem]): Associated coordinate system.
 
     Note:
         Only one of dihedral_as_rotation_in_degrees or dihedral_as_translation may be set.
-        If dihedral_as_translation is set, rotation_point_rel_chord must be 0.25.
     """
 
     def __init__(self,
@@ -33,8 +31,7 @@ class Airfoil:
                  chord: Optional[PositiveFloat] = None,
                  dihedral_as_rotation_in_degrees: DihedralInDegrees = 0,
                  dihedral_as_translation: float = 0,
-                 incidence: float = 0,
-                 rotation_point_rel_chord: Factor = 0.25):
+                 incidence: float = 0):
         """
         Initializes an Airfoil instance.
 
@@ -44,11 +41,9 @@ class Airfoil:
             dihedral_as_rotation_in_degrees (DihedralInDegrees): The dihedral angle as a rotation in degrees.
             dihedral_as_translation (float): The dihedral angle as a translation.
             incidence (float): The incidence angle of the airfoil.
-            rotation_point_rel_chord (Factor): The relative position of the rotation point along the chord.
 
         Raises:
             ValueError: If both dihedral_as_rotation_in_degrees and dihedral_as_translation are non-zero.
-            ValueError: If dihedral_as_translation is non-zero and rotation_point_rel_chord is not 0.25.
         """
         self.airfoil: str = airfoil
         self.chord: float = chord
@@ -57,9 +52,6 @@ class Airfoil:
         #if self.dihedral_as_rotation_in_degrees != 0 and self.dihedral_as_translation != 0:
         #    raise ValueError("either dihedral_as_rotation_in_radians or dihedral_as_translation must be zero!")
         self.incidence: float = incidence
-        self.rotation_point_rel_chord: float = rotation_point_rel_chord
-        #if self.dihedral_as_translation != 0 and self.rotation_point_rel_chord != 0.25:
-        #    raise ValueError("if dihedral_as_translation is not zero, than rotation_point_rel_chord has to be 0.25!")
         self.coordinate_system = None
 
     def set_airfoil_coordinate_system(self, cs: Plane):
@@ -109,5 +101,4 @@ class Airfoil:
             dihedral_as_rotation_in_degrees=data.get('dihedral_as_rotation_in_degrees', 0),
             dihedral_as_translation=data.get('dihedral_as_translation', 0),
             incidence=data.get('incidence', 0),
-            rotation_point_rel_chord=data.get('rotation_point_rel_chord', 0.25)
         )

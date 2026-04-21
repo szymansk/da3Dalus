@@ -9,14 +9,12 @@ export interface WingConfigSegment {
     chord: number;
     dihedral_as_rotation_in_degrees?: number;
     incidence?: number;
-    rotation_point_rel_chord?: number;
   };
   tip_airfoil: {
     airfoil: string;
     chord: number;
     dihedral_as_rotation_in_degrees?: number;
     incidence?: number;
-    rotation_point_rel_chord?: number;
   };
   length: number;
   sweep: number;

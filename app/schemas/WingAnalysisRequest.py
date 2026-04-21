@@ -42,7 +42,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 1,
                                     "dihedral_as_translation": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "length": 20.0,
                                 "sweep": 0,
@@ -53,7 +52,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "dihedral_as_translation": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "spare_list": [
                                     {
@@ -123,7 +121,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "dihedral_as_translation": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "length": 200,
                                 "sweep": 2.5,
@@ -134,7 +131,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "dihedral_as_translation": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "spare_list": [
                                     {
@@ -204,7 +200,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "dihedral_as_translation": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "length": 250,
                                 "sweep": 8,
@@ -215,7 +210,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "dihedral_as_translation": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "spare_list": [
                                     {
@@ -265,7 +259,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "dihedral_as_translation": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "length": 75,
                                 "sweep": 5,
@@ -276,7 +269,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "dihedral_as_translation": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "spare_list": [
                                     {
@@ -326,7 +318,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "dihedral_as_translation": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "length": 85,
                                 "sweep": 11,
@@ -337,7 +328,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "dihedral_as_translation": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "spare_list": [
                                     {
@@ -387,7 +377,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "dihedral_as_translation": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "length": 40,
                                 "sweep": 12,
@@ -398,7 +387,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "dihedral_as_translation": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "spare_list": [
                                     {
@@ -448,7 +436,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "dihedral_as_translation": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "length": 20,
                                 "sweep": 7.5,
@@ -459,7 +446,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 5,
                                     "dihedral_as_translation": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "spare_list": [
                                     {
@@ -493,7 +479,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 5,
                                     "dihedral_as_translation": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "length": 15,
                                 "sweep": 7.5,
@@ -504,7 +489,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 5,
                                     "dihedral_as_translation": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "spare_list": None,
                                 "trailing_edge_device": None,
@@ -519,7 +503,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 5,
                                     "dihedral_as_translation": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "length": 15,
                                 "sweep": 10,
@@ -530,7 +513,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 5,
                                     "dihedral_as_translation": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "spare_list": None,
                                 "trailing_edge_device": None,
@@ -545,7 +527,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 5,
                                     "dihedral_as_translation": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "length": 15,
                                 "sweep": 12.5,
@@ -556,7 +537,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 10,
                                     "dihedral_as_translation": 0,
                                     "incidence": -0.0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "spare_list": None,
                                 "trailing_edge_device": None,
@@ -571,7 +551,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 10,
                                     "dihedral_as_translation": 0,
                                     "incidence": -0.0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "length": 10,
                                 "sweep": 15,
@@ -582,7 +561,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 15,
                                     "dihedral_as_translation": 0,
                                     "incidence": -0.0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "spare_list": None,
                                 "trailing_edge_device": None,
@@ -597,7 +575,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 15,
                                     "dihedral_as_translation": 0,
                                     "incidence": -0.0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "length": 5,
                                 "sweep": 17.5,
@@ -608,7 +585,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "dihedral_as_translation": 0,
                                     "incidence": -0.0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "spare_list": None,
                                 "trailing_edge_device": None,
@@ -633,7 +609,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 45,
                                     "dihedral_as_translation": 0,
                                     "incidence": -2,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "length": 210.0,
                                 "sweep": 15,
@@ -644,7 +619,6 @@ class WingAnalysisRequest(BaseModel):
                                     "dihedral_as_rotation_in_degrees": 0,
                                     "dihedral_as_translation": 0,
                                     "incidence": 0,
-                                    "rotation_point_rel_chord": 0.25
                                 },
                                 "spare_list": [
                                     {

@@ -37,7 +37,7 @@ def single_segment_flat() -> WingConfiguration:
             chord=200.0,
             dihedral_as_rotation_in_degrees=0,
             incidence=0,
-            rotation_point_rel_chord=0.0,
+
         ),
         length=500.0,
         sweep=0,
@@ -46,7 +46,7 @@ def single_segment_flat() -> WingConfiguration:
             chord=200.0,
             dihedral_as_rotation_in_degrees=0,
             incidence=0,
-            rotation_point_rel_chord=0.0,
+
         ),
         symmetric=True,
         parameters="relative",
@@ -69,7 +69,7 @@ def single_segment_with_dihedral() -> WingConfiguration:
             chord=200.0,
             dihedral_as_rotation_in_degrees=5,
             incidence=0,
-            rotation_point_rel_chord=0.0,
+
         ),
         length=500.0,
         sweep=0,
@@ -78,7 +78,7 @@ def single_segment_with_dihedral() -> WingConfiguration:
             chord=200.0,
             dihedral_as_rotation_in_degrees=0,
             incidence=0,
-            rotation_point_rel_chord=0.0,
+
         ),
         symmetric=True,
         parameters="relative",
@@ -100,7 +100,7 @@ def single_segment_with_nose_pnt() -> WingConfiguration:
             chord=200.0,
             dihedral_as_rotation_in_degrees=0,
             incidence=0,
-            rotation_point_rel_chord=0.0,
+
         ),
         length=500.0,
         sweep=0,
@@ -109,7 +109,7 @@ def single_segment_with_nose_pnt() -> WingConfiguration:
             chord=200.0,
             dihedral_as_rotation_in_degrees=0,
             incidence=0,
-            rotation_point_rel_chord=0.0,
+
         ),
         symmetric=True,
         parameters="relative",
@@ -125,7 +125,7 @@ def single_segment_with_twist() -> WingConfiguration:
             chord=200.0,
             dihedral_as_rotation_in_degrees=0,
             incidence=0,
-            rotation_point_rel_chord=0.0,
+
         ),
         length=500.0,
         sweep=0,
@@ -134,7 +134,7 @@ def single_segment_with_twist() -> WingConfiguration:
             chord=200.0,
             dihedral_as_rotation_in_degrees=0,
             incidence=-10,
-            rotation_point_rel_chord=0.0,
+
         ),
         symmetric=True,
         parameters="relative",
@@ -152,7 +152,7 @@ def single_segment_with_twist_and_dihedral() -> WingConfiguration:
             chord=200.0,
             dihedral_as_rotation_in_degrees=10,
             incidence=3,
-            rotation_point_rel_chord=0.0,
+
         ),
         length=500.0,
         sweep=20,
@@ -161,7 +161,7 @@ def single_segment_with_twist_and_dihedral() -> WingConfiguration:
             chord=150.0,
             dihedral_as_rotation_in_degrees=0,
             incidence=-5,
-            rotation_point_rel_chord=0.0,
+
         ),
         symmetric=True,
         parameters="relative",
@@ -187,7 +187,7 @@ def configurator_wing() -> WingConfiguration:
             chord=200.0,
             dihedral_as_rotation_in_degrees=4,
             incidence=0,
-            rotation_point_rel_chord=0.0,
+
         ),
         length=500.0,
         sweep=50,
@@ -196,7 +196,7 @@ def configurator_wing() -> WingConfiguration:
             chord=200.0,
             dihedral_as_rotation_in_degrees=-4,
             incidence=-10,
-            rotation_point_rel_chord=0.0,
+
         ),
     )
     wc.add_segment(
@@ -207,7 +207,7 @@ def configurator_wing() -> WingConfiguration:
             chord=150,
             dihedral_as_rotation_in_degrees=-4,
             incidence=-5,
-            rotation_point_rel_chord=0.0,
+
         ),
     )
     wc.add_segment(
@@ -218,7 +218,7 @@ def configurator_wing() -> WingConfiguration:
             chord=100,
             dihedral_as_rotation_in_degrees=0,
             incidence=0,
-            rotation_point_rel_chord=0.0,
+
         ),
     )
     return wc

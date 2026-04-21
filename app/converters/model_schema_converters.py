@@ -87,23 +87,6 @@ def _wing_configuration_sections(wing_config: WingConfiguration):
     return sections
 
 
-def _prepare_wing_config_for_asb(wing_config: WingConfiguration) -> None:
-    """
-    Ensure WingConfiguration values are compatible with WingConfiguration.asb_wing().
-
-    `from_asb()` currently creates segments with rotation_point_rel_chord=0.0, but `asb_wing()`
-    requires 0.25. We normalize this before conversion.
-    """
-    for segment in wing_config.segments or []:
-        if segment.root_airfoil.rotation_point_rel_chord != 0.25:
-            segment.root_airfoil.rotation_point_rel_chord = 0.25
-        if segment.tip_airfoil.rotation_point_rel_chord != 0.25:
-            segment.tip_airfoil.rotation_point_rel_chord = 0.25
-
-    # Reset cached ASB representation so the updated geometry is used.
-    wing_config._asb_wing = None
-
-
 def _normalize_wing_config_ted_for_asb(wing_config: WingConfiguration):
     """
     Temporarily enforce rel_chord_tip == rel_chord_root for ASB conversion.
@@ -551,16 +534,6 @@ def asbWingSchemaToWingConfig(
     xsecs = _asb_wing_xsecs_from_schema(geometry_scaled_schema)
     wing_config = WingConfiguration.from_asb(xsecs, geometry_scaled_schema.symmetric)
     _hydrate_wing_configuration_details(wing_config, asb_wing)
-    # from_asb() leaves every segment's airfoils with
-    # rotation_point_rel_chord=0.0, but the rest of the pipeline
-    # (WingConfiguration.asb_wing() AND the VaseModeWingCreator CAD
-    # pipeline) expects the default 0.25 quarter-chord rotation point.
-    # Without this normalisation the resulting wing geometry is
-    # rotated around the leading edge instead of the quarter-chord,
-    # producing degenerate intersect shapes that hang / crash OCCT
-    # further down. See the matching call inside
-    # wingConfigToAsbWingSchema().
-    _prepare_wing_config_for_asb(wing_config)
     return wing_config
 
 
@@ -589,7 +562,6 @@ def wingConfigToAsbWingSchema(
         wing_name: Name to assign in the resulting schema/model.
         scale: Scaling used when creating the internal ASB wing (e.g. 0.001 for mm->m).
     """
-    _prepare_wing_config_for_asb(wing_config)
     ted_original_tip_values = _normalize_wing_config_ted_for_asb(wing_config)
     try:
         asb_wing = wing_config.asb_wing(scale=scale)

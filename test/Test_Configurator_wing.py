@@ -108,8 +108,7 @@ if __name__ == "__main__":
             chord=200.,
             dihedral_as_rotation_in_degrees=4,
             # dihedral_as_translation=50,
-            incidence=0,
-            rotation_point_rel_chord=0.25),
+            incidence=0,),
         length=500.,
         sweep=50,
         sweep_is_angle=False,
@@ -117,8 +116,7 @@ if __name__ == "__main__":
             chord=200.,
             dihedral_as_rotation_in_degrees=-4,
             # dihedral_as_translation=-100,
-            incidence=-10,
-            rotation_point_rel_chord=0.25),
+            incidence=-10,),
         spare_list=[
             Spare(spare_support_dimension_width=3,
                   spare_support_dimension_height=3,
@@ -132,8 +130,7 @@ if __name__ == "__main__":
         tip_airfoil=Airfoil(
             chord=150,
             dihedral_as_rotation_in_degrees=-4,
-            incidence=-5,
-            rotation_point_rel_chord=0.25),
+            incidence=-5,),
         spare_list=[
             Spare(spare_support_dimension_width=3,
                   spare_support_dimension_height=3,
@@ -146,8 +143,7 @@ if __name__ == "__main__":
         tip_airfoil=Airfoil(
             chord=100,
             dihedral_as_rotation_in_degrees=0,
-            incidence=0,
-            rotation_point_rel_chord=0.25),
+            incidence=0,),
         spare_list=[
             Spare(spare_support_dimension_width=3,
                   spare_support_dimension_height=3,

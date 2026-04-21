@@ -110,9 +110,7 @@ def compute_expected_xsecs(segments_params):
 
 def _seg_schema(
     root_airfoil=AIRFOIL, root_chord=200, root_incidence=0, root_dihedral=0,
-    root_rc=0.25,
     tip_airfoil=AIRFOIL, tip_chord=180, tip_incidence=0, tip_dihedral=0,
-    tip_rc=0.25,
     length=100, sweep=0, interpolation_pts=101,
 ):
     return Segment(
@@ -120,13 +118,11 @@ def _seg_schema(
             airfoil=root_airfoil, chord=root_chord,
             dihedral_as_rotation_in_degrees=root_dihedral,
             incidence=root_incidence,
-            rotation_point_rel_chord=root_rc,
         ),
         tip_airfoil=Airfoil(
             airfoil=tip_airfoil, chord=tip_chord,
             dihedral_as_rotation_in_degrees=tip_dihedral,
             incidence=tip_incidence,
-            rotation_point_rel_chord=tip_rc,
         ),
         length=length, sweep=sweep,
         number_interpolation_points=interpolation_pts,
@@ -134,16 +130,16 @@ def _seg_schema(
 
 
 def _seg_params(
-    root_chord=200, root_incidence=0, root_dihedral=0, root_rc=0.25,
-    tip_chord=180, tip_incidence=0, tip_dihedral=0, tip_rc=0.25,
+    root_chord=200, root_incidence=0, root_dihedral=0,
+    tip_chord=180, tip_incidence=0, tip_dihedral=0,
     length=100, sweep=0, dihedral_translation=0,
 ):
     """Parameters dict for the H-matrix computation."""
     return {
         "root_chord": root_chord, "root_incidence": root_incidence,
-        "root_dihedral": root_dihedral, "root_rc": root_rc,
+        "root_dihedral": root_dihedral,
         "tip_chord": tip_chord, "tip_incidence": tip_incidence,
-        "tip_dihedral": tip_dihedral, "tip_rc": tip_rc,
+        "tip_dihedral": tip_dihedral,
         "length": length, "sweep": sweep,
         "dihedral_translation": dihedral_translation,
     }

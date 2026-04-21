@@ -213,8 +213,7 @@ class WingConfiguration:
                                dihedral_as_rotation_in_degrees=self.segments[
                                    -1].tip_airfoil.dihedral_as_rotation_in_degrees,
                                dihedral_as_translation=self.segments[-1].tip_airfoil.dihedral_as_translation,
-                               incidence=self.segments[-1].tip_airfoil.incidence,
-                               rotation_point_rel_chord=self.segments[-1].tip_airfoil.rotation_point_rel_chord)
+                               incidence=self.segments[-1].tip_airfoil.incidence)
         self._normalize_airfoil_dihedral_members(root_airfoil)
 
         tip_airfoil.airfoil = tip_airfoil.airfoil if tip_airfoil.airfoil is not None else root_airfoil.airfoil
@@ -271,8 +270,7 @@ class WingConfiguration:
                                dihedral_as_rotation_in_degrees=self.segments[
                                    -1].tip_airfoil.dihedral_as_rotation_in_degrees,
                                dihedral_as_translation=self.segments[-1].tip_airfoil.dihedral_as_translation,
-                               incidence=self.segments[-1].tip_airfoil.incidence,
-                               rotation_point_rel_chord=self.segments[-1].tip_airfoil.rotation_point_rel_chord)
+                               incidence=self.segments[-1].tip_airfoil.incidence)
         self._normalize_airfoil_dihedral_members(root_airfoil)
 
         tip_airfoil.airfoil = tip_airfoil.airfoil if tip_airfoil.airfoil is not None else root_airfoil.airfoil
@@ -933,8 +931,7 @@ class WingConfiguration:
 
         Returns:
             A new WingConfiguration in *relative* mode, with
-            rotation_point_rel_chord=0 and dihedral_as_translation=0
-            on every airfoil.
+            dihedral_as_translation=0 on every airfoil.
         """
         asb_wing = asb.Wing(xsecs=xsecs, symmetric=symmetric)
         n = len(asb_wing.xsecs)
@@ -996,7 +993,6 @@ class WingConfiguration:
                 dihedral_as_rotation_in_degrees=d_rot,
                 dihedral_as_translation=0.0,
                 incidence=incidence,
-                rotation_point_rel_chord=0.0,
             )
 
         # Extract sweep and length from delta directly.
