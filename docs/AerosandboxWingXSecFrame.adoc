@@ -1,0 +1,1255 @@
+= Aerosandbox WingXSec Frame Transformation
+:author: da3Dalus
+:revdate: 2026-04-21
+:stem: latexmath
+:toc:
+
+== Overview
+
+This document describes how Aerosandbox computes the 3D reference frame of each `WingXSec` cross-section from its parameters, and how this frame can be expressed as a homogeneous transformation matrix.
+
+The relevant source code is in `aerosandbox/geometry/wing.py`, method `Wing._compute_frame_of_WingXSec(index)`.
+
+== WingXSec Parameters
+
+Each `WingXSec` carries the following geometric parameters:
+
+[cols="1,3"]
+|===
+| Parameter | Description
+
+| `xyz_le`  | 3D position of the leading edge (translation)
+| `chord`   | Chord length (scalar)
+| `twist`   | Twist angle in degrees (nose-up positive)
+| `airfoil` | 2D airfoil contour (normalized coordinates)
+|===
+
+The 3D wing geometry is derived entirely from these parameters -- Aerosandbox does **not** store explicit sweep or dihedral angles.
+
+== Frame Construction Algorithm
+
+The frame of WingXSec latexmath:[i] is a local coordinate system latexmath:[(\mathbf{x}_g, \mathbf{y}_g, \mathbf{z}_g)] attached at `xyz_le[i]`:
+
+[cols="1,2,3"]
+|===
+| Axis | Meaning | Construction
+
+| latexmath:[\mathbf{x}_g] | Chord direction (LE -> TE) | Starts as latexmath:[[1,0,0\]], then rotated by twist
+| latexmath:[\mathbf{y}_g] | Spanwise direction (root -> tip) | From neighbouring `xyz_le` positions, projected to YZ-plane
+| latexmath:[\mathbf{z}_g] | Thickness direction (lower -> upper surface) | latexmath:[\mathbf{x}_g \times \mathbf{y}_g]
+|===
+
+=== Step 1: Dihedral Angle (depends on neighbours)
+
+IMPORTANT: The dihedral angle latexmath:[\alpha_i] is **not** an intrinsic property of xsec latexmath:[i]. It is derived from the `xyz_le` positions of the neighbouring cross-sections. The frame of xsec latexmath:[i] therefore depends on the geometry of xsecs latexmath:[i-1] and latexmath:[i+1].
+
+The span vector used to determine latexmath:[\alpha_i] is computed differently depending on position:
+
+==== Root xsec (latexmath:[i = 0])
+
+Uses the forward difference only:
+
+[latexmath]
+++++
+\boldsymbol{\Delta}_0 = \mathrm{xyz\_le}[1] - \mathrm{xyz\_le}[0]
+++++
+
+==== Tip xsec (latexmath:[i = N-1])
+
+Uses the backward difference only:
+
+[latexmath]
+++++
+\boldsymbol{\Delta}_{N-1} = \mathrm{xyz\_le}[N-1] - \mathrm{xyz\_le}[N-2]
+++++
+
+==== Inner xsec (latexmath:[0 < i < N-1])
+
+Uses the **bisector** of the two neighbouring span vectors:
+
+[latexmath]
+++++
+\boldsymbol{\Delta}_{\mathrm{before}} = \frac{\mathrm{proj}_{YZ}(\mathrm{xyz\_le}[i] - \mathrm{xyz\_le}[i-1])}{|\mathrm{proj}_{YZ}(\mathrm{xyz\_le}[i] - \mathrm{xyz\_le}[i-1])|}
+++++
+
+[latexmath]
+++++
+\boldsymbol{\Delta}_{\mathrm{after}} = \frac{\mathrm{proj}_{YZ}(\mathrm{xyz\_le}[i+1] - \mathrm{xyz\_le}[i])}{|\mathrm{proj}_{YZ}(\mathrm{xyz\_le}[i+1] - \mathrm{xyz\_le}[i])|}
+++++
+
+[latexmath]
+++++
+\mathbf{y}_{g,i} = \mathrm{normalize}\!\left(\frac{\boldsymbol{\Delta}_{\mathrm{before}} + \boldsymbol{\Delta}_{\mathrm{after}}}{2}\right)
+++++
+
+==== Dihedral angle extraction
+
+In all cases, the span vector is first projected onto the YZ-plane (X-component set to zero) and normalised. The dihedral angle is then:
+
+[latexmath]
+++++
+\alpha_i = \arctan\!\left(\frac{\Delta_z}{\Delta_y}\right)
+++++
+
+where latexmath:[\Delta_y, \Delta_z] are the YZ-components of the resulting (projected, normalised) span vector latexmath:[\mathbf{y}_{g,i}].
+
+=== Step 2: Twist Rotation
+
+The twist angle latexmath:[\theta_i] is taken directly from `WingXSec.twist` (in degrees, nose-up positive). The twist rotation is applied around latexmath:[\mathbf{y}_g].
+
+=== Dependency Graph
+
+The frame of xsec latexmath:[i] therefore depends on:
+
+[cols="1,2"]
+|===
+| Parameter | Source
+
+| latexmath:[\mathrm{xyz\_le}_i] | Intrinsic to xsec latexmath:[i]
+| latexmath:[\theta_i] (twist) | Intrinsic to xsec latexmath:[i]
+| latexmath:[c_i] (chord) | Intrinsic to xsec latexmath:[i]
+| latexmath:[\alpha_i] (dihedral) | Derived from latexmath:[\mathrm{xyz\_le}_{i-1}], latexmath:[\mathrm{xyz\_le}_i], latexmath:[\mathrm{xyz\_le}_{i+1}]
+| latexmath:[s_z] (kink scale) | Derived from latexmath:[\alpha_{\mathrm{before}}] and latexmath:[\alpha_{\mathrm{after}}]
+|===
+
+This means the transformation cannot be computed from a single xsec in isolation -- the **wing topology** (sequence of xsecs) must be known.
+
+== Homogeneous Transformation Matrix
+
+The complete transformation from local airfoil coordinates to world coordinates is:
+
+[latexmath]
+++++
+\mathbf{T}_i = \mathbf{T}(\mathrm{xyz\_le}_i) \cdot \mathbf{R}_x(\alpha_i) \cdot \mathbf{R}_y(\theta_i)
+++++
+
+where:
+
+* latexmath:[\mathbf{T}(\mathbf{t})] is a pure translation by latexmath:[\mathbf{t}]
+* latexmath:[\mathbf{R}_x(\alpha)] is rotation about the X-axis by dihedral angle latexmath:[\alpha]
+* latexmath:[\mathbf{R}_y(\theta)] is rotation about the Y-axis by twist angle latexmath:[\theta]
+
+=== Expanded Form
+
+[latexmath]
+++++
+\mathbf{T}_i =
+\begin{bmatrix}
+\cos\theta & 0 & \sin\theta & x_{\mathrm{le}} \\
+\sin\alpha\,\sin\theta & \cos\alpha & -\sin\alpha\,\cos\theta & y_{\mathrm{le}} \\
+-\cos\alpha\,\sin\theta & \sin\alpha & \cos\alpha\,\cos\theta & z_{\mathrm{le}} \\
+0 & 0 & 0 & 1
+\end{bmatrix}
+++++
+
+The columns of the upper-left 3x3 block are:
+
+[latexmath]
+++++
+\mathbf{x}_g' = \begin{bmatrix} \cos\theta \\ \sin\alpha\,\sin\theta \\ -\cos\alpha\,\sin\theta \end{bmatrix}, \quad
+\mathbf{y}_g = \begin{bmatrix} 0 \\ \cos\alpha \\ \sin\alpha \end{bmatrix}, \quad
+\mathbf{z}_g' = \begin{bmatrix} \sin\theta \\ -\sin\alpha\,\cos\theta \\ \cos\alpha\,\cos\theta \end{bmatrix}
+++++
+
+== Placing an Airfoil Point in World Space
+
+A 2D airfoil coordinate latexmath:[(x_n, z_n)] (normalised, where latexmath:[x_n \in [0,1\]] from LE to TE) is mapped to world coordinates by:
+
+[latexmath]
+++++
+\mathbf{P}_{\mathrm{world}} = \mathbf{T}_i \cdot
+\begin{bmatrix}
+x_n \cdot c_i \\
+0 \\
+z_n \cdot c_i \\
+1
+\end{bmatrix}
+++++
+
+where latexmath:[c_i] is the chord length of xsec latexmath:[i]. The Y-component is zero because the airfoil is a 2D contour living in the local XZ-plane.
+
+Equivalently:
+
+[latexmath]
+++++
+\mathbf{P}_{\mathrm{world}} = \mathrm{xyz\_le}_i + c_i \left( x_n \cdot \mathbf{x}_g' + z_n \cdot \mathbf{z}_g' \right)
+++++
+
+== Special Case: Dihedral Kink (Inner Cross-Section)
+
+At a dihedral kink where latexmath:[\alpha_{\mathrm{before}} \neq \alpha_{\mathrm{after}}], Aerosandbox scales the thickness direction by a factor:
+
+[latexmath]
+++++
+s_z = \sqrt{\frac{2}{\cos(\alpha_{\mathrm{after}} - \alpha_{\mathrm{before}}) + 1}}
+++++
+
+This ensures the airfoil profile fills the geometric gap at the kink. The transformation becomes:
+
+[latexmath]
+++++
+\mathbf{T}_i = \mathbf{T}(\mathrm{xyz\_le}_i) \cdot \mathbf{R}_x(\bar{\alpha}_i) \cdot \mathbf{R}_y(\theta_i) \cdot \mathrm{diag}(1, 1, s_z, 1)
+++++
+
+where latexmath:[\bar{\alpha}_i] is computed from the bisector of the two neighbouring span vectors. In this case the frame is **not orthonormal** -- the latexmath:[\mathbf{z}_g] column is stretched.
+
+== Conversion from WingConfiguration to ASB Parameters
+
+The da3Dalus `WingConfiguration` uses explicit segment parameters (sweep, dihedral, length, incidence). The conversion to Aerosandbox collapses these into absolute `xyz_le` positions via `WingConfiguration.get_wing_workplane()`, which accumulates homogeneous transforms along the segment chain.
+
+=== WingConfiguration Segment Parameters
+
+Assuming `dihedral_as_translation` is **forbidden** (dihedral expressed solely as rotation), the relevant parameters per segment are:
+
+[cols="1,1,3"]
+|===
+| Parameter | Symbol | Description
+
+| `length` | latexmath:[l_i] | Spanwise extent of the segment (Y-direction)
+| `sweep` | latexmath:[s_i] | X-offset of tip LE relative to root LE
+| `dihedral_as_rotation_in_degrees` | latexmath:[\gamma_i] | Dihedral as rotation about the X-axis
+| `rotation_point_rel_chord` | latexmath:[rc_i] | Pivot point for incidence/dihedral rotations (fraction of chord)
+| `root_airfoil.chord` / `tip_airfoil.chord` | latexmath:[c_i] | Chord length
+| `root_airfoil.incidence` / `tip_airfoil.incidence` | latexmath:[\theta_i] | Twist angle (incidence)
+|===
+
+=== Parameter Mapping Overview
+
+IMPORTANT: The translation vector latexmath:[(s_i, l_i, 0)] is expressed in the **local frame** of the segment, which is rotated by the accumulated dihedral and incidence of all preceding segments. It is therefore **not** directly equal to a world-coordinate offset.
+
+[cols="2,4"]
+|===
+| WingConfiguration | Aerosandbox equivalent
+
+| `nose_pnt`
+| Global translation applied to the entire wing (latexmath:[\mathrm{xyz\_le}] offset)
+
+| segment `length` (latexmath:[l_i])
+| Distance along the **local (tilted) span axis**. Projects onto world coordinates as: latexmath:[\Delta y \approx l_i \cos\gamma_i], latexmath:[\Delta z \approx l_i \sin\gamma_i] (exact only without accumulated rotation from prior segments)
+
+| segment `sweep` (latexmath:[s_i])
+| X-offset along the **local chord direction**. Approximately equals world-X offset only when accumulated incidence is small: latexmath:[\Delta x \approx s_i \cos\theta_{\mathrm{accum}}]
+
+| `dihedral_as_rotation_in_degrees` (latexmath:[\gamma_i])
+| Tilts the local span axis, causing `length` to project onto both world-Y and world-Z. Also rotates all subsequent segments.
+
+| airfoil `incidence` (latexmath:[\theta_i])
+| Accumulates into ASB `twist`. Also rotates the local frame, affecting how subsequent `sweep` and `length` project into world coordinates.
+
+| airfoil `chord` (latexmath:[c_i])
+| Directly maps to ASB `chord` (with mm latexmath:[\to] m scaling)
+
+| `rotation_point_rel_chord` (latexmath:[rc_i])
+| Shifts the rotation pivot away from LE. Creates additional orbital offsets in latexmath:[\mathrm{xyz\_le}] when latexmath:[\theta \neq 0] or latexmath:[\gamma \neq 0]. Eliminated in canonical form (latexmath:[rc = 0]).
+|===
+
+==== Why `length` {ne} world-Y distance
+
+The segment translation latexmath:[(s_i, l_i, 0)^T] is rotated by the accumulated rotation matrix before being added to the position:
+
+[latexmath]
+++++
+\mathrm{xyz\_le}_{i+1} = \mathrm{xyz\_le}_i \;+\; \mathbf{R}_{\mathrm{accum}} \cdot \begin{bmatrix} s_i \\ l_i \\ 0 \end{bmatrix}
+++++
+
+For the first segment (no prior accumulation, only root dihedral latexmath:[\gamma_0] and root incidence latexmath:[\theta_0]):
+
+[latexmath]
+++++
+\begin{bmatrix} \Delta x \\ \Delta y \\ \Delta z \end{bmatrix}
+= \mathbf{R}_y(\theta_0) \cdot \mathbf{R}_x(\gamma_0) \cdot \begin{bmatrix} s_0 \\ l_0 \\ 0 \end{bmatrix}
+= \begin{bmatrix}
+s_0 \cos\theta_0 + l_0 \sin\gamma_0 \sin\theta_0 \\
+l_0 \cos\gamma_0 \\
+-s_0 \sin\theta_0 + l_0 \sin\gamma_0 \cos\theta_0
+\end{bmatrix}
+++++
+
+For typical small incidence (latexmath:[\theta_0 \approx 0]):
+
+[latexmath]
+++++
+\Delta x \approx s_0, \quad \Delta y \approx l_0 \cos\gamma_0, \quad \Delta z \approx l_0 \sin\gamma_0
+++++
+
+For subsequent segments, the rotation matrix accumulates all prior dihedrals and incidences, making the relationship increasingly indirect.
+
+=== Transformation Chain per Segment
+
+For each segment, the tip position is computed from the root position by the following matrix product (applied right-to-left):
+
+[latexmath]
+++++
+\mathbf{H}_{\mathrm{seg}} =
+\underbrace{\mathbf{T}(rc \cdot c, \; 0, \; 0)}_{\text{5. back to LE}}
+\cdot
+\underbrace{\mathbf{T}(s, \; l, \; 0)}_{\text{4. sweep + span}}
+\cdot
+\underbrace{\mathbf{R}_x(\gamma)}_{\text{3. dihedral}}
+\cdot
+\underbrace{\mathbf{R}_y(\theta)}_{\text{2. incidence}}
+\cdot
+\underbrace{\mathbf{T}(-rc \cdot c, \; 0, \; 0)}_{\text{1. move to pivot}}
+++++
+
+The steps in order of application (right-to-left):
+
+. **T(-rc{middot}c, 0, 0)** -- Translate to the rotation pivot point (rc{middot}chord back from LE)
+. **R_y({theta})** -- Rotate by incidence (twist) around the pivot
+. **R_x({gamma})** -- Rotate by dihedral around the pivot
+. **T(s, l, 0)** -- Translate by sweep (X) and span (Y)
+. **T(+rc{middot}c, 0, 0)** -- Translate back to LE reference
+
+=== Recursive Accumulation
+
+The frame of xsec latexmath:[i] is the **product of all preceding segment transforms**. The accumulated homogeneous matrix is:
+
+[latexmath]
+++++
+\mathbf{H}_0 = \mathbf{T}(\mathrm{nose\_pnt}) \cdot \mathbf{T}(rc_0 \cdot c_0, \; 0, \; 0) \cdot \mathbf{R}_y(\theta_0) \cdot \mathbf{T}(-rc_0 \cdot c_0, \; 0, \; 0) \cdot \mathbf{R}_x(\gamma_0)
+++++
+
+[latexmath]
+++++
+\mathbf{H}_{i+1} = \mathbf{H}_i \cdot \mathbf{H}_{\mathrm{seg},i}
+++++
+
+The ASB parameters are then extracted as:
+
+[latexmath]
+++++
+\mathrm{xyz\_le}_{i} = \mathbf{H}_i \begin{bmatrix} 0 \\ 0 \\ 0 \\ 1 \end{bmatrix} = \text{translation column of } \mathbf{H}_i
+++++
+
+[latexmath]
+++++
+\mathrm{twist}_i = \sum_{k=0}^{i} \mathrm{incidence}_k
+++++
+
+[latexmath]
+++++
+\mathrm{chord}_i = c_i
+++++
+
+IMPORTANT: Because the transforms are **accumulated multiplicatively**, the dihedral and incidence of segment latexmath:[i] rotate **all subsequent segments** as well. This is the key difference to ASB's flat list of absolute positions.
+
+=== Canonical Form (rc = 0)
+
+When `rotation_point_rel_chord = 0` is enforced (canonical form, as produced by `WingConfiguration.from_asb()`), the pivot translations cancel and the chain simplifies to:
+
+[latexmath]
+++++
+\mathbf{H}_{\mathrm{seg},i} = \mathbf{T}(s_i, \; l_i, \; 0) \cdot \mathbf{R}_x(\gamma_i) \cdot \mathbf{R}_y(\theta_i)
+++++
+
+Expanded, a single segment transform in canonical form is:
+
+[latexmath]
+++++
+\mathbf{H}_{\mathrm{seg},i} =
+\begin{bmatrix}
+\cos\theta_i & 0 & \sin\theta_i & s_i \\
+\sin\gamma_i \sin\theta_i & \cos\gamma_i & -\sin\gamma_i \cos\theta_i & l_i \\
+-\cos\gamma_i \sin\theta_i & \sin\gamma_i & \cos\gamma_i \cos\theta_i & 0 \\
+0 & 0 & 0 & 1
+\end{bmatrix}
+++++
+
+The accumulated position of xsec latexmath:[i+1] is then:
+
+[latexmath]
+++++
+\mathrm{xyz\_le}_{i+1} = \mathrm{xyz\_le}_i + \mathbf{R}_{\mathrm{accum},i} \cdot \begin{bmatrix} s_i \\ l_i \\ 0 \end{bmatrix}
+++++
+
+where latexmath:[\mathbf{R}_{\mathrm{accum},i}] is the upper-left 3x3 rotation block accumulated from all preceding segments:
+
+[latexmath]
+++++
+\mathbf{R}_{\mathrm{accum},i} = \prod_{k=0}^{i-1} \mathbf{R}_x(\gamma_k) \cdot \mathbf{R}_y(\theta_k)
+++++
+
+=== Geometric Interpretation
+
+The canonical-form conversion makes the relationship transparent:
+
+* **Sweep** (latexmath:[s_i]) contributes an X-offset in the *accumulated* frame -- it becomes a pure X-shift only if all prior dihedral and incidence are zero.
+* **Length** (latexmath:[l_i]) contributes a Y-offset in the *accumulated* frame -- it projects onto world-Y and world-Z depending on the accumulated dihedral.
+* **Dihedral** (latexmath:[\gamma_i]) rotates the local frame for *this and all subsequent* segments -- it does not create a Z-translation directly, but tilts the span axis so that subsequent lengths produce Z-offsets.
+* **Incidence** (latexmath:[\theta_i]) accumulates into ASB `twist` and also rotates the chord direction for subsequent segments (small effect on position if sweep is nonzero).
+
+=== Non-Canonical Form (rc != 0)
+
+When latexmath:[rc \neq 0], the rotation pivot is offset from the LE. This means:
+
+* Incidence rotation around latexmath:[rc \cdot c] creates an **additional positional shift** of the LE (the LE orbits around the pivot point).
+* Dihedral rotation likewise shifts the LE away from a straight line.
+* The ASB `xyz_le` must account for these orbital offsets.
+
+The positional contribution of the pivot offset is:
+
+[latexmath]
+++++
+\Delta\mathbf{p}_{\mathrm{pivot}} = rc \cdot c \cdot \left( \mathbf{R}_y(\theta) \cdot \mathbf{R}_x(\gamma) - \mathbf{I} \right) \cdot \begin{bmatrix} 1 \\ 0 \\ 0 \end{bmatrix}
+++++
+
+This vanishes when latexmath:[\theta = 0] and latexmath:[\gamma = 0], and is eliminated entirely in canonical form (latexmath:[rc = 0]).
+
+== Proof: Frame Orientation Mismatch between WingConfig and ASB
+
+This section rigorously proves that the WingConfiguration frame and the Aerosandbox frame at the same cross-section have, in general, **different orientations** -- even though they share the same position (latexmath:[\mathrm{xyz\_le}]).
+
+=== Setup: Two Representations of the Same Xsec
+
+Both systems describe the same physical cross-section latexmath:[i]. We express each as a homogeneous matrix and compare.
+
+==== WingConfig Frame (canonical form, rc = 0)
+
+From the recursive accumulation (see above), the WingConfig frame at the root xsec (latexmath:[i = 0]) is:
+
+[latexmath]
+++++
+\mathbf{H}^{\mathrm{wc}}_0 = \mathbf{T}(\mathrm{nose\_pnt}) \cdot \mathbf{R}_y(\theta_0) \cdot \mathbf{R}_x(\gamma_0)
+++++
+
+The orientation (upper-left 3x3 block) is:
+
+[latexmath]
+++++
+\mathbf{R}^{\mathrm{wc}}_0 = \mathbf{R}_y(\theta_0) \cdot \mathbf{R}_x(\gamma_0)
+++++
+
+==== ASB Frame
+
+From `_compute_frame_of_WingXSec(0)`, ASB computes:
+
+[latexmath]
+++++
+\mathbf{T}^{\mathrm{asb}}_0 = \mathbf{T}(\mathrm{xyz\_le}_0) \cdot \mathbf{R}_x(\alpha_0) \cdot \mathbf{R}_y(\mathrm{twist}_0)
+++++
+
+The orientation is:
+
+[latexmath]
+++++
+\mathbf{R}^{\mathrm{asb}}_0 = \mathbf{R}_x(\alpha_0) \cdot \mathbf{R}_y(\mathrm{twist}_0)
+++++
+
+where latexmath:[\mathrm{twist}_0 = \theta_0] (the root incidence) and latexmath:[\alpha_0] is derived from the positions of neighbouring xsecs.
+
+=== Claim
+
+[latexmath]
+++++
+\mathbf{R}^{\mathrm{wc}}_0 \neq \mathbf{R}^{\mathrm{asb}}_0 \quad \text{whenever } \theta_0 \neq 0 \text{ and } \gamma_0 \neq 0
+++++
+
+=== Proof
+
+==== Step 1: The rotation orders differ
+
+The two orientations are:
+
+[latexmath]
+++++
+\mathbf{R}^{\mathrm{wc}}_0 = \mathbf{R}_y(\theta_0) \cdot \mathbf{R}_x(\gamma_0) \qquad \text{(incidence first, then dihedral)}
+++++
+
+[latexmath]
+++++
+\mathbf{R}^{\mathrm{asb}}_0 = \mathbf{R}_x(\alpha_0) \cdot \mathbf{R}_y(\theta_0) \qquad \text{(dihedral first, then incidence)}
+++++
+
+Even if latexmath:[\alpha_0 = \gamma_0] (which we show below is only approximate), the products differ because rotation matrices do not commute:
+
+[latexmath]
+++++
+\mathbf{R}_y(\theta) \cdot \mathbf{R}_x(\gamma) \neq \mathbf{R}_x(\gamma) \cdot \mathbf{R}_y(\theta) \quad \text{for } \theta \neq 0,\; \gamma \neq 0
+++++
+
+==== Step 2: Explicit computation of the commutator
+
+Writing out both products for arbitrary latexmath:[\theta, \gamma]:
+
+[latexmath]
+++++
+\mathbf{R}_y(\theta) \cdot \mathbf{R}_x(\gamma) =
+\begin{bmatrix}
+\cos\theta & \sin\theta\sin\gamma & \sin\theta\cos\gamma \\
+0 & \cos\gamma & -\sin\gamma \\
+-\sin\theta & \cos\theta\sin\gamma & \cos\theta\cos\gamma
+\end{bmatrix}
+++++
+
+[latexmath]
+++++
+\mathbf{R}_x(\gamma) \cdot \mathbf{R}_y(\theta) =
+\begin{bmatrix}
+\cos\theta & 0 & \sin\theta \\
+\sin\gamma\sin\theta & \cos\gamma & -\sin\gamma\cos\theta \\
+-\cos\gamma\sin\theta & \sin\gamma & \cos\gamma\cos\theta
+\end{bmatrix}
+++++
+
+The difference matrix latexmath:[\mathbf{D} = \mathbf{R}_y \mathbf{R}_x - \mathbf{R}_x \mathbf{R}_y] has nonzero entries whenever latexmath:[\theta \neq 0] and latexmath:[\gamma \neq 0]. For example, element (1,2):
+
+[latexmath]
+++++
+D_{12} = \sin\theta\sin\gamma - 0 = \sin\theta\sin\gamma \neq 0
+++++
+
+This proves the two rotation matrices are unequal. latexmath:[\blacksquare]
+
+==== Step 3: Quantifying the angular error
+
+The angular distance between the two orientations can be measured via:
+
+[latexmath]
+++++
+\Delta\mathbf{R} = (\mathbf{R}^{\mathrm{wc}}_0)^T \cdot \mathbf{R}^{\mathrm{asb}}_0 = (\mathbf{R}_y \mathbf{R}_x)^T \cdot \mathbf{R}_x \mathbf{R}_y = \mathbf{R}_x^T \mathbf{R}_y^T \mathbf{R}_x \mathbf{R}_y
+++++
+
+This is the group commutator latexmath:[\lbrack \mathbf{R}_x^{-1}, \mathbf{R}_y^{-1} \rbrack]. For small angles, the rotation angle of this commutator is approximately:
+
+[latexmath]
+++++
+\delta \approx |\theta \cdot \gamma| \quad \text{(radians, to second order)}
+++++
+
+.Numerical example
+****
+For latexmath:[\theta_0 = 3°] (incidence) and latexmath:[\gamma_0 = 10°] (dihedral):
+
+[latexmath]
+++++
+\delta \approx \frac{3\pi}{180} \cdot \frac{10\pi}{180} \approx 0.0091\;\mathrm{rad} \approx 0.52°
+++++
+
+For latexmath:[\theta_0 = 5°] and latexmath:[\gamma_0 = 30°]:
+
+[latexmath]
+++++
+\delta \approx \frac{5\pi}{180} \cdot \frac{30\pi}{180} \approx 0.046\;\mathrm{rad} \approx 2.6°
+++++
+****
+
+==== Step 4: latexmath:[\alpha_0 \neq \gamma_0] in general
+
+ASB derives latexmath:[\alpha_0] from the YZ-projection of latexmath:[\mathrm{xyz\_le}[1\] - \mathrm{xyz\_le}[0\]]. In canonical form with sweep latexmath:[s_0] and length latexmath:[l_0]:
+
+[latexmath]
+++++
+\mathrm{xyz\_le}[1] - \mathrm{xyz\_le}[0] = \mathbf{R}_y(\theta_0) \cdot \mathbf{R}_x(\gamma_0) \cdot \begin{bmatrix} s_0 \\ l_0 \\ 0 \end{bmatrix}
+++++
+
+Expanding:
+
+[latexmath]
+++++
+\Delta y = l_0 \cos\gamma_0
+++++
+
+[latexmath]
+++++
+\Delta z = -s_0 \sin\theta_0 + l_0 \sin\gamma_0 \cos\theta_0
+++++
+
+Therefore:
+
+[latexmath]
+++++
+\alpha_0 = \arctan\!\left(\frac{-s_0 \sin\theta_0 + l_0 \sin\gamma_0 \cos\theta_0}{l_0 \cos\gamma_0}\right)
+++++
+
+This equals latexmath:[\gamma_0] only when latexmath:[s_0 = 0] and latexmath:[\theta_0 = 0]:
+
+[latexmath]
+++++
+\alpha_0 = \gamma_0 \iff s_0 \sin\theta_0 = 0 \;\wedge\; \cos\theta_0 = 1
+++++
+
+For any nonzero sweep combined with nonzero incidence, the derived dihedral angle latexmath:[\alpha_0] deviates from the parametric dihedral latexmath:[\gamma_0]. This introduces an **additional** orientation error beyond the commutator.
+
+=== Summary of the Mismatch
+
+[cols="1,2,2"]
+|===
+| Aspect | WingConfig | ASB
+
+| Position latexmath:[\mathrm{xyz\_le}]
+| Accumulated from transforms
+| Taken directly from WingConfig (via `asb_wing()`) -- **identical**
+
+| Orientation order
+| latexmath:[\mathbf{R}_y(\theta) \cdot \mathbf{R}_x(\gamma)] (incidence, then dihedral)
+| latexmath:[\mathbf{R}_x(\alpha) \cdot \mathbf{R}_y(\theta)] (dihedral, then incidence)
+
+| Dihedral source
+| Parametric: latexmath:[\gamma] from `dihedral_as_rotation_in_degrees`
+| Derived: latexmath:[\alpha] from neighbouring latexmath:[\mathrm{xyz\_le}] positions
+
+| Twist source
+| Per-segment `incidence`
+| Cumulative sum latexmath:[\sum \mathrm{incidence}_k]
+|===
+
+=== Consequence for Multi-Segment Wings
+
+For xsec latexmath:[i > 0], the mismatch compounds. The WingConfig orientation at xsec latexmath:[i] is:
+
+[latexmath]
+++++
+\mathbf{R}^{\mathrm{wc}}_i = \mathbf{R}_y(\theta_0) \cdot \mathbf{R}_x(\gamma_0) \cdot \mathbf{R}_x(\gamma_1) \cdot \mathbf{R}_y(\theta_1) \cdot \ldots
+++++
+
+(alternating dihedral and incidence rotations along the span), while ASB reconstructs:
+
+[latexmath]
+++++
+\mathbf{R}^{\mathrm{asb}}_i = \mathbf{R}_x(\alpha_i) \cdot \mathbf{R}_y\!\left(\sum_{k=0}^{i}\theta_k\right)
+++++
+
+The WingConfig chain has latexmath:[2i] interleaved rotations; ASB flattens this into exactly **two** rotations (one latexmath:[\mathbf{R}_x], one latexmath:[\mathbf{R}_y]). Information about the interleaving is irrecoverably lost.
+
+=== When the Frames ARE Equal
+
+The frames coincide exactly in these special cases:
+
+. **Zero incidence everywhere** (latexmath:[\theta_k = 0 \;\forall k]): Both reduce to latexmath:[\mathbf{R}_x(\gamma)] only.
+. **Zero dihedral everywhere** (latexmath:[\gamma_k = 0 \;\forall k]): Both reduce to latexmath:[\mathbf{R}_y(\theta)] only.
+. **Single segment with zero sweep and zero incidence**: latexmath:[\alpha_0 = \gamma_0] exactly, and the commutator vanishes.
+
+=== Proposed Fix: Swap Rotation Order in WingConfig
+
+NOTE: If we change the WingConfig rotation order from latexmath:[\mathbf{R}_y(\theta) \cdot \mathbf{R}_x(\gamma)] to latexmath:[\mathbf{R}_x(\gamma) \cdot \mathbf{R}_y(\theta)] (matching ASB's convention), the commutator error vanishes.
+
+==== Root Frame After Fix
+
+[latexmath]
+++++
+\mathbf{R}^{\mathrm{wc,new}}_0 = \mathbf{R}_x(\gamma_0) \cdot \mathbf{R}_y(\theta_0) = \mathbf{R}^{\mathrm{asb}}_0 \quad \text{(if } \alpha_0 = \gamma_0\text{)}
+++++
+
+==== When does latexmath:[\alpha_0 = \gamma_0] hold after the fix?
+
+With the new order, the position difference becomes:
+
+[latexmath]
+++++
+\boldsymbol{\Delta} = \mathbf{R}_x(\gamma_0) \cdot \mathbf{R}_y(\theta_0) \cdot \begin{bmatrix} s_0 \\ l_0 \\ 0 \end{bmatrix}
+= \begin{bmatrix}
+s_0 \cos\theta_0 \\
+l_0 \cos\gamma_0 + s_0 \sin\theta_0 \sin\gamma_0 \\
+l_0 \sin\gamma_0 - s_0 \sin\theta_0 \cos\gamma_0
+\end{bmatrix}
+++++
+
+The ASB-derived dihedral angle is:
+
+[latexmath]
+++++
+\alpha_0 = \arctan\!\left(\frac{l_0 \sin\gamma_0 - s_0 \sin\theta_0 \cos\gamma_0}{l_0 \cos\gamma_0 + s_0 \sin\theta_0 \sin\gamma_0}\right)
+++++
+
+This equals latexmath:[\gamma_0] **exactly** when:
+
+* latexmath:[s_0 = 0] (no sweep), OR
+* latexmath:[\theta_0 = 0] (no incidence)
+
+In both cases the latexmath:[s_0 \sin\theta_0] cross-terms vanish and latexmath:[\alpha_0 = \arctan(\sin\gamma_0 / \cos\gamma_0) = \gamma_0].
+
+==== Remaining residual error
+
+When sweep and incidence are both nonzero, the residual latexmath:[\alpha_0 - \gamma_0] is:
+
+[latexmath]
+++++
+\alpha_0 - \gamma_0 \approx -\frac{s_0}{l_0} \sin\theta_0 \quad \text{(for small } \gamma_0 \text{, first order)}
+++++
+
+.Numerical example (after fix)
+****
+For latexmath:[s_0 = 20\,\mathrm{mm}], latexmath:[l_0 = 500\,\mathrm{mm}], latexmath:[\theta_0 = 3°], latexmath:[\gamma_0 = 10°]:
+
+[latexmath]
+++++
+\alpha_0 - \gamma_0 \approx -\frac{20}{500} \cdot \sin(3°) \approx -0.0021\;\mathrm{rad} \approx -0.12°
+++++
+
+Compare to the **current** commutator error of latexmath:[\approx 0.52°] -- a **4x improvement**.
+****
+
+==== Multi-Segment Case After Fix
+
+With the fixed order, the segment chain in canonical form becomes:
+
+[latexmath]
+++++
+\mathbf{H}_{\mathrm{seg},i} = \mathbf{T}(s_i, l_i, 0) \cdot \mathbf{R}_x(\gamma_i) \cdot \mathbf{R}_y(\theta_i)
+++++
+
+The accumulated orientation at xsec latexmath:[n] is:
+
+[latexmath]
+++++
+\mathbf{R}^{\mathrm{wc}}_n = \prod_{k=0}^{n} \left[\mathbf{R}_x(\gamma_k) \cdot \mathbf{R}_y(\theta_k)\right]
+= \mathbf{R}_x(\gamma_0) \cdot \mathbf{R}_y(\theta_0) \cdot \mathbf{R}_x(\gamma_1) \cdot \mathbf{R}_y(\theta_1) \cdot \ldots \cdot \mathbf{R}_x(\gamma_n) \cdot \mathbf{R}_y(\theta_n)
+++++
+
+While ASB still uses:
+
+[latexmath]
+++++
+\mathbf{R}^{\mathrm{asb}}_n = \mathbf{R}_x(\alpha_n) \cdot \mathbf{R}_y\!\left(\sum_{k=0}^{n}\theta_k\right)
+++++
+
+The WingConfig chain has latexmath:[2(n+1)] interleaved rotations; ASB collapses them into **two**. This remains a structural mismatch. However, the error now comes **only** from:
+
+. The inability of ASB to represent alternating dihedral/incidence sequences (information loss)
+. The sweep-incidence cross-coupling in latexmath:[\alpha] derivation
+
+The first-order commutator (latexmath:[\theta \cdot \gamma] from the wrong rotation order) is **eliminated**.
+
+==== When frames match exactly after the fix
+
+[cols="1,2"]
+|===
+| Condition | Why it works
+
+| latexmath:[\theta_k = 0 \;\forall k]
+| All latexmath:[\mathbf{R}_y] become latexmath:[\mathbf{I}], chain reduces to latexmath:[\prod \mathbf{R}_x(\gamma_k) = \mathbf{R}_x(\sum\gamma_k)]
+
+| latexmath:[\gamma_k = 0 \;\forall k]
+| All latexmath:[\mathbf{R}_x] become latexmath:[\mathbf{I}], chain reduces to latexmath:[\prod \mathbf{R}_y(\theta_k) = \mathbf{R}_y(\sum\theta_k)]
+
+| Single segment, no sweep
+| latexmath:[\alpha_0 = \gamma_0] exactly, order matches, frames identical
+
+| Constant dihedral (latexmath:[\gamma_k = \gamma \;\forall k]), no sweep
+| latexmath:[\alpha] at each xsec equals latexmath:[\gamma], but interleaving still causes residual error latexmath:[\mathcal{O}(\gamma \cdot \theta_k)]
+|===
+
+==== Further Minimisation: Decouple Incidence from Position Propagation
+
+The remaining multi-segment interleaving error can be **completely eliminated** by a structural change: remove incidence (latexmath:[\mathbf{R}_y]) from the segment-to-segment transform and apply it only as a final local rotation.
+
+===== Key Insight
+
+In ASB, `twist` is purely local -- it rotates the chord direction at a given xsec but does **not** affect `xyz_le` of subsequent xsecs. In WingConfig, `incidence` participates in the segment transform and thereby rotates all subsequent positions. This coupling is the root cause of both the interleaving error and the sweep-incidence cross-coupling.
+
+===== Decoupled Segment Transform
+
+Define the geometric (position-propagating) part of the segment transform without incidence:
+
+[latexmath]
+++++
+\mathbf{H}^{\mathrm{geom}}_{\mathrm{seg},i} = \mathbf{T}(s_i,\; l_i,\; 0) \cdot \mathbf{R}_x(\gamma_i)
+++++
+
+The accumulated position uses only dihedral:
+
+[latexmath]
+++++
+\mathrm{xyz\_le}_{i+1} = \mathrm{xyz\_le}_i + \mathbf{R}_x\!\left(\sum_{k=0}^{i}\gamma_k\right) \cdot \begin{bmatrix} s_i \\ l_i \\ 0 \end{bmatrix}
+++++
+
+The local frame orientation at xsec latexmath:[i] is then composed as:
+
+[latexmath]
+++++
+\mathbf{R}^{\mathrm{wc,decoupled}}_i = \mathbf{R}_x\!\left(\sum_{k=0}^{i}\gamma_k\right) \cdot \mathbf{R}_y\!\left(\sum_{k=0}^{i}\theta_k\right)
+++++
+
+===== Why this works: R_x rotations commute
+
+The crucial algebraic property is that all latexmath:[\mathbf{R}_x] rotations share the same axis and therefore **commute**:
+
+[latexmath]
+++++
+\mathbf{R}_x(\gamma_0) \cdot \mathbf{R}_x(\gamma_1) \cdot \ldots \cdot \mathbf{R}_x(\gamma_n) = \mathbf{R}_x\!\left(\sum_{k=0}^{n}\gamma_k\right)
+++++
+
+With incidence decoupled from propagation, there are no interleaved latexmath:[\mathbf{R}_y] terms to break this commutativity. The chain collapses cleanly into a single latexmath:[\mathbf{R}_x].
+
+===== Why sweep no longer contaminates latexmath:[\alpha]
+
+With only latexmath:[\mathbf{R}_x] in the propagation chain, the position offset of each segment is:
+
+[latexmath]
+++++
+\mathbf{R}_x(\Gamma_i) \cdot \begin{bmatrix} s_i \\ l_i \\ 0 \end{bmatrix}
+= \begin{bmatrix} s_i \\ l_i\cos\Gamma_i \\ l_i\sin\Gamma_i \end{bmatrix}
+\quad \text{where } \Gamma_i = \sum_{k=0}^{i}\gamma_k
+++++
+
+The X-component (latexmath:[s_i]) is **unchanged** by latexmath:[\mathbf{R}_x] (rotation about X does not mix X with YZ). Therefore:
+
+[latexmath]
+++++
+\alpha_i = \arctan\!\left(\frac{\Delta z}{\Delta y}\right) = \arctan\!\left(\frac{l_i\sin\Gamma_i}{l_i\cos\Gamma_i}\right) = \Gamma_i
+++++
+
+**The sweep term vanishes completely from the latexmath:[\alpha] computation**, regardless of latexmath:[s_i]. This eliminates the residual error from the previous fix.
+
+===== Result: Exact Frame Equivalence
+
+With decoupled incidence:
+
+[latexmath]
+++++
+\mathbf{R}^{\mathrm{wc,decoupled}}_i = \mathbf{R}_x(\Gamma_i) \cdot \mathbf{R}_y(\Theta_i)
+++++
+
+[latexmath]
+++++
+\mathbf{R}^{\mathrm{asb}}_i = \mathbf{R}_x(\alpha_i) \cdot \mathbf{R}_y(\mathrm{twist}_i)
+++++
+
+With latexmath:[\alpha_i = \Gamma_i] (proven above) and latexmath:[\mathrm{twist}_i = \Theta_i = \sum\theta_k]:
+
+[latexmath]
+++++
+\boxed{\mathbf{R}^{\mathrm{wc,decoupled}}_i = \mathbf{R}^{\mathrm{asb}}_i \quad \forall\; i, \;\forall\; s_i, l_i, \gamma_i, \theta_i}
+++++
+
+The frames are **exactly equal** for any wing geometry (at root and tip xsecs).
+
+===== Residual at inner kink xsecs (bisector)
+
+At an inner xsec latexmath:[i] where the dihedral changes (latexmath:[\gamma_i \neq \gamma_{i+1}]), ASB uses the **bisector** of the two neighbouring span directions:
+
+[latexmath]
+++++
+\alpha^{\mathrm{asb}}_{\mathrm{inner},i} = \Gamma_{i-1} + \frac{\gamma_i}{2} = \Gamma_i - \frac{\gamma_i}{2}
+++++
+
+While WingConfig (decoupled) uses:
+
+[latexmath]
+++++
+\alpha^{\mathrm{wc}}_i = \Gamma_i = \Gamma_{i-1} + \gamma_i
+++++
+
+The residual is:
+
+[latexmath]
+++++
+\alpha^{\mathrm{wc}}_i - \alpha^{\mathrm{asb}}_{\mathrm{inner},i} = \frac{\gamma_i}{2}
+++++
+
+This is the same bisector offset that ASB compensates for via the latexmath:[s_z] scale factor (see <<Special Case: Dihedral Kink>>). It is not an error but a deliberate geometric choice: ASB places the profile on the bisecting plane at a kink to fill the gap symmetrically.
+
+===== Summary of Error Reduction
+
+[cols="2,1,1,1"]
+|===
+| Approach | Commutator latexmath:[\theta\gamma] | Sweep coupling | Multi-seg interleaving
+
+| Current WingConfig (latexmath:[\mathbf{R}_y \cdot \mathbf{R}_x])
+| latexmath:[\checkmark] present
+| latexmath:[\checkmark] present
+| latexmath:[\checkmark] present
+
+| Fix 1: Swap order (latexmath:[\mathbf{R}_x \cdot \mathbf{R}_y])
+| **eliminated**
+| residual latexmath:[\mathcal{O}(s\theta/l)]
+| latexmath:[\checkmark] present
+
+| Fix 2: Decouple incidence from propagation
+| **eliminated**
+| **eliminated**
+| **eliminated**
+|===
+
+===== Trade-off
+
+Decoupling incidence from propagation changes the physical semantics:
+
+* **Current**: Incidence is relative to the *local* chord direction of the preceding segment. A 3{deg} incidence on segment 2 tilts the chord relative to the already-tilted frame of segment 1.
+* **Decoupled**: Incidence (twist) is relative to the *global* XZ-plane (modulo accumulated dihedral). It becomes a purely aerodynamic parameter that does not alter the structural geometry.
+
+For typical aircraft wings (small incidence 0--5{deg}), the difference is negligible. For highly twisted wings (e.g. propeller blades with 30{deg}+ twist), the physical interpretation changes significantly -- subsequent segment positions would no longer follow the twisted chord direction.
+
+===== Concrete Algorithm: Decoupled Frame Computation
+
+The following describes the complete computation of position and orientation at xsec latexmath:[i] in the decoupled scheme. This replaces the current recursive matrix chain with two independent, simple calculations.
+
+**Inputs per segment** latexmath:[k]: sweep latexmath:[s_k], length latexmath:[l_k], dihedral latexmath:[\gamma_k], incidence latexmath:[\theta_k].
+
+====== Step 1: Accumulated angles (simple summation)
+
+[latexmath]
+++++
+\Gamma_i = \sum_{k=0}^{i} \gamma_k \qquad \text{(accumulated dihedral)}
+++++
+
+[latexmath]
+++++
+\Theta_i = \sum_{k=0}^{i} \theta_k \qquad \text{(accumulated twist)}
+++++
+
+====== Step 2: Position (iterative, only dihedral propagates)
+
+[latexmath]
+++++
+\mathrm{xyz\_le}_0 = \mathrm{nose\_pnt}
+++++
+
+[latexmath]
+++++
+\mathrm{xyz\_le}_{i+1} = \mathrm{xyz\_le}_i \;+\; \mathbf{R}_x(\Gamma_i) \cdot \begin{bmatrix} s_i \\ l_i \\ 0 \end{bmatrix}
+++++
+
+Expanding latexmath:[\mathbf{R}_x(\Gamma_i)] explicitly:
+
+[latexmath]
+++++
+\mathrm{xyz\_le}_{i+1} = \mathrm{xyz\_le}_i + \begin{bmatrix} s_i \\ l_i \cos\Gamma_i \\ l_i \sin\Gamma_i \end{bmatrix}
+++++
+
+NOTE: Incidence (latexmath:[\theta]) does **not** appear in the position calculation. The vector latexmath:[(s_i, l_i, 0)^T] is rotated only by the accumulated dihedral, never by incidence.
+
+====== Step 3: Orientation (two rotations, no chain)
+
+[latexmath]
+++++
+\mathbf{R}^{\mathrm{frame}}_i = \mathbf{R}_x(\Gamma_i) \cdot \mathbf{R}_y(\Theta_i)
+++++
+
+====== Step 4: Assemble homogeneous transformation
+
+[latexmath]
+++++
+\mathbf{H}_i = \begin{bmatrix} \mathbf{R}^{\mathrm{frame}}_i & \mathrm{xyz\_le}_i \\ \mathbf{0}^T & 1 \end{bmatrix}
+++++
+
+====== Comparison: Current vs. Decoupled
+
+[cols="1,2,2"]
+|===
+| | Current (coupled) | Decoupled
+
+| **Position of xsec** latexmath:[i]
+| Translation column of latexmath:[\prod_{k=0}^{i}\left(\mathbf{T} \cdot \mathbf{R}_x \cdot \mathbf{R}_y\right)_k] -- depends on all latexmath:[\gamma_k] AND latexmath:[\theta_k]
+| latexmath:[\mathrm{nose\_pnt} + \sum_{k=0}^{i-1} \mathbf{R}_x(\Gamma_k) \cdot (s_k, l_k, 0)^T] -- depends only on latexmath:[\gamma_k]
+
+| **Orientation of xsec** latexmath:[i]
+| Upper-left 3x3 of the product of latexmath:[2i] interleaved matrices
+| Exactly **two** matrices: latexmath:[\mathbf{R}_x(\Gamma_i) \cdot \mathbf{R}_y(\Theta_i)]
+
+| **Equals ASB frame?**
+| No (interleaving, cross-coupling)
+| **Yes, exactly** (for root/tip xsecs)
+|===
+
+====== Worked Example: 3-Segment Wing
+
+Given parameters (all sweeps latexmath:[s_k = 0], all lengths latexmath:[l_k = 500\,\mathrm{mm}]):
+
+[cols="1,1,1"]
+|===
+| Segment | latexmath:[\gamma_k] | latexmath:[\theta_k]
+
+| 0 (root) | 5{deg} | 2{deg}
+| 1 | 10{deg} | 1{deg}
+| 2 | 0{deg} | -1{deg}
+|===
+
+**Step 1: Accumulate**
+[cols="1,1,1"]
+|===
+| Xsec latexmath:[i] | latexmath:[\Gamma_i] | latexmath:[\Theta_i]
+
+| 0 | 5{deg} | 2{deg}
+| 1 | 15{deg} | 3{deg}
+| 2 | 15{deg} | 2{deg}
+|===
+
+**Step 2: Positions** (with latexmath:[\mathrm{nose\_pnt} = (0, 0, 0)]):
+
+[latexmath]
+++++
+\mathrm{xyz\_le}_1 = \begin{bmatrix} 0 \\ 500\cos 5° \\ 500\sin 5° \end{bmatrix} = \begin{bmatrix} 0 \\ 498.1 \\ 43.6 \end{bmatrix}\;\mathrm{mm}
+++++
+
+[latexmath]
+++++
+\mathrm{xyz\_le}_2 = \mathrm{xyz\_le}_1 + \begin{bmatrix} 0 \\ 500\cos 15° \\ 500\sin 15° \end{bmatrix} = \begin{bmatrix} 0 \\ 981.0 \\ 172.9 \end{bmatrix}\;\mathrm{mm}
+++++
+
+NOTE: The 2{deg} root incidence and 1{deg} segment-1 incidence have **no effect** on these positions. Compare: in the current coupled scheme, latexmath:[\mathrm{xyz\_le}_2] would differ by latexmath:[\approx 0.5\,\mathrm{mm}] due to the latexmath:[\mathbf{R}_y(\theta)] terms rotating the latexmath:[(s, l, 0)] vectors.
+
+**Step 3: Orientations**
+
+[latexmath]
+++++
+\mathbf{R}^{\mathrm{frame}}_0 = \mathbf{R}_x(5°) \cdot \mathbf{R}_y(2°)
+++++
+
+[latexmath]
+++++
+\mathbf{R}^{\mathrm{frame}}_1 = \mathbf{R}_x(15°) \cdot \mathbf{R}_y(3°)
+++++
+
+[latexmath]
+++++
+\mathbf{R}^{\mathrm{frame}}_2 = \mathbf{R}_x(15°) \cdot \mathbf{R}_y(2°)
+++++
+
+Each of these is in the form latexmath:[\mathbf{R}_x(\alpha) \cdot \mathbf{R}_y(\mathrm{twist})] -- **identical** to what ASB computes from the `xyz_le` positions and cumulative twist.
+
+====== Pseudocode
+
+[source,python]
+----
+def compute_decoupled_frames(nose_pnt, segments):
+    """
+    Compute xsec frames with incidence decoupled from position propagation.
+    Returns list of homogeneous 4x4 matrices, one per xsec.
+    """
+    frames = []
+    Gamma = 0.0  # accumulated dihedral
+    Theta = 0.0  # accumulated twist
+    xyz_le = np.array(nose_pnt, dtype=float)
+
+    for i, seg in enumerate(segments):
+        if i == 0:
+            Gamma = seg.root_airfoil.dihedral_as_rotation_in_degrees
+            Theta = seg.root_airfoil.incidence
+
+        # Orientation: R_x(Gamma) · R_y(Theta)
+        R = R_x(Gamma) @ R_y(Theta)
+
+        # Assemble homogeneous matrix
+        H = np.eye(4)
+        H[:3, :3] = R
+        H[:3, 3] = xyz_le
+        frames.append(H)
+
+        # Propagate position to next xsec (only dihedral, no incidence)
+        offset = R_x(Gamma) @ np.array([seg.sweep, seg.length, 0.0])
+        xyz_le = xyz_le + offset
+
+        # Accumulate angles for next xsec
+        Gamma += seg.tip_airfoil.dihedral_as_rotation_in_degrees
+        Theta += seg.tip_airfoil.incidence
+
+    # Final xsec (tip of last segment)
+    R = R_x(Gamma) @ R_y(Theta)
+    H = np.eye(4)
+    H[:3, :3] = R
+    H[:3, 3] = xyz_le
+    frames.append(H)
+
+    return frames
+----
+
+=== Physical Interpretation
+
+The mismatch means: given the same chord line positioned at the same latexmath:[\mathrm{xyz\_le}], the two systems disagree on **which direction is "up"** (the thickness/camber direction latexmath:[\mathbf{z}_g]).
+
+* In WingConfig, the airfoil is first twisted (incidence), then the entire twisted profile is tilted outboard (dihedral).
+* In ASB, the profile is first tilted by the span-derived dihedral, then twisted around the tilted span axis.
+
+The result is that the latexmath:[\mathbf{z}_g] vectors point in slightly different directions, and thus the airfoil surface occupies a slightly different volume in 3D space. The angular error scales as latexmath:[\mathcal{O}(\theta \cdot \gamma)].
+
+== Reverse Conversion: ASB to WingConfig (`from_asb`)
+
+The reverse path reconstructs a `WingConfiguration` from a list of `asb.WingXSec` objects. The implementation lives in `WingConfiguration.from_asb()` (line ~934).
+
+=== Algorithm
+
+==== Step 1: Extract raw ASB data
+
+[latexmath]
+++++
+\mathrm{nose\_pnt} = \mathrm{xyz\_le}[0]
+++++
+
+[latexmath]
+++++
+\mathrm{cum\_twists}[k] = \mathrm{xsecs}[k].\mathrm{twist} \quad \text{(absolute cumulative twist)}
+++++
+
+[latexmath]
+++++
+\boldsymbol{\Delta}_k = \mathrm{xyz\_le}[k+1] - \mathrm{xyz\_le}[k] \quad \text{(LE-to-LE differences in world frame)}
+++++
+
+==== Step 2: Extract per-segment parameters
+
+**Twist delta** (= incidence per segment):
+
+[latexmath]
+++++
+\theta^{\mathrm{tip}}_k = \mathrm{cum\_twists}[k+1] - \mathrm{cum\_twists}[k]
+++++
+
+**Cumulative dihedral** (only extractable when latexmath:[\theta^{\mathrm{tip}}_k \approx 0]):
+
+[latexmath]
+++++
+\Gamma_k = \arctan\!\left(\frac{\Delta_{k,z}}{\Delta_{k,y}}\right) \quad \text{if } |\theta^{\mathrm{tip}}_k| < \epsilon
+++++
+
+When latexmath:[\theta^{\mathrm{tip}}_k \neq 0], the Z-component of latexmath:[\boldsymbol{\Delta}_k] is contaminated by the incidence rotation (sweep-incidence cross-coupling), so dihedral cannot be cleanly separated. In this case `from_asb()` keeps the previous latexmath:[\Gamma] and uses `dihedral_as_translation` as fallback.
+
+==== Step 3: Track cumulative rotation matrix M
+
+`from_asb()` rebuilds the **same rotation chain** that `_get_relative_segment_coordinate_system()` uses in the forward direction:
+
+[latexmath]
+++++
+\mathbf{M}_0 = \mathbf{R}_y(\theta^{\mathrm{root}}) \cdot \mathbf{R}_x(\gamma^{\mathrm{root}})
+++++
+
+[latexmath]
+++++
+\mathbf{M}_{j+1} = \mathbf{M}_j \cdot \mathbf{R}_x(\gamma^{\mathrm{tip}}_j) \cdot \mathbf{R}_y(\theta^{\mathrm{tip}}_j)
+++++
+
+This matches the forward path exactly: root uses latexmath:[\mathbf{R}_y \cdot \mathbf{R}_x], segments use latexmath:[\mathbf{R}_x \cdot \mathbf{R}_y].
+
+==== Step 4: Recover local segment translation
+
+The local translation vector (sweep, length, dihedral_as_translation) is obtained by inverting the cumulative rotation:
+
+[latexmath]
+++++
+\mathbf{T}_j = \mathbf{M}_j^{-1} \cdot \boldsymbol{\Delta}_j = \mathbf{M}_j^T \cdot \boldsymbol{\Delta}_j
+++++
+
+(latexmath:[\mathbf{M}^T = \mathbf{M}^{-1}] because latexmath:[\mathbf{M}] is orthogonal)
+
+The components map directly to WingConfig parameters:
+
+[latexmath]
+++++
+\mathrm{sweep}_j = T_{j,x}, \quad \mathrm{length}_j = T_{j,y}, \quad \mathrm{dihedral\_as\_translation}_j = T_{j,z}
+++++
+
+=== Roundtrip Consistency
+
+[cols="1,2,2,2"]
+|===
+| Direction | Position | Twist value | Frame orientation
+
+| **WC {to} ASB** (`asb_wing`)
+| Exact (copies `plane.origin`)
+| Exact (sums incidence)
+| Differs by latexmath:[\mathcal{O}(\theta \cdot \gamma)] (commutator)
+
+| **ASB {to} WC** (`from_asb`)
+| Exact (latexmath:[\mathbf{M}^{-1} \cdot \boldsymbol{\Delta}] guarantees correct reconstruction)
+| Exact (`twist_delta` = incidence)
+| Same commutator difference to ASB's internal frame
+
+| **WC {to} ASB {to} WC** (full roundtrip)
+| **Exact**
+| **Exact**
+| **Exact** (errors cancel)
+|===
+
+The full roundtrip is **position-exact** because `from_asb()` uses the identical rotation chain (latexmath:[\mathbf{M}]) as the forward path. The commutator error between WC-frame and ASB-frame exists in both directions symmetrically, so it cancels in a complete roundtrip.
+
+=== Why the roundtrip is self-consistent
+
+The key insight: `from_asb()` does **not** try to reconstruct the ASB frame. It reconstructs the **WingConfig frame** (with its specific rotation order). The formula latexmath:[\mathbf{T}_j = \mathbf{M}_j^T \cdot \boldsymbol{\Delta}_j] inverts exactly the transform that `get_wing_workplane()` will later apply:
+
+[latexmath]
+++++
+\underbrace{\mathrm{xyz\_le}[j+1] - \mathrm{xyz\_le}[j]}_{\boldsymbol{\Delta}_j} = \mathbf{M}_j \cdot \mathbf{T}_j
+++++
+
+Since both sides use the same latexmath:[\mathbf{M}_j], the positions are guaranteed to match after reconstruction — regardless of whether latexmath:[\mathbf{M}_j] matches ASB's internal frame or not.
+
+=== Limitation: Dihedral extraction with nonzero twist
+
+When a segment has latexmath:[\theta^{\mathrm{tip}}_k \neq 0], the Z-component of latexmath:[\boldsymbol{\Delta}_k] contains contributions from both dihedral and the sweep-incidence cross-coupling:
+
+[latexmath]
+++++
+\Delta_z = l \sin\Gamma - s \sin\theta \cos\Gamma + \ldots
+++++
+
+`from_asb()` cannot separate these, so it falls back to:
+
+* `dihedral_as_rotation_in_degrees = 0`
+* `dihedral_as_translation = T_j[2]` (carries the full Z-offset as a pure translation)
+
+This is geometrically correct (the position roundtrips perfectly), but changes the **parametric representation**: the rebuilt WingConfiguration expresses dihedral differently than the original might have. The wing shape is identical; only the parameter decomposition differs.
+
+=== Geometric interpretation of the error
+
+The mismatch between WC and ASB frames is specifically a small rotation latexmath:[\approx \mathbf{R}_z(\theta \cdot \gamma)] (via the Lie algebra commutator latexmath:[[L_x, L_y\] = L_z]):
+
+* This rotates the chord direction (latexmath:[\mathbf{x}_g]) slightly toward the span direction (latexmath:[\mathbf{y}_g])
+* The thickness direction (latexmath:[\mathbf{z}_g]) remains nearly unchanged
+* The practical effect is a small spanwise shift of LE/TE points (~1mm for typical wings)
+* The airfoil **thickness distribution** is essentially unaffected
+
+== Architectural Decision: Separate Design Models, No Mixing
+
+Based on the analysis in this document, we derive the following architectural constraint for the da3Dalus wing design workflow.
+
+=== Problem Summary
+
+Converting between WingConfiguration (WC) and Aerosandbox (ASB) representations encounters three issues:
+
+[cols="1,2,2"]
+|===
+| Issue | Cause | Severity
+
+| Dihedral not extractable as angle
+| `from_asb()` cannot separate dihedral from sweep-incidence cross-coupling when latexmath:[\theta^{\mathrm{tip}} \neq 0]
+| **High** — defeats the designer's mental model
+
+| Unintuitive parameter decomposition
+| latexmath:[\mathbf{T}_j = \mathbf{M}_j^{-1} \cdot \boldsymbol{\Delta}_j] produces sweep/length values rotated by accumulated M
+| **Medium** — parameters don't match naive expectation
+
+| Frame orientation mismatch
+| Rotation order difference: latexmath:[\mathbf{R}_y \cdot \mathbf{R}_x] vs latexmath:[\mathbf{R}_x \cdot \mathbf{R}_y], error latexmath:[\approx \mathbf{R}_z(\theta \cdot \gamma)]
+| **Negligible** — ~0.5° profile rotation for typical wings
+|===
+
+These issues arise **only** when crossing between models — specifically when `from_asb()` must produce editable WC parameters from ASB positions.
+
+=== Decision
+
+**The designer chooses the design model at project creation. Models are not mixed.**
+
+[horizontal]
+WC mode (default):: Designer works with segment-relative parameters (dihedral angles, sweep, length, chord, incidence). Source of truth is the WC representation. ASB is computed on-the-fly for aerodynamic analysis via `asb_wing()`.
+
+ASB mode:: Designer works with absolute positions (`xyz_le`, chord, twist). Source of truth is the ASB representation. Analysis runs directly without conversion.
+
+Mode switching:: **Not supported.** A wing designed in WC stays in WC; a wing designed in ASB stays in ASB. One-way export (WC → ASB for external tools) is acceptable, but not as an editing path.
+
+=== Rationale
+
+[arabic]
+. **No crossing eliminates the decomposition problem.** If the designer never edits a `from_asb()` result, the ambiguous parameter extraction (dihedral-as-translation fallback, M-dependent sweep/length) never surfaces in the UI.
+
+. **`from_asb()` becomes verification-only.** Its sole purpose is confirming that the roundtrip WC → ASB → WC preserves positions and twist (proven exact in this document). It does not need to produce intuitive or editable parameters.
+
+. **The frame mismatch is acceptable.** Since the designer either sees CAD (rendered from WC frames) or aero results (computed from ASB positions/twist), the ~0.5° orientation difference between the two frame conventions is invisible in practice.
+
+. **Each model serves its strength:**
+   - WC: "I want 5° dihedral and 3° washout on the outer panel" — relative, intuitive, angle-based
+   - ASB: "I want the tip LE at (0.3, 1.2, 0.15) meters" — absolute, direct, position-based
+
+=== Consequences
+
+* The database schema needs a **model discriminator** per wing (e.g. `design_model: "wc" | "asb"`)
+* The frontend shows **different editors** depending on the model (segment-based vs. point-based) — both UIs already exist
+* `from_asb()` remains in the codebase for roundtrip testing and verification, but is **never exposed as an editing path** in the UI
+* Future optimizers that modify ASB positions must output results in ASB mode; WC-mode wings receive optimizer results as delta-suggestions to their WC parameters (not as raw xyz_le replacements)
+
+== Source Reference
+
+* `aerosandbox/geometry/wing.py` -- `_compute_frame_of_WingXSec()` (line ~1309)
+* `aerosandbox/geometry/wing.py` -- `_compute_xyz_of_WingXSec()` (line ~1296)
+* `aerosandbox/geometry/wing.py` -- `mesh_body()` (line ~810)
+* `cad_designer/airplane/aircraft_topology/wing/WingConfiguration.py` -- `asb_wing()` (line ~622)
+* `cad_designer/airplane/aircraft_topology/wing/WingConfiguration.py` -- `from_asb()` (line ~934)
