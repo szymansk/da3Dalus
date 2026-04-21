@@ -40,7 +40,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 162.0,
                                     "dihedral_as_rotation_in_degrees": 1,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": 0,
                                 },
                                 "length": 20.0,
@@ -50,7 +50,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 162.0,
                                     "dihedral_as_rotation_in_degrees": 0,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": 0,
                                 },
                                 "spare_list": [
@@ -119,7 +119,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 162.0,
                                     "dihedral_as_rotation_in_degrees": 0,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": 0,
                                 },
                                 "length": 200,
@@ -129,7 +129,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 157,
                                     "dihedral_as_rotation_in_degrees": 0,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": 0,
                                 },
                                 "spare_list": [
@@ -198,7 +198,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 157,
                                     "dihedral_as_rotation_in_degrees": 0,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": 0,
                                 },
                                 "length": 250,
@@ -208,7 +208,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 132.88888888888889,
                                     "dihedral_as_rotation_in_degrees": 0,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": 0,
                                 },
                                 "spare_list": [
@@ -257,7 +257,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 132.88888888888889,
                                     "dihedral_as_rotation_in_degrees": 0,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": 0,
                                 },
                                 "length": 75,
@@ -267,7 +267,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 123.05555555555554,
                                     "dihedral_as_rotation_in_degrees": 0,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": 0,
                                 },
                                 "spare_list": [
@@ -316,7 +316,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 123.05555555555554,
                                     "dihedral_as_rotation_in_degrees": 0,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": 0,
                                 },
                                 "length": 85,
@@ -326,7 +326,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 105.21777777777777,
                                     "dihedral_as_rotation_in_degrees": 0,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": 0,
                                 },
                                 "spare_list": [
@@ -375,7 +375,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 105.21777777777777,
                                     "dihedral_as_rotation_in_degrees": 0,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": 0,
                                 },
                                 "length": 40,
@@ -385,7 +385,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 90,
                                     "dihedral_as_rotation_in_degrees": 0,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": 0,
                                 },
                                 "spare_list": [
@@ -434,7 +434,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 90,
                                     "dihedral_as_rotation_in_degrees": 0,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": 0,
                                 },
                                 "length": 20,
@@ -444,7 +444,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 79.5,
                                     "dihedral_as_rotation_in_degrees": 5,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": 0,
                                 },
                                 "spare_list": [
@@ -477,7 +477,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 79.5,
                                     "dihedral_as_rotation_in_degrees": 5,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": 0,
                                 },
                                 "length": 15,
@@ -487,7 +487,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 71.0,
                                     "dihedral_as_rotation_in_degrees": 5,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": 0,
                                 },
                                 "spare_list": None,
@@ -501,7 +501,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 71.0,
                                     "dihedral_as_rotation_in_degrees": 5,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": 0,
                                 },
                                 "length": 15,
@@ -511,7 +511,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 62.0,
                                     "dihedral_as_rotation_in_degrees": 5,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": 0,
                                 },
                                 "spare_list": None,
@@ -525,7 +525,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 62.0,
                                     "dihedral_as_rotation_in_degrees": 5,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": 0,
                                 },
                                 "length": 15,
@@ -535,7 +535,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 52.5,
                                     "dihedral_as_rotation_in_degrees": 10,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": -0.0,
                                 },
                                 "spare_list": None,
@@ -549,7 +549,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 52.5,
                                     "dihedral_as_rotation_in_degrees": 10,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": -0.0,
                                 },
                                 "length": 10,
@@ -559,7 +559,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 40.5,
                                     "dihedral_as_rotation_in_degrees": 15,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": -0.0,
                                 },
                                 "spare_list": None,
@@ -573,7 +573,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 40.5,
                                     "dihedral_as_rotation_in_degrees": 15,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": -0.0,
                                 },
                                 "length": 5,
@@ -583,7 +583,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 24.0,
                                     "dihedral_as_rotation_in_degrees": 0,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": -0.0,
                                 },
                                 "spare_list": None,
@@ -607,7 +607,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 85.0,
                                     "dihedral_as_rotation_in_degrees": 45,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": -2,
                                 },
                                 "length": 210.0,
@@ -617,7 +617,7 @@ class WingAnalysisRequest(BaseModel):
                                     "airfoil": "./components/airfoils/mh32.dat",
                                     "chord": 70.0,
                                     "dihedral_as_rotation_in_degrees": 0,
-                                    "dihedral_as_translation": 0,
+
                                     "incidence": 0,
                                 },
                                 "spare_list": [

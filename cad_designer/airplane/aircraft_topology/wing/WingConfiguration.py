@@ -63,8 +63,6 @@ class WingConfiguration:
         """
         if airfoil.dihedral_as_rotation_in_degrees is None:
             airfoil.dihedral_as_rotation_in_degrees = 0.0
-        if airfoil.dihedral_as_translation is None:
-            airfoil.dihedral_as_translation = 0.0
 
     def __init__(self: T,
                  nose_pnt: tuple[float, float, float],
@@ -212,7 +210,6 @@ class WingConfiguration:
                                chord=self.segments[-1].tip_airfoil.chord,
                                dihedral_as_rotation_in_degrees=self.segments[
                                    -1].tip_airfoil.dihedral_as_rotation_in_degrees,
-                               dihedral_as_translation=self.segments[-1].tip_airfoil.dihedral_as_translation,
                                incidence=self.segments[-1].tip_airfoil.incidence)
         self._normalize_airfoil_dihedral_members(root_airfoil)
 
@@ -269,7 +266,6 @@ class WingConfiguration:
                                chord=self.segments[-1].tip_airfoil.chord,
                                dihedral_as_rotation_in_degrees=self.segments[
                                    -1].tip_airfoil.dihedral_as_rotation_in_degrees,
-                               dihedral_as_translation=self.segments[-1].tip_airfoil.dihedral_as_translation,
                                incidence=self.segments[-1].tip_airfoil.incidence)
         self._normalize_airfoil_dihedral_members(root_airfoil)
 
@@ -428,7 +424,7 @@ class WingConfiguration:
             offset = r_x @ np.array([
                 self.segments[seg].sweep,
                 self.segments[seg].length,
-                0.0,  # dihedral_as_translation is 0 in decoupled mode
+                0.0,  # z-offset is always 0; dihedral handled by rotation
             ])
             xyz_le += offset
 
@@ -931,7 +927,7 @@ class WingConfiguration:
 
         Returns:
             A new WingConfiguration in *relative* mode, with
-            dihedral_as_translation=0 on every airfoil.
+            dihedral carried as dihedral_as_rotation_in_degrees on every airfoil.
         """
         asb_wing = asb.Wing(xsecs=xsecs, symmetric=symmetric)
         n = len(asb_wing.xsecs)
@@ -991,7 +987,6 @@ class WingConfiguration:
                 airfoil=_airfoil_name(asb_wing.xsecs[k]),
                 chord=float(asb_wing.xsecs[k].chord),
                 dihedral_as_rotation_in_degrees=d_rot,
-                dihedral_as_translation=0.0,
                 incidence=incidence,
             )
 

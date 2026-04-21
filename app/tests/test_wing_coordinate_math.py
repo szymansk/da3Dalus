@@ -95,7 +95,7 @@ def Hi(Ci, Si_prev, Li_prev, Di_prev, deltai, iotai):
         Ci: chord at this station (mm) -- unused, kept for signature compatibility
         Si_prev: sweep of previous segment (mm)
         Li_prev: length of previous segment (mm)
-        Di_prev: dihedral_as_translation of previous segment (mm)
+        Di_prev: z-offset of previous segment (mm), always 0 in current decoupled mode
         deltai: dihedral_as_rotation_in_degrees at this station
         iotai: incidence angle at this station (degrees)
     """
@@ -252,7 +252,7 @@ class TestHiSubsequentSegments:
         assert origin[2] == pytest.approx(0, abs=1e-10)
 
     def test_hi_with_dihedral_translation(self):
-        """H_i with dihedral_as_translation=15mm, length=200.
+        """H_i with z-offset=15mm, length=200.
 
         H_i = T(0, 200, 15)
         The LE moves up by 15mm.
@@ -628,10 +628,9 @@ class TestMathRoundtrip:
         self._assert_roundtrip(segs, rec, "nonmonotone")
 
     def test_dihedral_projects_to_translation(self):
-        """Dihedral via rotation → projects to dihedral_as_translation in reverse.
+        """Dihedral via rotation roundtrips through ASB conversion.
 
-        From docs: "dihedral_as_rotation_in_degrees → reset to 0, encoded
-        through dihedral_as_translation"
+        Dihedral is always expressed as dihedral_as_rotation_in_degrees.
         """
         segs = [
             {"root_chord": 200, "root_incidence": 0, "root_dihedral": 5,

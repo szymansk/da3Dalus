@@ -107,7 +107,6 @@ if __name__ == "__main__":
             airfoil=airfoil,
             chord=200.,
             dihedral_as_rotation_in_degrees=4,
-            # dihedral_as_translation=50,
             incidence=0,),
         length=500.,
         sweep=50,
@@ -115,7 +114,6 @@ if __name__ == "__main__":
         tip_airfoil=Airfoil(
             chord=200.,
             dihedral_as_rotation_in_degrees=-4,
-            # dihedral_as_translation=-100,
             incidence=-10,),
         spare_list=[
             Spare(spare_support_dimension_width=3,

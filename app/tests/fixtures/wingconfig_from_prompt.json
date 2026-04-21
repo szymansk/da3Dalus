@@ -5,7 +5,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 162.0,
         "dihedral_as_rotation_in_degrees": 1,
-        "dihedral_as_translation": 0,
         "incidence": 0
       },
       "length": 20.0,
@@ -15,7 +14,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 162.0,
         "dihedral_as_rotation_in_degrees": 0,
-        "dihedral_as_translation": 0,
         "incidence": 0
       },
       "spare_list": [
@@ -84,7 +82,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 162.0,
         "dihedral_as_rotation_in_degrees": 0,
-        "dihedral_as_translation": 0,
         "incidence": 0
       },
       "length": 200,
@@ -94,7 +91,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 157,
         "dihedral_as_rotation_in_degrees": 0,
-        "dihedral_as_translation": 0,
         "incidence": 0
       },
       "spare_list": [
@@ -163,7 +159,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 157,
         "dihedral_as_rotation_in_degrees": 0,
-        "dihedral_as_translation": 0,
         "incidence": 0
       },
       "length": 250,
@@ -173,7 +168,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 132.88888888888889,
         "dihedral_as_rotation_in_degrees": 0,
-        "dihedral_as_translation": 0,
         "incidence": 0
       },
       "spare_list": [
@@ -222,7 +216,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 132.88888888888889,
         "dihedral_as_rotation_in_degrees": 0,
-        "dihedral_as_translation": 0,
         "incidence": 0
       },
       "length": 75,
@@ -232,7 +225,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 123.05555555555554,
         "dihedral_as_rotation_in_degrees": 0,
-        "dihedral_as_translation": 0,
         "incidence": 0
       },
       "spare_list": [
@@ -281,7 +273,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 123.05555555555554,
         "dihedral_as_rotation_in_degrees": 0,
-        "dihedral_as_translation": 0,
         "incidence": 0
       },
       "length": 85,
@@ -291,7 +282,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 105.21777777777777,
         "dihedral_as_rotation_in_degrees": 0,
-        "dihedral_as_translation": 0,
         "incidence": 0
       },
       "spare_list": [
@@ -340,7 +330,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 105.21777777777777,
         "dihedral_as_rotation_in_degrees": 0,
-        "dihedral_as_translation": 0,
         "incidence": 0
       },
       "length": 40,
@@ -350,7 +339,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 90,
         "dihedral_as_rotation_in_degrees": 0,
-        "dihedral_as_translation": 0,
         "incidence": 0
       },
       "spare_list": [
@@ -399,7 +387,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 90,
         "dihedral_as_rotation_in_degrees": 0,
-        "dihedral_as_translation": 0,
         "incidence": 0
       },
       "length": 20,
@@ -409,7 +396,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 79.5,
         "dihedral_as_rotation_in_degrees": 5,
-        "dihedral_as_translation": 0,
         "incidence": 0
       },
       "spare_list": [
@@ -442,7 +428,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 79.5,
         "dihedral_as_rotation_in_degrees": 5,
-        "dihedral_as_translation": 0,
         "incidence": 0
       },
       "length": 15,
@@ -452,7 +437,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 71.0,
         "dihedral_as_rotation_in_degrees": 5,
-        "dihedral_as_translation": 0,
         "incidence": 0
       },
       "spare_list": null,
@@ -466,7 +450,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 71.0,
         "dihedral_as_rotation_in_degrees": 5,
-        "dihedral_as_translation": 0,
         "incidence": 0
       },
       "length": 15,
@@ -476,7 +459,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 62.0,
         "dihedral_as_rotation_in_degrees": 5,
-        "dihedral_as_translation": 0,
         "incidence": 0
       },
       "spare_list": null,
@@ -490,7 +472,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 62.0,
         "dihedral_as_rotation_in_degrees": 5,
-        "dihedral_as_translation": 0,
         "incidence": 0
       },
       "length": 15,
@@ -500,7 +481,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 52.5,
         "dihedral_as_rotation_in_degrees": 10,
-        "dihedral_as_translation": 0,
         "incidence": -0.0
       },
       "spare_list": null,
@@ -514,7 +494,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 52.5,
         "dihedral_as_rotation_in_degrees": 10,
-        "dihedral_as_translation": 0,
         "incidence": -0.0
       },
       "length": 10,
@@ -524,7 +503,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 40.5,
         "dihedral_as_rotation_in_degrees": 15,
-        "dihedral_as_translation": 0,
         "incidence": -0.0
       },
       "spare_list": null,
@@ -538,7 +516,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 40.5,
         "dihedral_as_rotation_in_degrees": 15,
-        "dihedral_as_translation": 0,
         "incidence": -0.0
       },
       "length": 5,
@@ -548,7 +525,6 @@
         "airfoil": "../components/airfoils/mh32.dat",
         "chord": 24.0,
         "dihedral_as_rotation_in_degrees": 0,
-        "dihedral_as_translation": 0,
         "incidence": -0.0
       },
       "spare_list": null,

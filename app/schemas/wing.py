@@ -1,5 +1,5 @@
 from typing import List, Optional, Literal, Union
-from pydantic import AliasChoices, BaseModel, model_validator, PositiveFloat, NonNegativeFloat, Field
+from pydantic import AliasChoices, BaseModel, PositiveFloat, NonNegativeFloat, Field
 
 from app.schemas.Servo import Servo
 
@@ -137,33 +137,11 @@ class Airfoil(BaseModel):
         default=0,
         description="Dihedral angle in degrees, representing the upward angle of this cross section. Positive is wingtip upwards."
     )
-    dihedral_as_translation: Optional[NonNegativeFloat] = Field(
-        default=0,
-        description="(obsolete) Alternative way to specify dihedral as a vertical translation in millimeters."
-    )
     incidence: Optional[float] = Field(
         default=0,
         description="Incidence angle in degrees. Positive is leading edge upwards."
     )
 
-    @model_validator(mode='after')
-    def check_dihedral_fields(self):
-        """
-        Validates the dihedral parameters to ensure they are properly specified.
-
-        Rules:
-        1. Exactly one of dihedral_as_rotation_in_degrees or dihedral_as_translation must be zero
-        """
-        dihedral_rotation = self.dihedral_as_rotation_in_degrees
-        dihedral_translation = self.dihedral_as_translation
-
-        # Ensure that exactly one of the dihedral parameters is zero
-        if dihedral_rotation != 0 and dihedral_translation != 0:
-            raise ValueError(
-                "Exactly one of 'dihedral_as_rotation_in_degrees' or 'dihedral_as_translation' must be zero."
-            )
-
-        return self
 
 
 class Segment(BaseModel):

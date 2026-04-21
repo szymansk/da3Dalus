@@ -142,8 +142,7 @@ def single_segment_with_twist() -> WingConfiguration:
 
 
 def single_segment_with_twist_and_dihedral() -> WingConfiguration:
-    """One segment with both twist and dihedral. Previously required
-    dihedral_as_translation fallback; now roundtrips exactly with
+    """One segment with both twist and dihedral. Roundtrips exactly with
     decoupled frame computation."""
     return WingConfiguration(
         nose_pnt=(0.0, 0.0, 0.0),

@@ -39,7 +39,7 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
                 "airfoil": "../components/airfoils/mh32.dat",
                 "chord": 162.0,
                 "dihedral_as_rotation_in_degrees": 1,
-                "dihedral_as_translation": 0,
+
                 "incidence": 0,
             },
             "length": 20.0,
@@ -49,7 +49,7 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
                 "airfoil": "../components/airfoils/mh32.dat",
                 "chord": 162.0,
                 "dihedral_as_rotation_in_degrees": 0,
-                "dihedral_as_translation": 0,
+
                 "incidence": 0,
             },
             "spare_list": [
@@ -74,7 +74,7 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
                 "airfoil": "../components/airfoils/mh32.dat",
                 "chord": 162.0,
                 "dihedral_as_rotation_in_degrees": 0,
-                "dihedral_as_translation": 0,
+
                 "incidence": 0,
             },
             "length": 200,
@@ -84,7 +84,7 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
                 "airfoil": "../components/airfoils/mh32.dat",
                 "chord": 157,
                 "dihedral_as_rotation_in_degrees": 0,
-                "dihedral_as_translation": 0,
+
                 "incidence": 0,
             },
             "spare_list": [
@@ -109,7 +109,7 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
                 "airfoil": "../components/airfoils/mh32.dat",
                 "chord": 157,
                 "dihedral_as_rotation_in_degrees": 0,
-                "dihedral_as_translation": 0,
+
                 "incidence": 0,
             },
             "length": 250,
@@ -119,7 +119,7 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
                 "airfoil": "../components/airfoils/mh32.dat",
                 "chord": 132.88888888888889,
                 "dihedral_as_rotation_in_degrees": 0,
-                "dihedral_as_translation": 0,
+
                 "incidence": 0,
             },
             "spare_list": [

@@ -17,20 +17,15 @@ class Airfoil:
     Attributes:
         airfoil (Optional[str]): Identifier or path to the airfoil file.
         chord (Optional[PositiveFloat]): Chord length.
-        dihedral_as_rotation_in_degrees (DihedralInDegrees): Dihedral angle as rotation.
-        dihedral_as_translation (float): Dihedral as translation.
+        dihedral_as_rotation_in_degrees (DihedralInDegrees): Dihedral angle as rotation in degrees.
         incidence (float): Angle of incidence (twist).
         coordinate_system (Optional[CoordinateSystem]): Associated coordinate system.
-
-    Note:
-        Only one of dihedral_as_rotation_in_degrees or dihedral_as_translation may be set.
     """
 
     def __init__(self,
                  airfoil: Optional[str] = None,
                  chord: Optional[PositiveFloat] = None,
                  dihedral_as_rotation_in_degrees: DihedralInDegrees = 0,
-                 dihedral_as_translation: float = 0,
                  incidence: float = 0):
         """
         Initializes an Airfoil instance.
@@ -39,18 +34,11 @@ class Airfoil:
             airfoil (Optional[str]): The name or identifier of the airfoil.
             chord (Optional[PositiveFloat]): The chord length of the airfoil.
             dihedral_as_rotation_in_degrees (DihedralInDegrees): The dihedral angle as a rotation in degrees.
-            dihedral_as_translation (float): The dihedral angle as a translation.
             incidence (float): The incidence angle of the airfoil.
-
-        Raises:
-            ValueError: If both dihedral_as_rotation_in_degrees and dihedral_as_translation are non-zero.
         """
         self.airfoil: str = airfoil
         self.chord: float = chord
         self.dihedral_as_rotation_in_degrees: float = dihedral_as_rotation_in_degrees
-        self.dihedral_as_translation: float = dihedral_as_translation
-        #if self.dihedral_as_rotation_in_degrees != 0 and self.dihedral_as_translation != 0:
-        #    raise ValueError("either dihedral_as_rotation_in_radians or dihedral_as_translation must be zero!")
         self.incidence: float = incidence
         self.coordinate_system = None
 
@@ -99,6 +87,5 @@ class Airfoil:
             airfoil=data.get('airfoil'),
             chord=data.get('chord'),
             dihedral_as_rotation_in_degrees=data.get('dihedral_as_rotation_in_degrees', 0),
-            dihedral_as_translation=data.get('dihedral_as_translation', 0),
             incidence=data.get('incidence', 0),
         )

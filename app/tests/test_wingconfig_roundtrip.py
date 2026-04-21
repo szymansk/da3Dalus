@@ -64,7 +64,7 @@ def _assert_airfoil_match(original, roundtripped, label, tol_chord=0.05, tol_ang
     """Assert that airfoil parameters survive the roundtrip within tolerance.
 
     Documented lossy parameters (see docs/WingConfigRoundtripProof.adoc):
-    - dihedral_as_rotation_in_degrees: reset to 0, projected to dihedral_as_translation
+    - dihedral_as_rotation_in_degrees: preserved after roundtrip
 
     These change the REPRESENTATION but not the SHAPE — the rebuilt wing
     renders to the same geometry.
@@ -78,7 +78,7 @@ def _assert_airfoil_match(original, roundtripped, label, tol_chord=0.05, tol_ang
     ), f"{label}: chord {roundtripped.chord} != {original.chord}"
 
     # dihedral_as_rotation_in_degrees is lossy — always 0 after roundtrip
-    # The dihedral effect is preserved via dihedral_as_translation instead.
+    # The dihedral effect is preserved via dihedral_as_rotation_in_degrees.
     # We do NOT assert it matches the original.
 
     # rotation_point_rel_chord has been removed from the codebase.
