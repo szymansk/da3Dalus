@@ -270,6 +270,8 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
           xsec={fxsec}
           onSave={async (updated) => {
             await updateFuselageXSec(selectedFuselageXsecIndex, updated);
+            await mutateFuselage();
+            onGeometryChanged?.("");
           }}
         />
       );
