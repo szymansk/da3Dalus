@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronDown, ChevronRight, Plus, Trash2, Eye, EyeOff, Loader, PanelLeftClose, Pencil } from "lucide-react";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useWing } from "@/hooks/useWings";
@@ -10,6 +10,7 @@ import { API_BASE } from "@/lib/fetcher";
 import { useFuselage } from "@/hooks/useFuselage";
 import { useFuselages } from "@/hooks/useFuselages";
 import { ImportFuselageDialog } from "./ImportFuselageDialog";
+import { CreateWingDialog } from "./CreateWingDialog";
 
 // ── Types ───────────────────────────────────────────────────────
 
@@ -386,6 +387,19 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
   const { wing, isLoading, mutate: mutateWing } = useWing(aeroplaneId, selectedWing);
   const { wingConfig } = useWingConfig(aeroplaneId, selectedWing);
 
+  // When the selected wing has a design_model, lock the tree mode
+  const wingDesignModel = wing?.design_model ?? null;
+  const isModeLocked = wingDesignModel === "wc" || wingDesignModel === "asb";
+
+  // Auto-set treeMode to match wing's design_model when selecting a wing with a known model
+  useEffect(() => {
+    if (wingDesignModel === "wc" && treeMode !== "wingconfig") {
+      setTreeMode("wingconfig");
+    } else if (wingDesignModel === "asb" && treeMode !== "asb" && treeMode !== "fuselage") {
+      setTreeMode("asb");
+    }
+  }, [wingDesignModel, selectedWing]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [expandedSet, setExpandedSet] = useState<Set<string>>(() => {
     const s = new Set<string>();
     s.add("root");
@@ -400,36 +414,13 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
   // Add menu state
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [importFuselageOpen, setImportFuselageOpen] = useState(false);
+  const [createWingOpen, setCreateWingOpen] = useState(false);
   // Segment add menu: tracks which segment has an open add menu + click position
   const [segAddMenu, setSegAddMenu] = useState<{ wingName: string; xsecIndex: number; hasTed: boolean; x: number; y: number } | null>(null);
 
-  async function handleAddWing() {
-    if (!aeroplaneId) return;
-    const name = prompt("Wing name?");
-    if (!name) return;
-    const res = await fetch(
-      `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${encodeURIComponent(name)}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          symmetric: true,
-          x_secs: [
-            { xyz_le: [0, 0, 0], chord: 0.15, twist: 0, airfoil: "naca0015" },
-            { xyz_le: [0, 0.5, 0], chord: 0.12, twist: 0, airfoil: "naca0015" },
-          ],
-        }),
-      },
-    );
-    if (!res.ok) {
-      alert(`Failed to create wing: ${res.status}`);
-      return;
-    }
-    onWingSaved?.();
-    mutateWing();
-    selectWing(name);
+  function handleAddWing() {
     setAddMenuOpen(false);
+    setCreateWingOpen(true);
   }
 
   function toggleExpand(nodeId: string) {
@@ -636,24 +627,28 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
           Aeroplane Tree
         </span>
         <div className="flex-1" />
-        <div className="flex overflow-hidden rounded-xl border border-border">
+        <div className={`flex overflow-hidden rounded-xl border border-border ${isModeLocked ? "opacity-50" : ""}`}
+          title={isModeLocked ? `Locked to ${wingDesignModel === "wc" ? "Segments" : "X-Secs"} (wing design model)` : undefined}
+        >
           <button
-            onClick={() => setTreeMode("wingconfig")}
+            onClick={() => !isModeLocked && setTreeMode("wingconfig")}
+            disabled={isModeLocked}
             className={`px-2.5 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px] ${
               treeMode === "wingconfig"
                 ? "bg-primary text-primary-foreground"
                 : "bg-card-muted text-muted-foreground hover:text-foreground"
-            }`}
+            } ${isModeLocked ? "cursor-not-allowed" : ""}`}
           >
             Segments
           </button>
           <button
-            onClick={() => setTreeMode("asb")}
+            onClick={() => !isModeLocked && setTreeMode("asb")}
+            disabled={isModeLocked}
             className={`px-2.5 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px] ${
               treeMode === "asb" || treeMode === "fuselage"
                 ? "bg-primary text-primary-foreground"
                 : "bg-card-muted text-muted-foreground hover:text-foreground"
-            }`}
+            } ${isModeLocked ? "cursor-not-allowed" : ""}`}
           >
             X-Secs
           </button>
@@ -719,6 +714,18 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
           </div>
         </>
       )}
+
+      <CreateWingDialog
+        open={createWingOpen}
+        onClose={() => setCreateWingOpen(false)}
+        aeroplaneId={aeroplaneId}
+        onCreated={async (wingName, designModel) => {
+          onWingSaved?.();
+          await mutateWing();
+          selectWing(wingName);
+          setTreeMode(designModel === "wc" ? "wingconfig" : "asb");
+        }}
+      />
 
       <ImportFuselageDialog
         open={importFuselageOpen}

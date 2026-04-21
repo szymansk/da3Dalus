@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Play, Plus, Download, Upload } from "lucide-react";
+import { Plus, Download } from "lucide-react";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useWings } from "@/hooks/useWings";
-import { API_BASE } from "@/lib/fetcher";
 import { ImportFuselageDialog } from "./ImportFuselageDialog";
+import { CreateWingDialog } from "./CreateWingDialog";
 
 interface ActionRowProps {
   aeroplaneId: string | null;
@@ -17,62 +17,7 @@ export function ActionRow({ aeroplaneId, onWingCreated, onFuselageSaved }: Actio
   const ctx = useAeroplaneContext();
   const { mutate: mutateWings } = useWings(aeroplaneId);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
-
-  async function handleAddWing() {
-    if (!aeroplaneId) return;
-    const name = prompt("Wing name?");
-    if (!name) return;
-
-    // A wing needs at least 2 x_secs (root + tip) for valid ASB geometry
-    const rootXSec = {
-      xyz_le: [0, 0, 0],
-      chord: 0.15,
-      twist: 0,
-      airfoil: "naca0015",
-    };
-    const tipXSec = {
-      xyz_le: [0, 0.5, 0],
-      chord: 0.12,
-      twist: 0,
-      airfoil: "naca0015",
-    };
-
-    const res = await fetch(
-      `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${encodeURIComponent(name)}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          symmetric: true,
-          x_secs: [rootXSec, tipXSec],
-        }),
-      },
-    );
-
-    if (!res.ok) {
-      alert(`Failed to create wing: ${res.status}`);
-      return;
-    }
-
-    await mutateWings();
-    ctx.selectWing(name);
-    onWingCreated?.();
-  }
-
-  function handleAddFuselage() {
-    if (!aeroplaneId) {
-      alert("Select an aeroplane first.");
-      return;
-    }
-    const name = prompt("Fuselage name?");
-    if (!name) return;
-    alert(`Fuselage creation not yet connected (name: ${name})`);
-  }
-
-  function handlePreviewSTL() {
-    alert("STL preview not yet connected");
-  }
+  const [createWingOpen, setCreateWingOpen] = useState(false);
 
   function handleDownloadSTEP() {
     alert("STEP download not yet connected");
@@ -81,7 +26,7 @@ export function ActionRow({ aeroplaneId, onWingCreated, onFuselageSaved }: Actio
   return (
     <div className="flex flex-wrap items-center gap-2">
       <button
-        onClick={handleAddWing}
+        onClick={() => setCreateWingOpen(true)}
         className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3.5 py-2.5 text-[13px] text-foreground hover:bg-sidebar-accent"
       >
         <Plus size={14} />
@@ -101,6 +46,18 @@ export function ActionRow({ aeroplaneId, onWingCreated, onFuselageSaved }: Actio
         <Download size={14} />
         <span>Download STEP</span>
       </button>
+
+      <CreateWingDialog
+        open={createWingOpen}
+        onClose={() => setCreateWingOpen(false)}
+        aeroplaneId={aeroplaneId}
+        onCreated={async (wingName, designModel) => {
+          await mutateWings();
+          ctx.selectWing(wingName);
+          ctx.setTreeMode(designModel === "wc" ? "wingconfig" : "asb");
+          onWingCreated?.();
+        }}
+      />
 
       <ImportFuselageDialog
         open={importDialogOpen}

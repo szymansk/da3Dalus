@@ -192,9 +192,17 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
   const { aeroplaneId, selectedWing, selectedXsecIndex, selectedFuselage, selectedFuselageXsecIndex, treeMode } =
     useAeroplaneContext();
   const { wing, updateXSec, mutate } = useWing(aeroplaneId, selectedWing);
+
+  // Determine the effective mode: wing's design_model takes precedence over treeMode
+  const effectiveWingMode: "wingconfig" | "asb" = wing?.design_model === "asb"
+    ? "asb"
+    : wing?.design_model === "wc"
+      ? "wingconfig"
+      : (treeMode === "fuselage" ? "wingconfig" : treeMode);
+
   const { wingConfig, saveWingConfig, mutate: mutateWc } = useWingConfig(
     aeroplaneId,
-    treeMode === "wingconfig" ? selectedWing : null,
+    effectiveWingMode === "wingconfig" ? selectedWing : null,
   );
   const { fuselage, updateXSec: updateFuselageXSec, mutate: mutateFuselage } = useFuselage(
     aeroplaneId,
@@ -206,8 +214,8 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
 
   // (TED editing is now handled by TedEditDialog — no more tedSaveRef needed)
 
-  // Mode is driven by tree toggle, not local state
-  const mode: Mode = treeMode;
+  // Mode is driven by wing's design_model when set, otherwise falls back to tree toggle
+  const mode: Mode = treeMode === "fuselage" ? "fuselage" : effectiveWingMode;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
