@@ -409,105 +409,82 @@ class WingConfiguration:
         return wp_plane
 
     def _get_relative_segment_coordinate_system(self, segment, ignore_nose_point=True):
-        seg = 0
+        """Decoupled frame computation: incidence does not propagate into positions.
 
-        H_i = np.eye(4)
-        for seg in reversed(range(segment)):
+        Position chain uses only dihedral (R_x) + translation.
+        Twist (R_y) is accumulated separately and applied once at the end.
+        This makes the frame exactly equal to ASB's R_x(gamma) . R_y(twist) convention.
+        """
+        # Accumulate dihedral and twist angles starting from root
+        gamma_accum = self.segments[0].root_airfoil.dihedral_as_rotation_in_degrees
+        theta_accum = self.segments[0].root_airfoil.incidence
+
+        # Position: start at origin (nose_pnt applied at the end if needed)
+        xyz_le = np.zeros(3)
+
+        for seg in range(segment):
             airfoil_ref = self.segments[seg].tip_airfoil
 
-            t_neg_rel_chord = np.eye(4)
-            t_neg_rel_chord[0, 3] = -airfoil_ref.rotation_point_rel_chord * airfoil_ref.chord
+            # Position: only dihedral rotates the translation vector
+            r_x = np.array(self._create_homogeneous_rotation_matrix('x', gamma_accum))[:3, :3]
+            offset = r_x @ np.array([
+                self.segments[seg].sweep,
+                self.segments[seg].length,
+                0.0,  # dihedral_as_translation is 0 in decoupled mode
+            ])
+            xyz_le += offset
 
-            r_tip_incidence = np.array(self._create_homogeneous_rotation_matrix('y', airfoil_ref.incidence))
-            r_tip_dihedral = np.array(
-                self._create_homogeneous_rotation_matrix('x', airfoil_ref.dihedral_as_rotation_in_degrees))
+            # Accumulate angles for next xsec
+            gamma_accum += airfoil_ref.dihedral_as_rotation_in_degrees
+            theta_accum += airfoil_ref.incidence
 
-            t_sweep_length = np.eye(4)
-            t_sweep_length[0, 3] = self.segments[seg].sweep
-            t_sweep_length[1, 3] = self.segments[seg].length
-            t_sweep_length[2, 3] = self.segments[seg].root_airfoil.dihedral_as_translation
+        # Build homogeneous matrix: R_x(gamma) . R_y(theta) + translation
+        r_dihedral = np.array(self._create_homogeneous_rotation_matrix('x', gamma_accum))
+        r_incidence = np.array(self._create_homogeneous_rotation_matrix('y', theta_accum))
 
-            t_rel_chord = np.eye(4)
-            t_rel_chord[0, 3] = airfoil_ref.rotation_point_rel_chord * airfoil_ref.chord
-
-            H_i = t_rel_chord @ t_sweep_length @ r_tip_dihedral @ r_tip_incidence @ t_neg_rel_chord @ H_i
-            # H_i =  t_sweep_length @ t_rel_chord @ r_tip_incidence @ t_neg_rel_chord @ r_tip_dihedral @ H_i
-
-        # process also the root airfoil for segment 0
-        r_rel_chord = np.eye(4)
-        r_rel_chord[0, 3] = self.segments[seg].root_airfoil.rotation_point_rel_chord * self.segments[
-            seg].root_airfoil.chord
-
-        r_root_incidence = np.array(
-            self._create_homogeneous_rotation_matrix('y', self.segments[seg].root_airfoil.incidence))
-        r_root_dihedral = np.array(self._create_homogeneous_rotation_matrix('x', self.segments[
-            seg].root_airfoil.dihedral_as_rotation_in_degrees))
-
-        r_neg_rel_chord = np.eye(4)
-        r_neg_rel_chord[0, 3] = -self.segments[seg].root_airfoil.rotation_point_rel_chord * self.segments[
-            seg].root_airfoil.chord
-
-        # ``ignore_nose_point=True`` means "give me the segment frame WITHOUT
-        # the nose_pnt offset"; the absolute branch just below already
-        # follows this convention and asb_wing() relies on it (it passes
-        # ignore_nose_point=True and then applies .translate(nose_pnt)
-        # itself). The condition here was historically inverted, which
-        # caused nose_pnt to leak into asb_wing()'s per-segment frames and
-        # then be applied a second time by .translate(), producing a
-        # 2 × nose_pnt offset in the from_asb() roundtrip. See issue
-        # cad-modelling-service-tda.
         nose_point_trans = np.eye(4)
         if not ignore_nose_point:
             nose_point_trans[:3, 3] = self.nose_pnt
 
-        # apply the transformations in reverse order
-        # H = nose_point_trans @ r_rel_chord @ r_root_dihedral @ r_root_incidence @ r_neg_rel_chord @ H_i
-        H = nose_point_trans @ r_rel_chord @ r_root_incidence @ r_neg_rel_chord @ r_root_dihedral @ H_i
+        # Position in homogeneous matrix
+        t_pos = np.eye(4)
+        t_pos[:3, 3] = xyz_le
+
+        H = nose_point_trans @ t_pos @ r_dihedral @ r_incidence
 
         return H
 
     def _get_absolute_segment_coordinate_system(self, segment, ignore_nose_point=True):
-        """
-        Returns the absolute transformation matrix for the given segment.
-        Sweep is absolute to the leading edge of the root airfoil.
+        """Decoupled absolute frame computation.
+
+        Same decoupling as relative mode: position from dihedral only,
+        twist applied locally at the end.
         """
         if segment == 0:
-            r_incidence = self.segments[segment].root_airfoil.incidence
-            r_dihedral = self.segments[segment].root_airfoil.dihedral_as_rotation_in_degrees
-            t_dihedral = self.segments[segment].root_airfoil.dihedral_as_translation
+            r_dihedral_deg = self.segments[0].root_airfoil.dihedral_as_rotation_in_degrees
+            r_incidence_deg = self.segments[0].root_airfoil.incidence
             t_sweep = 0
             t_length = 0
-            point_rel_chord = self.segments[segment].root_airfoil.rotation_point_rel_chord
-            chord = self.segments[segment].root_airfoil.chord
         else:
-            r_incidence = self.segments[segment-1].tip_airfoil.incidence
-            r_dihedral = self.segments[segment-1].tip_airfoil.dihedral_as_rotation_in_degrees
-            t_dihedral = self.segments[segment-1].tip_airfoil.dihedral_as_translation
-            t_sweep = self.segments[segment-1].sweep
-            t_length = self.segments[segment-1].length
-            point_rel_chord = self.segments[segment-1].tip_airfoil.rotation_point_rel_chord
-            chord = self.segments[segment-1].tip_airfoil.chord
+            r_dihedral_deg = self.segments[segment - 1].tip_airfoil.dihedral_as_rotation_in_degrees
+            r_incidence_deg = self.segments[segment - 1].tip_airfoil.incidence
+            t_sweep = self.segments[segment - 1].sweep
+            t_length = self.segments[segment - 1].length
 
-        # process also the root airfoil for segment 0
-        r_incidence = np.array(self._create_homogeneous_rotation_matrix('y', r_incidence))
-        r_dihedral = np.array(self._create_homogeneous_rotation_matrix('x', r_dihedral))
-
-        neg_rel_chord = np.eye(4)
-        neg_rel_chord[0, 3] = -point_rel_chord * chord
-        rel_chord = np.eye(4)
-        rel_chord[0, 3] = point_rel_chord * chord
+        r_incidence = np.array(self._create_homogeneous_rotation_matrix('y', r_incidence_deg))
+        r_dihedral = np.array(self._create_homogeneous_rotation_matrix('x', r_dihedral_deg))
 
         t_sweep_length = np.eye(4)
         t_sweep_length[0, 3] = t_sweep
         t_sweep_length[1, 3] = t_length
-        t_sweep_length[2, 3] = t_dihedral
 
         nose_point_trans = np.eye(4)
         if not ignore_nose_point:
             nose_point_trans[:3, 3] = self.nose_pnt
 
-        # apply the transformations in reverse order
-        H = nose_point_trans @ t_sweep_length @ rel_chord @ r_incidence @ neg_rel_chord @ r_dihedral
+        # Decoupled: position from sweep+length only,
+        # then R_x(dihedral) . R_y(incidence)
+        H = nose_point_trans @ t_sweep_length @ r_dihedral @ r_incidence
 
         return H
 
@@ -932,49 +909,32 @@ class WingConfiguration:
 
     @staticmethod
     def from_asb(xsecs: List[asb.WingXSec], symmetric: bool = True) -> 'WingConfiguration':
-        """
-        Create a WingConfiguration from a list of Aerosandbox WingXSecs.
+        """Create a WingConfiguration from a list of Aerosandbox WingXSecs.
 
-        The rebuilt configuration is a *projection* of the asb
-        representation onto a canonical relative-mode form with
+        Decoupled reconstruction: with rc=0 and the decoupled frame
+        computation (incidence does not propagate into positions),
+        the inverse is trivial arithmetic:
 
-        - ``parameters = "relative"``
-        - ``rotation_point_rel_chord = 0`` on every airfoil (matches
-          aerosandbox's LE-pivot convention, see
-          ``aerosandbox/geometry/wing.py`` ``_compute_frame_of_WingXSec``)
-        - per-segment ``incidence`` equal to the *delta* of asb's
-          cumulative twist, with the root airfoil carrying the
-          absolute root twist
-        - per-segment ``dihedral_as_rotation_in_degrees`` extracted
-          from the asb LE-to-LE deltas whenever the segment has *no*
-          twist change (so the Z component of the delta is pure
-          dihedral, not a pivot artefact from an rc > 0 sandwich in
-          the original). Segments with non-zero twist delta fall back
-          to ``dihedral_as_rotation_in_degrees = 0`` and let
-          ``dihedral_as_translation`` carry the LE z-offset — matching
-          the Phase 3 behaviour for pure-twist cases.
+        - The position chain in _get_relative_segment_coordinate_system
+          uses only R_x(cumulative_dihedral) to rotate [sweep, length, 0].
+        - Therefore delta = R_x(cum_d) . [sweep, length, 0], giving:
+          - sweep = delta.x  (R_x does not affect X)
+          - length = sqrt(delta.y^2 + delta.z^2)
+          - cum_d = atan2(delta.z, delta.y)
+          - dihedral_delta = cum_d[k] - cum_d[k-1]
+          - incidence_delta = twist[k+1] - twist[k]
 
-        Derivation (rc=0, Wing's relative H chain):
-        let ``T_i`` be the rebuilt segment-i translation, and let
-        ``M_i`` be the cumulative rotation applied to ``T_i`` inside
-        the H chain. Then
-        ``xyz_le_rebuilt[k] = nose + sum_{i<k} M_i · T_i``.
-        For this to equal ``asb.xyz_le[k]`` we need
-        ``T_i = M_i^{-1} · (asb.xyz_le[i+1] - asb.xyz_le[i])``.
-
-        ``M_i`` is tracked iteratively as
-        ``M_{i+1} = M_i · R_x(tip_d_i) · R_y(tip_i_i)`` with
-        ``M_0 = R_y(root_i) · R_x(root_d)``. See
-        cad-modelling-service-dk4 for the full analysis.
+        No M-matrix tracking needed. Dihedral is always extractable
+        (no twist contamination in positions).
 
         Args:
-            xsecs (List[asb.WingXSec]): List of WingXSec objects.
-            symmetric (bool): Whether the wing is symmetric.
+            xsecs: List of WingXSec objects.
+            symmetric: Whether the wing is symmetric.
 
         Returns:
-            WingConfiguration: A new WingConfiguration instance in
-            *relative* mode, with ``rotation_point_rel_chord=0`` on
-            every airfoil.
+            A new WingConfiguration in *relative* mode, with
+            rotation_point_rel_chord=0 and dihedral_as_translation=0
+            on every airfoil.
         """
         asb_wing = asb.Wing(xsecs=xsecs, symmetric=symmetric)
         n = len(asb_wing.xsecs)
@@ -983,18 +943,7 @@ class WingConfiguration:
                 "WingConfiguration.from_asb requires at least 2 xsecs (one segment)."
             )
 
-        def R_y(angle_deg: float) -> ndarray:
-            c = math.cos(math.radians(angle_deg))
-            s = math.sin(math.radians(angle_deg))
-            return np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]])
-
-        def R_x(angle_deg: float) -> ndarray:
-            c = math.cos(math.radians(angle_deg))
-            s = math.sin(math.radians(angle_deg))
-            return np.array([[1, 0, 0], [0, c, -s], [0, s, c]])
-
-        # Per-segment deltas (global frame, includes the original's
-        # cumulative rotations).
+        # Per-segment deltas in global frame.
         deltas: List[ndarray] = []
         for i in range(n - 1):
             delta = (
@@ -1013,40 +962,24 @@ class WingConfiguration:
         # Per-xsec cumulative twist (absolute, as stored by asb).
         cum_twists: List[float] = [float(asb_wing.xsecs[k].twist) for k in range(n)]
 
-        # Per-segment twist delta: tip_i_j = twist[j+1] - twist[j].
-        # For segments where this is non-zero, we cannot distinguish
-        # a real dihedral_as_rotation_in_degrees contribution from an
-        # rc > 0 pivot artefact in the original wing's relative-mode
-        # H chain, so we fall back to d_rot = 0 on those segments.
-        twist_deltas: List[float] = [cum_twists[j + 1] - cum_twists[j] for j in range(n - 1)]
-
-        # Per-xsec cumulative dihedral angle cum_d[k], measured in
-        # degrees. For k in [0, n-2] with zero twist delta, extract
-        # from the delta's (y, z) components: the raw-local translation
-        # has (sweep, length, 0) which, rotated by M_k = R_x(cum_d[k]),
-        # gives (sweep, length·cos, length·sin), so
-        # atan2(delta.z, delta.y) = cum_d[k]. For the last xsec,
-        # duplicate cum_d[n-2] (no outgoing delta). For segments with
-        # non-zero twist delta, keep the previous cum_d (no change).
+        # Per-xsec cumulative dihedral angle, extracted from deltas.
+        # With decoupled frame, delta = R_x(cum_d) . [sweep, length, 0],
+        # so cum_d = atan2(delta.z, delta.y). Always extractable
+        # because twist does not contaminate positions.
         cum_d: List[float] = [0.0] * n
-        running_cum_d = 0.0
         for k in range(n - 1):
-            if abs(twist_deltas[k]) < 1e-9:
-                delta_y = float(deltas[k][1])
-                delta_z = float(deltas[k][2])
-                if abs(delta_y) + abs(delta_z) > 1e-12:
-                    running_cum_d = math.degrees(math.atan2(delta_z, delta_y))
-            cum_d[k] = running_cum_d
-        cum_d[n - 1] = running_cum_d
+            delta_y = float(deltas[k][1])
+            delta_z = float(deltas[k][2])
+            if abs(delta_y) + abs(delta_z) > 1e-12:
+                cum_d[k] = math.degrees(math.atan2(delta_z, delta_y))
+            else:
+                # Zero-length segment: inherit previous dihedral
+                cum_d[k] = cum_d[k - 1] if k > 0 else 0.0
+        cum_d[n - 1] = cum_d[n - 2]
 
         # Root airfoil rotations: absolute cumulative at xsec 0.
         root_i = cum_twists[0]
         root_d = cum_d[0]
-
-        # Iteratively track the cumulative rotation matrix M applied
-        # to each segment's local translation. M at xsec k is
-        # M_k = R_y(root_i) · R_x(root_d) · prod_{m<k} [R_x(tip_d_m) · R_y(tip_i_m)].
-        M = R_y(root_i) @ R_x(root_d)
 
         def _airfoil_name(xsec: asb.WingXSec) -> Optional[str]:
             af = xsec.airfoil
@@ -1054,7 +987,6 @@ class WingConfiguration:
 
         def _make_airfoil_at(
             k: int,
-            d_trans: float,
             incidence: float,
             d_rot: float,
         ) -> Airfoil:
@@ -1062,45 +994,32 @@ class WingConfiguration:
                 airfoil=_airfoil_name(asb_wing.xsecs[k]),
                 chord=float(asb_wing.xsecs[k].chord),
                 dihedral_as_rotation_in_degrees=d_rot,
-                dihedral_as_translation=d_trans,
+                dihedral_as_translation=0.0,
                 incidence=incidence,
                 rotation_point_rel_chord=0.0,
             )
 
-        # Segment 0: build via constructor. The root_airfoil gets the
-        # absolute root twist and the root dihedral (if any), and the
-        # tip_airfoil gets the per-segment tip incidence delta and
-        # tip dihedral delta.
+        # Extract sweep and length from delta directly.
+        # delta = R_x(cum_d) . [sweep, length, 0]
+        # => sweep = delta.x, length = sqrt(delta.y^2 + delta.z^2)
+        def _extract_sweep_length(delta: ndarray) -> tuple[float, float]:
+            sweep = float(delta[0])
+            length = float(math.sqrt(delta[1] ** 2 + delta[2] ** 2))
+            return sweep, length
+
+        # Segment 0
         tip_d_0 = cum_d[1] - cum_d[0]
         tip_i_0 = cum_twists[1] - cum_twists[0]
+        sweep_0, length_0 = _extract_sweep_length(deltas[0])
 
-        # T_0 = M_0^{-1} · delta_0 — the local-frame translation that,
-        # when rotated by M_0 in the H chain, yields delta_0.
-        T_0 = M.T @ deltas[0]
-
-        root_airfoil = _make_airfoil_at(
-            k=0,
-            d_trans=float(T_0[2]),
-            incidence=root_i,
-            d_rot=root_d,
-        )
-
-        tip_airfoil = _make_airfoil_at(
-            k=1,
-            # tip_airfoil.dihedral_as_translation on segment 0 is
-            # consumed by the H chain as the *next* segment's
-            # z-translation (after ``add_segment`` copies it into
-            # segments[1].root_airfoil). Pre-compute T_1 for that.
-            d_trans=0.0,  # will be overwritten below if there is a segment 1
-            incidence=tip_i_0,
-            d_rot=tip_d_0,
-        )
+        root_airfoil = _make_airfoil_at(k=0, incidence=root_i, d_rot=root_d)
+        tip_airfoil = _make_airfoil_at(k=1, incidence=tip_i_0, d_rot=tip_d_0)
 
         wc = WingConfiguration(
             nose_pnt=nose_pnt,
             root_airfoil=root_airfoil,
-            length=float(T_0[1]),
-            sweep=float(T_0[0]),
+            length=length_0,
+            sweep=sweep_0,
             sweep_is_angle=False,
             tip_airfoil=tip_airfoil,
             symmetric=symmetric,
@@ -1108,51 +1027,23 @@ class WingConfiguration:
             spare_list=None,
         )
 
-        # Update M to M_1 after applying segment 0's tip rotations.
-        M = M @ R_x(tip_d_0) @ R_y(tip_i_0)
-
-        # Fix segments[0].tip_airfoil.dihedral_as_translation so that
-        # ``add_segment`` propagates the correct z for segment 1.
-        if n >= 3:
-            T_1 = M.T @ deltas[1]
-            wc.segments[0].tip_airfoil.dihedral_as_translation = float(T_1[2])
-
         for j in range(1, n - 1):
-            # Compute T_j = M_j^{-1} · delta_j. M at this point is M_j
-            # (updated at the end of the previous iteration).
-            T_j = M.T @ deltas[j]
-
             tip_d_j = cum_d[j + 1] - cum_d[j]
             tip_i_j = cum_twists[j + 1] - cum_twists[j]
-
-            # The new segment's tip_airfoil carries T_{j+1}.z (the
-            # *next* segment's z-translation) if there is one, so that
-            # ``add_segment`` propagates it correctly.
-            next_d_trans = 0.0
-            if j + 1 < n - 1:
-                # We need M_{j+1} to compute T_{j+1}.z. Compute it
-                # provisionally from the running M and the about-to-
-                # be-applied tip rotations.
-                M_next = M @ R_x(tip_d_j) @ R_y(tip_i_j)
-                T_next = M_next.T @ deltas[j + 1]
-                next_d_trans = float(T_next[2])
+            sweep_j, length_j = _extract_sweep_length(deltas[j])
 
             new_tip_airfoil = _make_airfoil_at(
                 k=j + 1,
-                d_trans=next_d_trans,
                 incidence=tip_i_j,
                 d_rot=tip_d_j,
             )
 
             wc.add_segment(
-                length=float(T_j[1]),
-                sweep=float(T_j[0]),
+                length=length_j,
+                sweep=sweep_j,
                 sweep_is_angle=False,
                 tip_airfoil=new_tip_airfoil,
                 spare_list=None,
             )
-
-            # Update M to M_{j+1}.
-            M = M @ R_x(tip_d_j) @ R_y(tip_i_j)
 
         return wc

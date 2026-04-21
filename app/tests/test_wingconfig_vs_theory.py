@@ -50,12 +50,19 @@ def _Ry(deg):
 
 
 def compute_expected_xsecs(segments_params):
-    """Compute expected LE positions and cumulative twists from H-matrix theory.
+    """Compute expected LE positions and cumulative twists from decoupled H-matrix theory.
 
-    From docs/WingConfiguration.adoc:
-        H_0 = T(C_0*rc_0, 0, 0) · T(0,0,0) · R_x(δ_0) · R_y(ι_0) · T(-C_0*rc_0, 0, 0)
-        H_i = T(C_i*rc_i, 0, 0) · T(S_{i-1}, L_{i-1}, D_{i-1}) · R_x(δ_i) · R_y(ι_i) · T(-C_i*rc_i, 0, 0)
-        C_N = H_0 · ∏(n=1..N) H_n
+    Decoupled frame computation (GH #162):
+        Position chain uses only R_x(cumulative_dihedral) to rotate
+        [sweep, length, 0]. Twist (R_y) is accumulated separately
+        and applied only as a local rotation at the end, NOT propagated
+        into positions.
+
+        xyz_le[0] = [0, 0, 0]  (origin)
+        xyz_le[k] = sum_{i<k} R_x(gamma_accum_i) . [sweep_i, length_i, 0]
+
+        where gamma_accum_i is the cumulative dihedral up to segment i's
+        root airfoil.
 
     Each x_sec corresponds to one airfoil station:
         x_sec[0] = root airfoil of segment 0
@@ -64,87 +71,35 @@ def compute_expected_xsecs(segments_params):
     Returns list of dicts: [{xyz_le: [x,y,z], twist: float, chord: float}, ...]
     """
     xsecs = []
-    H_chain = []
 
-    for seg_idx, seg in enumerate(segments_params):
-        if seg_idx == 0:
-            # Root airfoil of segment 0
-            C0 = seg["root_chord"]
-            rc0 = seg["root_rc"]
-            delta0 = seg["root_dihedral"]
-            iota0 = seg["root_incidence"]
-
-            H0 = _T(C0*rc0, 0, 0) @ _T(0, 0, 0) @ _Rx(delta0) @ _Ry(iota0) @ _T(-C0*rc0, 0, 0)
-            H_chain.append(H0)
-
-            # x_sec 0: origin from H_0
-            C_curr = H0.copy()
-            origin = C_curr[:3, 3]
-            xsecs.append({
-                "xyz_le": origin.copy(),
-                "twist": iota0,  # "xsecs[0].twist = segments[0].root_airfoil.incidence"
-                "chord": C0,
-            })
-        else:
-            prev = segments_params[seg_idx - 1]
-            # The root of this segment = tip of previous segment
-            # Its parameters come from the previous segment's tip_airfoil
-            Ci = prev["tip_chord"]
-            rci = prev.get("tip_rc", 0.25)
-            deltai = prev.get("tip_dihedral", 0)
-            iotai = prev.get("tip_incidence", 0)
-            Si_prev = prev["sweep"]
-            Li_prev = prev["length"]
-            Di_prev = prev.get("dihedral_translation", 0)
-
-            Hi = _T(Ci*rci, 0, 0) @ _T(Si_prev, Li_prev, Di_prev) @ _Rx(deltai) @ _Ry(iotai) @ _T(-Ci*rci, 0, 0)
-            H_chain.append(Hi)
-
-            # Cumulative transform
-            C_curr = H_chain[0].copy()
-            for H in H_chain[1:]:
-                C_curr = C_curr @ H
-
-            origin = C_curr[:3, 3]
-            # Cumulative twist = sum of all incidences up to this station
-            # From doc: "xsecs[i].twist = sum(ι_k for k <= i)"
-            cum_twist = segments_params[0]["root_incidence"]
-            for k in range(seg_idx):
-                cum_twist += segments_params[k].get("tip_incidence", 0)
-
-            xsecs.append({
-                "xyz_le": origin.copy(),
-                "twist": cum_twist,
-                "chord": Ci,
-            })
-
-    # Last x_sec: tip of last segment
-    last = segments_params[-1]
-    Ci = last["tip_chord"]
-    rci = last.get("tip_rc", 0.25)
-    deltai = last.get("tip_dihedral", 0)
-    iotai = last.get("tip_incidence", 0)
-    Si_prev = last["sweep"]
-    Li_prev = last["length"]
-    Di_prev = last.get("dihedral_translation", 0)
-
-    Hi = _T(Ci*rci, 0, 0) @ _T(Si_prev, Li_prev, Di_prev) @ _Rx(deltai) @ _Ry(iotai) @ _T(-Ci*rci, 0, 0)
-    H_chain.append(Hi)
-
-    C_curr = H_chain[0].copy()
-    for H in H_chain[1:]:
-        C_curr = C_curr @ H
-
-    origin = C_curr[:3, 3]
-    cum_twist = segments_params[0]["root_incidence"]
-    for k in range(len(segments_params)):
-        cum_twist += segments_params[k].get("tip_incidence", 0)
+    # x_sec 0: root airfoil of segment 0, always at origin
+    seg0 = segments_params[0]
+    gamma_accum = seg0["root_dihedral"]
+    theta_accum = seg0["root_incidence"]
 
     xsecs.append({
-        "xyz_le": origin.copy(),
-        "twist": cum_twist,
-        "chord": Ci,
+        "xyz_le": np.array([0.0, 0.0, 0.0]),
+        "twist": theta_accum,
+        "chord": seg0["root_chord"],
     })
+
+    xyz_le = np.zeros(3)
+
+    for seg in segments_params:
+        # Position offset: R_x(gamma_accum) . [sweep, length, 0]
+        R_x_mat = np.array(_Rx(gamma_accum))[:3, :3]
+        offset = R_x_mat @ np.array([seg["sweep"], seg["length"], 0.0])
+        xyz_le = xyz_le + offset
+
+        # Accumulate angles from tip airfoil
+        gamma_accum += seg.get("tip_dihedral", 0)
+        theta_accum += seg.get("tip_incidence", 0)
+
+        xsecs.append({
+            "xyz_le": xyz_le.copy(),
+            "twist": theta_accum,
+            "chord": seg["tip_chord"],
+        })
 
     return xsecs
 
@@ -394,7 +349,6 @@ class TestForwardConversionVsTheory:
 
     # ── Combined (from TestCombinedRoundtrip) ──
 
-    @pytest.mark.xfail(reason="dihedral_as_rotation produces different LE positions than the simple H-matrix theory — known lossy projection, see docs/WingConfigRoundtripProof.adoc")
     def test_washin_with_dihedral_and_sweep(self):
         self._run(
             [_seg_schema(root_incidence=-1.5, tip_incidence=1, root_dihedral=3,
@@ -412,7 +366,6 @@ class TestForwardConversionVsTheory:
             "washin_with_dihedral_and_sweep",
         )
 
-    @pytest.mark.xfail(reason="dihedral_as_rotation produces different LE positions — known lossy projection")
     def test_trapez_wing_full(self):
         self._run(
             [_seg_schema(root_airfoil="naca2424", root_chord=200, root_incidence=2,
@@ -440,7 +393,6 @@ class TestForwardConversionVsTheory:
 
     # ── Drift test: 6-segment wing ──
 
-    @pytest.mark.xfail(reason="dihedral_as_rotation produces different LE positions — known lossy projection")
     def test_drift_6_segment_wing(self):
         schemas = [
             _seg_schema(root_chord=250, tip_chord=230, root_incidence=4, tip_incidence=3,
@@ -474,7 +426,6 @@ class TestForwardConversionVsTheory:
 
     # ── Drift test: 4-segment asymmetric ──
 
-    @pytest.mark.xfail(reason="dihedral_as_rotation produces different LE positions — known lossy projection")
     def test_drift_asymmetric_4_segments(self):
         schemas = [
             _seg_schema(root_chord=300, tip_chord=260, root_incidence=-2, tip_incidence=3,

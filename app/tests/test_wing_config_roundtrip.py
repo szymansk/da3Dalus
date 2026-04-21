@@ -13,10 +13,10 @@ on three levels:
 3. Rendered-shape volume / surface / centroid equality (tolerant)
 
 The user has specified that levels 1 and 2 must be *exact* for
-``nose_pnt``, ``incidence``, ``sweep``, ``dihedral_as_rotation_in_degrees``
-and ``dihedral_as_translation``. Airfoil-thickness drift from chord
-rotation is tolerated at level 3 and will be addressed separately via
-an ``Airfoil.chord_stretch_factor`` in Phase 4.
+``nose_pnt``, ``incidence``, ``sweep``, and
+``dihedral_as_rotation_in_degrees``. With decoupled frame computation,
+incidence no longer contaminates positions, so dihedral is always
+exactly recoverable from the LE-to-LE deltas.
 
 This test is intentionally **marked slow** and only runs on CI when the
 slow workflow is dispatched. The comparison helpers are platform-
@@ -163,31 +163,18 @@ def test_segment_origins_strict(roundtrip_case):
 # Initial sehr grosszuegig, damit wir die *gemessenen* Werte sehen statt
 # in eine fixe Zahl zu rennen. Volumen und Oberflaeche in Prozent; Centroid
 # in mm (wing_config units).
-# Strict (1e-3 / 1e-2 mm) tolerance for all cases that either use
-# only pure-twist, only pure-dihedral_as_rotation_in_degrees, or have
-# rc=0. After Phase 4 (cad-modelling-service-dk4) the full cumulative
-# R_x tracking in ``from_asb`` combined with the
-# ``propagate_cad_metadata`` hook recovers these cases exactly.
-#
-# ``configurator_wing`` is the one remaining relaxed entry: it
-# combines non-zero twist *and* non-zero dihedral_as_rotation_in_degrees
-# on segments that also have ``rotation_point_rel_chord=0.25``. In
-# that regime the asb-stored ``xyz_le`` positions mix twist-induced
-# offsets (from the rc > 0 sandwich) with real dihedral rotations,
-# and our heuristic recovery skips the dihedral extraction whenever
-# the twist delta is non-zero (to avoid mis-attributing the rc
-# artefact). The residual is ~0.2 % volume on configurator_wing;
-# closing it would need a full 3-axis Euler decomposition per
-# segment, which is theoretically straightforward but error-prone
-# and not required by any downstream consumer today. Tracked as a
-# stretch goal on cad-modelling-service-dk4.
+# Strict (1e-3 / 1e-2 mm) tolerance for all cases. With decoupled
+# frame computation (incidence does not propagate into positions),
+# dihedral is always exactly extractable from the LE-to-LE deltas.
+# The former configurator_wing relaxation (due to rc=0.25 +
+# twist+dihedral interleaving) is no longer needed.
 SHAPE_TOL = {
     "single_segment_flat": dict(vol_rel=1e-3, surf_rel=1e-3, centroid_mm=1e-2),
     "single_segment_with_nose_pnt": dict(vol_rel=1e-3, surf_rel=1e-3, centroid_mm=1e-2),
     "single_segment_with_dihedral": dict(vol_rel=1e-3, surf_rel=1e-3, centroid_mm=1e-2),
     "single_segment_with_twist": dict(vol_rel=1e-3, surf_rel=1e-3, centroid_mm=1e-2),
-    "single_segment_with_rc_0_5": dict(vol_rel=1e-3, surf_rel=1e-3, centroid_mm=1e-2),
-    "configurator_wing": dict(vol_rel=5e-3, surf_rel=1e-3, centroid_mm=5e-1),
+    "single_segment_with_twist_and_dihedral": dict(vol_rel=1e-3, surf_rel=1e-3, centroid_mm=1e-2),
+    "configurator_wing": dict(vol_rel=1e-3, surf_rel=1e-3, centroid_mm=1e-2),
     "ehawk_main_wing": dict(vol_rel=1e-3, surf_rel=1e-3, centroid_mm=1e-2),
 }
 
