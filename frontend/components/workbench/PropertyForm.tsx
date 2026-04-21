@@ -193,16 +193,20 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
     useAeroplaneContext();
   const { wing, updateXSec, mutate } = useWing(aeroplaneId, selectedWing);
 
-  // Determine the effective mode: wing's design_model takes precedence over treeMode
-  const effectiveWingMode: "wingconfig" | "asb" = wing?.design_model === "asb"
-    ? "asb"
-    : wing?.design_model === "wc"
-      ? "wingconfig"
-      : (treeMode === "fuselage" ? "wingconfig" : treeMode);
+  // The displayed mode follows the tree toggle directly (user can always switch view)
+  const wingMode: "wingconfig" | "asb" = treeMode === "fuselage" ? "wingconfig" : treeMode;
+
+  // Read-only when viewing a mode that doesn't match the wing's design_model
+  // e.g., WC wing viewed in ASB mode → read-only. ASB wing viewed in WC mode → read-only.
+  // Legacy wings (design_model=null) are never read-only.
+  const isReadOnly = wing?.design_model != null && (
+    (wing.design_model === "wc" && wingMode === "asb") ||
+    (wing.design_model === "asb" && wingMode === "wingconfig")
+  );
 
   const { wingConfig, saveWingConfig, mutate: mutateWc } = useWingConfig(
     aeroplaneId,
-    effectiveWingMode === "wingconfig" ? selectedWing : null,
+    wingMode === "wingconfig" ? selectedWing : null,
   );
   const { fuselage, updateXSec: updateFuselageXSec, mutate: mutateFuselage } = useFuselage(
     aeroplaneId,
@@ -214,8 +218,7 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
 
   // (TED editing is now handled by TedEditDialog — no more tedSaveRef needed)
 
-  // Mode is driven by wing's design_model when set, otherwise falls back to tree toggle
-  const mode: Mode = treeMode === "fuselage" ? "fuselage" : effectiveWingMode;
+  const mode: Mode = treeMode === "fuselage" ? "fuselage" : wingMode;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -486,7 +489,7 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
               </div>
             </div>
           </>
-        ) : asb ? (
+        ) : asb && !isReadOnly ? (
           <>
             {/* ASB mode: airfoil | chord */}
             <div className="flex gap-3">
@@ -543,26 +546,28 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
         )}
       </div>
 
-      {/* Actions */}
-      <div className="flex flex-col items-end gap-2 pt-4">
-        <div className="flex gap-2">
-          <button
-            onClick={handleCancel}
-            disabled={saving}
-            className="rounded-full border border-border-strong bg-background px-3.5 py-2 text-[13px] text-foreground hover:bg-sidebar-accent disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="rounded-full bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
-          >
-            {saving ? "Saving\u2026" : "Save"}
-          </button>
+      {/* Actions — hidden when viewing a cross-model read-only view */}
+      {!isReadOnly && (
+        <div className="flex flex-col items-end gap-2 pt-4">
+          <div className="flex gap-2">
+            <button
+              onClick={handleCancel}
+              disabled={saving}
+              className="rounded-full border border-border-strong bg-background px-3.5 py-2 text-[13px] text-foreground hover:bg-sidebar-accent disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="rounded-full bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
+            >
+              {saving ? "Saving\u2026" : "Save"}
+            </button>
+          </div>
+          {error && <p className="text-[12px] text-red-500">{error}</p>}
         </div>
-        {error && <p className="text-[12px] text-red-500">{error}</p>}
-      </div>
+      )}
     </div>
   );
 }

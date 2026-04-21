@@ -387,11 +387,10 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
   const { wing, isLoading, mutate: mutateWing } = useWing(aeroplaneId, selectedWing);
   const { wingConfig } = useWingConfig(aeroplaneId, selectedWing);
 
-  // When the selected wing has a design_model, lock the tree mode
+  // When the selected wing has a design_model, default to its preferred tree mode
   const wingDesignModel = wing?.design_model ?? null;
-  const isModeLocked = wingDesignModel === "wc" || wingDesignModel === "asb";
 
-  // Auto-set treeMode to match wing's design_model when selecting a wing with a known model
+  // Auto-set treeMode to match wing's design_model when selecting a wing
   useEffect(() => {
     if (wingDesignModel === "wc" && treeMode !== "wingconfig") {
       setTreeMode("wingconfig");
@@ -539,9 +538,22 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
 
   if (rootExpanded) {
     for (const wn of wingNames) {
+      // When viewing ASB tree for a WC wing (or vice versa), disable edit/delete/add actions
+      const isCrossModelView = wingDesignModel != null && (
+        (wingDesignModel === "wc" && treeMode === "asb") ||
+        (wingDesignModel === "asb" && treeMode === "wingconfig")
+      );
       const nodes = treeMode === "wingconfig"
-        ? buildSegmentNodes(wn, wing, wingConfig?.nose_pnt ?? null, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec, handleAddSegment, handleDeleteXsec, handleInsertXsec, onNodeEdit, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed, (wn2, xi, hasTed, cx, cy) => setSegAddMenu({ wingName: wn2, xsecIndex: xi, hasTed, x: cx, y: cy }))
-        : buildXsecNodes(wn, wing, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec, handleDeleteXsec, onNodeEdit, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed, (wn2, xi, hasTed, cx, cy) => setSegAddMenu({ wingName: wn2, xsecIndex: xi, hasTed, x: cx, y: cy }));
+        ? buildSegmentNodes(wn, wing, wingConfig?.nose_pnt ?? null, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec,
+            isCrossModelView ? undefined : handleAddSegment,
+            isCrossModelView ? (() => {}) : handleDeleteXsec,
+            isCrossModelView ? undefined : handleInsertXsec,
+            isCrossModelView ? undefined : onNodeEdit,
+            isCrossModelView ? undefined : onEditSpar, isCrossModelView ? undefined : onDeleteSpar, isCrossModelView ? undefined : onEditTed, isCrossModelView ? undefined : onDeleteTed, isCrossModelView ? undefined : onAddSpar, isCrossModelView ? undefined : onAddTed, isCrossModelView ? undefined : (wn2, xi, hasTed, cx, cy) => setSegAddMenu({ wingName: wn2, xsecIndex: xi, hasTed, x: cx, y: cy }))
+        : buildXsecNodes(wn, wing, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec,
+            isCrossModelView ? (() => {}) : handleDeleteXsec,
+            isCrossModelView ? undefined : onNodeEdit,
+            isCrossModelView ? undefined : onEditSpar, isCrossModelView ? undefined : onDeleteSpar, isCrossModelView ? undefined : onEditTed, isCrossModelView ? undefined : onDeleteTed, isCrossModelView ? undefined : onAddSpar, isCrossModelView ? undefined : onAddTed, isCrossModelView ? undefined : (wn2, xi, hasTed, cx, cy) => setSegAddMenu({ wingName: wn2, xsecIndex: xi, hasTed, x: cx, y: cy }));
       // Attach preview toggle to the wing root node
       if (nodes.length > 0 && onTogglePreview) {
         nodes[0].previewVisible = isWingVisible?.(wn) ?? false;
@@ -627,28 +639,24 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
           Aeroplane Tree
         </span>
         <div className="flex-1" />
-        <div className={`flex overflow-hidden rounded-xl border border-border ${isModeLocked ? "opacity-50" : ""}`}
-          title={isModeLocked ? `Locked to ${wingDesignModel === "wc" ? "Segments" : "X-Secs"} (wing design model)` : undefined}
-        >
+        <div className="flex overflow-hidden rounded-xl border border-border">
           <button
-            onClick={() => !isModeLocked && setTreeMode("wingconfig")}
-            disabled={isModeLocked}
+            onClick={() => setTreeMode("wingconfig")}
             className={`px-2.5 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px] ${
               treeMode === "wingconfig"
                 ? "bg-primary text-primary-foreground"
                 : "bg-card-muted text-muted-foreground hover:text-foreground"
-            } ${isModeLocked ? "cursor-not-allowed" : ""}`}
+            }`}
           >
             Segments
           </button>
           <button
-            onClick={() => !isModeLocked && setTreeMode("asb")}
-            disabled={isModeLocked}
+            onClick={() => setTreeMode("asb")}
             className={`px-2.5 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px] ${
               treeMode === "asb" || treeMode === "fuselage"
                 ? "bg-primary text-primary-foreground"
                 : "bg-card-muted text-muted-foreground hover:text-foreground"
-            } ${isModeLocked ? "cursor-not-allowed" : ""}`}
+            }`}
           >
             X-Secs
           </button>
