@@ -19,6 +19,7 @@ export interface XSec {
 export interface Wing {
   name: string;
   symmetric: boolean;
+  design_model?: "wc" | "asb" | null;
   x_secs: XSec[];
 }
 

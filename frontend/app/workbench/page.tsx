@@ -221,7 +221,7 @@ export default function WorkbenchPage() {
                 <X size={14} />
               </button>
             </div>
-            <PropertyForm />
+            <PropertyForm onGeometryChanged={() => { mutateAllWings(); mutateSelectedWing(); mutateAllFuselages(); }} />
           </div>
         </div>
       )}
