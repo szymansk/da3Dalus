@@ -639,23 +639,23 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
           Aeroplane Tree
         </span>
         <div className="flex-1" />
-        <div className="flex overflow-hidden rounded-xl border border-border">
+        <div className="flex gap-0.5 rounded-full border border-primary/60 bg-card-muted p-0.5">
           <button
             onClick={() => setTreeMode("wingconfig")}
-            className={`px-2.5 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px] ${
+            className={`rounded-full px-3 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px] transition-colors ${
               treeMode === "wingconfig"
                 ? "bg-primary text-primary-foreground"
-                : "bg-card-muted text-muted-foreground hover:text-foreground"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Segments
           </button>
           <button
             onClick={() => setTreeMode("asb")}
-            className={`px-2.5 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px] ${
+            className={`rounded-full px-3 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px] transition-colors ${
               treeMode === "asb" || treeMode === "fuselage"
                 ? "bg-primary text-primary-foreground"
-                : "bg-card-muted text-muted-foreground hover:text-foreground"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             X-Secs
