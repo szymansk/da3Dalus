@@ -722,6 +722,17 @@ export function WingOutlineViewer({
 
       const config = { displayModeBar: false, responsive: true };
 
+      // Guard: if there are no traces at all, render an empty 3D scene
+      // to avoid Plotly GL crashes (uniform3fv errors with zero data)
+      if (traces.length === 0) {
+        traces.push({
+          type: "scatter3d", mode: "lines",
+          x: [0], y: [0], z: [0],
+          line: { color: "transparent", width: 0 },
+          showlegend: false, hoverinfo: "skip",
+        } as PlotlyData);
+      }
+
       // Save camera before replot
       const el = containerRef.current as any;
       const currentCamera = el?.layout?.scene?.camera;
