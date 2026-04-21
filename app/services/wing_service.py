@@ -202,6 +202,7 @@ def create_wing(
                 )
             
             wing = WingModel.from_dict(name=wing_name, data=wing_data.model_dump())
+            wing.design_model = "asb"
             plane.wings.append(wing)
             db.add(wing)
             plane.updated_at = datetime.now()
@@ -250,6 +251,7 @@ def create_wing_from_wing_configuration(
                 wing_name=wing_name,
                 scale=scale,
             )
+            wing_model.design_model = "wc"
             plane.wings.append(wing_model)
             db.add(wing_model)
             plane.updated_at = datetime.now()
@@ -364,6 +366,7 @@ def put_wing_as_wingconfig(
                 wing_name=wing_name,
                 scale=scale,
             )
+            wing_model.design_model = "wc"
             plane.wings.append(wing_model)
             db.add(wing_model)
             plane.updated_at = datetime.now()
@@ -399,6 +402,7 @@ def update_wing(
             wing = get_wing_or_raise(plane, wing_name)
             
             new_wing = WingModel.from_dict(name=wing_name, data=wing_data.model_dump())
+            new_wing.design_model = "asb"
             plane.wings.remove(wing)
             plane.wings.append(new_wing)
             plane.updated_at = datetime.now()

@@ -433,6 +433,10 @@ class AsbWingSchema(BaseModel):
         description="Is the wing symmetric?",
         examples=[True, False],
     )
+    design_model: str = Field(
+        "wc",
+        description="Design model discriminator: 'wc' (WingConfig) or 'asb' (Aerosandbox)",
+    )
     x_secs: list[WingXSecSchema] = Field(
         ...,
         description="List of cross-sections of the wing",
