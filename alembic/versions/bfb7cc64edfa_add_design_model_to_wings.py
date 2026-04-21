@@ -22,7 +22,7 @@ def upgrade() -> None:
     """Add design_model discriminator column to wings table."""
     op.add_column(
         'wings',
-        sa.Column('design_model', sa.String(), nullable=False, server_default='wc'),
+        sa.Column('design_model', sa.String(), nullable=True, server_default=None),
     )
 
 

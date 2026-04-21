@@ -165,15 +165,16 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
 def _assert_design_model(
     db: Session, aeroplane_id: AeroPlaneID, wing_name: str, expected: str,
 ) -> None:
-    """Raise 403 if the wing's design_model doesn't match *expected*.
+    """Raise 409 Conflict if the wing's design_model doesn't match *expected*.
 
-    Silently returns when the wing does not exist yet (creation paths).
-    Uses _call_service to translate domain exceptions into HTTP errors.
+    Returns silently when the wing does not exist (creation paths) or when
+    design_model is NULL (legacy wings not yet classified).
+    Raises HTTP 404 via _call_service if the aeroplane does not exist.
     """
     actual = _call_service(wing_service.get_wing_design_model, db, aeroplane_id, wing_name)
     if actual is not None and actual != expected:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=status.HTTP_409_CONFLICT,
             detail=(
                 f"This wing uses design_model='{actual}'. "
                 f"This endpoint requires design_model='{expected}'."

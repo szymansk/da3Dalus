@@ -1,6 +1,6 @@
 """Tests for design_model API endpoint guards (gh#162).
 
-Verifies that WC wings reject ASB write endpoints (403) and vice versa,
+Verifies that WC wings reject ASB write endpoints (409) and vice versa,
 while read endpoints remain accessible for both design models.
 """
 from __future__ import annotations
@@ -74,7 +74,7 @@ def _create_asb_wing(client: TestClient, aeroplane_id: str, wing_name: str = "w"
 
 
 class TestWcWingGuards:
-    """WC wings must reject ASB write endpoints with 403."""
+    """WC wings must reject ASB write endpoints with 409."""
 
     def test_wc_wing_rejects_asb_update(self, client):
         aid = _create_aeroplane(client, "wc_guard_update")
@@ -88,7 +88,7 @@ class TestWcWingGuards:
             "symmetric": True,
         }
         resp = client.post(f"/aeroplanes/{aid}/wings/w", json=asb_wing)
-        assert resp.status_code == 403
+        assert resp.status_code == 409
         assert "design_model='wc'" in resp.json()["detail"]
 
     def test_wc_wing_rejects_cross_section_create(self, client):
@@ -96,7 +96,7 @@ class TestWcWingGuards:
         _create_wc_wing(client, aid)
         xsec = {"xyz_le": [0, 0.3, 0], "chord": 0.1, "twist": 0, "airfoil": "naca0012"}
         resp = client.post(f"/aeroplanes/{aid}/wings/w/cross_sections/0", json=xsec)
-        assert resp.status_code == 403
+        assert resp.status_code == 409
 
     def test_wc_wing_allows_wingconfig_put(self, client):
         aid = _create_aeroplane(client, "wc_guard_wc_put")
@@ -127,7 +127,7 @@ class TestWcWingGuards:
 
 
 class TestAsbWingGuards:
-    """ASB wings must reject WC write endpoints with 403."""
+    """ASB wings must reject WC write endpoints with 409."""
 
     def test_asb_wing_rejects_wingconfig_put(self, client):
         aid = _create_aeroplane(client, "asb_guard_wc_put")
@@ -136,18 +136,18 @@ class TestAsbWingGuards:
             f"/aeroplanes/{aid}/wings/w/wingconfig",
             json=MINIMAL_WINGCONFIG,
         )
-        assert resp.status_code == 403
+        assert resp.status_code == 409
         assert "design_model='asb'" in resp.json()["detail"]
 
     def test_asb_wing_rejects_from_wingconfig_overwrite(self, client):
-        """from-wingconfig POST on a name that already has an ASB wing -> 403."""
+        """from-wingconfig POST on a name that already has an ASB wing -> 409."""
         aid = _create_aeroplane(client, "asb_guard_wc_create")
         _create_asb_wing(client, aid)
         resp = client.post(
             f"/aeroplanes/{aid}/wings/w/from-wingconfig",
             json=MINIMAL_WINGCONFIG,
         )
-        assert resp.status_code == 403
+        assert resp.status_code == 409
 
     def test_asb_wing_allows_asb_update(self, client):
         aid = _create_aeroplane(client, "asb_guard_asb_up")

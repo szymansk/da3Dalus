@@ -993,15 +993,20 @@ class WingConfiguration:
         # Extract sweep and length from delta directly.
         # delta = R_x(cum_d) . [sweep, length, 0]
         # => sweep = delta.x, length = sqrt(delta.y^2 + delta.z^2)
-        def _extract_sweep_length(delta: ndarray) -> tuple[float, float]:
+        def _extract_sweep_length(delta: ndarray, seg_index: int) -> tuple[float, float]:
             sweep = float(delta[0])
             length = float(math.sqrt(delta[1] ** 2 + delta[2] ** 2))
+            if length < 1e-9:
+                raise ValueError(
+                    f"WingConfiguration.from_asb: segment {seg_index} has near-zero "
+                    f"span length ({length:.2e}). This produces degenerate geometry."
+                )
             return sweep, length
 
         # Segment 0
         tip_d_0 = cum_d[1] - cum_d[0]
         tip_i_0 = cum_twists[1] - cum_twists[0]
-        sweep_0, length_0 = _extract_sweep_length(deltas[0])
+        sweep_0, length_0 = _extract_sweep_length(deltas[0], 0)
 
         root_airfoil = _make_airfoil_at(k=0, incidence=root_i, d_rot=root_d)
         tip_airfoil = _make_airfoil_at(k=1, incidence=tip_i_0, d_rot=tip_d_0)
@@ -1021,7 +1026,7 @@ class WingConfiguration:
         for j in range(1, n - 1):
             tip_d_j = cum_d[j + 1] - cum_d[j]
             tip_i_j = cum_twists[j + 1] - cum_twists[j]
-            sweep_j, length_j = _extract_sweep_length(deltas[j])
+            sweep_j, length_j = _extract_sweep_length(deltas[j], j)
 
             new_tip_airfoil = _make_airfoil_at(
                 k=j + 1,

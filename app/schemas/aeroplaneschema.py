@@ -433,9 +433,9 @@ class AsbWingSchema(BaseModel):
         description="Is the wing symmetric?",
         examples=[True, False],
     )
-    design_model: str = Field(
-        "wc",
-        description="Design model discriminator: 'wc' (WingConfig) or 'asb' (Aerosandbox)",
+    design_model: Optional[Literal["wc", "asb"]] = Field(
+        None,
+        description="Design model discriminator: 'wc' (WingConfig) or 'asb' (Aerosandbox). NULL for legacy wings.",
     )
     x_secs: list[WingXSecSchema] = Field(
         ...,

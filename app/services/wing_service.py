@@ -126,7 +126,7 @@ def get_wing_design_model(db: Session, aeroplane_uuid, wing_name: str) -> str | 
     except SQLAlchemyError as e:
         db.rollback()
         logger.error(f"Database error when getting wing design_model: {e}")
-        raise InternalError(message=f"Database error: {e}")
+        raise InternalError(message="Failed to query wing design model")
 
 
 def _ensure_segment_detail_or_raise(

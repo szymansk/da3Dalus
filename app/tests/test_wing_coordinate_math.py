@@ -498,7 +498,7 @@ class TestMathRoundtrip:
             seg = {
                 "root_chord": asb_xsecs[i]["chord"],
                 "root_incidence": asb_xsecs[i]["twist"] if i == 0 else (asb_xsecs[i]["twist"] - asb_xsecs[i - 1]["twist"]),
-                "root_dihedral": 0,  # lossy: always 0 in reverse        # lossy: always 0 in reverse
+                "root_dihedral": 0,  # lossy: always 0 in reverse
                 "tip_chord": asb_xsecs[i + 1]["chord"],
                 "tip_incidence": asb_xsecs[i + 1]["twist"] - asb_xsecs[i]["twist"],
                 "tip_dihedral": 0,
