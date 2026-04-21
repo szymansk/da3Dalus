@@ -91,6 +91,44 @@ def _assert_non_terminal_xsec_or_raise(xsec_index: int, xsec_count: int) -> None
         )
 
 
+def get_wing_design_model(db: Session, aeroplane_uuid, wing_name: str) -> str | None:
+    """Return the design_model of an existing wing, or None if the wing does not exist.
+
+    Uses a lightweight scalar query and rolls back the implicit transaction
+    so that callers using ``with db.begin():`` are not disrupted.
+    """
+    from sqlalchemy import select
+
+    try:
+        # Verify aeroplane exists
+        plane_exists = db.execute(
+            select(AeroplaneModel.id).filter(AeroplaneModel.uuid == aeroplane_uuid)
+        ).scalar_one_or_none()
+        if plane_exists is None:
+            db.rollback()
+            raise NotFoundError(
+                message="Aeroplane not found",
+                details={"aeroplane_id": str(aeroplane_uuid)},
+            )
+
+        # Get wing design_model via join
+        result = db.execute(
+            select(WingModel.design_model)
+            .join(AeroplaneModel, WingModel.aeroplane_id == AeroplaneModel.id)
+            .filter(AeroplaneModel.uuid == aeroplane_uuid, WingModel.name == wing_name)
+        ).scalar_one_or_none()
+
+        # Roll back the implicit read transaction so db.begin() in service works
+        db.rollback()
+        return result
+    except NotFoundError:
+        raise
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(f"Database error when getting wing design_model: {e}")
+        raise InternalError(message=f"Database error: {e}")
+
+
 def _ensure_segment_detail_or_raise(
     x_sec: WingXSecModel,
     xsec_index: int,
