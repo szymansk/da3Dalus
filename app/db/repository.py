@@ -1,6 +1,6 @@
 from sqlalchemy.orm import joinedload
 
-from app.converters.model_schema_converters import aeroplaneModelToAeroplaneSchema_async
+from app.converters.model_schema_converters import aeroplane_model_to_aeroplane_schema_async
 from app.db.exceptions import NotFoundInDbException
 from app.models import AeroplaneModel, WingModel, WingXSecModel
 from app.models.aeroplanemodel import (
@@ -27,7 +27,7 @@ async def get_aeroplane_by_id(aeroplane_id, db) -> AeroplaneSchema:
                              .filter(AeroplaneModel.uuid == aeroplane_id).first())
     if not plane:
         raise NotFoundInDbException(f"Aeroplane with the given ID ({aeroplane_id}) not found.")
-    plane_schema: AeroplaneSchema = await aeroplaneModelToAeroplaneSchema_async(plane)
+    plane_schema: AeroplaneSchema = await aeroplane_model_to_aeroplane_schema_async(plane)
     return plane_schema
 
 

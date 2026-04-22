@@ -1,3 +1,4 @@
+import math
 import os
 from typing import Any, List, Optional
 
@@ -15,7 +16,7 @@ from cad_designer.airplane.aircraft_topology.fuselage.FuselageConfiguration impo
 from cad_designer.airplane.aircraft_topology.wing import Spare, TrailingEdgeDevice, WingConfiguration
 
 
-async def aeroplaneModelToAeroplaneSchema_async(plane: AeroplaneModel) -> AeroplaneSchema:
+async def aeroplane_model_to_aeroplane_schema_async(plane: AeroplaneModel) -> AeroplaneSchema:
     plane_dict = plane.__dict__.copy()
     plane_dict["wings"] = {w.name: w for w in plane.wings}
     plane_dict["fuselages"] = {f.name: f for f in plane.fuselages}
@@ -231,19 +232,34 @@ def _control_surface_from_ted(
     ted: schemas.TrailingEdgeDeviceDetailSchema,
     fallback: Optional[schemas.ControlSurfaceSchema] = None,
 ) -> schemas.ControlSurfaceSchema:
+    name = ted.name or (fallback.name if fallback else "Control Surface")
+
+    if ted.rel_chord_root is not None:
+        hinge_point = ted.rel_chord_root
+    elif fallback:
+        hinge_point = fallback.hinge_point
+    else:
+        hinge_point = 0.8
+
+    if ted.symmetric is not None:
+        symmetric = ted.symmetric
+    elif fallback:
+        symmetric = fallback.symmetric
+    else:
+        symmetric = True
+
+    if ted.deflection_deg is not None:
+        deflection = float(ted.deflection_deg)
+    elif fallback:
+        deflection = fallback.deflection
+    else:
+        deflection = 0.0
+
     return schemas.ControlSurfaceSchema(
-        name=ted.name or (fallback.name if fallback else "Control Surface"),
-        hinge_point=(
-            ted.rel_chord_root
-            if ted.rel_chord_root is not None
-            else (fallback.hinge_point if fallback else 0.8)
-        ),
-        symmetric=ted.symmetric if ted.symmetric is not None else (fallback.symmetric if fallback else True),
-        deflection=(
-            float(ted.deflection_deg)
-            if ted.deflection_deg is not None
-            else (fallback.deflection if fallback else 0.0)
-        ),
+        name=name,
+        hinge_point=hinge_point,
+        symmetric=symmetric,
+        deflection=deflection,
     )
 
 
@@ -285,7 +301,7 @@ def _scale_asb_wing_geometry_schema(
     wing: schemas.AsbWingSchema,
     scale: float,
 ) -> schemas.AsbWingSchema:
-    if scale == 1.0:
+    if math.isclose(scale, 1.0):
         return wing
 
     scaled_x_secs: List[schemas.WingXSecSchema] = []
@@ -318,7 +334,7 @@ def _asb_fuselage_xsecs_from_schema(
     ]
 
 
-def fuselageSchemaToFuselageConfig(
+def fuselage_schema_to_fuselage_config(
     fuselage: schemas.FuselageSchema,
 ) -> FuselageConfiguration:
     fuselage_config = FuselageConfiguration(name=fuselage.name)
@@ -329,7 +345,7 @@ def fuselageSchemaToFuselageConfig(
     return fuselage_config
 
 
-def fuselageModelToFuselageConfig(
+def fuselage_model_to_fuselage_config(
     fuselage: FuselageModel,
 ) -> FuselageConfiguration:
     fuselage_config = FuselageConfiguration(name=fuselage.name)
@@ -417,7 +433,7 @@ def _resolve_spare_vectors_and_origins(wing_config: WingConfiguration) -> None:
                 wing_config._set_standard_spare_origin_vector(segment_index, spare)
 
 
-async def aeroplaneSchemaToAsbAirplane_async(plane_schema: AeroplaneSchema) -> "asb.Airplane":
+async def aeroplane_schema_to_asb_airplane_async(plane_schema: AeroplaneSchema) -> "asb.Airplane":
     """
     Convert an AeroplaneSchema to an Aerosandbox Airplane object.
 
@@ -456,7 +472,7 @@ async def aeroplaneSchemaToAsbAirplane_async(plane_schema: AeroplaneSchema) -> "
     return asb_airplane
 
 
-async def aeroplaneSchemaToAirplaneConfiguration_async(plane_schema: AeroplaneSchema) -> AirplaneConfiguration:
+async def aeroplane_schema_to_airplane_configuration_async(plane_schema: AeroplaneSchema) -> AirplaneConfiguration:
     if plane_schema.total_mass_kg is None:
         raise ValueError("AeroplaneSchema.total_mass_kg must be set to build AirplaneConfiguration.")
 
@@ -470,7 +486,7 @@ async def aeroplaneSchemaToAirplaneConfiguration_async(plane_schema: AeroplaneSc
     fuselage_configs: Optional[List[FuselageConfiguration]] = None
     if plane_schema.fuselages:
         fuselage_configs = [
-            fuselageSchemaToFuselageConfig(fuselage_schema)
+            fuselage_schema_to_fuselage_config(fuselage_schema)
             for fuselage_schema in plane_schema.fuselages.values()
         ]
 
@@ -482,11 +498,11 @@ async def aeroplaneSchemaToAirplaneConfiguration_async(plane_schema: AeroplaneSc
     )
 
 
-def wingModelToAsbWingSchema(wing: WingModel) -> schemas.AsbWingSchema:
+def wing_model_to_asb_wing_schema(wing: WingModel) -> schemas.AsbWingSchema:
     """Convert a SQLAlchemy ``WingModel`` to its Pydantic
     ``AsbWingSchema`` representation.
 
-    Split out from :func:`wingModelToWingConfig` so that callers that
+    Split out from :func:`wing_model_to_wing_config` so that callers that
     need to cross a process boundary (e.g. the CAD ProcessPoolExecutor
     in ``app.services.cad_service``) can pickle the schema, which is
     picklable, instead of the final :class:`WingConfiguration`, which
@@ -520,13 +536,13 @@ def wingModelToAsbWingSchema(wing: WingModel) -> schemas.AsbWingSchema:
     })
 
 
-def asbWingSchemaToWingConfig(
+def asb_wing_schema_to_wing_config(
     asb_wing: schemas.AsbWingSchema,
     scale: float = 1.0,
 ) -> WingConfiguration:
     """Convert a ``AsbWingSchema`` to a live ``WingConfiguration``.
 
-    This is the second half of :func:`wingModelToWingConfig` and is
+    This is the second half of :func:`wing_model_to_wing_config` and is
     suitable for calling inside a worker process after the schema has
     been transported via pickle.
     """
@@ -537,19 +553,19 @@ def asbWingSchemaToWingConfig(
     return wing_config
 
 
-def wingModelToWingConfig(wing: WingModel, scale: float = 1.0) -> WingConfiguration:
+def wing_model_to_wing_config(wing: WingModel, scale: float = 1.0) -> WingConfiguration:
     """Convert a SQLAlchemy ``WingModel`` to a live ``WingConfiguration``.
 
-    Convenience wrapper around :func:`wingModelToAsbWingSchema` and
-    :func:`asbWingSchemaToWingConfig` for in-process callers. For
+    Convenience wrapper around :func:`wing_model_to_asb_wing_schema` and
+    :func:`asb_wing_schema_to_wing_config` for in-process callers. For
     cross-process transports prefer calling the two halves explicitly
     so the schema (not the config) crosses the process boundary.
     """
-    asb_wing = wingModelToAsbWingSchema(wing)
-    return asbWingSchemaToWingConfig(asb_wing, scale=scale)
+    asb_wing = wing_model_to_asb_wing_schema(wing)
+    return asb_wing_schema_to_wing_config(asb_wing, scale=scale)
 
 
-def wingConfigToAsbWingSchema(
+def wing_config_to_asb_wing_schema(
     wing_config: WingConfiguration,
     wing_name: str,
     scale: float = 1.0,
@@ -641,7 +657,7 @@ def wingConfigToAsbWingSchema(
     )
 
 
-def wingConfigToWingModel(
+def wing_config_to_wing_model(
     wing_config: WingConfiguration,
     wing_name: str,
     scale: float = 1.0,
@@ -654,7 +670,7 @@ def wingConfigToWingModel(
         wing_name: Name to assign to the resulting wing model.
         scale: Scaling used when creating the internal ASB wing (e.g. 0.001 for mm->m).
     """
-    asb_wing_schema = wingConfigToAsbWingSchema(
+    asb_wing_schema = wing_config_to_asb_wing_schema(
         wing_config=wing_config,
         wing_name=wing_name,
         scale=scale,

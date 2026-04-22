@@ -72,13 +72,13 @@ def _run_tessellation_worker(
     try:
         _logger.info("Starting tessellation for %s / %s", aeroplane_id, wing_name)
 
-        from app.converters.model_schema_converters import asbWingSchemaToWingConfig
+        from app.converters.model_schema_converters import asb_wing_schema_to_wing_config
         from cad_designer.airplane.creator.wing import WingLoftCreator
         from cadquery import Workplane
 
         # Rebuild WingConfiguration in the worker (CadQuery types not picklable)
         wing_schema = pickle.loads(wing_schema_pickle)
-        wing_config = asbWingSchemaToWingConfig(wing_schema, scale=wing_scale)
+        wing_config = asb_wing_schema_to_wing_config(wing_schema, scale=wing_scale)
 
         # Create the wing loft geometry via WingLoftCreator
         creator = WingLoftCreator(

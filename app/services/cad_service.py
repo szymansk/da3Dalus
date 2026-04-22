@@ -35,8 +35,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
 from app.converters.model_schema_converters import (
-    asbWingSchemaToWingConfig,
-    wingModelToAsbWingSchema,
+    asb_wing_schema_to_wing_config,
+    wing_model_to_asb_wing_schema,
 )
 from app.core.exceptions import NotFoundError, ValidationError, ConflictError, InternalError
 from app.models import AeroplaneModel, WingModel, WingXSecModel
@@ -294,7 +294,7 @@ def _run_construction_worker(
         # cannot be pickled.
         wing_schemas: Dict[str, Any] = pickle.loads(wing_schemas_pickle)
         wing_config: Dict[str, WingConfiguration] = {
-            name: asbWingSchemaToWingConfig(schema, scale=wing_scale)
+            name: asb_wing_schema_to_wing_config(schema, scale=wing_scale)
             for name, schema in wing_schemas.items()
         }
         fuselages: Optional[Dict[str, FuselageSchema]] = (
@@ -417,11 +417,11 @@ def start_wing_export_task(
     # relationship graph, so it must run in the parent process. The
     # final WingModel → WingConfiguration conversion (which creates
     # unpicklable cq.Vector instances) happens in the worker via
-    # asbWingSchemaToWingConfig. Scale metres → millimetres is applied
+    # asb_wing_schema_to_wing_config. Scale metres → millimetres is applied
     # inside the worker, so the scalar factor crosses the boundary too.
     try:
         wing_schemas: Dict[str, Any] = {
-            wing_name: wingModelToAsbWingSchema(wing),
+            wing_name: wing_model_to_asb_wing_schema(wing),
         }
     except Exception as exc:
         logger.error(

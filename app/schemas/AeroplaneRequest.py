@@ -26,7 +26,7 @@ class ServoSettings(BaseModel):
 
     trans_x: float = 0.0
     trans_y: float = 0.0
-    trans_z: float = 0.0,
+    trans_z: float = 0.0
 
     servo: Optional[Servo]
 

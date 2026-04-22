@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from app import schemas
 from app.core.exceptions import NotFoundError, InternalError, ValidationError
-from app.converters.model_schema_converters import fuselageModelToFuselageConfig, wingModelToWingConfig
+from app.converters.model_schema_converters import fuselage_model_to_fuselage_config, wing_model_to_wing_config
 from app.models.aeroplanemodel import AeroplaneModel
 from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import AirplaneConfiguration
 
@@ -235,7 +235,7 @@ def get_aeroplane_airplane_configuration(db: Session, aeroplane_uuid) -> dict:
         )
 
     try:
-        wing_configurations = [wingModelToWingConfig(wing) for wing in aeroplane.wings]
+        wing_configurations = [wing_model_to_wing_config(wing) for wing in aeroplane.wings]
     except Exception as exc:
         logger.error("Failed to convert wings for aeroplane %s: %s", aeroplane_uuid, exc)
         raise InternalError(
@@ -243,7 +243,7 @@ def get_aeroplane_airplane_configuration(db: Session, aeroplane_uuid) -> dict:
         )
     try:
         fuselage_configurations = (
-            [fuselageModelToFuselageConfig(fuselage) for fuselage in aeroplane.fuselages]
+            [fuselage_model_to_fuselage_config(fuselage) for fuselage in aeroplane.fuselages]
             if aeroplane.fuselages
             else None
         )
