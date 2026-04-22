@@ -59,6 +59,12 @@ export default function ConstructionPlansPage() {
   const [executeDialogOpen, setExecuteDialogOpen] = useState(false);
   const [executeAeroplaneId, setExecuteAeroplaneId] = useState<string>("");
 
+  // New Plan dialog state
+  const [newPlanDialogOpen, setNewPlanDialogOpen] = useState(false);
+  const [newPlanName, setNewPlanName] = useState("");
+  const [newPlanFromTemplate, setNewPlanFromTemplate] = useState(false);
+  const [newPlanTemplateId, setNewPlanTemplateId] = useState<number | null>(null);
+
   // CadViewer modal state
   const [cadViewerOpen, setCadViewerOpen] = useState(false);
   const [cadViewerFullscreen, setCadViewerFullscreen] = useState(false);
@@ -113,18 +119,49 @@ export default function ConstructionPlansPage() {
 
   // ── Plan CRUD ───────────────────────────────────────────────────
 
-  async function handleNewPlan() {
-    const name = prompt("Plan name:");
-    if (!name?.trim()) return;
-    try {
-      const created = await createPlan({
+  function handleNewPlan() {
+    if (viewMode === "plans") {
+      // Open the new plan dialog with template selection
+      setNewPlanName("");
+      setNewPlanFromTemplate(false);
+      setNewPlanTemplateId(null);
+      setNewPlanDialogOpen(true);
+    } else {
+      // Templates mode: simple prompt (no template-from-template)
+      const name = prompt("Template name:");
+      if (!name?.trim()) return;
+      createPlan({
         name: name.trim(),
         tree_json: { $TYPE: "ConstructionRootNode", creator_id: "root", successors: [] },
-        plan_type: viewMode === "templates" ? "template" : "plan",
-        aeroplane_id: viewMode === "plans" ? aeroplaneId ?? undefined : undefined,
-      });
-      activeMutate();
+        plan_type: "template",
+      })
+        .then((created) => {
+          activeMutate();
+          setSelectedPlanId(created.id);
+        })
+        .catch((err) => alert(err instanceof Error ? err.message : "Failed to create template"));
+    }
+  }
+
+  async function handleNewPlanSubmit() {
+    const name = newPlanName.trim();
+    if (!name) return;
+    try {
+      let created;
+      if (newPlanFromTemplate && newPlanTemplateId != null) {
+        created = await instantiateTemplate(aeroplaneId!, newPlanTemplateId, name);
+        mutateAeroplanePlans();
+      } else {
+        created = await createPlan({
+          name,
+          tree_json: { $TYPE: "ConstructionRootNode", creator_id: "root", successors: [] },
+          plan_type: "plan",
+          aeroplane_id: aeroplaneId ?? undefined,
+        });
+        activeMutate();
+      }
       setSelectedPlanId(created.id);
+      setNewPlanDialogOpen(false);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to create plan");
     }
@@ -712,6 +749,111 @@ export default function ConstructionPlansPage() {
                 />
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* New Plan Dialog */}
+      {newPlanDialogOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={() => setNewPlanDialogOpen(false)}
+        >
+          <div
+            className="flex w-[480px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
+              New Plan
+            </h2>
+
+            {/* Plan name */}
+            <label className="flex flex-col gap-1">
+              <span className="text-[12px] text-muted-foreground">Plan name</span>
+              <input
+                type="text"
+                value={newPlanName}
+                onChange={(e) => setNewPlanName(e.target.value)}
+                placeholder="Enter plan name..."
+                autoFocus
+                className="rounded-xl border border-border bg-input px-3 py-2 text-[12px] text-foreground outline-none"
+              />
+            </label>
+
+            {/* Template selection radio */}
+            <fieldset className="flex flex-col gap-2">
+              <span className="text-[12px] text-muted-foreground">Start from</span>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="newPlanSource"
+                  checked={!newPlanFromTemplate}
+                  onChange={() => {
+                    setNewPlanFromTemplate(false);
+                    setNewPlanTemplateId(null);
+                  }}
+                  className="accent-[#FF8400]"
+                />
+                <span className="text-[12px] text-foreground">Empty plan</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="newPlanSource"
+                  checked={newPlanFromTemplate}
+                  onChange={() => setNewPlanFromTemplate(true)}
+                  className="accent-[#FF8400]"
+                />
+                <span className="text-[12px] text-foreground">From template</span>
+              </label>
+            </fieldset>
+
+            {/* Template dropdown (visible when "From template" is selected) */}
+            {newPlanFromTemplate && (
+              <div className="flex flex-col gap-2">
+                <select
+                  value={newPlanTemplateId ?? ""}
+                  onChange={(e) =>
+                    setNewPlanTemplateId(e.target.value ? parseInt(e.target.value, 10) : null)
+                  }
+                  className="rounded-xl border border-border bg-input px-3 py-2 text-[12px] text-foreground"
+                >
+                  <option value="">Select a template...</option>
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.step_count} steps)
+                    </option>
+                  ))}
+                </select>
+                {/* Show description of selected template */}
+                {newPlanTemplateId != null && (() => {
+                  const selected = templates.find((t) => t.id === newPlanTemplateId);
+                  return selected?.description ? (
+                    <p className="text-[11px] text-muted-foreground">{selected.description}</p>
+                  ) : null;
+                })()}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setNewPlanDialogOpen(false)}
+                className="rounded-full border border-border px-4 py-2 text-[12px] text-muted-foreground hover:bg-sidebar-accent"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleNewPlanSubmit}
+                disabled={
+                  !newPlanName.trim() ||
+                  (newPlanFromTemplate && newPlanTemplateId == null)
+                }
+                className="rounded-full bg-primary px-4 py-2 text-[12px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
+              >
+                Create
+              </button>
+            </div>
           </div>
         </div>
       )}
