@@ -58,10 +58,8 @@ async def get_stability_summary(
     plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
     try:
-        asb_airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
-        result, _ = await analyse_aerodynamics(
-            analysis_tool, operating_point, asb_airplane
-        )
+        asb_airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
+        result, _ = analyse_aerodynamics(analysis_tool, operating_point, asb_airplane)
     except Exception as e:
         logger.error("Error computing stability: %s", e)
         raise InternalError(message=f"Stability analysis error: {e}")

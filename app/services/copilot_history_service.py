@@ -13,9 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 def _get_aeroplane(db: Session, aeroplane_uuid) -> AeroplaneModel:
-    aeroplane = db.query(AeroplaneModel).filter(
-        AeroplaneModel.uuid == aeroplane_uuid
-    ).first()
+    aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
     if not aeroplane:
         raise NotFoundError(entity="Aeroplane", resource_id=aeroplane_uuid)
     return aeroplane
@@ -39,9 +37,7 @@ def get_history(db: Session, aeroplane_uuid) -> CopilotHistory:
     return CopilotHistory(messages=messages)
 
 
-def append_message(
-    db: Session, aeroplane_uuid, data: CopilotMessageWrite
-) -> CopilotMessageRead:
+def append_message(db: Session, aeroplane_uuid, data: CopilotMessageWrite) -> CopilotMessageRead:
     try:
         aeroplane = _get_aeroplane(db, aeroplane_uuid)
         next_index = len(aeroplane.copilot_messages)
@@ -69,7 +65,7 @@ def append_message(
 def clear_history(db: Session, aeroplane_uuid) -> None:
     try:
         aeroplane = _get_aeroplane(db, aeroplane_uuid)
-        for msg in list(aeroplane.copilot_messages):
+        for msg in list(aeroplane.copilot_messages):  # list() required: deleting during iteration
             db.delete(msg)
         db.commit()
     except NotFoundError:
