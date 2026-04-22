@@ -14,11 +14,34 @@ on:
         default: false
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Detect changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'app/**'
+              - 'cad_designer/**'
+              - 'pyproject.toml'
+              - 'poetry.lock'
+              - 'alembic/**'
+            frontend:
+              - 'frontend/**'
+
   fast:
-    # Default job: skips slow tests and tests that need the vendored AVL
-    # binary. Target amd64 Linux only — CadQuery and Aerosandbox are
-    # intentionally excluded on linux/aarch64 via environment markers in
-    # pyproject.toml, so an arm64 matrix would fail dependency resolution.
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -74,6 +97,8 @@ jobs:
           if-no-files-found: ignore
 
   frontend:
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -107,7 +132,12 @@ jobs:
           if-no-files-found: ignore
 
   sonarcloud:
-    needs: [fast, frontend]
+    needs: [changes, fast, frontend]
+    if: |
+      always() &&
+      (needs.fast.result == 'success' || needs.fast.result == 'skipped') &&
+      (needs.frontend.result == 'success' || needs.frontend.result == 'skipped') &&
+      (needs.fast.result == 'success' || needs.frontend.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -116,11 +146,13 @@ jobs:
           fetch-depth: 0
 
       - name: Download Python coverage report
+        if: ${{ needs.fast.result == 'success' }}
         uses: actions/download-artifact@v5
         with:
           name: coverage-xml-py3.12
 
       - name: Download frontend coverage report
+        if: ${{ needs.frontend.result == 'success' }}
         uses: actions/download-artifact@v5
         with:
           name: frontend-coverage-lcov
@@ -130,10 +162,9 @@ jobs:
         uses: SonarSource/sonarcloud-github-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          
+
   slow:
-    # Only runs on manual workflow_dispatch with run_slow=true. Contains
-    # the heavy end-to-end CAD workflow tests that take 3-10 minutes.
+    needs: changes
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_slow }}
     runs-on: ubuntu-latest
     strategy:
@@ -168,12 +199,6 @@ jobs:
         run: poetry install --no-interaction --no-root
 
       - name: Run full suite including slow E2E tests
-        # Runs the full pytest suite (fast + slow marked). After the
-        # cad_service.py ProcessPoolExecutor refactor, the previously
-        # hanging CAD E2E test should complete within ~3 minutes.
-        # Wall-clock SIGKILL after 900s remains as a safety net.
-        # Verbose + unbuffered output + faulthandler stay in place for
-        # future diagnostic value at basically zero cost.
         run: |
           timeout --kill-after=30s 900 \
             poetry run pytest -v -s --capture=no --tb=short
