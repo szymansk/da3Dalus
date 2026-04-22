@@ -25,13 +25,19 @@ class OperationStatusResponse(BaseModel):
 
 
 # Handle an aeroplane fuselages
-@router.get("/aeroplanes/{aeroplane_id}/fuselages",
-            status_code=status.HTTP_200_OK,
-            tags=["fuselages"],
-            operation_id="get_aeroplane_fuselages")
+@router.get(
+    "/aeroplanes/{aeroplane_id}/fuselages",
+    status_code=status.HTTP_200_OK,
+    tags=["fuselages"],
+    operation_id="get_aeroplane_fuselages",
+    responses={
+        404: {"description": "Aeroplane not found"},
+        500: {"description": "Internal server error"},
+    },
+)
 async def get_aeroplane_fuselages(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
-        db: Annotated[Session, Depends(get_db)]
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> List[str]:
     """
     Returns a list of aeroplane's fuselage names.
@@ -53,16 +59,23 @@ async def get_aeroplane_fuselages(
 
 
 # Handle an aeroplane fuselage
-@router.put("/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}",
-            status_code=status.HTTP_201_CREATED,
-            response_model=OperationStatusResponse,
-            tags=["fuselages"],
-            operation_id="create_aeroplane_fuselage")
+@router.put(
+    "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}",
+    status_code=status.HTTP_201_CREATED,
+    response_model=OperationStatusResponse,
+    tags=["fuselages"],
+    operation_id="create_aeroplane_fuselage",
+    responses={
+        404: {"description": "Aeroplane not found"},
+        409: {"description": "Fuselage name conflict"},
+        500: {"description": "Internal server error"},
+    },
+)
 async def create_aeroplane_fuselage(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
-        fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
-        request: Annotated[schemas.FuselageSchema, Body(..., description="The new fuselage data")],
-        db: Annotated[Session, Depends(get_db)]
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
+    request: Annotated[schemas.FuselageSchema, Body(..., description="The new fuselage data")],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """
     Create the fuselage for the aeroplane.
@@ -89,6 +102,7 @@ async def create_aeroplane_fuselage(
 
             # Auto-sync: create group in component tree (gh#108)
             from app.services.component_tree_service import sync_group_for_fuselage
+
             sync_group_for_fuselage(db, str(aeroplane_id), fuselage_name)
         return OperationStatusResponse(status="created", operation="create_aeroplane_fuselage")
     except SQLAlchemyError as e:
@@ -106,24 +120,24 @@ async def create_aeroplane_fuselage(
     response_model=OperationStatusResponse,
     status_code=status.HTTP_200_OK,
     tags=["fuselages"],
-    operation_id="update_aeroplane_fuselage"
+    operation_id="update_aeroplane_fuselage",
+    responses={
+        404: {"description": "Aeroplane or fuselage not found"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def update_aeroplane_fuselage(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
-        fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
-        request: Annotated[schemas.FuselageSchema, Body(..., description="The new fuselage data")],
-        db: Annotated[Session, Depends(get_db)],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
+    request: Annotated[schemas.FuselageSchema, Body(..., description="The new fuselage data")],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """
     Overwrite an existing fuselage with the data in the request.
     """
     try:
         with db.begin():
-            plane = (
-                db.query(AeroplaneModel)
-                .filter(AeroplaneModel.uuid == aeroplane_id)
-                .first()
-            )
+            plane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
             if not plane:
                 raise HTTPException(404, "Aeroplane not found")
 
@@ -140,6 +154,7 @@ async def update_aeroplane_fuselage(
 
             # Auto-sync: ensure group exists in component tree (gh#108)
             from app.services.component_tree_service import sync_group_for_fuselage
+
             sync_group_for_fuselage(db, str(aeroplane_id), fuselage_name)
         return OperationStatusResponse(status="ok", operation="update_aeroplane_fuselage")
     except HTTPException:
@@ -152,13 +167,19 @@ async def update_aeroplane_fuselage(
         raise HTTPException(500, f"Unexpected error: {e}")
 
 
-@router.get("/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}",
-            tags=["fuselages"],
-            operation_id="get_aeroplane_fuselage")
+@router.get(
+    "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}",
+    tags=["fuselages"],
+    operation_id="get_aeroplane_fuselage",
+    responses={
+        404: {"description": "Aeroplane or fuselage not found"},
+        500: {"description": "Internal server error"},
+    },
+)
 async def get_aeroplane_fuselage(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
-        fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
-        db: Annotated[Session, Depends(get_db)]
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> schemas.FuselageSchema:
     """
     Returns the aeroplane fuselage.
@@ -188,12 +209,16 @@ async def get_aeroplane_fuselage(
     response_model=OperationStatusResponse,
     status_code=status.HTTP_200_OK,
     tags=["fuselages"],
-    operation_id="delete_aeroplane_fuselage"
+    operation_id="delete_aeroplane_fuselage",
+    responses={
+        404: {"description": "Aeroplane or fuselage not found"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def delete_aeroplane_fuselage(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
-        fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
-        db: Annotated[Session, Depends(get_db)]
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """
     Delete a fuselage.
@@ -212,6 +237,7 @@ async def delete_aeroplane_fuselage(
 
             # Auto-sync: remove fuselage group from component tree (gh#108)
             from app.services.component_tree_service import delete_synced_nodes
+
             delete_synced_nodes(db, str(aeroplane_id), f"fuselage:{fuselage_name}")
         return OperationStatusResponse(status="ok", operation="delete_aeroplane_fuselage")
     except SQLAlchemyError as e:
@@ -231,12 +257,16 @@ async def delete_aeroplane_fuselage(
     "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}/cross_sections",
     status_code=status.HTTP_200_OK,
     tags=["fuselage-cross-sections"],
-    operation_id="get_fuselage_cross_sections"
+    operation_id="get_fuselage_cross_sections",
+    responses={
+        404: {"description": "Aeroplane or fuselage not found"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def get_aeroplane_fuselage_cross_sections(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
-        fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
-        db: Annotated[Session, Depends(get_db)]
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> List[schemas.FuselageXSecSuperEllipseSchema]:
     """
     Returns the fuselage's cross-sections as a list.
@@ -268,12 +298,16 @@ async def get_aeroplane_fuselage_cross_sections(
     status_code=status.HTTP_200_OK,
     response_model=OperationStatusResponse,
     tags=["fuselage-cross-sections"],
-    operation_id="delete_all_fuselage_cross_sections"
+    operation_id="delete_all_fuselage_cross_sections",
+    responses={
+        404: {"description": "Aeroplane or fuselage not found"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def delete_aeroplane_fuselage_cross_sections(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
-        fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
-        db: Annotated[Session, Depends(get_db)]
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """
     Delete all cross-sections of a fuselage.
@@ -305,13 +339,17 @@ async def delete_aeroplane_fuselage_cross_sections(
     "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}/cross_sections/{cross_section_index}",
     status_code=status.HTTP_200_OK,
     tags=["fuselage-cross-sections"],
-    operation_id="get_fuselage_cross_section"
+    operation_id="get_fuselage_cross_section",
+    responses={
+        404: {"description": "Aeroplane, fuselage, or cross-section not found"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def get_aeroplane_fuselage_cross_section(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
-        fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
-        cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
-        db: Annotated[Session, Depends(get_db)]
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
+    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> schemas.FuselageXSecSuperEllipseSchema:
     """
     Returns the aeroplane fuselage cross-section at the specified index.
@@ -343,16 +381,28 @@ async def get_aeroplane_fuselage_cross_section(
     response_model=OperationStatusResponse,
     status_code=status.HTTP_201_CREATED,
     tags=["fuselage-cross-sections"],
-    operation_id="create_fuselage_cross_section"
+    operation_id="create_fuselage_cross_section",
+    responses={
+        404: {"description": "Aeroplane or fuselage not found"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def create_aeroplane_fuselage_cross_section(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
-        fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
-        cross_section_index: Annotated[int, Path(...,
-                                        description="The index where it will be spliced into the list of cross sections. (-1 is the end of the list, 0 is the start of the list)")],
-        request: Annotated[schemas.FuselageXSecSuperEllipseSchema, Body(..., description="Fuselage cross section request")],
-        db: Annotated[Session, Depends(get_db)]
-) :
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
+    cross_section_index: Annotated[
+        int,
+        Path(
+            ...,
+            description="The index where it will be spliced into the list of cross sections. (-1 is the end of the list, 0 is the start of the list)",
+        ),
+    ],
+    request: Annotated[
+        schemas.FuselageXSecSuperEllipseSchema,
+        Body(..., description="Fuselage cross section request"),
+    ],
+    db: Annotated[Session, Depends(get_db)],
+):
     """
     Creates a new cross-section for the fuselage and splice it into the list of cross-sections.
     """
@@ -406,14 +456,18 @@ async def create_aeroplane_fuselage_cross_section(
     response_model=OperationStatusResponse,
     status_code=status.HTTP_200_OK,
     tags=["fuselage-cross-sections"],
-    operation_id="update_fuselage_cross_section"
+    operation_id="update_fuselage_cross_section",
+    responses={
+        404: {"description": "Aeroplane, fuselage, or cross-section not found"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def update_aeroplane_fuselage_cross_section(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
-        fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
-        cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
-        request: Annotated[schemas.FuselageXSecSuperEllipseSchema, Body(...)],
-        db: Annotated[Session, Depends(get_db)]
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
+    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    request: Annotated[schemas.FuselageXSecSuperEllipseSchema, Body(...)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """
     Updates the cross-section for the fuselage.
@@ -448,16 +502,22 @@ async def update_aeroplane_fuselage_cross_section(
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
 
-@router.delete("/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}/cross_sections/{cross_section_index}",
-               status_code=status.HTTP_200_OK,
-               response_model=OperationStatusResponse,
-               tags=["fuselage-cross-sections"],
-               operation_id="delete_fuselage_cross_section")
+@router.delete(
+    "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}/cross_sections/{cross_section_index}",
+    status_code=status.HTTP_200_OK,
+    response_model=OperationStatusResponse,
+    tags=["fuselage-cross-sections"],
+    operation_id="delete_fuselage_cross_section",
+    responses={
+        404: {"description": "Aeroplane, fuselage, or cross-section not found"},
+        500: {"description": "Internal server error"},
+    },
+)
 async def delete_aeroplane_fuselage_cross_section(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
-        fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
-        cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
-        db: Annotated[Session, Depends(get_db)]
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
+    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """
     Delete a cross-section.

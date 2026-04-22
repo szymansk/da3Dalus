@@ -34,10 +34,14 @@ def _raise_http(exc: ServiceException) -> None:
     if isinstance(exc, NotFoundError):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     if isinstance(exc, (ValidationError, ValidationDomainError)):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message
+        ) from exc
     if isinstance(exc, ConflictError):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
-    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message) from exc
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message
+    ) from exc
 
 
 def _call(func, *args, **kwargs):
@@ -52,7 +56,13 @@ def _call(func, *args, **kwargs):
 @router.get(
     "",
     status_code=status.HTTP_200_OK,
-    operation_id="list_components"
+    operation_id="list_components",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def list_components(
     db: Annotated[Session, Depends(get_db)],
@@ -63,11 +73,7 @@ async def list_components(
     return _call(svc.list_components, db, component_type, q)
 
 
-@router.get(
-    "/types",
-    status_code=status.HTTP_200_OK,
-    operation_id="list_component_types"
-)
+@router.get("/types", status_code=status.HTTP_200_OK, operation_id="list_component_types")
 async def list_component_types(
     db: Annotated[Session, Depends(get_db)],
 ) -> ComponentTypesResponse:
@@ -82,7 +88,13 @@ async def list_component_types(
 @router.post(
     "",
     status_code=status.HTTP_201_CREATED,
-    operation_id="create_component"
+    operation_id="create_component",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def create_component(
     body: Annotated[ComponentWrite, Body(..., description="Component data")],
@@ -95,7 +107,13 @@ async def create_component(
 @router.get(
     "/{component_id}",
     status_code=status.HTTP_200_OK,
-    operation_id="get_component"
+    operation_id="get_component",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def get_component(
     component_id: Annotated[int, Path(..., description="The component ID")],
@@ -108,7 +126,13 @@ async def get_component(
 @router.put(
     "/{component_id}",
     status_code=status.HTTP_200_OK,
-    operation_id="update_component"
+    operation_id="update_component",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def update_component(
     component_id: Annotated[int, Path(..., description="The component ID")],
@@ -123,6 +147,12 @@ async def update_component(
     "/{component_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     operation_id="delete_component",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def delete_component(
     component_id: Annotated[int, Path(..., description="The component ID")],
@@ -140,7 +170,13 @@ MODELS_DIR = FilePath("tmp") / "component_models"
 @router.post(
     "/{component_id}/model",
     status_code=status.HTTP_200_OK,
-    operation_id="upload_component_model"
+    operation_id="upload_component_model",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Unsupported file type or validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def upload_component_model(
     component_id: Annotated[int, Path(..., description="The component ID")],
@@ -162,24 +198,35 @@ async def upload_component_model(
     with dest.open("wb") as out:
         shutil.copyfileobj(file.file, out)
 
-    return _call(svc.update_component, db, component_id, ComponentWrite(
-        name=comp.name,
-        component_type=comp.component_type,
-        manufacturer=comp.manufacturer,
-        description=comp.description,
-        mass_g=comp.mass_g,
-        bbox_x_mm=comp.bbox_x_mm,
-        bbox_y_mm=comp.bbox_y_mm,
-        bbox_z_mm=comp.bbox_z_mm,
-        model_ref=str(dest),
-        specs=comp.specs,
-    ))
+    return _call(
+        svc.update_component,
+        db,
+        component_id,
+        ComponentWrite(
+            name=comp.name,
+            component_type=comp.component_type,
+            manufacturer=comp.manufacturer,
+            description=comp.description,
+            mass_g=comp.mass_g,
+            bbox_x_mm=comp.bbox_x_mm,
+            bbox_y_mm=comp.bbox_y_mm,
+            bbox_z_mm=comp.bbox_z_mm,
+            model_ref=str(dest),
+            specs=comp.specs,
+        ),
+    )
 
 
 @router.get(
     "/{component_id}/model",
     status_code=status.HTTP_200_OK,
     operation_id="download_component_model",
+    responses={
+        404: {"description": "Component or model file not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def download_component_model(
     component_id: Annotated[int, Path(..., description="The component ID")],

@@ -26,10 +26,14 @@ def _raise_http(exc: ServiceException) -> None:
     if isinstance(exc, NotFoundError):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     if isinstance(exc, (ValidationError, ValidationDomainError)):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message
+        ) from exc
     if isinstance(exc, ConflictError):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
-    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message) from exc
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message
+    ) from exc
 
 
 def _call(func, *args, **kwargs):
@@ -45,7 +49,13 @@ def _call(func, *args, **kwargs):
     "/aeroplanes/{aeroplane_id}/weight-items",
     status_code=status.HTTP_200_OK,
     tags=["weight-items"],
-    operation_id="list_weight_items"
+    operation_id="list_weight_items",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def list_weight_items(
     aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
@@ -59,7 +69,13 @@ async def list_weight_items(
     "/aeroplanes/{aeroplane_id}/weight-items",
     status_code=status.HTTP_201_CREATED,
     tags=["weight-items"],
-    operation_id="create_weight_item"
+    operation_id="create_weight_item",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def create_weight_item(
     aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
@@ -74,7 +90,13 @@ async def create_weight_item(
     "/aeroplanes/{aeroplane_id}/weight-items/{item_id}",
     status_code=status.HTTP_200_OK,
     tags=["weight-items"],
-    operation_id="get_weight_item"
+    operation_id="get_weight_item",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def get_weight_item(
     aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
@@ -89,7 +111,13 @@ async def get_weight_item(
     "/aeroplanes/{aeroplane_id}/weight-items/{item_id}",
     status_code=status.HTTP_200_OK,
     tags=["weight-items"],
-    operation_id="update_weight_item"
+    operation_id="update_weight_item",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def update_weight_item(
     aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
@@ -106,6 +134,12 @@ async def update_weight_item(
     status_code=status.HTTP_204_NO_CONTENT,
     tags=["weight-items"],
     operation_id="delete_weight_item",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def delete_weight_item(
     aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],

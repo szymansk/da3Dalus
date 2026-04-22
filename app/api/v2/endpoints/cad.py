@@ -81,6 +81,12 @@ def _ensure_file_under_tmp(file_path: str, aeroplane_id: str) -> FilePath:
     status_code=http.HTTPStatus.ACCEPTED,
     tags=["cad"],
     operation_id="start_wing_tessellation",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def start_wing_tessellation(
     aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
@@ -124,6 +130,12 @@ async def start_wing_tessellation(
     "/aeroplanes/{aeroplane_id}/tessellation",
     tags=["cad"],
     operation_id="get_aeroplane_tessellation",
+    responses={
+        404: {"description": "Resource not found or no cached tessellations"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def get_aeroplane_tessellation(
     aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
@@ -235,6 +247,12 @@ async def get_aeroplane_tessellation(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}",
     status_code=http.HTTPStatus.ACCEPTED,
     operation_id="create_wing_loft_export",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def create_wing_loft(
     aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
@@ -289,6 +307,12 @@ async def create_wing_loft(
     "/aeroplanes/{aeroplane_id}/status",
     response_model_exclude_none=True,
     operation_id="get_aeroplane_task_status",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def get_aeroplane_task_status(
     aeroplane_id: str,
@@ -340,6 +364,12 @@ async def get_aeroplane_task_status(
 @router.get(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}/zip",
     operation_id="download_export_zip",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def download_aeroplane_zip(
     aeroplane_id: str,

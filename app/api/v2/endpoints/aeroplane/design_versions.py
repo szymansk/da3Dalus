@@ -30,10 +30,14 @@ def _raise_http(exc: ServiceException) -> None:
     if isinstance(exc, NotFoundError):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     if isinstance(exc, (ValidationError, ValidationDomainError)):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message
+        ) from exc
     if isinstance(exc, ConflictError):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
-    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message) from exc
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message
+    ) from exc
 
 
 def _call(func, *args, **kwargs):
@@ -50,6 +54,12 @@ def _call(func, *args, **kwargs):
     status_code=status.HTTP_200_OK,
     tags=["design-versions"],
     operation_id="list_design_versions",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def list_design_versions(
     aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
@@ -64,6 +74,12 @@ async def list_design_versions(
     status_code=status.HTTP_201_CREATED,
     tags=["design-versions"],
     operation_id="create_design_version",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def create_design_version(
     aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
@@ -79,6 +95,12 @@ async def create_design_version(
     status_code=status.HTTP_200_OK,
     tags=["design-versions"],
     operation_id="get_design_version",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def get_design_version(
     aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
@@ -94,6 +116,12 @@ async def get_design_version(
     status_code=status.HTTP_204_NO_CONTENT,
     tags=["design-versions"],
     operation_id="delete_design_version",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def delete_design_version(
     aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
@@ -109,6 +137,12 @@ async def delete_design_version(
     status_code=status.HTTP_200_OK,
     tags=["design-versions"],
     operation_id="diff_design_versions",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def diff_design_versions(
     aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],

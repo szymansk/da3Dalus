@@ -25,10 +25,14 @@ def _raise_http(exc: ServiceException) -> None:
     if isinstance(exc, NotFoundError):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     if isinstance(exc, (ValidationError, ValidationDomainError)):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message
+        ) from exc
     if isinstance(exc, ConflictError):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
-    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message) from exc
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message
+    ) from exc
 
 
 def _call(func, *args, **kwargs):
@@ -45,6 +49,12 @@ def _call(func, *args, **kwargs):
     status_code=status.HTTP_200_OK,
     tags=["copilot-history"],
     operation_id="get_copilot_history",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def get_copilot_history(
     aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
@@ -59,6 +69,12 @@ async def get_copilot_history(
     status_code=status.HTTP_201_CREATED,
     tags=["copilot-history"],
     operation_id="append_copilot_message",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def append_copilot_message(
     aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
@@ -74,6 +90,12 @@ async def append_copilot_message(
     status_code=status.HTTP_204_NO_CONTENT,
     tags=["copilot-history"],
     operation_id="clear_copilot_history",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def clear_copilot_history(
     aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
@@ -88,6 +110,12 @@ async def clear_copilot_history(
     status_code=status.HTTP_204_NO_CONTENT,
     tags=["copilot-history"],
     operation_id="delete_copilot_message",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def delete_copilot_message(
     aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],

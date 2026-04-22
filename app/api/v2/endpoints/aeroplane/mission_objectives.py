@@ -26,10 +26,14 @@ def _raise_http(exc: ServiceException) -> None:
     if isinstance(exc, NotFoundError):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     if isinstance(exc, (ValidationError, ValidationDomainError)):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message
+        ) from exc
     if isinstance(exc, ConflictError):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
-    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message) from exc
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message
+    ) from exc
 
 
 def _call(func, *args, **kwargs):
@@ -45,7 +49,13 @@ def _call(func, *args, **kwargs):
     "/aeroplanes/{aeroplane_id}/mission-objectives",
     status_code=status.HTTP_200_OK,
     tags=["mission-objectives"],
-    operation_id="get_mission_objectives"
+    operation_id="get_mission_objectives",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def get_mission_objectives(
     aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
@@ -59,7 +69,13 @@ async def get_mission_objectives(
     "/aeroplanes/{aeroplane_id}/mission-objectives",
     status_code=status.HTTP_200_OK,
     tags=["mission-objectives"],
-    operation_id="upsert_mission_objectives"
+    operation_id="upsert_mission_objectives",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def upsert_mission_objectives(
     aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
@@ -75,6 +91,12 @@ async def upsert_mission_objectives(
     status_code=status.HTTP_204_NO_CONTENT,
     tags=["mission-objectives"],
     operation_id="delete_mission_objectives",
+    responses={
+        404: {"description": "Resource not found"},
+        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def delete_mission_objectives(
     aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
