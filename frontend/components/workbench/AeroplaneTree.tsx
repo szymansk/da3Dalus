@@ -63,6 +63,16 @@ interface BuildNodeContext {
   callbacks: BuildNodeCallbacks;
 }
 
+// ── Shared helpers ─────────────────────────────────────────────
+
+function getTedData(xsec: XSec): Record<string, unknown> | null {
+  const ted = xsec.trailing_edge_device ?? xsec.control_surface;
+  if (ted && typeof ted === "object" && Object.keys(ted as Record<string, unknown>).length > 0) {
+    return ted as Record<string, unknown>;
+  }
+  return null;
+}
+
 // ── Shared TED / Spar node builders ─────────────────────────────
 
 function buildTedNode(
@@ -72,11 +82,9 @@ function buildTedNode(
   xsec: XSec,
   callbacks: BuildNodeCallbacks,
 ): TreeNode | null {
-  const ted = xsec.trailing_edge_device ?? xsec.control_surface;
-  const hasTed = ted && typeof ted === "object" && Object.keys(ted as Record<string, unknown>).length > 0;
-  if (!hasTed) return null;
+  const tedObj = getTedData(xsec);
+  if (!tedObj) return null;
 
-  const tedObj = ted as Record<string, unknown>;
   const tedName = (tedObj.name as string) ?? "TED";
   return {
     id: `${id}-ted`,
@@ -131,8 +139,7 @@ function buildAddHandler(
 ): ((e: React.MouseEvent) => void) | undefined {
   if (!callbacks.onAddSpar && !callbacks.onAddTed) return undefined;
 
-  const ted = xsec.trailing_edge_device ?? xsec.control_surface;
-  const hasTed = !!(ted && typeof ted === "object" && Object.keys(ted as Record<string, unknown>).length > 0);
+  const hasTed = getTedData(xsec) !== null;
 
   return (e: React.MouseEvent) => {
     if (hasTed) {
@@ -372,6 +379,8 @@ function buildCallbacks(
       selectWing,
       selectXsec,
       onDeleteXsec: noOp,
+      onAddSegment: noOp,
+      onInsertXsec: noOp,
     };
   }
 
@@ -401,7 +410,6 @@ interface BuildTreeDataParams {
   expandedSet: Set<string>;
   wing: { name: string; symmetric: boolean; x_secs: XSec[] } | null;
   wingConfig: { nose_pnt: number[] | null } | null;
-  wingDesignModel: string | null;
   treeMode: string;
   selectedWing: string | null;
   selectedXsecIndex: number | null;
@@ -719,7 +727,6 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
     expandedSet,
     wing,
     wingConfig,
-    wingDesignModel,
     treeMode,
     selectedWing,
     selectedXsecIndex,
