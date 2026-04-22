@@ -775,6 +775,21 @@ def delete_cross_section(
         raise InternalError(message=f"Database error: {e}")
 
 
+def _sync_spares_for_xsec(db_xsec, segment) -> None:
+    """Copy computed spare_vector/spare_origin from a WingConfiguration segment
+    back to the corresponding DB cross-section's spar records."""
+    for spare_idx, spare in enumerate(segment.spare_list or []):
+        if spare_idx >= len(db_xsec.detail.spares):
+            break
+        db_spare = db_xsec.detail.spares[spare_idx]
+        if spare.spare_vector is not None:
+            vec = spare.spare_vector.toTuple() if hasattr(spare.spare_vector, "toTuple") else spare.spare_vector
+            db_spare.spare_vector = [float(v) for v in vec]
+        if spare.spare_origin is not None:
+            orig = spare.spare_origin.toTuple() if hasattr(spare.spare_origin, "toTuple") else spare.spare_origin
+            db_spare.spare_origin = [float(v) for v in orig]
+
+
 def _recompute_spare_vectors(wing: WingModel) -> None:
     """Rebuild WingConfiguration to compute spare_vector/spare_origin for all spars,
     then persist the computed values back to the DB spar records.
@@ -792,16 +807,7 @@ def _recompute_spare_vectors(wing: WingModel) -> None:
             db_xsec = wing.x_secs[seg_idx]
             if db_xsec.detail is None:
                 continue
-            for spare_idx, spare in enumerate(segment.spare_list or []):
-                if spare_idx >= len(db_xsec.detail.spares):
-                    break
-                db_spare = db_xsec.detail.spares[spare_idx]
-                if spare.spare_vector is not None:
-                    vec = spare.spare_vector.toTuple() if hasattr(spare.spare_vector, "toTuple") else spare.spare_vector
-                    db_spare.spare_vector = [float(v) for v in vec]
-                if spare.spare_origin is not None:
-                    orig = spare.spare_origin.toTuple() if hasattr(spare.spare_origin, "toTuple") else spare.spare_origin
-                    db_spare.spare_origin = [float(v) for v in orig]
+            _sync_spares_for_xsec(db_xsec, segment)
     except ImportError:
         logger.debug("CadQuery not available — skipping spare vector computation")
 

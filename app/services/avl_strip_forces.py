@@ -25,6 +25,61 @@ _STRIP_COLUMNS = [
 ]
 
 
+def _parse_surface_header(stripped: str) -> dict | None:
+    """Detect and parse a "Surface # N Name" header line.
+
+    Returns a new surface dict if matched, or ``None``.
+    """
+    m = re.match(r"Surface\s+#\s*(\d+)\s+(.*)", stripped)
+    if not m:
+        return None
+    return {
+        "surface_number": int(m.group(1)),
+        "surface_name": m.group(2).strip(),
+        "n_chordwise": 0,
+        "n_spanwise": 0,
+        "surface_area": 0.0,
+        "strips": [],
+    }
+
+
+def _parse_strip_row(values: list[str], columns: list[str]) -> dict | None:
+    """Convert raw split values to a strip row dict.
+
+    Returns a dict keyed by *columns* or ``None`` if *values* has
+    fewer elements than *columns*.
+    """
+    if len(values) < len(columns):
+        return None
+    return {
+        col: int(val) if col == "j" else float(val)
+        for col, val in zip(columns, values, strict=False)
+    }
+
+
+def _try_parse_metadata(stripped: str, surface: dict) -> bool:
+    """Try to parse chordwise/spanwise/area metadata from *stripped*.
+
+    Mutates *surface* in place and returns ``True`` if any field
+    matched, ``False`` otherwise.
+    """
+    m = re.match(
+        r"#\s*Chordwise\s*=\s*(\d+)\s+#\s*Spanwise\s*=\s*(\d+)",
+        stripped,
+    )
+    if m:
+        surface["n_chordwise"] = int(m.group(1))
+        surface["n_spanwise"] = int(m.group(2))
+        return True
+
+    m = re.search(r"Surface area\s+Ssurf\s*=\s*([\d.Ee+-]+)", stripped)
+    if m:
+        surface["surface_area"] = float(m.group(1))
+        return True
+
+    return False
+
+
 def parse_strip_forces_output(stdout: str) -> list[dict]:
     """Parse AVL's ``FS`` (strip forces) stdout output into structured data.
 
@@ -43,17 +98,9 @@ def parse_strip_forces_output(stdout: str) -> list[dict]:
     for line in stdout.splitlines():
         stripped = line.strip()
 
-        # Detect surface header: "Surface # 1     Main Wing"
-        m = re.match(r"Surface\s+#\s*(\d+)\s+(.*)", stripped)
-        if m:
-            current_surface = {
-                "surface_number": int(m.group(1)),
-                "surface_name": m.group(2).strip(),
-                "n_chordwise": 0,
-                "n_spanwise": 0,
-                "surface_area": 0.0,
-                "strips": [],
-            }
+        header = _parse_surface_header(stripped)
+        if header is not None:
+            current_surface = header
             surfaces.append(current_surface)
             in_strip_table = False
             continue
@@ -61,20 +108,7 @@ def parse_strip_forces_output(stdout: str) -> list[dict]:
         if current_surface is None:
             continue
 
-        # Parse chordwise/spanwise counts
-        m = re.match(
-            r"#\s*Chordwise\s*=\s*(\d+)\s+#\s*Spanwise\s*=\s*(\d+)",
-            stripped,
-        )
-        if m:
-            current_surface["n_chordwise"] = int(m.group(1))
-            current_surface["n_spanwise"] = int(m.group(2))
-            continue
-
-        # Parse surface area
-        m = re.search(r"Surface area\s+Ssurf\s*=\s*([\d.Ee+-]+)", stripped)
-        if m:
-            current_surface["surface_area"] = float(m.group(1))
+        if _try_parse_metadata(stripped, current_surface):
             continue
 
         # Detect strip table header line
@@ -84,11 +118,8 @@ def parse_strip_forces_output(stdout: str) -> list[dict]:
 
         # Parse strip data rows (start with an integer index)
         if in_strip_table and stripped and stripped[0].isdigit():
-            values = stripped.split()
-            if len(values) >= len(_STRIP_COLUMNS):
-                row = {}
-                for col_name, val_str in zip(_STRIP_COLUMNS, values, strict=False):
-                    row[col_name] = int(val_str) if col_name == "j" else float(val_str)
+            row = _parse_strip_row(stripped.split(), _STRIP_COLUMNS)
+            if row is not None:
                 current_surface["strips"].append(row)
             continue
 
