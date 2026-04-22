@@ -420,9 +420,9 @@ def _can_follow_previous_spare(
     if segment_index == 0:
         return False
     previous_spares = wing_config.segments[segment_index - 1].spare_list or []
-    if spare_index >= len(previous_spares):
+    if spare_index < 0 or spare_index >= len(previous_spares):
         return False
-    prev = previous_spares[spare_index]
+    prev: Spare = previous_spares[spare_index]
     return prev.spare_vector is not None and prev.spare_origin is not None
 
 

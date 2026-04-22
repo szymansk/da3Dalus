@@ -391,9 +391,9 @@ def _convert_wing_to_pickle(wing: WingModel, wing_name: str, aeroplane_id_str: s
             wing_name: wing_model_to_asb_wing_schema(wing),
         }
     except Exception as exc:
-        logger.error("Failed to convert wing %s to schema: %s", wing_name, exc)
+        logger.error("Failed to convert wing to schema: %s", type(exc).__name__)
         raise InternalError(
-            message=f"Wing data conversion failed for '{wing_name}': {exc}",
+            message=f"Wing data conversion failed: {type(exc).__name__}",
         )
     try:
         return pickle.dumps(wing_schemas)
