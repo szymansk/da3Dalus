@@ -11,7 +11,7 @@ from app.models.aeroplanemodel import (
 from app.schemas import AeroplaneSchema, AsbWingSchema
 
 
-async def get_aeroplane_by_id(aeroplane_id, db) -> AeroplaneSchema:
+def get_aeroplane_by_id(aeroplane_id, db) -> AeroplaneSchema:
     plane: AeroplaneModel = (
         db.query(AeroplaneModel)
         .options(
@@ -37,9 +37,9 @@ async def get_aeroplane_by_id(aeroplane_id, db) -> AeroplaneSchema:
     return plane_schema
 
 
-async def get_wing_by_name_and_aeroplane_id(aeroplane_id, wing_name, db):
+def get_wing_by_name_and_aeroplane_id(aeroplane_id, wing_name, db):
     # Load the parent aeroplane
-    plane_schema = await get_aeroplane_by_id(aeroplane_id, db)
+    plane_schema = get_aeroplane_by_id(aeroplane_id, db)
     # Find the wing belonging to this aeroplane
     wing: AsbWingSchema = next(
         (w for w in plane_schema.wings.values() if w.name == wing_name), None

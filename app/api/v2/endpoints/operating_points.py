@@ -57,7 +57,7 @@ async def generate_default_operating_point_set(
 ) -> GeneratedOperatingPointSetRead:
     try:
         req = request or GenerateOperatingPointSetRequest()
-        return await operating_point_generator_service.generate_default_set_for_aircraft(
+        return operating_point_generator_service.generate_default_set_for_aircraft(
             db=db,
             aircraft_uuid=aeroplane_id,
             replace_existing=req.replace_existing,
@@ -82,7 +82,7 @@ async def trim_operating_point(
     db: Annotated[Session, Depends(get_db)],
 ) -> TrimmedOperatingPointRead:
     try:
-        return await operating_point_generator_service.trim_operating_point_for_aircraft(
+        return operating_point_generator_service.trim_operating_point_for_aircraft(
             db=db,
             aircraft_uuid=aeroplane_id,
             request=request,

@@ -1,4 +1,3 @@
-import asyncio
 import uuid
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -33,7 +32,7 @@ def db_session():
         Base.metadata.drop_all(bind=engine)
 
 
-async def _fake_trim(*_, target, **__):
+def _fake_trim(*_, target, **__):
     return TrimmedPoint(
         name=target["name"],
         description=f"mocked {target['name']}",
@@ -95,7 +94,7 @@ def test_generate_default_set_with_profile_assignment(db_session):
         patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_with_controls("rudder")),
         patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
     ):
-        result = asyncio.run(generate_default_set_for_aircraft(db_session, aircraft_uuid))
+        result = generate_default_set_for_aircraft(db_session, aircraft_uuid)
 
     assert result.source_flight_profile_id == profile.id
     assert len(result.operating_points) == 11
@@ -116,7 +115,7 @@ def test_generate_default_set_without_profile_uses_defaults(db_session):
         patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_with_controls("rudder")),
         patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
     ):
-        result = asyncio.run(generate_default_set_for_aircraft(db_session, aircraft_uuid))
+        result = generate_default_set_for_aircraft(db_session, aircraft_uuid)
 
     assert result.source_flight_profile_id is None
     assert len(result.operating_points) == 11
@@ -133,8 +132,8 @@ def test_generate_replace_existing_replaces_old_rows(db_session):
         patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_with_controls("rudder")),
         patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
     ):
-        asyncio.run(generate_default_set_for_aircraft(db_session, aircraft_uuid))
-        asyncio.run(generate_default_set_for_aircraft(db_session, aircraft_uuid, replace_existing=True))
+        generate_default_set_for_aircraft(db_session, aircraft_uuid)
+        generate_default_set_for_aircraft(db_session, aircraft_uuid, replace_existing=True)
 
     points = db_session.query(OperatingPointModel).filter(OperatingPointModel.aircraft_id == aircraft.id).all()
     assert len(points) == 11
@@ -152,7 +151,7 @@ def test_generate_skips_points_when_required_controls_missing(db_session, caplog
         patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_with_controls()),
         patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
     ):
-        result = asyncio.run(generate_default_set_for_aircraft(db_session, aircraft_uuid))
+        result = generate_default_set_for_aircraft(db_session, aircraft_uuid)
 
     names = [point.name for point in result.operating_points]
     assert "turn_n2" not in names
@@ -173,7 +172,7 @@ def test_generate_with_rudder_keeps_dutch_role_point(db_session):
         patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_with_controls("rudder")),
         patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
     ):
-        result = asyncio.run(generate_default_set_for_aircraft(db_session, aircraft_uuid))
+        result = generate_default_set_for_aircraft(db_session, aircraft_uuid)
 
     names = [point.name for point in result.operating_points]
     assert "dutch_role_start" in names
@@ -191,8 +190,8 @@ def test_generate_replace_existing_with_skips_keeps_consistent_rows(db_session):
         patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_with_controls()),
         patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
     ):
-        asyncio.run(generate_default_set_for_aircraft(db_session, aircraft_uuid))
-        asyncio.run(generate_default_set_for_aircraft(db_session, aircraft_uuid, replace_existing=True))
+        generate_default_set_for_aircraft(db_session, aircraft_uuid)
+        generate_default_set_for_aircraft(db_session, aircraft_uuid, replace_existing=True)
 
     points = db_session.query(OperatingPointModel).filter(OperatingPointModel.aircraft_id == aircraft.id).all()
     assert len(points) == 9
@@ -245,7 +244,7 @@ def test_trim_single_operating_point_for_aircraft(db_session):
         ),
         patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
     ):
-        result = asyncio.run(trim_operating_point_for_aircraft(db_session, aircraft_uuid, request))
+        result = trim_operating_point_for_aircraft(db_session, aircraft_uuid, request)
 
     assert result.source_flight_profile_id == profile.id
     assert result.point.name == "manual_trim"

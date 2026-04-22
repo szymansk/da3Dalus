@@ -199,7 +199,7 @@ def _compute_alpha_sweep_characteristic_points(
     return points
 
 
-async def get_aeroplane_schema_or_raise(db: Session, aeroplane_uuid) -> AeroplaneSchema:
+def get_aeroplane_schema_or_raise(db: Session, aeroplane_uuid) -> AeroplaneSchema:
     """
     Get an aeroplane schema by UUID.
     
@@ -208,7 +208,7 @@ async def get_aeroplane_schema_or_raise(db: Session, aeroplane_uuid) -> Aeroplan
         InternalError: If a database error occurs.
     """
     try:
-        return await get_aeroplane_by_id(aeroplane_uuid, db)
+        return get_aeroplane_by_id(aeroplane_uuid, db)
     except NotFoundInDbException as e:
         raise NotFoundError(
             message=str(e),
@@ -219,7 +219,7 @@ async def get_aeroplane_schema_or_raise(db: Session, aeroplane_uuid) -> Aeroplan
         raise InternalError(message=f"Database error: {e}")
 
 
-async def get_wing_schema_or_raise(
+def get_wing_schema_or_raise(
     db: Session,
     aeroplane_uuid,
     wing_name: str
@@ -232,7 +232,7 @@ async def get_wing_schema_or_raise(
         InternalError: If a database error occurs.
     """
     try:
-        return await get_wing_by_name_and_aeroplane_id(aeroplane_uuid, wing_name, db)
+        return get_wing_by_name_and_aeroplane_id(aeroplane_uuid, wing_name, db)
     except NotFoundInDbException as e:
         raise NotFoundError(
             message=str(e),
@@ -257,7 +257,7 @@ async def analyze_wing(
         NotFoundError: If the aeroplane or wing does not exist.
         InternalError: If an analysis error occurs.
     """
-    plane_schema = await get_wing_schema_or_raise(db, aeroplane_uuid, wing_name)
+    plane_schema = get_wing_schema_or_raise(db, aeroplane_uuid, wing_name)
     
     try:
         asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
@@ -285,7 +285,7 @@ async def analyze_airplane(
         NotFoundError: If the aeroplane does not exist.
         InternalError: If an analysis error occurs.
     """
-    plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
+    plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
     
     try:
         asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
@@ -312,7 +312,7 @@ async def calculate_streamlines_json(
     """
     import json as _json
 
-    plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
+    plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
     try:
         asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
@@ -340,7 +340,7 @@ async def analyze_alpha_sweep(
         NotFoundError: If the aeroplane does not exist.
         InternalError: If an analysis error occurs.
     """
-    plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
+    plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
     
     try:
         asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
@@ -419,8 +419,8 @@ async def get_alpha_sweep_diagram_url(
                     textcoords="offset points",
                     fontsize=8,
                     color=color,
-                    bbox=dict(boxstyle="round,pad=0.25", facecolor="white", edgecolor=color, linewidth=0.8, alpha=0.9),
-                    arrowprops=dict(arrowstyle="-", linestyle=":", color=color, linewidth=0.9),
+                    bbox={"boxstyle": "round,pad=0.25", "facecolor": "white", "edgecolor": color, "linewidth": 0.8, "alpha": 0.9},
+                    arrowprops={"arrowstyle": "-", "linestyle": ":", "color": color, "linewidth": 0.9},
                 )
 
         def add_trend_strip(ax, x_vals: np.ndarray, color_vals: list[str], strip_label: str):
@@ -880,7 +880,7 @@ async def analyze_simple_sweep(
         NotFoundError: If the aeroplane does not exist.
         InternalError: If an analysis error occurs.
     """
-    plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
+    plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
     
     try:
         asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
@@ -969,7 +969,7 @@ async def get_streamlines_three_view_image(
         NotFoundError: If the aeroplane does not exist.
         InternalError: If an analysis error occurs.
     """
-    plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
+    plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
     
     try:
         asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
@@ -1001,7 +1001,7 @@ async def get_three_view_image(db: Session, aeroplane_uuid) -> bytes:
         NotFoundError: If the aeroplane does not exist.
         InternalError: If an error occurs.
     """
-    plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
+    plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
     
     try:
         asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
@@ -1036,7 +1036,7 @@ async def analyze_airplane_strip_forces(
 
     from app.services.avl_strip_forces import AVLWithStripForces
 
-    plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
+    plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
     try:
         asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
@@ -1113,7 +1113,7 @@ async def analyze_wing_strip_forces(
 
     from app.services.avl_strip_forces import AVLWithStripForces
 
-    plane_schema = await get_wing_schema_or_raise(db, aeroplane_uuid, wing_name)
+    plane_schema = get_wing_schema_or_raise(db, aeroplane_uuid, wing_name)
 
     try:
         asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)

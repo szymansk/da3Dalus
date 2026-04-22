@@ -49,7 +49,7 @@ def on_wing_changed(
             safe_wing_name,
         )
 
-    # TODO(gh-202): Trigger background re-tessellation.
+    # See GH #202: Trigger background re-tessellation.
     # This requires re-loading the wing schema from the DB, pickling it,
     # and calling tessellation_service.trigger_background_tessellation().
     # Deferred because it needs a separate DB session factory and careful
