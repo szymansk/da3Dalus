@@ -1,4 +1,4 @@
-from typing import List, Optional, Literal, Union
+from typing import List, Optional, Literal
 from pydantic import AliasChoices, BaseModel, PositiveFloat, NonNegativeFloat, Field
 
 from app.schemas.Servo import Servo
@@ -38,7 +38,7 @@ class TrailingEdgeDevice(BaseModel):
         default=None, 
         description="Spacing from the tip edge of the segment in millimeters"
     )
-    servo: Optional[Union[Servo, int]] = Field(
+    servo: Servo | int | None = Field(
         default=None,
         validation_alias=AliasChoices("servo", "_servo"),
         serialization_alias="servo",
