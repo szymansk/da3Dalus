@@ -126,6 +126,50 @@ function aggregateRootStatus(
   return { status: "partial", total };
 }
 
+/** Weight annotation string for a single tree node. */
+function nodeAnnotation(node: ComponentTreeNode): string | undefined {
+  const totalG = node.total_weight_g;
+  if (totalG != null && totalG > 0) return `${totalG.toFixed(1)}g`;
+  if (node.weight_override_g != null) return `${node.weight_override_g}g`;
+  return undefined;
+}
+
+/** Node-type chip label for the tree row badge. */
+function nodeChip(node: ComponentTreeNode): string | undefined {
+  if (node.node_type === "cots") return "COTS";
+  if (node.node_type === "cad_shape") return "CAD";
+  return undefined;
+}
+
+function toSimpleTreeNode(
+  node: ComponentTreeNode,
+  level: number,
+  isExpanded: boolean,
+  cb: FlattenCallbacks,
+  selectedId: number | null,
+): SimpleTreeNode {
+  const hasChildren = node.children && node.children.length > 0;
+  const isGroup = node.node_type === "group";
+  return {
+    id: String(node.id),
+    label: node.name,
+    level,
+    expanded: hasChildren ? isExpanded : undefined,
+    leaf: !hasChildren,
+    selected: node.id === selectedId,
+    chip: nodeChip(node),
+    annotation: nodeAnnotation(node),
+    onClick: () => cb.onSelect(node),
+    onDelete: () => cb.onDelete(node),
+    onAdd: isGroup ? () => cb.onAdd(node) : undefined,
+    addTitle: isGroup ? `Add to ${node.name}` : undefined,
+    onEdit: () => cb.onEdit(node),
+    editTitle: `Edit ${node.name}`,
+    weightStatus: node.weight_status,
+    weightTooltip: weightTooltip(node),
+  };
+}
+
 function flattenTree(
   nodes: ComponentTreeNode[],
   level: number,
@@ -137,35 +181,7 @@ function flattenTree(
   for (const node of nodes) {
     const hasChildren = node.children && node.children.length > 0;
     const isExpanded = expanded.has(String(node.id));
-    const isGroup = node.node_type === "group";
-    // Use total_weight_g from the backend enrichment (gh#78). Fall back to
-    // weight_override_g for backward compatibility with older responses.
-    const totalG = node.total_weight_g;
-    const annotation =
-      totalG != null && totalG > 0
-        ? `${totalG.toFixed(1)}g`
-        : node.weight_override_g != null
-        ? `${node.weight_override_g}g`
-        : undefined;
-
-    result.push({
-      id: String(node.id),
-      label: node.name,
-      level,
-      expanded: hasChildren ? isExpanded : undefined,
-      leaf: !hasChildren,
-      selected: node.id === selectedId,
-      chip: node.node_type === "cots" ? "COTS" : node.node_type === "cad_shape" ? "CAD" : undefined,
-      annotation,
-      onClick: () => cb.onSelect(node),
-      onDelete: () => cb.onDelete(node),
-      onAdd: isGroup ? () => cb.onAdd(node) : undefined,
-      addTitle: isGroup ? `Add to ${node.name}` : undefined,
-      onEdit: () => cb.onEdit(node),
-      editTitle: `Edit ${node.name}`,
-      weightStatus: node.weight_status,
-      weightTooltip: weightTooltip(node),
-    });
+    result.push(toSimpleTreeNode(node, level, isExpanded, cb, selectedId));
     if (hasChildren && isExpanded) {
       result.push(...flattenTree(node.children, level + 1, expanded, cb, selectedId));
     }
@@ -253,6 +269,22 @@ export function ComponentTree({
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
   );
 
+  async function moveToRoot(activeId: number) {
+    mutate();
+    try {
+      await moveTreeNode(aeroplaneId, activeId, {
+        new_parent_id: null,
+        sort_index: tree.length,
+      });
+      mutate();
+    } catch (err) {
+      mutate();
+      if (typeof window !== "undefined") {
+        alert(err instanceof Error ? err.message : "Move failed");
+      }
+    }
+  }
+
   function onDragEnd(event: DragEndEvent) {
     if (!aeroplaneId) return;
     const activeStr = String(event.active.id).replace(/^node-/, "");
@@ -260,30 +292,13 @@ export function ComponentTree({
       ? String(event.over.id).replace(/^node-/, "")
       : null;
 
-    // The virtual root is display-only — it can never be the drag source.
     if (activeStr === VIRTUAL_ROOT_ID) return;
 
     const activeId = Number(activeStr);
     if (Number.isNaN(activeId)) return;
 
-    // Dropping onto the virtual root == reparent to top level. Issues the
-    // move directly (computeMoveResult expects real node IDs on both sides).
     if (overStr === VIRTUAL_ROOT_ID) {
-      void (async () => {
-        mutate();
-        try {
-          await moveTreeNode(aeroplaneId, activeId, {
-            new_parent_id: null,
-            sort_index: tree.length,
-          });
-          mutate();
-        } catch (err) {
-          mutate();
-          if (typeof window !== "undefined") {
-            alert(err instanceof Error ? err.message : "Move failed");
-          }
-        }
-      })();
+      void moveToRoot(activeId);
       return;
     }
 

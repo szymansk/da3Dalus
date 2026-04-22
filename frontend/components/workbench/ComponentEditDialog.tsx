@@ -37,41 +37,44 @@ function parseValue(prop: PropertyDefinition, raw: unknown): unknown {
   return String(raw);
 }
 
+type ValidationResult = { ok: true } | { ok: false; property: string; message: string };
+
+function fail(prop: PropertyDefinition, message: string): ValidationResult {
+  return { ok: false, property: prop.name, message };
+}
+
+function validateNumberRange(prop: PropertyDefinition, n: number): ValidationResult | null {
+  if (prop.min != null && n < prop.min) {
+    return fail(prop, `${prop.label}: expected \u2265 ${prop.min}, got ${n}.`);
+  }
+  if (prop.max != null && n > prop.max) {
+    return fail(prop, `${prop.label}: expected \u2264 ${prop.max}, got ${n}.`);
+  }
+  return null;
+}
+
+function validateProp(prop: PropertyDefinition, raw: unknown): ValidationResult | null {
+  const parsed = parseValue(prop, raw);
+  if (prop.required && (parsed === undefined || parsed === "")) {
+    return fail(prop, `${prop.label} (${prop.name}) is required.`);
+  }
+  if (parsed === undefined) return null;
+  if (prop.type === "number") {
+    return validateNumberRange(prop, parsed as number);
+  }
+  if (prop.type === "enum" && prop.options && !prop.options.includes(String(parsed))) {
+    return fail(prop, `${prop.label}: value '${parsed}' is not in ${JSON.stringify(prop.options)}.`);
+  }
+  return null;
+}
+
 function validate(
   schema: PropertyDefinition[],
   specs: Record<string, unknown>,
-): { ok: true } | { ok: false; property: string; message: string } {
+): ValidationResult {
   for (const prop of schema) {
-    const raw = specs[prop.name];
-    const parsed = parseValue(prop, raw);
-    if (prop.required && (parsed === undefined || parsed === "")) {
-      return {
-        ok: false, property: prop.name,
-        message: `${prop.label} (${prop.name}) is required.`,
-      };
-    }
-    if (parsed === undefined) continue;
-    if (prop.type === "number") {
-      const n = parsed as number;
-      if (prop.min != null && n < prop.min) {
-        return {
-          ok: false, property: prop.name,
-          message: `${prop.label}: expected ≥ ${prop.min}, got ${n}.`,
-        };
-      }
-      if (prop.max != null && n > prop.max) {
-        return {
-          ok: false, property: prop.name,
-          message: `${prop.label}: expected ≤ ${prop.max}, got ${n}.`,
-        };
-      }
-    }
-    if (prop.type === "enum" && prop.options && !prop.options.includes(String(parsed))) {
-      return {
-        ok: false, property: prop.name,
-        message: `${prop.label}: value '${parsed}' is not in ${JSON.stringify(prop.options)}.`,
-      };
-    }
+    const err = validateProp(prop, specs[prop.name]);
+    if (err) return err;
   }
   return { ok: true };
 }
@@ -128,21 +131,25 @@ export function ComponentEditDialog({
     setSpecs((prev) => ({ ...prev, [propName]: value }));
   }
 
+  /** Build the final specs object: parse known keys, keep unknown keys raw. */
+  function buildOutSpecs(): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const prop of schema) {
+      const parsed = parseValue(prop, specs[prop.name]);
+      if (parsed !== undefined) out[prop.name] = parsed;
+    }
+    for (const key of unknownKeys) {
+      out[key] = specs[key];
+    }
+    return out;
+  }
+
   async function handleSave() {
     if (!name.trim()) { setError("Name is required"); return; }
     const result = validate(schema, specs);
     if (!result.ok) {
       setError(result.message);
       return;
-    }
-    // Parse known specs to their declared types; keep unknown keys raw.
-    const outSpecs: Record<string, unknown> = {};
-    for (const prop of schema) {
-      const parsed = parseValue(prop, specs[prop.name]);
-      if (parsed !== undefined) outSpecs[prop.name] = parsed;
-    }
-    for (const key of unknownKeys) {
-      outSpecs[key] = specs[key];
     }
 
     setSaving(true);
@@ -158,7 +165,7 @@ export function ComponentEditDialog({
         bbox_y_mm: null,
         bbox_z_mm: null,
         model_ref: null,
-        specs: outSpecs,
+        specs: buildOutSpecs(),
       };
       if (isEdit && component) {
         await updateComponent(component.id, data as unknown as Component);

@@ -8,6 +8,10 @@ interface CadViewerProps {
   parts: Record<string, unknown>[];
 }
 
+interface PartData {
+  data?: { shapes?: Record<string, unknown>; instances?: Record<string, unknown>[] };
+}
+
 function resolveRefs(
   node: Record<string, unknown>,
   instances: Record<string, unknown>[],
@@ -23,6 +27,36 @@ function resolveRefs(
       if (part && typeof part === "object") {
         resolveRefs(part as Record<string, unknown>, instances);
       }
+    }
+  }
+}
+
+/** Deep-clone shapes and resolve instance refs for a single part. Returns null if no shapes. */
+function preparePartShapes(part: PartData): Record<string, unknown> | null {
+  const shapes = part?.data?.shapes;
+  if (!shapes) return null;
+  const copy = JSON.parse(JSON.stringify(shapes));
+  const instances = part?.data?.instances;
+  if (instances && Array.isArray(instances)) {
+    resolveRefs(copy, instances);
+  }
+  return copy;
+}
+
+/** Add remaining parts to an already-initialised viewer. */
+function addRemainingParts(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  viewer: any,
+  parts: Record<string, unknown>[],
+  rootId: string,
+): void {
+  for (let i = 1; i < parts.length; i++) {
+    const shapes = preparePartShapes(parts[i] as PartData);
+    if (!shapes) continue;
+    try {
+      viewer.addPart(rootId, shapes, { skipBounds: true });
+    } catch (err) {
+      console.warn(`[CadViewer] addPart for part ${i} failed:`, err);
     }
   }
 }
@@ -86,42 +120,14 @@ export function CadViewer({ parts }: CadViewerProps) {
         };
 
         // Extract shapes from the first part and render it (initializes the scene)
-        const first = parts[0] as {
-          data?: { shapes?: Record<string, unknown>; instances?: Record<string, unknown>[] };
-        };
-        const firstShapes = first?.data?.shapes;
-        const firstInstances = first?.data?.instances;
-        if (!firstShapes) throw new Error("No shape data in tessellation result");
-
-        // Deep-clone before resolving refs — never mutate cached state
-        const firstShapesCopy = JSON.parse(JSON.stringify(firstShapes));
-        if (firstInstances && Array.isArray(firstInstances)) {
-          resolveRefs(firstShapesCopy, firstInstances);
-        }
+        const firstShapesCopy = preparePartShapes(parts[0] as PartData);
+        if (!firstShapesCopy) throw new Error("No shape data in tessellation result");
 
         viewer.render(firstShapesCopy, renderOptions, viewerOptions);
 
         // Add remaining parts incrementally via addPart()
-        for (let i = 1; i < parts.length; i++) {
-          const part = parts[i] as {
-            data?: { shapes?: Record<string, unknown>; instances?: Record<string, unknown>[] };
-          };
-          const shapes = part?.data?.shapes;
-          const instances = part?.data?.instances;
-          if (!shapes) continue;
-
-          const shapesCopy = JSON.parse(JSON.stringify(shapes));
-          if (instances && Array.isArray(instances)) {
-            resolveRefs(shapesCopy, instances);
-          }
-
-          try {
-            const rootId = (firstShapesCopy as { id?: string }).id || "/Group";
-            viewer.addPart(rootId, shapesCopy, { skipBounds: true });
-          } catch (err) {
-            console.warn(`[CadViewer] addPart for part ${i} failed:`, err);
-          }
-        }
+        const rootId = (firstShapesCopy as { id?: string }).id || "/Group";
+        addRemainingParts(viewer, parts, rootId);
 
         // Recompute bounds once after all parts are added
         if (parts.length > 1) {

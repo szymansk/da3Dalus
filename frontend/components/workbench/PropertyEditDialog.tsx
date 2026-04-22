@@ -49,7 +49,36 @@ function toForm(prop: PropertyDefinition | null): FormState {
   };
 }
 
-function fromForm(f: FormState): { ok: true; prop: PropertyDefinition } | { ok: false; error: string } {
+type FromFormResult = { ok: true; prop: PropertyDefinition } | { ok: false; error: string };
+
+/** Apply type-specific fields (min/max, options, default) to a partially built prop. */
+function applyTypeFields(
+  prop: PropertyDefinition,
+  f: FormState,
+): string | null {
+  switch (f.type) {
+    case "number":
+      if (f.min.trim()) prop.min = Number(f.min);
+      if (f.max.trim()) prop.max = Number(f.max);
+      if (f.defaultStr.trim()) prop.default = Number(f.defaultStr);
+      return null;
+    case "enum": {
+      const opts = f.optionsCsv.split(",").map((o) => o.trim()).filter(Boolean);
+      if (opts.length === 0) return "Enum needs at least one option";
+      prop.options = opts;
+      if (f.defaultStr.trim()) prop.default = f.defaultStr.trim();
+      return null;
+    }
+    case "boolean":
+      if (f.defaultStr.trim()) prop.default = f.defaultStr.trim() === "true";
+      return null;
+    default:
+      if (f.defaultStr.trim()) prop.default = f.defaultStr.trim();
+      return null;
+  }
+}
+
+function fromForm(f: FormState): FromFormResult {
   if (!f.name.trim()) return { ok: false, error: "Name is required" };
   if (!SNAKE_CASE.test(f.name)) {
     return { ok: false, error: "Name must be snake_case (lowercase, digits, underscores)" };
@@ -65,20 +94,8 @@ function fromForm(f: FormState): { ok: true; prop: PropertyDefinition } | { ok: 
   if (f.unit.trim()) prop.unit = f.unit.trim();
   if (f.description.trim()) prop.description = f.description.trim();
 
-  if (f.type === "number") {
-    if (f.min.trim()) prop.min = Number(f.min);
-    if (f.max.trim()) prop.max = Number(f.max);
-    if (f.defaultStr.trim()) prop.default = Number(f.defaultStr);
-  } else if (f.type === "enum") {
-    const opts = f.optionsCsv.split(",").map((o) => o.trim()).filter(Boolean);
-    if (opts.length === 0) return { ok: false, error: "Enum needs at least one option" };
-    prop.options = opts;
-    if (f.defaultStr.trim()) prop.default = f.defaultStr.trim();
-  } else if (f.type === "boolean") {
-    if (f.defaultStr.trim()) prop.default = f.defaultStr.trim() === "true";
-  } else {
-    if (f.defaultStr.trim()) prop.default = f.defaultStr.trim();
-  }
+  const typeError = applyTypeFields(prop, f);
+  if (typeError) return { ok: false, error: typeError };
 
   return { ok: true, prop };
 }

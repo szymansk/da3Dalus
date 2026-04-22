@@ -13,6 +13,84 @@ interface CreatorParameterFormProps {
   availableShapeKeys?: string[];
 }
 
+/** Renders the appropriate input control for a single creator parameter. */
+function ParamInput({
+  param,
+  value,
+  onChange,
+  availableShapeKeys,
+}: {
+  param: CreatorParam;
+  value: unknown;
+  onChange: (key: string, value: unknown) => void;
+  availableShapeKeys: string[];
+}) {
+  const strValue = String(value ?? param.default ?? "");
+
+  if (param.is_shape_ref && availableShapeKeys.length > 0) {
+    return (
+      <ShapeRefInput
+        value={strValue}
+        onChange={(v) => onChange(param.name, v)}
+        shapeKeys={availableShapeKeys}
+        required={param.required}
+      />
+    );
+  }
+
+  if (param.options && param.options.length > 0) {
+    return (
+      <select
+        value={strValue}
+        onChange={(e) => onChange(param.name, e.target.value)}
+        className="rounded-lg border border-border bg-input px-3 py-1.5 text-[12px] text-foreground outline-none"
+      >
+        {!param.required && <option value="">—</option>}
+        {param.options.map((opt) => (
+          <option key={opt} value={opt}>{opt}</option>
+        ))}
+      </select>
+    );
+  }
+
+  if (param.type === "bool") {
+    return (
+      <input
+        type="checkbox"
+        checked={Boolean(value ?? param.default ?? false)}
+        onChange={(e) => onChange(param.name, e.target.checked)}
+        className="size-4"
+      />
+    );
+  }
+
+  if (param.type === "int" || param.type === "float") {
+    return (
+      <input
+        type="number"
+        value={strValue}
+        onChange={(e) => {
+          const v = param.type === "int"
+            ? parseInt(e.target.value, 10)
+            : parseFloat(e.target.value);
+          onChange(param.name, isNaN(v) ? null : v);
+        }}
+        step={param.type === "float" ? "any" : "1"}
+        className="rounded-lg border border-border bg-input px-3 py-1.5 text-[12px] text-foreground outline-none"
+      />
+    );
+  }
+
+  return (
+    <input
+      type="text"
+      value={strValue}
+      onChange={(e) => onChange(param.name, e.target.value)}
+      className="rounded-lg border border-border bg-input px-3 py-1.5 text-[12px] text-foreground outline-none"
+    />
+  );
+}
+
 export function CreatorParameterForm({
   creatorName,
   creatorDescription,
@@ -48,52 +126,12 @@ export function CreatorParameterForm({
                 <InfoTooltip text={param.description} size={10} />
               )}
             </span>
-            {param.is_shape_ref && availableShapeKeys.length > 0 ? (
-              <ShapeRefInput
-                value={String(values[param.name] ?? param.default ?? "")}
-                onChange={(v) => onChange(param.name, v)}
-                shapeKeys={availableShapeKeys}
-                required={param.required}
-              />
-            ) : param.options && param.options.length > 0 ? (
-              <select
-                value={String(values[param.name] ?? param.default ?? "")}
-                onChange={(e) => onChange(param.name, e.target.value)}
-                className="rounded-lg border border-border bg-input px-3 py-1.5 text-[12px] text-foreground outline-none"
-              >
-                {!param.required && <option value="">—</option>}
-                {param.options.map((opt) => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
-              </select>
-            ) : param.type === "bool" ? (
-              <input
-                type="checkbox"
-                checked={Boolean(values[param.name] ?? param.default ?? false)}
-                onChange={(e) => onChange(param.name, e.target.checked)}
-                className="size-4"
-              />
-            ) : param.type === "int" || param.type === "float" ? (
-              <input
-                type="number"
-                value={String(values[param.name] ?? param.default ?? "")}
-                onChange={(e) => {
-                  const v = param.type === "int"
-                    ? parseInt(e.target.value, 10)
-                    : parseFloat(e.target.value);
-                  onChange(param.name, isNaN(v) ? null : v);
-                }}
-                step={param.type === "float" ? "any" : "1"}
-                className="rounded-lg border border-border bg-input px-3 py-1.5 text-[12px] text-foreground outline-none"
-              />
-            ) : (
-              <input
-                type="text"
-                value={String(values[param.name] ?? param.default ?? "")}
-                onChange={(e) => onChange(param.name, e.target.value)}
-                className="rounded-lg border border-border bg-input px-3 py-1.5 text-[12px] text-foreground outline-none"
-              />
-            )}
+            <ParamInput
+              param={param}
+              value={values[param.name]}
+              onChange={onChange}
+              availableShapeKeys={availableShapeKeys}
+            />
           </label>
         ))
       )}
