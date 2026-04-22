@@ -17,7 +17,7 @@ from app.schemas.fuselage_slice import (
 logger = logging.getLogger(__name__)
 
 
-async def slice_step_file(
+def slice_step_file(
     file_content: bytes,
     filename: str,
     number_of_slices: int = 50,

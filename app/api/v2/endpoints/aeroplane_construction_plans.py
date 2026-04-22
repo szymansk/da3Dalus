@@ -99,6 +99,7 @@ async def execute_plan(
     operation_id="plan_to_template"
 )
 async def plan_to_template(
+    aeroplane_id: Annotated[str, Path(...)],
     plan_id: Annotated[int, Path(...)],
     db: Annotated[Session, Depends(get_db)],
     request: Annotated[ToTemplateRequest, Body()] = None,

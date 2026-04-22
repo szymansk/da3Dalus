@@ -47,7 +47,7 @@ async def slice_step_to_fuselage(
         )
 
     try:
-        return await svc.slice_step_file(
+        return svc.slice_step_file(
             file_content=content,
             filename=file.filename or "upload.step",
             number_of_slices=number_of_slices,

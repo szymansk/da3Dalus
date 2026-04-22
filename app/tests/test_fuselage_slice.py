@@ -4,7 +4,7 @@ Uses client_and_db fixture for in-memory SQLite isolation.
 """
 
 import io
-from unittest.mock import AsyncMock, patch
+from unittest.mock import MagicMock, patch
 
 from app.schemas.fuselage_slice import FuselageSliceResponse, GeometryProperties, FidelityMetrics
 from app.schemas.aeroplaneschema import FuselageSchema, FuselageXSecSuperEllipseSchema
@@ -31,7 +31,7 @@ class TestFuselageSliceEndpoint:
         client, _ = client_and_db
         with patch(
             "app.services.fuselage_slice_service.slice_step_file",
-            new_callable=AsyncMock,
+            new_callable=MagicMock,
             return_value=MOCK_RESPONSE,
         ):
             res = client.post(
@@ -48,7 +48,7 @@ class TestFuselageSliceEndpoint:
         client, _ = client_and_db
         with patch(
             "app.services.fuselage_slice_service.slice_step_file",
-            new_callable=AsyncMock,
+            new_callable=MagicMock,
             return_value=MOCK_RESPONSE,
         ):
             res = client.post(
@@ -66,7 +66,7 @@ class TestFuselageSliceEndpoint:
         client, _ = client_and_db
         with patch(
             "app.services.fuselage_slice_service.slice_step_file",
-            new_callable=AsyncMock,
+            new_callable=MagicMock,
             return_value=MOCK_RESPONSE,
         ):
             res = client.post(
@@ -87,13 +87,13 @@ class TestFuselageSliceEndpoint:
         # But since the service is async, we need to let it validate
         with patch(
             "app.services.fuselage_slice_service.slice_step_file",
-            new_callable=AsyncMock,
+            new_callable=MagicMock,
             side_effect=Exception("Should not be called"),
         ):
             from app.core.exceptions import ValidationError
             with patch(
                 "app.services.fuselage_slice_service.slice_step_file",
-                new_callable=AsyncMock,
+                new_callable=MagicMock,
                 side_effect=ValidationError(message="Unsupported file type: .pdf"),
             ):
                 res = client.post(
@@ -114,7 +114,7 @@ class TestFuselageSliceEndpoint:
         client, _ = client_and_db
         with patch(
             "app.services.fuselage_slice_service.slice_step_file",
-            new_callable=AsyncMock,
+            new_callable=MagicMock,
             return_value=MOCK_RESPONSE,
         ) as mock_svc:
             client.post(
@@ -138,7 +138,7 @@ class TestFuselageSliceEndpoint:
         client, _ = client_and_db
         with patch(
             "app.services.fuselage_slice_service.slice_step_file",
-            new_callable=AsyncMock,
+            new_callable=MagicMock,
             return_value=MOCK_RESPONSE,
         ) as mock_svc:
             client.post(
