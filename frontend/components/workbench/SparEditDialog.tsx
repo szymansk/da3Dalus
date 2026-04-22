@@ -26,6 +26,17 @@ interface SparEditDialogProps {
   onSaved: () => void;
 }
 
+function applyOptionalVec3(
+  vec: number[] | null | undefined,
+  setX: (v: string) => void,
+  setY: (v: string) => void,
+  setZ: (v: string) => void,
+) {
+  setX(vec?.[0] == null ? "" : String(vec[0]));
+  setY(vec?.[1] == null ? "" : String(vec[1]));
+  setZ(vec?.[2] == null ? "" : String(vec[2]));
+}
+
 function num(v: string, fallback = 0): number {
   if (v === "" || v === "-" || v === ".") return fallback;
   const n = parseFloat(v);
@@ -66,13 +77,9 @@ export function SparEditDialog({
       setHeight(String(initialData.spare_support_dimension_height ?? 4.42));
       setSparMode(initialData.spare_mode ?? "standard");
       setSparStart(String(initialData.spare_start ?? 0));
-      setSparLength(initialData.spare_length != null ? String(initialData.spare_length) : "");
-      setVecX(initialData.spare_vector?.[0] != null ? String(initialData.spare_vector[0]) : "");
-      setVecY(initialData.spare_vector?.[1] != null ? String(initialData.spare_vector[1]) : "");
-      setVecZ(initialData.spare_vector?.[2] != null ? String(initialData.spare_vector[2]) : "");
-      setOrigX(initialData.spare_origin?.[0] != null ? String(initialData.spare_origin[0]) : "");
-      setOrigY(initialData.spare_origin?.[1] != null ? String(initialData.spare_origin[1]) : "");
-      setOrigZ(initialData.spare_origin?.[2] != null ? String(initialData.spare_origin[2]) : "");
+      setSparLength(initialData.spare_length == null ? "" : String(initialData.spare_length));
+      applyOptionalVec3(initialData.spare_vector, setVecX, setVecY, setVecZ);
+      applyOptionalVec3(initialData.spare_origin, setOrigX, setOrigY, setOrigZ);
     } else {
       setPosFactor("25");
       setWidth("4.42");
@@ -80,12 +87,8 @@ export function SparEditDialog({
       setSparMode("standard");
       setSparStart("0");
       setSparLength("");
-      setVecX("");
-      setVecY("");
-      setVecZ("");
-      setOrigX("");
-      setOrigY("");
-      setOrigZ("");
+      setVecX(""); setVecY(""); setVecZ("");
+      setOrigX(""); setOrigY(""); setOrigZ("");
     }
     setError(null);
   }, [initialData, open]);

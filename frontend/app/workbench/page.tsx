@@ -9,9 +9,9 @@ import { TedEditDialog } from "@/components/workbench/TedEditDialog";
 import { WingOutlineViewer } from "@/components/workbench/WingOutlineViewer";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAeroplanes } from "@/hooks/useAeroplanes";
-import { useWings, useWing, useAllWingData, type Wing } from "@/hooks/useWings";
+import { useWings, useWing, useAllWingData } from "@/hooks/useWings";
 import { useFuselages } from "@/hooks/useFuselages";
-import { useAllFuselageData, type Fuselage } from "@/hooks/useFuselage";
+import { useAllFuselageData } from "@/hooks/useFuselage";
 import { API_BASE } from "@/lib/fetcher";
 
 export default function WorkbenchPage() {
