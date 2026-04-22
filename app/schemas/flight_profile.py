@@ -383,4 +383,4 @@ class AircraftFlightProfileAssignmentRead(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     aircraft_id: str
-    flight_profile_id: Optional[int]
+    flight_profile_id: Optional[int] = None

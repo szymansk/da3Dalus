@@ -28,11 +28,11 @@ class ServoSettings(BaseModel):
     trans_y: float = 0.0
     trans_z: float = 0.0
 
-    servo: Optional[Servo]
+    servo: Optional[Servo] = None
 
 class AeroplaneSettings(BaseModel):
-    printer_settings: Optional[Printer3dSettings]
-    servo_information: Optional[Dict[int, ServoSettings]]
+    printer_settings: Optional[Printer3dSettings] = None
+    servo_information: Optional[Dict[int, ServoSettings]] = None
 
 class CreatorUrlType(str, Enum):
     WING_LOFT = "wing_loft"
@@ -82,8 +82,8 @@ class SimpleSweepRequest(BaseModel):
 
 
 class CreateWingLoftRequest(BaseModel):
-    wings: Optional[Dict[str, Wing]]
-    settings: Optional[AeroplaneSettings]
+    wings: Optional[Dict[str, Wing]] = None
+    settings: Optional[AeroplaneSettings] = None
 
     model_config = ConfigDict(
         json_encoders={
@@ -595,9 +595,9 @@ class CreateWingLoftRequest(BaseModel):
 
 class CreateAeroPlaneRequest(BaseModel):
     blueprint: Union[Path, Any]
-    wings: Optional[Dict[str, Wing]]
-    fuselages: Optional[OrderedDict[str, Fuselage]]
-    settings: Optional[AeroplaneSettings]
+    wings: Optional[Dict[str, Wing]] = None
+    fuselages: Optional[OrderedDict[str, Fuselage]] = None
+    settings: Optional[AeroplaneSettings] = None
 
     model_config = ConfigDict(
         json_encoders={
