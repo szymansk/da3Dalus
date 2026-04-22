@@ -488,11 +488,12 @@ async def _trim_or_estimate_point(
 
     # Fallback grid-search if opti didn't converge well enough
     if best_score > 0.35:
-        gs_score, gs_alpha, gs_beta, velocity, gs_controls = await _grid_search_trim(
+        gs_score, gs_alpha, gs_beta, gs_velocity, gs_controls = await _grid_search_trim(
             asb_airplane, target, velocity, altitude, beta_candidates, cl_target_fn,
         )
         if gs_score < best_score:
             best_score, best_alpha, best_beta, best_controls = gs_score, gs_alpha, gs_beta, gs_controls
+            velocity = gs_velocity
 
     trim_status = _apply_limit_warnings(best_alpha, best_beta, best_score, constraints, warnings)
 
