@@ -36,29 +36,127 @@ interface TreeNode {
   onEdit?: () => void;
 }
 
+// ── Callback & context interfaces for build*Nodes ──────────────
+
+interface BuildNodeCallbacks {
+  selectWing: (n: string | null) => void;
+  selectXsec: (i: number | null) => void;
+  onDeleteXsec: (wn: string, i: number) => void;
+  onEditNode?: () => void;
+  onEditSpar?: (wingName: string, xsecIndex: number, sparIndex: number, data: Record<string, unknown>) => void;
+  onDeleteSpar?: (wingName: string, xsecIndex: number, sparIndex: number) => void;
+  onEditTed?: (wingName: string, xsecIndex: number, data: Record<string, unknown>) => void;
+  onDeleteTed?: (wingName: string, xsecIndex: number) => void;
+  onAddSpar?: (wingName: string, xsecIndex: number) => void;
+  onAddTed?: (wingName: string, xsecIndex: number) => void;
+  onAddMenu?: (wingName: string, xsecIndex: number, hasTed: boolean, x: number, y: number) => void;
+  onAddSegment?: (wn: string) => void;
+  onInsertXsec?: (wn: string, i: number) => void;
+}
+
+interface BuildNodeContext {
+  wingName: string;
+  wing: { name: string; symmetric: boolean; x_secs: XSec[] } | null;
+  selectedWing: string | null;
+  selectedXsecIndex: number | null;
+  expandedSet: Set<string>;
+  callbacks: BuildNodeCallbacks;
+}
+
+// ── Shared helpers ─────────────────────────────────────────────
+
+function getTedData(xsec: XSec): Record<string, unknown> | null {
+  const ted = xsec.trailing_edge_device ?? xsec.control_surface;
+  if (ted && typeof ted === "object" && Object.keys(ted as Record<string, unknown>).length > 0) {
+    return ted as Record<string, unknown>;
+  }
+  return null;
+}
+
+// ── Shared TED / Spar node builders ─────────────────────────────
+
+function buildTedNode(
+  id: string,
+  wingName: string,
+  xsecIndex: number,
+  xsec: XSec,
+  callbacks: BuildNodeCallbacks,
+): TreeNode | null {
+  const tedObj = getTedData(xsec);
+  if (!tedObj) return null;
+
+  const tedName = (tedObj.name as string) ?? "TED";
+  return {
+    id: `${id}-ted`,
+    label: `TED: ${tedName}`,
+    level: 3,
+    leaf: true,
+    chip: "TED",
+    onEdit: callbacks.onEditTed ? () => callbacks.onEditTed!(wingName, xsecIndex, tedObj) : undefined,
+    onDelete: callbacks.onDeleteTed ? () => {
+      if (confirm(`Delete control surface "${tedName}"?`)) callbacks.onDeleteTed!(wingName, xsecIndex);
+    } : undefined,
+  };
+}
+
+function buildSparNodes(
+  id: string,
+  wingName: string,
+  xsecIndex: number,
+  xsec: XSec,
+  callbacks: BuildNodeCallbacks,
+): TreeNode[] {
+  const spareList = Array.isArray(xsec.spare_list) ? xsec.spare_list as Record<string, unknown>[] : [];
+  const nodes: TreeNode[] = [];
+
+  for (let s = 0; s < spareList.length; s++) {
+    const sp = spareList[s];
+    const pos = ((sp.spare_position_factor as number ?? 0) * 100).toFixed(0);
+    const w = (sp.spare_support_dimension_width as number ?? 0).toFixed(1);
+    const h = (sp.spare_support_dimension_height as number ?? 0).toFixed(1);
+    nodes.push({
+      id: `${id}-spar-${s}`,
+      label: `spar @ ${pos}%`,
+      level: 3,
+      leaf: true,
+      detail: `${w}x${h} mm`,
+      onEdit: callbacks.onEditSpar ? () => callbacks.onEditSpar!(wingName, xsecIndex, s, sp) : undefined,
+      onDelete: callbacks.onDeleteSpar ? () => {
+        if (confirm(`Delete spar ${s}?`)) callbacks.onDeleteSpar!(wingName, xsecIndex, s);
+      } : undefined,
+    });
+  }
+
+  return nodes;
+}
+
+/** Build the add-button handler for a segment/xsec node. */
+function buildAddHandler(
+  wingName: string,
+  index: number,
+  xsec: XSec,
+  callbacks: BuildNodeCallbacks,
+): ((e: React.MouseEvent) => void) | undefined {
+  if (!callbacks.onAddSpar && !callbacks.onAddTed) return undefined;
+
+  const hasTed = getTedData(xsec) !== null;
+
+  return (e: React.MouseEvent) => {
+    if (hasTed) {
+      callbacks.onAddSpar?.(wingName, index);
+    } else {
+      callbacks.onAddMenu?.(wingName, index, hasTed, e.clientX, e.clientY);
+    }
+  };
+}
+
 // ── Build nodes for WingConfig mode (segments) ──────────────────
 
 function buildSegmentNodes(
-  wingName: string,
-  wing: { name: string; symmetric: boolean; x_secs: XSec[] } | null,
+  ctx: BuildNodeContext,
   nosePntMm: number[] | null,
-  selectedWing: string | null,
-  selectedXsecIndex: number | null,
-  expandedSet: Set<string>,
-  selectWing: (n: string | null) => void,
-  selectXsec: (i: number | null) => void,
-  onAddSegment: (wn: string) => void,
-  onDeleteXsec: (wn: string, i: number) => void,
-  onInsertXsec: (wn: string, i: number) => void,
-  onEditNode?: () => void,
-  onEditSpar?: (wingName: string, xsecIndex: number, sparIndex: number, data: Record<string, unknown>) => void,
-  onDeleteSpar?: (wingName: string, xsecIndex: number, sparIndex: number) => void,
-  onEditTed?: (wingName: string, xsecIndex: number, data: Record<string, unknown>) => void,
-  onDeleteTed?: (wingName: string, xsecIndex: number) => void,
-  onAddSpar?: (wingName: string, xsecIndex: number) => void,
-  onAddTed?: (wingName: string, xsecIndex: number) => void,
-  onAddMenu?: (wingName: string, xsecIndex: number, hasTed: boolean, x: number, y: number) => void,
 ): TreeNode[] {
+  const { wingName, wing, selectedWing, selectedXsecIndex, expandedSet, callbacks } = ctx;
   const nodes: TreeNode[] = [];
   const wingExpanded = expandedSet.has(`wing-${wingName}`);
 
@@ -68,10 +166,10 @@ function buildSegmentNodes(
     level: 1,
     expanded: wingExpanded,
     chip: "WING",
-    onClick: () => selectWing(wingName),
+    onClick: () => callbacks.selectWing(wingName),
     onDelete: () => {
       if (confirm(`Delete wing "${wingName}"?`)) {
-        onDeleteXsec(wingName, -1);
+        callbacks.onDeleteXsec(wingName, -1);
       }
     },
   });
@@ -101,21 +199,17 @@ function buildSegmentNodes(
     const segExpanded = expandedSet.has(segId);
 
     // Insert point before this segment (except before first)
-    if (i > 0) {
+    if (i > 0 && callbacks.onInsertXsec) {
       nodes.push({
         id: `${wingName}-ins-${i}`,
         label: "insert",
         level: 2,
         isInsertPoint: true,
-        onInsert: () => onInsertXsec(wingName, i),
+        onInsert: () => callbacks.onInsertXsec!(wingName, i),
       });
     }
 
     const chipLabel = getChipLabel(root);
-
-    // Determine if TED exists for add-menu logic
-    const ted = root.trailing_edge_device ?? root.control_surface;
-    const hasTed = ted && typeof ted === "object" && Object.keys(ted as Record<string, unknown>).length > 0;
 
     nodes.push({
       id: segId,
@@ -124,18 +218,12 @@ function buildSegmentNodes(
       expanded: segExpanded,
       selected: isSelected,
       chip: chipLabel,
-      onClick: () => { selectWing(wingName); selectXsec(i); },
-      onEdit: onEditNode ? () => { selectWing(wingName); selectXsec(i); onEditNode(); } : undefined,
-      onDelete: onDeleteXsec ? () => {
-        if (confirm(`Delete segment ${i}?`)) onDeleteXsec(wingName, i);
+      onClick: () => { callbacks.selectWing(wingName); callbacks.selectXsec(i); },
+      onEdit: callbacks.onEditNode ? () => { callbacks.selectWing(wingName); callbacks.selectXsec(i); callbacks.onEditNode!(); } : undefined,
+      onDelete: callbacks.onDeleteXsec ? () => {
+        if (confirm(`Delete segment ${i}?`)) callbacks.onDeleteXsec(wingName, i);
       } : undefined,
-      onAdd: (onAddSpar || onAddTed) ? (e: React.MouseEvent) => {
-        if (hasTed) {
-          onAddSpar?.(wingName, i);
-        } else {
-          onAddMenu?.(wingName, i, !!hasTed, e.clientX, e.clientY);
-        }
-      } : undefined,
+      onAdd: buildAddHandler(wingName, i, root, callbacks),
     });
 
     // Expanded segment details
@@ -158,76 +246,30 @@ function buildSegmentNodes(
         level: 3, leaf: true, muted: true, mono: true,
       });
 
-      // TED node (if TED exists)
-      if (hasTed) {
-        const tedObj = ted as Record<string, unknown>;
-        const tedName = (tedObj.name as string) ?? "TED";
-        nodes.push({
-          id: `${segId}-ted`,
-          label: `TED: ${tedName}`,
-          level: 3,
-          leaf: true,
-          chip: "TED",
-          onEdit: onEditTed ? () => onEditTed(wingName, i, tedObj) : undefined,
-          onDelete: onDeleteTed ? () => {
-            if (confirm(`Delete control surface "${tedName}"?`)) onDeleteTed(wingName, i);
-          } : undefined,
-        });
-      }
+      const tedNode = buildTedNode(segId, wingName, i, root, callbacks);
+      if (tedNode) nodes.push(tedNode);
 
-      // Individual spar nodes
-      const spareList = Array.isArray(root.spare_list) ? root.spare_list as Record<string, unknown>[] : [];
-      for (let s = 0; s < spareList.length; s++) {
-        const sp = spareList[s];
-        const pos = ((sp.spare_position_factor as number ?? 0) * 100).toFixed(0);
-        const w = (sp.spare_support_dimension_width as number ?? 0).toFixed(1);
-        const h = (sp.spare_support_dimension_height as number ?? 0).toFixed(1);
-        nodes.push({
-          id: `${segId}-spar-${s}`,
-          label: `spar @ ${pos}%`,
-          level: 3,
-          leaf: true,
-          detail: `${w}x${h} mm`,
-          onEdit: onEditSpar ? () => onEditSpar(wingName, i, s, sp) : undefined,
-          onDelete: onDeleteSpar ? () => {
-            if (confirm(`Delete spar ${s}?`)) onDeleteSpar(wingName, i, s);
-          } : undefined,
-        });
-      }
+      nodes.push(...buildSparNodes(segId, wingName, i, root, callbacks));
     }
   }
 
   // "+ segment" at the end
-  nodes.push({
-    id: `${wingName}-add`,
-    label: "+ segment",
-    level: 2, leaf: true, muted: true,
-    onClick: () => onAddSegment(wingName),
-  });
+  if (callbacks.onAddSegment) {
+    nodes.push({
+      id: `${wingName}-add`,
+      label: "+ segment",
+      level: 2, leaf: true, muted: true,
+      onClick: () => callbacks.onAddSegment!(wingName),
+    });
+  }
 
   return nodes;
 }
 
 // ── Build nodes for ASB mode (x_secs) ───────────────────────────
 
-function buildXsecNodes(
-  wingName: string,
-  wing: { name: string; symmetric: boolean; x_secs: XSec[] } | null,
-  selectedWing: string | null,
-  selectedXsecIndex: number | null,
-  expandedSet: Set<string>,
-  selectWing: (n: string | null) => void,
-  selectXsec: (i: number | null) => void,
-  onDeleteXsec: (wn: string, i: number) => void,
-  onEditNode?: () => void,
-  onEditSpar?: (wingName: string, xsecIndex: number, sparIndex: number, data: Record<string, unknown>) => void,
-  onDeleteSpar?: (wingName: string, xsecIndex: number, sparIndex: number) => void,
-  onEditTed?: (wingName: string, xsecIndex: number, data: Record<string, unknown>) => void,
-  onDeleteTed?: (wingName: string, xsecIndex: number) => void,
-  onAddSpar?: (wingName: string, xsecIndex: number) => void,
-  onAddTed?: (wingName: string, xsecIndex: number) => void,
-  onAddMenu?: (wingName: string, xsecIndex: number, hasTed: boolean, x: number, y: number) => void,
-): TreeNode[] {
+function buildXsecNodes(ctx: BuildNodeContext): TreeNode[] {
+  const { wingName, wing, selectedWing, selectedXsecIndex, expandedSet, callbacks } = ctx;
   const nodes: TreeNode[] = [];
   const wingExpanded = expandedSet.has(`wing-${wingName}`);
 
@@ -237,7 +279,7 @@ function buildXsecNodes(
     level: 1,
     expanded: wingExpanded,
     chip: "WING",
-    onClick: () => selectWing(wingName),
+    onClick: () => callbacks.selectWing(wingName),
   });
 
   if (!wingExpanded) return nodes;
@@ -258,20 +300,12 @@ function buildXsecNodes(
       expanded: xsecExpanded,
       selected: isSelected,
       chip: getChipLabel(xsec),
-      onClick: () => { selectWing(wingName); selectXsec(i); },
-      onEdit: onEditNode ? () => { selectWing(wingName); selectXsec(i); onEditNode(); } : undefined,
-      onDelete: onDeleteXsec ? () => {
-        if (confirm(`Delete x_sec ${i}?`)) onDeleteXsec(wingName, i);
+      onClick: () => { callbacks.selectWing(wingName); callbacks.selectXsec(i); },
+      onEdit: callbacks.onEditNode ? () => { callbacks.selectWing(wingName); callbacks.selectXsec(i); callbacks.onEditNode!(); } : undefined,
+      onDelete: callbacks.onDeleteXsec ? () => {
+        if (confirm(`Delete x_sec ${i}?`)) callbacks.onDeleteXsec(wingName, i);
       } : undefined,
-      onAdd: (onAddSpar || onAddTed) ? (e: React.MouseEvent) => {
-        const ted = xsec.trailing_edge_device ?? xsec.control_surface;
-        const hasTed = ted && typeof ted === "object" && Object.keys(ted as Record<string, unknown>).length > 0;
-        if (hasTed) {
-          onAddSpar?.(wingName, i);
-        } else {
-          onAddMenu?.(wingName, i, !!hasTed, e.clientX, e.clientY);
-        }
-      } : undefined,
+      onAdd: buildAddHandler(wingName, i, xsec, callbacks),
     });
 
     if (xsecExpanded) {
@@ -296,44 +330,10 @@ function buildXsecNodes(
         level: 3, leaf: true, muted: true, mono: true,
       });
 
-      // TED node (if TED exists)
-      const ted = xsec.trailing_edge_device ?? xsec.control_surface;
-      const hasTed = ted && typeof ted === "object" && Object.keys(ted as Record<string, unknown>).length > 0;
-      if (hasTed) {
-        const tedObj = ted as Record<string, unknown>;
-        const tedName = (tedObj.name as string) ?? "TED";
-        nodes.push({
-          id: `${xsecId}-ted`,
-          label: `TED: ${tedName}`,
-          level: 3,
-          leaf: true,
-          chip: "TED",
-          onEdit: onEditTed ? () => onEditTed(wingName, i, tedObj) : undefined,
-          onDelete: onDeleteTed ? () => {
-            if (confirm(`Delete control surface "${tedName}"?`)) onDeleteTed(wingName, i);
-          } : undefined,
-        });
-      }
+      const tedNode = buildTedNode(xsecId, wingName, i, xsec, callbacks);
+      if (tedNode) nodes.push(tedNode);
 
-      // Individual spar nodes
-      const spareList = Array.isArray(xsec.spare_list) ? xsec.spare_list as Record<string, unknown>[] : [];
-      for (let s = 0; s < spareList.length; s++) {
-        const sp = spareList[s];
-        const pos = ((sp.spare_position_factor as number ?? 0) * 100).toFixed(0);
-        const w = (sp.spare_support_dimension_width as number ?? 0).toFixed(1);
-        const h = (sp.spare_support_dimension_height as number ?? 0).toFixed(1);
-        nodes.push({
-          id: `${xsecId}-spar-${s}`,
-          label: `spar @ ${pos}%`,
-          level: 3,
-          leaf: true,
-          detail: `${w}x${h} mm`,
-          onEdit: onEditSpar ? () => onEditSpar(wingName, i, s, sp) : undefined,
-          onDelete: onDeleteSpar ? () => {
-            if (confirm(`Delete spar ${s}?`)) onDeleteSpar(wingName, i, s);
-          } : undefined,
-        });
-      }
+      nodes.push(...buildSparNodes(xsecId, wingName, i, xsec, callbacks));
     }
   });
 
@@ -352,6 +352,193 @@ function getChipLabel(xsec: XSec): string | undefined {
   const cs = xsec.control_surface;
   if (cs && typeof cs === "object" && "name" in cs) return String(cs.name).toUpperCase();
   return undefined;
+}
+
+// ── Build callbacks object — single conditional instead of 18 ternaries ──
+
+function buildCallbacks(
+  isCrossModelView: boolean,
+  selectWing: (n: string | null) => void,
+  selectXsec: (i: number | null) => void,
+  handleDeleteXsec: (wn: string, i: number) => void,
+  handleAddSegment: (wn: string) => void,
+  handleInsertXsec: (wn: string, i: number) => void,
+  setSegAddMenu: (v: { wingName: string; xsecIndex: number; hasTed: boolean; x: number; y: number }) => void,
+  onNodeEdit?: () => void,
+  onEditSpar?: (wingName: string, xsecIndex: number, sparIndex: number, data: Record<string, unknown>) => void,
+  onDeleteSpar?: (wingName: string, xsecIndex: number, sparIndex: number) => void,
+  onEditTed?: (wingName: string, xsecIndex: number, data: Record<string, unknown>) => void,
+  onDeleteTed?: (wingName: string, xsecIndex: number) => void,
+  onAddSpar?: (wingName: string, xsecIndex: number) => void,
+  onAddTed?: (wingName: string, xsecIndex: number) => void,
+): BuildNodeCallbacks {
+  const noOp = () => {};
+
+  if (isCrossModelView) {
+    return {
+      selectWing,
+      selectXsec,
+      onDeleteXsec: noOp,
+      onAddSegment: noOp,
+      onInsertXsec: noOp,
+    };
+  }
+
+  return {
+    selectWing,
+    selectXsec,
+    onDeleteXsec: handleDeleteXsec,
+    onEditNode: onNodeEdit,
+    onEditSpar,
+    onDeleteSpar,
+    onEditTed,
+    onDeleteTed,
+    onAddSpar,
+    onAddTed,
+    onAddMenu: (wn, xi, hasTed, cx, cy) => setSegAddMenu({ wingName: wn, xsecIndex: xi, hasTed, x: cx, y: cy }),
+    onAddSegment: handleAddSegment,
+    onInsertXsec: handleInsertXsec,
+  };
+}
+
+// ── Build complete tree data ────────────────────────────────────
+
+interface BuildTreeDataParams {
+  wingNames: string[];
+  fuselageNames: string[];
+  aeroplaneName?: string;
+  expandedSet: Set<string>;
+  wing: { name: string; symmetric: boolean; x_secs: XSec[] } | null;
+  wingConfig: { nose_pnt: number[] | null } | null;
+  treeMode: string;
+  selectedWing: string | null;
+  selectedXsecIndex: number | null;
+  selectedFuselage: string | null;
+  selectedFuselageXsecIndex: number | null;
+  fuselage: { x_secs: { a: number; b: number; n: number }[] } | null;
+  isWingVisible?: (wingName: string) => boolean;
+  isWingLoading?: (wingName: string) => boolean;
+  isFuselageVisible?: (name: string) => boolean;
+  onTogglePreview?: (wingName: string) => void;
+  onToggleAllPreview?: (wingNames: string[]) => void;
+  onToggleFuselagePreview?: (name: string) => void;
+  onNodeEdit?: () => void;
+  callbacks: BuildNodeCallbacks;
+  selectFuselage: (name: string | null) => void;
+  selectFuselageXsec: (i: number | null) => void;
+  handleDeleteFuselage: (fusName: string) => void;
+  handleDeleteFuselageXsec: (fusName: string, index: number) => void;
+  setAddMenuOpen: (v: boolean | ((prev: boolean) => boolean)) => void;
+}
+
+function buildTreeData(params: BuildTreeDataParams): TreeNode[] {
+  const treeData: TreeNode[] = [];
+  const rootExpanded = params.expandedSet.has("root");
+  const anyWingVisible = params.onTogglePreview ? params.wingNames.some((wn) => params.isWingVisible?.(wn)) : false;
+  const anyWingLoading = params.onTogglePreview ? params.wingNames.some((wn) => params.isWingLoading?.(wn)) : false;
+
+  treeData.push({
+    id: "root",
+    label: params.aeroplaneName ?? "Aeroplane",
+    level: 0,
+    expanded: rootExpanded,
+    previewVisible: anyWingVisible,
+    previewLoading: anyWingLoading,
+    onPreviewToggle: params.onToggleAllPreview
+      ? () => params.onToggleAllPreview!(params.wingNames)
+      : undefined,
+    onAdd: () => params.setAddMenuOpen((v: boolean) => !v),
+  });
+
+  if (!rootExpanded) return treeData;
+
+  // Wing nodes
+  for (const wn of params.wingNames) {
+    const ctx: BuildNodeContext = {
+      wingName: wn,
+      wing: params.wing,
+      selectedWing: params.selectedWing,
+      selectedXsecIndex: params.selectedXsecIndex,
+      expandedSet: params.expandedSet,
+      callbacks: params.callbacks,
+    };
+
+    const nodes = params.treeMode === "wingconfig"
+      ? buildSegmentNodes(ctx, params.wingConfig?.nose_pnt ?? null)
+      : buildXsecNodes(ctx);
+
+    // Attach preview toggle to the wing root node
+    if (nodes.length > 0 && params.onTogglePreview) {
+      nodes[0].previewVisible = params.isWingVisible?.(wn) ?? false;
+      nodes[0].previewLoading = params.isWingLoading?.(wn) ?? false;
+      nodes[0].onPreviewToggle = () => params.onTogglePreview!(wn);
+    }
+    treeData.push(...nodes);
+  }
+
+  // Fuselage nodes
+  buildFuselageNodes(treeData, params);
+
+  return treeData;
+}
+
+function buildFuselageNodes(treeData: TreeNode[], params: BuildTreeDataParams): void {
+  for (const fn of params.fuselageNames) {
+    const fusExpanded = params.expandedSet.has(`fuselage-${fn}`);
+    treeData.push({
+      id: `fuselage-${fn}`,
+      label: fn,
+      level: 1,
+      expanded: fusExpanded,
+      chip: "FUSELAGE",
+      onClick: () => {
+        params.selectFuselage(fn);
+      },
+      onDelete: () => params.handleDeleteFuselage(fn),
+      previewVisible: params.isFuselageVisible?.(fn) ?? true,
+      onPreviewToggle: params.onToggleFuselagePreview
+        ? () => params.onToggleFuselagePreview!(fn)
+        : undefined,
+    });
+
+    if (!fusExpanded) continue;
+
+    const hasFusData = params.fuselage && params.selectedFuselage === fn && params.fuselage.x_secs;
+    if (!hasFusData) {
+      treeData.push({
+        id: `fuselage-${fn}-loading`,
+        label: "loading\u2026",
+        level: 2,
+        leaf: true,
+        muted: true,
+      });
+      continue;
+    }
+
+    for (let i = 0; i < params.fuselage!.x_secs.length; i++) {
+      const xs = params.fuselage!.x_secs[i];
+      const isXsSelected = params.selectedFuselageXsecIndex === i;
+      treeData.push({
+        id: `fuselage-${fn}-xsec-${i}`,
+        label: `xsec ${i}`,
+        level: 2,
+        expanded: false,
+        leaf: true,
+        selected: isXsSelected,
+        detail: `a=${(xs.a * 1000).toFixed(1)}mm b=${(xs.b * 1000).toFixed(1)}mm n=${xs.n.toFixed(1)}`,
+        onClick: () => {
+          params.selectFuselage(fn);
+          params.selectFuselageXsec(i);
+        },
+        onEdit: () => {
+          params.selectFuselage(fn);
+          params.selectFuselageXsec(i);
+          params.onNodeEdit?.();
+        },
+        onDelete: () => params.handleDeleteFuselageXsec(fn, i),
+      });
+    }
+  }
 }
 
 // ── Props ───────────────────────────────────────────────────────
@@ -381,7 +568,8 @@ interface AeroplaneTreeProps {
 
 // ── Component ───────────────────────────────────────────────────
 
-export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, isFuselageVisible, onToggleFuselagePreview, onCollapseTree, onNodeEdit, onWingSaved, onFuselageSaved, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed }: AeroplaneTreeProps) {
+export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
+  const { aeroplaneId, wingNames, fuselageNames = [], aeroplaneName, isWingVisible, isWingLoading, onTogglePreview, onToggleAllPreview, isFuselageVisible, onToggleFuselagePreview, onCollapseTree, onNodeEdit, onWingSaved, onFuselageSaved, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed } = props;
   const { selectedWing, selectedXsecIndex, selectWing, selectXsec, selectedFuselage, selectedFuselageXsecIndex, selectFuselage, selectFuselageXsec, treeMode, setTreeMode } =
     useAeroplaneContext();
   const { wing, isLoading, mutate: mutateWing } = useWing(aeroplaneId, selectedWing);
@@ -517,111 +705,48 @@ export function AeroplaneTree({ aeroplaneId, wingNames, fuselageNames = [], aero
     }
   }
 
+  // Determine cross-model view once, build callbacks once
+  const isCrossModelView = wingDesignModel != null && (
+    (wingDesignModel === "wc" && treeMode === "asb") ||
+    (wingDesignModel === "asb" && treeMode === "wingconfig")
+  );
+
+  const callbacks = buildCallbacks(
+    isCrossModelView,
+    selectWing, selectXsec,
+    handleDeleteXsec, handleAddSegment, handleInsertXsec,
+    setSegAddMenu,
+    onNodeEdit, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed,
+  );
+
   // Build tree data
-  const treeData: TreeNode[] = [];
-  const rootExpanded = expandedSet.has("root");
-  const anyWingVisible = onTogglePreview ? wingNames.some((wn) => isWingVisible?.(wn)) : false;
-  const anyWingLoading = onTogglePreview ? wingNames.some((wn) => isWingLoading?.(wn)) : false;
-
-  treeData.push({
-    id: "root",
-    label: aeroplaneName ?? "Aeroplane",
-    level: 0,
-    expanded: rootExpanded,
-    previewVisible: anyWingVisible,
-    previewLoading: anyWingLoading,
-    onPreviewToggle: onToggleAllPreview
-      ? () => onToggleAllPreview(wingNames)
-      : undefined,
-    onAdd: () => setAddMenuOpen((v: boolean) => !v),
+  const treeData = buildTreeData({
+    wingNames,
+    fuselageNames,
+    aeroplaneName,
+    expandedSet,
+    wing,
+    wingConfig,
+    treeMode,
+    selectedWing,
+    selectedXsecIndex,
+    selectedFuselage,
+    selectedFuselageXsecIndex,
+    fuselage,
+    isWingVisible,
+    isWingLoading,
+    isFuselageVisible,
+    onTogglePreview,
+    onToggleAllPreview,
+    onToggleFuselagePreview,
+    onNodeEdit,
+    callbacks,
+    selectFuselage,
+    selectFuselageXsec,
+    handleDeleteFuselage,
+    handleDeleteFuselageXsec,
+    setAddMenuOpen,
   });
-
-  if (rootExpanded) {
-    for (const wn of wingNames) {
-      // When viewing ASB tree for a WC wing (or vice versa), disable edit/delete/add actions
-      const isCrossModelView = wingDesignModel != null && (
-        (wingDesignModel === "wc" && treeMode === "asb") ||
-        (wingDesignModel === "asb" && treeMode === "wingconfig")
-      );
-      const noOp = () => {};
-      const nodes = treeMode === "wingconfig"
-        ? buildSegmentNodes(wn, wing, wingConfig?.nose_pnt ?? null, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec,
-            isCrossModelView ? noOp : handleAddSegment,
-            isCrossModelView ? noOp : handleDeleteXsec,
-            isCrossModelView ? noOp : handleInsertXsec,
-            isCrossModelView ? undefined : onNodeEdit,
-            isCrossModelView ? undefined : onEditSpar, isCrossModelView ? undefined : onDeleteSpar, isCrossModelView ? undefined : onEditTed, isCrossModelView ? undefined : onDeleteTed, isCrossModelView ? undefined : onAddSpar, isCrossModelView ? undefined : onAddTed, isCrossModelView ? undefined : (wn2, xi, hasTed, cx, cy) => setSegAddMenu({ wingName: wn2, xsecIndex: xi, hasTed, x: cx, y: cy }))
-        : buildXsecNodes(wn, wing, selectedWing, selectedXsecIndex, expandedSet, selectWing, selectXsec,
-            isCrossModelView ? noOp : handleDeleteXsec,
-            isCrossModelView ? undefined : onNodeEdit,
-            isCrossModelView ? undefined : onEditSpar, isCrossModelView ? undefined : onDeleteSpar, isCrossModelView ? undefined : onEditTed, isCrossModelView ? undefined : onDeleteTed, isCrossModelView ? undefined : onAddSpar, isCrossModelView ? undefined : onAddTed, isCrossModelView ? undefined : (wn2, xi, hasTed, cx, cy) => setSegAddMenu({ wingName: wn2, xsecIndex: xi, hasTed, x: cx, y: cy }));
-      // Attach preview toggle to the wing root node
-      if (nodes.length > 0 && onTogglePreview) {
-        nodes[0].previewVisible = isWingVisible?.(wn) ?? false;
-        nodes[0].previewLoading = isWingLoading?.(wn) ?? false;
-        nodes[0].onPreviewToggle = () => onTogglePreview(wn);
-      }
-      treeData.push(...nodes);
-    }
-
-    // Fuselage nodes (expandable with cross-sections)
-    for (const fn of fuselageNames) {
-      const fusExpanded = expandedSet.has(`fuselage-${fn}`);
-      const isFusSelected = selectedFuselage === fn;
-      treeData.push({
-        id: `fuselage-${fn}`,
-        label: fn,
-        level: 1,
-        expanded: fusExpanded,
-        chip: "FUSELAGE",
-        onClick: () => {
-          selectFuselage(fn);
-        },
-        onDelete: () => handleDeleteFuselage(fn),
-        previewVisible: isFuselageVisible?.(fn) ?? true,
-        onPreviewToggle: onToggleFuselagePreview
-          ? () => onToggleFuselagePreview(fn)
-          : undefined,
-      });
-
-      if (fusExpanded) {
-        const hasFusData = fuselage && selectedFuselage === fn && fuselage.x_secs;
-        if (!hasFusData) {
-          treeData.push({
-            id: `fuselage-${fn}-loading`,
-            label: "loading\u2026",
-            level: 2,
-            leaf: true,
-            muted: true,
-          });
-        } else {
-          for (let i = 0; i < fuselage.x_secs.length; i++) {
-            const xs = fuselage.x_secs[i];
-            const isXsSelected = selectedFuselageXsecIndex === i;
-            treeData.push({
-              id: `fuselage-${fn}-xsec-${i}`,
-              label: `xsec ${i}`,
-              level: 2,
-              expanded: false,
-              leaf: true,
-              selected: isXsSelected,
-              detail: `a=${(xs.a * 1000).toFixed(1)}mm b=${(xs.b * 1000).toFixed(1)}mm n=${xs.n.toFixed(1)}`,
-              onClick: () => {
-                selectFuselage(fn);
-                selectFuselageXsec(i);
-              },
-              onEdit: () => {
-                selectFuselage(fn);
-                selectFuselageXsec(i);
-                onNodeEdit?.();
-              },
-              onDelete: () => handleDeleteFuselageXsec(fn, i),
-            });
-          }
-        }
-      }
-    }
-  }
 
   return (
     <div className="flex h-full min-h-0 flex-col rounded-xl border border-border bg-card p-3 px-4 overflow-hidden">
