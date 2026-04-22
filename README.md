@@ -250,3 +250,6 @@ Platform-specific dependencies are handled via environment markers in [pyproject
 
 Marc Szymanski (marc.szymanski@mac.com)
 
+
+
+<!-- Fix #212 -->
