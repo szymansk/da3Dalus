@@ -98,7 +98,7 @@ def _compute_alpha_sweep_characteristic_points(
                 "index": i, "alpha_deg": float(alpha[i]), "CL": float(cl[i]), "CD": float(cd[i]), "Cm": None,
             }
 
-            cross = np.where(np.sign(cl[:-1]) != np.sign(cl[1:]))[0]
+            cross = np.nonzero(np.sign(cl[:-1]) != np.sign(cl[1:]))[0]
             if len(cross) > 0:
                 i = int(cross[0])
                 cl0, cl1 = cl[i], cl[i + 1]
@@ -138,7 +138,7 @@ def _compute_alpha_sweep_characteristic_points(
             cm = cm_values[:n]
             alpha = alpha_array[:n]
 
-            cross = np.where(np.sign(cm[:-1]) != np.sign(cm[1:]))[0]
+            cross = np.nonzero(np.sign(cm[:-1]) != np.sign(cm[1:]))[0]
             if len(cross) > 0:
                 i = int(cross[0])
                 cm0, cm1 = cm[i], cm[i + 1]
