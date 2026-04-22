@@ -1,7 +1,7 @@
 import json
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Dict, Any, Union, OrderedDict, List, Literal
+from typing import Optional, Dict, Any, OrderedDict, List, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -599,7 +599,7 @@ class CreateWingLoftRequest(BaseModel):
 
 
 class CreateAeroPlaneRequest(BaseModel):
-    blueprint: Union[Path, Any]
+    blueprint: Path | Any
     wings: Optional[Dict[str, Wing]] = None
     fuselages: Optional[OrderedDict[str, Fuselage]] = None
     settings: Optional[AeroplaneSettings] = None
