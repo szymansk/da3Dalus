@@ -52,8 +52,8 @@ function buildFuselageSurface(
 /** Plotly 3D preview of fuselage from xsecs — lazy loaded */
 function FuselagePreview3D({ xsecs, selectedXsec }: { xsecs: XSec[]; selectedXsec: number | null }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const plotlyRef = useRef<any>(null);
-  const cameraRef = useRef<any>(null);
+  const plotlyRef = useRef<{ restyle: (el: HTMLDivElement, update: Record<string, unknown>, indices: number[]) => void } | null>(null);
+  const cameraRef = useRef<Record<string, unknown> | null>(null);
 
   // Initial plot + full rebuild when xsecs change
   useEffect(() => {
@@ -111,29 +111,36 @@ function FuselagePreview3D({ xsecs, selectedXsec }: { xsecs: XSec[]; selectedXse
 
       // Restore saved camera position (preserved across re-renders)
       if (cameraRef.current) {
-        layout.scene = { ...layout.scene, camera: cameraRef.current } as any;
+        layout.scene = { ...layout.scene, camera: cameraRef.current } as typeof layout.scene;
       }
 
-      await Plotly.default.react(containerRef.current, [surfaceTrace as any, ...xsecTraces as any[]], layout, {
-        responsive: true,
-        displayModeBar: true,
-        modeBarButtonsToRemove: ["toImage", "sendDataToCloud"] as any[],
-      });
+      await Plotly.default.react(
+        containerRef.current,
+        [surfaceTrace as Record<string, unknown>, ...xsecTraces as Record<string, unknown>[]],
+        layout,
+        {
+          responsive: true,
+          displayModeBar: true,
+          modeBarButtonsToRemove: ["toImage", "sendDataToCloud"] as string[],
+        },
+      );
 
       // Apply selection highlight immediately after render
       if (selectedXsec !== null && xsecs.length > 0) {
         const traceIndices = xsecs.map((_, i) => i + 1);
         const colors = xsecs.map((_, idx) => selectedXsec === idx ? "#E5484D" : "#B8B9B6");
         const widths = xsecs.map((_, idx) => selectedXsec === idx ? 5 : 1.5);
-        (Plotly.default as any).restyle(containerRef.current, { "line.color": colors, "line.width": widths }, traceIndices);
+        (Plotly.default as unknown as { restyle: (el: HTMLDivElement, update: Record<string, unknown>, indices: number[]) => void })
+          .restyle(containerRef.current, { "line.color": colors, "line.width": widths }, traceIndices);
       }
 
       // Listen for camera changes and save them
-      (containerRef.current as any).on?.("plotly_relayout", (update: any) => {
-        if (update?.["scene.camera"]) {
-          cameraRef.current = update["scene.camera"];
-        }
-      });
+      (containerRef.current as unknown as { on?: (event: string, cb: (update: Record<string, unknown>) => void) => void })
+        .on?.("plotly_relayout", (update: Record<string, unknown>) => {
+          if (update?.["scene.camera"]) {
+            cameraRef.current = update["scene.camera"] as Record<string, unknown>;
+          }
+        });
     })();
 
     return () => {
@@ -271,7 +278,7 @@ export function ImportFuselageDialog({
       })
       .then((data) => {
         const xFlip = flipX ? -1 : 1;
-        const newXsecs: XSec[] = (data.fuselage?.x_secs ?? []).map((xs: any) => ({
+        const newXsecs: XSec[] = (data.fuselage?.x_secs ?? []).map((xs: { xyz: number[]; a: number; b: number; n: number }) => ({
           xyz: xs.xyz.map((v: number, idx: number) => v * scaleFactor * (idx === 0 ? xFlip : 1)),
           a: xs.a * scaleFactor,
           b: xs.b * scaleFactor,

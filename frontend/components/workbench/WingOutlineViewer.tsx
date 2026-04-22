@@ -734,7 +734,7 @@ export function WingOutlineViewer({
       }
 
       // Save camera before replot
-      const el = containerRef.current as any;
+      const el = containerRef.current as unknown as { layout?: { scene?: { camera?: unknown } } } | null;
       const currentCamera = el?.layout?.scene?.camera;
       if (currentCamera) savedCamera.current = currentCamera;
 

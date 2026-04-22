@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import React from "react";
 
 vi.mock("react-resizable-panels", () => ({
-  Separator: ({ children, className, ...props }: any) => (
+  Separator: ({ children, className, ...props }: Record<string, unknown> & { children?: React.ReactNode; className?: string }) => (
     <div data-testid="separator" className={className} {...props}>
       {typeof children === "function" ? children() : children}
     </div>
@@ -11,7 +11,7 @@ vi.mock("react-resizable-panels", () => ({
 }));
 
 vi.mock("lucide-react", () => ({
-  ChevronRight: ({ className, ...props }: any) => (
+  ChevronRight: ({ className, ...props }: Record<string, unknown> & { className?: string }) => (
     <svg data-testid="chevron" className={className} {...props} />
   ),
 }));

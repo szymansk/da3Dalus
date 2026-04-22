@@ -146,10 +146,8 @@ function Field({
   const [localValue, setLocalValue] = useState(String(value));
   const [editing, setEditing] = useState(false);
 
-  // Sync from parent when not actively editing
-  useEffect(() => {
-    if (!editing) setLocalValue(String(value));
-  }, [value, editing]);
+  // Derive the displayed value: use local state when editing, parent prop otherwise
+  const displayValue = editing ? localValue : String(value);
 
   return (
     <div className="flex flex-1 flex-col gap-1">
@@ -161,8 +159,8 @@ function Field({
           <input
             type={type}
             step="any"
-            value={editing ? localValue : String(value)}
-            onFocus={() => setEditing(true)}
+            value={displayValue}
+            onFocus={() => { setEditing(true); setLocalValue(String(value)); }}
             onChange={(e) => {
               setLocalValue(e.target.value);
               onChange?.(e.target.value);

@@ -56,7 +56,7 @@ export function CadViewer({ parts }: CadViewerProps) {
 
         // Cleanup previous viewer
         if (viewerRef.current) {
-          try { (viewerRef.current as any).dispose?.(); } catch { /* ok */ }
+          try { (viewerRef.current as { dispose?: () => void }).dispose?.(); } catch { /* ok */ }
         }
         container.innerHTML = "";
 
@@ -116,7 +116,7 @@ export function CadViewer({ parts }: CadViewerProps) {
           }
 
           try {
-            const rootId = (firstShapesCopy as any).id || "/Group";
+            const rootId = (firstShapesCopy as { id?: string }).id || "/Group";
             viewer.addPart(rootId, shapesCopy, { skipBounds: true });
           } catch (err) {
             console.warn(`[CadViewer] addPart for part ${i} failed:`, err);
