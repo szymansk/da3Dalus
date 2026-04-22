@@ -300,7 +300,7 @@ async def analyze_wing(
     plane_schema = get_wing_schema_or_raise(db, aeroplane_uuid, wing_name)
 
     try:
-        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(
+        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
             plane_schema=plane_schema
         )
         asb_airplane.xyz_ref = operating_point.xyz_ref
@@ -330,7 +330,7 @@ async def analyze_airplane(
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
     try:
-        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(
+        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
             plane_schema=plane_schema
         )
         result, _ = await analyse_aerodynamics(analysis_tool, operating_point, asb_airplane)
@@ -359,7 +359,7 @@ async def calculate_streamlines_json(
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
     try:
-        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(
+        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
             plane_schema=plane_schema
         )
         _, figure = await analyse_aerodynamics(
@@ -385,7 +385,7 @@ async def analyze_alpha_sweep(db: Session, aeroplane_uuid, sweep_request: AlphaS
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
     try:
-        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(
+        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
             plane_schema=plane_schema
         )
 
@@ -1199,7 +1199,7 @@ async def analyze_simple_sweep(
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
     try:
-        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(
+        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
             plane_schema=plane_schema
         )
 
@@ -1301,7 +1301,7 @@ async def get_streamlines_three_view_image(
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
     try:
-        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(
+        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
             plane_schema=plane_schema
         )
 
@@ -1335,7 +1335,7 @@ async def get_three_view_image(db: Session, aeroplane_uuid) -> bytes:
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
     try:
-        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(
+        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
             plane_schema=plane_schema
         )
 
@@ -1372,7 +1372,7 @@ async def analyze_airplane_strip_forces(
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
     try:
-        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(
+        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
             plane_schema=plane_schema
         )
         asb_airplane.xyz_ref = operating_point.xyz_ref
@@ -1451,7 +1451,7 @@ async def analyze_wing_strip_forces(
     plane_schema = get_wing_schema_or_raise(db, aeroplane_uuid, wing_name)
 
     try:
-        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(
+        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
             plane_schema=plane_schema
         )
         asb_airplane.xyz_ref = operating_point.xyz_ref
