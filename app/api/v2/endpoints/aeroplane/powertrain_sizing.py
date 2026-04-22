@@ -23,8 +23,12 @@ def _raise_http(exc: ServiceException) -> None:
     if isinstance(exc, NotFoundError):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     if isinstance(exc, ValidationError):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message) from exc
-    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message
+        ) from exc
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message
+    ) from exc
 
 
 def _call(func, *args, **kwargs):
@@ -40,11 +44,18 @@ def _call(func, *args, **kwargs):
     "/aeroplanes/{aeroplane_id}/powertrain/sizing",
     status_code=status.HTTP_200_OK,
     tags=["powertrain"],
-    operation_id="size_powertrain"
+    operation_id="size_powertrain",
+    responses={
+        404: {"description": "Resource not found"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def size_powertrain(
     aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
-    body: Annotated[PowertrainSizingRequest, Body(..., description="Mission parameters for sizing")],
+    body: Annotated[
+        PowertrainSizingRequest, Body(..., description="Mission parameters for sizing")
+    ],
     db: Annotated[Session, Depends(get_db)],
 ) -> PowertrainSizingResponse:
     """Recommend motor+ESC+battery combos that fit the given mission parameters."""
