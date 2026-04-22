@@ -146,10 +146,11 @@ export default function ConstructionPlansPage() {
   async function handleNewPlanSubmit() {
     const name = newPlanName.trim();
     if (!name) return;
+    if (newPlanFromTemplate && newPlanTemplateId != null && !aeroplaneId) return;
     try {
       let created;
-      if (newPlanFromTemplate && newPlanTemplateId != null) {
-        created = await instantiateTemplate(aeroplaneId!, newPlanTemplateId, name);
+      if (newPlanFromTemplate && newPlanTemplateId != null && aeroplaneId) {
+        created = await instantiateTemplate(aeroplaneId, newPlanTemplateId, name);
         mutateAeroplanePlans();
       } else {
         created = await createPlan({
@@ -758,6 +759,7 @@ export default function ConstructionPlansPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
           onClick={() => setNewPlanDialogOpen(false)}
+          onKeyDown={(e) => { if (e.key === "Escape") setNewPlanDialogOpen(false); }}
         >
           <div
             className="flex w-[480px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
@@ -826,12 +828,12 @@ export default function ConstructionPlansPage() {
                   ))}
                 </select>
                 {/* Show description of selected template */}
-                {newPlanTemplateId != null && (() => {
-                  const selected = templates.find((t) => t.id === newPlanTemplateId);
-                  return selected?.description ? (
-                    <p className="text-[11px] text-muted-foreground">{selected.description}</p>
-                  ) : null;
-                })()}
+                {newPlanTemplateId != null &&
+                  templates.find((t) => t.id === newPlanTemplateId)?.description && (
+                    <p className="text-[11px] text-muted-foreground">
+                      {templates.find((t) => t.id === newPlanTemplateId)?.description}
+                    </p>
+                  )}
               </div>
             )}
 
