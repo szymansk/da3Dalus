@@ -430,6 +430,17 @@ def _extract_aeroplane_settings(
     return servo_settings_dumps, printer_pickle
 
 
+def _apply_worker_result(aeroplane_id_str: str, result: "Dict[str, Any]") -> None:
+    """Merge a successful worker result into the shared task dict."""
+    with tasks_lock:
+        if aeroplane_id_str in tasks:
+            task = tasks[aeroplane_id_str]
+            task["status"] = result.get("status", "FAILURE")
+            for key in ("result", "error", "traceback"):
+                if key in result:
+                    task[key] = result[key]
+
+
 def _make_task_done_callback(aeroplane_id_str: str):
     """Create the parent-side done callback for a worker future."""
     def _on_task_done(fut: "Future[Dict[str, Any]]") -> None:
@@ -447,16 +458,7 @@ def _make_task_done_callback(aeroplane_id_str: str):
                     )
             return
 
-        with tasks_lock:
-            if aeroplane_id_str in tasks:
-                task = tasks[aeroplane_id_str]
-                task["status"] = result.get("status", "FAILURE")
-                if "result" in result:
-                    task["result"] = result["result"]
-                if "error" in result:
-                    task["error"] = result["error"]
-                if "traceback" in result:
-                    task["traceback"] = result["traceback"]
+        _apply_worker_result(aeroplane_id_str, result)
     return _on_task_done
 
 

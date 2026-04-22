@@ -378,9 +378,9 @@ async def get_aeroplane_task_status(
 )
 async def download_aeroplane_zip(
     aeroplane_id: str,
-    wing_name: str,  # noqa: ARG001 — required by route path, not used in body
-    creator_url_type: str,  # noqa: ARG001 — required by route path, not used in body
-    exporter_url_type: str,  # noqa: ARG001 — required by route path, not used in body
+    wing_name: str,
+    creator_url_type: str,
+    exporter_url_type: str,
     settings: Annotated[Settings, Depends(get_settings)],
     request: Request = None,
 ) -> ZipAssetResponse:

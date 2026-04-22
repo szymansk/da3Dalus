@@ -1,5 +1,5 @@
 import uuid
-from unittest.mock import AsyncMock, patch
+from unittest.mock import MagicMock, patch
 
 from app.models.aeroplanemodel import AeroplaneModel
 from app.models.analysismodels import OperatingPointModel
@@ -45,7 +45,7 @@ def test_generate_default_endpoint_returns_generated_set(client_and_db):
 
     with patch(
         "app.api.v2.endpoints.operating_points.operating_point_generator_service.generate_default_set_for_aircraft",
-        new=AsyncMock(return_value=mocked_response),
+        new=MagicMock(return_value=mocked_response),
     ):
         response = client.post(
             f"/aeroplanes/{aircraft_uuid}/operating-pointsets/generate-default",
@@ -77,7 +77,7 @@ def test_generate_default_endpoint_handles_skipped_points_response(client_and_db
 
     with patch(
         "app.api.v2.endpoints.operating_points.operating_point_generator_service.generate_default_set_for_aircraft",
-        new=AsyncMock(return_value=mocked_response),
+        new=MagicMock(return_value=mocked_response),
     ):
         response = client.post(
             f"/aeroplanes/{aircraft_uuid}/operating-pointsets/generate-default",
@@ -121,7 +121,7 @@ def test_trim_operating_point_endpoint_returns_trimmed_point(client_and_db):
 
     with patch(
         "app.api.v2.endpoints.operating_points.operating_point_generator_service.trim_operating_point_for_aircraft",
-        new=AsyncMock(return_value=mocked_response),
+        new=MagicMock(return_value=mocked_response),
     ):
         response = client.post(
             f"/aeroplanes/{aircraft_uuid}/operating-points/trim",

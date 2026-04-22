@@ -541,7 +541,7 @@ def _apply_limit_warnings(
     return trim_status
 
 
-async def _trim_or_estimate_point(
+def _trim_or_estimate_point(
     asb_airplane: asb.Airplane,
     aircraft: AeroplaneModel,
     target: dict[str, Any],
@@ -678,7 +678,7 @@ def _persist_point_set(
     return opset, stored_points
 
 
-async def generate_default_set_for_aircraft(
+def generate_default_set_for_aircraft(
     db: Session,
     aircraft_uuid,
     replace_existing: bool = False,
@@ -711,7 +711,7 @@ async def generate_default_set_for_aircraft(
                 )
                 continue
 
-            point = await _trim_or_estimate_point(
+            point = _trim_or_estimate_point(
                 asb_airplane=asb_airplane,
                 aircraft=aircraft,
                 target=target,
@@ -762,7 +762,7 @@ async def generate_default_set_for_aircraft(
         raise InternalError(f"Operating-point generation error: {exc}")
 
 
-async def trim_operating_point_for_aircraft(
+def trim_operating_point_for_aircraft(
     db: Session,
     aircraft_uuid,
     request: TrimOperatingPointRequest,
@@ -800,7 +800,7 @@ async def trim_operating_point_for_aircraft(
                 },
             )
 
-        point = await _trim_or_estimate_point(
+        point = _trim_or_estimate_point(
             asb_airplane=asb_airplane,
             aircraft=aircraft,
             target=target,

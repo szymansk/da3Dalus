@@ -55,7 +55,7 @@ async def get_stability_summary(
     from app.converters.model_schema_converters import aeroplane_schema_to_asb_airplane_async
     from app.api.utils import analyse_aerodynamics
 
-    plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
+    plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
     try:
         asb_airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
