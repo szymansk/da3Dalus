@@ -3,5 +3,9 @@
   "python.linting.enabled": false,
   "python.envFile": "${workspaceFolder}/.env",
   "makefile.configureOnOpen": false,
-  "python-envs.defaultEnvManager": "ms-python.python:system"
+  "python-envs.defaultEnvManager": "ms-python.python:system",
+  "sonarlint.connectedMode.project": {
+    "connectionId": "szymansk",
+    "projectKey": "szymansk_da3Dalus"
+  }
 }
