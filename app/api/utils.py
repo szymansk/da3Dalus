@@ -247,19 +247,15 @@ def compile_four_view_figure(figure):
 
 
 async def save_content_and_get_static_url(aeroplane_id, base_url, content, content_type, filename):
-    # Create directory structure
     content_dir = os.path.join("tmp", str(aeroplane_id), content_type)
-    os.makedirs(content_dir, exist_ok=True)
-    # Save HTML content to file
     file_path = os.path.join(content_dir, filename)
-    await asyncio.to_thread(_write_file_sync, file_path, content)
-    # Return URL to the served HTML file
+    await asyncio.to_thread(_write_file_sync, content_dir, file_path, content)
     relative_url = f"/static/{aeroplane_id}/{content_type}/{filename}"
-    full_url = urljoin(base_url, relative_url)
-    return full_url
+    return urljoin(base_url, relative_url)
 
 
-def _write_file_sync(file_path: str, content: str) -> None:
-    """Write content to a file synchronously (used via asyncio.to_thread)."""
+def _write_file_sync(content_dir: str, file_path: str, content: str) -> None:
+    """Create directory and write content (used via asyncio.to_thread)."""
+    os.makedirs(content_dir, exist_ok=True)
     with open(file_path, "w") as f:
         f.write(content)

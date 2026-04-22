@@ -469,7 +469,7 @@ def _cl_target_for_velocity(
     return float((total_mass_kg * 9.81 * n_target) / (q_dyn * s_ref))
 
 
-async def _grid_search_trim(
+def _grid_search_trim(
     asb_airplane: asb.Airplane,
     target: dict[str, Any],
     velocity: float,
@@ -587,7 +587,7 @@ async def _trim_or_estimate_point(
 
     # Fallback grid-search if opti didn't converge well enough
     if best_score > 0.35:
-        gs_score, gs_alpha, gs_beta, gs_velocity, gs_controls = await _grid_search_trim(
+        gs_score, gs_alpha, gs_beta, gs_velocity, gs_controls = _grid_search_trim(
             asb_airplane,
             target,
             velocity,
