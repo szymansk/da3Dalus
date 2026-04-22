@@ -2,9 +2,10 @@
 
 ## What this project is
 
-**cad-modelling-service** is the Python backend of the **da3Dalus** aircraft
-design toolchain. It is a FastAPI service that:
+**da3Dalus** is an aircraft design toolchain with a Python backend and
+a React frontend.
 
+**Backend** (`app/`) — FastAPI service:
 - Generates parametric aircraft CAD (wings, fuselages, complete assemblies)
   using **CadQuery**.
 - Runs aerodynamic analysis — vortex lattice method, stability, operating
@@ -14,6 +15,15 @@ design toolchain. It is a FastAPI service that:
 - Exposes everything over a REST API (v2 current, v1 legacy) and a
   **Model Context Protocol (MCP)** server for AI-agent integration
   (via `FastMCP`).
+
+**Frontend** (`frontend/`) — Next.js 16 App Router + React 19:
+- Interactive workbench for aircraft design (wing editor, component
+  tree, analysis dashboards).
+- 3D CAD viewer via **Three.js** (`@react-three/fiber` + `drei`).
+- Aerodynamic charts via **Plotly** (`plotly.js-gl3d-dist-min`).
+- Data fetching with **SWR**, styling with **Tailwind CSS**.
+- Dark theme with orange accent (`#FF8400`), fonts: JetBrains Mono +
+  Geist.
 
 ## Using Superpowers
 
@@ -175,8 +185,6 @@ props (`paper_bgcolor`, `plot_bgcolor`, `font.color`).
 ### Other rules
 
 - **App Router** (not Pages Router) — see `frontend/AGENTS.md`
-- **Dark theme** with orange accent (`#FF8400`), fonts: JetBrains
-  Mono + Geist
 - All API calls go through the backend (no direct CORS calls)
 
 
