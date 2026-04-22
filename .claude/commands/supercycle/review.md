@@ -26,7 +26,73 @@ Gather: PR number, title, branch, files changed, lines changed.
 
 ---
 
-## Phase 2 — Classify PRs
+## Phase 2 — Issue Task Completeness Check
+
+For each PR, find the linked GH Issue (from PR body `Closes #N`):
+
+```bash
+gh pr view <N> --json body --jq '.body' | grep -oP 'Closes #\K\d+'
+```
+
+Then load the issue and extract its task list:
+
+```bash
+gh issue view <ISSUE> --json body --jq '.body'
+```
+
+Parse all checkbox items (`- [ ]` and `- [x]`) from the issue body.
+
+### For each unchecked task:
+
+Classify it into one of three categories:
+
+| Category | Criteria | Action |
+|----------|----------|--------|
+| **Done in PR** | The PR diff clearly implements this task | Check the box — update issue body |
+| **Agent-fixable** | Can be fixed by the agent without human judgment (code change, test, config) | Add to the fix list for `/supercycle:fix` |
+| **Human Only** | Requires human judgment, manual testing, external system access, or a decision only the user can make | Mark as `🧑 Human Only` in the issue, assign to user, add comment |
+
+### Handling "Human Only" tasks:
+
+If any task requires human action:
+
+1. **Update the issue body** — prepend `🧑 Human Only` to the task text:
+   ```
+   - [ ] 🧑 Human Only: Verify the deployment works in staging
+   ```
+
+2. **Assign the issue to the user:**
+   ```bash
+   gh issue edit <ISSUE> --add-assignee <user>
+   ```
+
+3. **Add a comment explaining what's needed:**
+   ```bash
+   gh issue comment <ISSUE> --body "## 🧑 Human Action Required
+
+   The following tasks from this issue require human action:
+
+   - [ ] <task description> — **Reason:** <why the agent can't do this>
+
+   The PR is otherwise ready. Please complete these tasks and check
+   them off, then the PR can be merged via \`/supercycle:merge <N>\`."
+   ```
+
+4. **Report in the review output** that the PR is blocked on human tasks.
+
+### Update issue checkboxes
+
+For tasks that ARE completed in the PR, update the issue body to
+check them off:
+
+```bash
+# Read current body, update checkboxes, write back
+gh issue edit <ISSUE> --body "<updated body with checked boxes>"
+```
+
+---
+
+## Phase 3 — Classify PR Content
 
 For each PR, determine which review agents to dispatch based on the
 diff content:
@@ -50,7 +116,7 @@ gh pr diff <N> --stat
 
 ---
 
-## Phase 3 — Dispatch Review Agents
+## Phase 4 — Dispatch Review Agents
 
 Launch all review agents **in parallel** (single message block).
 
@@ -64,14 +130,23 @@ Each agent prompt MUST include:
 
 ---
 
-## Phase 4 — Consolidate Findings
+## Phase 5 — Consolidate Findings
 
 After all agents return, consolidate into a single report:
 
 ```
 ## Review Results
 
-### PR #N — <title>
+### PR #N — <title> (Closes #ISSUE)
+
+#### Issue Task Completeness
+| # | Task | Status | Who |
+|---|------|--------|-----|
+| 1 | <task from issue> | ✅ Done in PR | Agent |
+| 2 | <task from issue> | 🔧 Agent-fixable | → /supercycle:fix |
+| 3 | <task from issue> | 🧑 Human Only | → Assigned to user |
+
+#### Code Review Findings
 
 | Agent | Findings | Severity |
 |-------|----------|----------|
@@ -85,12 +160,13 @@ After all agents return, consolidate into a single report:
 - [Finding with file:line and remedy]
 
 ### Verdict
-- PR #N: APPROVED / CHANGES REQUESTED
-- PR #M: APPROVED / CHANGES REQUESTED
+- PR #N: APPROVED / CHANGES REQUESTED / BLOCKED ON HUMAN
+- PR #M: APPROVED / CHANGES REQUESTED / BLOCKED ON HUMAN
 
 ### Next Steps
-- /supercycle:fix <PR numbers with findings>   ← fix issues
-- /supercycle:merge <PR numbers>               ← merge approved PRs
+- /supercycle:fix <PR numbers with agent-fixable findings>
+- /supercycle:merge <approved PR numbers>
+- 🧑 Human tasks assigned on issue #ISSUE — complete manually, then merge
 ```
 
 ---
@@ -103,6 +179,10 @@ After all agents return, consolidate into a single report:
   ├─ /supercycle:implement
   │
   ├─ /supercycle:review          ← YOU ARE HERE
+  │    ├─ Issue task completeness check
+  │    │    ├─ ✅ Done in PR → check off
+  │    │    ├─ 🔧 Agent-fixable → /supercycle:fix
+  │    │    └─ 🧑 Human Only → assign to user + comment
   │    ├─ code-reviewer (always)
   │    ├─ silent-failure-hunter (conditional)
   │    ├─ code-simplifier (conditional)
