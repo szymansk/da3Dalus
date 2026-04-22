@@ -73,8 +73,41 @@ jobs:
           path: coverage.xml
           if-no-files-found: ignore
 
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Lint (eslint)
+        run: npm run lint
+        working-directory: frontend
+
+      - name: Run unit tests with coverage
+        run: npm run test:unit -- --coverage
+        working-directory: frontend
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: frontend-coverage-lcov
+          path: frontend/coverage/lcov.info
+          if-no-files-found: ignore
+
   sonarcloud:
-    needs: fast
+    needs: [fast, frontend]
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -82,10 +115,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download coverage report
+      - name: Download Python coverage report
         uses: actions/download-artifact@v5
         with:
           name: coverage-xml-py3.12
+
+      - name: Download frontend coverage report
+        uses: actions/download-artifact@v5
+        with:
+          name: frontend-coverage-lcov
+          path: frontend/coverage
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v5
