@@ -530,7 +530,7 @@ def execute_plan(
 ) -> ExecutionResult:
     """Execute a plan against an aeroplane configuration."""
     from app.services.wing_service import get_aeroplane_or_raise, get_wing_or_raise
-    from app.converters.model_schema_converters import wingModelToWingConfig
+    from app.converters.model_schema_converters import wing_model_to_wing_config
 
     # Load plan
     plan = _get_plan_or_raise(db, plan_id)
@@ -547,7 +547,7 @@ def execute_plan(
     wing_config: dict = {}
     for wing in aeroplane.wings:
         try:
-            wc = wingModelToWingConfig(wing, scale=1000.0)
+            wc = wing_model_to_wing_config(wing, scale=1000.0)
             wing_config[wing.name] = wc
         except Exception as exc:
             logger.warning("Failed to convert wing '%s': %s", wing.name, exc)

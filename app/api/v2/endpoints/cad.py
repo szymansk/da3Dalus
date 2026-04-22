@@ -105,9 +105,9 @@ async def start_wing_tessellation(
         aeroplane = cad_service.get_aeroplane_with_wings(db, aeroplane_id)
         wing = cad_service.get_wing_from_aeroplane(aeroplane, wing_name)
 
-        from app.converters.model_schema_converters import wingModelToAsbWingSchema
+        from app.converters.model_schema_converters import wing_model_to_asb_wing_schema
 
-        wing_schema = wingModelToAsbWingSchema(wing)
+        wing_schema = wing_model_to_asb_wing_schema(wing)
         wing_schema_pickle = pickle.dumps(wing_schema)
 
         tessellation_service.start_tessellation_task(

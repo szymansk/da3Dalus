@@ -8,7 +8,7 @@ import numpy as np
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.converters.model_schema_converters import aeroplaneModelToAeroplaneSchema_async, aeroplaneSchemaToAsbAirplane_async
+from app.converters.model_schema_converters import aeroplane_model_to_aeroplane_schema_async, aeroplane_schema_to_asb_airplane_async
 from app.core.exceptions import InternalError, NotFoundError, ValidationError
 from app.models.aeroplanemodel import AeroplaneModel
 from app.models.analysismodels import OperatingPointModel, OperatingPointSetModel
@@ -536,8 +536,8 @@ async def generate_default_set_for_aircraft(
         refs = _estimate_reference_speeds(profile)
         targets = _build_target_definitions(profile, refs)
 
-        plane_schema = await aeroplaneModelToAeroplaneSchema_async(aircraft)
-        asb_airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
+        plane_schema = await aeroplane_model_to_aeroplane_schema_async(aircraft)
+        asb_airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         capabilities = _detect_control_capabilities(asb_airplane)
 
         points: list[TrimmedPoint] = []
@@ -616,8 +616,8 @@ async def trim_operating_point_for_aircraft(
             request.profile_id_override,
         )
 
-        plane_schema = await aeroplaneModelToAeroplaneSchema_async(aircraft)
-        asb_airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
+        plane_schema = await aeroplane_model_to_aeroplane_schema_async(aircraft)
+        asb_airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         capabilities = _detect_control_capabilities(asb_airplane)
 
         target = {

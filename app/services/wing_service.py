@@ -26,7 +26,7 @@ from app.models.aeroplanemodel import (
 from app.schemas.Servo import Servo as ServoSchema
 from app.schemas.wing import Wing as WingConfigurationSchema
 from app.services.create_wing_configuration import create_wing_configuration
-from app.converters.model_schema_converters import wingConfigToWingModel, wingModelToWingConfig
+from app.converters.model_schema_converters import wing_config_to_wing_model, wing_model_to_wing_config
 
 logger = logging.getLogger(__name__)
 
@@ -284,7 +284,7 @@ def create_wing_from_wing_configuration(
                 )
 
             wing_configuration = create_wing_configuration(wing_config_data)
-            wing_model = wingConfigToWingModel(
+            wing_model = wing_config_to_wing_model(
                 wing_config=wing_configuration,
                 wing_name=wing_name,
                 scale=scale,
@@ -309,14 +309,14 @@ def create_wing_from_wing_configuration(
 def get_wing_as_wingconfig(db: Session, aeroplane_uuid, wing_name: str) -> dict:
     """Return the wing converted back to WingConfiguration format.
 
-    Uses the roundtrip converter wingModelToWingConfig to produce
+    Uses the roundtrip converter wing_model_to_wing_config to produce
     the segment-based representation with root/tip airfoils,
     length, sweep, dihedral — without any estimation or loss.
     """
     aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
     wing = get_wing_or_raise(aeroplane, wing_name)
     try:
-        wing_config = wingModelToWingConfig(wing, scale=1000.0)
+        wing_config = wing_model_to_wing_config(wing, scale=1000.0)
     except Exception as exc:
         logger.error("Failed to convert wing %s to WingConfig: %s", wing_name, exc)
         raise InternalError(
@@ -397,7 +397,7 @@ def put_wing_as_wingconfig(
                 db.flush()
 
             wing_configuration = create_wing_configuration(wing_config_data)
-            wing_model = wingConfigToWingModel(
+            wing_model = wing_config_to_wing_model(
                 wing_config=wing_configuration,
                 wing_name=wing_name,
                 scale=scale,
@@ -799,7 +799,7 @@ def _recompute_spare_vectors(wing: WingModel) -> None:
     (The CAD call-site uses ``scale=1000.0`` because CadQuery works in mm.)
     """
     try:
-        wing_config = wingModelToWingConfig(wing, scale=1.0)
+        wing_config = wing_model_to_wing_config(wing, scale=1.0)
 
         for seg_idx, segment in enumerate(wing_config.segments or []):
             if seg_idx >= len(wing.x_secs) - 1:

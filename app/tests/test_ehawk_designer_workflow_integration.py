@@ -64,7 +64,7 @@ from zipfile import ZipFile
 import pytest
 from fastapi.testclient import TestClient
 
-from app.converters.model_schema_converters import wingConfigToAsbWingSchema
+from app.converters.model_schema_converters import wing_config_to_asb_wing_schema
 from test.ehawk_workflow_helpers import _build_main_wing
 
 
@@ -342,7 +342,7 @@ def test_ehawk_designer_workflow_stepwise(client: TestClient):
     repo_root = Path(__file__).resolve().parents[2]
     airfoil_path = str((repo_root / "components" / "airfoils" / "mh32.dat").resolve())
     expected_wing_config = _build_main_wing(airfoil_path)
-    asb_wing = wingConfigToAsbWingSchema(
+    asb_wing = wing_config_to_asb_wing_schema(
         wing_config=expected_wing_config,
         wing_name=wing_name,
         scale=0.001,

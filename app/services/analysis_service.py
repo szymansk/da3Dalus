@@ -21,7 +21,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.api.utils import analyse_aerodynamics, compile_four_view_figure
-from app.converters.model_schema_converters import aeroplaneSchemaToAsbAirplane_async
+from app.converters.model_schema_converters import aeroplane_schema_to_asb_airplane_async
 from app.core.exceptions import NotFoundError, InternalError
 from app.db.exceptions import NotFoundInDbException
 from app.db.repository import get_wing_by_name_and_aeroplane_id, get_aeroplane_by_id
@@ -232,7 +232,7 @@ async def analyze_wing(
     plane_schema = await get_wing_schema_or_raise(db, aeroplane_uuid, wing_name)
     
     try:
-        asb_airplane: Airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
+        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         asb_airplane.xyz_ref = operating_point.xyz_ref
         asb_airplane.wings = [w for w in asb_airplane.wings if w.name == wing_name]
         asb_airplane.fuselages = []
@@ -260,7 +260,7 @@ async def analyze_airplane(
     plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
     
     try:
-        asb_airplane: Airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
+        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         result, _ = await analyse_aerodynamics(analysis_tool, operating_point, asb_airplane)
         return result
     except Exception as e:
@@ -287,7 +287,7 @@ async def calculate_streamlines_json(
     plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
     try:
-        asb_airplane: Airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
+        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         _, figure = await analyse_aerodynamics(
             AnalysisToolUrlType.VORTEX_LATTICE,
             operating_point,
@@ -315,7 +315,7 @@ async def analyze_alpha_sweep(
     plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
     
     try:
-        asb_airplane: Airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
+        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         
         operating_point = OperatingPointSchema(
             altitude=sweep_request.altitude,
@@ -855,7 +855,7 @@ async def analyze_simple_sweep(
     plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
     
     try:
-        asb_airplane: Airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
+        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         
         operating_point = OperatingPointSchema(
             name=f"sweep over {sweep_request.sweep_var}",
@@ -944,7 +944,7 @@ async def get_streamlines_three_view_image(
     plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
     
     try:
-        asb_airplane: Airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
+        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         
         _, figure = await analyse_aerodynamics(
             AnalysisToolUrlType.VORTEX_LATTICE,
@@ -976,7 +976,7 @@ async def get_three_view_image(db: Session, aeroplane_uuid) -> bytes:
     plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
     
     try:
-        asb_airplane: Airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
+        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         
         fig = plt.figure(figsize=(10, 10))
         asb_airplane.draw_three_view(show=False)
@@ -1011,7 +1011,7 @@ async def analyze_airplane_strip_forces(
     plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
     try:
-        asb_airplane: Airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
+        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         asb_airplane.xyz_ref = operating_point.xyz_ref
 
         atmosphere = asb.Atmosphere(altitude=operating_point.altitude)
@@ -1088,7 +1088,7 @@ async def analyze_wing_strip_forces(
     plane_schema = await get_wing_schema_or_raise(db, aeroplane_uuid, wing_name)
 
     try:
-        asb_airplane: Airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
+        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         asb_airplane.xyz_ref = operating_point.xyz_ref
         asb_airplane.wings = [w for w in asb_airplane.wings if w.name == wing_name]
         asb_airplane.fuselages = []

@@ -18,8 +18,8 @@ pytest.importorskip("cadquery")
 from app.schemas.wing import Wing, Segment, Airfoil  # noqa: E402
 from app.services.create_wing_configuration import create_wing_configuration  # noqa: E402
 from app.converters.model_schema_converters import (  # noqa: E402
-    wingConfigToAsbWingSchema,
-    asbWingSchemaToWingConfig,
+    wing_config_to_asb_wing_schema,
+    asb_wing_schema_to_wing_config,
 )
 
 AIRFOIL = "naca0015"
@@ -29,8 +29,8 @@ AIRFOIL_ALT = "naca2412"
 def _roundtrip(wing_data: Wing):
     """WingConfig schema → WingConfiguration → ASB schema → WingConfiguration."""
     wc = create_wing_configuration(wing_data)
-    asb_schema = wingConfigToAsbWingSchema(wc, "test", scale=0.001)
-    wc2 = asbWingSchemaToWingConfig(asb_schema, scale=1000.0)
+    asb_schema = wing_config_to_asb_wing_schema(wc, "test", scale=0.001)
+    wc2 = asb_wing_schema_to_wing_config(asb_schema, scale=1000.0)
     return wc, wc2
 
 
@@ -371,8 +371,8 @@ class TestRoundtripDrift:
     def _multi_roundtrip(wing_data: Wing, n: int):
         """Apply the roundtrip n times, return per-iteration snapshots."""
         from app.converters.model_schema_converters import (
-            wingConfigToAsbWingSchema as to_asb,
-            asbWingSchemaToWingConfig as from_asb,
+            wing_config_to_asb_wing_schema as to_asb,
+            asb_wing_schema_to_wing_config as from_asb,
         )
         wc = create_wing_configuration(wing_data)
         snapshots = []

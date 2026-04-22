@@ -24,8 +24,8 @@ pytest.importorskip("cadquery")
 from app.schemas.wing import Wing, Segment, Airfoil  # noqa: E402
 from app.services.create_wing_configuration import create_wing_configuration  # noqa: E402
 from app.converters.model_schema_converters import (  # noqa: E402
-    wingConfigToAsbWingSchema,
-    asbWingSchemaToWingConfig,
+    wing_config_to_asb_wing_schema,
+    asb_wing_schema_to_wing_config,
 )
 
 AIRFOIL = "naca0015"
@@ -152,7 +152,7 @@ def _build_and_compare(segments_schemas, segments_params, scale=0.001, tol_pos=0
     """
     wing_data = Wing(nose_pnt=[0, 0, 0], symmetric=True, segments=segments_schemas)
     wc = create_wing_configuration(wing_data)
-    asb_schema = wingConfigToAsbWingSchema(wc, "test", scale=scale)
+    asb_schema = wing_config_to_asb_wing_schema(wc, "test", scale=scale)
 
     expected = compute_expected_xsecs(segments_params)
 

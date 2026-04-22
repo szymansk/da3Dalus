@@ -32,13 +32,13 @@ async def get_stability_summary(
     """Run an analysis and extract stability summary from the result."""
     # Lazy imports to avoid module-level import errors on platforms
     # where aerosandbox is not available.
-    from app.converters.model_schema_converters import aeroplaneSchemaToAsbAirplane_async
+    from app.converters.model_schema_converters import aeroplane_schema_to_asb_airplane_async
     from app.api.utils import analyse_aerodynamics
 
     plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
     try:
-        asb_airplane = await aeroplaneSchemaToAsbAirplane_async(plane_schema=plane_schema)
+        asb_airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         result, _ = await analyse_aerodynamics(
             analysis_tool, operating_point, asb_airplane
         )

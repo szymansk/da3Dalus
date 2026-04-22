@@ -17,12 +17,12 @@ from pydantic import ValidationError  # noqa: E402
 
 from app import schemas  # noqa: E402
 from app.converters.model_schema_converters import (  # noqa: E402
-    aeroplaneSchemaToAirplaneConfiguration_async,
-    aeroplaneSchemaToAsbAirplane_async,
-    fuselageModelToFuselageConfig,
-    wingConfigToAsbWingSchema,
-    wingConfigToWingModel,
-    wingModelToWingConfig,
+    aeroplane_schema_to_airplane_configuration_async,
+    aeroplane_schema_to_asb_airplane_async,
+    fuselage_model_to_fuselage_config,
+    wing_config_to_asb_wing_schema,
+    wing_config_to_wing_model,
+    wing_model_to_wing_config,
 )
 from app.models.aeroplanemodel import FuselageModel, WingModel  # noqa: E402
 from cad_designer.airplane.aircraft_topology.wing import (  # noqa: E402
@@ -99,7 +99,7 @@ def _create_test_fuselage_schema() -> schemas.FuselageSchema:
 def test_wing_config_to_asb_wing_schema():
     wing_config = _create_test_wing_config()
 
-    result = wingConfigToAsbWingSchema(wing_config=wing_config, wing_name="main-wing")
+    result = wing_config_to_asb_wing_schema(wing_config=wing_config, wing_name="main-wing")
 
     assert result.name == "main-wing"
     assert result.symmetric is True
@@ -126,8 +126,8 @@ def test_wing_config_to_asb_wing_schema():
 def test_wing_config_to_wing_model_and_back_preserves_details():
     wing_config = _create_test_wing_config()
 
-    wing_model = wingConfigToWingModel(wing_config=wing_config, wing_name="main-wing")
-    reconstructed = wingModelToWingConfig(wing_model)
+    wing_model = wing_config_to_wing_model(wing_config=wing_config, wing_name="main-wing")
+    reconstructed = wing_model_to_wing_config(wing_model)
 
     assert reconstructed.symmetric is True
     assert len(reconstructed.segments) == 1
@@ -185,7 +185,7 @@ def test_wing_model_to_wing_config_scales_geometry_for_cad():
     )
     wing_model = WingModel.from_dict(name="main-wing", data=wing_schema.model_dump())
 
-    scaled_config = wingModelToWingConfig(wing_model, scale=1000.0)
+    scaled_config = wing_model_to_wing_config(wing_model, scale=1000.0)
 
     assert scaled_config.segments[0].root_airfoil.chord == pytest.approx(200.0)
     assert scaled_config.segments[0].tip_airfoil.chord == pytest.approx(150.0)
@@ -235,7 +235,7 @@ def test_wing_model_to_wing_config_resolves_sparse_vectors_for_standard_and_foll
     )
     wing_model = WingModel.from_dict(name="main-wing", data=wing_schema.model_dump())
 
-    config = wingModelToWingConfig(wing_model, scale=1000.0)
+    config = wing_model_to_wing_config(wing_model, scale=1000.0)
 
     assert config.segments[0].spare_list is not None
     assert config.segments[0].spare_list[0].spare_vector is not None
@@ -283,7 +283,7 @@ def test_ted_projection_to_asb_uses_rel_chord_root():
         wings={"main-wing": wing},
     )
 
-    asb_airplane = asyncio.run(aeroplaneSchemaToAsbAirplane_async(plane))
+    asb_airplane = asyncio.run(aeroplane_schema_to_asb_airplane_async(plane))
     control_surface = asb_airplane.wings[0].xsecs[0].control_surfaces[0]
     assert control_surface.hinge_point == pytest.approx(0.73)
     assert control_surface.deflection == pytest.approx(6.0)
@@ -373,12 +373,12 @@ def test_aeroplane_schema_to_airplane_configuration_requires_mass():
     plane = schemas.AeroplaneSchema(name="test-plane", wings={"main-wing": wing})
 
     with pytest.raises(ValueError):
-        asyncio.run(aeroplaneSchemaToAirplaneConfiguration_async(plane))
+        asyncio.run(aeroplane_schema_to_airplane_configuration_async(plane))
 
 
 def test_aeroplane_schema_to_airplane_configuration_preserves_wing_details():
     wing_config = _create_test_wing_config()
-    wing_schema = wingConfigToAsbWingSchema(wing_config=wing_config, wing_name="main-wing")
+    wing_schema = wing_config_to_asb_wing_schema(wing_config=wing_config, wing_name="main-wing")
     fuselage_schema = _create_test_fuselage_schema()
     plane = schemas.AeroplaneSchema(
         name="test-plane",
@@ -387,7 +387,7 @@ def test_aeroplane_schema_to_airplane_configuration_preserves_wing_details():
         fuselages={"test-fuselage": fuselage_schema},
     )
 
-    airplane_config = asyncio.run(aeroplaneSchemaToAirplaneConfiguration_async(plane))
+    airplane_config = asyncio.run(aeroplane_schema_to_airplane_configuration_async(plane))
 
     assert airplane_config.total_mass == pytest.approx(3.0)
     assert len(airplane_config.wings) == 1
@@ -414,7 +414,7 @@ def test_fuselage_model_to_fuselage_config():
         },
     )
 
-    fuselage_config = fuselageModelToFuselageConfig(fuselage_model)
+    fuselage_config = fuselage_model_to_fuselage_config(fuselage_model)
 
     assert fuselage_config.name == "fuselage-a"
     assert fuselage_config.asb_fuselage is not None
