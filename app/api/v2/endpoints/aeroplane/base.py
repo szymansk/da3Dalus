@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import List
+from typing import Annotated, List
 
 from fastapi import APIRouter, Path, Depends, Query, Body, Response, HTTPException
 from fastapi import status
@@ -55,11 +55,10 @@ def _raise_http_from_domain(exc: ServiceException) -> None:
 
 
 @router.get("/aeroplanes",
-            response_model=GetAeroplaneResponse,
             status_code=status.HTTP_200_OK,
             tags=["aeroplanes"],
             operation_id="get_all_aeroplanes")
-async def get_aeroplanes(db: Session = Depends(get_db)) -> GetAeroplaneResponse:
+async def get_aeroplanes(db: Annotated[Session, Depends(get_db)]) -> GetAeroplaneResponse:
     """Returns a list of all aeroplanes names with ids alphabetically sorted by the name."""
     try:
         aeroplanes = aeroplane_service.list_all_aeroplanes(db)
@@ -81,13 +80,12 @@ async def get_aeroplanes(db: Session = Depends(get_db)) -> GetAeroplaneResponse:
 
 
 @router.post("/aeroplanes",
-             response_model=CreateAeroplaneResponse,
              status_code=status.HTTP_201_CREATED,
              tags=["aeroplanes"],
              operation_id="create_aeroplane")
 async def create_aeroplane(
-        name: str = Query(..., description="The aeroplanes name.", examples=["RV-7", "eHawk"]),
-        db: Session = Depends(get_db)
+        name: Annotated[str, Query(..., description="The aeroplanes name.", examples=["RV-7", "eHawk"])],
+        db: Annotated[Session, Depends(get_db)],
 ) -> CreateAeroplaneResponse:
     """Create a new aeroplane instance and returns its ID."""
     try:
@@ -102,12 +100,11 @@ async def create_aeroplane(
 
 @router.get("/aeroplanes/{aeroplane_id}",
             status_code=status.HTTP_200_OK,
-            response_model=schemas.AeroplaneSchema,
             tags=["aeroplanes"],
             operation_id="get_aeroplane_by_id")
 async def get_aeroplane(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        db: Session = Depends(get_db)
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        db: Annotated[Session, Depends(get_db)],
 ) -> schemas.AeroplaneSchema:
     """Returns the aeroplane definition."""
     try:
@@ -125,8 +122,8 @@ async def get_aeroplane(
                tags=["aeroplanes"],
                operation_id="delete_aeroplane")
 async def delete_aeroplane(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane to be deleted"),
-        db: Session = Depends(get_db)
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane to be deleted")],
+        db: Annotated[Session, Depends(get_db)],
 ):
     """Deletes the aeroplane."""
     try:
@@ -141,12 +138,11 @@ async def delete_aeroplane(
 
 @router.get("/aeroplanes/{aeroplane_id}/total_mass_kg",
             status_code=status.HTTP_200_OK,
-            response_model=AeroplaneMassRequest,
             tags=["aeroplanes"],
             operation_id="get_aeroplane_total_mass")
 async def get_aeroplane_total_mass_in_kg(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        db: Session = Depends(get_db)
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        db: Annotated[Session, Depends(get_db)],
 ) -> AeroplaneMassRequest:
     """Returns the total weight of the aeroplane in kg."""
     try:
@@ -161,7 +157,6 @@ async def get_aeroplane_total_mass_in_kg(
 
 @router.post("/aeroplanes/{aeroplane_id}/total_mass_kg",
              status_code=status.HTTP_201_CREATED,
-             response_model=OperationStatusResponse,
              responses={
                  200: {"model": OperationStatusResponse},
                  201: {"model": OperationStatusResponse},
@@ -169,10 +164,10 @@ async def get_aeroplane_total_mass_in_kg(
              tags=["aeroplanes"],
              operation_id="set_aeroplane_total_mass")
 async def create_aeroplane_total_mass_kg(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        total_mass_kg: AeroplaneMassRequest = Body(..., description="The total mass of the aeroplane in kg"),
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        total_mass_kg: Annotated[AeroplaneMassRequest, Body(..., description="The total mass of the aeroplane in kg")],
+        db: Annotated[Session, Depends(get_db)],
         response: Response = None,
-        db: Session = Depends(get_db)
 ) -> OperationStatusResponse:
     """Set the total mass of the aeroplane in kg. If it already exists, it will be overwritten."""
     try:
@@ -195,13 +190,12 @@ async def create_aeroplane_total_mass_kg(
 @router.get(
     "/aeroplanes/{aeroplane_id}/airplane_configuration",
     status_code=status.HTTP_200_OK,
-    response_model=AirplaneConfigurationResponse,
     tags=["aeroplanes"],
     operation_id="get_aeroplane_airplane_configuration",
 )
 async def get_aeroplane_airplane_configuration(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        db: Session = Depends(get_db)
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        db: Annotated[Session, Depends(get_db)],
 ) -> AirplaneConfigurationResponse:
     """Returns the full AirplaneConfiguration payload for the aeroplane."""
     try:

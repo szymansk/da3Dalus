@@ -1,7 +1,7 @@
 """Endpoints for the per-aeroplane component tree."""
 
 import logging
-from typing import Optional
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, status
 from sqlalchemy.orm import Session
@@ -48,12 +48,11 @@ def _call(func, *args, **kwargs):
 @router.get(
     "",
     status_code=status.HTTP_200_OK,
-    response_model=ComponentTreeResponse,
     operation_id="get_component_tree",
 )
 async def get_component_tree(
-    aeroplane_id: str = Path(...),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[str, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> ComponentTreeResponse:
     """Get the full component tree for an aeroplane."""
     return _call(svc.get_tree, db, aeroplane_id)
@@ -62,13 +61,12 @@ async def get_component_tree(
 @router.post(
     "",
     status_code=status.HTTP_201_CREATED,
-    response_model=ComponentTreeNodeRead,
     operation_id="add_tree_node",
 )
 async def add_tree_node(
-    aeroplane_id: str = Path(...),
-    body: ComponentTreeNodeWrite = Body(...),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[str, Path(...)],
+    body: Annotated[ComponentTreeNodeWrite, Body(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> ComponentTreeNodeRead:
     """Add a node to the component tree."""
     return _call(svc.add_node, db, aeroplane_id, body)
@@ -77,14 +75,13 @@ async def add_tree_node(
 @router.put(
     "/{node_id}",
     status_code=status.HTTP_200_OK,
-    response_model=ComponentTreeNodeRead,
     operation_id="update_tree_node",
 )
 async def update_tree_node(
-    aeroplane_id: str = Path(...),
-    node_id: int = Path(...),
-    body: ComponentTreeNodeWrite = Body(...),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[str, Path(...)],
+    node_id: Annotated[int, Path(...)],
+    body: Annotated[ComponentTreeNodeWrite, Body(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> ComponentTreeNodeRead:
     """Update a node in the component tree."""
     return _call(svc.update_node, db, aeroplane_id, node_id, body)
@@ -96,9 +93,9 @@ async def update_tree_node(
     operation_id="delete_tree_node",
 )
 async def delete_tree_node(
-    aeroplane_id: str = Path(...),
-    node_id: int = Path(...),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[str, Path(...)],
+    node_id: Annotated[int, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> None:
     """Delete a node from the tree. Synced nodes cannot be deleted (use move instead)."""
     _call(svc.delete_node, db, aeroplane_id, node_id)
@@ -107,14 +104,13 @@ async def delete_tree_node(
 @router.post(
     "/{node_id}/move",
     status_code=status.HTTP_200_OK,
-    response_model=ComponentTreeNodeRead,
     operation_id="move_tree_node",
 )
 async def move_tree_node(
-    aeroplane_id: str = Path(...),
-    node_id: int = Path(...),
-    body: MoveNodeRequest = Body(...),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[str, Path(...)],
+    node_id: Annotated[int, Path(...)],
+    body: Annotated[MoveNodeRequest, Body(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> ComponentTreeNodeRead:
     """Move a node to a new parent position."""
     return _call(svc.move_node, db, aeroplane_id, node_id, body.new_parent_id, body.sort_index)
@@ -123,13 +119,12 @@ async def move_tree_node(
 @router.get(
     "/{node_id}/weight",
     status_code=status.HTTP_200_OK,
-    response_model=WeightResponse,
     operation_id="get_node_weight",
 )
 async def get_node_weight(
-    aeroplane_id: str = Path(...),
-    node_id: int = Path(...),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[str, Path(...)],
+    node_id: Annotated[int, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> WeightResponse:
     """Calculate the recursive weight for a node (own + all children)."""
     return _call(svc.calculate_weight, db, aeroplane_id, node_id)

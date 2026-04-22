@@ -1,7 +1,7 @@
 """REST endpoints for Construction Templates (gh#126)."""
 from __future__ import annotations
 
-from typing import List
+from typing import Annotated, List
 
 from fastapi import APIRouter, Body, Depends
 from fastapi import status
@@ -34,11 +34,10 @@ def _handle_service_error(exc: ServiceException):
 
 @router.get(
     "/construction-templates",
-    response_model=List[PlanSummary],
     tags=["construction-templates"],
-    operation_id="list_construction_templates",
+    operation_id="list_construction_templates"
 )
-async def list_templates(db: Session = Depends(get_db)) -> List[PlanSummary]:
+async def list_templates(db: Annotated[Session, Depends(get_db)]) -> List[PlanSummary]:
     """List all construction templates."""
     try:
         return svc.list_plans(db, plan_type="template")
@@ -48,14 +47,13 @@ async def list_templates(db: Session = Depends(get_db)) -> List[PlanSummary]:
 
 @router.post(
     "/construction-templates",
-    response_model=PlanRead,
     status_code=status.HTTP_201_CREATED,
     tags=["construction-templates"],
-    operation_id="create_construction_template",
+    operation_id="create_construction_template"
 )
 async def create_template(
-    request: PlanCreate = Body(...),
-    db: Session = Depends(get_db),
+    request: Annotated[PlanCreate, Body(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> PlanRead:
     """Create a new construction template."""
     request.plan_type = "template"

@@ -1,3 +1,4 @@
+from typing import Annotated
 import logging
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, status
@@ -38,14 +39,13 @@ def _call(func, *args, **kwargs):
 @router.post(
     "/aeroplanes/{aeroplane_id}/powertrain/sizing",
     status_code=status.HTTP_200_OK,
-    response_model=PowertrainSizingResponse,
     tags=["powertrain"],
-    operation_id="size_powertrain",
+    operation_id="size_powertrain"
 )
 async def size_powertrain(
-    aeroplane_id: UUID4 = Path(..., description="The ID of the aeroplane"),
-    body: PowertrainSizingRequest = Body(..., description="Mission parameters for sizing"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    body: Annotated[PowertrainSizingRequest, Body(..., description="Mission parameters for sizing")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> PowertrainSizingResponse:
     """Recommend motor+ESC+battery combos that fit the given mission parameters."""
     return _call(svc.size_powertrain, db, aeroplane_id, body)

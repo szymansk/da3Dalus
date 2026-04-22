@@ -1,6 +1,6 @@
 import shutil
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 from urllib.parse import urljoin
 from uuid import uuid4
 
@@ -439,10 +439,9 @@ def _raise_http_from_domain(exc: ServiceException) -> None:
 
 @router.get(
     "/airfoils/{airfoil_name}/known",
-    response_model=AirfoilKnownResponse,
     status_code=status.HTTP_200_OK,
     operation_id="is_airfoil_known",
-    tags=["airfoils"],
+    tags=["airfoils"]
 )
 async def is_airfoil_known(airfoil_name: str) -> AirfoilKnownResponse:
     try:
@@ -473,15 +472,14 @@ async def is_airfoil_known(airfoil_name: str) -> AirfoilKnownResponse:
 
 @router.post(
     "/airfoils/datfile",
-    response_model=AirfoilUploadResponse,
     status_code=status.HTTP_201_CREATED,
     operation_id="upload_airfoil_datfile",
-    tags=["airfoils"],
+    tags=["airfoils"]
 )
 async def upload_airfoil_datfile(
     response: Response,
-    file: UploadFile = File(..., description="DAT-Datei mit Airfoil-Koordinaten."),
-    overwrite: bool = Query(default=False, description="Bestehende Datei überschreiben."),
+    file: Annotated[UploadFile, File(..., description="DAT-Datei mit Airfoil-Koordinaten.")],
+    overwrite: Annotated[bool, Query(description="Bestehende Datei überschreiben.")] = False,
 ) -> AirfoilUploadResponse:
     try:
         raw_name = (file.filename or "").strip()
@@ -507,10 +505,9 @@ async def upload_airfoil_datfile(
 
 @router.get(
     "/airfoils",
-    response_model=AirfoilListResponse,
     status_code=status.HTTP_200_OK,
     operation_id="list_airfoils",
-    tags=["airfoils"],
+    tags=["airfoils"]
 )
 async def list_airfoils() -> AirfoilListResponse:
     try:
@@ -536,15 +533,14 @@ async def list_airfoils() -> AirfoilListResponse:
 
 @router.get(
     "/airfoils/{airfoil_name}/datfile",
-    response_model=AirfoilDatDownloadResponse,
     status_code=status.HTTP_200_OK,
     operation_id="download_airfoil_datfile",
-    tags=["airfoils"],
+    tags=["airfoils"]
 )
 async def download_airfoil_datfile(
     airfoil_name: str,
+    settings: Annotated[Settings, Depends(get_settings)],
     request: Request = None,
-    settings: Settings = Depends(get_settings),
 ) -> AirfoilDatDownloadResponse:
     try:
         file_name, source_path = _resolve_airfoil_file(airfoil_name)
@@ -572,11 +568,10 @@ async def download_airfoil_datfile(
 
 @router.get(
     "/airfoils/{airfoil_name}/geometry-stats",
-    response_model=AirfoilGeometryStatsResponse,
     status_code=status.HTTP_200_OK,
     operation_id="get_airfoil_geometry_stats",
     tags=["airfoils"],
-    summary="Get airfoil geometry statistics (thickness, camber).",
+    summary="Get airfoil geometry statistics (thickness, camber)."
 )
 async def get_airfoil_geometry_stats(airfoil_name: str) -> AirfoilGeometryStatsResponse:
     """Compute max thickness and max camber from the .dat file coordinates."""
@@ -646,14 +641,13 @@ async def get_airfoil_coordinates(airfoil_name: str):
 
 @router.post(
     "/airfoils/{airfoil_name}/neuralfoil/analysis",
-    response_model=AirfoilNeuralFoilAnalysisResponse,
     status_code=status.HTTP_200_OK,
     operation_id="analyze_airfoil_neuralfoil",
-    tags=["airfoils"],
+    tags=["airfoils"]
 )
 async def analyze_airfoil_neuralfoil(
     airfoil_name: str,
-    request: AirfoilNeuralFoilRequest = Body(..., description="NeuralFoil Analyse-Konfiguration."),
+    request: Annotated[AirfoilNeuralFoilRequest, Body(..., description="NeuralFoil Analyse-Konfiguration.")],
 ) -> AirfoilNeuralFoilAnalysisResponse:
     try:
         file_name, file_path = _resolve_airfoil_file(airfoil_name)
@@ -692,16 +686,15 @@ async def analyze_airfoil_neuralfoil(
 
 @router.post(
     "/airfoils/{airfoil_name}/neuralfoil/analysis/diagrams",
-    response_model=AirfoilNeuralFoilDiagramResponse,
     status_code=status.HTTP_200_OK,
     operation_id="analyze_airfoil_neuralfoil_diagrams",
-    tags=["airfoils"],
+    tags=["airfoils"]
 )
 async def analyze_airfoil_neuralfoil_diagrams(
     airfoil_name: str,
-    request: AirfoilNeuralFoilRequest = Body(..., description="NeuralFoil Analyse-Konfiguration."),
+    request: Annotated[AirfoilNeuralFoilRequest, Body(..., description="NeuralFoil Analyse-Konfiguration.")],
+    settings: Annotated[Settings, Depends(get_settings)],
     http_request: Request = None,
-    settings: Settings = Depends(get_settings),
 ) -> AirfoilNeuralFoilDiagramResponse:
     try:
         file_name, file_path = _resolve_airfoil_file(airfoil_name)

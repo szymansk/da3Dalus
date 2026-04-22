@@ -97,7 +97,7 @@ class TestStabilityEndpoint:
             return_value=mock_response,
         ):
             res = client.post(
-                "/aeroplanes/00000000-0000-0000-0000-000000000001/stability_summary/aerobuildup",
+                "/aeroplanes/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/stability_summary/aerobuildup",
                 json={"velocity": 14.0, "alpha": 2.0, "beta": 0.0, "altitude": 0},
             )
             assert res.status_code == 200

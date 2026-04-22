@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import List
+from typing import Annotated, List
 
 from fastapi import APIRouter, Path, Depends, Body, HTTPException
 from fastapi import status
@@ -27,12 +27,11 @@ class OperationStatusResponse(BaseModel):
 # Handle an aeroplane fuselages
 @router.get("/aeroplanes/{aeroplane_id}/fuselages",
             status_code=status.HTTP_200_OK,
-            response_model=List[str],
             tags=["fuselages"],
             operation_id="get_aeroplane_fuselages")
 async def get_aeroplane_fuselages(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        db: Session = Depends(get_db)
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        db: Annotated[Session, Depends(get_db)]
 ) -> List[str]:
     """
     Returns a list of aeroplane's fuselage names.
@@ -60,10 +59,10 @@ async def get_aeroplane_fuselages(
             tags=["fuselages"],
             operation_id="create_aeroplane_fuselage")
 async def create_aeroplane_fuselage(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        fuselage_name: str = Path(..., description="The ID of the fuselage"),
-        request: schemas.FuselageSchema = Body(..., description="The new fuselage data"),
-        db: Session = Depends(get_db)
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
+        request: Annotated[schemas.FuselageSchema, Body(..., description="The new fuselage data")],
+        db: Annotated[Session, Depends(get_db)]
 ):
     """
     Create the fuselage for the aeroplane.
@@ -110,10 +109,10 @@ async def create_aeroplane_fuselage(
     operation_id="update_aeroplane_fuselage"
 )
 async def update_aeroplane_fuselage(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        fuselage_name: str = Path(..., description="The ID of the fuselage"),
-        request: schemas.FuselageSchema = Body(..., description="The new fuselage data"),
-        db: Session = Depends(get_db),
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
+        request: Annotated[schemas.FuselageSchema, Body(..., description="The new fuselage data")],
+        db: Annotated[Session, Depends(get_db)],
 ):
     """
     Overwrite an existing fuselage with the data in the request.
@@ -154,13 +153,12 @@ async def update_aeroplane_fuselage(
 
 
 @router.get("/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}",
-            response_model=schemas.FuselageSchema,
             tags=["fuselages"],
             operation_id="get_aeroplane_fuselage")
 async def get_aeroplane_fuselage(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        fuselage_name: str = Path(..., description="The ID of the fuselage"),
-        db: Session = Depends(get_db)
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
+        db: Annotated[Session, Depends(get_db)]
 ) -> schemas.FuselageSchema:
     """
     Returns the aeroplane fuselage.
@@ -193,9 +191,9 @@ async def get_aeroplane_fuselage(
     operation_id="delete_aeroplane_fuselage"
 )
 async def delete_aeroplane_fuselage(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        fuselage_name: str = Path(..., description="The ID of the fuselage"),
-        db: Session = Depends(get_db)
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
+        db: Annotated[Session, Depends(get_db)]
 ):
     """
     Delete a fuselage.
@@ -231,15 +229,14 @@ async def delete_aeroplane_fuselage(
 #########################################
 @router.get(
     "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}/cross_sections",
-    response_model=List[schemas.FuselageXSecSuperEllipseSchema],
     status_code=status.HTTP_200_OK,
     tags=["fuselage-cross-sections"],
     operation_id="get_fuselage_cross_sections"
 )
 async def get_aeroplane_fuselage_cross_sections(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        fuselage_name: str = Path(..., description="The ID of the fuselage"),
-        db: Session = Depends(get_db)
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
+        db: Annotated[Session, Depends(get_db)]
 ) -> List[schemas.FuselageXSecSuperEllipseSchema]:
     """
     Returns the fuselage's cross-sections as a list.
@@ -274,9 +271,9 @@ async def get_aeroplane_fuselage_cross_sections(
     operation_id="delete_all_fuselage_cross_sections"
 )
 async def delete_aeroplane_fuselage_cross_sections(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        fuselage_name: str = Path(..., description="The ID of the fuselage"),
-        db: Session = Depends(get_db)
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
+        db: Annotated[Session, Depends(get_db)]
 ):
     """
     Delete all cross-sections of a fuselage.
@@ -306,16 +303,15 @@ async def delete_aeroplane_fuselage_cross_sections(
 
 @router.get(
     "/aeroplanes/{aeroplane_id}/fuselages/{fuselage_name}/cross_sections/{cross_section_index}",
-    response_model=schemas.FuselageXSecSuperEllipseSchema,
     status_code=status.HTTP_200_OK,
     tags=["fuselage-cross-sections"],
     operation_id="get_fuselage_cross_section"
 )
 async def get_aeroplane_fuselage_cross_section(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        fuselage_name: str = Path(..., description="The ID of the fuselage"),
-        cross_section_index: int = Path(..., description="The index of the cross section"),
-        db: Session = Depends(get_db)
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
+        cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+        db: Annotated[Session, Depends(get_db)]
 ) -> schemas.FuselageXSecSuperEllipseSchema:
     """
     Returns the aeroplane fuselage cross-section at the specified index.
@@ -350,12 +346,12 @@ async def get_aeroplane_fuselage_cross_section(
     operation_id="create_fuselage_cross_section"
 )
 async def create_aeroplane_fuselage_cross_section(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        fuselage_name: str = Path(..., description="The ID of the fuselage"),
-        cross_section_index: int = Path(...,
-                                        description="The index where it will be spliced into the list of cross sections. (-1 is the end of the list, 0 is the start of the list)"),
-        request: schemas.FuselageXSecSuperEllipseSchema = Body(..., description="Fuselage cross section request"),
-        db: Session = Depends(get_db)
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
+        cross_section_index: Annotated[int, Path(...,
+                                        description="The index where it will be spliced into the list of cross sections. (-1 is the end of the list, 0 is the start of the list)")],
+        request: Annotated[schemas.FuselageXSecSuperEllipseSchema, Body(..., description="Fuselage cross section request")],
+        db: Annotated[Session, Depends(get_db)]
 ) :
     """
     Creates a new cross-section for the fuselage and splice it into the list of cross-sections.
@@ -413,11 +409,11 @@ async def create_aeroplane_fuselage_cross_section(
     operation_id="update_fuselage_cross_section"
 )
 async def update_aeroplane_fuselage_cross_section(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        fuselage_name: str = Path(..., description="The ID of the fuselage"),
-        cross_section_index: int = Path(..., description="The index of the cross section"),
-        request: schemas.FuselageXSecSuperEllipseSchema = Body(...),
-        db: Session = Depends(get_db)
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
+        cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+        request: Annotated[schemas.FuselageXSecSuperEllipseSchema, Body(...)],
+        db: Annotated[Session, Depends(get_db)]
 ):
     """
     Updates the cross-section for the fuselage.
@@ -458,10 +454,10 @@ async def update_aeroplane_fuselage_cross_section(
                tags=["fuselage-cross-sections"],
                operation_id="delete_fuselage_cross_section")
 async def delete_aeroplane_fuselage_cross_section(
-        aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-        fuselage_name: str = Path(..., description="The ID of the fuselage"),
-        cross_section_index: int = Path(..., description="The index of the cross section"),
-        db: Session = Depends(get_db)
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        fuselage_name: Annotated[str, Path(..., description="The ID of the fuselage")],
+        cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+        db: Annotated[Session, Depends(get_db)]
 ):
     """
     Delete a cross-section.

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Path, Query, UploadFile, status
 from fastapi.responses import FileResponse
@@ -64,12 +64,11 @@ def _call(func, *args, **kwargs):
 @router.get(
     "",
     status_code=status.HTTP_200_OK,
-    response_model=ConstructionPartList,
     operation_id="list_construction_parts",
 )
 async def list_construction_parts(
-    aeroplane_id: str = Path(...),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[str, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> ConstructionPartList:
     """List all construction parts owned by the given aeroplane."""
     return _call(svc.list_parts, db, aeroplane_id)
@@ -78,13 +77,12 @@ async def list_construction_parts(
 @router.get(
     "/{part_id}",
     status_code=status.HTTP_200_OK,
-    response_model=ConstructionPartRead,
     operation_id="get_construction_part",
 )
 async def get_construction_part(
-    aeroplane_id: str = Path(...),
-    part_id: int = Path(...),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[str, Path(...)],
+    part_id: Annotated[int, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> ConstructionPartRead:
     """Fetch a single construction part scoped to the given aeroplane."""
     return _call(svc.get_part, db, aeroplane_id, part_id)
@@ -93,13 +91,12 @@ async def get_construction_part(
 @router.put(
     "/{part_id}/lock",
     status_code=status.HTTP_200_OK,
-    response_model=ConstructionPartRead,
     operation_id="lock_construction_part",
 )
 async def lock_construction_part(
-    aeroplane_id: str = Path(...),
-    part_id: int = Path(...),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[str, Path(...)],
+    part_id: Annotated[int, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> ConstructionPartRead:
     """Mark the part as locked. Idempotent."""
     return _call(svc.lock_part, db, aeroplane_id, part_id)
@@ -108,13 +105,12 @@ async def lock_construction_part(
 @router.put(
     "/{part_id}/unlock",
     status_code=status.HTTP_200_OK,
-    response_model=ConstructionPartRead,
     operation_id="unlock_construction_part",
 )
 async def unlock_construction_part(
-    aeroplane_id: str = Path(...),
-    part_id: int = Path(...),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[str, Path(...)],
+    part_id: Annotated[int, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> ConstructionPartRead:
     """Mark the part as unlocked. Idempotent."""
     return _call(svc.unlock_part, db, aeroplane_id, part_id)
@@ -126,16 +122,15 @@ async def unlock_construction_part(
 @router.post(
     "",
     status_code=status.HTTP_201_CREATED,
-    response_model=ConstructionPartRead,
     operation_id="upload_construction_part",
 )
 async def upload_construction_part(
-    aeroplane_id: str = Path(...),
-    file: UploadFile = File(..., description="STEP (.step/.stp) or STL (.stl) file"),
-    name: str = Form(..., min_length=1, description="Display name"),
-    material_component_id: Optional[int] = Form(None, description="FK to components (material)"),
-    thumbnail_url: Optional[str] = Form(None, description="Optional preview image URL"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[str, Path(...)],
+    file: Annotated[UploadFile, File(..., description="STEP (.step/.stp) or STL (.stl) file")],
+    name: Annotated[str, Form(..., min_length=1, description="Display name")],
+    db: Annotated[Session, Depends(get_db)],
+    material_component_id: Annotated[Optional[int], Form(description="FK to components (material)")] = None,
+    thumbnail_url: Annotated[Optional[str], Form(description="Optional preview image URL")] = None,
 ) -> ConstructionPartRead:
     """Upload a CAD file and create a new construction-part for this aeroplane.
 
@@ -163,10 +158,10 @@ async def upload_construction_part(
     operation_id="download_construction_part_file",
 )
 async def download_construction_part_file(
-    aeroplane_id: str = Path(...),
-    part_id: int = Path(...),
-    format: str = Query("stl", description="Output format: 'step' or 'stl'"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[str, Path(...)],
+    part_id: Annotated[int, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
+    format: Annotated[str, Query(description="Output format: 'step' or 'stl'")] = "stl",
 ) -> FileResponse:
     """Download the construction-part file in the requested format.
 
@@ -185,14 +180,13 @@ async def download_construction_part_file(
 @router.put(
     "/{part_id}",
     status_code=status.HTTP_200_OK,
-    response_model=ConstructionPartRead,
     operation_id="update_construction_part",
 )
 async def update_construction_part(
-    aeroplane_id: str = Path(...),
-    part_id: int = Path(...),
-    body: ConstructionPartUpdate = Body(...),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[str, Path(...)],
+    part_id: Annotated[int, Path(...)],
+    body: Annotated[ConstructionPartUpdate, Body(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> ConstructionPartRead:
     """Update name / material / thumbnail. File and geometry stay untouched."""
     return _call(svc.update_part, db, aeroplane_id, part_id, body)
@@ -204,9 +198,9 @@ async def update_construction_part(
     operation_id="delete_construction_part",
 )
 async def delete_construction_part(
-    aeroplane_id: str = Path(...),
-    part_id: int = Path(...),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[str, Path(...)],
+    part_id: Annotated[int, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> None:
     """Delete a part and remove its file. Returns 409 if the part is locked."""
     _call(svc.delete_part, db, aeroplane_id, part_id)

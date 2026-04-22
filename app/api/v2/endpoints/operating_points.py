@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Annotated, Optional
 
 from fastapi import Depends, APIRouter, Query, Path, Body, HTTPException, status
 from pydantic import UUID4
@@ -48,20 +48,20 @@ def _resolve_aircraft_pk(db: Session, aircraft_uuid: UUID4) -> Optional[int]:
 
 @router.post(
     "/aeroplanes/{aeroplane_id}/operating-pointsets/generate-default",
-    response_model=GeneratedOperatingPointSetRead,
-    operation_id="generate_default_operating_point_set",
+    operation_id="generate_default_operating_point_set"
 )
 async def generate_default_operating_point_set(
-    aeroplane_id: UUID4 = Path(..., description="Aeroplane UUID"),
-    request: GenerateOperatingPointSetRequest = Body(default_factory=GenerateOperatingPointSetRequest),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[UUID4, Path(..., description="Aeroplane UUID")],
+    db: Annotated[Session, Depends(get_db)],
+    request: Annotated[GenerateOperatingPointSetRequest, Body()] = None,
 ) -> GeneratedOperatingPointSetRead:
     try:
+        req = request or GenerateOperatingPointSetRequest()
         return await operating_point_generator_service.generate_default_set_for_aircraft(
             db=db,
             aircraft_uuid=aeroplane_id,
-            replace_existing=request.replace_existing,
-            profile_id_override=request.profile_id_override,
+            replace_existing=req.replace_existing,
+            profile_id_override=req.profile_id_override,
         )
     except ServiceException as exc:
         _raise_http_from_domain(exc)
@@ -74,13 +74,12 @@ async def generate_default_operating_point_set(
 
 @router.post(
     "/aeroplanes/{aeroplane_id}/operating-points/trim",
-    response_model=TrimmedOperatingPointRead,
-    operation_id="trim_operating_point",
+    operation_id="trim_operating_point"
 )
 async def trim_operating_point(
-    aeroplane_id: UUID4 = Path(..., description="Aeroplane UUID"),
-    request: TrimOperatingPointRequest = Body(...),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[UUID4, Path(..., description="Aeroplane UUID")],
+    request: Annotated[TrimOperatingPointRequest, Body(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> TrimmedOperatingPointRead:
     try:
         return await operating_point_generator_service.trim_operating_point_for_aircraft(
@@ -100,7 +99,7 @@ async def trim_operating_point(
 @router.post("/operating_points/", response_model=StoredOperatingPointRead, operation_id="create_operating_point")
 def create_operating_point(
     op_data: StoredOperatingPointCreate,
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
 ):
     op = OperatingPointModel(**op_data.model_dump())
     db.add(op)
@@ -111,10 +110,10 @@ def create_operating_point(
 
 @router.get("/operating_points", response_model=list[StoredOperatingPointRead], operation_id="list_operating_points")
 def list_operating_points(
-    aircraft_id: Optional[UUID4] = Query(default=None, description="Optional aircraft UUID filter"),
-    skip: int = Query(default=0, ge=0),
-    limit: int = Query(default=200, ge=1, le=1000),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    aircraft_id: Annotated[Optional[UUID4], Query(description="Optional aircraft UUID filter")] = None,
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 200,
 ):
     query = db.query(OperatingPointModel).order_by(OperatingPointModel.id)
     if aircraft_id is not None:
@@ -128,7 +127,7 @@ def list_operating_points(
 @router.get("/operating_points/{op_id}", response_model=StoredOperatingPointRead, operation_id="get_operating_point")
 def read_operating_point(
     op_id: int,
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
 ):
     op = db.query(OperatingPointModel).filter(OperatingPointModel.id == op_id).first()
     if not op:
@@ -140,7 +139,7 @@ def read_operating_point(
 def update_operating_point(
     op_id: int,
     op_data: StoredOperatingPointCreate,
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
 ):
     op = db.query(OperatingPointModel).filter(OperatingPointModel.id == op_id).first()
     if not op:
@@ -153,7 +152,7 @@ def update_operating_point(
 
 
 @router.delete("/operating_points/{op_id}", operation_id="delete_operating_point")
-def delete_operating_point(op_id: int, db: Session = Depends(get_db)):
+def delete_operating_point(op_id: int, db: Annotated[Session, Depends(get_db)]):
     op = db.query(OperatingPointModel).filter(OperatingPointModel.id == op_id).first()
     if not op:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"OperatingPoint {op_id} not found")
@@ -165,7 +164,7 @@ def delete_operating_point(op_id: int, db: Session = Depends(get_db)):
 @router.post("/operating_pointsets/", response_model=OperatingPointSetSchema, operation_id="create_operating_pointset")
 def create_operating_pointset(
     opset_data: OperatingPointSetSchema,
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
 ):
     opset = OperatingPointSetModel(**opset_data.model_dump())
     db.add(opset)
@@ -176,10 +175,10 @@ def create_operating_pointset(
 
 @router.get("/operating_pointsets", response_model=list[OperatingPointSetSchema], operation_id="list_operating_pointsets")
 def list_operating_pointsets(
-    aircraft_id: Optional[UUID4] = Query(default=None, description="Optional aircraft UUID filter"),
-    skip: int = Query(default=0, ge=0),
-    limit: int = Query(default=200, ge=1, le=1000),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    aircraft_id: Annotated[Optional[UUID4], Query(description="Optional aircraft UUID filter")] = None,
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 200,
 ):
     query = db.query(OperatingPointSetModel).order_by(OperatingPointSetModel.id)
     if aircraft_id is not None:
@@ -191,7 +190,7 @@ def list_operating_pointsets(
 
 
 @router.get("/operating_pointsets/{opset_id}", response_model=OperatingPointSetSchema, operation_id="get_operating_pointset")
-def read_operating_pointset(opset_id: int, db: Session = Depends(get_db)):
+def read_operating_pointset(opset_id: int, db: Annotated[Session, Depends(get_db)]):
     opset = db.query(OperatingPointSetModel).filter(OperatingPointSetModel.id == opset_id).first()
     if not opset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"OperatingPointSet {opset_id} not found")
@@ -199,7 +198,7 @@ def read_operating_pointset(opset_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/operating_pointsets/{opset_id}", response_model=OperatingPointSetSchema, operation_id="update_operating_pointset")
-def update_operating_pointset(opset_id: int, opset_data: OperatingPointSetSchema, db: Session = Depends(get_db)):
+def update_operating_pointset(opset_id: int, opset_data: OperatingPointSetSchema, db: Annotated[Session, Depends(get_db)]):
     opset = db.query(OperatingPointSetModel).filter(OperatingPointSetModel.id == opset_id).first()
     if not opset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"OperatingPointSet {opset_id} not found")
@@ -211,7 +210,7 @@ def update_operating_pointset(opset_id: int, opset_data: OperatingPointSetSchema
 
 
 @router.delete("/operating_pointsets/{opset_id}", operation_id="delete_operating_pointset")
-def delete_operating_pointset(opset_id: int, db: Session = Depends(get_db)):
+def delete_operating_pointset(opset_id: int, db: Annotated[Session, Depends(get_db)]):
     opset = db.query(OperatingPointSetModel).filter(OperatingPointSetModel.id == opset_id).first()
     if not opset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"OperatingPointSet {opset_id} not found")

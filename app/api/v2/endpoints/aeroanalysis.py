@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Annotated
 from urllib.parse import urljoin
 from uuid import uuid4
 
@@ -74,9 +75,9 @@ def _save_png_and_get_static_url(
     operation_id="get_airplane_strip_forces",
 )
 async def get_airplane_strip_forces(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    operating_point: OperatingPointSchema = Body(..., description="The operating point"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point")],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Run AVL analysis for the full airplane and return strip-force distributions for all surfaces."""
     try:
@@ -97,10 +98,10 @@ async def get_airplane_strip_forces(
     operation_id="get_wing_strip_forces",
 )
 async def get_wing_strip_forces(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    wing_name: str = Path(..., description="The name of the wing"),
-    operating_point: OperatingPointSchema = Body(..., description="The operating point"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    wing_name: Annotated[str, Path(..., description="The name of the wing")],
+    operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point")],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Run AVL analysis and return spanwise strip-force distributions."""
     try:
@@ -118,11 +119,11 @@ async def get_wing_strip_forces(
              tags=["analysis"],
              operation_id="analyze_wing_aerodynamics")
 async def analyze_wing_post(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    wing_name: str = Path(..., description="The ID of the wing"),
-    operating_point: OperatingPointSchema = Body(..., description="The operating point of the analysis"),
-    analysis_tool: AnalysisToolUrlType = Path(..., description="The tool for aerodynamic analysis"),
-    db: Session = Depends(get_db)
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+    operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point of the analysis")],
+    analysis_tool: Annotated[AnalysisToolUrlType, Path(..., description="The tool for aerodynamic analysis")],
+    db: Annotated[Session, Depends(get_db)]
 ):
     """Analyze wings using aerobuildup, avl or vortex lattice and return the analysis results."""
     try:
@@ -138,13 +139,12 @@ async def analyze_wing_post(
 
 @router.post("/aeroplanes/{aeroplane_id}/stability_summary/{analysis_tool}",
              tags=["analysis"],
-             operation_id="get_stability_summary",
-             response_model=StabilitySummaryResponse)
+             operation_id="get_stability_summary")
 async def get_stability_summary(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    operating_point: OperatingPointSchema = Body(..., description="The operating point for the analysis"),
-    analysis_tool: AnalysisToolUrlType = Path(..., description="The analysis tool to use"),
-    db: Session = Depends(get_db)
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point for the analysis")],
+    analysis_tool: Annotated[AnalysisToolUrlType, Path(..., description="The analysis tool to use")],
+    db: Annotated[Session, Depends(get_db)]
 ) -> StabilitySummaryResponse:
     """Get static stability summary (neutral point, static margin, stability derivatives)."""
     try:
@@ -162,10 +162,10 @@ async def get_stability_summary(
              tags=["analysis"],
              operation_id="analyze_airplane_at_operating_point")
 async def analyze_airplane_post(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    operating_point: OperatingPointSchema = Body(..., description="The operating point of the analysis"),
-    analysis_tool: AnalysisToolUrlType = Path(..., description="The tool for aerodynamic analysis"),
-    db: Session = Depends(get_db)
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point of the analysis")],
+    analysis_tool: Annotated[AnalysisToolUrlType, Path(..., description="The tool for aerodynamic analysis")],
+    db: Annotated[Session, Depends(get_db)]
 ):
     """Analyze an airplane using aerobuildup, avl or vortex lattice and return the analysis results."""
     try:
@@ -183,9 +183,9 @@ async def analyze_airplane_post(
              tags=["analysis"],
              operation_id="get_streamlines_json")
 async def calculate_streamlines_json(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    operating_point: OperatingPointSchema = Body(..., description="The operating point"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point")],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Calculate VLM streamlines and return Plotly figure as JSON."""
     try:
@@ -203,9 +203,9 @@ async def calculate_streamlines_json(
              tags=["analysis"],
              operation_id="analyze_alpha_sweep")
 async def analyze_airplane_alpha_sweep(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    sweep_request: AlphaSweepRequest = Body(..., description="Sweep definitions and flight conditions"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    sweep_request: Annotated[AlphaSweepRequest, Body(..., description="Sweep definitions and flight conditions")],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Performs an angle of attack sweep for a given airplane."""
     try:
@@ -218,14 +218,13 @@ async def analyze_airplane_alpha_sweep(
 
 @router.post("/aeroplanes/{aeroplane_id}/alpha_sweep/diagram",
              tags=["analysis"],
-             response_model=StaticUrlResponse,
              operation_id="analyze_alpha_sweep_diagram")
 async def analyze_airplane_alpha_sweep_diagram(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    sweep_request: AlphaSweepRequest = Body(..., description="Sweep definitions and flight conditions"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    sweep_request: Annotated[AlphaSweepRequest, Body(..., description="Sweep definitions and flight conditions")],
+    db: Annotated[Session, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
     request: Request = None,
-    settings: Settings = Depends(get_settings),
 ) -> StaticUrlResponse:
     """Performs an angle of attack sweep, saves diagram under tmp, and returns its static URL."""
     base_url = _resolve_base_url(request, settings)
@@ -245,9 +244,9 @@ async def analyze_airplane_alpha_sweep_diagram(
              tags=["analysis"],
              operation_id="analyze_parameter_sweep")
 async def analyze_airplane_simple_sweep(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    sweep_request: SimpleSweepRequest = Body(..., description="Sweep definitions and flight conditions"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    sweep_request: Annotated[SimpleSweepRequest, Body(..., description="Sweep definitions and flight conditions")],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Performs sweep through the given sweep variable for a given airplane."""
     try:
@@ -273,13 +272,12 @@ async def analyze_airplane_simple_sweep(
 
 @router.get("/aeroplanes/{aeroplane_id}/three_view/url",
          tags=["analysis"],
-         response_model=StaticUrlResponse,
          operation_id="get_aeroplane_three_view_url")
 async def get_aeroplane_three_view_url(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    db: Annotated[Session, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
     request: Request = None,
-    settings: Settings = Depends(get_settings),
 ) -> StaticUrlResponse:
     """Generates a three-view diagram, saves it under tmp, and returns its static URL."""
     try:
@@ -300,14 +298,13 @@ async def get_aeroplane_three_view_url(
 
 @router.post("/aeroplanes/{aeroplane_id}/operating_point/vortex_lattice/streamlines/three_view/url",
              tags=["analysis"],
-             response_model=StaticUrlResponse,
              operation_id="get_streamlines_three_view_url")
 async def get_streamlines_three_view_url(
-    aeroplane_id: AeroPlaneID = Path(..., description="The ID of the aeroplane"),
-    operating_point: OperatingPointSchema = Body(..., description="The operating point of the analysis"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point of the analysis")],
+    db: Annotated[Session, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
     request: Request = None,
-    settings: Settings = Depends(get_settings),
 ) -> StaticUrlResponse:
     """Generates streamlines three-view image, saves it under tmp, and returns its static URL."""
     try:

@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 import logging
-from typing import List
+from typing import Annotated, List
 
-from fastapi import APIRouter, Body, Depends, Path
+from fastapi import APIRouter, Body, Depends, Path, Query
 from fastapi import status
 from sqlalchemy.orm import Session
 
@@ -48,10 +48,9 @@ def _handle_service_error(exc: ServiceException):
 
 @router.get(
     "/construction-plans/creators",
-    response_model=List[CreatorInfo],
     status_code=status.HTTP_200_OK,
     tags=["construction-plans"],
-    operation_id="list_creators",
+    operation_id="list_creators"
 )
 async def list_creators() -> List[CreatorInfo]:
     """List all available Creator classes with their parameters."""
@@ -63,14 +62,13 @@ async def list_creators() -> List[CreatorInfo]:
 
 @router.get(
     "/construction-plans",
-    response_model=List[PlanSummary],
     status_code=status.HTTP_200_OK,
     tags=["construction-plans"],
-    operation_id="list_construction_plans",
+    operation_id="list_construction_plans"
 )
 async def list_plans(
-    plan_type: str | None = None,
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    plan_type: Annotated[str | None, Query(description="Filter by plan type")] = None,
 ) -> List[PlanSummary]:
     """List all construction plans, optionally filtered by plan_type."""
     try:
@@ -81,14 +79,13 @@ async def list_plans(
 
 @router.post(
     "/construction-plans",
-    response_model=PlanRead,
     status_code=status.HTTP_201_CREATED,
     tags=["construction-plans"],
-    operation_id="create_construction_plan",
+    operation_id="create_construction_plan"
 )
 async def create_plan(
-    request: PlanCreate = Body(...),
-    db: Session = Depends(get_db),
+    request: Annotated[PlanCreate, Body(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> PlanRead:
     """Create a new construction plan."""
     try:
@@ -99,14 +96,13 @@ async def create_plan(
 
 @router.get(
     "/construction-plans/{plan_id}",
-    response_model=PlanRead,
     status_code=status.HTTP_200_OK,
     tags=["construction-plans"],
-    operation_id="get_construction_plan",
+    operation_id="get_construction_plan"
 )
 async def get_plan(
-    plan_id: int = Path(..., description="Construction plan ID"),
-    db: Session = Depends(get_db),
+    plan_id: Annotated[int, Path(..., description="Construction plan ID")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> PlanRead:
     """Get a construction plan by ID."""
     try:
@@ -117,15 +113,14 @@ async def get_plan(
 
 @router.put(
     "/construction-plans/{plan_id}",
-    response_model=PlanRead,
     status_code=status.HTTP_200_OK,
     tags=["construction-plans"],
-    operation_id="update_construction_plan",
+    operation_id="update_construction_plan"
 )
 async def update_plan(
-    plan_id: int = Path(...),
-    request: PlanCreate = Body(...),
-    db: Session = Depends(get_db),
+    plan_id: Annotated[int, Path(...)],
+    request: Annotated[PlanCreate, Body(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> PlanRead:
     """Update an existing construction plan."""
     try:
@@ -141,8 +136,8 @@ async def update_plan(
     operation_id="delete_construction_plan",
 )
 async def delete_plan(
-    plan_id: int = Path(...),
-    db: Session = Depends(get_db),
+    plan_id: Annotated[int, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Delete a construction plan."""
     try:
@@ -156,15 +151,14 @@ async def delete_plan(
 
 @router.post(
     "/construction-plans/{plan_id}/execute",
-    response_model=ExecutionResult,
     status_code=status.HTTP_200_OK,
     tags=["construction-plans"],
-    operation_id="execute_construction_plan",
+    operation_id="execute_construction_plan"
 )
 async def execute_plan(
-    plan_id: int = Path(...),
-    request: ExecuteRequest = Body(...),
-    db: Session = Depends(get_db),
+    plan_id: Annotated[int, Path(...)],
+    request: Annotated[ExecuteRequest, Body(...)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> ExecutionResult:
     """Execute a construction plan against an aeroplane configuration."""
     try:

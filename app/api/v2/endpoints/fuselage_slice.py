@@ -1,5 +1,6 @@
 """Endpoint for slicing a STEP file into a fuselage definition."""
 
+from typing import Annotated
 import logging
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
@@ -16,16 +17,15 @@ router = APIRouter(prefix="/fuselages", tags=["fuselages"])
 @router.post(
     "/slice",
     status_code=status.HTTP_200_OK,
-    response_model=FuselageSliceResponse,
     operation_id="slice_step_to_fuselage",
-    summary="Slice a STEP file into superellipse cross-sections (asb.Fuselage format)",
+    summary="Slice a STEP file into superellipse cross-sections (asb.Fuselage format)"
 )
 async def slice_step_to_fuselage(
-    file: UploadFile = File(..., description="STEP file (.step or .stp)"),
-    number_of_slices: int = Form(50, ge=2, le=500, description="Number of cross-section slices"),
-    points_per_slice: int = Form(30, ge=10, le=200, description="Points per wire discretization"),
-    slice_axis: str = Form("auto", description="Slice axis: 'x', 'y', 'z', or 'auto' (longest axis)"),
-    fuselage_name: str = Form("Imported Fuselage", description="Name for the resulting fuselage"),
+    file: Annotated[UploadFile, File(..., description="STEP file (.step or .stp)")],
+    number_of_slices: Annotated[int, Form(ge=2, le=500, description="Number of cross-section slices")] = 50,
+    points_per_slice: Annotated[int, Form(ge=10, le=200, description="Points per wire discretization")] = 30,
+    slice_axis: Annotated[str, Form(description="Slice axis: 'x', 'y', 'z', or 'auto' (longest axis)")] = "auto",
+    fuselage_name: Annotated[str, Form(description="Name for the resulting fuselage")] = "Imported Fuselage",
 ) -> FuselageSliceResponse:
     """Upload a STEP file, slice it along the fuselage longitudinal axis,
     fit symmetric superellipses to each cross-section, and return a

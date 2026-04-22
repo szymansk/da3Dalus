@@ -1,3 +1,4 @@
+from typing import Annotated
 import logging
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, status
@@ -43,13 +44,12 @@ def _call(func, *args, **kwargs):
 @router.get(
     "/aeroplanes/{aeroplane_id}/mission-objectives",
     status_code=status.HTTP_200_OK,
-    response_model=MissionObjectivesRead,
     tags=["mission-objectives"],
-    operation_id="get_mission_objectives",
+    operation_id="get_mission_objectives"
 )
 async def get_mission_objectives(
-    aeroplane_id: UUID4 = Path(..., description="The ID of the aeroplane"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> MissionObjectivesRead:
     """Get the mission objectives for the aeroplane."""
     return _call(svc.get_mission_objectives, db, aeroplane_id)
@@ -58,14 +58,13 @@ async def get_mission_objectives(
 @router.put(
     "/aeroplanes/{aeroplane_id}/mission-objectives",
     status_code=status.HTTP_200_OK,
-    response_model=MissionObjectivesRead,
     tags=["mission-objectives"],
-    operation_id="upsert_mission_objectives",
+    operation_id="upsert_mission_objectives"
 )
 async def upsert_mission_objectives(
-    aeroplane_id: UUID4 = Path(..., description="The ID of the aeroplane"),
-    body: MissionObjectivesWrite = Body(..., description="Mission objectives data"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    body: Annotated[MissionObjectivesWrite, Body(..., description="Mission objectives data")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> MissionObjectivesRead:
     """Create or update the mission objectives for the aeroplane."""
     return _call(svc.upsert_mission_objectives, db, aeroplane_id, body)
@@ -78,8 +77,8 @@ async def upsert_mission_objectives(
     operation_id="delete_mission_objectives",
 )
 async def delete_mission_objectives(
-    aeroplane_id: UUID4 = Path(..., description="The ID of the aeroplane"),
-    db: Session = Depends(get_db),
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    db: Annotated[Session, Depends(get_db)],
 ) -> None:
     """Delete the mission objectives for the aeroplane."""
     _call(svc.delete_mission_objectives, db, aeroplane_id)
