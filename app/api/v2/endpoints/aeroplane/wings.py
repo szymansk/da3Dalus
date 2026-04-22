@@ -28,7 +28,7 @@ AeroPlaneID = UUID4
 
 _DESC_AEROPLANE_ID = "The ID of the aeroplane"
 _DESC_WING_NAME = "The name of the wing"
-_DEFAULT_AIRFOIL_PATH = "../components/airfoils/mh32.dat"
+_DEFAULT_AIRFOIL_MH32 = "../components/airfoils/mh32.dat"
 _DESC_XSEC_INDEX = "The index of the cross section"
 
 
@@ -41,7 +41,7 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
     "segments": [
         {
             "root_airfoil": {
-                "airfoil": _DEFAULT_AIRFOIL_PATH,
+                "airfoil": _DEFAULT_AIRFOIL_MH32,
                 "chord": 162.0,
                 "dihedral_as_rotation_in_degrees": 1,
 
@@ -51,7 +51,7 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
             "sweep": 0,
             "sweep_angle": 0.0,
             "tip_airfoil": {
-                "airfoil": _DEFAULT_AIRFOIL_PATH,
+                "airfoil": _DEFAULT_AIRFOIL_MH32,
                 "chord": 162.0,
                 "dihedral_as_rotation_in_degrees": 0,
 
@@ -76,7 +76,7 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
         },
         {
             "root_airfoil": {
-                "airfoil": _DEFAULT_AIRFOIL_PATH,
+                "airfoil": _DEFAULT_AIRFOIL_MH32,
                 "chord": 162.0,
                 "dihedral_as_rotation_in_degrees": 0,
 
@@ -86,7 +86,7 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
             "sweep": 2.5,
             "sweep_angle": 0.7161599454704085,
             "tip_airfoil": {
-                "airfoil": _DEFAULT_AIRFOIL_PATH,
+                "airfoil": _DEFAULT_AIRFOIL_MH32,
                 "chord": 157,
                 "dihedral_as_rotation_in_degrees": 0,
 
@@ -111,7 +111,7 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
         },
         {
             "root_airfoil": {
-                "airfoil": _DEFAULT_AIRFOIL_PATH,
+                "airfoil": _DEFAULT_AIRFOIL_MH32,
                 "chord": 157,
                 "dihedral_as_rotation_in_degrees": 0,
 
@@ -121,7 +121,7 @@ _EHAWK_WINGCONFIG_EXAMPLE = {
             "sweep": 8,
             "sweep_angle": 1.8328395059420592,
             "tip_airfoil": {
-                "airfoil": _DEFAULT_AIRFOIL_PATH,
+                "airfoil": _DEFAULT_AIRFOIL_MH32,
                 "chord": 132.88888888888889,
                 "dihedral_as_rotation_in_degrees": 0,
 
