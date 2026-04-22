@@ -23,6 +23,26 @@ def _scalar(val) -> Optional[float]:
     return float(val)
 
 
+def _compute_static_margin(xnp: Optional[float], xcg: Optional[float], cref_val) -> Optional[float]:
+    """Compute static margin: (Xnp - Xcg) / MAC."""
+    if xnp is None or xcg is None:
+        return None
+    mac = _scalar(cref_val)
+    if not mac or mac <= 0:
+        return None
+    return (xnp - xcg) / mac
+
+
+def _find_trim_elevator(control_surfaces) -> Optional[float]:
+    """Extract trim elevator deflection from control surface data."""
+    if not hasattr(control_surfaces, "deflections") or not control_surfaces.deflections:
+        return None
+    for name, defl in control_surfaces.deflections.items():
+        if "elevator" in name.lower():
+            return _scalar(defl)
+    return None
+
+
 async def get_stability_summary(
     db: Session,
     aeroplane_uuid,
@@ -46,39 +66,18 @@ async def get_stability_summary(
         logger.error("Error computing stability: %s", e)
         raise InternalError(message=f"Stability analysis error: {e}")
 
-    # Extract data from AnalysisModel
     xnp = _scalar(result.reference.Xnp)
     xcg = float(operating_point.xyz_ref[0]) if operating_point.xyz_ref else None
-
-    # Derivatives
     cma = _scalar(result.derivatives.Cma)
     cnb = _scalar(result.derivatives.Cnb)
     clb = _scalar(result.derivatives.Clb)
 
-    # Static margin: (Xnp - Xcg) / MAC
-    static_margin = None
-    if xnp is not None and xcg is not None:
-        mac = _scalar(result.reference.Cref)
-        if mac and mac > 0:
-            static_margin = (xnp - xcg) / mac
-
-    # Flight condition
-    alpha = _scalar(result.flight_condition.alpha)
-
-    # Trim elevator (from control surface deflections if available)
-    trim_elevator = None
-    if hasattr(result.control_surfaces, "deflections") and result.control_surfaces.deflections:
-        for name, defl in result.control_surfaces.deflections.items():
-            if "elevator" in name.lower():
-                trim_elevator = _scalar(defl)
-                break
-
     return StabilitySummaryResponse(
-        static_margin=static_margin,
+        static_margin=_compute_static_margin(xnp, xcg, result.reference.Cref),
         neutral_point_x=xnp,
         cg_x=xcg,
-        trim_alpha_deg=alpha,
-        trim_elevator_deg=trim_elevator,
+        trim_alpha_deg=_scalar(result.flight_condition.alpha),
+        trim_elevator_deg=_find_trim_elevator(result.control_surfaces),
         Cma=cma,
         Cnb=cnb,
         Clb=clb,

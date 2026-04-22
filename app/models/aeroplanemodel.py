@@ -326,6 +326,49 @@ class WingModel(Base):
         return ted
 
     @classmethod
+    def _extract_xsec_segment_fields(cls, xsec_payload: dict):
+        """Pop segment-specific fields from xsec_payload; return them as a tuple."""
+        control_surface = cls._as_payload(xsec_payload.pop("control_surface", None))
+        trailing_edge_device = cls._merge_ted_with_control_surface(
+            trailing_edge_device=xsec_payload.pop("trailing_edge_device", None),
+            control_surface=control_surface,
+        )
+        return (
+            trailing_edge_device,
+            xsec_payload.pop("spare_list", None),
+            xsec_payload.pop("x_sec_type", None),
+            xsec_payload.pop("tip_type", None),
+            xsec_payload.pop("number_interpolation_points", None),
+        )
+
+    @classmethod
+    def _build_xsec_detail(cls, x_sec_type, tip_type, number_interpolation_points,
+                           trailing_edge_device, spare_list):
+        """Build a WingXSecDetailModel if any segment field is non-None, else return None."""
+        has_detail = any(
+            v is not None for v in [x_sec_type, tip_type, number_interpolation_points,
+                                    trailing_edge_device, spare_list]
+        )
+        if not has_detail:
+            return None
+
+        detail = WingXSecDetailModel(
+            x_sec_type=x_sec_type,
+            tip_type=tip_type,
+            number_interpolation_points=number_interpolation_points,
+        )
+        for spare_index, spare in enumerate(spare_list or []):
+            spare_payload = cls._as_payload(spare)
+            if spare_payload is not None:
+                detail.spares.append(WingXSecSpareModel(sort_index=spare_index, **spare_payload))
+
+        ted_model = cls._build_ted_model(trailing_edge_device)
+        if ted_model is not None:
+            detail.trailing_edge_device = ted_model
+
+        return detail
+
+    @classmethod
     def from_dict(cls, name, data):
         payload = data.copy()
         xsec_dicts = payload.pop("x_secs", [])
@@ -334,29 +377,13 @@ class WingModel(Base):
         wing = cls(name=name, **payload)
 
         for index, raw_xsec in enumerate(xsec_dicts):
-            xsec_payload = cls._as_payload(raw_xsec) or {}
-            xsec_payload = xsec_payload.copy()
-            is_terminal_xsec = index == len(xsec_dicts) - 1
+            xsec_payload = (cls._as_payload(raw_xsec) or {}).copy()
+            is_terminal = index == len(xsec_dicts) - 1
 
-            control_surface = cls._as_payload(xsec_payload.pop("control_surface", None))
-            trailing_edge_device = cls._merge_ted_with_control_surface(
-                trailing_edge_device=xsec_payload.pop("trailing_edge_device", None),
-                control_surface=control_surface,
-            )
-            spare_list = xsec_payload.pop("spare_list", None)
-            x_sec_type = xsec_payload.pop("x_sec_type", None)
-            tip_type = xsec_payload.pop("tip_type", None)
-            number_interpolation_points = xsec_payload.pop("number_interpolation_points", None)
+            ted, spare_list, x_sec_type, tip_type, n_interp = cls._extract_xsec_segment_fields(xsec_payload)
+            if is_terminal:
+                ted = spare_list = x_sec_type = tip_type = n_interp = None
 
-            if is_terminal_xsec:
-                trailing_edge_device = None
-                spare_list = None
-                x_sec_type = None
-                tip_type = None
-                number_interpolation_points = None
-
-            # Normalize bare airfoil names (e.g. "ag10") to portable relative paths
-            # so that worker subprocesses with a different CWD can resolve them.
             if "airfoil" in xsec_payload:
                 from app.converters.model_schema_converters import _normalize_airfoil_reference_for_schema
                 xsec_payload["airfoil"] = _normalize_airfoil_reference_for_schema(xsec_payload["airfoil"])
@@ -364,35 +391,7 @@ class WingModel(Base):
             if "sort_index" not in xsec_payload:
                 xsec_payload["sort_index"] = index
             xsec = WingXSecModel(**xsec_payload)
-
-            detail_required = any(
-                value is not None
-                for value in [
-                    x_sec_type,
-                    tip_type,
-                    number_interpolation_points,
-                    trailing_edge_device,
-                    spare_list,
-                ]
-            )
-            if detail_required:
-                detail = WingXSecDetailModel(
-                    x_sec_type=x_sec_type,
-                    tip_type=tip_type,
-                    number_interpolation_points=number_interpolation_points,
-                )
-
-                for spare_index, spare in enumerate(spare_list or []):
-                    spare_payload = cls._as_payload(spare)
-                    if spare_payload is None:
-                        continue
-                    detail.spares.append(WingXSecSpareModel(sort_index=spare_index, **spare_payload))
-
-                ted_model = cls._build_ted_model(trailing_edge_device)
-                if ted_model is not None:
-                    detail.trailing_edge_device = ted_model
-
-                xsec.detail = detail
+            xsec.detail = cls._build_xsec_detail(x_sec_type, tip_type, n_interp, ted, spare_list)
 
             wing.x_secs.append(xsec)
         return wing
