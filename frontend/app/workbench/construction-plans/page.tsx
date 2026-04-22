@@ -23,6 +23,15 @@ import {
   type ExecutionResult,
 } from "@/hooks/useConstructionPlans";
 import { useCreators, type CreatorInfo } from "@/hooks/useCreators";
+import {
+  getStepAtPath,
+  deleteStepAtPath,
+  insertStepAtPath,
+  updateNodeAtPath,
+  collectAvailableShapeKeys,
+  resolveIdTemplate,
+  computeReorderTargetPath,
+} from "@/lib/planTreeUtils";
 
 type RightPanel = "gallery" | "detail" | "params";
 
@@ -72,49 +81,8 @@ export default function ConstructionPlansPage() {
 
   // ── Helpers ─────────────────────────────────────────────────────
 
-  function getStepAtPath(tree: PlanStepNode, path: string): PlanStepNode | null {
-    if (path === "root") return tree;
-    const parts = path.replace("root.", "").split(".");
-    let current: PlanStepNode = tree;
-    for (const part of parts) {
-      const idx = parseInt(part, 10);
-      if (!current.successors || !current.successors[idx]) return null;
-      current = current.successors[idx];
-    }
-    return current;
-  }
-
   function findCreatorForStep(step: PlanStepNode): CreatorInfo | undefined {
     return creators.find((c) => c.class_name === step.creator_id || c.class_name === step.$TYPE);
-  }
-
-  /** Collect shape keys produced by all steps before `stopPath` in the tree. */
-  function collectAvailableShapeKeys(tree: PlanStepNode | null, stopPath?: string | null): string[] {
-    if (!tree) return [];
-    const keys: string[] = [];
-    const successors = tree.successors ?? [];
-    for (let i = 0; i < successors.length; i++) {
-      const stepPath = `root.${i}`;
-      if (stopPath && stepPath === stopPath) break;
-      const step = successors[i];
-      const stepId = step.creator_id ?? step.$TYPE ?? "step";
-      const creator = creators.find((c) => c.class_name === step.$TYPE || c.class_name === step.creator_id);
-      if (creator?.outputs.length) {
-        for (const out of creator.outputs) {
-          keys.push(out.key.replace(/\{id\}/g, stepId));
-        }
-      } else {
-        keys.push(stepId);
-      }
-    }
-    return keys;
-  }
-
-  function resolveIdTemplate(template: string, params: Record<string, unknown>): string {
-    return template.replace(/\{(\w+)\}/g, (match, key) => {
-      const val = params[key];
-      return val != null && val !== "" ? String(val) : match;
-    });
   }
 
   // ── Plan CRUD ───────────────────────────────────────────────────
@@ -193,27 +161,6 @@ export default function ConstructionPlansPage() {
     [],
   );
 
-  function deleteStepAtPath(tree: PlanStepNode, path: string): PlanStepNode {
-    if (path === "root") return { ...tree, successors: [] };
-    const parts = path.replace("root.", "").split(".");
-    const lastIdx = parseInt(parts[parts.length - 1], 10);
-    const parentPath = parts.slice(0, -1);
-
-    function navigate(node: PlanStepNode, remaining: string[]): PlanStepNode {
-      if (remaining.length === 0) {
-        const newSuccessors = [...(node.successors ?? [])];
-        newSuccessors.splice(lastIdx, 1);
-        return { ...node, successors: newSuccessors };
-      }
-      const idx = parseInt(remaining[0], 10);
-      const newSuccessors = [...(node.successors ?? [])];
-      newSuccessors[idx] = navigate(newSuccessors[idx], remaining.slice(1));
-      return { ...node, successors: newSuccessors };
-    }
-
-    return navigate(tree, parentPath);
-  }
-
   async function handleDeleteStep(path: string) {
     if (!plan || !selectedPlanId) return;
     const treeJson = plan.tree_json as unknown as PlanStepNode;
@@ -273,20 +220,7 @@ export default function ConstructionPlansPage() {
     if (paramSaveTimer.current) clearTimeout(paramSaveTimer.current);
     paramSaveTimer.current = setTimeout(() => {
       const treeJson = plan.tree_json as unknown as PlanStepNode;
-
-      function updateNodeAtPath(node: PlanStepNode, path: string): PlanStepNode {
-        if (path === "root") return updatedNode;
-        const parts = path.replace("root.", "").split(".");
-        const idx = parseInt(parts[0], 10);
-        const rest = parts.slice(1).join(".");
-        const newSuccessors = [...(node.successors ?? [])];
-        newSuccessors[idx] = rest
-          ? updateNodeAtPath(newSuccessors[idx], rest)
-          : updatedNode;
-        return { ...node, successors: newSuccessors };
-      }
-
-      const updated = updateNodeAtPath(treeJson, selectedStepPath);
+      const updated = updateNodeAtPath(treeJson, selectedStepPath, updatedNode);
       updatePlan(selectedPlanId, {
         name: plan.name,
         description: plan.description ?? undefined,
@@ -297,60 +231,13 @@ export default function ConstructionPlansPage() {
     }, 400);
   }
 
-  function insertStepAtPath(
-    tree: PlanStepNode,
-    path: string,
-    step: PlanStepNode,
-  ): PlanStepNode {
-    // Insert step after the node at `path` within the same parent
-    if (path === "root") {
-      return { ...tree, successors: [...(tree.successors ?? []), step] };
-    }
-    const parts = path.replace("root.", "").split(".");
-    const insertIdx = parseInt(parts[parts.length - 1], 10) + 1;
-    const parentParts = parts.slice(0, -1);
-
-    function navigate(node: PlanStepNode, remaining: string[]): PlanStepNode {
-      if (remaining.length === 0) {
-        const newSuccessors = [...(node.successors ?? [])];
-        newSuccessors.splice(insertIdx, 0, step);
-        return { ...node, successors: newSuccessors };
-      }
-      const idx = parseInt(remaining[0], 10);
-      const newSuccessors = [...(node.successors ?? [])];
-      newSuccessors[idx] = navigate(newSuccessors[idx], remaining.slice(1));
-      return { ...node, successors: newSuccessors };
-    }
-
-    return navigate(tree, parentParts);
-  }
-
   function handleReorder(fromPath: string, toPath: string) {
     if (!plan || !selectedPlanId) return;
     const treeJson = plan.tree_json as unknown as PlanStepNode;
     const fromNode = getStepAtPath(treeJson, fromPath);
     if (!fromNode) return;
     const withoutFrom = deleteStepAtPath(treeJson, fromPath);
-
-    // Adjust toPath when dragging forward in the same parent:
-    // after removing fromPath, indices shift down by 1
-    let adjustedToPath = toPath;
-    const fromParts = fromPath.replace("root.", "").split(".");
-    const toParts = toPath.replace("root.", "").split(".");
-    if (fromParts.length === toParts.length) {
-      const fromParent = fromParts.slice(0, -1).join(".");
-      const toParent = toParts.slice(0, -1).join(".");
-      if (fromParent === toParent) {
-        const fromIdx = parseInt(fromParts[fromParts.length - 1], 10);
-        const toIdx = parseInt(toParts[toParts.length - 1], 10);
-        if (fromIdx < toIdx) {
-          const adjusted = [...toParts];
-          adjusted[adjusted.length - 1] = String(toIdx - 1);
-          adjustedToPath = "root." + adjusted.join(".");
-        }
-      }
-    }
-
+    const adjustedToPath = computeReorderTargetPath(fromPath, toPath);
     const updated = insertStepAtPath(withoutFrom, adjustedToPath, fromNode);
 
     updatePlan(selectedPlanId, {
@@ -598,7 +485,7 @@ export default function ConstructionPlansPage() {
                 params={creatorForSelected.parameters}
                 values={selectedStepNode as unknown as Record<string, unknown>}
                 onChange={handleParamChange}
-                availableShapeKeys={collectAvailableShapeKeys(treeJson, selectedStepPath)}
+                availableShapeKeys={collectAvailableShapeKeys(treeJson, creators, selectedStepPath)}
               />
               <label className="flex flex-col gap-1 mt-2">
                 <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
@@ -691,7 +578,7 @@ export default function ConstructionPlansPage() {
                         setAddCreatorId(resolveIdTemplate(addingCreator.suggested_id, next));
                       }
                     }}
-                    availableShapeKeys={collectAvailableShapeKeys(treeJson)}
+                    availableShapeKeys={collectAvailableShapeKeys(treeJson, creators)}
                   />
                 )}
                 {/* Creator detail info (collapsed) */}
