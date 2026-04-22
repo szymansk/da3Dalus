@@ -10,24 +10,24 @@ export type Tab = (typeof TABS)[number];
 export { TABS };
 
 interface WingXSec {
-  xyz_le: number[];
-  chord: number;
+  readonly xyz_le: readonly number[];
+  readonly chord: number;
 }
 
 interface Props {
-  result: AnalysisResult | null;
-  aeroplaneId: string | null;
-  lastRunTime?: Date | null;
-  lastRunDurationMs?: number | null;
-  stripForces?: StripForcesResult | null;
-  stripForcesLoading?: boolean;
-  streamlinesFigure?: unknown;
-  streamlinesLoading?: boolean;
-  activeTab: Tab;
-  onTabChange: (tab: Tab) => void;
-  onConfigureClick?: () => void;
-  wingXSecs?: WingXSec[] | null;
-  wingSymmetric?: boolean;
+  readonly result: AnalysisResult | null;
+  readonly aeroplaneId: string | null;
+  readonly lastRunTime?: Date | null;
+  readonly lastRunDurationMs?: number | null;
+  readonly stripForces?: StripForcesResult | null;
+  readonly stripForcesLoading?: boolean;
+  readonly streamlinesFigure?: unknown;
+  readonly streamlinesLoading?: boolean;
+  readonly activeTab: Tab;
+  readonly onTabChange: (tab: Tab) => void;
+  readonly onConfigureClick?: () => void;
+  readonly wingXSecs?: WingXSec[] | null;
+  readonly wingSymmetric?: boolean;
 }
 
 // -- Plotly Chart (dynamic import) ----------------------------------------
@@ -50,7 +50,7 @@ function PlotlyChart({
   isMaximized,
   extraTraces,
   shapes,
-}: {
+}: Readonly<{
   xData: number[];
   yData: number[];
   xLabel: string;
@@ -63,7 +63,7 @@ function PlotlyChart({
   isMaximized?: boolean;
   extraTraces?: PlotlyTrace[];
   shapes?: PlotlyShape[];
-}) {
+}>) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -168,7 +168,7 @@ function PlotlyChart({
 
 // -- Streamlines Renderer -------------------------------------------------
 
-function StreamlinesRenderer({ figure }: { figure: unknown }) {
+function StreamlinesRenderer({ figure }: Readonly<{ figure: unknown }>) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -198,17 +198,17 @@ function StreamlinesRenderer({ figure }: { figure: unknown }) {
           ...sceneFromLayout,
           bgcolor: "#09090B",
           xaxis: {
-            ...((sceneFromLayout.xaxis as object) || {}),
+            ...(sceneFromLayout.xaxis as object),
             gridcolor: "#27272A",
             color: "#71717A",
           },
           yaxis: {
-            ...((sceneFromLayout.yaxis as object) || {}),
+            ...(sceneFromLayout.yaxis as object),
             gridcolor: "#27272A",
             color: "#71717A",
           },
           zaxis: {
-            ...((sceneFromLayout.zaxis as object) || {}),
+            ...(sceneFromLayout.zaxis as object),
             gridcolor: "#27272A",
             color: "#71717A",
           },
@@ -233,17 +233,116 @@ function StreamlinesRenderer({ figure }: { figure: unknown }) {
   return <div ref={containerRef} className="h-full w-full" />;
 }
 
+// -- Trefftz Plane Trace Builder ------------------------------------------
+
+const SURFACE_COLORS = [
+  { cl: "#E5484D", ccl: "#FF8400", clnorm: "#30A46C", ai: "#3B82F6" },
+  { cl: "#D946EF", ccl: "#F59E0B", clnorm: "#06B6D4", ai: "#8B5CF6" },
+  { cl: "#F97316", ccl: "#EF4444", clnorm: "#10B981", ai: "#6366F1" },
+  { cl: "#EC4899", ccl: "#F59E0B", clnorm: "#14B8A6", ai: "#A78BFA" },
+];
+
+function groupSurfaceStrips(surfaces: StripForcesResult["surfaces"]) {
+  const groups = new Map<string, { strips: typeof surfaces[0]["strips"] }>();
+  for (const surface of surfaces) {
+    const baseName = surface.surface_name.replace(/\s*\(YDUP\)$/, "");
+    const existing = groups.get(baseName);
+    if (existing) {
+      existing.strips = [...existing.strips, ...surface.strips];
+    } else {
+      groups.set(baseName, { strips: [...surface.strips] });
+    }
+  }
+  return groups;
+}
+
+function buildSurfaceTraces(
+  surfaceGroups: Map<string, { strips: StripForcesResult["surfaces"][0]["strips"] }>,
+): PlotlyTrace[] {
+  const traces: PlotlyTrace[] = [];
+  let surfIdx = 0;
+
+  for (const [surfaceName, group] of surfaceGroups) {
+    const sorted = group.strips.toSorted((a, b) => a.Yle - b.Yle);
+
+    const yMin = Math.min(...sorted.map((s) => s.Yle));
+    const yMax = Math.max(...sorted.map((s) => s.Yle));
+    if (Math.abs(yMax - yMin) < 0.001) continue;
+
+    const ySpan = sorted.map((s) => s.Yle);
+    const cl = sorted.map((s) => s.cl);
+    const clNorm = sorted.map((s) => s.cl_norm);
+    const cCl = sorted.map((s) => s.c_cl);
+    const aiDeg = sorted.map((s) => s.ai);
+    const colors = SURFACE_COLORS[surfIdx % SURFACE_COLORS.length];
+    const maxAbsCl = Math.max(...cl.map(Math.abs));
+    const isNegligible = maxAbsCl < 0.01;
+    const defaultVisible = isNegligible ? "legendonly" as const : true;
+
+    traces.push(
+      {
+        x: ySpan, y: cl, type: "scatter", mode: "lines",
+        name: `Cl (${surfaceName})`, legendgroup: surfaceName,
+        line: { color: colors.cl, width: 2, dash: "dash" },
+        showlegend: true, visible: defaultVisible,
+        hovertemplate: `${surfaceName}<br>y: %{x:.3f} m<br>Cl: %{y:.4f}<extra></extra>`,
+      },
+      {
+        x: ySpan, y: cCl, type: "scatter", mode: "lines",
+        name: `c\u00B7Cl (${surfaceName})`, legendgroup: surfaceName,
+        line: { color: colors.ccl, width: 2, dash: "dash" },
+        showlegend: true, visible: defaultVisible,
+        hovertemplate: `${surfaceName}<br>y: %{x:.3f} m<br>c\u00B7Cl: %{y:.4f}<extra></extra>`,
+      },
+      {
+        x: ySpan, y: clNorm, type: "scatter", mode: "lines",
+        name: `Cl\u00B7C/Cref (${surfaceName})`, legendgroup: surfaceName,
+        line: { color: colors.clnorm, width: 2 },
+        showlegend: true, visible: defaultVisible,
+        hovertemplate: `${surfaceName}<br>y: %{x:.3f} m<br>Cl\u00B7C/Cref: %{y:.4f}<extra></extra>`,
+      },
+      {
+        x: ySpan, y: aiDeg, type: "scatter", mode: "lines",
+        name: `\u03B1i (${surfaceName})`, legendgroup: surfaceName,
+        line: { color: colors.ai, width: 2, dash: "dot" },
+        yaxis: "y2", showlegend: true, visible: (isNegligible || surfIdx !== 0) ? "legendonly" as const : true,
+        hovertemplate: `${surfaceName}<br>y: %{x:.3f} m<br>\u03B1i: %{y:.2f}\u00B0<extra></extra>`,
+      },
+    );
+    surfIdx++;
+  }
+
+  return traces;
+}
+
+function buildSegmentMarkerTrace(
+  wingXSecs: WingXSec[],
+  wingSymmetric?: boolean,
+): PlotlyTrace {
+  const segY: number[] = [];
+  for (const xs of wingXSecs) {
+    segY.push(xs.xyz_le[1]);
+    if (wingSymmetric) segY.push(-xs.xyz_le[1]);
+  }
+  return {
+    x: segY, y: segY.map(() => 0),
+    type: "scatter", mode: "markers",
+    marker: { symbol: "triangle-up", size: 8, color: "#FF8400" },
+    showlegend: false, hoverinfo: "skip",
+  };
+}
+
 // -- Trefftz Plane Combined Chart -----------------------------------------
 
 function TrefftzPlaneChart({
   stripForces,
   wingXSecs,
   wingSymmetric,
-}: {
+}: Readonly<{
   stripForces: StripForcesResult;
   wingXSecs?: WingXSec[] | null;
   wingSymmetric?: boolean;
-}) {
+}>) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -257,99 +356,14 @@ function TrefftzPlaneChart({
       PlotlyRef = await import("plotly.js-gl3d-dist-min");
       if (disposed || !containerRef.current) return;
 
-      // Per-surface color palette
-      const surfaceColors = [
-        { cl: "#E5484D", ccl: "#FF8400", clnorm: "#30A46C", ai: "#3B82F6" },
-        { cl: "#D946EF", ccl: "#F59E0B", clnorm: "#06B6D4", ai: "#8B5CF6" },
-        { cl: "#F97316", ccl: "#EF4444", clnorm: "#10B981", ai: "#6366F1" },
-        { cl: "#EC4899", ccl: "#F59E0B", clnorm: "#14B8A6", ai: "#A78BFA" },
-      ];
+      const surfaceGroups = groupSurfaceStrips(stripForces.surfaces);
+      const traces: PlotlyTrace[] = buildSurfaceTraces(surfaceGroups);
 
-      const traces: PlotlyTrace[] = [];
-
-      // Group surfaces: merge YDUP with its parent for display
-      const surfaceGroups = new Map<string, { strips: typeof stripForces.surfaces[0]["strips"] }>();
-      for (const surface of stripForces.surfaces) {
-        // Strip "(YDUP)" suffix to group with parent
-        const baseName = surface.surface_name.replace(/\s*\(YDUP\)$/, "");
-        const existing = surfaceGroups.get(baseName);
-        if (existing) {
-          existing.strips = [...existing.strips, ...surface.strips];
-        } else {
-          surfaceGroups.set(baseName, { strips: [...surface.strips] });
-        }
-      }
-
-      let surfIdx = 0;
-      for (const [surfaceName, group] of surfaceGroups) {
-        const sorted = group.strips.sort((a, b) => a.Yle - b.Yle);
-
-        // Skip surfaces with no meaningful Y-span (e.g. vertical rudder)
-        const yMin = Math.min(...sorted.map((s) => s.Yle));
-        const yMax = Math.max(...sorted.map((s) => s.Yle));
-        if (Math.abs(yMax - yMin) < 0.001) continue;
-
-        const ySpan = sorted.map((s) => s.Yle);
-        const cl = sorted.map((s) => s.cl);
-        const clNorm = sorted.map((s) => s.cl_norm);
-        const cCl = sorted.map((s) => s.c_cl);
-        const aiDeg = sorted.map((s) => s.ai);
-        const colors = surfaceColors[surfIdx % surfaceColors.length];
-        // Hide surfaces with negligible lift (e.g. symmetric surface at beta=0)
-        const maxAbsCl = Math.max(...cl.map(Math.abs));
-        const isNegligible = maxAbsCl < 0.01;
-        const defaultVisible = isNegligible ? "legendonly" as const : true;
-
-        traces.push(
-          {
-            x: ySpan, y: cl, type: "scatter", mode: "lines",
-            name: `Cl (${surfaceName})`, legendgroup: surfaceName,
-            line: { color: colors.cl, width: 2, dash: "dash" },
-            showlegend: true, visible: defaultVisible,
-            hovertemplate: `${surfaceName}<br>y: %{x:.3f} m<br>Cl: %{y:.4f}<extra></extra>`,
-          },
-          {
-            x: ySpan, y: cCl, type: "scatter", mode: "lines",
-            name: `c\u00B7Cl (${surfaceName})`, legendgroup: surfaceName,
-            line: { color: colors.ccl, width: 2, dash: "dash" },
-            showlegend: true, visible: defaultVisible,
-            hovertemplate: `${surfaceName}<br>y: %{x:.3f} m<br>c\u00B7Cl: %{y:.4f}<extra></extra>`,
-          },
-          {
-            x: ySpan, y: clNorm, type: "scatter", mode: "lines",
-            name: `Cl\u00B7C/Cref (${surfaceName})`, legendgroup: surfaceName,
-            line: { color: colors.clnorm, width: 2 },
-            showlegend: true, visible: defaultVisible,
-            hovertemplate: `${surfaceName}<br>y: %{x:.3f} m<br>Cl\u00B7C/Cref: %{y:.4f}<extra></extra>`,
-          },
-          {
-            x: ySpan, y: aiDeg, type: "scatter", mode: "lines",
-            name: `\u03B1i (${surfaceName})`, legendgroup: surfaceName,
-            line: { color: colors.ai, width: 2, dash: "dot" },
-            yaxis: "y2", showlegend: true, visible: isNegligible ? "legendonly" as const : (surfIdx === 0 ? true : "legendonly" as const),
-            hovertemplate: `${surfaceName}<br>y: %{x:.3f} m<br>\u03B1i: %{y:.2f}\u00B0<extra></extra>`,
-          },
-        );
-        surfIdx++;
-      }
-
-      // Segment boundary markers as a scatter trace on the x-axis
-      const shapes: PlotlyShape[] = [];
       if (wingXSecs && wingXSecs.length > 0) {
-        const segY: number[] = [];
-        for (const xs of wingXSecs) {
-          segY.push(xs.xyz_le[1]);
-          if (wingSymmetric) segY.push(-xs.xyz_le[1]);
-        }
-        traces.push({
-          x: segY, y: segY.map(() => 0),
-          type: "scatter", mode: "markers",
-          marker: { symbol: "triangle-up", size: 8, color: "#FF8400" },
-          showlegend: false, hoverinfo: "skip",
-        });
+        traces.push(buildSegmentMarkerTrace(wingXSecs, wingSymmetric));
       }
 
-      // Summary annotation (top-left, like AVL)
+      const shapes: PlotlyShape[] = [];
       const annotations = [{
         x: 0.01, y: 0.98, xref: "paper", yref: "paper",
         xanchor: "left", yanchor: "top", showarrow: false,
@@ -413,6 +427,74 @@ function TrefftzPlaneChart({
   );
 }
 
+// -- Tab Content Helpers --------------------------------------------------
+
+function TrefftzPlaneTabContent({
+  stripForcesLoading,
+  stripForces,
+  wingXSecs,
+  wingSymmetric,
+}: Readonly<{
+  stripForcesLoading?: boolean;
+  stripForces?: StripForcesResult | null;
+  wingXSecs?: WingXSec[] | null;
+  wingSymmetric?: boolean;
+}>) {
+  if (stripForcesLoading) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
+          Running AVL strip-force analysis...
+        </span>
+      </div>
+    );
+  }
+  if (stripForces && stripForces.surfaces.length > 0) {
+    return (
+      <TrefftzPlaneChart
+        stripForces={stripForces}
+        wingXSecs={wingXSecs}
+        wingSymmetric={wingSymmetric}
+      />
+    );
+  }
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-4">
+      <span className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-muted-foreground">
+        Run an analysis to see strip-force distributions
+      </span>
+    </div>
+  );
+}
+
+function StreamlinesTabContent({
+  streamlinesLoading,
+  streamlinesFigure,
+}: Readonly<{
+  streamlinesLoading?: boolean;
+  streamlinesFigure?: unknown;
+}>) {
+  if (streamlinesLoading) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
+          Computing streamlines...
+        </span>
+      </div>
+    );
+  }
+  if (streamlinesFigure) {
+    return <StreamlinesRenderer figure={streamlinesFigure} />;
+  }
+  return (
+    <div className="flex flex-1 items-center justify-center">
+      <span className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-muted-foreground">
+        Run an analysis to see streamlines
+      </span>
+    </div>
+  );
+}
+
 // -- Main Component -------------------------------------------------------
 
 export function AnalysisViewerPanel({
@@ -440,7 +522,7 @@ export function AnalysisViewerPanel({
     if (!result || !result.CL || result.CL.length === 0) return null;
 
     const { CL, CD, Cm, alpha } = result;
-    const clOverCd = CL.map((cl, i) => (CD[i] !== 0 ? cl / CD[i] : 0));
+    const clOverCd = CL.map((cl, i) => (CD[i] === 0 ? 0 : cl / CD[i]));
 
     const maxCLIdx = CL.indexOf(Math.max(...CL));
     const maxLDIdx = clOverCd.indexOf(Math.max(...clOverCd));
@@ -603,45 +685,21 @@ export function AnalysisViewerPanel({
 
       {activeTab === "Trefftz Plane" && (
         <div className="flex flex-1 flex-col gap-4 overflow-auto bg-card-muted p-6">
-          {stripForcesLoading ? (
-            <div className="flex flex-1 items-center justify-center">
-              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
-                Running AVL strip-force analysis...
-              </span>
-            </div>
-          ) : stripForces && stripForces.surfaces.length > 0 ? (
-            <TrefftzPlaneChart
-              stripForces={stripForces}
-              wingXSecs={wingXSecs}
-              wingSymmetric={wingSymmetric}
-            />
-          ) : (
-            <div className="flex flex-1 flex-col items-center justify-center gap-4">
-              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-muted-foreground">
-                Run an analysis to see strip-force distributions
-              </span>
-            </div>
-          )}
+          <TrefftzPlaneTabContent
+            stripForcesLoading={stripForcesLoading}
+            stripForces={stripForces}
+            wingXSecs={wingXSecs}
+            wingSymmetric={wingSymmetric}
+          />
         </div>
       )}
 
       {activeTab === "Streamlines" && (
         <div className="flex flex-1 overflow-hidden bg-card-muted">
-          {streamlinesLoading ? (
-            <div className="flex flex-1 items-center justify-center">
-              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
-                Computing streamlines...
-              </span>
-            </div>
-          ) : streamlinesFigure ? (
-            <StreamlinesRenderer figure={streamlinesFigure} />
-          ) : (
-            <div className="flex flex-1 items-center justify-center">
-              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-muted-foreground">
-                Run an analysis to see streamlines
-              </span>
-            </div>
-          )}
+          <StreamlinesTabContent
+            streamlinesLoading={streamlinesLoading}
+            streamlinesFigure={streamlinesFigure}
+          />
         </div>
       )}
 
