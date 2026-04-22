@@ -101,16 +101,6 @@ You may also invoke them directly for granular control:
 | `/playwright-best-practices` | E2E tests, Page Object Model, flaky tests |
 | `/web-design-guidelines` | UI review, accessibility, UX compliance |
 
-### Quality Gates
-
-Before opening any PR, you MUST run `/supercycle:review` (or
-`/requesting-code-review`). Fix all findings before merging.
-
-After opening a PR, **check that CI checks pass** (`gh pr checks <N>`).
-If checks fail, fix the issues and push before merging. Use
-`/supercycle:fix` for automated fixes, `/supercycle:merge` for
-CI analysis + merge.
-
 ### Iron Laws
 
 1. **No production code without a failing test first**
@@ -248,48 +238,16 @@ emergency CI unblock, or this CLAUDE.md itself.
 
 Types: `feat`, `fix`, `refactor`, `chore`, `docs`, `test`
 
-### Branch workflow
-
-1. Assign yourself on the GitHub Issue
-2. `git switch main && git pull --rebase github main`
-3. `git switch -c <type>/gh-<N>-<slug>`
-4. Commit often; reference issue in commit body
-5. **Pre-PR gate** (mandatory before push):
-   ```bash
-   poetry run ruff check .
-   poetry run pytest -m "not slow"
-   ```
-6. `git push -u github HEAD`
-7. `gh pr create --base main --head <branch>` with issue link + test plan
-8. **Do NOT self-merge.** Session ends at "PR opened, GH Issue linked."
-
-### Overnight sessions
-
-When working unattended: pick independent issues first, create
-parallel branches off `main`. Sequential chains allowed (max 3 deep).
-Every PR must pass CI. Leave a handoff comment listing all PRs with
-dependency chain: `Stack: #41 ← #42 ← #43 (merge in order).`
+The supercycle agents create branches automatically following this
+convention. For manual work, use the same pattern.
 
 
 ## Session Completion
 
 **Work is NOT complete until `git push` succeeds.**
-
-1. File GH Issues for remaining work
-2. Run quality gates (tests, linters)
-3. Close finished GH Issues
-4. **PUSH TO REMOTE:**
-   ```bash
-   git pull --rebase
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-5. Clean up stashes, prune remote branches
-6. Verify all changes committed AND pushed
-7. Provide handoff context for next session
-
-**NEVER** stop before pushing. **NEVER** say "ready to push when you
-are" — YOU must push. If push fails, resolve and retry.
+`/supercycle:merge` handles CI checks, rebase, and push. For manual
+work: `git push` before saying "done". If push fails, resolve and retry.
+**NEVER** say "ready to push when you are" — YOU must push.
 
 
 ## Build & Test
