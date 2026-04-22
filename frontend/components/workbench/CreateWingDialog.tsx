@@ -51,7 +51,7 @@ export function CreateWingDialog({
   onClose,
   aeroplaneId,
   onCreated,
-}: CreateWingDialogProps) {
+}: Readonly<CreateWingDialogProps>) {
   const [name, setName] = useState("");
   const [designModel, setDesignModel] = useState<DesignModel>("wc");
   const [creating, setCreating] = useState(false);
@@ -117,7 +117,7 @@ export function CreateWingDialog({
         }
       }
 
-      await onCreated?.(trimmed, designModel);
+      onCreated?.(trimmed, designModel);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -136,13 +136,21 @@ export function CreateWingDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Create Wing"
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      onClick={onClose}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+    >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60" />
 
       {/* Dialog */}
       <div
         className="relative z-10 w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
         {/* Header */}
@@ -160,10 +168,11 @@ export function CreateWingDialog({
 
         {/* Name input */}
         <div className="mb-4">
-          <label className="mb-1 block text-[11px] text-muted-foreground">
+          <label htmlFor="wing-name" className="mb-1 block text-[11px] text-muted-foreground">
             Wing name
           </label>
           <input
+            id="wing-name"
             ref={inputRef}
             type="text"
             value={name}
@@ -174,12 +183,13 @@ export function CreateWingDialog({
         </div>
 
         {/* Design model selection */}
-        <div className="mb-4">
-          <label className="mb-2 block text-[11px] text-muted-foreground">
+        <fieldset className="mb-4 border-none p-0">
+          <legend className="mb-2 block text-[11px] text-muted-foreground">
             Design model
-          </label>
+          </legend>
           <div className="flex flex-col gap-2">
             <label
+              aria-label="Segment-based (WC)"
               className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-2.5 transition-colors ${
                 designModel === "wc"
                   ? "border-primary bg-primary/10"
@@ -207,6 +217,7 @@ export function CreateWingDialog({
               </div>
             </label>
             <label
+              aria-label="Position-based (ASB)"
               className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-2.5 transition-colors ${
                 designModel === "asb"
                   ? "border-primary bg-primary/10"
@@ -234,7 +245,7 @@ export function CreateWingDialog({
               </div>
             </label>
           </div>
-        </div>
+        </fieldset>
 
         {/* Error message */}
         {error && (
