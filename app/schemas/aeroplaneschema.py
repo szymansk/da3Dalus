@@ -4,6 +4,19 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, mod
 
 from app.schemas.Servo import Servo
 
+# --- Shared field descriptions (S1192) ---
+_DESC_TIP_HINGE_REL_CHORD = "Tip hinge position as relative chord (0.0-1.0)"
+_DESC_HINGE_SPACING_MM = "Hinge spacing in millimeters"
+_DESC_ROOT_SIDE_SPACING_MM = "Root side spacing in millimeters"
+_DESC_TIP_SIDE_SPACING_MM = "Tip side spacing in millimeters"
+_DESC_SERVO_PLACEMENT = "Servo placement relative to the wing shell"
+_DESC_REL_CHORD_SERVO = "Relative chord position of servo placement"
+_DESC_REL_LENGTH_SERVO = "Relative segment-length position of servo placement"
+_DESC_POS_DEFLECTION_DEG = "Maximum positive deflection in degrees"
+_DESC_NEG_DEFLECTION_DEG = "Maximum negative deflection in degrees"
+_DESC_TE_OFFSET_FACTOR = "Trailing-edge offset factor for printable geometry"
+_DESC_HINGE_TYPE = "Hinge type"
+
 SparMode = Literal["normal", "follow", "standard", "standard_backward", "orthogonal_backward"]
 HingeType = Literal["middle", "top", "top_simple", "round_inside", "round_outside"]
 WingXSecType = Literal["root", "segment", "tip"]
@@ -82,57 +95,57 @@ class ControlSurfacePatchSchema(BaseModel):
 
 
 class ControlSurfaceCadDetailsSchema(BaseModel):
-    rel_chord_tip: Optional[float] = Field(None, description="Tip hinge position as relative chord (0.0-1.0)")
-    hinge_spacing: Optional[float] = Field(None, description="Hinge spacing in millimeters")
-    side_spacing_root: Optional[float] = Field(None, description="Root side spacing in millimeters")
-    side_spacing_tip: Optional[float] = Field(None, description="Tip side spacing in millimeters")
+    rel_chord_tip: Optional[float] = Field(None, description=_DESC_TIP_HINGE_REL_CHORD)
+    hinge_spacing: Optional[float] = Field(None, description=_DESC_HINGE_SPACING_MM)
+    side_spacing_root: Optional[float] = Field(None, description=_DESC_ROOT_SIDE_SPACING_MM)
+    side_spacing_tip: Optional[float] = Field(None, description=_DESC_TIP_SIDE_SPACING_MM)
     servo_placement: Optional[Literal["top", "bottom"]] = Field(
         None,
-        description="Servo placement relative to the wing shell",
+        description=_DESC_SERVO_PLACEMENT,
     )
     rel_chord_servo_position: Optional[float] = Field(
         None,
-        description="Relative chord position of servo placement",
+        description=_DESC_REL_CHORD_SERVO,
     )
     rel_length_servo_position: Optional[float] = Field(
         None,
-        description="Relative segment-length position of servo placement",
+        description=_DESC_REL_LENGTH_SERVO,
     )
-    positive_deflection_deg: Optional[float] = Field(None, description="Maximum positive deflection in degrees")
-    negative_deflection_deg: Optional[float] = Field(None, description="Maximum negative deflection in degrees")
+    positive_deflection_deg: Optional[float] = Field(None, description=_DESC_POS_DEFLECTION_DEG)
+    negative_deflection_deg: Optional[float] = Field(None, description=_DESC_NEG_DEFLECTION_DEG)
     trailing_edge_offset_factor: Optional[float] = Field(
         None,
-        description="Trailing-edge offset factor for printable geometry",
+        description=_DESC_TE_OFFSET_FACTOR,
     )
-    hinge_type: Optional[HingeType] = Field(None, description="Hinge type")
+    hinge_type: Optional[HingeType] = Field(None, description=_DESC_HINGE_TYPE)
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class ControlSurfaceCadDetailsPatchSchema(BaseModel):
-    rel_chord_tip: Optional[float] = Field(None, description="Tip hinge position as relative chord (0.0-1.0)")
-    hinge_spacing: Optional[float] = Field(None, description="Hinge spacing in millimeters")
-    side_spacing_root: Optional[float] = Field(None, description="Root side spacing in millimeters")
-    side_spacing_tip: Optional[float] = Field(None, description="Tip side spacing in millimeters")
+    rel_chord_tip: Optional[float] = Field(None, description=_DESC_TIP_HINGE_REL_CHORD)
+    hinge_spacing: Optional[float] = Field(None, description=_DESC_HINGE_SPACING_MM)
+    side_spacing_root: Optional[float] = Field(None, description=_DESC_ROOT_SIDE_SPACING_MM)
+    side_spacing_tip: Optional[float] = Field(None, description=_DESC_TIP_SIDE_SPACING_MM)
     servo_placement: Optional[Literal["top", "bottom"]] = Field(
         None,
-        description="Servo placement relative to the wing shell",
+        description=_DESC_SERVO_PLACEMENT,
     )
     rel_chord_servo_position: Optional[float] = Field(
         None,
-        description="Relative chord position of servo placement",
+        description=_DESC_REL_CHORD_SERVO,
     )
     rel_length_servo_position: Optional[float] = Field(
         None,
-        description="Relative segment-length position of servo placement",
+        description=_DESC_REL_LENGTH_SERVO,
     )
-    positive_deflection_deg: Optional[float] = Field(None, description="Maximum positive deflection in degrees")
-    negative_deflection_deg: Optional[float] = Field(None, description="Maximum negative deflection in degrees")
+    positive_deflection_deg: Optional[float] = Field(None, description=_DESC_POS_DEFLECTION_DEG)
+    negative_deflection_deg: Optional[float] = Field(None, description=_DESC_NEG_DEFLECTION_DEG)
     trailing_edge_offset_factor: Optional[float] = Field(
         None,
-        description="Trailing-edge offset factor for printable geometry",
+        description=_DESC_TE_OFFSET_FACTOR,
     )
-    hinge_type: Optional[HingeType] = Field(None, description="Hinge type")
+    hinge_type: Optional[HingeType] = Field(None, description=_DESC_HINGE_TYPE)
 
     @model_validator(mode="after")
     def validate_non_empty_patch(self):
@@ -180,14 +193,14 @@ class SpareDetailSchema(BaseModel):
 class TrailingEdgeDeviceDetailSchema(BaseModel):
     name: Optional[str] = Field(None, description="Trailing-edge device name")
     rel_chord_root: Optional[float] = Field(None, description="Root hinge position as relative chord (0.0-1.0)")
-    rel_chord_tip: Optional[float] = Field(None, description="Tip hinge position as relative chord (0.0-1.0)")
-    hinge_spacing: Optional[float] = Field(None, description="Hinge spacing in millimeters")
-    side_spacing_root: Optional[float] = Field(None, description="Root side spacing in millimeters")
-    side_spacing_tip: Optional[float] = Field(None, description="Tip side spacing in millimeters")
+    rel_chord_tip: Optional[float] = Field(None, description=_DESC_TIP_HINGE_REL_CHORD)
+    hinge_spacing: Optional[float] = Field(None, description=_DESC_HINGE_SPACING_MM)
+    side_spacing_root: Optional[float] = Field(None, description=_DESC_ROOT_SIDE_SPACING_MM)
+    side_spacing_tip: Optional[float] = Field(None, description=_DESC_TIP_SIDE_SPACING_MM)
     servo: Optional[Servo | int] = Field(None, description="Servo object or servo index")
     servo_placement: Literal["top", "bottom"] = Field(
         "top",
-        description="Servo placement relative to the wing shell",
+        description=_DESC_SERVO_PLACEMENT,
     )
 
     @field_validator("servo_placement", mode="before")
@@ -198,25 +211,25 @@ class TrailingEdgeDeviceDetailSchema(BaseModel):
 
     rel_chord_servo_position: Optional[float] = Field(
         None,
-        description="Relative chord position of servo placement",
+        description=_DESC_REL_CHORD_SERVO,
     )
     rel_length_servo_position: Optional[float] = Field(
         None,
-        description="Relative segment-length position of servo placement",
+        description=_DESC_REL_LENGTH_SERVO,
     )
-    positive_deflection_deg: Optional[float] = Field(None, description="Maximum positive deflection in degrees")
-    negative_deflection_deg: Optional[float] = Field(None, description="Maximum negative deflection in degrees")
+    positive_deflection_deg: Optional[float] = Field(None, description=_DESC_POS_DEFLECTION_DEG)
+    negative_deflection_deg: Optional[float] = Field(None, description=_DESC_NEG_DEFLECTION_DEG)
     deflection_deg: Optional[float] = Field(
         0.0,
         description="Current trailing-edge device deflection in degrees",
     )
     trailing_edge_offset_factor: Optional[float] = Field(
         None,
-        description="Trailing-edge offset factor for printable geometry",
+        description=_DESC_TE_OFFSET_FACTOR,
     )
     hinge_type: Optional[HingeType] = Field(
         None,
-        description="Hinge type",
+        description=_DESC_HINGE_TYPE,
     )
     symmetric: Optional[bool] = Field(
         None,
@@ -229,35 +242,35 @@ class TrailingEdgeDeviceDetailSchema(BaseModel):
 class TrailingEdgeDevicePatchSchema(BaseModel):
     name: Optional[str] = Field(None, description="Trailing-edge device name")
     rel_chord_root: Optional[float] = Field(None, description="Root hinge position as relative chord (0.0-1.0)")
-    rel_chord_tip: Optional[float] = Field(None, description="Tip hinge position as relative chord (0.0-1.0)")
-    hinge_spacing: Optional[float] = Field(None, description="Hinge spacing in millimeters")
-    side_spacing_root: Optional[float] = Field(None, description="Root side spacing in millimeters")
-    side_spacing_tip: Optional[float] = Field(None, description="Tip side spacing in millimeters")
+    rel_chord_tip: Optional[float] = Field(None, description=_DESC_TIP_HINGE_REL_CHORD)
+    hinge_spacing: Optional[float] = Field(None, description=_DESC_HINGE_SPACING_MM)
+    side_spacing_root: Optional[float] = Field(None, description=_DESC_ROOT_SIDE_SPACING_MM)
+    side_spacing_tip: Optional[float] = Field(None, description=_DESC_TIP_SIDE_SPACING_MM)
     servo_placement: Optional[Literal["top", "bottom"]] = Field(
         None,
-        description="Servo placement relative to the wing shell",
+        description=_DESC_SERVO_PLACEMENT,
     )
     rel_chord_servo_position: Optional[float] = Field(
         None,
-        description="Relative chord position of servo placement",
+        description=_DESC_REL_CHORD_SERVO,
     )
     rel_length_servo_position: Optional[float] = Field(
         None,
-        description="Relative segment-length position of servo placement",
+        description=_DESC_REL_LENGTH_SERVO,
     )
-    positive_deflection_deg: Optional[float] = Field(None, description="Maximum positive deflection in degrees")
-    negative_deflection_deg: Optional[float] = Field(None, description="Maximum negative deflection in degrees")
+    positive_deflection_deg: Optional[float] = Field(None, description=_DESC_POS_DEFLECTION_DEG)
+    negative_deflection_deg: Optional[float] = Field(None, description=_DESC_NEG_DEFLECTION_DEG)
     deflection_deg: Optional[float] = Field(
         None,
         description="Current trailing-edge device deflection in degrees",
     )
     trailing_edge_offset_factor: Optional[float] = Field(
         None,
-        description="Trailing-edge offset factor for printable geometry",
+        description=_DESC_TE_OFFSET_FACTOR,
     )
     hinge_type: Optional[HingeType] = Field(
         None,
-        description="Hinge type",
+        description=_DESC_HINGE_TYPE,
     )
     symmetric: Optional[bool] = Field(
         None,

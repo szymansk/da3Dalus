@@ -32,10 +32,16 @@ from app.schemas.strip_forces import StripForcesResponse, SurfaceStripForces, St
 
 logger = logging.getLogger(__name__)
 
+# --- Shared plot color / label constants (S1192) ---
+_COLOR_GREEN = "tab:green"
+_COLOR_BLUE = "tab:blue"
+_COLOR_RED = "tab:red"
+_COLOR_ORANGE = "tab:orange"
+_COLOR_BROWN = "tab:brown"
+_LABEL_ALPHA_DEG = "Alpha [deg]"
 
-def _extract_alpha_sweep_arrays(
-    result: Any, sweep_request: AlphaSweepRequest
-) -> tuple[np.ndarray, Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray]]:
+
+def _extract_alpha_sweep_arrays(result: Any, sweep_request: AlphaSweepRequest) -> tuple[np.ndarray, Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray]]:
     alpha_values = None
     if getattr(result, "flight_condition", None) is not None:
         alpha_values = getattr(result.flight_condition, "alpha", None)
@@ -43,7 +49,7 @@ def _extract_alpha_sweep_arrays(
         alpha_values = np.linspace(
             start=sweep_request.alpha_start,
             stop=sweep_request.alpha_end,
-            num=sweep_request.alpha_num,
+            num=sweep_request.alpha_num
         )
     alpha_array = np.atleast_1d(np.asarray(alpha_values, dtype=float))
 
@@ -59,7 +65,9 @@ def _extract_alpha_sweep_arrays(
     return alpha_array, cl_values, cd_values, cm_values
 
 
-def _compute_cl_cd_points(alpha: np.ndarray, cl: np.ndarray, cd: np.ndarray, n: int) -> dict:
+def _compute_cl_cd_points(
+    alpha: np.ndarray, cl: np.ndarray, cd: np.ndarray, n: int
+) -> dict:
     """Compute characteristic points from CL and CD arrays."""
     points: dict = {}
 
@@ -68,30 +76,21 @@ def _compute_cl_cd_points(alpha: np.ndarray, cl: np.ndarray, cd: np.ndarray, n: 
     if np.isfinite(ld).any():
         i = int(np.nanargmax(ld))
         points["maximum_lift_to_drag_ratio_point"] = {
-            "index": i,
-            "alpha_deg": float(alpha[i]),
-            "CL": float(cl[i]),
-            "CD": float(cd[i]),
-            "Cm": None,
+            "index": i, "alpha_deg": float(alpha[i]),
+            "CL": float(cl[i]), "CD": float(cd[i]), "Cm": None,
             "lift_to_drag_ratio": float(ld[i]),
         }
 
     i = int(np.argmin(cd))
     points["minimum_drag_coefficient_point"] = {
-        "index": i,
-        "alpha_deg": float(alpha[i]),
-        "CL": float(cl[i]),
-        "CD": float(cd[i]),
-        "Cm": None,
+        "index": i, "alpha_deg": float(alpha[i]),
+        "CL": float(cl[i]), "CD": float(cd[i]), "Cm": None,
     }
 
     i = int(np.argmax(cl))
     points["maximum_lift_coefficient_point"] = {
-        "index": i,
-        "alpha_deg": float(alpha[i]),
-        "CL": float(cl[i]),
-        "CD": float(cd[i]),
-        "Cm": None,
+        "index": i, "alpha_deg": float(alpha[i]),
+        "CL": float(cl[i]), "CD": float(cd[i]), "Cm": None,
     }
 
     points["drag_at_zero_lift_point"] = _interpolate_zero_crossing(alpha, cl, cd)
@@ -115,11 +114,8 @@ def _interpolate_zero_crossing(alpha, cl, cd) -> dict:
         }
     i = int(np.argmin(np.abs(cl)))
     return {
-        "index": i,
-        "alpha_deg": float(alpha[i]),
-        "CL": float(cl[i]),
-        "CD": float(cd[i]),
-        "Cm": None,
+        "index": i, "alpha_deg": float(alpha[i]),
+        "CL": float(cl[i]), "CD": float(cd[i]), "Cm": None,
     }
 
 
@@ -135,18 +131,13 @@ def _find_stall_point(alpha, cl, cd, n: int) -> dict:
         else:
             i_stall = min(i_clmax + 1, n - 1)
     return {
-        "index": i_stall,
-        "alpha_deg": float(alpha[i_stall]),
-        "CL": float(cl[i_stall]),
-        "CD": float(cd[i_stall]),
-        "Cm": None,
+        "index": i_stall, "alpha_deg": float(alpha[i_stall]),
+        "CL": float(cl[i_stall]), "CD": float(cd[i_stall]), "Cm": None,
     }
 
 
 def _compute_trim_point(
-    alpha: np.ndarray,
-    cl: np.ndarray,
-    cm: np.ndarray,
+    alpha: np.ndarray, cl: np.ndarray, cm: np.ndarray,
     cd_values: Optional[np.ndarray],
 ) -> dict:
     """Find the trim point where Cm crosses zero."""
@@ -193,17 +184,16 @@ def _compute_alpha_sweep_characteristic_points(
     if cl_values is not None and cd_values is not None:
         n = min(len(cl_values), len(cd_values), len(alpha_array))
         if n > 0:
-            cl_cd_points = _compute_cl_cd_points(alpha_array[:n], cl_values[:n], cd_values[:n], n)
+            cl_cd_points = _compute_cl_cd_points(
+                alpha_array[:n], cl_values[:n], cd_values[:n], n
+            )
             points.update(cl_cd_points)
 
     if cl_values is not None and cm_values is not None:
         n = min(len(cl_values), len(cm_values), len(alpha_array))
         if n > 0:
             points["trim_point_cm_equals_zero"] = _compute_trim_point(
-                alpha_array[:n],
-                cl_values[:n],
-                cm_values[:n],
-                cd_values,
+                alpha_array[:n], cl_values[:n], cm_values[:n], cd_values,
             )
 
     return points
@@ -212,7 +202,7 @@ def _compute_alpha_sweep_characteristic_points(
 async def get_aeroplane_schema_or_raise(db: Session, aeroplane_uuid) -> AeroplaneSchema:
     """
     Get an aeroplane schema by UUID.
-
+    
     Raises:
         NotFoundError: If the aeroplane does not exist.
         InternalError: If a database error occurs.
@@ -220,16 +210,23 @@ async def get_aeroplane_schema_or_raise(db: Session, aeroplane_uuid) -> Aeroplan
     try:
         return await get_aeroplane_by_id(aeroplane_uuid, db)
     except NotFoundInDbException as e:
-        raise NotFoundError(message=str(e), details={"aeroplane_id": str(aeroplane_uuid)})
+        raise NotFoundError(
+            message=str(e),
+            details={"aeroplane_id": str(aeroplane_uuid)}
+        )
     except SQLAlchemyError as e:
         logger.error(f"Database error when getting aeroplane: {e}")
         raise InternalError(message=f"Database error: {e}")
 
 
-async def get_wing_schema_or_raise(db: Session, aeroplane_uuid, wing_name: str) -> AeroplaneSchema:
+async def get_wing_schema_or_raise(
+    db: Session,
+    aeroplane_uuid,
+    wing_name: str
+) -> AeroplaneSchema:
     """
     Get an aeroplane schema with only the specified wing.
-
+    
     Raises:
         NotFoundError: If the aeroplane or wing does not exist.
         InternalError: If a database error occurs.
@@ -238,7 +235,8 @@ async def get_wing_schema_or_raise(db: Session, aeroplane_uuid, wing_name: str) 
         return await get_wing_by_name_and_aeroplane_id(aeroplane_uuid, wing_name, db)
     except NotFoundInDbException as e:
         raise NotFoundError(
-            message=str(e), details={"aeroplane_id": str(aeroplane_uuid), "wing_name": wing_name}
+            message=str(e),
+            details={"aeroplane_id": str(aeroplane_uuid), "wing_name": wing_name}
         )
     except SQLAlchemyError as e:
         logger.error(f"Database error when getting wing: {e}")
@@ -250,24 +248,24 @@ async def analyze_wing(
     aeroplane_uuid,
     wing_name: str,
     operating_point: OperatingPointSchema,
-    analysis_tool: AnalysisToolUrlType,
+    analysis_tool: AnalysisToolUrlType
 ) -> Any:
     """
     Analyze a single wing using the specified analysis tool.
-
+    
     Raises:
         NotFoundError: If the aeroplane or wing does not exist.
         InternalError: If an analysis error occurs.
     """
     plane_schema = await get_wing_schema_or_raise(db, aeroplane_uuid, wing_name)
-
+    
     try:
-        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
+        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         asb_airplane.xyz_ref = operating_point.xyz_ref
         asb_airplane.wings = [w for w in asb_airplane.wings if w.name == wing_name]
         asb_airplane.fuselages = []
-
-        result, _ = analyse_aerodynamics(analysis_tool, operating_point, asb_airplane)
+        
+        result, _ = await analyse_aerodynamics(analysis_tool, operating_point, asb_airplane)
         return result
     except Exception as e:
         logger.error(f"Error analyzing wing: {e}")
@@ -278,20 +276,20 @@ async def analyze_airplane(
     db: Session,
     aeroplane_uuid,
     operating_point: OperatingPointSchema,
-    analysis_tool: AnalysisToolUrlType,
+    analysis_tool: AnalysisToolUrlType
 ) -> Any:
     """
     Analyze a complete airplane using the specified analysis tool.
-
+    
     Raises:
         NotFoundError: If the aeroplane does not exist.
         InternalError: If an analysis error occurs.
     """
     plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
-
+    
     try:
-        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
-        result, _ = analyse_aerodynamics(analysis_tool, operating_point, asb_airplane)
+        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
+        result, _ = await analyse_aerodynamics(analysis_tool, operating_point, asb_airplane)
         return result
     except Exception as e:
         logger.error(f"Error analyzing airplane: {e}")
@@ -317,8 +315,8 @@ async def calculate_streamlines_json(
     plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
     try:
-        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
-        _, figure = analyse_aerodynamics(
+        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
+        _, figure = await analyse_aerodynamics(
             AnalysisToolUrlType.VORTEX_LATTICE,
             operating_point,
             asb_airplane,
@@ -330,40 +328,42 @@ async def calculate_streamlines_json(
         raise InternalError(message=f"Analysis error: {e}")
 
 
-async def analyze_alpha_sweep(db: Session, aeroplane_uuid, sweep_request: AlphaSweepRequest) -> Any:
+async def analyze_alpha_sweep(
+    db: Session,
+    aeroplane_uuid,
+    sweep_request: AlphaSweepRequest
+) -> Any:
     """
     Perform an angle of attack sweep.
-
+    
     Raises:
         NotFoundError: If the aeroplane does not exist.
         InternalError: If an analysis error occurs.
     """
     plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
-
+    
     try:
-        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
-
+        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
+        
         operating_point = OperatingPointSchema(
             altitude=sweep_request.altitude,
             velocity=sweep_request.velocity,
             alpha=np.linspace(
                 start=sweep_request.alpha_start,
                 stop=sweep_request.alpha_end,
-                num=sweep_request.alpha_num,
+                num=sweep_request.alpha_num
             ),
             beta=sweep_request.beta,
             p=sweep_request.p,
             q=sweep_request.q,
             r=sweep_request.r,
-            xyz_ref=sweep_request.xyz_ref,
+            xyz_ref=sweep_request.xyz_ref
         )
-
-        result, _ = analyse_aerodynamics(
+        
+        result, _ = await analyse_aerodynamics(
             AnalysisToolUrlType.AEROBUILDUP, operating_point, asb_airplane
         )
-        alpha_array, cl_values, cd_values, cm_values = _extract_alpha_sweep_arrays(
-            result, sweep_request
-        )
+        alpha_array, cl_values, cd_values, cm_values = _extract_alpha_sweep_arrays(result, sweep_request)
         characteristic_points = _compute_alpha_sweep_characteristic_points(
             alpha_array, cl_values, cd_values, cm_values
         )
@@ -378,7 +378,10 @@ async def analyze_alpha_sweep(db: Session, aeroplane_uuid, sweep_request: AlphaS
 
 
 async def get_alpha_sweep_diagram_url(
-    db: Session, aeroplane_uuid, sweep_request: AlphaSweepRequest, base_url: str
+    db: Session,
+    aeroplane_uuid,
+    sweep_request: AlphaSweepRequest,
+    base_url: str
 ) -> str:
     """
     Generate an alpha sweep diagram as PNG, save it under tmp, and return its static URL.
@@ -388,9 +391,7 @@ async def get_alpha_sweep_diagram_url(
         result = sweep_data["analysis"]
         characteristic_points = sweep_data["characteristic_points"]
         aircraft_name = sweep_data.get("aircraft_name", str(aeroplane_uuid))
-        alpha_array, cl_values, cd_values, cm_values = _extract_alpha_sweep_arrays(
-            result, sweep_request
-        )
+        alpha_array, cl_values, cd_values, cm_values = _extract_alpha_sweep_arrays(result, sweep_request)
 
         fig, axes = plt.subplots(3, 2, figsize=(18, 16))
         axes = axes.flatten()
@@ -404,16 +405,7 @@ async def get_alpha_sweep_diagram_url(
         def annotate_with_collision_avoidance(ax, points_with_labels):
             used = []
             for x, y, label, color in points_with_labels:
-                candidate_offsets = [
-                    (12, 12),
-                    (12, -14),
-                    (-70, 14),
-                    (-70, -14),
-                    (36, 26),
-                    (36, -26),
-                    (-96, 26),
-                    (-96, -26),
-                ]
+                candidate_offsets = [(12, 12), (12, -14), (-70, 14), (-70, -14), (36, 26), (36, -26), (-96, 26), (-96, -26)]
                 chosen = candidate_offsets[0]
                 for ox, oy in candidate_offsets:
                     if all(abs(ox - uox) > 20 or abs(oy - uoy) > 12 for _, _, uox, uoy in used):
@@ -427,19 +419,8 @@ async def get_alpha_sweep_diagram_url(
                     textcoords="offset points",
                     fontsize=8,
                     color=color,
-                    bbox={
-                        "boxstyle": "round,pad=0.25",
-                        "facecolor": "white",
-                        "edgecolor": color,
-                        "linewidth": 0.8,
-                        "alpha": 0.9,
-                    },
-                    arrowprops={
-                        "arrowstyle": "-",
-                        "linestyle": ":",
-                        "color": color,
-                        "linewidth": 0.9,
-                    },
+                    bbox=dict(boxstyle="round,pad=0.25", facecolor="white", edgecolor=color, linewidth=0.8, alpha=0.9),
+                    arrowprops=dict(arrowstyle="-", linestyle=":", color=color, linewidth=0.9),
                 )
 
         def add_trend_strip(ax, x_vals: np.ndarray, color_vals: list[str], strip_label: str):
@@ -451,9 +432,7 @@ async def get_alpha_sweep_diagram_url(
                 edges = np.array([x[0] - 0.5, x[0] + 0.5], dtype=float)
             else:
                 mids = (x[:-1] + x[1:]) / 2.0
-                edges = np.concatenate(
-                    ([x[0] - (mids[0] - x[0])], mids, [x[-1] + (x[-1] - mids[-1])])
-                )
+                edges = np.concatenate(([x[0] - (mids[0] - x[0])], mids, [x[-1] + (x[-1] - mids[-1])]))
 
             strip_ax = ax.inset_axes([0.06, -0.20, 0.88, 0.07])
             for i in range(n):
@@ -464,15 +443,7 @@ async def get_alpha_sweep_diagram_url(
             strip_ax.set_xticks([])
             for spine in strip_ax.spines.values():
                 spine.set_visible(False)
-            strip_ax.text(
-                0.0,
-                0.5,
-                strip_label,
-                transform=strip_ax.transAxes,
-                va="center",
-                ha="left",
-                fontsize=8,
-            )
+            strip_ax.text(0.0, 0.5, strip_label, transform=strip_ax.transAxes, va="center", ha="left", fontsize=8)
 
         plotted = False
         alpha_point_labels = []
@@ -482,16 +453,10 @@ async def get_alpha_sweep_diagram_url(
         neutral_combined_labels = []
 
         xnp_values = None
-        if (
-            getattr(result, "reference", None) is not None
-            and getattr(result.reference, "Xnp", None) is not None
-        ):
+        if getattr(result, "reference", None) is not None and getattr(result.reference, "Xnp", None) is not None:
             xnp_values = np.atleast_1d(np.asarray(result.reference.Xnp, dtype=float))
         xnp_lat_values = None
-        if (
-            getattr(result, "reference", None) is not None
-            and getattr(result.reference, "Xnp_lat", None) is not None
-        ):
+        if getattr(result, "reference", None) is not None and getattr(result.reference, "Xnp_lat", None) is not None:
             xnp_lat_values = np.atleast_1d(np.asarray(result.reference.Xnp_lat, dtype=float))
 
         lift_values = drag_values = None
@@ -522,18 +487,18 @@ async def get_alpha_sweep_diagram_url(
             if length > 0:
                 cl_polar = cl_values[:length]
                 cd_polar = cd_values[:length]
-                alpha_polar = alpha_array[: min(len(alpha_array), length)]
+                alpha_polar = alpha_array[:min(len(alpha_array), length)]
 
                 ax_polar.plot(cd_polar, cl_polar, linewidth=2, label="Polar Curve")
                 plotted = True
 
                 marker_style = {
-                    "maximum_lift_to_drag_ratio_point": "tab:green",
-                    "minimum_drag_coefficient_point": "tab:blue",
-                    "maximum_lift_coefficient_point": "tab:red",
+                    "maximum_lift_to_drag_ratio_point": _COLOR_GREEN,
+                    "minimum_drag_coefficient_point": _COLOR_BLUE,
+                    "maximum_lift_coefficient_point": _COLOR_RED,
                     "drag_at_zero_lift_point": "tab:purple",
-                    "stall_point": "tab:orange",
-                    "trim_point_cm_equals_zero": "tab:brown",
+                    "stall_point": _COLOR_ORANGE,
+                    "trim_point_cm_equals_zero": _COLOR_BROWN,
                 }
                 label_name = {
                     "maximum_lift_to_drag_ratio_point": "(CL/CD)max",
@@ -549,10 +514,7 @@ async def get_alpha_sweep_diagram_url(
                     x_val = point["CD"]
                     y_val = point["CL"]
                     ax_polar.scatter(x_val, y_val, color=marker_style[key], s=35, zorder=5)
-                    if (
-                        key == "maximum_lift_to_drag_ratio_point"
-                        and point.get("lift_to_drag_ratio") is not None
-                    ):
+                    if key == "maximum_lift_to_drag_ratio_point" and point.get("lift_to_drag_ratio") is not None:
                         label = f"{label_name[key]}={point['lift_to_drag_ratio']:.2f}\nCD={x_val:.3f}, CL={y_val:.3f}"
                     elif key == "minimum_drag_coefficient_point":
                         label = f"{label_name[key]}={x_val:.3f}\nCL={y_val:.3f}"
@@ -572,15 +534,15 @@ async def get_alpha_sweep_diagram_url(
                         linestyle="--",
                         linewidth=1.2,
                         color="gray",
-                        alpha=0.8,
+                        alpha=0.8
                     )
 
                 if len(alpha_polar) > 0:
                     alpha_len = len(alpha_polar)
                     for key, color, text in [
-                        ("minimum_drag_coefficient_point", "tab:blue", "CDmin"),
-                        ("maximum_lift_coefficient_point", "tab:red", "CLmax"),
-                        ("stall_point", "tab:orange", "Stall"),
+                        ("minimum_drag_coefficient_point", _COLOR_BLUE, "CDmin"),
+                        ("maximum_lift_coefficient_point", _COLOR_RED, "CLmax"),
+                        ("stall_point", _COLOR_ORANGE, "Stall"),
                     ]:
                         point = characteristic_points.get(key)
                         if not point:
@@ -594,22 +556,13 @@ async def get_alpha_sweep_diagram_url(
                             if y_val is None:
                                 continue
                             ax_coeff.scatter(alpha_val, y_val, color=color, s=25, zorder=5)
-                            alpha_point_labels.append(
-                                (alpha_val, y_val, f"{text}={y_val:.3f} @ a={alpha_val:.2f}", color)
-                            )
+                            alpha_point_labels.append((alpha_val, y_val, f"{text}={y_val:.3f} @ a={alpha_val:.2f}", color))
                         else:
                             y_val = point.get("CL")
                             if y_val is None:
                                 continue
                             ax_coeff.scatter(alpha_val, y_val, color=color, s=25, zorder=5)
-                            alpha_point_labels.append(
-                                (
-                                    alpha_val,
-                                    y_val,
-                                    f"{text} @ a={alpha_val:.2f}, CL={y_val:.3f}",
-                                    color,
-                                )
-                            )
+                            alpha_point_labels.append((alpha_val, y_val, f"{text} @ a={alpha_val:.2f}, CL={y_val:.3f}", color))
 
         if cl_values is not None and cm_values is not None:
             length = min(len(cl_values), len(cm_values))
@@ -637,9 +590,7 @@ async def get_alpha_sweep_diagram_url(
                 if length > 1:
                     points = np.column_stack((cm_curve, cl_curve))
                     segments = np.stack([points[:-1], points[1:]], axis=1)
-                    segment_colors = (
-                        cm_strip_colors[1:] if len(cm_strip_colors) > 1 else ["#4caf50"]
-                    )
+                    segment_colors = cm_strip_colors[1:] if len(cm_strip_colors) > 1 else ["#4caf50"]
                     lc = LineCollection(segments, colors=segment_colors, linewidths=2.2, alpha=0.95)
                     ax_cm.add_collection(lc)
                     ax_cm.autoscale_view()
@@ -653,28 +604,19 @@ async def get_alpha_sweep_diagram_url(
                     alpha_trim = trim_point.get("alpha_deg")
                     cd_trim = trim_point.get("CD")
 
-                    ax_cm.scatter(cm_trim, cl_trim, color="tab:brown", s=35, zorder=5)
+                    ax_cm.scatter(cm_trim, cl_trim, color=_COLOR_BROWN, s=35, zorder=5)
                     cm_label = f"Trim (Cm=0): CL={cl_trim:.3f}"
                     if alpha_trim is not None:
                         cm_label += f", a={alpha_trim:.2f}"
-                    cm_point_labels.append((cm_trim, cl_trim, cm_label, "tab:brown"))
+                    cm_point_labels.append((cm_trim, cl_trim, cm_label, _COLOR_BROWN))
 
                     if alpha_trim is not None:
-                        ax_coeff.scatter(alpha_trim, 0.0, color="tab:brown", s=25, zorder=5)
-                        alpha_point_labels.append(
-                            (alpha_trim, 0.0, f"Trim (Cm=0) @ a={alpha_trim:.2f}", "tab:brown")
-                        )
+                        ax_coeff.scatter(alpha_trim, 0.0, color=_COLOR_BROWN, s=25, zorder=5)
+                        alpha_point_labels.append((alpha_trim, 0.0, f"Trim (Cm=0) @ a={alpha_trim:.2f}", _COLOR_BROWN))
 
                     if cd_trim is not None:
-                        ax_polar.scatter(cd_trim, cl_trim, color="tab:brown", s=35, zorder=5)
-                        polar_point_labels.append(
-                            (
-                                cd_trim,
-                                cl_trim,
-                                f"Trim (Cm=0)\nCD={cd_trim:.3f}, CL={cl_trim:.3f}",
-                                "tab:brown",
-                            )
-                        )
+                        ax_polar.scatter(cd_trim, cl_trim, color=_COLOR_BROWN, s=35, zorder=5)
+                        polar_point_labels.append((cd_trim, cl_trim, f"Trim (Cm=0)\nCD={cd_trim:.3f}, CL={cl_trim:.3f}", _COLOR_BROWN))
 
                 # Trend strip for longitudinal stability regime based on dCm/dalpha.
                 add_trend_strip(ax_coeff, alpha_cm, cm_strip_colors, "Cm trend")
@@ -690,14 +632,12 @@ async def get_alpha_sweep_diagram_url(
                 if np.isfinite(deviation).any():
                     outlier_idx = int(np.nanargmax(deviation))
                     outlier_alpha = alpha_array[min(outlier_idx, len(alpha_array) - 1)]
-                    neutral_combined_labels.append(
-                        (
-                            outlier_alpha,
-                            xnp_curve[outlier_idx],
-                            f"Xnp Ausreißer?\na={outlier_alpha:.2f}, Xnp={xnp_curve[outlier_idx]:.3f}",
-                            "tab:red",
-                        )
-                    )
+                    neutral_combined_labels.append((
+                        outlier_alpha,
+                        xnp_curve[outlier_idx],
+                        f"Xnp Ausreißer?\na={outlier_alpha:.2f}, Xnp={xnp_curve[outlier_idx]:.3f}",
+                        _COLOR_RED
+                    ))
 
         if lift_values is not None and drag_values is not None:
             ld_len = min(len(alpha_array), len(lift_values), len(drag_values))
@@ -708,30 +648,24 @@ async def get_alpha_sweep_diagram_url(
                 with np.errstate(divide="ignore", invalid="ignore"):
                     ld_curve = np.where(np.abs(drag_curve) > 1e-12, lift_curve / drag_curve, np.nan)
 
-                ax_ld.plot(alpha_ld, ld_curve, linewidth=2, color="tab:green", label="L/D")
+                ax_ld.plot(alpha_ld, ld_curve, linewidth=2, color=_COLOR_GREEN, label="L/D")
                 plotted = True
 
                 if np.isfinite(ld_curve).any():
                     i_ldmax = int(np.nanargmax(ld_curve))
-                    ax_ld.scatter(
-                        alpha_ld[i_ldmax], ld_curve[i_ldmax], color="tab:green", s=35, zorder=5
-                    )
-                    ld_point_labels.append(
-                        (
-                            alpha_ld[i_ldmax],
-                            ld_curve[i_ldmax],
-                            f"Sweet Spot\na={alpha_ld[i_ldmax]:.2f}, L/D={ld_curve[i_ldmax]:.2f}",
-                            "tab:green",
-                        )
-                    )
+                    ax_ld.scatter(alpha_ld[i_ldmax], ld_curve[i_ldmax], color=_COLOR_GREEN, s=35, zorder=5)
+                    ld_point_labels.append((
+                        alpha_ld[i_ldmax],
+                        ld_curve[i_ldmax],
+                        f"Sweet Spot\na={alpha_ld[i_ldmax]:.2f}, L/D={ld_curve[i_ldmax]:.2f}",
+                        _COLOR_GREEN
+                    ))
 
         if xnp_lat_values is not None and len(xnp_lat_values) > 0:
             lat_len = min(len(alpha_array), len(xnp_lat_values))
             if lat_len > 0:
                 x_axis = alpha_array[:lat_len]
-                ax_neutral_combined.plot(
-                    x_axis, xnp_lat_values[:lat_len], linewidth=2, color="tab:pink", label="Xnp_lat"
-                )
+                ax_neutral_combined.plot(x_axis, xnp_lat_values[:lat_len], linewidth=2, color="tab:pink", label="Xnp_lat")
                 plotted = True
 
                 median_lat = float(np.nanmedian(xnp_lat_values[:lat_len]))
@@ -740,14 +674,12 @@ async def get_alpha_sweep_diagram_url(
                     outlier_idx = int(np.nanargmax(deviation_lat))
                     outlier_x = x_axis[outlier_idx]
                     outlier_y = xnp_lat_values[outlier_idx]
-                    neutral_combined_labels.append(
-                        (
-                            outlier_x,
-                            outlier_y,
-                            f"Xnp_lat Ausreißer?\na={outlier_x:.2f}, Xnp_lat={outlier_y:.3f}",
-                            "tab:red",
-                        )
-                    )
+                    neutral_combined_labels.append((
+                        outlier_x,
+                        outlier_y,
+                        f"Xnp_lat Ausreißer?\na={outlier_x:.2f}, Xnp_lat={outlier_y:.3f}",
+                        _COLOR_RED
+                    ))
 
                 if lat_len > 1:
                     jumps = np.abs(np.diff(xnp_lat_values[:lat_len]))
@@ -755,34 +687,27 @@ async def get_alpha_sweep_diagram_url(
                         jump_idx = int(np.nanargmax(jumps)) + 1
                         jump_x = x_axis[jump_idx]
                         jump_y = xnp_lat_values[jump_idx]
-                        neutral_combined_labels.append(
-                            (jump_x, jump_y, f"Xnp_lat Sprung\na={jump_x:.2f}", "tab:orange")
-                        )
+                        neutral_combined_labels.append((
+                            jump_x,
+                            jump_y,
+                            f"Xnp_lat Sprung\na={jump_x:.2f}",
+                            _COLOR_ORANGE
+                        ))
 
         if xnp_values is not None and xnp_lat_values is not None:
             comb_len = min(len(alpha_array), len(xnp_values), len(xnp_lat_values))
             if comb_len > 0:
                 x_axis = alpha_array[:comb_len]
                 xnp_curve = xnp_values[:comb_len]
-                ax_neutral_combined.plot(
-                    x_axis, xnp_curve, linewidth=2, color="tab:cyan", label="Xnp"
-                )
+                ax_neutral_combined.plot(x_axis, xnp_curve, linewidth=2, color="tab:cyan", label="Xnp")
                 plotted = True
                 for x, y, _, color in neutral_combined_labels:
                     ax_neutral_combined.scatter(x, y, color=color, s=30, zorder=5)
 
                 xnp_lat_curve = xnp_lat_values[:comb_len]
                 with np.errstate(divide="ignore", invalid="ignore"):
-                    gx = (
-                        np.abs(np.gradient(xnp_curve, x_axis))
-                        if comb_len > 1
-                        else np.array([np.nan])
-                    )
-                    gy = (
-                        np.abs(np.gradient(xnp_lat_curve, x_axis))
-                        if comb_len > 1
-                        else np.array([np.nan])
-                    )
+                    gx = np.abs(np.gradient(xnp_curve, x_axis)) if comb_len > 1 else np.array([np.nan])
+                    gy = np.abs(np.gradient(xnp_lat_curve, x_axis)) if comb_len > 1 else np.array([np.nan])
                 combined_metric = gx + gy
                 valid = combined_metric[np.isfinite(combined_metric)]
                 if len(valid) > 0:
@@ -804,11 +729,9 @@ async def get_alpha_sweep_diagram_url(
 
         if not plotted:
             plt.close(fig)
-            raise InternalError(
-                message="Alpha sweep results did not contain plottable coefficient data."
-            )
+            raise InternalError(message="Alpha sweep results did not contain plottable coefficient data.")
 
-        ax_coeff.set_xlabel("Alpha [deg]")
+        ax_coeff.set_xlabel(_LABEL_ALPHA_DEG)
         ax_coeff.set_ylabel("Coefficient [-]")
         ax_coeff.set_title("Coefficients vs Alpha")
         ax_coeff.grid(True, alpha=0.3)
@@ -828,23 +751,21 @@ async def get_alpha_sweep_diagram_url(
         ax_cm.grid(True, alpha=0.3)
         annotate_with_collision_avoidance(ax_cm, cm_point_labels)
 
-        ax_ld.set_xlabel("Alpha [deg]")
+        ax_ld.set_xlabel(_LABEL_ALPHA_DEG)
         ax_ld.set_ylabel("L/D [-]")
         ax_ld.set_title("Glide Ratio: L/D vs Alpha")
         ax_ld.grid(True, alpha=0.3)
         ax_ld.legend()
         annotate_with_collision_avoidance(ax_ld, ld_point_labels)
 
-        ax_neutral_combined.set_xlabel("Alpha [deg]")
+        ax_neutral_combined.set_xlabel(_LABEL_ALPHA_DEG)
         ax_neutral_combined.set_ylabel("Neutral Point [m]")
         ax_neutral_combined.set_title("Combined: Xnp and Xnp_lat vs Alpha")
         ax_neutral_combined.grid(True, alpha=0.3)
         ax_neutral_combined.legend()
         annotate_with_collision_avoidance(ax_neutral_combined, neutral_combined_labels)
 
-        def classify_longitudinal_stability(
-            cm_vals: Optional[np.ndarray], alpha_vals: np.ndarray
-        ) -> tuple[str, str]:
+        def classify_longitudinal_stability(cm_vals: Optional[np.ndarray], alpha_vals: np.ndarray) -> tuple[str, str]:
             if cm_vals is None:
                 return "N/A", "gray"
             n = min(len(cm_vals), len(alpha_vals))
@@ -857,10 +778,10 @@ async def get_alpha_sweep_diagram_url(
                 return "N/A", "gray"
             slope = np.polyfit(x[mask], y[mask], 1)[0]
             if slope < -0.01:
-                return f"Stable (dCm/da={slope:.4f})", "tab:green"
+                return f"Stable (dCm/da={slope:.4f})", _COLOR_GREEN
             if slope <= 0.01:
-                return f"Neutral (dCm/da={slope:.4f})", "tab:orange"
-            return f"Unstable (dCm/da={slope:.4f})", "tab:red"
+                return f"Neutral (dCm/da={slope:.4f})", _COLOR_ORANGE
+            return f"Unstable (dCm/da={slope:.4f})", _COLOR_RED
 
         def classify_variation(series: Optional[np.ndarray], label: str) -> tuple[str, str]:
             if series is None or len(series) < 2:
@@ -871,62 +792,41 @@ async def get_alpha_sweep_diagram_url(
                 return f"{label}: N/A", "gray"
             span = float(np.max(values) - np.min(values))
             if span < 0.5:
-                return f"{label}: robust (span={span:.3f})", "tab:green"
+                return f"{label}: robust (span={span:.3f})", _COLOR_GREEN
             if span < 2.0:
-                return f"{label}: moderate (span={span:.3f})", "tab:orange"
-            return f"{label}: volatile (span={span:.3f})", "tab:red"
+                return f"{label}: moderate (span={span:.3f})", _COLOR_ORANGE
+            return f"{label}: volatile (span={span:.3f})", _COLOR_RED
 
         summary_lines: list[tuple[str, str]] = []
         generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         summary_lines.append((f"Aircraft: {aircraft_name}", "black"))
         summary_lines.append((f"Generated: {generated_at}", "black"))
-        summary_lines.append(
-            (
-                f"OpPoint: V={sweep_request.velocity:.2f} m/s, h={sweep_request.altitude:.1f} m, "
-                f"beta={sweep_request.beta:.2f} deg",
-                "black",
-            )
-        )
-        summary_lines.append(
-            (
-                f"Rates: p={sweep_request.p:.3f}, q={sweep_request.q:.3f}, r={sweep_request.r:.3f} rad/s | "
-                f"xyz_ref={sweep_request.xyz_ref}",
-                "black",
-            )
-        )
+        summary_lines.append((
+            f"OpPoint: V={sweep_request.velocity:.2f} m/s, h={sweep_request.altitude:.1f} m, "
+            f"beta={sweep_request.beta:.2f} deg",
+            "black",
+        ))
+        summary_lines.append((
+            f"Rates: p={sweep_request.p:.3f}, q={sweep_request.q:.3f}, r={sweep_request.r:.3f} rad/s | "
+            f"xyz_ref={sweep_request.xyz_ref}",
+            "black",
+        ))
         ldmax = characteristic_points.get("maximum_lift_to_drag_ratio_point")
         cdmin = characteristic_points.get("minimum_drag_coefficient_point")
         clmax = characteristic_points.get("maximum_lift_coefficient_point")
         trim = characteristic_points.get("trim_point_cm_equals_zero")
         stall = characteristic_points.get("stall_point")
 
-        if (
-            ldmax
-            and ldmax.get("lift_to_drag_ratio") is not None
-            and ldmax.get("alpha_deg") is not None
-        ):
-            summary_lines.append(
-                (
-                    f"L/D max: {ldmax['lift_to_drag_ratio']:.2f} @ a={ldmax['alpha_deg']:.2f}",
-                    "tab:green",
-                )
-            )
+        if ldmax and ldmax.get("lift_to_drag_ratio") is not None and ldmax.get("alpha_deg") is not None:
+            summary_lines.append((f"L/D max: {ldmax['lift_to_drag_ratio']:.2f} @ a={ldmax['alpha_deg']:.2f}", _COLOR_GREEN))
         if cdmin and cdmin.get("CD") is not None and cdmin.get("alpha_deg") is not None:
-            summary_lines.append(
-                (f"CD min: {cdmin['CD']:.3f} @ a={cdmin['alpha_deg']:.2f}", "tab:blue")
-            )
+            summary_lines.append((f"CD min: {cdmin['CD']:.3f} @ a={cdmin['alpha_deg']:.2f}", _COLOR_BLUE))
         if clmax and clmax.get("CL") is not None and clmax.get("alpha_deg") is not None:
-            summary_lines.append(
-                (f"CL max: {clmax['CL']:.3f} @ a={clmax['alpha_deg']:.2f}", "tab:red")
-            )
+            summary_lines.append((f"CL max: {clmax['CL']:.3f} @ a={clmax['alpha_deg']:.2f}", _COLOR_RED))
         if trim and trim.get("alpha_deg") is not None and trim.get("CL") is not None:
-            summary_lines.append(
-                (f"Trim (Cm=0): a={trim['alpha_deg']:.2f}, CL={trim['CL']:.3f}", "tab:brown")
-            )
+            summary_lines.append((f"Trim (Cm=0): a={trim['alpha_deg']:.2f}, CL={trim['CL']:.3f}", _COLOR_BROWN))
         if stall and stall.get("alpha_deg") is not None and stall.get("CL") is not None:
-            summary_lines.append(
-                (f"Stall-Indiz: a={stall['alpha_deg']:.2f}, CL={stall['CL']:.3f}", "tab:orange")
-            )
+            summary_lines.append((f"Stall-Indiz: a={stall['alpha_deg']:.2f}, CL={stall['CL']:.3f}", _COLOR_ORANGE))
 
         long_text, long_color = classify_longitudinal_stability(cm_values, alpha_array)
         xnp_text, xnp_color = classify_variation(xnp_values, "Xnp trend")
@@ -969,20 +869,22 @@ async def get_alpha_sweep_diagram_url(
 
 
 async def analyze_simple_sweep(
-    db: Session, aeroplane_uuid, sweep_request: SimpleSweepRequest
+    db: Session,
+    aeroplane_uuid,
+    sweep_request: SimpleSweepRequest
 ) -> Any:
     """
     Perform a parameter sweep.
-
+    
     Raises:
         NotFoundError: If the aeroplane does not exist.
         InternalError: If an analysis error occurs.
     """
     plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
-
+    
     try:
-        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
-
+        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
+        
         operating_point = OperatingPointSchema(
             name=f"sweep over {sweep_request.sweep_var}",
             description=None,
@@ -993,70 +895,57 @@ async def analyze_simple_sweep(
             p=sweep_request.p,
             q=sweep_request.q,
             r=sweep_request.r,
-            xyz_ref=sweep_request.xyz_ref,
+            xyz_ref=sweep_request.xyz_ref
         )
-
+        
         def vary_index(
-            values: List[float], index: int, start: float, stop: float, num: int
+            values: List[float],
+            index: int,
+            start: float,
+            stop: float,
+            num: int
         ) -> List[List[float]]:
             return [
                 [val if i != index else v for i, val in enumerate(values)]
                 for v in np.linspace(start, stop, num)
             ]
-
-        if sweep_request.sweep_var in ["alpha", "velocity", "beta", "p", "q", "r", "altitude"]:
+        
+        if sweep_request.sweep_var in ['alpha', 'velocity', 'beta', 'p', 'q', 'r', 'altitude']:
             current_val = operating_point.__dict__[sweep_request.sweep_var]
             operating_point.__dict__[sweep_request.sweep_var] = np.linspace(
                 start=current_val,
                 stop=current_val + sweep_request.step_size * sweep_request.num,
-                num=sweep_request.num,
+                num=sweep_request.num
             )
-        elif sweep_request.sweep_var == "x":
+        elif sweep_request.sweep_var == 'x':
             operating_point.xyz_ref = vary_index(
-                operating_point.xyz_ref,
-                0,
+                operating_point.xyz_ref, 0,
                 start=operating_point.xyz_ref[0],
                 stop=operating_point.xyz_ref[0] + sweep_request.step_size * sweep_request.num,
-                num=sweep_request.num,
+                num=sweep_request.num
             )
-        elif sweep_request.sweep_var == "y":
+        elif sweep_request.sweep_var == 'y':
             operating_point.xyz_ref = vary_index(
-                operating_point.xyz_ref,
-                1,
+                operating_point.xyz_ref, 1,
                 start=operating_point.xyz_ref[1],
                 stop=operating_point.xyz_ref[1] + sweep_request.step_size * sweep_request.num,
-                num=sweep_request.num,
+                num=sweep_request.num
             )
-        elif sweep_request.sweep_var == "z":
+        elif sweep_request.sweep_var == 'z':
             operating_point.xyz_ref = vary_index(
-                operating_point.xyz_ref,
-                2,
+                operating_point.xyz_ref, 2,
                 start=operating_point.xyz_ref[2],
                 stop=operating_point.xyz_ref[2] + sweep_request.step_size * sweep_request.num,
-                num=sweep_request.num,
+                num=sweep_request.num
             )
         else:
             from app.core.exceptions import ValidationError
-
             raise ValidationError(
                 message=f"Invalid sweep variable: {sweep_request.sweep_var}",
-                details={
-                    "valid_vars": [
-                        "alpha",
-                        "velocity",
-                        "beta",
-                        "p",
-                        "q",
-                        "r",
-                        "altitude",
-                        "x",
-                        "y",
-                        "z",
-                    ]
-                },
+                details={"valid_vars": ['alpha', 'velocity', 'beta', 'p', 'q', 'r', 'altitude', 'x', 'y', 'z']}
             )
-
-        result, _ = analyse_aerodynamics(
+        
+        result, _ = await analyse_aerodynamics(
             AnalysisToolUrlType.AEROBUILDUP, operating_point, asb_airplane
         )
         return result
@@ -1066,32 +955,34 @@ async def analyze_simple_sweep(
 
 
 async def get_streamlines_three_view_image(
-    db: Session, aeroplane_uuid, operating_point: OperatingPointSchema
+    db: Session,
+    aeroplane_uuid,
+    operating_point: OperatingPointSchema
 ) -> bytes:
     """
     Generate a four-view diagram with streamlines as PNG.
-
+    
     Returns:
         bytes: PNG image data.
-
+    
     Raises:
         NotFoundError: If the aeroplane does not exist.
         InternalError: If an analysis error occurs.
     """
     plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
-
+    
     try:
-        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
-
-        _, figure = analyse_aerodynamics(
+        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
+        
+        _, figure = await analyse_aerodynamics(
             AnalysisToolUrlType.VORTEX_LATTICE,
             operating_point,
             asb_airplane,
             draw_streamlines=True,
-            backend="plotly",
+            backend='plotly'
         )
-
-        fig = compile_four_view_figure(figure)
+        
+        fig = await compile_four_view_figure(figure)
         img_bytes = fig.to_image(format="png", width=1000, height=1000, scale=2)
         return img_bytes
     except Exception as e:
@@ -1102,27 +993,27 @@ async def get_streamlines_three_view_image(
 async def get_three_view_image(db: Session, aeroplane_uuid) -> bytes:
     """
     Generate a three-view diagram as PNG.
-
+    
     Returns:
         bytes: PNG image data.
-
+    
     Raises:
         NotFoundError: If the aeroplane does not exist.
         InternalError: If an error occurs.
     """
     plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
-
+    
     try:
-        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
-
+        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
+        
         fig = plt.figure(figsize=(10, 10))
         asb_airplane.draw_three_view(show=False)
-
+        
         img_bytes = io.BytesIO()
-        plt.savefig(img_bytes, format="png", dpi=300, bbox_inches="tight")
+        plt.savefig(img_bytes, format='png', dpi=300, bbox_inches='tight')
         img_bytes.seek(0)
         plt.close(fig)
-
+        
         return img_bytes.getvalue()
     except Exception as e:
         logger.error(f"Error generating three-view: {e}")
@@ -1148,7 +1039,7 @@ async def analyze_airplane_strip_forces(
     plane_schema = await get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
     try:
-        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
+        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         asb_airplane.xyz_ref = operating_point.xyz_ref
 
         atmosphere = asb.Atmosphere(altitude=operating_point.altitude)
@@ -1162,7 +1053,9 @@ async def analyze_airplane_strip_forces(
             atmosphere=atmosphere,
         )
 
-        avl_command = str(_Path(__file__).resolve().parents[2] / "exports" / "avl")
+        avl_command = str(
+            _Path(__file__).resolve().parents[2] / "exports" / "avl"
+        )
 
         avl = AVLWithStripForces(
             airplane=asb_airplane,
@@ -1177,16 +1070,14 @@ async def analyze_airplane_strip_forces(
         surfaces = []
         for sf in strip_forces_data:
             strips = [StripForceEntry.model_validate(s) for s in sf["strips"]]
-            surfaces.append(
-                SurfaceStripForces(
-                    surface_name=sf["surface_name"],
-                    surface_number=sf["surface_number"],
-                    n_chordwise=sf["n_chordwise"],
-                    n_spanwise=sf["n_spanwise"],
-                    surface_area=sf["surface_area"],
-                    strips=strips,
-                )
-            )
+            surfaces.append(SurfaceStripForces(
+                surface_name=sf["surface_name"],
+                surface_number=sf["surface_number"],
+                n_chordwise=sf["n_chordwise"],
+                n_spanwise=sf["n_spanwise"],
+                surface_area=sf["surface_area"],
+                strips=strips,
+            ))
 
         return StripForcesResponse(
             alpha=result.get("alpha", operating_point.alpha),
@@ -1225,7 +1116,7 @@ async def analyze_wing_strip_forces(
     plane_schema = await get_wing_schema_or_raise(db, aeroplane_uuid, wing_name)
 
     try:
-        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
+        asb_airplane: Airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         asb_airplane.xyz_ref = operating_point.xyz_ref
         asb_airplane.wings = [w for w in asb_airplane.wings if w.name == wing_name]
         asb_airplane.fuselages = []
@@ -1241,7 +1132,9 @@ async def analyze_wing_strip_forces(
             atmosphere=atmosphere,
         )
 
-        avl_command = str(_Path(__file__).resolve().parents[2] / "exports" / "avl")
+        avl_command = str(
+            _Path(__file__).resolve().parents[2] / "exports" / "avl"
+        )
 
         avl = AVLWithStripForces(
             airplane=asb_airplane,
@@ -1256,16 +1149,14 @@ async def analyze_wing_strip_forces(
         surfaces = []
         for sf in strip_forces_data:
             strips = [StripForceEntry.model_validate(s) for s in sf["strips"]]
-            surfaces.append(
-                SurfaceStripForces(
-                    surface_name=sf["surface_name"],
-                    surface_number=sf["surface_number"],
-                    n_chordwise=sf["n_chordwise"],
-                    n_spanwise=sf["n_spanwise"],
-                    surface_area=sf["surface_area"],
-                    strips=strips,
-                )
-            )
+            surfaces.append(SurfaceStripForces(
+                surface_name=sf["surface_name"],
+                surface_number=sf["surface_number"],
+                n_chordwise=sf["n_chordwise"],
+                n_spanwise=sf["n_spanwise"],
+                surface_area=sf["surface_area"],
+                strips=strips,
+            ))
 
         return StripForcesResponse(
             alpha=result.get("alpha", operating_point.alpha),

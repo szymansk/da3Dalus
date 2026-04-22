@@ -21,6 +21,9 @@ from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration impo
 
 logger = logging.getLogger(__name__)
 
+# --- Shared error message (S1192) ---
+_ERR_AEROPLANE_NOT_FOUND = "Aeroplane not found"
+
 
 def _to_json_compatible(value):
     if isinstance(value, dict):
@@ -84,7 +87,7 @@ def get_aeroplane_by_uuid(db: Session, aeroplane_uuid) -> AeroplaneModel:
         
         if not aeroplane:
             raise NotFoundError(
-                message="Aeroplane not found",
+                message=_ERR_AEROPLANE_NOT_FOUND,
                 details={"aeroplane_id": str(aeroplane_uuid)}
             )
         return aeroplane
@@ -150,7 +153,7 @@ def delete_aeroplane(db: Session, aeroplane_uuid) -> None:
             
             if not aeroplane:
                 raise NotFoundError(
-                    message="Aeroplane not found",
+                    message=_ERR_AEROPLANE_NOT_FOUND,
                     details={"aeroplane_id": str(aeroplane_uuid)}
                 )
             db.delete(aeroplane)
@@ -199,7 +202,7 @@ def set_aeroplane_mass(db: Session, aeroplane_uuid, total_mass_kg: float) -> boo
             
             if not aeroplane:
                 raise NotFoundError(
-                    message="Aeroplane not found",
+                    message=_ERR_AEROPLANE_NOT_FOUND,
                     details={"aeroplane_id": str(aeroplane_uuid)}
                 )
             

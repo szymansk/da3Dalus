@@ -16,6 +16,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# --- Shared error messages (S1192) ---
+_ERR_AEROPLANE_NOT_FOUND = "Aeroplane not found"
+_ERR_FUSELAGE_NOT_FOUND = "Fuselage not found"
+_ERR_XSEC_NOT_FOUND = "Cross-section not found"
+
 AeroPlaneID = UUID4
 
 
@@ -31,7 +36,7 @@ class OperationStatusResponse(BaseModel):
     tags=["fuselages"],
     operation_id="get_aeroplane_fuselages",
     responses={
-        404: {"description": "Aeroplane not found"},
+        404: {"description": _ERR_AEROPLANE_NOT_FOUND},
         500: {"description": "Internal server error"},
     },
 )
@@ -45,7 +50,7 @@ async def get_aeroplane_fuselages(
     try:
         aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
         if not aeroplane:
-            raise HTTPException(status_code=404, detail="Aeroplane not found")
+            raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
         fuselages = aeroplane.fuselages
         return [f.name for f in fuselages]
     except SQLAlchemyError as e:
@@ -66,7 +71,7 @@ async def get_aeroplane_fuselages(
     tags=["fuselages"],
     operation_id="create_aeroplane_fuselage",
     responses={
-        404: {"description": "Aeroplane not found"},
+        404: {"description": _ERR_AEROPLANE_NOT_FOUND},
         409: {"description": "Fuselage name conflict"},
         500: {"description": "Internal server error"},
     },
@@ -85,7 +90,7 @@ async def create_aeroplane_fuselage(
         with db.begin():
             plane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
             if not plane:
-                raise HTTPException(status_code=404, detail="Aeroplane not found")
+                raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
 
             if any(f.name == fuselage_name for f in plane.fuselages):
                 raise HTTPException(
@@ -139,11 +144,11 @@ async def update_aeroplane_fuselage(
         with db.begin():
             plane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
             if not plane:
-                raise HTTPException(404, "Aeroplane not found")
+                raise HTTPException(404, _ERR_AEROPLANE_NOT_FOUND)
 
             fuselage = next((f for f in plane.fuselages if f.name == fuselage_name), None)
             if not fuselage:
-                raise HTTPException(404, "Fuselage not found")
+                raise HTTPException(404, _ERR_FUSELAGE_NOT_FOUND)
 
             # Create new fuselage from request data
             new_fuselage = FuselageModel.from_dict(name=fuselage_name, data=request.model_dump())
@@ -188,11 +193,11 @@ async def get_aeroplane_fuselage(
         # Load the parent aeroplane
         plane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
         if not plane:
-            raise HTTPException(status_code=404, detail="Aeroplane not found")
+            raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
         # Find the fuselage belonging to this aeroplane
         fuselage = next((f for f in plane.fuselages if f.name == fuselage_name), None)
         if not fuselage:
-            raise HTTPException(status_code=404, detail="Fuselage not found")
+            raise HTTPException(status_code=404, detail=_ERR_FUSELAGE_NOT_FOUND)
         return schemas.FuselageSchema.model_validate(fuselage, from_attributes=True)
     except SQLAlchemyError as e:
         logger.error(f"Database error when getting aeroplane fuselage: {e}")
@@ -228,10 +233,10 @@ async def delete_aeroplane_fuselage(
         with db.begin():
             plane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
             if not plane:
-                raise HTTPException(status_code=404, detail="Aeroplane not found")
+                raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
             fuselage = next((f for f in plane.fuselages if str(f.name) == str(fuselage_name)), None)
             if not fuselage:
-                raise HTTPException(status_code=404, detail="Fuselage not found")
+                raise HTTPException(status_code=404, detail=_ERR_FUSELAGE_NOT_FOUND)
             db.delete(fuselage)
             plane.updated_at = datetime.now()
 
@@ -274,10 +279,10 @@ async def get_aeroplane_fuselage_cross_sections(
     try:
         aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
         if not aeroplane:
-            raise HTTPException(status_code=404, detail="Aeroplane not found")
+            raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
         fuselage = next((f for f in aeroplane.fuselages if f.name == fuselage_name), None)
         if not fuselage:
-            raise HTTPException(status_code=404, detail="Fuselage not found")
+            raise HTTPException(status_code=404, detail=_ERR_FUSELAGE_NOT_FOUND)
         # Serialize cross-sections
         return [
             schemas.FuselageXSecSuperEllipseSchema.model_validate(xs, from_attributes=True)
@@ -316,10 +321,10 @@ async def delete_aeroplane_fuselage_cross_sections(
         with db.begin():
             aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
             if not aeroplane:
-                raise HTTPException(status_code=404, detail="Aeroplane not found")
+                raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
             fuselage = next((f for f in aeroplane.fuselages if f.name == fuselage_name), None)
             if not fuselage:
-                raise HTTPException(status_code=404, detail="Fuselage not found")
+                raise HTTPException(status_code=404, detail=_ERR_FUSELAGE_NOT_FOUND)
             # Remove all cross-sections (using delete-orphan cascade)
             fuselage.x_secs.clear()
             # Touch parent timestamp
@@ -357,13 +362,13 @@ async def get_aeroplane_fuselage_cross_section(
     try:
         aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
         if not aeroplane:
-            raise HTTPException(status_code=404, detail="Aeroplane not found")
+            raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
         fuselage = next((f for f in aeroplane.fuselages if f.name == fuselage_name), None)
         if not fuselage:
-            raise HTTPException(status_code=404, detail="Fuselage not found")
+            raise HTTPException(status_code=404, detail=_ERR_FUSELAGE_NOT_FOUND)
         x_secs = fuselage.x_secs
         if cross_section_index < 0 or cross_section_index >= len(x_secs):
-            raise HTTPException(status_code=404, detail="Cross-section not found")
+            raise HTTPException(status_code=404, detail=_ERR_XSEC_NOT_FOUND)
         xs = x_secs[cross_section_index]
         return schemas.FuselageXSecSuperEllipseSchema.model_validate(xs, from_attributes=True)
     except HTTPException:
@@ -410,10 +415,10 @@ async def create_aeroplane_fuselage_cross_section(
         with db.begin():
             aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
             if not aeroplane:
-                raise HTTPException(status_code=404, detail="Aeroplane not found")
+                raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
             fuselage = next((f for f in aeroplane.fuselages if f.name == fuselage_name), None)
             if not fuselage:
-                raise HTTPException(status_code=404, detail="Fuselage not found")
+                raise HTTPException(status_code=404, detail=_ERR_FUSELAGE_NOT_FOUND)
             # build new FuselageXSecSuperEllipseModel from request data
             data = request.model_dump()
 
@@ -476,13 +481,13 @@ async def update_aeroplane_fuselage_cross_section(
         with db.begin():
             aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
             if not aeroplane:
-                raise HTTPException(status_code=404, detail="Aeroplane not found")
+                raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
             fuselage = next((f for f in aeroplane.fuselages if f.name == fuselage_name), None)
             if not fuselage:
-                raise HTTPException(status_code=404, detail="Fuselage not found")
+                raise HTTPException(status_code=404, detail=_ERR_FUSELAGE_NOT_FOUND)
             x_secs = fuselage.x_secs
             if cross_section_index < 0 or cross_section_index >= len(x_secs):
-                raise HTTPException(status_code=404, detail="Cross-section not found")
+                raise HTTPException(status_code=404, detail=_ERR_XSEC_NOT_FOUND)
 
             data = request.model_dump()
             # Create new cross-section with the same sort_index as the one being replaced
@@ -526,13 +531,13 @@ async def delete_aeroplane_fuselage_cross_section(
         with db.begin():
             aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
             if not aeroplane:
-                raise HTTPException(status_code=404, detail="Aeroplane not found")
+                raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
             fuselage = next((f for f in aeroplane.fuselages if f.name == fuselage_name), None)
             if not fuselage:
-                raise HTTPException(status_code=404, detail="Fuselage not found")
+                raise HTTPException(status_code=404, detail=_ERR_FUSELAGE_NOT_FOUND)
             x_secs = fuselage.x_secs
             if cross_section_index < 0 or cross_section_index >= len(x_secs):
-                raise HTTPException(status_code=404, detail="Cross-section not found")
+                raise HTTPException(status_code=404, detail=_ERR_XSEC_NOT_FOUND)
             # Remove and delete the cross-section
             xsec = x_secs.pop(cross_section_index)
             db.delete(xsec)

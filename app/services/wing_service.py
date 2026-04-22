@@ -30,6 +30,10 @@ from app.converters.model_schema_converters import wing_config_to_wing_model, wi
 
 logger = logging.getLogger(__name__)
 
+# --- Shared error messages (S1192) ---
+_ERR_XSEC_NOT_FOUND = "Cross-section not found"
+_ERR_TED_NOT_FOUND = "Trailing-edge device not found on this cross-section."
+
 
 def get_aeroplane_or_raise(db: Session, aeroplane_uuid) -> AeroplaneModel:
     """
@@ -77,7 +81,7 @@ def _get_xsec_or_raise(wing: WingModel, index: int) -> WingXSecModel:
     x_secs = wing.x_secs
     if index < 0 or index >= len(x_secs):
         raise NotFoundError(
-            message="Cross-section not found",
+            message=_ERR_XSEC_NOT_FOUND,
             details={"index": index, "wing_name": wing.name},
         )
     return x_secs[index]
@@ -690,7 +694,7 @@ def update_cross_section(
 
             if index < 0 or index >= len(x_secs):
                 raise NotFoundError(
-                    message="Cross-section not found",
+                    message=_ERR_XSEC_NOT_FOUND,
                     details={"index": index}
                 )
             xsec = x_secs[index]
@@ -761,7 +765,7 @@ def delete_cross_section(
             
             if index < 0 or index >= len(x_secs):
                 raise NotFoundError(
-                    message="Cross-section not found",
+                    message=_ERR_XSEC_NOT_FOUND,
                     details={"index": index}
                 )
             
@@ -1122,7 +1126,7 @@ def get_trailing_edge_device(
         ted = x_sec.detail.trailing_edge_device if x_sec.detail is not None else None
         if ted is None:
             raise NotFoundError(
-                message="Trailing-edge device not found on this cross-section.",
+                message=_ERR_TED_NOT_FOUND,
                 details={"index": xsec_index, "wing_name": wing_name},
             )
         return schemas.TrailingEdgeDeviceDetailSchema.model_validate(ted, from_attributes=True)
@@ -1177,7 +1181,7 @@ def delete_trailing_edge_device(
             ted = x_sec.detail.trailing_edge_device if x_sec.detail is not None else None
             if ted is None:
                 raise NotFoundError(
-                    message="Trailing-edge device not found on this cross-section.",
+                    message=_ERR_TED_NOT_FOUND,
                     details={"index": xsec_index, "wing_name": wing_name},
                 )
             db.delete(ted)
@@ -1320,7 +1324,7 @@ def get_trailing_edge_servo(
         ted = x_sec.detail.trailing_edge_device if x_sec.detail is not None else None
         if ted is None:
             raise NotFoundError(
-                message="Trailing-edge device not found on this cross-section.",
+                message=_ERR_TED_NOT_FOUND,
                 details={"index": xsec_index, "wing_name": wing_name},
             )
         return _servo_schema_from_ted(ted)
@@ -1389,7 +1393,7 @@ def delete_trailing_edge_servo(
             ted = x_sec.detail.trailing_edge_device if x_sec.detail is not None else None
             if ted is None:
                 raise NotFoundError(
-                    message="Trailing-edge device not found on this cross-section.",
+                    message=_ERR_TED_NOT_FOUND,
                     details={"index": xsec_index, "wing_name": wing_name},
                 )
             if ted.servo_data is None and ted.servo_index is None:

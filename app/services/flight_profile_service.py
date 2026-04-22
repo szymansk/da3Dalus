@@ -18,6 +18,9 @@ from app.schemas.flight_profile import (
 
 logger = logging.getLogger(__name__)
 
+# --- Shared error message (S1192) ---
+_ERR_NAME_EXISTS = "name existiert bereits"
+
 
 def _get_profile_or_raise(db: Session, profile_id: int) -> RCFlightProfileModel:
     profile = db.query(RCFlightProfileModel).filter(RCFlightProfileModel.id == profile_id).first()
@@ -46,7 +49,7 @@ def create_profile(db: Session, payload: RCFlightProfileCreate) -> RCFlightProfi
     try:
         existing = db.query(RCFlightProfileModel).filter(RCFlightProfileModel.name == payload.name).first()
         if existing:
-            raise ConflictError("name existiert bereits")
+            raise ConflictError(_ERR_NAME_EXISTS)
 
         profile = RCFlightProfileModel(**payload.model_dump())
         db.add(profile)
@@ -57,7 +60,7 @@ def create_profile(db: Session, payload: RCFlightProfileCreate) -> RCFlightProfi
         raise
     except IntegrityError:
         db.rollback()
-        raise ConflictError("name existiert bereits")
+        raise ConflictError(_ERR_NAME_EXISTS)
     except SQLAlchemyError as exc:
         db.rollback()
         raise InternalError(f"Database error: {exc}")
@@ -98,7 +101,7 @@ def update_profile(db: Session, profile_id: int, payload: RCFlightProfileUpdate)
         if target_name and target_name != profile.name:
             existing = db.query(RCFlightProfileModel).filter(RCFlightProfileModel.name == target_name).first()
             if existing:
-                raise ConflictError("name existiert bereits")
+                raise ConflictError(_ERR_NAME_EXISTS)
 
         merged_payload = {
             "name": update_data.get("name", profile.name),
@@ -127,7 +130,7 @@ def update_profile(db: Session, profile_id: int, payload: RCFlightProfileUpdate)
         raise
     except IntegrityError:
         db.rollback()
-        raise ConflictError("name existiert bereits")
+        raise ConflictError(_ERR_NAME_EXISTS)
     except SQLAlchemyError as exc:
         db.rollback()
         raise InternalError(f"Database error: {exc}")

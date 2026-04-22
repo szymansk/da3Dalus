@@ -45,6 +45,11 @@ class GUID(TypeDecorator):
             return value
 
 
+# --- Shared SQLAlchemy relationship / FK constants (S1192) ---
+_CASCADE_ALL_DELETE_ORPHAN = "all, delete-orphan"
+_FK_AEROPLANES_ID = "aeroplanes.id"
+
+
 class ProjectedControlSurface:
     """ASB-compatible control-surface view projected from a TED."""
 
@@ -72,14 +77,14 @@ class WingXSecDetailModel(Base):
     spares = relationship(
         "WingXSecSpareModel",
         back_populates="detail",
-        cascade="all, delete-orphan",
+        cascade=_CASCADE_ALL_DELETE_ORPHAN,
         order_by="WingXSecSpareModel.sort_index",
     )
     trailing_edge_device = relationship(
         "WingXSecTrailingEdgeDeviceModel",
         back_populates="detail",
         uselist=False,
-        cascade="all, delete-orphan",
+        cascade=_CASCADE_ALL_DELETE_ORPHAN,
     )
 
 
@@ -124,7 +129,7 @@ class WingXSecTrailingEdgeDeviceModel(Base):
         "WingXSecTedServoModel",
         back_populates="ted",
         uselist=False,
-        cascade="all, delete-orphan",
+        cascade=_CASCADE_ALL_DELETE_ORPHAN,
     )
 
     @property
@@ -167,7 +172,7 @@ class WingXSecModel(Base):
         "WingXSecDetailModel",
         back_populates="wing_xsec",
         uselist=False,
-        cascade="all, delete-orphan",
+        cascade=_CASCADE_ALL_DELETE_ORPHAN,
     )
     # index to maintain ordering of cross-sections within a wing
     sort_index = Column(Integer, default=0, nullable=False)
@@ -215,12 +220,12 @@ class WingModel(Base):
     x_secs = relationship(
         "WingXSecModel",
         back_populates="wing",
-        cascade="all, delete-orphan",
+        cascade=_CASCADE_ALL_DELETE_ORPHAN,
         order_by="WingXSecModel.sort_index"
     )
 
     # ForeignKey to Aeroplane
-    aeroplane_id = Column(Integer, ForeignKey("aeroplanes.id", ondelete="CASCADE"))
+    aeroplane_id = Column(Integer, ForeignKey(_FK_AEROPLANES_ID, ondelete="CASCADE"))
     aeroplane = relationship("AeroplaneModel", back_populates="wings")
 
     @property
@@ -417,11 +422,11 @@ class FuselageModel(Base):
     x_secs = relationship(
         "FuselageXSecSuperEllipseModel",
         back_populates="fuselage",
-        cascade="all, delete-orphan",
+        cascade=_CASCADE_ALL_DELETE_ORPHAN,
         order_by="FuselageXSecSuperEllipseModel.sort_index")
 
     # ForeignKey to Aeroplane
-    aeroplane_id = Column(Integer, ForeignKey("aeroplanes.id", ondelete="CASCADE"))
+    aeroplane_id = Column(Integer, ForeignKey(_FK_AEROPLANES_ID, ondelete="CASCADE"))
     aeroplane = relationship("AeroplaneModel", back_populates="fuselages")
 
     @classmethod
@@ -460,31 +465,31 @@ class AeroplaneModel(Base):
     wings = relationship(
         "WingModel",
         back_populates="aeroplane",
-        cascade="all, delete-orphan")
+        cascade=_CASCADE_ALL_DELETE_ORPHAN)
     fuselages = relationship(
         "FuselageModel",
         back_populates="aeroplane",
-        cascade="all, delete-orphan")
+        cascade=_CASCADE_ALL_DELETE_ORPHAN)
     flight_profile = relationship("RCFlightProfileModel", back_populates="aircraft")
     mission_objectives = relationship(
         "MissionObjectivesModel",
         back_populates="aeroplane",
         uselist=False,
-        cascade="all, delete-orphan")
+        cascade=_CASCADE_ALL_DELETE_ORPHAN)
     weight_items = relationship(
         "WeightItemModel",
         back_populates="aeroplane",
-        cascade="all, delete-orphan",
+        cascade=_CASCADE_ALL_DELETE_ORPHAN,
         order_by="WeightItemModel.id")
     copilot_messages = relationship(
         "CopilotMessageModel",
         back_populates="aeroplane",
-        cascade="all, delete-orphan",
+        cascade=_CASCADE_ALL_DELETE_ORPHAN,
         order_by="CopilotMessageModel.sort_index")
     design_versions = relationship(
         "DesignVersionModel",
         back_populates="aeroplane",
-        cascade="all, delete-orphan",
+        cascade=_CASCADE_ALL_DELETE_ORPHAN,
         order_by="DesignVersionModel.id.desc()")
 
 
@@ -492,7 +497,7 @@ class MissionObjectivesModel(Base):
     __tablename__ = "mission_objectives"
 
     aeroplane_id = Column(
-        Integer, ForeignKey("aeroplanes.id", ondelete="CASCADE"),
+        Integer, ForeignKey(_FK_AEROPLANES_ID, ondelete="CASCADE"),
         nullable=False, unique=True, index=True,
     )
     payload_kg = Column(Float, nullable=True)
@@ -513,7 +518,7 @@ class WeightItemModel(Base):
     __tablename__ = "weight_items"
 
     aeroplane_id = Column(
-        Integer, ForeignKey("aeroplanes.id", ondelete="CASCADE"),
+        Integer, ForeignKey(_FK_AEROPLANES_ID, ondelete="CASCADE"),
         nullable=False, index=True,
     )
     name = Column(String, nullable=False)
@@ -531,7 +536,7 @@ class CopilotMessageModel(Base):
     __tablename__ = "copilot_messages"
 
     aeroplane_id = Column(
-        Integer, ForeignKey("aeroplanes.id", ondelete="CASCADE"),
+        Integer, ForeignKey(_FK_AEROPLANES_ID, ondelete="CASCADE"),
         nullable=False, index=True,
     )
     sort_index = Column(Integer, nullable=False, default=0)
@@ -554,7 +559,7 @@ class DesignVersionModel(Base):
     __tablename__ = "design_versions"
 
     aeroplane_id = Column(
-        Integer, ForeignKey("aeroplanes.id", ondelete="CASCADE"),
+        Integer, ForeignKey(_FK_AEROPLANES_ID, ondelete="CASCADE"),
         nullable=False, index=True,
     )
     label = Column(String, nullable=False)
