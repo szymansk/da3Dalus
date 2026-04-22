@@ -757,6 +757,9 @@ export default function ConstructionPlansPage() {
       {/* New Plan Dialog */}
       {newPlanDialogOpen && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="New Plan"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
           onClick={() => setNewPlanDialogOpen(false)}
           onKeyDown={(e) => { if (e.key === "Escape") setNewPlanDialogOpen(false); }}
@@ -764,6 +767,7 @@ export default function ConstructionPlansPage() {
           <div
             className="flex w-[480px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
           >
             <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
               New Plan
@@ -816,7 +820,7 @@ export default function ConstructionPlansPage() {
                 <select
                   value={newPlanTemplateId ?? ""}
                   onChange={(e) =>
-                    setNewPlanTemplateId(e.target.value ? parseInt(e.target.value, 10) : null)
+                    setNewPlanTemplateId(e.target.value ? Number.parseInt(e.target.value, 10) : null)
                   }
                   className="rounded-xl border border-border bg-input px-3 py-2 text-[12px] text-foreground"
                 >
