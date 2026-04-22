@@ -313,6 +313,9 @@ async def get_aeroplane_task_status(
          operation_id="download_export_zip")
 async def download_aeroplane_zip(
     aeroplane_id: str,
+    wing_name: str,
+    creator_url_type: str,
+    exporter_url_type: str,
     settings: Annotated[Settings, Depends(get_settings)],
     request: Request = None,
 ) -> ZipAssetResponse:

@@ -39,7 +39,9 @@ def slice_step_file(
                     "Fuselage slicing requires CadQuery + OCP."
         ) from exc
 
-    suffix = Path(filename).suffix.lower()
+    # Sanitize filename: strip any path components to prevent path traversal (S2083)
+    safe_name = Path(filename).name  # basename only, no directory components
+    suffix = Path(safe_name).suffix.lower()
     if suffix not in (".step", ".stp"):
         raise ValidationError(
             message=f"Unsupported file type: {suffix}. Only STEP files (.step, .stp) are supported."
@@ -48,6 +50,10 @@ def slice_step_file(
     # Write to temp file (CadQuery needs a file path)
     tmp_dir = Path(tempfile.mkdtemp(prefix="fuselage_slice_"))
     tmp_file = tmp_dir / f"upload{suffix}"
+    # Verify the resolved path stays within the temp directory
+    if not tmp_file.resolve().is_relative_to(tmp_dir.resolve()):
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise ValidationError(message="Invalid filename: path traversal detected.")
     tmp_file.write_bytes(file_content)
 
     try:

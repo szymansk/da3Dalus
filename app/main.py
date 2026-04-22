@@ -242,8 +242,11 @@ async def request_validation_exception_handler(request: Request, exc: RequestVal
 
 
 import uvicorn
-def run_app(entry_point:str = "app.main:app", port:int = 8000):
-    uvicorn.run(entry_point, host="0.0.0.0", port=port, reload=True)
+
+
+def run_app(entry_point: str = "app.main:app", port: int = 8000) -> None:
+    host = os.environ.get("UVICORN_HOST", "127.0.0.1")
+    uvicorn.run(entry_point, host=host, port=port, reload=True)
 
 if __name__ == "__main__":
     run_app()
