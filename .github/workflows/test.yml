@@ -132,12 +132,11 @@ jobs:
           if-no-files-found: ignore
 
   sonarcloud:
-    needs: [changes, fast, frontend]
+    needs: [fast, frontend]
     if: |
       always() &&
       (needs.fast.result == 'success' || needs.fast.result == 'skipped') &&
-      (needs.frontend.result == 'success' || needs.frontend.result == 'skipped') &&
-      (needs.fast.result == 'success' || needs.frontend.result == 'success')
+      (needs.frontend.result == 'success' || needs.frontend.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
