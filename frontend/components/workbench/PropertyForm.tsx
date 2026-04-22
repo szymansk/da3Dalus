@@ -104,7 +104,7 @@ function xsecsToWingConfig(
   const dy = (tip.xyz_le[1] - root.xyz_le[1]) * 1000;
 
   // Estimate dihedral from z-component of leading-edge delta
-  const segLength = Math.sqrt(dx * dx + dy * dy);
+  const segLength = Math.hypot(dx, dy);
   const dz = (tip.xyz_le[2] - root.xyz_le[2]) * 1000;
   const dihedralDeg = segLength > 0 ? Math.atan2(dz, Math.abs(dy)) * (180 / Math.PI) : 0;
 
@@ -181,6 +181,297 @@ function Field({
         </span>
       </div>
     </div>
+  );
+}
+
+// ── WingConfig Fields Sub-Component ────────────────────────────
+
+function WingConfigFields({
+  wc,
+  setWc,
+  symmetric,
+  onSymmetricChange,
+  nosePnt,
+  setNosePnt,
+  selectedXsecIndex,
+  setDirty,
+  router,
+}: {
+  wc: WingConfigState;
+  setWc: (wc: WingConfigState) => void;
+  symmetric: boolean;
+  onSymmetricChange: (checked: boolean) => void;
+  nosePnt: [number, number, number];
+  setNosePnt: (v: [number, number, number]) => void;
+  selectedXsecIndex: number;
+  setDirty: (v: boolean) => void;
+  router: ReturnType<typeof useRouter>;
+}) {
+  return (
+    <>
+      {/* Wing-level: symmetric + nose_pnt — only on segment 0 */}
+      {selectedXsecIndex === 0 && (
+        <>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={symmetric}
+              onChange={(e) => {
+                onSymmetricChange(e.target.checked);
+              }}
+              className="h-4 w-4"
+            />
+            <span className="text-[11px] text-muted-foreground">symmetric wing</span>
+          </div>
+          <div className="flex gap-3">
+            <Field label="nose x" value={nosePnt[0]} suffix="mm"
+              onChange={(v) => { setDirty(true); setNosePnt([num(v), nosePnt[1], nosePnt[2]]); }} />
+            <Field label="nose y" value={nosePnt[1]} suffix="mm"
+              onChange={(v) => { setDirty(true); setNosePnt([nosePnt[0], num(v), nosePnt[2]]); }} />
+            <Field label="nose z" value={nosePnt[2]} suffix="mm"
+              onChange={(v) => { setDirty(true); setNosePnt([nosePnt[0], nosePnt[1], num(v)]); }} />
+          </div>
+        </>
+      )}
+      {/* ── Root Airfoil (only on segment 0) ── */}
+      {selectedXsecIndex === 0 && (
+        <>
+          <div className="flex items-center gap-2 border-b border-border pb-1">
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">Root Airfoil</span>
+          </div>
+          <div className="flex gap-3">
+            <div className="flex flex-1 items-end gap-1.5">
+              <div className="flex-1">
+                <AirfoilSelector
+                  label="root_airfoil"
+                  value={wc.root_airfoil}
+                  onChange={(v) => { setDirty(true); setWc({ ...wc, root_airfoil: v }); }}
+                />
+              </div>
+              <button
+                onClick={() => router.push("/workbench/airfoil-preview")}
+                className="mb-0.5 flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent"
+                title="Preview airfoil"
+              >
+                <Eye size={14} />
+              </button>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Field label="root_chord" value={wc.root_chord} suffix="mm"
+              onChange={(v) => { setDirty(true); setWc({ ...wc, root_chord: num(v) }); }} />
+            <Field label="dihedral" value={wc.root_dihedral} suffix="°"
+              onChange={(v) => { setDirty(true); setWc({ ...wc, root_dihedral: num(v) }); }} />
+          </div>
+          <div className="flex gap-3">
+            <Field label="incidence" value={wc.root_incidence} suffix="°"
+              onChange={(v) => { setDirty(true); setWc({ ...wc, root_incidence: num(v) }); }} />
+          </div>
+        </>
+      )}
+
+      {/* ── Tip Airfoil (always shown) ── */}
+      <div className="flex items-center gap-2 border-b border-border pb-1">
+        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">Tip Airfoil</span>
+      </div>
+      <div className="flex gap-3">
+        <div className="flex flex-1 items-end gap-1.5">
+          <div className="flex-1">
+            <AirfoilSelector
+              label="tip_airfoil"
+              value={wc.tip_airfoil}
+              onChange={(v) => { setDirty(true); setWc({ ...wc, tip_airfoil: v }); }}
+            />
+          </div>
+          <button
+            onClick={() => router.push("/workbench/airfoil-preview")}
+            className="mb-0.5 flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent"
+            title="Preview airfoil"
+          >
+            <Eye size={14} />
+          </button>
+        </div>
+      </div>
+      <div className="flex gap-3">
+        <Field label="tip_chord" value={wc.tip_chord} suffix="mm"
+          onChange={(v) => { setDirty(true); setWc({ ...wc, tip_chord: num(v) }); }} />
+        <Field label="tip_dihedral" value={wc.tip_dihedral} suffix="°"
+          onChange={(v) => { setDirty(true); setWc({ ...wc, tip_dihedral: num(v) }); }} />
+      </div>
+      <div className="flex gap-3">
+        <Field label="tip_incidence" value={wc.tip_incidence} suffix="°"
+          onChange={(v) => { setDirty(true); setWc({ ...wc, tip_incidence: num(v) }); }} />
+      </div>
+
+      {/* ── Segment Parameters (always shown) ── */}
+      <div className="flex items-center gap-2 border-b border-border pb-1">
+        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">Segment</span>
+      </div>
+      <div className="flex gap-3">
+        <Field label="length" value={wc.length} suffix="mm"
+          onChange={(v) => { setDirty(true); setWc({ ...wc, length: num(v) }); }} />
+        <Field label="sweep" value={wc.sweep} suffix="mm"
+          onChange={(v) => { setDirty(true); setWc({ ...wc, sweep: num(v) }); }} />
+      </div>
+      <div className="flex gap-3">
+        <Field label="interpolation_pts" value={wc.number_interpolation_points}
+          onChange={(v) => { setDirty(true); setWc({ ...wc, number_interpolation_points: num(v, 201) }); }} />
+        <div className="flex flex-1 flex-col gap-1">
+          <label className="text-[11px] text-muted-foreground">tip_type</label>
+          <select
+            value={wc.tip_type}
+            onChange={(e) => { setDirty(true); setWc({ ...wc, tip_type: e.target.value }); }}
+            className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+          >
+            <option value="">none</option>
+            <option value="flat">flat</option>
+            <option value="round">round</option>
+          </select>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── ASB Fields Sub-Component ───────────────────────────────────
+
+function AsbFields({
+  asb,
+  setAsb,
+  xsec,
+  setDirty,
+}: {
+  asb: AsbState;
+  setAsb: (v: AsbState) => void;
+  xsec: XSec;
+  setDirty: (v: boolean) => void;
+}) {
+  return (
+    <>
+      {/* ASB mode: airfoil | chord */}
+      <div className="flex gap-3">
+        <AirfoilSelector
+          label="airfoil"
+          value={asb.airfoil}
+          onChange={(v) => { setDirty(true); setAsb({ ...asb, airfoil: v }); }}
+        />
+        <Field
+          label="chord"
+          value={asb.chord}
+          suffix="mm"
+          onChange={(v) => { setDirty(true); setAsb({ ...asb, chord: num(v) }); }}
+        />
+      </div>
+      {/* twist | x_sec_type */}
+      <div className="flex gap-3">
+        <Field
+          label="twist"
+          value={asb.twist}
+          suffix="°"
+          onChange={(v) => { setDirty(true); setAsb({ ...asb, twist: num(v) }); }}
+        />
+        <Field
+          label="x_sec_type"
+          value={xsec.x_sec_type ?? "\u2014"}
+          readOnly
+        />
+      </div>
+      {/* xyz_le */}
+      <div className="flex gap-3">
+        {(["x", "y", "z"] as const).map((axis, i) => (
+          <Field
+            key={axis}
+            label={`xyz_le.${axis}`}
+            value={asb.xyz_le[i]}
+            suffix="m"
+            onChange={(v) => {
+              setDirty(true);
+              const next: [number, number, number] = [...asb.xyz_le];
+              next[i] = num(v);
+              setAsb({ ...asb, xyz_le: next });
+            }}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
+// ── Field Grid Content Helper ──────────────────────────────────
+
+function FieldGridContent({
+  mode,
+  wc,
+  setWc,
+  asb,
+  setAsb,
+  xsec,
+  isReadOnly,
+  wing,
+  symmetric,
+  onSymmetricChange,
+  nosePnt,
+  setNosePnt,
+  selectedXsecIndex,
+  setDirty,
+  router,
+}: {
+  mode: Mode;
+  wc: WingConfigState | null;
+  setWc: (v: WingConfigState) => void;
+  asb: AsbState | null;
+  setAsb: (v: AsbState) => void;
+  xsec: XSec;
+  isReadOnly: boolean;
+  wing: ReturnType<typeof useWing>["wing"];
+  symmetric: boolean;
+  onSymmetricChange: (checked: boolean) => void;
+  nosePnt: [number, number, number];
+  setNosePnt: (v: [number, number, number]) => void;
+  selectedXsecIndex: number;
+  setDirty: (v: boolean) => void;
+  router: ReturnType<typeof useRouter>;
+}) {
+  if (mode === "wingconfig" && wc) {
+    return (
+      <WingConfigFields
+        wc={wc}
+        setWc={setWc}
+        symmetric={symmetric}
+        onSymmetricChange={onSymmetricChange}
+        nosePnt={nosePnt}
+        setNosePnt={setNosePnt}
+        selectedXsecIndex={selectedXsecIndex}
+        setDirty={setDirty}
+        router={router}
+      />
+    );
+  }
+
+  if (asb && !isReadOnly) {
+    return (
+      <AsbFields asb={asb} setAsb={setAsb} xsec={xsec} setDirty={setDirty} />
+    );
+  }
+
+  if (isReadOnly) {
+    const designLabel = wing?.design_model === "wc" ? "Segment" : "X-Sec";
+    const switchLabel = wing?.design_model === "wc" ? "Segments" : "X-Secs";
+    return (
+      <p className="py-4 text-center text-[12px] text-muted-foreground">
+        This wing uses the {designLabel} design model.
+        Switch to {switchLabel} view to edit.
+      </p>
+    );
+  }
+
+  const fallbackMessage = mode === "wingconfig"
+    ? "Last segment has no WingConfig view (terminal x_sec)"
+    : "No data available";
+  return (
+    <p className="py-4 text-center text-[12px] text-muted-foreground">
+      {fallbackMessage}
+    </p>
   );
 }
 
@@ -363,192 +654,27 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
 
       {/* Field grid */}
       <div className="flex flex-col gap-3">
-        {mode === "wingconfig" && wc ? (
-          <>
-            {/* Wing-level: symmetric + nose_pnt — only on segment 0 */}
-            {selectedXsecIndex === 0 && (
-              <>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={wingConfig?.symmetric ?? true}
-                    onChange={(e) => {
-                      setDirty(true);
-                      if (wingConfig) wingConfig.symmetric = e.target.checked;
-                      // Force re-render via state toggle
-                      setWc({ ...wc });
-                    }}
-                    className="h-4 w-4"
-                  />
-                  <span className="text-[11px] text-muted-foreground">symmetric wing</span>
-                </div>
-                <div className="flex gap-3">
-                  <Field label="nose x" value={nosePnt[0]} suffix="mm"
-                    onChange={(v) => { setDirty(true); setNosePnt([num(v), nosePnt[1], nosePnt[2]]); }} />
-                  <Field label="nose y" value={nosePnt[1]} suffix="mm"
-                    onChange={(v) => { setDirty(true); setNosePnt([nosePnt[0], num(v), nosePnt[2]]); }} />
-                  <Field label="nose z" value={nosePnt[2]} suffix="mm"
-                    onChange={(v) => { setDirty(true); setNosePnt([nosePnt[0], nosePnt[1], num(v)]); }} />
-                </div>
-              </>
-            )}
-            {/* ── Root Airfoil (only on segment 0) ── */}
-            {selectedXsecIndex === 0 && (
-              <>
-                <div className="flex items-center gap-2 border-b border-border pb-1">
-                  <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">Root Airfoil</span>
-                </div>
-                <div className="flex gap-3">
-                  <div className="flex flex-1 items-end gap-1.5">
-                    <div className="flex-1">
-                      <AirfoilSelector
-                        label="root_airfoil"
-                        value={wc.root_airfoil}
-                        onChange={(v) => { setDirty(true); setWc({ ...wc, root_airfoil: v }); }}
-                      />
-                    </div>
-                    <button
-                      onClick={() => router.push("/workbench/airfoil-preview")}
-                      className="mb-0.5 flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent"
-                      title="Preview airfoil"
-                    >
-                      <Eye size={14} />
-                    </button>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <Field label="root_chord" value={wc.root_chord} suffix="mm"
-                    onChange={(v) => { setDirty(true); setWc({ ...wc, root_chord: num(v) }); }} />
-                  <Field label="dihedral" value={wc.root_dihedral} suffix="°"
-                    onChange={(v) => { setDirty(true); setWc({ ...wc, root_dihedral: num(v) }); }} />
-                </div>
-                <div className="flex gap-3">
-                  <Field label="incidence" value={wc.root_incidence} suffix="°"
-                    onChange={(v) => { setDirty(true); setWc({ ...wc, root_incidence: num(v) }); }} />
-                </div>
-              </>
-            )}
-
-            {/* ── Tip Airfoil (always shown) ── */}
-            <div className="flex items-center gap-2 border-b border-border pb-1">
-              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">Tip Airfoil</span>
-            </div>
-            <div className="flex gap-3">
-              <div className="flex flex-1 items-end gap-1.5">
-                <div className="flex-1">
-                  <AirfoilSelector
-                    label="tip_airfoil"
-                    value={wc.tip_airfoil}
-                    onChange={(v) => { setDirty(true); setWc({ ...wc, tip_airfoil: v }); }}
-                  />
-                </div>
-                <button
-                  onClick={() => router.push("/workbench/airfoil-preview")}
-                  className="mb-0.5 flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent"
-                  title="Preview airfoil"
-                >
-                  <Eye size={14} />
-                </button>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <Field label="tip_chord" value={wc.tip_chord} suffix="mm"
-                onChange={(v) => { setDirty(true); setWc({ ...wc, tip_chord: num(v) }); }} />
-              <Field label="tip_dihedral" value={wc.tip_dihedral} suffix="°"
-                onChange={(v) => { setDirty(true); setWc({ ...wc, tip_dihedral: num(v) }); }} />
-            </div>
-            <div className="flex gap-3">
-              <Field label="tip_incidence" value={wc.tip_incidence} suffix="°"
-                onChange={(v) => { setDirty(true); setWc({ ...wc, tip_incidence: num(v) }); }} />
-            </div>
-
-            {/* ── Segment Parameters (always shown) ── */}
-            <div className="flex items-center gap-2 border-b border-border pb-1">
-              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">Segment</span>
-            </div>
-            <div className="flex gap-3">
-              <Field label="length" value={wc.length} suffix="mm"
-                onChange={(v) => { setDirty(true); setWc({ ...wc, length: num(v) }); }} />
-              <Field label="sweep" value={wc.sweep} suffix="mm"
-                onChange={(v) => { setDirty(true); setWc({ ...wc, sweep: num(v) }); }} />
-            </div>
-            <div className="flex gap-3">
-              <Field label="interpolation_pts" value={wc.number_interpolation_points}
-                onChange={(v) => { setDirty(true); setWc({ ...wc, number_interpolation_points: num(v, 201) }); }} />
-              <div className="flex flex-1 flex-col gap-1">
-                <label className="text-[11px] text-muted-foreground">tip_type</label>
-                <select
-                  value={wc.tip_type}
-                  onChange={(e) => { setDirty(true); setWc({ ...wc, tip_type: e.target.value }); }}
-                  className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
-                >
-                  <option value="">none</option>
-                  <option value="flat">flat</option>
-                  <option value="round">round</option>
-                </select>
-              </div>
-            </div>
-          </>
-        ) : asb && !isReadOnly ? (
-          <>
-            {/* ASB mode: airfoil | chord */}
-            <div className="flex gap-3">
-              <AirfoilSelector
-                label="airfoil"
-                value={asb.airfoil}
-                onChange={(v) => { setDirty(true); setAsb({ ...asb, airfoil: v }); }}
-              />
-              <Field
-                label="chord"
-                value={asb.chord}
-                suffix="mm"
-                onChange={(v) => { setDirty(true); setAsb({ ...asb, chord: num(v) }); }}
-              />
-            </div>
-            {/* twist | x_sec_type */}
-            <div className="flex gap-3">
-              <Field
-                label="twist"
-                value={asb.twist}
-                suffix="°"
-                onChange={(v) => { setDirty(true); setAsb({ ...asb, twist: num(v) }); }}
-              />
-              <Field
-                label="x_sec_type"
-                value={xsec.x_sec_type ?? "\u2014"}
-                readOnly
-              />
-            </div>
-            {/* xyz_le */}
-            <div className="flex gap-3">
-              {(["x", "y", "z"] as const).map((axis, i) => (
-                <Field
-                  key={axis}
-                  label={`xyz_le.${axis}`}
-                  value={asb.xyz_le[i]}
-                  suffix="m"
-                  onChange={(v) => {
-                    setDirty(true);
-                    const next: [number, number, number] = [...asb.xyz_le];
-                    next[i] = num(v);
-                    setAsb({ ...asb, xyz_le: next });
-                  }}
-                />
-              ))}
-            </div>
-          </>
-        ) : isReadOnly ? (
-          <p className="py-4 text-center text-[12px] text-muted-foreground">
-            This wing uses the {wing?.design_model === "wc" ? "Segment" : "X-Sec"} design model.
-            Switch to {wing?.design_model === "wc" ? "Segments" : "X-Secs"} view to edit.
-          </p>
-        ) : (
-          <p className="py-4 text-center text-[12px] text-muted-foreground">
-            {mode === "wingconfig"
-              ? "Last segment has no WingConfig view (terminal x_sec)"
-              : "No data available"}
-          </p>
-        )}
+        <FieldGridContent
+          mode={mode}
+          wc={wc}
+          setWc={setWc}
+          asb={asb}
+          setAsb={setAsb}
+          xsec={xsec}
+          isReadOnly={isReadOnly}
+          wing={wing}
+          symmetric={wingConfig?.symmetric ?? true}
+          onSymmetricChange={(checked) => {
+            setDirty(true);
+            if (wingConfig) wingConfig.symmetric = checked;
+            if (wc) setWc({ ...wc });
+          }}
+          nosePnt={nosePnt}
+          setNosePnt={setNosePnt}
+          selectedXsecIndex={selectedXsecIndex!}
+          setDirty={setDirty}
+          router={router}
+        />
       </div>
 
       {/* Actions — hidden when viewing a cross-model read-only view */}
