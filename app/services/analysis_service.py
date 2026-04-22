@@ -623,6 +623,65 @@ def _format_polar_label(key: str, point: dict, x_val: float, y_val: float) -> st
     return f"{name}\nCD={x_val:.3f}, CL={y_val:.3f}"
 
 
+def _scatter_characteristic_points(
+    ax: Any,
+    characteristic_points: dict,
+) -> list[tuple[float, float, str, str]]:
+    """Scatter characteristic points on the polar panel and return labels."""
+    polar_point_labels: list[tuple[float, float, str, str]] = []
+    for key, point in characteristic_points.items():
+        if point is None or point.get("CD") is None or point.get("CL") is None:
+            continue
+        x_val, y_val = point["CD"], point["CL"]
+        ax.scatter(x_val, y_val, color=_MARKER_STYLES[key], s=35, zorder=5)
+        polar_point_labels.append(
+            (x_val, y_val, _format_polar_label(key, point, x_val, y_val), _MARKER_STYLES[key])
+        )
+    return polar_point_labels
+
+
+def _mirror_markers_to_alpha_panel(
+    ax_coeff: Any,
+    alpha_polar: np.ndarray,
+    characteristic_points: dict,
+) -> list[tuple[float, float, str, str]]:
+    """Mirror select characteristic-point markers onto the coefficient-vs-alpha panel."""
+    alpha_point_labels: list[tuple[float, float, str, str]] = []
+    alpha_len = len(alpha_polar)
+    if alpha_len == 0:
+        return alpha_point_labels
+
+    for key, color, text in [
+        ("minimum_drag_coefficient_point", _COLOR_BLUE, "CDmin"),
+        ("maximum_lift_coefficient_point", _COLOR_RED, "CLmax"),
+        ("stall_point", _COLOR_ORANGE, "Stall"),
+    ]:
+        point = characteristic_points.get(key)
+        if not point:
+            continue
+        idx = point.get("index")
+        if idx is None or idx >= alpha_len:
+            continue
+        alpha_val = alpha_polar[idx]
+        if key == "minimum_drag_coefficient_point":
+            y_val = point.get("CD")
+            if y_val is None:
+                continue
+            ax_coeff.scatter(alpha_val, y_val, color=color, s=25, zorder=5)
+            alpha_point_labels.append(
+                (alpha_val, y_val, f"{text}={y_val:.3f} @ a={alpha_val:.2f}", color)
+            )
+        else:
+            y_val = point.get("CL")
+            if y_val is None:
+                continue
+            ax_coeff.scatter(alpha_val, y_val, color=color, s=25, zorder=5)
+            alpha_point_labels.append(
+                (alpha_val, y_val, f"{text} @ a={alpha_val:.2f}, CL={y_val:.3f}", color)
+            )
+    return alpha_point_labels
+
+
 def _plot_drag_polar(
     ax: Any,
     ax_coeff: Any,
@@ -632,27 +691,16 @@ def _plot_drag_polar(
     characteristic_points: dict,
 ) -> tuple[bool, list, list]:
     """Plot CL-vs-CD polar with markers. Return (plotted, polar_labels, alpha_labels)."""
-    polar_point_labels: list[tuple[float, float, str, str]] = []
-    alpha_point_labels: list[tuple[float, float, str, str]] = []
-
     sliced = _safe_slice(cl_values, cd_values)
     if sliced is None:
-        return False, polar_point_labels, alpha_point_labels
+        return False, [], []
 
     cl_polar, cd_polar = sliced
     alpha_polar = alpha_array[: len(cl_polar)]
 
     ax.plot(cd_polar, cl_polar, linewidth=2, label="Polar Curve")
 
-    # Scatter characteristic points on polar
-    for key, point in characteristic_points.items():
-        if point is None or point.get("CD") is None or point.get("CL") is None:
-            continue
-        x_val, y_val = point["CD"], point["CL"]
-        ax.scatter(x_val, y_val, color=_MARKER_STYLES[key], s=35, zorder=5)
-        polar_point_labels.append(
-            (x_val, y_val, _format_polar_label(key, point, x_val, y_val), _MARKER_STYLES[key])
-        )
+    polar_point_labels = _scatter_characteristic_points(ax, characteristic_points)
 
     # L/D max tangent line
     ldmax = characteristic_points.get("maximum_lift_to_drag_ratio_point")
@@ -666,37 +714,9 @@ def _plot_drag_polar(
             alpha=0.8,
         )
 
-    # Mirror select markers onto the coefficient-vs-alpha panel
-    alpha_len = len(alpha_polar)
-    if alpha_len > 0:
-        for key, color, text in [
-            ("minimum_drag_coefficient_point", _COLOR_BLUE, "CDmin"),
-            ("maximum_lift_coefficient_point", _COLOR_RED, "CLmax"),
-            ("stall_point", _COLOR_ORANGE, "Stall"),
-        ]:
-            point = characteristic_points.get(key)
-            if not point:
-                continue
-            idx = point.get("index")
-            if idx is None or idx >= alpha_len:
-                continue
-            alpha_val = alpha_polar[idx]
-            if key == "minimum_drag_coefficient_point":
-                y_val = point.get("CD")
-                if y_val is None:
-                    continue
-                ax_coeff.scatter(alpha_val, y_val, color=color, s=25, zorder=5)
-                alpha_point_labels.append(
-                    (alpha_val, y_val, f"{text}={y_val:.3f} @ a={alpha_val:.2f}", color)
-                )
-            else:
-                y_val = point.get("CL")
-                if y_val is None:
-                    continue
-                ax_coeff.scatter(alpha_val, y_val, color=color, s=25, zorder=5)
-                alpha_point_labels.append(
-                    (alpha_val, y_val, f"{text} @ a={alpha_val:.2f}, CL={y_val:.3f}", color)
-                )
+    alpha_point_labels = _mirror_markers_to_alpha_panel(
+        ax_coeff, alpha_polar, characteristic_points
+    )
 
     return True, polar_point_labels, alpha_point_labels
 
@@ -719,6 +739,47 @@ def _compute_cm_strip_colors(cm_grad: np.ndarray) -> list[str]:
     return colors
 
 
+def _scatter_trim_point(
+    ax_cm: Any,
+    ax_coeff: Any,
+    ax_polar: Any,
+    characteristic_points: dict,
+) -> tuple[list[tuple[float, float, str, str]], list[tuple[float, float, str, str]], list[tuple[float, float, str, str]]]:
+    """Scatter the trim-point marker across the Cm, coefficient, and polar panels."""
+    cm_point_labels: list[tuple[float, float, str, str]] = []
+    extra_alpha_labels: list[tuple[float, float, str, str]] = []
+    extra_polar_labels: list[tuple[float, float, str, str]] = []
+
+    trim_point = characteristic_points.get("trim_point_cm_equals_zero")
+    if not trim_point or trim_point.get("CL") is None:
+        return cm_point_labels, extra_alpha_labels, extra_polar_labels
+
+    cm_trim = trim_point.get("Cm") if trim_point.get("Cm") is not None else 0.0
+    cl_trim = trim_point["CL"]
+    alpha_trim = trim_point.get("alpha_deg")
+    cd_trim = trim_point.get("CD")
+
+    ax_cm.scatter(cm_trim, cl_trim, color=_COLOR_BROWN, s=35, zorder=5)
+    cm_label = f"Trim (Cm=0): CL={cl_trim:.3f}"
+    if alpha_trim is not None:
+        cm_label += f", a={alpha_trim:.2f}"
+    cm_point_labels.append((cm_trim, cl_trim, cm_label, _COLOR_BROWN))
+
+    if alpha_trim is not None:
+        ax_coeff.scatter(alpha_trim, 0.0, color=_COLOR_BROWN, s=25, zorder=5)
+        extra_alpha_labels.append(
+            (alpha_trim, 0.0, f"Trim (Cm=0) @ a={alpha_trim:.2f}", _COLOR_BROWN)
+        )
+
+    if cd_trim is not None:
+        ax_polar.scatter(cd_trim, cl_trim, color=_COLOR_BROWN, s=35, zorder=5)
+        extra_polar_labels.append(
+            (cd_trim, cl_trim, f"Trim (Cm=0)\nCD={cd_trim:.3f}, CL={cl_trim:.3f}", _COLOR_BROWN)
+        )
+
+    return cm_point_labels, extra_alpha_labels, extra_polar_labels
+
+
 def _plot_cm_stability(
     ax_cm: Any,
     ax_coeff: Any,
@@ -729,13 +790,9 @@ def _plot_cm_stability(
     characteristic_points: dict,
 ) -> tuple[bool, list, list, list]:
     """Plot CL-vs-Cm stability panel. Return (plotted, cm_labels, alpha_labels, polar_labels)."""
-    cm_point_labels: list[tuple[float, float, str, str]] = []
-    extra_alpha_labels: list[tuple[float, float, str, str]] = []
-    extra_polar_labels: list[tuple[float, float, str, str]] = []
-
     sliced = _safe_slice(cl_values, cm_values)
     if sliced is None:
-        return False, cm_point_labels, extra_alpha_labels, extra_polar_labels
+        return False, [], [], []
 
     cl_curve, cm_curve = sliced
     alpha_cm = alpha_array[: len(cl_curve)]
@@ -757,30 +814,9 @@ def _plot_cm_stability(
         ax_cm.plot(cm_curve, cl_curve, linewidth=2, color="#4caf50")
 
     # Trim point annotation
-    trim_point = characteristic_points.get("trim_point_cm_equals_zero")
-    if trim_point and trim_point.get("CL") is not None:
-        cm_trim = trim_point.get("Cm") if trim_point.get("Cm") is not None else 0.0
-        cl_trim = trim_point["CL"]
-        alpha_trim = trim_point.get("alpha_deg")
-        cd_trim = trim_point.get("CD")
-
-        ax_cm.scatter(cm_trim, cl_trim, color=_COLOR_BROWN, s=35, zorder=5)
-        cm_label = f"Trim (Cm=0): CL={cl_trim:.3f}"
-        if alpha_trim is not None:
-            cm_label += f", a={alpha_trim:.2f}"
-        cm_point_labels.append((cm_trim, cl_trim, cm_label, _COLOR_BROWN))
-
-        if alpha_trim is not None:
-            ax_coeff.scatter(alpha_trim, 0.0, color=_COLOR_BROWN, s=25, zorder=5)
-            extra_alpha_labels.append(
-                (alpha_trim, 0.0, f"Trim (Cm=0) @ a={alpha_trim:.2f}", _COLOR_BROWN)
-            )
-
-        if cd_trim is not None:
-            ax_polar.scatter(cd_trim, cl_trim, color=_COLOR_BROWN, s=35, zorder=5)
-            extra_polar_labels.append(
-                (cd_trim, cl_trim, f"Trim (Cm=0)\nCD={cd_trim:.3f}, CL={cl_trim:.3f}", _COLOR_BROWN)
-            )
+    cm_point_labels, extra_alpha_labels, extra_polar_labels = _scatter_trim_point(
+        ax_cm, ax_coeff, ax_polar, characteristic_points
+    )
 
     # Trend strips
     _add_trend_strip(ax_coeff, alpha_cm, cm_strip_colors, "Cm trend")
