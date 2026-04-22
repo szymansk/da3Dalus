@@ -33,6 +33,7 @@ _airfoils_router = None
 if cad_available():
     try:
         from app.api.v2.endpoints import cad as _cad_module
+
         _cad_router = _cad_module.router
     except ImportError as exc:
         logging.getLogger(__name__).warning("cad router unavailable: %s", exc)
@@ -40,18 +41,21 @@ if cad_available():
 if aerosandbox_available():
     try:
         from app.api.v2.endpoints import aeroanalysis as _aeroanalysis_module
+
         _aeroanalysis_router = _aeroanalysis_module.router
     except ImportError as exc:
         logging.getLogger(__name__).warning("aeroanalysis router unavailable: %s", exc)
 
     try:
         from app.api.v2.endpoints import operating_points as _operating_points_module
+
         _operating_points_router = _operating_points_module.router
     except ImportError as exc:
         logging.getLogger(__name__).warning("operating_points router unavailable: %s", exc)
 
     try:
         from app.api.v2.endpoints import airfoils as _airfoils_module
+
         _airfoils_router = _airfoils_module.router
     except ImportError as exc:
         logging.getLogger(__name__).warning("airfoils router unavailable: %s", exc)
@@ -98,7 +102,8 @@ def create_app() -> FastAPI:
                 _seed_session.close()
         except Exception as exc:  # noqa: BLE001 — never block startup on this
             logging.getLogger(__name__).warning(
-                "seed_default_types at startup failed: %s", exc,
+                "seed_default_types at startup failed: %s",
+                exc,
             )
 
         async with mcp_app.lifespan(app):
@@ -110,9 +115,9 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="da3dalus Model Context Protocol (v2)",
         version="2.0.0",
-        openapi_url="/openapi.json",   # served at /api/v2/openapi.json
-        docs_url=None,                 # custom route below with custom favicon
-        redoc_url="/redoc",            # served at /api/v2/redoc
+        openapi_url="/openapi.json",  # served at /api/v2/openapi.json
+        docs_url=None,  # custom route below with custom favicon
+        redoc_url="/redoc",  # served at /api/v2/redoc
         lifespan=_combined_lifespan,
     )
     app.include_router(health.router, prefix="", tags=["health"])
@@ -137,7 +142,7 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"], # copied from other python backends to resolve the cors origin problem
+        allow_origins=["*"],  # copied from other python backends to resolve the cors origin problem
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -245,8 +250,10 @@ import uvicorn
 
 
 def run_app(entry_point: str = "app.main:app", port: int = 8000) -> None:
-    host = os.environ.get("UVICORN_HOST", "127.0.0.1")
-    uvicorn.run(entry_point, host=host, port=port, reload=True)
+    from app.core.config import settings as app_settings
+
+    uvicorn.run(entry_point, host=app_settings.UVICORN_HOST, port=port, reload=True)
+
 
 if __name__ == "__main__":
     run_app()

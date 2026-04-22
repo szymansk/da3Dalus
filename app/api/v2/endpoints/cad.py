@@ -42,12 +42,18 @@ def _raise_http_from_domain(exc: ServiceException) -> None:
     if isinstance(exc, NotFoundError):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     if isinstance(exc, (ValidationError, ValidationDomainError)):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message
+        ) from exc
     if isinstance(exc, ConflictError):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
     if isinstance(exc, InternalError):
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message) from exc
-    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message
+        ) from exc
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message
+    ) from exc
 
 
 def _ensure_file_under_tmp(file_path: str, aeroplane_id: str) -> FilePath:
@@ -74,7 +80,7 @@ def _ensure_file_under_tmp(file_path: str, aeroplane_id: str) -> FilePath:
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/tessellation",
     status_code=http.HTTPStatus.ACCEPTED,
     tags=["cad"],
-    operation_id="start_wing_tessellation"
+    operation_id="start_wing_tessellation",
 )
 async def start_wing_tessellation(
     aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
@@ -88,11 +94,13 @@ async def start_wing_tessellation(
     """
     try:
         import pickle
+
         aeroplane_id_str = str(aeroplane_id)
         aeroplane = cad_service.get_aeroplane_with_wings(db, aeroplane_id)
         wing = cad_service.get_wing_from_aeroplane(aeroplane, wing_name)
 
         from app.converters.model_schema_converters import wingModelToAsbWingSchema
+
         wing_schema = wingModelToAsbWingSchema(wing)
         wing_schema_pickle = pickle.dumps(wing_schema)
 
@@ -168,6 +176,7 @@ async def get_aeroplane_tessellation(
             shapes = data.get("shapes")
             if shapes:
                 import copy
+
                 shapes_copy = copy.deepcopy(shapes)
                 shapes_copy["color"] = "#FF8400" if entry.component_type == "wing" else "#888888"
                 if instance_offset > 0:
@@ -222,17 +231,28 @@ async def get_aeroplane_tessellation(
         ) from exc
 
 
-@router.post("/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}",
-         status_code=http.HTTPStatus.ACCEPTED,
-         operation_id="create_wing_loft_export")
-async def create_wing_loft(aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
-                           wing_name: Annotated[str, Path(..., description="The ID of the wing")],
-                           db: Annotated[Session, Depends(get_db)],
-                           leading_edge_offset_factor: Annotated[float, Query(description="only need for vase mode wing")] = 0.1,
-                           trailing_edge_offset_factor: Annotated[float, Query(description="only need for vase mode wing")] = 0.15,
-                           aeroplane_settings: Annotated[Optional[AeroplaneSettings], Body(description="General settings for the construction, not needed for a simple loft")] = None,
-                           creator_url_type: CreatorUrlType = CreatorUrlType.WING_LOFT,
-                           exporter_url_type: ExporterUrlType = ExporterUrlType.STL) -> CadTaskAcceptedResponse:
+@router.post(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}",
+    status_code=http.HTTPStatus.ACCEPTED,
+    operation_id="create_wing_loft_export",
+)
+async def create_wing_loft(
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    wing_name: Annotated[str, Path(..., description="The ID of the wing")],
+    db: Annotated[Session, Depends(get_db)],
+    leading_edge_offset_factor: Annotated[
+        float, Query(description="only need for vase mode wing")
+    ] = 0.1,
+    trailing_edge_offset_factor: Annotated[
+        float, Query(description="only need for vase mode wing")
+    ] = 0.15,
+    aeroplane_settings: Annotated[
+        Optional[AeroplaneSettings],
+        Body(description="General settings for the construction, not needed for a simple loft"),
+    ] = None,
+    creator_url_type: CreatorUrlType = CreatorUrlType.WING_LOFT,
+    exporter_url_type: ExporterUrlType = ExporterUrlType.STL,
+) -> CadTaskAcceptedResponse:
     """Create a wing loft export. Business logic delegated to cad_service."""
     try:
         aeroplane_id_str = str(aeroplane_id)
@@ -260,17 +280,24 @@ async def create_wing_loft(aeroplane_id: Annotated[AeroPlaneID, Path(..., descri
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:  # pragma: no cover - defensive fallback
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Unexpected error: {exc}") from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {exc}"
+        ) from exc
 
 
-@router.get("/aeroplanes/{aeroplane_id}/status",
-         response_model_exclude_none=True,
-         operation_id="get_aeroplane_task_status")
+@router.get(
+    "/aeroplanes/{aeroplane_id}/status",
+    response_model_exclude_none=True,
+    operation_id="get_aeroplane_task_status",
+)
 async def get_aeroplane_task_status(
     aeroplane_id: str,
-    task_type: Annotated[Optional[str], Query(description="Task type: 'tessellation' or None for CAD export")] = None,
-    wing_name: Annotated[Optional[str], Query(description="Wing name (required for tessellation tasks)")] = None,
+    task_type: Annotated[
+        Optional[str], Query(description="Task type: 'tessellation' or None for CAD export")
+    ] = None,
+    wing_name: Annotated[
+        Optional[str], Query(description="Wing name (required for tessellation tasks)")
+    ] = None,
 ) -> CadTaskStatusResponse:
     """Get the status of an aeroplane export or tessellation task."""
     try:
@@ -286,36 +313,39 @@ async def get_aeroplane_task_status(
         message: str | None = None
         result: dict | None = None
 
-        if task_result['status'] == 'PENDING':
+        if task_result["status"] == "PENDING":
             message = "Task is pending."
-        elif task_result['status'] == 'FAILURE':
-            message = task_result.get('error', 'An error occurred')
-        elif task_result['status'] == 'SUCCESS':
-            result = task_result.get('result')
+        elif task_result["status"] == "FAILURE":
+            message = task_result.get("error", "An error occurred")
+        elif task_result["status"] == "SUCCESS":
+            result = task_result.get("result")
         else:
             message = "Task is processing."
 
         return CadTaskStatusResponse(
             aeroplane_id=aeroplane_id,
             href=f"/aeroplanes/{aeroplane_id}",
-            status=task_result['status'],
+            status=task_result["status"],
             message=message,
             result=result,
         )
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:  # pragma: no cover - defensive fallback
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Unexpected error: {exc}") from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {exc}"
+        ) from exc
 
 
-@router.get("/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}/zip",
-         operation_id="download_export_zip")
+@router.get(
+    "/aeroplanes/{aeroplane_id}/wings/{wing_name}/{creator_url_type}/{exporter_url_type}/zip",
+    operation_id="download_export_zip",
+)
 async def download_aeroplane_zip(
     aeroplane_id: str,
-    wing_name: str,
-    creator_url_type: str,
-    exporter_url_type: str,
+    wing_name: str,  # noqa: ARG001 — required by route path, not used in body
+    creator_url_type: str,  # noqa: ARG001 — required by route path, not used in body
+    exporter_url_type: str,  # noqa: ARG001 — required by route path, not used in body
     settings: Annotated[Settings, Depends(get_settings)],
     request: Request = None,
 ) -> ZipAssetResponse:
@@ -339,5 +369,6 @@ async def download_aeroplane_zip(
     except ServiceException as exc:
         _raise_http_from_domain(exc)
     except Exception as exc:  # pragma: no cover - defensive fallback
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Unexpected error: {exc}") from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {exc}"
+        ) from exc
