@@ -17,42 +17,70 @@ design toolchain. It is a FastAPI service that:
 
 ## Using Superpowers
 
-Call '/using-superpowers' at start to get a clue about the past steps, current state and the steps to proceed with.
+Call '/using-superpowers' at start to get a clue about the past steps,
+current state and the steps to proceed with.
 
-## Development Workflow
+## Development Workflow — Supercycle
 
-Every non-trivial task follows this phased workflow using the
-superpowers skill system. **If there is even a 1% chance a skill
-applies, invoke it before proceeding.**
+**The primary development workflow is the Supercycle** — a set of
+slash commands that orchestrate the full lifecycle from issue to
+merged PR. Use these commands as the default entry point for all
+non-trivial work.
 
-### Phase 1: Design
+### Supercycle Commands (preferred)
 
-Invoke `/brainstorming` before any creative work — new features,
-components, UI changes, or architectural decisions.
+```
+/supercycle:work #187          ← Full cycle: brainstorm → implement → review → merge
+/supercycle:implement #188,#190  ← Skip brainstorming, parallel implementation
+/supercycle:review 200, 201      ← Dispatch code review agents on open PRs
+/supercycle:fix 201              ← Fix review findings on PR branches
+/supercycle:merge 200, 201       ← CI check + sequential merge with rebase
+```
 
-- Explore project context and ask clarifying questions
-- Propose 2–3 approaches with tradeoffs
-- Present design for user approval
-- **No implementation until design is approved**
+**Flow:**
+```
+/supercycle:work (or :implement)
+  ├─ Brainstorming with user (work only)
+  ├─ GH Issue creation/refinement
+  ├─ Parallelization analysis (file-overlap matrix)
+  ├─ Worktree agents (parallel implementation)
+  │
+  ├─ /supercycle:review
+  │    ├─ Issue task completeness check
+  │    │    ├─ ✅ Done in PR → check off
+  │    │    ├─ 🔧 Agent-fixable → /supercycle:fix
+  │    │    └─ 🧑 Human Only → assign to user + comment
+  │    └─ Code review agents (code-reviewer + conditional)
+  │
+  ├─ /supercycle:fix (if findings)
+  │
+  └─ /supercycle:merge
+       ├─ CI + SonarQube quality gate analysis
+       └─ Sequential merge with rebase conflict resolution
+```
 
-### Phase 2: Planning
+**When to use which entry point:**
+- **`/supercycle:work`** — New feature or bug, needs discussion with user
+- **`/supercycle:implement`** — Issue is clear, skip brainstorming
+- **`/supercycle:review`** — PRs exist, need automated review
+- **`/supercycle:fix`** — Review found issues to address
+- **`/supercycle:merge`** — PRs approved, ready to merge
 
-Invoke `/writing-plans` after design approval.
+### Underlying Skills (used within the supercycle)
 
-- Create a detailed implementation plan with exact file paths
-- Document dependencies between tasks
-- Offer execution model: subagent-driven or inline
+The supercycle commands orchestrate these skills internally.
+You may also invoke them directly for granular control:
 
-### Phase 3: Implementation
-
-**Test-driven.** Write a failing test first, then make it pass,
-then refactor. No production code without a failing test.
-
-| Skill | When |
-|-------|------|
-| `/test-driven-development` | **Every** feature or bugfix — RED → GREEN → REFACTOR |
-| `/systematic-debugging` | When encountering any bug or test failure |
-| `/subagent-driven-development` | Multi-task parallel execution (optional) |
+| Phase | Skill | When |
+|-------|-------|------|
+| Design | `/brainstorming` | Creative work — features, UI, architecture |
+| Planning | `/writing-plans` | Multi-step tasks after design approval |
+| Implementation | `/test-driven-development` | **Every** feature or bugfix — RED → GREEN → REFACTOR |
+| Implementation | `/systematic-debugging` | Any bug or test failure |
+| Implementation | `/subagent-driven-development` | Multi-task parallel execution |
+| Quality | `/verification-before-completion` | Before claiming work is done |
+| Quality | `/requesting-code-review` | Dispatch review agent on diff |
+| Completion | `/finishing-a-development-branch` | All tasks pass, ready to merge |
 
 **Backend (Python):**
 
@@ -73,27 +101,15 @@ then refactor. No production code without a failing test.
 | `/playwright-best-practices` | E2E tests, Page Object Model, flaky tests |
 | `/web-design-guidelines` | UI review, accessibility, UX compliance |
 
-### Phase 4: Quality
+### Quality Gates
 
-| Skill | When |
-|-------|------|
-| `/verification-before-completion` | Before claiming work is done — run tests, show evidence |
-| `/requesting-code-review` | After completing tasks — dispatch review agent on diff |
-
-Before opening any PR, you MUST run `/requesting-code-review` (or
-`/review`). Fix all findings before creating the PR. No exceptions.
+Before opening any PR, you MUST run `/supercycle:review` (or
+`/requesting-code-review`). Fix all findings before merging.
 
 After opening a PR, **check that CI checks pass** (`gh pr checks <N>`).
-If checks fail, fix the issues and push before requesting review or
-merging. A PR with failing checks is not ready.
-
-### Phase 5: Completion
-
-Invoke `/finishing-a-development-branch` when all tasks pass.
-
-- Verify tests pass
-- Push branch + open PR (or merge locally for trivial changes)
-- Clean up worktree
+If checks fail, fix the issues and push before merging. Use
+`/supercycle:fix` for automated fixes, `/supercycle:merge` for
+CI analysis + merge.
 
 ### Iron Laws
 
@@ -191,13 +207,16 @@ management: features, bugs, epics, and technical tasks.
 
 ```
 1. GitHub Issue created (by human or agent)
-2. Agent runs /brainstorming → /writing-plans (non-trivial work)
-3. Agent implements with /test-driven-development
-4. Agent runs /verification-before-completion
-5. Agent runs /requesting-code-review on the diff
-6. Agent opens PR referencing the GH Issue (Closes #N)
-7. Human reviews + merges PR → GH Issue auto-closes
+2. /supercycle:work #N        ← brainstorm + implement + PR
+   OR /supercycle:implement #N  ← if issue is already clear
+3. /supercycle:review <PR>    ← task completeness + code review
+4. /supercycle:fix <PR>       ← fix findings (if any)
+5. /supercycle:merge <PR>     ← CI check + merge
+6. GH Issue auto-closes via "Closes #N" in PR
 ```
+
+For multiple issues: the supercycle automatically analyses file
+overlaps and dispatches parallel worktree agents per batch.
 
 
 ## Branch Strategy
