@@ -19,9 +19,21 @@ except ImportError:
 
 # Column names in AVL's FS (strip forces) output table
 _STRIP_COLUMNS = [
-    "j", "Xle", "Yle", "Zle", "Chord", "Area",
-    "c_cl", "ai", "cl_norm", "cl", "cd", "cdv",
-    "cm_c/4", "cm_LE", "C.P.x/c",
+    "j",
+    "Xle",
+    "Yle",
+    "Zle",
+    "Chord",
+    "Area",
+    "c_cl",
+    "ai",
+    "cl_norm",
+    "cl",
+    "cd",
+    "cdv",
+    "cm_c/4",
+    "cm_LE",
+    "C.P.x/c",
 ]
 
 
@@ -177,12 +189,12 @@ if HAS_AEROSANDBOX:
 
                 ks = super()._default_keystroke_file_contents()
                 ks += [
-                    "x",                     # execute analysis
-                    "st",                    # stability output ...
-                    output_filename,         # ... to file
-                    "o",                     # overwrite if exists
+                    "x",  # execute analysis
+                    "st",  # stability output ...
+                    output_filename,  # ... to file
+                    "o",  # overwrite if exists
                     "",
-                    "fs",                    # strip forces to stdout
+                    "fs",  # strip forces to stdout
                     "",
                     "",
                     "quit",
@@ -199,7 +211,8 @@ if HAS_AEROSANDBOX:
                 )
                 try:
                     stdout_bytes, _ = proc.communicate(
-                        input=input_text.encode(), timeout=self.timeout,
+                        input=input_text.encode(),
+                        timeout=self.timeout,
                     )
                 except subprocess.TimeoutExpired:
                     proc.kill()
@@ -213,8 +226,7 @@ if HAS_AEROSANDBOX:
                 output_path = directory / output_filename
                 if not output_path.exists():
                     raise FileNotFoundError(
-                        "AVL didn't produce stability output. "
-                        "Check avl_command and input geometry."
+                        "AVL didn't produce stability output. Check avl_command and input geometry."
                     )
                 with open(output_path) as f:
                     raw = f.read()
@@ -262,9 +274,9 @@ if HAS_AEROSANDBOX:
             CL = result.get("CL", 0)
             CY = result.get("CY", 0)
             CD = result.get("CD", 0)
-            Cl = result.get("Cl", 0)
-            Cm = result.get("Cm", 0)
-            Cn = result.get("Cn", 0)
+            Cl = result.get("Cl", 0)  # noqa: N806 — standard aero coefficient
+            Cm = result.get("Cm", 0)  # noqa: N806 — standard aero coefficient
+            Cn = result.get("Cn", 0)  # noqa: N806 — standard aero coefficient
 
             result["L"] = q * S * CL
             result["Y"] = q * S * CY
@@ -274,21 +286,21 @@ if HAS_AEROSANDBOX:
             result["n_b"] = q * S * b * Cn
 
             try:
-                Clb = result.get("Clb", 0)
-                Cnr = result.get("Cnr", 0)
-                Clr = result.get("Clr", 0)
-                Cnb = result.get("Cnb", 0)
+                Clb = result.get("Clb", 0)  # noqa: N806 — standard aero coefficient
+                Cnr = result.get("Cnr", 0)  # noqa: N806 — standard aero coefficient
+                Clr = result.get("Clr", 0)  # noqa: N806 — standard aero coefficient
+                Cnb = result.get("Cnb", 0)  # noqa: N806 — standard aero coefficient
                 result["Clb Cnr / Clr Cnb"] = Clb * Cnr / (Clr * Cnb)
             except ZeroDivisionError:
                 result["Clb Cnr / Clr Cnb"] = np.nan
 
-            F_w = [-result["D"], result["Y"], -result["L"]]
-            F_b = op.convert_axes(*F_w, from_axes="wind", to_axes="body")
-            F_g = op.convert_axes(*F_b, from_axes="body", to_axes="geometry")
+            F_w = [-result["D"], result["Y"], -result["L"]]  # noqa: N806 — force in wind axes
+            F_b = op.convert_axes(*F_w, from_axes="wind", to_axes="body")  # noqa: N806 — force in body axes
+            F_g = op.convert_axes(*F_b, from_axes="body", to_axes="geometry")  # noqa: N806 — force in geometry axes
 
-            M_b = [result["l_b"], result["m_b"], result["n_b"]]
-            M_g = op.convert_axes(*M_b, from_axes="body", to_axes="geometry")
-            M_w = op.convert_axes(*M_b, from_axes="body", to_axes="wind")
+            M_b = [result["l_b"], result["m_b"], result["n_b"]]  # noqa: N806 — moment in body axes
+            M_g = op.convert_axes(*M_b, from_axes="body", to_axes="geometry")  # noqa: N806 — moment in geometry axes
+            M_w = op.convert_axes(*M_b, from_axes="body", to_axes="wind")  # noqa: N806 — moment in wind axes
 
             result["F_w"] = F_w
             result["F_b"] = F_b

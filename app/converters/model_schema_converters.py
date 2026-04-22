@@ -10,13 +10,21 @@ from app.models import AeroplaneModel, WingModel
 from app.models.aeroplanemodel import FuselageModel
 from app.schemas import AeroplaneSchema
 from app.schemas.Servo import Servo as ServoSchema
-from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import AirplaneConfiguration
+from cad_designer.airplane.aircraft_topology.airplane.AirplaneConfiguration import (
+    AirplaneConfiguration,
+)
 from cad_designer.airplane.aircraft_topology.components.Servo import Servo as WingServo
-from cad_designer.airplane.aircraft_topology.fuselage.FuselageConfiguration import FuselageConfiguration
-from cad_designer.airplane.aircraft_topology.wing import Spare, TrailingEdgeDevice, WingConfiguration
+from cad_designer.airplane.aircraft_topology.fuselage.FuselageConfiguration import (
+    FuselageConfiguration,
+)
+from cad_designer.airplane.aircraft_topology.wing import (
+    Spare,
+    TrailingEdgeDevice,
+    WingConfiguration,
+)
 
 
-async def aeroplane_model_to_aeroplane_schema_async(plane: AeroplaneModel) -> AeroplaneSchema:
+def aeroplane_model_to_aeroplane_schema_async(plane: AeroplaneModel) -> AeroplaneSchema:
     plane_dict = plane.__dict__.copy()
     plane_dict["wings"] = {w.name: w for w in plane.wings}
     plane_dict["fuselages"] = {f.name: f for f in plane.fuselages}
@@ -82,7 +90,9 @@ def _wing_configuration_sections(wing_config: WingConfiguration):
     if not wing_config.segments:
         return []
 
-    sections = [(wing_config.segments[0].root_airfoil, wing_config.segments[0].trailing_edge_device)]
+    sections = [
+        (wing_config.segments[0].root_airfoil, wing_config.segments[0].trailing_edge_device)
+    ]
     for segment in wing_config.segments:
         sections.append((segment.tip_airfoil, segment.trailing_edge_device))
     return sections
@@ -153,12 +163,18 @@ def _servo_to_wing_servo(servo_value: Any) -> Optional[WingServo | int]:
 
 
 def _spare_to_schema(spare: Spare) -> schemas.SpareDetailSchema:
-    vector = spare.spare_vector.toTuple() if getattr(spare, "spare_vector", None) is not None else None
-    origin = spare.spare_origin.toTuple() if getattr(spare, "spare_origin", None) is not None else None
+    vector = (
+        spare.spare_vector.toTuple() if getattr(spare, "spare_vector", None) is not None else None
+    )
+    origin = (
+        spare.spare_origin.toTuple() if getattr(spare, "spare_origin", None) is not None else None
+    )
     return schemas.SpareDetailSchema(
         spare_support_dimension_width=float(spare.spare_support_dimension_width),
         spare_support_dimension_height=float(spare.spare_support_dimension_height),
-        spare_position_factor=None if spare.spare_position_factor is None else float(spare.spare_position_factor),
+        spare_position_factor=None
+        if spare.spare_position_factor is None
+        else float(spare.spare_position_factor),
         spare_length=None if spare.spare_length is None else float(spare.spare_length),
         spare_start=0.0 if spare.spare_start is None else float(spare.spare_start),
         spare_mode=spare.spare_mode,
@@ -174,13 +190,19 @@ def _spare_schema_to_spare(spare_schema: schemas.SpareDetailSchema) -> Spare:
         spare_position_factor=spare_schema.spare_position_factor,
         spare_length=spare_schema.spare_length,
         spare_start=spare_schema.spare_start,
-        spare_vector=tuple(spare_schema.spare_vector) if spare_schema.spare_vector is not None else None,
-        spare_origin=tuple(spare_schema.spare_origin) if spare_schema.spare_origin is not None else None,
+        spare_vector=tuple(spare_schema.spare_vector)
+        if spare_schema.spare_vector is not None
+        else None,
+        spare_origin=tuple(spare_schema.spare_origin)
+        if spare_schema.spare_origin is not None
+        else None,
         spare_mode=spare_schema.spare_mode or "standard",
     )
 
 
-def _trailing_edge_device_to_schema(ted: TrailingEdgeDevice) -> schemas.TrailingEdgeDeviceDetailSchema:
+def _trailing_edge_device_to_schema(
+    ted: TrailingEdgeDevice,
+) -> schemas.TrailingEdgeDeviceDetailSchema:
     return schemas.TrailingEdgeDeviceDetailSchema(
         name=ted.name,
         rel_chord_root=ted.rel_chord_root,
@@ -215,16 +237,24 @@ def _trailing_edge_device_schema_to_wing_ted(
         servo_placement=ted_schema.servo_placement,
         rel_chord_servo_position=ted_schema.rel_chord_servo_position,
         rel_length_servo_position=ted_schema.rel_length_servo_position,
-        positive_deflection_deg=25.0 if ted_schema.positive_deflection_deg is None else ted_schema.positive_deflection_deg,
-        negative_deflection_deg=25.0 if ted_schema.negative_deflection_deg is None else ted_schema.negative_deflection_deg,
+        positive_deflection_deg=25.0
+        if ted_schema.positive_deflection_deg is None
+        else ted_schema.positive_deflection_deg,
+        negative_deflection_deg=25.0
+        if ted_schema.negative_deflection_deg is None
+        else ted_schema.negative_deflection_deg,
         trailing_edge_offset_factor=(
-            1.0 if ted_schema.trailing_edge_offset_factor is None else ted_schema.trailing_edge_offset_factor
+            1.0
+            if ted_schema.trailing_edge_offset_factor is None
+            else ted_schema.trailing_edge_offset_factor
         ),
         hinge_type="top" if ted_schema.hinge_type is None else ted_schema.hinge_type,
         symmetric=True if ted_schema.symmetric is None else ted_schema.symmetric,
     )
     # CAD type has no dedicated field yet; keep value on instance for roundtrip/export use.
-    ted.deflection_deg = 0.0 if ted_schema.deflection_deg is None else float(ted_schema.deflection_deg)
+    ted.deflection_deg = (
+        0.0 if ted_schema.deflection_deg is None else float(ted_schema.deflection_deg)
+    )
     return ted
 
 
@@ -449,7 +479,7 @@ def _resolve_spare_vectors_and_origins(wing_config: WingConfiguration) -> None:
             _resolve_single_spare(wing_config, segment_index, spare_index, spare)
 
 
-async def aeroplane_schema_to_asb_airplane_async(plane_schema: AeroplaneSchema) -> "asb.Airplane":
+def aeroplane_schema_to_asb_airplane_async(plane_schema: AeroplaneSchema) -> "asb.Airplane":
     """
     Convert an AeroplaneSchema to an Aerosandbox Airplane object.
 
@@ -467,7 +497,7 @@ async def aeroplane_schema_to_asb_airplane_async(plane_schema: AeroplaneSchema) 
             Wing(
                 name=wing_name,
                 symmetric=wing.symmetric,
-                xsecs=[xsec for xsec in _asb_wing_xsecs_from_schema(wing)] if wing.x_secs else None,
+                xsecs=list(_asb_wing_xsecs_from_schema(wing)) if wing.x_secs else None,
             )
             for wing_name, wing in plane_schema.wings.items()
         ]
@@ -488,9 +518,13 @@ async def aeroplane_schema_to_asb_airplane_async(plane_schema: AeroplaneSchema) 
     return asb_airplane
 
 
-async def aeroplane_schema_to_airplane_configuration_async(plane_schema: AeroplaneSchema) -> AirplaneConfiguration:
+def aeroplane_schema_to_airplane_configuration_async(
+    plane_schema: AeroplaneSchema,
+) -> AirplaneConfiguration:
     if plane_schema.total_mass_kg is None:
-        raise ValueError("AeroplaneSchema.total_mass_kg must be set to build AirplaneConfiguration.")
+        raise ValueError(
+            "AeroplaneSchema.total_mass_kg must be set to build AirplaneConfiguration."
+        )
 
     wing_configs: List[WingConfiguration] = []
     for wing in (plane_schema.wings or {}).values():
@@ -532,9 +566,12 @@ def wing_model_to_asb_wing_schema(wing: WingModel) -> schemas.AsbWingSchema:
     # legacy DB rows that have TED/spars on the terminal x-section.
     xsec_dicts = []
     for xs in wing.x_secs:
-        xsec_dicts.append(schemas.WingXSecSchema.model_validate(
-            xs, from_attributes=True,
-        ).model_dump())
+        xsec_dicts.append(
+            schemas.WingXSecSchema.model_validate(
+                xs,
+                from_attributes=True,
+            ).model_dump()
+        )
 
     # Strip segment-specific fields from last x-section
     if xsec_dicts:
@@ -545,11 +582,13 @@ def wing_model_to_asb_wing_schema(wing: WingModel) -> schemas.AsbWingSchema:
         last["tip_type"] = None
         last["number_interpolation_points"] = None
 
-    return schemas.AsbWingSchema.model_validate({
-        "name": wing.name,
-        "symmetric": wing.symmetric,
-        "x_secs": xsec_dicts,
-    })
+    return schemas.AsbWingSchema.model_validate(
+        {
+            "name": wing.name,
+            "symmetric": wing.symmetric,
+            "x_secs": xsec_dicts,
+        }
+    )
 
 
 def asb_wing_schema_to_wing_config(
@@ -615,7 +654,9 @@ def _build_segment_details(segment, control_surface):
         control_surface=control_surface,
     )
     if canonical_ted_payload is not None:
-        trailing_edge_device = schemas.TrailingEdgeDeviceDetailSchema.model_validate(canonical_ted_payload)
+        trailing_edge_device = schemas.TrailingEdgeDeviceDetailSchema.model_validate(
+            canonical_ted_payload
+        )
         control_surface = _control_surface_from_ted(trailing_edge_device, fallback=control_surface)
 
     if segment.spare_list is not None:
@@ -659,8 +700,12 @@ def wing_config_to_asb_wing_schema(
         segment = wing_config.segments[index] if index < len(wing_config.segments) else None
         if segment is not None:
             (
-                trailing_edge_device, spare_list, control_surface,
-                x_sec_type, tip_type, number_interpolation_points,
+                trailing_edge_device,
+                spare_list,
+                control_surface,
+                x_sec_type,
+                tip_type,
+                number_interpolation_points,
             ) = _build_segment_details(segment, control_surface)
 
         x_secs.append(

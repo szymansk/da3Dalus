@@ -8,7 +8,10 @@ import numpy as np
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.converters.model_schema_converters import aeroplane_model_to_aeroplane_schema_async, aeroplane_schema_to_asb_airplane_async
+from app.converters.model_schema_converters import (
+    aeroplane_model_to_aeroplane_schema_async,
+    aeroplane_schema_to_asb_airplane_async,
+)
 from app.core.exceptions import InternalError, NotFoundError, ValidationError
 from app.models.aeroplanemodel import AeroplaneModel
 from app.models.analysismodels import OperatingPointModel, OperatingPointSetModel
@@ -133,7 +136,9 @@ def _estimate_reference_speeds(profile: dict[str, Any]) -> dict[str, float]:
     }
 
 
-def _build_target_definitions(profile: dict[str, Any], refs: dict[str, float]) -> list[dict[str, Any]]:
+def _build_target_definitions(
+    profile: dict[str, Any], refs: dict[str, float]
+) -> list[dict[str, Any]]:
     goals = profile["goals"]
     altitude = float(profile["environment"].get("altitude_m", 0.0))
 
@@ -146,16 +151,86 @@ def _build_target_definitions(profile: dict[str, Any], refs: dict[str, float]) -
     approach = float(goals.get("approach_speed_margin_vs_ldg", 1.30)) * refs["vs_ldg"]
 
     return [
-        {"name": "stall_near_clean", "config": "clean", "velocity": stall_near, "altitude": altitude, "beta_target_deg": 0.0, "n_target": 1.0},
-        {"name": "takeoff_climb", "config": "takeoff", "velocity": takeoff, "altitude": altitude, "beta_target_deg": 0.0, "n_target": 1.0},
-        {"name": "best_angle_climb_vx", "config": "clean", "velocity": max(1.35 * refs["vs_clean"], cruise * 0.85), "altitude": altitude, "beta_target_deg": 0.0, "n_target": 1.0},
-        {"name": "best_rate_climb_vy", "config": "clean", "velocity": max(1.50 * refs["vs_clean"], cruise * 0.95), "altitude": altitude, "beta_target_deg": 0.0, "n_target": 1.0},
-        {"name": "cruise", "config": "clean", "velocity": cruise, "altitude": altitude, "beta_target_deg": 0.0, "n_target": 1.0},
-        {"name": "loiter_endurance", "config": "clean", "velocity": max(1.15 * refs["vs_clean"], cruise * 0.80), "altitude": altitude, "beta_target_deg": 0.0, "n_target": 1.0},
-        {"name": "max_range", "config": "clean", "velocity": max(1.25 * refs["vs_clean"], cruise * 0.95), "altitude": altitude, "beta_target_deg": 0.0, "n_target": 1.0},
-        {"name": "max_level_speed", "config": "clean", "velocity": v_max_level, "altitude": altitude, "beta_target_deg": 0.0, "n_target": 1.0},
-        {"name": "approach_landing", "config": "landing", "velocity": approach, "altitude": altitude, "beta_target_deg": 0.0, "n_target": 1.0},
-        {"name": "turn_n2", "config": "clean", "velocity": max(cruise, 1.3 * refs["vs_clean"]), "altitude": altitude, "beta_target_deg": 0.0, "n_target": target_turn_n},
+        {
+            "name": "stall_near_clean",
+            "config": "clean",
+            "velocity": stall_near,
+            "altitude": altitude,
+            "beta_target_deg": 0.0,
+            "n_target": 1.0,
+        },
+        {
+            "name": "takeoff_climb",
+            "config": "takeoff",
+            "velocity": takeoff,
+            "altitude": altitude,
+            "beta_target_deg": 0.0,
+            "n_target": 1.0,
+        },
+        {
+            "name": "best_angle_climb_vx",
+            "config": "clean",
+            "velocity": max(1.35 * refs["vs_clean"], cruise * 0.85),
+            "altitude": altitude,
+            "beta_target_deg": 0.0,
+            "n_target": 1.0,
+        },
+        {
+            "name": "best_rate_climb_vy",
+            "config": "clean",
+            "velocity": max(1.50 * refs["vs_clean"], cruise * 0.95),
+            "altitude": altitude,
+            "beta_target_deg": 0.0,
+            "n_target": 1.0,
+        },
+        {
+            "name": "cruise",
+            "config": "clean",
+            "velocity": cruise,
+            "altitude": altitude,
+            "beta_target_deg": 0.0,
+            "n_target": 1.0,
+        },
+        {
+            "name": "loiter_endurance",
+            "config": "clean",
+            "velocity": max(1.15 * refs["vs_clean"], cruise * 0.80),
+            "altitude": altitude,
+            "beta_target_deg": 0.0,
+            "n_target": 1.0,
+        },
+        {
+            "name": "max_range",
+            "config": "clean",
+            "velocity": max(1.25 * refs["vs_clean"], cruise * 0.95),
+            "altitude": altitude,
+            "beta_target_deg": 0.0,
+            "n_target": 1.0,
+        },
+        {
+            "name": "max_level_speed",
+            "config": "clean",
+            "velocity": v_max_level,
+            "altitude": altitude,
+            "beta_target_deg": 0.0,
+            "n_target": 1.0,
+        },
+        {
+            "name": "approach_landing",
+            "config": "landing",
+            "velocity": approach,
+            "altitude": altitude,
+            "beta_target_deg": 0.0,
+            "n_target": 1.0,
+        },
+        {
+            "name": "turn_n2",
+            "config": "clean",
+            "velocity": max(cruise, 1.3 * refs["vs_clean"]),
+            "altitude": altitude,
+            "beta_target_deg": 0.0,
+            "n_target": target_turn_n,
+        },
         {
             "name": "dutch_role_start",
             "config": "clean",
@@ -197,7 +272,9 @@ def _detect_control_capabilities(asb_airplane: asb.Airplane) -> dict[str, Any]:
                     normalized_control_names.add(raw_name.lower())
 
     def _contains_any(tokens: set[str]) -> bool:
-        return any(token in control_name for control_name in normalized_control_names for token in tokens)
+        return any(
+            token in control_name for control_name in normalized_control_names for token in tokens
+        )
 
     return {
         "has_pitch_control": _contains_any({"elevator", "stabilator", "elevon"}),
@@ -215,7 +292,9 @@ def _required_capabilities_for_target(target_name: str) -> set[str]:
     return set()
 
 
-def _validate_target_capability(target: dict[str, Any], capabilities: dict[str, Any]) -> tuple[bool, str]:
+def _validate_target_capability(
+    target: dict[str, Any], capabilities: dict[str, Any]
+) -> tuple[bool, str]:
     target_name = str(target.get("name", ""))
     if target_name == "turn_n2":
         if capabilities.get("has_roll_control") or capabilities.get("has_yaw_control"):
@@ -223,7 +302,9 @@ def _validate_target_capability(target: dict[str, Any], capabilities: dict[str, 
         return False, "has_roll_control|has_yaw_control"
 
     required = _required_capabilities_for_target(target_name)
-    missing = sorted(capability for capability in required if not capabilities.get(capability, False))
+    missing = sorted(
+        capability for capability in required if not capabilities.get(capability, False)
+    )
     if missing:
         return False, ",".join(missing)
     return True, ""
@@ -251,7 +332,9 @@ def _solve_trim_candidate_with_opti(
             upper_bound=alpha_upper,
         )
 
-        available_controls = [str(name).strip() for name in capabilities.get("available_controls", [])]
+        available_controls = [
+            str(name).strip() for name in capabilities.get("available_controls", [])
+        ]
         control_values: dict[str, Any] = {}
         control_variables: dict[str, Any] = {}
 
@@ -260,14 +343,20 @@ def _solve_trim_candidate_with_opti(
         roll_name = _pick_control_name(available_controls, {"aileron", "elevon"})
 
         if pitch_name:
-            control_variables[pitch_name] = opti.variable(init_guess=0.0, lower_bound=-25.0, upper_bound=25.0)
+            control_variables[pitch_name] = opti.variable(
+                init_guess=0.0, lower_bound=-25.0, upper_bound=25.0
+            )
         if target["name"] == "turn_n2" and roll_name:
-            control_variables[roll_name] = opti.variable(init_guess=0.0, lower_bound=-20.0, upper_bound=20.0)
+            control_variables[roll_name] = opti.variable(
+                init_guess=0.0, lower_bound=-20.0, upper_bound=20.0
+            )
         if target["name"] in {"turn_n2", "dutch_role_start"} and yaw_name:
-            control_variables[yaw_name] = opti.variable(init_guess=0.0, lower_bound=-25.0, upper_bound=25.0)
+            control_variables[yaw_name] = opti.variable(
+                init_guess=0.0, lower_bound=-25.0, upper_bound=25.0
+            )
 
         if control_variables:
-            control_values = {name: value for name, value in control_variables.items()}
+            control_values = dict(control_variables.items())
             airplane_for_eval = asb_airplane.with_control_deflections(control_values)
         else:
             airplane_for_eval = asb_airplane
@@ -326,7 +415,7 @@ def _solve_trim_candidate_with_opti(
         return None
 
 
-async def _evaluate_trim_candidate(
+def _evaluate_trim_candidate(
     asb_airplane: asb.Airplane,
     altitude_m: float,
     velocity_mps: float,
@@ -346,7 +435,9 @@ async def _evaluate_trim_candidate(
         atmosphere=atmosphere,
     )
 
-    airplane_for_eval = asb_airplane.with_control_deflections(controls) if controls else asb_airplane
+    airplane_for_eval = (
+        asb_airplane.with_control_deflections(controls) if controls else asb_airplane
+    )
     result = asb.AeroBuildup(
         airplane=airplane_for_eval,
         op_point=op,
@@ -401,7 +492,7 @@ async def _grid_search_trim(
         for beta_deg in beta_candidates:
             for alpha_deg in alpha_candidates:
                 try:
-                    score, _ = await _evaluate_trim_candidate(
+                    score, _ = _evaluate_trim_candidate(
                         asb_airplane=asb_airplane,
                         altitude_m=altitude,
                         velocity_mps=candidate_velocity,
@@ -424,11 +515,16 @@ async def _grid_search_trim(
 
 
 def _apply_limit_warnings(
-    best_alpha: float, best_beta: float, best_score: float,
-    constraints: dict[str, Any], warnings: list[str],
+    best_alpha: float,
+    best_beta: float,
+    best_score: float,
+    constraints: dict[str, Any],
+    warnings: list[str],
 ) -> OperatingPointStatus:
     """Determine trim status and append limit-reached warnings."""
-    trim_status = OperatingPointStatus.TRIMMED if best_score < 0.35 else OperatingPointStatus.NOT_TRIMMED
+    trim_status = (
+        OperatingPointStatus.TRIMMED if best_score < 0.35 else OperatingPointStatus.NOT_TRIMMED
+    )
     if trim_status == OperatingPointStatus.NOT_TRIMMED:
         warnings.append("NOT_TRIMMED")
 
@@ -474,11 +570,14 @@ async def _trim_or_estimate_point(
     best_controls: dict[str, float] = {}
 
     opti_solution = _solve_trim_candidate_with_opti(
-        asb_airplane=asb_airplane, target=target,
-        velocity_mps=velocity, altitude_m=altitude,
+        asb_airplane=asb_airplane,
+        target=target,
+        velocity_mps=velocity,
+        altitude_m=altitude,
         beta_target_deg=float(beta_candidates[0]),
         cl_target=cl_target_fn(velocity),
-        constraints=constraints, capabilities=capabilities,
+        constraints=constraints,
+        capabilities=capabilities,
     )
     if opti_solution and opti_solution["score"] < best_score:
         best_score = float(opti_solution["score"])
@@ -489,10 +588,20 @@ async def _trim_or_estimate_point(
     # Fallback grid-search if opti didn't converge well enough
     if best_score > 0.35:
         gs_score, gs_alpha, gs_beta, gs_velocity, gs_controls = await _grid_search_trim(
-            asb_airplane, target, velocity, altitude, beta_candidates, cl_target_fn,
+            asb_airplane,
+            target,
+            velocity,
+            altitude,
+            beta_candidates,
+            cl_target_fn,
         )
         if gs_score < best_score:
-            best_score, best_alpha, best_beta, best_controls = gs_score, gs_alpha, gs_beta, gs_controls
+            best_score, best_alpha, best_beta, best_controls = (
+                gs_score,
+                gs_alpha,
+                gs_beta,
+                gs_controls,
+            )
             velocity = gs_velocity
 
     trim_status = _apply_limit_warnings(best_alpha, best_beta, best_score, constraints, warnings)
@@ -508,7 +617,9 @@ async def _trim_or_estimate_point(
         altitude=float(altitude),
         alpha_rad=math.radians(best_alpha),
         beta_rad=math.radians(best_beta),
-        p=0.0, q=0.0, r=0.0,
+        p=0.0,
+        q=0.0,
+        r=0.0,
         status=trim_status,
         warnings=warnings,
         controls=best_controls,
@@ -526,9 +637,9 @@ def _persist_point_set(
         db.query(OperatingPointSetModel).filter(
             OperatingPointSetModel.aircraft_id == aircraft.id
         ).delete(synchronize_session=False)
-        db.query(OperatingPointModel).filter(
-            OperatingPointModel.aircraft_id == aircraft.id
-        ).delete(synchronize_session=False)
+        db.query(OperatingPointModel).filter(OperatingPointModel.aircraft_id == aircraft.id).delete(
+            synchronize_session=False
+        )
 
     stored_points: list[OperatingPointModel] = []
     for point in points:
@@ -575,12 +686,14 @@ async def generate_default_set_for_aircraft(
 ) -> GeneratedOperatingPointSetRead:
     try:
         aircraft = _get_aircraft_or_raise(db, aircraft_uuid)
-        profile, source_profile_id = _load_effective_flight_profile(db, aircraft, profile_id_override)
+        profile, source_profile_id = _load_effective_flight_profile(
+            db, aircraft, profile_id_override
+        )
         refs = _estimate_reference_speeds(profile)
         targets = _build_target_definitions(profile, refs)
 
-        plane_schema = await aeroplane_model_to_aeroplane_schema_async(aircraft)
-        asb_airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
+        plane_schema = aeroplane_model_to_aeroplane_schema_async(aircraft)
+        asb_airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         capabilities = _detect_control_capabilities(asb_airplane)
 
         points: list[TrimmedPoint] = []
@@ -634,7 +747,10 @@ async def generate_default_set_for_aircraft(
             description=opset.description,
             aircraft_id=opset.aircraft_id,
             source_flight_profile_id=opset.source_flight_profile_id,
-            operating_points=[StoredOperatingPointRead.model_validate(point, from_attributes=True) for point in stored_points],
+            operating_points=[
+                StoredOperatingPointRead.model_validate(point, from_attributes=True)
+                for point in stored_points
+            ],
         )
     except (NotFoundError, ValidationError):
         raise
@@ -659,8 +775,8 @@ async def trim_operating_point_for_aircraft(
             request.profile_id_override,
         )
 
-        plane_schema = await aeroplane_model_to_aeroplane_schema_async(aircraft)
-        asb_airplane = await aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
+        plane_schema = aeroplane_model_to_aeroplane_schema_async(aircraft)
+        asb_airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         capabilities = _detect_control_capabilities(asb_airplane)
 
         target = {

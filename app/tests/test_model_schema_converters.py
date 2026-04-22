@@ -1,4 +1,3 @@
-import asyncio
 import os
 
 import pytest
@@ -283,7 +282,7 @@ def test_ted_projection_to_asb_uses_rel_chord_root():
         wings={"main-wing": wing},
     )
 
-    asb_airplane = asyncio.run(aeroplane_schema_to_asb_airplane_async(plane))
+    asb_airplane = aeroplane_schema_to_asb_airplane_async(plane)
     control_surface = asb_airplane.wings[0].xsecs[0].control_surfaces[0]
     assert control_surface.hinge_point == pytest.approx(0.73)
     assert control_surface.deflection == pytest.approx(6.0)
@@ -373,7 +372,7 @@ def test_aeroplane_schema_to_airplane_configuration_requires_mass():
     plane = schemas.AeroplaneSchema(name="test-plane", wings={"main-wing": wing})
 
     with pytest.raises(ValueError):
-        asyncio.run(aeroplane_schema_to_airplane_configuration_async(plane))
+        aeroplane_schema_to_airplane_configuration_async(plane)
 
 
 def test_aeroplane_schema_to_airplane_configuration_preserves_wing_details():
@@ -387,7 +386,7 @@ def test_aeroplane_schema_to_airplane_configuration_preserves_wing_details():
         fuselages={"test-fuselage": fuselage_schema},
     )
 
-    airplane_config = asyncio.run(aeroplane_schema_to_airplane_configuration_async(plane))
+    airplane_config = aeroplane_schema_to_airplane_configuration_async(plane)
 
     assert airplane_config.total_mass == pytest.approx(3.0)
     assert len(airplane_config.wings) == 1
