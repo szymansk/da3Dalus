@@ -10,7 +10,7 @@ import logging
 import os
 from datetime import datetime
 from urllib.parse import urljoin
-from typing import List, Optional, Tuple, Any
+from typing import Any, List, Optional
 from uuid import uuid4
 
 import numpy as np
@@ -57,6 +57,18 @@ _LABEL_NAMES: dict[str, str] = {
     "stall_point": "Stall",
     "trim_point_cm_equals_zero": "Trim (Cm=0)",
 }
+
+
+def _safe_slice(
+    *arrays: Optional[np.ndarray],
+) -> Optional[tuple[np.ndarray, ...]]:
+    """Align arrays to shortest length. Returns None if any input is None or empty."""
+    if any(a is None for a in arrays):
+        return None
+    n = min(len(a) for a in arrays)
+    if n == 0:
+        return None
+    return tuple(a[:n] for a in arrays)
 
 
 def _extract_alpha_sweep_arrays(
@@ -623,16 +635,12 @@ def _plot_drag_polar(
     polar_point_labels: list[tuple[float, float, str, str]] = []
     alpha_point_labels: list[tuple[float, float, str, str]] = []
 
-    if cl_values is None or cd_values is None:
+    sliced = _safe_slice(cl_values, cd_values)
+    if sliced is None:
         return False, polar_point_labels, alpha_point_labels
 
-    length = min(len(cl_values), len(cd_values))
-    if length == 0:
-        return False, polar_point_labels, alpha_point_labels
-
-    cl_polar = cl_values[:length]
-    cd_polar = cd_values[:length]
-    alpha_polar = alpha_array[: min(len(alpha_array), length)]
+    cl_polar, cd_polar = sliced
+    alpha_polar = alpha_array[: len(cl_polar)]
 
     ax.plot(cd_polar, cl_polar, linewidth=2, label="Polar Curve")
 
@@ -725,24 +733,20 @@ def _plot_cm_stability(
     extra_alpha_labels: list[tuple[float, float, str, str]] = []
     extra_polar_labels: list[tuple[float, float, str, str]] = []
 
-    if cl_values is None or cm_values is None:
+    sliced = _safe_slice(cl_values, cm_values)
+    if sliced is None:
         return False, cm_point_labels, extra_alpha_labels, extra_polar_labels
 
-    length = min(len(cl_values), len(cm_values))
-    if length == 0:
-        return False, cm_point_labels, extra_alpha_labels, extra_polar_labels
-
-    cm_curve = cm_values[:length]
-    cl_curve = cl_values[:length]
-    alpha_cm = alpha_array[:length]
+    cl_curve, cm_curve = sliced
+    alpha_cm = alpha_array[: len(cl_curve)]
 
     with np.errstate(divide="ignore", invalid="ignore"):
-        cm_grad = np.gradient(cm_curve, alpha_cm) if length > 1 else np.array([np.nan])
+        cm_grad = np.gradient(cm_curve, alpha_cm) if len(cm_curve) > 1 else np.array([np.nan])
 
     cm_strip_colors = _compute_cm_strip_colors(cm_grad)
 
     # Render CL-Cm as alpha-ordered colored path segments.
-    if length > 1:
+    if len(cm_curve) > 1:
         points = np.column_stack((cm_curve, cl_curve))
         segments = np.stack([points[:-1], points[1:]], axis=1)
         segment_colors = cm_strip_colors[1:] if len(cm_strip_colors) > 1 else ["#4caf50"]
@@ -797,16 +801,11 @@ def _plot_glide_ratio(
     """Plot L/D vs alpha. Return (plotted, ld_point_labels)."""
     ld_point_labels: list[tuple[float, float, str, str]] = []
 
-    if lift_values is None or drag_values is None:
+    sliced = _safe_slice(alpha_array, lift_values, drag_values)
+    if sliced is None:
         return False, ld_point_labels
 
-    ld_len = min(len(alpha_array), len(lift_values), len(drag_values))
-    if ld_len == 0:
-        return False, ld_point_labels
-
-    alpha_ld = alpha_array[:ld_len]
-    lift_curve = lift_values[:ld_len]
-    drag_curve = drag_values[:ld_len]
+    alpha_ld, lift_curve, drag_curve = sliced
     with np.errstate(divide="ignore", invalid="ignore"):
         ld_curve = np.where(np.abs(drag_curve) > 1e-12, lift_curve / drag_curve, np.nan)
 
@@ -865,22 +864,19 @@ def _collect_xnp_lat_labels(
 ) -> tuple[bool, list[tuple[float, float, str, str]]]:
     """Plot Xnp_lat curve and collect outlier / jump labels. Return (plotted, labels)."""
     labels: list[tuple[float, float, str, str]] = []
-    if xnp_lat_values is None or len(xnp_lat_values) == 0:
+    sliced = _safe_slice(alpha_array, xnp_lat_values)
+    if sliced is None:
         return False, labels
 
-    lat_len = min(len(alpha_array), len(xnp_lat_values))
-    if lat_len == 0:
-        return False, labels
+    x_axis, lat_curve = sliced
+    ax.plot(x_axis, lat_curve, linewidth=2, color="tab:pink", label="Xnp_lat")
 
-    x_axis = alpha_array[:lat_len]
-    ax.plot(x_axis, xnp_lat_values[:lat_len], linewidth=2, color="tab:pink", label="Xnp_lat")
-
-    median_lat = float(np.nanmedian(xnp_lat_values[:lat_len]))
-    deviation_lat = np.abs(xnp_lat_values[:lat_len] - median_lat)
+    median_lat = float(np.nanmedian(lat_curve))
+    deviation_lat = np.abs(lat_curve - median_lat)
     if np.isfinite(deviation_lat).any():
         outlier_idx = int(np.nanargmax(deviation_lat))
         outlier_x = x_axis[outlier_idx]
-        outlier_y = xnp_lat_values[outlier_idx]
+        outlier_y = lat_curve[outlier_idx]
         labels.append(
             (
                 outlier_x,
@@ -890,12 +886,12 @@ def _collect_xnp_lat_labels(
             )
         )
 
-    if lat_len > 1:
-        jumps = np.abs(np.diff(xnp_lat_values[:lat_len]))
+    if len(lat_curve) > 1:
+        jumps = np.abs(np.diff(lat_curve))
         if np.isfinite(jumps).any():
             jump_idx = int(np.nanargmax(jumps)) + 1
             jump_x = x_axis[jump_idx]
-            jump_y = xnp_lat_values[jump_idx]
+            jump_y = lat_curve[jump_idx]
             labels.append((jump_x, jump_y, f"Xnp_lat Sprung\na={jump_x:.2f}", _COLOR_ORANGE))
 
     return True, labels
