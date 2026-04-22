@@ -41,6 +41,7 @@ non-trivial work.
 
 ```
 /supercycle:work #187          ← Full cycle: brainstorm → implement → review → merge
+/supercycle:bug <error log>    ← Bug intake: investigate → ticket → TDD fix → merge
 /supercycle:implement #188,#190  ← Skip brainstorming, parallel implementation
 /supercycle:review 200, 201      ← Dispatch code review agents on open PRs
 /supercycle:fix 201              ← Fix review findings on PR branches
@@ -67,10 +68,21 @@ non-trivial work.
   └─ /supercycle:merge
        ├─ CI + SonarQube quality gate analysis
        └─ Sequential merge with rebase conflict resolution
+
+/supercycle:bug <error log or #N>
+  ├─ Root cause investigation (/systematic-debugging)
+  ├─ GH Issue creation
+  ├─ TDD fix (/test-driven-development)
+  │    ├─ RED: failing test that reproduces bug
+  │    ├─ Fix root cause
+  │    └─ GREEN: verify (/verification-before-completion)
+  ├─ Code review
+  └─ CI check + merge
 ```
 
 **When to use which entry point:**
-- **`/supercycle:work`** — New feature or bug, needs discussion with user
+- **`/supercycle:work`** — New feature, needs discussion with user
+- **`/supercycle:bug`** — Bug report (error log or ticket) — fast-track to fix
 - **`/supercycle:implement`** — Issue is clear, skip brainstorming
 - **`/supercycle:review`** — PRs exist, need automated review
 - **`/supercycle:fix`** — Review found issues to address
