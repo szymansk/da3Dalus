@@ -1,12 +1,21 @@
 ---
-description: "Brainstorm a GH issue or feature idea with the user, refine the ticket, then hand off to the work-orchestrator agent for parallel implementation"
-argument-hint: "<GH issue number> OR <feature description in natural language>"
+description: "Full supercycle: brainstorm GH issue/feature with user, refine ticket, then orchestrate implementation through to merged PR"
+argument-hint: "<GH issue number> OR <feature description>"
 allowed-tools: Bash, Read, Glob, Grep, Agent, WebSearch
 ---
 
-# /work — Issue Brainstorming & Orchestrated Implementation
+# /supercycle:work — Full Development Cycle
 
 Argument: **$ARGUMENTS**
+
+This is the **full supercycle** entry point. It starts from scratch and
+drives a GH issue or feature idea through all phases to merged PR.
+
+For entering the cycle at a later phase, use:
+- `/supercycle:implement` — skip brainstorming, go straight to implementation
+- `/supercycle:review` — review existing PRs
+- `/supercycle:fix` — fix review findings on a PR branch
+- `/supercycle:merge` — CI check + merge existing PRs
 
 ---
 
@@ -133,23 +142,19 @@ The agent prompt MUST include:
 
 ---
 
-## Summary
-
-This command implements the first two phases of the da3Dalus agentic
-development workflow:
+## Supercycle Overview
 
 ```
-/work #187
+/supercycle:work #187          ← YOU ARE HERE
   │
   ├─ Phase 1: Read GH Issue + fetch external data
-  ├─ Phase 2: /brainstorming with user → refine/create ticket
+  ├─ Phase 2: Brainstorming with user → refine/create ticket
   └─ Phase 3: Hand off to work-orchestrator agent
                 │
                 ├─ Parallelization analysis
-                ├─ Planning
                 ├─ Worktree agents (parallel implementation)
-                ├─ Code review agents
-                ├─ Fix findings
-                ├─ CI monitoring
-                └─ Merge + verify
+                ├─ Code review agents        ← /supercycle:review
+                ├─ Fix findings              ← /supercycle:fix
+                ├─ CI monitoring + merge     ← /supercycle:merge
+                └─ Completion report
 ```
