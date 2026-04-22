@@ -59,20 +59,21 @@ export function useAirfoilGeometry(airfoilName: string | null) {
   return { geometry, isLoading, error };
 }
 
-export function parseSeligDat(content: string): AirfoilGeometry {
-  const lines = content.trim().split("\n");
-  // First line is name, rest are coordinates
+/** Parse coordinate lines (skip header) into [x, y] pairs. */
+function parseCoordinates(lines: string[]): [number, number][] {
   const coords: [number, number][] = [];
   for (let i = 1; i < lines.length; i++) {
     const parts = lines[i].trim().split(/\s+/);
-    if (parts.length >= 2) {
-      const x = parseFloat(parts[0]);
-      const y = parseFloat(parts[1]);
-      if (!isNaN(x) && !isNaN(y)) coords.push([x, y]);
-    }
+    if (parts.length < 2) continue;
+    const x = parseFloat(parts[0]);
+    const y = parseFloat(parts[1]);
+    if (!isNaN(x) && !isNaN(y)) coords.push([x, y]);
   }
+  return coords;
+}
 
-  // Find LE (minimum x) to split upper/lower
+/** Find the leading-edge index (minimum x). */
+function findLeadingEdgeIndex(coords: [number, number][]): number {
   let leIdx = 0;
   let minX = Infinity;
   for (let i = 0; i < coords.length; i++) {
@@ -81,29 +82,46 @@ export function parseSeligDat(content: string): AirfoilGeometry {
       leIdx = i;
     }
   }
+  return leIdx;
+}
 
-  const upper = coords.slice(0, leIdx + 1); // TE->LE (x decreasing)
-  const lower = coords.slice(leIdx); // LE->TE (x increasing)
-
-  // Compute thickness and camber at sampled x positions
+/** Compute max thickness, camber, and thickness x-position from upper/lower surfaces. */
+function computeThicknessAndCamber(
+  upper: [number, number][],
+  lower: [number, number][],
+): { maxThickness: number; maxCamber: number; maxThicknessX: number } {
   let maxThickness = 0;
   let maxCamber = 0;
   let maxThicknessX = 0.3;
-  const sampleXs = Array.from({ length: 50 }, (_, i) => i / 49); // 0 to 1
+  const sampleXs = Array.from({ length: 50 }, (_, i) => i / 49);
 
   for (const x of sampleXs) {
     const yUpper = interpolateY(upper, x);
     const yLower = interpolateY(lower, x);
-    if (yUpper !== null && yLower !== null) {
-      const thickness = yUpper - yLower;
-      const camber = (yUpper + yLower) / 2;
-      if (thickness > maxThickness) {
-        maxThickness = thickness;
-        maxThicknessX = x;
-      }
-      if (Math.abs(camber) > Math.abs(maxCamber)) maxCamber = camber;
+    if (yUpper === null || yLower === null) continue;
+
+    const thickness = yUpper - yLower;
+    const camber = (yUpper + yLower) / 2;
+    if (thickness > maxThickness) {
+      maxThickness = thickness;
+      maxThicknessX = x;
     }
+    if (Math.abs(camber) > Math.abs(maxCamber)) maxCamber = camber;
   }
+
+  return { maxThickness, maxCamber, maxThicknessX };
+}
+
+export function parseSeligDat(content: string): AirfoilGeometry {
+  const lines = content.trim().split("\n");
+  const coords = parseCoordinates(lines);
+  const leIdx = findLeadingEdgeIndex(coords);
+
+  const upper = coords.slice(0, leIdx + 1); // TE->LE (x decreasing)
+  const lower = coords.slice(leIdx); // LE->TE (x increasing)
+
+  const { maxThickness, maxCamber, maxThicknessX } =
+    computeThicknessAndCamber(upper, lower);
 
   return {
     upper,
