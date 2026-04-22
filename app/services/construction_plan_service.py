@@ -602,7 +602,10 @@ def execute_plan(
 
 def _numpy_to_list(obj: Any) -> Any:
     """Recursively convert numpy arrays and scalars to plain Python types."""
-    import numpy as np
+    try:
+        import numpy as np
+    except ImportError:
+        return obj
 
     if isinstance(obj, np.ndarray):
         return obj.tolist()
