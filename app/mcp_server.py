@@ -49,6 +49,10 @@ from app.schemas.aeroanalysisschema import (
 from app.schemas.flight_profile import FlightProfileType, RCFlightProfileCreate, RCFlightProfileUpdate
 from app.settings import get_settings
 
+# --- Shared literal constants (S1192) ---
+_MIME_IMAGE_PNG = "image/png"
+_STATIC_PREFIX = "/static/"
+
 
 @dataclass(frozen=True)
 class MCPToolSpec:
@@ -191,14 +195,14 @@ def build_public_url_from_tmp_path(file_path: Path, *, base_url: str | None = No
     tmp_root = _normalize_file_path("tmp")
     relative_path = normalized.relative_to(tmp_root)
     resolved_base_url = (base_url or get_settings().base_url).rstrip("/")
-    return f"{resolved_base_url}/static/{relative_path.as_posix()}"
+    return f"{resolved_base_url}{_STATIC_PREFIX}{relative_path.as_posix()}"
 
 
 def _resolve_tmp_path_from_static_url(url: str) -> Path:
     parsed = urlparse(url)
     path = parsed.path if parsed.scheme else url
-    if path.startswith("/static/"):
-        return _normalize_file_path(Path("tmp") / path.removeprefix("/static/"))
+    if path.startswith(_STATIC_PREFIX):
+        return _normalize_file_path(Path("tmp") / path.removeprefix(_STATIC_PREFIX))
     raise ValueError(f"Unsupported static URL format: {url}")
 
 
@@ -220,7 +224,7 @@ def resolve_tmp_path_from_known_output(payload: Any) -> Path:
     if candidate_path.exists():
         return _normalize_file_path(candidate_path)
 
-    if candidate.startswith("/static/") or "/static/" in candidate:
+    if candidate.startswith(_STATIC_PREFIX) or _STATIC_PREFIX in candidate:
         return _resolve_tmp_path_from_static_url(candidate)
 
     if candidate.startswith("tmp/") or candidate.startswith("./tmp/"):
@@ -313,7 +317,7 @@ def register_bytes_asset(
     if filename:
         target_name = filename
     else:
-        default_suffix = ".png" if mime_type == "image/png" else ".bin"
+        default_suffix = ".png" if mime_type == _MIME_IMAGE_PNG else ".bin"
         target_name = f"{asset_id}{default_suffix}"
 
     target_dir = _normalize_file_path(Path("tmp") / "mcp_assets" / asset_kind / asset_id[:2])
@@ -401,8 +405,8 @@ def _register_image_payload(
     if payload.get("encoding") != "base64" or "data" not in payload:
         raise ValueError(f"Expected base64 image payload, got: {payload!r}")
 
-    mime_type = payload.get("media_type", "image/png")
-    suffix = ".png" if mime_type == "image/png" else ".bin"
+    mime_type = payload.get("media_type", _MIME_IMAGE_PNG)
+    suffix = ".png" if mime_type == _MIME_IMAGE_PNG else ".bin"
     filename = f"{filename_prefix}_{uuid4().hex}{suffix}"
     image_bytes = base64.b64decode(payload["data"])
 
@@ -1088,7 +1092,7 @@ async def analyze_alpha_sweep_diagram_tool(
     diagram_path = resolve_tmp_path_from_known_output(payload)
     entry = register_file_asset(
         diagram_path,
-        mime_type="image/png",
+        mime_type=_MIME_IMAGE_PNG,
         kind="img",
         base_url=resolve_public_base_url(ctx),
     )
@@ -1121,7 +1125,7 @@ async def get_aeroplane_three_view_tool(aeroplane_id: UUID4, ctx: Context = None
     image_path = resolve_tmp_path_from_known_output(payload)
     entry = register_file_asset(
         image_path,
-        mime_type=payload.get("mime_type", "image/png") if isinstance(payload, dict) else "image/png",
+        mime_type=payload.get("mime_type", _MIME_IMAGE_PNG) if isinstance(payload, dict) else _MIME_IMAGE_PNG,
         kind="img",
         base_url=resolve_public_base_url(ctx),
     )
@@ -1349,7 +1353,7 @@ def create_mcp_server() -> FastMCP:
         "img://{asset_id}",
         name="image_asset",
         description="Read a generated image asset by asset ID.",
-        mime_type="image/png",
+        mime_type=_MIME_IMAGE_PNG,
     )(read_image_asset)
 
     mcp.resource(

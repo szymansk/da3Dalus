@@ -4,6 +4,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.schemas.wing import Wing
 from app.schemas.AeroplaneRequest import AeroplaneSettings
 
+# --- Shared literal constant (S1192) ---
+_DEFAULT_AIRFOIL_MH32 = "./components/airfoils/mh32.dat"
+
 
 class WingAnalysisRequest(BaseModel):
     """
@@ -37,7 +40,7 @@ class WingAnalysisRequest(BaseModel):
                         "segments": [
                             {
                                 "root_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 162.0,
                                     "dihedral_as_rotation_in_degrees": 1,
 
@@ -47,7 +50,7 @@ class WingAnalysisRequest(BaseModel):
                                 "sweep": 0,
                                 "sweep_angle": 0.0,
                                 "tip_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 162.0,
                                     "dihedral_as_rotation_in_degrees": 0,
 
@@ -116,7 +119,7 @@ class WingAnalysisRequest(BaseModel):
                             },
                             {
                                 "root_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 162.0,
                                     "dihedral_as_rotation_in_degrees": 0,
 
@@ -126,7 +129,7 @@ class WingAnalysisRequest(BaseModel):
                                 "sweep": 2.5,
                                 "sweep_angle": 0.7161599454704085,
                                 "tip_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 157,
                                     "dihedral_as_rotation_in_degrees": 0,
 
@@ -195,7 +198,7 @@ class WingAnalysisRequest(BaseModel):
                             },
                             {
                                 "root_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 157,
                                     "dihedral_as_rotation_in_degrees": 0,
 
@@ -205,7 +208,7 @@ class WingAnalysisRequest(BaseModel):
                                 "sweep": 8,
                                 "sweep_angle": 1.8328395059420592,
                                 "tip_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 132.88888888888889,
                                     "dihedral_as_rotation_in_degrees": 0,
 
@@ -254,7 +257,7 @@ class WingAnalysisRequest(BaseModel):
                             },
                             {
                                 "root_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 132.88888888888889,
                                     "dihedral_as_rotation_in_degrees": 0,
 
@@ -264,7 +267,7 @@ class WingAnalysisRequest(BaseModel):
                                 "sweep": 5,
                                 "sweep_angle": 3.8140748342903543,
                                 "tip_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 123.05555555555554,
                                     "dihedral_as_rotation_in_degrees": 0,
 
@@ -313,7 +316,7 @@ class WingAnalysisRequest(BaseModel):
                             },
                             {
                                 "root_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 123.05555555555554,
                                     "dihedral_as_rotation_in_degrees": 0,
 
@@ -323,7 +326,7 @@ class WingAnalysisRequest(BaseModel):
                                 "sweep": 11,
                                 "sweep_angle": 7.373766361330216,
                                 "tip_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 105.21777777777777,
                                     "dihedral_as_rotation_in_degrees": 0,
 
@@ -372,7 +375,7 @@ class WingAnalysisRequest(BaseModel):
                             },
                             {
                                 "root_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 105.21777777777777,
                                     "dihedral_as_rotation_in_degrees": 0,
 
@@ -382,7 +385,7 @@ class WingAnalysisRequest(BaseModel):
                                 "sweep": 12,
                                 "sweep_angle": 16.69924423399362,
                                 "tip_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 90,
                                     "dihedral_as_rotation_in_degrees": 0,
 
@@ -431,7 +434,7 @@ class WingAnalysisRequest(BaseModel):
                             },
                             {
                                 "root_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 90,
                                     "dihedral_as_rotation_in_degrees": 0,
 
@@ -441,7 +444,7 @@ class WingAnalysisRequest(BaseModel):
                                 "sweep": 7.5,
                                 "sweep_angle": 20.556045219583467,
                                 "tip_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 79.5,
                                     "dihedral_as_rotation_in_degrees": 5,
 
@@ -474,7 +477,7 @@ class WingAnalysisRequest(BaseModel):
                             },
                             {
                                 "root_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 79.5,
                                     "dihedral_as_rotation_in_degrees": 5,
 
@@ -484,7 +487,7 @@ class WingAnalysisRequest(BaseModel):
                                 "sweep": 7.5,
                                 "sweep_angle": 26.56505117707799,
                                 "tip_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 71.0,
                                     "dihedral_as_rotation_in_degrees": 5,
 
@@ -498,7 +501,7 @@ class WingAnalysisRequest(BaseModel):
                             },
                             {
                                 "root_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 71.0,
                                     "dihedral_as_rotation_in_degrees": 5,
 
@@ -508,7 +511,7 @@ class WingAnalysisRequest(BaseModel):
                                 "sweep": 10,
                                 "sweep_angle": 33.690067525979785,
                                 "tip_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 62.0,
                                     "dihedral_as_rotation_in_degrees": 5,
 
@@ -522,7 +525,7 @@ class WingAnalysisRequest(BaseModel):
                             },
                             {
                                 "root_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 62.0,
                                     "dihedral_as_rotation_in_degrees": 5,
 
@@ -532,7 +535,7 @@ class WingAnalysisRequest(BaseModel):
                                 "sweep": 12.5,
                                 "sweep_angle": 39.8055710922652,
                                 "tip_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 52.5,
                                     "dihedral_as_rotation_in_degrees": 10,
 
@@ -546,7 +549,7 @@ class WingAnalysisRequest(BaseModel):
                             },
                             {
                                 "root_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 52.5,
                                     "dihedral_as_rotation_in_degrees": 10,
 
@@ -556,7 +559,7 @@ class WingAnalysisRequest(BaseModel):
                                 "sweep": 15,
                                 "sweep_angle": 56.309932474020215,
                                 "tip_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 40.5,
                                     "dihedral_as_rotation_in_degrees": 15,
 
@@ -570,7 +573,7 @@ class WingAnalysisRequest(BaseModel):
                             },
                             {
                                 "root_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 40.5,
                                     "dihedral_as_rotation_in_degrees": 15,
 
@@ -580,7 +583,7 @@ class WingAnalysisRequest(BaseModel):
                                 "sweep": 17.5,
                                 "sweep_angle": 74.05460409907715,
                                 "tip_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 24.0,
                                     "dihedral_as_rotation_in_degrees": 0,
 
@@ -604,7 +607,7 @@ class WingAnalysisRequest(BaseModel):
                         "segments": [
                             {
                                 "root_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 85.0,
                                     "dihedral_as_rotation_in_degrees": 45,
 
@@ -614,7 +617,7 @@ class WingAnalysisRequest(BaseModel):
                                 "sweep": 15,
                                 "sweep_angle": 4.085616779974877,
                                 "tip_airfoil": {
-                                    "airfoil": "./components/airfoils/mh32.dat",
+                                    "airfoil": _DEFAULT_AIRFOIL_MH32,
                                     "chord": 70.0,
                                     "dihedral_as_rotation_in_degrees": 0,
 

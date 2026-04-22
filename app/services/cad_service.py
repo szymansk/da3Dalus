@@ -55,6 +55,9 @@ from cad_designer.airplane.aircraft_topology.wing import WingConfiguration
 
 logger = logging.getLogger(__name__)
 
+# --- Shared literal constant (S1192) ---
+_TYPE_KEY = "$TYPE"
+
 # In-memory task management (parent-process state only)
 tasks: Dict[str, Dict[str, Any]] = {}
 tasks_lock = Lock()
@@ -205,7 +208,7 @@ def build_wing_blueprint(
 ) -> Dict[str, Any]:
     """Build the blueprint dict for wing construction."""
     blueprint = {
-        '$TYPE': 'ConstructionRootNode',
+        _TYPE_KEY: 'ConstructionRootNode',
         'creator_id': 'eHawk-wing.root.root',
         'loglevel': 50,
         'successors': {}
@@ -213,9 +216,9 @@ def build_wing_blueprint(
     
     # Add wing node
     wing_node = {
-        '$TYPE': 'ConstructionStepNode',
+        _TYPE_KEY: 'ConstructionStepNode',
         'creator': {
-            '$TYPE': "",
+            _TYPE_KEY: "",
             'creator_id': wing_name,
             'loglevel': 10,
             'offset': 0,
@@ -228,9 +231,9 @@ def build_wing_blueprint(
     }
     
     if creator_url_type == CreatorUrlType.WING_LOFT:
-        wing_node['creator']['$TYPE'] = 'WingLoftCreator'
+        wing_node['creator'][_TYPE_KEY] = 'WingLoftCreator'
     else:  # VASE_MODE_WING
-        wing_node['creator']['$TYPE'] = 'VaseModeWingCreator'
+        wing_node['creator'][_TYPE_KEY] = 'VaseModeWingCreator'
         wing_node['creator']['leading_edge_offset_factor'] = leading_edge_offset_factor
         wing_node['creator']['trailing_edge_offset_factor'] = trailing_edge_offset_factor
     
@@ -238,9 +241,9 @@ def build_wing_blueprint(
     
     # Add exporter node
     blueprint['successors']['output-wing'] = {
-        '$TYPE': 'ConstructionStepNode',
+        _TYPE_KEY: 'ConstructionStepNode',
         'creator': {
-            '$TYPE': exporter_class,
+            _TYPE_KEY: exporter_class,
             'angular_tolerance': 0.1,
             'creator_id': 'output-wing',
             'file_path': './tmp/exports',

@@ -20,6 +20,9 @@ from app.schemas.component_tree import (
 
 logger = logging.getLogger(__name__)
 
+# --- Shared error entity (S1192) ---
+_ENTITY_COMPONENT_TREE_NODE = "Component tree node"
+
 
 def _to_schema(m: ComponentTreeNodeModel) -> ComponentTreeNodeRead:
     return ComponentTreeNodeRead(
@@ -222,7 +225,7 @@ def update_node(
             ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
         ).first()
         if not node:
-            raise NotFoundError(entity="Component tree node", resource_id=node_id)
+            raise NotFoundError(entity=_ENTITY_COMPONENT_TREE_NODE, resource_id=node_id)
 
         for key, value in data.model_dump().items():
             setattr(node, key, value)
@@ -245,7 +248,7 @@ def delete_node(db: Session, aeroplane_id: str, node_id: int) -> None:
             ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
         ).first()
         if not node:
-            raise NotFoundError(entity="Component tree node", resource_id=node_id)
+            raise NotFoundError(entity=_ENTITY_COMPONENT_TREE_NODE, resource_id=node_id)
 
         if node.synced_from:
             raise ValidationError(
@@ -286,7 +289,7 @@ def move_node(
             ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
         ).first()
         if not node:
-            raise NotFoundError(entity="Component tree node", resource_id=node_id)
+            raise NotFoundError(entity=_ENTITY_COMPONENT_TREE_NODE, resource_id=node_id)
 
         if new_parent_id:
             parent = db.query(ComponentTreeNodeModel).filter(
@@ -334,7 +337,7 @@ def calculate_weight(db: Session, aeroplane_id: str, node_id: int) -> WeightResp
         ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
     ).first()
     if not node:
-        raise NotFoundError(entity="Component tree node", resource_id=node_id)
+        raise NotFoundError(entity=_ENTITY_COMPONENT_TREE_NODE, resource_id=node_id)
 
     own_weight, source = _calculate_own_weight(db, node)
     children_weight = _calculate_children_weight(db, aeroplane_id, node_id)

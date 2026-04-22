@@ -3,6 +3,10 @@ from pydantic import AliasChoices, BaseModel, PositiveFloat, NonNegativeFloat, F
 
 from app.schemas.Servo import Servo
 
+# --- Shared literal constant (S1192) ---
+_DEFAULT_AIRFOIL_RG15 = "./components/airfoils/rg15.dat"
+
+
 class TrailingEdgeDevice(BaseModel):
     """
     Represents a trailing edge device (control surface) on a wing, such as an aileron, flap, or elevator.
@@ -208,7 +212,7 @@ class Wing(BaseModel):
                 "segments": [
                     {
                         "root_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 162.0,
                             "dihedral": 1,
                             "incidence": 0,
@@ -216,7 +220,7 @@ class Wing(BaseModel):
                         "length": 20.0,
                         "sweep": 0,
                         "tip_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 162.0,
                             "dihedral": 0,
                             "incidence": 0,
@@ -277,7 +281,7 @@ class Wing(BaseModel):
                     },
                     {
                         "root_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 162.0,
                             "dihedral": 0,
                             "incidence": 0,
@@ -285,7 +289,7 @@ class Wing(BaseModel):
                         "length": 200,
                         "sweep": 2.5,
                         "tip_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 157,
                             "dihedral": 0,
                             "incidence": 0,
@@ -349,7 +353,7 @@ class Wing(BaseModel):
                     },
                     {
                         "root_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 157,
                             "dihedral": 0,
                             "incidence": 0,
@@ -357,7 +361,7 @@ class Wing(BaseModel):
                         "length": 250,
                         "sweep": 8,
                         "tip_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 132.88888888888889,
                             "dihedral": 0,
                             "incidence": 0,
@@ -401,7 +405,7 @@ class Wing(BaseModel):
                     },
                     {
                         "root_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 132.88888888888889,
                             "dihedral": 0,
                             "incidence": 0,
@@ -409,7 +413,7 @@ class Wing(BaseModel):
                         "length": 75,
                         "sweep": 5,
                         "tip_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 123.05555555555554,
                             "dihedral": 0,
                             "incidence": 0,
@@ -445,7 +449,7 @@ class Wing(BaseModel):
                     },
                     {
                         "root_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 123.05555555555554,
                             "dihedral": 0,
                             "incidence": 0,
@@ -453,7 +457,7 @@ class Wing(BaseModel):
                         "length": 85,
                         "sweep": 11,
                         "tip_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 105.21777777777777,
                             "dihedral": 0,
                             "incidence": 0,
@@ -489,7 +493,7 @@ class Wing(BaseModel):
                     },
                     {
                         "root_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 105.21777777777777,
                             "dihedral": 0,
                             "incidence": 0,
@@ -497,7 +501,7 @@ class Wing(BaseModel):
                         "length": 40,
                         "sweep": 12,
                         "tip_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 90,
                             "dihedral": 0,
                             "incidence": 0,
@@ -533,7 +537,7 @@ class Wing(BaseModel):
                     },
                     {
                         "root_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 90,
                             "dihedral": 0,
                             "incidence": 0,
@@ -541,7 +545,7 @@ class Wing(BaseModel):
                         "length": 20,
                         "sweep": 7.5,
                         "tip_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 79.5,
                             "dihedral": 5,
                             "incidence": -0.5,
@@ -569,7 +573,7 @@ class Wing(BaseModel):
                     },
                     {
                         "root_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 79.5,
                             "dihedral": 0,
                             "incidence": 0,
@@ -577,7 +581,7 @@ class Wing(BaseModel):
                         "length": 15,
                         "sweep": 7.5,
                         "tip_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 71.0,
                             "dihedral": 5,
                             "incidence": -0.5,
@@ -587,7 +591,7 @@ class Wing(BaseModel):
                     },
                     {
                         "root_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 71.0,
                             "dihedral": 0,
                             "incidence": 0,
@@ -595,7 +599,7 @@ class Wing(BaseModel):
                         "length": 15,
                         "sweep": 10,
                         "tip_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 62.0,
                             "dihedral": 5,
                             "incidence": -0.5,
@@ -605,7 +609,7 @@ class Wing(BaseModel):
                     },
                     {
                         "root_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 62.0,
                             "dihedral": 0,
                             "incidence": 0,
@@ -613,7 +617,7 @@ class Wing(BaseModel):
                         "length": 15,
                         "sweep": 12.5,
                         "tip_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 52.5,
                             "dihedral": 10,
                             "incidence": -0.5,
@@ -623,7 +627,7 @@ class Wing(BaseModel):
                     },
                     {
                         "root_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 52.5,
                             "dihedral": 0,
                             "incidence": 0,
@@ -631,7 +635,7 @@ class Wing(BaseModel):
                         "length": 10,
                         "sweep": 15,
                         "tip_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 40.5,
                             "dihedral": 15,
                             "incidence": -0.5,
@@ -641,7 +645,7 @@ class Wing(BaseModel):
                     },
                     {
                         "root_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 40.5,
                             "dihedral": 0,
                             "incidence": 0,
@@ -649,7 +653,7 @@ class Wing(BaseModel):
                         "length": 5,
                         "sweep": 17.5,
                         "tip_airfoil": {
-                            "airfoil": "./components/airfoils/rg15.dat",
+                            "airfoil": _DEFAULT_AIRFOIL_RG15,
                             "chord": 24.0,
                             "dihedral": 0,
                             "incidence": -0.5,
