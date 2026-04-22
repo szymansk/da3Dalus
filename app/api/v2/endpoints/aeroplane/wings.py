@@ -26,6 +26,10 @@ router = APIRouter()
 
 AeroPlaneID = UUID4
 
+_DESC_AEROPLANE_ID = "The ID of the aeroplane"
+_DESC_WING_NAME = "The name of the wing"
+_DESC_XSEC_INDEX = "The index of the cross section"
+
 
 class OperationStatusResponse(BaseModel):
     status: str
@@ -211,7 +215,7 @@ def _call_service(func, *args, **kwargs):
             tags=["wings"],
             operation_id="get_aeroplane_wings")
 async def get_aeroplane_wings(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
         db: Annotated[Session, Depends(get_db)],
 ) -> List[str]:
     """Returns a list of aeroplane's wing names."""
@@ -224,7 +228,7 @@ async def get_aeroplane_wings(
             tags=["wings"],
             operation_id="create_aeroplane_wing")
 async def create_aeroplane_wing(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
         wing_name: Annotated[str, Path(..., description="The ID of the wing")],
         request: Annotated[schemas.AsbWingGeometryWriteSchema, Body(
             ...,
@@ -247,7 +251,7 @@ async def create_aeroplane_wing(
     operation_id="create_aeroplane_wing_from_wingconfig",
 )
 async def create_aeroplane_wing_from_wingconfig(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     wing_name: Annotated[str, Path(..., description="The ID of the wing")],
     request: Annotated[WingConfigurationSchema, Body(
         ...,
@@ -273,8 +277,8 @@ async def create_aeroplane_wing_from_wingconfig(
     operation_id="get_wing_as_wingconfig",
 )
 async def get_wing_as_wingconfig(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
-    wing_name: Annotated[str, Path(..., description="The name of the wing")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
+    wing_name: Annotated[str, Path(..., description=_DESC_WING_NAME)],
     db: Annotated[Session, Depends(get_db)],
 ):
     """Return the wing in WingConfiguration format (segments with root/tip airfoils, length, sweep, dihedral)."""
@@ -289,8 +293,8 @@ async def get_wing_as_wingconfig(
     operation_id="put_wing_as_wingconfig",
 )
 async def put_wing_as_wingconfig(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
-    wing_name: Annotated[str, Path(..., description="The name of the wing")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
+    wing_name: Annotated[str, Path(..., description=_DESC_WING_NAME)],
     request: Annotated[WingConfigurationSchema, Body(
         ...,
         description="WingConfiguration JSON (mm). Replaces the existing wing.",
@@ -312,7 +316,7 @@ async def put_wing_as_wingconfig(
     operation_id="update_aeroplane_wing"
 )
 async def update_aeroplane_wing(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
         wing_name: Annotated[str, Path(..., description="The ID of the wing")],
         request: Annotated[schemas.AsbWingGeometryWriteSchema, Body(
             ...,
@@ -331,7 +335,7 @@ async def update_aeroplane_wing(
             tags=["wings"],
             operation_id="get_aeroplane_wing")
 async def get_aeroplane_wing(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
         wing_name: Annotated[str, Path(..., description="The ID of the wing")],
         db: Annotated[Session, Depends(get_db)],
 ) -> schemas.AsbWingReadSchema:
@@ -347,7 +351,7 @@ async def get_aeroplane_wing(
     operation_id="delete_aeroplane_wing"
 )
 async def delete_aeroplane_wing(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
         wing_name: Annotated[str, Path(..., description="The ID of the wing")],
         db: Annotated[Session, Depends(get_db)],
 ):
@@ -367,7 +371,7 @@ async def delete_aeroplane_wing(
     operation_id="get_wing_cross_sections"
 )
 async def get_aeroplane_wing_cross_sections(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
         wing_name: Annotated[str, Path(..., description="The ID of the wing")],
         db: Annotated[Session, Depends(get_db)],
 ) -> List[schemas.WingXSecReadSchema]:
@@ -383,7 +387,7 @@ async def get_aeroplane_wing_cross_sections(
     operation_id="delete_all_wing_cross_sections"
 )
 async def delete_aeroplane_wing_cross_sections(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
         wing_name: Annotated[str, Path(..., description="The ID of the wing")],
         db: Annotated[Session, Depends(get_db)],
 ):
@@ -400,9 +404,9 @@ async def delete_aeroplane_wing_cross_sections(
     operation_id="get_wing_cross_section"
 )
 async def get_aeroplane_wing_cross_section(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
         wing_name: Annotated[str, Path(..., description="The ID of the wing")],
-        cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+        cross_section_index: Annotated[int, Path(..., description=_DESC_XSEC_INDEX)],
         db: Annotated[Session, Depends(get_db)],
 ) -> schemas.WingXSecReadSchema:
     """Returns the aeroplane wing cross-sections as a list of names."""
@@ -417,7 +421,7 @@ async def get_aeroplane_wing_cross_section(
     operation_id="create_wing_cross_section"
 )
 async def create_aeroplane_wing_cross_section(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
         wing_name: Annotated[str, Path(..., description="The ID of the wing")],
         cross_section_index: Annotated[int, Path(...,
                                         description="The index where it will be spliced into the list of cross sections. (-1 is the end of the list, 0 is the start of the list)")],
@@ -442,9 +446,9 @@ async def create_aeroplane_wing_cross_section(
     operation_id="update_wing_cross_section"
 )
 async def update_aeroplane_wing_cross_section(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
         wing_name: Annotated[str, Path(..., description="The ID of the wing")],
-        cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+        cross_section_index: Annotated[int, Path(..., description=_DESC_XSEC_INDEX)],
         request: Annotated[schemas.WingXSecGeometryWriteSchema, Body(
             ...,
             description="Geometry-only wing cross-section definition.",
@@ -464,9 +468,9 @@ async def update_aeroplane_wing_cross_section(
                tags=["cross-sections"],
                operation_id="delete_wing_cross_section")
 async def delete_aeroplane_wing_cross_section(
-        aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+        aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
         wing_name: Annotated[str, Path(..., description="The ID of the wing")],
-        cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+        cross_section_index: Annotated[int, Path(..., description=_DESC_XSEC_INDEX)],
         db: Annotated[Session, Depends(get_db)],
 ):
     """Delete a cross-section."""
@@ -483,9 +487,9 @@ async def delete_aeroplane_wing_cross_section(
     operation_id="get_wing_cross_section_spars",
 )
 async def get_aeroplane_wing_cross_section_spars(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     wing_name: Annotated[str, Path(..., description="The ID of the wing")],
-    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    cross_section_index: Annotated[int, Path(..., description=_DESC_XSEC_INDEX)],
     db: Annotated[Session, Depends(get_db)],
 ) -> List[schemas.SpareDetailSchema]:
     """Returns the spars assigned to the given cross-section."""
@@ -499,9 +503,9 @@ async def get_aeroplane_wing_cross_section_spars(
     operation_id="create_wing_cross_section_spar",
 )
 async def create_aeroplane_wing_cross_section_spar(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     wing_name: Annotated[str, Path(..., description="The ID of the wing")],
-    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    cross_section_index: Annotated[int, Path(..., description=_DESC_XSEC_INDEX)],
     request: Annotated[schemas.SpareDetailSchema, Body(..., description="Spar definition to append")],
     db: Annotated[Session, Depends(get_db)],
 ) -> OperationStatusResponse:
@@ -518,9 +522,9 @@ async def create_aeroplane_wing_cross_section_spar(
     operation_id="update_wing_cross_section_spar",
 )
 async def update_aeroplane_wing_cross_section_spar(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
-    wing_name: Annotated[str, Path(..., description="The name of the wing")],
-    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
+    wing_name: Annotated[str, Path(..., description=_DESC_WING_NAME)],
+    cross_section_index: Annotated[int, Path(..., description=_DESC_XSEC_INDEX)],
     spar_index: Annotated[int, Path(..., description="The index of the spar to replace")],
     request: Annotated[schemas.SpareDetailSchema, Body(..., description="Updated spar definition")],
     db: Annotated[Session, Depends(get_db)],
@@ -539,9 +543,9 @@ async def update_aeroplane_wing_cross_section_spar(
     operation_id="delete_wing_cross_section_spar",
 )
 async def delete_aeroplane_wing_cross_section_spar(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
-    wing_name: Annotated[str, Path(..., description="The name of the wing")],
-    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
+    wing_name: Annotated[str, Path(..., description=_DESC_WING_NAME)],
+    cross_section_index: Annotated[int, Path(..., description=_DESC_XSEC_INDEX)],
     spar_index: Annotated[int, Path(..., description="The index of the spar to delete")],
     db: Annotated[Session, Depends(get_db)],
 ) -> OperationStatusResponse:
@@ -674,9 +678,9 @@ async def delete_wing_trailing_edge_servo(
     operation_id="get_wing_cross_section_control_surface",
 )
 async def get_aeroplane_wing_cross_section_control_surface(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     wing_name: Annotated[str, Path(..., description="The ID of the wing")],
-    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    cross_section_index: Annotated[int, Path(..., description=_DESC_XSEC_INDEX)],
     db: Annotated[Session, Depends(get_db)],
 ) -> schemas.ControlSurfaceSchema:
     """Returns the control-surface analysis view projected from the canonical TED."""
@@ -696,9 +700,9 @@ async def get_aeroplane_wing_cross_section_control_surface(
     operation_id="patch_wing_cross_section_control_surface",
 )
 async def patch_aeroplane_wing_cross_section_control_surface(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     wing_name: Annotated[str, Path(..., description="The ID of the wing")],
-    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    cross_section_index: Annotated[int, Path(..., description=_DESC_XSEC_INDEX)],
     request: Annotated[schemas.ControlSurfacePatchSchema, Body(..., description="Control-surface patch payload.")],
     db: Annotated[Session, Depends(get_db)],
 ) -> schemas.ControlSurfaceSchema:
@@ -721,9 +725,9 @@ async def patch_aeroplane_wing_cross_section_control_surface(
     operation_id="delete_wing_cross_section_control_surface",
 )
 async def delete_aeroplane_wing_cross_section_control_surface(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     wing_name: Annotated[str, Path(..., description="The ID of the wing")],
-    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    cross_section_index: Annotated[int, Path(..., description=_DESC_XSEC_INDEX)],
     db: Annotated[Session, Depends(get_db)],
 ) -> OperationStatusResponse:
     """Deletes the canonical TED from which control-surface data is projected."""
@@ -745,9 +749,9 @@ async def delete_aeroplane_wing_cross_section_control_surface(
     operation_id="get_wing_cross_section_control_surface_cad_details",
 )
 async def get_aeroplane_wing_cross_section_control_surface_cad_details(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     wing_name: Annotated[str, Path(..., description="The ID of the wing")],
-    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    cross_section_index: Annotated[int, Path(..., description=_DESC_XSEC_INDEX)],
     db: Annotated[Session, Depends(get_db)],
 ) -> schemas.ControlSurfaceCadDetailsSchema:
     """Returns the CAD detail extension of an existing control surface."""
@@ -767,9 +771,9 @@ async def get_aeroplane_wing_cross_section_control_surface_cad_details(
     operation_id="patch_wing_cross_section_control_surface_cad_details",
 )
 async def patch_aeroplane_wing_cross_section_control_surface_cad_details(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     wing_name: Annotated[str, Path(..., description="The ID of the wing")],
-    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    cross_section_index: Annotated[int, Path(..., description=_DESC_XSEC_INDEX)],
     request: Annotated[schemas.ControlSurfaceCadDetailsPatchSchema, Body(
         ...,
         description="CAD detail patch payload that extends an existing control surface.",
@@ -795,9 +799,9 @@ async def patch_aeroplane_wing_cross_section_control_surface_cad_details(
     operation_id="delete_wing_cross_section_control_surface_cad_details",
 )
 async def delete_aeroplane_wing_cross_section_control_surface_cad_details(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     wing_name: Annotated[str, Path(..., description="The ID of the wing")],
-    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    cross_section_index: Annotated[int, Path(..., description=_DESC_XSEC_INDEX)],
     db: Annotated[Session, Depends(get_db)],
 ) -> OperationStatusResponse:
     """Removes CAD details while keeping the control-surface core definition."""
@@ -819,9 +823,9 @@ async def delete_aeroplane_wing_cross_section_control_surface_cad_details(
     operation_id="get_wing_cross_section_control_surface_cad_details_servo_details",
 )
 async def get_aeroplane_wing_cross_section_control_surface_cad_details_servo_details(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     wing_name: Annotated[str, Path(..., description="The ID of the wing")],
-    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    cross_section_index: Annotated[int, Path(..., description=_DESC_XSEC_INDEX)],
     db: Annotated[Session, Depends(get_db)],
 ) -> schemas.ControlSurfaceServoDetailsSchema:
     """Returns servo details of the control-surface CAD extension."""
@@ -841,9 +845,9 @@ async def get_aeroplane_wing_cross_section_control_surface_cad_details_servo_det
     operation_id="patch_wing_cross_section_control_surface_cad_details_servo_details",
 )
 async def patch_aeroplane_wing_cross_section_control_surface_cad_details_servo_details(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     wing_name: Annotated[str, Path(..., description="The ID of the wing")],
-    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    cross_section_index: Annotated[int, Path(..., description=_DESC_XSEC_INDEX)],
     request: Annotated[schemas.ControlSurfaceServoDetailsPatchSchema, Body(
         ...,
         description="Servo assignment payload (full Servo object or Servo ID reference).",
@@ -869,9 +873,9 @@ async def patch_aeroplane_wing_cross_section_control_surface_cad_details_servo_d
     operation_id="delete_wing_cross_section_control_surface_cad_details_servo_details",
 )
 async def delete_aeroplane_wing_cross_section_control_surface_cad_details_servo_details(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     wing_name: Annotated[str, Path(..., description="The ID of the wing")],
-    cross_section_index: Annotated[int, Path(..., description="The index of the cross section")],
+    cross_section_index: Annotated[int, Path(..., description=_DESC_XSEC_INDEX)],
     db: Annotated[Session, Depends(get_db)],
 ) -> OperationStatusResponse:
     """Deletes servo details from the control-surface CAD extension."""

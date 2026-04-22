@@ -30,6 +30,8 @@ from app.settings import Settings, get_settings
 router = APIRouter()
 AeroPlaneID = UUID4
 
+_DESC_AEROPLANE_ID = "The ID of the aeroplane"
+
 logger = logging.getLogger(__name__)
 
 
@@ -75,7 +77,7 @@ def _save_png_and_get_static_url(
     operation_id="get_airplane_strip_forces",
 )
 async def get_airplane_strip_forces(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point")],
     db: Annotated[Session, Depends(get_db)],
 ):
@@ -98,7 +100,7 @@ async def get_airplane_strip_forces(
     operation_id="get_wing_strip_forces",
 )
 async def get_wing_strip_forces(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     wing_name: Annotated[str, Path(..., description="The name of the wing")],
     operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point")],
     db: Annotated[Session, Depends(get_db)],
@@ -119,7 +121,7 @@ async def get_wing_strip_forces(
              tags=["analysis"],
              operation_id="analyze_wing_aerodynamics")
 async def analyze_wing_post(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     wing_name: Annotated[str, Path(..., description="The ID of the wing")],
     operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point of the analysis")],
     analysis_tool: Annotated[AnalysisToolUrlType, Path(..., description="The tool for aerodynamic analysis")],
@@ -141,7 +143,7 @@ async def analyze_wing_post(
              tags=["analysis"],
              operation_id="get_stability_summary")
 async def get_stability_summary(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point for the analysis")],
     analysis_tool: Annotated[AnalysisToolUrlType, Path(..., description="The analysis tool to use")],
     db: Annotated[Session, Depends(get_db)]
@@ -162,7 +164,7 @@ async def get_stability_summary(
              tags=["analysis"],
              operation_id="analyze_airplane_at_operating_point")
 async def analyze_airplane_post(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point of the analysis")],
     analysis_tool: Annotated[AnalysisToolUrlType, Path(..., description="The tool for aerodynamic analysis")],
     db: Annotated[Session, Depends(get_db)]
@@ -183,7 +185,7 @@ async def analyze_airplane_post(
              tags=["analysis"],
              operation_id="get_streamlines_json")
 async def calculate_streamlines_json(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point")],
     db: Annotated[Session, Depends(get_db)],
 ):
@@ -203,7 +205,7 @@ async def calculate_streamlines_json(
              tags=["analysis"],
              operation_id="analyze_alpha_sweep")
 async def analyze_airplane_alpha_sweep(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     sweep_request: Annotated[AlphaSweepRequest, Body(..., description="Sweep definitions and flight conditions")],
     db: Annotated[Session, Depends(get_db)],
 ):
@@ -220,7 +222,7 @@ async def analyze_airplane_alpha_sweep(
              tags=["analysis"],
              operation_id="analyze_alpha_sweep_diagram")
 async def analyze_airplane_alpha_sweep_diagram(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     sweep_request: Annotated[AlphaSweepRequest, Body(..., description="Sweep definitions and flight conditions")],
     db: Annotated[Session, Depends(get_db)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -244,7 +246,7 @@ async def analyze_airplane_alpha_sweep_diagram(
              tags=["analysis"],
              operation_id="analyze_parameter_sweep")
 async def analyze_airplane_simple_sweep(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     sweep_request: Annotated[SimpleSweepRequest, Body(..., description="Sweep definitions and flight conditions")],
     db: Annotated[Session, Depends(get_db)],
 ):
@@ -274,7 +276,7 @@ async def analyze_airplane_simple_sweep(
          tags=["analysis"],
          operation_id="get_aeroplane_three_view_url")
 async def get_aeroplane_three_view_url(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     db: Annotated[Session, Depends(get_db)],
     settings: Annotated[Settings, Depends(get_settings)],
     request: Request = None,
@@ -300,7 +302,7 @@ async def get_aeroplane_three_view_url(
              tags=["analysis"],
              operation_id="get_streamlines_three_view_url")
 async def get_streamlines_three_view_url(
-    aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
     operating_point: Annotated[OperatingPointSchema, Body(..., description="The operating point of the analysis")],
     db: Annotated[Session, Depends(get_db)],
     settings: Annotated[Settings, Depends(get_settings)],

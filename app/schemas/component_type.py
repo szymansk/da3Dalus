@@ -45,9 +45,8 @@ class PropertyDefinition(BaseModel):
 
     @model_validator(mode="after")
     def _check_type_specific_fields(self) -> "PropertyDefinition":
-        if self.type == "enum":
-            if not self.options or len(self.options) == 0:
-                raise ValueError("enum properties require a non-empty `options` list")
+        if self.type == "enum" and (not self.options or len(self.options) == 0):
+            raise ValueError("enum properties require a non-empty `options` list")
         if self.type != "number" and (self.min is not None or self.max is not None):
             # min/max are only meaningful for number; silently drop for others
             # instead of rejecting so the UI can keep them in state during

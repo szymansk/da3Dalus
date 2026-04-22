@@ -262,8 +262,7 @@ def validate_specs(
                     message=f"Property '{prop.name}' must be true or false.",
                     details={"property": prop.name, "type": "boolean", "value": value},
                 )
-        elif prop.type == "enum":
-            if prop.options and value not in prop.options:
+        elif prop.type == "enum" and prop.options and value not in prop.options:
                 raise ValidationError(
                     message=(
                         f"Property '{prop.name}' value '{value}' is not allowed. "

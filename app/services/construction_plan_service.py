@@ -26,6 +26,8 @@ from app.schemas.construction_plan import (
 
 logger = logging.getLogger(__name__)
 
+_ENTITY_CONSTRUCTION_PLAN = "Construction plan"
+
 
 # ── Helpers ─────────────────────────────────────────────────────
 
@@ -80,7 +82,7 @@ def _get_plan_or_raise(db: Session, plan_id: int) -> ConstructionPlanModel:
     """Load a plan by ID or raise NotFoundError."""
     plan = db.get(ConstructionPlanModel, plan_id)
     if plan is None:
-        raise NotFoundError(entity="Construction plan", resource_id=plan_id)
+        raise NotFoundError(entity=_ENTITY_CONSTRUCTION_PLAN, resource_id=plan_id)
     return plan
 
 
@@ -109,7 +111,7 @@ def get_plan(db: Session, plan_id: int) -> PlanRead:
     try:
         plan = db.get(ConstructionPlanModel, plan_id)
         if plan is None:
-            raise NotFoundError(entity="Construction plan", resource_id=plan_id)
+            raise NotFoundError(entity=_ENTITY_CONSTRUCTION_PLAN, resource_id=plan_id)
         return _to_read(plan)
     except NotFoundError:
         raise
@@ -143,7 +145,7 @@ def update_plan(db: Session, plan_id: int, data: PlanCreate) -> PlanRead:
     try:
         plan = db.get(ConstructionPlanModel, plan_id)
         if plan is None:
-            raise NotFoundError(entity="Construction plan", resource_id=plan_id)
+            raise NotFoundError(entity=_ENTITY_CONSTRUCTION_PLAN, resource_id=plan_id)
         plan.name = data.name
         plan.description = data.description
         plan.tree_json = data.tree_json
@@ -164,7 +166,7 @@ def delete_plan(db: Session, plan_id: int) -> None:
     try:
         plan = db.get(ConstructionPlanModel, plan_id)
         if plan is None:
-            raise NotFoundError(entity="Construction plan", resource_id=plan_id)
+            raise NotFoundError(entity=_ENTITY_CONSTRUCTION_PLAN, resource_id=plan_id)
         db.delete(plan)
         db.commit()
     except NotFoundError:
@@ -322,9 +324,8 @@ def _parse_docstring_returns(docstring: str) -> list[CreatorOutput]:
                 key=match.group(1),
                 description=match.group(2).strip(),
             ))
-        elif not stripped:
-            if outputs:
-                break  # Empty line after outputs ends section
+        elif not stripped and outputs:
+            break  # Empty line after outputs ends section
 
     return outputs
 

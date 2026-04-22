@@ -32,7 +32,7 @@ def _air_density(altitude_m: float) -> float:
 def _required_power_w(speed_ms: float, total_mass_kg: float, altitude_m: float) -> float:
     """Estimate power required for level flight at given speed."""
     rho = _air_density(altitude_m)
-    # Drag = 0.5 * rho * v^2 * Cd * S
+    # Parasitic drag: half rho v-squared Cd S
     drag_n = 0.5 * rho * speed_ms**2 * DRAG_COEFF_ESTIMATE * WING_AREA_ESTIMATE_M2
     # Add induced drag (simple)
     cl = (2 * total_mass_kg * 9.81) / (rho * speed_ms**2 * WING_AREA_ESTIMATE_M2)
