@@ -239,6 +239,32 @@ _INTERNAL_PARAMS = {
 }
 
 
+def _flush_attribute(
+    result: dict[str, str], name: str | None, desc: list[str],
+) -> None:
+    """Write accumulated attribute to *result* if *name* and *desc* exist."""
+    if name and desc:
+        result[name] = " ".join(desc).strip()
+
+
+def _is_section_header(stripped: str) -> bool:
+    """Detect the start of a new docstring section (e.g. ``Returns:``)."""
+    return (
+        bool(stripped)
+        and not stripped.startswith("_")
+        and stripped.endswith(":")
+        and "(" not in stripped
+    )
+
+
+def _parse_attribute_line(stripped: str) -> tuple[str, str] | None:
+    """Match ``name (type): desc`` and return *(name, desc_start)* or *None*."""
+    match = re.match(r"(\w+)\s*\([^)]*\)\s*:\s*(.*)", stripped)
+    if match:
+        return match.group(1), match.group(2)
+    return None
+
+
 def _parse_docstring_attributes(docstring: str) -> dict[str, str]:
     """Extract parameter descriptions from a docstring's Attributes section.
 
@@ -262,33 +288,27 @@ def _parse_docstring_attributes(docstring: str) -> dict[str, str]:
             continue
 
         # End of Attributes section on next section header
-        if stripped and not stripped.startswith("_") and stripped.endswith(":") and "(" not in stripped:
-            # Flush last param
-            if current_name and current_desc:
-                result[current_name] = " ".join(current_desc).strip()
+        if _is_section_header(stripped):
+            _flush_attribute(result, current_name, current_desc)
             break
 
         # New attribute line: "name (type): description"
-        match = re.match(r"(\w+)\s*\([^)]*\)\s*:\s*(.*)", stripped)
-        if match:
-            # Flush previous
-            if current_name and current_desc:
-                result[current_name] = " ".join(current_desc).strip()
-            current_name = match.group(1)
-            current_desc = [match.group(2)] if match.group(2) else []
+        parsed = _parse_attribute_line(stripped)
+        if parsed:
+            _flush_attribute(result, current_name, current_desc)
+            current_name, desc_start = parsed
+            current_desc = [desc_start] if desc_start else []
         elif current_name and stripped:
             # Continuation line
             current_desc.append(stripped)
         elif not stripped and current_name:
             # Empty line ends current param
-            if current_desc:
-                result[current_name] = " ".join(current_desc).strip()
+            _flush_attribute(result, current_name, current_desc)
             current_name = None
             current_desc = []
 
     # Flush final param
-    if current_name and current_desc:
-        result[current_name] = " ".join(current_desc).strip()
+    _flush_attribute(result, current_name, current_desc)
 
     return result
 
@@ -355,6 +375,17 @@ def _type_to_str(annotation: Any) -> str:
     return str(annotation).replace("typing.", "")
 
 
+def _find_literal_in_args(args: tuple) -> list[str] | None:
+    """Iterate over type *args*, skip NoneType, and return the first Literal values found."""
+    for arg in args:
+        if arg is type(None):
+            continue
+        vals = _extract_literal_values(arg)
+        if vals:
+            return vals
+    return None
+
+
 def _extract_literal_values(annotation: Any) -> list[str] | None:
     """Extract allowed values from Literal type annotations.
 
@@ -374,24 +405,16 @@ def _extract_literal_values(annotation: Any) -> list[str] | None:
 
     # Union / Optional — check each branch
     if origin is typing.Union:
-        for arg in annotation.__args__:
-            if arg is type(None):
-                continue
-            vals = _extract_literal_values(arg)
-            if vals:
-                return vals
+        return _find_literal_in_args(annotation.__args__)
 
     # Annotated — unwrap and recurse
     if hasattr(annotation, "__metadata__") and hasattr(annotation, "__origin__"):
         return _extract_literal_values(annotation.__origin__)
 
     # Nested args (e.g. Optional[Annotated[Literal[...], ...]])
-    for arg in getattr(annotation, "__args__", ()):
-        if arg is type(None):
-            continue
-        vals = _extract_literal_values(arg)
-        if vals:
-            return vals
+    args = getattr(annotation, "__args__", None)
+    if args:
+        return _find_literal_in_args(args)
 
     return None
 
@@ -577,32 +600,60 @@ def execute_plan(
     )
 
 
+def _numpy_to_list(obj: Any) -> Any:
+    """Recursively convert numpy arrays and scalars to plain Python types."""
+    try:
+        import numpy as np
+    except ImportError:
+        return obj
+
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    if isinstance(obj, dict):
+        return {k: _numpy_to_list(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_numpy_to_list(i) for i in obj]
+    if isinstance(obj, np.integer):
+        return int(obj)
+    if isinstance(obj, np.floating):
+        return float(obj)
+    return obj
+
+
+def _collect_shapes(structure: dict) -> tuple[list, list[str]]:
+    """Extract CadQuery Workplane objects and their keys from *structure*."""
+    shapes = []
+    names = []
+    for key, val in structure.items():
+        if hasattr(val, "val"):  # CadQuery Workplane
+            shapes.append(val)
+            names.append(key)
+    return shapes, names
+
+
+def _extract_solids(shapes: list) -> list:
+    """Safely extract solids from each shape, skipping failures."""
+    solids = []
+    for s in shapes:
+        try:
+            solids.extend(s.val().Solids())
+        except Exception:
+            pass
+    return solids
+
+
 def _tessellate_shapes(structure: dict) -> dict | None:
     """Tessellate CadQuery shapes for three-cad-viewer (best-effort)."""
     try:
         from ocp_tessellate.convert import to_ocpgroup, tessellate_group, combined_bb
-        import numpy as np
 
-        # Collect CadQuery Workplane objects from the structure
-        shapes = []
-        names = []
-        for key, val in structure.items():
-            if hasattr(val, "val"):  # CadQuery Workplane
-                shapes.append(val)
-                names.append(key)
-
+        shapes, _names = _collect_shapes(structure)
         if not shapes:
             return None
 
-        # Use the first shape for tessellation via compound
         from cadquery import Workplane, Compound
-        solids = []
-        for s in shapes:
-            try:
-                solids.extend(s.val().Solids())
-            except Exception:
-                pass
 
+        solids = _extract_solids(shapes)
         if not solids:
             return None
 
@@ -624,19 +675,6 @@ def _tessellate_shapes(structure: dict) -> dict | None:
         bb = combined_bb(tess_shapes)
         if bb is not None:
             tess_shapes["bb"] = bb.to_dict()
-
-        def _numpy_to_list(obj):
-            if isinstance(obj, np.ndarray):
-                return obj.tolist()
-            if isinstance(obj, dict):
-                return {k: _numpy_to_list(v) for k, v in obj.items()}
-            if isinstance(obj, (list, tuple)):
-                return [_numpy_to_list(i) for i in obj]
-            if isinstance(obj, np.integer):
-                return int(obj)
-            if isinstance(obj, np.floating):
-                return float(obj)
-            return obj
 
         return {
             "data": {
