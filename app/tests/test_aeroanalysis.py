@@ -343,5 +343,99 @@ class TestAeroanalysis(unittest.TestCase):
         self.assertIn("Aeroplane not found", str(ctx.exception.detail))
 
 
+class TestAnalysisServiceAwaitContract(unittest.TestCase):
+    """Service-level tests that verify sync helper functions are NOT awaited.
+
+    These tests call the async service functions directly (not the endpoint
+    layer) with MagicMock (not AsyncMock) for the sync dependencies. If a
+    sync function is incorrectly awaited, asyncio will raise TypeError.
+    """
+
+    def setUp(self):
+        self.test_plane_id = uuid.uuid4()
+        self.mock_db = MagicMock()
+        self.mock_plane_schema = MagicMock()
+        self.mock_plane_schema.name = "TestPlane"
+        self.mock_plane_schema.wings = {}
+        self.test_operating_point = OperatingPointSchema.model_construct(
+            velocity=10.0, alpha=5.0, beta=0.0,
+            p=0.0, q=0.0, r=0.0, xyz_ref=[0.0, 0.0, 0.0],
+        )
+
+    def _make_mock_result(self):
+        """Build a mock analysis result with the minimum attributes."""
+        result = MagicMock()
+        result.flight_condition.alpha = [0.0, 2.0, 4.0]
+        result.coefficients.CL = [0.0, 0.2, 0.4]
+        result.coefficients.CD = [0.01, 0.02, 0.04]
+        result.coefficients.Cm = [-0.05, -0.03, -0.01]
+        result.reference.Xnp = None
+        result.reference.Xnp_lat = None
+        result.forces.L = None
+        result.forces.D = None
+        return result
+
+    def test_analyze_alpha_sweep_does_not_await_sync_functions(self):
+        """analyse_aerodynamics is sync — awaiting it raises TypeError."""
+        from app.services.analysis_service import analyze_alpha_sweep
+
+        mock_result = self._make_mock_result()
+        sweep_request = AlphaSweepRequest.model_construct(
+            altitude=1000.0, velocity=30.0,
+            alpha_start=-5, alpha_end=15, alpha_num=3,
+            beta=0.0, p=0.0, q=0.0, r=0.0, xyz_ref=[0, 0, 0],
+        )
+
+        with (
+            patch(
+                "app.services.analysis_service.get_aeroplane_schema_or_raise",
+                return_value=self.mock_plane_schema,
+            ),
+            patch(
+                "app.services.analysis_service.aeroplane_schema_to_asb_airplane_async",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "app.services.analysis_service.analyse_aerodynamics",
+                return_value=(mock_result, None),
+            ),
+        ):
+            result = asyncio.run(
+                analyze_alpha_sweep(self.mock_db, self.test_plane_id, sweep_request)
+            )
+
+        self.assertIn("analysis", result)
+        self.assertIn("characteristic_points", result)
+
+    def test_analyze_airplane_does_not_await_sync_functions(self):
+        """analyse_aerodynamics is sync — awaiting it raises TypeError."""
+        from app.services.analysis_service import analyze_airplane
+
+        mock_result = MagicMock()
+
+        with (
+            patch(
+                "app.services.analysis_service.get_aeroplane_schema_or_raise",
+                return_value=self.mock_plane_schema,
+            ),
+            patch(
+                "app.services.analysis_service.aeroplane_schema_to_asb_airplane_async",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "app.services.analysis_service.analyse_aerodynamics",
+                return_value=(mock_result, None),
+            ),
+        ):
+            result = asyncio.run(
+                analyze_airplane(
+                    self.mock_db, self.test_plane_id,
+                    self.test_operating_point, AnalysisToolUrlType.AEROBUILDUP,
+                )
+            )
+
+        self.assertEqual(result, mock_result)
+
+
 if __name__ == "__main__":
     unittest.main()

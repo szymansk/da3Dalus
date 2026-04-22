@@ -307,7 +307,7 @@ async def analyze_wing(
         asb_airplane.wings = [w for w in asb_airplane.wings if w.name == wing_name]
         asb_airplane.fuselages = []
 
-        result, _ = await analyse_aerodynamics(analysis_tool, operating_point, asb_airplane)
+        result, _ = analyse_aerodynamics(analysis_tool, operating_point, asb_airplane)
         return result
     except Exception as e:
         logger.error(f"Error analyzing wing: {e}")
@@ -333,7 +333,7 @@ async def analyze_airplane(
         asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
             plane_schema=plane_schema
         )
-        result, _ = await analyse_aerodynamics(analysis_tool, operating_point, asb_airplane)
+        result, _ = analyse_aerodynamics(analysis_tool, operating_point, asb_airplane)
         return result
     except Exception as e:
         logger.error(f"Error analyzing airplane: {e}")
@@ -362,7 +362,7 @@ async def calculate_streamlines_json(
         asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
             plane_schema=plane_schema
         )
-        _, figure = await analyse_aerodynamics(
+        _, figure = analyse_aerodynamics(
             AnalysisToolUrlType.VORTEX_LATTICE,
             operating_point,
             asb_airplane,
@@ -404,7 +404,7 @@ async def analyze_alpha_sweep(db: Session, aeroplane_uuid, sweep_request: AlphaS
             xyz_ref=sweep_request.xyz_ref,
         )
 
-        result, _ = await analyse_aerodynamics(
+        result, _ = analyse_aerodynamics(
             AnalysisToolUrlType.AEROBUILDUP, operating_point, asb_airplane
         )
         alpha_array, cl_values, cd_values, cm_values = _extract_alpha_sweep_arrays(
@@ -1276,7 +1276,7 @@ async def analyze_simple_sweep(
                 },
             )
 
-        result, _ = await analyse_aerodynamics(
+        result, _ = analyse_aerodynamics(
             AnalysisToolUrlType.AEROBUILDUP, operating_point, asb_airplane
         )
         return result
@@ -1305,7 +1305,7 @@ async def get_streamlines_three_view_image(
             plane_schema=plane_schema
         )
 
-        _, figure = await analyse_aerodynamics(
+        _, figure = analyse_aerodynamics(
             AnalysisToolUrlType.VORTEX_LATTICE,
             operating_point,
             asb_airplane,
@@ -1313,7 +1313,7 @@ async def get_streamlines_three_view_image(
             backend="plotly",
         )
 
-        fig = await compile_four_view_figure(figure)
+        fig = compile_four_view_figure(figure)
         img_bytes = fig.to_image(format="png", width=1000, height=1000, scale=2)
         return img_bytes
     except Exception as e:
