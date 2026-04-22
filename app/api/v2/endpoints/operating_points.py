@@ -52,15 +52,16 @@ def _resolve_aircraft_pk(db: Session, aircraft_uuid: UUID4) -> Optional[int]:
 )
 async def generate_default_operating_point_set(
     aeroplane_id: Annotated[UUID4, Path(..., description="Aeroplane UUID")],
-    request: Annotated[GenerateOperatingPointSetRequest, Body()],
     db: Annotated[Session, Depends(get_db)],
+    request: Annotated[GenerateOperatingPointSetRequest, Body()] = None,
 ) -> GeneratedOperatingPointSetRead:
     try:
+        req = request or GenerateOperatingPointSetRequest()
         return await operating_point_generator_service.generate_default_set_for_aircraft(
             db=db,
             aircraft_uuid=aeroplane_id,
-            replace_existing=request.replace_existing,
-            profile_id_override=request.profile_id_override,
+            replace_existing=req.replace_existing,
+            profile_id_override=req.profile_id_override,
         )
     except ServiceException as exc:
         _raise_http_from_domain(exc)

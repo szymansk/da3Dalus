@@ -166,8 +166,8 @@ async def get_aeroplane_total_mass_in_kg(
 async def create_aeroplane_total_mass_kg(
         aeroplane_id: Annotated[AeroPlaneID, Path(..., description="The ID of the aeroplane")],
         total_mass_kg: Annotated[AeroplaneMassRequest, Body(..., description="The total mass of the aeroplane in kg")],
+        db: Annotated[Session, Depends(get_db)],
         response: Response = None,
-        db: Annotated[Session, Depends(get_db)] = None,
 ) -> OperationStatusResponse:
     """Set the total mass of the aeroplane in kg. If it already exists, it will be overwritten."""
     try:

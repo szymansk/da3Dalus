@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from typing import Annotated, List
 
-from fastapi import APIRouter, Body, Depends, Path
+from fastapi import APIRouter, Body, Depends, Path, Query
 from fastapi import status
 from sqlalchemy.orm import Session
 
@@ -68,7 +68,7 @@ async def list_creators() -> List[CreatorInfo]:
 )
 async def list_plans(
     db: Annotated[Session, Depends(get_db)],
-    plan_type: str | None = None,
+    plan_type: Annotated[str | None, Query(description="Filter by plan type")] = None,
 ) -> List[PlanSummary]:
     """List all construction plans, optionally filtered by plan_type."""
     try:
