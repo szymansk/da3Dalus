@@ -20,12 +20,12 @@ export default function AnalysisPage() {
   const [configOpen, setConfigOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("Polar");
 
-  const modalTitle =
-    activeTab === "Polar"
-      ? "Polar Configuration"
-      : activeTab === "Trefftz Plane"
-        ? "Trefftz Plane Configuration"
-        : "Streamlines Configuration";
+  const modalTitleByTab: Record<Tab, string> = {
+    "Polar": "Polar Configuration",
+    "Trefftz Plane": "Trefftz Plane Configuration",
+    "Streamlines": "Streamlines Configuration",
+  };
+  const modalTitle = modalTitleByTab[activeTab];
 
   return (
     <>
