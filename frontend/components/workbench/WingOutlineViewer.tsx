@@ -139,25 +139,34 @@ const COLOR_QC = "#30A46C";
 const COLOR_SPANWISE = "#FF840060";
 const COLOR_SELECTED = "#E5484D";    // selected xsec/segment: red
 const COLOR_TED = "#30A46C";
+const COLOR_SPAR = "#6E56CF";        // purple
 
-async function buildAllWingTraces(
-  wing: Wing,
-  selectedIdx: number | null,
-  showQC = false,
-): Promise<PlotlyData[]> {
-  const traces: PlotlyData[] = [];
-  const xsecs = wing.x_secs;
-  if (xsecs.length < 2) return traces;
+/** Shorthand for a scatter3d trace. */
+function scatter3d(
+  x: number[], y: number[], z: number[],
+  color: string, width: number, dash?: string,
+): PlotlyData {
+  return {
+    type: "scatter3d",
+    mode: "lines",
+    x, y, z,
+    line: { color, width, ...(dash ? { dash } : {}) },
+    showlegend: false,
+    hoverinfo: "skip",
+  };
+}
 
-  // Fetch all airfoil coordinates
-  const airfoils: (AirfoilCoords | null)[] = [];
-  for (const xs of xsecs) {
-    airfoils.push(await fetchAirfoilCoords(xs.airfoil));
-  }
+// ── Wing trace context shared across sub-builders ────────────────
 
-  const nInterp = 3; // interpolated profiles between stations
+interface WingTraceCtx {
+  xsecs: XSec[];
+  airfoils: (AirfoilCoords | null)[];
+  dihedrals: number[];
+  selectedIdx: number | null;
+}
 
-  // Compute dihedral angle at each station from span direction (YZ plane)
+/** Compute dihedral angle at each station from span direction (YZ plane). */
+function computeDihedrals(xsecs: XSec[]): number[] {
   const dihedrals: number[] = [];
   for (let i = 0; i < xsecs.length; i++) {
     let dy: number, dz: number;
@@ -170,8 +179,14 @@ async function buildAllWingTraces(
     }
     dihedrals.push(Math.atan2(dz, dy));
   }
+  return dihedrals;
+}
 
-  // ── Per-station: airfoil contour + camber line ──
+/** Per-station airfoil contour + camber line traces. */
+function buildStationAirfoilTraces(ctx: WingTraceCtx): PlotlyData[] {
+  const traces: PlotlyData[] = [];
+  const { xsecs, airfoils, dihedrals, selectedIdx } = ctx;
+
   for (let i = 0; i < xsecs.length; i++) {
     const xs = xsecs[i];
     const af = airfoils[i];
@@ -189,13 +204,20 @@ async function buildAllWingTraces(
     }
   }
 
-  // ── Interpolated airfoils between stations ──
+  return traces;
+}
+
+/** Interpolated airfoil profiles between adjacent stations. */
+function buildInterpolatedAirfoilTraces(ctx: WingTraceCtx): PlotlyData[] {
+  const traces: PlotlyData[] = [];
+  const { xsecs, airfoils, dihedrals, selectedIdx } = ctx;
+  const nInterp = 3;
+
   for (let i = 0; i < xsecs.length - 1; i++) {
     const afA = airfoils[i];
     const afB = airfoils[i + 1];
     if (!afA || !afB) continue;
 
-    // If selectedIdx is one of the two bounding stations, highlight interpolated too
     const segSelected = selectedIdx === i;
 
     for (let k = 1; k <= nInterp; k++) {
@@ -208,43 +230,55 @@ async function buildAllWingTraces(
     }
   }
 
-  // ── Spanwise lines: quarter chord (camber-to-camber), upper, lower ──
-  if (showQC) {
-    const qcX: number[] = [], qcY: number[] = [], qcZ: number[] = [];
-    const upperQcX: number[] = [], upperQcY: number[] = [], upperQcZ: number[] = [];
-    const lowerQcX: number[] = [], lowerQcY: number[] = [], lowerQcZ: number[] = [];
+  return traces;
+}
 
-    for (let i = 0; i < xsecs.length; i++) {
-      const xs = xsecs[i];
-      const af = airfoils[i];
-      const qcFrac = 0.25;
+/** Spanwise quarter-chord, upper, and lower reference lines. */
+function buildQuarterChordTraces(ctx: WingTraceCtx): PlotlyData[] {
+  const traces: PlotlyData[] = [];
+  const { xsecs, airfoils, dihedrals } = ctx;
 
-      if (af) {
-        const camberY = lerpLookup(af.camber_x, af.camber_y, qcFrac);
-        const qc = transformProfile([qcFrac], [camberY], xs.chord, xs.twist, xs.xyz_le, dihedrals[i]);
-        qcX.push(qc.x[0]); qcY.push(qc.y[0]); qcZ.push(qc.z[0]);
+  const qcX: number[] = [], qcY: number[] = [], qcZ: number[] = [];
+  const upperQcX: number[] = [], upperQcY: number[] = [], upperQcZ: number[] = [];
+  const lowerQcX: number[] = [], lowerQcY: number[] = [], lowerQcZ: number[] = [];
 
-        const upperY = lerpLookup(af.upper_x, af.upper_y, qcFrac);
-        const up = transformProfile([qcFrac], [upperY], xs.chord, xs.twist, xs.xyz_le, dihedrals[i]);
-        upperQcX.push(up.x[0]); upperQcY.push(up.y[0]); upperQcZ.push(up.z[0]);
+  for (let i = 0; i < xsecs.length; i++) {
+    const xs = xsecs[i];
+    const af = airfoils[i];
+    const qcFrac = 0.25;
 
-        const lowerY = lerpLookup(af.lower_x, af.lower_y, qcFrac);
-        const lo = transformProfile([qcFrac], [lowerY], xs.chord, xs.twist, xs.xyz_le, dihedrals[i]);
-        lowerQcX.push(lo.x[0]); lowerQcY.push(lo.y[0]); lowerQcZ.push(lo.z[0]);
-      } else {
-        const qcPt = transformProfile([qcFrac], [0], xs.chord, xs.twist, xs.xyz_le, dihedrals[i]);
-        qcX.push(qcPt.x[0]); qcY.push(qcPt.y[0]); qcZ.push(qcPt.z[0]);
-        upperQcX.push(qcPt.x[0]); upperQcY.push(qcPt.y[0]); upperQcZ.push(qcPt.z[0]);
-        lowerQcX.push(qcPt.x[0]); lowerQcY.push(qcPt.y[0]); lowerQcZ.push(qcPt.z[0]);
-      }
+    if (af) {
+      const camberY = lerpLookup(af.camber_x, af.camber_y, qcFrac);
+      const qc = transformProfile([qcFrac], [camberY], xs.chord, xs.twist, xs.xyz_le, dihedrals[i]);
+      qcX.push(qc.x[0]); qcY.push(qc.y[0]); qcZ.push(qc.z[0]);
+
+      const upperY = lerpLookup(af.upper_x, af.upper_y, qcFrac);
+      const up = transformProfile([qcFrac], [upperY], xs.chord, xs.twist, xs.xyz_le, dihedrals[i]);
+      upperQcX.push(up.x[0]); upperQcY.push(up.y[0]); upperQcZ.push(up.z[0]);
+
+      const lowerY = lerpLookup(af.lower_x, af.lower_y, qcFrac);
+      const lo = transformProfile([qcFrac], [lowerY], xs.chord, xs.twist, xs.xyz_le, dihedrals[i]);
+      lowerQcX.push(lo.x[0]); lowerQcY.push(lo.y[0]); lowerQcZ.push(lo.z[0]);
+    } else {
+      const qcPt = transformProfile([qcFrac], [0], xs.chord, xs.twist, xs.xyz_le, dihedrals[i]);
+      qcX.push(qcPt.x[0]); qcY.push(qcPt.y[0]); qcZ.push(qcPt.z[0]);
+      upperQcX.push(qcPt.x[0]); upperQcY.push(qcPt.y[0]); upperQcZ.push(qcPt.z[0]);
+      lowerQcX.push(qcPt.x[0]); lowerQcY.push(qcPt.y[0]); lowerQcZ.push(qcPt.z[0]);
     }
-
-    traces.push(scatter3d(qcX, qcY, qcZ, COLOR_QC, 2.5));
-    traces.push(scatter3d(upperQcX, upperQcY, upperQcZ, COLOR_SPANWISE, 1.5));
-    traces.push(scatter3d(lowerQcX, lowerQcY, lowerQcZ, COLOR_SPANWISE, 1.5));
   }
 
-  // ── Leading + trailing edge lines (per segment for highlighting) ──
+  traces.push(scatter3d(qcX, qcY, qcZ, COLOR_QC, 2.5));
+  traces.push(scatter3d(upperQcX, upperQcY, upperQcZ, COLOR_SPANWISE, 1.5));
+  traces.push(scatter3d(lowerQcX, lowerQcY, lowerQcZ, COLOR_SPANWISE, 1.5));
+
+  return traces;
+}
+
+/** Leading and trailing edge lines per segment. */
+function buildEdgeTraces(ctx: WingTraceCtx): PlotlyData[] {
+  const traces: PlotlyData[] = [];
+  const { xsecs, dihedrals, selectedIdx } = ctx;
+
   for (let i = 0; i < xsecs.length - 1; i++) {
     const segSelected = selectedIdx === i;
     const color = segSelected ? COLOR_SELECTED : COLOR_AIRFOIL;
@@ -269,7 +303,14 @@ async function buildAllWingTraces(
     ));
   }
 
-  // ── TED outlines ──
+  return traces;
+}
+
+/** Trailing edge device (TED) outlines. */
+function buildTEDTraces(ctx: WingTraceCtx): PlotlyData[] {
+  const traces: PlotlyData[] = [];
+  const { xsecs, dihedrals } = ctx;
+
   for (let i = 0; i < xsecs.length; i++) {
     const ted = xsecs[i].trailing_edge_device ?? xsecs[i].control_surface;
     if (!ted) continue;
@@ -298,87 +339,186 @@ async function buildAllWingTraces(
     ));
   }
 
-  // ── Spar lines ──
-  const COLOR_SPAR = "#6E56CF"; // purple
-  const nCirclePts = 16;
+  return traces;
+}
 
-  /** Draw a spar cross-section (circle or rectangle) at a 3D center point. */
-  function drawSparCrossSection(
-    center: { x: number[]; y: number[]; z: number[] },
-    sparW: number, sparH: number, twist: number, color: string,
-  ) {
-    if (sparW <= 0 || sparH <= 0) return;
-    const cx: number[] = [], cy: number[] = [], cz: number[] = [];
-    const isCircle = Math.abs(sparW - sparH) < 0.0001;
-    if (isCircle) {
-      const r = sparW / 2;
-      for (let j = 0; j <= nCirclePts; j++) {
-        const theta = (2 * Math.PI * j) / nCirclePts;
-        cx.push(center.x[0] + r * Math.cos(theta) * Math.cos(twist * Math.PI / 180));
-        cy.push(center.y[0]);
-        cz.push(center.z[0] + r * Math.sin(theta));
-      }
-    } else {
-      const hw = sparW / 2, hh = sparH / 2;
-      const twistRad = (twist ?? 0) * Math.PI / 180;
-      const cosT = Math.cos(twistRad);
-      const corners = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh], [-hw, -hh]];
-      for (const [dx, dz] of corners) {
-        cx.push(center.x[0] + dx * cosT);
-        cy.push(center.y[0]);
-        cz.push(center.z[0] + dz);
-      }
+// ── Spar helpers ─────────────────────────────────────────────────
+
+const N_CIRCLE_PTS = 16;
+
+/** Draw a spar cross-section (circle or rectangle) at a 3D center point. */
+function buildSparCrossSection(
+  center: { x: number[]; y: number[]; z: number[] },
+  sparW: number, sparH: number, twist: number, color: string,
+): PlotlyData | null {
+  if (sparW <= 0 || sparH <= 0) return null;
+  const cx: number[] = [], cy: number[] = [], cz: number[] = [];
+  const isCircle = Math.abs(sparW - sparH) < 0.0001;
+  if (isCircle) {
+    const r = sparW / 2;
+    for (let j = 0; j <= N_CIRCLE_PTS; j++) {
+      const theta = (2 * Math.PI * j) / N_CIRCLE_PTS;
+      cx.push(center.x[0] + r * Math.cos(theta) * Math.cos(twist * Math.PI / 180));
+      cy.push(center.y[0]);
+      cz.push(center.z[0] + r * Math.sin(theta));
     }
-    traces.push(scatter3d(cx, cy, cz, color, 1.5));
+  } else {
+    const hw = sparW / 2, hh = sparH / 2;
+    const twistRad = (twist ?? 0) * Math.PI / 180;
+    const cosT = Math.cos(twistRad);
+    const corners = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh], [-hw, -hh]];
+    for (const [dx, dz] of corners) {
+      cx.push(center.x[0] + dx * cosT);
+      cy.push(center.y[0]);
+      cz.push(center.z[0] + dz);
+    }
+  }
+  return scatter3d(cx, cy, cz, color, 1.5);
+}
+
+/** Interpolate xsec properties at spanwise fraction t (0=root, 1=tip). */
+function lerpXSec(
+  xsecs: XSec[], dihedrals: number[],
+  rootIdx: number, tipIdx: number, t: number,
+): { chord: number; twist: number; xyz_le: number[]; dihedral: number } {
+  const r = xsecs[rootIdx], tip = xsecs[tipIdx];
+  return {
+    chord: r.chord * (1 - t) + tip.chord * t,
+    twist: r.twist * (1 - t) + tip.twist * t,
+    xyz_le: r.xyz_le.map((v, k) => v * (1 - t) + tip.xyz_le[k] * t),
+    dihedral: dihedrals[rootIdx] * (1 - t) + dihedrals[tipIdx] * t,
+  };
+}
+
+/** Interpolate airfoil coordinates at spanwise fraction t. */
+function lerpAf(
+  airfoils: (AirfoilCoords | null)[],
+  rootIdx: number, tipIdx: number, t: number,
+): AirfoilCoords | null {
+  const afA = airfoils[rootIdx], afB = airfoils[tipIdx];
+  if (!afA && !afB) return null;
+  if (!afA) return afB;
+  if (!afB) return afA;
+  const nPts = 60;
+  const interpSurface = (
+    axArr: number[], ayArr: number[], bxArr: number[], byArr: number[],
+  ) => {
+    const xs: number[] = [], ys: number[] = [];
+    for (let j = 0; j <= nPts; j++) {
+      const xNorm = j / nPts;
+      xs.push(xNorm);
+      ys.push(lerpLookup(axArr, ayArr, xNorm) * (1 - t) + lerpLookup(bxArr, byArr, xNorm) * t);
+    }
+    return { x: xs, y: ys };
+  };
+  const upper = interpSurface(afA.upper_x, afA.upper_y, afB.upper_x, afB.upper_y);
+  const lower = interpSurface(afA.lower_x, afA.lower_y, afB.lower_x, afB.lower_y);
+  const camber = interpSurface(afA.camber_x, afA.camber_y, afB.camber_x, afB.camber_y);
+  return {
+    x: upper.x, y: upper.y,
+    upper_x: upper.x, upper_y: upper.y,
+    lower_x: lower.x, lower_y: lower.y,
+    camber_x: camber.x, camber_y: camber.y,
+  };
+}
+
+/** Build vertical spar line at a station (upper to lower surface). */
+function buildSparVerticalLine(
+  af: AirfoilCoords | null, posFactor: number,
+  station: { chord: number; twist: number; xyz_le: number[]; dihedral: number },
+  color: string,
+): PlotlyData {
+  if (af) {
+    const upperY = lerpLookup(af.upper_x, af.upper_y, posFactor);
+    const lowerY = lerpLookup(af.lower_x, af.lower_y, posFactor);
+    const top = transformProfile([posFactor], [upperY], station.chord, station.twist, station.xyz_le, station.dihedral);
+    const bot = transformProfile([posFactor], [lowerY], station.chord, station.twist, station.xyz_le, station.dihedral);
+    return scatter3d(
+      [top.x[0], bot.x[0]], [top.y[0], bot.y[0]], [top.z[0], bot.z[0]],
+      color, 2,
+    );
+  }
+  const ptUp = transformProfile([posFactor], [0.05], station.chord, station.twist, station.xyz_le, station.dihedral);
+  const ptDn = transformProfile([posFactor], [-0.05], station.chord, station.twist, station.xyz_le, station.dihedral);
+  return scatter3d(
+    [ptUp.x[0], ptDn.x[0]], [ptUp.y[0], ptDn.y[0]], [ptUp.z[0], ptDn.z[0]],
+    color, 2,
+  );
+}
+
+/** Build spanwise connection lines (upper + lower surface) for a spar. */
+function buildSparSpanwiseLines(
+  startAf: AirfoilCoords, endAf: AirfoilCoords, posFactor: number,
+  startStation: { chord: number; twist: number; xyz_le: number[]; dihedral: number },
+  endStation: { chord: number; twist: number; xyz_le: number[]; dihedral: number },
+  color: string,
+): PlotlyData[] {
+  const traces: PlotlyData[] = [];
+
+  const upperY1 = lerpLookup(startAf.upper_x, startAf.upper_y, posFactor);
+  const upperY2 = lerpLookup(endAf.upper_x, endAf.upper_y, posFactor);
+  const up1 = transformProfile([posFactor], [upperY1], startStation.chord, startStation.twist, startStation.xyz_le, startStation.dihedral);
+  const up2 = transformProfile([posFactor], [upperY2], endStation.chord, endStation.twist, endStation.xyz_le, endStation.dihedral);
+  traces.push(scatter3d(
+    [up1.x[0], up2.x[0]], [up1.y[0], up2.y[0]], [up1.z[0], up2.z[0]],
+    color, 1.5,
+  ));
+
+  const lowerY1 = lerpLookup(startAf.lower_x, startAf.lower_y, posFactor);
+  const lowerY2 = lerpLookup(endAf.lower_x, endAf.lower_y, posFactor);
+  const lo1 = transformProfile([posFactor], [lowerY1], startStation.chord, startStation.twist, startStation.xyz_le, startStation.dihedral);
+  const lo2 = transformProfile([posFactor], [lowerY2], endStation.chord, endStation.twist, endStation.xyz_le, endStation.dihedral);
+  traces.push(scatter3d(
+    [lo1.x[0], lo2.x[0]], [lo1.y[0], lo2.y[0]], [lo1.z[0], lo2.z[0]],
+    color, 1.5,
+  ));
+
+  return traces;
+}
+
+/** Build dashed edge lines along spar corners/extremes. */
+function buildSparEdgeLines(
+  startCenter: { x: number[]; y: number[]; z: number[] },
+  endCenter: { x: number[]; y: number[]; z: number[] },
+  sparW: number, sparH: number,
+  startTwist: number, endTwist: number,
+  color: string,
+): PlotlyData[] {
+  const traces: PlotlyData[] = [];
+  const isCircle = Math.abs(sparW - sparH) < 0.0001;
+  const edgeOffsets: [number, number][] = isCircle
+    ? [[0, sparW / 2], [0, -sparW / 2], [sparW / 2, 0], [-sparW / 2, 0]]
+    : [[sparW / 2, sparH / 2], [-sparW / 2, sparH / 2], [-sparW / 2, -sparH / 2], [sparW / 2, -sparH / 2]];
+
+  for (const [dChord, dVert] of edgeOffsets) {
+    const tw1 = (startTwist ?? 0) * Math.PI / 180;
+    const tw2 = (endTwist ?? 0) * Math.PI / 180;
+    const e1x = startCenter.x[0] + dChord * Math.cos(tw1);
+    const e1y = startCenter.y[0];
+    const e1z = startCenter.z[0] + dVert;
+    const e2x = endCenter.x[0] + dChord * Math.cos(tw2);
+    const e2y = endCenter.y[0];
+    const e2z = endCenter.z[0] + dVert;
+    traces.push(scatter3d(
+      [e1x, e2x], [e1y, e2y], [e1z, e2z],
+      color, 1, "dash",
+    ));
   }
 
-  /** Interpolate xsec properties at spanwise fraction t (0=root, 1=tip). */
-  function lerpXSec(rootIdx: number, tipIdx: number, t: number) {
-    const r = xsecs[rootIdx], tip = xsecs[tipIdx];
-    return {
-      chord: r.chord * (1 - t) + tip.chord * t,
-      twist: r.twist * (1 - t) + tip.twist * t,
-      xyz_le: r.xyz_le.map((v, k) => v * (1 - t) + tip.xyz_le[k] * t),
-      dihedral: dihedrals[rootIdx] * (1 - t) + dihedrals[tipIdx] * t,
-    };
-  }
+  return traces;
+}
 
-  /** Interpolate airfoil coordinates at spanwise fraction t. */
-  function lerpAf(rootIdx: number, tipIdx: number, t: number): AirfoilCoords | null {
-    const afA = airfoils[rootIdx], afB = airfoils[tipIdx];
-    if (!afA && !afB) return null;
-    if (!afA) return afB;
-    if (!afB) return afA;
-    const nPts = 60;
-    const interpSurface = (
-      axArr: number[], ayArr: number[], bxArr: number[], byArr: number[],
-    ) => {
-      const xs: number[] = [], ys: number[] = [];
-      for (let j = 0; j <= nPts; j++) {
-        const xNorm = j / nPts;
-        xs.push(xNorm);
-        ys.push(lerpLookup(axArr, ayArr, xNorm) * (1 - t) + lerpLookup(bxArr, byArr, xNorm) * t);
-      }
-      return { x: xs, y: ys };
-    };
-    const upper = interpSurface(afA.upper_x, afA.upper_y, afB.upper_x, afB.upper_y);
-    const lower = interpSurface(afA.lower_x, afA.lower_y, afB.lower_x, afB.lower_y);
-    const camber = interpSurface(afA.camber_x, afA.camber_y, afB.camber_x, afB.camber_y);
-    return {
-      x: upper.x, y: upper.y, // required by AirfoilCoords interface
-      upper_x: upper.x, upper_y: upper.y,
-      lower_x: lower.x, lower_y: lower.y,
-      camber_x: camber.x, camber_y: camber.y,
-    };
-  }
+/** All spar traces for the wing. */
+function buildSparTraces(ctx: WingTraceCtx): PlotlyData[] {
+  const traces: PlotlyData[] = [];
+  const { xsecs, airfoils, dihedrals, selectedIdx } = ctx;
 
   for (let i = 0; i < xsecs.length; i++) {
     const spars = xsecs[i].spare_list as Array<Record<string, unknown>> | undefined;
     if (!spars || spars.length === 0) continue;
-    if (i >= xsecs.length - 1) continue; // terminal xsec has no outgoing segment
+    if (i >= xsecs.length - 1) continue;
     const sparColor = selectedIdx === i ? COLOR_SELECTED : COLOR_SPAR;
 
-    // Segment span length in meters (euclidean distance between LE points)
     const dx = xsecs[i + 1].xyz_le[0] - xsecs[i].xyz_le[0];
     const dy = xsecs[i + 1].xyz_le[1] - xsecs[i].xyz_le[1];
     const dz = xsecs[i + 1].xyz_le[2] - xsecs[i].xyz_le[2];
@@ -387,7 +527,7 @@ async function buildAllWingTraces(
     for (const spar of spars) {
       const posFactor = spar.spare_position_factor as number | undefined;
       if (posFactor == null) continue;
-      const sparW = (spar.spare_support_dimension_width as number ?? 0) * 0.001; // mm → m
+      const sparW = (spar.spare_support_dimension_width as number ?? 0) * 0.001;
       const sparH = (spar.spare_support_dimension_height as number ?? 0) * 0.001;
       const sparStartMm = spar.spare_start as number ?? 0;
       const sparLengthMm = spar.spare_length as number | undefined;
@@ -397,15 +537,12 @@ async function buildAllWingTraces(
         ? Math.min((sparStartMm + sparLengthMm) * 0.001 / segmentSpan, 1)
         : 1;
 
-      // Interpolated station at spar start
-      const startStation = lerpXSec(i, i + 1, tStart);
-      const startAf = lerpAf(i, i + 1, tStart);
-      // Interpolated station at spar end
-      const endStation = lerpXSec(i, i + 1, tEnd);
-      const endAf = lerpAf(i, i + 1, tEnd);
+      const startStation = lerpXSec(xsecs, dihedrals, i, i + 1, tStart);
+      const startAf = lerpAf(airfoils, i, i + 1, tStart);
+      const endStation = lerpXSec(xsecs, dihedrals, i, i + 1, tEnd);
+      const endAf = lerpAf(airfoils, i, i + 1, tEnd);
 
-      // -- Compute spar center points --
-      // Prefer precise spare_origin + spare_vector if available, else fall back to camber line
+      // Compute spar center points
       const sparOrigin = spar.spare_origin as number[] | null | undefined;
       const sparVector = spar.spare_vector as number[] | null | undefined;
       const hasPrecise = sparOrigin && sparVector && sparOrigin.length === 3 && sparVector.length === 3;
@@ -427,7 +564,6 @@ async function buildAllWingTraces(
           z: [sparOrigin[2] + sparVector[2] * endDist],
         };
       } else {
-        // Camber-line fallback
         if (startAf) {
           const camberY = lerpLookup(startAf.camber_x, startAf.camber_y, posFactor);
           startCenter = transformProfile([posFactor], [camberY], startStation.chord, startStation.twist, startStation.xyz_le, startStation.dihedral);
@@ -438,106 +574,72 @@ async function buildAllWingTraces(
         }
       }
 
-      // -- Vertical spar line at start --
-      if (startAf) {
-        const upperY = lerpLookup(startAf.upper_x, startAf.upper_y, posFactor);
-        const lowerY = lerpLookup(startAf.lower_x, startAf.lower_y, posFactor);
-        const top = transformProfile([posFactor], [upperY], startStation.chord, startStation.twist, startStation.xyz_le, startStation.dihedral);
-        const bot = transformProfile([posFactor], [lowerY], startStation.chord, startStation.twist, startStation.xyz_le, startStation.dihedral);
-        traces.push(scatter3d(
-          [top.x[0], bot.x[0]], [top.y[0], bot.y[0]], [top.z[0], bot.z[0]],
-          sparColor, 2,
-        ));
-      } else {
-        const ptUp = transformProfile([posFactor], [0.05], startStation.chord, startStation.twist, startStation.xyz_le, startStation.dihedral);
-        const ptDn = transformProfile([posFactor], [-0.05], startStation.chord, startStation.twist, startStation.xyz_le, startStation.dihedral);
-        traces.push(scatter3d(
-          [ptUp.x[0], ptDn.x[0]], [ptUp.y[0], ptDn.y[0]], [ptUp.z[0], ptDn.z[0]],
-          sparColor, 2,
-        ));
-      }
-      // Cross-section at start
+      // Vertical spar lines + cross-sections
+      traces.push(buildSparVerticalLine(startAf, posFactor, startStation, sparColor));
       if (startCenter) {
-        drawSparCrossSection(startCenter, sparW, sparH, startStation.twist, sparColor);
+        const cs = buildSparCrossSection(startCenter, sparW, sparH, startStation.twist, sparColor);
+        if (cs) traces.push(cs);
       }
 
-      // -- Vertical spar line at end --
-      if (endAf) {
-        const upperY = lerpLookup(endAf.upper_x, endAf.upper_y, posFactor);
-        const lowerY = lerpLookup(endAf.lower_x, endAf.lower_y, posFactor);
-        const top = transformProfile([posFactor], [upperY], endStation.chord, endStation.twist, endStation.xyz_le, endStation.dihedral);
-        const bot = transformProfile([posFactor], [lowerY], endStation.chord, endStation.twist, endStation.xyz_le, endStation.dihedral);
-        traces.push(scatter3d(
-          [top.x[0], bot.x[0]], [top.y[0], bot.y[0]], [top.z[0], bot.z[0]],
-          sparColor, 2,
-        ));
-      } else {
-        const ptUp = transformProfile([posFactor], [0.05], endStation.chord, endStation.twist, endStation.xyz_le, endStation.dihedral);
-        const ptDn = transformProfile([posFactor], [-0.05], endStation.chord, endStation.twist, endStation.xyz_le, endStation.dihedral);
-        traces.push(scatter3d(
-          [ptUp.x[0], ptDn.x[0]], [ptUp.y[0], ptDn.y[0]], [ptUp.z[0], ptDn.z[0]],
-          sparColor, 2,
-        ));
-      }
-      // Cross-section at end
+      traces.push(buildSparVerticalLine(endAf, posFactor, endStation, sparColor));
       if (endCenter) {
-        drawSparCrossSection(endCenter, sparW, sparH, endStation.twist, sparColor);
+        const cs = buildSparCrossSection(endCenter, sparW, sparH, endStation.twist, sparColor);
+        if (cs) traces.push(cs);
       }
 
-      // -- Spanwise connection lines (upper + lower surface) from start to end --
+      // Spanwise connection lines
       if (startAf && endAf) {
-        const upperY1 = lerpLookup(startAf.upper_x, startAf.upper_y, posFactor);
-        const upperY2 = lerpLookup(endAf.upper_x, endAf.upper_y, posFactor);
-        const up1 = transformProfile([posFactor], [upperY1], startStation.chord, startStation.twist, startStation.xyz_le, startStation.dihedral);
-        const up2 = transformProfile([posFactor], [upperY2], endStation.chord, endStation.twist, endStation.xyz_le, endStation.dihedral);
-        traces.push(scatter3d(
-          [up1.x[0], up2.x[0]], [up1.y[0], up2.y[0]], [up1.z[0], up2.z[0]],
-          sparColor, 1.5,
-        ));
-
-        const lowerY1 = lerpLookup(startAf.lower_x, startAf.lower_y, posFactor);
-        const lowerY2 = lerpLookup(endAf.lower_x, endAf.lower_y, posFactor);
-        const lo1 = transformProfile([posFactor], [lowerY1], startStation.chord, startStation.twist, startStation.xyz_le, startStation.dihedral);
-        const lo2 = transformProfile([posFactor], [lowerY2], endStation.chord, endStation.twist, endStation.xyz_le, endStation.dihedral);
-        traces.push(scatter3d(
-          [lo1.x[0], lo2.x[0]], [lo1.y[0], lo2.y[0]], [lo1.z[0], lo2.z[0]],
-          sparColor, 1.5,
-        ));
+        traces.push(...buildSparSpanwiseLines(startAf, endAf, posFactor, startStation, endStation, sparColor));
       }
 
-      // -- Dashed edge lines along spar corners/extremes from start to end --
+      // Dashed edge lines
       if (startCenter && endCenter && sparW > 0 && sparH > 0) {
-        const isCircle = Math.abs(sparW - sparH) < 0.0001;
-        // offsets: [chordwise, vertical] from center
-        const edgeOffsets: [number, number][] = isCircle
-          ? [[0, sparW / 2], [0, -sparW / 2], [sparW / 2, 0], [-sparW / 2, 0]]  // top, bottom, left, right
-          : [[sparW / 2, sparH / 2], [-sparW / 2, sparH / 2], [-sparW / 2, -sparH / 2], [sparW / 2, -sparH / 2]]; // 4 corners
-
-        for (const [dChord, dVert] of edgeOffsets) {
-          const tw1 = (startStation.twist ?? 0) * Math.PI / 180;
-          const tw2 = (endStation.twist ?? 0) * Math.PI / 180;
-          const e1x = startCenter.x[0] + dChord * Math.cos(tw1);
-          const e1y = startCenter.y[0];
-          const e1z = startCenter.z[0] + dVert;
-          const e2x = endCenter.x[0] + dChord * Math.cos(tw2);
-          const e2y = endCenter.y[0];
-          const e2z = endCenter.z[0] + dVert;
-          traces.push(scatter3d(
-            [e1x, e2x], [e1y, e2y], [e1z, e2z],
-            sparColor, 1, "dash",
-          ));
-        }
+        traces.push(...buildSparEdgeLines(startCenter, endCenter, sparW, sparH, startStation.twist, endStation.twist, sparColor));
       }
     }
   }
 
-  // ── Mirror for symmetric wings ──
+  return traces;
+}
+
+/** Apply mirror for symmetric wings. */
+function mirrorTraces(traces: PlotlyData[]): PlotlyData[] {
+  return traces.map((t) => ({
+    ...t,
+    y: (t.y as number[]).map((v: number) => -v),
+  }));
+}
+
+// ── Main wing trace builder ─────────────────────────────────────
+
+async function buildAllWingTraces(
+  wing: Wing,
+  selectedIdx: number | null,
+  showQC = false,
+): Promise<PlotlyData[]> {
+  const xsecs = wing.x_secs;
+  if (xsecs.length < 2) return [];
+
+  // Fetch all airfoil coordinates
+  const airfoils: (AirfoilCoords | null)[] = [];
+  for (const xs of xsecs) {
+    airfoils.push(await fetchAirfoilCoords(xs.airfoil));
+  }
+
+  const dihedrals = computeDihedrals(xsecs);
+  const ctx: WingTraceCtx = { xsecs, airfoils, dihedrals, selectedIdx };
+
+  const traces: PlotlyData[] = [
+    ...buildStationAirfoilTraces(ctx),
+    ...buildInterpolatedAirfoilTraces(ctx),
+    ...(showQC ? buildQuarterChordTraces(ctx) : []),
+    ...buildEdgeTraces(ctx),
+    ...buildTEDTraces(ctx),
+    ...buildSparTraces(ctx),
+  ];
+
   if (wing.symmetric) {
-    const mirror = traces.map((t) => ({
-      ...t,
-      y: (t.y as number[]).map((v: number) => -v),
-    }));
-    traces.push(...mirror);
+    traces.push(...mirrorTraces(traces));
   }
 
   return traces;
@@ -598,19 +700,100 @@ function buildFuselageTraces(fuselage: Fuselage, color: string, selectedIdx: num
   return traces;
 }
 
-/** Shorthand for a scatter3d trace. */
-function scatter3d(
-  x: number[], y: number[], z: number[],
-  color: string, width: number, dash?: string,
-): PlotlyData {
+// ── Plotly layout configuration ─────────────────────────────────
+
+function buildPlotlyLayout() {
   return {
-    type: "scatter3d",
-    mode: "lines",
-    x, y, z,
-    line: { color, width, ...(dash ? { dash } : {}) },
+    paper_bgcolor: "#17171A",
+    plot_bgcolor: "#17171A",
+    scene: {
+      xaxis: { showgrid: true, gridcolor: "#2E2E2E", zerolinecolor: "#3A3A3A", color: "#7A7B78", title: "x" },
+      yaxis: { showgrid: true, gridcolor: "#2E2E2E", zerolinecolor: "#3A3A3A", color: "#7A7B78", title: "y" },
+      zaxis: { showgrid: true, gridcolor: "#2E2E2E", zerolinecolor: "#3A3A3A", color: "#7A7B78", title: "z" },
+      aspectmode: "data",
+      bgcolor: "#17171A",
+    },
+    margin: { l: 0, r: 0, t: 32, b: 0 },
     showlegend: false,
-    hoverinfo: "skip",
+    updatemenus: [{
+      type: "buttons",
+      direction: "left",
+      x: 1.0,
+      y: 1.05,
+      xanchor: "right",
+      yanchor: "bottom",
+      bgcolor: "#1A1A1A",
+      bordercolor: "#2E2E2E",
+      borderwidth: 1,
+      font: { color: "#B8B9B6", size: 10, family: "JetBrains Mono, monospace" },
+      buttons: [
+        {
+          label: "Top",
+          method: "relayout",
+          args: [{ "scene.camera": { eye: { x: 0, y: 0, z: 2 }, up: { x: -1, y: 0, z: 0 } } }],
+        },
+        {
+          label: "Front",
+          method: "relayout",
+          args: [{ "scene.camera": { eye: { x: -2, y: 0, z: 0 }, up: { x: 0, y: 0, z: 1 } } }],
+        },
+        {
+          label: "Side",
+          method: "relayout",
+          args: [{ "scene.camera": { eye: { x: 0, y: -2, z: 0 }, up: { x: 0, y: 0, z: 1 } } }],
+        },
+      ],
+    }, {
+      type: "buttons",
+      direction: "left",
+      x: 0.0,
+      y: 1.05,
+      xanchor: "left",
+      yanchor: "bottom",
+      bgcolor: "#1A1A1A",
+      bordercolor: "#2E2E2E",
+      borderwidth: 1,
+      font: { color: "#B8B9B6", size: 10, family: "JetBrains Mono, monospace" },
+      buttons: [
+        {
+          label: "Perspective",
+          method: "relayout",
+          args: [{ "scene.camera.projection": { type: "perspective" } }],
+        },
+        {
+          label: "Ortho",
+          method: "relayout",
+          args: [{ "scene.camera.projection": { type: "orthographic" } }],
+        },
+      ],
+    }],
   };
+}
+
+/** Collect all traces from visible wings and fuselages. */
+async function collectAllTraces(
+  wings: Wing[], fuselages: Fuselage[],
+  visibleWings: Set<string>, visibleFuselages: Set<string>,
+  selectedWing: string | null, selectedXsecIndex: number | null,
+  selectedFuselage: string | null, selectedFuselageXsecIndex: number | null,
+  showQuarterChord: boolean,
+): Promise<PlotlyData[]> {
+  const traces: PlotlyData[] = [];
+
+  for (const wing of wings) {
+    if (!visibleWings.has(wing.name)) continue;
+    const selIdx = selectedWing === wing.name ? selectedXsecIndex : null;
+    const wingTraces = await buildAllWingTraces(wing, selIdx, showQuarterChord);
+    traces.push(...wingTraces);
+  }
+
+  for (const fuse of fuselages) {
+    if (!visibleFuselages.has(fuse.name)) continue;
+    const fuseSelIdx = selectedFuselage === fuse.name ? selectedFuselageXsecIndex : null;
+    traces.push(...buildFuselageTraces(fuse, "#3B82F6", fuseSelIdx));
+  }
+
+  return traces;
 }
 
 // ── Component ────────────────────────────────────────────────────
@@ -639,91 +822,14 @@ export function WingOutlineViewer({
       if (disposed) return;
       plotlyRef.current = Plotly;
 
-      const traces: PlotlyData[] = [];
+      const traces = await collectAllTraces(
+        wings, fuselages, visibleWings, visibleFuselages,
+        selectedWing ?? null, selectedXsecIndex ?? null,
+        selectedFuselage ?? null, selectedFuselageXsecIndex ?? null,
+        showQuarterChord,
+      );
 
-      for (const wing of wings) {
-        if (!visibleWings.has(wing.name)) continue;
-        const selIdx = selectedWing === wing.name ? selectedXsecIndex : null;
-        const wingTraces = await buildAllWingTraces(wing, selIdx, showQuarterChord);
-        traces.push(...wingTraces);
-      }
-
-      for (const fuse of fuselages) {
-        if (!visibleFuselages.has(fuse.name)) continue;
-        const fuseSelIdx = selectedFuselage === fuse.name ? selectedFuselageXsecIndex : null;
-        traces.push(...buildFuselageTraces(fuse, "#3B82F6", fuseSelIdx));
-      }
-
-      const layout = {
-        paper_bgcolor: "#17171A",
-        plot_bgcolor: "#17171A",
-        scene: {
-          xaxis: { showgrid: true, gridcolor: "#2E2E2E", zerolinecolor: "#3A3A3A", color: "#7A7B78", title: "x" },
-          yaxis: { showgrid: true, gridcolor: "#2E2E2E", zerolinecolor: "#3A3A3A", color: "#7A7B78", title: "y" },
-          zaxis: { showgrid: true, gridcolor: "#2E2E2E", zerolinecolor: "#3A3A3A", color: "#7A7B78", title: "z" },
-          aspectmode: "data",
-          bgcolor: "#17171A",
-        },
-        margin: { l: 0, r: 0, t: 32, b: 0 },
-        showlegend: false,
-        updatemenus: [{
-          type: "buttons",
-          direction: "left",
-          x: 1.0,
-          y: 1.05,
-          xanchor: "right",
-          yanchor: "bottom",
-          bgcolor: "#1A1A1A",
-          bordercolor: "#2E2E2E",
-          borderwidth: 1,
-          font: { color: "#B8B9B6", size: 10, family: "JetBrains Mono, monospace" },
-          buttons: [
-            {
-              label: "Top",
-              method: "relayout",
-              args: [{ "scene.camera": { eye: { x: 0, y: 0, z: 2 }, up: { x: -1, y: 0, z: 0 } } }],
-            },
-            {
-              label: "Front",
-              method: "relayout",
-              args: [{ "scene.camera": { eye: { x: -2, y: 0, z: 0 }, up: { x: 0, y: 0, z: 1 } } }],
-            },
-            {
-              label: "Side",
-              method: "relayout",
-              args: [{ "scene.camera": { eye: { x: 0, y: -2, z: 0 }, up: { x: 0, y: 0, z: 1 } } }],
-            },
-          ],
-        }, {
-          type: "buttons",
-          direction: "left",
-          x: 0.0,
-          y: 1.05,
-          xanchor: "left",
-          yanchor: "bottom",
-          bgcolor: "#1A1A1A",
-          bordercolor: "#2E2E2E",
-          borderwidth: 1,
-          font: { color: "#B8B9B6", size: 10, family: "JetBrains Mono, monospace" },
-          buttons: [
-            {
-              label: "Perspective",
-              method: "relayout",
-              args: [{ "scene.camera.projection": { type: "perspective" } }],
-            },
-            {
-              label: "Ortho",
-              method: "relayout",
-              args: [{ "scene.camera.projection": { type: "orthographic" } }],
-            },
-          ],
-        }],
-      };
-
-      const config = { displayModeBar: false, responsive: true };
-
-      // Guard: if there are no traces at all, render an empty 3D scene
-      // to avoid Plotly GL crashes (uniform3fv errors with zero data)
+      // Guard: empty scene placeholder to avoid Plotly GL crashes
       if (traces.length === 0) {
         traces.push({
           type: "scatter3d", mode: "lines",
@@ -732,6 +838,9 @@ export function WingOutlineViewer({
           showlegend: false, hoverinfo: "skip",
         } as PlotlyData);
       }
+
+      const layout = buildPlotlyLayout();
+      const config = { displayModeBar: false, responsive: true };
 
       // Save camera before replot
       const el = containerRef.current as unknown as { layout?: { scene?: { camera?: unknown } } } | null;
