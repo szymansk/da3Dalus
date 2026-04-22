@@ -80,6 +80,44 @@ def _try_parse_metadata(stripped: str, surface: dict) -> bool:
     return False
 
 
+def _is_strip_table_header(stripped: str) -> bool:
+    """Return True if the line is a strip-table column header."""
+    return stripped.startswith("j") and "Xle" in stripped and "cl" in stripped
+
+
+def _process_strip_line(
+    stripped: str, current_surface: dict | None, in_strip_table: bool, surfaces: list[dict]
+) -> tuple[dict | None, bool]:
+    """Process a single line of AVL strip-forces output.
+
+    Returns updated (current_surface, in_strip_table).
+    """
+    header = _parse_surface_header(stripped)
+    if header is not None:
+        surfaces.append(header)
+        return header, False
+
+    if current_surface is None:
+        return None, in_strip_table
+
+    if _try_parse_metadata(stripped, current_surface):
+        return current_surface, in_strip_table
+
+    if _is_strip_table_header(stripped):
+        return current_surface, True
+
+    if in_strip_table and stripped and stripped[0].isdigit():
+        row = _parse_strip_row(stripped.split(), _STRIP_COLUMNS)
+        if row is not None:
+            current_surface["strips"].append(row)
+        return current_surface, in_strip_table
+
+    if in_strip_table and not stripped:
+        return current_surface, False
+
+    return current_surface, in_strip_table
+
+
 def parse_strip_forces_output(stdout: str) -> list[dict]:
     """Parse AVL's ``FS`` (strip forces) stdout output into structured data.
 
@@ -96,36 +134,9 @@ def parse_strip_forces_output(stdout: str) -> list[dict]:
     in_strip_table = False
 
     for line in stdout.splitlines():
-        stripped = line.strip()
-
-        header = _parse_surface_header(stripped)
-        if header is not None:
-            current_surface = header
-            surfaces.append(current_surface)
-            in_strip_table = False
-            continue
-
-        if current_surface is None:
-            continue
-
-        if _try_parse_metadata(stripped, current_surface):
-            continue
-
-        # Detect strip table header line
-        if stripped.startswith("j") and "Xle" in stripped and "cl" in stripped:
-            in_strip_table = True
-            continue
-
-        # Parse strip data rows (start with an integer index)
-        if in_strip_table and stripped and stripped[0].isdigit():
-            row = _parse_strip_row(stripped.split(), _STRIP_COLUMNS)
-            if row is not None:
-                current_surface["strips"].append(row)
-            continue
-
-        # End of strip table (blank line or non-data line after table started)
-        if in_strip_table and not stripped:
-            in_strip_table = False
+        current_surface, in_strip_table = _process_strip_line(
+            line.strip(), current_surface, in_strip_table, surfaces
+        )
 
     return surfaces
 

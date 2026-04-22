@@ -14,101 +14,92 @@ from app.schemas.aeroanalysisschema import OperatingPointSchema
 from cad_designer.airplane.aircraft_topology.models.analysis_model import AnalysisModel
 
 
+def _as_array_if_needed(value):
+    """Return value as-is if float, otherwise wrap in np.array."""
+    return value if isinstance(value, float) else np.array(value)
+
+
+def _build_operating_point(operating_point: OperatingPointSchema) -> asb.OperatingPoint:
+    """Build an Aerosandbox OperatingPoint from the schema."""
+    atmosphere = asb.Atmosphere(altitude=operating_point.altitude)
+    return asb.OperatingPoint(
+        velocity=_as_array_if_needed(operating_point.velocity),
+        alpha=_as_array_if_needed(operating_point.alpha),
+        beta=_as_array_if_needed(operating_point.beta),
+        p=_as_array_if_needed(operating_point.p),
+        q=_as_array_if_needed(operating_point.q),
+        r=_as_array_if_needed(operating_point.r),
+        atmosphere=atmosphere,
+    )
+
+
+def _run_avl(asb_airplane, op_point, operating_point):
+    """Run AVL analysis; raises ValueError for parameter sweeps."""
+    avl = asb.AVL(
+        airplane=asb_airplane, op_point=op_point, xyz_ref=operating_point.xyz_ref
+    )
+    if isinstance(operating_point.alpha, (list, tuple, np.ndarray)) or isinstance(
+        operating_point.beta, (list, tuple, np.ndarray)
+    ):
+        raise ValueError(
+            "AVL analysis does not support parameter sweeps. "
+            "Please use AeroBuildup or Vortex Lattice for that."
+        )
+    return AnalysisModel.from_avl_dict(avl.run()), None
+
+
+def _run_aerobuildup(asb_airplane, op_point, operating_point):
+    """Run AeroBuildup analysis."""
+    abu = asb.AeroBuildup(
+        airplane=asb_airplane, op_point=op_point, xyz_ref=operating_point.xyz_ref
+    )
+    return AnalysisModel.from_abu_dict(
+        abu.run_with_stability_derivatives(),
+        asb_airplan=asb_airplane,
+        methode="aerobuildup",
+    ), None
+
+
+def _run_vlm(asb_airplane, op_point, operating_point, draw_streamlines, backend):
+    """Run Vortex Lattice Method analysis."""
+    vlm = asb.VortexLatticeMethod(
+        airplane=asb_airplane, op_point=op_point, xyz_ref=operating_point.xyz_ref
+    )
+    vlm.verbose = True
+    vlm_results = vlm.run_with_stability_derivatives()
+    figure = vlm.draw(show=False, backend=backend) if draw_streamlines else None
+    return AnalysisModel.from_abu_dict(
+        vlm_results,
+        asb_airplan=asb_airplane,
+        operating_point=op_point,
+        methode="vortex_lattice",
+    ), figure
+
+
 async def analyse_aerodynamics(analysis_tool: AnalysisToolUrlType,
                                operating_point: OperatingPointSchema,
                                asb_airplane: Airplane,
                                draw_streamlines: bool = False,
                                backend: Literal['plotly','pyvista'] = 'plotly') -> (AnalysisModel, Figure|Plotter):
+    """Perform aerodynamic analysis using the specified tool.
+
+    Returns (AnalysisModel, Figure | None).
+    Raises ValueError for invalid tool or unsupported parameter sweeps.
     """
-    Perform aerodynamic analysis on an airplane using the specified analysis tool.
-
-    Args:
-        analysis_tool (AnalysisToolUrlType): The tool to use for aerodynamic analysis.
-            Options include AVL, AeroBuildup, or Vortex Lattice.
-        operating_point (OperatingPointSchema): The operating point containing flight conditions
-            such as velocity, altitude, and angles of attack.
-        asb_airplane (Airplane): The airplane model to analyze, represented as an aerosandbox Airplane object.
-        draw_streamlines (bool, optional): Whether to generate a streamline visualization. Defaults to False.
-
-    Returns:
-        tuple: A tuple containing:
-            - AnalysisModel: The results of the aerodynamic analysis.
-            - Figure: A Plotly figure object containing the streamline visualization
-              (if requested and only for Vortex Lattice analysis),
-              or None if `draw_streamlines` is False.
-
-    Raises:
-        ValueError: If an invalid analysis tool is specified or if unsupported parameter sweeps are attempted.
-    """
-    # Create the atmosphere
-    atmosphere = asb.Atmosphere(
-        altitude=operating_point.altitude
-    )
-    # Create the operating point
-    op_point = asb.OperatingPoint(
-        velocity=operating_point.velocity if isinstance(operating_point.velocity, float) else np.array(operating_point.velocity),
-        alpha=operating_point.alpha if isinstance(operating_point.alpha, float) else np.array(operating_point.alpha),
-        beta=operating_point.beta if isinstance(operating_point.beta, float) else np.array(operating_point.beta),
-        p=operating_point.p if isinstance(operating_point.p, float) else np.array(operating_point.p),
-        q=operating_point.q if isinstance(operating_point.q, float) else np.array(operating_point.q),
-        r=operating_point.r if isinstance(operating_point.r, float) else np.array(operating_point.r),
-        atmosphere=atmosphere
-    )
-
+    op_point = _build_operating_point(operating_point)
     asb_airplane.xyz_ref = operating_point.xyz_ref
+
     if analysis_tool == AnalysisToolUrlType.AVL:
-        # Run the AVL analysis
-        avl = asb.AVL(
-            airplane=asb_airplane,
-            op_point=op_point,
-            xyz_ref=operating_point.xyz_ref
-        )
-        if (isinstance(operating_point.alpha, (list, tuple, np.ndarray)) or
-                isinstance(operating_point.beta, (list, tuple, np.ndarray))):
-            raise ValueError(
-                "AVL analysis does not support parameter sweeps. Please use AeroBuildup or Vortex Lattice for that.")
+        return _run_avl(asb_airplane, op_point, operating_point)
+    if analysis_tool == AnalysisToolUrlType.AEROBUILDUP:
+        return _run_aerobuildup(asb_airplane, op_point, operating_point)
+    if analysis_tool == AnalysisToolUrlType.VORTEX_LATTICE:
+        return _run_vlm(asb_airplane, op_point, operating_point, draw_streamlines, backend)
 
-        # Get the results
-        avl_results = avl.run()
-        return AnalysisModel.from_avl_dict(avl_results), None
-    elif analysis_tool == AnalysisToolUrlType.AEROBUILDUP:
-        abu = asb.AeroBuildup(
-            airplane=asb_airplane,
-            op_point=op_point,
-            xyz_ref=operating_point.xyz_ref
-        )
-
-        # Get the results
-        abu_results = abu.run_with_stability_derivatives()
-        return AnalysisModel.from_abu_dict(
-            abu_results,
-            asb_airplan=asb_airplane,
-            methode='aerobuildup',
-        ), None
-    elif analysis_tool == AnalysisToolUrlType.VORTEX_LATTICE:
-        vlm = asb.VortexLatticeMethod(
-            airplane=asb_airplane,
-            op_point=op_point,
-            xyz_ref=operating_point.xyz_ref
-        )
-
-        # Get the results
-        vlm.verbose = True
-        vlm_results = vlm.run_with_stability_derivatives()
-        if draw_streamlines:
-            figure = vlm.draw(show=False, backend=backend)
-        else:
-            figure = None
-
-        return AnalysisModel.from_abu_dict(
-            vlm_results,
-            asb_airplan=asb_airplane,
-            operating_point=op_point,
-            methode='vortex_lattice',
-        ), figure
-    else:
-        raise ValueError(
-            f"Invalid analysis tool: {analysis_tool}. Must be one of: AVL, AeroBuildup, or Vortex Lattice.")
+    raise ValueError(
+        f"Invalid analysis tool: {analysis_tool}. "
+        "Must be one of: AVL, AeroBuildup, or Vortex Lattice."
+    )
 
 
 async def compile_four_view_figure(figure):

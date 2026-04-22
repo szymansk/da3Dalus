@@ -76,6 +76,65 @@ def _ensure_file_under_tmp(file_path: str, aeroplane_id: str) -> FilePath:
     return target_path
 
 
+def _offset_refs(node, offset: int) -> None:
+    """Recursively offset {ref: N} values in shapes by offset."""
+    if isinstance(node, dict):
+        if "ref" in node and isinstance(node["ref"], (int, float)):
+            node["ref"] = int(node["ref"]) + offset
+        for v in node.values():
+            _offset_refs(v, offset)
+    elif isinstance(node, list):
+        for item in node:
+            _offset_refs(item, offset)
+
+
+def _expand_bounding_box(bb_min: list[float], bb_max: list[float], shapes: dict) -> None:
+    """Expand bb_min/bb_max from the shapes' bounding box in place."""
+    entry_bb = shapes.get("bb")
+    if not entry_bb or "min" not in entry_bb or "max" not in entry_bb:
+        return
+    for i in range(3):
+        bb_min[i] = min(bb_min[i], entry_bb["min"][i])
+        bb_max[i] = max(bb_max[i], entry_bb["max"][i])
+
+
+def _merge_tessellation_entries(cached_entries) -> tuple[list, list, int, dict]:
+    """Merge cached tessellation entries into combined parts, instances, count, and bounding box."""
+    import copy
+
+    parts: list = []
+    combined_instances: list = []
+    total_count = 0
+    bb_min = [float("inf")] * 3
+    bb_max = [float("-inf")] * 3
+
+    for entry in cached_entries:
+        tess = entry.tessellation_json
+        data = tess.get("data", {})
+
+        instances = data.get("instances", [])
+        instance_offset = len(combined_instances)
+
+        shapes = data.get("shapes")
+        if shapes:
+            shapes_copy = copy.deepcopy(shapes)
+            shapes_copy["color"] = "#FF8400" if entry.component_type == "wing" else "#888888"
+            if instance_offset > 0:
+                _offset_refs(shapes_copy, instance_offset)
+            parts.append(shapes_copy)
+            _expand_bounding_box(bb_min, bb_max, shapes)
+
+        combined_instances.extend(instances)
+        total_count += tess.get("count", 0)
+
+    if any(v == float("inf") for v in bb_min):
+        combined_bb = {"min": [0, 0, 0], "max": [0, 0, 0]}
+    else:
+        combined_bb = {"min": bb_min, "max": bb_max}
+
+    return parts, combined_instances, total_count, combined_bb
+
+
 @router.post(
     "/aeroplanes/{aeroplane_id}/wings/{wing_name}/tessellation",
     status_code=http.HTTPStatus.ACCEPTED,
@@ -157,63 +216,9 @@ async def get_aeroplane_tessellation(
                 detail=f"No cached tessellations for aeroplane {aeroplane_id}",
             )
 
-        # Collect parts and instances from each cached entry.
-        # Instance refs ({ref: N}) are local to each component's instance
-        # array, so we offset them when merging into the combined array.
-        parts = []
-        combined_instances = []
-        total_count = 0
-        bb_min = [float("inf")] * 3
-        bb_max = [float("-inf")] * 3
-
-        def _offset_refs(node, offset):
-            """Recursively offset {ref: N} values in shapes by offset."""
-            if isinstance(node, dict):
-                if "ref" in node and isinstance(node["ref"], (int, float)):
-                    node["ref"] = int(node["ref"]) + offset
-                for v in node.values():
-                    _offset_refs(v, offset)
-            elif isinstance(node, list):
-                for item in node:
-                    _offset_refs(item, offset)
-
-        for entry in cached_entries:
-            tess = entry.tessellation_json
-            data = tess.get("data", {})
-
-            instances = data.get("instances", [])
-            instance_offset = len(combined_instances)
-
-            # Accumulate shapes with color per component type
-            shapes = data.get("shapes")
-            if shapes:
-                import copy
-
-                shapes_copy = copy.deepcopy(shapes)
-                shapes_copy["color"] = "#FF8400" if entry.component_type == "wing" else "#888888"
-                if instance_offset > 0:
-                    _offset_refs(shapes_copy, instance_offset)
-                parts.append(shapes_copy)
-
-            # Accumulate instances
-            combined_instances.extend(instances)
-
-            # Accumulate count
-            total_count += tess.get("count", 0)
-
-            # Expand bounding box from the shapes bb
-            if shapes and "bb" in shapes:
-                entry_bb = shapes["bb"]
-                if "min" in entry_bb and "max" in entry_bb:
-                    for i in range(3):
-                        bb_min[i] = min(bb_min[i], entry_bb["min"][i])
-                        bb_max[i] = max(bb_max[i], entry_bb["max"][i])
-
-        # Build combined bounding box (fall back to zeroes if no valid bb found)
-        if any(v == float("inf") for v in bb_min):
-            combined_bb = {"min": [0, 0, 0], "max": [0, 0, 0]}
-        else:
-            combined_bb = {"min": bb_min, "max": bb_max}
+        parts, combined_instances, total_count, combined_bb = _merge_tessellation_entries(
+            cached_entries
+        )
 
         return {
             "data": {

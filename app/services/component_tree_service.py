@@ -142,6 +142,44 @@ def get_tree(db: Session, aeroplane_id: str) -> ComponentTreeResponse:
     )
 
 
+def _validate_parent_exists(db: Session, aeroplane_id: str, parent_id: int) -> None:
+    """Raise NotFoundError if the parent node does not exist."""
+    parent = db.query(ComponentTreeNodeModel).filter(
+        ComponentTreeNodeModel.id == parent_id,
+        ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+    ).first()
+    if not parent:
+        raise NotFoundError(entity="Parent node", resource_id=parent_id)
+
+
+def _snapshot_construction_part_fields(
+    db: Session, aeroplane_id: str, data: ComponentTreeNodeWrite, payload: dict
+) -> None:
+    """Copy volume/area/material from the construction part onto payload for unset fields."""
+    part = (
+        db.query(ConstructionPartModel)
+        .filter(
+            ConstructionPartModel.id == data.construction_part_id,
+            ConstructionPartModel.aeroplane_id == aeroplane_id,
+        )
+        .first()
+    )
+    if part is None:
+        raise ValidationError(
+            message=(
+                f"construction_part_id={data.construction_part_id} does not "
+                f"exist for aeroplane '{aeroplane_id}'."
+            ),
+        )
+    explicit = data.model_dump(exclude_unset=True)
+    if "volume_mm3" not in explicit and part.volume_mm3 is not None:
+        payload["volume_mm3"] = part.volume_mm3
+    if "area_mm2" not in explicit and part.area_mm2 is not None:
+        payload["area_mm2"] = part.area_mm2
+    if "material_id" not in explicit and part.material_component_id is not None:
+        payload["material_id"] = part.material_component_id
+
+
 def add_node(
     db: Session, aeroplane_id: str, data: ComponentTreeNodeWrite
 ) -> ComponentTreeNodeRead:
@@ -154,39 +192,12 @@ def add_node(
     """
     try:
         if data.parent_id:
-            parent = db.query(ComponentTreeNodeModel).filter(
-                ComponentTreeNodeModel.id == data.parent_id,
-                ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
-            ).first()
-            if not parent:
-                raise NotFoundError(entity="Parent node", resource_id=data.parent_id)
+            _validate_parent_exists(db, aeroplane_id, data.parent_id)
 
         payload = data.model_dump()
 
         if data.construction_part_id is not None:
-            part = (
-                db.query(ConstructionPartModel)
-                .filter(
-                    ConstructionPartModel.id == data.construction_part_id,
-                    ConstructionPartModel.aeroplane_id == aeroplane_id,
-                )
-                .first()
-            )
-            if part is None:
-                raise ValidationError(
-                    message=(
-                        f"construction_part_id={data.construction_part_id} does not "
-                        f"exist for aeroplane '{aeroplane_id}'."
-                    ),
-                )
-            # Snapshot — only fill fields the caller didn't explicitly set.
-            explicit = data.model_dump(exclude_unset=True)
-            if "volume_mm3" not in explicit and part.volume_mm3 is not None:
-                payload["volume_mm3"] = part.volume_mm3
-            if "area_mm2" not in explicit and part.area_mm2 is not None:
-                payload["area_mm2"] = part.area_mm2
-            if "material_id" not in explicit and part.material_component_id is not None:
-                payload["material_id"] = part.material_component_id
+            _snapshot_construction_part_fields(db, aeroplane_id, data, payload)
 
         node = ComponentTreeNodeModel(aeroplane_id=aeroplane_id, **payload)
         db.add(node)
@@ -338,36 +349,49 @@ def calculate_weight(db: Session, aeroplane_id: str, node_id: int) -> WeightResp
     )
 
 
+def _weight_from_cots(db: Session, node: ComponentTreeNodeModel) -> Optional[float]:
+    """Return weight in grams for a COTS component, or None."""
+    if node.node_type != "cots" or not node.component_id:
+        return None
+    comp = db.query(ComponentModel).filter(ComponentModel.id == node.component_id).first()
+    if comp and comp.mass_g is not None:
+        return comp.mass_g * (node.quantity or 1)
+    return None
+
+
+def _weight_from_cad_shape(db: Session, node: ComponentTreeNodeModel) -> Optional[float]:
+    """Return weight in grams for a CAD shape using material density, or None."""
+    if node.node_type != "cad_shape" or not node.material_id:
+        return None
+    material = db.query(ComponentModel).filter(ComponentModel.id == node.material_id).first()
+    if not material:
+        return None
+    specs = material.specs or {}
+    density = specs.get("density_kg_m3")
+    if not density:
+        return None
+    if node.print_type == "surface" and node.area_mm2 is not None:
+        resolution = specs.get("print_resolution_mm", 0.4)
+        return node.area_mm2 * resolution * density / 1e6 * node.scale_factor
+    if node.volume_mm3 is not None:
+        return node.volume_mm3 * density / 1e6 * node.scale_factor
+    return None
+
+
 def _calculate_own_weight(
     db: Session, node: ComponentTreeNodeModel
 ) -> tuple[Optional[float], str]:
     """Calculate a single node's own weight."""
-    # Manual override takes precedence
     if node.weight_override_g is not None:
         return node.weight_override_g, "override"
 
-    # COTS component: use mass_g from catalog
-    if node.node_type == "cots" and node.component_id:
-        comp = db.query(ComponentModel).filter(ComponentModel.id == node.component_id).first()
-        if comp and comp.mass_g is not None:
-            return comp.mass_g * (node.quantity or 1), "cots"
+    cots_weight = _weight_from_cots(db, node)
+    if cots_weight is not None:
+        return cots_weight, "cots"
 
-    # CAD shape: calculate from volume/area + material
-    if node.node_type == "cad_shape" and node.material_id:
-        material = db.query(ComponentModel).filter(ComponentModel.id == node.material_id).first()
-        if material:
-            specs = material.specs or {}
-            density = specs.get("density_kg_m3")
-            if density:
-                if node.print_type == "surface" and node.area_mm2 is not None:
-                    resolution = specs.get("print_resolution_mm", 0.4)
-                    # area_mm2 * resolution_mm * density_kg_m3 / 1e9 → kg, * 1000 → g
-                    weight_g = node.area_mm2 * resolution * density / 1e6 * node.scale_factor
-                    return weight_g, "calculated"
-                elif node.volume_mm3 is not None:
-                    # volume_mm3 * density_kg_m3 / 1e9 → kg, * 1000 → g
-                    weight_g = node.volume_mm3 * density / 1e6 * node.scale_factor
-                    return weight_g, "calculated"
+    cad_weight = _weight_from_cad_shape(db, node)
+    if cad_weight is not None:
+        return cad_weight, "calculated"
 
     return None, "none"
 

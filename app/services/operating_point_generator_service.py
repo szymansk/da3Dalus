@@ -362,6 +362,89 @@ async def _evaluate_trim_candidate(
     return score, {"cm": cm, "cl": cl, "cy": cy}
 
 
+def _cl_target_for_velocity(
+    candidate_velocity_mps: float,
+    total_mass_kg: Optional[float],
+    s_ref: float,
+    rho: float,
+    n_target: float,
+) -> Optional[float]:
+    """Compute the CL target for a given velocity, or None if not computable."""
+    if not total_mass_kg or s_ref <= 0:
+        return None
+    q_dyn = 0.5 * rho * max(candidate_velocity_mps, 1e-3) ** 2
+    if q_dyn <= 1e-6:
+        return None
+    return float((total_mass_kg * 9.81 * n_target) / (q_dyn * s_ref))
+
+
+async def _grid_search_trim(
+    asb_airplane: asb.Airplane,
+    target: dict[str, Any],
+    velocity: float,
+    altitude: float,
+    beta_candidates: list[float],
+    cl_target_fn,
+) -> tuple[float, float, float, float, dict[str, float]]:
+    """Run a grid search over velocities, alphas, and betas to find the best trim.
+
+    Returns (best_score, best_alpha, best_beta, velocity, best_controls).
+    """
+    best_score = float("inf")
+    best_alpha = 0.0
+    best_beta = beta_candidates[0]
+    best_velocity = velocity
+    best_controls: dict[str, float] = {}
+
+    for candidate_velocity in _fallback_speeds(target["name"], velocity):
+        alpha_candidates = np.linspace(-4.0, 20.0, 13)
+        for beta_deg in beta_candidates:
+            for alpha_deg in alpha_candidates:
+                try:
+                    score, _ = await _evaluate_trim_candidate(
+                        asb_airplane=asb_airplane,
+                        altitude_m=altitude,
+                        velocity_mps=candidate_velocity,
+                        alpha_deg=float(alpha_deg),
+                        beta_deg=float(beta_deg),
+                        cl_target=cl_target_fn(candidate_velocity),
+                    )
+                except Exception as exc:
+                    logger.debug("Trim candidate failed for %s: %s", target["name"], exc)
+                    continue
+
+                if score < best_score:
+                    best_score = score
+                    best_alpha = float(alpha_deg)
+                    best_beta = float(beta_deg)
+                    best_velocity = candidate_velocity
+                    best_controls = {}
+
+    return best_score, best_alpha, best_beta, best_velocity, best_controls
+
+
+def _apply_limit_warnings(
+    best_alpha: float, best_beta: float, best_score: float,
+    constraints: dict[str, Any], warnings: list[str],
+) -> OperatingPointStatus:
+    """Determine trim status and append limit-reached warnings."""
+    trim_status = OperatingPointStatus.TRIMMED if best_score < 0.35 else OperatingPointStatus.NOT_TRIMMED
+    if trim_status == OperatingPointStatus.NOT_TRIMMED:
+        warnings.append("NOT_TRIMMED")
+
+    max_alpha = constraints.get("max_alpha_deg")
+    if max_alpha is not None and abs(best_alpha) > float(max_alpha):
+        trim_status = OperatingPointStatus.LIMIT_REACHED
+        warnings.append("ALPHA_LIMIT_REACHED")
+
+    max_beta = constraints.get("max_beta_deg")
+    if max_beta is not None and abs(best_beta) > float(max_beta):
+        trim_status = OperatingPointStatus.LIMIT_REACHED
+        warnings.append("BETA_LIMIT_REACHED")
+
+    return trim_status
+
+
 async def _trim_or_estimate_point(
     asb_airplane: asb.Airplane,
     aircraft: AeroplaneModel,
@@ -373,40 +456,29 @@ async def _trim_or_estimate_point(
     velocity = float(target["velocity"])
     altitude = float(target["altitude"])
 
-    max_alpha = constraints.get("max_alpha_deg")
-    max_beta = constraints.get("max_beta_deg")
-
     rho = float(asb.Atmosphere(altitude=altitude).density())
     s_ref = float(getattr(asb_airplane, "s_ref", 0.0) or 0.0)
     n_target = float(target.get("n_target", 1.0))
 
-    def _cl_target_for_velocity(candidate_velocity_mps: float) -> Optional[float]:
-        if not aircraft.total_mass_kg or s_ref <= 0:
-            return None
-        q_dyn = 0.5 * rho * max(candidate_velocity_mps, 1e-3) ** 2
-        if q_dyn <= 1e-6:
-            return None
-        return float((aircraft.total_mass_kg * 9.81 * n_target) / (q_dyn * s_ref))
-
-    best_score = float("inf")
-    best_alpha = 0.0
-    best_beta = float(target.get("beta_target_deg", 0.0))
-    best_controls: dict[str, float] = {}
+    def cl_target_fn(v: float) -> Optional[float]:
+        return _cl_target_for_velocity(v, aircraft.total_mass_kg, s_ref, rho, n_target)
 
     beta_candidates = [float(target.get("beta_target_deg", 0.0))]
     if target["name"] == "dutch_role_start":
         beta_candidates += [0.0, -2.0]
 
-    # Run Opti once on the nominal target; fallback grid-search handles broader recovery.
+    # Run Opti once on the nominal target
+    best_score = float("inf")
+    best_alpha = 0.0
+    best_beta = beta_candidates[0]
+    best_controls: dict[str, float] = {}
+
     opti_solution = _solve_trim_candidate_with_opti(
-        asb_airplane=asb_airplane,
-        target=target,
-        velocity_mps=velocity,
-        altitude_m=altitude,
+        asb_airplane=asb_airplane, target=target,
+        velocity_mps=velocity, altitude_m=altitude,
         beta_target_deg=float(beta_candidates[0]),
-        cl_target=_cl_target_for_velocity(velocity),
-        constraints=constraints,
-        capabilities=capabilities,
+        cl_target=cl_target_fn(velocity),
+        constraints=constraints, capabilities=capabilities,
     )
     if opti_solution and opti_solution["score"] < best_score:
         best_score = float(opti_solution["score"])
@@ -414,59 +486,30 @@ async def _trim_or_estimate_point(
         best_beta = float(opti_solution["beta_deg"])
         best_controls = dict(opti_solution["controls"])
 
+    # Fallback grid-search if opti didn't converge well enough
     if best_score > 0.35:
-        for candidate_velocity in _fallback_speeds(target["name"], velocity):
-            alpha_candidates = np.linspace(-4.0, 20.0, 13)
-            for beta_deg in beta_candidates:
-                for alpha_deg in alpha_candidates:
-                    try:
-                        score, _ = await _evaluate_trim_candidate(
-                            asb_airplane=asb_airplane,
-                            altitude_m=altitude,
-                            velocity_mps=candidate_velocity,
-                            alpha_deg=float(alpha_deg),
-                            beta_deg=float(beta_deg),
-                            cl_target=_cl_target_for_velocity(candidate_velocity),
-                        )
-                    except Exception as exc:
-                        logger.debug("Trim candidate failed for %s: %s", target["name"], exc)
-                        continue
+        gs_score, gs_alpha, gs_beta, gs_velocity, gs_controls = await _grid_search_trim(
+            asb_airplane, target, velocity, altitude, beta_candidates, cl_target_fn,
+        )
+        if gs_score < best_score:
+            best_score, best_alpha, best_beta, best_controls = gs_score, gs_alpha, gs_beta, gs_controls
+            velocity = gs_velocity
 
-                    if score < best_score:
-                        best_score = score
-                        best_alpha = float(alpha_deg)
-                        best_beta = float(beta_deg)
-                        velocity = candidate_velocity
-                        best_controls = {}
-
-    status = OperatingPointStatus.TRIMMED if best_score < 0.35 else OperatingPointStatus.NOT_TRIMMED
-    if status == OperatingPointStatus.NOT_TRIMMED:
-        warnings.append("NOT_TRIMMED")
-
-    if max_alpha is not None and abs(best_alpha) > float(max_alpha):
-        status = OperatingPointStatus.LIMIT_REACHED
-        warnings.append("ALPHA_LIMIT_REACHED")
-    if max_beta is not None and abs(best_beta) > float(max_beta):
-        status = OperatingPointStatus.LIMIT_REACHED
-        warnings.append("BETA_LIMIT_REACHED")
-
-    description = (
-        f"config={target['config']}, target_n={target.get('n_target', 1.0):.2f}, "
-        f"V={velocity:.2f}mps, altitude={altitude:.1f}m"
-    )
+    trim_status = _apply_limit_warnings(best_alpha, best_beta, best_score, constraints, warnings)
 
     return TrimmedPoint(
         name=target["name"],
-        description=description,
+        description=(
+            f"config={target['config']}, target_n={target.get('n_target', 1.0):.2f}, "
+            f"V={velocity:.2f}mps, altitude={altitude:.1f}m"
+        ),
         config=target["config"],
         velocity=float(velocity),
         altitude=float(altitude),
         alpha_rad=math.radians(best_alpha),
         beta_rad=math.radians(best_beta),
-        p=0.0,
-        q=0.0,
-        r=0.0,
-        status=status,
+        p=0.0, q=0.0, r=0.0,
+        status=trim_status,
         warnings=warnings,
         controls=best_controls,
     )

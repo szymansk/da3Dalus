@@ -194,6 +194,61 @@ def delete_type(db: Session, type_id: int) -> None:
 # --------------------------------------------------------------------------- #
 
 
+def _validate_number_prop(prop: "PropertyDefinition", value: Any) -> None:
+    """Validate a number property for type and range."""
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        raise ValidationError(
+            message=f"Property '{prop.name}' must be a number.",
+            details={"property": prop.name, "type": "number", "value": value},
+        )
+    if prop.min is not None and value < prop.min:
+        raise ValidationError(
+            message=(
+                f"Property '{prop.name}' is below the allowed minimum "
+                f"{prop.min} (got {value})."
+            ),
+            details={"property": prop.name, "min": prop.min, "value": value},
+        )
+    if prop.max is not None and value > prop.max:
+        raise ValidationError(
+            message=(
+                f"Property '{prop.name}' exceeds the allowed maximum "
+                f"{prop.max} (got {value})."
+            ),
+            details={"property": prop.name, "max": prop.max, "value": value},
+        )
+
+
+def _validate_single_prop(prop: "PropertyDefinition", value: Any) -> None:
+    """Validate a single property value against its definition."""
+    if prop.type == "number":
+        _validate_number_prop(prop, value)
+    elif prop.type == "string":
+        if not isinstance(value, str):
+            raise ValidationError(
+                message=f"Property '{prop.name}' must be a string.",
+                details={"property": prop.name, "type": "string", "value": value},
+            )
+    elif prop.type == "boolean":
+        if not isinstance(value, bool):
+            raise ValidationError(
+                message=f"Property '{prop.name}' must be true or false.",
+                details={"property": prop.name, "type": "boolean", "value": value},
+            )
+    elif prop.type == "enum" and prop.options and value not in prop.options:
+        raise ValidationError(
+            message=(
+                f"Property '{prop.name}' value '{value}' is not allowed. "
+                f"Options: {prop.options}."
+            ),
+            details={
+                "property": prop.name,
+                "allowed": prop.options,
+                "value": value,
+            },
+        )
+
+
 def validate_specs(
     db: Session, component_type_name: str, specs: dict[str, Any]
 ) -> None:
@@ -201,8 +256,8 @@ def validate_specs(
 
     Tolerant mode: unknown keys are ignored. Known keys are checked for:
       - presence (required)
-      - type (number → isinstance(float/int), enum → in options, boolean → bool)
-      - range (number → min/max)
+      - type (number, string, boolean, enum)
+      - range (number min/max)
     """
     row = (
         db.query(ComponentTypeModel)
@@ -228,52 +283,7 @@ def validate_specs(
                 )
             continue
 
-        if prop.type == "number":
-            if not isinstance(value, (int, float)) or isinstance(value, bool):
-                raise ValidationError(
-                    message=f"Property '{prop.name}' must be a number.",
-                    details={"property": prop.name, "type": "number", "value": value},
-                )
-            if prop.min is not None and value < prop.min:
-                raise ValidationError(
-                    message=(
-                        f"Property '{prop.name}' is below the allowed minimum "
-                        f"{prop.min} (got {value})."
-                    ),
-                    details={"property": prop.name, "min": prop.min, "value": value},
-                )
-            if prop.max is not None and value > prop.max:
-                raise ValidationError(
-                    message=(
-                        f"Property '{prop.name}' exceeds the allowed maximum "
-                        f"{prop.max} (got {value})."
-                    ),
-                    details={"property": prop.name, "max": prop.max, "value": value},
-                )
-        elif prop.type == "string":
-            if not isinstance(value, str):
-                raise ValidationError(
-                    message=f"Property '{prop.name}' must be a string.",
-                    details={"property": prop.name, "type": "string", "value": value},
-                )
-        elif prop.type == "boolean":
-            if not isinstance(value, bool):
-                raise ValidationError(
-                    message=f"Property '{prop.name}' must be true or false.",
-                    details={"property": prop.name, "type": "boolean", "value": value},
-                )
-        elif prop.type == "enum" and prop.options and value not in prop.options:
-                raise ValidationError(
-                    message=(
-                        f"Property '{prop.name}' value '{value}' is not allowed. "
-                        f"Options: {prop.options}."
-                    ),
-                    details={
-                        "property": prop.name,
-                        "allowed": prop.options,
-                        "value": value,
-                    },
-                )
+        _validate_single_prop(prop, value)
 
 
 def list_type_names(db: Session) -> list[str]:

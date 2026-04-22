@@ -57,6 +57,107 @@ def _extract_alpha_sweep_arrays(result: Any, sweep_request: AlphaSweepRequest) -
     return alpha_array, cl_values, cd_values, cm_values
 
 
+def _compute_cl_cd_points(
+    alpha: np.ndarray, cl: np.ndarray, cd: np.ndarray, n: int
+) -> dict:
+    """Compute characteristic points from CL and CD arrays."""
+    points: dict = {}
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ld = np.where(np.abs(cd) > 1e-12, cl / cd, np.nan)
+    if np.isfinite(ld).any():
+        i = int(np.nanargmax(ld))
+        points["maximum_lift_to_drag_ratio_point"] = {
+            "index": i, "alpha_deg": float(alpha[i]),
+            "CL": float(cl[i]), "CD": float(cd[i]), "Cm": None,
+            "lift_to_drag_ratio": float(ld[i]),
+        }
+
+    i = int(np.argmin(cd))
+    points["minimum_drag_coefficient_point"] = {
+        "index": i, "alpha_deg": float(alpha[i]),
+        "CL": float(cl[i]), "CD": float(cd[i]), "Cm": None,
+    }
+
+    i = int(np.argmax(cl))
+    points["maximum_lift_coefficient_point"] = {
+        "index": i, "alpha_deg": float(alpha[i]),
+        "CL": float(cl[i]), "CD": float(cd[i]), "Cm": None,
+    }
+
+    points["drag_at_zero_lift_point"] = _interpolate_zero_crossing(alpha, cl, cd)
+    points["stall_point"] = _find_stall_point(alpha, cl, cd, n)
+    return points
+
+
+def _interpolate_zero_crossing(alpha, cl, cd) -> dict:
+    """Find the drag-at-zero-lift point via interpolation or nearest."""
+    cross = np.where(np.sign(cl[:-1]) != np.sign(cl[1:]))[0]
+    if len(cross) > 0:
+        i = int(cross[0])
+        cl0, cl1 = cl[i], cl[i + 1]
+        t = 0.0 if abs(cl1 - cl0) <= 1e-12 else -cl0 / (cl1 - cl0)
+        return {
+            "index": None,
+            "alpha_deg": float(alpha[i] + t * (alpha[i + 1] - alpha[i])),
+            "CL": 0.0,
+            "CD": float(cd[i] + t * (cd[i + 1] - cd[i])),
+            "Cm": None,
+        }
+    i = int(np.argmin(np.abs(cl)))
+    return {
+        "index": i, "alpha_deg": float(alpha[i]),
+        "CL": float(cl[i]), "CD": float(cd[i]), "Cm": None,
+    }
+
+
+def _find_stall_point(alpha, cl, cd, n: int) -> dict:
+    """Find the stall point after CLmax."""
+    i_clmax = int(np.argmax(cl))
+    i_stall = i_clmax
+    if i_clmax < n - 1:
+        for i in range(i_clmax + 1, n):
+            if cl[i] < cl[i - 1] and cd[i] > cd[i - 1]:
+                i_stall = i
+                break
+        else:
+            i_stall = min(i_clmax + 1, n - 1)
+    return {
+        "index": i_stall, "alpha_deg": float(alpha[i_stall]),
+        "CL": float(cl[i_stall]), "CD": float(cd[i_stall]), "Cm": None,
+    }
+
+
+def _compute_trim_point(
+    alpha: np.ndarray, cl: np.ndarray, cm: np.ndarray,
+    cd_values: Optional[np.ndarray],
+) -> dict:
+    """Find the trim point where Cm crosses zero."""
+    cross = np.where(np.sign(cm[:-1]) != np.sign(cm[1:]))[0]
+    if len(cross) > 0:
+        i = int(cross[0])
+        cm0, cm1 = cm[i], cm[i + 1]
+        t = 0.0 if abs(cm1 - cm0) <= 1e-12 else -cm0 / (cm1 - cm0)
+        cd_trim = None
+        if cd_values is not None and len(cd_values) > i + 1:
+            cd_trim = float(cd_values[i] + t * (cd_values[i + 1] - cd_values[i]))
+        return {
+            "index": None,
+            "alpha_deg": float(alpha[i] + t * (alpha[i + 1] - alpha[i])),
+            "CL": float(cl[i] + t * (cl[i + 1] - cl[i])),
+            "CD": cd_trim,
+            "Cm": 0.0,
+        }
+    i = int(np.argmin(np.abs(cm)))
+    return {
+        "index": i,
+        "alpha_deg": float(alpha[i]),
+        "CL": float(cl[i]),
+        "CD": float(cd_values[i]) if cd_values is not None and len(cd_values) > i else None,
+        "Cm": float(cm[i]),
+    }
+
+
 def _compute_alpha_sweep_characteristic_points(
     alpha_array: np.ndarray,
     cl_values: Optional[np.ndarray],
@@ -75,98 +176,17 @@ def _compute_alpha_sweep_characteristic_points(
     if cl_values is not None and cd_values is not None:
         n = min(len(cl_values), len(cd_values), len(alpha_array))
         if n > 0:
-            cl = cl_values[:n]
-            cd = cd_values[:n]
-            alpha = alpha_array[:n]
-
-            with np.errstate(divide="ignore", invalid="ignore"):
-                ld = np.where(np.abs(cd) > 1e-12, cl / cd, np.nan)
-            if np.isfinite(ld).any():
-                i = int(np.nanargmax(ld))
-                points["maximum_lift_to_drag_ratio_point"] = {
-                    "index": i, "alpha_deg": float(alpha[i]), "CL": float(cl[i]), "CD": float(cd[i]), "Cm": None,
-                    "lift_to_drag_ratio": float(ld[i]),
-                }
-
-            i = int(np.argmin(cd))
-            points["minimum_drag_coefficient_point"] = {
-                "index": i, "alpha_deg": float(alpha[i]), "CL": float(cl[i]), "CD": float(cd[i]), "Cm": None,
-            }
-
-            i = int(np.argmax(cl))
-            points["maximum_lift_coefficient_point"] = {
-                "index": i, "alpha_deg": float(alpha[i]), "CL": float(cl[i]), "CD": float(cd[i]), "Cm": None,
-            }
-
-            cross = np.nonzero(np.sign(cl[:-1]) != np.sign(cl[1:]))[0]
-            if len(cross) > 0:
-                i = int(cross[0])
-                cl0, cl1 = cl[i], cl[i + 1]
-                cd0, cd1 = cd[i], cd[i + 1]
-                a0, a1 = alpha[i], alpha[i + 1]
-                t = 0.0 if abs(cl1 - cl0) <= 1e-12 else -cl0 / (cl1 - cl0)
-                points["drag_at_zero_lift_point"] = {
-                    "index": None,
-                    "alpha_deg": float(a0 + t * (a1 - a0)),
-                    "CL": 0.0,
-                    "CD": float(cd0 + t * (cd1 - cd0)),
-                    "Cm": None,
-                }
-            else:
-                i = int(np.argmin(np.abs(cl)))
-                points["drag_at_zero_lift_point"] = {
-                    "index": i, "alpha_deg": float(alpha[i]), "CL": float(cl[i]), "CD": float(cd[i]), "Cm": None,
-                }
-
-            i_clmax = int(np.argmax(cl))
-            i_stall = i_clmax
-            if i_clmax < n - 1:
-                for i in range(i_clmax + 1, n):
-                    if cl[i] < cl[i - 1] and cd[i] > cd[i - 1]:
-                        i_stall = i
-                        break
-                else:
-                    i_stall = min(i_clmax + 1, n - 1)
-            points["stall_point"] = {
-                "index": i_stall, "alpha_deg": float(alpha[i_stall]), "CL": float(cl[i_stall]), "CD": float(cd[i_stall]), "Cm": None,
-            }
+            cl_cd_points = _compute_cl_cd_points(
+                alpha_array[:n], cl_values[:n], cd_values[:n], n
+            )
+            points.update(cl_cd_points)
 
     if cl_values is not None and cm_values is not None:
         n = min(len(cl_values), len(cm_values), len(alpha_array))
         if n > 0:
-            cl = cl_values[:n]
-            cm = cm_values[:n]
-            alpha = alpha_array[:n]
-
-            cross = np.nonzero(np.sign(cm[:-1]) != np.sign(cm[1:]))[0]
-            if len(cross) > 0:
-                i = int(cross[0])
-                cm0, cm1 = cm[i], cm[i + 1]
-                cl0, cl1 = cl[i], cl[i + 1]
-                a0, a1 = alpha[i], alpha[i + 1]
-                t = 0.0 if abs(cm1 - cm0) <= 1e-12 else -cm0 / (cm1 - cm0)
-                cl_trim = cl0 + t * (cl1 - cl0)
-                alpha_trim = a0 + t * (a1 - a0)
-                cd_trim = None
-                if cd_values is not None and len(cd_values) > i + 1:
-                    cd0, cd1 = cd_values[i], cd_values[i + 1]
-                    cd_trim = cd0 + t * (cd1 - cd0)
-                points["trim_point_cm_equals_zero"] = {
-                    "index": None,
-                    "alpha_deg": float(alpha_trim),
-                    "CL": float(cl_trim),
-                    "CD": float(cd_trim) if cd_trim is not None else None,
-                    "Cm": 0.0,
-                }
-            else:
-                i = int(np.argmin(np.abs(cm)))
-                points["trim_point_cm_equals_zero"] = {
-                    "index": i,
-                    "alpha_deg": float(alpha[i]),
-                    "CL": float(cl[i]),
-                    "CD": float(cd_values[i]) if cd_values is not None and len(cd_values) > i else None,
-                    "Cm": float(cm[i]),
-                }
+            points["trim_point_cm_equals_zero"] = _compute_trim_point(
+                alpha_array[:n], cl_values[:n], cm_values[:n], cd_values,
+            )
 
     return points
 

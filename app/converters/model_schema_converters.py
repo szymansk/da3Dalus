@@ -366,6 +366,37 @@ def fuselage_model_to_fuselage_config(
     return fuselage_config
 
 
+def _hydrate_segment_from_xsec(
+    segment, root_x_sec: schemas.WingXSecSchema, tip_x_sec: schemas.WingXSecSchema
+) -> None:
+    """Copy schema-level details (airfoils, TED, spares, metadata) onto a WingConfiguration segment."""
+    segment.root_airfoil.airfoil = str(root_x_sec.airfoil)
+    segment.tip_airfoil.airfoil = str(tip_x_sec.airfoil)
+
+    if root_x_sec.x_sec_type is not None:
+        segment.wing_segment_type = root_x_sec.x_sec_type
+    if root_x_sec.tip_type is not None:
+        segment.tip_type = root_x_sec.tip_type
+    if root_x_sec.number_interpolation_points is not None:
+        segment.number_interpolation_points = root_x_sec.number_interpolation_points
+
+    ted_payload = WingModel._merge_ted_with_control_surface(
+        trailing_edge_device=root_x_sec.trailing_edge_device,
+        control_surface=root_x_sec.control_surface,
+    )
+    ted_schema = (
+        schemas.TrailingEdgeDeviceDetailSchema.model_validate(ted_payload)
+        if ted_payload is not None
+        else None
+    )
+    segment.trailing_edge_device = (
+        _trailing_edge_device_schema_to_wing_ted(ted_schema) if ted_schema is not None else None
+    )
+
+    if root_x_sec.spare_list is not None:
+        segment.spare_list = [_spare_schema_to_spare(s) for s in root_x_sec.spare_list]
+
+
 def _hydrate_wing_configuration_details(
     wing_config: WingConfiguration,
     wing_schema: schemas.AsbWingSchema,
@@ -373,64 +404,49 @@ def _hydrate_wing_configuration_details(
     for segment_index, segment in enumerate(wing_config.segments or []):
         if segment_index >= len(wing_schema.x_secs) - 1:
             break
-
-        # Preserve explicit API/schema airfoil references. `WingConfiguration.from_asb()` only
-        # keeps ASB airfoil names (e.g. "mh32"), which drops local file paths.
-        root_x_sec = wing_schema.x_secs[segment_index]
-        tip_x_sec = wing_schema.x_secs[segment_index + 1]
-        segment.root_airfoil.airfoil = str(root_x_sec.airfoil)
-        segment.tip_airfoil.airfoil = str(tip_x_sec.airfoil)
-
-        if root_x_sec.x_sec_type is not None:
-            segment.wing_segment_type = root_x_sec.x_sec_type
-        if root_x_sec.tip_type is not None:
-            segment.tip_type = root_x_sec.tip_type
-        if root_x_sec.number_interpolation_points is not None:
-            segment.number_interpolation_points = root_x_sec.number_interpolation_points
-
-        ted_payload = WingModel._merge_ted_with_control_surface(
-            trailing_edge_device=root_x_sec.trailing_edge_device,
-            control_surface=root_x_sec.control_surface,
+        _hydrate_segment_from_xsec(
+            segment,
+            wing_schema.x_secs[segment_index],
+            wing_schema.x_secs[segment_index + 1],
         )
-        ted_schema = (
-            schemas.TrailingEdgeDeviceDetailSchema.model_validate(ted_payload)
-            if ted_payload is not None
-            else None
-        )
-        segment.trailing_edge_device = (
-            _trailing_edge_device_schema_to_wing_ted(ted_schema) if ted_schema is not None else None
-        )
-
-        if root_x_sec.spare_list is not None:
-            segment.spare_list = [_spare_schema_to_spare(spare_schema) for spare_schema in root_x_sec.spare_list]
 
     _resolve_spare_vectors_and_origins(wing_config)
 
 
+def _can_follow_previous_spare(
+    wing_config: WingConfiguration, segment_index: int, spare_index: int
+) -> bool:
+    """Check if the spare can follow the previous segment's corresponding spare."""
+    if segment_index == 0:
+        return False
+    previous_spares = wing_config.segments[segment_index - 1].spare_list or []
+    if spare_index < 0 or spare_index >= len(previous_spares):
+        return False
+    prev: Spare = previous_spares[spare_index]
+    return prev.spare_vector is not None and prev.spare_origin is not None
+
+
+def _resolve_single_spare(
+    wing_config: WingConfiguration, segment_index: int, spare_index: int, spare
+) -> None:
+    """Resolve vectors and origins for a single spare based on its mode."""
+    mode = spare.spare_mode or "standard"
+
+    if mode == "follow":
+        if _can_follow_previous_spare(wing_config, segment_index, spare_index):
+            wing_config._set_follow_spare_origin_vector(segment_index, spare, spare_index)
+        else:
+            wing_config._set_standard_spare_origin_vector(segment_index, spare)
+        return
+
+    if mode in {"standard", "standard_backward", "orthogonal_backward", "normal"}:
+        wing_config._set_standard_spare_origin_vector(segment_index, spare)
+
+
 def _resolve_spare_vectors_and_origins(wing_config: WingConfiguration) -> None:
     for segment_index, segment in enumerate(wing_config.segments or []):
-        spare_list = segment.spare_list or []
-        for spare_index, spare in enumerate(spare_list):
-            mode = spare.spare_mode or "standard"
-
-            if mode == "follow":
-                if segment_index == 0:
-                    wing_config._set_standard_spare_origin_vector(segment_index, spare)
-                    continue
-
-                previous_spares = wing_config.segments[segment_index - 1].spare_list or []
-                if (
-                    spare_index < len(previous_spares)
-                    and previous_spares[spare_index].spare_vector is not None
-                    and previous_spares[spare_index].spare_origin is not None
-                ):
-                    wing_config._set_follow_spare_origin_vector(segment_index, spare, spare_index)
-                else:
-                    wing_config._set_standard_spare_origin_vector(segment_index, spare)
-                continue
-
-            if mode in {"standard", "standard_backward", "orthogonal_backward", "normal"}:
-                wing_config._set_standard_spare_origin_vector(segment_index, spare)
+        for spare_index, spare in enumerate(segment.spare_list or []):
+            _resolve_single_spare(wing_config, segment_index, spare_index, spare)
 
 
 async def aeroplane_schema_to_asb_airplane_async(plane_schema: AeroplaneSchema) -> "asb.Airplane":
@@ -565,81 +581,93 @@ def wing_model_to_wing_config(wing: WingModel, scale: float = 1.0) -> WingConfig
     return asb_wing_schema_to_wing_config(asb_wing, scale=scale)
 
 
+def _extract_control_surface_from_xsec(x_sec) -> Optional[schemas.ControlSurfaceSchema]:
+    """Extract the first control surface from an ASB WingXSec, if any."""
+    if not x_sec.control_surfaces:
+        return None
+    cs = x_sec.control_surfaces[0]
+    return schemas.ControlSurfaceSchema(
+        name=cs.name,
+        hinge_point=float(cs.hinge_point),
+        symmetric=bool(cs.symmetric),
+        deflection=float(cs.deflection),
+    )
+
+
+def _resolve_airfoil_ref_for_index(index, section_data, x_sec):
+    """Return the airfoil reference for the given xsec index."""
+    if index < len(section_data):
+        section_airfoil, _ = section_data[index]
+        return section_airfoil.airfoil
+    return x_sec.airfoil
+
+
+def _build_segment_details(segment, control_surface):
+    """Extract TED, spare list, and segment metadata from a WingConfiguration segment."""
+    trailing_edge_device = None
+    spare_list = None
+
+    if segment.trailing_edge_device is not None:
+        trailing_edge_device = _trailing_edge_device_to_schema(segment.trailing_edge_device)
+
+    canonical_ted_payload = WingModel._merge_ted_with_control_surface(
+        trailing_edge_device=trailing_edge_device,
+        control_surface=control_surface,
+    )
+    if canonical_ted_payload is not None:
+        trailing_edge_device = schemas.TrailingEdgeDeviceDetailSchema.model_validate(canonical_ted_payload)
+        control_surface = _control_surface_from_ted(trailing_edge_device, fallback=control_surface)
+
+    if segment.spare_list is not None:
+        spare_list = [_spare_to_schema(spare) for spare in segment.spare_list]
+
+    return (
+        trailing_edge_device,
+        spare_list,
+        control_surface,
+        segment.wing_segment_type,
+        segment.tip_type,
+        segment.number_interpolation_points,
+    )
+
+
 def wing_config_to_asb_wing_schema(
     wing_config: WingConfiguration,
     wing_name: str,
     scale: float = 1.0,
 ) -> schemas.AsbWingSchema:
-    """
-    Convert a WingConfiguration to the v2 ASB wing schema.
-
-    Args:
-        wing_config: Source wing configuration.
-        wing_name: Name to assign in the resulting schema/model.
-        scale: Scaling used when creating the internal ASB wing (e.g. 0.001 for mm->m).
-    """
+    """Convert a WingConfiguration to the v2 ASB wing schema."""
     ted_original_tip_values = _normalize_wing_config_ted_for_asb(wing_config)
     try:
         asb_wing = wing_config.asb_wing(scale=scale)
     finally:
         _restore_wing_config_ted_after_asb(ted_original_tip_values)
+
     section_data = _wing_configuration_sections(wing_config)
     x_secs = []
 
     for index, x_sec in enumerate(asb_wing.xsecs):
-        control_surface = None
-        if x_sec.control_surfaces:
-            cs = x_sec.control_surfaces[0]
-            control_surface = schemas.ControlSurfaceSchema(
-                name=cs.name,
-                hinge_point=float(cs.hinge_point),
-                symmetric=bool(cs.symmetric),
-                deflection=float(cs.deflection),
-            )
+        control_surface = _extract_control_surface_from_xsec(x_sec)
+        section_airfoil_ref = _resolve_airfoil_ref_for_index(index, section_data, x_sec)
 
-        # Always use the cumulative twist from asb_wing() — it is the
-        # authoritative source.  The local incidence from section_data
-        # is a per-segment delta, NOT the cumulative value ASB expects.
-        # Bug fix for GH #158.
-        section_twist = float(x_sec.twist)
-
-        if index < len(section_data):
-            section_airfoil, _ = section_data[index]
-            section_airfoil_ref = section_airfoil.airfoil
-        else:
-            section_airfoil_ref = x_sec.airfoil
-
-        segment = wing_config.segments[index] if index < len(wing_config.segments) else None
         trailing_edge_device = None
         spare_list = None
         x_sec_type = None
         tip_type = None
         number_interpolation_points = None
 
+        segment = wing_config.segments[index] if index < len(wing_config.segments) else None
         if segment is not None:
-            x_sec_type = segment.wing_segment_type
-            tip_type = segment.tip_type
-            number_interpolation_points = segment.number_interpolation_points
-
-            if segment.trailing_edge_device is not None:
-                trailing_edge_device = _trailing_edge_device_to_schema(segment.trailing_edge_device)
-
-            canonical_ted_payload = WingModel._merge_ted_with_control_surface(
-                trailing_edge_device=trailing_edge_device,
-                control_surface=control_surface,
-            )
-            if canonical_ted_payload is not None:
-                trailing_edge_device = schemas.TrailingEdgeDeviceDetailSchema.model_validate(canonical_ted_payload)
-                control_surface = _control_surface_from_ted(trailing_edge_device, fallback=control_surface)
-
-            if segment.spare_list is not None:
-                spare_list = [_spare_to_schema(spare) for spare in segment.spare_list]
+            (
+                trailing_edge_device, spare_list, control_surface,
+                x_sec_type, tip_type, number_interpolation_points,
+            ) = _build_segment_details(segment, control_surface)
 
         x_secs.append(
             schemas.WingXSecSchema(
                 xyz_le=[float(value) for value in x_sec.xyz_le],
                 chord=float(x_sec.chord),
-                twist=section_twist,
+                twist=float(x_sec.twist),
                 airfoil=_normalize_airfoil_reference_for_schema(section_airfoil_ref),
                 control_surface=control_surface,
                 x_sec_type=x_sec_type,

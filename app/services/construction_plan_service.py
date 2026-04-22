@@ -265,6 +265,37 @@ def _parse_attribute_line(stripped: str) -> tuple[str, str] | None:
     return None
 
 
+def _process_attribute_line(
+    stripped: str,
+    result: dict[str, str],
+    current_name: str | None,
+    current_desc: list[str],
+) -> tuple[str | None, list[str], bool]:
+    """Process a single line within the Attributes section.
+
+    Returns (current_name, current_desc, should_break).
+    """
+    if _is_section_header(stripped):
+        _flush_attribute(result, current_name, current_desc)
+        return None, [], True
+
+    parsed = _parse_attribute_line(stripped)
+    if parsed:
+        _flush_attribute(result, current_name, current_desc)
+        name, desc_start = parsed
+        return name, ([desc_start] if desc_start else []), False
+
+    if current_name and stripped:
+        current_desc.append(stripped)
+        return current_name, current_desc, False
+
+    if not stripped and current_name:
+        _flush_attribute(result, current_name, current_desc)
+        return None, [], False
+
+    return current_name, current_desc, False
+
+
 def _parse_docstring_attributes(docstring: str) -> dict[str, str]:
     """Extract parameter descriptions from a docstring's Attributes section.
 
@@ -287,29 +318,13 @@ def _parse_docstring_attributes(docstring: str) -> dict[str, str]:
         if not in_attributes:
             continue
 
-        # End of Attributes section on next section header
-        if _is_section_header(stripped):
-            _flush_attribute(result, current_name, current_desc)
+        current_name, current_desc, should_break = _process_attribute_line(
+            stripped, result, current_name, current_desc
+        )
+        if should_break:
             break
 
-        # New attribute line: "name (type): description"
-        parsed = _parse_attribute_line(stripped)
-        if parsed:
-            _flush_attribute(result, current_name, current_desc)
-            current_name, desc_start = parsed
-            current_desc = [desc_start] if desc_start else []
-        elif current_name and stripped:
-            # Continuation line
-            current_desc.append(stripped)
-        elif not stripped and current_name:
-            # Empty line ends current param
-            _flush_attribute(result, current_name, current_desc)
-            current_name = None
-            current_desc = []
-
-    # Flush final param
     _flush_attribute(result, current_name, current_desc)
-
     return result
 
 

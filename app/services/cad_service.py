@@ -381,112 +381,60 @@ def _run_construction_worker(
         }
 
 
-def start_wing_export_task(
-    aeroplane_id: str,
-    wing: WingModel,
-    wing_name: str,
-    creator_url_type: CreatorUrlType,
-    exporter_url_type: ExporterUrlType,
-    leading_edge_offset_factor: float,
-    trailing_edge_offset_factor: float,
-    aeroplane_settings: Optional[AeroplaneSettings],
-) -> None:
+def _convert_wing_to_pickle(wing: WingModel, wing_name: str, aeroplane_id_str: str) -> bytes:
+    """Convert WingModel to pickled AsbWingSchema dict.
+
+    Must run in the parent process because it needs live SQLAlchemy relationships.
     """
-    Start a background CAD task in a dedicated worker process.
-
-    Raises:
-        ConflictError: If another task is already running for this aeroplane.
-        ValidationError: If the exporter type is not supported.
-    """
-    aeroplane_id_str = str(aeroplane_id)
-
-    check_task_available(aeroplane_id_str)
-    register_pending_task(aeroplane_id_str)
-
-    exporter_class = map_exporter_type(exporter_url_type)
-
-    blueprint = build_wing_blueprint(
-        wing_name=wing_name,
-        creator_url_type=creator_url_type,
-        exporter_class=exporter_class,
-        leading_edge_offset_factor=leading_edge_offset_factor,
-        trailing_edge_offset_factor=trailing_edge_offset_factor,
-    )
-
-    # WingModel → AsbWingSchema conversion needs the live SQLAlchemy
-    # relationship graph, so it must run in the parent process. The
-    # final WingModel → WingConfiguration conversion (which creates
-    # unpicklable cq.Vector instances) happens in the worker via
-    # asb_wing_schema_to_wing_config. Scale metres → millimetres is applied
-    # inside the worker, so the scalar factor crosses the boundary too.
     try:
         wing_schemas: Dict[str, Any] = {
             wing_name: wing_model_to_asb_wing_schema(wing),
         }
     except Exception as exc:
-        logger.error(
-            "Failed to convert wing %s to schema: %s",
-            wing_name,
-            exc,
-        )
+        logger.error("Failed to convert wing to schema: %s", type(exc).__name__)
         raise InternalError(
-            message=f"Wing data conversion failed for '{wing_name}': {exc}",
+            message=f"Wing data conversion failed: {type(exc).__name__}",
         )
     try:
-        wing_schemas_pickle = pickle.dumps(wing_schemas)
+        return pickle.dumps(wing_schemas)
     except Exception as exc:
         logger.error(
             "Failed to pickle wing schema for %s: %s; keys=%s",
-            aeroplane_id_str,
-            exc,
+            aeroplane_id_str, exc,
             list(wing_schemas[wing_name].model_dump().keys()) if wing_schemas.get(wing_name) else [],
         )
         raise InternalError(
             message=f"Failed to prepare wing data for '{wing_name}': {exc}",
         )
-    wing_scale = 1000.0
 
-    # ``ServoInformation`` holds cq.Vector / gp_Vec internally and
-    # therefore cannot be pickled, so we transport the raw
-    # ``ServoSettings.model_dump()`` dict and rebuild the real object
-    # in the worker. ``Printer3dSettings`` is a plain Pydantic model
-    # and is picklable directly.
+
+def _extract_aeroplane_settings(
+    aeroplane_settings: Optional[AeroplaneSettings],
+) -> tuple[Dict[int, Dict[str, Any]], Optional[bytes]]:
+    """Extract picklable servo settings and printer settings from AeroplaneSettings."""
     servo_settings_dumps: Dict[int, Dict[str, Any]] = {}
     printer_settings_obj = None
+
     if aeroplane_settings is not None:
-        if aeroplane_settings.servo_information:
-            for key, value in aeroplane_settings.servo_information.items():
-                if hasattr(value, "model_dump"):
-                    servo_settings_dumps[int(key)] = value.model_dump()
-                else:
-                    servo_settings_dumps[int(key)] = dict(value)
+        for key, value in (aeroplane_settings.servo_information or {}).items():
+            if hasattr(value, "model_dump"):
+                servo_settings_dumps[int(key)] = value.model_dump()
+            else:
+                servo_settings_dumps[int(key)] = dict(value)
         printer_settings_obj = aeroplane_settings.printer_settings
 
-    printer_settings_pickle = (
-        pickle.dumps(printer_settings_obj) if printer_settings_obj is not None else None
-    )
+    printer_pickle = pickle.dumps(printer_settings_obj) if printer_settings_obj is not None else None
+    return servo_settings_dumps, printer_pickle
 
-    future = _get_executor().submit(
-        _run_construction_worker,
-        aeroplane_id_str,
-        blueprint,
-        wing_schemas_pickle,
-        wing_scale,
-        None,  # fuselages — not yet routed through the REST path
-        servo_settings_dumps,
-        printer_settings_pickle,
-    )
 
+def _make_task_done_callback(aeroplane_id_str: str):
+    """Create the parent-side done callback for a worker future."""
     def _on_task_done(fut: "Future[Dict[str, Any]]") -> None:
-        """Parent-side callback: pull the worker result into the tasks dict."""
         try:
             result = fut.result()
-        except Exception as exc:  # worker crashed (segfault, OOM, etc.)
+        except Exception as exc:
             logger.error(
-                "Worker process crashed for %s: %s",
-                aeroplane_id_str,
-                exc,
-                exc_info=True,
+                "Worker process crashed for %s: %s", aeroplane_id_str, exc, exc_info=True,
             )
             with tasks_lock:
                 if aeroplane_id_str in tasks:
@@ -506,8 +454,51 @@ def start_wing_export_task(
                     task["error"] = result["error"]
                 if "traceback" in result:
                     task["traceback"] = result["traceback"]
+    return _on_task_done
 
-    future.add_done_callback(_on_task_done)
+
+def start_wing_export_task(
+    aeroplane_id: str,
+    wing: WingModel,
+    wing_name: str,
+    creator_url_type: CreatorUrlType,
+    exporter_url_type: ExporterUrlType,
+    leading_edge_offset_factor: float,
+    trailing_edge_offset_factor: float,
+    aeroplane_settings: Optional[AeroplaneSettings],
+) -> None:
+    """Start a background CAD task in a dedicated worker process.
+
+    Raises:
+        ConflictError: If another task is already running for this aeroplane.
+        ValidationError: If the exporter type is not supported.
+    """
+    aeroplane_id_str = str(aeroplane_id)
+    check_task_available(aeroplane_id_str)
+    register_pending_task(aeroplane_id_str)
+
+    blueprint = build_wing_blueprint(
+        wing_name=wing_name,
+        creator_url_type=creator_url_type,
+        exporter_class=map_exporter_type(exporter_url_type),
+        leading_edge_offset_factor=leading_edge_offset_factor,
+        trailing_edge_offset_factor=trailing_edge_offset_factor,
+    )
+
+    wing_schemas_pickle = _convert_wing_to_pickle(wing, wing_name, aeroplane_id_str)
+    servo_settings_dumps, printer_settings_pickle = _extract_aeroplane_settings(aeroplane_settings)
+
+    future = _get_executor().submit(
+        _run_construction_worker,
+        aeroplane_id_str,
+        blueprint,
+        wing_schemas_pickle,
+        1000.0,  # wing_scale: metres → millimetres
+        None,    # fuselages — not yet routed through the REST path
+        servo_settings_dumps,
+        printer_settings_pickle,
+    )
+    future.add_done_callback(_make_task_done_callback(aeroplane_id_str))
 
     with tasks_lock:
         tasks[aeroplane_id_str]["future"] = future
