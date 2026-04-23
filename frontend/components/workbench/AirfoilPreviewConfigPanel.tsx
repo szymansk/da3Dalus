@@ -43,7 +43,7 @@ function ReadOnlyField({
   value: number | string | undefined;
   suffix?: string;
 }>) {
-  const display = value != null ? `${value}` : "\u2014";
+  const display = value == null ? "\u2014" : `${value}`;
   return (
     <div className="flex flex-1 flex-col gap-1">
       <label className="text-[11px] text-muted-foreground">{label}</label>

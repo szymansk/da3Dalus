@@ -75,16 +75,20 @@ export function SimpleTreeRow({ node, onToggle }: Readonly<SimpleTreeRowProps>) 
         node.selected ? "bg-sidebar-accent font-semibold" : ""
       } ${isOver ? "ring-2 ring-primary" : ""} ${isDragging ? "opacity-40" : ""}`}
       style={{ paddingLeft: indent }}
+      role="treeitem"
+      aria-selected={!!node.selected}
+      tabIndex={0}
       onClick={handleClick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClick(); } }}
     >
-      {!node.leaf ? (
+      {node.leaf ? (
+        <span className="w-3 shrink-0" />
+      ) : (
         node.expanded ? (
           <ChevronDown size={12} className="shrink-0 text-muted-foreground" />
         ) : (
           <ChevronRight size={12} className="shrink-0 text-muted-foreground" />
         )
-      ) : (
-        <span className="w-3 shrink-0" />
       )}
       <span
         className={`truncate ${node.muted ? "text-[12px] text-muted-foreground" : "font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"}`}

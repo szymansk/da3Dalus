@@ -66,7 +66,7 @@ async function downloadAndExtractStl(
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const stlBlob: Blob = await (stlEntry as any).getData(new BlobWriter());
+  const stlBlob = await (stlEntry as any).getData(new BlobWriter()) as Blob;
   await reader.close();
 
   return URL.createObjectURL(stlBlob);

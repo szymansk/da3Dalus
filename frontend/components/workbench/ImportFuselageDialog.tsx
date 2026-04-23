@@ -892,6 +892,7 @@ export function ImportFuselageDialog({
       className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={dialogHandleClose}
       onClick={(e) => { if (e.target === e.currentTarget) dialogHandleClose(); }}
+      onKeyDown={(e) => { if (e.key === "Escape") dialogHandleClose(); }}
       aria-label="New Fuselage"
     >
       <div

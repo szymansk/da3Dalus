@@ -70,15 +70,17 @@ export function GroupAddMenu({
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    globalThis.addEventListener("keydown", handler);
+    return () => globalThis.removeEventListener("keydown", handler);
   }, [onClose]);
 
   return (
     <div
       className="flex w-64 flex-col gap-0.5 rounded-xl border border-border bg-card p-1.5 shadow-2xl"
       onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
       role="menu"
+      tabIndex={-1}
     >
       <div className="px-2.5 pb-1 pt-1">
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">

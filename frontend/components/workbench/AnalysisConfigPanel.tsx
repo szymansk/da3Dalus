@@ -188,6 +188,10 @@ export function AnalysisConfigPanel({
               <label className="flex cursor-pointer items-center gap-2">
                 <span
                   onClick={() => setMode("single")}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setMode("single"); } }}
+                  role="radio"
+                  aria-checked={mode === "single"}
+                  tabIndex={0}
                   className={`flex h-4 w-4 items-center justify-center rounded-full border-2 bg-background ${
                     mode === "single" ? "border-primary" : "border-border-strong"
                   }`}
@@ -203,6 +207,10 @@ export function AnalysisConfigPanel({
               <label className="flex cursor-pointer items-center gap-2">
                 <span
                   onClick={() => setMode("sweep")}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setMode("sweep"); } }}
+                  role="radio"
+                  aria-checked={mode === "sweep"}
+                  tabIndex={0}
                   className={`flex h-4 w-4 items-center justify-center rounded-full border-2 bg-background ${
                     mode === "sweep" ? "border-primary" : "border-border-strong"
                   }`}

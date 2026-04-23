@@ -43,10 +43,10 @@ function toForm(prop: PropertyDefinition | null): FormState {
     unit: prop.unit ?? "",
     required: !!prop.required,
     description: prop.description ?? "",
-    min: prop.min != null ? String(prop.min) : "",
-    max: prop.max != null ? String(prop.max) : "",
+    min: prop.min == null ? "" : String(prop.min),
+    max: prop.max == null ? "" : String(prop.max),
     optionsCsv: (prop.options ?? []).join(", "),
-    defaultStr: prop.default != null ? String(prop.default) : "",
+    defaultStr: prop.default == null ? "" : (typeof prop.default === "object" ? JSON.stringify(prop.default) : String(prop.default)),
   };
 }
 
@@ -132,6 +132,7 @@ export function PropertyEditDialog({
       className="fixed inset-0 z-[60] flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
+      onKeyDown={(e) => { if (e.key === "Escape") handleClose(); }}
       aria-label={initial ? "Edit Property" : "New Property"}
     >
       <div className="flex w-[440px] flex-col gap-3 rounded-2xl border border-border bg-card p-5 shadow-2xl">

@@ -48,7 +48,7 @@ export default function ComponentsPage() {
   // snapshot after every mutate (save / delete / lock / move).
   const [editingNodeId, setEditingNodeId] = useState<number | null>(null);
   const { tree, mutate: mutateTree } = useComponentTree(aeroplaneId);
-  const editingNode = editingNodeId != null ? findNode(tree, editingNodeId) : null;
+  const editingNode = editingNodeId == null ? null : findNode(tree, editingNodeId);
 
   const handleDelete = async (comp: Component) => {
     if (!confirm(`Delete "${comp.name}"?`)) return;

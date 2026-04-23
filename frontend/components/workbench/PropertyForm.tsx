@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useId } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Eye } from "lucide-react";
+import { Box, ChevronDown, Eye } from "lucide-react";
 import { AirfoilSelector } from "./AirfoilSelector";
 import { useAeroplaneContext } from "./AeroplaneContext";
 import { useUnsavedChanges } from "./UnsavedChangesContext";
@@ -11,7 +11,6 @@ import { useWingConfig } from "@/hooks/useWingConfig";
 import type { WingConfigSegment } from "@/hooks/useWingConfig";
 import { useFuselage, type FuselageXSec } from "@/hooks/useFuselage";
 import { ImportFuselageDialog } from "./ImportFuselageDialog";
-import { Box } from "lucide-react";
 
 /** Parse a number input string, allowing empty/partial input during editing */
 function num(v: string, fallback = 0): number {

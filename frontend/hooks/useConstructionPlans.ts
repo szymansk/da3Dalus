@@ -60,7 +60,7 @@ export function useAeroplanePlans(aeroplaneId: string | null) {
 
 export function useConstructionPlan(id: number | null) {
   const { data, error, isLoading, mutate } = useSWR<PlanRead>(
-    id != null ? `/construction-plans/${id}` : null,
+    id == null ? null : `/construction-plans/${id}`,
     fetcher,
   );
 

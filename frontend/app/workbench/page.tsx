@@ -208,6 +208,7 @@ export default function WorkbenchPage() {
         className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
         onClose={configHandleClose}
         onClick={(e) => { if (e.target === e.currentTarget) configHandleClose(); }}
+        onKeyDown={(e) => { if (e.key === "Escape") configHandleClose(); }}
         aria-label="Configuration"
       >
         {configOpen && (

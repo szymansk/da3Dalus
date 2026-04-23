@@ -36,7 +36,7 @@ function parseValue(prop: PropertyDefinition, raw: unknown): unknown {
       if (typeof raw === "boolean") return raw;
       return raw === "true" || raw === true;
     default:
-      return String(raw);
+      return typeof raw === "object" ? JSON.stringify(raw) : String(raw);
   }
 }
 
@@ -67,7 +67,7 @@ function validateProp(prop: PropertyDefinition, raw: unknown): ValidationResult 
       return validateNumberRange(prop, parsed as number);
     case "enum":
       if (prop.options && !prop.options.includes(String(parsed))) {
-        return fail(prop, `${prop.label}: value '${parsed}' is not in ${JSON.stringify(prop.options)}.`);
+        return fail(prop, `${prop.label}: value '${String(parsed)}' is not in ${JSON.stringify(prop.options)}.`);
       }
       return null;
     default:
@@ -102,10 +102,10 @@ export function ComponentEditDialog({
   const [manufacturer, setManufacturer] = useState(component?.manufacturer ?? "");
   const [description, setDescription] = useState(component?.description ?? "");
   const [massG, setMassG] = useState(
-    component?.mass_g != null ? String(component.mass_g) : "",
+    component?.mass_g == null ? "" : String(component.mass_g),
   );
   const [specs, setSpecs] = useState<Record<string, unknown>>(
-    { ...(component?.specs ?? {}) },
+    { ...(component?.specs) },
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -197,6 +197,7 @@ export function ComponentEditDialog({
       className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
+      onKeyDown={(e) => { if (e.key === "Escape") handleClose(); }}
       aria-label={isEdit ? "Edit Component" : "New Component"}
     >
       <div className="flex max-h-[85vh] w-[520px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl">
@@ -376,7 +377,7 @@ function SpecField({ prop, value, onChange }: Readonly<SpecFieldProps>) {
           <select
             id={fieldId}
             data-spec={prop.name}
-            value={value == null ? "" : String(value)}
+            value={value == null ? "" : (typeof value === "object" ? JSON.stringify(value) : String(value))}
             onChange={(e) => onChange(e.target.value)}
             className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
           >
@@ -397,7 +398,7 @@ function SpecField({ prop, value, onChange }: Readonly<SpecFieldProps>) {
             id={fieldId}
             data-spec={prop.name}
             type={prop.type === "number" ? "number" : "text"}
-            value={value == null ? "" : String(value)}
+            value={value == null ? "" : (typeof value === "object" ? JSON.stringify(value) : String(value))}
             onChange={(e) => onChange(e.target.value)}
             min={prop.min ?? undefined}
             max={prop.max ?? undefined}

@@ -165,6 +165,7 @@ export function ComponentTypeEditDialog({
         className="fixed inset-0 z-[55] flex items-center justify-center bg-transparent backdrop:bg-black/60"
         onClose={handleClose}
         onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
+        onKeyDown={(e) => { if (e.key === "Escape") handleClose(); }}
         aria-label={heading}
       >
         <div className="flex w-[560px] max-h-[85vh] flex-col gap-3 rounded-2xl border border-border bg-card p-5 shadow-2xl">
@@ -330,6 +331,7 @@ export function ComponentTypeEditDialog({
         className="fixed inset-0 z-[60] flex items-center justify-center bg-transparent backdrop:bg-black/60"
         onClose={closeConfirmDialog}
         onClick={(e) => { if (e.target === e.currentTarget) closeConfirmDialog(); }}
+        onKeyDown={(e) => { if (e.key === "Escape") closeConfirmDialog(); }}
         aria-label="Confirm delete type"
       >
         {type && (

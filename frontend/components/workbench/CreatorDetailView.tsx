@@ -73,10 +73,8 @@ export function CreatorDetailView({ creator, onBack }: Readonly<CreatorDetailVie
       {/* Parameters */}
       <div className="flex flex-col gap-2">
         <h4 className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
-          Parameters
-          <span className="ml-1.5 text-[10px] text-subtle-foreground">
-            ({userParams.length})
-          </span>
+          Parameters{" "}
+          <span className="ml-1.5 text-[10px] text-subtle-foreground">({userParams.length})</span>
         </h4>
         {userParams.length === 0 ? (
           <p className="text-[11px] text-subtle-foreground">
