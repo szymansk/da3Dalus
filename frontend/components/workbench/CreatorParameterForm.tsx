@@ -25,7 +25,8 @@ function ParamInput({
   onChange: (key: string, value: unknown) => void;
   availableShapeKeys: string[];
 }) {
-  const strValue = String(value ?? param.default ?? "");
+  const rawValue = value ?? param.default ?? "";
+  const strValue = typeof rawValue === "object" ? JSON.stringify(rawValue) : String(rawValue);
 
   if (param.is_shape_ref && availableShapeKeys.length > 0) {
     return (

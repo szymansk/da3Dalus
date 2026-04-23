@@ -67,8 +67,8 @@ interface BuildNodeContext {
 
 function getTedData(xsec: XSec): Record<string, unknown> | null {
   const ted = xsec.trailing_edge_device ?? xsec.control_surface;
-  if (ted && typeof ted === "object" && Object.keys(ted as Record<string, unknown>).length > 0) {
-    return ted as Record<string, unknown>;
+  if (ted && typeof ted === "object" && Object.keys(ted).length > 0) {
+    return ted;
   }
   return null;
 }
