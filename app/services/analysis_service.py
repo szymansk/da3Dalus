@@ -640,6 +640,24 @@ def _scatter_characteristic_points(
     return polar_point_labels
 
 
+def _resolve_alpha_marker(
+    point: dict,
+    key: str,
+    alpha_val: float,
+    text: str,
+) -> tuple[float, str] | None:
+    """Return (y_value, label) for a characteristic point on the alpha panel, or None."""
+    if key == "minimum_drag_coefficient_point":
+        y_val = point.get("CD")
+        if y_val is None:
+            return None
+        return y_val, f"{text}={y_val:.3f} @ a={alpha_val:.2f}"
+    y_val = point.get("CL")
+    if y_val is None:
+        return None
+    return y_val, f"{text} @ a={alpha_val:.2f}, CL={y_val:.3f}"
+
+
 def _mirror_markers_to_alpha_panel(
     ax_coeff: Any,
     alpha_polar: np.ndarray,
@@ -662,23 +680,12 @@ def _mirror_markers_to_alpha_panel(
         idx = point.get("index")
         if idx is None or idx >= alpha_len:
             continue
-        alpha_val = alpha_polar[idx]
-        if key == "minimum_drag_coefficient_point":
-            y_val = point.get("CD")
-            if y_val is None:
-                continue
-            ax_coeff.scatter(alpha_val, y_val, color=color, s=25, zorder=5)
-            alpha_point_labels.append(
-                (alpha_val, y_val, f"{text}={y_val:.3f} @ a={alpha_val:.2f}", color)
-            )
-        else:
-            y_val = point.get("CL")
-            if y_val is None:
-                continue
-            ax_coeff.scatter(alpha_val, y_val, color=color, s=25, zorder=5)
-            alpha_point_labels.append(
-                (alpha_val, y_val, f"{text} @ a={alpha_val:.2f}, CL={y_val:.3f}", color)
-            )
+        resolved = _resolve_alpha_marker(point, key, alpha_polar[idx], text)
+        if resolved is None:
+            continue
+        y_val, label = resolved
+        ax_coeff.scatter(alpha_polar[idx], y_val, color=color, s=25, zorder=5)
+        alpha_point_labels.append((alpha_polar[idx], y_val, label, color))
     return alpha_point_labels
 
 

@@ -150,6 +150,41 @@ function buildAddHandler(
   };
 }
 
+/** Build detail rows for an expanded segment (chord, dimensions, TED, spars). */
+function buildExpandedSegmentDetails(
+  segId: string,
+  wingName: string,
+  segIdx: number,
+  root: XSec,
+  tip: XSec,
+  callbacks: BuildNodeCallbacks,
+): TreeNode[] {
+  const nodes: TreeNode[] = [];
+  const rootChord = (root.chord * 1000).toFixed(1);
+  const tipChord = (tip.chord * 1000).toFixed(1);
+  const length = (Math.abs(tip.xyz_le[1] - root.xyz_le[1]) * 1000).toFixed(1);
+  const sweep = ((tip.xyz_le[0] - root.xyz_le[0]) * 1000).toFixed(1);
+
+  nodes.push({
+    id: `${segId}-root`, label: `root: ${airfoilShort(root.airfoil)} · ${rootChord} mm`,
+    level: 3, leaf: true, muted: true,
+  });
+  nodes.push({
+    id: `${segId}-tip`, label: `tip: ${airfoilShort(tip.airfoil)} · ${tipChord} mm`,
+    level: 3, leaf: true, muted: true,
+  });
+  nodes.push({
+    id: `${segId}-dims`, label: `length ${length} mm · sweep ${sweep} mm`,
+    level: 3, leaf: true, muted: true, mono: true,
+  });
+
+  const tedNode = buildTedNode(segId, wingName, segIdx, root, callbacks);
+  if (tedNode) nodes.push(tedNode);
+
+  nodes.push(...buildSparNodes(segId, wingName, segIdx, root, callbacks));
+  return nodes;
+}
+
 // ── Build nodes for WingConfig mode (segments) ──────────────────
 
 function buildSegmentNodes(
@@ -228,28 +263,7 @@ function buildSegmentNodes(
 
     // Expanded segment details
     if (segExpanded) {
-      const rootChord = (root.chord * 1000).toFixed(1);
-      const tipChord = (tip.chord * 1000).toFixed(1);
-      const length = (Math.abs(tip.xyz_le[1] - root.xyz_le[1]) * 1000).toFixed(1);
-      const sweep = ((tip.xyz_le[0] - root.xyz_le[0]) * 1000).toFixed(1);
-
-      nodes.push({
-        id: `${segId}-root`, label: `root: ${airfoilShort(root.airfoil)} · ${rootChord} mm`,
-        level: 3, leaf: true, muted: true,
-      });
-      nodes.push({
-        id: `${segId}-tip`, label: `tip: ${airfoilShort(tip.airfoil)} · ${tipChord} mm`,
-        level: 3, leaf: true, muted: true,
-      });
-      nodes.push({
-        id: `${segId}-dims`, label: `length ${length} mm · sweep ${sweep} mm`,
-        level: 3, leaf: true, muted: true, mono: true,
-      });
-
-      const tedNode = buildTedNode(segId, wingName, i, root, callbacks);
-      if (tedNode) nodes.push(tedNode);
-
-      nodes.push(...buildSparNodes(segId, wingName, i, root, callbacks));
+      nodes.push(...buildExpandedSegmentDetails(segId, wingName, i, root, tip, callbacks));
     }
   }
 

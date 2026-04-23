@@ -474,6 +474,38 @@ function FieldGridContent({
   );
 }
 
+/** Build a segment payload from the edited WingConfig state, keeping other segments unchanged. */
+function buildUpdatedSegments(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  segments: any[],
+  editedIndex: number,
+  wc: WingConfigState,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): any[] {
+  return segments.map((seg, i) => {
+    if (i !== editedIndex) return seg;
+    return {
+      ...seg,
+      root_airfoil: {
+        airfoil: wc.root_airfoil,
+        chord: wc.root_chord,
+        dihedral_as_rotation_in_degrees: wc.root_dihedral,
+        incidence: wc.root_incidence,
+      },
+      tip_airfoil: {
+        airfoil: wc.tip_airfoil,
+        chord: wc.tip_chord,
+        dihedral_as_rotation_in_degrees: wc.tip_dihedral,
+        incidence: wc.tip_incidence,
+      },
+      length: wc.length,
+      sweep: wc.sweep,
+      number_interpolation_points: wc.number_interpolation_points,
+      tip_type: wc.tip_type || undefined,
+    };
+  });
+}
+
 // ── Main Component ──────────────────────────────────────────────
 
 export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingName: string) => void }) {
@@ -600,29 +632,7 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
     setSaving(true);
     setError(null);
     try {
-      // Build updated WingConfig: replace the edited segment, keep others
-      const updatedSegments = wingConfig.segments.map((seg, i) => {
-        if (i !== selectedXsecIndex) return seg;
-        return {
-          ...seg,
-          root_airfoil: {
-            airfoil: wc.root_airfoil,
-            chord: wc.root_chord,
-            dihedral_as_rotation_in_degrees: wc.root_dihedral,
-            incidence: wc.root_incidence,
-          },
-          tip_airfoil: {
-            airfoil: wc.tip_airfoil,
-            chord: wc.tip_chord,
-            dihedral_as_rotation_in_degrees: wc.tip_dihedral,
-            incidence: wc.tip_incidence,
-          },
-          length: wc.length,
-          sweep: wc.sweep,
-          number_interpolation_points: wc.number_interpolation_points,
-          tip_type: wc.tip_type || undefined,
-        };
-      });
+      const updatedSegments = buildUpdatedSegments(wingConfig.segments, selectedXsecIndex, wc);
 
       await saveWingConfig({
         ...wingConfig,

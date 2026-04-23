@@ -508,10 +508,116 @@ function buildSparEdgeLines(
   return traces;
 }
 
+/** Compute spar center points from precise origin/vector or airfoil camber fallback. */
+function computeSparCenters(
+  spar: Record<string, unknown>,
+  posFactor: number,
+  sparStartMm: number,
+  sparLengthMm: number | undefined,
+  segmentSpan: number,
+  startAf: AirfoilCoords | null,
+  endAf: AirfoilCoords | null,
+  startStation: ReturnType<typeof lerpXSec>,
+  endStation: ReturnType<typeof lerpXSec>,
+): { startCenter: { x: number[]; y: number[]; z: number[] } | null; endCenter: { x: number[]; y: number[]; z: number[] } | null } {
+  const sparOrigin = spar.spare_origin as number[] | null | undefined;
+  const sparVector = spar.spare_vector as number[] | null | undefined;
+  const hasPrecise = sparOrigin && sparVector && sparOrigin.length === 3 && sparVector.length === 3;
+
+  if (hasPrecise) {
+    const startDist = sparStartMm * 0.001;
+    const endDist = (sparLengthMm != null ? (sparStartMm + sparLengthMm) * 0.001 : segmentSpan);
+    return {
+      startCenter: {
+        x: [sparOrigin[0] + sparVector[0] * startDist],
+        y: [sparOrigin[1] + sparVector[1] * startDist],
+        z: [sparOrigin[2] + sparVector[2] * startDist],
+      },
+      endCenter: {
+        x: [sparOrigin[0] + sparVector[0] * endDist],
+        y: [sparOrigin[1] + sparVector[1] * endDist],
+        z: [sparOrigin[2] + sparVector[2] * endDist],
+      },
+    };
+  }
+
+  let startCenter: { x: number[]; y: number[]; z: number[] } | null = null;
+  let endCenter: { x: number[]; y: number[]; z: number[] } | null = null;
+  if (startAf) {
+    const camberY = lerpLookup(startAf.camber_x, startAf.camber_y, posFactor);
+    startCenter = transformProfile([posFactor], [camberY], startStation.chord, startStation.twist, startStation.xyz_le, startStation.dihedral);
+  }
+  if (endAf) {
+    const camberY = lerpLookup(endAf.camber_x, endAf.camber_y, posFactor);
+    endCenter = transformProfile([posFactor], [camberY], endStation.chord, endStation.twist, endStation.xyz_le, endStation.dihedral);
+  }
+  return { startCenter, endCenter };
+}
+
+/** Build traces for a single spar within a segment. */
+function buildSingleSparTraces(
+  spar: Record<string, unknown>,
+  segIdx: number,
+  ctx: WingTraceCtx,
+  segmentSpan: number,
+  sparColor: string,
+): PlotlyData[] {
+  const { xsecs, airfoils, dihedrals } = ctx;
+  const traces: PlotlyData[] = [];
+
+  const posFactor = spar.spare_position_factor as number | undefined;
+  if (posFactor == null) return traces;
+
+  const sparW = (spar.spare_support_dimension_width as number ?? 0) * 0.001;
+  const sparH = (spar.spare_support_dimension_height as number ?? 0) * 0.001;
+  const sparStartMm = spar.spare_start as number ?? 0;
+  const sparLengthMm = spar.spare_length as number | undefined;
+
+  const tStart = segmentSpan > 0 ? (sparStartMm * 0.001) / segmentSpan : 0;
+  const tEnd = (sparLengthMm != null && segmentSpan > 0)
+    ? Math.min((sparStartMm + sparLengthMm) * 0.001 / segmentSpan, 1)
+    : 1;
+
+  const startStation = lerpXSec(xsecs, dihedrals, segIdx, segIdx + 1, tStart);
+  const startAf = lerpAf(airfoils, segIdx, segIdx + 1, tStart);
+  const endStation = lerpXSec(xsecs, dihedrals, segIdx, segIdx + 1, tEnd);
+  const endAf = lerpAf(airfoils, segIdx, segIdx + 1, tEnd);
+
+  const { startCenter, endCenter } = computeSparCenters(
+    spar, posFactor, sparStartMm, sparLengthMm, segmentSpan,
+    startAf, endAf, startStation, endStation,
+  );
+
+  // Vertical spar lines + cross-sections
+  traces.push(buildSparVerticalLine(startAf, posFactor, startStation, sparColor));
+  if (startCenter) {
+    const cs = buildSparCrossSection(startCenter, sparW, sparH, startStation.twist, sparColor);
+    if (cs) traces.push(cs);
+  }
+
+  traces.push(buildSparVerticalLine(endAf, posFactor, endStation, sparColor));
+  if (endCenter) {
+    const cs = buildSparCrossSection(endCenter, sparW, sparH, endStation.twist, sparColor);
+    if (cs) traces.push(cs);
+  }
+
+  // Spanwise connection lines
+  if (startAf && endAf) {
+    traces.push(...buildSparSpanwiseLines(startAf, endAf, posFactor, startStation, endStation, sparColor));
+  }
+
+  // Dashed edge lines
+  if (startCenter && endCenter && sparW > 0 && sparH > 0) {
+    traces.push(...buildSparEdgeLines(startCenter, endCenter, sparW, sparH, startStation.twist, endStation.twist, sparColor));
+  }
+
+  return traces;
+}
+
 /** All spar traces for the wing. */
 function buildSparTraces(ctx: WingTraceCtx): PlotlyData[] {
   const traces: PlotlyData[] = [];
-  const { xsecs, airfoils, dihedrals, selectedIdx } = ctx;
+  const { xsecs, selectedIdx } = ctx;
 
   for (let i = 0; i < xsecs.length; i++) {
     const spars = xsecs[i].spare_list as Array<Record<string, unknown>> | undefined;
@@ -525,77 +631,7 @@ function buildSparTraces(ctx: WingTraceCtx): PlotlyData[] {
     const segmentSpan = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
     for (const spar of spars) {
-      const posFactor = spar.spare_position_factor as number | undefined;
-      if (posFactor == null) continue;
-      const sparW = (spar.spare_support_dimension_width as number ?? 0) * 0.001;
-      const sparH = (spar.spare_support_dimension_height as number ?? 0) * 0.001;
-      const sparStartMm = spar.spare_start as number ?? 0;
-      const sparLengthMm = spar.spare_length as number | undefined;
-
-      const tStart = segmentSpan > 0 ? (sparStartMm * 0.001) / segmentSpan : 0;
-      const tEnd = (sparLengthMm != null && segmentSpan > 0)
-        ? Math.min((sparStartMm + sparLengthMm) * 0.001 / segmentSpan, 1)
-        : 1;
-
-      const startStation = lerpXSec(xsecs, dihedrals, i, i + 1, tStart);
-      const startAf = lerpAf(airfoils, i, i + 1, tStart);
-      const endStation = lerpXSec(xsecs, dihedrals, i, i + 1, tEnd);
-      const endAf = lerpAf(airfoils, i, i + 1, tEnd);
-
-      // Compute spar center points
-      const sparOrigin = spar.spare_origin as number[] | null | undefined;
-      const sparVector = spar.spare_vector as number[] | null | undefined;
-      const hasPrecise = sparOrigin && sparVector && sparOrigin.length === 3 && sparVector.length === 3;
-
-      let startCenter: { x: number[]; y: number[]; z: number[] } | null = null;
-      let endCenter: { x: number[]; y: number[]; z: number[] } | null = null;
-
-      if (hasPrecise) {
-        const startDist = sparStartMm * 0.001;
-        const endDist = (sparLengthMm != null ? (sparStartMm + sparLengthMm) * 0.001 : segmentSpan);
-        startCenter = {
-          x: [sparOrigin[0] + sparVector[0] * startDist],
-          y: [sparOrigin[1] + sparVector[1] * startDist],
-          z: [sparOrigin[2] + sparVector[2] * startDist],
-        };
-        endCenter = {
-          x: [sparOrigin[0] + sparVector[0] * endDist],
-          y: [sparOrigin[1] + sparVector[1] * endDist],
-          z: [sparOrigin[2] + sparVector[2] * endDist],
-        };
-      } else {
-        if (startAf) {
-          const camberY = lerpLookup(startAf.camber_x, startAf.camber_y, posFactor);
-          startCenter = transformProfile([posFactor], [camberY], startStation.chord, startStation.twist, startStation.xyz_le, startStation.dihedral);
-        }
-        if (endAf) {
-          const camberY = lerpLookup(endAf.camber_x, endAf.camber_y, posFactor);
-          endCenter = transformProfile([posFactor], [camberY], endStation.chord, endStation.twist, endStation.xyz_le, endStation.dihedral);
-        }
-      }
-
-      // Vertical spar lines + cross-sections
-      traces.push(buildSparVerticalLine(startAf, posFactor, startStation, sparColor));
-      if (startCenter) {
-        const cs = buildSparCrossSection(startCenter, sparW, sparH, startStation.twist, sparColor);
-        if (cs) traces.push(cs);
-      }
-
-      traces.push(buildSparVerticalLine(endAf, posFactor, endStation, sparColor));
-      if (endCenter) {
-        const cs = buildSparCrossSection(endCenter, sparW, sparH, endStation.twist, sparColor);
-        if (cs) traces.push(cs);
-      }
-
-      // Spanwise connection lines
-      if (startAf && endAf) {
-        traces.push(...buildSparSpanwiseLines(startAf, endAf, posFactor, startStation, endStation, sparColor));
-      }
-
-      // Dashed edge lines
-      if (startCenter && endCenter && sparW > 0 && sparH > 0) {
-        traces.push(...buildSparEdgeLines(startCenter, endCenter, sparW, sparH, startStation.twist, endStation.twist, sparColor));
-      }
+      traces.push(...buildSingleSparTraces(spar, i, ctx, segmentSpan, sparColor));
     }
   }
 

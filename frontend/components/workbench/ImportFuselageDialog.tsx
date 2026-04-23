@@ -410,6 +410,48 @@ const INITIAL_XSECS: XSec[] = Array.from({ length: 50 }, (_, i) => ({
   n: 2.0 + 0.5 * Math.sin((i / 49) * Math.PI),
 }));
 
+/** Transform raw sliced xsecs by applying scale and optional X-flip. */
+function transformSlicedXsecs(
+  rawXsecs: Array<{ xyz: number[]; a: number; b: number; n: number }>,
+  scaleFactor: number,
+  flipX: boolean,
+): XSec[] {
+  const xFlip = flipX ? -1 : 1;
+  return rawXsecs.map((xs) => ({
+    xyz: xs.xyz.map((v: number, idx: number) => v * scaleFactor * (idx === 0 ? xFlip : 1)),
+    a: xs.a * scaleFactor,
+    b: xs.b * scaleFactor,
+    n: xs.n,
+  }));
+}
+
+/** Save a fuselage via PUT, falling back to POST on 409 conflict. */
+async function saveFuselage(
+  aeroplaneId: string,
+  fuselageName: string,
+  xsecs: XSec[],
+): Promise<void> {
+  const body = JSON.stringify({
+    name: fuselageName,
+    x_secs: xsecs.map((xs) => ({ xyz: xs.xyz, a: xs.a, b: xs.b, n: xs.n })),
+  });
+
+  let res = await fetch(
+    `${API_BASE}/aeroplanes/${aeroplaneId}/fuselages/${encodeURIComponent(fuselageName)}`,
+    { method: "PUT", headers: { "Content-Type": "application/json" }, body },
+  );
+  if (res.status === 409) {
+    res = await fetch(
+      `${API_BASE}/aeroplanes/${aeroplaneId}/fuselages/${encodeURIComponent(fuselageName)}`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body },
+    );
+  }
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Save failed: ${res.status} ${detail}`);
+  }
+}
+
 type Phase = "upload" | "processing" | "preview";
 
 export function ImportFuselageDialog({
@@ -470,13 +512,7 @@ export function ImportFuselageDialog({
       }
       const data = await res.json();
 
-      const xFlip = flipX ? -1 : 1;
-      const newXsecs: XSec[] = (data.fuselage?.x_secs ?? []).map((xs: { xyz: number[]; a: number; b: number; n: number }) => ({
-        xyz: xs.xyz.map((v: number, idx: number) => v * scaleFactor * (idx === 0 ? xFlip : 1)),
-        a: xs.a * scaleFactor,
-        b: xs.b * scaleFactor,
-        n: xs.n,
-      }));
+      const newXsecs = transformSlicedXsecs(data.fuselage?.x_secs ?? [], scaleFactor, flipX);
       setXsecs(newXsecs.length > 0 ? newXsecs : INITIAL_XSECS);
       setFidelity(extractFidelity(data));
       setFuselageName(data.fuselage?.name ?? fuselageName);
@@ -493,26 +529,7 @@ export function ImportFuselageDialog({
     setSaving(true);
     setError(null);
     try {
-      const body = JSON.stringify({
-        name: fuselageName,
-        x_secs: xsecs.map((xs) => ({ xyz: xs.xyz, a: xs.a, b: xs.b, n: xs.n })),
-      });
-
-      // Try PUT (create). If 409 conflict (already exists), try POST (update).
-      let res = await fetch(
-        `${API_BASE}/aeroplanes/${aeroplaneId}/fuselages/${encodeURIComponent(fuselageName)}`,
-        { method: "PUT", headers: { "Content-Type": "application/json" }, body },
-      );
-      if (res.status === 409) {
-        res = await fetch(
-          `${API_BASE}/aeroplanes/${aeroplaneId}/fuselages/${encodeURIComponent(fuselageName)}`,
-          { method: "POST", headers: { "Content-Type": "application/json" }, body },
-        );
-      }
-      if (!res.ok) {
-        const detail = await res.text();
-        throw new Error(`Save failed: ${res.status} ${detail}`);
-      }
+      await saveFuselage(aeroplaneId, fuselageName, xsecs);
       onSaved?.();
       handleReset();
       onClose();
