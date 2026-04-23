@@ -55,7 +55,7 @@ export default function AirfoilPreviewPage() {
   }, [velocity]);
 
   const rootGeo = useAirfoilGeometry(rootAirfoil);
-  const tipGeo = useAirfoilGeometry(tipAirfoil !== rootAirfoil ? tipAirfoil : null);
+  const tipGeo = useAirfoilGeometry(tipAirfoil === rootAirfoil ? null : tipAirfoil);
   const rootAnalysis = useAirfoilAnalysis();
   const tipAnalysis = useAirfoilAnalysis();
 

@@ -68,7 +68,7 @@ export function useAirfoilAnalysis() {
           clOverCd,
           clMax: rr.cl_max ?? null,
           alphaAtClMax: rr.alpha_at_cl_max_deg ?? null,
-          ldMax: ldMax != null ? Math.round(ldMax * 10) / 10 : null,
+          ldMax: ldMax == null ? null : Math.round(ldMax * 10) / 10,
           alphaAtLdMax,
         });
       } catch (err) {

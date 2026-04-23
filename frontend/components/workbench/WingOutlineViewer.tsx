@@ -515,7 +515,7 @@ function computeSparCenters(
 
   if (hasPrecise) {
     const startDist = sparStartMm * 0.001;
-    const endDist = (sparLengthMm != null ? (sparStartMm + sparLengthMm) * 0.001 : segmentSpan);
+    const endDist = (sparLengthMm == null ? segmentSpan : (sparStartMm + sparLengthMm) * 0.001);
     return {
       startCenter: {
         x: [sparOrigin[0] + sparVector[0] * startDist],

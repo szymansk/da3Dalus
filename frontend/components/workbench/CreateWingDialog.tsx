@@ -138,11 +138,13 @@ export function CreateWingDialog({
       className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
+      onKeyDown={(e) => { if (e.key === "Escape") handleClose(); }}
       aria-label="Create Wing"
     >
       {/* Dialog */}
       <div
         className="relative z-10 w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-xl"
+        role="presentation"
         onKeyDown={handleKeyDown}
       >
         {/* Header */}

@@ -25,7 +25,7 @@ export function SplitHandle({ onCollapse, collapsed }: Readonly<SplitHandleProps
         >
           <ChevronRight
             size={12}
-            className={`text-muted-foreground transition-transform ${!collapsed ? "rotate-180" : ""}`}
+            className={`text-muted-foreground transition-transform ${collapsed ? "" : "rotate-180"}`}
           />
         </button>
       )}

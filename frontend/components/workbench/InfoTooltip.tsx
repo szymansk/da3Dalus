@@ -15,9 +15,8 @@ export function InfoTooltip({ text, size = 11 }: Readonly<InfoTooltipProps>) {
   return (
     <span
       className="group/tip relative inline-flex shrink-0 text-muted-foreground hover:text-primary"
-      role="img"
       aria-label={text}
-      tabIndex={0}
+      role="note"
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
     >

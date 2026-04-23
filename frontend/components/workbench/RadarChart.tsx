@@ -66,7 +66,7 @@ export function RadarChart({
           key={`grid-${lv}`}
           data-testid="grid-ring"
           points={buildPolygonPoints(
-            cx, cy, R * lv, Array(n).fill(1), angles,
+            cx, cy, R * lv, new Array(n).fill(1), angles,
           )}
           fill="none"
           stroke="var(--color-border)"

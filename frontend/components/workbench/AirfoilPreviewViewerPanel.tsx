@@ -70,7 +70,7 @@ function LineChart({
     for (let i = 0; i < xData.length; i++) {
       const x = xData[i];
       const y = yData[i];
-      if (x != null && isFinite(x) && y != null && isFinite(y)) pairs.push({ x, y });
+      if (x != null && Number.isFinite(x) && y != null && Number.isFinite(y)) pairs.push({ x, y });
     }
     return pairs;
   }, [xData, yData]);
@@ -81,7 +81,7 @@ function LineChart({
     for (let i = 0; i < xData2.length; i++) {
       const x = xData2[i];
       const y = yData2[i];
-      if (x != null && isFinite(x) && y != null && isFinite(y)) pairs.push({ x, y });
+      if (x != null && Number.isFinite(x) && y != null && Number.isFinite(y)) pairs.push({ x, y });
     }
     return pairs;
   }, [xData2, yData2]);

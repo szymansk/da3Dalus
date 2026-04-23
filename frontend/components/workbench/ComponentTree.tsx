@@ -66,7 +66,7 @@ export async function handleDragEnd({
   } catch (err) {
     // Rollback: refetch from server to discard any client-side optimistic state.
     mutateFn();
-    if (typeof window !== "undefined") {
+    if (typeof globalThis.window !== "undefined") {
       alert(err instanceof Error ? err.message : "Move failed");
     }
   }
@@ -101,7 +101,7 @@ function weightTooltip(node: ComponentTreeNode): string {
   const own = node.own_weight_g;
   const total = node.total_weight_g ?? 0;
   const status = node.weight_status ?? "invalid";
-  const ownStr = own != null ? `${own.toFixed(1)}g` : "—";
+  const ownStr = own == null ? "—" : `${own.toFixed(1)}g`;
   const sourceLabel: Record<string, string> = {
     override: "manual override",
     cots: "from COTS catalog",
@@ -286,7 +286,7 @@ export function ComponentTree({
       mutate();
     } catch (err) {
       mutate();
-      if (typeof window !== "undefined") {
+      if (typeof globalThis.window !== "undefined") {
         alert(err instanceof Error ? err.message : "Move failed");
       }
     }
@@ -491,7 +491,9 @@ export function ComponentTree({
       {addFlow.kind === "menu" && (
         <div
           className="fixed inset-0 z-40 bg-black/40"
+          role="presentation"
           onClick={() => setAddFlow({ kind: "idle" })}
+          onKeyDown={(e) => { if (e.key === "Escape") setAddFlow({ kind: "idle" }); }}
         >
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             <GroupAddMenu

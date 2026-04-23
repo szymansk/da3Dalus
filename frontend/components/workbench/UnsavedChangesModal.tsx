@@ -14,6 +14,7 @@ export function UnsavedChangesModal() {
       className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/50"
       onClose={handleClose}
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
+      onKeyDown={(e) => { if (e.key === "Escape") handleClose(); }}
     >
       <div className="flex w-[460px] flex-col gap-5 rounded-[16px] border border-border bg-card p-6">
         <div className="flex items-center gap-3">
