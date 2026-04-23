@@ -163,7 +163,7 @@ export function useTessellation(aeroplaneId: string | null, wingName: string | n
           );
         }
       })
-      .catch(() => {});
+      .catch(() => { /* best-effort fetch — errors are non-critical */ });
   }, [aeroplaneId, wingName]);
 
   const triggerTessellation = useCallback(async () => {

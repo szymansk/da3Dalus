@@ -38,11 +38,11 @@ function ReadOnlyField({
   label,
   value,
   suffix,
-}: {
+}: Readonly<{
   label: string;
   value: number | string | undefined;
   suffix?: string;
-}) {
+}>) {
   const display = value != null ? `${value}` : "\u2014";
   return (
     <div className="flex flex-1 flex-col gap-1">
@@ -65,13 +65,13 @@ function ReynoldsField({
   onReChange,
   chordMm,
   color,
-}: {
+}: Readonly<{
   label: string;
   re: number;
   onReChange: (re: number) => void;
   chordMm: number;
   color?: string;
-}) {
+}>) {
   return (
     <div className="flex items-center gap-2">
       <span
@@ -113,7 +113,7 @@ export function AirfoilPreviewConfigPanel({
   tipAirfoil,
   onRootAirfoilChange,
   onTipAirfoilChange,
-  isRunning: _isRunning,
+  // isRunning reserved for future loading indicator
   segmentIndex,
   segmentCount,
   onSegmentChange,

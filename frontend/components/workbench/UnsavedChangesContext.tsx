@@ -17,7 +17,7 @@ interface UnsavedChangesContextValue {
 
 const UnsavedChangesContext = createContext<UnsavedChangesContextValue | null>(null);
 
-export function UnsavedChangesProvider({ children }: { children: ReactNode }) {
+export function UnsavedChangesProvider({ children }: Readonly<{ children: ReactNode }>) {
   const router = useRouter();
   const [isDirty, setDirty] = useState(false);
   const [pendingHref, setPendingHref] = useState<string | null>(null);

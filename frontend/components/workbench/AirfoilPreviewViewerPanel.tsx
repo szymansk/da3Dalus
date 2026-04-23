@@ -41,7 +41,7 @@ function LineChart({
   color = "var(--color-primary)",
   onToggleMaximize,
   isMaximized,
-}: {
+}: Readonly<{
   xData: (number | null)[];
   yData: (number | null)[];
   xData2?: (number | null)[];
@@ -57,7 +57,7 @@ function LineChart({
   xFormat?: (v: number) => string;
   onToggleMaximize?: () => void;
   isMaximized?: boolean;
-}) {
+}>) {
   const W = 400;
   const H = 200;
   const PAD = { top: 10, right: 15, bottom: 30, left: 45 };
@@ -300,10 +300,10 @@ function LineChart({
 function AirfoilSvg({
   rootGeometry,
   tipGeometry,
-}: {
+}: Readonly<{
   rootGeometry: AirfoilGeometry;
   tipGeometry: AirfoilGeometry | null;
-}) {
+}>) {
   const { upper, lower, maxThicknessX } = rootGeometry;
 
   // Compute viewbox from all geometries
@@ -319,7 +319,6 @@ function AirfoilSvg({
 
   const vbX = -0.05;
   const vbW = 1.15;
-  const _vbY = yMin - yPad;
   const vbH = yMax - yMin + 2 * yPad;
 
   function pathFromCoords(coords: [number, number][]): string {
