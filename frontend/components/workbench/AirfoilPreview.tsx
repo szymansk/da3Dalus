@@ -55,7 +55,7 @@ export function AirfoilPreview({ airfoilName, onClose }: Readonly<AirfoilPreview
           </span>
           <div className="rounded-xl border border-border bg-input px-2 py-1">
             <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground">
-              0.0
+              0
             </span>
           </div>
         </div>

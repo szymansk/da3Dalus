@@ -19,22 +19,28 @@ interface ComponentEditDialogProps {
 /** Default value inserted when a type is selected and specs don't already have the key. */
 function defaultForProp(prop: PropertyDefinition): unknown {
   if (prop.default != null) return prop.default;
-  if (prop.type === "boolean") return false;
-  return "";
+  switch (prop.type) {
+    case "boolean":
+      return false;
+    default:
+      return "";
+  }
 }
 
 /** Parse a user-entered string back into the property's declared type. */
 function parseValue(prop: PropertyDefinition, raw: unknown): unknown {
   if (raw === "" || raw == null) return undefined;
-  if (prop.type === "number") {
-    const n = Number(raw);
-    return Number.isFinite(n) ? n : undefined;
+  switch (prop.type) {
+    case "number": {
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : undefined;
+    }
+    case "boolean":
+      if (typeof raw === "boolean") return raw;
+      return raw === "true" || raw === true;
+    default:
+      return String(raw);
   }
-  if (prop.type === "boolean") {
-    if (typeof raw === "boolean") return raw;
-    return raw === "true" || raw === true;
-  }
-  return String(raw);
 }
 
 type ValidationResult = { ok: true } | { ok: false; property: string; message: string };
@@ -59,13 +65,17 @@ function validateProp(prop: PropertyDefinition, raw: unknown): ValidationResult 
     return fail(prop, `${prop.label} (${prop.name}) is required.`);
   }
   if (parsed === undefined) return null;
-  if (prop.type === "number") {
-    return validateNumberRange(prop, parsed as number);
+  switch (prop.type) {
+    case "number":
+      return validateNumberRange(prop, parsed as number);
+    case "enum":
+      if (prop.options && !prop.options.includes(String(parsed))) {
+        return fail(prop, `${prop.label}: value '${parsed}' is not in ${JSON.stringify(prop.options)}.`);
+      }
+      return null;
+    default:
+      return null;
   }
-  if (prop.type === "enum" && prop.options && !prop.options.includes(String(parsed))) {
-    return fail(prop, `${prop.label}: value '${String(parsed)}' is not in ${JSON.stringify(prop.options)}.`);
-  }
-  return null;
 }
 
 function validate(
@@ -341,58 +351,59 @@ interface SpecFieldProps {
 function SpecField({ prop, value, onChange }: Readonly<SpecFieldProps>) {
   const labelText = `${prop.label}${prop.required ? " *" : ""}${prop.unit ? ` (${prop.unit})` : ""}`;
 
-  if (prop.type === "boolean") {
-    return (
-      <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          data-spec={prop.name}
-          checked={!!value}
-          onChange={(e) => onChange(e.target.checked)}
-          id={`spec-${prop.name}`}
-        />
-        <label htmlFor={`spec-${prop.name}`} className="text-[12px] text-foreground">
-          {labelText}
-        </label>
-      </div>
-    );
-  }
+  switch (prop.type) {
+    case "boolean":
+      return (
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            data-spec={prop.name}
+            checked={!!value}
+            onChange={(e) => onChange(e.target.checked)}
+            id={`spec-${prop.name}`}
+          />
+          <label htmlFor={`spec-${prop.name}`} className="text-[12px] text-foreground">
+            {labelText}
+          </label>
+        </div>
+      );
 
-  if (prop.type === "enum") {
-    return (
-      <div className="flex flex-col gap-1">
-        <label className="text-[11px] text-muted-foreground">{labelText}</label>
-        <select
-          data-spec={prop.name}
-          value={value == null ? "" : String(value)}
-          onChange={(e) => onChange(e.target.value)}
-          className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
-        >
-          <option value=""></option>
-          {(prop.options ?? []).map((o) => (
-            <option key={o} value={o}>{o}</option>
-          ))}
-        </select>
-      </div>
-    );
-  }
+    case "enum":
+      return (
+        <div className="flex flex-col gap-1">
+          <label className="text-[11px] text-muted-foreground">{labelText}</label>
+          <select
+            data-spec={prop.name}
+            value={value == null ? "" : String(value)}
+            onChange={(e) => onChange(e.target.value)}
+            className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+          >
+            <option value=""></option>
+            {(prop.options ?? []).map((o) => (
+              <option key={o} value={o}>{o}</option>
+            ))}
+          </select>
+        </div>
+      );
 
-  // number or string
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-[11px] text-muted-foreground">{labelText}</label>
-      <input
-        data-spec={prop.name}
-        type={prop.type === "number" ? "number" : "text"}
-        value={value == null ? "" : String(value)}
-        onChange={(e) => onChange(e.target.value)}
-        min={prop.min ?? undefined}
-        max={prop.max ?? undefined}
-        className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
-      />
-      {prop.description && (
-        <span className="text-[10px] text-subtle-foreground">{prop.description}</span>
-      )}
-    </div>
-  );
+    default:
+      // number or string
+      return (
+        <div className="flex flex-col gap-1">
+          <label className="text-[11px] text-muted-foreground">{labelText}</label>
+          <input
+            data-spec={prop.name}
+            type={prop.type === "number" ? "number" : "text"}
+            value={value == null ? "" : String(value)}
+            onChange={(e) => onChange(e.target.value)}
+            min={prop.min ?? undefined}
+            max={prop.max ?? undefined}
+            className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+          />
+          {prop.description && (
+            <span className="text-[10px] text-subtle-foreground">{prop.description}</span>
+          )}
+        </div>
+      );
+  }
 }

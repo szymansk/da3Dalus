@@ -13,15 +13,15 @@ interface ActionRowProps {
   onFuselageSaved?: () => void;
 }
 
+function handleDownloadSTEP() {
+  alert("STEP download not yet connected");
+}
+
 export function ActionRow({ aeroplaneId, onWingCreated, onFuselageSaved }: Readonly<ActionRowProps>) {
   const ctx = useAeroplaneContext();
   const { mutate: mutateWings } = useWings(aeroplaneId);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [createWingOpen, setCreateWingOpen] = useState(false);
-
-  function handleDownloadSTEP() {
-    alert("STEP download not yet connected");
-  }
 
   return (
     <div className="flex flex-wrap items-center gap-2">

@@ -89,40 +89,6 @@ function segmentToWcState(seg: WingConfigSegment): WingConfigState {
   };
 }
 
-/** @deprecated — kept for reference, replaced by segmentToWcState + useWingConfig */
-function xsecsToWingConfig(
-  xsecs: XSec[],
-  segIndex: number,
-): WingConfigState | null {
-  if (segIndex < 0 || segIndex >= xsecs.length - 1) return null;
-  const root = xsecs[segIndex];
-  const tip = xsecs[segIndex + 1];
-  const rootChord = root.chord * 1000;
-  const tipChord = tip.chord * 1000;
-  const dx = (tip.xyz_le[0] - root.xyz_le[0]) * 1000;
-  const dy = (tip.xyz_le[1] - root.xyz_le[1]) * 1000;
-
-  // Estimate dihedral from z-component of leading-edge delta
-  const segLength = Math.hypot(dx, dy);
-  const dz = (tip.xyz_le[2] - root.xyz_le[2]) * 1000;
-  const dihedralDeg = segLength > 0 ? Math.atan2(dz, Math.abs(dy)) * (180 / Math.PI) : 0;
-
-  return {
-    root_airfoil: airfoilShortName(root.airfoil),
-    root_chord: rootChord,
-    root_dihedral: Math.round(dihedralDeg * 100) / 100,
-    root_incidence: root.twist,
-    tip_airfoil: airfoilShortName(tip.airfoil),
-    tip_chord: tipChord,
-    tip_dihedral: Math.round(dihedralDeg * 100) / 100,
-    tip_incidence: tip.twist,
-    length: Math.abs(dy),
-    sweep: dx,
-    number_interpolation_points: root.number_interpolation_points ?? 201,
-    tip_type: root.tip_type ?? "",
-  };
-}
-
 // ── Field Component ─────────────────────────────────────────────
 
 function Field({
@@ -611,8 +577,11 @@ export function PropertyForm({ onGeometryChanged }: Readonly<{ onGeometryChanged
 
   function handleCancel() {
     if (xsec) setAsb(xsecToAsb(xsec));
-    if (wing && selectedXsecIndex !== null)
-      setWc(xsecsToWingConfig(wing.x_secs, selectedXsecIndex));
+    if (wingConfig && selectedXsecIndex !== null && selectedXsecIndex < wingConfig.segments.length) {
+      setWc(segmentToWcState(wingConfig.segments[selectedXsecIndex]));
+    } else {
+      setWc(null);
+    }
     setError(null);
     setDirty(false);
   }

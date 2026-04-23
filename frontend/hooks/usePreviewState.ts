@@ -73,15 +73,18 @@ export function usePreviewState(aeroplaneId: string | null) {
           );
           const s = await r.json();
 
-          if (s.status === "SUCCESS" && s.result?.data) {
-            setPreviews((prev) => ({
-              ...prev,
-              [wingName]: { visible: true, data: s.result, loading: false, error: null },
-            }));
-            return;
-          }
-          if (s.status === "FAILURE") {
-            throw new Error(s.message || "Tessellation failed");
+          switch (s.status) {
+            case "SUCCESS":
+              if (s.result?.data) {
+                setPreviews((prev) => ({
+                  ...prev,
+                  [wingName]: { visible: true, data: s.result, loading: false, error: null },
+                }));
+                return;
+              }
+              break;
+            case "FAILURE":
+              throw new Error(s.message || "Tessellation failed");
           }
           await new Promise((resolve) => setTimeout(resolve, 500));
         }

@@ -230,8 +230,8 @@ export function NodePropertyPanel({
   const constructionPartId = node.construction_part_id ?? null;
 
   const original = nodeToForm(node);
-  const dirty = Object.keys(form).some(
-    (k) => form[k as keyof FormState] !== original[k as keyof FormState],
+  const dirty = (Object.keys(form) as (keyof FormState)[]).some(
+    (k) => form[k] !== original[k],
   );
 
   function update(patch: Partial<FormState>) {
