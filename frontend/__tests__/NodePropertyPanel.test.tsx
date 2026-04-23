@@ -248,7 +248,7 @@ describe("NodePropertyPanel — delete", () => {
     fireEvent.click(screen.getByTitle("Delete node"));
     const modalCancel = screen
       .getAllByText("Cancel")
-      .find((el) => el.closest("dialog") !== null) as HTMLElement;
+      .find((el) => el.closest(".fixed") !== null) as HTMLElement;
     expect(modalCancel).toBeDefined();
     fireEvent.click(modalCancel);
     expect(mockDelete).not.toHaveBeenCalled();

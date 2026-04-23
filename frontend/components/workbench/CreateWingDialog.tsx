@@ -135,7 +135,7 @@ export function CreateWingDialog({
   return (
     <dialog
       ref={dialogRef}
-      className="z-50 backdrop:bg-black/60"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
       aria-label="Create Wing"
     >
