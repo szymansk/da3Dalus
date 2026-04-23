@@ -147,6 +147,8 @@ change only what's necessary. Do NOT refactor surrounding code.
 
 ```
 # Run the new test → MUST PASS
+# If frontend changed: check for dependency violations
+cd frontend && npm run deps:check
 poetry run pytest <test_file>::<test_name> -v
 
 # Run full fast suite → no regressions

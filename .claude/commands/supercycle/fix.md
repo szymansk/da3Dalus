@@ -55,9 +55,13 @@ Verify technically before implementing. Don't blindly agree.
 
 ### 2c — Quality Gates
 ```bash
+# Backend
 poetry run ruff check .
 poetry run ruff format --check .
 poetry run pytest -m "not slow"
+
+# Frontend (if changed)
+cd frontend && npm run lint && npm run test:unit && npm run deps:check
 ```
 
 ### 2d — Commit and Push

@@ -145,6 +145,7 @@ equivalent frontend command.
 | Backend integration | pytest | `app/tests/test_*_integration.py` | `poetry run pytest -m "not slow"` |
 | Backend slow/CAD | pytest | `app/tests/test_*_integration.py` | `poetry run pytest -m slow` |
 | Frontend unit | vitest | `frontend/__tests__/` | `cd frontend && npm run test:unit` |
+| Frontend deps | dependency-cruiser | `frontend/.dependency-cruiser.cjs` | `cd frontend && npm run deps:check` |
 | Frontend E2E | playwright-bdd | `frontend/e2e/features/*.feature` | `cd frontend && npm run test:e2e` |
 
 

@@ -45,6 +45,7 @@ nlopt = ">=2.9,<3.0"
 [tool.poetry.group.dev.dependencies]
 pytest-cov = "^7.1.0"
 ruff = "^0.15.10"
+pydeps = "^3.0.3"
 
 [tool.pytest.ini_options]
 norecursedirs = ["external"]

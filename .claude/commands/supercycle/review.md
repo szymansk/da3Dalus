@@ -113,6 +113,20 @@ gh pr diff <N> --stat
 | PR adds new types / Pydantic models | `pr-review-toolkit:type-design-analyzer` | `class.*BaseModel`, `TypedDict` in diff |
 | PR adds new tests | `pr-review-toolkit:pr-test-analyzer` | files in `tests/` or `__tests__/` in diff |
 | PR adds docstrings / comments | `pr-review-toolkit:comment-analyzer` | `"""` or block comments in diff |
+| PR changes frontend imports | dependency-cruiser check | files in `frontend/` with `import` changes |
+
+### Dependency Architecture Check (frontend PRs):
+
+If the PR modifies any `frontend/` files, run dependency-cruiser
+to check for architecture violations:
+
+```bash
+cd frontend && npm run deps:check
+```
+
+Report any new violations (circular deps, layer violations) in the
+review output. These are blocking — circular dependencies and
+wrong-direction imports must be fixed before merge.
 
 ---
 

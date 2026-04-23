@@ -55,7 +55,10 @@ Each agent MUST:
 2. If issue references external system → fetch current data from there
 3. Create branch: `git switch -c <type>/gh-<N>-<slug>`
 4. Implement the fix/feature
-5. Run quality gates: `poetry run ruff check . && poetry run pytest -m "not slow"`
+5. Run quality gates:
+   - Backend: `poetry run ruff check . && poetry run pytest -m "not slow"`
+   - Frontend (if changed): `cd frontend && npm run lint && npm run test:unit && npm run deps:check`
+   - The `deps:check` catches circular dependencies and layer violations
 6. Push and create PR: `gh pr create --base main` with `Closes #N`
 7. Do NOT merge — leave PR open for review
 
