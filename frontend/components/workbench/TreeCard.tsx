@@ -25,7 +25,7 @@ export function TreeCard({
 }: Readonly<TreeCardProps>) {
   return (
     <div
-      className={`rounded-xl border border-border bg-card overflow-hidden flex flex-col${className ? ` ${className}` : ""}`}
+      className={["rounded-xl border border-border bg-card overflow-hidden flex flex-col", className].filter(Boolean).join(" ")}
     >
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3">

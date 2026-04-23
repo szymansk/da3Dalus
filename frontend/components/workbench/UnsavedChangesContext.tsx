@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 interface UnsavedChangesContextValue {
@@ -69,11 +69,14 @@ export function UnsavedChangesProvider({ children }: Readonly<{ children: ReactN
     return () => window.removeEventListener("beforeunload", handler);
   }, [isDirty]);
 
+  const ctxValue = useMemo(() => ({
+    isDirty, setDirty, registerSave, pendingHref,
+    requestNavigation, confirmDiscard, confirmSave, cancelNavigation, isSaving,
+  }), [isDirty, setDirty, registerSave, pendingHref,
+    requestNavigation, confirmDiscard, confirmSave, cancelNavigation, isSaving]);
+
   return (
-    <UnsavedChangesContext.Provider value={{
-      isDirty, setDirty, registerSave, pendingHref,
-      requestNavigation, confirmDiscard, confirmSave, cancelNavigation, isSaving,
-    }}>
+    <UnsavedChangesContext.Provider value={ctxValue}>
       {children}
     </UnsavedChangesContext.Provider>
   );

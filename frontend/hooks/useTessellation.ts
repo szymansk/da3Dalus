@@ -69,7 +69,7 @@ async function pollTessellation(
 
     if (statusData.status === "SUCCESS") {
       const tessResult = statusData.result;
-      if (!tessResult || !tessResult.data) {
+      if (!tessResult?.data) {
         throw new Error("Tessellation result has no data");
       }
       return tessResult;

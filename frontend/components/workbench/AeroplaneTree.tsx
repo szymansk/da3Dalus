@@ -260,7 +260,7 @@ function buildSegmentNodes(
   });
 
   if (!wingExpanded) return nodes;
-  if (!wing || wing.name !== wingName) {
+  if (wing?.name !== wingName) {
     nodes.push({ id: `${wingName}-loading`, label: "Loading…", level: 2, leaf: true, muted: true });
     return nodes;
   }
@@ -310,7 +310,7 @@ function buildXsecNodes(ctx: BuildNodeContext): TreeNode[] {
   });
 
   if (!wingExpanded) return nodes;
-  if (!wing || wing.name !== wingName) {
+  if (wing?.name !== wingName) {
     nodes.push({ id: `${wingName}-loading`, label: "Loading…", level: 2, leaf: true, muted: true });
     return nodes;
   }

@@ -29,7 +29,7 @@ export function useComponents(componentType?: string, search?: string) {
   if (componentType) params.set("component_type", componentType);
   if (search) params.set("q", search);
   const query = params.toString();
-  const url = `/components${query ? `?${query}` : ""}`;
+  const url = query ? "/components?" + query : "/components";
 
   const { data, error, isLoading, mutate } = useSWR<ComponentList>(url, fetcher);
 

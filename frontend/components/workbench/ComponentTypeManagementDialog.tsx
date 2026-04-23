@@ -48,6 +48,7 @@ export function ComponentTypeManagementDialog({
     <>
       <dialog
         ref={dialogRef}
+        role="dialog"
         className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
         onClose={handleClose}
         onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
@@ -80,7 +81,7 @@ export function ComponentTypeManagementDialog({
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto">
-            {error ? (
+            {error && (
               <div className="rounded-xl border border-destructive bg-destructive/10 p-3 text-[12px] text-destructive">
                 Failed to load types: {error instanceof Error ? error.message : String(error)}
                 <p className="mt-2 text-[11px] opacity-70">
@@ -88,13 +89,16 @@ export function ComponentTypeManagementDialog({
                   {" "}(landed in PR #86).
                 </p>
               </div>
-            ) : isLoading ? (
+            )}
+            {!error && isLoading && (
               <p className="py-8 text-center text-[12px] text-muted-foreground">Loading…</p>
-            ) : types.length === 0 ? (
+            )}
+            {!error && !isLoading && types.length === 0 && (
               <p className="py-8 text-center text-[12px] text-muted-foreground">
                 No types registered.
               </p>
-            ) : (
+            )}
+            {!error && !isLoading && types.length > 0 &&
               types.map((t) => (
                 <div
                   key={t.id}
@@ -129,7 +133,7 @@ export function ComponentTypeManagementDialog({
                   </button>
                 </div>
               ))
-            )}
+            }
           </div>
 
           <div className="flex justify-end">

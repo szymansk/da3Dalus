@@ -489,9 +489,10 @@ export function ComponentTree({
       </TreeCard>
 
       {addFlow.kind === "menu" && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40"
-          role="presentation"
+        <button
+          type="button"
+          className="fixed inset-0 z-40 border-0 bg-black/40 p-0"
+          aria-label="Close menu"
           onClick={() => setAddFlow({ kind: "idle" })}
           onKeyDown={(e) => { if (e.key === "Escape") setAddFlow({ kind: "idle" }); }}
         >
@@ -523,7 +524,7 @@ export function ComponentTree({
               constructionPartsEnabled={true}
             />
           </div>
-        </div>
+        </button>
       )}
 
       <CotsPickerDialog

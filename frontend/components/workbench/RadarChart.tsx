@@ -79,7 +79,7 @@ export function RadarChart({
         const outer = polarToCartesian(cx, cy, R, angle);
         return (
           <line
-            key={`spoke-${i}`}
+            key={`spoke-${axes[i].key}`}
             x1={cx} y1={cy} x2={outer.x} y2={outer.y}
             stroke="var(--color-border)" strokeWidth="1"
           />

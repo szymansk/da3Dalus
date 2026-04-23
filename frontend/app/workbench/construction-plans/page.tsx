@@ -648,6 +648,7 @@ function AddStepDialog({
   return (
     <dialog
       ref={dialogRef}
+      role="dialog"
       className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
@@ -794,6 +795,7 @@ function NewPlanDialog({
   return (
     <dialog
       ref={dialogRef}
+      role="dialog"
       className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
@@ -916,6 +918,7 @@ function ExecuteDialog({
   return (
     <dialog
       ref={dialogRef}
+      role="dialog"
       className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
@@ -1019,6 +1022,7 @@ function CadViewerModal({
   return (
     <dialog
       ref={dialogRef}
+      role="dialog"
       className={`fixed inset-0 z-50 flex items-center justify-center bg-transparent ${fullscreen ? "backdrop:bg-transparent" : "backdrop:bg-black/60"}`}
       onClose={handleClose}
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}

@@ -6,6 +6,7 @@ import {
   useState,
   useCallback,
   useEffect,
+  useMemo,
 } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -99,22 +100,37 @@ export function AeroplaneProvider({ children }: Readonly<{ children: ReactNode }
     setSelectedFuselageXsecIndex(index);
   }, []);
 
+  const ctxValue = useMemo(() => ({
+    aeroplaneId,
+    selectedWing,
+    selectedXsecIndex,
+    selectedFuselage,
+    selectedFuselageXsecIndex,
+    treeMode,
+    setAeroplaneId,
+    selectWing,
+    selectXsec,
+    selectFuselage,
+    selectFuselageXsec,
+    setTreeMode,
+  }), [
+    aeroplaneId,
+    selectedWing,
+    selectedXsecIndex,
+    selectedFuselage,
+    selectedFuselageXsecIndex,
+    treeMode,
+    setAeroplaneId,
+    selectWing,
+    selectXsec,
+    selectFuselage,
+    selectFuselageXsec,
+    setTreeMode,
+  ]);
+
   return (
     <Ctx
-      value={{
-        aeroplaneId,
-        selectedWing,
-        selectedXsecIndex,
-        selectedFuselage,
-        selectedFuselageXsecIndex,
-        treeMode,
-        setAeroplaneId,
-        selectWing,
-        selectXsec,
-        selectFuselage,
-        selectFuselageXsec,
-        setTreeMode,
-      }}
+      value={ctxValue}
     >
       {children}
     </Ctx>

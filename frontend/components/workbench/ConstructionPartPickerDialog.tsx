@@ -47,6 +47,7 @@ export function ConstructionPartPickerDialog({
   return (
     <dialog
       ref={dialogRef}
+      role="dialog"
       className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
@@ -83,12 +84,13 @@ export function ConstructionPartPickerDialog({
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto">
-          {isLoading ? (
+          {isLoading && (
             <div className="flex items-center justify-center gap-2 py-10 text-[13px] text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
               Loading construction parts...
             </div>
-          ) : filtered.length === 0 ? (
+          )}
+          {!isLoading && filtered.length === 0 && (
             <div className="flex flex-col items-center gap-2 py-10 text-[13px] text-muted-foreground">
               <Box className="size-8 text-subtle-foreground" />
               <span>
@@ -97,7 +99,8 @@ export function ConstructionPartPickerDialog({
                   : "No parts match the filter"}
               </span>
             </div>
-          ) : (
+          )}
+          {!isLoading && filtered.length > 0 &&
             filtered.map((part) => (
               <button
                 key={part.id}
@@ -126,7 +129,7 @@ export function ConstructionPartPickerDialog({
                 </div>
               </button>
             ))
-          )}
+          }
         </div>
 
         <div className="flex justify-end">

@@ -55,6 +55,7 @@ export default function AnalysisPage() {
       {/* Config Modal */}
       <dialog
         ref={dialogRef}
+        role="dialog"
         className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
         onClose={dialogHandleClose}
         onClick={(e) => { if (e.target === e.currentTarget) dialogHandleClose(); }}

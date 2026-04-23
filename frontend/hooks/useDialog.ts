@@ -24,10 +24,10 @@ export function useDialog(open: boolean, onClose: () => void) {
     const el = dialogRef.current;
     if (!el) return;
 
-    if (open) {
-      if (!el.open) el.showModal();
-    } else {
-      if (el.open) el.close();
+    if (open && !el.open) {
+      el.showModal();
+    } else if (!open && el.open) {
+      el.close();
     }
   }, [open]);
 

@@ -35,6 +35,7 @@ function ConfirmModal({ title, body, onConfirm, onCancel }: Readonly<ConfirmModa
   return (
     <dialog
       ref={dialogRef}
+      role="dialog"
       className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
@@ -123,19 +124,21 @@ export function ConstructionPartsGrid({
         </button>
       </div>
 
-      {isLoading ? (
+      {isLoading && (
         <div className="flex items-center justify-center gap-2 py-12 text-[13px] text-muted-foreground">
           <Loader2 className="size-4 animate-spin" />
           Loading construction parts...
         </div>
-      ) : parts.length === 0 ? (
+      )}
+      {!isLoading && parts.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-12">
           <Box className="size-12 text-subtle-foreground" />
           <span className="text-[13px] text-muted-foreground">
             No construction parts yet. Upload one to get started.
           </span>
         </div>
-      ) : (
+      )}
+      {!isLoading && parts.length > 0 && (
         <div className="grid grid-cols-2 gap-3">
           {parts.map((part) => {
             const busy = busyId === part.id;
