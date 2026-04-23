@@ -1,4 +1,4 @@
-from typing import Optional
+from __future__ import annotations
 
 from OCP.gp import *
 from pydantic import PositiveFloat
@@ -16,7 +16,7 @@ class ServoInformation(ComponentInformation):
 
     @length.setter
     def length(self, value):
-        pass
+        pass  # Read-only property backed by self.servo
 
     @property
     def width(self):
@@ -24,7 +24,7 @@ class ServoInformation(ComponentInformation):
 
     @width.setter
     def width(self, value):
-        pass
+        pass  # Read-only property backed by self.servo
 
     @property
     def height(self):
@@ -32,14 +32,14 @@ class ServoInformation(ComponentInformation):
 
     @height.setter
     def height(self, value):
-        pass
+        pass  # Read-only property backed by self.servo
 
     def __init__(self,
                  height: PositiveFloat, width: PositiveFloat, length: PositiveFloat,
                  lever_length: NonNegativeFloat,
                  rot_x: float = 0.0, rot_y: float = 0.0, rot_z: float = 0.0,
                  trans_x: float = 0.0, trans_y: float = 0.0, trans_z: float = 0.0,
-                 servo: Optional[Servo] = None):
+                 servo: Servo | None = None):
         self.lever_length = lever_length
         self.servo: Servo = servo if servo is not None \
             else Servo(length, width, height, 0, 0, 0, 0, 0, 0, 0, 0)

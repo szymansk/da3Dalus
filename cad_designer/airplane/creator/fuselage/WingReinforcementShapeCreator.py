@@ -51,8 +51,6 @@ class WingReinforcementShapeCreator(AbstractShapeCreator):
         wing_center = wing.findSolid().CenterOfBoundBox()
 
         root_section = wing.faces('<Y').display(name="root", severity=logging.NOTSET)
-        #tip_section = cq.Workplane('XZ', origin=(wing_center.x, wing_bbox.ymin + wing_bbox.ylen * tip_end_in_length_percent, wing_center.z))\
-        #    .add(wing).section().display(name="tip", severity=logging.NOTSET)
         tip_section = wing.faces('>Y').display(name="tip", severity=logging.NOTSET)
 
         ribs = self.construct_ribs(wing, rib_quantity, rib_width, wing_rib_angle_roll, wing_rib_angle_yaw)
@@ -139,15 +137,6 @@ class WingReinforcementShapeCreator(AbstractShapeCreator):
                 .loft() \
                 .display(name="pipe", severity=logging.NOTSET)
 
-        # beam = (cq.Workplane('XZ')
-        #              .copyWorkplane(root_section.workplane(invert=True, origin=root_bbox.center))
-        #              .moveTo(root_bbox.xlen * (chord_beam_position - 1 / 2), 0)
-        #              .rect(pipe_diameter + (4 * printer_resolution), root_bbox.zlen, True)
-        #              .copyWorkplane(tip_section.workplane(invert=True, origin=tip_bbox.center))
-        #              .moveTo(tip_bbox.xlen * (chord_beam_position - 1 / 2), 0)
-        #              .rect(pipe_diameter + 4 * printer_resolution, tip_bbox.zlen, True)
-        #              .loft().faces('<Y or >Y').shell(2*printer_resolution) ).intersect(intersect)
-
         beam = (cq.Workplane('XZ')
                      .copyWorkplane(root_section.workplane(invert=True, origin=root_bbox.center))
                      .moveTo(root_bbox.xlen * (chord_beam_position - 1 / 2) , 0)
@@ -156,15 +145,6 @@ class WingReinforcementShapeCreator(AbstractShapeCreator):
                      .moveTo(tip_bbox.xlen * (chord_beam_position - 1 / 2), 0)
                      .rect(2 * printer_resolution , tip_bbox.zlen, True)
                      .loft()).intersect(intersect)
-
-        # beam = beam + (cq.Workplane('XZ')
-        #         .copyWorkplane(root_section.workplane(invert=True, origin=root_bbox.center))
-        #         .moveTo(root_bbox.xlen * (chord_beam_position - 1 / 2) + (pipe_diameter / 2 + (2 * printer_resolution)),0)
-        #         .rect((2 * printer_resolution), root_bbox.zlen, True)
-        #         .copyWorkplane(tip_section.workplane(invert=True, origin=tip_bbox.center))
-        #         .moveTo(tip_bbox.xlen * (chord_beam_position - 1 / 2) + (pipe_diameter / 2 + (2 * printer_resolution)),0)
-        #         .rect(2 * printer_resolution, tip_bbox.zlen, True)
-        #         .loft()).intersect(intersect)
 
         if beam_with_pipe:
             beam = (beam + pipe) \

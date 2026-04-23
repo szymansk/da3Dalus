@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from functools import cached_property
-from typing import List, Optional, Dict, Any
+from typing import Any
 import json
 import os
 import zipfile
@@ -19,19 +21,18 @@ class AirplaneConfiguration:
     def __init__(self,
                  name: str,
                  total_mass_kg: float,
-                 wings: List[WingConfiguration],
-                 fuselages: Optional[List[FuselageConfiguration]] = None,
+                 wings: list[WingConfiguration],
+                 fuselages: list[FuselageConfiguration] | None = None,
                  ):
         self.name: str = name
         self.total_mass: float = total_mass_kg
-        self.wings: List[WingConfiguration] = wings
-        self.fuselages: Optional[List[FuselageConfiguration]] = fuselages
+        self.wings: list[WingConfiguration] = wings
+        self.fuselages: list[FuselageConfiguration] | None = fuselages
 
         self._main_wing_index = 0
         self._main_wing = self.wings[self._main_wing_index]
-        pass
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the AirplaneConfiguration to a dictionary for JSON serialization."""
         data = {
             "name": self.name,
@@ -175,9 +176,9 @@ class AirplaneConfiguration:
             fuselages=fuselages,
             propulsors=None,
             analysis_specific_options={
-                asb.AVL: dict(
-                    profile_drag_coefficient=0.,
-                )
+                asb.AVL: {
+                    "profile_drag_coefficient": 0.,
+                }
             }
         )
 

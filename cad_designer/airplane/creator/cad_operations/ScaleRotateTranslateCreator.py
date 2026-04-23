@@ -80,18 +80,4 @@ class ScaleRotateTranslateCreator(AbstractShapeCreator):
             .rotate((0,0,0),(0,0,1),rot_z)\
             .translate((trans_x, trans_y, trans_z)))
 
-        # trafo = tgl_geom.CTiglTransformation()
-        # trafo.add_scaling(scale_x, scale_y, scale_z)
-        # trafo.add_rotation_x(rot_x)
-        # trafo.add_rotation_y(rot_y)
-        # trafo.add_rotation_z(rot_z)
-        # trafo.add_translation(trans_x, trans_y, trans_z)
-
-        # if mirroring == "xy":
-        #     trafo.add_mirroring_at_xyplane()
-        # elif mirroring == "xz":
-        #     trafo.add_mirroring_at_xzplane()
-        # elif mirroring == "yz":
-        #     trafo.add_projection_on_yzplane()
-
         return shape

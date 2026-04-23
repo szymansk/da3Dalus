@@ -29,7 +29,7 @@ class AddMultipleShapesCreator(AbstractShapeCreator):
         shape = shape_list[0]
         for shp in shape_list[1:]:
             shape.add(shp)
-        _shape = shape.combine()
+        shape.combine()
         _shape = shape.combine() # I am not sure, why this only works after the second call...
 
         _shape.display(self.identifier, logging.DEBUG)

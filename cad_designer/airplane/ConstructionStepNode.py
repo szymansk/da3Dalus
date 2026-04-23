@@ -1,4 +1,6 @@
-from typing import MutableMapping, Union, TypeVar
+from __future__ import annotations
+
+from typing import MutableMapping, TypeVar
 from collections import OrderedDict
 from cadquery import Workplane
 
@@ -42,8 +44,8 @@ class ConstructionStepNode(AbstractShapeCreator, MutableMapping):
         """
         self.update({value.creator.identifier: value})
 
-    def _create_shape(self, shapes_of_interest: Union[list[str], None], input_shapes: dict[str, Workplane], **kwargs) \
-            -> dict[str, Union[object, Workplane]]:
+    def _create_shape(self, shapes_of_interest: list[str] | None, input_shapes: dict[str, Workplane], **kwargs) \
+            -> dict[str, object | Workplane]:
         """
         Executes the construction of all shapes based on the defined workflow structure.
         :param shapes_of_interest: 
@@ -70,5 +72,4 @@ class ConstructionStepNode(AbstractShapeCreator, MutableMapping):
         kwargs.update(output_shapes.copy())
         for key in self.successors:
             kwargs.update(self.successors.get(key).create_shape(_input_shapes, **kwargs))
-        # del _input_shapes  # deleting this list
         return kwargs

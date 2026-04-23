@@ -1,7 +1,5 @@
 from io import StringIO
 
-#import numpy as np
-#import aerosandbox.numpy as np
 import numpy as np
 import matplotlib.pyplot as plt
 import requests
@@ -32,57 +30,6 @@ def reparameterize_airfoil(airfoil_data, M):
     complete = list(reversed(_upper)) + _lower[1:]
     return [ (p.x, p.y) for p in complete]
 
-from typing import Callable
-from scipy import interpolate
-
-# def _reparameterize_airfoil(
-#     airfoil_data: list[tuple[float, float]],
-#     n_points_per_side: int = 100,
-#     spacing_function_per_side: Callable[[float, float, int], np.ndarray] = np.cosspace,
-# ) -> list[tuple[float, float]]:
-#     airfoil_data = np.array(airfoil_data)
-#     unique_array = np.array(list({tuple(row): None for row in map(tuple, airfoil_data)}.keys()))
-#     amin = int(np.argmin(unique_array[:, 0]))  # Leading Edge = min x
-#
-#     upper = unique_array[: amin + 1][::-1]  # reverse to go from TE -> LE
-#     lower = unique_array[amin:]            # LE -> TE
-#
-#     def resample_side(points: np.ndarray, spacing_fn: Callable, side: str) -> np.ndarray:
-#         distances = np.linalg.norm(np.diff(points, axis=0), axis=1)
-#         cumulative_distances = np.concatenate(([0], np.cumsum(distances)))
-#
-#         bc_type_a = (2, (0, 0)) if side == "upper" else (1, (0, -1))
-#         bc_type_b = (1, (0, -1)) if side == "upper" else (2, (0, 0))
-#
-#         try:
-#             spline = interpolate.CubicSpline(
-#                 x=cumulative_distances,
-#                 y=points,
-#                 axis=0,
-#                 bc_type=(bc_type_a, bc_type_b)
-#             )
-#
-#             resampled = spline(spacing_fn(0, cumulative_distances[-1], n_points_per_side))
-#         except ValueError as e:
-#             if not (
-#                     (np.all(np.diff(cumulative_distances)) > 0)
-#             ):
-#                 raise ValueError(
-#                     f"It looks like your Airfoil has a duplicate point at the '{side}' side. Try removing the duplicate point and "
-#                     "re-running Airfoil.repanel()."
-#                 )
-#             else:
-#                 raise e
-#
-#         return resampled, cumulative_distances
-#
-#     upper_resampled, uppder_cd = resample_side(upper, spacing_function_per_side, "upper")
-#     lower_resampled, lower_cd = resample_side(lower, spacing_function_per_side, "lower")
-#
-#     # Remove duplicate LE point from lower
-#     combined = np.vstack([upper_resampled, lower_resampled[1:]])
-#     return [tuple(p) for p in combined]
-
 def plot_airfoil(original_points, scaled_points, offset_points, normals, scaled_normals):
     original_points = np.array(original_points)
     scaled_points = np.array(scaled_points)
@@ -93,10 +40,6 @@ def plot_airfoil(original_points, scaled_points, offset_points, normals, scaled_
     fig, axs = plt.subplots(2, 1, figsize=(40, 10))
 
     axs[0].plot(original_points[:, 0], original_points[:, 1], 'bo-', label="Original Airfoil", markersize=5)
-    #axs[0].plot(offset_points[:, 0], offset_points[:, 1], 'r*-', label="Offset Airfoil", markersize=4)
-    #axs[0].quiver(original_points[:, 0], original_points[:, 1],
-    #              -normals[:, 0]*0.1, -normals[:, 1]*0.1,
-    #              angles='xy', scale_units='xy', scale=1, color='g', label="Normals")
     axs[0].set_aspect('equal', adjustable='box')
     axs[0].legend(loc='center left', bbox_to_anchor=(1, 0.5))
     axs[0].set_xlabel("x")
@@ -132,8 +75,6 @@ def airfoil(self: cq.Workplane, selig_file: str, chord: float, offset: float = 0
 
     if number_interpolation_points is not None:
         scaled_points = reparameterize_airfoil(scaled_points, number_interpolation_points)
-
-    #plot_airfoil(af_point_list, scale_points(point_list, chord), scaled_points, None, None)
 
     plane = self.plane
     new_plane = cq.Plane(xDir=plane.xDir, origin=(0, 0, 0), normal=plane.zDir)
@@ -199,9 +140,6 @@ if __name__ == "__main__":
                    offset=0.42,
                    number_interpolation_points = 201,
                    forConstruction= True)
-    # Run the tests
-    #unittest.main(argv=['first-arg-is-ignored'], exit=False)
-
     chord = 185
     # Visualize the airfoil with the increased offset using rg15 data
     original_points = rg15_data
@@ -217,8 +155,6 @@ if __name__ == "__main__":
     scaled_points = scale_points(reparameterized_points, chord)
     scaled_normals = calculate_normals(scaled_points)
 
-    #offset_points = apply_offset(reparameterized_points, normals, 0.42/chord)
-    #offset_points = repair_offset_profile(offset_points, reparameterized_points)
     scaled_offset_points = scale_points(offset_points, chord)
 
 

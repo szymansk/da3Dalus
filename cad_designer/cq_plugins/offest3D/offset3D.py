@@ -14,7 +14,6 @@ def offset3D(self: Workplane, offset: float, tol=1e-3, join_mode: Literal["arc",
 
     if perform_simple:
         maker.PerformBySimple(solid.wrapped, offset)
-        of_shape = maker.Shape()
     else:
         jm = GeomAbs_Arc
         if join_mode == "intersection":

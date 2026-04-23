@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from types import SimpleNamespace
 
@@ -8,7 +10,7 @@ logger = logging.getLogger(__name__)
 from functools import cached_property, cache
 
 import math
-from typing import TypeVar, Any, List, Tuple, Union, Optional, Literal
+from typing import TypeVar, Any, Literal
 
 import numpy as np
 import aerosandbox as asb
@@ -70,13 +72,13 @@ class WingConfiguration:
                  length: PositiveFloat,
                  sweep: NonNegativeFloat = 0,
                  sweep_is_angle: bool = False,
-                 tip_airfoil: Optional[Airfoil] = None,
-                 number_interpolation_points: Optional[PositiveInt] = None,
-                 spare_list: Optional[List[Spare]] = None,
-                 trailing_edge_device: Optional[TrailingEdgeDevice] = None,
+                 tip_airfoil: Airfoil | None = None,
+                 number_interpolation_points: PositiveInt | None = None,
+                 spare_list: list[Spare] | None = None,
+                 trailing_edge_device: TrailingEdgeDevice | None = None,
                  symmetric: bool = True,
                  parameters: Literal["relative", "aerosandbox"] = "relative") -> T:
-        self.segments: Union[list[WingSegment], None] = None
+        self.segments: list[WingSegment] | None = None
         self.nose_pnt: tuple[float, float, float] = nose_pnt
         self.parameters: Literal["relative", "aerosandbox"] = parameters
 
@@ -93,12 +95,12 @@ class WingConfiguration:
                                    number_interpolation_points=number_interpolation_points, wing_segment_type='root')
 
         self.segments: list[WingSegment] = [root_segment]
-        self._wing_workplanes: dict[Tuple[int, bool], Workplane] = {}
+        self._wing_workplanes: dict[tuple[int, bool], Workplane] = {}
         self._wing_workplanes[(0, False)] = self.get_wing_workplane(0)
         self.segments[0].root_airfoil.set_airfoil_coordinate_system((self._wing_workplanes[(0, False)].plane))
 
         self._scaled_point_list: dict[str, list[tuple[float, float]]] = {}
-        self._asb_wing: Optional[asb.Wing] = None
+        self._asb_wing: asb.Wing | None = None
 
         self.symmetric: bool = symmetric
 
@@ -184,8 +186,8 @@ class WingConfiguration:
                         tip_type: TipType,
                         length: PositiveFloat,
                         sweep: NonNegativeFloat = 0,
-                        tip_airfoil: Optional[Airfoil] = None,
-                        number_interpolation_points: Optional[PositiveInt] = None
+                        tip_airfoil: Airfoil | None = None,
+                        number_interpolation_points: PositiveInt | None = None
                         ) -> T:
         """
         Adds a tip segment to the wing configuration.
@@ -194,8 +196,8 @@ class WingConfiguration:
             tip_type (TipType): The type of the tip ('flat', 'round').
             length (PositiveFloat): The length of the tip segment.
             sweep (NonNegativeFloat): The sweep of the tip segment.
-            tip_airfoil (Optional[Airfoil]): The airfoil at the tip of the segment.
-            number_interpolation_points (Optional[PositiveInt]): Number of points for airfoil interpolation.
+            tip_airfoil (Airfoil | None): The airfoil at the tip of the segment.
+            number_interpolation_points (PositiveInt | None): Number of points for airfoil interpolation.
 
         Returns:
             WingConfiguration: The updated WingConfiguration instance.
@@ -233,10 +235,10 @@ class WingConfiguration:
                     length: PositiveFloat,
                     sweep: NonNegativeFloat = 0,
                     sweep_is_angle=False,
-                    tip_airfoil: Optional[Airfoil] = None,
-                    number_interpolation_points: Optional[PositiveInt] = None,
-                    spare_list: Optional[List[Spare]] = None,
-                    trailing_edge_device: Optional[TrailingEdgeDevice] = None
+                    tip_airfoil: Airfoil | None = None,
+                    number_interpolation_points: PositiveInt | None = None,
+                    spare_list: list[Spare] | None = None,
+                    trailing_edge_device: TrailingEdgeDevice | None = None
                     ) -> T:
         """
         Adds a new segment to the wing configuration.
@@ -245,10 +247,10 @@ class WingConfiguration:
             length (PositiveFloat): The length of the segment.
             sweep (NonNegativeFloat): The sweep of the segment.
             sweep_is_angle (bool): If True, sweep is interpreted as an angle.
-            tip_airfoil (Optional[Airfoil]): The airfoil at the tip of the segment.
-            number_interpolation_points (Optional[PositiveInt]): Number of points for airfoil interpolation.
-            spare_list (Optional[List[Spare]]): List of spares for the segment.
-            trailing_edge_device (Optional[TrailingEdgeDevice]): Trailing edge device for the segment.
+            tip_airfoil (Airfoil | None): The airfoil at the tip of the segment.
+            number_interpolation_points (PositiveInt | None): Number of points for airfoil interpolation.
+            spare_list (list[Spare] | None): List of spares for the segment.
+            trailing_edge_device (TrailingEdgeDevice | None): Trailing edge device for the segment.
 
         Returns:
             WingConfiguration: The updated WingConfiguration instance.
@@ -319,7 +321,6 @@ class WingConfiguration:
                         follows_spare = self.segments[seg_num].spare_list[spare_idx]
                         self._set_follow_spare_origin_vector(seg_num, follows_spare, spare_idx)
 
-                    pass
 
                 elif spare.spare_mode == "standard":
                     self._set_standard_spare_origin_vector(segment_number, spare)
@@ -337,7 +338,6 @@ class WingConfiguration:
                                     self.segments[segment_number].root_airfoil.chord * spare.spare_position_factor)
                     else:
                         spare.spare_origin = seg_plane.origin + spare.spare_origin
-                    pass
         return self
 
     def _set_follow_spare_origin_vector(self, segment_number, spare, spare_idx):
@@ -380,9 +380,6 @@ class WingConfiguration:
         Note:
             The workplane is aligned with the segment's geometry and cached for performance.
         """
-
-        #if (segment, ignore_nose_point) in self._wing_workplanes.keys():
-        #    return self._wing_workplanes[(segment, ignore_nose_point)]
 
         if self.parameters == "aerosandbox":
             all_trans = self._get_absolute_segment_coordinate_system(segment, ignore_nose_point)
@@ -523,7 +520,7 @@ class WingConfiguration:
         return self._scaled_point_list[key]
 
     def get_camber_y_at_rel_chord(self: T, segment: NonNegativeInt, relative_chord: Factor,
-                                  relative_length: float = 0.) -> Tuple[float, float]:
+                                  relative_length: float = 0.) -> tuple[float, float]:
         """
         Calculates the camber height and offset at a given relative chord position for a segment.
 
@@ -533,7 +530,7 @@ class WingConfiguration:
             relative_length (float): Relative position along the segment length (0 to 1).
 
         Returns:
-            Tuple[float, float]: (camber height, offset from lower surface to chord).
+            tuple[float, float]: (camber height, offset from lower surface to chord).
         """
         upper, lower = self.get_points_on_surface(segment, relative_chord=relative_chord,
                                                   relative_length=relative_length)
@@ -564,7 +561,7 @@ class WingConfiguration:
             end_segment (NonNegativeInt): Index of the ending segment.
 
         Returns:
-            Tuple[Plane, Plane]: Planes at the root and tip for the trailing edge device.
+            tuple[Plane, Plane]: Planes at the root and tip for the trailing edge device.
 
         Note:
             Returns (None, None) if no trailing edge device is present.
@@ -648,19 +645,19 @@ class WingConfiguration:
                     twist=incidence_angle,
                     control_surfaces=[control_surface] if control_surface is not None else None,
                     analysis_specific_options={
-                        asb.AVL: dict(
-                            spanwise_resolution=12,
-                            spanwise_spacing="cosine",
-                            cl_alpha_factor=None,  # This is a float
-                            drag_polar=dict(
-                                CL1=0,
-                                CD1=0,
-                                CL2=0,
-                                CD2=0,
-                                CL3=0,
-                                CD3=0,
-                            ),
-                        )},
+                        asb.AVL: {
+                            "spanwise_resolution": 12,
+                            "spanwise_spacing": "cosine",
+                            "cl_alpha_factor": None,  # This is a float
+                            "drag_polar": {
+                                "CL1": 0,
+                                "CD1": 0,
+                                "CL2": 0,
+                                "CD2": 0,
+                                "CL3": 0,
+                                "CD3": 0,
+                            },
+                        }},
                 ).translate([root_origin.x * scale, root_origin.y * scale, root_origin.z * scale])
                 sections.append(root_section)
                 is_root = False
@@ -689,35 +686,34 @@ class WingConfiguration:
             ).translate([tip_origin.x * scale, tip_origin.y * scale, tip_origin.z * scale])
 
             sections.append(tip_section)
-            pass
 
         # create the aerosandbox wing
         self._asb_wing = (asb.Wing(xsecs=sections,
                                    symmetric=self.symmetric,
                                    color=None,
                                    analysis_specific_options={
-                                       asb.AVL: dict(
-                                           wing_level_spanwise_spacing=True,
-                                           spanwise_resolution=int(round(tip_origin.y * scale * 50)),
-                                           spanwise_spacing="cosine",
-                                           chordwise_resolution=12,
-                                           chordwise_spacing="cosine",
-                                           component=None,  # This is an int
-                                           no_wake=False,
-                                           no_alpha_beta=False,
-                                           no_load=False,
-                                           drag_polar=dict(
-                                               CL1=0,
-                                               CD1=0,
-                                               CL2=0,
-                                               CD2=0,
-                                               CL3=0,
-                                               CD3=0,
-                                           ),
-                                       )}
+                                       asb.AVL: {
+                                           "wing_level_spanwise_spacing": True,
+                                           "spanwise_resolution": int(round(tip_origin.y * scale * 50)),
+                                           "spanwise_spacing": "cosine",
+                                           "chordwise_resolution": 12,
+                                           "chordwise_spacing": "cosine",
+                                           "component": None,  # This is an int
+                                           "no_wake": False,
+                                           "no_alpha_beta": False,
+                                           "no_load": False,
+                                           "drag_polar": {
+                                               "CL1": 0,
+                                               "CD1": 0,
+                                               "CL2": 0,
+                                               "CD2": 0,
+                                               "CL3": 0,
+                                               "CD3": 0,
+                                           },
+                                       }}
                                    )
                           # translate the wing to the nose point
-                          .translate([x * scale for x in list(self.nose_pnt)]))
+                          .translate([x * scale for x in self.nose_pnt]))
         return self._asb_wing
 
     @staticmethod
@@ -735,7 +731,7 @@ class WingConfiguration:
                               coordinate_system: CoordinateSystemBase = "world",
                               x_offset: float = .0,
                               z_offset: float = .0
-                              ) -> Tuple[Vector, Vector]:
+                              ) -> tuple[Vector, Vector]:
         """
         Returns the points on the surface (top, bottom) in the airfoil coordinate system.
         x points along the airfoil's center line, y points to the top, and z points along the nose
@@ -793,7 +789,7 @@ class WingConfiguration:
             logger.critical(f"unknown coordinate system {coordinate_system}")
             raise ValueError(f"unknown coordinate system {coordinate_system}")
 
-    def _interpolate_y_at_x(self, points, x, reverse=False) -> Tuple[float, float]:
+    def _interpolate_y_at_x(self, points, x, reverse=False) -> tuple[float, float]:
         # Extrahiere x- und y-Werte aus den Punkten
         if not reverse:
             x_values = [point[0] for point in points[:math.ceil(len(points) / 2)]]
@@ -902,7 +898,7 @@ class WingConfiguration:
             json.dump(self.__getstate__(), f, indent=4)
 
     @staticmethod
-    def from_asb(xsecs: List[asb.WingXSec], symmetric: bool = True) -> 'WingConfiguration':
+    def from_asb(xsecs: list[asb.WingXSec], symmetric: bool = True) -> 'WingConfiguration':
         """Create a WingConfiguration from a list of Aerosandbox WingXSecs.
 
         Decoupled reconstruction: with rc=0 and the decoupled frame
@@ -937,7 +933,7 @@ class WingConfiguration:
             )
 
         # Per-segment deltas in global frame.
-        deltas: List[ndarray] = []
+        deltas: list[ndarray] = []
         for i in range(n - 1):
             delta = (
                 np.asarray(asb_wing.xsecs[i + 1].xyz_le, dtype=float)
@@ -953,13 +949,13 @@ class WingConfiguration:
         )
 
         # Per-xsec cumulative twist (absolute, as stored by asb).
-        cum_twists: List[float] = [float(asb_wing.xsecs[k].twist) for k in range(n)]
+        cum_twists: list[float] = [float(asb_wing.xsecs[k].twist) for k in range(n)]
 
         # Per-xsec cumulative dihedral angle, extracted from deltas.
         # With decoupled frame, delta = R_x(cum_d) . [sweep, length, 0],
         # so cum_d = atan2(delta.z, delta.y). Always extractable
         # because twist does not contaminate positions.
-        cum_d: List[float] = [0.0] * n
+        cum_d: list[float] = [0.0] * n
         for k in range(n - 1):
             delta_y = float(deltas[k][1])
             delta_z = float(deltas[k][2])
@@ -974,7 +970,7 @@ class WingConfiguration:
         root_i = cum_twists[0]
         root_d = cum_d[0]
 
-        def _airfoil_name(xsec: asb.WingXSec) -> Optional[str]:
+        def _airfoil_name(xsec: asb.WingXSec) -> str | None:
             af = xsec.airfoil
             return af.name if af is not None else None
 

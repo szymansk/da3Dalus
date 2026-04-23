@@ -36,13 +36,11 @@ class ExportToStlCreator(AbstractShapeCreator):
         logging.info(f"exporting stl model '{', '.join(shapes_of_interest.keys())}' --> '{self.file_path}'")
 
         from cadquery import exporters
-        #ass = cq.Assembly()
         for name, shape in shapes_of_interest.items():
             step_path = os.path.join(self.file_path, f"{self.identifier}_{name}.stl")
             logging.debug(f"writing model to '{step_path}'")
             exporters.export(shape, step_path,
                              tolerance=self.tolerance, angularTolerance=self.angular_tolerance)
-            #ass.add(shape)
 
         import gc
         del exporters

@@ -13,7 +13,6 @@ def sewAndFixShape(self: Workplane) -> Workplane:
 
     exp_shell = TopExp_Explorer()
     make_solid = BRepBuilderAPI_MakeSolid()
-    # make_solid = TopOpeBRepBuild_ShellToSolid()
 
     exp_shell.Init(sewed_shape, TopAbs_SHELL)
     while exp_shell.More():

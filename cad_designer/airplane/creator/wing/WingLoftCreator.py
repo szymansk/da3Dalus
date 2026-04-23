@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import logging
-from typing import Union, Literal, Optional
 
 from cadquery import Workplane
 from pydantic import NonNegativeInt
@@ -13,7 +14,7 @@ class WingLoftCreator(AbstractShapeCreator):
     """Creates a solid loft shape of the full wing from wing configuration segments.
 
     Attributes:
-        wing_index (Union[str, int]): Index or identifier of the wing in the configuration.
+        wing_index (str | int): Index or identifier of the wing in the configuration.
         offset (float): Inward offset applied to the wing surface in mm.
         wing_side (str): Which side to create: LEFT, RIGHT, or BOTH.
         connected (bool): Whether to fill the gap between wing halves when dihedral is non-zero.
@@ -24,9 +25,9 @@ class WingLoftCreator(AbstractShapeCreator):
 
     suggested_creator_id = "{wing_index}.loft"
 
-    def __init__(self, creator_id: str, wing_index: Union[str, int], offset: float = 0,
-                 wing_config: Optional[dict[NonNegativeInt, WingConfiguration]] = None,
-                 wing_side: Optional[WingSides] = None, connected:bool=True, loglevel=logging.INFO):
+    def __init__(self, creator_id: str, wing_index: str | int, offset: float = 0,
+                 wing_config: dict[NonNegativeInt, WingConfiguration] | None = None,
+                 wing_side: WingSides | None = None, connected:bool=True, loglevel=logging.INFO):
         self.wing_side: WingSides = wing_side
         self.wing_index = wing_index
         self.offset = offset
@@ -87,10 +88,6 @@ class WingLoftCreator(AbstractShapeCreator):
                 tip_plane=tip_plane
             )
             right_wing.add(current)
-
-        #bb_right = right_wing.findSolid().BoundingBox(tolerance=1e-3)
-        #right_wing = right_wing.translate((0,-abs(bb_right.ymin)-1, 0))
-        #right_wing = right_wing.fix_shape()
 
         if self.wing_side == "LEFT":
             right_wing = right_wing.mirror("XZ")
