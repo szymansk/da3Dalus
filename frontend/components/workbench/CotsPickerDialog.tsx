@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X, Search, Loader2, Package } from "lucide-react";
 import { useComponents, type Component } from "@/hooks/useComponents";
+import { useDialog } from "@/hooks/useDialog";
 
 interface CotsPickerDialogProps {
   open: boolean;
@@ -37,8 +38,7 @@ export function CotsPickerDialog({
     typeFilter || undefined,
     search || undefined,
   );
-
-  if (!open) return null;
+  const { dialogRef, handleClose } = useDialog(open, onClose);
 
   function handlePick(comp: Component) {
     onSelect(comp);
@@ -50,19 +50,14 @@ export function CotsPickerDialog({
     : "Assign Component";
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
+      onClose={handleClose}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
       aria-label="Component picker"
-      onClick={onClose}
-      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
-      <div
-        className="flex max-h-[80vh] w-[560px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-      >
+      <div className="flex max-h-[80vh] w-[560px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl">
         <div className="flex items-center gap-3">
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
             {heading}
@@ -154,6 +149,6 @@ export function CotsPickerDialog({
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }

@@ -93,15 +93,18 @@ describe("ComponentTree — Construction-Part add flow (gh#57-wvg)", () => {
     render(<ComponentTree />);
     fireEvent.click(screen.getByTitle("Add to main_wing"));
 
-    const button = screen.getByText("Assign Construction Part").closest("button");
-    expect(button).not.toBeNull();
-    expect(button?.hasAttribute("disabled")).toBe(false);
+    const buttons = screen.getAllByText("Assign Construction Part");
+    const menuButton = buttons.find((el) => el.closest("button"))?.closest("button");
+    expect(menuButton).not.toBeNull();
+    expect(menuButton?.hasAttribute("disabled")).toBe(false);
   });
 
   it("opens the Construction-Part picker on menu click", () => {
     render(<ComponentTree />);
     fireEvent.click(screen.getByTitle("Add to main_wing"));
-    fireEvent.click(screen.getByText("Assign Construction Part"));
+    const buttons = screen.getAllByText("Assign Construction Part");
+    const menuButton = buttons.find((el) => el.closest("button"))?.closest("button");
+    fireEvent.click(menuButton!);
 
     expect(screen.getByText(/Assign Construction Part to 'main_wing'/)).toBeDefined();
     expect(screen.getByText("Bulkhead-A")).toBeDefined();
@@ -110,7 +113,9 @@ describe("ComponentTree — Construction-Part add flow (gh#57-wvg)", () => {
   it("creates a cad_shape tree node with construction_part_id on selection", async () => {
     render(<ComponentTree />);
     fireEvent.click(screen.getByTitle("Add to main_wing"));
-    fireEvent.click(screen.getByText("Assign Construction Part"));
+    const buttons = screen.getAllByText("Assign Construction Part");
+    const menuButton = buttons.find((el) => el.closest("button"))?.closest("button");
+    fireEvent.click(menuButton!);
     fireEvent.click(screen.getByText("Bulkhead-A"));
 
     expect(mockAddTreeNode).toHaveBeenCalledWith(

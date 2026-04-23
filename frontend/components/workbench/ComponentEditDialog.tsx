@@ -8,6 +8,7 @@ import {
   useComponentTypes,
   type PropertyDefinition,
 } from "@/hooks/useComponentTypes";
+import { useDialog } from "@/hooks/useDialog";
 
 interface ComponentEditDialogProps {
   open: boolean;
@@ -90,6 +91,7 @@ export function ComponentEditDialog({
 }: Readonly<ComponentEditDialogProps>) {
   const { types } = useComponentTypes();
   const isEdit = !!component;
+  const { dialogRef, handleClose } = useDialog(open, onClose);
 
   // All state is seeded once on mount — parent is responsible for mounting/
   // unmounting us conditionally so that reopening seeds from fresh props.
@@ -108,8 +110,6 @@ export function ComponentEditDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showUnknown, setShowUnknown] = useState(false);
-
-  if (!open) return null;
 
   const currentType = types.find((t) => t.name === componentType);
   const schema: PropertyDefinition[] = currentType?.schema ?? [];
@@ -192,19 +192,14 @@ export function ComponentEditDialog({
   else if (isEdit) submitLabel = "Update";
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
+      onClose={handleClose}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
       aria-label={isEdit ? "Edit Component" : "New Component"}
-      onClick={onClose}
-      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
-      <div
-        className="flex max-h-[85vh] w-[520px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-      >
+      <div className="flex max-h-[85vh] w-[520px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl">
         <div className="flex items-center gap-3">
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
             {isEdit ? "Edit Component" : "New Component"}
@@ -339,7 +334,7 @@ export function ComponentEditDialog({
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }
 

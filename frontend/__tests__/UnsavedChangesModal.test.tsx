@@ -35,7 +35,9 @@ describe("UnsavedChangesModal", () => {
   it("does not render when pendingHref is null", () => {
     mockUseUnsavedChanges.mockReturnValue(defaultCtx());
     const { container } = render(<UnsavedChangesModal />);
-    expect(container.innerHTML).toBe("");
+    const dialog = container.querySelector("dialog");
+    expect(dialog).toBeTruthy();
+    expect(dialog?.hasAttribute("open")).toBe(false);
   });
 
   it("renders when pendingHref is set", () => {

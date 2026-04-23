@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef, useId } from "react";
 import { X, Check, ChevronDown, ChevronUp, Search, ChevronRight } from "lucide-react";
 import { API_BASE } from "@/lib/fetcher";
 import { useComponents, type Component } from "@/hooks/useComponents";
+import { useDialog } from "@/hooks/useDialog";
 
 const HINGE_TYPES = ["middle", "top", "top_simple", "round_inside", "round_outside"] as const;
 
@@ -63,6 +64,7 @@ export function TedEditDialog({
   const [cadOpen, setCadOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { dialogRef, handleClose } = useDialog(open, onClose);
 
   useEffect(() => {
     if (initialData && typeof initialData === "object") {
@@ -99,8 +101,6 @@ export function TedEditDialog({
     }
     setError(null);
   }, [initialData, open]);
-
-  if (!open) return null;
 
   async function handleSave() {
     if (!name.trim()) {
@@ -192,19 +192,14 @@ export function TedEditDialog({
   else if (isNew) submitLabel = "Add";
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
+      onClose={handleClose}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
       aria-label={isNew ? "Add Control Surface" : "Edit Control Surface"}
-      onClick={onClose}
-      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
-      <div
-        className="flex max-h-[85vh] w-[480px] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-      >
+      <div className="flex max-h-[85vh] w-[480px] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
@@ -339,7 +334,7 @@ export function TedEditDialog({
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }
 

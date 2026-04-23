@@ -13,6 +13,8 @@ vi.mock("lucide-react", () => {
   return {
     ChevronDown: icon, ChevronRight: icon, Plus: icon, Trash2: icon,
     Eye: icon, EyeOff: icon, Loader: icon, PanelLeftClose: icon, Pencil: icon,
+    X: icon, Upload: icon, Check: icon, Loader2: icon, Maximize2: icon,
+    Minimize2: icon, Play: icon, Lock: icon,
   };
 });
 

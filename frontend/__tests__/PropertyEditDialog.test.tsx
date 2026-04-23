@@ -24,7 +24,7 @@ beforeEach(() => {
 
 describe("PropertyEditDialog", () => {
   it("does not render when open=false", () => {
-    render(
+    const { container } = render(
       <PropertyEditDialog
         open={false}
         initial={null}
@@ -32,7 +32,9 @@ describe("PropertyEditDialog", () => {
         onCancel={vi.fn()}
       />,
     );
-    expect(screen.queryByText(/Property/i)).toBeNull();
+    const dialog = container.querySelector("dialog");
+    expect(dialog).toBeTruthy();
+    expect(dialog?.hasAttribute("open")).toBe(false);
   });
 
   it("renders blank form for new property (initial=null)", () => {

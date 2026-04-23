@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { X } from "lucide-react";
 import { API_BASE } from "@/lib/fetcher";
+import { useDialog } from "@/hooks/useDialog";
 
 type DesignModel = "wc" | "asb";
 
@@ -57,6 +58,7 @@ export function CreateWingDialog({
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { dialogRef, handleClose } = useDialog(open, onClose);
 
   // Focus the name input when dialog opens
   useEffect(() => {
@@ -69,8 +71,6 @@ export function CreateWingDialog({
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [open]);
-
-  if (!open) return null;
 
   async function handleCreate() {
     const trimmed = name.trim();
@@ -130,27 +130,19 @@ export function CreateWingDialog({
     if (e.key === "Enter" && !creating) {
       handleCreate();
     }
-    if (e.key === "Escape") {
-      onClose();
-    }
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
+      onClose={handleClose}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
       aria-label="Create Wing"
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      onClick={onClose}
-      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60" />
-
       {/* Dialog */}
       <div
         className="relative z-10 w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
         {/* Header */}
@@ -272,6 +264,6 @@ export function CreateWingDialog({
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { Hammer, Plus, Trash2, Play, Loader2, BookTemplate, Copy, X, Maximize2, Minimize2 } from "lucide-react";
+import { useDialog } from "@/hooks/useDialog";
 import { CadViewer } from "@/components/workbench/CadViewer";
 import { WorkbenchTwoPanel } from "@/components/workbench/WorkbenchTwoPanel";
 import { PlanTree, type PlanStepNode } from "@/components/workbench/PlanTree";
@@ -642,22 +643,18 @@ function AddStepDialog({
   onSetAddStepParams,
   onAddCreator,
 }: Readonly<AddStepDialogProps>) {
-  if (!open) return null;
+  const { dialogRef, handleClose } = useDialog(open, onClose);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
+      onClose={handleClose}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
       aria-label={addingCreator ? `Add ${addingCreator.class_name}` : "Add Step"}
-      onClick={onClose}
-      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
-      <div
-        className="flex max-h-[85vh] w-[600px] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-      >
+      {open && (
+      <div className="flex max-h-[85vh] w-[600px] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl">
         {addingCreator ? (
           <>
             <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
@@ -761,7 +758,8 @@ function AddStepDialog({
           </>
         )}
       </div>
-    </div>
+      )}
+    </dialog>
   );
 }
 
@@ -790,22 +788,18 @@ function NewPlanDialog({
   onSetNewPlanTemplateId,
   onSubmit,
 }: Readonly<NewPlanDialogProps>) {
-  if (!open) return null;
+  const { dialogRef, handleClose } = useDialog(open, onClose);
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
+      onClose={handleClose}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
       aria-label="New Plan"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      onClick={onClose}
-      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
-      <div
-        className="flex w-[480px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-      >
+      {open && (
+      <div className="flex w-[480px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl">
         <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
           New Plan
         </h2>
@@ -889,7 +883,8 @@ function NewPlanDialog({
           </button>
         </div>
       </div>
-    </div>
+      )}
+    </dialog>
   );
 }
 
@@ -914,22 +909,18 @@ function ExecuteDialog({
   onSetExecuteAeroplaneId,
   onExecute,
 }: Readonly<ExecuteDialogProps>) {
-  if (!open) return null;
+  const { dialogRef, handleClose } = useDialog(open, onClose);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
+      onClose={handleClose}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
       aria-label="Execute Plan"
-      onClick={onClose}
-      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
-      <div
-        className="flex w-[480px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-      >
+      {open && (
+      <div className="flex w-[480px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl">
         <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
           Execute Plan
         </h2>
@@ -996,7 +987,8 @@ function ExecuteDialog({
           </button>
         </div>
       </div>
-    </div>
+      )}
+    </dialog>
   );
 }
 
@@ -1017,23 +1009,22 @@ function CadViewerModal({
   onClose,
   onToggleFullscreen,
 }: Readonly<CadViewerModalProps>) {
+  const { dialogRef, handleClose } = useDialog(open && !!cadViewerData, onClose);
+
   if (!open || !cadViewerData) return null;
 
   return (
-    <div
-      className={`fixed inset-0 z-50 flex items-center justify-center ${fullscreen ? "" : "bg-black/60"}`}
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-transparent ${fullscreen ? "backdrop:bg-transparent" : "backdrop:bg-black/60"}`}
+      onClose={handleClose}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
       aria-label="Execution Result"
-      onClick={onClose}
-      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
       <div
         className={`flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl ${
           fullscreen ? "h-full w-full rounded-none border-0" : "h-[80vh] w-[80vw]"
         }`}
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
@@ -1063,6 +1054,6 @@ function CadViewerModal({
           <CadViewer parts={[cadViewerData]} />
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }

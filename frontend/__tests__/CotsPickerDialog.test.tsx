@@ -44,14 +44,16 @@ beforeEach(() => {
 
 describe("CotsPickerDialog", () => {
   it("does not render when open=false", () => {
-    render(
+    const { container } = render(
       <CotsPickerDialog
         open={false}
         onClose={vi.fn()}
         onSelect={vi.fn()}
       />,
     );
-    expect(screen.queryByText(/Assign Component/i)).toBeNull();
+    const dialog = container.querySelector("dialog");
+    expect(dialog).toBeTruthy();
+    expect(dialog?.hasAttribute("open")).toBe(false);
   });
 
   it("renders the header with target group name when provided", () => {

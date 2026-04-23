@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, Loader2, Upload } from "lucide-react";
 import { uploadConstructionPart } from "@/hooks/useConstructionParts";
 import { useComponents } from "@/hooks/useComponents";
+import { useDialog } from "@/hooks/useDialog";
 
 interface ConstructionPartUploadDialogProps {
   open: boolean;
@@ -24,6 +25,7 @@ export function ConstructionPartUploadDialog({
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [fileName, setFileName] = useState<string>("");
+  const { dialogRef, handleClose } = useDialog(open, onClose);
 
   // Materials are queried from the existing COTS catalog.
   const { components: materials } = useComponents("material");
@@ -37,8 +39,6 @@ export function ConstructionPartUploadDialog({
       if (fileRef.current) fileRef.current.value = "";
     }
   }, [open]);
-
-  if (!open) return null;
 
   const file = fileRef.current?.files?.[0] ?? null;
   const canSubmit = !!name.trim() && !!fileName && !saving;
@@ -63,19 +63,14 @@ export function ConstructionPartUploadDialog({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
+      onClose={handleClose}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
       aria-label="Upload Construction Part"
-      onClick={onClose}
-      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
-      <div
-        className="flex w-[500px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-      >
+      <div className="flex w-[500px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl">
         <div className="flex items-center gap-3">
           <Upload size={16} className="text-primary" />
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
@@ -181,6 +176,6 @@ export function ConstructionPartUploadDialog({
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }

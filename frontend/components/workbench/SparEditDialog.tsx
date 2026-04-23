@@ -3,6 +3,7 @@
 import { useState, useEffect, useId } from "react";
 import { X } from "lucide-react";
 import { API_BASE } from "@/lib/fetcher";
+import { useDialog } from "@/hooks/useDialog";
 
 const SPAR_MODES = ["standard", "follow", "normal", "standard_backward", "orthogonal_backward"] as const;
 
@@ -69,6 +70,7 @@ export function SparEditDialog({
   const [origZ, setOrigZ] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { dialogRef, handleClose } = useDialog(open, onClose);
 
   useEffect(() => {
     if (initialData) {
@@ -92,8 +94,6 @@ export function SparEditDialog({
     }
     setError(null);
   }, [initialData, open]);
-
-  if (!open) return null;
 
   async function handleSave() {
     setSaving(true);
@@ -171,19 +171,14 @@ export function SparEditDialog({
   else if (isNew) submitLabel = "Add";
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
+      onClose={handleClose}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
       aria-label={isNew ? "Add Spar" : "Edit Spar"}
-      onClick={onClose}
-      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
-      <div
-        className="flex max-h-[85vh] w-[420px] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-      >
+      <div className="flex max-h-[85vh] w-[420px] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
@@ -268,7 +263,7 @@ export function SparEditDialog({
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }
 

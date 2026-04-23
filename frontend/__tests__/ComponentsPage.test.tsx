@@ -9,7 +9,7 @@
  * the WorkbenchTwoPanel (e.g. as a sibling via Fragment or via a portal).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import React from "react";
 
 // ── Mocks ─────────────────────────────────────────────────────────
@@ -109,26 +109,41 @@ describe("ComponentsPage — '+ New Component' dialog", () => {
     expect(screen.queryByText("New Component", { selector: "span" })).toBeNull();
   });
 
-  it("opens the create dialog when '+ New Component' is clicked", () => {
-    render(<ComponentsPage />);
+  it("opens the create dialog when '+ New Component' is clicked", async () => {
+    const { container } = render(<ComponentsPage />);
 
     const button = screen.getByText("New Component");
     fireEvent.click(button);
 
-    // The dialog title is "New Component" inside a <span> — same text as the
-    // button, so we assert on the presence of dialog-only form labels instead.
-    expect(screen.getByText("Name *")).toBeDefined();
-    expect(screen.getByText("Manufacturer")).toBeDefined();
-    expect(screen.getByText("Description")).toBeDefined();
+    // The ComponentEditDialog should now be mounted and open
+    await waitFor(() => {
+      const editDialog = container.querySelector('dialog[aria-label="New Component"]');
+      expect(editDialog).toBeTruthy();
+      expect(editDialog?.hasAttribute("open")).toBe(true);
+    });
   });
 
-  it("closes the dialog when Cancel is clicked", () => {
-    render(<ComponentsPage />);
+  it("closes the dialog when Cancel is clicked", async () => {
+    const { container } = render(<ComponentsPage />);
 
     fireEvent.click(screen.getByText("New Component"));
-    expect(screen.getByText("Name *")).toBeDefined();
 
-    fireEvent.click(screen.getByText("Cancel"));
-    expect(screen.queryByText("Name *")).toBeNull();
+    await waitFor(() => {
+      const editDialog = container.querySelector('dialog[aria-label="New Component"]');
+      expect(editDialog?.hasAttribute("open")).toBe(true);
+    });
+
+    // Cancel buttons exist in the page and dialog; click the one inside the edit dialog
+    const editDialog = container.querySelector('dialog[aria-label="New Component"]');
+    const cancelBtn = editDialog?.querySelector("button");
+    // Find the Cancel button specifically
+    const allBtns = editDialog?.querySelectorAll("button") ?? [];
+    const cancelButton = Array.from(allBtns).find((b) => b.textContent === "Cancel");
+    fireEvent.click(cancelButton!);
+
+    // The dialog should unmount because the parent uses conditional rendering
+    await waitFor(() => {
+      expect(container.querySelector('dialog[aria-label="New Component"]')).toBeNull();
+    });
   });
 });

@@ -2,26 +2,20 @@
 
 import { TriangleAlert } from "lucide-react";
 import { useUnsavedChanges } from "@/components/workbench/UnsavedChangesContext";
+import { useDialog } from "@/hooks/useDialog";
 
 export function UnsavedChangesModal() {
   const { pendingHref, isSaving, confirmDiscard, confirmSave, cancelNavigation } = useUnsavedChanges();
-
-  if (!pendingHref) return null;
+  const { dialogRef, handleClose } = useDialog(!!pendingHref, cancelNavigation);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Unsaved Changes"
-      onClick={cancelNavigation}
-      onKeyDown={(e) => { if (e.key === "Escape") cancelNavigation(); }}
+    <dialog
+      ref={dialogRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/50"
+      onClose={handleClose}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
     >
-      <div
-        className="flex w-[460px] flex-col gap-5 rounded-[16px] border border-border bg-card p-6"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-      >
+      <div className="flex w-[460px] flex-col gap-5 rounded-[16px] border border-border bg-card p-6">
         <div className="flex items-center gap-3">
           <TriangleAlert size={24} className="text-primary" />
           <span className="text-[18px] font-semibold text-foreground">
@@ -55,6 +49,6 @@ export function UnsavedChangesModal() {
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }

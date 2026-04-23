@@ -9,6 +9,7 @@ import {
   deleteConstructionPart,
   type ConstructionPart,
 } from "@/hooks/useConstructionParts";
+import { useDialog } from "@/hooks/useDialog";
 
 interface ConstructionPartsGridProps {
   aeroplaneId: string;
@@ -30,20 +31,16 @@ interface ConfirmModalProps {
 }
 
 function ConfirmModal({ title, body, onConfirm, onCancel }: Readonly<ConfirmModalProps>) {
+  const { dialogRef, handleClose } = useDialog(true, onCancel);
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
+      onClose={handleClose}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
       aria-label={title}
-      onClick={onCancel}
-      onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}
     >
-      <div
-        className="flex w-[420px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-      >
+      <div className="flex w-[420px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl">
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
           {title}
         </span>
@@ -63,7 +60,7 @@ function ConfirmModal({ title, body, onConfirm, onCancel }: Readonly<ConfirmModa
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }
 
