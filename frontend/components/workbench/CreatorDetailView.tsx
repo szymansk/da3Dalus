@@ -96,7 +96,7 @@ export function CreatorDetailView({ creator, onBack }: Readonly<CreatorDetailVie
                     </span>
                   ) : (
                     <span className="text-[9px] text-subtle-foreground">
-                      = {param.default != null ? String(param.default) : "None"}
+                      = {param.default != null ? (typeof param.default === "object" ? JSON.stringify(param.default) : String(param.default)) : "None"}
                     </span>
                   )}
                 </div>

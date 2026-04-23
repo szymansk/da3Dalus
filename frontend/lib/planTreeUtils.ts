@@ -116,7 +116,8 @@ export function collectAvailableShapeKeys(
 export function resolveIdTemplate(template: string, params: Record<string, unknown>): string {
   return template.replaceAll(/\{(\w+)\}/g, (match, key) => {
     const val = params[key as string];
-    return val != null && val !== "" ? String(val) : match;
+    if (val == null || val === "") return match;
+    return typeof val === "object" ? JSON.stringify(val) : String(val);
   });
 }
 

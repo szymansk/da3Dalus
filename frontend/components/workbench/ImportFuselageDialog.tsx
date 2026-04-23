@@ -477,7 +477,8 @@ export function ImportFuselageDialog({
   const [xsecsMaximized, setXsecsMaximized] = useState(false);
   const [xsecs, setXsecs] = useState<XSec[]>(initialXsecs ?? INITIAL_XSECS);
   const [selectedXsec, setSelectedXsec] = useState<number | null>(initialSelectedIndex ?? (editMode ? 0 : null));
-  const [_zoomScale, _setZoomScale] = useState<number | null>(null); // null = auto-fit selected
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [zoomScale, setZoomScale] = useState<number | null>(null); // null = auto-fit selected
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fidelity, setFidelity] = useState<{ volume_ratio: number; area_ratio: number } | null>(null);

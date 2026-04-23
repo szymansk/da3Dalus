@@ -63,7 +63,7 @@ function validateProp(prop: PropertyDefinition, raw: unknown): ValidationResult 
     return validateNumberRange(prop, parsed as number);
   }
   if (prop.type === "enum" && prop.options && !prop.options.includes(String(parsed))) {
-    return fail(prop, `${prop.label}: value '${parsed}' is not in ${JSON.stringify(prop.options)}.`);
+    return fail(prop, `${prop.label}: value '${String(parsed)}' is not in ${JSON.stringify(prop.options)}.`);
   }
   return null;
 }
@@ -288,7 +288,7 @@ export function ComponentEditDialog({
                 <ul className="mt-2 flex flex-col gap-1 pl-4">
                   {unknownKeys.map((k) => (
                     <li key={k} className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-subtle-foreground">
-                      {k}: {String(specs[k])}
+                      {k}: {typeof specs[k] === "object" ? JSON.stringify(specs[k]) : String(specs[k])}
                     </li>
                   ))}
                 </ul>

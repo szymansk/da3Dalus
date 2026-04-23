@@ -18,6 +18,13 @@ interface TedEditDialogProps {
   onSaved: () => void;
 }
 
+/** Safely convert an unknown value to a string, avoiding [object Object]. */
+function safeStr(v: unknown, fallback = ""): string {
+  if (v == null) return fallback;
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
+}
+
 function optFloat(v: string): number | undefined {
   const trimmed = v.trim();
   if (!trimmed) return undefined;
@@ -60,20 +67,20 @@ export function TedEditDialog({
   useEffect(() => {
     if (initialData && typeof initialData === "object") {
       const t = initialData;
-      setName(String(t.name ?? ""));
-      setHingePoint(String(t.rel_chord_root ?? t.hinge_point ?? "0.8"));
+      setName(safeStr(t.name));
+      setHingePoint(safeStr(t.rel_chord_root ?? t.hinge_point, "0.8"));
       setSymmetric(Boolean(t.symmetric));
-      setRelChordTip(String(t.rel_chord_tip ?? t.rel_chord_root ?? "0.8"));
-      setHingeType(String(t.hinge_type ?? "top"));
-      setPosDeg(String(t.positive_deflection_deg ?? "35"));
-      setNegDeg(String(t.negative_deflection_deg ?? "35"));
-      setHingeSpacing(t.hinge_spacing == null ? "" : String(t.hinge_spacing));
-      setSideSpacingRoot(t.side_spacing_root == null ? "" : String(t.side_spacing_root));
-      setSideSpacingTip(t.side_spacing_tip == null ? "" : String(t.side_spacing_tip));
-      setTeOffsetFactor(t.trailing_edge_offset_factor == null ? "1.0" : String(t.trailing_edge_offset_factor));
-      setServoPlacement(String(t.servo_placement ?? "top"));
-      setServoChordPos(t.rel_chord_servo_position == null ? "" : String(t.rel_chord_servo_position));
-      setServoLengthPos(t.rel_length_servo_position == null ? "" : String(t.rel_length_servo_position));
+      setRelChordTip(safeStr(t.rel_chord_tip ?? t.rel_chord_root, "0.8"));
+      setHingeType(safeStr(t.hinge_type, "top"));
+      setPosDeg(safeStr(t.positive_deflection_deg, "35"));
+      setNegDeg(safeStr(t.negative_deflection_deg, "35"));
+      setHingeSpacing(safeStr(t.hinge_spacing));
+      setSideSpacingRoot(safeStr(t.side_spacing_root));
+      setSideSpacingTip(safeStr(t.side_spacing_tip));
+      setTeOffsetFactor(safeStr(t.trailing_edge_offset_factor, "1.0"));
+      setServoPlacement(safeStr(t.servo_placement, "top"));
+      setServoChordPos(safeStr(t.rel_chord_servo_position));
+      setServoLengthPos(safeStr(t.rel_length_servo_position));
     } else {
       setName("");
       setHingePoint("0.8");

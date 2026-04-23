@@ -680,7 +680,7 @@ export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingN
           }}
           nosePnt={nosePnt}
           setNosePnt={setNosePnt}
-          selectedXsecIndex={selectedXsecIndex!}
+          selectedXsecIndex={selectedXsecIndex}
           setDirty={setDirty}
           router={router}
         />
