@@ -286,8 +286,9 @@ function WingConfigFields({
         <Field label="interpolation_pts" value={wc.number_interpolation_points}
           onChange={(v) => { setDirty(true); setWc({ ...wc, number_interpolation_points: num(v, 201) }); }} />
         <div className="flex flex-1 flex-col gap-1">
-          <label className="text-[11px] text-muted-foreground">tip_type</label>
+          <label htmlFor="pf-tip-type" className="text-[11px] text-muted-foreground">tip_type</label>
           <select
+            id="pf-tip-type"
             value={wc.tip_type}
             onChange={(e) => { setDirty(true); setWc({ ...wc, tip_type: e.target.value }); }}
             className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"

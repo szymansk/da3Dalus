@@ -93,8 +93,9 @@ export function ConstructionPartUploadDialog({
 
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] text-muted-foreground">Name *</label>
+            <label htmlFor="upload-part-name" className="text-[11px] text-muted-foreground">Name *</label>
             <input
+              id="upload-part-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -104,8 +105,9 @@ export function ConstructionPartUploadDialog({
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] text-muted-foreground">File * (.step / .stp / .stl)</label>
+            <label htmlFor="upload-part-file" className="text-[11px] text-muted-foreground">File * (.step / .stp / .stl)</label>
             <input
+              id="upload-part-file"
               ref={fileRef}
               type="file"
               accept=".step,.stp,.stl"

@@ -187,6 +187,7 @@ export function TedEditDialog({
   }
 
   const hasTed = !isNew;
+  const submitLabel = saving ? "Saving..." : isNew ? "Add" : "Save";
 
   return (
     <div
@@ -332,7 +333,7 @@ export function TedEditDialog({
             disabled={saving}
             className="rounded-full bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
           >
-            {saving ? "Saving..." : isNew ? "Add" : "Save"}
+            {submitLabel}
           </button>
         </div>
       </div>

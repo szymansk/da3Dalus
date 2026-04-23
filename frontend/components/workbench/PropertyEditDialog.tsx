@@ -129,11 +129,16 @@ export function PropertyEditDialog({
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60"
+      role="dialog"
+      aria-modal="true"
+      aria-label={initial ? "Edit Property" : "New Property"}
       onClick={onCancel}
+      onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}
     >
       <div
         className="flex w-[440px] flex-col gap-3 rounded-2xl border border-border bg-card p-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2">
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-foreground">
@@ -151,8 +156,9 @@ export function PropertyEditDialog({
 
         <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] text-muted-foreground">Name (snake_case) *</label>
+            <label htmlFor="pe-name" className="text-[11px] text-muted-foreground">Name (snake_case) *</label>
             <input
+              id="pe-name"
               type="text"
               value={form.name}
               onChange={(e) => update({ name: e.target.value })}
@@ -161,8 +167,9 @@ export function PropertyEditDialog({
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] text-muted-foreground">Label *</label>
+            <label htmlFor="pe-label" className="text-[11px] text-muted-foreground">Label *</label>
             <input
+              id="pe-label"
               type="text"
               value={form.label}
               onChange={(e) => update({ label: e.target.value })}
@@ -172,8 +179,9 @@ export function PropertyEditDialog({
           </div>
           <div className="flex gap-2">
             <div className="flex flex-1 flex-col gap-1">
-              <label className="text-[11px] text-muted-foreground">Type *</label>
+              <label htmlFor="pe-type" className="text-[11px] text-muted-foreground">Type *</label>
               <select
+                id="pe-type"
                 value={form.type}
                 onChange={(e) => update({ type: e.target.value as PropertyType })}
                 className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
@@ -182,8 +190,9 @@ export function PropertyEditDialog({
               </select>
             </div>
             <div className="flex flex-1 flex-col gap-1">
-              <label className="text-[11px] text-muted-foreground">Unit</label>
+              <label htmlFor="pe-unit" className="text-[11px] text-muted-foreground">Unit</label>
               <input
+                id="pe-unit"
                 type="text"
                 value={form.unit}
                 onChange={(e) => update({ unit: e.target.value })}
@@ -204,8 +213,9 @@ export function PropertyEditDialog({
             </label>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] text-muted-foreground">Description</label>
+            <label htmlFor="pe-description" className="text-[11px] text-muted-foreground">Description</label>
             <input
+              id="pe-description"
               type="text"
               value={form.description}
               onChange={(e) => update({ description: e.target.value })}
@@ -221,8 +231,9 @@ export function PropertyEditDialog({
             // 4-digit default value.
             <div className="flex gap-2">
               <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <label className="text-[11px] text-muted-foreground">Min</label>
+                <label htmlFor="pe-min" className="text-[11px] text-muted-foreground">Min</label>
                 <input
+                  id="pe-min"
                   type="number"
                   value={form.min}
                   onChange={(e) => update({ min: e.target.value })}
@@ -230,8 +241,9 @@ export function PropertyEditDialog({
                 />
               </div>
               <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <label className="text-[11px] text-muted-foreground">Max</label>
+                <label htmlFor="pe-max" className="text-[11px] text-muted-foreground">Max</label>
                 <input
+                  id="pe-max"
                   type="number"
                   value={form.max}
                   onChange={(e) => update({ max: e.target.value })}
@@ -239,8 +251,9 @@ export function PropertyEditDialog({
                 />
               </div>
               <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <label className="text-[11px] text-muted-foreground">Default</label>
+                <label htmlFor="pe-default-num" className="text-[11px] text-muted-foreground">Default</label>
                 <input
+                  id="pe-default-num"
                   type="number"
                   value={form.defaultStr}
                   onChange={(e) => update({ defaultStr: e.target.value })}
@@ -252,8 +265,9 @@ export function PropertyEditDialog({
 
           {form.type === "enum" && (
             <div className="flex flex-col gap-1">
-              <label className="text-[11px] text-muted-foreground">Options (comma-separated) *</label>
+              <label htmlFor="pe-options" className="text-[11px] text-muted-foreground">Options (comma-separated) *</label>
               <input
+                id="pe-options"
                 type="text"
                 value={form.optionsCsv}
                 onChange={(e) => update({ optionsCsv: e.target.value })}
@@ -265,8 +279,9 @@ export function PropertyEditDialog({
 
           {(form.type === "string" || form.type === "enum" || form.type === "boolean") && (
             <div className="flex flex-col gap-1">
-              <label className="text-[11px] text-muted-foreground">Default</label>
+              <label htmlFor="pe-default-str" className="text-[11px] text-muted-foreground">Default</label>
               <input
+                id="pe-default-str"
                 type="text"
                 value={form.defaultStr}
                 onChange={(e) => update({ defaultStr: e.target.value })}

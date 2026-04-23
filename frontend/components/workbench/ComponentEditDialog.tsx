@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { ChevronDown, ChevronRight, Loader2, X } from "lucide-react";
 import type { Component } from "@/hooks/useComponents";
 import { createComponent, updateComponent } from "@/hooks/useComponents";
@@ -191,6 +191,8 @@ export function ComponentEditDialog({
     }
   }
 
+  const submitLabel = saving ? "Saving\u2026" : isEdit ? "Update" : "Create";
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
@@ -220,8 +222,9 @@ export function ComponentEditDialog({
 
         <div className="flex flex-col gap-3 overflow-y-auto">
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] text-muted-foreground">Name *</label>
+            <label htmlFor="ce-name" className="text-[11px] text-muted-foreground">Name *</label>
             <input
+              id="ce-name"
               type="text" value={name} onChange={(e) => setName(e.target.value)}
               className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
             />
@@ -236,8 +239,9 @@ export function ComponentEditDialog({
            */}
           <div className="flex gap-3">
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label className="text-[11px] text-muted-foreground">Type</label>
+              <label htmlFor="ce-type" className="text-[11px] text-muted-foreground">Type</label>
               <select
+                id="ce-type"
                 value={componentType}
                 onChange={(e) => handleTypeChange(e.target.value)}
                 className="w-full truncate rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
@@ -248,8 +252,9 @@ export function ComponentEditDialog({
               </select>
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label className="text-[11px] text-muted-foreground">Mass (g)</label>
+              <label htmlFor="ce-mass" className="text-[11px] text-muted-foreground">Mass (g)</label>
               <input
+                id="ce-mass"
                 type="number" value={massG} onChange={(e) => setMassG(e.target.value)}
                 className="w-full rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
               />
@@ -257,16 +262,18 @@ export function ComponentEditDialog({
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] text-muted-foreground">Manufacturer</label>
+            <label htmlFor="ce-manufacturer" className="text-[11px] text-muted-foreground">Manufacturer</label>
             <input
+              id="ce-manufacturer"
               type="text" value={manufacturer}
               onChange={(e) => setManufacturer(e.target.value)}
               className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] text-muted-foreground">Description</label>
+            <label htmlFor="ce-description" className="text-[11px] text-muted-foreground">Description</label>
             <textarea
+              id="ce-description"
               value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
               className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground resize-none"
             />
@@ -330,7 +337,7 @@ export function ComponentEditDialog({
             className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
           >
             {saving && <Loader2 size={14} className="animate-spin" />}
-            {saving ? "Saving\u2026" : isEdit ? "Update" : "Create"}
+            {submitLabel}
           </button>
         </div>
       </div>
@@ -349,6 +356,7 @@ interface SpecFieldProps {
 }
 
 function SpecField({ prop, value, onChange }: Readonly<SpecFieldProps>) {
+  const fieldId = useId();
   const labelText = `${prop.label}${prop.required ? " *" : ""}${prop.unit ? ` (${prop.unit})` : ""}`;
 
   switch (prop.type) {
@@ -360,9 +368,9 @@ function SpecField({ prop, value, onChange }: Readonly<SpecFieldProps>) {
             data-spec={prop.name}
             checked={!!value}
             onChange={(e) => onChange(e.target.checked)}
-            id={`spec-${prop.name}`}
+            id={fieldId}
           />
-          <label htmlFor={`spec-${prop.name}`} className="text-[12px] text-foreground">
+          <label htmlFor={fieldId} className="text-[12px] text-foreground">
             {labelText}
           </label>
         </div>
@@ -371,8 +379,9 @@ function SpecField({ prop, value, onChange }: Readonly<SpecFieldProps>) {
     case "enum":
       return (
         <div className="flex flex-col gap-1">
-          <label className="text-[11px] text-muted-foreground">{labelText}</label>
+          <label htmlFor={fieldId} className="text-[11px] text-muted-foreground">{labelText}</label>
           <select
+            id={fieldId}
             data-spec={prop.name}
             value={value == null ? "" : String(value)}
             onChange={(e) => onChange(e.target.value)}
@@ -390,8 +399,9 @@ function SpecField({ prop, value, onChange }: Readonly<SpecFieldProps>) {
       // number or string
       return (
         <div className="flex flex-col gap-1">
-          <label className="text-[11px] text-muted-foreground">{labelText}</label>
+          <label htmlFor={fieldId} className="text-[11px] text-muted-foreground">{labelText}</label>
           <input
+            id={fieldId}
             data-spec={prop.name}
             type={prop.type === "number" ? "number" : "text"}
             value={value == null ? "" : String(value)}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { AlertTriangle, Lock, Loader2, Save, Trash2, X } from "lucide-react";
 import {
   deleteTreeNode,
@@ -135,10 +135,12 @@ interface FieldProps {
 }
 
 function Field({ label, value, onChange, type = "text", placeholder }: Readonly<FieldProps>) {
+  const id = useId();
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-[11px] text-muted-foreground">{label}</label>
+      <label htmlFor={id} className="text-[11px] text-muted-foreground">{label}</label>
       <input
+        id={id}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -176,10 +178,12 @@ function MaterialSelect({
   value: string;
   onChange: (v: string) => void;
 }>) {
+  const materialId = useId();
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-[11px] text-muted-foreground">Material</label>
+      <label htmlFor={materialId} className="text-[11px] text-muted-foreground">Material</label>
       <select
+        id={materialId}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
@@ -414,8 +418,9 @@ export function NodePropertyPanel({
                 onChange={(v) => update({ scale_factor: v })}
               />
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] text-muted-foreground">Print type</label>
+                <label htmlFor="npp-print-type" className="text-[11px] text-muted-foreground">Print type</label>
                 <select
+                  id="npp-print-type"
                   value={form.print_type}
                   onChange={(e) => update({ print_type: e.target.value })}
                   className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
