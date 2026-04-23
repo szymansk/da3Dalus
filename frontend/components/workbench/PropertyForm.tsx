@@ -480,16 +480,20 @@ function buildUpdatedSegments(
 
 // ── Fuselage xsec early-return helper (extracted for cognitive complexity) ──
 
-function renderFuselageXsecForm(
-  mode: Mode,
-  selectedFuselage: string | null,
-  selectedFuselageXsecIndex: number | null,
-  fuselage: { x_secs: FuselageXSec[] } | null | undefined,
-  aeroplaneId: string | null,
-  updateFuselageXSec: (idx: number, xsec: FuselageXSec) => Promise<void>,
-  mutateFuselage: () => Promise<unknown>,
-  onGeometryChanged: ((wingName: string) => void) | undefined,
-): React.ReactElement | null {
+interface FuselageXsecFormOptions {
+  mode: Mode;
+  selectedFuselage: string | null;
+  selectedFuselageXsecIndex: number | null;
+  fuselage: { x_secs: FuselageXSec[] } | null | undefined;
+  aeroplaneId: string | null;
+  updateFuselageXSec: (idx: number, xsec: FuselageXSec) => Promise<void>;
+  mutateFuselage: () => Promise<unknown>;
+  onGeometryChanged: ((wingName: string) => void) | undefined;
+}
+
+function renderFuselageXsecForm(opts: FuselageXsecFormOptions): React.ReactElement | null {
+  const { mode, selectedFuselage, selectedFuselageXsecIndex, fuselage,
+    aeroplaneId, updateFuselageXSec, mutateFuselage, onGeometryChanged } = opts;
   if (mode !== "fuselage" || !selectedFuselage || selectedFuselageXsecIndex === null || !fuselage) {
     return null;
   }
@@ -583,10 +587,10 @@ export function PropertyForm({ onGeometryChanged }: Readonly<{ onGeometryChanged
   }, [wingConfig, selectedXsecIndex]);
 
   // Fuselage xsec mode — delegate to dedicated form
-  const fuselageXsecForm = renderFuselageXsecForm(
+  const fuselageXsecForm = renderFuselageXsecForm({
     mode, selectedFuselage, selectedFuselageXsecIndex, fuselage,
     aeroplaneId, updateFuselageXSec, mutateFuselage, onGeometryChanged,
-  );
+  });
   if (fuselageXsecForm) return fuselageXsecForm;
 
   // No segment/xsec selected — nothing to show

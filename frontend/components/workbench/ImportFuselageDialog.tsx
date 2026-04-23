@@ -501,6 +501,290 @@ function buildDefaultXsecs(scaleFactor: number, flipX: boolean): XSec[] {
 
 type Phase = "upload" | "processing" | "preview";
 
+// ── Upload phase renderer (extracted for cognitive complexity) ──
+
+interface UploadPhaseProps {
+  fileName: string | null;
+  handleFileSelect: (f: File) => void;
+  handleCreateEmpty: () => void;
+  error: string | null;
+  fuselageName: string;
+  setFuselageName: (v: string) => void;
+  scaleInput: string;
+  setScaleInput: (v: string) => void;
+  scaleFactor: number;
+  setScaleFactor: (v: number) => void;
+  flipX: boolean;
+  setFlipX: (fn: (v: boolean) => boolean) => void;
+  slicesInput: string;
+  setSlicesInput: (v: string) => void;
+  slices: number;
+  setSlices: (v: number) => void;
+  axis: string;
+  setAxis: (v: string) => void;
+  handleStartSlicing: () => void;
+}
+
+function renderUploadPhase(p: UploadPhaseProps) {
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Two options: import or create */}
+      <div className="flex gap-4">
+        {/* Option 1: Import from STEP */}
+        <label className={`flex flex-1 h-40 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed transition-colors ${
+          p.fileName ? "border-primary bg-primary/10" : "border-border bg-card-muted hover:border-primary hover:bg-card-muted/80"
+        }`}>
+          <Upload size={28} className={p.fileName ? "text-primary" : "text-muted-foreground"} />
+          <span className={`text-[13px] ${p.fileName ? "text-foreground" : "text-muted-foreground"}`}>
+            {p.fileName ?? "Import from STEP file"}
+          </span>
+          <span className="text-[10px] text-subtle-foreground">
+            {p.fileName ? "Click to change file" : ".step, .stp"}
+          </span>
+          <input
+            type="file"
+            accept=".step,.stp"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) p.handleFileSelect(f);
+            }}
+          />
+        </label>
+
+        {/* Option 2: Create empty */}
+        <button
+          onClick={p.handleCreateEmpty}
+          className="flex flex-1 h-40 flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border bg-card-muted hover:border-primary hover:bg-card-muted/80 transition-colors"
+        >
+          <Plus size={28} className="text-muted-foreground" />
+          <span className="text-[13px] text-muted-foreground">
+            Create manually
+          </span>
+          <span className="text-[10px] text-subtle-foreground">
+            Start with 4 default sections
+          </span>
+        </button>
+      </div>
+      {p.error && (
+        <div className="rounded-xl border border-destructive bg-destructive/10 p-3 text-[12px] text-destructive">
+          {p.error}
+        </div>
+      )}
+
+      {/* Parameters */}
+      <div className="flex gap-4">
+        <div className="flex flex-1 flex-col gap-1">
+          <label htmlFor="fuselage-name" className="text-[11px] text-muted-foreground">
+            Fuselage Name
+          </label>
+          <input
+            id="fuselage-name"
+            type="text"
+            value={p.fuselageName}
+            onChange={(e) => p.setFuselageName(e.target.value)}
+            className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="fuselage-scale-factor" className="text-[11px] text-muted-foreground">Scale Factor</label>
+          <div className="flex items-center gap-2">
+            <input
+              id="fuselage-scale-factor"
+              type="text"
+              inputMode="decimal"
+              value={p.scaleInput}
+              onChange={(e) => {
+                p.setScaleInput(e.target.value);
+                const v = Number.parseFloat(e.target.value);
+                if (!Number.isNaN(v) && v > 0) p.setScaleFactor(v);
+              }}
+              onBlur={() => p.setScaleInput(String(p.scaleFactor))}
+              className="w-24 rounded-xl border border-border bg-input px-3 py-2 font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground"
+            />
+            <button
+              onClick={() => { p.setScaleFactor(0.001); p.setScaleInput("0.001"); }}
+              className={`rounded-full px-2 py-1 text-[10px] ${p.scaleFactor === 0.001 ? "bg-primary text-primary-foreground" : "bg-card-muted text-muted-foreground hover:text-foreground"}`}
+            >
+              mm→m
+            </button>
+            <button
+              onClick={() => { p.setScaleFactor(0.01); p.setScaleInput("0.01"); }}
+              className={`rounded-full px-2 py-1 text-[10px] ${p.scaleFactor === 0.01 ? "bg-primary text-primary-foreground" : "bg-card-muted text-muted-foreground hover:text-foreground"}`}
+            >
+              cm→m
+            </button>
+            <button
+              onClick={() => { p.setScaleFactor(1); p.setScaleInput("1"); }}
+              className={`rounded-full px-2 py-1 text-[10px] ${p.scaleFactor === 1 ? "bg-primary text-primary-foreground" : "bg-card-muted text-muted-foreground hover:text-foreground"}`}
+            >
+              1:1
+            </button>
+            <span className="mx-1 text-[9px] text-subtle-foreground">|</span>
+            <button
+              onClick={() => p.setFlipX((v) => !v)}
+              className={`rounded-full px-2 py-1 text-[10px] ${p.flipX ? "bg-primary text-primary-foreground" : "bg-card-muted text-muted-foreground hover:text-foreground"}`}
+              title="Flip X axis (reverse nose direction)"
+            >
+              Flip X
+            </button>
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="fuselage-slices" className="text-[11px] text-muted-foreground">
+            Slices
+          </label>
+          <input
+            id="fuselage-slices"
+            type="text"
+            inputMode="numeric"
+            value={p.slicesInput}
+            onChange={(e) => {
+              p.setSlicesInput(e.target.value);
+              const v = Number.parseInt(e.target.value, 10);
+              if (!Number.isNaN(v) && v >= 2 && v <= 500) p.setSlices(v);
+            }}
+            onBlur={() => p.setSlicesInput(String(p.slices))}
+            className="w-20 rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="fuselage-slice-axis" className="text-[11px] text-muted-foreground">
+            Slice Axis
+          </label>
+          <select
+            id="fuselage-slice-axis"
+            value={p.axis}
+            onChange={(e) => p.setAxis(e.target.value)}
+            className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+          >
+            <option value="auto">auto</option>
+            <option value="x">x</option>
+            <option value="y">y</option>
+            <option value="z">z</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Start Slicing button — only shown when file is selected */}
+      {p.fileName && (
+        <button
+          onClick={p.handleStartSlicing}
+          className="flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-2.5 text-[13px] text-primary-foreground hover:opacity-90 self-end"
+        >
+          <Play size={14} />
+          Start Slicing
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Preview phase renderer (extracted for cognitive complexity) ──
+
+interface PreviewPhaseProps {
+  xsecs: XSec[];
+  selectedXsec: number | null;
+  setSelectedXsec: (v: number | null) => void;
+  setXsecs: (v: XSec[]) => void;
+  viewerMaximized: boolean;
+  setViewerMaximized: (fn: (v: boolean) => boolean) => void;
+  xsecsMaximized: boolean;
+  setXsecsMaximized: (fn: (v: boolean) => boolean) => void;
+  fidelity: { volume_ratio: number; area_ratio: number } | null;
+  fuselageName: string;
+  setFuselageName: (v: string) => void;
+}
+
+function renderPreviewPhase(p: PreviewPhaseProps) {
+  return (
+    <div className="flex flex-1 flex-col gap-4 min-h-0">
+      {/* Combined 3D viewer — hidden when cross-sections maximized */}
+      {!p.xsecsMaximized && <div className="relative">
+        <button
+          onClick={() => p.setViewerMaximized((m) => !m)}
+          className="absolute right-2 top-2 z-10 flex size-8 items-center justify-center rounded-full border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+          title={p.viewerMaximized ? "Restore size" : "Maximize viewer"}
+        >
+          {p.viewerMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+        </button>
+        <div className="min-h-[150px] max-h-[35vh] rounded-xl border border-border bg-[#17171A] overflow-hidden">
+          <FuselagePreview3D xsecs={p.xsecs} selectedXsec={p.selectedXsec} />
+        </div>
+      </div>}
+
+      {/* Fidelity metrics — hidden when either view is maximized */}
+      {!p.viewerMaximized && !p.xsecsMaximized && (
+      <div className="flex gap-4">
+        <div className="flex flex-1 items-center gap-3 rounded-xl border border-border bg-card-muted px-4 py-2">
+          <span className="text-[12px] text-muted-foreground">Volume Fidelity</span>
+          <span className="flex-1" />
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
+            {((p.fidelity?.volume_ratio ?? 0) * 100).toFixed(1)}%
+          </span>
+        </div>
+        <div className="flex flex-1 items-center gap-3 rounded-xl border border-border bg-card-muted px-4 py-2">
+          <span className="text-[12px] text-muted-foreground">Area Fidelity</span>
+          <span className="flex-1" />
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
+            {((p.fidelity?.area_ratio ?? 0) * 100).toFixed(1)}%
+          </span>
+        </div>
+      </div>
+      )}
+
+      {/* Cross-section viewer — single section with slider + params */}
+      {!p.viewerMaximized && (
+      <div className={`relative flex rounded-xl border border-border bg-card-muted ${p.xsecsMaximized ? "flex-1 min-h-0" : "h-[220px] shrink-0"}`}>
+        <button
+          onClick={() => { p.setXsecsMaximized((m) => !m); }}
+          className="absolute right-2 top-2 z-10 flex size-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+          title={p.xsecsMaximized ? "Restore size" : "Maximize cross-sections"}
+        >
+          {p.xsecsMaximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+        </button>
+
+        {/* Left: single SVG cross-section + slider */}
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 p-4">
+          <CrossSectionSvg
+            xsecs={p.xsecs}
+            selectedXsec={p.selectedXsec}
+            setSelectedXsec={p.setSelectedXsec}
+            setXsecs={p.setXsecs}
+          />
+        </div>
+
+        {/* Right: parameter editor */}
+        <div className="flex w-[280px] shrink-0 flex-col gap-2 border-l border-border p-4 overflow-y-auto">
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-primary">
+            Section {p.selectedXsec ?? 0} Parameters
+          </span>
+          <XSecParameterEditor
+            xsecs={p.xsecs}
+            selectedXsec={p.selectedXsec}
+            setXsecs={p.setXsecs}
+          />
+        </div>
+      </div>
+      )}
+
+      {/* Fuselage name (editable) — hidden when either view maximized */}
+      {!p.viewerMaximized && !p.xsecsMaximized && (
+      <div className="flex items-center gap-3">
+        <label htmlFor="fuselage-save-as" className="text-[11px] text-muted-foreground">Save as:</label>
+        <input
+          id="fuselage-save-as"
+          type="text"
+          value={p.fuselageName}
+          onChange={(e) => p.setFuselageName(e.target.value)}
+          className="flex-1 rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+        />
+      </div>
+      )}
+    </div>
+  );
+}
+
 export function ImportFuselageDialog({
   open,
   onClose,
@@ -637,158 +921,14 @@ export function ImportFuselageDialog({
 
         {/* Body */}
         <div className="flex-1 flex flex-col overflow-hidden px-6 py-5">
-          {phase === "upload" && (
-            <div className="flex flex-col gap-5">
-              {/* Two options: import or create */}
-              <div className="flex gap-4">
-                {/* Option 1: Import from STEP */}
-                <label className={`flex flex-1 h-40 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed transition-colors ${
-                  fileName ? "border-primary bg-primary/10" : "border-border bg-card-muted hover:border-primary hover:bg-card-muted/80"
-                }`}>
-                  <Upload size={28} className={fileName ? "text-primary" : "text-muted-foreground"} />
-                  <span className={`text-[13px] ${fileName ? "text-foreground" : "text-muted-foreground"}`}>
-                    {fileName ?? "Import from STEP file"}
-                  </span>
-                  <span className="text-[10px] text-subtle-foreground">
-                    {fileName ? "Click to change file" : ".step, .stp"}
-                  </span>
-                  <input
-                    type="file"
-                    accept=".step,.stp"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) handleFileSelect(f);
-                    }}
-                  />
-                </label>
-
-                {/* Option 2: Create empty */}
-                <button
-                  onClick={handleCreateEmpty}
-                  className="flex flex-1 h-40 flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border bg-card-muted hover:border-primary hover:bg-card-muted/80 transition-colors"
-                >
-                  <Plus size={28} className="text-muted-foreground" />
-                  <span className="text-[13px] text-muted-foreground">
-                    Create manually
-                  </span>
-                  <span className="text-[10px] text-subtle-foreground">
-                    Start with 4 default sections
-                  </span>
-                </button>
-              </div>
-              {error && (
-                <div className="rounded-xl border border-destructive bg-destructive/10 p-3 text-[12px] text-destructive">
-                  {error}
-                </div>
-              )}
-
-              {/* Parameters */}
-              <div className="flex gap-4">
-                <div className="flex flex-1 flex-col gap-1">
-                  <label htmlFor="fuselage-name" className="text-[11px] text-muted-foreground">
-                    Fuselage Name
-                  </label>
-                  <input
-                    id="fuselage-name"
-                    type="text"
-                    value={fuselageName}
-                    onChange={(e) => setFuselageName(e.target.value)}
-                    className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="fuselage-scale-factor" className="text-[11px] text-muted-foreground">Scale Factor</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      id="fuselage-scale-factor"
-                      type="text"
-                      inputMode="decimal"
-                      value={scaleInput}
-                      onChange={(e) => {
-                        setScaleInput(e.target.value);
-                        const v = Number.parseFloat(e.target.value);
-                        if (!Number.isNaN(v) && v > 0) setScaleFactor(v);
-                      }}
-                      onBlur={() => setScaleInput(String(scaleFactor))}
-                      className="w-24 rounded-xl border border-border bg-input px-3 py-2 font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground"
-                    />
-                    <button
-                      onClick={() => { setScaleFactor(0.001); setScaleInput("0.001"); }}
-                      className={`rounded-full px-2 py-1 text-[10px] ${scaleFactor === 0.001 ? "bg-primary text-primary-foreground" : "bg-card-muted text-muted-foreground hover:text-foreground"}`}
-                    >
-                      mm→m
-                    </button>
-                    <button
-                      onClick={() => { setScaleFactor(0.01); setScaleInput("0.01"); }}
-                      className={`rounded-full px-2 py-1 text-[10px] ${scaleFactor === 0.01 ? "bg-primary text-primary-foreground" : "bg-card-muted text-muted-foreground hover:text-foreground"}`}
-                    >
-                      cm→m
-                    </button>
-                    <button
-                      onClick={() => { setScaleFactor(1); setScaleInput("1"); }}
-                      className={`rounded-full px-2 py-1 text-[10px] ${scaleFactor === 1 ? "bg-primary text-primary-foreground" : "bg-card-muted text-muted-foreground hover:text-foreground"}`}
-                    >
-                      1:1
-                    </button>
-                    <span className="mx-1 text-[9px] text-subtle-foreground">|</span>
-                    <button
-                      onClick={() => setFlipX((v) => !v)}
-                      className={`rounded-full px-2 py-1 text-[10px] ${flipX ? "bg-primary text-primary-foreground" : "bg-card-muted text-muted-foreground hover:text-foreground"}`}
-                      title="Flip X axis (reverse nose direction)"
-                    >
-                      Flip X
-                    </button>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="fuselage-slices" className="text-[11px] text-muted-foreground">
-                    Slices
-                  </label>
-                  <input
-                    id="fuselage-slices"
-                    type="text"
-                    inputMode="numeric"
-                    value={slicesInput}
-                    onChange={(e) => {
-                      setSlicesInput(e.target.value);
-                      const v = Number.parseInt(e.target.value, 10);
-                      if (!Number.isNaN(v) && v >= 2 && v <= 500) setSlices(v);
-                    }}
-                    onBlur={() => setSlicesInput(String(slices))}
-                    className="w-20 rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="fuselage-slice-axis" className="text-[11px] text-muted-foreground">
-                    Slice Axis
-                  </label>
-                  <select
-                    id="fuselage-slice-axis"
-                    value={axis}
-                    onChange={(e) => setAxis(e.target.value)}
-                    className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
-                  >
-                    <option value="auto">auto</option>
-                    <option value="x">x</option>
-                    <option value="y">y</option>
-                    <option value="z">z</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Start Slicing button — only shown when file is selected */}
-              {fileName && (
-                <button
-                  onClick={handleStartSlicing}
-                  className="flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-2.5 text-[13px] text-primary-foreground hover:opacity-90 self-end"
-                >
-                  <Play size={14} />
-                  Start Slicing
-                </button>
-              )}
-            </div>
-          )}
+          {phase === "upload" && renderUploadPhase({
+            fileName, handleFileSelect, handleCreateEmpty, error,
+            fuselageName, setFuselageName,
+            scaleInput, setScaleInput, scaleFactor, setScaleFactor,
+            flipX, setFlipX,
+            slicesInput, setSlicesInput, slices, setSlices,
+            axis, setAxis, handleStartSlicing,
+          })}
 
           {phase === "processing" && (
             <div className="flex h-60 flex-col items-center justify-center gap-4">
@@ -802,92 +942,12 @@ export function ImportFuselageDialog({
             </div>
           )}
 
-          {phase === "preview" && (
-            <div className="flex flex-1 flex-col gap-4 min-h-0">
-              {/* Combined 3D viewer — hidden when cross-sections maximized */}
-              {!xsecsMaximized && <div className="relative">
-                <button
-                  onClick={() => setViewerMaximized((m) => !m)}
-                  className="absolute right-2 top-2 z-10 flex size-8 items-center justify-center rounded-full border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-                  title={viewerMaximized ? "Restore size" : "Maximize viewer"}
-                >
-                  {viewerMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                </button>
-                <div className="min-h-[150px] max-h-[35vh] rounded-xl border border-border bg-[#17171A] overflow-hidden">
-                  <FuselagePreview3D xsecs={xsecs} selectedXsec={selectedXsec} />
-                </div>
-              </div>}
-
-              {/* Fidelity metrics — hidden when either view is maximized */}
-              {!viewerMaximized && !xsecsMaximized && (
-              <div className="flex gap-4">
-                <div className="flex flex-1 items-center gap-3 rounded-xl border border-border bg-card-muted px-4 py-2">
-                  <span className="text-[12px] text-muted-foreground">Volume Fidelity</span>
-                  <span className="flex-1" />
-                  <span className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
-                    {((fidelity?.volume_ratio ?? 0) * 100).toFixed(1)}%
-                  </span>
-                </div>
-                <div className="flex flex-1 items-center gap-3 rounded-xl border border-border bg-card-muted px-4 py-2">
-                  <span className="text-[12px] text-muted-foreground">Area Fidelity</span>
-                  <span className="flex-1" />
-                  <span className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
-                    {((fidelity?.area_ratio ?? 0) * 100).toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-              )}
-
-              {/* Cross-section viewer — single section with slider + params */}
-              {!viewerMaximized && (
-              <div className={`relative flex rounded-xl border border-border bg-card-muted ${xsecsMaximized ? "flex-1 min-h-0" : "h-[220px] shrink-0"}`}>
-                <button
-                  onClick={() => { setXsecsMaximized((m) => !m); }}
-                  className="absolute right-2 top-2 z-10 flex size-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-                  title={xsecsMaximized ? "Restore size" : "Maximize cross-sections"}
-                >
-                  {xsecsMaximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-                </button>
-
-                {/* Left: single SVG cross-section + slider */}
-                <div className="flex flex-1 flex-col items-center justify-center gap-2 p-4">
-                  <CrossSectionSvg
-                    xsecs={xsecs}
-                    selectedXsec={selectedXsec}
-                    setSelectedXsec={setSelectedXsec}
-                    setXsecs={setXsecs}
-                  />
-                </div>
-
-                {/* Right: parameter editor */}
-                <div className="flex w-[280px] shrink-0 flex-col gap-2 border-l border-border p-4 overflow-y-auto">
-                  <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-primary">
-                    Section {selectedXsec ?? 0} Parameters
-                  </span>
-                  <XSecParameterEditor
-                    xsecs={xsecs}
-                    selectedXsec={selectedXsec}
-                    setXsecs={setXsecs}
-                  />
-                </div>
-              </div>
-              )}
-
-              {/* Fuselage name (editable) — hidden when either view maximized */}
-              {!viewerMaximized && !xsecsMaximized && (
-              <div className="flex items-center gap-3">
-                <label htmlFor="fuselage-save-as" className="text-[11px] text-muted-foreground">Save as:</label>
-                <input
-                  id="fuselage-save-as"
-                  type="text"
-                  value={fuselageName}
-                  onChange={(e) => setFuselageName(e.target.value)}
-                  className="flex-1 rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
-                />
-              </div>
-              )}
-            </div>
-          )}
+          {phase === "preview" && renderPreviewPhase({
+            xsecs, selectedXsec, setSelectedXsec, setXsecs,
+            viewerMaximized, setViewerMaximized,
+            xsecsMaximized, setXsecsMaximized,
+            fidelity, fuselageName, setFuselageName,
+          })}
         </div>
 
         {/* Footer */}
