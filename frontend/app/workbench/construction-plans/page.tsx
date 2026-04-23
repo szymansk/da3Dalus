@@ -609,11 +609,16 @@ function AddStepDialog({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      role="dialog"
+      aria-modal="true"
+      aria-label={addingCreator ? `Add ${addingCreator.class_name}` : "Add Step"}
       onClick={onClose}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
       <div
         className="flex max-h-[85vh] w-[600px] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
       >
         {addingCreator ? (
           <>
@@ -872,11 +877,16 @@ function ExecuteDialog({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Execute Plan"
       onClick={onClose}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
       <div
         className="flex w-[480px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
       >
         <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
           Execute Plan
@@ -968,13 +978,18 @@ function CadViewerModal({
   return (
     <div
       className={`fixed inset-0 z-50 flex items-center justify-center ${fullscreen ? "" : "bg-black/60"}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Execution Result"
       onClick={onClose}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
       <div
         className={`flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl ${
           fullscreen ? "h-full w-full rounded-none border-0" : "h-[80vh] w-[80vw]"
         }`}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">

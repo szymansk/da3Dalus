@@ -11,12 +11,16 @@ export function UnsavedChangesModal() {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Unsaved Changes"
       onClick={cancelNavigation}
+      onKeyDown={(e) => { if (e.key === "Escape") cancelNavigation(); }}
     >
       <div
         className="flex w-[460px] flex-col gap-5 rounded-[16px] border border-border bg-card p-6"
         onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => { if (e.key === "Escape") cancelNavigation(); }}
+        onKeyDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3">
           <TriangleAlert size={24} className="text-primary" />

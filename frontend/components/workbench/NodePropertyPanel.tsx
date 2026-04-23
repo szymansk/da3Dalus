@@ -88,11 +88,16 @@ function ConfirmModal({ title, body, onConfirm, onCancel }: Readonly<ConfirmModa
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
       onClick={onCancel}
+      onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}
     >
       <div
         className="flex w-[420px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
       >
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
           {title}
@@ -318,12 +323,15 @@ export function NodePropertyPanel({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
       onClick={onClose}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
       role="dialog"
+      aria-modal="true"
       aria-label="Edit tree node"
     >
     <div
       className="flex max-h-[85vh] w-[480px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
       onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
     >
       <div className="flex items-center gap-2">
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-foreground">

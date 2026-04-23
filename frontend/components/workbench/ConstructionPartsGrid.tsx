@@ -33,11 +33,16 @@ function ConfirmModal({ title, body, onConfirm, onCancel }: Readonly<ConfirmModa
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
       onClick={onCancel}
+      onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}
     >
       <div
         className="flex w-[420px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
       >
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
           {title}

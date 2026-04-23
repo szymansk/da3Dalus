@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useId } from "react";
 import { X, Check, ChevronDown, ChevronUp, Search, ChevronRight } from "lucide-react";
 import { API_BASE } from "@/lib/fetcher";
 import { useComponents, type Component } from "@/hooks/useComponents";
@@ -184,14 +184,14 @@ export function TedEditDialog({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      role="presentation"
+      role="dialog"
+      aria-modal="true"
+      aria-label={isNew ? "Add Control Surface" : "Edit Control Surface"}
       onClick={onClose}
       onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
       <div
         className="flex max-h-[85vh] w-[480px] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
-        role="dialog"
-        aria-modal="true"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >
@@ -346,11 +346,13 @@ function TedField({
   type?: "text" | "number";
   onChange: (v: string) => void;
 }>) {
+  const id = useId();
   return (
     <div className="flex flex-1 flex-col gap-1">
-      <label className="text-[11px] text-muted-foreground">{label}</label>
+      <label htmlFor={id} className="text-[11px] text-muted-foreground">{label}</label>
       <div className="flex items-center gap-2 rounded-xl border border-border bg-input px-3 py-2">
         <input
+          id={id}
           type={type}
           step="any"
           value={value}

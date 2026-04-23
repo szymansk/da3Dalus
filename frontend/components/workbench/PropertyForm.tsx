@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Eye } from "lucide-react";
 import { AirfoilSelector } from "./AirfoilSelector";
@@ -142,6 +142,7 @@ function Field({
   readOnly?: boolean;
   isSelect?: boolean;
 }) {
+  const id = useId();
   const [localValue, setLocalValue] = useState(String(value));
   const [editing, setEditing] = useState(false);
 
@@ -150,12 +151,13 @@ function Field({
 
   return (
     <div className="flex flex-1 flex-col gap-1">
-      <label className="text-[11px] text-muted-foreground">{label}</label>
+      <label htmlFor={id} className="text-[11px] text-muted-foreground">{label}</label>
       <div className="flex items-center gap-2 rounded-xl border border-border bg-input px-3 py-2">
         {readOnly ? (
-          <span className="text-[13px] text-foreground">{value}</span>
+          <span id={id} className="text-[13px] text-foreground">{value}</span>
         ) : (
           <input
+            id={id}
             type={type}
             step="any"
             value={displayValue}
