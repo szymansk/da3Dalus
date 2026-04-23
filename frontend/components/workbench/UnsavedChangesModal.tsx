@@ -11,7 +11,7 @@ export function UnsavedChangesModal() {
   return (
     <dialog
       ref={dialogRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/50"
+      className="z-50 backdrop:bg-black/50"
       onClose={handleClose}
     >
       <div className="flex w-[460px] flex-col gap-5 rounded-[16px] border border-border bg-card p-6">

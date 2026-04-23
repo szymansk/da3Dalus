@@ -205,7 +205,7 @@ export default function WorkbenchPage() {
       {/* Configuration Modal — opens via pencil icon on segments/xsecs */}
       <dialog
         ref={configDialogRef}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
+        className="z-50 backdrop:bg-black/60"
         onClose={configHandleClose}
         aria-label="Configuration"
       >
