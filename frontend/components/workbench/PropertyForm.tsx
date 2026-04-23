@@ -133,7 +133,7 @@ function Field({
   onChange,
   readOnly,
   isSelect,
-}: {
+}: Readonly<{
   label: string;
   value: string | number;
   suffix?: string;
@@ -141,7 +141,7 @@ function Field({
   onChange?: (v: string) => void;
   readOnly?: boolean;
   isSelect?: boolean;
-}) {
+}>) {
   const id = useId();
   const [localValue, setLocalValue] = useState(String(value));
   const [editing, setEditing] = useState(false);
@@ -187,6 +187,18 @@ function Field({
 
 // ── WingConfig Fields Sub-Component ────────────────────────────
 
+interface WingConfigFieldsProps {
+  wc: WingConfigState;
+  setWc: (wc: WingConfigState) => void;
+  symmetric: boolean;
+  onSymmetricChange: (checked: boolean) => void;
+  nosePnt: [number, number, number];
+  setNosePnt: (v: [number, number, number]) => void;
+  selectedXsecIndex: number;
+  setDirty: (v: boolean) => void;
+  router: ReturnType<typeof useRouter>;
+}
+
 function WingConfigFields({
   wc,
   setWc,
@@ -197,17 +209,7 @@ function WingConfigFields({
   selectedXsecIndex,
   setDirty,
   router,
-}: {
-  wc: WingConfigState;
-  setWc: (wc: WingConfigState) => void;
-  symmetric: boolean;
-  onSymmetricChange: (checked: boolean) => void;
-  nosePnt: [number, number, number];
-  setNosePnt: (v: [number, number, number]) => void;
-  selectedXsecIndex: number;
-  setDirty: (v: boolean) => void;
-  router: ReturnType<typeof useRouter>;
-}) {
+}: Readonly<WingConfigFieldsProps>) {
   return (
     <>
       {/* Wing-level: symmetric + nose_pnt — only on segment 0 */}
@@ -341,12 +343,12 @@ function AsbFields({
   setAsb,
   xsec,
   setDirty,
-}: {
+}: Readonly<{
   asb: AsbState;
   setAsb: (v: AsbState) => void;
   xsec: XSec;
   setDirty: (v: boolean) => void;
-}) {
+}>) {
   return (
     <>
       {/* ASB mode: airfoil | chord */}
@@ -400,6 +402,24 @@ function AsbFields({
 
 // ── Field Grid Content Helper ──────────────────────────────────
 
+interface FieldGridContentProps {
+  mode: Mode;
+  wc: WingConfigState | null;
+  setWc: (v: WingConfigState) => void;
+  asb: AsbState | null;
+  setAsb: (v: AsbState) => void;
+  xsec: XSec;
+  isReadOnly: boolean;
+  wing: ReturnType<typeof useWing>["wing"];
+  symmetric: boolean;
+  onSymmetricChange: (checked: boolean) => void;
+  nosePnt: [number, number, number];
+  setNosePnt: (v: [number, number, number]) => void;
+  selectedXsecIndex: number;
+  setDirty: (v: boolean) => void;
+  router: ReturnType<typeof useRouter>;
+}
+
 function FieldGridContent({
   mode,
   wc,
@@ -416,23 +436,7 @@ function FieldGridContent({
   selectedXsecIndex,
   setDirty,
   router,
-}: {
-  mode: Mode;
-  wc: WingConfigState | null;
-  setWc: (v: WingConfigState) => void;
-  asb: AsbState | null;
-  setAsb: (v: AsbState) => void;
-  xsec: XSec;
-  isReadOnly: boolean;
-  wing: ReturnType<typeof useWing>["wing"];
-  symmetric: boolean;
-  onSymmetricChange: (checked: boolean) => void;
-  nosePnt: [number, number, number];
-  setNosePnt: (v: [number, number, number]) => void;
-  selectedXsecIndex: number;
-  setDirty: (v: boolean) => void;
-  router: ReturnType<typeof useRouter>;
-}) {
+}: Readonly<FieldGridContentProps>) {
   if (mode === "wingconfig" && wc) {
     return (
       <WingConfigFields
@@ -510,7 +514,7 @@ function buildUpdatedSegments(
 
 // ── Main Component ──────────────────────────────────────────────
 
-export function PropertyForm({ onGeometryChanged }: { onGeometryChanged?: (wingName: string) => void }) {
+export function PropertyForm({ onGeometryChanged }: Readonly<{ onGeometryChanged?: (wingName: string) => void }>) {
   const { aeroplaneId, selectedWing, selectedXsecIndex, selectedFuselage, selectedFuselageXsecIndex, treeMode } =
     useAeroplaneContext();
   const { wing, updateXSec, mutate } = useWing(aeroplaneId, selectedWing);
@@ -724,13 +728,13 @@ function FuselageXSecForm({
   xsecIndex,
   xsec,
   onSave,
-}: {
+}: Readonly<{
   aeroplaneId: string | null;
   fuselageName: string;
   xsecIndex: number;
   xsec: FuselageXSec;
   onSave: (updated: FuselageXSec) => Promise<void>;
-}) {
+}>) {
   const [xyz0, setXyz0] = useState(String(xsec.xyz[0]));
   const [xyz1, setXyz1] = useState(String(xsec.xyz[1]));
   const [xyz2, setXyz2] = useState(String(xsec.xyz[2]));

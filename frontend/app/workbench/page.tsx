@@ -274,12 +274,12 @@ function AeroplaneSelector({
   isLoading,
   onSelect,
   onCreate,
-}: {
+}: Readonly<{
   aeroplanes: { id: string; name: string; created_at: string; updated_at: string }[];
   isLoading: boolean;
   onSelect: (id: string) => void;
   onCreate: (name: string) => Promise<void>;
-}) {
+}>) {
   async function handleCreate() {
     const name = prompt("Aeroplane name?");
     if (!name) return;
@@ -293,13 +293,15 @@ function AeroplaneSelector({
           Select Aeroplane
         </h2>
 
-        {isLoading ? (
+        {isLoading && (
           <span className="text-[13px] text-muted-foreground">Loading...</span>
-        ) : aeroplanes.length === 0 ? (
+        )}
+        {!isLoading && aeroplanes.length === 0 && (
           <span className="text-[13px] text-muted-foreground">
             No aeroplanes yet. Create one to get started.
           </span>
-        ) : (
+        )}
+        {!isLoading && aeroplanes.length > 0 && (
           <div className="flex flex-col gap-1">
             {aeroplanes.map((a) => (
               <button

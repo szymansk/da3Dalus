@@ -370,28 +370,30 @@ function getChipLabel(xsec: XSec): string | undefined {
 
 // ── Build callbacks object — single conditional instead of 18 ternaries ──
 
-function buildCallbacks(
-  isCrossModelView: boolean,
-  selectWing: (n: string | null) => void,
-  selectXsec: (i: number | null) => void,
-  handleDeleteXsec: (wn: string, i: number) => void,
-  handleAddSegment: (wn: string) => void,
-  handleInsertXsec: (wn: string, i: number) => void,
-  setSegAddMenu: (v: { wingName: string; xsecIndex: number; hasTed: boolean; x: number; y: number }) => void,
-  onNodeEdit?: () => void,
-  onEditSpar?: (wingName: string, xsecIndex: number, sparIndex: number, data: Record<string, unknown>) => void,
-  onDeleteSpar?: (wingName: string, xsecIndex: number, sparIndex: number) => void,
-  onEditTed?: (wingName: string, xsecIndex: number, data: Record<string, unknown>) => void,
-  onDeleteTed?: (wingName: string, xsecIndex: number) => void,
-  onAddSpar?: (wingName: string, xsecIndex: number) => void,
-  onAddTed?: (wingName: string, xsecIndex: number) => void,
-): BuildNodeCallbacks {
+interface BuildCallbacksOptions {
+  isCrossModelView: boolean;
+  selectWing: (n: string | null) => void;
+  selectXsec: (i: number | null) => void;
+  handleDeleteXsec: (wn: string, i: number) => void;
+  handleAddSegment: (wn: string) => void;
+  handleInsertXsec: (wn: string, i: number) => void;
+  setSegAddMenu: (v: { wingName: string; xsecIndex: number; hasTed: boolean; x: number; y: number }) => void;
+  onNodeEdit?: () => void;
+  onEditSpar?: (wingName: string, xsecIndex: number, sparIndex: number, data: Record<string, unknown>) => void;
+  onDeleteSpar?: (wingName: string, xsecIndex: number, sparIndex: number) => void;
+  onEditTed?: (wingName: string, xsecIndex: number, data: Record<string, unknown>) => void;
+  onDeleteTed?: (wingName: string, xsecIndex: number) => void;
+  onAddSpar?: (wingName: string, xsecIndex: number) => void;
+  onAddTed?: (wingName: string, xsecIndex: number) => void;
+}
+
+function buildCallbacks(opts: BuildCallbacksOptions): BuildNodeCallbacks {
   const noOp = () => {};
 
-  if (isCrossModelView) {
+  if (opts.isCrossModelView) {
     return {
-      selectWing,
-      selectXsec,
+      selectWing: opts.selectWing,
+      selectXsec: opts.selectXsec,
       onDeleteXsec: noOp,
       onAddSegment: noOp,
       onInsertXsec: noOp,
@@ -399,19 +401,19 @@ function buildCallbacks(
   }
 
   return {
-    selectWing,
-    selectXsec,
-    onDeleteXsec: handleDeleteXsec,
-    onEditNode: onNodeEdit,
-    onEditSpar,
-    onDeleteSpar,
-    onEditTed,
-    onDeleteTed,
-    onAddSpar,
-    onAddTed,
-    onAddMenu: (wn, xi, hasTed, cx, cy) => setSegAddMenu({ wingName: wn, xsecIndex: xi, hasTed, x: cx, y: cy }),
-    onAddSegment: handleAddSegment,
-    onInsertXsec: handleInsertXsec,
+    selectWing: opts.selectWing,
+    selectXsec: opts.selectXsec,
+    onDeleteXsec: opts.handleDeleteXsec,
+    onEditNode: opts.onNodeEdit,
+    onEditSpar: opts.onEditSpar,
+    onDeleteSpar: opts.onDeleteSpar,
+    onEditTed: opts.onEditTed,
+    onDeleteTed: opts.onDeleteTed,
+    onAddSpar: opts.onAddSpar,
+    onAddTed: opts.onAddTed,
+    onAddMenu: (wn, xi, hasTed, cx, cy) => opts.setSegAddMenu({ wingName: wn, xsecIndex: xi, hasTed, x: cx, y: cy }),
+    onAddSegment: opts.handleAddSegment,
+    onInsertXsec: opts.handleInsertXsec,
   };
 }
 
@@ -725,13 +727,13 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
     (wingDesignModel === "asb" && treeMode === "wingconfig")
   );
 
-  const callbacks = buildCallbacks(
+  const callbacks = buildCallbacks({
     isCrossModelView,
     selectWing, selectXsec,
     handleDeleteXsec, handleAddSegment, handleInsertXsec,
     setSegAddMenu,
     onNodeEdit, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed,
-  );
+  });
 
   // Build tree data
   const treeData = buildTreeData({
@@ -890,7 +892,7 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
 
 // ── TreeRow ─────────────────────────────────────────────────────
 
-function TreeRow({ node, onToggle, onNodeEdit: _onNodeEdit }: { node: TreeNode; onToggle: () => void; onNodeEdit?: () => void }) {
+function TreeRow({ node, onToggle, onNodeEdit: _onNodeEdit }: Readonly<{ node: TreeNode; onToggle: () => void; onNodeEdit?: () => void }>) {
   if (node.isInsertPoint) {
     return (
       <div
@@ -994,13 +996,9 @@ function TreeRow({ node, onToggle, onNodeEdit: _onNodeEdit }: { node: TreeNode; 
           }`}
           title={node.previewVisible ? "Hide 3D preview" : "Show 3D preview"}
         >
-          {node.previewLoading ? (
-            <Loader size={12} className="animate-spin" />
-          ) : node.previewVisible ? (
-            <Eye size={12} />
-          ) : (
-            <EyeOff size={12} />
-          )}
+          {node.previewLoading && <Loader size={12} className="animate-spin" />}
+          {!node.previewLoading && node.previewVisible && <Eye size={12} />}
+          {!node.previewLoading && !node.previewVisible && <EyeOff size={12} />}
         </button>
       )}
     </div>
