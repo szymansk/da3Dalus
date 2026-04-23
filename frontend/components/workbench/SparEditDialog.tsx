@@ -169,11 +169,16 @@ export function SparEditDialog({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      role="presentation"
       onClick={onClose}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
       <div
         className="flex max-h-[85vh] w-[420px] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
+        role="dialog"
+        aria-modal="true"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -193,8 +198,9 @@ export function SparEditDialog({
           <div className="flex gap-3">
             <DialogField label="Position" value={posFactor} suffix="%" onChange={setPosFactor} />
             <div className="flex flex-1 flex-col gap-1">
-              <label className="text-[11px] text-muted-foreground">Mode</label>
+              <label htmlFor="spar-mode" className="text-[11px] text-muted-foreground">Mode</label>
               <select
+                id="spar-mode"
                 value={sparMode}
                 onChange={(e) => setSparMode(e.target.value)}
                 className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
@@ -213,13 +219,13 @@ export function SparEditDialog({
             <DialogField label="Start" value={sparStart} suffix="mm" onChange={setSparStart} />
             <DialogField label="Length (opt.)" value={sparLength} suffix="mm" onChange={setSparLength} />
           </div>
-          <label className="pt-1 text-[11px] text-muted-foreground">Vector (opt.)</label>
+          <span className="pt-1 text-[11px] text-muted-foreground">Vector (opt.)</span>
           <div className="flex gap-3">
             <DialogField label="X" value={vecX} onChange={setVecX} />
             <DialogField label="Y" value={vecY} onChange={setVecY} />
             <DialogField label="Z" value={vecZ} onChange={setVecZ} />
           </div>
-          <label className="pt-1 text-[11px] text-muted-foreground">Origin (opt.)</label>
+          <span className="pt-1 text-[11px] text-muted-foreground">Origin (opt.)</span>
           <div className="flex gap-3">
             <DialogField label="X" value={origX} onChange={setOrigX} />
             <DialogField label="Y" value={origY} onChange={setOrigY} />
@@ -267,12 +273,12 @@ function DialogField({
   value,
   suffix,
   onChange,
-}: {
+}: Readonly<{
   label: string;
   value: string;
   suffix?: string;
   onChange: (v: string) => void;
-}) {
+}>) {
   return (
     <div className="flex flex-1 flex-col gap-1">
       <label className="text-[11px] text-muted-foreground">{label}</label>

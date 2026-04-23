@@ -35,7 +35,7 @@ function resolveRefs(
 function preparePartShapes(part: PartData): Record<string, unknown> | null {
   const shapes = part?.data?.shapes;
   if (!shapes) return null;
-  const copy = JSON.parse(JSON.stringify(shapes));
+  const copy = structuredClone(shapes);
   const instances = part?.data?.instances;
   if (instances && Array.isArray(instances)) {
     resolveRefs(copy, instances);

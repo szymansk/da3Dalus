@@ -108,14 +108,14 @@ function _lerpCamber(
 function lerpLookup(xs: number[], ys: number[], target: number): number {
   if (xs.length === 0) return 0;
   if (target <= xs[0]) return ys[0];
-  if (target >= xs[xs.length - 1]) return ys[ys.length - 1];
+  if (target >= xs.at(-1)!) return ys.at(-1)!;
   for (let i = 1; i < xs.length; i++) {
     if (xs[i] >= target) {
       const frac = (target - xs[i - 1]) / (xs[i] - xs[i - 1] + 1e-12);
       return ys[i - 1] + frac * (ys[i] - ys[i - 1]);
     }
   }
-  return ys[ys.length - 1];
+  return ys.at(-1)!;
 }
 
 /** Linearly interpolate two xsec stations at fraction t. */
@@ -129,8 +129,8 @@ function lerpStation(a: XSec, b: XSec, t: number): { xyz_le: number[]; chord: nu
 
 // ── Trace builders ───────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type PlotlyData = any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Plotly trace shape varies
+type PlotlyData = Record<string, any>;
 
 const COLOR_AIRFOIL = "#FF8400";     // all airfoils: orange, thick
 const COLOR_INTERP = "#FF8400";      // interpolated: same orange
@@ -267,9 +267,11 @@ function buildQuarterChordTraces(ctx: WingTraceCtx): PlotlyData[] {
     }
   }
 
-  traces.push(scatter3d(qcX, qcY, qcZ, COLOR_QC, 2.5));
-  traces.push(scatter3d(upperQcX, upperQcY, upperQcZ, COLOR_SPANWISE, 1.5));
-  traces.push(scatter3d(lowerQcX, lowerQcY, lowerQcZ, COLOR_SPANWISE, 1.5));
+  traces.push(
+    scatter3d(qcX, qcY, qcZ, COLOR_QC, 2.5),
+    scatter3d(upperQcX, upperQcY, upperQcZ, COLOR_SPANWISE, 1.5),
+    scatter3d(lowerQcX, lowerQcY, lowerQcZ, COLOR_SPANWISE, 1.5),
+  );
 
   return traces;
 }
@@ -314,7 +316,8 @@ function buildTEDTraces(ctx: WingTraceCtx): PlotlyData[] {
   for (let i = 0; i < xsecs.length; i++) {
     const ted = xsecs[i].trailing_edge_device ?? xsecs[i].control_surface;
     if (!ted) continue;
-    const relChord = (ted as Record<string, unknown>).rel_chord_root as number | undefined;
+    const tedRec = ted as Record<string, unknown>;
+    const relChord = tedRec.rel_chord_root as number | undefined;
     if (relChord == null) continue;
 
     const nextI = Math.min(i + 1, xsecs.length - 1);
@@ -328,15 +331,16 @@ function buildTEDTraces(ctx: WingTraceCtx): PlotlyData[] {
     const te1 = transformProfile([1], [0], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);
     const te2 = transformProfile([1], [0], xsecs[nextI].chord, xsecs[nextI].twist, xsecs[nextI].xyz_le, dihedrals[nextI]);
 
-    // Hinge line
-    traces.push(scatter3d([h1.x[0], h2.x[0]], [h1.y[0], h2.y[0]], [h1.z[0], h2.z[0]], COLOR_TED, 3));
-    // TED area outline
-    traces.push(scatter3d(
-      [h1.x[0], te1.x[0], te2.x[0], h2.x[0], h1.x[0]],
-      [h1.y[0], te1.y[0], te2.y[0], h2.y[0], h1.y[0]],
-      [h1.z[0], te1.z[0], te2.z[0], h2.z[0], h1.z[0]],
-      COLOR_TED, 1.5,
-    ));
+    // Hinge line + TED area outline
+    traces.push(
+      scatter3d([h1.x[0], h2.x[0]], [h1.y[0], h2.y[0]], [h1.z[0], h2.z[0]], COLOR_TED, 3),
+      scatter3d(
+        [h1.x[0], te1.x[0], te2.x[0], h2.x[0], h1.x[0]],
+        [h1.y[0], te1.y[0], te2.y[0], h2.y[0], h1.y[0]],
+        [h1.z[0], te1.z[0], te2.z[0], h2.z[0], h1.z[0]],
+        COLOR_TED, 1.5,
+      ),
+    );
   }
 
   return traces;
@@ -628,7 +632,7 @@ function buildSparTraces(ctx: WingTraceCtx): PlotlyData[] {
     const dx = xsecs[i + 1].xyz_le[0] - xsecs[i].xyz_le[0];
     const dy = xsecs[i + 1].xyz_le[1] - xsecs[i].xyz_le[1];
     const dz = xsecs[i + 1].xyz_le[2] - xsecs[i].xyz_le[2];
-    const segmentSpan = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    const segmentSpan = Math.hypot(dx, dy, dz);
 
     for (const spar of spars) {
       traces.push(...buildSingleSparTraces(spar, i, ctx, segmentSpan, sparColor));

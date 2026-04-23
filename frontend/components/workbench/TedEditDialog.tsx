@@ -67,13 +67,13 @@ export function TedEditDialog({
       setHingeType(String(t.hinge_type ?? "top"));
       setPosDeg(String(t.positive_deflection_deg ?? "35"));
       setNegDeg(String(t.negative_deflection_deg ?? "35"));
-      setHingeSpacing(t.hinge_spacing != null ? String(t.hinge_spacing) : "");
-      setSideSpacingRoot(t.side_spacing_root != null ? String(t.side_spacing_root) : "");
-      setSideSpacingTip(t.side_spacing_tip != null ? String(t.side_spacing_tip) : "");
-      setTeOffsetFactor(t.trailing_edge_offset_factor != null ? String(t.trailing_edge_offset_factor) : "1.0");
+      setHingeSpacing(t.hinge_spacing == null ? "" : String(t.hinge_spacing));
+      setSideSpacingRoot(t.side_spacing_root == null ? "" : String(t.side_spacing_root));
+      setSideSpacingTip(t.side_spacing_tip == null ? "" : String(t.side_spacing_tip));
+      setTeOffsetFactor(t.trailing_edge_offset_factor == null ? "1.0" : String(t.trailing_edge_offset_factor));
       setServoPlacement(String(t.servo_placement ?? "top"));
-      setServoChordPos(t.rel_chord_servo_position != null ? String(t.rel_chord_servo_position) : "");
-      setServoLengthPos(t.rel_length_servo_position != null ? String(t.rel_length_servo_position) : "");
+      setServoChordPos(t.rel_chord_servo_position == null ? "" : String(t.rel_chord_servo_position));
+      setServoLengthPos(t.rel_length_servo_position == null ? "" : String(t.rel_length_servo_position));
     } else {
       setName("");
       setHingePoint("0.8");
@@ -184,11 +184,16 @@ export function TedEditDialog({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      role="presentation"
       onClick={onClose}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
       <div
         className="flex max-h-[85vh] w-[480px] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
+        role="dialog"
+        aria-modal="true"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -212,8 +217,9 @@ export function TedEditDialog({
           <div className="flex gap-3">
             <TedField label="Hinge Point (Tip Chord)" value={relChordTip} onChange={setRelChordTip} />
             <div className="flex flex-1 flex-col gap-1">
-              <label className="text-[11px] text-muted-foreground">Hinge Type</label>
+              <label htmlFor="ted-hinge-type" className="text-[11px] text-muted-foreground">Hinge Type</label>
               <select
+                id="ted-hinge-type"
                 value={hingeType}
                 onChange={(e) => setHingeType(e.target.value)}
                 className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
@@ -259,8 +265,9 @@ export function TedEditDialog({
                 </div>
                 <div className="flex gap-3">
                   <div className="flex flex-1 flex-col gap-1">
-                    <label className="text-[11px] text-muted-foreground">Servo Placement</label>
+                    <label htmlFor="ted-servo-placement" className="text-[11px] text-muted-foreground">Servo Placement</label>
                     <select
+                      id="ted-servo-placement"
                       value={servoPlacement}
                       onChange={(e) => setServoPlacement(e.target.value)}
                       className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
@@ -332,13 +339,13 @@ function TedField({
   suffix,
   type = "number",
   onChange,
-}: {
+}: Readonly<{
   label: string;
   value: string;
   suffix?: string;
   type?: "text" | "number";
   onChange: (v: string) => void;
-}) {
+}>) {
   return (
     <div className="flex flex-1 flex-col gap-1">
       <label className="text-[11px] text-muted-foreground">{label}</label>
@@ -383,20 +390,20 @@ function ServoPickerInDialog({
   xsecIndex,
   ted,
   onAssigned,
-}: {
+}: Readonly<{
   aeroplaneId: string;
   wingName: string;
   xsecIndex: number;
   ted: Record<string, unknown> | null | undefined;
   onAssigned: () => void;
-}) {
+}>) {
   const { components: servos } = useComponents("servo");
 
   const servoData = ted && typeof ted === "object"
-    ? (ted as Record<string, unknown>).servo as Record<string, unknown> | null | undefined
+    ? ted.servo as Record<string, unknown> | null | undefined
     : null;
   const assignedComponentId = servoData && typeof servoData === "object"
-    ? (servoData as Record<string, unknown>).component_id as number | null | undefined
+    ? servoData.component_id as number | null | undefined
     : null;
   const currentServoName = assignedComponentId
     ? servos.find((s) => s.id === assignedComponentId)?.name ?? `Servo #${assignedComponentId}`
@@ -475,7 +482,7 @@ function ServoPickerInDialog({
 
   return (
     <div ref={containerRef} className="relative flex flex-col gap-1">
-      <label className="text-[11px] text-muted-foreground">Servo</label>
+      <span className="text-[11px] text-muted-foreground">Servo</span>
       <button
         onClick={() => { setPickerOpen((v) => !v); if (pickerOpen) setSearch(""); }}
         disabled={assigning}
@@ -506,7 +513,7 @@ function ServoPickerInDialog({
               disabled={assigning}
               className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-sidebar-accent disabled:opacity-50"
             >
-              {!currentServoName ? <Check size={12} className="text-primary" /> : <div className="w-3" />}
+              {currentServoName ? <div className="w-3" /> : <Check size={12} className="text-primary" />}
               <span className="text-[13px] text-muted-foreground italic">None</span>
             </button>
             {filtered.map((s) => (

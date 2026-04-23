@@ -48,7 +48,7 @@ function getCachedIfValid(
 ): Record<string, unknown> | null {
   const key = cacheKey(aeroplaneId, wingName);
   const cached = tessellationCache.get(key);
-  return cached && cached.updatedAt === updatedAt ? cached.data : null;
+  return cached?.updatedAt === updatedAt ? cached.data : null;
 }
 
 /** Poll the status endpoint until SUCCESS, FAILURE, or timeout. */

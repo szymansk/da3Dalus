@@ -8,7 +8,7 @@ export function getStepAtPath(tree: PlanStepNode, path: string): PlanStepNode | 
   let current: PlanStepNode = tree;
   for (const part of parts) {
     const idx = Number.parseInt(part, 10);
-    if (!current.successors || !current.successors[idx]) return null;
+    if (!current.successors?.[idx]) return null;
     current = current.successors[idx];
   }
   return current;
@@ -18,7 +18,7 @@ export function getStepAtPath(tree: PlanStepNode, path: string): PlanStepNode | 
 export function deleteStepAtPath(tree: PlanStepNode, path: string): PlanStepNode {
   if (path === "root") return { ...tree, successors: [] };
   const parts = path.replace("root.", "").split(".");
-  const lastIdx = Number.parseInt(parts[parts.length - 1], 10);
+  const lastIdx = Number.parseInt(parts.at(-1)!, 10);
   const parentPath = parts.slice(0, -1);
 
   function navigate(node: PlanStepNode, remaining: string[]): PlanStepNode {
@@ -46,7 +46,7 @@ export function insertStepAtPath(
     return { ...tree, successors: [...(tree.successors ?? []), step] };
   }
   const parts = path.replace("root.", "").split(".");
-  const insertIdx = Number.parseInt(parts[parts.length - 1], 10) + 1;
+  const insertIdx = Number.parseInt(parts.at(-1)!, 10) + 1;
   const parentParts = parts.slice(0, -1);
 
   function navigate(node: PlanStepNode, remaining: string[]): PlanStepNode {
@@ -103,7 +103,7 @@ export function collectAvailableShapeKeys(
     );
     if (creator?.outputs.length) {
       for (const out of creator.outputs) {
-        keys.push(out.key.replace(/\{id\}/g, stepId));
+        keys.push(out.key.replaceAll("{id}", stepId));
       }
     } else {
       keys.push(stepId);
@@ -114,8 +114,8 @@ export function collectAvailableShapeKeys(
 
 /** Resolve `{param}` placeholders in an ID template using the given params. */
 export function resolveIdTemplate(template: string, params: Record<string, unknown>): string {
-  return template.replace(/\{(\w+)\}/g, (match, key) => {
-    const val = params[key];
+  return template.replaceAll(/\{(\w+)\}/g, (match, key) => {
+    const val = params[key as string];
     return val != null && val !== "" ? String(val) : match;
   });
 }
@@ -133,8 +133,8 @@ export function computeReorderTargetPath(fromPath: string, toPath: string): stri
   const toParent = toParts.slice(0, -1).join(".");
   if (fromParent !== toParent) return toPath;
 
-  const fromIdx = Number.parseInt(fromParts[fromParts.length - 1], 10);
-  const toIdx = Number.parseInt(toParts[toParts.length - 1], 10);
+  const fromIdx = Number.parseInt(fromParts.at(-1)!, 10);
+  const toIdx = Number.parseInt(toParts.at(-1)!, 10);
   if (fromIdx < toIdx) {
     const adjusted = [...toParts];
     adjusted[adjusted.length - 1] = String(toIdx - 1);
