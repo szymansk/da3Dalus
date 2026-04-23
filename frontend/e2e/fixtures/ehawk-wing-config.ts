@@ -5,17 +5,17 @@ export const EHAWK_WING_CONFIG = {
     {
       "root_airfoil": {
         "airfoil": "../components/airfoils/mh32.dat",
-        "chord": 162.0,
+        "chord": 162,
         "dihedral_as_rotation_in_degrees": 1,
 
         "incidence": 0,
       },
-      "length": 20.0,
+      "length": 20,
       "sweep": 0,
-      "sweep_angle": 0.0,
+      "sweep_angle": 0,
       "tip_airfoil": {
         "airfoil": "../components/airfoils/mh32.dat",
-        "chord": 162.0,
+        "chord": 162,
         "dihedral_as_rotation_in_degrees": 0,
 
         "incidence": 0,
@@ -26,7 +26,7 @@ export const EHAWK_WING_CONFIG = {
           "spare_support_dimension_height": 4.42,
           "spare_position_factor": 0.25,
           "spare_length": null,
-          "spare_start": 0.0,
+          "spare_start": 0,
           "spare_mode": "standard",
           "spare_vector": [
             0.03675826199775033,
@@ -44,12 +44,12 @@ export const EHAWK_WING_CONFIG = {
           "spare_support_dimension_height": 6.42,
           "spare_position_factor": 0.55,
           "spare_length": 70,
-          "spare_start": 0.0,
+          "spare_start": 0,
           "spare_mode": "standard",
           "spare_vector": [
-            0.0,
-            1.0,
-            0.0
+            0,
+            1,
+            0
           ],
           "spare_origin": [
             89.10000000000001,
@@ -62,12 +62,12 @@ export const EHAWK_WING_CONFIG = {
           "spare_support_dimension_height": 6.42,
           "spare_position_factor": 0.2,
           "spare_length": 70,
-          "spare_start": 0.0,
+          "spare_start": 0,
           "spare_mode": "standard",
           "spare_vector": [
-            0.0,
-            1.0,
-            0.0
+            0,
+            1,
+            0
           ],
           "spare_origin": [
             32.4,
@@ -84,7 +84,7 @@ export const EHAWK_WING_CONFIG = {
     {
       "root_airfoil": {
         "airfoil": "../components/airfoils/mh32.dat",
-        "chord": 162.0,
+        "chord": 162,
         "dihedral_as_rotation_in_degrees": 0,
 
         "incidence": 0,
@@ -105,7 +105,7 @@ export const EHAWK_WING_CONFIG = {
           "spare_support_dimension_height": 4.42,
           "spare_position_factor": 0.25,
           "spare_length": null,
-          "spare_start": 0.0,
+          "spare_start": 0,
           "spare_mode": "follow",
           "spare_vector": [
             0.03675826199775033,
@@ -123,12 +123,12 @@ export const EHAWK_WING_CONFIG = {
           "spare_support_dimension_height": 6.42,
           "spare_position_factor": 0.25,
           "spare_length": 60,
-          "spare_start": 0.0,
+          "spare_start": 0,
           "spare_mode": "follow",
           "spare_vector": [
-            0.0,
-            1.0,
-            0.0
+            0,
+            1,
+            0
           ],
           "spare_origin": [
             89.10000000000001,
@@ -141,12 +141,12 @@ export const EHAWK_WING_CONFIG = {
           "spare_support_dimension_height": 6.42,
           "spare_position_factor": 0.25,
           "spare_length": 60,
-          "spare_start": 0.0,
+          "spare_start": 0,
           "spare_mode": "follow",
           "spare_vector": [
-            0.0,
-            1.0,
-            0.0
+            0,
+            1,
+            0
           ],
           "spare_origin": [
             32.4,
@@ -184,7 +184,7 @@ export const EHAWK_WING_CONFIG = {
           "spare_support_dimension_height": 4.42,
           "spare_position_factor": 0.25,
           "spare_length": null,
-          "spare_start": 0.0,
+          "spare_start": 0,
           "spare_mode": "follow",
           "spare_vector": [
             0.03675826199775033,
@@ -203,8 +203,8 @@ export const EHAWK_WING_CONFIG = {
         "rel_chord_root": 0.8,
         "rel_chord_tip": 0.8,
         "hinge_spacing": 0.5,
-        "side_spacing_root": 2.0,
-        "side_spacing_tip": 2.0,
+        "side_spacing_root": 2,
+        "side_spacing_tip": 2,
         "_servo": 1,
         "servo_placement": "top",
         "rel_chord_servo_position": 0.414,
@@ -243,7 +243,7 @@ export const EHAWK_WING_CONFIG = {
           "spare_support_dimension_height": 4.42,
           "spare_position_factor": 0.25,
           "spare_length": null,
-          "spare_start": 0.0,
+          "spare_start": 0,
           "spare_mode": "follow",
           "spare_vector": [
             0.03675826199775033,
@@ -270,7 +270,7 @@ export const EHAWK_WING_CONFIG = {
         "rel_length_servo_position": null,
         "positive_deflection_deg": 25,
         "negative_deflection_deg": 25,
-        "trailing_edge_offset_factor": 1.0,
+        "trailing_edge_offset_factor": 1,
         "hinge_type": "top",
         "symmetric": true
       },
@@ -302,7 +302,7 @@ export const EHAWK_WING_CONFIG = {
           "spare_support_dimension_height": 4.42,
           "spare_position_factor": 0.25,
           "spare_length": null,
-          "spare_start": 0.0,
+          "spare_start": 0,
           "spare_mode": "follow",
           "spare_vector": [
             0.03675826199775033,
@@ -329,7 +329,7 @@ export const EHAWK_WING_CONFIG = {
         "rel_length_servo_position": null,
         "positive_deflection_deg": 25,
         "negative_deflection_deg": 25,
-        "trailing_edge_offset_factor": 1.0,
+        "trailing_edge_offset_factor": 1,
         "hinge_type": "top",
         "symmetric": true
       },
@@ -361,7 +361,7 @@ export const EHAWK_WING_CONFIG = {
           "spare_support_dimension_height": 4.42,
           "spare_position_factor": 0.25,
           "spare_length": null,
-          "spare_start": 0.0,
+          "spare_start": 0,
           "spare_mode": "follow",
           "spare_vector": [
             0.03675826199775033,
@@ -388,7 +388,7 @@ export const EHAWK_WING_CONFIG = {
         "rel_length_servo_position": null,
         "positive_deflection_deg": 25,
         "negative_deflection_deg": 25,
-        "trailing_edge_offset_factor": 1.0,
+        "trailing_edge_offset_factor": 1,
         "hinge_type": "top",
         "symmetric": true
       },
@@ -420,7 +420,7 @@ export const EHAWK_WING_CONFIG = {
           "spare_support_dimension_height": 4.42,
           "spare_position_factor": 0.25,
           "spare_length": null,
-          "spare_start": 0.0,
+          "spare_start": 0,
           "spare_mode": "standard_backward",
           "spare_vector": [
             0.03675826199775033,
@@ -452,7 +452,7 @@ export const EHAWK_WING_CONFIG = {
       "sweep_angle": 26.565051177077994,
       "tip_airfoil": {
         "airfoil": "../components/airfoils/mh32.dat",
-        "chord": 71.0,
+        "chord": 71,
         "dihedral_as_rotation_in_degrees": 5,
 
         "incidence": 0,
@@ -466,7 +466,7 @@ export const EHAWK_WING_CONFIG = {
     {
       "root_airfoil": {
         "airfoil": "../components/airfoils/mh32.dat",
-        "chord": 71.0,
+        "chord": 71,
         "dihedral_as_rotation_in_degrees": 5,
 
         "incidence": 0,
@@ -476,7 +476,7 @@ export const EHAWK_WING_CONFIG = {
       "sweep_angle": 33.690067525979785,
       "tip_airfoil": {
         "airfoil": "../components/airfoils/mh32.dat",
-        "chord": 62.0,
+        "chord": 62,
         "dihedral_as_rotation_in_degrees": 5,
 
         "incidence": 0,
@@ -490,7 +490,7 @@ export const EHAWK_WING_CONFIG = {
     {
       "root_airfoil": {
         "airfoil": "../components/airfoils/mh32.dat",
-        "chord": 62.0,
+        "chord": 62,
         "dihedral_as_rotation_in_degrees": 5,
 
         "incidence": 0,
@@ -503,7 +503,7 @@ export const EHAWK_WING_CONFIG = {
         "chord": 52.5,
         "dihedral_as_rotation_in_degrees": 10,
 
-        "incidence": -0.0,
+        "incidence": 0,
       },
       "spare_list": null,
       "trailing_edge_device": null,
@@ -517,7 +517,7 @@ export const EHAWK_WING_CONFIG = {
         "chord": 52.5,
         "dihedral_as_rotation_in_degrees": 10,
 
-        "incidence": -0.0,
+        "incidence": 0,
       },
       "length": 10,
       "sweep": 15,
@@ -527,7 +527,7 @@ export const EHAWK_WING_CONFIG = {
         "chord": 40.5,
         "dihedral_as_rotation_in_degrees": 15,
 
-        "incidence": -0.0,
+        "incidence": 0,
       },
       "spare_list": null,
       "trailing_edge_device": null,
@@ -541,17 +541,17 @@ export const EHAWK_WING_CONFIG = {
         "chord": 40.5,
         "dihedral_as_rotation_in_degrees": 15,
 
-        "incidence": -0.0,
+        "incidence": 0,
       },
       "length": 5,
       "sweep": 17.5,
       "sweep_angle": 74.05460409907715,
       "tip_airfoil": {
         "airfoil": "../components/airfoils/mh32.dat",
-        "chord": 24.0,
+        "chord": 24,
         "dihedral_as_rotation_in_degrees": 0,
 
-        "incidence": -0.0,
+        "incidence": 0,
       },
       "spare_list": null,
       "trailing_edge_device": null,
