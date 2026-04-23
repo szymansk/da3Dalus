@@ -194,6 +194,7 @@ export function ComponentEditDialog({
   return (
     <dialog
       ref={dialogRef}
+      role="dialog"
       className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
@@ -349,9 +350,16 @@ interface SpecFieldProps {
   onChange: (v: unknown) => void;
 }
 
+function selectValueToString(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
 function SpecField({ prop, value, onChange }: Readonly<SpecFieldProps>) {
   const fieldId = useId();
-  const labelText = `${prop.label}${prop.required ? " *" : ""}${prop.unit ? ` (${prop.unit})` : ""}`;
+  const suffix = prop.unit ? " (" + prop.unit + ")" : "";
+  const labelText = prop.label + (prop.required ? " *" : "") + suffix;
 
   switch (prop.type) {
     case "boolean":
@@ -377,7 +385,7 @@ function SpecField({ prop, value, onChange }: Readonly<SpecFieldProps>) {
           <select
             id={fieldId}
             data-spec={prop.name}
-            value={value == null ? "" : (typeof value === "object" ? JSON.stringify(value) : String(value))}
+            value={selectValueToString(value)}
             onChange={(e) => onChange(e.target.value)}
             className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
           >
@@ -398,7 +406,7 @@ function SpecField({ prop, value, onChange }: Readonly<SpecFieldProps>) {
             id={fieldId}
             data-spec={prop.name}
             type={prop.type === "number" ? "number" : "text"}
-            value={value == null ? "" : (typeof value === "object" ? JSON.stringify(value) : String(value))}
+            value={selectValueToString(value)}
             onChange={(e) => onChange(e.target.value)}
             min={prop.min ?? undefined}
             max={prop.max ?? undefined}

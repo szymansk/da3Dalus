@@ -522,7 +522,7 @@ export function AnalysisViewerPanel({
   }
 
   const charts = useMemo(() => {
-    if (!result || !result.CL || result.CL.length === 0) return null;
+    if (!result?.CL || result.CL.length === 0) return null;
 
     const { CL, CD, Cm, alpha } = result;
     const clOverCd = CL.map((cl, i) => (CD[i] === 0 ? 0 : cl / CD[i]));

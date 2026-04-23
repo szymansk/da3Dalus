@@ -498,17 +498,21 @@ function buildSparEdgeLines(
 }
 
 /** Compute spar center points from precise origin/vector or airfoil camber fallback. */
+interface ComputeSparCentersOpts {
+  spar: Record<string, unknown>;
+  posFactor: number;
+  sparStartMm: number;
+  sparLengthMm: number | undefined;
+  segmentSpan: number;
+  startAf: AirfoilCoords | null;
+  endAf: AirfoilCoords | null;
+  startStation: ReturnType<typeof lerpXSec>;
+  endStation: ReturnType<typeof lerpXSec>;
+}
 function computeSparCenters(
-  spar: Record<string, unknown>,
-  posFactor: number,
-  sparStartMm: number,
-  sparLengthMm: number | undefined,
-  segmentSpan: number,
-  startAf: AirfoilCoords | null,
-  endAf: AirfoilCoords | null,
-  startStation: ReturnType<typeof lerpXSec>,
-  endStation: ReturnType<typeof lerpXSec>,
+  opts: ComputeSparCentersOpts,
 ): { startCenter: { x: number[]; y: number[]; z: number[] } | null; endCenter: { x: number[]; y: number[]; z: number[] } | null } {
+  const { spar, posFactor, sparStartMm, sparLengthMm, segmentSpan, startAf, endAf, startStation, endStation } = opts;
   const sparOrigin = spar.spare_origin as number[] | null | undefined;
   const sparVector = spar.spare_vector as number[] | null | undefined;
   const hasPrecise = sparOrigin && sparVector && sparOrigin.length === 3 && sparVector.length === 3;
@@ -572,10 +576,10 @@ function buildSingleSparTraces(
   const endStation = lerpXSec(xsecs, dihedrals, segIdx, segIdx + 1, tEnd);
   const endAf = lerpAf(airfoils, segIdx, segIdx + 1, tEnd);
 
-  const { startCenter, endCenter } = computeSparCenters(
+  const { startCenter, endCenter } = computeSparCenters({
     spar, posFactor, sparStartMm, sparLengthMm, segmentSpan,
     startAf, endAf, startStation, endStation,
-  );
+  });
 
   // Vertical spar lines + cross-sections
   traces.push(buildSparVerticalLine(startAf, posFactor, startStation, sparColor));

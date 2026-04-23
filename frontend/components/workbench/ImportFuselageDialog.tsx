@@ -809,8 +809,7 @@ export function ImportFuselageDialog({
   const [xsecsMaximized, setXsecsMaximized] = useState(false);
   const [xsecs, setXsecs] = useState<XSec[]>(initialXsecs ?? INITIAL_XSECS);
   const [selectedXsec, setSelectedXsec] = useState<number | null>(initialSelectedIndex ?? (editMode ? 0 : null));
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [zoomScale, setZoomScale] = useState<number | null>(null); // null = auto-fit selected
+  // zoomScale state removed — was unused dead code (SonarQube S1854)
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fidelity, setFidelity] = useState<{ volume_ratio: number; area_ratio: number } | null>(null);
@@ -889,6 +888,7 @@ export function ImportFuselageDialog({
   return (
     <dialog
       ref={dialogRef}
+      role="dialog"
       className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={dialogHandleClose}
       onClick={(e) => { if (e.target === e.currentTarget) dialogHandleClose(); }}

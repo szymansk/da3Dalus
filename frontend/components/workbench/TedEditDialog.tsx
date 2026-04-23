@@ -194,6 +194,7 @@ export function TedEditDialog({
   return (
     <dialog
       ref={dialogRef}
+      role="dialog"
       className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
@@ -413,9 +414,12 @@ function ServoPickerInDialog({
   const assignedComponentId = servoData && typeof servoData === "object"
     ? servoData.component_id as number | null | undefined
     : null;
-  const currentServoName = assignedComponentId
-    ? servos.find((s) => s.id === assignedComponentId)?.name ?? `Servo #${assignedComponentId}`
-    : servoData ? "Servo (unknown)" : null;
+  let currentServoName: string | null = null;
+  if (assignedComponentId) {
+    currentServoName = servos.find((s) => s.id === assignedComponentId)?.name ?? `Servo #${assignedComponentId}`;
+  } else if (servoData) {
+    currentServoName = "Servo (unknown)";
+  }
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [search, setSearch] = useState("");

@@ -81,14 +81,12 @@ export function SimpleTreeRow({ node, onToggle }: Readonly<SimpleTreeRowProps>) 
       onClick={handleClick}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClick(); } }}
     >
-      {node.leaf ? (
-        <span className="w-3 shrink-0" />
-      ) : (
-        node.expanded ? (
-          <ChevronDown size={12} className="shrink-0 text-muted-foreground" />
-        ) : (
-          <ChevronRight size={12} className="shrink-0 text-muted-foreground" />
-        )
+      {node.leaf && <span className="w-3 shrink-0" />}
+      {!node.leaf && node.expanded && (
+        <ChevronDown size={12} className="shrink-0 text-muted-foreground" />
+      )}
+      {!node.leaf && !node.expanded && (
+        <ChevronRight size={12} className="shrink-0 text-muted-foreground" />
       )}
       <span
         className={`truncate ${node.muted ? "text-[12px] text-muted-foreground" : "font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"}`}

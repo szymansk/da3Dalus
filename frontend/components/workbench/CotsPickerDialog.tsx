@@ -52,6 +52,7 @@ export function CotsPickerDialog({
   return (
     <dialog
       ref={dialogRef}
+      role="dialog"
       className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
@@ -99,12 +100,13 @@ export function CotsPickerDialog({
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto">
-          {isLoading ? (
+          {isLoading && (
             <div className="flex items-center justify-center gap-2 py-10 text-[13px] text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
               Loading components...
             </div>
-          ) : components.length === 0 ? (
+          )}
+          {!isLoading && components.length === 0 && (
             <div className="flex flex-col items-center gap-2 py-10 text-[13px] text-muted-foreground">
               <Package className="size-8 text-subtle-foreground" />
               <span>
@@ -113,7 +115,8 @@ export function CotsPickerDialog({
                   : "No components available"}
               </span>
             </div>
-          ) : (
+          )}
+          {!isLoading && components.length > 0 &&
             components.map((comp) => (
               <button
                 key={comp.id}
@@ -138,7 +141,7 @@ export function CotsPickerDialog({
                 </div>
               </button>
             ))
-          )}
+          }
         </div>
 
         <div className="flex justify-end">

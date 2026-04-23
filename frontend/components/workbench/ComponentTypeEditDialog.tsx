@@ -64,10 +64,10 @@ export function ComponentTypeEditDialog({
   useEffect(() => {
     const el = confirmDialogRef.current;
     if (!el) return;
-    if (pendingDelete) {
-      if (!el.open) el.showModal();
-    } else {
-      if (el.open) el.close();
+    if (pendingDelete && !el.open) {
+      el.showModal();
+    } else if (!pendingDelete && el.open) {
+      el.close();
     }
   }, [pendingDelete]);
 
@@ -162,6 +162,7 @@ export function ComponentTypeEditDialog({
     <>
       <dialog
         ref={dialogRef}
+        role="dialog"
         className="fixed inset-0 z-[55] flex items-center justify-center bg-transparent backdrop:bg-black/60"
         onClose={handleClose}
         onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
@@ -328,6 +329,7 @@ export function ComponentTypeEditDialog({
 
       <dialog
         ref={confirmDialogRef}
+        role="dialog"
         className="fixed inset-0 z-[60] flex items-center justify-center bg-transparent backdrop:bg-black/60"
         onClose={closeConfirmDialog}
         onClick={(e) => { if (e.target === e.currentTarget) closeConfirmDialog(); }}

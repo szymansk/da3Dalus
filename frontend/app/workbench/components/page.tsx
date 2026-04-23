@@ -94,18 +94,18 @@ export default function ComponentsPage() {
           </button>
         </div>
 
-        {view === "construction" ? (
-          aeroplaneId ? (
-            <ConstructionPartsGrid
-              aeroplaneId={aeroplaneId}
-              onRequestUpload={() => setUploadOpen(true)}
-            />
-          ) : (
-            <p className="py-8 text-center text-[13px] text-muted-foreground">
-              Select an aeroplane first.
-            </p>
-          )
-        ) : (
+        {view === "construction" && aeroplaneId && (
+          <ConstructionPartsGrid
+            aeroplaneId={aeroplaneId}
+            onRequestUpload={() => setUploadOpen(true)}
+          />
+        )}
+        {view === "construction" && !aeroplaneId && (
+          <p className="py-8 text-center text-[13px] text-muted-foreground">
+            Select an aeroplane first.
+          </p>
+        )}
+        {view !== "construction" && (
         <>
         {/* Header */}
         <div className="flex items-center gap-2.5">
@@ -165,16 +165,18 @@ export default function ComponentsPage() {
         </div>
 
         {/* Component Cards */}
-        {isLoading ? (
+        {isLoading && (
           <p className="py-8 text-center text-[13px] text-muted-foreground">Loading components...</p>
-        ) : components.length === 0 ? (
+        )}
+        {!isLoading && components.length === 0 && (
           <div className="flex flex-col items-center gap-3 py-12">
             <Package className="size-12 text-subtle-foreground" />
             <p className="text-[13px] text-muted-foreground">
               {search || typeFilter ? "No components match your filter" : "No components yet. Create one to get started."}
             </p>
           </div>
-        ) : (
+        )}
+        {!isLoading && components.length > 0 && (
           <div className="grid grid-cols-2 gap-3">
             {components.map((comp) => (
               <div

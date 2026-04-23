@@ -173,9 +173,9 @@ function LineChart({
           preserveAspectRatio="xMidYMid meet"
         >
           {/* Grid lines */}
-          {yTicks.map((v, i) => (
+          {yTicks.map((v) => (
             <line
-              key={`yg${i}`}
+              key={`yg${v}`}
               x1={PAD.left}
               x2={W - PAD.right}
               y1={sy(v)}
@@ -184,9 +184,9 @@ function LineChart({
               strokeWidth="0.5"
             />
           ))}
-          {xTicks.map((v, i) => (
+          {xTicks.map((v) => (
             <line
-              key={`xg${i}`}
+              key={`xg${v}`}
               x1={sx(v)}
               x2={sx(v)}
               y1={PAD.top}
@@ -215,9 +215,9 @@ function LineChart({
           />
 
           {/* Y-axis labels */}
-          {yTicks.map((v, i) => (
+          {yTicks.map((v) => (
             <text
-              key={`yl${i}`}
+              key={`yl${v}`}
               x={PAD.left - 5}
               y={sy(v) + 3}
               textAnchor="end"
@@ -230,9 +230,9 @@ function LineChart({
           ))}
 
           {/* X-axis labels */}
-          {xTicks.map((v, i) => (
+          {xTicks.map((v) => (
             <text
-              key={`xl${i}`}
+              key={`xl${v}`}
               x={sx(v)}
               y={PAD.top + plotH + 14}
               textAnchor="middle"
@@ -295,7 +295,14 @@ function LineChart({
   );
 }
 
-// ── Airfoil SVG ─────────────────────────────────────────────────
+// ── Airfoil SVG helpers ─────────────────────────────────────────
+
+function pathFromCoords(coords: [number, number][]): string {
+  if (coords.length === 0) return "";
+  return coords
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${p[0]},${-p[1]}`)
+    .join(" ");
+}
 
 function AirfoilSvg({
   rootGeometry,
@@ -320,13 +327,6 @@ function AirfoilSvg({
   const vbX = -0.05;
   const vbW = 1.15;
   const vbH = yMax - yMin + 2 * yPad;
-
-  function pathFromCoords(coords: [number, number][]): string {
-    if (coords.length === 0) return "";
-    return coords
-      .map((p, i) => `${i === 0 ? "M" : "L"} ${p[0]},${-p[1]}`)
-      .join(" ");
-  }
 
   // Build camber line for root only
   const camberPoints: [number, number][] = [];
@@ -577,16 +577,18 @@ export function AirfoilPreviewViewerPanel({
 
         {/* SVG airfoil shape */}
         <div className="flex flex-1 items-center justify-center">
-          {geometryLoading ? (
+          {geometryLoading && (
             <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
               Loading{"\u2026"}
             </span>
-          ) : rootGeometry ? (
+          )}
+          {!geometryLoading && rootGeometry && (
             <AirfoilSvg
               rootGeometry={rootGeometry}
               tipGeometry={hasTip ? tipGeometry : null}
             />
-          ) : (
+          )}
+          {!geometryLoading && !rootGeometry && (
             <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
               No airfoil selected
             </span>

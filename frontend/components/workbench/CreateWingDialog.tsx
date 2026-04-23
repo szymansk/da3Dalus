@@ -135,6 +135,7 @@ export function CreateWingDialog({
   return (
     <dialog
       ref={dialogRef}
+      role="dialog"
       className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
@@ -142,10 +143,10 @@ export function CreateWingDialog({
       aria-label="Create Wing"
     >
       {/* Dialog */}
-      <div
+      <form
         className="relative z-10 w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-xl"
-        role="presentation"
         onKeyDown={handleKeyDown}
+        onSubmit={(e) => e.preventDefault()}
       >
         {/* Header */}
         <div className="mb-4 flex items-center justify-between">
@@ -265,7 +266,7 @@ export function CreateWingDialog({
             {creating ? "Creating\u2026" : "Create"}
           </button>
         </div>
-      </div>
+      </form>
     </dialog>
   );
 }

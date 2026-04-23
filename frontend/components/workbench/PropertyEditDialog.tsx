@@ -5,6 +5,12 @@ import { Check, X } from "lucide-react";
 import type { PropertyDefinition, PropertyType } from "@/hooks/useComponentTypes";
 import { useDialog } from "@/hooks/useDialog";
 
+function toDisplayString(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
 interface PropertyEditDialogProps {
   open: boolean;
   initial: PropertyDefinition | null;
@@ -46,7 +52,7 @@ function toForm(prop: PropertyDefinition | null): FormState {
     min: prop.min == null ? "" : String(prop.min),
     max: prop.max == null ? "" : String(prop.max),
     optionsCsv: (prop.options ?? []).join(", "),
-    defaultStr: prop.default == null ? "" : (typeof prop.default === "object" ? JSON.stringify(prop.default) : String(prop.default)),
+    defaultStr: toDisplayString(prop.default),
   };
 }
 
@@ -129,6 +135,7 @@ export function PropertyEditDialog({
   return (
     <dialog
       ref={dialogRef}
+      role="dialog"
       className="fixed inset-0 z-[60] flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
