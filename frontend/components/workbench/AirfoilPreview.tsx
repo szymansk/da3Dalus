@@ -23,7 +23,7 @@ const LD_BARS = [
 const CL_MAX = Math.max(...CL_BARS);
 const LD_MAX = Math.max(...LD_BARS);
 
-export function AirfoilPreview({ airfoilName, onClose }: AirfoilPreviewProps) {
+export function AirfoilPreview({ airfoilName, onClose }: Readonly<AirfoilPreviewProps>) {
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-hidden p-4">
       {/* ── Header Row ── */}

@@ -67,7 +67,7 @@ function addRemainingParts(
  * Supports multiple parts via viewer.addPart() — each wing is added
  * incrementally instead of assembling one giant JSON payload.
  */
-export function CadViewer({ parts }: CadViewerProps) {
+export function CadViewer({ parts }: Readonly<CadViewerProps>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<unknown>(null);
   const [error, setError] = useState<string | null>(null);

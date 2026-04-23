@@ -8,7 +8,7 @@ interface SplitHandleProps {
   collapsed?: boolean;
 }
 
-export function SplitHandle({ onCollapse, collapsed }: SplitHandleProps) {
+export function SplitHandle({ onCollapse, collapsed }: Readonly<SplitHandleProps>) {
   return (
     <Separator className="group relative flex w-1 items-center justify-center bg-border transition-colors hover:bg-primary/50 data-[resize-handle-active]:bg-primary/50">
       {/* Grip dots */}

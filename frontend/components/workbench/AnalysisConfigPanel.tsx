@@ -42,8 +42,8 @@ function getCurrentError(activeTab: Tab, analysis: UseAnalysisReturn, stripForce
 export function AnalysisConfigPanel({
   activeTab,
   analysis,
-  wingNames,
-  selectedWing,
+  wingNames: _wingNames,
+  selectedWing: _selectedWing,
   onRunStripForces,
   stripForcesRunning,
   stripForcesError,

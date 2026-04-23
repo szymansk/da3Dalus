@@ -39,7 +39,7 @@ export function RadarChart({
   target,
   analysis = null,
   size = 420,
-}: RadarChartProps) {
+}: Readonly<RadarChartProps>) {
   const height = Math.round(size * 0.81);
   const cx = size / 2;
   const cy = height / 2;

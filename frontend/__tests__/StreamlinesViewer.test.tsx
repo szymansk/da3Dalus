@@ -135,7 +135,7 @@ describe("StreamlinesViewer", () => {
 
     const inputs = screen.getAllByRole("spinbutton") as HTMLInputElement[];
     // Default params: velocity=20, alpha=5, beta=0, altitude=0
-    const values = inputs.map((i) => parseFloat(i.value));
+    const values = inputs.map((i) => Number.parseFloat(i.value));
     expect(values).toEqual([20, 5, 0, 0]);
   });
 });

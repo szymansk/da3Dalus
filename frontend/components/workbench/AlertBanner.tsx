@@ -8,7 +8,7 @@ interface AlertBannerProps {
 export function AlertBanner({
   title = "Coming soon \u2014 backend wiring in progress",
   children,
-}: AlertBannerProps) {
+}: Readonly<AlertBannerProps>) {
   return (
     <div className="flex items-start gap-3 rounded-xl border border-primary bg-[#2A1F10] p-4">
       <Info className="size-4 shrink-0 text-primary" />

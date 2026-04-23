@@ -37,7 +37,7 @@ export default function AirfoilPreviewPage() {
   const [rootAirfoil, setRootAirfoil] = useState(initialRoot);
   const [tipAirfoil, setTipAirfoil] = useState(initialTip);
   const [velocity, setVelocity] = useState(14); // m/s — typical model aircraft cruise
-  const [ma, setMa] = useState(0.0);
+  const [ma, setMa] = useState(0);
 
   // Re computed reactively from velocity + chord
   const rootChordMm = segment?.root_airfoil?.chord ?? 200;
@@ -76,7 +76,6 @@ export default function AirfoilPreviewPage() {
     setRootReOverride(null);
     setTipReOverride(null);
     // Analysis will auto-run via the effect below
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedXsecIndex, wingConfig]);
 
   const hasTip = tipAirfoil !== rootAirfoil;

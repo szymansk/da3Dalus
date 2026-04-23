@@ -71,9 +71,9 @@ function ParamInput({
         value={strValue}
         onChange={(e) => {
           const v = param.type === "int"
-            ? parseInt(e.target.value, 10)
-            : parseFloat(e.target.value);
-          onChange(param.name, isNaN(v) ? null : v);
+            ? Number.parseInt(e.target.value, 10)
+            : Number.parseFloat(e.target.value);
+          onChange(param.name, Number.isNaN(v) ? null : v);
         }}
         step={param.type === "float" ? "any" : "1"}
         className="rounded-lg border border-border bg-input px-3 py-1.5 text-[12px] text-foreground outline-none"
@@ -98,7 +98,7 @@ export function CreatorParameterForm({
   values,
   onChange,
   availableShapeKeys = [],
-}: CreatorParameterFormProps) {
+}: Readonly<CreatorParameterFormProps>) {
   return (
     <div className="flex flex-col gap-3">
       {creatorName && (

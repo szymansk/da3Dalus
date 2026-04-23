@@ -20,7 +20,7 @@ interface CreatorDetailViewProps {
  * in the gallery without a plan selected. Displays description,
  * parameter documentation, and output info.
  */
-export function CreatorDetailView({ creator, onBack }: CreatorDetailViewProps) {
+export function CreatorDetailView({ creator, onBack }: Readonly<CreatorDetailViewProps>) {
   const category = CATEGORY_LABELS[creator.category as CreatorCategory] ?? creator.category;
   const userParams = creator.parameters;
 

@@ -876,7 +876,7 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
 
 // ── TreeRow ─────────────────────────────────────────────────────
 
-function TreeRow({ node, onToggle, onNodeEdit }: { node: TreeNode; onToggle: () => void; onNodeEdit?: () => void }) {
+function TreeRow({ node, onToggle, onNodeEdit: _onNodeEdit }: { node: TreeNode; onToggle: () => void; onNodeEdit?: () => void }) {
   if (node.isInsertPoint) {
     return (
       <div

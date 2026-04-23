@@ -84,7 +84,7 @@ interface ConfirmModalProps {
   onCancel: () => void;
 }
 
-function ConfirmModal({ title, body, onConfirm, onCancel }: ConfirmModalProps) {
+function ConfirmModal({ title, body, onConfirm, onCancel }: Readonly<ConfirmModalProps>) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
@@ -129,7 +129,7 @@ interface FieldProps {
   placeholder?: string;
 }
 
-function Field({ label, value, onChange, type = "text", placeholder }: FieldProps) {
+function Field({ label, value, onChange, type = "text", placeholder }: Readonly<FieldProps>) {
   return (
     <div className="flex flex-col gap-1">
       <label className="text-[11px] text-muted-foreground">{label}</label>
@@ -201,7 +201,7 @@ export function NodePropertyPanel({
   aeroplaneId,
   onMutate,
   onClose,
-}: NodePropertyPanelProps) {
+}: Readonly<NodePropertyPanelProps>) {
   const [form, setForm] = useState<FormState | null>(
     node ? nodeToForm(node) : null,
   );

@@ -319,7 +319,7 @@ function AirfoilSvg({
 
   const vbX = -0.05;
   const vbW = 1.15;
-  const vbY = yMin - yPad;
+  const _vbY = yMin - yPad;
   const vbH = yMax - yMin + 2 * yPad;
 
   function pathFromCoords(coords: [number, number][]): string {
@@ -480,7 +480,7 @@ export function AirfoilPreviewViewerPanel({
   tipRe,
   ma,
   onMaChange,
-}: AirfoilPreviewViewerPanelProps) {
+}: Readonly<AirfoilPreviewViewerPanelProps>) {
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
 
   function toggleChart(id: string) {
@@ -546,8 +546,8 @@ export function AirfoilPreviewViewerPanel({
             step="0.01"
             value={ma}
             onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              if (!isNaN(v)) onMaChange(v);
+              const v = Number.parseFloat(e.target.value);
+              if (!Number.isNaN(v)) onMaChange(v);
             }}
             className="w-16 rounded-xl border border-border bg-input px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />

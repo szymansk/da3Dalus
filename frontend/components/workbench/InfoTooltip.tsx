@@ -11,7 +11,7 @@ interface InfoTooltipProps {
  * Hoverable info icon that shows a styled tooltip.
  * Uses CSS group-hover instead of native `title` (which is unreliable inside buttons).
  */
-export function InfoTooltip({ text, size = 11 }: InfoTooltipProps) {
+export function InfoTooltip({ text, size = 11 }: Readonly<InfoTooltipProps>) {
   return (
     <span
       className="group/tip relative inline-flex shrink-0 text-muted-foreground hover:text-primary"

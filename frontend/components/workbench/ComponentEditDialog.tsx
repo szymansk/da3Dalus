@@ -81,7 +81,7 @@ function validate(
 
 export function ComponentEditDialog({
   open, onClose, onSaved, component,
-}: ComponentEditDialogProps) {
+}: Readonly<ComponentEditDialogProps>) {
   const { types } = useComponentTypes();
   const isEdit = !!component;
 
@@ -160,7 +160,7 @@ export function ComponentEditDialog({
         component_type: componentType,
         manufacturer: manufacturer.trim() || null,
         description: description.trim() || null,
-        mass_g: massG ? parseFloat(massG) : null,
+        mass_g: massG ? Number.parseFloat(massG) : null,
         bbox_x_mm: null,
         bbox_y_mm: null,
         bbox_z_mm: null,
@@ -333,7 +333,7 @@ interface SpecFieldProps {
   onChange: (v: unknown) => void;
 }
 
-function SpecField({ prop, value, onChange }: SpecFieldProps) {
+function SpecField({ prop, value, onChange }: Readonly<SpecFieldProps>) {
   const labelText = `${prop.label}${prop.required ? " *" : ""}${prop.unit ? ` (${prop.unit})` : ""}`;
 
   if (prop.type === "boolean") {

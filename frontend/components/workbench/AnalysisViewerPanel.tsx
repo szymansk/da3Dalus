@@ -187,7 +187,7 @@ function StreamlinesRenderer({ figure }: Readonly<{ figure: unknown }>) {
         layout?: Record<string, unknown>;
       };
       const sceneFromLayout =
-        (figData.layout?.scene as Record<string, unknown>) || {};
+        (figData.layout?.scene as Record<string, unknown>) ?? {};
 
       const layout = {
         paper_bgcolor: "#09090B",
@@ -499,7 +499,7 @@ function StreamlinesTabContent({
 
 export function AnalysisViewerPanel({
   result,
-  aeroplaneId,
+  aeroplaneId: _aeroplaneId,
   lastRunTime,
   lastRunDurationMs,
   stripForces,
@@ -511,7 +511,7 @@ export function AnalysisViewerPanel({
   onConfigureClick,
   wingXSecs,
   wingSymmetric,
-}: Props) {
+}: Readonly<Props>) {
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
 
   function toggleChart(id: string) {

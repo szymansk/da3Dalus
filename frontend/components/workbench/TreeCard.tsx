@@ -22,7 +22,7 @@ export function TreeCard({
   actions,
   children,
   className,
-}: TreeCardProps) {
+}: Readonly<TreeCardProps>) {
   return (
     <div
       className={`rounded-xl border border-border bg-card overflow-hidden flex flex-col${className ? ` ${className}` : ""}`}
