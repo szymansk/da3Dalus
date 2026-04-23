@@ -79,10 +79,13 @@ export function CreatorGallery({ creators, onSelect }: Readonly<CreatorGalleryPr
       ) : (
         <div className="grid grid-cols-2 gap-2">
           {filtered.map((creator) => (
-            <button
+            <div
               key={creator.class_name}
+              role="button"
+              tabIndex={0}
               onClick={() => onSelect(creator)}
-              className="group/card flex flex-col gap-1 rounded-xl border border-border bg-card p-3 text-left hover:border-primary/50 hover:bg-sidebar-accent"
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(creator); } }}
+              className="group/card flex cursor-pointer flex-col gap-1 rounded-xl border border-border bg-card p-3 text-left hover:border-primary/50 hover:bg-sidebar-accent"
             >
               <span className="flex items-center gap-1.5">
                 <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground">
@@ -100,7 +103,7 @@ export function CreatorGallery({ creators, onSelect }: Readonly<CreatorGalleryPr
                   {creator.description}
                 </span>
               )}
-            </button>
+            </div>
           ))}
         </div>
       )}
