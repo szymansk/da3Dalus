@@ -33,6 +33,42 @@ import {
   computeReorderTargetPath,
 } from "@/lib/planTreeUtils";
 
+/** Build an ExecutionResult for a caught error. */
+function buildErrorResult(err: unknown): ExecutionResult {
+  return {
+    status: "error",
+    shape_keys: [],
+    export_paths: [],
+    error: err instanceof Error ? err.message : "Execution failed",
+    duration_ms: 0,
+    tessellation: null,
+  };
+}
+
+/** Create a new plan — either from a template or from scratch. */
+async function submitNewPlan(
+  name: string,
+  fromTemplate: boolean,
+  templateId: number | null,
+  aeroplaneId: string | null,
+  activeMutate: () => void,
+  mutateAeroplanePlans: () => void,
+): Promise<{ id: number }> {
+  if (fromTemplate && templateId != null && aeroplaneId) {
+    const created = await instantiateTemplate(aeroplaneId, templateId, name);
+    mutateAeroplanePlans();
+    return created;
+  }
+  const created = await createPlan({
+    name,
+    tree_json: { $TYPE: "ConstructionRootNode", creator_id: "root", successors: [] },
+    plan_type: "plan",
+    aeroplane_id: aeroplaneId ?? undefined,
+  });
+  activeMutate();
+  return created;
+}
+
 type RightPanel = "gallery" | "detail" | "params";
 
 function rightPanelHeading(
@@ -99,26 +135,28 @@ export default function ConstructionPlansPage() {
 
   function handleNewPlan() {
     if (viewMode === "plans") {
-      // Open the new plan dialog with template selection
       setNewPlanName("");
       setNewPlanFromTemplate(false);
       setNewPlanTemplateId(null);
       setNewPlanDialogOpen(true);
     } else {
-      // Templates mode: simple prompt (no template-from-template)
-      const name = prompt("Template name:");
-      if (!name?.trim()) return;
-      createPlan({
-        name: name.trim(),
-        tree_json: { $TYPE: "ConstructionRootNode", creator_id: "root", successors: [] },
-        plan_type: "template",
-      })
-        .then((created) => {
-          activeMutate();
-          setSelectedPlanId(created.id);
-        })
-        .catch((err) => alert(err instanceof Error ? err.message : "Failed to create template"));
+      handleNewTemplate();
     }
+  }
+
+  function handleNewTemplate() {
+    const name = prompt("Template name:");
+    if (!name?.trim()) return;
+    createPlan({
+      name: name.trim(),
+      tree_json: { $TYPE: "ConstructionRootNode", creator_id: "root", successors: [] },
+      plan_type: "template",
+    })
+      .then((created) => {
+        activeMutate();
+        setSelectedPlanId(created.id);
+      })
+      .catch((err) => alert(err instanceof Error ? err.message : "Failed to create template"));
   }
 
   async function handleNewPlanSubmit() {
@@ -126,19 +164,10 @@ export default function ConstructionPlansPage() {
     if (!name) return;
     if (newPlanFromTemplate && newPlanTemplateId != null && !aeroplaneId) return;
     try {
-      let created;
-      if (newPlanFromTemplate && newPlanTemplateId != null && aeroplaneId) {
-        created = await instantiateTemplate(aeroplaneId, newPlanTemplateId, name);
-        mutateAeroplanePlans();
-      } else {
-        created = await createPlan({
-          name,
-          tree_json: { $TYPE: "ConstructionRootNode", creator_id: "root", successors: [] },
-          plan_type: "plan",
-          aeroplane_id: aeroplaneId ?? undefined,
-        });
-        activeMutate();
-      }
+      const created = await submitNewPlan(
+        name, newPlanFromTemplate, newPlanTemplateId, aeroplaneId ?? null,
+        activeMutate, mutateAeroplanePlans,
+      );
       setSelectedPlanId(created.id);
       setNewPlanDialogOpen(false);
     } catch (err) {
@@ -271,22 +300,18 @@ export default function ConstructionPlansPage() {
     try {
       const result = await executePlan(executeAeroplaneId, selectedPlanId);
       setExecuteResult(result);
-      // Open CadViewer modal if tessellation data is available
-      if (result.status === "success" && result.tessellation) {
-        setCadViewerData(result.tessellation);
-        setCadViewerOpen(true);
-      }
+      openCadViewerIfSuccess(result);
     } catch (err) {
-      setExecuteResult({
-        status: "error",
-        shape_keys: [],
-        export_paths: [],
-        error: err instanceof Error ? err.message : "Execution failed",
-        duration_ms: 0,
-        tessellation: null,
-      });
+      setExecuteResult(buildErrorResult(err));
     } finally {
       setExecuting(false);
+    }
+  }
+
+  function openCadViewerIfSuccess(result: ExecutionResult) {
+    if (result.status === "success" && result.tessellation) {
+      setCadViewerData(result.tessellation);
+      setCadViewerOpen(true);
     }
   }
 

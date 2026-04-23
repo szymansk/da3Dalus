@@ -185,6 +185,54 @@ function buildExpandedSegmentDetails(
   return nodes;
 }
 
+// ── Build tree nodes for a single segment (extracted for complexity) ──
+
+function buildSingleSegmentNodes(ctx: BuildNodeContext, i: number): TreeNode[] {
+  const { wingName, wing, selectedWing, selectedXsecIndex, expandedSet, callbacks } = ctx;
+  if (!wing) return [];
+  const root = wing.x_secs[i];
+  const tip = wing.x_secs[i + 1];
+  const segId = `${wingName}-seg${i}`;
+  const isSelected = selectedWing === wingName && selectedXsecIndex === i;
+  const segExpanded = expandedSet.has(segId);
+  const nodes: TreeNode[] = [];
+
+  // Insert point before this segment (except before first)
+  if (i > 0 && callbacks.onInsertXsec) {
+    nodes.push({
+      id: `${wingName}-ins-${i}`,
+      label: "insert",
+      level: 2,
+      isInsertPoint: true,
+      onInsert: () => callbacks.onInsertXsec!(wingName, i),
+    });
+  }
+
+  const chipLabel = getChipLabel(root);
+
+  nodes.push({
+    id: segId,
+    label: i === 0 ? `segment ${i} (root)` : `segment ${i}`,
+    level: 2,
+    expanded: segExpanded,
+    selected: isSelected,
+    chip: chipLabel,
+    onClick: () => { callbacks.selectWing(wingName); callbacks.selectXsec(i); },
+    onEdit: callbacks.onEditNode ? () => { callbacks.selectWing(wingName); callbacks.selectXsec(i); callbacks.onEditNode!(); } : undefined,
+    onDelete: callbacks.onDeleteXsec ? () => {
+      if (confirm(`Delete segment ${i}?`)) callbacks.onDeleteXsec(wingName, i);
+    } : undefined,
+    onAdd: buildAddHandler(wingName, i, root, callbacks),
+  });
+
+  // Expanded segment details
+  if (segExpanded) {
+    nodes.push(...buildExpandedSegmentDetails(segId, wingName, i, root, tip, callbacks));
+  }
+
+  return nodes;
+}
+
 // ── Build nodes for WingConfig mode (segments) ──────────────────
 
 function buildSegmentNodes(
@@ -227,44 +275,7 @@ function buildSegmentNodes(
   // Segments (each segment = pair of consecutive x_secs)
   const segCount = wing.x_secs.length - 1;
   for (let i = 0; i < segCount; i++) {
-    const root = wing.x_secs[i];
-    const tip = wing.x_secs[i + 1];
-    const segId = `${wingName}-seg${i}`;
-    const isSelected = selectedWing === wingName && selectedXsecIndex === i;
-    const segExpanded = expandedSet.has(segId);
-
-    // Insert point before this segment (except before first)
-    if (i > 0 && callbacks.onInsertXsec) {
-      nodes.push({
-        id: `${wingName}-ins-${i}`,
-        label: "insert",
-        level: 2,
-        isInsertPoint: true,
-        onInsert: () => callbacks.onInsertXsec!(wingName, i),
-      });
-    }
-
-    const chipLabel = getChipLabel(root);
-
-    nodes.push({
-      id: segId,
-      label: i === 0 ? `segment ${i} (root)` : `segment ${i}`,
-      level: 2,
-      expanded: segExpanded,
-      selected: isSelected,
-      chip: chipLabel,
-      onClick: () => { callbacks.selectWing(wingName); callbacks.selectXsec(i); },
-      onEdit: callbacks.onEditNode ? () => { callbacks.selectWing(wingName); callbacks.selectXsec(i); callbacks.onEditNode!(); } : undefined,
-      onDelete: callbacks.onDeleteXsec ? () => {
-        if (confirm(`Delete segment ${i}?`)) callbacks.onDeleteXsec(wingName, i);
-      } : undefined,
-      onAdd: buildAddHandler(wingName, i, root, callbacks),
-    });
-
-    // Expanded segment details
-    if (segExpanded) {
-      nodes.push(...buildExpandedSegmentDetails(segId, wingName, i, root, tip, callbacks));
-    }
+    nodes.push(...buildSingleSegmentNodes(ctx, i));
   }
 
   // "+ segment" at the end

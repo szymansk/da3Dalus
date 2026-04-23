@@ -478,6 +478,38 @@ function buildUpdatedSegments(
   });
 }
 
+// ── Fuselage xsec early-return helper (extracted for cognitive complexity) ──
+
+function renderFuselageXsecForm(
+  mode: Mode,
+  selectedFuselage: string | null,
+  selectedFuselageXsecIndex: number | null,
+  fuselage: { x_secs: FuselageXSec[] } | null | undefined,
+  aeroplaneId: string | null,
+  updateFuselageXSec: (idx: number, xsec: FuselageXSec) => Promise<void>,
+  mutateFuselage: () => Promise<unknown>,
+  onGeometryChanged: ((wingName: string) => void) | undefined,
+): React.ReactElement | null {
+  if (mode !== "fuselage" || !selectedFuselage || selectedFuselageXsecIndex === null || !fuselage) {
+    return null;
+  }
+  const fxsec = fuselage.x_secs[selectedFuselageXsecIndex];
+  if (!fxsec) return null;
+  return (
+    <FuselageXSecForm
+      aeroplaneId={aeroplaneId}
+      fuselageName={selectedFuselage}
+      xsecIndex={selectedFuselageXsecIndex}
+      xsec={fxsec}
+      onSave={async (updated) => {
+        await updateFuselageXSec(selectedFuselageXsecIndex, updated);
+        await mutateFuselage();
+        onGeometryChanged?.("");
+      }}
+    />
+  );
+}
+
 // ── Main Component ──────────────────────────────────────────────
 
 export function PropertyForm({ onGeometryChanged }: Readonly<{ onGeometryChanged?: (wingName: string) => void }>) {
@@ -550,25 +582,12 @@ export function PropertyForm({ onGeometryChanged }: Readonly<{ onGeometryChanged
     }
   }, [wingConfig, selectedXsecIndex]);
 
-  // Fuselage xsec mode
-  if (mode === "fuselage" && selectedFuselage && selectedFuselageXsecIndex !== null && fuselage) {
-    const fxsec = fuselage.x_secs[selectedFuselageXsecIndex];
-    if (fxsec) {
-      return (
-        <FuselageXSecForm
-          aeroplaneId={aeroplaneId}
-          fuselageName={selectedFuselage}
-          xsecIndex={selectedFuselageXsecIndex}
-          xsec={fxsec}
-          onSave={async (updated) => {
-            await updateFuselageXSec(selectedFuselageXsecIndex, updated);
-            await mutateFuselage();
-            onGeometryChanged?.("");
-          }}
-        />
-      );
-    }
-  }
+  // Fuselage xsec mode — delegate to dedicated form
+  const fuselageXsecForm = renderFuselageXsecForm(
+    mode, selectedFuselage, selectedFuselageXsecIndex, fuselage,
+    aeroplaneId, updateFuselageXSec, mutateFuselage, onGeometryChanged,
+  );
+  if (fuselageXsecForm) return fuselageXsecForm;
 
   // No segment/xsec selected — nothing to show
   if (selectedXsecIndex === null || !xsec) {
