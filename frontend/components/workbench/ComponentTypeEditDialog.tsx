@@ -162,7 +162,7 @@ export function ComponentTypeEditDialog({
     <>
       <dialog
         ref={dialogRef}
-        className="fixed inset-0 z-[55] flex items-center justify-center bg-transparent backdrop:bg-black/60"
+        className="m-auto bg-transparent backdrop:bg-black/60"
         onClose={handleClose}
         aria-label={heading}
       >
@@ -326,7 +326,7 @@ export function ComponentTypeEditDialog({
 
       <dialog
         ref={confirmDialogRef}
-        className="fixed inset-0 z-[60] flex items-center justify-center bg-transparent backdrop:bg-black/60"
+        className="m-auto bg-transparent backdrop:bg-black/60"
         onClose={closeConfirmDialog}
         aria-label="Confirm delete type"
       >
