@@ -19,12 +19,12 @@ function ParamInput({
   value,
   onChange,
   availableShapeKeys,
-}: {
+}: Readonly<{
   param: CreatorParam;
   value: unknown;
   onChange: (key: string, value: unknown) => void;
   availableShapeKeys: string[];
-}) {
+}>) {
   const rawValue = value ?? param.default ?? "";
   const strValue = typeof rawValue === "object" ? JSON.stringify(rawValue) : String(rawValue);
 
@@ -150,12 +150,12 @@ function ShapeRefInput({
   onChange,
   shapeKeys,
   required,
-}: {
+}: Readonly<{
   value: string;
   onChange: (v: string) => void;
   shapeKeys: string[];
   required: boolean;
-}) {
+}>) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 

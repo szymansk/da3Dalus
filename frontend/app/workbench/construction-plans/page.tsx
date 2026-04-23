@@ -35,6 +35,16 @@ import {
 
 type RightPanel = "gallery" | "detail" | "params";
 
+function rightPanelHeading(
+  panel: RightPanel,
+  creatorForSelected: unknown,
+  browsingCreator: unknown,
+): string {
+  if (panel === "params" && creatorForSelected) return "Parameters";
+  if (panel === "detail" && browsingCreator) return "Creator Info";
+  return "Creator Catalog";
+}
+
 export default function ConstructionPlansPage() {
   const { aeroplaneId } = useAeroplaneContext();
   const { aeroplanes } = useAeroplanes();
@@ -460,11 +470,7 @@ export default function ConstructionPlansPage() {
           <div className="flex items-center gap-2.5">
             <Hammer className="size-5 text-primary" />
             <h1 className="font-[family-name:var(--font-jetbrains-mono)] text-[20px] text-foreground">
-              {rightPanel === "params" && creatorForSelected
-                ? "Parameters"
-                : rightPanel === "detail" && browsingCreator
-                ? "Creator Info"
-                : "Creator Catalog"}
+              {rightPanelHeading(rightPanel, creatorForSelected, browsingCreator)}
             </h1>
             <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
               {rightPanel === "gallery" ? `${creators.length} creators` : ""}
@@ -574,22 +580,7 @@ export default function ConstructionPlansPage() {
 
 // ── Extracted dialog components ──────────────────────────────────
 
-function AddStepDialog({
-  open,
-  addingCreator,
-  addCreatorId,
-  addCreatorIdManual,
-  addStepParams,
-  treeJson,
-  creators,
-  selectedStepPath,
-  onClose,
-  onSetAddingCreator,
-  onSetAddCreatorId,
-  onSetAddCreatorIdManual,
-  onSetAddStepParams,
-  onAddCreator,
-}: {
+interface AddStepDialogProps {
   open: boolean;
   addingCreator: CreatorInfo | null;
   addCreatorId: string;
@@ -603,7 +594,23 @@ function AddStepDialog({
   onSetAddCreatorIdManual: (v: boolean) => void;
   onSetAddStepParams: (p: Record<string, unknown>) => void;
   onAddCreator: (creator: CreatorInfo, creatorId?: string) => void;
-}) {
+}
+
+function AddStepDialog({
+  open,
+  addingCreator,
+  addCreatorId,
+  addCreatorIdManual,
+  addStepParams,
+  treeJson,
+  creators,
+  onClose,
+  onSetAddingCreator,
+  onSetAddCreatorId,
+  onSetAddCreatorIdManual,
+  onSetAddStepParams,
+  onAddCreator,
+}: Readonly<AddStepDialogProps>) {
   if (!open) return null;
 
   return (
@@ -727,6 +734,19 @@ function AddStepDialog({
   );
 }
 
+interface NewPlanDialogProps {
+  open: boolean;
+  newPlanName: string;
+  newPlanFromTemplate: boolean;
+  newPlanTemplateId: number | null;
+  templates: Array<{ id: number; name: string; step_count: number; description?: string | null }>;
+  onClose: () => void;
+  onSetNewPlanName: (v: string) => void;
+  onSetNewPlanFromTemplate: (v: boolean) => void;
+  onSetNewPlanTemplateId: (v: number | null) => void;
+  onSubmit: () => void;
+}
+
 function NewPlanDialog({
   open,
   newPlanName,
@@ -738,18 +758,7 @@ function NewPlanDialog({
   onSetNewPlanFromTemplate,
   onSetNewPlanTemplateId,
   onSubmit,
-}: {
-  open: boolean;
-  newPlanName: string;
-  newPlanFromTemplate: boolean;
-  newPlanTemplateId: number | null;
-  templates: Array<{ id: number; name: string; step_count: number; description?: string | null }>;
-  onClose: () => void;
-  onSetNewPlanName: (v: string) => void;
-  onSetNewPlanFromTemplate: (v: boolean) => void;
-  onSetNewPlanTemplateId: (v: number | null) => void;
-  onSubmit: () => void;
-}) {
+}: Readonly<NewPlanDialogProps>) {
   if (!open) return null;
 
   return (
@@ -853,6 +862,17 @@ function NewPlanDialog({
   );
 }
 
+interface ExecuteDialogProps {
+  open: boolean;
+  executeAeroplaneId: string;
+  executing: boolean;
+  executeResult: ExecutionResult | null;
+  aeroplanes: Array<{ id: string; name: string }>;
+  onClose: () => void;
+  onSetExecuteAeroplaneId: (v: string) => void;
+  onExecute: () => void;
+}
+
 function ExecuteDialog({
   open,
   executeAeroplaneId,
@@ -862,16 +882,7 @@ function ExecuteDialog({
   onClose,
   onSetExecuteAeroplaneId,
   onExecute,
-}: {
-  open: boolean;
-  executeAeroplaneId: string;
-  executing: boolean;
-  executeResult: ExecutionResult | null;
-  aeroplanes: Array<{ id: string; name: string }>;
-  onClose: () => void;
-  onSetExecuteAeroplaneId: (v: string) => void;
-  onExecute: () => void;
-}) {
+}: Readonly<ExecuteDialogProps>) {
   if (!open) return null;
 
   return (
@@ -958,6 +969,15 @@ function ExecuteDialog({
   );
 }
 
+interface CadViewerModalProps {
+  open: boolean;
+  fullscreen: boolean;
+  cadViewerData: Record<string, unknown> | null;
+  executeResult: ExecutionResult | null;
+  onClose: () => void;
+  onToggleFullscreen: () => void;
+}
+
 function CadViewerModal({
   open,
   fullscreen,
@@ -965,14 +985,7 @@ function CadViewerModal({
   executeResult,
   onClose,
   onToggleFullscreen,
-}: {
-  open: boolean;
-  fullscreen: boolean;
-  cadViewerData: Record<string, unknown> | null;
-  executeResult: ExecutionResult | null;
-  onClose: () => void;
-  onToggleFullscreen: () => void;
-}) {
+}: Readonly<CadViewerModalProps>) {
   if (!open || !cadViewerData) return null;
 
   return (

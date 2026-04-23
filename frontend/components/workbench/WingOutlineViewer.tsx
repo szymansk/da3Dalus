@@ -810,26 +810,32 @@ function buildPlotlyLayout() {
   };
 }
 
-/** Collect all traces from visible wings and fuselages. */
-async function collectAllTraces(
-  wings: Wing[], fuselages: Fuselage[],
-  visibleWings: Set<string>, visibleFuselages: Set<string>,
-  selectedWing: string | null, selectedXsecIndex: number | null,
-  selectedFuselage: string | null, selectedFuselageXsecIndex: number | null,
-  showQuarterChord: boolean,
-): Promise<PlotlyData[]> {
+/** Options for collecting all traces from visible wings and fuselages. */
+interface CollectTracesOptions {
+  wings: Wing[];
+  fuselages: Fuselage[];
+  visibleWings: Set<string>;
+  visibleFuselages: Set<string>;
+  selectedWing: string | null;
+  selectedXsecIndex: number | null;
+  selectedFuselage: string | null;
+  selectedFuselageXsecIndex: number | null;
+  showQuarterChord: boolean;
+}
+
+async function collectAllTraces(opts: CollectTracesOptions): Promise<PlotlyData[]> {
   const traces: PlotlyData[] = [];
 
-  for (const wing of wings) {
-    if (!visibleWings.has(wing.name)) continue;
-    const selIdx = selectedWing === wing.name ? selectedXsecIndex : null;
-    const wingTraces = await buildAllWingTraces(wing, selIdx, showQuarterChord);
+  for (const wing of opts.wings) {
+    if (!opts.visibleWings.has(wing.name)) continue;
+    const selIdx = opts.selectedWing === wing.name ? opts.selectedXsecIndex : null;
+    const wingTraces = await buildAllWingTraces(wing, selIdx, opts.showQuarterChord);
     traces.push(...wingTraces);
   }
 
-  for (const fuse of fuselages) {
-    if (!visibleFuselages.has(fuse.name)) continue;
-    const fuseSelIdx = selectedFuselage === fuse.name ? selectedFuselageXsecIndex : null;
+  for (const fuse of opts.fuselages) {
+    if (!opts.visibleFuselages.has(fuse.name)) continue;
+    const fuseSelIdx = opts.selectedFuselage === fuse.name ? opts.selectedFuselageXsecIndex : null;
     traces.push(...buildFuselageTraces(fuse, "#3B82F6", fuseSelIdx));
   }
 
@@ -862,12 +868,14 @@ export function WingOutlineViewer({
       if (disposed) return;
       plotlyRef.current = Plotly;
 
-      const traces = await collectAllTraces(
+      const traces = await collectAllTraces({
         wings, fuselages, visibleWings, visibleFuselages,
-        selectedWing ?? null, selectedXsecIndex ?? null,
-        selectedFuselage ?? null, selectedFuselageXsecIndex ?? null,
+        selectedWing: selectedWing ?? null,
+        selectedXsecIndex: selectedXsecIndex ?? null,
+        selectedFuselage: selectedFuselage ?? null,
+        selectedFuselageXsecIndex: selectedFuselageXsecIndex ?? null,
         showQuarterChord,
-      );
+      });
 
       // Guard: empty scene placeholder to avoid Plotly GL crashes
       if (traces.length === 0) {
