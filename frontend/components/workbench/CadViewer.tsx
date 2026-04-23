@@ -19,7 +19,7 @@ function resolveRefs(
   if (node.shape && typeof node.shape === "object") {
     const s = node.shape as Record<string, unknown>;
     if ("ref" in s && typeof s.ref === "number") {
-      node.shape = instances[s.ref as number];
+      node.shape = instances[s.ref];
     }
   }
   if (Array.isArray(node.parts)) {

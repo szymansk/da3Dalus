@@ -413,7 +413,7 @@ function TrefftzPlaneChart({
       await PlotlyRef.react(node, traces, layout, {
         responsive: true,
         displayModeBar: true,
-        modeBarButtonsToRemove: ["toImage", "sendDataToCloud"] as string[],
+        modeBarButtonsToRemove: ["toImage", "sendDataToCloud"],
       });
     })();
 
