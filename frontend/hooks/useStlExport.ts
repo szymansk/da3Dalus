@@ -29,9 +29,10 @@ async function pollExportStatus(aeroplaneId: string): Promise<void> {
     if (!statusRes.ok) throw new Error(`Status check failed: ${statusRes.status}`);
     const statusData = await statusRes.json();
 
-    if (statusData.status === "SUCCESS") return;
-    if (statusData.status === "FAILURE") {
-      throw new Error(statusData.message || "Export failed");
+    switch (statusData.status) {
+      case "SUCCESS": return;
+      case "FAILURE":
+        throw new Error(statusData.message || "Export failed");
     }
     await new Promise((r) => setTimeout(r, 500));
   }

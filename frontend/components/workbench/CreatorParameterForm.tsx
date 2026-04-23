@@ -54,42 +54,44 @@ function ParamInput({
     );
   }
 
-  if (param.type === "bool") {
-    return (
-      <input
-        type="checkbox"
-        checked={Boolean(value ?? param.default ?? false)}
-        onChange={(e) => onChange(param.name, e.target.checked)}
-        className="size-4"
-      />
-    );
-  }
+  switch (param.type) {
+    case "bool":
+      return (
+        <input
+          type="checkbox"
+          checked={Boolean(value ?? param.default ?? false)}
+          onChange={(e) => onChange(param.name, e.target.checked)}
+          className="size-4"
+        />
+      );
 
-  if (param.type === "int" || param.type === "float") {
-    return (
-      <input
-        type="number"
-        value={strValue}
-        onChange={(e) => {
-          const v = param.type === "int"
-            ? Number.parseInt(e.target.value, 10)
-            : Number.parseFloat(e.target.value);
-          onChange(param.name, Number.isNaN(v) ? null : v);
-        }}
-        step={param.type === "float" ? "any" : "1"}
-        className="rounded-lg border border-border bg-input px-3 py-1.5 text-[12px] text-foreground outline-none"
-      />
-    );
-  }
+    case "int":
+    case "float":
+      return (
+        <input
+          type="number"
+          value={strValue}
+          onChange={(e) => {
+            const v = param.type === "int"
+              ? Number.parseInt(e.target.value, 10)
+              : Number.parseFloat(e.target.value);
+            onChange(param.name, Number.isNaN(v) ? null : v);
+          }}
+          step={param.type === "float" ? "any" : "1"}
+          className="rounded-lg border border-border bg-input px-3 py-1.5 text-[12px] text-foreground outline-none"
+        />
+      );
 
-  return (
-    <input
-      type="text"
-      value={strValue}
-      onChange={(e) => onChange(param.name, e.target.value)}
-      className="rounded-lg border border-border bg-input px-3 py-1.5 text-[12px] text-foreground outline-none"
-    />
-  );
+    default:
+      return (
+        <input
+          type="text"
+          value={strValue}
+          onChange={(e) => onChange(param.name, e.target.value)}
+          className="rounded-lg border border-border bg-input px-3 py-1.5 text-[12px] text-foreground outline-none"
+        />
+      );
+  }
 }
 
 export function CreatorParameterForm({
