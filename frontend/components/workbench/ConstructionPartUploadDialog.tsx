@@ -17,7 +17,7 @@ export function ConstructionPartUploadDialog({
   aeroplaneId,
   onClose,
   onSaved,
-}: ConstructionPartUploadDialogProps) {
+}: Readonly<ConstructionPartUploadDialogProps>) {
   const [name, setName] = useState("");
   const [materialId, setMaterialId] = useState<string>("");
   const [saving, setSaving] = useState(false);

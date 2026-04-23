@@ -19,7 +19,7 @@ interface CreatorGalleryProps {
   onSelect: (creator: CreatorInfo) => void;
 }
 
-export function CreatorGallery({ creators, onSelect }: CreatorGalleryProps) {
+export function CreatorGallery({ creators, onSelect }: Readonly<CreatorGalleryProps>) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<CreatorCategory | null>(null);
 

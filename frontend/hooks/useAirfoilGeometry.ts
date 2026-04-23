@@ -65,9 +65,9 @@ function parseCoordinates(lines: string[]): [number, number][] {
   for (let i = 1; i < lines.length; i++) {
     const parts = lines[i].trim().split(/\s+/);
     if (parts.length < 2) continue;
-    const x = parseFloat(parts[0]);
-    const y = parseFloat(parts[1]);
-    if (!isNaN(x) && !isNaN(y)) coords.push([x, y]);
+    const x = Number.parseFloat(parts[0]);
+    const y = Number.parseFloat(parts[1]);
+    if (!Number.isNaN(x) && !Number.isNaN(y)) coords.push([x, y]);
   }
   return coords;
 }

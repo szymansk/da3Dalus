@@ -31,7 +31,7 @@ interface MenuItemProps {
   onClick: () => void;
 }
 
-function MenuItem({ icon, label, hint, disabled, onClick }: MenuItemProps) {
+function MenuItem({ icon, label, hint, disabled, onClick }: Readonly<MenuItemProps>) {
   return (
     <button
       onClick={disabled ? undefined : onClick}
@@ -62,7 +62,7 @@ export function GroupAddMenu({
   onAssignConstructionPart,
   onClose,
   constructionPartsEnabled = false,
-}: GroupAddMenuProps) {
+}: Readonly<GroupAddMenuProps>) {
   // Picking an action does not also close the menu — the parent is
   // expected to transition state, which implicitly unmounts this menu.
   // The menu closes on Escape via this effect.

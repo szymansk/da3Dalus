@@ -102,7 +102,7 @@ function fromForm(f: FormState): FromFormResult {
 
 export function PropertyEditDialog({
   open, initial, onSave, onCancel,
-}: PropertyEditDialogProps) {
+}: Readonly<PropertyEditDialogProps>) {
   // The parent is responsible for mounting/unmounting the dialog
   // (`{propDialog.open && <PropertyEditDialog key=... />}`) with a key
   // bound to the edit target — that way initial state seeds correctly

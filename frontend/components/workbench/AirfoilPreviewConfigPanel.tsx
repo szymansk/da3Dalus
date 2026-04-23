@@ -84,8 +84,8 @@ function ReynoldsField({
         type="number"
         value={re}
         onChange={(e) => {
-          const v = parseInt(e.target.value, 10);
-          if (!isNaN(v) && v > 0) onReChange(v);
+          const v = Number.parseInt(e.target.value, 10);
+          if (!Number.isNaN(v) && v > 0) onReChange(v);
         }}
         className="w-24 rounded-xl border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />
@@ -113,7 +113,7 @@ export function AirfoilPreviewConfigPanel({
   tipAirfoil,
   onRootAirfoilChange,
   onTipAirfoilChange,
-  isRunning,
+  isRunning: _isRunning,
   segmentIndex,
   segmentCount,
   onSegmentChange,
@@ -131,7 +131,7 @@ export function AirfoilPreviewConfigPanel({
   onSave,
   onRevert,
   onBack,
-}: AirfoilPreviewConfigPanelProps) {
+}: Readonly<AirfoilPreviewConfigPanelProps>) {
   const [showReInfo, setShowReInfo] = useState(false);
   const [velocityDraft, setVelocityDraft] = useState(String(velocity));
   const hasTip = tipAirfoil !== rootAirfoil;
@@ -139,8 +139,8 @@ export function AirfoilPreviewConfigPanel({
   useEffect(() => { setVelocityDraft(String(velocity)); }, [velocity]);
 
   function commitVelocity() {
-    const v = parseFloat(velocityDraft);
-    if (!isNaN(v) && v > 0) onVelocityChange(v);
+    const v = Number.parseFloat(velocityDraft);
+    if (!Number.isNaN(v) && v > 0) onVelocityChange(v);
     else setVelocityDraft(String(velocity));
   }
 

@@ -10,7 +10,7 @@ interface ConfigPanelProps {
   onFuselageSaved?: () => void;
 }
 
-export function ConfigPanel({ aeroplaneId, onGeometryChanged, onFuselageSaved }: ConfigPanelProps) {
+export function ConfigPanel({ aeroplaneId, onGeometryChanged, onFuselageSaved }: Readonly<ConfigPanelProps>) {
   const { mutate: mutateWings } = useWings(aeroplaneId);
 
   return (

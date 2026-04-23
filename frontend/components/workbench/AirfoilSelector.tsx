@@ -26,7 +26,7 @@ export function AirfoilSelector({
   onChange,
   onPreviewToggle,
   stats,
-}: AirfoilSelectorProps) {
+}: Readonly<AirfoilSelectorProps>) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);

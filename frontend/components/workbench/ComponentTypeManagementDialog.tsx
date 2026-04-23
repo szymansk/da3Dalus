@@ -15,7 +15,7 @@ interface ComponentTypeManagementDialogProps {
 
 export function ComponentTypeManagementDialog({
   open, onClose,
-}: ComponentTypeManagementDialogProps) {
+}: Readonly<ComponentTypeManagementDialogProps>) {
   const { types, isLoading, mutate, error } = useComponentTypes();
   const [editTarget, setEditTarget] = useState<{
     open: boolean;

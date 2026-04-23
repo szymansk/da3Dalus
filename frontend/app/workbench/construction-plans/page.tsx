@@ -361,7 +361,7 @@ export default function ConstructionPlansPage() {
             <select
               value={selectedPlanId ?? ""}
               onChange={(e) => {
-                const id = e.target.value ? parseInt(e.target.value, 10) : null;
+                const id = e.target.value ? Number.parseInt(e.target.value, 10) : null;
                 setSelectedPlanId(id);
                 setSelectedStepPath(null);
                 setSelectedStepNode(null);

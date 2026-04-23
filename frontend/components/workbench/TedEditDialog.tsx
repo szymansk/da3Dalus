@@ -21,7 +21,7 @@ interface TedEditDialogProps {
 function optFloat(v: string): number | undefined {
   const trimmed = v.trim();
   if (!trimmed) return undefined;
-  const n = parseFloat(trimmed);
+  const n = Number.parseFloat(trimmed);
   return Number.isFinite(n) ? n : undefined;
 }
 
@@ -34,7 +34,7 @@ export function TedEditDialog({
   isNew,
   initialData,
   onSaved,
-}: TedEditDialogProps) {
+}: Readonly<TedEditDialogProps>) {
   // Core fields
   const [name, setName] = useState("");
   const [hingePoint, setHingePoint] = useState("0.8");
@@ -111,7 +111,7 @@ export function TedEditDialog({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name,
-            rel_chord_root: parseFloat(hingePoint),
+            rel_chord_root: Number.parseFloat(hingePoint),
             symmetric,
           }),
         },
@@ -120,10 +120,10 @@ export function TedEditDialog({
 
       // PATCH cad details
       const cadPayload: Record<string, unknown> = {
-        rel_chord_tip: parseFloat(relChordTip),
+        rel_chord_tip: Number.parseFloat(relChordTip),
         servo_placement: servoPlacement,
-        positive_deflection_deg: parseFloat(posDeg),
-        negative_deflection_deg: parseFloat(negDeg),
+        positive_deflection_deg: Number.parseFloat(posDeg),
+        negative_deflection_deg: Number.parseFloat(negDeg),
         trailing_edge_offset_factor: optFloat(teOffsetFactor),
         hinge_type: hingeType,
       };

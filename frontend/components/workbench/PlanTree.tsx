@@ -86,7 +86,7 @@ export function PlanTree({
   onDeleteStep,
   onAddStep,
   onReorder,
-}: PlanTreeProps) {
+}: Readonly<PlanTreeProps>) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set(["root"]));
 
   const sensors = useSensors(

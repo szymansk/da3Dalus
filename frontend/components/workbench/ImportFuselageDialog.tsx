@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
-import { Upload, X, Check, Loader2, AlertTriangle, Maximize2, Minimize2, Plus, Trash2, Play } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Upload, X, Check, Loader2, Maximize2, Minimize2, Plus, Trash2, Play } from "lucide-react";
 import { API_BASE } from "@/lib/fetcher";
 
 /** Build Plotly Surface3d traces for a fuselage from xsec dicts */
@@ -309,7 +309,7 @@ function CrossSectionSvg({
           min={0}
           max={xsecs.length - 1}
           value={idx}
-          onChange={(e) => setSelectedXsec(parseInt(e.target.value))}
+          onChange={(e) => setSelectedXsec(Number.parseInt(e.target.value))}
           className="flex-1 accent-primary"
         />
         <button
@@ -373,7 +373,7 @@ function XSecParameterEditor({
           <div key={ax} className="flex flex-col gap-0.5">
             <label className="text-[9px] text-muted-foreground">xyz[{ax}]</label>
             <input type="number" step="0.001" value={xsec.xyz[i]}
-              onChange={(e) => update("xyz", parseFloat(e.target.value) || 0, i)}
+              onChange={(e) => update("xyz", Number.parseFloat(e.target.value) || 0, i)}
               className="w-full rounded-xl border border-border bg-input px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground" />
           </div>
         ))}
@@ -382,20 +382,20 @@ function XSecParameterEditor({
         <div className="flex flex-col gap-0.5">
           <label className="text-[9px] text-muted-foreground">a (width/2)</label>
           <input type="number" step="0.001" value={xsec.a}
-            onChange={(e) => update("a", parseFloat(e.target.value) || 0.001)}
+            onChange={(e) => update("a", Number.parseFloat(e.target.value) || 0.001)}
             className="w-full rounded-xl border border-border bg-input px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground" />
         </div>
         <div className="flex flex-col gap-0.5">
           <label className="text-[9px] text-muted-foreground">b (height/2)</label>
           <input type="number" step="0.001" value={xsec.b}
-            onChange={(e) => update("b", parseFloat(e.target.value) || 0.001)}
+            onChange={(e) => update("b", Number.parseFloat(e.target.value) || 0.001)}
             className="w-full rounded-xl border border-border bg-input px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground" />
         </div>
       </div>
       <div className="flex flex-col gap-0.5">
         <label className="text-[9px] text-muted-foreground">n (exponent)</label>
         <input type="number" step="0.1" value={xsec.n}
-          onChange={(e) => update("n", Math.max(0.5, Math.min(10, parseFloat(e.target.value) || 2)))}
+          onChange={(e) => update("n", Math.max(0.5, Math.min(10, Number.parseFloat(e.target.value) || 2)))}
           className="w-full rounded-xl border border-border bg-input px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground" />
       </div>
     </>
@@ -420,7 +420,7 @@ export function ImportFuselageDialog({
   initialXsecs,
   initialName,
   initialSelectedIndex,
-}: ImportFuselageDialogProps) {
+}: Readonly<ImportFuselageDialogProps>) {
   const editMode = !!initialXsecs;
   const [phase, setPhase] = useState<Phase>(editMode ? "preview" : "upload");
   const [fileName, setFileName] = useState<string | null>(null);
@@ -435,7 +435,7 @@ export function ImportFuselageDialog({
   const [xsecsMaximized, setXsecsMaximized] = useState(false);
   const [xsecs, setXsecs] = useState<XSec[]>(initialXsecs ?? INITIAL_XSECS);
   const [selectedXsec, setSelectedXsec] = useState<number | null>(initialSelectedIndex ?? (editMode ? 0 : null));
-  const [zoomScale, setZoomScale] = useState<number | null>(null); // null = auto-fit selected
+  const [_zoomScale, _setZoomScale] = useState<number | null>(null); // null = auto-fit selected
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fidelity, setFidelity] = useState<{ volume_ratio: number; area_ratio: number } | null>(null);
@@ -661,8 +661,8 @@ export function ImportFuselageDialog({
                       value={scaleInput}
                       onChange={(e) => {
                         setScaleInput(e.target.value);
-                        const v = parseFloat(e.target.value);
-                        if (!isNaN(v) && v > 0) setScaleFactor(v);
+                        const v = Number.parseFloat(e.target.value);
+                        if (!Number.isNaN(v) && v > 0) setScaleFactor(v);
                       }}
                       onBlur={() => setScaleInput(String(scaleFactor))}
                       className="w-24 rounded-xl border border-border bg-input px-3 py-2 font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground"
@@ -705,8 +705,8 @@ export function ImportFuselageDialog({
                     value={slicesInput}
                     onChange={(e) => {
                       setSlicesInput(e.target.value);
-                      const v = parseInt(e.target.value, 10);
-                      if (!isNaN(v) && v >= 2 && v <= 500) setSlices(v);
+                      const v = Number.parseInt(e.target.value, 10);
+                      if (!Number.isNaN(v) && v >= 2 && v <= 500) setSlices(v);
                     }}
                     onBlur={() => setSlicesInput(String(slices))}
                     className="w-20 rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"

@@ -39,8 +39,8 @@ function applyOptionalVec3(
 
 function num(v: string, fallback = 0): number {
   if (v === "" || v === "-" || v === ".") return fallback;
-  const n = parseFloat(v);
-  return isNaN(n) ? fallback : n;
+  const n = Number.parseFloat(v);
+  return Number.isNaN(n) ? fallback : n;
 }
 
 export function SparEditDialog({
@@ -52,7 +52,7 @@ export function SparEditDialog({
   sparIndex,
   initialData,
   onSaved,
-}: SparEditDialogProps) {
+}: Readonly<SparEditDialogProps>) {
   const isNew = sparIndex === undefined;
 
   const [posFactor, setPosFactor] = useState("25");

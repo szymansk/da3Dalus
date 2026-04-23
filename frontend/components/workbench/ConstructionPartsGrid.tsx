@@ -29,7 +29,7 @@ interface ConfirmModalProps {
   onCancel: () => void;
 }
 
-function ConfirmModal({ title, body, onConfirm, onCancel }: ConfirmModalProps) {
+function ConfirmModal({ title, body, onConfirm, onCancel }: Readonly<ConfirmModalProps>) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
@@ -65,7 +65,7 @@ function ConfirmModal({ title, body, onConfirm, onCancel }: ConfirmModalProps) {
 export function ConstructionPartsGrid({
   aeroplaneId,
   onRequestUpload,
-}: ConstructionPartsGridProps) {
+}: Readonly<ConstructionPartsGridProps>) {
   const { parts, total, isLoading, mutate } = useConstructionParts(aeroplaneId);
   const [pendingDelete, setPendingDelete] = useState<ConstructionPart | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronRight, Eye } from "lucide-react";
+import { ChevronDown, Eye } from "lucide-react";
 import { AirfoilSelector } from "./AirfoilSelector";
 import { useAeroplaneContext } from "./AeroplaneContext";
 import { useUnsavedChanges } from "./UnsavedChangesContext";
@@ -12,13 +12,12 @@ import type { WingConfigSegment } from "@/hooks/useWingConfig";
 import { useFuselage, type FuselageXSec } from "@/hooks/useFuselage";
 import { ImportFuselageDialog } from "./ImportFuselageDialog";
 import { Box } from "lucide-react";
-import { API_BASE } from "@/lib/fetcher";
 
 /** Parse a number input string, allowing empty/partial input during editing */
 function num(v: string, fallback = 0): number {
   if (v === "" || v === "-" || v === ".") return fallback;
-  const n = parseFloat(v);
-  return isNaN(n) ? fallback : n;
+  const n = Number.parseFloat(v);
+  return Number.isNaN(n) ? fallback : n;
 }
 
 // ── Types ───────────────────────────────────────────────────────
@@ -749,10 +748,10 @@ function FuselageXSecForm({
     setError(null);
     try {
       await onSave({
-        xyz: [parseFloat(xyz0) || 0, parseFloat(xyz1) || 0, parseFloat(xyz2) || 0],
-        a: parseFloat(a) || 0.001,
-        b: parseFloat(b) || 0.001,
-        n: Math.max(0.5, Math.min(10, parseFloat(n) || 2)),
+        xyz: [Number.parseFloat(xyz0) || 0, Number.parseFloat(xyz1) || 0, Number.parseFloat(xyz2) || 0],
+        a: Number.parseFloat(a) || 0.001,
+        b: Number.parseFloat(b) || 0.001,
+        n: Math.max(0.5, Math.min(10, Number.parseFloat(n) || 2)),
       });
       setDirty(false);
     } catch (err) {

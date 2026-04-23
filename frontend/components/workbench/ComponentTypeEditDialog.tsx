@@ -39,7 +39,7 @@ const SNAKE_CASE = /^[a-z][a-z0-9_]*$/;
 
 export function ComponentTypeEditDialog({
   open, type, onClose, onSaved,
-}: ComponentTypeEditDialogProps) {
+}: Readonly<ComponentTypeEditDialogProps>) {
   const [form, setForm] = useState<TypeFormState>(toForm(type));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);

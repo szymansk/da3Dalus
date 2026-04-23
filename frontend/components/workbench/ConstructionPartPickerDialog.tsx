@@ -25,7 +25,7 @@ export function ConstructionPartPickerDialog({
   onClose,
   onSelect,
   targetGroupName,
-}: ConstructionPartPickerDialogProps) {
+}: Readonly<ConstructionPartPickerDialogProps>) {
   const [search, setSearch] = useState("");
   const { parts, total, isLoading } = useConstructionParts(open ? aeroplaneId : null);
 

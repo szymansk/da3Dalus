@@ -194,7 +194,7 @@ interface NewGroupInputProps {
   onCancel: () => void;
 }
 
-function NewGroupInput({ onSubmit, onCancel }: NewGroupInputProps) {
+function NewGroupInput({ onSubmit, onCancel }: Readonly<NewGroupInputProps>) {
   const [value, setValue] = useState("");
 
   function trySubmit() {
@@ -245,7 +245,7 @@ interface ComponentTreeProps {
 export function ComponentTree({
   onNodeSelected,
   onNodeEditRequested,
-}: ComponentTreeProps = {}) {
+}: Readonly<ComponentTreeProps> = {}) {
   const { aeroplaneId } = useAeroplaneContext();
   const { tree, mutate } = useComponentTree(aeroplaneId);
   const { aeroplanes } = useAeroplanes();

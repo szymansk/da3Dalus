@@ -7,7 +7,7 @@ export function getStepAtPath(tree: PlanStepNode, path: string): PlanStepNode | 
   const parts = path.replace("root.", "").split(".");
   let current: PlanStepNode = tree;
   for (const part of parts) {
-    const idx = parseInt(part, 10);
+    const idx = Number.parseInt(part, 10);
     if (!current.successors || !current.successors[idx]) return null;
     current = current.successors[idx];
   }
@@ -18,7 +18,7 @@ export function getStepAtPath(tree: PlanStepNode, path: string): PlanStepNode | 
 export function deleteStepAtPath(tree: PlanStepNode, path: string): PlanStepNode {
   if (path === "root") return { ...tree, successors: [] };
   const parts = path.replace("root.", "").split(".");
-  const lastIdx = parseInt(parts[parts.length - 1], 10);
+  const lastIdx = Number.parseInt(parts[parts.length - 1], 10);
   const parentPath = parts.slice(0, -1);
 
   function navigate(node: PlanStepNode, remaining: string[]): PlanStepNode {
@@ -27,7 +27,7 @@ export function deleteStepAtPath(tree: PlanStepNode, path: string): PlanStepNode
       newSuccessors.splice(lastIdx, 1);
       return { ...node, successors: newSuccessors };
     }
-    const idx = parseInt(remaining[0], 10);
+    const idx = Number.parseInt(remaining[0], 10);
     const newSuccessors = [...(node.successors ?? [])];
     newSuccessors[idx] = navigate(newSuccessors[idx], remaining.slice(1));
     return { ...node, successors: newSuccessors };
@@ -46,7 +46,7 @@ export function insertStepAtPath(
     return { ...tree, successors: [...(tree.successors ?? []), step] };
   }
   const parts = path.replace("root.", "").split(".");
-  const insertIdx = parseInt(parts[parts.length - 1], 10) + 1;
+  const insertIdx = Number.parseInt(parts[parts.length - 1], 10) + 1;
   const parentParts = parts.slice(0, -1);
 
   function navigate(node: PlanStepNode, remaining: string[]): PlanStepNode {
@@ -55,7 +55,7 @@ export function insertStepAtPath(
       newSuccessors.splice(insertIdx, 0, step);
       return { ...node, successors: newSuccessors };
     }
-    const idx = parseInt(remaining[0], 10);
+    const idx = Number.parseInt(remaining[0], 10);
     const newSuccessors = [...(node.successors ?? [])];
     newSuccessors[idx] = navigate(newSuccessors[idx], remaining.slice(1));
     return { ...node, successors: newSuccessors };
@@ -72,7 +72,7 @@ export function updateNodeAtPath(
 ): PlanStepNode {
   if (path === "root") return updatedNode;
   const parts = path.replace("root.", "").split(".");
-  const idx = parseInt(parts[0], 10);
+  const idx = Number.parseInt(parts[0], 10);
   const rest = parts.slice(1).join(".");
   const newSuccessors = [...(tree.successors ?? [])];
   newSuccessors[idx] = rest
@@ -133,8 +133,8 @@ export function computeReorderTargetPath(fromPath: string, toPath: string): stri
   const toParent = toParts.slice(0, -1).join(".");
   if (fromParent !== toParent) return toPath;
 
-  const fromIdx = parseInt(fromParts[fromParts.length - 1], 10);
-  const toIdx = parseInt(toParts[toParts.length - 1], 10);
+  const fromIdx = Number.parseInt(fromParts[fromParts.length - 1], 10);
+  const toIdx = Number.parseInt(toParts[toParts.length - 1], 10);
   if (fromIdx < toIdx) {
     const adjusted = [...toParts];
     adjusted[adjusted.length - 1] = String(toIdx - 1);

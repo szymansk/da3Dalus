@@ -27,7 +27,7 @@ export function StreamlinesViewer({ aeroplaneId }: { aeroplaneId: string | null 
       if (disposed || !plotContainerRef.current) return;
 
       const figData = figure as { data?: unknown[]; layout?: Record<string, unknown> };
-      const sceneFromLayout = (figData.layout?.scene as Record<string, unknown>) || {};
+      const sceneFromLayout = (figData.layout?.scene as Record<string, unknown>) ?? {};
 
       // Dark theme overrides
       const layout = {
@@ -67,7 +67,7 @@ export function StreamlinesViewer({ aeroplaneId }: { aeroplaneId: string | null 
           <input
             type="number"
             value={params.velocity}
-            onChange={(e) => setParams((p) => ({ ...p, velocity: parseFloat(e.target.value) || 0 }))}
+            onChange={(e) => setParams((p) => ({ ...p, velocity: Number.parseFloat(e.target.value) || 0 }))}
             className="w-24 rounded-xl border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
           />
         </div>
@@ -78,7 +78,7 @@ export function StreamlinesViewer({ aeroplaneId }: { aeroplaneId: string | null 
           <input
             type="number"
             value={params.alpha}
-            onChange={(e) => setParams((p) => ({ ...p, alpha: parseFloat(e.target.value) || 0 }))}
+            onChange={(e) => setParams((p) => ({ ...p, alpha: Number.parseFloat(e.target.value) || 0 }))}
             className="w-20 rounded-xl border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
           />
         </div>
@@ -89,7 +89,7 @@ export function StreamlinesViewer({ aeroplaneId }: { aeroplaneId: string | null 
           <input
             type="number"
             value={params.beta}
-            onChange={(e) => setParams((p) => ({ ...p, beta: parseFloat(e.target.value) || 0 }))}
+            onChange={(e) => setParams((p) => ({ ...p, beta: Number.parseFloat(e.target.value) || 0 }))}
             className="w-20 rounded-xl border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
           />
         </div>
@@ -100,7 +100,7 @@ export function StreamlinesViewer({ aeroplaneId }: { aeroplaneId: string | null 
           <input
             type="number"
             value={params.altitude}
-            onChange={(e) => setParams((p) => ({ ...p, altitude: parseFloat(e.target.value) || 0 }))}
+            onChange={(e) => setParams((p) => ({ ...p, altitude: Number.parseFloat(e.target.value) || 0 }))}
             className="w-24 rounded-xl border border-border bg-input px-2 py-1.5 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
           />
         </div>

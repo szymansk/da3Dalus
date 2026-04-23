@@ -13,7 +13,7 @@ interface ActionRowProps {
   onFuselageSaved?: () => void;
 }
 
-export function ActionRow({ aeroplaneId, onWingCreated, onFuselageSaved }: ActionRowProps) {
+export function ActionRow({ aeroplaneId, onWingCreated, onFuselageSaved }: Readonly<ActionRowProps>) {
   const ctx = useAeroplaneContext();
   const { mutate: mutateWings } = useWings(aeroplaneId);
   const [importDialogOpen, setImportDialogOpen] = useState(false);

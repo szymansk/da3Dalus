@@ -30,7 +30,7 @@ export function CotsPickerDialog({
   onClose,
   onSelect,
   targetGroupName,
-}: CotsPickerDialogProps) {
+}: Readonly<CotsPickerDialogProps>) {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("");
   const { components, total, isLoading } = useComponents(

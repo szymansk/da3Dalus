@@ -6,7 +6,7 @@ interface WorkbenchTwoPanelProps {
   className?: string;
 }
 
-export function WorkbenchTwoPanel({ leftWidth = 360, children, className }: WorkbenchTwoPanelProps) {
+export function WorkbenchTwoPanel({ leftWidth = 360, children, className }: Readonly<WorkbenchTwoPanelProps>) {
   const childArray = React.Children.toArray(children);
   return (
     <div className={`flex h-full min-h-0 flex-1 gap-4 overflow-hidden${className ? ` ${className}` : ""}`}>

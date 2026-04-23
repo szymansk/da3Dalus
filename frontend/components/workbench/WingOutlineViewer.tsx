@@ -90,7 +90,7 @@ function lerpProfile(
 }
 
 /** Interpolate camber lines similarly. */
-function lerpCamber(
+function _lerpCamber(
   a: AirfoilCoords, b: AirfoilCoords, t: number, nPts = 40,
 ): { x: number[]; y: number[] } {
   const xs: number[] = [], ys: number[] = [];
@@ -746,7 +746,7 @@ function buildPlotlyLayout() {
     }, {
       type: "buttons",
       direction: "left",
-      x: 0.0,
+      x: 0,
       y: 1.05,
       xanchor: "left",
       yanchor: "bottom",
@@ -802,7 +802,7 @@ export function WingOutlineViewer({
   wings, fuselages, visibleWings, visibleFuselages,
   selectedXsecIndex = null, selectedWing = null,
   selectedFuselage = null, selectedFuselageXsecIndex = null,
-}: WingOutlineViewerProps) {
+}: Readonly<WingOutlineViewerProps>) {
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const plotlyRef = useRef<any>(null);

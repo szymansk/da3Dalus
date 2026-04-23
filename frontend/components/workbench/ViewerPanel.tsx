@@ -17,7 +17,7 @@ interface ViewerPanelProps {
   onExpandTree?: () => void;
 }
 
-export function ViewerPanel({ visibleParts, isAnyLoading, loadingWing, isMaximized, onToggleMaximize, isTreeCollapsed, onExpandTree }: ViewerPanelProps) {
+export function ViewerPanel({ visibleParts, isAnyLoading, loadingWing, isMaximized, onToggleMaximize, isTreeCollapsed, onExpandTree }: Readonly<ViewerPanelProps>) {
   const [activeStage, setActiveStage] = useState<Stage>("Bare Aero");
 
   return (

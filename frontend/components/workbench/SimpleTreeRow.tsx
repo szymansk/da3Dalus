@@ -37,7 +37,7 @@ interface SimpleTreeRowProps {
   onToggle: () => void;
 }
 
-export function SimpleTreeRow({ node, onToggle }: SimpleTreeRowProps) {
+export function SimpleTreeRow({ node, onToggle }: Readonly<SimpleTreeRowProps>) {
   const indent = node.level * 20;
 
   // dnd-kit hooks: each row is BOTH draggable (source) and droppable (target).
