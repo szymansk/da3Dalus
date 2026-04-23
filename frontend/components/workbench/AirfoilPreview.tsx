@@ -12,7 +12,7 @@ const AIRFOIL_LOWER =
 
 /* Static bar data for CL vs alpha */
 const CL_BARS = [
-  0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.74, 0.82, 0.90, 0.97, 1.04, 1.08, 0.85,
+  0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.74, 0.82, 0.9, 0.97, 1.04, 1.08, 0.85,
 ];
 
 /* Static bar data for CL/CD vs alpha */

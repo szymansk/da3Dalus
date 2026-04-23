@@ -26,7 +26,7 @@ function ParamInput({
   availableShapeKeys: string[];
 }>) {
   const rawValue = value ?? param.default ?? "";
-  const strValue = typeof rawValue === "object" ? JSON.stringify(rawValue) : String(rawValue);
+  const strValue = typeof rawValue === "object" ? JSON.stringify(rawValue) : String(rawValue as string | number | boolean);
 
   if (param.is_shape_ref && availableShapeKeys.length > 0) {
     return (

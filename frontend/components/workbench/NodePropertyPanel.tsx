@@ -90,11 +90,8 @@ function ConfirmModal({ title, body, onConfirm, onCancel }: Readonly<ConfirmModa
   return (
     <dialog
       ref={dialogRef}
-      role="dialog"
       className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
-      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape") handleClose(); }}
       aria-label={title}
     >
       <div className="flex w-[420px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl">
@@ -189,8 +186,9 @@ function MaterialSelect({
       >
         <option value="">No material selected</option>
         {materials.map((m) => {
-          const density = (m.specs as Record<string, unknown>)?.["density_kg_m3"];
-          const label = density ? `${m.name} (${String(density)} kg/m³)` : m.name;
+          const rawDensity = m.specs?.["density_kg_m3"];
+          const density = typeof rawDensity === "number" || typeof rawDensity === "string" ? rawDensity : undefined;
+          const label = density != null ? `${m.name} (${String(density)} kg/m³)` : m.name;
           return (
             <option key={m.id} value={String(m.id)}>{label}</option>
           );
@@ -326,11 +324,8 @@ export function NodePropertyPanel({
   return (
     <dialog
       ref={dialogRef}
-      role="dialog"
       className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={dialogHandleClose}
-      onClick={(e) => { if (e.target === e.currentTarget) dialogHandleClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape") dialogHandleClose(); }}
       aria-label="Edit tree node"
     >
     <div

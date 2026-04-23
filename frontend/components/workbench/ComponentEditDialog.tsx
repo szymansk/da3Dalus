@@ -18,14 +18,14 @@ interface ComponentEditDialogProps {
 }
 
 /** Default value inserted when a type is selected and specs don't already have the key. */
-function defaultForProp(prop: PropertyDefinition): unknown {
-  if (prop.default != null) return prop.default;
+function defaultForProp(prop: PropertyDefinition): SpecValue {
+  if (prop.default != null) return prop.default as SpecValue;
   if (prop.type === "boolean") return false;
   return "";
 }
 
 /** Parse a user-entered string back into the property's declared type. */
-function parseValue(prop: PropertyDefinition, raw: unknown): unknown {
+function parseValue(prop: PropertyDefinition, raw: SpecValue): SpecValue {
   if (raw === "" || raw == null) return undefined;
   switch (prop.type) {
     case "number": {
@@ -34,9 +34,9 @@ function parseValue(prop: PropertyDefinition, raw: unknown): unknown {
     }
     case "boolean":
       if (typeof raw === "boolean") return raw;
-      return raw === "true" || raw === true;
+      return raw === "true";
     default:
-      return typeof raw === "object" ? JSON.stringify(raw) : String(raw);
+      return String(raw);
   }
 }
 
@@ -56,7 +56,7 @@ function validateNumberRange(prop: PropertyDefinition, n: number): ValidationRes
   return null;
 }
 
-function validateProp(prop: PropertyDefinition, raw: unknown): ValidationResult | null {
+function validateProp(prop: PropertyDefinition, raw: SpecValue): ValidationResult | null {
   const parsed = parseValue(prop, raw);
   if (prop.required && (parsed === undefined || parsed === "")) {
     return fail(prop, `${prop.label} (${prop.name}) is required.`);
@@ -77,7 +77,7 @@ function validateProp(prop: PropertyDefinition, raw: unknown): ValidationResult 
 
 function validate(
   schema: PropertyDefinition[],
-  specs: Record<string, unknown>,
+  specs: Record<string, SpecValue>,
 ): ValidationResult {
   for (const prop of schema) {
     const err = validateProp(prop, specs[prop.name]);
@@ -104,8 +104,8 @@ export function ComponentEditDialog({
   const [massG, setMassG] = useState(
     component?.mass_g == null ? "" : String(component.mass_g),
   );
-  const [specs, setSpecs] = useState<Record<string, unknown>>(
-    { ...(component?.specs) },
+  const [specs, setSpecs] = useState<Record<string, SpecValue>>(
+    { ...(component?.specs as Record<string, SpecValue>) },
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -133,7 +133,7 @@ export function ComponentEditDialog({
     });
   }
 
-  function setSpec(propName: string, value: unknown) {
+  function setSpec(propName: string, value: SpecValue) {
     setSpecs((prev) => ({ ...prev, [propName]: value }));
   }
 
@@ -194,11 +194,8 @@ export function ComponentEditDialog({
   return (
     <dialog
       ref={dialogRef}
-      role="dialog"
       className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
-      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape") handleClose(); }}
       aria-label={isEdit ? "Edit Component" : "New Component"}
     >
       <div className="flex max-h-[85vh] w-[520px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl">
@@ -344,15 +341,16 @@ export function ComponentEditDialog({
 // SpecField — renders a single property-schema entry as the right input type.
 // --------------------------------------------------------------------------- //
 
+type SpecValue = string | number | boolean | null | undefined;
+
 interface SpecFieldProps {
   prop: PropertyDefinition;
-  value: unknown;
-  onChange: (v: unknown) => void;
+  value: SpecValue;
+  onChange: (v: SpecValue) => void;
 }
 
-function selectValueToString(value: unknown): string {
+function selectValueToString(value: SpecValue): string {
   if (value == null) return "";
-  if (typeof value === "object") return JSON.stringify(value);
   return String(value);
 }
 

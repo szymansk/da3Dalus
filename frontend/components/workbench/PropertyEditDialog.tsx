@@ -5,9 +5,8 @@ import { Check, X } from "lucide-react";
 import type { PropertyDefinition, PropertyType } from "@/hooks/useComponentTypes";
 import { useDialog } from "@/hooks/useDialog";
 
-function toDisplayString(value: unknown): string {
+function toDisplayString(value: string | number | boolean | null | undefined): string {
   if (value == null) return "";
-  if (typeof value === "object") return JSON.stringify(value);
   return String(value);
 }
 
@@ -52,7 +51,7 @@ function toForm(prop: PropertyDefinition | null): FormState {
     min: prop.min == null ? "" : String(prop.min),
     max: prop.max == null ? "" : String(prop.max),
     optionsCsv: (prop.options ?? []).join(", "),
-    defaultStr: toDisplayString(prop.default),
+    defaultStr: toDisplayString(prop.default as string | number | boolean | null | undefined),
   };
 }
 
@@ -135,11 +134,8 @@ export function PropertyEditDialog({
   return (
     <dialog
       ref={dialogRef}
-      role="dialog"
       className="fixed inset-0 z-[60] flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
-      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape") handleClose(); }}
       aria-label={initial ? "Edit Property" : "New Property"}
     >
       <div className="flex w-[440px] flex-col gap-3 rounded-2xl border border-border bg-card p-5 shadow-2xl">

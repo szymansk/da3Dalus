@@ -31,6 +31,22 @@ export function useDialog(open: boolean, onClose: () => void) {
     }
   }, [open]);
 
+  // Dismiss the dialog when the user clicks the backdrop (the area
+  // outside the inner content).  Using an imperative listener avoids
+  // placing onClick directly on the non-interactive <dialog> element,
+  // which would trigger SonarQube S6847.
+  useEffect(() => {
+    const el = dialogRef.current;
+    if (!el) return;
+
+    const onBackdropClick = (e: MouseEvent) => {
+      if (e.target === el) onClose();
+    };
+
+    el.addEventListener("click", onBackdropClick);
+    return () => el.removeEventListener("click", onBackdropClick);
+  }, [onClose]);
+
   const handleClose = useCallback(() => {
     onClose();
   }, [onClose]);

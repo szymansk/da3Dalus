@@ -648,11 +648,8 @@ function AddStepDialog({
   return (
     <dialog
       ref={dialogRef}
-      role="dialog"
       className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
-      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape") handleClose(); }}
       aria-label={addingCreator ? `Add ${addingCreator.class_name}` : "Add Step"}
     >
       {open && (
@@ -795,11 +792,8 @@ function NewPlanDialog({
   return (
     <dialog
       ref={dialogRef}
-      role="dialog"
       className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
-      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape") handleClose(); }}
       aria-label="New Plan"
     >
       {open && (
@@ -918,11 +912,8 @@ function ExecuteDialog({
   return (
     <dialog
       ref={dialogRef}
-      role="dialog"
       className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
-      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape") handleClose(); }}
       aria-label="Execute Plan"
     >
       {open && (
@@ -1022,11 +1013,8 @@ function CadViewerModal({
   return (
     <dialog
       ref={dialogRef}
-      role="dialog"
       className={`fixed inset-0 z-50 flex items-center justify-center bg-transparent ${fullscreen ? "backdrop:bg-transparent" : "backdrop:bg-black/60"}`}
       onClose={handleClose}
-      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape") handleClose(); }}
       aria-label="Execution Result"
     >
       <div

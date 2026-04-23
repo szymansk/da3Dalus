@@ -301,14 +301,13 @@ function buildTEDTraces(ctx: WingTraceCtx): PlotlyData[] {
   for (let i = 0; i < xsecs.length; i++) {
     const ted = xsecs[i].trailing_edge_device ?? xsecs[i].control_surface;
     if (!ted) continue;
-    const tedRec = ted as Record<string, unknown>;
-    const relChord = tedRec.rel_chord_root as number | undefined;
+    const relChord = ted.rel_chord_root as number | undefined;
     if (relChord == null) continue;
 
     const nextI = Math.min(i + 1, xsecs.length - 1);
     const nextTed = xsecs[nextI]?.trailing_edge_device ?? xsecs[nextI]?.control_surface;
     const nextRelChord = nextTed
-      ? ((nextTed as Record<string, unknown>).rel_chord_tip as number ?? relChord)
+      ? (nextTed.rel_chord_tip as number ?? relChord)
       : relChord;
 
     const h1 = transformProfile([relChord], [0], xsecs[i].chord, xsecs[i].twist, xsecs[i].xyz_le, dihedrals[i]);

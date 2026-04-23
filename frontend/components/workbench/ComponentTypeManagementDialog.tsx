@@ -48,11 +48,8 @@ export function ComponentTypeManagementDialog({
     <>
       <dialog
         ref={dialogRef}
-        role="dialog"
         className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
         onClose={handleClose}
-        onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape") handleClose(); }}
         aria-label="Manage Component Types"
       >
         <div className="flex w-[640px] max-h-[85vh] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl">

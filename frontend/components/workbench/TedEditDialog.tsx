@@ -19,11 +19,12 @@ interface TedEditDialogProps {
   onSaved: () => void;
 }
 
-/** Safely convert an unknown value to a string, avoiding [object Object]. */
+/** Safely convert a value to a string, avoiding [object Object]. */
 function safeStr(v: unknown, fallback = ""): string {
   if (v == null) return fallback;
-  if (typeof v === "object") return JSON.stringify(v);
-  return String(v);
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  return JSON.stringify(v);
 }
 
 function optFloat(v: string): number | undefined {
@@ -194,11 +195,8 @@ export function TedEditDialog({
   return (
     <dialog
       ref={dialogRef}
-      role="dialog"
       className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
-      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape") handleClose(); }}
       aria-label={isNew ? "Add Control Surface" : "Edit Control Surface"}
     >
       <div className="flex max-h-[85vh] w-[480px] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl">
