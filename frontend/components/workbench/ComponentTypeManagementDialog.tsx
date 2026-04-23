@@ -85,7 +85,7 @@ export function ComponentTypeManagementDialog({
         <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto">
           {error ? (
             <div className="rounded-xl border border-destructive bg-destructive/10 p-3 text-[12px] text-destructive">
-              Failed to load types: {String((error as Error).message ?? error)}
+              Failed to load types: {error instanceof Error ? error.message : String(error)}
               <p className="mt-2 text-[11px] opacity-70">
                 Make sure the backend exposes <code>/component-types</code>
                 {" "}(landed in PR #86).

@@ -122,7 +122,7 @@ function FuselagePreview3D({ xsecs, selectedXsec }: Readonly<{ xsecs: XSec[]; se
         {
           responsive: true,
           displayModeBar: true,
-          modeBarButtonsToRemove: ["toImage", "sendDataToCloud"] as string[],
+          modeBarButtonsToRemove: ["toImage", "sendDataToCloud"],
         },
       );
 

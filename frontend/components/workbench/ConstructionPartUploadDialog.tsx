@@ -141,7 +141,7 @@ export function ConstructionPartUploadDialog({
             >
               <option value="">No material selected</option>
               {materials.map((m) => {
-                const density = (m.specs as Record<string, unknown>)?.["density_kg_m3"];
+                const density = m.specs?.["density_kg_m3"];
                 const label = density
                   ? `${m.name} (${density} kg/m³)`
                   : m.name;

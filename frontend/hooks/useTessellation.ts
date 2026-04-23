@@ -67,16 +67,14 @@ async function pollTessellation(
     if (!statusRes.ok) throw new Error(`Status check failed: ${statusRes.status}`);
     const statusData = await statusRes.json();
 
-    switch (statusData.status) {
-      case "SUCCESS": {
-        const tessResult = statusData.result;
-        if (!tessResult || !tessResult.data) {
-          throw new Error("Tessellation result has no data");
-        }
-        return tessResult;
+    if (statusData.status === "SUCCESS") {
+      const tessResult = statusData.result;
+      if (!tessResult || !tessResult.data) {
+        throw new Error("Tessellation result has no data");
       }
-      case "FAILURE":
-        throw new Error(statusData.message || "Tessellation failed");
+      return tessResult;
+    } else if (statusData.status === "FAILURE") {
+      throw new Error(statusData.message || "Tessellation failed");
     }
     await new Promise((r) => setTimeout(r, 500));
   }
