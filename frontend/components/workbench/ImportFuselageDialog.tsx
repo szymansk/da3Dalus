@@ -407,7 +407,7 @@ const INITIAL_XSECS: XSec[] = Array.from({ length: 50 }, (_, i) => ({
   xyz: [i * 0.008, 0, 0],
   a: 0.005 + 0.04 * Math.sin((i / 49) * Math.PI),
   b: 0.005 + 0.03 * Math.sin((i / 49) * Math.PI),
-  n: 2.0 + 0.5 * Math.sin((i / 49) * Math.PI),
+  n: 2 + 0.5 * Math.sin((i / 49) * Math.PI),
 }));
 
 /** Transform raw sliced xsecs by applying scale and optional X-flip. */
@@ -515,7 +515,7 @@ export function ImportFuselageDialog({
   const [slices, setSlices] = useState(50);
   const [slicesInput, setSlicesInput] = useState("50");
   const [axis, setAxis] = useState("auto");
-  const [scaleFactor, setScaleFactor] = useState(1.0);
+  const [scaleFactor, setScaleFactor] = useState(1);
   const [scaleInput, setScaleInput] = useState("1");
   const [flipX, setFlipX] = useState(false);
   const [fuselageName, setFuselageName] = useState(initialName ?? "Imported Fuselage");
@@ -586,7 +586,7 @@ export function ImportFuselageDialog({
     setSlices(50);
     setSlicesInput("50");
     setAxis("auto");
-    setScaleFactor(1.0);
+    setScaleFactor(1);
     setScaleInput("1");
     setFlipX(false);
     setFuselageName(initialName ?? "Imported Fuselage");

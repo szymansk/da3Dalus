@@ -37,7 +37,7 @@ function preparePartShapes(part: PartData): Record<string, unknown> | null {
   if (!shapes) return null;
   const copy = structuredClone(shapes);
   const instances = part?.data?.instances;
-  if (instances && Array.isArray(instances)) {
+  if (Array.isArray(instances)) {
     resolveRefs(copy, instances);
   }
   return copy;
@@ -111,12 +111,12 @@ export function CadViewer({ parts }: Readonly<CadViewerProps>) {
         viewerRef.current = viewer;
 
         const renderOptions = {
-          ambientIntensity: 1.0,
+          ambientIntensity: 1,
           directIntensity: 1.1,
           metalness: 0.3,
           roughness: 0.65,
           edgeColor: 0x707070,
-          defaultOpacity: 1.0,
+          defaultOpacity: 1,
         };
 
         // Extract shapes from the first part and render it (initializes the scene)

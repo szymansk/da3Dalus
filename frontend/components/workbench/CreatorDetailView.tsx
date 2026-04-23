@@ -105,7 +105,7 @@ export function CreatorDetailView({ creator, onBack }: Readonly<CreatorDetailVie
                     {param.description}
                   </p>
                 )}
-                {param.options && param.options.length > 0 && (
+                {(param.options?.length ?? 0) > 0 && (
                   <div className="flex flex-wrap gap-1 mt-0.5">
                     {param.options.map((opt) => (
                       <span

@@ -39,7 +39,7 @@ function ParamInput({
     );
   }
 
-  if (param.options && param.options.length > 0) {
+  if ((param.options?.length ?? 0) > 0) {
     return (
       <select
         value={strValue}

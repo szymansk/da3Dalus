@@ -165,18 +165,20 @@ function buildExpandedSegmentDetails(
   const length = (Math.abs(tip.xyz_le[1] - root.xyz_le[1]) * 1000).toFixed(1);
   const sweep = ((tip.xyz_le[0] - root.xyz_le[0]) * 1000).toFixed(1);
 
-  nodes.push({
-    id: `${segId}-root`, label: `root: ${airfoilShort(root.airfoil)} · ${rootChord} mm`,
-    level: 3, leaf: true, muted: true,
-  });
-  nodes.push({
-    id: `${segId}-tip`, label: `tip: ${airfoilShort(tip.airfoil)} · ${tipChord} mm`,
-    level: 3, leaf: true, muted: true,
-  });
-  nodes.push({
-    id: `${segId}-dims`, label: `length ${length} mm · sweep ${sweep} mm`,
-    level: 3, leaf: true, muted: true, mono: true,
-  });
+  nodes.push(
+    {
+      id: `${segId}-root`, label: `root: ${airfoilShort(root.airfoil)} · ${rootChord} mm`,
+      level: 3, leaf: true, muted: true,
+    },
+    {
+      id: `${segId}-tip`, label: `tip: ${airfoilShort(tip.airfoil)} · ${tipChord} mm`,
+      level: 3, leaf: true, muted: true,
+    },
+    {
+      id: `${segId}-dims`, label: `length ${length} mm · sweep ${sweep} mm`,
+      level: 3, leaf: true, muted: true, mono: true,
+    },
+  );
 
   const tedNode = buildTedNode(segId, wingName, segIdx, root, callbacks);
   if (tedNode) nodes.push(tedNode);
@@ -334,26 +336,28 @@ function buildXsecNodes(ctx: BuildNodeContext): TreeNode[] {
     });
 
     if (xsecExpanded) {
-      nodes.push({
-        id: `${xsecId}-airfoil`,
-        label: `airfoil · ${airfoilShort(xsec.airfoil)}`,
-        level: 3, leaf: true, muted: true,
-      });
-      nodes.push({
-        id: `${xsecId}-chord`,
-        label: `chord ${(xsec.chord * 1000).toFixed(1)} mm`,
-        level: 3, leaf: true, muted: true, mono: true,
-      });
-      nodes.push({
-        id: `${xsecId}-twist`,
-        label: `twist ${xsec.twist}°`,
-        level: 3, leaf: true, muted: true, mono: true,
-      });
-      nodes.push({
-        id: `${xsecId}-xyz`,
-        label: `xyz_le [${xsec.xyz_le.map((v: number) => (v * 1000).toFixed(1)).join(", ")}] mm`,
-        level: 3, leaf: true, muted: true, mono: true,
-      });
+      nodes.push(
+        {
+          id: `${xsecId}-airfoil`,
+          label: `airfoil · ${airfoilShort(xsec.airfoil)}`,
+          level: 3, leaf: true, muted: true,
+        },
+        {
+          id: `${xsecId}-chord`,
+          label: `chord ${(xsec.chord * 1000).toFixed(1)} mm`,
+          level: 3, leaf: true, muted: true, mono: true,
+        },
+        {
+          id: `${xsecId}-twist`,
+          label: `twist ${xsec.twist}°`,
+          level: 3, leaf: true, muted: true, mono: true,
+        },
+        {
+          id: `${xsecId}-xyz`,
+          label: `xyz_le [${xsec.xyz_le.map((v: number) => (v * 1000).toFixed(1)).join(", ")}] mm`,
+          level: 3, leaf: true, muted: true, mono: true,
+        },
+      );
 
       const tedNode = buildTedNode(xsecId, wingName, i, xsec, callbacks);
       if (tedNode) nodes.push(tedNode);

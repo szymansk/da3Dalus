@@ -13,8 +13,8 @@ export function SplitHandle({ onCollapse, collapsed }: Readonly<SplitHandleProps
     <Separator className="group relative flex w-1 items-center justify-center bg-border transition-colors hover:bg-primary/50 data-[resize-handle-active]:bg-primary/50">
       {/* Grip dots */}
       <div className="flex flex-col gap-1">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="size-[3px] rounded-full bg-muted-foreground opacity-50" />
+        {[0, 1, 2].map((dot) => (
+          <div key={`grip-${dot}`} className="size-[3px] rounded-full bg-muted-foreground opacity-50" />
         ))}
       </div>
       {/* Collapse chevron */}

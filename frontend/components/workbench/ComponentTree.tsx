@@ -148,7 +148,7 @@ function toSimpleTreeNode(
   cb: FlattenCallbacks,
   selectedId: number | null,
 ): SimpleTreeNode {
-  const hasChildren = node.children && node.children.length > 0;
+  const hasChildren = (node.children?.length ?? 0) > 0;
   const isGroup = node.node_type === "group";
   return {
     id: String(node.id),
@@ -179,11 +179,11 @@ function flattenTree(
 ): SimpleTreeNode[] {
   const result: SimpleTreeNode[] = [];
   for (const node of nodes) {
-    const hasChildren = node.children && node.children.length > 0;
+    const hasChildren = (node.children?.length ?? 0) > 0;
     const isExpanded = expanded.has(String(node.id));
     result.push(toSimpleTreeNode(node, level, isExpanded, cb, selectedId));
     if (hasChildren && isExpanded) {
-      result.push(...flattenTree(node.children, level + 1, expanded, cb, selectedId));
+      result.push(...flattenTree(node.children!, level + 1, expanded, cb, selectedId));
     }
   }
   return result;

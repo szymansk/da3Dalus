@@ -110,7 +110,7 @@ function PlotlyChart({
           showgrid: false, showticklabels: false, zeroline: false,
         },
       };
-      if (shapes && shapes.length > 0) {
+      if ((shapes?.length ?? 0) > 0) {
         layout.shapes = shapes;
       }
 
@@ -359,7 +359,7 @@ function TrefftzPlaneChart({
       const surfaceGroups = groupSurfaceStrips(stripForces.surfaces);
       const traces: PlotlyTrace[] = buildSurfaceTraces(surfaceGroups);
 
-      if (wingXSecs && wingXSecs.length > 0) {
+      if ((wingXSecs?.length ?? 0) > 0) {
         traces.push(buildSegmentMarkerTrace(wingXSecs, wingSymmetric));
       }
 
@@ -449,7 +449,7 @@ function TrefftzPlaneTabContent({
       </div>
     );
   }
-  if (stripForces && stripForces.surfaces.length > 0) {
+  if ((stripForces?.surfaces.length ?? 0) > 0) {
     return (
       <TrefftzPlaneChart
         stripForces={stripForces}
