@@ -27,6 +27,9 @@ def _intersection(L1, L2):
     else:
         return False
 
+_ERR_PARALLEL = "defined segment would be parallel to target edge"
+
+
 def _line_segments_intersection(edge: Edge, v1: Point, v2: Point) -> Edge:
     s1 = edge.startPoint()
     s2 = edge.endPoint()
@@ -36,6 +39,25 @@ def _line_segments_intersection(edge: Edge, v1: Point, v2: Point) -> Edge:
     if (I == False):
         return False
     return Edge.makeLine(v1, Vector(I))
+
+
+def _intersect_to_edge(self: T, v1: Vector, v2: Vector, edge: Edge, tag: Optional[str], forConstruction: bool) -> T:
+    """Shared intersection logic for all segmentToEdge overloads."""
+    if edge.geomType() == "LINE":
+        val = _line_segments_intersection(edge, v1, v2)
+        if not val:
+            raise RuntimeError(_ERR_PARALLEL)
+    else:
+        return self
+    return self.edge(val, tag, forConstruction)
+
+
+def _angle_to_direction(angle: Union[float, int], v1: Vector) -> Vector:
+    """Convert an angle (degrees from +x) to a target vector relative to v1."""
+    r = R.from_euler("z", angle, degrees=True)
+    direction = Vector(tuple(r.apply((10.0, 0.0, 0.0))))
+    return direction * 10 + v1
+
 
 @multimethod
 def segmentToEdge(self: T, point: Point, direction: Point, end_tag: str, tag: Optional[str] = None, forConstruction: bool = False) -> T:
@@ -49,21 +71,10 @@ def segmentToEdge(self: T, point: Point, direction: Point, end_tag: str, tag: Op
     end_tag  : the finale edge to reach
     """
 
-    seg2 = self._tags[end_tag][0]
-    edge = tcast(Edge, seg2)
+    edge = tcast(Edge, self._tags[end_tag][0])
     v1: Vector = Vector(point)
     v2: Vector = Vector(direction) * 10 + v1
-
-    # dispatch on geom type
-    if edge.geomType() == "LINE":
-        val = _line_segments_intersection(edge, v1, v2)
-        if (val == False):
-            raise RuntimeError('defined segment would be parallel to target edge')
-    #elif v0.geomType() == "CIRCLE":
-    else:
-        return self
-
-    return self.edge(val, tag, forConstruction)
+    return _intersect_to_edge(self, v1, v2, edge, tag, forConstruction)
 
 @segmentToEdge.register
 def segmentToEdge(self: T, point: Point, angle: Union[float, int], end_tag: str, tag: Optional[str] = None,
@@ -73,29 +84,15 @@ def segmentToEdge(self: T, point: Point, angle: Union[float, int], end_tag: str,
     Construction of a segment that stops at the given tagged end edge.
     Starting at the given point.
 
-    point.   : start point
-    start_tag: start edge tag
+    point    : start point
     angle    : direction of the segment as angle in degrees from positive x
     end_tag  : the finale edge to reach
     """
 
-    seg2 = self._tags[end_tag][0]
-    edge = tcast(Edge, seg2)
+    edge = tcast(Edge, self._tags[end_tag][0])
     v1: Vector = Vector(point)
-    r = R.from_euler('z', angle, degrees=True)
-    direction = Vector(tuple(r.apply((10., 0., 0.))))  # x-unit vector rotate by root_incidence
-    v2: Vector = Vector(direction) * 10 + v1
-
-    # dispatch on geom type
-    if edge.geomType() == "LINE":
-        val = _line_segments_intersection(edge, v1, v2)
-        if (val == False):
-            raise RuntimeError('defined segment would be parallel to target edge')
-    # elif v0.geomType() == "CIRCLE":
-    else:
-        return self
-
-    return self.edge(val, tag, forConstruction)
+    v2: Vector = _angle_to_direction(angle, v1)
+    return _intersect_to_edge(self, v1, v2, edge, tag, forConstruction)
 
 
 @segmentToEdge.register
@@ -110,22 +107,10 @@ def segmentToEdge(
     end_tag  : the finale edge to reach
     """
 
-    point = self._endPoint()
-    seg2 = self._tags[end_tag][0]
-    edge = tcast(Edge, seg2)
-    v1: Vector = Vector(point)
+    edge = tcast(Edge, self._tags[end_tag][0])
+    v1: Vector = Vector(self._endPoint())
     v2: Vector = Vector(direction) * 10 + v1
-
-    # dispatch on geom type
-    if edge.geomType() == "LINE":
-        val = _line_segments_intersection(edge, v1, v2)
-        if (val == False):
-            raise RuntimeError('defined segment would be parallel to target edge')
-    # elif v0.geomType() == "CIRCLE":
-    else:
-        return self
-
-    return self.edge(val, tag, forConstruction)
+    return _intersect_to_edge(self, v1, v2, edge, tag, forConstruction)
 
 
 @segmentToEdge.register
@@ -141,24 +126,11 @@ def segmentToEdge(
     end_tag  : the finale edge to reach
     """
 
-    seg1 = self._tags[start_tag][0]
-    point = tcast(Edge, seg1).endPoint()
-
-    seg2 = self._tags[end_tag][0]
-    edge = tcast(Edge, seg2)
+    point = tcast(Edge, self._tags[start_tag][0]).endPoint()
+    edge = tcast(Edge, self._tags[end_tag][0])
     v1: Vector = Vector(point)
     v2: Vector = Vector(direction) * 10 + v1
-
-    # dispatch on geom type
-    if edge.geomType() == "LINE":
-        val = _line_segments_intersection(edge, v1, v2)
-        if (val == False):
-            raise RuntimeError('defined segment would be parallel to target edge')
-    # elif v0.geomType() == "CIRCLE":
-    else:
-        return self
-
-    return self.edge(val, tag, forConstruction)
+    return _intersect_to_edge(self, v1, v2, edge, tag, forConstruction)
 
 
 @segmentToEdge.register
@@ -172,24 +144,10 @@ def segmentToEdge(
     end_tag  : the finale edge to reach
     """
 
-    point = self._endPoint()
-    seg2 = self._tags[end_tag][0]
-    edge = tcast(Edge, seg2)
-    v1: Vector = Vector(point)
-    r = R.from_euler('z', angle, degrees=True)
-    direction = Vector(tuple(r.apply((10., 0., 0.))))  # x-unit vector rotate by root_incidence
-    v2: Vector = direction * 10 + v1
-
-    # dispatch on geom type
-    if edge.geomType() == "LINE":
-        val = _line_segments_intersection(edge, v1, v2)
-        if (val == False):
-            raise RuntimeError('defined segment would be parallel to target edge')
-    # elif v0.geomType() == "CIRCLE":
-    else:
-        return self
-
-    return self.edge(val, tag, forConstruction)
+    edge = tcast(Edge, self._tags[end_tag][0])
+    v1: Vector = Vector(self._endPoint())
+    v2: Vector = _angle_to_direction(angle, v1)
+    return _intersect_to_edge(self, v1, v2, edge, tag, forConstruction)
 
 
 @segmentToEdge.register
@@ -206,26 +164,11 @@ def segmentToEdge(
     end_tag  : the finale edge to reach
     """
 
-    seg1 = self._tags[start_tag][0]
-    point = tcast(Edge, seg1).endPoint()
-
-    seg2 = self._tags[end_tag][0]
-    edge = tcast(Edge, seg2)
+    point = tcast(Edge, self._tags[start_tag][0]).endPoint()
+    edge = tcast(Edge, self._tags[end_tag][0])
     v1: Vector = Vector(point)
-    r = R.from_euler('z', angle, degrees=True)
-    direction = Vector(tuple(r.apply((10., 0., 0.))))  # x-unit vector rotate by root_incidence
-    v2: Vector = direction * 10 + v1
-
-    # dispatch on geom type
-    if edge.geomType() == "LINE":
-        val = _line_segments_intersection(edge, v1, v2)
-        if (val == False):
-            raise RuntimeError('defined segment would be parallel to target edge')
-    # elif v0.geomType() == "CIRCLE":
-    else:
-        return self
-
-    return self.edge(val, tag, forConstruction)
+    v2: Vector = _angle_to_direction(angle, v1)
+    return _intersect_to_edge(self, v1, v2, edge, tag, forConstruction)
 
 @segmentToEdge.register
 def segmentToEdge(
