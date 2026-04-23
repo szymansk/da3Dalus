@@ -19,12 +19,8 @@ interface ComponentEditDialogProps {
 /** Default value inserted when a type is selected and specs don't already have the key. */
 function defaultForProp(prop: PropertyDefinition): unknown {
   if (prop.default != null) return prop.default;
-  switch (prop.type) {
-    case "boolean":
-      return false;
-    default:
-      return "";
-  }
+  if (prop.type === "boolean") return false;
+  return "";
 }
 
 /** Parse a user-entered string back into the property's declared type. */
@@ -191,7 +187,9 @@ export function ComponentEditDialog({
     }
   }
 
-  const submitLabel = saving ? "Saving\u2026" : isEdit ? "Update" : "Create";
+  let submitLabel = "Create";
+  if (saving) submitLabel = "Saving\u2026";
+  else if (isEdit) submitLabel = "Update";
 
   return (
     <div

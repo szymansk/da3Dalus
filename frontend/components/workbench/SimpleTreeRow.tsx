@@ -32,6 +32,12 @@ export interface SimpleTreeNode {
   weightTooltip?: string;
 }
 
+function weightStatusColor(status: SimpleTreeWeightStatus | undefined): string {
+  if (status === "valid") return "text-emerald-500";
+  if (status === "partial") return "text-amber-500";
+  return "text-red-500";
+}
+
 interface SimpleTreeRowProps {
   node: SimpleTreeNode;
   onToggle: () => void;
@@ -94,13 +100,7 @@ export function SimpleTreeRow({ node, onToggle }: Readonly<SimpleTreeRowProps>) 
       {node.weightStatus && (
         <span
           title={node.weightTooltip ?? `Weight: ${node.weightStatus}`}
-          className={
-            node.weightStatus === "valid"
-              ? "text-emerald-500"
-              : node.weightStatus === "partial"
-              ? "text-amber-500"
-              : "text-red-500"
-          }
+          className={weightStatusColor(node.weightStatus)}
           data-weight-status={node.weightStatus}
         >
           <Scale size={11} />

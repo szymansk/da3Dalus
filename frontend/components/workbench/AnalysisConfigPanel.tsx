@@ -129,12 +129,9 @@ export function AnalysisConfigPanel({
 
   const currentError = getCurrentError(activeTab, analysis, stripForcesError, streamlinesError);
 
-  const handleRun =
-    activeTab === "Polar"
-      ? handleRunPolar
-      : activeTab === "Trefftz Plane"
-        ? handleRunStripForces
-        : handleRunStreamlines;
+  let handleRun = handleRunStreamlines;
+  if (activeTab === "Polar") handleRun = handleRunPolar;
+  else if (activeTab === "Trefftz Plane") handleRun = handleRunStripForces;
 
   return (
     <div className="flex w-full flex-col gap-4 overflow-y-auto">

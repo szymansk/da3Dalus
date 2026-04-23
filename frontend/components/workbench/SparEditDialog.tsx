@@ -166,7 +166,9 @@ export function SparEditDialog({
     }
   }
 
-  const submitLabel = saving ? "Saving..." : isNew ? "Add" : "Save";
+  let submitLabel = "Save";
+  if (saving) submitLabel = "Saving...";
+  else if (isNew) submitLabel = "Add";
 
   return (
     <div

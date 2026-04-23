@@ -89,21 +89,6 @@ function lerpProfile(
   return { x: xs, y: ys };
 }
 
-/** Interpolate camber lines similarly. */
-function _lerpCamber(
-  a: AirfoilCoords, b: AirfoilCoords, t: number, nPts = 40,
-): { x: number[]; y: number[] } {
-  const xs: number[] = [], ys: number[] = [];
-  for (let i = 0; i <= nPts; i++) {
-    const xNorm = i / nPts;
-    xs.push(xNorm);
-    const ya = lerpLookup(a.camber_x, a.camber_y, xNorm);
-    const yb = lerpLookup(b.camber_x, b.camber_y, xNorm);
-    ys.push(ya * (1 - t) + yb * t);
-  }
-  return { x: xs, y: ys };
-}
-
 /** Linear interpolation lookup in sorted x/y arrays. */
 function lerpLookup(xs: number[], ys: number[], target: number): number {
   if (xs.length === 0) return 0;

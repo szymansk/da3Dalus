@@ -76,8 +76,12 @@ function rightPanelHeading(
   creatorForSelected: unknown,
   browsingCreator: unknown,
 ): string {
-  if (panel === "params" && creatorForSelected) return "Parameters";
-  if (panel === "detail" && browsingCreator) return "Creator Info";
+  if (panel === "params" && creatorForSelected) {
+    return "Parameters";
+  }
+  if (panel === "detail" && browsingCreator) {
+    return "Creator Info";
+  }
   return "Creator Catalog";
 }
 
@@ -502,7 +506,7 @@ export default function ConstructionPlansPage() {
             </span>
           </div>
 
-          {rightPanel === "params" && selectedStepNode && creatorForSelected ? (
+          {rightPanel === "params" && selectedStepNode && creatorForSelected && (
             <div className="flex flex-col gap-4">
               <button
                 onClick={() => setRightPanel("gallery")}
@@ -531,7 +535,8 @@ export default function ConstructionPlansPage() {
                 />
               </label>
             </div>
-          ) : rightPanel === "detail" && browsingCreator ? (
+          )}
+          {rightPanel === "detail" && browsingCreator && (
             <CreatorDetailView
               creator={browsingCreator}
               onBack={() => {
@@ -539,7 +544,8 @@ export default function ConstructionPlansPage() {
                 setRightPanel("gallery");
               }}
             />
-          ) : (
+          )}
+          {rightPanel === "gallery" && (
             <CreatorGallery
               creators={creators}
               onSelect={(creator) => {
