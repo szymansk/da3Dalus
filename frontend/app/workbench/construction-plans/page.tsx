@@ -520,358 +520,490 @@ export default function ConstructionPlansPage() {
         </div>
       </WorkbenchTwoPanel>
 
-      {/* Add Step Dialog — Phase 1: pick creator, Phase 2: confirm with creator_id */}
-      {addDialogOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => { setAddDialogOpen(false); setAddingCreator(null); }}
-        >
-          <div
-            className="flex max-h-[85vh] w-[600px] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {addingCreator ? (
-              <>
-                <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
-                  Add {addingCreator.class_name}
-                </h2>
-                {/* Creator ID input with auto-substitution */}
-                <label className="flex flex-col gap-1">
-                  <span className="flex items-center gap-2 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
-                    Step ID (creator_id)
-                    {addCreatorIdManual && addingCreator.suggested_id && (
-                      <button
-                        onClick={() => {
-                          setAddCreatorIdManual(false);
-                          setAddCreatorId(resolveIdTemplate(addingCreator.suggested_id!, addStepParams));
-                        }}
-                        className="text-[9px] text-primary hover:underline"
-                      >
-                        Reset
-                      </button>
-                    )}
-                  </span>
-                  <input
-                    type="text"
-                    value={addCreatorId}
-                    onChange={(e) => {
-                      setAddCreatorId(e.target.value);
-                      setAddCreatorIdManual(true);
-                    }}
-                    placeholder={addingCreator.suggested_id ?? addingCreator.class_name}
-                    className="rounded-lg border border-border bg-input px-3 py-2 font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground outline-none"
-                  />
-                  <span className="text-[9px] text-subtle-foreground">
-                    This ID is used to reference this step&apos;s output shapes in subsequent steps.
-                  </span>
-                </label>
-                {/* Parameter inputs */}
-                {addingCreator.parameters.length > 0 && (
-                  <CreatorParameterForm
-                    creatorName=""
-                    params={addingCreator.parameters}
-                    values={addStepParams}
-                    onChange={(key, value) => {
-                      const next = { ...addStepParams, [key]: value };
-                      setAddStepParams(next);
-                      if (!addCreatorIdManual && addingCreator.suggested_id) {
-                        setAddCreatorId(resolveIdTemplate(addingCreator.suggested_id, next));
-                      }
-                    }}
-                    availableShapeKeys={collectAvailableShapeKeys(treeJson, creators)}
-                  />
-                )}
-                {/* Creator detail info (collapsed) */}
-                <details className="rounded-xl border border-border">
-                  <summary className="cursor-pointer px-3 py-2 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
-                    Creator Info
-                  </summary>
-                  <div className="px-3 pb-3">
-                    <CreatorDetailView
-                      creator={addingCreator}
-                      onBack={() => setAddingCreator(null)}
-                    />
-                  </div>
-                </details>
-                {/* Confirm */}
-                <div className="flex justify-end gap-2">
-                  <button
-                    onClick={() => setAddingCreator(null)}
-                    className="rounded-full border border-border px-4 py-2 text-[12px] text-muted-foreground hover:bg-sidebar-accent"
-                  >
-                    Back
-                  </button>
+      <AddStepDialog
+        open={addDialogOpen}
+        addingCreator={addingCreator}
+        addCreatorId={addCreatorId}
+        addCreatorIdManual={addCreatorIdManual}
+        addStepParams={addStepParams}
+        treeJson={treeJson}
+        creators={creators}
+        onClose={() => { setAddDialogOpen(false); setAddingCreator(null); }}
+        onSetAddingCreator={setAddingCreator}
+        onSetAddCreatorId={setAddCreatorId}
+        onSetAddCreatorIdManual={setAddCreatorIdManual}
+        onSetAddStepParams={setAddStepParams}
+        onAddCreator={handleAddCreator}
+      />
+
+      <NewPlanDialog
+        open={newPlanDialogOpen}
+        newPlanName={newPlanName}
+        newPlanFromTemplate={newPlanFromTemplate}
+        newPlanTemplateId={newPlanTemplateId}
+        templates={templates}
+        onClose={() => setNewPlanDialogOpen(false)}
+        onSetNewPlanName={setNewPlanName}
+        onSetNewPlanFromTemplate={setNewPlanFromTemplate}
+        onSetNewPlanTemplateId={setNewPlanTemplateId}
+        onSubmit={handleNewPlanSubmit}
+      />
+
+      <ExecuteDialog
+        open={executeDialogOpen}
+        executeAeroplaneId={executeAeroplaneId}
+        executing={executing}
+        executeResult={executeResult}
+        aeroplanes={aeroplanes}
+        onClose={() => setExecuteDialogOpen(false)}
+        onSetExecuteAeroplaneId={setExecuteAeroplaneId}
+        onExecute={handleExecute}
+      />
+
+      <CadViewerModal
+        open={cadViewerOpen}
+        fullscreen={cadViewerFullscreen}
+        cadViewerData={cadViewerData}
+        executeResult={executeResult}
+        onClose={() => { setCadViewerOpen(false); setCadViewerFullscreen(false); }}
+        onToggleFullscreen={() => setCadViewerFullscreen((v) => !v)}
+      />
+    </>
+  );
+}
+
+// ── Extracted dialog components ──────────────────────────────────
+
+function AddStepDialog({
+  open,
+  addingCreator,
+  addCreatorId,
+  addCreatorIdManual,
+  addStepParams,
+  treeJson,
+  creators,
+  selectedStepPath,
+  onClose,
+  onSetAddingCreator,
+  onSetAddCreatorId,
+  onSetAddCreatorIdManual,
+  onSetAddStepParams,
+  onAddCreator,
+}: {
+  open: boolean;
+  addingCreator: CreatorInfo | null;
+  addCreatorId: string;
+  addCreatorIdManual: boolean;
+  addStepParams: Record<string, unknown>;
+  treeJson: PlanStepNode | null;
+  creators: CreatorInfo[];
+  onClose: () => void;
+  onSetAddingCreator: (c: CreatorInfo | null) => void;
+  onSetAddCreatorId: (id: string) => void;
+  onSetAddCreatorIdManual: (v: boolean) => void;
+  onSetAddStepParams: (p: Record<string, unknown>) => void;
+  onAddCreator: (creator: CreatorInfo, creatorId?: string) => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[85vh] w-[600px] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {addingCreator ? (
+          <>
+            <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
+              Add {addingCreator.class_name}
+            </h2>
+            <label className="flex flex-col gap-1">
+              <span className="flex items-center gap-2 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
+                Step ID (creator_id)
+                {addCreatorIdManual && addingCreator.suggested_id && (
                   <button
                     onClick={() => {
-                      const id = addCreatorId.trim() || addingCreator.suggested_id || addingCreator.class_name;
-                      handleAddCreator({ ...addingCreator } as CreatorInfo, id);
+                      onSetAddCreatorIdManual(false);
+                      onSetAddCreatorId(resolveIdTemplate(addingCreator.suggested_id!, addStepParams));
                     }}
-                    className="rounded-full bg-primary px-4 py-2 text-[12px] text-primary-foreground hover:opacity-90"
+                    className="text-[9px] text-primary hover:underline"
                   >
-                    Add Step
+                    Reset
                   </button>
-                </div>
+                )}
+              </span>
+              <input
+                type="text"
+                value={addCreatorId}
+                onChange={(e) => {
+                  onSetAddCreatorId(e.target.value);
+                  onSetAddCreatorIdManual(true);
+                }}
+                placeholder={addingCreator.suggested_id ?? addingCreator.class_name}
+                className="rounded-lg border border-border bg-input px-3 py-2 font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground outline-none"
+              />
+              <span className="text-[9px] text-subtle-foreground">
+                This ID is used to reference this step&apos;s output shapes in subsequent steps.
+              </span>
+            </label>
+            {addingCreator.parameters.length > 0 && (
+              <CreatorParameterForm
+                creatorName=""
+                params={addingCreator.parameters}
+                values={addStepParams}
+                onChange={(key, value) => {
+                  const next = { ...addStepParams, [key]: value };
+                  onSetAddStepParams(next);
+                  if (!addCreatorIdManual && addingCreator.suggested_id) {
+                    onSetAddCreatorId(resolveIdTemplate(addingCreator.suggested_id, next));
+                  }
+                }}
+                availableShapeKeys={collectAvailableShapeKeys(treeJson, creators)}
+              />
+            )}
+            <details className="rounded-xl border border-border">
+              <summary className="cursor-pointer px-3 py-2 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
+                Creator Info
+              </summary>
+              <div className="px-3 pb-3">
+                <CreatorDetailView
+                  creator={addingCreator}
+                  onBack={() => onSetAddingCreator(null)}
+                />
+              </div>
+            </details>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => onSetAddingCreator(null)}
+                className="rounded-full border border-border px-4 py-2 text-[12px] text-muted-foreground hover:bg-sidebar-accent"
+              >
+                Back
+              </button>
+              <button
+                onClick={() => {
+                  const id = addCreatorId.trim() || addingCreator.suggested_id || addingCreator.class_name;
+                  onAddCreator({ ...addingCreator } as CreatorInfo, id);
+                }}
+                className="rounded-full bg-primary px-4 py-2 text-[12px] text-primary-foreground hover:opacity-90"
+              >
+                Add Step
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
+              Add Step
+            </h2>
+            <CreatorGallery
+              creators={creators}
+              onSelect={(creator) => {
+                const defaults: Record<string, unknown> = {};
+                for (const p of creator.parameters) {
+                  if (p.default != null) defaults[p.name] = p.default;
+                }
+                onSetAddStepParams(defaults);
+                onSetAddingCreator(creator);
+                onSetAddCreatorIdManual(false);
+                onSetAddCreatorId(
+                  creator.suggested_id
+                    ? resolveIdTemplate(creator.suggested_id, defaults)
+                    : creator.class_name,
+                );
+              }}
+            />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function NewPlanDialog({
+  open,
+  newPlanName,
+  newPlanFromTemplate,
+  newPlanTemplateId,
+  templates,
+  onClose,
+  onSetNewPlanName,
+  onSetNewPlanFromTemplate,
+  onSetNewPlanTemplateId,
+  onSubmit,
+}: {
+  open: boolean;
+  newPlanName: string;
+  newPlanFromTemplate: boolean;
+  newPlanTemplateId: number | null;
+  templates: Array<{ id: number; name: string; step_count: number; description?: string | null }>;
+  onClose: () => void;
+  onSetNewPlanName: (v: string) => void;
+  onSetNewPlanFromTemplate: (v: boolean) => void;
+  onSetNewPlanTemplateId: (v: number | null) => void;
+  onSubmit: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="New Plan"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      onClick={onClose}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+    >
+      <div
+        className="flex w-[480px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
+        <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
+          New Plan
+        </h2>
+        <label className="flex flex-col gap-1">
+          <span className="text-[12px] text-muted-foreground">Plan name</span>
+          <input
+            type="text"
+            value={newPlanName}
+            onChange={(e) => onSetNewPlanName(e.target.value)}
+            placeholder="Enter plan name..."
+            autoFocus
+            className="rounded-xl border border-border bg-input px-3 py-2 text-[12px] text-foreground outline-none"
+          />
+        </label>
+        <fieldset className="flex flex-col gap-2">
+          <span className="text-[12px] text-muted-foreground">Start from</span>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="newPlanSource"
+              checked={!newPlanFromTemplate}
+              onChange={() => {
+                onSetNewPlanFromTemplate(false);
+                onSetNewPlanTemplateId(null);
+              }}
+              className="accent-[#FF8400]"
+            />
+            <span className="text-[12px] text-foreground">Empty plan</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="newPlanSource"
+              checked={newPlanFromTemplate}
+              onChange={() => onSetNewPlanFromTemplate(true)}
+              className="accent-[#FF8400]"
+            />
+            <span className="text-[12px] text-foreground">From template</span>
+          </label>
+        </fieldset>
+        {newPlanFromTemplate && (
+          <div className="flex flex-col gap-2">
+            <select
+              value={newPlanTemplateId ?? ""}
+              onChange={(e) =>
+                onSetNewPlanTemplateId(e.target.value ? Number.parseInt(e.target.value, 10) : null)
+              }
+              className="rounded-xl border border-border bg-input px-3 py-2 text-[12px] text-foreground"
+            >
+              <option value="">Select a template...</option>
+              {templates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} ({t.step_count} steps)
+                </option>
+              ))}
+            </select>
+            {newPlanTemplateId != null &&
+              templates.find((t) => t.id === newPlanTemplateId)?.description && (
+                <p className="text-[11px] text-muted-foreground">
+                  {templates.find((t) => t.id === newPlanTemplateId)?.description}
+                </p>
+              )}
+          </div>
+        )}
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="rounded-full border border-border px-4 py-2 text-[12px] text-muted-foreground hover:bg-sidebar-accent"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onSubmit}
+            disabled={
+              !newPlanName.trim() ||
+              (newPlanFromTemplate && newPlanTemplateId == null)
+            }
+            className="rounded-full bg-primary px-4 py-2 text-[12px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            Create
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExecuteDialog({
+  open,
+  executeAeroplaneId,
+  executing,
+  executeResult,
+  aeroplanes,
+  onClose,
+  onSetExecuteAeroplaneId,
+  onExecute,
+}: {
+  open: boolean;
+  executeAeroplaneId: string;
+  executing: boolean;
+  executeResult: ExecutionResult | null;
+  aeroplanes: Array<{ id: string; name: string }>;
+  onClose: () => void;
+  onSetExecuteAeroplaneId: (v: string) => void;
+  onExecute: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      onClick={onClose}
+    >
+      <div
+        className="flex w-[480px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
+          Execute Plan
+        </h2>
+        <label className="flex flex-col gap-1">
+          <span className="text-[12px] text-muted-foreground">Aeroplane</span>
+          <select
+            value={executeAeroplaneId}
+            onChange={(e) => onSetExecuteAeroplaneId(e.target.value)}
+            className="rounded-xl border border-border bg-input px-3 py-2 text-[12px] text-foreground"
+          >
+            <option value="">Select aeroplane...</option>
+            {aeroplanes.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {executeResult && (
+          <div
+            className={`rounded-xl border p-3 text-[12px] ${
+              executeResult.status === "success"
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                : "border-red-500/30 bg-red-500/10 text-red-400"
+            }`}
+          >
+            <p className="font-semibold">
+              {executeResult.status === "success" ? "Success" : "Error"}
+            </p>
+            {executeResult.error && <p>{executeResult.error}</p>}
+            {executeResult.shape_keys.length > 0 && (
+              <p>Shapes: {executeResult.shape_keys.join(", ")}</p>
+            )}
+            {executeResult.duration_ms > 0 && (
+              <p>Duration: {executeResult.duration_ms}ms</p>
+            )}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="rounded-full border border-border px-4 py-2 text-[12px] text-muted-foreground hover:bg-sidebar-accent"
+          >
+            Close
+          </button>
+          <button
+            onClick={onExecute}
+            disabled={!executeAeroplaneId || executing}
+            className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-[12px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            {executing ? (
+              <>
+                <Loader2 size={12} className="animate-spin" />
+                Running...
               </>
             ) : (
               <>
-                <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
-                  Add Step
-                </h2>
-                <CreatorGallery
-                  creators={creators}
-                  onSelect={(creator) => {
-                    // Build default params from creator defaults
-                    const defaults: Record<string, unknown> = {};
-                    for (const p of creator.parameters) {
-                      if (p.default != null) defaults[p.name] = p.default;
-                    }
-                    setAddStepParams(defaults);
-                    setAddingCreator(creator);
-                    setAddCreatorIdManual(false);
-                    setAddCreatorId(
-                      creator.suggested_id
-                        ? resolveIdTemplate(creator.suggested_id, defaults)
-                        : creator.class_name,
-                    );
-                  }}
-                />
+                <Play size={12} />
+                Execute
               </>
             )}
-          </div>
+          </button>
         </div>
-      )}
+      </div>
+    </div>
+  );
+}
 
-      {/* New Plan Dialog */}
-      {newPlanDialogOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="New Plan"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => setNewPlanDialogOpen(false)}
-          onKeyDown={(e) => { if (e.key === "Escape") setNewPlanDialogOpen(false); }}
-        >
-          <div
-            className="flex w-[480px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
+function CadViewerModal({
+  open,
+  fullscreen,
+  cadViewerData,
+  executeResult,
+  onClose,
+  onToggleFullscreen,
+}: {
+  open: boolean;
+  fullscreen: boolean;
+  cadViewerData: Record<string, unknown> | null;
+  executeResult: ExecutionResult | null;
+  onClose: () => void;
+  onToggleFullscreen: () => void;
+}) {
+  if (!open || !cadViewerData) return null;
+
+  return (
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center ${fullscreen ? "" : "bg-black/60"}`}
+      onClick={onClose}
+    >
+      <div
+        className={`flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl ${
+          fullscreen ? "h-full w-full rounded-none border-0" : "h-[80vh] w-[80vw]"
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
+            Execution Result
+          </span>
+          {executeResult && (
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
+              {executeResult.shape_keys.length} shapes · {executeResult.duration_ms}ms
+            </span>
+          )}
+          <div className="flex-1" />
+          <button
+            onClick={onToggleFullscreen}
+            className="flex size-7 items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-sidebar-accent"
+            title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
           >
-            <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
-              New Plan
-            </h2>
-
-            {/* Plan name */}
-            <label className="flex flex-col gap-1">
-              <span className="text-[12px] text-muted-foreground">Plan name</span>
-              <input
-                type="text"
-                value={newPlanName}
-                onChange={(e) => setNewPlanName(e.target.value)}
-                placeholder="Enter plan name..."
-                autoFocus
-                className="rounded-xl border border-border bg-input px-3 py-2 text-[12px] text-foreground outline-none"
-              />
-            </label>
-
-            {/* Template selection radio */}
-            <fieldset className="flex flex-col gap-2">
-              <span className="text-[12px] text-muted-foreground">Start from</span>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="newPlanSource"
-                  checked={!newPlanFromTemplate}
-                  onChange={() => {
-                    setNewPlanFromTemplate(false);
-                    setNewPlanTemplateId(null);
-                  }}
-                  className="accent-[#FF8400]"
-                />
-                <span className="text-[12px] text-foreground">Empty plan</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="newPlanSource"
-                  checked={newPlanFromTemplate}
-                  onChange={() => setNewPlanFromTemplate(true)}
-                  className="accent-[#FF8400]"
-                />
-                <span className="text-[12px] text-foreground">From template</span>
-              </label>
-            </fieldset>
-
-            {/* Template dropdown (visible when "From template" is selected) */}
-            {newPlanFromTemplate && (
-              <div className="flex flex-col gap-2">
-                <select
-                  value={newPlanTemplateId ?? ""}
-                  onChange={(e) =>
-                    setNewPlanTemplateId(e.target.value ? Number.parseInt(e.target.value, 10) : null)
-                  }
-                  className="rounded-xl border border-border bg-input px-3 py-2 text-[12px] text-foreground"
-                >
-                  <option value="">Select a template...</option>
-                  {templates.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} ({t.step_count} steps)
-                    </option>
-                  ))}
-                </select>
-                {/* Show description of selected template */}
-                {newPlanTemplateId != null &&
-                  templates.find((t) => t.id === newPlanTemplateId)?.description && (
-                    <p className="text-[11px] text-muted-foreground">
-                      {templates.find((t) => t.id === newPlanTemplateId)?.description}
-                    </p>
-                  )}
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setNewPlanDialogOpen(false)}
-                className="rounded-full border border-border px-4 py-2 text-[12px] text-muted-foreground hover:bg-sidebar-accent"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleNewPlanSubmit}
-                disabled={
-                  !newPlanName.trim() ||
-                  (newPlanFromTemplate && newPlanTemplateId == null)
-                }
-                className="rounded-full bg-primary px-4 py-2 text-[12px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
-              >
-                Create
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Execute Dialog */}
-      {executeDialogOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => setExecuteDialogOpen(false)}
-        >
-          <div
-            className="flex w-[480px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
+            {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+          </button>
+          <button
+            onClick={onClose}
+            className="flex size-7 items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-sidebar-accent"
           >
-            <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
-              Execute Plan
-            </h2>
-            <label className="flex flex-col gap-1">
-              <span className="text-[12px] text-muted-foreground">Aeroplane</span>
-              <select
-                value={executeAeroplaneId}
-                onChange={(e) => setExecuteAeroplaneId(e.target.value)}
-                className="rounded-xl border border-border bg-input px-3 py-2 text-[12px] text-foreground"
-              >
-                <option value="">Select aeroplane...</option>
-                {aeroplanes.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {executeResult && (
-              <div
-                className={`rounded-xl border p-3 text-[12px] ${
-                  executeResult.status === "success"
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                    : "border-red-500/30 bg-red-500/10 text-red-400"
-                }`}
-              >
-                <p className="font-semibold">
-                  {executeResult.status === "success" ? "Success" : "Error"}
-                </p>
-                {executeResult.error && <p>{executeResult.error}</p>}
-                {executeResult.shape_keys.length > 0 && (
-                  <p>Shapes: {executeResult.shape_keys.join(", ")}</p>
-                )}
-                {executeResult.duration_ms > 0 && (
-                  <p>Duration: {executeResult.duration_ms}ms</p>
-                )}
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setExecuteDialogOpen(false)}
-                className="rounded-full border border-border px-4 py-2 text-[12px] text-muted-foreground hover:bg-sidebar-accent"
-              >
-                Close
-              </button>
-              <button
-                onClick={handleExecute}
-                disabled={!executeAeroplaneId || executing}
-                className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-[12px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
-              >
-                {executing ? (
-                  <>
-                    <Loader2 size={12} className="animate-spin" />
-                    Running...
-                  </>
-                ) : (
-                  <>
-                    <Play size={12} />
-                    Execute
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
+            <X size={14} />
+          </button>
         </div>
-      )}
-
-      {/* CadViewer Modal — shows tessellated geometry after Execute */}
-      {cadViewerOpen && cadViewerData && (
-        <div
-          className={`fixed inset-0 z-50 flex items-center justify-center ${cadViewerFullscreen ? "" : "bg-black/60"}`}
-          onClick={() => { setCadViewerOpen(false); setCadViewerFullscreen(false); }}
-        >
-          <div
-            className={`flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl ${
-              cadViewerFullscreen ? "h-full w-full rounded-none border-0" : "h-[80vh] w-[80vw]"
-            }`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
-              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
-                Execution Result
-              </span>
-              {executeResult && (
-                <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-muted-foreground">
-                  {executeResult.shape_keys.length} shapes · {executeResult.duration_ms}ms
-                </span>
-              )}
-              <div className="flex-1" />
-              <button
-                onClick={() => setCadViewerFullscreen((v) => !v)}
-                className="flex size-7 items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-sidebar-accent"
-                title={cadViewerFullscreen ? "Exit fullscreen" : "Fullscreen"}
-              >
-                {cadViewerFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-              </button>
-              <button
-                onClick={() => { setCadViewerOpen(false); setCadViewerFullscreen(false); }}
-                className="flex size-7 items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-sidebar-accent"
-              >
-                <X size={14} />
-              </button>
-            </div>
-            <div className="min-h-0 flex-1">
-              <CadViewer parts={[cadViewerData]} />
-            </div>
-          </div>
+        <div className="min-h-0 flex-1">
+          <CadViewer parts={[cadViewerData]} />
         </div>
-      )}
-    </>
+      </div>
+    </div>
   );
 }
