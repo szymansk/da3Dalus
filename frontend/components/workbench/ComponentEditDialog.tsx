@@ -184,11 +184,16 @@ export function ComponentEditDialog({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      role="dialog"
+      aria-modal="true"
+      aria-label={isEdit ? "Edit Component" : "New Component"}
       onClick={onClose}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
       <div
         className="flex max-h-[85vh] w-[520px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3">
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">

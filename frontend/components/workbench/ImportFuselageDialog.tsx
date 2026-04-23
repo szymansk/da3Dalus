@@ -584,7 +584,11 @@ export function ImportFuselageDialog({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      role="dialog"
+      aria-modal="true"
+      aria-label="New Fuselage"
       onClick={() => { handleReset(); onClose(); }}
+      onKeyDown={(e) => { if (e.key === "Escape") { handleReset(); onClose(); } }}
     >
       <div
         className={`flex flex-col rounded-2xl border border-border bg-card shadow-2xl transition-all ${
@@ -593,6 +597,7 @@ export function ImportFuselageDialog({
             : "w-[900px] h-[80vh]"
         }`}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center gap-3 border-b border-border px-6 py-4">
@@ -660,10 +665,11 @@ export function ImportFuselageDialog({
               {/* Parameters */}
               <div className="flex gap-4">
                 <div className="flex flex-1 flex-col gap-1">
-                  <label className="text-[11px] text-muted-foreground">
+                  <label htmlFor="fuselage-name" className="text-[11px] text-muted-foreground">
                     Fuselage Name
                   </label>
                   <input
+                    id="fuselage-name"
                     type="text"
                     value={fuselageName}
                     onChange={(e) => setFuselageName(e.target.value)}
@@ -671,9 +677,10 @@ export function ImportFuselageDialog({
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] text-muted-foreground">Scale Factor</label>
+                  <label htmlFor="fuselage-scale-factor" className="text-[11px] text-muted-foreground">Scale Factor</label>
                   <div className="flex items-center gap-2">
                     <input
+                      id="fuselage-scale-factor"
                       type="text"
                       inputMode="decimal"
                       value={scaleInput}
@@ -714,10 +721,11 @@ export function ImportFuselageDialog({
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] text-muted-foreground">
+                  <label htmlFor="fuselage-slices" className="text-[11px] text-muted-foreground">
                     Slices
                   </label>
                   <input
+                    id="fuselage-slices"
                     type="text"
                     inputMode="numeric"
                     value={slicesInput}
@@ -731,10 +739,11 @@ export function ImportFuselageDialog({
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] text-muted-foreground">
+                  <label htmlFor="fuselage-slice-axis" className="text-[11px] text-muted-foreground">
                     Slice Axis
                   </label>
                   <select
+                    id="fuselage-slice-axis"
                     value={axis}
                     onChange={(e) => setAxis(e.target.value)}
                     className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
@@ -846,8 +855,9 @@ export function ImportFuselageDialog({
               {/* Fuselage name (editable) — hidden when either view maximized */}
               {!viewerMaximized && !xsecsMaximized && (
               <div className="flex items-center gap-3">
-                <label className="text-[11px] text-muted-foreground">Save as:</label>
+                <label htmlFor="fuselage-save-as" className="text-[11px] text-muted-foreground">Save as:</label>
                 <input
+                  id="fuselage-save-as"
                   type="text"
                   value={fuselageName}
                   onChange={(e) => setFuselageName(e.target.value)}

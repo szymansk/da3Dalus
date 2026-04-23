@@ -15,9 +15,13 @@ export function InfoTooltip({ text, size = 11 }: Readonly<InfoTooltipProps>) {
   return (
     <span
       className="group/tip relative inline-flex shrink-0 text-muted-foreground hover:text-primary"
+      role="img"
+      aria-label={text}
+      tabIndex={0}
       onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
     >
-      <Info size={size} />
+      <Info size={size} aria-hidden="true" />
       <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 hidden w-max max-w-[240px] -translate-x-1/2 rounded-lg border border-border bg-card px-2.5 py-1.5 text-[10px] font-normal leading-snug text-foreground shadow-lg group-hover/tip:block">
         {text}
       </span>

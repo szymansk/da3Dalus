@@ -65,13 +65,16 @@ export function ConstructionPartUploadDialog({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Upload Construction Part"
       onClick={onClose}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
       <div
         className="flex w-[500px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-label="Upload Construction Part"
+        onKeyDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3">
           <Upload size={16} className="text-primary" />
@@ -127,10 +130,11 @@ export function ConstructionPartUploadDialog({
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] text-muted-foreground">
+            <label htmlFor="upload-part-material" className="text-[11px] text-muted-foreground">
               Material (optional)
             </label>
             <select
+              id="upload-part-material"
               value={materialId}
               onChange={(e) => setMaterialId(e.target.value)}
               className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"

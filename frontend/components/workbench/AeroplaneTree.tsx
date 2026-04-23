@@ -814,7 +814,7 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
         )}
         {addMenuOpen && (
           <>
-            <div className="fixed inset-0 z-30" onClick={() => setAddMenuOpen(false)} />
+            <div className="fixed inset-0 z-30" role="presentation" aria-hidden="true" onClick={() => setAddMenuOpen(false)} onKeyDown={(e) => { if (e.key === "Escape") setAddMenuOpen(false); }} />
             <div className="absolute right-2 top-1 z-40 w-44 rounded-xl border border-border bg-card shadow-lg">
               <button
                 onClick={() => { setAddMenuOpen(false); handleAddWing(); }}
@@ -838,7 +838,7 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
       {/* Segment add menu (Spar / Control Surface) — positioned at click location */}
       {segAddMenu && (
         <>
-          <div className="fixed inset-0 z-30" onClick={() => setSegAddMenu(null)} />
+          <div className="fixed inset-0 z-30" role="presentation" aria-hidden="true" onClick={() => setSegAddMenu(null)} onKeyDown={(e) => { if (e.key === "Escape") setSegAddMenu(null); }} />
           <div
             className="fixed z-40 w-52 rounded-xl border border-border bg-card shadow-lg"
             style={{ left: segAddMenu.x, top: segAddMenu.y }}
@@ -924,7 +924,11 @@ function TreeRow({ node, onToggle, onNodeEdit: _onNodeEdit }: { node: TreeNode; 
         node.selected ? "bg-sidebar-accent font-semibold" : ""
       }`}
       style={{ paddingLeft: `${indent}px`, cursor: "pointer" }}
+      role="treeitem"
+      aria-selected={node.selected ?? false}
+      tabIndex={0}
       onClick={handleClick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClick(); } }}
     >
       {!isLeaf && (
         <span className="flex h-3 w-3 shrink-0 items-center justify-center text-muted-foreground">

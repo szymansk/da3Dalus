@@ -61,10 +61,11 @@ export function StreamlinesViewer({ aeroplaneId }: { aeroplaneId: string | null 
       {/* Form + Button row */}
       <div className="flex items-end gap-3 border-b border-border bg-card px-4 py-3">
         <div className="flex flex-col gap-1">
-          <label className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
+          <label htmlFor="streamlines-velocity" className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
             Velocity (m/s)
           </label>
           <input
+            id="streamlines-velocity"
             type="number"
             value={params.velocity}
             onChange={(e) => setParams((p) => ({ ...p, velocity: Number.parseFloat(e.target.value) || 0 }))}
@@ -72,10 +73,11 @@ export function StreamlinesViewer({ aeroplaneId }: { aeroplaneId: string | null 
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
+          <label htmlFor="streamlines-alpha" className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
             Alpha (&deg;)
           </label>
           <input
+            id="streamlines-alpha"
             type="number"
             value={params.alpha}
             onChange={(e) => setParams((p) => ({ ...p, alpha: Number.parseFloat(e.target.value) || 0 }))}
@@ -83,10 +85,11 @@ export function StreamlinesViewer({ aeroplaneId }: { aeroplaneId: string | null 
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
+          <label htmlFor="streamlines-beta" className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
             Beta (&deg;)
           </label>
           <input
+            id="streamlines-beta"
             type="number"
             value={params.beta}
             onChange={(e) => setParams((p) => ({ ...p, beta: Number.parseFloat(e.target.value) || 0 }))}
@@ -94,10 +97,11 @@ export function StreamlinesViewer({ aeroplaneId }: { aeroplaneId: string | null 
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
+          <label htmlFor="streamlines-altitude" className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
             Altitude (m)
           </label>
           <input
+            id="streamlines-altitude"
             type="number"
             value={params.altitude}
             onChange={(e) => setParams((p) => ({ ...p, altitude: Number.parseFloat(e.target.value) || 0 }))}
