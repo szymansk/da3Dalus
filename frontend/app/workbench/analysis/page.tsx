@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X } from "lucide-react";
+import { useDialog } from "@/hooks/useDialog";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAnalysis } from "@/hooks/useAnalysis";
 import { useStripForces } from "@/hooks/useStripForces";
@@ -19,6 +20,7 @@ export default function AnalysisPage() {
   const { wing } = useWing(aeroplaneId, selectedWing ?? wingNames[0] ?? null);
   const [configOpen, setConfigOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("Polar");
+  const { dialogRef, handleClose: dialogHandleClose } = useDialog(configOpen, () => setConfigOpen(false));
 
   const modalTitleByTab: Record<Tab, string> = {
     "Polar": "Polar Configuration",
@@ -51,20 +53,15 @@ export default function AnalysisPage() {
       </div>
 
       {/* Config Modal */}
-      {configOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          role="dialog"
-          aria-modal="true"
-          aria-label={modalTitle}
-          onClick={() => setConfigOpen(false)}
-          onKeyDown={(e) => { if (e.key === "Escape") setConfigOpen(false); }}
-        >
-          <div
-            className="flex max-h-[85vh] w-[480px] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-          >
+      <dialog
+        ref={dialogRef}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
+        onClose={dialogHandleClose}
+        onClick={(e) => { if (e.target === e.currentTarget) dialogHandleClose(); }}
+        aria-label={modalTitle}
+      >
+        {configOpen && (
+          <div className="flex max-h-[85vh] w-[480px] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl">
             <div className="flex items-center justify-between">
               <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
                 {modalTitle}
@@ -94,8 +91,8 @@ export default function AnalysisPage() {
               onClose={() => setConfigOpen(false)}
             />
           </div>
-        </div>
-      )}
+        )}
+      </dialog>
     </>
   );
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, X } from "lucide-react";
 import type { PropertyDefinition, PropertyType } from "@/hooks/useComponentTypes";
+import { useDialog } from "@/hooks/useDialog";
 
 interface PropertyEditDialogProps {
   open: boolean;
@@ -110,8 +111,7 @@ export function PropertyEditDialog({
   // react-hooks/set-state-in-effect lint rule forbids).
   const [form, setForm] = useState<FormState>(() => toForm(initial));
   const [error, setError] = useState<string | null>(null);
-
-  if (!open) return null;
+  const { dialogRef, handleClose } = useDialog(open, onCancel);
 
   function update(patch: Partial<FormState>) {
     setForm((prev) => ({ ...prev, ...patch }));
@@ -127,19 +127,14 @@ export function PropertyEditDialog({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60"
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-transparent backdrop:bg-black/60"
+      onClose={handleClose}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
       aria-label={initial ? "Edit Property" : "New Property"}
-      onClick={onCancel}
-      onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}
     >
-      <div
-        className="flex w-[440px] flex-col gap-3 rounded-2xl border border-border bg-card p-5 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-      >
+      <div className="flex w-[440px] flex-col gap-3 rounded-2xl border border-border bg-card p-5 shadow-2xl">
         <div className="flex items-center gap-2">
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-foreground">
             {initial ? "Edit Property" : "New Property"}
@@ -314,6 +309,6 @@ export function PropertyEditDialog({
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }

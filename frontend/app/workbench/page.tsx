@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { PanelLeftOpen, Maximize2, Minimize2, X } from "lucide-react";
+import { useDialog } from "@/hooks/useDialog";
 import { PropertyForm } from "@/components/workbench/PropertyForm";
 import { AeroplaneTree } from "@/components/workbench/AeroplaneTree";
 import { SparEditDialog } from "@/components/workbench/SparEditDialog";
@@ -26,6 +27,7 @@ export default function WorkbenchPage() {
   const [treeOpen, setTreeOpen] = useState(true);
   const [viewerMaximized, setViewerMaximized] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
+  const { dialogRef: configDialogRef, handleClose: configHandleClose } = useDialog(configOpen, () => setConfigOpen(false));
 
   // Spar/TED dialog state
   const [sparDialog, setSparDialog] = useState<{
@@ -201,20 +203,15 @@ export default function WorkbenchPage() {
       </div>
 
       {/* Configuration Modal — opens via pencil icon on segments/xsecs */}
-      {configOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Configuration"
-          onClick={() => setConfigOpen(false)}
-          onKeyDown={(e) => { if (e.key === "Escape") setConfigOpen(false); }}
-        >
-          <div
-            className="flex max-h-[85vh] w-[480px] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-          >
+      <dialog
+        ref={configDialogRef}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
+        onClose={configHandleClose}
+        onClick={(e) => { if (e.target === e.currentTarget) configHandleClose(); }}
+        aria-label="Configuration"
+      >
+        {configOpen && (
+          <div className="flex max-h-[85vh] w-[480px] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl">
             <div className="flex items-center justify-between">
               <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
                 Configuration
@@ -228,8 +225,8 @@ export default function WorkbenchPage() {
             </div>
             <PropertyForm onGeometryChanged={() => { mutateAllWings(); mutateSelectedWing(); mutateAllFuselages(); }} />
           </div>
-        </div>
-      )}
+        )}
+      </dialog>
 
       {/* Spar Edit/Add Dialog */}
       {sparDialog && aeroplaneId && (

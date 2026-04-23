@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Upload, X, Check, Loader2, Maximize2, Minimize2, Plus, Trash2, Play } from "lucide-react";
 import { API_BASE } from "@/lib/fetcher";
+import { useDialog } from "@/hooks/useDialog";
 
 /** Build Plotly Surface3d traces for a fuselage from xsec dicts */
 function buildFuselageSurface(
@@ -814,8 +815,7 @@ export function ImportFuselageDialog({
   const [error, setError] = useState<string | null>(null);
   const [fidelity, setFidelity] = useState<{ volume_ratio: number; area_ratio: number } | null>(null);
   const [saving, setSaving] = useState(false);
-
-  if (!open) return null;
+  const { dialogRef, handleClose: dialogHandleClose } = useDialog(open, () => { handleReset(); onClose(); });
 
   const handleFileSelect = (selectedFile: File) => {
     setFile(selectedFile);
@@ -887,13 +887,12 @@ export function ImportFuselageDialog({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
+      onClose={dialogHandleClose}
+      onClick={(e) => { if (e.target === e.currentTarget) dialogHandleClose(); }}
       aria-label="New Fuselage"
-      onClick={() => { handleReset(); onClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape") { handleReset(); onClose(); } }}
     >
       <div
         className={`flex flex-col rounded-2xl border border-border bg-card shadow-2xl transition-all ${
@@ -901,8 +900,6 @@ export function ImportFuselageDialog({
             ? "fixed inset-4 z-50 w-auto"
             : "w-[900px] h-[80vh]"
         }`}
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center gap-3 border-b border-border px-6 py-4">
@@ -979,6 +976,6 @@ export function ImportFuselageDialog({
           )}
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }

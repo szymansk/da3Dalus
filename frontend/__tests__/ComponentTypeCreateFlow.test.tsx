@@ -86,7 +86,7 @@ describe("Manage Types → New Type → Save flow (e2e)", () => {
     );
 
     // 1. Click "+ New Type"
-    fireEvent.click(screen.getByText(/New Type/i));
+    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
 
     // 2. Verify Edit dialog opened
     expect(screen.getByText(/New Type:/i)).toBeDefined();
@@ -114,7 +114,7 @@ describe("Manage Types → New Type → Save flow (e2e)", () => {
 
   it("Save with empty Label is blocked — no API call", () => {
     render(<ComponentTypeManagementDialog open={true} onClose={vi.fn()} />);
-    fireEvent.click(screen.getByText(/New Type/i));
+    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
     // No input → click Save
     clickSave();
     expect(mockCreate).not.toHaveBeenCalled();
@@ -126,7 +126,7 @@ describe("Manage Types → New Type → Save flow (e2e)", () => {
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByText(/New Type/i));
+    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
 
     const editable = editableTextInputs(container);
     fireEvent.change(editable[0], { target: { value: "CarbonTube" } });  // PascalCase
@@ -150,7 +150,7 @@ describe("Manage Types → New Type → Save flow (e2e)", () => {
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByText(/New Type/i));
+    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
 
     const editable = editableTextInputs(container);
     fireEvent.change(editable[0], { target: { value: "t1" } });
@@ -170,7 +170,7 @@ describe("Manage Types → New Type → Save flow (e2e)", () => {
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={onClose} />,
     );
-    fireEvent.click(screen.getByText(/New Type/i));
+    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
 
     const editable = editableTextInputs(container);
     fireEvent.change(editable[0], { target: { value: "t2" } });
@@ -195,7 +195,7 @@ describe("Create-Type payload contract", () => {
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByText(/New Type/i));
+    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
     const editable = editableTextInputs(container);
     fireEvent.change(editable[0], { target: { value: "motor_mount" } });
     fireEvent.change(editable[1], { target: { value: "Motor Mount" } });
@@ -218,7 +218,7 @@ describe("Create-Type payload contract", () => {
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByText(/New Type/i));
+    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
     const editable = editableTextInputs(container);
     fireEvent.change(editable[0], { target: { value: "empty_desc" } });
     fireEvent.change(editable[1], { target: { value: "Empty Desc" } });
@@ -238,7 +238,7 @@ describe("Create-Type payload contract", () => {
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByText(/New Type/i));
+    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
     const editable = editableTextInputs(container);
     fireEvent.change(editable[0], { target: { value: "arr_check" } });
     fireEvent.change(editable[1], { target: { value: "Arr Check" } });
@@ -258,7 +258,7 @@ describe("Create-Type payload contract", () => {
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByText(/New Type/i));
+    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
     const editable = editableTextInputs(container);
     fireEvent.change(editable[0], { target: { value: "nodup" } });
     fireEvent.change(editable[1], { target: { value: "NoDup" } });
@@ -282,7 +282,7 @@ describe("Adding properties inside the type", () => {
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByText(/New Type/i));
+    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
 
     // Fill Name + Label
     let editable = editableTextInputs(container);
@@ -349,7 +349,7 @@ describe("Adding properties inside the type", () => {
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByText(/New Type/i));
+    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
 
     const firstEditable = editableTextInputs(container);
     fireEvent.change(firstEditable[0], { target: { value: "multi" } });
@@ -395,7 +395,7 @@ describe("Adding properties inside the type", () => {
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByText(/New Type/i));
+    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
     const first = editableTextInputs(container);
     fireEvent.change(first[0], { target: { value: "enum_t" } });
     fireEvent.change(first[1], { target: { value: "Enum T" } });
@@ -431,7 +431,7 @@ describe("Backend error propagation on Save", () => {
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByText(/New Type/i));
+    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
 
     const editable = editableTextInputs(container);
     fireEvent.change(editable[0], { target: { value: "dup" } });
@@ -463,7 +463,7 @@ describe("Backend error propagation on Save", () => {
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByText(/New Type/i));
+    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
     const editable = editableTextInputs(container);
     fireEvent.change(editable[0], { target: { value: "t_x" } });
     fireEvent.change(editable[1], { target: { value: "T X" } });
@@ -482,7 +482,7 @@ describe("Backend error propagation on Save", () => {
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByText(/New Type/i));
+    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
     const editable = editableTextInputs(container);
     fireEvent.change(editable[0], { target: { value: "retry_me" } });
     fireEvent.change(editable[1], { target: { value: "Retry" } });
@@ -630,7 +630,7 @@ describe("Cancel / dismiss paths", () => {
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByText(/New Type/i));
+    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
 
     // Type something so we can verify Cancel really drops it
     const editable = editableTextInputs(container);
@@ -649,7 +649,10 @@ describe("Cancel / dismiss paths", () => {
     expect(mockUpdate).not.toHaveBeenCalled();
     expect(mockMutate).not.toHaveBeenCalled();
 
-    // Edit dialog no longer visible
-    expect(screen.queryByText(/New Type:/i)).toBeNull();
+    // Edit dialog is closed (not open)
+    const editDialogs = container.querySelectorAll("dialog");
+    // The edit dialog is the second one (first is management dialog)
+    const editDialog = editDialogs[1];
+    expect(editDialog?.hasAttribute("open")).toBe(false);
   });
 });

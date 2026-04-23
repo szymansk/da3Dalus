@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 import { AlertTriangle, Lock, Loader2, Save, Trash2, X } from "lucide-react";
+import { useDialog } from "@/hooks/useDialog";
 import {
   deleteTreeNode,
   updateTreeNode,
@@ -85,20 +86,16 @@ interface ConfirmModalProps {
 }
 
 function ConfirmModal({ title, body, onConfirm, onCancel }: Readonly<ConfirmModalProps>) {
+  const { dialogRef, handleClose } = useDialog(true, onCancel);
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
+      onClose={handleClose}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
       aria-label={title}
-      onClick={onCancel}
-      onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}
     >
-      <div
-        className="flex w-[420px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-      >
+      <div className="flex w-[420px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl">
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
           {title}
         </span>
@@ -118,7 +115,7 @@ function ConfirmModal({ title, body, onConfirm, onCancel }: Readonly<ConfirmModa
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }
 
@@ -218,6 +215,7 @@ export function NodePropertyPanel({
   const [error, setError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState(false);
   const [lockBusy, setLockBusy] = useState(false);
+  const { dialogRef, handleClose: dialogHandleClose } = useDialog(!!node, onClose);
 
   const { components: materials } = useComponents("material");
 
@@ -324,18 +322,15 @@ export function NodePropertyPanel({
   const lockTitle = "Lock part";
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      onClick={onClose}
-      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop:bg-black/60"
+      onClose={dialogHandleClose}
+      onClick={(e) => { if (e.target === e.currentTarget) dialogHandleClose(); }}
       aria-label="Edit tree node"
     >
     <div
       className="flex max-h-[85vh] w-[480px] flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
-      onClick={(e) => e.stopPropagation()}
-      onKeyDown={(e) => e.stopPropagation()}
     >
       <div className="flex items-center gap-2">
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] text-foreground">
@@ -469,6 +464,6 @@ export function NodePropertyPanel({
         />
       )}
     </div>
-    </div>
+    </dialog>
   );
 }

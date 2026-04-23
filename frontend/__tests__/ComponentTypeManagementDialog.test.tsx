@@ -55,8 +55,10 @@ function makeType(o: Record<string, unknown> = {}) {
 
 describe("ComponentTypeManagementDialog", () => {
   it("does not render when open=false", () => {
-    render(<ComponentTypeManagementDialog open={false} onClose={vi.fn()} />);
-    expect(screen.queryByText(/Manage Component Types/i)).toBeNull();
+    const { container } = render(<ComponentTypeManagementDialog open={false} onClose={vi.fn()} />);
+    const dialog = container.querySelector("dialog");
+    expect(dialog).toBeTruthy();
+    expect(dialog?.hasAttribute("open")).toBe(false);
   });
 
   it("shows empty state message when no types exist", () => {
@@ -117,7 +119,7 @@ describe("ComponentTypeManagementDialog", () => {
 
   it("'+ New Type' button opens the Edit dialog with an empty type", () => {
     render(<ComponentTypeManagementDialog open={true} onClose={vi.fn()} />);
-    fireEvent.click(screen.getByText(/New Type/i));
+    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
     // The Edit dialog has its own title "Edit Type" or "New Type"
     expect(screen.getByText(/New Type:/i)).toBeDefined();
   });

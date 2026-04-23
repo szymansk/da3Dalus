@@ -46,7 +46,7 @@ beforeEach(() => {
 
 describe("ConstructionPartPickerDialog", () => {
   it("does not render when open=false", () => {
-    render(
+    const { container } = render(
       <ConstructionPartPickerDialog
         open={false}
         aeroplaneId="a"
@@ -54,7 +54,9 @@ describe("ConstructionPartPickerDialog", () => {
         onSelect={vi.fn()}
       />,
     );
-    expect(screen.queryByText(/Construction Part/i)).toBeNull();
+    const dialog = container.querySelector("dialog");
+    expect(dialog).toBeTruthy();
+    expect(dialog?.hasAttribute("open")).toBe(false);
   });
 
   it("renders with target group name in the header", () => {

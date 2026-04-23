@@ -831,7 +831,7 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
         )}
         {addMenuOpen && (
           <>
-            <div className="fixed inset-0 z-30" role="presentation" aria-hidden="true" onClick={() => setAddMenuOpen(false)} onKeyDown={(e) => { if (e.key === "Escape") setAddMenuOpen(false); }} />
+            <div className="fixed inset-0 z-30" aria-hidden="true" onClick={() => setAddMenuOpen(false)} onKeyDown={(e) => { if (e.key === "Escape") setAddMenuOpen(false); }} />
             <div className="absolute right-2 top-1 z-40 w-44 rounded-xl border border-border bg-card shadow-lg">
               <button
                 onClick={() => { setAddMenuOpen(false); handleAddWing(); }}
@@ -855,7 +855,7 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
       {/* Segment add menu (Spar / Control Surface) — positioned at click location */}
       {segAddMenu && (
         <>
-          <div className="fixed inset-0 z-30" role="presentation" aria-hidden="true" onClick={() => setSegAddMenu(null)} onKeyDown={(e) => { if (e.key === "Escape") setSegAddMenu(null); }} />
+          <div className="fixed inset-0 z-30" aria-hidden="true" onClick={() => setSegAddMenu(null)} onKeyDown={(e) => { if (e.key === "Escape") setSegAddMenu(null); }} />
           <div
             className="fixed z-40 w-52 rounded-xl border border-border bg-card shadow-lg"
             style={{ left: segAddMenu.x, top: segAddMenu.y }}
