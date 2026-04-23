@@ -40,6 +40,7 @@ non-trivial work.
 ### Supercycle Commands (preferred)
 
 ```
+/supercycle:init                 ← Check & install all required tools and dependencies
 /supercycle:work #187          ← Full cycle: brainstorm → implement → review → merge
 /supercycle:bug <error log>    ← Bug intake: investigate → ticket → TDD fix → merge
 /supercycle:implement #188,#190  ← Skip brainstorming, parallel implementation
