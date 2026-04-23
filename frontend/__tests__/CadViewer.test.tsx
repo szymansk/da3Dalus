@@ -61,7 +61,7 @@ const SAMPLE_SHAPES = {
           shape: { vertices: [0, 0, 0], triangles: [0], normals: [0, 0, 1], edges: [] },
           state: [1, 1],
           color: "#FF8400",
-          alpha: 1.0,
+          alpha: 1,
           loc: [[0, 0, 0], [0, 0, 0, 1]],
         },
       ],
@@ -134,7 +134,7 @@ describe("CadViewer", () => {
     const [shapes, renderOpts] = mockRender.mock.calls[0];
     expect(shapes.version).toBe(3);
     expect(shapes.parts).toHaveLength(1);
-    expect(renderOpts.ambientIntensity).toBe(1.0);
+    expect(renderOpts.ambientIntensity).toBe(1);
     expect(renderOpts.edgeColor).toBe(0x707070);
   });
 

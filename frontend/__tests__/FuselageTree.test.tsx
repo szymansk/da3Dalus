@@ -23,7 +23,7 @@ vi.mock("@/hooks/useWings", () => ({
 const mockFuselageData = {
   name: "TestFuselage",
   x_secs: [
-    { xyz: [0, 0, 0], a: 0.01, b: 0.01, n: 2.0 },
+    { xyz: [0, 0, 0], a: 0.01, b: 0.01, n: 2 },
     { xyz: [0.1, 0, 0], a: 0.05, b: 0.04, n: 2.3 },
     { xyz: [0.2, 0, 0], a: 0.03, b: 0.02, n: 2.1 },
   ],

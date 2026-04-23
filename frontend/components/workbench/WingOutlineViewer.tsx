@@ -758,7 +758,7 @@ function buildPlotlyLayout() {
     updatemenus: [{
       type: "buttons",
       direction: "left",
-      x: 1.0,
+      x: 1,
       y: 1.05,
       xanchor: "right",
       yanchor: "bottom",
@@ -914,7 +914,7 @@ export function WingOutlineViewer({
 
     return () => {
       disposed = true;
-      if (containerRef.current && plotlyRef.current) {
+      if (containerRef.current && plotlyRef.current) { // NOSONAR — both refs needed
         try { plotlyRef.current.purge(containerRef.current); } catch { /* ok */ }
       }
     };

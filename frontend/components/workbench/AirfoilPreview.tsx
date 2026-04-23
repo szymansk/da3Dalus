@@ -166,7 +166,7 @@ export function AirfoilPreview({ airfoilName, onClose }: Readonly<AirfoilPreview
               const isStall = i === CL_BARS.length - 1;
               return (
                 <div
-                  key={i}
+                  key={`cl-${i}-${val}`}
                   className={`flex-1 rounded-t-sm ${isStall ? "bg-destructive" : "bg-primary"}`}
                   style={{ height: `${heightPct}%`, minHeight: 2 }}
                 />
@@ -211,7 +211,7 @@ export function AirfoilPreview({ airfoilName, onClose }: Readonly<AirfoilPreview
               const heightPct = (val / LD_MAX) * 100;
               return (
                 <div
-                  key={i}
+                  key={`ld-${i}-${val}`}
                   className="flex-1 rounded-t-sm bg-success"
                   style={{ height: `${heightPct}%`, minHeight: 2 }}
                 />

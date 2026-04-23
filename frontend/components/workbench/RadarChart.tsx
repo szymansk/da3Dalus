@@ -46,7 +46,7 @@ export function RadarChart({
   const R = Math.min(size, height) * 0.35;
   const n = axes.length;
   const angles = axes.map((_, i) => -Math.PI / 2 + (2 * Math.PI * i) / n);
-  const levels = [0.33, 0.67, 1.0];
+  const levels = [0.33, 0.67, 1];
 
   const targetValues = axes.map((a) => target[a.key] ?? 0);
   const analysisValues = analysis
