@@ -50,19 +50,20 @@ function buildFuselageSurface(
 }
 
 /** Plotly 3D preview of fuselage from xsecs — lazy loaded */
-function FuselagePreview3D({ xsecs, selectedXsec }: { xsecs: XSec[]; selectedXsec: number | null }) {
+function FuselagePreview3D({ xsecs, selectedXsec }: Readonly<{ xsecs: XSec[]; selectedXsec: number | null }>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const plotlyRef = useRef<{ restyle: (el: HTMLDivElement, update: Record<string, unknown>, indices: number[]) => void } | null>(null);
   const cameraRef = useRef<Record<string, unknown> | null>(null);
 
   // Initial plot + full rebuild when xsecs change
   useEffect(() => {
-    if (!containerRef.current || xsecs.length < 2) return;
+    const node = containerRef.current;
+    if (!node || xsecs.length < 2) return;
     let disposed = false;
 
     (async () => {
       const Plotly = await import("plotly.js-gl3d-dist-min");
-      if (disposed || !containerRef.current) return;
+      if (disposed || !node) return;
       plotlyRef.current = Plotly.default;
 
       const surfaceTrace = buildFuselageSurface(xsecs, "#FF8400", 0.7, "Reconstructed", 32);
@@ -115,7 +116,7 @@ function FuselagePreview3D({ xsecs, selectedXsec }: { xsecs: XSec[]; selectedXse
       }
 
       await Plotly.default.react(
-        containerRef.current,
+        node,
         [surfaceTrace as Record<string, unknown>, ...xsecTraces as Record<string, unknown>[]],
         layout,
         {
@@ -131,11 +132,11 @@ function FuselagePreview3D({ xsecs, selectedXsec }: { xsecs: XSec[]; selectedXse
         const colors = xsecs.map((_, idx) => selectedXsec === idx ? "#E5484D" : "#B8B9B6");
         const widths = xsecs.map((_, idx) => selectedXsec === idx ? 5 : 1.5);
         (Plotly.default as unknown as { restyle: (el: HTMLDivElement, update: Record<string, unknown>, indices: number[]) => void })
-          .restyle(containerRef.current, { "line.color": colors, "line.width": widths }, traceIndices);
+          .restyle(node, { "line.color": colors, "line.width": widths }, traceIndices);
       }
 
       // Listen for camera changes and save them
-      (containerRef.current as unknown as { on?: (event: string, cb: (update: Record<string, unknown>) => void) => void })
+      (node as unknown as { on?: (event: string, cb: (update: Record<string, unknown>) => void) => void })
         .on?.("plotly_relayout", (update: Record<string, unknown>) => {
           if (update?.["scene.camera"]) {
             cameraRef.current = update["scene.camera"] as Record<string, unknown>;
@@ -145,10 +146,10 @@ function FuselagePreview3D({ xsecs, selectedXsec }: { xsecs: XSec[]; selectedXse
 
     return () => {
       disposed = true;
-      if (containerRef.current) {
+      if (node) {
         import("plotly.js-gl3d-dist-min")
-          .then((P) => P.default.purge(containerRef.current!))
-          .catch(() => {});
+          .then((P) => P.default.purge(node))
+          .catch(() => { /* cleanup — safe to ignore */ });
       }
     };
   }, [xsecs]);
@@ -237,12 +238,12 @@ function CrossSectionSvg({
   selectedXsec,
   setSelectedXsec,
   setXsecs,
-}: {
+}: Readonly<{
   xsecs: XSec[];
   selectedXsec: number | null;
   setSelectedXsec: (idx: number | null) => void;
   setXsecs: React.Dispatch<React.SetStateAction<XSec[]>>;
-}) {
+}>) {
   const idx = selectedXsec ?? 0;
   const xsec = xsecs[idx];
   if (!xsec) return null;
@@ -345,11 +346,11 @@ function XSecParameterEditor({
   xsecs,
   selectedXsec,
   setXsecs,
-}: {
+}: Readonly<{
   xsecs: XSec[];
   selectedXsec: number | null;
   setXsecs: React.Dispatch<React.SetStateAction<XSec[]>>;
-}) {
+}>) {
   const idx = selectedXsec ?? 0;
   const xsec = xsecs[idx];
   if (!xsec) return null;
@@ -485,10 +486,10 @@ async function performSlicing(
 /** Build default xsecs for the "create empty" flow. */
 function buildDefaultXsecs(scaleFactor: number, flipX: boolean): XSec[] {
   const raw: XSec[] = [
-    { xyz: [0, 0, 0], a: 0.01, b: 0.01, n: 2.0 },
-    { xyz: [0.1, 0, 0], a: 0.05, b: 0.04, n: 2.0 },
-    { xyz: [0.3, 0, 0], a: 0.05, b: 0.04, n: 2.0 },
-    { xyz: [0.4, 0, 0], a: 0.01, b: 0.01, n: 2.0 },
+    { xyz: [0, 0, 0], a: 0.01, b: 0.01, n: 2 },
+    { xyz: [0.1, 0, 0], a: 0.05, b: 0.04, n: 2 },
+    { xyz: [0.3, 0, 0], a: 0.05, b: 0.04, n: 2 },
+    { xyz: [0.4, 0, 0], a: 0.01, b: 0.01, n: 2 },
   ];
   return raw.map(xs => ({
     ...xs,

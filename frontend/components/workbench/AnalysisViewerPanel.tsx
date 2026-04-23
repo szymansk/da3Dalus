@@ -67,7 +67,8 @@ function PlotlyChart({
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!containerRef.current || xData.length === 0) return;
+    const node = containerRef.current;
+    if (!node || xData.length === 0) return;
     let disposed = false;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -75,7 +76,7 @@ function PlotlyChart({
 
     (async () => {
       PlotlyRef = await import("plotly.js-gl3d-dist-min");
-      if (disposed || !containerRef.current) return;
+      if (disposed || !node) return;
 
       const mainTrace: PlotlyTrace = {
         x: xData,
@@ -114,7 +115,7 @@ function PlotlyChart({
         layout.shapes = shapes;
       }
 
-      await PlotlyRef.react(containerRef.current, allTraces, layout, {
+      await PlotlyRef.react(node, allTraces, layout, {
         responsive: true,
         displayModeBar: false,
       });
@@ -122,7 +123,7 @@ function PlotlyChart({
 
     return () => {
       disposed = true;
-      if (containerRef.current && PlotlyRef) PlotlyRef.purge(containerRef.current);
+      if (node && PlotlyRef) PlotlyRef.purge(node);
     };
   }, [xData, yData, xLabel, yLabel, color, xFormat, extraTraces, shapes]);
 
@@ -172,7 +173,8 @@ function StreamlinesRenderer({ figure }: Readonly<{ figure: unknown }>) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!figure || !containerRef.current) return;
+    const node = containerRef.current;
+    if (!figure || !node) return;
     let disposed = false;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -180,7 +182,7 @@ function StreamlinesRenderer({ figure }: Readonly<{ figure: unknown }>) {
 
     (async () => {
       PlotlyRef = await import("plotly.js-gl3d-dist-min");
-      if (disposed || !containerRef.current) return;
+      if (disposed || !node) return;
 
       const figData = figure as {
         data?: unknown[];
@@ -217,7 +219,7 @@ function StreamlinesRenderer({ figure }: Readonly<{ figure: unknown }>) {
         autosize: true,
       };
 
-      await PlotlyRef.react(containerRef.current, figData.data || [], layout, {
+      await PlotlyRef.react(node, figData.data || [], layout, {
         responsive: true,
         displayModeBar: true,
         modeBarButtonsToRemove: ["toImage", "sendDataToCloud"],
@@ -226,7 +228,7 @@ function StreamlinesRenderer({ figure }: Readonly<{ figure: unknown }>) {
 
     return () => {
       disposed = true;
-      if (containerRef.current && PlotlyRef) PlotlyRef.purge(containerRef.current);
+      if (node && PlotlyRef) PlotlyRef.purge(node);
     };
   }, [figure]);
 
@@ -346,7 +348,8 @@ function TrefftzPlaneChart({
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!containerRef.current || stripForces.surfaces.length === 0) return;
+    const node = containerRef.current;
+    if (!node || stripForces.surfaces.length === 0) return;
     let disposed = false;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -354,7 +357,7 @@ function TrefftzPlaneChart({
 
     (async () => {
       PlotlyRef = await import("plotly.js-gl3d-dist-min");
-      if (disposed || !containerRef.current) return;
+      if (disposed || !node) return;
 
       const surfaceGroups = groupSurfaceStrips(stripForces.surfaces);
       const traces: PlotlyTrace[] = buildSurfaceTraces(surfaceGroups);
@@ -407,7 +410,7 @@ function TrefftzPlaneChart({
         annotations,
       };
 
-      await PlotlyRef.react(containerRef.current, traces, layout, {
+      await PlotlyRef.react(node, traces, layout, {
         responsive: true,
         displayModeBar: true,
         modeBarButtonsToRemove: ["toImage", "sendDataToCloud"] as string[],
@@ -416,7 +419,7 @@ function TrefftzPlaneChart({
 
     return () => {
       disposed = true;
-      if (containerRef.current && PlotlyRef) PlotlyRef.purge(containerRef.current);
+      if (node && PlotlyRef) PlotlyRef.purge(node);
     };
   }, [stripForces, wingXSecs, wingSymmetric]);
 
@@ -499,7 +502,7 @@ function StreamlinesTabContent({
 
 export function AnalysisViewerPanel({
   result,
-  aeroplaneId: _aeroplaneId,
+  // aeroplaneId reserved for future use
   lastRunTime,
   lastRunDurationMs,
   stripForces,

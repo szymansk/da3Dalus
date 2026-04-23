@@ -241,7 +241,7 @@ function buildSegmentNodes(
   ctx: BuildNodeContext,
   nosePntMm: number[] | null,
 ): TreeNode[] {
-  const { wingName, wing, selectedWing, selectedXsecIndex, expandedSet, callbacks } = ctx;
+  const { wingName, wing, expandedSet, callbacks } = ctx;
   const nodes: TreeNode[] = [];
   const wingExpanded = expandedSet.has(`wing-${wingName}`);
 
@@ -907,7 +907,7 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
 
 // ── TreeRow ─────────────────────────────────────────────────────
 
-function TreeRow({ node, onToggle, onNodeEdit: _onNodeEdit }: Readonly<{ node: TreeNode; onToggle: () => void; onNodeEdit?: () => void }>) {
+function TreeRow({ node, onToggle }: Readonly<{ node: TreeNode; onToggle: () => void; onNodeEdit?: () => void }>) {
   if (node.isInsertPoint) {
     return (
       <div

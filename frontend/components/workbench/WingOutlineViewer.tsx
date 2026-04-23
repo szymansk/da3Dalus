@@ -858,10 +858,11 @@ export function WingOutlineViewer({
   const [showQuarterChord, setShowQuarterChord] = useState(false);
 
   useEffect(() => {
+    const node = containerRef.current;
     let disposed = false;
 
     async function render() {
-      if (!containerRef.current) return;
+      if (!node) return;
       setLoading(true);
 
       const Plotly = await import("plotly.js-gl3d-dist-min");
@@ -891,19 +892,19 @@ export function WingOutlineViewer({
       const config = { displayModeBar: false, responsive: true };
 
       // Save camera before replot
-      const el = containerRef.current as unknown as { layout?: { scene?: { camera?: unknown } } } | null;
+      const el = node as unknown as { layout?: { scene?: { camera?: unknown } } } | null;
       const currentCamera = el?.layout?.scene?.camera;
       if (currentCamera) savedCamera.current = currentCamera;
 
-      await Plotly.newPlot(containerRef.current, traces, layout, config);
+      await Plotly.newPlot(node, traces, layout, config);
 
       // Restore saved camera
       if (savedCamera.current) {
-        try { Plotly.relayout(containerRef.current, { "scene.camera": savedCamera.current }); } catch { /* ok */ }
+        try { Plotly.relayout(node, { "scene.camera": savedCamera.current }); } catch { /* ok */ }
       }
 
       // Track camera changes from user interaction
-      containerRef.current?.on?.("plotly_relayout", (update: Record<string, unknown>) => {
+      node?.on?.("plotly_relayout", (update: Record<string, unknown>) => {
         if (update["scene.camera"]) savedCamera.current = update["scene.camera"];
       });
 
@@ -914,8 +915,8 @@ export function WingOutlineViewer({
 
     return () => {
       disposed = true;
-      if (containerRef.current && plotlyRef.current) { // NOSONAR — both refs needed
-        try { plotlyRef.current.purge(containerRef.current); } catch { /* ok */ }
+      if (node && plotlyRef.current) { // NOSONAR — both refs needed
+        try { plotlyRef.current.purge(node); } catch { /* ok */ }
       }
     };
   }, [wings, fuselages, visibleWings, visibleFuselages, selectedXsecIndex, selectedWing, selectedFuselage, selectedFuselageXsecIndex, showQuarterChord]);

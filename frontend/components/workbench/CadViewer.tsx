@@ -74,7 +74,8 @@ export function CadViewer({ parts }: Readonly<CadViewerProps>) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!containerRef.current || parts.length === 0) return;
+    const containerNode = containerRef.current;
+    if (!containerNode || parts.length === 0) return;
     let disposed = false;
 
     async function init() {
@@ -84,9 +85,9 @@ export function CadViewer({ parts }: Readonly<CadViewerProps>) {
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const tcv = await import("three-cad-viewer") as any;
-        if (disposed || !containerRef.current) return;
+        if (disposed || !containerNode) return;
 
-        const container = containerRef.current;
+        const container = containerNode;
 
         // Cleanup previous viewer
         if (viewerRef.current) {
@@ -152,8 +153,8 @@ export function CadViewer({ parts }: Readonly<CadViewerProps>) {
         try { (viewerRef.current as { dispose?: () => void }).dispose?.(); } catch { /* ok */ }
         viewerRef.current = null;
       }
-      if (containerRef.current) {
-        containerRef.current.innerHTML = "";
+      if (containerNode) {
+        containerNode.innerHTML = "";
       }
     };
   }, [parts]);

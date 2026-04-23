@@ -149,10 +149,10 @@ function Field({ label, value, onChange, type = "text", placeholder }: Readonly<
   );
 }
 
-function SixDof({ form, update }: {
+function SixDof({ form, update }: Readonly<{
   form: FormState;
   update: (patch: Partial<FormState>) => void;
-}) {
+}>) {
   return (
     <>
       <div className="grid grid-cols-3 gap-2">
@@ -171,11 +171,11 @@ function SixDof({ form, update }: {
 
 function MaterialSelect({
   materials, value, onChange,
-}: {
+}: Readonly<{
   materials: Component[];
   value: string;
   onChange: (v: string) => void;
-}) {
+}>) {
   return (
     <div className="flex flex-col gap-1">
       <label className="text-[11px] text-muted-foreground">Material</label>

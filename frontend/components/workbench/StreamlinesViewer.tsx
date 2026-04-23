@@ -7,7 +7,7 @@ import { useStreamlines, type StreamlinesParams } from "@/hooks/useStreamlines";
 // DO NOT import react-plotly.js or plotly.js at top level — it is 1.5 MB.
 // We load it dynamically inside useEffect when figure data arrives.
 
-export function StreamlinesViewer({ aeroplaneId }: { aeroplaneId: string | null }) {
+export function StreamlinesViewer({ aeroplaneId }: Readonly<{ aeroplaneId: string | null }>) {
   const { figure, isComputing, error, computeStreamlines } = useStreamlines(aeroplaneId);
   const [params, setParams] = useState<StreamlinesParams>({
     velocity: 20,
@@ -19,12 +19,13 @@ export function StreamlinesViewer({ aeroplaneId }: { aeroplaneId: string | null 
 
   // Render Plotly when figure data arrives
   useEffect(() => {
-    if (!figure || !plotContainerRef.current) return;
+    const node = plotContainerRef.current;
+    if (!figure || !node) return;
     let disposed = false;
 
     (async () => {
       const Plotly = await import("plotly.js-gl3d-dist-min");
-      if (disposed || !plotContainerRef.current) return;
+      if (disposed || !node) return;
 
       const figData = figure as { data?: unknown[]; layout?: Record<string, unknown> };
       const sceneFromLayout = (figData.layout?.scene as Record<string, unknown>) ?? {};
@@ -41,7 +42,7 @@ export function StreamlinesViewer({ aeroplaneId }: { aeroplaneId: string | null 
         },
       };
 
-      Plotly.default.react(plotContainerRef.current, figData.data || [], layout, {
+      Plotly.default.react(node, figData.data || [], layout, {
         responsive: true,
         displayModeBar: true,
         modeBarButtonsToRemove: ["toImage", "sendDataToCloud"],
@@ -50,8 +51,8 @@ export function StreamlinesViewer({ aeroplaneId }: { aeroplaneId: string | null 
 
     return () => {
       disposed = true;
-      if (plotContainerRef.current) {
-        import("plotly.js-gl3d-dist-min").then((P) => P.default.purge(plotContainerRef.current!)).catch(() => {});
+      if (node) {
+        import("plotly.js-gl3d-dist-min").then((P) => P.default.purge(node)).catch(() => { /* cleanup — safe to ignore */ });
       }
     };
   }, [figure]);

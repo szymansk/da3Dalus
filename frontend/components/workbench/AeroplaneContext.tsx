@@ -31,7 +31,7 @@ const Ctx = createContext<AeroplaneContextValue | null>(null);
 
 const STORAGE_KEY = "da3dalus_aeroplane_id";
 
-export function AeroplaneProvider({ children }: { children: ReactNode }) {
+export function AeroplaneProvider({ children }: Readonly<{ children: ReactNode }>) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
