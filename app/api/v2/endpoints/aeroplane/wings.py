@@ -511,7 +511,6 @@ async def create_aeroplane_wing_cross_section_spar(
     db: Annotated[Session, Depends(get_db)],
 ) -> OperationStatusResponse:
     """Creates and appends one spar on the selected cross-section."""
-    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(wing_service.create_spare, db, aeroplane_id, wing_name, cross_section_index, request)
     return OperationStatusResponse(status="created", operation="create_wing_cross_section_spar")
 
@@ -531,7 +530,6 @@ async def update_aeroplane_wing_cross_section_spar(
     db: Annotated[Session, Depends(get_db)],
 ) -> OperationStatusResponse:
     """Replaces the spar at the given index on the selected cross-section."""
-    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(wing_service.update_spare, db, aeroplane_id, wing_name, cross_section_index, spar_index, request)
     on_wing_changed(db, aeroplane_id, wing_name)
     return OperationStatusResponse(status="updated", operation="update_wing_cross_section_spar")
@@ -551,7 +549,6 @@ async def delete_aeroplane_wing_cross_section_spar(
     db: Annotated[Session, Depends(get_db)],
 ) -> OperationStatusResponse:
     """Deletes the spar at the given index on the selected cross-section."""
-    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(wing_service.delete_spare, db, aeroplane_id, wing_name, cross_section_index, spar_index)
     on_wing_changed(db, aeroplane_id, wing_name)
     return OperationStatusResponse(status="deleted", operation="delete_wing_cross_section_spar")
@@ -592,7 +589,6 @@ async def patch_wing_trailing_edge_device(
     db: Annotated[Session, Depends(get_db)],
 ) -> schemas.TrailingEdgeDeviceDetailSchema:
     """Upsert TED fields directly (not through the ControlSurface wrapper)."""
-    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     result = _call_service(wing_service.patch_trailing_edge_device, db, aeroplane_id, wing_name, cross_section_index, request)
     on_wing_changed(db, aeroplane_id, wing_name)
     return result
@@ -611,7 +607,6 @@ async def delete_wing_trailing_edge_device(
     db: Annotated[Session, Depends(get_db)],
 ) -> OperationStatusResponse:
     """Deletes the TED on the selected cross-section."""
-    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(wing_service.delete_trailing_edge_device, db, aeroplane_id, wing_name, cross_section_index)
     on_wing_changed(db, aeroplane_id, wing_name)
     return OperationStatusResponse(status="deleted", operation="delete_wing_trailing_edge_device")
@@ -647,7 +642,6 @@ async def patch_wing_trailing_edge_servo(
     db: Annotated[Session, Depends(get_db)],
 ) -> schemas.ControlSurfaceServoDetailsSchema:
     """Assign or update the servo on the TED."""
-    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     result = _call_service(wing_service.patch_trailing_edge_servo, db, aeroplane_id, wing_name, cross_section_index, request)
     on_wing_changed(db, aeroplane_id, wing_name)
     return result
@@ -666,7 +660,6 @@ async def delete_wing_trailing_edge_servo(
     db: Annotated[Session, Depends(get_db)],
 ) -> OperationStatusResponse:
     """Remove the servo assignment from the TED."""
-    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(wing_service.delete_trailing_edge_servo, db, aeroplane_id, wing_name, cross_section_index)
     on_wing_changed(db, aeroplane_id, wing_name)
     return OperationStatusResponse(status="deleted", operation="delete_wing_trailing_edge_servo")
