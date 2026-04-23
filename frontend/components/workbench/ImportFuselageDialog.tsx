@@ -452,6 +452,52 @@ async function saveFuselage(
   }
 }
 
+/** Perform the slicing API call and return parsed xsecs + metadata. */
+async function performSlicing(
+  file: File,
+  slices: number,
+  axis: string,
+  fuselageName: string,
+  scaleFactor: number,
+  flipX: boolean,
+): Promise<{ xsecs: XSec[]; fidelity: { volume_ratio: number; area_ratio: number } | null; name: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("number_of_slices", String(slices));
+  formData.append("points_per_slice", "30");
+  formData.append("slice_axis", axis);
+  formData.append("fuselage_name", fuselageName);
+
+  const res = await fetch(`${API_BASE}/fuselages/slice`, { method: "POST", body: formData });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Slicing failed: ${res.status} ${body}`);
+  }
+  const data = await res.json();
+  const newXsecs = transformSlicedXsecs(data.fuselage?.x_secs ?? [], scaleFactor, flipX);
+  return {
+    xsecs: newXsecs.length > 0 ? newXsecs : INITIAL_XSECS,
+    fidelity: extractFidelity(data),
+    name: data.fuselage?.name ?? fuselageName,
+  };
+}
+
+/** Build default xsecs for the "create empty" flow. */
+function buildDefaultXsecs(scaleFactor: number, flipX: boolean): XSec[] {
+  const raw: XSec[] = [
+    { xyz: [0, 0, 0], a: 0.01, b: 0.01, n: 2.0 },
+    { xyz: [0.1, 0, 0], a: 0.05, b: 0.04, n: 2.0 },
+    { xyz: [0.3, 0, 0], a: 0.05, b: 0.04, n: 2.0 },
+    { xyz: [0.4, 0, 0], a: 0.01, b: 0.01, n: 2.0 },
+  ];
+  return raw.map(xs => ({
+    ...xs,
+    xyz: xs.xyz.map((v, idx) => v * scaleFactor * (idx === 0 && flipX ? -1 : 1)),
+    a: xs.a * scaleFactor,
+    b: xs.b * scaleFactor,
+  }));
+}
+
 type Phase = "upload" | "processing" | "preview";
 
 export function ImportFuselageDialog({
@@ -497,26 +543,11 @@ export function ImportFuselageDialog({
     if (!file) return;
     setPhase("processing");
     setError(null);
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("number_of_slices", String(slices));
-    formData.append("points_per_slice", "30");
-    formData.append("slice_axis", axis);
-    formData.append("fuselage_name", fuselageName);
-
     try {
-      const res = await fetch(`${API_BASE}/fuselages/slice`, { method: "POST", body: formData });
-      if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`Slicing failed: ${res.status} ${body}`);
-      }
-      const data = await res.json();
-
-      const newXsecs = transformSlicedXsecs(data.fuselage?.x_secs ?? [], scaleFactor, flipX);
-      setXsecs(newXsecs.length > 0 ? newXsecs : INITIAL_XSECS);
-      setFidelity(extractFidelity(data));
-      setFuselageName(data.fuselage?.name ?? fuselageName);
+      const result = await performSlicing(file, slices, axis, fuselageName, scaleFactor, flipX);
+      setXsecs(result.xsecs);
+      setFidelity(result.fidelity);
+      setFuselageName(result.name);
       setSelectedXsec(0);
       setPhase("preview");
     } catch (err) {
@@ -542,18 +573,7 @@ export function ImportFuselageDialog({
   };
 
   const handleCreateEmpty = () => {
-    const defaultXsecs: XSec[] = [
-      { xyz: [0, 0, 0], a: 0.01, b: 0.01, n: 2.0 },
-      { xyz: [0.1, 0, 0], a: 0.05, b: 0.04, n: 2.0 },
-      { xyz: [0.3, 0, 0], a: 0.05, b: 0.04, n: 2.0 },
-      { xyz: [0.4, 0, 0], a: 0.01, b: 0.01, n: 2.0 },
-    ].map(xs => ({
-      ...xs,
-      xyz: xs.xyz.map((v, idx) => v * scaleFactor * (idx === 0 && flipX ? -1 : 1)),
-      a: xs.a * scaleFactor,
-      b: xs.b * scaleFactor,
-    }));
-    setXsecs(defaultXsecs);
+    setXsecs(buildDefaultXsecs(scaleFactor, flipX));
     setFileName(null);
     setFidelity(null);
     setSelectedXsec(0);
