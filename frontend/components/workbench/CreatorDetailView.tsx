@@ -2,6 +2,12 @@
 
 import type { CreatorInfo, CreatorCategory } from "@/hooks/useCreators";
 
+function formatDefault(val: unknown): string {
+  if (val == null) return "None";
+  if (typeof val === "object") return JSON.stringify(val);
+  return String(val);
+}
+
 const CATEGORY_LABELS: Record<CreatorCategory, string> = {
   wing: "Wing",
   fuselage: "Fuselage",
@@ -96,7 +102,7 @@ export function CreatorDetailView({ creator, onBack }: Readonly<CreatorDetailVie
                     </span>
                   ) : (
                     <span className="text-[9px] text-subtle-foreground">
-                      = {param.default != null ? (typeof param.default === "object" ? JSON.stringify(param.default) : String(param.default)) : "None"}
+                      = {formatDefault(param.default)}
                     </span>
                   )}
                 </div>

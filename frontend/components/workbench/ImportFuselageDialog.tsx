@@ -372,8 +372,8 @@ function XSecParameterEditor({
       <div className="grid grid-cols-3 gap-2">
         {(["x", "y", "z"] as const).map((ax, i) => (
           <div key={ax} className="flex flex-col gap-0.5">
-            <label className="text-[9px] text-muted-foreground">xyz[{ax}]</label>
-            <input type="number" step="0.001" value={xsec.xyz[i]}
+            <label htmlFor={`xsec-xyz-${ax}`} className="text-[9px] text-muted-foreground">xyz[{ax}]</label>
+            <input id={`xsec-xyz-${ax}`} type="number" step="0.001" value={xsec.xyz[i]}
               onChange={(e) => update("xyz", Number.parseFloat(e.target.value) || 0, i)}
               className="w-full rounded-xl border border-border bg-input px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground" />
           </div>
@@ -381,21 +381,21 @@ function XSecParameterEditor({
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="flex flex-col gap-0.5">
-          <label className="text-[9px] text-muted-foreground">a (width/2)</label>
-          <input type="number" step="0.001" value={xsec.a}
+          <label htmlFor="xsec-a" className="text-[9px] text-muted-foreground">a (width/2)</label>
+          <input id="xsec-a" type="number" step="0.001" value={xsec.a}
             onChange={(e) => update("a", Number.parseFloat(e.target.value) || 0.001)}
             className="w-full rounded-xl border border-border bg-input px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground" />
         </div>
         <div className="flex flex-col gap-0.5">
-          <label className="text-[9px] text-muted-foreground">b (height/2)</label>
-          <input type="number" step="0.001" value={xsec.b}
+          <label htmlFor="xsec-b" className="text-[9px] text-muted-foreground">b (height/2)</label>
+          <input id="xsec-b" type="number" step="0.001" value={xsec.b}
             onChange={(e) => update("b", Number.parseFloat(e.target.value) || 0.001)}
             className="w-full rounded-xl border border-border bg-input px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground" />
         </div>
       </div>
       <div className="flex flex-col gap-0.5">
-        <label className="text-[9px] text-muted-foreground">n (exponent)</label>
-        <input type="number" step="0.1" value={xsec.n}
+        <label htmlFor="xsec-n" className="text-[9px] text-muted-foreground">n (exponent)</label>
+        <input id="xsec-n" type="number" step="0.1" value={xsec.n}
           onChange={(e) => update("n", Math.max(0.5, Math.min(10, Number.parseFloat(e.target.value) || 2)))}
           className="w-full rounded-xl border border-border bg-input px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground" />
       </div>

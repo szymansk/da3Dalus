@@ -145,11 +145,16 @@ export function ComponentTypeEditDialog({
   return (
     <div
       className="fixed inset-0 z-[55] flex items-center justify-center bg-black/60"
+      role="dialog"
+      aria-modal="true"
+      aria-label={heading}
       onClick={onClose}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
       <div
         className="flex w-[560px] max-h-[85vh] flex-col gap-3 rounded-2xl border border-border bg-card p-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2">
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[15px] text-foreground">
@@ -177,8 +182,9 @@ export function ComponentTypeEditDialog({
         <div className="flex flex-col gap-2 overflow-y-auto">
           <div className="flex gap-2">
             <div className="flex flex-1 flex-col gap-1">
-              <label className="text-[11px] text-muted-foreground">Name (snake_case)</label>
+              <label htmlFor="cte-name" className="text-[11px] text-muted-foreground">Name (snake_case)</label>
               <input
+                id="cte-name"
                 type="text"
                 value={form.name}
                 onChange={(e) => update({ name: e.target.value })}
@@ -188,8 +194,9 @@ export function ComponentTypeEditDialog({
               />
             </div>
             <div className="flex flex-1 flex-col gap-1">
-              <label className="text-[11px] text-muted-foreground">Label *</label>
+              <label htmlFor="cte-label" className="text-[11px] text-muted-foreground">Label *</label>
               <input
+                id="cte-label"
                 type="text"
                 value={form.label}
                 onChange={(e) => update({ label: e.target.value })}
@@ -199,8 +206,9 @@ export function ComponentTypeEditDialog({
             </div>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] text-muted-foreground">Description</label>
+            <label htmlFor="cte-description" className="text-[11px] text-muted-foreground">Description</label>
             <input
+              id="cte-description"
               type="text"
               value={form.description}
               onChange={(e) => update({ description: e.target.value })}
@@ -307,11 +315,16 @@ export function ComponentTypeEditDialog({
       {pendingDelete && type && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm delete type"
           onClick={() => setPendingDelete(false)}
+          onKeyDown={(e) => { if (e.key === "Escape") setPendingDelete(false); }}
         >
           <div
             className="flex w-[400px] flex-col gap-3 rounded-2xl border border-border bg-card p-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
           >
             <span className="font-[family-name:var(--font-jetbrains-mono)] text-[15px] text-foreground">
               Delete type &quot;{type.label}&quot;?
