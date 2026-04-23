@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Ensure native <dialog> stays hidden when closed, even with Tailwind positioning classes */
+dialog:not([open]) {
+  display: none !important;
+}
+
 @theme inline {
   /* Colors — mapped 1:1 from pencil da3Dalus.pen design tokens */
   --color-background: #111111;
