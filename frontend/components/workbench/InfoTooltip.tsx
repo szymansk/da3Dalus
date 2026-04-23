@@ -13,8 +13,9 @@ interface InfoTooltipProps {
  */
 export function InfoTooltip({ text, size = 11 }: Readonly<InfoTooltipProps>) {
   return (
-    <button
-      type="button"
+    <span
+      role="img"
+      tabIndex={0}
       className="group/tip relative inline-flex shrink-0 border-0 bg-transparent p-0 text-muted-foreground hover:text-primary"
       aria-label={text}
       onClick={(e) => e.stopPropagation()}
@@ -24,6 +25,6 @@ export function InfoTooltip({ text, size = 11 }: Readonly<InfoTooltipProps>) {
       <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 hidden w-max max-w-[240px] -translate-x-1/2 rounded-lg border border-border bg-card px-2.5 py-1.5 text-[10px] font-normal leading-snug text-foreground shadow-lg group-hover/tip:block">
         {text}
       </span>
-    </button>
+    </span>
   );
 }
