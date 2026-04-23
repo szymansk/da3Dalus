@@ -146,7 +146,7 @@ export default function WorkbenchPage() {
                   `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wn}/cross_sections/${xi}/spars/${si}`,
                   { method: "DELETE" },
                 );
-                if (res.ok) mutateSelectedWing();
+                if (res.ok) { mutateSelectedWing(); mutateAllWings(); }
               }}
               onEditTed={(wn, xi, data) => setTedDialog({ wingName: wn, xsecIndex: xi, isNew: false, data })}
               onDeleteTed={async (wn, xi) => {
@@ -155,7 +155,7 @@ export default function WorkbenchPage() {
                   `${API_BASE}/aeroplanes/${aeroplaneId}/wings/${wn}/cross_sections/${xi}/control_surface`,
                   { method: "DELETE" },
                 );
-                if (res.ok) mutateSelectedWing();
+                if (res.ok) { mutateSelectedWing(); mutateAllWings(); }
               }}
               onAddSpar={(wn, xi) => setSparDialog({ wingName: wn, xsecIndex: xi })}
               onAddTed={(wn, xi) => setTedDialog({ wingName: wn, xsecIndex: xi, isNew: true })}
@@ -244,7 +244,7 @@ export default function WorkbenchPage() {
             spare_start: number;
             spare_length?: number;
           }}
-          onSaved={() => mutateSelectedWing()}
+          onSaved={() => { mutateSelectedWing(); mutateAllWings(); }}
         />
       )}
 
@@ -258,7 +258,7 @@ export default function WorkbenchPage() {
           xsecIndex={tedDialog.xsecIndex}
           isNew={tedDialog.isNew}
           initialData={tedDialog.data}
-          onSaved={() => mutateSelectedWing()}
+          onSaved={() => { mutateSelectedWing(); mutateAllWings(); }}
         />
       )}
     </>
