@@ -88,11 +88,11 @@ export function AirfoilSelector({
 
   return (
     <div ref={containerRef} className="relative flex flex-1 flex-col gap-1">
-      <label htmlFor={`airfoil-${label.toLowerCase().replace(/\s+/g, "-")}`} className="text-[11px] text-muted-foreground">{label}</label>
+      <label htmlFor={`airfoil-${label.toLowerCase().replaceAll(/\s+/g, "-")}`} className="text-[11px] text-muted-foreground">{label}</label>
 
       {/* Trigger */}
       <button
-        id={`airfoil-${label.toLowerCase().replace(/\s+/g, "-")}`}
+        id={`airfoil-${label.toLowerCase().replaceAll(/\s+/g, "-")}`}
         onClick={toggle}
         className={`flex items-center gap-2 rounded-xl px-3 py-2 transition-colors ${
           open ? "border-2 border-primary bg-input" : "border border-border bg-input"

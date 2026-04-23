@@ -126,6 +126,13 @@ function aggregateRootStatus(
   return { status: "partial", total };
 }
 
+/** Weight tooltip for the virtual root row. */
+function rootWeightTooltip(status: "valid" | "partial" | "invalid"): string {
+  if (status === "valid") return "All nodes have a valid weight";
+  if (status === "partial") return "Some nodes have no weight and are counted as 0";
+  return "No node in the tree has a valid weight";
+}
+
 /** Weight annotation string for a single tree node. */
 function nodeAnnotation(node: ComponentTreeNode): string | undefined {
   const totalG = node.total_weight_g;
@@ -446,12 +453,7 @@ export function ComponentTree({
     onAdd: openRootAddMenu,
     addTitle: `Add to ${aeroplaneName}`,
     weightStatus: rootAgg.status,
-    weightTooltip:
-      rootAgg.status === "valid"
-        ? "All nodes have a valid weight"
-        : rootAgg.status === "partial"
-        ? "Some nodes have no weight and are counted as 0"
-        : "No node in the tree has a valid weight",
+    weightTooltip: rootWeightTooltip(rootAgg.status),
     annotation:
       rootAgg.total > 0 ? `${rootAgg.total.toFixed(1)}g` : undefined,
     annotationPrimary: true,
