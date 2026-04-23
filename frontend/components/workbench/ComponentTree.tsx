@@ -66,7 +66,7 @@ export async function handleDragEnd({
   } catch (err) {
     // Rollback: refetch from server to discard any client-side optimistic state.
     mutateFn();
-    if (typeof globalThis.window !== "undefined") {
+    if (globalThis.window !== undefined) {
       alert(err instanceof Error ? err.message : "Move failed");
     }
   }
@@ -286,7 +286,7 @@ export function ComponentTree({
       mutate();
     } catch (err) {
       mutate();
-      if (typeof globalThis.window !== "undefined") {
+      if (globalThis.window !== undefined) {
         alert(err instanceof Error ? err.message : "Move failed");
       }
     }

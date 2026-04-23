@@ -2,9 +2,8 @@
 
 import type { CreatorInfo, CreatorCategory } from "@/hooks/useCreators";
 
-function formatDefault(val: unknown): string {
+function formatDefault(val: string | number | boolean | null | undefined): string {
   if (val == null) return "None";
-  if (typeof val === "object") return JSON.stringify(val);
   return String(val);
 }
 
@@ -100,7 +99,7 @@ export function CreatorDetailView({ creator, onBack }: Readonly<CreatorDetailVie
                     </span>
                   ) : (
                     <span className="text-[9px] text-subtle-foreground">
-                      = {formatDefault(param.default)}
+                      = {formatDefault(param.default as string | number | boolean | null | undefined)}
                     </span>
                   )}
                 </div>

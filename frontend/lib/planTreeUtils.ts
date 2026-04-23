@@ -117,7 +117,9 @@ export function resolveIdTemplate(template: string, params: Record<string, unkno
   return template.replaceAll(/\{(\w+)\}/g, (match, key) => {
     const val = params[key as string];
     if (val == null || val === "") return match;
-    return typeof val === "object" ? JSON.stringify(val) : String(val);
+    if (typeof val === "string") return val;
+    if (typeof val === "number" || typeof val === "boolean") return String(val);
+    return JSON.stringify(val);
   });
 }
 
