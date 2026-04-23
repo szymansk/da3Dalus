@@ -17,9 +17,8 @@ class JSONStepNode(ConstructionStepNode):
                                                   cls=GeneralJSONDecoder,
                                                   **self._to_be_injected)
         _json_file.close()
-        if "successors" in kwargs.keys():
+        if "successors" in kwargs:
             kwargs.pop("successors")
-        if "creator" in kwargs.keys():
+        if "creator" in kwargs:
             kwargs.pop("creator")
         super().__init__(creator=creator.creator, successors=creator.successors, **kwargs)
-        pass

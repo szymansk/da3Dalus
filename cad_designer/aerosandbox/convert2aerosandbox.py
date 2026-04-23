@@ -1,11 +1,10 @@
+from __future__ import annotations
+
 import logging
-from typing import Any, Tuple, List
 
 import numpy as np
 import aerosandbox as asb
 from cadquery import Workplane, CQ
-
-import logging
 
 from cad_designer.aerosandbox.slicing import compute_shape_properties, slice_model_along_x, fit_shape_area_superellipse, \
     plot_superellipse_fit, load_step_model
@@ -16,7 +15,7 @@ logger = logging.getLogger(__name__)
 from pathlib import Path
 
 def asb_mesh_to_stl(
-    data: Tuple[np.ndarray, np.ndarray],
+    data: tuple[np.ndarray, np.ndarray],
     output_path: str,
     scale: float = 1.0,
     correct_normals: bool = True
@@ -27,7 +26,7 @@ def asb_mesh_to_stl(
     cavets: The normal direction of the STL file may not be correct.
 
     Args:
-        data (Tuple[np.ndarray, np.ndarray]): A tuple containing:
+        data (tuple[np.ndarray, np.ndarray]): A tuple containing:
             - vertices (np.ndarray): An array of vertex coordinates (Nx3).
             - triangles (np.ndarray): An array of triangle indices (Mx3).
         output_path (str): The file path where the STL file will be saved.
@@ -139,14 +138,12 @@ def convert_solid_to_asb_fuselage(shape: Workplane, number_of_slices=100, spacin
                 plot_superellipse_fit(points_3d= np.array(points), fit_result=result, num_samples = 200)
             result['center'] = np.array([points[0][0], result['center'][0], result['center'][1]])
             ellipse_slices.append(result)
-            #break # only take one wire per slice
             prev_params = result
 
     # convert ellipse_slices to FuselageXSec
     fuselage_xsecs = []
     for i, ellipse in enumerate(ellipse_slices):
         fuselage_xsec = asb.FuselageXSec(
-            #xyz_c = ellipse['center'],
             xyz_normal = np.array([1.0, 0.0, 0.0]),
             radius = None,
             width = 2. * ellipse['a'],
@@ -160,8 +157,8 @@ def convert_solid_to_asb_fuselage(shape: Workplane, number_of_slices=100, spacin
     asb_fuselage = asb.Fuselage(
         name="Fuselage",
         xsecs=fuselage_xsecs,
-        color = None, #: Optional[Union[str, Tuple[float]]] = None,
-        analysis_specific_options = None #: Optional[Dict[type, Dict[str, Any]]] = None,
+        color=None,
+        analysis_specific_options=None,
     )
 
     if plot:
@@ -170,7 +167,7 @@ def convert_solid_to_asb_fuselage(shape: Workplane, number_of_slices=100, spacin
                 f"Fuselage volume       >> initial: {surface_volume['volume']}; transformed: {asb_fuselage.volume()}; transformed/initial = {surface_volume['volume']/asb_fuselage.volume()}")
     return asb_fuselage
 
-def convert_step_to_asb_fuselage(step_file: str, number_of_slices=100, spacing=None, plot: bool = False, scale:float=1.0) -> List[asb.Fuselage]:
+def convert_step_to_asb_fuselage(step_file: str, number_of_slices=100, spacing=None, plot: bool = False, scale:float=1.0) -> list[asb.Fuselage]:
     """
     Converts a STEP file containing 3D CAD models into a list of AeroSandbox fuselage objects.
 

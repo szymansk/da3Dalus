@@ -1,4 +1,5 @@
-from typing import Optional
+from __future__ import annotations
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -12,11 +13,10 @@ class FuselageConfiguration:
     def __init__(self,
                  name: str):
         self.name: str = name
-        self.asb_fuselage: Optional[asb.Fuselage] = None
-        self._step_file: Optional[str] = None
-        self._step_scale: Optional[float] = None
-        self._number_of_slices: Optional[int] = None
-        pass
+        self.asb_fuselage: asb.Fuselage | None = None
+        self._step_file: str | None = None
+        self._step_scale: float | None = None
+        self._number_of_slices: int | None = None
 
     def __getstate__(self):
         """Return a dictionary of serializable attributes for JSON serialization."""
@@ -120,7 +120,7 @@ class FuselageConfiguration:
             number_of_slices=number_of_slices,
             scale=scale*MM_TO_M,
         )
-        fuselage.analysis_specific_options= {
+        fuselage.analysis_specific_options = {
                 dict(panel_resolution=24, panel_spacing="cosine")
             }
 

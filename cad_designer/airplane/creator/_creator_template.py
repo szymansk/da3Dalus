@@ -55,8 +55,9 @@ Documentation (frontend integration):
             \"\"\"
 """
 
+from __future__ import annotations
+
 import logging
-from typing import Optional, Union
 
 from cadquery import Workplane
 
@@ -82,7 +83,7 @@ class MyCreator(AbstractShapeCreator):
         # ── Shape references (upstream shapes this creator needs) ──
         # Use str keys that reference output of previous steps.
         # Default to None to allow positional pipeline resolution.
-        input_shape: Optional[str] = None,
+        input_shape: str | None = None,
         #
         # ── Runtime-injected config (optional) ─────────────────
         # These are passed by GeneralJSONDecoder at decode time.
@@ -113,7 +114,7 @@ class MyCreator(AbstractShapeCreator):
         shapes_of_interest: dict[str, Workplane],
         input_shapes: dict[str, Workplane],
         **kwargs,
-    ) -> dict[str, Union[object, Workplane]]:
+    ) -> dict[str, object | Workplane]:
         """
         Implement your shape creation logic here.
 

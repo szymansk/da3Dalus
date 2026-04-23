@@ -38,13 +38,11 @@ class ExportTo3mfCreator(AbstractShapeCreator):
         logging.info(f"converting shapes '{', '.join(shapes_of_interest.keys())}' to .3mf")
 
         from cadquery import exporters
-        #ass = cq.Assembly()
         for name, shape in shapes_of_interest.items():
             step_path = os.path.join(self.file_path, f"{self.identifier}_{name}.3mf")
             logging.debug(f"writing model to '{step_path}'")
             exporters.export(shape, step_path,
                              tolerance=self.tolerance, angularTolerance=self.angular_tolerance)
-            #ass.add(shape)
 
         import gc
         del exporters

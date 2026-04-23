@@ -1,4 +1,6 @@
-from typing import Tuple, TypeVar, Optional, Literal, Union, cast as tcast
+from __future__ import annotations
+
+from typing import TypeVar, Literal, cast as tcast
 from multimethod import multimethod
 
 from cadquery.occ_impl.shapes import Edge
@@ -8,7 +10,7 @@ from scipy.spatial.transform import Rotation as R
 
 T = TypeVar("T", bound="Sketch")
 Modes = Literal["a", "s", "i", "c"]  # add, subtract, intersect, construct
-Point = Union[Vector, Tuple[Union[int, float], Union[int, float]]]
+Point = Vector | tuple[int | float, int | float]
 
 def _line(p1, p2):
     A = (p1[1] - p2[1])
@@ -41,7 +43,7 @@ def _line_segments_intersection(edge: Edge, v1: Point, v2: Point) -> Edge:
     return Edge.makeLine(v1, Vector(I))
 
 
-def _intersect_to_edge(self: T, v1: Vector, v2: Vector, edge: Edge, tag: Optional[str], forConstruction: bool) -> T:
+def _intersect_to_edge(self: T, v1: Vector, v2: Vector, edge: Edge, tag: str | None, forConstruction: bool) -> T:
     """Shared intersection logic for all segmentToEdge overloads."""
     if edge.geomType() == "LINE":
         val = _line_segments_intersection(edge, v1, v2)
@@ -52,7 +54,7 @@ def _intersect_to_edge(self: T, v1: Vector, v2: Vector, edge: Edge, tag: Optiona
     return self.edge(val, tag, forConstruction)
 
 
-def _angle_to_direction(angle: Union[float, int], v1: Vector) -> Vector:
+def _angle_to_direction(angle: float | int, v1: Vector) -> Vector:
     """Convert an angle (degrees from +x) to a target vector relative to v1."""
     r = R.from_euler("z", angle, degrees=True)
     direction = Vector(tuple(r.apply((10.0, 0.0, 0.0))))
@@ -60,7 +62,7 @@ def _angle_to_direction(angle: Union[float, int], v1: Vector) -> Vector:
 
 
 @multimethod
-def segmentToEdge(self: T, point: Point, direction: Point, end_tag: str, tag: Optional[str] = None, forConstruction: bool = False) -> T:
+def segmentToEdge(self: T, point: Point, direction: Point, end_tag: str, tag: str | None = None, forConstruction: bool = False) -> T:
     """
     Construction of a segment that stops at the given tagged end edge.
     Starting at the given point.
@@ -77,7 +79,7 @@ def segmentToEdge(self: T, point: Point, direction: Point, end_tag: str, tag: Op
     return _intersect_to_edge(self, v1, v2, edge, tag, forConstruction)
 
 @segmentToEdge.register
-def segmentToEdge(self: T, point: Point, angle: Union[float, int], end_tag: str, tag: Optional[str] = None,
+def segmentToEdge(self: T, point: Point, angle: float | int, end_tag: str, tag: str | None = None,
                      forConstruction: bool = False
                      ) -> T:
     """
@@ -97,7 +99,7 @@ def segmentToEdge(self: T, point: Point, angle: Union[float, int], end_tag: str,
 
 @segmentToEdge.register
 def segmentToEdge(
-        self: T, direction: Point, end_tag: str, tag: Optional[str] = None, forConstruction: bool = False
+        self: T, direction: Point, end_tag: str, tag: str | None = None, forConstruction: bool = False
 ) -> T:
     """
     Construction of a segment that stops at the given tagged end edge.
@@ -115,7 +117,7 @@ def segmentToEdge(
 
 @segmentToEdge.register
 def segmentToEdge(
-        self: T, start_tag: str, direction: Point, end_tag: str, tag: Optional[str] = None,
+        self: T, start_tag: str, direction: Point, end_tag: str, tag: str | None = None,
         forConstruction: bool = False) -> T:
     """
     Construction of a segment that stops at the given tagged end edge.
@@ -135,7 +137,7 @@ def segmentToEdge(
 
 @segmentToEdge.register
 def segmentToEdge(
-        self: T, angle: Union[float, int], end_tag: str, tag: Optional[str] = None, forConstruction: bool = False) -> T:
+        self: T, angle: float | int, end_tag: str, tag: str | None = None, forConstruction: bool = False) -> T:
     """
     Construction of a segment that stops at the given tagged end edge.
     Starting at the end point of the last edge.
@@ -152,7 +154,7 @@ def segmentToEdge(
 
 @segmentToEdge.register
 def segmentToEdge(
-        self: T, start_tag: str, angle: Union[float, int], end_tag: str, tag: Optional[str] = None,
+        self: T, start_tag: str, angle: float | int, end_tag: str, tag: str | None = None,
         forConstruction: bool = False
 ) -> T:
     """
@@ -172,7 +174,7 @@ def segmentToEdge(
 
 @segmentToEdge.register
 def segmentToEdge(
-        self: T, start_tag: str, r: Union[float, int], end_tag: str, s: Union[float, int], tag: Optional[str] = None,
+        self: T, start_tag: str, r: float | int, end_tag: str, s: float | int, tag: str | None = None,
         forConstruction: bool = False) -> T:
     """
     Construction of a segment between two edges.
@@ -197,7 +199,7 @@ def segmentToEdge(
     return self.edge(val, tag, forConstruction)
 
 @segmentToEdge.register
-def segmentToEdge(self: T, end_tag: str, s: Union[float, int], point: Point, tag: Optional[str] = None, forConstruction: bool = False) -> T:
+def segmentToEdge(self: T, end_tag: str, s: float | int, point: Point, tag: str | None = None, forConstruction: bool = False) -> T:
     """
     Construction of a segment between the point and a point on an edge segment defined by end_tag and s as
     the path parameter.

@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import abc
 import logging
-from typing import Union
 
 from cadquery import Workplane
 
@@ -8,9 +9,9 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
     """
     Base class for shape creating/modifying nodes.
     """
-    def __init__(self, creator_id: str, shapes_of_interest_keys: Union[list[str], None], loglevel:int=logging.FATAL):
+    def __init__(self, creator_id: str, shapes_of_interest_keys: list[str] | None, loglevel:int=logging.FATAL):
         self.loglevel: int = loglevel
-        self._shapes_of_interest_keys: Union[list[str], None] = shapes_of_interest_keys
+        self._shapes_of_interest_keys: list[str] | None = shapes_of_interest_keys
         self.creator_id: str = creator_id
 
     @property
@@ -21,14 +22,13 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         :return: identifier as name of this shape. If used several times the shape will be overwritten in future steps.
         """
         return self.creator_id
-        pass
 
     @property
     def shapes_of_interest_keys(self) -> list[str]:
         return self._shapes_of_interest_keys
 
     @abc.abstractmethod
-    def _create_shape(self, shapes_of_interest: Union[list[str], None], input_shapes: dict[str, Workplane],
+    def _create_shape(self, shapes_of_interest: list[str] | None, input_shapes: dict[str, Workplane],
                       **kwargs) -> dict[str, Workplane]:
         """
         This method will create a shape. The shape can depend on shapes of previous steps. All previous steps
@@ -66,8 +66,8 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         """
         shapes = {}
         if needed_shapes is not None:
-            shapes = {k: kwargs[k] for k in kwargs.keys() & needed_shapes}
-            missing = {(k if k not in kwargs.keys() else None) for k in needed_shapes}  # check what is missing
+            shapes = {k: kwargs[k] for k in kwargs & needed_shapes}
+            missing = {(k if k not in kwargs else None) for k in needed_shapes}  # check what is missing
             missing = [i for i in missing if i is not None]  # remove all Nones
             if len(missing) > 0:
                 raise KeyError(f"shapes are missing in step '{self.identifier}': {missing}")

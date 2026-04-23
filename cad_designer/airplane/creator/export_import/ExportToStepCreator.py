@@ -63,23 +63,7 @@ class ExportToStepCreator(AbstractShapeCreator):
     def _generateStepWriter(self):
         # ===============
         from OCP.STEPControl import STEPControl_Controller, STEPControl_Writer
-        st = STEPControl_Controller()
-        # st.Init()
+        _st = STEPControl_Controller()
         step_writer = STEPControl_Writer()
-        dd = step_writer.WS().TransferWriter().FinderProcess()
-        # from OCP.Interface_Static import Interface_Static_SetCVal, Interface_Static_SetIVal
-        # defines the version of schema used for the output STEP file:
-        # 1 or AP214CD (default): AP214, CD version (dated 26 November 1996),
-        # 2 or AP214DIS: AP214, DIS version (dated 15 September 1998).
-        # 3 or AP203: AP203, possibly with modular extensions (depending on data written to a file).
-        # 4 or AP214IS: AP214, IS version (dated 2002)
-        # 5 or AP242DIS: AP242, DIS version.
-        # Interface_Static_SetCVal("write.step.schema", "AP214CD")
-        # 0 (Off) : (default) writes STEP files without assemblies.
-        # 1 (On) : writes all shapes in the form of STEP assemblies.
-        # 2 (Auto) : writes shapes having a structure of (possibly nested) TopoDS_Compounds in the form of STEP
-        #    assemblies, single shapes are written without assembly structures.
-        # Interface_Static_SetIVal("write.step.assembly", 0)
-        # Interface_Static_SetCVal("write.step.unit", "")
-        # Interface_Static_SetIVal("write.precision.mode", 0)
+        _dd = step_writer.WS().TransferWriter().FinderProcess()
         return step_writer

@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import logging
-from typing import Union
 
 import math
 import numpy as np
@@ -24,11 +25,11 @@ class StandWingSegmentOnPrinterCreator(AbstractShapeCreator):
 
     def __init__(self, creator_id: str,
                  shape_dict: dict[NonNegativeInt, str],
-                 wing_index: Union[str, NonNegativeInt],
+                 wing_index: str | NonNegativeInt,
                  wing_config: dict[NonNegativeInt, WingConfiguration] = None,
                  loglevel=logging.INFO):
         self.shape_dict: dict[NonNegativeInt, str] = shape_dict
-        self.wing_index: Union[str, NonNegativeInt] = wing_index
+        self.wing_index: str | NonNegativeInt = wing_index
         self._wing_config: dict[NonNegativeInt, WingConfiguration] = wing_config
         super().__init__(creator_id, shapes_of_interest_keys=[*shape_dict.values()], loglevel=loglevel)
 

@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import logging
 
 import math
 
 import numpy as np
 
-from typing import Union, Literal, Tuple, cast as tcast, Optional, Annotated
+from typing import Literal, Tuple, cast as tcast, Annotated
 from pydantic import Field, NonNegativeInt
 
 from math import cos, asin, degrees, radians
@@ -37,7 +39,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
         trailing_edge_offset_factor (float): Factor to determine the offset of the trailing edge.
         minimum_rib_angle (float): Minimum angle for ribs to ensure printability (default is 45°).
         wing_side (Literal["LEFT", "RIGHT", "BOTH"]): Specifies which side of the wing to create.
-        wing_index (Union[str, int]): Index or identifier of the wing.
+        wing_index (str | int): Index or identifier of the wing.
         _wing_config (dict[int, WingConfiguration]): Configuration of the wing segments.
         _printer_settings (Printer3dSettings): Printer settings for 3D printing.
         _servo_information (dict[int, ServoInformation]): Information about servo placements.
@@ -68,25 +70,25 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
     suggested_creator_id = "{wing_index}.vase_wing"
 
-    def __init__(self, creator_id: str, wing_index: Union[str, NonNegativeInt], leading_edge_offset_factor: Factor,
+    def __init__(self, creator_id: str, wing_index: str | NonNegativeInt, leading_edge_offset_factor: Factor,
                  trailing_edge_offset_factor: Factor,
                  minimum_rib_angle: Annotated[float, Field(ge=45.0, default=45)] = 45,
-                 wing_config: Optional[dict[NonNegativeInt, WingConfiguration]] = None,
-                 printer_settings: Optional[Printer3dSettings] = None,
-                 servo_information: Optional[dict[NonNegativeInt, ServoInformation]] = None,
-                 wing_side: Optional[WingSides] = None, symmetric: bool = True, connected:bool=True, loglevel: int = logging.INFO,
+                 wing_config: dict[NonNegativeInt, WingConfiguration] | None = None,
+                 printer_settings: Printer3dSettings | None = None,
+                 servo_information: dict[NonNegativeInt, ServoInformation] | None = None,
+                 wing_side: WingSides | None = None, symmetric: bool = True, connected:bool=True, loglevel: int = logging.INFO,
                  ):
         """
         Initializes the VaseModeWingCreator class with the required parameters.
 
         Parameters:
             creator_id (str): Identifier for the wing creator.
-            wing_index (Union[str, NonNegativeInt]): Index or identifier of the wing.
+            wing_index (str | NonNegativeInt): Index or identifier of the wing.
             leading_edge_offset_factor (Factor): Factor to determine the offset of the leading edge.
             trailing_edge_offset_factor (Factor): Factor to determine the offset of the trailing edge.
             minimum_rib_angle (float): Minimum angle for ribs to ensure printability (default is 45°).
             wing_config (Optional[dict[int, WingConfiguration]]): Configuration of the wing segments.
-            printer_settings (Optional[Printer3dSettings]): Printer settings for 3D printing.
+            printer_settings (Printer3dSettings | None): Printer settings for 3D printing.
             servo_information (Optional[dict[int, ServoInformation]]): Information about servo placements.
             wing_side (Literal["LEFT", "RIGHT", "BOTH"]): Specifies which side of the wing to create.
             loglevel (int): Logging level for the class (default is logging.INFO).
@@ -95,7 +97,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
         self.trailing_edge_offset_factor: float = trailing_edge_offset_factor
         self.minimum_rib_angle: float = minimum_rib_angle
         self.wing_side: WingSides = wing_side
-        self.wing_index: Union[str, int] = wing_index
+        self.wing_index: str | int = wing_index
         self._wing_config: dict[int, WingConfiguration] = wing_config
         self._printer_settings: Printer3dSettings = printer_settings
         self._servo_information: dict[int, ServoInformation] = servo_information
@@ -190,7 +192,6 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 segment=segment,
                 wing_config=wing_config,
                 spare_idx=spare_idx)
-            pass
             right_wing_spare = right_wing_spare.add(spare_shape)
 
         # create root segment ribs
@@ -221,7 +222,6 @@ class VaseModeWingCreator(AbstractShapeCreator):
                                                                                                  end_segment= segment,
                                                                                                  wing_config= wing_config)
             teds[f"{wing_config.segments[segment].trailing_edge_device.name}[{segment}]"] = ted_shape
-            pass
 
         logging.info(f"==> combining shapes --> '{self.identifier}[{segment}]'")
         final_right_segments[segment] = (right_wing_hull
@@ -272,8 +272,6 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 logging.info(f"==> creating main spare shape for '{self.identifier}[{segment}]'")
                 raw_spare, spare_plane = self._create_spare_shape(current=current_2xpwt_offset, segment=segment,
                                                                   wing_config=wing_config, spare_idx=0)
-                #right_wing_spare = right_wing_spare.add(raw_spare)
-
                 # create the cut out for the ribs in an hour glass like shape
                 # the cut out is created in a way that the main spare fits into it nicely
                 logging.info(f"==> creating rib shapes for '{self.identifier}[{segment}]'")
@@ -317,7 +315,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
                         wing_config.segments[ind].trailing_edge_device.rel_chord_tip = (
                             wing_config.segments[same_teds_indx[0]].trailing_edge_device.rel_chord_tip)
                         if ind != last_ind+1:
-                            raise ValueError(f"same ted names should be in a sequence no segments in between")
+                            raise ValueError("same ted names should be in a sequence no segments in between")
                         last_ind = ind
 
                     if ted.servo(self._servo_information) is not None:
@@ -373,17 +371,13 @@ class VaseModeWingCreator(AbstractShapeCreator):
                     .union(raw_ribs)
                     .cut(right_wing_slot)
                     .combine())
-                    #.fix_shape())
 
             right_wing_pwt_offset.add(current_pwt_offset)
-            pass
 
         # we combine everything and try to fix the shape
         final_right_wing = Workplane()
         for wing_seg in final_right_segments:
             final_right_wing = final_right_wing.add(wing_seg)
-        #final_right_wing = final_right_wing.fix_shape()
-
         # now we decide if we need the left, right or both wings for the wing
         # for the vertical stabilizer with the rudder we do only need one side
         if self.wing_side == "LEFT":
@@ -399,7 +393,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
                 _teds[f"{k}*"] = v.mirror("XZ")
             teds = _teds
 
-        final_right_wing = final_right_wing.combine()#.fix_shape().combine()
+        final_right_wing = final_right_wing.combine()
 
         # append main shapes
         final_dict: dict[str, Workplane] = {self.identifier: final_right_wing}
@@ -572,17 +566,6 @@ class VaseModeWingCreator(AbstractShapeCreator):
         cover = cover.union(toUnion=cover_small, clean=True, glue=False, tol=1.0e-3)
         updated_hull = updated_hull.union(toUnion=cover)
 
-        #cover.display("cover", 500)
-        #current_hull.display("hull", 500)
-        #updated_hull.display("hull", 500)
-        #servo_mount.display("servo_mount", 500)
-
-        # box=Workplane().box(3,1,12, centered=False)
-        # box = (Workplane(box.findSolid().mirror(mirrorPlane="YZ")
-        #                   .rotate((0, 0, 0), (0, 1, 0), servo_orientation_deg).located(plane.location)))
-        # trans = plane.xDir * so.x + plane.yDir * so.y + plane.zDir * (so.z - (so.z - sob.z) * 0.15)
-        # box = box.translate(trans).display("box",24234)
-
         glue_in_mount = ted.servo(self._servo_information).create_laying_glue_in_mount(base_thickness=MOUNT_PLATE_THICKNESS, placement='bottom')
         glue_in_mount = mirror_and_rotate(glue_in_mount)
         glue_in_mount = glue_in_mount.translate(trans_mount)
@@ -644,7 +627,6 @@ class VaseModeWingCreator(AbstractShapeCreator):
                     top_min = top_lc.z
                 if bottom_max < bottom_lc.z:
                     bottom_max = bottom_lc.z
-                pass
 
         return bottom_max, top_min
 
@@ -822,7 +804,6 @@ class VaseModeWingCreator(AbstractShapeCreator):
             )
         except:
             logging.warning(f"could not create segment: {segment}!")
-        pass
         return raw_ribs, leading_edge_start, trailing_edge_start, spare_vector_origin, lower_part
 
     @staticmethod

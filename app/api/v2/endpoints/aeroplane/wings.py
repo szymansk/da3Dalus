@@ -701,7 +701,6 @@ async def patch_aeroplane_wing_cross_section_control_surface(
     db: Annotated[Session, Depends(get_db)],
 ) -> schemas.ControlSurfaceSchema:
     """Upserts the control-surface analysis view by patching the canonical TED."""
-    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     return _call_service(
         wing_service.patch_control_surface,
         db,
@@ -725,7 +724,6 @@ async def delete_aeroplane_wing_cross_section_control_surface(
     db: Annotated[Session, Depends(get_db)],
 ) -> OperationStatusResponse:
     """Deletes the canonical TED from which control-surface data is projected."""
-    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(
         wing_service.delete_control_surface,
         db,
@@ -775,7 +773,6 @@ async def patch_aeroplane_wing_cross_section_control_surface_cad_details(
     db: Annotated[Session, Depends(get_db)],
 ) -> schemas.ControlSurfaceCadDetailsSchema:
     """Patches CAD details on an existing control surface without re-entering control-surface core fields."""
-    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     return _call_service(
         wing_service.patch_control_surface_cad_details,
         db,
@@ -799,7 +796,6 @@ async def delete_aeroplane_wing_cross_section_control_surface_cad_details(
     db: Annotated[Session, Depends(get_db)],
 ) -> OperationStatusResponse:
     """Removes CAD details while keeping the control-surface core definition."""
-    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(
         wing_service.delete_control_surface_cad_details,
         db,
@@ -849,7 +845,6 @@ async def patch_aeroplane_wing_cross_section_control_surface_cad_details_servo_d
     db: Annotated[Session, Depends(get_db)],
 ) -> schemas.ControlSurfaceServoDetailsSchema:
     """Assigns or updates servo details of the control-surface CAD extension."""
-    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     return _call_service(
         wing_service.patch_control_surface_cad_details_servo_details,
         db,
@@ -873,7 +868,6 @@ async def delete_aeroplane_wing_cross_section_control_surface_cad_details_servo_
     db: Annotated[Session, Depends(get_db)],
 ) -> OperationStatusResponse:
     """Deletes servo details from the control-surface CAD extension."""
-    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(
         wing_service.delete_control_surface_cad_details_servo_details,
         db,
