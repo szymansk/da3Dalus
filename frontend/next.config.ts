@@ -1,8 +1,5 @@
 import type { NextConfig } from "next";
 import path from "path";
-import { fileURLToPath } from "url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
   env: {
@@ -11,7 +8,7 @@ const nextConfig: NextConfig = {
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
-      three: path.resolve(__dirname, "node_modules/three"),
+      three: path.resolve("node_modules/three"),
     };
     return config;
   },

@@ -30,7 +30,7 @@ describe("next.config webpack three.js deduplication", () => {
     const result = config.webpack!(fakeWebpackConfig as any, {} as any);
 
     // The alias for "three" must point to the top-level node_modules/three
-    const expectedPath = path.resolve(__dirname, "..", "node_modules", "three");
+    const expectedPath = path.resolve("node_modules", "three");
     expect(result.resolve.alias).toHaveProperty("three");
     expect(result.resolve.alias.three).toBe(expectedPath);
   });
