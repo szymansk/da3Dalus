@@ -27,7 +27,7 @@ interface PlanTreeProps {
   selectedStepPath: string | null;
   onSelectStep: (path: string, node: PlanStepNode) => void;
   onDeleteStep: (path: string) => void;
-  onAddStep: () => void;
+  onAddStep: (parentPath?: string) => void;
   onReorder: (fromPath: string, toPath: string) => void;
 }
 
@@ -39,6 +39,7 @@ function flattenSteps(
   selectedPath: string | null,
   onSelect: (path: string, node: PlanStepNode) => void,
   onDelete: (path: string) => void,
+  onAddStep: (parentPath?: string) => void,
 ): SimpleTreeNode[] {
   const successors = node.successors ?? [];
   const isLeaf = successors.length === 0;
@@ -53,7 +54,9 @@ function flattenSteps(
     selected: path === selectedPath,
     chip: node.$TYPE?.replace("Creator", ""),
     onClick: () => onSelect(path, node),
-    onDelete: () => onDelete(path),
+    onDelete: path === "root" ? undefined : () => onDelete(path),
+    onAdd: () => onAddStep(path),
+    addTitle: `Add child step to ${node.creator_id ?? node.$TYPE ?? "step"}`,
   };
 
   const rows: SimpleTreeNode[] = [row];
@@ -69,6 +72,7 @@ function flattenSteps(
           selectedPath,
           onSelect,
           onDelete,
+          onAddStep,
         ),
       );
     });
@@ -104,8 +108,9 @@ export function PlanTree({
       selectedStepPath,
       onSelectStep,
       onDeleteStep,
+      onAddStep,
     );
-  }, [treeJson, expanded, selectedStepPath, onSelectStep, onDeleteStep]);
+  }, [treeJson, expanded, selectedStepPath, onSelectStep, onDeleteStep, onAddStep]);
 
   const handleToggle = useCallback(
     (id: string) => {
@@ -133,7 +138,7 @@ export function PlanTree({
       badge={`${stepCount} steps`}
       actions={
         <button
-          onClick={onAddStep}
+          onClick={() => onAddStep()}
           title="Add step"
           className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
         >

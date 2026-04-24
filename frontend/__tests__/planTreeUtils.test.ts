@@ -11,6 +11,7 @@ import {
   computeReorderTargetPath,
   toBackendTree,
   fromBackendTree,
+  appendChildAtPath,
 } from "@/lib/planTreeUtils";
 
 function makeNode(type: string, id: string, successors: PlanStepNode[] = []): PlanStepNode {
@@ -310,6 +311,58 @@ describe("fromBackendTree", () => {
     const frontend = fromBackendTree(backend);
     expect(frontend.successors![0].successors![0].$TYPE).toBe("ExportCreator");
     expect(frontend.successors![0].successors![0].creator_id).toBe("e1");
+  });
+});
+
+describe("appendChildAtPath", () => {
+  it("appends a child to root's successors when parentPath is 'root'", () => {
+    const tree = makeNode("Root", "root", [makeNode("A", "a")]);
+    const child = makeNode("B", "b");
+    const result = appendChildAtPath(tree, "root", child);
+    expect(result.successors!.length).toBe(2);
+    expect(result.successors![0].creator_id).toBe("a");
+    expect(result.successors![1].creator_id).toBe("b");
+  });
+
+  it("appends a child to a nested node's successors", () => {
+    const tree = makeNode("Root", "root", [
+      makeNode("A", "a", [makeNode("A1", "a1")]),
+      makeNode("B", "b"),
+    ]);
+    const child = makeNode("A2", "a2");
+    const result = appendChildAtPath(tree, "root.0", child);
+    expect(result.successors![0].successors!.length).toBe(2);
+    expect(result.successors![0].successors![0].creator_id).toBe("a1");
+    expect(result.successors![0].successors![1].creator_id).toBe("a2");
+    // Other siblings unchanged
+    expect(result.successors![1].creator_id).toBe("b");
+  });
+
+  it("appends a child to a deeply nested node", () => {
+    const tree = makeNode("Root", "root", [
+      makeNode("A", "a", [
+        makeNode("A1", "a1", [makeNode("A1a", "a1a")]),
+      ]),
+    ]);
+    const child = makeNode("A1b", "a1b");
+    const result = appendChildAtPath(tree, "root.0.0", child);
+    expect(result.successors![0].successors![0].successors!.length).toBe(2);
+    expect(result.successors![0].successors![0].successors![1].creator_id).toBe("a1b");
+  });
+
+  it("appends to a leaf node (creates successors array)", () => {
+    const tree = makeNode("Root", "root", [makeNode("A", "a")]);
+    const child = makeNode("A1", "a1");
+    const result = appendChildAtPath(tree, "root.0", child);
+    expect(result.successors![0].successors!.length).toBe(1);
+    expect(result.successors![0].successors![0].creator_id).toBe("a1");
+  });
+
+  it("does not mutate the original tree", () => {
+    const tree = makeNode("Root", "root", [makeNode("A", "a")]);
+    const child = makeNode("B", "b");
+    appendChildAtPath(tree, "root", child);
+    expect(tree.successors!.length).toBe(1);
   });
 });
 
