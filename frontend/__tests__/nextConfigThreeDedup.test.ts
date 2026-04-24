@@ -27,7 +27,10 @@ describe("next.config three.js deduplication (webpack + turbopack)", () => {
       },
     };
 
-    const result = config.webpack!(fakeWebpackConfig as any, {} as any);
+    const result = config.webpack!(
+      fakeWebpackConfig as Parameters<NonNullable<typeof config.webpack>>[0],
+      {} as Parameters<NonNullable<typeof config.webpack>>[1],
+    );
 
     // The alias for "three" must point to the top-level node_modules/three
     const expectedPath = path.resolve("node_modules", "three");
@@ -45,7 +48,10 @@ describe("next.config three.js deduplication (webpack + turbopack)", () => {
       },
     };
 
-    const result = config.webpack!(fakeWebpackConfig as any, {} as any);
+    const result = config.webpack!(
+      fakeWebpackConfig as Parameters<NonNullable<typeof config.webpack>>[0],
+      {} as Parameters<NonNullable<typeof config.webpack>>[1],
+    );
 
     // Existing alias must still be present
     expect(result.resolve.alias.existing).toBe("/some/path");
