@@ -431,3 +431,89 @@ describe("round-trip conversion", () => {
     expect(creator.offset).toBe(5);
   });
 });
+
+describe("toBackendTree produces exact GeneralJSONDecoder format", () => {
+  it("matches the canonical backend JSON structure for a WingLoftCreator plan", () => {
+    // Simulate what the frontend builds when user adds a WingLoftCreator step
+    const frontendTree: PlanStepNode = {
+      $TYPE: "ConstructionRootNode",
+      creator_id: "eHawk-wing",
+      successors: [
+        {
+          $TYPE: "WingLoftCreator",
+          creator_id: "main_wing.loft",
+          wing_side: "BOTH",
+          wing_index: "main_wing",
+          offset: 0,
+          connected: true,
+          loglevel: 10,
+          successors: [],
+        },
+      ],
+    };
+
+    const backend = toBackendTree(frontendTree);
+
+    // Root structure
+    expect(backend).toEqual({
+      $TYPE: "ConstructionRootNode",
+      creator_id: "eHawk-wing",
+      loglevel: 50,
+      successors: {
+        "main_wing.loft": {
+          $TYPE: "ConstructionStepNode",
+          creator_id: "main_wing.loft",
+          loglevel: 50,
+          creator: {
+            $TYPE: "WingLoftCreator",
+            creator_id: "main_wing.loft",
+            wing_side: "BOTH",
+            wing_index: "main_wing",
+            offset: 0,
+            connected: true,
+            loglevel: 10,
+          },
+          successors: {},
+        },
+      },
+    });
+  });
+
+  it("produces valid JSON that can be serialized and deserialized", () => {
+    const frontendTree: PlanStepNode = {
+      $TYPE: "ConstructionRootNode",
+      creator_id: "root",
+      successors: [
+        {
+          $TYPE: "Fuse2ShapesCreator",
+          creator_id: "fuse1",
+          shape_a: "wing_left",
+          shape_b: "wing_right",
+          loglevel: 20,
+          successors: [
+            {
+              $TYPE: "ExportToStepCreator",
+              creator_id: "export1",
+              file_path: "../exports",
+              successors: [],
+            },
+          ],
+        },
+      ],
+    };
+
+    const backend = toBackendTree(frontendTree);
+    const jsonString = JSON.stringify(backend);
+    const parsed = JSON.parse(jsonString);
+
+    // Verify the JSON round-trip is lossless
+    expect(parsed).toEqual(backend);
+
+    // Verify nested structure
+    expect(parsed.successors.fuse1.$TYPE).toBe("ConstructionStepNode");
+    expect(parsed.successors.fuse1.creator.$TYPE).toBe("Fuse2ShapesCreator");
+    expect(parsed.successors.fuse1.creator.shape_a).toBe("wing_left");
+    expect(parsed.successors.fuse1.successors.export1.$TYPE).toBe("ConstructionStepNode");
+    expect(parsed.successors.fuse1.successors.export1.creator.$TYPE).toBe("ExportToStepCreator");
+  });
+});
