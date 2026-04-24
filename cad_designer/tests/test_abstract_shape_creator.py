@@ -126,7 +126,6 @@ class TestCreateShape:
         _, inp, _ = creator.calls[0]
         assert inp is None
 
-    @_DICT_AND_BUG
     def test_shapes_of_interest_resolved_from_kwargs(self):
         creator = _StubCreator("test", shapes_of_interest_keys=["alpha", "beta"])
         creator.create_shape(
@@ -170,7 +169,6 @@ class TestCreateShape:
 # ---------------------------------------------------------------------------
 
 class TestCheckIfShapesAreAvailable:
-    @_DICT_AND_BUG
     def test_all_shapes_present(self):
         creator = _StubCreator("test")
         result = creator.check_if_shapes_are_available(
@@ -180,7 +178,6 @@ class TestCheckIfShapesAreAvailable:
         )
         assert result == {"a": "val_a", "b": "val_b"}
 
-    @_DICT_AND_BUG
     def test_missing_shapes_raises_key_error(self):
         creator = _StubCreator("test")
         with pytest.raises(KeyError, match="shapes are missing"):
@@ -210,7 +207,6 @@ class TestCheckIfShapesAreAvailable:
 # ---------------------------------------------------------------------------
 
 class TestReturnNeededShapes:
-    @_DICT_AND_BUG
     def test_named_shapes_resolved_from_kwargs(self):
         creator = _StubCreator("test")
         result = creator.return_needed_shapes(
@@ -221,7 +217,6 @@ class TestReturnNeededShapes:
         )
         assert result == {"a": "va", "b": "vb"}
 
-    @_DICT_AND_BUG
     def test_none_slots_filled_from_input_shapes(self):
         """None entries in shapes_needed are replaced by input_shapes keys,
         most significant (last) first."""
@@ -252,7 +247,6 @@ class TestReturnNeededShapes:
                 input_shapes=None,
             )
 
-    @_DICT_AND_BUG
     def test_mixed_named_and_none_slots(self):
         """Mix of named and None entries: named resolved from kwargs,
         None filled from input_shapes."""
@@ -268,13 +262,11 @@ class TestReturnNeededShapes:
 
     def test_all_named_no_none_no_input_shapes_needed(self):
         """When all shapes_needed are named (no None) and input_shapes is empty,
-        the None-filling logic is not triggered. Still hits check_if_shapes bug."""
+        the shapes are resolved from kwargs."""
         creator = _StubCreator("test")
-        # With no None entries, input_shapes count check passes (sum=0 > 0 is False).
-        # But check_if_shapes_are_available still has the dict & list bug.
-        with pytest.raises(TypeError):
-            creator.return_needed_shapes(
-                shapes_needed=["a"],
-                input_shapes={},
-                a="va",
-            )
+        result = creator.return_needed_shapes(
+            shapes_needed=["a"],
+            input_shapes={},
+            a="va",
+        )
+        assert result == {"a": "va"}

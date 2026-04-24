@@ -66,7 +66,7 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         """
         shapes = {}
         if needed_shapes is not None:
-            shapes = {k: kwargs[k] for k in kwargs & needed_shapes}
+            shapes = {k: kwargs[k] for k in needed_shapes if k in kwargs}
             missing = {(k if k not in kwargs else None) for k in needed_shapes}  # check what is missing
             missing = [i for i in missing if i is not None]  # remove all Nones
             if len(missing) > 0:

@@ -80,13 +80,11 @@ def _translated_box(
 # ---------------------------------------------------------------------------
 
 class TestFuse2ShapesCreator:
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_constructor_sets_shapes_of_interest(self):
         creator = Fuse2ShapesCreator("fuse_test", shape_a="a", shape_b="b")
         assert creator.shapes_of_interest_keys == ["a", "b"]
         assert creator.identifier == "fuse_test"
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_fuse_overlapping_boxes(self):
         """Fusing two overlapping boxes produces a volume larger than either
         but smaller than both combined."""
@@ -99,7 +97,6 @@ class TestFuse2ShapesCreator:
         # Two 1000mm3 boxes overlapping by 500mm3 --> 1500mm3
         assert vol == pytest.approx(1500.0, rel=0.01)
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_fuse_non_overlapping_boxes(self):
         """Fusing two non-overlapping boxes gives sum of volumes."""
         box_a = _box(10, 10, 10)
@@ -109,7 +106,6 @@ class TestFuse2ShapesCreator:
         vol = _volume(result["fused"])
         assert vol == pytest.approx(2000.0, rel=0.01)
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_fuse_with_none_shape_keys_uses_positional(self):
         """When shape_a/shape_b are None, they are filled from input_shapes."""
         box_a = _box(10, 10, 10)
@@ -125,13 +121,11 @@ class TestFuse2ShapesCreator:
 # ---------------------------------------------------------------------------
 
 class TestCut2ShapesCreator:
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_constructor_sets_shapes_of_interest(self):
         creator = Cut2ShapesCreator("cut_test", minuend="m", subtrahend="s")
         assert creator.shapes_of_interest_keys == ["m", "s"]
         assert creator.identifier == "cut_test"
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_cut_overlapping_boxes(self):
         """Cutting an overlapping box from another reduces volume."""
         minuend = _box(10, 10, 10)  # 1000
@@ -141,7 +135,6 @@ class TestCut2ShapesCreator:
         vol = _volume(result["cut_result"])
         assert vol == pytest.approx(500.0, rel=0.01)
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_cut_non_overlapping_returns_original(self):
         """Cutting a non-overlapping shape returns the original volume."""
         minuend = _box(10, 10, 10)
@@ -157,12 +150,10 @@ class TestCut2ShapesCreator:
 # ---------------------------------------------------------------------------
 
 class TestIntersect2ShapesCreator:
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_constructor_sets_shapes_of_interest(self):
         creator = Intersect2ShapesCreator("inter_test", shape_a="a", shape_b="b")
         assert creator.shapes_of_interest_keys == ["a", "b"]
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_intersect_overlapping_boxes(self):
         """Intersection of two overlapping boxes gives only the overlap volume."""
         box_a = _box(10, 10, 10)
@@ -172,7 +163,6 @@ class TestIntersect2ShapesCreator:
         vol = _volume(result["inter_result"])
         assert vol == pytest.approx(500.0, rel=0.01)
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_intersect_identical_boxes(self):
         """Intersection of two identical boxes equals original volume."""
         box_a = _box(10, 10, 10)
@@ -188,7 +178,6 @@ class TestIntersect2ShapesCreator:
 # ---------------------------------------------------------------------------
 
 class TestScaleRotateTranslateCreator:
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_constructor_defaults(self):
         creator = ScaleRotateTranslateCreator("srt", shape_id="s")
         assert creator.shapes_of_interest_keys == ["s"]
@@ -196,7 +185,6 @@ class TestScaleRotateTranslateCreator:
         assert creator.rot_x == 0.0
         assert creator.trans_x == 0.0
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_uniform_scale_overrides_per_axis(self):
         """Setting scale != 1.0 should override scale_x/y/z."""
         creator = ScaleRotateTranslateCreator(
@@ -206,7 +194,6 @@ class TestScaleRotateTranslateCreator:
         assert creator.scale_y == 2.0
         assert creator.scale_z == 2.0
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_translate_moves_centroid(self):
         """Translating a box moves its center of mass."""
         box = _box(10, 10, 10)
@@ -220,7 +207,6 @@ class TestScaleRotateTranslateCreator:
         assert new_center.y == pytest.approx(original_center.y + 50.0, abs=0.1)
         assert new_center.z == pytest.approx(original_center.z + 25.0, abs=0.1)
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_scale_changes_volume(self):
         """Scaling a box by factor 2 increases volume by 8x."""
         box = _box(10, 10, 10)  # 1000
@@ -229,7 +215,6 @@ class TestScaleRotateTranslateCreator:
         vol = _volume(result["scaled"])
         assert vol == pytest.approx(8000.0, rel=0.01)
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_rotation_preserves_volume(self):
         """Rotation does not change volume."""
         box = _box(10, 10, 10)
@@ -241,7 +226,6 @@ class TestScaleRotateTranslateCreator:
         vol = _volume(result["rotated"])
         assert vol == pytest.approx(original_vol, rel=0.01)
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_transform_by_classmethod(self):
         """The classmethod transform_by can be used standalone."""
         box = _box(10, 10, 10)
@@ -251,7 +235,6 @@ class TestScaleRotateTranslateCreator:
         center = transformed.findSolid().Center()
         assert center.x == pytest.approx(50.0, abs=0.1)
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_identity_transform(self):
         """Default (no-op) transform preserves shape exactly."""
         box = _box(10, 10, 10)
@@ -265,12 +248,10 @@ class TestScaleRotateTranslateCreator:
 # ---------------------------------------------------------------------------
 
 class TestAddMultipleShapesCreator:
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_constructor_sets_shapes_of_interest(self):
         creator = AddMultipleShapesCreator("compound", shapes=["a", "b", "c"])
         assert creator.shapes_of_interest_keys == ["a", "b", "c"]
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_add_multiple_boxes(self):
         """Adding multiple shapes produces a compound."""
         box_a = _box(10, 10, 10)
@@ -290,12 +271,10 @@ class TestAddMultipleShapesCreator:
 # ---------------------------------------------------------------------------
 
 class TestFuseMultipleShapesCreator:
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_constructor_sets_shapes_of_interest(self):
         creator = FuseMultipleShapesCreator("fuse_all", shapes=["a", "b"])
         assert creator.shapes_of_interest_keys == ["a", "b"]
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_fuse_three_non_overlapping_boxes(self):
         """Fusing three non-overlapping boxes gives sum of volumes."""
         box_a = _box(10, 10, 10)
@@ -306,7 +285,6 @@ class TestFuseMultipleShapesCreator:
         vol = _volume(result["fuse_all"])
         assert vol == pytest.approx(3000.0, rel=0.01)
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_fuse_two_overlapping_boxes(self):
         """Fusing two overlapping boxes deduplicates overlap volume."""
         box_a = _box(10, 10, 10)
@@ -322,14 +300,12 @@ class TestFuseMultipleShapesCreator:
 # ---------------------------------------------------------------------------
 
 class TestCutMultipleShapesCreator:
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_constructor_sets_shapes_of_interest(self):
         creator = CutMultipleShapesCreator(
             "cut_all", subtrahends=["s1", "s2"], minuend="m"
         )
         assert creator.shapes_of_interest_keys == ["m", "s1", "s2"]
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_cut_two_subtrahends_from_minuend(self):
         """Cutting two non-overlapping subtrahends from a large box
         reduces volume by both subtrahend volumes."""
@@ -345,7 +321,6 @@ class TestCutMultipleShapesCreator:
         vol = _volume(result["cut_all"])
         assert vol == pytest.approx(100000.0 - 2 * 1000.0, rel=0.01)
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_cut_with_positional_minuend(self):
         """When minuend is None, it is filled from input_shapes."""
         minuend = _box(100, 100, 10)
@@ -353,8 +328,9 @@ class TestCutMultipleShapesCreator:
         creator = CutMultipleShapesCreator(
             "cut_all", subtrahends=["s1"], minuend=None
         )
-        result = creator.create_shape(base=minuend,
-            s1=sub1,
+        result = creator.create_shape(
+            input_shapes={"base": minuend},
+            **{"base": minuend, "s1": sub1},
         )
         vol = _volume(result["cut_all"])
         assert vol == pytest.approx(100000.0 - 1000.0, rel=0.01)

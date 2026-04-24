@@ -5,7 +5,7 @@ Each creator is an AbstractShapeCreator subclass. We test:
   2. CAD shape creation via _create_shape (direct call) to verify
      that each creator produces the expected output keys and valid
      CadQuery geometry
-  3. Public create_shape() pathway (currently xfail due to a bug
+  3. Public create_shape() pathway (tests the full orchestration
      in AbstractShapeCreator.check_if_shapes_are_available where
      ``kwargs & needed_shapes`` fails with ``dict & list``)
 
@@ -104,7 +104,6 @@ def engine_info_dict(engine_info: EngineInformation) -> dict[int, EngineInformat
 
 class TestFuselageShellShapeCreator:
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_constructor_stores_attributes(self):
         creator = FuselageShellShapeCreator(
             creator_id="fus.shell", thickness=-2.0, fuselage="my_fus",
@@ -114,7 +113,6 @@ class TestFuselageShellShapeCreator:
         assert creator.fuselage == "my_fus"
         assert creator.shapes_of_interest_keys == ["my_fus"]
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_create_shape_returns_correct_key(self, fuselage_box):
         creator = FuselageShellShapeCreator(
             creator_id="fus.shell", thickness=-2.0, fuselage="fus_loft",
@@ -127,7 +125,6 @@ class TestFuselageShellShapeCreator:
         # The result should be a CadQuery Solid (findSolid returns it)
         assert result["fus.shell"] is not None
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_suggested_creator_id(self):
         assert "{fuselage}" in FuselageShellShapeCreator.suggested_creator_id
 
@@ -138,7 +135,6 @@ class TestFuselageShellShapeCreator:
 
 class TestFuselageReinforcementShapeCreator:
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_constructor_stores_attributes(self):
         creator = FuselageReinforcementShapeCreator(
             creator_id="fus.reinforcement",
@@ -176,7 +172,6 @@ class TestFuselageReinforcementShapeCreator:
         assert "fus.reinforcement" in result
         assert "fus.reinforcement.rods" in result
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_suggested_creator_id(self):
         assert "{fuselage_loft}" in FuselageReinforcementShapeCreator.suggested_creator_id
 
@@ -187,7 +182,6 @@ class TestFuselageReinforcementShapeCreator:
 
 class TestEngineMountShapeCreator:
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_constructor_stores_attributes(self, engine_info_dict):
         creator = EngineMountShapeCreator(
             creator_id="engine[0].mount",
@@ -202,7 +196,6 @@ class TestEngineMountShapeCreator:
         # shapes_of_interest_keys is None for this creator (self-contained)
         assert creator.shapes_of_interest_keys is None
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_create_shape_returns_mount_and_cutout(self, engine_info_dict):
         """EngineMountShapeCreator has shapes_of_interest_keys=None so
         the public create_shape() pathway works without the dict & list bug."""
@@ -217,7 +210,6 @@ class TestEngineMountShapeCreator:
         assert "engine[0].mount" in result
         assert "engine[0].mount.cutout" in result
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_explicit_params_override_engine_info(self, engine_info_dict):
         creator = EngineMountShapeCreator(
             creator_id="engine[0].mount",
@@ -239,7 +231,6 @@ class TestEngineMountShapeCreator:
         assert creator.engine_down_thrust_deg == 2.0
         assert "engine[0].mount" in result
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_none_params_filled_from_engine_info(self, engine_info_dict, engine_info):
         """When optional params are None, values are pulled from engine_information."""
         creator = EngineMountShapeCreator(
@@ -254,7 +245,6 @@ class TestEngineMountShapeCreator:
         assert creator.engine_down_thrust_deg == engine_info.down_thrust
         assert creator.engine_total_cover_length == engine_info.length
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_suggested_creator_id(self):
         assert "{engine_index}" in EngineMountShapeCreator.suggested_creator_id
 
@@ -265,7 +255,6 @@ class TestEngineMountShapeCreator:
 
 class TestEngineCoverAndMountPanelAndFuselageShapeCreator:
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_constructor_stores_attributes(self, engine_info_dict):
         creator = EngineCoverAndMountPanelAndFuselageShapeCreator(
             creator_id="engine[0].backplate",
@@ -338,7 +327,6 @@ class TestEngineCoverAndMountPanelAndFuselageShapeCreator:
         assert fuselage is None
         assert cape is None
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_suggested_creator_id(self):
         assert "{engine_index}" in EngineCoverAndMountPanelAndFuselageShapeCreator.suggested_creator_id
 
@@ -349,7 +337,6 @@ class TestEngineCoverAndMountPanelAndFuselageShapeCreator:
 
 class TestEngineCapeShapeCreator:
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_constructor_stores_attributes(self, engine_info_dict):
         creator = EngineCapeShapeCreator(
             creator_id="engine[0].cape",
@@ -391,7 +378,6 @@ class TestEngineCapeShapeCreator:
         assert creator.identifier == "renamed"
         assert creator.creator_id == "renamed"
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_suggested_creator_id(self):
         assert "{engine_index}" in EngineCapeShapeCreator.suggested_creator_id
 
@@ -402,7 +388,6 @@ class TestEngineCapeShapeCreator:
 
 class TestWingReinforcementShapeCreator:
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_constructor_stores_attributes(self):
         creator = WingReinforcementShapeCreator(
             creator_id="wing_reinforcement",
@@ -435,7 +420,6 @@ class TestWingReinforcementShapeCreator:
         assert bbox is not None
         assert wing_type in ("high", "low")
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_suggested_creator_id(self):
         assert WingReinforcementShapeCreator.suggested_creator_id == "wing_reinforcement"
 
@@ -446,7 +430,6 @@ class TestWingReinforcementShapeCreator:
 
 class TestFuselageWingSupportShapeCreator:
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_constructor_stores_attributes(self):
         creator = FuselageWingSupportShapeCreator(
             creator_id="wing_support",
@@ -462,7 +445,6 @@ class TestFuselageWingSupportShapeCreator:
         assert creator.rib_width == 1.5
         assert creator.shapes_of_interest_keys == ["fus_loft", "wing_loft"]
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_create_shape_returns_support(self, fuselage_box, wing_box):
         creator = FuselageWingSupportShapeCreator(
             creator_id="wing_support",
@@ -488,7 +470,6 @@ class TestFuselageWingSupportShapeCreator:
         assert bbox is not None
         assert wing_type in ("high", "low")
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_suggested_creator_id(self):
         assert FuselageWingSupportShapeCreator.suggested_creator_id == "wing_support"
 
@@ -499,7 +480,6 @@ class TestFuselageWingSupportShapeCreator:
 
 class TestFuselageElectronicsAccessCutOutShapeCreator:
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_constructor_stores_attributes(self):
         creator = FuselageElectronicsAccessCutOutShapeCreator(
             creator_id="fus.electronics_cutout",
@@ -512,7 +492,6 @@ class TestFuselageElectronicsAccessCutOutShapeCreator:
         assert creator.ribcage_factor == 0.6
         assert creator.shapes_of_interest_keys == ["fus_loft", "wing_loft"]
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_create_shape_returns_cutout(self, fuselage_box, wing_box):
         creator = FuselageElectronicsAccessCutOutShapeCreator(
             creator_id="fus.electronics_cutout",
@@ -538,7 +517,6 @@ class TestFuselageElectronicsAccessCutOutShapeCreator:
         assert bbox is not None
         assert wing_type in ("high", "low")
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_suggested_creator_id(self):
         assert (
             "{fuselage_loft}"
@@ -552,7 +530,6 @@ class TestFuselageElectronicsAccessCutOutShapeCreator:
 
 class TestWingAttachmentBoltCutoutShapeCreator:
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_constructor_stores_attributes(self):
         creator = WingAttachmentBoltCutoutShapeCreator(
             creator_id="bolt_cutout",
@@ -564,7 +541,6 @@ class TestWingAttachmentBoltCutoutShapeCreator:
         assert creator.bolt_diameter == 3.0
         assert creator.shapes_of_interest_keys == ["fus_loft", "wing_loft"]
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_create_shape_returns_cutout(self, fuselage_box, wing_box):
         creator = WingAttachmentBoltCutoutShapeCreator(
             creator_id="bolt_cutout",
@@ -589,13 +565,12 @@ class TestWingAttachmentBoltCutoutShapeCreator:
         assert bbox is not None
         assert wing_type in ("high", "low")
 
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_suggested_creator_id(self):
         assert WingAttachmentBoltCutoutShapeCreator.suggested_creator_id == "bolt_cutout"
 
 
 # ---------------------------------------------------------------------------
-# Public create_shape() pathway — xfail due to production bug
+# Public create_shape() pathway — full orchestration through base class
 # ---------------------------------------------------------------------------
 
 class TestCreateShapePublicAPI:
@@ -606,26 +581,13 @@ class TestCreateShapePublicAPI:
     Should be ``kwargs.keys() & set(needed_shapes)``.
     """
 
-    @pytest.mark.xfail(
-        reason="AbstractShapeCreator.check_if_shapes_are_available bug: "
-               "dict & list unsupported (line 69)",
-        raises=TypeError,
-        strict=True,
-    )
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_fuselage_shell_create_shape_public(self, fuselage_box):
         creator = FuselageShellShapeCreator(
             creator_id="fus.shell", thickness=-2.0, fuselage="fus_loft",
         )
-        creator.create_shape(input_shapes=None, fus_loft=fuselage_box)
+        result = creator.create_shape(input_shapes=None, fus_loft=fuselage_box)
+        assert "fus.shell" in result
 
-    @pytest.mark.xfail(
-        reason="AbstractShapeCreator.check_if_shapes_are_available bug: "
-               "dict & list unsupported (line 69)",
-        raises=TypeError,
-        strict=True,
-    )
-    @pytest.mark.xfail(reason="dict & list bug in AbstractShapeCreator (gh-297)")
     def test_bolt_cutout_create_shape_public(self, fuselage_box, wing_box):
         creator = WingAttachmentBoltCutoutShapeCreator(
             creator_id="bolt_cutout",
