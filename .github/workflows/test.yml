@@ -82,6 +82,7 @@ jobs:
           poetry run pytest -m "not slow" \
             --tb=short \
             --cov=app \
+            --cov=cad_designer \
             --cov-report=term-missing \
             --cov-report=xml \
             --cov-fail-under=70
