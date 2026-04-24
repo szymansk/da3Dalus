@@ -10,7 +10,7 @@
 import { describe, it, expect } from "vitest";
 import path from "node:path";
 
-describe("next.config webpack three.js deduplication", () => {
+describe("next.config three.js deduplication (webpack + turbopack)", () => {
   it("aliases 'three' to the top-level node_modules copy", async () => {
     // Dynamic-import the config (it's an ES module with default export)
     const mod = await import("../next.config");
@@ -51,5 +51,16 @@ describe("next.config webpack three.js deduplication", () => {
     expect(result.resolve.alias.existing).toBe("/some/path");
     // And the three alias must also be set
     expect(result.resolve.alias).toHaveProperty("three");
+  });
+
+  it("sets turbopack.resolveAlias for three.js", async () => {
+    const mod = await import("../next.config");
+    const config = mod.default;
+
+    expect(config.turbopack).toBeDefined();
+    expect(config.turbopack!.resolveAlias).toBeDefined();
+
+    const expectedPath = path.resolve("node_modules", "three");
+    expect((config.turbopack!.resolveAlias as Record<string, string>).three).toBe(expectedPath);
   });
 });
