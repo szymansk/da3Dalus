@@ -809,7 +809,6 @@ export function ImportFuselageDialog({
   const [xsecsMaximized, setXsecsMaximized] = useState(false);
   const [xsecs, setXsecs] = useState<XSec[]>(initialXsecs ?? INITIAL_XSECS);
   const [selectedXsec, setSelectedXsec] = useState<number | null>(initialSelectedIndex ?? (editMode ? 0 : null));
-  // zoomScale state removed — was unused dead code (SonarQube S1854)
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fidelity, setFidelity] = useState<{ volume_ratio: number; area_ratio: number } | null>(null);
@@ -876,7 +875,6 @@ export function ImportFuselageDialog({
     setFuselageName(initialName ?? "Imported Fuselage");
     setXsecs(initialXsecs ?? INITIAL_XSECS);
     setSelectedXsec(initialSelectedIndex ?? (editMode ? 0 : null));
-    setZoomScale(null);
     setXsecsMaximized(false);
     setViewerMaximized(false);
     setFile(null);
