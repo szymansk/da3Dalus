@@ -56,9 +56,16 @@ vi.mock("@/hooks/useConstructionPlans", () => ({
           tree_json: {
             $TYPE: "ConstructionRootNode",
             creator_id: "root",
-            successors: [
-              { $TYPE: "VaseModeWingCreator", creator_id: "VaseModeWingCreator", wing_index: "main_wing", successors: [] },
-            ],
+            loglevel: 50,
+            successors: {
+              VaseModeWingCreator: {
+                $TYPE: "ConstructionStepNode",
+                creator_id: "VaseModeWingCreator",
+                loglevel: 50,
+                creator: { $TYPE: "VaseModeWingCreator", creator_id: "VaseModeWingCreator", wing_index: "main_wing", loglevel: 50 },
+                successors: {},
+              },
+            },
           },
           plan_type: "template",
           aeroplane_id: null,
@@ -73,9 +80,16 @@ vi.mock("@/hooks/useConstructionPlans", () => ({
           tree_json: {
             $TYPE: "ConstructionRootNode",
             creator_id: "root",
-            successors: [
-              { $TYPE: "VaseModeWingCreator", creator_id: "VaseModeWingCreator", wing_index: "main_wing", successors: [] },
-            ],
+            loglevel: 50,
+            successors: {
+              VaseModeWingCreator: {
+                $TYPE: "ConstructionStepNode",
+                creator_id: "VaseModeWingCreator",
+                loglevel: 50,
+                creator: { $TYPE: "VaseModeWingCreator", creator_id: "VaseModeWingCreator", wing_index: "main_wing", loglevel: 50 },
+                successors: {},
+              },
+            },
           },
           plan_type: "plan",
           aeroplane_id: "aero-1",

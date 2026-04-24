@@ -145,3 +145,108 @@ export function computeReorderTargetPath(fromPath: string, toPath: string): stri
   }
   return toPath;
 }
+
+/** Default loglevel matching Python's logging.FATAL (50). */
+const DEFAULT_LOGLEVEL = 50;
+
+/**
+ * Convert the frontend's simplified plan tree (array-based successors,
+ * creators as direct nodes) to the backend's GeneralJSONEncoder format
+ * (dict-keyed successors, ConstructionStepNode wrappers around creators).
+ */
+export function toBackendTree(
+  node: PlanStepNode,
+): Record<string, unknown> {
+  const successors = node.successors ?? [];
+  const backendSuccessors: Record<string, Record<string, unknown>> = {};
+
+  for (const child of successors) {
+    const { $TYPE, creator_id, successors: childSuccessors, ...creatorParams } = child;
+    const loglevel = (creatorParams.loglevel as number) ?? DEFAULT_LOGLEVEL;
+    // Remove loglevel from creatorParams to avoid duplication — it's set explicitly
+    delete creatorParams.loglevel;
+
+    if (backendSuccessors[creator_id] !== undefined) {
+      console.warn(`Duplicate creator_id "${creator_id}" in plan tree — second entry overwrites the first`);
+    }
+    backendSuccessors[creator_id] = {
+      $TYPE: "ConstructionStepNode",
+      creator_id,
+      loglevel: DEFAULT_LOGLEVEL,
+      creator: {
+        $TYPE,
+        creator_id,
+        loglevel,
+        ...creatorParams,
+      },
+      successors: toBackendTree({ ...child, $TYPE: "tmp", creator_id: "tmp" }).successors as Record<string, unknown>,
+    };
+  }
+
+  const { successors: _s, ...rootFields } = node as Record<string, unknown>;
+  return {
+    ...rootFields,
+    loglevel: (rootFields.loglevel as number) ?? DEFAULT_LOGLEVEL,
+    successors: backendSuccessors,
+  };
+}
+
+/**
+ * Convert the backend's GeneralJSONEncoder format (dict-keyed successors,
+ * ConstructionStepNode wrappers) to the frontend's simplified format
+ * (array-based successors, creators as direct nodes).
+ *
+ * If the tree is already in frontend format (array successors), it is
+ * returned as-is.
+ */
+export function fromBackendTree(
+  tree: Record<string, unknown>,
+): PlanStepNode {
+  const rawSuccessors = tree.successors;
+
+  // Already in frontend format (array) or missing
+  if (!rawSuccessors || Array.isArray(rawSuccessors)) {
+    const node = tree as unknown as PlanStepNode;
+    // Still recurse into children to handle mixed formats
+    if (Array.isArray(rawSuccessors) && rawSuccessors.length > 0) {
+      return {
+        ...node,
+        successors: rawSuccessors.map((child) =>
+          fromBackendTree(child as Record<string, unknown>),
+        ),
+      };
+    }
+    return node;
+  }
+
+  // Backend format: dict-keyed ConstructionStepNodes
+  const dictSuccessors = rawSuccessors as Record<string, Record<string, unknown>>;
+  const children: PlanStepNode[] = Object.values(dictSuccessors).map((stepNode) => {
+    const creator = (stepNode.creator ?? {}) as Record<string, unknown>;
+    const { $TYPE, creator_id, loglevel, ...params } = creator;
+    const childSuccessors = stepNode.successors as Record<string, unknown> | undefined;
+
+    // Recursively convert nested successors
+    const converted = childSuccessors && Object.keys(childSuccessors).length > 0
+      ? fromBackendTree({
+          $TYPE: "tmp",
+          creator_id: "tmp",
+          successors: childSuccessors,
+        }).successors
+      : [];
+
+    return {
+      $TYPE: $TYPE as string,
+      creator_id: creator_id as string,
+      loglevel: loglevel as number,
+      ...params,
+      successors: converted ?? [],
+    } as PlanStepNode;
+  });
+
+  const { successors: _s, ...rootFields } = tree;
+  return {
+    ...(rootFields as unknown as PlanStepNode),
+    successors: children,
+  };
+}
