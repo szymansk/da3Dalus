@@ -29,6 +29,7 @@ import {
   deleteStepAtPath,
   insertStepAtPath,
   updateNodeAtPath,
+  appendChildAtPath,
   collectAvailableShapeKeys,
   resolveIdTemplate,
   computeReorderTargetPath,
@@ -111,6 +112,7 @@ export default function ConstructionPlansPage() {
   const [addCreatorId, setAddCreatorId] = useState("");
   const [addCreatorIdManual, setAddCreatorIdManual] = useState(false);
   const [addStepParams, setAddStepParams] = useState<Record<string, unknown>>({});
+  const [addStepParentPath, setAddStepParentPath] = useState<string | null>(null);
 
   // Debounce timer for parameter saves
   const paramSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -238,10 +240,8 @@ export default function ConstructionPlansPage() {
       ...addStepParams,
       successors: [],
     };
-    const updatedTree: PlanStepNode = {
-      ...treeJson,
-      successors: [...(treeJson.successors ?? []), newStep],
-    };
+    const parentPath = addStepParentPath ?? "root";
+    const updatedTree = appendChildAtPath(treeJson, parentPath, newStep);
     try {
       await updatePlan(selectedPlanId, {
         name: plan.name,
@@ -252,6 +252,7 @@ export default function ConstructionPlansPage() {
       activeMutate();
       setAddDialogOpen(false);
       setAddingCreator(null);
+      setAddStepParentPath(null);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to add step");
     }
@@ -485,7 +486,10 @@ export default function ConstructionPlansPage() {
               selectedStepPath={selectedStepPath}
               onSelectStep={handleSelectStep}
               onDeleteStep={handleDeleteStep}
-              onAddStep={() => setAddDialogOpen(true)}
+              onAddStep={(parentPath) => {
+                setAddStepParentPath(parentPath ?? "root");
+                setAddDialogOpen(true);
+              }}
               onReorder={handleReorder}
             />
           ) : (
@@ -570,7 +574,7 @@ export default function ConstructionPlansPage() {
         addStepParams={addStepParams}
         treeJson={treeJson}
         creators={creators}
-        onClose={() => { setAddDialogOpen(false); setAddingCreator(null); }}
+        onClose={() => { setAddDialogOpen(false); setAddingCreator(null); setAddStepParentPath(null); }}
         onSetAddingCreator={setAddingCreator}
         onSetAddCreatorId={setAddCreatorId}
         onSetAddCreatorIdManual={setAddCreatorIdManual}

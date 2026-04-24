@@ -94,6 +94,14 @@ function ParamInput({
   }
 }
 
+const LOGLEVEL_OPTIONS = [
+  { value: 10, label: "DEBUG" },
+  { value: 20, label: "INFO" },
+  { value: 30, label: "WARNING" },
+  { value: 40, label: "ERROR" },
+  { value: 50, label: "CRITICAL" },
+] as const;
+
 export function CreatorParameterForm({
   creatorName,
   creatorDescription,
@@ -114,6 +122,22 @@ export function CreatorParameterForm({
           )}
         </div>
       )}
+      {/* Loglevel — universal AbstractShapeCreator parameter */}
+      <label className="flex flex-col gap-1">
+        <span className="flex items-center gap-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
+          loglevel
+          <span className="text-[9px] text-subtle-foreground">(int)</span>
+        </span>
+        <select
+          value={Number(values.loglevel ?? 50)}
+          onChange={(e) => onChange("loglevel", Number.parseInt(e.target.value, 10))}
+          className="rounded-lg border border-border bg-input px-3 py-1.5 text-[12px] text-foreground outline-none"
+        >
+          {LOGLEVEL_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label} ({opt.value})</option>
+          ))}
+        </select>
+      </label>
       {params.length === 0 ? (
         <p className="text-[12px] text-muted-foreground">No parameters</p>
       ) : (

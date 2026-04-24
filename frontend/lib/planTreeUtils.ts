@@ -146,6 +146,28 @@ export function computeReorderTargetPath(fromPath: string, toPath: string): stri
   return toPath;
 }
 
+/** Return a new tree with `child` appended to the successors of the node at `parentPath`. */
+export function appendChildAtPath(
+  tree: PlanStepNode,
+  parentPath: string,
+  child: PlanStepNode,
+): PlanStepNode {
+  if (parentPath === "root") {
+    return { ...tree, successors: [...(tree.successors ?? []), child] };
+  }
+  const parts = parentPath.replace("root.", "").split(".");
+  const idx = Number.parseInt(parts[0], 10);
+  const rest = parts.slice(1);
+  const newSuccessors = [...(tree.successors ?? [])];
+  if (rest.length === 0) {
+    const target = newSuccessors[idx];
+    newSuccessors[idx] = { ...target, successors: [...(target.successors ?? []), child] };
+  } else {
+    newSuccessors[idx] = appendChildAtPath(newSuccessors[idx], "root." + rest.join("."), child);
+  }
+  return { ...tree, successors: newSuccessors };
+}
+
 /** Default loglevel matching Python's logging.FATAL (50). */
 const DEFAULT_LOGLEVEL = 50;
 
