@@ -177,39 +177,39 @@ describe("ConstructionPlansPage", () => {
     expect(screen.getByText("Plans")).toBeDefined();
   });
 
-  it("renders the plan selector with templates by default", () => {
+  it("defaults to plans mode when aeroplane is selected", () => {
     render(<ConstructionPlansPage />);
-    expect(screen.getByText("eHawk Wing (3 steps)")).toBeDefined();
+    // With aeroplaneId set, the page should default to plans view
+    expect(screen.getByText("eHawk Build (2 steps)")).toBeDefined();
   });
 
-  it("shows plan tree when a template is selected", () => {
+  it("shows plan tree when a plan is selected", () => {
     render(<ConstructionPlansPage />);
     const select = screen.getByRole("combobox") as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "1" } });
-    // Appears in both the plan tree and the creator catalog
+    fireEvent.change(select, { target: { value: "2" } });
     const matches = screen.getAllByText("VaseModeWingCreator");
     expect(matches.length).toBeGreaterThanOrEqual(2);
   });
 
   it("shows Create Plan button (not Execute) in template mode", () => {
     render(<ConstructionPlansPage />);
+    fireEvent.click(screen.getByText("Templates"));
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "1" } });
     expect(screen.getByText("Create Plan")).toBeDefined();
-    // Execute should not be visible in template mode
     const executeButtons = screen.queryAllByText("Execute");
-    // The only "Execute" is inside the dialog trigger which is hidden in template mode
     expect(executeButtons.length).toBe(0);
   });
 
   it("shows Execute button in plans mode", () => {
     render(<ConstructionPlansPage />);
-    fireEvent.click(screen.getByText("Plans"));
+    // Already in plans mode (default with aeroplaneId)
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "2" } });
     expect(screen.getByText("Execute")).toBeDefined();
   });
 
-  it("creates a new template via prompt", async () => {
+  it("creates a new template via prompt in templates mode", async () => {
     render(<ConstructionPlansPage />);
+    fireEvent.click(screen.getByText("Templates"));
     const buttons = screen.getAllByTitle("New template");
     fireEvent.click(buttons[0]);
     await waitFor(() => {
@@ -221,7 +221,7 @@ describe("ConstructionPlansPage", () => {
 
   it("opens execute dialog and shows aeroplane selector in plans mode", () => {
     render(<ConstructionPlansPage />);
-    fireEvent.click(screen.getByText("Plans"));
+    // Already in plans mode (default with aeroplaneId)
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "2" } });
     fireEvent.click(screen.getByText("Execute"));
     expect(screen.getByText("Execute Plan")).toBeDefined();
