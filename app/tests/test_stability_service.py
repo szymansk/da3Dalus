@@ -225,7 +225,7 @@ def _make_analysis_result(
 
 def _run_async(coro):
     """Run an async coroutine synchronously for tests (no pytest-asyncio needed)."""
-    return asyncio.get_event_loop().run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 def _patch_analysis_deps(mock_result, *, converter_side_effect=None):
