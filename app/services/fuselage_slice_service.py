@@ -1,6 +1,7 @@
 """Fuselage Slice Service — orchestrates STEP upload, slicing, and response."""
 
 import logging
+import math
 import shutil
 import tempfile
 from pathlib import Path
@@ -15,6 +16,13 @@ from app.schemas.fuselage_slice import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _sanitize_float(val: object) -> object:
+    """Replace NaN/Inf with None for JSON safety."""
+    if isinstance(val, float) and not math.isfinite(val):
+        return None
+    return val
 
 
 def slice_step_file(
@@ -71,6 +79,9 @@ def slice_step_file(
         raise InternalError(message=f"Fuselage slicing failed: {exc}") from exc
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    # Sanitize NaN/Inf values from aerosandbox (GH#301)
+    metrics = {k: _sanitize_float(v) for k, v in metrics.items()}
 
     # Convert to FuselageSchema
     fuselage_xsecs = [
