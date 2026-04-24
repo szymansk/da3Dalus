@@ -91,7 +91,11 @@ go ahead or the severity is critical, proceed without delay.
 
 ## Phase 3 — Create GH Issue
 
-**Skip if the input was already a GH issue number.**
+**MANDATORY: Always create a GH Issue immediately after root cause
+analysis — BEFORE any code changes. Report the ticket number to the
+user. No bug fix work may begin without a ticket number.**
+
+**Skip only if the input was already a GH issue number.**
 
 Create a bug ticket:
 

@@ -134,6 +134,9 @@ You may also invoke them directly for granular control:
    a bug. Fix the production code. NEVER weaken assertions, delete
    tests, add `@skip`, or rewrite step definitions to bypass the UI.
    A green suite from weakened tests is worthless.
+5. **No bug fix without a GH ticket** — `/supercycle:bug` must
+   create a GitHub Issue (report ticket number to user) after root
+   cause analysis and before any code changes.
 
 ### Test coverage target: 70–80%
 
@@ -149,6 +152,7 @@ equivalent frontend command.
 | Frontend unit | vitest | `frontend/__tests__/` | `cd frontend && npm run test:unit` |
 | Frontend deps | dependency-cruiser | `frontend/.dependency-cruiser.cjs` | `cd frontend && npm run deps:check` |
 | Frontend E2E | playwright-bdd | `frontend/e2e/features/*.feature` | `cd frontend && npm run test:e2e` |
+| cad_designer | pytest | `cad_designer/tests/test_*.py` | `poetry run pytest cad_designer/tests/` |
 
 
 ## Frontend Design Rules
@@ -273,6 +277,12 @@ work: `git push` before saying "done". If push fails, resolve and retry.
 **NEVER** say "ready to push when you are" — YOU must push.
 
 
+## Git
+
+- Remote is named `github` (not `origin`): `git push github <branch>`
+- SonarQube project key: `szymansk_da3Dalus` (see `sonar-project.properties`)
+
+
 ## Build & Test
 
 Language: **Python 3.11–3.13**, managed with **Poetry 2.x**.
@@ -363,6 +373,10 @@ components/                  # Airfoils, servos, templates (data)
 - **Platform guard.** On `linux/aarch64`, `cadquery` and `aerosandbox`
   are excluded. Code that imports them must tolerate `ImportError`.
 - **Secrets in `.env`**, never in git. Document in `.env.example`.
+- **`wing_service` uses `with db.begin():`** in all write
+  operations. Direct service-level tests must use a session with
+  `autobegin=False` or go through the REST API via `TestClient`.
+  See gh-298.
 
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
