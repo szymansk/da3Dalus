@@ -1,6 +1,7 @@
 """Tests for Construction Plans CRUD + Creator Catalog + Execute (gh#101).
 
 Covers sub-tickets #109 (DB model), #110 (CRUD), #111 (creators), #112 (execute).
+Also: #315 (frontend JSON ↔ backend decoder compatibility).
 """
 from __future__ import annotations
 
@@ -8,6 +9,15 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+
+
+def _can_import_cad() -> bool:
+    """Check if cadquery/cad_designer is available (excluded on linux/aarch64)."""
+    try:
+        from cad_designer.airplane.GeneralJSONEncoderDecoder import GeneralJSONDecoder  # noqa: F401
+        return True
+    except (ImportError, ModuleNotFoundError):
+        return False
 
 
 @pytest.fixture()
@@ -378,6 +388,198 @@ class TestTemplatePlanDuality:
         plan = next(p for p in resp.json() if p["name"] == "Typed Plan")
         assert plan["plan_type"] == "plan"
         assert plan["aeroplane_id"] == aid
+
+
+# ── Frontend JSON → Backend Decoder Tests (#315) ─────────────────
+
+
+# This is the exact JSON structure that the frontend's toBackendTree()
+# produces. It must be accepted by GeneralJSONDecoder without error.
+FRONTEND_GENERATED_TREE = {
+    "$TYPE": "ConstructionRootNode",
+    "creator_id": "eHawk-wing",
+    "loglevel": 50,
+    "successors": {
+        "fuse1": {
+            "$TYPE": "ConstructionStepNode",
+            "creator_id": "fuse1",
+            "loglevel": 50,
+            "creator": {
+                "$TYPE": "Fuse2ShapesCreator",
+                "creator_id": "fuse1",
+                "shape_a": "wing_left",
+                "shape_b": "wing_right",
+                "loglevel": 20,
+            },
+            "successors": {},
+        },
+    },
+}
+
+
+class TestFrontendJsonDecoderCompat:
+    """Verify that JSON produced by the frontend's toBackendTree() is
+    accepted by GeneralJSONDecoder — the exact chain that broke in #310."""
+
+    @pytest.mark.skipif(
+        not _can_import_cad(),
+        reason="cadquery / cad_designer not available on this platform",
+    )
+    def test_decoder_accepts_frontend_json(self):
+        """GeneralJSONDecoder can deserialize a frontend-produced plan
+        into a ConstructionRootNode with the correct creator."""
+        import json
+        from cad_designer.airplane.GeneralJSONEncoderDecoder import GeneralJSONDecoder
+        from cad_designer.airplane.ConstructionRootNode import ConstructionRootNode
+        from cad_designer.airplane.ConstructionStepNode import ConstructionStepNode
+
+        json_string = json.dumps(FRONTEND_GENERATED_TREE)
+        root = json.loads(
+            json_string,
+            cls=GeneralJSONDecoder,
+            wing_config={},
+            printer_settings={},
+            servo_information={},
+            engine_information=None,
+            component_information=None,
+        )
+
+        # Root is a ConstructionRootNode
+        assert isinstance(root, ConstructionRootNode)
+        # Has one successor
+        assert len(root.successors) == 1
+        # Successor is a ConstructionStepNode
+        step = root.successors["fuse1"]
+        assert isinstance(step, ConstructionStepNode)
+        # Step wraps the correct creator
+        assert step.creator.__class__.__name__ == "Fuse2ShapesCreator"
+        assert step.creator.shape_a == "wing_left"
+        assert step.creator.shape_b == "wing_right"
+
+    @pytest.mark.skipif(
+        not _can_import_cad(),
+        reason="cadquery / cad_designer not available on this platform",
+    )
+    def test_decoder_accepts_nested_frontend_json(self):
+        """Nested successors from frontend are correctly deserialized."""
+        import json
+        from cad_designer.airplane.GeneralJSONEncoderDecoder import GeneralJSONDecoder
+        from cad_designer.airplane.ConstructionRootNode import ConstructionRootNode
+
+        nested_tree = {
+            "$TYPE": "ConstructionRootNode",
+            "creator_id": "root",
+            "loglevel": 50,
+            "successors": {
+                "fuse1": {
+                    "$TYPE": "ConstructionStepNode",
+                    "creator_id": "fuse1",
+                    "loglevel": 50,
+                    "creator": {
+                        "$TYPE": "Fuse2ShapesCreator",
+                        "creator_id": "fuse1",
+                        "shape_a": "a",
+                        "shape_b": "b",
+                        "loglevel": 50,
+                    },
+                    "successors": {
+                        "fuse2": {
+                            "$TYPE": "ConstructionStepNode",
+                            "creator_id": "fuse2",
+                            "loglevel": 50,
+                            "creator": {
+                                "$TYPE": "Fuse2ShapesCreator",
+                                "creator_id": "fuse2",
+                                "shape_a": "c",
+                                "shape_b": "d",
+                                "loglevel": 50,
+                            },
+                            "successors": {},
+                        },
+                    },
+                },
+            },
+        }
+
+        json_string = json.dumps(nested_tree)
+        root = json.loads(
+            json_string,
+            cls=GeneralJSONDecoder,
+            wing_config={},
+            printer_settings={},
+            servo_information={},
+            engine_information=None,
+            component_information=None,
+        )
+
+        assert isinstance(root, ConstructionRootNode)
+        step1 = root.successors["fuse1"]
+        assert step1.creator.shape_a == "a"
+        step2 = step1.successors["fuse2"]
+        assert step2.creator.shape_a == "c"
+        assert step2.creator.shape_b == "d"
+
+
+class TestFrontendJsonIntegration:
+    """Integration test: create a plan with frontend-format JSON via the
+    REST API, then execute it. This is the full chain that was broken."""
+
+    def test_create_and_execute_frontend_format_plan(self, client):
+        """POST plan with frontend JSON → execute → no decoder error."""
+        # Create aeroplane (needed for execution)
+        aid = _create_aeroplane(client)
+
+        # Create plan with exact frontend-produced JSON
+        plan = _create_plan(
+            client,
+            "frontend-format-test",
+            tree=FRONTEND_GENERATED_TREE,
+            plan_type="plan",
+            aeroplane_id=aid,
+        )
+
+        # Execute — this is where #310 crashed with 'list has no attribute get'
+        resp = client.post(
+            f"/construction-plans/{plan['id']}/execute",
+            json={"aeroplane_id": aid},
+        )
+        # We expect 200 (success or soft error from missing shapes),
+        # NOT 422 (decoder failure)
+        assert resp.status_code == 200, (
+            f"Execute returned {resp.status_code}: {resp.text}. "
+            "If 422, the frontend JSON format is not accepted by GeneralJSONDecoder."
+        )
+        result = resp.json()
+        # The plan should decode successfully — even if execution
+        # fails (missing input shapes), it's a runtime error not a decode error
+        assert result["status"] in ("success", "error")
+        if result["status"] == "error":
+            assert "'list' object has no attribute 'get'" not in result["error"], (
+                "The original #310 bug is still present — frontend JSON has wrong structure"
+            )
+            assert "Failed to decode" not in result["error"], (
+                "GeneralJSONDecoder rejected the frontend JSON format"
+            )
+
+    def test_roundtrip_store_and_retrieve_preserves_structure(self, client):
+        """Plan stored with frontend JSON can be retrieved with identical structure."""
+        plan = _create_plan(
+            client,
+            "roundtrip-test",
+            tree=FRONTEND_GENERATED_TREE,
+        )
+        resp = client.get(f"/construction-plans/{plan['id']}")
+        assert resp.status_code == 200
+        stored = resp.json()["tree_json"]
+
+        # Verify the structure survived the DB round-trip
+        assert stored["$TYPE"] == "ConstructionRootNode"
+        assert stored["loglevel"] == 50
+        assert isinstance(stored["successors"], dict)
+        step = stored["successors"]["fuse1"]
+        assert step["$TYPE"] == "ConstructionStepNode"
+        assert step["creator"]["$TYPE"] == "Fuse2ShapesCreator"
+        assert step["creator"]["shape_a"] == "wing_left"
 
 
 # ── Printer Settings Seed (#115) ────────────────────────────────
