@@ -10,13 +10,13 @@ from app.schemas.aeroplaneschema import FuselageSchema
 
 
 class GeometryProperties(BaseModel):
-    volume_m3: float = Field(..., description="Volume in cubic meters")
-    surface_area_m2: float = Field(..., description="Surface area in square meters")
+    volume_m3: float | None = Field(..., description="Volume in cubic meters (None if computation produced NaN/Inf)")
+    surface_area_m2: float | None = Field(..., description="Surface area in square meters (None if computation produced NaN/Inf)")
 
 
 class FidelityMetrics(BaseModel):
-    volume_ratio: float = Field(..., description="Reconstructed/original volume ratio (1.0 = perfect)")
-    area_ratio: float = Field(..., description="Reconstructed/original area ratio (1.0 = perfect)")
+    volume_ratio: float | None = Field(..., description="Reconstructed/original volume ratio (1.0 = perfect, None if NaN/Inf)")
+    area_ratio: float | None = Field(..., description="Reconstructed/original area ratio (1.0 = perfect, None if NaN/Inf)")
 
 
 class FuselageSliceResponse(BaseModel):
