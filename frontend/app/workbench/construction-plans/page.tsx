@@ -32,6 +32,8 @@ import {
   collectAvailableShapeKeys,
   resolveIdTemplate,
   computeReorderTargetPath,
+  toBackendTree,
+  fromBackendTree,
 } from "@/lib/planTreeUtils";
 
 /** Build an ExecutionResult for a caught error. */
@@ -62,7 +64,7 @@ async function submitNewPlan(
   }
   const created = await createPlan({
     name,
-    tree_json: { $TYPE: "ConstructionRootNode", creator_id: "root", successors: [] },
+    tree_json: { $TYPE: "ConstructionRootNode", creator_id: "root", loglevel: 50, successors: {} },
     plan_type: "plan",
     aeroplane_id: aeroplaneId ?? undefined,
   });
@@ -154,7 +156,7 @@ export default function ConstructionPlansPage() {
     if (!name?.trim()) return;
     createPlan({
       name: name.trim(),
-      tree_json: { $TYPE: "ConstructionRootNode", creator_id: "root", successors: [] },
+      tree_json: { $TYPE: "ConstructionRootNode", creator_id: "root", loglevel: 50, successors: {} },
       plan_type: "template",
     })
       .then((created) => {
@@ -207,13 +209,13 @@ export default function ConstructionPlansPage() {
 
   async function handleDeleteStep(path: string) {
     if (!plan || !selectedPlanId) return;
-    const treeJson = plan.tree_json as unknown as PlanStepNode;
+    const treeJson = fromBackendTree(plan.tree_json as Record<string, unknown>);
     const updated = deleteStepAtPath(treeJson, path);
     try {
       await updatePlan(selectedPlanId, {
         name: plan.name,
         description: plan.description ?? undefined,
-        tree_json: updated as unknown as Record<string, unknown>,
+        tree_json: toBackendTree(updated),
       });
       mutatePlan();
       activeMutate();
@@ -229,7 +231,7 @@ export default function ConstructionPlansPage() {
 
   async function handleAddCreator(creator: CreatorInfo, creatorId?: string) {
     if (!plan || !selectedPlanId) return;
-    const treeJson = plan.tree_json as unknown as PlanStepNode;
+    const treeJson = fromBackendTree(plan.tree_json as Record<string, unknown>);
     const newStep: PlanStepNode = {
       $TYPE: creator.class_name,
       creator_id: creatorId || creator.suggested_id || creator.class_name,
@@ -244,7 +246,7 @@ export default function ConstructionPlansPage() {
       await updatePlan(selectedPlanId, {
         name: plan.name,
         description: plan.description ?? undefined,
-        tree_json: updatedTree as unknown as Record<string, unknown>,
+        tree_json: toBackendTree(updatedTree),
       });
       mutatePlan();
       activeMutate();
@@ -263,12 +265,12 @@ export default function ConstructionPlansPage() {
     // Debounce the API call to avoid flooding on every keystroke
     if (paramSaveTimer.current) clearTimeout(paramSaveTimer.current);
     paramSaveTimer.current = setTimeout(() => {
-      const treeJson = plan.tree_json as unknown as PlanStepNode;
+      const treeJson = fromBackendTree(plan.tree_json as Record<string, unknown>);
       const updated = updateNodeAtPath(treeJson, selectedStepPath, updatedNode);
       updatePlan(selectedPlanId, {
         name: plan.name,
         description: plan.description ?? undefined,
-        tree_json: updated as unknown as Record<string, unknown>,
+        tree_json: toBackendTree(updated),
       })
         .then(() => mutatePlan())
         .catch((err) => alert(err instanceof Error ? err.message : "Failed to save parameter"));
@@ -277,7 +279,7 @@ export default function ConstructionPlansPage() {
 
   function handleReorder(fromPath: string, toPath: string) {
     if (!plan || !selectedPlanId) return;
-    const treeJson = plan.tree_json as unknown as PlanStepNode;
+    const treeJson = fromBackendTree(plan.tree_json as Record<string, unknown>);
     const fromNode = getStepAtPath(treeJson, fromPath);
     if (!fromNode) return;
     const withoutFrom = deleteStepAtPath(treeJson, fromPath);
@@ -287,7 +289,7 @@ export default function ConstructionPlansPage() {
     updatePlan(selectedPlanId, {
       name: plan.name,
       description: plan.description ?? undefined,
-      tree_json: updated as unknown as Record<string, unknown>,
+      tree_json: toBackendTree(updated),
     })
       .then(() => {
         mutatePlan();
@@ -347,7 +349,9 @@ export default function ConstructionPlansPage() {
 
   // ── Render ──────────────────────────────────────────────────────
 
-  const treeJson = plan?.tree_json as unknown as PlanStepNode | null;
+  const treeJson = plan?.tree_json
+    ? fromBackendTree(plan.tree_json as Record<string, unknown>)
+    : null;
   const stepCount = treeJson?.successors?.length ?? 0;
   const creatorForSelected = selectedStepNode
     ? findCreatorForStep(selectedStepNode)

@@ -9,6 +9,8 @@ import {
   collectAvailableShapeKeys,
   resolveIdTemplate,
   computeReorderTargetPath,
+  toBackendTree,
+  fromBackendTree,
 } from "@/lib/planTreeUtils";
 
 function makeNode(type: string, id: string, successors: PlanStepNode[] = []): PlanStepNode {
@@ -151,5 +153,162 @@ describe("computeReorderTargetPath", () => {
 
   it("returns toPath unchanged for same-index siblings in different depth", () => {
     expect(computeReorderTargetPath("root.0.1", "root.1")).toBe("root.1");
+  });
+});
+
+describe("toBackendTree", () => {
+  it("converts a root with no successors", () => {
+    const frontend = makeNode("ConstructionRootNode", "root");
+    const backend = toBackendTree(frontend);
+    expect(backend.$TYPE).toBe("ConstructionRootNode");
+    expect(backend.creator_id).toBe("root");
+    expect(backend.loglevel).toBe(50);
+    expect(backend.successors).toEqual({});
+  });
+
+  it("wraps each child in a ConstructionStepNode with creator", () => {
+    const frontend: PlanStepNode = {
+      $TYPE: "ConstructionRootNode",
+      creator_id: "root",
+      successors: [
+        { $TYPE: "WingLoftCreator", creator_id: "main_wing.loft", offset: 0, connected: true, wing_index: "main_wing", wing_side: "BOTH", successors: [] },
+      ],
+    };
+    const backend = toBackendTree(frontend);
+
+    // successors is a dict keyed by creator_id
+    expect(backend.successors).toBeTypeOf("object");
+    expect(Array.isArray(backend.successors)).toBe(false);
+
+    const step = (backend.successors as Record<string, Record<string, unknown>>)["main_wing.loft"];
+    expect(step).toBeDefined();
+    expect(step.$TYPE).toBe("ConstructionStepNode");
+    expect(step.creator_id).toBe("main_wing.loft");
+    expect(step.loglevel).toBe(50);
+
+    // creator is nested inside the step node
+    const creator = step.creator as Record<string, unknown>;
+    expect(creator.$TYPE).toBe("WingLoftCreator");
+    expect(creator.creator_id).toBe("main_wing.loft");
+    expect(creator.offset).toBe(0);
+    expect(creator.connected).toBe(true);
+    expect(creator.wing_index).toBe("main_wing");
+    expect(creator.wing_side).toBe("BOTH");
+    expect(creator.loglevel).toBe(50);
+  });
+
+  it("preserves loglevel if already set on the node", () => {
+    const frontend: PlanStepNode = {
+      $TYPE: "ConstructionRootNode",
+      creator_id: "root",
+      loglevel: 10,
+      successors: [
+        { $TYPE: "WingLoftCreator", creator_id: "w1", loglevel: 20, successors: [] },
+      ],
+    };
+    const backend = toBackendTree(frontend);
+    expect(backend.loglevel).toBe(10);
+
+    const step = (backend.successors as Record<string, Record<string, unknown>>)["w1"];
+    const creator = step.creator as Record<string, unknown>;
+    expect(creator.loglevel).toBe(20);
+  });
+
+  it("handles nested successors recursively", () => {
+    const frontend: PlanStepNode = {
+      $TYPE: "ConstructionRootNode",
+      creator_id: "root",
+      successors: [
+        {
+          $TYPE: "WingLoftCreator", creator_id: "w1",
+          successors: [
+            { $TYPE: "ExportCreator", creator_id: "e1", successors: [] },
+          ],
+        },
+      ],
+    };
+    const backend = toBackendTree(frontend);
+    const step = (backend.successors as Record<string, Record<string, unknown>>)["w1"];
+    const nested = (step.successors as Record<string, Record<string, unknown>>)["e1"];
+    expect(nested.$TYPE).toBe("ConstructionStepNode");
+    expect((nested.creator as Record<string, unknown>).$TYPE).toBe("ExportCreator");
+  });
+});
+
+describe("fromBackendTree", () => {
+  it("converts a backend root with dict successors to frontend format", () => {
+    const backend = {
+      $TYPE: "ConstructionRootNode",
+      creator_id: "root",
+      loglevel: 50,
+      successors: {
+        "main_wing.loft": {
+          $TYPE: "ConstructionStepNode",
+          creator_id: "main_wing.loft",
+          loglevel: 50,
+          creator: {
+            $TYPE: "WingLoftCreator",
+            creator_id: "main_wing.loft",
+            offset: 0,
+            connected: true,
+            loglevel: 10,
+          },
+          successors: {},
+        },
+      },
+    };
+    const frontend = fromBackendTree(backend);
+    expect(frontend.$TYPE).toBe("ConstructionRootNode");
+    expect(frontend.creator_id).toBe("root");
+    expect(frontend.loglevel).toBe(50);
+    expect(Array.isArray(frontend.successors)).toBe(true);
+    expect(frontend.successors!.length).toBe(1);
+
+    const child = frontend.successors![0];
+    expect(child.$TYPE).toBe("WingLoftCreator");
+    expect(child.creator_id).toBe("main_wing.loft");
+    expect(child.offset).toBe(0);
+    expect(child.connected).toBe(true);
+    expect(child.loglevel).toBe(10);
+  });
+
+  it("passes through frontend format unchanged (array successors)", () => {
+    const frontend: PlanStepNode = {
+      $TYPE: "ConstructionRootNode",
+      creator_id: "root",
+      successors: [
+        { $TYPE: "WingLoftCreator", creator_id: "w1", successors: [] },
+      ],
+    };
+    const result = fromBackendTree(frontend);
+    expect(result.successors).toEqual(frontend.successors);
+  });
+
+  it("handles nested dict successors recursively", () => {
+    const backend = {
+      $TYPE: "ConstructionRootNode",
+      creator_id: "root",
+      loglevel: 50,
+      successors: {
+        w1: {
+          $TYPE: "ConstructionStepNode",
+          creator_id: "w1",
+          loglevel: 50,
+          creator: { $TYPE: "WingLoftCreator", creator_id: "w1", loglevel: 50 },
+          successors: {
+            e1: {
+              $TYPE: "ConstructionStepNode",
+              creator_id: "e1",
+              loglevel: 50,
+              creator: { $TYPE: "ExportCreator", creator_id: "e1", loglevel: 50 },
+              successors: {},
+            },
+          },
+        },
+      },
+    };
+    const frontend = fromBackendTree(backend);
+    expect(frontend.successors![0].successors![0].$TYPE).toBe("ExportCreator");
+    expect(frontend.successors![0].successors![0].creator_id).toBe("e1");
   });
 });
