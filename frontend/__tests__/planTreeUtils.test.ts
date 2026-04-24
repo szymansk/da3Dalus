@@ -312,3 +312,69 @@ describe("fromBackendTree", () => {
     expect(frontend.successors![0].successors![0].creator_id).toBe("e1");
   });
 });
+
+describe("round-trip conversion", () => {
+  it("frontend → backend → frontend preserves all data", () => {
+    const original: PlanStepNode = {
+      $TYPE: "ConstructionRootNode",
+      creator_id: "root",
+      successors: [
+        {
+          $TYPE: "WingLoftCreator",
+          creator_id: "w1",
+          offset: 0,
+          wing_index: "main",
+          wing_side: "BOTH",
+          successors: [
+            { $TYPE: "ExportCreator", creator_id: "e1", format: "step", successors: [] },
+          ],
+        },
+      ],
+    };
+    const roundTripped = fromBackendTree(toBackendTree(original));
+    expect(roundTripped.$TYPE).toBe("ConstructionRootNode");
+    expect(roundTripped.creator_id).toBe("root");
+    expect(roundTripped.successors!.length).toBe(1);
+
+    const child = roundTripped.successors![0];
+    expect(child.$TYPE).toBe("WingLoftCreator");
+    expect(child.creator_id).toBe("w1");
+    expect(child.offset).toBe(0);
+    expect(child.wing_index).toBe("main");
+    expect(child.wing_side).toBe("BOTH");
+
+    const nested = child.successors![0];
+    expect(nested.$TYPE).toBe("ExportCreator");
+    expect(nested.creator_id).toBe("e1");
+    expect(nested.format).toBe("step");
+  });
+
+  it("backend → frontend → backend preserves structure", () => {
+    const backend = {
+      $TYPE: "ConstructionRootNode",
+      creator_id: "root",
+      loglevel: 50,
+      successors: {
+        w1: {
+          $TYPE: "ConstructionStepNode",
+          creator_id: "w1",
+          loglevel: 50,
+          creator: { $TYPE: "WingLoftCreator", creator_id: "w1", loglevel: 10, offset: 5 },
+          successors: {},
+        },
+      },
+    };
+    const roundTripped = toBackendTree(fromBackendTree(backend));
+    expect(roundTripped.$TYPE).toBe("ConstructionRootNode");
+    expect(roundTripped.loglevel).toBe(50);
+
+    const step = (roundTripped.successors as Record<string, Record<string, unknown>>)["w1"];
+    expect(step.$TYPE).toBe("ConstructionStepNode");
+    expect(step.loglevel).toBe(50);
+
+    const creator = step.creator as Record<string, unknown>;
+    expect(creator.$TYPE).toBe("WingLoftCreator");
+    expect(creator.loglevel).toBe(10);
+    expect(creator.offset).toBe(5);
+  });
+});

@@ -166,6 +166,9 @@ export function toBackendTree(
     // Remove loglevel from creatorParams to avoid duplication — it's set explicitly
     delete creatorParams.loglevel;
 
+    if (backendSuccessors[creator_id] !== undefined) {
+      console.warn(`Duplicate creator_id "${creator_id}" in plan tree — second entry overwrites the first`);
+    }
     backendSuccessors[creator_id] = {
       $TYPE: "ConstructionStepNode",
       creator_id,
