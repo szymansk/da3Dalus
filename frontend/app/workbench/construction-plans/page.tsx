@@ -94,7 +94,7 @@ export default function ConstructionPlansPage() {
   const { aeroplanes } = useAeroplanes();
   const { creators } = useCreators();
 
-  const [viewMode, setViewMode] = useState<"templates" | "plans">("templates");
+  const [viewMode, setViewMode] = useState<"templates" | "plans">(aeroplaneId ? "plans" : "templates");
   const { plans: templates, mutate: mutateTemplates } = useConstructionPlans("template");
   const { plans: aeroplanePlans, mutate: mutateAeroplanePlans } = useAeroplanePlans(aeroplaneId);
   const activePlans = viewMode === "templates" ? templates : aeroplanePlans;
