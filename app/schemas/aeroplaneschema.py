@@ -203,6 +203,21 @@ class TrailingEdgeDeviceDetailSchema(BaseModel):
         description=_DESC_SERVO_PLACEMENT,
     )
 
+    @field_validator("servo", mode="before")
+    @classmethod
+    def _coerce_servo_orm(cls, v):
+        """Convert ORM servo model to dict so Pydantic can validate as Servo.
+
+        When ``from_attributes=True`` processes a ``WingXSecTrailingEdgeDeviceModel``,
+        the ``servo`` property returns a ``WingXSecTedServoModel`` ORM object.
+        Pydantic cannot auto-convert it to ``Servo | int``, so we extract a dict.
+        """
+        if v is None or isinstance(v, (int, dict, Servo)):
+            return v
+        if hasattr(v, "__dict__"):
+            return {k: val for k, val in v.__dict__.items() if not k.startswith("_")}
+        return v
+
     @field_validator("servo_placement", mode="before")
     @classmethod
     def _default_servo_placement(cls, v):
