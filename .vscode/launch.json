@@ -22,6 +22,29 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "FastAPI: DEBUG (all logs + break on exceptions)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "app.main:app",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "8001",
+                "--reload",
+                "--log-level",
+                "debug"
+            ],
+            "env": {
+                "LOG_LEVEL": "DEBUG",
+                "PYTHONUNBUFFERED": "1",
+                "PYTHONFAULTHANDLER": "1"
+            },
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
             "name": "MCP: app.mcp_server",
             "type": "python",
             "request": "launch",

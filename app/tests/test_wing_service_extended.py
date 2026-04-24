@@ -51,11 +51,15 @@ def client(client_and_db):
     yield c
 
 
-def _make_plane_with_wing(db, *, wing_name: str = "main", xsec_count: int = 2):
+def _make_plane_with_wing(db, *, wing_name: str = "main", xsec_count: int = 2, ):
     """Create an aeroplane with a wing that has xsec_count cross-sections.
 
     Returns (aeroplane, wing) ORM instances.
     The first N-1 xsecs get a detail row; the last (terminal) does not.
+
+    When *rollback_for_begin* is True the implicit read transaction is
+    rolled back after setup so that service functions using
+    ``with db.begin():`` can start their own transaction.
     """
     plane = make_aeroplane(db, name=f"test-{uuid.uuid4().hex[:8]}")
     wing = WingModel(name=wing_name, symmetric=True, aeroplane_id=plane.id)
@@ -74,6 +78,7 @@ def _make_plane_with_wing(db, *, wing_name: str = "main", xsec_count: int = 2):
     db.commit()
     db.refresh(plane)
     return plane, wing
+
 
 
 # ── get_aeroplane_or_raise ────────────────────────────────────────────
@@ -99,7 +104,7 @@ class TestGetWingOrRaise:
         result = wing_service.get_wing_or_raise(plane, "main")
         assert result.name == "main"
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_raises_not_found_for_missing_wing(self, db):
         plane = make_aeroplane(db)
         with pytest.raises(NotFoundError, match="Wing not found"):
@@ -120,7 +125,6 @@ class TestGetXsecOrRaise:
         with pytest.raises(NotFoundError, match="Cross-section not found"):
             wing_service._get_xsec_or_raise(wing, -1)
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session")
     def test_raises_for_out_of_bounds_index(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         with pytest.raises(NotFoundError, match="Cross-section not found"):
@@ -165,7 +169,7 @@ class TestListWingNames:
 
 
 class TestCreateWing:
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_creates_wing_successfully(self, db):
         plane = make_aeroplane(db)
         write_schema = schemas.AsbWingGeometryWriteSchema.model_construct(
@@ -178,7 +182,7 @@ class TestCreateWing:
         created = next(w for w in plane.wings if w.name == "new_wing")
         assert created.design_model == "asb"
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_rejects_duplicate_wing_name(self, db):
         plane, _ = _make_plane_with_wing(db, wing_name="dup")
         write_schema = schemas.AsbWingGeometryWriteSchema.model_construct(
@@ -200,7 +204,7 @@ class TestCreateWing:
 
 
 class TestUpdateWing:
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_replaces_wing_data(self, db):
         plane, wing = _make_plane_with_wing(db, wing_name="upd")
         write_schema = schemas.AsbWingGeometryWriteSchema.model_construct(
@@ -212,7 +216,7 @@ class TestUpdateWing:
         updated = next(w for w in plane.wings if w.name == "upd")
         assert updated.design_model == "asb"
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_raises_not_found_for_missing_wing(self, db):
         plane = make_aeroplane(db)
         write_schema = schemas.AsbWingGeometryWriteSchema.model_construct(
@@ -232,7 +236,7 @@ class TestGetWing:
         assert isinstance(result, schemas.AsbWingReadSchema)
         assert result.name == "gw"
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_raises_for_missing_wing(self, db):
         plane = make_aeroplane(db)
         with pytest.raises(NotFoundError):
@@ -243,14 +247,14 @@ class TestGetWing:
 
 
 class TestDeleteWing:
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_deletes_existing_wing(self, db):
         plane, _ = _make_plane_with_wing(db, wing_name="del")
         wing_service.delete_wing(db, plane.uuid, "del")
         db.refresh(plane)
         assert not any(w.name == "del" for w in plane.wings)
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_raises_for_missing_wing(self, db):
         plane = make_aeroplane(db)
         with pytest.raises(NotFoundError):
@@ -287,7 +291,7 @@ class TestGetWingCrossSections:
         result = wing_service.get_wing_cross_sections(db, plane.uuid, "main")
         assert len(result) == 3
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_raises_for_missing_wing(self, db):
         plane = make_aeroplane(db)
         with pytest.raises(NotFoundError):
@@ -295,7 +299,7 @@ class TestGetWingCrossSections:
 
 
 class TestDeleteAllCrossSections:
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_deletes_all_cross_sections(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=3)
         wing_service.delete_all_cross_sections(db, plane.uuid, "main")
@@ -309,7 +313,7 @@ class TestGetCrossSection:
         result = wing_service.get_cross_section(db, plane.uuid, "main", 0)
         assert isinstance(result, schemas.WingXSecReadSchema)
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_raises_for_out_of_bounds(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         with pytest.raises(NotFoundError):
@@ -317,7 +321,7 @@ class TestGetCrossSection:
 
 
 class TestCreateCrossSection:
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_appends_at_end(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         xsec_data = schemas.WingXSecGeometryWriteSchema.model_construct(
@@ -330,7 +334,7 @@ class TestCreateCrossSection:
         db.refresh(wing)
         assert len(wing.x_secs) == 3
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_inserts_at_index(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         xsec_data = schemas.WingXSecGeometryWriteSchema.model_construct(
@@ -343,7 +347,7 @@ class TestCreateCrossSection:
         db.refresh(wing)
         assert len(wing.x_secs) == 3
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_with_segment_metadata(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         xsec_data = schemas.WingXSecGeometryWriteSchema.model_construct(
@@ -364,7 +368,7 @@ class TestCreateCrossSection:
 
 
 class TestUpdateCrossSection:
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_updates_geometry_fields(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         xsec_data = schemas.WingXSecGeometryWriteSchema.model_construct(
@@ -379,7 +383,7 @@ class TestUpdateCrossSection:
         assert xsec.chord == 0.20
         assert xsec.airfoil == "naca2412"
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_updates_segment_metadata_on_non_terminal(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=3)
         xsec_data = schemas.WingXSecGeometryWriteSchema.model_construct(
@@ -396,7 +400,7 @@ class TestUpdateCrossSection:
         assert wing.x_secs[0].detail.tip_type == "flat"
         assert wing.x_secs[0].detail.number_interpolation_points == 80
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_rejects_metadata_on_terminal(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         xsec_data = schemas.WingXSecGeometryWriteSchema.model_construct(
@@ -409,7 +413,7 @@ class TestUpdateCrossSection:
         with pytest.raises(ValidationError, match="last cross-section"):
             wing_service.update_cross_section(db, plane.uuid, "main", 1, xsec_data)
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_raises_for_out_of_bounds(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         xsec_data = schemas.WingXSecGeometryWriteSchema.model_construct(
@@ -420,14 +424,14 @@ class TestUpdateCrossSection:
 
 
 class TestDeleteCrossSection:
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_deletes_by_index(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=3)
         wing_service.delete_cross_section(db, plane.uuid, "main", 1)
         db.refresh(wing)
         assert len(wing.x_secs) == 2
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_raises_for_out_of_bounds(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         with pytest.raises(NotFoundError):
@@ -468,7 +472,7 @@ class TestSparService:
         assert len(result) == 1
         assert result[0].spare_position_factor == pytest.approx(0.3)
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_create_spare_on_non_terminal(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=3)
         spare_data = schemas.SpareDetailSchema.model_construct(
@@ -482,7 +486,7 @@ class TestSparService:
         db.refresh(wing)
         assert len(wing.x_secs[0].detail.spares) == 1
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_create_spare_on_terminal_raises(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         spare_data = schemas.SpareDetailSchema.model_construct(
@@ -495,7 +499,7 @@ class TestSparService:
         with pytest.raises(ValidationError, match="terminal"):
             wing_service.create_spare(db, plane.uuid, "main", 1, spare_data)
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_update_spare(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_spar(db, wing, 0, position_factor=0.25)
@@ -512,7 +516,7 @@ class TestSparService:
         assert spar.spare_position_factor == pytest.approx(0.6)
         assert spar.spare_mode == "follow"
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_update_spare_invalid_index_raises(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_spar(db, wing, 0)
@@ -526,7 +530,7 @@ class TestSparService:
         with pytest.raises(NotFoundError, match="Spar index"):
             wing_service.update_spare(db, plane.uuid, "main", 0, 99, updated)
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_delete_spare(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_spar(db, wing, 0)
@@ -534,7 +538,7 @@ class TestSparService:
         db.refresh(wing)
         assert len(wing.x_secs[0].detail.spares) == 0
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_delete_spare_invalid_index_raises(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         with pytest.raises(NotFoundError, match="Spar index"):
@@ -577,7 +581,7 @@ class TestControlSurfaceService:
         with pytest.raises(ValidationError, match="terminal"):
             wing_service.get_control_surface(db, plane.uuid, "main", 1)
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_patch_control_surface_creates_ted(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         patch = schemas.ControlSurfacePatchSchema(
@@ -588,7 +592,7 @@ class TestControlSurfaceService:
         assert result.name == "elevator"
         assert result.hinge_point == pytest.approx(0.7)
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_patch_control_surface_updates_existing(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_ted(db, wing, 0, name="ail")
@@ -596,7 +600,7 @@ class TestControlSurfaceService:
         result = wing_service.patch_control_surface(db, plane.uuid, "main", 0, patch)
         assert result.symmetric is True
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_patch_control_surface_deflection(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_ted(db, wing, 0)
@@ -604,7 +608,7 @@ class TestControlSurfaceService:
         result = wing_service.patch_control_surface(db, plane.uuid, "main", 0, patch)
         assert result.deflection == pytest.approx(5.0)
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_delete_control_surface(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_ted(db, wing, 0)
@@ -612,7 +616,7 @@ class TestControlSurfaceService:
         db.refresh(wing)
         assert wing.x_secs[0].detail.trailing_edge_device is None
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_delete_control_surface_missing_raises(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         with pytest.raises(NotFoundError, match="Control surface not found"):
@@ -658,7 +662,7 @@ class TestControlSurfaceCadDetailsService:
                 db, plane.uuid, "main", 0
             )
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_patch_cad_details(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_ted_with_cad(db, wing, 0)
@@ -672,7 +676,7 @@ class TestControlSurfaceCadDetailsService:
         assert result.rel_chord_tip == pytest.approx(0.82)
         assert result.hinge_type == "top_simple"
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_delete_cad_details_resets_to_minimal(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_ted_with_cad(db, wing, 0)
@@ -742,7 +746,7 @@ class TestControlSurfaceCadServoDetailsService:
         )
         assert result.servo == 42
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_get_servo_details_no_servo_raises(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         xsec = wing.x_secs[0]
@@ -756,7 +760,7 @@ class TestControlSurfaceCadServoDetailsService:
                 db, plane.uuid, "main", 0
             )
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_patch_servo_details_with_int(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_ted_with_servo(db, wing, 0)
@@ -766,7 +770,7 @@ class TestControlSurfaceCadServoDetailsService:
         )
         assert result.servo == 7
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_patch_servo_details_with_servo_obj(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_ted_with_servo(db, wing, 0)
@@ -782,7 +786,7 @@ class TestControlSurfaceCadServoDetailsService:
         )
         assert isinstance(result, schemas.ControlSurfaceServoDetailsSchema)
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_delete_servo_details(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_ted_with_servo(db, wing, 0)
@@ -794,7 +798,7 @@ class TestControlSurfaceCadServoDetailsService:
         assert ted.servo_data is None
         assert ted.servo_index is None
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_delete_servo_details_no_servo_raises(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         xsec = wing.x_secs[0]
@@ -844,7 +848,7 @@ class TestTrailingEdgeDeviceService:
         with pytest.raises(ValidationError, match="terminal"):
             wing_service.get_trailing_edge_device(db, plane.uuid, "main", 1)
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_patch_trailing_edge_device_creates(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         patch = schemas.TrailingEdgeDevicePatchSchema.model_construct(
@@ -855,7 +859,7 @@ class TestTrailingEdgeDeviceService:
         assert isinstance(result, schemas.TrailingEdgeDeviceDetailSchema)
         assert result.name == "rudder"
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_patch_trailing_edge_device_updates_existing(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_ted(db, wing, 0)
@@ -866,7 +870,7 @@ class TestTrailingEdgeDeviceService:
         result = wing_service.patch_trailing_edge_device(db, plane.uuid, "main", 0, patch)
         assert result.hinge_spacing == pytest.approx(3.0)
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_delete_trailing_edge_device(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_ted(db, wing, 0)
@@ -874,7 +878,7 @@ class TestTrailingEdgeDeviceService:
         db.refresh(wing)
         assert wing.x_secs[0].detail.trailing_edge_device is None
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_delete_trailing_edge_device_missing_raises(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         with pytest.raises(NotFoundError, match="Trailing-edge device not found"):
@@ -939,7 +943,7 @@ class TestTrailingEdgeServoService:
         with pytest.raises(ValidationError, match="terminal"):
             wing_service.get_trailing_edge_servo(db, plane.uuid, "main", 1)
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_patch_trailing_edge_servo_with_int(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_ted_no_servo(db, wing, 0)
@@ -947,7 +951,7 @@ class TestTrailingEdgeServoService:
         result = wing_service.patch_trailing_edge_servo(db, plane.uuid, "main", 0, patch)
         assert result.servo == 5
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_patch_trailing_edge_servo_with_object(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_ted_no_servo(db, wing, 0)
@@ -961,7 +965,7 @@ class TestTrailingEdgeServoService:
         result = wing_service.patch_trailing_edge_servo(db, plane.uuid, "main", 0, patch)
         assert isinstance(result, schemas.TrailingEdgeServoSchema)
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_patch_trailing_edge_servo_updates_existing(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_ted_with_servo(db, wing, 0)
@@ -975,14 +979,14 @@ class TestTrailingEdgeServoService:
         result = wing_service.patch_trailing_edge_servo(db, plane.uuid, "main", 0, patch)
         assert isinstance(result, schemas.TrailingEdgeServoSchema)
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_patch_trailing_edge_servo_no_ted_raises(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         patch = schemas.TrailingEdgeServoPatchSchema(servo=5)
         with pytest.raises(ValidationError, match="Trailing-edge device must exist"):
             wing_service.patch_trailing_edge_servo(db, plane.uuid, "main", 0, patch)
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_delete_trailing_edge_servo(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_ted_with_servo(db, wing, 0)
@@ -992,13 +996,13 @@ class TestTrailingEdgeServoService:
         assert ted.servo_data is None
         assert ted.servo_index is None
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_delete_trailing_edge_servo_no_ted_raises(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         with pytest.raises(NotFoundError, match="Trailing-edge device not found"):
             wing_service.delete_trailing_edge_servo(db, plane.uuid, "main", 0)
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_delete_trailing_edge_servo_no_servo_raises(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         self._add_ted_no_servo(db, wing, 0)
@@ -1110,7 +1114,7 @@ class TestWingConfigRoundtrip:
         assert "segments" in data
         assert len(data["segments"]) == 1
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="wrong endpoint route (gh-299)", strict=False)
     def test_put_wingconfig_replaces(self, client):
         """PUT wingconfig replaces an existing wing."""
         resp = client.post("/aeroplanes", params={"name": "wc-put"})
@@ -1146,7 +1150,7 @@ class TestWingConfigRoundtrip:
         resp = client.put(f"/aeroplanes/{aid}/wings/wput/from-wingconfig", json=wc2)
         assert resp.status_code == 200, resp.text
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="wrong endpoint route (gh-299)", strict=False)
     def test_put_wingconfig_creates_if_new(self, client):
         """PUT wingconfig creates the wing if it does not exist."""
         resp = client.post("/aeroplanes", params={"name": "wc-putnew"})
@@ -1190,7 +1194,7 @@ class TestWingConfigRoundtrip:
         resp = client.post(f"/aeroplanes/{aid}/wings/wdup/from-wingconfig", json=wc)
         assert resp.status_code == 422
 
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="wrong endpoint route (gh-299)", strict=False)
     def test_wingconfig_with_spars_and_ted(self, client):
         """Create wingconfig with spars and TED, then read back."""
         resp = client.post("/aeroplanes", params={"name": "wc-full"})
@@ -1282,7 +1286,7 @@ class TestBuildCrossSectionModel:
 
 
 class TestExistingTedForControlSurface:
-    @pytest.mark.skip(reason="service uses db.begin() which conflicts with conftest session — needs REST API tests")
+    @pytest.mark.xfail(reason="service uses db.begin() — needs autobegin=False session fixture (gh-298)", strict=False)
     def test_returns_ted_when_present(self, db):
         plane, wing = _make_plane_with_wing(db, xsec_count=2)
         xsec = wing.x_secs[0]
