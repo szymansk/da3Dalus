@@ -398,10 +398,10 @@ class TestCreateVersion:
         mock_db.rollback.assert_called_once()
 
 
-# ── get_version ─────────────────────────────────────────────────────────
+# ── get_version (CRUD) ──────────────────────────────────────────────────
 
 
-class TestGetVersion:
+class TestGetVersionCrud:
     def test_success(self):
         mock_db = MagicMock()
         now = datetime.now(timezone.utc)
