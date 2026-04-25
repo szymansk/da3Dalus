@@ -91,9 +91,15 @@ def list_executions(plan_id: int) -> list[ArtifactDirectory]:
         raise InternalError(message="Cannot read artifact directory") from exc
 
 
-def list_files(plan_id: int, execution_id: str) -> list[ArtifactFile]:
-    """List files in an execution's artifact directory."""
+def list_files(plan_id: int, execution_id: str, subpath: str = "") -> list[ArtifactFile]:
+    """List files in an execution's artifact directory (or a subdirectory)."""
     exec_dir = _resolve_execution_dir(plan_id, execution_id)
+    if subpath:
+        target = exec_dir / subpath
+        target = _ensure_within_base(target)
+        if not target.is_dir():
+            raise NotFoundError(message=f"Directory not found: {subpath}")
+        exec_dir = target
     try:
         files: list[ArtifactFile] = []
         for entry in sorted(exec_dir.iterdir()):

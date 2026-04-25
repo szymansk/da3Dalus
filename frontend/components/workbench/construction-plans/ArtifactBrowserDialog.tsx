@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Download, Trash2, X, FolderOpen, File as FileIcon } from "lucide-react";
+import { Download, Trash2, X, FolderOpen, ChevronRight, File as FileIcon } from "lucide-react";
 import { useDialog } from "@/hooks/useDialog";
 import {
   usePlanArtifacts,
@@ -34,8 +34,9 @@ export function ArtifactBrowserDialog({
   const { executions, error: execError, isLoading: execLoading, mutate: mutateExecutions } =
     usePlanArtifacts(open ? planId : null);
   const [selectedExecution, setSelectedExecution] = useState<string | null>(null);
+  const [currentPath, setCurrentPath] = useState("");
   const { files, error: filesError, isLoading: filesLoading, mutate: mutateFiles } =
-    useArtifactFiles(open ? planId : null, selectedExecution);
+    useArtifactFiles(open ? planId : null, selectedExecution, currentPath);
 
   // Auto-select most recent execution when list loads
   useEffect(() => {
@@ -48,6 +49,7 @@ export function ArtifactBrowserDialog({
   useEffect(() => {
     if (!open) {
       setSelectedExecution(null);
+      setCurrentPath("");
     }
   }, [open]);
 
@@ -109,7 +111,7 @@ export function ArtifactBrowserDialog({
               {executions.map((e) => (
                 <button
                   key={e.execution_id}
-                  onClick={() => setSelectedExecution(e.execution_id)}
+                  onClick={() => { setSelectedExecution(e.execution_id); setCurrentPath(""); }}
                   className={`rounded-lg px-2 py-2 text-left text-[12px] hover:bg-sidebar-accent ${
                     e.execution_id === selectedExecution
                       ? "bg-sidebar-accent text-primary"
@@ -128,6 +130,29 @@ export function ArtifactBrowserDialog({
 
             {/* Files list */}
             <div className="flex flex-1 flex-col overflow-y-auto px-6 py-5">
+              {/* Breadcrumb navigation */}
+              {selectedExecution && currentPath && (
+                <div className="mb-2 flex items-center gap-1 text-[12px]">
+                  <button
+                    onClick={() => setCurrentPath("")}
+                    className="text-primary hover:underline"
+                  >
+                    /
+                  </button>
+                  {currentPath.split("/").map((segment, i, arr) => (
+                    <span key={i} className="flex items-center gap-1">
+                      <ChevronRight size={10} className="text-muted-foreground" />
+                      <button
+                        onClick={() => setCurrentPath(arr.slice(0, i + 1).join("/"))}
+                        className={i === arr.length - 1 ? "text-foreground" : "text-primary hover:underline"}
+                      >
+                        {segment}
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {!selectedExecution && (
                 <p className="text-[13px] text-muted-foreground">
                   Select an execution from the left to view files.
@@ -144,7 +169,7 @@ export function ArtifactBrowserDialog({
               )}
               {selectedExecution && !filesError && !filesLoading && files.length === 0 && (
                 <p className="text-[13px] text-muted-foreground">
-                  No files in this execution directory.
+                  {currentPath ? "Empty directory." : "No files in this execution directory."}
                 </p>
               )}
               {selectedExecution && files.length > 0 && (
@@ -152,9 +177,14 @@ export function ArtifactBrowserDialog({
                   {files.map((f) => (
                     <div
                       key={f.name}
-                      className="group flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-sidebar-accent"
+                      className={`group flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-sidebar-accent ${f.is_dir ? "cursor-pointer" : ""}`}
+                      onClick={f.is_dir ? () => setCurrentPath(currentPath ? `${currentPath}/${f.name}` : f.name) : undefined}
                     >
-                      <FileIcon size={12} className="text-muted-foreground" />
+                      {f.is_dir ? (
+                        <FolderOpen size={12} className="text-primary" />
+                      ) : (
+                        <FileIcon size={12} className="text-muted-foreground" />
+                      )}
                       <span className="flex-1 font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground">
                         {f.name}
                       </span>
@@ -169,13 +199,14 @@ export function ArtifactBrowserDialog({
                           download={f.name}
                           title="Download"
                           className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:text-primary"
+                          onClick={(e) => e.stopPropagation()}
                         >
                           <Download size={12} />
                         </a>
                       )}
                       {!f.is_dir && (
                         <button
-                          onClick={() => handleDelete(f.name)}
+                          onClick={(e) => { e.stopPropagation(); handleDelete(f.name); }}
                           title="Delete"
                           className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:text-destructive"
                         >

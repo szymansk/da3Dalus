@@ -63,10 +63,11 @@ export function usePlanArtifacts(planId: number | null) {
   };
 }
 
-export function useArtifactFiles(planId: number | null, executionId: string | null) {
+export function useArtifactFiles(planId: number | null, executionId: string | null, subpath: string = "") {
+  const query = subpath ? `?subpath=${encodeURIComponent(subpath)}` : "";
   const { data, error, isLoading, mutate } = useSWR<ArtifactFile[]>(
     planId && executionId
-      ? `/construction-plans/${planId}/artifacts/${executionId}`
+      ? `/construction-plans/${planId}/artifacts/${executionId}${query}`
       : null,
     fetcher,
   );
