@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useDroppable } from "@dnd-kit/core";
 import { Play, Plus, BookTemplate, Pencil, ChevronDown, ChevronRight } from "lucide-react";
 import { SimpleTreeRow } from "@/components/workbench/SimpleTreeRow";
 import type { PlanStepNode } from "@/components/workbench/PlanTree";
@@ -124,10 +125,18 @@ export function PlanTreeSection({
   hidePlanActions = false,
 }: Readonly<PlanTreeSectionProps>) {
   const [renaming, setRenaming] = useState(false);
+  // Plan header is a droppable target for "add to root" drops
+  const { setNodeRef: setRootDropRef, isOver: rootIsOver } = useDroppable({
+    id: `plan-root-${plan.id}`,
+    data: { planId: plan.id, path: "root" },
+  });
   return (
     <div className="flex flex-col">
       {/* Plan header row with action buttons */}
-      <div className="group flex items-center gap-1.5 rounded-xl py-1.5 pr-2 hover:bg-sidebar-accent">
+      <div
+        ref={setRootDropRef}
+        className={`group flex items-center gap-1.5 rounded-xl py-1.5 pr-2 hover:bg-sidebar-accent ${rootIsOver ? "ring-2 ring-primary" : ""}`}
+      >
         <button onClick={onToggle} className="flex items-center">
           {expanded ? (
             <ChevronDown size={12} className="shrink-0 text-muted-foreground" />

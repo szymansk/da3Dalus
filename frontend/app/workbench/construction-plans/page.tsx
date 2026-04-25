@@ -1,6 +1,13 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import {
+  DndContext,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  type DragEndEvent,
+} from "@dnd-kit/core";
 import { Hammer, Play, Plus, BookTemplate, PanelLeftOpen, PanelLeftClose } from "lucide-react";
 import { useCreators } from "@/hooks/useCreators";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
@@ -367,6 +374,89 @@ export default function ConstructionPlansPage() {
     [executeTemplateId, templates, aeroplanes, selectedTemplateId, templateTree, creators],
   );
 
+  // ── Drag-and-drop ─────────────────────────────────────────────
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+  );
+
+  const handleDragEnd = useCallback(
+    async (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over) return;
+      const activeId = String(active.id);
+      const overId = String(over.id);
+
+      // Source: gallery creator → tree
+      if (activeId.startsWith("creator-")) {
+        const creator = active.data.current?.creator as CreatorInfo | undefined;
+        if (!creator) return;
+        // Resolve drop target: either "plan-root-{planId}" or "node-plan-{planId}-{path}"
+        let targetPlanId: number | null = null;
+        let targetPath = "root";
+        if (overId.startsWith("plan-root-")) {
+          targetPlanId = Number(overId.slice("plan-root-".length));
+        } else if (overId.startsWith("node-plan-")) {
+          const rest = overId.slice("node-plan-".length);
+          const dotIdx = rest.indexOf("-");
+          if (dotIdx > 0) {
+            targetPlanId = Number(rest.slice(0, dotIdx));
+            targetPath = rest.slice(dotIdx + 1);
+          }
+        }
+        if (!targetPlanId) return;
+        // Reuse handleAddStepSelect logic by setting state then calling
+        setAddStepPlanId(targetPlanId);
+        setAddStepParentPath(targetPath);
+        // Wait for state, then call the select handler directly
+        try {
+          // Need a microtask delay so state is current — but we have the values already
+          // so just inline the logic
+          const isTemplate = templates.some((t) => t.id === targetPlanId);
+          const tree = isTemplate ? templateTree : activeTree;
+          const detail = isTemplate ? templateDetail : activePlanDetail;
+          if (!tree || !detail) {
+            alert("Plan data not loaded — expand the plan first before dropping.");
+            return;
+          }
+          const baseId = creator.suggested_id ?? creator.class_name.replace(/Creator$/, "").toLowerCase();
+          const existingIds = new Set<string>();
+          function collectIds(node: PlanStepNode) {
+            existingIds.add(node.creator_id);
+            (node.successors ?? []).forEach(collectIds);
+          }
+          collectIds(tree);
+          let creatorId = baseId;
+          let counter = 1;
+          while (existingIds.has(creatorId)) {
+            creatorId = `${baseId}_${counter++}`;
+          }
+          const newNode: PlanStepNode = {
+            $TYPE: creator.class_name,
+            creator_id: creatorId,
+            loglevel: 50,
+            successors: [],
+          };
+          for (const param of creator.parameters) {
+            if (param.default != null) {
+              (newNode as Record<string, unknown>)[param.name] = param.default;
+            }
+          }
+          const updatedTree = appendChildAtPath(tree, targetPath, newNode);
+          const backendTree = toBackendTree(updatedTree);
+          await updatePlan(targetPlanId, { name: detail.name, tree_json: backendTree });
+          if (isTemplate) mutateTemplates();
+          else mutatePlans();
+          mutatePlanDetail();
+        } catch (err) {
+          alert(`Drop failed: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+      // Tree-to-tree reorder/reparent could go here in a future iteration
+    },
+    [templates, templateTree, activeTree, templateDetail, activePlanDetail, mutatePlans, mutateTemplates, mutatePlanDetail],
+  );
+
   // ── No-aeroplane guard ────────────────────────────────────────
 
   if (!aeroplaneId) {
@@ -443,6 +533,7 @@ export default function ConstructionPlansPage() {
 
   return (
     <>
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="flex h-full min-h-0 flex-1 gap-4 overflow-hidden">
         {/* Left panel */}
         <div
@@ -557,12 +648,14 @@ export default function ConstructionPlansPage() {
           </div>
           <CreatorGallery
             creators={creators}
+            draggable
             onSelect={(creator) =>
-              alert(`Would add "${creator.class_name}" to plan via drag-and-drop`)
+              alert(`Drag "${creator.class_name}" onto a plan tree, or use a plan's + button.`)
             }
           />
         </div>
       </div>
+    </DndContext>
 
       <EditParamsModal
         open={editModalOpen}
