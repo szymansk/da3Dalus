@@ -1,16 +1,27 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Hammer, Play, BookTemplate, PanelLeftOpen, PanelLeftClose } from "lucide-react";
 import { useCreators } from "@/hooks/useCreators";
+import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
+import {
+  useAeroplanePlans,
+  useConstructionPlans,
+  useConstructionPlan,
+  updatePlan,
+  executePlan,
+  toTemplate,
+} from "@/hooks/useConstructionPlans";
+import {
+  fromBackendTree,
+  toBackendTree,
+  collectAvailableShapeKeys,
+  updateNodeAtPath,
+} from "@/lib/planTreeUtils";
+import type { PlanStepNode } from "@/components/workbench/PlanTree";
+import type { CreatorInfo } from "@/hooks/useCreators";
 import { CreatorGallery } from "@/components/workbench/CreatorGallery";
 import { TreeCard } from "@/components/workbench/TreeCard";
-import {
-  MOCK_PLANS,
-  MOCK_TEMPLATES,
-  countCreators,
-  type MockCreatorNode,
-} from "@/components/workbench/construction-plans/types";
 import { PlanTreeSection } from "@/components/workbench/construction-plans/PlanTreeSection";
 import { TemplateModePanel } from "@/components/workbench/construction-plans/TemplateModePanel";
 import { EditParamsModal } from "@/components/workbench/construction-plans/EditParamsModal";
@@ -25,46 +36,70 @@ function toggleInSet<T>(prev: Set<T>, value: T): Set<T> {
   return next;
 }
 
-// ── Initial expanded keys (click-dummy defaults) ──────────────────
-const INITIAL_EXPANDED_CREATORS = new Set([
-  "plan-1-vase_wing", "plan-1-mirror_wing",
-  "plan-4-raw_wing", "plan-4-positioned_wing",
-  "plan-4-servo_cutout_left", "plan-4-servo_cutout_right",
-  "plan-4-wing_shell", "plan-4-wing_with_servos", "plan-4-wing_repaired",
-  "plan-4-wing_step_export", "plan-4-wing_stl_export", "plan-4-wing_3mf_export",
-  "plan-4-print_orientation", "plan-4-print_stl_export",
-  "plan-4-wing_loft", "plan-4-servo_left", "plan-4-servo_right", "plan-4-spar_carbon_tube",
-  "plan-5-depth_01_wing", "plan-5-depth_02_transform", "plan-5-depth_03_cut",
-  "plan-5-depth_04_offset", "plan-5-depth_05_fuse", "plan-5-depth_06_repair",
-  "plan-5-depth_07_reposition", "plan-5-depth_08_intersect", "plan-5-depth_09_compound",
-  "plan-5-depth_10_export",
-]);
-
 export default function ConstructionPlansPage() {
+  const { aeroplaneId } = useAeroplaneContext();
   const { creators } = useCreators();
 
-  // View mode
+  // ── Data fetching ─────────────────────────────────────────────
+  const { plans, mutate: mutatePlans } = useAeroplanePlans(aeroplaneId);
+  const { plans: templates, mutate: mutateTemplates } = useConstructionPlans("template");
+
+  // Full tree for the active plan (expanded plan or plan being edited)
+  const [activePlanId, setActivePlanId] = useState<number | null>(null);
+  const { plan: activePlanDetail, mutate: mutatePlanDetail } = useConstructionPlan(activePlanId);
+  const activeTree = activePlanDetail?.tree_json
+    ? fromBackendTree(activePlanDetail.tree_json)
+    : null;
+
+  // Full tree for selected template
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
+  const { plan: templateDetail } = useConstructionPlan(selectedTemplateId);
+  const templateTree = templateDetail?.tree_json
+    ? fromBackendTree(templateDetail.tree_json)
+    : null;
+
+  // ── View state ────────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<"plans" | "templates">("plans");
   const [treeWide, setTreeWide] = useState(false);
 
   // Plan mode state
-  const [expandedPlans, setExpandedPlans] = useState<Set<number>>(new Set([1, 4, 5]));
-  const [expandedCreators, setExpandedCreators] = useState<Set<string>>(INITIAL_EXPANDED_CREATORS);
+  const [expandedPlans, setExpandedPlans] = useState<Set<number>>(new Set());
+  const [expandedCreators, setExpandedCreators] = useState<Set<string>>(new Set());
 
   // Template mode state
-  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
   const [templateExpandedCreators, setTemplateExpandedCreators] = useState<Set<string>>(new Set());
 
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editingCreator, setEditingCreator] = useState<MockCreatorNode | null>(null);
+  const [editingNode, setEditingNode] = useState<PlanStepNode | null>(null);
+  const [editingPath, setEditingPath] = useState<string | null>(null);
+  const [editingCreatorInfo, setEditingCreatorInfo] = useState<CreatorInfo | null>(null);
+  const [editingShapeKeys, setEditingShapeKeys] = useState<string[]>([]);
 
-  // ── Callbacks ───────────────────────────────────────────────────
+  // ── Auto-expand first plan on load ────────────────────────────
+  useEffect(() => {
+    if (plans.length > 0 && expandedPlans.size === 0) {
+      const firstId = plans[0].id;
+      setExpandedPlans(new Set([firstId]));
+      setActivePlanId(firstId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plans]);
 
-  const togglePlan = useCallback(
-    (planId: number) => setExpandedPlans((prev) => toggleInSet(prev, planId)),
-    [],
-  );
+  // ── Callbacks ─────────────────────────────────────────────────
+
+  const togglePlan = useCallback((planId: number) => {
+    setExpandedPlans((prev) => {
+      const next = new Set(prev);
+      if (next.has(planId)) {
+        next.delete(planId);
+      } else {
+        next.add(planId);
+        setActivePlanId(planId);
+      }
+      return next;
+    });
+  }, []);
 
   const toggleCreator = useCallback(
     (key: string) => setExpandedCreators((prev) => toggleInSet(prev, key)),
@@ -76,35 +111,137 @@ export default function ConstructionPlansPage() {
     [],
   );
 
-  const handleEditCreator = useCallback((_planId: number, creator: MockCreatorNode) => {
-    setEditingCreator(creator);
-    setEditModalOpen(true);
+  const handleExecutePlan = useCallback(
+    async (planId: number) => {
+      if (!aeroplaneId) return;
+      try {
+        const result = await executePlan(aeroplaneId, planId);
+        if (result.status === "error") {
+          alert(`Execution failed: ${result.error}`);
+        } else {
+          alert(
+            `Execution succeeded! ${result.shape_keys?.length ?? 0} shapes produced in ${result.duration_ms}ms`,
+          );
+          // TODO: Open 3D viewer with result.tessellation
+        }
+      } catch (err) {
+        alert(`Execution error: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    },
+    [aeroplaneId],
+  );
+
+  const handleSaveAsTemplate = useCallback(
+    async (planId: number) => {
+      if (!aeroplaneId) return;
+      try {
+        await toTemplate(aeroplaneId, planId);
+        mutateTemplates();
+        alert("Saved as template!");
+      } catch (err) {
+        alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    },
+    [aeroplaneId, mutateTemplates],
+  );
+
+  const handleRenamePlan = useCallback(async (planId: number, newName: string) => {
+    // For now, alert stub — inline rename UI comes later
+    alert(`Rename plan ${planId} to "${newName}"`);
   }, []);
+
+  const handleAddStep = useCallback(async (planId: number, parentPath?: string) => {
+    // For now, alert stub — creator picker integration comes later
+    alert(`Add step to plan ${planId}${parentPath ? ` at ${parentPath}` : ""}`);
+  }, []);
+
+  const handleEditCreator = useCallback(
+    (planId: number, node: PlanStepNode, path: string) => {
+      const info = creators.find((c) => c.class_name === node.$TYPE) ?? null;
+      const tree = activePlanId === planId ? activeTree : templateTree;
+      const shapeKeys = tree ? collectAvailableShapeKeys(tree, creators, path) : [];
+      setEditingNode(node);
+      setEditingPath(path);
+      setEditingCreatorInfo(info);
+      setEditingShapeKeys(shapeKeys);
+      setEditModalOpen(true);
+      setActivePlanId(planId);
+    },
+    [creators, activePlanId, activeTree, templateTree],
+  );
+
+  const handleEditSave = useCallback(
+    async (path: string, params: Record<string, unknown>) => {
+      if (!activePlanId || !activeTree || !activePlanDetail) return;
+      const updatedNode = { ...editingNode!, ...params } as PlanStepNode;
+      const updatedTree = updateNodeAtPath(activeTree, path, updatedNode);
+      const backendTree = toBackendTree(updatedTree);
+      try {
+        await updatePlan(activePlanId, {
+          name: activePlanDetail.name,
+          tree_json: backendTree,
+        });
+        mutatePlanDetail();
+        mutatePlans();
+      } catch (err) {
+        alert(`Save failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    },
+    [activePlanId, activeTree, activePlanDetail, editingNode, mutatePlanDetail, mutatePlans],
+  );
+
+  // ── Template callbacks ────────────────────────────────────────
 
   const handleSelectTemplate = useCallback((id: number) => {
     setSelectedTemplateId(id);
-    const template = MOCK_TEMPLATES.find((t) => t.id === id);
-    if (template) {
-      setTemplateExpandedCreators(
-        new Set(template.creators.map((c) => `plan-${id}-${c.creatorId}`)),
-      );
-    }
   }, []);
 
-  // ── Derived values ──────────────────────────────────────────────
-  const editingCreatorInfo = editingCreator
-    ? creators.find((c) => c.class_name === editingCreator.creatorClassName) ?? null
-    : null;
-  const totalSteps = MOCK_PLANS.reduce((sum, p) => sum + countCreators(p.creators), 0);
+  const handleExecuteTemplate = useCallback(
+    async (templateId: number) => {
+      // Alert stub — needs aeroplane picker dialog
+      alert(`Execute template ${templateId}: not yet implemented (needs aeroplane picker)`);
+    },
+    [],
+  );
 
+  const handleRenameTemplate = useCallback(async (templateId: number, name: string) => {
+    // Alert stub
+    alert(`Rename template ${templateId} to "${name}"`);
+  }, []);
+
+  const handleAddStepToTemplate = useCallback(async (templateId: number, parentPath?: string) => {
+    // Alert stub
+    alert(`Add step to template ${templateId}${parentPath ? ` at ${parentPath}` : ""}`);
+  }, []);
+
+  // ── No-aeroplane guard ────────────────────────────────────────
+
+  if (!aeroplaneId) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-[13px] text-muted-foreground">
+          Select an aeroplane to view its construction plans.
+        </p>
+      </div>
+    );
+  }
+
+  // ── Derived values ──────────────────────────────────────────────
+  const totalSteps = plans.reduce((s, p) => s + p.step_count, 0);
   const panelStyle = { width: treeWide ? "66%" : 360, minWidth: treeWide ? "66%" : 360 };
 
-  function ModeButton({ mode, Icon, label }: { mode: "plans" | "templates"; Icon: typeof Hammer; label: string }) {
+  function ModeButton({
+    mode,
+    Icon,
+    label,
+  }: Readonly<{ mode: "plans" | "templates"; Icon: typeof Hammer; label: string }>) {
     return (
       <button
         onClick={() => setViewMode(mode)}
         className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] ${
-          viewMode === mode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+          viewMode === mode
+            ? "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:text-foreground"
         }`}
       >
         <Icon size={12} /> {label}
@@ -128,7 +265,10 @@ export default function ConstructionPlansPage() {
     <>
       <div className="flex h-full min-h-0 flex-1 gap-4 overflow-hidden">
         {/* Left panel */}
-        <div className="flex min-h-0 shrink-0 flex-col overflow-hidden transition-all duration-300" style={panelStyle}>
+        <div
+          className="flex min-h-0 shrink-0 flex-col overflow-hidden transition-all duration-300"
+          style={panelStyle}
+        >
           <div className="flex h-full flex-col gap-3 overflow-hidden">
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
@@ -138,26 +278,58 @@ export default function ConstructionPlansPage() {
             </div>
 
             {viewMode === "plans" && (
-              <TreeCard title="Construction Plans" badge={`${totalSteps} steps`} actions={<>
-                <button onClick={() => alert("Execute All: would execute all plans")} title="Execute all plans"
-                  className="flex size-6 items-center justify-center rounded-lg text-primary hover:text-primary/70">
-                  <Play size={14} />
-                </button>
-                <WidthToggle />
-              </>}>
-                {MOCK_PLANS.map((plan) => (
-                  <PlanTreeSection key={plan.id} plan={plan} expanded={expandedPlans.has(plan.id)}
-                    onToggle={() => togglePlan(plan.id)} expandedCreators={expandedCreators}
-                    onToggleCreator={toggleCreator} onEditCreator={handleEditCreator} />
+              <TreeCard
+                title="Construction Plans"
+                badge={`${totalSteps} steps`}
+                actions={
+                  <>
+                    <button
+                      onClick={() => alert("Execute All: would execute all plans")}
+                      title="Execute all plans"
+                      className="flex size-6 items-center justify-center rounded-lg text-primary hover:text-primary/70"
+                    >
+                      <Play size={14} />
+                    </button>
+                    <WidthToggle />
+                  </>
+                }
+              >
+                {plans.map((plan) => (
+                  <PlanTreeSection
+                    key={plan.id}
+                    plan={plan}
+                    treeJson={activePlanId === plan.id ? activeTree : null}
+                    creators={creators}
+                    expanded={expandedPlans.has(plan.id)}
+                    onToggle={() => togglePlan(plan.id)}
+                    expandedCreators={expandedCreators}
+                    onToggleCreator={toggleCreator}
+                    onEditCreator={handleEditCreator}
+                    onExecute={handleExecutePlan}
+                    onSaveAsTemplate={handleSaveAsTemplate}
+                    onRename={handleRenamePlan}
+                    onAddStep={handleAddStep}
+                  />
                 ))}
               </TreeCard>
             )}
 
             {viewMode === "templates" && (
-              <TemplateModePanel templates={MOCK_TEMPLATES} selectedTemplateId={selectedTemplateId}
-                onSelectTemplate={handleSelectTemplate} expandedCreators={templateExpandedCreators}
-                onToggleCreator={toggleTemplateCreator} onEditCreator={handleEditCreator}
-                treeWide={treeWide} onToggleWide={() => setTreeWide((w) => !w)} />
+              <TemplateModePanel
+                templates={templates}
+                selectedTemplateId={selectedTemplateId}
+                selectedTemplateTree={templateTree}
+                creators={creators}
+                onSelectTemplate={handleSelectTemplate}
+                expandedCreators={templateExpandedCreators}
+                onToggleCreator={toggleTemplateCreator}
+                onEditCreator={handleEditCreator}
+                onExecuteTemplate={handleExecuteTemplate}
+                onRenameTemplate={handleRenameTemplate}
+                onAddStep={handleAddStepToTemplate}
+                treeWide={treeWide}
+                onToggleWide={() => setTreeWide((w) => !w)}
+              />
             )}
           </div>
         </div>
@@ -166,16 +338,35 @@ export default function ConstructionPlansPage() {
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto">
           <div className="flex items-center gap-2.5">
             <Hammer className="size-5 text-primary" />
-            <h1 className="font-[family-name:var(--font-jetbrains-mono)] text-[20px] text-foreground">Creator Catalog</h1>
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">{creators.length} creators</span>
+            <h1 className="font-[family-name:var(--font-jetbrains-mono)] text-[20px] text-foreground">
+              Creator Catalog
+            </h1>
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
+              {creators.length} creators
+            </span>
           </div>
-          <CreatorGallery creators={creators}
-            onSelect={(creator) => alert(`Would add "${creator.class_name}" to plan via drag-and-drop`)} />
+          <CreatorGallery
+            creators={creators}
+            onSelect={(creator) =>
+              alert(`Would add "${creator.class_name}" to plan via drag-and-drop`)
+            }
+          />
         </div>
       </div>
 
-      <EditParamsModal open={editModalOpen} creator={editingCreator}
-        creatorInfo={editingCreatorInfo} onClose={() => { setEditModalOpen(false); setEditingCreator(null); }} />
+      <EditParamsModal
+        open={editModalOpen}
+        node={editingNode}
+        nodePath={editingPath}
+        creatorInfo={editingCreatorInfo}
+        availableShapeKeys={editingShapeKeys}
+        onClose={() => {
+          setEditModalOpen(false);
+          setEditingNode(null);
+          setEditingPath(null);
+        }}
+        onSave={handleEditSave}
+      />
     </>
   );
 }
