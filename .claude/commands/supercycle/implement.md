@@ -1,7 +1,7 @@
 ---
 description: "Skip brainstorming — go straight to parallel implementation of one or more GH issues via worktree agents"
 argument-hint: "<GH issue numbers, comma-separated: #188, #190>"
-allowed-tools: Bash, Read, Glob, Grep, Agent, WebSearch
+allowed-tools: Bash, Read, Glob, Grep, Agent, WebSearch, Skill
 ---
 
 # /supercycle:implement — Direct Implementation
@@ -23,7 +23,9 @@ gh issue view <N> --json number,title,body,labels
 ```
 
 If any issue references an external system (SonarQube, Sentry, etc.),
-fetch current data NOW.
+fetch current data NOW. For SonarQube issues, use
+`/sonarqube:sonar-list-issues` to get current line numbers and
+`/sonarqube:sonar-analyze` for deeper analysis of affected files.
 
 ---
 

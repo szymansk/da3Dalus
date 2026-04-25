@@ -1,7 +1,7 @@
 ---
 description: "Check CI, analyse quality gates, and merge one or more PRs sequentially with rebase conflict resolution"
 argument-hint: "<PR numbers, comma-separated: 200, 201>"
-allowed-tools: Bash, Read, Glob, Grep
+allowed-tools: Bash, Read, Glob, Grep, Skill
 ---
 
 # /supercycle:merge — CI Check & Merge
@@ -39,20 +39,20 @@ Tests failing on PR #N. Options:
 
 ## Phase 2 — SonarQube Quality Gate Analysis
 
-If SonarCloud Quality Gate is failing:
-
-```
-mcp__sonarqube__get_project_quality_gate_status(projectKey, pullRequest=<N>)
-```
+If SonarCloud Quality Gate is failing, use `/sonarqube:sonar-quality-gate`
+to get the detailed status for the PR.
 
 For each failed condition:
 - **Security / Reliability / Maintainability:** Must fix before merge.
-  Report the specific issues.
+  Use `/sonarqube:sonar-list-issues` to get the specific issues on
+  the PR branch and `/sonarqube:sonar-analyze` for deeper analysis.
 - **Coverage on new code:** Analyse if acceptable:
   - Refactoring/chore PRs: coverage gaps on renamed/moved code are expected
-  - Feature PRs: new code should have tests — flag if missing
-- **Duplication:** Check if duplication is from mechanical changes (e.g.
-  repeated `responses={}` patterns) or real copy-paste.
+  - Feature PRs: new code should have tests — flag if missing.
+    Use `/sonarqube:sonar-coverage` to inspect uncovered lines.
+- **Duplication:** Use `/sonarqube:sonar-duplication` to check if
+  duplication is from mechanical changes (e.g. repeated `responses={}`
+  patterns) or real copy-paste.
 
 Report the analysis and a merge recommendation for each PR.
 

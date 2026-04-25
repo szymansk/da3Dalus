@@ -1,7 +1,7 @@
 ---
 description: "Check and install all tools, dependencies, and services required by the supercycle workflow"
 argument-hint: ""
-allowed-tools: Bash, Read, Glob, Grep
+allowed-tools: Bash, Read, Glob, Grep, Skill
 ---
 
 # /supercycle:init — Toolchain Setup & Verification
@@ -91,17 +91,19 @@ npx playwright --version 2>/dev/null || echo "INFO: Playwright not installed —
 ## Phase 4 — External Services
 
 ### 4.1 — SonarQube / SonarCloud
+
+Run `/sonarqube:sonar-integrate` to ensure `sonarqube-cli` is
+installed and up-to-date, authentication is valid, and the MCP
+server + secrets-scanning hooks are wired into Claude Code.
+
+The skill handles everything: install, self-update, auth check,
+and `sonar integrate claude`. It will prompt the user only when
+interactive input is required (auth login, scope selection).
+
+After the skill completes, verify the project config:
 ```bash
-# Check if sonar-project.properties exists
 test -f sonar-project.properties && echo "SonarQube configured" || echo "MISSING: sonar-project.properties"
-
-# Check MCP server
-# SonarQube MCP should be available — verify by trying to list projects
 ```
-
-Use `mcp__sonarqube__search_my_sonarqube_projects` to verify the
-SonarQube MCP connection works. If it fails, suggest running
-`/sonarqube:integrate`.
 
 ### 4.2 — GitHub Actions
 ```bash
@@ -161,6 +163,7 @@ npm run test:unit -- --run 2>&1 | tail -3          # vitest (fast)
 | Frontend | vitest | X.Y.Z | ✓ (N tests pass) |
 | Frontend | dep-cruiser | X.Y.Z | ✓ (N violations) |
 | Frontend | playwright | X.Y.Z | ✓ / not installed |
+| Service | sonarqube-cli | X.Y.Z | ✓ / not installed |
 | Service | SonarCloud | — | ✓ connected / ✗ not configured |
 | Service | GitHub Actions | — | ✓ workflow exists |
 | Commands | supercycle/* | — | ✓ all 7 present |

@@ -1,7 +1,7 @@
 ---
 description: "Bug intake: investigate root cause, create GH ticket, fix, review, and merge — all in one flow"
 argument-hint: "<error log, description, or GH issue number>"
-allowed-tools: Bash, Read, Edit, Write, Glob, Grep, Agent, WebSearch
+allowed-tools: Bash, Read, Edit, Write, Glob, Grep, Agent, WebSearch, Skill
 ---
 
 # /supercycle:bug — Bug Intake & Fix
@@ -27,7 +27,8 @@ gh issue view <number> --json number,title,body,labels,state
 ```
 
 Read the issue. If it references external systems (SonarQube, Sentry),
-fetch current data NOW.
+fetch current data NOW. For SonarQube references, use
+`/sonarqube:sonar-list-issues` and `/sonarqube:sonar-analyze`.
 
 ### If free-text (error log / description):
 

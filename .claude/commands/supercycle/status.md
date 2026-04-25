@@ -1,7 +1,7 @@
 ---
 description: "Project health dashboard — GH issues, SonarQube status, dependency graph, and next-phase recommendations"
 argument-hint: ""
-allowed-tools: Bash, Read, Glob, Grep, Agent, WebSearch
+allowed-tools: Bash, Read, Glob, Grep, Agent, WebSearch, Skill
 ---
 
 # /supercycle:status — Project Health Dashboard
@@ -73,8 +73,8 @@ gh pr list --state open --json number,title,headRefName,additions,deletions
 
 ### 2a — Quality Gate Status
 
-Use `mcp__sonarqube__get_project_quality_gate_status` for the
-overall project quality gate.
+Use `/sonarqube:sonar-quality-gate` for the overall project
+quality gate.
 
 Present:
 ```
@@ -84,8 +84,7 @@ Present:
 
 ### 2b — Issue Distribution
 
-Use `mcp__sonarqube__search_sonar_issues_in_projects` with
-`ps=1` for each severity to get counts:
+Use `/sonarqube:sonar-list-issues` to get issues by severity:
 
 ```
 | Severity | Count | Trend |
@@ -99,8 +98,8 @@ Use `mcp__sonarqube__search_sonar_issues_in_projects` with
 
 ### 2c — Top Rules
 
-Fetch page 1 (100 issues) and count by rule to identify the
-most frequent issue types:
+From the `/sonarqube:sonar-list-issues` output, count by rule
+to identify the most frequent issue types:
 
 ```
 | Rule | Count | Description |
@@ -109,7 +108,7 @@ most frequent issue types:
 
 ### 2d — Top Files
 
-From the same page 1 data, count by file:
+From the same data, count by file:
 
 ```
 | File | Issues | Top Rule |
