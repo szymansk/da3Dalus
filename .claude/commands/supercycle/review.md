@@ -185,6 +185,30 @@ After all agents return, consolidate into a single report:
 
 ---
 
+## GH Issue Tracking
+
+**Reference:** See `tracking.md` in this directory for the label
+catalog, comment template, and helper commands.
+
+### At Phase 1 start (loading PRs):
+
+For each linked issue (from `Closes #N` in PR body), rotate status
+to `status:in-review`.
+
+### After Phase 5 (review consolidated):
+
+For each linked issue:
+
+1. Post a comment with header `## 🏷️ has-review` containing the
+   full consolidated review report (verdict, findings, task
+   completeness, must-fix vs should-fix, next steps)
+2. Add label `has-review`
+
+**IMPORTANT:** Always post the comment FIRST, then add the label.
+Always ensure the label exists before adding it (idempotent create).
+
+---
+
 ## Supercycle Position
 
 ```
