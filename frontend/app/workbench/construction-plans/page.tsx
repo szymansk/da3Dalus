@@ -136,54 +136,139 @@ const MOCK_PLANS: MockPlan[] = [
             successors: [
               {
                 creatorClassName: "Cut2ShapesCreator",
-                creatorId: "wing_with_cutouts",
+                creatorId: "servo_cutout_left",
                 shapes: [
                   { name: "positioned_wing", direction: "input" },
-                  { name: "wing_with_cutouts", direction: "output" },
-                ],
-                mockParams: { loglevel: 50, minuend: "positioned_wing" },
-              },
-              {
-                creatorClassName: "SimpleOffsetShapeCreator",
-                creatorId: "wing_offset",
-                shapes: [
-                  { name: "positioned_wing", direction: "input" },
-                  { name: "wing_offset", direction: "output" },
+                  { name: "servo_cutout_left", direction: "output" },
                 ],
                 mockParams: { loglevel: 50 },
               },
               {
-                creatorClassName: "FuseMultipleShapesCreator",
-                creatorId: "wing_fused",
+                creatorClassName: "Cut2ShapesCreator",
+                creatorId: "servo_cutout_right",
                 shapes: [
-                  { name: "wing_with_cutouts", direction: "input" },
-                  { name: "wing_offset", direction: "input" },
-                  { name: "wing_fused", direction: "output" },
+                  { name: "positioned_wing", direction: "input" },
+                  { name: "servo_cutout_right", direction: "output" },
+                ],
+                mockParams: { loglevel: 50 },
+              },
+              {
+                creatorClassName: "SimpleOffsetShapeCreator",
+                creatorId: "wing_shell",
+                shapes: [
+                  { name: "positioned_wing", direction: "input" },
+                  { name: "wing_shell", direction: "output" },
                 ],
                 mockParams: { loglevel: 50 },
                 successors: [
                   {
-                    creatorClassName: "RepairFacesShapeCreator",
-                    creatorId: "wing_repaired",
+                    creatorClassName: "FuseMultipleShapesCreator",
+                    creatorId: "wing_with_servos",
                     shapes: [
-                      { name: "wing_fused", direction: "input" },
-                      { name: "wing_repaired", direction: "output" },
+                      { name: "wing_shell", direction: "input" },
+                      { name: "servo_cutout_left", direction: "input" },
+                      { name: "servo_cutout_right", direction: "input" },
+                      { name: "wing_with_servos", direction: "output" },
                     ],
                     mockParams: { loglevel: 50 },
                     successors: [
                       {
-                        creatorClassName: "ExportToStepCreator",
-                        creatorId: "wing_export",
+                        creatorClassName: "RepairFacesShapeCreator",
+                        creatorId: "wing_repaired",
                         shapes: [
-                          { name: "wing_repaired", direction: "input" },
+                          { name: "wing_with_servos", direction: "input" },
+                          { name: "wing_repaired", direction: "output" },
                         ],
-                        mockParams: { loglevel: 50, output_dir: "./exports" },
+                        mockParams: { loglevel: 50 },
+                        successors: [
+                          {
+                            creatorClassName: "ExportToStepCreator",
+                            creatorId: "wing_step_export",
+                            shapes: [
+                              { name: "wing_repaired", direction: "input" },
+                            ],
+                            mockParams: { loglevel: 50, output_dir: "./step" },
+                          },
+                          {
+                            creatorClassName: "ExportToStlCreator",
+                            creatorId: "wing_stl_export",
+                            shapes: [
+                              { name: "wing_repaired", direction: "input" },
+                            ],
+                            mockParams: { loglevel: 50, output_dir: "./stl" },
+                          },
+                          {
+                            creatorClassName: "ExportTo3mfCreator",
+                            creatorId: "wing_3mf_export",
+                            shapes: [
+                              { name: "wing_repaired", direction: "input" },
+                            ],
+                            mockParams: { loglevel: 50, output_dir: "./3mf" },
+                          },
+                        ],
                       },
                     ],
                   },
                 ],
               },
             ],
+          },
+          {
+            creatorClassName: "StandWingSegmentOnPrinterCreator",
+            creatorId: "print_orientation",
+            shapes: [
+              { name: "raw_wing", direction: "input" },
+              { name: "print_ready_wing", direction: "output" },
+            ],
+            mockParams: { loglevel: 50 },
+            successors: [
+              {
+                creatorClassName: "ExportToStlCreator",
+                creatorId: "print_stl_export",
+                shapes: [
+                  { name: "print_ready_wing", direction: "input" },
+                ],
+                mockParams: { loglevel: 50, output_dir: "./print" },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        creatorClassName: "WingLoftCreator",
+        creatorId: "wing_loft",
+        shapes: [
+          { name: "wing_config", direction: "input" },
+          { name: "wing_loft_solid", direction: "output" },
+        ],
+        mockParams: { loglevel: 20 },
+        successors: [
+          {
+            creatorClassName: "ServoImporterCreator",
+            creatorId: "servo_left",
+            shapes: [
+              { name: "wing_loft_solid", direction: "input" },
+              { name: "servo_left_shape", direction: "output" },
+            ],
+            mockParams: { loglevel: 50 },
+          },
+          {
+            creatorClassName: "ServoImporterCreator",
+            creatorId: "servo_right",
+            shapes: [
+              { name: "wing_loft_solid", direction: "input" },
+              { name: "servo_right_shape", direction: "output" },
+            ],
+            mockParams: { loglevel: 50 },
+          },
+          {
+            creatorClassName: "ComponentImporterCreator",
+            creatorId: "spar_carbon_tube",
+            shapes: [
+              { name: "wing_loft_solid", direction: "input" },
+              { name: "spar_shape", direction: "output" },
+            ],
+            mockParams: { loglevel: 50 },
           },
         ],
       },
@@ -529,8 +614,11 @@ export default function ConstructionPlansPage() {
     new Set([
       "plan-1-vase_wing", "plan-1-mirror_wing",
       "plan-4-raw_wing", "plan-4-positioned_wing",
-      "plan-4-wing_with_cutouts", "plan-4-wing_offset",
-      "plan-4-wing_fused", "plan-4-wing_repaired", "plan-4-wing_export",
+      "plan-4-servo_cutout_left", "plan-4-servo_cutout_right",
+      "plan-4-wing_shell", "plan-4-wing_with_servos", "plan-4-wing_repaired",
+      "plan-4-wing_step_export", "plan-4-wing_stl_export", "plan-4-wing_3mf_export",
+      "plan-4-print_orientation", "plan-4-print_stl_export",
+      "plan-4-wing_loft", "plan-4-servo_left", "plan-4-servo_right", "plan-4-spar_carbon_tube",
     ]),
   );
 
