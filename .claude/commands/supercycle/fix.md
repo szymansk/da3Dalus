@@ -44,11 +44,14 @@ git pull github <branch-name>
 
 ### 2b — Verify Findings
 
-For each finding:
-1. Read the affected file and line
-2. Determine if the finding is legitimate or a false positive
-3. If false positive: document why and skip
-4. If legitimate: implement the fix
+For each finding — **prefer Serena tools** for navigation:
+1. Use `serena:find_symbol` or `serena:file_outline` to locate the
+   affected code (instead of reading entire files)
+2. Use `serena:find_references` to assess blast radius
+3. Determine if the finding is legitimate or a false positive
+4. If false positive: document why and skip
+5. If legitimate: implement the fix (use `serena:rename_symbol` for
+   renames, `serena:replace_symbol_body` for function rewrites)
 
 **Apply `superpowers:receiving-code-review` principle:**
 Verify technically before implementing. Don't blindly agree.

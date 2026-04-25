@@ -114,6 +114,8 @@ The agent prompt MUST include:
 4. User preferences/constraints expressed during discussion
 5. Affected files discovered during exploration
 6. The branch naming convention: `<type>/gh-<N>-<short-slug>`
+7. Instruction to prefer Serena tools for symbol navigation,
+   cross-file renaming, reference lookup, and code structure analysis
 
 **Example prompt structure:**
 ```

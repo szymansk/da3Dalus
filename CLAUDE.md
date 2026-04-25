@@ -125,6 +125,34 @@ You may also invoke them directly for granular control:
 | `/playwright-best-practices` | E2E tests, Page Object Model, flaky tests |
 | `/web-design-guidelines` | UI review, accessibility, UX compliance |
 
+## Serena — IDE-Level Code Intelligence
+
+**Serena** is an MCP-based code intelligence server that provides
+semantic, symbol-level operations instead of fragile text-based
+editing. It is installed via `/supercycle:init` and connected as
+an MCP server.
+
+**Prefer Serena tools over text-based operations for:**
+
+| Operation | Serena tool | Instead of |
+|-----------|-------------|------------|
+| Find symbol definitions | `serena:find_symbol` | Grep for function name |
+| Find references | `serena:find_references` | Grep across codebase |
+| Rename symbol | `serena:rename_symbol` | Find-and-replace |
+| Get file outline | `serena:file_outline` | Read entire file |
+| Replace symbol body | `serena:replace_symbol_body` | Edit with line numbers |
+| Type hierarchy | `serena:type_hierarchy` | Manual class traversal |
+
+**When to use Serena vs. standard tools:**
+- **Serena** — renaming, cross-file refactoring, understanding call
+  chains, finding all references, navigating type hierarchies,
+  replacing function/method bodies safely
+- **Standard tools** — simple edits, new file creation, config
+  changes, reading files where symbol context isn't needed
+
+**Setup:** `uv tool install -p 3.13 serena-agent@latest --prerelease=allow`
+then `serena init` (uses Language Server backend, not JetBrains).
+
 ### Iron Laws
 
 1. **No production code without a failing test first**

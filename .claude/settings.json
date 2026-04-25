@@ -53,6 +53,15 @@
     ],
     "PreToolUse": [
       {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "serena-hooks remind --client=claude-code"
+          }
+        ]
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {
@@ -100,6 +109,10 @@
           {
             "type": "command",
             "command": "bash -c \"./.claude/hooks/pre-command/check-toolchain.sh 2>/dev/null || true\""
+          },
+          {
+            "type": "command",
+            "command": "serena-hooks activate --client=claude-code"
           }
         ]
       }
@@ -110,6 +123,10 @@
           {
             "type": "command",
             "command": "bash -c \"if [ -d .beads ]; then bd sync 2>/dev/null || true; fi\""
+          },
+          {
+            "type": "command",
+            "command": "serena-hooks cleanup --client=claude-code"
           }
         ]
       }

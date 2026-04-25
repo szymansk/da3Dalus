@@ -42,6 +42,45 @@ node --version || echo "MISSING: brew install node"
 npm --version
 ```
 
+### 1.6 — uv (Python package installer)
+```bash
+uv --version || echo "MISSING: Install uv — see https://docs.astral.sh/uv/getting-started/installation/"
+```
+
+If missing, install:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+### 1.7 — Serena (IDE-level code intelligence for AI agents)
+```bash
+serena --version || echo "MISSING: Install Serena"
+```
+
+If missing, install via uv:
+```bash
+uv tool install -p 3.13 serena-agent@latest --prerelease=allow
+```
+
+After installation, initialize Serena in the project (uses Language
+Server backend by default — NOT JetBrains):
+```bash
+serena init
+```
+
+Verify MCP server is configured for Claude Code:
+```bash
+claude mcp list 2>/dev/null | grep -q serena && echo "✓ Serena MCP configured" || echo "MISSING: Run 'claude mcp add --scope user serena -- serena start-mcp-server --context claude-code --project-from-cwd'"
+```
+
+If the MCP server is not configured, add it with the **absolute path**
+to the serena binary (uv installs to `~/.local/bin/` which may not be
+in PATH):
+```bash
+SERENA_BIN="$(which serena 2>/dev/null || echo "$HOME/.local/bin/serena")"
+claude mcp add --scope user serena -- "$SERENA_BIN" start-mcp-server --context=claude-code --project-from-cwd
+```
+
 ---
 
 ## Phase 2 — Backend Dependencies
@@ -166,6 +205,9 @@ npm run test:unit -- --run 2>&1 | tail -3          # vitest (fast)
 | Service | sonarqube-cli | X.Y.Z | ✓ / not installed |
 | Service | SonarCloud | — | ✓ connected / ✗ not configured |
 | Service | GitHub Actions | — | ✓ workflow exists |
+| System | uv | X.Y.Z | ✓ |
+| System | serena | X.Y.Z | ✓ / not installed |
+| Service | Serena MCP | — | ✓ configured / ✗ not configured |
 | Commands | supercycle/* | — | ✓ all 7 present |
 
 ### Issues Found
@@ -185,6 +227,7 @@ npm run test:unit -- --run 2>&1 | tail -3          # vitest (fast)
   ├─ System tools (git, gh, python, poetry, node)
   ├─ Backend deps (ruff, pytest, pydeps)
   ├─ Frontend deps (eslint, vitest, dep-cruiser, playwright)
+  ├─ Code intelligence (uv, Serena + MCP server)
   ├─ External services (SonarCloud, GitHub Actions)
   ├─ Supercycle commands verification
   ├─ Smoke test

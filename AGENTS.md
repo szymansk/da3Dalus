@@ -14,21 +14,31 @@ the docs are the source of truth.
 
 - `app/` — Python FastAPI Backend (port 8000)
 - `frontend/` — Next.js Frontend (port 3000)
-- Backend REST API: http://localhost:8000
-- Swagger UI: http://localhost:8000/docs
+- Backend REST API: http://localhost:8001
+- Swagger UI: http://localhost:8001/docs
 - Frontend dev server: http://localhost:3000
 
-This project uses **bd** (beads) for issue tracking. Run `bd prime` for full workflow context.
+This project uses **gh** (GitHub) for issue tracking.
 
-## Quick Reference
+## Serena — Prefer Semantic Code Operations
 
-```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --claim  # Claim work atomically
-bd close <id>         # Complete work
-bd dolt push          # Push beads data to remote
-```
+This project has **Serena** configured as an MCP server for IDE-level
+code intelligence. **Always prefer Serena tools over text-based
+operations** for the following tasks:
+
+- **Finding symbols:** Use Serena's symbol search instead of Grep
+- **Finding references:** Use Serena's reference lookup for cross-file
+  analysis instead of grepping for function names
+- **Renaming:** Use Serena's semantic rename (handles all references
+  across files) instead of find-and-replace
+- **Replacing function/method bodies:** Use Serena's symbol body
+  replacement instead of Edit with line numbers
+- **Understanding code structure:** Use Serena's file outline and
+  type hierarchy instead of reading entire files
+
+**Standard tools remain appropriate for:** simple edits, new file
+creation, config changes, reading files where symbol context isn't
+needed, and when Serena tools are unavailable.
 
 ## Non-Interactive Shell Commands
 
@@ -54,25 +64,6 @@ cp -rf source dest          # NOT: cp -r source dest
 - `apt-get` - use `-y` flag
 - `brew` - use `HOMEBREW_NO_AUTO_UPDATE=1` env var
 
-<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
-## Beads Issue Tracker
-
-This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
-
-### Quick Reference
-
-```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --claim  # Claim work
-bd close <id>         # Complete work
-```
-
-### Rules
-
-- Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
-- Run `bd prime` for detailed command reference and session close protocol
-- Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
 
 ## Session Completion
 
@@ -86,7 +77,6 @@ bd close <id>         # Complete work
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
    git pull --rebase
-   bd dolt push
    git push
    git status  # MUST show "up to date with origin"
    ```
@@ -99,4 +89,3 @@ bd close <id>         # Complete work
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
-<!-- END BEADS INTEGRATION -->

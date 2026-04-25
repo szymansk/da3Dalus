@@ -38,11 +38,13 @@ Parse the input for:
 - **Endpoint / trigger** — what action caused the error
 - **HTTP status** — 500, 404, etc.
 
-Immediately locate the affected code:
+Immediately locate the affected code — **prefer Serena tools**:
 ```
-grep for error message → find the raise / log site
-read the function → understand the call chain
+serena:find_symbol → locate the raise / log site by symbol name
+serena:find_references → trace the call chain across files
+serena:file_outline → understand file structure without reading everything
 ```
+Fallback to Grep if Serena tools are unavailable.
 
 ---
 

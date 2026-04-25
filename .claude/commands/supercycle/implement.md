@@ -56,7 +56,11 @@ Each agent MUST:
 1. Read the GH Issue (`gh issue view <N>`)
 2. If issue references external system → fetch current data from there
 3. Create branch: `git switch -c <type>/gh-<N>-<slug>`
-4. Implement the fix/feature
+4. Implement the fix/feature — **prefer Serena tools** for:
+   - Finding symbols and references (instead of Grep)
+   - Renaming symbols cross-file (instead of find-and-replace)
+   - Replacing function/method bodies (instead of Edit with line numbers)
+   - Understanding file structure via outlines (instead of reading entire files)
 5. Run quality gates:
    - Backend: `poetry run ruff check . && poetry run pytest -m "not slow"`
    - Frontend (if changed): `cd frontend && npm run lint && npm run test:unit && npm run deps:check`
