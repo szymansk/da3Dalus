@@ -34,6 +34,7 @@ interface MockCreatorNode {
   creatorId: string;
   shapes: MockShape[];
   mockParams: Record<string, unknown>;
+  successors?: MockCreatorNode[];
 }
 
 interface MockPlan {
@@ -108,6 +109,83 @@ const MOCK_PLANS: MockPlan[] = [
           { name: "motor_cutout", direction: "output" },
         ],
         mockParams: { loglevel: 50, minuend: "mount_base" },
+      },
+    ],
+  },
+  {
+    id: 4,
+    name: "Wing Assembly Pipeline",
+    creators: [
+      {
+        creatorClassName: "VaseModeWingCreator",
+        creatorId: "raw_wing",
+        shapes: [
+          { name: "wing_config", direction: "input" },
+          { name: "raw_wing", direction: "output" },
+        ],
+        mockParams: { loglevel: 20 },
+        successors: [
+          {
+            creatorClassName: "ScaleRotateTranslateCreator",
+            creatorId: "positioned_wing",
+            shapes: [
+              { name: "raw_wing", direction: "input" },
+              { name: "positioned_wing", direction: "output" },
+            ],
+            mockParams: { loglevel: 50, source_shape: "raw_wing" },
+            successors: [
+              {
+                creatorClassName: "Cut2ShapesCreator",
+                creatorId: "wing_with_cutouts",
+                shapes: [
+                  { name: "positioned_wing", direction: "input" },
+                  { name: "wing_with_cutouts", direction: "output" },
+                ],
+                mockParams: { loglevel: 50, minuend: "positioned_wing" },
+              },
+              {
+                creatorClassName: "SimpleOffsetShapeCreator",
+                creatorId: "wing_offset",
+                shapes: [
+                  { name: "positioned_wing", direction: "input" },
+                  { name: "wing_offset", direction: "output" },
+                ],
+                mockParams: { loglevel: 50 },
+              },
+              {
+                creatorClassName: "FuseMultipleShapesCreator",
+                creatorId: "wing_fused",
+                shapes: [
+                  { name: "wing_with_cutouts", direction: "input" },
+                  { name: "wing_offset", direction: "input" },
+                  { name: "wing_fused", direction: "output" },
+                ],
+                mockParams: { loglevel: 50 },
+                successors: [
+                  {
+                    creatorClassName: "RepairFacesShapeCreator",
+                    creatorId: "wing_repaired",
+                    shapes: [
+                      { name: "wing_fused", direction: "input" },
+                      { name: "wing_repaired", direction: "output" },
+                    ],
+                    mockParams: { loglevel: 50 },
+                    successors: [
+                      {
+                        creatorClassName: "ExportToStepCreator",
+                        creatorId: "wing_export",
+                        shapes: [
+                          { name: "wing_repaired", direction: "input" },
+                        ],
+                        mockParams: { loglevel: 50, output_dir: "./exports" },
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
       },
     ],
   },
@@ -446,9 +524,14 @@ export default function ConstructionPlansPage() {
   const [viewMode, setViewMode] = useState<"plans" | "templates">("plans");
 
   // Plan mode state
-  const [expandedPlans, setExpandedPlans] = useState<Set<number>>(new Set([1]));
+  const [expandedPlans, setExpandedPlans] = useState<Set<number>>(new Set([1, 4]));
   const [expandedCreators, setExpandedCreators] = useState<Set<string>>(
-    new Set(["plan-1-vase_wing", "plan-1-mirror_wing"]),
+    new Set([
+      "plan-1-vase_wing", "plan-1-mirror_wing",
+      "plan-4-raw_wing", "plan-4-positioned_wing",
+      "plan-4-wing_with_cutouts", "plan-4-wing_offset",
+      "plan-4-wing_fused", "plan-4-wing_repaired", "plan-4-wing_export",
+    ]),
   );
 
   // Template mode state
@@ -500,8 +583,71 @@ export default function ConstructionPlansPage() {
     ? creators.find((c) => c.class_name === editingCreator.creatorClassName) ?? null
     : null;
 
-  // Total step count across all plans
-  const totalSteps = MOCK_PLANS.reduce((sum, p) => sum + p.creators.length, 0);
+  // Count all creators recursively
+  function countCreators(creators: MockCreatorNode[]): number {
+    return creators.reduce(
+      (sum, c) => sum + 1 + countCreators(c.successors ?? []),
+      0,
+    );
+  }
+  const totalSteps = MOCK_PLANS.reduce((sum, p) => sum + countCreators(p.creators), 0);
+
+  // Render a creator node and its successors recursively
+  function renderCreatorTree(
+    creator: MockCreatorNode,
+    planId: number,
+    level: number,
+    expandedSet: Set<string>,
+    toggleFn: (key: string) => void,
+  ) {
+    const creatorKey = `plan-${planId}-${creator.creatorId}`;
+    const isCreatorExpanded = expandedSet.has(creatorKey);
+    const hasChildren = creator.shapes.length > 0 || (creator.successors ?? []).length > 0;
+
+    return (
+      <div key={creatorKey} className="flex flex-col">
+        <SimpleTreeRow
+          node={{
+            id: creatorKey,
+            label: creator.creatorId,
+            level,
+            leaf: !hasChildren,
+            expanded: isCreatorExpanded,
+            chip: creator.creatorClassName.replace("Creator", ""),
+            onClick: () => toggleFn(creatorKey),
+            onEdit: () => handleEditCreator(planId, creator),
+            editTitle: `Edit ${creator.creatorId}`,
+            onAdd: () => alert(`Add successor to "${creator.creatorId}"`),
+            addTitle: `Add successor to ${creator.creatorId}`,
+          }}
+          onToggle={() => toggleFn(creatorKey)}
+        />
+
+        {hasChildren &&
+          isCreatorExpanded && (
+            <>
+              {creator.shapes.map((shape) => (
+                <SimpleTreeRow
+                  key={`${creatorKey}-${shape.direction}-${shape.name}`}
+                  node={{
+                    id: `${creatorKey}-${shape.direction}-${shape.name}`,
+                    label: `${shape.direction === "input" ? "\u2B07" : "\u2B06"} ${shape.name}`,
+                    level: level + 1,
+                    leaf: true,
+                    muted: true,
+                    annotation: shape.direction,
+                  }}
+                  onToggle={() => {}}
+                />
+              ))}
+              {(creator.successors ?? []).map((successor) =>
+                renderCreatorTree(successor, planId, level + 1, expandedSet, toggleFn),
+              )}
+            </>
+          )}
+      </div>
+    );
+  }
 
   return (
     <>
@@ -600,51 +746,9 @@ export default function ConstructionPlansPage() {
 
                   {/* Creator nodes (when plan is expanded) */}
                   {expandedPlans.has(plan.id) &&
-                    plan.creators.map((creator) => {
-                      const creatorKey = `plan-${plan.id}-${creator.creatorId}`;
-                      const isCreatorExpanded = expandedCreators.has(creatorKey);
-                      const hasShapes = creator.shapes.length > 0;
-
-                      return (
-                        <div key={creatorKey} className="flex flex-col">
-                          {/* Creator row */}
-                          <SimpleTreeRow
-                            node={{
-                              id: creatorKey,
-                              label: creator.creatorId,
-                              level: 1,
-                              leaf: !hasShapes,
-                              expanded: isCreatorExpanded,
-                              chip: creator.creatorClassName.replace("Creator", ""),
-                              onClick: () => toggleCreator(creatorKey),
-                              onEdit: () => handleEditCreator(plan.id, creator),
-                              editTitle: `Edit ${creator.creatorId}`,
-                              onAdd: () => alert(`Add successor to "${creator.creatorId}"`),
-                              addTitle: `Add successor to ${creator.creatorId}`,
-                            }}
-                            onToggle={() => toggleCreator(creatorKey)}
-                          />
-
-                          {/* Input/output shape rows */}
-                          {hasShapes &&
-                            isCreatorExpanded &&
-                            creator.shapes.map((shape) => (
-                              <SimpleTreeRow
-                                key={`${creatorKey}-${shape.direction}-${shape.name}`}
-                                node={{
-                                  id: `${creatorKey}-${shape.direction}-${shape.name}`,
-                                  label: `${shape.direction === "input" ? "\u2B07" : "\u2B06"} ${shape.name}`,
-                                  level: 2,
-                                  leaf: true,
-                                  muted: true,
-                                  annotation: shape.direction,
-                                }}
-                                onToggle={() => {}}
-                              />
-                            ))}
-                        </div>
-                      );
-                    })}
+                    plan.creators.map((creator) =>
+                      renderCreatorTree(creator, plan.id, 1, expandedCreators, toggleCreator),
+                    )}
 
                   {/* Separator between plans */}
                   <div className="mx-2 my-1 border-b border-border/50" />
@@ -709,48 +813,9 @@ export default function ConstructionPlansPage() {
                     </button>
                   </div>
 
-                  {selectedTemplate.creators.map((creator) => {
-                    const creatorKey = `plan-${selectedTemplate.id}-${creator.creatorId}`;
-                    const isCreatorExpanded = templateExpandedCreators.has(creatorKey);
-                    const hasShapes = creator.shapes.length > 0;
-
-                    return (
-                      <div key={creatorKey} className="flex flex-col">
-                        <SimpleTreeRow
-                          node={{
-                            id: creatorKey,
-                            label: creator.creatorId,
-                            level: 1,
-                            leaf: !hasShapes,
-                            expanded: isCreatorExpanded,
-                            chip: creator.creatorClassName.replace("Creator", ""),
-                            onClick: () => toggleTemplateCreator(creatorKey),
-                            onEdit: () => handleEditCreator(selectedTemplate.id, creator),
-                            editTitle: `Edit ${creator.creatorId}`,
-                            onAdd: () => alert(`Add successor to "${creator.creatorId}"`),
-                            addTitle: `Add successor to ${creator.creatorId}`,
-                          }}
-                          onToggle={() => toggleTemplateCreator(creatorKey)}
-                        />
-                        {hasShapes &&
-                          isCreatorExpanded &&
-                          creator.shapes.map((shape) => (
-                            <SimpleTreeRow
-                              key={`${creatorKey}-${shape.direction}-${shape.name}`}
-                              node={{
-                                id: `${creatorKey}-${shape.direction}-${shape.name}`,
-                                label: `${shape.direction === "input" ? "\u2B07" : "\u2B06"} ${shape.name}`,
-                                level: 2,
-                                leaf: true,
-                                muted: true,
-                                annotation: shape.direction,
-                              }}
-                              onToggle={() => {}}
-                            />
-                          ))}
-                      </div>
-                    );
-                  })}
+                  {selectedTemplate.creators.map((creator) =>
+                    renderCreatorTree(creator, selectedTemplate.id, 1, templateExpandedCreators, toggleTemplateCreator),
+                  )}
                 </TreeCard>
               ) : (
                 <div className="flex flex-1 items-center justify-center">
