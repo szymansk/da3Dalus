@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDown, ArrowUp, X } from "lucide-react";
+import { ArrowRight, ArrowLeft, X } from "lucide-react";
 import { useDialog } from "@/hooks/useDialog";
 import { CreatorParameterForm } from "@/components/workbench/CreatorParameterForm";
 import type { CreatorInfo } from "@/hooks/useCreators";
@@ -105,7 +105,7 @@ export function EditParamsModal({
                     key={`input-${inp.paramName}`}
                     className={`flex items-center gap-2 text-[12px] ${inp.boundValue ? "text-muted-foreground" : "text-red-400/70"}`}
                   >
-                    <ArrowDown size={10} className={inp.boundValue ? "text-blue-400" : "text-red-400/50"} />
+                    <ArrowRight size={10} className={inp.boundValue ? "text-blue-400" : "text-red-400/50"} />
                     <span className="font-[family-name:var(--font-jetbrains-mono)]">
                       {inp.boundValue ?? inp.paramName}
                     </span>
@@ -119,7 +119,7 @@ export function EditParamsModal({
                     key={`output-${key}`}
                     className="flex items-center gap-2 text-[12px] text-muted-foreground"
                   >
-                    <ArrowUp size={10} className="text-emerald-400" />
+                    <ArrowLeft size={10} className="text-emerald-400" />
                     <span className="font-[family-name:var(--font-jetbrains-mono)]">{key}</span>
                     <span className="text-[10px] text-subtle-foreground">(output)</span>
                   </div>
