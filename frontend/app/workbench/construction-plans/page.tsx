@@ -22,6 +22,7 @@ import {
   executePlan,
   toTemplate,
   instantiateTemplate,
+  executeStreamUrl,
 } from "@/hooks/useConstructionPlans";
 import {
   fromBackendTree,
@@ -111,6 +112,7 @@ export default function ConstructionPlansPage() {
   const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
   const [executionTitle, setExecutionTitle] = useState("");
   const [executionDialogOpen, setExecutionDialogOpen] = useState(false);
+  const [executionStreamUrl, setExecutionStreamUrl] = useState<string | null>(null);
 
   // Artifact browser state
   const [artifactsPlanId, setArtifactsPlanId] = useState<number | null>(null);
@@ -170,22 +172,9 @@ export default function ConstructionPlansPage() {
       }
       setExecutionTitle(`Execute: ${planName}`);
       setExecutionResult(null);
+      // Use streaming endpoint — viewer opens immediately, shapes appear incrementally
+      setExecutionStreamUrl(executeStreamUrl(aeroplaneId, planId));
       setExecutionDialogOpen(true);
-      try {
-        const result = await executePlan(aeroplaneId, planId);
-        setExecutionResult(result);
-      } catch (err) {
-        setExecutionResult({
-          status: "error",
-          shape_keys: [],
-          export_paths: [],
-          error: err instanceof Error ? err.message : String(err),
-          duration_ms: 0,
-          tessellation: null,
-          artifact_dir: null,
-          execution_id: null,
-        });
-      }
     },
     [aeroplaneId, plans, activePlanId, activeTree, creators],
   );
@@ -702,9 +691,11 @@ export default function ConstructionPlansPage() {
         open={executionDialogOpen}
         title={executionTitle}
         result={executionResult}
+        streamUrl={executionStreamUrl}
         onClose={() => {
           setExecutionDialogOpen(false);
           setExecutionResult(null);
+          setExecutionStreamUrl(null);
         }}
       />
 

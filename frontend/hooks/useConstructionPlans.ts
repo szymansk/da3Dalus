@@ -196,6 +196,10 @@ export async function executePlan(
   return res.json();
 }
 
+export function executeStreamUrl(aeroplaneId: string, planId: number): string {
+  return `${API_BASE}/aeroplanes/${aeroplaneId}/construction-plans/${planId}/execute-stream`;
+}
+
 export async function instantiateTemplate(
   aeroplaneId: string,
   templateId: number,

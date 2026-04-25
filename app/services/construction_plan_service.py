@@ -629,6 +629,135 @@ def execute_plan(
     )
 
 
+def execute_plan_streaming(
+    db: Session,
+    plan_id: int,
+    request: ExecuteRequest,
+):
+    """Execute a plan and yield SSE events as shapes are displayed.
+
+    Returns a generator of SSE-formatted strings. Each `display()` call
+    in the Creator code produces a 'shape' event with tessellated geometry.
+    The final event is 'complete' or 'error'.
+    """
+    import json
+    import os
+    import queue
+    import threading
+
+    from app.services.wing_service import get_aeroplane_or_raise
+    from app.services.artifact_service import create_execution_dir
+    from app.converters.model_schema_converters import wing_model_to_wing_config
+
+    # Load plan
+    plan = _get_plan_or_raise(db, plan_id)
+    if plan.plan_type == "template":
+        yield f"event: error\ndata: {json.dumps({'error': 'Templates cannot be executed'})}\n\n"
+        return
+
+    effective_aeroplane_id = plan.aeroplane_id or request.aeroplane_id
+    aeroplane = get_aeroplane_or_raise(db, effective_aeroplane_id)
+
+    wing_config: dict = {}
+    for wing in aeroplane.wings:
+        try:
+            wc = wing_model_to_wing_config(wing, scale=1000.0)
+            wing_config[wing.name] = wc
+        except Exception as exc:
+            logger.warning("Failed to convert wing '%s': %s", wing.name, exc)
+
+    printer_settings = _load_printer_settings(db)
+    execution_id, artifact_dir = create_execution_dir(effective_aeroplane_id, plan_id)
+
+    # Decode tree
+    t0 = time.monotonic()
+    try:
+        from cad_designer.airplane.GeneralJSONEncoderDecoder import GeneralJSONDecoder
+
+        json_string = json.dumps(plan.tree_json)
+        root_node = json.loads(
+            json_string,
+            cls=GeneralJSONDecoder,
+            wing_config=wing_config,
+            printer_settings=printer_settings,
+            servo_information={},
+            engine_information=None,
+            component_information=None,
+        )
+    except Exception as exc:
+        logger.exception("Failed to decode plan tree_json: plan_id=%s", plan_id)
+        yield f"event: error\ndata: {json.dumps({'error': f'Decode failed: {exc}'})}\n\n"
+        return
+
+    # Set up display callback → queue
+    shape_queue: queue.Queue = queue.Queue()
+
+    def on_display(name: str, tessellation: dict):
+        # Convert numpy arrays to plain Python types for JSON serialization
+        clean = _numpy_to_list(tessellation)
+        shape_queue.put(("shape", name, clean))
+
+    from cad_designer.cq_plugins.display.display import set_display_callback
+    set_display_callback(on_display)
+    prev_env = os.environ.get("DISPLAY_CONSTRUCTION_STEP")
+    os.environ["DISPLAY_CONSTRUCTION_STEP"] = "1"
+
+    # Run execution in background thread
+    result_holder: list = []
+
+    def run():
+        try:
+            structure = root_node.create_shape()
+            duration_ms = int((time.monotonic() - t0) * 1000)
+            shape_keys = list(structure.keys()) if isinstance(structure, dict) else []
+            # Final tessellation of the complete structure
+            tessellation = _tessellate_shapes(structure) if isinstance(structure, dict) else None
+            result_holder.append(("complete", {
+                "duration_ms": duration_ms,
+                "shape_keys": shape_keys,
+                "tessellation": _numpy_to_list(tessellation) if tessellation else None,
+                "artifact_dir": str(artifact_dir),
+                "execution_id": execution_id,
+            }))
+        except Exception as exc:
+            duration_ms = int((time.monotonic() - t0) * 1000)
+            logger.exception("Plan execution failed: plan_id=%s", plan_id)
+            result_holder.append(("error", {
+                "error": f"{type(exc).__name__}: {exc}",
+                "duration_ms": duration_ms,
+                "artifact_dir": str(artifact_dir),
+                "execution_id": execution_id,
+            }))
+        finally:
+            shape_queue.put(("done", None, None))
+            set_display_callback(None)
+            if prev_env is None:
+                os.environ.pop("DISPLAY_CONSTRUCTION_STEP", None)
+            else:
+                os.environ["DISPLAY_CONSTRUCTION_STEP"] = prev_env
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+
+    # Yield SSE events from queue
+    while True:
+        try:
+            event_type, name, data = shape_queue.get(timeout=300)
+        except queue.Empty:
+            yield f"event: error\ndata: {json.dumps({'error': 'Execution timed out'})}\n\n"
+            break
+
+        if event_type == "shape":
+            yield f"event: shape\ndata: {json.dumps({'name': name, 'tessellation': data})}\n\n"
+        elif event_type == "done":
+            if result_holder:
+                final_type, final_data = result_holder[0]
+                yield f"event: {final_type}\ndata: {json.dumps(final_data)}\n\n"
+            break
+
+    thread.join(timeout=5)
+
+
 def _numpy_to_list(obj: Any) -> Any:
     """Recursively convert numpy arrays and scalars to plain Python types."""
     try:
