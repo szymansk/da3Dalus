@@ -274,6 +274,90 @@ const MOCK_PLANS: MockPlan[] = [
       },
     ],
   },
+  {
+    id: 5,
+    name: "Deep Nesting Stress Test",
+    creators: [
+      {
+        creatorClassName: "VaseModeWingCreator",
+        creatorId: "depth_01_wing",
+        shapes: [{ name: "depth_01", direction: "output" }],
+        mockParams: { loglevel: 50 },
+        successors: [
+          {
+            creatorClassName: "ScaleRotateTranslateCreator",
+            creatorId: "depth_02_transform",
+            shapes: [{ name: "depth_01", direction: "input" }, { name: "depth_02", direction: "output" }],
+            mockParams: { loglevel: 50 },
+            successors: [
+              {
+                creatorClassName: "Cut2ShapesCreator",
+                creatorId: "depth_03_cut",
+                shapes: [{ name: "depth_02", direction: "input" }, { name: "depth_03", direction: "output" }],
+                mockParams: { loglevel: 50 },
+                successors: [
+                  {
+                    creatorClassName: "SimpleOffsetShapeCreator",
+                    creatorId: "depth_04_offset",
+                    shapes: [{ name: "depth_03", direction: "input" }, { name: "depth_04", direction: "output" }],
+                    mockParams: { loglevel: 50 },
+                    successors: [
+                      {
+                        creatorClassName: "FuseMultipleShapesCreator",
+                        creatorId: "depth_05_fuse",
+                        shapes: [{ name: "depth_04", direction: "input" }, { name: "depth_05", direction: "output" }],
+                        mockParams: { loglevel: 50 },
+                        successors: [
+                          {
+                            creatorClassName: "RepairFacesShapeCreator",
+                            creatorId: "depth_06_repair",
+                            shapes: [{ name: "depth_05", direction: "input" }, { name: "depth_06", direction: "output" }],
+                            mockParams: { loglevel: 50 },
+                            successors: [
+                              {
+                                creatorClassName: "ScaleRotateTranslateCreator",
+                                creatorId: "depth_07_reposition",
+                                shapes: [{ name: "depth_06", direction: "input" }, { name: "depth_07", direction: "output" }],
+                                mockParams: { loglevel: 50 },
+                                successors: [
+                                  {
+                                    creatorClassName: "Intersect2ShapesCreator",
+                                    creatorId: "depth_08_intersect",
+                                    shapes: [{ name: "depth_07", direction: "input" }, { name: "depth_08", direction: "output" }],
+                                    mockParams: { loglevel: 50 },
+                                    successors: [
+                                      {
+                                        creatorClassName: "AddMultipleShapesCreator",
+                                        creatorId: "depth_09_compound",
+                                        shapes: [{ name: "depth_08", direction: "input" }, { name: "depth_09", direction: "output" }],
+                                        mockParams: { loglevel: 50 },
+                                        successors: [
+                                          {
+                                            creatorClassName: "ExportToStepCreator",
+                                            creatorId: "depth_10_export",
+                                            shapes: [{ name: "depth_09", direction: "input" }],
+                                            mockParams: { loglevel: 50, output_dir: "./deep" },
+                                          },
+                                        ],
+                                      },
+                                    ],
+                                  },
+                                ],
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 const MOCK_TEMPLATES: MockTemplate[] = [
@@ -609,7 +693,7 @@ export default function ConstructionPlansPage() {
   const [viewMode, setViewMode] = useState<"plans" | "templates">("plans");
 
   // Plan mode state
-  const [expandedPlans, setExpandedPlans] = useState<Set<number>>(new Set([1, 4]));
+  const [expandedPlans, setExpandedPlans] = useState<Set<number>>(new Set([1, 4, 5]));
   const [expandedCreators, setExpandedCreators] = useState<Set<string>>(
     new Set([
       "plan-1-vase_wing", "plan-1-mirror_wing",
@@ -619,6 +703,10 @@ export default function ConstructionPlansPage() {
       "plan-4-wing_step_export", "plan-4-wing_stl_export", "plan-4-wing_3mf_export",
       "plan-4-print_orientation", "plan-4-print_stl_export",
       "plan-4-wing_loft", "plan-4-servo_left", "plan-4-servo_right", "plan-4-spar_carbon_tube",
+      "plan-5-depth_01_wing", "plan-5-depth_02_transform", "plan-5-depth_03_cut",
+      "plan-5-depth_04_offset", "plan-5-depth_05_fuse", "plan-5-depth_06_repair",
+      "plan-5-depth_07_reposition", "plan-5-depth_08_intersect", "plan-5-depth_09_compound",
+      "plan-5-depth_10_export",
     ]),
   );
 
