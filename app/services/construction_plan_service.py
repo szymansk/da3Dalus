@@ -545,6 +545,7 @@ def execute_plan(
 ) -> ExecutionResult:
     """Execute a plan against an aeroplane configuration."""
     from app.services.wing_service import get_aeroplane_or_raise, get_wing_or_raise
+    from app.services.artifact_service import create_execution_dir
     from app.converters.model_schema_converters import wing_model_to_wing_config
 
     # Load plan
@@ -557,6 +558,9 @@ def execute_plan(
     # Load aeroplane (prefer stored aeroplane_id, fall back to request)
     effective_aeroplane_id = plan.aeroplane_id or request.aeroplane_id
     aeroplane = get_aeroplane_or_raise(db, effective_aeroplane_id)
+
+    # Create artifact directory for this execution
+    execution_id, artifact_dir = create_execution_dir(effective_aeroplane_id, plan_id)
 
     # Build wing_config map: all wings
     wing_config: dict = {}
@@ -590,8 +594,11 @@ def execute_plan(
             message=f"Failed to decode construction plan: {exc}",
         )
 
-    # Execute
+    # Execute (chdir into artifact_dir so creators using relative paths land there)
+    import os
+    cwd_before = os.getcwd()
     try:
+        os.chdir(artifact_dir)
         structure = root_node.create_shape()
         duration_ms = int((time.monotonic() - t0) * 1000)
     except Exception as exc:
@@ -600,7 +607,11 @@ def execute_plan(
             status="error",
             error=str(exc),
             duration_ms=duration_ms,
+            artifact_dir=str(artifact_dir),
+            execution_id=execution_id,
         )
+    finally:
+        os.chdir(cwd_before)
 
     shape_keys = list(structure.keys()) if isinstance(structure, dict) else []
 
@@ -612,6 +623,8 @@ def execute_plan(
         shape_keys=shape_keys,
         duration_ms=duration_ms,
         tessellation=tessellation,
+        artifact_dir=str(artifact_dir),
+        execution_id=execution_id,
     )
 
 

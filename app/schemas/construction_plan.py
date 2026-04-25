@@ -110,3 +110,33 @@ class ExecutionResult(BaseModel):
     error: Optional[str] = None
     duration_ms: int = 0
     tessellation: Optional[dict] = Field(None, description="three-cad-viewer compatible tessellation data")
+    artifact_dir: Optional[str] = Field(
+        None,
+        description="Server-side artifact directory for this execution (relative to artifacts base)",
+    )
+    execution_id: Optional[str] = Field(
+        None,
+        description="Timestamp-based execution identifier",
+    )
+
+
+# ── Artifact browser schemas ────────────────────────────────────
+
+
+class ArtifactFile(BaseModel):
+    """File entry in an artifact directory listing."""
+
+    name: str = Field(..., description="File or directory name")
+    is_dir: bool = Field(False, description="True if entry is a subdirectory")
+    size_bytes: int = Field(0, description="File size in bytes (0 for directories)")
+    modified: str = Field(..., description="ISO timestamp of last modification")
+
+
+class ArtifactDirectory(BaseModel):
+    """A single execution's artifact directory."""
+
+    execution_id: str = Field(..., description="Execution timestamp identifier")
+    plan_id: int = Field(..., description="Owning plan id")
+    aeroplane_id: str = Field(..., description="Owning aeroplane id")
+    created: str = Field(..., description="ISO timestamp the directory was created")
+    file_count: int = Field(0, description="Number of files in the directory")
