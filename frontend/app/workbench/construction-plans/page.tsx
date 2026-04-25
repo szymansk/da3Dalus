@@ -1,13 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import {
-  Hammer,
-  Play,
-  BookTemplate,
-  PanelLeftOpen,
-  PanelLeftClose,
-} from "lucide-react";
+import { Hammer, Play, BookTemplate, PanelLeftOpen, PanelLeftClose } from "lucide-react";
 import { useCreators } from "@/hooks/useCreators";
 import { CreatorGallery } from "@/components/workbench/CreatorGallery";
 import { TreeCard } from "@/components/workbench/TreeCard";
@@ -20,6 +14,16 @@ import {
 import { PlanTreeSection } from "@/components/workbench/construction-plans/PlanTreeSection";
 import { TemplateModePanel } from "@/components/workbench/construction-plans/TemplateModePanel";
 import { EditParamsModal } from "@/components/workbench/construction-plans/EditParamsModal";
+
+// ── Helpers ───────────────────────────────────────────────────────
+
+/** Toggle a value in a Set, returning a new Set (immutable update). */
+function toggleInSet<T>(prev: Set<T>, value: T): Set<T> {
+  const next = new Set(prev);
+  if (next.has(value)) next.delete(value);
+  else next.add(value);
+  return next;
+}
 
 // ── Initial expanded keys (click-dummy defaults) ──────────────────
 const INITIAL_EXPANDED_CREATORS = new Set([
@@ -57,32 +61,20 @@ export default function ConstructionPlansPage() {
 
   // ── Callbacks ───────────────────────────────────────────────────
 
-  const togglePlan = useCallback((planId: number) => {
-    setExpandedPlans((prev) => {
-      const next = new Set(prev);
-      if (next.has(planId)) next.delete(planId);
-      else next.add(planId);
-      return next;
-    });
-  }, []);
+  const togglePlan = useCallback(
+    (planId: number) => setExpandedPlans((prev) => toggleInSet(prev, planId)),
+    [],
+  );
 
-  const toggleCreator = useCallback((key: string) => {
-    setExpandedCreators((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }, []);
+  const toggleCreator = useCallback(
+    (key: string) => setExpandedCreators((prev) => toggleInSet(prev, key)),
+    [],
+  );
 
-  const toggleTemplateCreator = useCallback((key: string) => {
-    setTemplateExpandedCreators((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }, []);
+  const toggleTemplateCreator = useCallback(
+    (key: string) => setTemplateExpandedCreators((prev) => toggleInSet(prev, key)),
+    [],
+  );
 
   const handleEditCreator = useCallback((_planId: number, creator: MockCreatorNode) => {
     setEditingCreator(creator);
@@ -105,28 +97,32 @@ export default function ConstructionPlansPage() {
     : null;
   const totalSteps = MOCK_PLANS.reduce((sum, p) => sum + countCreators(p.creators), 0);
 
-  const modeBtn = (mode: "plans" | "templates", Icon: typeof Hammer, label: string) => (
-    <button
-      onClick={() => setViewMode(mode)}
-      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] ${
-        viewMode === mode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-      }`}
-    >
-      <Icon size={12} /> {label}
-    </button>
-  );
-
-  const widthToggle = (
-    <button
-      onClick={() => setTreeWide((w) => !w)}
-      title={treeWide ? "Collapse tree panel" : "Expand tree panel"}
-      className="flex size-6 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-sidebar-accent"
-    >
-      {treeWide ? <PanelLeftClose size={12} /> : <PanelLeftOpen size={12} />}
-    </button>
-  );
-
   const panelStyle = { width: treeWide ? "66%" : 360, minWidth: treeWide ? "66%" : 360 };
+
+  function ModeButton({ mode, Icon, label }: { mode: "plans" | "templates"; Icon: typeof Hammer; label: string }) {
+    return (
+      <button
+        onClick={() => setViewMode(mode)}
+        className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] ${
+          viewMode === mode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        <Icon size={12} /> {label}
+      </button>
+    );
+  }
+
+  function WidthToggle() {
+    return (
+      <button
+        onClick={() => setTreeWide((w) => !w)}
+        title={treeWide ? "Collapse tree panel" : "Expand tree panel"}
+        className="flex size-6 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-sidebar-accent"
+      >
+        {treeWide ? <PanelLeftClose size={12} /> : <PanelLeftOpen size={12} />}
+      </button>
+    );
+  }
 
   return (
     <>
@@ -136,8 +132,8 @@ export default function ConstructionPlansPage() {
           <div className="flex h-full flex-col gap-3 overflow-hidden">
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
-                {modeBtn("plans", Hammer, "Plans")}
-                {modeBtn("templates", BookTemplate, "Templates")}
+                <ModeButton mode="plans" Icon={Hammer} label="Plans" />
+                <ModeButton mode="templates" Icon={BookTemplate} label="Templates" />
               </div>
             </div>
 
@@ -147,7 +143,7 @@ export default function ConstructionPlansPage() {
                   className="flex size-6 items-center justify-center rounded-lg text-primary hover:text-primary/70">
                   <Play size={14} />
                 </button>
-                {widthToggle}
+                <WidthToggle />
               </>}>
                 {MOCK_PLANS.map((plan) => (
                   <PlanTreeSection key={plan.id} plan={plan} expanded={expandedPlans.has(plan.id)}
@@ -178,7 +174,7 @@ export default function ConstructionPlansPage() {
         </div>
       </div>
 
-      <EditParamsModal key={editingCreator?.creatorId} open={editModalOpen} creator={editingCreator}
+      <EditParamsModal open={editModalOpen} creator={editingCreator}
         creatorInfo={editingCreatorInfo} onClose={() => { setEditModalOpen(false); setEditingCreator(null); }} />
     </>
   );

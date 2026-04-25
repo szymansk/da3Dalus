@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { Play, Pencil, Plus, PanelLeftOpen, PanelLeftClose, ChevronDown } from "lucide-react";
 import { TreeCard } from "@/components/workbench/TreeCard";
 import { TemplateSelector } from "./TemplateSelector";

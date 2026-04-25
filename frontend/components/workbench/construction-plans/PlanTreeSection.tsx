@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import type { ReactNode } from "react";
 import { Play, Plus, BookTemplate, Pencil, ChevronDown, ChevronRight } from "lucide-react";
 import { SimpleTreeRow } from "@/components/workbench/SimpleTreeRow";
 import type { MockCreatorNode, MockPlan, MockTemplate } from "./types";
@@ -12,7 +12,7 @@ export function renderCreatorTree(
   expandedSet: Set<string>,
   toggleFn: (key: string) => void,
   onEdit: (planId: number, creator: MockCreatorNode) => void,
-): React.ReactNode {
+): ReactNode {
   const creatorKey = `plan-${planId}-${creator.creatorId}`;
   const isCreatorExpanded = expandedSet.has(creatorKey);
   const hasChildren = creator.shapes.length > 0 || (creator.successors ?? []).length > 0;

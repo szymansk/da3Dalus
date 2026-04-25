@@ -21,9 +21,17 @@ export function EditParamsModal({
   onClose,
 }: Readonly<EditParamsModalProps>) {
   const { dialogRef, handleClose } = useDialog(open, onClose);
-  const [values, setValues] = useState<Record<string, unknown>>(
-    creator?.mockParams ?? {},
-  );
+  const [values, setValues] = useState<Record<string, unknown>>({});
+
+  // Reset values when a different creator is opened (or the same one reopened)
+  const [lastCreatorId, setLastCreatorId] = useState<string | null>(null);
+  if (open && creator && creator.creatorId !== lastCreatorId) {
+    setLastCreatorId(creator.creatorId);
+    setValues(creator.mockParams ?? {});
+  }
+  if (!open && lastCreatorId !== null) {
+    setLastCreatorId(null);
+  }
 
   return (
     <dialog
