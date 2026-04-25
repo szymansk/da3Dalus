@@ -7,6 +7,7 @@ import {
   usePlanArtifacts,
   useArtifactFiles,
   deleteArtifactFile,
+  deleteExecution,
   artifactDownloadUrl,
 } from "@/hooks/useConstructionPlans";
 
@@ -52,6 +53,21 @@ export function ArtifactBrowserDialog({
       setCurrentPath("");
     }
   }, [open]);
+
+  async function handleDeleteExecution(executionId: string) {
+    if (!planId) return;
+    if (!confirm(`Delete execution ${executionId} and all its files? This cannot be undone.`)) return;
+    try {
+      await deleteExecution(planId, executionId);
+      mutateExecutions();
+      if (selectedExecution === executionId) {
+        setSelectedExecution(null);
+        setCurrentPath("");
+      }
+    } catch (err) {
+      alert(`Delete failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
   async function handleDelete(filename: string) {
     if (!planId || !selectedExecution) return;
@@ -109,22 +125,33 @@ export function ArtifactBrowserDialog({
                 <p className="px-2 text-[12px] text-muted-foreground">No executions yet</p>
               )}
               {executions.map((e) => (
-                <button
+                <div
                   key={e.execution_id}
-                  onClick={() => { setSelectedExecution(e.execution_id); setCurrentPath(""); }}
-                  className={`rounded-lg px-2 py-2 text-left text-[12px] hover:bg-sidebar-accent ${
+                  className={`group/exec flex items-center rounded-lg px-2 py-2 text-[12px] hover:bg-sidebar-accent ${
                     e.execution_id === selectedExecution
                       ? "bg-sidebar-accent text-primary"
                       : "text-foreground"
                   }`}
                 >
-                  <span className="block font-[family-name:var(--font-jetbrains-mono)]">
-                    {e.execution_id}
-                  </span>
-                  <span className="block text-[10px] text-muted-foreground">
-                    {e.file_count} files
-                  </span>
-                </button>
+                  <button
+                    onClick={() => { setSelectedExecution(e.execution_id); setCurrentPath(""); }}
+                    className="flex-1 text-left"
+                  >
+                    <span className="block font-[family-name:var(--font-jetbrains-mono)]">
+                      {e.execution_id}
+                    </span>
+                    <span className="block text-[10px] text-muted-foreground">
+                      {e.file_count} files
+                    </span>
+                  </button>
+                  <button
+                    onClick={(ev) => { ev.stopPropagation(); handleDeleteExecution(e.execution_id); }}
+                    title="Delete execution"
+                    className="hidden shrink-0 size-5 items-center justify-center rounded-lg text-destructive group-hover/exec:flex"
+                  >
+                    <Trash2 size={10} />
+                  </button>
+                </div>
               ))}
             </div>
 

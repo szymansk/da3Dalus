@@ -142,6 +142,19 @@ def delete_file(plan_id: int, execution_id: str, filename: str) -> None:
     logger.info("Deleted artifact file: %s", path)
 
 
+def delete_execution(plan_id: int, execution_id: str) -> None:
+    """Delete an entire execution directory and all its contents."""
+    import shutil
+
+    exec_dir = _resolve_execution_dir(plan_id, execution_id)
+    try:
+        shutil.rmtree(exec_dir)
+    except OSError as exc:
+        logger.exception("Failed to delete execution dir %s", exec_dir)
+        raise InternalError(message=f"Cannot delete execution: {execution_id}") from exc
+    logger.info("Deleted execution dir: %s", exec_dir)
+
+
 def _resolve_execution_dir(plan_id: int, execution_id: str) -> Path:
     """Find and validate the execution directory for plan_id/execution_id."""
     base = settings.ARTIFACTS_BASE_DIR

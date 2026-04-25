@@ -235,10 +235,27 @@ async def download_artifact_file(
 async def delete_artifact_file(
     plan_id: Annotated[int, Path(...)],
     execution_id: Annotated[str, Path(...)],
-    filename: Annotated[str, Path(...)],
+    filename: str,
 ):
     """Delete a single artifact file."""
     try:
         artifact_service.delete_file(plan_id, execution_id, filename)
+    except ServiceException as exc:
+        _handle_service_error(exc)
+
+
+@router.delete(
+    "/construction-plans/{plan_id}/artifacts/{execution_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["construction-plans"],
+    operation_id="delete_execution",
+)
+async def delete_execution(
+    plan_id: Annotated[int, Path(...)],
+    execution_id: Annotated[str, Path(...)],
+):
+    """Delete an entire execution directory and all its artifacts."""
+    try:
+        artifact_service.delete_execution(plan_id, execution_id)
     except ServiceException as exc:
         _handle_service_error(exc)

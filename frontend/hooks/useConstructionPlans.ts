@@ -93,6 +93,19 @@ export async function deleteArtifactFile(
   }
 }
 
+export async function deleteExecution(
+  planId: number,
+  executionId: string,
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/construction-plans/${planId}/artifacts/${executionId}`,
+    { method: "DELETE" },
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to delete execution: ${res.status}`);
+  }
+}
+
 export function artifactDownloadUrl(
   planId: number,
   executionId: string,
