@@ -342,7 +342,7 @@ export default function ConstructionPlansPage() {
     if (!aeroplaneId) return;
     const newPlan = await createPlan({
       name: `New Plan ${plans.length + 1}`,
-      tree_json: { $TYPE: "ConstructionStepNode", creator_id: "root", successors: {} },
+      tree_json: { $TYPE: "ConstructionRootNode", creator_id: "root", successors: {} },
       plan_type: "plan",
       aeroplane_id: aeroplaneId,
     });

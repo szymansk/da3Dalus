@@ -208,6 +208,8 @@ export function toBackendTree(
   const { successors: _s, ...rootFields } = node as Record<string, unknown>;
   return {
     ...rootFields,
+    // Root must always be ConstructionRootNode for the GeneralJSONDecoder
+    $TYPE: "ConstructionRootNode",
     loglevel: (rootFields.loglevel as number) ?? DEFAULT_LOGLEVEL,
     successors: backendSuccessors,
   };
