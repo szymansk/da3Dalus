@@ -25,6 +25,40 @@ class GeneralJSONEncoder(JSONEncoder):
         return dic
 
 
+def _coerce_params(cls, params: dict) -> dict:
+    """Coerce JSON values to match __init__ type annotations.
+
+    Prevents TypeError when JSON stores numeric values as strings
+    (e.g. "0.1" instead of 0.1). Handles NewType wrappers (ShapeId, CreatorId).
+    """
+    try:
+        hints = {k: v for k, v in cls.__init__.__annotations__.items() if k != "return"}
+    except AttributeError:
+        return params
+    coerced = {}
+    for key, value in params.items():
+        if value is None or key not in hints:
+            coerced[key] = value
+            continue
+        hint = hints[key]
+        try:
+            # Unwrap NewType (ShapeId → str, CreatorId → str)
+            target = getattr(hint, "__supertype__", None) or hint
+            if target is float and not isinstance(value, float):
+                coerced[key] = float(value)
+            elif target is int and not isinstance(value, int):
+                coerced[key] = int(value)
+            elif target is bool and not isinstance(value, bool):
+                coerced[key] = bool(value)
+            elif target is str and not isinstance(value, str):
+                coerced[key] = str(value)
+            else:
+                coerced[key] = value
+        except (ValueError, TypeError):
+            coerced[key] = value
+    return coerced
+
+
 class GeneralJSONDecoder(JSONDecoder):
     def __init__(self, *args, **kwargs):
         """
@@ -57,4 +91,5 @@ class GeneralJSONDecoder(JSONDecoder):
             intersection_dict ={k: dic[k] for k in dic.keys() & init_params.keys()}
             # join and create object
             intersection_dict.update(intersection)
+        intersection_dict = _coerce_params(cls, intersection_dict)
         return cls(**intersection_dict)
