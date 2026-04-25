@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useDroppable } from "@dnd-kit/core";
-import { Play, Plus, BookTemplate, Pencil, ChevronDown, ChevronRight } from "lucide-react";
+import { Play, Plus, BookTemplate, Pencil, FolderOpen, ChevronDown, ChevronRight } from "lucide-react";
 import { SimpleTreeRow } from "@/components/workbench/SimpleTreeRow";
 import type { PlanStepNode } from "@/components/workbench/PlanTree";
 import { resolveNodeShapes } from "@/lib/planTreeUtils";
@@ -106,6 +106,7 @@ interface PlanTreeSectionProps {
   onSaveAsTemplate: (planId: number) => void;
   onRename: (planId: number, newName: string) => Promise<void> | void;
   onAddStep: (planId: number, parentPath?: string) => void;
+  onShowArtifacts?: (planId: number) => void;
   hidePlanActions?: boolean;
 }
 
@@ -122,6 +123,7 @@ export function PlanTreeSection({
   onSaveAsTemplate,
   onRename,
   onAddStep,
+  onShowArtifacts,
   hidePlanActions = false,
 }: Readonly<PlanTreeSectionProps>) {
   const [renaming, setRenaming] = useState(false);
@@ -174,6 +176,15 @@ export function PlanTreeSection({
             >
               <BookTemplate size={10} />
             </button>
+            {onShowArtifacts && (
+              <button
+                onClick={() => onShowArtifacts(plan.id)}
+                title={`Browse artifacts for ${plan.name}`}
+                className="hidden size-5 items-center justify-center rounded-full text-muted-foreground hover:text-primary group-hover:flex"
+              >
+                <FolderOpen size={10} />
+              </button>
+            )}
             <button
               onClick={() => setRenaming(true)}
               title={`Rename ${plan.name}`}

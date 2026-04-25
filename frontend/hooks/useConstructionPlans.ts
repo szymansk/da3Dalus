@@ -31,6 +31,73 @@ export interface ExecutionResult {
   error: string | null;
   duration_ms: number;
   tessellation: Record<string, unknown> | null;
+  artifact_dir?: string | null;
+  execution_id?: string | null;
+}
+
+export interface ArtifactDirectory {
+  execution_id: string;
+  plan_id: number;
+  aeroplane_id: string;
+  created: string;
+  file_count: number;
+}
+
+export interface ArtifactFile {
+  name: string;
+  is_dir: boolean;
+  size_bytes: number;
+  modified: string;
+}
+
+export function usePlanArtifacts(planId: number | null) {
+  const { data, error, isLoading, mutate } = useSWR<ArtifactDirectory[]>(
+    planId ? `/construction-plans/${planId}/artifacts` : null,
+    fetcher,
+  );
+  return {
+    executions: data ?? [],
+    error,
+    isLoading,
+    mutate,
+  };
+}
+
+export function useArtifactFiles(planId: number | null, executionId: string | null) {
+  const { data, error, isLoading, mutate } = useSWR<ArtifactFile[]>(
+    planId && executionId
+      ? `/construction-plans/${planId}/artifacts/${executionId}`
+      : null,
+    fetcher,
+  );
+  return {
+    files: data ?? [],
+    error,
+    isLoading,
+    mutate,
+  };
+}
+
+export async function deleteArtifactFile(
+  planId: number,
+  executionId: string,
+  filename: string,
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/construction-plans/${planId}/artifacts/${executionId}/${encodeURIComponent(filename)}`,
+    { method: "DELETE" },
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to delete artifact: ${res.status}`);
+  }
+}
+
+export function artifactDownloadUrl(
+  planId: number,
+  executionId: string,
+  filename: string,
+): string {
+  return `${API_BASE}/construction-plans/${planId}/artifacts/${executionId}/${encodeURIComponent(filename)}`;
 }
 
 export function useConstructionPlans(planType?: string) {

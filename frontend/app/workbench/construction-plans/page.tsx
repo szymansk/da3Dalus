@@ -39,6 +39,7 @@ import { EditParamsModal } from "@/components/workbench/construction-plans/EditP
 import { AddStepDialog } from "@/components/workbench/construction-plans/AddStepDialog";
 import { AeroplanePickerDialog } from "@/components/workbench/construction-plans/AeroplanePickerDialog";
 import { ExecutionResultDialog } from "@/components/workbench/construction-plans/ExecutionResultDialog";
+import { ArtifactBrowserDialog } from "@/components/workbench/construction-plans/ArtifactBrowserDialog";
 import type { ExecutionResult } from "@/hooks/useConstructionPlans";
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -105,6 +106,9 @@ export default function ConstructionPlansPage() {
   const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
   const [executionTitle, setExecutionTitle] = useState("");
   const [executionDialogOpen, setExecutionDialogOpen] = useState(false);
+
+  // Artifact browser state
+  const [artifactsPlanId, setArtifactsPlanId] = useState<number | null>(null);
 
   // ── Auto-expand first plan on load ────────────────────────────
   useEffect(() => {
@@ -313,7 +317,6 @@ export default function ConstructionPlansPage() {
     try {
       const newPlan = await createPlan({
         name: `New Plan ${plans.length + 1}`,
-        description: null,
         tree_json: { $TYPE: "ConstructionStepNode", creator_id: "root", successors: {} },
         plan_type: "plan",
         aeroplane_id: aeroplaneId,
@@ -610,6 +613,7 @@ export default function ConstructionPlansPage() {
                     onSaveAsTemplate={handleSaveAsTemplate}
                     onRename={handleRenamePlan}
                     onAddStep={handleAddStep}
+                    onShowArtifacts={(id) => setArtifactsPlanId(id)}
                   />
                 ))}
               </TreeCard>
@@ -706,6 +710,17 @@ export default function ConstructionPlansPage() {
           setExecutionDialogOpen(false);
           setExecutionResult(null);
         }}
+      />
+
+      <ArtifactBrowserDialog
+        open={artifactsPlanId != null}
+        planId={artifactsPlanId}
+        planName={
+          artifactsPlanId
+            ? plans.find((p) => p.id === artifactsPlanId)?.name ?? "plan"
+            : "plan"
+        }
+        onClose={() => setArtifactsPlanId(null)}
       />
     </>
   );
