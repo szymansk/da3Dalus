@@ -54,44 +54,52 @@ function ParamInput({
     );
   }
 
-  switch (param.type) {
-    case "bool":
-      return (
-        <input
-          type="checkbox"
-          checked={Boolean(value ?? param.default ?? false)}
-          onChange={(e) => onChange(param.name, e.target.checked)}
-          className="size-4"
-        />
-      );
+  // Determine the effective input type from the param.type string.
+  // Backend may report "Factor", "confloat(...)", "Annotated[float, ...]", etc.
+  const lowerType = param.type.toLowerCase();
+  const isFloat = lowerType === "float" || lowerType.startsWith("confloat")
+    || lowerType.startsWith("factor") || lowerType.startsWith("annotated[float");
+  const isInt = lowerType === "int" || lowerType.startsWith("nonnegativeint")
+    || lowerType.startsWith("conint") || lowerType.startsWith("annotated[int");
+  const isBool = lowerType === "bool";
 
-    case "int":
-    case "float":
-      return (
-        <input
-          type="number"
-          value={strValue}
-          onChange={(e) => {
-            const v = param.type === "int"
-              ? Number.parseInt(e.target.value, 10)
-              : Number.parseFloat(e.target.value);
-            onChange(param.name, Number.isNaN(v) ? null : v);
-          }}
-          step={param.type === "float" ? "any" : "1"}
-          className="rounded-lg border border-border bg-input px-3 py-1.5 text-[12px] text-foreground outline-none"
-        />
-      );
-
-    default:
-      return (
-        <input
-          type="text"
-          value={strValue}
-          onChange={(e) => onChange(param.name, e.target.value)}
-          className="rounded-lg border border-border bg-input px-3 py-1.5 text-[12px] text-foreground outline-none"
-        />
-      );
+  if (isBool) {
+    return (
+      <input
+        type="checkbox"
+        checked={Boolean(value ?? param.default ?? false)}
+        onChange={(e) => onChange(param.name, e.target.checked)}
+        className="size-4"
+      />
+    );
   }
+
+  if (isFloat || isInt) {
+    return (
+      <input
+        type="number"
+        value={strValue}
+        onChange={(e) => {
+          const v = isInt
+            ? Number.parseInt(e.target.value, 10)
+            : Number.parseFloat(e.target.value);
+          onChange(param.name, Number.isNaN(v) ? null : v);
+        }}
+        step={isFloat ? "any" : "1"}
+        className="rounded-lg border border-border bg-input px-3 py-1.5 text-[12px] text-foreground outline-none"
+      />
+    );
+  }
+
+  // Default: text input
+  return (
+    <input
+      type="text"
+      value={strValue}
+      onChange={(e) => onChange(param.name, e.target.value)}
+      className="rounded-lg border border-border bg-input px-3 py-1.5 text-[12px] text-foreground outline-none"
+    />
+  );
 }
 
 const LOGLEVEL_OPTIONS = [

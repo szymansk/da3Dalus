@@ -84,6 +84,36 @@ def _resolve_base_type(hint) -> type | None:
     return None
 
 
+def _normalize_numeric_string(value) -> str:
+    """Normalize a numeric string to use '.' as decimal separator.
+
+    Handles common locale formats:
+    - "0,1"         → "0.1"       (comma as decimal)
+    - "1.234,56"    → "1234.56"   (German: dot=thousands, comma=decimal)
+    - "1,234.56"    → "1234.56"   (English: comma=thousands, dot=decimal)
+    - "1234"        → "1234"      (no separator)
+    """
+    s = str(value).strip()
+    has_dot = "." in s
+    has_comma = "," in s
+
+    if has_dot and has_comma:
+        # Both present: the LAST separator is the decimal
+        dot_pos = s.rfind(".")
+        comma_pos = s.rfind(",")
+        if comma_pos > dot_pos:
+            # "1.234,56" → German format: dot is thousands, comma is decimal
+            s = s.replace(".", "").replace(",", ".")
+        else:
+            # "1,234.56" → English format: comma is thousands, dot is decimal
+            s = s.replace(",", "")
+    elif has_comma and not has_dot:
+        # Only comma: treat as decimal separator
+        s = s.replace(",", ".")
+
+    return s
+
+
 def _coerce_params(cls, params: dict) -> dict:
     """Coerce JSON values to match __init__ type annotations.
 
@@ -107,10 +137,9 @@ def _coerce_params(cls, params: dict) -> dict:
             continue
         try:
             if target is float and not isinstance(value, float):
-                # Handle locale comma as decimal separator (e.g. "0,1" → "0.1")
-                coerced[key] = float(str(value).replace(",", "."))
+                coerced[key] = float(_normalize_numeric_string(value))
             elif target is int and not isinstance(value, (int, bool)):
-                coerced[key] = int(float(str(value).replace(",", ".")))
+                coerced[key] = int(float(_normalize_numeric_string(value)))
             elif target is bool and not isinstance(value, bool):
                 coerced[key] = bool(value)
             elif target is str and not isinstance(value, str):
