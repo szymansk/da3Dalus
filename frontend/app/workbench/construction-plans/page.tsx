@@ -21,6 +21,7 @@ import {
   updateNodeAtPath,
   appendChildAtPath,
 } from "@/lib/planTreeUtils";
+import { validatePlan } from "@/lib/planValidation";
 import type { PlanStepNode } from "@/components/workbench/PlanTree";
 import type { CreatorInfo } from "@/hooks/useCreators";
 import { CreatorGallery } from "@/components/workbench/CreatorGallery";
@@ -137,6 +138,17 @@ export default function ConstructionPlansPage() {
     async (planId: number) => {
       if (!aeroplaneId) return;
       const planName = plans.find((p) => p.id === planId)?.name ?? `Plan ${planId}`;
+      // Validate using the active tree if it's the plan being executed
+      if (activePlanId === planId && activeTree) {
+        const validation = validatePlan(activeTree, creators);
+        if (!validation.valid) {
+          const summary = validation.issues
+            .map((i) => `• ${i.creatorId}: ${i.message}`)
+            .join("\n");
+          alert(`Validation failed for "${planName}":\n\n${summary}`);
+          return;
+        }
+      }
       setExecutionTitle(`Execute: ${planName}`);
       setExecutionResult(null);
       setExecutionDialogOpen(true);
@@ -154,7 +166,7 @@ export default function ConstructionPlansPage() {
         });
       }
     },
-    [aeroplaneId, plans],
+    [aeroplaneId, plans, activePlanId, activeTree, creators],
   );
 
   const handleSaveAsTemplate = useCallback(
@@ -322,6 +334,18 @@ export default function ConstructionPlansPage() {
       if (executeTemplateId == null) return;
       const tpl = templates.find((t) => t.id === executeTemplateId);
       const aero = aeroplanes.find((a) => a.id === selectedAeroplaneId);
+      // Validate using the loaded template tree
+      if (selectedTemplateId === executeTemplateId && templateTree) {
+        const validation = validatePlan(templateTree, creators);
+        if (!validation.valid) {
+          const summary = validation.issues
+            .map((i) => `• ${i.creatorId}: ${i.message}`)
+            .join("\n");
+          alert(`Validation failed for template "${tpl?.name ?? "template"}":\n\n${summary}`);
+          setExecuteTemplateId(null);
+          return;
+        }
+      }
       setExecutionTitle(`Execute: ${tpl?.name ?? "template"} on ${aero?.name ?? "aeroplane"}`);
       setExecutionResult(null);
       setExecutionDialogOpen(true);
@@ -340,7 +364,7 @@ export default function ConstructionPlansPage() {
         });
       }
     },
-    [executeTemplateId, templates, aeroplanes],
+    [executeTemplateId, templates, aeroplanes, selectedTemplateId, templateTree, creators],
   );
 
   // ── No-aeroplane guard ────────────────────────────────────────
