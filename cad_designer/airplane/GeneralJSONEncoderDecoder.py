@@ -84,6 +84,14 @@ def _resolve_base_type(hint) -> type | None:
     return None
 
 
+def _is_list_type(hint) -> bool:
+    """Check if a type hint represents a list type."""
+    if isinstance(hint, str):
+        return hint.lower().startswith("list[") or hint.lower() == "list"
+    origin = getattr(hint, "__origin__", None)
+    return origin is list
+
+
 def _normalize_numeric_string(value) -> str:
     """Normalize a numeric string to use '.' as decimal separator.
 
@@ -131,7 +139,19 @@ def _coerce_params(cls, params: dict) -> dict:
         if value is None or key not in raw_hints:
             coerced[key] = value
             continue
-        target = _resolve_base_type(raw_hints[key])
+        hint_str = raw_hints[key]
+
+        # Handle list types: if annotation says list[...] but value is a string,
+        # wrap it in a list. This prevents iterating over characters of a string
+        # when the code expects a list of shape keys.
+        if _is_list_type(hint_str) and isinstance(value, str):
+            coerced[key] = [value] if value.strip() else []
+            continue
+        if _is_list_type(hint_str) and not isinstance(value, list):
+            coerced[key] = value
+            continue
+
+        target = _resolve_base_type(hint_str)
         if target is None:
             coerced[key] = value
             continue
