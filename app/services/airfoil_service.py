@@ -70,11 +70,9 @@ def _parse_dat_file(path: Path) -> tuple[str, list[list[float]]]:
     if len(lines) < 3:
         raise ValueError(f"Too few lines ({len(lines)})")
 
-    # First line is the airfoil name
-    airfoil_name = lines[0].strip()
-    if not airfoil_name:
-        # Fall back to filename without extension
-        airfoil_name = path.stem
+    # Use the filename stem as the canonical name (e.g. "rg15" from "rg15.dat").
+    # This matches how the CQ plugin looks up airfoils (by file stem, not Selig header).
+    airfoil_name = path.stem
 
     # Parse coordinate lines
     coords = []

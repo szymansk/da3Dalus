@@ -1,6 +1,7 @@
 """Pydantic schemas for airfoil profiles."""
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -24,7 +25,7 @@ class AirfoilRead(BaseModel):
         description="List of [x, y] coordinate pairs",
     )
     source_file: Optional[str] = None
-    created_at: str
+    created_at: datetime
 
     model_config = {"from_attributes": True}
 
