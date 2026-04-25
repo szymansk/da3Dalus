@@ -1,12 +1,13 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Play, Plus, BookTemplate, Pencil, ChevronDown, ChevronRight } from "lucide-react";
 import { SimpleTreeRow } from "@/components/workbench/SimpleTreeRow";
 import type { PlanStepNode } from "@/components/workbench/PlanTree";
 import { resolveNodeShapes } from "@/lib/planTreeUtils";
 import type { PlanSummary } from "@/hooks/useConstructionPlans";
 import type { CreatorInfo } from "@/hooks/useCreators";
+import { InlineEditableName } from "./InlineEditableName";
 
 export function renderCreatorTree(
   node: PlanStepNode,
@@ -17,6 +18,7 @@ export function renderCreatorTree(
   onEdit: (planId: number, node: PlanStepNode, path: string) => void,
   creators: CreatorInfo[],
   path: string,
+  onAddSuccessor: (planId: number, parentPath: string) => void,
 ): ReactNode {
   const creatorKey = `plan-${planId}-${path}`;
   const isCreatorExpanded = expandedSet.has(creatorKey);
@@ -35,7 +37,7 @@ export function renderCreatorTree(
           chip: node.$TYPE.replace("Creator", ""),
           onEdit: () => onEdit(planId, node, path),
           editTitle: `Edit ${node.creator_id}`,
-          onAdd: () => alert(`Add successor to "${node.creator_id}"`),
+          onAdd: () => onAddSuccessor(planId, path),
           addTitle: `Add successor to ${node.creator_id}`,
         }}
         onToggle={() => toggleFn(creatorKey)}
@@ -81,6 +83,7 @@ export function renderCreatorTree(
               onEdit,
               creators,
               `${path}.${index}`,
+              onAddSuccessor,
             ),
           )}
         </>
@@ -100,7 +103,7 @@ interface PlanTreeSectionProps {
   onEditCreator: (planId: number, node: PlanStepNode, path: string) => void;
   onExecute: (planId: number) => void;
   onSaveAsTemplate: (planId: number) => void;
-  onRename: (planId: number, newName: string) => void;
+  onRename: (planId: number, newName: string) => Promise<void> | void;
   onAddStep: (planId: number, parentPath?: string) => void;
   hidePlanActions?: boolean;
 }
@@ -120,6 +123,7 @@ export function PlanTreeSection({
   onAddStep,
   hidePlanActions = false,
 }: Readonly<PlanTreeSectionProps>) {
+  const [renaming, setRenaming] = useState(false);
   return (
     <div className="flex flex-col">
       {/* Plan header row with action buttons */}
@@ -131,10 +135,17 @@ export function PlanTreeSection({
             <ChevronRight size={12} className="shrink-0 text-muted-foreground" />
           )}
         </button>
-        <span className="font-[family-name:var(--font-geist-sans)] text-[13px] font-medium text-foreground">
-          {plan.name}
-        </span>
-        {plan.step_count > 0 && (
+        <InlineEditableName
+          value={plan.name}
+          editing={renaming}
+          onCommit={async (newName) => {
+            setRenaming(false);
+            await onRename(plan.id, newName);
+          }}
+          onCancel={() => setRenaming(false)}
+          className="font-[family-name:var(--font-geist-sans)] text-[13px] font-medium text-foreground"
+        />
+        {plan.step_count > 0 && !renaming && (
           <span className="text-[11px] text-muted-foreground">({plan.step_count})</span>
         )}
         <span className="flex-1" />
@@ -155,7 +166,7 @@ export function PlanTreeSection({
               <BookTemplate size={10} />
             </button>
             <button
-              onClick={() => onRename(plan.id, plan.name)}
+              onClick={() => setRenaming(true)}
               title={`Rename ${plan.name}`}
               className="hidden size-5 items-center justify-center rounded-full text-muted-foreground hover:text-primary group-hover:flex"
             >
@@ -185,6 +196,7 @@ export function PlanTreeSection({
             onEditCreator,
             creators,
             `root.${index}`,
+            onAddStep,
           ),
         )}
 

@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { Hammer, Play, Plus, BookTemplate, PanelLeftOpen, PanelLeftClose } from "lucide-react";
 import { useCreators } from "@/hooks/useCreators";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
+import { useAeroplanes } from "@/hooks/useAeroplanes";
 import {
   useAeroplanePlans,
   useConstructionPlans,
@@ -18,6 +19,7 @@ import {
   toBackendTree,
   collectAvailableShapeKeys,
   updateNodeAtPath,
+  appendChildAtPath,
 } from "@/lib/planTreeUtils";
 import type { PlanStepNode } from "@/components/workbench/PlanTree";
 import type { CreatorInfo } from "@/hooks/useCreators";
@@ -26,6 +28,10 @@ import { TreeCard } from "@/components/workbench/TreeCard";
 import { PlanTreeSection } from "@/components/workbench/construction-plans/PlanTreeSection";
 import { TemplateModePanel } from "@/components/workbench/construction-plans/TemplateModePanel";
 import { EditParamsModal } from "@/components/workbench/construction-plans/EditParamsModal";
+import { AddStepDialog } from "@/components/workbench/construction-plans/AddStepDialog";
+import { AeroplanePickerDialog } from "@/components/workbench/construction-plans/AeroplanePickerDialog";
+import { ExecutionResultDialog } from "@/components/workbench/construction-plans/ExecutionResultDialog";
+import type { ExecutionResult } from "@/hooks/useConstructionPlans";
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -78,6 +84,20 @@ export default function ConstructionPlansPage() {
   const [editingCreatorInfo, setEditingCreatorInfo] = useState<CreatorInfo | null>(null);
   const [editingShapeKeys, setEditingShapeKeys] = useState<string[]>([]);
 
+  // Add-step modal state
+  const [addStepOpen, setAddStepOpen] = useState(false);
+  const [addStepPlanId, setAddStepPlanId] = useState<number | null>(null);
+  const [addStepParentPath, setAddStepParentPath] = useState<string | undefined>(undefined);
+
+  // Execute-template aeroplane picker state
+  const [executeTemplateId, setExecuteTemplateId] = useState<number | null>(null);
+  const { aeroplanes } = useAeroplanes();
+
+  // Execution result viewer state
+  const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
+  const [executionTitle, setExecutionTitle] = useState("");
+  const [executionDialogOpen, setExecutionDialogOpen] = useState(false);
+
   // ── Auto-expand first plan on load ────────────────────────────
   useEffect(() => {
     if (plans.length > 0 && expandedPlans.size === 0) {
@@ -116,21 +136,25 @@ export default function ConstructionPlansPage() {
   const handleExecutePlan = useCallback(
     async (planId: number) => {
       if (!aeroplaneId) return;
+      const planName = plans.find((p) => p.id === planId)?.name ?? `Plan ${planId}`;
+      setExecutionTitle(`Execute: ${planName}`);
+      setExecutionResult(null);
+      setExecutionDialogOpen(true);
       try {
         const result = await executePlan(aeroplaneId, planId);
-        if (result.status === "error") {
-          alert(`Execution failed: ${result.error}`);
-        } else {
-          alert(
-            `Execution succeeded! ${result.shape_keys?.length ?? 0} shapes produced in ${result.duration_ms}ms`,
-          );
-          // TODO: Open 3D viewer with result.tessellation
-        }
+        setExecutionResult(result);
       } catch (err) {
-        alert(`Execution error: ${err instanceof Error ? err.message : String(err)}`);
+        setExecutionResult({
+          status: "error",
+          shape_keys: [],
+          export_paths: [],
+          error: err instanceof Error ? err.message : String(err),
+          duration_ms: 0,
+          tessellation: null,
+        });
       }
     },
-    [aeroplaneId],
+    [aeroplaneId, plans],
   );
 
   const handleSaveAsTemplate = useCallback(
@@ -147,15 +171,78 @@ export default function ConstructionPlansPage() {
     [aeroplaneId, mutateTemplates],
   );
 
-  const handleRenamePlan = useCallback(async (planId: number, newName: string) => {
-    // For now, alert stub — inline rename UI comes later
-    alert(`Rename plan ${planId} to "${newName}"`);
+  const handleRenamePlan = useCallback(
+    async (planId: number, newName: string) => {
+      // Need the plan's tree_json to call updatePlan — fetch detail if not loaded
+      const isTemplate = templates.some((t) => t.id === planId);
+      const detail = isTemplate ? templateDetail : (activePlanDetail?.id === planId ? activePlanDetail : null);
+      if (!detail || detail.id !== planId) {
+        alert("Cannot rename: plan data not loaded. Expand the plan first.");
+        return;
+      }
+      try {
+        await updatePlan(planId, { name: newName, tree_json: detail.tree_json });
+        if (isTemplate) mutateTemplates();
+        else mutatePlans();
+        mutatePlanDetail();
+      } catch (err) {
+        alert(`Rename failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    },
+    [templates, activePlanDetail, templateDetail, mutatePlans, mutateTemplates, mutatePlanDetail],
+  );
+
+  const handleAddStep = useCallback((planId: number, parentPath?: string) => {
+    setAddStepPlanId(planId);
+    setAddStepParentPath(parentPath);
+    setAddStepOpen(true);
   }, []);
 
-  const handleAddStep = useCallback(async (planId: number, parentPath?: string) => {
-    // For now, alert stub — creator picker integration comes later
-    alert(`Add step to plan ${planId}${parentPath ? ` at ${parentPath}` : ""}`);
-  }, []);
+  const handleAddStepSelect = useCallback(
+    async (creator: CreatorInfo) => {
+      if (addStepPlanId == null) return;
+      const isTemplate = templates.some((t) => t.id === addStepPlanId);
+      const tree = isTemplate ? templateTree : activeTree;
+      const detail = isTemplate ? templateDetail : activePlanDetail;
+      if (!tree || !detail) {
+        throw new Error("Plan data not loaded");
+      }
+      // Build the new node from CreatorInfo. Use suggested_id if available, else class_name as id base.
+      const baseId = creator.suggested_id ?? creator.class_name.replace(/Creator$/, "").toLowerCase();
+      // Make the id unique by appending a counter if needed
+      const existingIds = new Set<string>();
+      function collectIds(node: PlanStepNode) {
+        existingIds.add(node.creator_id);
+        (node.successors ?? []).forEach(collectIds);
+      }
+      collectIds(tree);
+      let creatorId = baseId;
+      let counter = 1;
+      while (existingIds.has(creatorId)) {
+        creatorId = `${baseId}_${counter++}`;
+      }
+      const newNode: PlanStepNode = {
+        $TYPE: creator.class_name,
+        creator_id: creatorId,
+        loglevel: 50,
+        successors: [],
+      };
+      // Seed default values
+      for (const param of creator.parameters) {
+        if (param.default != null) {
+          (newNode as Record<string, unknown>)[param.name] = param.default;
+        }
+      }
+      const parentPath = addStepParentPath ?? "root";
+      const updatedTree = appendChildAtPath(tree, parentPath, newNode);
+      const backendTree = toBackendTree(updatedTree);
+      await updatePlan(addStepPlanId, { name: detail.name, tree_json: backendTree });
+      if (isTemplate) mutateTemplates();
+      else mutatePlans();
+      mutatePlanDetail();
+    },
+    [addStepPlanId, addStepParentPath, templates, templateTree, activeTree, templateDetail, activePlanDetail, mutatePlans, mutateTemplates, mutatePlanDetail],
+  );
 
   const handleEditCreator = useCallback(
     (planId: number, node: PlanStepNode, path: string) => {
@@ -226,23 +313,35 @@ export default function ConstructionPlansPage() {
     setSelectedTemplateId(id);
   }, []);
 
-  const handleExecuteTemplate = useCallback(
-    async (templateId: number) => {
-      // Alert stub — needs aeroplane picker dialog
-      alert(`Execute template ${templateId}: not yet implemented (needs aeroplane picker)`);
+  const handleExecuteTemplate = useCallback((templateId: number) => {
+    setExecuteTemplateId(templateId);
+  }, []);
+
+  const handleExecuteTemplateOnAeroplane = useCallback(
+    async (selectedAeroplaneId: string) => {
+      if (executeTemplateId == null) return;
+      const tpl = templates.find((t) => t.id === executeTemplateId);
+      const aero = aeroplanes.find((a) => a.id === selectedAeroplaneId);
+      setExecutionTitle(`Execute: ${tpl?.name ?? "template"} on ${aero?.name ?? "aeroplane"}`);
+      setExecutionResult(null);
+      setExecutionDialogOpen(true);
+      setExecuteTemplateId(null);
+      try {
+        const result = await executePlan(selectedAeroplaneId, executeTemplateId);
+        setExecutionResult(result);
+      } catch (err) {
+        setExecutionResult({
+          status: "error",
+          shape_keys: [],
+          export_paths: [],
+          error: err instanceof Error ? err.message : String(err),
+          duration_ms: 0,
+          tessellation: null,
+        });
+      }
     },
-    [],
+    [executeTemplateId, templates, aeroplanes],
   );
-
-  const handleRenameTemplate = useCallback(async (templateId: number, name: string) => {
-    // Alert stub
-    alert(`Rename template ${templateId} to "${name}"`);
-  }, []);
-
-  const handleAddStepToTemplate = useCallback(async (templateId: number, parentPath?: string) => {
-    // Alert stub
-    alert(`Add step to template ${templateId}${parentPath ? ` at ${parentPath}` : ""}`);
-  }, []);
 
   // ── No-aeroplane guard ────────────────────────────────────────
 
@@ -348,7 +447,30 @@ export default function ConstructionPlansPage() {
                       <Plus size={12} />
                     </button>
                     <button
-                      onClick={() => alert("Execute All: would execute all plans")}
+                      onClick={async () => {
+                        if (!aeroplaneId || plans.length === 0) return;
+                        setExecutionTitle(`Execute all plans (${plans.length})`);
+                        setExecutionResult(null);
+                        setExecutionDialogOpen(true);
+                        try {
+                          // Execute sequentially; show result of last successful execution
+                          let lastResult: ExecutionResult | null = null;
+                          for (const p of plans) {
+                            lastResult = await executePlan(aeroplaneId, p.id);
+                            if (lastResult.status === "error") break;
+                          }
+                          setExecutionResult(lastResult);
+                        } catch (err) {
+                          setExecutionResult({
+                            status: "error",
+                            shape_keys: [],
+                            export_paths: [],
+                            error: err instanceof Error ? err.message : String(err),
+                            duration_ms: 0,
+                            tessellation: null,
+                          });
+                        }
+                      }}
                       title="Execute all plans"
                       className="flex size-6 items-center justify-center rounded-lg text-primary hover:text-primary/70"
                     >
@@ -389,8 +511,8 @@ export default function ConstructionPlansPage() {
                 onToggleCreator={toggleTemplateCreator}
                 onEditCreator={handleEditCreator}
                 onExecuteTemplate={handleExecuteTemplate}
-                onRenameTemplate={handleRenameTemplate}
-                onAddStep={handleAddStepToTemplate}
+                onRenameTemplate={handleRenamePlan}
+                onAddStep={handleAddStep}
                 treeWide={treeWide}
                 onToggleWide={() => setTreeWide((w) => !w)}
               />
@@ -431,6 +553,42 @@ export default function ConstructionPlansPage() {
           setEditingPath(null);
         }}
         onSave={handleEditSave}
+      />
+
+      <AddStepDialog
+        open={addStepOpen}
+        creators={creators}
+        parentLabel={
+          addStepPlanId
+            ? plans.find((p) => p.id === addStepPlanId)?.name ??
+              templates.find((t) => t.id === addStepPlanId)?.name ??
+              "plan"
+            : "plan"
+        }
+        onClose={() => {
+          setAddStepOpen(false);
+          setAddStepPlanId(null);
+          setAddStepParentPath(undefined);
+        }}
+        onSelect={handleAddStepSelect}
+      />
+
+      <AeroplanePickerDialog
+        open={executeTemplateId != null}
+        aeroplanes={aeroplanes}
+        title="Select aeroplane to execute against"
+        onClose={() => setExecuteTemplateId(null)}
+        onSelect={handleExecuteTemplateOnAeroplane}
+      />
+
+      <ExecutionResultDialog
+        open={executionDialogOpen}
+        title={executionTitle}
+        result={executionResult}
+        onClose={() => {
+          setExecutionDialogOpen(false);
+          setExecutionResult(null);
+        }}
       />
     </>
   );
