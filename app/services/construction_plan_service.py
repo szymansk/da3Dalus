@@ -564,14 +564,14 @@ def _rewrite_export_paths(tree_json: dict, artifact_dir) -> dict:
                 fp = creator.get("file_path")
                 if isinstance(fp, str) and not os.path.isabs(fp):
                     abs_path = artifact / fp
-                    abs_path.mkdir(parents=True, exist_ok=True)
+                    abs_path.mkdir(parents=True, exist_ok=True)  # file_path is a directory for exporters
                     creator["file_path"] = str(abs_path)
         # Also check if this node itself is an export creator (flat format)
         if node_type in _EXPORT_CREATOR_TYPES:
             fp = node.get("file_path")
             if isinstance(fp, str) and not os.path.isabs(fp):
                 abs_path = artifact / fp
-                abs_path.mkdir(parents=True, exist_ok=True)
+                abs_path.mkdir(parents=True, exist_ok=True)  # file_path is a directory for exporters
                 node["file_path"] = str(abs_path)
         # Recurse into successors
         successors = node.get("successors")
@@ -707,14 +707,22 @@ def execute_plan_streaming(
     from app.services.artifact_service import create_execution_dir
     from app.converters.model_schema_converters import wing_model_to_wing_config
 
-    # Load plan
-    plan = _get_plan_or_raise(db, plan_id)
+    # Load plan — wrap setup in try/except to yield SSE errors instead of crashing
+    try:
+        plan = _get_plan_or_raise(db, plan_id)
+    except (NotFoundError, ValidationError) as exc:
+        yield f"event: error\ndata: {json.dumps({'error': str(exc)})}\n\n"
+        return
     if plan.plan_type == "template":
         yield f"event: error\ndata: {json.dumps({'error': 'Templates cannot be executed'})}\n\n"
         return
 
     effective_aeroplane_id = plan.aeroplane_id or request.aeroplane_id
-    aeroplane = get_aeroplane_or_raise(db, effective_aeroplane_id)
+    try:
+        aeroplane = get_aeroplane_or_raise(db, effective_aeroplane_id)
+    except NotFoundError as exc:
+        yield f"event: error\ndata: {json.dumps({'error': str(exc)})}\n\n"
+        return
 
     wing_config: dict = {}
     for wing in aeroplane.wings:
@@ -853,11 +861,11 @@ def _collect_shapes(structure: dict) -> tuple[list, list[str]]:
 def _extract_solids(shapes: list) -> list:
     """Safely extract solids from each shape, skipping failures."""
     solids = []
-    for s in shapes:
+    for i, s in enumerate(shapes):
         try:
             solids.extend(s.val().Solids())
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Failed to extract solids from shape %d: %s", i, exc)
     return solids
 
 

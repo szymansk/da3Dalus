@@ -49,7 +49,11 @@ def create_execution_dir(aeroplane_id: str, plan_id: int) -> tuple[str, Path]:
     execution_id = new_execution_id()
     relative = Path(aeroplane_id) / str(plan_id) / execution_id
     abs_path = _ensure_within_base(settings.ARTIFACTS_BASE_DIR / relative)
-    abs_path.mkdir(parents=True, exist_ok=True)
+    try:
+        abs_path.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        logger.exception("Failed to create artifact dir %s", abs_path)
+        raise InternalError(message=f"Cannot create artifact directory: {exc}") from exc
     logger.info("Created artifact dir: %s", abs_path)
     return execution_id, abs_path
 

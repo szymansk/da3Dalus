@@ -166,7 +166,12 @@ def _coerce_params(cls, params: dict) -> dict:
                 coerced[key] = str(value)
             else:
                 coerced[key] = value
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as exc:
+            import logging as _log
+            _log.warning(
+                "Type coercion failed for %s.%s: value=%r, expected=%s (%s)",
+                cls.__name__, key, value, target.__name__ if target else "?", exc,
+            )
             coerced[key] = value
     return coerced
 

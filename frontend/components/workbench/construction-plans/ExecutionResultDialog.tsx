@@ -41,15 +41,18 @@ export function ExecutionResultDialog({
     const es = new EventSource(streamUrl);
     eventSourceRef.current = es;
 
+    let retryCount = 0;
+
     es.addEventListener("shape", (e) => {
+      retryCount = 0; // reset on successful event
       try {
         const data = JSON.parse(e.data);
         if (data.tessellation) {
           setStreamedParts((prev) => [...prev, data.tessellation]);
           setInfo(data.name ?? "");
         }
-      } catch {
-        // Ignore malformed events
+      } catch (err) {
+        console.warn("[ExecutionStream] Malformed shape event:", err);
       }
     });
 
@@ -58,27 +61,33 @@ export function ExecutionResultDialog({
         const data = JSON.parse(e.data);
         setStatus("success");
         setInfo(`${data.shape_keys?.length ?? 0} shapes · ${data.duration_ms} ms`);
-        // If the final tessellation is available, use it as the last part
         if (data.tessellation) {
           setStreamedParts([data.tessellation]);
         }
-      } catch {
+      } catch (err) {
+        console.error("[ExecutionStream] Failed to parse complete event:", err);
         setStatus("success");
+        setInfo("Completed (response parsing failed)");
       }
       es.close();
     });
 
     es.addEventListener("error", (e) => {
-      // SSE error event can be a real error or just connection close
       if (es.readyState === EventSource.CLOSED) return;
       try {
         const data = JSON.parse((e as MessageEvent).data ?? "{}");
         setError(data.error ?? "Execution failed");
+        setStatus("error");
+        es.close();
       } catch {
-        setError("Connection lost during execution");
+        // Native EventSource error (network/connection issue)
+        retryCount++;
+        if (retryCount > 3) {
+          setError("Cannot connect to execution server. Please check that the backend is running.");
+          setStatus("error");
+          es.close();
+        }
       }
-      setStatus("error");
-      es.close();
     });
 
     return () => {

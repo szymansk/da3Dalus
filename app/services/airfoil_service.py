@@ -4,7 +4,6 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-import numpy as np
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -44,7 +43,7 @@ def get_airfoil(db: Session, name: str) -> AirfoilRead:
         raise InternalError(message=f"Database error: {e}") from e
 
 
-def get_airfoil_coordinates(db: Session, name: str) -> list[tuple[float, float]]:
+def get_airfoil_coordinates(db: Session, name: str) -> list[tuple[float, float]] | None:
     """Get airfoil coordinates as list of (x, y) tuples.
 
     Used by the CadQuery airfoil plugin as a DB-backed alternative
@@ -101,6 +100,14 @@ def import_directory(db: Session, directory: str) -> AirfoilImportResult:
     - Malformed files are skipped with a warning.
     """
     dir_path = Path(directory).resolve()
+    # Security: restrict import to the project's components directory
+    project_root = Path(__file__).resolve().parent.parent.parent
+    allowed_base = project_root / "components"
+    try:
+        dir_path.relative_to(allowed_base)
+    except ValueError:
+        from app.core.exceptions import ValidationError as VE
+        raise VE(message=f"Import directory must be within {allowed_base}")
     if not dir_path.is_dir():
         raise NotFoundError(entity="Directory", resource_id=directory)
 
