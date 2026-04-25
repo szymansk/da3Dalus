@@ -272,3 +272,20 @@ export function fromBackendTree(
     successors: children,
   };
 }
+
+export interface ResolvedShapes {
+  inputs: string[];
+  outputs: string[];
+}
+
+export function resolveNodeShapes(
+  node: PlanStepNode,
+  creators: CreatorInfo[],
+): ResolvedShapes {
+  const info = creators.find(c => c.class_name === node.$TYPE);
+  if (!info) return { inputs: [], outputs: [] };
+  return {
+    inputs: info.parameters.filter(p => p.is_shape_ref).map(p => p.name),
+    outputs: info.outputs.map(o => o.key),
+  };
+}
