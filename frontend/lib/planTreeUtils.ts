@@ -294,7 +294,7 @@ export function buildStepNode(creator: CreatorInfo, tree: PlanStepNode): PlanSte
   const base = creator.suggested_id ?? creator.class_name.replace(/Creator$/, "").toLowerCase();
   const node: PlanStepNode = {
     $TYPE: creator.class_name,
-    creator_id: uniqueCreatorId(tree, base),
+    creator_id: base, // placeholder — resolved after defaults are set
     loglevel: 50,
     successors: [],
   };
@@ -303,6 +303,14 @@ export function buildStepNode(creator: CreatorInfo, tree: PlanStepNode): PlanSte
       (node as Record<string, unknown>)[param.name] = param.default;
     }
   }
+  // Resolve {placeholder} in creator_id using the seeded default values
+  const nodeRecord = node as Record<string, unknown>;
+  node.creator_id = base.replace(/\{(\w+)\}/g, (_match, param) => {
+    const val = nodeRecord[param];
+    return typeof val === "string" ? val : typeof val === "number" ? String(val) : `{${param}}`;
+  });
+  // Ensure uniqueness after resolution
+  node.creator_id = uniqueCreatorId(tree, node.creator_id);
   return node;
 }
 
