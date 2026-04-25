@@ -13,9 +13,10 @@ import {
   ArrowUp,
   Search,
   X,
+  PanelLeftOpen,
+  PanelLeftClose,
 } from "lucide-react";
 import { useDialog } from "@/hooks/useDialog";
-import { WorkbenchTwoPanel } from "@/components/workbench/WorkbenchTwoPanel";
 import { CreatorGallery } from "@/components/workbench/CreatorGallery";
 import { CreatorParameterForm } from "@/components/workbench/CreatorParameterForm";
 import { useCreators, type CreatorInfo } from "@/hooks/useCreators";
@@ -692,6 +693,9 @@ export default function ConstructionPlansPage() {
   // View mode toggle
   const [viewMode, setViewMode] = useState<"plans" | "templates">("plans");
 
+  // Tree panel width: normal (360px) or wide (2/3 of screen)
+  const [treeWide, setTreeWide] = useState(false);
+
   // Plan mode state
   const [expandedPlans, setExpandedPlans] = useState<Set<number>>(new Set([1, 4, 5]));
   const [expandedCreators, setExpandedCreators] = useState<Set<string>>(
@@ -826,11 +830,16 @@ export default function ConstructionPlansPage() {
 
   return (
     <>
-      <WorkbenchTwoPanel>
+      <div className="flex h-full min-h-0 flex-1 gap-4 overflow-hidden">
         {/* ─── Left panel: plan/template trees ─── */}
-        <div className="flex h-full flex-col gap-3 overflow-hidden">
-          {/* Mode toggle */}
-          <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1 self-start">
+        <div
+          className="flex min-h-0 shrink-0 flex-col overflow-hidden transition-all duration-300"
+          style={{ width: treeWide ? "66%" : 360, minWidth: treeWide ? "66%" : 360 }}
+        >
+          <div className="flex h-full flex-col gap-3 overflow-hidden">
+          {/* Mode toggle + expand/collapse */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
             <button
               onClick={() => setViewMode("plans")}
               className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] ${
@@ -852,6 +861,14 @@ export default function ConstructionPlansPage() {
             >
               <BookTemplate size={12} />
               Templates
+            </button>
+            </div>
+            <button
+              onClick={() => setTreeWide((w) => !w)}
+              title={treeWide ? "Collapse tree panel" : "Expand tree panel"}
+              className="flex size-7 items-center justify-center rounded-xl border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent"
+            >
+              {treeWide ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
             </button>
           </div>
 
@@ -1001,10 +1018,11 @@ export default function ConstructionPlansPage() {
               )}
             </div>
           )}
+          </div>
         </div>
 
         {/* ─── Right panel: Creator Gallery ─── */}
-        <div className="flex min-h-0 w-full flex-1 flex-col gap-4 overflow-y-auto">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto">
           <div className="flex items-center gap-2.5">
             <Hammer className="size-5 text-primary" />
             <h1 className="font-[family-name:var(--font-jetbrains-mono)] text-[20px] text-foreground">
@@ -1021,7 +1039,7 @@ export default function ConstructionPlansPage() {
             }
           />
         </div>
-      </WorkbenchTwoPanel>
+      </div>
 
       {/* Parameter edit modal */}
       <EditParamsModal
