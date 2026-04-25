@@ -25,28 +25,90 @@ class GeneralJSONEncoder(JSONEncoder):
         return dic
 
 
+def _resolve_base_type(hint) -> type | None:
+    """Resolve a type hint to its base Python type (float, int, bool, str).
+
+    Handles: plain types, NewType wrappers, string annotations,
+    Annotated types (e.g. Annotated[float, Field(...)]), and
+    pydantic constrained types (confloat, etc.).
+    """
+    import typing
+
+    # If hint is a string (from `from __future__ import annotations`),
+    # try to identify the base type from the string
+    if isinstance(hint, str):
+        hint_lower = hint.lower()
+        if hint_lower == "float" or hint_lower.startswith("confloat"):
+            return float
+        if hint_lower == "int" or hint_lower.startswith("nonnegativeint") or hint_lower.startswith("conint"):
+            return int
+        if hint_lower == "bool":
+            return bool
+        if hint_lower == "str":
+            return str
+        if hint_lower in ("creatorid", "shapeid"):
+            return str
+        # Annotated[float, ...] or Factor (which is confloat)
+        if "factor" in hint_lower:
+            return float
+        if hint_lower.startswith("annotated["):
+            # Extract base type from "Annotated[float, ...]"
+            inner = hint_lower.split("[", 1)[1].split(",", 1)[0].strip()
+            if inner == "float":
+                return float
+            if inner == "int":
+                return int
+            if inner == "str":
+                return str
+            if inner == "bool":
+                return bool
+        return None
+
+    # Unwrap NewType
+    supertype = getattr(hint, "__supertype__", None)
+    if supertype:
+        return supertype
+
+    # Unwrap Annotated
+    origin = getattr(hint, "__origin__", None)
+    if origin is not None:
+        # typing.Annotated has __origin__ = the base type (in Python 3.11+)
+        # For Annotated[float, ...], __args__[0] is float
+        args = getattr(hint, "__args__", None)
+        if args:
+            return _resolve_base_type(args[0])
+
+    if hint in (float, int, bool, str):
+        return hint
+
+    return None
+
+
 def _coerce_params(cls, params: dict) -> dict:
     """Coerce JSON values to match __init__ type annotations.
 
     Prevents TypeError when JSON stores numeric values as strings
-    (e.g. "0.1" instead of 0.1). Handles NewType wrappers (ShapeId, CreatorId).
+    (e.g. "0.1" instead of 0.1). Handles NewType wrappers, string
+    annotations from `from __future__ import annotations`, and
+    Annotated types.
     """
     try:
-        hints = {k: v for k, v in cls.__init__.__annotations__.items() if k != "return"}
+        raw_hints = {k: v for k, v in cls.__init__.__annotations__.items() if k != "return"}
     except AttributeError:
         return params
     coerced = {}
     for key, value in params.items():
-        if value is None or key not in hints:
+        if value is None or key not in raw_hints:
             coerced[key] = value
             continue
-        hint = hints[key]
+        target = _resolve_base_type(raw_hints[key])
+        if target is None:
+            coerced[key] = value
+            continue
         try:
-            # Unwrap NewType (ShapeId → str, CreatorId → str)
-            target = getattr(hint, "__supertype__", None) or hint
             if target is float and not isinstance(value, float):
                 coerced[key] = float(value)
-            elif target is int and not isinstance(value, int):
+            elif target is int and not isinstance(value, (int, bool)):
                 coerced[key] = int(value)
             elif target is bool and not isinstance(value, bool):
                 coerced[key] = bool(value)
