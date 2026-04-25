@@ -31,10 +31,10 @@ export function ArtifactBrowserDialog({
   onClose,
 }: Readonly<ArtifactBrowserDialogProps>) {
   const { dialogRef, handleClose } = useDialog(open, onClose);
-  const { executions, isLoading: execLoading, mutate: mutateExecutions } =
+  const { executions, error: execError, isLoading: execLoading, mutate: mutateExecutions } =
     usePlanArtifacts(open ? planId : null);
   const [selectedExecution, setSelectedExecution] = useState<string | null>(null);
-  const { files, isLoading: filesLoading, mutate: mutateFiles } =
+  const { files, error: filesError, isLoading: filesLoading, mutate: mutateFiles } =
     useArtifactFiles(open ? planId : null, selectedExecution);
 
   // Auto-select most recent execution when list loads
@@ -97,7 +97,13 @@ export function ArtifactBrowserDialog({
               {execLoading && (
                 <p className="px-2 text-[12px] text-muted-foreground">Loading...</p>
               )}
-              {!execLoading && executions.length === 0 && (
+              {execError && (
+                <div className="px-2 py-1">
+                  <p className="text-[12px] text-destructive">Failed to load executions</p>
+                  <button onClick={() => mutateExecutions()} className="text-[11px] text-primary hover:underline">Retry</button>
+                </div>
+              )}
+              {!execLoading && !execError && executions.length === 0 && (
                 <p className="px-2 text-[12px] text-muted-foreground">No executions yet</p>
               )}
               {executions.map((e) => (
@@ -127,10 +133,16 @@ export function ArtifactBrowserDialog({
                   Select an execution from the left to view files.
                 </p>
               )}
-              {selectedExecution && filesLoading && (
+              {selectedExecution && filesError && (
+                <div>
+                  <p className="text-[13px] text-destructive">Failed to load files</p>
+                  <button onClick={() => mutateFiles()} className="text-[12px] text-primary hover:underline">Retry</button>
+                </div>
+              )}
+              {selectedExecution && !filesError && filesLoading && (
                 <p className="text-[13px] text-muted-foreground">Loading files...</p>
               )}
-              {selectedExecution && !filesLoading && files.length === 0 && (
+              {selectedExecution && !filesError && !filesLoading && files.length === 0 && (
                 <p className="text-[13px] text-muted-foreground">
                   No files in this execution directory.
                 </p>

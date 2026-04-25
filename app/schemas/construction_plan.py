@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -104,7 +104,7 @@ class ExecuteRequest(BaseModel):
 class ExecutionResult(BaseModel):
     """Response from plan execution."""
 
-    status: str = Field(description="'success' or 'error'")
+    status: Literal["success", "error"] = Field(description="Execution status")
     shape_keys: list[str] = Field(default_factory=list)
     export_paths: list[str] = Field(default_factory=list)
     error: Optional[str] = None

@@ -59,8 +59,12 @@ function validateNode(
     }
   }
 
-  // Add this node's outputs to the available set, then walk successors
-  const ownOutputs = info.outputs.map((o) => o.key);
+  // Add this node's outputs to the available set, then walk successors.
+  // Substitute {id} with the node's creator_id (matching collectAvailableShapeKeys).
+  const stepId = node.creator_id;
+  const ownOutputs = info.outputs.length
+    ? info.outputs.map((o) => o.key.replaceAll("{id}", stepId))
+    : [stepId];
   const nextAvailable = new Set([...availableShapes, ...ownOutputs]);
   (node.successors ?? []).forEach((s, i) => {
     validateNode(s, `${path}.${i}`, nextAvailable, creators, issues);

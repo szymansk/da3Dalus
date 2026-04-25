@@ -273,6 +273,37 @@ export function fromBackendTree(
   };
 }
 
+/** Build a unique creator_id from a base string, avoiding collisions with existing tree IDs. */
+function uniqueCreatorId(tree: PlanStepNode, base: string): string {
+  const existing = new Set<string>();
+  function walk(n: PlanStepNode) {
+    existing.add(n.creator_id);
+    (n.successors ?? []).forEach(walk);
+  }
+  walk(tree);
+  if (!existing.has(base)) return base;
+  let i = 1;
+  while (existing.has(`${base}_${i}`)) i++;
+  return `${base}_${i}`;
+}
+
+/** Build a new PlanStepNode from CreatorInfo, with a unique creator_id and seeded defaults. */
+export function buildStepNode(creator: CreatorInfo, tree: PlanStepNode): PlanStepNode {
+  const base = creator.suggested_id ?? creator.class_name.replace(/Creator$/, "").toLowerCase();
+  const node: PlanStepNode = {
+    $TYPE: creator.class_name,
+    creator_id: uniqueCreatorId(tree, base),
+    loglevel: 50,
+    successors: [],
+  };
+  for (const param of creator.parameters) {
+    if (param.default != null) {
+      (node as Record<string, unknown>)[param.name] = param.default;
+    }
+  }
+  return node;
+}
+
 export interface ResolvedShapes {
   inputs: string[];
   outputs: string[];

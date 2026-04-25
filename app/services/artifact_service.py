@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from app.core.config import settings
-from app.core.exceptions import NotFoundError, ValidationError
+from app.core.exceptions import InternalError, NotFoundError, ValidationError
 from app.schemas.construction_plan import ArtifactDirectory, ArtifactFile
 
 logger = logging.getLogger(__name__)
@@ -62,46 +62,54 @@ def list_executions(plan_id: int) -> list[ArtifactDirectory]:
     base = settings.ARTIFACTS_BASE_DIR
     if not base.exists():
         return []
-    out: list[ArtifactDirectory] = []
-    for aero_dir in base.iterdir():
-        if not aero_dir.is_dir():
-            continue
-        plan_dir = aero_dir / str(plan_id)
-        if not plan_dir.is_dir():
-            continue
-        for exec_dir in plan_dir.iterdir():
-            if not exec_dir.is_dir():
+    try:
+        out: list[ArtifactDirectory] = []
+        for aero_dir in base.iterdir():
+            if not aero_dir.is_dir():
                 continue
-            stat = exec_dir.stat()
-            file_count = sum(1 for _ in exec_dir.rglob("*") if _.is_file())
-            out.append(
-                ArtifactDirectory(
-                    execution_id=exec_dir.name,
-                    plan_id=plan_id,
-                    aeroplane_id=aero_dir.name,
-                    created=datetime.fromtimestamp(stat.st_ctime, UTC).isoformat(),
-                    file_count=file_count,
+            plan_dir = aero_dir / str(plan_id)
+            if not plan_dir.is_dir():
+                continue
+            for exec_dir in plan_dir.iterdir():
+                if not exec_dir.is_dir():
+                    continue
+                stat = exec_dir.stat()
+                file_count = sum(1 for _ in exec_dir.rglob("*") if _.is_file())
+                out.append(
+                    ArtifactDirectory(
+                        execution_id=exec_dir.name,
+                        plan_id=plan_id,
+                        aeroplane_id=aero_dir.name,
+                        created=datetime.fromtimestamp(stat.st_ctime, UTC).isoformat(),
+                        file_count=file_count,
+                    )
                 )
-            )
-    out.sort(key=lambda d: d.execution_id, reverse=True)
-    return out
+        out.sort(key=lambda d: d.execution_id, reverse=True)
+        return out
+    except OSError as exc:
+        logger.exception("Failed to list executions for plan %s", plan_id)
+        raise InternalError(message="Cannot read artifact directory") from exc
 
 
 def list_files(plan_id: int, execution_id: str) -> list[ArtifactFile]:
     """List files in an execution's artifact directory."""
     exec_dir = _resolve_execution_dir(plan_id, execution_id)
-    files: list[ArtifactFile] = []
-    for entry in sorted(exec_dir.iterdir()):
-        stat = entry.stat()
-        files.append(
-            ArtifactFile(
-                name=entry.name,
-                is_dir=entry.is_dir(),
-                size_bytes=stat.st_size if entry.is_file() else 0,
-                modified=datetime.fromtimestamp(stat.st_mtime, UTC).isoformat(),
+    try:
+        files: list[ArtifactFile] = []
+        for entry in sorted(exec_dir.iterdir()):
+            stat = entry.stat()
+            files.append(
+                ArtifactFile(
+                    name=entry.name,
+                    is_dir=entry.is_dir(),
+                    size_bytes=stat.st_size if entry.is_file() else 0,
+                    modified=datetime.fromtimestamp(stat.st_mtime, UTC).isoformat(),
+                )
             )
-        )
-    return files
+        return files
+    except OSError as exc:
+        logger.exception("Failed to list files in %s", exec_dir)
+        raise InternalError(message="Cannot read artifact files") from exc
 
 
 def get_file_path(plan_id: int, execution_id: str, filename: str) -> Path:
@@ -109,6 +117,9 @@ def get_file_path(plan_id: int, execution_id: str, filename: str) -> Path:
     exec_dir = _resolve_execution_dir(plan_id, execution_id)
     candidate = exec_dir / filename
     resolved = _ensure_within_base(candidate)
+    # Reject symlinks to prevent indirect escapes
+    if candidate.is_symlink():
+        raise ValidationError(message=f"Symbolic links are not allowed: {filename}")
     if not resolved.is_file():
         raise NotFoundError(message=f"File not found: {filename}")
     return resolved
@@ -117,7 +128,11 @@ def get_file_path(plan_id: int, execution_id: str, filename: str) -> Path:
 def delete_file(plan_id: int, execution_id: str, filename: str) -> None:
     """Delete a file inside an execution dir."""
     path = get_file_path(plan_id, execution_id, filename)
-    path.unlink()
+    try:
+        path.unlink()
+    except OSError as exc:
+        logger.exception("Failed to delete artifact file %s", path)
+        raise InternalError(message=f"Cannot delete file: {filename}") from exc
     logger.info("Deleted artifact file: %s", path)
 
 

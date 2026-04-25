@@ -27,6 +27,7 @@ import {
   collectAvailableShapeKeys,
   updateNodeAtPath,
   appendChildAtPath,
+  buildStepNode,
 } from "@/lib/planTreeUtils";
 import { validatePlan } from "@/lib/planValidation";
 import type { PlanStepNode } from "@/components/workbench/PlanTree";
@@ -174,6 +175,8 @@ export default function ConstructionPlansPage() {
           error: err instanceof Error ? err.message : String(err),
           duration_ms: 0,
           tessellation: null,
+          artifact_dir: null,
+          execution_id: null,
         });
       }
     },
@@ -221,50 +224,31 @@ export default function ConstructionPlansPage() {
     setAddStepOpen(true);
   }, []);
 
-  const handleAddStepSelect = useCallback(
-    async (creator: CreatorInfo) => {
-      if (addStepPlanId == null) return;
-      const isTemplate = templates.some((t) => t.id === addStepPlanId);
+  /** Shared helper: add a creator as a child node at a given path in a plan/template tree. */
+  const addCreatorToPlan = useCallback(
+    async (planId: number, parentPath: string, creator: CreatorInfo) => {
+      const isTemplate = templates.some((t) => t.id === planId);
       const tree = isTemplate ? templateTree : activeTree;
       const detail = isTemplate ? templateDetail : activePlanDetail;
       if (!tree || !detail) {
-        throw new Error("Plan data not loaded");
+        throw new Error("Plan data not loaded. Expand the plan first.");
       }
-      // Build the new node from CreatorInfo. Use suggested_id if available, else class_name as id base.
-      const baseId = creator.suggested_id ?? creator.class_name.replace(/Creator$/, "").toLowerCase();
-      // Make the id unique by appending a counter if needed
-      const existingIds = new Set<string>();
-      function collectIds(node: PlanStepNode) {
-        existingIds.add(node.creator_id);
-        (node.successors ?? []).forEach(collectIds);
-      }
-      collectIds(tree);
-      let creatorId = baseId;
-      let counter = 1;
-      while (existingIds.has(creatorId)) {
-        creatorId = `${baseId}_${counter++}`;
-      }
-      const newNode: PlanStepNode = {
-        $TYPE: creator.class_name,
-        creator_id: creatorId,
-        loglevel: 50,
-        successors: [],
-      };
-      // Seed default values
-      for (const param of creator.parameters) {
-        if (param.default != null) {
-          (newNode as Record<string, unknown>)[param.name] = param.default;
-        }
-      }
-      const parentPath = addStepParentPath ?? "root";
+      const newNode = buildStepNode(creator, tree);
       const updatedTree = appendChildAtPath(tree, parentPath, newNode);
-      const backendTree = toBackendTree(updatedTree);
-      await updatePlan(addStepPlanId, { name: detail.name, tree_json: backendTree });
+      await updatePlan(planId, { name: detail.name, tree_json: toBackendTree(updatedTree) });
       if (isTemplate) mutateTemplates();
       else mutatePlans();
       mutatePlanDetail();
     },
-    [addStepPlanId, addStepParentPath, templates, templateTree, activeTree, templateDetail, activePlanDetail, mutatePlans, mutateTemplates, mutatePlanDetail],
+    [templates, templateTree, activeTree, templateDetail, activePlanDetail, mutatePlans, mutateTemplates, mutatePlanDetail],
+  );
+
+  const handleAddStepSelect = useCallback(
+    async (creator: CreatorInfo) => {
+      if (addStepPlanId == null) return;
+      await addCreatorToPlan(addStepPlanId, addStepParentPath ?? "root", creator);
+    },
+    [addStepPlanId, addStepParentPath, addCreatorToPlan],
   );
 
   const handleEditCreator = useCallback(
@@ -371,6 +355,8 @@ export default function ConstructionPlansPage() {
           error: err instanceof Error ? err.message : String(err),
           duration_ms: 0,
           tessellation: null,
+          artifact_dir: null,
+          execution_id: null,
         });
       }
     },
@@ -408,56 +394,15 @@ export default function ConstructionPlansPage() {
           }
         }
         if (!targetPlanId) return;
-        // Reuse handleAddStepSelect logic by setting state then calling
-        setAddStepPlanId(targetPlanId);
-        setAddStepParentPath(targetPath);
-        // Wait for state, then call the select handler directly
         try {
-          // Need a microtask delay so state is current — but we have the values already
-          // so just inline the logic
-          const isTemplate = templates.some((t) => t.id === targetPlanId);
-          const tree = isTemplate ? templateTree : activeTree;
-          const detail = isTemplate ? templateDetail : activePlanDetail;
-          if (!tree || !detail) {
-            alert("Plan data not loaded — expand the plan first before dropping.");
-            return;
-          }
-          const baseId = creator.suggested_id ?? creator.class_name.replace(/Creator$/, "").toLowerCase();
-          const existingIds = new Set<string>();
-          function collectIds(node: PlanStepNode) {
-            existingIds.add(node.creator_id);
-            (node.successors ?? []).forEach(collectIds);
-          }
-          collectIds(tree);
-          let creatorId = baseId;
-          let counter = 1;
-          while (existingIds.has(creatorId)) {
-            creatorId = `${baseId}_${counter++}`;
-          }
-          const newNode: PlanStepNode = {
-            $TYPE: creator.class_name,
-            creator_id: creatorId,
-            loglevel: 50,
-            successors: [],
-          };
-          for (const param of creator.parameters) {
-            if (param.default != null) {
-              (newNode as Record<string, unknown>)[param.name] = param.default;
-            }
-          }
-          const updatedTree = appendChildAtPath(tree, targetPath, newNode);
-          const backendTree = toBackendTree(updatedTree);
-          await updatePlan(targetPlanId, { name: detail.name, tree_json: backendTree });
-          if (isTemplate) mutateTemplates();
-          else mutatePlans();
-          mutatePlanDetail();
+          await addCreatorToPlan(targetPlanId, targetPath, creator);
         } catch (err) {
           alert(`Drop failed: ${err instanceof Error ? err.message : String(err)}`);
         }
       }
       // Tree-to-tree reorder/reparent could go here in a future iteration
     },
-    [templates, templateTree, activeTree, templateDetail, activePlanDetail, mutatePlans, mutateTemplates, mutatePlanDetail],
+    [addCreatorToPlan],
   );
 
   // ── No-aeroplane guard ────────────────────────────────────────
@@ -586,6 +531,8 @@ export default function ConstructionPlansPage() {
                             error: err instanceof Error ? err.message : String(err),
                             duration_ms: 0,
                             tessellation: null,
+                            artifact_dir: null,
+                            execution_id: null,
                           });
                         }
                       }}

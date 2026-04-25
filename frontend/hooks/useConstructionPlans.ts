@@ -31,8 +31,8 @@ export interface ExecutionResult {
   error: string | null;
   duration_ms: number;
   tessellation: Record<string, unknown> | null;
-  artifact_dir?: string | null;
-  execution_id?: string | null;
+  artifact_dir: string | null;
+  execution_id: string | null;
 }
 
 export interface ArtifactDirectory {
