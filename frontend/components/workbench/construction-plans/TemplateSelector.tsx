@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { ChevronDown, Search } from "lucide-react";
-import type { MockTemplate } from "./types";
+import type { PlanSummary } from "@/hooks/useConstructionPlans";
 
 interface TemplateSelectorProps {
-  templates: MockTemplate[];
+  templates: PlanSummary[];
   selectedId: number | null;
   onSelect: (id: number) => void;
 }
@@ -63,7 +63,7 @@ export function TemplateSelector({ templates, selectedId, onSelect }: Readonly<T
               >
                 <span className="font-[family-name:var(--font-jetbrains-mono)]">{t.name}</span>
                 <span className="ml-2 text-[10px] text-muted-foreground">
-                  {t.creators.length} steps
+                  {t.step_count} steps
                 </span>
               </button>
             ))

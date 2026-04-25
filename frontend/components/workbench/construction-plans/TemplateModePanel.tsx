@@ -4,15 +4,22 @@ import { Play, Pencil, Plus, PanelLeftOpen, PanelLeftClose, ChevronDown } from "
 import { TreeCard } from "@/components/workbench/TreeCard";
 import { TemplateSelector } from "./TemplateSelector";
 import { renderCreatorTree } from "./PlanTreeSection";
-import type { MockCreatorNode, MockTemplate } from "./types";
+import type { PlanSummary } from "@/hooks/useConstructionPlans";
+import type { PlanStepNode } from "@/components/workbench/PlanTree";
+import type { CreatorInfo } from "@/hooks/useCreators";
 
 interface TemplateModePanelProps {
-  templates: MockTemplate[];
+  templates: PlanSummary[];
   selectedTemplateId: number | null;
+  selectedTemplateTree: PlanStepNode | null;
+  creators: CreatorInfo[];
   onSelectTemplate: (id: number) => void;
   expandedCreators: Set<string>;
   onToggleCreator: (key: string) => void;
-  onEditCreator: (planId: number, creator: MockCreatorNode) => void;
+  onEditCreator: (planId: number, node: PlanStepNode, path: string) => void;
+  onExecuteTemplate: (templateId: number) => void;
+  onRenameTemplate: (templateId: number, newName: string) => void;
+  onAddStep: (templateId: number, parentPath?: string) => void;
   treeWide: boolean;
   onToggleWide: () => void;
 }
@@ -20,10 +27,15 @@ interface TemplateModePanelProps {
 export function TemplateModePanel({
   templates,
   selectedTemplateId,
+  selectedTemplateTree,
+  creators,
   onSelectTemplate,
   expandedCreators,
   onToggleCreator,
   onEditCreator,
+  onExecuteTemplate,
+  onRenameTemplate,
+  onAddStep,
   treeWide,
   onToggleWide,
 }: Readonly<TemplateModePanelProps>) {
@@ -40,11 +52,11 @@ export function TemplateModePanel({
       {selectedTemplate ? (
         <TreeCard
           title={selectedTemplate.name}
-          badge={`${selectedTemplate.creators.length} steps`}
+          badge={`${selectedTemplate.step_count} steps`}
           actions={
             <>
               <button
-                onClick={() => alert("Play Template: would open aeroplane selector")}
+                onClick={() => onExecuteTemplate(selectedTemplate.id)}
                 title="Execute template against an aeroplane"
                 className="flex size-6 items-center justify-center rounded-lg text-primary hover:text-primary/70"
               >
@@ -68,14 +80,14 @@ export function TemplateModePanel({
             </span>
             <span className="flex-1" />
             <button
-              onClick={() => alert(`Rename: "${selectedTemplate.name}"`)}
+              onClick={() => onRenameTemplate(selectedTemplate.id, selectedTemplate.name)}
               title={`Rename ${selectedTemplate.name}`}
               className="hidden size-5 items-center justify-center rounded-full text-muted-foreground hover:text-primary group-hover:flex"
             >
               <Pencil size={10} />
             </button>
             <button
-              onClick={() => alert(`Add step to "${selectedTemplate.name}"`)}
+              onClick={() => onAddStep(selectedTemplate.id)}
               title={`Add step to ${selectedTemplate.name}`}
               className="hidden size-5 items-center justify-center rounded-full text-muted-foreground hover:text-primary group-hover:flex"
             >
@@ -83,15 +95,23 @@ export function TemplateModePanel({
             </button>
           </div>
 
-          {selectedTemplate.creators.map((creator) =>
-            renderCreatorTree(
-              creator,
-              selectedTemplate.id,
-              1,
-              expandedCreators,
-              onToggleCreator,
-              onEditCreator,
-            ),
+          {selectedTemplateTree == null ? (
+            <div className="flex items-center justify-center py-4">
+              <p className="text-[12px] text-muted-foreground">Loading steps…</p>
+            </div>
+          ) : (
+            (selectedTemplateTree.successors ?? []).map((node, i) =>
+              renderCreatorTree(
+                node,
+                selectedTemplate.id,
+                1,
+                expandedCreators,
+                onToggleCreator,
+                onEditCreator,
+                creators,
+                `root.${i}`,
+              ),
+            )
           )}
         </TreeCard>
       ) : (

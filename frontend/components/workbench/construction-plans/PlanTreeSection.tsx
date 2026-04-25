@@ -3,56 +3,85 @@
 import type { ReactNode } from "react";
 import { Play, Plus, BookTemplate, Pencil, ChevronDown, ChevronRight } from "lucide-react";
 import { SimpleTreeRow } from "@/components/workbench/SimpleTreeRow";
-import type { MockCreatorNode, MockPlan, MockTemplate } from "./types";
+import type { PlanStepNode } from "@/components/workbench/PlanTree";
+import { resolveNodeShapes } from "@/lib/planTreeUtils";
+import type { PlanSummary } from "@/hooks/useConstructionPlans";
+import type { CreatorInfo } from "@/hooks/useCreators";
 
 export function renderCreatorTree(
-  creator: MockCreatorNode,
+  node: PlanStepNode,
   planId: number,
   level: number,
   expandedSet: Set<string>,
   toggleFn: (key: string) => void,
-  onEdit: (planId: number, creator: MockCreatorNode) => void,
+  onEdit: (planId: number, node: PlanStepNode, path: string) => void,
+  creators: CreatorInfo[],
+  path: string,
 ): ReactNode {
-  const creatorKey = `plan-${planId}-${creator.creatorId}`;
+  const creatorKey = `plan-${planId}-${path}`;
   const isCreatorExpanded = expandedSet.has(creatorKey);
-  const hasChildren = creator.shapes.length > 0 || (creator.successors ?? []).length > 0;
+  const { inputs, outputs } = resolveNodeShapes(node, creators);
+  const hasChildren = inputs.length > 0 || outputs.length > 0 || (node.successors ?? []).length > 0;
 
   return (
     <div key={creatorKey} className="flex flex-col">
       <SimpleTreeRow
         node={{
           id: creatorKey,
-          label: creator.creatorId,
+          label: node.creator_id,
           level,
           leaf: !hasChildren,
           expanded: isCreatorExpanded,
-          chip: creator.creatorClassName.replace("Creator", ""),
-          onEdit: () => onEdit(planId, creator),
-          editTitle: `Edit ${creator.creatorId}`,
-          onAdd: () => alert(`Add successor to "${creator.creatorId}"`),
-          addTitle: `Add successor to ${creator.creatorId}`,
+          chip: node.$TYPE.replace("Creator", ""),
+          onEdit: () => onEdit(planId, node, path),
+          editTitle: `Edit ${node.creator_id}`,
+          onAdd: () => alert(`Add successor to "${node.creator_id}"`),
+          addTitle: `Add successor to ${node.creator_id}`,
         }}
         onToggle={() => toggleFn(creatorKey)}
       />
 
       {hasChildren && isCreatorExpanded && (
         <>
-          {creator.shapes.map((shape) => (
+          {inputs.map((name) => (
             <SimpleTreeRow
-              key={`${creatorKey}-${shape.direction}-${shape.name}`}
+              key={`${creatorKey}-input-${name}`}
               node={{
-                id: `${creatorKey}-${shape.direction}-${shape.name}`,
-                label: `${shape.direction === "input" ? "\u2B07" : "\u2B06"} ${shape.name}`,
+                id: `${creatorKey}-input-${name}`,
+                label: `\u2B07 ${name}`,
                 level: level + 1,
                 leaf: true,
                 muted: true,
-                annotation: shape.direction,
+                annotation: "input",
               }}
               onToggle={() => {}}
             />
           ))}
-          {(creator.successors ?? []).map((successor) =>
-            renderCreatorTree(successor, planId, level + 1, expandedSet, toggleFn, onEdit),
+          {outputs.map((name) => (
+            <SimpleTreeRow
+              key={`${creatorKey}-output-${name}`}
+              node={{
+                id: `${creatorKey}-output-${name}`,
+                label: `\u2B06 ${name}`,
+                level: level + 1,
+                leaf: true,
+                muted: true,
+                annotation: "output",
+              }}
+              onToggle={() => {}}
+            />
+          ))}
+          {(node.successors ?? []).map((successor, index) =>
+            renderCreatorTree(
+              successor,
+              planId,
+              level + 1,
+              expandedSet,
+              toggleFn,
+              onEdit,
+              creators,
+              `${path}.${index}`,
+            ),
           )}
         </>
       )}
@@ -61,22 +90,34 @@ export function renderCreatorTree(
 }
 
 interface PlanTreeSectionProps {
-  plan: MockPlan | MockTemplate;
+  plan: PlanSummary;
+  treeJson: PlanStepNode | null;
+  creators: CreatorInfo[];
   expanded: boolean;
   onToggle: () => void;
   expandedCreators: Set<string>;
   onToggleCreator: (key: string) => void;
-  onEditCreator: (planId: number, creator: MockCreatorNode) => void;
+  onEditCreator: (planId: number, node: PlanStepNode, path: string) => void;
+  onExecute: (planId: number) => void;
+  onSaveAsTemplate: (planId: number) => void;
+  onRename: (planId: number, newName: string) => void;
+  onAddStep: (planId: number, parentPath?: string) => void;
   hidePlanActions?: boolean;
 }
 
 export function PlanTreeSection({
   plan,
+  treeJson,
+  creators,
   expanded,
   onToggle,
   expandedCreators,
   onToggleCreator,
   onEditCreator,
+  onExecute,
+  onSaveAsTemplate,
+  onRename,
+  onAddStep,
   hidePlanActions = false,
 }: Readonly<PlanTreeSectionProps>) {
   return (
@@ -93,18 +134,21 @@ export function PlanTreeSection({
         <span className="font-[family-name:var(--font-geist-sans)] text-[13px] font-medium text-foreground">
           {plan.name}
         </span>
+        {plan.step_count > 0 && (
+          <span className="text-[11px] text-muted-foreground">({plan.step_count})</span>
+        )}
         <span className="flex-1" />
         {!hidePlanActions && (
           <>
             <button
-              onClick={() => alert(`Play: would execute "${plan.name}"`)}
+              onClick={() => onExecute(plan.id)}
               title={`Execute ${plan.name}`}
               className="hidden size-5 items-center justify-center rounded-full text-muted-foreground hover:text-primary group-hover:flex"
             >
               <Play size={10} />
             </button>
             <button
-              onClick={() => alert(`Save as Template: "${plan.name}"`)}
+              onClick={() => onSaveAsTemplate(plan.id)}
               title={`Save ${plan.name} as template`}
               className="hidden size-5 items-center justify-center rounded-full text-muted-foreground hover:text-primary group-hover:flex"
             >
@@ -118,7 +162,7 @@ export function PlanTreeSection({
               <Pencil size={10} />
             </button>
             <button
-              onClick={() => alert(`Add step to "${plan.name}"`)}
+              onClick={() => onAddStep(plan.id)}
               title={`Add step to ${plan.name}`}
               className="hidden size-5 items-center justify-center rounded-full text-muted-foreground hover:text-primary group-hover:flex"
             >
@@ -128,10 +172,20 @@ export function PlanTreeSection({
         )}
       </div>
 
-      {/* Creator nodes (when plan is expanded) */}
+      {/* Creator nodes (when plan is expanded and tree is loaded) */}
       {expanded &&
-        plan.creators.map((creator) =>
-          renderCreatorTree(creator, plan.id, 1, expandedCreators, onToggleCreator, onEditCreator),
+        treeJson &&
+        (treeJson.successors ?? []).map((node, index) =>
+          renderCreatorTree(
+            node,
+            plan.id,
+            1,
+            expandedCreators,
+            onToggleCreator,
+            onEditCreator,
+            creators,
+            `root.${index}`,
+          ),
         )}
 
       {/* Separator between plans (hidden in template mode) */}

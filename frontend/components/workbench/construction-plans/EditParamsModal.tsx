@@ -5,47 +5,77 @@ import { ArrowDown, ArrowUp, X } from "lucide-react";
 import { useDialog } from "@/hooks/useDialog";
 import { CreatorParameterForm } from "@/components/workbench/CreatorParameterForm";
 import type { CreatorInfo } from "@/hooks/useCreators";
-import type { MockCreatorNode } from "./types";
+import type { PlanStepNode } from "@/components/workbench/PlanTree";
+import { resolveNodeShapes } from "@/lib/planTreeUtils";
 
 interface EditParamsModalProps {
   open: boolean;
-  creator: MockCreatorNode | null;
+  node: PlanStepNode | null;
+  nodePath: string | null;
   creatorInfo: CreatorInfo | null;
+  availableShapeKeys: string[];
   onClose: () => void;
+  onSave: (path: string, updatedParams: Record<string, unknown>) => void;
+}
+
+function extractValues(
+  node: PlanStepNode,
+  creatorInfo: CreatorInfo,
+): Record<string, unknown> {
+  const vals: Record<string, unknown> = {};
+  for (const param of creatorInfo.parameters) {
+    if (param.name in node) vals[param.name] = (node as Record<string, unknown>)[param.name];
+    else if (param.default != null) vals[param.name] = param.default;
+  }
+  // Always include loglevel (universal param)
+  if ("loglevel" in node) vals.loglevel = (node as Record<string, unknown>).loglevel;
+  return vals;
 }
 
 export function EditParamsModal({
   open,
-  creator,
+  node,
+  nodePath,
   creatorInfo,
+  availableShapeKeys,
   onClose,
+  onSave,
 }: Readonly<EditParamsModalProps>) {
   const { dialogRef, handleClose } = useDialog(open, onClose);
   const [values, setValues] = useState<Record<string, unknown>>({});
 
-  // Reset values when a different creator is opened (or the same one reopened)
-  const [lastCreatorId, setLastCreatorId] = useState<string | null>(null);
-  if (open && creator && creator.creatorId !== lastCreatorId) {
-    setLastCreatorId(creator.creatorId);
-    setValues(creator.mockParams ?? {});
+  // Reset values when a different node is opened (track by creator_id)
+  const [lastNodeId, setLastNodeId] = useState<string | null>(null);
+  if (open && node && node.creator_id !== lastNodeId) {
+    setLastNodeId(node.creator_id);
+    setValues(creatorInfo ? extractValues(node, creatorInfo) : {});
   }
-  if (!open && lastCreatorId !== null) {
-    setLastCreatorId(null);
+  if (!open && lastNodeId !== null) {
+    setLastNodeId(null);
   }
+
+  const shapes = node && creatorInfo ? resolveNodeShapes(node, [creatorInfo]) : { inputs: [], outputs: [] };
+
+  const handleSave = () => {
+    if (nodePath != null) {
+      onSave(nodePath, values);
+    }
+    onClose();
+  };
 
   return (
     <dialog
       ref={dialogRef}
       className="m-auto bg-transparent backdrop:bg-black/60"
       onClose={handleClose}
-      aria-label={creator ? `Edit ${creator.creatorId}` : "Edit Parameters"}
+      aria-label={node ? `Edit ${node.creator_id}` : "Edit Parameters"}
     >
-      {open && creator && (
+      {open && node && (
         <div className="flex max-h-[85vh] w-[520px] flex-col rounded-2xl border border-border bg-card shadow-2xl">
           {/* Header */}
           <div className="flex items-center gap-3 border-b border-border px-6 py-4">
             <span className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
-              Edit {creator.creatorId}
+              Edit {node.creator_id}
             </span>
             <span className="flex-1" />
             <button
@@ -58,23 +88,29 @@ export function EditParamsModal({
 
           {/* Body */}
           <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-5">
-            {creator.shapes.length > 0 && (
+            {(shapes.inputs.length > 0 || shapes.outputs.length > 0) && (
               <div className="flex flex-col gap-1 rounded-xl border border-border bg-card-muted/30 p-3">
                 <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
                   Shapes
                 </span>
-                {creator.shapes.map((s) => (
+                {shapes.inputs.map((name) => (
                   <div
-                    key={`${s.direction}-${s.name}`}
+                    key={`input-${name}`}
                     className="flex items-center gap-2 text-[12px] text-muted-foreground"
                   >
-                    {s.direction === "input" ? (
-                      <ArrowDown size={10} className="text-blue-400" />
-                    ) : (
-                      <ArrowUp size={10} className="text-emerald-400" />
-                    )}
-                    <span className="font-[family-name:var(--font-jetbrains-mono)]">{s.name}</span>
-                    <span className="text-[10px] text-subtle-foreground">({s.direction})</span>
+                    <ArrowDown size={10} className="text-blue-400" />
+                    <span className="font-[family-name:var(--font-jetbrains-mono)]">{name}</span>
+                    <span className="text-[10px] text-subtle-foreground">(input)</span>
+                  </div>
+                ))}
+                {shapes.outputs.map((key) => (
+                  <div
+                    key={`output-${key}`}
+                    className="flex items-center gap-2 text-[12px] text-muted-foreground"
+                  >
+                    <ArrowUp size={10} className="text-emerald-400" />
+                    <span className="font-[family-name:var(--font-jetbrains-mono)]">{key}</span>
+                    <span className="text-[10px] text-subtle-foreground">(output)</span>
                   </div>
                 ))}
               </div>
@@ -87,13 +123,11 @@ export function EditParamsModal({
                 params={creatorInfo.parameters}
                 values={values}
                 onChange={(key, value) => setValues((prev) => ({ ...prev, [key]: value }))}
-                availableShapeKeys={creator.shapes
-                  .filter((s) => s.direction === "output")
-                  .map((s) => s.name)}
+                availableShapeKeys={availableShapeKeys}
               />
             ) : (
               <p className="text-[12px] text-muted-foreground">
-                Creator &quot;{creator.creatorClassName}&quot; not found in catalog.
+                Creator &quot;{node.$TYPE}&quot; not found in catalog.
               </p>
             )}
           </div>
@@ -107,7 +141,7 @@ export function EditParamsModal({
               Cancel
             </button>
             <button
-              onClick={onClose}
+              onClick={handleSave}
               className="rounded-full bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90"
             >
               Save
