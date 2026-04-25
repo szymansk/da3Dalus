@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Hammer, Play, BookTemplate, PanelLeftOpen, PanelLeftClose } from "lucide-react";
+import { Hammer, Play, Plus, BookTemplate, PanelLeftOpen, PanelLeftClose } from "lucide-react";
 import { useCreators } from "@/hooks/useCreators";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import {
   useAeroplanePlans,
   useConstructionPlans,
   useConstructionPlan,
+  createPlan,
   updatePlan,
   executePlan,
   toTemplate,
@@ -201,6 +202,24 @@ export default function ConstructionPlansPage() {
     [editingPlanId, editingNode, templates, templateTree, activeTree, templateDetail, activePlanDetail, mutatePlanDetail, mutatePlans, mutateTemplates],
   );
 
+  const handleCreatePlan = useCallback(async () => {
+    if (!aeroplaneId) return;
+    try {
+      const newPlan = await createPlan({
+        name: `New Plan ${plans.length + 1}`,
+        description: null,
+        tree_json: { $TYPE: "ConstructionStepNode", creator_id: "root", successors: {} },
+        plan_type: "plan",
+        aeroplane_id: aeroplaneId,
+      });
+      mutatePlans();
+      setExpandedPlans((prev) => new Set(prev).add(newPlan.id));
+      setActivePlanId(newPlan.id);
+    } catch (err) {
+      alert(`Create plan failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }, [aeroplaneId, plans.length, mutatePlans]);
+
   // ── Template callbacks ────────────────────────────────────────
 
   const handleSelectTemplate = useCallback((id: number) => {
@@ -321,6 +340,13 @@ export default function ConstructionPlansPage() {
                 badge={`${totalSteps} steps`}
                 actions={
                   <>
+                    <button
+                      onClick={handleCreatePlan}
+                      title="Create new plan"
+                      className="flex size-6 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                    >
+                      <Plus size={12} />
+                    </button>
                     <button
                       onClick={() => alert("Execute All: would execute all plans")}
                       title="Execute all plans"
