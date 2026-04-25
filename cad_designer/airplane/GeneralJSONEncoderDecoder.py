@@ -107,9 +107,10 @@ def _coerce_params(cls, params: dict) -> dict:
             continue
         try:
             if target is float and not isinstance(value, float):
-                coerced[key] = float(value)
+                # Handle locale comma as decimal separator (e.g. "0,1" → "0.1")
+                coerced[key] = float(str(value).replace(",", "."))
             elif target is int and not isinstance(value, (int, bool)):
-                coerced[key] = int(value)
+                coerced[key] = int(float(str(value).replace(",", ".")))
             elif target is bool and not isinstance(value, bool):
                 coerced[key] = bool(value)
             elif target is str and not isinstance(value, str):
