@@ -206,27 +206,28 @@ async def list_artifact_files(
 
 
 @router.get(
-    "/construction-plans/{plan_id}/artifacts/{execution_id}/{filename}",
+    "/construction-plans/{plan_id}/artifacts/{execution_id}/{filename:path}",
     tags=["construction-plans"],
     operation_id="download_artifact_file",
 )
 async def download_artifact_file(
     plan_id: Annotated[int, Path(...)],
     execution_id: Annotated[str, Path(...)],
-    filename: Annotated[str, Path(...)],
+    filename: str,
 ):
-    """Download a single artifact file."""
+    """Download a single artifact file (supports subdirectory paths like wing/file.stl)."""
     from fastapi.responses import FileResponse
+    from pathlib import Path as PathLib
 
     try:
         path = artifact_service.get_file_path(plan_id, execution_id, filename)
-        return FileResponse(path, filename=filename)
+        return FileResponse(path, filename=PathLib(filename).name)
     except ServiceException as exc:
         _handle_service_error(exc)
 
 
 @router.delete(
-    "/construction-plans/{plan_id}/artifacts/{execution_id}/{filename}",
+    "/construction-plans/{plan_id}/artifacts/{execution_id}/{filename:path}",
     status_code=status.HTTP_204_NO_CONTENT,
     tags=["construction-plans"],
     operation_id="delete_artifact_file",

@@ -98,7 +98,9 @@ export function artifactDownloadUrl(
   executionId: string,
   filename: string,
 ): string {
-  return `${API_BASE}/construction-plans/${planId}/artifacts/${executionId}/${encodeURIComponent(filename)}`;
+  // Encode each path segment individually to preserve slashes for subdirectory paths
+  const encodedPath = filename.split("/").map(encodeURIComponent).join("/");
+  return `${API_BASE}/construction-plans/${planId}/artifacts/${executionId}/${encodedPath}`;
 }
 
 export function useConstructionPlans(planType?: string) {

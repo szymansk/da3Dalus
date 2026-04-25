@@ -195,7 +195,7 @@ export function ArtifactBrowserDialog({
                       )}
                       {!f.is_dir && planId && (
                         <a
-                          href={artifactDownloadUrl(planId, selectedExecution, f.name)}
+                          href={artifactDownloadUrl(planId, selectedExecution, currentPath ? `${currentPath}/${f.name}` : f.name)}
                           download={f.name}
                           title="Download"
                           className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:text-primary"
