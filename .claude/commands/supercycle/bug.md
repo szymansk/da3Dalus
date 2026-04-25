@@ -265,9 +265,12 @@ Phase 3 (ticket creation).
    and link, root cause summary, test name, fix description
 2. Add label `has-pr`
 
-### After Phase 5a (review dispatched):
+### After Phase 5a (review complete):
 
-Rotate status to `status:in-review`.
+1. Post a comment with header `## 🏷️ has-review` containing the
+   review verdict, findings summary, and next steps
+2. Add label `has-review`
+3. Rotate status to `status:in-review`
 
 ### After Phase 5b (merged):
 
