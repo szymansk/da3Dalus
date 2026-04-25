@@ -4,9 +4,7 @@ from __future__ import annotations
 import inspect
 import json
 import logging
-import os
 import re
-import threading
 import time
 from typing import Any
 
@@ -537,13 +535,6 @@ def _collect_creators(cls: type, result: list[CreatorInfo], seen: set[str]) -> N
 # ── Execute ─────────────────────────────────────────────────────
 
 
-# Process-wide lock guarding os.chdir during plan execution. Without this,
-# concurrent execute_plan calls would write to each other's artifact dirs
-# because chdir mutates global process state. Long term: pass artifact_dir
-# explicitly to creators instead of relying on cwd.
-_EXECUTE_CHDIR_LOCK = threading.Lock()
-
-
 def execute_plan(
     db: Session,
     plan_id: int,
@@ -604,32 +595,24 @@ def execute_plan(
             message=f"Failed to decode construction plan: {exc}",
         ) from exc
 
-    # Execute (chdir into artifact_dir so creators using relative paths land there).
-    # Guarded by a process-wide lock because os.chdir mutates global state.
-    with _EXECUTE_CHDIR_LOCK:
-        cwd_before = os.getcwd()
-        try:
-            os.chdir(artifact_dir)
-            structure = root_node.create_shape()
-            duration_ms = int((time.monotonic() - t0) * 1000)
-        except Exception as exc:
-            duration_ms = int((time.monotonic() - t0) * 1000)
-            logger.exception(
-                "Plan execution failed: plan_id=%s aeroplane_id=%s execution_id=%s",
-                plan_id, effective_aeroplane_id, execution_id,
-            )
-            return ExecutionResult(
-                status="error",
-                error=f"{type(exc).__name__}: {exc}",
-                duration_ms=duration_ms,
-                artifact_dir=str(artifact_dir),
-                execution_id=execution_id,
-            )
-        finally:
-            try:
-                os.chdir(cwd_before)
-            except OSError:
-                logger.exception("Failed to restore cwd to %s", cwd_before)
+    # Execute. Resources like airfoils are loaded from the DB (not filesystem),
+    # so we do NOT chdir — cwd stays at the project root.
+    try:
+        structure = root_node.create_shape()
+        duration_ms = int((time.monotonic() - t0) * 1000)
+    except Exception as exc:
+        duration_ms = int((time.monotonic() - t0) * 1000)
+        logger.exception(
+            "Plan execution failed: plan_id=%s aeroplane_id=%s execution_id=%s",
+            plan_id, effective_aeroplane_id, execution_id,
+        )
+        return ExecutionResult(
+            status="error",
+            error=f"{type(exc).__name__}: {exc}",
+            duration_ms=duration_ms,
+            artifact_dir=str(artifact_dir),
+            execution_id=execution_id,
+        )
 
     shape_keys = list(structure.keys()) if isinstance(structure, dict) else []
 

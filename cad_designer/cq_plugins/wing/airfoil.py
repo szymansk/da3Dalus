@@ -8,7 +8,35 @@ import unittest
 import urllib3
 import shapely.geometry as shp
 
+def _try_db_lookup(file_path: str) -> list[tuple[float, float]] | None:
+    """Try to load airfoil coordinates from the database.
+
+    Extracts the airfoil name from the file path (e.g. "rg15" from
+    "./components/airfoils/rg15.dat") and queries the DB.
+    Returns None if not found or DB unavailable.
+    """
+    try:
+        from pathlib import Path as _Path
+        name = _Path(file_path).stem
+        from app.db.session import SessionLocal
+        from app.services.airfoil_service import get_airfoil_coordinates
+        db = SessionLocal()
+        try:
+            coords = get_airfoil_coordinates(db, name)
+            return coords
+        finally:
+            db.close()
+    except Exception:
+        return None
+
+
 def read_airfoil_file(file_path):
+    # Try database first (avoids cwd dependency)
+    db_coords = _try_db_lookup(file_path)
+    if db_coords is not None:
+        return db_coords
+
+    # Fallback to filesystem
     if urllib3.util.parse_url(file_path).scheme is not None:
         afpts = np.loadtxt(StringIO(str(requests.get(file_path).content, encoding='utf-8')), skiprows=1)
     else:
