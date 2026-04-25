@@ -3,6 +3,7 @@ import logging
 from cadquery import Workplane
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
+from cad_designer.airplane.types import ShapeId
 
 class SimpleOffsetShapeCreator(AbstractShapeCreator):
     """Creates a uniformly offset version of a shape, enlarging or shrinking it.
@@ -19,7 +20,7 @@ class SimpleOffsetShapeCreator(AbstractShapeCreator):
 
     def __init__(self, creator_id: str,
                  offset: float,
-                 shape: str = None,
+                 shape: ShapeId = None,
                  loglevel=logging.INFO):
         self.offset = offset
         self.shape = shape

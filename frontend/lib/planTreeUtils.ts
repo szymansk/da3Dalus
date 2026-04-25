@@ -314,6 +314,11 @@ export interface ResolvedShapes {
   outputs: string[];
 }
 
+/** Check if a CreatorParam type is a shape reference (ShapeId or list[ShapeId]). */
+export function isShapeRefType(type: string): boolean {
+  return type === "ShapeId" || type === "list[ShapeId]";
+}
+
 export function resolveNodeShapes(
   node: PlanStepNode,
   creators: CreatorInfo[],
@@ -321,12 +326,29 @@ export function resolveNodeShapes(
   const info = creators.find(c => c.class_name === node.$TYPE);
   if (!info) return { inputs: [], outputs: [] };
   const stepId = node.creator_id;
-  return {
-    inputs: info.parameters.filter(p => p.is_shape_ref).map(p => {
-      const val = (node as Record<string, unknown>)[p.name];
+
+  const inputs: ResolvedShapeInput[] = [];
+  for (const p of info.parameters) {
+    if (!isShapeRefType(p.type)) continue;
+    const val = (node as Record<string, unknown>)[p.name];
+    if (p.type === "list[ShapeId]" && Array.isArray(val)) {
+      // Multi-shape ref: each element is a separate input
+      for (const v of val) {
+        const bound = typeof v === "string" && v.trim() !== "" ? v : null;
+        inputs.push({ paramName: p.name, boundValue: bound });
+      }
+      // If list is empty, show one unbound entry
+      if (val.length === 0) {
+        inputs.push({ paramName: p.name, boundValue: null });
+      }
+    } else {
       const bound = typeof val === "string" && val.trim() !== "" ? val : null;
-      return { paramName: p.name, boundValue: bound };
-    }),
+      inputs.push({ paramName: p.name, boundValue: bound });
+    }
+  }
+
+  return {
+    inputs,
     outputs: info.outputs.map(o => o.key.replaceAll("{id}", stepId)),
   };
 }

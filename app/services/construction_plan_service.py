@@ -387,9 +387,17 @@ def _get_category(cls: type) -> str:
 def _type_to_str(annotation: Any) -> str:
     if annotation is inspect.Parameter.empty:
         return "any"
+    # Handle generic aliases (e.g. list[ShapeId]) BEFORE __name__ check,
+    # because list[X].__name__ == "list" (loses the subscript).
+    if hasattr(annotation, "__args__"):
+        raw = str(annotation).replace("typing.", "")
+        raw = re.sub(r"cad_designer\.airplane\.types\.", "", raw)
+        return raw
     if hasattr(annotation, "__name__"):
         return annotation.__name__
-    return str(annotation).replace("typing.", "")
+    raw = str(annotation).replace("typing.", "")
+    raw = re.sub(r"cad_designer\.airplane\.types\.", "", raw)
+    return raw
 
 
 def _find_literal_in_args(args: tuple) -> list[str] | None:
@@ -436,36 +444,6 @@ def _extract_literal_values(annotation: Any) -> list[str] | None:
     return None
 
 
-def _get_shape_ref_params(cls: type) -> set[str]:
-    """Detect which __init__ params are used as shapes_of_interest_keys.
-
-    Parses the source of __init__ looking for the super().__init__ call
-    with shapes_of_interest_keys=[...] and extracts referenced param names.
-    """
-    try:
-        src = inspect.getsource(cls.__init__)
-    except (TypeError, OSError):
-        return set()
-
-    # Match shapes_of_interest_keys=[...] or shapes_of_interest_keys=self.xxx
-    match = re.search(r"shapes_of_interest_keys\s*=\s*(\[[^\]]*\]|self\.\w+)", src)
-    if not match:
-        return set()
-
-    expr = match.group(1)
-    if expr.startswith("self."):
-        return {expr.replace("self.", "")}
-
-    # Extract all identifiers from the list expression (self.foo or bare foo)
-    refs = set()
-    for m in re.finditer(r"(?:self\.)?(\w+)", expr):
-        name = m.group(1)
-        # Skip non-param identifiers
-        if name not in ("self", "None", "True", "False"):
-            refs.add(name)
-    return refs
-
-
 def list_creators() -> list[CreatorInfo]:
     """Reflect over all AbstractShapeCreator subclasses and return metadata."""
     try:
@@ -504,7 +482,6 @@ def _collect_creators(cls: type, result: list[CreatorInfo], seen: set[str]) -> N
 
     sig = inspect.signature(cls.__init__)
     param_descriptions = _parse_docstring_attributes(cls.__doc__ or "")
-    shape_ref_params = _get_shape_ref_params(cls)
     params: list[CreatorParam] = []
     for pname, param in sig.parameters.items():
         if pname in _INTERNAL_PARAMS:
@@ -516,7 +493,6 @@ def _collect_creators(cls: type, result: list[CreatorInfo], seen: set[str]) -> N
             required=param.default is inspect.Parameter.empty,
             description=param_descriptions.get(pname),
             options=_extract_literal_values(param.annotation),
-            is_shape_ref=pname in shape_ref_params,
         ))
 
     docstring = (cls.__doc__ or "").strip().split("\n")[0] if cls.__doc__ else None

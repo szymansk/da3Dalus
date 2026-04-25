@@ -1,5 +1,6 @@
 import type { PlanStepNode } from "@/components/workbench/PlanTree";
 import type { CreatorInfo } from "@/hooks/useCreators";
+import { isShapeRefType } from "@/lib/planTreeUtils";
 
 export interface ValidationIssue {
   path: string;
@@ -46,15 +47,17 @@ function validateNode(
       });
       continue;
     }
-    // Check shape references
-    if (param.is_shape_ref && !isEmpty(val)) {
-      const ref = String(val);
-      if (!availableShapes.has(ref)) {
-        issues.push({
-          path,
-          creatorId: node.creator_id,
-          message: `Shape reference "${ref}" (${param.name}) is not available at this point`,
-        });
+    // Check shape references (ShapeId or list[ShapeId])
+    if (isShapeRefType(param.type) && !isEmpty(val)) {
+      const refs = Array.isArray(val) ? val.map(String) : [String(val)];
+      for (const ref of refs) {
+        if (ref.trim() && !availableShapes.has(ref)) {
+          issues.push({
+            path,
+            creatorId: node.creator_id,
+            message: `Shape reference "${ref}" (${param.name}) is not available at this point`,
+          });
+        }
       }
     }
   }

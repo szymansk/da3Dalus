@@ -1,4 +1,4 @@
-from typing import Annotated, Literal
+from typing import Annotated, Literal, NewType
 
 from pydantic import confloat, Field, BeforeValidator
 
@@ -28,3 +28,8 @@ WingSides = Annotated[
     Field(description="Allowed values are 'LEFT', 'RIGHT' or 'BOTH'"),
     BeforeValidator(lambda x: x.upper() if isinstance(x, str) else x),
 ]
+
+# A reference to an upstream shape key in a construction plan.
+# Used in Creator constructors to annotate parameters that receive
+# shape names from the plan tree (via shapes_of_interest_keys).
+ShapeId = NewType("ShapeId", str)

@@ -5,6 +5,7 @@ import cadquery as cq
 from cadquery import Workplane
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
+from cad_designer.airplane.types import ShapeId
 
 
 class ExportToStepCreator(AbstractShapeCreator):
@@ -20,9 +21,9 @@ class ExportToStepCreator(AbstractShapeCreator):
 
     suggested_creator_id = "export_step"
 
-    def __init__(self, creator_id: str, file_path: str, shapes_to_export: list[str] = None, loglevel=logging.INFO):
+    def __init__(self, creator_id: str, file_path: str, shapes_to_export: list[ShapeId] = None, loglevel=logging.INFO):
         self.file_path: str = file_path
-        self.shapes_to_export: list[str] = shapes_to_export
+        self.shapes_to_export: list[ShapeId] = shapes_to_export
         super().__init__(creator_id, shapes_of_interest_keys=self.shapes_to_export, loglevel=loglevel)
 
     def _create_shape(self, shapes_of_interest: dict[str, Workplane],

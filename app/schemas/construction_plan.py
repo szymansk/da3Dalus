@@ -71,7 +71,6 @@ class CreatorParam(BaseModel):
     required: bool
     description: Optional[str] = Field(None, description="Human-readable parameter description")
     options: Optional[list[str]] = Field(None, description="Allowed values for Literal/enum params")
-    is_shape_ref: bool = Field(False, description="True if this param references an upstream shape key")
 
 
 class CreatorOutput(BaseModel):

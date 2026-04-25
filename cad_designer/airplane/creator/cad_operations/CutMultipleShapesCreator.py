@@ -3,6 +3,7 @@ import logging
 from cadquery import Workplane
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
+from cad_designer.airplane.types import ShapeId
 
 
 class CutMultipleShapesCreator(AbstractShapeCreator):
@@ -18,7 +19,7 @@ class CutMultipleShapesCreator(AbstractShapeCreator):
 
     suggested_creator_id = "cut_all.{minuend}"
 
-    def __init__(self, creator_id: str, subtrahends: list[str], minuend: str = None, loglevel=logging.INFO):
+    def __init__(self, creator_id: str, subtrahends: list[ShapeId], minuend: ShapeId = None, loglevel=logging.INFO):
         self.subtrahends = subtrahends
         self.minuend = minuend
         soik = [self.minuend] + self.subtrahends

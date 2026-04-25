@@ -3,6 +3,7 @@ import logging
 from cadquery import Workplane
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
+from cad_designer.airplane.types import ShapeId
 
 
 class RepairFacesShapeCreator(AbstractShapeCreator):
@@ -19,8 +20,8 @@ class RepairFacesShapeCreator(AbstractShapeCreator):
     suggested_creator_id = "repair.{shape}"
 
     def __init__(self, creator_id: str,
-                 shape: str = None,
-                 repair_tool: str = None,
+                 shape: ShapeId = None,
+                 repair_tool: ShapeId = None,
                  loglevel=logging.INFO):
         self.repair_tool = repair_tool
         self.shape = shape

@@ -3,6 +3,7 @@ import logging
 from cadquery import Workplane
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
+from cad_designer.airplane.types import ShapeId
 
 
 class Cut2ShapesCreator(AbstractShapeCreator):
@@ -19,8 +20,8 @@ class Cut2ShapesCreator(AbstractShapeCreator):
     suggested_creator_id = "cut.{minuend}"
 
     def __init__(self, creator_id: str,
-                 minuend: str = None,
-                 subtrahend: str = None, loglevel=logging.INFO):
+                 minuend: ShapeId = None,
+                 subtrahend: ShapeId = None, loglevel=logging.INFO):
         self.minuend = minuend
         self.subtrahend = subtrahend
         super().__init__(creator_id, shapes_of_interest_keys=[self.minuend, self.subtrahend], loglevel=loglevel)

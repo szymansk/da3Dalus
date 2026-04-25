@@ -5,6 +5,7 @@ import numpy
 from cadquery import Workplane
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
+from cad_designer.airplane.types import ShapeId
 
 
 class WingReinforcementShapeCreator(AbstractShapeCreator):
@@ -22,8 +23,8 @@ class WingReinforcementShapeCreator(AbstractShapeCreator):
 
     def __init__(self,
                  creator_id: str,
-                 fuselage_loft: str,
-                 full_wing_loft: str,
+                 fuselage_loft: ShapeId,
+                 full_wing_loft: ShapeId,
                  loglevel=logging.INFO):
         self.full_wing_loft = full_wing_loft
         self.fuselage_loft = fuselage_loft

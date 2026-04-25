@@ -28,7 +28,7 @@ function ParamInput({
   const rawValue = value ?? param.default ?? "";
   const strValue = typeof rawValue === "object" ? JSON.stringify(rawValue) : String(rawValue as string | number | boolean);
 
-  if (param.is_shape_ref && availableShapeKeys.length > 0) {
+  if ((param.type === "ShapeId" || param.type === "list[ShapeId]") && availableShapeKeys.length > 0) {
     return (
       <ShapeRefInput
         value={strValue}
