@@ -347,8 +347,20 @@ export function resolveNodeShapes(
     }
   }
 
+  // Resolve output key placeholders: {id} → creator_id, {param} → node[param]
+  const nodeRecord = node as Record<string, unknown>;
+  const resolveKey = (key: string): string => {
+    let resolved = key.replaceAll("{id}", stepId);
+    // Replace remaining {param_name} placeholders with actual values
+    resolved = resolved.replace(/\{(\w+)\}/g, (_match, param) => {
+      const val = nodeRecord[param];
+      return typeof val === "string" ? val : typeof val === "number" ? String(val) : `{${param}}`;
+    });
+    return resolved;
+  };
+
   return {
     inputs,
-    outputs: info.outputs.map(o => o.key.replaceAll("{id}", stepId)),
+    outputs: info.outputs.map(o => resolveKey(o.key)),
   };
 }

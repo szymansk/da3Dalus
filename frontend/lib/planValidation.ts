@@ -63,10 +63,19 @@ function validateNode(
   }
 
   // Add this node's outputs to the available set, then walk successors.
-  // Substitute {id} with the node's creator_id (matching collectAvailableShapeKeys).
+  // Substitute all {placeholder} values with node properties.
   const stepId = node.creator_id;
+  const nodeRecord = node as Record<string, unknown>;
+  const resolveKey = (key: string): string => {
+    let resolved = key.replaceAll("{id}", stepId);
+    resolved = resolved.replace(/\{(\w+)\}/g, (_match, param) => {
+      const val = nodeRecord[param];
+      return typeof val === "string" ? val : typeof val === "number" ? String(val) : `{${param}}`;
+    });
+    return resolved;
+  };
   const ownOutputs = info.outputs.length
-    ? info.outputs.map((o) => o.key.replaceAll("{id}", stepId))
+    ? info.outputs.map((o) => resolveKey(o.key))
     : [stepId];
   const nextAvailable = new Set([...availableShapes, ...ownOutputs]);
   (node.successors ?? []).forEach((s, i) => {
