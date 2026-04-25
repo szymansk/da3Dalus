@@ -563,12 +563,16 @@ def _rewrite_export_paths(tree_json: dict, artifact_dir) -> dict:
             if creator_type in _EXPORT_CREATOR_TYPES:
                 fp = creator.get("file_path")
                 if isinstance(fp, str) and not os.path.isabs(fp):
-                    creator["file_path"] = str(artifact / fp)
+                    abs_path = artifact / fp
+                    abs_path.mkdir(parents=True, exist_ok=True)
+                    creator["file_path"] = str(abs_path)
         # Also check if this node itself is an export creator (flat format)
         if node_type in _EXPORT_CREATOR_TYPES:
             fp = node.get("file_path")
             if isinstance(fp, str) and not os.path.isabs(fp):
-                node["file_path"] = str(artifact / fp)
+                abs_path = artifact / fp
+                abs_path.mkdir(parents=True, exist_ok=True)
+                node["file_path"] = str(abs_path)
         # Recurse into successors
         successors = node.get("successors")
         if isinstance(successors, dict):
