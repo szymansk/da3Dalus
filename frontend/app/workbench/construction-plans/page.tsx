@@ -614,7 +614,6 @@ export default function ConstructionPlansPage() {
             leaf: !hasChildren,
             expanded: isCreatorExpanded,
             chip: creator.creatorClassName.replace("Creator", ""),
-            onClick: () => toggleFn(creatorKey),
             onEdit: () => handleEditCreator(planId, creator),
             editTitle: `Edit ${creator.creatorId}`,
             onAdd: () => alert(`Add successor to "${creator.creatorId}"`),
