@@ -4,6 +4,8 @@ from __future__ import annotations
 import inspect
 import json
 import logging
+import copy
+import os
 import re
 import time
 from typing import Any
@@ -535,6 +537,53 @@ def _collect_creators(cls: type, result: list[CreatorInfo], seen: set[str]) -> N
 # ── Execute ─────────────────────────────────────────────────────
 
 
+_EXPORT_CREATOR_TYPES = {
+    "ExportToStlCreator", "ExportToStepCreator",
+    "ExportToIgesCreator", "ExportTo3mfCreator",
+}
+
+
+def _rewrite_export_paths(tree_json: dict, artifact_dir) -> dict:
+    """Rewrite relative file_path params in export Creators to absolute paths.
+
+    Walks the tree_json recursively and prepends artifact_dir to any
+    file_path that is not already absolute.
+    """
+    from pathlib import Path
+
+    tree = copy.deepcopy(tree_json)
+    artifact = Path(artifact_dir)
+
+    def walk(node: dict) -> None:
+        node_type = node.get("$TYPE", "")
+        # Check the creator inside ConstructionStepNode
+        creator = node.get("creator")
+        if isinstance(creator, dict):
+            creator_type = creator.get("$TYPE", "")
+            if creator_type in _EXPORT_CREATOR_TYPES:
+                fp = creator.get("file_path")
+                if isinstance(fp, str) and not os.path.isabs(fp):
+                    creator["file_path"] = str(artifact / fp)
+        # Also check if this node itself is an export creator (flat format)
+        if node_type in _EXPORT_CREATOR_TYPES:
+            fp = node.get("file_path")
+            if isinstance(fp, str) and not os.path.isabs(fp):
+                node["file_path"] = str(artifact / fp)
+        # Recurse into successors
+        successors = node.get("successors")
+        if isinstance(successors, dict):
+            for child in successors.values():
+                if isinstance(child, dict):
+                    walk(child)
+        elif isinstance(successors, list):
+            for child in successors:
+                if isinstance(child, dict):
+                    walk(child)
+
+    walk(tree)
+    return tree
+
+
 def execute_plan(
     db: Session,
     plan_id: int,
@@ -571,12 +620,17 @@ def execute_plan(
     # Load printer_settings from component library (if available)
     printer_settings = _load_printer_settings(db)
 
+    # Rewrite relative file_path parameters in export Creators to absolute
+    # paths inside the artifact directory. Without this, exports would land
+    # in the project root (since we no longer chdir into artifact_dir).
+    tree_for_exec = _rewrite_export_paths(plan.tree_json, artifact_dir)
+
     # Decode tree_json with GeneralJSONDecoder
     t0 = time.monotonic()
     try:
         from cad_designer.airplane.GeneralJSONEncoderDecoder import GeneralJSONDecoder
 
-        json_string = json.dumps(plan.tree_json)
+        json_string = json.dumps(tree_for_exec)
         root_node = json.loads(
             json_string,
             cls=GeneralJSONDecoder,
@@ -669,12 +723,15 @@ def execute_plan_streaming(
     printer_settings = _load_printer_settings(db)
     execution_id, artifact_dir = create_execution_dir(effective_aeroplane_id, plan_id)
 
+    # Rewrite export paths for artifact directory
+    tree_for_exec = _rewrite_export_paths(plan.tree_json, artifact_dir)
+
     # Decode tree
     t0 = time.monotonic()
     try:
         from cad_designer.airplane.GeneralJSONEncoderDecoder import GeneralJSONDecoder
 
-        json_string = json.dumps(plan.tree_json)
+        json_string = json.dumps(tree_for_exec)
         root_node = json.loads(
             json_string,
             cls=GeneralJSONDecoder,
