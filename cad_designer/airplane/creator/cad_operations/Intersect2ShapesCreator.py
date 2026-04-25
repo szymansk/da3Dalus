@@ -3,7 +3,7 @@ import logging
 from cadquery import Workplane
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
-from cad_designer.airplane.types import ShapeId
+from cad_designer.airplane.types import CreatorId, ShapeId
 
 
 class Intersect2ShapesCreator(AbstractShapeCreator):
@@ -19,7 +19,7 @@ class Intersect2ShapesCreator(AbstractShapeCreator):
 
     suggested_creator_id = "intersect.{shape_a}.{shape_b}"
 
-    def __init__(self, creator_id: str, shape_a: ShapeId = None, shape_b: ShapeId = None, loglevel=logging.INFO):
+    def __init__(self, creator_id: CreatorId, shape_a: ShapeId = None, shape_b: ShapeId = None, loglevel=logging.INFO):
         self.shape_a = shape_a
         self.shape_b = shape_b
         super().__init__(creator_id, shapes_of_interest_keys=[self.shape_a, self.shape_b], loglevel=loglevel)

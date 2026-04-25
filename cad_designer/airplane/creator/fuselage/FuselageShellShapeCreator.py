@@ -4,7 +4,7 @@ import cadquery as cq
 from cadquery import Workplane
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
-from cad_designer.airplane.types import ShapeId
+from cad_designer.airplane.types import CreatorId, ShapeId
 
 
 class FuselageShellShapeCreator(AbstractShapeCreator):
@@ -20,7 +20,7 @@ class FuselageShellShapeCreator(AbstractShapeCreator):
 
     suggested_creator_id = "{fuselage}.shell"
 
-    def __init__(self, creator_id: str,
+    def __init__(self, creator_id: CreatorId,
                  thickness: float,
                  fuselage: ShapeId = None,
                  loglevel=logging.INFO):

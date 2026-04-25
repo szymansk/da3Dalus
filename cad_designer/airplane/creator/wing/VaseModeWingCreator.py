@@ -24,7 +24,7 @@ from cad_designer.airplane.aircraft_topology.wing.WingSegment import WingSegment
 from cad_designer.airplane.aircraft_topology.wing.TrailingEdgeDevice import TrailingEdgeDevice
 from cad_designer.airplane.creator.wing.ted_sketch_creators import ted_sketch_creators
 
-from cad_designer.airplane.types import Factor, WingSides
+from cad_designer.airplane.types import CreatorId, Factor, WingSides
 
 MOUNT_PLATE_THICKNESS = 1.0
 
@@ -70,7 +70,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
 
     suggested_creator_id = "{wing_index}.vase_wing"
 
-    def __init__(self, creator_id: str, wing_index: str | NonNegativeInt, leading_edge_offset_factor: Factor,
+    def __init__(self, creator_id: CreatorId, wing_index: str | NonNegativeInt, leading_edge_offset_factor: Factor,
                  trailing_edge_offset_factor: Factor,
                  minimum_rib_angle: Annotated[float, Field(ge=45.0, default=45)] = 45,
                  wing_config: dict[NonNegativeInt, WingConfiguration] | None = None,

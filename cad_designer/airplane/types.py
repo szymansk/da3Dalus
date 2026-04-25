@@ -33,3 +33,6 @@ WingSides = Annotated[
 # Used in Creator constructors to annotate parameters that receive
 # shape names from the plan tree (via shapes_of_interest_keys).
 ShapeId = NewType("ShapeId", str)
+
+# Unique identifier for a construction step in the plan tree.
+CreatorId = NewType("CreatorId", str)

@@ -5,14 +5,17 @@ import logging
 
 from cadquery import Workplane
 
+from cad_designer.airplane.types import CreatorId, ShapeId
+
+
 class AbstractShapeCreator(metaclass=abc.ABCMeta):
     """
     Base class for shape creating/modifying nodes.
     """
-    def __init__(self, creator_id: str, shapes_of_interest_keys: list[str] | None, loglevel:int=logging.FATAL):
+    def __init__(self, creator_id: CreatorId, shapes_of_interest_keys: list[ShapeId] | None, loglevel:int=logging.FATAL):
         self.loglevel: int = loglevel
-        self._shapes_of_interest_keys: list[str] | None = shapes_of_interest_keys
-        self.creator_id: str = creator_id
+        self._shapes_of_interest_keys: list[ShapeId] | None = shapes_of_interest_keys
+        self.creator_id: CreatorId = creator_id
 
     @property
     def identifier(self) -> str:

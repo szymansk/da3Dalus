@@ -6,6 +6,7 @@ from cadquery import Workplane
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 from cad_designer.airplane.aircraft_topology.components.EngineInformation import EngineInformation
+from cad_designer.airplane.types import CreatorId
 
 
 class EngineMountShapeCreator(AbstractShapeCreator):
@@ -30,7 +31,7 @@ class EngineMountShapeCreator(AbstractShapeCreator):
 
     suggested_creator_id = "engine[{engine_index}].mount"
 
-    def __init__(self, creator_id: str, engine_index: int, mount_plate_thickness: float, cutout_thickness,
+    def __init__(self, creator_id: CreatorId, engine_index: int, mount_plate_thickness: float, cutout_thickness,
                  engine_screw_hole_circle: float = None, engine_mount_box_length: float = None,
                  engine_screw_din_diameter: float = None, engine_screw_length: float = None,
                  engine_total_cover_length: float = None, engine_down_thrust_deg: float = None,

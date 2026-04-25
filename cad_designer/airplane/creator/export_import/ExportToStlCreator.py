@@ -4,7 +4,7 @@ import os
 from cadquery import Workplane
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
-from cad_designer.airplane.types import ShapeId
+from cad_designer.airplane.types import CreatorId, ShapeId
 
 
 class ExportToStlCreator(AbstractShapeCreator):
@@ -22,7 +22,7 @@ class ExportToStlCreator(AbstractShapeCreator):
 
     suggested_creator_id = "export_stl"
 
-    def __init__(self, creator_id: str, file_path: str, shapes_to_export: list[ShapeId] = None,
+    def __init__(self, creator_id: CreatorId, file_path: str, shapes_to_export: list[ShapeId] = None,
                  tolerance: float = 0.1, angular_tolerance: float = 0.1, loglevel=logging.INFO):
         self.file_path: str = file_path
         self.tolerance = tolerance

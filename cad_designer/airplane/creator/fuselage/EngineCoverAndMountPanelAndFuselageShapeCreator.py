@@ -5,7 +5,7 @@ import cadquery as cq
 from cadquery import Workplane
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
-from cad_designer.airplane.types import ShapeId
+from cad_designer.airplane.types import CreatorId, ShapeId
 from cad_designer.airplane.aircraft_topology.components.EngineInformation import EngineInformation
 
 
@@ -28,7 +28,7 @@ class EngineCoverAndMountPanelAndFuselageShapeCreator(AbstractShapeCreator):
 
     suggested_creator_id = "engine[{engine_index}].backplate"
 
-    def __init__(self, creator_id: str, engine_index: int, mount_plate_thickness: float,
+    def __init__(self, creator_id: CreatorId, engine_index: int, mount_plate_thickness: float,
                  engine_screw_hole_circle: float = None, engine_mount_box_length: float = None,
                  engine_total_cover_length: float = None, engine_side_thrust_deg: float = None,
                  engine_down_thrust_deg: float = None, full_fuselage_loft: ShapeId = None,

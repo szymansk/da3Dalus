@@ -7,6 +7,7 @@ from cadquery import Workplane
 
 from cad_designer.airplane import ConstructionStepNode
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
+from cad_designer.airplane.types import CreatorId
 
 
 class ConstructionRootNode(AbstractShapeCreator, MutableMapping):
@@ -14,7 +15,7 @@ class ConstructionRootNode(AbstractShapeCreator, MutableMapping):
     A node that is a map and holds in itself the following steps in the construction tree
     """
 
-    def __init__(self, creator_id: str, successors: OrderedDict[str, ConstructionStepNode] = None):
+    def __init__(self, creator_id: CreatorId, successors: OrderedDict[str, ConstructionStepNode] = None):
         """
         :param successors: all following construction steps
         """

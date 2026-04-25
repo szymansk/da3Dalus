@@ -3,7 +3,7 @@ import logging
 from cadquery import Workplane
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
-from cad_designer.airplane.types import ShapeId
+from cad_designer.airplane.types import CreatorId, ShapeId
 
 
 class FuseMultipleShapesCreator(AbstractShapeCreator):
@@ -18,7 +18,7 @@ class FuseMultipleShapesCreator(AbstractShapeCreator):
 
     suggested_creator_id = "fuse_all"
 
-    def __init__(self, creator_id: str, shapes: list[ShapeId], loglevel=logging.INFO):
+    def __init__(self, creator_id: CreatorId, shapes: list[ShapeId], loglevel=logging.INFO):
         self.shapes = shapes
         super().__init__(creator_id, shapes_of_interest_keys=shapes, loglevel=loglevel)
 

@@ -4,7 +4,7 @@ from cadquery import Workplane
 import cadquery as cq
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
-from cad_designer.airplane.types import ShapeId
+from cad_designer.airplane.types import CreatorId, ShapeId
 
 class FuselageElectronicsAccessCutOutShapeCreator(AbstractShapeCreator):
     """Creates a cutout in the fuselage for electronics access.
@@ -22,7 +22,7 @@ class FuselageElectronicsAccessCutOutShapeCreator(AbstractShapeCreator):
 
     suggested_creator_id = "{fuselage_loft}.electronics_cutout"
 
-    def __init__(self, creator_id: str, ribcage_factor: float, length_factor, fuselage_loft: ShapeId, full_wing_loft: ShapeId,
+    def __init__(self, creator_id: CreatorId, ribcage_factor: float, length_factor, fuselage_loft: ShapeId, full_wing_loft: ShapeId,
                  wing_position: str = None, loglevel=logging.INFO):
         """
         Creates a cutout shape for creating the access to the electronics depending on the wing position ('top',

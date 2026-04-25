@@ -7,6 +7,7 @@ from cad_designer.airplane.creator.export_import.IgesImportCreator import IgesIm
 from cad_designer.airplane.aircraft_topology.components.ComponentInformation import ComponentInformation
 from cad_designer.airplane.creator.export_import import StepImportCreator
 from cad_designer.airplane.creator.cad_operations import ScaleRotateTranslateCreator
+from cad_designer.airplane.types import CreatorId
 
 
 class ComponentImporterCreator(AbstractShapeCreator):
@@ -24,7 +25,7 @@ class ComponentImporterCreator(AbstractShapeCreator):
     suggested_creator_id = "component.{component_idx}"
 
     def __init__(self,
-                 creator_id: str,
+                 creator_id: CreatorId,
                  component_idx: str,
                  component_file: str,
                  mirror_model_by_plane="",

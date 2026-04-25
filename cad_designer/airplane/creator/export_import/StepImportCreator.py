@@ -4,6 +4,7 @@ from cadquery import Workplane
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 from cad_designer.airplane.creator.cad_operations import ScaleRotateTranslateCreator
+from cad_designer.airplane.types import CreatorId
 
 
 class StepImportCreator(AbstractShapeCreator):
@@ -28,7 +29,7 @@ class StepImportCreator(AbstractShapeCreator):
 
     suggested_creator_id = "import_step"
 
-    def __init__(self, creator_id: str, step_file: str,
+    def __init__(self, creator_id: CreatorId, step_file: str,
                  trans_x: float = .0,
                  trans_y: float = .0,
                  trans_z: float = .0,
