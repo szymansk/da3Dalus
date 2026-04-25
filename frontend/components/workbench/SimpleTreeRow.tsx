@@ -12,6 +12,8 @@ export interface SimpleTreeNode {
   expanded?: boolean;
   leaf?: boolean;
   muted?: boolean;
+  /** Render label in a subtle error/red tone. */
+  error?: boolean;
   selected?: boolean;
   chip?: string;
   annotation?: string;
@@ -89,7 +91,7 @@ export function SimpleTreeRow({ node, onToggle }: Readonly<SimpleTreeRowProps>) 
         <ChevronRight size={12} className="shrink-0 text-muted-foreground" />
       )}
       <span
-        className={`whitespace-nowrap ${node.muted ? "text-[12px] text-muted-foreground" : "font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"}`}
+        className={`whitespace-nowrap ${node.error ? "text-[12px] text-red-400/70" : node.muted ? "text-[12px] text-muted-foreground" : "font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"}`}
       >
         {node.label}
       </span>

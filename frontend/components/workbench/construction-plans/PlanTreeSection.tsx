@@ -48,16 +48,19 @@ export function renderCreatorTree(
 
       {hasChildren && isCreatorExpanded && (
         <>
-          {inputs.map((name) => (
+          {inputs.map((inp) => (
             <SimpleTreeRow
-              key={`${creatorKey}-input-${name}`}
+              key={`${creatorKey}-input-${inp.paramName}`}
               node={{
-                id: `${creatorKey}-input-${name}`,
-                label: `\u2B07 ${name}`,
+                id: `${creatorKey}-input-${inp.paramName}`,
+                label: inp.boundValue
+                  ? `\u2B07 ${inp.boundValue}`
+                  : `\u2B07 ${inp.paramName}`,
                 level: level + 1,
                 leaf: true,
-                muted: true,
-                annotation: "input",
+                muted: !!inp.boundValue,
+                error: !inp.boundValue,
+                annotation: inp.boundValue ? inp.paramName : "unbound",
               }}
               onToggle={() => {}}
             />

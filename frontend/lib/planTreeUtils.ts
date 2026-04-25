@@ -304,8 +304,13 @@ export function buildStepNode(creator: CreatorInfo, tree: PlanStepNode): PlanSte
   return node;
 }
 
+export interface ResolvedShapeInput {
+  paramName: string;
+  boundValue: string | null;  // null = unbound (show in red)
+}
+
 export interface ResolvedShapes {
-  inputs: string[];
+  inputs: ResolvedShapeInput[];
   outputs: string[];
 }
 
@@ -315,8 +320,13 @@ export function resolveNodeShapes(
 ): ResolvedShapes {
   const info = creators.find(c => c.class_name === node.$TYPE);
   if (!info) return { inputs: [], outputs: [] };
+  const stepId = node.creator_id;
   return {
-    inputs: info.parameters.filter(p => p.is_shape_ref).map(p => p.name),
-    outputs: info.outputs.map(o => o.key),
+    inputs: info.parameters.filter(p => p.is_shape_ref).map(p => {
+      const val = (node as Record<string, unknown>)[p.name];
+      const bound = typeof val === "string" && val.trim() !== "" ? val : null;
+      return { paramName: p.name, boundValue: bound };
+    }),
+    outputs: info.outputs.map(o => o.key.replaceAll("{id}", stepId)),
   };
 }

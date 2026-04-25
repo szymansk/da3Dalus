@@ -100,14 +100,18 @@ export function EditParamsModal({
                 <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
                   Shapes
                 </span>
-                {shapes.inputs.map((name) => (
+                {shapes.inputs.map((inp) => (
                   <div
-                    key={`input-${name}`}
-                    className="flex items-center gap-2 text-[12px] text-muted-foreground"
+                    key={`input-${inp.paramName}`}
+                    className={`flex items-center gap-2 text-[12px] ${inp.boundValue ? "text-muted-foreground" : "text-red-400/70"}`}
                   >
-                    <ArrowDown size={10} className="text-blue-400" />
-                    <span className="font-[family-name:var(--font-jetbrains-mono)]">{name}</span>
-                    <span className="text-[10px] text-subtle-foreground">(input)</span>
+                    <ArrowDown size={10} className={inp.boundValue ? "text-blue-400" : "text-red-400/50"} />
+                    <span className="font-[family-name:var(--font-jetbrains-mono)]">
+                      {inp.boundValue ?? inp.paramName}
+                    </span>
+                    <span className="text-[10px] text-subtle-foreground">
+                      ({inp.boundValue ? inp.paramName : "unbound"})
+                    </span>
                   </div>
                 ))}
                 {shapes.outputs.map((key) => (
