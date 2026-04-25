@@ -115,15 +115,6 @@ export function SimpleTreeRow({ node, onToggle }: Readonly<SimpleTreeRowProps>) 
           {node.annotation}
         </span>
       )}
-      {node.onAdd && (
-        <button
-          onClick={(e) => { e.stopPropagation(); node.onAdd?.(); }}
-          title={node.addTitle ?? "Add"}
-          className="hidden size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground group-hover:flex"
-        >
-          <Plus size={10} />
-        </button>
-      )}
       {node.onEdit && (
         <button
           onClick={(e) => { e.stopPropagation(); node.onEdit?.(); }}
@@ -131,6 +122,15 @@ export function SimpleTreeRow({ node, onToggle }: Readonly<SimpleTreeRowProps>) 
           className="hidden size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground group-hover:flex"
         >
           <Pencil size={10} />
+        </button>
+      )}
+      {node.onAdd && (
+        <button
+          onClick={(e) => { e.stopPropagation(); node.onAdd?.(); }}
+          title={node.addTitle ?? "Add"}
+          className="hidden size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground group-hover:flex"
+        >
+          <Plus size={10} />
         </button>
       )}
       {node.onDelete && (
