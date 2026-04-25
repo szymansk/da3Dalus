@@ -94,6 +94,30 @@ git push github <branch>
 
 ---
 
+## GH Issue Tracking
+
+**Reference:** See `tracking.md` in this directory for the label
+catalog, comment template, and helper commands.
+
+### At Phase 1 start (identifying findings):
+
+For each linked issue (from `Closes #N` in PR body), rotate status
+to `status:fixing`.
+
+### After Phase 3 (report):
+
+For each linked issue:
+
+1. Post a comment with header `## 🏷️ has-fix` containing the full
+   fix report (findings fixed with file:line references, findings
+   skipped as false positives with rationale)
+2. Add label `has-fix`
+
+**IMPORTANT:** Always post the comment FIRST, then add the label.
+Always ensure the label exists before adding it (idempotent create).
+
+---
+
 ## Supercycle Position
 
 ```

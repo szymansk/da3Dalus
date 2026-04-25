@@ -111,6 +111,25 @@ Report:
 
 ---
 
+## GH Issue Tracking
+
+**Reference:** See `tracking.md` in this directory for the label
+catalog, comment template, and helper commands.
+
+### At Phase 1 start (CI status check):
+
+For each linked issue (from `Closes #N` in PR body), rotate status
+to `status:merging`.
+
+### After Phase 4 (post-merge verification):
+
+For each linked issue, rotate status to `status:merged`.
+
+No `has-*` label is set — the merged status and the closed issue
+(via `Closes #N`) are sufficient.
+
+---
+
 ## Supercycle Position
 
 ```

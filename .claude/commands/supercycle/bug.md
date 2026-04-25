@@ -232,6 +232,55 @@ poetry run pytest -m "not slow"   # Full suite green
 
 ---
 
+## GH Issue Tracking
+
+**Reference:** See `tracking.md` in this directory for the label
+catalog, comment template, and helper commands.
+
+### At Phase 2 start (root cause investigation):
+
+Rotate status to `status:brainstorming`.
+
+### After Phase 2c (root cause identified):
+
+1. Post a comment with header `## 🏷️ has-root-cause` containing the
+   full bug analysis (error, root cause, introducing commit, severity,
+   affected features, proposed fix)
+2. Add label `has-root-cause`
+
+**Note:** If the bug input was free-text, the GH Issue may not exist
+yet at this point. In that case, post the root-cause comment AFTER
+Phase 3 (ticket creation).
+
+### After Phase 4b (failing test written — TDD RED):
+
+1. Post a comment with header `## 🏷️ has-reproduction` containing
+   the test name, file path, test code, and failing output
+2. Add label `has-reproduction`
+3. Rotate status to `status:implementing`
+
+### After Phase 4f (PR created):
+
+1. Post a comment with header `## 🏷️ has-pr` containing PR number
+   and link, root cause summary, test name, fix description
+2. Add label `has-pr`
+
+### After Phase 5a (review complete):
+
+1. Post a comment with header `## 🏷️ has-review` containing the
+   review verdict, findings summary, and next steps
+2. Add label `has-review`
+3. Rotate status to `status:in-review`
+
+### After Phase 5b (merged):
+
+Rotate status to `status:merged`.
+
+**IMPORTANT:** Always post the comment FIRST, then add the label.
+Always ensure the label exists before adding it (idempotent create).
+
+---
+
 ## Supercycle Position
 
 ```
