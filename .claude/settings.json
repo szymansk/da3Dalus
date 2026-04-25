@@ -7,6 +7,10 @@
           {
             "type": "command",
             "command": "bash -c \"./.claude/hooks/post-command/log-tool-result.sh 2>/dev/null || true\""
+          },
+          {
+            "type": "command",
+            "command": "bash -c \"./.claude/hooks/post-command/validate-issue-tracking.sh 2>/dev/null || true\""
           }
         ]
       },
