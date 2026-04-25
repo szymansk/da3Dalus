@@ -142,6 +142,32 @@ The agent prompt MUST include:
 
 ---
 
+## GH Issue Tracking
+
+**Reference:** See `tracking.md` in this directory for the label
+catalog, comment template, and helper commands.
+
+### At Phase 2 start (brainstorming begins):
+
+Rotate status to `status:brainstorming`.
+
+### After Phase 2c (spec/design finalized):
+
+1. Post the full design spec as a comment with header `## 🏷️ has-spec`
+2. Add label `has-spec`
+3. Rotate status to `status:planning`
+
+### After writing plans (before handing off to work-orchestrator):
+
+1. Post the full implementation plan as a comment with header `## 🏷️ has-plan`
+2. Add label `has-plan`
+3. Rotate status to `status:implementing`
+
+**IMPORTANT:** Always post the comment FIRST, then add the label.
+Always ensure the label exists before adding it (idempotent create).
+
+---
+
 ## Supercycle Overview
 
 ```
