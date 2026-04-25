@@ -209,6 +209,13 @@ export function PlanTreeSection({
             >
               <Pencil size={10} />
             </button>
+            <button
+              onClick={() => onAddStep(plan.id)}
+              title={`Add step to ${plan.name}`}
+              className="hidden size-5 items-center justify-center rounded-full text-muted-foreground hover:text-primary group-hover:flex"
+            >
+              <Plus size={10} />
+            </button>
             {onDeletePlan && (
               <button
                 onClick={() => onDeletePlan(plan.id)}
@@ -218,13 +225,6 @@ export function PlanTreeSection({
                 <Trash2 size={10} />
               </button>
             )}
-            <button
-              onClick={() => onAddStep(plan.id)}
-              title={`Add step to ${plan.name}`}
-              className="hidden size-5 items-center justify-center rounded-full text-muted-foreground hover:text-primary group-hover:flex"
-            >
-              <Plus size={10} />
-            </button>
           </>
         )}
       </div>
