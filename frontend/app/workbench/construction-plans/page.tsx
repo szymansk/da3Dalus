@@ -863,13 +863,6 @@ export default function ConstructionPlansPage() {
               Templates
             </button>
             </div>
-            <button
-              onClick={() => setTreeWide((w) => !w)}
-              title={treeWide ? "Collapse tree panel" : "Expand tree panel"}
-              className="flex size-7 items-center justify-center rounded-xl border border-border bg-card-muted text-muted-foreground hover:bg-sidebar-accent"
-            >
-              {treeWide ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
-            </button>
           </div>
 
           {/* Plan mode */}
@@ -878,6 +871,7 @@ export default function ConstructionPlansPage() {
               title="Construction Plans"
               badge={`${totalSteps} steps`}
               actions={
+                <>
                 <button
                   onClick={() => alert("Execute All: would execute all plans")}
                   title="Execute all plans"
@@ -886,6 +880,14 @@ export default function ConstructionPlansPage() {
                   <Play size={10} />
                   Execute All
                 </button>
+                <button
+                  onClick={() => setTreeWide((w) => !w)}
+                  title={treeWide ? "Collapse tree panel" : "Expand tree panel"}
+                  className="flex size-6 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-sidebar-accent"
+                >
+                  {treeWide ? <PanelLeftClose size={12} /> : <PanelLeftOpen size={12} />}
+                </button>
+                </>
               }
             >
               {MOCK_PLANS.map((plan) => (
@@ -972,6 +974,7 @@ export default function ConstructionPlansPage() {
                   title={selectedTemplate.name}
                   badge={`${selectedTemplate.creators.length} steps`}
                   actions={
+                    <>
                     <button
                       onClick={() => alert("Play Template: would open aeroplane selector")}
                       title="Execute template against an aeroplane"
@@ -980,6 +983,14 @@ export default function ConstructionPlansPage() {
                       <Play size={10} />
                       Test
                     </button>
+                    <button
+                      onClick={() => setTreeWide((w) => !w)}
+                      title={treeWide ? "Collapse tree panel" : "Expand tree panel"}
+                      className="flex size-6 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-sidebar-accent"
+                    >
+                      {treeWide ? <PanelLeftClose size={12} /> : <PanelLeftOpen size={12} />}
+                    </button>
+                    </>
                   }
                 >
                   {/* Template root node */}
