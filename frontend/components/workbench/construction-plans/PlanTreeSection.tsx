@@ -27,12 +27,19 @@ export function renderCreatorTree(
   const { inputs, outputs } = resolveNodeShapes(node, creators);
   const hasChildren = inputs.length > 0 || outputs.length > 0 || (node.successors ?? []).length > 0;
 
+  // Resolve {placeholder} in creator_id for display (e.g. "{wing_index}.vase_wing" → "0.vase_wing")
+  const nodeRecord = node as Record<string, unknown>;
+  const displayLabel = node.creator_id.replace(/\{(\w+)\}/g, (_match, param) => {
+    const val = nodeRecord[param];
+    return typeof val === "string" ? val : typeof val === "number" ? String(val) : `{${param}}`;
+  });
+
   return (
     <div key={creatorKey} className="flex flex-col">
       <SimpleTreeRow
         node={{
           id: creatorKey,
-          label: node.creator_id,
+          label: displayLabel,
           level,
           leaf: !hasChildren,
           expanded: isCreatorExpanded,
