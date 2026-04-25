@@ -71,7 +71,7 @@ export function SimpleTreeRow({ node, onToggle }: Readonly<SimpleTreeRowProps>) 
       {...attributes}
       {...listeners}
       aria-roledescription="sortable"
-      className={`group flex w-full items-center gap-1.5 rounded-xl py-1.5 pr-2 hover:bg-sidebar-accent cursor-pointer ${
+      className={`group flex min-w-full w-max items-center gap-1.5 rounded-xl py-1.5 pr-2 hover:bg-sidebar-accent cursor-pointer ${
         node.selected ? "bg-sidebar-accent font-semibold" : ""
       } ${isOver ? "ring-2 ring-primary" : ""} ${isDragging ? "opacity-40" : ""}`}
       style={{ paddingLeft: indent }}
@@ -89,7 +89,7 @@ export function SimpleTreeRow({ node, onToggle }: Readonly<SimpleTreeRowProps>) 
         <ChevronRight size={12} className="shrink-0 text-muted-foreground" />
       )}
       <span
-        className={`truncate ${node.muted ? "text-[12px] text-muted-foreground" : "font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"}`}
+        className={`whitespace-nowrap ${node.muted ? "text-[12px] text-muted-foreground" : "font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"}`}
       >
         {node.label}
       </span>
