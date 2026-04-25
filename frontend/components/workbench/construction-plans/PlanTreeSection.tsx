@@ -20,6 +20,7 @@ export function renderCreatorTree(
   creators: CreatorInfo[],
   path: string,
   onAddSuccessor: (planId: number, parentPath: string) => void,
+  onDeleteStep: (planId: number, path: string) => void,
 ): ReactNode {
   const creatorKey = `plan-${planId}-${path}`;
   const isCreatorExpanded = expandedSet.has(creatorKey);
@@ -40,6 +41,7 @@ export function renderCreatorTree(
           editTitle: `Edit ${node.creator_id}`,
           onAdd: () => onAddSuccessor(planId, path),
           addTitle: `Add successor to ${node.creator_id}`,
+          onDelete: () => onDeleteStep(planId, path),
         }}
         onToggle={() => toggleFn(creatorKey)}
       />
@@ -85,6 +87,7 @@ export function renderCreatorTree(
               creators,
               `${path}.${index}`,
               onAddSuccessor,
+              onDeleteStep,
             ),
           )}
         </>
@@ -106,6 +109,7 @@ interface PlanTreeSectionProps {
   onSaveAsTemplate: (planId: number) => void;
   onRename: (planId: number, newName: string) => Promise<void> | void;
   onAddStep: (planId: number, parentPath?: string) => void;
+  onDeleteStep: (planId: number, path: string) => void;
   onShowArtifacts?: (planId: number) => void;
   hidePlanActions?: boolean;
 }
@@ -123,6 +127,7 @@ export function PlanTreeSection({
   onSaveAsTemplate,
   onRename,
   onAddStep,
+  onDeleteStep,
   onShowArtifacts,
   hidePlanActions = false,
 }: Readonly<PlanTreeSectionProps>) {
@@ -217,6 +222,7 @@ export function PlanTreeSection({
             creators,
             `root.${index}`,
             onAddStep,
+            onDeleteStep,
           ),
         )}
 

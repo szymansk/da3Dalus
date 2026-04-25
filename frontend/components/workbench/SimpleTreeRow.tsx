@@ -94,7 +94,7 @@ export function SimpleTreeRow({ node, onToggle }: Readonly<SimpleTreeRowProps>) 
         {node.label}
       </span>
       {node.chip && (
-        <span className="rounded bg-card-muted px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-primary">
+        <span className="max-w-[120px] truncate rounded bg-card-muted px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-primary">
           {node.chip}
         </span>
       )}
@@ -119,7 +119,7 @@ export function SimpleTreeRow({ node, onToggle }: Readonly<SimpleTreeRowProps>) 
         <button
           onClick={(e) => { e.stopPropagation(); node.onEdit?.(); }}
           title={node.editTitle ?? `Edit ${node.label}`}
-          className="hidden size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground group-hover:flex"
+          className="hidden shrink-0 size-5 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground group-hover:flex"
         >
           <Pencil size={10} />
         </button>
@@ -128,7 +128,7 @@ export function SimpleTreeRow({ node, onToggle }: Readonly<SimpleTreeRowProps>) 
         <button
           onClick={(e) => { e.stopPropagation(); node.onAdd?.(); }}
           title={node.addTitle ?? "Add"}
-          className="hidden size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground group-hover:flex"
+          className="hidden shrink-0 size-5 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground group-hover:flex"
         >
           <Plus size={10} />
         </button>
@@ -136,7 +136,7 @@ export function SimpleTreeRow({ node, onToggle }: Readonly<SimpleTreeRowProps>) 
       {node.onDelete && (
         <button
           onClick={(e) => { e.stopPropagation(); node.onDelete?.(); }}
-          className="hidden size-5 items-center justify-center rounded-full text-destructive group-hover:flex"
+          className="hidden shrink-0 size-5 items-center justify-center rounded-lg text-destructive group-hover:flex"
         >
           <Trash2 size={10} />
         </button>

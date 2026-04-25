@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Play, Pencil, Plus, PanelLeftOpen, PanelLeftClose, ChevronDown } from "lucide-react";
+import { Play, Pencil, Plus, Trash2, PanelLeftOpen, PanelLeftClose, ChevronDown } from "lucide-react";
 import { TreeCard } from "@/components/workbench/TreeCard";
 import { TemplateSelector } from "./TemplateSelector";
 import { renderCreatorTree } from "./PlanTreeSection";
@@ -22,6 +22,8 @@ interface TemplateModePanelProps {
   onExecuteTemplate: (templateId: number) => void;
   onRenameTemplate: (templateId: number, newName: string) => Promise<void> | void;
   onAddStep: (templateId: number, parentPath?: string) => void;
+  onDeleteStep: (planId: number, path: string) => void;
+  onDeleteTemplate: (templateId: number) => void;
   treeWide: boolean;
   onToggleWide: () => void;
 }
@@ -38,6 +40,8 @@ export function TemplateModePanel({
   onExecuteTemplate,
   onRenameTemplate,
   onAddStep,
+  onDeleteStep,
+  onDeleteTemplate,
   treeWide,
   onToggleWide,
 }: Readonly<TemplateModePanelProps>) {
@@ -64,6 +68,13 @@ export function TemplateModePanel({
                 className="flex size-6 items-center justify-center rounded-lg text-primary hover:text-primary/70"
               >
                 <Play size={14} />
+              </button>
+              <button
+                onClick={() => onDeleteTemplate(selectedTemplate.id)}
+                title={`Delete ${selectedTemplate.name}`}
+                className="flex size-6 items-center justify-center rounded-lg text-destructive hover:text-destructive/70"
+              >
+                <Trash2 size={14} />
               </button>
               <button
                 onClick={onToggleWide}
@@ -121,6 +132,7 @@ export function TemplateModePanel({
                 creators,
                 `root.${i}`,
                 onAddStep,
+                onDeleteStep,
               ),
             )
           )}

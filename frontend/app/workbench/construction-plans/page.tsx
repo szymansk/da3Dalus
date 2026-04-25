@@ -18,8 +18,10 @@ import {
   useConstructionPlan,
   createPlan,
   updatePlan,
+  deletePlan,
   executePlan,
   toTemplate,
+  instantiateTemplate,
 } from "@/hooks/useConstructionPlans";
 import {
   fromBackendTree,
@@ -27,6 +29,7 @@ import {
   collectAvailableShapeKeys,
   updateNodeAtPath,
   appendChildAtPath,
+  deleteStepAtPath,
   buildStepNode,
 } from "@/lib/planTreeUtils";
 import { validatePlan } from "@/lib/planValidation";
@@ -41,6 +44,7 @@ import { AddStepDialog } from "@/components/workbench/construction-plans/AddStep
 import { AeroplanePickerDialog } from "@/components/workbench/construction-plans/AeroplanePickerDialog";
 import { ExecutionResultDialog } from "@/components/workbench/construction-plans/ExecutionResultDialog";
 import { ArtifactBrowserDialog } from "@/components/workbench/construction-plans/ArtifactBrowserDialog";
+import { NewPlanDialog } from "@/components/workbench/construction-plans/NewPlanDialog";
 import type { ExecutionResult } from "@/hooks/useConstructionPlans";
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -70,7 +74,7 @@ export default function ConstructionPlansPage() {
 
   // Full tree for selected template
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
-  const { plan: templateDetail } = useConstructionPlan(selectedTemplateId);
+  const { plan: templateDetail, mutate: mutateTemplateDetail } = useConstructionPlan(selectedTemplateId);
   const templateTree = templateDetail?.tree_json
     ? fromBackendTree(templateDetail.tree_json)
     : null;
@@ -110,6 +114,9 @@ export default function ConstructionPlansPage() {
 
   // Artifact browser state
   const [artifactsPlanId, setArtifactsPlanId] = useState<number | null>(null);
+
+  // New plan dialog state
+  const [newPlanDialogOpen, setNewPlanDialogOpen] = useState(false);
 
   // ── Auto-expand first plan on load ────────────────────────────
   useEffect(() => {
@@ -207,7 +214,7 @@ export default function ConstructionPlansPage() {
         return;
       }
       try {
-        await updatePlan(planId, { name: newName, tree_json: detail.tree_json });
+        await updatePlan(planId, { name: newName, tree_json: detail.tree_json, plan_type: detail.plan_type, aeroplane_id: detail.aeroplane_id });
         if (isTemplate) mutateTemplates();
         else mutatePlans();
         mutatePlanDetail();
@@ -224,6 +231,41 @@ export default function ConstructionPlansPage() {
     setAddStepOpen(true);
   }, []);
 
+  const handleDeleteStep = useCallback(
+    async (planId: number, path: string) => {
+      const isTemplate = templates.some((t) => t.id === planId);
+      const tree = isTemplate ? templateTree : activeTree;
+      const detail = isTemplate ? templateDetail : activePlanDetail;
+      if (!tree || !detail) {
+        alert("Plan data not loaded.");
+        return;
+      }
+      const updatedTree = deleteStepAtPath(tree, path);
+      try {
+        await updatePlan(planId, { name: detail.name, tree_json: toBackendTree(updatedTree), plan_type: detail.plan_type, aeroplane_id: detail.aeroplane_id });
+        if (isTemplate) { mutateTemplates(); mutateTemplateDetail(); }
+        else { mutatePlans(); mutatePlanDetail(); }
+      } catch (err) {
+        alert(`Delete step failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    },
+    [templates, templateTree, activeTree, templateDetail, activePlanDetail, mutatePlans, mutateTemplates, mutatePlanDetail, mutateTemplateDetail],
+  );
+
+  const handleDeleteTemplate = useCallback(
+    async (templateId: number) => {
+      if (!confirm("Delete this template? This cannot be undone.")) return;
+      try {
+        await deletePlan(templateId);
+        mutateTemplates();
+        if (selectedTemplateId === templateId) setSelectedTemplateId(null);
+      } catch (err) {
+        alert(`Delete template failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    },
+    [mutateTemplates, selectedTemplateId],
+  );
+
   /** Shared helper: add a creator as a child node at a given path in a plan/template tree. */
   const addCreatorToPlan = useCallback(
     async (planId: number, parentPath: string, creator: CreatorInfo) => {
@@ -235,12 +277,11 @@ export default function ConstructionPlansPage() {
       }
       const newNode = buildStepNode(creator, tree);
       const updatedTree = appendChildAtPath(tree, parentPath, newNode);
-      await updatePlan(planId, { name: detail.name, tree_json: toBackendTree(updatedTree) });
-      if (isTemplate) mutateTemplates();
-      else mutatePlans();
-      mutatePlanDetail();
+      await updatePlan(planId, { name: detail.name, tree_json: toBackendTree(updatedTree), plan_type: detail.plan_type, aeroplane_id: detail.aeroplane_id });
+      if (isTemplate) { mutateTemplates(); mutateTemplateDetail(); }
+      else { mutatePlans(); mutatePlanDetail(); }
     },
-    [templates, templateTree, activeTree, templateDetail, activePlanDetail, mutatePlans, mutateTemplates, mutatePlanDetail],
+    [templates, templateTree, activeTree, templateDetail, activePlanDetail, mutatePlans, mutateTemplates, mutatePlanDetail, mutateTemplateDetail],
   );
 
   const handleAddStepSelect = useCallback(
@@ -288,30 +329,35 @@ export default function ConstructionPlansPage() {
       await updatePlan(editingPlanId, {
         name: detail.name,
         tree_json: backendTree,
+        plan_type: detail.plan_type,
+        aeroplane_id: detail.aeroplane_id,
       });
-      mutatePlanDetail();
-      mutatePlans();
-      mutateTemplates();
+      if (isTemplate) { mutateTemplates(); mutateTemplateDetail(); }
+      else { mutatePlans(); mutatePlanDetail(); }
     },
-    [editingPlanId, editingNode, templates, templateTree, activeTree, templateDetail, activePlanDetail, mutatePlanDetail, mutatePlans, mutateTemplates],
+    [editingPlanId, editingNode, templates, templateTree, activeTree, templateDetail, activePlanDetail, mutatePlanDetail, mutateTemplateDetail, mutatePlans, mutateTemplates],
   );
 
-  const handleCreatePlan = useCallback(async () => {
+  const handleCreateEmptyPlan = useCallback(async () => {
     if (!aeroplaneId) return;
-    try {
-      const newPlan = await createPlan({
-        name: `New Plan ${plans.length + 1}`,
-        tree_json: { $TYPE: "ConstructionStepNode", creator_id: "root", successors: {} },
-        plan_type: "plan",
-        aeroplane_id: aeroplaneId,
-      });
-      mutatePlans();
-      setExpandedPlans((prev) => new Set(prev).add(newPlan.id));
-      setActivePlanId(newPlan.id);
-    } catch (err) {
-      alert(`Create plan failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
+    const newPlan = await createPlan({
+      name: `New Plan ${plans.length + 1}`,
+      tree_json: { $TYPE: "ConstructionStepNode", creator_id: "root", successors: {} },
+      plan_type: "plan",
+      aeroplane_id: aeroplaneId,
+    });
+    mutatePlans();
+    setExpandedPlans((prev) => new Set(prev).add(newPlan.id));
+    setActivePlanId(newPlan.id);
   }, [aeroplaneId, plans.length, mutatePlans]);
+
+  const handleCreateFromTemplate = useCallback(async (templateId: number) => {
+    if (!aeroplaneId) return;
+    const newPlan = await instantiateTemplate(aeroplaneId, templateId);
+    mutatePlans();
+    setExpandedPlans((prev) => new Set(prev).add(newPlan.id));
+    setActivePlanId(newPlan.id);
+  }, [aeroplaneId, mutatePlans]);
 
   // ── Template callbacks ────────────────────────────────────────
 
@@ -503,7 +549,7 @@ export default function ConstructionPlansPage() {
                 actions={
                   <>
                     <button
-                      onClick={handleCreatePlan}
+                      onClick={() => setNewPlanDialogOpen(true)}
                       title="Create new plan"
                       className="flex size-6 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
                     >
@@ -560,6 +606,7 @@ export default function ConstructionPlansPage() {
                     onSaveAsTemplate={handleSaveAsTemplate}
                     onRename={handleRenamePlan}
                     onAddStep={handleAddStep}
+                    onDeleteStep={handleDeleteStep}
                     onShowArtifacts={(id) => setArtifactsPlanId(id)}
                   />
                 ))}
@@ -579,6 +626,8 @@ export default function ConstructionPlansPage() {
                 onExecuteTemplate={handleExecuteTemplate}
                 onRenameTemplate={handleRenamePlan}
                 onAddStep={handleAddStep}
+                onDeleteStep={handleDeleteStep}
+                onDeleteTemplate={handleDeleteTemplate}
                 treeWide={treeWide}
                 onToggleWide={() => setTreeWide((w) => !w)}
               />
@@ -657,6 +706,14 @@ export default function ConstructionPlansPage() {
           setExecutionDialogOpen(false);
           setExecutionResult(null);
         }}
+      />
+
+      <NewPlanDialog
+        open={newPlanDialogOpen}
+        templates={templates}
+        onClose={() => setNewPlanDialogOpen(false)}
+        onCreateEmpty={handleCreateEmptyPlan}
+        onCreateFromTemplate={handleCreateFromTemplate}
       />
 
       <ArtifactBrowserDialog

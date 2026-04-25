@@ -156,7 +156,7 @@ export async function createPlan(
 
 export async function updatePlan(
   id: number,
-  body: { name: string; description?: string; tree_json: Record<string, unknown> },
+  body: { name: string; description?: string; tree_json: Record<string, unknown>; plan_type?: string; aeroplane_id?: string | null },
 ): Promise<PlanRead> {
   const res = await fetch(`${API_BASE}/construction-plans/${id}`, {
     method: "PUT",
