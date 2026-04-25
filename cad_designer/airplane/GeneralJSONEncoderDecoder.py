@@ -204,4 +204,16 @@ class GeneralJSONDecoder(JSONDecoder):
             # join and create object
             intersection_dict.update(intersection)
         intersection_dict = _coerce_params(cls, intersection_dict)
+        # Resolve {placeholder} in creator_id using other param values
+        if "creator_id" in intersection_dict and isinstance(intersection_dict["creator_id"], str):
+            import re
+            def _replace_placeholder(m):
+                param = m.group(1)
+                val = intersection_dict.get(param)
+                if val is not None and not isinstance(val, (dict, list)):
+                    return str(val)
+                return m.group(0)  # keep unresolved
+            intersection_dict["creator_id"] = re.sub(
+                r"\{(\w+)\}", _replace_placeholder, intersection_dict["creator_id"],
+            )
         return cls(**intersection_dict)
