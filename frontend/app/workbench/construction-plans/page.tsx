@@ -178,8 +178,8 @@ export default function ConstructionPlansPage() {
         </div>
       </div>
 
-      <EditParamsModal open={editModalOpen} creator={editingCreator} creatorInfo={editingCreatorInfo}
-        onClose={() => { setEditModalOpen(false); setEditingCreator(null); }} />
+      <EditParamsModal key={editingCreator?.creatorId} open={editModalOpen} creator={editingCreator}
+        creatorInfo={editingCreatorInfo} onClose={() => { setEditModalOpen(false); setEditingCreator(null); }} />
     </>
   );
 }

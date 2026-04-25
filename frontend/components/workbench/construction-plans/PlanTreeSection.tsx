@@ -78,7 +78,7 @@ export function PlanTreeSection({
   onToggleCreator,
   onEditCreator,
   hidePlanActions = false,
-}: PlanTreeSectionProps) {
+}: Readonly<PlanTreeSectionProps>) {
   return (
     <div className="flex flex-col">
       {/* Plan header row with action buttons */}

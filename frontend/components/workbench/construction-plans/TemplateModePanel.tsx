@@ -27,7 +27,7 @@ export function TemplateModePanel({
   onEditCreator,
   treeWide,
   onToggleWide,
-}: TemplateModePanelProps) {
+}: Readonly<TemplateModePanelProps>) {
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId) ?? null;
 
   return (
