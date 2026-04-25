@@ -51,9 +51,9 @@ def reparameterize_airfoil(airfoil_data, M):
     afpoly_upper = shp.LineString(airfoil_data[:amin+1])
     afpoly_lower = shp.LineString(airfoil_data[amin:])
 
-    upper = [ afpoly_upper.interpolate(t, True) for t in np.linspace(1., 0., int(np.ceil(M/2)), True)]
+    upper = [ afpoly_upper.interpolate(t, normalized=True) for t in np.linspace(1., 0., int(np.ceil(M/2)), True)]
     _upper = sorted(upper, key=lambda p: p.x)
-    lower = [ afpoly_lower.interpolate(t, True) for t in np.linspace(0., 1., int(np.floor(M/2 + 1)), False)]
+    lower = [ afpoly_lower.interpolate(t, normalized=True) for t in np.linspace(0., 1., int(np.floor(M/2 + 1)), False)]
     _lower = sorted(lower, key=lambda p: p.x)
     complete = list(reversed(_upper)) + _lower[1:]
     return [ (p.x, p.y) for p in complete]
