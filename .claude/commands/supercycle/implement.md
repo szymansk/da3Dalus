@@ -84,6 +84,31 @@ Next steps:
 
 ---
 
+## GH Issue Tracking
+
+**Reference:** See `tracking.md` in this directory for the label
+catalog, comment template, and helper commands.
+
+### At Phase 1 start (loading issues):
+
+For each issue, rotate status to `status:implementing`.
+
+### After Phase 3 (PRs created):
+
+For each issue that got a PR:
+
+1. Post a comment with header `## 🏷️ has-pr` containing:
+   - PR number and link
+   - Branch name
+   - Summary of changes (files modified, tests added)
+   - Quality gate results
+2. Add label `has-pr`
+
+**IMPORTANT:** Always post the comment FIRST, then add the label.
+Always ensure the label exists before adding it (idempotent create).
+
+---
+
 ## Supercycle Position
 
 ```
