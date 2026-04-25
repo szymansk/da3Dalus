@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown, Search } from "lucide-react";
-import { MockTemplate } from "./types";
+import type { MockTemplate } from "./types";
 
 interface TemplateSelectorProps {
   templates: MockTemplate[];
