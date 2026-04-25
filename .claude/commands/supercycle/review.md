@@ -1,7 +1,7 @@
 ---
 description: "Run parallel code review agents on one or more open PRs — dispatches code-reviewer + conditional specialized reviewers"
 argument-hint: "<PR numbers, comma-separated: 200, 201>"
-allowed-tools: Bash, Read, Glob, Grep, Agent
+allowed-tools: Bash, Read, Glob, Grep, Agent, Skill
 ---
 
 # /supercycle:review — Parallel PR Review

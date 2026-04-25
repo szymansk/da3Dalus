@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c \"./.claude/hooks/post-command/log-tool-result.sh 2\u003e/dev/null || true\""
+            "command": "bash -c \"./.claude/hooks/post-command/log-tool-result.sh 2>/dev/null || true\""
           }
         ]
       },
@@ -15,11 +15,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c \"./.claude/hooks/post-command/format-code.sh 2\u003e/dev/null || true\""
+            "command": "bash -c \"./.claude/hooks/post-command/format-code.sh 2>/dev/null || true\""
           },
           {
             "type": "command",
-            "command": "bash -c \"./.claude/hooks/post-command/lint-code.sh 2\u003e/dev/null || true\""
+            "command": "bash -c \"./.claude/hooks/post-command/lint-code.sh 2>/dev/null || true\""
           }
         ]
       },
@@ -28,11 +28,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c \"./.claude/hooks/post-command/format-code.sh 2\u003e/dev/null || true\""
+            "command": "bash -c \"./.claude/hooks/post-command/format-code.sh 2>/dev/null || true\""
           },
           {
             "type": "command",
-            "command": "bash -c \"./.claude/hooks/post-command/lint-code.sh 2\u003e/dev/null || true\""
+            "command": "bash -c \"./.claude/hooks/post-command/lint-code.sh 2>/dev/null || true\""
           }
         ]
       }
@@ -53,7 +53,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c \"./.claude/hooks/pre-command/log-tool-use.sh 2\u003e/dev/null || true\""
+            "command": "bash -c \"./.claude/hooks/pre-command/log-tool-use.sh 2>/dev/null || true\""
           }
         ]
       },
@@ -74,6 +74,16 @@
             "command": "bash ./.claude/hooks/pre-command/check-sensitive-path.sh"
           }
         ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/sonar-secrets/build-scripts/pretool-secrets.sh",
+            "timeout": 60
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -81,11 +91,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c \"if [ -d .beads ]; then bd prime 2\u003e/dev/null || true; fi\""
+            "command": "bash -c \"if [ -d .beads ]; then bd prime 2>/dev/null || true; fi\""
           },
           {
             "type": "command",
-            "command": "bash -c \"./.claude/hooks/pre-command/check-toolchain.sh 2\u003e/dev/null || true\""
+            "command": "bash -c \"./.claude/hooks/pre-command/check-toolchain.sh 2>/dev/null || true\""
           }
         ]
       }
@@ -95,7 +105,19 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c \"if [ -d .beads ]; then bd sync 2\u003e/dev/null || true; fi\""
+            "command": "bash -c \"if [ -d .beads ]; then bd sync 2>/dev/null || true; fi\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/sonar-secrets/build-scripts/prompt-secrets.sh",
+            "timeout": 60
           }
         ]
       }

@@ -1,7 +1,7 @@
 ---
 description: "Fix review findings on PR branches — switch to branch, apply fixes, run quality gates, push"
 argument-hint: "<PR numbers, comma-separated: 200, 201>"
-allowed-tools: Bash, Read, Edit, Write, Glob, Grep
+allowed-tools: Bash, Read, Edit, Write, Glob, Grep, Skill
 ---
 
 # /supercycle:fix — Fix Review Findings

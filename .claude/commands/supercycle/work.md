@@ -1,7 +1,7 @@
 ---
 description: "Full supercycle: brainstorm GH issue/feature with user, refine ticket, then orchestrate implementation through to merged PR"
 argument-hint: "<GH issue number> OR <feature description>"
-allowed-tools: Bash, Read, Glob, Grep, Agent, WebSearch
+allowed-tools: Bash, Read, Glob, Grep, Agent, WebSearch, Skill
 ---
 
 # /supercycle:work — Full Development Cycle
@@ -36,8 +36,8 @@ that system NOW — issue descriptions go stale.
 
 **SonarQube example:**
 - If the issue body mentions `S1234` or links to sonarcloud.io →
-  use `sonarqube:list-issues` to get current line numbers and rule details
-- Use `sonarqube:show-rule` for the official fix recommendation
+  use `/sonarqube:sonar-list-issues` to get current line numbers and rule details
+- Use `/sonarqube:sonar-analyze` on the affected file for deeper analysis
 
 ### If free-text (feature description):
 
