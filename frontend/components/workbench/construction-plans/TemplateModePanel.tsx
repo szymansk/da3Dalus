@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useDroppable } from "@dnd-kit/core";
 import { Play, Pencil, Plus, Trash2, PanelLeftOpen, PanelLeftClose, ChevronDown } from "lucide-react";
 import { TreeCard } from "@/components/workbench/TreeCard";
 import { TemplateSelector } from "./TemplateSelector";
@@ -47,6 +48,12 @@ export function TemplateModePanel({
 }: Readonly<TemplateModePanelProps>) {
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId) ?? null;
   const [renaming, setRenaming] = useState(false);
+  // Template root is a droppable target for drag-from-gallery
+  const { setNodeRef: setTemplateRootRef, isOver: templateRootIsOver } = useDroppable({
+    id: selectedTemplateId != null ? `plan-root-${selectedTemplateId}` : "template-root-disabled",
+    data: selectedTemplateId != null ? { planId: selectedTemplateId, path: "root" } : undefined,
+    disabled: selectedTemplateId == null,
+  });
 
   return (
     <div className="flex h-full flex-col gap-3 overflow-hidden">
@@ -86,8 +93,11 @@ export function TemplateModePanel({
             </>
           }
         >
-          {/* Template root node */}
-          <div className="group flex items-center gap-1.5 rounded-xl py-1.5 pr-2 hover:bg-sidebar-accent">
+          {/* Template root node — droppable target */}
+          <div
+            ref={setTemplateRootRef}
+            className={`group flex items-center gap-1.5 rounded-xl py-1.5 pr-2 hover:bg-sidebar-accent ${templateRootIsOver ? "ring-2 ring-primary" : ""}`}
+          >
             <ChevronDown size={12} className="shrink-0 text-muted-foreground" />
             <InlineEditableName
               value={selectedTemplate.name}
