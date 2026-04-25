@@ -38,11 +38,11 @@ function toggleInSet<T>(prev: Set<T>, value: T): Set<T> {
 
 export default function ConstructionPlansPage() {
   const { aeroplaneId } = useAeroplaneContext();
-  const { creators } = useCreators();
+  const { creators, error: creatorsError } = useCreators();
 
   // ── Data fetching ─────────────────────────────────────────────
-  const { plans, mutate: mutatePlans } = useAeroplanePlans(aeroplaneId);
-  const { plans: templates, mutate: mutateTemplates } = useConstructionPlans("template");
+  const { plans, error: plansError, isLoading: plansLoading, mutate: mutatePlans } = useAeroplanePlans(aeroplaneId);
+  const { plans: templates, error: templatesError, mutate: mutateTemplates } = useConstructionPlans("template");
 
   // Full tree for the active plan (expanded plan or plan being edited)
   const [activePlanId, setActivePlanId] = useState<number | null>(null);
@@ -71,6 +71,7 @@ export default function ConstructionPlansPage() {
 
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
   const [editingNode, setEditingNode] = useState<PlanStepNode | null>(null);
   const [editingPath, setEditingPath] = useState<string | null>(null);
   const [editingCreatorInfo, setEditingCreatorInfo] = useState<CreatorInfo | null>(null);
@@ -139,7 +140,7 @@ export default function ConstructionPlansPage() {
         mutateTemplates();
         alert("Saved as template!");
       } catch (err) {
-        alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
+        alert(`Save as template failed: ${err instanceof Error ? err.message : String(err)}`);
       }
     },
     [aeroplaneId, mutateTemplates],
@@ -158,36 +159,46 @@ export default function ConstructionPlansPage() {
   const handleEditCreator = useCallback(
     (planId: number, node: PlanStepNode, path: string) => {
       const info = creators.find((c) => c.class_name === node.$TYPE) ?? null;
-      const tree = activePlanId === planId ? activeTree : templateTree;
+      // Use the plan tree if editing a plan, template tree if editing a template
+      const isTemplate = templates.some((t) => t.id === planId);
+      const tree = isTemplate ? templateTree : activeTree;
       const shapeKeys = tree ? collectAvailableShapeKeys(tree, creators, path) : [];
+      setEditingPlanId(planId);
       setEditingNode(node);
       setEditingPath(path);
       setEditingCreatorInfo(info);
       setEditingShapeKeys(shapeKeys);
       setEditModalOpen(true);
-      setActivePlanId(planId);
+      // Ensure the correct plan detail is loaded for saving
+      if (!isTemplate) setActivePlanId(planId);
     },
-    [creators, activePlanId, activeTree, templateTree],
+    [creators, templates, activeTree, templateTree],
   );
 
   const handleEditSave = useCallback(
-    async (path: string, params: Record<string, unknown>) => {
-      if (!activePlanId || !activeTree || !activePlanDetail) return;
-      const updatedNode = { ...editingNode!, ...params } as PlanStepNode;
-      const updatedTree = updateNodeAtPath(activeTree, path, updatedNode);
-      const backendTree = toBackendTree(updatedTree);
-      try {
-        await updatePlan(activePlanId, {
-          name: activePlanDetail.name,
-          tree_json: backendTree,
-        });
-        mutatePlanDetail();
-        mutatePlans();
-      } catch (err) {
-        alert(`Save failed: ${err instanceof Error ? err.message : String(err)}`);
+    async (path: string, params: Record<string, unknown>): Promise<void> => {
+      if (!editingPlanId || !editingNode) {
+        throw new Error("Cannot save: no plan or node selected.");
       }
+      // Determine which tree we're editing (plan or template)
+      const isTemplate = templates.some((t) => t.id === editingPlanId);
+      const tree = isTemplate ? templateTree : activeTree;
+      const detail = isTemplate ? templateDetail : activePlanDetail;
+      if (!tree || !detail) {
+        throw new Error("Cannot save: plan data is not loaded. Please close and try again.");
+      }
+      const updatedNode = { ...editingNode, ...params } as PlanStepNode;
+      const updatedTree = updateNodeAtPath(tree, path, updatedNode);
+      const backendTree = toBackendTree(updatedTree);
+      await updatePlan(editingPlanId, {
+        name: detail.name,
+        tree_json: backendTree,
+      });
+      mutatePlanDetail();
+      mutatePlans();
+      mutateTemplates();
     },
-    [activePlanId, activeTree, activePlanDetail, editingNode, mutatePlanDetail, mutatePlans],
+    [editingPlanId, editingNode, templates, templateTree, activeTree, templateDetail, activePlanDetail, mutatePlanDetail, mutatePlans, mutateTemplates],
   );
 
   // ── Template callbacks ────────────────────────────────────────
@@ -222,6 +233,33 @@ export default function ConstructionPlansPage() {
         <p className="text-[13px] text-muted-foreground">
           Select an aeroplane to view its construction plans.
         </p>
+      </div>
+    );
+  }
+
+  // ── Loading / error states ─────────────────────────────────────
+  const fetchError = plansError || templatesError || creatorsError;
+  if (plansLoading && plans.length === 0) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-[13px] text-muted-foreground">Loading construction plans...</p>
+      </div>
+    );
+  }
+  if (fetchError) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-[13px] text-destructive">
+            Failed to load construction plans.
+          </p>
+          <button
+            onClick={() => { mutatePlans(); mutateTemplates(); }}
+            className="rounded-full border border-border px-4 py-2 text-[12px] text-muted-foreground hover:bg-sidebar-accent"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
@@ -362,6 +400,7 @@ export default function ConstructionPlansPage() {
         availableShapeKeys={editingShapeKeys}
         onClose={() => {
           setEditModalOpen(false);
+          setEditingPlanId(null);
           setEditingNode(null);
           setEditingPath(null);
         }}

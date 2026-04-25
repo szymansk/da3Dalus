@@ -155,7 +155,7 @@ export function PlanTreeSection({
               <BookTemplate size={10} />
             </button>
             <button
-              onClick={() => alert(`Rename: "${plan.name}"`)}
+              onClick={() => onRename(plan.id, plan.name)}
               title={`Rename ${plan.name}`}
               className="hidden size-5 items-center justify-center rounded-full text-muted-foreground hover:text-primary group-hover:flex"
             >

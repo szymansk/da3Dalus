@@ -15,7 +15,7 @@ interface EditParamsModalProps {
   creatorInfo: CreatorInfo | null;
   availableShapeKeys: string[];
   onClose: () => void;
-  onSave: (path: string, updatedParams: Record<string, unknown>) => void;
+  onSave: (path: string, updatedParams: Record<string, unknown>) => Promise<void>;
 }
 
 function extractValues(
@@ -44,23 +44,30 @@ export function EditParamsModal({
   const { dialogRef, handleClose } = useDialog(open, onClose);
   const [values, setValues] = useState<Record<string, unknown>>({});
 
-  // Reset values when a different node is opened (track by creator_id)
-  const [lastNodeId, setLastNodeId] = useState<string | null>(null);
-  if (open && node && node.creator_id !== lastNodeId) {
-    setLastNodeId(node.creator_id);
+  // Reset values when a different node is opened (track by nodePath for uniqueness)
+  const [lastNodePath, setLastNodePath] = useState<string | null>(null);
+  if (open && node && nodePath !== lastNodePath) {
+    setLastNodePath(nodePath);
     setValues(creatorInfo ? extractValues(node, creatorInfo) : {});
   }
-  if (!open && lastNodeId !== null) {
-    setLastNodeId(null);
+  if (!open && lastNodePath !== null) {
+    setLastNodePath(null);
   }
 
   const shapes = node && creatorInfo ? resolveNodeShapes(node, [creatorInfo]) : { inputs: [], outputs: [] };
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
-    if (nodePath != null) {
-      onSave(nodePath, values);
+  const handleSave = async () => {
+    if (nodePath == null) return;
+    setSaving(true);
+    try {
+      await onSave(nodePath, values);
+      onClose();
+    } catch (err) {
+      alert(`Save failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setSaving(false);
     }
-    onClose();
   };
 
   return (
@@ -136,15 +143,17 @@ export function EditParamsModal({
           <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
             <button
               onClick={onClose}
-              className="rounded-full border border-border px-4 py-2 text-[13px] text-muted-foreground hover:bg-sidebar-accent"
+              disabled={saving}
+              className="rounded-full border border-border px-4 py-2 text-[13px] text-muted-foreground hover:bg-sidebar-accent disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
-              className="rounded-full bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90"
+              disabled={saving}
+              className="rounded-full bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
             >
-              Save
+              {saving ? "Saving\u2026" : "Save"}
             </button>
           </div>
         </div>
