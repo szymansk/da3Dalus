@@ -54,8 +54,8 @@ export function renderCreatorTree(
               node={{
                 id: `${creatorKey}-input-${inp.paramName}`,
                 label: inp.boundValue
-                  ? `\u2192 ${inp.boundValue}`
-                  : `\u2192 ${inp.paramName}`,
+                  ? `\u27A1 ${inp.boundValue}`
+                  : `\u27A1 ${inp.paramName}`,
                 level: level + 1,
                 leaf: true,
                 muted: !!inp.boundValue,
@@ -70,7 +70,7 @@ export function renderCreatorTree(
               key={`${creatorKey}-output-${name}`}
               node={{
                 id: `${creatorKey}-output-${name}`,
-                label: `\u2190 ${name}`,
+                label: `\u2B05 ${name}`,
                 level: level + 1,
                 leaf: true,
                 muted: true,
