@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useDroppable } from "@dnd-kit/core";
-import { Play, Plus, BookTemplate, Pencil, FolderOpen, ChevronDown, ChevronRight } from "lucide-react";
+import { Play, Plus, BookTemplate, Pencil, Trash2, FolderOpen, ChevronDown, ChevronRight } from "lucide-react";
 import { SimpleTreeRow } from "@/components/workbench/SimpleTreeRow";
 import type { PlanStepNode } from "@/components/workbench/PlanTree";
 import { resolveNodeShapes } from "@/lib/planTreeUtils";
@@ -120,6 +120,7 @@ interface PlanTreeSectionProps {
   onRename: (planId: number, newName: string) => Promise<void> | void;
   onAddStep: (planId: number, parentPath?: string) => void;
   onDeleteStep: (planId: number, path: string) => void;
+  onDeletePlan?: (planId: number) => void;
   onShowArtifacts?: (planId: number) => void;
   hidePlanActions?: boolean;
 }
@@ -138,6 +139,7 @@ export function PlanTreeSection({
   onRename,
   onAddStep,
   onDeleteStep,
+  onDeletePlan,
   onShowArtifacts,
   hidePlanActions = false,
 }: Readonly<PlanTreeSectionProps>) {
@@ -207,6 +209,15 @@ export function PlanTreeSection({
             >
               <Pencil size={10} />
             </button>
+            {onDeletePlan && (
+              <button
+                onClick={() => onDeletePlan(plan.id)}
+                title={`Delete ${plan.name}`}
+                className="hidden size-5 items-center justify-center rounded-lg text-destructive group-hover:flex"
+              >
+                <Trash2 size={10} />
+              </button>
+            )}
             <button
               onClick={() => onAddStep(plan.id)}
               title={`Add step to ${plan.name}`}

@@ -255,6 +255,20 @@ export default function ConstructionPlansPage() {
     [mutateTemplates, selectedTemplateId],
   );
 
+  const handleDeletePlan = useCallback(
+    async (planId: number) => {
+      if (!confirm("Delete this plan? This cannot be undone.")) return;
+      try {
+        await deletePlan(planId);
+        mutatePlans();
+        if (activePlanId === planId) setActivePlanId(null);
+      } catch (err) {
+        alert(`Delete plan failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    },
+    [mutatePlans, activePlanId],
+  );
+
   /** Shared helper: add a creator as a child node at a given path in a plan/template tree. */
   const addCreatorToPlan = useCallback(
     async (planId: number, parentPath: string, creator: CreatorInfo) => {
@@ -596,6 +610,7 @@ export default function ConstructionPlansPage() {
                     onRename={handleRenamePlan}
                     onAddStep={handleAddStep}
                     onDeleteStep={handleDeleteStep}
+                    onDeletePlan={handleDeletePlan}
                     onShowArtifacts={(id) => setArtifactsPlanId(id)}
                   />
                 ))}
