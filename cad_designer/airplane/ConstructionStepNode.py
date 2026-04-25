@@ -5,6 +5,7 @@ from collections import OrderedDict
 from cadquery import Workplane
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
+from cad_designer.airplane.types import CreatorId, ShapeId
 
 T = TypeVar("T", bound="ConstructionStepNode")
 
@@ -13,7 +14,7 @@ class ConstructionStepNode(AbstractShapeCreator, MutableMapping):
     A node that is a map and holds in itself the following steps in the construction tree
     """
 
-    def __init__(self, creator: AbstractShapeCreator, successors: OrderedDict[str, T]=None, **kwargs):
+    def __init__(self, creator: AbstractShapeCreator, successors: OrderedDict[CreatorId, T]=None, **kwargs):
         """
         :param geometry: the geometry, that is created in this node
         :param successors: all following construction steps
@@ -44,8 +45,8 @@ class ConstructionStepNode(AbstractShapeCreator, MutableMapping):
         """
         self.update({value.creator.identifier: value})
 
-    def _create_shape(self, shapes_of_interest: list[str] | None, input_shapes: dict[str, Workplane], **kwargs) \
-            -> dict[str, object | Workplane]:
+    def _create_shape(self, shapes_of_interest: dict[ShapeId, Workplane] | None, input_shapes: dict[ShapeId, Workplane], **kwargs) \
+            -> dict[ShapeId, object | Workplane]:
         """
         Executes the construction of all shapes based on the defined workflow structure.
         :param shapes_of_interest: 
