@@ -109,11 +109,32 @@ def list_plans(
         raise InternalError(message=f"Database error: {e}")
 
 
+def _migrate_tree_json(db: Session, plan: ConstructionPlanModel) -> None:
+    """Fix legacy tree_json that uses ConstructionStepNode as root.
+
+    Old plans created with the wrong root $TYPE are silently migrated
+    to ConstructionRootNode on first read.
+    """
+    tree = plan.tree_json
+    if not isinstance(tree, dict):
+        return
+    root_type = tree.get("$TYPE", "")
+    if root_type == "ConstructionStepNode":
+        logger.info("Migrating plan %s root from ConstructionStepNode → ConstructionRootNode", plan.id)
+        tree["$TYPE"] = "ConstructionRootNode"
+        # Remove 'creator' key if present (ConstructionRootNode doesn't use it)
+        tree.pop("creator", None)
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(plan, "tree_json")
+        db.commit()
+
+
 def get_plan(db: Session, plan_id: int) -> PlanRead:
     try:
         plan = db.get(ConstructionPlanModel, plan_id)
         if plan is None:
             raise NotFoundError(entity=_ENTITY_CONSTRUCTION_PLAN, resource_id=plan_id)
+        _migrate_tree_json(db, plan)
         return _to_read(plan)
     except NotFoundError:
         raise
