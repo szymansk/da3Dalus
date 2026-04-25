@@ -875,10 +875,9 @@ export default function ConstructionPlansPage() {
                 <button
                   onClick={() => alert("Execute All: would execute all plans")}
                   title="Execute all plans"
-                  className="flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[11px] text-primary-foreground hover:opacity-90"
+                  className="flex size-6 items-center justify-center rounded-lg text-primary hover:text-primary/70"
                 >
-                  <Play size={10} />
-                  Execute All
+                  <Play size={14} />
                 </button>
                 <button
                   onClick={() => setTreeWide((w) => !w)}
@@ -978,10 +977,9 @@ export default function ConstructionPlansPage() {
                     <button
                       onClick={() => alert("Play Template: would open aeroplane selector")}
                       title="Execute template against an aeroplane"
-                      className="flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[11px] text-primary-foreground hover:opacity-90"
+                      className="flex size-6 items-center justify-center rounded-lg text-primary hover:text-primary/70"
                     >
-                      <Play size={10} />
-                      Test
+                      <Play size={14} />
                     </button>
                     <button
                       onClick={() => setTreeWide((w) => !w)}
