@@ -62,6 +62,7 @@ import logging
 from cadquery import Workplane
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
+from cad_designer.airplane.types import CreatorId, ShapeId
 
 
 class MyCreator(AbstractShapeCreator):
@@ -75,7 +76,7 @@ class MyCreator(AbstractShapeCreator):
 
     def __init__(
         self,
-        creator_id: str,
+        creator_id: CreatorId,
         # ── Domain parameters ──────────────────────────────────
         # Add your creator-specific parameters here.
         # Example: thickness: float, count: int, mode: str = "default"
@@ -83,7 +84,7 @@ class MyCreator(AbstractShapeCreator):
         # ── Shape references (upstream shapes this creator needs) ──
         # Use str keys that reference output of previous steps.
         # Default to None to allow positional pipeline resolution.
-        input_shape: str | None = None,
+        input_shape: ShapeId | None = None,
         #
         # ── Runtime-injected config (optional) ─────────────────
         # These are passed by GeneralJSONDecoder at decode time.

@@ -437,6 +437,70 @@ def _raise_http_from_domain(exc: ServiceException) -> None:
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message) from exc
 
 
+# ── DB-backed airfoil endpoints (gh#335) ────────────────────────
+
+from sqlalchemy.orm import Session
+from app.db.session import get_db
+from app.schemas.airfoil import AirfoilImportResult, AirfoilRead, AirfoilSummary
+from app.services import airfoil_service
+
+
+@router.get(
+    "/airfoils/db",
+    status_code=status.HTTP_200_OK,
+    tags=["airfoils"],
+    operation_id="list_airfoils_db",
+)
+async def list_airfoils_db(
+    db: Annotated[Session, Depends(get_db)],
+) -> list[AirfoilSummary]:
+    """List all airfoils stored in the database."""
+    try:
+        return airfoil_service.list_airfoils(db)
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
+
+
+@router.get(
+    "/airfoils/db/{name}",
+    status_code=status.HTTP_200_OK,
+    tags=["airfoils"],
+    operation_id="get_airfoil_db",
+)
+async def get_airfoil_db(
+    name: Annotated[str, Path(description="Airfoil name (case-insensitive)")],
+    db: Annotated[Session, Depends(get_db)],
+) -> AirfoilRead:
+    """Get a single airfoil from the database by name (with coordinates)."""
+    try:
+        return airfoil_service.get_airfoil(db, name)
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
+
+
+@router.post(
+    "/airfoils/import",
+    status_code=status.HTTP_200_OK,
+    tags=["airfoils"],
+    operation_id="import_airfoils_from_directory",
+)
+async def import_airfoils(
+    directory: Annotated[str, Body(embed=True, description="Directory path to scan recursively for .dat files")],
+    db: Annotated[Session, Depends(get_db)],
+) -> AirfoilImportResult:
+    """Recursively scan a directory for .dat files and import into DB.
+
+    Skips malformed files and existing airfoils (case-insensitive name match).
+    """
+    try:
+        return airfoil_service.import_directory(db, directory)
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
+
+
+# ── Legacy filesystem-based endpoints ───────────────────────────
+
+
 @router.get(
     "/airfoils/{airfoil_name}/known",
     status_code=status.HTTP_200_OK,

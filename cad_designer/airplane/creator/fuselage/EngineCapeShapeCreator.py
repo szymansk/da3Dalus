@@ -3,6 +3,7 @@ import logging
 from cadquery import Workplane
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
+from cad_designer.airplane.types import CreatorId, ShapeId
 from cad_designer.airplane.aircraft_topology.components.EngineInformation import EngineInformation
 from cad_designer.airplane.creator.fuselage.EngineCoverAndMountPanelAndFuselageShapeCreator import EngineCoverAndMountPanelAndFuselageShapeCreator
 
@@ -24,9 +25,9 @@ class EngineCapeShapeCreator(AbstractShapeCreator):
 
     suggested_creator_id = "engine[{engine_index}].cape"
 
-    def __init__(self, creator_id: str, engine_index: int, mount_plate_thickness: float,
+    def __init__(self, creator_id: CreatorId, engine_index: int, mount_plate_thickness: float,
                  engine_mount_box_length: float = None, engine_total_cover_length: float = None,
-                 full_fuselage_loft: str = None, engine_information: dict[int, EngineInformation] = None,
+                 full_fuselage_loft: ShapeId = None, engine_information: dict[int, EngineInformation] = None,
                  loglevel=logging.INFO):
         self.full_fuselage_loft = full_fuselage_loft
         self.mount_plate_thickness = mount_plate_thickness

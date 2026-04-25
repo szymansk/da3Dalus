@@ -208,6 +208,8 @@ export function toBackendTree(
   const { successors: _s, ...rootFields } = node as Record<string, unknown>;
   return {
     ...rootFields,
+    // Root must always be ConstructionRootNode for the GeneralJSONDecoder
+    $TYPE: "ConstructionRootNode",
     loglevel: (rootFields.loglevel as number) ?? DEFAULT_LOGLEVEL,
     successors: backendSuccessors,
   };
@@ -270,5 +272,105 @@ export function fromBackendTree(
   return {
     ...(rootFields as unknown as PlanStepNode),
     successors: children,
+  };
+}
+
+/** Build a unique creator_id from a base string, avoiding collisions with existing tree IDs. */
+function uniqueCreatorId(tree: PlanStepNode, base: string): string {
+  const existing = new Set<string>();
+  function walk(n: PlanStepNode) {
+    existing.add(n.creator_id);
+    (n.successors ?? []).forEach(walk);
+  }
+  walk(tree);
+  if (!existing.has(base)) return base;
+  let i = 1;
+  while (existing.has(`${base}_${i}`)) i++;
+  return `${base}_${i}`;
+}
+
+/** Build a new PlanStepNode from CreatorInfo, with a unique creator_id and seeded defaults. */
+export function buildStepNode(creator: CreatorInfo, tree: PlanStepNode): PlanStepNode {
+  const base = creator.suggested_id ?? creator.class_name.replace(/Creator$/, "").toLowerCase();
+  const node: PlanStepNode = {
+    $TYPE: creator.class_name,
+    creator_id: base, // placeholder — resolved after defaults are set
+    loglevel: 50,
+    successors: [],
+  };
+  for (const param of creator.parameters) {
+    if (param.default != null) {
+      (node as Record<string, unknown>)[param.name] = param.default;
+    }
+  }
+  // Resolve {placeholder} in creator_id using the seeded default values
+  const nodeRecord = node as Record<string, unknown>;
+  node.creator_id = base.replace(/\{(\w+)\}/g, (_match, param) => {
+    const val = nodeRecord[param];
+    return typeof val === "string" ? val : typeof val === "number" ? String(val) : `{${param}}`;
+  });
+  // Ensure uniqueness after resolution
+  node.creator_id = uniqueCreatorId(tree, node.creator_id);
+  return node;
+}
+
+export interface ResolvedShapeInput {
+  paramName: string;
+  boundValue: string | null;  // null = unbound (show in red)
+}
+
+export interface ResolvedShapes {
+  inputs: ResolvedShapeInput[];
+  outputs: string[];
+}
+
+/** Check if a CreatorParam type is a shape reference (ShapeId or list[ShapeId]). */
+export function isShapeRefType(type: string): boolean {
+  return type === "ShapeId" || type === "list[ShapeId]";
+}
+
+export function resolveNodeShapes(
+  node: PlanStepNode,
+  creators: CreatorInfo[],
+): ResolvedShapes {
+  const info = creators.find(c => c.class_name === node.$TYPE);
+  if (!info) return { inputs: [], outputs: [] };
+  const stepId = node.creator_id;
+
+  const inputs: ResolvedShapeInput[] = [];
+  for (const p of info.parameters) {
+    if (!isShapeRefType(p.type)) continue;
+    const val = (node as Record<string, unknown>)[p.name];
+    if (p.type === "list[ShapeId]" && Array.isArray(val)) {
+      // Multi-shape ref: each element is a separate input
+      for (const v of val) {
+        const bound = typeof v === "string" && v.trim() !== "" ? v : null;
+        inputs.push({ paramName: p.name, boundValue: bound });
+      }
+      // If list is empty, show one unbound entry
+      if (val.length === 0) {
+        inputs.push({ paramName: p.name, boundValue: null });
+      }
+    } else {
+      const bound = typeof val === "string" && val.trim() !== "" ? val : null;
+      inputs.push({ paramName: p.name, boundValue: bound });
+    }
+  }
+
+  // Resolve output key placeholders: {id} → creator_id, {param} → node[param]
+  const nodeRecord = node as Record<string, unknown>;
+  const resolveKey = (key: string): string => {
+    let resolved = key.replaceAll("{id}", stepId);
+    // Replace remaining {param_name} placeholders with actual values
+    resolved = resolved.replace(/\{(\w+)\}/g, (_match, param) => {
+      const val = nodeRecord[param];
+      return typeof val === "string" ? val : typeof val === "number" ? String(val) : `{${param}}`;
+    });
+    return resolved;
+  };
+
+  return {
+    inputs,
+    outputs: info.outputs.map(o => resolveKey(o.key)),
   };
 }

@@ -16,6 +16,8 @@ from app.core.exceptions import (
 )
 from app.db.session import get_db
 from app.schemas.construction_plan import (
+    ArtifactDirectory,
+    ArtifactFile,
     CreatorInfo,
     ExecuteRequest,
     ExecutionResult,
@@ -23,6 +25,7 @@ from app.schemas.construction_plan import (
     PlanRead,
     PlanSummary,
 )
+from app.services import artifact_service
 from app.services import construction_plan_service as svc
 
 logger = logging.getLogger(__name__)
@@ -163,5 +166,96 @@ async def execute_plan(
     """Execute a construction plan against an aeroplane configuration."""
     try:
         return svc.execute_plan(db, plan_id, request)
+    except ServiceException as exc:
+        _handle_service_error(exc)
+
+
+# ── Artifact browser ───────────────────────────────────────────
+
+
+@router.get(
+    "/construction-plans/{plan_id}/artifacts",
+    tags=["construction-plans"],
+    operation_id="list_plan_artifacts",
+)
+async def list_artifacts(
+    plan_id: Annotated[int, Path(...)],
+) -> List[ArtifactDirectory]:
+    """List all execution artifact directories for a plan."""
+    try:
+        return artifact_service.list_executions(plan_id)
+    except ServiceException as exc:
+        _handle_service_error(exc)
+
+
+@router.get(
+    "/construction-plans/{plan_id}/artifacts/{execution_id}",
+    tags=["construction-plans"],
+    operation_id="list_artifact_files",
+)
+async def list_artifact_files(
+    plan_id: Annotated[int, Path(...)],
+    execution_id: Annotated[str, Path(...)],
+    subpath: Annotated[str, Query(description="Subdirectory path within execution dir")] = "",
+) -> List[ArtifactFile]:
+    """List files in a specific execution's artifact directory (or subdirectory)."""
+    try:
+        return artifact_service.list_files(plan_id, execution_id, subpath=subpath)
+    except ServiceException as exc:
+        _handle_service_error(exc)
+
+
+@router.get(
+    "/construction-plans/{plan_id}/artifacts/{execution_id}/{filename:path}",
+    tags=["construction-plans"],
+    operation_id="download_artifact_file",
+)
+async def download_artifact_file(
+    plan_id: Annotated[int, Path(...)],
+    execution_id: Annotated[str, Path(...)],
+    filename: str,
+):
+    """Download a single artifact file (supports subdirectory paths like wing/file.stl)."""
+    from fastapi.responses import FileResponse
+    from pathlib import Path as PathLib
+
+    try:
+        path = artifact_service.get_file_path(plan_id, execution_id, filename)
+        return FileResponse(path, filename=PathLib(filename).name)
+    except ServiceException as exc:
+        _handle_service_error(exc)
+
+
+@router.delete(
+    "/construction-plans/{plan_id}/artifacts/{execution_id}/{filename:path}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["construction-plans"],
+    operation_id="delete_artifact_file",
+)
+async def delete_artifact_file(
+    plan_id: Annotated[int, Path(...)],
+    execution_id: Annotated[str, Path(...)],
+    filename: str,
+):
+    """Delete a single artifact file."""
+    try:
+        artifact_service.delete_file(plan_id, execution_id, filename)
+    except ServiceException as exc:
+        _handle_service_error(exc)
+
+
+@router.delete(
+    "/construction-plans/{plan_id}/artifacts/{execution_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["construction-plans"],
+    operation_id="delete_execution",
+)
+async def delete_execution(
+    plan_id: Annotated[int, Path(...)],
+    execution_id: Annotated[str, Path(...)],
+):
+    """Delete an entire execution directory and all its artifacts."""
+    try:
+        artifact_service.delete_execution(plan_id, execution_id)
     except ServiceException as exc:
         _handle_service_error(exc)

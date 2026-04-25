@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useDraggable } from "@dnd-kit/core";
 import { Search } from "lucide-react";
 import type { CreatorInfo, CreatorCategory } from "@/hooks/useCreators";
 import { CREATOR_CATEGORIES } from "@/hooks/useCreators";
@@ -17,9 +18,52 @@ const CATEGORY_LABELS: Record<CreatorCategory, string> = {
 interface CreatorGalleryProps {
   creators: CreatorInfo[];
   onSelect: (creator: CreatorInfo) => void;
+  /** When true, each creator card is draggable. Drop targets handle the drop. */
+  draggable?: boolean;
 }
 
-export function CreatorGallery({ creators, onSelect }: Readonly<CreatorGalleryProps>) {
+interface CreatorCardProps {
+  creator: CreatorInfo;
+  onSelect: (creator: CreatorInfo) => void;
+  draggable: boolean;
+}
+
+function CreatorCard({ creator, onSelect, draggable }: Readonly<CreatorCardProps>) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `creator-${creator.class_name}`,
+    data: { type: "creator", creator },
+    disabled: !draggable,
+  });
+  return (
+    <div
+      ref={draggable ? setNodeRef : undefined}
+      {...(draggable ? attributes : {})}
+      {...(draggable ? listeners : {})}
+      role="button"
+      tabIndex={0}
+      onClick={() => onSelect(creator)}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(creator); } }}
+      className={`group/card flex cursor-pointer flex-col gap-1 rounded-xl border border-border bg-card p-3 text-left hover:border-primary/50 hover:bg-sidebar-accent ${isDragging ? "opacity-40" : ""}`}
+    >
+      <span className="flex items-center gap-1.5">
+        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground">
+          {creator.class_name}
+        </span>
+        {creator.description && <InfoTooltip text={creator.description} />}
+      </span>
+      <span className="rounded-full bg-card-muted px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground self-start">
+        {CATEGORY_LABELS[creator.category as CreatorCategory] ?? creator.category}
+      </span>
+      {creator.description && (
+        <span className="text-[10px] text-subtle-foreground line-clamp-2">
+          {creator.description}
+        </span>
+      )}
+    </div>
+  );
+}
+
+export function CreatorGallery({ creators, onSelect, draggable = false }: Readonly<CreatorGalleryProps>) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<CreatorCategory | null>(null);
 
@@ -79,31 +123,12 @@ export function CreatorGallery({ creators, onSelect }: Readonly<CreatorGalleryPr
       ) : (
         <div className="grid grid-cols-2 gap-2">
           {filtered.map((creator) => (
-            <div
+            <CreatorCard
               key={creator.class_name}
-              role="button"
-              tabIndex={0}
-              onClick={() => onSelect(creator)}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(creator); } }}
-              className="group/card flex cursor-pointer flex-col gap-1 rounded-xl border border-border bg-card p-3 text-left hover:border-primary/50 hover:bg-sidebar-accent"
-            >
-              <span className="flex items-center gap-1.5">
-                <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground">
-                  {creator.class_name}
-                </span>
-                {creator.description && (
-                  <InfoTooltip text={creator.description} />
-                )}
-              </span>
-              <span className="rounded-full bg-card-muted px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-muted-foreground self-start">
-                {CATEGORY_LABELS[creator.category as CreatorCategory] ?? creator.category}
-              </span>
-              {creator.description && (
-                <span className="text-[10px] text-subtle-foreground line-clamp-2">
-                  {creator.description}
-                </span>
-              )}
-            </div>
+              creator={creator}
+              onSelect={onSelect}
+              draggable={draggable}
+            />
           ))}
         </div>
       )}

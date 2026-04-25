@@ -8,6 +8,7 @@ from cad_designer.airplane.creator.export_import.IgesImportCreator import IgesIm
 from cad_designer.airplane.aircraft_topology.components.ServoInformation import ServoInformation
 from cad_designer.airplane.creator.export_import import StepImportCreator
 from cad_designer.airplane.creator.cad_operations import ScaleRotateTranslateCreator
+from cad_designer.airplane.types import CreatorId
 
 
 class ServoImporterCreator(AbstractShapeCreator):
@@ -31,7 +32,7 @@ class ServoImporterCreator(AbstractShapeCreator):
 
     suggested_creator_id = "servo[{servo_idx}]"
 
-    def __init__(self, creator_id: str, servo_feature: str, servo_stamp: str, servo_filling: str, servo_model: str,
+    def __init__(self, creator_id: CreatorId, servo_feature: str, servo_stamp: str, servo_filling: str, servo_model: str,
                  servo_idx: int, reverse_model=False, servo_information: dict[int, ServoInformation] = None,
                  mirror_model_by_plane="", loglevel=logging.INFO):
         self.mirror_model_by_plane = mirror_model_by_plane

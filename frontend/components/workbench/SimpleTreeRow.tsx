@@ -12,6 +12,8 @@ export interface SimpleTreeNode {
   expanded?: boolean;
   leaf?: boolean;
   muted?: boolean;
+  /** Render label in a subtle error/red tone. */
+  error?: boolean;
   selected?: boolean;
   chip?: string;
   annotation?: string;
@@ -71,7 +73,7 @@ export function SimpleTreeRow({ node, onToggle }: Readonly<SimpleTreeRowProps>) 
       {...attributes}
       {...listeners}
       aria-roledescription="sortable"
-      className={`group flex w-full items-center gap-1.5 rounded-xl py-1.5 pr-2 hover:bg-sidebar-accent cursor-pointer ${
+      className={`group flex min-w-full w-max items-center gap-1.5 rounded-xl py-1.5 pr-2 hover:bg-sidebar-accent cursor-pointer ${
         node.selected ? "bg-sidebar-accent font-semibold" : ""
       } ${isOver ? "ring-2 ring-primary" : ""} ${isDragging ? "opacity-40" : ""}`}
       style={{ paddingLeft: indent }}
@@ -89,12 +91,12 @@ export function SimpleTreeRow({ node, onToggle }: Readonly<SimpleTreeRowProps>) 
         <ChevronRight size={12} className="shrink-0 text-muted-foreground" />
       )}
       <span
-        className={`truncate ${node.muted ? "text-[12px] text-muted-foreground" : "font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"}`}
+        className={`whitespace-nowrap ${node.error ? "text-[12px] text-red-400/70" : node.muted ? "text-[12px] text-muted-foreground" : "font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"}`}
       >
         {node.label}
       </span>
       {node.chip && (
-        <span className="rounded bg-card-muted px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-primary">
+        <span className="max-w-[120px] truncate rounded bg-card-muted px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-primary">
           {node.chip}
         </span>
       )}
@@ -115,28 +117,28 @@ export function SimpleTreeRow({ node, onToggle }: Readonly<SimpleTreeRowProps>) 
           {node.annotation}
         </span>
       )}
-      {node.onAdd && (
-        <button
-          onClick={(e) => { e.stopPropagation(); node.onAdd?.(); }}
-          title={node.addTitle ?? "Add"}
-          className="hidden size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground group-hover:flex"
-        >
-          <Plus size={10} />
-        </button>
-      )}
       {node.onEdit && (
         <button
           onClick={(e) => { e.stopPropagation(); node.onEdit?.(); }}
           title={node.editTitle ?? `Edit ${node.label}`}
-          className="hidden size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground group-hover:flex"
+          className="hidden shrink-0 size-5 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground group-hover:flex"
         >
           <Pencil size={10} />
+        </button>
+      )}
+      {node.onAdd && (
+        <button
+          onClick={(e) => { e.stopPropagation(); node.onAdd?.(); }}
+          title={node.addTitle ?? "Add"}
+          className="hidden shrink-0 size-5 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground group-hover:flex"
+        >
+          <Plus size={10} />
         </button>
       )}
       {node.onDelete && (
         <button
           onClick={(e) => { e.stopPropagation(); node.onDelete?.(); }}
-          className="hidden size-5 items-center justify-center rounded-full text-destructive group-hover:flex"
+          className="hidden shrink-0 size-5 items-center justify-center rounded-lg text-destructive group-hover:flex"
         >
           <Trash2 size={10} />
         </button>

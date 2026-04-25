@@ -7,6 +7,7 @@ from cadquery import Workplane, Shape
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 from cad_designer.airplane.creator.cad_operations import ScaleRotateTranslateCreator
+from cad_designer.airplane.types import CreatorId
 
 
 class IgesImportCreator(AbstractShapeCreator):
@@ -31,7 +32,7 @@ class IgesImportCreator(AbstractShapeCreator):
 
     suggested_creator_id = "import_iges"
 
-    def __init__(self, creator_id: str, iges_file: str, trans_x: float = .0, trans_y: float = .0, trans_z: float = .0,
+    def __init__(self, creator_id: CreatorId, iges_file: str, trans_x: float = .0, trans_y: float = .0, trans_z: float = .0,
                  rot_x: float = .0, rot_y: float = .0, rot_z: float = .0, scale: float = 1.0, scale_x=1.0, scale_y=1.0,
                  scale_z=1.0, loglevel=logging.INFO):
         self.iges_file = iges_file

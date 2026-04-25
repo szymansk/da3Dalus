@@ -5,17 +5,20 @@ import logging
 
 from cadquery import Workplane
 
+from cad_designer.airplane.types import CreatorId, ShapeId
+
+
 class AbstractShapeCreator(metaclass=abc.ABCMeta):
     """
     Base class for shape creating/modifying nodes.
     """
-    def __init__(self, creator_id: str, shapes_of_interest_keys: list[str] | None, loglevel:int=logging.FATAL):
+    def __init__(self, creator_id: CreatorId, shapes_of_interest_keys: list[ShapeId] | None, loglevel:int=logging.FATAL):
         self.loglevel: int = loglevel
-        self._shapes_of_interest_keys: list[str] | None = shapes_of_interest_keys
-        self.creator_id: str = creator_id
+        self._shapes_of_interest_keys: list[ShapeId] | None = shapes_of_interest_keys
+        self.creator_id: CreatorId = creator_id
 
     @property
-    def identifier(self) -> str:
+    def identifier(self) -> CreatorId:
         """
         This property is abstract and used in the ConstructionStepNode. The variable, that ist used to hold the
         property should not be private (does not start with an '_'). Otherwise, it will not be de-/serialized.
@@ -24,12 +27,12 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         return self.creator_id
 
     @property
-    def shapes_of_interest_keys(self) -> list[str]:
+    def shapes_of_interest_keys(self) -> list[ShapeId]:
         return self._shapes_of_interest_keys
 
     @abc.abstractmethod
-    def _create_shape(self, shapes_of_interest: list[str] | None, input_shapes: dict[str, Workplane],
-                      **kwargs) -> dict[str, Workplane]:
+    def _create_shape(self, shapes_of_interest: dict[ShapeId, Workplane] | None, input_shapes: dict[ShapeId, Workplane],
+                      **kwargs) -> dict[ShapeId, Workplane]:
         """
         This method will create a shape. The shape can depend on shapes of previous steps. All previous steps
         occur in the kwargs variable. The keys are the 'identifier's and the values hold the shapes.
@@ -43,7 +46,7 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         """
         pass
 
-    def create_shape(self, input_shapes: dict[str, Workplane] = None, **kwargs) -> dict[str, Workplane]:
+    def create_shape(self, input_shapes: dict[ShapeId, Workplane] = None, **kwargs) -> dict[ShapeId, Workplane]:
         shapes_of_interest = self.return_needed_shapes(shapes_needed=self.shapes_of_interest_keys,
                                                        input_shapes=input_shapes, **kwargs) \
             if self.shapes_of_interest_keys is not None else None
@@ -57,7 +60,7 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         logging.getLogger().setLevel(level=actual_loglevel)
         return result
 
-    def check_if_shapes_are_available(self, needed_shapes: list[str], **kwargs) -> dict[str, Workplane]:
+    def check_if_shapes_are_available(self, needed_shapes: list[ShapeId], **kwargs) -> dict[ShapeId, Workplane]:
         """
         Check if the shapes, that are needed, have been created before and are available in kwargs.
         :param needed_shapes: list of str with shape identifiers
@@ -74,9 +77,9 @@ class AbstractShapeCreator(metaclass=abc.ABCMeta):
         return shapes
 
     def return_needed_shapes(self,
-                             shapes_needed: list[str],
-                             input_shapes: dict[str, Workplane],
-                             **kwargs) -> dict[str, Workplane]:
+                             shapes_needed: list[ShapeId],
+                             input_shapes: dict[ShapeId, Workplane],
+                             **kwargs) -> dict[ShapeId, Workplane]:
         """
         for each position of shapes_need that is 'None', we take one shape from the input_shapes.
         we expect the input shapes to be ordered most significant last

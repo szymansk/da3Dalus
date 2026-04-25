@@ -4,6 +4,7 @@ import cadquery as cq
 from cadquery import Workplane
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
+from cad_designer.airplane.types import CreatorId, ShapeId
 
 class ScaleRotateTranslateCreator(AbstractShapeCreator):
     """Applies scale, rotation, and translation transforms to a shape.
@@ -28,7 +29,7 @@ class ScaleRotateTranslateCreator(AbstractShapeCreator):
 
     suggested_creator_id = "transform.{shape_id}"
 
-    def __init__(self, creator_id: str, shape_id: str, scale: float = 1.0, rot_x: float = .0, rot_y: float = .0,
+    def __init__(self, creator_id: CreatorId, shape_id: ShapeId, scale: float = 1.0, rot_x: float = .0, rot_y: float = .0,
                  rot_z: float = .0, trans_x: float = .0, trans_y: float = .0, trans_z: float = .0, scale_x=1.0,
                  scale_y=1.0, scale_z=1.0, mirroring="", loglevel=logging.INFO):
         self.mirroring = mirroring

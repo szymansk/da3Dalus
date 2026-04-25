@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -71,7 +71,6 @@ class CreatorParam(BaseModel):
     required: bool
     description: Optional[str] = Field(None, description="Human-readable parameter description")
     options: Optional[list[str]] = Field(None, description="Allowed values for Literal/enum params")
-    is_shape_ref: bool = Field(False, description="True if this param references an upstream shape key")
 
 
 class CreatorOutput(BaseModel):
@@ -104,9 +103,39 @@ class ExecuteRequest(BaseModel):
 class ExecutionResult(BaseModel):
     """Response from plan execution."""
 
-    status: str = Field(description="'success' or 'error'")
+    status: Literal["success", "error"] = Field(description="Execution status")
     shape_keys: list[str] = Field(default_factory=list)
     export_paths: list[str] = Field(default_factory=list)
     error: Optional[str] = None
     duration_ms: int = 0
     tessellation: Optional[dict] = Field(None, description="three-cad-viewer compatible tessellation data")
+    artifact_dir: Optional[str] = Field(
+        None,
+        description="Server-side artifact directory for this execution (relative to artifacts base)",
+    )
+    execution_id: Optional[str] = Field(
+        None,
+        description="Timestamp-based execution identifier",
+    )
+
+
+# ── Artifact browser schemas ────────────────────────────────────
+
+
+class ArtifactFile(BaseModel):
+    """File entry in an artifact directory listing."""
+
+    name: str = Field(..., description="File or directory name")
+    is_dir: bool = Field(False, description="True if entry is a subdirectory")
+    size_bytes: int = Field(0, description="File size in bytes (0 for directories)")
+    modified: str = Field(..., description="ISO timestamp of last modification")
+
+
+class ArtifactDirectory(BaseModel):
+    """A single execution's artifact directory."""
+
+    execution_id: str = Field(..., description="Execution timestamp identifier")
+    plan_id: int = Field(..., description="Owning plan id")
+    aeroplane_id: str = Field(..., description="Owning aeroplane id")
+    created: str = Field(..., description="ISO timestamp the directory was created")
+    file_count: int = Field(0, description="Number of files in the directory")

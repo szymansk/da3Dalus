@@ -7,7 +7,7 @@ from pydantic import NonNegativeInt
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 from cad_designer.airplane.aircraft_topology.wing.WingConfiguration import WingConfiguration
-from cad_designer.airplane.types import WingSides
+from cad_designer.airplane.types import CreatorId, WingSides
 
 
 class WingLoftCreator(AbstractShapeCreator):
@@ -25,7 +25,7 @@ class WingLoftCreator(AbstractShapeCreator):
 
     suggested_creator_id = "{wing_index}.loft"
 
-    def __init__(self, creator_id: str, wing_index: str | int, offset: float = 0,
+    def __init__(self, creator_id: CreatorId, wing_index: str | int, offset: float = 0,
                  wing_config: dict[NonNegativeInt, WingConfiguration] | None = None,
                  wing_side: WingSides | None = None, connected:bool=True, loglevel=logging.INFO):
         self.wing_side: WingSides = wing_side

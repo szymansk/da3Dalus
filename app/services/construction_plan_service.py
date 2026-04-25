@@ -4,6 +4,8 @@ from __future__ import annotations
 import inspect
 import json
 import logging
+import copy
+import os
 import re
 import time
 from typing import Any
@@ -107,11 +109,32 @@ def list_plans(
         raise InternalError(message=f"Database error: {e}")
 
 
+def _migrate_tree_json(db: Session, plan: ConstructionPlanModel) -> None:
+    """Fix legacy tree_json that uses ConstructionStepNode as root.
+
+    Old plans created with the wrong root $TYPE are silently migrated
+    to ConstructionRootNode on first read.
+    """
+    tree = plan.tree_json
+    if not isinstance(tree, dict):
+        return
+    root_type = tree.get("$TYPE", "")
+    if root_type == "ConstructionStepNode":
+        logger.info("Migrating plan %s root from ConstructionStepNode → ConstructionRootNode", plan.id)
+        tree["$TYPE"] = "ConstructionRootNode"
+        # Remove 'creator' key if present (ConstructionRootNode doesn't use it)
+        tree.pop("creator", None)
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(plan, "tree_json")
+        db.commit()
+
+
 def get_plan(db: Session, plan_id: int) -> PlanRead:
     try:
         plan = db.get(ConstructionPlanModel, plan_id)
         if plan is None:
             raise NotFoundError(entity=_ENTITY_CONSTRUCTION_PLAN, resource_id=plan_id)
+        _migrate_tree_json(db, plan)
         return _to_read(plan)
     except NotFoundError:
         raise
@@ -385,9 +408,17 @@ def _get_category(cls: type) -> str:
 def _type_to_str(annotation: Any) -> str:
     if annotation is inspect.Parameter.empty:
         return "any"
+    # Handle generic aliases (e.g. list[ShapeId]) BEFORE __name__ check,
+    # because list[X].__name__ == "list" (loses the subscript).
+    if hasattr(annotation, "__args__"):
+        raw = str(annotation).replace("typing.", "")
+        raw = re.sub(r"cad_designer\.airplane\.types\.", "", raw)
+        return raw
     if hasattr(annotation, "__name__"):
         return annotation.__name__
-    return str(annotation).replace("typing.", "")
+    raw = str(annotation).replace("typing.", "")
+    raw = re.sub(r"cad_designer\.airplane\.types\.", "", raw)
+    return raw
 
 
 def _find_literal_in_args(args: tuple) -> list[str] | None:
@@ -434,36 +465,6 @@ def _extract_literal_values(annotation: Any) -> list[str] | None:
     return None
 
 
-def _get_shape_ref_params(cls: type) -> set[str]:
-    """Detect which __init__ params are used as shapes_of_interest_keys.
-
-    Parses the source of __init__ looking for the super().__init__ call
-    with shapes_of_interest_keys=[...] and extracts referenced param names.
-    """
-    try:
-        src = inspect.getsource(cls.__init__)
-    except (TypeError, OSError):
-        return set()
-
-    # Match shapes_of_interest_keys=[...] or shapes_of_interest_keys=self.xxx
-    match = re.search(r"shapes_of_interest_keys\s*=\s*(\[[^\]]*\]|self\.\w+)", src)
-    if not match:
-        return set()
-
-    expr = match.group(1)
-    if expr.startswith("self."):
-        return {expr.replace("self.", "")}
-
-    # Extract all identifiers from the list expression (self.foo or bare foo)
-    refs = set()
-    for m in re.finditer(r"(?:self\.)?(\w+)", expr):
-        name = m.group(1)
-        # Skip non-param identifiers
-        if name not in ("self", "None", "True", "False"):
-            refs.add(name)
-    return refs
-
-
 def list_creators() -> list[CreatorInfo]:
     """Reflect over all AbstractShapeCreator subclasses and return metadata."""
     try:
@@ -502,7 +503,6 @@ def _collect_creators(cls: type, result: list[CreatorInfo], seen: set[str]) -> N
 
     sig = inspect.signature(cls.__init__)
     param_descriptions = _parse_docstring_attributes(cls.__doc__ or "")
-    shape_ref_params = _get_shape_ref_params(cls)
     params: list[CreatorParam] = []
     for pname, param in sig.parameters.items():
         if pname in _INTERNAL_PARAMS:
@@ -514,7 +514,6 @@ def _collect_creators(cls: type, result: list[CreatorInfo], seen: set[str]) -> N
             required=param.default is inspect.Parameter.empty,
             description=param_descriptions.get(pname),
             options=_extract_literal_values(param.annotation),
-            is_shape_ref=pname in shape_ref_params,
         ))
 
     docstring = (cls.__doc__ or "").strip().split("\n")[0] if cls.__doc__ else None
@@ -538,6 +537,57 @@ def _collect_creators(cls: type, result: list[CreatorInfo], seen: set[str]) -> N
 # ── Execute ─────────────────────────────────────────────────────
 
 
+_EXPORT_CREATOR_TYPES = {
+    "ExportToStlCreator", "ExportToStepCreator",
+    "ExportToIgesCreator", "ExportTo3mfCreator",
+}
+
+
+def _rewrite_export_paths(tree_json: dict, artifact_dir) -> dict:
+    """Rewrite relative file_path params in export Creators to absolute paths.
+
+    Walks the tree_json recursively and prepends artifact_dir to any
+    file_path that is not already absolute.
+    """
+    from pathlib import Path
+
+    tree = copy.deepcopy(tree_json)
+    artifact = Path(artifact_dir)
+
+    def walk(node: dict) -> None:
+        node_type = node.get("$TYPE", "")
+        # Check the creator inside ConstructionStepNode
+        creator = node.get("creator")
+        if isinstance(creator, dict):
+            creator_type = creator.get("$TYPE", "")
+            if creator_type in _EXPORT_CREATOR_TYPES:
+                fp = creator.get("file_path")
+                if isinstance(fp, str) and not os.path.isabs(fp):
+                    abs_path = artifact / fp
+                    abs_path.mkdir(parents=True, exist_ok=True)  # file_path is a directory for exporters
+                    creator["file_path"] = str(abs_path)
+        # Also check if this node itself is an export creator (flat format)
+        if node_type in _EXPORT_CREATOR_TYPES:
+            fp = node.get("file_path")
+            if isinstance(fp, str) and not os.path.isabs(fp):
+                abs_path = artifact / fp
+                abs_path.mkdir(parents=True, exist_ok=True)  # file_path is a directory for exporters
+                node["file_path"] = str(abs_path)
+        # Recurse into successors
+        successors = node.get("successors")
+        if isinstance(successors, dict):
+            for child in successors.values():
+                if isinstance(child, dict):
+                    walk(child)
+        elif isinstance(successors, list):
+            for child in successors:
+                if isinstance(child, dict):
+                    walk(child)
+
+    walk(tree)
+    return tree
+
+
 def execute_plan(
     db: Session,
     plan_id: int,
@@ -545,6 +595,7 @@ def execute_plan(
 ) -> ExecutionResult:
     """Execute a plan against an aeroplane configuration."""
     from app.services.wing_service import get_aeroplane_or_raise, get_wing_or_raise
+    from app.services.artifact_service import create_execution_dir
     from app.converters.model_schema_converters import wing_model_to_wing_config
 
     # Load plan
@@ -558,6 +609,9 @@ def execute_plan(
     effective_aeroplane_id = plan.aeroplane_id or request.aeroplane_id
     aeroplane = get_aeroplane_or_raise(db, effective_aeroplane_id)
 
+    # Create artifact directory for this execution
+    execution_id, artifact_dir = create_execution_dir(effective_aeroplane_id, plan_id)
+
     # Build wing_config map: all wings
     wing_config: dict = {}
     for wing in aeroplane.wings:
@@ -570,12 +624,17 @@ def execute_plan(
     # Load printer_settings from component library (if available)
     printer_settings = _load_printer_settings(db)
 
+    # Rewrite relative file_path parameters in export Creators to absolute
+    # paths inside the artifact directory. Without this, exports would land
+    # in the project root (since we no longer chdir into artifact_dir).
+    tree_for_exec = _rewrite_export_paths(plan.tree_json, artifact_dir)
+
     # Decode tree_json with GeneralJSONDecoder
+    t0 = time.monotonic()
     try:
         from cad_designer.airplane.GeneralJSONEncoderDecoder import GeneralJSONDecoder
 
-        json_string = json.dumps(plan.tree_json)
-        t0 = time.monotonic()
+        json_string = json.dumps(tree_for_exec)
         root_node = json.loads(
             json_string,
             cls=GeneralJSONDecoder,
@@ -586,20 +645,31 @@ def execute_plan(
             component_information=None,
         )
     except Exception as exc:
+        logger.exception(
+            "Failed to decode plan tree_json: plan_id=%s execution_id=%s",
+            plan_id, execution_id,
+        )
         raise ValidationError(
             message=f"Failed to decode construction plan: {exc}",
-        )
+        ) from exc
 
-    # Execute
+    # Execute. Resources like airfoils are loaded from the DB (not filesystem),
+    # so we do NOT chdir — cwd stays at the project root.
     try:
         structure = root_node.create_shape()
         duration_ms = int((time.monotonic() - t0) * 1000)
     except Exception as exc:
         duration_ms = int((time.monotonic() - t0) * 1000)
+        logger.exception(
+            "Plan execution failed: plan_id=%s aeroplane_id=%s execution_id=%s",
+            plan_id, effective_aeroplane_id, execution_id,
+        )
         return ExecutionResult(
             status="error",
-            error=str(exc),
+            error=f"{type(exc).__name__}: {exc}",
             duration_ms=duration_ms,
+            artifact_dir=str(artifact_dir),
+            execution_id=execution_id,
         )
 
     shape_keys = list(structure.keys()) if isinstance(structure, dict) else []
@@ -612,7 +682,149 @@ def execute_plan(
         shape_keys=shape_keys,
         duration_ms=duration_ms,
         tessellation=tessellation,
+        artifact_dir=str(artifact_dir),
+        execution_id=execution_id,
     )
+
+
+def execute_plan_streaming(
+    db: Session,
+    plan_id: int,
+    request: ExecuteRequest,
+):
+    """Execute a plan and yield SSE events as shapes are displayed.
+
+    Returns a generator of SSE-formatted strings. Each `display()` call
+    in the Creator code produces a 'shape' event with tessellated geometry.
+    The final event is 'complete' or 'error'.
+    """
+    import json
+    import os
+    import queue
+    import threading
+
+    from app.services.wing_service import get_aeroplane_or_raise
+    from app.services.artifact_service import create_execution_dir
+    from app.converters.model_schema_converters import wing_model_to_wing_config
+
+    # Load plan — wrap setup in try/except to yield SSE errors instead of crashing
+    try:
+        plan = _get_plan_or_raise(db, plan_id)
+    except (NotFoundError, ValidationError) as exc:
+        yield f"event: error\ndata: {json.dumps({'error': str(exc)})}\n\n"
+        return
+    if plan.plan_type == "template":
+        yield f"event: error\ndata: {json.dumps({'error': 'Templates cannot be executed'})}\n\n"
+        return
+
+    effective_aeroplane_id = plan.aeroplane_id or request.aeroplane_id
+    try:
+        aeroplane = get_aeroplane_or_raise(db, effective_aeroplane_id)
+    except NotFoundError as exc:
+        yield f"event: error\ndata: {json.dumps({'error': str(exc)})}\n\n"
+        return
+
+    wing_config: dict = {}
+    for wing in aeroplane.wings:
+        try:
+            wc = wing_model_to_wing_config(wing, scale=1000.0)
+            wing_config[wing.name] = wc
+        except Exception as exc:
+            logger.warning("Failed to convert wing '%s': %s", wing.name, exc)
+
+    printer_settings = _load_printer_settings(db)
+    execution_id, artifact_dir = create_execution_dir(effective_aeroplane_id, plan_id)
+
+    # Rewrite export paths for artifact directory
+    tree_for_exec = _rewrite_export_paths(plan.tree_json, artifact_dir)
+
+    # Decode tree
+    t0 = time.monotonic()
+    try:
+        from cad_designer.airplane.GeneralJSONEncoderDecoder import GeneralJSONDecoder
+
+        json_string = json.dumps(tree_for_exec)
+        root_node = json.loads(
+            json_string,
+            cls=GeneralJSONDecoder,
+            wing_config=wing_config,
+            printer_settings=printer_settings,
+            servo_information={},
+            engine_information=None,
+            component_information=None,
+        )
+    except Exception as exc:
+        logger.exception("Failed to decode plan tree_json: plan_id=%s", plan_id)
+        yield f"event: error\ndata: {json.dumps({'error': f'Decode failed: {exc}'})}\n\n"
+        return
+
+    # Set up display callback → queue
+    shape_queue: queue.Queue = queue.Queue()
+
+    def on_display(name: str, tessellation: dict):
+        # Convert numpy arrays to plain Python types for JSON serialization
+        clean = _numpy_to_list(tessellation)
+        shape_queue.put(("shape", name, clean))
+
+    from cad_designer.cq_plugins.display.display import set_display_callback
+    set_display_callback(on_display)
+    prev_env = os.environ.get("DISPLAY_CONSTRUCTION_STEP")
+    os.environ["DISPLAY_CONSTRUCTION_STEP"] = "1"
+
+    # Run execution in background thread
+    result_holder: list = []
+
+    def run():
+        try:
+            structure = root_node.create_shape()
+            duration_ms = int((time.monotonic() - t0) * 1000)
+            shape_keys = list(structure.keys()) if isinstance(structure, dict) else []
+            # Final tessellation of the complete structure
+            tessellation = _tessellate_shapes(structure) if isinstance(structure, dict) else None
+            result_holder.append(("complete", {
+                "duration_ms": duration_ms,
+                "shape_keys": shape_keys,
+                "tessellation": _numpy_to_list(tessellation) if tessellation else None,
+                "artifact_dir": str(artifact_dir),
+                "execution_id": execution_id,
+            }))
+        except Exception as exc:
+            duration_ms = int((time.monotonic() - t0) * 1000)
+            logger.exception("Plan execution failed: plan_id=%s", plan_id)
+            result_holder.append(("error", {
+                "error": f"{type(exc).__name__}: {exc}",
+                "duration_ms": duration_ms,
+                "artifact_dir": str(artifact_dir),
+                "execution_id": execution_id,
+            }))
+        finally:
+            shape_queue.put(("done", None, None))
+            set_display_callback(None)
+            if prev_env is None:
+                os.environ.pop("DISPLAY_CONSTRUCTION_STEP", None)
+            else:
+                os.environ["DISPLAY_CONSTRUCTION_STEP"] = prev_env
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+
+    # Yield SSE events from queue
+    while True:
+        try:
+            event_type, name, data = shape_queue.get(timeout=300)
+        except queue.Empty:
+            yield f"event: error\ndata: {json.dumps({'error': 'Execution timed out'})}\n\n"
+            break
+
+        if event_type == "shape":
+            yield f"event: shape\ndata: {json.dumps({'name': name, 'tessellation': data})}\n\n"
+        elif event_type == "done":
+            if result_holder:
+                final_type, final_data = result_holder[0]
+                yield f"event: {final_type}\ndata: {json.dumps(final_data)}\n\n"
+            break
+
+    thread.join(timeout=5)
 
 
 def _numpy_to_list(obj: Any) -> Any:
@@ -649,11 +861,11 @@ def _collect_shapes(structure: dict) -> tuple[list, list[str]]:
 def _extract_solids(shapes: list) -> list:
     """Safely extract solids from each shape, skipping failures."""
     solids = []
-    for s in shapes:
+    for i, s in enumerate(shapes):
         try:
             solids.extend(s.val().Solids())
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Failed to extract solids from shape %d: %s", i, exc)
     return solids
 
 

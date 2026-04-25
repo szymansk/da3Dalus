@@ -92,6 +92,42 @@ async def execute_plan(
         _handle_service_error(exc)
 
 
+@router.get(
+    "/aeroplanes/{aeroplane_id}/construction-plans/{plan_id}/execute-stream",
+    tags=["construction-plans"],
+    operation_id="execute_aeroplane_construction_plan_stream"
+)
+async def execute_plan_stream(
+    aeroplane_id: Annotated[str, Path(...)],
+    plan_id: Annotated[int, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """Execute a construction plan with streaming SSE output.
+
+    Returns Server-Sent Events as shapes are tessellated during construction:
+    - event: shape — a single shape tessellated (three-cad-viewer format)
+    - event: complete — execution finished successfully
+    - event: error — execution failed
+    """
+    from fastapi.responses import StreamingResponse
+
+    try:
+        generator = svc.execute_plan_streaming(
+            db, plan_id, ExecuteRequest(aeroplane_id=aeroplane_id),
+        )
+        return StreamingResponse(
+            generator,
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+    except ServiceException as exc:
+        _handle_service_error(exc)
+
+
 @router.post(
     "/aeroplanes/{aeroplane_id}/construction-plans/{plan_id}/to-template",
     status_code=status.HTTP_201_CREATED,

@@ -5,6 +5,7 @@ import numpy
 from cadquery import Workplane
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
+from cad_designer.airplane.types import CreatorId, ShapeId
 
 
 class FuselageReinforcementShapeCreator(AbstractShapeCreator):
@@ -26,8 +27,8 @@ class FuselageReinforcementShapeCreator(AbstractShapeCreator):
 
     suggested_creator_id = "{fuselage_loft}.reinforcement"
 
-    def __init__(self, creator_id: str, rib_width: float, rib_spacing, ribcage_factor: float,
-                 reinforcement_pipes_diameter: float, print_resolution: float, fuselage_loft: str, full_wing_loft,
+    def __init__(self, creator_id: CreatorId, rib_width: float, rib_spacing, ribcage_factor: float,
+                 reinforcement_pipes_diameter: float, print_resolution: float, fuselage_loft: ShapeId, full_wing_loft: ShapeId,
                  loglevel=logging.INFO):
         """
         Creates a cage like structure with pipes for CFRP-rods in the four intersections.

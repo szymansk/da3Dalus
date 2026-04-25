@@ -4,6 +4,7 @@ import cadquery as cq
 from cadquery import Workplane
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
+from cad_designer.airplane.types import CreatorId, ShapeId
 
 
 class WingAttachmentBoltCutoutShapeCreator(AbstractShapeCreator):
@@ -20,7 +21,7 @@ class WingAttachmentBoltCutoutShapeCreator(AbstractShapeCreator):
 
     suggested_creator_id = "bolt_cutout"
 
-    def __init__(self, creator_id: str, fuselage_loft: str, full_wing_loft: str, bolt_diameter: float, loglevel=logging.INFO):
+    def __init__(self, creator_id: CreatorId, fuselage_loft: ShapeId, full_wing_loft: ShapeId, bolt_diameter: float, loglevel=logging.INFO):
         self.bolt_diameter = bolt_diameter
         self.full_wing_loft = full_wing_loft
         self.fuselage_loft = fuselage_loft

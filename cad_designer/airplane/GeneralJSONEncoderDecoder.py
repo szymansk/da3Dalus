@@ -25,6 +25,157 @@ class GeneralJSONEncoder(JSONEncoder):
         return dic
 
 
+def _resolve_base_type(hint) -> type | None:
+    """Resolve a type hint to its base Python type (float, int, bool, str).
+
+    Handles: plain types, NewType wrappers, string annotations,
+    Annotated types (e.g. Annotated[float, Field(...)]), and
+    pydantic constrained types (confloat, etc.).
+    """
+    import typing
+
+    # If hint is a string (from `from __future__ import annotations`),
+    # try to identify the base type from the string
+    if isinstance(hint, str):
+        hint_lower = hint.lower()
+        if hint_lower == "float" or hint_lower.startswith("confloat"):
+            return float
+        if hint_lower == "int" or hint_lower.startswith("nonnegativeint") or hint_lower.startswith("conint"):
+            return int
+        if hint_lower == "bool":
+            return bool
+        if hint_lower == "str":
+            return str
+        if hint_lower in ("creatorid", "shapeid"):
+            return str
+        # Annotated[float, ...] or Factor (which is confloat)
+        if "factor" in hint_lower:
+            return float
+        if hint_lower.startswith("annotated["):
+            # Extract base type from "Annotated[float, ...]"
+            inner = hint_lower.split("[", 1)[1].split(",", 1)[0].strip()
+            if inner == "float":
+                return float
+            if inner == "int":
+                return int
+            if inner == "str":
+                return str
+            if inner == "bool":
+                return bool
+        return None
+
+    # Unwrap NewType
+    supertype = getattr(hint, "__supertype__", None)
+    if supertype:
+        return supertype
+
+    # Unwrap Annotated
+    origin = getattr(hint, "__origin__", None)
+    if origin is not None:
+        # typing.Annotated has __origin__ = the base type (in Python 3.11+)
+        # For Annotated[float, ...], __args__[0] is float
+        args = getattr(hint, "__args__", None)
+        if args:
+            return _resolve_base_type(args[0])
+
+    if hint in (float, int, bool, str):
+        return hint
+
+    return None
+
+
+def _is_list_type(hint) -> bool:
+    """Check if a type hint represents a list type."""
+    if isinstance(hint, str):
+        return hint.lower().startswith("list[") or hint.lower() == "list"
+    origin = getattr(hint, "__origin__", None)
+    return origin is list
+
+
+def _normalize_numeric_string(value) -> str:
+    """Normalize a numeric string to use '.' as decimal separator.
+
+    Handles common locale formats:
+    - "0,1"         → "0.1"       (comma as decimal)
+    - "1.234,56"    → "1234.56"   (German: dot=thousands, comma=decimal)
+    - "1,234.56"    → "1234.56"   (English: comma=thousands, dot=decimal)
+    - "1234"        → "1234"      (no separator)
+    """
+    s = str(value).strip()
+    has_dot = "." in s
+    has_comma = "," in s
+
+    if has_dot and has_comma:
+        # Both present: the LAST separator is the decimal
+        dot_pos = s.rfind(".")
+        comma_pos = s.rfind(",")
+        if comma_pos > dot_pos:
+            # "1.234,56" → German format: dot is thousands, comma is decimal
+            s = s.replace(".", "").replace(",", ".")
+        else:
+            # "1,234.56" → English format: comma is thousands, dot is decimal
+            s = s.replace(",", "")
+    elif has_comma and not has_dot:
+        # Only comma: treat as decimal separator
+        s = s.replace(",", ".")
+
+    return s
+
+
+def _coerce_params(cls, params: dict) -> dict:
+    """Coerce JSON values to match __init__ type annotations.
+
+    Prevents TypeError when JSON stores numeric values as strings
+    (e.g. "0.1" instead of 0.1). Handles NewType wrappers, string
+    annotations from `from __future__ import annotations`, and
+    Annotated types.
+    """
+    try:
+        raw_hints = {k: v for k, v in cls.__init__.__annotations__.items() if k != "return"}
+    except AttributeError:
+        return params
+    coerced = {}
+    for key, value in params.items():
+        if value is None or key not in raw_hints:
+            coerced[key] = value
+            continue
+        hint_str = raw_hints[key]
+
+        # Handle list types: if annotation says list[...] but value is a string,
+        # wrap it in a list. This prevents iterating over characters of a string
+        # when the code expects a list of shape keys.
+        if _is_list_type(hint_str) and isinstance(value, str):
+            coerced[key] = [value] if value.strip() else []
+            continue
+        if _is_list_type(hint_str) and not isinstance(value, list):
+            coerced[key] = value
+            continue
+
+        target = _resolve_base_type(hint_str)
+        if target is None:
+            coerced[key] = value
+            continue
+        try:
+            if target is float and not isinstance(value, float):
+                coerced[key] = float(_normalize_numeric_string(value))
+            elif target is int and not isinstance(value, (int, bool)):
+                coerced[key] = int(float(_normalize_numeric_string(value)))
+            elif target is bool and not isinstance(value, bool):
+                coerced[key] = bool(value)
+            elif target is str and not isinstance(value, str):
+                coerced[key] = str(value)
+            else:
+                coerced[key] = value
+        except (ValueError, TypeError) as exc:
+            import logging as _log
+            _log.warning(
+                "Type coercion failed for %s.%s: value=%r, expected=%s (%s)",
+                cls.__name__, key, value, target.__name__ if target else "?", exc,
+            )
+            coerced[key] = value
+    return coerced
+
+
 class GeneralJSONDecoder(JSONDecoder):
     def __init__(self, *args, **kwargs):
         """
@@ -57,4 +208,17 @@ class GeneralJSONDecoder(JSONDecoder):
             intersection_dict ={k: dic[k] for k in dic.keys() & init_params.keys()}
             # join and create object
             intersection_dict.update(intersection)
+        intersection_dict = _coerce_params(cls, intersection_dict)
+        # Resolve {placeholder} in creator_id using other param values
+        if "creator_id" in intersection_dict and isinstance(intersection_dict["creator_id"], str):
+            import re
+            def _replace_placeholder(m):
+                param = m.group(1)
+                val = intersection_dict.get(param)
+                if val is not None and not isinstance(val, (dict, list)):
+                    return str(val)
+                return m.group(0)  # keep unresolved
+            intersection_dict["creator_id"] = re.sub(
+                r"\{(\w+)\}", _replace_placeholder, intersection_dict["creator_id"],
+            )
         return cls(**intersection_dict)

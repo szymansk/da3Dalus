@@ -43,7 +43,7 @@ export function TreeCard({
         {actions}
       </div>
       {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto px-4 pb-3">{children}</div>
+      <div className="flex-1 overflow-auto px-4 pb-3">{children}</div>
     </div>
   );
 }

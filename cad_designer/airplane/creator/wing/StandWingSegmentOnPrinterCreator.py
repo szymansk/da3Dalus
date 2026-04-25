@@ -9,6 +9,7 @@ from pydantic import NonNegativeInt
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
 from cad_designer.airplane.aircraft_topology.wing.WingConfiguration import WingConfiguration
+from cad_designer.airplane.types import CreatorId
 
 
 class StandWingSegmentOnPrinterCreator(AbstractShapeCreator):
@@ -23,7 +24,7 @@ class StandWingSegmentOnPrinterCreator(AbstractShapeCreator):
     """
     suggested_creator_id = "{wing_index}.print_orientation"
 
-    def __init__(self, creator_id: str,
+    def __init__(self, creator_id: CreatorId,
                  shape_dict: dict[NonNegativeInt, str],
                  wing_index: str | NonNegativeInt,
                  wing_config: dict[NonNegativeInt, WingConfiguration] = None,

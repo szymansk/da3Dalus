@@ -3,6 +3,7 @@ import logging
 from cadquery import Workplane
 
 from cad_designer.airplane.AbstractShapeCreator import AbstractShapeCreator
+from cad_designer.airplane.types import CreatorId, ShapeId
 
 class AddMultipleShapesCreator(AbstractShapeCreator):
     """Adds multiple shapes together as a compound without boolean fusion.
@@ -16,7 +17,7 @@ class AddMultipleShapesCreator(AbstractShapeCreator):
 
     suggested_creator_id = "compound"
 
-    def __init__(self, creator_id: str, shapes: list[str], loglevel=logging.INFO):
+    def __init__(self, creator_id: CreatorId, shapes: list[ShapeId], loglevel=logging.INFO):
         self.shapes = shapes
         super().__init__(creator_id, shapes_of_interest_keys=shapes, loglevel=loglevel)
 
