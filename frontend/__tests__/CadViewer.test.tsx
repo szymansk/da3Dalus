@@ -107,7 +107,9 @@ describe("CadViewer", () => {
       await new Promise((r) => setTimeout(r, 50));
     });
 
-    expect(lastDisplayOptions!.theme).toBe("dark");
+    // theme belongs to Viewer options (not Display) — the library's
+    // Display ignores it and the Viewer's state defaults to "light".
+    expect(lastViewerOptions!.theme).toBe("dark");
     // gh#345: treeWidth must be > 0 so the Tree/Clipping/Material tabs
     // are actually rendered. Was 0 (broken UX).
     expect(lastDisplayOptions!.treeWidth).toBeGreaterThan(0);

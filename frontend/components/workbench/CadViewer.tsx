@@ -110,12 +110,11 @@ export function CadViewer({ parts }: Readonly<CadViewerProps>) {
           cadWidth: Math.max(0, w - treeWidth),
           height: h,
           treeWidth,
-          theme: "dark",
           glass: false,
           tools: true,
         });
 
-        const viewerOptions = { target: [0, 0, 0], up: "Z" };
+        const viewerOptions = { target: [0, 0, 0], up: "Z", theme: "dark" };
         const viewer = new tcv.Viewer(display, viewerOptions, () => {});
         viewerRef.current = viewer;
 

@@ -106,3 +106,15 @@ body {
   background: var(--color-card);
   color: var(--color-foreground);
 }
+
+/* Override hardcoded light-grey borders in the viewer's toolbar,
+   separators, and dropdown panels with our accent colour. */
+.cad-viewer-host .tcv_cad_toolbar {
+  border-color: var(--color-primary) !important;
+}
+.cad-viewer-host .tcv_separator {
+  border-color: var(--color-primary) !important;
+}
+.cad-viewer-host .tcv_round {
+  border-color: var(--color-primary) !important;
+}
