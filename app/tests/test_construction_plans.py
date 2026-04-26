@@ -813,3 +813,123 @@ class TestPlanExecutionPathRegression:
         plan_dir = tmp_path / aero_id / str(plan["id"]) / exec_id
         assert plan_dir.is_dir()
         assert not (tmp_path / "_template_runs" / str(plan["id"])).exists()
+
+
+class TestExecuteStreaming:
+    """gh#339/gh#344 — coverage for the SSE streaming endpoint setup paths.
+
+    Full streaming execution requires cadquery (skipif elsewhere). These
+    tests cover the early-return error paths and the template-branch wiring,
+    which are pure Python and run on every platform.
+    """
+
+    def _consume_events(self, response_iter) -> str:
+        """Collect SSE chunks from an httpx streaming response into one string."""
+        chunks = []
+        for chunk in response_iter:
+            if isinstance(chunk, bytes):
+                chunks.append(chunk.decode("utf-8"))
+            else:
+                chunks.append(chunk)
+        return "".join(chunks)
+
+    def test_stream_unknown_plan_emits_error_event(self, client):
+        with client.stream(
+            "GET",
+            f"/aeroplanes/aero-x/construction-plans/{99999}/execute-stream",
+        ) as resp:
+            assert resp.status_code == 200
+            assert resp.headers["content-type"].startswith("text/event-stream")
+            body = self._consume_events(resp.iter_bytes())
+
+        assert "event: error" in body
+        # The plan_id is part of the lookup error message
+        assert "99999" in body or "not found" in body.lower()
+
+    def test_stream_template_with_unknown_aeroplane_emits_error_event(
+        self, client, monkeypatch, tmp_path
+    ):
+        """Template + valid-UUID aeroplane_id that's not in DB → SSE error."""
+        import uuid
+
+        from app.core.config import settings
+
+        monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
+
+        template = _create_plan(client, "Tpl Stream", tree=SAMPLE_TREE, plan_type="template")
+        nonexistent_aero = str(uuid.uuid4())  # valid UUID format, not in DB
+
+        with client.stream(
+            "GET",
+            f"/aeroplanes/{nonexistent_aero}/construction-plans/{template['id']}/execute-stream",
+        ) as resp:
+            assert resp.status_code == 200
+            body = self._consume_events(resp.iter_bytes())
+
+        assert "event: error" in body
+        assert "not found" in body.lower() or "aeroplane" in body.lower()
+
+    def test_stream_template_without_any_aeroplane_emits_error(
+        self, client_and_db, monkeypatch, tmp_path
+    ):
+        """Defensive guard: if execute_plan_streaming is called with no
+        aeroplane_id (neither stored on the plan nor in the request) for a
+        template, it must emit an SSE error rather than crash. This branch
+        is unreachable via the REST URL endpoint (which requires aeroplane_id
+        in the path) so we exercise the service directly.
+        """
+        from app.core.config import settings
+        from app.services import construction_plan_service as svc
+        from app.schemas.construction_plan import ExecuteRequest
+
+        monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        client, SessionLocal = client_and_db
+
+        # Create a template via REST so the DB has a row
+        template = _create_plan(
+            client, "Tpl Direct", tree=SAMPLE_TREE, plan_type="template",
+        )
+
+        with SessionLocal() as session:
+            events = list(
+                svc.execute_plan_streaming(
+                    session,
+                    template["id"],
+                    ExecuteRequest(aeroplane_id=None),
+                )
+            )
+
+        assert any("event: error" in e for e in events)
+        assert any("aeroplane_id required for template execution" in e for e in events)
+
+    @pytest.mark.skipif(not _can_import_cad(), reason="cadquery not available")
+    def test_stream_template_branch_creates_template_run_dir(
+        self, client, client_and_db, monkeypatch, tmp_path
+    ):
+        """Pin that the streaming endpoint routes templates to _template_runs/."""
+        from app.core.config import settings
+
+        monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        _, SessionLocal = client_and_db
+        from app.tests.conftest import make_aeroplane
+
+        with SessionLocal() as session:
+            aero = make_aeroplane(session, name="for-stream-tpl")
+            aero_id = str(aero.uuid)
+
+        template = _create_plan(
+            client, "Tpl Stream Real", tree=SAMPLE_TREE, plan_type="template",
+        )
+
+        with client.stream(
+            "GET",
+            f"/aeroplanes/{aero_id}/construction-plans/{template['id']}/execute-stream",
+        ) as resp:
+            assert resp.status_code == 200
+            self._consume_events(resp.iter_bytes())
+
+        # An execution dir exists under _template_runs/<template_id>/
+        tpl_root = tmp_path / "_template_runs" / str(template["id"])
+        assert tpl_root.is_dir()
+        children = list(tpl_root.iterdir())
+        assert len(children) == 1, "exactly one execution dir per template (replace-on-next-run)"

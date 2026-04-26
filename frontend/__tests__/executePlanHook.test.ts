@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { executePlan } from "@/hooks/useConstructionPlans";
+import { executePlan, executionZipUrl } from "@/hooks/useConstructionPlans";
 
 describe("executePlan hook (gh#343 regression guard)", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
@@ -67,5 +67,19 @@ describe("executePlan hook (gh#343 regression guard)", () => {
 
     await expect(executePlan("aero-x", 27)).rejects.toThrow(/422/);
   });
+});
 
+describe("executionZipUrl helper (gh#339)", () => {
+  it("returns the /zip endpoint URL for a plan/execution pair", () => {
+    const url = executionZipUrl(42, "20260426T094402Z");
+
+    expect(url).toContain("/construction-plans/42/artifacts/");
+    expect(url).toContain("/zip");
+    expect(url).toMatch(/\/artifacts\/20260426T094402Z\/zip$/);
+  });
+
+  it("URL-encodes the execution_id", () => {
+    const url = executionZipUrl(7, "exec id with spaces");
+    expect(url).toContain("exec%20id%20with%20spaces");
+  });
 });
