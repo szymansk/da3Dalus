@@ -118,6 +118,7 @@ def create_segment(segment_model: SegmentModel) -> dict | None:
 
     del initialization_dict['root_airfoil']
     del initialization_dict['tip_type']
+    initialization_dict.pop('wing_segment_type', None)
 
     return initialization_dict
 
@@ -131,6 +132,7 @@ def create_tip_segment(segment_model: SegmentModel) -> dict | None:
     del initialization_dict['root_airfoil']
     del initialization_dict['spare_list']
     del initialization_dict['trailing_edge_device']
+    initialization_dict.pop('wing_segment_type', None)
 
     return initialization_dict
 
@@ -171,5 +173,6 @@ def create_root_segment(wing_model: WingModel) -> dict:
     initialization_dict['trailing_edge_device'] = create_trailing_edge_device(root_segment.trailing_edge_device) if root_segment.trailing_edge_device is not None else None
 
     del initialization_dict['tip_type']
+    initialization_dict.pop('wing_segment_type', None)
 
     return initialization_dict
