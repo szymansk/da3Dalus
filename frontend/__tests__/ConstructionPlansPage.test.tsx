@@ -28,6 +28,10 @@ const mockExecutePlan = vi.fn().mockResolvedValue({
 const mockMutateAeroplanePlans = vi.fn();
 const mockInstantiateTemplate = vi.fn().mockResolvedValue({ id: 10, name: "Instantiated" });
 const mockToTemplate = vi.fn().mockResolvedValue({ id: 11, name: "Saved Template" });
+const mockExecuteStreamUrl = vi.fn(
+  (aeroplaneId: string, planId: number) =>
+    `http://localhost:8000/aeroplanes/${aeroplaneId}/construction-plans/${planId}/execute-stream`,
+);
 
 vi.mock("@/hooks/useConstructionPlans", () => ({
   useConstructionPlans: () => ({
@@ -115,6 +119,7 @@ vi.mock("@/hooks/useConstructionPlans", () => ({
     `http://localhost:8000/construction-plans/${planId}/artifacts/${execId}/${filename}`,
   executionZipUrl: (planId: number, execId: string) =>
     `http://localhost:8000/construction-plans/${planId}/artifacts/${execId}/zip`,
+  executeStreamUrl: (...args: [string, number]) => mockExecuteStreamUrl(...args),
 }));
 
 vi.mock("@/hooks/useCreators", () => ({
@@ -172,16 +177,35 @@ vi.mock("@/lib/fetcher", () => ({
 
 import ConstructionPlansPage from "@/app/workbench/construction-plans/page";
 
+// jsdom does not implement EventSource. Stub it so that ExecutionResultDialog
+// can mount with a streamUrl prop without throwing.
+class FakeEventSource {
+  static CONNECTING = 0;
+  static OPEN = 1;
+  static CLOSED = 2;
+  readyState = FakeEventSource.CONNECTING;
+  url: string;
+  constructor(url: string) {
+    this.url = url;
+  }
+  addEventListener() {}
+  removeEventListener() {}
+  close() {
+    this.readyState = FakeEventSource.CLOSED;
+  }
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(window, "prompt").mockReturnValue("Test Plan");
   vi.spyOn(window, "confirm").mockReturnValue(true);
+  vi.stubGlobal("EventSource", FakeEventSource);
 });
 
-// NOTE: 7 of the tests below are skipped — they assume the pre-gh-323 UI
-// (HTML <select> combobox, specific button titles like "New template", etc.)
-// which was rewritten in PR #338. Tracked in #342 — rewrite tests against the
-// current TemplateModePanel / TemplateSelector / PlanTreeSection components.
+// Tests target the post-gh-323 UI: TemplateModePanel + TemplateSelector
+// (rich combobox) and PlanTreeSection (per-plan icon-button toolbar).
+// User-journey style — render the page, drive interactions, assert visible
+// elements via labels/titles.
 describe("ConstructionPlansPage", () => {
   it("renders the template/plans toggle", () => {
     render(<ConstructionPlansPage />);
@@ -189,51 +213,94 @@ describe("ConstructionPlansPage", () => {
     expect(screen.getByText("Plans")).toBeDefined();
   });
 
-  it.skip("defaults to plans mode when aeroplane is selected — see #342", () => {
+  it("defaults to plans mode and shows the aeroplane's plan", async () => {
     render(<ConstructionPlansPage />);
-    expect(screen.getByText("eHawk Build (2 steps)")).toBeDefined();
+    // Plans mode is the default. The PlanTreeSection renders the plan
+    // name via InlineEditableName as a <span>, plus a "(2)" step counter.
+    await waitFor(() => {
+      expect(screen.getByText("eHawk Build")).toBeDefined();
+    });
+    // Step counter rendered next to the name (gh-323 PlanTreeSection)
+    expect(screen.getByText("(2)")).toBeDefined();
   });
 
-  it.skip("shows plan tree when a plan is selected — see #342", () => {
+  it("shows the plan tree when the auto-selected plan is loaded", async () => {
     render(<ConstructionPlansPage />);
-    const select = screen.getByRole("combobox") as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "2" } });
-    const matches = screen.getAllByText("VaseModeWingCreator");
-    expect(matches.length).toBeGreaterThanOrEqual(2);
+    // The first plan is auto-expanded via useEffect (page.tsx). Once
+    // the active plan detail is loaded, renderCreatorTree displays
+    // each step's creator_id as the row label. The same identifier
+    // also appears as a parameter label inside the row's add/edit
+    // tooltips, so multiple matches are expected.
+    await waitFor(() => {
+      const matches = screen.getAllByText("VaseModeWingCreator");
+      // Renders at least twice: once as the row label in renderCreatorTree
+      // and once as the parameter description in the row's add/edit tooltip.
+      // Catches a regression where the tooltip parameter label disappears.
+      expect(matches.length).toBeGreaterThanOrEqual(2);
+    });
   });
 
-  it.skip("shows Create Plan button (not Execute) in template mode — see #342", () => {
+  it("shows template-specific actions after selecting a template in template mode", async () => {
     render(<ConstructionPlansPage />);
     fireEvent.click(screen.getByText("Templates"));
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "1" } });
-    expect(screen.getByText("Create Plan")).toBeDefined();
-    const executeButtons = screen.queryAllByText("Execute");
-    expect(executeButtons.length).toBe(0);
+    // Open the TemplateSelector dropdown and click "eHawk Wing"
+    fireEvent.click(screen.getByRole("combobox"));
+    fireEvent.click(screen.getByText("eHawk Wing"));
+    // After selection, the TemplateModePanel renders the template-specific
+    // toolbar: "Execute template against an aeroplane" (Play),
+    // "Delete eHawk Wing" (Trash), and "Add step to eHawk Wing" (Plus).
+    await waitFor(() => {
+      expect(screen.getByTitle("Execute template against an aeroplane")).toBeDefined();
+    });
+    expect(screen.getByTitle("Add step to eHawk Wing")).toBeDefined();
+    // The plan-mode-only "Execute eHawk Build" button must not appear
+    // in template mode (the plan list is hidden).
+    expect(screen.queryByTitle("Execute eHawk Build")).toBeNull();
   });
 
-  it.skip("shows Execute button in plans mode — see #342", () => {
+  it("shows the Execute action for each plan in plans mode", async () => {
     render(<ConstructionPlansPage />);
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "2" } });
-    expect(screen.getByText("Execute")).toBeDefined();
+    // Default mode is plans — first plan auto-expands. PlanTreeSection
+    // renders an icon Play button with title="Execute eHawk Build" and
+    // the TreeCard renders a header-level "Execute all plans" button.
+    await waitFor(() => {
+      expect(screen.getByTitle("Execute eHawk Build")).toBeDefined();
+    });
+    expect(screen.getByTitle("Execute all plans")).toBeDefined();
   });
 
-  it.skip("creates a new template via prompt in templates mode — see #342", async () => {
+  it("creates a new plan via NewPlanDialog when '+' is clicked in plans mode", async () => {
     render(<ConstructionPlansPage />);
-    fireEvent.click(screen.getByText("Templates"));
-    const buttons = screen.getAllByTitle("New template");
-    fireEvent.click(buttons[0]);
+    // The TreeCard "+" header button (title="Create new plan") opens
+    // NewPlanDialog. The dialog offers an "Empty plan" choice that
+    // delegates to handleCreateEmptyPlan → createPlan({plan_type: "plan"}).
+    fireEvent.click(screen.getByTitle("Create new plan"));
+    // Dialog renders with aria-label="Create new plan"
+    const dialog = await screen.findByRole("dialog", { name: "Create new plan" });
+    expect(dialog).toBeDefined();
+    fireEvent.click(screen.getByText("Empty plan"));
     await waitFor(() => {
       expect(mockCreatePlan).toHaveBeenCalledWith(
-        expect.objectContaining({ name: "Test Plan", plan_type: "template" }),
+        expect.objectContaining({ plan_type: "plan", aeroplane_id: "aero-1" }),
       );
     });
   });
 
-  it.skip("opens execute dialog and shows aeroplane selector in plans mode — see #342", () => {
+  it("opens AeroplanePickerDialog when executing a template", async () => {
     render(<ConstructionPlansPage />);
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "2" } });
-    fireEvent.click(screen.getByText("Execute"));
-    expect(screen.getByText("Execute Plan")).toBeDefined();
+    fireEvent.click(screen.getByText("Templates"));
+    fireEvent.click(screen.getByRole("combobox"));
+    fireEvent.click(screen.getByText("eHawk Wing"));
+    // Click "Execute template against an aeroplane" — opens
+    // AeroplanePickerDialog (gh-323).
+    fireEvent.click(
+      await screen.findByTitle("Execute template against an aeroplane"),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Select aeroplane to execute against",
+    });
+    expect(dialog).toBeDefined();
+    // Aeroplane list is rendered inside the dialog
     expect(screen.getByText("eHawk")).toBeDefined();
   });
 
@@ -242,10 +309,29 @@ describe("ConstructionPlansPage", () => {
     expect(screen.getByText("Creator Catalog")).toBeDefined();
   });
 
-  it.skip("shows Save as Template button in plans mode — see #342", () => {
+  it("shows Save-as-template action for each plan in plans mode", async () => {
     render(<ConstructionPlansPage />);
-    fireEvent.click(screen.getByText("Plans"));
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "2" } });
-    expect(screen.getByText("Save as Template")).toBeDefined();
+    // Plans mode is the default. Each plan row in PlanTreeSection
+    // renders a BookTemplate icon button with
+    // title="Save <plan-name> as template" that calls toTemplate(...).
+    await waitFor(() => {
+      expect(screen.getByTitle("Save eHawk Build as template")).toBeDefined();
+    });
+  });
+
+  it("starts streaming execution when Execute is clicked in plans mode", async () => {
+    render(<ConstructionPlansPage />);
+    // Plans mode is the default. Clicking the per-plan Play icon
+    // (title="Execute <plan-name>") triggers handleExecutePlan which
+    // builds a streaming URL via executeStreamUrl(aeroplaneId, planId)
+    // and opens the ExecutionResultDialog with that streamUrl.
+    const executeButton = await screen.findByTitle("Execute eHawk Build");
+    fireEvent.click(executeButton);
+
+    // The contract: the page asks for the streaming URL with the
+    // active aeroplane id and the clicked plan id.
+    await waitFor(() => {
+      expect(mockExecuteStreamUrl).toHaveBeenCalledWith("aero-1", 2);
+    });
   });
 });
