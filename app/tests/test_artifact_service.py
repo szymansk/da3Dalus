@@ -90,3 +90,48 @@ class TestResolveExecutionDir:
 
         with pytest.raises(NotFoundError):
             artifact_service._resolve_execution_dir(404, "nonexistent")
+
+
+class TestZipExecution:
+    def test_zips_all_files_in_execution(self, tmp_artifacts: Path):
+        execution_id, exec_dir = artifact_service.create_execution_dir("aero-z", 11)
+        (exec_dir / "a.stl").write_bytes(b"AAAA")
+        (exec_dir / "b.txt").write_text("hello")
+        sub = exec_dir / "wing"
+        sub.mkdir()
+        (sub / "c.stp").write_bytes(b"CCCC")
+
+        zip_path = artifact_service.zip_execution(11, execution_id)
+
+        import zipfile
+
+        with zipfile.ZipFile(zip_path) as zf:
+            names = sorted(zf.namelist())
+        assert names == ["a.stl", "b.txt", "wing/c.stp"]
+
+    def test_returns_empty_zip_for_empty_execution(self, tmp_artifacts: Path):
+        execution_id, _ = artifact_service.create_execution_dir("aero-z", 12)
+
+        zip_path = artifact_service.zip_execution(12, execution_id)
+
+        import zipfile
+
+        with zipfile.ZipFile(zip_path) as zf:
+            assert zf.namelist() == []
+
+    def test_zips_template_execution(self, tmp_artifacts: Path):
+        execution_id, exec_dir = artifact_service.create_template_execution_dir(33)
+        (exec_dir / "out.stl").write_bytes(b"X")
+
+        zip_path = artifact_service.zip_execution(33, execution_id)
+
+        import zipfile
+
+        with zipfile.ZipFile(zip_path) as zf:
+            assert zf.namelist() == ["out.stl"]
+
+    def test_raises_not_found_for_unknown_execution(self, tmp_artifacts: Path):
+        from app.core.exceptions import NotFoundError
+
+        with pytest.raises(NotFoundError):
+            artifact_service.zip_execution(99, "doesnotexist")

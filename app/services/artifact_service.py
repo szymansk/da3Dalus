@@ -215,6 +215,42 @@ def delete_execution(plan_id: int, execution_id: str) -> None:
     logger.info("Deleted execution dir: %s", exec_dir)
 
 
+def zip_execution(plan_id: int, execution_id: str) -> Path:
+    """Zip an entire execution directory and return the path to the zip file.
+
+    The zip is written to a temp file (auto-cleaned by the OS / next
+    template run). Empty executions yield a valid empty zip (200 OK
+    semantics, not a 404).
+    """
+    import os as _os
+    import tempfile
+    import zipfile
+
+    exec_dir = _resolve_execution_dir(plan_id, execution_id)
+
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=f"plan{plan_id}-{execution_id}-", suffix=".zip"
+    )
+    _os.close(fd)  # we re-open via zipfile
+    zip_path = Path(tmp_name)
+
+    try:
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for file_path in sorted(exec_dir.rglob("*")):
+                if not file_path.is_file():
+                    continue
+                arcname = file_path.relative_to(exec_dir).as_posix()
+                zf.write(file_path, arcname=arcname)
+    except OSError as exc:
+        logger.exception(
+            "Failed to build zip for execution %s/%s", plan_id, execution_id
+        )
+        zip_path.unlink(missing_ok=True)
+        raise InternalError(message=f"Cannot build zip: {exc}") from exc
+
+    return zip_path
+
+
 def _resolve_execution_dir(plan_id: int, execution_id: str) -> Path:
     """Find and validate the execution directory for plan_id/execution_id.
 
