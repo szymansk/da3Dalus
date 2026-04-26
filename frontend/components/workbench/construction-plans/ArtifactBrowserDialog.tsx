@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Download, Trash2, X, FolderOpen, ChevronRight, File as FileIcon } from "lucide-react";
 import { useDialog } from "@/hooks/useDialog";
 import {
@@ -34,25 +34,27 @@ export function ArtifactBrowserDialog({
   const { dialogRef, handleClose } = useDialog(open, onClose);
   const { executions, error: execError, isLoading: execLoading, mutate: mutateExecutions } =
     usePlanArtifacts(open ? planId : null);
-  const [selectedExecution, setSelectedExecution] = useState<string | null>(null);
+  const [selectedOverride, setSelectedOverride] = useState<string | null>(null);
   const [currentPath, setCurrentPath] = useState("");
-  const { files, error: filesError, isLoading: filesLoading, mutate: mutateFiles } =
-    useArtifactFiles(open ? planId : null, selectedExecution, currentPath);
+  const [prevOpen, setPrevOpen] = useState(open);
 
-  // Auto-select most recent execution when list loads
-  useEffect(() => {
-    if (executions.length > 0 && !selectedExecution) {
-      setSelectedExecution(executions[0].execution_id);
-    }
-  }, [executions, selectedExecution]);
-
-  // Reset on close
-  useEffect(() => {
+  // Reset state when the dialog closes. Render-time setState is the React 19
+  // recommended pattern for "adjust state when a prop changes" — see
+  // react-hooks/set-state-in-effect.
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (!open) {
-      setSelectedExecution(null);
+      setSelectedOverride(null);
       setCurrentPath("");
     }
-  }, [open]);
+  }
+
+  // Effective selection: explicit override wins, otherwise auto-pick the most
+  // recent execution. Deriving this avoids a useEffect+setState cycle.
+  const selectedExecution = selectedOverride ?? executions[0]?.execution_id ?? null;
+
+  const { files, error: filesError, isLoading: filesLoading, mutate: mutateFiles } =
+    useArtifactFiles(open ? planId : null, selectedExecution, currentPath);
 
   async function handleDeleteExecution(executionId: string) {
     if (!planId) return;
@@ -61,7 +63,7 @@ export function ArtifactBrowserDialog({
       await deleteExecution(planId, executionId);
       mutateExecutions();
       if (selectedExecution === executionId) {
-        setSelectedExecution(null);
+        setSelectedOverride(null);
         setCurrentPath("");
       }
     } catch (err) {
@@ -134,7 +136,7 @@ export function ArtifactBrowserDialog({
                   }`}
                 >
                   <button
-                    onClick={() => { setSelectedExecution(e.execution_id); setCurrentPath(""); }}
+                    onClick={() => { setSelectedOverride(e.execution_id); setCurrentPath(""); }}
                     className="flex-1 text-left"
                   >
                     <span className="block font-[family-name:var(--font-jetbrains-mono)]">
