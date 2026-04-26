@@ -206,6 +206,30 @@ async def list_artifact_files(
 
 
 @router.get(
+    "/construction-plans/{plan_id}/artifacts/{execution_id}/zip",
+    tags=["construction-plans"],
+    operation_id="download_execution_zip",
+)
+async def download_execution_zip(
+    plan_id: Annotated[int, Path(...)],
+    execution_id: Annotated[str, Path(...)],
+):
+    """Download all artifact files of an execution as a single zip."""
+    from fastapi.responses import FileResponse
+
+    try:
+        zip_path = artifact_service.zip_execution(plan_id, execution_id)
+        filename = f"plan-{plan_id}-{execution_id}.zip"
+        return FileResponse(
+            zip_path,
+            media_type="application/zip",
+            filename=filename,
+        )
+    except ServiceException as exc:
+        _handle_service_error(exc)
+
+
+@router.get(
     "/construction-plans/{plan_id}/artifacts/{execution_id}/{filename:path}",
     tags=["construction-plans"],
     operation_id="download_artifact_file",

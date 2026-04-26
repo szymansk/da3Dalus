@@ -596,3 +596,69 @@ class TestPrinterSettingsSeed:
         assert len(ps["schema"]) == 3
         prop_names = {p["name"] for p in ps["schema"]}
         assert prop_names == {"layer_height", "wall_thickness", "rel_gap_wall_thickness"}
+
+
+# ── Zip download (gh#339) ───────────────────────────────────────
+
+
+class TestZipDownload:
+    """GH#339 — zip download endpoint for an execution dir."""
+
+    def test_zip_endpoint_returns_zip_with_all_files(
+        self, client, tmp_path, monkeypatch
+    ):
+        from app.core.config import settings
+        from app.services import artifact_service
+
+        monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        execution_id, exec_dir = artifact_service.create_execution_dir(
+            "aero-zipper", 501
+        )
+        (exec_dir / "alpha.stl").write_bytes(b"AAA")
+        (exec_dir / "beta.txt").write_text("bb")
+
+        resp = client.get(
+            f"/construction-plans/501/artifacts/{execution_id}/zip"
+        )
+
+        assert resp.status_code == 200, resp.text
+        assert resp.headers["content-type"] == "application/zip"
+        assert "attachment" in resp.headers.get("content-disposition", "")
+
+        import io
+        import zipfile
+
+        with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
+            assert sorted(zf.namelist()) == ["alpha.stl", "beta.txt"]
+
+    def test_zip_endpoint_404_for_missing_execution(
+        self, client, tmp_path, monkeypatch
+    ):
+        from app.core.config import settings
+
+        monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        tmp_path.mkdir(exist_ok=True)
+
+        resp = client.get("/construction-plans/9999/artifacts/missing/zip")
+        assert resp.status_code == 404
+
+    def test_zip_endpoint_returns_empty_zip_for_empty_execution(
+        self, client, tmp_path, monkeypatch
+    ):
+        from app.core.config import settings
+        from app.services import artifact_service
+
+        monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        execution_id, _ = artifact_service.create_execution_dir("aero-empty", 502)
+
+        resp = client.get(
+            f"/construction-plans/502/artifacts/{execution_id}/zip"
+        )
+
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "application/zip"
+        import io
+        import zipfile
+
+        with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
+            assert zf.namelist() == []
