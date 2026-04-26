@@ -113,6 +113,10 @@ export default function ConstructionPlansPage() {
   const [executionTitle, setExecutionTitle] = useState("");
   const [executionDialogOpen, setExecutionDialogOpen] = useState(false);
   const [executionStreamUrl, setExecutionStreamUrl] = useState<string | null>(null);
+  // Plan/template id whose execution is currently displayed in the result
+  // dialog. Used to wire the Generated-files section to the right artifact
+  // endpoints (gh#339).
+  const [executionPlanId, setExecutionPlanId] = useState<number | null>(null);
 
   // Artifact browser state
   const [artifactsPlanId, setArtifactsPlanId] = useState<number | null>(null);
@@ -172,6 +176,7 @@ export default function ConstructionPlansPage() {
       }
       setExecutionTitle(`Execute: ${planName}`);
       setExecutionResult(null);
+      setExecutionPlanId(planId);
       // Use streaming endpoint — viewer opens immediately, shapes appear incrementally
       setExecutionStreamUrl(executeStreamUrl(aeroplaneId, planId));
       setExecutionDialogOpen(true);
@@ -391,6 +396,7 @@ export default function ConstructionPlansPage() {
       }
       setExecutionTitle(`Execute: ${tpl?.name ?? "template"} on ${aero?.name ?? "aeroplane"}`);
       setExecutionResult(null);
+      setExecutionPlanId(executeTemplateId);
       setExecutionDialogOpen(true);
       setExecuteTemplateId(null);
       try {
@@ -563,15 +569,19 @@ export default function ConstructionPlansPage() {
                         if (!aeroplaneId || plans.length === 0) return;
                         setExecutionTitle(`Execute all plans (${plans.length})`);
                         setExecutionResult(null);
+                        setExecutionPlanId(null);
                         setExecutionDialogOpen(true);
                         try {
                           // Execute sequentially; show result of last successful execution
                           let lastResult: ExecutionResult | null = null;
+                          let lastPlanId: number | null = null;
                           for (const p of plans) {
                             lastResult = await executePlan(aeroplaneId, p.id);
+                            lastPlanId = p.id;
                             if (lastResult.status === "error") break;
                           }
                           setExecutionResult(lastResult);
+                          setExecutionPlanId(lastPlanId);
                         } catch (err) {
                           setExecutionResult({
                             status: "error",
@@ -707,10 +717,12 @@ export default function ConstructionPlansPage() {
         title={executionTitle}
         result={executionResult}
         streamUrl={executionStreamUrl}
+        planId={executionPlanId}
         onClose={() => {
           setExecutionDialogOpen(false);
           setExecutionResult(null);
           setExecutionStreamUrl(null);
+          setExecutionPlanId(null);
         }}
       />
 
