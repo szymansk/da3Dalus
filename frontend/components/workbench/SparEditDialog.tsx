@@ -81,7 +81,10 @@ export function SparEditDialog({
       setSparStart(String(initialData.spare_start ?? 0));
       setSparLength(initialData.spare_length == null ? "" : String(initialData.spare_length));
       applyOptionalVec3(initialData.spare_vector, setVecX, setVecY, setVecZ);
-      applyOptionalVec3(initialData.spare_origin, setOrigX, setOrigY, setOrigZ);
+      applyOptionalVec3(
+        initialData.spare_origin?.map((v: number) => v * 1000) ?? null,
+        setOrigX, setOrigY, setOrigZ,
+      );
     } else {
       setPosFactor("25");
       setWidth("4.42");
@@ -115,7 +118,7 @@ export function SparEditDialog({
         payload.spare_vector = null;
       }
       if (origX.trim() && origY.trim() && origZ.trim()) {
-        payload.spare_origin = [num(origX), num(origY), num(origZ)];
+        payload.spare_origin = [num(origX) / 1000, num(origY) / 1000, num(origZ) / 1000];
       } else {
         payload.spare_origin = null;
       }
@@ -223,7 +226,7 @@ export function SparEditDialog({
             <DialogField label="Y" value={vecY} onChange={setVecY} />
             <DialogField label="Z" value={vecZ} onChange={setVecZ} />
           </div>
-          <span className="pt-1 text-[11px] text-muted-foreground">Origin (opt.)</span>
+          <span className="pt-1 text-[11px] text-muted-foreground">Origin (opt.) mm</span>
           <div className="flex gap-3">
             <DialogField label="X" value={origX} onChange={setOrigX} />
             <DialogField label="Y" value={origY} onChange={setOrigY} />

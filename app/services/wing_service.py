@@ -798,9 +798,10 @@ def _recompute_spare_vectors(wing: WingModel) -> None:
     """Rebuild WingConfiguration to compute spare_vector/spare_origin for all spars,
     then persist the computed values back to the DB spar records.
 
-    Uses ``scale=1.0`` intentionally — the DB stores metres and the frontend
-    consumes metres, so the computed origin coordinates must stay in metres.
-    (The CAD call-site uses ``scale=1000.0`` because CadQuery works in mm.)
+    Uses ``scale=1.0`` because the DB stores metres — the computed origin
+    coordinates stay in metres.  The CAD call-site rebuilds with
+    ``scale=1000.0``; ``_resolve_spare_vectors_and_origins`` forces
+    recomputation so the origin always matches the active geometry scale.
     """
     try:
         wing_config = wing_model_to_wing_config(wing, scale=1.0)

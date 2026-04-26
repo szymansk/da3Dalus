@@ -244,6 +244,51 @@ def test_wing_model_to_wing_config_resolves_sparse_vectors_for_standard_and_foll
     assert config.segments[1].spare_list[0].spare_origin is not None
 
 
+def test_spare_origin_recomputed_when_scaled_gh352():
+    """Regression for gh-352: spare_origin from DB (meters) must not leak into mm context.
+
+    When _recompute_spare_vectors stores origin in meters and the CAD path
+    rebuilds with scale=1000.0, the origin must be recomputed from mm-scale
+    geometry — not used as-is from the DB.
+    """
+    wing_schema = schemas.AsbWingSchema(
+        name="test-wing",
+        symmetric=True,
+        x_secs=[
+            schemas.WingXSecSchema(
+                xyz_le=[0.0, 0.0, 0.0],
+                chord=0.2,
+                twist=0.0,
+                airfoil="./components/airfoils/mh32.dat",
+                spare_list=[
+                    schemas.SpareDetailSchema(
+                        spare_support_dimension_width=4.42,
+                        spare_support_dimension_height=4.42,
+                        spare_position_factor=0.25,
+                        spare_mode="standard",
+                        spare_origin=[0.05, 0.0, 0.003],
+                    )
+                ],
+            ),
+            schemas.WingXSecSchema(
+                xyz_le=[0.0, 0.5, 0.0],
+                chord=0.15,
+                twist=0.0,
+                airfoil="./components/airfoils/mh32.dat",
+            ),
+        ],
+    )
+    wing_model = WingModel.from_dict(name="test-wing", data=wing_schema.model_dump())
+
+    config_mm = wing_model_to_wing_config(wing_model, scale=1000.0)
+    spare = config_mm.segments[0].spare_list[0]
+
+    assert spare.spare_origin is not None
+    assert abs(spare.spare_origin.x) > 1.0, (
+        f"spare_origin.x={spare.spare_origin.x} looks like meters, expected mm"
+    )
+
+
 def test_ted_projection_to_asb_uses_rel_chord_root():
     wing = schemas.AsbWingSchema(
         name="main-wing",
