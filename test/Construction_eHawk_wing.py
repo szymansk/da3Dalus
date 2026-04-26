@@ -500,7 +500,7 @@ if __name__ == "__main__":
 
     # load the string
     myMap: ConstructionStepNode = json.loads(json_data, cls=GeneralJSONDecoder,
-                                             servo_information={}, #servo_information,
+                                             servo_information=servo_information,
                                              wing_config=wing_configuration,
                                              printer_settings=printer_settings)
 
