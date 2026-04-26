@@ -38,6 +38,7 @@ def _seg(
     root_airfoil=AIRFOIL, root_chord=200, root_incidence=0, root_dihedral=0,
     tip_airfoil=AIRFOIL, tip_chord=180, tip_incidence=0, tip_dihedral=0,
     length=100, sweep=0, interpolation_pts=101, tip_type=None,
+    wing_segment_type=None,
 ) -> Segment:
     return Segment(
         root_airfoil=Airfoil(
@@ -53,6 +54,7 @@ def _seg(
         length=length, sweep=sweep,
         number_interpolation_points=interpolation_pts,
         tip_type=tip_type,
+        wing_segment_type=wing_segment_type,
     )
 
 
@@ -349,6 +351,46 @@ class TestAirfoilNameRoundtrip:
         wc, wc2 = _roundtrip(wing)
         assert "naca2412" in wc2.segments[0].tip_airfoil.airfoil.lower()
         assert "naca0015" in wc2.segments[1].tip_airfoil.airfoil.lower()
+
+
+# ═══════════════════════════════════════════════════════════════════
+# wing_segment_type roundtrip (gh-351)
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestWingSegmentTypeRoundtrip:
+
+    def test_wing_segment_type_auto_assigned(self):
+        """wing_segment_type is set by the CAD layer and survives roundtrip."""
+        wing = _wing(
+            _seg(root_chord=200, tip_chord=180, length=50),
+            _seg(root_chord=180, tip_chord=140, length=200),
+            _seg(root_chord=140, tip_chord=80, length=200, tip_type="flat"),
+        )
+        _, wc2 = _roundtrip(wing)
+        assert wc2.segments[0].wing_segment_type == "root"
+        assert wc2.segments[1].wing_segment_type == "segment"
+        assert wc2.segments[2].wing_segment_type == "tip"
+
+    def test_wing_segment_type_schema_field_exists(self):
+        """Segment schema includes wing_segment_type for API serialization."""
+        seg = Segment(
+            root_airfoil=Airfoil(airfoil=AIRFOIL, chord=200),
+            tip_airfoil=Airfoil(airfoil=AIRFOIL, chord=180),
+            length=100, sweep=0,
+            wing_segment_type="root",
+        )
+        data = seg.model_dump()
+        assert data["wing_segment_type"] == "root"
+
+    def test_wing_segment_type_defaults_none(self):
+        """Segment schema defaults wing_segment_type to None."""
+        seg = Segment(
+            root_airfoil=Airfoil(airfoil=AIRFOIL, chord=200),
+            tip_airfoil=Airfoil(airfoil=AIRFOIL, chord=180),
+            length=100, sweep=0,
+        )
+        assert seg.wing_segment_type is None
 
 
 # ═══════════════════════════════════════════════════════════════════
