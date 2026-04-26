@@ -91,7 +91,14 @@ catalog, comment template, and helper commands.
 
 ### At Phase 1 start (loading issues):
 
-For each issue, rotate status to `status:implementing`.
+For each issue, rotate status:
+
+```bash
+ISSUE=<N>
+CURRENT=$(gh issue view "$ISSUE" --json labels --jq '.labels[].name | select(startswith("status:"))' | tr '\n' ',' | sed 's/,$//')
+[ -n "$CURRENT" ] && gh issue edit "$ISSUE" --remove-label "$CURRENT"
+gh issue edit "$ISSUE" --add-label "status:implementing"
+```
 
 ### After Phase 3 (PRs created):
 

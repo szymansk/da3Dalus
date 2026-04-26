@@ -118,12 +118,24 @@ catalog, comment template, and helper commands.
 
 ### At Phase 1 start (CI status check):
 
-For each linked issue (from `Closes #N` in PR body), rotate status
-to `status:merging`.
+For each linked issue (from `Closes #N` in PR body), rotate status:
+
+```bash
+ISSUE=<N>
+CURRENT=$(gh issue view "$ISSUE" --json labels --jq '.labels[].name | select(startswith("status:"))' | tr '\n' ',' | sed 's/,$//')
+[ -n "$CURRENT" ] && gh issue edit "$ISSUE" --remove-label "$CURRENT"
+gh issue edit "$ISSUE" --add-label "status:merging"
+```
 
 ### After Phase 4 (post-merge verification):
 
-For each linked issue, rotate status to `status:merged`.
+For each linked issue, rotate status:
+
+```bash
+CURRENT=$(gh issue view "$ISSUE" --json labels --jq '.labels[].name | select(startswith("status:"))' | tr '\n' ',' | sed 's/,$//')
+[ -n "$CURRENT" ] && gh issue edit "$ISSUE" --remove-label "$CURRENT"
+gh issue edit "$ISSUE" --add-label "status:merged"
+```
 
 No `has-*` label is set — the merged status and the closed issue
 (via `Closes #N`) are sufficient.
