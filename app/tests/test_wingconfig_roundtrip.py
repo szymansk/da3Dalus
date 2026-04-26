@@ -60,14 +60,16 @@ def _wing(*segments: Segment) -> Wing:
     return Wing(nose_pnt=[0, 0, 0], symmetric=True, segments=list(segments))
 
 
-def _assert_airfoil_match(original, roundtripped, label, tol_chord=0.05, tol_angle=0.01):
+def _assert_airfoil_match(
+    original, roundtripped, label,
+    tol_chord=0.05, tol_angle=0.01, is_terminal_tip=False,
+):
     """Assert that airfoil parameters survive the roundtrip within tolerance.
 
-    Documented lossy parameters (see docs/WingConfigRoundtripProof.adoc):
-    - dihedral_as_rotation_in_degrees: preserved after roundtrip
-
-    These change the REPRESENTATION but not the SHAPE — the rebuilt wing
-    renders to the same geometry.
+    Terminal tip dihedral is inherently lossy: the ASB model stores only
+    xyz_le positions, and the last cross-section has no successor segment
+    to derive a dihedral direction from. WingConfiguration.from_asb sets
+    cum_d[n-1] = cum_d[n-2], making the terminal delta always 0.
     """
     assert roundtripped.incidence == pytest.approx(
         original.incidence, abs=tol_angle
@@ -77,15 +79,13 @@ def _assert_airfoil_match(original, roundtripped, label, tol_chord=0.05, tol_ang
         original.chord, abs=tol_chord
     ), f"{label}: chord {roundtripped.chord} != {original.chord}"
 
-    # dihedral_as_rotation_in_degrees is lossy — always 0 after roundtrip
-    # The dihedral effect is preserved via dihedral_as_rotation_in_degrees.
-    # We do NOT assert it matches the original.
-
-    # rotation_point_rel_chord has been removed from the codebase.
-    # The rotation pivot is always at the LE.
+    if not is_terminal_tip:
+        assert roundtripped.dihedral_as_rotation_in_degrees == pytest.approx(
+            original.dihedral_as_rotation_in_degrees, abs=0.1
+        ), f"{label}: dihedral {roundtripped.dihedral_as_rotation_in_degrees} != {original.dihedral_as_rotation_in_degrees}"
 
 
-def _assert_segment_match(orig_seg, rt_seg, seg_idx):
+def _assert_segment_match(orig_seg, rt_seg, seg_idx, *, total_segments=None):
     """Assert that a segment survives the roundtrip.
 
     Compares the WingConfiguration segments (after create_wing_configuration),
@@ -95,11 +95,14 @@ def _assert_segment_match(orig_seg, rt_seg, seg_idx):
     Length and sweep may differ when rc ≠ 0 (documented lossy projection),
     so we use a relaxed tolerance.
     """
+    is_last = total_segments is not None and seg_idx == total_segments - 1
+
     _assert_airfoil_match(
         orig_seg.root_airfoil, rt_seg.root_airfoil, f"seg[{seg_idx}].root"
     )
     _assert_airfoil_match(
-        orig_seg.tip_airfoil, rt_seg.tip_airfoil, f"seg[{seg_idx}].tip"
+        orig_seg.tip_airfoil, rt_seg.tip_airfoil, f"seg[{seg_idx}].tip",
+        is_terminal_tip=is_last,
     )
     # Length/sweep tolerance is relaxed because rc projection changes these
     assert rt_seg.length == pytest.approx(
@@ -122,7 +125,7 @@ class TestBasicRoundtrip:
         wing = _wing(_seg())
         wc, wc2 = _roundtrip(wing)
         assert len(wc2.segments) == 1
-        _assert_segment_match(wing.segments[0], wc2.segments[0], 0)
+        _assert_segment_match(wing.segments[0], wc2.segments[0], 0, total_segments=1)
 
     def test_two_segments_flat(self):
         wing = _wing(
@@ -132,7 +135,7 @@ class TestBasicRoundtrip:
         wc, wc2 = _roundtrip(wing)
         assert len(wc2.segments) == 2
         for i in range(2):
-            _assert_segment_match(wc.segments[i], wc2.segments[i], i)
+            _assert_segment_match(wc.segments[i], wc2.segments[i], i, total_segments=2)
 
     def test_four_segments_flat(self):
         wing = _wing(
@@ -144,7 +147,7 @@ class TestBasicRoundtrip:
         wc, wc2 = _roundtrip(wing)
         assert len(wc2.segments) == 4
         for i in range(4):
-            _assert_segment_match(wc.segments[i], wc2.segments[i], i)
+            _assert_segment_match(wc.segments[i], wc2.segments[i], i, total_segments=4)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -163,7 +166,7 @@ class TestIncidenceRoundtrip:
         )
         wc, wc2 = _roundtrip(wing)
         for i in range(2):
-            _assert_segment_match(wc.segments[i], wc2.segments[i], i)
+            _assert_segment_match(wc.segments[i], wc2.segments[i], i, total_segments=2)
 
     def test_washout_classic(self):
         """Root 3°, tip -1° — classic washout."""
@@ -173,7 +176,7 @@ class TestIncidenceRoundtrip:
         )
         wc, wc2 = _roundtrip(wing)
         for i in range(2):
-            _assert_segment_match(wc.segments[i], wc2.segments[i], i)
+            _assert_segment_match(wc.segments[i], wc2.segments[i], i, total_segments=2)
 
     def test_washin(self):
         """Negative root, positive tip — washin."""
@@ -183,7 +186,7 @@ class TestIncidenceRoundtrip:
         )
         wc, wc2 = _roundtrip(wing)
         for i in range(2):
-            _assert_segment_match(wc.segments[i], wc2.segments[i], i)
+            _assert_segment_match(wc.segments[i], wc2.segments[i], i, total_segments=2)
 
     def test_root_incidence_tip_zero(self):
         """Regression: root=-1.5°, tip=0° was corrupted to tip=1.5°."""
@@ -192,8 +195,8 @@ class TestIncidenceRoundtrip:
             _seg(root_incidence=0, tip_incidence=0, length=200),
         )
         wc, wc2 = _roundtrip(wing)
-        _assert_segment_match(wc.segments[0], wc2.segments[0], 0)
-        _assert_segment_match(wc.segments[1], wc2.segments[1], 1)
+        _assert_segment_match(wc.segments[0], wc2.segments[0], 0, total_segments=2)
+        _assert_segment_match(wc.segments[1], wc2.segments[1], 1, total_segments=2)
 
     def test_large_twist_range(self):
         """8° root to -5° tip — large but valid range."""
@@ -204,7 +207,7 @@ class TestIncidenceRoundtrip:
         )
         wc, wc2 = _roundtrip(wing)
         for i in range(3):
-            _assert_segment_match(wc.segments[i], wc2.segments[i], i)
+            _assert_segment_match(wc.segments[i], wc2.segments[i], i, total_segments=3)
 
     def test_nonmonotone_twist(self):
         """Twist increases then decreases — 0°/2°/4°/1°."""
@@ -215,7 +218,7 @@ class TestIncidenceRoundtrip:
         )
         wc, wc2 = _roundtrip(wing)
         for i in range(3):
-            _assert_segment_match(wc.segments[i], wc2.segments[i], i)
+            _assert_segment_match(wc.segments[i], wc2.segments[i], i, total_segments=3)
 
     def test_all_segments_different_incidence(self):
         """Each segment has unique root/tip incidence."""
@@ -227,7 +230,7 @@ class TestIncidenceRoundtrip:
         )
         wc, wc2 = _roundtrip(wing)
         for i in range(4):
-            _assert_segment_match(wc.segments[i], wc2.segments[i], i)
+            _assert_segment_match(wc.segments[i], wc2.segments[i], i, total_segments=4)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -244,7 +247,7 @@ class TestDihedralRoundtrip:
         )
         wc, wc2 = _roundtrip(wing)
         for i in range(2):
-            _assert_segment_match(wc.segments[i], wc2.segments[i], i)
+            _assert_segment_match(wc.segments[i], wc2.segments[i], i, total_segments=2)
 
     def test_dihedral_only_root_segment(self):
         wing = _wing(
@@ -254,19 +257,17 @@ class TestDihedralRoundtrip:
         )
         wc, wc2 = _roundtrip(wing)
         for i in range(3):
-            _assert_segment_match(wc.segments[i], wc2.segments[i], i)
+            _assert_segment_match(wc.segments[i], wc2.segments[i], i, total_segments=3)
 
     def test_negative_dihedral_anhedral(self):
         """Anhedral: negative dihedral on a segment."""
-        # Note: dihedral_as_rotation_in_degrees is NonNegativeFloat in schema
-        # Anhedral might not be supported. Test with 0 to be safe.
         wing = _wing(
-            _seg(root_dihedral=0, length=100),
-            _seg(root_dihedral=0, length=200),
+            _seg(root_dihedral=-3, tip_dihedral=-3, length=100),
+            _seg(root_dihedral=-3, tip_dihedral=-3, length=200),
         )
         wc, wc2 = _roundtrip(wing)
         for i in range(2):
-            _assert_segment_match(wc.segments[i], wc2.segments[i], i)
+            _assert_segment_match(wc.segments[i], wc2.segments[i], i, total_segments=2)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -294,7 +295,7 @@ class TestCombinedRoundtrip:
         )
         wc, wc2 = _roundtrip(wing)
         for i in range(3):
-            _assert_segment_match(wc.segments[i], wc2.segments[i], i)
+            _assert_segment_match(wc.segments[i], wc2.segments[i], i, total_segments=3)
 
     def test_trapez_wing_full(self):
         """Classic trapezoid wing — 4 segments, taper, washout, dihedral."""
@@ -322,7 +323,7 @@ class TestCombinedRoundtrip:
         )
         wc, wc2 = _roundtrip(wing)
         for i in range(4):
-            _assert_segment_match(wc.segments[i], wc2.segments[i], i)
+            _assert_segment_match(wc.segments[i], wc2.segments[i], i, total_segments=4)
 
 
 # ═══════════════════════════════════════════════════════════════════

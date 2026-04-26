@@ -1,5 +1,5 @@
 from typing import List, Optional, Literal
-from pydantic import AliasChoices, BaseModel, PositiveFloat, NonNegativeFloat, Field
+from pydantic import AliasChoices, BaseModel, PositiveFloat, Field
 
 from app.schemas.Servo import Servo
 
@@ -137,9 +137,11 @@ class Airfoil(BaseModel):
     chord: PositiveFloat = Field(
         description="Length of the airfoil chord in millimeters"
     )
-    dihedral_as_rotation_in_degrees: Optional[NonNegativeFloat] = Field(
+    dihedral_as_rotation_in_degrees: Optional[float] = Field(
         default=0,
-        description="Dihedral angle in degrees, representing the upward angle of this cross section. Positive is wingtip upwards."
+        ge=-180.0,
+        le=180.0,
+        description="Dihedral angle in degrees, representing the upward angle of this cross section. Positive is wingtip upwards, negative is anhedral."
     )
     incidence: Optional[float] = Field(
         default=0,
