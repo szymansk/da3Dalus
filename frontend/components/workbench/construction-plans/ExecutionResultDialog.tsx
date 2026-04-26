@@ -121,11 +121,14 @@ export function ExecutionResultDialog({
 
   const isStreaming = !!streamUrl;
   const parts = isStreaming ? streamedParts : nonStreamParts;
-  const effectiveStatus = isStreaming ? status : (preResult ? preResult.status : "executing");
+  const preResultStatus = preResult ? preResult.status : "executing";
+  const effectiveStatus = isStreaming ? status : preResultStatus;
   const effectiveError = isStreaming ? error : preResult?.error;
-  const effectiveInfo = isStreaming
-    ? info
-    : (preResult?.status === "success" ? `${preResult.shape_keys?.length ?? 0} shapes · ${preResult.duration_ms} ms` : "");
+  const preResultInfo =
+    preResult?.status === "success"
+      ? `${preResult.shape_keys?.length ?? 0} shapes · ${preResult.duration_ms} ms`
+      : "";
+  const effectiveInfo = isStreaming ? info : preResultInfo;
   const effectiveExecutionId = isStreaming
     ? streamedExecutionId
     : (preResult?.execution_id ?? executionId ?? null);
@@ -235,28 +238,49 @@ function GeneratedFilesSection({
           Download zip
         </a>
       </div>
-      {isLoading ? (
-        <p className="text-[12px] text-muted-foreground">Loading files...</p>
-      ) : files.length === 0 ? (
-        <p className="text-[12px] text-muted-foreground">No files generated.</p>
-      ) : (
-        <ul className="flex max-h-32 flex-col gap-1 overflow-y-auto">
-          {files.map((f) => (
-            <li key={f.name} className="flex items-center gap-2 text-[12px]">
-              <a
-                href={artifactDownloadUrl(planId, executionId, f.name)}
-                className="text-primary hover:underline"
-                download
-              >
-                {f.name}
-              </a>
-              <span className="text-muted-foreground">
-                ({Math.max(1, Math.round(f.size_bytes / 1024))} KB)
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
+      <FileListBody
+        planId={planId}
+        executionId={executionId}
+        files={files}
+        isLoading={isLoading}
+      />
     </div>
+  );
+}
+
+function FileListBody({
+  planId,
+  executionId,
+  files,
+  isLoading,
+}: Readonly<{
+  planId: number;
+  executionId: string;
+  files: { name: string; size_bytes: number; is_dir: boolean; modified: string }[];
+  isLoading: boolean;
+}>) {
+  if (isLoading) {
+    return <p className="text-[12px] text-muted-foreground">Loading files...</p>;
+  }
+  if (files.length === 0) {
+    return <p className="text-[12px] text-muted-foreground">No files generated.</p>;
+  }
+  return (
+    <ul className="flex max-h-32 flex-col gap-1 overflow-y-auto">
+      {files.map((f) => (
+        <li key={f.name} className="flex items-center gap-2 text-[12px]">
+          <a
+            href={artifactDownloadUrl(planId, executionId, f.name)}
+            className="text-primary hover:underline"
+            download
+          >
+            {f.name}
+          </a>
+          <span className="text-muted-foreground">
+            ({Math.max(1, Math.round(f.size_bytes / 1024))} KB)
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }

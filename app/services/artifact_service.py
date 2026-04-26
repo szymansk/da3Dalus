@@ -147,6 +147,18 @@ def list_executions(plan_id: int) -> list[ArtifactDirectory]:
         raise InternalError(message="Cannot read artifact directory") from exc
 
 
+def _to_artifact_file(entry: Path, name: str) -> ArtifactFile:
+    """Build an ArtifactFile from a filesystem entry."""
+    stat = entry.stat()
+    is_dir = entry.is_dir()
+    return ArtifactFile(
+        name=name,
+        is_dir=is_dir,
+        size_bytes=stat.st_size if not is_dir else 0,
+        modified=datetime.fromtimestamp(stat.st_mtime, UTC).isoformat(),
+    )
+
+
 def list_files(
     plan_id: int,
     execution_id: str,
@@ -169,33 +181,13 @@ def list_files(
             raise NotFoundError(message=f"Directory not found: {subpath}")
         exec_dir = target
     try:
-        files: list[ArtifactFile] = []
         if recursive:
-            for entry in sorted(exec_dir.rglob("*")):
-                if not entry.is_file():
-                    continue
-                stat = entry.stat()
-                rel_path = entry.relative_to(exec_dir).as_posix()
-                files.append(
-                    ArtifactFile(
-                        name=rel_path,
-                        is_dir=False,
-                        size_bytes=stat.st_size,
-                        modified=datetime.fromtimestamp(stat.st_mtime, UTC).isoformat(),
-                    )
-                )
-        else:
-            for entry in sorted(exec_dir.iterdir()):
-                stat = entry.stat()
-                files.append(
-                    ArtifactFile(
-                        name=entry.name,
-                        is_dir=entry.is_dir(),
-                        size_bytes=stat.st_size if entry.is_file() else 0,
-                        modified=datetime.fromtimestamp(stat.st_mtime, UTC).isoformat(),
-                    )
-                )
-        return files
+            return [
+                _to_artifact_file(entry, entry.relative_to(exec_dir).as_posix())
+                for entry in sorted(exec_dir.rglob("*"))
+                if entry.is_file()
+            ]
+        return [_to_artifact_file(entry, entry.name) for entry in sorted(exec_dir.iterdir())]
     except OSError as exc:
         logger.exception("Failed to list files in %s", exec_dir)
         raise InternalError(message="Cannot read artifact files") from exc
@@ -263,7 +255,10 @@ def zip_execution(plan_id: int, execution_id: str) -> Path:
                 arcname = file_path.relative_to(exec_dir).as_posix()
                 zf.write(file_path, arcname=arcname)
     except OSError as exc:
-        logger.exception("Failed to build zip for execution %s/%s", plan_id, execution_id)
+        # Log the validated exec_dir path (sanitised by _ensure_within_base),
+        # not the raw user-supplied execution_id, to avoid log injection
+        # (pythonsecurity:S5145).
+        logger.exception("Failed to build zip for execution at %s", exec_dir)
         zip_path.unlink(missing_ok=True)
         raise InternalError(message=f"Cannot build zip: {exc}") from exc
 
