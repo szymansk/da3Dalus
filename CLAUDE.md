@@ -50,6 +50,7 @@ non-trivial work.
 ```
 /supercycle:status               ← Project health dashboard — issues, SonarQube, recommendations
 /supercycle:init                 ← Check & install all required tools and dependencies
+/supercycle:ticket <description> ← Brainstorm + create refined GH Issue (read-only, no code changes)
 /supercycle:work #187          ← Full cycle: brainstorm → implement → review → merge
 /supercycle:bug <error log>    ← Bug intake: investigate → ticket → TDD fix → merge
 /supercycle:implement #188,#190  ← Skip brainstorming, parallel implementation
@@ -60,6 +61,17 @@ non-trivial work.
 
 **Flow:**
 ```
+/supercycle:ticket <description>
+  ├─ Ask type (Feature/Bug/Task) + depth (Light/Medium/Full)
+  ├─ Codebase exploration (code-base-explorer agent)
+  ├─ Brainstorming with user
+  ├─ Create GH Issue (after user approval)
+  ├─ Autonomous refinement subagent
+  │    ├─ Structure, acceptance criteria, codebase refs
+  │    ├─ Scope guard, dependencies, effort estimate
+  │    └─ Labels: has-spec, status:ready
+  └─ Report (ticket URL + next steps)
+
 /supercycle:work (or :implement)
   ├─ Brainstorming with user (work only)
   ├─ GH Issue creation/refinement
@@ -91,6 +103,7 @@ non-trivial work.
 ```
 
 **When to use which entry point:**
+- **`/supercycle:ticket`** — Turn an idea into a refined GH Issue (no code changes)
 - **`/supercycle:work`** — New feature, needs discussion with user
 - **`/supercycle:bug`** — Bug report (error log or ticket) — fast-track to fix
 - **`/supercycle:implement`** — Issue is clear, skip brainstorming
