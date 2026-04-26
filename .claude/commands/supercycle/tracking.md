@@ -44,6 +44,7 @@ previous one and adds the next.
 | `status:fixing` | `#FBCA04` | Review findings being addressed |
 | `status:merging` | `#0E8A16` | CI passing, merge in progress |
 | `status:merged` | `#333333` | Issue closed, PR merged |
+| `status:ready` | `#0075CA` | Ticket refined, ready for implementation |
 
 ---
 
@@ -116,6 +117,7 @@ gh label create "status:in-review"     --description "PR under review"          
 gh label create "status:fixing"        --description "Review findings being fixed"   --color "FBCA04" 2>/dev/null || true
 gh label create "status:merging"       --description "CI passing, merging"           --color "0E8A16" 2>/dev/null || true
 gh label create "status:merged"        --description "Issue closed, PR merged"       --color "333333" 2>/dev/null || true
+gh label create "status:ready"         --description "Ticket refined, ready for implementation" --color "0075CA" 2>/dev/null || true
 ```
 
 ### Post comment then add label
@@ -176,6 +178,8 @@ gh issue edit "$ISSUE" --add-label "$NEW_STATUS"
 | `fix.md` — fixes applied | `has-fix` | `→ status:fixing` |
 | `merge.md` — merge started | — | `→ status:merging` |
 | `merge.md` — merge complete | — | `→ status:merged` |
+| `ticket.md` — issue created | — | `→ status:brainstorming` |
+| `ticket.md` — refinement complete | `has-spec` | `→ status:ready` |
 | `bug.md` — root cause found | `has-root-cause` | — |
 | `bug.md` — reproduction added | `has-reproduction` | `→ status:implementing` |
 | `bug.md` — PR created | `has-pr` | — |
