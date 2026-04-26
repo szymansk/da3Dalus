@@ -216,12 +216,29 @@ def delete_execution(plan_id: int, execution_id: str) -> None:
 
 
 def _resolve_execution_dir(plan_id: int, execution_id: str) -> Path:
-    """Find and validate the execution directory for plan_id/execution_id."""
+    """Find and validate the execution directory for plan_id/execution_id.
+
+    Searches first under <base>/<aero_id>/<plan_id>/<exec_id> (plan
+    executions). If not found, falls back to
+    <base>/_template_runs/<plan_id>/<exec_id> (template executions).
+    """
     base = settings.ARTIFACTS_BASE_DIR
     if not base.exists():
         raise NotFoundError(message="No artifacts base directory")
+
+    # 1) Search per-aeroplane plan execution dirs (skip the template-runs
+    #    prefix so a template exec_id is not coincidentally returned as
+    #    a plan dir).
     for aero_dir in base.iterdir():
+        if not aero_dir.is_dir() or aero_dir.name == TEMPLATE_RUNS_PREFIX:
+            continue
         candidate = aero_dir / str(plan_id) / execution_id
         if candidate.is_dir():
             return _ensure_within_base(candidate)
+
+    # 2) Fall back to template runs.
+    tpl_candidate = base / TEMPLATE_RUNS_PREFIX / str(plan_id) / execution_id
+    if tpl_candidate.is_dir():
+        return _ensure_within_base(tpl_candidate)
+
     raise NotFoundError(message=f"Execution {execution_id} not found for plan {plan_id}")

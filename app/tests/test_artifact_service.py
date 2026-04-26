@@ -47,3 +47,46 @@ class TestCreateTemplateExecutionDir:
         assert dir_a.exists()
         assert (dir_a / "a.txt").read_text() == "keep"
         assert dir_b.exists()
+
+
+class TestResolveExecutionDir:
+    def test_resolves_plan_execution_dir(self, tmp_artifacts: Path):
+        # Plan execution lives under <base>/<aero_id>/<plan_id>/<exec_id>/
+        execution_id, plan_dir = artifact_service.create_execution_dir("aero-x", 99)
+
+        resolved = artifact_service._resolve_execution_dir(99, execution_id)
+
+        assert resolved == plan_dir
+
+    def test_resolves_template_execution_dir(self, tmp_artifacts: Path):
+        execution_id, tpl_dir = artifact_service.create_template_execution_dir(55)
+
+        resolved = artifact_service._resolve_execution_dir(55, execution_id)
+
+        assert resolved == tpl_dir
+
+    def test_plan_takes_precedence_over_template_when_id_collides(
+        self, tmp_artifacts: Path
+    ):
+        # Edge case: same id used for both (in real DB they wouldn't collide,
+        # but the resolver must be deterministic).
+        plan_exec_id, plan_dir = artifact_service.create_execution_dir("aero-y", 123)
+        # Manually create a template-run dir with a different exec_id so they
+        # don't both have the same dir name.
+        tpl_root = tmp_artifacts / "_template_runs" / "123"
+        tpl_root.mkdir(parents=True)
+        (tpl_root / "20260101T000000Z").mkdir()
+
+        # Plan exec_id resolves to plan dir
+        assert artifact_service._resolve_execution_dir(123, plan_exec_id) == plan_dir
+        # Template exec_id resolves to template dir
+        assert (
+            artifact_service._resolve_execution_dir(123, "20260101T000000Z")
+            == tpl_root.resolve() / "20260101T000000Z"
+        )
+
+    def test_raises_not_found_for_unknown_execution(self, tmp_artifacts: Path):
+        from app.core.exceptions import NotFoundError
+
+        with pytest.raises(NotFoundError):
+            artifact_service._resolve_execution_dir(404, "nonexistent")
