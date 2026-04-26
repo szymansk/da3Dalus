@@ -28,6 +28,10 @@ const mockExecutePlan = vi.fn().mockResolvedValue({
 const mockMutateAeroplanePlans = vi.fn();
 const mockInstantiateTemplate = vi.fn().mockResolvedValue({ id: 10, name: "Instantiated" });
 const mockToTemplate = vi.fn().mockResolvedValue({ id: 11, name: "Saved Template" });
+const mockExecuteStreamUrl = vi.fn(
+  (aeroplaneId: string, planId: number) =>
+    `http://localhost:8000/aeroplanes/${aeroplaneId}/construction-plans/${planId}/execute-stream`,
+);
 
 vi.mock("@/hooks/useConstructionPlans", () => ({
   useConstructionPlans: () => ({
@@ -115,8 +119,7 @@ vi.mock("@/hooks/useConstructionPlans", () => ({
     `http://localhost:8000/construction-plans/${planId}/artifacts/${execId}/${filename}`,
   executionZipUrl: (planId: number, execId: string) =>
     `http://localhost:8000/construction-plans/${planId}/artifacts/${execId}/zip`,
-  executeStreamUrl: (aeroplaneId: string, planId: number) =>
-    `http://localhost:8000/aeroplanes/${aeroplaneId}/construction-plans/${planId}/execute-stream`,
+  executeStreamUrl: (...args: [string, number]) => mockExecuteStreamUrl(...args),
 }));
 
 vi.mock("@/hooks/useCreators", () => ({
@@ -174,10 +177,29 @@ vi.mock("@/lib/fetcher", () => ({
 
 import ConstructionPlansPage from "@/app/workbench/construction-plans/page";
 
+// jsdom does not implement EventSource. Stub it so that ExecutionResultDialog
+// can mount with a streamUrl prop without throwing.
+class FakeEventSource {
+  static CONNECTING = 0;
+  static OPEN = 1;
+  static CLOSED = 2;
+  readyState = FakeEventSource.CONNECTING;
+  url: string;
+  constructor(url: string) {
+    this.url = url;
+  }
+  addEventListener() {}
+  removeEventListener() {}
+  close() {
+    this.readyState = FakeEventSource.CLOSED;
+  }
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(window, "prompt").mockReturnValue("Test Plan");
   vi.spyOn(window, "confirm").mockReturnValue(true);
+  vi.stubGlobal("EventSource", FakeEventSource);
 });
 
 // Tests target the post-gh-323 UI: TemplateModePanel + TemplateSelector
@@ -211,7 +233,10 @@ describe("ConstructionPlansPage", () => {
     // tooltips, so multiple matches are expected.
     await waitFor(() => {
       const matches = screen.getAllByText("VaseModeWingCreator");
-      expect(matches.length).toBeGreaterThanOrEqual(1);
+      // Renders at least twice: once as the row label in renderCreatorTree
+      // and once as the parameter description in the row's add/edit tooltip.
+      // Catches a regression where the tooltip parameter label disappears.
+      expect(matches.length).toBeGreaterThanOrEqual(2);
     });
   });
 
@@ -291,6 +316,22 @@ describe("ConstructionPlansPage", () => {
     // title="Save <plan-name> as template" that calls toTemplate(...).
     await waitFor(() => {
       expect(screen.getByTitle("Save eHawk Build as template")).toBeDefined();
+    });
+  });
+
+  it("starts streaming execution when Execute is clicked in plans mode", async () => {
+    render(<ConstructionPlansPage />);
+    // Plans mode is the default. Clicking the per-plan Play icon
+    // (title="Execute <plan-name>") triggers handleExecutePlan which
+    // builds a streaming URL via executeStreamUrl(aeroplaneId, planId)
+    // and opens the ExecutionResultDialog with that streamUrl.
+    const executeButton = await screen.findByTitle("Execute eHawk Build");
+    fireEvent.click(executeButton);
+
+    // The contract: the page asks for the streaming URL with the
+    // active aeroplane id and the clicked plan id.
+    await waitFor(() => {
+      expect(mockExecuteStreamUrl).toHaveBeenCalledWith("aero-1", 2);
     });
   });
 });
