@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+// gh#345: ship the library's own CSS so the toolbar + tabs render
+// as styled controls instead of bare text labels.
+import "three-cad-viewer/css";
 
 interface CadViewerProps {
   /** One or more tessellation results to render. Each is a single-wing
@@ -98,13 +101,18 @@ export function CadViewer({ parts }: Readonly<CadViewerProps>) {
         const w = container.clientWidth || 800;
         const h = container.clientHeight || 500;
 
+        // gh#345: enable the toolbar and tree panel so the user can
+        // toggle axes/grid, switch to perspective/orthographic, change
+        // view presets, and inspect the scene tree. The library's CSS
+        // (imported at the top of this file) handles the layout.
+        const treeWidth = 200;
         const display = new tcv.Display(container, {
-          cadWidth: w,
+          cadWidth: Math.max(0, w - treeWidth),
           height: h,
-          treeWidth: 0,
+          treeWidth,
           theme: "dark",
           glass: false,
-          tools: false,
+          tools: true,
         });
 
         const viewerOptions = { target: [0, 0, 0], up: "Z" };
@@ -181,7 +189,7 @@ export function CadViewer({ parts }: Readonly<CadViewerProps>) {
           </span>
         </div>
       )}
-      <div ref={containerRef} className="h-full w-full" />
+      <div ref={containerRef} className="cad-viewer-host h-full w-full" />
     </div>
   );
 }

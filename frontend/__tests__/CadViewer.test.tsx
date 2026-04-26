@@ -83,7 +83,7 @@ describe("CadViewer", () => {
     mockDispose.mockClear();
   });
 
-  it("passes glass:false and tools:false to Display constructor", async () => {
+  it("passes glass:false and tools:true to Display constructor (gh#345)", async () => {
     await act(async () => {
       render(<CadViewer parts={[SAMPLE_SHAPES as unknown as Record<string, unknown>]} />);
     });
@@ -94,10 +94,12 @@ describe("CadViewer", () => {
 
     expect(lastDisplayOptions).not.toBeNull();
     expect(lastDisplayOptions!.glass).toBe(false);
-    expect(lastDisplayOptions!.tools).toBe(false);
+    // gh#345: tools enabled so the user gets the toolbar (axes/grid
+    // toggles, view-cube, camera presets). Was false (broken UX).
+    expect(lastDisplayOptions!.tools).toBe(true);
   });
 
-  it("passes theme:dark and treeWidth:0 to Display", async () => {
+  it("passes theme:dark and a non-zero treeWidth to Display (gh#345)", async () => {
     await act(async () => {
       render(<CadViewer parts={[SAMPLE_SHAPES as unknown as Record<string, unknown>]} />);
     });
@@ -106,7 +108,9 @@ describe("CadViewer", () => {
     });
 
     expect(lastDisplayOptions!.theme).toBe("dark");
-    expect(lastDisplayOptions!.treeWidth).toBe(0);
+    // gh#345: treeWidth must be > 0 so the Tree/Clipping/Material tabs
+    // are actually rendered. Was 0 (broken UX).
+    expect(lastDisplayOptions!.treeWidth).toBeGreaterThan(0);
   });
 
   it("passes target and up to Viewer constructor", async () => {
