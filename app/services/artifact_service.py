@@ -36,9 +36,26 @@ def _ensure_within_base(path: Path) -> Path:
     return resolved
 
 
+_last_execution_id: str | None = None
+_last_execution_id_suffix: int = 0
+
+
 def new_execution_id() -> str:
-    """Generate a UTC timestamp execution id (e.g. '20260425T120630Z')."""
-    return datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    """Generate a UTC timestamp execution id (e.g. '20260425T120630Z').
+
+    Within the same process, consecutive calls in the same UTC second
+    return distinct ids by appending a numeric suffix
+    (e.g. '20260425T120630Z-1'). This guarantees that callers which
+    treat the id as a unique handle never collide.
+    """
+    global _last_execution_id, _last_execution_id_suffix
+    base_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    if base_id == _last_execution_id:
+        _last_execution_id_suffix += 1
+        return f"{base_id}-{_last_execution_id_suffix}"
+    _last_execution_id = base_id
+    _last_execution_id_suffix = 0
+    return base_id
 
 
 def create_execution_dir(aeroplane_id: str, plan_id: int) -> tuple[str, Path]:
@@ -55,6 +72,45 @@ def create_execution_dir(aeroplane_id: str, plan_id: int) -> tuple[str, Path]:
         logger.exception("Failed to create artifact dir %s", abs_path)
         raise InternalError(message=f"Cannot create artifact directory: {exc}") from exc
     logger.info("Created artifact dir: %s", abs_path)
+    return execution_id, abs_path
+
+
+TEMPLATE_RUNS_PREFIX = "_template_runs"
+
+
+def create_template_execution_dir(template_id: int) -> tuple[str, Path]:
+    """Create a fresh artifact directory for a template execution.
+
+    Wipes any previous execution under <base>/_template_runs/<template_id>/
+    so at most one template execution exists per template at any time.
+    Returns (execution_id, absolute_path).
+    """
+    import shutil
+
+    base = settings.ARTIFACTS_BASE_DIR
+    template_root = base / TEMPLATE_RUNS_PREFIX / str(template_id)
+    if template_root.exists():
+        # Validate containment before destructive operation.
+        _ensure_within_base(template_root)
+        try:
+            shutil.rmtree(template_root)
+        except OSError as exc:
+            logger.exception("Failed to wipe template run dir %s", template_root)
+            raise InternalError(
+                message=f"Cannot reset template run directory: {exc}"
+            ) from exc
+
+    execution_id = new_execution_id()
+    abs_path = base / TEMPLATE_RUNS_PREFIX / str(template_id) / execution_id
+    try:
+        abs_path.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        logger.exception("Failed to create template artifact dir %s", abs_path)
+        raise InternalError(
+            message=f"Cannot create template artifact directory: {exc}"
+        ) from exc
+    abs_path = _ensure_within_base(abs_path)
+    logger.info("Created template artifact dir: %s", abs_path)
     return execution_id, abs_path
 
 
