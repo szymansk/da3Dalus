@@ -84,7 +84,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ./.claude/hooks/sonar-secrets/build-scripts/pretool-secrets.sh",
+            "command": ".claude/hooks/sonar-secrets/build-scripts/pretool-secrets.sh",
             "timeout": 60
           }
         ]
@@ -120,7 +120,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ./.claude/hooks/sonar-secrets/build-scripts/prompt-secrets.sh",
+            "command": ".claude/hooks/sonar-secrets/build-scripts/prompt-secrets.sh",
             "timeout": 60
           }
         ]
