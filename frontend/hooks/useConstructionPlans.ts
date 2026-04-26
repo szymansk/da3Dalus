@@ -116,6 +116,10 @@ export function artifactDownloadUrl(
   return `${API_BASE}/construction-plans/${planId}/artifacts/${executionId}/${encodedPath}`;
 }
 
+export function executionZipUrl(planId: number, executionId: string): string {
+  return `${API_BASE}/construction-plans/${planId}/artifacts/${encodeURIComponent(executionId)}/zip`;
+}
+
 export function useConstructionPlans(planType?: string) {
   const path = planType
     ? `/construction-plans?plan_type=${planType}`
