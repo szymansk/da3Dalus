@@ -239,7 +239,12 @@ catalog, comment template, and helper commands.
 
 ### At Phase 2 start (root cause investigation):
 
-Rotate status to `status:brainstorming`.
+```bash
+ISSUE=<N>
+CURRENT=$(gh issue view "$ISSUE" --json labels --jq '.labels[].name | select(startswith("status:"))' | tr '\n' ',' | sed 's/,$//')
+[ -n "$CURRENT" ] && gh issue edit "$ISSUE" --remove-label "$CURRENT"
+gh issue edit "$ISSUE" --add-label "status:brainstorming"
+```
 
 ### After Phase 2c (root cause identified):
 
@@ -257,7 +262,13 @@ Phase 3 (ticket creation).
 1. Post a comment with header `## 🏷️ has-reproduction` containing
    the test name, file path, test code, and failing output
 2. Add label `has-reproduction`
-3. Rotate status to `status:implementing`
+3. Rotate status:
+
+```bash
+CURRENT=$(gh issue view "$ISSUE" --json labels --jq '.labels[].name | select(startswith("status:"))' | tr '\n' ',' | sed 's/,$//')
+[ -n "$CURRENT" ] && gh issue edit "$ISSUE" --remove-label "$CURRENT"
+gh issue edit "$ISSUE" --add-label "status:implementing"
+```
 
 ### After Phase 4f (PR created):
 
@@ -270,11 +281,21 @@ Phase 3 (ticket creation).
 1. Post a comment with header `## 🏷️ has-review` containing the
    review verdict, findings summary, and next steps
 2. Add label `has-review`
-3. Rotate status to `status:in-review`
+3. Rotate status:
+
+```bash
+CURRENT=$(gh issue view "$ISSUE" --json labels --jq '.labels[].name | select(startswith("status:"))' | tr '\n' ',' | sed 's/,$//')
+[ -n "$CURRENT" ] && gh issue edit "$ISSUE" --remove-label "$CURRENT"
+gh issue edit "$ISSUE" --add-label "status:in-review"
+```
 
 ### After Phase 5b (merged):
 
-Rotate status to `status:merged`.
+```bash
+CURRENT=$(gh issue view "$ISSUE" --json labels --jq '.labels[].name | select(startswith("status:"))' | tr '\n' ',' | sed 's/,$//')
+[ -n "$CURRENT" ] && gh issue edit "$ISSUE" --remove-label "$CURRENT"
+gh issue edit "$ISSUE" --add-label "status:merged"
+```
 
 **IMPORTANT:** Always post the comment FIRST, then add the label.
 Always ensure the label exists before adding it (idempotent create).

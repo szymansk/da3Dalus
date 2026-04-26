@@ -174,7 +174,10 @@ gh issue create \
 ### 5c — Apply tracking
 
 ```bash
-gh issue edit <N> --add-label "status:brainstorming"
+ISSUE=<N>
+CURRENT=$(gh issue view "$ISSUE" --json labels --jq '.labels[].name | select(startswith("status:"))' | tr '\n' ',' | sed 's/,$//')
+[ -n "$CURRENT" ] && gh issue edit "$ISSUE" --remove-label "$CURRENT"
+gh issue edit "$ISSUE" --add-label "status:brainstorming"
 ```
 
 ### 5d — Report to user

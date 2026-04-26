@@ -149,19 +149,36 @@ catalog, comment template, and helper commands.
 
 ### At Phase 2 start (brainstorming begins):
 
-Rotate status to `status:brainstorming`.
+```bash
+ISSUE=<N>
+CURRENT=$(gh issue view "$ISSUE" --json labels --jq '.labels[].name | select(startswith("status:"))' | tr '\n' ',' | sed 's/,$//')
+[ -n "$CURRENT" ] && gh issue edit "$ISSUE" --remove-label "$CURRENT"
+gh issue edit "$ISSUE" --add-label "status:brainstorming"
+```
 
 ### After Phase 2c (spec/design finalized):
 
 1. Post the full design spec as a comment with header `## 🏷️ has-spec`
 2. Add label `has-spec`
-3. Rotate status to `status:planning`
+3. Rotate status:
+
+```bash
+CURRENT=$(gh issue view "$ISSUE" --json labels --jq '.labels[].name | select(startswith("status:"))' | tr '\n' ',' | sed 's/,$//')
+[ -n "$CURRENT" ] && gh issue edit "$ISSUE" --remove-label "$CURRENT"
+gh issue edit "$ISSUE" --add-label "status:planning"
+```
 
 ### After writing plans (before handing off to work-orchestrator):
 
 1. Post the full implementation plan as a comment with header `## 🏷️ has-plan`
 2. Add label `has-plan`
-3. Rotate status to `status:implementing`
+3. Rotate status:
+
+```bash
+CURRENT=$(gh issue view "$ISSUE" --json labels --jq '.labels[].name | select(startswith("status:"))' | tr '\n' ',' | sed 's/,$//')
+[ -n "$CURRENT" ] && gh issue edit "$ISSUE" --remove-label "$CURRENT"
+gh issue edit "$ISSUE" --add-label "status:implementing"
+```
 
 **IMPORTANT:** Always post the comment FIRST, then add the label.
 Always ensure the label exists before adding it (idempotent create).

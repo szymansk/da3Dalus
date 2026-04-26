@@ -101,8 +101,14 @@ catalog, comment template, and helper commands.
 
 ### At Phase 1 start (identifying findings):
 
-For each linked issue (from `Closes #N` in PR body), rotate status
-to `status:fixing`.
+For each linked issue (from `Closes #N` in PR body), rotate status:
+
+```bash
+ISSUE=<N>
+CURRENT=$(gh issue view "$ISSUE" --json labels --jq '.labels[].name | select(startswith("status:"))' | tr '\n' ',' | sed 's/,$//')
+[ -n "$CURRENT" ] && gh issue edit "$ISSUE" --remove-label "$CURRENT"
+gh issue edit "$ISSUE" --add-label "status:fixing"
+```
 
 ### After Phase 3 (report):
 
