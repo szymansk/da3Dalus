@@ -35,7 +35,6 @@ interface WingConfigState {
   length: number;           // mm
   sweep: number;            // mm
   number_interpolation_points: number;
-  wing_segment_type: string;
   tip_type: string;
 }
 
@@ -85,7 +84,6 @@ function segmentToWcState(seg: WingConfigSegment): WingConfigState {
     length: seg.length,
     sweep: seg.sweep,
     number_interpolation_points: seg.number_interpolation_points ?? 201,
-    wing_segment_type: seg.wing_segment_type ?? "",
     tip_type: seg.tip_type ?? "",
   };
 }
@@ -286,23 +284,6 @@ function WingConfigFields({
       <div className="flex gap-3">
         <Field label="interpolation_pts" value={wc.number_interpolation_points}
           onChange={(v) => { setDirty(true); setWc({ ...wc, number_interpolation_points: num(v, 201) }); }} />
-        <div className="flex flex-1 flex-col gap-1">
-          <label htmlFor="pf-segment-type" className="text-[11px] text-muted-foreground">segment_type</label>
-          <select
-            id="pf-segment-type"
-            value={wc.wing_segment_type}
-            disabled
-            className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-muted-foreground opacity-60"
-          >
-            <option value="">none</option>
-            <option value="root">root</option>
-            <option value="segment">segment</option>
-            <option value="tip">tip</option>
-          </select>
-        </div>
-      </div>
-      <div className="flex gap-3">
-        <div className="flex flex-1" />
         <div className="flex flex-1 flex-col gap-1">
           <label htmlFor="pf-tip-type" className="text-[11px] text-muted-foreground">tip_type</label>
           <select

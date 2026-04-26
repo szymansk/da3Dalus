@@ -19,7 +19,6 @@ export interface WingConfigSegment {
   length: number;
   sweep: number;
   number_interpolation_points?: number;
-  wing_segment_type?: "root" | "segment" | "tip";
   tip_type?: string;
   spare_list?: unknown[];
   trailing_edge_device?: Record<string, unknown> | null;
