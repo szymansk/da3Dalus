@@ -737,6 +737,48 @@ class TestTemplateExecution:
         assert second_dir.is_dir()
 
 
+class TestTemplateExecutionViaAeroplaneEndpoint:
+    """GH#343 — templates can be executed via the URL-style endpoint that the
+    frontend uses: POST /aeroplanes/{aero_id}/construction-plans/{template_id}/execute.
+
+    This is a regression guard. The execute-guard removal in svc.execute_plan
+    fixes both this URL endpoint and the body-style /construction-plans/{id}/execute
+    endpoint (they share the service function), but PR #340 originally only
+    covered the body-style endpoint. This class verifies the URL-style path.
+    """
+
+    @pytest.mark.skipif(not _can_import_cad(), reason="cadquery not available")
+    def test_aeroplane_url_endpoint_executes_template(
+        self, client, client_and_db, tmp_path, monkeypatch
+    ):
+        from app.core.config import settings
+
+        monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        _, SessionLocal = client_and_db
+        from app.tests.conftest import make_aeroplane
+
+        with SessionLocal() as session:
+            aero = make_aeroplane(session, name="for-url-tpl-exec")
+            aero_id = str(aero.uuid)
+
+        template = _create_plan(client, "Tpl URL", tree=SAMPLE_TREE, plan_type="template")
+
+        resp = client.post(
+            f"/aeroplanes/{aero_id}/construction-plans/{template['id']}/execute",
+        )
+
+        # Must NOT return 422 with "Templates cannot be executed" — that's the
+        # exact regression #343 reports.
+        assert resp.status_code == 200, resp.text
+        assert "Templates cannot be executed" not in resp.text
+        body = resp.json()
+        assert body["status"] in ("success", "error"), body
+        # Artifacts land under the template-runs tree (replace-on-next-run lifecycle)
+        assert body["execution_id"]
+        tpl_dir = tmp_path / "_template_runs" / str(template["id"]) / body["execution_id"]
+        assert tpl_dir.is_dir()
+
+
 class TestPlanExecutionPathRegression:
     """Plan executions still write to <aero>/<plan>/<exec> (gh#339)."""
 
