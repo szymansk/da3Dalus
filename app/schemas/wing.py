@@ -185,7 +185,7 @@ class Segment(BaseModel):
         default=None,
         description="Number of points used for interpolation between root and tip airfoils"
     )
-    wing_segment_type: Optional[str] = Field(
+    wing_segment_type: Optional[Literal["root", "segment", "tip"]] = Field(
         default=None,
         description="Segment classification: 'root', 'segment', or 'tip'"
     )
