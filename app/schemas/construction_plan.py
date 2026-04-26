@@ -95,9 +95,17 @@ class CreatorInfo(BaseModel):
 
 
 class ExecuteRequest(BaseModel):
-    """Request body for executing a plan against an aeroplane."""
+    """Request body for executing a plan against an aeroplane.
 
-    aeroplane_id: str = Field(..., description="UUID of the aeroplane to use")
+    `aeroplane_id` is optional in the request body — for stored plans
+    that already have an `aeroplane_id`, the value can be omitted; for
+    templates (no stored aeroplane), the request body must supply it
+    or the service raises a 422.
+    """
+
+    aeroplane_id: Optional[str] = Field(
+        None, description="UUID of the aeroplane to use (required for templates)"
+    )
 
 
 class ExecutionResult(BaseModel):

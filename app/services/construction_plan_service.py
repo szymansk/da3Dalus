@@ -595,22 +595,31 @@ def execute_plan(
 ) -> ExecutionResult:
     """Execute a plan against an aeroplane configuration."""
     from app.services.wing_service import get_aeroplane_or_raise, get_wing_or_raise
-    from app.services.artifact_service import create_execution_dir
+    from app.services import artifact_service
     from app.converters.model_schema_converters import wing_model_to_wing_config
 
     # Load plan
     plan = _get_plan_or_raise(db, plan_id)
-    if plan.plan_type == "template":
-        raise ValidationError(
-            message="Templates cannot be executed. Instantiate as a plan first.",
-        )
 
-    # Load aeroplane (prefer stored aeroplane_id, fall back to request)
+    # Resolve aeroplane: prefer stored aeroplane_id (real plans), fall back
+    # to request (templates require it explicitly).
     effective_aeroplane_id = plan.aeroplane_id or request.aeroplane_id
+    if plan.plan_type == "template" and not effective_aeroplane_id:
+        raise ValidationError(
+            message="aeroplane_id required for template execution",
+        )
     aeroplane = get_aeroplane_or_raise(db, effective_aeroplane_id)
 
-    # Create artifact directory for this execution
-    execution_id, artifact_dir = create_execution_dir(effective_aeroplane_id, plan_id)
+    # Create artifact directory: templates go to a dedicated _template_runs
+    # tree with replace-on-next-run; plans go under <aeroplane>/<plan>/.
+    if plan.plan_type == "template":
+        execution_id, artifact_dir = artifact_service.create_template_execution_dir(
+            plan_id
+        )
+    else:
+        execution_id, artifact_dir = artifact_service.create_execution_dir(
+            effective_aeroplane_id, plan_id
+        )
 
     # Build wing_config map: all wings
     wing_config: dict = {}
@@ -704,7 +713,7 @@ def execute_plan_streaming(
     import threading
 
     from app.services.wing_service import get_aeroplane_or_raise
-    from app.services.artifact_service import create_execution_dir
+    from app.services import artifact_service
     from app.converters.model_schema_converters import wing_model_to_wing_config
 
     # Load plan — wrap setup in try/except to yield SSE errors instead of crashing
@@ -713,11 +722,16 @@ def execute_plan_streaming(
     except (NotFoundError, ValidationError) as exc:
         yield f"event: error\ndata: {json.dumps({'error': str(exc)})}\n\n"
         return
-    if plan.plan_type == "template":
-        yield f"event: error\ndata: {json.dumps({'error': 'Templates cannot be executed'})}\n\n"
-        return
 
     effective_aeroplane_id = plan.aeroplane_id or request.aeroplane_id
+    if plan.plan_type == "template" and not effective_aeroplane_id:
+        yield (
+            "event: error\ndata: "
+            f"{json.dumps({'error': 'aeroplane_id required for template execution'})}"
+            "\n\n"
+        )
+        return
+
     try:
         aeroplane = get_aeroplane_or_raise(db, effective_aeroplane_id)
     except NotFoundError as exc:
@@ -733,7 +747,16 @@ def execute_plan_streaming(
             logger.warning("Failed to convert wing '%s': %s", wing.name, exc)
 
     printer_settings = _load_printer_settings(db)
-    execution_id, artifact_dir = create_execution_dir(effective_aeroplane_id, plan_id)
+
+    # Templates: replace-on-next-run; plans: per-aeroplane persistent.
+    if plan.plan_type == "template":
+        execution_id, artifact_dir = artifact_service.create_template_execution_dir(
+            plan_id
+        )
+    else:
+        execution_id, artifact_dir = artifact_service.create_execution_dir(
+            effective_aeroplane_id, plan_id
+        )
 
     # Rewrite export paths for artifact directory
     tree_for_exec = _rewrite_export_paths(plan.tree_json, artifact_dir)

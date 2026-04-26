@@ -226,15 +226,6 @@ class TestPlanExecution:
         )
         assert resp.status_code == 404
 
-    def test_execute_template_rejected(self, client):
-        """POST execute on a template → 422."""
-        plan = _create_plan(client, "tmpl_no_exec", plan_type="template")
-        resp = client.post(
-            f"/construction-plans/{plan['id']}/execute",
-            json={"aeroplane_id": "00000000-0000-0000-0000-000000000000"},
-        )
-        assert resp.status_code == 422
-
     def test_execute_plan_with_invalid_creator_returns_error(self, client):
         """Plan with unknown creator type → decode error → 422."""
         bad_tree = {
@@ -662,3 +653,136 @@ class TestZipDownload:
 
         with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
             assert zf.namelist() == []
+
+
+# ── Template execution (gh#339) ─────────────────────────────────
+
+
+class TestTemplateExecution:
+    """GH#339 — templates can be executed against a chosen aeroplane."""
+
+    @pytest.mark.skipif(not _can_import_cad(), reason="cadquery not available")
+    def test_execute_template_returns_success(
+        self, client, client_and_db, tmp_path, monkeypatch
+    ):
+        from app.core.config import settings
+
+        monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        _, SessionLocal = client_and_db
+        from app.tests.conftest import make_aeroplane
+
+        with SessionLocal() as session:
+            aero = make_aeroplane(session, name="for-tpl-exec")
+            aero_id = str(aero.uuid)
+
+        # Create a template (plan_type defaults to "template" in helper)
+        template = _create_plan(
+            client, "Tpl A", tree=SAMPLE_TREE, plan_type="template"
+        )
+
+        resp = client.post(
+            f"/construction-plans/{template['id']}/execute",
+            json={"aeroplane_id": aero_id},
+        )
+
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        # decode may fail (no real Creator) but status code must not be 422
+        assert body["status"] in ("success", "error"), body
+
+    def test_execute_template_without_aeroplane_id_returns_422(self, client):
+        template = _create_plan(
+            client, "Tpl B", tree=SAMPLE_TREE, plan_type="template"
+        )
+
+        resp = client.post(
+            f"/construction-plans/{template['id']}/execute",
+            json={},
+        )
+
+        assert resp.status_code == 422
+        assert "aeroplane_id" in resp.json()["detail"].lower()
+
+    @pytest.mark.skipif(not _can_import_cad(), reason="cadquery not available")
+    def test_template_execution_replaces_previous_run(
+        self, client, client_and_db, tmp_path, monkeypatch
+    ):
+        from app.core.config import settings
+
+        monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        _, SessionLocal = client_and_db
+        from app.tests.conftest import make_aeroplane
+
+        with SessionLocal() as session:
+            aero = make_aeroplane(session, name="for-replace")
+            aero_id = str(aero.uuid)
+
+        template = _create_plan(
+            client, "Tpl C", tree=SAMPLE_TREE, plan_type="template"
+        )
+
+        # First execute
+        resp1 = client.post(
+            f"/construction-plans/{template['id']}/execute",
+            json={"aeroplane_id": aero_id},
+        )
+        assert resp1.status_code == 200
+        first_exec_id = resp1.json()["execution_id"]
+
+        # Second execute
+        resp2 = client.post(
+            f"/construction-plans/{template['id']}/execute",
+            json={"aeroplane_id": aero_id},
+        )
+        assert resp2.status_code == 200
+        second_exec_id = resp2.json()["execution_id"]
+
+        assert first_exec_id != second_exec_id
+        # First execution dir is gone
+        first_dir = (
+            tmp_path / "_template_runs" / str(template["id"]) / first_exec_id
+        )
+        assert not first_dir.exists()
+        # Second execution dir exists
+        second_dir = (
+            tmp_path / "_template_runs" / str(template["id"]) / second_exec_id
+        )
+        assert second_dir.is_dir()
+
+
+class TestPlanExecutionPathRegression:
+    """Plan executions still write to <aero>/<plan>/<exec> (gh#339)."""
+
+    @pytest.mark.skipif(not _can_import_cad(), reason="cadquery not available")
+    def test_plan_execution_path_unchanged(
+        self, client, client_and_db, tmp_path, monkeypatch
+    ):
+        from app.core.config import settings
+
+        monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        _, SessionLocal = client_and_db
+        from app.tests.conftest import make_aeroplane
+
+        with SessionLocal() as session:
+            aero = make_aeroplane(session, name="for-plan")
+            aero_id = str(aero.uuid)
+
+        plan = _create_plan(
+            client,
+            "Real Plan",
+            tree=SAMPLE_TREE,
+            plan_type="plan",
+            aeroplane_id=aero_id,
+        )
+
+        resp = client.post(
+            f"/construction-plans/{plan['id']}/execute",
+            json={"aeroplane_id": aero_id},
+        )
+        assert resp.status_code == 200
+        exec_id = resp.json()["execution_id"]
+
+        # Plan dir under aeroplane root, NOT under _template_runs
+        plan_dir = tmp_path / aero_id / str(plan["id"]) / exec_id
+        assert plan_dir.is_dir()
+        assert not (tmp_path / "_template_runs" / str(plan["id"])).exists()
