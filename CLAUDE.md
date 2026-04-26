@@ -25,6 +25,14 @@ a React frontend.
 - Dark theme with orange accent (`#FF8400`), fonts: JetBrains Mono +
   Geist.
 
+## Codebase Exploration
+
+Prefer the **code-base-explorer** agent (`.claude/agents/code-base-explorer.md`)
+over the generic Explore agent when exploring this codebase. It uses
+Serena's LSP-backed symbol tools for semantic navigation (find symbol,
+find references, symbols overview) alongside standard Glob/Grep/Read,
+giving more accurate results for structural questions.
+
 ## Using Superpowers
 
 Call '/using-superpowers' at start to get a clue about the past steps,

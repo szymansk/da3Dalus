@@ -10,6 +10,14 @@ the docs are the source of truth.
 
 <!-- END:nextjs-agent-rules -->
 
+## Codebase Exploration
+
+Prefer the **code-base-explorer** agent (`.claude/agents/code-base-explorer.md`)
+over the generic Explore agent when exploring this codebase. It uses
+Serena's LSP-backed symbol tools for semantic navigation (find symbol,
+find references, symbols overview) alongside standard Glob/Grep/Read,
+giving more accurate results for structural questions.
+
 ## Project structure
 
 - `app/` — Python FastAPI Backend (port 8000)
