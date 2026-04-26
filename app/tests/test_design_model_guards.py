@@ -91,12 +91,12 @@ class TestWcWingGuards:
         assert resp.status_code == 409
         assert "design_model='wc'" in resp.json()["detail"]
 
-    def test_wc_wing_rejects_cross_section_create(self, client):
+    def test_wc_wing_allows_cross_section_create(self, client):
         aid = _create_aeroplane(client, "wc_guard_xsec")
         _create_wc_wing(client, aid)
         xsec = {"xyz_le": [0, 0.3, 0], "chord": 0.1, "twist": 0, "airfoil": "naca0012"}
         resp = client.post(f"/aeroplanes/{aid}/wings/w/cross_sections/0", json=xsec)
-        assert resp.status_code == 409
+        assert resp.status_code == 201
 
     def test_wc_wing_allows_wingconfig_put(self, client):
         aid = _create_aeroplane(client, "wc_guard_wc_put")

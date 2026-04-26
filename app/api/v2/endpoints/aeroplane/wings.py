@@ -393,7 +393,6 @@ async def delete_aeroplane_wing_cross_sections(
         db: Annotated[Session, Depends(get_db)],
 ):
     """Delete all cross-sections of a wing."""
-    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(wing_service.delete_all_cross_sections, db, aeroplane_id, wing_name)
     return OperationStatusResponse(status="ok", operation="delete_all_wing_cross_sections")
 
@@ -433,7 +432,6 @@ async def create_aeroplane_wing_cross_section(
         db: Annotated[Session, Depends(get_db)],
 ):
     """Creates a new cross-section for the wing and splice it into the list of cross-sections."""
-    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(wing_service.create_cross_section, db, aeroplane_id, wing_name, cross_section_index, request)
     on_wing_changed(db, aeroplane_id, wing_name)
     return OperationStatusResponse(status="created", operation="create_wing_cross_section")
@@ -457,7 +455,6 @@ async def update_aeroplane_wing_cross_section(
         db: Annotated[Session, Depends(get_db)],
 ):
     """Updates the cross-section for the aeroplane."""
-    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(wing_service.update_cross_section, db, aeroplane_id, wing_name, cross_section_index, request)
     on_wing_changed(db, aeroplane_id, wing_name)
     return OperationStatusResponse(status="ok", operation="update_wing_cross_section")
@@ -475,7 +472,6 @@ async def delete_aeroplane_wing_cross_section(
         db: Annotated[Session, Depends(get_db)],
 ):
     """Delete a cross-section."""
-    _assert_design_model(db, aeroplane_id, wing_name, "asb")
     _call_service(wing_service.delete_cross_section, db, aeroplane_id, wing_name, cross_section_index)
     on_wing_changed(db, aeroplane_id, wing_name)
     return OperationStatusResponse(status="ok", operation="delete_wing_cross_section")
