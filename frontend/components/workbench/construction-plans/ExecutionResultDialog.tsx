@@ -4,6 +4,11 @@ import { useEffect, useState, useRef } from "react";
 import { X } from "lucide-react";
 import { useDialog } from "@/hooks/useDialog";
 import { CadViewer } from "@/components/workbench/CadViewer";
+import {
+  artifactDownloadUrl,
+  executionZipUrl,
+  useArtifactFiles,
+} from "@/hooks/useConstructionPlans";
 import type { ExecutionResult } from "@/hooks/useConstructionPlans";
 
 interface ExecutionResultDialogProps {
@@ -13,6 +18,10 @@ interface ExecutionResultDialogProps {
   result?: ExecutionResult | null;
   /** SSE URL for streaming mode. When set, streams shapes incrementally. */
   streamUrl?: string | null;
+  /** Plan/template id for the artifact endpoints. */
+  planId?: number | null;
+  /** Execution id (resolved from result or streamed 'complete' event). */
+  executionId?: string | null;
   onClose: () => void;
 }
 
@@ -21,6 +30,8 @@ export function ExecutionResultDialog({
   title,
   result: preResult,
   streamUrl,
+  planId,
+  executionId,
   onClose,
 }: Readonly<ExecutionResultDialogProps>) {
   const { dialogRef, handleClose } = useDialog(open, onClose);
@@ -28,6 +39,9 @@ export function ExecutionResultDialog({
   const [status, setStatus] = useState<"executing" | "success" | "error">("executing");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string>("");
+  const [streamedExecutionId, setStreamedExecutionId] = useState<string | null>(
+    null,
+  );
   const eventSourceRef = useRef<EventSource | null>(null);
 
   // SSE streaming
@@ -37,6 +51,7 @@ export function ExecutionResultDialog({
     setStatus("executing");
     setError(null);
     setInfo("");
+    setStreamedExecutionId(null);
 
     const es = new EventSource(streamUrl);
     eventSourceRef.current = es;
@@ -61,6 +76,7 @@ export function ExecutionResultDialog({
         const data = JSON.parse(e.data);
         setStatus("success");
         setInfo(`${data.shape_keys?.length ?? 0} shapes · ${data.duration_ms} ms`);
+        if (data.execution_id) setStreamedExecutionId(data.execution_id);
         if (data.tessellation) {
           setStreamedParts([data.tessellation]);
         }
@@ -110,6 +126,9 @@ export function ExecutionResultDialog({
   const effectiveInfo = isStreaming
     ? info
     : (preResult?.status === "success" ? `${preResult.shape_keys?.length ?? 0} shapes · ${preResult.duration_ms} ms` : "");
+  const effectiveExecutionId = isStreaming
+    ? streamedExecutionId
+    : (preResult?.execution_id ?? executionId ?? null);
 
   return (
     <dialog
@@ -175,8 +194,68 @@ export function ExecutionResultDialog({
               </div>
             )}
           </div>
+
+          {effectiveStatus === "success" && (
+            <GeneratedFilesSection
+              planId={planId ?? null}
+              executionId={effectiveExecutionId}
+            />
+          )}
         </div>
       )}
     </dialog>
+  );
+}
+
+function GeneratedFilesSection({
+  planId,
+  executionId,
+}: Readonly<{ planId: number | null; executionId: string | null }>) {
+  const { files, isLoading } = useArtifactFiles(planId, executionId);
+
+  if (planId == null || executionId == null) return null;
+
+  const visibleFiles = files.filter((f) => !f.is_dir);
+
+  return (
+    <div className="border-t border-border px-6 py-4">
+      <div className="mb-2 flex items-center gap-3">
+        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
+          Generated files
+        </span>
+        <span className="flex-1" />
+        {visibleFiles.length > 0 && (
+          <a
+            href={executionZipUrl(planId, executionId)}
+            className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-primary hover:underline"
+            download
+          >
+            Download zip
+          </a>
+        )}
+      </div>
+      {isLoading ? (
+        <p className="text-[12px] text-muted-foreground">Loading files...</p>
+      ) : visibleFiles.length === 0 ? (
+        <p className="text-[12px] text-muted-foreground">No files generated.</p>
+      ) : (
+        <ul className="flex max-h-32 flex-col gap-1 overflow-y-auto">
+          {visibleFiles.map((f) => (
+            <li key={f.name} className="flex items-center gap-2 text-[12px]">
+              <a
+                href={artifactDownloadUrl(planId, executionId, f.name)}
+                className="text-primary hover:underline"
+                download
+              >
+                {f.name}
+              </a>
+              <span className="text-muted-foreground">
+                ({Math.max(1, Math.round(f.size_bytes / 1024))} KB)
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
