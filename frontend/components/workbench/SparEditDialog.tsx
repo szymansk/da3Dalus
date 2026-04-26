@@ -223,7 +223,7 @@ export function SparEditDialog({
             <DialogField label="Y" value={vecY} onChange={setVecY} />
             <DialogField label="Z" value={vecZ} onChange={setVecZ} />
           </div>
-          <span className="pt-1 text-[11px] text-muted-foreground">Origin (opt.)</span>
+          <span className="pt-1 text-[11px] text-muted-foreground">Origin (opt.) mm</span>
           <div className="flex gap-3">
             <DialogField label="X" value={origX} onChange={setOrigX} />
             <DialogField label="Y" value={origY} onChange={setOrigY} />
