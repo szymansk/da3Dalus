@@ -18,18 +18,25 @@ export function InlineEditableName({
   className,
 }: Readonly<InlineEditableNameProps>) {
   const [draft, setDraft] = useState(value);
+  const [prevEditing, setPrevEditing] = useState(editing);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sync draft from value when entering edit mode. Doing this during render
+  // (instead of in useEffect) is the React 19 recommended pattern for
+  // "adjust state when a prop changes" — see react-hooks/set-state-in-effect.
+  if (editing !== prevEditing) {
+    setPrevEditing(editing);
+    if (editing) setDraft(value);
+  }
 
   useEffect(() => {
     if (editing) {
-      setDraft(value);
-      // Focus and select all on edit start
       requestAnimationFrame(() => {
         inputRef.current?.focus();
         inputRef.current?.select();
       });
     }
-  }, [editing, value]);
+  }, [editing]);
 
   if (!editing) {
     return <span className={className}>{value}</span>;

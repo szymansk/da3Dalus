@@ -52,7 +52,7 @@ describe("TreeCard", () => {
     expect(screen.getByText("Add")).toBeDefined();
   });
 
-  it("body container has overflow-y-auto class", () => {
+  it("body container scrolls when content overflows", () => {
     render(
       <TreeCard title="Tree">
         <span data-testid="child">content</span>
@@ -61,6 +61,6 @@ describe("TreeCard", () => {
 
     const child = screen.getByTestId("child");
     const body = child.parentElement!;
-    expect(body.className).toContain("overflow-y-auto");
+    expect(body.className).toContain("overflow-auto");
   });
 });
