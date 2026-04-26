@@ -1,4 +1,5 @@
 """Service layer for Construction Plans (gh#101)."""
+
 from __future__ import annotations
 
 import inspect
@@ -120,11 +121,14 @@ def _migrate_tree_json(db: Session, plan: ConstructionPlanModel) -> None:
         return
     root_type = tree.get("$TYPE", "")
     if root_type == "ConstructionStepNode":
-        logger.info("Migrating plan %s root from ConstructionStepNode → ConstructionRootNode", plan.id)
+        logger.info(
+            "Migrating plan %s root from ConstructionStepNode → ConstructionRootNode", plan.id
+        )
         tree["$TYPE"] = "ConstructionRootNode"
         # Remove 'creator' key if present (ConstructionRootNode doesn't use it)
         tree.pop("creator", None)
         from sqlalchemy.orm.attributes import flag_modified
+
         flag_modified(plan, "tree_json")
         db.commit()
 
@@ -254,16 +258,23 @@ def to_template(
 
 
 _INTERNAL_PARAMS = {
-    "self", "loglevel", "kwargs",
+    "self",
+    "loglevel",
+    "kwargs",
     "creator_id",
     # Runtime-injected config (passed by GeneralJSONDecoder, not user-facing)
-    "wing_config", "printer_settings", "servo_information",
-    "engine_information", "component_information",
+    "wing_config",
+    "printer_settings",
+    "servo_information",
+    "engine_information",
+    "component_information",
 }
 
 
 def _flush_attribute(
-    result: dict[str, str], name: str | None, desc: list[str],
+    result: dict[str, str],
+    name: str | None,
+    desc: list[str],
 ) -> None:
     """Write accumulated attribute to *result* if *name* and *desc* exist."""
     if name and desc:
@@ -372,16 +383,23 @@ def _parse_docstring_returns(docstring: str) -> list[CreatorOutput]:
             continue
 
         # End on next section header
-        if stripped and not stripped.startswith("{") and stripped.endswith(":") and "(" not in stripped:
+        if (
+            stripped
+            and not stripped.startswith("{")
+            and stripped.endswith(":")
+            and "(" not in stripped
+        ):
             break
 
         # Output line: "{id}.name (type): Description"
         match = re.match(r"(\{[^}]*\}[^\s]*)\s*(?:\([^)]*\))?\s*:\s*(.*)", stripped)
         if match:
-            outputs.append(CreatorOutput(
-                key=match.group(1),
-                description=match.group(2).strip(),
-            ))
+            outputs.append(
+                CreatorOutput(
+                    key=match.group(1),
+                    description=match.group(2).strip(),
+                )
+            )
         elif not stripped and outputs:
             break  # Empty line after outputs ends section
 
@@ -507,28 +525,32 @@ def _collect_creators(cls: type, result: list[CreatorInfo], seen: set[str]) -> N
     for pname, param in sig.parameters.items():
         if pname in _INTERNAL_PARAMS:
             continue
-        params.append(CreatorParam(
-            name=pname,
-            type=_type_to_str(param.annotation),
-            default=param.default if param.default is not inspect.Parameter.empty else None,
-            required=param.default is inspect.Parameter.empty,
-            description=param_descriptions.get(pname),
-            options=_extract_literal_values(param.annotation),
-        ))
+        params.append(
+            CreatorParam(
+                name=pname,
+                type=_type_to_str(param.annotation),
+                default=param.default if param.default is not inspect.Parameter.empty else None,
+                required=param.default is inspect.Parameter.empty,
+                description=param_descriptions.get(pname),
+                options=_extract_literal_values(param.annotation),
+            )
+        )
 
     docstring = (cls.__doc__ or "").strip().split("\n")[0] if cls.__doc__ else None
 
     outputs = _parse_docstring_returns(cls.__doc__ or "")
     suggested_id = getattr(cls, "suggested_creator_id", None)
 
-    result.append(CreatorInfo(
-        class_name=name,
-        category=_get_category(cls),
-        description=docstring,
-        parameters=params,
-        outputs=outputs,
-        suggested_id=suggested_id,
-    ))
+    result.append(
+        CreatorInfo(
+            class_name=name,
+            category=_get_category(cls),
+            description=docstring,
+            parameters=params,
+            outputs=outputs,
+            suggested_id=suggested_id,
+        )
+    )
 
     for sub in cls.__subclasses__():
         _collect_creators(sub, result, seen)
@@ -538,8 +560,10 @@ def _collect_creators(cls: type, result: list[CreatorInfo], seen: set[str]) -> N
 
 
 _EXPORT_CREATOR_TYPES = {
-    "ExportToStlCreator", "ExportToStepCreator",
-    "ExportToIgesCreator", "ExportTo3mfCreator",
+    "ExportToStlCreator",
+    "ExportToStepCreator",
+    "ExportToIgesCreator",
+    "ExportTo3mfCreator",
 }
 
 
@@ -564,14 +588,18 @@ def _rewrite_export_paths(tree_json: dict, artifact_dir) -> dict:
                 fp = creator.get("file_path")
                 if isinstance(fp, str) and not os.path.isabs(fp):
                     abs_path = artifact / fp
-                    abs_path.mkdir(parents=True, exist_ok=True)  # file_path is a directory for exporters
+                    abs_path.mkdir(
+                        parents=True, exist_ok=True
+                    )  # file_path is a directory for exporters
                     creator["file_path"] = str(abs_path)
         # Also check if this node itself is an export creator (flat format)
         if node_type in _EXPORT_CREATOR_TYPES:
             fp = node.get("file_path")
             if isinstance(fp, str) and not os.path.isabs(fp):
                 abs_path = artifact / fp
-                abs_path.mkdir(parents=True, exist_ok=True)  # file_path is a directory for exporters
+                abs_path.mkdir(
+                    parents=True, exist_ok=True
+                )  # file_path is a directory for exporters
                 node["file_path"] = str(abs_path)
         # Recurse into successors
         successors = node.get("successors")
@@ -595,22 +623,29 @@ def execute_plan(
 ) -> ExecutionResult:
     """Execute a plan against an aeroplane configuration."""
     from app.services.wing_service import get_aeroplane_or_raise, get_wing_or_raise
-    from app.services.artifact_service import create_execution_dir
+    from app.services import artifact_service
     from app.converters.model_schema_converters import wing_model_to_wing_config
 
     # Load plan
     plan = _get_plan_or_raise(db, plan_id)
-    if plan.plan_type == "template":
-        raise ValidationError(
-            message="Templates cannot be executed. Instantiate as a plan first.",
-        )
 
-    # Load aeroplane (prefer stored aeroplane_id, fall back to request)
+    # Resolve aeroplane: prefer stored aeroplane_id (real plans), fall back
+    # to request (templates require it explicitly).
     effective_aeroplane_id = plan.aeroplane_id or request.aeroplane_id
+    if plan.plan_type == "template" and not effective_aeroplane_id:
+        raise ValidationError(
+            message="aeroplane_id required for template execution",
+        )
     aeroplane = get_aeroplane_or_raise(db, effective_aeroplane_id)
 
-    # Create artifact directory for this execution
-    execution_id, artifact_dir = create_execution_dir(effective_aeroplane_id, plan_id)
+    # Create artifact directory: templates go to a dedicated _template_runs
+    # tree with replace-on-next-run; plans go under <aeroplane>/<plan>/.
+    if plan.plan_type == "template":
+        execution_id, artifact_dir = artifact_service.create_template_execution_dir(plan_id)
+    else:
+        execution_id, artifact_dir = artifact_service.create_execution_dir(
+            effective_aeroplane_id, plan_id
+        )
 
     # Build wing_config map: all wings
     wing_config: dict = {}
@@ -647,7 +682,8 @@ def execute_plan(
     except Exception as exc:
         logger.exception(
             "Failed to decode plan tree_json: plan_id=%s execution_id=%s",
-            plan_id, execution_id,
+            plan_id,
+            execution_id,
         )
         raise ValidationError(
             message=f"Failed to decode construction plan: {exc}",
@@ -662,7 +698,9 @@ def execute_plan(
         duration_ms = int((time.monotonic() - t0) * 1000)
         logger.exception(
             "Plan execution failed: plan_id=%s aeroplane_id=%s execution_id=%s",
-            plan_id, effective_aeroplane_id, execution_id,
+            plan_id,
+            effective_aeroplane_id,
+            execution_id,
         )
         return ExecutionResult(
             status="error",
@@ -704,7 +742,7 @@ def execute_plan_streaming(
     import threading
 
     from app.services.wing_service import get_aeroplane_or_raise
-    from app.services.artifact_service import create_execution_dir
+    from app.services import artifact_service
     from app.converters.model_schema_converters import wing_model_to_wing_config
 
     # Load plan — wrap setup in try/except to yield SSE errors instead of crashing
@@ -713,11 +751,16 @@ def execute_plan_streaming(
     except (NotFoundError, ValidationError) as exc:
         yield f"event: error\ndata: {json.dumps({'error': str(exc)})}\n\n"
         return
-    if plan.plan_type == "template":
-        yield f"event: error\ndata: {json.dumps({'error': 'Templates cannot be executed'})}\n\n"
-        return
 
     effective_aeroplane_id = plan.aeroplane_id or request.aeroplane_id
+    if plan.plan_type == "template" and not effective_aeroplane_id:
+        yield (
+            "event: error\ndata: "
+            f"{json.dumps({'error': 'aeroplane_id required for template execution'})}"
+            "\n\n"
+        )
+        return
+
     try:
         aeroplane = get_aeroplane_or_raise(db, effective_aeroplane_id)
     except NotFoundError as exc:
@@ -733,7 +776,14 @@ def execute_plan_streaming(
             logger.warning("Failed to convert wing '%s': %s", wing.name, exc)
 
     printer_settings = _load_printer_settings(db)
-    execution_id, artifact_dir = create_execution_dir(effective_aeroplane_id, plan_id)
+
+    # Templates: replace-on-next-run; plans: per-aeroplane persistent.
+    if plan.plan_type == "template":
+        execution_id, artifact_dir = artifact_service.create_template_execution_dir(plan_id)
+    else:
+        execution_id, artifact_dir = artifact_service.create_execution_dir(
+            effective_aeroplane_id, plan_id
+        )
 
     # Rewrite export paths for artifact directory
     tree_for_exec = _rewrite_export_paths(plan.tree_json, artifact_dir)
@@ -767,6 +817,7 @@ def execute_plan_streaming(
         shape_queue.put(("shape", name, clean))
 
     from cad_designer.cq_plugins.display.display import set_display_callback
+
     set_display_callback(on_display)
     prev_env = os.environ.get("DISPLAY_CONSTRUCTION_STEP")
     os.environ["DISPLAY_CONSTRUCTION_STEP"] = "1"
@@ -781,22 +832,32 @@ def execute_plan_streaming(
             shape_keys = list(structure.keys()) if isinstance(structure, dict) else []
             # Final tessellation of the complete structure
             tessellation = _tessellate_shapes(structure) if isinstance(structure, dict) else None
-            result_holder.append(("complete", {
-                "duration_ms": duration_ms,
-                "shape_keys": shape_keys,
-                "tessellation": _numpy_to_list(tessellation) if tessellation else None,
-                "artifact_dir": str(artifact_dir),
-                "execution_id": execution_id,
-            }))
+            result_holder.append(
+                (
+                    "complete",
+                    {
+                        "duration_ms": duration_ms,
+                        "shape_keys": shape_keys,
+                        "tessellation": _numpy_to_list(tessellation) if tessellation else None,
+                        "artifact_dir": str(artifact_dir),
+                        "execution_id": execution_id,
+                    },
+                )
+            )
         except Exception as exc:
             duration_ms = int((time.monotonic() - t0) * 1000)
             logger.exception("Plan execution failed: plan_id=%s", plan_id)
-            result_holder.append(("error", {
-                "error": f"{type(exc).__name__}: {exc}",
-                "duration_ms": duration_ms,
-                "artifact_dir": str(artifact_dir),
-                "execution_id": execution_id,
-            }))
+            result_holder.append(
+                (
+                    "error",
+                    {
+                        "error": f"{type(exc).__name__}: {exc}",
+                        "duration_ms": duration_ms,
+                        "artifact_dir": str(artifact_dir),
+                        "execution_id": execution_id,
+                    },
+                )
+            )
         finally:
             shape_queue.put(("done", None, None))
             set_display_callback(None)
@@ -896,7 +957,10 @@ def _tessellate_shapes(structure: dict) -> dict | None:
 
         params = {"deviation": 0.1, "angular_tolerance": 0.2}
         instances, tess_shapes, _mapping = tessellate_group(
-            part_group, instances, params, progress=None,
+            part_group,
+            instances,
+            params,
+            progress=None,
         )
 
         bb = combined_bb(tess_shapes)
@@ -924,6 +988,7 @@ def _load_printer_settings(db: Session):
     """Try to load Printer3dSettings from a component of type 'printer_settings'."""
     try:
         from app.models.component import ComponentModel
+
         comp = (
             db.query(ComponentModel)
             .filter(ComponentModel.component_type == "printer_settings")
@@ -931,6 +996,7 @@ def _load_printer_settings(db: Session):
         )
         if comp and comp.specs:
             from cad_designer.airplane.aircraft_topology.printer3d import Printer3dSettings
+
             return Printer3dSettings(
                 layer_height=float(comp.specs.get("layer_height", 0.24)),
                 wall_thickness=float(comp.specs.get("wall_thickness", 0.42)),
@@ -942,6 +1008,9 @@ def _load_printer_settings(db: Session):
     # Fallback defaults
     try:
         from cad_designer.airplane.aircraft_topology.printer3d import Printer3dSettings
-        return Printer3dSettings(layer_height=0.24, wall_thickness=0.42, rel_gap_wall_thickness=0.075)
+
+        return Printer3dSettings(
+            layer_height=0.24, wall_thickness=0.42, rel_gap_wall_thickness=0.075
+        )
     except ImportError:
         return None

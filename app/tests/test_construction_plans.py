@@ -3,6 +3,7 @@
 Covers sub-tickets #109 (DB model), #110 (CRUD), #111 (creators), #112 (execute).
 Also: #315 (frontend JSON ↔ backend decoder compatibility).
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -15,6 +16,7 @@ def _can_import_cad() -> bool:
     """Check if cadquery/cad_designer is available (excluded on linux/aarch64)."""
     try:
         from cad_designer.airplane.GeneralJSONEncoderDecoder import GeneralJSONDecoder  # noqa: F401
+
         return True
     except (ImportError, ModuleNotFoundError):
         return False
@@ -191,9 +193,16 @@ class TestCreatorCatalog:
         """Internal and runtime-injected params not in parameters."""
         for c in client.get("/construction-plans/creators").json():
             param_names = {p["name"] for p in c["parameters"]}
-            for internal in ("self", "loglevel", "creator_id", "wing_config",
-                             "printer_settings", "servo_information",
-                             "engine_information", "component_information"):
+            for internal in (
+                "self",
+                "loglevel",
+                "creator_id",
+                "wing_config",
+                "printer_settings",
+                "servo_information",
+                "engine_information",
+                "component_information",
+            ):
                 assert internal not in param_names, f"{c['class_name']} exposes {internal}"
 
     def test_excludes_infrastructure_classes(self, client):
@@ -225,15 +234,6 @@ class TestPlanExecution:
             json={"aeroplane_id": "00000000-0000-0000-0000-000000000000"},
         )
         assert resp.status_code == 404
-
-    def test_execute_template_rejected(self, client):
-        """POST execute on a template → 422."""
-        plan = _create_plan(client, "tmpl_no_exec", plan_type="template")
-        resp = client.post(
-            f"/construction-plans/{plan['id']}/execute",
-            json={"aeroplane_id": "00000000-0000-0000-0000-000000000000"},
-        )
-        assert resp.status_code == 422
 
     def test_execute_plan_with_invalid_creator_returns_error(self, client):
         """Plan with unknown creator type → decode error → 422."""
@@ -596,3 +596,340 @@ class TestPrinterSettingsSeed:
         assert len(ps["schema"]) == 3
         prop_names = {p["name"] for p in ps["schema"]}
         assert prop_names == {"layer_height", "wall_thickness", "rel_gap_wall_thickness"}
+
+
+# ── Zip download (gh#339) ───────────────────────────────────────
+
+
+class TestZipDownload:
+    """GH#339 — zip download endpoint for an execution dir."""
+
+    def test_zip_endpoint_returns_zip_with_all_files(self, client, tmp_path, monkeypatch):
+        from app.core.config import settings
+        from app.services import artifact_service
+
+        monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        execution_id, exec_dir = artifact_service.create_execution_dir("aero-zipper", 501)
+        (exec_dir / "alpha.stl").write_bytes(b"AAA")
+        (exec_dir / "beta.txt").write_text("bb")
+
+        resp = client.get(f"/construction-plans/501/artifacts/{execution_id}/zip")
+
+        assert resp.status_code == 200, resp.text
+        assert resp.headers["content-type"] == "application/zip"
+        assert "attachment" in resp.headers.get("content-disposition", "")
+
+        import io
+        import zipfile
+
+        with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
+            assert sorted(zf.namelist()) == ["alpha.stl", "beta.txt"]
+
+    def test_zip_endpoint_404_for_missing_execution(self, client, tmp_path, monkeypatch):
+        from app.core.config import settings
+
+        monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        tmp_path.mkdir(exist_ok=True)
+
+        resp = client.get("/construction-plans/9999/artifacts/missing/zip")
+        assert resp.status_code == 404
+
+    def test_zip_endpoint_returns_empty_zip_for_empty_execution(
+        self, client, tmp_path, monkeypatch
+    ):
+        from app.core.config import settings
+        from app.services import artifact_service
+
+        monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        execution_id, _ = artifact_service.create_execution_dir("aero-empty", 502)
+
+        resp = client.get(f"/construction-plans/502/artifacts/{execution_id}/zip")
+
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "application/zip"
+        import io
+        import zipfile
+
+        with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
+            assert zf.namelist() == []
+
+
+# ── Template execution (gh#339) ─────────────────────────────────
+
+
+class TestTemplateExecution:
+    """GH#339 — templates can be executed against a chosen aeroplane."""
+
+    @pytest.mark.skipif(not _can_import_cad(), reason="cadquery not available")
+    def test_execute_template_returns_success(self, client, client_and_db, tmp_path, monkeypatch):
+        from app.core.config import settings
+
+        monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        _, SessionLocal = client_and_db
+        from app.tests.conftest import make_aeroplane
+
+        with SessionLocal() as session:
+            aero = make_aeroplane(session, name="for-tpl-exec")
+            aero_id = str(aero.uuid)
+
+        # Create a template (plan_type defaults to "template" in helper)
+        template = _create_plan(client, "Tpl A", tree=SAMPLE_TREE, plan_type="template")
+
+        resp = client.post(
+            f"/construction-plans/{template['id']}/execute",
+            json={"aeroplane_id": aero_id},
+        )
+
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        # decode may fail (no real Creator) but status code must not be 422
+        assert body["status"] in ("success", "error"), body
+
+    def test_execute_template_without_aeroplane_id_returns_422(self, client):
+        template = _create_plan(client, "Tpl B", tree=SAMPLE_TREE, plan_type="template")
+
+        resp = client.post(
+            f"/construction-plans/{template['id']}/execute",
+            json={},
+        )
+
+        assert resp.status_code == 422
+        assert "aeroplane_id" in resp.json()["detail"].lower()
+
+    @pytest.mark.skipif(not _can_import_cad(), reason="cadquery not available")
+    def test_template_execution_replaces_previous_run(
+        self, client, client_and_db, tmp_path, monkeypatch
+    ):
+        from app.core.config import settings
+
+        monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        _, SessionLocal = client_and_db
+        from app.tests.conftest import make_aeroplane
+
+        with SessionLocal() as session:
+            aero = make_aeroplane(session, name="for-replace")
+            aero_id = str(aero.uuid)
+
+        template = _create_plan(client, "Tpl C", tree=SAMPLE_TREE, plan_type="template")
+
+        # First execute
+        resp1 = client.post(
+            f"/construction-plans/{template['id']}/execute",
+            json={"aeroplane_id": aero_id},
+        )
+        assert resp1.status_code == 200
+        first_exec_id = resp1.json()["execution_id"]
+
+        # Second execute
+        resp2 = client.post(
+            f"/construction-plans/{template['id']}/execute",
+            json={"aeroplane_id": aero_id},
+        )
+        assert resp2.status_code == 200
+        second_exec_id = resp2.json()["execution_id"]
+
+        assert first_exec_id != second_exec_id
+        # First execution dir is gone
+        first_dir = tmp_path / "_template_runs" / str(template["id"]) / first_exec_id
+        assert not first_dir.exists()
+        # Second execution dir exists
+        second_dir = tmp_path / "_template_runs" / str(template["id"]) / second_exec_id
+        assert second_dir.is_dir()
+
+
+class TestTemplateExecutionViaAeroplaneEndpoint:
+    """GH#343 — templates can be executed via the URL-style endpoint that the
+    frontend uses: POST /aeroplanes/{aero_id}/construction-plans/{template_id}/execute.
+
+    This is a regression guard. The execute-guard removal in svc.execute_plan
+    fixes both this URL endpoint and the body-style /construction-plans/{id}/execute
+    endpoint (they share the service function), but PR #340 originally only
+    covered the body-style endpoint. This class verifies the URL-style path.
+    """
+
+    @pytest.mark.skipif(not _can_import_cad(), reason="cadquery not available")
+    def test_aeroplane_url_endpoint_executes_template(
+        self, client, client_and_db, tmp_path, monkeypatch
+    ):
+        from app.core.config import settings
+
+        monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        _, SessionLocal = client_and_db
+        from app.tests.conftest import make_aeroplane
+
+        with SessionLocal() as session:
+            aero = make_aeroplane(session, name="for-url-tpl-exec")
+            aero_id = str(aero.uuid)
+
+        template = _create_plan(client, "Tpl URL", tree=SAMPLE_TREE, plan_type="template")
+
+        resp = client.post(
+            f"/aeroplanes/{aero_id}/construction-plans/{template['id']}/execute",
+        )
+
+        # Must NOT return 422 with "Templates cannot be executed" — that's the
+        # exact regression #343 reports.
+        assert resp.status_code == 200, resp.text
+        assert "Templates cannot be executed" not in resp.text
+        body = resp.json()
+        assert body["status"] in ("success", "error"), body
+        # Artifacts land under the template-runs tree (replace-on-next-run lifecycle)
+        assert body["execution_id"]
+        tpl_dir = tmp_path / "_template_runs" / str(template["id"]) / body["execution_id"]
+        assert tpl_dir.is_dir()
+
+
+class TestPlanExecutionPathRegression:
+    """Plan executions still write to <aero>/<plan>/<exec> (gh#339)."""
+
+    @pytest.mark.skipif(not _can_import_cad(), reason="cadquery not available")
+    def test_plan_execution_path_unchanged(self, client, client_and_db, tmp_path, monkeypatch):
+        from app.core.config import settings
+
+        monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        _, SessionLocal = client_and_db
+        from app.tests.conftest import make_aeroplane
+
+        with SessionLocal() as session:
+            aero = make_aeroplane(session, name="for-plan")
+            aero_id = str(aero.uuid)
+
+        plan = _create_plan(
+            client,
+            "Real Plan",
+            tree=SAMPLE_TREE,
+            plan_type="plan",
+            aeroplane_id=aero_id,
+        )
+
+        resp = client.post(
+            f"/construction-plans/{plan['id']}/execute",
+            json={"aeroplane_id": aero_id},
+        )
+        assert resp.status_code == 200
+        exec_id = resp.json()["execution_id"]
+
+        # Plan dir under aeroplane root, NOT under _template_runs
+        plan_dir = tmp_path / aero_id / str(plan["id"]) / exec_id
+        assert plan_dir.is_dir()
+        assert not (tmp_path / "_template_runs" / str(plan["id"])).exists()
+
+
+class TestExecuteStreaming:
+    """gh#339/gh#344 — coverage for the SSE streaming endpoint setup paths.
+
+    Full streaming execution requires cadquery (skipif elsewhere). These
+    tests cover the early-return error paths and the template-branch wiring,
+    which are pure Python and run on every platform.
+    """
+
+    def _consume_events(self, response_iter) -> str:
+        """Collect SSE chunks from an httpx streaming response into one string."""
+        chunks = []
+        for chunk in response_iter:
+            if isinstance(chunk, bytes):
+                chunks.append(chunk.decode("utf-8"))
+            else:
+                chunks.append(chunk)
+        return "".join(chunks)
+
+    def test_stream_unknown_plan_emits_error_event(self, client):
+        with client.stream(
+            "GET",
+            f"/aeroplanes/aero-x/construction-plans/{99999}/execute-stream",
+        ) as resp:
+            assert resp.status_code == 200
+            assert resp.headers["content-type"].startswith("text/event-stream")
+            body = self._consume_events(resp.iter_bytes())
+
+        assert "event: error" in body
+        # The plan_id is part of the lookup error message
+        assert "99999" in body or "not found" in body.lower()
+
+    def test_stream_template_with_unknown_aeroplane_emits_error_event(
+        self, client, monkeypatch, tmp_path
+    ):
+        """Template + valid-UUID aeroplane_id that's not in DB → SSE error."""
+        import uuid
+
+        from app.core.config import settings
+
+        monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
+
+        template = _create_plan(client, "Tpl Stream", tree=SAMPLE_TREE, plan_type="template")
+        nonexistent_aero = str(uuid.uuid4())  # valid UUID format, not in DB
+
+        with client.stream(
+            "GET",
+            f"/aeroplanes/{nonexistent_aero}/construction-plans/{template['id']}/execute-stream",
+        ) as resp:
+            assert resp.status_code == 200
+            body = self._consume_events(resp.iter_bytes())
+
+        assert "event: error" in body
+        assert "not found" in body.lower() or "aeroplane" in body.lower()
+
+    def test_stream_template_without_any_aeroplane_emits_error(
+        self, client_and_db, monkeypatch, tmp_path
+    ):
+        """Defensive guard: if execute_plan_streaming is called with no
+        aeroplane_id (neither stored on the plan nor in the request) for a
+        template, it must emit an SSE error rather than crash. This branch
+        is unreachable via the REST URL endpoint (which requires aeroplane_id
+        in the path) so we exercise the service directly.
+        """
+        from app.core.config import settings
+        from app.services import construction_plan_service as svc
+        from app.schemas.construction_plan import ExecuteRequest
+
+        monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        client, SessionLocal = client_and_db
+
+        # Create a template via REST so the DB has a row
+        template = _create_plan(
+            client, "Tpl Direct", tree=SAMPLE_TREE, plan_type="template",
+        )
+
+        with SessionLocal() as session:
+            events = list(
+                svc.execute_plan_streaming(
+                    session,
+                    template["id"],
+                    ExecuteRequest(aeroplane_id=None),
+                )
+            )
+
+        assert any("event: error" in e for e in events)
+        assert any("aeroplane_id required for template execution" in e for e in events)
+
+    @pytest.mark.skipif(not _can_import_cad(), reason="cadquery not available")
+    def test_stream_template_branch_creates_template_run_dir(
+        self, client, client_and_db, monkeypatch, tmp_path
+    ):
+        """Pin that the streaming endpoint routes templates to _template_runs/."""
+        from app.core.config import settings
+
+        monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
+        _, SessionLocal = client_and_db
+        from app.tests.conftest import make_aeroplane
+
+        with SessionLocal() as session:
+            aero = make_aeroplane(session, name="for-stream-tpl")
+            aero_id = str(aero.uuid)
+
+        template = _create_plan(
+            client, "Tpl Stream Real", tree=SAMPLE_TREE, plan_type="template",
+        )
+
+        with client.stream(
+            "GET",
+            f"/aeroplanes/{aero_id}/construction-plans/{template['id']}/execute-stream",
+        ) as resp:
+            assert resp.status_code == 200
+            self._consume_events(resp.iter_bytes())
+
+        # An execution dir exists under _template_runs/<template_id>/
+        tpl_root = tmp_path / "_template_runs" / str(template["id"])
+        assert tpl_root.is_dir()
+        children = list(tpl_root.iterdir())
+        assert len(children) == 1, "exactly one execution dir per template (replace-on-next-run)"

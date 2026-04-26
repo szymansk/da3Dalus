@@ -36,9 +36,26 @@ def _ensure_within_base(path: Path) -> Path:
     return resolved
 
 
+_last_execution_id: str | None = None
+_last_execution_id_suffix: int = 0
+
+
 def new_execution_id() -> str:
-    """Generate a UTC timestamp execution id (e.g. '20260425T120630Z')."""
-    return datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    """Generate a UTC timestamp execution id (e.g. '20260425T120630Z').
+
+    Within the same process, consecutive calls in the same UTC second
+    return distinct ids by appending a numeric suffix
+    (e.g. '20260425T120630Z-1'). This guarantees that callers which
+    treat the id as a unique handle never collide.
+    """
+    global _last_execution_id, _last_execution_id_suffix
+    base_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    if base_id == _last_execution_id:
+        _last_execution_id_suffix += 1
+        return f"{base_id}-{_last_execution_id_suffix}"
+    _last_execution_id = base_id
+    _last_execution_id_suffix = 0
+    return base_id
 
 
 def create_execution_dir(aeroplane_id: str, plan_id: int) -> tuple[str, Path]:
@@ -55,6 +72,41 @@ def create_execution_dir(aeroplane_id: str, plan_id: int) -> tuple[str, Path]:
         logger.exception("Failed to create artifact dir %s", abs_path)
         raise InternalError(message=f"Cannot create artifact directory: {exc}") from exc
     logger.info("Created artifact dir: %s", abs_path)
+    return execution_id, abs_path
+
+
+TEMPLATE_RUNS_PREFIX = "_template_runs"
+
+
+def create_template_execution_dir(template_id: int) -> tuple[str, Path]:
+    """Create a fresh artifact directory for a template execution.
+
+    Wipes any previous execution under <base>/_template_runs/<template_id>/
+    so at most one template execution exists per template at any time.
+    Returns (execution_id, absolute_path).
+    """
+    import shutil
+
+    base = settings.ARTIFACTS_BASE_DIR
+    template_root = base / TEMPLATE_RUNS_PREFIX / str(template_id)
+    if template_root.exists():
+        # Validate containment before destructive operation.
+        _ensure_within_base(template_root)
+        try:
+            shutil.rmtree(template_root)
+        except OSError as exc:
+            logger.exception("Failed to wipe template run dir %s", template_root)
+            raise InternalError(message=f"Cannot reset template run directory: {exc}") from exc
+
+    execution_id = new_execution_id()
+    abs_path = base / TEMPLATE_RUNS_PREFIX / str(template_id) / execution_id
+    try:
+        abs_path.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        logger.exception("Failed to create template artifact dir %s", abs_path)
+        raise InternalError(message=f"Cannot create template artifact directory: {exc}") from exc
+    abs_path = _ensure_within_base(abs_path)
+    logger.info("Created template artifact dir: %s", abs_path)
     return execution_id, abs_path
 
 
@@ -95,8 +147,32 @@ def list_executions(plan_id: int) -> list[ArtifactDirectory]:
         raise InternalError(message="Cannot read artifact directory") from exc
 
 
-def list_files(plan_id: int, execution_id: str, subpath: str = "") -> list[ArtifactFile]:
-    """List files in an execution's artifact directory (or a subdirectory)."""
+def _to_artifact_file(entry: Path, name: str) -> ArtifactFile:
+    """Build an ArtifactFile from a filesystem entry."""
+    stat = entry.stat()
+    is_dir = entry.is_dir()
+    return ArtifactFile(
+        name=name,
+        is_dir=is_dir,
+        size_bytes=stat.st_size if not is_dir else 0,
+        modified=datetime.fromtimestamp(stat.st_mtime, UTC).isoformat(),
+    )
+
+
+def list_files(
+    plan_id: int,
+    execution_id: str,
+    subpath: str = "",
+    recursive: bool = False,
+) -> list[ArtifactFile]:
+    """List files in an execution's artifact directory.
+
+    With ``recursive=True``, returns a flat list of all files under the
+    execution directory (or under ``subpath``) with relative paths in the
+    ``name`` field — directories are omitted. Without it, returns only
+    immediate children (files and subdirectories), matching the original
+    breadcrumb-browser behaviour.
+    """
     exec_dir = _resolve_execution_dir(plan_id, execution_id)
     if subpath:
         target = exec_dir / subpath
@@ -105,18 +181,13 @@ def list_files(plan_id: int, execution_id: str, subpath: str = "") -> list[Artif
             raise NotFoundError(message=f"Directory not found: {subpath}")
         exec_dir = target
     try:
-        files: list[ArtifactFile] = []
-        for entry in sorted(exec_dir.iterdir()):
-            stat = entry.stat()
-            files.append(
-                ArtifactFile(
-                    name=entry.name,
-                    is_dir=entry.is_dir(),
-                    size_bytes=stat.st_size if entry.is_file() else 0,
-                    modified=datetime.fromtimestamp(stat.st_mtime, UTC).isoformat(),
-                )
-            )
-        return files
+        if recursive:
+            return [
+                _to_artifact_file(entry, entry.relative_to(exec_dir).as_posix())
+                for entry in sorted(exec_dir.rglob("*"))
+                if entry.is_file()
+            ]
+        return [_to_artifact_file(entry, entry.name) for entry in sorted(exec_dir.iterdir())]
     except OSError as exc:
         logger.exception("Failed to list files in %s", exec_dir)
         raise InternalError(message="Cannot read artifact files") from exc
@@ -159,13 +230,65 @@ def delete_execution(plan_id: int, execution_id: str) -> None:
     logger.info("Deleted execution dir: %s", exec_dir)
 
 
+def zip_execution(plan_id: int, execution_id: str) -> Path:
+    """Zip an entire execution directory and return the path to the zip file.
+
+    The zip is written to a temp file (auto-cleaned by the OS / next
+    template run). Empty executions yield a valid empty zip (200 OK
+    semantics, not a 404).
+    """
+    import os as _os
+    import tempfile
+    import zipfile
+
+    exec_dir = _resolve_execution_dir(plan_id, execution_id)
+
+    fd, tmp_name = tempfile.mkstemp(prefix=f"plan{plan_id}-{execution_id}-", suffix=".zip")
+    _os.close(fd)  # we re-open via zipfile
+    zip_path = Path(tmp_name)
+
+    try:
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for file_path in sorted(exec_dir.rglob("*")):
+                if not file_path.is_file():
+                    continue
+                arcname = file_path.relative_to(exec_dir).as_posix()
+                zf.write(file_path, arcname=arcname)
+    except OSError as exc:
+        # Log the validated exec_dir path (sanitised by _ensure_within_base),
+        # not the raw user-supplied execution_id, to avoid log injection
+        # (pythonsecurity:S5145).
+        logger.exception("Failed to build zip for execution at %s", exec_dir)
+        zip_path.unlink(missing_ok=True)
+        raise InternalError(message=f"Cannot build zip: {exc}") from exc
+
+    return zip_path
+
+
 def _resolve_execution_dir(plan_id: int, execution_id: str) -> Path:
-    """Find and validate the execution directory for plan_id/execution_id."""
+    """Find and validate the execution directory for plan_id/execution_id.
+
+    Searches first under <base>/<aero_id>/<plan_id>/<exec_id> (plan
+    executions). If not found, falls back to
+    <base>/_template_runs/<plan_id>/<exec_id> (template executions).
+    """
     base = settings.ARTIFACTS_BASE_DIR
     if not base.exists():
         raise NotFoundError(message="No artifacts base directory")
+
+    # 1) Search per-aeroplane plan execution dirs (skip the template-runs
+    #    prefix so a template exec_id is not coincidentally returned as
+    #    a plan dir).
     for aero_dir in base.iterdir():
+        if not aero_dir.is_dir() or aero_dir.name == TEMPLATE_RUNS_PREFIX:
+            continue
         candidate = aero_dir / str(plan_id) / execution_id
         if candidate.is_dir():
             return _ensure_within_base(candidate)
+
+    # 2) Fall back to template runs.
+    tpl_candidate = base / TEMPLATE_RUNS_PREFIX / str(plan_id) / execution_id
+    if tpl_candidate.is_dir():
+        return _ensure_within_base(tpl_candidate)
+
     raise NotFoundError(message=f"Execution {execution_id} not found for plan {plan_id}")

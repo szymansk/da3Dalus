@@ -1,4 +1,5 @@
 """Pydantic schemas for Construction Plans (gh#101)."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -17,7 +18,9 @@ class PlanCreate(BaseModel):
         description="Serialised ConstructionRootNode tree (GeneralJSONEncoder format)",
     )
     plan_type: str = Field("template", description="'template' or 'plan'")
-    aeroplane_id: Optional[str] = Field(None, description="Aeroplane ID (required for plan_type='plan')")
+    aeroplane_id: Optional[str] = Field(
+        None, description="Aeroplane ID (required for plan_type='plan')"
+    )
 
 
 class PlanRead(PlanCreate):
@@ -84,20 +87,34 @@ class CreatorInfo(BaseModel):
     """Metadata for one AbstractShapeCreator subclass."""
 
     class_name: str
-    category: str = Field(description="Module category: wing, fuselage, cad_operations, export_import, components")
+    category: str = Field(
+        description="Module category: wing, fuselage, cad_operations, export_import, components"
+    )
     description: Optional[str] = None
     parameters: list[CreatorParam]
-    outputs: list[CreatorOutput] = Field(default_factory=list, description="Shape keys this creator produces")
-    suggested_id: Optional[str] = Field(None, description="Template for creator_id, e.g. '{wing_index}.vase_wing'")
+    outputs: list[CreatorOutput] = Field(
+        default_factory=list, description="Shape keys this creator produces"
+    )
+    suggested_id: Optional[str] = Field(
+        None, description="Template for creator_id, e.g. '{wing_index}.vase_wing'"
+    )
 
 
 # ── Execute schemas ─────────────────────────────────────────────
 
 
 class ExecuteRequest(BaseModel):
-    """Request body for executing a plan against an aeroplane."""
+    """Request body for executing a plan against an aeroplane.
 
-    aeroplane_id: str = Field(..., description="UUID of the aeroplane to use")
+    `aeroplane_id` is optional in the request body — for stored plans
+    that already have an `aeroplane_id`, the value can be omitted; for
+    templates (no stored aeroplane), the request body must supply it
+    or the service raises a 422.
+    """
+
+    aeroplane_id: Optional[str] = Field(
+        None, description="UUID of the aeroplane to use (required for templates)"
+    )
 
 
 class ExecutionResult(BaseModel):
@@ -108,7 +125,9 @@ class ExecutionResult(BaseModel):
     export_paths: list[str] = Field(default_factory=list)
     error: Optional[str] = None
     duration_ms: int = 0
-    tessellation: Optional[dict] = Field(None, description="three-cad-viewer compatible tessellation data")
+    tessellation: Optional[dict] = Field(
+        None, description="three-cad-viewer compatible tessellation data"
+    )
     artifact_dir: Optional[str] = Field(
         None,
         description="Server-side artifact directory for this execution (relative to artifacts base)",

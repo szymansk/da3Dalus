@@ -1,4 +1,5 @@
 """REST endpoints for Construction Plans (gh#101)."""
+
 from __future__ import annotations
 
 import logging
@@ -53,7 +54,7 @@ def _handle_service_error(exc: ServiceException):
     "/construction-plans/creators",
     status_code=status.HTTP_200_OK,
     tags=["construction-plans"],
-    operation_id="list_creators"
+    operation_id="list_creators",
 )
 async def list_creators() -> List[CreatorInfo]:
     """List all available Creator classes with their parameters."""
@@ -67,7 +68,7 @@ async def list_creators() -> List[CreatorInfo]:
     "/construction-plans",
     status_code=status.HTTP_200_OK,
     tags=["construction-plans"],
-    operation_id="list_construction_plans"
+    operation_id="list_construction_plans",
 )
 async def list_plans(
     db: Annotated[Session, Depends(get_db)],
@@ -84,7 +85,7 @@ async def list_plans(
     "/construction-plans",
     status_code=status.HTTP_201_CREATED,
     tags=["construction-plans"],
-    operation_id="create_construction_plan"
+    operation_id="create_construction_plan",
 )
 async def create_plan(
     request: Annotated[PlanCreate, Body(...)],
@@ -101,7 +102,7 @@ async def create_plan(
     "/construction-plans/{plan_id}",
     status_code=status.HTTP_200_OK,
     tags=["construction-plans"],
-    operation_id="get_construction_plan"
+    operation_id="get_construction_plan",
 )
 async def get_plan(
     plan_id: Annotated[int, Path(..., description="Construction plan ID")],
@@ -118,7 +119,7 @@ async def get_plan(
     "/construction-plans/{plan_id}",
     status_code=status.HTTP_200_OK,
     tags=["construction-plans"],
-    operation_id="update_construction_plan"
+    operation_id="update_construction_plan",
 )
 async def update_plan(
     plan_id: Annotated[int, Path(...)],
@@ -156,7 +157,7 @@ async def delete_plan(
     "/construction-plans/{plan_id}/execute",
     status_code=status.HTTP_200_OK,
     tags=["construction-plans"],
-    operation_id="execute_construction_plan"
+    operation_id="execute_construction_plan",
 )
 async def execute_plan(
     plan_id: Annotated[int, Path(...)],
@@ -197,10 +198,40 @@ async def list_artifact_files(
     plan_id: Annotated[int, Path(...)],
     execution_id: Annotated[str, Path(...)],
     subpath: Annotated[str, Query(description="Subdirectory path within execution dir")] = "",
+    recursive: Annotated[
+        bool,
+        Query(description="If true, return all files recursively as a flat list with relative paths"),
+    ] = False,
 ) -> List[ArtifactFile]:
     """List files in a specific execution's artifact directory (or subdirectory)."""
     try:
-        return artifact_service.list_files(plan_id, execution_id, subpath=subpath)
+        return artifact_service.list_files(
+            plan_id, execution_id, subpath=subpath, recursive=recursive
+        )
+    except ServiceException as exc:
+        _handle_service_error(exc)
+
+
+@router.get(
+    "/construction-plans/{plan_id}/artifacts/{execution_id}/zip",
+    tags=["construction-plans"],
+    operation_id="download_execution_zip",
+)
+async def download_execution_zip(
+    plan_id: Annotated[int, Path(...)],
+    execution_id: Annotated[str, Path(...)],
+):
+    """Download all artifact files of an execution as a single zip."""
+    from fastapi.responses import FileResponse
+
+    try:
+        zip_path = artifact_service.zip_execution(plan_id, execution_id)
+        filename = f"plan-{plan_id}-{execution_id}.zip"
+        return FileResponse(
+            zip_path,
+            media_type="application/zip",
+            filename=filename,
+        )
     except ServiceException as exc:
         _handle_service_error(exc)
 
