@@ -63,8 +63,16 @@ export function usePlanArtifacts(planId: number | null) {
   };
 }
 
-export function useArtifactFiles(planId: number | null, executionId: string | null, subpath: string = "") {
-  const query = subpath ? `?subpath=${encodeURIComponent(subpath)}` : "";
+export function useArtifactFiles(
+  planId: number | null,
+  executionId: string | null,
+  subpath: string = "",
+  recursive: boolean = false,
+) {
+  const params = new URLSearchParams();
+  if (subpath) params.set("subpath", subpath);
+  if (recursive) params.set("recursive", "true");
+  const query = params.toString() ? `?${params.toString()}` : "";
   const { data, error, isLoading, mutate } = useSWR<ArtifactFile[]>(
     planId && executionId
       ? `/construction-plans/${planId}/artifacts/${executionId}${query}`

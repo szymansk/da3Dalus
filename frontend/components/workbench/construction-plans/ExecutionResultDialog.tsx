@@ -211,11 +211,12 @@ function GeneratedFilesSection({
   planId,
   executionId,
 }: Readonly<{ planId: number | null; executionId: string | null }>) {
-  const { files, isLoading } = useArtifactFiles(planId, executionId);
+  // Recursive listing — exporters typically write into subdirectories
+  // (e.g. wing/foo.stl), and the post-execution view should show every
+  // generated file flat with its relative path.
+  const { files, isLoading } = useArtifactFiles(planId, executionId, "", true);
 
   if (planId == null || executionId == null) return null;
-
-  const visibleFiles = files.filter((f) => !f.is_dir);
 
   return (
     <div className="border-t border-border px-6 py-4">
@@ -224,23 +225,23 @@ function GeneratedFilesSection({
           Generated files
         </span>
         <span className="flex-1" />
-        {visibleFiles.length > 0 && (
-          <a
-            href={executionZipUrl(planId, executionId)}
-            className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-primary hover:underline"
-            download
-          >
-            Download zip
-          </a>
-        )}
+        {/* Always show the zip download on a successful execution; the
+            backend returns an empty zip for empty exec dirs, never 404. */}
+        <a
+          href={executionZipUrl(planId, executionId)}
+          className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-primary hover:underline"
+          download
+        >
+          Download zip
+        </a>
       </div>
       {isLoading ? (
         <p className="text-[12px] text-muted-foreground">Loading files...</p>
-      ) : visibleFiles.length === 0 ? (
+      ) : files.length === 0 ? (
         <p className="text-[12px] text-muted-foreground">No files generated.</p>
       ) : (
         <ul className="flex max-h-32 flex-col gap-1 overflow-y-auto">
-          {visibleFiles.map((f) => (
+          {files.map((f) => (
             <li key={f.name} className="flex items-center gap-2 text-[12px]">
               <a
                 href={artifactDownloadUrl(planId, executionId, f.name)}

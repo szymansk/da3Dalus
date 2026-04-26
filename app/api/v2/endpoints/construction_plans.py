@@ -198,10 +198,16 @@ async def list_artifact_files(
     plan_id: Annotated[int, Path(...)],
     execution_id: Annotated[str, Path(...)],
     subpath: Annotated[str, Query(description="Subdirectory path within execution dir")] = "",
+    recursive: Annotated[
+        bool,
+        Query(description="If true, return all files recursively as a flat list with relative paths"),
+    ] = False,
 ) -> List[ArtifactFile]:
     """List files in a specific execution's artifact directory (or subdirectory)."""
     try:
-        return artifact_service.list_files(plan_id, execution_id, subpath=subpath)
+        return artifact_service.list_files(
+            plan_id, execution_id, subpath=subpath, recursive=recursive
+        )
     except ServiceException as exc:
         _handle_service_error(exc)
 

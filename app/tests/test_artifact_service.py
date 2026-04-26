@@ -133,3 +133,51 @@ class TestZipExecution:
 
         with pytest.raises(NotFoundError):
             artifact_service.zip_execution(99, "doesnotexist")
+
+
+class TestListFilesRecursive:
+    """gh#344 — recursive=True returns flat list with relative paths."""
+
+    def test_recursive_returns_files_under_subdirs(self, tmp_artifacts: Path):
+        execution_id, exec_dir = artifact_service.create_execution_dir("aero-rec", 800)
+        (exec_dir / "top.txt").write_text("top")
+        sub = exec_dir / "wing"
+        sub.mkdir()
+        (sub / "wing.stl").write_bytes(b"W")
+        nested = sub / "deeper"
+        nested.mkdir()
+        (nested / "n.stp").write_bytes(b"N")
+
+        files = artifact_service.list_files(800, execution_id, recursive=True)
+
+        names = sorted(f.name for f in files)
+        assert names == ["top.txt", "wing/deeper/n.stp", "wing/wing.stl"]
+        assert all(f.is_dir is False for f in files), "recursive flat list excludes directories"
+
+    def test_non_recursive_unchanged(self, tmp_artifacts: Path):
+        execution_id, exec_dir = artifact_service.create_execution_dir("aero-flat", 801)
+        (exec_dir / "a.txt").write_text("a")
+        (exec_dir / "wing").mkdir()
+
+        files = artifact_service.list_files(801, execution_id)
+
+        names = sorted(f.name for f in files)
+        assert names == ["a.txt", "wing"]
+        # The wing entry must be flagged as a directory in non-recursive mode
+        wing_entry = next(f for f in files if f.name == "wing")
+        assert wing_entry.is_dir is True
+
+    def test_recursive_with_subpath(self, tmp_artifacts: Path):
+        execution_id, exec_dir = artifact_service.create_execution_dir("aero-sub", 802)
+        sub = exec_dir / "wing"
+        sub.mkdir()
+        (sub / "a.stl").write_bytes(b"a")
+        (sub / "deep").mkdir()
+        (sub / "deep" / "b.stl").write_bytes(b"b")
+        # Files outside the subpath should NOT appear
+        (exec_dir / "ignore.txt").write_text("ignore")
+
+        files = artifact_service.list_files(802, execution_id, subpath="wing", recursive=True)
+
+        names = sorted(f.name for f in files)
+        assert names == ["a.stl", "deep/b.stl"]

@@ -157,4 +157,132 @@ describe("ExecutionResultDialog — Generated files section", () => {
       "/construction-plans/42/artifacts/exec-99/zip",
     );
   });
+
+  it("gh#344: shows Download zip even when no files are generated", async () => {
+    vi.mocked(useArtifactFiles).mockReturnValue({
+      files: [],
+      error: null,
+      isLoading: false,
+      mutate: vi.fn(),
+    } as unknown as ReturnType<typeof useArtifactFiles>);
+
+    render(
+      <ExecutionResultDialog
+        open
+        title="Test"
+        planId={42}
+        result={{
+          status: "success",
+          shape_keys: [],
+          export_paths: [],
+          error: null,
+          duration_ms: 100,
+          tessellation: null,
+          artifact_dir: "/tmp/x",
+          execution_id: "exec-empty",
+        }}
+        onClose={() => {}}
+      />,
+    );
+
+    // The zip link MUST be present even when the file list is empty —
+    // the user must always have a download path on a successful execution.
+    const zipLink = await screen.findByRole("link", { name: /download zip/i });
+    expect(zipLink.getAttribute("href")).toContain(
+      "/construction-plans/42/artifacts/exec-empty/zip",
+    );
+  });
+
+  it("gh#344: renders nested file paths returned by the recursive listing", async () => {
+    // Recursive listing puts subdir files in the flat list with relative
+    // path in the `name` field — this is the bug fix from gh#344.
+    vi.mocked(useArtifactFiles).mockReturnValue({
+      files: [
+        {
+          name: "wing/export_stl_main_wing.loft.stl",
+          is_dir: false,
+          size_bytes: 4096,
+          modified: "",
+        },
+        {
+          name: "fuselage/body.stp",
+          is_dir: false,
+          size_bytes: 8192,
+          modified: "",
+        },
+      ],
+      error: null,
+      isLoading: false,
+      mutate: vi.fn(),
+    } as unknown as ReturnType<typeof useArtifactFiles>);
+
+    render(
+      <ExecutionResultDialog
+        open
+        title="Test"
+        planId={42}
+        result={{
+          status: "success",
+          shape_keys: [],
+          export_paths: [],
+          error: null,
+          duration_ms: 100,
+          tessellation: null,
+          artifact_dir: "/tmp/x",
+          execution_id: "exec-nested",
+        }}
+        onClose={() => {}}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("wing/export_stl_main_wing.loft.stl"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("fuselage/body.stp")).toBeInTheDocument();
+    });
+
+    // Verify the download link preserves the relative path
+    const wingLink = screen.getByText("wing/export_stl_main_wing.loft.stl");
+    expect(wingLink.getAttribute("href")).toContain(
+      "/artifacts/exec-nested/wing/export_stl_main_wing.loft.stl",
+    );
+  });
+
+  it("gh#344: useArtifactFiles is called with recursive=true", async () => {
+    vi.mocked(useArtifactFiles).mockReturnValue({
+      files: [],
+      error: null,
+      isLoading: false,
+      mutate: vi.fn(),
+    } as unknown as ReturnType<typeof useArtifactFiles>);
+
+    render(
+      <ExecutionResultDialog
+        open
+        title="Test"
+        planId={42}
+        result={{
+          status: "success",
+          shape_keys: [],
+          export_paths: [],
+          error: null,
+          duration_ms: 100,
+          tessellation: null,
+          artifact_dir: "/tmp/x",
+          execution_id: "exec-r",
+        }}
+        onClose={() => {}}
+      />,
+    );
+
+    // Pin the contract: the dialog asks the hook for a recursive listing
+    // so files in subdirectories are included.
+    expect(vi.mocked(useArtifactFiles)).toHaveBeenCalledWith(
+      42,
+      "exec-r",
+      "",
+      true,
+    );
+  });
 });

@@ -147,8 +147,20 @@ def list_executions(plan_id: int) -> list[ArtifactDirectory]:
         raise InternalError(message="Cannot read artifact directory") from exc
 
 
-def list_files(plan_id: int, execution_id: str, subpath: str = "") -> list[ArtifactFile]:
-    """List files in an execution's artifact directory (or a subdirectory)."""
+def list_files(
+    plan_id: int,
+    execution_id: str,
+    subpath: str = "",
+    recursive: bool = False,
+) -> list[ArtifactFile]:
+    """List files in an execution's artifact directory.
+
+    With ``recursive=True``, returns a flat list of all files under the
+    execution directory (or under ``subpath``) with relative paths in the
+    ``name`` field — directories are omitted. Without it, returns only
+    immediate children (files and subdirectories), matching the original
+    breadcrumb-browser behaviour.
+    """
     exec_dir = _resolve_execution_dir(plan_id, execution_id)
     if subpath:
         target = exec_dir / subpath
@@ -158,16 +170,31 @@ def list_files(plan_id: int, execution_id: str, subpath: str = "") -> list[Artif
         exec_dir = target
     try:
         files: list[ArtifactFile] = []
-        for entry in sorted(exec_dir.iterdir()):
-            stat = entry.stat()
-            files.append(
-                ArtifactFile(
-                    name=entry.name,
-                    is_dir=entry.is_dir(),
-                    size_bytes=stat.st_size if entry.is_file() else 0,
-                    modified=datetime.fromtimestamp(stat.st_mtime, UTC).isoformat(),
+        if recursive:
+            for entry in sorted(exec_dir.rglob("*")):
+                if not entry.is_file():
+                    continue
+                stat = entry.stat()
+                rel_path = entry.relative_to(exec_dir).as_posix()
+                files.append(
+                    ArtifactFile(
+                        name=rel_path,
+                        is_dir=False,
+                        size_bytes=stat.st_size,
+                        modified=datetime.fromtimestamp(stat.st_mtime, UTC).isoformat(),
+                    )
                 )
-            )
+        else:
+            for entry in sorted(exec_dir.iterdir()):
+                stat = entry.stat()
+                files.append(
+                    ArtifactFile(
+                        name=entry.name,
+                        is_dir=entry.is_dir(),
+                        size_bytes=stat.st_size if entry.is_file() else 0,
+                        modified=datetime.fromtimestamp(stat.st_mtime, UTC).isoformat(),
+                    )
+                )
         return files
     except OSError as exc:
         logger.exception("Failed to list files in %s", exec_dir)
