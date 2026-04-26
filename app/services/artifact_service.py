@@ -96,9 +96,7 @@ def create_template_execution_dir(template_id: int) -> tuple[str, Path]:
             shutil.rmtree(template_root)
         except OSError as exc:
             logger.exception("Failed to wipe template run dir %s", template_root)
-            raise InternalError(
-                message=f"Cannot reset template run directory: {exc}"
-            ) from exc
+            raise InternalError(message=f"Cannot reset template run directory: {exc}") from exc
 
     execution_id = new_execution_id()
     abs_path = base / TEMPLATE_RUNS_PREFIX / str(template_id) / execution_id
@@ -106,9 +104,7 @@ def create_template_execution_dir(template_id: int) -> tuple[str, Path]:
         abs_path.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
         logger.exception("Failed to create template artifact dir %s", abs_path)
-        raise InternalError(
-            message=f"Cannot create template artifact directory: {exc}"
-        ) from exc
+        raise InternalError(message=f"Cannot create template artifact directory: {exc}") from exc
     abs_path = _ensure_within_base(abs_path)
     logger.info("Created template artifact dir: %s", abs_path)
     return execution_id, abs_path
@@ -228,9 +224,7 @@ def zip_execution(plan_id: int, execution_id: str) -> Path:
 
     exec_dir = _resolve_execution_dir(plan_id, execution_id)
 
-    fd, tmp_name = tempfile.mkstemp(
-        prefix=f"plan{plan_id}-{execution_id}-", suffix=".zip"
-    )
+    fd, tmp_name = tempfile.mkstemp(prefix=f"plan{plan_id}-{execution_id}-", suffix=".zip")
     _os.close(fd)  # we re-open via zipfile
     zip_path = Path(tmp_name)
 
@@ -242,9 +236,7 @@ def zip_execution(plan_id: int, execution_id: str) -> Path:
                 arcname = file_path.relative_to(exec_dir).as_posix()
                 zf.write(file_path, arcname=arcname)
     except OSError as exc:
-        logger.exception(
-            "Failed to build zip for execution %s/%s", plan_id, execution_id
-        )
+        logger.exception("Failed to build zip for execution %s/%s", plan_id, execution_id)
         zip_path.unlink(missing_ok=True)
         raise InternalError(message=f"Cannot build zip: {exc}") from exc
 

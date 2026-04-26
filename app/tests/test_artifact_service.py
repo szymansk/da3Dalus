@@ -65,9 +65,7 @@ class TestResolveExecutionDir:
 
         assert resolved == tpl_dir
 
-    def test_plan_takes_precedence_over_template_when_id_collides(
-        self, tmp_artifacts: Path
-    ):
+    def test_plan_takes_precedence_over_template_when_id_collides(self, tmp_artifacts: Path):
         # Edge case: same id used for both (in real DB they wouldn't collide,
         # but the resolver must be deterministic).
         plan_exec_id, plan_dir = artifact_service.create_execution_dir("aero-y", 123)

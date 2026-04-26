@@ -1,4 +1,5 @@
 """REST endpoints for Construction Plans (gh#101)."""
+
 from __future__ import annotations
 
 import logging
@@ -53,7 +54,7 @@ def _handle_service_error(exc: ServiceException):
     "/construction-plans/creators",
     status_code=status.HTTP_200_OK,
     tags=["construction-plans"],
-    operation_id="list_creators"
+    operation_id="list_creators",
 )
 async def list_creators() -> List[CreatorInfo]:
     """List all available Creator classes with their parameters."""
@@ -67,7 +68,7 @@ async def list_creators() -> List[CreatorInfo]:
     "/construction-plans",
     status_code=status.HTTP_200_OK,
     tags=["construction-plans"],
-    operation_id="list_construction_plans"
+    operation_id="list_construction_plans",
 )
 async def list_plans(
     db: Annotated[Session, Depends(get_db)],
@@ -84,7 +85,7 @@ async def list_plans(
     "/construction-plans",
     status_code=status.HTTP_201_CREATED,
     tags=["construction-plans"],
-    operation_id="create_construction_plan"
+    operation_id="create_construction_plan",
 )
 async def create_plan(
     request: Annotated[PlanCreate, Body(...)],
@@ -101,7 +102,7 @@ async def create_plan(
     "/construction-plans/{plan_id}",
     status_code=status.HTTP_200_OK,
     tags=["construction-plans"],
-    operation_id="get_construction_plan"
+    operation_id="get_construction_plan",
 )
 async def get_plan(
     plan_id: Annotated[int, Path(..., description="Construction plan ID")],
@@ -118,7 +119,7 @@ async def get_plan(
     "/construction-plans/{plan_id}",
     status_code=status.HTTP_200_OK,
     tags=["construction-plans"],
-    operation_id="update_construction_plan"
+    operation_id="update_construction_plan",
 )
 async def update_plan(
     plan_id: Annotated[int, Path(...)],
@@ -156,7 +157,7 @@ async def delete_plan(
     "/construction-plans/{plan_id}/execute",
     status_code=status.HTTP_200_OK,
     tags=["construction-plans"],
-    operation_id="execute_construction_plan"
+    operation_id="execute_construction_plan",
 )
 async def execute_plan(
     plan_id: Annotated[int, Path(...)],

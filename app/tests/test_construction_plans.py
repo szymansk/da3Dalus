@@ -3,6 +3,7 @@
 Covers sub-tickets #109 (DB model), #110 (CRUD), #111 (creators), #112 (execute).
 Also: #315 (frontend JSON ↔ backend decoder compatibility).
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -15,6 +16,7 @@ def _can_import_cad() -> bool:
     """Check if cadquery/cad_designer is available (excluded on linux/aarch64)."""
     try:
         from cad_designer.airplane.GeneralJSONEncoderDecoder import GeneralJSONDecoder  # noqa: F401
+
         return True
     except (ImportError, ModuleNotFoundError):
         return False
@@ -191,9 +193,16 @@ class TestCreatorCatalog:
         """Internal and runtime-injected params not in parameters."""
         for c in client.get("/construction-plans/creators").json():
             param_names = {p["name"] for p in c["parameters"]}
-            for internal in ("self", "loglevel", "creator_id", "wing_config",
-                             "printer_settings", "servo_information",
-                             "engine_information", "component_information"):
+            for internal in (
+                "self",
+                "loglevel",
+                "creator_id",
+                "wing_config",
+                "printer_settings",
+                "servo_information",
+                "engine_information",
+                "component_information",
+            ):
                 assert internal not in param_names, f"{c['class_name']} exposes {internal}"
 
     def test_excludes_infrastructure_classes(self, client):
@@ -595,22 +604,16 @@ class TestPrinterSettingsSeed:
 class TestZipDownload:
     """GH#339 — zip download endpoint for an execution dir."""
 
-    def test_zip_endpoint_returns_zip_with_all_files(
-        self, client, tmp_path, monkeypatch
-    ):
+    def test_zip_endpoint_returns_zip_with_all_files(self, client, tmp_path, monkeypatch):
         from app.core.config import settings
         from app.services import artifact_service
 
         monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
-        execution_id, exec_dir = artifact_service.create_execution_dir(
-            "aero-zipper", 501
-        )
+        execution_id, exec_dir = artifact_service.create_execution_dir("aero-zipper", 501)
         (exec_dir / "alpha.stl").write_bytes(b"AAA")
         (exec_dir / "beta.txt").write_text("bb")
 
-        resp = client.get(
-            f"/construction-plans/501/artifacts/{execution_id}/zip"
-        )
+        resp = client.get(f"/construction-plans/501/artifacts/{execution_id}/zip")
 
         assert resp.status_code == 200, resp.text
         assert resp.headers["content-type"] == "application/zip"
@@ -622,9 +625,7 @@ class TestZipDownload:
         with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
             assert sorted(zf.namelist()) == ["alpha.stl", "beta.txt"]
 
-    def test_zip_endpoint_404_for_missing_execution(
-        self, client, tmp_path, monkeypatch
-    ):
+    def test_zip_endpoint_404_for_missing_execution(self, client, tmp_path, monkeypatch):
         from app.core.config import settings
 
         monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
@@ -642,9 +643,7 @@ class TestZipDownload:
         monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
         execution_id, _ = artifact_service.create_execution_dir("aero-empty", 502)
 
-        resp = client.get(
-            f"/construction-plans/502/artifacts/{execution_id}/zip"
-        )
+        resp = client.get(f"/construction-plans/502/artifacts/{execution_id}/zip")
 
         assert resp.status_code == 200
         assert resp.headers["content-type"] == "application/zip"
@@ -662,9 +661,7 @@ class TestTemplateExecution:
     """GH#339 — templates can be executed against a chosen aeroplane."""
 
     @pytest.mark.skipif(not _can_import_cad(), reason="cadquery not available")
-    def test_execute_template_returns_success(
-        self, client, client_and_db, tmp_path, monkeypatch
-    ):
+    def test_execute_template_returns_success(self, client, client_and_db, tmp_path, monkeypatch):
         from app.core.config import settings
 
         monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
@@ -676,9 +673,7 @@ class TestTemplateExecution:
             aero_id = str(aero.uuid)
 
         # Create a template (plan_type defaults to "template" in helper)
-        template = _create_plan(
-            client, "Tpl A", tree=SAMPLE_TREE, plan_type="template"
-        )
+        template = _create_plan(client, "Tpl A", tree=SAMPLE_TREE, plan_type="template")
 
         resp = client.post(
             f"/construction-plans/{template['id']}/execute",
@@ -691,9 +686,7 @@ class TestTemplateExecution:
         assert body["status"] in ("success", "error"), body
 
     def test_execute_template_without_aeroplane_id_returns_422(self, client):
-        template = _create_plan(
-            client, "Tpl B", tree=SAMPLE_TREE, plan_type="template"
-        )
+        template = _create_plan(client, "Tpl B", tree=SAMPLE_TREE, plan_type="template")
 
         resp = client.post(
             f"/construction-plans/{template['id']}/execute",
@@ -717,9 +710,7 @@ class TestTemplateExecution:
             aero = make_aeroplane(session, name="for-replace")
             aero_id = str(aero.uuid)
 
-        template = _create_plan(
-            client, "Tpl C", tree=SAMPLE_TREE, plan_type="template"
-        )
+        template = _create_plan(client, "Tpl C", tree=SAMPLE_TREE, plan_type="template")
 
         # First execute
         resp1 = client.post(
@@ -739,14 +730,10 @@ class TestTemplateExecution:
 
         assert first_exec_id != second_exec_id
         # First execution dir is gone
-        first_dir = (
-            tmp_path / "_template_runs" / str(template["id"]) / first_exec_id
-        )
+        first_dir = tmp_path / "_template_runs" / str(template["id"]) / first_exec_id
         assert not first_dir.exists()
         # Second execution dir exists
-        second_dir = (
-            tmp_path / "_template_runs" / str(template["id"]) / second_exec_id
-        )
+        second_dir = tmp_path / "_template_runs" / str(template["id"]) / second_exec_id
         assert second_dir.is_dir()
 
 
@@ -754,9 +741,7 @@ class TestPlanExecutionPathRegression:
     """Plan executions still write to <aero>/<plan>/<exec> (gh#339)."""
 
     @pytest.mark.skipif(not _can_import_cad(), reason="cadquery not available")
-    def test_plan_execution_path_unchanged(
-        self, client, client_and_db, tmp_path, monkeypatch
-    ):
+    def test_plan_execution_path_unchanged(self, client, client_and_db, tmp_path, monkeypatch):
         from app.core.config import settings
 
         monkeypatch.setattr(settings, "ARTIFACTS_BASE_DIR", tmp_path)
