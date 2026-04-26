@@ -66,3 +66,43 @@ body {
 *::-webkit-scrollbar-thumb:hover {
   background: var(--color-muted-foreground);
 }
+
+/* gh#345: bind three-cad-viewer's CSS variables to our da3Dalus.pen
+   design tokens so the viewer's toolbar / tabs / tree panel match the
+   app's dark theme regardless of which theme the library defaults to.
+
+   Selector specificity matters here: the library defines its variables
+   under `[data-theme="light"]` / `[data-theme="dark"]` and sets
+   data-theme on both the container (= our .cad-viewer-host) and on
+   document.body. To beat that we match BOTH the container itself and
+   anything inside it where data-theme has been applied, with !important
+   on each var so the cascade order between globals.css and the lib's
+   stylesheet is irrelevant. */
+.cad-viewer-host,
+.cad-viewer-host[data-theme],
+.cad-viewer-host *[data-theme] {
+  --tcv-font-color: var(--color-foreground) !important;
+  --tcv-bg-color: var(--color-card) !important;
+  --tcv-bg-overlay-color: rgba(26, 26, 26, 0.85) !important;
+  --tcv-bg-overlay-rest-color: rgba(26, 26, 26, 0.2) !important;
+  --tcv-bg-highlight-color: var(--color-sidebar-accent) !important;
+  --tcv-bg-pressed-color: var(--color-border) !important;
+  --tcv-bg-pressed-border-color: var(--color-border-strong) !important;
+  --tcv-bg-tooltip-color: var(--color-card-muted) !important;
+  --tcv-theme-blue: var(--color-primary) !important;
+  --tcv-theme-led: var(--color-primary) !important;
+  --tcv-shadow: rgba(0, 0, 0, 0.6) !important;
+  --tcv-menu-shadow: rgba(0, 0, 0, 0.4) !important;
+  --tcv-scrollbar-hover: rgba(255, 255, 255, 0.4) !important;
+  --tcv-scrollbar-active: rgba(255, 255, 255, 0.6) !important;
+  --tcv-scrollbar-thumb: rgba(255, 255, 255, 0.15) !important;
+  --tcv-dropdown-bg: var(--color-card-muted) !important;
+}
+
+/* The library sets data-theme on document.body too which cascades the
+   light defaults to everything outside the viewer. Reset within our
+   viewer container so the lib's body-level vars never leak in. */
+.cad-viewer-host {
+  background: var(--color-card);
+  color: var(--color-foreground);
+}
