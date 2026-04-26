@@ -291,8 +291,8 @@ function WingConfigFields({
           <select
             id="pf-segment-type"
             value={wc.wing_segment_type}
-            disabled
-            className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-muted-foreground opacity-60"
+            onChange={(e) => { setDirty(true); setWc({ ...wc, wing_segment_type: e.target.value }); }}
+            className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
           >
             <option value="">none</option>
             <option value="root">root</option>
@@ -492,6 +492,7 @@ function buildUpdatedSegments(
       length: wc.length,
       sweep: wc.sweep,
       number_interpolation_points: wc.number_interpolation_points,
+      wing_segment_type: wc.wing_segment_type || undefined,
       tip_type: wc.tip_type || undefined,
     };
   });
