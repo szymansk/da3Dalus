@@ -21,8 +21,6 @@ detect_tools() {
     command -v golangci-lint &>/dev/null && tools+=("golangci-lint")
     command -v goreleaser &>/dev/null && tools+=("goreleaser")
     command -v git &>/dev/null && tools+=("git")
-    command -v bd &>/dev/null && tools+=("bd")
-
     # Output as JSON array
     if [ ${#tools[@]} -gt 0 ]; then
         printf '%s\n' "${tools[@]}" | jq -R . | jq -s .

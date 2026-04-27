@@ -18,7 +18,7 @@ If commit FAILED or was REJECTED by hook, NEVER amend - fix the issue and create
 
 ## Commit Message Format
 
-Use conventional commits with beads issue references:
+Use conventional commits with GitHub issue references:
 
 ```
 <type>(<scope>): <description>
@@ -31,8 +31,8 @@ Use conventional commits with beads issue references:
 Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `style`, `build`, `ci`
 
 Examples:
-- `feat(bd-a1b2): add user authentication`
-- `fix(bd-c3d4): resolve nil pointer in darwin installer`
+- `feat(gh-101): add user authentication`
+- `fix(gh-352): resolve unit mismatch in spare origin`
 - `refactor: extract validation logic to separate module`
 
 ## Branch Workflow

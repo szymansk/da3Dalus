@@ -195,7 +195,7 @@ PR body MUST include:
 Launch the `code-reviewer` agent on the PR:
 
 ```
-Agent(subagent_type: "pr-review-toolkit:code-reviewer", ...)
+Agent(subagent_type: "code-reviewer", ...)
 ```
 
 For critical bugs: report review findings but proceed to merge

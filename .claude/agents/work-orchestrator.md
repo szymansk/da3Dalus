@@ -129,7 +129,7 @@ For each PR created in Phase 2, launch review agents in parallel:
 
 ```python
 Agent(
-    subagent_type="pr-review-toolkit:code-reviewer",
+    subagent_type="code-reviewer",
     prompt="Review PR #<N>. Get diff with gh pr diff <N>. ..."
 )
 ```

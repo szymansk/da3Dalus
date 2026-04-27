@@ -102,7 +102,7 @@ gh pr diff <N> --stat
 ```
 
 ### Mandatory (always dispatched):
-- `pr-review-toolkit:code-reviewer` — general quality, conventions, correctness
+- `code-reviewer` — project-specific orchestrator (wraps pr-review-toolkit:code-reviewer + language reviewers + Serena/SonarQube)
 
 ### Conditional (based on PR content):
 

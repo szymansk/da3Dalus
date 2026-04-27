@@ -400,17 +400,3 @@ components/                  # Airfoils, servos, templates (data)
   See gh-298.
 
 
-<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
-## Beads — Local Work Distribution (Optional)
-
-Beads (`bd`) is available as an **optional local work queue** during
-sessions. Use it to break a GH Issue into parallel sub-tasks, track
-claims, and manage dependencies. **GitHub Issues remain the primary
-tracker.**
-
-```bash
-bd ready              # Find available local work
-bd close <id>         # Complete work
-bd remember "insight" # Persist knowledge across sessions
-```
-<!-- END BEADS INTEGRATION -->

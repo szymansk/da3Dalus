@@ -41,16 +41,7 @@
         ]
       }
     ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bd prime"
-          }
-        ]
-      }
-    ],
+    "PreCompact": [],
     "PreToolUse": [
       {
         "matcher": "Bash",
@@ -95,25 +86,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c \"if [ -d .beads ]; then bd prime 2>/dev/null || true; fi\""
-          },
-          {
-            "type": "command",
             "command": "bash -c \"./.claude/hooks/pre-command/check-toolchain.sh 2>/dev/null || true\""
           }
         ]
       }
     ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -c \"if [ -d .beads ]; then bd sync 2>/dev/null || true; fi\""
-          }
-        ]
-      }
-    ],
+    "Stop": [],
     "UserPromptSubmit": [
       {
         "matcher": "*",
