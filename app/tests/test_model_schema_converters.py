@@ -289,6 +289,108 @@ def test_spare_origin_recomputed_when_scaled_gh352():
     )
 
 
+def test_spare_origin_roundtrip_consistency_gh362():
+    """Regression for gh-362: converting a wing twice must yield identical spare_origin.
+
+    If spare_vector is not cleared alongside spare_origin before recomputation,
+    the retained stale vector can cause the recomputed origin to drift.
+    """
+    wing_schema = schemas.AsbWingSchema(
+        name="test-wing",
+        symmetric=True,
+        x_secs=[
+            schemas.WingXSecSchema(
+                xyz_le=[0.0, 0.0, 0.0],
+                chord=0.2,
+                twist=0.0,
+                airfoil="./components/airfoils/mh32.dat",
+                spare_list=[
+                    schemas.SpareDetailSchema(
+                        spare_support_dimension_width=4.42,
+                        spare_support_dimension_height=4.42,
+                        spare_position_factor=0.25,
+                        spare_mode="standard",
+                    )
+                ],
+            ),
+            schemas.WingXSecSchema(
+                xyz_le=[0.0, 0.5, 0.0],
+                chord=0.15,
+                twist=0.0,
+                airfoil="./components/airfoils/mh32.dat",
+            ),
+        ],
+    )
+    wing_model = WingModel.from_dict(name="test-wing", data=wing_schema.model_dump())
+
+    config_1 = wing_model_to_wing_config(wing_model, scale=1000.0)
+    origin_1 = config_1.segments[0].spare_list[0].spare_origin
+    vector_1 = config_1.segments[0].spare_list[0].spare_vector
+
+    config_2 = wing_model_to_wing_config(wing_model, scale=1000.0)
+    origin_2 = config_2.segments[0].spare_list[0].spare_origin
+    vector_2 = config_2.segments[0].spare_list[0].spare_vector
+
+    assert origin_1 is not None
+    assert origin_2 is not None
+    assert vector_1 is not None
+    assert vector_2 is not None
+
+    assert origin_1.x == pytest.approx(origin_2.x, abs=1e-6)
+    assert origin_1.y == pytest.approx(origin_2.y, abs=1e-6)
+    assert origin_1.z == pytest.approx(origin_2.z, abs=1e-6)
+
+    assert vector_1.x == pytest.approx(vector_2.x, abs=1e-6)
+    assert vector_1.y == pytest.approx(vector_2.y, abs=1e-6)
+    assert vector_1.z == pytest.approx(vector_2.z, abs=1e-6)
+
+
+def test_spare_origin_at_scale_1_matches_geometry_gh362():
+    """Regression for gh-362: at scale=1.0 spare_origin must match meter-scale geometry.
+
+    The spare at position_factor=0.25 on a 0.2m chord should have an x origin
+    around 0.25 * 0.2 = 0.05m (at the quarter-chord).
+    """
+    wing_schema = schemas.AsbWingSchema(
+        name="test-wing",
+        symmetric=True,
+        x_secs=[
+            schemas.WingXSecSchema(
+                xyz_le=[0.0, 0.0, 0.0],
+                chord=0.2,
+                twist=0.0,
+                airfoil="./components/airfoils/mh32.dat",
+                spare_list=[
+                    schemas.SpareDetailSchema(
+                        spare_support_dimension_width=4.42,
+                        spare_support_dimension_height=4.42,
+                        spare_position_factor=0.25,
+                        spare_mode="standard",
+                    )
+                ],
+            ),
+            schemas.WingXSecSchema(
+                xyz_le=[0.0, 0.5, 0.0],
+                chord=0.15,
+                twist=0.0,
+                airfoil="./components/airfoils/mh32.dat",
+            ),
+        ],
+    )
+    wing_model = WingModel.from_dict(name="test-wing", data=wing_schema.model_dump())
+
+    config = wing_model_to_wing_config(wing_model, scale=1.0)
+    spare = config.segments[0].spare_list[0]
+
+    assert spare.spare_origin is not None
+    assert spare.spare_vector is not None
+
+    # At scale=1.0, chord is 0.2m, position_factor=0.25 → x ≈ 0.05m
+    assert spare.spare_origin.x == pytest.approx(0.05, abs=0.01), (
+        f"spare_origin.x={spare.spare_origin.x}, expected ~0.05m at quarter-chord"
+    )
+
+
 def test_ted_projection_to_asb_uses_rel_chord_root():
     wing = schemas.AsbWingSchema(
         name="main-wing",

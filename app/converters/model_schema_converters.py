@@ -480,6 +480,7 @@ def _resolve_spare_vectors_and_origins(wing_config: WingConfiguration) -> None:
             # matches whatever scale the WingConfiguration was built with.
             # Without this, a DB-cached origin (meters) leaks into a
             # mm-scale config and produces 1000x-offset spars (gh-352).
+            spare.spare_vector = None
             spare.spare_origin = None
             _resolve_single_spare(wing_config, segment_index, spare_index, spare)
 
