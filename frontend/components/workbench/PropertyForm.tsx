@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useId } from "react";
+import { useEffect, useState, useId, forwardRef, useImperativeHandle } from "react";
 import { useRouter } from "next/navigation";
 import { Box, ChevronDown, Eye } from "lucide-react";
 import { AirfoilSelector } from "./AirfoilSelector";
@@ -22,6 +22,10 @@ function num(v: string, fallback = 0): number {
 // ── Types ───────────────────────────────────────────────────────
 
 type Mode = "wingconfig" | "asb" | "fuselage";
+
+export interface PropertyFormHandle {
+  save(): Promise<void>;
+}
 
 interface WingConfigState {
   root_airfoil: string;
@@ -516,7 +520,8 @@ function renderFuselageXsecForm(opts: FuselageXsecFormOptions): React.ReactEleme
 
 // ── Main Component ──────────────────────────────────────────────
 
-export function PropertyForm({ onGeometryChanged }: Readonly<{ onGeometryChanged?: (wingName: string) => void }>) {
+export const PropertyForm = forwardRef<PropertyFormHandle, Readonly<{ onGeometryChanged?: (wingName: string) => void }>>(
+  function PropertyForm({ onGeometryChanged }, ref) {
   const { aeroplaneId, selectedWing, selectedXsecIndex, selectedFuselage, selectedFuselageXsecIndex, treeMode } =
     useAeroplaneContext();
   const { wing, updateXSec, mutate } = useWing(aeroplaneId, selectedWing);
@@ -541,7 +546,7 @@ export function PropertyForm({ onGeometryChanged }: Readonly<{ onGeometryChanged
     treeMode === "fuselage" ? selectedFuselage : null,
   );
 
-  const { setDirty } = useUnsavedChanges();
+  const { isDirty, setDirty } = useUnsavedChanges();
   const router = useRouter();
 
   // (TED editing is now handled by TedEditDialog — no more tedSaveRef needed)
@@ -586,6 +591,19 @@ export function PropertyForm({ onGeometryChanged }: Readonly<{ onGeometryChanged
     }
   }, [wingConfig, selectedXsecIndex]);
 
+  useImperativeHandle(ref, () => ({
+    async save() {
+      if (!isDirty) return;
+      if (mode === "wingconfig") {
+        await handleSaveWingConfig();
+      } else if (mode === "fuselage") {
+        await handleSaveFuselage();
+      } else {
+        await handleSaveAsb();
+      }
+    },
+  }));
+
   // Fuselage xsec mode — delegate to dedicated form
   const fuselageXsecForm = renderFuselageXsecForm({
     mode, selectedFuselage, selectedFuselageXsecIndex, fuselage,
@@ -620,6 +638,7 @@ export function PropertyForm({ onGeometryChanged }: Readonly<{ onGeometryChanged
       setDirty(false);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Save failed");
+      throw err;
     } finally {
       setSaving(false);
     }
@@ -643,6 +662,26 @@ export function PropertyForm({ onGeometryChanged }: Readonly<{ onGeometryChanged
       setDirty(false);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Save failed");
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSaveFuselage() {
+    if (mode !== "fuselage" || !selectedFuselage || selectedFuselageXsecIndex === null || !fuselage) return;
+    const fxsec = fuselage.x_secs[selectedFuselageXsecIndex];
+    if (!fxsec) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await updateFuselageXSec(selectedFuselageXsecIndex, fxsec);
+      await mutateFuselage();
+      onGeometryChanged?.("");
+      setDirty(false);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Save failed");
+      throw err;
     } finally {
       setSaving(false);
     }
@@ -696,7 +735,7 @@ export function PropertyForm({ onGeometryChanged }: Readonly<{ onGeometryChanged
               Cancel
             </button>
             <button
-              onClick={handleSave}
+              onClick={() => void handleSave().catch(() => {})}
               disabled={saving}
               className="rounded-full bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
             >
@@ -708,7 +747,8 @@ export function PropertyForm({ onGeometryChanged }: Readonly<{ onGeometryChanged
       )}
     </div>
   );
-}
+  },
+);
 
 
 
