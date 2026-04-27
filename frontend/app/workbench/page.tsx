@@ -3,9 +3,8 @@
 import { useState, useMemo, useCallback, useRef } from "react";
 import { PanelLeftOpen, Maximize2, Minimize2, X } from "lucide-react";
 import { useDialog } from "@/hooks/useDialog";
-import { PropertyForm } from "@/components/workbench/PropertyForm";
+import { PropertyForm, type PropertyFormHandle } from "@/components/workbench/PropertyForm";
 import { SegmentPaginator } from "@/components/workbench/SegmentPaginator";
-import { type PropertyFormHandle } from "@/components/workbench/PropertyForm";
 import { useWingConfig } from "@/hooks/useWingConfig";
 import { AeroplaneTree } from "@/components/workbench/AeroplaneTree";
 import { SparEditDialog } from "@/components/workbench/SparEditDialog";
@@ -19,7 +18,12 @@ import { useAllFuselageData, useFuselage } from "@/hooks/useFuselage";
 import { API_BASE } from "@/lib/fetcher";
 
 export default function WorkbenchPage() {
-  const { aeroplaneId, setAeroplaneId, selectedWing, selectedXsecIndex, selectXsec, selectedFuselage, selectedFuselageXsecIndex, selectFuselageXsec, treeMode } = useAeroplaneContext();
+  const {
+    aeroplaneId, setAeroplaneId,
+    selectedWing, selectedXsecIndex, selectXsec,
+    selectedFuselage, selectedFuselageXsecIndex, selectFuselageXsec,
+    treeMode,
+  } = useAeroplaneContext();
   const { aeroplanes, isLoading, createAeroplane } = useAeroplanes();
   const { wingNames, mutate: mutateWingNames } = useWings(aeroplaneId);
   const { fuselageNames, mutate: mutateFuselages } = useFuselages(aeroplaneId);
@@ -248,7 +252,7 @@ export default function WorkbenchPage() {
               <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
                 Configuration
               </h2>
-              {paginatorCurrent !== null && paginatorTotal != null && paginatorTotal > 1 && (
+              {paginatorCurrent != null && paginatorTotal != null && paginatorTotal > 1 && (
                 <SegmentPaginator
                   current={paginatorCurrent}
                   total={paginatorTotal}
