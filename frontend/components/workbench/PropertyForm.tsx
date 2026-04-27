@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useId, forwardRef, useImperativeHandle } from "react";
+import { useEffect, useState, useId, useRef, forwardRef, useImperativeHandle } from "react";
 import { useRouter } from "next/navigation";
 import { Box, ChevronDown, Eye } from "lucide-react";
 import { AirfoilSelector } from "./AirfoilSelector";
@@ -493,11 +493,12 @@ interface FuselageXsecFormOptions {
   updateFuselageXSec: (idx: number, xsec: FuselageXSec) => Promise<void>;
   mutateFuselage: () => Promise<unknown>;
   onGeometryChanged: ((wingName: string) => void) | undefined;
+  formRef: React.RefObject<PropertyFormHandle | null>;
 }
 
 function renderFuselageXsecForm(opts: FuselageXsecFormOptions): React.ReactElement | null {
   const { mode, selectedFuselage, selectedFuselageXsecIndex, fuselage,
-    aeroplaneId, updateFuselageXSec, mutateFuselage, onGeometryChanged } = opts;
+    aeroplaneId, updateFuselageXSec, mutateFuselage, onGeometryChanged, formRef } = opts;
   if (mode !== "fuselage" || !selectedFuselage || selectedFuselageXsecIndex === null || !fuselage) {
     return null;
   }
@@ -505,6 +506,7 @@ function renderFuselageXsecForm(opts: FuselageXsecFormOptions): React.ReactEleme
   if (!fxsec) return null;
   return (
     <FuselageXSecForm
+      ref={formRef}
       aeroplaneId={aeroplaneId}
       fuselageName={selectedFuselage}
       xsecIndex={selectedFuselageXsecIndex}
@@ -591,23 +593,26 @@ export const PropertyForm = forwardRef<PropertyFormHandle, Readonly<{ onGeometry
     }
   }, [wingConfig, selectedXsecIndex]);
 
+  const fuselageFormRef = useRef<PropertyFormHandle>(null);
+
   useImperativeHandle(ref, () => ({
     async save() {
       if (!isDirty) return;
-      if (mode === "wingconfig") {
+      if (mode === "fuselage") {
+        await fuselageFormRef.current?.save();
+      } else if (mode === "wingconfig") {
         await handleSaveWingConfig();
-      } else if (mode === "fuselage") {
-        await handleSaveFuselage();
       } else {
         await handleSaveAsb();
       }
     },
-  }));
+  }), [isDirty, mode]);
 
   // Fuselage xsec mode — delegate to dedicated form
   const fuselageXsecForm = renderFuselageXsecForm({
     mode, selectedFuselage, selectedFuselageXsecIndex, fuselage,
     aeroplaneId, updateFuselageXSec, mutateFuselage, onGeometryChanged,
+    formRef: fuselageFormRef,
   });
   if (fuselageXsecForm) return fuselageXsecForm;
 
@@ -668,25 +673,6 @@ export const PropertyForm = forwardRef<PropertyFormHandle, Readonly<{ onGeometry
     }
   }
 
-  async function handleSaveFuselage() {
-    if (mode !== "fuselage" || !selectedFuselage || selectedFuselageXsecIndex === null || !fuselage) return;
-    const fxsec = fuselage.x_secs[selectedFuselageXsecIndex];
-    if (!fxsec) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await updateFuselageXSec(selectedFuselageXsecIndex, fxsec);
-      await mutateFuselage();
-      onGeometryChanged?.("");
-      setDirty(false);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Save failed");
-      throw err;
-    } finally {
-      setSaving(false);
-    }
-  }
-
   const handleSave = mode === "wingconfig" ? handleSaveWingConfig : handleSaveAsb;
 
   return (
@@ -735,7 +721,7 @@ export const PropertyForm = forwardRef<PropertyFormHandle, Readonly<{ onGeometry
               Cancel
             </button>
             <button
-              onClick={() => void handleSave().catch(() => {})}
+              onClick={() => void handleSave().catch((err) => console.error("[PropertyForm] Save failed:", err))}
               disabled={saving}
               className="rounded-full bg-primary px-4 py-2 text-[13px] text-primary-foreground hover:opacity-90 disabled:opacity-50"
             >
@@ -754,19 +740,13 @@ export const PropertyForm = forwardRef<PropertyFormHandle, Readonly<{ onGeometry
 
 // ── Fuselage XSec Form ────────────────────────────────────────
 
-function FuselageXSecForm({
-  aeroplaneId,
-  fuselageName,
-  xsecIndex,
-  xsec,
-  onSave,
-}: Readonly<{
+const FuselageXSecForm = forwardRef<PropertyFormHandle, Readonly<{
   aeroplaneId: string | null;
   fuselageName: string;
   xsecIndex: number;
   xsec: FuselageXSec;
   onSave: (updated: FuselageXSec) => Promise<void>;
-}>) {
+}>>(function FuselageXSecForm({ aeroplaneId, fuselageName, xsecIndex, xsec, onSave }, ref) {
   const [xyz0, setXyz0] = useState(String(xsec.xyz[0]));
   const [xyz1, setXyz1] = useState(String(xsec.xyz[1]));
   const [xyz2, setXyz2] = useState(String(xsec.xyz[2]));
@@ -791,16 +771,34 @@ function FuselageXSecForm({
     setError(null);
   }, [xsec, xsecIndex]);
 
+  const buildPayload = (): FuselageXSec => ({
+    xyz: [Number.parseFloat(xyz0) || 0, Number.parseFloat(xyz1) || 0, Number.parseFloat(xyz2) || 0],
+    a: Number.parseFloat(a) || 0.001,
+    b: Number.parseFloat(b) || 0.001,
+    n: Math.max(0.5, Math.min(10, Number.parseFloat(n) || 2)),
+  });
+
+  useImperativeHandle(ref, () => ({
+    async save() {
+      setSaving(true);
+      setError(null);
+      try {
+        await onSave(buildPayload());
+        setDirty(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+        throw err;
+      } finally {
+        setSaving(false);
+      }
+    },
+  }));
+
   const handleSave = async () => {
     setSaving(true);
     setError(null);
     try {
-      await onSave({
-        xyz: [Number.parseFloat(xyz0) || 0, Number.parseFloat(xyz1) || 0, Number.parseFloat(xyz2) || 0],
-        a: Number.parseFloat(a) || 0.001,
-        b: Number.parseFloat(b) || 0.001,
-        n: Math.max(0.5, Math.min(10, Number.parseFloat(n) || 2)),
-      });
+      await onSave(buildPayload());
       setDirty(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -883,4 +881,4 @@ function FuselageXSecForm({
       </div>
     </div>
   );
-}
+});

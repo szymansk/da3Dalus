@@ -40,6 +40,8 @@ export function SegmentPaginator({ current, total, onChange, disabled }: Readonl
     setLoading(true);
     try {
       await onChange(index);
+    } catch (err) {
+      console.error("[SegmentPaginator] onChange failed:", err);
     } finally {
       setLoading(false);
     }

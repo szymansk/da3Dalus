@@ -48,7 +48,8 @@ export default function WorkbenchPage() {
   const handleSegmentChange = useCallback(async (newIndex: number) => {
     try {
       await formRef.current?.save();
-    } catch {
+    } catch (err) {
+      console.error("[WorkbenchPage] Auto-save before segment change failed:", err);
       return;
     }
     if (mode === "fuselage") {
