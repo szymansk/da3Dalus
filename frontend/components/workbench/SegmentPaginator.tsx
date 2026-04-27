@@ -66,6 +66,7 @@ export function SegmentPaginator({ current, total, onChange, disabled }: Readonl
         ) : (
           <button
             key={page}
+            title={`Segment ${page}`}
             disabled={isDisabled}
             onClick={() => handleClick(page)}
             className={`flex size-6 items-center justify-center rounded font-[family-name:var(--font-jetbrains-mono)] text-[11px] ${
