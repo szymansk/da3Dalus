@@ -391,6 +391,114 @@ def test_spare_origin_at_scale_1_matches_geometry_gh362():
     )
 
 
+def test_follow_mode_spare_roundtrip_consistency_gh362():
+    """Regression for gh-362: follow-mode spares must be stable across repeated conversions."""
+    wing_schema = schemas.AsbWingSchema(
+        name="test-wing",
+        symmetric=True,
+        x_secs=[
+            schemas.WingXSecSchema(
+                xyz_le=[0.0, 0.0, 0.0],
+                chord=0.2,
+                twist=0.0,
+                airfoil="./components/airfoils/mh32.dat",
+                spare_list=[
+                    schemas.SpareDetailSchema(
+                        spare_support_dimension_width=4.42,
+                        spare_support_dimension_height=4.42,
+                        spare_position_factor=0.25,
+                        spare_mode="standard",
+                    )
+                ],
+            ),
+            schemas.WingXSecSchema(
+                xyz_le=[0.01, 0.4, 0.01],
+                chord=0.16,
+                twist=0.0,
+                airfoil="./components/airfoils/mh32.dat",
+                spare_list=[
+                    schemas.SpareDetailSchema(
+                        spare_support_dimension_width=4.42,
+                        spare_support_dimension_height=4.42,
+                        spare_position_factor=0.25,
+                        spare_mode="follow",
+                    )
+                ],
+            ),
+            schemas.WingXSecSchema(
+                xyz_le=[0.02, 0.7, 0.02],
+                chord=0.12,
+                twist=0.0,
+                airfoil="./components/airfoils/mh32.dat",
+            ),
+        ],
+    )
+    wing_model = WingModel.from_dict(name="test-wing", data=wing_schema.model_dump())
+
+    config_1 = wing_model_to_wing_config(wing_model, scale=1000.0)
+    follow_1 = config_1.segments[1].spare_list[0]
+
+    config_2 = wing_model_to_wing_config(wing_model, scale=1000.0)
+    follow_2 = config_2.segments[1].spare_list[0]
+
+    assert follow_1.spare_origin is not None
+    assert follow_2.spare_origin is not None
+    assert follow_1.spare_vector is not None
+    assert follow_2.spare_vector is not None
+
+    assert follow_1.spare_origin.x == pytest.approx(follow_2.spare_origin.x, abs=1e-6)
+    assert follow_1.spare_origin.y == pytest.approx(follow_2.spare_origin.y, abs=1e-6)
+    assert follow_1.spare_origin.z == pytest.approx(follow_2.spare_origin.z, abs=1e-6)
+
+    assert follow_1.spare_vector.x == pytest.approx(follow_2.spare_vector.x, abs=1e-6)
+    assert follow_1.spare_vector.y == pytest.approx(follow_2.spare_vector.y, abs=1e-6)
+    assert follow_1.spare_vector.z == pytest.approx(follow_2.spare_vector.z, abs=1e-6)
+
+
+def test_stale_spare_vector_discarded_on_recomputation_gh362():
+    """Regression for gh-362: pre-populated spare_vector from DB must be discarded."""
+    wing_schema = schemas.AsbWingSchema(
+        name="test-wing",
+        symmetric=True,
+        x_secs=[
+            schemas.WingXSecSchema(
+                xyz_le=[0.0, 0.0, 0.0],
+                chord=0.2,
+                twist=0.0,
+                airfoil="./components/airfoils/mh32.dat",
+                spare_list=[
+                    schemas.SpareDetailSchema(
+                        spare_support_dimension_width=4.42,
+                        spare_support_dimension_height=4.42,
+                        spare_position_factor=0.25,
+                        spare_mode="standard",
+                        spare_vector=[99.0, 99.0, 99.0],
+                        spare_origin=[0.05, 0.0, 0.003],
+                    )
+                ],
+            ),
+            schemas.WingXSecSchema(
+                xyz_le=[0.0, 0.5, 0.0],
+                chord=0.15,
+                twist=0.0,
+                airfoil="./components/airfoils/mh32.dat",
+            ),
+        ],
+    )
+    wing_model = WingModel.from_dict(name="test-wing", data=wing_schema.model_dump())
+
+    config = wing_model_to_wing_config(wing_model, scale=1000.0)
+    spare = config.segments[0].spare_list[0]
+
+    assert spare.spare_vector is not None
+    assert spare.spare_vector.x != pytest.approx(99.0, abs=1.0), (
+        "stale spare_vector was not discarded during recomputation"
+    )
+    assert abs(spare.spare_origin.x) > 1.0, (
+        f"spare_origin.x={spare.spare_origin.x} looks like meters, expected mm"
+    )
+
+
 def test_ted_projection_to_asb_uses_rel_chord_root():
     wing = schemas.AsbWingSchema(
         name="main-wing",
