@@ -442,13 +442,13 @@ class TestTedPropagation:
                     f"x_sec[{i}] should NOT have TED — TED leaked from segment 1"
                 )
 
-    def test_asb_control_surfaces_preserved_for_analysis(self):
-        """ASB control_surfaces on x_secs must survive for flight analysis.
+    def test_control_surface_only_on_segments_with_ted(self):
+        """control_surface must only appear on x_secs whose segment has a TED.
 
-        ASB puts a control_surface on both root and tip x_secs of a
-        segment with a TED. The tip x_sec (shared boundary) carries the
-        previous segment's cs — this is correct for ASB panel definitions
-        and must not be discarded.
+        The ASB x_sec at index i≥1 carries the previous segment's
+        control_surface, but storing it would cause WingModel.from_dict
+        to recreate a phantom TED via _merge_ted_with_control_surface.
+        Only segment-owned TED data is stored.
         """
         wing_data = _wing(
             _seg(root_chord=300, tip_chord=280, length=500),
@@ -465,14 +465,12 @@ class TestTedPropagation:
         wc = create_wing_configuration(wing_data)
         asb_schema = wing_config_to_asb_wing_schema(wc, "test", scale=0.001)
 
-        # x_sec[1] = root of seg 1 (has TED) → must have cs
+        # x_sec[1] = segment 1 (has TED) → must have cs
         assert asb_schema.x_secs[1].control_surface is not None
         assert asb_schema.x_secs[1].control_surface.name == "aileron"
-        # x_sec[2] = tip of seg 1 → must also have cs (ASB panel boundary)
-        assert asb_schema.x_secs[2].control_surface is not None
-        # x_sec[0] = root of seg 0 (no TED) → no cs
+        # All other x_secs: no cs (segment has no TED)
         assert asb_schema.x_secs[0].control_surface is None
-        # x_sec[3] = tip of seg 2 (no TED, no preceding TED) → no cs
+        assert asb_schema.x_secs[2].control_surface is None
         assert asb_schema.x_secs[3].control_surface is None
 
     def test_ted_stable_over_repeated_saves(self):
