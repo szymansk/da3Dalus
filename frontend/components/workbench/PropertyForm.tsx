@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useId } from "react";
+import { useEffect, useState, useId, useRef, useImperativeHandle } from "react";
 import { useRouter } from "next/navigation";
 import { Box, ChevronDown, Eye } from "lucide-react";
 import { AirfoilSelector } from "./AirfoilSelector";
@@ -22,6 +22,10 @@ function num(v: string, fallback = 0): number {
 // ── Types ───────────────────────────────────────────────────────
 
 type Mode = "wingconfig" | "asb" | "fuselage";
+
+export interface PropertyFormHandle {
+  save(): Promise<void>;
+}
 
 interface WingConfigState {
   root_airfoil: string;
@@ -489,11 +493,12 @@ interface FuselageXsecFormOptions {
   updateFuselageXSec: (idx: number, xsec: FuselageXSec) => Promise<void>;
   mutateFuselage: () => Promise<unknown>;
   onGeometryChanged: ((wingName: string) => void) | undefined;
+  formRef: React.RefObject<PropertyFormHandle | null>;
 }
 
 function renderFuselageXsecForm(opts: FuselageXsecFormOptions): React.ReactElement | null {
   const { mode, selectedFuselage, selectedFuselageXsecIndex, fuselage,
-    aeroplaneId, updateFuselageXSec, mutateFuselage, onGeometryChanged } = opts;
+    aeroplaneId, updateFuselageXSec, mutateFuselage, onGeometryChanged, formRef } = opts;
   if (mode !== "fuselage" || !selectedFuselage || selectedFuselageXsecIndex === null || !fuselage) {
     return null;
   }
@@ -501,6 +506,7 @@ function renderFuselageXsecForm(opts: FuselageXsecFormOptions): React.ReactEleme
   if (!fxsec) return null;
   return (
     <FuselageXSecForm
+      ref={formRef}
       aeroplaneId={aeroplaneId}
       fuselageName={selectedFuselage}
       xsecIndex={selectedFuselageXsecIndex}
@@ -516,7 +522,10 @@ function renderFuselageXsecForm(opts: FuselageXsecFormOptions): React.ReactEleme
 
 // ── Main Component ──────────────────────────────────────────────
 
-export function PropertyForm({ onGeometryChanged }: Readonly<{ onGeometryChanged?: (wingName: string) => void }>) {
+export function PropertyForm({ onGeometryChanged, ref }: Readonly<{
+  onGeometryChanged?: (wingName: string) => void;
+  ref?: React.Ref<PropertyFormHandle>;
+}>) {
   const { aeroplaneId, selectedWing, selectedXsecIndex, selectedFuselage, selectedFuselageXsecIndex, treeMode } =
     useAeroplaneContext();
   const { wing, updateXSec, mutate } = useWing(aeroplaneId, selectedWing);
@@ -541,7 +550,7 @@ export function PropertyForm({ onGeometryChanged }: Readonly<{ onGeometryChanged
     treeMode === "fuselage" ? selectedFuselage : null,
   );
 
-  const { setDirty } = useUnsavedChanges();
+  const { isDirty, setDirty } = useUnsavedChanges();
   const router = useRouter();
 
   // (TED editing is now handled by TedEditDialog — no more tedSaveRef needed)
@@ -586,10 +595,27 @@ export function PropertyForm({ onGeometryChanged }: Readonly<{ onGeometryChanged
     }
   }, [wingConfig, selectedXsecIndex]);
 
+  const fuselageFormRef = useRef<PropertyFormHandle>(null);
+
+  useImperativeHandle(ref, () => ({
+    async save() {
+      if (!isDirty) return;
+      if (mode === "fuselage") {
+        if (!fuselageFormRef.current) throw new Error("Fuselage form not mounted");
+        await fuselageFormRef.current.save();
+      } else if (mode === "wingconfig") {
+        if (!await handleSaveWingConfig()) throw new Error("Save failed");
+      } else {
+        if (!await handleSaveAsb()) throw new Error("Save failed");
+      }
+    },
+  }));
+
   // Fuselage xsec mode — delegate to dedicated form
   const fuselageXsecForm = renderFuselageXsecForm({
     mode, selectedFuselage, selectedFuselageXsecIndex, fuselage,
     aeroplaneId, updateFuselageXSec, mutateFuselage, onGeometryChanged,
+    formRef: fuselageFormRef,
   });
   if (fuselageXsecForm) return fuselageXsecForm;
 
@@ -609,8 +635,8 @@ export function PropertyForm({ onGeometryChanged }: Readonly<{ onGeometryChanged
     setDirty(false);
   }
 
-  async function handleSaveAsb() {
-    if (!asb) return;
+  async function handleSaveAsb(): Promise<boolean> {
+    if (!asb) return false;
     setSaving(true);
     setError(null);
     try {
@@ -618,15 +644,17 @@ export function PropertyForm({ onGeometryChanged }: Readonly<{ onGeometryChanged
       await mutate();
       if (selectedWing) onGeometryChanged?.(selectedWing);
       setDirty(false);
+      return true;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Save failed");
+      return false;
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleSaveWingConfig() {
-    if (!wc || !wingConfig || selectedXsecIndex === null) return;
+  async function handleSaveWingConfig(): Promise<boolean> {
+    if (!wc || !wingConfig || selectedXsecIndex === null) return false;
     setSaving(true);
     setError(null);
     try {
@@ -641,8 +669,10 @@ export function PropertyForm({ onGeometryChanged }: Readonly<{ onGeometryChanged
       await mutateWc();
       if (selectedWing) onGeometryChanged?.(selectedWing);
       setDirty(false);
+      return true;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Save failed");
+      return false;
     } finally {
       setSaving(false);
     }
@@ -714,18 +744,13 @@ export function PropertyForm({ onGeometryChanged }: Readonly<{ onGeometryChanged
 
 // ── Fuselage XSec Form ────────────────────────────────────────
 
-function FuselageXSecForm({
-  aeroplaneId,
-  fuselageName,
-  xsecIndex,
-  xsec,
-  onSave,
-}: Readonly<{
+function FuselageXSecForm({ aeroplaneId, fuselageName, xsecIndex, xsec, onSave, ref }: Readonly<{
   aeroplaneId: string | null;
   fuselageName: string;
   xsecIndex: number;
   xsec: FuselageXSec;
   onSave: (updated: FuselageXSec) => Promise<void>;
+  ref?: React.Ref<PropertyFormHandle>;
 }>) {
   const [xyz0, setXyz0] = useState(String(xsec.xyz[0]));
   const [xyz1, setXyz1] = useState(String(xsec.xyz[1]));
@@ -751,16 +776,34 @@ function FuselageXSecForm({
     setError(null);
   }, [xsec, xsecIndex]);
 
+  const buildPayload = (): FuselageXSec => ({
+    xyz: [Number.parseFloat(xyz0) || 0, Number.parseFloat(xyz1) || 0, Number.parseFloat(xyz2) || 0],
+    a: Number.parseFloat(a) || 0.001,
+    b: Number.parseFloat(b) || 0.001,
+    n: Math.max(0.5, Math.min(10, Number.parseFloat(n) || 2)),
+  });
+
+  useImperativeHandle(ref, () => ({
+    async save() {
+      setSaving(true);
+      setError(null);
+      try {
+        await onSave(buildPayload());
+        setDirty(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+        throw err;
+      } finally {
+        setSaving(false);
+      }
+    },
+  }));
+
   const handleSave = async () => {
     setSaving(true);
     setError(null);
     try {
-      await onSave({
-        xyz: [Number.parseFloat(xyz0) || 0, Number.parseFloat(xyz1) || 0, Number.parseFloat(xyz2) || 0],
-        a: Number.parseFloat(a) || 0.001,
-        b: Number.parseFloat(b) || 0.001,
-        n: Math.max(0.5, Math.min(10, Number.parseFloat(n) || 2)),
-      });
+      await onSave(buildPayload());
       setDirty(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

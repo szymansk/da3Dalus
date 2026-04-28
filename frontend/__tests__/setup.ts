@@ -1,3 +1,5 @@
+import "@testing-library/jest-dom";
+
 /**
  * Vitest setup — polyfill HTMLDialogElement for jsdom.
  *

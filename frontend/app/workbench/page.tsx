@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { PanelLeftOpen, Maximize2, Minimize2, X } from "lucide-react";
 import { useDialog } from "@/hooks/useDialog";
-import { PropertyForm } from "@/components/workbench/PropertyForm";
+import { PropertyForm, type PropertyFormHandle } from "@/components/workbench/PropertyForm";
+import { SegmentPaginator } from "@/components/workbench/SegmentPaginator";
+import { useWingConfig } from "@/hooks/useWingConfig";
 import { AeroplaneTree } from "@/components/workbench/AeroplaneTree";
 import { SparEditDialog } from "@/components/workbench/SparEditDialog";
 import { TedEditDialog } from "@/components/workbench/TedEditDialog";
@@ -12,15 +14,52 @@ import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAeroplanes } from "@/hooks/useAeroplanes";
 import { useWings, useWing, useAllWingData } from "@/hooks/useWings";
 import { useFuselages } from "@/hooks/useFuselages";
-import { useAllFuselageData } from "@/hooks/useFuselage";
+import { useAllFuselageData, useFuselage } from "@/hooks/useFuselage";
 import { API_BASE } from "@/lib/fetcher";
 
 export default function WorkbenchPage() {
-  const { aeroplaneId, setAeroplaneId, selectedWing, selectedXsecIndex, selectedFuselage, selectedFuselageXsecIndex } = useAeroplaneContext();
+  const {
+    aeroplaneId, setAeroplaneId,
+    selectedWing, selectedXsecIndex, selectXsec,
+    selectedFuselage, selectedFuselageXsecIndex, selectFuselageXsec,
+    treeMode,
+  } = useAeroplaneContext();
   const { aeroplanes, isLoading, createAeroplane } = useAeroplanes();
   const { wingNames, mutate: mutateWingNames } = useWings(aeroplaneId);
   const { fuselageNames, mutate: mutateFuselages } = useFuselages(aeroplaneId);
-  const { mutate: mutateSelectedWing } = useWing(aeroplaneId, selectedWing);
+  const { wing, mutate: mutateSelectedWing } = useWing(aeroplaneId, selectedWing);
+  const { wingConfig } = useWingConfig(aeroplaneId, treeMode === "wingconfig" ? selectedWing : null);
+  const { fuselage } = useFuselage(aeroplaneId, treeMode === "fuselage" ? selectedFuselage : null);
+
+  const mode = treeMode === "fuselage" ? "fuselage" : treeMode;
+
+  const paginatorCurrent = mode === "fuselage"
+    ? selectedFuselageXsecIndex
+    : selectedXsecIndex;
+
+  const paginatorTotal = mode === "fuselage"
+    ? fuselage?.x_secs?.length
+    : mode === "wingconfig"
+      ? wingConfig?.segments?.length
+      : wing?.x_secs?.length;
+
+  const formRef = useRef<PropertyFormHandle>(null);
+
+  const handleSegmentChange = useCallback(async (newIndex: number) => {
+    if (formRef.current) {
+      try {
+        await formRef.current.save();
+      } catch {
+        return;
+      }
+    }
+    if (mode === "fuselage") {
+      selectFuselageXsec(newIndex);
+    } else {
+      selectXsec(newIndex);
+    }
+  }, [mode, selectXsec, selectFuselageXsec]);
+
   const aeroplaneName =
     aeroplanes.find((a) => a.id === aeroplaneId)?.name ?? "Aeroplane";
 
@@ -215,14 +254,22 @@ export default function WorkbenchPage() {
               <h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[16px] text-foreground">
                 Configuration
               </h2>
+              {paginatorCurrent != null && paginatorTotal != null && paginatorTotal > 1 && (
+                <SegmentPaginator
+                  current={paginatorCurrent}
+                  total={paginatorTotal}
+                  onChange={handleSegmentChange}
+                />
+              )}
               <button
+                aria-label="Close"
                 onClick={() => setConfigOpen(false)}
                 className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent"
               >
                 <X size={14} />
               </button>
             </div>
-            <PropertyForm onGeometryChanged={() => { mutateAllWings(); mutateSelectedWing(); mutateAllFuselages(); }} />
+            <PropertyForm ref={formRef} onGeometryChanged={() => { mutateAllWings(); mutateSelectedWing(); mutateAllFuselages(); }} />
           </div>
         )}
       </dialog>
