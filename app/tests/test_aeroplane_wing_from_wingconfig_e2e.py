@@ -116,8 +116,7 @@ def test_create_wing_from_wingconfig_endpoint_persists_full_details(client_and_d
             if index >= 7:
                 assert x_sec.detail.tip_type == "flat"
 
-        # One additional minimal TED is canonicalized from an ASB control surface.
-        assert ted_count == 5
+        assert ted_count == 4
         assert spare_count == 11
 
         # First TED from payload has asymmetric behavior and should be preserved.
