@@ -410,13 +410,10 @@ def _hydrate_segment_from_xsec(
     if root_x_sec.number_interpolation_points is not None:
         segment.number_interpolation_points = root_x_sec.number_interpolation_points
 
-    ted_payload = WingModel._merge_ted_with_control_surface(
-        trailing_edge_device=root_x_sec.trailing_edge_device,
-        control_surface=root_x_sec.control_surface,
-    )
+    ted_raw = _to_payload(root_x_sec.trailing_edge_device)
     ted_schema = (
-        schemas.TrailingEdgeDeviceDetailSchema.model_validate(ted_payload)
-        if ted_payload is not None
+        schemas.TrailingEdgeDeviceDetailSchema.model_validate(ted_raw)
+        if ted_raw
         else None
     )
     segment.trailing_edge_device = (
@@ -649,23 +646,21 @@ def _resolve_airfoil_ref_for_index(index, section_data, x_sec):
     return x_sec.airfoil
 
 
-def _build_segment_details(segment, control_surface):
-    """Extract TED, spare list, and segment metadata from a WingConfiguration segment."""
+def _build_segment_details(segment, asb_control_surface):
+    """Extract TED, spare list, and segment metadata from a WingConfiguration segment.
+
+    The TED is derived solely from the segment's own trailing_edge_device.
+    The ASB control_surface (which may belong to the previous segment due
+    to the root/tip index offset) is preserved for flight analysis but
+    never used to create a TED.
+    """
     trailing_edge_device = None
+    control_surface = asb_control_surface
     spare_list = None
 
     if segment.trailing_edge_device is not None:
         trailing_edge_device = _trailing_edge_device_to_schema(segment.trailing_edge_device)
-
-    canonical_ted_payload = WingModel._merge_ted_with_control_surface(
-        trailing_edge_device=trailing_edge_device,
-        control_surface=control_surface,
-    )
-    if canonical_ted_payload is not None:
-        trailing_edge_device = schemas.TrailingEdgeDeviceDetailSchema.model_validate(
-            canonical_ted_payload
-        )
-        control_surface = _control_surface_from_ted(trailing_edge_device, fallback=control_surface)
+        control_surface = _control_surface_from_ted(trailing_edge_device, fallback=asb_control_surface)
 
     if segment.spare_list is not None:
         spare_list = [_spare_to_schema(spare) for spare in segment.spare_list]

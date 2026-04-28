@@ -38,7 +38,7 @@ def _seg(
     root_airfoil=AIRFOIL, root_chord=200, root_incidence=0, root_dihedral=0,
     tip_airfoil=AIRFOIL, tip_chord=180, tip_incidence=0, tip_dihedral=0,
     length=100, sweep=0, interpolation_pts=101, tip_type=None,
-    wing_segment_type=None,
+    wing_segment_type=None, trailing_edge_device=None,
 ) -> Segment:
     return Segment(
         root_airfoil=Airfoil(
@@ -55,6 +55,7 @@ def _seg(
         number_interpolation_points=interpolation_pts,
         tip_type=tip_type,
         wing_segment_type=wing_segment_type,
+        trailing_edge_device=trailing_edge_device,
     )
 
 
@@ -396,6 +397,111 @@ class TestWingSegmentTypeRoundtrip:
 # ═══════════════════════════════════════════════════════════════════
 # Segment count roundtrip
 # ═══════════════════════════════════════════════════════════════════
+
+
+# ═══════════════════════════════════════════════════════════════════
+# TED propagation — control surfaces must not leak to adjacent segments
+# ═══════════════════════════════════════════════════════════════════
+
+from app.schemas.wing import TrailingEdgeDevice  # noqa: E402
+
+
+class TestTedPropagation:
+    """Verify that TED on one segment does not propagate to neighbours.
+
+    Regression test for a bug where the ASB x_sec index is off-by-one
+    relative to the WingConfiguration segment index, causing
+    _build_segment_details to merge a previous segment's control_surface
+    into the current segment's TED.
+    """
+
+    def test_ted_does_not_spread_to_adjacent_segments(self):
+        """Only segment 1 has a TED; segments 0 and 2 must stay clean."""
+        wing_data = _wing(
+            _seg(root_chord=300, tip_chord=280, length=500),
+            _seg(
+                root_chord=280, tip_chord=250, length=400,
+                trailing_edge_device=TrailingEdgeDevice(
+                    name="aileron", rel_chord_root=0.75, rel_chord_tip=0.75,
+                    symmetric=False,
+                ),
+            ),
+            _seg(root_chord=250, tip_chord=200, length=300),
+        )
+
+        wc = create_wing_configuration(wing_data)
+        asb_schema = wing_config_to_asb_wing_schema(wc, "test", scale=0.001)
+
+        for i, x_sec in enumerate(asb_schema.x_secs):
+            if i == 1:
+                assert x_sec.trailing_edge_device is not None, (
+                    f"x_sec[{i}] (segment 1 root) should have TED"
+                )
+            else:
+                assert x_sec.trailing_edge_device is None, (
+                    f"x_sec[{i}] should NOT have TED — TED leaked from segment 1"
+                )
+
+    def test_asb_control_surfaces_preserved_for_analysis(self):
+        """ASB control_surfaces on x_secs must survive for flight analysis.
+
+        ASB puts a control_surface on both root and tip x_secs of a
+        segment with a TED. The tip x_sec (shared boundary) carries the
+        previous segment's cs — this is correct for ASB panel definitions
+        and must not be discarded.
+        """
+        wing_data = _wing(
+            _seg(root_chord=300, tip_chord=280, length=500),
+            _seg(
+                root_chord=280, tip_chord=250, length=400,
+                trailing_edge_device=TrailingEdgeDevice(
+                    name="aileron", rel_chord_root=0.75, rel_chord_tip=0.75,
+                    symmetric=False,
+                ),
+            ),
+            _seg(root_chord=250, tip_chord=200, length=300),
+        )
+
+        wc = create_wing_configuration(wing_data)
+        asb_schema = wing_config_to_asb_wing_schema(wc, "test", scale=0.001)
+
+        # x_sec[1] = root of seg 1 (has TED) → must have cs
+        assert asb_schema.x_secs[1].control_surface is not None
+        assert asb_schema.x_secs[1].control_surface.name == "aileron"
+        # x_sec[2] = tip of seg 1 → must also have cs (ASB panel boundary)
+        assert asb_schema.x_secs[2].control_surface is not None
+        # x_sec[0] = root of seg 0 (no TED) → no cs
+        assert asb_schema.x_secs[0].control_surface is None
+        # x_sec[3] = tip of seg 2 (no TED, no preceding TED) → no cs
+        assert asb_schema.x_secs[3].control_surface is None
+
+    def test_ted_stable_over_repeated_saves(self):
+        """Repeated roundtrips must not grow TEDs onto new segments."""
+        ted = TrailingEdgeDevice(
+            name="aileron", rel_chord_root=0.8, rel_chord_tip=0.8,
+            symmetric=True,
+        )
+        wing_data = _wing(
+            _seg(root_chord=300, tip_chord=280, length=500),
+            _seg(root_chord=280, tip_chord=250, length=400),
+            _seg(
+                root_chord=250, tip_chord=220, length=300,
+                trailing_edge_device=ted,
+            ),
+            _seg(root_chord=220, tip_chord=200, length=200),
+        )
+
+        wc = create_wing_configuration(wing_data)
+        for cycle in range(5):
+            asb_schema = wing_config_to_asb_wing_schema(wc, "test", scale=0.001)
+            ted_count = sum(
+                1 for x in asb_schema.x_secs if x.trailing_edge_device is not None
+            )
+            assert ted_count == 1, (
+                f"Cycle {cycle}: expected 1 TED, found {ted_count} — "
+                "TED propagated to adjacent segments"
+            )
+            wc = asb_wing_schema_to_wing_config(asb_schema, scale=1000.0)
 
 
 # ═══════════════════════════════════════════════════════════════════
