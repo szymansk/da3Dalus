@@ -46,11 +46,12 @@ export default function WorkbenchPage() {
   const formRef = useRef<PropertyFormHandle>(null);
 
   const handleSegmentChange = useCallback(async (newIndex: number) => {
-    try {
-      await formRef.current?.save();
-    } catch (err) {
-      console.error("[WorkbenchPage] Auto-save before segment change failed:", err);
-      return;
+    if (formRef.current) {
+      try {
+        await formRef.current.save();
+      } catch {
+        return;
+      }
     }
     if (mode === "fuselage") {
       selectFuselageXsec(newIndex);
@@ -261,6 +262,7 @@ export default function WorkbenchPage() {
                 />
               )}
               <button
+                aria-label="Close"
                 onClick={() => setConfigOpen(false)}
                 className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent"
               >
