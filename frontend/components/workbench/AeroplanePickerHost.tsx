@@ -27,6 +27,7 @@ export function AeroplanePickerHost() {
       }}
       onCreate={async (name) => {
         const created = await createAeroplane(name);
+        if (!created?.id) throw new Error("Server returned aeroplane without an ID");
         setAeroplaneId(created.id);
         closePicker();
       }}

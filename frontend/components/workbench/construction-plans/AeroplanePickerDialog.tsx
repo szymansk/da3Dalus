@@ -20,6 +20,7 @@ export function AeroplanePickerDialog({
   open,
   aeroplanes,
   title,
+  selectedAeroplaneId,
   onClose,
   onSelect,
   onDelete,
@@ -38,9 +39,9 @@ export function AeroplanePickerDialog({
     setSubmitting(true);
     try {
       await onSelect(id);
-      onClose();
     } catch (err) {
-      alert(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+      console.error("handlePick failed:", err);
+      alert(err instanceof Error ? err.message : String(err));
     } finally {
       setSubmitting(false);
     }
@@ -53,7 +54,8 @@ export function AeroplanePickerDialog({
       await onDelete(confirmDelete.id);
       setConfirmDelete(null);
     } catch (err) {
-      alert(`Failed to delete: ${err instanceof Error ? err.message : String(err)}`);
+      console.error("handleDelete failed:", err);
+      alert(err instanceof Error ? err.message : String(err));
     } finally {
       setSubmitting(false);
     }
@@ -67,7 +69,8 @@ export function AeroplanePickerDialog({
     try {
       await onCreate(name);
     } catch (err) {
-      alert(`Failed to create: ${err instanceof Error ? err.message : String(err)}`);
+      console.error("handleCreate failed:", err);
+      alert(err instanceof Error ? err.message : String(err));
     } finally {
       setSubmitting(false);
     }
@@ -120,7 +123,7 @@ export function AeroplanePickerDialog({
                 filtered.map((a) => (
                   <div
                     key={a.id}
-                    className="group flex items-center gap-1 rounded-lg hover:bg-sidebar-accent"
+                    className={`group flex items-center gap-1 rounded-lg hover:bg-sidebar-accent ${a.id === selectedAeroplaneId ? "bg-sidebar-accent/60" : ""}`}
                   >
                     <button
                       type="button"
@@ -137,7 +140,7 @@ export function AeroplanePickerDialog({
                         type="button"
                         disabled={submitting}
                         onClick={(e) => { e.stopPropagation(); setConfirmDelete(a); }}
-                        className="mr-2 flex size-6 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-red-500/20 hover:text-red-400 group-hover:opacity-100 disabled:opacity-50"
+                        className="mr-2 flex size-6 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-red-500/20 hover:text-red-400 group-hover:opacity-100 focus-visible:opacity-100 disabled:opacity-50"
                         title={`Delete ${a.name}`}
                       >
                         <Trash2 size={14} />
