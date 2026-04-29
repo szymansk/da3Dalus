@@ -12,7 +12,7 @@ import { AnalysisViewerPanel, type Tab } from "@/components/workbench/AnalysisVi
 import { AnalysisConfigPanel } from "@/components/workbench/AnalysisConfigPanel";
 
 export default function AnalysisPage() {
-  const { aeroplaneId, selectedWing, openPicker } = useAeroplaneContext();
+  const { aeroplaneId, hydrated, selectedWing, openPicker } = useAeroplaneContext();
   const analysis = useAnalysis(aeroplaneId);
   const stripForces = useStripForces(aeroplaneId);
   const streamlines = useStreamlines(aeroplaneId);
@@ -30,8 +30,8 @@ export default function AnalysisPage() {
   const modalTitle = modalTitleByTab[activeTab];
 
   useEffect(() => {
-    if (!aeroplaneId) openPicker();
-  }, [aeroplaneId, openPicker]);
+    if (hydrated && !aeroplaneId) openPicker();
+  }, [hydrated, aeroplaneId, openPicker]);
 
   if (!aeroplaneId) {
     return (

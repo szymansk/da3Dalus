@@ -59,7 +59,7 @@ function toggleInSet<T>(prev: Set<T>, value: T): Set<T> {
 }
 
 export default function ConstructionPlansPage() {
-  const { aeroplaneId, openPicker } = useAeroplaneContext();
+  const { aeroplaneId, hydrated, openPicker } = useAeroplaneContext();
   const { creators, error: creatorsError } = useCreators();
 
   // ── Data fetching ─────────────────────────────────────────────
@@ -463,8 +463,8 @@ export default function ConstructionPlansPage() {
   // ── No-aeroplane guard ────────────────────────────────────────
 
   useEffect(() => {
-    if (!aeroplaneId) openPicker();
-  }, [aeroplaneId, openPicker]);
+    if (hydrated && !aeroplaneId) openPicker();
+  }, [hydrated, aeroplaneId, openPicker]);
 
   if (!aeroplaneId) {
     return (

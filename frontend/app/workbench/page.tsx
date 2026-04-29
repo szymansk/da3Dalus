@@ -24,6 +24,7 @@ export default function WorkbenchPage() {
     selectedFuselage, selectedFuselageXsecIndex, selectFuselageXsec,
     treeMode,
     openPicker,
+    hydrated,
   } = useAeroplaneContext();
   const { aeroplanes } = useAeroplanes();
   const { wingNames, mutate: mutateWingNames } = useWings(aeroplaneId);
@@ -148,8 +149,8 @@ export default function WorkbenchPage() {
   const { fuselages: allFuselages, mutate: mutateAllFuselages } = useAllFuselageData(aeroplaneId, fuselageNames);
 
   useEffect(() => {
-    if (!aeroplaneId) openPicker();
-  }, [aeroplaneId, openPicker]);
+    if (hydrated && !aeroplaneId) openPicker();
+  }, [hydrated, aeroplaneId, openPicker]);
 
   if (!aeroplaneId) {
     return (

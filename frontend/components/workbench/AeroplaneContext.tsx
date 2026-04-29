@@ -15,6 +15,7 @@ export type TreeMode = "wingconfig" | "asb" | "fuselage";
 
 interface AeroplaneContextValue {
   aeroplaneId: string | null;
+  hydrated: boolean;
   selectedWing: string | null;
   selectedXsecIndex: number | null;
   selectedFuselage: string | null;
@@ -46,6 +47,7 @@ export function AeroplaneProvider({ children }: Readonly<{ children: ReactNode }
   const [selectedFuselage, setSelectedFuselage] = useState<string | null>(null);
   const [selectedFuselageXsecIndex, setSelectedFuselageXsecIndex] = useState<number | null>(null);
   const [treeMode, setTreeMode] = useState<TreeMode>("wingconfig");
+  const [hydrated, setHydrated] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const openPicker = useCallback(() => setPickerOpen(true), []);
   const closePicker = useCallback(() => setPickerOpen(false), []);
@@ -73,6 +75,7 @@ export function AeroplaneProvider({ children }: Readonly<{ children: ReactNode }
       setAeroplaneIdRaw(resolved);
       localStorage.setItem(STORAGE_KEY, resolved);
     }
+    setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -108,6 +111,7 @@ export function AeroplaneProvider({ children }: Readonly<{ children: ReactNode }
 
   const ctxValue = useMemo(() => ({
     aeroplaneId,
+    hydrated,
     selectedWing,
     selectedXsecIndex,
     selectedFuselage,
@@ -124,6 +128,7 @@ export function AeroplaneProvider({ children }: Readonly<{ children: ReactNode }
     closePicker,
   }), [
     aeroplaneId,
+    hydrated,
     selectedWing,
     selectedXsecIndex,
     selectedFuselage,
