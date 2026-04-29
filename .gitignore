@@ -262,3 +262,11 @@ coverage.xml
 # Claude Code skills lock
 skills-lock.json
 .claude/worktrees/
+
+# Superpowers brainstorming session data
+.superpowers/
+
+# AI session artifacts (patterns, plans, screenshots)
+patterns/
+planning/
+screenshots/

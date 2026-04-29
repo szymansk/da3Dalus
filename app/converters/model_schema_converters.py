@@ -650,10 +650,13 @@ def _build_segment_details(segment):
     """Extract TED, spare list, and segment metadata from a WingConfiguration segment.
 
     Both TED and control_surface are derived solely from the segment's
-    own trailing_edge_device. The ASB x_sec's control_surface (which
-    belongs to the previous segment due to the root/tip index offset)
-    is discarded — storing it would cause WingModel.from_dict to
-    recreate a phantom TED via _merge_ted_with_control_surface.
+    own trailing_edge_device. The caller overwrites the x_sec-derived
+    control_surface with the values returned here. ASB produces N+1
+    x_secs for N segments: x_sec[0] is the wing root, and x_sec[i]
+    (i>=1) is the tip of segment i-1, so x_sec[i]'s control_surface
+    belongs to segment i-1, not segment i. Passing that misaligned
+    value through to WingModel.from_dict would recreate a phantom TED
+    via _merge_ted_with_control_surface.
     """
     trailing_edge_device = None
     control_surface = None
