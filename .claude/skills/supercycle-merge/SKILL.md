@@ -4,7 +4,7 @@ description: "Check CI, analyze SonarQube quality gate, and merge PRs with post-
 argument-hint: "<PR numbers, comma-separated: 200, 201>"
 ---
 
-# /supercycle:merge — CI Check & Merge
+# /supercycle-merge — CI Check & Merge
 
 Argument: **$ARGUMENTS**
 
@@ -18,7 +18,7 @@ Check CI status, analyze SonarQube quality gates, and merge PRs.
 
 For each PR number in arguments:
 
-Use `load-pr` from `../tracking.md`.
+Use `load-pr` from `../supercycle-common/tracking.md`.
 
 ### 2. Verify Prior Steps
 
@@ -35,7 +35,7 @@ gh pr checks $PR
 If any test check is failing, do NOT proceed. Report the failure:
 ```
 Tests failing on PR #N. Options:
-- /supercycle:fix <N> — investigate and fix
+- /supercycle-fix <N> — investigate and fix
 - gh pr checks <N> — check again after fix
 ```
 

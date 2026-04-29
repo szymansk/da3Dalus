@@ -4,7 +4,7 @@ description: "Fix review findings on PR branches — evaluate with technical rig
 argument-hint: "<PR numbers, comma-separated: 200, 201>"
 ---
 
-# /supercycle:fix — Fix Review Findings
+# /supercycle-fix — Fix Review Findings
 
 Argument: **$ARGUMENTS**
 
@@ -84,5 +84,5 @@ Report:
 |----|----------|-------|-------------------------|
 
 ### Next Steps
-- /supercycle:merge <PR numbers>
+- /supercycle-merge <PR numbers>
 ```

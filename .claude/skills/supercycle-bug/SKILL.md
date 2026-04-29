@@ -4,7 +4,7 @@ description: "Bug intake: investigate root cause, create GH ticket, TDD fix, rev
 argument-hint: "<error log, description, or GH issue number>"
 ---
 
-# /supercycle:bug — Bug Intake & Fix
+# /supercycle-bug — Bug Intake & Fix
 
 Argument: **$ARGUMENTS**
 
@@ -19,7 +19,7 @@ fix → review → merge.
 
 ### If numeric (e.g. `210`, `#210`):
 
-Use `load-issue` from `../tracking.md`.
+Use `load-issue` from `../supercycle-common/tracking.md`.
 Use `read-step-comments` to pick up any prior context.
 
 ### If free-text (error log / description):
@@ -32,7 +32,7 @@ Parse the input for:
 
 ### Fetch SonarQube Context
 
-Use `fetch-sonar-context` from `../tracking.md`.
+Use `fetch-sonar-context` from `../supercycle-common/tracking.md`.
 
 ---
 

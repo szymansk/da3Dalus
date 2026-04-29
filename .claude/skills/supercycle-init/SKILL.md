@@ -3,7 +3,7 @@ name: supercycle-init
 description: "Check and install all tools, dependencies, and services required by the supercycle workflow"
 ---
 
-# /supercycle:init — Toolchain Setup & Verification
+# /supercycle-init — Toolchain Setup & Verification
 
 Argument: **$ARGUMENTS**
 
@@ -65,7 +65,7 @@ test -f .github/workflows/test.yml && echo "CI workflow configured" || echo "MIS
 
 ## Phase 5 — Tracking Labels
 
-Run the `ensure-labels` operation from `../tracking.md` to create
+Run the `ensure-labels` operation from `../supercycle-common/tracking.md` to create
 all tracking labels idempotently.
 
 ## Phase 6 — Smoke Test

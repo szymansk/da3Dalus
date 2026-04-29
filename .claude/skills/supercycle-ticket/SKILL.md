@@ -4,7 +4,7 @@ description: "Ticket intake: brainstorm with user, explore codebase, create refi
 argument-hint: "<free-form description of the idea, feature, bug, or task>"
 ---
 
-# /supercycle:ticket — Ticket Creation & Refinement
+# /supercycle-ticket — Ticket Creation & Refinement
 
 Argument: **$ARGUMENTS**
 
@@ -13,8 +13,8 @@ Brainstorm an idea into a refined GH Issue. This skill is
 to GitHub Issues via `gh`.
 
 For implementation after ticket creation, use:
-- `/supercycle:work` — brainstorm + implement + merge
-- `/supercycle:implement` — skip brainstorming, start coding
+- `/supercycle-work` — brainstorm + implement + merge
+- `/supercycle-implement` — skip brainstorming, start coding
 
 ---
 
@@ -79,13 +79,13 @@ gh issue create \
 
 ### 2. Post step comment and labels
 
-Use `post-step-comment` from `../tracking.md`:
+Use `post-step-comment` from `../supercycle-common/tracking.md`:
 - **Label:** `has-spec`
 - **Body:** Full spec / acceptance criteria from brainstorming output
 
 ### 3. Set status
 
-Use `rotate-status` from `../tracking.md`:
+Use `rotate-status` from `../supercycle-common/tracking.md`:
 - **New status:** `status:ready`
 
 ### 4. Report
@@ -93,5 +93,5 @@ Use `rotate-status` from `../tracking.md`:
 > "Created issue #N: <title> — <url>"
 >
 > **Next steps:**
-> - `/supercycle:work #N` — brainstorm implementation + build
-> - `/supercycle:implement #N` — skip brainstorming, start coding
+> - `/supercycle-work #N` — brainstorm implementation + build
+> - `/supercycle-implement #N` — skip brainstorming, start coding

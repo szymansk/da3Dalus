@@ -4,7 +4,7 @@ description: "Full supercycle: brainstorm, plan, implement, review, fix, merge �
 argument-hint: "<GH issue number> OR <feature description>"
 ---
 
-# /supercycle:work — Full Development Cycle
+# /supercycle-work — Full Development Cycle
 
 Argument: **$ARGUMENTS**
 
@@ -13,10 +13,10 @@ through all phases to merged PR. Delegates actual work to
 superpowers skills; handles GH tracking and SonarQube integration.
 
 For entering the cycle at a later phase:
-- `/supercycle:implement` — skip brainstorming
-- `/supercycle:review` — review existing PRs
-- `/supercycle:fix` — fix review findings
-- `/supercycle:merge` — CI check + merge
+- `/supercycle-implement` — skip brainstorming
+- `/supercycle-review` — review existing PRs
+- `/supercycle-fix` — fix review findings
+- `/supercycle-merge` — CI check + merge
 
 ---
 
@@ -26,7 +26,7 @@ For entering the cycle at a later phase:
 
 **If numeric (e.g. `187`, `#187`):**
 
-Use `load-issue` from `../tracking.md` to fetch the issue.
+Use `load-issue` from `../supercycle-common/tracking.md` to fetch the issue.
 Use `read-step-comments` to pick up any prior context.
 
 **If free-text:** Accept as brainstorming input. A GH Issue will
@@ -34,7 +34,7 @@ be created during the brainstorming phase.
 
 ### 2. Fetch SonarQube Context
 
-Use `fetch-sonar-context` from `../tracking.md`. If the issue body
+Use `fetch-sonar-context` from `../supercycle-common/tracking.md`. If the issue body
 mentions SonarQube rule IDs or sonarcloud links, fetch current
 findings. Pass these to the brainstorming skill as context.
 

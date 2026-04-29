@@ -4,7 +4,7 @@ description: "Skip brainstorming — go straight to implementation of a GH issue
 argument-hint: "<GH issue number(s), comma-separated: #188, #190>"
 ---
 
-# /supercycle:implement — Direct Implementation
+# /supercycle-implement — Direct Implementation
 
 Argument: **$ARGUMENTS**
 
@@ -20,13 +20,13 @@ spec and/or plan.
 
 For each issue number in arguments:
 
-Use `load-issue` from `../tracking.md`.
+Use `load-issue` from `../supercycle-common/tracking.md`.
 Use `read-step-comments` with filter `has-spec`, `has-plan` to
 pick up spec and plan from prior phases.
 
 ### 2. Fetch SonarQube Context
 
-Use `fetch-sonar-context` from `../tracking.md`.
+Use `fetch-sonar-context` from `../supercycle-common/tracking.md`.
 
 ### 3. Set Status
 

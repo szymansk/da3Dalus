@@ -3,7 +3,7 @@ name: supercycle-status
 description: "Project health dashboard — GH issues, SonarQube status, test health, and next-phase recommendations"
 ---
 
-# /supercycle:status — Project Health Dashboard
+# /supercycle-status — Project Health Dashboard
 
 Argument: **$ARGUMENTS**
 

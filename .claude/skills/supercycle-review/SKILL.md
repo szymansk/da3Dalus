@@ -4,7 +4,7 @@ description: "Comprehensive PR review: dispatch specialized review agents, check
 argument-hint: "<PR numbers, comma-separated: 200, 201>"
 ---
 
-# /supercycle:review — Comprehensive PR Review
+# /supercycle-review — Comprehensive PR Review
 
 Argument: **$ARGUMENTS**
 
@@ -19,7 +19,7 @@ task completeness and aggregates findings by severity.
 
 For each PR number in arguments:
 
-Use `load-pr` from `../tracking.md`.
+Use `load-pr` from `../supercycle-common/tracking.md`.
 
 ### 2. Extract Linked Issues
 
@@ -59,7 +59,7 @@ For each unchecked task, classify:
 | Category | Criteria | Action |
 |----------|----------|--------|
 | **Done in PR** | PR diff clearly implements this | Check the box — update issue body |
-| **Agent-fixable** | Can be fixed without human judgment | Add to fix list for `/supercycle:fix` |
+| **Agent-fixable** | Can be fixed without human judgment | Add to fix list for `/supercycle-fix` |
 | **Human Only** | Requires human judgment, manual testing, or a decision | Mark `🧑 Human Only`, assign to user, add comment |
 
 For "Human Only" tasks:
@@ -97,6 +97,6 @@ Report:
 PR #N: APPROVED / CHANGES REQUESTED / BLOCKED ON HUMAN
 
 ### Next Steps
-- /supercycle:fix <PRs with findings>
-- /supercycle:merge <approved PRs>
+- /supercycle-fix <PRs with findings>
+- /supercycle-merge <approved PRs>
 ```

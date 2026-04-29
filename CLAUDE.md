@@ -41,7 +41,7 @@ current state and the steps to proceed with.
 ## Development Workflow — Supercycle
 
 **The primary development workflow is the Supercycle** — a set of
-project-local skills (`.claude/skills/supercycle/`) that orchestrate
+project-local skills (`.claude/skills/supercycle-*/`) that orchestrate
 the full lifecycle from issue to merged PR. They are thin
 orchestrators: supercycle handles GH tracking + SonarQube; superpowers
 skills do the actual work.
@@ -49,15 +49,15 @@ skills do the actual work.
 ### Supercycle Skills (preferred)
 
 ```
-/supercycle:status               ← Project health dashboard — issues, SonarQube, recommendations
-/supercycle:init                 ← Check & install all required tools and dependencies
-/supercycle:ticket <description> ← Brainstorm + create refined GH Issue (read-only, no code changes)
-/supercycle:work #187            ← Full cycle: brainstorm → implement → review → merge
-/supercycle:bug <error log>      ← Bug intake: investigate → ticket → TDD fix → merge
-/supercycle:implement #188,#190  ← Skip brainstorming, implementation from spec/plan
-/supercycle:review 200, 201      ← Dispatch multi-agent review on open PRs
-/supercycle:fix 201              ← Fix review findings on PR branches
-/supercycle:merge 200, 201       ← CI + SonarQube quality gate + merge
+/supercycle-status               ← Project health dashboard — issues, SonarQube, recommendations
+/supercycle-init                 ← Check & install all required tools and dependencies
+/supercycle-ticket <description> ← Brainstorm + create refined GH Issue (read-only, no code changes)
+/supercycle-work #187            ← Full cycle: brainstorm → implement → review → merge
+/supercycle-bug <error log>      ← Bug intake: investigate → ticket → TDD fix → merge
+/supercycle-implement #188,#190  ← Skip brainstorming, implementation from spec/plan
+/supercycle-review 200, 201      ← Dispatch multi-agent review on open PRs
+/supercycle-fix 201              ← Fix review findings on PR branches
+/supercycle-merge 200, 201       ← CI + SonarQube quality gate + merge
 ```
 
 **Architecture:** Each skill follows GATHER → DELEGATE → TRACK:
@@ -71,9 +71,9 @@ pick up context via `read-step-comments` even across sessions.
 
 **Flow:**
 ```
-/supercycle:ticket → /brainstorming → GH Issue + has-spec
+/supercycle-ticket → /brainstorming → GH Issue + has-spec
 
-/supercycle:work
+/supercycle-work
   ├─ /brainstorming → USER GATE → has-spec
   ├─ /writing-plans → has-plan
   ├─ /using-git-worktrees
@@ -82,7 +82,7 @@ pick up context via `read-step-comments` even across sessions.
   ├─ IF findings: /receiving-code-review + /sonarqube:sonar-fix-issue → has-fix
   └─ /finishing-a-development-branch → status:merged
 
-/supercycle:bug (auto-chains, no user gates)
+/supercycle-bug (auto-chains, no user gates)
   ├─ /systematic-debugging → has-root-cause
   ├─ GH Issue creation
   ├─ /using-git-worktrees
@@ -93,13 +93,13 @@ pick up context via `read-step-comments` even across sessions.
 ```
 
 **When to use which entry point:**
-- **`/supercycle:ticket`** — Turn an idea into a refined GH Issue (no code changes)
-- **`/supercycle:work`** — New feature, needs discussion with user
-- **`/supercycle:bug`** — Bug report (error log or ticket) — fast-track to fix
-- **`/supercycle:implement`** — Issue is clear, skip brainstorming
-- **`/supercycle:review`** — PRs exist, need automated review
-- **`/supercycle:fix`** — Review found issues to address
-- **`/supercycle:merge`** — PRs approved, ready to merge
+- **`/supercycle-ticket`** — Turn an idea into a refined GH Issue (no code changes)
+- **`/supercycle-work`** — New feature, needs discussion with user
+- **`/supercycle-bug`** — Bug report (error log or ticket) — fast-track to fix
+- **`/supercycle-implement`** — Issue is clear, skip brainstorming
+- **`/supercycle-review`** — PRs exist, need automated review
+- **`/supercycle-fix`** — Review found issues to address
+- **`/supercycle-merge`** — PRs approved, ready to merge
 
 ### Underlying Skills (used within the supercycle)
 
@@ -147,7 +147,7 @@ You may also invoke them directly for granular control:
    a bug. Fix the production code. NEVER weaken assertions, delete
    tests, add `@skip`, or rewrite step definitions to bypass the UI.
    A green suite from weakened tests is worthless.
-5. **No bug fix without a GH ticket** — `/supercycle:bug` must
+5. **No bug fix without a GH ticket** — `/supercycle-bug` must
    create a GitHub Issue (report ticket number to user) after root
    cause analysis and before any code changes.
 
@@ -237,11 +237,11 @@ management: features, bugs, epics, and technical tasks.
 
 ```
 1. GitHub Issue created (by human or agent)
-2. /supercycle:work #N        ← brainstorm + implement + PR
-   OR /supercycle:implement #N  ← if issue is already clear
-3. /supercycle:review <PR>    ← task completeness + code review
-4. /supercycle:fix <PR>       ← fix findings (if any)
-5. /supercycle:merge <PR>     ← CI check + merge
+2. /supercycle-work #N        ← brainstorm + implement + PR
+   OR /supercycle-implement #N  ← if issue is already clear
+3. /supercycle-review <PR>    ← task completeness + code review
+4. /supercycle-fix <PR>       ← fix findings (if any)
+5. /supercycle-merge <PR>     ← CI check + merge
 6. GH Issue auto-closes via "Closes #N" in PR
 ```
 
@@ -285,7 +285,7 @@ convention. For manual work, use the same pattern.
 ## Session Completion
 
 **Work is NOT complete until `git push` succeeds.**
-`/supercycle:merge` handles CI checks, rebase, and push. For manual
+`/supercycle-merge` handles CI checks, rebase, and push. For manual
 work: `git push` before saying "done". If push fails, resolve and retry.
 **NEVER** say "ready to push when you are" — YOU must push.
 
