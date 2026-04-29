@@ -31,7 +31,7 @@ function isActive(href: string, pathname: string) {
 
 export function Header() {
   const pathname = usePathname();
-  const { aeroplaneId, selectedWing, selectedXsecIndex, setAeroplaneId } = useAeroplaneContext();
+  const { aeroplaneId, selectedWing, selectedXsecIndex, openPicker } = useAeroplaneContext();
   const { aeroplanes } = useAeroplanes();
   const aeroplaneName = aeroplanes.find((a) => a.id === aeroplaneId)?.name ?? "da3Dalus";
 
@@ -40,7 +40,7 @@ export function Header() {
       {/* Left cluster */}
       <div className="flex items-center gap-3">
         <button
-          onClick={() => setAeroplaneId(null)}
+          onClick={openPicker}
           className="flex items-center gap-2 rounded-full bg-sidebar-accent px-3 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground hover:bg-sidebar-accent/80"
           title="Switch aeroplane"
         >

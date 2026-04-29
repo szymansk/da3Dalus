@@ -2,6 +2,7 @@ stls/
 *.stl
 *.zip
 *.stp
+.worktrees/
 
 # Created by .ignore support plugin (hsz.mobi)
 ### Python template

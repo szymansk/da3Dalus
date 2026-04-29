@@ -15,17 +15,21 @@ export type TreeMode = "wingconfig" | "asb" | "fuselage";
 
 interface AeroplaneContextValue {
   aeroplaneId: string | null;
+  hydrated: boolean;
   selectedWing: string | null;
   selectedXsecIndex: number | null;
   selectedFuselage: string | null;
   selectedFuselageXsecIndex: number | null;
   treeMode: TreeMode;
+  pickerOpen: boolean;
   setAeroplaneId: (id: string | null) => void;
   selectWing: (name: string | null) => void;
   selectXsec: (index: number | null) => void;
   selectFuselage: (name: string | null) => void;
   selectFuselageXsec: (index: number | null) => void;
   setTreeMode: (mode: TreeMode) => void;
+  openPicker: () => void;
+  closePicker: () => void;
 }
 
 const Ctx = createContext<AeroplaneContextValue | null>(null);
@@ -43,6 +47,10 @@ export function AeroplaneProvider({ children }: Readonly<{ children: ReactNode }
   const [selectedFuselage, setSelectedFuselage] = useState<string | null>(null);
   const [selectedFuselageXsecIndex, setSelectedFuselageXsecIndex] = useState<number | null>(null);
   const [treeMode, setTreeMode] = useState<TreeMode>("wingconfig");
+  const [hydrated, setHydrated] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const openPicker = useCallback(() => setPickerOpen(true), []);
+  const closePicker = useCallback(() => setPickerOpen(false), []);
 
   const setAeroplaneId = useCallback(
     (id: string | null) => {
@@ -67,6 +75,7 @@ export function AeroplaneProvider({ children }: Readonly<{ children: ReactNode }
       setAeroplaneIdRaw(resolved);
       localStorage.setItem(STORAGE_KEY, resolved);
     }
+    setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -102,30 +111,38 @@ export function AeroplaneProvider({ children }: Readonly<{ children: ReactNode }
 
   const ctxValue = useMemo(() => ({
     aeroplaneId,
+    hydrated,
     selectedWing,
     selectedXsecIndex,
     selectedFuselage,
     selectedFuselageXsecIndex,
     treeMode,
+    pickerOpen,
     setAeroplaneId,
     selectWing,
     selectXsec,
     selectFuselage,
     selectFuselageXsec,
     setTreeMode,
+    openPicker,
+    closePicker,
   }), [
     aeroplaneId,
+    hydrated,
     selectedWing,
     selectedXsecIndex,
     selectedFuselage,
     selectedFuselageXsecIndex,
     treeMode,
+    pickerOpen,
     setAeroplaneId,
     selectWing,
     selectXsec,
     selectFuselage,
     selectFuselageXsec,
     setTreeMode,
+    openPicker,
+    closePicker,
   ]);
 
   return (

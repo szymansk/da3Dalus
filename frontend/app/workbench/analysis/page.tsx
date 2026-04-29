@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { useDialog } from "@/hooks/useDialog";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
@@ -12,7 +12,7 @@ import { AnalysisViewerPanel, type Tab } from "@/components/workbench/AnalysisVi
 import { AnalysisConfigPanel } from "@/components/workbench/AnalysisConfigPanel";
 
 export default function AnalysisPage() {
-  const { aeroplaneId, selectedWing } = useAeroplaneContext();
+  const { aeroplaneId, hydrated, selectedWing, openPicker } = useAeroplaneContext();
   const analysis = useAnalysis(aeroplaneId);
   const stripForces = useStripForces(aeroplaneId);
   const streamlines = useStreamlines(aeroplaneId);
@@ -28,6 +28,18 @@ export default function AnalysisPage() {
     "Streamlines": "Streamlines Configuration",
   };
   const modalTitle = modalTitleByTab[activeTab];
+
+  useEffect(() => {
+    if (hydrated && !aeroplaneId) openPicker();
+  }, [hydrated, aeroplaneId, openPicker]);
+
+  if (!aeroplaneId) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <span className="text-[13px] text-muted-foreground">No aeroplane selected</span>
+      </div>
+    );
+  }
 
   return (
     <>

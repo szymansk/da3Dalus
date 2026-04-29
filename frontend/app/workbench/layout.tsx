@@ -4,6 +4,7 @@ import { CopilotStrip } from "@/components/workbench/CopilotStrip";
 import { AeroplaneProvider } from "@/components/workbench/AeroplaneContext";
 import { UnsavedChangesProvider } from "@/components/workbench/UnsavedChangesContext";
 import { UnsavedChangesModal } from "@/components/workbench/UnsavedChangesModal";
+import { AeroplanePickerHost } from "@/components/workbench/AeroplanePickerHost";
 
 export default function WorkbenchLayout({
   children,
@@ -22,6 +23,7 @@ export default function WorkbenchLayout({
             <CopilotStrip />
           </div>
           <UnsavedChangesModal />
+          <AeroplanePickerHost />
         </UnsavedChangesProvider>
       </AeroplaneProvider>
     </Suspense>
