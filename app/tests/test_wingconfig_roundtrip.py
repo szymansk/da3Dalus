@@ -474,7 +474,7 @@ class TestTedPropagation:
         assert asb_schema.x_secs[3].control_surface is None
 
     def test_ted_survives_full_roundtrip_on_wingconfig(self):
-        """GET path: after roundtrip, only the TED-bearing segment has a TED in WingConfig."""
+        """Converter roundtrip: only the TED-bearing segment has a TED in WingConfig."""
         wing_data = _wing(
             _seg(root_chord=300, tip_chord=280, length=500),
             _seg(
@@ -491,8 +491,11 @@ class TestTedPropagation:
 
         assert wc2.segments[0].trailing_edge_device is None
         assert wc2.segments[1].trailing_edge_device is not None
-        assert wc2.segments[1].trailing_edge_device.name == "aileron"
-        assert wc2.segments[1].trailing_edge_device.rel_chord_root == pytest.approx(0.75)
+        ted = wc2.segments[1].trailing_edge_device
+        assert ted.name == "aileron"
+        assert ted.rel_chord_root == pytest.approx(0.75)
+        assert ted.rel_chord_tip == pytest.approx(0.75)
+        assert ted.symmetric is False
         assert wc2.segments[2].trailing_edge_device is None
 
     def test_ted_on_first_segment(self):
@@ -558,6 +561,33 @@ class TestTedPropagation:
         assert wc2.segments[1].trailing_edge_device is None
         assert wc2.segments[2].trailing_edge_device is not None
         assert wc2.segments[2].trailing_edge_device.name == "aileron"
+        assert wc2.segments[3].trailing_edge_device is None
+
+    def test_adjacent_teds_do_not_cross_contaminate(self):
+        """Adjacent TED-bearing segments must each retain their own TED."""
+        wing_data = _wing(
+            _seg(root_chord=300, tip_chord=280, length=500),
+            _seg(
+                root_chord=280, tip_chord=250, length=400,
+                trailing_edge_device=TrailingEdgeDevice(
+                    name="flap", rel_chord_root=0.7, rel_chord_tip=0.7,
+                ),
+            ),
+            _seg(
+                root_chord=250, tip_chord=220, length=300,
+                trailing_edge_device=TrailingEdgeDevice(
+                    name="aileron", rel_chord_root=0.8, rel_chord_tip=0.8,
+                ),
+            ),
+            _seg(root_chord=220, tip_chord=200, length=200),
+        )
+
+        _, wc2 = _roundtrip(wing_data)
+        assert wc2.segments[0].trailing_edge_device is None
+        assert wc2.segments[1].trailing_edge_device.name == "flap"
+        assert wc2.segments[1].trailing_edge_device.rel_chord_root == pytest.approx(0.7)
+        assert wc2.segments[2].trailing_edge_device.name == "aileron"
+        assert wc2.segments[2].trailing_edge_device.rel_chord_root == pytest.approx(0.8)
         assert wc2.segments[3].trailing_edge_device is None
 
     def test_ted_stable_over_repeated_saves(self):
