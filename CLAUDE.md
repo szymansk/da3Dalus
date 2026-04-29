@@ -41,65 +41,55 @@ current state and the steps to proceed with.
 ## Development Workflow — Supercycle
 
 **The primary development workflow is the Supercycle** — a set of
-slash commands that orchestrate the full lifecycle from issue to
-merged PR. Use these commands as the default entry point for all
-non-trivial work.
+project-local skills (`.claude/skills/supercycle/`) that orchestrate
+the full lifecycle from issue to merged PR. They are thin
+orchestrators: supercycle handles GH tracking + SonarQube; superpowers
+skills do the actual work.
 
-### Supercycle Commands (preferred)
+### Supercycle Skills (preferred)
 
 ```
 /supercycle:status               ← Project health dashboard — issues, SonarQube, recommendations
 /supercycle:init                 ← Check & install all required tools and dependencies
 /supercycle:ticket <description> ← Brainstorm + create refined GH Issue (read-only, no code changes)
-/supercycle:work #187          ← Full cycle: brainstorm → implement → review → merge
-/supercycle:bug <error log>    ← Bug intake: investigate → ticket → TDD fix → merge
-/supercycle:implement #188,#190  ← Skip brainstorming, parallel implementation
-/supercycle:review 200, 201      ← Dispatch code review agents on open PRs
+/supercycle:work #187            ← Full cycle: brainstorm → implement → review → merge
+/supercycle:bug <error log>      ← Bug intake: investigate → ticket → TDD fix → merge
+/supercycle:implement #188,#190  ← Skip brainstorming, implementation from spec/plan
+/supercycle:review 200, 201      ← Dispatch multi-agent review on open PRs
 /supercycle:fix 201              ← Fix review findings on PR branches
-/supercycle:merge 200, 201       ← CI check + sequential merge with rebase
+/supercycle:merge 200, 201       ← CI + SonarQube quality gate + merge
 ```
+
+**Architecture:** Each skill follows GATHER → DELEGATE → TRACK:
+- **GATHER** — Load GH issue, read prior step comments, fetch SonarQube context
+- **DELEGATE** — Invoke superpowers skills with gathered context
+- **TRACK** — Post structured GH comments (`has-spec`, `has-plan`, `has-review`, etc.), rotate status labels
+
+GH Issue comments serve as cross-session memory — each phase writes
+its artifact (spec, plan, review findings) so downstream phases can
+pick up context via `read-step-comments` even across sessions.
 
 **Flow:**
 ```
-/supercycle:ticket <description>
-  ├─ Ask type (Feature/Bug/Task) + depth (Light/Medium/Full)
-  ├─ Codebase exploration (code-base-explorer agent)
-  ├─ Brainstorming with user
-  ├─ Create GH Issue (after user approval)
-  ├─ Autonomous refinement subagent
-  │    ├─ Structure, acceptance criteria, codebase refs
-  │    ├─ Scope guard, dependencies, effort estimate
-  │    └─ Labels: has-spec, status:ready
-  └─ Report (ticket URL + next steps)
+/supercycle:ticket → /brainstorming → GH Issue + has-spec
 
-/supercycle:work (or :implement)
-  ├─ Brainstorming with user (work only)
-  ├─ GH Issue creation/refinement
-  ├─ Parallelization analysis (file-overlap matrix)
-  ├─ Worktree agents (parallel implementation)
-  │
-  ├─ /supercycle:review
-  │    ├─ Issue task completeness check
-  │    │    ├─ ✅ Done in PR → check off
-  │    │    ├─ 🔧 Agent-fixable → /supercycle:fix
-  │    │    └─ 🧑 Human Only → assign to user + comment
-  │    └─ Code review agents (code-reviewer + conditional)
-  │
-  ├─ /supercycle:fix (if findings)
-  │
-  └─ /supercycle:merge
-       ├─ CI + SonarQube quality gate analysis
-       └─ Sequential merge with rebase conflict resolution
+/supercycle:work
+  ├─ /brainstorming → USER GATE → has-spec
+  ├─ /writing-plans → has-plan
+  ├─ /using-git-worktrees
+  ├─ /subagent-driven-development (TDD embedded per task)
+  ├─ /pr-review-toolkit:review-pr → has-review + has-pr
+  ├─ IF findings: /receiving-code-review + /sonarqube:sonar-fix-issue → has-fix
+  └─ /finishing-a-development-branch → status:merged
 
-/supercycle:bug <error log or #N>
-  ├─ Root cause investigation (/systematic-debugging)
+/supercycle:bug (auto-chains, no user gates)
+  ├─ /systematic-debugging → has-root-cause
   ├─ GH Issue creation
-  ├─ TDD fix (/test-driven-development)
-  │    ├─ RED: failing test that reproduces bug
-  │    ├─ Fix root cause
-  │    └─ GREEN: verify (/verification-before-completion)
-  ├─ Code review
-  └─ CI check + merge
+  ├─ /using-git-worktrees
+  ├─ /test-driven-development (RED → GREEN → REFACTOR) → has-reproduction
+  ├─ /verification-before-completion
+  ├─ /pr-review-toolkit:review-pr → has-review + has-pr
+  └─ /finishing-a-development-branch → status:merged
 ```
 
 **When to use which entry point:**
@@ -113,7 +103,7 @@ non-trivial work.
 
 ### Underlying Skills (used within the supercycle)
 
-The supercycle commands orchestrate these skills internally.
+The supercycle skills orchestrate these superpowers skills internally.
 You may also invoke them directly for granular control:
 
 | Phase | Skill | When |
@@ -124,7 +114,9 @@ You may also invoke them directly for granular control:
 | Implementation | `/systematic-debugging` | Any bug or test failure |
 | Implementation | `/subagent-driven-development` | Multi-task parallel execution |
 | Quality | `/verification-before-completion` | Before claiming work is done |
-| Quality | `/requesting-code-review` | Dispatch review agent on diff |
+| Quality | `/requesting-code-review` | Quick single-agent review between tasks |
+| Quality | `/pr-review-toolkit:review-pr` | Comprehensive multi-agent review before merge |
+| Quality | `/receiving-code-review` | Evaluate review findings with technical rigor |
 | Completion | `/finishing-a-development-branch` | All tasks pass, ready to merge |
 
 **Backend (Python):**
