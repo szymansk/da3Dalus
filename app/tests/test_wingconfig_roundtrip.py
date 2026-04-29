@@ -473,6 +473,93 @@ class TestTedPropagation:
         assert asb_schema.x_secs[2].control_surface is None
         assert asb_schema.x_secs[3].control_surface is None
 
+    def test_ted_survives_full_roundtrip_on_wingconfig(self):
+        """GET path: after roundtrip, only the TED-bearing segment has a TED in WingConfig."""
+        wing_data = _wing(
+            _seg(root_chord=300, tip_chord=280, length=500),
+            _seg(
+                root_chord=280, tip_chord=250, length=400,
+                trailing_edge_device=TrailingEdgeDevice(
+                    name="aileron", rel_chord_root=0.75, rel_chord_tip=0.75,
+                    symmetric=False,
+                ),
+            ),
+            _seg(root_chord=250, tip_chord=200, length=300),
+        )
+
+        _, wc2 = _roundtrip(wing_data)
+
+        assert wc2.segments[0].trailing_edge_device is None
+        assert wc2.segments[1].trailing_edge_device is not None
+        assert wc2.segments[1].trailing_edge_device.name == "aileron"
+        assert wc2.segments[1].trailing_edge_device.rel_chord_root == pytest.approx(0.75)
+        assert wc2.segments[2].trailing_edge_device is None
+
+    def test_ted_on_first_segment(self):
+        """Boundary: TED on segment 0 must not leak forward."""
+        wing_data = _wing(
+            _seg(
+                root_chord=300, tip_chord=280, length=500,
+                trailing_edge_device=TrailingEdgeDevice(
+                    name="flap", rel_chord_root=0.7, rel_chord_tip=0.7,
+                ),
+            ),
+            _seg(root_chord=280, tip_chord=250, length=400),
+            _seg(root_chord=250, tip_chord=200, length=300),
+        )
+
+        _, wc2 = _roundtrip(wing_data)
+        assert wc2.segments[0].trailing_edge_device is not None
+        assert wc2.segments[0].trailing_edge_device.name == "flap"
+        assert wc2.segments[1].trailing_edge_device is None
+        assert wc2.segments[2].trailing_edge_device is None
+
+    def test_ted_on_last_segment(self):
+        """Boundary: TED on last segment must not leak backward."""
+        wing_data = _wing(
+            _seg(root_chord=300, tip_chord=280, length=500),
+            _seg(root_chord=280, tip_chord=250, length=400),
+            _seg(
+                root_chord=250, tip_chord=200, length=300,
+                trailing_edge_device=TrailingEdgeDevice(
+                    name="elevator", rel_chord_root=0.8, rel_chord_tip=0.8,
+                ),
+            ),
+        )
+
+        _, wc2 = _roundtrip(wing_data)
+        assert wc2.segments[0].trailing_edge_device is None
+        assert wc2.segments[1].trailing_edge_device is None
+        assert wc2.segments[2].trailing_edge_device is not None
+        assert wc2.segments[2].trailing_edge_device.name == "elevator"
+
+    def test_multiple_non_adjacent_teds(self):
+        """TEDs on segments 0 and 2 (non-adjacent) must not spread to 1 or 3."""
+        wing_data = _wing(
+            _seg(
+                root_chord=300, tip_chord=280, length=500,
+                trailing_edge_device=TrailingEdgeDevice(
+                    name="flap", rel_chord_root=0.7, rel_chord_tip=0.7,
+                ),
+            ),
+            _seg(root_chord=280, tip_chord=250, length=400),
+            _seg(
+                root_chord=250, tip_chord=220, length=300,
+                trailing_edge_device=TrailingEdgeDevice(
+                    name="aileron", rel_chord_root=0.8, rel_chord_tip=0.8,
+                ),
+            ),
+            _seg(root_chord=220, tip_chord=200, length=200),
+        )
+
+        _, wc2 = _roundtrip(wing_data)
+        assert wc2.segments[0].trailing_edge_device is not None
+        assert wc2.segments[0].trailing_edge_device.name == "flap"
+        assert wc2.segments[1].trailing_edge_device is None
+        assert wc2.segments[2].trailing_edge_device is not None
+        assert wc2.segments[2].trailing_edge_device.name == "aileron"
+        assert wc2.segments[3].trailing_edge_device is None
+
     def test_ted_stable_over_repeated_saves(self):
         """Repeated roundtrips must not grow TEDs onto new segments."""
         ted = TrailingEdgeDevice(
