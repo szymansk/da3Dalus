@@ -265,3 +265,8 @@ skills-lock.json
 
 # Superpowers brainstorming session data
 .superpowers/
+
+# AI session artifacts (patterns, plans, screenshots)
+patterns/
+planning/
+screenshots/
