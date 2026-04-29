@@ -59,7 +59,7 @@ function toggleInSet<T>(prev: Set<T>, value: T): Set<T> {
 }
 
 export default function ConstructionPlansPage() {
-  const { aeroplaneId } = useAeroplaneContext();
+  const { aeroplaneId, openPicker } = useAeroplaneContext();
   const { creators, error: creatorsError } = useCreators();
 
   // ── Data fetching ─────────────────────────────────────────────
@@ -462,12 +462,14 @@ export default function ConstructionPlansPage() {
 
   // ── No-aeroplane guard ────────────────────────────────────────
 
+  useEffect(() => {
+    if (!aeroplaneId) openPicker();
+  }, [aeroplaneId, openPicker]);
+
   if (!aeroplaneId) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-[13px] text-muted-foreground">
-          Select an aeroplane to view its construction plans.
-        </p>
+        <span className="text-[13px] text-muted-foreground">No aeroplane selected</span>
       </div>
     );
   }
