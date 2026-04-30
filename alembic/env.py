@@ -35,6 +35,12 @@ import app.models.component
 import app.models.component_type
 import app.models.construction_part
 import app.models.tessellation_cache
+import app.models.airfoil
+import app.models.analysismodels
+import app.models.component_tree
+import app.models.component_type
+import app.models.construction_plan
+import app.models.avl_geometry_file
 
 target_metadata = Base.metadata
 
