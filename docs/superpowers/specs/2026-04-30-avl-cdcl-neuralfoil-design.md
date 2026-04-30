@@ -202,6 +202,32 @@ generate_avl_content()
   → return repr(avl_file)
 ```
 
+## Unit handling
+
+AVL requires all lengths in a consistent unit ("Lunit"). In da3Dalus,
+the AVL file uses **metres**. The topology/schema layer uses **mm**.
+
+| AVL field | Unit in file | Source unit | Conversion |
+|-----------|-------------|-------------|------------|
+| Sref | m² | mm² | ×0.000001 |
+| Cref, Bref | m | mm | ×0.001 |
+| Xref, Yref, Zref | m | mm | ×0.001 |
+| Xle, Yle, Zle | m | mm | ×0.001 |
+| Chord | m | mm | ×0.001 |
+| Ainc | degrees | degrees | none |
+| Mach | dimensionless | — | none |
+| CDCL (CL, CD) | dimensionless | — | none |
+| CLAF | dimensionless | — | none |
+| CONTROL Xhinge | x/c (0–1) | x/c (0–1) | none |
+| CONTROL XYZhvec | direction vector | — | none |
+
+The generator must apply mm→m conversion for all geometry lengths.
+This is currently handled by the converters (`scale=0.001`); the new
+generator inherits this responsibility.
+
+**Sref scales quadratically** (mm²→m² = ×10⁻⁶), all other lengths
+scale linearly (×10⁻³). This is the most common source of unit bugs.
+
 ## What replaces `asb.AVL.write_avl()`
 
 The new `AvlGeometryFile` replaces the Aerosandbox file writer. The
@@ -324,10 +350,19 @@ Cosine spacing at 2×8 is more accurate than uniform at 8×32.
 - [ ] `SpacingConfig` is configurable with sensible defaults
 - [ ] `auto_optimise=False` uses base values without modification
 
+### Unit handling
+- [ ] All geometry lengths (Sref, Cref, Bref, XYZref, Xle/Yle/Zle,
+      Chord) are converted from mm to metres
+- [ ] Sref is converted mm²→m² (×10⁻⁶, quadratic scaling)
+- [ ] Dimensionless values (CDCL, CLAF, Mach, Xhinge) are passed
+      through without conversion
+- [ ] Unit conversion is tested with known geometry
+
 ### Testing
 - [ ] Existing tests pass
 - [ ] New tests cover: dataclass serialisation, CDCL fitting, cache
-      behaviour, user-edit preservation, spacing optimisation rules
+      behaviour, user-edit preservation, spacing optimisation rules,
+      unit conversion
 - [ ] Test coverage >80%
 
 ## Out of Scope
