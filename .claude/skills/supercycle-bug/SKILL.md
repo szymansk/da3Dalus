@@ -34,6 +34,13 @@ Parse the input for:
 
 Use `fetch-sonar-context` from `../supercycle-common/tracking.md`.
 
+### Question Protocol
+
+**Any question from agent to user** MUST be posted to the GH Issue
+first using `post-question-comment` from
+`../supercycle-common/tracking.md`. Post to GH, then ask in
+conversation. Remove `has-question` label after answer.
+
 ---
 
 ## DELEGATE (auto-chain, no user gates)
@@ -77,6 +84,9 @@ After RED:
 **GREEN:** Write minimal fix for root cause.
 
 **REFACTOR:** Clean up.
+
+**Context:** Run `/compact` before proceeding — root cause and
+reproduction are persisted in GH comments.
 
 ### Phase 5 — Verification
 

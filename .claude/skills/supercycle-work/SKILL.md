@@ -42,6 +42,14 @@ findings. Pass these to the brainstorming skill as context.
 
 Use `rotate-status` → `status:brainstorming`
 
+### 4. Question Protocol
+
+**Any question from agent to user — in any phase or delegated
+skill — MUST be posted to the GH Issue first** using
+`post-question-comment` from `../supercycle-common/tracking.md`.
+Post to GH, then ask in conversation. After the user answers,
+remove the `has-question` label.
+
 ---
 
 ## DELEGATE
@@ -73,6 +81,9 @@ After brainstorming completes:
 
 Do NOT proceed until the user explicitly confirms.
 
+**Context:** Run `/compact` before proceeding — brainstorming
+context is persisted in the `has-spec` comment and the spec file.
+
 ### Phase 3 — Planning
 
 Invoke `/writing-plans` with:
@@ -87,6 +98,9 @@ After planning completes:
   with a `github-blob-link` to the plan file on the feature branch
 - Use `rotate-status` → `status:planning`
 
+**Context:** Run `/compact` before proceeding — planning
+context is persisted in the `has-plan` comment and the plan file.
+
 ### Phase 4 — Implementation
 
 Invoke `/subagent-driven-development` with:
@@ -95,6 +109,9 @@ Invoke `/subagent-driven-development` with:
 - Per-task review via `/requesting-code-review`
 - If `detect-frontend` is true: frontend subagents follow
   `/vercel-react-best-practices` and `/vercel-composition-patterns`
+
+**Context:** Run `/compact` before proceeding — implementation
+produced commits and the PR; detailed task context is no longer needed.
 
 ### Phase 5 — Comprehensive Review
 
@@ -121,6 +138,9 @@ If the review reported findings:
 
 After fixing:
 - Use `post-step-comment`: `has-fix` — fix report with rationale
+
+**Context:** Run `/compact` before proceeding — fix details are
+persisted in the `has-fix` comment.
 
 ### Phase 7 — Finish
 

@@ -32,6 +32,13 @@ Use `fetch-sonar-context` from `../supercycle-common/tracking.md`.
 
 Use `rotate-status` → `status:implementing` for each issue.
 
+### 4. Question Protocol
+
+**Any question from agent to user** MUST be posted to the GH Issue
+first using `post-question-comment` from
+`../supercycle-common/tracking.md`. Post to GH, then ask in
+conversation. Remove `has-question` label after answer.
+
 ---
 
 ## DELEGATE
@@ -48,6 +55,9 @@ Invoke `/subagent-driven-development` with:
 - Per-task review via `/requesting-code-review`
 - If `detect-frontend` is true: frontend subagents follow
   `/vercel-react-best-practices` and `/vercel-composition-patterns`
+
+**Context:** Run `/compact` before proceeding — implementation
+context is in the commits and PR.
 
 ### Phase 3 — Comprehensive Review
 

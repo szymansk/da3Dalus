@@ -44,6 +44,17 @@ Map the choice to:
 > 2. **Medium** — + propose 2-3 approaches with trade-offs
 > 3. **Full** — + multiple clarifying questions, iterative refinement
 
+### 3. Question Protocol
+
+**Any question from agent to user** — including clarifying questions
+during brainstorming — MUST be posted to the GH Issue first using
+`post-question-comment` from `../supercycle-common/tracking.md`.
+Post to GH, then ask in conversation. Remove `has-question` label
+after answer.
+
+**Note:** If no GH Issue exists yet (free-text input), questions
+are asked in conversation only until the issue is created in TRACK.
+
 ---
 
 ## DELEGATE

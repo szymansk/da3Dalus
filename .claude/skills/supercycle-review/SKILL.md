@@ -34,6 +34,13 @@ Use `read-step-comments` on linked issues with filters
 
 Use `rotate-status` → `status:in-review` for each linked issue.
 
+### 5. Question Protocol
+
+**Any question from agent to user** MUST be posted to the linked
+GH Issue first using `post-question-comment` from
+`../supercycle-common/tracking.md`. Post to GH, then ask in
+conversation. Remove `has-question` label after answer.
+
 ---
 
 ## DELEGATE

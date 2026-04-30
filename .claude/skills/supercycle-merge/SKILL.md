@@ -79,6 +79,7 @@ Use `rotate-status` → `status:merged` for each linked issue.
 Post-merge verification:
 ```bash
 git switch main && git pull github main
+poetry run alembic upgrade head
 poetry run pytest -m "not slow"
 ```
 

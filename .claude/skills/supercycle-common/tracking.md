@@ -22,6 +22,7 @@ an issue may carry several `has-*` labels at once.
 | `has-fix` | `#FBCA04` | Review findings addressed |
 | `has-root-cause` | `#D93F0B` | Root cause identified (bug flow) |
 | `has-reproduction` | `#B60205` | Reproduction test added (bug flow) |
+| `has-question` | `#D4C5F9` | Agent posted a question for the user |
 
 ### Status Labels (`status:*`)
 
@@ -55,6 +56,7 @@ gh label create "has-review"       --description "Code review comment posted"   
 gh label create "has-fix"          --description "Review findings addressed"         --color "FBCA04" 2>/dev/null || true
 gh label create "has-root-cause"   --description "Root cause identified"             --color "D93F0B" 2>/dev/null || true
 gh label create "has-reproduction" --description "Reproduction test added"           --color "B60205" 2>/dev/null || true
+gh label create "has-question"     --description "Agent question for user"           --color "D4C5F9" 2>/dev/null || true
 
 gh label create "status:brainstorming" --description "Active brainstorming"          --color "C2E0C6" 2>/dev/null || true
 gh label create "status:planning"      --description "Plan in progress"              --color "BFD4F2" 2>/dev/null || true
@@ -159,6 +161,7 @@ marker but the full content (spec text, plan, review findings, etc.):
 | `has-pr` | PR number/link, branch, summary of changes, files modified, quality gate results |
 | `has-review` | Full review report: verdict, findings by severity, task completeness |
 | `has-fix` | Fix report: findings fixed with file:line, findings skipped with rationale |
+| `has-question` | Numbered list of specific questions needing user input |
 
 **File references in comments:** When the artifact is a file in the
 repo (spec, plan), the file MUST be committed and pushed to the
@@ -218,6 +221,42 @@ When true, activate:
 - Both Vercel skills as review lenses alongside
   `/pr-review-toolkit:review-pr`
 
+### `post-question-comment`
+
+Post a question for the user as a GH Issue comment before asking
+in the conversation. This ensures questions are persisted across
+sessions and visible in the issue timeline.
+
+**When to use:** Every time a supercycle skill or its delegated
+agent/subagent needs to ask the user a question — clarifying
+questions during brainstorming, design decisions during planning,
+implementation choices, review ambiguities, etc.
+
+**Flow:** Post to GH first, then ask in conversation.
+
+**Inputs:** `ISSUE`, `SKILL_NAME`, `QUESTIONS` (list of questions)
+
+```bash
+gh issue comment "$ISSUE" --body "$(cat <<'BODY'
+## ❓ has-question
+
+> Question from **supercycle/$SKILL_NAME** · $(date -u +%Y-%m-%d)
+
+---
+
+$QUESTIONS
+
+BODY
+)"
+
+gh issue edit "$ISSUE" --add-label "has-question"
+```
+
+After the user answers, remove the `has-question` label:
+```bash
+gh issue edit "$ISSUE" --remove-label "has-question"
+```
+
 ---
 
 ## Comment Template
@@ -240,10 +279,10 @@ Every tracking comment follows this structure:
 
 | Skill | Reads | Writes (step labels) | Status transitions |
 |---|---|---|---|
-| `ticket` | — | `has-spec` | `→ status:ready` |
-| `work` | prior comments | `has-spec`, `has-plan`, `has-pr`, `has-review`, `has-fix` | `→ brainstorming → planning → implementing → in-review → merged` |
-| `implement` | `has-spec`, `has-plan` | `has-pr`, `has-review`, `has-fix` | `→ implementing → merged` |
-| `bug` | prior comments | `has-root-cause`, `has-reproduction`, `has-pr`, `has-review`, `has-fix` | `→ implementing → merged` |
+| `ticket` | — | `has-spec`, `has-question` | `→ status:ready` |
+| `work` | prior comments | `has-spec`, `has-plan`, `has-pr`, `has-review`, `has-fix`, `has-question` | `→ brainstorming → planning → implementing → in-review → merged` |
+| `implement` | `has-spec`, `has-plan` | `has-pr`, `has-review`, `has-fix`, `has-question` | `→ implementing → merged` |
+| `bug` | prior comments | `has-root-cause`, `has-reproduction`, `has-pr`, `has-review`, `has-fix`, `has-question` | `→ implementing → merged` |
 | `review` | `has-spec`, `has-plan`, `has-pr` | `has-review` | `→ in-review` |
 | `fix` | `has-review` | `has-fix` | `→ fixing` |
 | `merge` | `has-review`, `has-fix` | — | `→ merging → merged` |
