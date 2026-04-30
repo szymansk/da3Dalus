@@ -199,6 +199,7 @@ class VaseModeWingCreator(AbstractShapeCreator):
         right_wing_cutout, leading_edge_start, trailing_edge_start, spare_vector_origin, lower_part = (
             self._create_ribs_shape(current=current_pwt_offset, segment=segment, wing_config=wing_config,
                                     leading_edge_start=None, trailing_edge_start=None, start_upper_part=False))
+        raw_ribs = right_wing_cutout
 
         # create root segment slot
         logging.info(f"==> creating rib slot for '{self.identifier}[{segment}]'")
