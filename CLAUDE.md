@@ -205,9 +205,8 @@ Details in `.claude/rules/python-conventions.md`.
   Aerosandbox integration use **metres**. Conversion happens in the
   converters via `scale=0.001` (mm→m) and `scale=1000.0` (m→mm).
   Always be explicit about which unit context you're in.
-- **`wing_service` uses `with db.begin():`** in all write
-  operations. Direct service-level tests must use a session with
-  `autobegin=False` or go through the REST API via `TestClient`.
-  See gh-298.
+- **Transaction management** is handled by the `get_db()` dependency
+  in `app/db/session.py` — it commits on success and rollbacks on
+  exception. Services must not call `db.begin()`.
 
 

@@ -56,10 +56,6 @@ def _make_plane_with_wing(db, *, wing_name: str = "main", xsec_count: int = 2, )
 
     Returns (aeroplane, wing) ORM instances.
     The first N-1 xsecs get a detail row; the last (terminal) does not.
-
-    When *rollback_for_begin* is True the implicit read transaction is
-    rolled back after setup so that service functions using
-    ``with db.begin():`` can start their own transaction.
     """
     plane = make_aeroplane(db, name=f"test-{uuid.uuid4().hex[:8]}")
     wing = WingModel(name=wing_name, symmetric=True, aeroplane_id=plane.id)
