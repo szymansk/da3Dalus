@@ -54,7 +54,7 @@ Invoke `/brainstorming` with:
 - Instruction that output is for a GH Issue, not implementation
 
 The brainstorming skill handles:
-- Codebase exploration (uses Serena LSP tools)
+- Codebase exploration *Invoke agent `@code-base-explorer`* (uses Serena LSP tools)
 - Clarifying questions (one at a time)
 - 2-3 approaches with trade-offs and recommendation
 - Design presentation in sections with user approval
