@@ -63,37 +63,39 @@ export default function ComponentsPage() {
   return (
     <>
     <WorkbenchTwoPanel>
-      <ComponentTree
-        onNodeEditRequested={(n: ComponentTreeNode) => setEditingNodeId(n.id)}
-      />
+      <div className="flex h-full flex-col gap-3 overflow-hidden">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
+            <button
+              onClick={() => setView("library")}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] ${
+                view === "library"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Package size={12} />
+              Library
+            </button>
+            <button
+              onClick={() => setView("construction")}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] ${
+                view === "construction"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Box size={12} />
+              Construction Parts
+            </button>
+          </div>
+        </div>
+        <ComponentTree
+          onNodeEditRequested={(n: ComponentTreeNode) => setEditingNodeId(n.id)}
+        />
+      </div>
 
       <div className="flex min-h-0 w-full flex-1 flex-col gap-4 overflow-y-auto">
-        {/* View Toggle */}
-        <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1 self-start">
-          <button
-            onClick={() => setView("library")}
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] ${
-              view === "library"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Package size={12} />
-            Library
-          </button>
-          <button
-            onClick={() => setView("construction")}
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] ${
-              view === "construction"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Box size={12} />
-            Construction Parts
-          </button>
-        </div>
-
         {view === "construction" && aeroplaneId && (
           <ConstructionPartsGrid
             aeroplaneId={aeroplaneId}
