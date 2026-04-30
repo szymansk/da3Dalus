@@ -430,6 +430,7 @@ def update_wing(
         plane.wings.remove(wing)
         plane.wings.append(new_wing)
         plane.updated_at = datetime.now()
+        db.flush()
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -527,6 +528,7 @@ def delete_all_cross_sections(db: Session, aeroplane_uuid, wing_name: str) -> No
         wing = get_wing_or_raise(aeroplane, wing_name)
         wing.x_secs.clear()
         aeroplane.updated_at = datetime.now()
+        db.flush()
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
@@ -632,9 +634,10 @@ def create_cross_section(
             wing.x_secs.append(new_xsec)
         else:
             wing.x_secs.insert(insertion_index, new_xsec)
-            
+
         aeroplane.updated_at = datetime.now()
         db.add(new_xsec)
+        db.flush()
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
@@ -717,6 +720,7 @@ def update_cross_section(
                 )
 
         aeroplane.updated_at = datetime.now()
+        db.flush()
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -751,6 +755,7 @@ def delete_cross_section(
         xsec = x_secs.pop(index)
         db.delete(xsec)
         aeroplane.updated_at = datetime.now()
+        db.flush()
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
@@ -792,8 +797,8 @@ def _recompute_spare_vectors(wing: WingModel) -> None:
             if db_xsec.detail is None:
                 continue
             _sync_spares_for_xsec(db_xsec, segment)
-    except ImportError:
-        logger.debug("CadQuery not available — skipping spare vector computation")
+    except (ImportError, FileNotFoundError) as e:
+        logger.debug("Skipping spare vector computation: %s", e)
 
 
 def get_spares(
@@ -844,6 +849,7 @@ def create_spare(
         )
         detail.spares.append(spare)
         db.add(spare)
+        db.flush()
         _recompute_spare_vectors(wing)
         aeroplane.updated_at = datetime.now()
     except (NotFoundError, ValidationError):
@@ -875,6 +881,7 @@ def update_spare(
         spare = detail.spares[spar_index]
         for key, value in spare_data.model_dump().items():
             setattr(spare, key, value)
+        db.flush()
         _recompute_spare_vectors(wing)
         aeroplane.updated_at = datetime.now()
     except (NotFoundError, ValidationError):
@@ -997,6 +1004,7 @@ def delete_control_surface(
             )
         db.delete(ted)
         aeroplane.updated_at = datetime.now()
+        db.flush()
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -1078,6 +1086,7 @@ def delete_control_surface_cad_details(
 
         db.add(ted)
         aeroplane.updated_at = datetime.now()
+        db.flush()
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -1157,6 +1166,7 @@ def delete_trailing_edge_device(
             )
         db.delete(ted)
         aeroplane.updated_at = datetime.now()
+        db.flush()
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -1272,6 +1282,7 @@ def delete_control_surface_cad_details_servo_details(
         ted.servo_data = None
         ted.servo_index = None
         aeroplane.updated_at = datetime.now()
+        db.flush()
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -1371,6 +1382,7 @@ def delete_trailing_edge_servo(
         ted.servo_data = None
         ted.servo_index = None
         aeroplane.updated_at = datetime.now()
+        db.flush()
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
