@@ -79,3 +79,29 @@ class TestAvlGeometryFileModel:
         db.flush()
 
         assert db.get(AvlGeometryFileModel, geom_id) is None
+
+
+# ── Schema Tests ──────────────────────────────────────────────────────────────
+
+
+from app.schemas.avl_geometry import AvlGeometryResponse, AvlGeometryUpdateRequest
+
+
+class TestAvlGeometrySchemas:
+    def test_response_schema(self):
+        resp = AvlGeometryResponse(
+            content="SURFACE\nWing\n",
+            is_dirty=False,
+            is_user_edited=True,
+        )
+        assert resp.content == "SURFACE\nWing\n"
+        assert resp.is_dirty is False
+        assert resp.is_user_edited is True
+
+    def test_update_request_schema(self):
+        req = AvlGeometryUpdateRequest(content="SURFACE\nWing\nSECTION\n")
+        assert req.content == "SURFACE\nWing\nSECTION\n"
+
+    def test_update_request_empty_content_rejected(self):
+        with pytest.raises(Exception):
+            AvlGeometryUpdateRequest(content="")
