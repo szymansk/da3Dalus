@@ -74,6 +74,10 @@ def client_and_db() -> Tuple[TestClient, sessionmaker]:
         db = TestingSessionLocal()
         try:
             yield db
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
         finally:
             db.close()
 
