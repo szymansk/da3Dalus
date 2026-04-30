@@ -91,3 +91,77 @@ class TestAVLWithStripForcesIntegration:
         for key in ["CL", "CD", "Cm", "CLa", "Cma"]:
             assert child_result[key] == pytest.approx(parent_result[key], rel=1e-4), \
                 f"{key}: {child_result[key]} != {parent_result[key]}"
+
+    def test_symmetric_airplane_produces_symmetric_strip_forces(self, op_point):
+        """For a symmetric multi-wing airplane at beta=0, YDUP strip forces must match exactly."""
+        import aerosandbox as asb
+        from app.services.avl_strip_forces import AVLWithStripForces
+
+        airplane = asb.Airplane(
+            name="symmetric_test",
+            wings=[
+                asb.Wing(
+                    name="main_wing",
+                    symmetric=True,
+                    xsecs=[
+                        asb.WingXSec(xyz_le=[0, 0, 0], chord=0.3, airfoil=asb.Airfoil("naca2412")),
+                        asb.WingXSec(xyz_le=[0.02, 0.5, 0], chord=0.2, airfoil=asb.Airfoil("naca2412")),
+                    ],
+                ),
+                asb.Wing(
+                    name="v-tail",
+                    symmetric=True,
+                    xsecs=[
+                        asb.WingXSec(xyz_le=[0.4, 0, 0], chord=0.15, airfoil=asb.Airfoil("naca0012")),
+                        asb.WingXSec(xyz_le=[0.42, 0.15, 0.1], chord=0.1, airfoil=asb.Airfoil("naca0012")),
+                    ],
+                ),
+            ],
+        )
+
+        avl = AVLWithStripForces(
+            airplane=airplane, op_point=op_point,
+            avl_command=str(AVL_BINARY), timeout=15,
+        )
+        surfaces = avl.run()["strip_forces"]
+
+        paired = {}
+        for s in surfaces:
+            base = s["surface_name"].replace(" (YDUP)", "")
+            paired.setdefault(base, {})[
+                "ydup" if "(YDUP)" in s["surface_name"] else "orig"
+            ] = s
+
+        for name, pair in paired.items():
+            assert "orig" in pair and "ydup" in pair, f"{name}: missing YDUP pair"
+            orig_strips = sorted(pair["orig"]["strips"], key=lambda s: s["Yle"])
+            ydup_strips = sorted(pair["ydup"]["strips"], key=lambda s: abs(s["Yle"]))
+
+            assert len(orig_strips) == len(ydup_strips), f"{name}: strip count mismatch"
+            for o, y in zip(orig_strips, ydup_strips, strict=True):
+                assert o["cl"] == pytest.approx(y["cl"], rel=1e-6), \
+                    f"{name}: Cl asymmetry at y={o['Yle']}: {o['cl']} vs {y['cl']}"
+
+    def test_nonzero_beta_causes_asymmetry(self, simple_airplane):
+        """Non-zero beta legitimately produces asymmetric strip forces."""
+        import aerosandbox as asb
+        from app.services.avl_strip_forces import AVLWithStripForces
+
+        op_beta = asb.OperatingPoint(velocity=20, alpha=5, beta=2)
+
+        avl = AVLWithStripForces(
+            airplane=simple_airplane, op_point=op_beta,
+            avl_command=str(AVL_BINARY), timeout=15,
+        )
+        surfaces = avl.run()["strip_forces"]
+
+        orig = next(s for s in surfaces if "(YDUP)" not in s["surface_name"])
+        ydup = next(s for s in surfaces if "(YDUP)" in s["surface_name"])
+        orig_strips = sorted(orig["strips"], key=lambda s: s["Yle"])
+        ydup_strips = sorted(ydup["strips"], key=lambda s: abs(s["Yle"]))
+
+        max_cl_diff = max(
+            abs(o["cl"] - y["cl"]) for o, y in zip(orig_strips, ydup_strips, strict=True)
+        )
+        assert max_cl_diff > 0.001, \
+            f"Expected asymmetry from beta=2, got max diff={max_cl_diff}"

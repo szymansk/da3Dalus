@@ -33,6 +33,7 @@ export interface SurfaceStripForces {
 
 export interface StripForcesResult {
   alpha: number;
+  beta: number;
   mach: number;
   sref: number;
   cref: number;

@@ -1459,6 +1459,7 @@ async def analyze_airplane_strip_forces(
 
         return StripForcesResponse(
             alpha=result.get("alpha", operating_point.alpha),
+            beta=result.get("beta", operating_point.beta),
             mach=result.get("mach", 0),
             sref=result.get("Sref", 0),
             cref=result.get("Cref", 0),
@@ -1540,6 +1541,7 @@ async def analyze_wing_strip_forces(
 
         return StripForcesResponse(
             alpha=result.get("alpha", operating_point.alpha),
+            beta=result.get("beta", operating_point.beta),
             mach=result.get("mach", 0),
             sref=result.get("Sref", 0),
             cref=result.get("Cref", 0),
