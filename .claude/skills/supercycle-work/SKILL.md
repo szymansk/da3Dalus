@@ -46,7 +46,16 @@ Use `rotate-status` → `status:brainstorming`
 
 ## DELEGATE
 
-### Phase 1 — Brainstorming
+### Phase 1 — Worktree Setup (early — before spec/plan)
+
+Create the feature branch and worktree FIRST so that spec and plan
+files are committed directly on the feature branch — not on main.
+This makes `github-blob-link` references in step comments work
+immediately.
+
+Invoke `/using-git-worktrees` to create an isolated workspace.
+
+### Phase 2 — Brainstorming
 
 Invoke `/brainstorming` with:
 - Full issue body (if existing) or user's free-text description
@@ -54,7 +63,9 @@ Invoke `/brainstorming` with:
 - Instruction that this feeds into `/writing-plans` next
 
 After brainstorming completes:
-- Use `post-step-comment`: `has-spec` — full spec/acceptance criteria
+- Commit and push the spec file to the feature branch
+- Use `post-step-comment`: `has-spec` — full spec/acceptance criteria,
+  with a `github-blob-link` to the spec file on the feature branch
 - If a new GH Issue was created during brainstorming, capture its number
 
 **USER GATE:**
@@ -62,27 +73,24 @@ After brainstorming completes:
 
 Do NOT proceed until the user explicitly confirms.
 
-### Phase 2 — Planning
+### Phase 3 — Planning
 
 Invoke `/writing-plans` with:
-- The approved spec from Phase 1
+- The approved spec from Phase 2
 - TDD directives: every implementation task must follow RED-GREEN-REFACTOR
 - If `detect-frontend` is true: include `/vercel-react-best-practices`
   and `/vercel-composition-patterns` as directives for frontend tasks
 
 After planning completes:
-- Use `post-step-comment`: `has-plan` — full plan with task breakdown
+- Commit and push the plan file to the feature branch
+- Use `post-step-comment`: `has-plan` — full plan with task breakdown,
+  with a `github-blob-link` to the plan file on the feature branch
 - Use `rotate-status` → `status:planning`
-
-### Phase 3 — Worktree Setup
-
-Invoke `/using-git-worktrees` to create an isolated workspace.
-- Use `rotate-status` → `status:implementing`
 
 ### Phase 4 — Implementation
 
 Invoke `/subagent-driven-development` with:
-- The plan from Phase 2
+- The plan from Phase 3
 - Subagents invoke `/test-driven-development` internally
 - Per-task review via `/requesting-code-review`
 - If `detect-frontend` is true: frontend subagents follow

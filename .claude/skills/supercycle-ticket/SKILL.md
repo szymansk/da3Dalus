@@ -79,9 +79,12 @@ gh issue create \
 
 ### 2. Post step comment and labels
 
+Commit and push the spec file before posting the comment.
+
 Use `post-step-comment` from `../supercycle-common/tracking.md`:
 - **Label:** `has-spec`
-- **Body:** Full spec / acceptance criteria from brainstorming output
+- **Body:** Full spec / acceptance criteria from brainstorming output,
+  with a `github-blob-link` to the spec file on the current branch
 
 ### 3. Set status
 

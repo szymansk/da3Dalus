@@ -125,6 +125,21 @@ CURRENT=$(gh issue view "$ISSUE" --json labels \
 gh issue edit "$ISSUE" --add-label "$NEW_STATUS"
 ```
 
+### `github-blob-link`
+
+Construct a full GitHub blob URL for a file on a specific branch.
+Use this whenever a step comment references a committed file (spec,
+plan, etc.) so links are clickable in GH Issue comments.
+
+**Inputs:** `BRANCH`, `FILE_PATH` (relative to repo root)
+
+```
+https://github.com/szymansk/da3Dalus/blob/$BRANCH/$FILE_PATH
+```
+
+**Pre-condition:** The file MUST be committed AND pushed to the
+branch before the link is posted, otherwise it will 404.
+
 ### `post-step-comment`
 
 Post a structured comment with substantive content, then add the
@@ -145,6 +160,12 @@ marker but the full content (spec text, plan, review findings, etc.):
 | `has-review` | Full review report: verdict, findings by severity, task completeness |
 | `has-fix` | Fix report: findings fixed with file:line, findings skipped with rationale |
 
+**File references in comments:** When the artifact is a file in the
+repo (spec, plan), the file MUST be committed and pushed to the
+feature branch BEFORE posting the comment. Include a `github-blob-link`
+at the top of the comment body so the file is directly clickable in
+the GH Issue.
+
 ```bash
 gh label create "$LABEL" --description "..." --color "..." 2>/dev/null || true
 
@@ -152,6 +173,8 @@ gh issue comment "$ISSUE" --body "$(cat <<'BODY'
 ## 🏷️ $LABEL
 
 > Label `$LABEL` added by **supercycle/$SKILL_NAME** · $(date -u +%Y-%m-%d)
+
+📄 [View $LABEL artifact](https://github.com/szymansk/da3Dalus/blob/$BRANCH/$FILE_PATH)
 
 ---
 
