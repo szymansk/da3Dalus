@@ -96,39 +96,27 @@ def _assert_non_terminal_xsec_or_raise(xsec_index: int, xsec_count: int) -> None
 
 
 def get_wing_design_model(db: Session, aeroplane_uuid, wing_name: str) -> str | None:
-    """Return the design_model of an existing wing, or None if the wing does not exist.
-
-    Uses a lightweight scalar query and rolls back the implicit transaction
-    so that callers using ``with db.begin():`` are not disrupted.
-    """
+    """Return the design_model of an existing wing, or None if the wing does not exist."""
     from sqlalchemy import select
 
     try:
-        # Verify aeroplane exists
         plane_exists = db.execute(
             select(AeroplaneModel.id).filter(AeroplaneModel.uuid == aeroplane_uuid)
         ).scalar_one_or_none()
         if plane_exists is None:
-            db.rollback()
             raise NotFoundError(
                 message="Aeroplane not found",
                 details={"aeroplane_id": str(aeroplane_uuid)},
             )
 
-        # Get wing design_model via join
-        result = db.execute(
+        return db.execute(
             select(WingModel.design_model)
             .join(AeroplaneModel, WingModel.aeroplane_id == AeroplaneModel.id)
             .filter(AeroplaneModel.uuid == aeroplane_uuid, WingModel.name == wing_name)
         ).scalar_one_or_none()
-
-        # Roll back the implicit read transaction so db.begin() in service works
-        db.rollback()
-        return result
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
-        db.rollback()
         logger.error(f"Database error when getting wing design_model: {e}")
         raise InternalError(message="Failed to query wing design model")
 
@@ -234,24 +222,23 @@ def create_wing(
         InternalError: If a database error occurs.
     """
     try:
-        with db.begin():
-            plane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        plane = get_aeroplane_or_raise(db, aeroplane_uuid)
             
-            if any(w.name == wing_name for w in plane.wings):
-                raise ValidationError(
-                    message="Wing name must be unique for this aeroplane",
-                    details={"wing_name": wing_name}
-                )
+        if any(w.name == wing_name for w in plane.wings):
+            raise ValidationError(
+                message="Wing name must be unique for this aeroplane",
+                details={"wing_name": wing_name}
+            )
             
-            wing = WingModel.from_dict(name=wing_name, data=wing_data.model_dump())
-            wing.design_model = "asb"
-            plane.wings.append(wing)
-            db.add(wing)
-            plane.updated_at = datetime.now()
+        wing = WingModel.from_dict(name=wing_name, data=wing_data.model_dump())
+        wing.design_model = "asb"
+        plane.wings.append(wing)
+        db.add(wing)
+        plane.updated_at = datetime.now()
 
-            # Auto-sync: create group in component tree (gh#108)
-            from app.services.component_tree_service import sync_group_for_wing
-            sync_group_for_wing(db, str(aeroplane_uuid), wing_name)
+        # Auto-sync: create group in component tree (gh#108)
+        from app.services.component_tree_service import sync_group_for_wing
+        sync_group_for_wing(db, str(aeroplane_uuid), wing_name)
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -278,29 +265,28 @@ def create_wing_from_wing_configuration(
         InternalError: If a database error occurs.
     """
     try:
-        with db.begin():
-            plane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        plane = get_aeroplane_or_raise(db, aeroplane_uuid)
 
-            if any(w.name == wing_name for w in plane.wings):
-                raise ValidationError(
-                    message="Wing name must be unique for this aeroplane",
-                    details={"wing_name": wing_name},
-                )
-
-            wing_configuration = create_wing_configuration(wing_config_data)
-            wing_model = wing_config_to_wing_model(
-                wing_config=wing_configuration,
-                wing_name=wing_name,
-                scale=scale,
+        if any(w.name == wing_name for w in plane.wings):
+            raise ValidationError(
+                message="Wing name must be unique for this aeroplane",
+                details={"wing_name": wing_name},
             )
-            wing_model.design_model = "wc"
-            plane.wings.append(wing_model)
-            db.add(wing_model)
-            plane.updated_at = datetime.now()
 
-            # Auto-sync: create group in component tree (gh#108)
-            from app.services.component_tree_service import sync_group_for_wing
-            sync_group_for_wing(db, str(aeroplane_uuid), wing_name)
+        wing_configuration = create_wing_configuration(wing_config_data)
+        wing_model = wing_config_to_wing_model(
+            wing_config=wing_configuration,
+            wing_name=wing_name,
+            scale=scale,
+        )
+        wing_model.design_model = "wc"
+        plane.wings.append(wing_model)
+        db.add(wing_model)
+        plane.updated_at = datetime.now()
+
+        # Auto-sync: create group in component tree (gh#108)
+        from app.services.component_tree_service import sync_group_for_wing
+        sync_group_for_wing(db, str(aeroplane_uuid), wing_name)
     except (NotFoundError, ValidationError):
         raise
     except (ValueError, TypeError) as e:
@@ -392,28 +378,27 @@ def put_wing_as_wingconfig(
     the existing wing first (idempotent PUT semantics).
     """
     try:
-        with db.begin():
-            plane = get_aeroplane_or_raise(db, aeroplane_uuid)
-            # Remove existing wing if present
-            existing = next((w for w in plane.wings if w.name == wing_name), None)
-            if existing:
-                db.delete(existing)
-                db.flush()
+        plane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        # Remove existing wing if present
+        existing = next((w for w in plane.wings if w.name == wing_name), None)
+        if existing:
+            db.delete(existing)
+            db.flush()
 
-            wing_configuration = create_wing_configuration(wing_config_data)
-            wing_model = wing_config_to_wing_model(
-                wing_config=wing_configuration,
-                wing_name=wing_name,
-                scale=scale,
-            )
-            wing_model.design_model = "wc"
-            plane.wings.append(wing_model)
-            db.add(wing_model)
-            plane.updated_at = datetime.now()
+        wing_configuration = create_wing_configuration(wing_config_data)
+        wing_model = wing_config_to_wing_model(
+            wing_config=wing_configuration,
+            wing_name=wing_name,
+            scale=scale,
+        )
+        wing_model.design_model = "wc"
+        plane.wings.append(wing_model)
+        db.add(wing_model)
+        plane.updated_at = datetime.now()
 
-            # Auto-sync: ensure group in component tree (gh#108)
-            from app.services.component_tree_service import sync_group_for_wing
-            sync_group_for_wing(db, str(aeroplane_uuid), wing_name)
+        # Auto-sync: ensure group in component tree (gh#108)
+        from app.services.component_tree_service import sync_group_for_wing
+        sync_group_for_wing(db, str(aeroplane_uuid), wing_name)
     except (NotFoundError, ValidationError):
         raise
     except (ValueError, TypeError) as e:
@@ -437,15 +422,14 @@ def update_wing(
         InternalError: If a database error occurs.
     """
     try:
-        with db.begin():
-            plane = get_aeroplane_or_raise(db, aeroplane_uuid)
-            wing = get_wing_or_raise(plane, wing_name)
+        plane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(plane, wing_name)
             
-            new_wing = WingModel.from_dict(name=wing_name, data=wing_data.model_dump())
-            new_wing.design_model = "asb"
-            plane.wings.remove(wing)
-            plane.wings.append(new_wing)
-            plane.updated_at = datetime.now()
+        new_wing = WingModel.from_dict(name=wing_name, data=wing_data.model_dump())
+        new_wing.design_model = "asb"
+        plane.wings.remove(wing)
+        plane.wings.append(new_wing)
+        plane.updated_at = datetime.now()
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -485,16 +469,15 @@ def delete_wing(db: Session, aeroplane_uuid, wing_name: str) -> None:
         InternalError: If a database error occurs.
     """
     try:
-        with db.begin():
-            plane = get_aeroplane_or_raise(db, aeroplane_uuid)
-            wing = get_wing_or_raise(plane, wing_name)
-            db.delete(wing)
-            plane.updated_at = datetime.now()
+        plane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(plane, wing_name)
+        db.delete(wing)
+        plane.updated_at = datetime.now()
 
-            # Auto-sync: remove wing group + servos from component tree (gh#108)
-            from app.services.component_tree_service import delete_synced_nodes
-            delete_synced_nodes(db, str(aeroplane_uuid), f"wing:{wing_name}")
-            delete_synced_nodes(db, str(aeroplane_uuid), f"servo:{wing_name}:")
+        # Auto-sync: remove wing group + servos from component tree (gh#108)
+        from app.services.component_tree_service import delete_synced_nodes
+        delete_synced_nodes(db, str(aeroplane_uuid), f"wing:{wing_name}")
+        delete_synced_nodes(db, str(aeroplane_uuid), f"servo:{wing_name}:")
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
@@ -540,11 +523,10 @@ def delete_all_cross_sections(db: Session, aeroplane_uuid, wing_name: str) -> No
         InternalError: If a database error occurs.
     """
     try:
-        with db.begin():
-            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
-            wing = get_wing_or_raise(aeroplane, wing_name)
-            wing.x_secs.clear()
-            aeroplane.updated_at = datetime.now()
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        wing.x_secs.clear()
+        aeroplane.updated_at = datetime.now()
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
@@ -627,33 +609,32 @@ def create_cross_section(
         InternalError: If a database error occurs.
     """
     try:
-        with db.begin():
-            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
-            wing = get_wing_or_raise(aeroplane, wing_name)
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
 
-            existing = wing.x_secs
-            if index == -1 or index >= len(existing):
-                insertion_index = len(existing)
-            else:
-                insertion_index = index
+        existing = wing.x_secs
+        if index == -1 or index >= len(existing):
+            insertion_index = len(existing)
+        else:
+            insertion_index = index
 
-            new_xsec = _build_cross_section_model(
-                xsec_data=xsec_data,
-                sort_index=insertion_index,
-                is_terminal_xsec=(insertion_index == len(existing)),
-            )
+        new_xsec = _build_cross_section_model(
+            xsec_data=xsec_data,
+            sort_index=insertion_index,
+            is_terminal_xsec=(insertion_index == len(existing)),
+        )
             
-            for xs in existing[insertion_index:]:
-                xs.sort_index = xs.sort_index + 1
-                db.add(xs)
+        for xs in existing[insertion_index:]:
+            xs.sort_index = xs.sort_index + 1
+            db.add(xs)
 
-            if insertion_index == len(existing):
-                wing.x_secs.append(new_xsec)
-            else:
-                wing.x_secs.insert(insertion_index, new_xsec)
+        if insertion_index == len(existing):
+            wing.x_secs.append(new_xsec)
+        else:
+            wing.x_secs.insert(insertion_index, new_xsec)
             
-            aeroplane.updated_at = datetime.now()
-            db.add(new_xsec)
+        aeroplane.updated_at = datetime.now()
+        db.add(new_xsec)
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
@@ -687,56 +668,55 @@ def update_cross_section(
         InternalError: If a database error occurs.
     """
     try:
-        with db.begin():
-            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
-            wing = get_wing_or_raise(aeroplane, wing_name)
-            x_secs = wing.x_secs
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        x_secs = wing.x_secs
 
-            if index < 0 or index >= len(x_secs):
-                raise NotFoundError(
-                    message=_ERR_XSEC_NOT_FOUND,
-                    details={"index": index}
-                )
-            xsec = x_secs[index]
-            xsec.xyz_le = xsec_data.xyz_le
-            xsec.chord = xsec_data.chord
-            xsec.twist = xsec_data.twist
-            xsec.airfoil = str(xsec_data.airfoil)
-
-            # Optional segment metadata — only write if the client
-            # sent something, so that a geometry-only PUT doesn't
-            # wipe previously-set fields.
-            has_metadata = any(
-                value is not None
-                for value in (
-                    xsec_data.x_sec_type,
-                    xsec_data.tip_type,
-                    xsec_data.number_interpolation_points,
-                )
+        if index < 0 or index >= len(x_secs):
+            raise NotFoundError(
+                message=_ERR_XSEC_NOT_FOUND,
+                details={"index": index}
             )
-            if has_metadata:
-                is_terminal = index == len(x_secs) - 1
-                if is_terminal:
-                    raise ValidationError(
-                        message=(
-                            "Segment-specific fields (x_sec_type, "
-                            "tip_type, number_interpolation_points) are not "
-                            "allowed on the last cross-section."
-                        ),
-                        details={"index": index},
-                    )
-                if xsec.detail is None:
-                    xsec.detail = WingXSecDetailModel()
-                if xsec_data.x_sec_type is not None:
-                    xsec.detail.x_sec_type = xsec_data.x_sec_type
-                if xsec_data.tip_type is not None:
-                    xsec.detail.tip_type = xsec_data.tip_type
-                if xsec_data.number_interpolation_points is not None:
-                    xsec.detail.number_interpolation_points = (
-                        xsec_data.number_interpolation_points
-                    )
+        xsec = x_secs[index]
+        xsec.xyz_le = xsec_data.xyz_le
+        xsec.chord = xsec_data.chord
+        xsec.twist = xsec_data.twist
+        xsec.airfoil = str(xsec_data.airfoil)
 
-            aeroplane.updated_at = datetime.now()
+        # Optional segment metadata — only write if the client
+        # sent something, so that a geometry-only PUT doesn't
+        # wipe previously-set fields.
+        has_metadata = any(
+            value is not None
+            for value in (
+                xsec_data.x_sec_type,
+                xsec_data.tip_type,
+                xsec_data.number_interpolation_points,
+            )
+        )
+        if has_metadata:
+            is_terminal = index == len(x_secs) - 1
+            if is_terminal:
+                raise ValidationError(
+                    message=(
+                        "Segment-specific fields (x_sec_type, "
+                        "tip_type, number_interpolation_points) are not "
+                        "allowed on the last cross-section."
+                    ),
+                    details={"index": index},
+                )
+            if xsec.detail is None:
+                xsec.detail = WingXSecDetailModel()
+            if xsec_data.x_sec_type is not None:
+                xsec.detail.x_sec_type = xsec_data.x_sec_type
+            if xsec_data.tip_type is not None:
+                xsec.detail.tip_type = xsec_data.tip_type
+            if xsec_data.number_interpolation_points is not None:
+                xsec.detail.number_interpolation_points = (
+                    xsec_data.number_interpolation_points
+                )
+
+        aeroplane.updated_at = datetime.now()
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -758,20 +738,19 @@ def delete_cross_section(
         InternalError: If a database error occurs.
     """
     try:
-        with db.begin():
-            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
-            wing = get_wing_or_raise(aeroplane, wing_name)
-            x_secs = wing.x_secs
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        x_secs = wing.x_secs
             
-            if index < 0 or index >= len(x_secs):
-                raise NotFoundError(
-                    message=_ERR_XSEC_NOT_FOUND,
-                    details={"index": index}
-                )
+        if index < 0 or index >= len(x_secs):
+            raise NotFoundError(
+                message=_ERR_XSEC_NOT_FOUND,
+                details={"index": index}
+            )
             
-            xsec = x_secs.pop(index)
-            db.delete(xsec)
-            aeroplane.updated_at = datetime.now()
+        xsec = x_secs.pop(index)
+        db.delete(xsec)
+        aeroplane.updated_at = datetime.now()
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
@@ -853,21 +832,20 @@ def create_spare(
     Spars are segment-specific and therefore cannot be assigned to the terminal cross-section.
     """
     try:
-        with db.begin():
-            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
-            wing = get_wing_or_raise(aeroplane, wing_name)
-            x_sec = _get_xsec_or_raise(wing, xsec_index)
-            detail = _ensure_segment_detail_or_raise(x_sec, xsec_index, len(wing.x_secs))
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        x_sec = _get_xsec_or_raise(wing, xsec_index)
+        detail = _ensure_segment_detail_or_raise(x_sec, xsec_index, len(wing.x_secs))
 
-            spare_payload = spare_data.model_dump()
-            spare = WingXSecSpareModel(
-                sort_index=len(detail.spares),
-                **spare_payload,
-            )
-            detail.spares.append(spare)
-            db.add(spare)
-            _recompute_spare_vectors(wing)
-            aeroplane.updated_at = datetime.now()
+        spare_payload = spare_data.model_dump()
+        spare = WingXSecSpareModel(
+            sort_index=len(detail.spares),
+            **spare_payload,
+        )
+        detail.spares.append(spare)
+        db.add(spare)
+        _recompute_spare_vectors(wing)
+        aeroplane.updated_at = datetime.now()
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -885,21 +863,20 @@ def update_spare(
 ) -> None:
     """Replace a spar at the given index on a wing cross-section."""
     try:
-        with db.begin():
-            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
-            wing = get_wing_or_raise(aeroplane, wing_name)
-            x_sec = _get_xsec_or_raise(wing, xsec_index)
-            detail = _ensure_segment_detail_or_raise(x_sec, xsec_index, len(wing.x_secs))
-            if spar_index < 0 or spar_index >= len(detail.spares):
-                raise NotFoundError(
-                    message=f"Spar index {spar_index} out of range (0..{len(detail.spares) - 1}).",
-                    details={"spar_index": spar_index},
-                )
-            spare = detail.spares[spar_index]
-            for key, value in spare_data.model_dump().items():
-                setattr(spare, key, value)
-            _recompute_spare_vectors(wing)
-            aeroplane.updated_at = datetime.now()
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        x_sec = _get_xsec_or_raise(wing, xsec_index)
+        detail = _ensure_segment_detail_or_raise(x_sec, xsec_index, len(wing.x_secs))
+        if spar_index < 0 or spar_index >= len(detail.spares):
+            raise NotFoundError(
+                message=f"Spar index {spar_index} out of range (0..{len(detail.spares) - 1}).",
+                details={"spar_index": spar_index},
+            )
+        spare = detail.spares[spar_index]
+        for key, value in spare_data.model_dump().items():
+            setattr(spare, key, value)
+        _recompute_spare_vectors(wing)
+        aeroplane.updated_at = datetime.now()
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -916,25 +893,24 @@ def delete_spare(
 ) -> None:
     """Delete a spar at the given index on a wing cross-section."""
     try:
-        with db.begin():
-            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
-            wing = get_wing_or_raise(aeroplane, wing_name)
-            x_sec = _get_xsec_or_raise(wing, xsec_index)
-            detail = _ensure_segment_detail_or_raise(x_sec, xsec_index, len(wing.x_secs))
-            if spar_index < 0 or spar_index >= len(detail.spares):
-                raise NotFoundError(
-                    message=f"Spar index {spar_index} out of range (0..{len(detail.spares) - 1}).",
-                    details={"spar_index": spar_index},
-                )
-            spare = detail.spares[spar_index]
-            db.delete(spare)
-            # Re-index remaining spares
-            for i, s in enumerate(detail.spares):
-                if s is not spare:
-                    s.sort_index = i if i < spar_index else i - 1
-            db.flush()  # ensure delete is visible before recompute
-            _recompute_spare_vectors(wing)
-            aeroplane.updated_at = datetime.now()
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        x_sec = _get_xsec_or_raise(wing, xsec_index)
+        detail = _ensure_segment_detail_or_raise(x_sec, xsec_index, len(wing.x_secs))
+        if spar_index < 0 or spar_index >= len(detail.spares):
+            raise NotFoundError(
+                message=f"Spar index {spar_index} out of range (0..{len(detail.spares) - 1}).",
+                details={"spar_index": spar_index},
+            )
+        spare = detail.spares[spar_index]
+        db.delete(spare)
+        # Re-index remaining spares
+        for i, s in enumerate(detail.spares):
+            if s is not spare:
+                s.sort_index = i if i < spar_index else i - 1
+        db.flush()  # ensure delete is visible before recompute
+        _recompute_spare_vectors(wing)
+        aeroplane.updated_at = datetime.now()
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -975,27 +951,26 @@ def patch_control_surface(
     patch: schemas.ControlSurfacePatchSchema,
 ) -> schemas.ControlSurfaceSchema:
     try:
-        with db.begin():
-            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
-            wing = get_wing_or_raise(aeroplane, wing_name)
-            x_sec = _get_xsec_or_raise(wing, xsec_index)
-            detail = _ensure_segment_detail_or_raise(x_sec, xsec_index, len(wing.x_secs))
-            ted = _ensure_ted_exists(detail)
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        x_sec = _get_xsec_or_raise(wing, xsec_index)
+        detail = _ensure_segment_detail_or_raise(x_sec, xsec_index, len(wing.x_secs))
+        ted = _ensure_ted_exists(detail)
 
-            if patch.name is not None:
-                ted.name = patch.name
-            if patch.hinge_point is not None:
-                ted.rel_chord_root = patch.hinge_point
-                if ted.rel_chord_tip is None:
-                    ted.rel_chord_tip = patch.hinge_point
-            if patch.symmetric is not None:
-                ted.symmetric = patch.symmetric
-            if patch.deflection is not None:
-                ted.deflection_deg = patch.deflection
+        if patch.name is not None:
+            ted.name = patch.name
+        if patch.hinge_point is not None:
+            ted.rel_chord_root = patch.hinge_point
+            if ted.rel_chord_tip is None:
+                ted.rel_chord_tip = patch.hinge_point
+        if patch.symmetric is not None:
+            ted.symmetric = patch.symmetric
+        if patch.deflection is not None:
+            ted.deflection_deg = patch.deflection
 
-            db.add(ted)
-            aeroplane.updated_at = datetime.now()
-            return _serialize_control_surface_from_ted(ted)
+        db.add(ted)
+        aeroplane.updated_at = datetime.now()
+        return _serialize_control_surface_from_ted(ted)
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -1010,19 +985,18 @@ def delete_control_surface(
     xsec_index: int,
 ) -> None:
     try:
-        with db.begin():
-            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
-            wing = get_wing_or_raise(aeroplane, wing_name)
-            x_sec = _get_xsec_or_raise(wing, xsec_index)
-            _assert_non_terminal_xsec_or_raise(xsec_index, len(wing.x_secs))
-            ted = x_sec.detail.trailing_edge_device if x_sec.detail is not None else None
-            if ted is None:
-                raise NotFoundError(
-                    message="Control surface not found on this cross-section.",
-                    details={"index": xsec_index, "wing_name": wing_name},
-                )
-            db.delete(ted)
-            aeroplane.updated_at = datetime.now()
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        x_sec = _get_xsec_or_raise(wing, xsec_index)
+        _assert_non_terminal_xsec_or_raise(xsec_index, len(wing.x_secs))
+        ted = x_sec.detail.trailing_edge_device if x_sec.detail is not None else None
+        if ted is None:
+            raise NotFoundError(
+                message="Control surface not found on this cross-section.",
+                details={"index": xsec_index, "wing_name": wing_name},
+            )
+        db.delete(ted)
+        aeroplane.updated_at = datetime.now()
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -1057,18 +1031,17 @@ def patch_control_surface_cad_details(
     patch: schemas.ControlSurfaceCadDetailsPatchSchema,
 ) -> schemas.ControlSurfaceCadDetailsSchema:
     try:
-        with db.begin():
-            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
-            wing = get_wing_or_raise(aeroplane, wing_name)
-            x_sec = _get_xsec_or_raise(wing, xsec_index)
-            ted = _existing_ted_for_control_surface_or_raise(wing, x_sec, xsec_index, wing_name)
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        x_sec = _get_xsec_or_raise(wing, xsec_index)
+        ted = _existing_ted_for_control_surface_or_raise(wing, x_sec, xsec_index, wing_name)
 
-            for key, value in patch.model_dump(exclude_none=True).items():
-                setattr(ted, key, value)
+        for key, value in patch.model_dump(exclude_none=True).items():
+            setattr(ted, key, value)
 
-            db.add(ted)
-            aeroplane.updated_at = datetime.now()
-            return _serialize_control_surface_cad_details(ted)
+        db.add(ted)
+        aeroplane.updated_at = datetime.now()
+        return _serialize_control_surface_cad_details(ted)
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -1083,29 +1056,28 @@ def delete_control_surface_cad_details(
     xsec_index: int,
 ) -> None:
     try:
-        with db.begin():
-            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
-            wing = get_wing_or_raise(aeroplane, wing_name)
-            x_sec = _get_xsec_or_raise(wing, xsec_index)
-            ted = _existing_ted_for_control_surface_or_raise(wing, x_sec, xsec_index, wing_name)
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        x_sec = _get_xsec_or_raise(wing, xsec_index)
+        ted = _existing_ted_for_control_surface_or_raise(wing, x_sec, xsec_index, wing_name)
 
-            # Revert to minimal control-surface TED while keeping analysis fields intact.
-            ted.rel_chord_tip = ted.rel_chord_root
-            ted.hinge_spacing = None
-            ted.side_spacing_root = None
-            ted.side_spacing_tip = None
-            ted.servo_placement = None
-            ted.rel_chord_servo_position = None
-            ted.rel_length_servo_position = None
-            ted.positive_deflection_deg = None
-            ted.negative_deflection_deg = None
-            ted.trailing_edge_offset_factor = None
-            ted.hinge_type = None
-            ted.servo_index = None
-            ted.servo_data = None
+        # Revert to minimal control-surface TED while keeping analysis fields intact.
+        ted.rel_chord_tip = ted.rel_chord_root
+        ted.hinge_spacing = None
+        ted.side_spacing_root = None
+        ted.side_spacing_tip = None
+        ted.servo_placement = None
+        ted.rel_chord_servo_position = None
+        ted.rel_length_servo_position = None
+        ted.positive_deflection_deg = None
+        ted.negative_deflection_deg = None
+        ted.trailing_edge_offset_factor = None
+        ted.hinge_type = None
+        ted.servo_index = None
+        ted.servo_data = None
 
-            db.add(ted)
-            aeroplane.updated_at = datetime.now()
+        db.add(ted)
+        aeroplane.updated_at = datetime.now()
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -1146,20 +1118,19 @@ def patch_trailing_edge_device(
     patch: schemas.TrailingEdgeDevicePatchSchema,
 ) -> schemas.TrailingEdgeDeviceDetailSchema:
     try:
-        with db.begin():
-            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
-            wing = get_wing_or_raise(aeroplane, wing_name)
-            x_sec = _get_xsec_or_raise(wing, xsec_index)
-            detail = _ensure_segment_detail_or_raise(x_sec, xsec_index, len(wing.x_secs))
-            ted = _ensure_ted_exists(detail)
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        x_sec = _get_xsec_or_raise(wing, xsec_index)
+        detail = _ensure_segment_detail_or_raise(x_sec, xsec_index, len(wing.x_secs))
+        ted = _ensure_ted_exists(detail)
 
-            patch_payload = patch.model_dump(exclude_none=True)
-            for key, value in patch_payload.items():
-                setattr(ted, key, value)
+        patch_payload = patch.model_dump(exclude_none=True)
+        for key, value in patch_payload.items():
+            setattr(ted, key, value)
 
-            db.add(ted)
-            aeroplane.updated_at = datetime.now()
-            return schemas.TrailingEdgeDeviceDetailSchema.model_validate(ted, from_attributes=True)
+        db.add(ted)
+        aeroplane.updated_at = datetime.now()
+        return schemas.TrailingEdgeDeviceDetailSchema.model_validate(ted, from_attributes=True)
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -1174,19 +1145,18 @@ def delete_trailing_edge_device(
     xsec_index: int,
 ) -> None:
     try:
-        with db.begin():
-            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
-            wing = get_wing_or_raise(aeroplane, wing_name)
-            x_sec = _get_xsec_or_raise(wing, xsec_index)
-            _assert_non_terminal_xsec_or_raise(xsec_index, len(wing.x_secs))
-            ted = x_sec.detail.trailing_edge_device if x_sec.detail is not None else None
-            if ted is None:
-                raise NotFoundError(
-                    message=_ERR_TED_NOT_FOUND,
-                    details={"index": xsec_index, "wing_name": wing_name},
-                )
-            db.delete(ted)
-            aeroplane.updated_at = datetime.now()
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        x_sec = _get_xsec_or_raise(wing, xsec_index)
+        _assert_non_terminal_xsec_or_raise(xsec_index, len(wing.x_secs))
+        ted = x_sec.detail.trailing_edge_device if x_sec.detail is not None else None
+        if ted is None:
+            raise NotFoundError(
+                message=_ERR_TED_NOT_FOUND,
+                details={"index": xsec_index, "wing_name": wing_name},
+            )
+        db.delete(ted)
+        aeroplane.updated_at = datetime.now()
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -1243,40 +1213,39 @@ def patch_control_surface_cad_details_servo_details(
     patch: schemas.ControlSurfaceServoDetailsPatchSchema,
 ) -> schemas.ControlSurfaceServoDetailsSchema:
     try:
-        with db.begin():
-            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
-            wing = get_wing_or_raise(aeroplane, wing_name)
-            x_sec = _get_xsec_or_raise(wing, xsec_index)
-            ted = _existing_ted_for_control_surface_or_raise(wing, x_sec, xsec_index, wing_name)
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        x_sec = _get_xsec_or_raise(wing, xsec_index)
+        ted = _existing_ted_for_control_surface_or_raise(wing, x_sec, xsec_index, wing_name)
 
-            servo_payload = patch.servo
-            if isinstance(servo_payload, int):
-                ted.servo_index = servo_payload
-                ted.servo_data = None
+        servo_payload = patch.servo
+        if isinstance(servo_payload, int):
+            ted.servo_index = servo_payload
+            ted.servo_data = None
+        else:
+            ted.servo_index = None
+            servo_dict = servo_payload.model_dump(exclude_none=True)
+            if ted.servo_data is None:
+                ted.servo_data = WingXSecTedServoModel(**servo_dict)
             else:
-                ted.servo_index = None
-                servo_dict = servo_payload.model_dump(exclude_none=True)
-                if ted.servo_data is None:
-                    ted.servo_data = WingXSecTedServoModel(**servo_dict)
-                else:
-                    for key, value in servo_dict.items():
-                        setattr(ted.servo_data, key, value)
+                for key, value in servo_dict.items():
+                    setattr(ted.servo_data, key, value)
 
-            db.add(ted)
-            aeroplane.updated_at = datetime.now()
+        db.add(ted)
+        aeroplane.updated_at = datetime.now()
 
-            # Auto-sync: upsert servo node in component tree (gh#108)
-            from app.services.component_tree_service import upsert_synced_servo
-            comp_id = None
-            if not isinstance(servo_payload, int) and ted.servo_data:
-                comp_id = ted.servo_data.component_id
-            upsert_synced_servo(
-                db, str(aeroplane_uuid), wing_name, xsec_index,
-                component_id=comp_id,
-                symmetric=wing.symmetric if hasattr(wing, "symmetric") else False,
-            )
+        # Auto-sync: upsert servo node in component tree (gh#108)
+        from app.services.component_tree_service import upsert_synced_servo
+        comp_id = None
+        if not isinstance(servo_payload, int) and ted.servo_data:
+            comp_id = ted.servo_data.component_id
+        upsert_synced_servo(
+            db, str(aeroplane_uuid), wing_name, xsec_index,
+            component_id=comp_id,
+            symmetric=wing.symmetric if hasattr(wing, "symmetric") else False,
+        )
 
-            return _control_surface_servo_details_schema_from_ted(ted)
+        return _control_surface_servo_details_schema_from_ted(ted)
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -1291,19 +1260,18 @@ def delete_control_surface_cad_details_servo_details(
     xsec_index: int,
 ) -> None:
     try:
-        with db.begin():
-            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
-            wing = get_wing_or_raise(aeroplane, wing_name)
-            x_sec = _get_xsec_or_raise(wing, xsec_index)
-            ted = _existing_ted_for_control_surface_or_raise(wing, x_sec, xsec_index, wing_name)
-            if ted.servo_data is None and ted.servo_index is None:
-                raise NotFoundError(
-                    message="No servo configured for this control-surface CAD detail.",
-                    details={"index": xsec_index, "wing_name": wing_name},
-                )
-            ted.servo_data = None
-            ted.servo_index = None
-            aeroplane.updated_at = datetime.now()
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        x_sec = _get_xsec_or_raise(wing, xsec_index)
+        ted = _existing_ted_for_control_surface_or_raise(wing, x_sec, xsec_index, wing_name)
+        if ted.servo_data is None and ted.servo_index is None:
+            raise NotFoundError(
+                message="No servo configured for this control-surface CAD detail.",
+                details={"index": xsec_index, "wing_name": wing_name},
+            )
+        ted.servo_data = None
+        ted.servo_index = None
+        aeroplane.updated_at = datetime.now()
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -1344,34 +1312,33 @@ def patch_trailing_edge_servo(
     patch: schemas.TrailingEdgeServoPatchSchema,
 ) -> schemas.TrailingEdgeServoSchema:
     try:
-        with db.begin():
-            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
-            wing = get_wing_or_raise(aeroplane, wing_name)
-            x_sec = _get_xsec_or_raise(wing, xsec_index)
-            _assert_non_terminal_xsec_or_raise(xsec_index, len(wing.x_secs))
-            ted = x_sec.detail.trailing_edge_device if x_sec.detail is not None else None
-            if ted is None:
-                raise ValidationError(
-                    message="Trailing-edge device must exist before assigning a servo.",
-                    details={"index": xsec_index, "wing_name": wing_name},
-                )
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        x_sec = _get_xsec_or_raise(wing, xsec_index)
+        _assert_non_terminal_xsec_or_raise(xsec_index, len(wing.x_secs))
+        ted = x_sec.detail.trailing_edge_device if x_sec.detail is not None else None
+        if ted is None:
+            raise ValidationError(
+                message="Trailing-edge device must exist before assigning a servo.",
+                details={"index": xsec_index, "wing_name": wing_name},
+            )
 
-            servo_payload = patch.servo
-            if isinstance(servo_payload, int):
-                ted.servo_index = servo_payload
-                ted.servo_data = None
+        servo_payload = patch.servo
+        if isinstance(servo_payload, int):
+            ted.servo_index = servo_payload
+            ted.servo_data = None
+        else:
+            ted.servo_index = None
+            servo_dict = servo_payload.model_dump(exclude_none=True)
+            if ted.servo_data is None:
+                ted.servo_data = WingXSecTedServoModel(**servo_dict)
             else:
-                ted.servo_index = None
-                servo_dict = servo_payload.model_dump(exclude_none=True)
-                if ted.servo_data is None:
-                    ted.servo_data = WingXSecTedServoModel(**servo_dict)
-                else:
-                    for key, value in servo_dict.items():
-                        setattr(ted.servo_data, key, value)
+                for key, value in servo_dict.items():
+                    setattr(ted.servo_data, key, value)
 
-            db.add(ted)
-            aeroplane.updated_at = datetime.now()
-            return _servo_schema_from_ted(ted)
+        db.add(ted)
+        aeroplane.updated_at = datetime.now()
+        return _servo_schema_from_ted(ted)
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
@@ -1386,25 +1353,24 @@ def delete_trailing_edge_servo(
     xsec_index: int,
 ) -> None:
     try:
-        with db.begin():
-            aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
-            wing = get_wing_or_raise(aeroplane, wing_name)
-            x_sec = _get_xsec_or_raise(wing, xsec_index)
-            _assert_non_terminal_xsec_or_raise(xsec_index, len(wing.x_secs))
-            ted = x_sec.detail.trailing_edge_device if x_sec.detail is not None else None
-            if ted is None:
-                raise NotFoundError(
-                    message=_ERR_TED_NOT_FOUND,
-                    details={"index": xsec_index, "wing_name": wing_name},
-                )
-            if ted.servo_data is None and ted.servo_index is None:
-                raise NotFoundError(
-                    message="No servo configured for this trailing-edge device.",
-                    details={"index": xsec_index, "wing_name": wing_name},
-                )
-            ted.servo_data = None
-            ted.servo_index = None
-            aeroplane.updated_at = datetime.now()
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
+        wing = get_wing_or_raise(aeroplane, wing_name)
+        x_sec = _get_xsec_or_raise(wing, xsec_index)
+        _assert_non_terminal_xsec_or_raise(xsec_index, len(wing.x_secs))
+        ted = x_sec.detail.trailing_edge_device if x_sec.detail is not None else None
+        if ted is None:
+            raise NotFoundError(
+                message=_ERR_TED_NOT_FOUND,
+                details={"index": xsec_index, "wing_name": wing_name},
+            )
+        if ted.servo_data is None and ted.servo_index is None:
+            raise NotFoundError(
+                message="No servo configured for this trailing-edge device.",
+                details={"index": xsec_index, "wing_name": wing_name},
+            )
+        ted.servo_data = None
+        ted.servo_index = None
+        aeroplane.updated_at = datetime.now()
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as e:
