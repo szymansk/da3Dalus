@@ -138,7 +138,7 @@ class TestAVLWithStripForcesIntegration:
             ydup_strips = sorted(pair["ydup"]["strips"], key=lambda s: abs(s["Yle"]))
 
             assert len(orig_strips) == len(ydup_strips), f"{name}: strip count mismatch"
-            for o, y in zip(orig_strips, ydup_strips):
+            for o, y in zip(orig_strips, ydup_strips, strict=True):
                 assert o["cl"] == pytest.approx(y["cl"], rel=1e-6), \
                     f"{name}: Cl asymmetry at y={o['Yle']}: {o['cl']} vs {y['cl']}"
 
@@ -161,7 +161,7 @@ class TestAVLWithStripForcesIntegration:
         ydup_strips = sorted(ydup["strips"], key=lambda s: abs(s["Yle"]))
 
         max_cl_diff = max(
-            abs(o["cl"] - y["cl"]) for o, y in zip(orig_strips, ydup_strips)
+            abs(o["cl"] - y["cl"]) for o, y in zip(orig_strips, ydup_strips, strict=True)
         )
         assert max_cl_diff > 0.001, \
             f"Expected asymmetry from beta=2, got max diff={max_cl_diff}"
