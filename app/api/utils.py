@@ -34,9 +34,22 @@ def _build_operating_point(operating_point: OperatingPointSchema) -> asb.Operati
     )
 
 
-def _run_avl(asb_airplane, op_point, operating_point):
+def _run_avl(asb_airplane, op_point, operating_point, avl_file_content=None):
     """Run AVL analysis; raises ValueError for parameter sweeps."""
-    avl = asb.AVL(airplane=asb_airplane, op_point=op_point, xyz_ref=operating_point.xyz_ref)
+    if avl_file_content is not None:
+        import tempfile
+        from pathlib import Path
+        tmp_dir = tempfile.mkdtemp()
+        avl_path = Path(tmp_dir) / "airplane.avl"
+        avl_path.write_text(avl_file_content)
+        avl = asb.AVL(
+            airplane=asb_airplane,
+            op_point=op_point,
+            xyz_ref=operating_point.xyz_ref,
+            working_directory=tmp_dir,
+        )
+    else:
+        avl = asb.AVL(airplane=asb_airplane, op_point=op_point, xyz_ref=operating_point.xyz_ref)
     if isinstance(operating_point.alpha, (list, tuple, np.ndarray)) or isinstance(
         operating_point.beta, (list, tuple, np.ndarray)
     ):
@@ -79,6 +92,7 @@ def analyse_aerodynamics(
     asb_airplane: Airplane,
     draw_streamlines: bool = False,
     backend: Literal["plotly", "pyvista"] = "plotly",
+    avl_file_content: str | None = None,
 ) -> (AnalysisModel, Figure | Plotter):
     """Perform aerodynamic analysis using the specified tool.
 
@@ -89,7 +103,7 @@ def analyse_aerodynamics(
     asb_airplane.xyz_ref = operating_point.xyz_ref
 
     if analysis_tool == AnalysisToolUrlType.AVL:
-        return _run_avl(asb_airplane, op_point, operating_point)
+        return _run_avl(asb_airplane, op_point, operating_point, avl_file_content)
     if analysis_tool == AnalysisToolUrlType.AEROBUILDUP:
         return _run_aerobuildup(asb_airplane, op_point, operating_point)
     if analysis_tool == AnalysisToolUrlType.VORTEX_LATTICE:

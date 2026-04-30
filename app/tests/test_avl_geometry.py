@@ -405,3 +405,55 @@ class TestAvlGeometryEndpoints:
             json={"content": ""},
         )
         assert resp.status_code == 422
+
+
+# ── Analysis Integration Tests ────────────────────────────────────────────────
+
+
+class TestAvlAnalysisIntegration:
+    def test_strip_forces_uses_saved_geometry(self, db: Session):
+        """When is_user_edited=True, the saved content should be used."""
+        aeroplane = AeroplaneModel(name="TestPlane")
+        db.add(aeroplane)
+        db.flush()
+
+        geom = AvlGeometryFileModel(
+            aeroplane_id=aeroplane.id,
+            content="CUSTOM AVL CONTENT",
+            is_user_edited=True,
+            is_dirty=False,
+        )
+        db.add(geom)
+        db.flush()
+
+        from app.services.avl_geometry_service import get_user_avl_content
+        content = get_user_avl_content(db, aeroplane.uuid)
+        assert content == "CUSTOM AVL CONTENT"
+
+    def test_strip_forces_returns_none_when_not_edited(self, db: Session):
+        aeroplane = AeroplaneModel(name="TestPlane")
+        db.add(aeroplane)
+        db.flush()
+
+        from app.services.avl_geometry_service import get_user_avl_content
+        content = get_user_avl_content(db, aeroplane.uuid)
+        assert content is None
+
+    def test_strip_forces_returns_none_when_dirty(self, db: Session):
+        """Dirty files should not be used — fall back to generation."""
+        aeroplane = AeroplaneModel(name="TestPlane")
+        db.add(aeroplane)
+        db.flush()
+
+        geom = AvlGeometryFileModel(
+            aeroplane_id=aeroplane.id,
+            content="STALE CONTENT",
+            is_user_edited=True,
+            is_dirty=True,
+        )
+        db.add(geom)
+        db.flush()
+
+        from app.services.avl_geometry_service import get_user_avl_content
+        content = get_user_avl_content(db, aeroplane.uuid)
+        assert content is None

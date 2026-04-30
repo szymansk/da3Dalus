@@ -115,6 +115,24 @@ def regenerate_avl_geometry(db: Session, aeroplane_uuid) -> AvlGeometryResponse:
     )
 
 
+def get_user_avl_content(db: Session, aeroplane_uuid) -> str | None:
+    """Return saved AVL content if it exists, is user-edited, and is not dirty.
+
+    Returns None when no file is saved, the file was not user-edited, or the
+    file is dirty (i.e. the aeroplane geometry changed after the last save).
+    In all None cases the caller should fall back to generating fresh content.
+    """
+    aeroplane = _get_aeroplane_or_raise(db, aeroplane_uuid)
+    geom = (
+        db.query(AvlGeometryFileModel)
+        .filter_by(aeroplane_id=aeroplane.id)
+        .first()
+    )
+    if geom is None or not geom.is_user_edited or geom.is_dirty:
+        return None
+    return geom.content
+
+
 def delete_avl_geometry(db: Session, aeroplane_uuid) -> None:
     """Delete the stored AVL geometry file. Raises NotFoundError if none exists."""
     aeroplane = _get_aeroplane_or_raise(db, aeroplane_uuid)

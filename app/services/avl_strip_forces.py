@@ -164,6 +164,10 @@ if HAS_AEROSANDBOX:
         output file for the parent's parser.
         """
 
+        def __init__(self, *args, avl_file_content: str | None = None, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._avl_file_content = avl_file_content
+
         def run(self) -> dict:
             """Run AVL with strip-force capture.
 
@@ -185,7 +189,10 @@ if HAS_AEROSANDBOX:
             try:
                 airplane_file = "airplane.avl"
                 output_filename = "output.txt"
-                self.write_avl(directory / airplane_file)
+                if self._avl_file_content is not None:
+                    (directory / airplane_file).write_text(self._avl_file_content)
+                else:
+                    self.write_avl(directory / airplane_file)
 
                 ks = super()._default_keystroke_file_contents()
                 ks += [
