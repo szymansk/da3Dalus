@@ -106,8 +106,18 @@ def save_avl_geometry(db: Session, aeroplane_uuid, content: str) -> AvlGeometryR
 
 def regenerate_avl_geometry(db: Session, aeroplane_uuid) -> AvlGeometryResponse:
     """Discard any saved file and regenerate content from the current aeroplane state."""
-    _get_aeroplane_or_raise(db, aeroplane_uuid)
+    aeroplane = _get_aeroplane_or_raise(db, aeroplane_uuid)
     content = generate_avl_content(db, aeroplane_uuid)
+
+    geom = (
+        db.query(AvlGeometryFileModel)
+        .filter_by(aeroplane_id=aeroplane.id)
+        .first()
+    )
+    if geom is not None:
+        db.delete(geom)
+        db.flush()
+
     return AvlGeometryResponse(
         content=content,
         is_dirty=False,

@@ -29,8 +29,14 @@ def _mark_dirty(session: Session, aeroplane_id: int | None) -> None:
 def _resolve_aeroplane_id(target) -> int | None:
     if isinstance(target, (WingModel, FuselageModel)):
         return target.aeroplane_id
-    if isinstance(target, WingXSecModel) and target.wing is not None:
-        return target.wing.aeroplane_id
+    if isinstance(target, WingXSecModel):
+        if target.wing is not None:
+            return target.wing.aeroplane_id
+        session = Session.object_session(target)
+        if session is not None and target.wing_id is not None:
+            wing = session.get(WingModel, target.wing_id)
+            if wing is not None:
+                return wing.aeroplane_id
     return None
 
 
