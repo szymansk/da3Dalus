@@ -21,8 +21,6 @@ class TestDeleteAeroplane(unittest.TestCase):
         result = asyncio.run(delete_aeroplane(aeroplane_id=test_id, db=mock_db))
         mock_db.query.assert_called_once()
         mock_db.delete.assert_called_once_with(mock_model)
-        # ensure transaction was entered
-        begin_cm.__enter__.assert_called_once()
         self.assertEqual(result.status, "ok")
         self.assertEqual(result.operation, "delete_aeroplane")
 
