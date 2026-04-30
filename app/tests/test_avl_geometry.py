@@ -229,3 +229,91 @@ class TestAvlGeometryService:
     def test_get_avl_geometry_aeroplane_not_found(self, db: Session):
         with pytest.raises(NotFoundError):
             get_avl_geometry(db, uuid.uuid4())
+
+
+# ── Dirty Flag Event Hook Tests ───────────────────────────────────────────────
+
+
+from app.models.aeroplanemodel import WingModel, WingXSecModel, FuselageModel
+import app.models.avl_geometry_events  # noqa: F401 — registers event listeners
+
+
+class TestAvlGeometryDirtyFlag:
+    def test_wing_insert_sets_dirty(self, db: Session):
+        aeroplane = AeroplaneModel(name="TestPlane")
+        db.add(aeroplane)
+        db.flush()
+
+        geom = AvlGeometryFileModel(
+            aeroplane_id=aeroplane.id,
+            content="ORIGINAL",
+            is_user_edited=True,
+            is_dirty=False,
+        )
+        db.add(geom)
+        db.flush()
+
+        wing = WingModel(name="Main Wing", aeroplane_id=aeroplane.id)
+        db.add(wing)
+        db.flush()
+
+        db.refresh(geom)
+        assert geom.is_dirty is True
+
+    def test_wing_update_sets_dirty(self, db: Session):
+        aeroplane = AeroplaneModel(name="TestPlane")
+        db.add(aeroplane)
+        db.flush()
+
+        wing = WingModel(name="Main Wing", aeroplane_id=aeroplane.id)
+        db.add(wing)
+        db.flush()
+
+        geom = AvlGeometryFileModel(
+            aeroplane_id=aeroplane.id,
+            content="ORIGINAL",
+            is_user_edited=True,
+            is_dirty=False,
+        )
+        db.add(geom)
+        db.flush()
+
+        wing.name = "Updated Wing"
+        db.flush()
+
+        db.refresh(geom)
+        assert geom.is_dirty is True
+
+    def test_wing_delete_sets_dirty(self, db: Session):
+        aeroplane = AeroplaneModel(name="TestPlane")
+        db.add(aeroplane)
+        db.flush()
+
+        wing = WingModel(name="Main Wing", aeroplane_id=aeroplane.id)
+        db.add(wing)
+        db.flush()
+
+        geom = AvlGeometryFileModel(
+            aeroplane_id=aeroplane.id,
+            content="ORIGINAL",
+            is_user_edited=True,
+            is_dirty=False,
+        )
+        db.add(geom)
+        db.flush()
+
+        db.delete(wing)
+        db.flush()
+
+        db.refresh(geom)
+        assert geom.is_dirty is True
+
+    def test_no_geom_file_no_error(self, db: Session):
+        """Event fires but no geometry file exists — should be a no-op."""
+        aeroplane = AeroplaneModel(name="TestPlane")
+        db.add(aeroplane)
+        db.flush()
+
+        wing = WingModel(name="Main Wing", aeroplane_id=aeroplane.id)
+        db.add(wing)
+        db.flush()  # Should not raise
