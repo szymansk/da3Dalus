@@ -86,29 +86,27 @@ async def create_aeroplane_fuselage(
     Create the fuselage for the aeroplane.
     """
     try:
-        # perform read and write in a single transaction to avoid nested begin
-        with db.begin():
-            plane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
-            if not plane:
-                raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
+        plane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
+        if not plane:
+            raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
 
-            if any(f.name == fuselage_name for f in plane.fuselages):
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="Fuselage name must be unique for this aeroplane",
-                )
+        if any(f.name == fuselage_name for f in plane.fuselages):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Fuselage name must be unique for this aeroplane",
+            )
 
-            # Create fuselage from request data
-            fuselage = FuselageModel.from_dict(name=fuselage_name, data=request.model_dump())
+        # Create fuselage from request data
+        fuselage = FuselageModel.from_dict(name=fuselage_name, data=request.model_dump())
 
-            plane.fuselages.append(fuselage)
-            db.add(fuselage)
-            plane.updated_at = datetime.now()
+        plane.fuselages.append(fuselage)
+        db.add(fuselage)
+        plane.updated_at = datetime.now()
 
-            # Auto-sync: create group in component tree (gh#108)
-            from app.services.component_tree_service import sync_group_for_fuselage
+        # Auto-sync: create group in component tree (gh#108)
+        from app.services.component_tree_service import sync_group_for_fuselage
 
-            sync_group_for_fuselage(db, str(aeroplane_id), fuselage_name)
+        sync_group_for_fuselage(db, str(aeroplane_id), fuselage_name)
         return OperationStatusResponse(status="created", operation="create_aeroplane_fuselage")
     except SQLAlchemyError as e:
         logger.error(f"Database error when creating aeroplane fuselage: {e}")
@@ -141,26 +139,25 @@ async def update_aeroplane_fuselage(
     Overwrite an existing fuselage with the data in the request.
     """
     try:
-        with db.begin():
-            plane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
-            if not plane:
-                raise HTTPException(404, _ERR_AEROPLANE_NOT_FOUND)
+        plane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
+        if not plane:
+            raise HTTPException(404, _ERR_AEROPLANE_NOT_FOUND)
 
-            fuselage = next((f for f in plane.fuselages if f.name == fuselage_name), None)
-            if not fuselage:
-                raise HTTPException(404, _ERR_FUSELAGE_NOT_FOUND)
+        fuselage = next((f for f in plane.fuselages if f.name == fuselage_name), None)
+        if not fuselage:
+            raise HTTPException(404, _ERR_FUSELAGE_NOT_FOUND)
 
-            # Create new fuselage from request data
-            new_fuselage = FuselageModel.from_dict(name=fuselage_name, data=request.model_dump())
+        # Create new fuselage from request data
+        new_fuselage = FuselageModel.from_dict(name=fuselage_name, data=request.model_dump())
 
-            plane.fuselages.remove(fuselage)
-            plane.fuselages.append(new_fuselage)
-            plane.updated_at = datetime.now()
+        plane.fuselages.remove(fuselage)
+        plane.fuselages.append(new_fuselage)
+        plane.updated_at = datetime.now()
 
-            # Auto-sync: ensure group exists in component tree (gh#108)
-            from app.services.component_tree_service import sync_group_for_fuselage
+        # Auto-sync: ensure group exists in component tree (gh#108)
+        from app.services.component_tree_service import sync_group_for_fuselage
 
-            sync_group_for_fuselage(db, str(aeroplane_id), fuselage_name)
+        sync_group_for_fuselage(db, str(aeroplane_id), fuselage_name)
         return OperationStatusResponse(status="ok", operation="update_aeroplane_fuselage")
     except HTTPException:
         raise
@@ -230,20 +227,19 @@ async def delete_aeroplane_fuselage(
     """
     try:
         # Find the plane and the fuselage belonging to it
-        with db.begin():
-            plane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
-            if not plane:
-                raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
-            fuselage = next((f for f in plane.fuselages if str(f.name) == str(fuselage_name)), None)
-            if not fuselage:
-                raise HTTPException(status_code=404, detail=_ERR_FUSELAGE_NOT_FOUND)
-            db.delete(fuselage)
-            plane.updated_at = datetime.now()
+        plane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
+        if not plane:
+            raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
+        fuselage = next((f for f in plane.fuselages if str(f.name) == str(fuselage_name)), None)
+        if not fuselage:
+            raise HTTPException(status_code=404, detail=_ERR_FUSELAGE_NOT_FOUND)
+        db.delete(fuselage)
+        plane.updated_at = datetime.now()
 
-            # Auto-sync: remove fuselage group from component tree (gh#108)
-            from app.services.component_tree_service import delete_synced_nodes
+        # Auto-sync: remove fuselage group from component tree (gh#108)
+        from app.services.component_tree_service import delete_synced_nodes
 
-            delete_synced_nodes(db, str(aeroplane_id), f"fuselage:{fuselage_name}")
+        delete_synced_nodes(db, str(aeroplane_id), f"fuselage:{fuselage_name}")
         return OperationStatusResponse(status="ok", operation="delete_aeroplane_fuselage")
     except SQLAlchemyError as e:
         logger.error(f"Database error when deleting aeroplane fuselage: {e}")
@@ -318,17 +314,16 @@ async def delete_aeroplane_fuselage_cross_sections(
     Delete all cross-sections of a fuselage.
     """
     try:
-        with db.begin():
-            aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
-            if not aeroplane:
-                raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
-            fuselage = next((f for f in aeroplane.fuselages if f.name == fuselage_name), None)
-            if not fuselage:
-                raise HTTPException(status_code=404, detail=_ERR_FUSELAGE_NOT_FOUND)
-            # Remove all cross-sections (using delete-orphan cascade)
-            fuselage.x_secs.clear()
-            # Touch parent timestamp
-            aeroplane.updated_at = datetime.now()
+        aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
+        if not aeroplane:
+            raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
+        fuselage = next((f for f in aeroplane.fuselages if f.name == fuselage_name), None)
+        if not fuselage:
+            raise HTTPException(status_code=404, detail=_ERR_FUSELAGE_NOT_FOUND)
+        # Remove all cross-sections (using delete-orphan cascade)
+        fuselage.x_secs.clear()
+        # Touch parent timestamp
+        aeroplane.updated_at = datetime.now()
         return OperationStatusResponse(status="ok", operation="delete_all_fuselage_cross_sections")
     except HTTPException:
         raise
@@ -412,39 +407,38 @@ async def create_aeroplane_fuselage_cross_section(
     Creates a new cross-section for the fuselage and splice it into the list of cross-sections.
     """
     try:
-        with db.begin():
-            aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
-            if not aeroplane:
-                raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
-            fuselage = next((f for f in aeroplane.fuselages if f.name == fuselage_name), None)
-            if not fuselage:
-                raise HTTPException(status_code=404, detail=_ERR_FUSELAGE_NOT_FOUND)
-            # build new FuselageXSecSuperEllipseModel from request data
-            data = request.model_dump()
+        aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
+        if not aeroplane:
+            raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
+        fuselage = next((f for f in aeroplane.fuselages if f.name == fuselage_name), None)
+        if not fuselage:
+            raise HTTPException(status_code=404, detail=_ERR_FUSELAGE_NOT_FOUND)
+        # build new FuselageXSecSuperEllipseModel from request data
+        data = request.model_dump()
 
-            # determine insertion index
-            existing = fuselage.x_secs
-            if cross_section_index == -1 or cross_section_index >= len(existing):
-                insertion_index = len(existing)
-            else:
-                insertion_index = cross_section_index
+        # determine insertion index
+        existing = fuselage.x_secs
+        if cross_section_index == -1 or cross_section_index >= len(existing):
+            insertion_index = len(existing)
+        else:
+            insertion_index = cross_section_index
 
-            # shift sort_index of following cross-sections
-            for xs in existing[insertion_index:]:
-                xs.sort_index = xs.sort_index + 1
-                db.add(xs)
+        # shift sort_index of following cross-sections
+        for xs in existing[insertion_index:]:
+            xs.sort_index = xs.sort_index + 1
+            db.add(xs)
 
-            # create new cross-section with appropriate sort_index
-            new_xsec = FuselageXSecSuperEllipseModel(sort_index=insertion_index, **data)
+        # create new cross-section with appropriate sort_index
+        new_xsec = FuselageXSecSuperEllipseModel(sort_index=insertion_index, **data)
 
-            # insert new cross-section
-            if insertion_index == len(existing):
-                fuselage.x_secs.append(new_xsec)
-            else:
-                fuselage.x_secs.insert(insertion_index, new_xsec)
-            # touch parent timestamp
-            aeroplane.updated_at = datetime.now()
-            db.add(new_xsec)
+        # insert new cross-section
+        if insertion_index == len(existing):
+            fuselage.x_secs.append(new_xsec)
+        else:
+            fuselage.x_secs.insert(insertion_index, new_xsec)
+        # touch parent timestamp
+        aeroplane.updated_at = datetime.now()
+        db.add(new_xsec)
         return OperationStatusResponse(status="created", operation="create_fuselage_cross_section")
     except HTTPException:
         raise
@@ -478,24 +472,23 @@ async def update_aeroplane_fuselage_cross_section(
     Updates the cross-section for the fuselage.
     """
     try:
-        with db.begin():
-            aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
-            if not aeroplane:
-                raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
-            fuselage = next((f for f in aeroplane.fuselages if f.name == fuselage_name), None)
-            if not fuselage:
-                raise HTTPException(status_code=404, detail=_ERR_FUSELAGE_NOT_FOUND)
-            x_secs = fuselage.x_secs
-            if cross_section_index < 0 or cross_section_index >= len(x_secs):
-                raise HTTPException(status_code=404, detail=_ERR_XSEC_NOT_FOUND)
+        aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
+        if not aeroplane:
+            raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
+        fuselage = next((f for f in aeroplane.fuselages if f.name == fuselage_name), None)
+        if not fuselage:
+            raise HTTPException(status_code=404, detail=_ERR_FUSELAGE_NOT_FOUND)
+        x_secs = fuselage.x_secs
+        if cross_section_index < 0 or cross_section_index >= len(x_secs):
+            raise HTTPException(status_code=404, detail=_ERR_XSEC_NOT_FOUND)
 
-            data = request.model_dump()
-            # Create new cross-section with the same sort_index as the one being replaced
-            new_xsec = FuselageXSecSuperEllipseModel(sort_index=cross_section_index, **data)
+        data = request.model_dump()
+        # Create new cross-section with the same sort_index as the one being replaced
+        new_xsec = FuselageXSecSuperEllipseModel(sort_index=cross_section_index, **data)
 
-            fuselage.x_secs[cross_section_index] = new_xsec
-            # Touch parent timestamp
-            aeroplane.updated_at = datetime.now()
+        fuselage.x_secs[cross_section_index] = new_xsec
+        # Touch parent timestamp
+        aeroplane.updated_at = datetime.now()
         return OperationStatusResponse(status="ok", operation="update_fuselage_cross_section")
     except HTTPException:
         raise
@@ -528,27 +521,26 @@ async def delete_aeroplane_fuselage_cross_section(
     Delete a cross-section.
     """
     try:
-        with db.begin():
-            aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
-            if not aeroplane:
-                raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
-            fuselage = next((f for f in aeroplane.fuselages if f.name == fuselage_name), None)
-            if not fuselage:
-                raise HTTPException(status_code=404, detail=_ERR_FUSELAGE_NOT_FOUND)
-            x_secs = fuselage.x_secs
-            if cross_section_index < 0 or cross_section_index >= len(x_secs):
-                raise HTTPException(status_code=404, detail=_ERR_XSEC_NOT_FOUND)
-            # Remove and delete the cross-section
-            xsec = x_secs.pop(cross_section_index)
-            db.delete(xsec)
+        aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
+        if not aeroplane:
+            raise HTTPException(status_code=404, detail=_ERR_AEROPLANE_NOT_FOUND)
+        fuselage = next((f for f in aeroplane.fuselages if f.name == fuselage_name), None)
+        if not fuselage:
+            raise HTTPException(status_code=404, detail=_ERR_FUSELAGE_NOT_FOUND)
+        x_secs = fuselage.x_secs
+        if cross_section_index < 0 or cross_section_index >= len(x_secs):
+            raise HTTPException(status_code=404, detail=_ERR_XSEC_NOT_FOUND)
+        # Remove and delete the cross-section
+        xsec = x_secs.pop(cross_section_index)
+        db.delete(xsec)
 
-            # Update sort_index for remaining cross-sections
-            for i, xs in enumerate(x_secs):
-                if xs.sort_index != i:
-                    xs.sort_index = i
-                    db.add(xs)
+        # Update sort_index for remaining cross-sections
+        for i, xs in enumerate(x_secs):
+            if xs.sort_index != i:
+                xs.sort_index = i
+                db.add(xs)
 
-            aeroplane.updated_at = datetime.now()
+        aeroplane.updated_at = datetime.now()
         return OperationStatusResponse(status="ok", operation="delete_fuselage_cross_section")
     except HTTPException:
         raise
