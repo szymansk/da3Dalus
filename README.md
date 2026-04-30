@@ -58,6 +58,49 @@ Poetry is the recommended way for local development with hot-reload capabilities
    - Press `F5` or select "FastAPI: app.main" from the Run and Debug panel
    - The application will start with debugging enabled
 
+#### Fresh Local Database
+
+The backend uses `SQLALCHEMY_DATABASE_URL` for both the application and
+Alembic. If the variable is unset, it defaults to the local SQLite database
+`sqlite:///./db/test.db`.
+
+1. **Create a local environment file:**
+   ```bash
+   cp -f .env.example .env
+   ```
+
+2. **Create the database directory if it does not exist:**
+   ```bash
+   mkdir -p db
+   ```
+
+3. **Optional: reset the local SQLite database:**
+   ```bash
+   rm -f db/test.db
+   ```
+
+4. **Apply all database migrations:**
+   ```bash
+   poetry run alembic upgrade head
+   ```
+
+5. **Start the backend:**
+   ```bash
+   poetry run uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+   ```
+
+On startup, the app also runs an idempotent seed step for the default component
+types, so a migrated fresh database is ready to use immediately.
+
+To use another database, set `SQLALCHEMY_DATABASE_URL` in `.env` or in your
+shell before running Alembic and the app, for example:
+
+```bash
+export SQLALCHEMY_DATABASE_URL=postgresql+psycopg2://user:pass@localhost:5432/da3dalus
+poetry run alembic upgrade head
+poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
 ### Option 2: Using Docker Compose (Production)
 
 Docker Compose provides a containerized environment with all dependencies pre-installed.
@@ -249,4 +292,3 @@ Platform-specific dependencies are handled via environment markers in [pyproject
 ## Contributors
 
 Marc Szymanski (marc.szymanski@mac.com)
-

@@ -19,19 +19,15 @@ a React frontend.
 **Frontend** (`frontend/`) — Next.js 16 App Router + React 19:
 - Interactive workbench for aircraft design (wing editor, component
   tree, analysis dashboards).
-- 3D CAD viewer via **Three.js** (`@react-three/fiber` + `drei`).
+- 3D CAD viewer via **three-cad-viewer** (Three.js-based).
 - Aerodynamic charts via **Plotly** (`plotly.js-gl3d-dist-min`).
 - Data fetching with **SWR**, styling with **Tailwind CSS**.
 - Dark theme with orange accent (`#FF8400`), fonts: JetBrains Mono +
   Geist.
 
 ## Codebase Exploration
+NEVER use the Explore agent. Always launch  @"code-base-explorer (agent)". It is faster and more precise than grep-based search. 
 
-Prefer the **code-base-explorer** agent (`.claude/agents/code-base-explorer.md`)
-over the generic Explore agent when exploring this codebase. It uses
-Serena's LSP-backed symbol tools for semantic navigation (find symbol,
-find references, symbols overview) alongside standard Glob/Grep/Read,
-giving more accurate results for structural questions.
 
 ## Using Superpowers
 
@@ -40,103 +36,17 @@ current state and the steps to proceed with.
 
 ## Development Workflow — Supercycle
 
-**The primary development workflow is the Supercycle** — a set of
-project-local skills (`.claude/skills/supercycle-*/`) that orchestrate
-the full lifecycle from issue to merged PR. They are thin
-orchestrators: supercycle handles GH tracking + SonarQube; superpowers
-skills do the actual work.
+**The primary development workflow is the Supercycle** — project-local
+skills (`.claude/skills/supercycle-*/`) that orchestrate the full
+lifecycle from issue to merged PR. Each skill self-documents its
+usage; invoke `/supercycle-status` for an overview.
 
-### Supercycle Skills (preferred)
-
-```
-/supercycle-status               ← Project health dashboard — issues, SonarQube, recommendations
-/supercycle-init                 ← Check & install all required tools and dependencies
-/supercycle-ticket <description> ← Brainstorm + create refined GH Issue (read-only, no code changes)
-/supercycle-work #187            ← Full cycle: brainstorm → implement → review → merge
-/supercycle-bug <error log>      ← Bug intake: investigate → ticket → TDD fix → merge
-/supercycle-implement #188,#190  ← Skip brainstorming, implementation from spec/plan
-/supercycle-review 200, 201      ← Dispatch multi-agent review on open PRs
-/supercycle-fix 201              ← Fix review findings on PR branches
-/supercycle-merge 200, 201       ← CI + SonarQube quality gate + merge
-```
-
-**Architecture:** Each skill follows GATHER → DELEGATE → TRACK:
-- **GATHER** — Load GH issue, read prior step comments, fetch SonarQube context
-- **DELEGATE** — Invoke superpowers skills with gathered context
-- **TRACK** — Post structured GH comments (`has-spec`, `has-plan`, `has-review`, etc.), rotate status labels
-
-GH Issue comments serve as cross-session memory — each phase writes
-its artifact (spec, plan, review findings) so downstream phases can
-pick up context via `read-step-comments` even across sessions.
-
-**Flow:**
-```
-/supercycle-ticket → /brainstorming → GH Issue + has-spec
-
-/supercycle-work
-  ├─ /brainstorming → USER GATE → has-spec
-  ├─ /writing-plans → has-plan
-  ├─ /using-git-worktrees
-  ├─ /subagent-driven-development (TDD embedded per task)
-  ├─ /pr-review-toolkit:review-pr → has-review + has-pr
-  ├─ IF findings: /receiving-code-review + /sonarqube:sonar-fix-issue → has-fix
-  └─ /finishing-a-development-branch → status:merged
-
-/supercycle-bug (auto-chains, no user gates)
-  ├─ /systematic-debugging → has-root-cause
-  ├─ GH Issue creation
-  ├─ /using-git-worktrees
-  ├─ /test-driven-development (RED → GREEN → REFACTOR) → has-reproduction
-  ├─ /verification-before-completion
-  ├─ /pr-review-toolkit:review-pr → has-review + has-pr
-  └─ /finishing-a-development-branch → status:merged
-```
-
-**When to use which entry point:**
-- **`/supercycle-ticket`** — Turn an idea into a refined GH Issue (no code changes)
-- **`/supercycle-work`** — New feature, needs discussion with user
-- **`/supercycle-bug`** — Bug report (error log or ticket) — fast-track to fix
-- **`/supercycle-implement`** — Issue is clear, skip brainstorming
-- **`/supercycle-review`** — PRs exist, need automated review
-- **`/supercycle-fix`** — Review found issues to address
-- **`/supercycle-merge`** — PRs approved, ready to merge
-
-### Underlying Skills (used within the supercycle)
-
-The supercycle skills orchestrate these superpowers skills internally.
-You may also invoke them directly for granular control:
-
-| Phase | Skill | When |
-|-------|-------|------|
-| Design | `/brainstorming` | Creative work — features, UI, architecture |
-| Planning | `/writing-plans` | Multi-step tasks after design approval |
-| Implementation | `/test-driven-development` | **Every** feature or bugfix — RED → GREEN → REFACTOR |
-| Implementation | `/systematic-debugging` | Any bug or test failure |
-| Implementation | `/subagent-driven-development` | Multi-task parallel execution |
-| Quality | `/verification-before-completion` | Before claiming work is done |
-| Quality | `/requesting-code-review` | Quick single-agent review between tasks |
-| Quality | `/pr-review-toolkit:review-pr` | Comprehensive multi-agent review before merge |
-| Quality | `/receiving-code-review` | Evaluate review findings with technical rigor |
-| Completion | `/finishing-a-development-branch` | All tasks pass, ready to merge |
-
-**Backend (Python):**
-
-| Skill | When |
-|-------|------|
-| `/python-testing-patterns` | pytest fixtures, mocking, parametrize, test strategies |
-| `/pytest-coverage` | Measuring + improving coverage toward 70–80% target |
-| `/security-review` | Security analysis (OWASP, auth, injection) |
-
-**Frontend (React / Next.js):**
-
-| Skill | When |
-|-------|------|
-| `/vercel-react-best-practices` | Performance, data fetching, bundle size |
-| `/vercel-composition-patterns` | Component API design, compound components |
-| `/nextjs-app-router-patterns` | Server Components, streaming, App Router |
-| `/webapp-testing` | Component + integration tests |
-| `/playwright-best-practices` | E2E tests, Page Object Model, flaky tests |
-| `/web-design-guidelines` | UI review, accessibility, UX compliance |
+Entry points:
+- **`/supercycle-ticket`** — Idea → refined GH Issue (no code)
+- **`/supercycle-work #N`** — Full cycle: brainstorm → implement → review → merge
+- **`/supercycle-bug`** — Bug report → fast-track TDD fix → merge
+- **`/supercycle-implement #N`** — Issue is clear, skip brainstorming
+- **`/supercycle-review`, `/supercycle-fix`, `/supercycle-merge`** — PR lifecycle
 
 ### Iron Laws
 
@@ -151,7 +61,7 @@ You may also invoke them directly for granular control:
    create a GitHub Issue (report ticket number to user) after root
    cause analysis and before any code changes.
 
-### Test coverage target: 70–80%
+### Test coverage target: >80%
 
 Every feature, bugfix, and refactor must include tests. Check
 coverage with `poetry run pytest --cov=app` (backend) or the
@@ -168,57 +78,6 @@ equivalent frontend command.
 | cad_designer | pytest | `cad_designer/tests/test_*.py` | `poetry run pytest cad_designer/tests/` |
 
 
-## Frontend Design Rules
-
-### Reuse before creating
-
-Before building a new component, **search the existing frontend**
-for patterns that match. This project has battle-tested components:
-
-- `TreeCard` + `SimpleTreeRow` — collapsible tree panels with DnD
-- `AirfoilSelector` — searchable dropdown (reuse for any picker)
-- `Field` — labeled number/text input with suffix
-- `GroupAddMenu` — contextual add-action popover
-- Collapsible sections (`ChevronDown`/`ChevronRight` toggle)
-- Modal dialogs (`fixed inset-0 z-50` backdrop + card)
-- SWR hooks (`useWing`, `useComponents`, `useComponentTypes`, etc.)
-
-Check `frontend/components/workbench/` and `frontend/hooks/` first.
-Only create new components when no existing pattern fits.
-
-### Click-dummy for large UI changes
-
-For new screens, major layout changes, or complex interactions:
-build a **click-dummy** (functional prototype with hardcoded data)
-and review it with the user before implementing the real logic.
-Small additions (new form fields, extra buttons) that follow
-existing patterns don't need a click-dummy.
-
-### Adding Analysis Types
-
-Each analysis type is a tab in the Analysis page
-(`frontend/app/workbench/analysis/`) with its own:
-
-1. **Tab entry** in `AnalysisViewerPanel.tsx` TABS array
-2. **Config section** in `AnalysisConfigPanel.tsx` (keyed by
-   `activeTab` prop)
-3. **Hook** in `frontend/hooks/` for the backend endpoint
-4. **Plotly charts** for result visualization
-
-Pattern: Tab selection → "Configure & Run" opens tab-specific
-modal → user sets parameters → Run → results displayed as Plotly
-charts. Future analysis types (e.g. stability/trim with operating
-point) follow the same pattern.
-
-All analysis charts use **Plotly** (dynamic import via
-`import("plotly.js-gl3d-dist-min")`). Dark theme via layout
-props (`paper_bgcolor`, `plot_bgcolor`, `font.color`).
-
-### Other rules
-
-- **App Router** (not Pages Router) — see `frontend/AGENTS.md`
-- All API calls go through the backend (no direct CORS calls)
-
 
 ## Issue Tracking — GitHub Issues
 
@@ -229,7 +88,8 @@ management: features, bugs, epics, and technical tasks.
 - **Bug reports:** `.github/ISSUE_TEMPLATE/bug.md`
 - **Technical tasks:** `.github/ISSUE_TEMPLATE/task.md`
 - Always use templates — they ensure consistent structure
-- The agent MAY create GitHub Issues for discovered improvements
+- The agent MAY create GitHub Issues for discovered **bugs** only;
+  feature ideas need user confirmation via `/supercycle-ticket`
 - PRs reference the issue: `Closes #N`
 - Epics are GH Issues with sub-ticket links in comments
 
@@ -319,45 +179,17 @@ poetry run ruff format .
 docker compose build && docker compose up -d  # port 8086
 ```
 
-**Runtime endpoints:**
-
-| URL | What |
-|-----|------|
-| `http://localhost:8001` | REST API |
-| `http://localhost:8001/docs` | Swagger UI |
-| `http://localhost:8001/redoc` | ReDoc |
-| `http://localhost:8001/openapi.json` | OpenAPI schema |
-| `http://localhost:8001/mcp` | MCP (Streamable HTTP) |
+API runs on `http://localhost:8001` — Swagger at `/docs`, MCP at `/mcp`.
 
 
 ## Architecture
 
 Layered FastAPI application. Request flow: **endpoint → service →
-model / schema / converter**.
-
-```
-app/
-├── main.py                  # FastAPI entrypoint + router wiring
-├── mcp_server.py            # FastMCP server (same host/port)
-├── api/v2/endpoints/        # Current API, grouped by domain
-├── services/                # Business logic, CAD orchestration
-├── models/                  # SQLAlchemy ORM models
-├── schemas/                 # Pydantic request/response DTOs
-├── converters/              # schema ⇄ model ⇄ CAD transforms
-├── core/                    # Config, logging, exceptions
-├── db/                      # SQLAlchemy session + engine
-└── tests/                   # pytest test modules
-
-alembic/                     # DB migrations
-cad_designer/                # CadQuery primitives, plugins, decorators
-components/                  # Airfoils, servos, templates (data)
-```
-
-- `v2` is current; `v1` is legacy. New endpoints → `app/api/v2/endpoints/`
-- MCP via FastMCP 3.x on the same host/port as REST
+model / schema / converter**. `v2` is current; `v1` is legacy.
+Details in `.claude/rules/python-conventions.md`.
 
 
-## Conventions & Patterns
+## Non-obvious Conventions
 
 - **`cad_designer/` — existing code is read-only, new Creators are
   allowed.** Never modify topology classes (`Airfoil`, `WingSegment`,
@@ -367,25 +199,12 @@ components/                  # Airfoils, servos, templates (data)
   (`app/schemas/`) and frontend UX.
   **New Creators** (subclasses of `AbstractShapeCreator`) may be
   added. Use `cad_designer/airplane/creator/_creator_template.py`
-  as the starting point — it documents the constructor pattern,
-  `shapes_of_interest_keys`, `_create_shape()` contract, logging,
-  and output key conventions.
+  as the starting point.
 - **Units: mm in WingConfig, meters in DB/ASB.** The WingConfig
   schemas and topology classes use **millimetres**. The database and
   Aerosandbox integration use **metres**. Conversion happens in the
   converters via `scale=0.001` (mm→m) and `scale=1000.0` (m→mm).
   Always be explicit about which unit context you're in.
-- **Endpoints stay thin.** Validate → delegate to service → return
-  Pydantic response. No business logic in endpoints.
-- **Pydantic at every boundary.** Never pass raw `dict`.
-- **SQLAlchemy models in `app/models/`.** Always add an Alembic
-  migration when changing a model.
-- **Reuse before reinventing.** Check `app/converters/`,
-  `app/services/`, `cad_designer/decorators/`, `cad_designer/cq_plugins/`.
-- **CPU-bound CAD in services**, not endpoints.
-- **Platform guard.** On `linux/aarch64`, `cadquery` and `aerosandbox`
-  are excluded. Code that imports them must tolerate `ImportError`.
-- **Secrets in `.env`**, never in git. Document in `.env.example`.
 - **`wing_service` uses `with db.begin():`** in all write
   operations. Direct service-level tests must use a session with
   `autobegin=False` or go through the REST API via `TestClient`.
