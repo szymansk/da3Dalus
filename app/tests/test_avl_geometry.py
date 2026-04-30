@@ -7,6 +7,8 @@ Base.metadata.create_all().
 
 from __future__ import annotations
 
+import uuid
+
 import pytest
 from sqlalchemy.orm import Session
 
@@ -105,3 +107,125 @@ class TestAvlGeometrySchemas:
     def test_update_request_empty_content_rejected(self):
         with pytest.raises(Exception):
             AvlGeometryUpdateRequest(content="")
+
+
+# ── Service Tests ─────────────────────────────────────────────────────────────
+
+
+from unittest.mock import patch
+
+from app.services.avl_geometry_service import (
+    delete_avl_geometry,
+    generate_avl_content,
+    get_avl_geometry,
+    regenerate_avl_geometry,
+    save_avl_geometry,
+)
+from app.core.exceptions import NotFoundError
+
+
+class TestAvlGeometryService:
+    def test_get_avl_geometry_no_saved_file_generates(self, db: Session):
+        """When no saved file exists, generate content on the fly."""
+        aeroplane = AeroplaneModel(name="TestPlane")
+        db.add(aeroplane)
+        db.flush()
+
+        with patch(
+            "app.services.avl_geometry_service.generate_avl_content",
+            return_value="GENERATED\nCONTENT\n",
+        ):
+            result = get_avl_geometry(db, aeroplane.uuid)
+
+        assert result.content == "GENERATED\nCONTENT\n"
+        assert result.is_user_edited is False
+        assert result.is_dirty is False
+
+    def test_get_avl_geometry_returns_saved(self, db: Session):
+        """When a saved file exists, return it."""
+        aeroplane = AeroplaneModel(name="TestPlane")
+        db.add(aeroplane)
+        db.flush()
+
+        geom = AvlGeometryFileModel(
+            aeroplane_id=aeroplane.id,
+            content="USER CONTENT",
+            is_user_edited=True,
+        )
+        db.add(geom)
+        db.flush()
+
+        result = get_avl_geometry(db, aeroplane.uuid)
+        assert result.content == "USER CONTENT"
+        assert result.is_user_edited is True
+
+    def test_save_avl_geometry_creates_new(self, db: Session):
+        aeroplane = AeroplaneModel(name="TestPlane")
+        db.add(aeroplane)
+        db.flush()
+
+        result = save_avl_geometry(db, aeroplane.uuid, "NEW CONTENT")
+        assert result.content == "NEW CONTENT"
+        assert result.is_user_edited is True
+        assert result.is_dirty is False
+
+    def test_save_avl_geometry_updates_existing(self, db: Session):
+        aeroplane = AeroplaneModel(name="TestPlane")
+        db.add(aeroplane)
+        db.flush()
+
+        geom = AvlGeometryFileModel(
+            aeroplane_id=aeroplane.id,
+            content="OLD",
+            is_dirty=True,
+        )
+        db.add(geom)
+        db.flush()
+
+        result = save_avl_geometry(db, aeroplane.uuid, "UPDATED")
+        assert result.content == "UPDATED"
+        assert result.is_dirty is False
+        assert result.is_user_edited is True
+
+    def test_regenerate_returns_fresh_content(self, db: Session):
+        aeroplane = AeroplaneModel(name="TestPlane")
+        db.add(aeroplane)
+        db.flush()
+
+        with patch(
+            "app.services.avl_geometry_service.generate_avl_content",
+            return_value="FRESH\nGENERATED\n",
+        ):
+            result = regenerate_avl_geometry(db, aeroplane.uuid)
+
+        assert result.content == "FRESH\nGENERATED\n"
+        assert result.is_user_edited is False
+
+    def test_delete_avl_geometry(self, db: Session):
+        aeroplane = AeroplaneModel(name="TestPlane")
+        db.add(aeroplane)
+        db.flush()
+
+        geom = AvlGeometryFileModel(aeroplane_id=aeroplane.id, content="DATA")
+        db.add(geom)
+        db.flush()
+
+        delete_avl_geometry(db, aeroplane.uuid)
+        assert (
+            db.query(AvlGeometryFileModel)
+            .filter_by(aeroplane_id=aeroplane.id)
+            .first()
+            is None
+        )
+
+    def test_delete_avl_geometry_not_found(self, db: Session):
+        aeroplane = AeroplaneModel(name="TestPlane")
+        db.add(aeroplane)
+        db.flush()
+
+        with pytest.raises(NotFoundError):
+            delete_avl_geometry(db, aeroplane.uuid)
+
+    def test_get_avl_geometry_aeroplane_not_found(self, db: Session):
+        with pytest.raises(NotFoundError):
+            get_avl_geometry(db, uuid.uuid4())
