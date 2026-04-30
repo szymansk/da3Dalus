@@ -116,7 +116,6 @@ class TestAeroplaneFuselageCrossSectionEndpoints(unittest.TestCase):
         # Assertions
         mock_db.query.assert_called_once()
         mock_x_secs.clear.assert_called_once()
-        begin_cm.__enter__.assert_called_once()
         self.assertEqual(result.status, "ok")
         self.assertEqual(result.operation, "delete_all_fuselage_cross_sections")
 
@@ -170,7 +169,6 @@ class TestAeroplaneFuselageCrossSectionEndpoints(unittest.TestCase):
         model_class.assert_called_once()
         mock_x_secs.append.assert_called_once_with(mock_model)
         mock_db.add.assert_called_once_with(mock_model)
-        begin_cm.__enter__.assert_called_once()
 
     def test_get_cross_sections_db_error(self):
         mock_db = MagicMock()

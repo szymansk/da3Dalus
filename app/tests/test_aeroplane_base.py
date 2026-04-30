@@ -38,8 +38,7 @@ class TestCreateAeroplane(unittest.TestCase):
     def test_create_aeroplane_db_error(self):
         # Setup mock
         mock_db = MagicMock()
-        begin_cm = mock_db.begin.return_value
-        begin_cm.__enter__.side_effect = SQLAlchemyError("Test DB error")
+        mock_db.add.side_effect = SQLAlchemyError("Test DB error")
 
         # Call the function and check for exception
         with self.assertRaises(HTTPException) as context:
@@ -48,13 +47,10 @@ class TestCreateAeroplane(unittest.TestCase):
         # Assertions
         self.assertEqual(context.exception.status_code, 500)
         self.assertIn("Database error", context.exception.detail)
-        mock_db.begin.assert_called_once()
 
     def test_create_aeroplane_unexpected_error(self):
         # Setup mock
         mock_db = MagicMock()
-        begin_cm = mock_db.begin.return_value
-        begin_cm.__enter__.return_value = None
         mock_db.add.side_effect = Exception("Test unexpected error")
 
         # Call the function and check for exception
@@ -64,7 +60,6 @@ class TestCreateAeroplane(unittest.TestCase):
         # Assertions
         self.assertEqual(context.exception.status_code, 500)
         self.assertIn("Unexpected error", context.exception.detail)
-        mock_db.begin.assert_called_once()
 
 class TestGetAeroplanes(unittest.TestCase):
     def test_get_aeroplanes_success(self):
@@ -201,16 +196,10 @@ class TestDeleteAeroplane(unittest.TestCase):
         mock_model = MagicMock()
         mock_db.query.return_value.filter.return_value.first.return_value = mock_model
 
-        # Context manager for transaction
-        begin_cm = mock_db.begin.return_value
-        begin_cm.__enter__.return_value = None
-
         result = asyncio.run(delete_aeroplane(aeroplane_id=test_id, db=mock_db))
 
         mock_db.query.assert_called_once_with(AeroplaneModel)
         mock_db.delete.assert_called_once_with(mock_model)
-        # Ensure transaction was entered
-        begin_cm.__enter__.assert_called_once()
         self.assertEqual(result.status, "ok")
         self.assertEqual(result.operation, "delete_aeroplane")
 

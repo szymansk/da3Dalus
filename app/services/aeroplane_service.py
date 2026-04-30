@@ -62,10 +62,9 @@ def create_aeroplane(db: Session, name: str) -> AeroplaneModel:
     """
     try:
         aeroplane = AeroplaneModel(name=name)
-        with db.begin():
-            db.add(aeroplane)
-            db.flush()
-            db.refresh(aeroplane)
+        db.add(aeroplane)
+        db.flush()
+        db.refresh(aeroplane)
         return aeroplane
     except SQLAlchemyError as e:
         logger.error(f"Database error when creating aeroplane: {e}")
@@ -146,17 +145,16 @@ def delete_aeroplane(db: Session, aeroplane_uuid) -> None:
         InternalError: If a database error occurs.
     """
     try:
-        with db.begin():
-            aeroplane = db.query(AeroplaneModel).filter(
-                AeroplaneModel.uuid == aeroplane_uuid
-            ).first()
-            
-            if not aeroplane:
-                raise NotFoundError(
-                    message=_ERR_AEROPLANE_NOT_FOUND,
-                    details={"aeroplane_id": str(aeroplane_uuid)}
-                )
-            db.delete(aeroplane)
+        aeroplane = db.query(AeroplaneModel).filter(
+            AeroplaneModel.uuid == aeroplane_uuid
+        ).first()
+
+        if not aeroplane:
+            raise NotFoundError(
+                message=_ERR_AEROPLANE_NOT_FOUND,
+                details={"aeroplane_id": str(aeroplane_uuid)}
+            )
+        db.delete(aeroplane)
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
@@ -195,23 +193,22 @@ def set_aeroplane_mass(db: Session, aeroplane_uuid, total_mass_kg: float) -> boo
     """
     try:
         created = False
-        with db.begin():
-            aeroplane = db.query(AeroplaneModel).filter(
-                AeroplaneModel.uuid == aeroplane_uuid
-            ).first()
-            
-            if not aeroplane:
-                raise NotFoundError(
-                    message=_ERR_AEROPLANE_NOT_FOUND,
-                    details={"aeroplane_id": str(aeroplane_uuid)}
-                )
-            
-            if aeroplane.total_mass_kg is None:
-                created = True
-            
-            aeroplane.total_mass_kg = total_mass_kg
-            aeroplane.updated_at = datetime.now()
-        
+        aeroplane = db.query(AeroplaneModel).filter(
+            AeroplaneModel.uuid == aeroplane_uuid
+        ).first()
+
+        if not aeroplane:
+            raise NotFoundError(
+                message=_ERR_AEROPLANE_NOT_FOUND,
+                details={"aeroplane_id": str(aeroplane_uuid)}
+            )
+
+        if aeroplane.total_mass_kg is None:
+            created = True
+
+        aeroplane.total_mass_kg = total_mass_kg
+        aeroplane.updated_at = datetime.now()
+
         return created
     except NotFoundError:
         raise

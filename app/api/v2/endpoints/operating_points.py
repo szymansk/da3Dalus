@@ -103,7 +103,7 @@ def create_operating_point(
 ):
     op = OperatingPointModel(**op_data.model_dump())
     db.add(op)
-    db.commit()
+    db.flush()
     db.refresh(op)
     return op
 
@@ -146,7 +146,7 @@ def update_operating_point(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"OperatingPoint {op_id} not found")
     for key, value in op_data.model_dump().items():
         setattr(op, key, value)
-    db.commit()
+    db.flush()
     db.refresh(op)
     return op
 
@@ -157,7 +157,6 @@ def delete_operating_point(op_id: int, db: Annotated[Session, Depends(get_db)]):
     if not op:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"OperatingPoint {op_id} not found")
     db.delete(op)
-    db.commit()
     return {"detail": "Operating point deleted"}
 
 
@@ -168,7 +167,7 @@ def create_operating_pointset(
 ):
     opset = OperatingPointSetModel(**opset_data.model_dump())
     db.add(opset)
-    db.commit()
+    db.flush()
     db.refresh(opset)
     return opset
 
@@ -204,7 +203,7 @@ def update_operating_pointset(opset_id: int, opset_data: OperatingPointSetSchema
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"OperatingPointSet {opset_id} not found")
     for key, value in opset_data.model_dump().items():
         setattr(opset, key, value)
-    db.commit()
+    db.flush()
     db.refresh(opset)
     return opset
 
@@ -215,5 +214,4 @@ def delete_operating_pointset(opset_id: int, db: Annotated[Session, Depends(get_
     if not opset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"OperatingPointSet {opset_id} not found")
     db.delete(opset)
-    db.commit()
     return {"detail": "Operating point set deleted"}
