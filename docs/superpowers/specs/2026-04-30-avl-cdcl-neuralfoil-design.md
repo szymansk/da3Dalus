@@ -1,15 +1,15 @@
-# AVL CDCL Integration via NeuralFoil
+# AVL Own Generator, CDCL via NeuralFoil & Intelligent Spacing
 
 ## Problem
 
-AVL analyses currently compute only **induced drag** (CDi) from the
-Trefftz plane. The CDCL blocks in generated `.avl` files are all zeros
-(`0 0 0 0 0 0`), meaning no profile drag (friction, pressure,
-separation) is accounted for. This leads to:
+1. **No profile drag:** AVL analyses compute only induced drag (CDi).
+   CDCL blocks are all zeros — no friction, pressure, or separation
+   drag. This inflates L/D ratios and produces unrealistic drag polars.
 
-- Overly optimistic total drag predictions
-- Inflated L/D ratios
-- Unrealistic drag polars
+2. **Suboptimal panel distribution:** Aerosandbox's `write_avl()` uses
+   fixed defaults (Nchord=12, Nspan=12, cosine everywhere). It does
+   not adapt spacing to geometry features like control surface
+   boundaries, taper breaks, or sweep — leaving accuracy on the table.
 
 ## Solution Overview
 
@@ -22,6 +22,9 @@ separation) is accounted for. This leads to:
 3. **3-point CDCL fit** — extract CL_min (with CD), CD_min (with CL),
    CL_max (with CD) from the NeuralFoil polar to populate the AVL
    CDCL format.
+4. **Intelligent spacing** — automatically adapt panel counts and
+   spacing distributions based on geometry features (control surfaces,
+   taper breaks, sweep, aligned surfaces).
 
 ## Data Structure: `AvlGeometryFile`
 
@@ -213,6 +216,74 @@ Aerosandbox is still used for:
 
 Only file generation is decoupled.
 
+## Intelligent Spacing Optimisation
+
+The own generator can apply AVL's 4 spacing rules automatically
+(avl_doc.txt, lines 1086–1131) instead of relying on fixed defaults.
+
+### Spacing distributions (Cspace, Sspace)
+
+| Value | Distribution | When to use |
+|-------|-------------|-------------|
+| 1.0 | cosine | **Default** — bunched at both ends |
+| 2.0 | sine | Bunched at start of segment |
+| -2.0 | -sine | Root-to-tip on unswept wings without centreline chord break |
+| 3.0 | equal | Rarely useful, slow convergence |
+
+Intermediate values (e.g. 1.5) produce blended distributions.
+
+### Automatic optimisations
+
+The generator inspects the geometry and sets spacing intelligently:
+
+1. **Control surface detection:** if any section has CONTROL entries,
+   increase `n_chord` (e.g. 12→16) to resolve the camberline
+   discontinuity at the hinge line (Rule 3).
+
+2. **Unswept wing detection:** if the wing has no significant sweep
+   and no centreline chord break, use `-sine` (-2.0) spanwise spacing
+   from root to tip. This is equivalent to cosine across the full
+   span and more efficient (avl_doc.txt, line 1040–1047).
+
+3. **Aligned surface consistency (Rule 1):** if two surfaces share
+   similar y,z coordinates (e.g. wing + horizontal tail), enforce
+   identical spanwise spacing to prevent trailing vortices from
+   passing through downstream control points.
+
+4. **Local span refinement:** at control surface boundaries (flap/
+   aileron start/end), use per-section `n_span` with tighter spacing
+   instead of uniform distribution across the whole surface.
+
+5. **Bidirectional refinement (Rule 4):** when the user requests
+   higher resolution, scale both `n_chord` and `n_span` together —
+   never just one direction.
+
+### SpacingConfig schema
+
+```python
+class SpacingConfig(BaseModel):
+    n_chord: int = 12
+    c_space: float = 1.0       # cosine default
+    n_span: int = 20
+    s_space: float = 1.0       # cosine default
+    auto_optimise: bool = True  # apply intelligent rules above
+```
+
+When `auto_optimise=True` (default), the generator overrides the
+base values where geometry features warrant it. When `False`, the
+base values are used as-is, giving the user full manual control.
+
+### Refinement study reference (avl_doc.txt, lines 1058–1081)
+
+| Spacing | Nchord×Nspan | Oswald error |
+|---------|-------------|-------------|
+| Cosine | 1×4 | +0.09% |
+| Uniform | 1×4 | +13.45% |
+| Cosine | 4×16 | -0.00% |
+| Uniform | 8×32 | +1.54% |
+
+Cosine spacing at 2×8 is more accurate than uniform at 8×32.
+
 ## Files affected
 
 | File | Change |
@@ -223,12 +294,16 @@ Only file generation is decoupled.
 | `app/services/avl_geometry_service.py` | Use `AvlGeometryFile` instead of `asb.AVL.write_avl()` |
 | `app/services/analysis_service.py` | CDCL injection in analysis flow |
 | `app/converters/model_schema_converters.py` | Build `AvlSection` for file generation |
-| `app/api/utils.py` | Pass CDCL config through |
+| `app/api/utils.py` | Pass CDCL + spacing config through |
 
 ## Acceptance Criteria
 
+### AVL file generator
 - [ ] New `AvlGeometryFile` dataclass produces valid `.avl` files
       (verified against Aerosandbox output for existing test cases)
+- [ ] Each dataclass component serialises correctly via `__repr__`
+
+### CDCL / NeuralFoil
 - [ ] Each section in analysed `.avl` files has CDCL values from
       NeuralFoil (not zeros)
 - [ ] Reynolds number computed per section from velocity, chord,
@@ -239,9 +314,20 @@ Only file generation is decoupled.
 - [ ] In-memory cache prevents redundant NeuralFoil calls for same
       airfoil+Re
 - [ ] AVL total drag output includes induced + profile drag
+
+### Intelligent spacing
+- [ ] `auto_optimise=True` increases Nchord when control surfaces
+      are present
+- [ ] Unswept wings without centreline break use -sine spanwise
+      spacing
+- [ ] Aligned surfaces (same y,z) get identical spanwise spacing
+- [ ] `SpacingConfig` is configurable with sensible defaults
+- [ ] `auto_optimise=False` uses base values without modification
+
+### Testing
 - [ ] Existing tests pass
 - [ ] New tests cover: dataclass serialisation, CDCL fitting, cache
-      behaviour, user-edit preservation
+      behaviour, user-edit preservation, spacing optimisation rules
 - [ ] Test coverage >80%
 
 ## Out of Scope
