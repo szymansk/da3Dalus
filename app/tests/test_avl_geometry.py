@@ -10,6 +10,8 @@ from __future__ import annotations
 import uuid
 
 import pytest
+from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.aeroplanemodel import AeroplaneModel
@@ -64,7 +66,7 @@ class TestAvlGeometryFileModel:
 
         geom2 = AvlGeometryFileModel(aeroplane_id=aeroplane.id, content="v2")
         db.add(geom2)
-        with pytest.raises(Exception):
+        with pytest.raises(IntegrityError):
             db.flush()
 
     def test_cascade_delete(self, db: Session):
@@ -105,7 +107,7 @@ class TestAvlGeometrySchemas:
         assert req.content == "SURFACE\nWing\nSECTION\n"
 
     def test_update_request_empty_content_rejected(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             AvlGeometryUpdateRequest(content="")
 
 
