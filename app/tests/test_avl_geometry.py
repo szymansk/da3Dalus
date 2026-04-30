@@ -317,3 +317,91 @@ class TestAvlGeometryDirtyFlag:
         wing = WingModel(name="Main Wing", aeroplane_id=aeroplane.id)
         db.add(wing)
         db.flush()  # Should not raise
+
+
+# ── Endpoint Tests ────────────────────────────────────────────────────────────
+
+
+class TestAvlGeometryEndpoints:
+    def _create_aeroplane(self, client) -> str:
+        resp = client.post("/aeroplanes", params={"name": "TestPlane"})
+        assert resp.status_code == 201
+        return resp.json()["id"]
+
+    def test_get_avl_geometry_generates_on_first_access(self, client_and_db):
+        client, _ = client_and_db
+        aeroplane_id = self._create_aeroplane(client)
+        with patch(
+            "app.services.avl_geometry_service.generate_avl_content",
+            return_value="GENERATED\n",
+        ):
+            resp = client.get(f"/aeroplanes/{aeroplane_id}/avl-geometry")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["content"] == "GENERATED\n"
+        assert data["is_user_edited"] is False
+
+    def test_put_saves_geometry(self, client_and_db):
+        client, _ = client_and_db
+        aeroplane_id = self._create_aeroplane(client)
+        resp = client.put(
+            f"/aeroplanes/{aeroplane_id}/avl-geometry",
+            json={"content": "EDITED CONTENT"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["content"] == "EDITED CONTENT"
+        assert data["is_user_edited"] is True
+
+    def test_put_then_get_returns_saved(self, client_and_db):
+        client, _ = client_and_db
+        aeroplane_id = self._create_aeroplane(client)
+        client.put(
+            f"/aeroplanes/{aeroplane_id}/avl-geometry",
+            json={"content": "SAVED"},
+        )
+        resp = client.get(f"/aeroplanes/{aeroplane_id}/avl-geometry")
+        assert resp.status_code == 200
+        assert resp.json()["content"] == "SAVED"
+
+    def test_regenerate_returns_fresh(self, client_and_db):
+        client, _ = client_and_db
+        aeroplane_id = self._create_aeroplane(client)
+        with patch(
+            "app.services.avl_geometry_service.generate_avl_content",
+            return_value="REGENERATED\n",
+        ):
+            resp = client.post(f"/aeroplanes/{aeroplane_id}/avl-geometry/regenerate")
+        assert resp.status_code == 200
+        assert resp.json()["content"] == "REGENERATED\n"
+
+    def test_delete_removes_file(self, client_and_db):
+        client, _ = client_and_db
+        aeroplane_id = self._create_aeroplane(client)
+        client.put(
+            f"/aeroplanes/{aeroplane_id}/avl-geometry",
+            json={"content": "TO DELETE"},
+        )
+        resp = client.delete(f"/aeroplanes/{aeroplane_id}/avl-geometry")
+        assert resp.status_code == 204
+
+    def test_delete_not_found(self, client_and_db):
+        client, _ = client_and_db
+        aeroplane_id = self._create_aeroplane(client)
+        resp = client.delete(f"/aeroplanes/{aeroplane_id}/avl-geometry")
+        assert resp.status_code == 404
+
+    def test_get_not_found_aeroplane(self, client_and_db):
+        client, _ = client_and_db
+        nonexistent_id = "550e8400-e29b-41d4-a716-446655440000"
+        resp = client.get(f"/aeroplanes/{nonexistent_id}/avl-geometry")
+        assert resp.status_code == 404
+
+    def test_put_empty_content_rejected(self, client_and_db):
+        client, _ = client_and_db
+        aeroplane_id = self._create_aeroplane(client)
+        resp = client.put(
+            f"/aeroplanes/{aeroplane_id}/avl-geometry",
+            json={"content": ""},
+        )
+        assert resp.status_code == 422
