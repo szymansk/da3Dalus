@@ -28,6 +28,13 @@ a React frontend.
 ## Codebase Exploration
 NEVER use the Explore agent. Always launch  @"code-base-explorer (agent)". It is faster and more precise than grep-based search. 
 
+## AVL Questions
+
+For ANY question about AVL (Athena Vortex Lattice) — geometry files,
+input format, running simulations, interpreting output, Oswald factor,
+induced drag, box wings, Trefftz Plane, spacing, control surfaces,
+trim, or eigenmodes — **invoke `/avl-advisor`**. It has an indexed
+knowledge base over the official AVL User Primer and the Budziak thesis.
 
 ## Using Superpowers
 
