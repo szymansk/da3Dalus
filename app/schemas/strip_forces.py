@@ -34,6 +34,7 @@ class SurfaceStripForces(BaseModel):
 
 class StripForcesResponse(BaseModel):
     alpha: float = Field(..., description="Angle of attack (deg)")
+    beta: float = Field(..., description="Sideslip angle (deg)")
     mach: float = Field(..., description="Mach number")
     sref: float = Field(..., description="Reference area (m²)")
     cref: float = Field(..., description="Reference chord (m)")

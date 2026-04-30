@@ -373,6 +373,7 @@ function TrefftzPlaneChart({
         font: { color: "#71717A", family: "JetBrains Mono, monospace", size: 10 },
         text: [
           `\u03B1 = ${stripForces.alpha.toFixed(2)}\u00B0`,
+          `\u03B2 = ${stripForces.beta.toFixed(2)}\u00B0`,
           `Mach = ${stripForces.mach.toFixed(3)}`,
           `Sref = ${stripForces.sref.toFixed(4)} m\u00B2`,
           `Cref = ${stripForces.cref.toFixed(4)} m`,

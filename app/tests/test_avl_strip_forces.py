@@ -50,6 +50,26 @@ SAMPLE_FS_OUTPUT = """
 """
 
 
+class TestStripForcesResponseSchema:
+    def test_beta_field_required(self):
+        from app.schemas.strip_forces import StripForcesResponse
+        import pydantic
+
+        with pytest.raises(pydantic.ValidationError):
+            StripForcesResponse(
+                alpha=5.0, mach=0.04, sref=0.25, cref=0.25, bref=1.0, surfaces=[]
+            )
+
+    def test_beta_field_included_in_response(self):
+        from app.schemas.strip_forces import StripForcesResponse
+
+        resp = StripForcesResponse(
+            alpha=5.0, beta=2.0, mach=0.04, sref=0.25, cref=0.25, bref=1.0, surfaces=[]
+        )
+        data = resp.model_dump()
+        assert data["beta"] == 2.0
+
+
 class TestParseStripForcesOutput:
     def test_parses_two_surfaces(self):
         result = parse_strip_forces_output(SAMPLE_FS_OUTPUT)
