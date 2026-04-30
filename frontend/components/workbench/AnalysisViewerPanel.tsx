@@ -26,6 +26,8 @@ interface Props {
   readonly activeTab: Tab;
   readonly onTabChange: (tab: Tab) => void;
   readonly onConfigureClick?: () => void;
+  readonly onEditAvlGeometry?: () => void;
+  readonly showAvlGeometryButton?: boolean;
   readonly wingXSecs?: WingXSec[] | null;
   readonly wingSymmetric?: boolean;
 }
@@ -513,6 +515,8 @@ export function AnalysisViewerPanel({
   activeTab,
   onTabChange,
   onConfigureClick,
+  onEditAvlGeometry,
+  showAvlGeometryButton,
   wingXSecs,
   wingSymmetric,
 }: Readonly<Props>) {
@@ -559,6 +563,15 @@ export function AnalysisViewerPanel({
           >
             <Settings size={12} />
             Configure & Run
+          </button>
+        )}
+        {showAvlGeometryButton && onEditAvlGeometry && (
+          <button
+            onClick={onEditAvlGeometry}
+            className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3 py-1.5 text-[12px] text-foreground hover:bg-sidebar-accent"
+          >
+            <Settings size={12} />
+            Edit AVL Geometry
           </button>
         )}
         <div className="flex items-center gap-1">

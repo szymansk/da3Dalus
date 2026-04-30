@@ -10,6 +10,7 @@ import { useStreamlines } from "@/hooks/useStreamlines";
 import { useWings, useWing } from "@/hooks/useWings";
 import { AnalysisViewerPanel, type Tab } from "@/components/workbench/AnalysisViewerPanel";
 import { AnalysisConfigPanel } from "@/components/workbench/AnalysisConfigPanel";
+import { AvlGeometryEditor } from "@/components/workbench/AvlGeometryEditor";
 
 export default function AnalysisPage() {
   const { aeroplaneId, hydrated, selectedWing, openPicker } = useAeroplaneContext();
@@ -19,8 +20,11 @@ export default function AnalysisPage() {
   const { wingNames } = useWings(aeroplaneId);
   const { wing } = useWing(aeroplaneId, selectedWing ?? wingNames[0] ?? null);
   const [configOpen, setConfigOpen] = useState(false);
+  const [avlEditorOpen, setAvlEditorOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("Polar");
   const { dialogRef, handleClose: dialogHandleClose } = useDialog(configOpen, () => setConfigOpen(false));
+
+  const showAvlGeometryButton = activeTab === "Trefftz Plane" || activeTab === "Streamlines";
 
   const modalTitleByTab: Record<Tab, string> = {
     "Polar": "Polar Configuration",
@@ -58,6 +62,8 @@ export default function AnalysisPage() {
             activeTab={activeTab}
             onTabChange={setActiveTab}
             onConfigureClick={() => setConfigOpen(true)}
+            showAvlGeometryButton={showAvlGeometryButton}
+            onEditAvlGeometry={() => setAvlEditorOpen(true)}
             wingXSecs={wing?.x_secs}
             wingSymmetric={wing?.symmetric}
           />
@@ -104,6 +110,14 @@ export default function AnalysisPage() {
           </div>
         )}
       </dialog>
+
+      {aeroplaneId && (
+        <AvlGeometryEditor
+          aeroplaneId={aeroplaneId}
+          open={avlEditorOpen}
+          onClose={() => setAvlEditorOpen(false)}
+        />
+      )}
     </>
   );
 }

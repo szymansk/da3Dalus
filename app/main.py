@@ -70,6 +70,7 @@ from app.core.exceptions import (
 )
 from sqlalchemy.exc import IntegrityError
 from app.logging_config import setup_logging
+import app.models.avl_geometry_events  # noqa: F401 — registers event listeners at startup
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles

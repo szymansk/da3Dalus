@@ -329,11 +329,18 @@ async def analyze_airplane(
     """
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
+    user_avl_content = None
+    if analysis_tool == AnalysisToolUrlType.AVL:
+        from app.services.avl_geometry_service import get_user_avl_content
+        user_avl_content = get_user_avl_content(db, aeroplane_uuid)
+
     try:
         asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
             plane_schema=plane_schema
         )
-        result, _ = analyse_aerodynamics(analysis_tool, operating_point, asb_airplane)
+        result, _ = analyse_aerodynamics(
+            analysis_tool, operating_point, asb_airplane, avl_file_content=user_avl_content
+        )
         return result
     except Exception as e:
         logger.error(f"Error analyzing airplane: {e}")
@@ -1413,6 +1420,8 @@ async def analyze_airplane_strip_forces(
     from app.services.avl_strip_forces import AVLWithStripForces
 
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
+    from app.services.avl_geometry_service import get_user_avl_content
+    user_avl_content = get_user_avl_content(db, aeroplane_uuid)
 
     try:
         asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
@@ -1439,6 +1448,7 @@ async def analyze_airplane_strip_forces(
             xyz_ref=operating_point.xyz_ref,
             avl_command=avl_command,
             timeout=60,
+            avl_file_content=user_avl_content,
         )
         result = avl.run()
 
