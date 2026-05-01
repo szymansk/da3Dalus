@@ -3,6 +3,32 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+
+class CdclConfig(BaseModel):
+    """Configuration for NeuralFoil CDCL profile-drag computation."""
+
+    alpha_start_deg: float = Field(-10.0, description="Start of alpha sweep in degrees")
+    alpha_end_deg: float = Field(16.0, description="End of alpha sweep in degrees")
+    alpha_step_deg: float = Field(1.0, description="Alpha step size in degrees")
+    model_size: str = Field("large", description="NeuralFoil model size")
+    n_crit: float = Field(9.0, description="Critical amplification ratio for transition")
+    xtr_upper: float = Field(1.0, description="Upper surface forced transition location (0-1)")
+    xtr_lower: float = Field(1.0, description="Lower surface forced transition location (0-1)")
+    include_360_deg_effects: bool = Field(
+        False, description="Include 360-degree post-stall effects"
+    )
+
+
+class SpacingConfig(BaseModel):
+    """Configuration for AVL panel spacing optimisation."""
+
+    n_chord: int = Field(12, description="Base chordwise panel count")
+    c_space: float = Field(1.0, description="Chordwise spacing distribution (1=cosine)")
+    n_span: int = Field(20, description="Base spanwise panel count")
+    s_space: float = Field(1.0, description="Spanwise spacing distribution (1=cosine)")
+    auto_optimise: bool = Field(True, description="Apply intelligent spacing rules automatically")
+
+
 # Schema für OperatingPointSet
 class OperatingPointSetSchema(BaseModel):
     name: str
@@ -10,6 +36,7 @@ class OperatingPointSetSchema(BaseModel):
     operating_points: list[int]
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class OperatingPointSchema(BaseModel):
     name: Optional[str] = Field(None, description="Name of the operating point")
@@ -23,11 +50,19 @@ class OperatingPointSchema(BaseModel):
     q: float = Field(0.0, description="Pitch rate in rad/s")
     r: float = Field(0.0, description="Yaw rate in rad/s")
 
-    xyz_ref: List[float] \
-        = Field([0.0, 0.0, 0.0], description="default location in meters about which moments and rotation rates are defined (if doing trim calculations, xyz_ref must be the CG location)")
+    xyz_ref: List[float] = Field(
+        [0.0, 0.0, 0.0],
+        description="default location in meters about which moments and rotation rates are defined (if doing trim calculations, xyz_ref must be the CG location)",
+    )
 
     # Atmosphere parameters
     altitude: float = Field(0.0, description="Altitude in meters")
+
+    # Optional NeuralFoil and spacing configurations
+    cdcl_config: Optional[CdclConfig] = Field(None, description="NeuralFoil CDCL configuration")
+    spacing_config: Optional[SpacingConfig] = Field(
+        None, description="AVL panel spacing configuration"
+    )
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -58,10 +93,14 @@ class StoredOperatingPointCreate(BaseModel):
     name: str
     description: str
     aircraft_id: Optional[int] = None
-    config: str = Field("clean", description="Aircraft configuration name, e.g. clean/takeoff/landing.")
+    config: str = Field(
+        "clean", description="Aircraft configuration name, e.g. clean/takeoff/landing."
+    )
     status: OperatingPointStatus = Field(OperatingPointStatus.NOT_TRIMMED)
     warnings: list[str] = Field(default_factory=list)
-    controls: dict[str, float] = Field(default_factory=dict, description="Trim outputs such as throttle/elevator.")
+    controls: dict[str, float] = Field(
+        default_factory=dict, description="Trim outputs such as throttle/elevator."
+    )
     velocity: float = Field(..., description="Velocity in m/s")
     alpha: float = Field(..., description="Angle of attack in radians")
     beta: float = Field(..., description="Sideslip angle in radians")
