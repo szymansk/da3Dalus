@@ -198,3 +198,60 @@ describe("EditParamsModal — reset behavior", () => {
     expect(screen.queryByTitle("Reset to auto-derived ID")).toBeNull();
   });
 });
+
+describe("EditParamsModal — save payload", () => {
+  it("sends _creatorIdDirty: true when ID was manually edited", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const node = makeNode();
+    const creator = makeCreatorInfo({ suggested_id: "wing_{span}" });
+
+    render(
+      <EditParamsModal
+        open={true}
+        node={node}
+        nodePath="/0"
+        creatorInfo={creator}
+        availableShapeKeys={[]}
+        onClose={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    // Type into ID field to set dirty
+    fireEvent.change(screen.getByLabelText("ID"), { target: { value: "my-id" } });
+
+    // Click save
+    fireEvent.click(screen.getByText("Save"));
+    await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
+
+    const [path, params] = onSave.mock.calls[0];
+    expect(path).toBe("/0");
+    expect(params.creator_id).toBe("my-id");
+    expect(params._creatorIdDirty).toBe(true);
+  });
+
+  it("omits _creatorIdDirty when ID was not manually edited", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const node = makeNode();
+    const creator = makeCreatorInfo({ suggested_id: "wing_{span}" });
+
+    render(
+      <EditParamsModal
+        open={true}
+        node={node}
+        nodePath="/0"
+        creatorInfo={creator}
+        availableShapeKeys={[]}
+        onClose={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    // Save without editing ID
+    fireEvent.click(screen.getByText("Save"));
+    await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
+
+    const [, params] = onSave.mock.calls[0];
+    expect(params._creatorIdDirty).toBeUndefined();
+  });
+});
