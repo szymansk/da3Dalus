@@ -28,7 +28,7 @@ from app.avl.spacing import optimise_surface_spacing
 from app.core.exceptions import InternalError, NotFoundError
 from app.models.aeroplanemodel import AeroplaneModel
 from app.models.avl_geometry_file import AvlGeometryFileModel
-from app.schemas.aeroanalysisschema import CdclConfig, SpacingConfig
+from app.schemas.aeroanalysisschema import CdclConfig, OperatingPointSchema, SpacingConfig
 from app.schemas.aeroplaneschema import AeroplaneSchema, AsbWingSchema, WingXSecSchema
 from app.schemas.avl_geometry import AvlGeometryResponse
 
@@ -204,12 +204,11 @@ def generate_avl_content_from_schema(
 def inject_cdcl(
     avl_file: AvlGeometryFile,
     plane_schema: AeroplaneSchema,
-    operating_point: "OperatingPointSchema",
+    operating_point: OperatingPointSchema,
     cdcl_config: CdclConfig,
 ) -> None:
     """Inject NeuralFoil CDCL values in-place. Preserves non-zero (user-edited) CDCLs."""
     from app.converters.model_schema_converters import _build_asb_airfoil
-    from app.schemas.aeroanalysisschema import OperatingPointSchema  # noqa: F811
     from app.services.neuralfoil_cdcl_service import NeuralFoilCdclService, compute_reynolds_number
 
     service = NeuralFoilCdclService()

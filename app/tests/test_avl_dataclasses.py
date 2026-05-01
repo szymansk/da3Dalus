@@ -9,7 +9,7 @@ class TestAvlCdcl:
         cdcl = AvlCdcl(cl_min=-0.6, cd_min=0.024, cl_0=0.2, cd_0=0.008, cl_max=1.4, cd_max=0.032)
         result = repr(cdcl)
         assert "CDCL" in result
-        lines = [l.strip() for l in result.strip().splitlines() if l.strip() and not l.strip().startswith("!")]
+        lines = [ln.strip() for ln in result.strip().splitlines() if ln.strip() and not ln.strip().startswith("!")]
         assert lines[0] == "CDCL"
         values = lines[1].split()
         assert len(values) == 6
@@ -37,7 +37,7 @@ class TestAvlControl:
 
         ctrl = AvlControl(name="aileron", gain=1.0, xhinge=0.8, xyz_hvec=(0.0, 0.0, 0.0), sgn_dup=-1.0)
         result = repr(ctrl)
-        lines = [l.strip() for l in result.strip().splitlines() if l.strip() and not l.strip().startswith("!")]
+        lines = [ln.strip() for ln in result.strip().splitlines() if ln.strip() and not ln.strip().startswith("!")]
         assert lines[0] == "CONTROL"
         parts = lines[1].split()
         assert parts[0] == "aileron"
@@ -84,12 +84,12 @@ class TestAvlSection:
         result = repr(sec)
         # Should have 7 values on geometry line: Xle Yle Zle Chord Ainc Nspan Sspace
         lines = [
-            l
-            for l in result.splitlines()
-            if l.strip()
-            and not l.strip().startswith("!")
-            and not l.strip().startswith("#")
-            and l.strip() != "SECTION"
+            ln
+            for ln in result.splitlines()
+            if ln.strip()
+            and not ln.strip().startswith("!")
+            and not ln.strip().startswith("#")
+            and ln.strip() != "SECTION"
         ]
         geo = lines[0].split()
         assert len(geo) == 7
