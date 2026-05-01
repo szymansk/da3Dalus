@@ -307,6 +307,11 @@ function buildXsecNodes(ctx: BuildNodeContext): TreeNode[] {
     expanded: wingExpanded,
     chip: "WING",
     onClick: () => callbacks.selectWing(wingName),
+    onDelete: () => {
+      if (confirm(`Delete wing "${wingName}"?`)) {
+        callbacks.onDeleteXsec(wingName, -1);
+      }
+    },
   });
 
   if (!wingExpanded) return nodes;
@@ -316,6 +321,16 @@ function buildXsecNodes(ctx: BuildNodeContext): TreeNode[] {
   }
 
   wing.x_secs.forEach((xsec, i) => {
+    if (i > 0 && callbacks.onInsertXsec) {
+      nodes.push({
+        id: `${wingName}-xsec-ins-${i}`,
+        label: "insert",
+        level: 2,
+        isInsertPoint: true,
+        onInsert: () => callbacks.onInsertXsec!(wingName, i),
+      });
+    }
+
     const xsecId = `${wingName}-xsec${i}`;
     const isSelected = selectedWing === wingName && selectedXsecIndex === i;
     const xsecExpanded = expandedSet.has(xsecId);
@@ -365,6 +380,15 @@ function buildXsecNodes(ctx: BuildNodeContext): TreeNode[] {
       nodes.push(...buildSparNodes(xsecId, wingName, i, xsec, callbacks));
     }
   });
+
+  if (callbacks.onAddSegment) {
+    nodes.push({
+      id: `${wingName}-xsec-add`,
+      label: "+ x_sec",
+      level: 2, leaf: true, muted: true,
+      onClick: () => callbacks.onAddSegment!(wingName),
+    });
+  }
 
   return nodes;
 }
