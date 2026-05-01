@@ -85,8 +85,9 @@ After RED:
 
 **REFACTOR:** Clean up.
 
-**Context:** Run `/compact` before proceeding — root cause and
-reproduction are persisted in GH comments.
+**Context:** Run `/compact with focus on issue number, PR number,
+branch name, worktree path, and root cause summary` before proceeding.
+Root cause and reproduction details are persisted in GH comments.
 
 ### Phase 5 — Verification
 

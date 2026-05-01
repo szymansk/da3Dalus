@@ -56,8 +56,9 @@ Invoke `/subagent-driven-development` with:
 - If `detect-frontend` is true: frontend subagents follow
   `/vercel-react-best-practices` and `/vercel-composition-patterns`
 
-**Context:** Run `/compact` before proceeding — implementation
-context is in the commits and PR.
+**Context:** Run `/compact with focus on issue number, PR number,
+branch name, and frontend detection result` before proceeding.
+Implementation details are fully externalized in commits and the PR.
 
 ### Phase 3 — Comprehensive Review
 
