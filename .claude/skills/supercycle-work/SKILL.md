@@ -81,8 +81,11 @@ After brainstorming completes:
 
 Do NOT proceed until the user explicitly confirms.
 
-**Context:** Run `/compact` before proceeding — brainstorming
-context is persisted in the `has-spec` comment and the spec file.
+**Context:** Run `/compact with focus on issue number, branch name,
+worktree path, spec acceptance criteria, user gate feedback, and
+frontend detection result` before proceeding. If spec details are
+needed after compaction, re-read from the spec file or use
+`read-step-comments` with filter `has-spec`.
 
 ### Phase 3 — Planning
 
@@ -98,8 +101,11 @@ After planning completes:
   with a `github-blob-link` to the plan file on the feature branch
 - Use `rotate-status` → `status:planning`
 
-**Context:** Run `/compact` before proceeding — planning
-context is persisted in the `has-plan` comment and the plan file.
+**Context:** Run `/compact with focus on issue number, branch name,
+worktree path, plan file path, task count and structure, and frontend
+detection result` before proceeding. If plan details are needed after
+compaction, re-read from the plan file or use `read-step-comments`
+with filter `has-plan`.
 
 ### Phase 4 — Implementation
 
@@ -110,8 +116,9 @@ Invoke `/subagent-driven-development` with:
 - If `detect-frontend` is true: frontend subagents follow
   `/vercel-react-best-practices` and `/vercel-composition-patterns`
 
-**Context:** Run `/compact` before proceeding — implementation
-produced commits and the PR; detailed task context is no longer needed.
+**Context:** Run `/compact with focus on issue number, PR number,
+branch name, and frontend detection result` before proceeding.
+Implementation details are fully externalized in commits and the PR.
 
 ### Phase 5 — Comprehensive Review
 
@@ -139,7 +146,8 @@ If the review reported findings:
 After fixing:
 - Use `post-step-comment`: `has-fix` — fix report with rationale
 
-**Context:** Run `/compact` before proceeding — fix details are
+**Context:** Run `/compact with focus on PR number, issue number,
+branch name, and worktree path` before proceeding. Fix details are
 persisted in the `has-fix` comment.
 
 ### Phase 7 — Finish
