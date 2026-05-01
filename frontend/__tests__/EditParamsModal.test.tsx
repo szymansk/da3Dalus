@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import React from "react";
 import type { PlanStepNode } from "@/components/workbench/PlanTree";
 import type { CreatorInfo } from "@/hooks/useCreators";
@@ -132,5 +132,34 @@ describe("EditParamsModal — reset button", () => {
     );
 
     expect(screen.queryByTitle("Reset to auto-derived ID")).toBeNull();
+  });
+});
+
+describe("EditParamsModal — dirty state transitions", () => {
+  it("typing into ID field sets dirty and blocks auto-derivation on param change", () => {
+    const node = makeNode();
+    const creator = makeCreatorInfo({ suggested_id: "wing_{span}" });
+
+    render(
+      <EditParamsModal
+        open={true}
+        node={node}
+        nodePath="/0"
+        creatorInfo={creator}
+        availableShapeKeys={[]}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+
+    const idInput = screen.getByLabelText("ID") as HTMLInputElement;
+
+    // Type into the ID field — should become dirty
+    fireEvent.change(idInput, { target: { value: "my-custom-id" } });
+    expect(idInput.value).toBe("my-custom-id");
+
+    // Now change a param — ID should NOT auto-derive because dirty
+    act(() => { capturedOnChange?.("span", 2000); });
+    expect(idInput.value).toBe("my-custom-id");
   });
 });
