@@ -53,7 +53,7 @@ export function EditParamsModal({
     setLastNodePath(nodePath);
     setValues(creatorInfo ? extractValues(node, creatorInfo) : {});
     setCreatorId(node.creator_id);
-    setCreatorIdDirty(!!(node as Record<string, unknown>)._creatorIdDirty);
+    setCreatorIdDirty(!!node._creatorIdDirty);
   }
   if (!open && lastNodePath !== null) {
     setLastNodePath(null);
@@ -116,7 +116,7 @@ export function EditParamsModal({
               }}
               className="flex-1 rounded-lg border border-border bg-card-muted/30 px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground outline-none focus:border-primary"
             />
-            {creatorIdDirty && (
+            {creatorIdDirty && creatorInfo?.suggested_id && (
               <button
                 type="button"
                 onClick={() => {
