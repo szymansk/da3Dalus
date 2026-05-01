@@ -234,6 +234,28 @@ describe("toBackendTree", () => {
     expect(nested.$TYPE).toBe("ConstructionStepNode");
     expect((nested.creator as Record<string, unknown>).$TYPE).toBe("ExportCreator");
   });
+
+  it("strips _creatorIdDirty from nodes before serialization", () => {
+    const frontend: PlanStepNode = {
+      $TYPE: "ConstructionRootNode",
+      creator_id: "root",
+      successors: [
+        {
+          $TYPE: "WingLoftCreator",
+          creator_id: "custom_wing",
+          _creatorIdDirty: true,
+          offset: 0,
+          successors: [],
+        },
+      ],
+    };
+    const backend = toBackendTree(frontend);
+    const step = (backend.successors as Record<string, Record<string, unknown>>)["custom_wing"];
+    const creator = step.creator as Record<string, unknown>;
+    expect(creator._creatorIdDirty).toBeUndefined();
+    expect(step._creatorIdDirty).toBeUndefined();
+    expect(backend._creatorIdDirty).toBeUndefined();
+  });
 });
 
 describe("fromBackendTree", () => {
@@ -283,6 +305,35 @@ describe("fromBackendTree", () => {
     };
     const result = fromBackendTree(frontend);
     expect(result.successors).toEqual(frontend.successors);
+  });
+
+  it("preserves _creatorIdDirty when present in frontend-format tree", () => {
+    const frontend: PlanStepNode = {
+      $TYPE: "ConstructionRootNode",
+      creator_id: "root",
+      successors: [
+        {
+          $TYPE: "WingLoftCreator",
+          creator_id: "custom_wing",
+          _creatorIdDirty: true,
+          successors: [],
+        },
+      ],
+    };
+    const result = fromBackendTree(frontend);
+    expect(result.successors![0]._creatorIdDirty).toBe(true);
+  });
+
+  it("works fine with old trees that lack _creatorIdDirty", () => {
+    const frontend: PlanStepNode = {
+      $TYPE: "ConstructionRootNode",
+      creator_id: "root",
+      successors: [
+        { $TYPE: "WingLoftCreator", creator_id: "w1", successors: [] },
+      ],
+    };
+    const result = fromBackendTree(frontend);
+    expect(result.successors![0]._creatorIdDirty).toBeUndefined();
   });
 
   it("handles nested dict successors recursively", () => {
@@ -400,6 +451,26 @@ describe("round-trip conversion", () => {
     expect(nested.$TYPE).toBe("ExportCreator");
     expect(nested.creator_id).toBe("e1");
     expect(nested.format).toBe("step");
+  });
+
+  it("round-trip strips _creatorIdDirty (frontend → backend → frontend)", () => {
+    const original: PlanStepNode = {
+      $TYPE: "ConstructionRootNode",
+      creator_id: "root",
+      successors: [
+        {
+          $TYPE: "WingLoftCreator",
+          creator_id: "custom_wing",
+          _creatorIdDirty: true,
+          offset: 0,
+          successors: [],
+        },
+      ],
+    };
+    const roundTripped = fromBackendTree(toBackendTree(original));
+    expect(roundTripped.successors![0].creator_id).toBe("custom_wing");
+    expect(roundTripped.successors![0]._creatorIdDirty).toBeUndefined();
+    expect(roundTripped.successors![0].offset).toBe(0);
   });
 
   it("backend → frontend → backend preserves structure", () => {

@@ -183,7 +183,7 @@ export function toBackendTree(
   const backendSuccessors: Record<string, Record<string, unknown>> = {};
 
   for (const child of successors) {
-    const { $TYPE, creator_id, successors: childSuccessors, ...creatorParams } = child;
+    const { $TYPE, creator_id, successors: childSuccessors, _creatorIdDirty, ...creatorParams } = child;
     const loglevel = (creatorParams.loglevel as number) ?? DEFAULT_LOGLEVEL;
     // Remove loglevel from creatorParams to avoid duplication — it's set explicitly
     delete creatorParams.loglevel;
@@ -205,7 +205,7 @@ export function toBackendTree(
     };
   }
 
-  const { successors: _s, ...rootFields } = node as Record<string, unknown>;
+  const { successors: _s, _creatorIdDirty: _d, ...rootFields } = node as Record<string, unknown>;
   return {
     ...rootFields,
     // Root must always be ConstructionRootNode for the GeneralJSONDecoder

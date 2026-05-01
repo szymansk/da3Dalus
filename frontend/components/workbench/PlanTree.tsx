@@ -16,6 +16,7 @@ import { SimpleTreeRow, type SimpleTreeNode } from "./SimpleTreeRow";
 export interface PlanStepNode {
   $TYPE: string;
   creator_id: string;
+  _creatorIdDirty?: boolean;
   [key: string]: unknown;
   successors?: PlanStepNode[];
 }
