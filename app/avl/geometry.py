@@ -9,6 +9,7 @@ docs/superpowers/specs/2026-04-30-avl-cdcl-neuralfoil-design.md
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Union
 
@@ -45,14 +46,11 @@ class AvlCdcl:
         return cls(cl_min=0.0, cd_min=0.0, cl_0=0.0, cd_0=0.0, cl_max=0.0, cd_max=0.0)
 
     def is_zero(self) -> bool:
-        """Return True when all six values are zero."""
-        return (
-            self.cl_min == 0.0
-            and self.cd_min == 0.0
-            and self.cl_0 == 0.0
-            and self.cd_0 == 0.0
-            and self.cl_max == 0.0
-            and self.cd_max == 0.0
+        """Return True when all six values are zero (or negligibly close)."""
+        tol = 1e-12
+        return all(
+            math.isclose(v, 0.0, abs_tol=tol)
+            for v in (self.cl_min, self.cd_min, self.cl_0, self.cd_0, self.cl_max, self.cd_max)
         )
 
     # ------------------------------------------------------------------
@@ -453,7 +451,7 @@ class AvlGeometryFile:
         sections.append(repr(self.symmetry).rstrip("\n"))
         sections.append(repr(self.reference).rstrip("\n"))
 
-        if self.cdp != 0.0:
+        if not math.isclose(self.cdp, 0.0, abs_tol=1e-12):
             sections.append(f"!  CDp\n   {self.cdp}")
 
         # Surfaces
