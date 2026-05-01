@@ -132,3 +132,86 @@ class TestInjectCdcl:
         assert avl_file.surfaces[0].sections[0].cdcl == user_cdcl
         # Second section: was zero, now replaced
         assert not avl_file.surfaces[0].sections[1].cdcl.is_zero()
+
+    def test_inject_cdcl_with_none_section_cdcl(self):
+        from app.services.avl_geometry_service import build_avl_geometry_file, inject_cdcl
+
+        avl_file = build_avl_geometry_file(_make_plane_schema(), SpacingConfig(auto_optimise=False))
+        avl_file.surfaces[0].sections[0].cdcl = None
+        op = OperatingPointSchema(velocity=30.0, altitude=0.0)
+        inject_cdcl(avl_file, _make_plane_schema(), op, CdclConfig())
+        assert avl_file.surfaces[0].sections[0].cdcl is not None
+        assert avl_file.surfaces[0].sections[0].cdcl.cd_0 > 0
+
+    def test_inject_cdcl_surface_wing_mismatch_logs_warning(self, caplog):
+        import logging
+
+        from app.avl.geometry import AvlCdcl, AvlSection, AvlSurface
+        from app.services.avl_geometry_service import build_avl_geometry_file, inject_cdcl
+
+        avl_file = build_avl_geometry_file(_make_plane_schema(), SpacingConfig(auto_optimise=False))
+        avl_file.surfaces.append(
+            AvlSurface(
+                name="Extra",
+                n_chord=8,
+                c_space=1.0,
+                sections=[AvlSection(xyz_le=(0, 0, 0), chord=0.1, cdcl=AvlCdcl.zeros())],
+            )
+        )
+        op = OperatingPointSchema(velocity=30.0, altitude=0.0)
+        with caplog.at_level(logging.WARNING, logger="app.services.avl_geometry_service"):
+            inject_cdcl(avl_file, _make_plane_schema(), op, CdclConfig())
+        assert "mismatch" in caplog.text
+        assert not avl_file.surfaces[0].sections[0].cdcl.is_zero()
+
+
+class TestBuildAirfoilNode:
+    def test_naca_airfoil(self):
+        from app.avl.geometry import AvlNaca
+        from app.services.avl_geometry_service import _build_airfoil_node
+
+        result = _build_airfoil_node("naca2412")
+        assert isinstance(result, AvlNaca)
+        assert result.digits == "2412"
+
+    def test_naca5_airfoil(self):
+        from app.avl.geometry import AvlNaca
+        from app.services.avl_geometry_service import _build_airfoil_node
+
+        result = _build_airfoil_node("NACA23012")
+        assert isinstance(result, AvlNaca)
+        assert result.digits == "23012"
+
+    def test_unknown_falls_back_to_naca0012(self):
+        from app.avl.geometry import AvlNaca
+        from app.services.avl_geometry_service import _build_airfoil_node
+
+        result = _build_airfoil_node("nonexistent_airfoil_xyz")
+        assert isinstance(result, AvlNaca)
+        assert result.digits == "0012"
+
+
+class TestBuildGeometryEdgeCases:
+    def test_no_control_surfaces_wing(self):
+        from app.services.avl_geometry_service import build_avl_geometry_file
+
+        plane = AeroplaneSchema(
+            name="NoCtrlPlane",
+            wings=OrderedDict(
+                {
+                    "Plain Wing": AsbWingSchema(
+                        name="Plain Wing",
+                        symmetric=False,
+                        x_secs=[
+                            WingXSecSchema(xyz_le=[0.0, 0.0, 0.0], chord=0.2, twist=0.0, airfoil="naca0012"),
+                            WingXSecSchema(xyz_le=[0.0, 1.0, 0.0], chord=0.1, twist=0.0, airfoil="naca0012"),
+                        ],
+                    ),
+                }
+            ),
+            xyz_ref=[0, 0, 0],
+        )
+        avl_file = build_avl_geometry_file(plane, SpacingConfig(auto_optimise=False))
+        assert len(avl_file.surfaces) == 1
+        content = repr(avl_file)
+        assert "CONTROL" not in content

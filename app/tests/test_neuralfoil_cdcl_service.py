@@ -83,6 +83,29 @@ class TestNeuralFoilCdclService:
         re = compute_reynolds_number(velocity=30.0, chord=0.2, altitude=0.0)
         assert 350_000 < re < 500_000
 
+    def test_compute_reynolds_number_zero_velocity(self):
+        from app.services.neuralfoil_cdcl_service import compute_reynolds_number
+
+        assert compute_reynolds_number(velocity=0.0, chord=0.2, altitude=0.0) == 0.0
+
+    def test_compute_reynolds_number_zero_chord(self):
+        from app.services.neuralfoil_cdcl_service import compute_reynolds_number
+
+        assert compute_reynolds_number(velocity=30.0, chord=0.0, altitude=0.0) == 0.0
+
+    def test_xtr_fields_wired_through(self):
+        from app.avl.geometry import AvlCdcl
+        from app.schemas.aeroanalysisschema import CdclConfig
+        from app.services.neuralfoil_cdcl_service import NeuralFoilCdclService
+
+        service = NeuralFoilCdclService()
+        config = CdclConfig(xtr_upper=0.3, xtr_lower=0.3)
+        result = service.compute_cdcl(
+            asb.Airfoil("naca2412"), re=500_000.0, mach=0.1, config=config
+        )
+        assert isinstance(result, AvlCdcl)
+        assert result.cd_0 > 0
+
 
 class TestOperatingPointWithConfigs:
     def test_operating_point_accepts_configs(self):

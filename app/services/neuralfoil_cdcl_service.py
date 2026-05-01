@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 def compute_reynolds_number(velocity: float, chord: float, altitude: float) -> float:
     """Compute Reynolds number from flight conditions and section chord."""
+    if velocity <= 0.0 or chord <= 0.0:
+        return 0.0
     atm = asb.Atmosphere(altitude=altitude)
     return velocity * chord / atm.kinematic_viscosity()
 
@@ -30,6 +32,9 @@ def _get_polar_data(
     alpha_step: float,
     model_size: str,
     n_crit: float,
+    xtr_upper: float,
+    xtr_lower: float,
+    include_360_deg_effects: bool,
 ) -> tuple:
     """Cached NeuralFoil polar — keyed on hashable primitives only."""
     airfoil = asb.Airfoil(name=airfoil_name)
@@ -40,9 +45,15 @@ def _get_polar_data(
         mach=mach,
         model_size=model_size,
         n_crit=n_crit,
+        xtr_upper=xtr_upper,
+        xtr_lower=xtr_lower,
+        include_360_deg_effects=include_360_deg_effects,
     )
     CLs = np.atleast_1d(aero["CL"])
     CDs = np.atleast_1d(aero["CD"])
+    if not np.all(np.isfinite(CLs)) or not np.all(np.isfinite(CDs)):
+        logger.warning("NeuralFoil returned NaN/Inf for %s at Re=%.0f — using zero CDCL", airfoil_name, re)
+        return tuple(alphas.tolist()), tuple(np.zeros_like(CLs).tolist()), tuple(np.zeros_like(CDs).tolist())
     return tuple(alphas.tolist()), tuple(CLs.tolist()), tuple(CDs.tolist())
 
 
@@ -62,6 +73,9 @@ class NeuralFoilCdclService:
             alpha_step=config.alpha_step_deg,
             model_size=config.model_size,
             n_crit=config.n_crit,
+            xtr_upper=config.xtr_upper,
+            xtr_lower=config.xtr_lower,
+            include_360_deg_effects=config.include_360_deg_effects,
         )
         CLs = np.array(cl_list)
         CDs = np.array(cd_list)

@@ -67,7 +67,7 @@ def _build_airfoil_node(airfoil_ref: str) -> AvlNaca | AvlAfile:
         if os.path.isfile(resolved):
             return AvlAfile(filepath=resolved)
     except Exception:
-        pass
+        logger.debug("Could not resolve airfoil '%s' as file, falling back to NACA 0012", ref)
 
     return AvlNaca(digits="0012")
 
@@ -89,7 +89,7 @@ def _build_section(
         asb_airfoil = _build_asb_airfoil(xsec.airfoil)
         claf = 1.0 + 0.77 * asb_airfoil.max_thickness()
     except Exception:
-        pass
+        logger.debug("Could not compute CLAF for airfoil '%s', using default 1.0", xsec.airfoil)
 
     return AvlSection(
         xyz_le=tuple(xsec.xyz_le),
@@ -204,15 +204,23 @@ def generate_avl_content_from_schema(
 def inject_cdcl(
     avl_file: AvlGeometryFile,
     plane_schema: AeroplaneSchema,
-    operating_point,
+    operating_point: "OperatingPointSchema",
     cdcl_config: CdclConfig,
 ) -> None:
     """Inject NeuralFoil CDCL values in-place. Preserves non-zero (user-edited) CDCLs."""
     from app.converters.model_schema_converters import _build_asb_airfoil
+    from app.schemas.aeroanalysisschema import OperatingPointSchema  # noqa: F811
     from app.services.neuralfoil_cdcl_service import NeuralFoilCdclService, compute_reynolds_number
 
     service = NeuralFoilCdclService()
     wing_list = list(plane_schema.wings.values()) if plane_schema.wings else []
+
+    if len(avl_file.surfaces) != len(wing_list):
+        logger.warning(
+            "Surface/wing count mismatch: %d surfaces vs %d wings — CDCL injection may be incomplete",
+            len(avl_file.surfaces),
+            len(wing_list),
+        )
 
     for surf_idx, surface in enumerate(avl_file.surfaces):
         if surf_idx >= len(wing_list):
@@ -224,11 +232,7 @@ def inject_cdcl(
             if sec_idx >= len(wing.x_secs):
                 continue
             xsec = wing.x_secs[sec_idx]
-            velocity = (
-                operating_point.velocity
-                if isinstance(operating_point.velocity, (int, float))
-                else 10.0
-            )
+            velocity = float(operating_point.velocity)
             re = compute_reynolds_number(
                 velocity=velocity, chord=xsec.chord, altitude=operating_point.altitude
             )

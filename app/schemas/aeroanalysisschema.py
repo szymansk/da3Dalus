@@ -7,13 +7,13 @@ from pydantic import BaseModel, ConfigDict, Field
 class CdclConfig(BaseModel):
     """Configuration for NeuralFoil CDCL profile-drag computation."""
 
-    alpha_start_deg: float = Field(-10.0, description="Start of alpha sweep in degrees")
-    alpha_end_deg: float = Field(16.0, description="End of alpha sweep in degrees")
-    alpha_step_deg: float = Field(1.0, description="Alpha step size in degrees")
+    alpha_start_deg: float = Field(-10.0, ge=-180.0, le=180.0, description="Start of alpha sweep in degrees")
+    alpha_end_deg: float = Field(16.0, ge=-180.0, le=180.0, description="End of alpha sweep in degrees")
+    alpha_step_deg: float = Field(1.0, gt=0.0, le=10.0, description="Alpha step size in degrees")
     model_size: str = Field("large", description="NeuralFoil model size")
-    n_crit: float = Field(9.0, description="Critical amplification ratio for transition")
-    xtr_upper: float = Field(1.0, description="Upper surface forced transition location (0-1)")
-    xtr_lower: float = Field(1.0, description="Lower surface forced transition location (0-1)")
+    n_crit: float = Field(9.0, ge=0.0, le=20.0, description="Critical amplification ratio for transition")
+    xtr_upper: float = Field(1.0, ge=0.0, le=1.0, description="Upper surface forced transition location (0-1)")
+    xtr_lower: float = Field(1.0, ge=0.0, le=1.0, description="Lower surface forced transition location (0-1)")
     include_360_deg_effects: bool = Field(
         False, description="Include 360-degree post-stall effects"
     )
@@ -22,9 +22,9 @@ class CdclConfig(BaseModel):
 class SpacingConfig(BaseModel):
     """Configuration for AVL panel spacing optimisation."""
 
-    n_chord: int = Field(12, description="Base chordwise panel count")
+    n_chord: int = Field(12, ge=4, le=100, description="Base chordwise panel count")
     c_space: float = Field(1.0, description="Chordwise spacing distribution (1=cosine)")
-    n_span: int = Field(20, description="Base spanwise panel count")
+    n_span: int = Field(20, ge=4, le=200, description="Base spanwise panel count")
     s_space: float = Field(1.0, description="Spanwise spacing distribution (1=cosine)")
     auto_optimise: bool = Field(True, description="Apply intelligent spacing rules automatically")
 
