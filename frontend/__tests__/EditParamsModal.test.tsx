@@ -133,6 +133,43 @@ describe("EditParamsModal — reset button", () => {
 
     expect(screen.queryByTitle("Reset to auto-derived ID")).toBeNull();
   });
+
+  it("does not show reset button when creatorInfo is null", () => {
+    const node = makeNode({ _creatorIdDirty: true });
+
+    render(
+      <EditParamsModal
+        open={true}
+        node={node}
+        nodePath="/0"
+        creatorInfo={null}
+        availableShapeKeys={[]}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTitle("Reset to auto-derived ID")).toBeNull();
+  });
+
+  it("does not show reset button when suggested_id is empty string", () => {
+    const node = makeNode({ _creatorIdDirty: true });
+    const creator = makeCreatorInfo({ suggested_id: "" as string | null });
+
+    render(
+      <EditParamsModal
+        open={true}
+        node={node}
+        nodePath="/0"
+        creatorInfo={creator}
+        availableShapeKeys={[]}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTitle("Reset to auto-derived ID")).toBeNull();
+  });
 });
 
 describe("EditParamsModal — dirty state transitions", () => {
@@ -161,6 +198,29 @@ describe("EditParamsModal — dirty state transitions", () => {
     // Now change a param — ID should NOT auto-derive because dirty
     act(() => { capturedOnChange?.("span", 2000); });
     expect(idInput.value).toBe("my-custom-id");
+  });
+
+  it("auto-derives ID from template when param changes and not dirty", () => {
+    const node = makeNode();
+    const creator = makeCreatorInfo({ suggested_id: "wing_{span}" });
+
+    render(
+      <EditParamsModal
+        open={true}
+        node={node}
+        nodePath="/0"
+        creatorInfo={creator}
+        availableShapeKeys={[]}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+
+    const idInput = screen.getByLabelText("ID") as HTMLInputElement;
+
+    // Change param without touching ID — should auto-derive
+    act(() => { capturedOnChange?.("span", 2000); });
+    expect(idInput.value).toBe("wing_2000");
   });
 });
 
@@ -228,6 +288,60 @@ describe("EditParamsModal — save payload", () => {
     expect(path).toBe("/0");
     expect(params.creator_id).toBe("my-id");
     expect(params._creatorIdDirty).toBe(true);
+  });
+
+  it("forwards pre-existing dirty flag on save without editing", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const node = makeNode({ _creatorIdDirty: true });
+    const creator = makeCreatorInfo({ suggested_id: "wing_{span}" });
+
+    render(
+      <EditParamsModal
+        open={true}
+        node={node}
+        nodePath="/0"
+        creatorInfo={creator}
+        availableShapeKeys={[]}
+        onClose={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    // Save without editing anything
+    fireEvent.click(screen.getByText("Save"));
+    await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
+
+    const [, params] = onSave.mock.calls[0];
+    expect(params._creatorIdDirty).toBe(true);
+  });
+
+  it("omits _creatorIdDirty after reset and save", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const node = makeNode({ _creatorIdDirty: true });
+    const creator = makeCreatorInfo({ suggested_id: "wing_{span}" });
+
+    render(
+      <EditParamsModal
+        open={true}
+        node={node}
+        nodePath="/0"
+        creatorInfo={creator}
+        availableShapeKeys={[]}
+        onClose={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    // Click reset to clear dirty
+    const resetBtn = screen.getByTitle("Reset to auto-derived ID");
+    fireEvent.click(resetBtn);
+
+    // Save
+    fireEvent.click(screen.getByText("Save"));
+    await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
+
+    const [, params] = onSave.mock.calls[0];
+    expect(params._creatorIdDirty).toBeUndefined();
   });
 
   it("omits _creatorIdDirty when ID was not manually edited", async () => {
