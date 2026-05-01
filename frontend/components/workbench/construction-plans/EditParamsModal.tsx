@@ -53,7 +53,7 @@ export function EditParamsModal({
     setLastNodePath(nodePath);
     setValues(creatorInfo ? extractValues(node, creatorInfo) : {});
     setCreatorId(node.creator_id);
-    setCreatorIdDirty(!!(node as Record<string, unknown>)._creatorIdDirty);
+    setCreatorIdDirty(!!node._creatorIdDirty);
   }
   if (!open && lastNodePath !== null) {
     setLastNodePath(null);
