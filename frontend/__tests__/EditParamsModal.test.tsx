@@ -163,3 +163,38 @@ describe("EditParamsModal — dirty state transitions", () => {
     expect(idInput.value).toBe("my-custom-id");
   });
 });
+
+describe("EditParamsModal — reset behavior", () => {
+  it("clicking reset clears dirty and re-derives ID from template", () => {
+    const node = makeNode({ _creatorIdDirty: true });
+    const creator = makeCreatorInfo({ suggested_id: "wing_{span}" });
+
+    render(
+      <EditParamsModal
+        open={true}
+        node={node}
+        nodePath="/0"
+        creatorInfo={creator}
+        availableShapeKeys={[]}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+
+    const idInput = screen.getByLabelText("ID") as HTMLInputElement;
+    // Type custom value
+    fireEvent.change(idInput, { target: { value: "custom-id" } });
+    expect(idInput.value).toBe("custom-id");
+
+    // Click reset
+    const resetBtn = screen.getByTitle("Reset to auto-derived ID");
+    fireEvent.click(resetBtn);
+
+    // ID should be resolved from template with current param values
+    // Default span=1000, so template "wing_{span}" → "wing_1000"
+    expect(idInput.value).toBe("wing_1000");
+
+    // Reset button should disappear (dirty=false)
+    expect(screen.queryByTitle("Reset to auto-derived ID")).toBeNull();
+  });
+});
