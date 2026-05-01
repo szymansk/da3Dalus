@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, ArrowLeft, X } from "lucide-react";
+import { ArrowRight, ArrowLeft, X, RotateCcw } from "lucide-react";
 import { useDialog } from "@/hooks/useDialog";
 import { CreatorParameterForm } from "@/components/workbench/CreatorParameterForm";
 import type { CreatorInfo } from "@/hooks/useCreators";
 import type { PlanStepNode } from "@/components/workbench/PlanTree";
-import { resolveNodeShapes } from "@/lib/planTreeUtils";
+import { resolveNodeShapes, resolveIdTemplate } from "@/lib/planTreeUtils";
 
 interface EditParamsModalProps {
   open: boolean;
@@ -46,9 +46,14 @@ export function EditParamsModal({
 
   // Reset values when a different node is opened (track by nodePath for uniqueness)
   const [lastNodePath, setLastNodePath] = useState<string | null>(null);
+  const [creatorId, setCreatorId] = useState("");
+  const [creatorIdDirty, setCreatorIdDirty] = useState(false);
+
   if (open && node && nodePath !== lastNodePath) {
     setLastNodePath(nodePath);
     setValues(creatorInfo ? extractValues(node, creatorInfo) : {});
+    setCreatorId(node.creator_id);
+    setCreatorIdDirty(!!(node as Record<string, unknown>)._creatorIdDirty);
   }
   if (!open && lastNodePath !== null) {
     setLastNodePath(null);
@@ -61,7 +66,7 @@ export function EditParamsModal({
     if (nodePath == null) return;
     setSaving(true);
     try {
-      await onSave(nodePath, values);
+      await onSave(nodePath, { ...values, creator_id: creatorId, _creatorIdDirty: creatorIdDirty || undefined });
       onClose();
     } catch (err) {
       alert(`Save failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -91,6 +96,41 @@ export function EditParamsModal({
             >
               <X size={16} />
             </button>
+          </div>
+
+          {/* CreatorId field */}
+          <div className="flex items-center gap-2 border-b border-border px-6 py-3">
+            <label
+              htmlFor="creator-id-input"
+              className="shrink-0 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground"
+            >
+              ID
+            </label>
+            <input
+              id="creator-id-input"
+              type="text"
+              value={creatorId}
+              onChange={(e) => {
+                setCreatorId(e.target.value);
+                setCreatorIdDirty(true);
+              }}
+              className="flex-1 rounded-lg border border-border bg-card-muted/30 px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground outline-none focus:border-primary"
+            />
+            {creatorIdDirty && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCreatorIdDirty(false);
+                  if (creatorInfo?.suggested_id) {
+                    setCreatorId(resolveIdTemplate(creatorInfo.suggested_id, values));
+                  }
+                }}
+                title="Reset to auto-derived ID"
+                className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+              >
+                <RotateCcw size={12} />
+              </button>
+            )}
           </div>
 
           {/* Body */}
@@ -133,7 +173,13 @@ export function EditParamsModal({
                 creatorDescription={creatorInfo.description}
                 params={creatorInfo.parameters}
                 values={values}
-                onChange={(key, value) => setValues((prev) => ({ ...prev, [key]: value }))}
+                onChange={(key, value) => {
+                  const next = { ...values, [key]: value };
+                  setValues(next);
+                  if (!creatorIdDirty && creatorInfo?.suggested_id) {
+                    setCreatorId(resolveIdTemplate(creatorInfo.suggested_id, next));
+                  }
+                }}
                 availableShapeKeys={availableShapeKeys}
               />
             ) : (
