@@ -331,8 +331,16 @@ async def analyze_airplane(
 
     user_avl_content = None
     if analysis_tool == AnalysisToolUrlType.AVL:
-        from app.services.avl_geometry_service import get_user_avl_content
+        from app.services.avl_geometry_service import get_user_avl_content, build_avl_geometry_file, inject_cdcl
+        from app.schemas.aeroanalysisschema import CdclConfig, SpacingConfig
+
         user_avl_content = get_user_avl_content(db, aeroplane_uuid)
+        if user_avl_content is None:
+            cdcl_config = operating_point.cdcl_config or CdclConfig()
+            spacing_config = operating_point.spacing_config or SpacingConfig()
+            avl_file = build_avl_geometry_file(plane_schema, spacing_config)
+            inject_cdcl(avl_file, plane_schema, operating_point, cdcl_config)
+            user_avl_content = repr(avl_file)
 
     try:
         asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
@@ -1420,8 +1428,16 @@ async def analyze_airplane_strip_forces(
     from app.services.avl_strip_forces import AVLWithStripForces
 
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
-    from app.services.avl_geometry_service import get_user_avl_content
+    from app.services.avl_geometry_service import get_user_avl_content, build_avl_geometry_file, inject_cdcl
+    from app.schemas.aeroanalysisschema import CdclConfig, SpacingConfig
+
     user_avl_content = get_user_avl_content(db, aeroplane_uuid)
+    if user_avl_content is None:
+        cdcl_config = operating_point.cdcl_config or CdclConfig()
+        spacing_config = operating_point.spacing_config or SpacingConfig()
+        avl_file = build_avl_geometry_file(plane_schema, spacing_config)
+        inject_cdcl(avl_file, plane_schema, operating_point, cdcl_config)
+        user_avl_content = repr(avl_file)
 
     try:
         asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
