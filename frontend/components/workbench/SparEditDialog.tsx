@@ -75,11 +75,11 @@ export function SparEditDialog({
   useEffect(() => {
     if (initialData) {
       setPosFactor(String((initialData.spare_position_factor ?? 0) * 100));
-      setWidth(String(initialData.spare_support_dimension_width ?? 4.42));
-      setHeight(String(initialData.spare_support_dimension_height ?? 4.42));
+      setWidth(String(initialData.spare_support_dimension_width != null ? initialData.spare_support_dimension_width * 1000 : 4.42));
+      setHeight(String(initialData.spare_support_dimension_height != null ? initialData.spare_support_dimension_height * 1000 : 4.42));
       setSparMode(initialData.spare_mode ?? "standard");
-      setSparStart(String(initialData.spare_start ?? 0));
-      setSparLength(initialData.spare_length == null ? "" : String(initialData.spare_length));
+      setSparStart(String((initialData.spare_start ?? 0) * 1000));
+      setSparLength(initialData.spare_length == null ? "" : String(initialData.spare_length * 1000));
       applyOptionalVec3(initialData.spare_vector, setVecX, setVecY, setVecZ);
       applyOptionalVec3(
         initialData.spare_origin?.map((v: number) => v * 1000) ?? null,
@@ -104,13 +104,13 @@ export function SparEditDialog({
     try {
       const payload: Record<string, unknown> = {
         spare_position_factor: num(posFactor) / 100,
-        spare_support_dimension_width: num(width),
-        spare_support_dimension_height: num(height),
+        spare_support_dimension_width: num(width) / 1000,
+        spare_support_dimension_height: num(height) / 1000,
         spare_mode: sparMode,
-        spare_start: num(sparStart),
+        spare_start: num(sparStart) / 1000,
       };
       if (sparLength.trim()) {
-        payload.spare_length = num(sparLength);
+        payload.spare_length = num(sparLength) / 1000;
       }
       if (vecX.trim() && vecY.trim() && vecZ.trim()) {
         payload.spare_vector = [num(vecX), num(vecY), num(vecZ)];

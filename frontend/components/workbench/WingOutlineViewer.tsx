@@ -500,8 +500,8 @@ function buildSparEdgeLines(
 interface ComputeSparCentersOpts {
   spar: Record<string, unknown>;
   posFactor: number;
-  sparStartMm: number;
-  sparLengthMm: number | undefined;
+  sparStart: number;
+  sparLength: number | undefined;
   segmentSpan: number;
   startAf: AirfoilCoords | null;
   endAf: AirfoilCoords | null;
@@ -511,14 +511,14 @@ interface ComputeSparCentersOpts {
 function computeSparCenters(
   opts: ComputeSparCentersOpts,
 ): { startCenter: { x: number[]; y: number[]; z: number[] } | null; endCenter: { x: number[]; y: number[]; z: number[] } | null } {
-  const { spar, posFactor, sparStartMm, sparLengthMm, segmentSpan, startAf, endAf, startStation, endStation } = opts;
+  const { spar, posFactor, sparStart, sparLength, segmentSpan, startAf, endAf, startStation, endStation } = opts;
   const sparOrigin = spar.spare_origin as number[] | null | undefined;
   const sparVector = spar.spare_vector as number[] | null | undefined;
   const hasPrecise = sparOrigin && sparVector && sparOrigin.length === 3 && sparVector.length === 3;
 
   if (hasPrecise) {
-    const startDist = sparStartMm * 0.001;
-    const endDist = (sparLengthMm == null ? segmentSpan : (sparStartMm + sparLengthMm) * 0.001);
+    const startDist = sparStart;
+    const endDist = (sparLength == null ? segmentSpan : sparStart + sparLength);
     return {
       startCenter: {
         x: [sparOrigin[0] + sparVector[0] * startDist],
@@ -560,14 +560,14 @@ function buildSingleSparTraces(
   const posFactor = spar.spare_position_factor as number | undefined;
   if (posFactor == null) return traces;
 
-  const sparW = (spar.spare_support_dimension_width as number ?? 0) * 0.001;
-  const sparH = (spar.spare_support_dimension_height as number ?? 0) * 0.001;
-  const sparStartMm = spar.spare_start as number ?? 0;
-  const sparLengthMm = spar.spare_length as number | undefined;
+  const sparW = (spar.spare_support_dimension_width as number ?? 0);
+  const sparH = (spar.spare_support_dimension_height as number ?? 0);
+  const sparStart = spar.spare_start as number ?? 0;
+  const sparLength = spar.spare_length as number | undefined;
 
-  const tStart = segmentSpan > 0 ? (sparStartMm * 0.001) / segmentSpan : 0;
-  const tEnd = (sparLengthMm != null && segmentSpan > 0)
-    ? Math.min((sparStartMm + sparLengthMm) * 0.001 / segmentSpan, 1)
+  const tStart = segmentSpan > 0 ? sparStart / segmentSpan : 0;
+  const tEnd = (sparLength != null && segmentSpan > 0)
+    ? Math.min((sparStart + sparLength) / segmentSpan, 1)
     : 1;
 
   const startStation = lerpXSec(xsecs, dihedrals, segIdx, segIdx + 1, tStart);
@@ -576,7 +576,7 @@ function buildSingleSparTraces(
   const endAf = lerpAf(airfoils, segIdx, segIdx + 1, tEnd);
 
   const { startCenter, endCenter } = computeSparCenters({
-    spar, posFactor, sparStartMm, sparLengthMm, segmentSpan,
+    spar, posFactor, sparStart, sparLength, segmentSpan,
     startAf, endAf, startStation, endStation,
   });
 
