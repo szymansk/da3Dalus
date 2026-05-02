@@ -12,6 +12,7 @@ import {
   toBackendTree,
   fromBackendTree,
   appendChildAtPath,
+  resolveParamValue,
 } from "@/lib/planTreeUtils";
 
 function makeNode(type: string, id: string, successors: PlanStepNode[] = []): PlanStepNode {
@@ -500,6 +501,27 @@ describe("round-trip conversion", () => {
     expect(creator.$TYPE).toBe("WingLoftCreator");
     expect(creator.loglevel).toBe(10);
     expect(creator.offset).toBe(5);
+  });
+});
+
+describe("resolveParamValue", () => {
+  it("returns string values as-is", () => {
+    expect(resolveParamValue("hello", "{x}")).toBe("hello");
+    expect(resolveParamValue("", "{x}")).toBe("");
+  });
+
+  it("converts numbers to strings", () => {
+    expect(resolveParamValue(42, "{x}")).toBe("42");
+    expect(resolveParamValue(0, "{x}")).toBe("0");
+    expect(resolveParamValue(-1.5, "{x}")).toBe("-1.5");
+  });
+
+  it("returns fallback for non-string/non-number types", () => {
+    expect(resolveParamValue(null, "{x}")).toBe("{x}");
+    expect(resolveParamValue(undefined, "{x}")).toBe("{x}");
+    expect(resolveParamValue(true, "{x}")).toBe("{x}");
+    expect(resolveParamValue({}, "{x}")).toBe("{x}");
+    expect(resolveParamValue([], "{x}")).toBe("{x}");
   });
 });
 
