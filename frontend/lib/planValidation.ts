@@ -1,6 +1,6 @@
 import type { PlanStepNode } from "@/components/workbench/PlanTree";
 import type { CreatorInfo } from "@/hooks/useCreators";
-import { isShapeRefType } from "@/lib/planTreeUtils";
+import { isShapeRefType, resolveParamValue } from "@/lib/planTreeUtils";
 
 export interface ValidationIssue {
   path: string;
@@ -68,10 +68,9 @@ function validateNode(
   const nodeRecord = node as Record<string, unknown>;
   const resolveKey = (key: string): string => {
     let resolved = key.replaceAll("{id}", stepId);
-    resolved = resolved.replace(/\{(\w+)\}/g, (_match, param) => {
-      const val = nodeRecord[param];
-      return typeof val === "string" ? val : typeof val === "number" ? String(val) : `{${param}}`;
-    });
+    resolved = resolved.replace(/\{(\w+)\}/g, (_match, param) =>
+      resolveParamValue(nodeRecord[param], `{${param}}`),
+    );
     return resolved;
   };
   const ownOutputs = info.outputs.length

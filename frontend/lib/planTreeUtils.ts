@@ -1,6 +1,16 @@
 import type { PlanStepNode } from "@/components/workbench/PlanTree";
 import type { CreatorInfo } from "@/hooks/useCreators";
 
+/**
+ * Resolve a parameter value to a string.
+ * Returns the value as-is if it is a string, converts numbers, or returns the fallback.
+ */
+export function resolveParamValue(val: unknown, fallback: string): string {
+  if (typeof val === "string") return val;
+  if (typeof val === "number") return String(val);
+  return fallback;
+}
+
 /** Navigate the plan tree to find the node at the given dot-separated path. */
 export function getStepAtPath(tree: PlanStepNode, path: string): PlanStepNode | null {
   if (path === "root") return tree;
@@ -308,10 +318,9 @@ export function buildStepNode(creator: CreatorInfo, tree: PlanStepNode): PlanSte
   }
   // Resolve {placeholder} in creator_id using the seeded default values
   const nodeRecord = node as Record<string, unknown>;
-  node.creator_id = base.replace(/\{(\w+)\}/g, (_match, param) => {
-    const val = nodeRecord[param];
-    return typeof val === "string" ? val : typeof val === "number" ? String(val) : `{${param}}`;
-  });
+  node.creator_id = base.replace(/\{(\w+)\}/g, (_match, param) =>
+    resolveParamValue(nodeRecord[param], `{${param}}`),
+  );
   // Ensure uniqueness after resolution
   node.creator_id = uniqueCreatorId(tree, node.creator_id);
   return node;
@@ -365,10 +374,9 @@ export function resolveNodeShapes(
   const resolveKey = (key: string): string => {
     let resolved = key.replaceAll("{id}", stepId);
     // Replace remaining {param_name} placeholders with actual values
-    resolved = resolved.replace(/\{(\w+)\}/g, (_match, param) => {
-      const val = nodeRecord[param];
-      return typeof val === "string" ? val : typeof val === "number" ? String(val) : `{${param}}`;
-    });
+    resolved = resolved.replace(/\{(\w+)\}/g, (_match, param) =>
+      resolveParamValue(nodeRecord[param], `{${param}}`),
+    );
     return resolved;
   };
 
