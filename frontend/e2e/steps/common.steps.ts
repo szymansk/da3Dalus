@@ -39,10 +39,6 @@ Given("I am on the workbench with an aeroplane", async ({ page, request }) => {
     .catch(() => false);
 
   if (selectorVisible) {
-    // Click the first aeroplane button in the list
-    const firstAeroplane = page.locator(
-      'button:has-text("") >> nth=0',
-    );
     // Find a button that is NOT "Create New"
     const aeroplaneButtons = page.locator(
       'div.flex.flex-col.gap-1 button',

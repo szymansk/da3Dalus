@@ -183,7 +183,8 @@ export function toBackendTree(
   const backendSuccessors: Record<string, Record<string, unknown>> = {};
 
   for (const child of successors) {
-    const { $TYPE, creator_id, successors: childSuccessors, _creatorIdDirty, ...creatorParams } = child;
+    // eslint-disable-next-line sonarjs/no-unused-vars -- destructure-to-exclude
+    const { $TYPE, creator_id, successors: _childSuccessors, _creatorIdDirty: _dirty, ...creatorParams } = child;
     const loglevel = (creatorParams.loglevel as number) ?? DEFAULT_LOGLEVEL;
     // Remove loglevel from creatorParams to avoid duplication — it's set explicitly
     delete creatorParams.loglevel;
@@ -205,6 +206,7 @@ export function toBackendTree(
     };
   }
 
+  // eslint-disable-next-line sonarjs/no-unused-vars -- destructure-to-exclude
   const { successors: _s, _creatorIdDirty: _d, ...rootFields } = node as Record<string, unknown>;
   return {
     ...rootFields,
@@ -268,6 +270,7 @@ export function fromBackendTree(
     } as PlanStepNode;
   });
 
+  // eslint-disable-next-line sonarjs/no-unused-vars -- destructure-to-exclude
   const { successors: _s, ...rootFields } = tree;
   return {
     ...(rootFields as unknown as PlanStepNode),

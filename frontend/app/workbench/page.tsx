@@ -19,7 +19,7 @@ import { API_BASE } from "@/lib/fetcher";
 
 export default function WorkbenchPage() {
   const {
-    aeroplaneId, setAeroplaneId,
+    aeroplaneId,
     selectedWing, selectedXsecIndex, selectXsec,
     selectedFuselage, selectedFuselageXsecIndex, selectFuselageXsec,
     treeMode,
