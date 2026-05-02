@@ -45,6 +45,7 @@
     "dependency-cruiser": "^17.3.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.1-canary.33",
+    "eslint-plugin-sonarjs": "^4.0.3",
     "jsdom": "^29.0.2",
     "playwright-bdd": "^8.5.0",
     "tailwindcss": "^4",
