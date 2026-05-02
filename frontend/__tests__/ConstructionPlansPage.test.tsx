@@ -180,9 +180,9 @@ import ConstructionPlansPage from "@/app/workbench/construction-plans/page";
 // jsdom does not implement EventSource. Stub it so that ExecutionResultDialog
 // can mount with a streamUrl prop without throwing.
 class FakeEventSource {
-  static CONNECTING = 0;
-  static OPEN = 1;
-  static CLOSED = 2;
+  static readonly CONNECTING = 0;
+  static readonly OPEN = 1;
+  static readonly CLOSED = 2;
   readyState = FakeEventSource.CONNECTING;
   url: string;
   constructor(url: string) {

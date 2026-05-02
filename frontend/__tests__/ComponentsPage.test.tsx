@@ -135,7 +135,6 @@ describe("ComponentsPage — '+ New Component' dialog", () => {
 
     // Cancel buttons exist in the page and dialog; click the one inside the edit dialog
     const editDialog = container.querySelector('dialog[aria-label="New Component"]');
-    const cancelBtn = editDialog?.querySelector("button");
     // Find the Cancel button specifically
     const allBtns = editDialog?.querySelectorAll("button") ?? [];
     const cancelButton = Array.from(allBtns).find((b) => b.textContent === "Cancel");
