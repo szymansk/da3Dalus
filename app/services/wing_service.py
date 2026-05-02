@@ -34,6 +34,57 @@ logger = logging.getLogger(__name__)
 _ERR_XSEC_NOT_FOUND = "Cross-section not found"
 _ERR_TED_NOT_FOUND = "Trailing-edge device not found on this cross-section."
 
+# --- Unit conversion constant (mm → m) ---
+_MM_TO_M = 0.001
+
+
+_M_TO_MM = 1000.0
+
+
+def _convert_spare_to_meters(spare: schemas.SpareDetailSchema) -> schemas.SpareDetailSchema:
+    """Convert a SpareDetailSchema dimensional fields from mm (DB storage) to meters (API response).
+
+    Only converts the fields that are ALWAYS stored in mm: width, height,
+    length, start. The spare_origin and spare_vector are NOT converted here
+    because _recompute_spare_vectors already stores them in meters (gh-352/gh-362).
+    """
+    return spare.model_copy(
+        update={
+            "spare_support_dimension_width": spare.spare_support_dimension_width * _MM_TO_M,
+            "spare_support_dimension_height": spare.spare_support_dimension_height * _MM_TO_M,
+            "spare_length": spare.spare_length * _MM_TO_M if spare.spare_length is not None else None,
+            "spare_start": spare.spare_start * _MM_TO_M,
+        }
+    )
+
+
+def _convert_spare_to_mm(spare: schemas.SpareDetailSchema) -> schemas.SpareDetailSchema:
+    """Convert a SpareDetailSchema dimensional fields from meters (API input) to mm (DB storage).
+
+    Only converts the fields that are stored in mm: width, height, length, start.
+    The spare_origin and spare_vector are passed through unchanged because
+    _recompute_spare_vectors will overwrite them with correct meter values.
+    """
+    return spare.model_copy(
+        update={
+            "spare_support_dimension_width": spare.spare_support_dimension_width * _M_TO_MM,
+            "spare_support_dimension_height": spare.spare_support_dimension_height * _M_TO_MM,
+            "spare_length": spare.spare_length * _M_TO_MM if spare.spare_length is not None else None,
+            "spare_start": spare.spare_start * _M_TO_MM,
+        }
+    )
+
+
+def _convert_xsec_spares_to_meters(
+    xsec: schemas.WingXSecReadSchema,
+) -> schemas.WingXSecReadSchema:
+    """Convert spare detail fields on a cross-section schema from mm to meters."""
+    if not xsec.spare_list:
+        return xsec
+    return xsec.model_copy(
+        update={"spare_list": [_convert_spare_to_meters(s) for s in xsec.spare_list]}
+    )
+
 
 def get_aeroplane_or_raise(db: Session, aeroplane_uuid) -> AeroplaneModel:
     """
@@ -282,6 +333,9 @@ def create_wing_from_wing_configuration(
         wing_model.design_model = "wc"
         plane.wings.append(wing_model)
         db.add(wing_model)
+        db.flush()
+        # Ensure spare_origin/spare_vector are stored in meters (gh-366)
+        _recompute_spare_vectors(wing_model)
         plane.updated_at = datetime.now()
 
         # Auto-sync: create group in component tree (gh#108)
@@ -394,6 +448,9 @@ def put_wing_as_wingconfig(
         wing_model.design_model = "wc"
         plane.wings.append(wing_model)
         db.add(wing_model)
+        db.flush()
+        # Ensure spare_origin/spare_vector are stored in meters (gh-366)
+        _recompute_spare_vectors(wing_model)
         plane.updated_at = datetime.now()
 
         # Auto-sync: ensure group in component tree (gh#108)
@@ -441,7 +498,10 @@ def update_wing(
 def get_wing(db: Session, aeroplane_uuid, wing_name: str) -> schemas.AsbWingReadSchema:
     """
     Get a wing as schema.
-    
+
+    All values in the response use meters — spare detail fields stored in mm
+    are converted at read time (gh-366).
+
     Raises:
         NotFoundError: If the aeroplane or wing does not exist.
         InternalError: If a database error occurs.
@@ -450,7 +510,10 @@ def get_wing(db: Session, aeroplane_uuid, wing_name: str) -> schemas.AsbWingRead
         plane = get_aeroplane_or_raise(db, aeroplane_uuid)
         wing = get_wing_or_raise(plane, wing_name)
         _materialize_wing_relations(wing)
-        return schemas.AsbWingReadSchema.model_validate(wing, from_attributes=True)
+        schema = schemas.AsbWingReadSchema.model_validate(wing, from_attributes=True)
+        # Convert spare detail fields from mm (DB) to meters (API)
+        converted_xsecs = [_convert_xsec_spares_to_meters(xs) for xs in schema.x_secs]
+        return schema.model_copy(update={"x_secs": converted_xsecs})
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
@@ -495,7 +558,9 @@ def get_wing_cross_sections(
 ) -> List[schemas.WingXSecReadSchema]:
     """
     Get all cross-sections for a wing.
-    
+
+    Spare detail fields are converted from mm (DB) to meters (gh-366).
+
     Raises:
         NotFoundError: If the aeroplane or wing does not exist.
         InternalError: If a database error occurs.
@@ -505,7 +570,9 @@ def get_wing_cross_sections(
         wing = get_wing_or_raise(aeroplane, wing_name)
         _materialize_wing_relations(wing)
         return [
-            schemas.WingXSecReadSchema.model_validate(xs, from_attributes=True)
+            _convert_xsec_spares_to_meters(
+                schemas.WingXSecReadSchema.model_validate(xs, from_attributes=True)
+            )
             for xs in wing.x_secs
         ]
     except NotFoundError:
@@ -544,7 +611,9 @@ def get_cross_section(
 ) -> schemas.WingXSecReadSchema:
     """
     Get a specific cross-section by index.
-    
+
+    Spare detail fields are converted from mm (DB) to meters (gh-366).
+
     Raises:
         NotFoundError: If the aeroplane, wing, or cross-section does not exist.
         InternalError: If a database error occurs.
@@ -554,7 +623,9 @@ def get_cross_section(
         wing = get_wing_or_raise(aeroplane, wing_name)
         _materialize_wing_relations(wing)
         x_sec = _get_xsec_or_raise(wing, index)
-        return schemas.WingXSecReadSchema.model_validate(x_sec, from_attributes=True)
+        return _convert_xsec_spares_to_meters(
+            schemas.WingXSecReadSchema.model_validate(x_sec, from_attributes=True)
+        )
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
@@ -809,6 +880,8 @@ def get_spares(
 ) -> List[schemas.SpareDetailSchema]:
     """
     Get all spars for a wing cross-section.
+
+    Values are returned in meters (converted from mm DB storage, gh-366).
     """
     try:
         aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
@@ -816,7 +889,12 @@ def get_spares(
         _materialize_wing_relations(wing)
         x_sec = _get_xsec_or_raise(wing, xsec_index)
         spares = x_sec.detail.spares if x_sec.detail is not None else []
-        return [schemas.SpareDetailSchema.model_validate(spare, from_attributes=True) for spare in spares]
+        return [
+            _convert_spare_to_meters(
+                schemas.SpareDetailSchema.model_validate(spare, from_attributes=True)
+            )
+            for spare in spares
+        ]
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
@@ -834,6 +912,9 @@ def create_spare(
     """
     Create a spar on a wing cross-section.
 
+    Input values are in meters (API convention). They are converted to mm
+    for DB storage (gh-366).
+
     Spars are segment-specific and therefore cannot be assigned to the terminal cross-section.
     """
     try:
@@ -842,7 +923,7 @@ def create_spare(
         x_sec = _get_xsec_or_raise(wing, xsec_index)
         detail = _ensure_segment_detail_or_raise(x_sec, xsec_index, len(wing.x_secs))
 
-        spare_payload = spare_data.model_dump()
+        spare_payload = _convert_spare_to_mm(spare_data).model_dump()
         spare = WingXSecSpareModel(
             sort_index=len(detail.spares),
             **spare_payload,
@@ -867,7 +948,11 @@ def update_spare(
     spar_index: int,
     spare_data: schemas.SpareDetailSchema,
 ) -> None:
-    """Replace a spar at the given index on a wing cross-section."""
+    """Replace a spar at the given index on a wing cross-section.
+
+    Input values are in meters (API convention). They are converted to mm
+    for DB storage (gh-366).
+    """
     try:
         aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
         wing = get_wing_or_raise(aeroplane, wing_name)
@@ -879,7 +964,7 @@ def update_spare(
                 details={"spar_index": spar_index},
             )
         spare = detail.spares[spar_index]
-        for key, value in spare_data.model_dump().items():
+        for key, value in _convert_spare_to_mm(spare_data).model_dump().items():
             setattr(spare, key, value)
         db.flush()
         _recompute_spare_vectors(wing)
