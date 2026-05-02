@@ -202,7 +202,12 @@ export default function ConstructionPlansPage() {
     async (planId: number, newName: string) => {
       // Need the plan's tree_json to call updatePlan — fetch detail if not loaded
       const isTemplate = templates.some((t) => t.id === planId);
-      const detail = isTemplate ? templateDetail : (activePlanDetail?.id === planId ? activePlanDetail : null);
+      let detail = null;
+      if (isTemplate) {
+        detail = templateDetail;
+      } else if (activePlanDetail?.id === planId) {
+        detail = activePlanDetail;
+      }
       if (!detail || detail.id !== planId) {
         alert("Cannot rename: plan data not loaded. Expand the plan first.");
         return;

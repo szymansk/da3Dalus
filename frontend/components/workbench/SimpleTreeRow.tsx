@@ -67,6 +67,15 @@ export function SimpleTreeRow({ node, onToggle }: Readonly<SimpleTreeRowProps>) 
     node.onClick?.();
   }
 
+  let labelClass: string;
+  if (node.error) {
+    labelClass = "text-[12px] text-red-400/70";
+  } else if (node.muted) {
+    labelClass = "text-[12px] text-muted-foreground";
+  } else {
+    labelClass = "font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground";
+  }
+
   return (
     <div
       ref={setRefs}
@@ -91,7 +100,7 @@ export function SimpleTreeRow({ node, onToggle }: Readonly<SimpleTreeRowProps>) 
         <ChevronRight size={12} className="shrink-0 text-muted-foreground" />
       )}
       <span
-        className={`whitespace-nowrap ${node.error ? "text-[12px] text-red-400/70" : node.muted ? "text-[12px] text-muted-foreground" : "font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"}`}
+        className={`whitespace-nowrap ${labelClass}`}
       >
         {node.label}
       </span>
