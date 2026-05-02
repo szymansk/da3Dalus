@@ -11,6 +11,11 @@ const eslintConfig = defineConfig([
     rules: {
       "sonarjs/no-clear-text-protocols": "off",
       "sonarjs/publicly-writable-directories": "off",
+      "@typescript-eslint/no-unused-vars": ["warn", {
+        varsIgnorePattern: "^_",
+        argsIgnorePattern: "^_",
+        caughtErrorsIgnorePattern: "^_",
+      }],
     },
   },
   globalIgnores([
