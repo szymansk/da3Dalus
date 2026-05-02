@@ -1263,3 +1263,97 @@ class TestExistingTedForControlSurface:
             wing_service._existing_ted_for_control_surface_or_raise(
                 wing, xsec, 1, "main"
             )
+
+
+# ── gh-366: Unified units (meters) in wing endpoint response ─────────
+
+
+class TestWingEndpointUnitsConsistency:
+    """Verify that get_wing returns ALL fields in meters (gh-366).
+
+    The DB stores spare detail fields in mm (from WingConfig). The API
+    must convert them to meters so that consumers see a single unit system.
+    """
+
+    def _make_plane_with_spares_mm(self, db):
+        """Create a wing where the spare fields are stored in mm (as they come from WingConfig)."""
+        plane = make_aeroplane(db, name=f"units-test-{uuid.uuid4().hex[:8]}")
+        wing = WingModel(name="main", symmetric=True, design_model="wc", aeroplane_id=plane.id)
+
+        # Two x-secs: first has a spare, second is terminal
+        xsec0 = WingXSecModel(
+            sort_index=0,
+            xyz_le=[0.0, 0.0, 0.0],  # meters
+            chord=0.162,  # meters
+            twist=0.0,
+            airfoil="naca0012",
+        )
+        detail = WingXSecDetailModel(x_sec_type="root")
+        spare = WingXSecSpareModel(
+            sort_index=0,
+            spare_support_dimension_width=4.42,   # mm in DB
+            spare_support_dimension_height=6.0,    # mm in DB
+            spare_position_factor=0.25,
+            spare_length=70.0,                     # mm in DB
+            spare_start=5.0,                       # mm in DB
+            spare_mode="standard",
+            spare_vector=[0.0, 1.0, 0.0],
+            spare_origin=[40.5, 0.0, 3.45],        # mm in DB
+        )
+        detail.spares.append(spare)
+        xsec0.detail = detail
+
+        xsec1 = WingXSecModel(
+            sort_index=1,
+            xyz_le=[0.0, 0.5, 0.0],  # meters
+            chord=0.150,  # meters
+            twist=0.0,
+            airfoil="naca0012",
+        )
+
+        wing.x_secs.append(xsec0)
+        wing.x_secs.append(xsec1)
+        db.add(wing)
+        db.commit()
+        db.refresh(plane)
+        return plane, wing
+
+    def test_get_wing_returns_spare_fields_in_meters(self, db):
+        """Spare dimensional fields (width, height, length, start) must be in meters."""
+        plane, wing = self._make_plane_with_spares_mm(db)
+
+        result = wing_service.get_wing(db, plane.uuid, "main")
+
+        spare = result.x_secs[0].spare_list[0]
+        # spare_support_dimension_width stored as 4.42 mm -> expect 0.00442 m
+        assert abs(spare.spare_support_dimension_width - 0.00442) < 1e-9
+        # spare_support_dimension_height stored as 6.0 mm -> expect 0.006 m
+        assert abs(spare.spare_support_dimension_height - 0.006) < 1e-9
+        # spare_length stored as 70.0 mm -> expect 0.07 m
+        assert abs(spare.spare_length - 0.07) < 1e-9
+        # spare_start stored as 5.0 mm -> expect 0.005 m
+        assert abs(spare.spare_start - 0.005) < 1e-9
+        # spare_origin and spare_vector are already in meters in DB
+        # (stored as meters by _recompute_spare_vectors)
+        # In this test they are set manually, so they stay as-is
+        assert spare.spare_origin == [40.5, 0.0, 3.45]
+
+    def test_get_wing_cross_sections_returns_spare_fields_in_meters(self, db):
+        """get_wing_cross_sections should also apply the mm->m conversion."""
+        plane, wing = self._make_plane_with_spares_mm(db)
+
+        result = wing_service.get_wing_cross_sections(db, plane.uuid, "main")
+
+        spare = result[0].spare_list[0]
+        assert abs(spare.spare_support_dimension_width - 0.00442) < 1e-9
+        assert abs(spare.spare_support_dimension_height - 0.006) < 1e-9
+        assert abs(spare.spare_length - 0.07) < 1e-9
+
+    def test_get_wing_units_schema_reports_meters_for_all(self, db):
+        """The units metadata must declare meters for detail fields too."""
+        plane, wing = self._make_plane_with_spares_mm(db)
+
+        result = wing_service.get_wing(db, plane.uuid, "main")
+
+        assert result.units.geometry_length == "m"
+        assert result.units.detail_length == "m"

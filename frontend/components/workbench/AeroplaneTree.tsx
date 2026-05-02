@@ -112,8 +112,8 @@ function buildSparNodes(
   for (let s = 0; s < spareList.length; s++) {
     const sp = spareList[s];
     const pos = ((sp.spare_position_factor as number ?? 0) * 100).toFixed(0);
-    const w = (sp.spare_support_dimension_width as number ?? 0).toFixed(1);
-    const h = (sp.spare_support_dimension_height as number ?? 0).toFixed(1);
+    const w = ((sp.spare_support_dimension_width as number ?? 0) * 1000).toFixed(1);
+    const h = ((sp.spare_support_dimension_height as number ?? 0) * 1000).toFixed(1);
     nodes.push({
       id: `${id}-spar-${s}`,
       label: `spar @ ${pos}%`,

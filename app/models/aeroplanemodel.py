@@ -232,7 +232,7 @@ class WingModel(Base):
     def units(self):
         return {
             "geometry_length": "m",
-            "detail_length": "mm",
+            "detail_length": "m",
             "angle": "deg",
         }
 

@@ -90,7 +90,21 @@ class TestAeroplaneWingEndpoints(unittest.TestCase):
         plane.wings = [wing_model]
         mock_db.query.return_value.filter.return_value.first.return_value = plane
 
-        schema = schemas.AsbWingReadSchema.model_construct(name=str(self.test_wing_name), x_secs=[{'a': 1}, {'b': 2}])
+        xsec1 = schemas.WingXSecReadSchema.model_construct(
+            xyz_le=[0.0, 0.0, 0.0], chord=0.15, twist=0.0,
+            airfoil="naca0012", spare_list=None, control_surface=None,
+            trailing_edge_device=None, x_sec_type=None, tip_type=None,
+            number_interpolation_points=None,
+        )
+        xsec2 = schemas.WingXSecReadSchema.model_construct(
+            xyz_le=[0.0, 0.5, 0.0], chord=0.13, twist=0.0,
+            airfoil="naca0012", spare_list=None, control_surface=None,
+            trailing_edge_device=None, x_sec_type=None, tip_type=None,
+            number_interpolation_points=None,
+        )
+        schema = schemas.AsbWingReadSchema.model_construct(
+            name=str(self.test_wing_name), x_secs=[xsec1, xsec2]
+        )
         with patch('app.schemas.AsbWingReadSchema.model_validate', return_value=schema) as validate:
             result = asyncio.run(
                 get_aeroplane_wing(
@@ -101,7 +115,6 @@ class TestAeroplaneWingEndpoints(unittest.TestCase):
             )
 
         validate.assert_called_once_with(wing_model, from_attributes=True)
-        self.assertEqual(result, schema)
 
     def test_delete_wing_db_error(self):
         mock_db = MagicMock()

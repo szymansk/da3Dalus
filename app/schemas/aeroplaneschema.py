@@ -172,20 +172,20 @@ class ControlSurfaceCadDetailsPatchSchema(BaseModel):
 
 
 class SpareDetailSchema(BaseModel):
-    spare_support_dimension_width: float = Field(..., description="Spar support width in millimeters")
-    spare_support_dimension_height: float = Field(..., description="Spar support height in millimeters")
+    spare_support_dimension_width: float = Field(..., description="Spar support width in meters")
+    spare_support_dimension_height: float = Field(..., description="Spar support height in meters")
     spare_position_factor: Optional[float] = Field(
         None,
         description="Relative chord-wise position of the spar as a factor (0.0-1.0)",
     )
-    spare_length: Optional[float] = Field(None, description="Spar length in millimeters")
-    spare_start: float = Field(0.0, description="Spar start offset in millimeters")
+    spare_length: Optional[float] = Field(None, description="Spar length in meters")
+    spare_start: float = Field(0.0, description="Spar start offset in meters")
     spare_mode: Optional[SparMode] = Field(
         "standard",
         description="Spar placement mode",
     )
     spare_vector: Optional[list[float]] = Field(None, description="Spar direction vector [x, y, z]")
-    spare_origin: Optional[list[float]] = Field(None, description="Spar origin [x, y, z]")
+    spare_origin: Optional[list[float]] = Field(None, description="Spar origin [x, y, z] in meters")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -342,7 +342,7 @@ class ControlSurfaceServoDetailsPatchSchema(TrailingEdgeServoPatchSchema):
 
 class WingUnitsSchema(BaseModel):
     geometry_length: Literal["m"] = Field("m", description="Unit of `xyz_le`, `chord` in x-sections")
-    detail_length: Literal["mm"] = Field("mm", description="Unit of detailed wing configuration fields")
+    detail_length: Literal["m"] = Field("m", description="Unit of spar detail fields (origin, dimensions, length, start)")
     angle: Literal["deg"] = Field("deg", description="Unit of angular fields")
 
     model_config = ConfigDict(from_attributes=True)
