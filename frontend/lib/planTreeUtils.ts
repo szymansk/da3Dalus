@@ -1,6 +1,16 @@
 import type { PlanStepNode } from "@/components/workbench/PlanTree";
 import type { CreatorInfo } from "@/hooks/useCreators";
 
+/**
+ * Resolve a parameter value to a string.
+ * Returns the value as-is if it is a string, converts numbers, or returns the fallback.
+ */
+export function resolveParamValue(val: unknown, fallback: string): string {
+  if (typeof val === "string") return val;
+  if (typeof val === "number") return String(val);
+  return fallback;
+}
+
 /** Navigate the plan tree to find the node at the given dot-separated path. */
 export function getStepAtPath(tree: PlanStepNode, path: string): PlanStepNode | null {
   if (path === "root") return tree;
@@ -183,7 +193,8 @@ export function toBackendTree(
   const backendSuccessors: Record<string, Record<string, unknown>> = {};
 
   for (const child of successors) {
-    const { $TYPE, creator_id, successors: childSuccessors, _creatorIdDirty, ...creatorParams } = child;
+    // eslint-disable-next-line sonarjs/no-unused-vars -- destructure-to-exclude
+    const { $TYPE, creator_id, successors: _childSuccessors, _creatorIdDirty: _dirty, ...creatorParams } = child;
     const loglevel = (creatorParams.loglevel as number) ?? DEFAULT_LOGLEVEL;
     // Remove loglevel from creatorParams to avoid duplication — it's set explicitly
     delete creatorParams.loglevel;
@@ -205,6 +216,7 @@ export function toBackendTree(
     };
   }
 
+  // eslint-disable-next-line sonarjs/no-unused-vars -- destructure-to-exclude
   const { successors: _s, _creatorIdDirty: _d, ...rootFields } = node as Record<string, unknown>;
   return {
     ...rootFields,
@@ -268,6 +280,7 @@ export function fromBackendTree(
     } as PlanStepNode;
   });
 
+  // eslint-disable-next-line sonarjs/no-unused-vars -- destructure-to-exclude
   const { successors: _s, ...rootFields } = tree;
   return {
     ...(rootFields as unknown as PlanStepNode),
@@ -305,10 +318,9 @@ export function buildStepNode(creator: CreatorInfo, tree: PlanStepNode): PlanSte
   }
   // Resolve {placeholder} in creator_id using the seeded default values
   const nodeRecord = node as Record<string, unknown>;
-  node.creator_id = base.replace(/\{(\w+)\}/g, (_match, param) => {
-    const val = nodeRecord[param];
-    return typeof val === "string" ? val : typeof val === "number" ? String(val) : `{${param}}`;
-  });
+  node.creator_id = base.replace(/\{(\w+)\}/g, (_match, param) =>
+    resolveParamValue(nodeRecord[param], `{${param}}`),
+  );
   // Ensure uniqueness after resolution
   node.creator_id = uniqueCreatorId(tree, node.creator_id);
   return node;
@@ -329,6 +341,22 @@ export function isShapeRefType(type: string): boolean {
   return type === "ShapeId" || type === "list[ShapeId]";
 }
 
+function collectParamInputs(
+  paramName: string,
+  paramType: string,
+  val: unknown,
+): ResolvedShapeInput[] {
+  if (paramType === "list[ShapeId]" && Array.isArray(val)) {
+    if (val.length === 0) return [{ paramName, boundValue: null }];
+    return val.map((v) => ({
+      paramName,
+      boundValue: typeof v === "string" && v.trim() !== "" ? v : null,
+    }));
+  }
+  const bound = typeof val === "string" && val.trim() !== "" ? val : null;
+  return [{ paramName, boundValue: bound }];
+}
+
 export function resolveNodeShapes(
   node: PlanStepNode,
   creators: CreatorInfo[],
@@ -341,20 +369,7 @@ export function resolveNodeShapes(
   for (const p of info.parameters) {
     if (!isShapeRefType(p.type)) continue;
     const val = (node as Record<string, unknown>)[p.name];
-    if (p.type === "list[ShapeId]" && Array.isArray(val)) {
-      // Multi-shape ref: each element is a separate input
-      for (const v of val) {
-        const bound = typeof v === "string" && v.trim() !== "" ? v : null;
-        inputs.push({ paramName: p.name, boundValue: bound });
-      }
-      // If list is empty, show one unbound entry
-      if (val.length === 0) {
-        inputs.push({ paramName: p.name, boundValue: null });
-      }
-    } else {
-      const bound = typeof val === "string" && val.trim() !== "" ? val : null;
-      inputs.push({ paramName: p.name, boundValue: bound });
-    }
+    inputs.push(...collectParamInputs(p.name, p.type, val));
   }
 
   // Resolve output key placeholders: {id} → creator_id, {param} → node[param]
@@ -362,10 +377,9 @@ export function resolveNodeShapes(
   const resolveKey = (key: string): string => {
     let resolved = key.replaceAll("{id}", stepId);
     // Replace remaining {param_name} placeholders with actual values
-    resolved = resolved.replace(/\{(\w+)\}/g, (_match, param) => {
-      const val = nodeRecord[param];
-      return typeof val === "string" ? val : typeof val === "number" ? String(val) : `{${param}}`;
-    });
+    resolved = resolved.replace(/\{(\w+)\}/g, (_match, param) =>
+      resolveParamValue(nodeRecord[param], `{${param}}`),
+    );
     return resolved;
   };
 

@@ -5,7 +5,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { Play, Plus, BookTemplate, Pencil, Trash2, FolderOpen, ChevronDown, ChevronRight } from "lucide-react";
 import { SimpleTreeRow } from "@/components/workbench/SimpleTreeRow";
 import type { PlanStepNode } from "@/components/workbench/PlanTree";
-import { resolveNodeShapes } from "@/lib/planTreeUtils";
+import { resolveNodeShapes, resolveParamValue } from "@/lib/planTreeUtils";
 import type { PlanSummary } from "@/hooks/useConstructionPlans";
 import type { CreatorInfo } from "@/hooks/useCreators";
 import { InlineEditableName } from "./InlineEditableName";
@@ -30,10 +30,9 @@ export function renderCreatorTree(
   const nodeRecord = node as Record<string, unknown>;
   const displayLabel = nodeRecord._creatorIdDirty
     ? node.creator_id
-    : node.creator_id.replace(/\{(\w+)\}/g, (_match, param) => {
-        const val = nodeRecord[param];
-        return typeof val === "string" ? val : typeof val === "number" ? String(val) : `{${param}}`;
-      });
+    : node.creator_id.replace(/\{(\w+)\}/g, (_match, param) =>
+        resolveParamValue(nodeRecord[param], `{${param}}`),
+      );
 
   return (
     <div key={creatorKey} className="flex flex-col">

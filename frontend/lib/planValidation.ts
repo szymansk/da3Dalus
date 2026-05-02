@@ -1,6 +1,6 @@
 import type { PlanStepNode } from "@/components/workbench/PlanTree";
 import type { CreatorInfo } from "@/hooks/useCreators";
-import { isShapeRefType } from "@/lib/planTreeUtils";
+import { isShapeRefType, resolveParamValue } from "@/lib/planTreeUtils";
 
 export interface ValidationIssue {
   path: string;
@@ -17,6 +17,26 @@ function isEmpty(v: unknown): boolean {
   if (v == null) return true;
   if (typeof v === "string" && v.trim() === "") return true;
   return false;
+}
+
+function checkShapeRefs(
+  val: unknown,
+  paramName: string,
+  availableShapes: Set<string>,
+  path: string,
+  creatorId: string,
+  issues: ValidationIssue[],
+): void {
+  const refs = Array.isArray(val) ? val.map(String) : [String(val)];
+  for (const ref of refs) {
+    if (ref.trim() && !availableShapes.has(ref)) {
+      issues.push({
+        path,
+        creatorId,
+        message: `Shape reference "${ref}" (${paramName}) is not available at this point`,
+      });
+    }
+  }
 }
 
 function validateNode(
@@ -49,16 +69,7 @@ function validateNode(
     }
     // Check shape references (ShapeId or list[ShapeId])
     if (isShapeRefType(param.type) && !isEmpty(val)) {
-      const refs = Array.isArray(val) ? val.map(String) : [String(val)];
-      for (const ref of refs) {
-        if (ref.trim() && !availableShapes.has(ref)) {
-          issues.push({
-            path,
-            creatorId: node.creator_id,
-            message: `Shape reference "${ref}" (${param.name}) is not available at this point`,
-          });
-        }
-      }
+      checkShapeRefs(val, param.name, availableShapes, path, node.creator_id, issues);
     }
   }
 
@@ -68,10 +79,9 @@ function validateNode(
   const nodeRecord = node as Record<string, unknown>;
   const resolveKey = (key: string): string => {
     let resolved = key.replaceAll("{id}", stepId);
-    resolved = resolved.replace(/\{(\w+)\}/g, (_match, param) => {
-      const val = nodeRecord[param];
-      return typeof val === "string" ? val : typeof val === "number" ? String(val) : `{${param}}`;
-    });
+    resolved = resolved.replace(/\{(\w+)\}/g, (_match, param) =>
+      resolveParamValue(nodeRecord[param], `{${param}}`),
+    );
     return resolved;
   };
   const ownOutputs = info.outputs.length

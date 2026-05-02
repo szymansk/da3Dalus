@@ -3,7 +3,7 @@
  * tested via PropertyForm in fuselage mode (GH#359).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, act, fireEvent } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import React, { useRef } from "react";
 
 // ── Mocks ──────────────────────────────────────────────────────

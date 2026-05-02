@@ -132,6 +132,54 @@ export function AvlGeometryEditor({ aeroplaneId, open, onClose }: Props) {
     ? "fixed inset-4 z-50"
     : "w-[900px] h-[650px]";
 
+  function renderEditorBody() {
+    if (geometry.isLoading) {
+      return (
+        <div className="flex h-full items-center justify-center text-[13px] text-muted-foreground">
+          Loading AVL geometry…
+        </div>
+      );
+    }
+    if (mode === "diff" && regeneratedContent !== null) {
+      return (
+        <MonacoDiffEditor
+          original={localContent}
+          modified={regeneratedContent}
+          language="avl"
+          theme="avl-dark"
+          onMount={handleEditorDidMount}
+          options={{
+            readOnly: false,
+            renderSideBySide: true,
+            fontFamily: "var(--font-jetbrains-mono), monospace",
+            fontSize: 13,
+            minimap: { enabled: false },
+            lineNumbers: "on",
+            scrollBeyondLastLine: false,
+          }}
+        />
+      );
+    }
+    return (
+      <MonacoEditor
+        value={localContent}
+        onChange={(v) => setLocalContent(v ?? "")}
+        language="avl"
+        theme="avl-dark"
+        onMount={handleEditorDidMount}
+        options={{
+          fontFamily: "var(--font-jetbrains-mono), monospace",
+          fontSize: 13,
+          minimap: { enabled: false },
+          lineNumbers: "on",
+          scrollBeyondLastLine: false,
+          wordWrap: "off",
+          automaticLayout: true,
+        }}
+      />
+    );
+  }
+
   return (
     <>
       <AvlDirtyWarning
@@ -186,45 +234,7 @@ export function AvlGeometryEditor({ aeroplaneId, open, onClose }: Props) {
 
           {/* Editor Body */}
           <div className="flex-1 overflow-hidden">
-            {geometry.isLoading ? (
-              <div className="flex h-full items-center justify-center text-[13px] text-muted-foreground">
-                Loading AVL geometry…
-              </div>
-            ) : mode === "diff" && regeneratedContent !== null ? (
-              <MonacoDiffEditor
-                original={localContent}
-                modified={regeneratedContent}
-                language="avl"
-                theme="avl-dark"
-                onMount={handleEditorDidMount}
-                options={{
-                  readOnly: false,
-                  renderSideBySide: true,
-                  fontFamily: "var(--font-jetbrains-mono), monospace",
-                  fontSize: 13,
-                  minimap: { enabled: false },
-                  lineNumbers: "on",
-                  scrollBeyondLastLine: false,
-                }}
-              />
-            ) : (
-              <MonacoEditor
-                value={localContent}
-                onChange={(v) => setLocalContent(v ?? "")}
-                language="avl"
-                theme="avl-dark"
-                onMount={handleEditorDidMount}
-                options={{
-                  fontFamily: "var(--font-jetbrains-mono), monospace",
-                  fontSize: 13,
-                  minimap: { enabled: false },
-                  lineNumbers: "on",
-                  scrollBeyondLastLine: false,
-                  wordWrap: "off",
-                  automaticLayout: true,
-                }}
-              />
-            )}
+            {renderEditorBody()}
           </div>
 
           {/* Footer */}

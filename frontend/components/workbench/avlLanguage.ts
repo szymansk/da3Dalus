@@ -26,12 +26,12 @@ export const avlLanguage: languages.IMonarchLanguage & { keywords: string[] } = 
   ],
   tokenizer: {
     root: [
-      [/[!#].*$/, "comment"],
+      [/[!#][^\n]*/, "comment"],
       [
         /[A-Z][A-Z_]+/,
         { cases: { "@keywords": "keyword", "@default": "identifier" } },
       ],
-      [/-?\d+\.?\d*([eE][+-]?\d+)?/, "number"],
+      [/-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?/, "number"],
       [/[a-zA-Z_]\w*/, "identifier"],
     ],
   },

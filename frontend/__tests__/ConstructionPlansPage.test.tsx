@@ -50,60 +50,62 @@ vi.mock("@/hooks/useConstructionPlans", () => ({
     isLoading: false,
     mutate: mockMutateAeroplanePlans,
   }),
-  useConstructionPlan: (id: number | null) => ({
-    plan: id === 1
-      ? {
-          id: 1,
-          name: "eHawk Wing",
-          description: null,
-          tree_json: {
-            $TYPE: "ConstructionRootNode",
-            creator_id: "root",
-            loglevel: 50,
-            successors: {
-              VaseModeWingCreator: {
-                $TYPE: "ConstructionStepNode",
-                creator_id: "VaseModeWingCreator",
-                loglevel: 50,
-                creator: { $TYPE: "VaseModeWingCreator", creator_id: "VaseModeWingCreator", wing_index: "main_wing", loglevel: 50 },
-                successors: {},
-              },
+  useConstructionPlan: (id: number | null) => {
+    const mockPlanDetails: Record<number, object> = {
+      1: {
+        id: 1,
+        name: "eHawk Wing",
+        description: null,
+        tree_json: {
+          $TYPE: "ConstructionRootNode",
+          creator_id: "root",
+          loglevel: 50,
+          successors: {
+            VaseModeWingCreator: {
+              $TYPE: "ConstructionStepNode",
+              creator_id: "VaseModeWingCreator",
+              loglevel: 50,
+              creator: { $TYPE: "VaseModeWingCreator", creator_id: "VaseModeWingCreator", wing_index: "main_wing", loglevel: 50 },
+              successors: {},
             },
           },
-          plan_type: "template",
-          aeroplane_id: null,
-          created_at: "2026-01-01",
-          updated_at: "2026-01-01",
-        }
-      : id === 2
-      ? {
-          id: 2,
-          name: "eHawk Build",
-          description: null,
-          tree_json: {
-            $TYPE: "ConstructionRootNode",
-            creator_id: "root",
-            loglevel: 50,
-            successors: {
-              VaseModeWingCreator: {
-                $TYPE: "ConstructionStepNode",
-                creator_id: "VaseModeWingCreator",
-                loglevel: 50,
-                creator: { $TYPE: "VaseModeWingCreator", creator_id: "VaseModeWingCreator", wing_index: "main_wing", loglevel: 50 },
-                successors: {},
-              },
+        },
+        plan_type: "template",
+        aeroplane_id: null,
+        created_at: "2026-01-01",
+        updated_at: "2026-01-01",
+      },
+      2: {
+        id: 2,
+        name: "eHawk Build",
+        description: null,
+        tree_json: {
+          $TYPE: "ConstructionRootNode",
+          creator_id: "root",
+          loglevel: 50,
+          successors: {
+            VaseModeWingCreator: {
+              $TYPE: "ConstructionStepNode",
+              creator_id: "VaseModeWingCreator",
+              loglevel: 50,
+              creator: { $TYPE: "VaseModeWingCreator", creator_id: "VaseModeWingCreator", wing_index: "main_wing", loglevel: 50 },
+              successors: {},
             },
           },
-          plan_type: "plan",
-          aeroplane_id: "aero-1",
-          created_at: "2026-01-01",
-          updated_at: "2026-01-01",
-        }
-      : null,
-    error: null,
-    isLoading: false,
-    mutate: mockMutatePlan,
-  }),
+        },
+        plan_type: "plan",
+        aeroplane_id: "aero-1",
+        created_at: "2026-01-01",
+        updated_at: "2026-01-01",
+      },
+    };
+    return {
+      plan: id !== null ? (mockPlanDetails[id] ?? null) : null,
+      error: null,
+      isLoading: false,
+      mutate: mockMutatePlan,
+    };
+  },
   createPlan: (...args: unknown[]) => mockCreatePlan(...args),
   updatePlan: vi.fn().mockResolvedValue({}),
   deletePlan: (...args: unknown[]) => mockDeletePlan(...args),
@@ -180,9 +182,9 @@ import ConstructionPlansPage from "@/app/workbench/construction-plans/page";
 // jsdom does not implement EventSource. Stub it so that ExecutionResultDialog
 // can mount with a streamUrl prop without throwing.
 class FakeEventSource {
-  static CONNECTING = 0;
-  static OPEN = 1;
-  static CLOSED = 2;
+  static readonly CONNECTING = 0;
+  static readonly OPEN = 1;
+  static readonly CLOSED = 2;
   readyState = FakeEventSource.CONNECTING;
   url: string;
   constructor(url: string) {

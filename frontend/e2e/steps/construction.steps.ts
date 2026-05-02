@@ -267,7 +267,6 @@ Then("the analysis completes without error", async ({ page }) => {
   // The "Run an analysis" placeholder disappears when results arrive
   await page.waitForFunction(
     () => {
-      const placeholder = document.querySelector('[class*="items-center"]');
       const hasPlaceholder = !!document.body.innerText.includes("Run an analysis to see results");
       const hasError = !!document.body.innerText.match(/Analysis failed|Error/i);
       return !hasPlaceholder || hasError;

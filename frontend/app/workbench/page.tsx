@@ -19,7 +19,7 @@ import { API_BASE } from "@/lib/fetcher";
 
 export default function WorkbenchPage() {
   const {
-    aeroplaneId, setAeroplaneId,
+    aeroplaneId,
     selectedWing, selectedXsecIndex, selectXsec,
     selectedFuselage, selectedFuselageXsecIndex, selectFuselageXsec,
     treeMode,
@@ -39,11 +39,11 @@ export default function WorkbenchPage() {
     ? selectedFuselageXsecIndex
     : selectedXsecIndex;
 
-  const paginatorTotal = mode === "fuselage"
-    ? fuselage?.x_secs?.length
-    : mode === "wingconfig"
-      ? wingConfig?.segments?.length
-      : wing?.x_secs?.length;
+  const paginatorTotal = (() => {
+    if (mode === "fuselage") return fuselage?.x_secs?.length;
+    if (mode === "wingconfig") return wingConfig?.segments?.length;
+    return wing?.x_secs?.length;
+  })();
 
   const formRef = useRef<PropertyFormHandle>(null);
 

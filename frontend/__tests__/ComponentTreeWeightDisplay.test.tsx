@@ -289,7 +289,7 @@ describe("ComponentTree — virtual root (gh#89)", () => {
       tree: [makeNode({ id: 1, name: "wing", weight_status: "valid", total_weight_g: 50 })],
       totalNodes: 1, isLoading: false, error: null,
     };
-    const { container } = render(<ComponentTree />);
+    render(<ComponentTree />);
     // Find the row for "wing" and verify its padding-left corresponds to level=1
     // (= 20px) rather than the pre-gh#89 level=0 (= 0px).
     const wingText = screen.getByText("wing");
@@ -299,7 +299,5 @@ describe("ComponentTree — virtual root (gh#89)", () => {
     const aeroText = screen.getByText("Aeroplane");
     const rootRow = aeroText.closest('[aria-roledescription="sortable"]') as HTMLElement;
     expect(rootRow.style.paddingLeft).toBe("0px");
-    // Silence unused
-    void container;
   });
 });
