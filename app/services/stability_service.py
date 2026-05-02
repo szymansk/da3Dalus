@@ -3,6 +3,7 @@
 import logging
 from typing import Optional
 
+import numpy as np
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import InternalError
@@ -15,10 +16,18 @@ logger = logging.getLogger(__name__)
 
 
 def _scalar(val) -> Optional[float]:
-    """Extract a scalar float from a value that may be a list or None."""
+    """Extract a scalar float from a value that may be a list, numpy array, or None."""
     if val is None:
         return None
+    if isinstance(val, np.ndarray):
+        if val.ndim == 0:
+            return float(val)
+        if val.size > 1:
+            logger.warning("_scalar received %s with %d elements; using first", type(val).__name__, val.size)
+        return float(val[0]) if val.size > 0 else None
     if isinstance(val, list):
+        if len(val) > 1:
+            logger.warning("_scalar received %s with %d elements; using first", type(val).__name__, len(val))
         return float(val[0]) if len(val) > 0 else None
     return float(val)
 
