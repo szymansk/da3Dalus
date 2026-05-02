@@ -612,14 +612,8 @@ class TestFromAvlDict:
         expected = data["Xref"] - (data["Cnb"] * (data["Bref"] / data["CYb"]))
         assert model.reference.Xnp_lat == [expected]
 
-    @pytest.mark.xfail(
-        reason="Production bug: Xnp_lat is list[float]|None but from_avl_dict "
-               "stores [None] when CYb==0, causing Pydantic validation error",
-        raises=ValidationError,
-        strict=True,
-    )
     def test_xnp_lat_cyb_zero(self):
-        """When CYb == 0, Xnp_lat should be [None] or None — currently crashes."""
+        """When CYb == 0, Xnp_lat must be None (not [None]) to satisfy type."""
         data = _make_avl_flat_dict()
         data["CYb"] = 0
         model = AnalysisModel.from_avl_dict(data)

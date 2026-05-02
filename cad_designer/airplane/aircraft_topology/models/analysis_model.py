@@ -317,7 +317,7 @@ class AnalysisModel(BaseModel):
             Yref=data['Yref'],
             Zref=data['Zref'],
             Xnp=[data['Xnp']],
-            Xnp_lat=[data['Xref'] - (data["Cnb"] * (data['Bref'] / data["CYb"])) if data['CYb'] != 0 else None],  # Example calculation for Xnp_lat
+            Xnp_lat=[data['Xref'] - (data["Cnb"] * (data['Bref'] / data["CYb"]))] if data['CYb'] != 0 else None,
             Strips=data['Strips'],
             Surfaces=data['Surfaces'],
             Vortices=data['Vortices']
