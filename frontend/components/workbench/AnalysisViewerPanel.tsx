@@ -249,7 +249,9 @@ const SURFACE_COLORS = [
 function groupSurfaceStrips(surfaces: StripForcesResult["surfaces"]) {
   const groups = new Map<string, { strips: typeof surfaces[0]["strips"] }>();
   for (const surface of surfaces) {
-    const baseName = surface.surface_name.replace(/\s*\(YDUP\)$/, "");
+    const baseName = surface.surface_name.endsWith("(YDUP)")
+      ? surface.surface_name.slice(0, -6).trimEnd()
+      : surface.surface_name;
     const existing = groups.get(baseName);
     if (existing) {
       existing.strips = [...existing.strips, ...surface.strips];
