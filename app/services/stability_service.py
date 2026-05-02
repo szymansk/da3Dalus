@@ -22,8 +22,12 @@ def _scalar(val) -> Optional[float]:
     if isinstance(val, np.ndarray):
         if val.ndim == 0:
             return float(val)
+        if val.size > 1:
+            logger.warning("_scalar received %s with %d elements; using first", type(val).__name__, val.size)
         return float(val[0]) if val.size > 0 else None
     if isinstance(val, list):
+        if len(val) > 1:
+            logger.warning("_scalar received %s with %d elements; using first", type(val).__name__, len(val))
         return float(val[0]) if len(val) > 0 else None
     return float(val)
 
