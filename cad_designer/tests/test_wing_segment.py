@@ -230,15 +230,15 @@ class TestWingSegmentSerialization:
 class TestWingSegmentEdgeCases:
     """Test edge cases and boundary conditions."""
 
-    @pytest.mark.xfail(
-        reason="Production bug: __getstate__ treats empty list as falsy, serializes as None instead of []",
-        strict=True,
-    )
     def test_empty_spare_list(self, root_airfoil):
+        """Regression test for gh-290: empty spare_list must serialize as [], not None."""
         ws = WingSegment(root_airfoil=root_airfoil, length=500.0, spare_list=[])
         state = ws.__getstate__()
         # Empty list should serialize as empty list, not None
         assert state["spare_list"] == []
+        # Roundtrip: from_json_dict must also preserve empty list (not coerce to None)
+        restored = WingSegment.from_json_dict(state)
+        assert restored.spare_list == []
 
     def test_from_json_dict_missing_optional_fields(self):
         data = {
