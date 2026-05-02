@@ -123,7 +123,7 @@ class WingSegment:
 
         # Create spare_list
         spare_list = None
-        if data.get('spare_list'):
+        if data.get('spare_list') is not None:
             spare_list = [Spare.from_json_dict(spare_data) for spare_data in data.get('spare_list')]
 
         # Create trailing_edge_device

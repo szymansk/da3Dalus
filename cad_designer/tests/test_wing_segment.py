@@ -236,6 +236,9 @@ class TestWingSegmentEdgeCases:
         state = ws.__getstate__()
         # Empty list should serialize as empty list, not None
         assert state["spare_list"] == []
+        # Roundtrip: from_json_dict must also preserve empty list (not coerce to None)
+        restored = WingSegment.from_json_dict(state)
+        assert restored.spare_list == []
 
     def test_from_json_dict_missing_optional_fields(self):
         data = {
