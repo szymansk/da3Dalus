@@ -19,6 +19,26 @@ function isEmpty(v: unknown): boolean {
   return false;
 }
 
+function checkShapeRefs(
+  val: unknown,
+  paramName: string,
+  availableShapes: Set<string>,
+  path: string,
+  creatorId: string,
+  issues: ValidationIssue[],
+): void {
+  const refs = Array.isArray(val) ? val.map(String) : [String(val)];
+  for (const ref of refs) {
+    if (ref.trim() && !availableShapes.has(ref)) {
+      issues.push({
+        path,
+        creatorId,
+        message: `Shape reference "${ref}" (${paramName}) is not available at this point`,
+      });
+    }
+  }
+}
+
 function validateNode(
   node: PlanStepNode,
   path: string,
@@ -49,16 +69,7 @@ function validateNode(
     }
     // Check shape references (ShapeId or list[ShapeId])
     if (isShapeRefType(param.type) && !isEmpty(val)) {
-      const refs = Array.isArray(val) ? val.map(String) : [String(val)];
-      for (const ref of refs) {
-        if (ref.trim() && !availableShapes.has(ref)) {
-          issues.push({
-            path,
-            creatorId: node.creator_id,
-            message: `Shape reference "${ref}" (${param.name}) is not available at this point`,
-          });
-        }
-      }
+      checkShapeRefs(val, param.name, availableShapes, path, node.creator_id, issues);
     }
   }
 

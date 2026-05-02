@@ -50,6 +50,21 @@ import type { ExecutionResult } from "@/hooks/useConstructionPlans";
 
 // ── Helpers ───────────────────────────────────────────────────────
 
+/** Parse a DnD drop target ID into plan ID and path. */
+function parseDropTarget(overId: string): { planId: number; path: string } | null {
+  if (overId.startsWith("plan-root-")) {
+    return { planId: Number(overId.slice("plan-root-".length)), path: "root" };
+  }
+  if (overId.startsWith("node-plan-")) {
+    const rest = overId.slice("node-plan-".length);
+    const dotIdx = rest.indexOf("-");
+    if (dotIdx > 0) {
+      return { planId: Number(rest.slice(0, dotIdx)), path: rest.slice(dotIdx + 1) };
+    }
+  }
+  return null;
+}
+
 /** Toggle a value in a Set, returning a new Set (immutable update). */
 function toggleInSet<T>(prev: Set<T>, value: T): Set<T> {
   const next = new Set(prev);
@@ -434,33 +449,19 @@ export default function ConstructionPlansPage() {
       const { active, over } = event;
       if (!over) return;
       const activeId = String(active.id);
-      const overId = String(over.id);
+      if (!activeId.startsWith("creator-")) return;
 
-      // Source: gallery creator → tree
-      if (activeId.startsWith("creator-")) {
-        const creator = active.data.current?.creator as CreatorInfo | undefined;
-        if (!creator) return;
-        // Resolve drop target: either "plan-root-{planId}" or "node-plan-{planId}-{path}"
-        let targetPlanId: number | null = null;
-        let targetPath = "root";
-        if (overId.startsWith("plan-root-")) {
-          targetPlanId = Number(overId.slice("plan-root-".length));
-        } else if (overId.startsWith("node-plan-")) {
-          const rest = overId.slice("node-plan-".length);
-          const dotIdx = rest.indexOf("-");
-          if (dotIdx > 0) {
-            targetPlanId = Number(rest.slice(0, dotIdx));
-            targetPath = rest.slice(dotIdx + 1);
-          }
-        }
-        if (!targetPlanId) return;
-        try {
-          await addCreatorToPlan(targetPlanId, targetPath, creator);
-        } catch (err) {
-          alert(`Drop failed: ${err instanceof Error ? err.message : String(err)}`);
-        }
+      const creator = active.data.current?.creator as CreatorInfo | undefined;
+      if (!creator) return;
+
+      const target = parseDropTarget(String(over.id));
+      if (!target) return;
+
+      try {
+        await addCreatorToPlan(target.planId, target.path, creator);
+      } catch (err) {
+        alert(`Drop failed: ${err instanceof Error ? err.message : String(err)}`);
       }
-      // Tree-to-tree reorder/reparent could go here in a future iteration
     },
     [addCreatorToPlan],
   );
