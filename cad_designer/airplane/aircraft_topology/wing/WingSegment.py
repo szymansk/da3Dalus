@@ -95,7 +95,7 @@ class WingSegment:
             if key == 'root_airfoil' or key == 'tip_airfoil':
                 data[key] = value.__getstate__() if value else None
             elif key == 'spare_list':
-                data[key] = [spare.__getstate__() for spare in value] if value else None
+                data[key] = [spare.__getstate__() for spare in value] if value is not None else None
             elif key == 'trailing_edge_device':
                 data[key] = value.__getstate__() if value else None
             else:
