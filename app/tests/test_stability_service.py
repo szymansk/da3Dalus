@@ -52,23 +52,21 @@ class TestScalar:
         assert result == pytest.approx(4.2)
         assert isinstance(result, float)
 
-    def test_numpy_array_single_element_raises(self):
-        """NOTE: _scalar does not handle numpy arrays (not isinstance list).
+    def test_numpy_array_single_element(self):
+        """A single-element numpy array should return that element as float."""
+        result = _scalar(np.array([9.9]))
+        assert result == pytest.approx(9.9)
+        assert isinstance(result, float)
 
-        A single-element np.array falls through to float(), which raises
-        TypeError in numpy >= 1.24. This documents current production
-        behaviour. If numpy arrays need support, _scalar should be updated
-        to check for np.ndarray.
-        """
-        # numpy >= 1.24 raises TypeError for float(np.array([x]))
-        # numpy < 1.24 may succeed. We document both possibilities.
-        try:
-            result = _scalar(np.array([9.9]))
-            # If it succeeds (older numpy), the value should be correct.
-            assert result == pytest.approx(9.9)
-        except TypeError:
-            # Expected on numpy >= 1.24: cannot convert array to scalar.
-            pass
+    def test_numpy_array_multiple_elements(self):
+        """A multi-element numpy array should return the first element as float."""
+        result = _scalar(np.array([1.0, 2.0, 3.0]))
+        assert result == pytest.approx(1.0)
+        assert isinstance(result, float)
+
+    def test_numpy_array_empty_returns_none(self):
+        """An empty numpy array should return None."""
+        assert _scalar(np.array([])) is None
 
     def test_string_numeric(self):
         """A numeric string should convert to float."""
