@@ -5,7 +5,8 @@
  *   - COTS picker wiring — clicking a component creates a cots tree node
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 
 vi.mock("lucide-react", () => {
@@ -122,10 +123,11 @@ beforeEach(() => {
 });
 
 describe("ComponentTree — per-group add flow", () => {
-  it("renders an add button for each group node (root + nested)", () => {
+  it("renders an add button for each group node (root + nested)", async () => {
+    const user = userEvent.setup();
     const { container } = render(<ComponentTree />);
     // Expand the root group so the nested group is visible.
-    fireEvent.click(screen.getByText("eHawk"));
+    await user.click(screen.getByText("eHawk"));
 
     // Expect one add button per group row; root (tree header) + 2 groups = 3 '+' affordances.
     // We query by title since buttons use an empty <span> icon.
@@ -133,28 +135,31 @@ describe("ComponentTree — per-group add flow", () => {
     expect(addButtons.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("opens the popover when a group's (+) is clicked", () => {
+  it("opens the popover when a group's (+) is clicked", async () => {
+    const user = userEvent.setup();
     render(<ComponentTree />);
     // Click the (+) on the root group eHawk.
     const rootAddBtn = screen.getByTitle("Add to eHawk");
-    fireEvent.click(rootAddBtn);
+    await user.click(rootAddBtn);
 
     expect(screen.getByText("New Group")).toBeDefined();
     expect(screen.getByText("Assign COTS Component")).toBeDefined();
   });
 
   it("opens an inline input for 'New Group' and submits to create a sub-group", async () => {
+    const user = userEvent.setup();
     render(<ComponentTree />);
-    fireEvent.click(screen.getByTitle("Add to eHawk"));
-    fireEvent.click(screen.getByText("New Group"));
+    await user.click(screen.getByTitle("Add to eHawk"));
+    await user.click(screen.getByText("New Group"));
 
     // Inline input appears — we look for a text input placeholder
     const input = screen.getByPlaceholderText(/group name/i) as HTMLInputElement;
     expect(input).toBeDefined();
-    fireEvent.change(input, { target: { value: "electronics" } });
+    await user.clear(input);
+    await user.type(input, "electronics");
 
     // Submit by pressing Enter
-    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+    await user.keyboard("{Enter}");
 
     expect(mockAddTreeNode).toHaveBeenCalledWith(
       "aero-1",
@@ -166,37 +171,42 @@ describe("ComponentTree — per-group add flow", () => {
     );
   });
 
-  it("cancels the inline input on Escape without calling the API", () => {
+  it("cancels the inline input on Escape without calling the API", async () => {
+    const user = userEvent.setup();
     render(<ComponentTree />);
-    fireEvent.click(screen.getByTitle("Add to eHawk"));
-    fireEvent.click(screen.getByText("New Group"));
+    await user.click(screen.getByTitle("Add to eHawk"));
+    await user.click(screen.getByText("New Group"));
 
     const input = screen.getByPlaceholderText(/group name/i) as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "not-saved" } });
-    fireEvent.keyDown(input, { key: "Escape", code: "Escape" });
+    await user.clear(input);
+    await user.type(input, "not-saved");
+    await user.keyboard("{Escape}");
 
     expect(mockAddTreeNode).not.toHaveBeenCalled();
     expect(screen.queryByPlaceholderText(/group name/i)).toBeNull();
   });
 
-  it("does not submit an empty group name", () => {
+  it("does not submit an empty group name", async () => {
+    const user = userEvent.setup();
     render(<ComponentTree />);
-    fireEvent.click(screen.getByTitle("Add to eHawk"));
-    fireEvent.click(screen.getByText("New Group"));
+    await user.click(screen.getByTitle("Add to eHawk"));
+    await user.click(screen.getByText("New Group"));
 
     const input = screen.getByPlaceholderText(/group name/i) as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "   " } });
-    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+    await user.clear(input);
+    await user.type(input, "   ");
+    await user.keyboard("{Enter}");
 
     expect(mockAddTreeNode).not.toHaveBeenCalled();
   });
 
-  it("pencil icon per row fires onNodeEditRequested with the correct node", () => {
+  it("pencil icon per row fires onNodeEditRequested with the correct node", async () => {
+    const user = userEvent.setup();
     const onEdit = vi.fn();
     render(<ComponentTree onNodeEditRequested={onEdit} />);
 
     // Click the pencil icon on the root "eHawk" row.
-    fireEvent.click(screen.getByTitle("Edit eHawk"));
+    await user.click(screen.getByTitle("Edit eHawk"));
     expect(onEdit).toHaveBeenCalledTimes(1);
     expect(onEdit.mock.calls[0][0]).toEqual(
       expect.objectContaining({ id: 10, name: "eHawk" }),
@@ -204,13 +214,14 @@ describe("ComponentTree — per-group add flow", () => {
   });
 
   it("opens the COTS picker and creates a cots node on selection", async () => {
+    const user = userEvent.setup();
     render(<ComponentTree />);
-    fireEvent.click(screen.getByTitle("Add to eHawk"));
-    fireEvent.click(screen.getByText("Assign COTS Component"));
+    await user.click(screen.getByTitle("Add to eHawk"));
+    await user.click(screen.getByText("Assign COTS Component"));
 
     // The picker dialog is open, library component is listed
     const pickRow = screen.getByText("KST X08");
-    fireEvent.click(pickRow);
+    await user.click(pickRow);
 
     expect(mockAddTreeNode).toHaveBeenCalledWith(
       "aero-1",

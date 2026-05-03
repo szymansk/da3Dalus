@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 import type { PlanStepNode } from "@/components/workbench/PlanTree";
 import type { CreatorInfo } from "@/hooks/useCreators";
@@ -173,7 +174,8 @@ describe("EditParamsModal — reset button", () => {
 });
 
 describe("EditParamsModal — dirty state transitions", () => {
-  it("typing into ID field sets dirty and blocks auto-derivation on param change", () => {
+  it("typing into ID field sets dirty and blocks auto-derivation on param change", async () => {
+    const user = userEvent.setup();
     const node = makeNode();
     const creator = makeCreatorInfo({ suggested_id: "wing_{span}" });
 
@@ -192,7 +194,8 @@ describe("EditParamsModal — dirty state transitions", () => {
     const idInput = screen.getByLabelText("ID") as HTMLInputElement;
 
     // Type into the ID field — should become dirty
-    fireEvent.change(idInput, { target: { value: "my-custom-id" } });
+    await user.clear(idInput);
+    await user.type(idInput, "my-custom-id");
     expect(idInput.value).toBe("my-custom-id");
 
     // Now change a param — ID should NOT auto-derive because dirty
@@ -225,7 +228,8 @@ describe("EditParamsModal — dirty state transitions", () => {
 });
 
 describe("EditParamsModal — reset behavior", () => {
-  it("clicking reset clears dirty and re-derives ID from template", () => {
+  it("clicking reset clears dirty and re-derives ID from template", async () => {
+    const user = userEvent.setup();
     const node = makeNode({ _creatorIdDirty: true });
     const creator = makeCreatorInfo({ suggested_id: "wing_{span}" });
 
@@ -243,12 +247,13 @@ describe("EditParamsModal — reset behavior", () => {
 
     const idInput = screen.getByLabelText("ID") as HTMLInputElement;
     // Type custom value
-    fireEvent.change(idInput, { target: { value: "custom-id" } });
+    await user.clear(idInput);
+    await user.type(idInput, "custom-id");
     expect(idInput.value).toBe("custom-id");
 
     // Click reset
     const resetBtn = screen.getByTitle("Reset to auto-derived ID");
-    fireEvent.click(resetBtn);
+    await user.click(resetBtn);
 
     // ID should be resolved from template with current param values
     // Default span=1000, so template "wing_{span}" → "wing_1000"
@@ -261,6 +266,7 @@ describe("EditParamsModal — reset behavior", () => {
 
 describe("EditParamsModal — save payload", () => {
   it("sends _creatorIdDirty: true when ID was manually edited", async () => {
+    const user = userEvent.setup();
     const onSave = vi.fn().mockResolvedValue(undefined);
     const node = makeNode();
     const creator = makeCreatorInfo({ suggested_id: "wing_{span}" });
@@ -278,10 +284,12 @@ describe("EditParamsModal — save payload", () => {
     );
 
     // Type into ID field to set dirty
-    fireEvent.change(screen.getByLabelText("ID"), { target: { value: "my-id" } });
+    const idInput = screen.getByLabelText("ID") as HTMLInputElement;
+    await user.clear(idInput);
+    await user.type(idInput, "my-id");
 
     // Click save
-    fireEvent.click(screen.getByText("Save"));
+    await user.click(screen.getByText("Save"));
     await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
 
     const [path, params] = onSave.mock.calls[0];
@@ -291,6 +299,7 @@ describe("EditParamsModal — save payload", () => {
   });
 
   it("forwards pre-existing dirty flag on save without editing", async () => {
+    const user = userEvent.setup();
     const onSave = vi.fn().mockResolvedValue(undefined);
     const node = makeNode({ _creatorIdDirty: true });
     const creator = makeCreatorInfo({ suggested_id: "wing_{span}" });
@@ -308,7 +317,7 @@ describe("EditParamsModal — save payload", () => {
     );
 
     // Save without editing anything
-    fireEvent.click(screen.getByText("Save"));
+    await user.click(screen.getByText("Save"));
     await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
 
     const [, params] = onSave.mock.calls[0];
@@ -316,6 +325,7 @@ describe("EditParamsModal — save payload", () => {
   });
 
   it("omits _creatorIdDirty after reset and save", async () => {
+    const user = userEvent.setup();
     const onSave = vi.fn().mockResolvedValue(undefined);
     const node = makeNode({ _creatorIdDirty: true });
     const creator = makeCreatorInfo({ suggested_id: "wing_{span}" });
@@ -334,10 +344,10 @@ describe("EditParamsModal — save payload", () => {
 
     // Click reset to clear dirty
     const resetBtn = screen.getByTitle("Reset to auto-derived ID");
-    fireEvent.click(resetBtn);
+    await user.click(resetBtn);
 
     // Save
-    fireEvent.click(screen.getByText("Save"));
+    await user.click(screen.getByText("Save"));
     await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
 
     const [, params] = onSave.mock.calls[0];
@@ -345,6 +355,7 @@ describe("EditParamsModal — save payload", () => {
   });
 
   it("omits _creatorIdDirty when ID was not manually edited", async () => {
+    const user = userEvent.setup();
     const onSave = vi.fn().mockResolvedValue(undefined);
     const node = makeNode();
     const creator = makeCreatorInfo({ suggested_id: "wing_{span}" });
@@ -362,7 +373,7 @@ describe("EditParamsModal — save payload", () => {
     );
 
     // Save without editing ID
-    fireEvent.click(screen.getByText("Save"));
+    await user.click(screen.getByText("Save"));
     await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
 
     const [, params] = onSave.mock.calls[0];

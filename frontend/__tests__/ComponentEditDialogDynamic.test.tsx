@@ -6,7 +6,8 @@
  * type changes, and surfaces "Unknown properties" for legacy data.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 
 vi.mock("lucide-react", () => {
@@ -66,69 +67,75 @@ beforeEach(() => {
 });
 
 describe("ComponentEditDialog — dynamic specs rendering", () => {
-  it("renders number + enum fields for material type", () => {
+  it("renders number + enum fields for material type", async () => {
+    const user = userEvent.setup();
     render(
       <ComponentEditDialog open={true} onClose={vi.fn()} onSaved={vi.fn()}
         component={null} />,
     );
     // Select Material type
     const select = screen.getAllByRole("combobox")[0] as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "material" } });
+    await user.selectOptions(select, "material");
 
     expect(screen.getByText(/Dichte/i)).toBeDefined();
     expect(screen.getByText(/Drucktyp/i)).toBeDefined();
   });
 
-  it("required fields are marked with a star", () => {
+  it("required fields are marked with a star", async () => {
+    const user = userEvent.setup();
     render(
       <ComponentEditDialog open={true} onClose={vi.fn()} onSaved={vi.fn()}
         component={null} />,
     );
     const select = screen.getAllByRole("combobox")[0] as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "material" } });
+    await user.selectOptions(select, "material");
     // The Dichte label should have a * (since required=true)
     expect(screen.getByText(/Dichte/).textContent).toContain("*");
   });
 
-  it("type change preserves compatible specs (same name+type)", () => {
+  it("type change preserves compatible specs (same name+type)", async () => {
     // Create with a servo, fill torque, switch to a type that also has torque
     // — servo has torque_kg_cm, material doesn't. Switch servo→material
     // should drop torque, switching back should restore via user input only.
+    const user = userEvent.setup();
     const { container } = render(
       <ComponentEditDialog open={true} onClose={vi.fn()} onSaved={vi.fn()}
         component={null} />,
     );
 
     const select = screen.getAllByRole("combobox")[0] as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "servo" } });
+    await user.selectOptions(select, "servo");
     // fill torque
     const torque = container.querySelector('input[data-spec="torque_kg_cm"]') as HTMLInputElement;
     expect(torque).toBeDefined();
-    fireEvent.change(torque, { target: { value: "1.8" } });
+    await user.clear(torque);
+    await user.type(torque, "1.8");
     expect(torque.value).toBe("1.8");
 
     // switch to material — torque field disappears
-    fireEvent.change(select, { target: { value: "material" } });
+    await user.selectOptions(select, "material");
     expect(container.querySelector('input[data-spec="torque_kg_cm"]')).toBeNull();
 
     // switch back to servo — torque field reappears, value preserved
-    fireEvent.change(select, { target: { value: "servo" } });
+    await user.selectOptions(select, "servo");
     const torqueAgain = container.querySelector('input[data-spec="torque_kg_cm"]') as HTMLInputElement;
     expect(torqueAgain.value).toBe("1.8");
   });
 
-  it("blocks submit when a required field is missing", () => {
+  it("blocks submit when a required field is missing", async () => {
+    const user = userEvent.setup();
     render(
       <ComponentEditDialog open={true} onClose={vi.fn()} onSaved={vi.fn()}
         component={null} />,
     );
     const nameInput = screen.getAllByRole("textbox")[0] as HTMLInputElement;
-    fireEvent.change(nameInput, { target: { value: "My Material" } });
+    await user.clear(nameInput);
+    await user.type(nameInput, "My Material");
     const select = screen.getAllByRole("combobox")[0] as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "material" } });
+    await user.selectOptions(select, "material");
     // Don't fill density
 
-    fireEvent.click(screen.getByText(/^Create$/));
+    await user.click(screen.getByText(/^Create$/));
     expect(mockCreate).not.toHaveBeenCalled();
     // Error message (inside a destructive-styled box) mentions the missing field.
     // The label "Dichte" also appears as a regular label — so we filter to the
@@ -140,21 +147,24 @@ describe("ComponentEditDialog — dynamic specs rendering", () => {
     expect(inErrorBox).toBe(true);
   });
 
-  it("submits specs when all required fields are set", () => {
+  it("submits specs when all required fields are set", async () => {
+    const user = userEvent.setup();
     const { container } = render(
       <ComponentEditDialog open={true} onClose={vi.fn()} onSaved={vi.fn()}
         component={null} />,
     );
     const nameInput = screen.getAllByRole("textbox")[0] as HTMLInputElement;
-    fireEvent.change(nameInput, { target: { value: "PLA+" } });
+    await user.clear(nameInput);
+    await user.type(nameInput, "PLA+");
 
     const select = screen.getAllByRole("combobox")[0] as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "material" } });
+    await user.selectOptions(select, "material");
 
     const density = container.querySelector('input[data-spec="density_kg_m3"]') as HTMLInputElement;
-    fireEvent.change(density, { target: { value: "1240" } });
+    await user.clear(density);
+    await user.type(density, "1240");
 
-    fireEvent.click(screen.getByText(/^Create$/));
+    await user.click(screen.getByText(/^Create$/));
     expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({
       name: "PLA+",
       component_type: "material",
@@ -177,13 +187,14 @@ describe("ComponentEditDialog — dynamic specs rendering", () => {
     expect(screen.getByText(/Unknown properties/i)).toBeDefined();
   });
 
-  it("number field shows the unit as a hint", () => {
+  it("number field shows the unit as a hint", async () => {
+    const user = userEvent.setup();
     const { container } = render(
       <ComponentEditDialog open={true} onClose={vi.fn()} onSaved={vi.fn()}
         component={null} />,
     );
     const select = screen.getAllByRole("combobox")[0] as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "material" } });
+    await user.selectOptions(select, "material");
     // The unit "kg/m³" appears near the density input
     expect(container.textContent).toContain("kg/m³");
   });
