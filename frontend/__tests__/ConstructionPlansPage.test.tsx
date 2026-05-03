@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 
 // ── Mocks ─────────────────────────────────────────────────────────
@@ -243,11 +244,12 @@ describe("ConstructionPlansPage", () => {
   });
 
   it("shows template-specific actions after selecting a template in template mode", async () => {
+    const user = userEvent.setup();
     render(<ConstructionPlansPage />);
-    fireEvent.click(screen.getByText("Templates"));
+    await user.click(screen.getByText("Templates"));
     // Open the TemplateSelector dropdown and click "eHawk Wing"
-    fireEvent.click(screen.getByRole("combobox"));
-    fireEvent.click(screen.getByText("eHawk Wing"));
+    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByText("eHawk Wing"));
     // After selection, the TemplateModePanel renders the template-specific
     // toolbar: "Execute template against an aeroplane" (Play),
     // "Delete eHawk Wing" (Trash), and "Add step to eHawk Wing" (Plus).
@@ -272,15 +274,16 @@ describe("ConstructionPlansPage", () => {
   });
 
   it("creates a new plan via NewPlanDialog when '+' is clicked in plans mode", async () => {
+    const user = userEvent.setup();
     render(<ConstructionPlansPage />);
     // The TreeCard "+" header button (title="Create new plan") opens
     // NewPlanDialog. The dialog offers an "Empty plan" choice that
     // delegates to handleCreateEmptyPlan → createPlan({plan_type: "plan"}).
-    fireEvent.click(screen.getByTitle("Create new plan"));
+    await user.click(screen.getByTitle("Create new plan"));
     // Dialog renders with aria-label="Create new plan"
     const dialog = await screen.findByRole("dialog", { name: "Create new plan" });
     expect(dialog).toBeDefined();
-    fireEvent.click(screen.getByText("Empty plan"));
+    await user.click(screen.getByText("Empty plan"));
     await waitFor(() => {
       expect(mockCreatePlan).toHaveBeenCalledWith(
         expect.objectContaining({ plan_type: "plan", aeroplane_id: "aero-1" }),
@@ -289,13 +292,14 @@ describe("ConstructionPlansPage", () => {
   });
 
   it("opens AeroplanePickerDialog when executing a template", async () => {
+    const user = userEvent.setup();
     render(<ConstructionPlansPage />);
-    fireEvent.click(screen.getByText("Templates"));
-    fireEvent.click(screen.getByRole("combobox"));
-    fireEvent.click(screen.getByText("eHawk Wing"));
+    await user.click(screen.getByText("Templates"));
+    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByText("eHawk Wing"));
     // Click "Execute template against an aeroplane" — opens
     // AeroplanePickerDialog (gh-323).
-    fireEvent.click(
+    await user.click(
       await screen.findByTitle("Execute template against an aeroplane"),
     );
     const dialog = await screen.findByRole("dialog", {
@@ -322,13 +326,14 @@ describe("ConstructionPlansPage", () => {
   });
 
   it("starts streaming execution when Execute is clicked in plans mode", async () => {
+    const user = userEvent.setup();
     render(<ConstructionPlansPage />);
     // Plans mode is the default. Clicking the per-plan Play icon
     // (title="Execute <plan-name>") triggers handleExecutePlan which
     // builds a streaming URL via executeStreamUrl(aeroplaneId, planId)
     // and opens the ExecutionResultDialog with that streamUrl.
     const executeButton = await screen.findByTitle("Execute eHawk Build");
-    fireEvent.click(executeButton);
+    await user.click(executeButton);
 
     // The contract: the page asks for the streaming URL with the
     // active aeroplane id and the clicked plan id.

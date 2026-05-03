@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 
 vi.mock("lucide-react", () => {
@@ -61,28 +62,32 @@ describe("CreatorGallery", () => {
     expect(screen.getByText("Fuse2ShapesCreator")).toBeDefined();
   });
 
-  it("filters creators by search text", () => {
+  it("filters creators by search text", async () => {
+    const user = userEvent.setup();
     render(<CreatorGallery creators={MOCK_CREATORS} onSelect={vi.fn()} />);
     const input = screen.getByPlaceholderText("Search creators...");
-    fireEvent.change(input, { target: { value: "vase" } });
+    await user.clear(input);
+    await user.type(input, "vase");
     expect(screen.getByText("VaseModeWingCreator")).toBeDefined();
     expect(screen.queryByText("ExportToStepCreator")).toBeNull();
   });
 
-  it("filters creators by category tab", () => {
+  it("filters creators by category tab", async () => {
+    const user = userEvent.setup();
     render(<CreatorGallery creators={MOCK_CREATORS} onSelect={vi.fn()} />);
     const exportTab = screen.getAllByText("Export").find(
       (el) => el.tagName === "BUTTON" && !el.closest(".grid"),
     )!;
-    fireEvent.click(exportTab);
+    await user.click(exportTab);
     expect(screen.getByText("ExportToStepCreator")).toBeDefined();
     expect(screen.queryByText("VaseModeWingCreator")).toBeNull();
   });
 
-  it("calls onSelect when a creator card is clicked", () => {
+  it("calls onSelect when a creator card is clicked", async () => {
+    const user = userEvent.setup();
     const onSelect = vi.fn();
     render(<CreatorGallery creators={MOCK_CREATORS} onSelect={onSelect} />);
-    fireEvent.click(screen.getByText("VaseModeWingCreator"));
+    await user.click(screen.getByText("VaseModeWingCreator"));
     expect(onSelect).toHaveBeenCalledWith(MOCK_CREATORS[0]);
   });
 });

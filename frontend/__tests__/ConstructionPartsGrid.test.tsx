@@ -7,7 +7,8 @@
  * part is locked — we surface that as a blocked button + tooltip.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 
 vi.mock("lucide-react", () => {
@@ -74,6 +75,7 @@ describe("ConstructionPartsGrid", () => {
   });
 
   it("lock-toggle calls the correct API (lock on unlocked, unlock on locked)", async () => {
+    const user = userEvent.setup();
     partsReturn = {
       parts: [
         { id: 1, name: "P1", volume_mm3: 100, area_mm2: 10, locked: false, material_component_id: null, file_format: "step", thumbnail_url: null },
@@ -83,11 +85,12 @@ describe("ConstructionPartsGrid", () => {
     render(<ConstructionPartsGrid aeroplaneId="a" onRequestUpload={vi.fn()} />);
 
     const lockBtn = screen.getByTitle("Lock part");
-    fireEvent.click(lockBtn);
+    await user.click(lockBtn);
     expect(mockLock).toHaveBeenCalledWith("a", 1);
   });
 
   it("delete asks for confirmation via modal and fires delete on confirm", async () => {
+    const user = userEvent.setup();
     partsReturn = {
       parts: [
         { id: 5, name: "Doomed", volume_mm3: 100, area_mm2: 10, locked: false, material_component_id: null, file_format: "step", thumbnail_url: null },
@@ -97,11 +100,11 @@ describe("ConstructionPartsGrid", () => {
     render(<ConstructionPartsGrid aeroplaneId="a" onRequestUpload={vi.fn()} />);
 
     // First click opens the modal
-    fireEvent.click(screen.getByTitle("Delete part"));
+    await user.click(screen.getByTitle("Delete part"));
     expect(screen.getByText(/Delete "Doomed"/i)).toBeDefined();
 
     // Confirm fires the API
-    fireEvent.click(screen.getByText(/Confirm/i));
+    await user.click(screen.getByText(/Confirm/i));
     expect(mockDelete).toHaveBeenCalledWith("a", 5);
   });
 
@@ -118,10 +121,11 @@ describe("ConstructionPartsGrid", () => {
     expect(btn.disabled).toBe(true);
   });
 
-  it("upload button calls onRequestUpload (parent opens the dialog)", () => {
+  it("upload button calls onRequestUpload (parent opens the dialog)", async () => {
+    const user = userEvent.setup();
     const onReq = vi.fn();
     render(<ConstructionPartsGrid aeroplaneId="a" onRequestUpload={onReq} />);
-    fireEvent.click(screen.getByText(/Upload Part/i));
+    await user.click(screen.getByText(/Upload Part/i));
     expect(onReq).toHaveBeenCalledTimes(1);
   });
 });

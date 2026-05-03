@@ -6,7 +6,8 @@
  * return the edited property to the parent via onSave.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 
 vi.mock("lucide-react", () => {
@@ -105,7 +106,8 @@ describe("PropertyEditDialog", () => {
     expect(screen.queryByText(/^Min/i)).toBeNull();
   });
 
-  it("rejects non-snake_case names with an inline error", () => {
+  it("rejects non-snake_case names with an inline error", async () => {
+    const user = userEvent.setup();
     const onSave = vi.fn();
     const { container } = render(
       <PropertyEditDialog
@@ -116,8 +118,9 @@ describe("PropertyEditDialog", () => {
       />,
     );
     const nameInput = container.querySelector('input[type="text"]') as HTMLInputElement;
-    fireEvent.change(nameInput, { target: { value: "BadName" } });
-    fireEvent.click(screen.getByText(/^Apply$/i));
+    await user.clear(nameInput);
+    await user.type(nameInput, "BadName");
+    await user.click(screen.getByText(/^Apply$/i));
     expect(onSave).not.toHaveBeenCalled();
     // Error message appears (we know the text mentions snake_case — we
     // assert by getAllByText since the label "Name (snake_case) *" also
@@ -125,7 +128,8 @@ describe("PropertyEditDialog", () => {
     expect(screen.getAllByText(/snake_case/i).length).toBeGreaterThanOrEqual(2);
   });
 
-  it("Apply calls onSave with the edited property", () => {
+  it("Apply calls onSave with the edited property", async () => {
+    const user = userEvent.setup();
     const onSave = vi.fn();
     const { container } = render(
       <PropertyEditDialog
@@ -136,10 +140,12 @@ describe("PropertyEditDialog", () => {
       />,
     );
     const inputs = container.querySelectorAll('input[type="text"]') as NodeListOf<HTMLInputElement>;
-    fireEvent.change(inputs[0], { target: { value: "torque_kg_cm" } });
-    fireEvent.change(inputs[1], { target: { value: "Drehmoment" } });
+    await user.clear(inputs[0]);
+    await user.type(inputs[0], "torque_kg_cm");
+    await user.clear(inputs[1]);
+    await user.type(inputs[1], "Drehmoment");
 
-    fireEvent.click(screen.getByText(/^Apply$/));
+    await user.click(screen.getByText(/^Apply$/));
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "torque_kg_cm",
@@ -176,7 +182,8 @@ describe("PropertyEditDialog", () => {
     }
   });
 
-  it("Cancel calls onCancel without onSave", () => {
+  it("Cancel calls onCancel without onSave", async () => {
+    const user = userEvent.setup();
     const onSave = vi.fn();
     const onCancel = vi.fn();
     render(
@@ -187,7 +194,7 @@ describe("PropertyEditDialog", () => {
         onCancel={onCancel}
       />,
     );
-    fireEvent.click(screen.getByText(/^Cancel$/));
+    await user.click(screen.getByText(/^Cancel$/));
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect(onSave).not.toHaveBeenCalled();
   });

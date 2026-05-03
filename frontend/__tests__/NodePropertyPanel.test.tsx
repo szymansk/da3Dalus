@@ -9,7 +9,8 @@
  * endpoint and is disabled when construction_part_id is not set.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 import type { ComponentTreeNode } from "@/hooks/useComponentTree";
 
@@ -166,6 +167,7 @@ describe("NodePropertyPanel — material dropdown", () => {
 
 describe("NodePropertyPanel — save", () => {
   it("Save posts the edited fields via updateTreeNode", async () => {
+    const user = userEvent.setup();
     const node = makeNode({ id: 7, node_type: "group", name: "old" });
     const onMutate = vi.fn();
     const { container } = render(
@@ -173,9 +175,10 @@ describe("NodePropertyPanel — save", () => {
     );
 
     const nameInput = container.querySelector('input[type="text"]') as HTMLInputElement;
-    fireEvent.change(nameInput, { target: { value: "renamed" } });
+    await user.clear(nameInput);
+    await user.type(nameInput, "renamed");
 
-    fireEvent.click(screen.getByText("Save"));
+    await user.click(screen.getByText("Save"));
 
     expect(mockUpdate).toHaveBeenCalledWith(
       "a",
@@ -196,16 +199,18 @@ describe("NodePropertyPanel — save", () => {
     expect(saveBtn.disabled).toBe(true);
   });
 
-  it("Cancel resets the form without calling the API", () => {
+  it("Cancel resets the form without calling the API", async () => {
+    const user = userEvent.setup();
     const node = makeNode({ id: 1, node_type: "group", name: "orig" });
     const { container } = render(
       <NodePropertyPanel node={node} aeroplaneId="a" onMutate={vi.fn()} onClose={vi.fn()} />,
     );
     const nameInput = container.querySelector('input[type="text"]') as HTMLInputElement;
 
-    fireEvent.change(nameInput, { target: { value: "edited" } });
+    await user.clear(nameInput);
+    await user.type(nameInput, "edited");
     expect(nameInput.value).toBe("edited");
-    fireEvent.click(screen.getByText("Cancel"));
+    await user.click(screen.getByText("Cancel"));
     expect(nameInput.value).toBe("orig");
     expect(mockUpdate).not.toHaveBeenCalled();
   });
@@ -216,17 +221,19 @@ describe("NodePropertyPanel — save", () => {
 // --------------------------------------------------------------------------- //
 
 describe("NodePropertyPanel — delete", () => {
-  it("opens a confirmation modal on Delete click", () => {
+  it("opens a confirmation modal on Delete click", async () => {
+    const user = userEvent.setup();
     const node = makeNode({ id: 5, name: "doomed" });
     render(
       <NodePropertyPanel node={node} aeroplaneId="a" onMutate={vi.fn()} onClose={vi.fn()} />,
     );
 
-    fireEvent.click(screen.getByTitle("Delete node"));
+    await user.click(screen.getByTitle("Delete node"));
     expect(screen.getByText(/Delete "doomed"/)).toBeDefined();
   });
 
   it("Confirm in the modal fires deleteTreeNode; Cancel does not", async () => {
+    const user = userEvent.setup();
     const node = makeNode({ id: 5, name: "doomed" });
     const onClose = vi.fn();
     const onMutate = vi.fn();
@@ -234,8 +241,8 @@ describe("NodePropertyPanel — delete", () => {
       <NodePropertyPanel node={node} aeroplaneId="a" onMutate={onMutate} onClose={onClose} />,
     );
 
-    fireEvent.click(screen.getByTitle("Delete node"));
-    fireEvent.click(screen.getByText(/Confirm/));
+    await user.click(screen.getByTitle("Delete node"));
+    await user.click(screen.getByText(/Confirm/));
     expect(mockDelete).toHaveBeenCalledWith("a", 5);
 
     // Reset: re-render, click delete, then Cancel in the modal — no delete.
@@ -245,12 +252,12 @@ describe("NodePropertyPanel — delete", () => {
     rerender(
       <NodePropertyPanel node={node} aeroplaneId="a" onMutate={onMutate} onClose={onClose} />,
     );
-    fireEvent.click(screen.getByTitle("Delete node"));
+    await user.click(screen.getByTitle("Delete node"));
     const modalCancel = screen
       .getAllByText("Cancel")
       .find((el) => el.closest("dialog") !== null) as HTMLElement;
     expect(modalCancel).toBeDefined();
-    fireEvent.click(modalCancel);
+    await user.click(modalCancel);
     expect(mockDelete).not.toHaveBeenCalled();
   });
 });
@@ -294,14 +301,15 @@ describe("NodePropertyPanel — lock toggle", () => {
     expect(screen.queryByTitle(/Lock/i)).toBeNull();
   });
 
-  it("Lock click fires lockConstructionPart with the FK", () => {
+  it("Lock click fires lockConstructionPart with the FK", async () => {
+    const user = userEvent.setup();
     const node = makeNode({ node_type: "cad_shape", name: "p" });
     (node as unknown as { construction_part_id: number }).construction_part_id = 42;
 
     render(
       <NodePropertyPanel node={node} aeroplaneId="a" onMutate={vi.fn()} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByTitle("Lock part"));
+    await user.click(screen.getByTitle("Lock part"));
     expect(mockLock).toHaveBeenCalledWith("a", 42);
   });
 });
