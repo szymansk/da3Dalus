@@ -86,13 +86,12 @@ def _set_locked(
     try:
         part = _get_part_or_404(db, aeroplane_id, part_id)
         part.locked = locked
-        db.commit()
+        db.flush()
         db.refresh(part)
         return ConstructionPartRead.model_validate(part)
     except NotFoundError:
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error while toggling lock on part %s: %s", part_id, exc)
         raise InternalError(message=f"Database error: {exc}") from exc
 
@@ -243,14 +242,12 @@ def create_part(
         geom = _extract_geometry(dest, fmt)
         for key, value in geom.items():
             setattr(part, key, value)
-        db.commit()
+        db.flush()
         db.refresh(part)
         return ConstructionPartRead.model_validate(part)
     except ValidationError:
-        db.rollback()
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in create_part: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc
 
@@ -320,13 +317,12 @@ def update_part(
             part.material_component_id = explicit["material_component_id"]
         if "thumbnail_url" in explicit:
             part.thumbnail_url = explicit["thumbnail_url"]
-        db.commit()
+        db.flush()
         db.refresh(part)
         return ConstructionPartRead.model_validate(part)
     except NotFoundError:
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in update_part: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc
 
@@ -345,8 +341,12 @@ def delete_part(db: Session, aeroplane_id: str, part_id: int) -> None:
             )
         file_path = part.file_path
         db.delete(part)
-        db.commit()
+        db.flush()
         if file_path:
+            # NOTE: File is unlinked before get_db() commits the DB deletion.
+            # If the commit fails, the DB row will reference a missing file.
+            # Acceptable trade-off: the alternative (delete after commit) risks
+            # orphaned files if the app crashes between commit and unlink.
             try:
                 os.unlink(file_path)
             except FileNotFoundError:
@@ -356,6 +356,5 @@ def delete_part(db: Session, aeroplane_id: str, part_id: int) -> None:
     except (NotFoundError, ConflictError):
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in delete_part: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc

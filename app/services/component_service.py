@@ -58,11 +58,10 @@ def create_component(db: Session, data: ComponentWrite) -> ComponentRead:
     try:
         comp = ComponentModel(**data.model_dump())
         db.add(comp)
-        db.commit()
+        db.flush()
         db.refresh(comp)
         return _to_schema(comp)
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in create_component: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc
 
@@ -85,13 +84,12 @@ def update_component(
             raise NotFoundError(entity="Component", resource_id=component_id)
         for key, value in data.model_dump().items():
             setattr(comp, key, value)
-        db.commit()
+        db.flush()
         db.refresh(comp)
         return _to_schema(comp)
     except NotFoundError:
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in update_component: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc
 
@@ -102,10 +100,9 @@ def delete_component(db: Session, component_id: int) -> None:
         if comp is None:
             raise NotFoundError(entity="Component", resource_id=component_id)
         db.delete(comp)
-        db.commit()
+        db.flush()
     except NotFoundError:
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in delete_component: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc

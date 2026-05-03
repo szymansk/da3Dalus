@@ -212,6 +212,7 @@ def start_tessellation_task(
                             geometry_hash or "manual",
                             worker_result["result"],
                         )
+                        db.commit()
                         logger.info("Cached tessellation for %s/%s", aeroplane_id, wing_name)
                 finally:
                     db.close()
@@ -376,6 +377,7 @@ def _start_tessellation_and_cache(
                 geometry_hash,
                 worker_result["result"],
             )
+            db.commit()
             logger.info("Cached background tessellation for %s", key)
         except Exception:
             logger.exception("Error caching tessellation for %s", key)

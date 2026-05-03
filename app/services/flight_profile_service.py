@@ -53,16 +53,14 @@ def create_profile(db: Session, payload: RCFlightProfileCreate) -> RCFlightProfi
 
         profile = RCFlightProfileModel(**payload.model_dump())
         db.add(profile)
-        db.commit()
+        db.flush()
         db.refresh(profile)
         return RCFlightProfileRead.model_validate(profile, from_attributes=True)
     except ConflictError:
         raise
     except IntegrityError:
-        db.rollback()
         raise ConflictError(_ERR_NAME_EXISTS)
     except SQLAlchemyError as exc:
-        db.rollback()
         raise InternalError(f"Database error: {exc}")
 
 
@@ -122,17 +120,15 @@ def update_profile(db: Session, profile_id: int, payload: RCFlightProfileUpdate)
         profile.constraints = normalized.constraints.model_dump()
         profile.updated_at = datetime.now(timezone.utc)
         db.add(profile)
-        db.commit()
+        db.flush()
         db.refresh(profile)
 
         return RCFlightProfileRead.model_validate(profile, from_attributes=True)
     except (NotFoundError, ConflictError):
         raise
     except IntegrityError:
-        db.rollback()
         raise ConflictError(_ERR_NAME_EXISTS)
     except SQLAlchemyError as exc:
-        db.rollback()
         raise InternalError(f"Database error: {exc}")
 
 
@@ -148,11 +144,10 @@ def delete_profile(db: Session, profile_id: int) -> None:
             )
 
         db.delete(profile)
-        db.commit()
+        db.flush()
     except (NotFoundError, ConflictError):
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         raise InternalError(f"Database error: {exc}")
 
 
@@ -168,7 +163,7 @@ def assign_profile_to_aircraft(
         aircraft.flight_profile_id = profile.id
         aircraft.updated_at = datetime.now(timezone.utc)
         db.add(aircraft)
-        db.commit()
+        db.flush()
 
         return AircraftFlightProfileAssignmentRead(
             aircraft_id=str(aircraft.uuid),
@@ -177,7 +172,6 @@ def assign_profile_to_aircraft(
     except NotFoundError:
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         raise InternalError(f"Database error: {exc}")
 
 
@@ -188,7 +182,7 @@ def detach_profile_from_aircraft(db: Session, aircraft_id) -> AircraftFlightProf
         aircraft.flight_profile_id = None
         aircraft.updated_at = datetime.now(timezone.utc)
         db.add(aircraft)
-        db.commit()
+        db.flush()
 
         return AircraftFlightProfileAssignmentRead(
             aircraft_id=str(aircraft.uuid),
@@ -197,5 +191,4 @@ def detach_profile_from_aircraft(db: Session, aircraft_id) -> AircraftFlightProf
     except NotFoundError:
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         raise InternalError(f"Database error: {exc}")

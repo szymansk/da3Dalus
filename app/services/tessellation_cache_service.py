@@ -74,7 +74,7 @@ def cache_tessellation(
         existing.geometry_hash = geometry_hash
         existing.tessellation_json = tessellation_json
         existing.is_stale = False
-        db.commit()
+        db.flush()
         db.refresh(existing)
         return existing
 
@@ -87,7 +87,7 @@ def cache_tessellation(
         is_stale=False,
     )
     db.add(entry)
-    db.commit()
+    db.flush()
     db.refresh(entry)
     return entry
 
@@ -113,7 +113,6 @@ def invalidate(
         query = query.filter(TessellationCacheModel.component_name == component_name)
 
     count = query.update({"is_stale": True})
-    db.commit()
     return count
 
 

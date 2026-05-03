@@ -131,14 +131,12 @@ def create_type(db: Session, data: ComponentTypeWrite) -> ComponentTypeRead:
             deletable=True,  # user-created types are always deletable
         )
         db.add(row)
-        db.commit()
+        db.flush()
         db.refresh(row)
         return _to_schema(db, row)
     except IntegrityError as exc:
-        db.rollback()
         raise ConflictError(message=f"Name conflict: {exc}") from exc
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in create_type: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc
 
@@ -153,13 +151,12 @@ def update_type(
         row.description = data.description
         row.schema_def = [p.model_dump() for p in data.schema]
         # name and deletable stay untouched
-        db.commit()
+        db.flush()
         db.refresh(row)
         return _to_schema(db, row)
     except NotFoundError:
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in update_type: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc
 
@@ -182,9 +179,8 @@ def delete_type(db: Session, type_id: int) -> None:
         )
     try:
         db.delete(row)
-        db.commit()
+        db.flush()
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in delete_type: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc
 
@@ -438,4 +434,3 @@ def seed_default_types(db: Session) -> None:
                 deletable=False,
             )
         )
-    db.commit()

@@ -130,7 +130,7 @@ def _migrate_tree_json(db: Session, plan: ConstructionPlanModel) -> None:
         from sqlalchemy.orm.attributes import flag_modified
 
         flag_modified(plan, "tree_json")
-        db.commit()
+        db.flush()
 
 
 def get_plan(db: Session, plan_id: int) -> PlanRead:
@@ -158,11 +158,10 @@ def create_plan(db: Session, data: PlanCreate) -> PlanRead:
             aeroplane_id=data.aeroplane_id,
         )
         db.add(plan)
-        db.commit()
+        db.flush()
         db.refresh(plan)
         return _to_read(plan)
     except SQLAlchemyError as e:
-        db.rollback()
         logger.error("DB error creating plan: %s", e)
         raise InternalError(message=f"Database error: {e}")
 
@@ -178,13 +177,12 @@ def update_plan(db: Session, plan_id: int, data: PlanCreate) -> PlanRead:
         plan.tree_json = data.tree_json
         plan.plan_type = data.plan_type
         plan.aeroplane_id = data.aeroplane_id
-        db.commit()
+        db.flush()
         db.refresh(plan)
         return _to_read(plan)
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
-        db.rollback()
         logger.error("DB error updating plan %s: %s", plan_id, e)
         raise InternalError(message=f"Database error: {e}")
 
@@ -195,11 +193,10 @@ def delete_plan(db: Session, plan_id: int) -> None:
         if plan is None:
             raise NotFoundError(entity=_ENTITY_CONSTRUCTION_PLAN, resource_id=plan_id)
         db.delete(plan)
-        db.commit()
+        db.flush()
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
-        db.rollback()
         logger.error("DB error deleting plan %s: %s", plan_id, e)
         raise InternalError(message=f"Database error: {e}")
 

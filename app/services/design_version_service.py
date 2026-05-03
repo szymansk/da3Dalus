@@ -32,8 +32,12 @@ def _get_aeroplane(db: Session, aeroplane_uuid) -> AeroplaneModel:
     return aeroplane
 
 
-def _get_version(aeroplane: AeroplaneModel, version_id: int) -> DesignVersionModel:
-    ver = next((v for v in aeroplane.design_versions if v.id == version_id), None)
+def _get_version(db: Session, aeroplane: AeroplaneModel, version_id: int) -> DesignVersionModel:
+    ver = (
+        db.query(DesignVersionModel)
+        .filter(DesignVersionModel.aeroplane_id == aeroplane.id, DesignVersionModel.id == version_id)
+        .first()
+    )
     if ver is None:
         raise NotFoundError(entity="DesignVersion", resource_id=version_id)
     return ver
@@ -108,6 +112,11 @@ def _build_snapshot(aeroplane: AeroplaneModel) -> dict[str, Any]:
 
 def list_versions(db: Session, aeroplane_uuid) -> list[DesignVersionSummary]:
     aeroplane = _get_aeroplane(db, aeroplane_uuid)
+    rows = (
+        db.query(DesignVersionModel)
+        .filter(DesignVersionModel.aeroplane_id == aeroplane.id)
+        .all()
+    )
     return [
         DesignVersionSummary(
             id=v.id,
@@ -116,7 +125,7 @@ def list_versions(db: Session, aeroplane_uuid) -> list[DesignVersionSummary]:
             parent_version_id=v.parent_version_id,
             created_at=v.created_at,
         )
-        for v in aeroplane.design_versions
+        for v in rows
     ]
 
 
@@ -133,7 +142,7 @@ def create_version(
             snapshot=snapshot,
         )
         db.add(ver)
-        db.commit()
+        db.flush()
         db.refresh(ver)
         return DesignVersionSummary(
             id=ver.id,
@@ -145,14 +154,13 @@ def create_version(
     except NotFoundError:
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in create_version: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc
 
 
 def get_version(db: Session, aeroplane_uuid, version_id: int) -> DesignVersionRead:
     aeroplane = _get_aeroplane(db, aeroplane_uuid)
-    ver = _get_version(aeroplane, version_id)
+    ver = _get_version(db, aeroplane, version_id)
     return DesignVersionRead(
         id=ver.id,
         label=ver.label,
@@ -166,13 +174,12 @@ def get_version(db: Session, aeroplane_uuid, version_id: int) -> DesignVersionRe
 def delete_version(db: Session, aeroplane_uuid, version_id: int) -> None:
     try:
         aeroplane = _get_aeroplane(db, aeroplane_uuid)
-        ver = _get_version(aeroplane, version_id)
+        ver = _get_version(db, aeroplane, version_id)
         db.delete(ver)
-        db.commit()
+        db.flush()
     except NotFoundError:
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in delete_version: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc
 
@@ -181,8 +188,8 @@ def diff_versions(
     db: Session, aeroplane_uuid, version_a_id: int, version_b_id: int
 ) -> DesignVersionDiff:
     aeroplane = _get_aeroplane(db, aeroplane_uuid)
-    ver_a = _get_version(aeroplane, version_a_id)
-    ver_b = _get_version(aeroplane, version_b_id)
+    ver_a = _get_version(db, aeroplane, version_a_id)
+    ver_b = _get_version(db, aeroplane, version_b_id)
     changes = _compute_diff(ver_a.snapshot, ver_b.snapshot)
     return DesignVersionDiff(
         version_a=version_a_id,

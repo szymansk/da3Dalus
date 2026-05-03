@@ -147,16 +147,9 @@ def import_directory(db: Session, directory: str) -> AirfoilImportResult:
             result.imported += 1
         except SQLAlchemyError as exc:
             logger.warning("Failed to import airfoil '%s': %s", airfoil_name, exc)
-            db.rollback()
+            db.rollback()  # Required: reset session state so next iteration can proceed
             result.errors += 1
             result.error_files.append(dat_file.name)
-
-    try:
-        db.commit()
-    except SQLAlchemyError as exc:
-        db.rollback()
-        logger.error("Failed to commit airfoil import: %s", exc)
-        raise InternalError(message=f"Import commit failed: {exc}") from exc
 
     logger.info(
         "Airfoil import: %d imported, %d skipped, %d errors",

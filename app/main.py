@@ -99,6 +99,7 @@ def create_app() -> FastAPI:
             _seed_session = SessionLocal()
             try:
                 seed_default_types(_seed_session)
+                _seed_session.commit()
             finally:
                 _seed_session.close()
         except Exception as exc:  # noqa: BLE001 — never block startup on this
