@@ -15,7 +15,8 @@
  * start firing bogus requests again.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
+import { render, screen, within, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 
 vi.mock("lucide-react", () => {
@@ -66,42 +67,37 @@ function editableTextInputs(container: HTMLElement): HTMLInputElement[] {
 }
 
 /** Click the Save button on the currently open dialog. */
-function clickSave() {
+async function clickSave(user: ReturnType<typeof userEvent.setup>) {
   const saveButtons = screen.getAllByText(/^Save$/);
   expect(saveButtons.length).toBeGreaterThan(0);
-  fireEvent.click(saveButtons[0]);
-}
-
-/** Flush two microtask ticks so awaited promises in handlers settle. */
-async function flushMicrotasks() {
-  await Promise.resolve();
-  await Promise.resolve();
-  await Promise.resolve();
+  await user.click(saveButtons[0]);
 }
 
 describe("Manage Types → New Type → Save flow (e2e)", () => {
   it("creates a new type end-to-end: open mgmt → click New Type → fill form → Save → createComponentType called", async () => {
+    const user = userEvent.setup();
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
 
     // 1. Click "+ New Type"
-    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
+    await user.click(screen.getByRole("button", { name: /New Type/i }));
 
     // 2. Verify Edit dialog opened
     expect(screen.getByText(/New Type:/i)).toBeDefined();
 
     // 3. Fill in Name + Label
     const editable = editableTextInputs(container);
-    fireEvent.change(editable[0], { target: { value: "carbon_tube" } });
+    await user.clear(editable[0]);
+    await user.type(editable[0], "carbon_tube");
     // [name, label, description] — index 1 is label
-    fireEvent.change(editable[1], { target: { value: "Carbon Tube" } });
+    await user.clear(editable[1]);
+    await user.type(editable[1], "Carbon Tube");
 
     // 4. Click Save
-    clickSave();
+    await clickSave(user);
 
     // 5. The backend client must have been called with the payload
-    await flushMicrotasks();
     expect(mockCreate).toHaveBeenCalledTimes(1);
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -112,27 +108,31 @@ describe("Manage Types → New Type → Save flow (e2e)", () => {
     );
   });
 
-  it("Save with empty Label is blocked — no API call", () => {
+  it("Save with empty Label is blocked — no API call", async () => {
+    const user = userEvent.setup();
     render(<ComponentTypeManagementDialog open={true} onClose={vi.fn()} />);
-    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
+    await user.click(screen.getByRole("button", { name: /New Type/i }));
     // No input → click Save
-    clickSave();
+    await clickSave(user);
     expect(mockCreate).not.toHaveBeenCalled();
     // Inline error appears
     expect(screen.getByText(/Label is required/i)).toBeDefined();
   });
 
-  it("Save with non-snake_case Name is blocked for new types", () => {
+  it("Save with non-snake_case Name is blocked for new types", async () => {
+    const user = userEvent.setup();
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
+    await user.click(screen.getByRole("button", { name: /New Type/i }));
 
     const editable = editableTextInputs(container);
-    fireEvent.change(editable[0], { target: { value: "CarbonTube" } });  // PascalCase
-    fireEvent.change(editable[1], { target: { value: "Carbon Tube" } });
+    await user.clear(editable[0]);
+    await user.type(editable[0], "CarbonTube");  // PascalCase
+    await user.clear(editable[1]);
+    await user.type(editable[1], "Carbon Tube");
 
-    clickSave();
+    await clickSave(user);
 
     expect(mockCreate).not.toHaveBeenCalled();
     // The inline error mentions snake_case. The label also mentions it, so we
@@ -147,36 +147,41 @@ describe("Manage Types → New Type → Save flow (e2e)", () => {
   // ------------------------------------------------------------------- //
 
   it("after successful save, onSaved is invoked so the list refetches", async () => {
+    const user = userEvent.setup();
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
+    await user.click(screen.getByRole("button", { name: /New Type/i }));
 
     const editable = editableTextInputs(container);
-    fireEvent.change(editable[0], { target: { value: "t1" } });
-    fireEvent.change(editable[1], { target: { value: "T1" } });
+    await user.clear(editable[0]);
+    await user.type(editable[0], "t1");
+    await user.clear(editable[1]);
+    await user.type(editable[1], "T1");
 
-    clickSave();
-    await flushMicrotasks();
+    await clickSave(user);
 
     expect(mockMutate).toHaveBeenCalled();
   });
 
-  it("clicking Save propagates: no event handler outside the dialog triggers before handleSave", () => {
+  it("clicking Save propagates: no event handler outside the dialog triggers before handleSave", async () => {
     // Guards against a regression where stopPropagation on the inner card
     // is dropped — which would let the parent backdrop's onClick close the
     // dialog before the async save settles.
+    const user = userEvent.setup();
     const onClose = vi.fn();
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={onClose} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
+    await user.click(screen.getByRole("button", { name: /New Type/i }));
 
     const editable = editableTextInputs(container);
-    fireEvent.change(editable[0], { target: { value: "t2" } });
-    fireEvent.change(editable[1], { target: { value: "T2" } });
+    await user.clear(editable[0]);
+    await user.type(editable[0], "t2");
+    await user.clear(editable[1]);
+    await user.type(editable[1], "T2");
 
-    clickSave();
+    await clickSave(user);
     // The parent Management dialog must NOT have closed as a side-effect of
     // the Save click (Save closes the EDIT dialog via onSaved→onClose, but
     // the Management dialog's onClose must not fire).
@@ -192,18 +197,19 @@ describe("Manage Types → New Type → Save flow (e2e)", () => {
 
 describe("Create-Type payload contract", () => {
   it("Description field is included in the payload", async () => {
+    const user = userEvent.setup();
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
+    await user.click(screen.getByRole("button", { name: /New Type/i }));
     const editable = editableTextInputs(container);
-    fireEvent.change(editable[0], { target: { value: "motor_mount" } });
-    fireEvent.change(editable[1], { target: { value: "Motor Mount" } });
-    fireEvent.change(editable[2], {
-      target: { value: "Printed bracket for the motor" },
-    });
-    clickSave();
-    await flushMicrotasks();
+    await user.clear(editable[0]);
+    await user.type(editable[0], "motor_mount");
+    await user.clear(editable[1]);
+    await user.type(editable[1], "Motor Mount");
+    await user.clear(editable[2]);
+    await user.type(editable[2], "Printed bracket for the motor");
+    await clickSave(user);
 
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -215,17 +221,19 @@ describe("Create-Type payload contract", () => {
   });
 
   it("empty description is sent as null (not empty string)", async () => {
+    const user = userEvent.setup();
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
+    await user.click(screen.getByRole("button", { name: /New Type/i }));
     const editable = editableTextInputs(container);
-    fireEvent.change(editable[0], { target: { value: "empty_desc" } });
-    fireEvent.change(editable[1], { target: { value: "Empty Desc" } });
+    await user.clear(editable[0]);
+    await user.type(editable[0], "empty_desc");
+    await user.clear(editable[1]);
+    await user.type(editable[1], "Empty Desc");
     // description left blank
 
-    clickSave();
-    await flushMicrotasks();
+    await clickSave(user);
 
     const payload = mockCreate.mock.calls[0][0];
     expect(payload.description).toBeNull();
@@ -235,15 +243,17 @@ describe("Create-Type payload contract", () => {
     // Regression for the double-encoding bug:
     // backend rejected payloads where `schema` was a stringified JSON array.
     // The frontend must always send a real array — including when empty.
+    const user = userEvent.setup();
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
+    await user.click(screen.getByRole("button", { name: /New Type/i }));
     const editable = editableTextInputs(container);
-    fireEvent.change(editable[0], { target: { value: "arr_check" } });
-    fireEvent.change(editable[1], { target: { value: "Arr Check" } });
-    clickSave();
-    await flushMicrotasks();
+    await user.clear(editable[0]);
+    await user.type(editable[0], "arr_check");
+    await user.clear(editable[1]);
+    await user.type(editable[1], "Arr Check");
+    await clickSave(user);
 
     const payload = mockCreate.mock.calls[0][0];
     expect(Array.isArray(payload.schema)).toBe(true);
@@ -255,20 +265,37 @@ describe("Create-Type payload contract", () => {
     // would duplicate mutations and is one plausible explanation for the
     // "delete 1 wiped the table" symptom. Even if our investigation found the
     // backend to be safe, we pin this guarantee down in the UI as well.
+    //
+    // Use a deferred promise so the Save handler stays pending while we
+    // attempt a second click. The button should be disabled after the first
+    // click (React re-renders between awaited userEvent calls).
+    let resolveCreate!: (v: unknown) => void;
+    mockCreate.mockImplementationOnce(
+      () => new Promise((r) => { resolveCreate = r; }),
+    );
+
+    const user = userEvent.setup();
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
+    await user.click(screen.getByRole("button", { name: /New Type/i }));
     const editable = editableTextInputs(container);
-    fireEvent.change(editable[0], { target: { value: "nodup" } });
-    fireEvent.change(editable[1], { target: { value: "NoDup" } });
-    clickSave();
-    // The Save handler is async → the dialog disables the button after
-    // the first click so a second click should be a no-op.
-    clickSave();
-    await flushMicrotasks();
+    await user.clear(editable[0]);
+    await user.type(editable[0], "nodup");
+    await user.clear(editable[1]);
+    await user.type(editable[1], "NoDup");
 
-    expect(mockCreate).toHaveBeenCalledTimes(1);
+    // First click — starts the save, button becomes disabled while pending
+    await user.click(screen.getAllByText(/^Save$/)[0]);
+
+    // Second click — button is disabled, so this should be a no-op
+    await user.click(screen.getAllByText(/^Save$/)[0]);
+
+    // Resolve the pending save
+    resolveCreate({ id: 999, name: "nodup" });
+    await waitFor(() => {
+      expect(mockCreate).toHaveBeenCalledTimes(1);
+    });
   });
 });
 
@@ -279,19 +306,22 @@ describe("Create-Type payload contract", () => {
 
 describe("Adding properties inside the type", () => {
   it("adds a 'number' property via PropertyEditDialog → appears in Save payload", async () => {
+    const user = userEvent.setup();
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
+    await user.click(screen.getByRole("button", { name: /New Type/i }));
 
     // Fill Name + Label
     let editable = editableTextInputs(container);
-    fireEvent.change(editable[0], { target: { value: "tube" } });
-    fireEvent.change(editable[1], { target: { value: "Tube" } });
+    await user.clear(editable[0]);
+    await user.type(editable[0], "tube");
+    await user.clear(editable[1]);
+    await user.type(editable[1], "Tube");
 
     // Open PropertyEditDialog: Button labelled "+ Property" (inside Edit dialog)
     // There are multiple Plus icons on screen — target by text of the label.
-    fireEvent.click(screen.getByText(/^Property$/));
+    await user.click(screen.getByText(/^Property$/));
 
     // PropertyEditDialog is now mounted. Fill Name + Label + Unit + Min/Max.
     // We re-query because new inputs appeared inside the nested dialog.
@@ -304,9 +334,12 @@ describe("Adding properties inside the type", () => {
     //   4: prop Label
     //   5: prop Unit
     //   6: prop Description
-    fireEvent.change(editable[3], { target: { value: "diameter_mm" } });
-    fireEvent.change(editable[4], { target: { value: "Diameter" } });
-    fireEvent.change(editable[5], { target: { value: "mm" } });
+    await user.clear(editable[3]);
+    await user.type(editable[3], "diameter_mm");
+    await user.clear(editable[4]);
+    await user.type(editable[4], "Diameter");
+    await user.clear(editable[5]);
+    await user.type(editable[5], "mm");
 
     // Number-type Min/Max/Default inputs are rendered as type="number"
     const numberInputs = container.querySelectorAll(
@@ -314,20 +347,22 @@ describe("Adding properties inside the type", () => {
     ) as NodeListOf<HTMLInputElement>;
     // Min, Max, Default
     expect(numberInputs.length).toBe(3);
-    fireEvent.change(numberInputs[0], { target: { value: "1" } });
-    fireEvent.change(numberInputs[1], { target: { value: "500" } });
-    fireEvent.change(numberInputs[2], { target: { value: "25" } });
+    await user.clear(numberInputs[0]);
+    await user.type(numberInputs[0], "1");
+    await user.clear(numberInputs[1]);
+    await user.type(numberInputs[1], "500");
+    await user.clear(numberInputs[2]);
+    await user.type(numberInputs[2], "25");
 
     // Apply
-    fireEvent.click(screen.getByText(/^Apply$/));
+    await user.click(screen.getByText(/^Apply$/));
 
     // Property row should now show in the outer dialog
     expect(screen.getByText(/diameter_mm/)).toBeDefined();
     expect(screen.getByText(/Properties \(1\)/)).toBeDefined();
 
     // Save the type
-    clickSave();
-    await flushMicrotasks();
+    await clickSave(user);
 
     expect(mockCreate).toHaveBeenCalledTimes(1);
     const payload = mockCreate.mock.calls[0][0];
@@ -346,28 +381,35 @@ describe("Adding properties inside the type", () => {
   });
 
   it("adds two properties; deletes the first; Save payload has only the survivor", async () => {
+    const user = userEvent.setup();
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
+    await user.click(screen.getByRole("button", { name: /New Type/i }));
 
     const firstEditable = editableTextInputs(container);
-    fireEvent.change(firstEditable[0], { target: { value: "multi" } });
-    fireEvent.change(firstEditable[1], { target: { value: "Multi" } });
+    await user.clear(firstEditable[0]);
+    await user.type(firstEditable[0], "multi");
+    await user.clear(firstEditable[1]);
+    await user.type(firstEditable[1], "Multi");
 
     // Add property #1 ("alpha")
-    fireEvent.click(screen.getByText(/^Property$/));
+    await user.click(screen.getByText(/^Property$/));
     let editable = editableTextInputs(container);
-    fireEvent.change(editable[3], { target: { value: "alpha" } });
-    fireEvent.change(editable[4], { target: { value: "Alpha" } });
-    fireEvent.click(screen.getByText(/^Apply$/));
+    await user.clear(editable[3]);
+    await user.type(editable[3], "alpha");
+    await user.clear(editable[4]);
+    await user.type(editable[4], "Alpha");
+    await user.click(screen.getByText(/^Apply$/));
 
     // Add property #2 ("beta")
-    fireEvent.click(screen.getByText(/^Property$/));
+    await user.click(screen.getByText(/^Property$/));
     editable = editableTextInputs(container);
-    fireEvent.change(editable[3], { target: { value: "beta" } });
-    fireEvent.change(editable[4], { target: { value: "Beta" } });
-    fireEvent.click(screen.getByText(/^Apply$/));
+    await user.clear(editable[3]);
+    await user.type(editable[3], "beta");
+    await user.clear(editable[4]);
+    await user.type(editable[4], "Beta");
+    await user.click(screen.getByText(/^Apply$/));
 
     expect(screen.getByText(/Properties \(2\)/)).toBeDefined();
 
@@ -377,40 +419,44 @@ describe("Adding properties inside the type", () => {
     const deleteBtn = within(alphaRow as HTMLElement).getByTitle(
       /Delete property/i,
     );
-    fireEvent.click(deleteBtn);
+    await user.click(deleteBtn);
 
     expect(screen.getByText(/Properties \(1\)/)).toBeDefined();
     expect(screen.queryByText("alpha")).toBeNull();
 
     // Save
-    clickSave();
-    await flushMicrotasks();
+    await clickSave(user);
 
     const payload = mockCreate.mock.calls[0][0];
     expect(payload.schema).toHaveLength(1);
     expect(payload.schema[0].name).toBe("beta");
   });
 
-  it("PropertyEditDialog validation blocks Apply: enum with no options", () => {
+  it("PropertyEditDialog validation blocks Apply: enum with no options", async () => {
+    const user = userEvent.setup();
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
+    await user.click(screen.getByRole("button", { name: /New Type/i }));
     const first = editableTextInputs(container);
-    fireEvent.change(first[0], { target: { value: "enum_t" } });
-    fireEvent.change(first[1], { target: { value: "Enum T" } });
+    await user.clear(first[0]);
+    await user.type(first[0], "enum_t");
+    await user.clear(first[1]);
+    await user.type(first[1], "Enum T");
 
-    fireEvent.click(screen.getByText(/^Property$/));
+    await user.click(screen.getByText(/^Property$/));
     const editable = editableTextInputs(container);
-    fireEvent.change(editable[3], { target: { value: "color" } });
-    fireEvent.change(editable[4], { target: { value: "Color" } });
+    await user.clear(editable[3]);
+    await user.type(editable[3], "color");
+    await user.clear(editable[4]);
+    await user.type(editable[4], "Color");
 
     // Switch type to enum
     const select = container.querySelector("select") as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "enum" } });
+    await user.selectOptions(select, "enum");
 
     // Click Apply with empty options CSV
-    fireEvent.click(screen.getByText(/^Apply$/));
+    await user.click(screen.getByText(/^Apply$/));
 
     // Property-row list must still show 0 properties, inline error shown
     expect(screen.getByText(/Enum needs at least one option/i)).toBeDefined();
@@ -425,19 +471,22 @@ describe("Adding properties inside the type", () => {
 
 describe("Backend error propagation on Save", () => {
   it("409 conflict: error is shown, dialog stays open, form preserved", async () => {
+    const user = userEvent.setup();
     mockCreate.mockRejectedValueOnce(
       new Error("Type with name 'dup' already exists."),
     );
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
+    await user.click(screen.getByRole("button", { name: /New Type/i }));
 
     const editable = editableTextInputs(container);
-    fireEvent.change(editable[0], { target: { value: "dup" } });
-    fireEvent.change(editable[1], { target: { value: "Dup" } });
+    await user.clear(editable[0]);
+    await user.type(editable[0], "dup");
+    await user.clear(editable[1]);
+    await user.type(editable[1], "Dup");
 
-    clickSave();
+    await clickSave(user);
 
     // Error is surfaced (waitFor — the rejected promise settles on a later tick)
     await waitFor(() => {
@@ -457,18 +506,21 @@ describe("Backend error propagation on Save", () => {
   });
 
   it("422 validation: message passes through unchanged", async () => {
+    const user = userEvent.setup();
     mockCreate.mockRejectedValueOnce(
       new Error("Ungültige Eingabedaten"),
     );
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
+    await user.click(screen.getByRole("button", { name: /New Type/i }));
     const editable = editableTextInputs(container);
-    fireEvent.change(editable[0], { target: { value: "t_x" } });
-    fireEvent.change(editable[1], { target: { value: "T X" } });
+    await user.clear(editable[0]);
+    await user.type(editable[0], "t_x");
+    await user.clear(editable[1]);
+    await user.type(editable[1], "T X");
 
-    clickSave();
+    await clickSave(user);
 
     await waitFor(() => {
       expect(screen.getByText(/Ungültige Eingabedaten/)).toBeDefined();
@@ -476,25 +528,28 @@ describe("Backend error propagation on Save", () => {
   });
 
   it("after a failed save, the user can retry: second call made on second Save", async () => {
+    const user = userEvent.setup();
     mockCreate
       .mockRejectedValueOnce(new Error("boom"))
       .mockResolvedValueOnce({ id: 5, name: "retry_me" });
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
+    await user.click(screen.getByRole("button", { name: /New Type/i }));
     const editable = editableTextInputs(container);
-    fireEvent.change(editable[0], { target: { value: "retry_me" } });
-    fireEvent.change(editable[1], { target: { value: "Retry" } });
+    await user.clear(editable[0]);
+    await user.type(editable[0], "retry_me");
+    await user.clear(editable[1]);
+    await user.type(editable[1], "Retry");
 
-    clickSave();
+    await clickSave(user);
     await waitFor(() => {
       expect(screen.getByText(/boom/)).toBeDefined();
     });
     expect(mockCreate).toHaveBeenCalledTimes(1);
 
     // Click Save again — this time it succeeds
-    clickSave();
+    await clickSave(user);
     await waitFor(() => {
       expect(mockCreate).toHaveBeenCalledTimes(2);
     });
@@ -531,11 +586,12 @@ describe("Edit existing type (not new)", () => {
     };
   });
 
-  it("opens with pre-filled values; Name is disabled (immutable)", () => {
+  it("opens with pre-filled values; Name is disabled (immutable)", async () => {
+    const user = userEvent.setup();
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByTitle(/Edit Carbon Tube/i));
+    await user.click(screen.getByTitle(/Edit Carbon Tube/i));
 
     // Name input should be disabled
     const nameInput = container.querySelector(
@@ -556,19 +612,20 @@ describe("Edit existing type (not new)", () => {
   });
 
   it("Save on an existing type calls updateComponentType(id, payload) — not create", async () => {
+    const user = userEvent.setup();
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByTitle(/Edit Carbon Tube/i));
+    await user.click(screen.getByTitle(/Edit Carbon Tube/i));
 
     // Update the label and description
     const labelInput = container.querySelector(
       'input[value="Carbon Tube"]',
     ) as HTMLInputElement;
-    fireEvent.change(labelInput, { target: { value: "Carbon Tube v2" } });
+    await user.clear(labelInput);
+    await user.type(labelInput, "Carbon Tube v2");
 
-    clickSave();
-    await flushMicrotasks();
+    await clickSave(user);
 
     expect(mockCreate).not.toHaveBeenCalled();
     expect(mockUpdate).toHaveBeenCalledTimes(1);
@@ -580,21 +637,22 @@ describe("Edit existing type (not new)", () => {
   });
 
   it("delete button inside edit dialog opens confirm → Confirm calls deleteComponentType(id)", async () => {
+    const user = userEvent.setup();
     render(<ComponentTypeManagementDialog open={true} onClose={vi.fn()} />);
-    fireEvent.click(screen.getByTitle(/Edit Carbon Tube/i));
+    await user.click(screen.getByTitle(/Edit Carbon Tube/i));
 
     // Delete-type button is visible because deletable=true AND ref_count=0
-    fireEvent.click(screen.getByTitle(/Delete type/i));
+    await user.click(screen.getByTitle(/Delete type/i));
 
     // Confirmation shows a Confirm button
-    fireEvent.click(screen.getByText(/^Confirm$/));
-    await flushMicrotasks();
+    await user.click(screen.getByText(/^Confirm$/));
 
     expect(mockDelete).toHaveBeenCalledTimes(1);
     expect(mockDelete).toHaveBeenCalledWith(42);
   });
 
-  it("seeded type: delete-type button is not rendered in the edit dialog", () => {
+  it("seeded type: delete-type button is not rendered in the edit dialog", async () => {
+    const user = userEvent.setup();
     hookReturn = {
       types: [{ ...existingType, id: 1, name: "material", label: "Material", deletable: false }],
       isLoading: false,
@@ -602,12 +660,13 @@ describe("Edit existing type (not new)", () => {
       error: null,
     };
     render(<ComponentTypeManagementDialog open={true} onClose={vi.fn()} />);
-    fireEvent.click(screen.getByTitle(/Edit Material/i));
+    await user.click(screen.getByTitle(/Edit Material/i));
 
     expect(screen.queryByTitle(/Delete type/i)).toBeNull();
   });
 
-  it("referenced type: delete-type button is not rendered in the edit dialog", () => {
+  it("referenced type: delete-type button is not rendered in the edit dialog", async () => {
+    const user = userEvent.setup();
     hookReturn = {
       types: [{ ...existingType, reference_count: 5 }],
       isLoading: false,
@@ -615,7 +674,7 @@ describe("Edit existing type (not new)", () => {
       error: null,
     };
     render(<ComponentTypeManagementDialog open={true} onClose={vi.fn()} />);
-    fireEvent.click(screen.getByTitle(/Edit Carbon Tube/i));
+    await user.click(screen.getByTitle(/Edit Carbon Tube/i));
 
     expect(screen.queryByTitle(/Delete type/i)).toBeNull();
   });
@@ -626,16 +685,19 @@ describe("Edit existing type (not new)", () => {
 // ----------------------------------------------------------------------- //
 
 describe("Cancel / dismiss paths", () => {
-  it("Cancel button in Edit dialog closes it without calling any CRUD", () => {
+  it("Cancel button in Edit dialog closes it without calling any CRUD", async () => {
+    const user = userEvent.setup();
     const { container } = render(
       <ComponentTypeManagementDialog open={true} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
+    await user.click(screen.getByRole("button", { name: /New Type/i }));
 
     // Type something so we can verify Cancel really drops it
     const editable = editableTextInputs(container);
-    fireEvent.change(editable[0], { target: { value: "throwaway" } });
-    fireEvent.change(editable[1], { target: { value: "Throwaway" } });
+    await user.clear(editable[0]);
+    await user.type(editable[0], "throwaway");
+    await user.clear(editable[1]);
+    await user.type(editable[1], "Throwaway");
 
     // Edit dialog has a "Cancel" button (so does the outer, for the mgmt
     // dialog itself). Target the Cancel that is a sibling of the Save inside
@@ -643,7 +705,7 @@ describe("Cancel / dismiss paths", () => {
     const saveBtn = screen.getByText(/^Save$/);
     const card = saveBtn.closest("div")?.parentElement as HTMLElement;
     const cancelInsideEdit = within(card).getByText(/^Cancel$/);
-    fireEvent.click(cancelInsideEdit);
+    await user.click(cancelInsideEdit);
 
     expect(mockCreate).not.toHaveBeenCalled();
     expect(mockUpdate).not.toHaveBeenCalled();

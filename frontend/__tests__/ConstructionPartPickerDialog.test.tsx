@@ -7,7 +7,8 @@
  * `cad_shape` tree node with `construction_part_id` set (N1 wiring).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 
 vi.mock("lucide-react", () => {
@@ -118,7 +119,8 @@ describe("ConstructionPartPickerDialog", () => {
     expect(screen.getByText("Frame-B")).toBeDefined();
   });
 
-  it("calls onSelect with the part on row click and closes", () => {
+  it("calls onSelect with the part on row click and closes", async () => {
+    const user = userEvent.setup();
     partsReturnValue = {
       parts: [
         { id: 42, name: "MyPart", volume_mm3: 500, area_mm2: 50, locked: false, material_component_id: null, file_format: "stl" },
@@ -136,14 +138,15 @@ describe("ConstructionPartPickerDialog", () => {
         onSelect={onSelect}
       />,
     );
-    fireEvent.click(screen.getByText("MyPart"));
+    await user.click(screen.getByText("MyPart"));
     expect(onSelect).toHaveBeenCalledWith(
       expect.objectContaining({ id: 42, name: "MyPart" }),
     );
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("closes on Cancel", () => {
+  it("closes on Cancel", async () => {
+    const user = userEvent.setup();
     const onClose = vi.fn();
     render(
       <ConstructionPartPickerDialog
@@ -153,11 +156,12 @@ describe("ConstructionPartPickerDialog", () => {
         onSelect={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByText("Cancel"));
+    await user.click(screen.getByText("Cancel"));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("filters by search", () => {
+  it("filters by search", async () => {
+    const user = userEvent.setup();
     partsReturnValue = {
       parts: [
         { id: 1, name: "Bulkhead", volume_mm3: 100, area_mm2: 10, locked: false, material_component_id: null, file_format: "step" },
@@ -175,7 +179,8 @@ describe("ConstructionPartPickerDialog", () => {
       />,
     );
     const input = screen.getByPlaceholderText(/search/i) as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "bulk" } });
+    await user.clear(input);
+    await user.type(input, "bulk");
     expect(screen.getByText("Bulkhead")).toBeDefined();
     expect(screen.queryByText("Frame")).toBeNull();
   });

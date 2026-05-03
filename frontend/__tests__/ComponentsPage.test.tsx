@@ -9,7 +9,8 @@
  * the WorkbenchTwoPanel (e.g. as a sibling via Fragment or via a portal).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 
 // ── Mocks ─────────────────────────────────────────────────────────
@@ -110,10 +111,11 @@ describe("ComponentsPage — '+ New Component' dialog", () => {
   });
 
   it("opens the create dialog when '+ New Component' is clicked", async () => {
+    const user = userEvent.setup();
     const { container } = render(<ComponentsPage />);
 
     const button = screen.getByText("New Component");
-    fireEvent.click(button);
+    await user.click(button);
 
     // The ComponentEditDialog should now be mounted and open
     await waitFor(() => {
@@ -124,9 +126,10 @@ describe("ComponentsPage — '+ New Component' dialog", () => {
   });
 
   it("closes the dialog when Cancel is clicked", async () => {
+    const user = userEvent.setup();
     const { container } = render(<ComponentsPage />);
 
-    fireEvent.click(screen.getByText("New Component"));
+    await user.click(screen.getByText("New Component"));
 
     await waitFor(() => {
       const editDialog = container.querySelector('dialog[aria-label="New Component"]');
@@ -138,7 +141,7 @@ describe("ComponentsPage — '+ New Component' dialog", () => {
     // Find the Cancel button specifically
     const allBtns = editDialog?.querySelectorAll("button") ?? [];
     const cancelButton = Array.from(allBtns).find((b) => b.textContent === "Cancel");
-    fireEvent.click(cancelButton!);
+    await user.click(cancelButton!);
 
     // The dialog should unmount because the parent uses conditional rendering
     await waitFor(() => {

@@ -8,7 +8,8 @@
  *   3. "Assign Construction Part" — disabled until gh#57-wvg (D4) ships
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 
 vi.mock("lucide-react", () => {
@@ -56,7 +57,8 @@ describe("GroupAddMenu", () => {
     expect(screen.getByText(/avionics/)).toBeDefined();
   });
 
-  it("calls onNewGroup (but not onClose) when 'New Group' is clicked", () => {
+  it("calls onNewGroup (but not onClose) when 'New Group' is clicked", async () => {
+    const user = userEvent.setup();
     const onNewGroup = vi.fn();
     const onClose = vi.fn();
     render(
@@ -69,7 +71,7 @@ describe("GroupAddMenu", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("New Group"));
+    await user.click(screen.getByText("New Group"));
 
     // The parent is responsible for dismissing the menu (typically by
     // transitioning into another state); GroupAddMenu must NOT auto-close.
@@ -77,7 +79,8 @@ describe("GroupAddMenu", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it("calls onAssignCots (but not onClose) when 'Assign COTS Component' is clicked", () => {
+  it("calls onAssignCots (but not onClose) when 'Assign COTS Component' is clicked", async () => {
+    const user = userEvent.setup();
     const onAssignCots = vi.fn();
     const onClose = vi.fn();
     render(
@@ -90,13 +93,14 @@ describe("GroupAddMenu", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("Assign COTS Component"));
+    await user.click(screen.getByText("Assign COTS Component"));
 
     expect(onAssignCots).toHaveBeenCalledTimes(1);
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it("disables 'Assign Construction Part' when constructionPartsEnabled=false", () => {
+  it("disables 'Assign Construction Part' when constructionPartsEnabled=false", async () => {
+    const user = userEvent.setup();
     const onAssign = vi.fn();
     render(
       <GroupAddMenu
@@ -110,11 +114,12 @@ describe("GroupAddMenu", () => {
     );
 
     // Clicking the disabled item must not fire the callback
-    fireEvent.click(screen.getByText("Assign Construction Part"));
+    await user.click(screen.getByText("Assign Construction Part"));
     expect(onAssign).not.toHaveBeenCalled();
   });
 
-  it("calls onClose when the Escape key is pressed", () => {
+  it("calls onClose when the Escape key is pressed", async () => {
+    const user = userEvent.setup();
     const onClose = vi.fn();
     render(
       <GroupAddMenu
@@ -125,11 +130,12 @@ describe("GroupAddMenu", () => {
         onClose={onClose}
       />,
     );
-    fireEvent.keyDown(window, { key: "Escape", code: "Escape" });
+    await user.keyboard("{Escape}");
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("enables 'Assign Construction Part' when constructionPartsEnabled=true", () => {
+  it("enables 'Assign Construction Part' when constructionPartsEnabled=true", async () => {
+    const user = userEvent.setup();
     const onAssign = vi.fn();
     const onClose = vi.fn();
     render(
@@ -143,7 +149,7 @@ describe("GroupAddMenu", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("Assign Construction Part"));
+    await user.click(screen.getByText("Assign Construction Part"));
     expect(onAssign).toHaveBeenCalledTimes(1);
     expect(onClose).not.toHaveBeenCalled();
   });

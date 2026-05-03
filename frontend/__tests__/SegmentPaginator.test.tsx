@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 
 vi.mock("lucide-react", () => {
@@ -100,36 +101,32 @@ describe("SegmentPaginator", () => {
     });
 
     it("prev arrow calls onChange(current - 1)", async () => {
+      const user = userEvent.setup();
       render(<SegmentPaginator current={2} total={4} onChange={onChange} />);
-      await act(async () => {
-        fireEvent.click(screen.getByLabelText("Previous segment"));
-      });
+      await user.click(screen.getByLabelText("Previous segment"));
       expect(onChange).toHaveBeenCalledWith(1);
     });
 
     it("next arrow calls onChange(current + 1)", async () => {
+      const user = userEvent.setup();
       render(<SegmentPaginator current={1} total={4} onChange={onChange} />);
-      await act(async () => {
-        fireEvent.click(screen.getByLabelText("Next segment"));
-      });
+      await user.click(screen.getByLabelText("Next segment"));
       expect(onChange).toHaveBeenCalledWith(2);
     });
   });
 
   describe("index click", () => {
     it("calls onChange with clicked index", async () => {
+      const user = userEvent.setup();
       render(<SegmentPaginator current={0} total={4} onChange={onChange} />);
-      await act(async () => {
-        fireEvent.click(screen.getByRole("button", { name: "3" }));
-      });
+      await user.click(screen.getByRole("button", { name: "3" }));
       expect(onChange).toHaveBeenCalledWith(3);
     });
 
     it("does not call onChange when clicking current index", async () => {
+      const user = userEvent.setup();
       render(<SegmentPaginator current={2} total={4} onChange={onChange} />);
-      await act(async () => {
-        fireEvent.click(screen.getByRole("button", { name: "2" }));
-      });
+      await user.click(screen.getByRole("button", { name: "2" }));
       expect(onChange).not.toHaveBeenCalled();
     });
   });
@@ -142,15 +139,14 @@ describe("SegmentPaginator", () => {
     });
 
     it("all buttons disabled while onChange is in flight", async () => {
+      const user = userEvent.setup();
       let resolveOnChange: () => void;
       const slowChange = vi.fn<(n: number) => Promise<void>>(
         () => new Promise((r) => { resolveOnChange = r; }),
       );
       render(<SegmentPaginator current={1} total={4} onChange={slowChange} />);
 
-      await act(async () => {
-        fireEvent.click(screen.getByLabelText("Next segment"));
-      });
+      await user.click(screen.getByLabelText("Next segment"));
 
       const buttons = screen.getAllByRole("button");
       buttons.forEach((btn) => expect(btn).toBeDisabled());

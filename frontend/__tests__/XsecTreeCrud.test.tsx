@@ -2,7 +2,8 @@
  * Tests for X-Secs tree CRUD controls in ASB mode (GH#358).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 
 // ── Mocks ──────────────────────────────────────────────────────
@@ -95,12 +96,13 @@ describe("X-Secs tree CRUD controls (ASB mode)", () => {
   });
 
   it("clicking insert point calls handleInsertXsec", async () => {
+    const user = userEvent.setup();
     const mockFetch = vi.fn().mockResolvedValue({ ok: true });
     global.fetch = mockFetch;
 
     renderTree();
     const insertButtons = screen.getAllByText("insert");
-    fireEvent.click(insertButtons[0]);
+    await user.click(insertButtons[0]);
 
     // Insert at index 1 (between x_sec 0 and x_sec 1)
     expect(mockFetch).toHaveBeenCalledWith(
@@ -115,11 +117,12 @@ describe("X-Secs tree CRUD controls (ASB mode)", () => {
   });
 
   it("clicking + x_sec calls handleAddSegment", async () => {
+    const user = userEvent.setup();
     const mockFetch = vi.fn().mockResolvedValue({ ok: true });
     global.fetch = mockFetch;
 
     renderTree();
-    fireEvent.click(screen.getByText("+ x_sec"));
+    await user.click(screen.getByText("+ x_sec"));
 
     // Append at index equal to x_secs.length (3)
     expect(mockFetch).toHaveBeenCalledWith(
@@ -128,7 +131,8 @@ describe("X-Secs tree CRUD controls (ASB mode)", () => {
     );
   });
 
-  it("wing node has delete action", () => {
+  it("wing node has delete action", async () => {
+    const user = userEvent.setup();
     const mockConfirm = vi.fn().mockReturnValue(true);
     global.confirm = mockConfirm;
     const mockFetch = vi.fn().mockResolvedValue({ ok: true });
@@ -141,7 +145,7 @@ describe("X-Secs tree CRUD controls (ASB mode)", () => {
     const wingRow = wingNode.closest("[role='treeitem']")!;
     // The delete button is the last button with stopPropagation in the row
     const deleteBtn = wingRow.querySelector("button:last-of-type")!;
-    fireEvent.click(deleteBtn);
+    await user.click(deleteBtn);
 
     expect(mockConfirm).toHaveBeenCalledWith('Delete wing "TestWing"?');
     expect(mockFetch).toHaveBeenCalledWith(

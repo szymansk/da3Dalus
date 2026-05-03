@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 
 vi.mock("lucide-react", () => ({
@@ -51,30 +52,33 @@ describe("UnsavedChangesModal", () => {
     ).toBeDefined();
   });
 
-  it("Discard button calls confirmDiscard", () => {
+  it("Discard button calls confirmDiscard", async () => {
+    const user = userEvent.setup();
     const ctx = defaultCtx({ pendingHref: "/workbench/analysis" });
     mockUseUnsavedChanges.mockReturnValue(ctx);
     render(<UnsavedChangesModal />);
 
-    fireEvent.click(screen.getByText("Discard"));
+    await user.click(screen.getByText("Discard"));
     expect(ctx.confirmDiscard).toHaveBeenCalledOnce();
   });
 
-  it("Cancel button calls cancelNavigation", () => {
+  it("Cancel button calls cancelNavigation", async () => {
+    const user = userEvent.setup();
     const ctx = defaultCtx({ pendingHref: "/workbench/analysis" });
     mockUseUnsavedChanges.mockReturnValue(ctx);
     render(<UnsavedChangesModal />);
 
-    fireEvent.click(screen.getByText("Cancel"));
+    await user.click(screen.getByText("Cancel"));
     expect(ctx.cancelNavigation).toHaveBeenCalledOnce();
   });
 
-  it("Save & Continue button calls confirmSave", () => {
+  it("Save & Continue button calls confirmSave", async () => {
+    const user = userEvent.setup();
     const ctx = defaultCtx({ pendingHref: "/workbench/analysis" });
     mockUseUnsavedChanges.mockReturnValue(ctx);
     render(<UnsavedChangesModal />);
 
-    fireEvent.click(screen.getByText("Save & Continue"));
+    await user.click(screen.getByText("Save & Continue"));
     expect(ctx.confirmSave).toHaveBeenCalledOnce();
   });
 

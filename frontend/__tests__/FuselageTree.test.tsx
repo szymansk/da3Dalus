@@ -2,7 +2,8 @@
  * Tests for fuselage support in AeroplaneTree + PropertyForm (GH#32).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 
 // ── Mocks ──────────────────────────────────────────────────────
@@ -90,7 +91,8 @@ describe("Fuselage in AeroplaneTree", () => {
     expect(screen.getByText("FUSELAGE")).toBeDefined();
   });
 
-  it("calls selectFuselage on fuselage node click", () => {
+  it("calls selectFuselage on fuselage node click", async () => {
+    const user = userEvent.setup();
     render(
       <AeroplaneTree
         aeroplaneId="aero-1"
@@ -99,11 +101,12 @@ describe("Fuselage in AeroplaneTree", () => {
         aeroplaneName="eHawk"
       />
     );
-    fireEvent.click(screen.getByText("MyFuselage"));
+    await user.click(screen.getByText("MyFuselage"));
     expect(mockSelectFuselage).toHaveBeenCalledWith("MyFuselage");
   });
 
-  it("shows loading when expanded but data not loaded", () => {
+  it("shows loading when expanded but data not loaded", async () => {
+    const user = userEvent.setup();
     // selectedFuselage is set (simulating after click)
     ctxOverrides = { selectedFuselage: "MyFuselage" };
     fuselageReturnValue = { fuselage: null };
@@ -118,11 +121,12 @@ describe("Fuselage in AeroplaneTree", () => {
     );
 
     // Click to expand — toggles expandedSet via TreeRow onToggle
-    fireEvent.click(screen.getByText("MyFuselage"));
+    await user.click(screen.getByText("MyFuselage"));
     expect(screen.getByText(/loading/i)).toBeDefined();
   });
 
-  it("shows xsec nodes with a/b/n details when data loaded", () => {
+  it("shows xsec nodes with a/b/n details when data loaded", async () => {
+    const user = userEvent.setup();
     ctxOverrides = { selectedFuselage: "TestFuselage" };
     fuselageReturnValue = { fuselage: mockFuselageData };
 
@@ -136,7 +140,7 @@ describe("Fuselage in AeroplaneTree", () => {
     );
 
     // Click to expand
-    fireEvent.click(screen.getByText("TestFuselage"));
+    await user.click(screen.getByText("TestFuselage"));
 
     // 3 xsec nodes visible
     expect(screen.getByText("xsec 0")).toBeDefined();
@@ -147,7 +151,8 @@ describe("Fuselage in AeroplaneTree", () => {
     expect(screen.getByText("a=50.0mm b=40.0mm n=2.3")).toBeDefined();
   });
 
-  it("calls selectFuselageXsec when clicking an xsec", () => {
+  it("calls selectFuselageXsec when clicking an xsec", async () => {
+    const user = userEvent.setup();
     ctxOverrides = { selectedFuselage: "TestFuselage" };
     fuselageReturnValue = { fuselage: mockFuselageData };
 
@@ -160,13 +165,14 @@ describe("Fuselage in AeroplaneTree", () => {
       />
     );
 
-    fireEvent.click(screen.getByText("TestFuselage"));
-    fireEvent.click(screen.getByText("xsec 1"));
+    await user.click(screen.getByText("TestFuselage"));
+    await user.click(screen.getByText("xsec 1"));
 
     expect(mockSelectFuselageXsec).toHaveBeenCalledWith(1);
   });
 
-  it("highlights selected xsec", () => {
+  it("highlights selected xsec", async () => {
+    const user = userEvent.setup();
     ctxOverrides = {
       selectedFuselage: "TestFuselage",
       selectedFuselageXsecIndex: 1,
@@ -182,7 +188,7 @@ describe("Fuselage in AeroplaneTree", () => {
       />
     );
 
-    fireEvent.click(screen.getByText("TestFuselage"));
+    await user.click(screen.getByText("TestFuselage"));
 
     // xsec 1 should have selected styling (bg-sidebar-accent + font-semibold)
     const xsec1 = screen.getByText("xsec 1").closest("div");
