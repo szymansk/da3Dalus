@@ -736,7 +736,7 @@ def generate_default_set_for_aircraft(
             replace_existing=replace_existing,
         )
 
-        db.commit()
+        db.flush()
         db.refresh(opset)
         for point in stored_points:
             db.refresh(point)
@@ -755,10 +755,8 @@ def generate_default_set_for_aircraft(
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         raise InternalError(f"Database error: {exc}")
     except Exception as exc:
-        db.rollback()
         raise InternalError(f"Operating-point generation error: {exc}")
 
 

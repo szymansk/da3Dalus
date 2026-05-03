@@ -45,13 +45,12 @@ def upsert_mission_objectives(
             for key, value in flat.items():
                 setattr(obj, key, value)
 
-        db.commit()
+        db.flush()
         db.refresh(obj)
         return _model_to_schema(obj)
     except NotFoundError:
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in upsert_mission_objectives: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc
 
@@ -63,11 +62,10 @@ def delete_mission_objectives(db: Session, aeroplane_uuid) -> None:
         if obj is None:
             raise NotFoundError(entity="MissionObjectives", resource_id=aeroplane_uuid)
         db.delete(obj)
-        db.commit()
+        db.flush()
     except NotFoundError:
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in delete_mission_objectives: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc
 

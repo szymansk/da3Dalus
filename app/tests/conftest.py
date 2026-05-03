@@ -67,6 +67,7 @@ def client_and_db() -> Tuple[TestClient, sessionmaker]:
     _seed_session = TestingSessionLocal()
     try:
         seed_default_types(_seed_session)
+        _seed_session.commit()
     finally:
         _seed_session.close()
 

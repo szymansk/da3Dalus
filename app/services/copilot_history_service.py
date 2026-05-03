@@ -33,14 +33,24 @@ def _msg_to_schema(msg: CopilotMessageModel) -> CopilotMessageRead:
 
 def get_history(db: Session, aeroplane_uuid) -> CopilotHistory:
     aeroplane = _get_aeroplane(db, aeroplane_uuid)
-    messages = [_msg_to_schema(m) for m in aeroplane.copilot_messages]
+    messages_query = (
+        db.query(CopilotMessageModel)
+        .filter(CopilotMessageModel.aeroplane_id == aeroplane.id)
+        .order_by(CopilotMessageModel.sort_index)
+        .all()
+    )
+    messages = [_msg_to_schema(m) for m in messages_query]
     return CopilotHistory(messages=messages)
 
 
 def append_message(db: Session, aeroplane_uuid, data: CopilotMessageWrite) -> CopilotMessageRead:
     try:
         aeroplane = _get_aeroplane(db, aeroplane_uuid)
-        next_index = len(aeroplane.copilot_messages)
+        next_index = (
+            db.query(CopilotMessageModel)
+            .filter(CopilotMessageModel.aeroplane_id == aeroplane.id)
+            .count()
+        )
         msg = CopilotMessageModel(
             aeroplane_id=aeroplane.id,
             sort_index=next_index,
@@ -51,13 +61,12 @@ def append_message(db: Session, aeroplane_uuid, data: CopilotMessageWrite) -> Co
             parent_id=data.parent_id,
         )
         db.add(msg)
-        db.commit()
+        db.flush()
         db.refresh(msg)
         return _msg_to_schema(msg)
     except NotFoundError:
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in append_message: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc
 
@@ -67,11 +76,10 @@ def clear_history(db: Session, aeroplane_uuid) -> None:
         aeroplane = _get_aeroplane(db, aeroplane_uuid)
         for msg in list(aeroplane.copilot_messages):  # list() required: deleting during iteration
             db.delete(msg)
-        db.commit()
+        db.flush()
     except NotFoundError:
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in clear_history: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc
 
@@ -83,10 +91,9 @@ def delete_message(db: Session, aeroplane_uuid, message_id: int) -> None:
         if msg is None:
             raise NotFoundError(entity="CopilotMessage", resource_id=message_id)
         db.delete(msg)
-        db.commit()
+        db.flush()
     except NotFoundError:
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in delete_message: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc

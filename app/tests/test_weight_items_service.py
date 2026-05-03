@@ -141,7 +141,7 @@ class TestCreateWeightItem:
         _, SessionLocal = client_and_db
         with SessionLocal() as db:
             aeroplane = make_aeroplane(db)
-            with patch.object(db, "commit", side_effect=SQLAlchemyError("boom")):
+            with patch.object(db, "flush", side_effect=SQLAlchemyError("boom")):
                 with pytest.raises(InternalError):
                     svc.create_weight_item(db, aeroplane.uuid, _make_item())
 
@@ -222,7 +222,7 @@ class TestUpdateWeightItem:
         with SessionLocal() as db:
             aeroplane = make_aeroplane(db)
             created = svc.create_weight_item(db, aeroplane.uuid, _make_item())
-            with patch.object(db, "commit", side_effect=SQLAlchemyError("boom")):
+            with patch.object(db, "flush", side_effect=SQLAlchemyError("boom")):
                 with pytest.raises(InternalError):
                     svc.update_weight_item(db, aeroplane.uuid, created.id, _make_item(name="new"))
 
@@ -260,7 +260,7 @@ class TestDeleteWeightItem:
         with SessionLocal() as db:
             aeroplane = make_aeroplane(db)
             created = svc.create_weight_item(db, aeroplane.uuid, _make_item())
-            with patch.object(db, "commit", side_effect=SQLAlchemyError("boom")):
+            with patch.object(db, "flush", side_effect=SQLAlchemyError("boom")):
                 with pytest.raises(InternalError):
                     svc.delete_weight_item(db, aeroplane.uuid, created.id)
 

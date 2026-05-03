@@ -37,7 +37,12 @@ def _item_to_schema(item: WeightItemModel) -> WeightItemRead:
 
 def list_weight_items(db: Session, aeroplane_uuid) -> WeightSummary:
     aeroplane = _get_aeroplane(db, aeroplane_uuid)
-    items = [_item_to_schema(i) for i in aeroplane.weight_items]
+    rows = (
+        db.query(WeightItemModel)
+        .filter(WeightItemModel.aeroplane_id == aeroplane.id)
+        .all()
+    )
+    items = [_item_to_schema(i) for i in rows]
     total = sum(i.mass_kg for i in items)
     return WeightSummary(items=items, total_mass_kg=round(total, 6))
 
@@ -49,20 +54,23 @@ def create_weight_item(
         aeroplane = _get_aeroplane(db, aeroplane_uuid)
         item = WeightItemModel(aeroplane_id=aeroplane.id, **data.model_dump())
         db.add(item)
-        db.commit()
+        db.flush()
         db.refresh(item)
         return _item_to_schema(item)
     except NotFoundError:
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in create_weight_item: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc
 
 
 def get_weight_item(db: Session, aeroplane_uuid, item_id: int) -> WeightItemRead:
     aeroplane = _get_aeroplane(db, aeroplane_uuid)
-    item = next((i for i in aeroplane.weight_items if i.id == item_id), None)
+    item = (
+        db.query(WeightItemModel)
+        .filter(WeightItemModel.aeroplane_id == aeroplane.id, WeightItemModel.id == item_id)
+        .first()
+    )
     if item is None:
         raise NotFoundError(entity="WeightItem", resource_id=item_id)
     return _item_to_schema(item)
@@ -73,18 +81,21 @@ def update_weight_item(
 ) -> WeightItemRead:
     try:
         aeroplane = _get_aeroplane(db, aeroplane_uuid)
-        item = next((i for i in aeroplane.weight_items if i.id == item_id), None)
+        item = (
+            db.query(WeightItemModel)
+            .filter(WeightItemModel.aeroplane_id == aeroplane.id, WeightItemModel.id == item_id)
+            .first()
+        )
         if item is None:
             raise NotFoundError(entity="WeightItem", resource_id=item_id)
         for key, value in data.model_dump().items():
             setattr(item, key, value)
-        db.commit()
+        db.flush()
         db.refresh(item)
         return _item_to_schema(item)
     except NotFoundError:
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in update_weight_item: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc
 
@@ -92,14 +103,17 @@ def update_weight_item(
 def delete_weight_item(db: Session, aeroplane_uuid, item_id: int) -> None:
     try:
         aeroplane = _get_aeroplane(db, aeroplane_uuid)
-        item = next((i for i in aeroplane.weight_items if i.id == item_id), None)
+        item = (
+            db.query(WeightItemModel)
+            .filter(WeightItemModel.aeroplane_id == aeroplane.id, WeightItemModel.id == item_id)
+            .first()
+        )
         if item is None:
             raise NotFoundError(entity="WeightItem", resource_id=item_id)
         db.delete(item)
-        db.commit()
+        db.flush()
     except NotFoundError:
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in delete_weight_item: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc

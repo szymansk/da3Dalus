@@ -200,6 +200,7 @@ class TestAeroplaneTessellationEndpoint:
             session, aeroplane_internal_id,
             "wing", "tail", "hash_tail", tail_tess,
         )
+        session.commit()
         session.close()
 
         resp = client.get(f"/aeroplanes/{aeroplane_uuid}/tessellation")
@@ -249,6 +250,7 @@ class TestAeroplaneTessellationEndpoint:
             session, aeroplane_internal_id,
             component_type="wing", component_name="w1",
         )
+        session.commit()
         session.close()
 
         resp = client.get(f"/aeroplanes/{aeroplane_uuid}/tessellation")

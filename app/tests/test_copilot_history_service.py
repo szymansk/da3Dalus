@@ -165,7 +165,7 @@ class TestAppendMessage:
         _, SessionLocal = client_and_db
         with SessionLocal() as db:
             aeroplane = make_aeroplane(db)
-            with patch.object(db, "commit", side_effect=SQLAlchemyError("boom")):
+            with patch.object(db, "flush", side_effect=SQLAlchemyError("boom")):
                 with pytest.raises(InternalError):
                     svc.append_message(db, aeroplane.uuid, _make_msg_write())
 
@@ -207,7 +207,7 @@ class TestClearHistory:
         with SessionLocal() as db:
             aeroplane = make_aeroplane(db)
             svc.append_message(db, aeroplane.uuid, _make_msg_write(content="x"))
-            with patch.object(db, "commit", side_effect=SQLAlchemyError("boom")):
+            with patch.object(db, "flush", side_effect=SQLAlchemyError("boom")):
                 with pytest.raises(InternalError):
                     svc.clear_history(db, aeroplane.uuid)
 
@@ -249,7 +249,7 @@ class TestDeleteMessage:
         with SessionLocal() as db:
             aeroplane = make_aeroplane(db)
             msg = svc.append_message(db, aeroplane.uuid, _make_msg_write(content="x"))
-            with patch.object(db, "commit", side_effect=SQLAlchemyError("boom")):
+            with patch.object(db, "flush", side_effect=SQLAlchemyError("boom")):
                 with pytest.raises(InternalError):
                     svc.delete_message(db, aeroplane.uuid, msg.id)
 

@@ -170,15 +170,20 @@ class TestGetAeroplane:
 
 class TestGetVersion:
     def test_found(self):
-        v1 = _make_mock_version(version_id=1)
         v2 = _make_mock_version(version_id=2)
-        ap = _make_mock_aeroplane(design_versions=[v1, v2])
-        assert _get_version(ap, 2) is v2
+        ap = _make_mock_aeroplane(design_versions=[])
+        ap.id = 42
+        mock_db = MagicMock()
+        mock_db.query.return_value.filter.return_value.first.return_value = v2
+        assert _get_version(mock_db, ap, 2) is v2
 
     def test_not_found_raises(self):
         ap = _make_mock_aeroplane(design_versions=[])
+        ap.id = 42
+        mock_db = MagicMock()
+        mock_db.query.return_value.filter.return_value.first.return_value = None
         with pytest.raises(NotFoundError) as exc_info:
-            _get_version(ap, 999)
+            _get_version(mock_db, ap, 999)
         assert "DesignVersion" in str(exc_info.value)
 
 
@@ -324,7 +329,13 @@ class TestListVersions:
         v1 = _make_mock_version(version_id=1, label="v1", created_at=now)
         v2 = _make_mock_version(version_id=2, label="v2", created_at=now)
         ap = _make_mock_aeroplane(design_versions=[v1, v2])
-        mock_db.query.return_value.filter.return_value.first.return_value = ap
+
+        # First query returns aeroplane, second returns version rows
+        aeroplane_chain = MagicMock()
+        aeroplane_chain.filter.return_value.first.return_value = ap
+        version_chain = MagicMock()
+        version_chain.filter.return_value.all.return_value = [v1, v2]
+        mock_db.query.side_effect = [aeroplane_chain, version_chain]
 
         result = list_versions(mock_db, ap.uuid)
         assert len(result) == 2
@@ -335,7 +346,12 @@ class TestListVersions:
     def test_empty_list(self):
         mock_db = MagicMock()
         ap = _make_mock_aeroplane(design_versions=[])
-        mock_db.query.return_value.filter.return_value.first.return_value = ap
+
+        aeroplane_chain = MagicMock()
+        aeroplane_chain.filter.return_value.first.return_value = ap
+        version_chain = MagicMock()
+        version_chain.filter.return_value.all.return_value = []
+        mock_db.query.side_effect = [aeroplane_chain, version_chain]
 
         result = list_versions(mock_db, ap.uuid)
         assert result == []
@@ -359,7 +375,7 @@ class TestCreateVersion:
         )
         mock_db.query.return_value.filter.return_value.first.return_value = ap
 
-        # After commit + refresh, the version object should have an id and created_at
+        # After flush + refresh, the version object should have an id and created_at
         def fake_refresh(obj):
             obj.id = 42
             obj.created_at = now
@@ -375,7 +391,7 @@ class TestCreateVersion:
         assert result.label == "snapshot-1"
         assert result.description == "first version"
         mock_db.add.assert_called_once()
-        mock_db.commit.assert_called_once()
+        mock_db.flush.assert_called_once()
 
     def test_aeroplane_not_found(self):
         mock_db = MagicMock()
@@ -384,18 +400,17 @@ class TestCreateVersion:
         with pytest.raises(NotFoundError):
             create_version(mock_db, uuid.uuid4(), data)
 
-    def test_db_error_rolls_back(self):
+    def test_db_error_raises_internal_error(self):
         mock_db = MagicMock()
         ap = _make_mock_aeroplane(
             wings=[], fuselages=[], weight_items=[], mission_objectives=None
         )
         mock_db.query.return_value.filter.return_value.first.return_value = ap
-        mock_db.commit.side_effect = SQLAlchemyError("disk full")
+        mock_db.flush.side_effect = SQLAlchemyError("disk full")
 
         data = DesignVersionCreate(label="boom")
         with pytest.raises(InternalError, match="Database error"):
             create_version(mock_db, ap.uuid, data)
-        mock_db.rollback.assert_called_once()
 
 
 # ── get_version (CRUD) ──────────────────────────────────────────────────
@@ -408,7 +423,12 @@ class TestGetVersionCrud:
         snap = {"name": "plane", "wings": []}
         ver = _make_mock_version(version_id=5, label="v5", snapshot=snap, created_at=now)
         ap = _make_mock_aeroplane(design_versions=[ver])
-        mock_db.query.return_value.filter.return_value.first.return_value = ap
+
+        aeroplane_chain = MagicMock()
+        aeroplane_chain.filter.return_value.first.return_value = ap
+        version_chain = MagicMock()
+        version_chain.filter.return_value.first.return_value = ver
+        mock_db.query.side_effect = [aeroplane_chain, version_chain]
 
         result = get_version(mock_db, ap.uuid, 5)
         assert isinstance(result, DesignVersionRead)
@@ -424,7 +444,13 @@ class TestGetVersionCrud:
     def test_version_not_found(self):
         mock_db = MagicMock()
         ap = _make_mock_aeroplane(design_versions=[])
-        mock_db.query.return_value.filter.return_value.first.return_value = ap
+
+        aeroplane_chain = MagicMock()
+        aeroplane_chain.filter.return_value.first.return_value = ap
+        version_chain = MagicMock()
+        version_chain.filter.return_value.first.return_value = None
+        mock_db.query.side_effect = [aeroplane_chain, version_chain]
+
         with pytest.raises(NotFoundError):
             get_version(mock_db, ap.uuid, 999)
 
@@ -437,11 +463,16 @@ class TestDeleteVersion:
         mock_db = MagicMock()
         ver = _make_mock_version(version_id=7)
         ap = _make_mock_aeroplane(design_versions=[ver])
-        mock_db.query.return_value.filter.return_value.first.return_value = ap
+
+        aeroplane_chain = MagicMock()
+        aeroplane_chain.filter.return_value.first.return_value = ap
+        version_chain = MagicMock()
+        version_chain.filter.return_value.first.return_value = ver
+        mock_db.query.side_effect = [aeroplane_chain, version_chain]
 
         delete_version(mock_db, ap.uuid, 7)
         mock_db.delete.assert_called_once_with(ver)
-        mock_db.commit.assert_called_once()
+        mock_db.flush.assert_called_once()
 
     def test_aeroplane_not_found(self):
         mock_db = MagicMock()
@@ -452,20 +483,30 @@ class TestDeleteVersion:
     def test_version_not_found(self):
         mock_db = MagicMock()
         ap = _make_mock_aeroplane(design_versions=[])
-        mock_db.query.return_value.filter.return_value.first.return_value = ap
+
+        aeroplane_chain = MagicMock()
+        aeroplane_chain.filter.return_value.first.return_value = ap
+        version_chain = MagicMock()
+        version_chain.filter.return_value.first.return_value = None
+        mock_db.query.side_effect = [aeroplane_chain, version_chain]
+
         with pytest.raises(NotFoundError):
             delete_version(mock_db, ap.uuid, 1)
 
-    def test_db_error_rolls_back(self):
+    def test_db_error_raises_internal_error(self):
         mock_db = MagicMock()
         ver = _make_mock_version(version_id=7)
         ap = _make_mock_aeroplane(design_versions=[ver])
-        mock_db.query.return_value.filter.return_value.first.return_value = ap
-        mock_db.commit.side_effect = SQLAlchemyError("lock timeout")
+
+        aeroplane_chain = MagicMock()
+        aeroplane_chain.filter.return_value.first.return_value = ap
+        version_chain = MagicMock()
+        version_chain.filter.return_value.first.return_value = ver
+        mock_db.query.side_effect = [aeroplane_chain, version_chain]
+        mock_db.flush.side_effect = SQLAlchemyError("lock timeout")
 
         with pytest.raises(InternalError, match="Database error"):
             delete_version(mock_db, ap.uuid, 7)
-        mock_db.rollback.assert_called_once()
 
 
 # ── diff_versions ──────────────────────────────────────────────────────
@@ -478,7 +519,14 @@ class TestDiffVersions:
         v1 = _make_mock_version(version_id=1, snapshot=snap)
         v2 = _make_mock_version(version_id=2, snapshot=dict(snap))  # copy
         ap = _make_mock_aeroplane(design_versions=[v1, v2])
-        mock_db.query.return_value.filter.return_value.first.return_value = ap
+
+        aeroplane_chain = MagicMock()
+        aeroplane_chain.filter.return_value.first.return_value = ap
+        ver_chain_a = MagicMock()
+        ver_chain_a.filter.return_value.first.return_value = v1
+        ver_chain_b = MagicMock()
+        ver_chain_b.filter.return_value.first.return_value = v2
+        mock_db.query.side_effect = [aeroplane_chain, ver_chain_a, ver_chain_b]
 
         result = diff_versions(mock_db, ap.uuid, 1, 2)
         assert isinstance(result, DesignVersionDiff)
@@ -493,7 +541,14 @@ class TestDiffVersions:
         v1 = _make_mock_version(version_id=1, snapshot=snap_a)
         v2 = _make_mock_version(version_id=2, snapshot=snap_b)
         ap = _make_mock_aeroplane(design_versions=[v1, v2])
-        mock_db.query.return_value.filter.return_value.first.return_value = ap
+
+        aeroplane_chain = MagicMock()
+        aeroplane_chain.filter.return_value.first.return_value = ap
+        ver_chain_a = MagicMock()
+        ver_chain_a.filter.return_value.first.return_value = v1
+        ver_chain_b = MagicMock()
+        ver_chain_b.filter.return_value.first.return_value = v2
+        mock_db.query.side_effect = [aeroplane_chain, ver_chain_a, ver_chain_b]
 
         result = diff_versions(mock_db, ap.uuid, 1, 2)
         assert len(result.changes) == 1
@@ -504,7 +559,15 @@ class TestDiffVersions:
         mock_db = MagicMock()
         v1 = _make_mock_version(version_id=1)
         ap = _make_mock_aeroplane(design_versions=[v1])
-        mock_db.query.return_value.filter.return_value.first.return_value = ap
+
+        aeroplane_chain = MagicMock()
+        aeroplane_chain.filter.return_value.first.return_value = ap
+        ver_chain_a = MagicMock()
+        ver_chain_a.filter.return_value.first.return_value = v1
+        ver_chain_b = MagicMock()
+        ver_chain_b.filter.return_value.first.return_value = None
+        mock_db.query.side_effect = [aeroplane_chain, ver_chain_a, ver_chain_b]
+
         with pytest.raises(NotFoundError):
             diff_versions(mock_db, ap.uuid, 1, 999)
 

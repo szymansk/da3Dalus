@@ -204,13 +204,12 @@ def add_node(
 
         node = ComponentTreeNodeModel(aeroplane_id=aeroplane_id, **payload)
         db.add(node)
-        db.commit()
+        db.flush()
         db.refresh(node)
         return _to_schema(node)
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in add_node: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc
 
@@ -229,13 +228,12 @@ def update_node(
 
         for key, value in data.model_dump().items():
             setattr(node, key, value)
-        db.commit()
+        db.flush()
         db.refresh(node)
         return _to_schema(node)
     except NotFoundError:
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in update_node: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc
 
@@ -259,11 +257,10 @@ def delete_node(db: Session, aeroplane_id: str, node_id: int) -> None:
         # Delete children recursively
         _delete_subtree(db, aeroplane_id, node_id)
         db.delete(node)
-        db.commit()
+        db.flush()
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in delete_node: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc
 
@@ -304,13 +301,12 @@ def move_node(
 
         node.parent_id = new_parent_id
         node.sort_index = sort_index
-        db.commit()
+        db.flush()
         db.refresh(node)
         return _to_schema(node)
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as exc:
-        db.rollback()
         logger.error("DB error in move_node: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc
 

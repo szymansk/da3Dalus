@@ -128,7 +128,7 @@ class TestCreateProfile:
     def test_db_error_raises_internal_error(self, client_and_db):
         _, SessionLocal = client_and_db
         with SessionLocal() as db:
-            with patch.object(db, "commit", side_effect=SQLAlchemyError("boom")):
+            with patch.object(db, "flush", side_effect=SQLAlchemyError("boom")):
                 with pytest.raises(InternalError):
                     svc.create_profile(db, _make_profile_payload(name="db_fail"))
 
@@ -262,7 +262,7 @@ class TestUpdateProfile:
         _, SessionLocal = client_and_db
         with SessionLocal() as db:
             created = svc.create_profile(db, _make_profile_payload(name="db_fail_upd"))
-            with patch.object(db, "commit", side_effect=SQLAlchemyError("boom")):
+            with patch.object(db, "flush", side_effect=SQLAlchemyError("boom")):
                 with pytest.raises(InternalError):
                     svc.update_profile(db, created.id, _make_update_payload(name="new_name_fail"))
 
@@ -367,7 +367,7 @@ class TestAssignProfileToAircraft:
         with SessionLocal() as db:
             aeroplane = make_aeroplane(db)
             profile = svc.create_profile(db, _make_profile_payload(name="assign_db_fail"))
-            with patch.object(db, "commit", side_effect=SQLAlchemyError("boom")):
+            with patch.object(db, "flush", side_effect=SQLAlchemyError("boom")):
                 with pytest.raises(InternalError):
                     svc.assign_profile_to_aircraft(db, aeroplane.uuid, profile.id)
 
@@ -406,7 +406,7 @@ class TestDetachProfileFromAircraft:
         _, SessionLocal = client_and_db
         with SessionLocal() as db:
             aeroplane = make_aeroplane(db)
-            with patch.object(db, "commit", side_effect=SQLAlchemyError("boom")):
+            with patch.object(db, "flush", side_effect=SQLAlchemyError("boom")):
                 with pytest.raises(InternalError):
                     svc.detach_profile_from_aircraft(db, aeroplane.uuid)
 
