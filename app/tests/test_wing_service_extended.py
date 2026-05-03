@@ -1371,3 +1371,59 @@ class TestWingEndpointUnitsConsistency:
         assert abs(spare.spare_vector[0] - 0.0) < 1e-9
         assert abs(spare.spare_vector[1] - 0.001) < 1e-9
         assert abs(spare.spare_vector[2] - 0.0) < 1e-9
+
+
+class TestSpareDbStorageUnitsMm:
+    """Verify that spare_origin/spare_vector are stored in mm in the DB (gh-402)."""
+
+    def test_recompute_stores_origin_vector_in_mm(self, db):
+        """After _recompute_spare_vectors, DB spare_origin/spare_vector must be in mm."""
+        plane = make_aeroplane(db, name=f"db-units-{uuid.uuid4().hex[:8]}")
+        wing = WingModel(name="main", symmetric=True, design_model="wc", aeroplane_id=plane.id)
+
+        xsec0 = WingXSecModel(
+            sort_index=0,
+            xyz_le=[0.0, 0.0, 0.0],
+            chord=0.2,
+            twist=0.0,
+            airfoil=airfoil_path,
+        )
+        detail = WingXSecDetailModel(x_sec_type="root")
+        spare = WingXSecSpareModel(
+            sort_index=0,
+            spare_support_dimension_width=4.42,
+            spare_support_dimension_height=6.0,
+            spare_position_factor=0.25,
+            spare_length=70.0,
+            spare_start=5.0,
+            spare_mode="standard",
+            spare_vector=[0.0, 0.0, 0.0],
+            spare_origin=[0.0, 0.0, 0.0],
+        )
+        detail.spares.append(spare)
+        xsec0.detail = detail
+
+        xsec1 = WingXSecModel(
+            sort_index=1,
+            xyz_le=[0.0, 0.5, 0.0],
+            chord=0.15,
+            twist=0.0,
+            airfoil=airfoil_path,
+        )
+
+        wing.x_secs.append(xsec0)
+        wing.x_secs.append(xsec1)
+        db.add(wing)
+        db.commit()
+
+        wing_service._recompute_spare_vectors(wing)
+        db.commit()
+
+        db.refresh(spare)
+        # At scale=1.0, position_factor=0.25 on chord=0.2m gives origin.x ≈ 0.05m
+        # After scaling to mm, DB should store ≈ 50.0 mm
+        assert spare.spare_origin is not None
+        assert spare.spare_origin[0] > 1.0, (
+            f"spare_origin[0]={spare.spare_origin[0]} looks like meters, expected mm (>1.0)"
+        )
+        assert spare.spare_vector is not None

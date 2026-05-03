@@ -833,27 +833,29 @@ def delete_cross_section(
 
 def _sync_spares_for_xsec(db_xsec, segment) -> None:
     """Copy computed spare_vector/spare_origin from a WingConfiguration segment
-    back to the corresponding DB cross-section's spar records."""
+    back to the corresponding DB cross-section's spar records.
+
+    The WingConfiguration computes origin/vector in meters (built with scale=1.0).
+    Values are scaled to mm for consistent DB storage (gh-402).
+    """
     for spare_idx, spare in enumerate(segment.spare_list or []):
         if spare_idx >= len(db_xsec.detail.spares):
             break
         db_spare = db_xsec.detail.spares[spare_idx]
         if spare.spare_vector is not None:
             vec = spare.spare_vector.toTuple() if hasattr(spare.spare_vector, "toTuple") else spare.spare_vector
-            db_spare.spare_vector = [float(v) for v in vec]
+            db_spare.spare_vector = [float(v) * _M_TO_MM for v in vec]
         if spare.spare_origin is not None:
             orig = spare.spare_origin.toTuple() if hasattr(spare.spare_origin, "toTuple") else spare.spare_origin
-            db_spare.spare_origin = [float(v) for v in orig]
+            db_spare.spare_origin = [float(v) * _M_TO_MM for v in orig]
 
 
 def _recompute_spare_vectors(wing: WingModel) -> None:
     """Rebuild WingConfiguration to compute spare_vector/spare_origin for all spars,
-    then persist the computed values back to the DB spar records.
+    then persist the computed values back to the DB spar records in mm.
 
-    Uses ``scale=1.0`` because the DB stores metres — the computed origin
-    coordinates stay in metres.  The CAD call-site rebuilds with
-    ``scale=1000.0``; ``_resolve_spare_vectors_and_origins`` forces
-    recomputation so the origin always matches the active geometry scale.
+    Uses ``scale=1.0`` to compute in metres, then ``_sync_spares_for_xsec``
+    converts to mm for consistent DB storage (gh-402).
     """
     try:
         wing_config = wing_model_to_wing_config(wing, scale=1.0)
