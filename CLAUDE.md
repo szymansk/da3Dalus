@@ -211,7 +211,12 @@ Details in `.claude/rules/python-conventions.md`.
   schemas and topology classes use **millimetres**. The database and
   Aerosandbox integration use **metres**. Conversion happens in the
   converters via `scale=0.001` (mm→m) and `scale=1000.0` (m→mm).
-  Always be explicit about which unit context you're in.
+  **Exception:** `wing_xsec_spares` stores all 6 dimensional fields
+  in **mm** (gh-402): width, height, length, start, spare_origin.
+  `spare_vector` is a dimensionless unit direction vector (no unit).
+  The service layer (`_convert_spare_to_meters`) converts to metres
+  for API responses. Always be explicit about which unit context
+  you're in.
 - **Transaction management** is handled by the `get_db()` dependency
   in `app/db/session.py` — it commits on success and rollbacks on
   exception. Services must not call `db.begin()`.
