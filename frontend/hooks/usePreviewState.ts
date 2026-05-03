@@ -30,11 +30,23 @@ export function usePreviewState(aeroplaneId: string | null) {
     abortControllers.current = {};
   }, [aeroplaneId]);
 
-  // Fix #3: Memoize visible parts by comparing data references, not array identity
+  // gh-400: Stabilize visibleParts reference to prevent unnecessary CadViewer
+  // teardown/rebuild. Only produce a new array when the actual data refs change,
+  // not on every previews state mutation (loading/error toggles).
+  const prevPartsRef = useRef<Record<string, unknown>[]>([]);
   const visibleParts = useMemo((): Record<string, unknown>[] => {
-    return Object.values(previews)
+    const next = Object.values(previews)
       .filter((p) => p.visible && p.data)
       .map((p) => p.data!);
+    const prev = prevPartsRef.current;
+    if (
+      next.length === prev.length &&
+      next.every((d, i) => d === prev[i])
+    ) {
+      return prev;
+    }
+    prevPartsRef.current = next;
+    return next;
   }, [previews]);
 
   const isAnyLoading = useMemo(() => Object.values(previews).some((p) => p.loading), [previews]);
