@@ -5,7 +5,8 @@
  * Name is required; file is required; material is optional.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 
 vi.mock("lucide-react", () => {
@@ -88,6 +89,7 @@ describe("ConstructionPartUploadDialog", () => {
   });
 
   it("posts FormData with name + file on submit", async () => {
+    const user = userEvent.setup();
     const onSaved = vi.fn();
     const onClose = vi.fn();
     const { container } = render(
@@ -100,14 +102,14 @@ describe("ConstructionPartUploadDialog", () => {
     );
 
     const nameInput = container.querySelector('input[type="text"]') as HTMLInputElement;
-    fireEvent.change(nameInput, { target: { value: "My Part" } });
+    await user.clear(nameInput);
+    await user.type(nameInput, "My Part");
 
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File([new Uint8Array([1, 2, 3])], "part.stl", { type: "application/octet-stream" });
-    Object.defineProperty(fileInput, "files", { value: [file] });
-    fireEvent.change(fileInput);
+    await user.upload(fileInput, file);
 
-    fireEvent.click(screen.getByText(/Upload/i, { selector: "button" }));
+    await user.click(screen.getByText(/Upload/i, { selector: "button" }));
 
     // FormData equality is tricky — check positional args + instance type.
     expect(mockUpload).toHaveBeenCalled();
@@ -115,7 +117,8 @@ describe("ConstructionPartUploadDialog", () => {
     expect(mockUpload.mock.calls[0][1]).toBeInstanceOf(FormData);
   });
 
-  it("auto-fills the Name field from the filename (without suffix) when Name is empty", () => {
+  it("auto-fills the Name field from the filename (without suffix) when Name is empty", async () => {
+    const user = userEvent.setup();
     const { container } = render(
       <ConstructionPartUploadDialog
         open={true}
@@ -131,13 +134,13 @@ describe("ConstructionPartUploadDialog", () => {
     expect(nameInput.value).toBe("");
 
     const file = new File([new Uint8Array([1, 2, 3])], "Bulkhead-A.step", { type: "application/octet-stream" });
-    Object.defineProperty(fileInput, "files", { value: [file] });
-    fireEvent.change(fileInput);
+    await user.upload(fileInput, file);
 
     expect(nameInput.value).toBe("Bulkhead-A");
   });
 
-  it("auto-fill strips a double extension only to the last suffix", () => {
+  it("auto-fill strips a double extension only to the last suffix", async () => {
+    const user = userEvent.setup();
     const { container } = render(
       <ConstructionPartUploadDialog
         open={true}
@@ -150,13 +153,13 @@ describe("ConstructionPartUploadDialog", () => {
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
 
     const file = new File([new Uint8Array([1])], "part.v2.stl", { type: "application/octet-stream" });
-    Object.defineProperty(fileInput, "files", { value: [file] });
-    fireEvent.change(fileInput);
+    await user.upload(fileInput, file);
 
     expect(nameInput.value).toBe("part.v2");
   });
 
-  it("does NOT overwrite the Name field when the user has already typed something", () => {
+  it("does NOT overwrite the Name field when the user has already typed something", async () => {
+    const user = userEvent.setup();
     const { container } = render(
       <ConstructionPartUploadDialog
         open={true}
@@ -169,18 +172,19 @@ describe("ConstructionPartUploadDialog", () => {
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
 
     // User types a custom name first.
-    fireEvent.change(nameInput, { target: { value: "MyCustomName" } });
+    await user.clear(nameInput);
+    await user.type(nameInput, "MyCustomName");
     expect(nameInput.value).toBe("MyCustomName");
 
     // Then picks a file — the custom name must be preserved.
     const file = new File([new Uint8Array([1])], "some-file.step", { type: "application/octet-stream" });
-    Object.defineProperty(fileInput, "files", { value: [file] });
-    fireEvent.change(fileInput);
+    await user.upload(fileInput, file);
 
     expect(nameInput.value).toBe("MyCustomName");
   });
 
-  it("auto-fill re-engages if the user clears the Name and then picks another file", () => {
+  it("auto-fill re-engages if the user clears the Name and then picks another file", async () => {
+    const user = userEvent.setup();
     const { container } = render(
       <ConstructionPartUploadDialog
         open={true}
@@ -194,19 +198,18 @@ describe("ConstructionPartUploadDialog", () => {
 
     // First file -> auto-fill "First".
     const f1 = new File([new Uint8Array([1])], "First.step");
-    Object.defineProperty(fileInput, "files", { value: [f1], configurable: true });
-    fireEvent.change(fileInput);
+    await user.upload(fileInput, f1);
     expect(nameInput.value).toBe("First");
 
     // User wipes the name, then picks another file.
-    fireEvent.change(nameInput, { target: { value: "" } });
+    await user.clear(nameInput);
     const f2 = new File([new Uint8Array([1])], "Second.stl");
-    Object.defineProperty(fileInput, "files", { value: [f2], configurable: true });
-    fireEvent.change(fileInput);
+    await user.upload(fileInput, f2);
     expect(nameInput.value).toBe("Second");
   });
 
-  it("closes on Cancel", () => {
+  it("closes on Cancel", async () => {
+    const user = userEvent.setup();
     const onClose = vi.fn();
     render(
       <ConstructionPartUploadDialog
@@ -216,7 +219,7 @@ describe("ConstructionPartUploadDialog", () => {
         onSaved={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByText("Cancel"));
+    await user.click(screen.getByText("Cancel"));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
