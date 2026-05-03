@@ -1063,7 +1063,6 @@ class TestWingConfigRoundtrip:
         assert "segments" in data
         assert len(data["segments"]) == 1
 
-    @pytest.mark.xfail(reason="wrong endpoint route (gh-299)", strict=False)
     def test_put_wingconfig_replaces(self, client):
         """PUT wingconfig replaces an existing wing."""
         resp = client.post("/aeroplanes", params={"name": "wc-put"})
@@ -1096,10 +1095,9 @@ class TestWingConfigRoundtrip:
             ],
             "nose_pnt": [10, 0, 0],
         }
-        resp = client.put(f"/aeroplanes/{aid}/wings/wput/from-wingconfig", json=wc2)
+        resp = client.put(f"/aeroplanes/{aid}/wings/wput/wingconfig", json=wc2)
         assert resp.status_code == 200, resp.text
 
-    @pytest.mark.xfail(reason="wrong endpoint route (gh-299)", strict=False)
     def test_put_wingconfig_creates_if_new(self, client):
         """PUT wingconfig creates the wing if it does not exist."""
         resp = client.post("/aeroplanes", params={"name": "wc-putnew"})
@@ -1117,7 +1115,7 @@ class TestWingConfigRoundtrip:
             ],
             "nose_pnt": [0, 0, 0],
         }
-        resp = client.put(f"/aeroplanes/{aid}/wings/wnew/from-wingconfig", json=wc)
+        resp = client.put(f"/aeroplanes/{aid}/wings/wnew/wingconfig", json=wc)
         assert resp.status_code == 200
 
     def test_create_wingconfig_duplicate_raises_422(self, client):
