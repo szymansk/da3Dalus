@@ -343,6 +343,10 @@ def delete_part(db: Session, aeroplane_id: str, part_id: int) -> None:
         db.delete(part)
         db.flush()
         if file_path:
+            # NOTE: File is unlinked before get_db() commits the DB deletion.
+            # If the commit fails, the DB row will reference a missing file.
+            # Acceptable trade-off: the alternative (delete after commit) risks
+            # orphaned files if the app crashes between commit and unlink.
             try:
                 os.unlink(file_path)
             except FileNotFoundError:
