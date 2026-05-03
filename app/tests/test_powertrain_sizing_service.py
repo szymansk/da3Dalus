@@ -129,16 +129,14 @@ class TestRequiredPowerW:
         assert p_sea != p_alt
 
     def test_zero_speed_returns_zero_power(self):
-        """At zero speed, drag is zero and power should be zero.
+        """At zero airspeed no aerodynamic power is needed; should return 0.0."""
+        result = _required_power_w(0.0, 2.0, 0.0)
+        assert result == 0.0
 
-        NOTE: _required_power_w divides by speed**2 when computing cl,
-        which causes a ZeroDivisionError at speed=0. This is a potential
-        production bug -- the function should guard against zero speed.
-        We mark this xfail to document the behavior without modifying
-        production code.
-        """
-        with pytest.raises(ZeroDivisionError):
-            _required_power_w(0.0, 2.0, 0.0)
+    def test_negative_speed_returns_zero_power(self):
+        """Negative speed is physically meaningless; should return 0.0."""
+        result = _required_power_w(-5.0, 2.0, 0.0)
+        assert result == 0.0
 
 
 # --------------------------------------------------------------------------- #
