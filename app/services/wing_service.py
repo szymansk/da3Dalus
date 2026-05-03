@@ -58,9 +58,9 @@ def _convert_spare_to_meters(spare: schemas.SpareDetailSchema) -> schemas.SpareD
 def _convert_spare_to_mm(spare: schemas.SpareDetailSchema) -> schemas.SpareDetailSchema:
     """Convert a SpareDetailSchema dimensional fields from meters (API input) to mm (DB storage).
 
-    Only converts the fields that are stored in mm: width, height, length, start.
-    The spare_origin and spare_vector are passed through unchanged because
-    _recompute_spare_vectors will overwrite them with correct meter values.
+    Only converts width, height, length, start. The spare_origin and spare_vector
+    are passed through unchanged because _recompute_spare_vectors will overwrite
+    them with correct mm values (gh-402).
     """
     return spare.model_copy(
         update={
