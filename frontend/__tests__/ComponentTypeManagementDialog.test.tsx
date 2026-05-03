@@ -7,7 +7,8 @@
  * user types with references.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 
 vi.mock("lucide-react", () => {
@@ -117,14 +118,16 @@ describe("ComponentTypeManagementDialog", () => {
     expect(btn.disabled).toBe(false);
   });
 
-  it("'+ New Type' button opens the Edit dialog with an empty type", () => {
+  it("'+ New Type' button opens the Edit dialog with an empty type", async () => {
+    const user = userEvent.setup();
     render(<ComponentTypeManagementDialog open={true} onClose={vi.fn()} />);
-    fireEvent.click(screen.getByRole("button", { name: /New Type/i }));
+    await user.click(screen.getByRole("button", { name: /New Type/i }));
     // The Edit dialog has its own title "Edit Type" or "New Type"
     expect(screen.getByText(/New Type:/i)).toBeDefined();
   });
 
-  it("pencil icon on a row opens the Edit dialog with that type", () => {
+  it("pencil icon on a row opens the Edit dialog with that type", async () => {
+    const user = userEvent.setup();
     typesReturn = {
       types: [
         makeType({ id: 1, name: "material", label: "Material", deletable: false }),
@@ -132,7 +135,7 @@ describe("ComponentTypeManagementDialog", () => {
       isLoading: false, mutate: vi.fn(),
     };
     render(<ComponentTypeManagementDialog open={true} onClose={vi.fn()} />);
-    fireEvent.click(screen.getByTitle(/Edit Material/i));
+    await user.click(screen.getByTitle(/Edit Material/i));
     expect(screen.getByText(/Edit Type: Material/i)).toBeDefined();
   });
 
@@ -152,10 +155,11 @@ describe("ComponentTypeManagementDialog", () => {
     expect(screen.getByText(/404/)).toBeDefined();
   });
 
-  it("Close button calls onClose", () => {
+  it("Close button calls onClose", async () => {
+    const user = userEvent.setup();
     const onClose = vi.fn();
     render(<ComponentTypeManagementDialog open={true} onClose={onClose} />);
-    fireEvent.click(screen.getByText(/^Close$/));
+    await user.click(screen.getByText(/^Close$/));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

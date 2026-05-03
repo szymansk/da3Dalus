@@ -6,7 +6,8 @@
  * total weight + status of the roots combined.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 
 vi.mock("lucide-react", () => {
@@ -257,7 +258,8 @@ describe("ComponentTree — virtual root (gh#89)", () => {
     expect(deleteButtons.length).toBe(1);
   });
 
-  it("collapsing the virtual root hides every child row", () => {
+  it("collapsing the virtual root hides every child row", async () => {
+    const user = userEvent.setup();
     treeReturnValue = {
       tree: [
         makeNode({ id: 1, name: "wing", weight_status: "valid", total_weight_g: 50 }),
@@ -270,7 +272,7 @@ describe("ComponentTree — virtual root (gh#89)", () => {
     expect(screen.getByText("wing")).toBeDefined();
     expect(screen.getByText("fuselage")).toBeDefined();
     // Click the virtual root label to toggle it collapsed.
-    fireEvent.click(screen.getByText("Aeroplane"));
+    await user.click(screen.getByText("Aeroplane"));
     expect(screen.queryByText("wing")).toBeNull();
     expect(screen.queryByText("fuselage")).toBeNull();
     // The virtual root itself stays visible.

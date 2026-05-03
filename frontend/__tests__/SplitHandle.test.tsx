@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 
 vi.mock("react-resizable-panels", () => ({
@@ -43,10 +44,11 @@ describe("SplitHandle", () => {
     expect(chevron.getAttribute("class")).toContain("rotate-180");
   });
 
-  it("calls onCollapse when collapse button is clicked", () => {
+  it("calls onCollapse when collapse button is clicked", async () => {
+    const user = userEvent.setup();
     const onCollapse = vi.fn();
     render(<SplitHandle onCollapse={onCollapse} collapsed={false} />);
-    fireEvent.click(screen.getByRole("button"));
+    await user.click(screen.getByRole("button"));
     expect(onCollapse).toHaveBeenCalledOnce();
   });
 });

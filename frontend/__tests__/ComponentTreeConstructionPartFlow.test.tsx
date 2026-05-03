@@ -7,7 +7,8 @@
  * volume_mm3 / area_mm2 / material_id).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 
 vi.mock("lucide-react", () => {
@@ -89,9 +90,10 @@ beforeEach(() => {
 });
 
 describe("ComponentTree — Construction-Part add flow (gh#57-wvg)", () => {
-  it("the 'Assign Construction Part' menu item is enabled", () => {
+  it("the 'Assign Construction Part' menu item is enabled", async () => {
+    const user = userEvent.setup();
     render(<ComponentTree />);
-    fireEvent.click(screen.getByTitle("Add to main_wing"));
+    await user.click(screen.getByTitle("Add to main_wing"));
 
     const buttons = screen.getAllByText("Assign Construction Part");
     const menuButton = buttons.find((el) => el.closest("button"))?.closest("button");
@@ -99,24 +101,26 @@ describe("ComponentTree — Construction-Part add flow (gh#57-wvg)", () => {
     expect(menuButton?.hasAttribute("disabled")).toBe(false);
   });
 
-  it("opens the Construction-Part picker on menu click", () => {
+  it("opens the Construction-Part picker on menu click", async () => {
+    const user = userEvent.setup();
     render(<ComponentTree />);
-    fireEvent.click(screen.getByTitle("Add to main_wing"));
+    await user.click(screen.getByTitle("Add to main_wing"));
     const buttons = screen.getAllByText("Assign Construction Part");
     const menuButton = buttons.find((el) => el.closest("button"))?.closest("button");
-    fireEvent.click(menuButton!);
+    await user.click(menuButton!);
 
     expect(screen.getByText(/Assign Construction Part to 'main_wing'/)).toBeDefined();
     expect(screen.getByText("Bulkhead-A")).toBeDefined();
   });
 
   it("creates a cad_shape tree node with construction_part_id on selection", async () => {
+    const user = userEvent.setup();
     render(<ComponentTree />);
-    fireEvent.click(screen.getByTitle("Add to main_wing"));
+    await user.click(screen.getByTitle("Add to main_wing"));
     const buttons = screen.getAllByText("Assign Construction Part");
     const menuButton = buttons.find((el) => el.closest("button"))?.closest("button");
-    fireEvent.click(menuButton!);
-    fireEvent.click(screen.getByText("Bulkhead-A"));
+    await user.click(menuButton!);
+    await user.click(screen.getByText("Bulkhead-A"));
 
     expect(mockAddTreeNode).toHaveBeenCalledWith(
       "a",

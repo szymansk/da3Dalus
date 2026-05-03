@@ -3,7 +3,8 @@
  * the Component Library and reports the chosen ID back (gh#57-40g).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 
 vi.mock("lucide-react", () => {
@@ -101,7 +102,8 @@ describe("CotsPickerDialog", () => {
     expect(screen.getByText("Sunnysky A2212")).toBeDefined();
   });
 
-  it("calls onSelect with the component ID and closes on pick", () => {
+  it("calls onSelect with the component ID and closes on pick", async () => {
+    const user = userEvent.setup();
     componentsReturnValue = {
       components: [
         { id: 42, name: "KST X08", component_type: "servo", manufacturer: "KST", mass_g: 7, specs: {} },
@@ -120,14 +122,15 @@ describe("CotsPickerDialog", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("KST X08"));
+    await user.click(screen.getByText("KST X08"));
     expect(onSelect).toHaveBeenCalledWith(
       expect.objectContaining({ id: 42, name: "KST X08" }),
     );
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("closes on Cancel click", () => {
+  it("closes on Cancel click", async () => {
+    const user = userEvent.setup();
     const onClose = vi.fn();
     render(
       <CotsPickerDialog
@@ -137,7 +140,7 @@ describe("CotsPickerDialog", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("Cancel"));
+    await user.click(screen.getByText("Cancel"));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
