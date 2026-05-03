@@ -19,34 +19,13 @@ from app.models.aeroplanemodel import (
     FuselageModel,
     FuselageXSecSuperEllipseModel,
 )
+from app.services.wing_service import get_aeroplane_or_raise
 
 logger = logging.getLogger(__name__)
 
 # --- Shared error messages (S1192) ---
-_ERR_AEROPLANE_NOT_FOUND = "Aeroplane not found"
 _ERR_FUSELAGE_NOT_FOUND = "Fuselage not found"
 _ERR_XSEC_NOT_FOUND = "Cross-section not found"
-
-
-def _get_aeroplane_or_raise(db: Session, aeroplane_uuid) -> AeroplaneModel:
-    """Get an aeroplane by UUID or raise NotFoundError."""
-    try:
-        aeroplane = (
-            db.query(AeroplaneModel)
-            .filter(AeroplaneModel.uuid == aeroplane_uuid)
-            .first()
-        )
-        if not aeroplane:
-            raise NotFoundError(
-                message=_ERR_AEROPLANE_NOT_FOUND,
-                details={"aeroplane_id": str(aeroplane_uuid)},
-            )
-        return aeroplane
-    except NotFoundError:
-        raise
-    except SQLAlchemyError as e:
-        logger.error("Database error when getting aeroplane: %s", e)
-        raise InternalError(message=f"Database error: {e}")
 
 
 def _get_fuselage_or_raise(
@@ -76,7 +55,7 @@ def list_fuselage_names(db: Session, aeroplane_uuid) -> List[str]:
         InternalError: If a database error occurs.
     """
     try:
-        aeroplane = _get_aeroplane_or_raise(db, aeroplane_uuid)
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
         return [f.name for f in aeroplane.fuselages]
     except NotFoundError:
         raise
@@ -100,7 +79,7 @@ def create_fuselage(
         InternalError: If a database error occurs.
     """
     try:
-        plane = _get_aeroplane_or_raise(db, aeroplane_uuid)
+        plane = get_aeroplane_or_raise(db, aeroplane_uuid)
 
         if any(f.name == fuselage_name for f in plane.fuselages):
             raise ConflictError(
@@ -119,6 +98,7 @@ def create_fuselage(
         from app.services.component_tree_service import sync_group_for_fuselage
 
         sync_group_for_fuselage(db, str(aeroplane_uuid), fuselage_name)
+        db.flush()
     except (NotFoundError, ConflictError):
         raise
     except SQLAlchemyError as e:
@@ -140,7 +120,7 @@ def update_fuselage(
         InternalError: If a database error occurs.
     """
     try:
-        plane = _get_aeroplane_or_raise(db, aeroplane_uuid)
+        plane = get_aeroplane_or_raise(db, aeroplane_uuid)
         fuselage = _get_fuselage_or_raise(plane, fuselage_name)
 
         new_fuselage = FuselageModel.from_dict(
@@ -154,6 +134,7 @@ def update_fuselage(
         from app.services.component_tree_service import sync_group_for_fuselage
 
         sync_group_for_fuselage(db, str(aeroplane_uuid), fuselage_name)
+        db.flush()
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
@@ -174,7 +155,7 @@ def get_fuselage(
         InternalError: If a database error occurs.
     """
     try:
-        plane = _get_aeroplane_or_raise(db, aeroplane_uuid)
+        plane = get_aeroplane_or_raise(db, aeroplane_uuid)
         fuselage = _get_fuselage_or_raise(plane, fuselage_name)
         return schemas.FuselageSchema.model_validate(fuselage, from_attributes=True)
     except NotFoundError:
@@ -197,7 +178,7 @@ def delete_fuselage(
         InternalError: If a database error occurs.
     """
     try:
-        plane = _get_aeroplane_or_raise(db, aeroplane_uuid)
+        plane = get_aeroplane_or_raise(db, aeroplane_uuid)
         fuselage = _get_fuselage_or_raise(plane, fuselage_name)
         db.delete(fuselage)
         plane.updated_at = datetime.now()
@@ -206,6 +187,7 @@ def delete_fuselage(
         from app.services.component_tree_service import delete_synced_nodes
 
         delete_synced_nodes(db, str(aeroplane_uuid), f"fuselage:{fuselage_name}")
+        db.flush()
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
@@ -229,7 +211,7 @@ def get_fuselage_cross_sections(
         InternalError: If a database error occurs.
     """
     try:
-        aeroplane = _get_aeroplane_or_raise(db, aeroplane_uuid)
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
         fuselage = _get_fuselage_or_raise(aeroplane, fuselage_name)
         return [
             schemas.FuselageXSecSuperEllipseSchema.model_validate(
@@ -257,10 +239,11 @@ def delete_all_cross_sections(
         InternalError: If a database error occurs.
     """
     try:
-        aeroplane = _get_aeroplane_or_raise(db, aeroplane_uuid)
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
         fuselage = _get_fuselage_or_raise(aeroplane, fuselage_name)
         fuselage.x_secs.clear()
         aeroplane.updated_at = datetime.now()
+        db.flush()
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
@@ -282,7 +265,7 @@ def get_cross_section(
         InternalError: If a database error occurs.
     """
     try:
-        aeroplane = _get_aeroplane_or_raise(db, aeroplane_uuid)
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
         fuselage = _get_fuselage_or_raise(aeroplane, fuselage_name)
         x_secs = fuselage.x_secs
         if index < 0 or index >= len(x_secs):
@@ -317,7 +300,7 @@ def create_cross_section(
         InternalError: If a database error occurs.
     """
     try:
-        aeroplane = _get_aeroplane_or_raise(db, aeroplane_uuid)
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
         fuselage = _get_fuselage_or_raise(aeroplane, fuselage_name)
 
         data = xsec_data.model_dump()
@@ -343,6 +326,7 @@ def create_cross_section(
 
         aeroplane.updated_at = datetime.now()
         db.add(new_xsec)
+        db.flush()
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
@@ -365,7 +349,7 @@ def update_cross_section(
         InternalError: If a database error occurs.
     """
     try:
-        aeroplane = _get_aeroplane_or_raise(db, aeroplane_uuid)
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
         fuselage = _get_fuselage_or_raise(aeroplane, fuselage_name)
         x_secs = fuselage.x_secs
 
@@ -379,6 +363,7 @@ def update_cross_section(
         new_xsec = FuselageXSecSuperEllipseModel(sort_index=index, **data)
         fuselage.x_secs[index] = new_xsec
         aeroplane.updated_at = datetime.now()
+        db.flush()
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
@@ -400,7 +385,7 @@ def delete_cross_section(
         InternalError: If a database error occurs.
     """
     try:
-        aeroplane = _get_aeroplane_or_raise(db, aeroplane_uuid)
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_uuid)
         fuselage = _get_fuselage_or_raise(aeroplane, fuselage_name)
         x_secs = fuselage.x_secs
 
@@ -420,6 +405,7 @@ def delete_cross_section(
                 db.add(xs)
 
         aeroplane.updated_at = datetime.now()
+        db.flush()
     except NotFoundError:
         raise
     except SQLAlchemyError as e:
