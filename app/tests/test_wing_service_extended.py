@@ -1427,3 +1427,75 @@ class TestSpareDbStorageUnitsMm:
             f"spare_origin[0]={spare.spare_origin[0]} looks like meters, expected mm (>1.0)"
         )
         assert spare.spare_vector is not None
+
+    def test_spare_round_trip_api_meters_db_mm_api_meters(self, db):
+        """Round-trip: create via API (m) → DB stores mm → read via API returns same m."""
+        plane = make_aeroplane(db, name=f"roundtrip-{uuid.uuid4().hex[:8]}")
+        wing = WingModel(name="main", symmetric=True, design_model="wc", aeroplane_id=plane.id)
+
+        xsec0 = WingXSecModel(
+            sort_index=0,
+            xyz_le=[0.0, 0.0, 0.0],
+            chord=0.2,
+            twist=0.0,
+            airfoil=airfoil_path,
+        )
+        detail = WingXSecDetailModel(x_sec_type="root")
+        xsec0.detail = detail
+
+        xsec1 = WingXSecModel(
+            sort_index=1,
+            xyz_le=[0.0, 0.5, 0.0],
+            chord=0.15,
+            twist=0.0,
+            airfoil=airfoil_path,
+        )
+
+        wing.x_secs.append(xsec0)
+        wing.x_secs.append(xsec1)
+        db.add(wing)
+        db.commit()
+        db.refresh(plane)
+
+        # Create spare via service (API input in meters)
+        spare_input = schemas.SpareDetailSchema(
+            spare_support_dimension_width=0.00442,
+            spare_support_dimension_height=0.006,
+            spare_position_factor=0.25,
+            spare_length=0.07,
+            spare_start=0.005,
+            spare_mode="standard",
+            spare_vector=[0.0, 1.0, 0.0],
+            spare_origin=[0.0, 0.0, 0.0],
+        )
+        wing_service.create_spare(db, plane.uuid, "main", 0, spare_input)
+        db.commit()
+
+        # Read back via service (API output in meters)
+        spares = wing_service.get_spares(db, plane.uuid, "main", 0)
+        assert len(spares) == 1
+        result = spares[0]
+
+        # Dimensional fields: API input → DB (mm) → API output (m)
+        assert abs(result.spare_support_dimension_width - 0.00442) < 1e-9
+        assert abs(result.spare_support_dimension_height - 0.006) < 1e-9
+        assert abs(result.spare_length - 0.07) < 1e-9
+        assert abs(result.spare_start - 0.005) < 1e-9
+
+        # origin/vector are recomputed by _recompute_spare_vectors,
+        # so API output won't match API input exactly — but they must be in meters
+        assert result.spare_origin is not None
+        assert all(isinstance(v, float) for v in result.spare_origin)
+        assert result.spare_vector is not None
+        assert all(isinstance(v, float) for v in result.spare_vector)
+
+        # Verify DB stores mm: read raw DB record
+        db.refresh(wing)
+        db_spare = wing.x_secs[0].detail.spares[0]
+        # width stored in mm (0.00442 m * 1000 = 4.42 mm)
+        assert abs(db_spare.spare_support_dimension_width - 4.42) < 1e-6
+        # origin should be in mm (values > 1.0 for a 200mm chord wing)
+        assert db_spare.spare_origin is not None
+        assert db_spare.spare_origin[0] > 1.0, (
+            f"DB spare_origin[0]={db_spare.spare_origin[0]} looks like meters, expected mm"
+        )
