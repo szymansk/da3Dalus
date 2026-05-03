@@ -1331,10 +1331,10 @@ class TestWingEndpointUnitsConsistency:
         assert abs(spare.spare_length - 0.07) < 1e-9
         # spare_start stored as 5.0 mm -> expect 0.005 m
         assert abs(spare.spare_start - 0.005) < 1e-9
-        # spare_origin and spare_vector are already in meters in DB
-        # (stored as meters by _recompute_spare_vectors)
-        # In this test they are set manually, so they stay as-is
-        assert spare.spare_origin == [40.5, 0.0, 3.45]
+        # spare_origin stored as [40.5, 0.0, 3.45] mm -> converted to meters (gh-402)
+        assert abs(spare.spare_origin[0] - 0.0405) < 1e-9
+        assert abs(spare.spare_origin[1] - 0.0) < 1e-9
+        assert abs(spare.spare_origin[2] - 0.00345) < 1e-9
 
     def test_get_wing_cross_sections_returns_spare_fields_in_meters(self, db):
         """get_wing_cross_sections should also apply the mm->m conversion."""
@@ -1355,3 +1355,19 @@ class TestWingEndpointUnitsConsistency:
 
         assert result.units.geometry_length == "m"
         assert result.units.detail_length == "m"
+
+    def test_get_wing_returns_spare_origin_vector_in_meters(self, db):
+        """After gh-402, spare_origin/spare_vector are stored in mm and must be converted to meters."""
+        plane, wing = self._make_plane_with_spares_mm(db)
+
+        result = wing_service.get_wing(db, plane.uuid, "main")
+
+        spare = result.x_secs[0].spare_list[0]
+        # spare_origin stored as [40.5, 0.0, 3.45] mm -> expect [0.0405, 0.0, 0.00345] m
+        assert abs(spare.spare_origin[0] - 0.0405) < 1e-9
+        assert abs(spare.spare_origin[1] - 0.0) < 1e-9
+        assert abs(spare.spare_origin[2] - 0.00345) < 1e-9
+        # spare_vector stored as [0.0, 1.0, 0.0] mm -> expect [0.0, 0.001, 0.0] m
+        assert abs(spare.spare_vector[0] - 0.0) < 1e-9
+        assert abs(spare.spare_vector[1] - 0.001) < 1e-9
+        assert abs(spare.spare_vector[2] - 0.0) < 1e-9

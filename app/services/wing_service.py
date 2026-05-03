@@ -42,18 +42,15 @@ _M_TO_MM = 1000.0
 
 
 def _convert_spare_to_meters(spare: schemas.SpareDetailSchema) -> schemas.SpareDetailSchema:
-    """Convert a SpareDetailSchema dimensional fields from mm (DB storage) to meters (API response).
-
-    Only converts the fields that are ALWAYS stored in mm: width, height,
-    length, start. The spare_origin and spare_vector are NOT converted here
-    because _recompute_spare_vectors already stores them in meters (gh-352/gh-362).
-    """
+    """Convert all SpareDetailSchema dimensional fields from mm (DB storage) to meters (API response)."""
     return spare.model_copy(
         update={
             "spare_support_dimension_width": spare.spare_support_dimension_width * _MM_TO_M,
             "spare_support_dimension_height": spare.spare_support_dimension_height * _MM_TO_M,
             "spare_length": spare.spare_length * _MM_TO_M if spare.spare_length is not None else None,
             "spare_start": spare.spare_start * _MM_TO_M,
+            "spare_origin": [v * _MM_TO_M for v in spare.spare_origin] if spare.spare_origin is not None else None,
+            "spare_vector": [v * _MM_TO_M for v in spare.spare_vector] if spare.spare_vector is not None else None,
         }
     )
 
