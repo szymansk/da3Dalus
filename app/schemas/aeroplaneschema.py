@@ -184,7 +184,7 @@ class SpareDetailSchema(BaseModel):
         "standard",
         description="Spar placement mode",
     )
-    spare_vector: Optional[list[float]] = Field(None, description="Spar direction vector [x, y, z] in meters")
+    spare_vector: Optional[list[float]] = Field(None, description="Spar direction vector [x, y, z]")
     spare_origin: Optional[list[float]] = Field(None, description="Spar origin [x, y, z] in meters")
 
     model_config = ConfigDict(from_attributes=True)

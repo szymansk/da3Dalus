@@ -8,7 +8,6 @@ Create Date: 2026-05-03 17:07:38.785374
 from typing import Sequence, Union
 
 from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
@@ -27,15 +26,8 @@ def upgrade() -> None:
               json_extract(spare_origin, '$[2]') * 1000
             )
         WHERE spare_origin IS NOT NULL
-    """)
-    op.execute("""
-        UPDATE wing_xsec_spares
-        SET spare_vector = json_array(
-              json_extract(spare_vector, '$[0]') * 1000,
-              json_extract(spare_vector, '$[1]') * 1000,
-              json_extract(spare_vector, '$[2]') * 1000
-            )
-        WHERE spare_vector IS NOT NULL
+          AND json_valid(spare_origin)
+          AND json_array_length(spare_origin) = 3
     """)
 
 
@@ -48,13 +40,6 @@ def downgrade() -> None:
               json_extract(spare_origin, '$[2]') * 0.001
             )
         WHERE spare_origin IS NOT NULL
-    """)
-    op.execute("""
-        UPDATE wing_xsec_spares
-        SET spare_vector = json_array(
-              json_extract(spare_vector, '$[0]') * 0.001,
-              json_extract(spare_vector, '$[1]') * 0.001,
-              json_extract(spare_vector, '$[2]') * 0.001
-            )
-        WHERE spare_vector IS NOT NULL
+          AND json_valid(spare_origin)
+          AND json_array_length(spare_origin) = 3
     """)

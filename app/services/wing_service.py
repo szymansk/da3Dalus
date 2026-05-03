@@ -42,7 +42,10 @@ _M_TO_MM = 1000.0
 
 
 def _convert_spare_to_meters(spare: schemas.SpareDetailSchema) -> schemas.SpareDetailSchema:
-    """Convert all SpareDetailSchema dimensional fields from mm (DB storage) to meters (API response)."""
+    """Convert SpareDetailSchema dimensional fields from mm (DB storage) to meters (API response).
+
+    spare_vector is dimensionless (unit direction vector) and is NOT scaled.
+    """
     return spare.model_copy(
         update={
             "spare_support_dimension_width": spare.spare_support_dimension_width * _MM_TO_M,
@@ -50,17 +53,16 @@ def _convert_spare_to_meters(spare: schemas.SpareDetailSchema) -> schemas.SpareD
             "spare_length": spare.spare_length * _MM_TO_M if spare.spare_length is not None else None,
             "spare_start": spare.spare_start * _MM_TO_M,
             "spare_origin": [v * _MM_TO_M for v in spare.spare_origin] if spare.spare_origin is not None else None,
-            "spare_vector": [v * _MM_TO_M for v in spare.spare_vector] if spare.spare_vector is not None else None,
         }
     )
 
 
 def _convert_spare_to_mm(spare: schemas.SpareDetailSchema) -> schemas.SpareDetailSchema:
-    """Convert a SpareDetailSchema dimensional fields from meters (API input) to mm (DB storage).
+    """Convert SpareDetailSchema dimensional fields from meters (API input) to mm (DB storage).
 
-    Only converts width, height, length, start. The spare_origin and spare_vector
-    are passed through unchanged because _recompute_spare_vectors will overwrite
-    them with correct mm values (gh-402).
+    spare_origin is converted as a defensive fallback for when _recompute_spare_vectors
+    fails silently (ImportError on linux/aarch64, FileNotFoundError for missing airfoils).
+    spare_vector is dimensionless (unit direction vector) and is NOT scaled.
     """
     return spare.model_copy(
         update={
@@ -68,6 +70,7 @@ def _convert_spare_to_mm(spare: schemas.SpareDetailSchema) -> schemas.SpareDetai
             "spare_support_dimension_height": spare.spare_support_dimension_height * _M_TO_MM,
             "spare_length": spare.spare_length * _M_TO_MM if spare.spare_length is not None else None,
             "spare_start": spare.spare_start * _M_TO_MM,
+            "spare_origin": [v * _M_TO_MM for v in spare.spare_origin] if spare.spare_origin is not None else None,
         }
     )
 
@@ -331,7 +334,7 @@ def create_wing_from_wing_configuration(
         plane.wings.append(wing_model)
         db.add(wing_model)
         db.flush()
-        # Ensure spare_origin/spare_vector are stored in meters (gh-366)
+        # Recompute spare_origin/spare_vector and store in mm (gh-402)
         _recompute_spare_vectors(wing_model)
         plane.updated_at = datetime.now()
 
@@ -446,7 +449,7 @@ def put_wing_as_wingconfig(
         plane.wings.append(wing_model)
         db.add(wing_model)
         db.flush()
-        # Ensure spare_origin/spare_vector are stored in meters (gh-366)
+        # Recompute spare_origin/spare_vector and store in mm (gh-402)
         _recompute_spare_vectors(wing_model)
         plane.updated_at = datetime.now()
 
@@ -835,8 +838,8 @@ def _sync_spares_for_xsec(db_xsec, segment) -> None:
     """Copy computed spare_vector/spare_origin from a WingConfiguration segment
     back to the corresponding DB cross-section's spar records.
 
-    The WingConfiguration computes origin/vector in meters (built with scale=1.0).
-    Values are scaled to mm for consistent DB storage (gh-402).
+    spare_origin is computed in meters (scale=1.0) and scaled to mm for DB storage.
+    spare_vector is a dimensionless unit direction vector and is stored as-is.
     """
     for spare_idx, spare in enumerate(segment.spare_list or []):
         if spare_idx >= len(db_xsec.detail.spares):
@@ -844,7 +847,7 @@ def _sync_spares_for_xsec(db_xsec, segment) -> None:
         db_spare = db_xsec.detail.spares[spare_idx]
         if spare.spare_vector is not None:
             vec = spare.spare_vector.toTuple() if hasattr(spare.spare_vector, "toTuple") else spare.spare_vector
-            db_spare.spare_vector = [float(v) * _M_TO_MM for v in vec]
+            db_spare.spare_vector = [float(v) for v in vec]
         if spare.spare_origin is not None:
             orig = spare.spare_origin.toTuple() if hasattr(spare.spare_origin, "toTuple") else spare.spare_origin
             db_spare.spare_origin = [float(v) * _M_TO_MM for v in orig]
@@ -852,10 +855,11 @@ def _sync_spares_for_xsec(db_xsec, segment) -> None:
 
 def _recompute_spare_vectors(wing: WingModel) -> None:
     """Rebuild WingConfiguration to compute spare_vector/spare_origin for all spars,
-    then persist the computed values back to the DB spar records in mm.
+    then persist the computed values back to the DB spar records.
 
-    Uses ``scale=1.0`` to compute in metres, then ``_sync_spares_for_xsec``
-    converts to mm for consistent DB storage (gh-402).
+    Uses ``scale=1.0`` so spare_origin is in metres, then ``_sync_spares_for_xsec``
+    converts origin to mm. spare_vector is a dimensionless unit direction vector
+    and is stored as-is (gh-402).
     """
     try:
         wing_config = wing_model_to_wing_config(wing, scale=1.0)
@@ -868,7 +872,7 @@ def _recompute_spare_vectors(wing: WingModel) -> None:
                 continue
             _sync_spares_for_xsec(db_xsec, segment)
     except (ImportError, FileNotFoundError) as e:
-        logger.debug("Skipping spare vector computation: %s", e)
+        logger.warning("Skipping spare vector computation: %s", e)
 
 
 def get_spares(
