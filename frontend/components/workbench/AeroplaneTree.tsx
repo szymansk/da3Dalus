@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronDown, ChevronRight, Plus, Trash2, Eye, EyeOff, Loader, PanelLeftClose, Pencil } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2, Eye, EyeOff, Loader, PanelLeftClose, Pencil, Plane, GalleryHorizontal, GalleryHorizontalEnd } from "lucide-react";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useWing } from "@/hooks/useWings";
 import type { XSec } from "@/hooks/useWings";
@@ -816,29 +816,32 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
             <PanelLeftClose size={14} />
           </button>
         )}
-        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
-          Aeroplane Tree
+        <Plane size={14} className="text-primary" />
+        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-foreground">
+          Configuration
         </span>
         <div className="flex-1" />
-        <div className="flex shrink-0 gap-0.5 rounded-full border border-primary/60 bg-card-muted p-0.5">
+        <div className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-card p-1">
           <button
             onClick={() => setTreeMode("wingconfig")}
-            className={`whitespace-nowrap rounded-full px-3.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] transition-colors ${
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] transition-colors ${
               treeMode === "wingconfig"
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
+            <GalleryHorizontal size={12} />
             Segments
           </button>
           <button
             onClick={() => setTreeMode("asb")}
-            className={`whitespace-nowrap rounded-full px-3.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] transition-colors ${
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] transition-colors ${
               treeMode === "asb" || treeMode === "fuselage"
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
+            <GalleryHorizontalEnd size={12} />
             X-Secs
           </button>
         </div>
