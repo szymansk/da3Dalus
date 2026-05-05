@@ -14,79 +14,98 @@ spec and/or plan.
 
 ---
 
-## GATHER
+<gather>
 
-### 1. Load Issues
-
+<step name="load-issues">
 For each issue number in arguments:
-
 Use `load-issue` from `../supercycle-common/tracking.md`.
 Use `read-step-comments` with filter `has-spec`, `has-plan` to
 pick up spec and plan from prior phases.
+</step>
 
-### 2. Fetch SonarQube Context
-
+<step name="fetch-sonar-context">
 Use `fetch-sonar-context` from `../supercycle-common/tracking.md`.
+</step>
 
-### 3. Set Status
-
+<step name="set-status">
 Use `rotate-status` → `status:implementing` for each issue.
+</step>
 
-### 4. Question Protocol
+<step name="question-protocol">
+Any question from agent to user MUST be posted to the GH Issue first
+using `post-question-comment` from `../supercycle-common/tracking.md`.
+Post to GH, then ask in conversation. Remove `has-question` label
+after answer.
+</step>
 
-**Any question from agent to user** MUST be posted to the GH Issue
-first using `post-question-comment` from
-`../supercycle-common/tracking.md`. Post to GH, then ask in
-conversation. Remove `has-question` label after answer.
+</gather>
 
 ---
 
-## DELEGATE
+<delegate>
 
-### Phase 1 — Worktree Setup
+<phase name="worktree-setup" order="1">
+<action>Invoke `/using-git-worktrees` to create an isolated workspace.</action>
+</phase>
 
-Invoke `/using-git-worktrees` to create an isolated workspace.
+<phase name="implementation" order="2">
+<description>Execute using TDD subagents.</description>
 
-### Phase 2 — Implementation
-
+<step name="invoke-implementation">
 Invoke `/subagent-driven-development` with:
 - Context: spec + plan from step comments passed to subagents
 - Subagents invoke `/test-driven-development` internally
 - Per-task review via `/requesting-code-review`
 - If `detect-frontend` is true: frontend subagents follow
   `/vercel-react-best-practices` and `/vercel-composition-patterns`
+</step>
 
-**Context:** Run `/compact with focus on issue number, PR number,
-branch name, and frontend detection result` before proceeding.
-Implementation details are fully externalized in commits and the PR.
+<context-management>
+Run `/compact with focus on issue number, PR number, branch name, and
+frontend detection result` before proceeding. Implementation details
+are fully externalized in commits and the PR.
+</context-management>
+</phase>
 
-### Phase 3 — Comprehensive Review
-
+<phase name="comprehensive-review" order="3">
+<step name="invoke-review">
 Invoke `/pr-review-toolkit:review-pr` with:
 - Context: spec + plan from step comments
+</step>
 
+<step name="post-review-artifacts">
 After review:
 - Use `post-step-comment`: `has-review` — full review report
 - Use `post-step-comment`: `has-pr` — PR number, branch, changes, quality gates
+</step>
+</phase>
 
-### Phase 4 — Fix Findings (if any)
+<phase name="fix-findings" order="4">
+<condition trigger="review reported findings">
 
-If findings reported:
+<step name="evaluate-and-fix">
 1. `/receiving-code-review` — evaluate + verify
 2. `/sonarqube:sonar-fix-issue` — SonarQube issues
 3. `/verification-before-completion` — evidence
+</step>
 
+<step name="post-fix-artifacts">
 After fixing:
 - Use `post-step-comment`: `has-fix` — fix report
+</step>
 
-### Phase 5 — Finish
+</condition>
+</phase>
 
-Invoke `/finishing-a-development-branch`
+<phase name="finish" order="5">
+<action>Invoke `/finishing-a-development-branch`</action>
+</phase>
+
+</delegate>
 
 ---
 
-## TRACK
-
+<track>
 Use `rotate-status` → `status:merged`
-
 Report PRs created with links.
+</track>
