@@ -170,15 +170,16 @@ export default function WorkbenchPage() {
   return (
     <>
       <div className="flex h-full min-h-0 flex-1 flex-col gap-3 overflow-hidden">
-        {/* Header row: toggle left, heading right */}
-        <div className="flex items-center gap-2">
-          <PillToggle
-            options={treeModeOptions}
-            value={treeMode}
-            onChange={setTreeMode}
-            isActive={(opt, cur) => opt === cur || (opt === "asb" && cur === "fuselage")}
-          />
-          <div className="flex-1" />
+        {/* Header row: toggle left (aligned with tree), heading left-aligned with preview */}
+        <div className="flex items-center gap-4">
+          <div className="w-[320px] shrink-0">
+            <PillToggle
+              options={treeModeOptions}
+              value={treeMode}
+              onChange={setTreeMode}
+              isActive={(opt, cur) => opt === cur || (opt === "asb" && cur === "fuselage")}
+            />
+          </div>
           <div className="flex items-center gap-2.5">
             <Plane className="size-5 text-primary" />
             <h1 className="font-[family-name:var(--font-jetbrains-mono)] text-[20px] text-foreground">
