@@ -191,6 +191,23 @@ class TestBuildAirfoilNode:
         assert result.digits == "0012"
 
 
+    def test_naca_decimal_thickness(self):
+        from app.avl.geometry import AvlNaca
+        from app.services.avl_geometry_service import _build_airfoil_node
+
+        result = _build_airfoil_node("naca23013.5")
+        assert isinstance(result, AvlNaca)
+        assert result.digits == "23013.5"
+
+    def test_naca_decimal_thickness_case_insensitive(self):
+        from app.avl.geometry import AvlNaca
+        from app.services.avl_geometry_service import _build_airfoil_node
+
+        result = _build_airfoil_node("NACA23013.5")
+        assert isinstance(result, AvlNaca)
+        assert result.digits == "23013.5"
+
+
 class TestBuildGeometryEdgeCases:
     def test_no_control_surfaces_wing(self):
         from app.services.avl_geometry_service import build_avl_geometry_file

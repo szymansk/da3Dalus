@@ -674,3 +674,23 @@ def test_fuselage_model_to_fuselage_config():
     assert fuselage_config.asb_fuselage is not None
     assert len(fuselage_config.asb_fuselage.xsecs) == 2
     assert fuselage_config.asb_fuselage.xsecs[1].height == pytest.approx(0.06)
+
+
+class TestBuildAsbAirfoil:
+    def test_decimal_naca_preserves_full_name(self):
+        """naca23013.5 must not be mangled by os.path.splitext stripping '.5'.
+
+        Regression test for gh-409.
+        """
+        from app.converters.model_schema_converters import _build_asb_airfoil
+
+        airfoil = _build_asb_airfoil("naca23013.5")
+        assert airfoil.coordinates is not None, (
+            "Should load coordinates from components/airfoils/naca23013.5.dat"
+        )
+
+    def test_standard_naca_still_works(self):
+        from app.converters.model_schema_converters import _build_asb_airfoil
+
+        airfoil = _build_asb_airfoil("naca2412")
+        assert airfoil.coordinates is not None
