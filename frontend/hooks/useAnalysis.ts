@@ -4,13 +4,13 @@ import { useState, useCallback } from "react";
 import { API_BASE } from "@/lib/fetcher";
 
 export interface AlphaSweepParams {
-  analysis_tool: string;
-  velocity_m_s: number;
-  alpha_start_deg: number;
-  alpha_end_deg: number;
-  alpha_step_deg: number;
-  beta_deg: number;
-  xyz_ref_m: number[];
+  alpha_start: number;
+  alpha_end: number;
+  alpha_num: number;
+  velocity: number;
+  beta: number;
+  altitude: number;
+  xyz_ref: number[];
 }
 
 export interface AnalysisResult {

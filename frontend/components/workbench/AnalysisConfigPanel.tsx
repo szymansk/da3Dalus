@@ -77,14 +77,17 @@ export function AnalysisConfigPanel({
 
   // ── Polar handlers ──
   const handleRunPolar = () => {
+    const start = Number.parseFloat(alphaStart) || -5;
+    const end = Number.parseFloat(alphaEnd) || 15;
+    const step = Number.parseFloat(alphaStep) || 1;
     analysis.runAlphaSweep({
-      analysis_tool: analysisTool,
-      velocity_m_s: Number.parseFloat(velocity) || 14,
-      alpha_start_deg: Number.parseFloat(alphaStart) || -5,
-      alpha_end_deg: Number.parseFloat(alphaEnd) || 15,
-      alpha_step_deg: Number.parseFloat(alphaStep) || 1,
-      beta_deg: Number.parseFloat(beta) || 0,
-      xyz_ref_m: parseXyzRef(),
+      alpha_start: start,
+      alpha_end: end,
+      alpha_num: Math.max(2, Math.round((end - start) / step) + 1),
+      velocity: Number.parseFloat(velocity) || 14,
+      beta: Number.parseFloat(beta) || 0,
+      altitude: Number.parseFloat(altitude) || 0,
+      xyz_ref: parseXyzRef(),
     });
     onClose?.();
   };
