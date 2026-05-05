@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import { PanelLeftOpen, Maximize2, Minimize2, X } from "lucide-react";
+import { PanelLeftOpen, Maximize2, Minimize2, X, GalleryHorizontal, GalleryHorizontalEnd, Plane } from "lucide-react";
+import { PillToggle, type PillToggleOption } from "@/components/ui/PillToggle";
+import type { TreeMode } from "@/components/workbench/AeroplaneContext";
 import { useDialog } from "@/hooks/useDialog";
 import { PropertyForm, type PropertyFormHandle } from "@/components/workbench/PropertyForm";
 import { SegmentPaginator } from "@/components/workbench/SegmentPaginator";
@@ -22,7 +24,7 @@ export default function WorkbenchPage() {
     aeroplaneId,
     selectedWing, selectedXsecIndex, selectXsec,
     selectedFuselage, selectedFuselageXsecIndex, selectFuselageXsec,
-    treeMode,
+    treeMode, setTreeMode,
     openPicker,
     hydrated,
   } = useAeroplaneContext();
@@ -152,6 +154,11 @@ export default function WorkbenchPage() {
     if (hydrated && !aeroplaneId) openPicker();
   }, [hydrated, aeroplaneId, openPicker]);
 
+  const treeModeOptions: PillToggleOption<TreeMode>[] = [
+    { value: "wingconfig", label: "Segments", icon: GalleryHorizontal },
+    { value: "asb", label: "X-Secs", icon: GalleryHorizontalEnd },
+  ];
+
   if (!aeroplaneId) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -162,9 +169,27 @@ export default function WorkbenchPage() {
 
   return (
     <>
-      <div className="flex h-full min-h-0 flex-1 gap-4 overflow-hidden">
-        {/* Tree Panel — collapsible, fixed width, scrollable */}
-        {treeOpen && !viewerMaximized && (
+      <div className="flex h-full min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+        {/* Header row: toggle left, heading right */}
+        <div className="flex items-center gap-2">
+          <PillToggle
+            options={treeModeOptions}
+            value={treeMode}
+            onChange={setTreeMode}
+            isActive={(opt, cur) => opt === cur || (opt === "asb" && cur === "fuselage")}
+          />
+          <div className="flex-1" />
+          <div className="flex items-center gap-2.5">
+            <Plane className="size-5 text-primary" />
+            <h1 className="font-[family-name:var(--font-jetbrains-mono)] text-[20px] text-foreground">
+              Configuration
+            </h1>
+          </div>
+        </div>
+
+        <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
+          {/* Tree Panel — collapsible, fixed width, scrollable */}
+          {treeOpen && !viewerMaximized && (
           <div className="flex h-full min-h-0 w-[320px] shrink-0 flex-col overflow-hidden">
             <AeroplaneTree
               aeroplaneId={aeroplaneId}
@@ -240,6 +265,7 @@ export default function WorkbenchPage() {
               selectedFuselageXsecIndex={selectedFuselageXsecIndex}
             />
           </div>
+        </div>
         </div>
       </div>
 

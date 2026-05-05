@@ -805,7 +805,7 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
 
   return (
     <div className="flex h-full min-h-0 flex-col rounded-xl border border-border bg-card p-3 px-4 overflow-hidden">
-      {/* Header with collapse + mode toggle */}
+      {/* Header with collapse button */}
       <div className="mb-2 flex items-center gap-2">
         {onCollapseTree && (
           <button
@@ -819,29 +819,6 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
           Aeroplane Tree
         </span>
-        <div className="flex-1" />
-        <div className="flex shrink-0 gap-0.5 rounded-full border border-primary/60 bg-card-muted p-0.5">
-          <button
-            onClick={() => setTreeMode("wingconfig")}
-            className={`whitespace-nowrap rounded-full px-3.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] transition-colors ${
-              treeMode === "wingconfig"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Segments
-          </button>
-          <button
-            onClick={() => setTreeMode("asb")}
-            className={`whitespace-nowrap rounded-full px-3.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] transition-colors ${
-              treeMode === "asb" || treeMode === "fuselage"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            X-Secs
-          </button>
-        </div>
       </div>
 
       {/* Tree rows */}
