@@ -50,6 +50,16 @@ describe("PillToggle", () => {
     expect(onChange).toHaveBeenCalledWith("library");
   });
 
+  it("has radiogroup ARIA semantics", () => {
+    render(<PillToggle options={OPTIONS} value="library" onChange={() => {}} />);
+    const group = screen.getByRole("radiogroup");
+    expect(group).toBeDefined();
+    const radios = screen.getAllByRole("radio");
+    expect(radios).toHaveLength(2);
+    expect(radios[0].getAttribute("aria-checked")).toBe("true");
+    expect(radios[1].getAttribute("aria-checked")).toBe("false");
+  });
+
   it("uses custom isActive when provided", () => {
     const isActive = (opt: View, cur: View) =>
       opt === cur || (opt === "construction" && cur === "library");

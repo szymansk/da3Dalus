@@ -172,7 +172,7 @@ export default function WorkbenchPage() {
       <div className="flex h-full min-h-0 flex-1 flex-col gap-3 overflow-hidden">
         {/* Header row: toggle left (aligned with tree), heading left-aligned with preview */}
         <div className="flex items-center gap-4">
-          <div className="w-[320px] shrink-0">
+          <div className={treeOpen && !viewerMaximized ? "w-[320px] shrink-0" : ""}>
             <PillToggle
               options={treeModeOptions}
               value={treeMode}
