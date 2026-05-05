@@ -55,10 +55,19 @@ after answer.
 Invoke `/systematic-debugging` with the parsed error context.
 </step>
 
+<step name="runtime-debugging">
+<condition trigger="bug is in Python backend AND code reading alone cannot determine root cause (e.g. 500 error, wrong return value, unexpected state)">
+Invoke `/supercycle-python-debug` with the symptom and suspected
+module/function. Use the debug JSON findings to confirm or refine
+the root cause hypothesis from systematic-debugging.
+</condition>
+</step>
+
 <step name="post-root-cause">
 After investigation:
 - Use `post-step-comment`: `has-root-cause` — error, root cause,
   introducing commit, severity, affected features, proposed fix
+- Include runtime debug JSON findings when available
 - Note: If input was free-text, the GH Issue may not exist yet.
   Post this comment AFTER Phase 2 (issue creation).
 </step>
