@@ -107,6 +107,28 @@ class TestNeuralFoilCdclService:
         assert result.cd_0 > 0
 
 
+    def test_compute_cdcl_with_file_based_airfoil(self):
+        """Airfoils loaded from .dat files (e.g. naca23013.5) must not crash.
+
+        Regression test for gh-409: _get_polar_data recreated the airfoil
+        from just the name, losing the coordinate file reference.
+        """
+        from app.avl.geometry import AvlCdcl
+        from app.converters.model_schema_converters import _build_asb_airfoil
+        from app.schemas.aeroanalysisschema import CdclConfig
+        from app.services.neuralfoil_cdcl_service import NeuralFoilCdclService
+
+        airfoil = _build_asb_airfoil("naca23013.5")
+        assert airfoil.coordinates is not None, "Coordinate file should be loaded"
+
+        service = NeuralFoilCdclService()
+        result = service.compute_cdcl(
+            airfoil, re=500_000.0, mach=0.1, config=CdclConfig()
+        )
+        assert isinstance(result, AvlCdcl)
+        assert result.cd_0 > 0
+
+
 class TestOperatingPointWithConfigs:
     def test_operating_point_accepts_configs(self):
         from app.schemas.aeroanalysisschema import CdclConfig, OperatingPointSchema, SpacingConfig

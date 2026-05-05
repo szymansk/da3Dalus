@@ -37,7 +37,9 @@ def _get_polar_data(
     include_360_deg_effects: bool,
 ) -> tuple:
     """Cached NeuralFoil polar — keyed on hashable primitives only."""
-    airfoil = asb.Airfoil(name=airfoil_name)
+    from app.converters.model_schema_converters import _build_asb_airfoil
+
+    airfoil = _build_asb_airfoil(airfoil_name)
     alphas = np.arange(alpha_start, alpha_end + alpha_step / 2, alpha_step)
     aero = airfoil.get_aero_from_neuralfoil(
         alpha=alphas,
