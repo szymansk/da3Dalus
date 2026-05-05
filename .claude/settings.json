@@ -3,42 +3,15 @@
     "PostToolUse": [
       {
         "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -c \"./.claude/hooks/post-command/log-tool-result.sh 2>/dev/null || true\""
-          },
-          {
-            "type": "command",
-            "command": "bash -c \"./.claude/hooks/post-command/validate-issue-tracking.sh 2>/dev/null || true\""
-          }
-        ]
+        "hooks": []
       },
       {
         "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -c \"./.claude/hooks/post-command/format-code.sh 2>/dev/null || true\""
-          },
-          {
-            "type": "command",
-            "command": "bash -c \"./.claude/hooks/post-command/lint-code.sh 2>/dev/null || true\""
-          }
-        ]
+        "hooks": []
       },
       {
         "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -c \"./.claude/hooks/post-command/format-code.sh 2>/dev/null || true\""
-          },
-          {
-            "type": "command",
-            "command": "bash -c \"./.claude/hooks/post-command/lint-code.sh 2>/dev/null || true\""
-          }
-        ]
+        "hooks": []
       }
     ],
     "PreCompact": [],
@@ -54,55 +27,23 @@
       },
       {
         "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ./.claude/hooks/pre-command/check-sensitive-path.sh"
-          }
-        ]
+        "hooks": []
       },
       {
         "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ./.claude/hooks/pre-command/check-sensitive-path.sh"
-          }
-        ]
+        "hooks": []
       },
       {
         "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/sonar-secrets/build-scripts/pretool-secrets.sh",
-            "timeout": 60
-          }
-        ]
+        "hooks": []
       }
     ],
     "SessionStart": [
       {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -c \"./.claude/hooks/pre-command/check-toolchain.sh 2>/dev/null || true\""
-          }
-        ]
+        "hooks": [ ]
       }
     ],
     "Stop": [],
-    "UserPromptSubmit": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/sonar-secrets/build-scripts/prompt-secrets.sh",
-            "timeout": 60
-          }
-        ]
-      }
-    ]
+    "UserPromptSubmit": []
   }
 }
