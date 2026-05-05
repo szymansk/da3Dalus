@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Package, Search, Plus, Settings, Trash2, Box } from "lucide-react";
+import { PillToggle, type PillToggleOption } from "@/components/ui/PillToggle";
 import { WorkbenchTwoPanel } from "@/components/workbench/WorkbenchTwoPanel";
 import { ComponentTree } from "@/components/workbench/ComponentTree";
 import { ComponentEditDialog } from "@/components/workbench/ComponentEditDialog";
@@ -50,6 +51,11 @@ export default function ComponentsPage() {
   const { tree, mutate: mutateTree } = useComponentTree(aeroplaneId);
   const editingNode = editingNodeId == null ? null : findNode(tree, editingNodeId);
 
+  const viewOptions: PillToggleOption<View>[] = [
+    { value: "library", label: "Library", icon: Package },
+    { value: "construction", label: "Construction Parts", icon: Box },
+  ];
+
   const handleDelete = async (comp: Component) => {
     if (!confirm(`Delete "${comp.name}"?`)) return;
     try {
@@ -64,32 +70,7 @@ export default function ComponentsPage() {
     <>
     <WorkbenchTwoPanel>
       <div className="flex h-full flex-col gap-3 overflow-hidden">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
-            <button
-              onClick={() => setView("library")}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] ${
-                view === "library"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Package size={12} />
-              Library
-            </button>
-            <button
-              onClick={() => setView("construction")}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] ${
-                view === "construction"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Box size={12} />
-              Construction Parts
-            </button>
-          </div>
-        </div>
+        <PillToggle options={viewOptions} value={view} onChange={setView} />
         <ComponentTree
           onNodeEditRequested={(n: ComponentTreeNode) => setEditingNodeId(n.id)}
         />

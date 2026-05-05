@@ -47,6 +47,7 @@ import { ExecutionResultDialog } from "@/components/workbench/construction-plans
 import { ArtifactBrowserDialog } from "@/components/workbench/construction-plans/ArtifactBrowserDialog";
 import { NewPlanDialog } from "@/components/workbench/construction-plans/NewPlanDialog";
 import type { ExecutionResult } from "@/hooks/useConstructionPlans";
+import { PillToggle, type PillToggleOption } from "@/components/ui/PillToggle";
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -511,24 +512,10 @@ export default function ConstructionPlansPage() {
   const totalSteps = plans.reduce((s, p) => s + p.step_count, 0);
   const panelStyle = { width: treeWide ? "66%" : 360, minWidth: treeWide ? "66%" : 360 };
 
-  function ModeButton({
-    mode,
-    Icon,
-    label,
-  }: Readonly<{ mode: "plans" | "templates"; Icon: typeof Hammer; label: string }>) {
-    return (
-      <button
-        onClick={() => setViewMode(mode)}
-        className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] ${
-          viewMode === mode
-            ? "bg-primary text-primary-foreground"
-            : "text-muted-foreground hover:text-foreground"
-        }`}
-      >
-        <Icon size={12} /> {label}
-      </button>
-    );
-  }
+  const viewModeOptions: PillToggleOption<"plans" | "templates">[] = [
+    { value: "plans", label: "Plans", icon: Hammer },
+    { value: "templates", label: "Templates", icon: BookTemplate },
+  ];
 
   function WidthToggle() {
     return (
@@ -552,12 +539,7 @@ export default function ConstructionPlansPage() {
           style={panelStyle}
         >
           <div className="flex h-full flex-col gap-3 overflow-hidden">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
-                <ModeButton mode="plans" Icon={Hammer} label="Plans" />
-                <ModeButton mode="templates" Icon={BookTemplate} label="Templates" />
-              </div>
-            </div>
+            <PillToggle options={viewModeOptions} value={viewMode} onChange={setViewMode} />
 
             {viewMode === "plans" && (
               <TreeCard
