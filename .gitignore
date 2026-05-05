@@ -271,3 +271,11 @@ skills-lock.json
 patterns/
 planning/
 screenshots/
+
+# AVL build artifacts (compiled locally, not portable)
+Avl/bin/avl
+Avl/plotlib/*.o
+Avl/plotlib/*.a
+Avl/plotlib/config.make
+Avl/eispack/*.o
+Avl/eispack/*.a

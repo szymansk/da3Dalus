@@ -35,11 +35,11 @@ DP =
 #DP = -fdefault-real-8
 
 FFLAGS  = -O2 $(MARCH) $(DP)
-CFLAGS  = -O2 $(MARCH) $(DEFINE)
-CFLAGS0 = -O0 $(MARCH) $(DEFINE)
+CFLAGS  = -O2 $(MARCH) $(DEFINE) -I/opt/homebrew/include
+CFLAGS0 = -O0 $(MARCH) $(DEFINE) -I/opt/homebrew/include
 
 AR = ar r
-RANLIB = ranlib 
-LINKLIB = -L/usr/X11R6/lib -lX11 
+RANLIB = ranlib
+LINKLIB = -L/opt/homebrew/lib -lX11
 WOBJ = Xwin2.o
 WSRC = xwin11

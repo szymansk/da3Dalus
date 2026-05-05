@@ -79,7 +79,7 @@ OPT = -O
 DP =
 ACHK =
 
-PLTLIB = -L/usr/X11R6/lib -lX11
+PLTLIB = -L/opt/homebrew/lib -lX11
 SECOND = second_g77.f
 
 # gfortran array mismatch fix - if needed add to FFLAGS
