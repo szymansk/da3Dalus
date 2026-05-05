@@ -101,6 +101,35 @@ poetry run alembic upgrade head
 poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
+### Frontend (Next.js)
+
+The frontend is a Next.js application located in `frontend/`.
+
+#### Prerequisites
+
+- Node.js 18+ and npm
+
+#### Steps
+
+1. **Install dependencies:**
+   ```bash
+   cd frontend && npm install
+   ```
+
+2. **Start the development server:**
+   ```bash
+   npm run dev
+   ```
+
+   The frontend will be available at `http://localhost:3000`.
+
+3. **Backend connection:**
+   The frontend connects to the backend at `http://localhost:8001` by default.
+   To use a different backend URL, set the environment variable:
+   ```bash
+   NEXT_PUBLIC_API_URL=http://localhost:9000 npm run dev
+   ```
+
 ### Option 2: Using Docker Compose (Production)
 
 Docker Compose provides a containerized environment with all dependencies pre-installed.
