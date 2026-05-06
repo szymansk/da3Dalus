@@ -153,6 +153,20 @@ def parse_strip_forces_output(stdout: str) -> list[dict]:
     return surfaces
 
 
+def build_control_deflection_commands(airplane) -> list[str]:
+    """Build AVL keystroke commands to set correct control surface deflections.
+
+    Aerosandbox hardcodes ``d1 d1 1`` — this produces correct overrides.
+    """
+    seen: dict[str, float] = {}
+    for wing in airplane.wings:
+        for xsec in wing.xsecs:
+            for cs in xsec.control_surfaces:
+                if cs.name not in seen:
+                    seen[cs.name] = float(cs.deflection)
+    return [f"d{i} d{i} {defl}" for i, defl in enumerate(seen.values(), 1)]
+
+
 if HAS_AEROSANDBOX:
     import numpy as np
 
@@ -167,6 +181,11 @@ if HAS_AEROSANDBOX:
         def __init__(self, *args, avl_file_content: str | None = None, **kwargs):
             super().__init__(*args, **kwargs)
             self._avl_file_content = avl_file_content
+
+        def _default_keystroke_file_contents(self):
+            ks = super()._default_keystroke_file_contents()
+            ks += build_control_deflection_commands(self.airplane)
+            return ks
 
         def run(self) -> dict:
             """Run AVL with strip-force capture.
