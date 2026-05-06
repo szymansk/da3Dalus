@@ -56,9 +56,7 @@ class TestStripForcesResponseSchema:
         import pydantic
 
         with pytest.raises(pydantic.ValidationError):
-            StripForcesResponse(
-                alpha=5.0, mach=0.04, sref=0.25, cref=0.25, bref=1.0, surfaces=[]
-            )
+            StripForcesResponse(alpha=5.0, mach=0.04, sref=0.25, cref=0.25, bref=1.0, surfaces=[])
 
     def test_beta_field_included_in_response(self):
         from app.schemas.strip_forces import StripForcesResponse
@@ -104,6 +102,176 @@ class TestParseStripForcesOutput:
         assert result == []
 
 
+class TestBuildControlDeflectionCommands:
+    """Test that control surface deflections are correctly translated to AVL commands."""
+
+    def test_no_control_surfaces_returns_empty(self):
+        import aerosandbox as asb
+        from app.services.avl_strip_forces import build_control_deflection_commands
+
+        airplane = asb.Airplane(
+            name="test",
+            wings=[
+                asb.Wing(
+                    name="W",
+                    symmetric=True,
+                    xsecs=[
+                        asb.WingXSec(xyz_le=[0, 0, 0], chord=0.3, airfoil=asb.Airfoil("naca0012")),
+                        asb.WingXSec(
+                            xyz_le=[0, 0.5, 0], chord=0.2, airfoil=asb.Airfoil("naca0012")
+                        ),
+                    ],
+                )
+            ],
+        )
+        assert build_control_deflection_commands(airplane) == []
+
+    def test_single_control_surface_zero_deflection(self):
+        import aerosandbox as asb
+        from app.services.avl_strip_forces import build_control_deflection_commands
+
+        airplane = asb.Airplane(
+            name="test",
+            wings=[
+                asb.Wing(
+                    name="W",
+                    symmetric=True,
+                    xsecs=[
+                        asb.WingXSec(
+                            xyz_le=[0, 0, 0],
+                            chord=0.3,
+                            airfoil=asb.Airfoil("naca0012"),
+                            control_surfaces=[
+                                asb.ControlSurface(
+                                    name="aileron", symmetric=False, deflection=0, hinge_point=0.75
+                                ),
+                            ],
+                        ),
+                        asb.WingXSec(
+                            xyz_le=[0, 0.5, 0], chord=0.2, airfoil=asb.Airfoil("naca0012")
+                        ),
+                    ],
+                )
+            ],
+        )
+        commands = build_control_deflection_commands(airplane)
+        assert commands == ["d1 d1 0.0"]
+
+    def test_single_control_surface_nonzero_deflection(self):
+        import aerosandbox as asb
+        from app.services.avl_strip_forces import build_control_deflection_commands
+
+        airplane = asb.Airplane(
+            name="test",
+            wings=[
+                asb.Wing(
+                    name="W",
+                    symmetric=True,
+                    xsecs=[
+                        asb.WingXSec(
+                            xyz_le=[0, 0, 0],
+                            chord=0.3,
+                            airfoil=asb.Airfoil("naca0012"),
+                            control_surfaces=[
+                                asb.ControlSurface(
+                                    name="flap", symmetric=True, deflection=10, hinge_point=0.7
+                                ),
+                            ],
+                        ),
+                        asb.WingXSec(
+                            xyz_le=[0, 0.5, 0], chord=0.2, airfoil=asb.Airfoil("naca0012")
+                        ),
+                    ],
+                )
+            ],
+        )
+        commands = build_control_deflection_commands(airplane)
+        assert commands == ["d1 d1 10.0"]
+
+    def test_multiple_control_surfaces(self):
+        import aerosandbox as asb
+        from app.services.avl_strip_forces import build_control_deflection_commands
+
+        airplane = asb.Airplane(
+            name="test",
+            wings=[
+                asb.Wing(
+                    name="W",
+                    symmetric=True,
+                    xsecs=[
+                        asb.WingXSec(
+                            xyz_le=[0, 0, 0],
+                            chord=0.3,
+                            airfoil=asb.Airfoil("naca0012"),
+                            control_surfaces=[
+                                asb.ControlSurface(
+                                    name="flap", symmetric=True, deflection=5, hinge_point=0.7
+                                ),
+                            ],
+                        ),
+                        asb.WingXSec(
+                            xyz_le=[0, 0.25, 0],
+                            chord=0.25,
+                            airfoil=asb.Airfoil("naca0012"),
+                            control_surfaces=[
+                                asb.ControlSurface(
+                                    name="aileron", symmetric=False, deflection=0, hinge_point=0.75
+                                ),
+                            ],
+                        ),
+                        asb.WingXSec(
+                            xyz_le=[0, 0.5, 0], chord=0.2, airfoil=asb.Airfoil("naca0012")
+                        ),
+                    ],
+                )
+            ],
+        )
+        commands = build_control_deflection_commands(airplane)
+        assert commands == ["d1 d1 5.0", "d2 d2 0.0"]
+
+    def test_duplicate_names_use_first_deflection(self):
+        """Same control surface name on multiple xsecs takes the first deflection."""
+        import aerosandbox as asb
+        from app.services.avl_strip_forces import build_control_deflection_commands
+
+        airplane = asb.Airplane(
+            name="test",
+            wings=[
+                asb.Wing(
+                    name="W",
+                    symmetric=True,
+                    xsecs=[
+                        asb.WingXSec(
+                            xyz_le=[0, 0, 0],
+                            chord=0.3,
+                            airfoil=asb.Airfoil("naca0012"),
+                            control_surfaces=[
+                                asb.ControlSurface(
+                                    name="flap", symmetric=True, deflection=3, hinge_point=0.7
+                                ),
+                            ],
+                        ),
+                        asb.WingXSec(
+                            xyz_le=[0, 0.25, 0],
+                            chord=0.25,
+                            airfoil=asb.Airfoil("naca0012"),
+                            control_surfaces=[
+                                asb.ControlSurface(
+                                    name="flap", symmetric=True, deflection=3, hinge_point=0.7
+                                ),
+                            ],
+                        ),
+                        asb.WingXSec(
+                            xyz_le=[0, 0.5, 0], chord=0.2, airfoil=asb.Airfoil("naca0012")
+                        ),
+                    ],
+                )
+            ],
+        )
+        commands = build_control_deflection_commands(airplane)
+        assert commands == ["d1 d1 3.0"]
+
+
 class TestAVLWithStripForcesKeystrokes:
     def test_subclass_inherits_parent_keystrokes(self):
         """AVLWithStripForces preserves parent setup keystrokes."""
@@ -112,10 +280,18 @@ class TestAVLWithStripForcesKeystrokes:
 
         airplane = asb.Airplane(
             name="test",
-            wings=[asb.Wing(name="W", symmetric=True, xsecs=[
-                asb.WingXSec(xyz_le=[0, 0, 0], chord=0.3, airfoil=asb.Airfoil("naca0012")),
-                asb.WingXSec(xyz_le=[0, 0.5, 0], chord=0.2, airfoil=asb.Airfoil("naca0012")),
-            ])],
+            wings=[
+                asb.Wing(
+                    name="W",
+                    symmetric=True,
+                    xsecs=[
+                        asb.WingXSec(xyz_le=[0, 0, 0], chord=0.3, airfoil=asb.Airfoil("naca0012")),
+                        asb.WingXSec(
+                            xyz_le=[0, 0.5, 0], chord=0.2, airfoil=asb.Airfoil("naca0012")
+                        ),
+                    ],
+                )
+            ],
         )
         op = asb.OperatingPoint(velocity=20, alpha=5)
         avl = AVLWithStripForces(airplane=airplane, op_point=op)
@@ -130,11 +306,55 @@ class TestAVLWithStripForcesKeystrokes:
 
         airplane = asb.Airplane(
             name="test",
-            wings=[asb.Wing(name="W", symmetric=True, xsecs=[
-                asb.WingXSec(xyz_le=[0, 0, 0], chord=0.3, airfoil=asb.Airfoil("naca0012")),
-                asb.WingXSec(xyz_le=[0, 0.5, 0], chord=0.2, airfoil=asb.Airfoil("naca0012")),
-            ])],
+            wings=[
+                asb.Wing(
+                    name="W",
+                    symmetric=True,
+                    xsecs=[
+                        asb.WingXSec(xyz_le=[0, 0, 0], chord=0.3, airfoil=asb.Airfoil("naca0012")),
+                        asb.WingXSec(
+                            xyz_le=[0, 0.5, 0], chord=0.2, airfoil=asb.Airfoil("naca0012")
+                        ),
+                    ],
+                )
+            ],
         )
         op = asb.OperatingPoint(velocity=20, alpha=5)
         avl = AVLWithStripForces(airplane=airplane, op_point=op)
         assert isinstance(avl, asb.AVL)
+
+    def test_control_deflections_override_hardcoded_default(self):
+        """AVLWithStripForces overrides Aerosandbox's hardcoded d1=1° with actual deflections."""
+        from app.services.avl_strip_forces import AVLWithStripForces
+        import aerosandbox as asb
+
+        airplane = asb.Airplane(
+            name="test",
+            wings=[
+                asb.Wing(
+                    name="W",
+                    symmetric=True,
+                    xsecs=[
+                        asb.WingXSec(
+                            xyz_le=[0, 0, 0],
+                            chord=0.3,
+                            airfoil=asb.Airfoil("naca0012"),
+                            control_surfaces=[
+                                asb.ControlSurface(
+                                    name="aileron", symmetric=False, deflection=0, hinge_point=0.75
+                                ),
+                            ],
+                        ),
+                        asb.WingXSec(
+                            xyz_le=[0, 0.5, 0], chord=0.2, airfoil=asb.Airfoil("naca0012")
+                        ),
+                    ],
+                )
+            ],
+        )
+        op = asb.OperatingPoint(velocity=20, alpha=5)
+        avl = AVLWithStripForces(airplane=airplane, op_point=op)
+        ks = avl._default_keystroke_file_contents()
+        joined = "\n".join(str(k) for k in ks)
+        assert "d1 d1 0.0" in joined
+        assert joined.index("d1 d1 0.0") > joined.index("d1 d1 1")
