@@ -32,7 +32,7 @@ export interface AssumptionsSummary {
 
 export function useDesignAssumptions(aeroplaneId: string | null) {
   const path = aeroplaneId
-    ? `/v2/aeroplanes/${aeroplaneId}/assumptions`
+    ? `/aeroplanes/${aeroplaneId}/assumptions`
     : null;
   const { data, error, isLoading, mutate } = useSWR<AssumptionsSummary>(
     path,
@@ -41,39 +41,55 @@ export function useDesignAssumptions(aeroplaneId: string | null) {
 
   const seedDefaults = useCallback(async () => {
     if (!aeroplaneId) return;
-    await fetch(`${API_BASE}/v2/aeroplanes/${aeroplaneId}/assumptions`, {
-      method: "POST",
-    });
+    const res = await fetch(
+      `${API_BASE}/aeroplanes/${aeroplaneId}/assumptions`,
+      { method: "POST" },
+    );
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`Failed to seed defaults: ${res.status} ${body}`);
+    }
     mutate();
   }, [aeroplaneId, mutate]);
 
   const updateEstimate = useCallback(
-    async (paramName: string, value: number) => {
+    async (paramName: Assumption["parameter_name"], value: number) => {
       if (!aeroplaneId) return;
-      await fetch(
-        `${API_BASE}/v2/aeroplanes/${aeroplaneId}/assumptions/${paramName}`,
+      const res = await fetch(
+        `${API_BASE}/aeroplanes/${aeroplaneId}/assumptions/${paramName}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ estimate_value: value }),
         },
       );
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(`Failed to update assumption: ${res.status} ${body}`);
+      }
       mutate();
     },
     [aeroplaneId, mutate],
   );
 
   const switchSource = useCallback(
-    async (paramName: string, source: "ESTIMATE" | "CALCULATED") => {
+    async (
+      paramName: Assumption["parameter_name"],
+      source: "ESTIMATE" | "CALCULATED",
+    ) => {
       if (!aeroplaneId) return;
-      await fetch(
-        `${API_BASE}/v2/aeroplanes/${aeroplaneId}/assumptions/${paramName}/source`,
+      const res = await fetch(
+        `${API_BASE}/aeroplanes/${aeroplaneId}/assumptions/${paramName}/source`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ active_source: source }),
         },
       );
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(`Failed to switch source: ${res.status} ${body}`);
+      }
       mutate();
     },
     [aeroplaneId, mutate],

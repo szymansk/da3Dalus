@@ -56,7 +56,9 @@ def divergence_level(pct: float | None) -> DIVERGENCE_LEVEL:
 class AssumptionWrite(BaseModel):
     """Payload for updating a design assumption estimate."""
 
-    estimate_value: float = Field(..., description="Manual estimate for this parameter")
+    estimate_value: float = Field(
+        ..., allow_inf_nan=False, description="Manual estimate for this parameter"
+    )
 
 
 class AssumptionSourceSwitch(BaseModel):
@@ -71,14 +73,16 @@ class AssumptionRead(BaseModel):
     """Read-only representation of one design assumption."""
 
     id: int
-    parameter_name: str
+    parameter_name: VALID_PARAMETERS
     estimate_value: float
     calculated_value: float | None = None
     calculated_source: str | None = None
-    active_source: str
+    active_source: ACTIVE_SOURCE
     effective_value: float = Field(..., description="Value used for simulations")
     divergence_pct: float | None = None
-    divergence_level: str = Field(..., description="none, info, warning, or alert")
+    divergence_level: DIVERGENCE_LEVEL = Field(
+        ..., description="none, info, warning, or alert"
+    )
     unit: str = Field("", description="Display unit for this parameter")
     is_design_choice: bool = Field(
         False, description="True for params that are never auto-calculated"

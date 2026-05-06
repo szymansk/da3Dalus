@@ -19,6 +19,7 @@ from app.core.exceptions import (
 )
 from app.db.session import get_db
 from app.schemas.design_assumption import (
+    PARAMETER_DEFAULTS,
     AssumptionRead,
     AssumptionSourceSwitch,
     AssumptionWrite,
@@ -29,6 +30,8 @@ from app.services import design_assumptions_service as svc
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+_PARAM_NAME_PATTERN = "^(" + "|".join(PARAMETER_DEFAULTS.keys()) + ")$"
 
 
 def _raise_http(exc: ServiceException) -> None:
@@ -51,10 +54,9 @@ def _call(func, *args, **kwargs):
     except ServiceException as exc:
         _raise_http(exc)
     except Exception as exc:
+        logger.error("Unexpected error in design assumptions: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Unexpected error: {exc}") from exc
 
-
-_PARAM_NAME_PATTERN = r"^(mass|cg_x|target_static_margin|cd0|cl_max|g_limit)$"
 
 
 @router.post(

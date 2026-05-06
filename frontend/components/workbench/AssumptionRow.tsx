@@ -86,7 +86,7 @@ export function AssumptionRow({
 
   function commitEdit() {
     const parsed = parseFloat(draft);
-    if (!isNaN(parsed) && parsed !== assumption.estimate_value) {
+    if (Number.isFinite(parsed) && parsed !== assumption.estimate_value) {
       onUpdateEstimate(assumption.parameter_name, parsed);
     }
     setEditing(false);

@@ -1373,6 +1373,16 @@ async def detach_flight_profile_from_aeroplane_tool(aeroplane_id: UUID4) -> Any:
 
 # Design assumption tools
 @mcp_tool(
+    name="seed_design_assumptions",
+    description="Seed default design assumptions for an aeroplane (idempotent).",
+)
+async def seed_design_assumptions_tool(aeroplane_id: UUID4) -> Any:
+    return await _call_endpoint(
+        design_assumptions.seed_assumptions_endpoint, aeroplane_id=aeroplane_id
+    )
+
+
+@mcp_tool(
     name="get_design_assumptions",
     description="Get all design assumptions for an aeroplane with divergence info.",
 )

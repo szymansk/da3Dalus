@@ -91,15 +91,23 @@ def seed_defaults(db: Session, aeroplane_uuid) -> AssumptionsSummary:
 
 def list_assumptions(db: Session, aeroplane_uuid) -> AssumptionsSummary:
     """List all design assumptions for an aeroplane."""
-    aeroplane = _get_aeroplane(db, aeroplane_uuid)
-    rows = (
-        db.query(DesignAssumptionModel)
-        .filter(DesignAssumptionModel.aeroplane_id == aeroplane.id)
-        .all()
-    )
-    assumptions = [_assumption_to_read(r) for r in rows]
-    warnings_count = sum(1 for a in assumptions if a.divergence_level in ("warning", "alert"))
-    return AssumptionsSummary(assumptions=assumptions, warnings_count=warnings_count)
+    try:
+        aeroplane = _get_aeroplane(db, aeroplane_uuid)
+        rows = (
+            db.query(DesignAssumptionModel)
+            .filter(DesignAssumptionModel.aeroplane_id == aeroplane.id)
+            .all()
+        )
+        assumptions = [_assumption_to_read(r) for r in rows]
+        warnings_count = sum(
+            1 for a in assumptions if a.divergence_level in ("warning", "alert")
+        )
+        return AssumptionsSummary(assumptions=assumptions, warnings_count=warnings_count)
+    except NotFoundError:
+        raise
+    except SQLAlchemyError as exc:
+        logger.error("DB error in list_assumptions: %s", exc)
+        raise InternalError(message=f"Database error: {exc}") from exc
 
 
 def update_assumption(

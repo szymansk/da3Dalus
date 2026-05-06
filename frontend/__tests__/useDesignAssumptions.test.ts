@@ -77,7 +77,7 @@ describe("useDesignAssumptions", () => {
 
     expect(mockFetch).toHaveBeenCalledOnce();
     const [url, options] = mockFetch.mock.calls[0];
-    expect(url).toContain("/v2/aeroplanes/aero-1/assumptions");
+    expect(url).toContain("/aeroplanes/aero-1/assumptions");
     expect(options.method).toBe("POST");
     expect(mockMutate).toHaveBeenCalled();
   });
@@ -107,7 +107,7 @@ describe("useDesignAssumptions", () => {
 
     expect(mockFetch).toHaveBeenCalledOnce();
     const [url, options] = mockFetch.mock.calls[0];
-    expect(url).toContain("/v2/aeroplanes/aero-1/assumptions/mass");
+    expect(url).toContain("/aeroplanes/aero-1/assumptions/mass");
     expect(options.method).toBe("PUT");
     expect(JSON.parse(options.body)).toEqual({ estimate_value: 3.0 });
     expect(mockMutate).toHaveBeenCalled();
@@ -138,7 +138,7 @@ describe("useDesignAssumptions", () => {
 
     expect(mockFetch).toHaveBeenCalledOnce();
     const [url, options] = mockFetch.mock.calls[0];
-    expect(url).toContain("/v2/aeroplanes/aero-1/assumptions/mass/source");
+    expect(url).toContain("/aeroplanes/aero-1/assumptions/mass/source");
     expect(options.method).toBe("PATCH");
     expect(JSON.parse(options.body)).toEqual({ active_source: "CALCULATED" });
     expect(mockMutate).toHaveBeenCalled();
@@ -155,5 +155,59 @@ describe("useDesignAssumptions", () => {
     });
 
     expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("seedDefaults throws on non-ok response", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      text: () => Promise.resolve("Not found"),
+    });
+    globalThis.fetch = mockFetch;
+
+    const { result } = renderHook(() => useDesignAssumptions("aero-1"));
+
+    await expect(
+      act(async () => {
+        await result.current.seedDefaults();
+      }),
+    ).rejects.toThrow("Failed to seed defaults: 404");
+    expect(mockMutate).not.toHaveBeenCalled();
+  });
+
+  it("updateEstimate throws on non-ok response", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 422,
+      text: () => Promise.resolve("Validation error"),
+    });
+    globalThis.fetch = mockFetch;
+
+    const { result } = renderHook(() => useDesignAssumptions("aero-1"));
+
+    await expect(
+      act(async () => {
+        await result.current.updateEstimate("mass", -1);
+      }),
+    ).rejects.toThrow("Failed to update assumption: 422");
+    expect(mockMutate).not.toHaveBeenCalled();
+  });
+
+  it("switchSource throws on non-ok response", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 422,
+      text: () => Promise.resolve("Design choice"),
+    });
+    globalThis.fetch = mockFetch;
+
+    const { result } = renderHook(() => useDesignAssumptions("aero-1"));
+
+    await expect(
+      act(async () => {
+        await result.current.switchSource("g_limit", "CALCULATED");
+      }),
+    ).rejects.toThrow("Failed to switch source: 422");
+    expect(mockMutate).not.toHaveBeenCalled();
   });
 });
