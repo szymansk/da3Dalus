@@ -5,7 +5,7 @@ import { Wind, SlidersHorizontal, Activity, Maximize2, Minimize2, Settings } fro
 import type { AnalysisResult } from "@/hooks/useAnalysis";
 import type { StripForcesResult } from "@/hooks/useStripForces";
 
-const TABS = ["Polar", "Trefftz Plane", "Streamlines"] as const;
+const TABS = ["Assumptions", "Polar", "Trefftz Plane", "Streamlines"] as const;
 export type Tab = (typeof TABS)[number];
 export { TABS };
 
@@ -30,6 +30,7 @@ interface Props {
   readonly showAvlGeometryButton?: boolean;
   readonly wingXSecs?: WingXSec[] | null;
   readonly wingSymmetric?: boolean;
+  readonly assumptionsSlot?: React.ReactNode;
 }
 
 // -- Plotly Chart (dynamic import) ----------------------------------------
@@ -521,6 +522,7 @@ export function AnalysisViewerPanel({
   showAvlGeometryButton,
   wingXSecs,
   wingSymmetric,
+  assumptionsSlot,
 }: Readonly<Props>) {
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
 
@@ -558,7 +560,7 @@ export function AnalysisViewerPanel({
           Aerodynamic Analysis
         </span>
         <div className="flex-1" />
-        {onConfigureClick && (
+        {activeTab !== "Assumptions" && onConfigureClick && (
           <button
             onClick={onConfigureClick}
             className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3 py-1.5 text-[12px] text-foreground hover:bg-sidebar-accent"
@@ -567,7 +569,7 @@ export function AnalysisViewerPanel({
             Configure & Run
           </button>
         )}
-        {showAvlGeometryButton && onEditAvlGeometry && (
+        {activeTab !== "Assumptions" && showAvlGeometryButton && onEditAvlGeometry && (
           <button
             onClick={onEditAvlGeometry}
             className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3 py-1.5 text-[12px] text-foreground hover:bg-sidebar-accent"
@@ -594,6 +596,12 @@ export function AnalysisViewerPanel({
       </div>
 
       {/* Tab Body */}
+      {activeTab === "Assumptions" && (
+        <div className="flex flex-1 flex-col overflow-auto bg-card-muted p-6">
+          {assumptionsSlot}
+        </div>
+      )}
+
       {activeTab === "Polar" && (
         <div className="flex flex-1 flex-col gap-4 overflow-auto bg-card-muted p-6">
           {charts ? (

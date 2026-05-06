@@ -14,6 +14,7 @@ from .copilot_history import router as copilot_history_router
 from .design_versions import router as design_versions_router
 from .powertrain_sizing import router as powertrain_sizing_router
 from .avl_geometry import router as avl_geometry_router
+from .design_assumptions import router as design_assumptions_router
 
 # Include the routers
 router.include_router(base_router)
@@ -25,3 +26,4 @@ router.include_router(copilot_history_router)
 router.include_router(design_versions_router)
 router.include_router(powertrain_sizing_router)
 router.include_router(avl_geometry_router)
+router.include_router(design_assumptions_router)

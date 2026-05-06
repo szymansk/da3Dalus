@@ -11,6 +11,7 @@ import { useWings, useWing } from "@/hooks/useWings";
 import { AnalysisViewerPanel, type Tab } from "@/components/workbench/AnalysisViewerPanel";
 import { AnalysisConfigPanel } from "@/components/workbench/AnalysisConfigPanel";
 import { AvlGeometryEditor } from "@/components/workbench/AvlGeometryEditor";
+import { AssumptionsPanel } from "@/components/workbench/AssumptionsPanel";
 
 export default function AnalysisPage() {
   const { aeroplaneId, hydrated, selectedWing, openPicker } = useAeroplaneContext();
@@ -27,6 +28,7 @@ export default function AnalysisPage() {
   const showAvlGeometryButton = activeTab === "Trefftz Plane" || activeTab === "Streamlines";
 
   const modalTitleByTab: Record<Tab, string> = {
+    "Assumptions": "Assumptions",
     "Polar": "Polar Configuration",
     "Trefftz Plane": "Trefftz Plane Configuration",
     "Streamlines": "Streamlines Configuration",
@@ -66,6 +68,7 @@ export default function AnalysisPage() {
             onEditAvlGeometry={() => setAvlEditorOpen(true)}
             wingXSecs={wing?.x_secs}
             wingSymmetric={wing?.symmetric}
+            assumptionsSlot={<AssumptionsPanel aeroplaneId={aeroplaneId} />}
           />
         </div>
       </div>

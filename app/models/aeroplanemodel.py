@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 import uuid
 from sqlalchemy.dialects.postgresql import UUID
@@ -9,17 +9,19 @@ from typing import Any, Optional
 
 from app.db.base import Base
 
+
 # Custom UUID type for SQLite compatibility
 class GUID(TypeDecorator):
     """Platform-independent GUID type.
     Uses PostgreSQL's UUID type, otherwise uses
     CHAR(32), storing as stringified hex values.
     """
+
     impl = CHAR
     cache_ok = True
 
     def load_dialect_impl(self, dialect):
-        if dialect.name == 'postgresql':
+        if dialect.name == "postgresql":
             return dialect.type_descriptor(UUID())
         else:
             return dialect.type_descriptor(CHAR(32))
@@ -27,7 +29,7 @@ class GUID(TypeDecorator):
     def process_bind_param(self, value, dialect):
         if value is None:
             return value
-        elif dialect.name == 'postgresql':
+        elif dialect.name == "postgresql":
             return str(value)
         else:
             if not isinstance(value, uuid.UUID):
@@ -68,7 +70,9 @@ class ProjectedControlSurface:
 
 class WingXSecDetailModel(Base):
     __tablename__ = "wing_xsec_details"
-    wing_xsec_id = Column(Integer, ForeignKey("wing_xsecs.id", ondelete="CASCADE"), nullable=False, unique=True)
+    wing_xsec_id = Column(
+        Integer, ForeignKey("wing_xsecs.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
     x_sec_type = Column(String, nullable=True)
     tip_type = Column(String, nullable=True)
     number_interpolation_points = Column(Integer, nullable=True)
@@ -90,7 +94,9 @@ class WingXSecDetailModel(Base):
 
 class WingXSecSpareModel(Base):
     __tablename__ = "wing_xsec_spares"
-    wing_xsec_detail_id = Column(Integer, ForeignKey("wing_xsec_details.id", ondelete="CASCADE"), nullable=False)
+    wing_xsec_detail_id = Column(
+        Integer, ForeignKey("wing_xsec_details.id", ondelete="CASCADE"), nullable=False
+    )
     sort_index = Column(Integer, default=0, nullable=False)
     spare_support_dimension_width = Column(Float, nullable=False)
     spare_support_dimension_height = Column(Float, nullable=False)
@@ -106,7 +112,9 @@ class WingXSecSpareModel(Base):
 
 class WingXSecTrailingEdgeDeviceModel(Base):
     __tablename__ = "wing_xsec_trailing_edge_devices"
-    wing_xsec_detail_id = Column(Integer, ForeignKey("wing_xsec_details.id", ondelete="CASCADE"), nullable=False, unique=True)
+    wing_xsec_detail_id = Column(
+        Integer, ForeignKey("wing_xsec_details.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
     name = Column(String, nullable=True)
     rel_chord_root = Column(Float, nullable=True)
     rel_chord_tip = Column(Float, nullable=True)
@@ -141,7 +149,12 @@ class WingXSecTrailingEdgeDeviceModel(Base):
 
 class WingXSecTedServoModel(Base):
     __tablename__ = "wing_xsec_ted_servos"
-    ted_id = Column(Integer, ForeignKey("wing_xsec_trailing_edge_devices.id", ondelete="CASCADE"), nullable=False, unique=True)
+    ted_id = Column(
+        Integer,
+        ForeignKey("wing_xsec_trailing_edge_devices.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
     component_id = Column(Integer, ForeignKey("components.id"), nullable=True)
     length = Column(Float, nullable=True)
     width = Column(Float, nullable=True)
@@ -156,6 +169,7 @@ class WingXSecTedServoModel(Base):
     screw_hole_d = Column(Float, nullable=True)
 
     ted = relationship("WingXSecTrailingEdgeDeviceModel", back_populates="servo_data")
+
 
 class WingXSecModel(Base):
     __tablename__ = "wing_xsecs"
@@ -210,6 +224,7 @@ class WingXSecModel(Base):
             deflection=projected["deflection"],
         )
 
+
 class WingModel(Base):
     __tablename__ = "wings"
     name = Column(String, nullable=False)
@@ -221,7 +236,7 @@ class WingModel(Base):
         "WingXSecModel",
         back_populates="wing",
         cascade=_CASCADE_ALL_DELETE_ORPHAN,
-        order_by="WingXSecModel.sort_index"
+        order_by="WingXSecModel.sort_index",
     )
 
     # ForeignKey to Aeroplane
@@ -347,12 +362,19 @@ class WingModel(Base):
         )
 
     @classmethod
-    def _build_xsec_detail(cls, x_sec_type, tip_type, number_interpolation_points,
-                           trailing_edge_device, spare_list):
+    def _build_xsec_detail(
+        cls, x_sec_type, tip_type, number_interpolation_points, trailing_edge_device, spare_list
+    ):
         """Build a WingXSecDetailModel if any segment field is non-None, else return None."""
         has_detail = any(
-            v is not None for v in [x_sec_type, tip_type, number_interpolation_points,
-                                    trailing_edge_device, spare_list]
+            v is not None
+            for v in [
+                x_sec_type,
+                tip_type,
+                number_interpolation_points,
+                trailing_edge_device,
+                spare_list,
+            ]
         )
         if not has_detail:
             return None
@@ -385,13 +407,20 @@ class WingModel(Base):
             xsec_payload = (cls._as_payload(raw_xsec) or {}).copy()
             is_terminal = index == len(xsec_dicts) - 1
 
-            ted, spare_list, x_sec_type, tip_type, n_interp = cls._extract_xsec_segment_fields(xsec_payload)
+            ted, spare_list, x_sec_type, tip_type, n_interp = cls._extract_xsec_segment_fields(
+                xsec_payload
+            )
             if is_terminal:
                 ted = spare_list = x_sec_type = tip_type = n_interp = None
 
             if "airfoil" in xsec_payload:
-                from app.converters.model_schema_converters import _normalize_airfoil_reference_for_schema
-                xsec_payload["airfoil"] = _normalize_airfoil_reference_for_schema(xsec_payload["airfoil"])
+                from app.converters.model_schema_converters import (
+                    _normalize_airfoil_reference_for_schema,
+                )
+
+                xsec_payload["airfoil"] = _normalize_airfoil_reference_for_schema(
+                    xsec_payload["airfoil"]
+                )
 
             if "sort_index" not in xsec_payload:
                 xsec_payload["sort_index"] = index
@@ -400,6 +429,7 @@ class WingModel(Base):
 
             wing.x_secs.append(xsec)
         return wing
+
 
 class FuselageXSecSuperEllipseModel(Base):
     __tablename__ = "fuselage_xsecs"
@@ -414,6 +444,7 @@ class FuselageXSecSuperEllipseModel(Base):
     fuselage_id = Column(Integer, ForeignKey("fuselages.id", ondelete="CASCADE"))
     fuselage = relationship("FuselageModel", back_populates="x_secs")
 
+
 class FuselageModel(Base):
     __tablename__ = "fuselages"
     name = Column(String, nullable=False)
@@ -423,7 +454,8 @@ class FuselageModel(Base):
         "FuselageXSecSuperEllipseModel",
         back_populates="fuselage",
         cascade=_CASCADE_ALL_DELETE_ORPHAN,
-        order_by="FuselageXSecSuperEllipseModel.sort_index")
+        order_by="FuselageXSecSuperEllipseModel.sort_index",
+    )
 
     # ForeignKey to Aeroplane
     aeroplane_id = Column(Integer, ForeignKey(_FK_AEROPLANES_ID, ondelete="CASCADE"))
@@ -438,19 +470,22 @@ class FuselageModel(Base):
             fuselage.x_secs.append(FuselageXSecSuperEllipseModel(sort_index=i, **xd))
         return fuselage
 
+
 class AeroplaneModel(Base):
     __tablename__ = "aeroplanes"
     uuid = Column(GUID, default=lambda: uuid.uuid4(), unique=True, nullable=False)
     name = Column(String, nullable=False)
     total_mass_kg = Column(Float, nullable=True)
     # Optional assigned flight-intent profile used for target operating-point generation.
-    flight_profile_id = Column(Integer, ForeignKey("rc_flight_profiles.id"), nullable=True, index=True)
+    flight_profile_id = Column(
+        Integer, ForeignKey("rc_flight_profiles.id"), nullable=True, index=True
+    )
     xyz_ref = Column(JSON, default=[0, 0, 0])  # Store as JSON array
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         server_default=func.now(),
-        nullable=False
+        nullable=False,
     )
     updated_at = Column(
         DateTime(timezone=True),
@@ -458,47 +493,57 @@ class AeroplaneModel(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         server_default=func.now(),
         server_onupdate=func.now(),
-        nullable=False
+        nullable=False,
     )
 
     # Relationships
     wings = relationship(
-        "WingModel",
-        back_populates="aeroplane",
-        cascade=_CASCADE_ALL_DELETE_ORPHAN)
+        "WingModel", back_populates="aeroplane", cascade=_CASCADE_ALL_DELETE_ORPHAN
+    )
     fuselages = relationship(
-        "FuselageModel",
-        back_populates="aeroplane",
-        cascade=_CASCADE_ALL_DELETE_ORPHAN)
+        "FuselageModel", back_populates="aeroplane", cascade=_CASCADE_ALL_DELETE_ORPHAN
+    )
     flight_profile = relationship("RCFlightProfileModel", back_populates="aircraft")
     mission_objectives = relationship(
         "MissionObjectivesModel",
         back_populates="aeroplane",
         uselist=False,
-        cascade=_CASCADE_ALL_DELETE_ORPHAN)
+        cascade=_CASCADE_ALL_DELETE_ORPHAN,
+    )
     weight_items = relationship(
         "WeightItemModel",
         back_populates="aeroplane",
         cascade=_CASCADE_ALL_DELETE_ORPHAN,
-        order_by="WeightItemModel.id")
+        order_by="WeightItemModel.id",
+    )
     copilot_messages = relationship(
         "CopilotMessageModel",
         back_populates="aeroplane",
         cascade=_CASCADE_ALL_DELETE_ORPHAN,
-        order_by="CopilotMessageModel.sort_index")
+        order_by="CopilotMessageModel.sort_index",
+    )
     design_versions = relationship(
         "DesignVersionModel",
         back_populates="aeroplane",
         cascade=_CASCADE_ALL_DELETE_ORPHAN,
-        order_by="DesignVersionModel.id.desc()")
+        order_by="DesignVersionModel.id.desc()",
+    )
+    design_assumptions = relationship(
+        "DesignAssumptionModel",
+        back_populates="aeroplane",
+        cascade=_CASCADE_ALL_DELETE_ORPHAN,
+    )
 
 
 class MissionObjectivesModel(Base):
     __tablename__ = "mission_objectives"
 
     aeroplane_id = Column(
-        Integer, ForeignKey(_FK_AEROPLANES_ID, ondelete="CASCADE"),
-        nullable=False, unique=True, index=True,
+        Integer,
+        ForeignKey(_FK_AEROPLANES_ID, ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
     )
     payload_kg = Column(Float, nullable=True)
     target_flight_time_min = Column(Float, nullable=True)
@@ -518,8 +563,10 @@ class WeightItemModel(Base):
     __tablename__ = "weight_items"
 
     aeroplane_id = Column(
-        Integer, ForeignKey(_FK_AEROPLANES_ID, ondelete="CASCADE"),
-        nullable=False, index=True,
+        Integer,
+        ForeignKey(_FK_AEROPLANES_ID, ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     name = Column(String, nullable=False)
     mass_kg = Column(Float, nullable=False)
@@ -536,8 +583,10 @@ class CopilotMessageModel(Base):
     __tablename__ = "copilot_messages"
 
     aeroplane_id = Column(
-        Integer, ForeignKey(_FK_AEROPLANES_ID, ondelete="CASCADE"),
-        nullable=False, index=True,
+        Integer,
+        ForeignKey(_FK_AEROPLANES_ID, ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     sort_index = Column(Integer, nullable=False, default=0)
     role = Column(String, nullable=False)  # user | assistant | tool
@@ -559,8 +608,10 @@ class DesignVersionModel(Base):
     __tablename__ = "design_versions"
 
     aeroplane_id = Column(
-        Integer, ForeignKey(_FK_AEROPLANES_ID, ondelete="CASCADE"),
-        nullable=False, index=True,
+        Integer,
+        ForeignKey(_FK_AEROPLANES_ID, ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     label = Column(String, nullable=False)
     description = Column(String, nullable=True)
@@ -574,3 +625,34 @@ class DesignVersionModel(Base):
     )
 
     aeroplane = relationship("AeroplaneModel", back_populates="design_versions")
+
+
+class DesignAssumptionModel(Base):
+    __tablename__ = "design_assumptions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    aeroplane_id = Column(
+        Integer,
+        ForeignKey(_FK_AEROPLANES_ID, ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    parameter_name = Column(String, nullable=False)
+    estimate_value = Column(Float, nullable=False)
+    calculated_value = Column(Float, nullable=True)
+    calculated_source = Column(String, nullable=True)
+    active_source = Column(String, nullable=False, default="ESTIMATE")
+    divergence_pct = Column(Float, nullable=True)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    aeroplane = relationship("AeroplaneModel", back_populates="design_assumptions")
+
+    __table_args__ = (
+        UniqueConstraint("aeroplane_id", "parameter_name", name="uq_assumption_aeroplane_param"),
+    )
