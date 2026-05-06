@@ -27,6 +27,7 @@ from app.api.v2.endpoints import cad
 from app.api.v2.endpoints import flight_profiles
 from app.api.v2.endpoints import operating_points
 from app.api.v2.endpoints.aeroplane import base as aeroplane_base
+from app.api.v2.endpoints.aeroplane import design_assumptions
 from app.api.v2.endpoints.aeroplane import fuselages as aeroplane_fuselages
 from app.api.v2.endpoints.aeroplane import wings as aeroplane_wings
 from app.db.session import SessionLocal
@@ -46,7 +47,12 @@ from app.schemas.aeroanalysisschema import (
     StoredOperatingPointCreate,
     TrimOperatingPointRequest,
 )
-from app.schemas.flight_profile import FlightProfileType, RCFlightProfileCreate, RCFlightProfileUpdate
+from app.schemas.design_assumption import AssumptionSourceSwitch, AssumptionWrite
+from app.schemas.flight_profile import (
+    FlightProfileType,
+    RCFlightProfileCreate,
+    RCFlightProfileUpdate,
+)
 from app.settings import get_settings
 
 # --- Shared literal constants (S1192) ---
@@ -288,7 +294,9 @@ def register_file_asset(
         normalized_path = (copied_dir / copied_name).resolve()
         shutil.copy2(source_path, normalized_path)
 
-    resolved_mime = mime_type or mimetypes.guess_type(normalized_path.name)[0] or "application/octet-stream"
+    resolved_mime = (
+        mime_type or mimetypes.guess_type(normalized_path.name)[0] or "application/octet-stream"
+    )
     asset_kind = _infer_asset_kind(resolved_mime, explicit_kind=kind)
     asset_filename = filename or normalized_path.name
 
@@ -458,14 +466,18 @@ async def delete_aeroplane_tool(aeroplane_id: UUID4) -> Any:
     description="Get the stored total mass for an aeroplane in kilograms.",
 )
 async def get_aeroplane_total_mass_tool(aeroplane_id: UUID4) -> Any:
-    return await _call_endpoint(aeroplane_base.get_aeroplane_total_mass_in_kg, aeroplane_id=aeroplane_id)
+    return await _call_endpoint(
+        aeroplane_base.get_aeroplane_total_mass_in_kg, aeroplane_id=aeroplane_id
+    )
 
 
 @mcp_tool(
     name="set_aeroplane_total_mass",
     description="Create or overwrite the total aeroplane mass in kilograms.",
 )
-async def set_aeroplane_total_mass_tool(aeroplane_id: UUID4, total_mass_kg: AeroplaneMassRequest) -> Any:
+async def set_aeroplane_total_mass_tool(
+    aeroplane_id: UUID4, total_mass_kg: AeroplaneMassRequest
+) -> Any:
     return await _call_endpoint(
         aeroplane_base.create_aeroplane_total_mass_kg,
         aeroplane_id=aeroplane_id,
@@ -486,7 +498,9 @@ async def is_airfoil_known_tool(airfoil_name: str) -> Any:
     name="upload_airfoil_datfile",
     description="Upload a DAT airfoil definition into components/airfoils.",
 )
-async def upload_airfoil_datfile_tool(file_name: str, dat_content: str, overwrite: bool = False) -> Any:
+async def upload_airfoil_datfile_tool(
+    file_name: str, dat_content: str, overwrite: bool = False
+) -> Any:
     return await _call_endpoint(
         airfoils.upload_airfoil_dat_content,
         file_name=file_name,
@@ -590,7 +604,9 @@ async def delete_all_wing_cross_sections_tool(aeroplane_id: UUID4, wing_name: st
     name="get_wing_cross_section",
     description="Get one wing cross-section by index.",
 )
-async def get_wing_cross_section_tool(aeroplane_id: UUID4, wing_name: str, cross_section_index: int) -> Any:
+async def get_wing_cross_section_tool(
+    aeroplane_id: UUID4, wing_name: str, cross_section_index: int
+) -> Any:
     return await _call_endpoint(
         aeroplane_wings.get_aeroplane_wing_cross_section,
         aeroplane_id=aeroplane_id,
@@ -641,7 +657,9 @@ async def update_wing_cross_section_tool(
     name="delete_wing_cross_section",
     description="Delete one wing cross-section by index.",
 )
-async def delete_wing_cross_section_tool(aeroplane_id: UUID4, wing_name: str, cross_section_index: int) -> Any:
+async def delete_wing_cross_section_tool(
+    aeroplane_id: UUID4, wing_name: str, cross_section_index: int
+) -> Any:
     return await _call_endpoint(
         aeroplane_wings.delete_aeroplane_wing_cross_section,
         aeroplane_id=aeroplane_id,
@@ -815,7 +833,9 @@ async def delete_wing_cross_section_control_surface_cad_details_servo_details_to
     description="List all fuselage names for a specific aeroplane UUID.",
 )
 async def get_aeroplane_fuselages_tool(aeroplane_id: UUID4) -> Any:
-    return await _call_endpoint(aeroplane_fuselages.get_aeroplane_fuselages, aeroplane_id=aeroplane_id)
+    return await _call_endpoint(
+        aeroplane_fuselages.get_aeroplane_fuselages, aeroplane_id=aeroplane_id
+    )
 
 
 @mcp_tool(
@@ -904,7 +924,9 @@ async def delete_all_fuselage_cross_sections_tool(aeroplane_id: UUID4, fuselage_
     name="get_fuselage_cross_section",
     description="Get one fuselage cross-section by index.",
 )
-async def get_fuselage_cross_section_tool(aeroplane_id: UUID4, fuselage_name: str, cross_section_index: int) -> Any:
+async def get_fuselage_cross_section_tool(
+    aeroplane_id: UUID4, fuselage_name: str, cross_section_index: int
+) -> Any:
     return await _call_endpoint(
         aeroplane_fuselages.get_aeroplane_fuselage_cross_section,
         aeroplane_id=aeroplane_id,
@@ -955,7 +977,9 @@ async def update_fuselage_cross_section_tool(
     name="delete_fuselage_cross_section",
     description="Delete one fuselage cross-section by index.",
 )
-async def delete_fuselage_cross_section_tool(aeroplane_id: UUID4, fuselage_name: str, cross_section_index: int) -> Any:
+async def delete_fuselage_cross_section_tool(
+    aeroplane_id: UUID4, fuselage_name: str, cross_section_index: int
+) -> Any:
     return await _call_endpoint(
         aeroplane_fuselages.delete_aeroplane_fuselage_cross_section,
         aeroplane_id=aeroplane_id,
@@ -1103,7 +1127,9 @@ async def analyze_alpha_sweep_diagram_tool(
     name="analyze_parameter_sweep",
     description="Run a parameter sweep for one variable (alpha, velocity, beta, p, q, or r).",
 )
-async def analyze_parameter_sweep_tool(aeroplane_id: UUID4, sweep_request: SimpleSweepRequest) -> Any:
+async def analyze_parameter_sweep_tool(
+    aeroplane_id: UUID4, sweep_request: SimpleSweepRequest
+) -> Any:
     return await _call_endpoint(
         aeroanalysis.analyze_airplane_simple_sweep,
         aeroplane_id=aeroplane_id,
@@ -1125,7 +1151,9 @@ async def get_aeroplane_three_view_tool(aeroplane_id: UUID4, ctx: Context = None
     image_path = resolve_tmp_path_from_known_output(payload)
     entry = register_file_asset(
         image_path,
-        mime_type=payload.get("mime_type", _MIME_IMAGE_PNG) if isinstance(payload, dict) else _MIME_IMAGE_PNG,
+        mime_type=payload.get("mime_type", _MIME_IMAGE_PNG)
+        if isinstance(payload, dict)
+        else _MIME_IMAGE_PNG,
         kind="img",
         base_url=resolve_public_base_url(ctx),
     )
@@ -1201,7 +1229,9 @@ async def get_operating_point_tool(op_id: int) -> Any:
     description="Replace one stored operating point by numeric operating-point ID.",
 )
 async def update_operating_point_tool(op_id: int, op_data: StoredOperatingPointCreate) -> Any:
-    return await _call_endpoint(operating_points.update_operating_point, op_id=op_id, op_data=op_data)
+    return await _call_endpoint(
+        operating_points.update_operating_point, op_id=op_id, op_data=op_data
+    )
 
 
 @mcp_tool(
@@ -1336,7 +1366,50 @@ async def assign_flight_profile_to_aeroplane_tool(aeroplane_id: UUID4, profile_i
     description="Detach the currently assigned flight profile from an aeroplane UUID.",
 )
 async def detach_flight_profile_from_aeroplane_tool(aeroplane_id: UUID4) -> Any:
-    return await _call_endpoint(flight_profiles.detach_flight_profile_from_aeroplane, aeroplane_id=aeroplane_id)
+    return await _call_endpoint(
+        flight_profiles.detach_flight_profile_from_aeroplane, aeroplane_id=aeroplane_id
+    )
+
+
+# Design assumption tools
+@mcp_tool(
+    name="get_design_assumptions",
+    description="Get all design assumptions for an aeroplane with divergence info.",
+)
+async def get_design_assumptions_tool(aeroplane_id: UUID4) -> Any:
+    return await _call_endpoint(
+        design_assumptions.list_assumptions_endpoint, aeroplane_id=aeroplane_id
+    )
+
+
+@mcp_tool(
+    name="set_design_assumption",
+    description="Update the estimate value of a design assumption parameter.",
+)
+async def set_design_assumption_tool(
+    aeroplane_id: UUID4, param_name: str, body: AssumptionWrite
+) -> Any:
+    return await _call_endpoint(
+        design_assumptions.update_assumption_endpoint,
+        aeroplane_id=aeroplane_id,
+        param_name=param_name,
+        body=body,
+    )
+
+
+@mcp_tool(
+    name="switch_assumption_source",
+    description="Switch a design assumption between ESTIMATE and CALCULATED.",
+)
+async def switch_assumption_source_tool(
+    aeroplane_id: UUID4, param_name: str, body: AssumptionSourceSwitch
+) -> Any:
+    return await _call_endpoint(
+        design_assumptions.switch_source_endpoint,
+        aeroplane_id=aeroplane_id,
+        param_name=param_name,
+        body=body,
+    )
 
 
 MCP_TOOL_NAMES: tuple[str, ...] = tuple(spec.name for spec in TOOL_SPECS)
