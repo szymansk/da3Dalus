@@ -2,15 +2,27 @@
 
 ## da3Dalus Construction Workbench Frontend
 
-- Backend API: http://localhost:8000 (FastAPI)
-- Swagger UI: http://localhost:8000/docs
-- OpenAPI schema: http://localhost:8000/openapi.json
-- MCP endpoint: http://localhost:8000/mcp
+- **Next.js 16** (App Router) + **React 19** — see AGENTS.md for breaking-change warning
+- Backend API: http://localhost:8001 (FastAPI)
+- Swagger UI: http://localhost:8001/docs
+- OpenAPI schema: http://localhost:8001/openapi.json
+- MCP endpoint: http://localhost:8001/mcp
 - This frontend connects to the cad-modelling-service backend
 - Use App Router (not Pages Router)
 - All API calls go through server-side route handlers or
   server actions to avoid CORS
 - Dark theme with orange accent (#FF8400), fonts: JetBrains Mono + Geist
+
+## Commands
+
+```bash
+npm run dev          # Start dev server (Next.js)
+npm run build        # Production build
+npm run lint         # ESLint
+npm run test:unit    # Vitest unit tests
+npm run test:e2e     # Playwright-BDD end-to-end tests
+npm run deps:check   # Dependency-cruiser architecture checks
+```
 
 ## Design Rules
 

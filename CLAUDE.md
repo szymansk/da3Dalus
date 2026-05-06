@@ -98,7 +98,37 @@ management: features, bugs, epics, and technical tasks.
 - The agent MAY create GitHub Issues for discovered **bugs** only;
   feature ideas need user confirmation via `/supercycle-ticket`
 - PRs reference the issue: `Closes #N`
-- Epics are GH Issues with sub-ticket links in comments
+- Epics are GH Issues labeled `epic` with **native sub-issues**
+
+### GitHub Issue Relationships
+
+When creating epics or related tickets, **always add structural
+relationships** via the GitHub API:
+
+- **Sub-issues:** Use the `addSubIssue` GraphQL mutation to link
+  child tickets to their epic. Every sub-ticket must have exactly
+  one parent epic.
+- **Dependencies:** Add a `## Dependencies` or `## Relationships`
+  section to each ticket body with explicit `Depends on #N` /
+  `Blocks #N` references. Also add relationship comments when
+  cross-ticket dependencies exist.
+- **Labels:** Epics get the `epic` label. Sub-tickets inherit the
+  parent's domain (e.g. `enhancement`, `bug`).
+
+```bash
+# Add sub-issue to an epic
+gh api graphql -f query='mutation {
+  addSubIssue(input: {
+    issueId: "<EPIC_NODE_ID>"
+    subIssueId: "<TICKET_NODE_ID>"
+  }) { subIssue { number title } }
+}'
+
+# Get a ticket's node ID
+gh api graphql -f query='{ repository(owner:"szymansk", name:"da3Dalus") {
+  issue(number: 123) { id }
+}}' --jq '.data.repository.issue.id'
+```
 
 ### End-to-end workflow
 
@@ -165,7 +195,7 @@ work: `git push` before saying "done". If push fails, resolve and retry.
 
 ## Build & Test
 
-Language: **Python 3.11–3.13**, managed with **Poetry 2.x**.
+Language: **Python 3.11–3.12**, managed with **Poetry 2.x**.
 
 ```bash
 # Local development (hot reload)
@@ -192,7 +222,7 @@ API runs on `http://localhost:8001` — Swagger at `/docs`, MCP at `/mcp`.
 ## Architecture
 
 Layered FastAPI application. Request flow: **endpoint → service →
-model / schema / converter**. `v2` is current; `v1` is legacy.
+model / schema / converter**. All endpoints are under `v2`.
 Details in `.claude/rules/python-conventions.md`.
 
 
