@@ -7,7 +7,6 @@ trim_with_aerobuildup service, and the aerobuildup-trim endpoint.
 from __future__ import annotations
 
 import asyncio
-import math
 import uuid
 from unittest.mock import MagicMock, patch
 
@@ -151,6 +150,34 @@ class TestAeroBuildupTrimRequest:
         assert req.target_coefficient == "CL"
         assert req.target_value == 0.5
 
+    def test_invalid_target_coefficient_rejected(self):
+        from pydantic import ValidationError as PydanticValidationError
+
+        from app.schemas.aeroanalysisschema import (
+            AeroBuildupTrimRequest,
+            OperatingPointSchema,
+        )
+
+        with pytest.raises(PydanticValidationError, match="Invalid target coefficient"):
+            AeroBuildupTrimRequest(
+                operating_point=OperatingPointSchema(velocity=15.0),
+                target_coefficient="CZ",
+            )
+
+    def test_case_sensitive_target_coefficient(self):
+        from pydantic import ValidationError as PydanticValidationError
+
+        from app.schemas.aeroanalysisschema import (
+            AeroBuildupTrimRequest,
+            OperatingPointSchema,
+        )
+
+        with pytest.raises(PydanticValidationError, match="Invalid target coefficient"):
+            AeroBuildupTrimRequest(
+                operating_point=OperatingPointSchema(velocity=15.0),
+                target_coefficient="cm",
+            )
+
 
 # =========================================================================== #
 # Schema validation — AeroBuildupTrimResult
@@ -188,11 +215,12 @@ class TestAeroBuildupTrimResult:
             trim_variable="elevator",
             trimmed_deflection=0.0,
             target_coefficient="Cm",
-            achieved_value=float("nan"),
+            achieved_value=None,
         )
         assert result.converged is False
         assert result.trim_variable == "elevator"
         assert result.trimmed_deflection == 0.0
+        assert result.achieved_value is None
         assert result.aero_coefficients == {}
         assert result.stability_derivatives == {}
 
@@ -203,7 +231,7 @@ class TestAeroBuildupTrimResult:
 
 
 def _make_mock_airplane_with_controls(control_names: list[str]) -> MagicMock:
-    """Build a mock ASB airplane with the given control surfaces."""
+    """Build a mock ASB airplane with all given control surfaces on one wing/xsec."""
     airplane = MagicMock()
     cs_list = []
     for name in control_names:
@@ -236,38 +264,8 @@ class TestTrimWithAerobuildup:
         mock_airplane = _make_mock_airplane_with_controls(["elevator"])
         mock_to_asb.return_value = mock_airplane
 
-        # Mock AeroBuildup: Cm = 0.1 * deflection (trim at deflection=0)
-        # But we want Cm=0 for trim — the residual is Cm - 0 = 0.1*d
-        # So trim should find deflection=0.0
-        def mock_aerobuildup_init(airplane, op_point, xyz_ref):
-            abu = MagicMock()
-
-            def run_with_stability_derivatives():
-                # We need to get the deflection from the airplane's control surface
-                # But since we're mocking with_control_deflections, we track the deflection
-                return {
-                    "CL": 0.5,
-                    "CD": 0.03,
-                    "CY": 0.0,
-                    "Cm": 0.0,  # Will be overridden below
-                    "Cl": 0.0,
-                    "Cn": 0.0,
-                    "CL_a": 6.1,
-                    "Cm_a": -1.2,
-                }
-
-            abu.run_with_stability_derivatives = run_with_stability_derivatives
-            return abu
-
-        # Instead of mocking AeroBuildup class, mock _run_single_aerobuildup
-        call_count = [0]
-        deflections_seen = []
-
         def mock_run_single(asb_airplane, op_point, xyz_ref, trim_variable, deflection_deg):
-            call_count[0] += 1
-            deflections_seen.append(deflection_deg)
-            # Cm varies linearly: Cm = 0.1 + 0.02 * deflection
-            # Root at deflection = -5.0
+            # Cm = 0.1 + 0.02 * deflection → root at deflection = -5.0
             cm_val = 0.1 + 0.02 * deflection_deg
             return {
                 "CL": 0.5,
@@ -296,9 +294,55 @@ class TestTrimWithAerobuildup:
         assert result.trim_variable == "elevator"
         assert result.target_coefficient == "Cm"
         assert abs(result.trimmed_deflection - (-5.0)) < 1e-4
+        assert result.achieved_value is not None
         assert abs(result.achieved_value) < 1e-4
         assert "CL" in result.aero_coefficients
         assert "CL_a" in result.stability_derivatives
+        # Verify coefficient categorization: non-aero/non-deriv keys are excluded
+        assert "some_junk" not in result.aero_coefficients
+
+    @patch("app.converters.model_schema_converters.aeroplane_schema_to_asb_airplane_async")
+    @patch("app.services.analysis_service.get_aeroplane_schema_or_raise")
+    def test_success_trim_non_default_target(self, mock_get_schema, mock_to_asb):
+        """Trim CL to 0.5 instead of default Cm=0."""
+        from app.schemas.aeroanalysisschema import (
+            AeroBuildupTrimRequest,
+            OperatingPointSchema,
+        )
+        from app.services.aerobuildup_trim_service import trim_with_aerobuildup
+
+        mock_get_schema.return_value = MagicMock()
+        mock_airplane = _make_mock_airplane_with_controls(["elevator"])
+        mock_to_asb.return_value = mock_airplane
+
+        def mock_run_single(asb_airplane, op_point, xyz_ref, trim_variable, deflection_deg):
+            # CL = 0.1 * deflection + 0.3 → CL=0.5 at deflection=2.0
+            cl_val = 0.1 * deflection_deg + 0.3
+            return {
+                "CL": cl_val,
+                "CD": 0.03,
+                "Cm": -0.01,
+            }
+
+        with patch(
+            "app.services.aerobuildup_trim_service._run_single_aerobuildup",
+            side_effect=mock_run_single,
+        ):
+            request = AeroBuildupTrimRequest(
+                operating_point=OperatingPointSchema(velocity=15.0, alpha=5.0),
+                trim_variable="elevator",
+                target_coefficient="CL",
+                target_value=0.5,
+            )
+            result = asyncio.run(
+                trim_with_aerobuildup(db=MagicMock(), aeroplane_uuid="test-uuid", request=request)
+            )
+
+        assert result.converged is True
+        assert result.target_coefficient == "CL"
+        assert abs(result.trimmed_deflection - 2.0) < 1e-4
+        assert result.achieved_value is not None
+        assert abs(result.achieved_value - 0.5) < 1e-4
 
     @patch("app.services.analysis_service.get_aeroplane_schema_or_raise")
     def test_aeroplane_not_found(self, mock_get_schema):
@@ -331,7 +375,6 @@ class TestTrimWithAerobuildup:
         from app.services.aerobuildup_trim_service import trim_with_aerobuildup
 
         mock_get_schema.return_value = MagicMock()
-        # Airplane has no control surfaces
         mock_airplane = _make_mock_airplane_with_controls([])
         mock_to_asb.return_value = mock_airplane
 
@@ -359,12 +402,11 @@ class TestTrimWithAerobuildup:
         mock_airplane = _make_mock_airplane_with_controls(["elevator"])
         mock_to_asb.return_value = mock_airplane
 
-        # Cm is always positive — no root in bounds
         def mock_run_single(asb_airplane, op_point, xyz_ref, trim_variable, deflection_deg):
             return {
                 "CL": 0.5,
                 "CD": 0.03,
-                "Cm": 1.0,  # Always positive, never crosses zero
+                "Cm": 1.0,  # Always positive — no root in bounds
             }
 
         with patch(
@@ -380,7 +422,7 @@ class TestTrimWithAerobuildup:
             )
 
         assert result.converged is False
-        assert math.isnan(result.achieved_value)
+        assert result.achieved_value is None
 
     @patch("app.converters.model_schema_converters.aeroplane_schema_to_asb_airplane_async")
     @patch("app.services.analysis_service.get_aeroplane_schema_or_raise")
@@ -396,31 +438,6 @@ class TestTrimWithAerobuildup:
         mock_airplane = _make_mock_airplane_with_controls(["elevator"])
         mock_to_asb.return_value = mock_airplane
 
-        # Residual changes sign (so bracket check passes) but brentq fails
-        call_count = [0]
-
-        def mock_run_single(asb_airplane, op_point, xyz_ref, trim_variable, deflection_deg):
-            call_count[0] += 1
-            # First two calls: bounds evaluation (opposite signs)
-            if call_count[0] <= 2:
-                return {
-                    "CL": 0.5,
-                    "CD": 0.03,
-                    "Cm": -1.0 if deflection_deg < 0 else 1.0,
-                }
-            # Subsequent calls during brentq: raise to simulate failure
-            raise RuntimeError("simulation diverged")
-
-        with patch(
-            "app.services.aerobuildup_trim_service._run_single_aerobuildup",
-            side_effect=mock_run_single,
-        ):
-            # brentq will catch the RuntimeError and re-raise as ValueError
-            # Actually, brentq doesn't catch runtime errors — it will propagate.
-            # Let's mock brentq itself to raise ValueError
-            pass
-
-        # Better approach: mock brentq directly
         with (
             patch(
                 "app.services.aerobuildup_trim_service._run_single_aerobuildup",
@@ -431,7 +448,7 @@ class TestTrimWithAerobuildup:
                 },
             ),
             patch(
-                "app.services.aerobuildup_trim_service.brentq",
+                "scipy.optimize.brentq",
                 side_effect=ValueError("convergence failed"),
             ),
         ):
@@ -444,7 +461,72 @@ class TestTrimWithAerobuildup:
             )
 
         assert result.converged is False
-        assert math.isnan(result.achieved_value)
+        assert result.achieved_value is None
+
+    @patch("app.converters.model_schema_converters.aeroplane_schema_to_asb_airplane_async")
+    @patch("app.services.analysis_service.get_aeroplane_schema_or_raise")
+    def test_bounds_evaluation_runtime_error_raises_internal_error(
+        self, mock_get_schema, mock_to_asb
+    ):
+        """When AeroBuildup crashes at bounds, raise InternalError (not ValidationDomainError)."""
+        from app.core.exceptions import InternalError
+        from app.schemas.aeroanalysisschema import (
+            AeroBuildupTrimRequest,
+            OperatingPointSchema,
+        )
+        from app.services.aerobuildup_trim_service import trim_with_aerobuildup
+
+        mock_get_schema.return_value = MagicMock()
+        mock_airplane = _make_mock_airplane_with_controls(["elevator"])
+        mock_to_asb.return_value = mock_airplane
+
+        with patch(
+            "app.services.aerobuildup_trim_service._run_single_aerobuildup",
+            side_effect=RuntimeError("simulation diverged"),
+        ):
+            request = AeroBuildupTrimRequest(
+                operating_point=OperatingPointSchema(velocity=15.0, alpha=5.0),
+                trim_variable="elevator",
+            )
+            with pytest.raises(InternalError, match="AeroBuildup evaluation failed unexpectedly"):
+                asyncio.run(
+                    trim_with_aerobuildup(
+                        db=MagicMock(), aeroplane_uuid="test-uuid", request=request
+                    )
+                )
+
+    @patch("app.converters.model_schema_converters.aeroplane_schema_to_asb_airplane_async")
+    @patch("app.services.analysis_service.get_aeroplane_schema_or_raise")
+    def test_invalid_target_coefficient_in_output_raises(self, mock_get_schema, mock_to_asb):
+        """When the target coefficient is missing from AeroBuildup output, raise ValidationDomainError."""
+        from app.core.exceptions import ValidationDomainError
+        from app.schemas.aeroanalysisschema import (
+            AeroBuildupTrimRequest,
+            OperatingPointSchema,
+        )
+        from app.services.aerobuildup_trim_service import trim_with_aerobuildup
+
+        mock_get_schema.return_value = MagicMock()
+        mock_airplane = _make_mock_airplane_with_controls(["elevator"])
+        mock_to_asb.return_value = mock_airplane
+
+        def mock_run_single(asb_airplane, op_point, xyz_ref, trim_variable, deflection_deg):
+            return {"CL": 0.5, "CD": 0.03}  # No "Cm" key
+
+        with patch(
+            "app.services.aerobuildup_trim_service._run_single_aerobuildup",
+            side_effect=mock_run_single,
+        ):
+            request = AeroBuildupTrimRequest(
+                operating_point=OperatingPointSchema(velocity=15.0, alpha=5.0),
+                trim_variable="elevator",
+            )
+            with pytest.raises(ValidationDomainError, match="Coefficient 'Cm' not found"):
+                asyncio.run(
+                    trim_with_aerobuildup(
+                        db=MagicMock(), aeroplane_uuid="test-uuid", request=request
+                    )
+                )
 
 
 # =========================================================================== #
@@ -578,3 +660,30 @@ class TestAeroBuildupTrimEndpoint:
             json=payload,
         )
         assert resp.status_code == 422
+
+    @patch("app.services.aerobuildup_trim_service.trim_with_aerobuildup")
+    def test_endpoint_not_converged_returns_null_achieved(self, mock_trim, client_and_db):
+        from app.schemas.aeroanalysisschema import AeroBuildupTrimResult
+
+        client, _ = client_and_db
+        aeroplane_uuid = str(uuid.uuid4())
+
+        mock_trim.return_value = AeroBuildupTrimResult(
+            converged=False,
+            trim_variable="elevator",
+            trimmed_deflection=0.0,
+            target_coefficient="Cm",
+            achieved_value=None,
+        )
+
+        payload = {
+            "operating_point": {"velocity": 15.0, "alpha": 5.0},
+        }
+        resp = client.post(
+            f"/aeroplanes/{aeroplane_uuid}/operating-points/aerobuildup-trim",
+            json=payload,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["converged"] is False
+        assert data["achieved_value"] is None

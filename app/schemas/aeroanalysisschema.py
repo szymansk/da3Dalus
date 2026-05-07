@@ -104,11 +104,11 @@ class AeroBuildupTrimRequest(BaseModel):
     )
     target_coefficient: str = Field(
         "Cm",
-        description="Aerodynamic coefficient to target. Typically 'Cm' for pitch trim.",
+        description="Aerodynamic coefficient to target (one of: CL, CD, CY, Cm, Cl, Cn).",
     )
     target_value: float = Field(
         0.0,
-        description="Target value for the coefficient (default: 0 = zero pitching moment)",
+        description="Target value for the coefficient (default: 0)",
     )
     deflection_bounds: list[float] = Field(
         default=[-25.0, 25.0],
@@ -124,6 +124,16 @@ class AeroBuildupTrimRequest(BaseModel):
             raise ValueError(
                 f"Invalid trim variable name '{v}'. Must be a letter followed by "
                 f"letters/digits/underscores."
+            )
+        return v
+
+    @field_validator("target_coefficient")
+    @classmethod
+    def validate_target_coefficient(cls, v: str) -> str:
+        allowed = {"CL", "CD", "CY", "Cm", "Cl", "Cn"}
+        if v not in allowed:
+            raise ValueError(
+                f"Invalid target coefficient '{v}'. Must be one of: {sorted(allowed)}"
             )
         return v
 
@@ -146,7 +156,9 @@ class AeroBuildupTrimResult(BaseModel):
         ..., description="Deflection angle that achieves trim (degrees)"
     )
     target_coefficient: str = Field(..., description="Coefficient that was targeted")
-    achieved_value: float = Field(..., description="Achieved value of target coefficient at trim")
+    achieved_value: Optional[float] = Field(
+        ..., description="Achieved value of target coefficient at trim, or null if not converged"
+    )
     aero_coefficients: dict[str, float] = Field(
         default_factory=dict,
         description="All aero coefficients at trim (CL, CD, Cm, etc.)",

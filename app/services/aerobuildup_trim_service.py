@@ -1,13 +1,11 @@
-"""AeroBuildup trim analysis — find control deflections via scipy root-finding."""
+"""AeroBuildup trim — find a single control deflection via scipy Brent root-finding."""
 
 from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING
 
-import aerosandbox as asb
 from pydantic import UUID4
-from scipy.optimize import brentq
 
 from app.schemas.aeroanalysisschema import (
     AeroBuildupTrimRequest,
@@ -19,6 +17,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Aerosandbox uses underscore notation (CL_a = dCL/dalpha);
+# legacy AVL-style keys (Clb, Cnr) may also appear in output.
 _AERO_COEFF_KEYS = {"CL", "CD", "CY", "Cm", "Cl", "Cn"}
 _STABILITY_DERIV_KEYS = {
     "CL_a",
@@ -36,13 +36,15 @@ _STABILITY_DERIV_KEYS = {
 
 
 def _run_single_aerobuildup(
-    asb_airplane: asb.Airplane,
-    op_point: asb.OperatingPoint,
+    asb_airplane,
+    op_point,
     xyz_ref: list[float],
     trim_variable: str,
     deflection_deg: float,
 ) -> dict:
     """Run a single AeroBuildup analysis at a specific control deflection."""
+    import aerosandbox as asb
+
     deflected = asb_airplane.with_control_deflections({trim_variable: deflection_deg})
     abu = asb.AeroBuildup(
         airplane=deflected,
@@ -57,9 +59,12 @@ async def trim_with_aerobuildup(
     aeroplane_uuid: UUID4,
     request: AeroBuildupTrimRequest,
 ) -> AeroBuildupTrimResult:
-    """Run AeroBuildup trim: vary a control surface deflection to achieve target coefficient."""
+    """Find the control deflection that achieves a target aero coefficient via Brent's method."""
+    import aerosandbox as asb
+    from scipy.optimize import brentq
+
     from app.converters.model_schema_converters import aeroplane_schema_to_asb_airplane_async
-    from app.core.exceptions import ValidationDomainError
+    from app.core.exceptions import InternalError, ValidationDomainError
     from app.services.analysis_service import get_aeroplane_schema_or_raise
 
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
@@ -79,7 +84,7 @@ async def trim_with_aerobuildup(
         atmosphere=atmosphere,
     )
 
-    # Verify the trim variable (control surface) exists on the airplane
+    # Fail fast before expensive solver iterations if the surface doesn't exist
     control_names: set[str] = set()
     for wing in asb_airplane.wings:
         for xsec in wing.xsecs:
@@ -112,47 +117,103 @@ async def trim_with_aerobuildup(
 
     lower, upper = request.deflection_bounds
 
-    # Check that the root is bracketed
     try:
         f_lower = residual(lower)
         f_upper = residual(upper)
     except ValidationDomainError:
         raise
+    except (ValueError, TypeError) as e:
+        raise ValidationDomainError(
+            message=f"AeroBuildup evaluation failed at bounds: {e}"
+        ) from e
     except Exception as e:
-        raise ValidationDomainError(message=f"AeroBuildup evaluation failed at bounds: {e}") from e
+        logger.error(
+            "Unexpected AeroBuildup failure for aeroplane %s at bounds [%g, %g]: %s",
+            aeroplane_uuid,
+            lower,
+            upper,
+            e,
+            exc_info=True,
+        )
+        raise InternalError(
+            message=f"AeroBuildup evaluation failed unexpectedly: {e}"
+        ) from e
 
     if f_lower * f_upper > 0:
+        logger.warning(
+            "AeroBuildup trim root not bracketed for aeroplane %s: "
+            "residual(%s=%g)=%g, residual(%s=%g)=%g — target %s=%g not achievable "
+            "within [%g, %g]",
+            aeroplane_uuid,
+            request.trim_variable,
+            lower,
+            f_lower,
+            request.trim_variable,
+            upper,
+            f_upper,
+            target_coeff,
+            target_val,
+            lower,
+            upper,
+        )
         return AeroBuildupTrimResult(
             converged=False,
             trim_variable=request.trim_variable,
             trimmed_deflection=0.0,
             target_coefficient=target_coeff,
-            achieved_value=float("nan"),
+            achieved_value=None,
             aero_coefficients={},
             stability_derivatives={},
         )
 
     try:
         trimmed_deflection = brentq(residual, lower, upper, xtol=1e-6, maxiter=50)
-    except ValueError:
+    except ValueError as e:
+        logger.warning(
+            "AeroBuildup brentq failed for aeroplane %s, %s targeting %s=%g: %s",
+            aeroplane_uuid,
+            request.trim_variable,
+            target_coeff,
+            target_val,
+            e,
+        )
         return AeroBuildupTrimResult(
             converged=False,
             trim_variable=request.trim_variable,
             trimmed_deflection=0.0,
             target_coefficient=target_coeff,
-            achieved_value=float("nan"),
+            achieved_value=None,
             aero_coefficients={},
             stability_derivatives={},
         )
 
-    # Final run at trim to get full coefficients
-    final_result = _run_single_aerobuildup(
-        asb_airplane,
-        op_point,
-        op.xyz_ref,
-        request.trim_variable,
-        trimmed_deflection,
-    )
+    # Re-run at converged deflection for full coefficient and derivative set
+    try:
+        final_result = _run_single_aerobuildup(
+            asb_airplane,
+            op_point,
+            op.xyz_ref,
+            request.trim_variable,
+            trimmed_deflection,
+        )
+    except Exception as e:
+        logger.error(
+            "Final AeroBuildup evaluation failed at trimmed deflection %g for "
+            "aeroplane %s: %s",
+            trimmed_deflection,
+            aeroplane_uuid,
+            e,
+            exc_info=True,
+        )
+        return AeroBuildupTrimResult(
+            converged=True,
+            trim_variable=request.trim_variable,
+            trimmed_deflection=round(trimmed_deflection, 6),
+            target_coefficient=target_coeff,
+            achieved_value=None,
+            aero_coefficients={},
+            stability_derivatives={},
+        )
 
     aero = {
         k: float(v)
@@ -165,6 +226,12 @@ async def trim_with_aerobuildup(
         if k in _STABILITY_DERIV_KEYS and isinstance(v, (int, float))
     }
     achieved = float(final_result.get(target_coeff, float("nan")))
+    if target_coeff not in final_result:
+        logger.warning(
+            "Target coefficient '%s' missing from final AeroBuildup result for aeroplane %s",
+            target_coeff,
+            aeroplane_uuid,
+        )
 
     return AeroBuildupTrimResult(
         converged=True,
