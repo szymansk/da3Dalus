@@ -134,6 +134,8 @@ POLL_INTERVAL=600
 build_initial_prompt() {
   local issue="${1:-$ISSUE_NUMBER}"
   cat <<EOF
+/clear
+
 /${SUPERCYCLE_CMD} #${issue}
 
 ${AUTONOMOUS_RULES}
