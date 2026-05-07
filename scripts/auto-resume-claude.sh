@@ -295,48 +295,57 @@ main() {
 
   if is_epic "$ISSUE_NUMBER"; then
     log "Issue #${ISSUE_NUMBER} is an EPIC — entering sub-issue loop."
+
+    local queue_file="${OUTPUT_DIR}/epic-${ISSUE_NUMBER}-queue.txt"
+    local all_sub_issues
+    all_sub_issues="$(get_open_sub_issues "$ISSUE_NUMBER")"
+
+    if [[ -z "$all_sub_issues" ]]; then
+      log "All sub-issues of epic #${ISSUE_NUMBER} are already closed."
+      exit 0
+    fi
+
+    local total
+    total="$(echo "$all_sub_issues" | wc -l | tr -d ' ')"
+
+    # Write queue file: number | status | title
+    : > "$queue_file"
+    while IFS= read -r num; do
+      local title
+      title="$(gh issue view "$num" --json title --jq '.title' 2>/dev/null || echo '(unknown)')"
+      echo "${num}|PENDING|${title}" >> "$queue_file"
+    done <<< "$all_sub_issues"
+
+    log "Planned queue ($total issues) saved to: $queue_file"
+    while IFS= read -r line; do log "  $line"; done < "$queue_file"
+
     local failed_issues=()
     local completed=0
+    local index=0
 
-    while true; do
-      local sub_issues
-      sub_issues="$(get_open_sub_issues "$ISSUE_NUMBER")"
+    while IFS='|' read -r num status title; do
+      index=$((index + 1))
 
-      if [[ -z "$sub_issues" ]]; then
-        log "All sub-issues of epic #${ISSUE_NUMBER} are closed."
-        break
+      if [[ "$status" == "DONE" || "$status" == "FAILED" ]]; then
+        continue
       fi
 
-      local remaining
-      remaining="$(echo "$sub_issues" | wc -l | tr -d ' ')"
-      log "Epic #${ISSUE_NUMBER}: $remaining open sub-issue(s) remaining."
+      log "=== [$index/$total] Starting sub-issue #${num}: ${title} ==="
+      sed -i '' "s/^${num}|PENDING|/${num}|RUNNING|/" "$queue_file"
 
-      local next_issue
-      next_issue="$(echo "$sub_issues" | head -1)"
-
-      if [[ ${#failed_issues[@]} -gt 0 ]] && printf '%s\n' "${failed_issues[@]}" | grep -qx "$next_issue"; then
-        log "Issue #${next_issue} already failed — skipping."
-        sub_issues="$(echo "$sub_issues" | tail -n +2)"
-        if [[ -z "$sub_issues" ]]; then
-          log "No more sub-issues to try."
-          break
-        fi
-        next_issue="$(echo "$sub_issues" | head -1)"
-      fi
-
-      log "=== Starting sub-issue #${next_issue} ==="
-
-      if run_single_issue "$next_issue"; then
+      if run_single_issue "$num"; then
         completed=$((completed + 1))
-        log "Sub-issue #${next_issue} done. ($completed completed so far)"
+        sed -i '' "s/^${num}|RUNNING|/${num}|DONE|/" "$queue_file"
+        log "Sub-issue #${num} done. ($completed/$total completed)"
       else
-        log "Sub-issue #${next_issue} failed. Continuing with next."
-        failed_issues+=("$next_issue")
+        sed -i '' "s/^${num}|RUNNING|/${num}|FAILED|/" "$queue_file"
+        log "Sub-issue #${num} failed. Continuing with next."
+        failed_issues+=("$num")
       fi
-    done
+    done < "$queue_file"
 
     log "=== Epic #${ISSUE_NUMBER} loop finished ==="
-    log "Completed: $completed | Failed: ${#failed_issues[@]}"
+    log "Completed: $completed | Failed: ${#failed_issues[@]} | Total: $total"
     if [[ ${#failed_issues[@]} -gt 0 ]]; then
       log "Failed issues: ${failed_issues[*]}"
       exit 1
