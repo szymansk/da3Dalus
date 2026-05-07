@@ -25,6 +25,7 @@ from app.schemas.stability import StabilitySummaryResponse, StabilityResultRead
 from app.schemas.strip_forces import StripForcesResponse
 from app.services import analysis_service
 from app.services import stability_service
+from app.services.wing_service import get_aeroplane_or_raise
 from app.settings import Settings, get_settings
 
 router = APIRouter()
@@ -169,7 +170,6 @@ async def get_cached_stability(
 ) -> StabilityResultRead:
     """Get the last cached stability result without triggering a new analysis."""
     try:
-        from app.services.wing_service import get_aeroplane_or_raise
         aeroplane = get_aeroplane_or_raise(db, aeroplane_id)
         result = stability_service.get_cached_stability(db, aeroplane.id)
         if result is None:

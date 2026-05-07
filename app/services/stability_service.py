@@ -229,6 +229,8 @@ def _get_margin_bounds(db: Session, aeroplane_id: int) -> tuple[float, float]:
         ))
         .all()
     )
+    if not rows:
+        logger.debug("No margin bounds in design_assumptions for aeroplane %s; using defaults (5%%/25%%)", aeroplane_id)
     for r in rows:
         val = r.calculated_value if r.active_source == "CALCULATED" and r.calculated_value is not None else r.estimate_value
         if r.parameter_name == "min_static_margin":
@@ -242,20 +244,25 @@ def _auto_populate_cd0(db: Session, aeroplane_id: int, result) -> None:
     """Update cd0 calculated_value from AeroBuildup parasitic drag."""
     from app.models.aeroplanemodel import DesignAssumptionModel
 
-    cd0_val = _scalar(getattr(result, "CD", None))
-    if cd0_val is None:
-        cd0_val = _scalar(getattr(getattr(result, "aero", None), "CD", None))
-    if cd0_val is None:
-        return
-    row = (
-        db.query(DesignAssumptionModel)
-        .filter_by(aeroplane_id=aeroplane_id, parameter_name="cd0")
-        .first()
-    )
-    if row is not None:
+    try:
+        cd0_val = _scalar(getattr(result, "CD", None))
+        if cd0_val is None:
+            cd0_val = _scalar(getattr(getattr(result, "aero", None), "CD", None))
+        if cd0_val is None:
+            return
+        row = (
+            db.query(DesignAssumptionModel)
+            .filter_by(aeroplane_id=aeroplane_id, parameter_name="cd0")
+            .first()
+        )
+        if row is None:
+            logger.debug("No cd0 assumption row for aeroplane %s; skipping auto-populate", aeroplane_id)
+            return
         row.calculated_value = cd0_val
         row.calculated_source = "stability_analysis"
         db.flush()
+    except Exception:
+        logger.warning("Failed to auto-populate cd0 for aeroplane %s", aeroplane_id, exc_info=True)
 
 
 # ---------------------------------------------------------------------------
@@ -330,8 +337,7 @@ async def get_stability_summary(
     )
 
     geometry_hash = compute_geometry_hash(plane_schema)
-    solver_name = str(analysis_tool).split(".")[-1] if "." in str(analysis_tool) else str(analysis_tool)
-    persist_stability_result(db, plane_schema.id, solver_name, summary, geometry_hash)
+    persist_stability_result(db, plane_schema.id, str(analysis_tool), summary, geometry_hash)
 
     if str(analysis_tool).lower() in ("aerobuildup",):
         _auto_populate_cd0(db, plane_schema.id, result)
