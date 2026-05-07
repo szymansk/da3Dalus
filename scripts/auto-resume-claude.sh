@@ -128,7 +128,7 @@ get_open_sub_issues() {
     }' --jq '.data.node.subIssues.nodes[] | select(.state == "OPEN") | .number'
 }
 
-QUOTA_PATTERN='rate.?limit|quota|usage.?limit|too.?many.?requests|capacity|throttl|429|overloaded'
+QUOTA_PATTERN='rate.?limit|quota|usage.?limit|too.?many.?requests|capacity|throttl|429|overloaded|out of.*(usage|credits)|resets [0-9]'
 POLL_INTERVAL=600
 
 build_initial_prompt() {
@@ -225,7 +225,52 @@ run_claude() {
   fi
 
   LAST_OUTPUT="$(tail -100 "$attempt_output")"
+
+  # Final quota check — Claude may have printed the message and exited
+  # before the poll loop had a chance to check
+  if [[ "$LAST_QUOTA_DETECTED" == false && "$LAST_EXIT_CODE" -ne 0 ]]; then
+    if grep -qiE "$QUOTA_PATTERN" "$attempt_output" 2>/dev/null; then
+      LAST_QUOTA_DETECTED=true
+      log "Quota/rate-limit detected in output (post-exit)."
+    fi
+  fi
+
   log "Full output saved to: $attempt_output"
+}
+
+parse_reset_time() {
+  local output="$1"
+  local reset_match
+  reset_match="$(grep -oiE 'resets [0-9]{1,2}:[0-9]{2}(am|pm)' <<< "$output" | head -1 || true)"
+
+  if [[ -z "$reset_match" ]]; then
+    return 1
+  fi
+
+  local time_part
+  time_part="$(echo "$reset_match" | grep -oiE '[0-9]{1,2}:[0-9]{2}(am|pm)')"
+
+  local hour minute ampm
+  hour="$(echo "$time_part" | grep -oE '^[0-9]{1,2}')"
+  minute="$(echo "$time_part" | grep -oE ':[0-9]{2}' | tr -d ':')"
+  ampm="$(echo "$time_part" | grep -oiE '(am|pm)')"
+
+  if [[ "$(echo "$ampm" | tr '[:upper:]' '[:lower:]')" == "pm" && "$hour" -ne 12 ]]; then
+    hour=$((hour + 12))
+  elif [[ "$(echo "$ampm" | tr '[:upper:]' '[:lower:]')" == "am" && "$hour" -eq 12 ]]; then
+    hour=0
+  fi
+
+  local now_epoch reset_epoch
+  now_epoch="$(date +%s)"
+  reset_epoch="$(date -j -f '%H:%M' "${hour}:${minute}" +%s 2>/dev/null || echo 0)"
+
+  if [[ "$reset_epoch" -le "$now_epoch" ]]; then
+    reset_epoch=$((reset_epoch + 86400))
+  fi
+
+  local wait_seconds=$(( reset_epoch - now_epoch + 60 ))
+  echo "$wait_seconds"
 }
 
 run_single_issue() {
@@ -242,9 +287,17 @@ run_single_issue() {
     run_claude "$attempt" "$issue"
 
     if [[ "$LAST_QUOTA_DETECTED" == true ]]; then
-      log "Waiting ${RETRY_INTERVAL_MIN} minutes for quota reset..."
-      log "Next attempt at: $(date -v+${RETRY_INTERVAL_MIN}M '+%H:%M:%S' 2>/dev/null || date -d "+${RETRY_INTERVAL_MIN} minutes" '+%H:%M:%S' 2>/dev/null || echo "~${RETRY_INTERVAL_MIN}m from now")"
-      sleep "$((RETRY_INTERVAL_MIN * 60))"
+      local wait_seconds
+      wait_seconds="$(parse_reset_time "$LAST_OUTPUT" || echo 0)"
+
+      if [[ "$wait_seconds" -gt 60 ]]; then
+        local wait_min=$(( wait_seconds / 60 ))
+        log "Quota reset time found. Waiting ${wait_min} minutes (until reset + 1 min)..."
+        sleep "$wait_seconds"
+      else
+        log "No reset time found. Waiting ${RETRY_INTERVAL_MIN} minutes..."
+        sleep "$((RETRY_INTERVAL_MIN * 60))"
+      fi
       attempt=$((attempt + 1))
     elif [[ "$LAST_EXIT_CODE" -eq 0 ]]; then
       log "Issue #${issue} completed successfully."
@@ -279,8 +332,16 @@ main() {
       log "--- Resume attempt $attempt of $MAX_RETRIES ---"
       run_claude "$attempt"
       if [[ "$LAST_QUOTA_DETECTED" == true ]]; then
-        log "Quota detected. Waiting ${RETRY_INTERVAL_MIN} minutes..."
-        sleep "$((RETRY_INTERVAL_MIN * 60))"
+        local wait_seconds
+        wait_seconds="$(parse_reset_time "$LAST_OUTPUT" || echo 0)"
+        if [[ "$wait_seconds" -gt 60 ]]; then
+          local wait_min=$(( wait_seconds / 60 ))
+          log "Quota reset time found. Waiting ${wait_min} minutes..."
+          sleep "$wait_seconds"
+        else
+          log "No reset time found. Waiting ${RETRY_INTERVAL_MIN} minutes..."
+          sleep "$((RETRY_INTERVAL_MIN * 60))"
+        fi
         attempt=$((attempt + 1))
       elif [[ "$LAST_EXIT_CODE" -eq 0 ]]; then
         log "Resume completed successfully."
