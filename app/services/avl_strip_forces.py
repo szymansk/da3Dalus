@@ -153,10 +153,15 @@ def parse_strip_forces_output(stdout: str) -> list[dict]:
     return surfaces
 
 
-def build_control_deflection_commands(airplane) -> list[str]:
+def build_control_deflection_commands(
+    airplane,
+    overrides: dict[str, float] | None = None,
+) -> list[str]:
     """Build AVL keystroke commands to set correct control surface deflections.
 
     Aerosandbox hardcodes ``d1 d1 1`` — this produces correct overrides.
+    When *overrides* is provided, matching control surface names use the
+    override value instead of the geometry default.
     """
     seen: dict[str, float] = {}
     for wing in airplane.wings:
@@ -164,6 +169,10 @@ def build_control_deflection_commands(airplane) -> list[str]:
             for cs in xsec.control_surfaces:
                 if cs.name not in seen:
                     seen[cs.name] = float(cs.deflection)
+    if overrides:
+        for name, defl in overrides.items():
+            if name in seen:
+                seen[name] = float(defl)
     return [f"d{i} d{i} {defl}" for i, defl in enumerate(seen.values(), 1)]
 
 
