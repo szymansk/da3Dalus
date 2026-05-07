@@ -21,7 +21,7 @@ from app.db.session import get_db
 from app.schemas.AeroplaneRequest import AnalysisToolUrlType, AlphaSweepRequest, SimpleSweepRequest
 from app.schemas.api_responses import StaticUrlResponse
 from app.schemas.aeroanalysisschema import OperatingPointSchema
-from app.schemas.stability import StabilitySummaryResponse
+from app.schemas.stability import StabilitySummaryResponse, StabilityResultRead
 from app.schemas.strip_forces import StripForcesResponse
 from app.services import analysis_service
 from app.services import stability_service
@@ -158,6 +158,28 @@ async def get_stability_summary(
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail=f"Unexpected error: {exc}") from exc
+
+
+@router.get("/aeroplanes/{aeroplane_id}/stability",
+            tags=["analysis"],
+            operation_id="get_cached_stability")
+async def get_cached_stability(
+    aeroplane_id: Annotated[AeroPlaneID, Path(..., description=_DESC_AEROPLANE_ID)],
+    db: Annotated[Session, Depends(get_db)]
+) -> StabilityResultRead:
+    """Get the last cached stability result without triggering a new analysis."""
+    try:
+        from app.services.wing_service import get_aeroplane_or_raise
+        aeroplane = get_aeroplane_or_raise(db, aeroplane_id)
+        result = stability_service.get_cached_stability(db, aeroplane.id)
+        if result is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No cached stability result. Run POST .../stability_summary/{tool} first.",
+            )
+        return result
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
 
 
 @router.post("/aeroplanes/{aeroplane_id}/operating_point/{analysis_tool}",
