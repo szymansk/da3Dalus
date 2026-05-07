@@ -4,6 +4,63 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class TrimTarget(str, Enum):
+    """Aerodynamic parameters that AVL can target during trim."""
+
+    CL = "CL"
+    CY = "CY"
+    PITCHING_MOMENT = "PM"
+    ROLLING_MOMENT = "RM"
+    YAWING_MOMENT = "YM"
+
+
+class TrimConstraint(BaseModel):
+    """A single trim constraint: adjust a variable to achieve a target."""
+
+    variable: str = Field(
+        ...,
+        description="Run variable to adjust: 'alpha', 'beta', 'roll_rate', "
+        "'pitch_rate', 'yaw_rate', or a control surface name like 'elevator'",
+    )
+    target: TrimTarget = Field(..., description="Aerodynamic parameter to target")
+    value: float = Field(0.0, description="Target value (default: 0 = zero the parameter)")
+
+
+class AVLTrimRequest(BaseModel):
+    """Request to run AVL trim analysis."""
+
+    operating_point: "OperatingPointSchema" = Field(
+        ..., description="Operating point for the trim analysis"
+    )
+    trim_constraints: list[TrimConstraint] = Field(
+        ..., min_length=1, description="At least one trim constraint"
+    )
+
+
+class AVLTrimResult(BaseModel):
+    """Result of AVL trim analysis."""
+
+    converged: bool = Field(..., description="Whether AVL successfully converged")
+    trimmed_deflections: dict[str, float] = Field(
+        default_factory=dict, description="Achieved control surface deflections (name -> degrees)"
+    )
+    trimmed_state: dict[str, float] = Field(
+        default_factory=dict, description="Achieved state variables (alpha, beta, etc.)"
+    )
+    aero_coefficients: dict[str, float] = Field(
+        default_factory=dict, description="Aerodynamic coefficients at trim (CL, CD, Cm, etc.)"
+    )
+    forces_and_moments: dict[str, float] = Field(
+        default_factory=dict, description="Dimensional forces and moments"
+    )
+    stability_derivatives: dict[str, float] = Field(
+        default_factory=dict, description="Stability derivatives at trim point"
+    )
+    raw_results: dict[str, float] = Field(
+        default_factory=dict, description="Full parsed AVL output"
+    )
+
+
 class CdclConfig(BaseModel):
     """Configuration for NeuralFoil CDCL profile-drag computation."""
 

@@ -41,6 +41,7 @@ from app.schemas.AeroplaneRequest import (
     SimpleSweepRequest,
 )
 from app.schemas.aeroanalysisschema import (
+    AVLTrimRequest,
     GenerateOperatingPointSetRequest,
     OperatingPointSchema,
     OperatingPointSetSchema,
@@ -1186,6 +1187,23 @@ async def trim_operating_point_tool(
 ) -> Any:
     return await _call_endpoint(
         operating_points.trim_operating_point,
+        aircraft_id=aircraft_id,
+        request=request,
+    )
+
+
+@mcp_tool(
+    name="avl_trim_operating_point",
+    description="Run AVL trim analysis using indirect constraints. "
+    "Finds control deflections (or alpha/beta) that achieve target aerodynamic parameters. "
+    "Example: trim elevator to zero pitching moment.",
+)
+async def avl_trim_operating_point_tool(
+    aircraft_id: UUID4,
+    request: AVLTrimRequest,
+) -> Any:
+    return await _call_endpoint(
+        operating_points.avl_trim_operating_point,
         aircraft_id=aircraft_id,
         request=request,
     )

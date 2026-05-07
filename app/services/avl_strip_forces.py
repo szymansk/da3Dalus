@@ -143,6 +143,61 @@ def parse_strip_forces_output(stdout: str) -> list[dict]:
     return surfaces
 
 
+def get_control_surface_index_map(airplane) -> dict[str, int]:
+    """Map control surface names to their AVL D-indices (1-based).
+
+    Traverses airplane.wings -> xsecs -> control_surfaces in order,
+    assigning indices based on first occurrence (same order as
+    build_control_deflection_commands).
+    """
+    seen: dict[str, int] = {}
+    idx = 1
+    for wing in airplane.wings:
+        for xsec in wing.xsecs:
+            for cs in xsec.control_surfaces:
+                if cs.name not in seen:
+                    seen[cs.name] = idx
+                    idx += 1
+    return seen
+
+
+_VARIABLE_TO_AVL: dict[str, str] = {
+    "alpha": "a",
+    "beta": "b",
+    "roll_rate": "r",
+    "pitch_rate": "p",
+    "yaw_rate": "y",
+}
+
+
+def build_indirect_constraint_commands(
+    airplane,
+    trim_constraints: list,
+) -> list[str]:
+    """Build AVL indirect constraint keystrokes from trim constraints.
+
+    Maps each constraint to the AVL format: ``<variable> <target> <value>``
+    where variable is a/b/r/p/y or d1/d2/... and target is CL/CY/PM/RM/YM.
+
+    Raises ValueError if a control surface name is not found in the airplane.
+    """
+    cs_map = get_control_surface_index_map(airplane)
+    commands: list[str] = []
+    for tc in trim_constraints:
+        if tc.variable in _VARIABLE_TO_AVL:
+            avl_var = _VARIABLE_TO_AVL[tc.variable]
+        elif tc.variable in cs_map:
+            avl_var = f"d{cs_map[tc.variable]}"
+        else:
+            raise ValueError(
+                f"Unknown trim variable '{tc.variable}'. "
+                f"Must be one of {list(_VARIABLE_TO_AVL.keys())} "
+                f"or a control surface name: {list(cs_map.keys())}"
+            )
+        commands.append(f"{avl_var} {tc.target.value} {tc.value}")
+    return commands
+
+
 def build_control_deflection_commands(
     airplane,
     overrides: dict[str, float] | None = None,
