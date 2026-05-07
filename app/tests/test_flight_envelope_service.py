@@ -266,3 +266,179 @@ class TestFlightEnvelopeModel:
             session.add(e2)
             with pytest.raises(IntegrityError):
                 session.flush()
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Task 3: V-n curve computation + KPI derivation tests
+# ────────────────────────────────────────────────────────────────────────────
+
+
+class TestComputeVnCurve:
+    """Pure computation: V-n curve generation."""
+
+    # Reference values for a 1.5 kg aircraft, Cl_max=1.4, g_limit=3.0,
+    # S=0.25 m^2, rho=1.225, v_max=28 m/s.
+    MASS = 1.5
+    CL_MAX = 1.4
+    G_LIMIT = 3.0
+    S = 0.25
+    RHO = 1.225
+    V_MAX = 28.0
+
+    @property
+    def expected_stall(self) -> float:
+        return math.sqrt(2 * self.MASS * 9.81 / (self.RHO * self.S * self.CL_MAX))
+
+    @property
+    def expected_dive(self) -> float:
+        return 1.4 * self.V_MAX
+
+    def test_stall_speed_math(self):
+        from app.services.flight_envelope_service import compute_vn_curve
+
+        curve = compute_vn_curve(
+            mass_kg=self.MASS,
+            cl_max=self.CL_MAX,
+            g_limit=self.G_LIMIT,
+            wing_area_m2=self.S,
+            rho=self.RHO,
+            v_max_mps=self.V_MAX,
+        )
+        assert abs(curve.stall_speed_mps - self.expected_stall) < 0.01
+
+    def test_dive_speed(self):
+        from app.services.flight_envelope_service import compute_vn_curve
+
+        curve = compute_vn_curve(
+            mass_kg=self.MASS,
+            cl_max=self.CL_MAX,
+            g_limit=self.G_LIMIT,
+            wing_area_m2=self.S,
+            rho=self.RHO,
+            v_max_mps=self.V_MAX,
+        )
+        assert abs(curve.dive_speed_mps - self.expected_dive) < 0.01
+
+    def test_positive_boundary_capped_at_g_limit(self):
+        from app.services.flight_envelope_service import compute_vn_curve
+
+        curve = compute_vn_curve(
+            mass_kg=self.MASS,
+            cl_max=self.CL_MAX,
+            g_limit=self.G_LIMIT,
+            wing_area_m2=self.S,
+            rho=self.RHO,
+            v_max_mps=self.V_MAX,
+        )
+        for pt in curve.positive:
+            assert pt.load_factor <= self.G_LIMIT + 1e-9
+
+    def test_negative_boundary_capped(self):
+        from app.services.flight_envelope_service import compute_vn_curve
+
+        curve = compute_vn_curve(
+            mass_kg=self.MASS,
+            cl_max=self.CL_MAX,
+            g_limit=self.G_LIMIT,
+            wing_area_m2=self.S,
+            rho=self.RHO,
+            v_max_mps=self.V_MAX,
+        )
+        neg_limit = -0.4 * self.G_LIMIT
+        for pt in curve.negative:
+            assert pt.load_factor >= neg_limit - 1e-9
+
+    def test_at_least_50_positive_points(self):
+        from app.services.flight_envelope_service import compute_vn_curve
+
+        curve = compute_vn_curve(
+            mass_kg=self.MASS,
+            cl_max=self.CL_MAX,
+            g_limit=self.G_LIMIT,
+            wing_area_m2=self.S,
+            rho=self.RHO,
+            v_max_mps=self.V_MAX,
+        )
+        assert len(curve.positive) >= 50
+
+
+class TestDerivePerformanceKPIs:
+    """Pure computation: KPI derivation."""
+
+    def test_always_returns_6_kpis(self):
+        from app.services.flight_envelope_service import derive_performance_kpis
+
+        kpis = derive_performance_kpis(
+            stall_speed_mps=8.0,
+            v_max_mps=28.0,
+            g_limit=3.0,
+            markers=[],
+        )
+        assert len(kpis) == 6
+
+    def test_kpi_labels_present(self):
+        from app.services.flight_envelope_service import derive_performance_kpis
+
+        kpis = derive_performance_kpis(
+            stall_speed_mps=8.0,
+            v_max_mps=28.0,
+            g_limit=3.0,
+            markers=[],
+        )
+        labels = {k.label for k in kpis}
+        assert labels == {
+            "stall_speed",
+            "best_ld_speed",
+            "min_sink_speed",
+            "max_speed",
+            "max_load_factor",
+            "dive_speed",
+        }
+
+    def test_dive_speed_kpi_value(self):
+        from app.services.flight_envelope_service import derive_performance_kpis
+
+        kpis = derive_performance_kpis(
+            stall_speed_mps=8.0,
+            v_max_mps=28.0,
+            g_limit=3.0,
+            markers=[],
+        )
+        dive_kpi = next(k for k in kpis if k.label == "dive_speed")
+        assert abs(dive_kpi.value - 1.4 * 28.0) < 0.01
+
+    def test_best_ld_from_marker(self):
+        from app.schemas.flight_envelope import VnMarker
+        from app.services.flight_envelope_service import derive_performance_kpis
+
+        marker = VnMarker(
+            op_id=10,
+            name="best_ld_point",
+            velocity_mps=15.0,
+            load_factor=1.0,
+            status="TRIMMED",
+            label="best_ld",
+        )
+        kpis = derive_performance_kpis(
+            stall_speed_mps=8.0,
+            v_max_mps=28.0,
+            g_limit=3.0,
+            markers=[marker],
+        )
+        best_ld = next(k for k in kpis if k.label == "best_ld_speed")
+        assert abs(best_ld.value - 15.0) < 0.01
+        assert best_ld.source_op_id == 10
+        assert best_ld.confidence == "trimmed"
+
+    def test_fallback_best_ld_without_marker(self):
+        from app.services.flight_envelope_service import derive_performance_kpis
+
+        kpis = derive_performance_kpis(
+            stall_speed_mps=8.0,
+            v_max_mps=28.0,
+            g_limit=3.0,
+            markers=[],
+        )
+        best_ld = next(k for k in kpis if k.label == "best_ld_speed")
+        assert abs(best_ld.value - 1.4 * 8.0) < 0.01
+        assert best_ld.confidence == "estimated"
