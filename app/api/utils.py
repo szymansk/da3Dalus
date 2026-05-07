@@ -34,19 +34,8 @@ def _build_operating_point(operating_point: OperatingPointSchema) -> asb.Operati
     )
 
 
-def _build_control_run_command(
-    asb_airplane,
-    overrides: dict[str, float] | None = None,
-) -> str | None:
-    """Build AVL run_command string to override hardcoded control deflections."""
-    from app.services.avl_strip_forces import build_control_deflection_commands
-
-    commands = build_control_deflection_commands(asb_airplane, overrides)
-    return "\n".join(commands) if commands else None
-
-
 def _run_avl(asb_airplane, op_point, operating_point, avl_file_content=None):
-    """Run AVL analysis; raises ValueError for parameter sweeps."""
+    """Run AVL analysis via standalone AVLRunner; raises ValueError for parameter sweeps."""
     if isinstance(operating_point.alpha, (list, tuple, np.ndarray)) or isinstance(
         operating_point.beta, (list, tuple, np.ndarray)
     ):
@@ -54,24 +43,18 @@ def _run_avl(asb_airplane, op_point, operating_point, avl_file_content=None):
             "AVL analysis does not support parameter sweeps. "
             "Please use AeroBuildup or Vortex Lattice for that."
         )
-    run_command = _build_control_run_command(asb_airplane)
-    if avl_file_content is not None:
-        import tempfile
-        from pathlib import Path
+    if avl_file_content is None:
+        raise ValueError("avl_file_content is required for AVL analysis")
 
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            avl_path = Path(tmp_dir) / "airplane.avl"
-            avl_path.write_text(avl_file_content)
-            avl = asb.AVL(
-                airplane=asb_airplane,
-                op_point=op_point,
-                xyz_ref=operating_point.xyz_ref,
-                working_directory=tmp_dir,
-            )
-            return AnalysisModel.from_avl_dict(avl.run(run_command=run_command)), None
-    else:
-        avl = asb.AVL(airplane=asb_airplane, op_point=op_point, xyz_ref=operating_point.xyz_ref)
-        return AnalysisModel.from_avl_dict(avl.run(run_command=run_command)), None
+    from app.services.avl_runner import AVLRunner
+
+    runner = AVLRunner(
+        airplane=asb_airplane,
+        op_point=op_point,
+        xyz_ref=operating_point.xyz_ref,
+    )
+    result = runner.run(avl_file_content=avl_file_content)
+    return AnalysisModel.from_avl_dict(result), None
 
 
 def _run_aerobuildup(asb_airplane, op_point, operating_point):

@@ -25,6 +25,7 @@ from app.schemas.aeroanalysisschema import OperatingPointSchema
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_operating_point(**overrides) -> OperatingPointSchema:
     """Build a minimal OperatingPointSchema via model_construct."""
     defaults = dict(
@@ -134,38 +135,29 @@ class TestBuildOperatingPoint:
 
 
 class TestRunAvl:
-    """_run_avl creates an AVL instance and raises for parameter sweeps."""
+    """_run_avl uses AVLRunner and raises for parameter sweeps."""
 
     @patch("app.api.utils.AnalysisModel")
-    @patch("app.api.utils.asb")
-    def test_scalar_alpha_beta_runs_successfully(self, mock_asb, mock_analysis_model):
+    @patch("app.services.avl_runner.AVLRunner.run")
+    def test_scalar_alpha_beta_runs_successfully(self, mock_runner_run, mock_analysis_model):
         from app.api.utils import _run_avl
 
-        mock_avl_instance = MagicMock()
-        mock_avl_instance.run.return_value = {"CL": 0.5}
-        mock_asb.AVL.return_value = mock_avl_instance
+        mock_runner_run.return_value = {"CL": 0.5}
         mock_analysis_model.from_avl_dict.return_value = MagicMock()
 
         airplane = MagicMock()
         op_point = MagicMock()
         operating_point = _make_operating_point(alpha=5.0, beta=0.0)
 
-        result, figure = _run_avl(airplane, op_point, operating_point)
+        result, figure = _run_avl(airplane, op_point, operating_point, avl_file_content="GEOM")
 
-        mock_asb.AVL.assert_called_once_with(
-            airplane=airplane,
-            op_point=op_point,
-            xyz_ref=operating_point.xyz_ref,
-        )
-        mock_avl_instance.run.assert_called_once()
+        mock_runner_run.assert_called_once_with(avl_file_content="GEOM")
         mock_analysis_model.from_avl_dict.assert_called_once_with({"CL": 0.5})
         assert figure is None
 
-    @patch("app.api.utils.asb")
-    def test_list_alpha_raises_value_error(self, mock_asb):
+    def test_list_alpha_raises_value_error(self):
         from app.api.utils import _run_avl
 
-        mock_asb.AVL.return_value = MagicMock()
         airplane = MagicMock()
         op_point = MagicMock()
         operating_point = _make_operating_point(alpha=[0.0, 5.0, 10.0])
@@ -173,11 +165,9 @@ class TestRunAvl:
         with pytest.raises(ValueError, match="AVL analysis does not support parameter sweeps"):
             _run_avl(airplane, op_point, operating_point)
 
-    @patch("app.api.utils.asb")
-    def test_list_beta_raises_value_error(self, mock_asb):
+    def test_list_beta_raises_value_error(self):
         from app.api.utils import _run_avl
 
-        mock_asb.AVL.return_value = MagicMock()
         airplane = MagicMock()
         op_point = MagicMock()
         operating_point = _make_operating_point(beta=[0.0, 2.0])
@@ -185,17 +175,25 @@ class TestRunAvl:
         with pytest.raises(ValueError, match="AVL analysis does not support parameter sweeps"):
             _run_avl(airplane, op_point, operating_point)
 
-    @patch("app.api.utils.asb")
-    def test_np_array_alpha_raises_value_error(self, mock_asb):
+    def test_np_array_alpha_raises_value_error(self):
         from app.api.utils import _run_avl
 
-        mock_asb.AVL.return_value = MagicMock()
         airplane = MagicMock()
         op_point = MagicMock()
         operating_point = _make_operating_point(alpha=np.array([1.0, 2.0]))
 
         with pytest.raises(ValueError, match="AVL analysis does not support parameter sweeps"):
             _run_avl(airplane, op_point, operating_point)
+
+    def test_none_avl_file_content_raises_value_error(self):
+        from app.api.utils import _run_avl
+
+        airplane = MagicMock()
+        op_point = MagicMock()
+        operating_point = _make_operating_point(alpha=5.0, beta=0.0)
+
+        with pytest.raises(ValueError, match="avl_file_content is required"):
+            _run_avl(airplane, op_point, operating_point, avl_file_content=None)
 
 
 # =========================================================================== #
@@ -259,8 +257,11 @@ class TestRunVlm:
         operating_point = _make_operating_point()
 
         result, figure = _run_vlm(
-            airplane, op_point, operating_point,
-            draw_streamlines=False, backend="plotly",
+            airplane,
+            op_point,
+            operating_point,
+            draw_streamlines=False,
+            backend="plotly",
         )
 
         mock_asb.VortexLatticeMethod.assert_called_once_with(
@@ -289,8 +290,11 @@ class TestRunVlm:
         operating_point = _make_operating_point()
 
         result, figure = _run_vlm(
-            airplane, op_point, operating_point,
-            draw_streamlines=True, backend="pyvista",
+            airplane,
+            op_point,
+            operating_point,
+            draw_streamlines=True,
+            backend="pyvista",
         )
 
         mock_vlm_instance.draw.assert_called_once_with(show=False, backend="pyvista")
@@ -342,7 +346,9 @@ class TestAnalyseAerodynamics:
         op_schema = _make_operating_point()
 
         result = analyse_aerodynamics(
-            AnalysisToolUrlType.AVL, op_schema, airplane,
+            AnalysisToolUrlType.AVL,
+            op_schema,
+            airplane,
         )
 
         mock_run_avl.assert_called_once()
@@ -361,7 +367,9 @@ class TestAnalyseAerodynamics:
         op_schema = _make_operating_point()
 
         result = analyse_aerodynamics(
-            AnalysisToolUrlType.AEROBUILDUP, op_schema, airplane,
+            AnalysisToolUrlType.AEROBUILDUP,
+            op_schema,
+            airplane,
         )
 
         mock_run_abu.assert_called_once()
@@ -380,8 +388,11 @@ class TestAnalyseAerodynamics:
         op_schema = _make_operating_point()
 
         result = analyse_aerodynamics(
-            AnalysisToolUrlType.VORTEX_LATTICE, op_schema, airplane,
-            draw_streamlines=True, backend="pyvista",
+            AnalysisToolUrlType.VORTEX_LATTICE,
+            op_schema,
+            airplane,
+            draw_streamlines=True,
+            backend="pyvista",
         )
 
         mock_run_vlm.assert_called_once()

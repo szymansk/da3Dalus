@@ -2,7 +2,6 @@
 
 Tests cover:
 - build_control_deflection_commands() with overrides parameter
-- _build_control_run_command() with overrides parameter
 - analyse_aerodynamics() applying overrides before dispatching to solvers
 """
 
@@ -93,24 +92,6 @@ class TestBuildControlDeflectionCommandsOverrides:
         commands_none = build_control_deflection_commands(airplane, overrides=None)
         commands_empty = build_control_deflection_commands(airplane, overrides={})
         assert commands_none == commands_empty == ["d1 d1 15.0"]
-
-
-class TestBuildControlRunCommandOverrides:
-    """Test _build_control_run_command passes overrides through."""
-
-    def test_overrides_passed_through(self):
-        from app.api.utils import _build_control_run_command
-
-        airplane = _make_airplane_with_controls([("elevator", 5.0)])
-        result = _build_control_run_command(airplane, overrides={"elevator": -3.0})
-        assert result == "d1 d1 -3.0"
-
-    def test_none_overrides_uses_defaults(self):
-        from app.api.utils import _build_control_run_command
-
-        airplane = _make_airplane_with_controls([("elevator", 5.0)])
-        result = _build_control_run_command(airplane, overrides=None)
-        assert result == "d1 d1 5.0"
 
 
 class TestAnalyseAerodynamicsDeflectionOverrides:
