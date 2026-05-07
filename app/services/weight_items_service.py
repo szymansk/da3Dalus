@@ -60,8 +60,8 @@ def _try_sync_assumptions(db: Session, aeroplane_uuid) -> None:
         from app.services.mass_cg_service import sync_weight_items_to_assumptions
 
         sync_weight_items_to_assumptions(db, aeroplane_uuid)
-    except Exception:
-        logger.debug("Skipped assumption sync (assumptions may not be seeded yet)")
+    except (NotFoundError, SQLAlchemyError) as exc:
+        logger.warning("Skipped assumption sync: %s", exc)
 
 
 def create_weight_item(db: Session, aeroplane_uuid, data: WeightItemWrite) -> WeightItemRead:

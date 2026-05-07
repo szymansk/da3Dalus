@@ -108,6 +108,17 @@ class TestMassSweepEndpoint:
         )
         assert resp.status_code == 422
 
+    def test_422_for_negative_mass(self, client_and_db):
+        client, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            aeroplane = make_aeroplane(db)
+
+        resp = client.post(
+            f"/aeroplanes/{aeroplane.uuid}/mass_sweep",
+            json={"masses_kg": [1.0, -0.5], "velocity": 15.0, "altitude": 0.0},
+        )
+        assert resp.status_code == 422
+
 
 # ---------------------------------------------------------------------------
 # GET /aeroplanes/{id}/cg_comparison

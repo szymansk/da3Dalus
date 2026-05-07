@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Sequence
+from typing import Sequence, TypedDict
 
 from sqlalchemy.orm import Session
 
@@ -21,6 +21,13 @@ logger = logging.getLogger(__name__)
 
 GRAVITY = 9.81
 CG_TOLERANCE_M = 0.01
+
+
+class WeightItemData(TypedDict):
+    mass_kg: float
+    x_m: float
+    y_m: float
+    z_m: float
 
 
 # ---------------------------------------------------------------------------
@@ -47,6 +54,10 @@ def compute_design_metrics(
         raise ValidationError(message="s_ref must be positive")
     if cl_max <= 0:
         raise ValidationError(message="cl_max must be positive")
+    if rho <= 0:
+        raise ValidationError(message="rho must be positive")
+    if velocity <= 0:
+        raise ValidationError(message="velocity must be positive")
 
     weight = mass_kg * GRAVITY
     wing_loading = weight / s_ref
@@ -90,7 +101,7 @@ def compute_mass_sweep(
 
 
 def aggregate_weight_items(
-    items: Sequence[dict],
+    items: Sequence[WeightItemData],
 ) -> tuple[float | None, float | None, float | None, float | None]:
     """Compute total mass and mass-weighted CG from a list of weight item dicts.
 
@@ -146,35 +157,36 @@ def sync_weight_items_to_assumptions(db: Session, aeroplane_uuid) -> None:
     """Aggregate weight items and update mass/cg_x calculated values."""
     aeroplane = _get_aeroplane(db, aeroplane_uuid)
 
-    has_assumptions = (
-        db.query(DesignAssumptionModel)
-        .filter(DesignAssumptionModel.aeroplane_id == aeroplane.id)
-        .first()
+    target_params = {"mass", "cg_x"}
+    existing = (
+        db.query(DesignAssumptionModel.parameter_name)
+        .filter(
+            DesignAssumptionModel.aeroplane_id == aeroplane.id,
+            DesignAssumptionModel.parameter_name.in_(target_params),
+        )
+        .all()
     )
-    if not has_assumptions:
+    existing_names = {row[0] for row in existing}
+    if not existing_names:
         return
 
     rows = db.query(WeightItemModel).filter(WeightItemModel.aeroplane_id == aeroplane.id).all()
-    items = [{"mass_kg": r.mass_kg, "x_m": r.x_m, "y_m": r.y_m, "z_m": r.z_m} for r in rows]
+    items: list[WeightItemData] = [
+        {"mass_kg": r.mass_kg, "x_m": r.x_m, "y_m": r.y_m, "z_m": r.z_m} for r in rows
+    ]
 
     total_mass, cg_x, _cg_y, _cg_z = aggregate_weight_items(items)
 
     from app.services.design_assumptions_service import update_calculated_value
 
-    update_calculated_value(
-        db,
-        aeroplane_uuid,
-        "mass",
-        total_mass,
-        "weight_items" if total_mass is not None else None,
-    )
-    update_calculated_value(
-        db,
-        aeroplane_uuid,
-        "cg_x",
-        cg_x,
-        "weight_items" if cg_x is not None else None,
-    )
+    source = "weight_items" if total_mass is not None else None
+    if "mass" in existing_names:
+        update_calculated_value(db, aeroplane_uuid, "mass", total_mass, source)
+    if "cg_x" in existing_names:
+        update_calculated_value(
+            db, aeroplane_uuid, "cg_x", cg_x,
+            "weight_items" if cg_x is not None else None,
+        )
 
 
 def get_cg_comparison(db: Session, aeroplane_uuid) -> CGComparisonResponse:
@@ -215,7 +227,7 @@ def get_s_ref_for_aeroplane(db: Session, aeroplane_uuid) -> float:
         asb_airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
     except Exception as e:
         logger.error("Error building ASB airplane for s_ref: %s", e)
-        raise InternalError(message=f"Could not compute wing reference area: {e}")
+        raise InternalError(message=f"Could not compute wing reference area: {e}") from e
     s_ref = float(getattr(asb_airplane, "s_ref", 0.0) or 0.0)
     if s_ref <= 0:
         raise ValidationError(

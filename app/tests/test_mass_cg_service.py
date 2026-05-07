@@ -137,6 +137,14 @@ class TestComputeDesignMetrics:
         with pytest.raises(ValidationError):
             svc.compute_design_metrics(1.5, 0.3, 0.0, SEA_LEVEL_RHO, 15.0)
 
+    def test_zero_rho_raises(self):
+        with pytest.raises(ValidationError):
+            svc.compute_design_metrics(1.5, 0.3, 1.4, 0.0, 15.0)
+
+    def test_zero_velocity_raises(self):
+        with pytest.raises(ValidationError):
+            svc.compute_design_metrics(1.5, 0.3, 1.4, SEA_LEVEL_RHO, 0.0)
+
     def test_response_fields(self):
         """All response fields are populated."""
         result = svc.compute_design_metrics(1.5, 0.3, 1.4, SEA_LEVEL_RHO, 15.0)
@@ -404,7 +412,7 @@ class TestGetCGComparison:
             assert result.component_cg_x == pytest.approx(0.15)
             assert result.component_total_mass_kg == pytest.approx(1.0)
             assert result.delta_x == pytest.approx(PARAMETER_DEFAULTS["cg_x"] - 0.15)
-            assert result.within_tolerance is True or result.within_tolerance is False
+            assert result.within_tolerance is (abs(PARAMETER_DEFAULTS["cg_x"] - 0.15) < 0.01)
 
     def test_without_weight_items(self, client_and_db):
         _, SessionLocal = client_and_db
@@ -471,6 +479,30 @@ class TestGetEffectiveAssumptionValue:
             val = svc.get_effective_assumption_value(db, aeroplane.uuid, "mass")
             assert val == 2.5
 
+    def test_falls_back_to_estimate_when_calculated_is_none(self, client_and_db):
+        """When active_source is CALCULATED but calculated_value is None, return estimate."""
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            aeroplane = make_aeroplane(db)
+            _seed_and_get(db, aeroplane.uuid)
+
+            from app.models.aeroplanemodel import DesignAssumptionModel
+
+            row = (
+                db.query(DesignAssumptionModel)
+                .filter(
+                    DesignAssumptionModel.aeroplane_id == aeroplane.id,
+                    DesignAssumptionModel.parameter_name == "mass",
+                )
+                .first()
+            )
+            row.active_source = "CALCULATED"
+            row.calculated_value = None
+            db.flush()
+
+            val = svc.get_effective_assumption_value(db, aeroplane.uuid, "mass")
+            assert val == PARAMETER_DEFAULTS["mass"]
+
     def test_raises_not_found(self, client_and_db):
         _, SessionLocal = client_and_db
         with SessionLocal() as db:
@@ -479,3 +511,40 @@ class TestGetEffectiveAssumptionValue:
 
             with pytest.raises(NotFoundError):
                 svc.get_effective_assumption_value(db, aeroplane.uuid, "nonexistent")
+
+
+# ---------------------------------------------------------------------------
+# aggregate_weight_items edge cases
+# ---------------------------------------------------------------------------
+
+
+class TestAggregateWeightItemsEdgeCases:
+    def test_negative_mass_item(self):
+        """Negative mass computes correctly (documents behavior)."""
+        items = [
+            {"mass_kg": 1.0, "x_m": 0.2, "y_m": 0.0, "z_m": 0.0},
+            {"mass_kg": -0.5, "x_m": 0.4, "y_m": 0.0, "z_m": 0.0},
+        ]
+        mass, cx, cy, cz = svc.aggregate_weight_items(items)
+        assert mass == pytest.approx(0.5)
+        assert cx == pytest.approx((1.0 * 0.2 + (-0.5) * 0.4) / 0.5)
+
+
+# ---------------------------------------------------------------------------
+# Weight item CRUD sync resilience
+# ---------------------------------------------------------------------------
+
+
+class TestWeightItemSyncResilience:
+    def test_crud_succeeds_without_seeded_assumptions(self, client_and_db):
+        """Weight item create works even if no assumptions are seeded."""
+        _, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            aeroplane = make_aeroplane(db)
+            item = wi_svc.create_weight_item(
+                db,
+                aeroplane.uuid,
+                _make_weight_item(name="motor", mass_kg=0.3, x_m=0.05),
+            )
+            assert item.name == "motor"
+            assert item.mass_kg == pytest.approx(0.3)
