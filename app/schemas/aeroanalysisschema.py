@@ -1,17 +1,21 @@
+import re
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class TrimTarget(str, Enum):
     """Aerodynamic parameters that AVL can target during trim."""
 
-    CL = "CL"
-    CY = "CY"
+    CL = "C"
+    CY = "S"
     PITCHING_MOMENT = "PM"
     ROLLING_MOMENT = "RM"
     YAWING_MOMENT = "YM"
+
+
+KNOWN_STATE_VARIABLES = {"alpha", "beta", "roll_rate", "pitch_rate", "yaw_rate"}
 
 
 class TrimConstraint(BaseModel):
@@ -25,6 +29,18 @@ class TrimConstraint(BaseModel):
     target: TrimTarget = Field(..., description="Aerodynamic parameter to target")
     value: float = Field(0.0, description="Target value (default: 0 = zero the parameter)")
 
+    @field_validator("variable")
+    @classmethod
+    def validate_variable_format(cls, v: str) -> str:
+        if v in KNOWN_STATE_VARIABLES:
+            return v
+        if not re.match(r"^[a-zA-Z][a-zA-Z0-9_]*$", v):
+            raise ValueError(
+                f"Invalid variable name '{v}'. Must be a letter followed by "
+                f"letters/digits/underscores, or one of: {sorted(KNOWN_STATE_VARIABLES)}"
+            )
+        return v
+
 
 class AVLTrimRequest(BaseModel):
     """Request to run AVL trim analysis."""
@@ -35,6 +51,21 @@ class AVLTrimRequest(BaseModel):
     trim_constraints: list[TrimConstraint] = Field(
         ..., min_length=1, description="At least one trim constraint"
     )
+
+    @model_validator(mode="after")
+    def validate_constraints(self) -> "AVLTrimRequest":
+        variables = [c.variable for c in self.trim_constraints]
+        if len(variables) != len(set(variables)):
+            dupes = [v for v in variables if variables.count(v) > 1]
+            raise ValueError(f"Duplicate trim variables: {set(dupes)}")
+        targets = [c.target for c in self.trim_constraints]
+        if len(targets) != len(set(targets)):
+            dupes = [t.name for t in targets if targets.count(t) > 1]
+            raise ValueError(f"Duplicate trim targets: {set(dupes)}")
+        op = self.operating_point
+        if isinstance(getattr(op, "alpha", None), list):
+            raise ValueError("Alpha must be a scalar float for trim analysis, not a list")
+        return self
 
 
 class AVLTrimResult(BaseModel):

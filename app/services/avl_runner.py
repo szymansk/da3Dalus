@@ -17,6 +17,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import aerosandbox as asb
 
+    from app.schemas.aeroanalysisschema import TrimConstraint
+
 logger = logging.getLogger(__name__)
 
 
@@ -216,7 +218,7 @@ class AVLRunner:
     def run_trim(
         self,
         avl_file_content: str,
-        trim_constraints: list,
+        trim_constraints: list[TrimConstraint],
         control_overrides: dict[str, float] | None = None,
     ) -> dict:
         """Run AVL with indirect constraints for trim analysis.

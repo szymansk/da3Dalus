@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.schemas.aeroanalysisschema import TrimConstraint
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +176,7 @@ _VARIABLE_TO_AVL: dict[str, str] = {
 
 def build_indirect_constraint_commands(
     airplane,
-    trim_constraints: list,
+    trim_constraints: list[TrimConstraint],
 ) -> list[str]:
     """Build AVL indirect constraint keystrokes from trim constraints.
 

@@ -2,12 +2,13 @@
 
 Covers: TrimTarget, TrimConstraint, AVLTrimRequest, AVLTrimResult schemas,
 get_control_surface_index_map, build_indirect_constraint_commands,
-AVLRunner.run_trim, _categorize_results, and trim_with_avl service.
+_categorize_results, trim_with_avl service, and the AVL trim endpoint.
 """
 
 from __future__ import annotations
 
 import asyncio
+import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -24,8 +25,8 @@ class TestTrimTarget:
     def test_all_target_values(self):
         from app.schemas.aeroanalysisschema import TrimTarget
 
-        assert TrimTarget.CL.value == "CL"
-        assert TrimTarget.CY.value == "CY"
+        assert TrimTarget.CL.value == "C"
+        assert TrimTarget.CY.value == "S"
         assert TrimTarget.PITCHING_MOMENT.value == "PM"
         assert TrimTarget.ROLLING_MOMENT.value == "RM"
         assert TrimTarget.YAWING_MOMENT.value == "YM"
@@ -265,7 +266,7 @@ class TestBuildIndirectConstraintCommands:
         airplane = self._make_airplane([])
         tc = TrimConstraint(variable="alpha", target=TrimTarget.CL, value=0.5)
         commands = build_indirect_constraint_commands(airplane, [tc])
-        assert commands == ["a CL 0.5"]
+        assert commands == ["a C 0.5"]
 
     def test_beta_to_cy(self):
         from app.schemas.aeroanalysisschema import TrimConstraint, TrimTarget
@@ -274,7 +275,7 @@ class TestBuildIndirectConstraintCommands:
         airplane = self._make_airplane([])
         tc = TrimConstraint(variable="beta", target=TrimTarget.CY, value=0.0)
         commands = build_indirect_constraint_commands(airplane, [tc])
-        assert commands == ["b CY 0.0"]
+        assert commands == ["b S 0.0"]
 
     def test_roll_rate_to_rm(self):
         from app.schemas.aeroanalysisschema import TrimConstraint, TrimTarget
@@ -343,73 +344,7 @@ class TestBuildIndirectConstraintCommands:
             TrimConstraint(variable="elevator", target=TrimTarget.PITCHING_MOMENT, value=0.0),
         ]
         commands = build_indirect_constraint_commands(airplane, constraints)
-        assert commands == ["a CL 0.5", "d1 PM 0.0"]
-
-
-# =========================================================================== #
-# AVLRunner.run_trim
-# =========================================================================== #
-
-
-class TestAVLRunnerRunTrim:
-    """Verify AVLRunner.run_trim() builds correct extra keystrokes and delegates to run()."""
-
-    def _make_runner(self):
-        from app.services.avl_runner import AVLRunner
-
-        airplane = MagicMock()
-        airplane.wings = []
-        op_point = MagicMock()
-
-        runner = AVLRunner(
-            airplane=airplane,
-            op_point=op_point,
-            xyz_ref=[0.0, 0.0, 0.0],
-        )
-        return runner
-
-    @patch("app.services.avl_strip_forces.build_indirect_constraint_commands")
-    def test_run_trim_calls_run_with_extra_keystrokes(self, mock_build):
-        from app.schemas.aeroanalysisschema import TrimConstraint, TrimTarget
-
-        mock_build.return_value = ["d1 PM 0.0"]
-        runner = self._make_runner()
-        runner.run = MagicMock(return_value={"CL": 0.5})
-
-        tc = TrimConstraint(variable="elevator", target=TrimTarget.PITCHING_MOMENT)
-        result = runner.run_trim(
-            avl_file_content="FAKE AVL CONTENT",
-            trim_constraints=[tc],
-        )
-
-        mock_build.assert_called_once_with(runner.airplane, [tc])
-        runner.run.assert_called_once_with(
-            avl_file_content="FAKE AVL CONTENT",
-            control_overrides=None,
-            extra_keystrokes=["d1 PM 0.0"],
-        )
-        assert result == {"CL": 0.5}
-
-    @patch("app.services.avl_strip_forces.build_indirect_constraint_commands")
-    def test_run_trim_passes_control_overrides(self, mock_build):
-        from app.schemas.aeroanalysisschema import TrimConstraint, TrimTarget
-
-        mock_build.return_value = ["a CL 0.5"]
-        runner = self._make_runner()
-        runner.run = MagicMock(return_value={})
-
-        tc = TrimConstraint(variable="alpha", target=TrimTarget.CL, value=0.5)
-        runner.run_trim(
-            avl_file_content="FAKE",
-            trim_constraints=[tc],
-            control_overrides={"aileron": 5.0},
-        )
-
-        runner.run.assert_called_once_with(
-            avl_file_content="FAKE",
-            control_overrides={"aileron": 5.0},
-            extra_keystrokes=["a CL 0.5"],
-        )
+        assert commands == ["a C 0.5", "d1 PM 0.0"]
 
 
 # =========================================================================== #
@@ -544,7 +479,7 @@ class TestTrimWithAvl:
 
     @patch("app.services.analysis_service.get_aeroplane_schema_or_raise")
     def test_trim_with_avl_aeroplane_not_found(self, mock_get_schema):
-        from app.core.exceptions import InternalError
+        from app.core.exceptions import NotFoundError
         from app.schemas.aeroanalysisschema import (
             AVLTrimRequest,
             OperatingPointSchema,
@@ -553,7 +488,7 @@ class TestTrimWithAvl:
         )
         from app.services.avl_trim_service import trim_with_avl
 
-        mock_get_schema.side_effect = Exception("not found")
+        mock_get_schema.side_effect = NotFoundError(message="not found")
 
         db = MagicMock()
         request = AVLTrimRequest(
@@ -563,5 +498,236 @@ class TestTrimWithAvl:
             ],
         )
 
-        with pytest.raises(InternalError):
+        with pytest.raises(NotFoundError):
             asyncio.run(trim_with_avl(db, "bad-uuid", request))
+
+
+# =========================================================================== #
+# Validator tests
+# =========================================================================== #
+
+
+class TestTrimConstraintValidators:
+    """Verify TrimConstraint field validators."""
+
+    def test_valid_known_state_variable(self):
+        from app.schemas.aeroanalysisschema import TrimConstraint, TrimTarget
+
+        for var in ("alpha", "beta", "roll_rate", "pitch_rate", "yaw_rate"):
+            tc = TrimConstraint(variable=var, target=TrimTarget.CL)
+            assert tc.variable == var
+
+    def test_valid_control_surface_name(self):
+        from app.schemas.aeroanalysisschema import TrimConstraint, TrimTarget
+
+        tc = TrimConstraint(variable="elevator", target=TrimTarget.PITCHING_MOMENT)
+        assert tc.variable == "elevator"
+
+    def test_invalid_empty_variable_rejected(self):
+        from pydantic import ValidationError as PydanticValidationError
+
+        from app.schemas.aeroanalysisschema import TrimConstraint, TrimTarget
+
+        with pytest.raises(PydanticValidationError, match="Invalid variable name"):
+            TrimConstraint(variable="", target=TrimTarget.CL)
+
+    def test_invalid_special_chars_rejected(self):
+        from pydantic import ValidationError as PydanticValidationError
+
+        from app.schemas.aeroanalysisschema import TrimConstraint, TrimTarget
+
+        with pytest.raises(PydanticValidationError, match="Invalid variable name"):
+            TrimConstraint(variable="bad-name!", target=TrimTarget.CL)
+
+    def test_invalid_starts_with_digit_rejected(self):
+        from pydantic import ValidationError as PydanticValidationError
+
+        from app.schemas.aeroanalysisschema import TrimConstraint, TrimTarget
+
+        with pytest.raises(PydanticValidationError, match="Invalid variable name"):
+            TrimConstraint(variable="1elevator", target=TrimTarget.CL)
+
+
+class TestAVLTrimRequestValidators:
+    """Verify AVLTrimRequest model validators."""
+
+    def test_duplicate_variables_rejected(self):
+        from pydantic import ValidationError as PydanticValidationError
+
+        from app.schemas.aeroanalysisschema import (
+            AVLTrimRequest,
+            OperatingPointSchema,
+            TrimConstraint,
+            TrimTarget,
+        )
+
+        with pytest.raises(PydanticValidationError, match="Duplicate trim variables"):
+            AVLTrimRequest(
+                operating_point=OperatingPointSchema(velocity=15.0),
+                trim_constraints=[
+                    TrimConstraint(variable="alpha", target=TrimTarget.CL, value=0.5),
+                    TrimConstraint(variable="alpha", target=TrimTarget.PITCHING_MOMENT, value=0.0),
+                ],
+            )
+
+    def test_duplicate_targets_rejected(self):
+        from pydantic import ValidationError as PydanticValidationError
+
+        from app.schemas.aeroanalysisschema import (
+            AVLTrimRequest,
+            OperatingPointSchema,
+            TrimConstraint,
+            TrimTarget,
+        )
+
+        with pytest.raises(PydanticValidationError, match="Duplicate trim targets"):
+            AVLTrimRequest(
+                operating_point=OperatingPointSchema(velocity=15.0),
+                trim_constraints=[
+                    TrimConstraint(variable="alpha", target=TrimTarget.CL, value=0.5),
+                    TrimConstraint(variable="elevator", target=TrimTarget.CL, value=0.3),
+                ],
+            )
+
+    def test_alpha_as_list_rejected(self):
+        from pydantic import ValidationError as PydanticValidationError
+
+        from app.schemas.aeroanalysisschema import (
+            AVLTrimRequest,
+            OperatingPointSchema,
+            TrimConstraint,
+            TrimTarget,
+        )
+
+        with pytest.raises(PydanticValidationError, match="Alpha must be a scalar"):
+            AVLTrimRequest(
+                operating_point=OperatingPointSchema(velocity=15.0, alpha=[1.0, 2.0]),
+                trim_constraints=[
+                    TrimConstraint(variable="alpha", target=TrimTarget.CL, value=0.5),
+                ],
+            )
+
+
+# =========================================================================== #
+# AVL trim endpoint tests
+# =========================================================================== #
+
+
+class TestAVLTrimEndpoint:
+    """Verify the /aeroplanes/{uuid}/operating-points/avl-trim endpoint."""
+
+    @pytest.fixture()
+    def client_and_db(self):
+        from fastapi.testclient import TestClient
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        from sqlalchemy.pool import StaticPool
+
+        from app.db.base import Base
+        from app.db.session import get_db
+        from app.main import create_app
+
+        engine = create_engine(
+            "sqlite://",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        Base.metadata.create_all(bind=engine)
+        TestingSessionLocal = sessionmaker(bind=engine)
+
+        app = create_app()
+
+        def override_get_db():
+            db = TestingSessionLocal()
+            try:
+                yield db
+                db.commit()
+            except Exception:
+                db.rollback()
+                raise
+            finally:
+                db.close()
+
+        app.dependency_overrides[get_db] = override_get_db
+        with TestClient(app) as client:
+            yield client, TestingSessionLocal
+
+        app.dependency_overrides.clear()
+        Base.metadata.drop_all(bind=engine)
+
+    @patch("app.services.avl_trim_service.trim_with_avl")
+    def test_avl_trim_endpoint_success(self, mock_trim, client_and_db):
+        from app.schemas.aeroanalysisschema import AVLTrimResult
+
+        client, _ = client_and_db
+        aeroplane_uuid = str(uuid.uuid4())
+
+        mock_trim.return_value = AVLTrimResult(
+            converged=True,
+            trimmed_deflections={"elevator": -2.5},
+            trimmed_state={"alpha": 3.2},
+            aero_coefficients={"CL": 0.5, "CD": 0.03},
+            forces_and_moments={"L": 50.0},
+            stability_derivatives={"CL_a": 6.1},
+            raw_results={"CL": 0.5},
+        )
+
+        payload = {
+            "operating_point": {"velocity": 15.0, "alpha": 5.0},
+            "trim_constraints": [
+                {"variable": "alpha", "target": "C", "value": 0.5},
+            ],
+        }
+        resp = client.post(
+            f"/aeroplanes/{aeroplane_uuid}/operating-points/avl-trim",
+            json=payload,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["converged"] is True
+        assert data["aero_coefficients"]["CL"] == 0.5
+        assert data["trimmed_deflections"]["elevator"] == -2.5
+
+    @patch("app.services.avl_trim_service.trim_with_avl")
+    def test_avl_trim_endpoint_not_found(self, mock_trim, client_and_db):
+        from app.core.exceptions import NotFoundError
+
+        client, _ = client_and_db
+        aeroplane_uuid = str(uuid.uuid4())
+
+        mock_trim.side_effect = NotFoundError(message="Aeroplane not found")
+
+        payload = {
+            "operating_point": {"velocity": 15.0, "alpha": 5.0},
+            "trim_constraints": [
+                {"variable": "alpha", "target": "C", "value": 0.5},
+            ],
+        }
+        resp = client.post(
+            f"/aeroplanes/{aeroplane_uuid}/operating-points/avl-trim",
+            json=payload,
+        )
+        assert resp.status_code == 404
+
+    @patch("app.services.avl_trim_service.trim_with_avl")
+    def test_avl_trim_endpoint_validation_error(self, mock_trim, client_and_db):
+        from app.core.exceptions import ValidationDomainError
+
+        client, _ = client_and_db
+        aeroplane_uuid = str(uuid.uuid4())
+
+        mock_trim.side_effect = ValidationDomainError(
+            message="Unknown trim variable 'nonexistent'"
+        )
+
+        payload = {
+            "operating_point": {"velocity": 15.0, "alpha": 5.0},
+            "trim_constraints": [
+                {"variable": "elevator", "target": "PM", "value": 0.0},
+            ],
+        }
+        resp = client.post(
+            f"/aeroplanes/{aeroplane_uuid}/operating-points/avl-trim",
+            json=payload,
+        )
+        assert resp.status_code == 422
