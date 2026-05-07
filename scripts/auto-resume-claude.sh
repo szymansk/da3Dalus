@@ -128,21 +128,8 @@ get_open_sub_issues() {
     }' --jq '.data.node.subIssues.nodes[] | select(.state == "OPEN") | .number'
 }
 
-is_quota_error() {
-  local output="$1"
-  local exit_code="$2"
-
-  [[ "$exit_code" -ne 0 ]] || return 1
-
-  grep -qiE \
-    'rate.?limit|quota|usage.?limit|too.?many.?requests|capacity|throttl|429|overloaded' \
-    <<< "$output"
-}
-
-is_success() {
-  local exit_code="$1"
-  [[ "$exit_code" -eq 0 ]]
-}
+QUOTA_PATTERN='rate.?limit|quota|usage.?limit|too.?many.?requests|capacity|throttl|429|overloaded'
+POLL_INTERVAL=10
 
 build_initial_prompt() {
   local issue="${1:-$ISSUE_NUMBER}"
@@ -172,7 +159,6 @@ run_claude() {
   local attempt="$1"
   local issue="${2:-$ISSUE_NUMBER}"
   local attempt_output="${OUTPUT_DIR}/issue-${issue}-attempt-${attempt}.log"
-  local exit_code=0
   local prompt
 
   if [[ "$attempt" -eq 1 ]]; then
@@ -189,23 +175,54 @@ run_claude() {
   fi
   claude_args+=(-p "$prompt")
 
+  # Always write to file; run claude in background so we can monitor
+  : > "$attempt_output"
+  claude "${claude_args[@]}" >> "$attempt_output" 2>&1 &
+  local claude_pid=$!
+
+  # Optional terminal streaming via tail -f
+  local tail_pid=""
   case "$VERBOSITY" in
     verbose)
-      claude "${claude_args[@]}" 2>&1 | tee "$attempt_output" || exit_code=$?
-      ;;
-    quiet)
-      claude "${claude_args[@]}" > "$attempt_output" 2>&1 || exit_code=$?
+      tail -f "$attempt_output" &
+      tail_pid=$!
       ;;
     normal)
-      claude "${claude_args[@]}" 2>&1 | tee "$attempt_output" | extract_status_lines || exit_code=$?
-      if [[ "${PIPESTATUS[0]}" -ne 0 ]]; then
-        exit_code="${PIPESTATUS[0]}"
-      fi
+      tail -f "$attempt_output" | extract_status_lines &
+      tail_pid=$!
       ;;
   esac
 
+  # Poll output for quota/rate-limit messages while claude runs
+  LAST_QUOTA_DETECTED=false
+  local bytes_checked=0
+  while kill -0 "$claude_pid" 2>/dev/null; do
+    sleep "$POLL_INTERVAL"
+    local current_size
+    current_size="$(wc -c < "$attempt_output" 2>/dev/null || echo 0)"
+    if [[ "$current_size" -gt "$bytes_checked" ]]; then
+      if tail -c +"$((bytes_checked + 1))" "$attempt_output" 2>/dev/null \
+           | grep -qiE "$QUOTA_PATTERN"; then
+        LAST_QUOTA_DETECTED=true
+        log "Quota/rate-limit detected in output. Killing Claude (PID $claude_pid)..."
+        kill "$claude_pid" 2>/dev/null || true
+        break
+      fi
+      bytes_checked="$current_size"
+    fi
+  done
+
+  # Reap claude process
+  wait "$claude_pid" 2>/dev/null || true
+  LAST_EXIT_CODE=$?
+
+  # Clean up tail
+  if [[ -n "$tail_pid" ]]; then
+    kill "$tail_pid" 2>/dev/null || true
+    wait "$tail_pid" 2>/dev/null || true
+  fi
+
   LAST_OUTPUT="$(tail -100 "$attempt_output")"
-  LAST_EXIT_CODE="$exit_code"
   log "Full output saved to: $attempt_output"
 }
 
@@ -215,24 +232,23 @@ run_single_issue() {
 
   LAST_OUTPUT=""
   LAST_EXIT_CODE=0
+  LAST_QUOTA_DETECTED=false
 
   while [[ "$attempt" -le "$MAX_RETRIES" ]]; do
     log "--- Issue #${issue} — attempt $attempt of $MAX_RETRIES ---"
 
     run_claude "$attempt" "$issue"
 
-    if is_success "$LAST_EXIT_CODE"; then
-      log "Issue #${issue} completed successfully."
-      return 0
-    fi
-
-    if is_quota_error "$LAST_OUTPUT" "$LAST_EXIT_CODE"; then
-      log "Quota/rate-limit detected. Waiting ${RETRY_INTERVAL_MIN} minutes..."
+    if [[ "$LAST_QUOTA_DETECTED" == true ]]; then
+      log "Waiting ${RETRY_INTERVAL_MIN} minutes for quota reset..."
       log "Next attempt at: $(date -v+${RETRY_INTERVAL_MIN}M '+%H:%M:%S' 2>/dev/null || date -d "+${RETRY_INTERVAL_MIN} minutes" '+%H:%M:%S' 2>/dev/null || echo "~${RETRY_INTERVAL_MIN}m from now")"
       sleep "$((RETRY_INTERVAL_MIN * 60))"
       attempt=$((attempt + 1))
+    elif [[ "$LAST_EXIT_CODE" -eq 0 ]]; then
+      log "Issue #${issue} completed successfully."
+      return 0
     else
-      log "Issue #${issue} failed with non-quota error (exit code $LAST_EXIT_CODE)."
+      log "Issue #${issue} failed (exit code $LAST_EXIT_CODE)."
       log "Last output tail:"
       tail -5 <<< "$LAST_OUTPUT" | while read -r line; do log "  $line"; done
       return "$LAST_EXIT_CODE"
@@ -255,18 +271,18 @@ main() {
     log "Resuming last conversation..."
     LAST_OUTPUT=""
     LAST_EXIT_CODE=0
+    LAST_QUOTA_DETECTED=false
     local attempt=1
     while [[ "$attempt" -le "$MAX_RETRIES" ]]; do
       log "--- Resume attempt $attempt of $MAX_RETRIES ---"
       run_claude "$attempt"
-      if is_success "$LAST_EXIT_CODE"; then
-        log "Resume completed successfully."
-        exit 0
-      fi
-      if is_quota_error "$LAST_OUTPUT" "$LAST_EXIT_CODE"; then
+      if [[ "$LAST_QUOTA_DETECTED" == true ]]; then
         log "Quota detected. Waiting ${RETRY_INTERVAL_MIN} minutes..."
         sleep "$((RETRY_INTERVAL_MIN * 60))"
         attempt=$((attempt + 1))
+      elif [[ "$LAST_EXIT_CODE" -eq 0 ]]; then
+        log "Resume completed successfully."
+        exit 0
       else
         log "Resume failed (exit code $LAST_EXIT_CODE)."
         exit "$LAST_EXIT_CODE"
