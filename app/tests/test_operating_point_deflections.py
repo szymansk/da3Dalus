@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 from app.core.platform import aerosandbox_available
 from app.schemas.aeroanalysisschema import OperatingPointSchema, StoredOperatingPointCreate
-from app.models.analysismodels import OperatingPointModel
 
 pytestmark = pytest.mark.skipif(
     not aerosandbox_available(),

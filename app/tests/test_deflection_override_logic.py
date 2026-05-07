@@ -129,8 +129,6 @@ class TestAnalyseAerodynamicsDeflectionOverrides:
 
     @patch("app.api.utils._run_aerobuildup")
     def test_aerobuildup_gets_deflected_airplane(self, mock_run_abu):
-        import aerosandbox as asb
-
         from app.api.utils import analyse_aerodynamics
         from app.schemas.AeroplaneRequest import AnalysisToolUrlType
 
