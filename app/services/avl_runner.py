@@ -17,6 +17,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import aerosandbox as asb
 
+    from app.schemas.aeroanalysisschema import TrimConstraint
+
 logger = logging.getLogger(__name__)
 
 
@@ -212,6 +214,27 @@ class AVLRunner:
         result["M_w"] = M_w
 
         return result
+
+    def run_trim(
+        self,
+        avl_file_content: str,
+        trim_constraints: list[TrimConstraint],
+        control_overrides: dict[str, float] | None = None,
+    ) -> dict:
+        """Run AVL with indirect constraints for trim analysis.
+
+        Builds indirect constraint keystrokes from trim_constraints,
+        injects them as extra_keystrokes, and runs AVL.
+        The result includes the achieved deflections/state from AVL's convergence.
+        """
+        from app.services.avl_strip_forces import build_indirect_constraint_commands
+
+        extra_ks = build_indirect_constraint_commands(self.airplane, trim_constraints)
+        return self.run(
+            avl_file_content=avl_file_content,
+            control_overrides=control_overrides,
+            extra_keystrokes=extra_ks,
+        )
 
     def run(
         self,

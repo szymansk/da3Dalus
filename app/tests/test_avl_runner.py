@@ -505,3 +505,47 @@ class TestAVLRunnerDefaults:
             avl_command="/custom/avl",
         )
         assert runner.avl_command == "/custom/avl"
+
+
+# =========================================================================== #
+# AVLRunner.run_trim
+# =========================================================================== #
+
+
+class TestAVLRunnerRunTrim:
+    """Verify run_trim() delegates to run() with indirect constraint keystrokes."""
+
+    def _make_runner(self):
+        from app.services.avl_runner import AVLRunner
+
+        airplane = MagicMock()
+        airplane.wings = []
+        op_point = MagicMock()
+        return AVLRunner(
+            airplane=airplane,
+            op_point=op_point,
+            xyz_ref=[0.0, 0.0, 0.0],
+        )
+
+    @patch("app.services.avl_strip_forces.build_indirect_constraint_commands")
+    def test_run_trim_delegates_with_extra_keystrokes(self, mock_build):
+        from app.schemas.aeroanalysisschema import TrimConstraint, TrimTarget
+
+        mock_build.return_value = ["d1 PM 0.0"]
+        runner = self._make_runner()
+        runner.run = MagicMock(return_value={"CL": 0.5})
+
+        tc = TrimConstraint(variable="elevator", target=TrimTarget.PITCHING_MOMENT)
+        result = runner.run_trim(
+            avl_file_content="FAKE",
+            trim_constraints=[tc],
+            control_overrides={"aileron": 5.0},
+        )
+
+        mock_build.assert_called_once_with(runner.airplane, [tc])
+        runner.run.assert_called_once_with(
+            avl_file_content="FAKE",
+            control_overrides={"aileron": 5.0},
+            extra_keystrokes=["d1 PM 0.0"],
+        )
+        assert result == {"CL": 0.5}
