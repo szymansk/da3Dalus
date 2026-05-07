@@ -1161,6 +1161,39 @@ async def get_aeroplane_three_view_tool(aeroplane_id: UUID4, ctx: Context = None
     return _asset_payload(entry)
 
 
+# Stability tools
+@mcp_tool(
+    name="get_stability",
+    description="Get the last cached stability analysis result for an aeroplane. "
+                "Returns neutral point, static margin, CG range, and stability class "
+                "without triggering a new computation.",
+)
+async def get_stability_tool(aeroplane_id: UUID4) -> Any:
+    return await _call_endpoint(
+        aeroanalysis.get_cached_stability,
+        aeroplane_id=aeroplane_id,
+    )
+
+
+@mcp_tool(
+    name="compute_stability",
+    description="Compute fresh stability analysis for an aeroplane using the specified solver. "
+                "Returns neutral point, static margin, CG range, stability derivatives, and "
+                "persists the result for future get_stability calls.",
+)
+async def compute_stability_tool(
+    aeroplane_id: UUID4,
+    operating_point: OperatingPointSchema,
+    analysis_tool: AnalysisToolUrlType,
+) -> Any:
+    return await _call_endpoint(
+        aeroanalysis.get_stability_summary,
+        aeroplane_id=aeroplane_id,
+        operating_point=operating_point,
+        analysis_tool=analysis_tool,
+    )
+
+
 # Operating-point tools
 @mcp_tool(
     name="generate_default_operating_point_set",

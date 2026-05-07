@@ -533,6 +533,11 @@ class AeroplaneModel(Base):
         back_populates="aeroplane",
         cascade=_CASCADE_ALL_DELETE_ORPHAN,
     )
+    stability_results = relationship(
+        "StabilityResultModel",
+        back_populates="aeroplane",
+        cascade=_CASCADE_ALL_DELETE_ORPHAN,
+    )
 
 
 class MissionObjectivesModel(Base):

@@ -40,6 +40,7 @@ import app.models.analysismodels
 import app.models.component_tree
 import app.models.construction_plan
 import app.models.avl_geometry_file
+import app.models.stability_result
 
 target_metadata = Base.metadata
 
