@@ -12,6 +12,10 @@ import logging
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import aerosandbox as asb
 
 logger = logging.getLogger(__name__)
 
@@ -74,8 +78,8 @@ class AVLRunner:
 
     def __init__(
         self,
-        airplane,  # asb.Airplane
-        op_point,  # asb.OperatingPoint
+        airplane: asb.Airplane,
+        op_point: asb.OperatingPoint,
         xyz_ref: list[float],
         avl_command: str | None = None,
         timeout: float = 30,
@@ -142,10 +146,10 @@ class AVLRunner:
             if key_to_lower in result:
                 result[key_to_lower.lower()] = result.pop(key_to_lower)
 
-        # Strip "tot" suffix
+        # Strip "tot" suffix (e.g. CLtot → CL, Cl'tot → Cl')
         for key in list(result.keys()):
-            if "tot" in key:
-                result[key.replace("tot", "")] = result.pop(key)
+            if key.endswith("tot"):
+                result[key.removesuffix("tot")] = result.pop(key)
 
         # Derived quantities
         q = op.dynamic_pressure()
@@ -231,8 +235,6 @@ class AVLRunner:
             FileNotFoundError: If AVL doesn't produce stability output.
             RuntimeError: If AVL times out.
         """
-        from app.services.avl_strip_forces import parse_strip_forces_output
-
         output_filename = "output.txt"
         airplane_file = "airplane.avl"
 
@@ -275,10 +277,15 @@ class AVLRunner:
                     f"AVL timed out after {self.timeout}s. Try increasing the timeout parameter."
                 )
 
+            if proc.returncode != 0:
+                logger.warning("AVL exited with code %d", proc.returncode)
+
             output_path = directory / output_filename
             if not output_path.exists():
+                stderr_text = stdout_bytes.decode(errors="replace") if stdout_bytes else ""
                 raise FileNotFoundError(
-                    "AVL didn't produce stability output. Check avl_command and input geometry."
+                    f"AVL didn't produce stability output. Check avl_command and input geometry. "
+                    f"stderr/stdout hint: {stderr_text[:500]}"
                 )
             raw = output_path.read_text()
 
@@ -286,6 +293,8 @@ class AVLRunner:
             result = self._post_process_results(result)
 
             if include_strip_forces:
+                from app.services.avl_strip_forces import parse_strip_forces_output
+
                 stdout_text = stdout_bytes.decode(errors="replace")
                 result["strip_forces"] = parse_strip_forces_output(stdout_text)
 

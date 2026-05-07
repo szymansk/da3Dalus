@@ -66,9 +66,22 @@ async def get_stability_summary(
 
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
+    avl_file_content = None
+    if analysis_tool == AnalysisToolUrlType.AVL:
+        from app.services.avl_geometry_service import build_avl_geometry_file, inject_cdcl
+        from app.schemas.aeroanalysisschema import CdclConfig, SpacingConfig
+
+        cdcl_config = operating_point.cdcl_config or CdclConfig()
+        spacing_config = operating_point.spacing_config or SpacingConfig()
+        avl_file = build_avl_geometry_file(plane_schema, spacing_config)
+        inject_cdcl(avl_file, plane_schema, operating_point, cdcl_config)
+        avl_file_content = repr(avl_file)
+
     try:
         asb_airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
-        result, _ = analyse_aerodynamics(analysis_tool, operating_point, asb_airplane)
+        result, _ = analyse_aerodynamics(
+            analysis_tool, operating_point, asb_airplane, avl_file_content=avl_file_content
+        )
     except Exception as e:
         logger.error("Error computing stability: %s", e)
         raise InternalError(message=f"Stability analysis error: {e}")

@@ -2,7 +2,6 @@
 
 Tests cover:
 - build_control_deflection_commands() with overrides parameter
-- _build_control_run_command() with overrides parameter
 - analyse_aerodynamics() applying overrides before dispatching to solvers
 """
 
