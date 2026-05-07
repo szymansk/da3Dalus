@@ -16,6 +16,7 @@ from .powertrain_sizing import router as powertrain_sizing_router
 from .avl_geometry import router as avl_geometry_router
 from .design_assumptions import router as design_assumptions_router
 from .mass_cg import router as mass_cg_router
+from .flight_envelope import router as flight_envelope_router
 
 # Include the routers
 router.include_router(base_router)
@@ -29,3 +30,4 @@ router.include_router(powertrain_sizing_router)
 router.include_router(avl_geometry_router)
 router.include_router(design_assumptions_router)
 router.include_router(mass_cg_router)
+router.include_router(flight_envelope_router)
