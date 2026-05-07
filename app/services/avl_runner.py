@@ -272,15 +272,13 @@ class AVLRunner:
                 proc.kill()
                 proc.communicate()
                 raise RuntimeError(
-                    f"AVL timed out after {self.timeout}s. "
-                    "Try increasing the timeout parameter."
+                    f"AVL timed out after {self.timeout}s. Try increasing the timeout parameter."
                 )
 
             output_path = directory / output_filename
             if not output_path.exists():
                 raise FileNotFoundError(
-                    "AVL didn't produce stability output. "
-                    "Check avl_command and input geometry."
+                    "AVL didn't produce stability output. Check avl_command and input geometry."
                 )
             raw = output_path.read_text()
 

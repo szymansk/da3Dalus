@@ -311,9 +311,7 @@ async def analyze_wing(
         user_avl_content = repr(avl_file)
 
     try:
-        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
-            plane_schema=plane_schema
-        )
+        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         asb_airplane.xyz_ref = operating_point.xyz_ref
         asb_airplane.wings = [w for w in asb_airplane.wings if w.name == wing_name]
         asb_airplane.fuselages = []
@@ -344,7 +342,11 @@ async def analyze_airplane(
 
     user_avl_content = None
     if analysis_tool == AnalysisToolUrlType.AVL:
-        from app.services.avl_geometry_service import get_user_avl_content, build_avl_geometry_file, inject_cdcl
+        from app.services.avl_geometry_service import (
+            get_user_avl_content,
+            build_avl_geometry_file,
+            inject_cdcl,
+        )
         from app.schemas.aeroanalysisschema import CdclConfig, SpacingConfig
 
         user_avl_content = get_user_avl_content(db, aeroplane_uuid)
@@ -356,9 +358,7 @@ async def analyze_airplane(
             user_avl_content = repr(avl_file)
 
     try:
-        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
-            plane_schema=plane_schema
-        )
+        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         result, _ = analyse_aerodynamics(
             analysis_tool, operating_point, asb_airplane, avl_file_content=user_avl_content
         )
@@ -387,9 +387,7 @@ async def calculate_streamlines_json(
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
     try:
-        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
-            plane_schema=plane_schema
-        )
+        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         _, figure = analyse_aerodynamics(
             AnalysisToolUrlType.VORTEX_LATTICE,
             operating_point,
@@ -413,9 +411,7 @@ async def analyze_alpha_sweep(db: Session, aeroplane_uuid, sweep_request: AlphaS
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
     try:
-        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
-            plane_schema=plane_schema
-        )
+        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
 
         operating_point = OperatingPointSchema(
             altitude=sweep_request.altitude,
@@ -779,7 +775,11 @@ def _scatter_trim_point(
     ax_coeff: Any,
     ax_polar: Any,
     characteristic_points: dict,
-) -> tuple[list[tuple[float, float, str, str]], list[tuple[float, float, str, str]], list[tuple[float, float, str, str]]]:
+) -> tuple[
+    list[tuple[float, float, str, str]],
+    list[tuple[float, float, str, str]],
+    list[tuple[float, float, str, str]],
+]:
     """Scatter the trim-point marker across the Cm, coefficient, and polar panels."""
     cm_point_labels: list[tuple[float, float, str, str]] = []
     extra_alpha_labels: list[tuple[float, float, str, str]] = []
@@ -1270,9 +1270,7 @@ async def analyze_simple_sweep(
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
     try:
-        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
-            plane_schema=plane_schema
-        )
+        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
 
         operating_point = OperatingPointSchema(
             name=f"sweep over {sweep_request.sweep_var}",
@@ -1372,9 +1370,7 @@ async def get_streamlines_three_view_image(
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
     try:
-        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
-            plane_schema=plane_schema
-        )
+        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
 
         _, figure = analyse_aerodynamics(
             AnalysisToolUrlType.VORTEX_LATTICE,
@@ -1406,9 +1402,7 @@ async def get_three_view_image(db: Session, aeroplane_uuid) -> bytes:
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
 
     try:
-        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
-            plane_schema=plane_schema
-        )
+        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
 
         fig = plt.figure(figsize=(10, 10))
         asb_airplane.draw_three_view(show=False)
@@ -1439,7 +1433,11 @@ async def analyze_airplane_strip_forces(
     from app.services.avl_runner import AVLRunner
 
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
-    from app.services.avl_geometry_service import get_user_avl_content, build_avl_geometry_file, inject_cdcl
+    from app.services.avl_geometry_service import (
+        get_user_avl_content,
+        build_avl_geometry_file,
+        inject_cdcl,
+    )
     from app.schemas.aeroanalysisschema import CdclConfig, SpacingConfig
 
     user_avl_content = get_user_avl_content(db, aeroplane_uuid)
@@ -1451,9 +1449,7 @@ async def analyze_airplane_strip_forces(
         user_avl_content = repr(avl_file)
 
     try:
-        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
-            plane_schema=plane_schema
-        )
+        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         asb_airplane.xyz_ref = operating_point.xyz_ref
 
         atmosphere = asb.Atmosphere(altitude=operating_point.altitude)
@@ -1539,9 +1535,7 @@ async def analyze_wing_strip_forces(
     user_avl_content = repr(avl_file)
 
     try:
-        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
-            plane_schema=plane_schema
-        )
+        asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         asb_airplane.xyz_ref = operating_point.xyz_ref
         asb_airplane.wings = [w for w in asb_airplane.wings if w.name == wing_name]
         asb_airplane.fuselages = []

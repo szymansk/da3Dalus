@@ -25,6 +25,7 @@ from app.schemas.aeroanalysisschema import OperatingPointSchema
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_operating_point(**overrides) -> OperatingPointSchema:
     """Build a minimal OperatingPointSchema via model_construct."""
     defaults = dict(
@@ -256,8 +257,11 @@ class TestRunVlm:
         operating_point = _make_operating_point()
 
         result, figure = _run_vlm(
-            airplane, op_point, operating_point,
-            draw_streamlines=False, backend="plotly",
+            airplane,
+            op_point,
+            operating_point,
+            draw_streamlines=False,
+            backend="plotly",
         )
 
         mock_asb.VortexLatticeMethod.assert_called_once_with(
@@ -286,8 +290,11 @@ class TestRunVlm:
         operating_point = _make_operating_point()
 
         result, figure = _run_vlm(
-            airplane, op_point, operating_point,
-            draw_streamlines=True, backend="pyvista",
+            airplane,
+            op_point,
+            operating_point,
+            draw_streamlines=True,
+            backend="pyvista",
         )
 
         mock_vlm_instance.draw.assert_called_once_with(show=False, backend="pyvista")
@@ -339,7 +346,9 @@ class TestAnalyseAerodynamics:
         op_schema = _make_operating_point()
 
         result = analyse_aerodynamics(
-            AnalysisToolUrlType.AVL, op_schema, airplane,
+            AnalysisToolUrlType.AVL,
+            op_schema,
+            airplane,
         )
 
         mock_run_avl.assert_called_once()
@@ -358,7 +367,9 @@ class TestAnalyseAerodynamics:
         op_schema = _make_operating_point()
 
         result = analyse_aerodynamics(
-            AnalysisToolUrlType.AEROBUILDUP, op_schema, airplane,
+            AnalysisToolUrlType.AEROBUILDUP,
+            op_schema,
+            airplane,
         )
 
         mock_run_abu.assert_called_once()
@@ -377,8 +388,11 @@ class TestAnalyseAerodynamics:
         op_schema = _make_operating_point()
 
         result = analyse_aerodynamics(
-            AnalysisToolUrlType.VORTEX_LATTICE, op_schema, airplane,
-            draw_streamlines=True, backend="pyvista",
+            AnalysisToolUrlType.VORTEX_LATTICE,
+            op_schema,
+            airplane,
+            draw_streamlines=True,
+            backend="pyvista",
         )
 
         mock_run_vlm.assert_called_once()
