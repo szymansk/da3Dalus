@@ -129,7 +129,7 @@ get_open_sub_issues() {
 }
 
 QUOTA_PATTERN='rate.?limit|quota|usage.?limit|too.?many.?requests|capacity|throttl|429|overloaded'
-POLL_INTERVAL=10
+POLL_INTERVAL=600
 
 build_initial_prompt() {
   local issue="${1:-$ISSUE_NUMBER}"
