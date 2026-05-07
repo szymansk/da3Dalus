@@ -14,9 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def _get_aeroplane(db: Session, aeroplane_uuid) -> AeroplaneModel:
-    aeroplane = db.query(AeroplaneModel).filter(
-        AeroplaneModel.uuid == aeroplane_uuid
-    ).first()
+    aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
     if not aeroplane:
         raise NotFoundError(entity="Aeroplane", resource_id=aeroplane_uuid)
     return aeroplane
@@ -37,25 +35,43 @@ def _item_to_schema(item: WeightItemModel) -> WeightItemRead:
 
 def list_weight_items(db: Session, aeroplane_uuid) -> WeightSummary:
     aeroplane = _get_aeroplane(db, aeroplane_uuid)
-    rows = (
-        db.query(WeightItemModel)
-        .filter(WeightItemModel.aeroplane_id == aeroplane.id)
-        .all()
-    )
+    rows = db.query(WeightItemModel).filter(WeightItemModel.aeroplane_id == aeroplane.id).all()
     items = [_item_to_schema(i) for i in rows]
     total = sum(i.mass_kg for i in items)
-    return WeightSummary(items=items, total_mass_kg=round(total, 6))
+
+    cg_x = cg_y = cg_z = None
+    if total > 0:
+        cg_x = round(sum(i.mass_kg * i.x_m for i in items) / total, 6)
+        cg_y = round(sum(i.mass_kg * i.y_m for i in items) / total, 6)
+        cg_z = round(sum(i.mass_kg * i.z_m for i in items) / total, 6)
+
+    return WeightSummary(
+        items=items,
+        total_mass_kg=round(total, 6),
+        cg_x_m=cg_x,
+        cg_y_m=cg_y,
+        cg_z_m=cg_z,
+    )
 
 
-def create_weight_item(
-    db: Session, aeroplane_uuid, data: WeightItemWrite
-) -> WeightItemRead:
+def _try_sync_assumptions(db: Session, aeroplane_uuid) -> None:
+    """Best-effort sync of weight items to design assumption calculated values."""
+    try:
+        from app.services.mass_cg_service import sync_weight_items_to_assumptions
+
+        sync_weight_items_to_assumptions(db, aeroplane_uuid)
+    except (NotFoundError, SQLAlchemyError) as exc:
+        logger.warning("Skipped assumption sync: %s", exc)
+
+
+def create_weight_item(db: Session, aeroplane_uuid, data: WeightItemWrite) -> WeightItemRead:
     try:
         aeroplane = _get_aeroplane(db, aeroplane_uuid)
         item = WeightItemModel(aeroplane_id=aeroplane.id, **data.model_dump())
         db.add(item)
         db.flush()
         db.refresh(item)
+        _try_sync_assumptions(db, aeroplane_uuid)
         return _item_to_schema(item)
     except NotFoundError:
         raise
@@ -92,6 +108,7 @@ def update_weight_item(
             setattr(item, key, value)
         db.flush()
         db.refresh(item)
+        _try_sync_assumptions(db, aeroplane_uuid)
         return _item_to_schema(item)
     except NotFoundError:
         raise
@@ -112,6 +129,7 @@ def delete_weight_item(db: Session, aeroplane_uuid, item_id: int) -> None:
             raise NotFoundError(entity="WeightItem", resource_id=item_id)
         db.delete(item)
         db.flush()
+        _try_sync_assumptions(db, aeroplane_uuid)
     except NotFoundError:
         raise
     except SQLAlchemyError as exc:

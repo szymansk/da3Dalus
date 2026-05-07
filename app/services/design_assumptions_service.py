@@ -99,9 +99,7 @@ def list_assumptions(db: Session, aeroplane_uuid) -> AssumptionsSummary:
             .all()
         )
         assumptions = [_assumption_to_read(r) for r in rows]
-        warnings_count = sum(
-            1 for a in assumptions if a.divergence_level in ("warning", "alert")
-        )
+        warnings_count = sum(1 for a in assumptions if a.divergence_level in ("warning", "alert"))
         return AssumptionsSummary(assumptions=assumptions, warnings_count=warnings_count)
     except NotFoundError:
         raise
@@ -172,4 +170,42 @@ def switch_source(
         raise
     except SQLAlchemyError as exc:
         logger.error("DB error in switch_source: %s", exc)
+        raise InternalError(message=f"Database error: {exc}") from exc
+
+
+def update_calculated_value(
+    db: Session,
+    aeroplane_uuid,
+    param_name: str,
+    value: float | None,
+    source: str | None,
+) -> AssumptionRead:
+    """Update the calculated value and source for a design assumption.
+
+    Called by aggregation services (e.g. weight-item sync) to feed
+    computed values back into the assumption row. Recomputes divergence.
+    """
+    try:
+        aeroplane = _get_aeroplane(db, aeroplane_uuid)
+        row = (
+            db.query(DesignAssumptionModel)
+            .filter(
+                DesignAssumptionModel.aeroplane_id == aeroplane.id,
+                DesignAssumptionModel.parameter_name == param_name,
+            )
+            .first()
+        )
+        if row is None:
+            raise NotFoundError(entity="DesignAssumption", resource_id=param_name)
+
+        row.calculated_value = value
+        row.calculated_source = source
+        row.divergence_pct = compute_divergence_pct(row.estimate_value, value)
+        db.flush()
+        db.refresh(row)
+        return _assumption_to_read(row)
+    except NotFoundError:
+        raise
+    except SQLAlchemyError as exc:
+        logger.error("DB error in update_calculated_value: %s", exc)
         raise InternalError(message=f"Database error: {exc}") from exc

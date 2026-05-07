@@ -5,9 +5,7 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 
-WEIGHT_CATEGORIES = Literal[
-    "electronics", "battery", "structural", "payload", "other"
-]
+WEIGHT_CATEGORIES = Literal["electronics", "battery", "structural", "payload", "other"]
 
 
 class WeightItemWrite(BaseModel):
@@ -27,3 +25,6 @@ class WeightItemRead(WeightItemWrite):
 class WeightSummary(BaseModel):
     items: list[WeightItemRead] = Field(default_factory=list)
     total_mass_kg: float = Field(0.0, description="Sum of all item masses")
+    cg_x_m: float | None = Field(None, description="Mass-weighted CG X [m]")
+    cg_y_m: float | None = Field(None, description="Mass-weighted CG Y [m]")
+    cg_z_m: float | None = Field(None, description="Mass-weighted CG Z [m]")
