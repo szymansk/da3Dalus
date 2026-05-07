@@ -41,6 +41,7 @@ import app.models.component_tree
 import app.models.construction_plan
 import app.models.avl_geometry_file
 import app.models.stability_result
+import app.models.flight_envelope_model
 
 target_metadata = Base.metadata
 

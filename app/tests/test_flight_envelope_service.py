@@ -167,3 +167,102 @@ class TestComputeEnvelopeRequest:
 
         req = ComputeEnvelopeRequest(force_recompute=True)
         assert req.force_recompute is True
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Task 2: DB model tests
+# ────────────────────────────────────────────────────────────────────────────
+
+
+class TestFlightEnvelopeModel:
+    """FlightEnvelopeModel ORM tests using in-memory SQLite."""
+
+    @pytest.fixture(autouse=True)
+    def _setup_db(self):
+        """Create a fresh in-memory SQLite database for each test."""
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import Session, sessionmaker
+        from sqlalchemy.pool import StaticPool
+
+        from app.db.base import Base
+
+        engine = create_engine(
+            "sqlite://",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        Base.metadata.create_all(bind=engine)
+        self.SessionLocal = sessionmaker(bind=engine, class_=Session)
+        self.engine = engine
+        yield
+        Base.metadata.drop_all(bind=engine)
+
+    def _make_aeroplane(self, session) -> int:
+        """Create a minimal aeroplane and return its id."""
+        import uuid as _uuid
+
+        from app.models.aeroplanemodel import AeroplaneModel
+
+        plane = AeroplaneModel(name="test-plane", uuid=_uuid.uuid4())
+        session.add(plane)
+        session.flush()
+        return plane.id
+
+    def test_create_and_read(self):
+        from datetime import datetime, timezone
+
+        from app.models.flight_envelope_model import FlightEnvelopeModel
+
+        with self.SessionLocal() as session:
+            aeroplane_id = self._make_aeroplane(session)
+            now = datetime.now(timezone.utc)
+            envelope = FlightEnvelopeModel(
+                aeroplane_id=aeroplane_id,
+                vn_curve_json={"positive": [], "negative": []},
+                kpis_json=[],
+                markers_json=[],
+                assumptions_snapshot={"mass": 1.5},
+                computed_at=now,
+            )
+            session.add(envelope)
+            session.flush()
+            session.refresh(envelope)
+
+            assert envelope.id is not None
+            assert envelope.aeroplane_id == aeroplane_id
+            assert envelope.vn_curve_json == {"positive": [], "negative": []}
+            # SQLite strips timezone info; compare naive timestamps
+            assert envelope.computed_at.replace(tzinfo=None) == now.replace(tzinfo=None)
+
+    def test_unique_constraint_per_aeroplane(self):
+        from datetime import datetime, timezone
+
+        from sqlalchemy.exc import IntegrityError
+
+        from app.models.flight_envelope_model import FlightEnvelopeModel
+
+        with self.SessionLocal() as session:
+            aeroplane_id = self._make_aeroplane(session)
+            now = datetime.now(timezone.utc)
+            e1 = FlightEnvelopeModel(
+                aeroplane_id=aeroplane_id,
+                vn_curve_json={},
+                kpis_json=[],
+                markers_json=[],
+                assumptions_snapshot={},
+                computed_at=now,
+            )
+            session.add(e1)
+            session.flush()
+
+            e2 = FlightEnvelopeModel(
+                aeroplane_id=aeroplane_id,
+                vn_curve_json={},
+                kpis_json=[],
+                markers_json=[],
+                assumptions_snapshot={},
+                computed_at=now,
+            )
+            session.add(e2)
+            with pytest.raises(IntegrityError):
+                session.flush()
