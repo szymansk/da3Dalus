@@ -299,6 +299,17 @@ async def analyze_wing(
     """
     plane_schema = get_wing_schema_or_raise(db, aeroplane_uuid, wing_name)
 
+    user_avl_content = None
+    if analysis_tool == AnalysisToolUrlType.AVL:
+        from app.services.avl_geometry_service import build_avl_geometry_file, inject_cdcl
+        from app.schemas.aeroanalysisschema import CdclConfig, SpacingConfig
+
+        cdcl_config = operating_point.cdcl_config or CdclConfig()
+        spacing_config = operating_point.spacing_config or SpacingConfig()
+        avl_file = build_avl_geometry_file(plane_schema, spacing_config)
+        inject_cdcl(avl_file, plane_schema, operating_point, cdcl_config)
+        user_avl_content = repr(avl_file)
+
     try:
         asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(
             plane_schema=plane_schema
@@ -307,7 +318,9 @@ async def analyze_wing(
         asb_airplane.wings = [w for w in asb_airplane.wings if w.name == wing_name]
         asb_airplane.fuselages = []
 
-        result, _ = analyse_aerodynamics(analysis_tool, operating_point, asb_airplane)
+        result, _ = analyse_aerodynamics(
+            analysis_tool, operating_point, asb_airplane, avl_file_content=user_avl_content
+        )
         return result
     except Exception as e:
         logger.error(f"Error analyzing wing: {e}")
