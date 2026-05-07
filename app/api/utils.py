@@ -34,11 +34,14 @@ def _build_operating_point(operating_point: OperatingPointSchema) -> asb.Operati
     )
 
 
-def _build_control_run_command(asb_airplane) -> str | None:
+def _build_control_run_command(
+    asb_airplane,
+    overrides: dict[str, float] | None = None,
+) -> str | None:
     """Build AVL run_command string to override hardcoded control deflections."""
     from app.services.avl_strip_forces import build_control_deflection_commands
 
-    commands = build_control_deflection_commands(asb_airplane)
+    commands = build_control_deflection_commands(asb_airplane, overrides)
     return "\n".join(commands) if commands else None
 
 
@@ -112,6 +115,10 @@ def analyse_aerodynamics(
     """
     op_point = _build_operating_point(operating_point)
     asb_airplane.xyz_ref = operating_point.xyz_ref
+
+    overrides = operating_point.control_deflections
+    if overrides:
+        asb_airplane = asb_airplane.with_control_deflections(overrides)
 
     if analysis_tool == AnalysisToolUrlType.AVL:
         return _run_avl(asb_airplane, op_point, operating_point, avl_file_content)

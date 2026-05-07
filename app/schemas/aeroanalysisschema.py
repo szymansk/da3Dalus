@@ -7,13 +7,23 @@ from pydantic import BaseModel, ConfigDict, Field
 class CdclConfig(BaseModel):
     """Configuration for NeuralFoil CDCL profile-drag computation."""
 
-    alpha_start_deg: float = Field(-10.0, ge=-180.0, le=180.0, description="Start of alpha sweep in degrees")
-    alpha_end_deg: float = Field(16.0, ge=-180.0, le=180.0, description="End of alpha sweep in degrees")
+    alpha_start_deg: float = Field(
+        -10.0, ge=-180.0, le=180.0, description="Start of alpha sweep in degrees"
+    )
+    alpha_end_deg: float = Field(
+        16.0, ge=-180.0, le=180.0, description="End of alpha sweep in degrees"
+    )
     alpha_step_deg: float = Field(1.0, gt=0.0, le=10.0, description="Alpha step size in degrees")
     model_size: str = Field("large", description="NeuralFoil model size")
-    n_crit: float = Field(9.0, ge=0.0, le=20.0, description="Critical amplification ratio for transition")
-    xtr_upper: float = Field(1.0, ge=0.0, le=1.0, description="Upper surface forced transition location (0-1)")
-    xtr_lower: float = Field(1.0, ge=0.0, le=1.0, description="Lower surface forced transition location (0-1)")
+    n_crit: float = Field(
+        9.0, ge=0.0, le=20.0, description="Critical amplification ratio for transition"
+    )
+    xtr_upper: float = Field(
+        1.0, ge=0.0, le=1.0, description="Upper surface forced transition location (0-1)"
+    )
+    xtr_lower: float = Field(
+        1.0, ge=0.0, le=1.0, description="Lower surface forced transition location (0-1)"
+    )
     include_360_deg_effects: bool = Field(
         False, description="Include 360-degree post-stall effects"
     )
@@ -64,6 +74,12 @@ class OperatingPointSchema(BaseModel):
         None, description="AVL panel spacing configuration"
     )
 
+    control_deflections: dict[str, float] | None = Field(
+        default=None,
+        description="Runtime control surface deflections (name → degrees). "
+        "Overrides geometry defaults for this operating point.",
+    )
+
     model_config = ConfigDict(
         from_attributes=True,
         json_schema_extra={
@@ -78,6 +94,7 @@ class OperatingPointSchema(BaseModel):
                 "r": 0.0,
                 "altitude": 0.0,
                 "xyz_ref": [0.0, 0.0, 0.0],
+                "control_deflections": {"elevator": -2.0},
             }
         },
     )
@@ -109,6 +126,12 @@ class StoredOperatingPointCreate(BaseModel):
     r: float = Field(..., description="Yaw rate in rad/s")
     xyz_ref: List[float] = Field(default_factory=lambda: [0.0, 0.0, 0.0])
     altitude: float = Field(..., description="Altitude in meters")
+
+    control_deflections: dict[str, float] | None = Field(
+        default=None,
+        description="Runtime control surface deflections (name → degrees). "
+        "Overrides geometry defaults for this operating point.",
+    )
 
     model_config = ConfigDict(from_attributes=True)
 
