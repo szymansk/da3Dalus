@@ -16,6 +16,8 @@ from app.db.session import get_db
 from app.models.aeroplanemodel import AeroplaneModel
 from app.models.analysismodels import OperatingPointModel, OperatingPointSetModel
 from app.schemas.aeroanalysisschema import (
+    AeroBuildupTrimRequest,
+    AeroBuildupTrimResult,
     AVLTrimRequest,
     AVLTrimResult,
     GeneratedOperatingPointSetRead,
@@ -117,6 +119,33 @@ async def avl_trim_operating_point(
         from app.services import avl_trim_service
 
         return await avl_trim_service.trim_with_avl(
+            db=db,
+            aeroplane_uuid=aeroplane_id,
+            request=request,
+        )
+    except ServiceException as exc:
+        _raise_http_from_domain(exc)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error: {exc}",
+        ) from exc
+
+
+@router.post(
+    "/aeroplanes/{aeroplane_id}/operating-points/aerobuildup-trim",
+    operation_id="aerobuildup_trim_operating_point",
+)
+async def aerobuildup_trim_operating_point(
+    aeroplane_id: Annotated[UUID4, Path(..., description="Aeroplane UUID")],
+    request: Annotated[AeroBuildupTrimRequest, Body(...)],
+    db: Annotated[Session, Depends(get_db)],
+) -> AeroBuildupTrimResult:
+    """Run AeroBuildup trim analysis using scipy root-finding."""
+    try:
+        from app.services import aerobuildup_trim_service
+
+        return await aerobuildup_trim_service.trim_with_aerobuildup(
             db=db,
             aeroplane_uuid=aeroplane_id,
             request=request,

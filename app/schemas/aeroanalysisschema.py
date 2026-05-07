@@ -92,6 +92,82 @@ class AVLTrimResult(BaseModel):
     )
 
 
+class AeroBuildupTrimRequest(BaseModel):
+    """Request to run AeroBuildup trim analysis."""
+
+    operating_point: "OperatingPointSchema" = Field(
+        ..., description="Operating point for the trim analysis"
+    )
+    trim_variable: str = Field(
+        "elevator",
+        description="Control surface name to vary for trim (e.g. 'elevator')",
+    )
+    target_coefficient: str = Field(
+        "Cm",
+        description="Aerodynamic coefficient to target (one of: CL, CD, CY, Cm, Cl, Cn).",
+    )
+    target_value: float = Field(
+        0.0,
+        description="Target value for the coefficient (default: 0)",
+    )
+    deflection_bounds: list[float] = Field(
+        default=[-25.0, 25.0],
+        min_length=2,
+        max_length=2,
+        description="Search bounds for deflection in degrees [lower, upper]",
+    )
+
+    @field_validator("trim_variable")
+    @classmethod
+    def validate_trim_variable_format(cls, v: str) -> str:
+        if not re.match(r"^[a-zA-Z][a-zA-Z0-9_]*$", v):
+            raise ValueError(
+                f"Invalid trim variable name '{v}'. Must be a letter followed by "
+                f"letters/digits/underscores."
+            )
+        return v
+
+    @field_validator("target_coefficient")
+    @classmethod
+    def validate_target_coefficient(cls, v: str) -> str:
+        allowed = {"CL", "CD", "CY", "Cm", "Cl", "Cn"}
+        if v not in allowed:
+            raise ValueError(
+                f"Invalid target coefficient '{v}'. Must be one of: {sorted(allowed)}"
+            )
+        return v
+
+    @model_validator(mode="after")
+    def validate_bounds_order(self) -> "AeroBuildupTrimRequest":
+        if self.deflection_bounds[0] >= self.deflection_bounds[1]:
+            raise ValueError("deflection_bounds[0] must be less than deflection_bounds[1]")
+        op = self.operating_point
+        if isinstance(getattr(op, "alpha", None), list):
+            raise ValueError("Alpha must be a scalar float for trim analysis, not a list")
+        return self
+
+
+class AeroBuildupTrimResult(BaseModel):
+    """Result of AeroBuildup trim analysis."""
+
+    converged: bool = Field(..., description="Whether the root-finding converged")
+    trim_variable: str = Field(..., description="Control surface that was varied")
+    trimmed_deflection: float = Field(
+        ..., description="Deflection angle that achieves trim (degrees)"
+    )
+    target_coefficient: str = Field(..., description="Coefficient that was targeted")
+    achieved_value: Optional[float] = Field(
+        ..., description="Achieved value of target coefficient at trim, or null if not converged"
+    )
+    aero_coefficients: dict[str, float] = Field(
+        default_factory=dict,
+        description="All aero coefficients at trim (CL, CD, Cm, etc.)",
+    )
+    stability_derivatives: dict[str, float] = Field(
+        default_factory=dict, description="Stability derivatives at trim point"
+    )
+
+
 class CdclConfig(BaseModel):
     """Configuration for NeuralFoil CDCL profile-drag computation."""
 
