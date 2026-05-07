@@ -442,3 +442,224 @@ class TestDerivePerformanceKPIs:
         best_ld = next(k for k in kpis if k.label == "best_ld_speed")
         assert abs(best_ld.value - 1.4 * 8.0) < 0.01
         assert best_ld.confidence == "estimated"
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Task 4: Full envelope service (DB integration) tests
+# ────────────────────────────────────────────────────────────────────────────
+
+
+class TestFullEnvelopeService:
+    """Integration tests for compute_flight_envelope / get_flight_envelope.
+
+    Heavy external dependencies (_load_assumptions, _get_wing_area_m2,
+    _get_v_max, _load_operating_point_markers) are mocked so the tests
+    exercise orchestration and DB upsert logic without needing real
+    ASB converters or design-assumption rows.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _setup_db(self):
+        """Fresh in-memory SQLite with all tables."""
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import Session, sessionmaker
+        from sqlalchemy.pool import StaticPool
+
+        from app.db.base import Base
+
+        engine = create_engine(
+            "sqlite://",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        Base.metadata.create_all(bind=engine)
+        self.SessionLocal = sessionmaker(bind=engine, class_=Session)
+        self.engine = engine
+        yield
+        Base.metadata.drop_all(bind=engine)
+
+    def _make_aeroplane(self, session):
+        """Create a minimal aeroplane and return the model instance."""
+        import uuid as _uuid
+
+        from app.models.aeroplanemodel import AeroplaneModel
+
+        plane = AeroplaneModel(name="test-plane", uuid=_uuid.uuid4())
+        session.add(plane)
+        session.flush()
+        return plane
+
+    def _mock_patches(self):
+        """Return a dict of patch targets and their return values."""
+        return {
+            "app.services.flight_envelope_service._load_assumptions": {
+                "mass": 1.5,
+                "cl_max": 1.4,
+                "g_limit": 3.0,
+            },
+            "app.services.flight_envelope_service._get_wing_area_m2": 0.25,
+            "app.services.flight_envelope_service._get_v_max": 28.0,
+            "app.services.flight_envelope_service._load_operating_point_markers": [],
+        }
+
+    def test_compute_returns_envelope(self):
+        from unittest.mock import patch
+
+        from app.services.flight_envelope_service import compute_flight_envelope
+
+        patches = self._mock_patches()
+        with self.SessionLocal() as session:
+            plane = self._make_aeroplane(session)
+            with (
+                patch(
+                    "app.services.flight_envelope_service._load_assumptions",
+                    return_value=patches["app.services.flight_envelope_service._load_assumptions"],
+                ),
+                patch(
+                    "app.services.flight_envelope_service._get_wing_area_m2",
+                    return_value=patches["app.services.flight_envelope_service._get_wing_area_m2"],
+                ),
+                patch(
+                    "app.services.flight_envelope_service._get_v_max",
+                    return_value=patches["app.services.flight_envelope_service._get_v_max"],
+                ),
+                patch(
+                    "app.services.flight_envelope_service._load_operating_point_markers",
+                    return_value=patches[
+                        "app.services.flight_envelope_service._load_operating_point_markers"
+                    ],
+                ),
+            ):
+                result = compute_flight_envelope(session, plane.uuid)
+
+            assert result.aeroplane_id == plane.id
+            assert len(result.kpis) == 6
+            assert len(result.vn_curve.positive) >= 50
+            assert result.assumptions_snapshot == {"mass": 1.5, "cl_max": 1.4, "g_limit": 3.0}
+
+    def test_compute_persists_to_db(self):
+        from unittest.mock import patch
+
+        from app.models.flight_envelope_model import FlightEnvelopeModel
+        from app.services.flight_envelope_service import compute_flight_envelope
+
+        patches = self._mock_patches()
+        with self.SessionLocal() as session:
+            plane = self._make_aeroplane(session)
+            with (
+                patch(
+                    "app.services.flight_envelope_service._load_assumptions",
+                    return_value=patches["app.services.flight_envelope_service._load_assumptions"],
+                ),
+                patch(
+                    "app.services.flight_envelope_service._get_wing_area_m2",
+                    return_value=patches["app.services.flight_envelope_service._get_wing_area_m2"],
+                ),
+                patch(
+                    "app.services.flight_envelope_service._get_v_max",
+                    return_value=patches["app.services.flight_envelope_service._get_v_max"],
+                ),
+                patch(
+                    "app.services.flight_envelope_service._load_operating_point_markers",
+                    return_value=patches[
+                        "app.services.flight_envelope_service._load_operating_point_markers"
+                    ],
+                ),
+            ):
+                compute_flight_envelope(session, plane.uuid)
+
+            row = (
+                session.query(FlightEnvelopeModel)
+                .filter(FlightEnvelopeModel.aeroplane_id == plane.id)
+                .first()
+            )
+            assert row is not None
+            assert row.aeroplane_id == plane.id
+
+    def test_upsert_on_recompute(self):
+        from unittest.mock import patch
+
+        from app.models.flight_envelope_model import FlightEnvelopeModel
+        from app.services.flight_envelope_service import compute_flight_envelope
+
+        patches = self._mock_patches()
+        with self.SessionLocal() as session:
+            plane = self._make_aeroplane(session)
+            with (
+                patch(
+                    "app.services.flight_envelope_service._load_assumptions",
+                    return_value=patches["app.services.flight_envelope_service._load_assumptions"],
+                ),
+                patch(
+                    "app.services.flight_envelope_service._get_wing_area_m2",
+                    return_value=patches["app.services.flight_envelope_service._get_wing_area_m2"],
+                ),
+                patch(
+                    "app.services.flight_envelope_service._get_v_max",
+                    return_value=patches["app.services.flight_envelope_service._get_v_max"],
+                ),
+                patch(
+                    "app.services.flight_envelope_service._load_operating_point_markers",
+                    return_value=patches[
+                        "app.services.flight_envelope_service._load_operating_point_markers"
+                    ],
+                ),
+            ):
+                first = compute_flight_envelope(session, plane.uuid)
+                second = compute_flight_envelope(session, plane.uuid)
+
+            # Same DB row reused (upsert, not duplicate)
+            assert first.id == second.id
+            count = (
+                session.query(FlightEnvelopeModel)
+                .filter(FlightEnvelopeModel.aeroplane_id == plane.id)
+                .count()
+            )
+            assert count == 1
+
+    def test_get_returns_cached(self):
+        from unittest.mock import patch
+
+        from app.services.flight_envelope_service import (
+            compute_flight_envelope,
+            get_flight_envelope,
+        )
+
+        patches = self._mock_patches()
+        with self.SessionLocal() as session:
+            plane = self._make_aeroplane(session)
+            with (
+                patch(
+                    "app.services.flight_envelope_service._load_assumptions",
+                    return_value=patches["app.services.flight_envelope_service._load_assumptions"],
+                ),
+                patch(
+                    "app.services.flight_envelope_service._get_wing_area_m2",
+                    return_value=patches["app.services.flight_envelope_service._get_wing_area_m2"],
+                ),
+                patch(
+                    "app.services.flight_envelope_service._get_v_max",
+                    return_value=patches["app.services.flight_envelope_service._get_v_max"],
+                ),
+                patch(
+                    "app.services.flight_envelope_service._load_operating_point_markers",
+                    return_value=patches[
+                        "app.services.flight_envelope_service._load_operating_point_markers"
+                    ],
+                ),
+            ):
+                compute_flight_envelope(session, plane.uuid)
+
+            cached = get_flight_envelope(session, plane.uuid)
+            assert cached is not None
+            assert cached.aeroplane_id == plane.id
+
+    def test_get_returns_none_when_missing(self):
+        import uuid as _uuid
+
+        from app.services.flight_envelope_service import get_flight_envelope
+
+        with self.SessionLocal() as session:
+            plane = self._make_aeroplane(session)
+            result = get_flight_envelope(session, plane.uuid)
+            assert result is None

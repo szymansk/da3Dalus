@@ -4,8 +4,17 @@ from __future__ import annotations
 
 import logging
 import math
+from datetime import datetime, timezone
 
+from sqlalchemy.orm import Session
+
+from app.core.exceptions import NotFoundError
+from app.models.aeroplanemodel import AeroplaneModel
+from app.models.analysismodels import OperatingPointModel
+from app.models.flight_envelope_model import FlightEnvelopeModel
+from app.schemas.design_assumption import PARAMETER_DEFAULTS
 from app.schemas.flight_envelope import (
+    FlightEnvelopeRead,
     PerformanceKPI,
     VnCurve,
     VnMarker,
@@ -190,3 +199,201 @@ def derive_performance_kpis(
     )
 
     return kpis
+
+
+# ---------------------------------------------------------------------------
+# DB-aware helpers
+# ---------------------------------------------------------------------------
+
+
+def _get_aeroplane(db: Session, aeroplane_uuid) -> AeroplaneModel:
+    """Query AeroplaneModel by uuid; raise NotFoundError if missing."""
+    aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
+    if not aeroplane:
+        raise NotFoundError(entity="Aeroplane", resource_id=aeroplane_uuid)
+    return aeroplane
+
+
+def _load_assumptions(db: Session, aeroplane_uuid) -> dict[str, float]:
+    """Load effective values for mass, cl_max, g_limit.
+
+    Falls back to PARAMETER_DEFAULTS if a design assumption row is missing.
+    """
+    from app.services.mass_cg_service import get_effective_assumption_value
+
+    result: dict[str, float] = {}
+    for param in ("mass", "cl_max", "g_limit"):
+        try:
+            result[param] = get_effective_assumption_value(db, aeroplane_uuid, param)
+        except NotFoundError:
+            result[param] = PARAMETER_DEFAULTS[param]
+    return result
+
+
+def _get_wing_area_m2(db: Session, aeroplane: AeroplaneModel) -> float:
+    """Convert aeroplane to ASB Airplane and return s_ref."""
+    from app.converters.model_schema_converters import (
+        aeroplane_model_to_aeroplane_schema_async,
+        aeroplane_schema_to_asb_airplane_async,
+    )
+
+    schema = aeroplane_model_to_aeroplane_schema_async(aeroplane)
+    asb_airplane = aeroplane_schema_to_asb_airplane_async(schema)
+    return asb_airplane.s_ref
+
+
+def _get_v_max(db: Session, aeroplane: AeroplaneModel) -> float:
+    """Get max level speed from flight profile goals; default 28.0 m/s."""
+    profile = aeroplane.flight_profile
+    if profile is not None:
+        goals = profile.goals
+        if isinstance(goals, dict):
+            v = goals.get("max_level_speed_mps")
+            if v is not None:
+                return float(v)
+    return 28.0
+
+
+def _load_operating_point_markers(
+    db: Session,
+    aeroplane: AeroplaneModel,
+    mass_kg: float,
+    wing_area_m2: float,
+) -> list[VnMarker]:
+    """Query OperatingPointModel rows for this aeroplane and map to VnMarker."""
+    ops = (
+        db.query(OperatingPointModel).filter(OperatingPointModel.aircraft_id == aeroplane.id).all()
+    )
+    markers: list[VnMarker] = []
+    weight = mass_kg * GRAVITY
+    for op in ops:
+        v = op.velocity
+        if v is None or v <= 0:
+            continue
+        # Compute load factor from alpha: n ~ q * S * CL / W
+        # but we don't know CL from this row. Approximate as 1.0 for level flight.
+        # For trimmed points, CL = W / (q * S) => n = 1.0; for turning points
+        # the status encodes it. We report n=1.0 as a safe default; markers
+        # are visual aids and refined later by the frontend.
+        q = 0.5 * 1.225 * v**2
+        n = q * wing_area_m2 / weight if weight > 0 else 1.0
+        # Clamp to a reasonable range
+        n = max(-5.0, min(n, 5.0))
+        markers.append(
+            VnMarker(
+                op_id=op.id,
+                name=op.name or "unnamed",
+                velocity_mps=v,
+                load_factor=round(n, 4),
+                status=op.status or "NOT_TRIMMED",
+                label=op.name or "unnamed",
+            )
+        )
+    return markers
+
+
+def _model_to_read(row: FlightEnvelopeModel) -> FlightEnvelopeRead:
+    """Convert a FlightEnvelopeModel row to a FlightEnvelopeRead schema."""
+    return FlightEnvelopeRead(
+        id=row.id,
+        aeroplane_id=row.aeroplane_id,
+        vn_curve=VnCurve.model_validate(row.vn_curve_json),
+        kpis=[PerformanceKPI.model_validate(k) for k in row.kpis_json],
+        operating_points=[VnMarker.model_validate(m) for m in row.markers_json],
+        assumptions_snapshot=row.assumptions_snapshot,
+        computed_at=row.computed_at,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Public orchestration API
+# ---------------------------------------------------------------------------
+
+
+def compute_flight_envelope(db: Session, aeroplane_uuid) -> FlightEnvelopeRead:
+    """Compute (or recompute) the flight envelope for an aeroplane.
+
+    Steps:
+    1. Load aeroplane and design assumptions
+    2. Get wing area via ASB conversion
+    3. Get v_max from flight profile
+    4. Compute V-n curve and KPIs
+    5. Load operating-point markers
+    6. Upsert to DB
+    7. Return FlightEnvelopeRead
+    """
+    aeroplane = _get_aeroplane(db, aeroplane_uuid)
+    assumptions = _load_assumptions(db, aeroplane_uuid)
+    wing_area_m2 = _get_wing_area_m2(db, aeroplane)
+    v_max = _get_v_max(db, aeroplane)
+
+    mass_kg = assumptions["mass"]
+    cl_max = assumptions["cl_max"]
+    g_limit = assumptions["g_limit"]
+
+    vn_curve = compute_vn_curve(
+        mass_kg=mass_kg,
+        cl_max=cl_max,
+        g_limit=g_limit,
+        wing_area_m2=wing_area_m2,
+        v_max_mps=v_max,
+    )
+
+    markers = _load_operating_point_markers(db, aeroplane, mass_kg, wing_area_m2)
+
+    kpis = derive_performance_kpis(
+        stall_speed_mps=vn_curve.stall_speed_mps,
+        v_max_mps=v_max,
+        g_limit=g_limit,
+        markers=markers,
+    )
+
+    now = datetime.now(timezone.utc)
+
+    # Serialize for JSON columns
+    vn_curve_json = vn_curve.model_dump(mode="json")
+    kpis_json = [k.model_dump(mode="json") for k in kpis]
+    markers_json = [m.model_dump(mode="json") for m in markers]
+    assumptions_snapshot = assumptions
+
+    # Upsert: update if exists, create if not
+    existing = (
+        db.query(FlightEnvelopeModel)
+        .filter(FlightEnvelopeModel.aeroplane_id == aeroplane.id)
+        .first()
+    )
+    if existing is not None:
+        existing.vn_curve_json = vn_curve_json
+        existing.kpis_json = kpis_json
+        existing.markers_json = markers_json
+        existing.assumptions_snapshot = assumptions_snapshot
+        existing.computed_at = now
+        db.flush()
+        db.refresh(existing)
+        return _model_to_read(existing)
+
+    row = FlightEnvelopeModel(
+        aeroplane_id=aeroplane.id,
+        vn_curve_json=vn_curve_json,
+        kpis_json=kpis_json,
+        markers_json=markers_json,
+        assumptions_snapshot=assumptions_snapshot,
+        computed_at=now,
+    )
+    db.add(row)
+    db.flush()
+    db.refresh(row)
+    return _model_to_read(row)
+
+
+def get_flight_envelope(db: Session, aeroplane_uuid) -> FlightEnvelopeRead | None:
+    """Return the cached flight envelope, or None if not yet computed."""
+    aeroplane = _get_aeroplane(db, aeroplane_uuid)
+    row = (
+        db.query(FlightEnvelopeModel)
+        .filter(FlightEnvelopeModel.aeroplane_id == aeroplane.id)
+        .first()
+    )
+    if row is None:
+        return None
+    return _model_to_read(row)
