@@ -296,7 +296,7 @@ main() {
       local next_issue
       next_issue="$(echo "$sub_issues" | head -1)"
 
-      if printf '%s\n' "${failed_issues[@]}" 2>/dev/null | grep -qx "$next_issue"; then
+      if [[ ${#failed_issues[@]} -gt 0 ]] && printf '%s\n' "${failed_issues[@]}" | grep -qx "$next_issue"; then
         log "Issue #${next_issue} already failed — skipping."
         sub_issues="$(echo "$sub_issues" | tail -n +2)"
         if [[ -z "$sub_issues" ]]; then
