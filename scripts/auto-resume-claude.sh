@@ -130,6 +130,7 @@ get_open_sub_issues() {
 
 QUOTA_PATTERN='rate.?limit|quota|usage.?limit|too.?many.?requests|capacity|throttl|429|overloaded|out of.*(usage|credits)|resets [0-9]'
 POLL_INTERVAL=600
+ISSUE_CLOSED_POLL_INTERVAL=120
 
 build_initial_prompt() {
   local issue="${1:-$ISSUE_NUMBER}"
@@ -195,13 +196,31 @@ run_claude() {
       ;;
   esac
 
-  # Poll: check process liveness every 5s, check output for quota every POLL_INTERVAL
+  # Poll: check process liveness every 5s, check output for quota every POLL_INTERVAL,
+  # and check if the GitHub issue was closed every ISSUE_CLOSED_POLL_INTERVAL
   LAST_QUOTA_DETECTED=false
+  LAST_ISSUE_CLOSED=false
   local bytes_checked=0
   local seconds_since_check=0
+  local seconds_since_issue_check=0
   while kill -0 "$claude_pid" 2>/dev/null; do
     sleep 5
     seconds_since_check=$((seconds_since_check + 5))
+    seconds_since_issue_check=$((seconds_since_issue_check + 5))
+
+    # Check if the GitHub issue was closed (Claude finished but process hangs)
+    if [[ "$seconds_since_issue_check" -ge "$ISSUE_CLOSED_POLL_INTERVAL" ]]; then
+      seconds_since_issue_check=0
+      local issue_state
+      issue_state="$(gh issue view "$issue" --json state --jq '.state' 2>/dev/null || echo '')"
+      if [[ "$issue_state" == "CLOSED" ]]; then
+        LAST_ISSUE_CLOSED=true
+        log "Issue #${issue} closed on GitHub. Killing idle Claude (PID $claude_pid)..."
+        kill "$claude_pid" 2>/dev/null || true
+        break
+      fi
+    fi
+
     if [[ "$seconds_since_check" -ge "$POLL_INTERVAL" ]]; then
       seconds_since_check=0
       local current_size
@@ -224,6 +243,11 @@ run_claude() {
   wait "$claude_pid" 2>/dev/null
   LAST_EXIT_CODE=$?
   set -e
+
+  # If we killed Claude because the issue was already closed, treat as success
+  if [[ "$LAST_ISSUE_CLOSED" == true ]]; then
+    LAST_EXIT_CODE=0
+  fi
 
   # Clean up tail
   if [[ -n "$tail_pid" ]]; then
