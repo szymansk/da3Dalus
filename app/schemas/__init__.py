@@ -1,4 +1,5 @@
 from app.schemas.aeroplaneschema import AeroplaneSchema
+from app.schemas.aeroplaneschema import ControlSurfaceRole
 from app.schemas.aeroplaneschema import ControlSurfaceSchema
 from app.schemas.aeroplaneschema import ControlSurfacePatchSchema
 from app.schemas.aeroplaneschema import ControlSurfaceCadDetailsSchema

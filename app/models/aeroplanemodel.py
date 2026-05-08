@@ -331,6 +331,9 @@ class WingModel(Base):
         ted_payload.pop("wing_xsec_detail_id", None)
         ted_payload.pop("detail", None)
         ted_payload.pop("servo_data", None)
+        # role and label are schema-only until the DB migration adds these columns
+        ted_payload.pop("role", None)
+        ted_payload.pop("label", None)
         servo_payload = cls._as_payload(ted_payload.pop("servo", None))
         ted = WingXSecTrailingEdgeDeviceModel(**ted_payload)
 
