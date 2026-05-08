@@ -1,0 +1,17 @@
+{
+  "typeCheckingMode": "basic",
+  "venvPath": ".",
+  "venv": ".venv",
+  "include": ["app"],
+  "exclude": [
+    "**/__pycache__",
+    "**/node_modules",
+    "app/tests",
+    "alembic",
+    "frontend",
+    "scripts",
+    "cad_designer"
+  ],
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false
+}
