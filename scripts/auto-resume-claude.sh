@@ -195,28 +195,35 @@ run_claude() {
       ;;
   esac
 
-  # Poll output for quota/rate-limit messages while claude runs
+  # Poll: check process liveness every 5s, check output for quota every POLL_INTERVAL
   LAST_QUOTA_DETECTED=false
   local bytes_checked=0
+  local seconds_since_check=0
   while kill -0 "$claude_pid" 2>/dev/null; do
-    sleep "$POLL_INTERVAL"
-    local current_size
-    current_size="$(wc -c < "$attempt_output" 2>/dev/null || echo 0)"
-    if [[ "$current_size" -gt "$bytes_checked" ]]; then
-      if tail -c +"$((bytes_checked + 1))" "$attempt_output" 2>/dev/null \
-           | grep -qiE "$QUOTA_PATTERN"; then
-        LAST_QUOTA_DETECTED=true
-        log "Quota/rate-limit detected in output. Killing Claude (PID $claude_pid)..."
-        kill "$claude_pid" 2>/dev/null || true
-        break
+    sleep 5
+    seconds_since_check=$((seconds_since_check + 5))
+    if [[ "$seconds_since_check" -ge "$POLL_INTERVAL" ]]; then
+      seconds_since_check=0
+      local current_size
+      current_size="$(wc -c < "$attempt_output" 2>/dev/null || echo 0)"
+      if [[ "$current_size" -gt "$bytes_checked" ]]; then
+        if tail -c +"$((bytes_checked + 1))" "$attempt_output" 2>/dev/null \
+             | grep -qiE "$QUOTA_PATTERN"; then
+          LAST_QUOTA_DETECTED=true
+          log "Quota/rate-limit detected in output. Killing Claude (PID $claude_pid)..."
+          kill "$claude_pid" 2>/dev/null || true
+          break
+        fi
+        bytes_checked="$current_size"
       fi
-      bytes_checked="$current_size"
     fi
   done
 
-  # Reap claude process
-  wait "$claude_pid" 2>/dev/null || true
+  # Reap claude process — capture exit code without letting || true mask it
+  set +e
+  wait "$claude_pid" 2>/dev/null
   LAST_EXIT_CODE=$?
+  set -e
 
   # Clean up tail
   if [[ -n "$tail_pid" ]]; then
