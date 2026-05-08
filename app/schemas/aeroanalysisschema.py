@@ -298,6 +298,12 @@ class StoredOperatingPointCreate(BaseModel):
         "Overrides geometry defaults for this operating point.",
     )
 
+    trim_enrichment: Optional[dict] = Field(
+        default=None,
+        description="Enrichment data: analysis goal, deflection reserves, design warnings. "
+        "Computed after trim solve.",
+    )
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -379,6 +385,49 @@ class GeneratedOperatingPointSetRead(BaseModel):
     operating_points: list[StoredOperatingPointRead]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class DeflectionReserve(BaseModel):
+    """Per-surface deflection usage at a trim point."""
+
+    deflection_deg: float = Field(..., description="Actual deflection at trim (degrees)")
+    max_pos_deg: float = Field(..., description="Mechanical limit in positive direction (degrees)")
+    max_neg_deg: float = Field(..., description="Mechanical limit in negative direction (degrees)")
+    usage_fraction: float = Field(
+        ..., description="Fraction of available authority used (|defl| / limit), 0.0-1.0+"
+    )
+
+
+class DesignWarning(BaseModel):
+    """A threshold-based design warning generated from trim results."""
+
+    level: str = Field(
+        ...,
+        description="Severity: 'info', 'warning', or 'critical'",
+        pattern="^(info|warning|critical)$",
+    )
+    category: str = Field(..., description="Warning category: 'authority', 'trim_quality', etc.")
+    surface: Optional[str] = Field(None, description="Control surface name, if applicable")
+    message: str = Field(..., description="Human-readable warning message")
+
+
+class TrimEnrichment(BaseModel):
+    """Enrichment data computed after a trim solve - stored as JSON on OperatingPointModel."""
+
+    analysis_goal: str = Field(..., description="Human-readable design question this OP answers")
+    trim_method: str = Field(
+        ..., description="Solver used: 'opti', 'grid_search', 'avl', 'aerobuildup'"
+    )
+    trim_score: Optional[float] = Field(None, description="Trim quality score (lower = better)")
+    trim_residuals: dict[str, float] = Field(
+        default_factory=dict, description="Residual coefficients at trim (cm, cy, cl)"
+    )
+    deflection_reserves: dict[str, DeflectionReserve] = Field(
+        default_factory=dict, description="Per-surface deflection reserve"
+    )
+    design_warnings: list[DesignWarning] = Field(
+        default_factory=list, description="Threshold-based design warnings"
+    )
 
 
 class AnalysisStatusResponse(BaseModel):

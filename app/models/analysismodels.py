@@ -41,3 +41,4 @@ class OperatingPointModel(Base):
     altitude = Column(Float, nullable=False)
 
     control_deflections = Column(JSON, nullable=True)
+    trim_enrichment = Column(JSON, nullable=True)

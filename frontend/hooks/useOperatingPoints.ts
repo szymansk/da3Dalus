@@ -34,6 +34,29 @@ export function extractControlSurfaces(wings: Wing[]): ControlSurface[] {
   }));
 }
 
+export interface DeflectionReserve {
+  deflection_deg: number;
+  max_pos_deg: number;
+  max_neg_deg: number;
+  usage_fraction: number;
+}
+
+export interface DesignWarning {
+  level: "info" | "warning" | "critical";
+  category: string;
+  surface: string | null;
+  message: string;
+}
+
+export interface TrimEnrichment {
+  analysis_goal: string;
+  trim_method: string;
+  trim_score: number | null;
+  trim_residuals: Record<string, number>;
+  deflection_reserves: Record<string, DeflectionReserve>;
+  design_warnings: DesignWarning[];
+}
+
 export interface StoredOperatingPoint {
   id: number;
   name: string;
@@ -52,6 +75,7 @@ export interface StoredOperatingPoint {
   xyz_ref: number[];
   altitude: number;
   control_deflections: Record<string, number> | null;
+  trim_enrichment: TrimEnrichment | null;
 }
 
 export interface AVLTrimResult {
