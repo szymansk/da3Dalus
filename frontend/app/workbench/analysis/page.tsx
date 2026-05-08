@@ -9,6 +9,7 @@ import { useStripForces } from "@/hooks/useStripForces";
 import { useStreamlines } from "@/hooks/useStreamlines";
 import { useWings, useWing } from "@/hooks/useWings";
 import { useFlightEnvelope } from "@/hooks/useFlightEnvelope";
+import { useStability } from "@/hooks/useStability";
 import { AnalysisViewerPanel, type Tab } from "@/components/workbench/AnalysisViewerPanel";
 import { AnalysisConfigPanel } from "@/components/workbench/AnalysisConfigPanel";
 import { AvlGeometryEditor } from "@/components/workbench/AvlGeometryEditor";
@@ -20,6 +21,7 @@ export default function AnalysisPage() {
   const stripForces = useStripForces(aeroplaneId);
   const streamlines = useStreamlines(aeroplaneId);
   const envelope = useFlightEnvelope(aeroplaneId);
+  const stability = useStability(aeroplaneId);
   const { wingNames } = useWings(aeroplaneId);
   const { wing } = useWing(aeroplaneId, selectedWing ?? wingNames[0] ?? null);
   const [configOpen, setConfigOpen] = useState(false);
@@ -35,6 +37,7 @@ export default function AnalysisPage() {
     "Trefftz Plane": "Trefftz Plane Configuration",
     "Streamlines": "Streamlines Configuration",
     "Envelope": "Flight Envelope",
+    "Stability": "Stability Analysis",
   };
   const modalTitle = modalTitleByTab[activeTab];
 
@@ -76,6 +79,10 @@ export default function AnalysisPage() {
             isComputingEnvelope={envelope.isComputing}
             envelopeError={envelope.error}
             onComputeEnvelope={envelope.compute}
+            stability={stability.data}
+            isComputingStability={stability.isComputing}
+            stabilityError={stability.error}
+            onComputeStability={stability.compute}
           />
         </div>
       </div>
