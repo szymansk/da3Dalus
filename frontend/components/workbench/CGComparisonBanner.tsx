@@ -14,11 +14,11 @@ export function CGComparisonBanner({ aeroplaneId, onCGSynced }: Props) {
   const [syncing, setSyncing] = useState(false);
 
   // Don't render if loading, no data, no component CG, or within tolerance
-  if (isLoading || !data || data.component_cg_x == null || data.within_tolerance !== false) {
+  if (isLoading || !data || data.component_cg_x == null || data.delta_x == null || data.within_tolerance !== false) {
     return null;
   }
 
-  const deltaM = data.delta_x!;
+  const deltaM = data.delta_x;
   const deltaCm = Math.abs(deltaM * 100);
   const isSevere = deltaCm > 5;
 
@@ -29,7 +29,7 @@ export function CGComparisonBanner({ aeroplaneId, onCGSynced }: Props) {
   async function handleSync() {
     setSyncing(true);
     try {
-      await syncDesignCG(data!.component_cg_x!);
+      await syncDesignCG(data.component_cg_x!);
       onCGSynced();
     } finally {
       setSyncing(false);
@@ -44,7 +44,7 @@ export function CGComparisonBanner({ aeroplaneId, onCGSynced }: Props) {
       <AlertTriangle size={14} className={textColor} />
       <div className="flex flex-1 flex-col gap-0.5">
         <span className={`font-[family-name:var(--font-jetbrains-mono)] text-[12px] ${textColor}`}>
-          Component CG ({data.component_cg_x!.toFixed(3)}m) differs from design CG ({data.design_cg_x.toFixed(3)}m) by {deltaCm.toFixed(1)}cm
+          Component CG ({data.component_cg_x.toFixed(3)}m) differs from design CG ({data.design_cg_x.toFixed(3)}m) by {deltaCm.toFixed(1)}cm
         </span>
       </div>
       <button
