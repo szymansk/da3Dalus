@@ -1242,6 +1242,30 @@ async def avl_trim_operating_point_tool(
     )
 
 
+# Flight-envelope tools
+@mcp_tool(
+    name="get_flight_envelope",
+    description="Get the cached flight envelope (V-n diagram, KPIs) for an aircraft.",
+)
+async def get_flight_envelope_tool(aeroplane_id: UUID4) -> Any:
+    from app.api.v2.endpoints.aeroplane.flight_envelope import get_flight_envelope
+
+    return await _call_endpoint(get_flight_envelope, aeroplane_id=aeroplane_id)
+
+
+@mcp_tool(
+    name="compute_flight_envelope",
+    description="Compute or recompute the flight envelope for an aircraft. "
+    "Returns V-n curves and performance KPIs.",
+)
+async def compute_flight_envelope_tool(aeroplane_id: UUID4) -> Any:
+    from app.api.v2.endpoints.aeroplane.flight_envelope import (
+        compute_flight_envelope_endpoint,
+    )
+
+    return await _call_endpoint(compute_flight_envelope_endpoint, aeroplane_id=aeroplane_id)
+
+
 @mcp_tool(
     name="create_operating_point",
     description="Create and persist one stored operating point record.",

@@ -4,8 +4,10 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { Wind, SlidersHorizontal, Activity, Maximize2, Minimize2, Settings } from "lucide-react";
 import type { AnalysisResult } from "@/hooks/useAnalysis";
 import type { StripForcesResult } from "@/hooks/useStripForces";
+import type { FlightEnvelopeData } from "@/hooks/useFlightEnvelope";
+import { EnvelopePanel } from "@/components/workbench/EnvelopePanel";
 
-const TABS = ["Assumptions", "Polar", "Trefftz Plane", "Streamlines"] as const;
+const TABS = ["Assumptions", "Polar", "Trefftz Plane", "Streamlines", "Envelope"] as const;
 export type Tab = (typeof TABS)[number];
 export { TABS };
 
@@ -31,6 +33,10 @@ interface Props {
   readonly wingXSecs?: WingXSec[] | null;
   readonly wingSymmetric?: boolean;
   readonly assumptionsSlot?: React.ReactNode;
+  readonly envelope?: FlightEnvelopeData | null;
+  readonly isComputingEnvelope?: boolean;
+  readonly envelopeError?: string | null;
+  readonly onComputeEnvelope?: () => void;
 }
 
 // -- Plotly Chart (dynamic import) ----------------------------------------
@@ -523,6 +529,10 @@ export function AnalysisViewerPanel({
   wingXSecs,
   wingSymmetric,
   assumptionsSlot,
+  envelope,
+  isComputingEnvelope,
+  envelopeError,
+  onComputeEnvelope,
 }: Readonly<Props>) {
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
 
@@ -560,7 +570,7 @@ export function AnalysisViewerPanel({
           Aerodynamic Analysis
         </span>
         <div className="flex-1" />
-        {activeTab !== "Assumptions" && onConfigureClick && (
+        {activeTab !== "Assumptions" && activeTab !== "Envelope" && onConfigureClick && (
           <button
             onClick={onConfigureClick}
             className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3 py-1.5 text-[12px] text-foreground hover:bg-sidebar-accent"
@@ -569,7 +579,7 @@ export function AnalysisViewerPanel({
             Configure & Run
           </button>
         )}
-        {activeTab !== "Assumptions" && showAvlGeometryButton && onEditAvlGeometry && (
+        {activeTab !== "Assumptions" && activeTab !== "Envelope" && showAvlGeometryButton && onEditAvlGeometry && (
           <button
             onClick={onEditAvlGeometry}
             className="flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-3 py-1.5 text-[12px] text-foreground hover:bg-sidebar-accent"
@@ -728,6 +738,15 @@ export function AnalysisViewerPanel({
             streamlinesFigure={streamlinesFigure}
           />
         </div>
+      )}
+
+      {activeTab === "Envelope" && (
+        <EnvelopePanel
+          envelope={envelope ?? null}
+          isComputing={isComputingEnvelope ?? false}
+          error={envelopeError ?? null}
+          onCompute={onComputeEnvelope ?? (() => {})}
+        />
       )}
 
       {/* Info Chip Row */}
