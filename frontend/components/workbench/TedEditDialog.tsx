@@ -8,6 +8,19 @@ import { useDialog } from "@/hooks/useDialog";
 
 const HINGE_TYPES = ["middle", "top", "top_simple", "round_inside", "round_outside"] as const;
 
+const CONTROL_SURFACE_ROLES = [
+  { value: "elevator", label: "Elevator" },
+  { value: "aileron", label: "Aileron" },
+  { value: "rudder", label: "Rudder" },
+  { value: "elevon", label: "Elevon" },
+  { value: "stabilator", label: "Stabilator" },
+  { value: "flap", label: "Flap" },
+  { value: "spoiler", label: "Spoiler" },
+  { value: "other", label: "Other" },
+] as const;
+
+type ControlSurfaceRole = (typeof CONTROL_SURFACE_ROLES)[number]["value"];
+
 interface TedEditDialogProps {
   open: boolean;
   onClose: () => void;
@@ -45,7 +58,10 @@ export function TedEditDialog({
   onSaved,
 }: Readonly<TedEditDialogProps>) {
   // Core fields
-  const [name, setName] = useState("");
+  const [role, setRole] = useState<ControlSurfaceRole>(
+    (initialData?.role as ControlSurfaceRole) ?? "other"
+  );
+  const [label, setLabel] = useState(safeStr(initialData?.label));
   const [hingePoint, setHingePoint] = useState("0.8");
   const [symmetric, setSymmetric] = useState(false);
   const [relChordTip, setRelChordTip] = useState("0.8");
@@ -70,7 +86,8 @@ export function TedEditDialog({
   useEffect(() => {
     if (initialData && typeof initialData === "object") {
       const t = initialData;
-      setName(safeStr(t.name));
+      setRole((t.role as ControlSurfaceRole) ?? "other");
+      setLabel(safeStr(t.label));
       setHingePoint(safeStr(t.rel_chord_root ?? t.hinge_point, "0.8"));
       setSymmetric(Boolean(t.symmetric));
       setRelChordTip(safeStr(t.rel_chord_tip ?? t.rel_chord_root, "0.8"));
@@ -85,7 +102,8 @@ export function TedEditDialog({
       setServoChordPos(safeStr(t.rel_chord_servo_position));
       setServoLengthPos(safeStr(t.rel_length_servo_position));
     } else {
-      setName("");
+      setRole("other");
+      setLabel("");
       setHingePoint("0.8");
       setSymmetric(false);
       setRelChordTip("0.8");
@@ -104,10 +122,6 @@ export function TedEditDialog({
   }, [initialData, open]);
 
   async function handleSave() {
-    if (!name.trim()) {
-      setError("Name is required");
-      return;
-    }
     setSaving(true);
     setError(null);
     try {
@@ -118,7 +132,8 @@ export function TedEditDialog({
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name,
+            role,
+            ...(label.trim() ? { label: label.trim() } : { label: null }),
             rel_chord_root: Number.parseFloat(hingePoint),
             symmetric,
           }),
@@ -216,9 +231,22 @@ export function TedEditDialog({
         {/* Fields */}
         <div className="flex flex-col gap-3">
           <div className="flex gap-3">
-            <TedField label="Name" value={name} type="text" onChange={setName} />
+            <div className="flex flex-1 flex-col gap-1">
+              <label htmlFor="ted-role" className="text-[11px] text-muted-foreground">Role</label>
+              <select
+                id="ted-role"
+                value={role}
+                onChange={(e) => setRole(e.target.value as ControlSurfaceRole)}
+                className="rounded-xl border border-border bg-input px-3 py-2 text-[13px] text-foreground"
+              >
+                {CONTROL_SURFACE_ROLES.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
+            </div>
             <TedField label="Hinge Point (Root Chord)" value={hingePoint} onChange={setHingePoint} />
           </div>
+          <TedField label="Label (optional)" value={label} type="text" onChange={setLabel} placeholder="e.g. Left Aileron" />
           <div className="flex gap-3">
             <TedField label="Hinge Point (Tip Chord)" value={relChordTip} onChange={setRelChordTip} />
             <div className="flex flex-1 flex-col gap-1">
@@ -344,12 +372,14 @@ function TedField({
   suffix,
   type = "number",
   onChange,
+  placeholder,
 }: Readonly<{
   label: string;
   value: string;
   suffix?: string;
   type?: "text" | "number";
   onChange: (v: string) => void;
+  placeholder?: string;
 }>) {
   const id = useId();
   return (
@@ -362,6 +392,7 @@ function TedField({
           step="any"
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
           className="w-full bg-transparent text-[13px] text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
         {suffix && (

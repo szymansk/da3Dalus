@@ -156,6 +156,7 @@ def test_generate_skips_points_when_required_controls_missing(db_session, caplog
     names = [point.name for point in result.operating_points]
     assert "turn_n2" not in names
     assert "dutch_role_start" not in names
+    assert "stall_with_flaps" not in names
     assert len(result.operating_points) == 9
 
     # Logging can differ depending on global logger configuration. Functional output is asserted above.

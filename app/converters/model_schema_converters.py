@@ -262,7 +262,9 @@ def _control_surface_from_ted(
     ted: schemas.TrailingEdgeDeviceDetailSchema,
     fallback: Optional[schemas.ControlSurfaceSchema] = None,
 ) -> schemas.ControlSurfaceSchema:
-    name = ted.name or (fallback.name if fallback else "Control Surface")
+    display_name = ted.name or (fallback.name if fallback else "Control Surface")
+    role = ted.role.value if hasattr(ted, "role") and ted.role else "other"
+    name = f"[{role}]{display_name}"
 
     if ted.rel_chord_root is not None:
         hinge_point = ted.rel_chord_root

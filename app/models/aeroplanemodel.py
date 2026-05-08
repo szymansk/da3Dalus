@@ -116,6 +116,8 @@ class WingXSecTrailingEdgeDeviceModel(Base):
         Integer, ForeignKey("wing_xsec_details.id", ondelete="CASCADE"), nullable=False, unique=True
     )
     name = Column(String, nullable=True)
+    role = Column(String, nullable=False, default="other", server_default="other")
+    label = Column(String, nullable=True)
     rel_chord_root = Column(Float, nullable=True)
     rel_chord_tip = Column(Float, nullable=True)
     hinge_spacing = Column(Float, nullable=True)

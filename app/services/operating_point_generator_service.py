@@ -1,5 +1,6 @@
 import logging
 import math
+import re
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -26,6 +27,30 @@ from app.schemas.aeroanalysisschema import (
 )
 
 logger = logging.getLogger(__name__)
+
+_ROLE_TAG_RE = re.compile(r"^\[(\w+)\](.*)$")
+
+PITCH_ROLES = {"elevator", "stabilator", "elevon"}
+ROLL_ROLES = {"aileron", "elevon"}
+YAW_ROLES = {"rudder"}
+FLAP_ROLES = {"flap"}
+
+PITCH_TOKENS = {"elevator", "stabilator", "elevon"}
+ROLL_TOKENS = {"aileron", "elevon"}
+YAW_TOKENS = {"rudder"}
+FLAP_TOKENS = {"flap"}
+
+
+def _parse_role_tag(name: str) -> tuple[Optional[str], str]:
+    """Parse a ``[role]display`` tag from a control surface name.
+
+    Returns ``(role, display)`` when the tag is present, otherwise
+    ``(None, name)``.
+    """
+    m = _ROLE_TAG_RE.match(name)
+    if m:
+        return m.group(1), m.group(2)
+    return None, name
 
 
 @dataclass
@@ -166,6 +191,7 @@ def _build_target_definitions(
             "altitude": altitude,
             "beta_target_deg": 0.0,
             "n_target": 1.0,
+            "flap_deflection_deg": 15.0,
         },
         {
             "name": "best_angle_climb_vx",
@@ -222,6 +248,16 @@ def _build_target_definitions(
             "altitude": altitude,
             "beta_target_deg": 0.0,
             "n_target": 1.0,
+            "flap_deflection_deg": 30.0,
+        },
+        {
+            "name": "stall_with_flaps",
+            "config": "landing",
+            "velocity": max(2.0, refs["vs_ldg"] * 1.05),
+            "altitude": altitude,
+            "beta_target_deg": 0.0,
+            "n_target": 1.0,
+            "flap_deflection_deg": 30.0,
         },
         {
             "name": "turn_n2",
@@ -251,36 +287,55 @@ def _fallback_speeds(name: str, base_velocity: float) -> list[float]:
     return [max(2.0, base_velocity * f) for f in factors]
 
 
-def _pick_control_name(available_controls: list[str], tokens: set[str]) -> Optional[str]:
+def _pick_control_name(
+    available_controls: list[str],
+    tokens: Optional[set[str]] = None,
+    roles: Optional[set[str]] = None,
+) -> Optional[str]:
+    """Find a control surface name matching the given roles or tokens.
+
+    Prefers an exact ``[role]`` tag match via *roles*, then falls back to
+    substring matching via *tokens*.
+    """
+    target_roles = roles or tokens or set()
     for control_name in available_controls:
-        normalized_control = control_name.strip().lower()
-        if any(token in normalized_control for token in tokens):
+        role, display = _parse_role_tag(control_name)
+        if role and role in target_roles:
             return control_name
+    if tokens:
+        for control_name in available_controls:
+            normalized = control_name.strip().lower()
+            if any(token in normalized for token in tokens):
+                return control_name
     return None
 
 
 def _detect_control_capabilities(asb_airplane: asb.Airplane) -> dict[str, Any]:
-    control_names: set[str] = set()
-    normalized_control_names: set[str] = set()
+    control_names: list[str] = []
+    roles_found: set[str] = set()
 
     for wing in getattr(asb_airplane, "wings", []) or []:
         for xsec in getattr(wing, "xsecs", []) or []:
-            for control_surface in getattr(xsec, "control_surfaces", []) or []:
-                raw_name = str(getattr(control_surface, "name", "")).strip()
-                if raw_name:
-                    control_names.add(raw_name)
-                    normalized_control_names.add(raw_name.lower())
-
-    def _contains_any(tokens: set[str]) -> bool:
-        return any(
-            token in control_name for control_name in normalized_control_names for token in tokens
-        )
+            for cs in getattr(xsec, "control_surfaces", []) or []:
+                raw_name = str(getattr(cs, "name", "")).strip()
+                if not raw_name:
+                    continue
+                control_names.append(raw_name)
+                role, display = _parse_role_tag(raw_name)
+                if role:
+                    roles_found.add(role)
+                else:
+                    normalized = raw_name.lower()
+                    for token in PITCH_TOKENS | ROLL_TOKENS | YAW_TOKENS | FLAP_TOKENS:
+                        if token in normalized:
+                            roles_found.add(token)
 
     return {
-        "has_pitch_control": _contains_any({"elevator", "stabilator", "elevon"}),
-        "has_roll_control": _contains_any({"aileron", "elevon"}),
-        "has_yaw_control": _contains_any({"rudder"}),
-        "available_controls": sorted(control_names),
+        "has_pitch_control": bool(roles_found & PITCH_ROLES),
+        "has_roll_control": bool(roles_found & ROLL_ROLES),
+        "has_yaw_control": bool(roles_found & YAW_ROLES),
+        "has_flap": bool(roles_found & FLAP_ROLES),
+        "available_controls": sorted(set(control_names)),
     }
 
 
@@ -289,6 +344,8 @@ def _required_capabilities_for_target(target_name: str) -> set[str]:
         return {"has_roll_control|has_yaw_control"}
     if target_name == "dutch_role_start":
         return {"has_yaw_control"}
+    if target_name == "stall_with_flaps":
+        return {"has_flap"}
     return set()
 
 
@@ -338,9 +395,9 @@ def _solve_trim_candidate_with_opti(
         control_values: dict[str, Any] = {}
         control_variables: dict[str, Any] = {}
 
-        pitch_name = _pick_control_name(available_controls, {"elevator", "stabilator", "elevon"})
-        yaw_name = _pick_control_name(available_controls, {"rudder"})
-        roll_name = _pick_control_name(available_controls, {"aileron", "elevon"})
+        pitch_name = _pick_control_name(available_controls, tokens=PITCH_TOKENS, roles=PITCH_ROLES)
+        yaw_name = _pick_control_name(available_controls, tokens=YAW_TOKENS, roles=YAW_ROLES)
+        roll_name = _pick_control_name(available_controls, tokens=ROLL_TOKENS, roles=ROLL_ROLES)
 
         if pitch_name:
             control_variables[pitch_name] = opti.variable(
@@ -357,9 +414,24 @@ def _solve_trim_candidate_with_opti(
 
         if control_variables:
             control_values = dict(control_variables.items())
+            # Add fixed flap deflection (not an optimizer variable)
+            flap_deflection = target.get("flap_deflection_deg")
+            if flap_deflection is not None:
+                flap_name = _pick_control_name(available_controls, tokens=FLAP_TOKENS, roles=FLAP_ROLES)
+                if flap_name:
+                    control_values[flap_name] = float(flap_deflection)
             airplane_for_eval = asb_airplane.with_control_deflections(control_values)
         else:
-            airplane_for_eval = asb_airplane
+            # No control variables, but may still have fixed flap deflection
+            flap_deflection = target.get("flap_deflection_deg")
+            if flap_deflection is not None:
+                flap_name = _pick_control_name(available_controls, tokens=FLAP_TOKENS, roles=FLAP_ROLES)
+                if flap_name:
+                    control_values[flap_name] = float(flap_deflection)
+            if control_values:
+                airplane_for_eval = asb_airplane.with_control_deflections(control_values)
+            else:
+                airplane_for_eval = asb_airplane
 
         op = asb.OperatingPoint(
             velocity=float(velocity_mps),

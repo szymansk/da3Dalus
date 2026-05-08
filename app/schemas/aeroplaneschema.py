@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Literal, Optional, OrderedDict
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
@@ -21,6 +22,19 @@ SparMode = Literal["normal", "follow", "standard", "standard_backward", "orthogo
 HingeType = Literal["middle", "top", "top_simple", "round_inside", "round_outside"]
 WingXSecType = Literal["root", "segment", "tip"]
 TipType = Literal["flat", "round"]
+
+
+class ControlSurfaceRole(str, Enum):
+    """Standardized role for a trailing-edge control surface."""
+
+    ELEVATOR = "elevator"
+    AILERON = "aileron"
+    RUDDER = "rudder"
+    ELEVON = "elevon"
+    STABILATOR = "stabilator"
+    FLAP = "flap"
+    SPOILER = "spoiler"
+    OTHER = "other"
 
 
 class AeroplaneSchema(BaseModel):
@@ -192,6 +206,11 @@ class SpareDetailSchema(BaseModel):
 
 class TrailingEdgeDeviceDetailSchema(BaseModel):
     name: Optional[str] = Field(None, description="Trailing-edge device name")
+    role: ControlSurfaceRole = Field(
+        ControlSurfaceRole.OTHER,
+        description="Standardized control surface role for auto-trim detection",
+    )
+    label: Optional[str] = Field(None, description="Optional user-defined display name")
     rel_chord_root: Optional[float] = Field(None, description="Root hinge position as relative chord (0.0-1.0)")
     rel_chord_tip: Optional[float] = Field(None, description=_DESC_TIP_HINGE_REL_CHORD)
     hinge_spacing: Optional[float] = Field(None, description=_DESC_HINGE_SPACING_MM)
@@ -251,11 +270,19 @@ class TrailingEdgeDeviceDetailSchema(BaseModel):
         description="Whether deflection is symmetric between left/right wing",
     )
 
+    @model_validator(mode="after")
+    def _compute_name_from_role(self):
+        if self.name is None and (self.label is not None or self.role != ControlSurfaceRole.OTHER):
+            self.name = self.label if self.label else self.role.value
+        return self
+
     model_config = ConfigDict(from_attributes=True)
 
 
 class TrailingEdgeDevicePatchSchema(BaseModel):
     name: Optional[str] = Field(None, description="Trailing-edge device name")
+    role: Optional[ControlSurfaceRole] = Field(None, description="Control surface role")
+    label: Optional[str] = Field(None, description="Optional display name")
     rel_chord_root: Optional[float] = Field(None, description="Root hinge position as relative chord (0.0-1.0)")
     rel_chord_tip: Optional[float] = Field(None, description=_DESC_TIP_HINGE_REL_CHORD)
     hinge_spacing: Optional[float] = Field(None, description=_DESC_HINGE_SPACING_MM)
@@ -298,6 +325,8 @@ class TrailingEdgeDevicePatchSchema(BaseModel):
             value is None
             for value in [
                 self.name,
+                self.role,
+                self.label,
                 self.rel_chord_root,
                 self.rel_chord_tip,
                 self.hinge_spacing,
