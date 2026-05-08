@@ -298,6 +298,12 @@ class StoredOperatingPointCreate(BaseModel):
         "Overrides geometry defaults for this operating point.",
     )
 
+    trim_enrichment: Optional[dict] = Field(
+        default=None,
+        description="Enrichment data: analysis goal, deflection reserves, design warnings. "
+        "Computed after trim solve.",
+    )
+
     model_config = ConfigDict(from_attributes=True)
 
 

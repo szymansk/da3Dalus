@@ -1,9 +1,19 @@
+import uuid
+
 import pytest
 from pydantic import ValidationError
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
+from app.db.base import Base
+from app.models.aeroplanemodel import AeroplaneModel
+from app.models.analysismodels import OperatingPointModel
 from app.schemas.aeroanalysisschema import (
     DeflectionReserve,
     DesignWarning,
+    StoredOperatingPointCreate,
+    StoredOperatingPointRead,
     TrimEnrichment,
 )
 
@@ -109,3 +119,148 @@ class TestTrimEnrichment:
         data = e.model_dump()
         e2 = TrimEnrichment.model_validate(data)
         assert e2 == e
+
+
+@pytest.fixture()
+def db_session():
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
+    Base.metadata.create_all(bind=engine)
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)
+
+
+class TestTrimEnrichmentPersistence:
+    def test_op_model_stores_trim_enrichment(self, db_session):
+        aircraft = AeroplaneModel(name="test-plane", uuid=uuid.uuid4())
+        db_session.add(aircraft)
+        db_session.commit()
+
+        enrichment_data = {
+            "analysis_goal": "Can trim near stall?",
+            "trim_method": "opti",
+            "trim_score": 0.02,
+            "trim_residuals": {"cm": 0.001},
+            "deflection_reserves": {},
+            "design_warnings": [],
+        }
+
+        op = OperatingPointModel(
+            name="test_op",
+            description="test",
+            aircraft_id=aircraft.id,
+            config="clean",
+            status="TRIMMED",
+            warnings=[],
+            controls={},
+            velocity=15.0,
+            alpha=0.05,
+            beta=0.0,
+            p=0.0,
+            q=0.0,
+            r=0.0,
+            xyz_ref=[0, 0, 0],
+            altitude=0.0,
+            trim_enrichment=enrichment_data,
+        )
+        db_session.add(op)
+        db_session.commit()
+        db_session.refresh(op)
+
+        assert op.trim_enrichment is not None
+        assert op.trim_enrichment["analysis_goal"] == "Can trim near stall?"
+
+    def test_op_model_trim_enrichment_null_by_default(self, db_session):
+        aircraft = AeroplaneModel(name="test-plane-2", uuid=uuid.uuid4())
+        db_session.add(aircraft)
+        db_session.commit()
+
+        op = OperatingPointModel(
+            name="test_op_null",
+            description="test",
+            aircraft_id=aircraft.id,
+            config="clean",
+            status="NOT_TRIMMED",
+            warnings=[],
+            controls={},
+            velocity=15.0,
+            alpha=0.0,
+            beta=0.0,
+            p=0.0,
+            q=0.0,
+            r=0.0,
+            xyz_ref=[0, 0, 0],
+            altitude=0.0,
+        )
+        db_session.add(op)
+        db_session.commit()
+        db_session.refresh(op)
+
+        assert op.trim_enrichment is None
+
+
+class TestStoredOPSchemaEnrichment:
+    def test_create_schema_accepts_trim_enrichment(self):
+        enrichment = {
+            "analysis_goal": "Test goal",
+            "trim_method": "opti",
+            "trim_score": 0.05,
+            "trim_residuals": {"cm": 0.001},
+            "deflection_reserves": {},
+            "design_warnings": [],
+        }
+        op = StoredOperatingPointCreate(
+            name="test",
+            description="test",
+            velocity=15.0,
+            alpha=0.05,
+            beta=0.0,
+            p=0.0,
+            q=0.0,
+            r=0.0,
+            altitude=0.0,
+            trim_enrichment=enrichment,
+        )
+        assert op.trim_enrichment is not None
+        assert op.trim_enrichment["trim_method"] == "opti"
+
+    def test_create_schema_defaults_to_none(self):
+        op = StoredOperatingPointCreate(
+            name="test",
+            description="test",
+            velocity=15.0,
+            alpha=0.05,
+            beta=0.0,
+            p=0.0,
+            q=0.0,
+            r=0.0,
+            altitude=0.0,
+        )
+        assert op.trim_enrichment is None
+
+    def test_read_schema_includes_trim_enrichment(self):
+        op = StoredOperatingPointRead(
+            id=1,
+            name="test",
+            description="test",
+            velocity=15.0,
+            alpha=0.05,
+            beta=0.0,
+            p=0.0,
+            q=0.0,
+            r=0.0,
+            altitude=0.0,
+            trim_enrichment={
+                "analysis_goal": "Goal",
+                "trim_method": "opti",
+                "trim_score": None,
+                "trim_residuals": {},
+                "deflection_reserves": {},
+                "design_warnings": [],
+            },
+        )
+        assert op.trim_enrichment["analysis_goal"] == "Goal"
