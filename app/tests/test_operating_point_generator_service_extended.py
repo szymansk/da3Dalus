@@ -534,15 +534,16 @@ class TestEstimateReferenceSpeeds:
 
 
 class TestBuildTargetDefinitions:
-    def test_returns_11_targets(self):
+    def test_returns_12_targets(self):
         profile = _default_profile()
         refs = _estimate_reference_speeds(profile)
         targets = _build_target_definitions(profile, refs)
-        assert len(targets) == 11
+        assert len(targets) == 12
         names = [t["name"] for t in targets]
         assert "cruise" in names
         assert "dutch_role_start" in names
         assert "turn_n2" in names
+        assert "stall_with_flaps" in names
 
     def test_altitude_propagated(self):
         profile = _default_profile()

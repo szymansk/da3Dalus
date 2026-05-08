@@ -77,3 +77,91 @@ class TestConverterRoleEncoding:
         ted = TrailingEdgeDeviceDetailSchema(role="other", name="Custom Thing")
         cs = _control_surface_from_ted(ted)
         assert cs.name == "[other]Custom Thing"
+
+
+# ================================================================== #
+# Role-based detection in OP generator service
+# ================================================================== #
+
+from unittest.mock import MagicMock
+from app.services.operating_point_generator_service import (
+    _detect_control_capabilities,
+    _pick_control_name,
+)
+
+
+def _mock_airplane_with_controls(names: list[str]):
+    airplane = MagicMock()
+    xsec = MagicMock()
+    controls = []
+    for n in names:
+        cs = MagicMock()
+        cs.name = n
+        controls.append(cs)
+    xsec.control_surfaces = controls
+    wing = MagicMock()
+    wing.xsecs = [xsec]
+    airplane.wings = [wing]
+    return airplane
+
+
+class TestRoleBasedDetection:
+    def test_detect_elevator_by_role(self):
+        airplane = _mock_airplane_with_controls(["[elevator]Höhenruder"])
+        caps = _detect_control_capabilities(airplane)
+        assert caps["has_pitch_control"] is True
+
+    def test_detect_aileron_by_role(self):
+        airplane = _mock_airplane_with_controls(["[aileron]Querruder"])
+        caps = _detect_control_capabilities(airplane)
+        assert caps["has_roll_control"] is True
+
+    def test_detect_rudder_by_role(self):
+        airplane = _mock_airplane_with_controls(["[rudder]Seitenruder"])
+        caps = _detect_control_capabilities(airplane)
+        assert caps["has_yaw_control"] is True
+
+    def test_detect_flap_by_role(self):
+        airplane = _mock_airplane_with_controls(["[flap]Landeklappe"])
+        caps = _detect_control_capabilities(airplane)
+        assert caps["has_flap"] is True
+
+    def test_no_flap_when_none_present(self):
+        airplane = _mock_airplane_with_controls(["[elevator]Elevator"])
+        caps = _detect_control_capabilities(airplane)
+        assert caps["has_flap"] is False
+
+    def test_elevon_detected_as_both_pitch_and_roll(self):
+        airplane = _mock_airplane_with_controls(["[elevon]Elevon"])
+        caps = _detect_control_capabilities(airplane)
+        assert caps["has_pitch_control"] is True
+        assert caps["has_roll_control"] is True
+
+    def test_other_role_not_detected_as_control(self):
+        airplane = _mock_airplane_with_controls(["[other]Custom"])
+        caps = _detect_control_capabilities(airplane)
+        assert caps["has_pitch_control"] is False
+        assert caps["has_roll_control"] is False
+        assert caps["has_yaw_control"] is False
+        assert caps["has_flap"] is False
+
+    def test_fallback_to_substring_for_untagged_names(self):
+        airplane = _mock_airplane_with_controls(["elevator"])
+        caps = _detect_control_capabilities(airplane)
+        assert caps["has_pitch_control"] is True
+
+
+class TestRoleBasedPickControl:
+    def test_pick_by_role_tag(self):
+        result = _pick_control_name(
+            ["[aileron]Left Aileron", "[elevator]Höhenruder"],
+            roles={"elevator"},
+        )
+        assert result == "[elevator]Höhenruder"
+
+    def test_pick_flap(self):
+        result = _pick_control_name(
+            ["[elevator]Elevator", "[flap]Inboard Flap"],
+            roles={"flap"},
+        )
+        assert result == "[flap]Inboard Flap"
