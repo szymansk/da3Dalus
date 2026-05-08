@@ -344,6 +344,8 @@ def _required_capabilities_for_target(target_name: str) -> set[str]:
         return {"has_roll_control|has_yaw_control"}
     if target_name == "dutch_role_start":
         return {"has_yaw_control"}
+    if target_name == "stall_with_flaps":
+        return {"has_flap"}
     return set()
 
 
@@ -393,9 +395,9 @@ def _solve_trim_candidate_with_opti(
         control_values: dict[str, Any] = {}
         control_variables: dict[str, Any] = {}
 
-        pitch_name = _pick_control_name(available_controls, roles=PITCH_ROLES)
-        yaw_name = _pick_control_name(available_controls, roles=YAW_ROLES)
-        roll_name = _pick_control_name(available_controls, roles=ROLL_ROLES)
+        pitch_name = _pick_control_name(available_controls, tokens=PITCH_TOKENS, roles=PITCH_ROLES)
+        yaw_name = _pick_control_name(available_controls, tokens=YAW_TOKENS, roles=YAW_ROLES)
+        roll_name = _pick_control_name(available_controls, tokens=ROLL_TOKENS, roles=ROLL_ROLES)
 
         if pitch_name:
             control_variables[pitch_name] = opti.variable(
@@ -415,7 +417,7 @@ def _solve_trim_candidate_with_opti(
             # Add fixed flap deflection (not an optimizer variable)
             flap_deflection = target.get("flap_deflection_deg")
             if flap_deflection is not None:
-                flap_name = _pick_control_name(available_controls, roles=FLAP_ROLES)
+                flap_name = _pick_control_name(available_controls, tokens=FLAP_TOKENS, roles=FLAP_ROLES)
                 if flap_name:
                     control_values[flap_name] = float(flap_deflection)
             airplane_for_eval = asb_airplane.with_control_deflections(control_values)
@@ -423,7 +425,7 @@ def _solve_trim_candidate_with_opti(
             # No control variables, but may still have fixed flap deflection
             flap_deflection = target.get("flap_deflection_deg")
             if flap_deflection is not None:
-                flap_name = _pick_control_name(available_controls, roles=FLAP_ROLES)
+                flap_name = _pick_control_name(available_controls, tokens=FLAP_TOKENS, roles=FLAP_ROLES)
                 if flap_name:
                     control_values[flap_name] = float(flap_deflection)
             if control_values:

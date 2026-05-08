@@ -421,6 +421,21 @@ class TestValidateTargetCapability:
         )
         assert ok is True
 
+    def test_stall_with_flaps_requires_flap(self):
+        ok, missing = _validate_target_capability(
+            {"name": "stall_with_flaps"},
+            {"has_flap": False},
+        )
+        assert ok is False
+        assert "has_flap" in missing
+
+    def test_stall_with_flaps_valid_when_flap_present(self):
+        ok, _ = _validate_target_capability(
+            {"name": "stall_with_flaps"},
+            {"has_flap": True},
+        )
+        assert ok is True
+
     def test_cruise_always_valid(self):
         ok, _ = _validate_target_capability({"name": "cruise"}, {})
         assert ok is True
