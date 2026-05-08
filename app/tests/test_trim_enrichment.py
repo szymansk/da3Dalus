@@ -271,7 +271,8 @@ class TestStoredOPSchemaEnrichment:
 # Enrichment engine tests (Task 4)
 # ---------------------------------------------------------------------------
 
-from unittest.mock import MagicMock
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 from app.services.operating_point_generator_service import (
     _build_deflection_limits,
     _compute_enrichment,
@@ -419,3 +420,100 @@ class TestComputeEnrichment:
         categories = [w.category for w in enrichment.design_warnings]
         assert "trim_quality" in categories
         assert any(w.level == "critical" for w in enrichment.design_warnings)
+
+
+# ---------------------------------------------------------------------------
+# Integration tests: enrichment wired into service entry points (Task 5)
+# ---------------------------------------------------------------------------
+
+
+def _fake_trim(*_, target, **__):
+    return TrimmedPoint(
+        name=target["name"],
+        description=f"mocked {target['name']}",
+        config=target["config"],
+        velocity=float(target["velocity"]),
+        altitude=float(target["altitude"]),
+        alpha_rad=0.05,
+        beta_rad=0.0,
+        p=0.0, q=0.0, r=0.0,
+        status=OperatingPointStatus.TRIMMED,
+        warnings=[],
+        controls={"[elevator]Elevator": -3.0},
+    )
+
+
+def _mock_airplane_for_integration(*control_names: str) -> SimpleNamespace:
+    control_surfaces = [SimpleNamespace(name=name) for name in control_names]
+    return SimpleNamespace(
+        xyz_ref=[0, 0, 0],
+        s_ref=1.0,
+        wings=[SimpleNamespace(xsecs=[SimpleNamespace(control_surfaces=control_surfaces)])],
+    )
+
+
+class TestEnrichmentIntegration:
+    def test_generated_ops_have_trim_enrichment(self, db_session):
+        from app.services.operating_point_generator_service import generate_default_set_for_aircraft
+        aircraft_uuid = uuid.uuid4()
+        aircraft = AeroplaneModel(name="enrich-test", uuid=aircraft_uuid)
+        db_session.add(aircraft)
+        db_session.commit()
+
+        with (
+            patch("app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async", return_value=SimpleNamespace()),
+            patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_for_integration("[elevator]Elevator", "[rudder]Rudder")),
+            patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
+        ):
+            result = generate_default_set_for_aircraft(db_session, aircraft_uuid)
+
+        for op in result.operating_points:
+            assert op.trim_enrichment is not None, f"OP {op.name} missing enrichment"
+            assert "analysis_goal" in op.trim_enrichment
+            assert "deflection_reserves" in op.trim_enrichment
+
+    def test_generated_ops_enrichment_persisted_to_db(self, db_session):
+        from app.services.operating_point_generator_service import generate_default_set_for_aircraft
+        aircraft_uuid = uuid.uuid4()
+        aircraft = AeroplaneModel(name="enrich-persist", uuid=aircraft_uuid)
+        db_session.add(aircraft)
+        db_session.commit()
+
+        with (
+            patch("app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async", return_value=SimpleNamespace()),
+            patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_for_integration("[elevator]Elevator", "[rudder]Rudder")),
+            patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
+        ):
+            generate_default_set_for_aircraft(db_session, aircraft_uuid)
+
+        persisted = db_session.query(OperatingPointModel).filter(
+            OperatingPointModel.aircraft_id == aircraft.id
+        ).all()
+        for op_model in persisted:
+            assert op_model.trim_enrichment is not None
+
+    def test_single_trim_has_enrichment(self, db_session):
+        from app.services.operating_point_generator_service import trim_operating_point_for_aircraft
+        from app.schemas.aeroanalysisschema import TrimOperatingPointRequest
+
+        aircraft_uuid = uuid.uuid4()
+        aircraft = AeroplaneModel(name="enrich-single", uuid=aircraft_uuid)
+        db_session.add(aircraft)
+        db_session.commit()
+
+        request = TrimOperatingPointRequest(
+            name="custom_test",
+            config="clean",
+            velocity=20.0,
+            altitude=100.0,
+        )
+
+        with (
+            patch("app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async", return_value=SimpleNamespace()),
+            patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_for_integration("[elevator]Elevator")),
+            patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
+        ):
+            result = trim_operating_point_for_aircraft(db_session, aircraft_uuid, request)
+
+        assert result.point.trim_enrichment is not None
+        assert result.point.trim_enrichment["analysis_goal"] == "User-defined trim point"

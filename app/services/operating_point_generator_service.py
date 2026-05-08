@@ -88,6 +88,7 @@ class TrimmedPoint:
     status: OperatingPointStatus
     warnings: list[str]
     controls: dict[str, float]
+    trim_enrichment: dict | None = None
 
 
 def _safe_coeff(result: dict[str, Any], key: str, default: float = 0.0) -> float:
@@ -843,6 +844,7 @@ def _persist_point_set(
             r=point.r,
             xyz_ref=[0.0, 0.0, 0.0],
             altitude=point.altitude,
+            trim_enrichment=point.trim_enrichment,
         )
         db.add(model)
         stored_points.append(model)
@@ -879,6 +881,7 @@ def generate_default_set_for_aircraft(
         plane_schema = aeroplane_model_to_aeroplane_schema_async(aircraft)
         asb_airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         capabilities = _detect_control_capabilities(asb_airplane)
+        deflection_limits = _build_deflection_limits(asb_airplane)
 
         points: list[TrimmedPoint] = []
         skipped_names: list[str] = []
@@ -902,6 +905,14 @@ def generate_default_set_for_aircraft(
                 constraints=profile.get("constraints", {}),
                 capabilities=capabilities,
             )
+            enrichment = _compute_enrichment(
+                point=point,
+                limits=deflection_limits,
+                trim_method="opti",
+                trim_score=None,
+                trim_residuals={},
+            )
+            point.trim_enrichment = enrichment.model_dump()
             points.append(point)
 
         logger.info(
@@ -990,6 +1001,15 @@ def trim_operating_point_for_aircraft(
             capabilities=capabilities,
         )
 
+        deflection_limits = _build_deflection_limits(asb_airplane)
+        enrichment = _compute_enrichment(
+            point=point,
+            limits=deflection_limits,
+            trim_method="opti",
+            trim_score=None,
+            trim_residuals={},
+        )
+
         point_payload = StoredOperatingPointCreate(
             name=point.name,
             description=point.description,
@@ -1006,6 +1026,7 @@ def trim_operating_point_for_aircraft(
             r=point.r,
             xyz_ref=[0.0, 0.0, 0.0],
             altitude=point.altitude,
+            trim_enrichment=enrichment.model_dump(),
         )
         return TrimmedOperatingPointRead(
             source_flight_profile_id=source_profile_id,
