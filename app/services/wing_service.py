@@ -1225,6 +1225,17 @@ def patch_trailing_edge_device(
         for key, value in patch_payload.items():
             setattr(ted, key, value)
 
+        # When role or label is patched (without an explicit name), recompute
+        # the display name so the response stays consistent with the schema's
+        # _compute_name_from_role logic.
+        if patch.name is None and (patch.role is not None or patch.label is not None):
+            effective_label = ted.label
+            effective_role = ted.role
+            if effective_label:
+                ted.name = effective_label
+            elif effective_role and effective_role != "other":
+                ted.name = effective_role
+
         db.add(ted)
         db.flush()
         db.refresh(ted)

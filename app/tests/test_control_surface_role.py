@@ -165,3 +165,128 @@ class TestRoleBasedPickControl:
             roles={"flap"},
         )
         assert result == "[flap]Inboard Flap"
+
+
+# ================================================================== #
+# TED PATCH endpoint — integration tests (role / label round-trip)
+# ================================================================== #
+
+from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
+
+_AIRFOIL_PATH = str(
+    (Path(__file__).resolve().parents[2] / "components" / "airfoils" / "mh32.dat").resolve()
+)
+
+
+def _seed_wing_with_ted(client: TestClient, name: str, *, db) -> str:
+    """Create an aeroplane + wing (design_model='asb') with one TED on xsec 0."""
+    from app.models.aeroplanemodel import AeroplaneModel
+
+    resp = client.post("/aeroplanes", params={"name": name})
+    assert resp.status_code == 201
+    aeroplane_id = resp.json()["id"]
+
+    wc = {
+        "segments": [
+            {
+                "root_airfoil": {"airfoil": _AIRFOIL_PATH, "chord": 150.0, "incidence": 0},
+                "tip_airfoil": {"airfoil": _AIRFOIL_PATH, "chord": 120.0, "incidence": 0},
+                "length": 500.0,
+                "sweep": 10.0,
+                "number_interpolation_points": 101,
+                "spare_list": [],
+                "trailing_edge_device": {
+                    "name": "aileron",
+                    "rel_chord_root": 0.8,
+                    "rel_chord_tip": 0.8,
+                    "positive_deflection_deg": 25,
+                    "negative_deflection_deg": 25,
+                    "symmetric": False,
+                },
+            }
+        ],
+        "nose_pnt": [0, 0, 0],
+    }
+    resp = client.post(f"/aeroplanes/{aeroplane_id}/wings/w/from-wingconfig", json=wc)
+    assert resp.status_code == 201, resp.text
+
+    # Flip design_model to 'asb' so TED CRUD endpoints operate on this wing
+    plane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_id).first()
+    wing = next(w for w in plane.wings if w.name == "w")
+    wing.design_model = "asb"
+    db.commit()
+
+    return aeroplane_id
+
+
+@pytest.fixture()
+def _client(client_and_db):
+    c, _ = client_and_db
+    yield c
+
+
+@pytest.fixture()
+def _db(client_and_db):
+    _, SessionLocal = client_and_db
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+
+
+class TestTedPatchEndpoint:
+    def test_patch_ted_with_role(self, _client, _db):
+        aid = _seed_wing_with_ted(_client, "ted_role_patch", db=_db)
+        resp = _client.patch(
+            f"/aeroplanes/{aid}/wings/w/cross_sections/0/trailing_edge_device",
+            json={"role": "elevator"},
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["role"] == "elevator"
+
+    def test_patch_ted_with_label(self, _client, _db):
+        aid = _seed_wing_with_ted(_client, "ted_label_patch", db=_db)
+        resp = _client.patch(
+            f"/aeroplanes/{aid}/wings/w/cross_sections/0/trailing_edge_device",
+            json={"role": "aileron", "label": "Left Aileron"},
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["role"] == "aileron"
+        assert body["label"] == "Left Aileron"
+        assert body["name"] == "Left Aileron"
+
+    def test_patch_ted_role_persists_across_get(self, _client, _db):
+        aid = _seed_wing_with_ted(_client, "ted_role_persist", db=_db)
+        _client.patch(
+            f"/aeroplanes/{aid}/wings/w/cross_sections/0/trailing_edge_device",
+            json={"role": "rudder"},
+        )
+        resp = _client.get(
+            f"/aeroplanes/{aid}/wings/w/cross_sections/0/trailing_edge_device"
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["role"] == "rudder"
+
+    def test_patch_ted_label_without_role_keeps_existing_role(self, _client, _db):
+        """Patching only label must not reset role to 'other'."""
+        aid = _seed_wing_with_ted(_client, "ted_label_only", db=_db)
+        # First set a role
+        _client.patch(
+            f"/aeroplanes/{aid}/wings/w/cross_sections/0/trailing_edge_device",
+            json={"role": "flap"},
+        )
+        # Then patch only the label
+        resp = _client.patch(
+            f"/aeroplanes/{aid}/wings/w/cross_sections/0/trailing_edge_device",
+            json={"label": "Inboard Flap"},
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["role"] == "flap"
+        assert body["label"] == "Inboard Flap"
