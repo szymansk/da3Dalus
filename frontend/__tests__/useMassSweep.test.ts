@@ -134,6 +134,51 @@ describe("useMassSweep", () => {
     expect(result.current.data).toEqual(FAKE_SWEEP);
   });
 
+  it("clears data when aeroplaneId changes", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(FAKE_SWEEP),
+    });
+
+    const { result, rerender } = renderHook(
+      ({ id }) => useMassSweep(id),
+      { initialProps: { id: "42" as string | null } },
+    );
+
+    await act(async () => {
+      await result.current.compute({ velocity: 15, altitude: 0 });
+    });
+    expect(result.current.data).toEqual(FAKE_SWEEP);
+
+    rerender({ id: "99" });
+
+    expect(result.current.data).toBeNull();
+    expect(result.current.error).toBeNull();
+  });
+
+  it("clears data when aeroplaneId becomes null", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(FAKE_SWEEP),
+    });
+
+    const { result, rerender } = renderHook(
+      ({ id }) => useMassSweep(id),
+      { initialProps: { id: "42" as string | null } },
+    );
+
+    await act(async () => {
+      await result.current.compute({ velocity: 15, altitude: 0 });
+    });
+    expect(result.current.data).toEqual(FAKE_SWEEP);
+
+    rerender({ id: null });
+
+    expect(result.current.data).toBeNull();
+  });
+
   it("uses custom masses when provided", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,

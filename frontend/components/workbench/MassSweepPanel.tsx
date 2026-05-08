@@ -32,13 +32,15 @@ export function MassSweepPanel({
         <div className="flex-1" />
 
         <label className="flex items-center gap-1.5 font-[family-name:var(--font-geist-sans)] text-[12px] text-muted-foreground">
-          <span id="velocity-label">Velocity</span>
+          Velocity
           <input
             type="number"
-            aria-labelledby="velocity-label"
             aria-label="Velocity"
             value={velocity}
-            onChange={(e) => setVelocity(Number(e.target.value))}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              if (!Number.isNaN(v)) setVelocity(v);
+            }}
             step={1}
             min={1}
             className="w-16 rounded-md border border-border bg-card px-2 py-1 text-[12px] text-foreground"
@@ -47,13 +49,15 @@ export function MassSweepPanel({
         </label>
 
         <label className="flex items-center gap-1.5 font-[family-name:var(--font-geist-sans)] text-[12px] text-muted-foreground">
-          <span id="altitude-label">Altitude</span>
+          Altitude
           <input
             type="number"
-            aria-labelledby="altitude-label"
             aria-label="Altitude"
             value={altitude}
-            onChange={(e) => setAltitude(Number(e.target.value))}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              if (!Number.isNaN(v)) setAltitude(v);
+            }}
             step={100}
             min={0}
             className="w-20 rounded-md border border-border bg-card px-2 py-1 text-[12px] text-foreground"

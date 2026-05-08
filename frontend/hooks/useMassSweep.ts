@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { API_BASE } from "@/lib/fetcher";
 
 export interface MassSweepPoint {
@@ -37,6 +37,11 @@ export function useMassSweep(aeroplaneId: string | null) {
   const [data, setData] = useState<MassSweepData | null>(null);
   const [isComputing, setIsComputing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setData(null);
+    setError(null);
+  }, [aeroplaneId]);
 
   const compute = useCallback(
     async (opts: ComputeOptions = {}) => {
