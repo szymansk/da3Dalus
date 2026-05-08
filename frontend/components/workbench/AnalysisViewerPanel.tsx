@@ -8,8 +8,10 @@ import type { FlightEnvelopeData } from "@/hooks/useFlightEnvelope";
 import { EnvelopePanel } from "@/components/workbench/EnvelopePanel";
 import type { StabilityData } from "@/hooks/useStability";
 import { StabilityPanel } from "@/components/workbench/StabilityPanel";
+import type { StoredOperatingPoint, AVLTrimResult, AeroBuildupTrimResult, TrimConstraint } from "@/hooks/useOperatingPoints";
+import { OperatingPointsPanel } from "@/components/workbench/OperatingPointsPanel";
 
-const TABS = ["Assumptions", "Polar", "Trefftz Plane", "Streamlines", "Envelope", "Stability"] as const;
+const TABS = ["Assumptions", "Polar", "Trefftz Plane", "Streamlines", "Envelope", "Stability", "Operating Points"] as const;
 export type Tab = (typeof TABS)[number];
 export { TABS };
 
@@ -43,6 +45,14 @@ interface Props {
   readonly isComputingStability?: boolean;
   readonly stabilityError?: string | null;
   readonly onComputeStability?: () => void;
+  readonly operatingPoints?: StoredOperatingPoint[];
+  readonly isLoadingOps?: boolean;
+  readonly isGeneratingOps?: boolean;
+  readonly isTrimmingOps?: boolean;
+  readonly opsError?: string | null;
+  readonly onGenerateOps?: () => void;
+  readonly onTrimWithAvl?: (point: StoredOperatingPoint, constraints: TrimConstraint[]) => Promise<AVLTrimResult | null>;
+  readonly onTrimWithAerobuildup?: (point: StoredOperatingPoint, trimVariable: string, targetCoefficient: string, targetValue: number) => Promise<AeroBuildupTrimResult | null>;
 }
 
 // -- Plotly Chart (dynamic import) ----------------------------------------
@@ -543,6 +553,14 @@ export function AnalysisViewerPanel({
   isComputingStability,
   stabilityError,
   onComputeStability,
+  operatingPoints,
+  isLoadingOps,
+  isGeneratingOps,
+  isTrimmingOps,
+  opsError,
+  onGenerateOps,
+  onTrimWithAvl,
+  onTrimWithAerobuildup,
 }: Readonly<Props>) {
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
 
@@ -765,6 +783,19 @@ export function AnalysisViewerPanel({
           isComputing={isComputingStability ?? false}
           error={stabilityError ?? null}
           onCompute={onComputeStability ?? (() => {})}
+        />
+      )}
+
+      {activeTab === "Operating Points" && (
+        <OperatingPointsPanel
+          points={operatingPoints ?? []}
+          isLoading={isLoadingOps ?? false}
+          isGenerating={isGeneratingOps ?? false}
+          isTrimming={isTrimmingOps ?? false}
+          error={opsError ?? null}
+          onGenerate={onGenerateOps ?? (() => {})}
+          onTrimWithAvl={onTrimWithAvl ?? (() => Promise.resolve(null))}
+          onTrimWithAerobuildup={onTrimWithAerobuildup ?? (() => Promise.resolve(null))}
         />
       )}
 
