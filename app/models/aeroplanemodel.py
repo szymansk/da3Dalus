@@ -116,6 +116,8 @@ class WingXSecTrailingEdgeDeviceModel(Base):
         Integer, ForeignKey("wing_xsec_details.id", ondelete="CASCADE"), nullable=False, unique=True
     )
     name = Column(String, nullable=True)
+    role = Column(String, nullable=False, default="other", server_default="other")
+    label = Column(String, nullable=True)
     rel_chord_root = Column(Float, nullable=True)
     rel_chord_tip = Column(Float, nullable=True)
     hinge_spacing = Column(Float, nullable=True)
@@ -331,9 +333,6 @@ class WingModel(Base):
         ted_payload.pop("wing_xsec_detail_id", None)
         ted_payload.pop("detail", None)
         ted_payload.pop("servo_data", None)
-        # role and label are schema-only until the DB migration adds these columns
-        ted_payload.pop("role", None)
-        ted_payload.pop("label", None)
         servo_payload = cls._as_payload(ted_payload.pop("servo", None))
         ted = WingXSecTrailingEdgeDeviceModel(**ted_payload)
 

@@ -1226,6 +1226,8 @@ def patch_trailing_edge_device(
             setattr(ted, key, value)
 
         db.add(ted)
+        db.flush()
+        db.refresh(ted)
         aeroplane.updated_at = datetime.now()
         return schemas.TrailingEdgeDeviceDetailSchema.model_validate(ted, from_attributes=True)
     except (NotFoundError, ValidationError):
