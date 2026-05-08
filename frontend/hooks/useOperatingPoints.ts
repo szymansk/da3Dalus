@@ -71,6 +71,20 @@ export interface UseOperatingPointsReturn {
   ) => Promise<AeroBuildupTrimResult | null>;
 }
 
+function toTrimPayload(point: StoredOperatingPoint) {
+  return {
+    velocity: point.velocity,
+    alpha: point.alpha,
+    beta: point.beta,
+    p: point.p,
+    q: point.q,
+    r: point.r,
+    xyz_ref: point.xyz_ref,
+    altitude: point.altitude,
+    control_deflections: point.control_deflections,
+  };
+}
+
 export function useOperatingPoints(
   aeroplaneId: string | null,
 ): UseOperatingPointsReturn {
@@ -85,9 +99,9 @@ export function useOperatingPoints(
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(
-        `${API_BASE}/operating_points?aircraft_id=${aeroplaneId}`,
-      );
+      const url = new URL(`${API_BASE}/operating_points`);
+      url.searchParams.set("aircraft_id", aeroplaneId);
+      const res = await fetch(url);
       if (res.status === 404) {
         setPoints([]);
         return;
@@ -114,7 +128,7 @@ export function useOperatingPoints(
       setError(null);
       try {
         const res = await fetch(
-          `${API_BASE}/aeroplanes/${aeroplaneId}/operating-pointsets/generate-default`,
+          `${API_BASE}/aeroplanes/${encodeURIComponent(aeroplaneId)}/operating-pointsets/generate-default`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -145,22 +159,12 @@ export function useOperatingPoints(
       setError(null);
       try {
         const res = await fetch(
-          `${API_BASE}/aeroplanes/${aeroplaneId}/operating-points/avl-trim`,
+          `${API_BASE}/aeroplanes/${encodeURIComponent(aeroplaneId)}/operating-points/avl-trim`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              operating_point: {
-                velocity: point.velocity,
-                alpha: point.alpha,
-                beta: point.beta,
-                p: point.p,
-                q: point.q,
-                r: point.r,
-                xyz_ref: point.xyz_ref,
-                altitude: point.altitude,
-                control_deflections: point.control_deflections,
-              },
+              operating_point: toTrimPayload(point),
               trim_constraints: constraints,
             }),
           },
@@ -194,22 +198,12 @@ export function useOperatingPoints(
       setError(null);
       try {
         const res = await fetch(
-          `${API_BASE}/aeroplanes/${aeroplaneId}/operating-points/aerobuildup-trim`,
+          `${API_BASE}/aeroplanes/${encodeURIComponent(aeroplaneId)}/operating-points/aerobuildup-trim`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              operating_point: {
-                velocity: point.velocity,
-                alpha: point.alpha,
-                beta: point.beta,
-                p: point.p,
-                q: point.q,
-                r: point.r,
-                xyz_ref: point.xyz_ref,
-                altitude: point.altitude,
-                control_deflections: point.control_deflections,
-              },
+              operating_point: toTrimPayload(point),
               trim_variable: trimVariable,
               target_coefficient: targetCoefficient,
               target_value: targetValue,

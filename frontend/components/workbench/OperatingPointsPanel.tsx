@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { X, ChevronUp, ChevronDown } from "lucide-react";
 import type {
   StoredOperatingPoint,
@@ -35,6 +35,15 @@ const STATUS_STYLES: Record<
 
 type SortKey = "name" | "velocity" | "alpha" | "beta" | "config" | "status";
 type SortDir = "asc" | "desc";
+
+const COLUMNS: { key: SortKey; label: string }[] = [
+  { key: "name", label: "Name" },
+  { key: "velocity", label: "Velocity (m/s)" },
+  { key: "alpha", label: "Alpha (deg)" },
+  { key: "beta", label: "Beta (deg)" },
+  { key: "config", label: "Config" },
+  { key: "status", label: "Status" },
+];
 
 interface Props {
   readonly points: StoredOperatingPoint[];
@@ -134,6 +143,15 @@ export function OperatingPointsPanel({
     setAbResult(null);
   }, []);
 
+  useEffect(() => {
+    if (!selectedPoint) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeDrawer();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [selectedPoint, closeDrawer]);
+
   const handleAvlTrim = useCallback(async () => {
     if (!selectedPoint) return;
     const result = await onTrimWithAvl(selectedPoint, avlConstraints);
@@ -185,16 +203,10 @@ export function OperatingPointsPanel({
     setAvlConstraints((prev) => prev.filter((_, i) => i !== idx));
   }, []);
 
-  const sorted = sortPoints(points, sortKey, sortDir);
-
-  const columns: { key: SortKey; label: string }[] = [
-    { key: "name", label: "Name" },
-    { key: "velocity", label: "Velocity (m/s)" },
-    { key: "alpha", label: "Alpha (deg)" },
-    { key: "beta", label: "Beta (deg)" },
-    { key: "config", label: "Config" },
-    { key: "status", label: "Status" },
-  ];
+  const sorted = useMemo(
+    () => sortPoints(points, sortKey, sortDir),
+    [points, sortKey, sortDir],
+  );
 
   return (
     <div className="relative flex flex-1 flex-col gap-4 overflow-auto bg-card-muted p-6">
@@ -238,7 +250,7 @@ export function OperatingPointsPanel({
           <table className="w-full">
             <thead>
               <tr className="border-b border-border">
-                {columns.map((col) => (
+                {COLUMNS.map((col) => (
                   <th
                     key={col.key}
                     onClick={() => handleSort(col.key)}
@@ -315,6 +327,7 @@ export function OperatingPointsPanel({
               </h2>
               <button
                 onClick={closeDrawer}
+                aria-label="Close"
                 className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent"
               >
                 <X size={14} />

@@ -72,9 +72,8 @@ describe("useOperatingPoints", () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      expect.stringContaining("/operating_points?aircraft_id=42"),
-    );
+    const calledUrl = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(calledUrl.toString()).toContain("/operating_points?aircraft_id=42");
     expect(result.current.points).toEqual(fakePoints);
     expect(result.current.error).toBeNull();
   });
