@@ -24,6 +24,7 @@ from app.schemas.aeroanalysisschema import (
     GenerateOperatingPointSetRequest,
     OperatingPointDeflectionPatch,
     OperatingPointSetSchema,
+    OperatingPointStatus,
     StoredOperatingPointCreate,
     StoredOperatingPointRead,
     TrimmedOperatingPointRead,
@@ -255,7 +256,7 @@ def patch_operating_point_deflections(
             detail=f"OperatingPoint {op_id} not found",
         )
     op.control_deflections = patch.control_deflections
-    op.status = "NOT_TRIMMED"
+    op.status = OperatingPointStatus.NOT_TRIMMED
     db.flush()
     db.refresh(op)
     return op

@@ -141,3 +141,18 @@ class TestPatchDeflections:
 
         # And the patched field is correct
         assert data["control_deflections"] == {"flap": 10.0}
+
+    def test_patch_deflections_rejects_invalid_key(self, client_and_db):
+        """Patching with an invalid control surface name returns 422."""
+        client, _ = client_and_db
+
+        create_resp = client.post("/operating_points/", json=_op_payload())
+        assert create_resp.status_code == 200
+        op_id = create_resp.json()["id"]
+
+        patch_resp = client.patch(
+            f"/operating_points/{op_id}/deflections",
+            json={"control_deflections": {"<script>": 5.0}},
+        )
+
+        assert patch_resp.status_code == 422
