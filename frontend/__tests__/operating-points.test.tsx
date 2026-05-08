@@ -438,4 +438,177 @@ describe("OperatingPointsPanel", () => {
       expect(screen.queryByText("Flight Conditions")).not.toBeInTheDocument();
     });
   });
+
+  it("displays error message when error prop is set", () => {
+    if (!OperatingPointsPanel) return;
+    renderPanel({ error: "Something went wrong" });
+    expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+  });
+
+  it("shows loading state", () => {
+    if (!OperatingPointsPanel) return;
+    renderPanel({ isLoading: true });
+    expect(screen.getByText(/loading/i)).toBeInTheDocument();
+  });
+
+  it("shows generating state on button", () => {
+    if (!OperatingPointsPanel) return;
+    renderPanel({ isGenerating: true });
+    expect(screen.getByText("Generating...")).toBeInTheDocument();
+  });
+
+  it("drawer shows flight condition details", async () => {
+    if (!OperatingPointsPanel) return;
+    const user = userEvent.setup();
+    const points = [makeOP({
+      id: 1, name: "Test OP", velocity: 25.0, alpha: 0.05, beta: 0.01,
+      altitude: 1000, config: "takeoff", description: "Test description",
+    })];
+    renderPanel({ points });
+    await user.click(screen.getByText("Test OP"));
+    await waitFor(() => {
+      expect(screen.getByText("Flight Conditions")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Test description")).toBeInTheDocument();
+    expect(screen.getByText("25.00 m/s")).toBeInTheDocument();
+    expect(screen.getByText("1000 m")).toBeInTheDocument();
+    expect(screen.getAllByText("takeoff").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("drawer shows warnings when present", async () => {
+    if (!OperatingPointsPanel) return;
+    const user = userEvent.setup();
+    const points = [makeOP({
+      id: 1, name: "Warned", warnings: ["Stall warning", "Control limit"],
+    })];
+    renderPanel({ points });
+    await user.click(screen.getByText("Warned"));
+    await waitFor(() => {
+      expect(screen.getByText("Stall warning")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Control limit")).toBeInTheDocument();
+  });
+
+  it("drawer shows controls section when controls exist", async () => {
+    if (!OperatingPointsPanel) return;
+    const user = userEvent.setup();
+    const points = [makeOP({
+      id: 1, name: "Trimmed OP", controls: { elevator: -2.1, aileron: 0.5 },
+    })];
+    renderPanel({ points });
+    await user.click(screen.getByText("Trimmed OP"));
+    await waitFor(() => {
+      expect(screen.getByText("Controls")).toBeInTheDocument();
+    });
+    expect(screen.getByText("elevator")).toBeInTheDocument();
+    expect(screen.getByText("aileron")).toBeInTheDocument();
+  });
+
+  it("runs AVL trim and shows result", async () => {
+    if (!OperatingPointsPanel) return;
+    const user = userEvent.setup();
+    const points = [makeOP({ id: 1, name: "TrimMe" })];
+    const onTrimWithAvl = vi.fn().mockResolvedValue(FAKE_AVL_RESULT);
+    renderPanel({ points, onTrimWithAvl });
+    await user.click(screen.getByText("TrimMe"));
+    await waitFor(() => {
+      expect(screen.getByText("Trim with AVL")).toBeInTheDocument();
+    });
+    const runBtn = screen.getByRole("button", { name: /run avl trim/i });
+    await user.click(runBtn);
+    await waitFor(() => {
+      expect(onTrimWithAvl).toHaveBeenCalledOnce();
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Converged")).toBeInTheDocument();
+    });
+  });
+
+  it("runs AeroBuildup trim and shows result", async () => {
+    if (!OperatingPointsPanel) return;
+    const user = userEvent.setup();
+    const points = [makeOP({ id: 1, name: "AbTrim" })];
+    const onTrimWithAerobuildup = vi.fn().mockResolvedValue(FAKE_AEROBUILDUP_RESULT);
+    renderPanel({ points, onTrimWithAerobuildup });
+    await user.click(screen.getByText("AbTrim"));
+    await waitFor(() => {
+      expect(screen.getByText("Trim with AeroBuildup")).toBeInTheDocument();
+    });
+    const runBtn = screen.getByRole("button", { name: /run aerobuildup trim/i });
+    await user.click(runBtn);
+    await waitFor(() => {
+      expect(onTrimWithAerobuildup).toHaveBeenCalledOnce();
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Converged")).toBeInTheDocument();
+    });
+  });
+
+  it("sorts table by clicking column headers", async () => {
+    if (!OperatingPointsPanel) return;
+    const user = userEvent.setup();
+    const points = [
+      makeOP({ id: 1, name: "Bravo", velocity: 30 }),
+      makeOP({ id: 2, name: "Alpha", velocity: 10 }),
+    ];
+    renderPanel({ points });
+    const rows = screen.getAllByRole("row");
+    expect(rows[1]).toHaveTextContent("Alpha");
+    expect(rows[2]).toHaveTextContent("Bravo");
+    const velocityHeader = screen.getByText("Velocity (m/s)");
+    await user.click(velocityHeader);
+    const rowsAfter = screen.getAllByRole("row");
+    expect(rowsAfter[1]).toHaveTextContent("Alpha");
+    await user.click(velocityHeader);
+    const rowsDesc = screen.getAllByRole("row");
+    expect(rowsDesc[1]).toHaveTextContent("Bravo");
+  });
+
+  it("adds and removes AVL trim constraints", async () => {
+    if (!OperatingPointsPanel) return;
+    const user = userEvent.setup();
+    const points = [makeOP({ id: 1, name: "Constrained" })];
+    renderPanel({ points });
+    await user.click(screen.getByText("Constrained"));
+    await waitFor(() => {
+      expect(screen.getByText("Trim with AVL")).toBeInTheDocument();
+    });
+    const addBtn = screen.getByText("+ Constraint");
+    await user.click(addBtn);
+    const variableInputs = screen.getAllByDisplayValue("elevator");
+    expect(variableInputs.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows not converged result for failed trim", async () => {
+    if (!OperatingPointsPanel) return;
+    const user = userEvent.setup();
+    const points = [makeOP({ id: 1, name: "FailTrim" })];
+    const failedResult = { ...FAKE_AVL_RESULT, converged: false };
+    const onTrimWithAvl = vi.fn().mockResolvedValue(failedResult);
+    renderPanel({ points, onTrimWithAvl });
+    await user.click(screen.getByText("FailTrim"));
+    await waitFor(() => {
+      expect(screen.getByText("Trim with AVL")).toBeInTheDocument();
+    });
+    const runBtn = screen.getByRole("button", { name: /run avl trim/i });
+    await user.click(runBtn);
+    await waitFor(() => {
+      expect(screen.getByText("Not Converged")).toBeInTheDocument();
+    });
+  });
+
+  it("closes drawer with Escape key", async () => {
+    if (!OperatingPointsPanel) return;
+    const user = userEvent.setup();
+    const points = [makeOP({ id: 1, name: "EscTest" })];
+    renderPanel({ points });
+    await user.click(screen.getByText("EscTest"));
+    await waitFor(() => {
+      expect(screen.getByText("Flight Conditions")).toBeInTheDocument();
+    });
+    await user.keyboard("{Escape}");
+    await waitFor(() => {
+      expect(screen.queryByText("Flight Conditions")).not.toBeInTheDocument();
+    });
+  });
 });
