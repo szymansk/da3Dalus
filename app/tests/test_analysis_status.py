@@ -54,6 +54,17 @@ def _make_op(session, aircraft_id: int, status: str = "TRIMMED", name: str = "op
 class TestGetAnalysisStatus:
     """Test GET /aeroplanes/{aeroplane_id}/analysis-status."""
 
+    @pytest.fixture(autouse=True)
+    def _clear_job_tracker(self):
+        """Reset the global job_tracker between tests to avoid state leaks."""
+        from app.core.background_jobs import job_tracker
+
+        job_tracker._jobs.clear()
+        job_tracker._debounce_tasks.clear()
+        yield
+        job_tracker._jobs.clear()
+        job_tracker._debounce_tasks.clear()
+
     def test_returns_empty_for_unknown_aeroplane(self, client_and_db):
         client, _ = client_and_db
         fake_uuid = str(uuid.uuid4())
