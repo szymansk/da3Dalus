@@ -189,7 +189,7 @@ work: `git push` before saying "done". If push fails, resolve and retry.
 
 ## Git
 
-- Remote is named `github` (not `origin`): `git push github <branch>`
+- Remote is named `origin`: `git push origin <branch>`
 - SonarQube project key: `szymansk_da3Dalus` (see `sonar-project.properties`)
 
 
