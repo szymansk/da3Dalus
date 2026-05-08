@@ -8,7 +8,7 @@ import type { FlightEnvelopeData } from "@/hooks/useFlightEnvelope";
 import { EnvelopePanel } from "@/components/workbench/EnvelopePanel";
 import type { StabilityData } from "@/hooks/useStability";
 import { StabilityPanel } from "@/components/workbench/StabilityPanel";
-import type { StoredOperatingPoint, AVLTrimResult, AeroBuildupTrimResult, TrimConstraint } from "@/hooks/useOperatingPoints";
+import type { StoredOperatingPoint, AVLTrimResult, AeroBuildupTrimResult, TrimConstraint, ControlSurface } from "@/hooks/useOperatingPoints";
 import { OperatingPointsPanel } from "@/components/workbench/OperatingPointsPanel";
 
 const TABS = ["Assumptions", "Polar", "Trefftz Plane", "Streamlines", "Envelope", "Stability", "Operating Points"] as const;
@@ -53,6 +53,8 @@ interface Props {
   readonly onGenerateOps?: () => void;
   readonly onTrimWithAvl?: (point: StoredOperatingPoint, constraints: TrimConstraint[]) => Promise<AVLTrimResult | null>;
   readonly onTrimWithAerobuildup?: (point: StoredOperatingPoint, trimVariable: string, targetCoefficient: string, targetValue: number) => Promise<AeroBuildupTrimResult | null>;
+  readonly controlSurfaces?: ControlSurface[];
+  readonly onUpdateDeflections?: (opId: number, deflections: Record<string, number> | null) => Promise<void>;
 }
 
 // -- Plotly Chart (dynamic import) ----------------------------------------
@@ -561,6 +563,8 @@ export function AnalysisViewerPanel({
   onGenerateOps,
   onTrimWithAvl,
   onTrimWithAerobuildup,
+  controlSurfaces,
+  onUpdateDeflections,
 }: Readonly<Props>) {
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
 
@@ -796,6 +800,8 @@ export function AnalysisViewerPanel({
           onGenerate={onGenerateOps ?? (() => {})}
           onTrimWithAvl={onTrimWithAvl ?? (() => Promise.resolve(null))}
           onTrimWithAerobuildup={onTrimWithAerobuildup ?? (() => Promise.resolve(null))}
+          controlSurfaces={controlSurfaces ?? []}
+          onUpdateDeflections={onUpdateDeflections ?? (async () => {})}
         />
       )}
 

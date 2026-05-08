@@ -2,8 +2,37 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { API_BASE } from "@/lib/fetcher";
+import type { Wing } from "@/hooks/useWings";
 
 export type OperatingPointStatus = "TRIMMED" | "NOT_TRIMMED" | "LIMIT_REACHED";
+
+export interface ControlSurface {
+  name: string;
+  deflection_deg: number;
+}
+
+function isValidControlDevice(
+  ted: Record<string, unknown> | null | undefined,
+): ted is Record<string, unknown> & { name: string } {
+  return ted != null && typeof ted === "object" && typeof ted.name === "string";
+}
+
+export function extractControlSurfaces(wings: Wing[]): ControlSurface[] {
+  const seen = new Map<string, number>();
+  const allXSecs = wings.flatMap((w) => w.x_secs);
+  for (const xsec of allXSecs) {
+    const ted = xsec.trailing_edge_device ?? xsec.control_surface;
+    if (!isValidControlDevice(ted)) continue;
+    if (seen.has(ted.name)) continue;
+    const deflection =
+      typeof ted.deflection_deg === "number" ? ted.deflection_deg : 0;
+    seen.set(ted.name, deflection);
+  }
+  return Array.from(seen.entries()).map(([name, deflection_deg]) => ({
+    name,
+    deflection_deg,
+  }));
+}
 
 export interface StoredOperatingPoint {
   id: number;
@@ -69,6 +98,10 @@ export interface UseOperatingPointsReturn {
     targetCoefficient: string,
     targetValue: number,
   ) => Promise<AeroBuildupTrimResult | null>;
+  updateDeflections: (
+    opId: number,
+    deflections: Record<string, number> | null,
+  ) => Promise<void>;
 }
 
 function toTrimPayload(point: StoredOperatingPoint) {
@@ -227,6 +260,35 @@ export function useOperatingPoints(
     [aeroplaneId, refresh],
   );
 
+  const updateDeflections = useCallback(
+    async (
+      opId: number,
+      deflections: Record<string, number> | null,
+    ): Promise<void> => {
+      setError(null);
+      try {
+        const res = await fetch(
+          `${API_BASE}/operating_points/${opId}/deflections`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ control_deflections: deflections }),
+          },
+        );
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(
+            `Failed to update deflections: ${res.status} ${body}`,
+          );
+        }
+        await refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
+    },
+    [refresh],
+  );
+
   useEffect(() => {
     if (aeroplaneId) {
       refresh();
@@ -245,5 +307,6 @@ export function useOperatingPoints(
     refresh,
     trimWithAvl,
     trimWithAerobuildup,
+    updateDeflections,
   };
 }

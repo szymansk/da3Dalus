@@ -304,6 +304,30 @@ class StoredOperatingPointRead(StoredOperatingPointCreate):
     id: int
 
 
+class OperatingPointDeflectionPatch(BaseModel):
+    """Partial update: only control surface deflection overrides."""
+
+    control_deflections: dict[str, float] | None = Field(
+        ...,
+        description="Runtime control surface deflections (name → degrees). "
+        "Overrides geometry defaults for this operating point. "
+        "Set to null to clear all overrides.",
+    )
+
+    @field_validator("control_deflections")
+    @classmethod
+    def validate_deflection_keys(cls, v: dict[str, float] | None) -> dict[str, float] | None:
+        if v is None:
+            return v
+        for key in v:
+            if not re.match(r"^[a-zA-Z][a-zA-Z0-9_ -]*$", key):
+                raise ValueError(
+                    f"Invalid control surface name '{key}'. "
+                    "Must start with a letter, followed by letters/digits/underscores/spaces/hyphens."
+                )
+        return v
+
+
 class GenerateOperatingPointSetRequest(BaseModel):
     replace_existing: bool = Field(
         False,

@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { X } from "lucide-react";
 import { useDialog } from "@/hooks/useDialog";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAnalysis } from "@/hooks/useAnalysis";
 import { useStripForces } from "@/hooks/useStripForces";
 import { useStreamlines } from "@/hooks/useStreamlines";
-import { useWings, useWing } from "@/hooks/useWings";
+import { useWings, useAllWingData, useWing } from "@/hooks/useWings";
 import { useFlightEnvelope } from "@/hooks/useFlightEnvelope";
 import { useStability } from "@/hooks/useStability";
-import { useOperatingPoints } from "@/hooks/useOperatingPoints";
+import { useOperatingPoints, extractControlSurfaces } from "@/hooks/useOperatingPoints";
 import { AnalysisViewerPanel, type Tab } from "@/components/workbench/AnalysisViewerPanel";
 import { AnalysisConfigPanel } from "@/components/workbench/AnalysisConfigPanel";
 import { AvlGeometryEditor } from "@/components/workbench/AvlGeometryEditor";
@@ -25,7 +25,12 @@ export default function AnalysisPage() {
   const stability = useStability(aeroplaneId);
   const ops = useOperatingPoints(aeroplaneId);
   const { wingNames } = useWings(aeroplaneId);
+  const { wings: allWings } = useAllWingData(aeroplaneId, wingNames);
   const { wing } = useWing(aeroplaneId, selectedWing ?? wingNames[0] ?? null);
+  const controlSurfaces = useMemo(
+    () => extractControlSurfaces(allWings),
+    [allWings],
+  );
   const [configOpen, setConfigOpen] = useState(false);
   const [avlEditorOpen, setAvlEditorOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("Polar");
@@ -94,6 +99,8 @@ export default function AnalysisPage() {
             onGenerateOps={ops.generate}
             onTrimWithAvl={ops.trimWithAvl}
             onTrimWithAerobuildup={ops.trimWithAerobuildup}
+            controlSurfaces={controlSurfaces}
+            onUpdateDeflections={ops.updateDeflections}
           />
         </div>
       </div>

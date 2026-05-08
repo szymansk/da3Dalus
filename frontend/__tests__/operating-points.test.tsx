@@ -4,11 +4,14 @@ import userEvent from "@testing-library/user-event";
 import React from "react";
 import {
   useOperatingPoints,
+  extractControlSurfaces,
   type StoredOperatingPoint,
   type AVLTrimResult,
   type AeroBuildupTrimResult,
   type TrimConstraint,
+  type ControlSurface,
 } from "@/hooks/useOperatingPoints";
+import type { Wing } from "@/hooks/useWings";
 
 function makeOP(overrides: Partial<StoredOperatingPoint> = {}): StoredOperatingPoint {
   return {
@@ -301,6 +304,57 @@ describe("useOperatingPoints", () => {
     expect(result.current.error).toContain("500");
     expect(result.current.isTrimming).toBe(false);
   });
+
+  it("updateDeflections() calls PATCH endpoint and refreshes", async () => {
+    const point = makeOP();
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve([point]) })
+      .mockResolvedValueOnce({ ok: true, status: 200 })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve([point]) });
+    globalThis.fetch = mockFetch;
+
+    const { result } = renderHook(() => useOperatingPoints("42"));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.updateDeflections(1, { elevator: -5 });
+    });
+
+    expect(mockFetch.mock.calls[1][0]).toContain("/operating_points/1/deflections");
+    expect(mockFetch.mock.calls[1][1]).toEqual(
+      expect.objectContaining({ method: "PATCH" }),
+    );
+    const body = JSON.parse(mockFetch.mock.calls[1][1].body);
+    expect(body).toEqual({ control_deflections: { elevator: -5 } });
+    // Refresh was called (3rd fetch call)
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+    expect(result.current.error).toBeNull();
+  });
+
+  it("updateDeflections() sets error on failure", async () => {
+    const point = makeOP();
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve([point]) })
+      .mockResolvedValueOnce({ ok: false, status: 400, text: () => Promise.resolve("Bad request") });
+    globalThis.fetch = mockFetch;
+
+    const { result } = renderHook(() => useOperatingPoints("42"));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.updateDeflections(1, { elevator: -5 });
+    });
+
+    expect(result.current.error).toContain("400");
+  });
 });
 
 vi.mock("lucide-react", () => {
@@ -346,6 +400,8 @@ describe("OperatingPointsPanel", () => {
       onGenerate: vi.fn(),
       onTrimWithAvl: vi.fn().mockResolvedValue(null),
       onTrimWithAerobuildup: vi.fn().mockResolvedValue(null),
+      controlSurfaces: [] as ControlSurface[],
+      onUpdateDeflections: vi.fn().mockResolvedValue(undefined),
       ...overrides,
     };
     return { ...render(<OperatingPointsPanel {...defaultProps} />), props: defaultProps };
@@ -738,5 +794,178 @@ describe("OperatingPointsPanel", () => {
     await user.click(screen.getByText("Beta (deg)"));
     const rowsBeta = screen.getAllByRole("row");
     expect(rowsBeta[1]).toHaveTextContent("Point2");
+  });
+
+  it("drawer shows Control Deflections section when control surfaces exist", async () => {
+    if (!OperatingPointsPanel) return;
+    const user = userEvent.setup();
+    const points = [makeOP({ id: 1, name: "DeflTest" })];
+    const controlSurfaces: ControlSurface[] = [
+      { name: "elevator", deflection_deg: 0 },
+      { name: "aileron", deflection_deg: 5 },
+    ];
+    renderPanel({ points, controlSurfaces });
+    await user.click(screen.getByText("DeflTest"));
+    await waitFor(() => {
+      expect(screen.getByText("Control Deflections")).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText("elevator deflection")).toBeInTheDocument();
+    expect(screen.getByLabelText("aileron deflection")).toBeInTheDocument();
+  });
+
+  it("shows 'No control surfaces found' when empty", async () => {
+    if (!OperatingPointsPanel) return;
+    const user = userEvent.setup();
+    const points = [makeOP({ id: 1, name: "EmptyCS" })];
+    renderPanel({ points, controlSurfaces: [] });
+    await user.click(screen.getByText("EmptyCS"));
+    await waitFor(() => {
+      expect(screen.getByText("Control Deflections")).toBeInTheDocument();
+    });
+    expect(screen.getByText("No control surfaces found")).toBeInTheDocument();
+  });
+
+  it("shows override values when control_deflections is set", async () => {
+    if (!OperatingPointsPanel) return;
+    const user = userEvent.setup();
+    const points = [
+      makeOP({
+        id: 1,
+        name: "OverrideTest",
+        control_deflections: { elevator: -3.5 },
+      }),
+    ];
+    const controlSurfaces: ControlSurface[] = [
+      { name: "elevator", deflection_deg: 0 },
+    ];
+    renderPanel({ points, controlSurfaces });
+    await user.click(screen.getByText("OverrideTest"));
+    await waitFor(() => {
+      expect(screen.getByText("Control Deflections")).toBeInTheDocument();
+    });
+    const input = screen.getByLabelText("elevator deflection");
+    expect(input).toHaveValue(-3.5);
+  });
+
+  it("Save Deflections button calls onUpdateDeflections", async () => {
+    if (!OperatingPointsPanel) return;
+    const user = userEvent.setup();
+    const points = [makeOP({ id: 1, name: "SaveTest" })];
+    const controlSurfaces: ControlSurface[] = [
+      { name: "elevator", deflection_deg: 0 },
+    ];
+    const onUpdateDeflections = vi.fn().mockResolvedValue(undefined);
+    renderPanel({ points, controlSurfaces, onUpdateDeflections });
+    await user.click(screen.getByText("SaveTest"));
+    await waitFor(() => {
+      expect(screen.getByText("Control Deflections")).toBeInTheDocument();
+    });
+    const saveBtn = screen.getByRole("button", { name: /save deflections/i });
+    await user.click(saveBtn);
+    expect(onUpdateDeflections).toHaveBeenCalledWith(1, { elevator: 0 });
+  });
+});
+
+describe("extractControlSurfaces", () => {
+  it("extracts control surfaces from wing trailing edge devices", () => {
+    const wings: Wing[] = [
+      {
+        name: "main_wing",
+        symmetric: true,
+        x_secs: [
+          {
+            xyz_le: [0, 0, 0],
+            chord: 1.0,
+            twist: 0,
+            airfoil: "NACA2412",
+            trailing_edge_device: { name: "elevator", deflection_deg: -2 },
+          },
+          {
+            xyz_le: [0, 1, 0],
+            chord: 0.8,
+            twist: 0,
+            airfoil: "NACA2412",
+            trailing_edge_device: null,
+          },
+        ],
+      },
+    ];
+    const result = extractControlSurfaces(wings);
+    expect(result).toEqual([{ name: "elevator", deflection_deg: -2 }]);
+  });
+
+  it("deduplicates by name, keeping first occurrence", () => {
+    const wings: Wing[] = [
+      {
+        name: "main_wing",
+        symmetric: true,
+        x_secs: [
+          {
+            xyz_le: [0, 0, 0],
+            chord: 1.0,
+            twist: 0,
+            airfoil: "NACA2412",
+            trailing_edge_device: { name: "aileron", deflection_deg: 5 },
+          },
+          {
+            xyz_le: [0, 1, 0],
+            chord: 0.8,
+            twist: 0,
+            airfoil: "NACA2412",
+            trailing_edge_device: { name: "aileron", deflection_deg: 10 },
+          },
+        ],
+      },
+    ];
+    const result = extractControlSurfaces(wings);
+    expect(result).toEqual([{ name: "aileron", deflection_deg: 5 }]);
+  });
+
+  it("returns empty array for wings without TEDs", () => {
+    const wings: Wing[] = [
+      {
+        name: "main_wing",
+        symmetric: true,
+        x_secs: [
+          {
+            xyz_le: [0, 0, 0],
+            chord: 1.0,
+            twist: 0,
+            airfoil: "NACA2412",
+          },
+        ],
+      },
+    ];
+    const result = extractControlSurfaces(wings);
+    expect(result).toEqual([]);
+  });
+
+  it("handles null/undefined trailing_edge_device", () => {
+    const wings: Wing[] = [
+      {
+        name: "main_wing",
+        symmetric: true,
+        x_secs: [
+          {
+            xyz_le: [0, 0, 0],
+            chord: 1.0,
+            twist: 0,
+            airfoil: "NACA2412",
+            trailing_edge_device: null,
+            control_surface: null,
+          },
+          {
+            xyz_le: [0, 1, 0],
+            chord: 0.8,
+            twist: 0,
+            airfoil: "NACA2412",
+            trailing_edge_device: undefined,
+            control_surface: undefined,
+          },
+        ],
+      },
+    ];
+    const result = extractControlSurfaces(wings);
+    expect(result).toEqual([]);
   });
 });
