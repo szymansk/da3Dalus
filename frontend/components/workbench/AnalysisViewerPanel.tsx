@@ -6,8 +6,10 @@ import type { AnalysisResult } from "@/hooks/useAnalysis";
 import type { StripForcesResult } from "@/hooks/useStripForces";
 import type { FlightEnvelopeData } from "@/hooks/useFlightEnvelope";
 import { EnvelopePanel } from "@/components/workbench/EnvelopePanel";
+import type { StabilityData } from "@/hooks/useStability";
+import { StabilityPanel } from "@/components/workbench/StabilityPanel";
 
-const TABS = ["Assumptions", "Polar", "Trefftz Plane", "Streamlines", "Envelope"] as const;
+const TABS = ["Assumptions", "Polar", "Trefftz Plane", "Streamlines", "Envelope", "Stability"] as const;
 export type Tab = (typeof TABS)[number];
 export { TABS };
 
@@ -37,6 +39,10 @@ interface Props {
   readonly isComputingEnvelope?: boolean;
   readonly envelopeError?: string | null;
   readonly onComputeEnvelope?: () => void;
+  readonly stability?: StabilityData | null;
+  readonly isComputingStability?: boolean;
+  readonly stabilityError?: string | null;
+  readonly onComputeStability?: () => void;
 }
 
 // -- Plotly Chart (dynamic import) ----------------------------------------
@@ -533,6 +539,10 @@ export function AnalysisViewerPanel({
   isComputingEnvelope,
   envelopeError,
   onComputeEnvelope,
+  stability,
+  isComputingStability,
+  stabilityError,
+  onComputeStability,
 }: Readonly<Props>) {
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
 
@@ -746,6 +756,15 @@ export function AnalysisViewerPanel({
           isComputing={isComputingEnvelope ?? false}
           error={envelopeError ?? null}
           onCompute={onComputeEnvelope ?? (() => {})}
+        />
+      )}
+
+      {activeTab === "Stability" && (
+        <StabilityPanel
+          data={stability ?? null}
+          isComputing={isComputingStability ?? false}
+          error={stabilityError ?? null}
+          onCompute={onComputeStability ?? (() => {})}
         />
       )}
 
