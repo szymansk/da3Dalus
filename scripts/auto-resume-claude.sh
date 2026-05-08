@@ -18,6 +18,7 @@ MAX_RETRIES=50
 LOG_FILE="claude-auto-resume.log"
 OUTPUT_DIR="claude-auto-resume-output"
 VERBOSITY="quiet"  # quiet | normal | verbose
+SESSION_RUN_ID="$(date '+%Y%m%d-%H%M%S')"
 
 ISSUE_NUMBER=""
 RESUME_MODE=false
@@ -163,6 +164,7 @@ run_claude() {
   local issue="${2:-$ISSUE_NUMBER}"
   local attempt_output="${OUTPUT_DIR}/issue-${issue}-attempt-${attempt}.log"
   local prompt
+  local session_name="auto-resume-${issue}-${SESSION_RUN_ID}"
 
   if [[ "$attempt" -eq 1 ]]; then
     log "Starting: /${SUPERCYCLE_CMD} #${issue}"
@@ -174,7 +176,9 @@ run_claude() {
 
   local claude_args=(--dangerously-skip-permissions)
   if [[ "$attempt" -gt 1 ]]; then
-    claude_args+=(--resume)
+    claude_args+=(--resume "$session_name")
+  else
+    claude_args+=(--name "$session_name")
   fi
   claude_args+=(-p "$prompt")
 
@@ -272,18 +276,19 @@ run_claude() {
 parse_reset_time() {
   local output="$1"
   local reset_match
-  reset_match="$(grep -oiE 'resets [0-9]{1,2}:[0-9]{2}(am|pm)' <<< "$output" | head -1 || true)"
+  reset_match="$(grep -oiE 'resets [0-9]{1,2}(:[0-9]{2})?(am|pm)' <<< "$output" | head -1 || true)"
 
   if [[ -z "$reset_match" ]]; then
     return 1
   fi
 
   local time_part
-  time_part="$(echo "$reset_match" | grep -oiE '[0-9]{1,2}:[0-9]{2}(am|pm)')"
+  time_part="$(echo "$reset_match" | grep -oiE '[0-9]{1,2}(:[0-9]{2})?(am|pm)')"
 
   local hour minute ampm
   hour="$(echo "$time_part" | grep -oE '^[0-9]{1,2}')"
-  minute="$(echo "$time_part" | grep -oE ':[0-9]{2}' | tr -d ':')"
+  minute="$(echo "$time_part" | grep -oE ':[0-9]{2}' | tr -d ':' || true)"
+  minute="${minute:-00}"
   ampm="$(echo "$time_part" | grep -oiE '(am|pm)')"
 
   if [[ "$(echo "$ampm" | tr '[:upper:]' '[:lower:]')" == "pm" && "$hour" -ne 12 ]]; then
