@@ -322,6 +322,14 @@ export function OperatingPointsPanel({
                         )}
                         {style.label}
                       </span>
+                      {pt.trim_enrichment?.design_warnings?.some(
+                        (w: { level: string }) => w.level === "warning" || w.level === "critical",
+                      ) && (
+                        <span
+                          className="ml-1.5 inline-block size-2 rounded-full bg-yellow-500"
+                          title="Has design warnings"
+                        />
+                      )}
                     </td>
                   </tr>
                 );
@@ -363,6 +371,10 @@ export function OperatingPointsPanel({
                   {selectedPoint.description}
                 </p>
               )}
+
+              <AnalysisGoalBanner enrichment={selectedPoint.trim_enrichment ?? null} />
+              <ControlAuthorityChart enrichment={selectedPoint.trim_enrichment ?? null} />
+              <DesignWarningBadges enrichment={selectedPoint.trim_enrichment ?? null} />
 
               <div className="flex flex-col gap-3 rounded-xl border border-border bg-card-muted p-4">
                 <span className="font-[family-name:var(--font-geist-sans)] text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
