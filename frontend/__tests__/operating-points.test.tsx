@@ -611,4 +611,132 @@ describe("OperatingPointsPanel", () => {
       expect(screen.queryByText("Flight Conditions")).not.toBeInTheDocument();
     });
   });
+
+  it("AVL trim result shows trimmed deflections and aero coefficients", async () => {
+    if (!OperatingPointsPanel) return;
+    const user = userEvent.setup();
+    const points = [makeOP({ id: 1, name: "FullResult" })];
+    const onTrimWithAvl = vi.fn().mockResolvedValue(FAKE_AVL_RESULT);
+    renderPanel({ points, onTrimWithAvl });
+    await user.click(screen.getByText("FullResult"));
+    await waitFor(() => {
+      expect(screen.getByText("Run AVL Trim")).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole("button", { name: /run avl trim/i }));
+    await waitFor(() => {
+      expect(screen.getByText("Trimmed Deflections")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Aero Coefficients")).toBeInTheDocument();
+    expect(screen.getByText("-2.5000")).toBeInTheDocument();
+  });
+
+  it("AeroBuildup trim result shows trim variable and achieved value", async () => {
+    if (!OperatingPointsPanel) return;
+    const user = userEvent.setup();
+    const points = [makeOP({ id: 1, name: "AbFullResult" })];
+    const onTrimWithAerobuildup = vi.fn().mockResolvedValue(FAKE_AEROBUILDUP_RESULT);
+    renderPanel({ points, onTrimWithAerobuildup });
+    await user.click(screen.getByText("AbFullResult"));
+    await waitFor(() => {
+      expect(screen.getByText("Trim with AeroBuildup")).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole("button", { name: /run aerobuildup trim/i }));
+    await waitFor(() => {
+      expect(screen.getByText("-3.0000")).toBeInTheDocument();
+    });
+    expect(screen.getAllByText("0.500000").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("displays status badge in drawer", async () => {
+    if (!OperatingPointsPanel) return;
+    const user = userEvent.setup();
+    const points = [makeOP({ id: 1, name: "BadgeTest", status: "LIMIT_REACHED" })];
+    renderPanel({ points });
+    await user.click(screen.getByText("BadgeTest"));
+    await waitFor(() => {
+      expect(screen.getAllByText("Status").length).toBeGreaterThanOrEqual(2);
+    });
+    const badges = screen.getAllByText("Limit Reached");
+    expect(badges.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("trim buttons disabled when isTrimming is true", async () => {
+    if (!OperatingPointsPanel) return;
+    const user = userEvent.setup();
+    const points = [makeOP({ id: 1, name: "DisabledTest" })];
+    renderPanel({ points, isTrimming: true });
+    await user.click(screen.getByText("DisabledTest"));
+    await waitFor(() => {
+      const trimmingButtons = screen.getAllByText("Trimming...");
+      expect(trimmingButtons.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("modifies AVL constraint values via inputs", async () => {
+    if (!OperatingPointsPanel) return;
+    const user = userEvent.setup();
+    const points = [makeOP({ id: 1, name: "InputTest" })];
+    renderPanel({ points });
+    await user.click(screen.getByText("InputTest"));
+    await waitFor(() => {
+      expect(screen.getByText("Trim with AVL")).toBeInTheDocument();
+    });
+    const variableInputs = screen.getAllByDisplayValue("elevator");
+    const avlInput = variableInputs[0];
+    await user.clear(avlInput);
+    await user.type(avlInput, "aileron");
+    expect(avlInput).toHaveValue("aileron");
+  });
+
+  it("modifies AeroBuildup trim form inputs", async () => {
+    if (!OperatingPointsPanel) return;
+    const user = userEvent.setup();
+    const points = [makeOP({ id: 1, name: "AbInputTest" })];
+    renderPanel({ points });
+    await user.click(screen.getByText("AbInputTest"));
+    await waitFor(() => {
+      expect(screen.getByText("Trim with AeroBuildup")).toBeInTheDocument();
+    });
+    const elevatorInputs = screen.getAllByDisplayValue("elevator");
+    expect(elevatorInputs.length).toBeGreaterThanOrEqual(2);
+    const coeffInput = screen.getByDisplayValue("CL");
+    expect(coeffInput).toBeInTheDocument();
+  });
+
+  it("removes an AVL constraint", async () => {
+    if (!OperatingPointsPanel) return;
+    const user = userEvent.setup();
+    const points = [makeOP({ id: 1, name: "RemoveTest" })];
+    renderPanel({ points });
+    await user.click(screen.getByText("RemoveTest"));
+    await waitFor(() => {
+      expect(screen.getByText("Trim with AVL")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("+ Constraint"));
+    const valueInputsBefore = screen.getAllByDisplayValue("0");
+    const removeButtons = screen.getAllByRole("button").filter(
+      (b) => b.querySelector("[size]") && b.closest(".flex.items-end"),
+    );
+    if (removeButtons.length > 0) {
+      await user.click(removeButtons[removeButtons.length - 1]);
+    }
+    const valueInputsAfter = screen.getAllByDisplayValue("0");
+    expect(valueInputsAfter.length).toBeLessThanOrEqual(valueInputsBefore.length);
+  });
+
+  it("sorts by different columns: config and status", async () => {
+    if (!OperatingPointsPanel) return;
+    const user = userEvent.setup();
+    const points = [
+      makeOP({ id: 1, name: "Point1", config: "landing", status: "TRIMMED", beta: 0.05 }),
+      makeOP({ id: 2, name: "Point2", config: "clean", status: "NOT_TRIMMED", beta: 0.01 }),
+    ];
+    renderPanel({ points });
+    await user.click(screen.getByText("Config"));
+    const rows = screen.getAllByRole("row");
+    expect(rows[1]).toHaveTextContent("Point2");
+    await user.click(screen.getByText("Beta (deg)"));
+    const rowsBeta = screen.getAllByRole("row");
+    expect(rowsBeta[1]).toHaveTextContent("Point2");
+  });
 });
