@@ -88,6 +88,8 @@ class TrimmedPoint:
     status: OperatingPointStatus
     warnings: list[str]
     controls: dict[str, float]
+    trim_score: float | None = None
+    trim_residuals: dict[str, float] | None = None
     trim_enrichment: dict | None = None
 
 
@@ -753,6 +755,8 @@ def _trim_or_estimate_point(
     best_alpha = 0.0
     best_beta = beta_candidates[0]
     best_controls: dict[str, float] = {}
+    best_residuals: dict[str, float] = {}
+    best_method = "opti"
 
     opti_solution = _solve_trim_candidate_with_opti(
         asb_airplane=asb_airplane,
@@ -769,6 +773,8 @@ def _trim_or_estimate_point(
         best_alpha = float(opti_solution["alpha_deg"])
         best_beta = float(opti_solution["beta_deg"])
         best_controls = dict(opti_solution["controls"])
+        best_residuals = dict(opti_solution.get("metrics", {}))
+        best_method = "opti"
 
     # Fallback grid-search if opti didn't converge well enough
     if best_score > 0.35:
@@ -787,6 +793,8 @@ def _trim_or_estimate_point(
                 gs_beta,
                 gs_controls,
             )
+            best_residuals = {}
+            best_method = "grid_search"
             velocity = gs_velocity
 
     trim_status = _apply_limit_warnings(best_alpha, best_beta, best_score, constraints, warnings)
@@ -808,6 +816,8 @@ def _trim_or_estimate_point(
         status=trim_status,
         warnings=warnings,
         controls=best_controls,
+        trim_score=best_score if best_score < float("inf") else None,
+        trim_residuals=best_residuals,
     )
 
 
@@ -909,8 +919,8 @@ def generate_default_set_for_aircraft(
                 point=point,
                 limits=deflection_limits,
                 trim_method="opti",
-                trim_score=None,
-                trim_residuals={},
+                trim_score=point.trim_score,
+                trim_residuals=point.trim_residuals or {},
             )
             point.trim_enrichment = enrichment.model_dump()
             points.append(point)
@@ -1006,8 +1016,8 @@ def trim_operating_point_for_aircraft(
             point=point,
             limits=deflection_limits,
             trim_method="opti",
-            trim_score=None,
-            trim_residuals={},
+            trim_score=point.trim_score,
+            trim_residuals=point.trim_residuals or {},
         )
 
         point_payload = StoredOperatingPointCreate(

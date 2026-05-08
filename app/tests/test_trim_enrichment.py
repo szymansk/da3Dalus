@@ -517,3 +517,42 @@ class TestEnrichmentIntegration:
 
         assert result.point.trim_enrichment is not None
         assert result.point.trim_enrichment["analysis_goal"] == "User-defined trim point"
+
+    def test_trim_score_flows_through_to_enrichment(self, db_session):
+        from app.services.operating_point_generator_service import generate_default_set_for_aircraft
+
+        def _fake_trim_with_score(*_, target, **__):
+            return TrimmedPoint(
+                name=target["name"],
+                description=f"mocked {target['name']}",
+                config=target["config"],
+                velocity=float(target["velocity"]),
+                altitude=float(target["altitude"]),
+                alpha_rad=0.05,
+                beta_rad=0.0,
+                p=0.0, q=0.0, r=0.0,
+                status=OperatingPointStatus.TRIMMED,
+                warnings=[],
+                controls={"[elevator]Elevator": -3.0},
+                trim_score=0.15,
+                trim_residuals={"cm": 0.08, "cy": 0.01},
+            )
+
+        aircraft_uuid = uuid.uuid4()
+        aircraft = AeroplaneModel(name="score-flow", uuid=aircraft_uuid)
+        db_session.add(aircraft)
+        db_session.commit()
+
+        with (
+            patch("app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async", return_value=SimpleNamespace()),
+            patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_for_integration("[elevator]Elevator", "[rudder]Rudder")),
+            patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim_with_score),
+        ):
+            result = generate_default_set_for_aircraft(db_session, aircraft_uuid)
+
+        first_op = result.operating_points[0]
+        assert first_op.trim_enrichment is not None
+        assert first_op.trim_enrichment["trim_score"] == pytest.approx(0.15)
+        assert first_op.trim_enrichment["trim_residuals"]["cm"] == pytest.approx(0.08)
+        warning_categories = [w["category"] for w in first_op.trim_enrichment["design_warnings"]]
+        assert "trim_quality" in warning_categories
