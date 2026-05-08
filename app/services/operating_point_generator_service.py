@@ -18,10 +18,13 @@ from app.models.aeroplanemodel import AeroplaneModel
 from app.models.analysismodels import OperatingPointModel, OperatingPointSetModel
 from app.models.flightprofilemodel import RCFlightProfileModel
 from app.schemas.aeroanalysisschema import (
+    DeflectionReserve,
+    DesignWarning,
     GeneratedOperatingPointSetRead,
     OperatingPointStatus,
     StoredOperatingPointCreate,
     StoredOperatingPointRead,
+    TrimEnrichment,
     TrimmedOperatingPointRead,
     TrimOperatingPointRequest,
 )
@@ -39,6 +42,23 @@ PITCH_TOKENS = {"elevator", "stabilator", "elevon"}
 ROLL_TOKENS = {"aileron", "elevon"}
 YAW_TOKENS = {"rudder"}
 FLAP_TOKENS = {"flap"}
+
+ANALYSIS_GOALS: dict[str, str] = {
+    "stall_near_clean": "Can the aircraft trim near stall? How much elevator authority remains?",
+    "takeoff_climb": "What flap + elevator setting gives safe climb at takeoff speed?",
+    "cruise": "What is the drag-minimal trim at cruise speed?",
+    "loiter_endurance": "What trim gives minimum sink for max loiter endurance?",
+    "max_level_speed": "Can the aircraft trim at Vmax? Is the tail adequate?",
+    "approach_landing": "What flap + elevator trim for safe approach speed?",
+    "turn_n2": "How much aileron + rudder for coordinated turn at 2g?",
+    "dutch_role_start": "How does the aircraft respond to sideslip? Is yaw damping adequate?",
+    "best_angle_climb_vx": "What trim gives the steepest climb for obstacle clearance?",
+    "best_rate_climb_vy": "What trim gives the fastest altitude gain?",
+    "max_range": "What trim maximizes ground distance per unit energy?",
+    "stall_with_flaps": "How does stall behavior change with flaps deployed?",
+}
+
+_DEFAULT_ANALYSIS_GOAL = "User-defined trim point"
 
 
 def _parse_role_tag(name: str) -> tuple[Optional[str], str]:
@@ -86,6 +106,98 @@ def _compute_trim_score(cm: float, cy: float, cl: float, cl_target: Optional[flo
     if cl_target is not None:
         score += 0.3 * abs(cl - cl_target)
     return score
+
+
+def _build_deflection_limits(
+    asb_airplane: asb.Airplane,
+    default_limit_deg: float = 25.0,
+) -> dict[str, tuple[float, float]]:
+    """Extract per-surface mechanical limits (max_pos_deg, max_neg_deg) from ASB airplane."""
+    limits: dict[str, tuple[float, float]] = {}
+    for wing in getattr(asb_airplane, "wings", []) or []:
+        for xsec in getattr(wing, "xsecs", []) or []:
+            for cs in getattr(xsec, "control_surfaces", []) or []:
+                name = str(getattr(cs, "name", "")).strip()
+                if not name:
+                    continue
+                limits[name] = (default_limit_deg, default_limit_deg)
+    return limits
+
+
+def _compute_enrichment(
+    point: "TrimmedPoint",
+    limits: dict[str, tuple[float, float]],
+    trim_method: str,
+    trim_score: float | None,
+    trim_residuals: dict[str, float],
+) -> "TrimEnrichment":
+    """Compute enrichment data from a trimmed point and its mechanical limits."""
+    analysis_goal = ANALYSIS_GOALS.get(point.name, _DEFAULT_ANALYSIS_GOAL)
+
+    deflection_reserves: dict[str, DeflectionReserve] = {}
+    for surface_name, deflection_deg in point.controls.items():
+        max_pos, max_neg = limits.get(surface_name, (25.0, 25.0))
+        if deflection_deg >= 0:
+            limit = max_pos
+        else:
+            limit = max_neg
+        usage = abs(deflection_deg) / limit if limit > 0 else 0.0
+        deflection_reserves[surface_name] = DeflectionReserve(
+            deflection_deg=deflection_deg,
+            max_pos_deg=max_pos,
+            max_neg_deg=max_neg,
+            usage_fraction=usage,
+        )
+
+    warnings: list[DesignWarning] = []
+    for surface_name, reserve in deflection_reserves.items():
+        if reserve.usage_fraction > 0.95:
+            warnings.append(DesignWarning(
+                level="critical",
+                category="authority",
+                surface=surface_name,
+                message=f"{surface_name}: near mechanical limit ({reserve.usage_fraction:.0%} used) — redesign needed",
+            ))
+        elif reserve.usage_fraction > 0.80:
+            warnings.append(DesignWarning(
+                level="warning",
+                category="authority",
+                surface=surface_name,
+                message=f"{surface_name}: {reserve.usage_fraction:.0%} authority used — surface may be undersized",
+            ))
+
+    if trim_score is not None:
+        if trim_score > 0.5:
+            warnings.append(DesignWarning(
+                level="critical",
+                category="trim_quality",
+                surface=None,
+                message="Trim failed to converge — results unreliable",
+            ))
+        elif trim_score > 0.1:
+            warnings.append(DesignWarning(
+                level="warning",
+                category="trim_quality",
+                surface=None,
+                message="Poor trim quality — equilibrium not fully achieved",
+            ))
+
+    if point.status == OperatingPointStatus.LIMIT_REACHED:
+        warnings.append(DesignWarning(
+            level="critical",
+            category="authority",
+            surface=None,
+            message="Optimizer hit a constraint boundary — check all surfaces",
+        ))
+
+    return TrimEnrichment(
+        analysis_goal=analysis_goal,
+        trim_method=trim_method,
+        trim_score=trim_score,
+        trim_residuals=trim_residuals,
+        deflection_reserves=deflection_reserves,
+        design_warnings=warnings,
+    )
 
 
 def _default_profile() -> dict[str, Any]:
