@@ -2,8 +2,10 @@ from typing import Annotated, Optional
 
 from fastapi import Depends, APIRouter, Query, Path, Body, HTTPException, status
 from pydantic import UUID4
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.background_jobs import job_tracker
 from app.core.exceptions import (
     ServiceException,
     NotFoundError,
@@ -18,6 +20,7 @@ from app.models.analysismodels import OperatingPointModel, OperatingPointSetMode
 from app.schemas.aeroanalysisschema import (
     AeroBuildupTrimRequest,
     AeroBuildupTrimResult,
+    AnalysisStatusResponse,
     AVLTrimRequest,
     AVLTrimResult,
     GeneratedOperatingPointSetRead,
@@ -56,6 +59,40 @@ def _raise_http_from_domain(exc: ServiceException) -> None:
 def _resolve_aircraft_pk(db: Session, aircraft_uuid: UUID4) -> Optional[int]:
     aircraft = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aircraft_uuid).first()
     return aircraft.id if aircraft else None
+
+
+@router.get(
+    "/aeroplanes/{aeroplane_id}/analysis-status",
+    response_model=AnalysisStatusResponse,
+    operation_id="get_analysis_status",
+)
+def get_analysis_status(
+    aeroplane_id: Annotated[UUID4, Path(...)],
+    db: Annotated[Session, Depends(get_db)],
+) -> AnalysisStatusResponse:
+    aircraft_pk = _resolve_aircraft_pk(db, aeroplane_id)
+    if aircraft_pk is None:
+        return AnalysisStatusResponse()
+
+    rows = (
+        db.query(OperatingPointModel.status, func.count())
+        .filter(OperatingPointModel.aircraft_id == aircraft_pk)
+        .group_by(OperatingPointModel.status)
+        .all()
+    )
+
+    op_counts = {status: count for status, count in rows}
+    total = sum(op_counts.values())
+
+    job = job_tracker.get_job(aircraft_pk)
+
+    return AnalysisStatusResponse(
+        op_counts=op_counts,
+        total_ops=total,
+        retrim_active=job_tracker.is_active(aircraft_pk),
+        retrim_debouncing=job_tracker.is_debouncing(aircraft_pk),
+        last_computation=job.finished_at if job else None,
+    )
 
 
 @router.post(

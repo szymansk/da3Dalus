@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { X, ChevronUp, ChevronDown } from "lucide-react";
+import { X, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
 import type {
   StoredOperatingPoint,
   OperatingPointStatus,
@@ -15,7 +15,7 @@ const RAD_TO_DEG = 180 / Math.PI;
 
 const STATUS_STYLES: Record<
   OperatingPointStatus,
-  { bg: string; text: string; label: string }
+  { bg: string; text: string; label: string; spinner?: boolean }
 > = {
   TRIMMED: {
     bg: "bg-emerald-500/15",
@@ -31,6 +31,17 @@ const STATUS_STYLES: Record<
     bg: "bg-red-500/15",
     text: "text-red-400",
     label: "Limit Reached",
+  },
+  DIRTY: {
+    bg: "bg-orange-500/15",
+    text: "text-orange-400",
+    label: "Outdated",
+  },
+  COMPUTING: {
+    bg: "bg-orange-500/15",
+    text: "text-orange-400",
+    label: "Computing",
+    spinner: true,
   },
 };
 
@@ -303,8 +314,11 @@ export function OperatingPointsPanel({
                     </td>
                     <td className="px-4 py-2.5">
                       <span
-                        className={`inline-flex rounded-full px-2 py-0.5 font-[family-name:var(--font-geist-sans)] text-[10px] font-medium ${style.bg} ${style.text}`}
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-[family-name:var(--font-geist-sans)] text-[10px] font-medium ${style.bg} ${style.text}`}
                       >
+                        {style.spinner && (
+                          <Loader2 size={10} className="animate-spin" />
+                        )}
                         {style.label}
                       </span>
                     </td>

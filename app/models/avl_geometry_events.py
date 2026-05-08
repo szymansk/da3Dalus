@@ -8,7 +8,9 @@ import logging
 from sqlalchemy import event, update
 from sqlalchemy.orm import Session
 
+from app.core.events import GeometryChanged, event_bus
 from app.models.aeroplanemodel import FuselageModel, WingModel, WingXSecModel
+from app.models.analysismodels import OperatingPointModel
 from app.models.avl_geometry_file import AvlGeometryFileModel
 
 logger = logging.getLogger(__name__)
@@ -23,6 +25,19 @@ def _mark_dirty(session: Session, aeroplane_id: int | None) -> None:
         update(AvlGeometryFileModel)
         .where(AvlGeometryFileModel.aeroplane_id == aeroplane_id)
         .values(is_dirty=True)
+    )
+
+
+def _mark_ops_dirty(session: Session, aeroplane_id: int | None) -> None:
+    if aeroplane_id is None:
+        return
+    session.execute(
+        update(OperatingPointModel)
+        .where(
+            OperatingPointModel.aircraft_id == aeroplane_id,
+            OperatingPointModel.status.notin_(["DIRTY", "COMPUTING"]),
+        )
+        .values(status="DIRTY")
     )
 
 
@@ -46,6 +61,11 @@ def _on_geometry_change(mapper, connection, target):
         return
     aeroplane_id = _resolve_aeroplane_id(target)
     _mark_dirty(session, aeroplane_id)
+    _mark_ops_dirty(session, aeroplane_id)
+    if aeroplane_id is not None:
+        event_bus.publish(
+            GeometryChanged(aeroplane_id=aeroplane_id, source_model=type(target).__name__)
+        )
 
 
 for _model in _GEOMETRY_MODELS:
