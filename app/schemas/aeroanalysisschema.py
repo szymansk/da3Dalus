@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 
@@ -132,9 +133,7 @@ class AeroBuildupTrimRequest(BaseModel):
     def validate_target_coefficient(cls, v: str) -> str:
         allowed = {"CL", "CD", "CY", "Cm", "Cl", "Cn"}
         if v not in allowed:
-            raise ValueError(
-                f"Invalid target coefficient '{v}'. Must be one of: {sorted(allowed)}"
-            )
+            raise ValueError(f"Invalid target coefficient '{v}'. Must be one of: {sorted(allowed)}")
         return v
 
     @model_validator(mode="after")
@@ -268,6 +267,8 @@ class OperatingPointStatus(str, Enum):
     TRIMMED = "TRIMMED"
     NOT_TRIMMED = "NOT_TRIMMED"
     LIMIT_REACHED = "LIMIT_REACHED"
+    DIRTY = "DIRTY"
+    COMPUTING = "COMPUTING"
 
 
 class StoredOperatingPointCreate(BaseModel):
@@ -378,3 +379,16 @@ class GeneratedOperatingPointSetRead(BaseModel):
     operating_points: list[StoredOperatingPointRead]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AnalysisStatusResponse(BaseModel):
+    op_counts: dict[str, int] = Field(
+        default_factory=dict,
+        description="Count of operating points per status (TRIMMED, NOT_TRIMMED, DIRTY, COMPUTING, LIMIT_REACHED)",
+    )
+    total_ops: int = Field(0, description="Total number of operating points")
+    retrim_active: bool = Field(False, description="Whether a background retrim job is running")
+    retrim_debouncing: bool = Field(False, description="Whether a debounce timer is active")
+    last_computation: Optional[datetime] = Field(
+        None, description="Timestamp of last completed retrim"
+    )

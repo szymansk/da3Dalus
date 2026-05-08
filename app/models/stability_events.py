@@ -8,8 +8,10 @@ import logging
 from sqlalchemy import event, update
 from sqlalchemy.orm import Session
 
+from app.core.events import GeometryChanged, event_bus
 from app.models.aeroplanemodel import FuselageModel, WingModel, WingXSecModel
 from app.models.stability_result import StabilityResultModel
+from app.services.invalidation_service import mark_ops_dirty
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +48,11 @@ def _on_geometry_change(mapper, connection, target):
         return
     aeroplane_id = _resolve_aeroplane_id(target)
     _mark_stability_dirty(session, aeroplane_id)
+    if aeroplane_id is not None:
+        mark_ops_dirty(session, aeroplane_id)
+        event_bus.publish(
+            GeometryChanged(aeroplane_id=aeroplane_id, source_model=type(target).__name__)
+        )
 
 
 for _model in _GEOMETRY_MODELS:

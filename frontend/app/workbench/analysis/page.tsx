@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { X } from "lucide-react";
 import { useDialog } from "@/hooks/useDialog";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
@@ -11,6 +11,7 @@ import { useWings, useAllWingData, useWing } from "@/hooks/useWings";
 import { useFlightEnvelope } from "@/hooks/useFlightEnvelope";
 import { useStability } from "@/hooks/useStability";
 import { useOperatingPoints, extractControlSurfaces } from "@/hooks/useOperatingPoints";
+import { useAnalysisStatus } from "@/hooks/useAnalysisStatus";
 import { useMassSweep } from "@/hooks/useMassSweep";
 import { useDesignAssumptions } from "@/hooks/useDesignAssumptions";
 import { AnalysisViewerPanel, type Tab } from "@/components/workbench/AnalysisViewerPanel";
@@ -27,6 +28,7 @@ export default function AnalysisPage() {
   const envelope = useFlightEnvelope(aeroplaneId);
   const stability = useStability(aeroplaneId);
   const ops = useOperatingPoints(aeroplaneId);
+  const analysisStatus = useAnalysisStatus(aeroplaneId);
   const massSweep = useMassSweep(aeroplaneId);
   const assumptions = useDesignAssumptions(aeroplaneId);
   const currentMassKg = useMemo(() => {
@@ -40,6 +42,20 @@ export default function AnalysisPage() {
     () => extractControlSurfaces(allWings),
     [allWings],
   );
+  // Refresh operating points when retrim completes (COMPUTING -> all TRIMMED)
+  const prevComputingRef = useRef(false);
+  const opsRefresh = ops.refresh;
+  useEffect(() => {
+    const wasComputing = prevComputingRef.current;
+    const isComputing =
+      (analysisStatus.status.op_counts["COMPUTING"] ?? 0) > 0 ||
+      analysisStatus.status.retrim_active;
+    prevComputingRef.current = isComputing;
+    if (wasComputing && !isComputing) {
+      opsRefresh();
+    }
+  }, [analysisStatus.status, opsRefresh]);
+
   const [configOpen, setConfigOpen] = useState(false);
   const [avlEditorOpen, setAvlEditorOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("Polar");
@@ -123,6 +139,7 @@ export default function AnalysisPage() {
             onTrimWithAerobuildup={ops.trimWithAerobuildup}
             controlSurfaces={controlSurfaces}
             onUpdateDeflections={ops.updateDeflections}
+            analysisStatus={analysisStatus.status}
           />
         </div>
       </div>

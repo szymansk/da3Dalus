@@ -46,6 +46,7 @@ nlopt = ">=2.9,<3.0"
 pytest-cov = "^7.1.0"
 ruff = "^0.15.10"
 pydeps = "^3.0.3"
+pyright = "^1.1.409"
 
 [tool.pytest.ini_options]
 norecursedirs = ["external"]

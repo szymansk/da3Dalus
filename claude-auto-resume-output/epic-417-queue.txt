@@ -1,0 +1,3 @@
+438|RUNNING|feat: event-driven invalidation and background auto-retrim pipeline
+439|PENDING|feat: standardized control surface role dropdown with flap support
+440|PENDING|feat: trim result interpretation — designer feedback per operating point

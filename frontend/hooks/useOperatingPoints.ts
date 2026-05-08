@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { API_BASE } from "@/lib/fetcher";
 import type { Wing } from "@/hooks/useWings";
 
-export type OperatingPointStatus = "TRIMMED" | "NOT_TRIMMED" | "LIMIT_REACHED";
+export type OperatingPointStatus = "TRIMMED" | "NOT_TRIMMED" | "LIMIT_REACHED" | "DIRTY" | "COMPUTING";
 
 export interface ControlSurface {
   name: string;

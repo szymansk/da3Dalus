@@ -109,10 +109,17 @@ def create_app() -> FastAPI:
                 exc,
             )
 
+        from app.services.invalidation_service import register_handlers
+
+        register_handlers()
+
         async with mcp_app.lifespan(app):
             try:
                 yield
             finally:
+                from app.core.background_jobs import job_tracker
+
+                await job_tracker.shutdown()
                 _cad_service.shutdown_executor()
 
     app = FastAPI(

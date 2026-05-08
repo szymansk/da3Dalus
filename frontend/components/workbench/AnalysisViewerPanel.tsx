@@ -10,6 +10,8 @@ import type { StabilityData } from "@/hooks/useStability";
 import { StabilityPanel } from "@/components/workbench/StabilityPanel";
 import type { StoredOperatingPoint, AVLTrimResult, AeroBuildupTrimResult, TrimConstraint, ControlSurface } from "@/hooks/useOperatingPoints";
 import { OperatingPointsPanel } from "@/components/workbench/OperatingPointsPanel";
+import { AnalysisStatusIndicator } from "./AnalysisStatusIndicator";
+import type { AnalysisStatus } from "@/hooks/useAnalysisStatus";
 
 const TABS = ["Assumptions", "Polar", "Trefftz Plane", "Streamlines", "Envelope", "Stability", "Operating Points"] as const;
 export type Tab = (typeof TABS)[number];
@@ -55,6 +57,7 @@ interface Props {
   readonly onTrimWithAerobuildup?: (point: StoredOperatingPoint, trimVariable: string, targetCoefficient: string, targetValue: number) => Promise<AeroBuildupTrimResult | null>;
   readonly controlSurfaces?: ControlSurface[];
   readonly onUpdateDeflections?: (opId: number, deflections: Record<string, number> | null) => Promise<void>;
+  readonly analysisStatus?: AnalysisStatus;
 }
 
 // -- Plotly Chart (dynamic import) ----------------------------------------
@@ -565,6 +568,7 @@ export function AnalysisViewerPanel({
   onTrimWithAerobuildup,
   controlSurfaces,
   onUpdateDeflections,
+  analysisStatus,
 }: Readonly<Props>) {
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
 
@@ -635,6 +639,7 @@ export function AnalysisViewerPanel({
             </button>
           ))}
         </div>
+        {analysisStatus && <AnalysisStatusIndicator status={analysisStatus} />}
       </div>
 
       {/* Tab Body */}

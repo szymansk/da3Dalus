@@ -7,6 +7,7 @@ import logging
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.core.events import AssumptionChanged, event_bus
 from app.core.exceptions import InternalError, NotFoundError, ValidationError
 from app.models.aeroplanemodel import AeroplaneModel, DesignAssumptionModel
 from app.schemas.design_assumption import (
@@ -129,6 +130,11 @@ def update_assumption(
         row.divergence_pct = compute_divergence_pct(data.estimate_value, row.calculated_value)
         db.flush()
         db.refresh(row)
+        if param_name in {"mass", "cg_x"}:
+            from app.services.invalidation_service import mark_ops_dirty
+
+            mark_ops_dirty(db, aeroplane.id)
+        event_bus.publish(AssumptionChanged(aeroplane_id=aeroplane.id, parameter_name=param_name))
         return _assumption_to_read(row)
     except NotFoundError:
         raise
@@ -165,6 +171,11 @@ def switch_source(
         row.active_source = data.active_source
         db.flush()
         db.refresh(row)
+        if param_name in {"mass", "cg_x"}:
+            from app.services.invalidation_service import mark_ops_dirty
+
+            mark_ops_dirty(db, aeroplane.id)
+        event_bus.publish(AssumptionChanged(aeroplane_id=aeroplane.id, parameter_name=param_name))
         return _assumption_to_read(row)
     except (NotFoundError, ValidationError):
         raise
