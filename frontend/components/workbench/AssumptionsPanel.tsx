@@ -3,13 +3,14 @@
 import { AlertTriangle, Loader2, Plus } from "lucide-react";
 import { useDesignAssumptions } from "@/hooks/useDesignAssumptions";
 import { AssumptionRow } from "@/components/workbench/AssumptionRow";
+import { CGComparisonBanner } from "@/components/workbench/CGComparisonBanner";
 
 interface Props {
   readonly aeroplaneId: string;
 }
 
 export function AssumptionsPanel({ aeroplaneId }: Props) {
-  const { data, isLoading, error, seedDefaults, updateEstimate, switchSource } =
+  const { data, isLoading, error, seedDefaults, updateEstimate, switchSource, mutate } =
     useDesignAssumptions(aeroplaneId);
 
   if (isLoading) {
@@ -71,6 +72,9 @@ export function AssumptionsPanel({ aeroplaneId }: Props) {
           </span>
         )}
       </div>
+
+      {/* CG comparison warning */}
+      <CGComparisonBanner aeroplaneId={aeroplaneId} onCGSynced={() => mutate()} />
 
       {/* Rows */}
       <div className="rounded-xl border border-border bg-card">
