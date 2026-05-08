@@ -128,6 +128,18 @@ describe("AnalysisStatusIndicator", () => {
     expect(screen.queryByText(/outdated/)).not.toBeInTheDocument();
   });
 
+  it("shows 'All trimmed' when retrim_active but all ops already trimmed", async () => {
+    const AnalysisStatusIndicator = await loadComponent();
+    const status = makeStatus({
+      op_counts: { TRIMMED: 5 },
+      total_ops: 5,
+      retrim_active: true,
+    });
+    render(<AnalysisStatusIndicator status={status} />);
+    expect(screen.getByText("All trimmed")).toBeInTheDocument();
+    expect(screen.queryByText(/Re-trimming/)).not.toBeInTheDocument();
+  });
+
   it("prefers computing over debouncing", async () => {
     const AnalysisStatusIndicator = await loadComponent();
     const status = makeStatus({

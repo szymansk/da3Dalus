@@ -81,7 +81,7 @@ def get_analysis_status(
         .all()
     )
 
-    op_counts = {status: count for status, count in rows}
+    op_counts = {st: count for st, count in rows}
     total = sum(op_counts.values())
 
     job = job_tracker.get_job(aircraft_pk)

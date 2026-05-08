@@ -31,7 +31,7 @@ class TestJobTrackerSchedule:
     def test_schedule_creates_debouncing_job(self):
         async def _test():
             tracker = JobTracker()
-            tracker.DEBOUNCE_SECONDS = 0.05
+            tracker.debounce_seconds = 0.05
             tracker.schedule_retrim(42)
 
             job = tracker.get_job(42)
@@ -47,7 +47,7 @@ class TestJobTrackerSchedule:
     def test_debounce_resets_on_reschedule(self):
         async def _test():
             tracker = JobTracker()
-            tracker.DEBOUNCE_SECONDS = 0.1
+            tracker.debounce_seconds = 0.1
 
             call_count = 0
 
@@ -72,7 +72,7 @@ class TestJobTrackerSchedule:
     def test_job_lifecycle_debouncing_to_done(self):
         async def _test():
             tracker = JobTracker()
-            tracker.DEBOUNCE_SECONDS = 0.05
+            tracker.debounce_seconds = 0.05
 
             async def mock_trim(aeroplane_id: int) -> None:
                 pass
@@ -97,7 +97,7 @@ class TestJobTrackerSchedule:
     def test_job_lifecycle_failed(self):
         async def _test():
             tracker = JobTracker()
-            tracker.DEBOUNCE_SECONDS = 0.05
+            tracker.debounce_seconds = 0.05
 
             async def failing_trim(aeroplane_id: int) -> None:
                 raise RuntimeError("Trim computation failed")
@@ -136,7 +136,7 @@ class TestJobTrackerStateQueries:
     def test_is_active_false_after_done(self):
         async def _test():
             tracker = JobTracker()
-            tracker.DEBOUNCE_SECONDS = 0.05
+            tracker.debounce_seconds = 0.05
 
             async def mock_trim(aeroplane_id: int) -> None:
                 pass
@@ -159,7 +159,7 @@ class TestJobTrackerShutdown:
     def test_shutdown_cancels_debouncing_tasks(self):
         async def _test():
             tracker = JobTracker()
-            tracker.DEBOUNCE_SECONDS = 10.0  # long debounce — will be cancelled
+            tracker.debounce_seconds = 10.0  # long debounce — will be cancelled
 
             tracker.schedule_retrim(1)
             assert tracker.is_active(1)
@@ -191,7 +191,7 @@ class TestConcurrentAeroplanes:
     def test_independent_aeroplanes(self):
         async def _test():
             tracker = JobTracker()
-            tracker.DEBOUNCE_SECONDS = 0.05
+            tracker.debounce_seconds = 0.05
 
             results = {}
 

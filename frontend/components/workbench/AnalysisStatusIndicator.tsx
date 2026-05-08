@@ -16,12 +16,16 @@ export function AnalysisStatusIndicator({ status }: Props) {
   const computingCount = op_counts["COMPUTING"] ?? 0;
   const trimmedCount = op_counts["TRIMMED"] ?? 0;
 
-  // Determine state and display
-  if (computingCount > 0 || retrim_active) {
+  if (computingCount > 0 || (retrim_active && trimmedCount < total_ops)) {
     const done = trimmedCount;
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-orange-400">
-        <Loader2 className="h-3 w-3 animate-spin" />
+      <span
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="inline-flex items-center gap-1.5 text-xs text-orange-400"
+      >
+        <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
         Re-trimming {done}/{total_ops}…
       </span>
     );
@@ -29,8 +33,13 @@ export function AnalysisStatusIndicator({ status }: Props) {
 
   if (retrim_debouncing) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-zinc-400">
-        <span className="h-2 w-2 rounded-full bg-zinc-500" />
+      <span
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="inline-flex items-center gap-1.5 text-xs text-zinc-400"
+      >
+        <span className="h-2 w-2 rounded-full bg-zinc-500" aria-hidden="true" />
         Waiting for changes…
       </span>
     );
@@ -38,17 +47,26 @@ export function AnalysisStatusIndicator({ status }: Props) {
 
   if (dirtyCount > 0) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-orange-400">
-        <span className="h-2 w-2 rounded-full bg-orange-500" />
+      <span
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="inline-flex items-center gap-1.5 text-xs text-orange-400"
+      >
+        <span className="h-2 w-2 rounded-full bg-orange-500" aria-hidden="true" />
         {dirtyCount} point{dirtyCount !== 1 ? "s" : ""} outdated
       </span>
     );
   }
 
-  // All trimmed (or mix of trimmed + other non-dirty states)
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400">
-      <span className="h-2 w-2 rounded-full bg-emerald-500" />
+    <span
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      className="inline-flex items-center gap-1.5 text-xs text-emerald-400"
+    >
+      <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
       All trimmed
     </span>
   );
