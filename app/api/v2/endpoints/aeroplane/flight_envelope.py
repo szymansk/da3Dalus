@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, NoReturn
 
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from pydantic import UUID4
@@ -16,7 +16,7 @@ from app.services import flight_envelope_service
 router = APIRouter()
 
 
-def _raise_http_from_domain(exc: ServiceException) -> None:
+def _raise_http_from_domain(exc: ServiceException) -> NoReturn:
     """Map domain exceptions to HTTP status codes."""
     if isinstance(exc, NotFoundError):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc

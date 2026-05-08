@@ -361,6 +361,24 @@ class TestComputeVnCurve:
         )
         assert len(curve.positive) >= 50
 
+    def test_rejects_non_positive_mass(self):
+        from app.services.flight_envelope_service import compute_vn_curve
+
+        with pytest.raises(ValueError, match="positive"):
+            compute_vn_curve(
+                mass_kg=0, cl_max=self.CL_MAX, g_limit=self.G_LIMIT,
+                wing_area_m2=self.S, v_max_mps=self.V_MAX,
+            )
+
+    def test_rejects_non_positive_wing_area(self):
+        from app.services.flight_envelope_service import compute_vn_curve
+
+        with pytest.raises(ValueError, match="positive"):
+            compute_vn_curve(
+                mass_kg=self.MASS, cl_max=self.CL_MAX, g_limit=self.G_LIMIT,
+                wing_area_m2=-1.0, v_max_mps=self.V_MAX,
+            )
+
 
 class TestDerivePerformanceKPIs:
     """Pure computation: KPI derivation."""

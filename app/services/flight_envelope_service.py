@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import InternalError, NotFoundError
 from app.models.aeroplanemodel import AeroplaneModel
 from app.models.analysismodels import OperatingPointModel
 from app.models.flight_envelope_model import FlightEnvelopeModel
@@ -44,6 +44,9 @@ def compute_vn_curve(
     Returns a VnCurve with positive and negative boundary points from
     stall speed to dive speed (1.4 * v_max).
     """
+    if mass_kg <= 0 or cl_max <= 0 or wing_area_m2 <= 0 or v_max_mps <= 0:
+        raise ValueError("mass_kg, cl_max, wing_area_m2, and v_max_mps must be positive")
+
     weight = mass_kg * GRAVITY
     v_stall = math.sqrt(2 * weight / (rho * wing_area_m2 * cl_max))
     v_dive = 1.4 * v_max_mps
@@ -239,7 +242,10 @@ def _get_wing_area_m2(db: Session, aeroplane: AeroplaneModel) -> float:
 
     schema = aeroplane_model_to_aeroplane_schema_async(aeroplane)
     asb_airplane = aeroplane_schema_to_asb_airplane_async(schema)
-    return asb_airplane.s_ref
+    s_ref = asb_airplane.s_ref
+    if s_ref is None or s_ref <= 0:
+        raise InternalError("Cannot determine wing reference area — no wings defined")
+    return float(s_ref)
 
 
 def _get_v_max(db: Session, aeroplane: AeroplaneModel) -> float:
@@ -265,20 +271,13 @@ def _load_operating_point_markers(
         db.query(OperatingPointModel).filter(OperatingPointModel.aircraft_id == aeroplane.id).all()
     )
     markers: list[VnMarker] = []
-    weight = mass_kg * GRAVITY
     for op in ops:
         v = op.velocity
         if v is None or v <= 0:
             continue
-        # Compute load factor from alpha: n ~ q * S * CL / W
-        # but we don't know CL from this row. Approximate as 1.0 for level flight.
-        # For trimmed points, CL = W / (q * S) => n = 1.0; for turning points
-        # the status encodes it. We report n=1.0 as a safe default; markers
-        # are visual aids and refined later by the frontend.
-        q = 0.5 * 1.225 * v**2
-        n = q * wing_area_m2 / weight if weight > 0 else 1.0
-        # Clamp to a reasonable range
-        n = max(-5.0, min(n, 5.0))
+        # Operating points represent level flight conditions (n=1.0).
+        # Without stored CL, we cannot derive actual load factor.
+        n = 1.0
         markers.append(
             VnMarker(
                 op_id=op.id,
