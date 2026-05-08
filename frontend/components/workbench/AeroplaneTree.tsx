@@ -85,16 +85,18 @@ function buildTedNode(
   const tedObj = getTedData(xsec);
   if (!tedObj) return null;
 
-  const tedName = (tedObj.name as string) ?? "TED";
+  const tedRole = (tedObj.role as string) ?? "";
+  const tedLabel = (tedObj.label as string) ?? "";
+  const tedDisplay = tedLabel || tedRole || "TED";
   return {
     id: `${id}-ted`,
-    label: `TED: ${tedName}`,
+    label: `TED: ${tedDisplay}`,
     level: 3,
     leaf: true,
     chip: "TED",
     onEdit: callbacks.onEditTed ? () => callbacks.onEditTed!(wingName, xsecIndex, tedObj) : undefined,
     onDelete: callbacks.onDeleteTed ? () => {
-      if (confirm(`Delete control surface "${tedName}"?`)) callbacks.onDeleteTed!(wingName, xsecIndex);
+      if (confirm(`Delete control surface "${tedDisplay}"?`)) callbacks.onDeleteTed!(wingName, xsecIndex);
     } : undefined,
   };
 }
