@@ -173,7 +173,6 @@ class TestRoleBasedPickControl:
 
 from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
 
 _AIRFOIL_PATH = str(
