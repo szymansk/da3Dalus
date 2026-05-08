@@ -20,6 +20,11 @@ vi.mock("lucide-react", () => {
   };
 });
 
+vi.mock("@/components/workbench/CGComparisonBanner", () => ({
+  CGComparisonBanner: ({ aeroplaneId }: { aeroplaneId: string }) =>
+    React.createElement("div", { "data-testid": "cg-comparison-banner-mock", "data-aeroplane-id": aeroplaneId }),
+}));
+
 const mockSeedDefaults = vi.fn();
 const mockUpdateEstimate = vi.fn();
 const mockSwitchSource = vi.fn();
@@ -126,6 +131,19 @@ describe("AssumptionsPanel", () => {
 
     expect(screen.getByText("Total Mass")).toBeDefined();
     expect(screen.getByText("Zero-Lift Drag (CD₀)")).toBeDefined();
+  });
+
+  it("renders CGComparisonBanner when assumptions exist", () => {
+    hookReturn.data = {
+      assumptions: [makeAssumption()],
+      warnings_count: 0,
+    };
+
+    render(<AssumptionsPanel aeroplaneId="aero-1" />);
+
+    const banner = screen.getByTestId("cg-comparison-banner-mock");
+    expect(banner).toBeDefined();
+    expect(banner.getAttribute("data-aeroplane-id")).toBe("aero-1");
   });
 
   it("shows warnings badge when warnings_count > 0", () => {
