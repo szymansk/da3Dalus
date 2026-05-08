@@ -6,7 +6,10 @@ describe("AnalysisViewerPanel TABS", () => {
     expect(TABS).toContain("Stability");
   });
 
-  it("has Stability as the last tab", () => {
-    expect(TABS[TABS.length - 1]).toBe("Stability");
+  it("includes Stability before Operating Points", () => {
+    const stabilityIdx = TABS.indexOf("Stability");
+    const opsIdx = TABS.indexOf("Operating Points");
+    expect(stabilityIdx).toBeGreaterThan(-1);
+    expect(opsIdx).toBeGreaterThan(stabilityIdx);
   });
 });

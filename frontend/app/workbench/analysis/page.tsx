@@ -10,6 +10,7 @@ import { useStreamlines } from "@/hooks/useStreamlines";
 import { useWings, useWing } from "@/hooks/useWings";
 import { useFlightEnvelope } from "@/hooks/useFlightEnvelope";
 import { useStability } from "@/hooks/useStability";
+import { useOperatingPoints } from "@/hooks/useOperatingPoints";
 import { AnalysisViewerPanel, type Tab } from "@/components/workbench/AnalysisViewerPanel";
 import { AnalysisConfigPanel } from "@/components/workbench/AnalysisConfigPanel";
 import { AvlGeometryEditor } from "@/components/workbench/AvlGeometryEditor";
@@ -22,6 +23,7 @@ export default function AnalysisPage() {
   const streamlines = useStreamlines(aeroplaneId);
   const envelope = useFlightEnvelope(aeroplaneId);
   const stability = useStability(aeroplaneId);
+  const ops = useOperatingPoints(aeroplaneId);
   const { wingNames } = useWings(aeroplaneId);
   const { wing } = useWing(aeroplaneId, selectedWing ?? wingNames[0] ?? null);
   const [configOpen, setConfigOpen] = useState(false);
@@ -38,6 +40,7 @@ export default function AnalysisPage() {
     "Streamlines": "Streamlines Configuration",
     "Envelope": "Flight Envelope",
     "Stability": "Stability Analysis",
+    "Operating Points": "Operating Points",
   };
   const modalTitle = modalTitleByTab[activeTab];
 
@@ -83,6 +86,14 @@ export default function AnalysisPage() {
             isComputingStability={stability.isComputing}
             stabilityError={stability.error}
             onComputeStability={stability.compute}
+            operatingPoints={ops.points}
+            isLoadingOps={ops.isLoading}
+            isGeneratingOps={ops.isGenerating}
+            isTrimmingOps={ops.isTrimming}
+            opsError={ops.error}
+            onGenerateOps={ops.generate}
+            onTrimWithAvl={ops.trimWithAvl}
+            onTrimWithAerobuildup={ops.trimWithAerobuildup}
           />
         </div>
       </div>
