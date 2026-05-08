@@ -304,6 +304,17 @@ class StoredOperatingPointRead(StoredOperatingPointCreate):
     id: int
 
 
+class OperatingPointDeflectionPatch(BaseModel):
+    """Partial update: only control surface deflection overrides."""
+
+    control_deflections: dict[str, float] | None = Field(
+        ...,
+        description="Runtime control surface deflections (name → degrees). "
+        "Overrides geometry defaults for this operating point. "
+        "Set to null to clear all overrides.",
+    )
+
+
 class GenerateOperatingPointSetRequest(BaseModel):
     replace_existing: bool = Field(
         False,

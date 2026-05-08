@@ -22,6 +22,7 @@ from app.schemas.aeroanalysisschema import (
     AVLTrimResult,
     GeneratedOperatingPointSetRead,
     GenerateOperatingPointSetRequest,
+    OperatingPointDeflectionPatch,
     OperatingPointSetSchema,
     StoredOperatingPointCreate,
     StoredOperatingPointRead,
@@ -231,6 +232,30 @@ def update_operating_point(
         )
     for key, value in op_data.model_dump().items():
         setattr(op, key, value)
+    db.flush()
+    db.refresh(op)
+    return op
+
+
+@router.patch(
+    "/operating_points/{op_id}/deflections",
+    response_model=StoredOperatingPointRead,
+    operation_id="patch_operating_point_deflections",
+)
+def patch_operating_point_deflections(
+    op_id: int,
+    patch: OperatingPointDeflectionPatch,
+    db: Annotated[Session, Depends(get_db)],
+):
+    """Update only the control surface deflection overrides for an operating point."""
+    op = db.query(OperatingPointModel).filter(OperatingPointModel.id == op_id).first()
+    if not op:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"OperatingPoint {op_id} not found",
+        )
+    op.control_deflections = patch.control_deflections
+    op.status = "NOT_TRIMMED"
     db.flush()
     db.refresh(op)
     return op

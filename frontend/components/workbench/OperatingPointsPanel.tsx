@@ -8,6 +8,7 @@ import type {
   AVLTrimResult,
   AeroBuildupTrimResult,
   TrimConstraint,
+  ControlSurface,
 } from "@/hooks/useOperatingPoints";
 
 const RAD_TO_DEG = 180 / Math.PI;
@@ -62,6 +63,11 @@ interface Props {
     targetCoefficient: string,
     targetValue: number,
   ) => Promise<AeroBuildupTrimResult | null>;
+  readonly controlSurfaces: ControlSurface[];
+  readonly onUpdateDeflections: (
+    opId: number,
+    deflections: Record<string, number> | null,
+  ) => Promise<void>;
 }
 
 function sortPoints(
@@ -105,6 +111,8 @@ export function OperatingPointsPanel({
   onGenerate,
   onTrimWithAvl,
   onTrimWithAerobuildup,
+  controlSurfaces,
+  onUpdateDeflections,
 }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -384,6 +392,15 @@ export function OperatingPointsPanel({
                 </div>
               )}
 
+              <ControlDeflectionsSection
+                controlSurfaces={controlSurfaces}
+                currentDeflections={selectedPoint.control_deflections}
+                onSave={(deflections) =>
+                  onUpdateDeflections(selectedPoint.id, deflections)
+                }
+                disabled={isTrimming}
+              />
+
               {Object.keys(selectedPoint.controls).length > 0 && (
                 <div className="flex flex-col gap-3 rounded-xl border border-border bg-card-muted p-4">
                   <span className="font-[family-name:var(--font-geist-sans)] text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -581,6 +598,127 @@ function TrimResultCard({
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+function ControlDeflectionsSection({
+  controlSurfaces,
+  currentDeflections,
+  onSave,
+  disabled,
+}: Readonly<{
+  controlSurfaces: ControlSurface[];
+  currentDeflections: Record<string, number> | null;
+  onSave: (deflections: Record<string, number> | null) => void;
+  disabled: boolean;
+}>) {
+  const initialDeflections = useMemo(() => {
+    const initial: Record<string, string> = {};
+    for (const cs of controlSurfaces) {
+      const overrideValue = currentDeflections?.[cs.name];
+      initial[cs.name] =
+        overrideValue != null
+          ? String(overrideValue)
+          : String(cs.deflection_deg);
+    }
+    return initial;
+  }, [controlSurfaces, currentDeflections]);
+
+  const [localDeflections, setLocalDeflections] = useState(initialDeflections);
+
+  // Reset local state when inputs change by comparing the serialized key
+  const deflectionKey = JSON.stringify(initialDeflections);
+  const [prevKey, setPrevKey] = useState(deflectionKey);
+  if (deflectionKey !== prevKey) {
+    setPrevKey(deflectionKey);
+    setLocalDeflections(initialDeflections);
+  }
+
+  const handleChange = useCallback((name: string, value: string) => {
+    setLocalDeflections((prev) => ({ ...prev, [name]: value }));
+  }, []);
+
+  const handleSave = useCallback(() => {
+    const deflections: Record<string, number> = {};
+    for (const [name, val] of Object.entries(localDeflections)) {
+      deflections[name] = parseFloat(val) || 0;
+    }
+    onSave(deflections);
+  }, [localDeflections, onSave]);
+
+  const handleReset = useCallback(() => {
+    onSave(null);
+  }, [onSave]);
+
+  return (
+    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card-muted p-4">
+      <span className="font-[family-name:var(--font-geist-sans)] text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        Control Deflections
+      </span>
+      {controlSurfaces.length === 0 ? (
+        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
+          No control surfaces found
+        </span>
+      ) : (
+        <>
+          <div className="flex flex-col gap-2">
+            {controlSurfaces.map((cs) => {
+              const isOverridden =
+                currentDeflections != null &&
+                cs.name in currentDeflections &&
+                currentDeflections[cs.name] !== cs.deflection_deg;
+              return (
+                <div key={cs.name} className="flex items-center gap-3">
+                  <span
+                    className={`flex-1 font-[family-name:var(--font-geist-sans)] text-[12px] ${
+                      isOverridden
+                        ? "text-[#FF8400]"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {isOverridden && (
+                      <span className="mr-1.5 inline-block size-1.5 rounded-full bg-[#FF8400]" />
+                    )}
+                    {cs.name}
+                  </span>
+                  <input
+                    type="number"
+                    step="any"
+                    value={localDeflections[cs.name] ?? "0"}
+                    onChange={(e) => handleChange(cs.name, e.target.value)}
+                    disabled={disabled}
+                    className={`w-24 rounded-lg border border-border bg-input px-2.5 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[12px] outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
+                      isOverridden ? "text-[#FF8400]" : "text-foreground"
+                    } disabled:opacity-50`}
+                    aria-label={`${cs.name} deflection`}
+                  />
+                  <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground">
+                    deg
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleReset}
+              disabled={disabled || currentDeflections == null}
+              className="rounded-full border border-border px-3 py-1 font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+            >
+              Reset to Defaults
+            </button>
+            <div className="flex-1" />
+            <button
+              onClick={handleSave}
+              disabled={disabled}
+              className="rounded-full bg-[#FF8400] px-4 py-1 font-[family-name:var(--font-geist-sans)] text-[11px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              Save Deflections
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
