@@ -11,10 +11,13 @@ import { useWings, useAllWingData, useWing } from "@/hooks/useWings";
 import { useFlightEnvelope } from "@/hooks/useFlightEnvelope";
 import { useStability } from "@/hooks/useStability";
 import { useOperatingPoints, extractControlSurfaces } from "@/hooks/useOperatingPoints";
+import { useMassSweep } from "@/hooks/useMassSweep";
+import { useDesignAssumptions } from "@/hooks/useDesignAssumptions";
 import { AnalysisViewerPanel, type Tab } from "@/components/workbench/AnalysisViewerPanel";
 import { AnalysisConfigPanel } from "@/components/workbench/AnalysisConfigPanel";
 import { AvlGeometryEditor } from "@/components/workbench/AvlGeometryEditor";
 import { AssumptionsPanel } from "@/components/workbench/AssumptionsPanel";
+import { MassSweepPanel } from "@/components/workbench/MassSweepPanel";
 
 export default function AnalysisPage() {
   const { aeroplaneId, hydrated, selectedWing, openPicker } = useAeroplaneContext();
@@ -24,6 +27,12 @@ export default function AnalysisPage() {
   const envelope = useFlightEnvelope(aeroplaneId);
   const stability = useStability(aeroplaneId);
   const ops = useOperatingPoints(aeroplaneId);
+  const massSweep = useMassSweep(aeroplaneId);
+  const assumptions = useDesignAssumptions(aeroplaneId);
+  const currentMassKg = useMemo(() => {
+    const massAssumption = assumptions.data?.assumptions.find((a) => a.parameter_name === "mass");
+    return massAssumption?.effective_value ?? null;
+  }, [assumptions.data]);
   const { wingNames } = useWings(aeroplaneId);
   const { wings: allWings } = useAllWingData(aeroplaneId, wingNames);
   const { wing } = useWing(aeroplaneId, selectedWing ?? wingNames[0] ?? null);
@@ -82,7 +91,20 @@ export default function AnalysisPage() {
             onEditAvlGeometry={() => setAvlEditorOpen(true)}
             wingXSecs={wing?.x_secs}
             wingSymmetric={wing?.symmetric}
-            assumptionsSlot={<AssumptionsPanel aeroplaneId={aeroplaneId} />}
+            assumptionsSlot={
+              <>
+                <AssumptionsPanel aeroplaneId={aeroplaneId} />
+                <div className="mt-6">
+                  <MassSweepPanel
+                    data={massSweep.data}
+                    isComputing={massSweep.isComputing}
+                    error={massSweep.error}
+                    onCompute={massSweep.compute}
+                    currentMassKg={currentMassKg}
+                  />
+                </div>
+              </>
+            }
             envelope={envelope.data}
             isComputingEnvelope={envelope.isComputing}
             envelopeError={envelope.error}
