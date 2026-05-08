@@ -467,7 +467,7 @@ class TestTedPropagation:
 
         # x_sec[1] = segment 1 (has TED) → must have cs
         assert asb_schema.x_secs[1].control_surface is not None
-        assert asb_schema.x_secs[1].control_surface.name == "aileron"
+        assert asb_schema.x_secs[1].control_surface.name == "[other]aileron"
         # All other x_secs: no cs (segment has no TED)
         assert asb_schema.x_secs[0].control_surface is None
         assert asb_schema.x_secs[2].control_surface is None

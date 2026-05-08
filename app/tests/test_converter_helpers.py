@@ -122,7 +122,7 @@ class TestControlSurfaceFromTed:
             deflection_deg=15.0,
         )
         result = _control_surface_from_ted(ted)
-        assert result.name == "Aileron"
+        assert result.name == "[other]Aileron"
         assert result.hinge_point == 0.75
         assert result.symmetric is False
         assert result.deflection == 15.0
@@ -157,18 +157,18 @@ class TestControlSurfaceFromTed:
         assert result.hinge_point == 0.8
         assert result.symmetric is True
         assert result.deflection == 0.0
-        assert result.name == "Control Surface"
+        assert result.name == "[other]Control Surface"
 
     def test_ted_name_with_fallback_name(self):
         """TED name takes precedence over fallback name."""
         ted = schemas.TrailingEdgeDeviceDetailSchema(name="My TED")
         fallback = schemas.ControlSurfaceSchema(name="Old Name")
         result = _control_surface_from_ted(ted, fallback=fallback)
-        assert result.name == "My TED"
+        assert result.name == "[other]My TED"
 
     def test_fallback_name_when_ted_has_none(self):
         """Fallback name used when TED name is None."""
         ted = schemas.TrailingEdgeDeviceDetailSchema()
         fallback = schemas.ControlSurfaceSchema(name="Fallback Name")
         result = _control_surface_from_ted(ted, fallback=fallback)
-        assert result.name == "Fallback Name"
+        assert result.name == "[other]Fallback Name"

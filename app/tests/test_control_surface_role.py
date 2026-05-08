@@ -57,3 +57,23 @@ class TestTedPatchSchemaRoleField:
     def test_patch_with_label_only(self):
         patch = TrailingEdgeDevicePatchSchema(label="Inboard Flap")
         assert patch.label == "Inboard Flap"
+
+
+from app.converters.model_schema_converters import _control_surface_from_ted
+
+
+class TestConverterRoleEncoding:
+    def test_role_encoded_in_name(self):
+        ted = TrailingEdgeDeviceDetailSchema(role="elevator")
+        cs = _control_surface_from_ted(ted)
+        assert cs.name == "[elevator]elevator"
+
+    def test_role_with_label_encoded(self):
+        ted = TrailingEdgeDeviceDetailSchema(role="aileron", label="Left Aileron")
+        cs = _control_surface_from_ted(ted)
+        assert cs.name == "[aileron]Left Aileron"
+
+    def test_other_role_uses_name(self):
+        ted = TrailingEdgeDeviceDetailSchema(role="other", name="Custom Thing")
+        cs = _control_surface_from_ted(ted)
+        assert cs.name == "[other]Custom Thing"
