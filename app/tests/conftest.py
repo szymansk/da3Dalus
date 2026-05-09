@@ -413,3 +413,334 @@ def seed_design_assumptions(session: Session, aeroplane_id: int) -> list[DesignA
     for r in rows:
         session.refresh(r)
     return rows
+
+
+# --------------------------------------------------------------------------- #
+# Smoke-plane shared helpers
+# --------------------------------------------------------------------------- #
+
+_AILERON: dict = {
+    "name": "Aileron",
+    "role": "aileron",
+    "rel_chord_root": 0.75,
+    "rel_chord_tip": 0.75,
+    "positive_deflection_deg": 25.0,
+    "negative_deflection_deg": 25.0,
+    "deflection_deg": 0.0,
+    "symmetric": False,
+}
+
+_ELEVATOR: dict = {
+    "name": "Elevator",
+    "role": "elevator",
+    "rel_chord_root": 0.75,
+    "rel_chord_tip": 0.75,
+    "positive_deflection_deg": 25.0,
+    "negative_deflection_deg": 25.0,
+    "deflection_deg": 0.0,
+    "symmetric": True,
+}
+
+_RUDDER: dict = {
+    "name": "Rudder",
+    "role": "rudder",
+    "rel_chord_root": 0.75,
+    "rel_chord_tip": 0.75,
+    "positive_deflection_deg": 25.0,
+    "negative_deflection_deg": 25.0,
+    "deflection_deg": 0.0,
+    "symmetric": True,
+}
+
+
+def _smoke_aeroplane(session: Session, name: str) -> AeroplaneModel:
+    """Create base AeroplaneModel for smoke tests (Peter's Glider parameters)."""
+    aeroplane = AeroplaneModel(
+        name=name,
+        uuid=uuid.uuid4(),
+        total_mass_kg=1.5,
+        xyz_ref=[0.15, 0.0, 0.0],
+    )
+    session.add(aeroplane)
+    session.flush()
+    return aeroplane
+
+
+def _smoke_main_wing(
+    session: Session,
+    aeroplane_id: int,
+    sec0_ted: dict | None = None,
+    sec1_ted: dict | None = None,
+) -> WingModel:
+    """3-section symmetric main wing (sd7037). sec2 never has a TED."""
+    wing = WingModel(name="main_wing", symmetric=True, aeroplane_id=aeroplane_id)
+    session.add(wing)
+    session.flush()
+
+    _add_xsec(
+        session,
+        wing,
+        xyz_le=[0, 0, 0],
+        chord=0.18,
+        twist=2.0,
+        airfoil="sd7037",
+        sort_index=0,
+        **({"x_sec_type": "segment", "ted_kwargs": sec0_ted} if sec0_ted else {}),
+    )
+    _add_xsec(
+        session,
+        wing,
+        xyz_le=[0.01, 0.5, 0],
+        chord=0.16,
+        twist=0.0,
+        airfoil="sd7037",
+        sort_index=1,
+        **({"x_sec_type": "segment", "ted_kwargs": sec1_ted} if sec1_ted else {}),
+    )
+    _add_xsec(
+        session,
+        wing,
+        xyz_le=[0.08, 1.0, 0.1],
+        chord=0.08,
+        twist=-2.0,
+        airfoil="sd7037",
+        sort_index=2,
+    )
+    return wing
+
+
+def _smoke_htail(
+    session: Session,
+    aeroplane_id: int,
+    z_offset: float = 0.06,
+    ted_kwargs: dict | None = None,
+) -> WingModel:
+    """Symmetric horizontal tail (naca0010). TED on root section if provided."""
+    htail = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=aeroplane_id)
+    session.add(htail)
+    session.flush()
+
+    _add_xsec(
+        session,
+        htail,
+        xyz_le=[0.6, 0, z_offset],
+        chord=0.10,
+        twist=-10.0,
+        airfoil="naca0010",
+        sort_index=0,
+        **({"x_sec_type": "segment", "ted_kwargs": ted_kwargs} if ted_kwargs else {}),
+    )
+    _add_xsec(
+        session,
+        htail,
+        xyz_le=[0.62, 0.17, z_offset],
+        chord=0.08,
+        twist=-10.0,
+        airfoil="naca0010",
+        sort_index=1,
+    )
+    return htail
+
+
+def _smoke_vtail(
+    session: Session,
+    aeroplane_id: int,
+    ted_kwargs: dict | None = None,
+) -> WingModel:
+    """Non-symmetric vertical tail (naca0010). TED on root section if provided."""
+    vtail = WingModel(name="vertical_tail", symmetric=False, aeroplane_id=aeroplane_id)
+    session.add(vtail)
+    session.flush()
+
+    _add_xsec(
+        session,
+        vtail,
+        xyz_le=[0.6, 0, 0.07],
+        chord=0.10,
+        twist=0.0,
+        airfoil="naca0010",
+        sort_index=0,
+        **({"x_sec_type": "segment", "ted_kwargs": ted_kwargs} if ted_kwargs else {}),
+    )
+    _add_xsec(
+        session,
+        vtail,
+        xyz_le=[0.64, 0, 0.22],
+        chord=0.06,
+        twist=0.0,
+        airfoil="naca0010",
+        sort_index=1,
+    )
+    return vtail
+
+
+# --------------------------------------------------------------------------- #
+# Smoke-plane factory functions
+# --------------------------------------------------------------------------- #
+
+
+def seed_smoke_conventional_ttail(session: Session) -> AeroplaneModel:
+    """Conventional T-tail: aileron on wing sec 1, elevator + rudder on tail."""
+    aeroplane = _smoke_aeroplane(session, "smoke-conventional-ttail")
+    _smoke_main_wing(session, aeroplane.id, sec1_ted=_AILERON)
+    _smoke_htail(session, aeroplane.id, z_offset=0.06, ted_kwargs=_ELEVATOR)
+    _smoke_vtail(session, aeroplane.id, ted_kwargs=_RUDDER)
+    session.commit()
+    session.refresh(aeroplane)
+    return aeroplane
+
+
+def seed_smoke_vtail_ruddervator(session: Session) -> AeroplaneModel:
+    """V-tail with ruddervator: aileron on wing sec 1, ruddervator on V-tail."""
+    aeroplane = _smoke_aeroplane(session, "smoke-vtail-ruddervator")
+    _smoke_main_wing(session, aeroplane.id, sec1_ted=_AILERON)
+
+    # V-tail: symmetric wing with dihedral simulated via z at tip
+    vtail = WingModel(name="v_tail", symmetric=True, aeroplane_id=aeroplane.id)
+    session.add(vtail)
+    session.flush()
+
+    _ruddervator: dict = {
+        "name": "Ruddervator",
+        "role": "ruddervator",
+        "rel_chord_root": 0.75,
+        "rel_chord_tip": 0.75,
+        "positive_deflection_deg": 25.0,
+        "negative_deflection_deg": 25.0,
+        "deflection_deg": 0.0,
+        "symmetric": True,
+    }
+    _add_xsec(
+        session,
+        vtail,
+        xyz_le=[0.6, 0, 0.06],
+        chord=0.12,
+        twist=-10.0,
+        airfoil="naca0010",
+        sort_index=0,
+        x_sec_type="segment",
+        ted_kwargs=_ruddervator,
+    )
+    _add_xsec(
+        session,
+        vtail,
+        xyz_le=[0.62, 0.17, 0.12],
+        chord=0.08,
+        twist=-10.0,
+        airfoil="naca0010",
+        sort_index=1,
+    )
+
+    session.commit()
+    session.refresh(aeroplane)
+    return aeroplane
+
+
+def seed_smoke_conventional_cross(session: Session) -> AeroplaneModel:
+    """Conventional cross-tail: aileron on wing sec 1, elevator + rudder, htail at z=0."""
+    aeroplane = _smoke_aeroplane(session, "smoke-conventional-cross")
+    _smoke_main_wing(session, aeroplane.id, sec1_ted=_AILERON)
+    _smoke_htail(session, aeroplane.id, z_offset=0.0, ted_kwargs=_ELEVATOR)
+    _smoke_vtail(session, aeroplane.id, ted_kwargs=_RUDDER)
+    session.commit()
+    session.refresh(aeroplane)
+    return aeroplane
+
+
+def seed_smoke_flying_wing(session: Session) -> AeroplaneModel:
+    """Flying wing: elevon on sec 0, elevon on sec 1, no tail."""
+    aeroplane = _smoke_aeroplane(session, "smoke-flying-wing")
+
+    _elevon_0: dict = {
+        "name": "Elevon_0",
+        "role": "elevon",
+        "rel_chord_root": 0.75,
+        "rel_chord_tip": 0.75,
+        "positive_deflection_deg": 25.0,
+        "negative_deflection_deg": 25.0,
+        "deflection_deg": 0.0,
+        "symmetric": False,
+    }
+    _elevon_1: dict = {
+        "name": "Elevon_1",
+        "role": "elevon",
+        "rel_chord_root": 0.75,
+        "rel_chord_tip": 0.75,
+        "positive_deflection_deg": 25.0,
+        "negative_deflection_deg": 25.0,
+        "deflection_deg": 0.0,
+        "symmetric": False,
+    }
+    _smoke_main_wing(session, aeroplane.id, sec0_ted=_elevon_0, sec1_ted=_elevon_1)
+
+    session.commit()
+    session.refresh(aeroplane)
+    return aeroplane
+
+
+def seed_smoke_flaperon_ttail(session: Session) -> AeroplaneModel:
+    """Flaperon T-tail: flaperon on sec 0 + sec 1, elevator + rudder on tail."""
+    aeroplane = _smoke_aeroplane(session, "smoke-flaperon-ttail")
+
+    _flaperon_0: dict = {
+        "name": "Flaperon_0",
+        "role": "flaperon",
+        "rel_chord_root": 0.75,
+        "rel_chord_tip": 0.75,
+        "positive_deflection_deg": 25.0,
+        "negative_deflection_deg": 25.0,
+        "deflection_deg": 0.0,
+        "symmetric": False,
+    }
+    _flaperon_1: dict = {
+        "name": "Flaperon_1",
+        "role": "flaperon",
+        "rel_chord_root": 0.75,
+        "rel_chord_tip": 0.75,
+        "positive_deflection_deg": 25.0,
+        "negative_deflection_deg": 25.0,
+        "deflection_deg": 0.0,
+        "symmetric": False,
+    }
+    _smoke_main_wing(session, aeroplane.id, sec0_ted=_flaperon_0, sec1_ted=_flaperon_1)
+    _smoke_htail(session, aeroplane.id, z_offset=0.06, ted_kwargs=_ELEVATOR)
+    _smoke_vtail(session, aeroplane.id, ted_kwargs=_RUDDER)
+
+    session.commit()
+    session.refresh(aeroplane)
+    return aeroplane
+
+
+def seed_smoke_flap_aileron_ttail(session: Session) -> AeroplaneModel:
+    """Flap+aileron T-tail: flap on sec 0, aileron on sec 1, elevator + rudder on tail."""
+    aeroplane = _smoke_aeroplane(session, "smoke-flap-aileron-ttail")
+
+    _flap: dict = {
+        "name": "Flap",
+        "role": "flap",
+        "rel_chord_root": 0.75,
+        "rel_chord_tip": 0.75,
+        "positive_deflection_deg": 25.0,
+        "negative_deflection_deg": 25.0,
+        "deflection_deg": 0.0,
+        "symmetric": True,
+    }
+    _smoke_main_wing(session, aeroplane.id, sec0_ted=_flap, sec1_ted=_AILERON)
+    _smoke_htail(session, aeroplane.id, z_offset=0.06, ted_kwargs=_ELEVATOR)
+    _smoke_vtail(session, aeroplane.id, ted_kwargs=_RUDDER)
+
+    session.commit()
+    session.refresh(aeroplane)
+    return aeroplane
+
+
+def seed_smoke_stabilator_ttail(session: Session) -> AeroplaneModel:
+    """Stabilator T-tail: aileron on wing sec 1, htail has NO TED (all-moving), rudder only."""
+    aeroplane = _smoke_aeroplane(session, "smoke-stabilator-ttail")
+    _smoke_main_wing(session, aeroplane.id, sec1_ted=_AILERON)
+    _smoke_htail(session, aeroplane.id, z_offset=0.06, ted_kwargs=None)
+    _smoke_vtail(session, aeroplane.id, ted_kwargs=_RUDDER)
+
+    session.commit()
+    session.refresh(aeroplane)
+    return aeroplane
