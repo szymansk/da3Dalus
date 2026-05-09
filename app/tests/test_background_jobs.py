@@ -226,26 +226,11 @@ class TestRetrimJobTracking:
         assert len(job.completed_op_ids) == 2
         assert len(job.failed_op_ids) == 1
 
-    def test_populates_dirty_op_ids_before_trim(self):
-        async def _test():
-            tracker = JobTracker()
-            tracker.debounce_seconds = 0.01
-            captured_job = {}
-
-            async def capture_trim(aeroplane_id: int) -> None:
-                job = tracker.get_job(aeroplane_id)
-                captured_job["dirty"] = list(job.dirty_op_ids)
-
-            tracker.set_trim_function(capture_trim)
-            tracker.schedule_retrim(42)
-            await asyncio.sleep(0.1)
-
-            job = tracker.get_job(42)
-            assert job.status == JobStatus.DONE
-            assert isinstance(job.dirty_op_ids, list)
-            await tracker.shutdown()
-
-        _run(_test())
+    def test_tracking_lists_independent_per_job(self):
+        job_a = RetrimJob(aeroplane_id=1)
+        job_b = RetrimJob(aeroplane_id=2)
+        job_a.dirty_op_ids = [10, 20]
+        assert job_b.dirty_op_ids == []
 
 
 class TestModuleLevelSingleton:

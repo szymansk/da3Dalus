@@ -18,6 +18,7 @@ from app.schemas.aeroanalysisschema import (
     AeroBuildupTrimRequest,
     OperatingPointSchema,
 )
+from app.schemas.AeroplaneRequest import AnalysisToolUrlType
 from app.services.aerobuildup_trim_service import trim_with_aerobuildup
 from app.services.stability_service import get_stability_summary
 
@@ -81,7 +82,8 @@ async def retrim_dirty_ops(aeroplane_id: int) -> None:
         pitch_control = _find_pitch_control_name(db, aeroplane_id)
         if pitch_control is None:
             logger.warning(
-                "Retrim: no pitch control surface on aeroplane %d — skipping",
+                "Retrim: no pitch control surface on aeroplane %d — "
+                "OPs remain DIRTY until an elevator/elevon/stabilator is added",
                 aeroplane_id,
             )
             return
@@ -133,22 +135,19 @@ async def retrim_dirty_ops(aeroplane_id: int) -> None:
             db.flush()
 
         if any_trimmed:
-            first_trimmed = (
-                db.query(OperatingPointModel)
-                .filter_by(aircraft_id=aeroplane_id, status="TRIMMED")
-                .first()
+            first_trimmed = next(
+                (op for op in dirty_ops if op.status == "TRIMMED"), None
             )
             if first_trimmed:
                 try:
-                    from app.schemas.AeroplaneRequest import AnalysisToolUrlType
-
                     op_schema = _op_model_to_schema(first_trimmed)
                     await get_stability_summary(
                         db, aeroplane_uuid, op_schema, AnalysisToolUrlType.AEROBUILDUP
                     )
                 except Exception:
                     logger.exception(
-                        "Stability recomputation failed for aeroplane %d",
+                        "Stability recomputation failed for aeroplane %d — "
+                        "trim results committed but stability data may be stale",
                         aeroplane_id,
                     )
 
@@ -156,5 +155,6 @@ async def retrim_dirty_ops(aeroplane_id: int) -> None:
     except Exception:
         logger.exception("Retrim transaction failed for aeroplane %d", aeroplane_id)
         db.rollback()
+        raise
     finally:
         db.close()

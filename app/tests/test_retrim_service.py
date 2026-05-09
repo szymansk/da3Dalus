@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.core.background_jobs import RetrimJob
+from app.models.aeroplanemodel import AeroplaneModel
 from app.models.analysismodels import OperatingPointModel
 from app.tests.conftest import make_aeroplane, make_operating_point
 
@@ -326,7 +327,7 @@ class TestRetrimDirtyOps:
             patch(
                 "app.services.retrim_service.get_stability_summary",
                 new_callable=AsyncMock,
-            ),
+            ) as mock_stability,
         ):
             from app.services.retrim_service import retrim_dirty_ops
 
@@ -335,6 +336,7 @@ class TestRetrimDirtyOps:
         db2 = SessionLocal()
         op = db2.query(OperatingPointModel).filter_by(aircraft_id=aeroplane.id).first()
         assert op.status == "LIMIT_REACHED"
+        mock_stability.assert_not_called()
         db2.close()
 
     def test_no_pitch_control_leaves_ops_dirty(self, client_and_db):
@@ -408,6 +410,147 @@ class TestRetrimDirtyOps:
             _run(retrim_dirty_ops(aeroplane.id))
 
         mock_stability.assert_called_once()
+
+
+    def test_aeroplane_deleted_before_retrim(self, client_and_db):
+        """Finding 9: aeroplane deleted between schedule and execution."""
+        _, SessionLocal = client_and_db
+        db = SessionLocal()
+        aeroplane = make_aeroplane(db, name="deleted")
+        aeroplane_id = aeroplane.id
+        make_operating_point(db, aircraft_id=aeroplane_id, name="cruise", status="DIRTY")
+        db.query(OperatingPointModel).filter_by(aircraft_id=aeroplane_id).delete()
+        db.query(AeroplaneModel).filter_by(id=aeroplane_id).delete()
+        db.commit()
+        db.close()
+
+        with patch("app.services.retrim_service.SessionLocal", SessionLocal):
+            from app.services.retrim_service import retrim_dirty_ops
+
+            _run(retrim_dirty_ops(aeroplane_id))
+
+    def test_control_deflections_merge_preserves_existing(self, client_and_db):
+        """Finding 10: existing deflections must survive the merge."""
+        _, SessionLocal = client_and_db
+        db = SessionLocal()
+        aeroplane = make_aeroplane(db, name="merge-test")
+
+        from app.models.aeroplanemodel import (
+            WingModel, WingXSecModel, WingXSecDetailModel,
+            WingXSecTrailingEdgeDeviceModel,
+        )
+
+        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True)
+        db.add(wing)
+        db.flush()
+        xsec = WingXSecModel(
+            wing_id=wing.id, xyz_le=[0, 0, 0], chord=0.2, twist=0, airfoil="naca0012",
+            sort_index=0,
+        )
+        db.add(xsec)
+        db.flush()
+        detail = WingXSecDetailModel(wing_xsec_id=xsec.id)
+        db.add(detail)
+        db.flush()
+        ted = WingXSecTrailingEdgeDeviceModel(
+            wing_xsec_detail_id=detail.id, name="elevator",
+        )
+        db.add(ted)
+        db.commit()
+
+        make_operating_point(
+            db, aircraft_id=aeroplane.id, name="cruise", status="DIRTY",
+            control_deflections={"aileron": 5.0},
+        )
+        db.close()
+
+        mock_trim_result = MagicMock()
+        mock_trim_result.converged = True
+        mock_trim_result.trimmed_deflection = -3.0
+        mock_trim_result.aero_coefficients = {}
+        mock_trim_result.stability_derivatives = {}
+
+        with (
+            patch("app.services.retrim_service.SessionLocal", SessionLocal),
+            patch(
+                "app.services.retrim_service.trim_with_aerobuildup",
+                new_callable=AsyncMock,
+                return_value=mock_trim_result,
+            ),
+            patch(
+                "app.services.retrim_service.get_stability_summary",
+                new_callable=AsyncMock,
+            ),
+        ):
+            from app.services.retrim_service import retrim_dirty_ops
+
+            _run(retrim_dirty_ops(aeroplane.id))
+
+        db2 = SessionLocal()
+        op = db2.query(OperatingPointModel).filter_by(aircraft_id=aeroplane.id).first()
+        assert op.control_deflections["aileron"] == 5.0
+        assert op.control_deflections["elevator"] == -3.0
+        db2.close()
+
+    def test_stability_failure_does_not_rollback_trims(self, client_and_db):
+        """Finding 12: OPs remain TRIMMED even if stability recomputation fails."""
+        _, SessionLocal = client_and_db
+        db = SessionLocal()
+        aeroplane = make_aeroplane(db, name="stab-fail")
+
+        from app.models.aeroplanemodel import (
+            WingModel, WingXSecModel, WingXSecDetailModel,
+            WingXSecTrailingEdgeDeviceModel,
+        )
+
+        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True)
+        db.add(wing)
+        db.flush()
+        xsec = WingXSecModel(
+            wing_id=wing.id, xyz_le=[0, 0, 0], chord=0.2, twist=0, airfoil="naca0012",
+            sort_index=0,
+        )
+        db.add(xsec)
+        db.flush()
+        detail = WingXSecDetailModel(wing_xsec_id=xsec.id)
+        db.add(detail)
+        db.flush()
+        ted = WingXSecTrailingEdgeDeviceModel(
+            wing_xsec_detail_id=detail.id, name="elevator",
+        )
+        db.add(ted)
+        db.commit()
+
+        make_operating_point(db, aircraft_id=aeroplane.id, name="cruise", status="DIRTY")
+        db.close()
+
+        mock_trim_result = MagicMock()
+        mock_trim_result.converged = True
+        mock_trim_result.trimmed_deflection = -2.0
+        mock_trim_result.aero_coefficients = {}
+        mock_trim_result.stability_derivatives = {}
+
+        with (
+            patch("app.services.retrim_service.SessionLocal", SessionLocal),
+            patch(
+                "app.services.retrim_service.trim_with_aerobuildup",
+                new_callable=AsyncMock,
+                return_value=mock_trim_result,
+            ),
+            patch(
+                "app.services.retrim_service.get_stability_summary",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("Stability computation exploded"),
+            ),
+        ):
+            from app.services.retrim_service import retrim_dirty_ops
+
+            _run(retrim_dirty_ops(aeroplane.id))
+
+        db2 = SessionLocal()
+        op = db2.query(OperatingPointModel).filter_by(aircraft_id=aeroplane.id).first()
+        assert op.status == "TRIMMED"
+        db2.close()
 
 
 class TestStartupRegistration:
