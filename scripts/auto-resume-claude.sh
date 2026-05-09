@@ -23,6 +23,7 @@ SESSION_RUN_ID="$(date '+%Y%m%d-%H%M%S')"
 ISSUE_NUMBER=""
 RESUME_MODE=false
 SUPERCYCLE_CMD="supercycle-work"
+REMOTE_MODE=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -34,6 +35,7 @@ while [[ $# -gt 0 ]]; do
     --normal)       VERBOSITY="normal"; shift ;;
     --quiet)        VERBOSITY="quiet"; shift ;;
     --implement)    SUPERCYCLE_CMD="supercycle-implement"; shift ;;
+    --remote|-rc)   REMOTE_MODE=true; shift ;;
     -*)             echo "Unknown option: $1" >&2; exit 1 ;;
     *)              ISSUE_NUMBER="$1"; shift ;;
   esac
@@ -52,6 +54,7 @@ Output modes:
 Options:
   --resume           Resume last conversation instead of starting new
   --implement        Use /supercycle-implement instead of /supercycle-work
+  --remote, -rc      Run Claude CLI in remote mode (--remote)
   --max-retries N    Max retry attempts per issue (default: 50)
   --interval N       Minutes to wait between retries (default: 10)
   --log FILE         Log file path (default: claude-auto-resume.log)
@@ -175,6 +178,9 @@ run_claude() {
   fi
 
   local claude_args=(--dangerously-skip-permissions)
+  if [[ "$REMOTE_MODE" == true ]]; then
+    claude_args+=(--remote)
+  fi
   if [[ "$attempt" -gt 1 ]]; then
     claude_args+=(--resume "$session_name")
   else
