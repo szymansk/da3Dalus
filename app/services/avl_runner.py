@@ -14,7 +14,10 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+try:
+    from avl_binary import avl_path as _avl_path
+except ImportError:
+    _avl_path = None
 
 if TYPE_CHECKING:
     import aerosandbox as asb
@@ -22,6 +25,17 @@ if TYPE_CHECKING:
     from app.schemas.aeroanalysisschema import TrimConstraint
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_default_avl_command() -> str:
+    if _avl_path is not None:
+        return str(_avl_path())
+    import shutil
+
+    found = shutil.which("avl")
+    if found:
+        return found
+    return "avl"
 
 
 def parse_stability_output(raw: str) -> dict[str, float]:
@@ -69,33 +83,6 @@ def parse_stability_output(raw: str) -> dict[str, float]:
     return items
 
 
-def _resolve_avl_path() -> Path:
-    """Find the AVL binary, falling back to the main worktree if needed."""
-    local = _PROJECT_ROOT / "exports" / "avl"
-    if local.exists():
-        return local
-
-    # In a git worktree the binary lives in the main worktree's exports/
-    try:
-        result = subprocess.run(
-            ["git", "worktree", "list", "--porcelain"],
-            capture_output=True,
-            text=True,
-            cwd=_PROJECT_ROOT,
-            timeout=5,
-        )
-        for line in result.stdout.splitlines():
-            if line.startswith("worktree "):
-                main_avl = Path(line.split(" ", 1)[1]) / "exports" / "avl"
-                if main_avl.exists():
-                    return main_avl
-    except (subprocess.SubprocessError, OSError):
-        pass
-
-    # Return the local path anyway — will fail at runtime with a clear error
-    return local
-
-
 class AVLRunner:
     """Standalone AVL runner — owns the full lifecycle from geometry to results.
 
@@ -104,8 +91,6 @@ class AVLRunner:
     geometry/flight condition data, but handles all AVL interaction
     independently.
     """
-
-    DEFAULT_AVL_COMMAND = str(_resolve_avl_path())
 
     def __init__(
         self,
@@ -119,7 +104,7 @@ class AVLRunner:
         self.airplane = airplane
         self.op_point = op_point
         self.xyz_ref = xyz_ref
-        self.avl_command = avl_command or self.DEFAULT_AVL_COMMAND
+        self.avl_command = avl_command or _resolve_default_avl_command()
         self.timeout = timeout
         self.working_directory = working_directory
 

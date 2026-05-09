@@ -1,0 +1,15 @@
+[project]
+name = "avl-binary"
+version = "1.0.0"
+description = "Pre-compiled AVL (Athena Vortex Lattice) binary for da3Dalus"
+requires-python = ">=3.11"
+
+[build-system]
+requires = ["setuptools>=75.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.package-data]
+avl_binary = ["bin/*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
