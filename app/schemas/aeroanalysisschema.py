@@ -91,6 +91,7 @@ class AVLTrimResult(BaseModel):
     raw_results: dict[str, float] = Field(
         default_factory=dict, description="Full parsed AVL output"
     )
+    trim_enrichment: Optional[dict] = Field(None, description="Enrichment data computed after trim")
 
 
 class AeroBuildupTrimRequest(BaseModel):
@@ -165,6 +166,7 @@ class AeroBuildupTrimResult(BaseModel):
     stability_derivatives: dict[str, float] = Field(
         default_factory=dict, description="Stability derivatives at trim point"
     )
+    trim_enrichment: Optional[dict] = Field(None, description="Enrichment data computed after trim")
 
 
 class CdclConfig(BaseModel):
@@ -411,6 +413,42 @@ class DesignWarning(BaseModel):
     message: str = Field(..., description="Human-readable warning message")
 
 
+class ControlEffectiveness(BaseModel):
+    """Per-surface control effectiveness derivative at trim point."""
+
+    derivative: float = Field(..., description="Control derivative (e.g. dCm/d-delta-e in 1/deg)")
+    coefficient: str = Field(..., description="Coefficient affected (Cm, Cl, Cn)")
+    surface: str = Field(..., description="Control surface name")
+
+
+class StabilityClassification(BaseModel):
+    """Static stability classification at a trim point."""
+
+    is_statically_stable: bool = Field(..., description="Cm_alpha < 0")
+    is_directionally_stable: bool = Field(..., description="Cn_beta > 0")
+    is_laterally_stable: bool = Field(..., description="Cl_beta < 0")
+    static_margin: Optional[float] = Field(
+        None, description="Static margin = -Cm_a/CL_a (fraction of MAC)"
+    )
+    overall_class: str = Field(
+        ...,
+        description="'stable', 'neutral', or 'unstable'",
+        pattern="^(stable|neutral|unstable)$",
+    )
+
+
+class MixerValues(BaseModel):
+    """Symmetric/differential decomposition for dual-role surfaces."""
+
+    symmetric_offset: float = Field(
+        ..., description="Average deflection of paired surfaces (degrees)"
+    )
+    differential_throw: float = Field(
+        ..., description="Half-difference of paired surfaces (degrees)"
+    )
+    role: str = Field(..., description="Dual-role type: elevon, flaperon, ruddervator")
+
+
 class TrimEnrichment(BaseModel):
     """Enrichment data computed after a trim solve - stored as JSON on OperatingPointModel."""
 
@@ -428,6 +466,16 @@ class TrimEnrichment(BaseModel):
     design_warnings: list[DesignWarning] = Field(
         default_factory=list, description="Threshold-based design warnings"
     )
+    effectiveness: dict[str, ControlEffectiveness] = Field(
+        default_factory=dict, description="Per-surface control effectiveness"
+    )
+    stability_classification: Optional[StabilityClassification] = Field(
+        None, description="Stability classification at trim point"
+    )
+    mixer_values: dict[str, MixerValues] = Field(
+        default_factory=dict, description="Dual-role surface decomposition"
+    )
+    result_summary: str = Field("", description="Human-readable trim result summary")
 
 
 class AnalysisStatusResponse(BaseModel):

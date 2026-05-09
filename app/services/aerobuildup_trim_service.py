@@ -123,9 +123,7 @@ async def trim_with_aerobuildup(
     except ValidationDomainError:
         raise
     except (ValueError, TypeError) as e:
-        raise ValidationDomainError(
-            message=f"AeroBuildup evaluation failed at bounds: {e}"
-        ) from e
+        raise ValidationDomainError(message=f"AeroBuildup evaluation failed at bounds: {e}") from e
     except Exception as e:
         logger.error(
             "Unexpected AeroBuildup failure for aeroplane %s at bounds [%g, %g]: %s",
@@ -135,9 +133,7 @@ async def trim_with_aerobuildup(
             e,
             exc_info=True,
         )
-        raise InternalError(
-            message=f"AeroBuildup evaluation failed unexpectedly: {e}"
-        ) from e
+        raise InternalError(message=f"AeroBuildup evaluation failed unexpectedly: {e}") from e
 
     if f_lower * f_upper > 0:
         logger.warning(
@@ -198,8 +194,7 @@ async def trim_with_aerobuildup(
         )
     except Exception as e:
         logger.error(
-            "Final AeroBuildup evaluation failed at trimmed deflection %g for "
-            "aeroplane %s: %s",
+            "Final AeroBuildup evaluation failed at trimmed deflection %g for aeroplane %s: %s",
             trimmed_deflection,
             aeroplane_uuid,
             e,
@@ -233,6 +228,31 @@ async def trim_with_aerobuildup(
             aeroplane_uuid,
         )
 
+    # Compute enrichment for the converged trim result
+    trim_enrichment_data = None
+    try:
+        from app.services.trim_enrichment_service import (
+            build_deflection_limits_from_schema,
+            compute_enrichment,
+        )
+
+        deflection_limits = build_deflection_limits_from_schema(plane_schema)
+        alpha_deg = float(op.alpha)
+        enrichment = compute_enrichment(
+            controls={request.trim_variable: round(trimmed_deflection, 6)},
+            limits=deflection_limits,
+            trim_method="aerobuildup",
+            trim_score=None,
+            trim_residuals={},
+            op_name="aerobuildup_trim",
+            alpha_deg=alpha_deg,
+            stability_derivatives=derivs or None,
+            aero_coefficients=aero or None,
+        )
+        trim_enrichment_data = enrichment.model_dump()
+    except Exception:
+        logger.debug("Enrichment computation failed for aeroplane %s", aeroplane_uuid)
+
     return AeroBuildupTrimResult(
         converged=True,
         trim_variable=request.trim_variable,
@@ -241,4 +261,5 @@ async def trim_with_aerobuildup(
         achieved_value=round(achieved, 8),
         aero_coefficients=aero,
         stability_derivatives=derivs,
+        trim_enrichment=trim_enrichment_data,
     )

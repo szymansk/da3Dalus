@@ -139,4 +139,27 @@ async def trim_with_avl(
             aeroplane_uuid,
             list(result.keys()),
         )
+
+    # Compute enrichment for converged trim results
+    if trimmed.converged and trimmed.trimmed_deflections:
+        from app.services.trim_enrichment_service import (
+            build_deflection_limits_from_schema,
+            compute_enrichment,
+        )
+
+        deflection_limits = build_deflection_limits_from_schema(plane_schema)
+        alpha_deg = trimmed.trimmed_state.get("alpha", float(op.alpha))
+        enrichment = compute_enrichment(
+            controls=trimmed.trimmed_deflections,
+            limits=deflection_limits,
+            trim_method="avl",
+            trim_score=None,
+            trim_residuals={},
+            op_name="avl_trim",
+            alpha_deg=alpha_deg,
+            stability_derivatives=trimmed.stability_derivatives or None,
+            aero_coefficients=trimmed.aero_coefficients or None,
+        )
+        trimmed.trim_enrichment = enrichment.model_dump()
+
     return trimmed
