@@ -48,13 +48,38 @@ export interface DesignWarning {
   message: string;
 }
 
+export interface ControlEffectiveness {
+  derivative: number;
+  coefficient: string;
+  surface: string;
+}
+
+export interface StabilityClassification {
+  is_statically_stable: boolean;
+  is_directionally_stable: boolean;
+  is_laterally_stable: boolean;
+  static_margin: number | null;
+  overall_class: "stable" | "neutral" | "unstable";
+}
+
+export interface MixerValues {
+  symmetric_offset: number;
+  differential_throw: number;
+  role: "elevon" | "flaperon" | "ruddervator";
+}
+
 export interface TrimEnrichment {
   analysis_goal: string;
+  result_summary: string;
   trim_method: string;
   trim_score: number | null;
   trim_residuals: Record<string, number>;
   deflection_reserves: Record<string, DeflectionReserve>;
   design_warnings: DesignWarning[];
+  effectiveness: Record<string, ControlEffectiveness>;
+  stability_classification: StabilityClassification | null;
+  mixer_values: Record<string, MixerValues>;
+  aero_coefficients: Record<string, number>;
 }
 
 export interface StoredOperatingPoint {
