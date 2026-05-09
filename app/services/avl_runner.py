@@ -14,7 +14,7 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+from avl_binary import avl_path
 
 if TYPE_CHECKING:
     import aerosandbox as asb
@@ -69,33 +69,6 @@ def parse_stability_output(raw: str) -> dict[str, float]:
     return items
 
 
-def _resolve_avl_path() -> Path:
-    """Find the AVL binary, falling back to the main worktree if needed."""
-    local = _PROJECT_ROOT / "exports" / "avl"
-    if local.exists():
-        return local
-
-    # In a git worktree the binary lives in the main worktree's exports/
-    try:
-        result = subprocess.run(
-            ["git", "worktree", "list", "--porcelain"],
-            capture_output=True,
-            text=True,
-            cwd=_PROJECT_ROOT,
-            timeout=5,
-        )
-        for line in result.stdout.splitlines():
-            if line.startswith("worktree "):
-                main_avl = Path(line.split(" ", 1)[1]) / "exports" / "avl"
-                if main_avl.exists():
-                    return main_avl
-    except (subprocess.SubprocessError, OSError):
-        pass
-
-    # Return the local path anyway — will fail at runtime with a clear error
-    return local
-
-
 class AVLRunner:
     """Standalone AVL runner — owns the full lifecycle from geometry to results.
 
@@ -105,7 +78,7 @@ class AVLRunner:
     independently.
     """
 
-    DEFAULT_AVL_COMMAND = str(_resolve_avl_path())
+    DEFAULT_AVL_COMMAND = str(avl_path())
 
     def __init__(
         self,

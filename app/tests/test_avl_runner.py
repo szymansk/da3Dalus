@@ -597,7 +597,9 @@ class TestAVLRunnerRun:
 class TestAVLRunnerDefaults:
     """Verify default configuration of AVLRunner."""
 
-    def test_default_avl_command_resolves_to_exports(self):
+    def test_default_avl_command_resolves_to_avl_binary(self):
+        from pathlib import Path
+
         from app.services.avl_runner import AVLRunner
 
         runner = AVLRunner(
@@ -605,8 +607,8 @@ class TestAVLRunnerDefaults:
             op_point=MagicMock(),
             xyz_ref=[0, 0, 0],
         )
-        assert runner.avl_command.endswith("exports/avl")
-        assert "avl_runner.py" not in runner.avl_command
+        assert Path(runner.avl_command).name == "avl"
+        assert Path(runner.avl_command).exists()
 
     def test_custom_avl_command_used(self):
         from app.services.avl_runner import AVLRunner
