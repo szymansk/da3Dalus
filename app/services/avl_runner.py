@@ -143,7 +143,30 @@ class AVLRunner:
         """
         from app.services.avl_strip_forces import build_control_deflection_commands
 
+        op = self.op_point
+        b = self.airplane.b_ref
+        c = self.airplane.c_ref
+        v = op.velocity
+
         ks: list[str] = ["OPER"]
+        ks += [
+            "m",
+            f"mn {op.mach()}",
+            f"v {v}",
+            f"d {op.atmosphere.density()}",
+            "g 9.81",
+            "",
+        ]
+        pb2v = op.p * b / (2 * v) if v and b else 0
+        qc2v = op.q * c / (2 * v) if v and c else 0
+        rb2v = op.r * b / (2 * v) if v and b else 0
+        ks += [
+            f"a a {op.alpha}",
+            f"b b {op.beta}",
+            f"r r {pb2v}",
+            f"p p {qc2v}",
+            f"y y {rb2v}",
+        ]
         ks += build_control_deflection_commands(self.airplane, control_overrides)
         if extra_keystrokes:
             ks += extra_keystrokes
