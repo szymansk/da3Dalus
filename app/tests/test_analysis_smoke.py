@@ -53,9 +53,10 @@ def smoke_plane(request, client_and_db):
     return client, aeroplane, config
 
 
+@pytest.mark.integration
 def test_smoke_factories(client_and_db):
     """Verify all 7 smoke-plane factories create valid aeroplanes (sanity check)."""
-    client, SessionLocal = client_and_db
+    _client, SessionLocal = client_and_db
     session = SessionLocal()
     try:
         for config in SMOKE_CONFIGS:
