@@ -67,6 +67,13 @@ Entry points:
 5. **No bug fix without a GH ticket** — `/supercycle-bug` must
    create a GitHub Issue (report ticket number to user) after root
    cause analysis and before any code changes.
+6. **Never skip failing tests** — do not use `--ignore`,
+   `@pytest.mark.skip`, `-k "not ..."`, or any other mechanism to
+   exclude failing tests from a run. If tests fail because
+   infrastructure is broken (missing binaries, broken worktree
+   setup, missing dependencies), create a **high-priority bug
+   ticket** immediately and fix the infrastructure. A broken test
+   environment is a blocker, not a footnote.
 
 ### Test coverage target: >80%
 
