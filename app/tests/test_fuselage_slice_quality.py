@@ -1,9 +1,8 @@
-"""Slow tests for superellipse fit quality with real STEP files (GH#59 AC-5).
+"""Superellipse fit quality tests with real STEP files (GH#59 AC-5).
 
 These tests load actual fuselage STEP files and validate that the slicing
-pipeline produces geometrically faithful results.
-
-Marked @pytest.mark.slow — skipped in the fast CI job.
+pipeline produces geometrically faithful results. Requires CadQuery but
+does not use the ProcessPoolExecutor — runs synchronously.
 """
 
 import pytest
@@ -16,7 +15,7 @@ except ImportError:
     HAS_CADQUERY = False
 
 pytestmark = [
-    pytest.mark.slow,
+    pytest.mark.requires_cadquery,
     pytest.mark.skipif(not HAS_CADQUERY, reason="CadQuery not available on this platform"),
 ]
 
