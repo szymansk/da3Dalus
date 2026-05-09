@@ -35,6 +35,10 @@ def build_wheel(platform: str, binary_path: Path) -> Path:
     shutil.copy2(binary_path, target)
     target.chmod(target.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
+    for stale in (PACKAGE_DIR / "build", PACKAGE_DIR / "avl_binary.egg-info"):
+        if stale.exists():
+            shutil.rmtree(stale)
+
     DIST_DIR.mkdir(exist_ok=True)
 
     subprocess.run(
@@ -43,10 +47,9 @@ def build_wheel(platform: str, binary_path: Path) -> Path:
         check=True,
     )
 
-    generic_wheel = next(DIST_DIR.glob("avl_binary-*.whl"))
+    generic_wheel = next(DIST_DIR.glob("avl_binary-*-any.whl"))
     platform_tag = PLATFORM_TAGS[platform]
     parts = generic_wheel.stem.split("-")
-    # Replace: name-version-pythontag-abitag-platformtag
     final_name = f"{parts[0]}-{parts[1]}-py3-none-{platform_tag}.whl"
     final_path = DIST_DIR / final_name
     generic_wheel.rename(final_path)
