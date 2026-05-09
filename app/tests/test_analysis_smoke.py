@@ -66,3 +66,157 @@ def test_smoke_factories(client_and_db):
             )
     finally:
         session.close()
+
+
+@pytest.mark.integration
+@pytest.mark.requires_aerosandbox
+def test_alpha_sweep(smoke_plane):
+    client, aeroplane, config = smoke_plane
+    response = client.post(
+        f"/aeroplanes/{aeroplane.uuid}/alpha_sweep",
+        json={
+            "alpha_start": -5,
+            "alpha_end": 15,
+            "alpha_num": 5,
+            "velocity": 15.0,
+            "altitude": 0,
+        },
+    )
+    assert response.status_code == 200, f"{config.name}: {response.text}"
+
+
+@pytest.mark.integration
+@pytest.mark.requires_aerosandbox
+def test_strip_forces(smoke_plane):
+    client, aeroplane, config = smoke_plane
+    response = client.post(
+        f"/aeroplanes/{aeroplane.uuid}/strip_forces",
+        json={"alpha": 5.0, "velocity": 15.0, "altitude": 0},
+    )
+    assert response.status_code == 200, f"{config.name}: {response.text}"
+    data = response.json()
+    assert "surfaces" in data, f"{config.name}: missing 'surfaces' key"
+
+
+@pytest.mark.integration
+@pytest.mark.requires_aerosandbox
+def test_streamlines(smoke_plane):
+    client, aeroplane, config = smoke_plane
+    response = client.post(
+        f"/aeroplanes/{aeroplane.uuid}/streamlines",
+        json={"alpha": 5.0, "velocity": 15.0, "altitude": 0},
+    )
+    assert response.status_code == 200, f"{config.name}: {response.text}"
+
+
+@pytest.mark.integration
+@pytest.mark.requires_aerosandbox
+def test_flight_envelope(smoke_plane):
+    client, aeroplane, config = smoke_plane
+    response = client.post(
+        f"/aeroplanes/{aeroplane.uuid}/flight-envelope/compute",
+        json={},
+    )
+    assert response.status_code == 200, f"{config.name}: {response.text}"
+
+
+@pytest.mark.integration
+@pytest.mark.requires_aerosandbox
+def test_stability_summary(smoke_plane):
+    client, aeroplane, config = smoke_plane
+    response = client.post(
+        f"/aeroplanes/{aeroplane.uuid}/stability_summary/aerobuildup",
+        json={"velocity": 15.0, "alpha": 5.0, "altitude": 0},
+    )
+    assert response.status_code == 200, f"{config.name}: {response.text}"
+    data = response.json()
+    assert "neutral_point_x" in data, f"{config.name}: missing 'neutral_point_x'"
+    assert "static_margin" in data, f"{config.name}: missing 'static_margin'"
+
+
+@pytest.mark.integration
+@pytest.mark.requires_aerosandbox
+def test_generate_default_ops(smoke_plane):
+    client, aeroplane, config = smoke_plane
+    response = client.post(
+        f"/aeroplanes/{aeroplane.uuid}/operating-pointsets/generate-default",
+        json={"replace_existing": True},
+    )
+    assert response.status_code == 200, f"{config.name}: {response.text}"
+    data = response.json()
+    assert "operating_points" in data, f"{config.name}: missing 'operating_points'"
+
+
+@pytest.mark.slow
+@pytest.mark.requires_avl
+def test_avl_trim(smoke_plane):
+    client, aeroplane, config = smoke_plane
+    response = client.post(
+        f"/aeroplanes/{aeroplane.uuid}/operating-points/avl-trim",
+        json={
+            "operating_point": {
+                "velocity": 15.0,
+                "alpha": 5.0,
+                "beta": 0.0,
+                "p": 0.0,
+                "q": 0.0,
+                "r": 0.0,
+                "xyz_ref": [0.15, 0.0, 0.0],
+                "altitude": 0.0,
+            },
+            "trim_constraints": [
+                {"variable": "alpha", "target": "PM", "value": 0.0},
+            ],
+        },
+    )
+    assert response.status_code == 200, f"{config.name}: {response.text}"
+
+
+@pytest.mark.slow
+@pytest.mark.requires_aerosandbox
+def test_aerobuildup_trim(smoke_plane):
+    client, aeroplane, config = smoke_plane
+    response = client.post(
+        f"/aeroplanes/{aeroplane.uuid}/operating-points/aerobuildup-trim",
+        json={
+            "operating_point": {
+                "velocity": 15.0,
+                "alpha": 5.0,
+                "beta": 0.0,
+                "p": 0.0,
+                "q": 0.0,
+                "r": 0.0,
+                "xyz_ref": [0.15, 0.0, 0.0],
+                "altitude": 0.0,
+            },
+            "trim_variable": config.trim_ted,
+            "target_coefficient": "Cm",
+            "target_value": 0.0,
+            "deflection_bounds": [-25.0, 25.0],
+        },
+    )
+    assert response.status_code == 200, f"{config.name}: {response.text}"
+
+
+@pytest.mark.integration
+@pytest.mark.requires_aerosandbox
+def test_mass_sweep(smoke_plane):
+    client, aeroplane, config = smoke_plane
+    response = client.post(
+        f"/aeroplanes/{aeroplane.uuid}/mass_sweep",
+        json={
+            "masses_kg": [1.0, 1.5, 2.0],
+            "velocity": 15.0,
+            "altitude": 0,
+        },
+    )
+    assert response.status_code == 200, f"{config.name}: {response.text}"
+    data = response.json()
+    assert "points" in data, f"{config.name}: missing 'points'"
+
+
+@pytest.mark.integration
+def test_cg_comparison(smoke_plane):
+    client, aeroplane, config = smoke_plane
+    response = client.get(f"/aeroplanes/{aeroplane.uuid}/cg_comparison")
+    assert response.status_code == 200, f"{config.name}: {response.text}"
