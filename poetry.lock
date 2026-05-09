@@ -345,6 +345,38 @@ cryptography = "*"
 joserfc = ">=1.6.0"
 
 [[package]]
+name = "avl-binary"
+version = "1.0.0"
+description = "Pre-compiled AVL (Athena Vortex Lattice) binary for da3Dalus"
+optional = false
+python-versions = ">=3.11"
+groups = ["main"]
+markers = "sys_platform == \"darwin\" and platform_machine == \"arm64\""
+files = [
+    {file = "avl_binary-1.0.0-py3-none-macosx_11_0_arm64.whl", hash = "sha256:92d40afd01ef9868b7c861c8f29efeb94d7db10aa3d81b39a49367eff67f6357"},
+]
+
+[package.source]
+type = "url"
+url = "https://github.com/szymansk/da3Dalus/releases/download/avl-binary-v1.0.0/avl_binary-1.0.0-py3-none-macosx_11_0_arm64.whl"
+
+[[package]]
+name = "avl-binary"
+version = "1.0.0"
+description = "Pre-compiled AVL (Athena Vortex Lattice) binary for da3Dalus"
+optional = false
+python-versions = ">=3.11"
+groups = ["main"]
+markers = "sys_platform == \"linux\" and platform_machine == \"x86_64\""
+files = [
+    {file = "avl_binary-1.0.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:33173648bc9c3f5c060cc76d63739048c1515d4dded425354c04417f980a12b1"},
+]
+
+[package.source]
+type = "url"
+url = "https://github.com/szymansk/da3Dalus/releases/download/avl-binary-v1.0.0/avl_binary-1.0.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+
+[[package]]
 name = "backports-tarfile"
 version = "1.2.0"
 description = "Backport of CPython tarfile module"
@@ -5793,7 +5825,7 @@ description = "Provider of IANA time zone data"
 optional = false
 python-versions = ">=2"
 groups = ["main"]
-markers = "(platform_system != \"Linux\" or platform_machine != \"aarch64\") and (sys_platform == \"win32\" or sys_platform == \"emscripten\")"
+markers = "(sys_platform == \"win32\" or sys_platform == \"emscripten\") and (platform_system != \"Linux\" or platform_machine != \"aarch64\")"
 files = [
     {file = "tzdata-2026.2-py2.py3-none-any.whl", hash = "sha256:bbe9af844f658da81a5f95019480da3a89415801f6cc966806612cc7169bffe7"},
     {file = "tzdata-2026.2.tar.gz", hash = "sha256:9173fde7d80d9018e02a662e168e5a2d04f87c41ea174b139fbef642eda62d10"},
@@ -6341,4 +6373,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "b1ad1b021bbf4077eee7faa29368ff9360c8dce0930657565ad3e4c380cfcdd7"
+content-hash = "af3015a74d7480f5199c01d8ac49ee7e9e2d83ec2f9156def781543b8b3e3179"
