@@ -2,16 +2,12 @@
 
 import { useRef, useEffect } from "react";
 import type { TrimEnrichment, DeflectionReserve } from "@/hooks/useOperatingPoints";
+import { displaySurfaceName } from "./utils";
 
 function authorityColor(fraction: number): string {
   if (fraction > 0.8) return "#EF4444";
   if (fraction > 0.6) return "#F59E0B";
   return "#30A46C";
-}
-
-function displaySurfaceName(encoded: string): string {
-  const match = encoded.match(/^\[(\w+)\](.+)$/);
-  return match ? match[2] : encoded;
 }
 
 function formatLabel(name: string, reserve: DeflectionReserve): string {

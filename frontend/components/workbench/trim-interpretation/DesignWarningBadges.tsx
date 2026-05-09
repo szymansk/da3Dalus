@@ -5,6 +5,7 @@ import type {
   TrimEnrichment,
   DesignWarning,
 } from "@/hooks/useOperatingPoints";
+import { displaySurfaceName } from "./utils";
 
 const WARNING_STYLES = {
   info: "border-blue-500/30 bg-blue-500/10 text-blue-400",
@@ -17,11 +18,6 @@ const DETAIL_BG = {
   warning: "bg-yellow-500/5",
   critical: "bg-red-500/5",
 } as const;
-
-function displaySurfaceName(encoded: string): string {
-  const match = encoded.match(/^\[(\w+)\](.+)$/);
-  return match ? match[2] : encoded;
-}
 
 function WarningBadge({
   warning,
@@ -39,6 +35,7 @@ function WarningBadge({
       <button
         type="button"
         onClick={onToggle}
+        aria-expanded={isExpanded}
         className={`cursor-pointer rounded-lg border px-3 py-2 text-left transition-all ${WARNING_STYLES[warning.level] ?? WARNING_STYLES.info}`}
       >
         <span className="font-[family-name:var(--font-geist-sans)] text-[12px]">
