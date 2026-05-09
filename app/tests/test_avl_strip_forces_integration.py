@@ -4,10 +4,14 @@ from pathlib import Path
 
 import pytest
 
-from avl_binary import avl_path
-
-AVL_BINARY = str(avl_path())
 pytestmark = pytest.mark.slow
+
+
+@pytest.fixture(scope="module")
+def avl_binary():
+    from avl_binary import avl_path
+
+    return str(avl_path())
 
 
 def _build_avl_geometry_content(airplane) -> str:
@@ -54,7 +58,7 @@ def op_point():
 
 
 class TestAVLRunnerStripForcesIntegration:
-    def test_run_returns_strip_forces(self, simple_airplane, op_point):
+    def test_run_returns_strip_forces(self, simple_airplane, op_point, avl_binary):
         from app.services.avl_runner import AVLRunner
 
         avl_content = _build_avl_geometry_content(simple_airplane)
@@ -62,7 +66,7 @@ class TestAVLRunnerStripForcesIntegration:
             airplane=simple_airplane,
             op_point=op_point,
             xyz_ref=[0, 0, 0],
-            avl_command=str(AVL_BINARY),
+            avl_command=avl_binary,
             timeout=15,
         )
         result = runner.run(
@@ -91,7 +95,7 @@ class TestAVLRunnerStripForcesIntegration:
             assert strip["cl"] > 0  # positive alpha -> positive lift
             assert -1 < strip["Yle"] < 1  # within wingspan
 
-    def test_standard_results_match_parent(self, simple_airplane, op_point):
+    def test_standard_results_match_parent(self, simple_airplane, op_point, avl_binary):
         """AVLRunner must return equivalent base results to asb.AVL."""
         import aerosandbox as asb
         from app.services.avl_runner import AVLRunner
@@ -99,7 +103,7 @@ class TestAVLRunnerStripForcesIntegration:
         parent_avl = asb.AVL(
             airplane=simple_airplane,
             op_point=op_point,
-            avl_command=str(AVL_BINARY),
+            avl_command=avl_binary,
             timeout=15,
         )
         parent_result = parent_avl.run()
@@ -109,7 +113,7 @@ class TestAVLRunnerStripForcesIntegration:
             airplane=simple_airplane,
             op_point=op_point,
             xyz_ref=[0, 0, 0],
-            avl_command=str(AVL_BINARY),
+            avl_command=avl_binary,
             timeout=15,
         )
         runner_result = runner.run(avl_file_content=avl_content)
@@ -120,7 +124,7 @@ class TestAVLRunnerStripForcesIntegration:
                 f"{key}: {runner_result[key]} != {parent_result[key]}"
             )
 
-    def test_symmetric_airplane_produces_symmetric_strip_forces(self, op_point):
+    def test_symmetric_airplane_produces_symmetric_strip_forces(self, op_point, avl_binary):
         """For a symmetric multi-wing airplane at beta=0, YDUP strip forces must match exactly."""
         import aerosandbox as asb
         from app.services.avl_runner import AVLRunner
@@ -158,7 +162,7 @@ class TestAVLRunnerStripForcesIntegration:
             airplane=airplane,
             op_point=op_point,
             xyz_ref=[0, 0, 0],
-            avl_command=str(AVL_BINARY),
+            avl_command=avl_binary,
             timeout=15,
         )
         surfaces = runner.run(
@@ -182,7 +186,7 @@ class TestAVLRunnerStripForcesIntegration:
                     f"{name}: Cl asymmetry at y={o['Yle']}: {o['cl']} vs {y['cl']}"
                 )
 
-    def test_nonzero_beta_causes_asymmetry(self, simple_airplane):
+    def test_nonzero_beta_causes_asymmetry(self, simple_airplane, avl_binary):
         """Non-zero beta legitimately produces asymmetric strip forces."""
         import aerosandbox as asb
         from app.services.avl_runner import AVLRunner
@@ -194,7 +198,7 @@ class TestAVLRunnerStripForcesIntegration:
             airplane=simple_airplane,
             op_point=op_beta,
             xyz_ref=[0, 0, 0],
-            avl_command=str(AVL_BINARY),
+            avl_command=avl_binary,
             timeout=15,
         )
         surfaces = runner.run(

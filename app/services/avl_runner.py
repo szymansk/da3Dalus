@@ -14,7 +14,10 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from avl_binary import avl_path
+try:
+    from avl_binary import avl_path as _avl_path
+except ImportError:
+    _avl_path = None
 
 if TYPE_CHECKING:
     import aerosandbox as asb
@@ -22,6 +25,17 @@ if TYPE_CHECKING:
     from app.schemas.aeroanalysisschema import TrimConstraint
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_default_avl_command() -> str:
+    if _avl_path is not None:
+        return str(_avl_path())
+    import shutil
+
+    found = shutil.which("avl")
+    if found:
+        return found
+    return "avl"
 
 
 def parse_stability_output(raw: str) -> dict[str, float]:
@@ -78,8 +92,6 @@ class AVLRunner:
     independently.
     """
 
-    DEFAULT_AVL_COMMAND = str(avl_path())
-
     def __init__(
         self,
         airplane: asb.Airplane,
@@ -92,7 +104,7 @@ class AVLRunner:
         self.airplane = airplane
         self.op_point = op_point
         self.xyz_ref = xyz_ref
-        self.avl_command = avl_command or self.DEFAULT_AVL_COMMAND
+        self.avl_command = avl_command or _resolve_default_avl_command()
         self.timeout = timeout
         self.working_directory = working_directory
 

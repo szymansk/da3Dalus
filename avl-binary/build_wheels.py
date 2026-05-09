@@ -35,29 +35,37 @@ def build_wheel(platform: str, binary_path: Path) -> Path:
     shutil.copy2(binary_path, target)
     target.chmod(target.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
-    for stale in (PACKAGE_DIR / "build", PACKAGE_DIR / "avl_binary.egg-info"):
-        if stale.exists():
-            shutil.rmtree(stale)
+    try:
+        for stale in (PACKAGE_DIR / "build", PACKAGE_DIR / "avl_binary.egg-info", DIST_DIR):
+            if stale.exists():
+                shutil.rmtree(stale)
 
-    DIST_DIR.mkdir(exist_ok=True)
+        DIST_DIR.mkdir(exist_ok=True)
 
-    subprocess.run(
-        [sys.executable, "-m", "build", "--wheel", "--outdir", str(DIST_DIR)],
-        cwd=str(PACKAGE_DIR),
-        check=True,
-    )
+        subprocess.run(
+            [sys.executable, "-m", "build", "--wheel", "--outdir", str(DIST_DIR)],
+            cwd=str(PACKAGE_DIR),
+            check=True,
+        )
 
-    generic_wheel = next(DIST_DIR.glob("avl_binary-*-any.whl"))
-    platform_tag = PLATFORM_TAGS[platform]
-    parts = generic_wheel.stem.split("-")
-    final_name = f"{parts[0]}-{parts[1]}-py3-none-{platform_tag}.whl"
-    final_path = DIST_DIR / final_name
-    generic_wheel.rename(final_path)
+        wheels = list(DIST_DIR.glob("avl_binary-*-any.whl"))
+        if not wheels:
+            raise FileNotFoundError(
+                f"No generic wheel found in {DIST_DIR}. "
+                "Check that 'python -m build' succeeded."
+            )
+        generic_wheel = wheels[0]
+        platform_tag = PLATFORM_TAGS[platform]
+        parts = generic_wheel.stem.split("-")
+        final_name = f"{parts[0]}-{parts[1]}-py3-none-{platform_tag}.whl"
+        final_path = DIST_DIR / final_name
+        generic_wheel.rename(final_path)
 
-    target.unlink()
-
-    print(f"Built: {final_path}")
-    return final_path
+        print(f"Built: {final_path}")
+        return final_path
+    finally:
+        if target.exists():
+            target.unlink()
 
 
 def main() -> None:

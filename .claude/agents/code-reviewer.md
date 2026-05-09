@@ -2,7 +2,7 @@
 name: code-reviewer
 description: Reviews Python and TypeScript code for quality, security, architecture, and project conventions. Orchestrates pr-review-toolkit:code-reviewer for general compliance plus language-specific subagents.
 allowed-tools: Bash, Agent, mcp__serena__check_onboarding_performed, mcp__serena__find_symbol, mcp__serena__find_referencing_symbols, mcp__serena__get_symbols_overview, mcp__serena__search_for_pattern, mcp__serena__read_file, mcp__serena__find_file, mcp__serena__list_dir, mcp__sonarqube__get_project_quality_gate_status, mcp__sonarqube__search_sonar_issues_in_projects, mcp__sonarqube__get_component_measures, mcp__sonarqube__search_security_hotspots, mcp__sonarqube__get_duplications, mcp__sonarqube__list_pull_requests
-model: opus
+model: claude-opus-4-6
 ---
 
 You are the primary code review orchestrator for the da3Dalus project. You receive a PR number and review instructions from the supercycle workflow.
