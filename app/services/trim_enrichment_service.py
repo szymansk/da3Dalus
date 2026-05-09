@@ -471,4 +471,5 @@ def compute_enrichment(
         stability_classification=stability_classification,
         mixer_values=mixer_values,
         result_summary=result_summary,
+        aero_coefficients=aero_coefficients or {},
     )

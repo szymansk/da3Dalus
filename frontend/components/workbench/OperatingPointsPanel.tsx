@@ -9,8 +9,14 @@ import type {
   AeroBuildupTrimResult,
   TrimConstraint,
   ControlSurface,
-  TrimEnrichment,
 } from "@/hooks/useOperatingPoints";
+import {
+  AnalysisGoalCard,
+  ControlAuthorityChart,
+  DesignWarningBadges,
+  MixerValuesCard,
+  OpComparisonTable,
+} from "./trim-interpretation";
 
 const RAD_TO_DEG = 180 / Math.PI;
 
@@ -339,6 +345,8 @@ export function OperatingPointsPanel({
         </div>
       )}
 
+      <OpComparisonTable points={points} />
+
       {selectedPoint && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div
@@ -372,9 +380,10 @@ export function OperatingPointsPanel({
                 </p>
               )}
 
-              <AnalysisGoalBanner enrichment={selectedPoint.trim_enrichment ?? null} />
+              <AnalysisGoalCard enrichment={selectedPoint.trim_enrichment ?? null} />
               <ControlAuthorityChart enrichment={selectedPoint.trim_enrichment ?? null} />
               <DesignWarningBadges enrichment={selectedPoint.trim_enrichment ?? null} />
+              <MixerValuesCard enrichment={selectedPoint.trim_enrichment ?? null} />
 
               <div className="flex flex-col gap-3 rounded-xl border border-border bg-card-muted p-4">
                 <span className="font-[family-name:var(--font-geist-sans)] text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -806,93 +815,3 @@ function AbTrimResultCard({
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Trim Enrichment display components                                  */
-/* ------------------------------------------------------------------ */
-
-export function AnalysisGoalBanner({ enrichment }: Readonly<{ enrichment: TrimEnrichment | null }>) {
-  if (!enrichment) return null;
-  return (
-    <div className="rounded-lg border border-[#FF8400]/30 bg-[#FF8400]/10 px-4 py-3">
-      <span className="font-[family-name:var(--font-geist-sans)] text-[11px] font-medium uppercase tracking-wider text-[#FF8400]">
-        Analysis Goal
-      </span>
-      <p className="mt-1 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground">
-        {enrichment.analysis_goal}
-      </p>
-    </div>
-  );
-}
-
-function authorityColor(fraction: number): string {
-  if (fraction > 0.95) return "bg-red-500";
-  if (fraction > 0.80) return "bg-orange-500";
-  if (fraction > 0.60) return "bg-yellow-500";
-  return "bg-emerald-500";
-}
-
-function displaySurfaceName(encoded: string): string {
-  const match = encoded.match(/^\[(\w+)\](.+)$/);
-  return match ? match[2] : encoded;
-}
-
-export function ControlAuthorityChart({ enrichment }: Readonly<{ enrichment: TrimEnrichment | null }>) {
-  if (!enrichment) return null;
-  const entries = Object.entries(enrichment.deflection_reserves);
-  if (entries.length === 0) return null;
-  return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card-muted p-4">
-      <span className="font-[family-name:var(--font-geist-sans)] text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-        Control Authority
-      </span>
-      <div className="flex flex-col gap-2">
-        {entries.map(([name, reserve]) => {
-          const pct = Math.round(reserve.usage_fraction * 100);
-          const barWidth = Math.min(pct, 100);
-          return (
-            <div key={name} className="flex flex-col gap-1">
-              <div className="flex items-baseline justify-between">
-                <span className="font-[family-name:var(--font-geist-sans)] text-[12px] text-muted-foreground">
-                  {displaySurfaceName(name)}
-                </span>
-                <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-foreground">
-                  {pct}%
-                </span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-sidebar-accent">
-                <div
-                  className={`h-full rounded-full transition-all ${authorityColor(reserve.usage_fraction)}`}
-                  style={{ width: `${barWidth}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-const WARNING_STYLES = {
-  info: "border-blue-500/30 bg-blue-500/10 text-blue-400",
-  warning: "border-yellow-500/30 bg-yellow-500/10 text-yellow-400",
-  critical: "border-red-500/30 bg-red-500/10 text-red-400",
-} as const;
-
-export function DesignWarningBadges({ enrichment }: Readonly<{ enrichment: TrimEnrichment | null }>) {
-  if (!enrichment || enrichment.design_warnings.length === 0) return null;
-  return (
-    <div className="flex flex-col gap-1.5">
-      {enrichment.design_warnings.map((w, i) => (
-        <div
-          key={i}
-          className={`rounded-lg border px-3 py-2 ${WARNING_STYLES[w.level] ?? WARNING_STYLES.info}`}
-        >
-          <span className="font-[family-name:var(--font-geist-sans)] text-[12px]">
-            {w.message}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}

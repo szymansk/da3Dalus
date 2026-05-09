@@ -486,6 +486,9 @@ class TrimEnrichment(BaseModel):
         default_factory=dict, description="Dual-role surface decomposition"
     )
     result_summary: str = Field("", description="Human-readable trim result summary")
+    aero_coefficients: dict[str, float] = Field(
+        default_factory=dict, description="Aerodynamic coefficients at trim (CL, CD, Cm, etc.)"
+    )
 
 
 class AnalysisStatusResponse(BaseModel):
