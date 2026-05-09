@@ -27,12 +27,12 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_PITCH_TOKENS = {"elevator", "stabilator", "elevon"}
+_PITCH_ROLES = {"elevator", "stabilator", "elevon"}
 
 
 def _find_pitch_control_name(db: Session, aeroplane_id: int) -> str | None:
     """Find the name of the first pitch control surface on the aeroplane."""
-    rows = (
+    row = (
         db.query(WingXSecTrailingEdgeDeviceModel.name)
         .join(
             WingXSecDetailModel,
@@ -40,13 +40,13 @@ def _find_pitch_control_name(db: Session, aeroplane_id: int) -> str | None:
         )
         .join(WingXSecModel, WingXSecDetailModel.wing_xsec_id == WingXSecModel.id)
         .join(WingModel, WingXSecModel.wing_id == WingModel.id)
-        .filter(WingModel.aeroplane_id == aeroplane_id)
-        .all()
+        .filter(
+            WingModel.aeroplane_id == aeroplane_id,
+            WingXSecTrailingEdgeDeviceModel.role.in_(_PITCH_ROLES),
+        )
+        .first()
     )
-    for (name,) in rows:
-        if name and any(token in name.lower() for token in _PITCH_TOKENS):
-            return name
-    return None
+    return row[0] if row else None
 
 
 def _op_model_to_schema(op: OperatingPointModel) -> OperatingPointSchema:

@@ -283,21 +283,27 @@ class TestFallbackSpeeds:
 
 
 class TestPickControlName:
-    def test_finds_matching_control(self):
-        assert _pick_control_name(["Elevator_Main"], {"elevator"}) == "Elevator_Main"
+    def test_finds_matching_control_by_role_tag(self):
+        assert _pick_control_name(["[elevator]Main"], roles={"elevator"}) == "[elevator]Main"
 
-    def test_returns_none_when_no_match(self):
-        assert _pick_control_name(["Flap_Left"], {"elevator"}) is None
+    def test_returns_none_when_no_role_match(self):
+        assert _pick_control_name(["[flap]Left"], roles={"elevator"}) is None
 
-    def test_case_insensitive(self):
-        assert _pick_control_name(["RUDDER_1"], {"rudder"}) == "RUDDER_1"
+    def test_returns_none_for_untagged_names(self):
+        assert _pick_control_name(["RUDDER_1"], roles={"rudder"}) is None
 
     def test_empty_list(self):
-        assert _pick_control_name([], {"elevator"}) is None
+        assert _pick_control_name([], roles={"elevator"}) is None
 
     def test_first_match_wins(self):
-        result = _pick_control_name(["elevon_left", "elevator_right"], {"elevon", "elevator"})
-        assert result == "elevon_left"
+        result = _pick_control_name(
+            ["[elevon]Left", "[elevator]Right"], roles={"elevon", "elevator"}
+        )
+        assert result == "[elevon]Left"
+
+    def test_untagged_names_ignored_even_with_matching_substring(self):
+        result = _pick_control_name(["elevator_main", "[aileron]Left"], roles={"elevator"})
+        assert result is None
 
 
 # ================================================================== #
@@ -306,26 +312,33 @@ class TestPickControlName:
 
 
 class TestDetectControlCapabilities:
-    def test_with_elevator(self):
-        airplane = _mock_airplane_with_controls("elevator")
+    def test_with_tagged_elevator(self):
+        airplane = _mock_airplane_with_controls("[elevator]Main")
         caps = _detect_control_capabilities(airplane)
         assert caps["has_pitch_control"] is True
         assert caps["has_roll_control"] is False
         assert caps["has_yaw_control"] is False
-        assert "elevator" in caps["available_controls"]
+        assert "[elevator]Main" in caps["available_controls"]
 
-    def test_with_aileron_and_rudder(self):
-        airplane = _mock_airplane_with_controls("aileron", "rudder")
+    def test_with_tagged_aileron_and_rudder(self):
+        airplane = _mock_airplane_with_controls("[aileron]Left", "[rudder]Tail")
         caps = _detect_control_capabilities(airplane)
         assert caps["has_pitch_control"] is False
         assert caps["has_roll_control"] is True
         assert caps["has_yaw_control"] is True
 
-    def test_with_elevon(self):
-        airplane = _mock_airplane_with_controls("elevon_left")
+    def test_with_tagged_elevon(self):
+        airplane = _mock_airplane_with_controls("[elevon]Left")
         caps = _detect_control_capabilities(airplane)
         assert caps["has_pitch_control"] is True
         assert caps["has_roll_control"] is True
+
+    def test_untagged_names_not_detected(self):
+        airplane = _mock_airplane_with_controls("elevator", "aileron")
+        caps = _detect_control_capabilities(airplane)
+        assert caps["has_pitch_control"] is False
+        assert caps["has_roll_control"] is False
+        assert caps["available_controls"] == ["aileron", "elevator"]
 
     def test_no_controls(self):
         airplane = _mock_airplane_with_controls()
