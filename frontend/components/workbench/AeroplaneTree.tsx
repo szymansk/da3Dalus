@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ChevronDown, ChevronRight, Plus, Trash2, Eye, EyeOff, Loader, PanelLeftClose, Pencil } from "lucide-react";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useWing } from "@/hooks/useWings";
@@ -63,6 +63,25 @@ interface BuildNodeContext {
   callbacks: BuildNodeCallbacks;
 }
 
+// ── Role icon mapping ─────────────────────────────────────────
+
+const ROLE_ICONS: Record<string, string> = {
+  elevator: "↕",
+  aileron: "↔",
+  rudder: "⟳",
+  elevon: "⤡",
+  stabilator: "↕",
+  flap: "▽",
+  spoiler: "▢",
+  other: "○",
+};
+
+const PITCH_ROLES = new Set(["elevator", "elevon", "stabilator"]);
+
+function getRoleIcon(role: string): string {
+  return ROLE_ICONS[role] ?? "○";
+}
+
 // ── Shared helpers ─────────────────────────────────────────────
 
 function getTedData(xsec: XSec): Record<string, unknown> | null {
@@ -88,12 +107,13 @@ function buildTedNode(
   const tedRole = (tedObj.role as string) ?? "";
   const tedLabel = (tedObj.label as string) ?? "";
   const tedDisplay = tedLabel || tedRole || "TED";
+  const icon = getRoleIcon(tedRole);
   return {
     id: `${id}-ted`,
-    label: `TED: ${tedDisplay}`,
+    label: `${icon} ${tedDisplay}`,
     level: 3,
     leaf: true,
-    chip: "TED",
+    chip: tedRole ? tedRole.toUpperCase() : "TED",
     onEdit: callbacks.onEditTed ? () => callbacks.onEditTed!(wingName, xsecIndex, tedObj) : undefined,
     onDelete: callbacks.onDeleteTed ? () => {
       if (confirm(`Delete control surface "${tedDisplay}"?`)) callbacks.onDeleteTed!(wingName, xsecIndex);
@@ -402,10 +422,13 @@ function airfoilShort(raw: string): string {
 }
 
 function getChipLabel(xsec: XSec): string | undefined {
-  const ted = xsec.trailing_edge_device;
-  if (ted && typeof ted === "object" && "name" in ted) return String(ted.name).toUpperCase();
-  const cs = xsec.control_surface;
-  if (cs && typeof cs === "object" && "name" in cs) return String(cs.name).toUpperCase();
+  const ted = xsec.trailing_edge_device ?? xsec.control_surface;
+  if (ted && typeof ted === "object") {
+    const t = ted as Record<string, unknown>;
+    const role = t.role as string | undefined;
+    if (role) return `${getRoleIcon(role)} ${role.toUpperCase()}`;
+    if ("name" in t) return String(t.name).toUpperCase();
+  }
   return undefined;
 }
 
@@ -776,6 +799,16 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
     onNodeEdit, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed,
   });
 
+  const hasPitchSurface = useMemo(() => {
+    if (!wing) return true;
+    return wing.x_secs.some((xsec) => {
+      const ted = getTedData(xsec);
+      if (!ted) return false;
+      const role = (ted.role as string) ?? "";
+      return PITCH_ROLES.has(role);
+    });
+  }, [wing]);
+
   // Build tree data
   const treeData = buildTreeData({
     wingNames,
@@ -854,6 +887,16 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
           </>
         )}
       </div>
+
+      {/* Pitch control surface warning */}
+      {!hasPitchSurface && wing && (
+        <div
+          role="alert"
+          className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-400"
+        >
+          No pitch control surface assigned. Auto-trim and stability analysis require an elevator, elevon, or stabilator.
+        </div>
+      )}
 
       {/* Segment add menu (Spar / Control Surface) — positioned at click location */}
       {segAddMenu && (

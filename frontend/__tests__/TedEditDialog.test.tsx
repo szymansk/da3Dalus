@@ -1,7 +1,7 @@
 /**
- * Unit tests for the TedEditDialog role dropdown (gh-439).
+ * Unit tests for the TedEditDialog (gh-439, gh-450).
  */
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
@@ -114,5 +114,85 @@ describe("TedEditDialog role dropdown", () => {
     expect(values).toContain("flap");
     expect(values).toContain("spoiler");
     expect(values).toContain("other");
+  });
+});
+
+describe("TedEditDialog save payload (gh-450)", () => {
+  const onSaved = vi.fn();
+  const onClose = vi.fn();
+  const defaultProps = {
+    open: true,
+    onClose,
+    aeroplaneId: "1",
+    wingName: "Main Wing",
+    xsecIndex: 0,
+    isNew: false,
+    initialData: { role: "elevator", label: "Main Elevator", rel_chord_root: 0.8 },
+    onSaved,
+  };
+
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({}), { status: 200 }),
+    );
+    onSaved.mockClear();
+    onClose.mockClear();
+  });
+
+  afterEach(() => {
+    fetchSpy.mockRestore();
+  });
+
+  it("sends role and label in TED PATCH payload", async () => {
+    const user = userEvent.setup();
+    render(<TedEditDialog {...defaultProps} />);
+
+    const saveBtn = screen.getByText("Save");
+    await user.click(saveBtn);
+
+    expect(fetchSpy).toHaveBeenCalled();
+    const tedCall = fetchSpy.mock.calls.find(
+      (c) => typeof c[0] === "string" && c[0].includes("/trailing_edge_device"),
+    );
+    expect(tedCall).toBeTruthy();
+    const body = JSON.parse((tedCall![1] as RequestInit).body as string);
+    expect(body.role).toBe("elevator");
+    expect(body.label).toBe("Main Elevator");
+  });
+
+  it("sends null label when label is cleared", async () => {
+    const user = userEvent.setup();
+    render(<TedEditDialog {...defaultProps} />);
+
+    const labelInput = screen.getByPlaceholderText("e.g. Left Aileron") as HTMLInputElement;
+    await user.clear(labelInput);
+
+    const saveBtn = screen.getByText("Save");
+    await user.click(saveBtn);
+
+    const tedCall = fetchSpy.mock.calls.find(
+      (c) => typeof c[0] === "string" && c[0].includes("/trailing_edge_device"),
+    );
+    const body = JSON.parse((tedCall![1] as RequestInit).body as string);
+    expect(body.label).toBeNull();
+  });
+
+  it("sends changed role after dropdown selection", async () => {
+    const user = userEvent.setup();
+    render(<TedEditDialog {...defaultProps} />);
+
+    const select = screen.getByLabelText("Role") as HTMLSelectElement;
+    await user.selectOptions(select, "aileron");
+
+    const saveBtn = screen.getByText("Save");
+    await user.click(saveBtn);
+
+    const tedCall = fetchSpy.mock.calls.find(
+      (c) => typeof c[0] === "string" && c[0].includes("/trailing_edge_device"),
+    );
+    const body = JSON.parse((tedCall![1] as RequestInit).body as string);
+    expect(body.role).toBe("aileron");
   });
 });

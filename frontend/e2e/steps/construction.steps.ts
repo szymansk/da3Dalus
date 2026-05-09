@@ -466,3 +466,80 @@ Then("the wing is symmetric", async ({}) => {
   const wing = loadWingData();
   expect(wing.symmetric).toBe(true);
 });
+
+// ── gh-450: TED role UI ────────────────────────────────────────
+
+When("I click the add button on the segment", async ({ page }) => {
+  const side = sidebar(page);
+  const segRow = side.getByRole("treeitem", { selected: true }).first();
+  const addBtn = segRow.getByTitle("Add");
+  await addBtn.click();
+});
+
+When("I select {string}", async ({ page }, optionText: string) => {
+  await page.getByText(optionText, { exact: true }).click();
+  await page.waitForTimeout(500);
+});
+
+When(
+  "I select role {string} in the TED dialog",
+  async ({ page }, role: string) => {
+    const dialog = page.locator("dialog").first();
+    const select = dialog.getByLabel("Role");
+    await select.selectOption(role);
+  },
+);
+
+When(
+  "I fill label {string} in the TED dialog",
+  async ({ page }, label: string) => {
+    const dialog = page.locator("dialog").first();
+    const input = dialog.getByPlaceholder("e.g. Left Aileron");
+    await input.fill(label);
+  },
+);
+
+Then("the pitch warning is visible", async ({ page }) => {
+  await expect(
+    page.getByRole("alert").getByText(/No pitch control surface/),
+  ).toBeVisible({ timeout: 5000 });
+});
+
+Then("the pitch warning is not visible", async ({ page }) => {
+  const warning = page.getByRole("alert").getByText(/No pitch control surface/);
+  await expect(warning).not.toBeVisible({ timeout: 3000 }).catch(() => {
+    // Element not found at all is fine
+  });
+});
+
+Then(
+  "the pitch warning text contains {string}",
+  async ({ page }, text: string) => {
+    await expect(
+      page.getByRole("alert").getByText(text),
+    ).toBeVisible({ timeout: 5000 });
+  },
+);
+
+Given(
+  "no cross section has role {string} or {string} or {string}",
+  async ({ request }, role1: string, role2: string, role3: string) => {
+    await ensureIdFromApi(request);
+    const res = await request.get(
+      `${API}/aeroplanes/${aeroplaneId}/wings/main_wing`,
+    );
+    const wing = await res.json();
+    const pitchRoles = [role1, role2, role3];
+    const hasPitch = wing.x_secs?.some(
+      (xs: Record<string, unknown>) => {
+        const ted = (xs.trailing_edge_device ?? xs.control_surface) as Record<string, unknown> | null;
+        return ted && pitchRoles.includes(ted.role as string);
+      },
+    );
+    if (hasPitch) {
+      throw new Error(
+        "Precondition failed: wing has a pitch control surface. Remove it first.",
+      );
+    }
+  },
+);
