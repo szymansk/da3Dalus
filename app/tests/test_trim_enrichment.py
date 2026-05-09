@@ -126,6 +126,23 @@ class TestTrimEnrichment:
         e2 = TrimEnrichment.model_validate(data)
         assert e2 == e
 
+    def test_aero_coefficients_explicit(self):
+        """aero_coefficients can be set explicitly on TrimEnrichment."""
+        e = TrimEnrichment(
+            analysis_goal="Test aero coefficients",
+            trim_method="avl",
+            aero_coefficients={"CL": 0.45, "CD": 0.025, "Cm": -0.001},
+        )
+        assert e.aero_coefficients == {"CL": 0.45, "CD": 0.025, "Cm": -0.001}
+
+    def test_aero_coefficients_defaults_to_empty_dict(self):
+        """aero_coefficients defaults to empty dict for backward compatibility."""
+        e = TrimEnrichment(
+            analysis_goal="Test default",
+            trim_method="opti",
+        )
+        assert e.aero_coefficients == {}
+
     def test_new_fields_have_defaults(self):
         """New enrichment fields (effectiveness, stability_classification, etc.)
         must default so existing persisted JSON does not break on load."""
@@ -137,6 +154,7 @@ class TestTrimEnrichment:
         assert e.stability_classification is None
         assert e.mixer_values == {}
         assert e.result_summary == ""
+        assert e.aero_coefficients == {}
 
     def test_full_enrichment_with_all_new_fields(self):
         e = TrimEnrichment(
