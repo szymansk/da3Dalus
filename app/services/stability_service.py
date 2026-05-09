@@ -16,6 +16,7 @@ from app.schemas.aeroanalysisschema import OperatingPointSchema
 from app.schemas.AeroplaneRequest import AnalysisToolUrlType
 from app.schemas.stability import StabilitySummaryResponse, StabilityResultRead
 from app.services.analysis_service import get_aeroplane_schema_or_raise
+from app.services.wing_service import get_aeroplane_or_raise
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +29,15 @@ def _scalar(val) -> Optional[float]:
         if val.ndim == 0:
             return float(val)
         if val.size > 1:
-            logger.warning("_scalar received %s with %d elements; using first", type(val).__name__, val.size)
+            logger.warning(
+                "_scalar received %s with %d elements; using first", type(val).__name__, val.size
+            )
         return float(val[0]) if val.size > 0 else None
     if isinstance(val, list):
         if len(val) > 1:
-            logger.warning("_scalar received %s with %d elements; using first", type(val).__name__, len(val))
+            logger.warning(
+                "_scalar received %s with %d elements; using first", type(val).__name__, len(val)
+            )
         return float(val[0]) if len(val) > 0 else None
     return float(val)
 
@@ -106,13 +111,15 @@ def compute_geometry_hash(plane_schema) -> str:
             xsecs = []
             if hasattr(w, "x_secs") and w.x_secs:
                 for xs in w.x_secs:
-                    xsecs.append({
-                        "x_le": getattr(xs, "x_le", 0),
-                        "y_le": getattr(xs, "y_le", 0),
-                        "z_le": getattr(xs, "z_le", 0),
-                        "chord": getattr(xs, "chord", 0),
-                        "twist": getattr(xs, "twist", 0),
-                    })
+                    xsecs.append(
+                        {
+                            "x_le": getattr(xs, "x_le", 0),
+                            "y_le": getattr(xs, "y_le", 0),
+                            "z_le": getattr(xs, "z_le", 0),
+                            "chord": getattr(xs, "chord", 0),
+                            "twist": getattr(xs, "twist", 0),
+                        }
+                    )
             wing_data["x_secs"] = xsecs
             data["wings"].append(wing_data)
     if hasattr(plane_schema, "fuselages") and plane_schema.fuselages:
@@ -121,11 +128,13 @@ def compute_geometry_hash(plane_schema) -> str:
             xsecs = []
             if hasattr(f, "x_secs") and f.x_secs:
                 for xs in f.x_secs:
-                    xsecs.append({
-                        "x": getattr(xs, "x_c", 0),
-                        "width": getattr(xs, "width", 0),
-                        "height": getattr(xs, "height", 0),
-                    })
+                    xsecs.append(
+                        {
+                            "x": getattr(xs, "x_c", 0),
+                            "width": getattr(xs, "width", 0),
+                            "height": getattr(xs, "height", 0),
+                        }
+                    )
             fus_data["x_secs"] = xsecs
             data["fuselages"].append(fus_data)
     raw = json.dumps(data, sort_keys=True, default=str)
@@ -148,9 +157,7 @@ def persist_stability_result(
     from app.models.stability_result import StabilityResultModel
 
     existing = (
-        db.query(StabilityResultModel)
-        .filter_by(aeroplane_id=aeroplane_id, solver=solver)
-        .first()
+        db.query(StabilityResultModel).filter_by(aeroplane_id=aeroplane_id, solver=solver).first()
     )
     values = {
         "neutral_point_x": summary.neutral_point_x,
@@ -224,15 +231,22 @@ def _get_margin_bounds(db: Session, aeroplane_id: int) -> tuple[float, float]:
     rows = (
         db.query(DesignAssumptionModel)
         .filter_by(aeroplane_id=aeroplane_id)
-        .filter(DesignAssumptionModel.parameter_name.in_(
-            ["min_static_margin", "max_static_margin"]
-        ))
+        .filter(
+            DesignAssumptionModel.parameter_name.in_(["min_static_margin", "max_static_margin"])
+        )
         .all()
     )
     if not rows:
-        logger.debug("No margin bounds in design_assumptions for aeroplane %s; using defaults (5%%/25%%)", aeroplane_id)
+        logger.debug(
+            "No margin bounds in design_assumptions for aeroplane %s; using defaults (5%%/25%%)",
+            aeroplane_id,
+        )
     for r in rows:
-        val = r.calculated_value if r.active_source == "CALCULATED" and r.calculated_value is not None else r.estimate_value
+        val = (
+            r.calculated_value
+            if r.active_source == "CALCULATED" and r.calculated_value is not None
+            else r.estimate_value
+        )
         if r.parameter_name == "min_static_margin":
             min_margin = val
         elif r.parameter_name == "max_static_margin":
@@ -256,7 +270,9 @@ def _auto_populate_cd0(db: Session, aeroplane_id: int, result) -> None:
             .first()
         )
         if row is None:
-            logger.debug("No cd0 assumption row for aeroplane %s; skipping auto-populate", aeroplane_id)
+            logger.debug(
+                "No cd0 assumption row for aeroplane %s; skipping auto-populate", aeroplane_id
+            )
             return
         row.calculated_value = cd0_val
         row.calculated_source = "stability_analysis"
@@ -281,6 +297,7 @@ async def get_stability_summary(
     from app.api.utils import analyse_aerodynamics
 
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
+    aeroplane_pk = get_aeroplane_or_raise(db, aeroplane_uuid).id
 
     avl_file_content = None
     if analysis_tool == AnalysisToolUrlType.AVL:
@@ -311,7 +328,7 @@ async def get_stability_summary(
     static_margin = _compute_static_margin(xnp, xcg, mac_val)
     static_margin_pct = static_margin * 100 if static_margin is not None else None
 
-    min_margin, max_margin = _get_margin_bounds(db, plane_schema.id)
+    min_margin, max_margin = _get_margin_bounds(db, aeroplane_pk)
     cg_range = None
     if xnp is not None and mac_val is not None and mac_val > 0:
         cg_range = compute_cg_range(xnp, mac_val, min_margin, max_margin)
@@ -337,9 +354,9 @@ async def get_stability_summary(
     )
 
     geometry_hash = compute_geometry_hash(plane_schema)
-    persist_stability_result(db, plane_schema.id, str(analysis_tool), summary, geometry_hash)
+    persist_stability_result(db, aeroplane_pk, str(analysis_tool), summary, geometry_hash)
 
     if str(analysis_tool).lower() in ("aerobuildup",):
-        _auto_populate_cd0(db, plane_schema.id, result)
+        _auto_populate_cd0(db, aeroplane_pk, result)
 
     return summary
