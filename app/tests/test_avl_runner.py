@@ -125,14 +125,25 @@ class TestParseStabilityOutput:
 class TestBuildKeystrokes:
     """Verify keystroke sequence construction."""
 
-    def _make_runner(self, airplane=None):
+    def _make_runner(self, airplane=None, op_point=None):
         """Create an AVLRunner with minimal mocks."""
         from app.services.avl_runner import AVLRunner
 
         if airplane is None:
             airplane = MagicMock()
             airplane.wings = []
-        op_point = MagicMock()
+            airplane.b_ref = 2.0
+            airplane.c_ref = 0.25
+        if op_point is None:
+            op_point = MagicMock()
+            op_point.velocity = 20.0
+            op_point.alpha = 5.0
+            op_point.beta = 1.0
+            op_point.p = 0.0
+            op_point.q = 0.0
+            op_point.r = 0.0
+            op_point.mach.return_value = 0.058
+            op_point.atmosphere.density.return_value = 1.225
         return AVLRunner(
             airplane=airplane,
             op_point=op_point,
@@ -199,6 +210,108 @@ class TestBuildKeystrokes:
         overrides = {"aileron": 10.0}
         runner._build_keystrokes("output.txt", control_overrides=overrides)
         mock_bcc.assert_called_once_with(runner.airplane, overrides)
+
+    @patch("app.services.avl_strip_forces.build_control_deflection_commands", return_value=[])
+    def test_injects_mass_parameters(self, mock_bcc):
+        runner = self._make_runner()
+        ks = runner._build_keystrokes("output.txt")
+        assert "m" in ks
+        m_idx = ks.index("m")
+        assert ks[m_idx + 1] == "mn 0.058"
+        assert ks[m_idx + 2] == "v 20.0"
+        assert ks[m_idx + 3] == "d 1.225"
+        assert ks[m_idx + 4] == "g 9.81"
+        assert ks[m_idx + 5] == ""  # exit mass submenu
+
+    @patch("app.services.avl_strip_forces.build_control_deflection_commands", return_value=[])
+    def test_injects_alpha_beta(self, mock_bcc):
+        runner = self._make_runner()
+        ks = runner._build_keystrokes("output.txt")
+        assert "a a 5.0" in ks
+        assert "b b 1.0" in ks
+
+    @patch("app.services.avl_strip_forces.build_control_deflection_commands", return_value=[])
+    def test_injects_nondimensional_rates(self, mock_bcc):
+        op = MagicMock()
+        op.velocity = 20.0
+        op.alpha = 0.0
+        op.beta = 0.0
+        op.p = 0.5  # roll rate rad/s
+        op.q = 0.1  # pitch rate rad/s
+        op.r = 0.2  # yaw rate rad/s
+        op.mach.return_value = 0.0
+        op.atmosphere.density.return_value = 1.225
+
+        airplane = MagicMock()
+        airplane.wings = []
+        airplane.b_ref = 2.0
+        airplane.c_ref = 0.25
+
+        runner = self._make_runner(airplane=airplane, op_point=op)
+        ks = runner._build_keystrokes("output.txt")
+
+        pb2v = 0.5 * 2.0 / (2 * 20.0)  # = 0.025
+        qc2v = 0.1 * 0.25 / (2 * 20.0)  # = 0.000625
+        rb2v = 0.2 * 2.0 / (2 * 20.0)  # = 0.01
+
+        assert f"r r {pb2v}" in ks
+        assert f"p p {qc2v}" in ks
+        assert f"y y {rb2v}" in ks
+
+    @patch("app.services.avl_strip_forces.build_control_deflection_commands", return_value=[])
+    def test_zero_velocity_zeroes_rates(self, mock_bcc):
+        op = MagicMock()
+        op.velocity = 0.0
+        op.alpha = 0.0
+        op.beta = 0.0
+        op.p = 1.0
+        op.q = 1.0
+        op.r = 1.0
+        op.mach.return_value = 0.0
+        op.atmosphere.density.return_value = 1.225
+
+        runner = self._make_runner(op_point=op)
+        ks = runner._build_keystrokes("output.txt")
+
+        assert "r r 0" in ks
+        assert "p p 0" in ks
+        assert "y y 0" in ks
+
+    @patch("app.services.avl_strip_forces.build_control_deflection_commands", return_value=[])
+    def test_zero_span_zeroes_roll_yaw_rates(self, mock_bcc):
+        airplane = MagicMock()
+        airplane.wings = []
+        airplane.b_ref = 0.0
+        airplane.c_ref = 0.25
+
+        op = MagicMock()
+        op.velocity = 20.0
+        op.alpha = 0.0
+        op.beta = 0.0
+        op.p = 1.0
+        op.q = 1.0
+        op.r = 1.0
+        op.mach.return_value = 0.0
+        op.atmosphere.density.return_value = 1.225
+
+        runner = self._make_runner(airplane=airplane, op_point=op)
+        ks = runner._build_keystrokes("output.txt")
+
+        assert "r r 0" in ks  # pb2v=0 because b=0
+        assert "y y 0" in ks  # rb2v=0 because b=0
+        # pitch rate should still compute since c_ref != 0
+        qc2v = 1.0 * 0.25 / (2 * 20.0)
+        assert f"p p {qc2v}" in ks
+
+    @patch("app.services.avl_strip_forces.build_control_deflection_commands", return_value=[])
+    def test_op_params_before_control_deflections(self, mock_bcc):
+        """Operating point params must appear before control deflection commands."""
+        mock_bcc.return_value = ["d1 d1 5.0"]
+        runner = self._make_runner()
+        ks = runner._build_keystrokes("output.txt")
+        alpha_idx = ks.index("a a 5.0")
+        defl_idx = ks.index("d1 d1 5.0")
+        assert alpha_idx < defl_idx
 
 
 # =========================================================================== #
