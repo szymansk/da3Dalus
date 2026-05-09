@@ -51,6 +51,11 @@ after answer.
 <phase name="implementation" order="2">
 <description>Execute using TDD subagents.</description>
 
+<step name="cleanup-before-tests">
+Use `kill-orphaned-workers` from `../supercycle-common/tracking.md`
+before running any tests.
+</step>
+
 <step name="invoke-implementation">
 Invoke `/subagent-driven-development` with:
 - Context: spec + plan from step comments passed to subagents
@@ -86,7 +91,8 @@ After review:
 <step name="evaluate-and-fix">
 1. `/receiving-code-review` — evaluate + verify
 2. `/sonarqube:sonar-fix-issue` — SonarQube issues
-3. `/verification-before-completion` — evidence
+3. Use `kill-orphaned-workers` from `../supercycle-common/tracking.md`
+4. `/verification-before-completion` — evidence
 </step>
 
 <step name="post-fix-artifacts">

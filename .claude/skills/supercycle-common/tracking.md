@@ -203,6 +203,39 @@ If given a file list, run `/sonarqube:sonar-analyze` on each file.
 
 Return findings as structured context for the delegated skill.
 
+### `kill-orphaned-workers`
+
+Kill orphaned CadQuery/OCCT multiprocessing worker processes left
+behind by crashed or timed-out test runs. These spawn-mode children
+consume 100% CPU and ~500 MB RAM each, starving subsequent test
+runs of resources.
+
+**When to use:** BEFORE every test run and AFTER any test run that
+fails, times out, or is interrupted. Skills that run tests must
+call this operation at both points.
+
+**Detection:** Orphaned workers have PPID=1 (parent exited) and
+match the `multiprocessing.spawn` command pattern.
+
+```bash
+# Find and kill orphaned multiprocessing workers (PPID=1 = orphaned)
+ORPHANS=$(ps -eo pid,ppid,command | \
+  grep 'multiprocessing.spawn' | \
+  grep -v grep | \
+  awk '$2 == 1 {print $1}')
+if [ -n "$ORPHANS" ]; then
+  echo "Killing orphaned CadQuery workers: $ORPHANS"
+  echo "$ORPHANS" | xargs kill 2>/dev/null || true
+fi
+```
+
+**Why this matters:** The CAD `ProcessPoolExecutor` uses
+`multiprocessing.get_context("spawn")` with 4 workers. When pytest
+crashes or times out, `shutdown_executor(wait=False)` fires but
+cannot kill workers stuck in OCCT kernel calls. They become orphans
+(PPID=1) running at 99% CPU indefinitely, consuming ~500 MB each.
+Three orphans = 1.5 GB RAM + 300% CPU stolen from the next run.
+
 ### `detect-frontend`
 
 Check if frontend files are affected.

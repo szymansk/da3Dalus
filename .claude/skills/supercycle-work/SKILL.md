@@ -137,6 +137,12 @@ from the plan file or use `read-step-comments` with filter `has-plan`.
 <phase name="implementation" order="4">
 <description>Execute the plan using TDD subagents.</description>
 
+<step name="cleanup-before-tests">
+Use `kill-orphaned-workers` from `../supercycle-common/tracking.md`
+before running any tests. Orphaned CadQuery workers from prior runs
+consume 100% CPU and ~500 MB RAM each, causing timeouts and crashes.
+</step>
+
 <step name="invoke-implementation">
 Invoke `/subagent-driven-development` with:
 - The plan from Phase 3
@@ -181,6 +187,10 @@ rigor, verify before implementing, push back on false positives.
 
 <step name="fix-sonarqube">
 Invoke `/sonarqube:sonar-fix-issue` for each SonarQube issue.
+</step>
+
+<step name="cleanup-before-verification">
+Use `kill-orphaned-workers` from `../supercycle-common/tracking.md`.
 </step>
 
 <step name="verify-fixes">

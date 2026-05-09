@@ -99,6 +99,13 @@ Use `rotate-status` → `status:implementing`
 <phase name="tdd-fix" order="4">
 <description>Fix the bug using strict TDD: RED → GREEN → REFACTOR.</description>
 
+<step name="cleanup-before-tests">
+Use `kill-orphaned-workers` from `../supercycle-common/tracking.md`
+before running any tests. Orphaned CadQuery workers from prior runs
+consume 100% CPU and ~500 MB RAM each, causing timeouts and crashes
+in subsequent test runs.
+</step>
+
 <step name="red">
 Invoke `/test-driven-development` directly (no plan layer).
 Write failing test reproducing the bug.
@@ -123,6 +130,10 @@ and reproduction details are persisted in GH comments.
 </phase>
 
 <phase name="verification" order="5">
+<step name="cleanup-before-verification">
+Use `kill-orphaned-workers` from `../supercycle-common/tracking.md`
+before running the verification test suite.
+</step>
 <action>Invoke `/verification-before-completion` — evidence before claims.</action>
 </phase>
 
