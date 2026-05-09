@@ -58,6 +58,7 @@ def client_and_db() -> Tuple[TestClient, sessionmaker]:
         bind=engine,
         autocommit=False,
         autoflush=False,
+        expire_on_commit=False,
         class_=Session,
     )
     Base.metadata.create_all(bind=engine)
@@ -179,19 +180,33 @@ def make_operating_point(
     *,
     aircraft_id: int,
     name: str = "op_test",
+    description: str = "",
     velocity: float = 20.0,
     alpha: float = 0.05,
     beta: float = 0.0,
+    p: float = 0.0,
+    q: float = 0.0,
+    r: float = 0.0,
+    xyz_ref: list[float] | None = None,
+    altitude: float = 0.0,
     status: str = "TRIMMED",
+    control_deflections: dict[str, float] | None = None,
 ) -> OperatingPointModel:
     """Create and commit a minimal OperatingPointModel tied to an aircraft."""
     op = OperatingPointModel(
         name=name,
+        description=description,
         aircraft_id=aircraft_id,
         velocity=velocity,
         alpha=alpha,
         beta=beta,
+        p=p,
+        q=q,
+        r=r,
+        xyz_ref=xyz_ref or [0.0, 0.0, 0.0],
+        altitude=altitude,
         status=status,
+        control_deflections=control_deflections,
     )
     session.add(op)
     session.commit()

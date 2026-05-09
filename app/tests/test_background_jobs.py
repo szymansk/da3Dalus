@@ -214,6 +214,25 @@ class TestConcurrentAeroplanes:
         _run(_test())
 
 
+class TestRetrimJobTracking:
+    """Test that RetrimJob tracking lists work correctly."""
+
+    def test_tracking_lists_are_lists(self):
+        job = RetrimJob(aeroplane_id=1)
+        job.dirty_op_ids = [10, 20, 30]
+        job.completed_op_ids = [10, 20]
+        job.failed_op_ids = [30]
+        assert len(job.dirty_op_ids) == 3
+        assert len(job.completed_op_ids) == 2
+        assert len(job.failed_op_ids) == 1
+
+    def test_tracking_lists_independent_per_job(self):
+        job_a = RetrimJob(aeroplane_id=1)
+        job_b = RetrimJob(aeroplane_id=2)
+        job_a.dirty_op_ids = [10, 20]
+        assert job_b.dirty_op_ids == []
+
+
 class TestModuleLevelSingleton:
     def test_job_tracker_is_instance(self):
         assert isinstance(job_tracker, JobTracker)
