@@ -507,9 +507,7 @@ Then("the pitch warning is visible", async ({ page }) => {
 
 Then("the pitch warning is not visible", async ({ page }) => {
   const warning = page.getByRole("alert").getByText(/No pitch control surface/);
-  await expect(warning).not.toBeVisible({ timeout: 3000 }).catch(() => {
-    // Element not found at all is fine
-  });
+  await expect(warning).not.toBeVisible({ timeout: 3000 });
 });
 
 Then(
@@ -518,6 +516,25 @@ Then(
     await expect(
       page.getByRole("alert").getByText(text),
     ).toBeVisible({ timeout: 5000 });
+  },
+);
+
+Given(
+  "at least one cross section has a pitch role",
+  async ({ request }) => {
+    await ensureIdFromApi(request);
+    const res = await request.get(
+      `${API}/aeroplanes/${aeroplaneId}/wings/main_wing`,
+    );
+    const wing = await res.json();
+    const pitchRoles = ["elevator", "elevon", "stabilator"];
+    const hasPitch = wing.x_secs?.some(
+      (xs: Record<string, unknown>) => {
+        const ted = (xs.trailing_edge_device ?? xs.control_surface) as Record<string, unknown> | null;
+        return ted && pitchRoles.includes(ted.role as string);
+      },
+    );
+    expect(hasPitch).toBeTruthy();
   },
 );
 

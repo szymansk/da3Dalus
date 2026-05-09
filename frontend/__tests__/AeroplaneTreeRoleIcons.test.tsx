@@ -140,7 +140,10 @@ describe("AeroplaneTree role icons (gh-450)", () => {
   it("shows correct role icon for each role type in segment chip", () => {
     const roles = [
       { role: "elevator", icon: "↕" },
+      { role: "aileron", icon: "↔" },
       { role: "rudder", icon: "⟳" },
+      { role: "elevon", icon: "⤡" },
+      { role: "stabilator", icon: "↕" },
       { role: "flap", icon: "▽" },
       { role: "spoiler", icon: "▢" },
       { role: "other", icon: "○" },
