@@ -38,11 +38,6 @@ ROLL_ROLES = {"aileron", "elevon"}
 YAW_ROLES = {"rudder"}
 FLAP_ROLES = {"flap"}
 
-PITCH_TOKENS = {"elevator", "stabilator", "elevon"}
-ROLL_TOKENS = {"aileron", "elevon"}
-YAW_TOKENS = {"rudder"}
-FLAP_TOKENS = {"flap"}
-
 ANALYSIS_GOALS: dict[str, str] = {
     "stall_near_clean": "Can the aircraft trim near stall? How much elevator authority remains?",
     "takeoff_climb": "What flap + elevator setting gives safe climb at takeoff speed?",
@@ -404,24 +399,13 @@ def _fallback_speeds(name: str, base_velocity: float) -> list[float]:
 
 def _pick_control_name(
     available_controls: list[str],
-    tokens: Optional[set[str]] = None,
-    roles: Optional[set[str]] = None,
+    roles: set[str],
 ) -> Optional[str]:
-    """Find a control surface name matching the given roles or tokens.
-
-    Prefers an exact ``[role]`` tag match via *roles*, then falls back to
-    substring matching via *tokens*.
-    """
-    target_roles = roles or tokens or set()
+    """Find a control surface name whose ``[role]`` tag matches *roles*."""
     for control_name in available_controls:
-        role, display = _parse_role_tag(control_name)
-        if role and role in target_roles:
+        role, _display = _parse_role_tag(control_name)
+        if role and role in roles:
             return control_name
-    if tokens:
-        for control_name in available_controls:
-            normalized = control_name.strip().lower()
-            if any(token in normalized for token in tokens):
-                return control_name
     return None
 
 
@@ -436,14 +420,9 @@ def _detect_control_capabilities(asb_airplane: asb.Airplane) -> dict[str, Any]:
                 if not raw_name:
                     continue
                 control_names.append(raw_name)
-                role, display = _parse_role_tag(raw_name)
+                role, _display = _parse_role_tag(raw_name)
                 if role:
                     roles_found.add(role)
-                else:
-                    normalized = raw_name.lower()
-                    for token in PITCH_TOKENS | ROLL_TOKENS | YAW_TOKENS | FLAP_TOKENS:
-                        if token in normalized:
-                            roles_found.add(token)
 
     return {
         "has_pitch_control": bool(roles_found & PITCH_ROLES),
@@ -510,9 +489,9 @@ def _solve_trim_candidate_with_opti(
         control_values: dict[str, Any] = {}
         control_variables: dict[str, Any] = {}
 
-        pitch_name = _pick_control_name(available_controls, tokens=PITCH_TOKENS, roles=PITCH_ROLES)
-        yaw_name = _pick_control_name(available_controls, tokens=YAW_TOKENS, roles=YAW_ROLES)
-        roll_name = _pick_control_name(available_controls, tokens=ROLL_TOKENS, roles=ROLL_ROLES)
+        pitch_name = _pick_control_name(available_controls, roles=PITCH_ROLES)
+        yaw_name = _pick_control_name(available_controls, roles=YAW_ROLES)
+        roll_name = _pick_control_name(available_controls, roles=ROLL_ROLES)
 
         if pitch_name:
             control_variables[pitch_name] = opti.variable(
@@ -532,7 +511,7 @@ def _solve_trim_candidate_with_opti(
             # Add fixed flap deflection (not an optimizer variable)
             flap_deflection = target.get("flap_deflection_deg")
             if flap_deflection is not None:
-                flap_name = _pick_control_name(available_controls, tokens=FLAP_TOKENS, roles=FLAP_ROLES)
+                flap_name = _pick_control_name(available_controls, roles=FLAP_ROLES)
                 if flap_name:
                     control_values[flap_name] = float(flap_deflection)
             airplane_for_eval = asb_airplane.with_control_deflections(control_values)
@@ -540,7 +519,7 @@ def _solve_trim_candidate_with_opti(
             # No control variables, but may still have fixed flap deflection
             flap_deflection = target.get("flap_deflection_deg")
             if flap_deflection is not None:
-                flap_name = _pick_control_name(available_controls, tokens=FLAP_TOKENS, roles=FLAP_ROLES)
+                flap_name = _pick_control_name(available_controls, roles=FLAP_ROLES)
                 if flap_name:
                     control_values[flap_name] = float(flap_deflection)
             if control_values:

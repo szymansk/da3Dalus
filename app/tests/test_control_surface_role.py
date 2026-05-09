@@ -145,10 +145,15 @@ class TestRoleBasedDetection:
         assert caps["has_yaw_control"] is False
         assert caps["has_flap"] is False
 
-    def test_fallback_to_substring_for_untagged_names(self):
+    def test_untagged_names_not_detected(self):
         airplane = _mock_airplane_with_controls(["elevator"])
         caps = _detect_control_capabilities(airplane)
-        assert caps["has_pitch_control"] is True
+        assert caps["has_pitch_control"] is False
+
+    def test_untagged_flap_not_detected(self):
+        airplane = _mock_airplane_with_controls(["flap_left"])
+        caps = _detect_control_capabilities(airplane)
+        assert caps["has_flap"] is False
 
 
 class TestRoleBasedPickControl:

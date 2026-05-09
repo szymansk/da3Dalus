@@ -91,7 +91,7 @@ def test_generate_default_set_with_profile_assignment(db_session):
 
     with (
         patch("app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async", return_value=SimpleNamespace()),
-        patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_with_controls("rudder")),
+        patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_with_controls("[rudder]Rudder")),
         patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
     ):
         result = generate_default_set_for_aircraft(db_session, aircraft_uuid)
@@ -112,7 +112,7 @@ def test_generate_default_set_without_profile_uses_defaults(db_session):
 
     with (
         patch("app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async", return_value=SimpleNamespace()),
-        patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_with_controls("rudder")),
+        patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_with_controls("[rudder]Rudder")),
         patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
     ):
         result = generate_default_set_for_aircraft(db_session, aircraft_uuid)
@@ -129,7 +129,7 @@ def test_generate_replace_existing_replaces_old_rows(db_session):
 
     with (
         patch("app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async", return_value=SimpleNamespace()),
-        patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_with_controls("rudder")),
+        patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_with_controls("[rudder]Rudder")),
         patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
     ):
         generate_default_set_for_aircraft(db_session, aircraft_uuid)
@@ -170,7 +170,7 @@ def test_generate_with_rudder_keeps_dutch_role_point(db_session):
 
     with (
         patch("app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async", return_value=SimpleNamespace()),
-        patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_with_controls("rudder")),
+        patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_with_controls("[rudder]Rudder")),
         patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
     ):
         result = generate_default_set_for_aircraft(db_session, aircraft_uuid)
@@ -241,7 +241,7 @@ def test_trim_single_operating_point_for_aircraft(db_session):
         patch("app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async", return_value=SimpleNamespace()),
         patch(
             "app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async",
-            return_value=_mock_airplane_with_controls("elevator"),
+            return_value=_mock_airplane_with_controls("[elevator]Elevator"),
         ),
         patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
     ):

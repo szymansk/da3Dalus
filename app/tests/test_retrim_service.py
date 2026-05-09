@@ -44,7 +44,7 @@ class TestFindPitchControlName:
         db.add(detail)
         db.flush()
         ted = WingXSecTrailingEdgeDeviceModel(
-            wing_xsec_detail_id=detail.id, name="elevator",
+            wing_xsec_detail_id=detail.id, name="elevator", role="elevator",
         )
         db.add(ted)
         db.commit()
@@ -77,7 +77,7 @@ class TestFindPitchControlName:
         db.add(detail)
         db.flush()
         ted = WingXSecTrailingEdgeDeviceModel(
-            wing_xsec_detail_id=detail.id, name="elevon",
+            wing_xsec_detail_id=detail.id, name="elevon", role="elevon",
         )
         db.add(ted)
         db.commit()
@@ -119,7 +119,7 @@ class TestFindPitchControlName:
         db.add(detail)
         db.flush()
         ted = WingXSecTrailingEdgeDeviceModel(
-            wing_xsec_detail_id=detail.id, name="aileron",
+            wing_xsec_detail_id=detail.id, name="aileron", role="aileron",
         )
         db.add(ted)
         db.commit()
@@ -173,7 +173,7 @@ class TestRetrimDirtyOps:
         db.add(detail)
         db.flush()
         ted = WingXSecTrailingEdgeDeviceModel(
-            wing_xsec_detail_id=detail.id, name="elevator",
+            wing_xsec_detail_id=detail.id, name="elevator", role="elevator",
         )
         db.add(ted)
         db.commit()
@@ -234,7 +234,7 @@ class TestRetrimDirtyOps:
         db.add(detail)
         db.flush()
         ted = WingXSecTrailingEdgeDeviceModel(
-            wing_xsec_detail_id=detail.id, name="elevator",
+            wing_xsec_detail_id=detail.id, name="elevator", role="elevator",
         )
         db.add(ted)
         db.commit()
@@ -306,7 +306,7 @@ class TestRetrimDirtyOps:
         db.add(detail)
         db.flush()
         ted = WingXSecTrailingEdgeDeviceModel(
-            wing_xsec_detail_id=detail.id, name="elevator",
+            wing_xsec_detail_id=detail.id, name="elevator", role="elevator",
         )
         db.add(ted)
         db.commit()
@@ -379,7 +379,7 @@ class TestRetrimDirtyOps:
         db.add(detail)
         db.flush()
         ted = WingXSecTrailingEdgeDeviceModel(
-            wing_xsec_detail_id=detail.id, name="elevator",
+            wing_xsec_detail_id=detail.id, name="elevator", role="elevator",
         )
         db.add(ted)
         db.commit()
@@ -453,7 +453,7 @@ class TestRetrimDirtyOps:
         db.add(detail)
         db.flush()
         ted = WingXSecTrailingEdgeDeviceModel(
-            wing_xsec_detail_id=detail.id, name="elevator",
+            wing_xsec_detail_id=detail.id, name="elevator", role="elevator",
         )
         db.add(ted)
         db.commit()
@@ -516,7 +516,7 @@ class TestRetrimDirtyOps:
         db.add(detail)
         db.flush()
         ted = WingXSecTrailingEdgeDeviceModel(
-            wing_xsec_detail_id=detail.id, name="elevator",
+            wing_xsec_detail_id=detail.id, name="elevator", role="elevator",
         )
         db.add(ted)
         db.commit()
@@ -588,7 +588,7 @@ class TestRetrimIntegration:
         db.add(detail)
         db.flush()
         ted = WingXSecTrailingEdgeDeviceModel(
-            wing_xsec_detail_id=detail.id, name="elevator",
+            wing_xsec_detail_id=detail.id, name="elevator", role="elevator",
         )
         db.add(ted)
         db.commit()
