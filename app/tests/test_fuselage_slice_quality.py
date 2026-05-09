@@ -19,54 +19,53 @@ pytestmark = [
     pytest.mark.skipif(not HAS_CADQUERY, reason="CadQuery not available on this platform"),
 ]
 
-EHAWK_STEP = "components/aircraft/eHawk/e-Hawk Rumpf v29.step"
+RV7_STEP = "components/aircraft/RV-7/fuselage.step"
 PUNISHER_STEP = "components/aircraft/punisher/fuselage.step"
 
 
-class TestEHawkFuselage:
-    """Fit quality tests against the eHawk fuselage (primary test case)."""
+class TestRV7Fuselage:
+    """Fit quality tests against the RV-7 fuselage (primary test case)."""
 
     @pytest.fixture(scope="class")
-    def ehawk_result(self):
+    def rv7_result(self):
         xsecs, metrics = slice_step_to_fuselage(
-            EHAWK_STEP, number_of_slices=50, points_per_slice=30
+            RV7_STEP, number_of_slices=50, points_per_slice=30
         )
         return xsecs, metrics
 
-    def test_volume_fidelity_above_90_percent(self, ehawk_result):
-        _, metrics = ehawk_result
+    def test_volume_fidelity_above_90_percent(self, rv7_result):
+        _, metrics = rv7_result
         assert metrics["volume_ratio"] >= 0.90, (
             f"Volume fidelity too low: {metrics['volume_ratio']:.3f} (need ≥ 0.90)"
         )
 
-    def test_area_fidelity_above_85_percent(self, ehawk_result):
-        _, metrics = ehawk_result
+    def test_area_fidelity_above_85_percent(self, rv7_result):
+        _, metrics = rv7_result
         assert metrics["area_ratio"] >= 0.85, (
             f"Area fidelity too low: {metrics['area_ratio']:.3f} (need ≥ 0.85)"
         )
 
-    def test_all_exponents_in_valid_range(self, ehawk_result):
-        xsecs, _ = ehawk_result
+    def test_all_exponents_in_valid_range(self, rv7_result):
+        xsecs, _ = rv7_result
         for i, xsec in enumerate(xsecs):
             assert 0.5 <= xsec["n"] <= 10.0, (
                 f"Section {i}: exponent n={xsec['n']:.2f} out of range [0.5, 10.0]"
             )
 
-    def test_no_degenerate_cross_sections(self, ehawk_result):
-        xsecs, _ = ehawk_result
+    def test_no_degenerate_cross_sections(self, rv7_result):
+        xsecs, _ = rv7_result
         for i, xsec in enumerate(xsecs):
             assert xsec["a"] > 0.001, f"Section {i}: a={xsec['a']:.6f} is degenerate"
             assert xsec["b"] > 0.001, f"Section {i}: b={xsec['b']:.6f} is degenerate"
 
-    def test_slice_count_matches_request(self, ehawk_result):
-        xsecs, _ = ehawk_result
-        # Allow ±2 tolerance for rounding at boundaries
+    def test_slice_count_matches_request(self, rv7_result):
+        xsecs, _ = rv7_result
         assert abs(len(xsecs) - 50) <= 2, (
             f"Expected ~50 slices, got {len(xsecs)}"
         )
 
-    def test_xsecs_ordered_along_x(self, ehawk_result):
-        xsecs, _ = ehawk_result
+    def test_xsecs_ordered_along_x(self, rv7_result):
+        xsecs, _ = rv7_result
         x_coords = [xs["xyz"][0] for xs in xsecs]
         for i in range(1, len(x_coords)):
             assert x_coords[i] >= x_coords[i - 1], (
@@ -75,7 +74,7 @@ class TestEHawkFuselage:
 
 
 class TestPunisherFuselage:
-    """Secondary test case with simpler geometry."""
+    """Punisher has simple geometry — smoke test only."""
 
     @pytest.fixture(scope="class")
     def punisher_result(self):
@@ -100,9 +99,8 @@ class TestPunisherFuselage:
 class TestAxisAutoDetection:
     """Test that auto-detection picks the correct axis."""
 
-    def test_ehawk_auto_detects_x(self):
-        """eHawk fuselage is longest along X — auto should pick X."""
+    def test_rv7_auto_detects_x(self):
         from cad_designer.aerosandbox.slicing import load_step_model, detect_longest_axis
-        model = load_step_model(EHAWK_STEP)
+        model = load_step_model(RV7_STEP)
         axis = detect_longest_axis(model.val())
         assert axis == "x", f"Expected auto-detect 'x', got '{axis}'"
