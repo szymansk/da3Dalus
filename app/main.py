@@ -113,6 +113,11 @@ def create_app() -> FastAPI:
 
         register_handlers()
 
+        from app.services.retrim_service import retrim_dirty_ops
+        from app.core.background_jobs import job_tracker
+
+        job_tracker.set_trim_function(retrim_dirty_ops)
+
         async with mcp_app.lifespan(app):
             try:
                 yield
