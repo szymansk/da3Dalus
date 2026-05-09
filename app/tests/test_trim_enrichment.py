@@ -280,7 +280,7 @@ class TestStoredOPSchemaEnrichment:
             trim_enrichment=enrichment,
         )
         assert op.trim_enrichment is not None
-        assert op.trim_enrichment["trim_method"] == "opti"
+        assert op.trim_enrichment.trim_method == "opti"
 
     def test_create_schema_defaults_to_none(self):
         op = StoredOperatingPointCreate(
@@ -317,7 +317,7 @@ class TestStoredOPSchemaEnrichment:
                 "design_warnings": [],
             },
         )
-        assert op.trim_enrichment["analysis_goal"] == "Goal"
+        assert op.trim_enrichment.analysis_goal == "Goal"
 
 
 # ---------------------------------------------------------------------------
@@ -335,6 +335,7 @@ from app.services.trim_enrichment_service import (
     compute_enrichment,
     decompose_dual_role,
     generate_result_summary,
+    parse_role_tag,
 )
 from app.services.operating_point_generator_service import TrimmedPoint
 
@@ -563,13 +564,13 @@ class TestStabilityClassification:
         assert sc.is_statically_stable is False
         assert sc.overall_class == "unstable"
 
-    def test_neutral_aircraft(self):
-        """Cm_a < 0, Cn_b > 0, but Cl_b > 0 (laterally unstable) -> neutral."""
+    def test_laterally_unstable_classified_as_unstable(self):
+        """Cm_a < 0, Cn_b > 0, but Cl_b > 0 (laterally unstable) -> unstable."""
         sc = classify_stability({"Cm_a": -0.5, "Cn_b": 0.02, "Cl_b": 0.01, "CL_a": 4.0})
         assert sc.is_statically_stable is True
         assert sc.is_directionally_stable is True
         assert sc.is_laterally_stable is False
-        assert sc.overall_class == "neutral"
+        assert sc.overall_class == "unstable"
 
     def test_static_margin_computed(self):
         sc = classify_stability({"Cm_a": -2.0, "CL_a": 4.0, "Cn_b": 0.01, "Cl_b": -0.01})
@@ -578,6 +579,40 @@ class TestStabilityClassification:
 
     def test_zero_cl_a_no_margin(self):
         sc = classify_stability({"Cm_a": -0.5, "CL_a": 0.0, "Cn_b": 0.01, "Cl_b": -0.01})
+        assert sc.static_margin is None
+
+    def test_cnb_variant_stable(self):
+        """Test that Cnb (legacy AVL notation) is accepted alongside Clb."""
+        sc = classify_stability({"Cm_a": -0.5, "Cnb": 0.02, "Clb": -0.01, "CL_a": 4.0})
+        assert sc.is_statically_stable is True
+        assert sc.is_directionally_stable is True
+        assert sc.is_laterally_stable is True
+        assert sc.overall_class == "stable"
+
+    def test_partial_derivatives_neutral(self):
+        """Only Cm_a and CL_a present — not enough data for full 'stable'."""
+        sc = classify_stability({"Cm_a": -0.5, "CL_a": 4.0})
+        assert sc.is_statically_stable is True
+        # Missing derivatives assume stable
+        assert sc.is_directionally_stable is True
+        assert sc.is_laterally_stable is True
+        # But overall is neutral because not all axes confirmed
+        assert sc.overall_class == "neutral"
+
+    def test_no_derivatives_neutral(self):
+        """Empty derivatives dict produces neutral classification."""
+        sc = classify_stability({})
+        assert sc.overall_class == "neutral"
+
+    def test_partial_with_unstable_axis(self):
+        """Cm_a > 0 (unstable) with no lateral/directional data -> unstable."""
+        sc = classify_stability({"Cm_a": 0.3, "CL_a": 4.0})
+        assert sc.is_statically_stable is False
+        assert sc.overall_class == "unstable"
+
+    def test_static_margin_requires_cm_a(self):
+        """Static margin is None when Cm_a is absent, even if CL_a is present."""
+        sc = classify_stability({"CL_a": 4.0, "Cn_b": 0.02, "Cl_b": -0.01})
         assert sc.static_margin is None
 
 
@@ -772,11 +807,23 @@ class TestAVLTrimEnrichmentField:
             trim_enrichment={"analysis_goal": "test", "trim_method": "avl"},
         )
         assert result.trim_enrichment is not None
-        assert result.trim_enrichment["trim_method"] == "avl"
+        assert result.trim_enrichment.trim_method == "avl"
 
     def test_avl_result_defaults_to_none(self):
         result = AVLTrimResult(converged=False)
         assert result.trim_enrichment is None
+
+    def test_avl_result_serializes_enrichment(self):
+        """AVLTrimResult with TrimEnrichment serialises to dict correctly."""
+        enrichment = TrimEnrichment(analysis_goal="avl test", trim_method="avl", trim_score=0.01)
+        result = AVLTrimResult(
+            converged=True,
+            trimmed_deflections={"[elevator]Elev": -3.0},
+            trim_enrichment=enrichment,
+        )
+        data = result.model_dump()
+        assert isinstance(data["trim_enrichment"], dict)
+        assert data["trim_enrichment"]["trim_method"] == "avl"
 
 
 class TestAeroBuildupTrimEnrichmentField:
@@ -790,7 +837,7 @@ class TestAeroBuildupTrimEnrichmentField:
             trim_enrichment={"analysis_goal": "test", "trim_method": "aerobuildup"},
         )
         assert result.trim_enrichment is not None
-        assert result.trim_enrichment["trim_method"] == "aerobuildup"
+        assert result.trim_enrichment.trim_method == "aerobuildup"
 
     def test_aerobuildup_result_defaults_to_none(self):
         result = AeroBuildupTrimResult(
@@ -801,6 +848,21 @@ class TestAeroBuildupTrimEnrichmentField:
             achieved_value=None,
         )
         assert result.trim_enrichment is None
+
+    def test_aerobuildup_result_serializes_enrichment(self):
+        """AeroBuildupTrimResult with TrimEnrichment serialises to dict correctly."""
+        enrichment = TrimEnrichment(analysis_goal="aerobuildup test", trim_method="aerobuildup")
+        result = AeroBuildupTrimResult(
+            converged=True,
+            trim_variable="[elevator]Elev",
+            trimmed_deflection=-3.0,
+            target_coefficient="Cm",
+            achieved_value=0.001,
+            trim_enrichment=enrichment,
+        )
+        data = result.model_dump()
+        assert isinstance(data["trim_enrichment"], dict)
+        assert data["trim_enrichment"]["trim_method"] == "aerobuildup"
 
 
 # ---------------------------------------------------------------------------
@@ -874,8 +936,8 @@ class TestEnrichmentIntegration:
 
         for op in result.operating_points:
             assert op.trim_enrichment is not None, f"OP {op.name} missing enrichment"
-            assert "analysis_goal" in op.trim_enrichment
-            assert "deflection_reserves" in op.trim_enrichment
+            assert op.trim_enrichment.analysis_goal
+            assert op.trim_enrichment.deflection_reserves is not None
 
     def test_generated_ops_enrichment_persisted_to_db(self, db_session):
         from app.services.operating_point_generator_service import generate_default_set_for_aircraft
@@ -942,7 +1004,7 @@ class TestEnrichmentIntegration:
             result = trim_operating_point_for_aircraft(db_session, aircraft_uuid, request)
 
         assert result.point.trim_enrichment is not None
-        assert result.point.trim_enrichment["analysis_goal"] == "User-defined trim point"
+        assert result.point.trim_enrichment.analysis_goal == "User-defined trim point"
 
     def test_trim_score_flows_through_to_enrichment(self, db_session):
         from app.services.operating_point_generator_service import generate_default_set_for_aircraft
@@ -989,7 +1051,124 @@ class TestEnrichmentIntegration:
 
         first_op = result.operating_points[0]
         assert first_op.trim_enrichment is not None
-        assert first_op.trim_enrichment["trim_score"] == pytest.approx(0.15)
-        assert first_op.trim_enrichment["trim_residuals"]["cm"] == pytest.approx(0.08)
-        warning_categories = [w["category"] for w in first_op.trim_enrichment["design_warnings"]]
+        assert first_op.trim_enrichment.trim_score == pytest.approx(0.15)
+        assert first_op.trim_enrichment.trim_residuals["cm"] == pytest.approx(0.08)
+        warning_categories = [w.category for w in first_op.trim_enrichment.design_warnings]
         assert "trim_quality" in warning_categories
+
+
+# ---------------------------------------------------------------------------
+# parse_role_tag unit tests (T4)
+# ---------------------------------------------------------------------------
+
+
+class TestParseRoleTag:
+    def test_tagged_name(self):
+        role, display = parse_role_tag("[elevator]My Elev")
+        assert role == "elevator"
+        assert display == "My Elev"
+
+    def test_plain_name(self):
+        role, display = parse_role_tag("plain")
+        assert role is None
+        assert display == "plain"
+
+    def test_tag_only(self):
+        role, display = parse_role_tag("[elevator]")
+        assert role == "elevator"
+        assert display == ""
+
+    def test_empty_string(self):
+        role, display = parse_role_tag("")
+        assert role is None
+        assert display == ""
+
+
+# ---------------------------------------------------------------------------
+# LIMIT_REACHED warning test (T1)
+# ---------------------------------------------------------------------------
+
+
+class TestLimitReachedWarning:
+    def test_limit_reached_produces_critical_warning(self):
+        enrichment = compute_enrichment(
+            controls={"[elevator]Elev": -10.0},
+            limits={"[elevator]Elev": (25.0, 25.0)},
+            trim_method="opti",
+            trim_score=0.02,
+            trim_residuals={},
+            op_name="cruise",
+            alpha_deg=3.0,
+            status="LIMIT_REACHED",
+        )
+        authority_warnings = [
+            w for w in enrichment.design_warnings if w.category == "authority" and w.surface is None
+        ]
+        assert len(authority_warnings) == 1
+        assert authority_warnings[0].level == "critical"
+        assert "constraint boundary" in authority_warnings[0].message
+
+
+# ---------------------------------------------------------------------------
+# Trim score boundary tests (T3)
+# ---------------------------------------------------------------------------
+
+
+class TestTrimScoreBoundaries:
+    def test_trim_score_0_5_critical_warning(self):
+        """trim_score > 0.5 produces a critical trim_quality warning."""
+        enrichment = compute_enrichment(
+            controls={},
+            limits={},
+            trim_method="opti",
+            trim_score=0.5,
+            trim_residuals={},
+            op_name="cruise",
+            alpha_deg=3.0,
+        )
+        trim_warnings = [w for w in enrichment.design_warnings if w.category == "trim_quality"]
+        # 0.5 is not > 0.5, so no critical warning
+        assert not any(w.level == "critical" for w in trim_warnings)
+
+    def test_trim_score_above_0_5_critical(self):
+        """trim_score > 0.5 produces a critical trim_quality warning."""
+        enrichment = compute_enrichment(
+            controls={},
+            limits={},
+            trim_method="opti",
+            trim_score=0.51,
+            trim_residuals={},
+            op_name="cruise",
+            alpha_deg=3.0,
+        )
+        trim_warnings = [w for w in enrichment.design_warnings if w.category == "trim_quality"]
+        assert any(w.level == "critical" for w in trim_warnings)
+
+    def test_trim_score_0_1_no_warning(self):
+        """trim_score <= 0.1 produces no trim_quality warning."""
+        enrichment = compute_enrichment(
+            controls={},
+            limits={},
+            trim_method="opti",
+            trim_score=0.1,
+            trim_residuals={},
+            op_name="cruise",
+            alpha_deg=3.0,
+        )
+        trim_warnings = [w for w in enrichment.design_warnings if w.category == "trim_quality"]
+        assert len(trim_warnings) == 0
+
+    def test_trim_score_0_11_warning(self):
+        """trim_score > 0.1 produces a warning-level trim_quality warning."""
+        enrichment = compute_enrichment(
+            controls={},
+            limits={},
+            trim_method="opti",
+            trim_score=0.11,
+            trim_residuals={},
+            op_name="cruise",
+            alpha_deg=3.0,
+        )
+        trim_warnings = [w for w in enrichment.design_warnings if w.category == "trim_quality"]
+        assert len(trim_warnings) == 1
+        assert trim_warnings[0].level == "warning"

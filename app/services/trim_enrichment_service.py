@@ -9,7 +9,7 @@ single ``compute_enrichment()`` entry point.
 from __future__ import annotations
 
 import re
-from typing import Any, Optional
+from typing import Any
 
 from app.schemas.aeroanalysisschema import (
     ControlEffectiveness,
@@ -54,7 +54,7 @@ ANALYSIS_GOALS: dict[str, str] = {
 _DEFAULT_ANALYSIS_GOAL = "User-defined trim point"
 
 
-def _parse_role_tag(name: str) -> tuple[Optional[str], str]:
+def parse_role_tag(name: str) -> tuple[str | None, str]:
     """Parse a ``[role]display`` tag from a control surface name.
 
     Returns ``(role, display)`` when the tag is present, otherwise
@@ -118,26 +118,48 @@ def build_deflection_limits_from_schema(
 def classify_stability(
     stability_derivatives: dict[str, float],
 ) -> StabilityClassification:
-    """Classify static stability from derivatives at the trim point."""
+    """Classify static stability from derivatives at the trim point.
+
+    Only classifies based on derivatives that are actually present.
+    Missing derivatives are assumed stable (not counted against the
+    aircraft), but prevent a full "stable" classification — the result
+    is "neutral" when some axes are unknown.
+    """
+    has_cm_a = "Cm_a" in stability_derivatives
+    has_cn_b = "Cn_b" in stability_derivatives or "Cnb" in stability_derivatives
+    has_cl_b = "Cl_b" in stability_derivatives or "Clb" in stability_derivatives
+
     cm_a = stability_derivatives.get("Cm_a", 0.0)
     cn_b = stability_derivatives.get("Cn_b", stability_derivatives.get("Cnb", 0.0))
     cl_b = stability_derivatives.get("Cl_b", stability_derivatives.get("Clb", 0.0))
     cl_a = stability_derivatives.get("CL_a", 0.0)
 
-    is_static = cm_a < 0
-    is_directional = cn_b > 0
-    is_lateral = cl_b < 0
+    is_static = cm_a < 0 if has_cm_a else True
+    is_directional = cn_b > 0 if has_cn_b else True
+    is_lateral = cl_b < 0 if has_cl_b else True
 
     static_margin: float | None = None
-    if abs(cl_a) > 1e-6:
+    if has_cm_a and abs(cl_a) > 1e-6:
         static_margin = round(-cm_a / cl_a, 4)
 
-    if is_static and is_directional and is_lateral:
-        overall = "stable"
-    elif not is_static or (not is_directional and not is_lateral):
-        overall = "unstable"
+    # Classify based on KNOWN derivatives only
+    known_axes_stable: list[bool] = []
+    if has_cm_a:
+        known_axes_stable.append(is_static)
+    if has_cn_b:
+        known_axes_stable.append(is_directional)
+    if has_cl_b:
+        known_axes_stable.append(is_lateral)
+
+    if not known_axes_stable:
+        overall = "neutral"  # no data
+    elif all(known_axes_stable):
+        if len(known_axes_stable) == 3:
+            overall = "stable"
+        else:
+            overall = "neutral"  # partially stable but not fully confirmed
     else:
-        overall = "neutral"
+        overall = "unstable"  # at least one known axis is unstable
 
     return StabilityClassification(
         is_statically_stable=is_static,
@@ -169,7 +191,7 @@ def compute_control_effectiveness(
     }
 
     for surface_name in controls:
-        role, _display = _parse_role_tag(surface_name)
+        role, _display = parse_role_tag(surface_name)
         if not role:
             continue
 
@@ -207,7 +229,7 @@ def decompose_dual_role(
     # Group controls by role
     role_groups: dict[str, list[tuple[str, float]]] = {}
     for surface_name, deflection in controls.items():
-        role, _display = _parse_role_tag(surface_name)
+        role, _display = parse_role_tag(surface_name)
         if role and role in DUAL_ROLES:
             role_groups.setdefault(role, []).append((surface_name, deflection))
 
@@ -250,7 +272,7 @@ def generate_result_summary(
     # Find the main pitch control and its reserve
     pitch_reserve_str = ""
     for name, reserve in deflection_reserves.items():
-        role, _ = _parse_role_tag(name)
+        role, _ = parse_role_tag(name)
         if role in ("elevator", "stabilator", "elevon"):
             reserve_pct = (1 - reserve.usage_fraction) * 100
             pitch_reserve_str = f" with {reserve_pct:.0f}% elevator reserve"
@@ -366,7 +388,7 @@ def compute_enrichment(
                 )
             )
 
-    if status == OperatingPointStatus.LIMIT_REACHED or status == "LIMIT_REACHED":
+    if status == OperatingPointStatus.LIMIT_REACHED:
         warnings.append(
             DesignWarning(
                 level="critical",

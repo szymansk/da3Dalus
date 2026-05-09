@@ -91,7 +91,9 @@ class AVLTrimResult(BaseModel):
     raw_results: dict[str, float] = Field(
         default_factory=dict, description="Full parsed AVL output"
     )
-    trim_enrichment: Optional[dict] = Field(None, description="Enrichment data computed after trim")
+    trim_enrichment: Optional["TrimEnrichment"] = Field(
+        None, description="Enrichment data computed after trim"
+    )
 
 
 class AeroBuildupTrimRequest(BaseModel):
@@ -166,7 +168,9 @@ class AeroBuildupTrimResult(BaseModel):
     stability_derivatives: dict[str, float] = Field(
         default_factory=dict, description="Stability derivatives at trim point"
     )
-    trim_enrichment: Optional[dict] = Field(None, description="Enrichment data computed after trim")
+    trim_enrichment: Optional["TrimEnrichment"] = Field(
+        None, description="Enrichment data computed after trim"
+    )
 
 
 class CdclConfig(BaseModel):
@@ -300,7 +304,7 @@ class StoredOperatingPointCreate(BaseModel):
         "Overrides geometry defaults for this operating point.",
     )
 
-    trim_enrichment: Optional[dict] = Field(
+    trim_enrichment: Optional["TrimEnrichment"] = Field(
         default=None,
         description="Enrichment data: analysis goal, deflection reserves, design warnings. "
         "Computed after trim solve.",
@@ -417,7 +421,9 @@ class ControlEffectiveness(BaseModel):
     """Per-surface control effectiveness derivative at trim point."""
 
     derivative: float = Field(..., description="Control derivative (e.g. dCm/d-delta-e in 1/deg)")
-    coefficient: str = Field(..., description="Coefficient affected (Cm, Cl, Cn)")
+    coefficient: str = Field(
+        ..., description="Coefficient affected (Cm, Cl, Cn, CL)", pattern="^(Cm|Cl|Cn|CL)$"
+    )
     surface: str = Field(..., description="Control surface name")
 
 
@@ -444,9 +450,13 @@ class MixerValues(BaseModel):
         ..., description="Average deflection of paired surfaces (degrees)"
     )
     differential_throw: float = Field(
-        ..., description="Half-difference of paired surfaces (degrees)"
+        ..., ge=0.0, description="Half-difference of paired surfaces (degrees)"
     )
-    role: str = Field(..., description="Dual-role type: elevon, flaperon, ruddervator")
+    role: str = Field(
+        ...,
+        description="Dual-role type: elevon, flaperon, ruddervator",
+        pattern="^(elevon|flaperon|ruddervator)$",
+    )
 
 
 class TrimEnrichment(BaseModel):
@@ -489,3 +499,9 @@ class AnalysisStatusResponse(BaseModel):
     last_computation: Optional[datetime] = Field(
         None, description="Timestamp of last completed retrim"
     )
+
+
+# Resolve forward references for TrimEnrichment used in earlier classes
+AVLTrimResult.model_rebuild()
+AeroBuildupTrimResult.model_rebuild()
+StoredOperatingPointCreate.model_rebuild()

@@ -1,6 +1,5 @@
 import logging
 import math
-import re
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -26,10 +25,9 @@ from app.schemas.aeroanalysisschema import (
     TrimOperatingPointRequest,
 )
 from app.services.trim_enrichment_service import (
-    ANALYSIS_GOALS,
-    _parse_role_tag,
     build_deflection_limits_from_schema,
     compute_enrichment,
+    parse_role_tag,
 )
 
 logger = logging.getLogger(__name__)
@@ -57,6 +55,7 @@ class TrimmedPoint:
     controls: dict[str, float]
     trim_score: float | None = None
     trim_residuals: dict[str, float] | None = None
+    trim_method: str = "opti"
     trim_enrichment: dict | None = None
 
 
@@ -283,7 +282,7 @@ def _pick_control_name(
 ) -> Optional[str]:
     """Find a control surface name whose ``[role]`` tag matches *roles*."""
     for control_name in available_controls:
-        role, _display = _parse_role_tag(control_name)
+        role, _display = parse_role_tag(control_name)
         if role and role in roles:
             return control_name
     return None
@@ -300,7 +299,7 @@ def _detect_control_capabilities(asb_airplane: asb.Airplane) -> dict[str, Any]:
                 if not raw_name:
                     continue
                 control_names.append(raw_name)
-                role, _display = _parse_role_tag(raw_name)
+                role, _display = parse_role_tag(raw_name)
                 if role:
                     roles_found.add(role)
 
@@ -677,6 +676,7 @@ def _trim_or_estimate_point(
         controls=best_controls,
         trim_score=best_score if best_score < float("inf") else None,
         trim_residuals=best_residuals,
+        trim_method=best_method,
     )
 
 
@@ -774,17 +774,25 @@ def generate_default_set_for_aircraft(
                 constraints=profile.get("constraints", {}),
                 capabilities=capabilities,
             )
-            enrichment = compute_enrichment(
-                controls=point.controls,
-                limits=deflection_limits,
-                trim_method="opti",
-                trim_score=point.trim_score,
-                trim_residuals=point.trim_residuals or {},
-                op_name=point.name,
-                alpha_deg=math.degrees(point.alpha_rad),
-                status=point.status.value if point.status else None,
-            )
-            point.trim_enrichment = enrichment.model_dump()
+            try:
+                enrichment = compute_enrichment(
+                    controls=point.controls,
+                    limits=deflection_limits,
+                    trim_method=point.trim_method,
+                    trim_score=point.trim_score,
+                    trim_residuals=point.trim_residuals or {},
+                    op_name=point.name,
+                    alpha_deg=math.degrees(point.alpha_rad),
+                    status=point.status.value if point.status else None,
+                )
+                point.trim_enrichment = enrichment.model_dump()
+            except Exception:
+                logger.warning(
+                    "Enrichment computation failed for OP '%s' on aircraft %s",
+                    point.name,
+                    aircraft_uuid,
+                    exc_info=True,
+                )
             points.append(point)
 
         logger.info(
@@ -874,16 +882,26 @@ def trim_operating_point_for_aircraft(
         )
 
         deflection_limits = build_deflection_limits_from_schema(plane_schema)
-        enrichment = compute_enrichment(
-            controls=point.controls,
-            limits=deflection_limits,
-            trim_method="opti",
-            trim_score=point.trim_score,
-            trim_residuals=point.trim_residuals or {},
-            op_name=point.name,
-            alpha_deg=math.degrees(point.alpha_rad),
-            status=point.status.value if point.status else None,
-        )
+        enrichment_data = None
+        try:
+            enrichment = compute_enrichment(
+                controls=point.controls,
+                limits=deflection_limits,
+                trim_method=point.trim_method,
+                trim_score=point.trim_score,
+                trim_residuals=point.trim_residuals or {},
+                op_name=point.name,
+                alpha_deg=math.degrees(point.alpha_rad),
+                status=point.status.value if point.status else None,
+            )
+            enrichment_data = enrichment.model_dump()
+        except Exception:
+            logger.warning(
+                "Enrichment computation failed for single trim OP '%s' on aircraft %s",
+                point.name,
+                aircraft_uuid,
+                exc_info=True,
+            )
 
         point_payload = StoredOperatingPointCreate(
             name=point.name,
@@ -901,7 +919,7 @@ def trim_operating_point_for_aircraft(
             r=point.r,
             xyz_ref=[0.0, 0.0, 0.0],
             altitude=point.altitude,
-            trim_enrichment=enrichment.model_dump(),
+            trim_enrichment=enrichment_data,
         )
         return TrimmedOperatingPointRead(
             source_flight_profile_id=source_profile_id,

@@ -234,24 +234,41 @@ async def trim_with_aerobuildup(
         from app.services.trim_enrichment_service import (
             build_deflection_limits_from_schema,
             compute_enrichment,
+            parse_role_tag,
         )
 
         deflection_limits = build_deflection_limits_from_schema(plane_schema)
         alpha_deg = float(op.alpha)
+
+        # Find the tagged name for the trim variable from ASB control surfaces
+        tagged_trim_variable = request.trim_variable
+        for wing in asb_airplane.wings:
+            for xsec in wing.xsecs:
+                for cs in xsec.control_surfaces:
+                    cs_name = str(getattr(cs, "name", "")).strip()
+                    _role, display = parse_role_tag(cs_name)
+                    if display.strip() == request.trim_variable or cs_name == request.trim_variable:
+                        tagged_trim_variable = cs_name
+                        break
+
         enrichment = compute_enrichment(
-            controls={request.trim_variable: round(trimmed_deflection, 6)},
+            controls={tagged_trim_variable: round(trimmed_deflection, 6)},
             limits=deflection_limits,
             trim_method="aerobuildup",
             trim_score=None,
             trim_residuals={},
-            op_name="aerobuildup_trim",
+            op_name=request.operating_point.name or "aerobuildup_trim",
             alpha_deg=alpha_deg,
             stability_derivatives=derivs or None,
             aero_coefficients=aero or None,
         )
-        trim_enrichment_data = enrichment.model_dump()
+        trim_enrichment_data = enrichment
     except Exception:
-        logger.debug("Enrichment computation failed for aeroplane %s", aeroplane_uuid)
+        logger.warning(
+            "Enrichment computation failed for aeroplane %s",
+            aeroplane_uuid,
+            exc_info=True,
+        )
 
     return AeroBuildupTrimResult(
         converged=True,
