@@ -35,6 +35,15 @@ _STABILITY_DERIV_KEYS = {
 }
 
 
+def _to_scalar(value) -> float:
+    """Coerce a numeric value (possibly a 1-element numpy array) to a Python float."""
+    import numpy as np
+
+    if isinstance(value, np.ndarray):
+        return float(value.ravel()[0])
+    return float(value)
+
+
 def _run_single_aerobuildup(
     asb_airplane,
     op_point,
@@ -84,17 +93,30 @@ async def trim_with_aerobuildup(
         atmosphere=atmosphere,
     )
 
-    # Fail fast before expensive solver iterations if the surface doesn't exist
+    # Fail fast before expensive solver iterations if the surface doesn't exist.
+    # Match against both the full tagged name and the display-only portion
+    # so callers can use either "[elevator]Elevator" or just "Elevator".
+    from app.services.trim_enrichment_service import parse_role_tag
+
     control_names: set[str] = set()
+    display_to_tagged: dict[str, str] = {}
     for wing in asb_airplane.wings:
         for xsec in wing.xsecs:
             for cs in xsec.control_surfaces:
-                control_names.add(cs.name)
-    if request.trim_variable not in control_names:
-        raise ValidationDomainError(
-            message=f"Control surface '{request.trim_variable}' not found on airplane. "
-            f"Available: {sorted(control_names)}"
-        )
+                cs_name = str(getattr(cs, "name", "")).strip()
+                control_names.add(cs_name)
+                _role, display = parse_role_tag(cs_name)
+                display_to_tagged[display.strip()] = cs_name
+
+    resolved_trim_var = request.trim_variable
+    if resolved_trim_var not in control_names:
+        if resolved_trim_var in display_to_tagged:
+            resolved_trim_var = display_to_tagged[resolved_trim_var]
+        else:
+            raise ValidationDomainError(
+                message=f"Control surface '{request.trim_variable}' not found on airplane. "
+                f"Available: {sorted(control_names)}"
+            )
 
     target_coeff = request.target_coefficient
     target_val = request.target_value
@@ -104,7 +126,7 @@ async def trim_with_aerobuildup(
             asb_airplane,
             op_point,
             op.xyz_ref,
-            request.trim_variable,
+            resolved_trim_var,
             deflection_deg,
         )
         coeff_val = result.get(target_coeff)
@@ -113,7 +135,7 @@ async def trim_with_aerobuildup(
                 message=f"Coefficient '{target_coeff}' not found in AeroBuildup output. "
                 f"Available: {sorted(k for k in result if isinstance(result[k], (int, float)))}"
             )
-        return float(coeff_val) - target_val
+        return _to_scalar(coeff_val) - target_val
 
     lower, upper = request.deflection_bounds
 
@@ -189,7 +211,7 @@ async def trim_with_aerobuildup(
             asb_airplane,
             op_point,
             op.xyz_ref,
-            request.trim_variable,
+            resolved_trim_var,
             trimmed_deflection,
         )
     except Exception as e:
@@ -210,17 +232,22 @@ async def trim_with_aerobuildup(
             stability_derivatives={},
         )
 
+    import numpy as np
+
+    def _is_numeric(v):
+        return isinstance(v, (int, float, np.integer, np.floating, np.ndarray))
+
     aero = {
-        k: float(v)
+        k: _to_scalar(v)
         for k, v in final_result.items()
-        if k in _AERO_COEFF_KEYS and isinstance(v, (int, float))
+        if k in _AERO_COEFF_KEYS and _is_numeric(v)
     }
     derivs = {
-        k: float(v)
+        k: _to_scalar(v)
         for k, v in final_result.items()
-        if k in _STABILITY_DERIV_KEYS and isinstance(v, (int, float))
+        if k in _STABILITY_DERIV_KEYS and _is_numeric(v)
     }
-    achieved = float(final_result.get(target_coeff, float("nan")))
+    achieved = _to_scalar(final_result.get(target_coeff, float("nan")))
     if target_coeff not in final_result:
         logger.warning(
             "Target coefficient '%s' missing from final AeroBuildup result for aeroplane %s",

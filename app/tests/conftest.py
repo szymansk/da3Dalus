@@ -17,6 +17,7 @@ session, so tests can rely on `.id` being populated.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 from typing import Tuple
 
 import pytest
@@ -28,7 +29,16 @@ from sqlalchemy.pool import StaticPool
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import create_app
-from app.models.aeroplanemodel import AeroplaneModel, FuselageModel, WingModel
+from app.models.aeroplanemodel import (
+    AeroplaneModel,
+    DesignAssumptionModel,
+    FuselageModel,
+    WeightItemModel,
+    WingModel,
+    WingXSecDetailModel,
+    WingXSecModel,
+    WingXSecTrailingEdgeDeviceModel,
+)
 from app.models.analysismodels import OperatingPointModel
 from app.services import cad_service
 from app.services.component_type_service import seed_default_types
@@ -212,3 +222,194 @@ def make_operating_point(
     session.commit()
     session.refresh(op)
     return op
+
+
+def _add_xsec(
+    session: Session,
+    wing: WingModel,
+    *,
+    xyz_le: list[float],
+    chord: float,
+    twist: float,
+    airfoil: str,
+    sort_index: int,
+    x_sec_type: str | None = None,
+    ted_kwargs: dict | None = None,
+) -> WingXSecModel:
+    """Create a WingXSecModel with optional detail and trailing edge device."""
+    xsec = WingXSecModel(
+        wing_id=wing.id,
+        xyz_le=xyz_le,
+        chord=chord,
+        twist=twist,
+        airfoil=airfoil,
+        sort_index=sort_index,
+    )
+    session.add(xsec)
+    session.flush()
+
+    if x_sec_type or ted_kwargs:
+        detail = WingXSecDetailModel(
+            wing_xsec_id=xsec.id,
+            x_sec_type=x_sec_type,
+        )
+        session.add(detail)
+        session.flush()
+        if ted_kwargs:
+            ted = WingXSecTrailingEdgeDeviceModel(
+                wing_xsec_detail_id=detail.id,
+                **ted_kwargs,
+            )
+            session.add(ted)
+            session.flush()
+
+    return xsec
+
+
+def seed_integration_aeroplane(session: Session) -> AeroplaneModel:
+    """Create a complete aeroplane with main wing, htail, and vtail for integration tests.
+
+    All geometry uses metres (DB convention). The plane has control surfaces
+    on each wing root segment: aileron, elevator, and rudder.
+    """
+    aeroplane = AeroplaneModel(
+        name="integration-test-plane",
+        uuid=uuid.uuid4(),
+        total_mass_kg=1.5,
+        xyz_ref=[0.15, 0.0, 0.0],
+    )
+    session.add(aeroplane)
+    session.flush()
+
+    # --- main wing ---
+    main_wing = WingModel(name="main_wing", symmetric=True, aeroplane_id=aeroplane.id)
+    session.add(main_wing)
+    session.flush()
+    _add_xsec(
+        session,
+        main_wing,
+        xyz_le=[0, 0, 0],
+        chord=0.2,
+        twist=2.0,
+        airfoil="naca2412",
+        sort_index=0,
+        x_sec_type="segment",
+        ted_kwargs={
+            "name": "MainAileron",
+            "role": "aileron",
+            "rel_chord_root": 0.75,
+            "rel_chord_tip": 0.75,
+            "positive_deflection_deg": 25.0,
+            "negative_deflection_deg": 25.0,
+            "deflection_deg": 0.0,
+            "symmetric": False,
+        },
+    )
+    _add_xsec(
+        session,
+        main_wing,
+        xyz_le=[0.0, 0.5, 0.0],
+        chord=0.15,
+        twist=0.0,
+        airfoil="naca2412",
+        sort_index=1,
+    )
+
+    # --- horizontal tail ---
+    htail = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=aeroplane.id)
+    session.add(htail)
+    session.flush()
+    _add_xsec(
+        session,
+        htail,
+        xyz_le=[0.5, 0.0, 0.0],
+        chord=0.1,
+        twist=0.0,
+        airfoil="naca0012",
+        sort_index=0,
+        x_sec_type="segment",
+        ted_kwargs={
+            "name": "Elevator",
+            "role": "elevator",
+            "rel_chord_root": 0.5,
+            "rel_chord_tip": 0.5,
+            "positive_deflection_deg": 25.0,
+            "negative_deflection_deg": 25.0,
+            "deflection_deg": 0.0,
+            "symmetric": True,
+        },
+    )
+    _add_xsec(
+        session,
+        htail,
+        xyz_le=[0.5, 0.2, 0.0],
+        chord=0.08,
+        twist=0.0,
+        airfoil="naca0012",
+        sort_index=1,
+    )
+
+    # --- vertical tail ---
+    vtail = WingModel(name="vertical_tail", symmetric=False, aeroplane_id=aeroplane.id)
+    session.add(vtail)
+    session.flush()
+    _add_xsec(
+        session,
+        vtail,
+        xyz_le=[0.5, 0.0, 0.0],
+        chord=0.1,
+        twist=0.0,
+        airfoil="naca0009",
+        sort_index=0,
+        x_sec_type="segment",
+        ted_kwargs={
+            "name": "Rudder",
+            "role": "rudder",
+            "rel_chord_root": 0.5,
+            "rel_chord_tip": 0.5,
+            "positive_deflection_deg": 25.0,
+            "negative_deflection_deg": 25.0,
+            "deflection_deg": 0.0,
+            "symmetric": True,
+        },
+    )
+    _add_xsec(
+        session,
+        vtail,
+        xyz_le=[0.5, 0.0, 0.15],
+        chord=0.07,
+        twist=0.0,
+        airfoil="naca0009",
+        sort_index=1,
+    )
+
+    session.commit()
+    session.refresh(aeroplane)
+    return aeroplane
+
+
+def seed_design_assumptions(session: Session, aeroplane_id: int) -> list[DesignAssumptionModel]:
+    """Seed the minimal set of design assumptions needed for analysis endpoints."""
+    params = {
+        "mass": 1.5,
+        "cg_x": 0.15,
+        "cl_max": 1.4,
+        "g_limit": 3.0,
+        "cd0": 0.03,
+        "target_static_margin": 0.12,
+    }
+    rows = []
+    for name, value in params.items():
+        row = DesignAssumptionModel(
+            aeroplane_id=aeroplane_id,
+            parameter_name=name,
+            estimate_value=value,
+            active_source="ESTIMATE",
+            updated_at=datetime.now(timezone.utc),
+        )
+        session.add(row)
+        rows.append(row)
+    session.commit()
+    for r in rows:
+        session.refresh(r)
+    return rows
