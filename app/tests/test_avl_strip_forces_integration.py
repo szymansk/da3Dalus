@@ -1,12 +1,12 @@
-"""Integration test for AVL strip-force extraction via AVLRunner.
+"""Integration test for AVL strip-force extraction via AVLRunner."""
 
-Requires the AVL binary at exports/avl.
-"""
-
-import pytest
 from pathlib import Path
 
-AVL_BINARY = Path(__file__).resolve().parents[2] / "exports" / "avl"
+import pytest
+
+from avl_binary import avl_path
+
+AVL_BINARY = str(avl_path())
 pytestmark = pytest.mark.slow
 
 
