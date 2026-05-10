@@ -55,7 +55,7 @@ def test_recompute_publishes_assumption_changed_on_cg_change(client_and_db):
     patches = [
         patch(
             "app.services.assumption_compute_service._build_asb_airplane",
-            return_value=SimpleNamespace(wings=[object()], xyz_ref=[0.08, 0.0, 0.0]),
+            return_value=SimpleNamespace(wings=[SimpleNamespace(area=lambda: 0.30, mean_aerodynamic_chord=lambda: 0.20, span=lambda: 1.5)], xyz_ref=[0.08, 0.0, 0.0], s_ref=0.30, c_ref=0.20, b_ref=1.5),
         ),
         patch(
             "app.services.assumption_compute_service._stability_run_at_cruise",
@@ -109,7 +109,7 @@ def test_recompute_does_not_publish_when_cg_unchanged(client_and_db):
     patches = [
         patch(
             "app.services.assumption_compute_service._build_asb_airplane",
-            return_value=SimpleNamespace(wings=[object()], xyz_ref=[0.08, 0.0, 0.0]),
+            return_value=SimpleNamespace(wings=[SimpleNamespace(area=lambda: 0.30, mean_aerodynamic_chord=lambda: 0.20, span=lambda: 1.5)], xyz_ref=[0.08, 0.0, 0.0], s_ref=0.30, c_ref=0.20, b_ref=1.5),
         ),
         patch(
             "app.services.assumption_compute_service._stability_run_at_cruise",

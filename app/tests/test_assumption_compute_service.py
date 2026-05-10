@@ -13,12 +13,29 @@ from app.services.design_assumptions_service import seed_defaults
 from app.tests.conftest import make_aeroplane
 
 
+def _make_fake_airplane():
+    """Stub for asb_airplane: a wing with .area/.mean_aerodynamic_chord/.span()
+    so _select_main_wing + the s_ref/c_ref/b_ref override don't blow up."""
+    fake_wing = SimpleNamespace(
+        area=lambda: 0.30,
+        mean_aerodynamic_chord=lambda: 0.20,
+        span=lambda: 1.5,
+    )
+    return SimpleNamespace(
+        wings=[fake_wing],
+        xyz_ref=[0.08, 0.0, 0.0],
+        s_ref=0.30,
+        c_ref=0.20,
+        b_ref=1.5,
+    )
+
+
 def _patches():
     """Stub the three ASB-bound helpers so tests don't need real ASB."""
     return (
         patch(
             "app.services.assumption_compute_service._build_asb_airplane",
-            return_value=SimpleNamespace(wings=[object()], xyz_ref=[0.08, 0.0, 0.0]),
+            return_value=_make_fake_airplane(),
         ),
         patch(
             "app.services.assumption_compute_service._stability_run_at_cruise",

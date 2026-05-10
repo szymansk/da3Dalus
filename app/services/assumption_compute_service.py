@@ -64,6 +64,16 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         )
         return
 
+    # Override ASB's reference area / chord / span so all CL/CD numbers
+    # produced by AeroBuildup are normalised by the MAIN WING. ASB's
+    # default is the first wing in the list, which may be a tail or
+    # rudder for unusual orderings — that produces wildly inflated CL_max.
+    main_wing = _select_main_wing(asb_airplane)
+    if main_wing is not None:
+        asb_airplane.s_ref = float(main_wing.area())
+        asb_airplane.c_ref = float(main_wing.mean_aerodynamic_chord())
+        asb_airplane.b_ref = float(main_wing.span())
+
     # Ensure assumption rows + computation config exist (idempotent).
     # Wings can be created before the user opens the Assumptions tab,
     # so we cannot rely on the user having seeded them already.
