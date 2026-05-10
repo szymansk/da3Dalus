@@ -400,35 +400,51 @@ git commit -m "feat(gh-465): add auto_switch_source to update_calculated_value"
 
 ```python
 # app/tests/test_seed_computation_config.py
-from unittest.mock import MagicMock, patch
-from app.models.computation_config import AircraftComputationConfigModel, COMPUTATION_CONFIG_DEFAULTS
+from app.models.computation_config import (
+    AircraftComputationConfigModel,
+    COMPUTATION_CONFIG_DEFAULTS,
+)
+from app.services.design_assumptions_service import seed_defaults
+from app.tests.conftest import make_aeroplane
 
 
-def test_seed_defaults_creates_computation_config():
-    """seed_defaults should also seed computation config if it doesn't exist."""
-    db = MagicMock()
-    # Mock: no existing assumptions
-    db.query.return_value.filter.return_value.all.return_value = []
-    # Mock: no existing computation config
-    db.query.return_value.filter.return_value.first.return_value = None
+def test_seed_defaults_creates_computation_config(client_and_db):
+    """seed_defaults seeds a per-aircraft computation config row."""
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        db.commit()
+        aeroplane_id = aeroplane.id
 
-    with patch("app.services.design_assumptions_service._get_aeroplane") as mock_get:
-        mock_aeroplane = MagicMock()
-        mock_aeroplane.id = 42
-        mock_get.return_value = mock_aeroplane
+    with SessionLocal() as db:
+        config = (
+            db.query(AircraftComputationConfigModel)
+            .filter(AircraftComputationConfigModel.aeroplane_id == aeroplane_id)
+            .first()
+        )
+        assert config is not None
+        assert config.coarse_alpha_step_deg == COMPUTATION_CONFIG_DEFAULTS["coarse_alpha_step_deg"]
+        assert config.fine_velocity_count == COMPUTATION_CONFIG_DEFAULTS["fine_velocity_count"]
 
-        with patch("app.services.design_assumptions_service.list_assumptions") as mock_list:
-            mock_list.return_value = MagicMock()
 
-            from app.services.design_assumptions_service import seed_defaults
-            seed_defaults(db, "test-uuid")
+def test_seed_defaults_idempotent_for_config(client_and_db):
+    """Calling seed_defaults twice does not create a second config row."""
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        seed_defaults(db, str(aeroplane.uuid))
+        db.commit()
+        aeroplane_id = aeroplane.id
 
-    # Verify a ComputationConfigModel was added
-    added_objects = [call.args[0] for call in db.add.call_args_list]
-    config_objects = [o for o in added_objects if isinstance(o, AircraftComputationConfigModel)]
-    assert len(config_objects) == 1
-    assert config_objects[0].aeroplane_id == 42
-    assert config_objects[0].coarse_alpha_step_deg == COMPUTATION_CONFIG_DEFAULTS["coarse_alpha_step_deg"]
+    with SessionLocal() as db:
+        configs = (
+            db.query(AircraftComputationConfigModel)
+            .filter(AircraftComputationConfigModel.aeroplane_id == aeroplane_id)
+            .all()
+        )
+        assert len(configs) == 1
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -477,100 +493,150 @@ git commit -m "feat(gh-465): seed computation config in seed_defaults"
 - Create: `app/services/assumption_compute_service.py`
 - Test: `app/tests/test_assumption_compute_service.py`
 
-- [ ] **Step 1: Write failing test for the recompute pipeline**
+- [ ] **Step 1: Write failing tests for the recompute pipeline**
+
+The tests use a real in-memory DB via the existing `client_and_db`
+fixture (see `app/tests/conftest.py`) so the assumption rows actually
+persist and can be re-read. Heavy ASB calls are stubbed via the small
+helpers `_stability_run_at_cruise`, `_coarse_alpha_sweep`,
+`_fine_sweep_cl_max` — that keeps unit tests fast without faking the
+ASB result-object surface.
 
 ```python
 # app/tests/test_assumption_compute_service.py
 from __future__ import annotations
 
-import math
-from unittest.mock import MagicMock, patch, call
-import pytest
+from unittest.mock import patch
+from types import SimpleNamespace
+
+from app.models.computation_config import (
+    AircraftComputationConfigModel,
+    COMPUTATION_CONFIG_DEFAULTS,
+)
+from app.models.aeroplanemodel import DesignAssumptionModel
+from app.services.assumption_compute_service import recompute_assumptions
+from app.services.design_assumptions_service import seed_defaults
+from app.tests.conftest import make_aeroplane
 
 
-@pytest.fixture
-def mock_asb_airplane():
-    airplane = MagicMock()
-    airplane.wings = [MagicMock()]
-    airplane.xyz_ref = [0.08, 0, 0]
-    wing = airplane.wings[0]
-    wing.mean_aerodynamic_chord.return_value = 0.20
-    return airplane
+def _patches():
+    """Stub the three ASB-bound helpers so tests don't need real ASB."""
+    return (
+        patch(
+            "app.services.assumption_compute_service._build_asb_airplane",
+            return_value=SimpleNamespace(wings=[object()], xyz_ref=[0.08, 0.0, 0.0]),
+        ),
+        patch(
+            "app.services.assumption_compute_service._stability_run_at_cruise",
+            return_value=(0.085, 0.20, 0.025),  # x_np, MAC, CD0
+        ),
+        patch(
+            "app.services.assumption_compute_service._coarse_alpha_sweep",
+            return_value=15.0,  # stall_alpha_deg
+        ),
+        patch(
+            "app.services.assumption_compute_service._fine_sweep_cl_max",
+            return_value=1.35,
+        ),
+        patch(
+            "app.services.assumption_compute_service._load_flight_profile_speeds",
+            return_value=(18.0, 28.0),
+        ),
+    )
 
 
-@pytest.fixture
-def mock_aerobuildup_results():
-    """Simulate AeroBuildup output for a coarse alpha sweep."""
-    import numpy as np
+def test_recompute_writes_all_three_assumptions(client_and_db):
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        db.commit()
+        aeroplane_uuid = str(aeroplane.uuid)
+        aeroplane_id = aeroplane.id
 
-    alphas_deg = np.arange(-5, 26, 1.0)
-    alphas_rad = np.radians(alphas_deg)
-    CLs = 2 * math.pi * alphas_rad * 0.8  # approximate thin airfoil
-    CDs = 0.02 + 0.05 * CLs**2
+    p1, p2, p3, p4, p5 = _patches()
+    with p1, p2, p3, p4, p5:
+        with SessionLocal() as db:
+            recompute_assumptions(db, aeroplane_uuid)
+            db.commit()
 
-    return {
-        "alpha_deg": alphas_deg,
-        "CL": CLs,
-        "CD": CDs,
-        "x_np": 0.085,
-    }
+    with SessionLocal() as db:
+        rows = {
+            r.parameter_name: r
+            for r in db.query(DesignAssumptionModel)
+            .filter(DesignAssumptionModel.aeroplane_id == aeroplane_id)
+            .all()
+        }
+        assert rows["cl_max"].calculated_value == 1.35
+        assert rows["cd0"].calculated_value == 0.025
+        # cg_x = x_np - target_static_margin × MAC
+        #      = 0.085 - 0.12 × 0.20 = 0.061
+        # (target_static_margin default is 0.12 per PARAMETER_DEFAULTS)
+        assert abs(rows["cg_x"].calculated_value - 0.061) < 1e-6
 
 
-def test_recompute_assumptions_basic(mock_asb_airplane):
-    """Verify all 3 assumptions are written and context is cached."""
-    from app.services.assumption_compute_service import recompute_assumptions
+def test_recompute_skips_when_no_wings(client_and_db):
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        db.commit()
+        aeroplane_uuid = str(aeroplane.uuid)
 
-    db = MagicMock()
-
-    with (
-        patch("app.services.assumption_compute_service._load_aircraft_as_asb") as mock_load,
-        patch("app.services.assumption_compute_service._load_flight_profile_speeds") as mock_speeds,
-        patch("app.services.assumption_compute_service._load_or_create_config") as mock_config,
-        patch("app.services.assumption_compute_service._run_coarse_sweep") as mock_coarse,
-        patch("app.services.assumption_compute_service._run_fine_sweep") as mock_fine,
-        patch("app.services.assumption_compute_service._load_effective_assumption") as mock_sm,
-        patch("app.services.assumption_compute_service._load_cg_agg") as mock_cg_agg,
-        patch("app.services.assumption_compute_service.update_calculated_value") as mock_update,
-        patch("app.services.assumption_compute_service._cache_context") as mock_cache,
+    with patch(
+        "app.services.assumption_compute_service._build_asb_airplane",
+        return_value=SimpleNamespace(wings=[], xyz_ref=[0, 0, 0]),
     ):
-        mock_load.return_value = (mock_asb_airplane, MagicMock())
-        mock_speeds.return_value = (18.0, 28.0)
-        mock_config.return_value = MagicMock(
-            coarse_alpha_min_deg=-5.0, coarse_alpha_max_deg=25.0,
-            coarse_alpha_step_deg=1.0, fine_alpha_margin_deg=5.0,
-            fine_alpha_step_deg=0.5, fine_velocity_count=8,
+        with SessionLocal() as db:
+            recompute_assumptions(db, aeroplane_uuid)
+            db.commit()
+
+    with SessionLocal() as db:
+        cd0 = (
+            db.query(DesignAssumptionModel)
+            .filter_by(parameter_name="cd0")
+            .first()
         )
-        mock_coarse.return_value = {"cd0": 0.025, "x_np": 0.085, "stall_alpha_deg": 15.0}
-        mock_fine.return_value = 1.35
-        mock_sm.return_value = 0.12
-        mock_cg_agg.return_value = 0.092
-
-        recompute_assumptions(db, "test-uuid")
-
-    assert mock_update.call_count == 3
-    param_names = [c.kwargs.get("param_name") or c.args[2] for c in mock_update.call_args_list]
-    assert set(param_names) == {"cl_max", "cd0", "cg_x"}
-    mock_cache.assert_called_once()
+        assert cd0.calculated_value is None  # untouched
 
 
-def test_recompute_assumptions_no_wings():
-    """Should skip gracefully when aircraft has no wings."""
-    from app.services.assumption_compute_service import recompute_assumptions
+def test_recompute_caches_context_and_publishes_cg_change(client_and_db):
+    from app.core.events import AssumptionChanged, event_bus
 
-    db = MagicMock()
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        db.commit()
+        aeroplane_uuid = str(aeroplane.uuid)
+        aeroplane_id = aeroplane.id
 
-    with (
-        patch("app.services.assumption_compute_service._load_aircraft_as_asb") as mock_load,
-        patch("app.services.assumption_compute_service.update_calculated_value") as mock_update,
-    ):
-        airplane = MagicMock()
-        airplane.wings = []
-        mock_load.return_value = (airplane, MagicMock())
+    captured: list = []
+    handler = captured.append
+    event_bus.subscribe(AssumptionChanged, handler)
 
-        recompute_assumptions(db, "test-uuid")
+    p1, p2, p3, p4, p5 = _patches()
+    try:
+        with p1, p2, p3, p4, p5:
+            with SessionLocal() as db:
+                recompute_assumptions(db, aeroplane_uuid)
+                db.commit()
+    finally:
+        # EventBus has no public unsubscribe; remove from internal list
+        event_bus._subscribers.get(AssumptionChanged, []).remove(handler)
 
-    mock_update.assert_not_called()
+    with SessionLocal() as db:
+        from app.models.aeroplanemodel import AeroplaneModel
+        a = db.query(AeroplaneModel).filter_by(id=aeroplane_id).first()
+        ctx = a.assumption_computation_context
+        assert ctx["v_cruise_mps"] == 18.0
+        assert ctx["mac_m"] == 0.20
+        assert ctx["x_np_m"] == 0.085
+
+    cg_events = [e for e in captured if e.parameter_name == "cg_x"]
+    assert len(cg_events) == 1
 ```
+
 
 - [ ] **Step 2: Run tests to verify they fail**
 
@@ -584,141 +650,187 @@ Expected: FAIL with `ModuleNotFoundError`
 from __future__ import annotations
 
 import logging
-import math
 from datetime import datetime, timezone
 from typing import Any
 
 import numpy as np
 from sqlalchemy.orm import Session
 
+from app.api.utils import analyse_aerodynamics
 from app.converters.model_schema_converters import (
     aeroplane_model_to_aeroplane_schema_async,
     aeroplane_schema_to_asb_airplane_async,
 )
 from app.core.events import AssumptionChanged, event_bus
-from app.models.aeroplanemodel import AeroplaneModel, DesignAssumptionModel
+from app.models.aeroplanemodel import AeroplaneModel, DesignAssumptionModel, WeightItemModel
 from app.models.computation_config import (
     AircraftComputationConfigModel,
     COMPUTATION_CONFIG_DEFAULTS,
 )
-from app.services.design_assumptions_service import update_calculated_value
+from app.schemas.AeroplaneRequest import AnalysisToolUrlType
+from app.schemas.aeroanalysisschema import OperatingPointSchema
+from app.schemas.design_assumption import PARAMETER_DEFAULTS
+from app.services.design_assumptions_service import _get_aeroplane, update_calculated_value
 from app.services.mass_cg_service import aggregate_weight_items
+from app.services.stability_service import _scalar
 
 logger = logging.getLogger(__name__)
 
 
 def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
-    asb_airplane, aircraft = _load_aircraft_as_asb(db, aeroplane_uuid)
+    """Recompute cl_max, cd0, cg_x from geometry via AeroSandbox.
+
+    Sync function — caller MUST wrap in asyncio.to_thread() when invoked
+    from async context (see app/main.py recompute wrapper).
+
+    Skips silently if aircraft has no wings.
+    """
+    aircraft = _get_aeroplane(db, aeroplane_uuid)
+    asb_airplane = _build_asb_airplane(aircraft)
 
     if not asb_airplane.wings:
-        logger.info("No wings on aircraft %s — skipping assumption recompute", aeroplane_uuid)
+        logger.info(
+            "No wings on aircraft %s — skipping assumption recompute", aeroplane_uuid
+        )
         return
 
-    v_cruise, v_max = _load_flight_profile_speeds(db, aircraft)
-    mac = _compute_mac(asb_airplane)
     config = _load_or_create_config(db, aircraft.id)
+    v_cruise, v_max = _load_flight_profile_speeds(db, aircraft)
 
-    coarse = _run_coarse_sweep(asb_airplane, v_cruise, config)
-    cl_max = _run_fine_sweep(asb_airplane, coarse["stall_alpha_deg"], v_cruise, v_max, config)
+    try:
+        x_np, mac, cd0 = _stability_run_at_cruise(asb_airplane, v_cruise)
+        stall_alpha = _coarse_alpha_sweep(asb_airplane, v_cruise, config)
+        cl_max = _fine_sweep_cl_max(asb_airplane, stall_alpha, v_cruise, v_max, config)
+    except Exception:
+        logger.exception(
+            "AeroBuildup failed during recompute for aircraft %s — aborting", aeroplane_uuid
+        )
+        return
 
     target_sm = _load_effective_assumption(db, aircraft.id, "target_static_margin")
-    cg_x = coarse["x_np"] - target_sm * mac
+    cg_x = x_np - target_sm * mac
 
     old_cg = _get_current_calculated_value(db, aircraft.id, "cg_x")
 
-    update_calculated_value(db, aeroplane_uuid, "cl_max", round(cl_max, 4), "aerobuildup", auto_switch_source=True)
-    update_calculated_value(db, aeroplane_uuid, "cd0", round(coarse["cd0"], 5), "aerobuildup", auto_switch_source=True)
-    update_calculated_value(db, aeroplane_uuid, "cg_x", round(cg_x, 4), "aerobuildup", auto_switch_source=True)
+    update_calculated_value(
+        db, aeroplane_uuid, "cl_max", round(cl_max, 4), "aerobuildup",
+        auto_switch_source=True,
+    )
+    update_calculated_value(
+        db, aeroplane_uuid, "cd0", round(cd0, 5), "aerobuildup",
+        auto_switch_source=True,
+    )
+    update_calculated_value(
+        db, aeroplane_uuid, "cg_x", round(cg_x, 4), "aerobuildup",
+        auto_switch_source=True,
+    )
 
-    cg_agg = _load_cg_agg(db, aircraft)
+    cg_agg = _load_cg_agg(db, aircraft.id)
     re = _reynolds_number(v_cruise, mac)
 
     _cache_context(db, aircraft, {
         "v_cruise_mps": v_cruise,
         "reynolds": round(re),
         "mac_m": round(mac, 4),
-        "x_np_m": round(coarse["x_np"], 4),
+        "x_np_m": round(x_np, 4),
         "target_static_margin": target_sm,
         "cg_agg_m": round(cg_agg, 4) if cg_agg is not None else None,
         "computed_at": datetime.now(timezone.utc).isoformat(),
     })
 
-    if old_cg is None or abs(cg_x - (old_cg or 0)) > 1e-6:
-        event_bus.publish(AssumptionChanged(aeroplane_id=aircraft.id, parameter_name="cg_x"))
+    if old_cg is None or abs(cg_x - old_cg) > 1e-6:
+        # Mirror update_assumption: mark OPs DIRTY in the same transaction
+        # before emitting AssumptionChanged. Otherwise the retrim handler
+        # finds no DIRTY ops and does nothing.
+        from app.services.invalidation_service import mark_ops_dirty
+
+        mark_ops_dirty(db, aircraft.id)
+        event_bus.publish(
+            AssumptionChanged(aeroplane_id=aircraft.id, parameter_name="cg_x")
+        )
 
 
-def _load_aircraft_as_asb(db: Session, aeroplane_uuid):
-    aircraft = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
-    if aircraft is None:
-        raise ValueError(f"Aircraft {aeroplane_uuid} not found")
+def _build_asb_airplane(aircraft: AeroplaneModel):
     schema = aeroplane_model_to_aeroplane_schema_async(aircraft)
-    asb_airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=schema)
-    return asb_airplane, aircraft
+    return aeroplane_schema_to_asb_airplane_async(plane_schema=schema)
 
 
-def _load_flight_profile_speeds(db: Session, aircraft: AeroplaneModel) -> tuple[float, float]:
-    from app.services.operating_point_generator_service import _load_effective_flight_profile
-
-    profile, _ = _load_effective_flight_profile(db, aircraft)
-    goals = profile.get("goals", {})
-    cruise = float(goals.get("cruise_speed_mps", 18.0))
-    v_max = float(goals.get("max_level_speed_mps") or max(1.35 * cruise, cruise + 8.0))
-    return cruise, v_max
-
-
-def _compute_mac(asb_airplane) -> float:
-    if asb_airplane.wings:
-        return float(asb_airplane.wings[0].mean_aerodynamic_chord())
-    return 0.2
-
-
-def _load_or_create_config(db: Session, aeroplane_id: int) -> AircraftComputationConfigModel:
+def _load_or_create_config(
+    db: Session, aeroplane_id: int
+) -> AircraftComputationConfigModel:
     config = (
         db.query(AircraftComputationConfigModel)
         .filter(AircraftComputationConfigModel.aeroplane_id == aeroplane_id)
         .first()
     )
     if config is None:
-        config = AircraftComputationConfigModel(aeroplane_id=aeroplane_id, **COMPUTATION_CONFIG_DEFAULTS)
+        config = AircraftComputationConfigModel(
+            aeroplane_id=aeroplane_id, **COMPUTATION_CONFIG_DEFAULTS
+        )
         db.add(config)
         db.flush()
     return config
 
 
-def _run_coarse_sweep(
-    asb_airplane, v_cruise: float, config: AircraftComputationConfigModel,
-) -> dict[str, float]:
+def _load_flight_profile_speeds(
+    db: Session, aircraft: AeroplaneModel
+) -> tuple[float, float]:
+    from app.services.operating_point_generator_service import (
+        _load_effective_flight_profile,
+    )
+
+    profile, _ = _load_effective_flight_profile(db, aircraft)
+    goals = profile.get("goals", {})
+    cruise = float(goals.get("cruise_speed_mps", 18.0))
+    v_max = float(
+        goals.get("max_level_speed_mps") or max(1.35 * cruise, cruise + 8.0)
+    )
+    return cruise, v_max
+
+
+def _stability_run_at_cruise(
+    asb_airplane, v_cruise: float
+) -> tuple[float, float, float]:
+    """Returns (x_np, MAC, CD0) from a single AeroBuildup stability run.
+
+    Uses analyse_aerodynamics → AnalysisModel — same code path as
+    stability_service, so x_np / MAC / CD0 are consistent across the app.
+    """
+    xyz_ref = list(asb_airplane.xyz_ref) if asb_airplane.xyz_ref is not None else [0.0, 0.0, 0.0]
+    op_schema = OperatingPointSchema(velocity=v_cruise, alpha=0.0, xyz_ref=xyz_ref)
+    result, _ = analyse_aerodynamics(
+        AnalysisToolUrlType.AEROBUILDUP, op_schema, asb_airplane
+    )
+    x_np = _scalar(result.reference.Xnp)
+    mac = _scalar(result.reference.Cref)
+    cd0 = _scalar(result.coefficients.CD)
+    if x_np is None or mac is None or cd0 is None:
+        raise ValueError("AeroBuildup returned NULL for x_np/MAC/CD0")
+    return float(x_np), float(mac), float(cd0)
+
+
+def _coarse_alpha_sweep(
+    asb_airplane, v_cruise: float, config: AircraftComputationConfigModel
+) -> float:
+    """Returns approximate stall_alpha_deg (alpha where CL peaks)."""
     import aerosandbox as asb
 
-    alphas = np.arange(config.coarse_alpha_min_deg, config.coarse_alpha_max_deg + 0.01, config.coarse_alpha_step_deg)
-
-    op = asb.OperatingPoint(velocity=v_cruise, alpha=0)
-    abu = asb.AeroBuildup(airplane=asb_airplane, op_point=op)
-    results = abu.run_with_stability_derivatives()
-    x_np = float(results.get("x_np", 0.0))
-
-    CLs = []
-    CDs = []
+    alphas = np.arange(
+        config.coarse_alpha_min_deg,
+        config.coarse_alpha_max_deg + 0.01,
+        config.coarse_alpha_step_deg,
+    )
+    xyz_ref = list(asb_airplane.xyz_ref) if asb_airplane.xyz_ref is not None else [0.0, 0.0, 0.0]
+    cls: list[float] = []
     for a in alphas:
-        op_a = asb.OperatingPoint(velocity=v_cruise, alpha=a)
-        abu_a = asb.AeroBuildup(airplane=asb_airplane, op_point=op_a)
-        r = abu_a.run()
-        CLs.append(float(r["CL"]))
-        CDs.append(float(r["CD"]))
-
-    CLs = np.array(CLs)
-    CDs = np.array(CDs)
-
-    idx_cl_zero = int(np.argmin(np.abs(CLs)))
-    cd0 = float(CDs[idx_cl_zero])
-
-    idx_cl_max = int(np.argmax(CLs))
-    stall_alpha = float(alphas[idx_cl_max])
-
-    return {"cd0": cd0, "x_np": x_np, "stall_alpha_deg": stall_alpha}
+        op = asb.OperatingPoint(velocity=v_cruise, alpha=float(a))
+        abu = asb.AeroBuildup(airplane=asb_airplane, op_point=op, xyz_ref=xyz_ref)
+        r = abu.run()
+        cls.append(_extract_scalar(r, "CL", default=0.0))
+    return float(alphas[int(np.argmax(cls))])
 
 
-def _run_fine_sweep(
+def _fine_sweep_cl_max(
     asb_airplane,
     stall_alpha_deg: float,
     v_cruise: float,
@@ -734,22 +846,32 @@ def _run_fine_sweep(
     v_stall_approx = max(v_cruise * 0.5, 3.0)
     velocities = np.linspace(v_stall_approx, v_max, config.fine_velocity_count)
 
-    cl_max = -np.inf
+    xyz_ref = list(asb_airplane.xyz_ref) if asb_airplane.xyz_ref is not None else [0.0, 0.0, 0.0]
+    cl_max = -float("inf")
     for v in velocities:
         for a in alphas:
-            op = asb.OperatingPoint(velocity=v, alpha=a)
-            abu = asb.AeroBuildup(airplane=asb_airplane, op_point=op)
+            op = asb.OperatingPoint(velocity=float(v), alpha=float(a))
+            abu = asb.AeroBuildup(airplane=asb_airplane, op_point=op, xyz_ref=xyz_ref)
             r = abu.run()
-            cl = float(r["CL"])
+            cl = _extract_scalar(r, "CL", default=0.0)
             if cl > cl_max:
                 cl_max = cl
-
     return float(cl_max)
 
 
-def _load_effective_assumption(db: Session, aeroplane_id: int, param_name: str) -> float:
-    from app.schemas.design_assumption import PARAMETER_DEFAULTS
+def _extract_scalar(result: Any, key: str, *, default: float) -> float:
+    """Extract a CL/CD scalar from raw AeroBuildup result (dict or object)."""
+    if isinstance(result, dict):
+        val = result.get(key)
+    else:
+        val = getattr(result, key, None)
+    scalar = _scalar(val)
+    return float(scalar) if scalar is not None else default
 
+
+def _load_effective_assumption(
+    db: Session, aeroplane_id: int, param_name: str
+) -> float:
     row = (
         db.query(DesignAssumptionModel)
         .filter(
@@ -765,7 +887,9 @@ def _load_effective_assumption(db: Session, aeroplane_id: int, param_name: str) 
     return row.estimate_value
 
 
-def _get_current_calculated_value(db: Session, aeroplane_id: int, param_name: str) -> float | None:
+def _get_current_calculated_value(
+    db: Session, aeroplane_id: int, param_name: str
+) -> float | None:
     row = (
         db.query(DesignAssumptionModel)
         .filter(
@@ -777,22 +901,33 @@ def _get_current_calculated_value(db: Session, aeroplane_id: int, param_name: st
     return row.calculated_value if row else None
 
 
-def _load_cg_agg(db: Session, aircraft: AeroplaneModel) -> float | None:
-    from app.models.aeroplanemodel import WeightItemModel
-
-    rows = db.query(WeightItemModel).filter(WeightItemModel.aeroplane_id == aircraft.id).all()
+def _load_cg_agg(db: Session, aeroplane_id: int) -> float | None:
+    rows = (
+        db.query(WeightItemModel)
+        .filter(WeightItemModel.aeroplane_id == aeroplane_id)
+        .all()
+    )
     if not rows:
         return None
-    items = [{"mass_kg": r.mass_kg, "x_m": r.x_m, "y_m": r.y_m, "z_m": r.z_m} for r in rows]
+    items = [
+        {"mass_kg": r.mass_kg, "x_m": r.x_m, "y_m": r.y_m, "z_m": r.z_m}
+        for r in rows
+    ]
     _, cg_x, _, _ = aggregate_weight_items(items)
     return cg_x
 
 
-def _reynolds_number(velocity: float, mac: float, rho: float = 1.225, mu: float = 1.81e-5) -> float:
+def _reynolds_number(
+    velocity: float, mac: float, rho: float = 1.225, mu: float = 1.81e-5
+) -> float:
+    """Sea-level standard atmosphere — sufficient for the UI chip; not
+    altitude-aware. Operating points use their own atmosphere model."""
     return rho * velocity * mac / mu
 
 
-def _cache_context(db: Session, aircraft: AeroplaneModel, context: dict[str, Any]) -> None:
+def _cache_context(
+    db: Session, aircraft: AeroplaneModel, context: dict[str, Any]
+) -> None:
     aircraft.assumption_computation_context = context
     db.flush()
 ```
@@ -821,18 +956,26 @@ git commit -m "feat(gh-465): add assumption compute service with two-phase ASB s
 
 - [ ] **Step 1: Write failing test**
 
+> NOTE on patch target: the handler does a lazy
+> `from app.core.background_jobs import job_tracker`. `mock.patch` must
+> target the *origin* of the name (where the lazy import looks it up),
+> NOT `app.services.invalidation_service` — patching the latter has no
+> effect because the local binding is created at call time.
+
 ```python
 # app/tests/test_invalidation_recompute.py
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from app.core.events import GeometryChanged
 
 
 def test_geometry_changed_schedules_recompute():
-    from app.services.invalidation_service import _on_geometry_changed_recompute_assumptions
+    from app.services.invalidation_service import (
+        _on_geometry_changed_recompute_assumptions,
+    )
 
     event = GeometryChanged(aeroplane_id=42, source_model="WingModel")
 
-    with patch("app.services.invalidation_service.job_tracker") as mock_tracker:
+    with patch("app.core.background_jobs.job_tracker") as mock_tracker:
         _on_geometry_changed_recompute_assumptions(event)
 
     mock_tracker.schedule_recompute_assumptions.assert_called_once_with(42)
@@ -950,24 +1093,37 @@ event_bus.subscribe(GeometryChanged, _on_geometry_changed_recompute_assumptions)
 
 - [ ] **Step 5: Wire recompute function in main.py**
 
-In `app/main.py`, in `_combined_lifespan`, after `job_tracker.set_trim_function(retrim_dirty_ops)`, add:
+In `app/main.py`, in `_combined_lifespan`, after
+`job_tracker.set_trim_function(retrim_dirty_ops)`, add:
 
 ```python
+import asyncio
+from app.db.session import SessionLocal
+from app.models.aeroplanemodel import AeroplaneModel
 from app.services.assumption_compute_service import recompute_assumptions
 
-async def _recompute_wrapper(aeroplane_id: int) -> None:
-    from app.db.session import SessionLocal
+def _recompute_sync(aeroplane_id: int) -> None:
     db = SessionLocal()
     try:
-        aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.id == aeroplane_id).first()
-        if aeroplane:
-            recompute_assumptions(db, str(aeroplane.uuid))
-            db.commit()
+        aeroplane = (
+            db.query(AeroplaneModel)
+            .filter(AeroplaneModel.id == aeroplane_id)
+            .first()
+        )
+        if aeroplane is None:
+            return
+        recompute_assumptions(db, str(aeroplane.uuid))
+        db.commit()
     except Exception:
         db.rollback()
         raise
     finally:
         db.close()
+
+async def _recompute_wrapper(aeroplane_id: int) -> None:
+    # ASB calls are CPU-bound (~200 calls per recompute). Running them
+    # directly on the event loop would block all other requests.
+    await asyncio.to_thread(_recompute_sync, aeroplane_id)
 
 job_tracker.set_recompute_function(_recompute_wrapper)
 ```
@@ -994,45 +1150,98 @@ git commit -m "feat(gh-465): wire GeometryChanged to assumption recompute via jo
 
 - [ ] **Step 1: Write failing tests**
 
+These tests use the existing `client_and_db` fixture that wires
+`override_get_db` against an in-memory SQLite (see
+`app/tests/conftest.py`). That matches the rest of the assumption
+endpoint test suite (`test_design_assumptions_endpoint.py`).
+
 ```python
 # app/tests/test_computation_endpoints.py
-from unittest.mock import MagicMock, patch
-from fastapi.testclient import TestClient
+from app.models.aeroplanemodel import AeroplaneModel
+from app.models.computation_config import (
+    AircraftComputationConfigModel,
+    COMPUTATION_CONFIG_DEFAULTS,
+)
+from app.tests.conftest import make_aeroplane
 
 
-def test_get_computation_context_returns_cached():
-    from app.main import app
-    client = TestClient(app)
+def test_get_computation_context_returns_null_when_never_computed(client_and_db):
+    client, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        aeroplane_uuid = str(aeroplane.uuid)
 
-    with patch("app.api.v2.endpoints.aeroplane.design_assumptions._get_aeroplane_by_uuid") as mock_get:
-        mock_aeroplane = MagicMock()
-        mock_aeroplane.assumption_computation_context = {
+    resp = client.get(f"/aeroplanes/{aeroplane_uuid}/assumptions/computation-context")
+    assert resp.status_code == 200
+    assert resp.json() is None
+
+
+def test_get_computation_context_returns_cached(client_and_db):
+    client, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        aeroplane.assumption_computation_context = {
             "v_cruise_mps": 18.0,
             "reynolds": 230000,
             "mac_m": 0.21,
         }
-        mock_get.return_value = mock_aeroplane
+        db.commit()
+        aeroplane_uuid = str(aeroplane.uuid)
 
-        response = client.get("/v2/aeroplanes/test-uuid/assumptions/computation-context")
+    resp = client.get(f"/aeroplanes/{aeroplane_uuid}/assumptions/computation-context")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["v_cruise_mps"] == 18.0
+    assert body["reynolds"] == 230000
 
-    assert response.status_code == 200
-    data = response.json()
-    assert data["v_cruise_mps"] == 18.0
+
+def test_get_computation_config_creates_default_when_missing(client_and_db):
+    client, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        aeroplane_uuid = str(aeroplane.uuid)
+        aeroplane_id = aeroplane.id
+
+    resp = client.get(f"/aeroplanes/{aeroplane_uuid}/computation-config")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["coarse_alpha_step_deg"] == COMPUTATION_CONFIG_DEFAULTS["coarse_alpha_step_deg"]
+
+    with SessionLocal() as db:
+        rows = (
+            db.query(AircraftComputationConfigModel)
+            .filter(AircraftComputationConfigModel.aeroplane_id == aeroplane_id)
+            .all()
+        )
+        assert len(rows) == 1
 
 
-def test_get_computation_context_returns_null():
-    from app.main import app
-    client = TestClient(app)
+def test_put_computation_config_updates_fields(client_and_db):
+    client, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        aeroplane_uuid = str(aeroplane.uuid)
 
-    with patch("app.api.v2.endpoints.aeroplane.design_assumptions._get_aeroplane_by_uuid") as mock_get:
-        mock_aeroplane = MagicMock()
-        mock_aeroplane.assumption_computation_context = None
-        mock_get.return_value = mock_aeroplane
+    resp = client.put(
+        f"/aeroplanes/{aeroplane_uuid}/computation-config",
+        json={"coarse_alpha_step_deg": 0.5, "fine_velocity_count": 12},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["coarse_alpha_step_deg"] == 0.5
+    assert body["fine_velocity_count"] == 12
+    # Untouched fields keep defaults
+    assert body["debounce_seconds"] == COMPUTATION_CONFIG_DEFAULTS["debounce_seconds"]
 
-        response = client.get("/v2/aeroplanes/test-uuid/assumptions/computation-context")
 
-    assert response.status_code == 200
-    assert response.json() is None
+def test_get_computation_context_404_for_missing_aeroplane(client_and_db):
+    import uuid
+
+    client, _ = client_and_db
+    resp = client.get(
+        f"/aeroplanes/{uuid.uuid4()}/assumptions/computation-context"
+    )
+    assert resp.status_code == 404
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -1427,7 +1636,14 @@ git commit -m "feat(gh-465): dynamic Info Chip Row with computation context"
 
 **Files:**
 - Modify: `frontend/components/workbench/AnalysisViewerPanel.tsx`
+- Modify: parent page that renders `AnalysisViewerPanel` (typically
+  `frontend/app/workbench/analysis/page.tsx` or equivalent)
 - Test: `frontend/__tests__/AnalysisWingGate.test.tsx`
+
+> **Why a new `hasWings` prop:** The existing `wingXSecs` prop holds
+> cross-sections of *one* wing — it cannot tell us whether the aircraft
+> has any wings at all. Counting components from the parent (where the
+> aircraft tree is already loaded) is the correct source of truth.
 
 - [ ] **Step 1: Write failing test**
 
@@ -1447,7 +1663,7 @@ vi.mock("@/hooks/useComputationContext", () => ({
 }));
 
 describe("Analysis Tab Wing Gate", () => {
-  it("shows empty state for Polar tab when no wings", async () => {
+  it("shows empty state for Polar tab when hasWings is false", async () => {
     const mod = await import("@/components/workbench/AnalysisViewerPanel");
     const Panel = mod.AnalysisViewerPanel;
 
@@ -1456,15 +1672,16 @@ describe("Analysis Tab Wing Gate", () => {
         result={null}
         activeTab="Polar"
         onTabChange={() => {}}
-        wingXSecs={[]}
-        // ... other required props with null/empty defaults
+        hasWings={false}
+        wingXSecs={null}
+        /* other required props default to null/empty */
       />,
     );
 
     expect(screen.getByText(/add a wing/i)).toBeInTheDocument();
   });
 
-  it("shows Assumptions tab content even without wings", async () => {
+  it("shows Assumptions tab content even when hasWings is false", async () => {
     const mod = await import("@/components/workbench/AnalysisViewerPanel");
     const Panel = mod.AnalysisViewerPanel;
 
@@ -1473,8 +1690,25 @@ describe("Analysis Tab Wing Gate", () => {
         result={null}
         activeTab="Assumptions"
         onTabChange={() => {}}
-        wingXSecs={[]}
-        // ... other required props
+        hasWings={false}
+        wingXSecs={null}
+      />,
+    );
+
+    expect(screen.queryByText(/add a wing/i)).not.toBeInTheDocument();
+  });
+
+  it("shows Polar content when hasWings is true", async () => {
+    const mod = await import("@/components/workbench/AnalysisViewerPanel");
+    const Panel = mod.AnalysisViewerPanel;
+
+    render(
+      <Panel
+        result={null}
+        activeTab="Polar"
+        onTabChange={() => {}}
+        hasWings={true}
+        wingXSecs={null}
       />,
     );
 
@@ -1486,48 +1720,72 @@ describe("Analysis Tab Wing Gate", () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd frontend && npx vitest run __tests__/AnalysisWingGate.test.tsx`
-Expected: FAIL — no wing gate exists yet
+Expected: FAIL — `hasWings` prop is unknown, gate logic missing.
 
-- [ ] **Step 3: Add wing gate to AnalysisViewerPanel**
+- [ ] **Step 3: Add `hasWings` prop and wing gate to AnalysisViewerPanel**
 
-In `AnalysisViewerPanel.tsx`, add a helper check:
+In `AnalysisViewerPanel.tsx`:
+
+1. Add `hasWings` to the `Props` interface (default-treated as
+   `true` for backwards compatibility if a caller forgets the prop —
+   but the parent page MUST pass it):
+   ```tsx
+   readonly hasWings?: boolean;  // defaults to true so callers without wings data don't see empty states accidentally
+   ```
+2. Destructure with default in the component signature:
+   `hasWings = true,`
+3. Compute the gated set of tabs:
+   ```tsx
+   const COMPUTATION_TABS = new Set<Tab>([
+     "Polar", "Trefftz Plane", "Streamlines", "Envelope",
+     "Stability", "Operating Points",
+   ]);
+   const showWingGate = !hasWings && COMPUTATION_TABS.has(activeTab);
+   ```
+4. Render the empty state once at the top of the tab-content area
+   (before the per-tab branches), early-returning:
+   ```tsx
+   {showWingGate ? (
+     <div className="flex flex-1 items-center justify-center bg-card-muted">
+       <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
+         Add a wing to enable aerodynamic analysis
+       </span>
+     </div>
+   ) : (
+     /* existing tab-content switch */
+   )}
+   ```
+   `Assumptions` is not in `COMPUTATION_TABS`, so it always renders normally.
+
+- [ ] **Step 4: Wire `hasWings` from the parent page**
+
+The parent page that renders `AnalysisViewerPanel` already has the
+aircraft tree (via `useComponents` or similar). Compute and pass:
 
 ```tsx
-const hasWings = (wingXSecs?.length ?? 0) > 0;
+const hasWings = (components ?? []).some((c) => c.kind === "wing");
+// or whatever the existing wing-detection convention is
+<AnalysisViewerPanel hasWings={hasWings} ... />
 ```
 
-Then for each computation tab (Polar, Trefftz, Streamlines, Stability, Envelope, Operating Points), wrap the content with:
+Verify the actual prop names against the parent page when implementing
+— do not invent component shape. Search for existing usages of
+`<AnalysisViewerPanel` in the workbench pages.
 
-```tsx
-{activeTab === "Polar" && (
-  hasWings ? (
-    // ... existing Polar content
-  ) : (
-    <div className="flex flex-1 items-center justify-center bg-card-muted">
-      <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
-        Add a wing to enable aerodynamic analysis
-      </span>
-    </div>
-  )
-)}
-```
-
-Leave Assumptions tab unchanged — it always renders.
-
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 5: Run test to verify it passes**
 
 Run: `cd frontend && npx vitest run __tests__/AnalysisWingGate.test.tsx`
 Expected: PASS
 
-- [ ] **Step 5: Run full frontend test suite**
+- [ ] **Step 6: Run full frontend test suite**
 
 Run: `cd frontend && npm run test:unit`
 Expected: All tests pass
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add frontend/components/workbench/AnalysisViewerPanel.tsx frontend/__tests__/AnalysisWingGate.test.tsx
+git add frontend/components/workbench/AnalysisViewerPanel.tsx frontend/app/workbench/analysis/page.tsx frontend/__tests__/AnalysisWingGate.test.tsx
 git commit -m "feat(gh-465): gate analysis tabs on wing existence"
 ```
 
@@ -1543,79 +1801,145 @@ git commit -m "feat(gh-465): gate analysis tabs on wing existence"
 ```python
 # app/tests/test_assumption_compute_integration.py
 import pytest
-from unittest.mock import patch, MagicMock
-import numpy as np
+from unittest.mock import patch
+from types import SimpleNamespace
 
-from app.core.events import GeometryChanged, event_bus
+from app.core.events import (
+    AssumptionChanged,
+    GeometryChanged,
+    event_bus,
+)
+from app.models.aeroplanemodel import DesignAssumptionModel
+from app.services.design_assumptions_service import seed_defaults
+from app.tests.conftest import make_aeroplane
 
 
 @pytest.mark.integration
-def test_geometry_changed_triggers_full_recompute_chain():
-    """Integration: GeometryChanged → recompute → assumptions updated."""
-    calls = []
+def test_geometry_changed_handler_schedules_recompute():
+    """Handler delegates to job_tracker.schedule_recompute_assumptions."""
+    from app.services.invalidation_service import (
+        _on_geometry_changed_recompute_assumptions,
+    )
 
-    def track_recompute(aeroplane_id):
-        calls.append(("recompute", aeroplane_id))
-
+    # Patch the origin module — the handler does a lazy
+    # `from app.core.background_jobs import job_tracker`.
     with patch("app.core.background_jobs.job_tracker") as mock_tracker:
-        mock_tracker.schedule_recompute_assumptions = track_recompute
+        _on_geometry_changed_recompute_assumptions(
+            GeometryChanged(aeroplane_id=42, source_model="WingModel")
+        )
 
-        from app.services.invalidation_service import _on_geometry_changed_recompute_assumptions
-        event = GeometryChanged(aeroplane_id=42, source_model="WingModel")
-        _on_geometry_changed_recompute_assumptions(event)
-
-    assert ("recompute", 42) in calls
+    mock_tracker.schedule_recompute_assumptions.assert_called_once_with(42)
 
 
 @pytest.mark.integration
-def test_recompute_publishes_assumption_changed_on_cg_change():
-    """Integration: recompute with changed cg_x publishes AssumptionChanged."""
-    published = []
+def test_recompute_publishes_assumption_changed_on_cg_change(client_and_db):
+    """Full pipeline: recompute with seeded assumptions emits AssumptionChanged for cg_x."""
+    from app.services.assumption_compute_service import recompute_assumptions
 
-    def capture_event(event):
-        published.append(event)
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        db.commit()
+        aeroplane_uuid = str(aeroplane.uuid)
 
-    event_bus.subscribe(type(MagicMock()), capture_event)
+    captured: list = []
+    handler = captured.append
+    event_bus.subscribe(AssumptionChanged, handler)
 
-    from app.core.events import AssumptionChanged
-    original_publish = event_bus.publish
+    patches = [
+        patch(
+            "app.services.assumption_compute_service._build_asb_airplane",
+            return_value=SimpleNamespace(wings=[object()], xyz_ref=[0.08, 0.0, 0.0]),
+        ),
+        patch(
+            "app.services.assumption_compute_service._stability_run_at_cruise",
+            return_value=(0.085, 0.20, 0.020),
+        ),
+        patch(
+            "app.services.assumption_compute_service._coarse_alpha_sweep",
+            return_value=14.0,
+        ),
+        patch(
+            "app.services.assumption_compute_service._fine_sweep_cl_max",
+            return_value=1.35,
+        ),
+        patch(
+            "app.services.assumption_compute_service._load_flight_profile_speeds",
+            return_value=(18.0, 28.0),
+        ),
+    ]
 
-    events_published = []
+    try:
+        for p in patches:
+            p.start()
+        with SessionLocal() as db:
+            recompute_assumptions(db, aeroplane_uuid)
+            db.commit()
+    finally:
+        for p in patches:
+            p.stop()
+        event_bus._subscribers.get(AssumptionChanged, []).remove(handler)
 
-    def capture_publish(event):
-        events_published.append(event)
-        original_publish(event)
+    cg_events = [e for e in captured if e.parameter_name == "cg_x"]
+    assert len(cg_events) == 1
 
-    with patch.object(event_bus, "publish", side_effect=capture_publish):
-        with patch("app.services.assumption_compute_service._load_aircraft_as_asb") as mock_load:
-            airplane = MagicMock()
-            airplane.wings = [MagicMock()]
-            airplane.wings[0].mean_aerodynamic_chord.return_value = 0.2
-            mock_load.return_value = (airplane, MagicMock(id=42, uuid="test"))
 
-            with (
-                patch("app.services.assumption_compute_service._load_flight_profile_speeds", return_value=(18.0, 28.0)),
-                patch("app.services.assumption_compute_service._load_or_create_config") as mc,
-                patch("app.services.assumption_compute_service._run_coarse_sweep", return_value={"cd0": 0.02, "x_np": 0.085, "stall_alpha_deg": 14.0}),
-                patch("app.services.assumption_compute_service._run_fine_sweep", return_value=1.35),
-                patch("app.services.assumption_compute_service._load_effective_assumption", return_value=0.12),
-                patch("app.services.assumption_compute_service._get_current_calculated_value", return_value=None),
-                patch("app.services.assumption_compute_service._load_cg_agg", return_value=0.09),
-                patch("app.services.assumption_compute_service.update_calculated_value"),
-                patch("app.services.assumption_compute_service._cache_context"),
-            ):
-                mc.return_value = MagicMock(
-                    coarse_alpha_min_deg=-5, coarse_alpha_max_deg=25,
-                    coarse_alpha_step_deg=1, fine_alpha_margin_deg=5,
-                    fine_alpha_step_deg=0.5, fine_velocity_count=8,
-                )
+@pytest.mark.integration
+def test_recompute_does_not_publish_when_cg_unchanged(client_and_db):
+    """Second recompute with same inputs does not emit a duplicate event."""
+    from app.services.assumption_compute_service import recompute_assumptions
 
-                from app.services.assumption_compute_service import recompute_assumptions
-                recompute_assumptions(MagicMock(), "test-uuid")
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        db.commit()
+        aeroplane_uuid = str(aeroplane.uuid)
 
-    assumption_events = [e for e in events_published if isinstance(e, AssumptionChanged)]
-    assert len(assumption_events) == 1
-    assert assumption_events[0].parameter_name == "cg_x"
+    captured: list = []
+    handler = captured.append
+    event_bus.subscribe(AssumptionChanged, handler)
+
+    patches = [
+        patch(
+            "app.services.assumption_compute_service._build_asb_airplane",
+            return_value=SimpleNamespace(wings=[object()], xyz_ref=[0.08, 0.0, 0.0]),
+        ),
+        patch(
+            "app.services.assumption_compute_service._stability_run_at_cruise",
+            return_value=(0.085, 0.20, 0.020),
+        ),
+        patch(
+            "app.services.assumption_compute_service._coarse_alpha_sweep",
+            return_value=14.0,
+        ),
+        patch(
+            "app.services.assumption_compute_service._fine_sweep_cl_max",
+            return_value=1.35,
+        ),
+        patch(
+            "app.services.assumption_compute_service._load_flight_profile_speeds",
+            return_value=(18.0, 28.0),
+        ),
+    ]
+
+    try:
+        for p in patches:
+            p.start()
+        with SessionLocal() as db:
+            recompute_assumptions(db, aeroplane_uuid)
+            db.commit()
+        with SessionLocal() as db:
+            recompute_assumptions(db, aeroplane_uuid)
+            db.commit()
+    finally:
+        for p in patches:
+            p.stop()
+        event_bus._subscribers.get(AssumptionChanged, []).remove(handler)
+
+    cg_events = [e for e in captured if e.parameter_name == "cg_x"]
+    assert len(cg_events) == 1  # Only first call emitted; second was idempotent
 ```
 
 - [ ] **Step 2: Run integration test**
@@ -1681,6 +2005,27 @@ cd frontend && npm run test:unit
 | `app/services/design_assumptions_service.py` | `auto_switch_source` param + seed computation config |
 | `app/services/invalidation_service.py` | New GeometryChanged handler for recompute |
 | `app/core/background_jobs.py` | `schedule_recompute_assumptions` + debounce |
-| `app/main.py` | Wire recompute function to job tracker |
+| `app/main.py` | Wire recompute function to job tracker (via `asyncio.to_thread`) |
 | `app/api/v2/endpoints/aeroplane/design_assumptions.py` | 3 new endpoints |
-| `frontend/components/workbench/AnalysisViewerPanel.tsx` | Wing gate + InfoChipRow integration |
+| `frontend/components/workbench/AnalysisViewerPanel.tsx` | `hasWings` prop + wing gate + InfoChipRow integration |
+| Parent workbench analysis page | Pass `hasWings={...}` derived from components tree |
+
+## Implementation Notes (Cross-Task)
+
+- **ASB API surface:** `result.reference.Xnp`, `result.reference.Cref`,
+  and `result.coefficients.CD` are accessed on the typed `AnalysisModel`
+  returned by `app.api.utils.analyse_aerodynamics`. Direct ASB calls
+  (`abu.run()`) return a dict-like — handle both via the `_extract_scalar`
+  helper.
+- **`xyz_ref` always passed:** Every `AeroBuildup` constructor in this
+  feature receives `xyz_ref` so NP / CG values are referenced
+  consistently with the rest of the system.
+- **Sync vs async:** `recompute_assumptions` is sync. The wrapper in
+  `app/main.py` invokes it via `asyncio.to_thread()` to keep the
+  FastAPI event loop responsive.
+- **`_get_aeroplane` reuse:** The compute service uses
+  `design_assumptions_service._get_aeroplane(db, aeroplane_uuid)` —
+  same UUID-resolution pattern as the rest of the assumptions code.
+- **Test fixtures:** All DB-touching tests use the existing
+  `client_and_db` fixture (in-memory SQLite) and the
+  `make_aeroplane` factory from `app/tests/conftest.py`.

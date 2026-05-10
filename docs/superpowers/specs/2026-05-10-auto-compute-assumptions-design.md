@@ -29,31 +29,45 @@ Design assumptions `cl_max`, `cd0`, and `cg_x` are manual inputs that most users
 GeometryChanged event (any wing/fuselage change)
   → invalidation_service: schedule_recompute_assumptions(aeroplane_id)
     → job_tracker debounce (config.debounce_seconds, default 2s)
-      → assumption_compute_service.recompute_assumptions(db, aeroplane_uuid)
-         1. Load aircraft → convert to ASB Airplane
-         2. Load flight profile (or default) → cruise_speed, V_max (max_level_speed_mps)
-         3. Compute MAC from ASB geometry
-         4. Load aircraft_computation_config (or seed defaults)
-         5. Two-phase AeroBuildup sweep:
-            Phase 1 — coarse alpha sweep at cruise speed (config: alpha_min to alpha_max, coarse_step):
-              - Find approximate stall alpha (alpha where CL peaks)
-              - CD0 = CD at the alpha where CL is closest to 0
-              - x_np from run_with_stability_derivatives()
-            Phase 2 — fine alpha × velocity sweep around stall region:
-              - Alpha: stall_alpha ± config.fine_alpha_margin, config.fine_step
-              - Velocity: from ~1.0× stall speed to V_max from flight profile
-                (config.fine_velocity_count evenly spaced speeds)
+      → asyncio.to_thread(recompute_assumptions, db, aeroplane_uuid)
+         (run in worker thread — ASB calls are CPU-bound and would
+          otherwise block the FastAPI event loop)
+         1. Load aircraft via _get_aeroplane (existing helper) → convert
+            to ASB Airplane
+         2. Load aircraft_computation_config (or create with defaults)
+         3. Load flight profile (or default) → cruise_speed, V_max
+         4. Stability run at cruise / alpha=0 via app.api.utils.analyse_aerodynamics
+            (AnalysisToolUrlType.AEROBUILDUP) → AnalysisModel
+              - x_np = _scalar(result.reference.Xnp)
+              - MAC = _scalar(result.reference.Cref)  (NOT wings[0])
+              - CD0 = _scalar(result.coefficients.CD) at alpha=0
+            (Pass xyz_ref via OperatingPointSchema. analyse_aerodynamics
+             handles the AeroBuildup → AnalysisModel conversion that
+             stability_service already relies on.)
+         5. Coarse alpha sweep at cruise speed via raw asb.AeroBuildup(...).run():
+              - alphas: coarse_alpha_min..max, coarse_alpha_step
+              - find stall_alpha (alpha where CL peaks)
+         6. Fine alpha × velocity sweep around stall region:
+              - alphas: stall_alpha ± fine_alpha_margin, fine_alpha_step
+              - velocities: stall_speed_approx..V_max, fine_velocity_count
               - CL_max = max(CL) across all (alpha, velocity) combinations
-              - This captures Re-dependent stall behavior at RC/UAV scales
-         6. Load target_static_margin from assumptions (effective value)
-         7. cg_x = x_np - target_static_margin × MAC
-         8. update_calculated_value("cl_max", CL_max, "aerobuildup", auto_switch=True)
-            update_calculated_value("cd0", CD0, "aerobuildup", auto_switch=True)
-            update_calculated_value("cg_x", cg_x, "aerobuildup", auto_switch=True)
-         9. Cache computation context on aeroplane model
-        10. If cg_x changed: publish AssumptionChanged event directly from recompute service
-            (update_calculated_value does NOT publish events by design — the recompute
-            service takes responsibility for triggering the retrim chain)
+              - captures Re-dependent stall behavior at RC/UAV scales
+         7. Load target_static_margin from assumptions (effective value)
+         8. cg_x = x_np - target_static_margin × MAC
+         9. update_calculated_value("cl_max", ..., auto_switch_source=True)
+            update_calculated_value("cd0",    ..., auto_switch_source=True)
+            update_calculated_value("cg_x",   ..., auto_switch_source=True)
+        10. Cache computation context on aeroplane model
+        11. If cg_x changed:
+              - call mark_ops_dirty(db, aeroplane_id) in the same
+                transaction (mirrors update_assumption — without this,
+                retrim_dirty_ops finds no DIRTY ops and is a no-op)
+              - publish AssumptionChanged event directly from recompute
+                service (update_calculated_value does NOT publish events
+                by design — the recompute service takes responsibility
+                for triggering the retrim chain). Only cg_x triggers
+                retrim; see Limitations below for the cd0/cl_max
+                trade-off.
 ```
 
 ### Event Chain
@@ -218,6 +232,50 @@ SWR revalidates on focus/navigation. The recompute takes ~2s and runs in the bac
 | Info Chip Row handles null context | vitest | Chips show "–" when no context |
 | Tabs show wing gate | vitest | Empty state when no wings |
 | Assumptions tab accessible without wings | vitest | Always renders |
+
+## Limitations & Trade-offs
+
+### CL_max accuracy
+
+`AeroBuildup` is an analytical model that estimates 2D airfoil
+characteristics — including stall — via curve-fitted models against
+Airfoil Tools / XFoil databases. Accuracy depends on:
+
+- **Airfoil database coverage:** Common airfoils (NACA 4-digit, Clark Y,
+  Eppler, Selig RC series) are well-covered. Custom or unusual profiles
+  fall back to thin-airfoil approximations and the CL_max estimate
+  becomes unreliable.
+- **Reynolds number:** At very low Re (< 50,000) the curve fits become
+  noisy. Most RC airfoils are usable above this threshold.
+- **3D effects:** AR, taper, sweep are handled by ASB internally, but
+  effects from twist distribution, separation bubbles, and tip vortices
+  are approximate.
+
+For these reasons CL_max from auto-compute is a **starting estimate**.
+Users with measured wind-tunnel or simulation data should switch the
+assumption back to ESTIMATE and enter their own value.
+
+### Retrim trigger scope
+
+Only `cg_x` changes trigger the retrim chain. `cd0` and `cl_max` updates
+populate `calculated_value` but do **not** mark OPs dirty. Rationale:
+
+- `cd0` affects trim drag and throttle but the elevator deflection and
+  alpha solution remain stable for small CD0 deltas. Recomputing every
+  trim on each geometry change would be costly for a marginal gain.
+- `cl_max` is only used for stall checks / envelope computations, not
+  for the trim solution itself.
+
+If a future use case demands cd0-driven retrim, the existing
+`_OP_AFFECTING_PARAMS` set in `invalidation_service` is the single point
+of extension.
+
+### Event-loop blocking
+
+`recompute_assumptions` is a sync function that does ~200 ASB calls per
+run (worst case). It MUST be invoked via `asyncio.to_thread()` so the
+FastAPI event loop stays responsive. The existing `retrim_dirty_ops`
+follows the same constraint; the recompute wrapper applies it explicitly.
 
 ## Out of Scope
 
