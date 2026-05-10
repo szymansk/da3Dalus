@@ -13,7 +13,7 @@ class TestControlSurfaceRole:
         assert ControlSurfaceRole.OTHER == "other"
 
     def test_all_roles_present(self):
-        expected = {"elevator", "aileron", "rudder", "elevon", "stabilator", "flap", "spoiler", "other"}
+        expected = {"elevator", "aileron", "rudder", "elevon", "stabilator", "flap", "flaperon", "ruddervator", "spoiler", "other"}
         assert {r.value for r in ControlSurfaceRole} == expected
 
 
