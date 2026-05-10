@@ -86,7 +86,7 @@ def test_alpha_sweep(smoke_plane):
     assert response.status_code == 200, f"{config.name}: {response.text}"
 
 
-@pytest.mark.integration
+@pytest.mark.slow
 @pytest.mark.requires_avl
 def test_strip_forces(smoke_plane):
     client, aeroplane, config = smoke_plane
