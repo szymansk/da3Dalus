@@ -174,6 +174,16 @@ class JobTracker:
             return False
         return job.status == JobStatus.DEBOUNCING
 
+    def get_recompute_job(self, aeroplane_id: int) -> RecomputeAssumptionsJob | None:
+        return self._recompute_jobs.get(aeroplane_id)
+
+    def is_recompute_active(self, aeroplane_id: int) -> bool:
+        """True while a recompute is debouncing or running."""
+        job = self._recompute_jobs.get(aeroplane_id)
+        if job is None:
+            return False
+        return job.status in (JobStatus.DEBOUNCING, JobStatus.COMPUTING)
+
     async def shutdown(self) -> None:
         for task in self._debounce_tasks.values():
             if not task.done():

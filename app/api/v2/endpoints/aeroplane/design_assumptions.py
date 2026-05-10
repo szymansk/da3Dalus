@@ -168,6 +168,40 @@ def _resolve_aeroplane(db: Session, aeroplane_id: UUID4) -> AeroplaneModel:
 
 
 # ---------------------------------------------------------------------------
+# Recompute status endpoint
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/aeroplanes/{aeroplane_id}/assumptions/recompute-status",
+    status_code=status.HTTP_200_OK,
+    tags=["design-assumptions"],
+    operation_id="get_recompute_status",
+    summary="Get current state of the assumption recompute job",
+    responses={404: {"description": "Aeroplane not found"}},
+)
+async def get_recompute_status(
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """Returns the live state of the per-aircraft recompute job so the
+    UI can show a 'Recomputing…' indicator regardless of which event
+    triggered the job (geometry change, mass change, SM change, …)."""
+    from app.core.background_jobs import job_tracker
+
+    aeroplane = _resolve_aeroplane(db, aeroplane_id)
+    job = job_tracker.get_recompute_job(aeroplane.id)
+    if job is None:
+        return {"status": "idle", "started_at": None, "finished_at": None, "error": None}
+    return {
+        "status": job.status.value.lower(),
+        "started_at": job.started_at.isoformat() if job.started_at else None,
+        "finished_at": job.finished_at.isoformat() if job.finished_at else None,
+        "error": job.error,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Computation-context endpoint
 # ---------------------------------------------------------------------------
 

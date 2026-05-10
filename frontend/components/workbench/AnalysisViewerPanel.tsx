@@ -14,6 +14,7 @@ import { OperatingPointsPanel } from "@/components/workbench/OperatingPointsPane
 import { AnalysisStatusIndicator } from "./AnalysisStatusIndicator";
 import type { AnalysisStatus } from "@/hooks/useAnalysisStatus";
 import { useDesignAssumptions } from "@/hooks/useDesignAssumptions";
+import { useRecomputeStatus } from "@/hooks/useRecomputeStatus";
 
 const TABS = ["Assumptions", "Polar", "Trefftz Plane", "Streamlines", "Envelope", "Stability", "Operating Points"] as const;
 export type Tab = (typeof TABS)[number];
@@ -576,6 +577,7 @@ export function AnalysisViewerPanel({
 }: Readonly<Props>) {
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
   const assumptions = useDesignAssumptions(aeroplaneId);
+  const recomputeStatus = useRecomputeStatus(aeroplaneId);
   const cgAero = useMemo(() => {
     const a = assumptions.data?.assumptions.find((x) => x.parameter_name === "cg_x");
     return a?.effective_value ?? null;
@@ -841,7 +843,7 @@ export function AnalysisViewerPanel({
       <InfoChipRow
         aeroplaneId={aeroplaneId}
         cgAero={cgAero}
-        isRecomputing={assumptions.isRecomputing}
+        isRecomputing={recomputeStatus.isRecomputing}
         rightSlot={
           <span className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
             {charts ? `${charts.alpha.length} points` : "No data"}
