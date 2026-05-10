@@ -12,6 +12,10 @@ vi.mock("lucide-react", () => {
     Ruler: icon,
     Target: icon,
     Navigation: icon,
+    Gauge: icon,
+    AlertTriangle: icon,
+    SlidersHorizontal: icon,
+    Activity: icon,
   };
 });
 

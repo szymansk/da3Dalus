@@ -59,7 +59,7 @@ def test_recompute_publishes_assumption_changed_on_cg_change(client_and_db):
         ),
         patch(
             "app.services.assumption_compute_service._stability_run_at_cruise",
-            return_value=(0.085, 0.20, 0.020),
+            return_value=(0.085, 0.20, 0.020, 0.30),
         ),
         patch(
             "app.services.assumption_compute_service._coarse_alpha_sweep",
@@ -113,7 +113,7 @@ def test_recompute_does_not_publish_when_cg_unchanged(client_and_db):
         ),
         patch(
             "app.services.assumption_compute_service._stability_run_at_cruise",
-            return_value=(0.085, 0.20, 0.020),
+            return_value=(0.085, 0.20, 0.020, 0.30),
         ),
         patch(
             "app.services.assumption_compute_service._coarse_alpha_sweep",

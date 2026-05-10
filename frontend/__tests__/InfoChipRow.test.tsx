@@ -4,7 +4,17 @@ import React from "react";
 
 vi.mock("lucide-react", () => {
   const icon = (props: Record<string, unknown>) => React.createElement("span", props);
-  return { Wind: icon, SlidersHorizontal: icon, Activity: icon, Ruler: icon, Target: icon, Navigation: icon, Settings: icon };
+  return {
+    Wind: icon,
+    SlidersHorizontal: icon,
+    Activity: icon,
+    Ruler: icon,
+    Target: icon,
+    Navigation: icon,
+    Settings: icon,
+    Gauge: icon,
+    AlertTriangle: icon,
+  };
 });
 
 vi.mock("@/hooks/useComputationContext", () => ({

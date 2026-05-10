@@ -22,7 +22,7 @@ def _patches():
         ),
         patch(
             "app.services.assumption_compute_service._stability_run_at_cruise",
-            return_value=(0.085, 0.20, 0.025),  # x_np, MAC, CD0
+            return_value=(0.085, 0.20, 0.025, 0.30),  # x_np, MAC, CD0
         ),
         patch(
             "app.services.assumption_compute_service._coarse_alpha_sweep",

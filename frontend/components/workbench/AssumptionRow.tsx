@@ -77,23 +77,35 @@ export function AssumptionRow({
   onUpdateEstimate,
   onSwitchSource,
 }: Props) {
+  // Percentage units (e.g. "% MAC") store the value as a decimal fraction
+  // (0.12) but the user thinks in 12%. Display × 100, parse ÷ 100.
+  const isPercent = assumption.unit.includes("%");
+  const toDisplay = (v: number) => (isPercent ? v * 100 : v);
+  const fromDisplay = (v: number) => (isPercent ? v / 100 : v);
+  const displayUnit = isPercent ? "%" : assumption.unit;
+  const formatNumber = (v: number) =>
+    isPercent ? toDisplay(v).toFixed(1) : v.toPrecision(4);
+
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(String(assumption.estimate_value));
+  const [draft, setDraft] = useState(String(toDisplay(assumption.estimate_value)));
   const inputRef = useRef<HTMLInputElement>(null);
 
   const label =
     PARAM_LABELS[assumption.parameter_name] ?? assumption.parameter_name;
 
   function commitEdit() {
-    const parsed = parseFloat(draft);
-    if (Number.isFinite(parsed) && parsed !== assumption.estimate_value) {
-      onUpdateEstimate(assumption.parameter_name, parsed);
+    const parsedDisplay = parseFloat(draft);
+    if (Number.isFinite(parsedDisplay)) {
+      const parsed = fromDisplay(parsedDisplay);
+      if (parsed !== assumption.estimate_value) {
+        onUpdateEstimate(assumption.parameter_name, parsed);
+      }
     }
     setEditing(false);
   }
 
   function startEdit() {
-    setDraft(String(assumption.estimate_value));
+    setDraft(String(toDisplay(assumption.estimate_value)));
     setEditing(true);
     // Focus after render
     setTimeout(() => inputRef.current?.select(), 0);
@@ -117,8 +129,8 @@ export function AssumptionRow({
 
       {/* Effective value */}
       <span className="min-w-[90px] font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground">
-        {assumption.effective_value.toPrecision(4)}{" "}
-        <span className="text-muted-foreground">{assumption.unit}</span>
+        {formatNumber(assumption.effective_value)}{" "}
+        <span className="text-muted-foreground">{displayUnit}</span>
       </span>
 
       {/* Source badge */}
@@ -149,7 +161,7 @@ export function AssumptionRow({
             className="rounded px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
             data-testid={`estimate-display-${assumption.parameter_name}`}
           >
-            {assumption.estimate_value}
+            {formatNumber(assumption.estimate_value)}
           </button>
         )}
       </div>

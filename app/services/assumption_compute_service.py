@@ -73,7 +73,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     v_cruise, v_max = _load_flight_profile_speeds(db, aircraft)
 
     try:
-        x_np, mac, cd0 = _stability_run_at_cruise(asb_airplane, v_cruise)
+        x_np, mac, cd0, s_ref = _stability_run_at_cruise(asb_airplane, v_cruise)
         stall_alpha = _coarse_alpha_sweep(asb_airplane, v_cruise, config)
         cl_max = _fine_sweep_cl_max(asb_airplane, stall_alpha, v_cruise, v_max, config)
     except Exception:
@@ -102,11 +102,16 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
 
     cg_agg = _load_cg_agg(db, aircraft.id)
     re = _reynolds_number(v_cruise, mac)
+    mass = _load_effective_assumption(db, aircraft.id, "mass")
+    v_stall = _stall_speed(mass, s_ref, cl_max)
 
     _cache_context(db, aircraft, {
         "v_cruise_mps": v_cruise,
+        "v_max_mps": round(v_max, 1),
+        "v_stall_mps": round(v_stall, 1) if v_stall is not None else None,
         "reynolds": round(re),
         "mac_m": round(mac, 4),
+        "s_ref_m2": round(s_ref, 4),
         "x_np_m": round(x_np, 4),
         "target_static_margin": target_sm,
         "cg_agg_m": round(cg_agg, 4) if cg_agg is not None else None,
@@ -169,7 +174,10 @@ def _stability_run_at_cruise(
     """Returns (x_np, MAC, CD0) from a single AeroBuildup stability run.
 
     Uses analyse_aerodynamics → AnalysisModel — same code path as
-    stability_service, so x_np / MAC / CD0 are consistent across the app.
+    stability_service, so x_np / MAC / CD0 / S_ref are consistent across
+    the app.
+
+    Returns (x_np, MAC, CD0, S_ref).
     """
     xyz_ref = list(asb_airplane.xyz_ref) if asb_airplane.xyz_ref is not None else [0.0, 0.0, 0.0]
     op_schema = OperatingPointSchema(velocity=v_cruise, alpha=0.0, xyz_ref=xyz_ref)
@@ -179,9 +187,10 @@ def _stability_run_at_cruise(
     x_np = _scalar(result.reference.Xnp)
     mac = _scalar(result.reference.Cref)
     cd0 = _scalar(result.coefficients.CD)
-    if x_np is None or mac is None or cd0 is None:
-        raise ValueError("AeroBuildup returned NULL for x_np/MAC/CD0")
-    return float(x_np), float(mac), float(cd0)
+    s_ref = _scalar(result.reference.Sref)
+    if x_np is None or mac is None or cd0 is None or s_ref is None:
+        raise ValueError("AeroBuildup returned NULL for x_np/MAC/CD0/S_ref")
+    return float(x_np), float(mac), float(cd0), float(s_ref)
 
 
 def _coarse_alpha_sweep(
@@ -305,6 +314,26 @@ def _reynolds_number(
     their own atmosphere model.
     """
     return rho * velocity * mac / mu
+
+
+def _stall_speed(
+    mass_kg: float,
+    s_ref_m2: float,
+    cl_max: float,
+    rho: float = 1.225,
+    g: float = 9.81,
+) -> float | None:
+    """Sea-level stall speed: V_stall = sqrt(2 W / (rho S CL_max)).
+
+    Returns None when CL_max or S_ref is non-positive. The 0.5 floor on
+    CL_max prevents wildly inflated stall speeds when AeroBuildup
+    misjudges stall on degenerate geometry.
+    """
+    if s_ref_m2 <= 0 or cl_max <= 0:
+        return None
+    cl_max_safe = max(cl_max, 0.5)
+    weight_n = mass_kg * g
+    return float(np.sqrt(2.0 * weight_n / (rho * s_ref_m2 * cl_max_safe)))
 
 
 def _cache_context(

@@ -1,6 +1,6 @@
 "use client";
 
-import { Wind, Ruler, Target, Navigation } from "lucide-react";
+import { Wind, Ruler, Target, Navigation, Gauge, AlertTriangle } from "lucide-react";
 import { useComputationContext } from "@/hooks/useComputationContext";
 
 interface Props {
@@ -47,7 +47,9 @@ export function InfoChipRow({ aeroplaneId, cgAero, rightSlot }: Props) {
 
   return (
     <div className="flex items-center gap-2 border-t border-border bg-card px-4 py-3">
-      <Chip icon={Wind} prefix="V = " value={fmt(ctx?.v_cruise_mps, 1, " m/s")} />
+      <Chip icon={AlertTriangle} prefix="V_stall = " value={fmt(ctx?.v_stall_mps, 1, " m/s")} />
+      <Chip icon={Wind} prefix="V_cruise = " value={fmt(ctx?.v_cruise_mps, 1, " m/s")} />
+      <Chip icon={Gauge} prefix="V_max = " value={fmt(ctx?.v_max_mps, 1, " m/s")} />
       <Chip icon={Wind} prefix="Re ≈ " value={fmtRe(ctx?.reynolds)} />
       <Chip icon={Ruler} prefix="MAC = " value={fmt(ctx?.mac_m, 2, " m")} />
       <Chip icon={Target} prefix="NP = " value={fmt(ctx?.x_np_m, 3, " m")} />

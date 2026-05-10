@@ -5,8 +5,11 @@ import { fetcher } from "@/lib/fetcher";
 
 export interface ComputationContext {
   v_cruise_mps: number;
+  v_max_mps?: number | null;
+  v_stall_mps?: number | null;
   reynolds: number;
   mac_m: number;
+  s_ref_m2?: number | null;
   x_np_m: number;
   target_static_margin: number;
   cg_agg_m: number | null;
