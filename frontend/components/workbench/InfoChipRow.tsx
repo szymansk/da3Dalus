@@ -14,16 +14,19 @@ function Chip({
   icon: Icon,
   prefix,
   value,
+  stale = false,
 }: {
   readonly icon: React.ComponentType<{ size: number; className: string }>;
   readonly prefix: string;
   readonly value: string;
+  readonly stale?: boolean;
 }) {
+  const valueClass = stale ? "text-red-400" : "text-foreground";
   return (
     <div className="flex items-center gap-1.5 rounded-full bg-card-muted px-3 py-1.5">
       <Icon size={12} className="text-muted-foreground" />
       <span className="font-[family-name:var(--font-geist-sans)] text-[12px] text-foreground">
-        {prefix}<span>{value}</span>
+        {prefix}<span className={valueClass}>{value}</span>
       </span>
     </div>
   );
@@ -46,14 +49,19 @@ export function InfoChipRow({ aeroplaneId, cgAero, isRecomputing, rightSlot }: P
 
   const cgValue = cgAero != null ? `${cgAero.toFixed(3)} m` : "–";
 
+  // Values that depend on the geometry-driven recompute. While a job is
+  // in flight these are stale → render in red so the user knows not to
+  // trust them until the recompute settles.
+  const stale = !!isRecomputing;
+
   return (
     <div className="flex items-center gap-2 border-t border-border bg-card px-4 py-3">
-      <Chip icon={AlertTriangle} prefix="V_stall = " value={fmt(ctx?.v_stall_mps, 1, " m/s")} />
-      <Chip icon={Wind} prefix="V_cruise = " value={fmt(ctx?.v_cruise_mps, 1, " m/s")} />
-      <Chip icon={Gauge} prefix="V_max = " value={fmt(ctx?.v_max_mps, 1, " m/s")} />
-      <Chip icon={Wind} prefix="Re ≈ " value={fmtRe(ctx?.reynolds)} />
-      <Chip icon={Ruler} prefix="MAC = " value={fmt(ctx?.mac_m, 2, " m")} />
-      <Chip icon={Target} prefix="NP = " value={fmt(ctx?.x_np_m, 3, " m")} />
+      <Chip icon={AlertTriangle} prefix="V_stall = " value={fmt(ctx?.v_stall_mps, 1, " m/s")} stale={stale} />
+      <Chip icon={Wind} prefix="V_cruise = " value={fmt(ctx?.v_cruise_mps, 1, " m/s")} stale={stale} />
+      <Chip icon={Gauge} prefix="V_max = " value={fmt(ctx?.v_max_mps, 1, " m/s")} stale={stale} />
+      <Chip icon={Wind} prefix="Re ≈ " value={fmtRe(ctx?.reynolds)} stale={stale} />
+      <Chip icon={Ruler} prefix="MAC = " value={fmt(ctx?.mac_m, 2, " m")} stale={stale} />
+      <Chip icon={Target} prefix="NP = " value={fmt(ctx?.x_np_m, 3, " m")} stale={stale} />
       <Chip
         icon={Navigation}
         prefix="SM = "
@@ -62,14 +70,21 @@ export function InfoChipRow({ aeroplaneId, cgAero, isRecomputing, rightSlot }: P
             ? (ctx.target_static_margin * 100).toFixed(0) + "%"
             : "–"
         }
+        stale={stale}
       />
       <div className="flex items-center gap-1.5 rounded-full bg-card-muted px-3 py-1.5">
         <Navigation size={12} className="text-muted-foreground" />
         <span className="font-[family-name:var(--font-geist-sans)] text-[12px] text-foreground">
           {"CG = "}
-          <span>{cgValue}</span>
+          <span className={stale ? "text-red-400" : ""}>{cgValue}</span>
           {cgAero != null && ctx?.cg_agg_m != null && ctx?.mac_m != null && (
-            <span className={`ml-1 ${cgDivergenceColor(cgAero, ctx.cg_agg_m, ctx.mac_m)}`}>
+            <span
+              className={`ml-1 ${
+                stale
+                  ? "text-red-400"
+                  : cgDivergenceColor(cgAero, ctx.cg_agg_m, ctx.mac_m)
+              }`}
+            >
               ({ctx.cg_agg_m.toFixed(3)})
             </span>
           )}
