@@ -41,6 +41,18 @@ def _on_geometry_changed(event: GeometryChanged) -> None:
     job_tracker.schedule_retrim(event.aeroplane_id)
 
 
+def _on_geometry_changed_recompute_assumptions(event: GeometryChanged) -> None:
+    """Handler that schedules a debounced assumption recompute."""
+    logger.info(
+        "GeometryChanged for aeroplane %d (source: %s) — scheduling assumption recompute",
+        event.aeroplane_id,
+        event.source_model,
+    )
+    from app.core.background_jobs import job_tracker
+
+    job_tracker.schedule_recompute_assumptions(event.aeroplane_id)
+
+
 def _on_assumption_changed(event: AssumptionChanged) -> None:
     """Schedule retrim when an OP-affecting assumption changes."""
     if event.parameter_name in _OP_AFFECTING_PARAMS:
@@ -57,4 +69,5 @@ def _on_assumption_changed(event: AssumptionChanged) -> None:
 def register_handlers() -> None:
     """Register event handlers on the global event bus."""
     event_bus.subscribe(GeometryChanged, _on_geometry_changed)
+    event_bus.subscribe(GeometryChanged, _on_geometry_changed_recompute_assumptions)
     event_bus.subscribe(AssumptionChanged, _on_assumption_changed)

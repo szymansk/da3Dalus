@@ -118,6 +118,38 @@ def create_app() -> FastAPI:
 
         job_tracker.set_trim_function(retrim_dirty_ops)
 
+        import asyncio as _asyncio
+        from app.db.session import SessionLocal as _SessionLocal
+        from app.models.aeroplanemodel import AeroplaneModel as _AeroplaneModel
+        from app.services.assumption_compute_service import (
+            recompute_assumptions as _recompute_assumptions,
+        )
+
+        def _recompute_sync(aeroplane_id: int) -> None:
+            db = _SessionLocal()
+            try:
+                aeroplane = (
+                    db.query(_AeroplaneModel)
+                    .filter(_AeroplaneModel.id == aeroplane_id)
+                    .first()
+                )
+                if aeroplane is None:
+                    return
+                _recompute_assumptions(db, str(aeroplane.uuid))
+                db.commit()
+            except Exception:
+                db.rollback()
+                raise
+            finally:
+                db.close()
+
+        async def _recompute_wrapper(aeroplane_id: int) -> None:
+            # ASB calls are CPU-bound (~200 calls per recompute). Running them
+            # directly on the event loop would block all other requests.
+            await _asyncio.to_thread(_recompute_sync, aeroplane_id)
+
+        job_tracker.set_recompute_function(_recompute_wrapper)
+
         async with mcp_app.lifespan(app):
             try:
                 yield
