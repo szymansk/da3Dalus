@@ -70,13 +70,14 @@ export function useDesignAssumptions(aeroplaneId: string | null) {
       }
       mutate();
 
-      // Recompute-triggering parameters (target_static_margin) re-derive
-      // cl_max/cd0/cg_x via the backend debounced job. Recompute time
-      // varies wildly (debounce 2s + ASB sweep — anything from 3s to 15s
+      // Recompute-triggering parameters re-derive cl_max/cd0/cg_x and
+      // V_stall via the backend debounced job. Recompute time varies
+      // wildly (debounce 2s + ASB sweep — anything from 3s to 15s
       // depending on geometry complexity). Poll a few times to catch
       // whenever it settles, and surface an isRecomputing flag so the UI
       // can show a spinner.
-      const RECOMPUTE_TRIGGERS = new Set(["target_static_margin"]);
+      // Must mirror app/services/invalidation_service._RECOMPUTE_TRIGGERING_PARAMS.
+      const RECOMPUTE_TRIGGERS = new Set(["target_static_margin", "mass"]);
       if (RECOMPUTE_TRIGGERS.has(paramName)) {
         setIsRecomputing(true);
         const ctxPath = `/aeroplanes/${aeroplaneId}/assumptions/computation-context`;
