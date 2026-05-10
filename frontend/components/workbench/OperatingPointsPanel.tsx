@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { X, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
+import { X, ChevronUp, ChevronDown, Loader2, Info } from "lucide-react";
 import type {
   StoredOperatingPoint,
   OperatingPointStatus,
@@ -431,6 +431,7 @@ export function OperatingPointsPanel({
               <ControlDeflectionsSection
                 controlSurfaces={controlSurfaces}
                 currentDeflections={selectedPoint.control_deflections}
+                trimControls={selectedPoint.controls}
                 onSave={(deflections) =>
                   onUpdateDeflections(selectedPoint.id, deflections)
                 }
@@ -639,28 +640,51 @@ function TrimResultCard({
   );
 }
 
+function _findTrimDeflection(
+  trimControls: Record<string, number> | null | undefined,
+  surfaceName: string,
+): number | null {
+  if (!trimControls) return null;
+  // Backend stores trim solution keyed as "[control_type]surface_name"
+  // (e.g. "[elevator]elevator"). Match by the part after the closing
+  // bracket so we find the value regardless of control_type.
+  for (const [key, val] of Object.entries(trimControls)) {
+    const match = key.match(/^\[[^\]]+\](.+)$/);
+    if (match && match[1] === surfaceName) return val;
+  }
+  return null;
+}
+
 function ControlDeflectionsSection({
   controlSurfaces,
   currentDeflections,
+  trimControls,
   onSave,
   disabled,
 }: Readonly<{
   controlSurfaces: ControlSurface[];
   currentDeflections: Record<string, number> | null;
+  trimControls?: Record<string, number> | null;
   onSave: (deflections: Record<string, number> | null) => void;
   disabled: boolean;
 }>) {
+  const [showInfo, setShowInfo] = useState(false);
+
   const initialDeflections = useMemo(() => {
     const initial: Record<string, string> = {};
     for (const cs of controlSurfaces) {
+      // Priority order:
+      // 1. User override (currentDeflections) — explicit choice wins
+      // 2. Trim solution (trimControls) — solver result, the natural "current"
+      // 3. Geometry default (cs.deflection_deg) — typically 0 for clean config
       const overrideValue = currentDeflections?.[cs.name];
+      const trimValue = _findTrimDeflection(trimControls, cs.name);
+      const fallback = trimValue != null ? trimValue : cs.deflection_deg;
       initial[cs.name] =
-        overrideValue != null
-          ? String(overrideValue)
-          : String(cs.deflection_deg);
+        overrideValue != null ? String(overrideValue) : String(fallback);
     }
     return initial;
-  }, [controlSurfaces, currentDeflections]);
+  }, [controlSurfaces, currentDeflections, trimControls]);
 
   const [localDeflections, setLocalDeflections] = useState(initialDeflections);
 
@@ -689,10 +713,34 @@ function ControlDeflectionsSection({
   }, [onSave]);
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card-muted p-4">
-      <span className="font-[family-name:var(--font-geist-sans)] text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-        Control Deflections
-      </span>
+    <div className="relative flex flex-col gap-3 rounded-xl border border-border bg-card-muted p-4">
+      <div className="flex items-center gap-1.5">
+        <span className="font-[family-name:var(--font-geist-sans)] text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          Control Deflections
+        </span>
+        <button
+          type="button"
+          onClick={() => setShowInfo((v) => !v)}
+          className="text-muted-foreground hover:text-orange-400"
+          aria-label="Sign convention for control deflections"
+          data-testid="control-deflections-info"
+        >
+          <Info size={12} />
+        </button>
+      </div>
+      {showInfo && (
+        <div
+          className="absolute left-4 top-10 z-20 max-w-[420px] whitespace-pre-line rounded-md border border-border bg-card px-3 py-2 font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground shadow-lg"
+          role="tooltip"
+        >
+          {"Sign convention (ASB / aerospace standard):\n" +
+            "• Elevator / elevon: − = trailing-edge UP → nose-up moment\n" +
+            "• Aileron: + = right-wing TE down (right roll)\n" +
+            "• Rudder: + = trailing-edge LEFT → nose-left yaw\n\n" +
+            "Values shown reflect the trim solution — edit to override " +
+            "for what-if analysis."}
+        </div>
+      )}
       {controlSurfaces.length === 0 ? (
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
           No control surfaces found

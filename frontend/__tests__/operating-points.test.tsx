@@ -117,7 +117,7 @@ describe("useOperatingPoints", () => {
       expect.objectContaining({ method: "POST" }),
     );
     const body = JSON.parse(mockFetch.mock.calls[1][1].body);
-    expect(body).toEqual({ replace_existing: false });
+    expect(body).toEqual({ replace_existing: true });
 
     expect(result.current.points).toEqual(fakePoints);
     expect(result.current.isGenerating).toBe(false);
@@ -367,6 +367,7 @@ vi.mock("lucide-react", () => {
     Plus: icon,
     X: icon,
     Loader2: icon,
+    Info: icon,
     AlertTriangle: icon,
     Check: icon,
     RefreshCw: icon,

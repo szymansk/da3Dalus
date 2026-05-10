@@ -214,7 +214,11 @@ export function useOperatingPoints(
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ replace_existing: replaceExisting ?? false }),
+            // Default to replace_existing=true so 'Generate Default OPs'
+            // replaces the previous default set instead of appending —
+            // prevents duplicate cruise / loiter / max_range rows when the
+            // user re-generates after geometry / mass / SM changes.
+            body: JSON.stringify({ replace_existing: replaceExisting ?? true }),
           },
         );
         if (!res.ok) {
