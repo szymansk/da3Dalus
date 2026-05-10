@@ -126,7 +126,9 @@ export function AssumptionRow({
 
       {/* Estimate editor */}
       <div className="flex min-w-[120px] items-center gap-1">
-        <span className="text-[10px] text-muted-foreground">est:</span>
+        {!assumption.is_design_choice && (
+          <span className="text-[10px] text-muted-foreground">est:</span>
+        )}
         {editing ? (
           <input
             ref={inputRef}
