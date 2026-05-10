@@ -113,7 +113,11 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     cg_agg = _load_cg_agg(db, aircraft.id)
     re = _reynolds_number(v_cruise, mac)
     mass = _load_effective_assumption(db, aircraft.id, "mass")
-    v_stall = _stall_speed(mass, s_ref, cl_max)
+    # Use the EFFECTIVE cl_max so a user override (toggle to ESTIMATE)
+    # actually changes V_stall — otherwise V_stall would always reflect
+    # the geometry-derived value regardless of the user's choice.
+    cl_max_effective = _load_effective_assumption(db, aircraft.id, "cl_max")
+    v_stall = _stall_speed(mass, s_ref, cl_max_effective)
 
     _cache_context(db, aircraft, {
         "v_cruise_mps": v_cruise,

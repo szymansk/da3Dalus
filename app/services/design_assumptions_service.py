@@ -129,7 +129,14 @@ def list_assumptions(db: Session, aeroplane_uuid) -> AssumptionsSummary:
 def update_assumption(
     db: Session, aeroplane_uuid, param_name: str, data: AssumptionWrite
 ) -> AssumptionRead:
-    """Update the estimate value of a design assumption."""
+    """Update the estimate value of a design assumption.
+
+    Only fires downstream events (mark_ops_dirty + AssumptionChanged)
+    when active_source == "ESTIMATE" — i.e. when the user's estimate
+    is the effective value. Editing an estimate while the calculated
+    value is active doesn't change the effective value, so the retrim
+    chain and the recompute should NOT fire.
+    """
     try:
         aeroplane = _get_aeroplane(db, aeroplane_uuid)
         row = (
@@ -143,15 +150,20 @@ def update_assumption(
         if row is None:
             raise NotFoundError(entity="DesignAssumption", resource_id=param_name)
 
+        active_was_estimate = row.active_source == "ESTIMATE"
         row.estimate_value = data.estimate_value
         row.divergence_pct = compute_divergence_pct(data.estimate_value, row.calculated_value)
         db.flush()
         db.refresh(row)
-        if param_name in {"mass", "cg_x"}:
-            from app.services.invalidation_service import mark_ops_dirty
 
-            mark_ops_dirty(db, aeroplane.id)
-        event_bus.publish(AssumptionChanged(aeroplane_id=aeroplane.id, parameter_name=param_name))
+        if active_was_estimate:
+            if param_name in {"mass", "cg_x"}:
+                from app.services.invalidation_service import mark_ops_dirty
+
+                mark_ops_dirty(db, aeroplane.id)
+            event_bus.publish(
+                AssumptionChanged(aeroplane_id=aeroplane.id, parameter_name=param_name)
+            )
         return _assumption_to_read(row)
     except NotFoundError:
         raise
@@ -193,6 +205,15 @@ def switch_source(
 
             mark_ops_dirty(db, aeroplane.id)
         event_bus.publish(AssumptionChanged(aeroplane_id=aeroplane.id, parameter_name=param_name))
+
+        # A source toggle changes the effective value by definition, so
+        # the geometry-driven recompute should re-derive downstream
+        # context (V_stall etc.). Skip cg_x — it's the recompute's own
+        # output and re-running would loop.
+        if param_name != "cg_x":
+            from app.core.background_jobs import job_tracker
+
+            job_tracker.schedule_recompute_assumptions(aeroplane.id)
         return _assumption_to_read(row)
     except (NotFoundError, ValidationError):
         raise
