@@ -540,7 +540,7 @@ class AeroplaneModel(Base):
         "AircraftComputationConfigModel",
         back_populates="aeroplane",
         uselist=False,
-        cascade="all, delete-orphan",
+        cascade=_CASCADE_ALL_DELETE_ORPHAN,
     )
     stability_results = relationship(
         "StabilityResultModel",
