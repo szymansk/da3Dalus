@@ -153,6 +153,39 @@ def get_effective_assumption_value(db: Session, aeroplane_uuid, param_name: str)
     return row.estimate_value
 
 
+def sync_component_tree_to_mass(db: Session, aeroplane_uuid) -> None:
+    """Aggregate component-tree weights and update mass.calculated_value.
+
+    Source of truth for the mass assumption when the user builds the
+    aircraft via the Component Tree (CAD shapes + COTS components +
+    overrides). Called from the component-tree CRUD endpoints so any
+    change immediately reflects in the assumptions panel.
+
+    Auto-switches active_source to CALCULATED on the first sync.
+    """
+    from app.services.component_tree_service import get_aircraft_total_weight_kg
+    from app.services.design_assumptions_service import update_calculated_value
+
+    aeroplane = _get_aeroplane(db, aeroplane_uuid)
+    mass_row_exists = (
+        db.query(DesignAssumptionModel.parameter_name)
+        .filter(
+            DesignAssumptionModel.aeroplane_id == aeroplane.id,
+            DesignAssumptionModel.parameter_name == "mass",
+        )
+        .first()
+    )
+    if mass_row_exists is None:
+        return
+
+    total_kg = get_aircraft_total_weight_kg(db, aeroplane_uuid)
+    source = "component_tree" if total_kg is not None else None
+    update_calculated_value(
+        db, aeroplane_uuid, "mass", total_kg, source,
+        auto_switch_source=True,
+    )
+
+
 def sync_weight_items_to_assumptions(db: Session, aeroplane_uuid) -> None:
     """Aggregate weight items and update mass.calculated_value.
 

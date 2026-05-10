@@ -206,6 +206,7 @@ def add_node(
         db.add(node)
         db.flush()
         db.refresh(node)
+        _sync_aircraft_mass(db, aeroplane_id)
         return _to_schema(node)
     except (NotFoundError, ValidationError):
         raise
@@ -230,6 +231,7 @@ def update_node(
             setattr(node, key, value)
         db.flush()
         db.refresh(node)
+        _sync_aircraft_mass(db, aeroplane_id)
         return _to_schema(node)
     except NotFoundError:
         raise
@@ -258,6 +260,7 @@ def delete_node(db: Session, aeroplane_id: str, node_id: int) -> None:
         _delete_subtree(db, aeroplane_id, node_id)
         db.delete(node)
         db.flush()
+        _sync_aircraft_mass(db, aeroplane_id)
     except (NotFoundError, ValidationError):
         raise
     except SQLAlchemyError as exc:
@@ -324,6 +327,52 @@ def _is_descendant(db: Session, aeroplane_id: str, candidate_id: int, ancestor_i
             ComponentTreeNodeModel.id == current.parent_id,
         ).first()
     return False
+
+
+def _sync_aircraft_mass(db: Session, aeroplane_id: str) -> None:
+    """Re-sync the mass design assumption after a tree mutation.
+
+    Lazy-imported to avoid a circular import at module load. Errors are
+    swallowed because a failed mass sync should NOT block the original
+    component-tree CRUD operation.
+    """
+    try:
+        from app.services.mass_cg_service import sync_component_tree_to_mass
+
+        sync_component_tree_to_mass(db, aeroplane_id)
+    except Exception:
+        logger.warning(
+            "Failed to sync aircraft mass after component-tree change for %s",
+            aeroplane_id,
+            exc_info=True,
+        )
+
+
+def get_aircraft_total_weight_kg(db: Session, aeroplane_id: str) -> Optional[float]:
+    """Sum the weight of all top-level component-tree nodes (kg).
+
+    Top-level here means parent_id IS NULL — that captures every wing,
+    fuselage, payload, etc. since their synced groups are root nodes.
+    Returns None if the tree is empty (so the caller knows to clear the
+    mass calculated_value).
+    """
+    roots = (
+        db.query(ComponentTreeNodeModel)
+        .filter(
+            ComponentTreeNodeModel.aeroplane_id == aeroplane_id,
+            ComponentTreeNodeModel.parent_id.is_(None),
+        )
+        .all()
+    )
+    if not roots:
+        return None
+    total_g = 0.0
+    for r in roots:
+        own, _ = _calculate_own_weight(db, r)
+        total_g += (own or 0.0) + _calculate_children_weight(
+            db, aeroplane_id, r.id
+        )
+    return total_g / 1000.0 if total_g > 0 else None
 
 
 def calculate_weight(db: Session, aeroplane_id: str, node_id: int) -> WeightResponse:
