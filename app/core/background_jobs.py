@@ -126,10 +126,11 @@ class JobTracker:
         self._debounce_tasks[aeroplane_id] = new_task
 
     async def _debounced_retrim(self, aeroplane_id: int) -> None:
-        try:
-            await asyncio.sleep(self.debounce_seconds)
-        except asyncio.CancelledError:
-            return
+        # If the task is cancelled (replaced by a newer schedule),
+        # CancelledError propagates from asyncio.sleep and the
+        # coroutine ends. No catch needed — propagation is the
+        # correct cooperative-cancellation pattern.
+        await asyncio.sleep(self.debounce_seconds)
 
         if self._trim_function is None:
             logger.warning("No trim function registered — cannot retrim aeroplane %d", aeroplane_id)
@@ -177,10 +178,8 @@ class JobTracker:
         self._recompute_debounce_tasks[aeroplane_id] = new_task
 
     async def _debounced_recompute(self, aeroplane_id: int) -> None:
-        try:
-            await asyncio.sleep(self.debounce_seconds)
-        except asyncio.CancelledError:
-            return
+        # See _debounced_retrim for the cancellation-propagation rationale.
+        await asyncio.sleep(self.debounce_seconds)
 
         if self._recompute_function is None:
             logger.warning(

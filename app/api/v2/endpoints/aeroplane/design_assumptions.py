@@ -183,7 +183,7 @@ def _resolve_aeroplane(db: Session, aeroplane_id: UUID4) -> AeroplaneModel:
 async def get_recompute_status(
     aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
     db: Annotated[Session, Depends(get_db)],
-):
+) -> dict[str, str | None]:
     """Returns the live state of the per-aircraft recompute job so the
     UI can show a 'Recomputing…' indicator regardless of which event
     triggered the job (geometry change, mass change, SM change, …)."""
@@ -219,7 +219,7 @@ async def get_recompute_status(
 async def get_computation_context(
     aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
     db: Annotated[Session, Depends(get_db)],
-):
+) -> dict | None:
     """Return the JSON context cached by the last assumption recompute,
     or null if no recompute has run yet."""
     aeroplane = _resolve_aeroplane(db, aeroplane_id)

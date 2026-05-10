@@ -111,6 +111,79 @@ def test_recompute_skips_when_no_wings(client_and_db):
         assert cd0.calculated_value is None  # untouched
 
 
+def test_recompute_aborts_cleanly_on_asb_exception(client_and_db):
+    """ASB failure must NOT corrupt existing calculated_value fields and
+    must NOT publish AssumptionChanged. This guards a critical loop in
+    recompute_assumptions: any exception inside the sweep helpers is
+    caught and the function returns without writing anything."""
+    from app.core.events import AssumptionChanged, event_bus
+
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        # Pre-seed known calculated values that must survive untouched.
+        cd0_row = (
+            db.query(DesignAssumptionModel)
+            .filter_by(aeroplane_id=aeroplane.id, parameter_name="cd0")
+            .first()
+        )
+        cd0_row.calculated_value = 0.9999
+        cd0_row.calculated_source = "previous_run"
+        db.commit()
+        aeroplane_uuid = str(aeroplane.uuid)
+
+    captured: list = []
+    handler = captured.append
+    event_bus.subscribe(AssumptionChanged, handler)
+
+    try:
+        with (
+            patch(
+                "app.services.assumption_compute_service._build_asb_airplane",
+                return_value=SimpleNamespace(
+                    wings=[
+                        SimpleNamespace(
+                            area=lambda: 0.30,
+                            mean_aerodynamic_chord=lambda: 0.20,
+                            span=lambda: 1.5,
+                        )
+                    ],
+                    xyz_ref=[0.0, 0.0, 0.0],
+                    s_ref=0.30,
+                    c_ref=0.20,
+                    b_ref=1.5,
+                ),
+            ),
+            patch(
+                "app.services.assumption_compute_service._stability_run_at_cruise",
+                side_effect=RuntimeError("ASB boom"),
+            ),
+            patch(
+                "app.services.assumption_compute_service._load_flight_profile_speeds",
+                return_value=(18.0, 28.0, True),
+            ),
+        ):
+            with SessionLocal() as db:
+                recompute_assumptions(db, aeroplane_uuid)
+                db.commit()
+    finally:
+        event_bus._subscribers.get(AssumptionChanged, []).remove(handler)
+
+    # Pre-existing value survives.
+    with SessionLocal() as db:
+        cd0_row = (
+            db.query(DesignAssumptionModel)
+            .filter_by(parameter_name="cd0")
+            .first()
+        )
+        assert cd0_row.calculated_value == 0.9999
+        assert cd0_row.calculated_source == "previous_run"
+
+    # No spurious cg_x change event.
+    assert [e.parameter_name for e in captured] == []
+
+
 def test_recompute_caches_context_and_publishes_cg_change(client_and_db):
     from app.core.events import AssumptionChanged, event_bus
 
