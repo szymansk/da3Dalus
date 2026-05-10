@@ -36,6 +36,7 @@ export default function AnalysisPage() {
     return massAssumption?.effective_value ?? null;
   }, [assumptions.data]);
   const { wingNames } = useWings(aeroplaneId);
+  const hasWings = wingNames.length > 0;
   const { wings: allWings } = useAllWingData(aeroplaneId, wingNames);
   const { wing } = useWing(aeroplaneId, selectedWing ?? wingNames[0] ?? null);
   const controlSurfaces = useMemo(
@@ -94,6 +95,7 @@ export default function AnalysisPage() {
           <AnalysisViewerPanel
             result={analysis.result}
             aeroplaneId={aeroplaneId}
+            hasWings={hasWings}
             lastRunTime={analysis.lastRunTime}
             lastRunDurationMs={analysis.lastRunDurationMs}
             stripForces={stripForces.result}

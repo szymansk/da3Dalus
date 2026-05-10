@@ -26,7 +26,7 @@ interface WingXSec {
 
 interface Props {
   readonly result: AnalysisResult | null;
-  readonly aeroplaneId: string | null;
+  readonly aeroplaneId?: string | null;
   readonly lastRunTime?: Date | null;
   readonly lastRunDurationMs?: number | null;
   readonly stripForces?: StripForcesResult | null;
@@ -41,6 +41,7 @@ interface Props {
   readonly wingXSecs?: WingXSec[] | null;
   readonly wingSymmetric?: boolean;
   readonly assumptionsSlot?: React.ReactNode;
+  readonly hasWings?: boolean;
   readonly envelope?: FlightEnvelopeData | null;
   readonly isComputingEnvelope?: boolean;
   readonly envelopeError?: string | null;
@@ -552,6 +553,7 @@ export function AnalysisViewerPanel({
   wingXSecs,
   wingSymmetric,
   assumptionsSlot,
+  hasWings = true,
   envelope,
   isComputingEnvelope,
   envelopeError,
@@ -582,6 +584,16 @@ export function AnalysisViewerPanel({
   function toggleChart(id: string) {
     setMaximizedChart((prev) => (prev === id ? null : id));
   }
+
+  const COMPUTATION_TABS = new Set<Tab>([
+    "Polar",
+    "Trefftz Plane",
+    "Streamlines",
+    "Envelope",
+    "Stability",
+    "Operating Points",
+  ]);
+  const showWingGate = !hasWings && COMPUTATION_TABS.has(activeTab);
 
   const charts = useMemo(() => {
     if (!result?.CL || result.CL.length === 0) return null;
@@ -656,7 +668,15 @@ export function AnalysisViewerPanel({
         </div>
       )}
 
-      {activeTab === "Polar" && (
+      {showWingGate && (
+        <div className="flex flex-1 items-center justify-center bg-card-muted">
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
+            Add a wing to enable aerodynamic analysis
+          </span>
+        </div>
+      )}
+
+      {!showWingGate && activeTab === "Polar" && (
         <div className="flex flex-1 flex-col gap-4 overflow-auto bg-card-muted p-6">
           {charts ? (
             (() => {
@@ -764,7 +784,7 @@ export function AnalysisViewerPanel({
         </div>
       )}
 
-      {activeTab === "Trefftz Plane" && (
+      {!showWingGate && activeTab === "Trefftz Plane" && (
         <div className="flex flex-1 flex-col gap-4 overflow-auto bg-card-muted p-6">
           <TrefftzPlaneTabContent
             stripForcesLoading={stripForcesLoading}
@@ -775,7 +795,7 @@ export function AnalysisViewerPanel({
         </div>
       )}
 
-      {activeTab === "Streamlines" && (
+      {!showWingGate && activeTab === "Streamlines" && (
         <div className="flex flex-1 overflow-hidden bg-card-muted">
           <StreamlinesTabContent
             streamlinesLoading={streamlinesLoading}
@@ -784,7 +804,7 @@ export function AnalysisViewerPanel({
         </div>
       )}
 
-      {activeTab === "Envelope" && (
+      {!showWingGate && activeTab === "Envelope" && (
         <EnvelopePanel
           envelope={envelope ?? null}
           isComputing={isComputingEnvelope ?? false}
@@ -793,7 +813,7 @@ export function AnalysisViewerPanel({
         />
       )}
 
-      {activeTab === "Stability" && (
+      {!showWingGate && activeTab === "Stability" && (
         <StabilityPanel
           data={stability ?? null}
           isComputing={isComputingStability ?? false}
@@ -802,7 +822,7 @@ export function AnalysisViewerPanel({
         />
       )}
 
-      {activeTab === "Operating Points" && (
+      {!showWingGate && activeTab === "Operating Points" && (
         <OperatingPointsPanel
           points={operatingPoints ?? []}
           isLoading={isLoadingOps ?? false}
