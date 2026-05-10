@@ -235,11 +235,11 @@ export function OperatingPointsPanel({
   );
 
   return (
-    <div className="relative flex flex-1 flex-col gap-4 overflow-auto bg-card-muted p-6">
+    <div className="relative flex min-h-0 flex-1 flex-col gap-4 bg-card-muted p-6">
       <div className="flex items-center gap-3">
         <div className="flex-1" />
         <button
-          onClick={onGenerate}
+          onClick={() => onGenerate()}
           disabled={isGenerating}
           className="flex items-center gap-1.5 rounded-full bg-[#FF8400] px-4 py-1.5 font-[family-name:var(--font-geist-sans)] text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
         >
@@ -272,9 +272,9 @@ export function OperatingPointsPanel({
       )}
 
       {points.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-border bg-card">
           <table className="w-full">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-card">
               <tr className="border-b border-border">
                 {COLUMNS.map((col) => (
                   <th
