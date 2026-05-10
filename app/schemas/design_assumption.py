@@ -44,8 +44,16 @@ PARAMETER_DEFAULTS: dict[str, float] = {
     "cd0": 0.03,
     "cl_max": 1.4,
     "g_limit": 3.0,
-    "power_to_weight": 300.0,  # typical RC sport model; 0 means glider
-    "prop_efficiency": 0.65,    # typical 65% for RC propellers at cruise
+    # Typical RC ranges (per common P/W chart):
+    #   160-200 W/kg → trainer / slow aerobatic
+    #   200-240 W/kg → sport aerobatic / scale     ← default
+    #   240-290 W/kg → advanced aerobatic / fast
+    #   290-330 W/kg → light 3D / ducted fan
+    #   330-440 W/kg → unlimited 3D
+    #   0           → glider (no powertrain, V_max = structural V_NE)
+    "power_to_weight": 220.0,
+    # Typical 0.55-0.75 for RC propellers at cruise; 0.65 is a sane middle.
+    "prop_efficiency": 0.65,
 }
 
 
