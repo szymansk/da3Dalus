@@ -68,17 +68,35 @@ describe("useStability", () => {
     expect(result.current.error).toContain("500");
   });
 
-  it("compute() POSTs to stability_summary and refreshes cached data", async () => {
+  it("compute() POSTs to stability_summary with design CG and refreshes cached data", async () => {
     const mockFetch = vi.fn()
+      // 1. initial refresh on mount → /stability (no cached data yet)
       .mockResolvedValueOnce({ ok: false, status: 404, text: () => Promise.resolve("Not found") })
+      // 2. compute → GET /assumptions to find effective cg_x
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          assumptions: [{ parameter_name: "cg_x", effective_value: 0.073 }],
+        }),
+      })
+      // 3. compute → POST /stability_summary/avl
       .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve(FAKE_STABILITY) })
+      // 4. refresh after compute → GET /stability
       .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve(FAKE_STABILITY) });
     globalThis.fetch = mockFetch;
     const { result } = renderHook(() => useStability("42"));
     await waitFor(() => { expect(result.current.isLoading).toBe(false); });
     await act(async () => { await result.current.compute(); });
-    expect(mockFetch.mock.calls[1][0]).toContain("/aeroplanes/42/stability_summary/avl");
-    expect(mockFetch.mock.calls[1][1]).toEqual(expect.objectContaining({ method: "POST" }));
+
+    const stabPostCall = mockFetch.mock.calls.find(
+      (c: [string, { method?: string }]) =>
+        typeof c[0] === "string" && c[0].includes("/stability_summary/avl"),
+    );
+    expect(stabPostCall).toBeTruthy();
+    expect(stabPostCall![1]).toEqual(expect.objectContaining({ method: "POST" }));
+    const body = JSON.parse(String(stabPostCall![1].body));
+    expect(body.xyz_ref).toEqual([0.073, 0, 0]);
     expect(result.current.data).toEqual(FAKE_STABILITY);
     expect(result.current.isComputing).toBe(false);
   });
