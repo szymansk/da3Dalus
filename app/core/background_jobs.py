@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Awaitable, Callable
+from typing import Awaitable, Callable, Coroutine
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,50 @@ class JobTracker:
         self._recompute_jobs: dict[int, RecomputeAssumptionsJob] = {}
         self._recompute_debounce_tasks: dict[int, asyncio.Task] = {}
         self._recompute_function: Callable[[int], Awaitable[None]] | None = None
+        # Reference to the FastAPI event loop, captured at startup. Lets
+        # us schedule from worker threads (asyncio.to_thread inside the
+        # recompute pipeline) instead of silently failing with
+        # "no running event loop".
+        self._main_loop: asyncio.AbstractEventLoop | None = None
+
+    def bind_loop(self, loop: asyncio.AbstractEventLoop) -> None:
+        """Capture the application's main event loop. Call from lifespan."""
+        self._main_loop = loop
+
+    def _create_task_safe(self, coro: Coroutine[None, None, None]) -> asyncio.Task | None:
+        """Create a task on the main loop regardless of caller thread.
+
+        Returns None when no loop is bound and we're not running inside
+        one — in that case the schedule is silently dropped (matching
+        previous behaviour for non-server contexts like unit tests).
+        """
+        try:
+            running = asyncio.get_running_loop()
+            return running.create_task(coro)
+        except RuntimeError:
+            pass
+        if self._main_loop is None:
+            logger.debug("No bound event loop — skipping schedule")
+            return None
+        # asyncio.run_coroutine_threadsafe returns a concurrent.futures.Future.
+        # We don't track it here because cancellation of cross-thread
+        # tasks is awkward; the debounce-cancel path uses asyncio.Task,
+        # so we only accept proper Task creation for tracking.
+        # Workaround: schedule via call_soon_threadsafe so the actual
+        # create_task happens on the main thread, returning a real Task
+        # via a small wrapper.
+        result: dict[str, asyncio.Task | None] = {"task": None}
+        ready = threading.Event()
+
+        def _make_task() -> None:
+            try:
+                result["task"] = self._main_loop.create_task(coro)  # type: ignore[union-attr]
+            finally:
+                ready.set()
+
+        self._main_loop.call_soon_threadsafe(_make_task)
+        ready.wait(timeout=2.0)
+        return result["task"]
 
     def set_trim_function(self, fn: Callable[[int], Awaitable[None]]) -> None:
         self._trim_function = fn
@@ -63,21 +108,22 @@ class JobTracker:
             return
 
         existing_task = self._debounce_tasks.get(aeroplane_id)
-        if existing_task and not existing_task.done():
-            existing_task.cancel()
 
-        self._jobs[aeroplane_id] = RetrimJob(aeroplane_id=aeroplane_id)
-
-        try:
-            loop = asyncio.get_running_loop()
-            self._debounce_tasks[aeroplane_id] = loop.create_task(
-                self._debounced_retrim(aeroplane_id)
-            )
-        except RuntimeError:
+        # Try to create the new task FIRST. Only cancel the existing
+        # task and overwrite the job if creation succeeded — otherwise
+        # we'd leave the job in DEBOUNCING with no task to fire it.
+        new_task = self._create_task_safe(self._debounced_retrim(aeroplane_id))
+        if new_task is None:
             logger.debug(
-                "No running event loop — skipping background retrim for aeroplane %d",
+                "Cannot schedule retrim for aeroplane %d — no event loop available",
                 aeroplane_id,
             )
+            return
+
+        if existing_task and not existing_task.done():
+            existing_task.cancel()
+        self._jobs[aeroplane_id] = RetrimJob(aeroplane_id=aeroplane_id)
+        self._debounce_tasks[aeroplane_id] = new_task
 
     async def _debounced_retrim(self, aeroplane_id: int) -> None:
         try:
@@ -112,21 +158,23 @@ class JobTracker:
 
     def schedule_recompute_assumptions(self, aeroplane_id: int) -> None:
         existing_task = self._recompute_debounce_tasks.get(aeroplane_id)
-        if existing_task and not existing_task.done():
-            existing_task.cancel()
 
-        self._recompute_jobs[aeroplane_id] = RecomputeAssumptionsJob(aeroplane_id=aeroplane_id)
-
-        try:
-            loop = asyncio.get_running_loop()
-            self._recompute_debounce_tasks[aeroplane_id] = loop.create_task(
-                self._debounced_recompute(aeroplane_id)
-            )
-        except RuntimeError:
+        # Same atomic-create pattern as schedule_retrim: build the task
+        # before clobbering existing state. Otherwise a worker-thread
+        # caller (no event loop) would cancel the in-flight debounce
+        # and leave the job stuck in DEBOUNCING forever.
+        new_task = self._create_task_safe(self._debounced_recompute(aeroplane_id))
+        if new_task is None:
             logger.debug(
-                "No running event loop — skipping recompute for aeroplane %d",
+                "Cannot schedule recompute for aeroplane %d — no event loop available",
                 aeroplane_id,
             )
+            return
+
+        if existing_task and not existing_task.done():
+            existing_task.cancel()
+        self._recompute_jobs[aeroplane_id] = RecomputeAssumptionsJob(aeroplane_id=aeroplane_id)
+        self._recompute_debounce_tasks[aeroplane_id] = new_task
 
     async def _debounced_recompute(self, aeroplane_id: int) -> None:
         try:

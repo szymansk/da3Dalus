@@ -116,9 +116,14 @@ def create_app() -> FastAPI:
         from app.services.retrim_service import retrim_dirty_ops
         from app.core.background_jobs import job_tracker
 
+        import asyncio as _asyncio
+
+        # Bind the FastAPI event loop so JobTracker can schedule from
+        # worker threads (asyncio.to_thread inside the recompute
+        # pipeline).
+        job_tracker.bind_loop(_asyncio.get_running_loop())
         job_tracker.set_trim_function(retrim_dirty_ops)
 
-        import asyncio as _asyncio
         from app.db.session import SessionLocal as _SessionLocal
         from app.models.aeroplanemodel import AeroplaneModel as _AeroplaneModel
         from app.services.assumption_compute_service import (
