@@ -10,6 +10,10 @@ from sqlalchemy.orm import Session
 from app.core.events import AssumptionChanged, event_bus
 from app.core.exceptions import InternalError, NotFoundError, ValidationError
 from app.models.aeroplanemodel import AeroplaneModel, DesignAssumptionModel
+from app.models.computation_config import (
+    AircraftComputationConfigModel,
+    COMPUTATION_CONFIG_DEFAULTS,
+)
 from app.schemas.design_assumption import (
     DESIGN_CHOICE_PARAMS,
     PARAMETER_DEFAULTS,
@@ -80,6 +84,19 @@ def seed_defaults(db: Session, aeroplane_uuid) -> AssumptionsSummary:
                     active_source="ESTIMATE",
                 )
                 db.add(row)
+
+        # Also seed per-aircraft computation config (idempotent)
+        existing_config = (
+            db.query(AircraftComputationConfigModel)
+            .filter(AircraftComputationConfigModel.aeroplane_id == aeroplane.id)
+            .first()
+        )
+        if existing_config is None:
+            config = AircraftComputationConfigModel(
+                aeroplane_id=aeroplane.id,
+                **COMPUTATION_CONFIG_DEFAULTS,
+            )
+            db.add(config)
 
         db.flush()
         return list_assumptions(db, aeroplane_uuid)
