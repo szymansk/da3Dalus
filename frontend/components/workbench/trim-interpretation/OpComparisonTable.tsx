@@ -122,13 +122,13 @@ export function OpComparisonTable({ points }: Props) {
   ];
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-border bg-card-muted p-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-2 rounded-xl border border-border bg-card-muted p-4">
       <span className="font-[family-name:var(--font-geist-sans)] text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
         OP Comparison
       </span>
-      <div className="overflow-x-auto">
+      <div className="min-h-0 flex-1 overflow-auto">
         <table className="w-full text-left font-[family-name:var(--font-jetbrains-mono)] text-[11px]">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-card-muted">
             <tr className="border-b border-border">
               {columns.map((col) => (
                 <th

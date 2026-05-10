@@ -235,7 +235,7 @@ export function OperatingPointsPanel({
   );
 
   return (
-    <div className="relative flex flex-1 flex-col gap-4 overflow-auto bg-card-muted p-6">
+    <div className="relative flex min-h-0 flex-1 flex-col gap-4 bg-card-muted p-6">
       <div className="flex items-center gap-3">
         <div className="flex-1" />
         <button
@@ -272,9 +272,9 @@ export function OperatingPointsPanel({
       )}
 
       {points.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-border bg-card">
           <table className="w-full">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-card">
               <tr className="border-b border-border">
                 {COLUMNS.map((col) => (
                   <th
