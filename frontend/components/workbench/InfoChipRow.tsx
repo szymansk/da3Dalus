@@ -1,11 +1,12 @@
 "use client";
 
-import { Wind, Ruler, Target, Navigation, Gauge, AlertTriangle } from "lucide-react";
+import { Wind, Ruler, Target, Navigation, Gauge, AlertTriangle, Loader2 } from "lucide-react";
 import { useComputationContext } from "@/hooks/useComputationContext";
 
 interface Props {
   readonly aeroplaneId: string | null;
   readonly cgAero: number | null;
+  readonly isRecomputing?: boolean;
   readonly rightSlot?: React.ReactNode;
 }
 
@@ -35,7 +36,7 @@ function cgDivergenceColor(cgAero: number, cgAgg: number, mac: number): string {
   return "text-red-400";
 }
 
-export function InfoChipRow({ aeroplaneId, cgAero, rightSlot }: Props) {
+export function InfoChipRow({ aeroplaneId, cgAero, isRecomputing, rightSlot }: Props) {
   const { data: ctx } = useComputationContext(aeroplaneId);
 
   const fmt = (v: number | null | undefined, decimals: number, suffix = "") =>
@@ -75,6 +76,15 @@ export function InfoChipRow({ aeroplaneId, cgAero, rightSlot }: Props) {
         </span>
       </div>
       <div className="flex-1" />
+      {isRecomputing && (
+        <span
+          className="flex items-center gap-1 rounded-full bg-orange-500/15 px-2 py-1 text-[11px] text-orange-400"
+          data-testid="recomputing-chip"
+        >
+          <Loader2 size={11} className="animate-spin" />
+          Recomputing…
+        </span>
+      )}
       {rightSlot}
     </div>
   );

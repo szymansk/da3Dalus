@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR, { mutate as globalMutate } from "swr";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { API_BASE, fetcher } from "@/lib/fetcher";
 
 export interface Assumption {
@@ -38,6 +38,7 @@ export function useDesignAssumptions(aeroplaneId: string | null) {
     path,
     fetcher,
   );
+  const [isRecomputing, setIsRecomputing] = useState(false);
 
   const seedDefaults = useCallback(async () => {
     if (!aeroplaneId) return;
@@ -70,18 +71,30 @@ export function useDesignAssumptions(aeroplaneId: string | null) {
       mutate();
 
       // Recompute-triggering parameters (target_static_margin) re-derive
-      // cl_max/cd0/cg_x via the backend debounced job. Schedule a delayed
-      // revalidation so the panel and chips reflect the new computed
-      // values once the recompute settles. Time = backend debounce (2s)
-      // + recompute work (~1-2s) + safety margin.
+      // cl_max/cd0/cg_x via the backend debounced job. Recompute time
+      // varies wildly (debounce 2s + ASB sweep — anything from 3s to 15s
+      // depending on geometry complexity). Poll a few times to catch
+      // whenever it settles, and surface an isRecomputing flag so the UI
+      // can show a spinner.
       const RECOMPUTE_TRIGGERS = new Set(["target_static_margin"]);
       if (RECOMPUTE_TRIGGERS.has(paramName)) {
-        setTimeout(() => {
+        setIsRecomputing(true);
+        const ctxPath = `/aeroplanes/${aeroplaneId}/assumptions/computation-context`;
+        const revalidate = () => {
           mutate();
-          globalMutate(
-            `/aeroplanes/${aeroplaneId}/assumptions/computation-context`,
-          );
-        }, 4000);
+          globalMutate(ctxPath);
+        };
+        // Idempotent revalidations at staggered intervals — covers
+        // recompute times anywhere from 3s to 12s. Cleanup is not needed:
+        // mutate() / globalMutate() are idempotent if the component
+        // unmounts in the meantime.
+        setTimeout(revalidate, 2500);
+        setTimeout(revalidate, 5000);
+        setTimeout(revalidate, 8000);
+        setTimeout(() => {
+          revalidate();
+          setIsRecomputing(false);
+        }, 12000);
       }
     },
     [aeroplaneId, mutate],
@@ -113,6 +126,7 @@ export function useDesignAssumptions(aeroplaneId: string | null) {
   return {
     data: data ?? null,
     isLoading,
+    isRecomputing,
     error: error ?? null,
     seedDefaults,
     updateEstimate,

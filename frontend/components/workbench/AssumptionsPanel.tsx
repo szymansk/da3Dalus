@@ -10,8 +10,16 @@ interface Props {
 }
 
 export function AssumptionsPanel({ aeroplaneId }: Props) {
-  const { data, isLoading, error, seedDefaults, updateEstimate, switchSource, mutate } =
-    useDesignAssumptions(aeroplaneId);
+  const {
+    data,
+    isLoading,
+    isRecomputing,
+    error,
+    seedDefaults,
+    updateEstimate,
+    switchSource,
+    mutate,
+  } = useDesignAssumptions(aeroplaneId);
 
   if (isLoading) {
     return (
@@ -69,6 +77,15 @@ export function AssumptionsPanel({ aeroplaneId }: Props) {
           >
             <AlertTriangle size={10} />
             {warningsCount}
+          </span>
+        )}
+        {isRecomputing && (
+          <span
+            className="flex items-center gap-1 rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] text-orange-400"
+            data-testid="recomputing-indicator"
+          >
+            <Loader2 size={10} className="animate-spin" />
+            Recomputing…
           </span>
         )}
       </div>

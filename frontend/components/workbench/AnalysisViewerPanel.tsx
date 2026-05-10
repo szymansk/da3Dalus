@@ -841,6 +841,7 @@ export function AnalysisViewerPanel({
       <InfoChipRow
         aeroplaneId={aeroplaneId}
         cgAero={cgAero}
+        isRecomputing={assumptions.isRecomputing}
         rightSlot={
           <span className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
             {charts ? `${charts.alpha.length} points` : "No data"}
