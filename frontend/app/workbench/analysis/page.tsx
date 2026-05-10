@@ -181,6 +181,11 @@ export default function AnalysisPage() {
               }}
               streamlinesRunning={streamlines.isComputing}
               streamlinesError={streamlines.error}
+              designCgX={
+                assumptions.data?.assumptions.find(
+                  (a) => a.parameter_name === "cg_x",
+                )?.effective_value ?? null
+              }
               onClose={() => setConfigOpen(false)}
             />
           </div>

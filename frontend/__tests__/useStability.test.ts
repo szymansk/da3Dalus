@@ -80,7 +80,7 @@ describe("useStability", () => {
           assumptions: [{ parameter_name: "cg_x", effective_value: 0.073 }],
         }),
       })
-      // 3. compute → POST /stability_summary/avl
+      // 3. compute → POST /stability_summary/aerobuildup
       .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve(FAKE_STABILITY) })
       // 4. refresh after compute → GET /stability
       .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve(FAKE_STABILITY) });
@@ -91,7 +91,7 @@ describe("useStability", () => {
 
     const stabPostCall = mockFetch.mock.calls.find(
       (c: [string, { method?: string }]) =>
-        typeof c[0] === "string" && c[0].includes("/stability_summary/avl"),
+        typeof c[0] === "string" && c[0].includes("/stability_summary/aerobuildup"),
     );
     expect(stabPostCall).toBeTruthy();
     expect(stabPostCall![1]).toEqual(expect.objectContaining({ method: "POST" }));

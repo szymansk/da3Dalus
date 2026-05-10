@@ -102,6 +102,7 @@ describe("useStreamlines", () => {
       alpha: 10,
       beta: 2,
       altitude: 500,
+      xyz_ref: [0, 0, 0],
     });
   });
 

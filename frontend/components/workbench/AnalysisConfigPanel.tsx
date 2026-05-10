@@ -23,6 +23,10 @@ interface AnalysisConfigPanelProps {
   readonly onRunStreamlines?: (params: StreamlinesParams) => void;
   readonly streamlinesRunning?: boolean;
   readonly streamlinesError?: string | null;
+  // Default xyz_ref[0] for analysis runs — comes from the design CG
+  // (cg_x effective value from assumptions). Falls back to 0 when not
+  // available.
+  readonly designCgX?: number | null;
   // Modal close
   readonly onClose?: () => void;
 }
@@ -50,6 +54,7 @@ export function AnalysisConfigPanel({
   onRunStreamlines,
   streamlinesRunning,
   streamlinesError,
+  designCgX,
   onClose,
 }: Readonly<AnalysisConfigPanelProps>) {
   const [mode, setMode] = useState<Mode>("sweep");
@@ -63,7 +68,12 @@ export function AnalysisConfigPanel({
   const [altitude, setAltitude] = useState("100");
   const [beta, setBeta] = useState("0");
   const [analysisTool, setAnalysisTool] = useState("aero_buildup");
-  const [xyzRef, setXyzRef] = useState("0, 0, 0");
+  // xyzRef defaults to the design CG (cg_x effective from assumptions)
+  // — that is the moment-reference point the rest of the system uses.
+  // Falling back to "0, 0, 0" is just a placeholder until the prop arrives.
+  const [xyzRef, setXyzRef] = useState(
+    designCgX != null ? `${designCgX.toFixed(4)}, 0, 0` : "0, 0, 0",
+  );
 
   // Trefftz-specific state
   const [trefftzAlpha, setTrefftzAlpha] = useState("5");
@@ -111,6 +121,7 @@ export function AnalysisConfigPanel({
       alpha: Number.parseFloat(trefftzAlpha) || 5,
       beta: Number.parseFloat(beta) || 0,
       altitude: Number.parseFloat(altitude) || 100,
+      xyz_ref: parseXyzRef(),
     });
     onClose?.();
   };
@@ -123,7 +134,7 @@ export function AnalysisConfigPanel({
     setAltitude("100");
     setBeta("0");
     setAnalysisTool("aero_buildup");
-    setXyzRef("0, 0, 0");
+    setXyzRef(designCgX != null ? `${designCgX.toFixed(4)}, 0, 0` : "0, 0, 0");
     setTrefftzAlpha("5");
   };
 

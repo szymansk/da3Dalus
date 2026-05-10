@@ -91,7 +91,7 @@ export function useStability(aeroplaneId: string | null): UseStabilityReturn {
       }
 
       const res = await fetch(
-        `${API_BASE}/aeroplanes/${aeroplaneId}/stability_summary/avl`,
+        `${API_BASE}/aeroplanes/${aeroplaneId}/stability_summary/aerobuildup`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
