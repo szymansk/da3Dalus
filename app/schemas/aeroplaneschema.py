@@ -31,6 +31,8 @@ class ControlSurfaceRole(str, Enum):
     AILERON = "aileron"
     RUDDER = "rudder"
     ELEVON = "elevon"
+    FLAPERON = "flaperon"
+    RUDDERVATOR = "ruddervator"
     STABILATOR = "stabilator"
     FLAP = "flap"
     SPOILER = "spoiler"
