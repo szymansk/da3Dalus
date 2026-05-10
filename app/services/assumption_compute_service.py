@@ -113,19 +113,23 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     cg_agg = _load_cg_agg(db, aircraft.id)
     re = _reynolds_number(v_cruise, mac)
     mass = _load_effective_assumption(db, aircraft.id, "mass")
-    # Use the EFFECTIVE cl_max so a user override (toggle to ESTIMATE)
-    # actually changes V_stall — otherwise V_stall would always reflect
-    # the geometry-derived value regardless of the user's choice.
+    # Use EFFECTIVE values so user overrides (toggle to ESTIMATE)
+    # actually change V_stall and V_md.
     cl_max_effective = _load_effective_assumption(db, aircraft.id, "cl_max")
+    cd0_effective = _load_effective_assumption(db, aircraft.id, "cd0")
+    aspect_ratio = _main_wing_aspect_ratio(asb_airplane)
     v_stall = _stall_speed(mass, s_ref, cl_max_effective)
+    v_md = _min_drag_speed(mass, s_ref, cd0_effective, aspect_ratio)
 
     _cache_context(db, aircraft, {
         "v_cruise_mps": v_cruise,
         "v_max_mps": round(v_max, 1),
         "v_stall_mps": round(v_stall, 1) if v_stall is not None else None,
+        "v_md_mps": round(v_md, 1) if v_md is not None else None,
         "reynolds": round(re),
         "mac_m": round(mac, 4),
         "s_ref_m2": round(s_ref, 4),
+        "aspect_ratio": round(aspect_ratio, 2) if aspect_ratio is not None else None,
         "x_np_m": round(x_np, 4),
         "target_static_margin": target_sm,
         "cg_agg_m": round(cg_agg, 4) if cg_agg is not None else None,
@@ -367,6 +371,52 @@ def _stall_speed(
     cl_max_safe = max(cl_max, 0.5)
     weight_n = mass_kg * g
     return float(np.sqrt(2.0 * weight_n / (rho * s_ref_m2 * cl_max_safe)))
+
+
+def _main_wing_aspect_ratio(asb_airplane) -> float | None:
+    """Aspect ratio AR = b² / S of the main wing (largest planform)."""
+    main = _select_main_wing(asb_airplane)
+    if main is None:
+        return None
+    s = float(main.area())
+    b = float(main.span())
+    if s <= 0:
+        return None
+    return (b * b) / s
+
+
+def _min_drag_speed(
+    mass_kg: float,
+    s_ref_m2: float,
+    cd0: float,
+    aspect_ratio: float | None,
+    rho: float = 1.225,
+    g: float = 9.81,
+    oswald_e: float = 0.8,
+) -> float | None:
+    """Sea-level minimum-drag speed (= best L/D = best range for prop).
+
+    Derivation: at (L/D)_max the induced drag equals the parasitic
+    drag, giving CL_opt = sqrt(CD0/k) with k = 1 / (pi · AR · e).
+    Solving level flight L = W for V yields:
+
+        V_md = sqrt( (2 m g) / (rho S sqrt(CD0/k)) )
+
+    Returns None for degenerate inputs (no wing, zero AR, zero CD0).
+    """
+    if (
+        s_ref_m2 <= 0
+        or cd0 <= 1e-6
+        or aspect_ratio is None
+        or aspect_ratio <= 0
+    ):
+        return None
+    k = 1.0 / (np.pi * aspect_ratio * oswald_e)
+    cl_opt = float(np.sqrt(cd0 / k))
+    if cl_opt <= 0:
+        return None
+    weight_n = mass_kg * g
+    return float(np.sqrt(2.0 * weight_n / (rho * s_ref_m2 * cl_opt)))
 
 
 def _cache_context(
