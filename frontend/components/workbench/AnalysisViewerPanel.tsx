@@ -61,6 +61,16 @@ interface Props {
   readonly onTrimWithAerobuildup?: (point: StoredOperatingPoint, trimVariable: string, targetCoefficient: string, targetValue: number) => Promise<AeroBuildupTrimResult | null>;
   readonly controlSurfaces?: ControlSurface[];
   readonly onUpdateDeflections?: (opId: number, deflections: Record<string, number> | null) => Promise<void>;
+  readonly onDeleteOp?: (opId: number) => Promise<void>;
+  readonly onDeleteAllOps?: () => Promise<void>;
+  readonly onCreateOp?: (payload: {
+    name: string;
+    velocity: number;
+    alpha: number;
+    beta?: number;
+    altitude?: number;
+    config?: string;
+  }) => Promise<void>;
   readonly analysisStatus?: AnalysisStatus;
 }
 
@@ -573,6 +583,9 @@ export function AnalysisViewerPanel({
   onTrimWithAerobuildup,
   controlSurfaces,
   onUpdateDeflections,
+  onDeleteOp,
+  onDeleteAllOps,
+  onCreateOp,
   analysisStatus,
 }: Readonly<Props>) {
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
@@ -836,6 +849,9 @@ export function AnalysisViewerPanel({
           onTrimWithAerobuildup={onTrimWithAerobuildup ?? (() => Promise.resolve(null))}
           controlSurfaces={controlSurfaces ?? []}
           onUpdateDeflections={onUpdateDeflections ?? (async () => {})}
+          onDeleteOp={onDeleteOp}
+          onDeleteAll={onDeleteAllOps}
+          onCreateOp={onCreateOp}
         />
       )}
 

@@ -141,6 +141,9 @@ export default function AnalysisPage() {
             onTrimWithAerobuildup={ops.trimWithAerobuildup}
             controlSurfaces={controlSurfaces}
             onUpdateDeflections={ops.updateDeflections}
+            onDeleteOp={ops.deleteOp}
+            onDeleteAllOps={ops.deleteAll}
+            onCreateOp={ops.createOp}
             analysisStatus={analysisStatus.status}
           />
         </div>
