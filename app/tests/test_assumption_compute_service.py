@@ -51,7 +51,7 @@ def _patches():
         ),
         patch(
             "app.services.assumption_compute_service._load_flight_profile_speeds",
-            return_value=(18.0, 28.0),
+            return_value=(18.0, 28.0, True),
         ),
     )
 

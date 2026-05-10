@@ -58,7 +58,12 @@ export function InfoChipRow({ aeroplaneId, cgAero, isRecomputing, rightSlot }: P
     <div className="flex items-center gap-2 border-t border-border bg-card px-4 py-3">
       <Chip icon={AlertTriangle} prefix="V_stall = " value={fmt(ctx?.v_stall_mps, 1, " m/s")} stale={stale} />
       <Chip icon={Wind} prefix="V_md = " value={fmt(ctx?.v_md_mps, 1, " m/s")} stale={stale} />
-      <Chip icon={Wind} prefix="V_cruise = " value={fmt(ctx?.v_cruise_mps, 1, " m/s")} stale={stale} />
+      <Chip
+        icon={Wind}
+        prefix={ctx?.v_cruise_auto ? "V_cruise* = " : "V_cruise = "}
+        value={fmt(ctx?.v_cruise_mps, 1, " m/s")}
+        stale={stale}
+      />
       <Chip
         icon={Gauge}
         prefix={ctx?.is_glider ? "V_NE = " : "V_max = "}

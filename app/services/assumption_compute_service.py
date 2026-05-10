@@ -80,7 +80,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     seed_defaults(db, aeroplane_uuid)
 
     config = _load_or_create_config(db, aircraft.id)
-    v_cruise, v_max = _load_flight_profile_speeds(db, aircraft)
+    v_cruise, v_max, user_set_cruise = _load_flight_profile_speeds(db, aircraft)
 
     try:
         x_np, mac, cd0, s_ref = _stability_run_at_cruise(asb_airplane, v_cruise)
@@ -132,8 +132,15 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     v_max_effective = v_max_computed if v_max_computed is not None else v_max
     is_glider = p_to_w <= 0
 
+    # If the user hasn't set a flight profile, suggest V_md as the
+    # cruise speed (best L/D = best range for prop aircraft). Once the
+    # user creates a profile and sets cruise_speed_mps, we respect it.
+    v_cruise_effective = v_md if (not user_set_cruise and v_md is not None) else v_cruise
+    cruise_is_auto = not user_set_cruise and v_md is not None
+
     _cache_context(db, aircraft, {
-        "v_cruise_mps": v_cruise,
+        "v_cruise_mps": round(v_cruise_effective, 1),
+        "v_cruise_auto": cruise_is_auto,
         "v_max_mps": round(v_max_effective, 1),
         "v_stall_mps": round(v_stall, 1) if v_stall is not None else None,
         "v_md_mps": round(v_md, 1) if v_md is not None else None,
@@ -184,18 +191,25 @@ def _load_or_create_config(
 
 def _load_flight_profile_speeds(
     db: Session, aircraft: AeroplaneModel
-) -> tuple[float, float]:
+) -> tuple[float, float, bool]:
+    """Returns (cruise_mps, v_max_goal_mps, user_set_cruise).
+
+    user_set_cruise=False when the aircraft has no flight profile (we
+    fall back to the default profile). Callers can use this signal to
+    decide whether to override cruise with a computed value (V_md).
+    """
     from app.services.operating_point_generator_service import (
         _load_effective_flight_profile,
     )
 
-    profile, _ = _load_effective_flight_profile(db, aircraft)
+    profile, source_profile_id = _load_effective_flight_profile(db, aircraft)
     goals = profile.get("goals", {})
     cruise = float(goals.get("cruise_speed_mps", 18.0))
     v_max = float(
         goals.get("max_level_speed_mps") or max(1.35 * cruise, cruise + 8.0)
     )
-    return cruise, v_max
+    user_set_cruise = source_profile_id is not None
+    return cruise, v_max, user_set_cruise
 
 
 def _select_main_wing(asb_airplane):

@@ -5,6 +5,7 @@ import { fetcher } from "@/lib/fetcher";
 
 export interface ComputationContext {
   v_cruise_mps: number;
+  v_cruise_auto?: boolean;
   v_max_mps?: number | null;
   v_stall_mps?: number | null;
   v_md_mps?: number | null;

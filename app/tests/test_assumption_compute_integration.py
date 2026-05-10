@@ -71,7 +71,7 @@ def test_recompute_publishes_assumption_changed_on_cg_change(client_and_db):
         ),
         patch(
             "app.services.assumption_compute_service._load_flight_profile_speeds",
-            return_value=(18.0, 28.0),
+            return_value=(18.0, 28.0, True),
         ),
     ]
 
@@ -125,7 +125,7 @@ def test_recompute_does_not_publish_when_cg_unchanged(client_and_db):
         ),
         patch(
             "app.services.assumption_compute_service._load_flight_profile_speeds",
-            return_value=(18.0, 28.0),
+            return_value=(18.0, 28.0, True),
         ),
     ]
 
