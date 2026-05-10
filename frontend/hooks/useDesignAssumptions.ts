@@ -1,6 +1,6 @@
 "use client";
 
-import useSWR from "swr";
+import useSWR, { mutate as globalMutate } from "swr";
 import { useCallback } from "react";
 import { API_BASE, fetcher } from "@/lib/fetcher";
 
@@ -68,6 +68,21 @@ export function useDesignAssumptions(aeroplaneId: string | null) {
         throw new Error(`Failed to update assumption: ${res.status} ${body}`);
       }
       mutate();
+
+      // Recompute-triggering parameters (target_static_margin) re-derive
+      // cl_max/cd0/cg_x via the backend debounced job. Schedule a delayed
+      // revalidation so the panel and chips reflect the new computed
+      // values once the recompute settles. Time = backend debounce (2s)
+      // + recompute work (~1-2s) + safety margin.
+      const RECOMPUTE_TRIGGERS = new Set(["target_static_margin"]);
+      if (RECOMPUTE_TRIGGERS.has(paramName)) {
+        setTimeout(() => {
+          mutate();
+          globalMutate(
+            `/aeroplanes/${aeroplaneId}/assumptions/computation-context`,
+          );
+        }, 4000);
+      }
     },
     [aeroplaneId, mutate],
   );
