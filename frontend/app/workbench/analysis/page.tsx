@@ -59,7 +59,7 @@ export default function AnalysisPage() {
 
   const [configOpen, setConfigOpen] = useState(false);
   const [avlEditorOpen, setAvlEditorOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>("Polar");
+  const [activeTab, setActiveTab] = useState<Tab>("Assumptions");
   const { dialogRef, handleClose: dialogHandleClose } = useDialog(configOpen, () => setConfigOpen(false));
 
   const showAvlGeometryButton = activeTab === "Trefftz Plane" || activeTab === "Streamlines";
