@@ -223,11 +223,11 @@ class TestAssumptionsSummary:
 
 
 class TestConstants:
-    def test_parameter_defaults_has_six_entries(self):
-        assert len(PARAMETER_DEFAULTS) == 6
+    def test_parameter_defaults_has_eight_entries(self):
+        assert len(PARAMETER_DEFAULTS) == 8
 
-    def test_parameter_units_has_six_entries(self):
-        assert len(PARAMETER_UNITS) == 6
+    def test_parameter_units_has_eight_entries(self):
+        assert len(PARAMETER_UNITS) == 8
 
     def test_design_choice_params(self):
         assert "target_static_margin" in DESIGN_CHOICE_PARAMS

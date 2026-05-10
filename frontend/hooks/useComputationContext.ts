@@ -8,6 +8,7 @@ export interface ComputationContext {
   v_max_mps?: number | null;
   v_stall_mps?: number | null;
   v_md_mps?: number | null;
+  is_glider?: boolean;
   reynolds: number;
   mac_m: number;
   s_ref_m2?: number | null;

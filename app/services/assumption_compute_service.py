@@ -114,18 +114,30 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     re = _reynolds_number(v_cruise, mac)
     mass = _load_effective_assumption(db, aircraft.id, "mass")
     # Use EFFECTIVE values so user overrides (toggle to ESTIMATE)
-    # actually change V_stall and V_md.
+    # actually change V_stall, V_md, and V_max.
     cl_max_effective = _load_effective_assumption(db, aircraft.id, "cl_max")
     cd0_effective = _load_effective_assumption(db, aircraft.id, "cd0")
+    p_to_w = _load_effective_assumption(db, aircraft.id, "power_to_weight")
+    prop_eta = _load_effective_assumption(db, aircraft.id, "prop_efficiency")
     aspect_ratio = _main_wing_aspect_ratio(asb_airplane)
     v_stall = _stall_speed(mass, s_ref, cl_max_effective)
     v_md = _min_drag_speed(mass, s_ref, cd0_effective, aspect_ratio)
 
+    # V_max from physics if powered (P/W > 0); otherwise fall back to
+    # the user-set goal in the flight profile (gliders set max speed
+    # via structural limits, not thrust).
+    v_max_computed = _max_level_speed(
+        mass, s_ref, cd0_effective, aspect_ratio, p_to_w, prop_eta
+    )
+    v_max_effective = v_max_computed if v_max_computed is not None else v_max
+    is_glider = p_to_w <= 0
+
     _cache_context(db, aircraft, {
         "v_cruise_mps": v_cruise,
-        "v_max_mps": round(v_max, 1),
+        "v_max_mps": round(v_max_effective, 1),
         "v_stall_mps": round(v_stall, 1) if v_stall is not None else None,
         "v_md_mps": round(v_md, 1) if v_md is not None else None,
+        "is_glider": is_glider,
         "reynolds": round(re),
         "mac_m": round(mac, 4),
         "s_ref_m2": round(s_ref, 4),
@@ -383,6 +395,63 @@ def _main_wing_aspect_ratio(asb_airplane) -> float | None:
     if s <= 0:
         return None
     return (b * b) / s
+
+
+def _max_level_speed(
+    mass_kg: float,
+    s_ref_m2: float,
+    cd0: float,
+    aspect_ratio: float | None,
+    power_to_weight: float,
+    prop_eta: float,
+    rho: float = 1.225,
+    g: float = 9.81,
+) -> float | None:
+    """Sea-level V_max from a power balance.
+
+    At V_max, available shaft power × prop efficiency equals power
+    required for level flight:
+
+        P_avail · η_prop = D(V) · V
+
+    With induced + parasitic drag this becomes a 4th-order polynomial
+    in V:
+
+        A · V⁴ − P_eta · V + B = 0
+
+    where A = ½ρ·S·CD0, B = 2k·W²/(ρ·S), P_eta = (P/W) · m · η.
+
+    Returns None for gliders (P/W ≤ 0) or other degenerate inputs;
+    callers should fall back to the user-set max speed goal.
+    """
+    if (
+        power_to_weight <= 0
+        or prop_eta <= 0
+        or s_ref_m2 <= 0
+        or cd0 <= 1e-6
+        or aspect_ratio is None
+        or aspect_ratio <= 0
+    ):
+        return None
+
+    weight_n = mass_kg * g
+    p_eta = power_to_weight * mass_kg * prop_eta
+    k = 1.0 / (np.pi * aspect_ratio * 0.8)
+    a = 0.5 * rho * s_ref_m2 * cd0
+    b = 2.0 * k * weight_n * weight_n / (rho * s_ref_m2)
+
+    # numpy.roots solves a · V⁴ + 0 · V³ + 0 · V² − P_eta · V + b = 0.
+    coeffs = [a, 0.0, 0.0, -p_eta, b]
+    roots = np.roots(coeffs)
+    # Pick the largest real positive root above V_md.
+    real_positive = [
+        float(r.real)
+        for r in roots
+        if abs(r.imag) < 1e-6 and r.real > 0
+    ]
+    if not real_positive:
+        return None
+    return max(real_positive)
 
 
 def _min_drag_speed(

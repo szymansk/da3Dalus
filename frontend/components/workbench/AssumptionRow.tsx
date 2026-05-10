@@ -11,6 +11,8 @@ const PARAM_LABELS: Record<string, string> = {
   cd0: "Zero-Lift Drag (CD₀)",
   cl_max: "Max Lift Coefficient (CL_max)",
   g_limit: "Load Factor Limit",
+  power_to_weight: "Power-to-Weight (0 = glider)",
+  prop_efficiency: "Propeller Efficiency",
 };
 
 function divergenceColor(level: Assumption["divergence_level"]): string {

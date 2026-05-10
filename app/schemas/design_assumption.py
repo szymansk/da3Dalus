@@ -8,10 +8,22 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-VALID_PARAMETERS = Literal["mass", "cg_x", "target_static_margin", "cd0", "cl_max", "g_limit"]
+VALID_PARAMETERS = Literal[
+    "mass",
+    "cg_x",
+    "target_static_margin",
+    "cd0",
+    "cl_max",
+    "g_limit",
+    "power_to_weight",
+    "prop_efficiency",
+]
 ACTIVE_SOURCE = Literal["ESTIMATE", "CALCULATED"]
 DIVERGENCE_LEVEL = Literal["none", "info", "warning", "alert"]
 
+# Pure user choices that never get a calculated value. power_to_weight
+# and prop_efficiency are NOT in this set: they're user-set initially
+# but will be replaced by a powertrain compute later.
 DESIGN_CHOICE_PARAMS = frozenset({"target_static_margin", "g_limit"})
 
 PARAMETER_UNITS: dict[str, str] = {
@@ -21,6 +33,8 @@ PARAMETER_UNITS: dict[str, str] = {
     "cd0": "",
     "cl_max": "",
     "g_limit": "g",
+    "power_to_weight": "W/kg",
+    "prop_efficiency": "",
 }
 
 PARAMETER_DEFAULTS: dict[str, float] = {
@@ -30,6 +44,8 @@ PARAMETER_DEFAULTS: dict[str, float] = {
     "cd0": 0.03,
     "cl_max": 1.4,
     "g_limit": 3.0,
+    "power_to_weight": 300.0,  # typical RC sport model; 0 means glider
+    "prop_efficiency": 0.65,    # typical 65% for RC propellers at cruise
 }
 
 

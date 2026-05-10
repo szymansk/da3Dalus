@@ -59,7 +59,12 @@ export function InfoChipRow({ aeroplaneId, cgAero, isRecomputing, rightSlot }: P
       <Chip icon={AlertTriangle} prefix="V_stall = " value={fmt(ctx?.v_stall_mps, 1, " m/s")} stale={stale} />
       <Chip icon={Wind} prefix="V_md = " value={fmt(ctx?.v_md_mps, 1, " m/s")} stale={stale} />
       <Chip icon={Wind} prefix="V_cruise = " value={fmt(ctx?.v_cruise_mps, 1, " m/s")} stale={stale} />
-      <Chip icon={Gauge} prefix="V_max = " value={fmt(ctx?.v_max_mps, 1, " m/s")} stale={stale} />
+      <Chip
+        icon={Gauge}
+        prefix={ctx?.is_glider ? "V_NE = " : "V_max = "}
+        value={fmt(ctx?.v_max_mps, 1, " m/s")}
+        stale={stale}
+      />
       <Chip icon={Wind} prefix="Re ≈ " value={fmtRe(ctx?.reynolds)} stale={stale} />
       <Chip icon={Ruler} prefix="MAC = " value={fmt(ctx?.mac_m, 2, " m")} stale={stale} />
       <Chip icon={Target} prefix="NP = " value={fmt(ctx?.x_np_m, 3, " m")} stale={stale} />

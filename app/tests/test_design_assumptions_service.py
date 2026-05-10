@@ -27,7 +27,7 @@ class TestSeedDefaults:
         with SessionLocal() as db:
             aeroplane = make_aeroplane(db)
             summary = svc.seed_defaults(db, aeroplane.uuid)
-            assert len(summary.assumptions) == 6
+            assert len(summary.assumptions) == 8
 
     def test_default_values_match(self, client_and_db):
         _, SessionLocal = client_and_db
@@ -45,7 +45,7 @@ class TestSeedDefaults:
             aeroplane = make_aeroplane(db)
             svc.seed_defaults(db, aeroplane.uuid)
             summary = svc.seed_defaults(db, aeroplane.uuid)
-            assert len(summary.assumptions) == 6
+            assert len(summary.assumptions) == 8
 
     def test_all_defaults_use_estimate_source(self, client_and_db):
         _, SessionLocal = client_and_db
@@ -74,7 +74,7 @@ class TestListAssumptions:
             aeroplane = make_aeroplane(db)
             svc.seed_defaults(db, aeroplane.uuid)
             summary = svc.list_assumptions(db, aeroplane.uuid)
-            assert len(summary.assumptions) == 6
+            assert len(summary.assumptions) == 8
 
     def test_empty_before_seed(self, client_and_db):
         _, SessionLocal = client_and_db
