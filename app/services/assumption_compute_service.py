@@ -168,16 +168,30 @@ def _load_flight_profile_speeds(
     return cruise, v_max
 
 
+def _select_main_wing(asb_airplane):
+    """Pick the main wing — the wing with the largest planform area.
+
+    A typical configuration has main wing + horizontal tail + vertical
+    tail. ASB's `reference.Cref` defaults to the FIRST wing in the list,
+    which may not be the main wing for the user's geometry. Picking by
+    planform area is robust across user-defined wing orderings.
+    """
+    if not asb_airplane.wings:
+        return None
+    return max(asb_airplane.wings, key=lambda w: float(w.area()))
+
+
 def _stability_run_at_cruise(
     asb_airplane, v_cruise: float
-) -> tuple[float, float, float]:
-    """Returns (x_np, MAC, CD0) from a single AeroBuildup stability run.
+) -> tuple[float, float, float, float]:
+    """Returns (x_np, MAC, CD0, S_ref).
 
-    Uses analyse_aerodynamics → AnalysisModel — same code path as
-    stability_service, so x_np / MAC / CD0 / S_ref are consistent across
-    the app.
+    Uses analyse_aerodynamics → AnalysisModel for x_np and CD0 (same
+    path as stability_service, keeps NP consistent across the app).
 
-    Returns (x_np, MAC, CD0, S_ref).
+    For MAC and S_ref, takes the **main wing** (largest planform area)
+    rather than ASB's reference. The reference may point at a tail or
+    rudder for unusual wing orderings.
     """
     xyz_ref = list(asb_airplane.xyz_ref) if asb_airplane.xyz_ref is not None else [0.0, 0.0, 0.0]
     op_schema = OperatingPointSchema(velocity=v_cruise, alpha=0.0, xyz_ref=xyz_ref)
@@ -185,12 +199,17 @@ def _stability_run_at_cruise(
         AnalysisToolUrlType.AEROBUILDUP, op_schema, asb_airplane
     )
     x_np = _scalar(result.reference.Xnp)
-    mac = _scalar(result.reference.Cref)
     cd0 = _scalar(result.coefficients.CD)
-    s_ref = _scalar(result.reference.Sref)
-    if x_np is None or mac is None or cd0 is None or s_ref is None:
-        raise ValueError("AeroBuildup returned NULL for x_np/MAC/CD0/S_ref")
-    return float(x_np), float(mac), float(cd0), float(s_ref)
+
+    main_wing = _select_main_wing(asb_airplane)
+    if main_wing is None:
+        raise ValueError("Cannot compute MAC: no wings on aircraft")
+    mac = float(main_wing.mean_aerodynamic_chord())
+    s_ref = float(main_wing.area())
+
+    if x_np is None or cd0 is None or mac <= 0 or s_ref <= 0:
+        raise ValueError("AeroBuildup returned NULL or non-positive values")
+    return float(x_np), mac, float(cd0), s_ref
 
 
 def _coarse_alpha_sweep(
