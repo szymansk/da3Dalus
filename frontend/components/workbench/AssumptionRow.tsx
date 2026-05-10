@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { ArrowLeftRight } from "lucide-react";
+import { ArrowLeftRight, Info } from "lucide-react";
 import type { Assumption } from "@/hooks/useDesignAssumptions";
 
 const PARAM_LABELS: Record<string, string> = {
@@ -11,8 +11,23 @@ const PARAM_LABELS: Record<string, string> = {
   cd0: "Zero-Lift Drag (CD₀)",
   cl_max: "Max Lift Coefficient (CL_max)",
   g_limit: "Load Factor Limit",
-  power_to_weight: "Power-to-Weight (sport ≈ 200, 3D ≈ 330; 0 = glider)",
-  prop_efficiency: "Propeller Efficiency (0.55-0.75 typical)",
+  power_to_weight: "Power-to-Weight",
+  prop_efficiency: "Propeller Efficiency",
+};
+
+const PARAM_INFO: Record<string, string> = {
+  power_to_weight:
+    "Typical RC ranges (W/kg):\n" +
+    "• 160–200: trainer / slow aerobatic\n" +
+    "• 200–240: sport aerobatic / scale\n" +
+    "• 240–290: advanced aerobatic, high-speed\n" +
+    "• 290–330: light 3D, ducted fan\n" +
+    "• 330–440: unlimited 3D\n" +
+    "• 0: glider (no powertrain — V_max becomes a structural V_NE limit)",
+  prop_efficiency:
+    "Typical 0.55–0.75 for RC propellers at cruise. " +
+    "Higher for well-matched motor/prop combos at design speed; " +
+    "lower for static-thrust setups or off-design conditions.",
 };
 
 function divergenceColor(level: Assumption["divergence_level"]): string {
@@ -113,6 +128,9 @@ export function AssumptionRow({
     setTimeout(() => inputRef.current?.select(), 0);
   }
 
+  const [showInfo, setShowInfo] = useState(false);
+  const infoText = PARAM_INFO[assumption.parameter_name];
+
   const canToggleSource =
     !assumption.is_design_choice && assumption.calculated_value != null;
 
@@ -123,11 +141,30 @@ export function AssumptionRow({
   };
 
   return (
-    <div className="flex items-center gap-3 border-b border-border px-4 py-2.5 last:border-b-0">
+    <div className="relative flex items-center gap-3 border-b border-border px-4 py-2.5 last:border-b-0">
       {/* Label */}
-      <span className="min-w-[180px] text-[12px] text-foreground">
+      <span className="flex min-w-[180px] items-center gap-1.5 text-[12px] text-foreground">
         {label}
+        {infoText && (
+          <button
+            type="button"
+            onClick={() => setShowInfo((v) => !v)}
+            className="text-muted-foreground hover:text-orange-400"
+            aria-label={`Info about ${label}`}
+            data-testid={`info-button-${assumption.parameter_name}`}
+          >
+            <Info size={12} />
+          </button>
+        )}
       </span>
+      {showInfo && infoText && (
+        <div
+          className="absolute left-4 top-full z-20 mt-1 max-w-[420px] whitespace-pre-line rounded-md border border-border bg-card px-3 py-2 font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground shadow-lg"
+          role="tooltip"
+        >
+          {infoText}
+        </div>
+      )}
 
       {/* Effective value */}
       <span className="min-w-[90px] font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground">
