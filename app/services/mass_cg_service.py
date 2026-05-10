@@ -161,10 +161,14 @@ def sync_component_tree_to_mass(db: Session, aeroplane_uuid) -> None:
     overrides). Called from the component-tree CRUD endpoints so any
     change immediately reflects in the assumptions panel.
 
-    Auto-switches active_source to CALCULATED on the first sync.
+    Auto-switches active_source to CALCULATED on the first sync. Emits
+    AssumptionChanged(mass) so downstream handlers run (retrim + V_stall
+    recompute via assumption_compute_service).
     """
+    from app.core.events import AssumptionChanged, event_bus
     from app.services.component_tree_service import get_aircraft_total_weight_kg
     from app.services.design_assumptions_service import update_calculated_value
+    from app.services.invalidation_service import mark_ops_dirty
 
     aeroplane = _get_aeroplane(db, aeroplane_uuid)
     mass_row_exists = (
@@ -183,6 +187,10 @@ def sync_component_tree_to_mass(db: Session, aeroplane_uuid) -> None:
     update_calculated_value(
         db, aeroplane_uuid, "mass", total_kg, source,
         auto_switch_source=True,
+    )
+    mark_ops_dirty(db, aeroplane.id)
+    event_bus.publish(
+        AssumptionChanged(aeroplane_id=aeroplane.id, parameter_name="mass")
     )
 
 
@@ -219,12 +227,18 @@ def sync_weight_items_to_assumptions(db: Session, aeroplane_uuid) -> None:
 
     total_mass, _cg_x, _cg_y, _cg_z = aggregate_weight_items(items)
 
+    from app.core.events import AssumptionChanged, event_bus
     from app.services.design_assumptions_service import update_calculated_value
+    from app.services.invalidation_service import mark_ops_dirty
 
     source = "weight_items" if total_mass is not None else None
     update_calculated_value(
         db, aeroplane_uuid, "mass", total_mass, source,
         auto_switch_source=True,
+    )
+    mark_ops_dirty(db, aeroplane.id)
+    event_bus.publish(
+        AssumptionChanged(aeroplane_id=aeroplane.id, parameter_name="mass")
     )
 
 

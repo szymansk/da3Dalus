@@ -16,9 +16,11 @@ logger = logging.getLogger(__name__)
 _OP_AFFECTING_PARAMS = {"mass", "cg_x"}
 
 # Assumption parameters that are inputs to the geometry-driven recompute
-# (changing them must re-derive cl_max/cd0/cg_x). cg_x itself is excluded
-# to prevent the recompute → AssumptionChanged(cg_x) → recompute loop.
-_RECOMPUTE_TRIGGERING_PARAMS = {"target_static_margin"}
+# (changing them must re-derive cl_max/cd0/cg_x and the cached context
+# values like V_stall = sqrt(2 W / (rho S CL_max))). cg_x itself is
+# excluded to prevent the recompute → AssumptionChanged(cg_x) →
+# recompute loop. cd0 and cl_max are excluded for the same reason.
+_RECOMPUTE_TRIGGERING_PARAMS = {"target_static_margin", "mass"}
 
 
 def mark_ops_dirty(session: Session, aeroplane_id: int) -> int:
