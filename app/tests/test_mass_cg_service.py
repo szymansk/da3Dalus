@@ -353,8 +353,14 @@ class TestSyncWeightItemsToAssumptions:
             summary = da_svc.list_assumptions(db, aeroplane.uuid)
             by_name = {a.parameter_name: a for a in summary.assumptions}
             assert by_name["mass"].calculated_value == pytest.approx(0.8)
-            expected_cg = (0.3 * 0.05 + 0.5 * 0.15) / 0.8
-            assert by_name["cg_x"].calculated_value == pytest.approx(expected_cg)
+            # Mass auto-switches to CALCULATED on first sync (gh-465).
+            assert by_name["mass"].active_source == "CALCULATED"
+            # cg_x is NOT set by weight-item sync anymore (gh-465). The
+            # cg_x assumption represents CG_aero = NP - SM × MAC, which
+            # is owned by assumption_compute_service. CG_agg from weight
+            # items is exposed via the computation context for comparison
+            # only.
+            assert by_name["cg_x"].calculated_value is None
 
     def test_clears_calculated_when_no_items(self, client_and_db):
         _, SessionLocal = client_and_db
