@@ -2,6 +2,7 @@
 
 import { AlertTriangle, Loader2, Plus } from "lucide-react";
 import { useDesignAssumptions } from "@/hooks/useDesignAssumptions";
+import { useRecomputeStatus } from "@/hooks/useRecomputeStatus";
 import { AssumptionRow } from "@/components/workbench/AssumptionRow";
 import { CGComparisonBanner } from "@/components/workbench/CGComparisonBanner";
 
@@ -10,8 +11,16 @@ interface Props {
 }
 
 export function AssumptionsPanel({ aeroplaneId }: Props) {
-  const { data, isLoading, error, seedDefaults, updateEstimate, switchSource, mutate } =
-    useDesignAssumptions(aeroplaneId);
+  const {
+    data,
+    isLoading,
+    error,
+    seedDefaults,
+    updateEstimate,
+    switchSource,
+    mutate,
+  } = useDesignAssumptions(aeroplaneId);
+  const { isRecomputing } = useRecomputeStatus(aeroplaneId);
 
   if (isLoading) {
     return (
@@ -69,6 +78,15 @@ export function AssumptionsPanel({ aeroplaneId }: Props) {
           >
             <AlertTriangle size={10} />
             {warningsCount}
+          </span>
+        )}
+        {isRecomputing && (
+          <span
+            className="flex items-center gap-1 rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] text-orange-400"
+            data-testid="recomputing-indicator"
+          >
+            <Loader2 size={10} className="animate-spin" />
+            Recomputing…
           </span>
         )}
       </div>

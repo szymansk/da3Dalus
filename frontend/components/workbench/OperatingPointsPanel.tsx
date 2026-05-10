@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { X, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
+import { X, ChevronUp, ChevronDown, Loader2, Info, Trash2 } from "lucide-react";
 import type {
   StoredOperatingPoint,
   OperatingPointStatus,
@@ -86,6 +86,16 @@ interface Props {
     opId: number,
     deflections: Record<string, number> | null,
   ) => Promise<void>;
+  readonly onDeleteOp?: (opId: number) => Promise<void>;
+  readonly onDeleteAll?: () => Promise<void>;
+  readonly onCreateOp?: (payload: {
+    name: string;
+    velocity: number;
+    alpha: number;
+    beta?: number;
+    altitude?: number;
+    config?: string;
+  }) => Promise<void>;
 }
 
 function sortPoints(
@@ -131,6 +141,9 @@ export function OperatingPointsPanel({
   onTrimWithAerobuildup,
   controlSurfaces,
   onUpdateDeflections,
+  onDeleteOp,
+  onDeleteAll,
+  onCreateOp,
 }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -144,6 +157,7 @@ export function OperatingPointsPanel({
   const [abTargetValue, setAbTargetValue] = useState("0.5");
   const [avlResult, setAvlResult] = useState<AVLTrimResult | null>(null);
   const [abResult, setAbResult] = useState<AeroBuildupTrimResult | null>(null);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
 
   const handleSort = useCallback(
     (key: SortKey) => {
@@ -238,6 +252,30 @@ export function OperatingPointsPanel({
     <div className="relative flex min-h-0 flex-1 flex-col gap-4 bg-card-muted p-6">
       <div className="flex items-center gap-3">
         <div className="flex-1" />
+        {onCreateOp && (
+          <button
+            onClick={() => setAddDialogOpen(true)}
+            disabled={isGenerating}
+            className="flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-1.5 font-[family-name:var(--font-geist-sans)] text-[12px] font-medium text-foreground transition-colors hover:bg-sidebar-accent disabled:opacity-50"
+            data-testid="add-op-button"
+          >
+            + Add OP
+          </button>
+        )}
+        {onDeleteAll && points.length > 0 && (
+          <button
+            onClick={() => {
+              if (confirm(`Delete all ${points.length} operating points?`)) {
+                void onDeleteAll();
+              }
+            }}
+            disabled={isGenerating}
+            className="flex items-center gap-1.5 rounded-full border border-red-500/40 bg-card px-4 py-1.5 font-[family-name:var(--font-geist-sans)] text-[12px] font-medium text-red-400 transition-colors hover:bg-red-500/10 disabled:opacity-50"
+            data-testid="delete-all-ops-button"
+          >
+            Clear All
+          </button>
+        )}
         <button
           onClick={() => onGenerate()}
           disabled={isGenerating}
@@ -293,6 +331,7 @@ export function OperatingPointsPanel({
                     </span>
                   </th>
                 ))}
+                {onDeleteOp && <th className="w-10 px-2 py-2.5" />}
               </tr>
             </thead>
             <tbody>
@@ -337,6 +376,23 @@ export function OperatingPointsPanel({
                         />
                       )}
                     </td>
+                    {onDeleteOp && (
+                      <td className="px-2 py-2.5">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm(`Delete '${pt.name}'?`)) {
+                              void onDeleteOp(pt.id);
+                            }
+                          }}
+                          className="rounded p-1 text-muted-foreground hover:bg-red-500/10 hover:text-red-400"
+                          aria-label={`Delete ${pt.name}`}
+                          data-testid={`delete-op-${pt.id}`}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
@@ -431,6 +487,7 @@ export function OperatingPointsPanel({
               <ControlDeflectionsSection
                 controlSurfaces={controlSurfaces}
                 currentDeflections={selectedPoint.control_deflections}
+                trimControls={selectedPoint.controls}
                 onSave={(deflections) =>
                   onUpdateDeflections(selectedPoint.id, deflections)
                 }
@@ -542,6 +599,149 @@ export function OperatingPointsPanel({
           </div>
         </div>
       )}
+      {addDialogOpen && onCreateOp && (
+        <AddOpDialog
+          onClose={() => setAddDialogOpen(false)}
+          onCreate={async (payload) => {
+            await onCreateOp(payload);
+            setAddDialogOpen(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function AddOpDialog({
+  onClose,
+  onCreate,
+}: Readonly<{
+  onClose: () => void;
+  onCreate: (payload: {
+    name: string;
+    velocity: number;
+    alpha: number;
+    beta?: number;
+    altitude?: number;
+    config?: string;
+  }) => Promise<void>;
+}>) {
+  const [name, setName] = useState("");
+  const [velocity, setVelocity] = useState("18");
+  const [alpha, setAlpha] = useState("0");
+  const [beta, setBeta] = useState("0");
+  const [altitude, setAltitude] = useState("0");
+  const [config, setConfig] = useState("clean");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!name.trim()) return;
+    setSubmitting(true);
+    try {
+      await onCreate({
+        name: name.trim(),
+        velocity: parseFloat(velocity) || 18,
+        alpha: parseFloat(alpha) || 0,
+        beta: parseFloat(beta) || 0,
+        altitude: parseFloat(altitude) || 0,
+        config,
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="w-[420px] rounded-xl border border-border bg-card p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="font-[family-name:var(--font-geist-sans)] text-[14px] font-medium text-foreground">
+            Add Operating Point
+          </h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="flex flex-col gap-3">
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Name</span>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. high_speed_pass"
+              className="rounded border border-border bg-card-muted px-2 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground outline-none focus:border-orange-400"
+              data-testid="add-op-name"
+            />
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Velocity (m/s)</span>
+              <input
+                type="number"
+                value={velocity}
+                onChange={(e) => setVelocity(e.target.value)}
+                className="rounded border border-border bg-card-muted px-2 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground outline-none focus:border-orange-400"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Alpha (°)</span>
+              <input
+                type="number"
+                value={alpha}
+                onChange={(e) => setAlpha(e.target.value)}
+                className="rounded border border-border bg-card-muted px-2 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground outline-none focus:border-orange-400"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Beta (°)</span>
+              <input
+                type="number"
+                value={beta}
+                onChange={(e) => setBeta(e.target.value)}
+                className="rounded border border-border bg-card-muted px-2 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground outline-none focus:border-orange-400"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Altitude (m)</span>
+              <input
+                type="number"
+                value={altitude}
+                onChange={(e) => setAltitude(e.target.value)}
+                className="rounded border border-border bg-card-muted px-2 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground outline-none focus:border-orange-400"
+              />
+            </label>
+          </div>
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Config</span>
+            <select
+              value={config}
+              onChange={(e) => setConfig(e.target.value)}
+              className="rounded border border-border bg-card-muted px-2 py-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground outline-none focus:border-orange-400"
+            >
+              <option value="clean">clean</option>
+              <option value="takeoff">takeoff</option>
+              <option value="landing">landing</option>
+            </select>
+          </label>
+          <div className="mt-2 flex justify-end gap-2">
+            <button
+              onClick={onClose}
+              className="rounded-full border border-border px-3 py-1.5 text-[12px] text-muted-foreground hover:text-foreground"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={!name.trim() || submitting}
+              className="rounded-full bg-[#FF8400] px-4 py-1.5 text-[12px] font-medium text-white hover:opacity-90 disabled:opacity-50"
+              data-testid="add-op-submit"
+            >
+              {submitting ? "Creating..." : "Create"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -639,28 +839,51 @@ function TrimResultCard({
   );
 }
 
+function _findTrimDeflection(
+  trimControls: Record<string, number> | null | undefined,
+  surfaceName: string,
+): number | null {
+  if (!trimControls) return null;
+  // Backend stores trim solution keyed as "[control_type]surface_name"
+  // (e.g. "[elevator]elevator"). Match by the part after the closing
+  // bracket so we find the value regardless of control_type.
+  for (const [key, val] of Object.entries(trimControls)) {
+    const match = key.match(/^\[[^\]]+\](.+)$/);
+    if (match && match[1] === surfaceName) return val;
+  }
+  return null;
+}
+
 function ControlDeflectionsSection({
   controlSurfaces,
   currentDeflections,
+  trimControls,
   onSave,
   disabled,
 }: Readonly<{
   controlSurfaces: ControlSurface[];
   currentDeflections: Record<string, number> | null;
+  trimControls?: Record<string, number> | null;
   onSave: (deflections: Record<string, number> | null) => void;
   disabled: boolean;
 }>) {
+  const [showInfo, setShowInfo] = useState(false);
+
   const initialDeflections = useMemo(() => {
     const initial: Record<string, string> = {};
     for (const cs of controlSurfaces) {
+      // Priority order:
+      // 1. User override (currentDeflections) — explicit choice wins
+      // 2. Trim solution (trimControls) — solver result, the natural "current"
+      // 3. Geometry default (cs.deflection_deg) — typically 0 for clean config
       const overrideValue = currentDeflections?.[cs.name];
+      const trimValue = _findTrimDeflection(trimControls, cs.name);
+      const fallback = trimValue != null ? trimValue : cs.deflection_deg;
       initial[cs.name] =
-        overrideValue != null
-          ? String(overrideValue)
-          : String(cs.deflection_deg);
+        overrideValue != null ? String(overrideValue) : String(fallback);
     }
     return initial;
-  }, [controlSurfaces, currentDeflections]);
+  }, [controlSurfaces, currentDeflections, trimControls]);
 
   const [localDeflections, setLocalDeflections] = useState(initialDeflections);
 
@@ -689,10 +912,34 @@ function ControlDeflectionsSection({
   }, [onSave]);
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card-muted p-4">
-      <span className="font-[family-name:var(--font-geist-sans)] text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-        Control Deflections
-      </span>
+    <div className="relative flex flex-col gap-3 rounded-xl border border-border bg-card-muted p-4">
+      <div className="flex items-center gap-1.5">
+        <span className="font-[family-name:var(--font-geist-sans)] text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          Control Deflections
+        </span>
+        <button
+          type="button"
+          onClick={() => setShowInfo((v) => !v)}
+          className="text-muted-foreground hover:text-orange-400"
+          aria-label="Sign convention for control deflections"
+          data-testid="control-deflections-info"
+        >
+          <Info size={12} />
+        </button>
+      </div>
+      {showInfo && (
+        <div
+          className="absolute left-4 top-10 z-20 max-w-[420px] whitespace-pre-line rounded-md border border-border bg-card px-3 py-2 font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground shadow-lg"
+          role="tooltip"
+        >
+          {"Sign convention (ASB / aerospace standard):\n" +
+            "• Elevator / elevon: − = trailing-edge UP → nose-up moment\n" +
+            "• Aileron: + = right-wing TE down (right roll)\n" +
+            "• Rudder: + = trailing-edge LEFT → nose-left yaw\n\n" +
+            "Values shown reflect the trim solution — edit to override " +
+            "for what-if analysis."}
+        </div>
+      )}
       {controlSurfaces.length === 0 ? (
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-muted-foreground">
           No control surfaces found

@@ -108,6 +108,63 @@ def _get_profile_or_raise(db: Session, profile_id: int) -> RCFlightProfileModel:
     return profile
 
 
+def _load_design_cg_x(db: Session, aeroplane_id: int) -> float:
+    """Look up the effective cg_x from design assumptions, or 0.0."""
+    from app.models.aeroplanemodel import DesignAssumptionModel
+
+    row = (
+        db.query(DesignAssumptionModel)
+        .filter(
+            DesignAssumptionModel.aeroplane_id == aeroplane_id,
+            DesignAssumptionModel.parameter_name == "cg_x",
+        )
+        .first()
+    )
+    if row is None:
+        return 0.0
+    if row.active_source == "CALCULATED" and row.calculated_value is not None:
+        return float(row.calculated_value)
+    return float(row.estimate_value)
+
+
+def _load_effective_mass_kg(
+    db: Session, aeroplane_id: int, fallback_kg: Optional[float]
+) -> Optional[float]:
+    """Effective mass from the assumption row, falling back to the
+    aeroplane's total_mass_kg field (legacy)."""
+    from app.models.aeroplanemodel import DesignAssumptionModel
+
+    row = (
+        db.query(DesignAssumptionModel)
+        .filter(
+            DesignAssumptionModel.aeroplane_id == aeroplane_id,
+            DesignAssumptionModel.parameter_name == "mass",
+        )
+        .first()
+    )
+    if row is None:
+        return fallback_kg
+    if row.active_source == "CALCULATED" and row.calculated_value is not None:
+        return float(row.calculated_value)
+    return float(row.estimate_value)
+
+
+def _resolve_cruise_speed_with_md_fallback(
+    aircraft: AeroplaneModel, goals: dict[str, Any], source_profile_id: Optional[int]
+) -> float:
+    """When the aircraft has no flight profile, use V_md from the cached
+    computation context as the cruise speed. Mirrors the chip behaviour
+    in the Info Chip Row."""
+    cruise_from_goals = float(goals.get("cruise_speed_mps", 18.0))
+    if source_profile_id is not None:
+        return cruise_from_goals
+    ctx = aircraft.assumption_computation_context or {}
+    v_md = ctx.get("v_md_mps")
+    if isinstance(v_md, (int, float)) and v_md > 0:
+        return float(v_md)
+    return cruise_from_goals
+
+
 def _load_effective_flight_profile(
     db: Session,
     aircraft: AeroplaneModel,
@@ -592,6 +649,7 @@ def _trim_or_estimate_point(
     target: dict[str, Any],
     constraints: dict[str, Any],
     capabilities: dict[str, Any],
+    effective_mass_kg: Optional[float] = None,
 ) -> TrimmedPoint:
     warnings = list(target.get("warnings", []))
     velocity = float(target["velocity"])
@@ -600,9 +658,16 @@ def _trim_or_estimate_point(
     rho = float(asb.Atmosphere(altitude=altitude).density())
     s_ref = float(getattr(asb_airplane, "s_ref", 0.0) or 0.0)
     n_target = float(target.get("n_target", 1.0))
+    # Effective mass from the design assumptions takes precedence over
+    # the legacy aircraft.total_mass_kg field — that way Component-Tree
+    # weight changes (which sync into the mass assumption) flow into
+    # CL_target without requiring a separate aircraft-level update.
+    mass_for_cl = (
+        effective_mass_kg if effective_mass_kg is not None else aircraft.total_mass_kg
+    )
 
     def cl_target_fn(v: float) -> Optional[float]:
-        return _cl_target_for_velocity(v, aircraft.total_mass_kg, s_ref, rho, n_target)
+        return _cl_target_for_velocity(v, mass_for_cl, s_ref, rho, n_target)
 
     beta_candidates = [float(target.get("beta_target_deg", 0.0))]
     if target["name"] == "dutch_role_start":
@@ -686,6 +751,7 @@ def _persist_point_set(
     points: list[TrimmedPoint],
     source_flight_profile_id: Optional[int],
     replace_existing: bool,
+    design_cg_x: float = 0.0,
 ) -> tuple[OperatingPointSetModel, list[OperatingPointModel]]:
     if replace_existing:
         db.query(OperatingPointSetModel).filter(
@@ -711,7 +777,7 @@ def _persist_point_set(
             p=point.p,
             q=point.q,
             r=point.r,
-            xyz_ref=[0.0, 0.0, 0.0],
+            xyz_ref=[design_cg_x, 0.0, 0.0],
             altitude=point.altitude,
             trim_enrichment=point.trim_enrichment,
         )
@@ -744,11 +810,32 @@ def generate_default_set_for_aircraft(
         profile, source_profile_id = _load_effective_flight_profile(
             db, aircraft, profile_id_override
         )
+        # When no flight profile is set, fall back to V_md for cruise —
+        # the same auto-suggestion logic the Info Chip Row uses. Patch
+        # the goals dict in-place before reference-speed estimation so
+        # all downstream targets see the resolved cruise speed.
+        cruise_resolved = _resolve_cruise_speed_with_md_fallback(
+            aircraft, profile.get("goals", {}), source_profile_id
+        )
+        profile.setdefault("goals", {})["cruise_speed_mps"] = cruise_resolved
+
+        # Effective values from design assumptions take precedence over
+        # legacy aircraft fields, so Component-Tree weight changes and
+        # SM choices flow into the trim solution without an extra step.
+        effective_mass_kg = _load_effective_mass_kg(
+            db, aircraft.id, aircraft.total_mass_kg
+        )
+        design_cg_x = _load_design_cg_x(db, aircraft.id)
+
         refs = _estimate_reference_speeds(profile)
         targets = _build_target_definitions(profile, refs)
 
         plane_schema = aeroplane_model_to_aeroplane_schema_async(aircraft)
         asb_airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
+        # Use the design CG as the moment-reference point for trim, so
+        # Cm=0 means "balanced about the user's design CG", not about
+        # the origin. Mirrors what stability_summary already does.
+        asb_airplane.xyz_ref = [design_cg_x, 0.0, 0.0]
         capabilities = _detect_control_capabilities(asb_airplane)
         deflection_limits = build_deflection_limits_from_schema(plane_schema)
 
@@ -773,6 +860,7 @@ def generate_default_set_for_aircraft(
                 target=target,
                 constraints=profile.get("constraints", {}),
                 capabilities=capabilities,
+                effective_mass_kg=effective_mass_kg,
             )
             try:
                 enrichment = compute_enrichment(
@@ -809,6 +897,7 @@ def generate_default_set_for_aircraft(
             points=points,
             source_flight_profile_id=source_profile_id,
             replace_existing=replace_existing,
+            design_cg_x=design_cg_x,
         )
 
         db.flush()
@@ -873,12 +962,18 @@ def trim_operating_point_for_aircraft(
                 },
             )
 
+        effective_mass_kg = _load_effective_mass_kg(
+            db, aircraft.id, aircraft.total_mass_kg
+        )
+        design_cg_x = _load_design_cg_x(db, aircraft.id)
+
         point = _trim_or_estimate_point(
             asb_airplane=asb_airplane,
             aircraft=aircraft,
             target=target,
             constraints=profile.get("constraints", {}),
             capabilities=capabilities,
+            effective_mass_kg=effective_mass_kg,
         )
 
         deflection_limits = build_deflection_limits_from_schema(plane_schema)
@@ -917,7 +1012,7 @@ def trim_operating_point_for_aircraft(
             p=point.p,
             q=point.q,
             r=point.r,
-            xyz_ref=[0.0, 0.0, 0.0],
+            xyz_ref=[design_cg_x, 0.0, 0.0],
             altitude=point.altitude,
             trim_enrichment=enrichment_data,
         )

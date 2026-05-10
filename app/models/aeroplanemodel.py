@@ -483,6 +483,7 @@ class AeroplaneModel(Base):
         Integer, ForeignKey("rc_flight_profiles.id"), nullable=True, index=True
     )
     xyz_ref = Column(JSON, default=[0, 0, 0])  # Store as JSON array
+    assumption_computation_context = Column(JSON, nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -533,6 +534,12 @@ class AeroplaneModel(Base):
     design_assumptions = relationship(
         "DesignAssumptionModel",
         back_populates="aeroplane",
+        cascade=_CASCADE_ALL_DELETE_ORPHAN,
+    )
+    computation_config = relationship(
+        "AircraftComputationConfigModel",
+        back_populates="aeroplane",
+        uselist=False,
         cascade=_CASCADE_ALL_DELETE_ORPHAN,
     )
     stability_results = relationship(

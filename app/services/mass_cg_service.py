@@ -153,21 +153,71 @@ def get_effective_assumption_value(db: Session, aeroplane_uuid, param_name: str)
     return row.estimate_value
 
 
-def sync_weight_items_to_assumptions(db: Session, aeroplane_uuid) -> None:
-    """Aggregate weight items and update mass/cg_x calculated values."""
-    aeroplane = _get_aeroplane(db, aeroplane_uuid)
+def sync_component_tree_to_mass(db: Session, aeroplane_uuid) -> None:
+    """Aggregate component-tree weights and update mass.calculated_value.
 
-    target_params = {"mass", "cg_x"}
-    existing = (
+    Source of truth for the mass assumption when the user builds the
+    aircraft via the Component Tree (CAD shapes + COTS components +
+    overrides). Called from the component-tree CRUD endpoints so any
+    change immediately reflects in the assumptions panel.
+
+    Auto-switches active_source to CALCULATED on the first sync. Emits
+    AssumptionChanged(mass) so downstream handlers run (retrim + V_stall
+    recompute via assumption_compute_service).
+    """
+    from app.core.events import AssumptionChanged, event_bus
+    from app.services.component_tree_service import get_aircraft_total_weight_kg
+    from app.services.design_assumptions_service import update_calculated_value
+    from app.services.invalidation_service import mark_ops_dirty
+
+    aeroplane = _get_aeroplane(db, aeroplane_uuid)
+    mass_row_exists = (
         db.query(DesignAssumptionModel.parameter_name)
         .filter(
             DesignAssumptionModel.aeroplane_id == aeroplane.id,
-            DesignAssumptionModel.parameter_name.in_(target_params),
+            DesignAssumptionModel.parameter_name == "mass",
         )
-        .all()
+        .first()
     )
-    existing_names = {row[0] for row in existing}
-    if not existing_names:
+    if mass_row_exists is None:
+        return
+
+    total_kg = get_aircraft_total_weight_kg(db, aeroplane_uuid)
+    source = "component_tree" if total_kg is not None else None
+    update_calculated_value(
+        db, aeroplane_uuid, "mass", total_kg, source,
+        auto_switch_source=True,
+    )
+    mark_ops_dirty(db, aeroplane.id)
+    event_bus.publish(
+        AssumptionChanged(aeroplane_id=aeroplane.id, parameter_name="mass")
+    )
+
+
+def sync_weight_items_to_assumptions(db: Session, aeroplane_uuid) -> None:
+    """Aggregate weight items and update mass.calculated_value.
+
+    Mass is **always** calculated from the component tree by default —
+    we auto-switch active_source to CALCULATED on the first sync so the
+    user sees the aggregated weight immediately. Users who want a manual
+    override can flip the source back to ESTIMATE in the UI.
+
+    Does NOT write cg_x: per gh-465 the cg_x assumption represents
+    CG_aero (NP - SM × MAC, computed by assumption_compute_service).
+    CG_agg from weight items is exposed via the computation context for
+    comparison only.
+    """
+    aeroplane = _get_aeroplane(db, aeroplane_uuid)
+
+    mass_row_exists = (
+        db.query(DesignAssumptionModel.parameter_name)
+        .filter(
+            DesignAssumptionModel.aeroplane_id == aeroplane.id,
+            DesignAssumptionModel.parameter_name == "mass",
+        )
+        .first()
+    )
+    if mass_row_exists is None:
         return
 
     rows = db.query(WeightItemModel).filter(WeightItemModel.aeroplane_id == aeroplane.id).all()
@@ -175,18 +225,21 @@ def sync_weight_items_to_assumptions(db: Session, aeroplane_uuid) -> None:
         {"mass_kg": r.mass_kg, "x_m": r.x_m, "y_m": r.y_m, "z_m": r.z_m} for r in rows
     ]
 
-    total_mass, cg_x, _cg_y, _cg_z = aggregate_weight_items(items)
+    total_mass, _cg_x, _cg_y, _cg_z = aggregate_weight_items(items)
 
+    from app.core.events import AssumptionChanged, event_bus
     from app.services.design_assumptions_service import update_calculated_value
+    from app.services.invalidation_service import mark_ops_dirty
 
     source = "weight_items" if total_mass is not None else None
-    if "mass" in existing_names:
-        update_calculated_value(db, aeroplane_uuid, "mass", total_mass, source)
-    if "cg_x" in existing_names:
-        update_calculated_value(
-            db, aeroplane_uuid, "cg_x", cg_x,
-            "weight_items" if cg_x is not None else None,
-        )
+    update_calculated_value(
+        db, aeroplane_uuid, "mass", total_mass, source,
+        auto_switch_source=True,
+    )
+    mark_ops_dirty(db, aeroplane.id)
+    event_bus.publish(
+        AssumptionChanged(aeroplane_id=aeroplane.id, parameter_name="mass")
+    )
 
 
 def get_cg_comparison(db: Session, aeroplane_uuid) -> CGComparisonResponse:

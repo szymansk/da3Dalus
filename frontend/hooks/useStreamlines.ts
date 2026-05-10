@@ -14,6 +14,12 @@ export interface StreamlinesParams {
   alpha: number;
   beta: number;
   altitude: number;
+  /**
+   * Moment-reference point for the run. Defaults to [0,0,0] on the
+   * backend if omitted, but callers should pass the design CG so the
+   * streamline visualisation is consistent with the rest of the system.
+   */
+  xyz_ref?: number[];
 }
 
 export function useStreamlines(aeroplaneId: string | null) {
@@ -39,6 +45,7 @@ export function useStreamlines(aeroplaneId: string | null) {
               alpha: params.alpha,
               beta: params.beta,
               altitude: params.altitude,
+              xyz_ref: params.xyz_ref ?? [0, 0, 0],
             }),
           },
         );

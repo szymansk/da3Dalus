@@ -230,4 +230,5 @@ class TestWeightItemsSyncAssumptions:
         resp = client.get(f"/aeroplanes/{aeroplane.uuid}/assumptions")
         by_name = {a["parameter_name"]: a for a in resp.json()["assumptions"]}
         assert by_name["mass"]["calculated_value"] == pytest.approx(1.0)
-        assert by_name["cg_x"]["calculated_value"] == pytest.approx(0.2)
+        # cg_x is no longer set by weight-item sync (gh-465).
+        assert by_name["cg_x"]["calculated_value"] is None

@@ -6,10 +6,10 @@ describe("AnalysisViewerPanel TABS", () => {
     expect(TABS).toContain("Stability");
   });
 
-  it("includes Stability before Operating Points", () => {
-    const stabilityIdx = TABS.indexOf("Stability");
+  it("places Operating Points right after Assumptions", () => {
+    const assumptionsIdx = TABS.indexOf("Assumptions");
     const opsIdx = TABS.indexOf("Operating Points");
-    expect(stabilityIdx).toBeGreaterThan(-1);
-    expect(opsIdx).toBeGreaterThan(stabilityIdx);
+    expect(assumptionsIdx).toBe(0);
+    expect(opsIdx).toBe(assumptionsIdx + 1);
   });
 });

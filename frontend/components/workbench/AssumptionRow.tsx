@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { ArrowLeftRight } from "lucide-react";
+import { ArrowLeftRight, Info } from "lucide-react";
 import type { Assumption } from "@/hooks/useDesignAssumptions";
 
 const PARAM_LABELS: Record<string, string> = {
@@ -11,6 +11,23 @@ const PARAM_LABELS: Record<string, string> = {
   cd0: "Zero-Lift Drag (CD₀)",
   cl_max: "Max Lift Coefficient (CL_max)",
   g_limit: "Load Factor Limit",
+  power_to_weight: "Power-to-Weight",
+  prop_efficiency: "Propeller Efficiency",
+};
+
+const PARAM_INFO: Record<string, string> = {
+  power_to_weight:
+    "Typical RC ranges (W/kg):\n" +
+    "• 160–200: trainer / slow aerobatic\n" +
+    "• 200–240: sport aerobatic / scale\n" +
+    "• 240–290: advanced aerobatic, high-speed\n" +
+    "• 290–330: light 3D, ducted fan\n" +
+    "• 330–440: unlimited 3D\n" +
+    "• 0: glider (no powertrain — V_max becomes a structural V_NE limit)",
+  prop_efficiency:
+    "Typical 0.55–0.75 for RC propellers at cruise. " +
+    "Higher for well-matched motor/prop combos at design speed; " +
+    "lower for static-thrust setups or off-design conditions.",
 };
 
 function divergenceColor(level: Assumption["divergence_level"]): string {
@@ -77,27 +94,42 @@ export function AssumptionRow({
   onUpdateEstimate,
   onSwitchSource,
 }: Props) {
+  // Percentage units (e.g. "% MAC") store the value as a decimal fraction
+  // (0.12) but the user thinks in 12%. Display × 100, parse ÷ 100.
+  const isPercent = assumption.unit.includes("%");
+  const toDisplay = (v: number) => (isPercent ? v * 100 : v);
+  const fromDisplay = (v: number) => (isPercent ? v / 100 : v);
+  const displayUnit = isPercent ? "%" : assumption.unit;
+  const formatNumber = (v: number) =>
+    isPercent ? toDisplay(v).toFixed(1) : v.toPrecision(4);
+
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(String(assumption.estimate_value));
+  const [draft, setDraft] = useState(String(toDisplay(assumption.estimate_value)));
   const inputRef = useRef<HTMLInputElement>(null);
 
   const label =
     PARAM_LABELS[assumption.parameter_name] ?? assumption.parameter_name;
 
   function commitEdit() {
-    const parsed = parseFloat(draft);
-    if (Number.isFinite(parsed) && parsed !== assumption.estimate_value) {
-      onUpdateEstimate(assumption.parameter_name, parsed);
+    const parsedDisplay = parseFloat(draft);
+    if (Number.isFinite(parsedDisplay)) {
+      const parsed = fromDisplay(parsedDisplay);
+      if (parsed !== assumption.estimate_value) {
+        onUpdateEstimate(assumption.parameter_name, parsed);
+      }
     }
     setEditing(false);
   }
 
   function startEdit() {
-    setDraft(String(assumption.estimate_value));
+    setDraft(String(toDisplay(assumption.estimate_value)));
     setEditing(true);
     // Focus after render
     setTimeout(() => inputRef.current?.select(), 0);
   }
+
+  const [showInfo, setShowInfo] = useState(false);
+  const infoText = PARAM_INFO[assumption.parameter_name];
 
   const canToggleSource =
     !assumption.is_design_choice && assumption.calculated_value != null;
@@ -109,16 +141,35 @@ export function AssumptionRow({
   };
 
   return (
-    <div className="flex items-center gap-3 border-b border-border px-4 py-2.5 last:border-b-0">
+    <div className="relative flex items-center gap-3 border-b border-border px-4 py-2.5 last:border-b-0">
       {/* Label */}
-      <span className="min-w-[180px] text-[12px] text-foreground">
+      <span className="flex min-w-[180px] items-center gap-1.5 text-[12px] text-foreground">
         {label}
+        {infoText && (
+          <button
+            type="button"
+            onClick={() => setShowInfo((v) => !v)}
+            className="text-muted-foreground hover:text-orange-400"
+            aria-label={`Info about ${label}`}
+            data-testid={`info-button-${assumption.parameter_name}`}
+          >
+            <Info size={12} />
+          </button>
+        )}
       </span>
+      {showInfo && infoText && (
+        <div
+          className="absolute left-4 top-full z-20 mt-1 max-w-[420px] whitespace-pre-line rounded-md border border-border bg-card px-3 py-2 font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground shadow-lg"
+          role="tooltip"
+        >
+          {infoText}
+        </div>
+      )}
 
       {/* Effective value */}
       <span className="min-w-[90px] font-[family-name:var(--font-jetbrains-mono)] text-[12px] text-foreground">
-        {assumption.effective_value.toPrecision(4)}{" "}
-        <span className="text-muted-foreground">{assumption.unit}</span>
+        {formatNumber(assumption.effective_value)}{" "}
+        <span className="text-muted-foreground">{displayUnit}</span>
       </span>
 
       {/* Source badge */}
@@ -126,7 +177,9 @@ export function AssumptionRow({
 
       {/* Estimate editor */}
       <div className="flex min-w-[120px] items-center gap-1">
-        <span className="text-[10px] text-muted-foreground">est:</span>
+        {!assumption.is_design_choice && (
+          <span className="text-[10px] text-muted-foreground">est:</span>
+        )}
         {editing ? (
           <input
             ref={inputRef}
@@ -147,7 +200,7 @@ export function AssumptionRow({
             className="rounded px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
             data-testid={`estimate-display-${assumption.parameter_name}`}
           >
-            {assumption.estimate_value}
+            {formatNumber(assumption.estimate_value)}
           </button>
         )}
       </div>

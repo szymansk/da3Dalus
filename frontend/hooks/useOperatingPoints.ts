@@ -151,6 +151,16 @@ export interface UseOperatingPointsReturn {
     opId: number,
     deflections: Record<string, number> | null,
   ) => Promise<void>;
+  deleteOp: (opId: number) => Promise<void>;
+  deleteAll: () => Promise<void>;
+  createOp: (payload: {
+    name: string;
+    velocity: number;
+    alpha: number;
+    beta?: number;
+    altitude?: number;
+    config?: string;
+  }) => Promise<void>;
 }
 
 function toTrimPayload(point: StoredOperatingPoint) {
@@ -214,7 +224,11 @@ export function useOperatingPoints(
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ replace_existing: replaceExisting ?? false }),
+            // Default to replace_existing=true so 'Generate Default OPs'
+            // replaces the previous default set instead of appending —
+            // prevents duplicate cruise / loiter / max_range rows when the
+            // user re-generates after geometry / mass / SM changes.
+            body: JSON.stringify({ replace_existing: replaceExisting ?? true }),
           },
         );
         if (!res.ok) {
@@ -338,6 +352,89 @@ export function useOperatingPoints(
     [refresh],
   );
 
+  const deleteOp = useCallback(
+    async (opId: number): Promise<void> => {
+      setError(null);
+      try {
+        const res = await fetch(`${API_BASE}/operating_points/${opId}`, {
+          method: "DELETE",
+        });
+        if (!res.ok && res.status !== 204) {
+          const body = await res.text();
+          throw new Error(`Delete failed: ${res.status} ${body}`);
+        }
+        await refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
+    },
+    [refresh],
+  );
+
+  const deleteAll = useCallback(async (): Promise<void> => {
+    if (!aeroplaneId) return;
+    setError(null);
+    try {
+      // Delete all OPs for this aircraft by hitting the per-OP DELETE
+      // endpoint in parallel — there's no bulk-delete-by-aircraft yet.
+      const ids = points.map((p) => p.id);
+      await Promise.all(
+        ids.map((id) =>
+          fetch(`${API_BASE}/operating_points/${id}`, { method: "DELETE" }),
+        ),
+      );
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }, [aeroplaneId, points, refresh]);
+
+  const createOp = useCallback(
+    async (payload: {
+      name: string;
+      velocity: number;
+      alpha: number;
+      beta?: number;
+      altitude?: number;
+      config?: string;
+    }): Promise<void> => {
+      if (!aeroplaneId) return;
+      setError(null);
+      try {
+        const res = await fetch(`${API_BASE}/operating_points/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: payload.name,
+            description: payload.name,
+            aircraft_id: null,
+            config: payload.config ?? "clean",
+            status: "DIRTY",
+            warnings: [],
+            controls: {},
+            velocity: payload.velocity,
+            alpha: payload.alpha,
+            beta: payload.beta ?? 0,
+            p: 0,
+            q: 0,
+            r: 0,
+            xyz_ref: [0, 0, 0],
+            altitude: payload.altitude ?? 0,
+            aeroplane_uuid: aeroplaneId,
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(`Create failed: ${res.status} ${body}`);
+        }
+        await refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
+    },
+    [aeroplaneId, refresh],
+  );
+
   useEffect(() => {
     if (aeroplaneId) {
       refresh();
@@ -357,5 +454,8 @@ export function useOperatingPoints(
     trimWithAvl,
     trimWithAerobuildup,
     updateDeflections,
+    deleteOp,
+    deleteAll,
+    createOp,
   };
 }

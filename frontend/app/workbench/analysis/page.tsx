@@ -36,6 +36,7 @@ export default function AnalysisPage() {
     return massAssumption?.effective_value ?? null;
   }, [assumptions.data]);
   const { wingNames } = useWings(aeroplaneId);
+  const hasWings = wingNames.length > 0;
   const { wings: allWings } = useAllWingData(aeroplaneId, wingNames);
   const { wing } = useWing(aeroplaneId, selectedWing ?? wingNames[0] ?? null);
   const controlSurfaces = useMemo(
@@ -58,7 +59,7 @@ export default function AnalysisPage() {
 
   const [configOpen, setConfigOpen] = useState(false);
   const [avlEditorOpen, setAvlEditorOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>("Polar");
+  const [activeTab, setActiveTab] = useState<Tab>("Assumptions");
   const { dialogRef, handleClose: dialogHandleClose } = useDialog(configOpen, () => setConfigOpen(false));
 
   const showAvlGeometryButton = activeTab === "Trefftz Plane" || activeTab === "Streamlines";
@@ -94,6 +95,7 @@ export default function AnalysisPage() {
           <AnalysisViewerPanel
             result={analysis.result}
             aeroplaneId={aeroplaneId}
+            hasWings={hasWings}
             lastRunTime={analysis.lastRunTime}
             lastRunDurationMs={analysis.lastRunDurationMs}
             stripForces={stripForces.result}
@@ -139,6 +141,9 @@ export default function AnalysisPage() {
             onTrimWithAerobuildup={ops.trimWithAerobuildup}
             controlSurfaces={controlSurfaces}
             onUpdateDeflections={ops.updateDeflections}
+            onDeleteOp={ops.deleteOp}
+            onDeleteAllOps={ops.deleteAll}
+            onCreateOp={ops.createOp}
             analysisStatus={analysisStatus.status}
           />
         </div>
@@ -179,6 +184,11 @@ export default function AnalysisPage() {
               }}
               streamlinesRunning={streamlines.isComputing}
               streamlinesError={streamlines.error}
+              designCgX={
+                assumptions.data?.assumptions.find(
+                  (a) => a.parameter_name === "cg_x",
+                )?.effective_value ?? null
+              }
               onClose={() => setConfigOpen(false)}
             />
           </div>

@@ -70,12 +70,38 @@ export function useStability(aeroplaneId: string | null): UseStabilityReturn {
     setIsComputing(true);
     setError(null);
     try {
+      // Use the design CG (cg_x effective from assumptions) as the
+      // moment reference point for the stability run. Without this
+      // the backend defaults xyz_ref to [0,0,0] and the static margin
+      // is computed against an origin CG, not the real design point.
+      let cgX = 0;
+      try {
+        const aRes = await fetch(`${API_BASE}/aeroplanes/${aeroplaneId}/assumptions`);
+        if (aRes.ok) {
+          const aBody = await aRes.json();
+          const cgRow = aBody.assumptions?.find(
+            (a: { parameter_name: string }) => a.parameter_name === "cg_x",
+          );
+          if (cgRow && typeof cgRow.effective_value === "number") {
+            cgX = cgRow.effective_value;
+          }
+        }
+      } catch {
+        // Fall through with cgX=0; better than failing the stability run.
+      }
+
       const res = await fetch(
-        `${API_BASE}/aeroplanes/${aeroplaneId}/stability_summary/avl`,
+        `${API_BASE}/aeroplanes/${aeroplaneId}/stability_summary/aerobuildup`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ velocity: 20, alpha: 2, beta: 0, altitude: 0 }),
+          body: JSON.stringify({
+            velocity: 20,
+            alpha: 2,
+            beta: 0,
+            altitude: 0,
+            xyz_ref: [cgX, 0, 0],
+          }),
         },
       );
       if (!res.ok) {

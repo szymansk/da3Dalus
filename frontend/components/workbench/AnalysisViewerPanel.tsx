@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { Wind, SlidersHorizontal, Activity, Maximize2, Minimize2, Settings } from "lucide-react";
+import { Maximize2, Minimize2, Settings } from "lucide-react";
+import { InfoChipRow } from "@/components/workbench/InfoChipRow";
 import type { AnalysisResult } from "@/hooks/useAnalysis";
 import type { StripForcesResult } from "@/hooks/useStripForces";
 import type { FlightEnvelopeData } from "@/hooks/useFlightEnvelope";
@@ -12,8 +13,10 @@ import type { StoredOperatingPoint, AVLTrimResult, AeroBuildupTrimResult, TrimCo
 import { OperatingPointsPanel } from "@/components/workbench/OperatingPointsPanel";
 import { AnalysisStatusIndicator } from "./AnalysisStatusIndicator";
 import type { AnalysisStatus } from "@/hooks/useAnalysisStatus";
+import { useDesignAssumptions } from "@/hooks/useDesignAssumptions";
+import { useRecomputeStatus } from "@/hooks/useRecomputeStatus";
 
-const TABS = ["Assumptions", "Polar", "Trefftz Plane", "Streamlines", "Envelope", "Stability", "Operating Points"] as const;
+const TABS = ["Assumptions", "Operating Points", "Polar", "Trefftz Plane", "Streamlines", "Envelope", "Stability"] as const;
 export type Tab = (typeof TABS)[number];
 export { TABS };
 
@@ -24,7 +27,7 @@ interface WingXSec {
 
 interface Props {
   readonly result: AnalysisResult | null;
-  readonly aeroplaneId: string | null;
+  readonly aeroplaneId?: string | null;
   readonly lastRunTime?: Date | null;
   readonly lastRunDurationMs?: number | null;
   readonly stripForces?: StripForcesResult | null;
@@ -39,6 +42,7 @@ interface Props {
   readonly wingXSecs?: WingXSec[] | null;
   readonly wingSymmetric?: boolean;
   readonly assumptionsSlot?: React.ReactNode;
+  readonly hasWings?: boolean;
   readonly envelope?: FlightEnvelopeData | null;
   readonly isComputingEnvelope?: boolean;
   readonly envelopeError?: string | null;
@@ -57,6 +61,16 @@ interface Props {
   readonly onTrimWithAerobuildup?: (point: StoredOperatingPoint, trimVariable: string, targetCoefficient: string, targetValue: number) => Promise<AeroBuildupTrimResult | null>;
   readonly controlSurfaces?: ControlSurface[];
   readonly onUpdateDeflections?: (opId: number, deflections: Record<string, number> | null) => Promise<void>;
+  readonly onDeleteOp?: (opId: number) => Promise<void>;
+  readonly onDeleteAllOps?: () => Promise<void>;
+  readonly onCreateOp?: (payload: {
+    name: string;
+    velocity: number;
+    alpha: number;
+    beta?: number;
+    altitude?: number;
+    config?: string;
+  }) => Promise<void>;
   readonly analysisStatus?: AnalysisStatus;
 }
 
@@ -535,7 +549,7 @@ function StreamlinesTabContent({
 
 export function AnalysisViewerPanel({
   result,
-  // aeroplaneId reserved for future use
+  aeroplaneId,
   lastRunTime,
   lastRunDurationMs,
   stripForces,
@@ -550,6 +564,7 @@ export function AnalysisViewerPanel({
   wingXSecs,
   wingSymmetric,
   assumptionsSlot,
+  hasWings = true,
   envelope,
   isComputingEnvelope,
   envelopeError,
@@ -568,13 +583,32 @@ export function AnalysisViewerPanel({
   onTrimWithAerobuildup,
   controlSurfaces,
   onUpdateDeflections,
+  onDeleteOp,
+  onDeleteAllOps,
+  onCreateOp,
   analysisStatus,
 }: Readonly<Props>) {
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
+  const assumptions = useDesignAssumptions(aeroplaneId);
+  const recomputeStatus = useRecomputeStatus(aeroplaneId);
+  const cgAero = useMemo(() => {
+    const a = assumptions.data?.assumptions.find((x) => x.parameter_name === "cg_x");
+    return a?.effective_value ?? null;
+  }, [assumptions.data]);
 
   function toggleChart(id: string) {
     setMaximizedChart((prev) => (prev === id ? null : id));
   }
+
+  const COMPUTATION_TABS = new Set<Tab>([
+    "Polar",
+    "Trefftz Plane",
+    "Streamlines",
+    "Envelope",
+    "Stability",
+    "Operating Points",
+  ]);
+  const showWingGate = !hasWings && COMPUTATION_TABS.has(activeTab);
 
   const charts = useMemo(() => {
     if (!result?.CL || result.CL.length === 0) return null;
@@ -649,7 +683,15 @@ export function AnalysisViewerPanel({
         </div>
       )}
 
-      {activeTab === "Polar" && (
+      {showWingGate && (
+        <div className="flex flex-1 items-center justify-center bg-card-muted">
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
+            Add a wing to enable aerodynamic analysis
+          </span>
+        </div>
+      )}
+
+      {!showWingGate && activeTab === "Polar" && (
         <div className="flex flex-1 flex-col gap-4 overflow-auto bg-card-muted p-6">
           {charts ? (
             (() => {
@@ -757,7 +799,7 @@ export function AnalysisViewerPanel({
         </div>
       )}
 
-      {activeTab === "Trefftz Plane" && (
+      {!showWingGate && activeTab === "Trefftz Plane" && (
         <div className="flex flex-1 flex-col gap-4 overflow-auto bg-card-muted p-6">
           <TrefftzPlaneTabContent
             stripForcesLoading={stripForcesLoading}
@@ -768,7 +810,7 @@ export function AnalysisViewerPanel({
         </div>
       )}
 
-      {activeTab === "Streamlines" && (
+      {!showWingGate && activeTab === "Streamlines" && (
         <div className="flex flex-1 overflow-hidden bg-card-muted">
           <StreamlinesTabContent
             streamlinesLoading={streamlinesLoading}
@@ -777,7 +819,7 @@ export function AnalysisViewerPanel({
         </div>
       )}
 
-      {activeTab === "Envelope" && (
+      {!showWingGate && activeTab === "Envelope" && (
         <EnvelopePanel
           envelope={envelope ?? null}
           isComputing={isComputingEnvelope ?? false}
@@ -786,7 +828,7 @@ export function AnalysisViewerPanel({
         />
       )}
 
-      {activeTab === "Stability" && (
+      {!showWingGate && activeTab === "Stability" && (
         <StabilityPanel
           data={stability ?? null}
           isComputing={isComputingStability ?? false}
@@ -795,7 +837,7 @@ export function AnalysisViewerPanel({
         />
       )}
 
-      {activeTab === "Operating Points" && (
+      {!showWingGate && activeTab === "Operating Points" && (
         <OperatingPointsPanel
           points={operatingPoints ?? []}
           isLoading={isLoadingOps ?? false}
@@ -807,46 +849,35 @@ export function AnalysisViewerPanel({
           onTrimWithAerobuildup={onTrimWithAerobuildup ?? (() => Promise.resolve(null))}
           controlSurfaces={controlSurfaces ?? []}
           onUpdateDeflections={onUpdateDeflections ?? (async () => {})}
+          onDeleteOp={onDeleteOp}
+          onDeleteAll={onDeleteAllOps}
+          onCreateOp={onCreateOp}
         />
       )}
 
       {/* Info Chip Row */}
-      <div className="flex items-center gap-2 border-t border-border bg-card px-4 py-3">
-        <div className="flex items-center gap-1.5 rounded-full bg-card-muted px-3 py-1.5">
-          <Wind size={12} className="text-muted-foreground" />
-          <span className="font-[family-name:var(--font-geist-sans)] text-[12px] text-foreground">
-            Flight profile: cruise
+      <InfoChipRow
+        aeroplaneId={aeroplaneId}
+        cgAero={cgAero}
+        isRecomputing={recomputeStatus.isRecomputing}
+        rightSlot={
+          <span className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
+            {charts ? `${charts.alpha.length} points` : "No data"}
+            {lastRunTime && lastRunDurationMs != null && (
+              <>
+                {" "}
+                {"\u00B7"} Last run:{" "}
+                {lastRunTime.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
+                })}{" "}
+                {"\u00B7"} {lastRunDurationMs} ms
+              </>
+            )}
           </span>
-        </div>
-        <div className="flex items-center gap-1.5 rounded-full bg-card-muted px-3 py-1.5">
-          <SlidersHorizontal size={12} className="text-muted-foreground" />
-          <span className="font-[family-name:var(--font-geist-sans)] text-[12px] text-foreground">
-            Trim: elevator {"\u2212"}2.1{"\u00B0"}
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5 rounded-full bg-card-muted px-3 py-1.5">
-          <Activity size={12} className="text-muted-foreground" />
-          <span className="font-[family-name:var(--font-geist-sans)] text-[12px] text-foreground">
-            Re {"\u2248"} 4.2e5
-          </span>
-        </div>
-        <div className="flex-1" />
-        <span className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
-          {charts ? `${charts.alpha.length} points` : "No data"}
-          {lastRunTime && lastRunDurationMs != null && (
-            <>
-              {" "}
-              {"\u00B7"} Last run:{" "}
-              {lastRunTime.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: false,
-              })}{" "}
-              {"\u00B7"} {lastRunDurationMs} ms
-            </>
-          )}
-        </span>
-      </div>
+        }
+      />
     </div>
   );
 }

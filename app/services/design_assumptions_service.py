@@ -10,6 +10,10 @@ from sqlalchemy.orm import Session
 from app.core.events import AssumptionChanged, event_bus
 from app.core.exceptions import InternalError, NotFoundError, ValidationError
 from app.models.aeroplanemodel import AeroplaneModel, DesignAssumptionModel
+from app.models.computation_config import (
+    AircraftComputationConfigModel,
+    COMPUTATION_CONFIG_DEFAULTS,
+)
 from app.schemas.design_assumption import (
     DESIGN_CHOICE_PARAMS,
     PARAMETER_DEFAULTS,
@@ -81,6 +85,19 @@ def seed_defaults(db: Session, aeroplane_uuid) -> AssumptionsSummary:
                 )
                 db.add(row)
 
+        # Also seed per-aircraft computation config (idempotent)
+        existing_config = (
+            db.query(AircraftComputationConfigModel)
+            .filter(AircraftComputationConfigModel.aeroplane_id == aeroplane.id)
+            .first()
+        )
+        if existing_config is None:
+            config = AircraftComputationConfigModel(
+                aeroplane_id=aeroplane.id,
+                **COMPUTATION_CONFIG_DEFAULTS,
+            )
+            db.add(config)
+
         db.flush()
         return list_assumptions(db, aeroplane_uuid)
     except NotFoundError:
@@ -112,7 +129,14 @@ def list_assumptions(db: Session, aeroplane_uuid) -> AssumptionsSummary:
 def update_assumption(
     db: Session, aeroplane_uuid, param_name: str, data: AssumptionWrite
 ) -> AssumptionRead:
-    """Update the estimate value of a design assumption."""
+    """Update the estimate value of a design assumption.
+
+    Only fires downstream events (mark_ops_dirty + AssumptionChanged)
+    when active_source == "ESTIMATE" — i.e. when the user's estimate
+    is the effective value. Editing an estimate while the calculated
+    value is active doesn't change the effective value, so the retrim
+    chain and the recompute should NOT fire.
+    """
     try:
         aeroplane = _get_aeroplane(db, aeroplane_uuid)
         row = (
@@ -126,15 +150,20 @@ def update_assumption(
         if row is None:
             raise NotFoundError(entity="DesignAssumption", resource_id=param_name)
 
+        active_was_estimate = row.active_source == "ESTIMATE"
         row.estimate_value = data.estimate_value
         row.divergence_pct = compute_divergence_pct(data.estimate_value, row.calculated_value)
         db.flush()
         db.refresh(row)
-        if param_name in {"mass", "cg_x"}:
-            from app.services.invalidation_service import mark_ops_dirty
 
-            mark_ops_dirty(db, aeroplane.id)
-        event_bus.publish(AssumptionChanged(aeroplane_id=aeroplane.id, parameter_name=param_name))
+        if active_was_estimate:
+            if param_name in {"mass", "cg_x"}:
+                from app.services.invalidation_service import mark_ops_dirty
+
+                mark_ops_dirty(db, aeroplane.id)
+            event_bus.publish(
+                AssumptionChanged(aeroplane_id=aeroplane.id, parameter_name=param_name)
+            )
         return _assumption_to_read(row)
     except NotFoundError:
         raise
@@ -176,6 +205,15 @@ def switch_source(
 
             mark_ops_dirty(db, aeroplane.id)
         event_bus.publish(AssumptionChanged(aeroplane_id=aeroplane.id, parameter_name=param_name))
+
+        # A source toggle changes the effective value by definition, so
+        # the geometry-driven recompute should re-derive downstream
+        # context (V_stall etc.). Skip cg_x — it's the recompute's own
+        # output and re-running would loop.
+        if param_name != "cg_x":
+            from app.core.background_jobs import job_tracker
+
+            job_tracker.schedule_recompute_assumptions(aeroplane.id)
         return _assumption_to_read(row)
     except (NotFoundError, ValidationError):
         raise
@@ -190,11 +228,19 @@ def update_calculated_value(
     param_name: str,
     value: float | None,
     source: str | None,
+    auto_switch_source: bool = False,
 ) -> AssumptionRead:
     """Update the calculated value and source for a design assumption.
 
-    Called by aggregation services (e.g. weight-item sync) to feed
-    computed values back into the assumption row. Recomputes divergence.
+    Called by aggregation services (e.g. weight-item sync) and by the
+    geometry-driven assumption recompute service to feed computed values
+    back into the assumption row. Recomputes divergence.
+
+    When auto_switch_source=True, the active source is automatically
+    switched from "ESTIMATE" to "CALCULATED" on the first calculated
+    value (i.e. when the row currently has no calculated_value).
+    Design-choice parameters (target_static_margin, g_limit) never
+    auto-switch — those remain user-controlled.
     """
     try:
         aeroplane = _get_aeroplane(db, aeroplane_uuid)
@@ -209,9 +255,20 @@ def update_calculated_value(
         if row is None:
             raise NotFoundError(entity="DesignAssumption", resource_id=param_name)
 
+        should_switch = (
+            auto_switch_source
+            and row.calculated_value is None
+            and row.active_source == "ESTIMATE"
+            and param_name not in DESIGN_CHOICE_PARAMS
+        )
+
         row.calculated_value = value
         row.calculated_source = source
         row.divergence_pct = compute_divergence_pct(row.estimate_value, value)
+
+        if should_switch:
+            row.active_source = "CALCULATED"
+
         db.flush()
         db.refresh(row)
         return _assumption_to_read(row)

@@ -15,6 +15,13 @@ logger = logging.getLogger(__name__)
 # Assumption parameters that affect operating points
 _OP_AFFECTING_PARAMS = {"mass", "cg_x"}
 
+# Assumption parameters that are inputs to the geometry-driven recompute
+# (changing them must re-derive cl_max/cd0/cg_x and the cached context
+# values like V_stall = sqrt(2 W / (rho S CL_max))). cg_x itself is
+# excluded to prevent the recompute → AssumptionChanged(cg_x) →
+# recompute loop. cd0 and cl_max are excluded for the same reason.
+_RECOMPUTE_TRIGGERING_PARAMS = {"target_static_margin", "mass"}
+
 
 def mark_ops_dirty(session: Session, aeroplane_id: int) -> int:
     """Mark all operating points for an aeroplane as DIRTY. Returns count updated."""
@@ -41,6 +48,18 @@ def _on_geometry_changed(event: GeometryChanged) -> None:
     job_tracker.schedule_retrim(event.aeroplane_id)
 
 
+def _on_geometry_changed_recompute_assumptions(event: GeometryChanged) -> None:
+    """Handler that schedules a debounced assumption recompute."""
+    logger.info(
+        "GeometryChanged for aeroplane %d (source: %s) — scheduling assumption recompute",
+        event.aeroplane_id,
+        event.source_model,
+    )
+    from app.core.background_jobs import job_tracker
+
+    job_tracker.schedule_recompute_assumptions(event.aeroplane_id)
+
+
 def _on_assumption_changed(event: AssumptionChanged) -> None:
     """Schedule retrim when an OP-affecting assumption changes."""
     if event.parameter_name in _OP_AFFECTING_PARAMS:
@@ -54,7 +73,26 @@ def _on_assumption_changed(event: AssumptionChanged) -> None:
         job_tracker.schedule_retrim(event.aeroplane_id)
 
 
+def _on_assumption_changed_recompute(event: AssumptionChanged) -> None:
+    """Schedule recompute when a recompute-input assumption changes.
+
+    Currently only target_static_margin — it is a factor in the cg_x
+    formula (cg_x = x_np - SM × MAC), so changing it must re-derive cg_x.
+    """
+    if event.parameter_name in _RECOMPUTE_TRIGGERING_PARAMS:
+        logger.info(
+            "AssumptionChanged(%s) for aeroplane %d — scheduling assumption recompute",
+            event.parameter_name,
+            event.aeroplane_id,
+        )
+        from app.core.background_jobs import job_tracker
+
+        job_tracker.schedule_recompute_assumptions(event.aeroplane_id)
+
+
 def register_handlers() -> None:
     """Register event handlers on the global event bus."""
     event_bus.subscribe(GeometryChanged, _on_geometry_changed)
+    event_bus.subscribe(GeometryChanged, _on_geometry_changed_recompute_assumptions)
     event_bus.subscribe(AssumptionChanged, _on_assumption_changed)
+    event_bus.subscribe(AssumptionChanged, _on_assumption_changed_recompute)
