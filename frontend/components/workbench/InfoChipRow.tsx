@@ -37,7 +37,7 @@ function cgDivergenceColor(cgAero: number, cgAgg: number, mac: number): string {
 }
 
 export function InfoChipRow({ aeroplaneId, cgAero, isRecomputing, rightSlot }: Props) {
-  const { data: ctx } = useComputationContext(aeroplaneId);
+  const { data: ctx } = useComputationContext(aeroplaneId, { isRecomputing });
 
   const fmt = (v: number | null | undefined, decimals: number, suffix = "") =>
     v != null ? `${v.toFixed(decimals)}${suffix}` : "–";

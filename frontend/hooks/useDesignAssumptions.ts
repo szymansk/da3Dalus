@@ -80,7 +80,11 @@ export function useDesignAssumptions(aeroplaneId: string | null) {
       const RECOMPUTE_TRIGGERS = new Set(["target_static_margin", "mass"]);
       if (RECOMPUTE_TRIGGERS.has(paramName)) {
         setIsRecomputing(true);
-        const ctxPath = `/aeroplanes/${aeroplaneId}/assumptions/computation-context`;
+        // Match useComputationContext key exactly — that hook uses
+        // encodeURIComponent on the aeroplaneId. For UUIDs the encoded
+        // form is identical, but matching defensively avoids future
+        // breakage when keys diverge.
+        const ctxPath = `/aeroplanes/${encodeURIComponent(aeroplaneId)}/assumptions/computation-context`;
         const revalidate = () => {
           mutate();
           globalMutate(ctxPath);

@@ -16,13 +16,20 @@ export interface ComputationContext {
   computed_at: string;
 }
 
-export function useComputationContext(aeroplaneId: string | null) {
+export function useComputationContext(
+  aeroplaneId: string | null,
+  options?: { readonly isRecomputing?: boolean },
+) {
   const path = aeroplaneId
     ? `/aeroplanes/${encodeURIComponent(aeroplaneId)}/assumptions/computation-context`
     : null;
+  // While the assumption compute job is in flight, poll every 1.5s so
+  // the chip values update as soon as the backend settles. Polling
+  // stops as soon as isRecomputing flips back to false.
   const { data, error, isLoading, mutate } = useSWR<ComputationContext | null>(
     path,
     fetcher,
+    options?.isRecomputing ? { refreshInterval: 1500 } : undefined,
   );
 
   return { data, error, isLoading, mutate };
