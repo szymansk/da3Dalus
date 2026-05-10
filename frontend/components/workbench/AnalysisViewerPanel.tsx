@@ -16,7 +16,7 @@ import type { AnalysisStatus } from "@/hooks/useAnalysisStatus";
 import { useDesignAssumptions } from "@/hooks/useDesignAssumptions";
 import { useRecomputeStatus } from "@/hooks/useRecomputeStatus";
 
-const TABS = ["Assumptions", "Polar", "Trefftz Plane", "Streamlines", "Envelope", "Stability", "Operating Points"] as const;
+const TABS = ["Assumptions", "Operating Points", "Polar", "Trefftz Plane", "Streamlines", "Envelope", "Stability"] as const;
 export type Tab = (typeof TABS)[number];
 export { TABS };
 
