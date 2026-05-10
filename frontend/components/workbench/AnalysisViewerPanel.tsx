@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { Wind, SlidersHorizontal, Activity, Maximize2, Minimize2, Settings } from "lucide-react";
+import { Maximize2, Minimize2, Settings } from "lucide-react";
+import { InfoChipRow } from "@/components/workbench/InfoChipRow";
 import type { AnalysisResult } from "@/hooks/useAnalysis";
 import type { StripForcesResult } from "@/hooks/useStripForces";
 import type { FlightEnvelopeData } from "@/hooks/useFlightEnvelope";
@@ -12,6 +13,7 @@ import type { StoredOperatingPoint, AVLTrimResult, AeroBuildupTrimResult, TrimCo
 import { OperatingPointsPanel } from "@/components/workbench/OperatingPointsPanel";
 import { AnalysisStatusIndicator } from "./AnalysisStatusIndicator";
 import type { AnalysisStatus } from "@/hooks/useAnalysisStatus";
+import { useDesignAssumptions } from "@/hooks/useDesignAssumptions";
 
 const TABS = ["Assumptions", "Polar", "Trefftz Plane", "Streamlines", "Envelope", "Stability", "Operating Points"] as const;
 export type Tab = (typeof TABS)[number];
@@ -535,7 +537,7 @@ function StreamlinesTabContent({
 
 export function AnalysisViewerPanel({
   result,
-  // aeroplaneId reserved for future use
+  aeroplaneId,
   lastRunTime,
   lastRunDurationMs,
   stripForces,
@@ -571,6 +573,11 @@ export function AnalysisViewerPanel({
   analysisStatus,
 }: Readonly<Props>) {
   const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
+  const assumptions = useDesignAssumptions(aeroplaneId);
+  const cgAero = useMemo(() => {
+    const a = assumptions.data?.assumptions.find((x) => x.parameter_name === "cg_x");
+    return a?.effective_value ?? null;
+  }, [assumptions.data]);
 
   function toggleChart(id: string) {
     setMaximizedChart((prev) => (prev === id ? null : id));
@@ -811,42 +818,27 @@ export function AnalysisViewerPanel({
       )}
 
       {/* Info Chip Row */}
-      <div className="flex items-center gap-2 border-t border-border bg-card px-4 py-3">
-        <div className="flex items-center gap-1.5 rounded-full bg-card-muted px-3 py-1.5">
-          <Wind size={12} className="text-muted-foreground" />
-          <span className="font-[family-name:var(--font-geist-sans)] text-[12px] text-foreground">
-            Flight profile: cruise
+      <InfoChipRow
+        aeroplaneId={aeroplaneId}
+        cgAero={cgAero}
+        rightSlot={
+          <span className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
+            {charts ? `${charts.alpha.length} points` : "No data"}
+            {lastRunTime && lastRunDurationMs != null && (
+              <>
+                {" "}
+                {"\u00B7"} Last run:{" "}
+                {lastRunTime.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
+                })}{" "}
+                {"\u00B7"} {lastRunDurationMs} ms
+              </>
+            )}
           </span>
-        </div>
-        <div className="flex items-center gap-1.5 rounded-full bg-card-muted px-3 py-1.5">
-          <SlidersHorizontal size={12} className="text-muted-foreground" />
-          <span className="font-[family-name:var(--font-geist-sans)] text-[12px] text-foreground">
-            Trim: elevator {"\u2212"}2.1{"\u00B0"}
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5 rounded-full bg-card-muted px-3 py-1.5">
-          <Activity size={12} className="text-muted-foreground" />
-          <span className="font-[family-name:var(--font-geist-sans)] text-[12px] text-foreground">
-            Re {"\u2248"} 4.2e5
-          </span>
-        </div>
-        <div className="flex-1" />
-        <span className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
-          {charts ? `${charts.alpha.length} points` : "No data"}
-          {lastRunTime && lastRunDurationMs != null && (
-            <>
-              {" "}
-              {"\u00B7"} Last run:{" "}
-              {lastRunTime.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: false,
-              })}{" "}
-              {"\u00B7"} {lastRunDurationMs} ms
-            </>
-          )}
-        </span>
-      </div>
+        }
+      />
     </div>
   );
 }
