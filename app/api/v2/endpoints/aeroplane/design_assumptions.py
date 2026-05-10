@@ -18,6 +18,12 @@ from app.core.exceptions import (
     ValidationError,
 )
 from app.db.session import get_db
+from app.models.aeroplanemodel import AeroplaneModel
+from app.models.computation_config import (
+    COMPUTATION_CONFIG_DEFAULTS,
+    AircraftComputationConfigModel,
+)
+from app.schemas.computation_config import ComputationConfigRead, ComputationConfigWrite
 from app.schemas.design_assumption import (
     PARAMETER_DEFAULTS,
     AssumptionRead,
@@ -140,3 +146,127 @@ async def switch_source_endpoint(
 ) -> AssumptionRead:
     """Switch a design assumption between ESTIMATE and CALCULATED sources."""
     return _call(svc.switch_source, db, aeroplane_id, param_name, body)
+
+
+# ---------------------------------------------------------------------------
+# Inline helper — resolve aeroplane UUID → model row (raises 404 if missing)
+# ---------------------------------------------------------------------------
+
+
+def _resolve_aeroplane(db: Session, aeroplane_id: UUID4) -> AeroplaneModel:
+    """Return the AeroplaneModel for *aeroplane_id*, or raise HTTP 404."""
+    aeroplane = (
+        db.query(AeroplaneModel)
+        .filter(AeroplaneModel.uuid == str(aeroplane_id))
+        .first()
+    )
+    if aeroplane is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Aeroplane not found"
+        )
+    return aeroplane
+
+
+# ---------------------------------------------------------------------------
+# Computation-context endpoint
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/aeroplanes/{aeroplane_id}/assumptions/computation-context",
+    status_code=status.HTTP_200_OK,
+    tags=["design-assumptions"],
+    operation_id="get_computation_context",
+    summary="Get cached computation context",
+    responses={
+        404: {"description": "Aeroplane not found"},
+    },
+)
+async def get_computation_context(
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """Return the JSON context cached by the last assumption recompute,
+    or null if no recompute has run yet."""
+    aeroplane = _resolve_aeroplane(db, aeroplane_id)
+    return aeroplane.assumption_computation_context
+
+
+# ---------------------------------------------------------------------------
+# Computation-config endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/aeroplanes/{aeroplane_id}/computation-config",
+    response_model=ComputationConfigRead,
+    status_code=status.HTTP_200_OK,
+    tags=["design-assumptions"],
+    operation_id="get_computation_config",
+    summary="Get computation configuration",
+    responses={
+        404: {"description": "Aeroplane not found"},
+    },
+)
+async def get_computation_config(
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    db: Annotated[Session, Depends(get_db)],
+) -> ComputationConfigRead:
+    """Return the per-aircraft computation config, creating a default row
+    if it does not yet exist."""
+    aeroplane = _resolve_aeroplane(db, aeroplane_id)
+    config = (
+        db.query(AircraftComputationConfigModel)
+        .filter(AircraftComputationConfigModel.aeroplane_id == aeroplane.id)
+        .first()
+    )
+    if config is None:
+        config = AircraftComputationConfigModel(
+            aeroplane_id=aeroplane.id,
+            **COMPUTATION_CONFIG_DEFAULTS,
+        )
+        db.add(config)
+        db.flush()
+        db.refresh(config)
+    return config  # type: ignore[return-value]
+
+
+@router.put(
+    "/aeroplanes/{aeroplane_id}/computation-config",
+    response_model=ComputationConfigRead,
+    status_code=status.HTTP_200_OK,
+    tags=["design-assumptions"],
+    operation_id="update_computation_config",
+    summary="Update computation configuration",
+    responses={
+        404: {"description": "Aeroplane not found"},
+        422: {"description": "Validation error"},
+    },
+)
+async def update_computation_config(
+    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
+    body: Annotated[ComputationConfigWrite, Body(..., description="Partial update payload")],
+    db: Annotated[Session, Depends(get_db)],
+) -> ComputationConfigRead:
+    """Partial update of the computation config. Missing/null fields keep
+    their current value (or the default if no row exists yet)."""
+    aeroplane = _resolve_aeroplane(db, aeroplane_id)
+    config = (
+        db.query(AircraftComputationConfigModel)
+        .filter(AircraftComputationConfigModel.aeroplane_id == aeroplane.id)
+        .first()
+    )
+    if config is None:
+        config = AircraftComputationConfigModel(
+            aeroplane_id=aeroplane.id,
+            **COMPUTATION_CONFIG_DEFAULTS,
+        )
+        db.add(config)
+        db.flush()
+
+    update_data = body.model_dump(exclude_none=True)
+    for key, val in update_data.items():
+        setattr(config, key, val)
+    db.flush()
+    db.refresh(config)
+    return config  # type: ignore[return-value]
