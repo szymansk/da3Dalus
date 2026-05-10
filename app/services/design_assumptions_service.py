@@ -190,11 +190,19 @@ def update_calculated_value(
     param_name: str,
     value: float | None,
     source: str | None,
+    auto_switch_source: bool = False,
 ) -> AssumptionRead:
     """Update the calculated value and source for a design assumption.
 
-    Called by aggregation services (e.g. weight-item sync) to feed
-    computed values back into the assumption row. Recomputes divergence.
+    Called by aggregation services (e.g. weight-item sync) and by the
+    geometry-driven assumption recompute service to feed computed values
+    back into the assumption row. Recomputes divergence.
+
+    When auto_switch_source=True, the active source is automatically
+    switched from "ESTIMATE" to "CALCULATED" on the first calculated
+    value (i.e. when the row currently has no calculated_value).
+    Design-choice parameters (target_static_margin, g_limit) never
+    auto-switch — those remain user-controlled.
     """
     try:
         aeroplane = _get_aeroplane(db, aeroplane_uuid)
@@ -209,9 +217,20 @@ def update_calculated_value(
         if row is None:
             raise NotFoundError(entity="DesignAssumption", resource_id=param_name)
 
+        should_switch = (
+            auto_switch_source
+            and row.calculated_value is None
+            and row.active_source == "ESTIMATE"
+            and param_name not in DESIGN_CHOICE_PARAMS
+        )
+
         row.calculated_value = value
         row.calculated_source = source
         row.divergence_pct = compute_divergence_pct(row.estimate_value, value)
+
+        if should_switch:
+            row.active_source = "CALCULATED"
+
         db.flush()
         db.refresh(row)
         return _assumption_to_read(row)
