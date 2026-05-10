@@ -36,7 +36,11 @@ from app.models.computation_config import (
 from app.schemas.AeroplaneRequest import AnalysisToolUrlType
 from app.schemas.aeroanalysisschema import OperatingPointSchema
 from app.schemas.design_assumption import PARAMETER_DEFAULTS
-from app.services.design_assumptions_service import _get_aeroplane, update_calculated_value
+from app.services.design_assumptions_service import (
+    _get_aeroplane,
+    seed_defaults,
+    update_calculated_value,
+)
 from app.services.mass_cg_service import aggregate_weight_items
 from app.services.stability_service import _scalar
 
@@ -59,6 +63,11 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
             "No wings on aircraft %s — skipping assumption recompute", aeroplane_uuid
         )
         return
+
+    # Ensure assumption rows + computation config exist (idempotent).
+    # Wings can be created before the user opens the Assumptions tab,
+    # so we cannot rely on the user having seeded them already.
+    seed_defaults(db, aeroplane_uuid)
 
     config = _load_or_create_config(db, aircraft.id)
     v_cruise, v_max = _load_flight_profile_speeds(db, aircraft)
