@@ -448,7 +448,7 @@ describe("OperatingPointsPanel", () => {
     expect(limitBadge.className).toMatch(/red/);
   });
 
-  it("clicking Generate Default OPs calls onGenerate", async () => {
+  it("clicking Generate Default OPs calls onGenerate without event args (gh-470)", async () => {
     if (!OperatingPointsPanel) return;
 
     const user = userEvent.setup();
@@ -458,6 +458,7 @@ describe("OperatingPointsPanel", () => {
     await user.click(btn);
 
     expect(props.onGenerate).toHaveBeenCalledOnce();
+    expect(props.onGenerate).toHaveBeenCalledWith();
   });
 
   it("clicking a row opens the detail drawer", async () => {
