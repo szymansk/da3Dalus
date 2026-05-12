@@ -52,11 +52,11 @@ describe("TedEditDialog role dropdown", () => {
     onSaved: vi.fn(),
   };
 
-  it("renders role dropdown with all 8 options", () => {
+  it("renders role dropdown with all 9 options", () => {
     render(<TedEditDialog {...defaultProps} />);
     const select = screen.getByLabelText("Role") as HTMLSelectElement;
     expect(select).toBeTruthy();
-    expect(select.options.length).toBe(8);
+    expect(select.options.length).toBe(9);
   });
 
   it("defaults role to 'other' for new TED", () => {
@@ -110,10 +110,12 @@ describe("TedEditDialog role dropdown", () => {
     expect(values).toContain("aileron");
     expect(values).toContain("rudder");
     expect(values).toContain("elevon");
+    expect(values).toContain("flaperon");
+    expect(values).toContain("ruddervator");
     expect(values).toContain("stabilator");
     expect(values).toContain("flap");
-    expect(values).toContain("spoiler");
     expect(values).toContain("other");
+    expect(values).not.toContain("spoiler");
   });
 });
 
