@@ -2,7 +2,6 @@
 
 import { AlertTriangle, Loader2, Plus } from "lucide-react";
 import { useDesignAssumptions } from "@/hooks/useDesignAssumptions";
-import { useRecomputeStatus } from "@/hooks/useRecomputeStatus";
 import { AssumptionRow } from "@/components/workbench/AssumptionRow";
 import { CGComparisonBanner } from "@/components/workbench/CGComparisonBanner";
 
@@ -14,13 +13,13 @@ export function AssumptionsPanel({ aeroplaneId }: Props) {
   const {
     data,
     isLoading,
+    isRecomputing,
     error,
     seedDefaults,
     updateEstimate,
     switchSource,
     mutate,
   } = useDesignAssumptions(aeroplaneId);
-  const { isRecomputing } = useRecomputeStatus(aeroplaneId);
 
   if (isLoading) {
     return (

@@ -260,12 +260,57 @@ describe("useDesignAssumptions — refresh on recompute completion (gh-473)", ()
 
     await waitFor(() => {
       expect(mockMutate).toHaveBeenCalled();
+      // Exact-string match — silent drift in the computation-context key
+      // would break SWR cache invalidation parity with useComputationContext
+      // and silently re-introduce the gh-473 bug.
+      expect(mockGlobalMutate).toHaveBeenCalledWith(
+        "/aeroplanes/aero-1/assumptions/computation-context",
+      );
     });
-    expect(mockGlobalMutate).toHaveBeenCalledWith(
-      expect.stringMatching(
-        /\/aeroplanes\/aero-1\/assumptions\/computation-context$/,
-      ),
-    );
+  });
+
+  it("revalidates again on a second active → idle cycle (locks ref-based edge detection)", async () => {
+    useRecomputeStatusMock.mockReturnValue({
+      isRecomputing: true,
+      status: "computing",
+      error: null,
+    });
+    const { rerender } = renderHook(() => useDesignAssumptions("aero-1"));
+
+    // First cycle: active → idle
+    useRecomputeStatusMock.mockReturnValue({
+      isRecomputing: false,
+      status: "done",
+      error: null,
+    });
+    rerender();
+    await waitFor(() => {
+      expect(mockMutate).toHaveBeenCalled();
+    });
+
+    mockMutate.mockClear();
+    mockGlobalMutate.mockClear();
+
+    // Second cycle: idle → active → idle should fire again
+    useRecomputeStatusMock.mockReturnValue({
+      isRecomputing: true,
+      status: "computing",
+      error: null,
+    });
+    rerender();
+    useRecomputeStatusMock.mockReturnValue({
+      isRecomputing: false,
+      status: "done",
+      error: null,
+    });
+    rerender();
+
+    await waitFor(() => {
+      expect(mockMutate).toHaveBeenCalledTimes(1);
+      expect(mockGlobalMutate).toHaveBeenCalledWith(
+        "/aeroplanes/aero-1/assumptions/computation-context",
+      );
+    });
   });
 
   it("does NOT revalidate when isRecomputing stays false across renders", () => {
