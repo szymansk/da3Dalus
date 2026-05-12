@@ -80,11 +80,22 @@ def derive_performance_kpis(
     v_max_mps: float,
     g_limit: float,
     markers: list[VnMarker],
+    v_md_polar_mps: float | None = None,
+    v_min_sink_polar_mps: float | None = None,
 ) -> list[PerformanceKPI]:
     """Derive 6 KPIs from the flight envelope and operating-point markers.
 
     Always returns exactly 6 KPIs: stall_speed, best_ld_speed,
     min_sink_speed, max_speed, max_load_factor, dive_speed.
+
+    Precedence for ``best_ld_speed`` and ``min_sink_speed``:
+    1. TRIMMED operating-point marker — confidence ``"trimmed"``
+    2. Polar-derived value (``v_md_polar_mps`` / ``v_min_sink_polar_mps``)
+       from ``assumption_computation_context`` — confidence ``"computed"``
+    3. Heuristic multiplier of ``V_s`` (1.4·V_s and 1.2·V_s) —
+       confidence ``"estimated"`` (gh-475 audit §4.1; this is wrong by
+       up to 15 % for high-AR airframes and is kept only for the cold-start
+       case where no polar has been computed yet).
     """
     markers_by_label: dict[str, VnMarker] = {m.label: m for m in markers}
 
@@ -115,6 +126,17 @@ def derive_performance_kpis(
                 confidence="trimmed",
             )
         )
+    elif v_md_polar_mps is not None and v_md_polar_mps > 0:
+        kpis.append(
+            PerformanceKPI(
+                label="best_ld_speed",
+                display_name="Best L/D Speed",
+                value=round(v_md_polar_mps, 4),
+                unit="m/s",
+                source_op_id=None,
+                confidence="computed",
+            )
+        )
     else:
         kpis.append(
             PerformanceKPI(
@@ -138,6 +160,17 @@ def derive_performance_kpis(
                 unit="m/s",
                 source_op_id=min_sink_marker.op_id,
                 confidence="trimmed",
+            )
+        )
+    elif v_min_sink_polar_mps is not None and v_min_sink_polar_mps > 0:
+        kpis.append(
+            PerformanceKPI(
+                label="min_sink_speed",
+                display_name="Min Sink Speed",
+                value=round(v_min_sink_polar_mps, 4),
+                unit="m/s",
+                source_op_id=None,
+                confidence="computed",
             )
         )
     else:
@@ -340,11 +373,23 @@ def compute_flight_envelope(db: Session, aeroplane_uuid) -> FlightEnvelopeRead:
 
     markers = _load_operating_point_markers(db, aeroplane, mass_kg, wing_area_m2)
 
+    # Pull polar-derived V_md / V_min_sink from the assumption computation
+    # context (populated by assumption_compute_service). When present these
+    # take precedence over the heuristic 1.4·V_s / 1.2·V_s fallbacks
+    # (gh-475 — audit §4.1, off by ~15 % for high-AR airframes).
+    ctx = aeroplane.assumption_computation_context or {}
+    v_md_polar = ctx.get("v_md_mps")
+    v_min_sink_polar = ctx.get("v_min_sink_mps")
+
     kpis = derive_performance_kpis(
         stall_speed_mps=vn_curve.stall_speed_mps,
         v_max_mps=v_max,
         g_limit=g_limit,
         markers=markers,
+        v_md_polar_mps=float(v_md_polar) if isinstance(v_md_polar, (int, float)) else None,
+        v_min_sink_polar_mps=(
+            float(v_min_sink_polar) if isinstance(v_min_sink_polar, (int, float)) else None
+        ),
     )
 
     now = datetime.now(timezone.utc)

@@ -191,12 +191,39 @@ def _load_effective_flight_profile(
     return _default_profile(), None
 
 
-def _estimate_reference_speeds(profile: dict[str, Any]) -> dict[str, float]:
+def _estimate_reference_speeds(
+    profile: dict[str, Any],
+    cached_context: dict[str, Any] | None = None,
+) -> dict[str, float]:
+    """Estimate clean / take-off / landing stall speeds for OP seeding.
+
+    Precedence (gh-475 — audit §4.3, the cruise/margin path inverts
+    physical causality and produces 2.5×-too-high V_s for STOL designs):
+
+    1. ``cached_context["v_stall_mps"]`` when available — this is the
+       physics-derived value ``√(2·m·g / (ρ·S·C_L_max))`` cached by
+       ``assumption_compute_service`` after an AeroBuildup pass.
+    2. ``V_cruise / min_speed_margin_vs_clean`` as a cold-start fallback
+       when no polar has been computed yet.
+
+    Configuration / flap deltas:
+    - ``vs_to``  ≈ 0.95 · V_s_clean (mild high-lift effect)
+    - ``vs_ldg`` ≈ 0.90 · V_s_clean (full flaps)
+    These multipliers are retained from the original implementation; a
+    proper fix needs ``C_L_max_landing`` in design assumptions (separate
+    ticket).
+    """
     goals = profile["goals"]
     cruise = float(goals.get("cruise_speed_mps", 18.0))
     min_margin_clean = max(1.05, float(goals.get("min_speed_margin_vs_clean", 1.20)))
 
-    vs_clean = max(3.0, cruise / min_margin_clean)
+    cached_vs = None
+    if cached_context is not None:
+        raw = cached_context.get("v_stall_mps")
+        if isinstance(raw, (int, float)) and raw > 0:
+            cached_vs = float(raw)
+
+    vs_clean = cached_vs if cached_vs is not None else max(3.0, cruise / min_margin_clean)
     vs_to = max(2.5, vs_clean * 0.95)
     vs_ldg = max(2.0, vs_clean * 0.90)
 
@@ -827,7 +854,12 @@ def generate_default_set_for_aircraft(
         )
         design_cg_x = _load_design_cg_x(db, aircraft.id)
 
-        refs = _estimate_reference_speeds(profile)
+        # Seed V_s from cached physics when available; cruise/margin only
+        # as a cold-start fallback (gh-475).
+        refs = _estimate_reference_speeds(
+            profile,
+            cached_context=aircraft.assumption_computation_context,
+        )
         targets = _build_target_definitions(profile, refs)
 
         plane_schema = aeroplane_model_to_aeroplane_schema_async(aircraft)
