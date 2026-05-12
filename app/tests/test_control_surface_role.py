@@ -16,6 +16,20 @@ class TestControlSurfaceRole:
         expected = {"elevator", "aileron", "rudder", "elevon", "stabilator", "flap", "flaperon", "ruddervator", "spoiler", "other"}
         assert {r.value for r in ControlSurfaceRole} == expected
 
+    def test_dual_roles_are_subset_of_enum(self):
+        # Why: DUAL_ROLES and ControlSurfaceRole are two unlinked sources of
+        # truth (gh-463). If they diverge, V-tail/flaperon configs fail with
+        # 500 because trim enrichment expects roles the schema rejects.
+        from app.services.trim_enrichment_service import DUAL_ROLES
+        assert DUAL_ROLES <= {r.value for r in ControlSurfaceRole}
+
+    def test_role_coefficient_map_keys_are_valid_enum_values(self):
+        # Why: ROLE_COEFFICIENT_MAP keys must be assignable as ControlSurfaceRole
+        # values; otherwise trim enrichment looks up coefficients for roles that
+        # can never be set on a TED.
+        from app.services.trim_enrichment_service import ROLE_COEFFICIENT_MAP
+        assert set(ROLE_COEFFICIENT_MAP) <= {r.value for r in ControlSurfaceRole}
+
 
 class TestTedSchemaRoleField:
     def test_role_defaults_to_other(self):
