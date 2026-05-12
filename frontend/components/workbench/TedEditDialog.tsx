@@ -13,9 +13,10 @@ const CONTROL_SURFACE_ROLES = [
   { value: "aileron", label: "Aileron" },
   { value: "rudder", label: "Rudder" },
   { value: "elevon", label: "Elevon" },
+  { value: "flaperon", label: "Flaperon" },
+  { value: "ruddervator", label: "Ruddervator" },
   { value: "stabilator", label: "Stabilator" },
   { value: "flap", label: "Flap" },
-  { value: "spoiler", label: "Spoiler" },
   { value: "other", label: "Other" },
 ] as const;
 

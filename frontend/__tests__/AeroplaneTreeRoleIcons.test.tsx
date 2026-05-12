@@ -157,9 +157,10 @@ describe("AeroplaneTree role icons (gh-450)", () => {
       { role: "aileron", icon: "↔" },
       { role: "rudder", icon: "⟳" },
       { role: "elevon", icon: "⤡" },
+      { role: "flaperon", icon: "⇋" },
+      { role: "ruddervator", icon: "⋎" },
       { role: "stabilator", icon: "↕" },
       { role: "flap", icon: "▽" },
-      { role: "spoiler", icon: "▢" },
       { role: "other", icon: "○" },
     ];
     for (const { role, icon } of roles) {
@@ -229,6 +230,32 @@ describe("AeroplaneTree pitch warning (gh-450)", () => {
     expect(
       screen.queryByText(/No pitch control surface assigned/),
     ).toBeNull();
+  });
+
+  it("does not show warning when wing has ruddervator (V-tail)", () => {
+    // gh-481: ruddervator provides pitch authority (V-tail surface acting
+    // as elevator) and must satisfy the pitch-control check.
+    mockWingData = makeWing([
+      makeXsec({ trailing_edge_device: { role: "ruddervator", label: "" } }),
+      makeXsec(),
+    ]);
+    render(<AeroplaneTree {...baseProps} />);
+    expect(
+      screen.queryByText(/No pitch control surface assigned/),
+    ).toBeNull();
+  });
+
+  it("shows warning when wing has only flaperon (not a pitch surface)", () => {
+    // gh-481: flaperon is roll + lift augmentation only; does not satisfy
+    // the pitch-control requirement.
+    mockWingData = makeWing([
+      makeXsec({ trailing_edge_device: { role: "flaperon", label: "" } }),
+      makeXsec(),
+    ]);
+    render(<AeroplaneTree {...baseProps} />);
+    expect(
+      screen.getByText(/No pitch control surface assigned/),
+    ).toBeTruthy();
   });
 
   it("does not show warning when no wing is loaded", () => {

@@ -70,13 +70,17 @@ const ROLE_ICONS: Record<string, string> = {
   aileron: "↔",
   rudder: "⟳",
   elevon: "⤡",
+  flaperon: "⇋",
+  ruddervator: "⋎",
   stabilator: "↕",
   flap: "▽",
-  spoiler: "▢",
   other: "○",
 };
 
-const PITCH_ROLES = new Set(["elevator", "elevon", "stabilator"]);
+// Pitch-control roles. Ruddervator (V-tail) provides pitch authority
+// in addition to yaw, so it counts here. Flaperon does not (roll + lift
+// augmentation, not pitch).
+const PITCH_ROLES = new Set(["elevator", "elevon", "stabilator", "ruddervator"]);
 
 function getRoleIcon(role: string): string {
   return ROLE_ICONS[role] ?? "○";
@@ -900,7 +904,7 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
           role="alert"
           className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-400"
         >
-          No pitch control surface assigned. Auto-trim and stability analysis require an elevator, elevon, or stabilator.
+          No pitch control surface assigned. Auto-trim and stability analysis require an elevator, elevon, stabilator, or ruddervator.
         </div>
       )}
 
