@@ -1,7 +1,7 @@
 /**
  * Tests for AeroplaneTree role icons and pitch control surface warning (gh-450).
  */
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import React from "react";
 import type { XSec } from "@/hooks/useWings";
@@ -57,12 +57,26 @@ vi.mock("@/components/workbench/AeroplaneContext", () => ({
   }),
 }));
 
-let mockWingData: { name: string; symmetric: boolean; x_secs: XSec[]; design_model?: string } | null = null;
+type MockWing = { name: string; symmetric: boolean; x_secs: XSec[]; design_model?: string };
+let mockWingData: MockWing | null = null;
+let mockAllWingsData: MockWing[] = [];
+
+function resolveMockAllWings(): MockWing[] {
+  if (mockAllWingsData.length > 0) return mockAllWingsData;
+  if (mockWingData) return [mockWingData];
+  return [];
+}
 
 vi.mock("@/hooks/useWings", () => ({
   useWing: () => ({
     wing: mockWingData,
     isLoading: false,
+    mutate: vi.fn(),
+  }),
+  useAllWingData: () => ({
+    wings: resolveMockAllWings(),
+    isLoading: false,
+    error: undefined,
     mutate: vi.fn(),
   }),
 }));
@@ -161,6 +175,10 @@ describe("AeroplaneTree role icons (gh-450)", () => {
 });
 
 describe("AeroplaneTree pitch warning (gh-450)", () => {
+  beforeEach(() => {
+    mockAllWingsData = [];
+  });
+
   it("shows warning when wing has no pitch control surface", () => {
     mockWingData = makeWing([
       makeXsec({ trailing_edge_device: { role: "aileron", label: "" } }),
@@ -219,5 +237,116 @@ describe("AeroplaneTree pitch warning (gh-450)", () => {
     expect(
       screen.queryByText(/No pitch control surface assigned/),
     ).toBeNull();
+  });
+});
+
+describe("AeroplaneTree pitch warning — aeroplane-wide scope (gh-464)", () => {
+  // Why: the warning must reflect aeroplane-wide capability, not just the
+  // currently-selected wing. A wing of ailerons should not show the warning
+  // when another wing on the same aeroplane has an elevator.
+  beforeEach(() => {
+    mockAllWingsData = [];
+  });
+
+  it("hides warning on aileron-only wing when another wing has elevator", () => {
+    const aileronWing: MockWing = {
+      name: "Main Wing",
+      symmetric: true,
+      x_secs: [
+        makeXsec({ trailing_edge_device: { role: "aileron", label: "" } }),
+        makeXsec(),
+      ],
+      design_model: "wc",
+    };
+    const tailWing: MockWing = {
+      name: "Horizontal Tail",
+      symmetric: true,
+      x_secs: [
+        makeXsec({ trailing_edge_device: { role: "elevator", label: "" } }),
+        makeXsec(),
+      ],
+      design_model: "wc",
+    };
+    mockWingData = aileronWing;
+    mockAllWingsData = [aileronWing, tailWing];
+
+    render(
+      <AeroplaneTree
+        aeroplaneId="1"
+        wingNames={["Main Wing", "Horizontal Tail"]}
+        aeroplaneName="Test Plane"
+      />,
+    );
+    expect(
+      screen.queryByText(/No pitch control surface assigned/),
+    ).toBeNull();
+  });
+
+  it("hides warning on rudder-only wing when another wing has elevon", () => {
+    const rudderWing: MockWing = {
+      name: "Vertical Tail",
+      symmetric: false,
+      x_secs: [
+        makeXsec({ trailing_edge_device: { role: "rudder", label: "" } }),
+        makeXsec(),
+      ],
+      design_model: "wc",
+    };
+    const flyingWing: MockWing = {
+      name: "Main Wing",
+      symmetric: true,
+      x_secs: [
+        makeXsec({ trailing_edge_device: { role: "elevon", label: "" } }),
+        makeXsec(),
+      ],
+      design_model: "wc",
+    };
+    mockWingData = rudderWing;
+    mockAllWingsData = [flyingWing, rudderWing];
+
+    render(
+      <AeroplaneTree
+        aeroplaneId="1"
+        wingNames={["Main Wing", "Vertical Tail"]}
+        aeroplaneName="Test Plane"
+      />,
+    );
+    expect(
+      screen.queryByText(/No pitch control surface assigned/),
+    ).toBeNull();
+  });
+
+  it("still shows warning when no wing on the aeroplane has a pitch surface", () => {
+    const aileronWing: MockWing = {
+      name: "Main Wing",
+      symmetric: true,
+      x_secs: [
+        makeXsec({ trailing_edge_device: { role: "aileron", label: "" } }),
+        makeXsec(),
+      ],
+      design_model: "wc",
+    };
+    const flapWing: MockWing = {
+      name: "Inner Wing",
+      symmetric: true,
+      x_secs: [
+        makeXsec({ trailing_edge_device: { role: "flap", label: "" } }),
+        makeXsec(),
+      ],
+      design_model: "wc",
+    };
+    mockWingData = aileronWing;
+    mockAllWingsData = [aileronWing, flapWing];
+
+    render(
+      <AeroplaneTree
+        aeroplaneId="1"
+        wingNames={["Main Wing", "Inner Wing"]}
+        aeroplaneName="Test Plane"
+      />,
+    );
+    expect(
+      screen.getByText(/No pitch control surface assigned/),
+    ).toBeTruthy();
   });
 });

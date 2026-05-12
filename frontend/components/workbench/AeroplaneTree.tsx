@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { ChevronDown, ChevronRight, Plus, Trash2, Eye, EyeOff, Loader, PanelLeftClose, Pencil } from "lucide-react";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
-import { useWing } from "@/hooks/useWings";
+import { useWing, useAllWingData } from "@/hooks/useWings";
 import type { XSec } from "@/hooks/useWings";
 import { useWingConfig } from "@/hooks/useWingConfig";
 import { API_BASE } from "@/lib/fetcher";
@@ -799,15 +799,21 @@ export function AeroplaneTree(props: Readonly<AeroplaneTreeProps>) {
     onNodeEdit, onEditSpar, onDeleteSpar, onEditTed, onDeleteTed, onAddSpar, onAddTed,
   });
 
+  // Pitch-control capability is an aeroplane-wide property: any wing with an
+  // elevator/elevon/stabilator satisfies the trim/stability requirement, so
+  // the warning must check across all wings rather than just the selected one.
+  const { wings: allWings } = useAllWingData(aeroplaneId, wingNames);
   const hasPitchSurface = useMemo(() => {
-    if (!wing) return true;
-    return wing.x_secs.some((xsec) => {
-      const ted = getTedData(xsec);
-      if (!ted) return false;
-      const role = (ted.role as string) ?? "";
-      return PITCH_ROLES.has(role);
-    });
-  }, [wing]);
+    if (allWings.length === 0) return true;
+    return allWings.some((w) =>
+      w.x_secs.some((xsec) => {
+        const ted = getTedData(xsec);
+        if (!ted) return false;
+        const role = (ted.role as string) ?? "";
+        return PITCH_ROLES.has(role);
+      }),
+    );
+  }, [allWings]);
 
   // Build tree data
   const treeData = buildTreeData({

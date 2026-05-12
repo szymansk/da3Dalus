@@ -32,6 +32,7 @@ const mockWing = {
 
 vi.mock("@/hooks/useWings", () => ({
   useWing: () => ({ wing: mockWing, isLoading: false, mutate: vi.fn() }),
+  useAllWingData: () => ({ wings: [mockWing], isLoading: false, error: undefined, mutate: vi.fn() }),
 }));
 
 vi.mock("@/hooks/useWingConfig", () => ({
