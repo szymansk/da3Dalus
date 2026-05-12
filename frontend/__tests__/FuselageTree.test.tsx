@@ -21,6 +21,7 @@ vi.mock("lucide-react", () => {
 
 vi.mock("@/hooks/useWings", () => ({
   useWing: () => ({ wing: null, isLoading: false, mutate: vi.fn() }),
+  useAllWingData: () => ({ wings: [], isLoading: false, error: undefined, mutate: vi.fn() }),
 }));
 
 const mockFuselageData = {
