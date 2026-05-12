@@ -5,11 +5,13 @@
  * the hook returns expected data shapes.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { useDesignAssumptions } from "@/hooks/useDesignAssumptions";
+import { useRecomputeStatus } from "@/hooks/useRecomputeStatus";
 
 // Mock SWR to avoid real network requests
 const mockMutate = vi.fn();
+const mockGlobalMutate = vi.fn();
 vi.mock("swr", () => ({
   default: vi.fn(() => ({
     data: {
@@ -35,7 +37,18 @@ vi.mock("swr", () => ({
     isLoading: false,
     mutate: mockMutate,
   })),
+  mutate: (...args: unknown[]) => mockGlobalMutate(...args),
 }));
+
+vi.mock("@/hooks/useRecomputeStatus", () => ({
+  useRecomputeStatus: vi.fn(() => ({
+    isRecomputing: false,
+    status: "idle",
+    error: null,
+  })),
+}));
+
+const useRecomputeStatusMock = vi.mocked(useRecomputeStatus);
 
 describe("useDesignAssumptions", () => {
   beforeEach(() => {
@@ -209,5 +222,131 @@ describe("useDesignAssumptions", () => {
       }),
     ).rejects.toThrow("Failed to switch source: 422");
     expect(mockMutate).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Regression tests for gh-473 — info chips and assumption rows stale after
+ * backend recompute completes. The fix wires `useRecomputeStatus` into
+ * `useDesignAssumptions`: on the recomputing → idle transition, both
+ * SWR caches (`/assumptions` and `/assumptions/computation-context`) must
+ * be invalidated so chips refresh without a tab switch.
+ */
+describe("useDesignAssumptions — refresh on recompute completion (gh-473)", () => {
+  beforeEach(() => {
+    mockMutate.mockClear();
+    mockGlobalMutate.mockClear();
+    useRecomputeStatusMock.mockReset();
+  });
+
+  it("revalidates both assumptions and computation-context when isRecomputing transitions true → false", async () => {
+    useRecomputeStatusMock.mockReturnValue({
+      isRecomputing: true,
+      status: "computing",
+      error: null,
+    });
+    const { rerender } = renderHook(() => useDesignAssumptions("aero-1"));
+
+    // Drop calls from the initial mount; we only care about the transition.
+    mockMutate.mockClear();
+    mockGlobalMutate.mockClear();
+
+    useRecomputeStatusMock.mockReturnValue({
+      isRecomputing: false,
+      status: "done",
+      error: null,
+    });
+    rerender();
+
+    await waitFor(() => {
+      expect(mockMutate).toHaveBeenCalled();
+      // Exact-string match — silent drift in the computation-context key
+      // would break SWR cache invalidation parity with useComputationContext
+      // and silently re-introduce the gh-473 bug.
+      expect(mockGlobalMutate).toHaveBeenCalledWith(
+        "/aeroplanes/aero-1/assumptions/computation-context",
+      );
+    });
+  });
+
+  it("revalidates again on a second active → idle cycle (locks ref-based edge detection)", async () => {
+    useRecomputeStatusMock.mockReturnValue({
+      isRecomputing: true,
+      status: "computing",
+      error: null,
+    });
+    const { rerender } = renderHook(() => useDesignAssumptions("aero-1"));
+
+    // First cycle: active → idle
+    useRecomputeStatusMock.mockReturnValue({
+      isRecomputing: false,
+      status: "done",
+      error: null,
+    });
+    rerender();
+    await waitFor(() => {
+      expect(mockMutate).toHaveBeenCalled();
+    });
+
+    mockMutate.mockClear();
+    mockGlobalMutate.mockClear();
+
+    // Second cycle: idle → active → idle should fire again
+    useRecomputeStatusMock.mockReturnValue({
+      isRecomputing: true,
+      status: "computing",
+      error: null,
+    });
+    rerender();
+    useRecomputeStatusMock.mockReturnValue({
+      isRecomputing: false,
+      status: "done",
+      error: null,
+    });
+    rerender();
+
+    await waitFor(() => {
+      expect(mockMutate).toHaveBeenCalledTimes(1);
+      expect(mockGlobalMutate).toHaveBeenCalledWith(
+        "/aeroplanes/aero-1/assumptions/computation-context",
+      );
+    });
+  });
+
+  it("does NOT revalidate when isRecomputing stays false across renders", () => {
+    useRecomputeStatusMock.mockReturnValue({
+      isRecomputing: false,
+      status: "idle",
+      error: null,
+    });
+    const { rerender } = renderHook(() => useDesignAssumptions("aero-1"));
+    mockMutate.mockClear();
+    mockGlobalMutate.mockClear();
+
+    rerender();
+
+    expect(mockMutate).not.toHaveBeenCalled();
+    expect(mockGlobalMutate).not.toHaveBeenCalled();
+  });
+
+  it("does NOT revalidate when isRecomputing flips false → true (job just started)", () => {
+    useRecomputeStatusMock.mockReturnValue({
+      isRecomputing: false,
+      status: "idle",
+      error: null,
+    });
+    const { rerender } = renderHook(() => useDesignAssumptions("aero-1"));
+    mockMutate.mockClear();
+    mockGlobalMutate.mockClear();
+
+    useRecomputeStatusMock.mockReturnValue({
+      isRecomputing: true,
+      status: "computing",
+      error: null,
+    });
+    rerender();
+
+    expect(mockMutate).not.toHaveBeenCalled();
+    expect(mockGlobalMutate).not.toHaveBeenCalled();
   });
 });
