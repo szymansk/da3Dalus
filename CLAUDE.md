@@ -36,6 +36,9 @@ induced drag, box wings, Trefftz Plane, spacing, control surfaces,
 trim, or eigenmodes — **invoke `/avl-advisor`**. It has an indexed
 knowledge base over the official AVL User Primer and the Budziak thesis.
 
+## Aerodynamics Questions
+For ANY questions about aerodynamics - e.G. stall speed, best glide, sub sonic aerodynynamics, ... - **invoke `/aerodynamics-expert`**.
+
 ## Using Superpowers
 
 Call '/using-superpowers' at start to get a clue about the past steps,
