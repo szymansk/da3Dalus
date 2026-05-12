@@ -1,8 +1,9 @@
 "use client";
 
 import useSWR, { mutate as globalMutate } from "swr";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { API_BASE, fetcher } from "@/lib/fetcher";
+import { useRecomputeStatus } from "@/hooks/useRecomputeStatus";
 
 export interface Assumption {
   id: number;
@@ -38,7 +39,24 @@ export function useDesignAssumptions(aeroplaneId: string | null) {
     path,
     fetcher,
   );
-  const [isRecomputing, setIsRecomputing] = useState(false);
+  const { isRecomputing } = useRecomputeStatus(aeroplaneId);
+
+  // gh-473: When the backend recompute job transitions from active to idle,
+  // both SWR caches go stale silently. Force-revalidate both so the rows
+  // and the InfoChipRow update without requiring the user to switch tabs.
+  // Covers every recompute trigger — geometry change, weight-item sync,
+  // assumption edit — because they all flow through the same job status.
+  const prevRecomputingRef = useRef(false);
+  useEffect(() => {
+    const wasRecomputing = prevRecomputingRef.current;
+    prevRecomputingRef.current = !!isRecomputing;
+    if (wasRecomputing && !isRecomputing && aeroplaneId) {
+      mutate();
+      globalMutate(
+        `/aeroplanes/${encodeURIComponent(aeroplaneId)}/assumptions/computation-context`,
+      );
+    }
+  }, [isRecomputing, mutate, aeroplaneId]);
 
   const seedDefaults = useCallback(async () => {
     if (!aeroplaneId) return;
@@ -69,38 +87,6 @@ export function useDesignAssumptions(aeroplaneId: string | null) {
         throw new Error(`Failed to update assumption: ${res.status} ${body}`);
       }
       mutate();
-
-      // Recompute-triggering parameters re-derive cl_max/cd0/cg_x and
-      // V_stall via the backend debounced job. Recompute time varies
-      // wildly (debounce 2s + ASB sweep — anything from 3s to 15s
-      // depending on geometry complexity). Poll a few times to catch
-      // whenever it settles, and surface an isRecomputing flag so the UI
-      // can show a spinner.
-      // Must mirror app/services/invalidation_service._RECOMPUTE_TRIGGERING_PARAMS.
-      const RECOMPUTE_TRIGGERS = new Set(["target_static_margin", "mass"]);
-      if (RECOMPUTE_TRIGGERS.has(paramName)) {
-        setIsRecomputing(true);
-        // Match useComputationContext key exactly — that hook uses
-        // encodeURIComponent on the aeroplaneId. For UUIDs the encoded
-        // form is identical, but matching defensively avoids future
-        // breakage when keys diverge.
-        const ctxPath = `/aeroplanes/${encodeURIComponent(aeroplaneId)}/assumptions/computation-context`;
-        const revalidate = () => {
-          mutate();
-          globalMutate(ctxPath);
-        };
-        // Idempotent revalidations at staggered intervals — covers
-        // recompute times anywhere from 3s to 12s. Cleanup is not needed:
-        // mutate() / globalMutate() are idempotent if the component
-        // unmounts in the meantime.
-        setTimeout(revalidate, 2500);
-        setTimeout(revalidate, 5000);
-        setTimeout(revalidate, 8000);
-        setTimeout(() => {
-          revalidate();
-          setIsRecomputing(false);
-        }, 12000);
-      }
     },
     [aeroplaneId, mutate],
   );
