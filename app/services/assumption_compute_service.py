@@ -122,6 +122,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     aspect_ratio = _main_wing_aspect_ratio(asb_airplane)
     v_stall = _stall_speed(mass, s_ref, cl_max_effective)
     v_md = _min_drag_speed(mass, s_ref, cd0_effective, aspect_ratio)
+    v_min_sink = _min_sink_speed(mass, s_ref, cd0_effective, aspect_ratio)
 
     # V_max from physics if powered (P/W > 0); otherwise fall back to
     # the user-set goal in the flight profile (gliders set max speed
@@ -144,6 +145,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         "v_max_mps": round(v_max_effective, 1),
         "v_stall_mps": round(v_stall, 1) if v_stall is not None else None,
         "v_md_mps": round(v_md, 1) if v_md is not None else None,
+        "v_min_sink_mps": round(v_min_sink, 1) if v_min_sink is not None else None,
         "is_glider": is_glider,
         "reynolds": round(re),
         "mac_m": round(mac, 4),
@@ -500,6 +502,37 @@ def _min_drag_speed(
         return None
     weight_n = mass_kg * g
     return float(np.sqrt(2.0 * weight_n / (rho * s_ref_m2 * cl_opt)))
+
+
+def _min_sink_speed(
+    mass_kg: float,
+    s_ref_m2: float,
+    cd0: float,
+    aspect_ratio: float | None,
+    rho: float = 1.225,
+    g: float = 9.81,
+    oswald_e: float = 0.8,
+) -> float | None:
+    """Sea-level minimum-sink speed (= minimum-power, V_mp).
+
+    Anderson §6.7.2: at min-power the induced drag is three times the
+    parasitic drag, giving C_L_mp = sqrt(3·π·e·AR·C_D0). Equivalent
+    identity: V_mp = V_md / 3^(1/4) ≈ 0.760·V_md.
+
+    Returns None for degenerate inputs (no wing, zero AR, zero CD0).
+    """
+    if (
+        s_ref_m2 <= 0
+        or cd0 <= 1e-6
+        or aspect_ratio is None
+        or aspect_ratio <= 0
+    ):
+        return None
+    cl_mp = float(np.sqrt(3.0 * np.pi * oswald_e * aspect_ratio * cd0))
+    if cl_mp <= 0:
+        return None
+    weight_n = mass_kg * g
+    return float(np.sqrt(2.0 * weight_n / (rho * s_ref_m2 * cl_mp)))
 
 
 def _cache_context(

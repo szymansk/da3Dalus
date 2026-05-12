@@ -41,8 +41,16 @@ class PerformanceKPI(BaseModel):
     source_op_id: int | None = Field(
         None, description="Operating-point ID this KPI was derived from, if any"
     )
-    confidence: Literal["trimmed", "estimated", "limit"] = Field(
-        ..., description="How the value was determined"
+    confidence: Literal["trimmed", "computed", "estimated", "limit"] = Field(
+        ...,
+        description=(
+            "How the value was determined: "
+            "'trimmed' = from a TRIMMED operating point; "
+            "'computed' = polar/physics-derived from cached assumptions "
+            "(e.g. V_md from C_D0/AR/e); "
+            "'estimated' = heuristic shortcut (e.g. 1.4·V_s); "
+            "'limit' = boundary or user-supplied limit."
+        ),
     )
 
 
