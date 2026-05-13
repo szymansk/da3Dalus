@@ -660,3 +660,187 @@ class TestBindingConstraintMarker:
         # Either infeasible flag OR some constraints are marked binding
         # — both are valid representations
         assert chart["feasibility"] in {"feasible", "infeasible_below_constraints"}
+
+
+# ===========================================================================
+# Class 8: Unknown mode fallback (line 123-124)
+# ===========================================================================
+
+class TestUnknownModeFallback:
+    """_mode_defaults falls back to uav_runway for unknown mode strings."""
+
+    def test_unknown_mode_returns_uav_runway_defaults(self):
+        """An unrecognised mode string should fall back to uav_runway defaults."""
+        mcs = _helpers()
+        defaults_unknown = mcs._mode_defaults("totally_unknown_mode")
+        defaults_uav = mcs._mode_defaults("uav_runway")
+        assert defaults_unknown == defaults_uav
+
+    def test_unknown_mode_does_not_raise(self):
+        """_mode_defaults must not raise for an unknown mode — log + fallback."""
+        mcs = _helpers()
+        # Should return a dict, not raise
+        result = mcs._mode_defaults("xyzzy_mode")
+        assert isinstance(result, dict)
+        assert "s_runway" in result
+
+    def test_compute_chart_unknown_mode_uses_fallback(self):
+        """compute_chart with an unknown mode string should still return valid output."""
+        compute_chart = _service()
+        # Pass an unrecognised mode; service should use uav_runway defaults
+        chart = compute_chart(CESSNA_172, mode="unknown_test_mode")
+        assert "constraints" in chart
+        assert chart["feasibility"] in {"feasible", "infeasible_below_constraints"}
+
+
+# ===========================================================================
+# Class 9: Landing constraint zero-runway path (line 223)
+# ===========================================================================
+
+class TestLandingConstraintEdgeCases:
+    """Edge cases in the landing constraint helper."""
+
+    def test_landing_constraint_zero_runway_returns_inf(self):
+        """s_runway = 0 → no landing constraint → returns float('inf')."""
+        mcs = _helpers()
+        ws_max = mcs._landing_constraint(s_runway=0.0, cl_max_l=2.1, rho=1.225)
+        assert math.isinf(ws_max)
+        assert ws_max > 0
+
+    def test_landing_constraint_negative_runway_returns_inf(self):
+        """Negative s_runway (treated as unconstrained) → float('inf')."""
+        mcs = _helpers()
+        ws_max = mcs._landing_constraint(s_runway=-1.0, cl_max_l=2.1, rho=1.225)
+        assert math.isinf(ws_max)
+
+
+# ===========================================================================
+# Class 10: Design point resolution from aircraft dict (lines 349, 353)
+# ===========================================================================
+
+class TestDesignPointFromAircraftDict:
+    """_design_point_from_aircraft covers all three W/S resolution paths."""
+
+    def test_ws_from_ws_n_m2_key_directly(self):
+        """When 'ws_n_m2' key is present it is used directly."""
+        mcs = _helpers()
+        aircraft = {
+            "mass_kg": 100.0,
+            "t_static_N": 200.0,
+            "ws_n_m2": 450.0,   # explicit W/S
+        }
+        dp = mcs._design_point_from_aircraft(aircraft)
+        assert dp["ws_n_m2"] == pytest.approx(450.0, abs=1.0)
+
+    def test_ws_falls_back_to_zero_when_no_area_info(self):
+        """When neither s_ref_m2 nor ws_n_m2 is present, W/S = 0."""
+        mcs = _helpers()
+        aircraft = {
+            "mass_kg": 100.0,
+            "t_static_N": 200.0,
+            # No s_ref_m2, no ws_n_m2
+        }
+        dp = mcs._design_point_from_aircraft(aircraft)
+        assert dp["ws_n_m2"] == 0.0
+
+    def test_tw_zero_when_mass_zero(self):
+        """With mass_kg = 0 the T/W falls back to 0 (no division by zero)."""
+        mcs = _helpers()
+        aircraft = {
+            "mass_kg": 0.0,
+            "t_static_N": 500.0,
+            "s_ref_m2": 10.0,
+        }
+        dp = mcs._design_point_from_aircraft(aircraft)
+        assert dp["t_w"] == 0.0
+
+
+# ===========================================================================
+# Class 11: Cruise speed fallback from polar estimate (lines 483-492)
+# ===========================================================================
+
+class TestCruiseSpeedFallback:
+    """compute_chart estimates v_cruise from polar when not given."""
+
+    def test_v_cruise_estimated_when_not_in_aircraft(self):
+        """Aircraft dict without v_cruise_mps or v_md_mps → warning appended."""
+        compute_chart = _service()
+        aircraft_no_vcruise = {
+            "mass_kg": 1088.0,
+            "t_static_N": 1900.0,
+            "s_ref_m2": 16.17,
+            "ar": 7.32,
+            "cd0": 0.031,
+            "e_oswald": 0.75,
+            "cl_max_clean": 1.6,
+            "cl_max_takeoff": 1.6,
+            "cl_max_landing": 2.1,
+            # deliberately NO v_cruise_mps, NO v_md_mps
+        }
+        chart = compute_chart(aircraft_no_vcruise, mode="uav_runway")
+        # Must still complete and return valid output
+        assert "constraints" in chart
+        # A warning should be appended about estimated v_cruise
+        assert len(chart["warnings"]) >= 1
+        assert any("v_cruise_mps" in w for w in chart["warnings"])
+
+    def test_v_md_mps_used_as_cruise_when_v_cruise_absent(self):
+        """v_md_mps in aircraft dict is used as cruise speed fallback (no warning)."""
+        compute_chart = _service()
+        aircraft_with_vmd = {
+            "mass_kg": 1088.0,
+            "t_static_N": 1900.0,
+            "s_ref_m2": 16.17,
+            "ar": 7.32,
+            "cd0": 0.031,
+            "e_oswald": 0.75,
+            "cl_max_clean": 1.6,
+            "cl_max_takeoff": 1.6,
+            "cl_max_landing": 2.1,
+            "v_md_mps": 45.0,   # present, used as cruise fallback
+            # NO v_cruise_mps
+        }
+        chart = compute_chart(aircraft_with_vmd, mode="uav_runway")
+        assert "constraints" in chart
+        # No warning about estimated v_cruise (we had v_md_mps)
+        assert not any("v_cruise_mps not specified" in w for w in chart["warnings"])
+
+
+# ===========================================================================
+# Class 12: uav_belly_land mode (line 520 — landing constraint disabled)
+# ===========================================================================
+
+class TestUavBellyLandMode:
+    """uav_belly_land mode skips the landing distance constraint."""
+
+    def test_belly_land_landing_constraint_is_none(self):
+        """In uav_belly_land mode the Landing constraint ws_max must be None (no runway)."""
+        compute_chart = _service()
+        chart = compute_chart(CESSNA_172, mode="uav_belly_land")
+        landing_constraints = [c for c in chart["constraints"] if c["name"] == "Landing"]
+        assert len(landing_constraints) == 1
+        assert landing_constraints[0]["ws_max"] is None, (
+            "uav_belly_land mode should not impose a landing ws_max constraint"
+        )
+
+    def test_belly_land_mode_returns_valid_chart(self):
+        """uav_belly_land mode must produce a valid chart structure."""
+        compute_chart = _service()
+        chart = compute_chart(CESSNA_172, mode="uav_belly_land")
+        assert chart["feasibility"] in {"feasible", "infeasible_below_constraints"}
+        assert len(chart["constraints"]) >= 4
+
+    def test_uav_belly_land_defaults_same_runway_as_uav_runway(self):
+        """uav_belly_land has s_runway=200 in defaults (takeoff still needs runway)."""
+        mcs = _helpers()
+        defaults = mcs._mode_defaults("uav_belly_land")
+        assert defaults["s_runway"] == 200.0
+        assert defaults["gamma_climb_deg"] == 4.0
+        assert defaults["v_s_target"] == 12.0
+
+    def test_rc_hand_launch_mode_produces_valid_chart(self):
+        """rc_hand_launch mode (no runway) should produce a valid chart."""
+        compute_chart = _service()
+        chart = compute_chart(LIGHT_RC, mode="rc_hand_launch")
+        assert chart["feasibility"] in {"feasible", "infeasible_below_constraints"}
+        assert len(chart["constraints"]) >= 4

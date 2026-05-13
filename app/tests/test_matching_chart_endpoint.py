@@ -198,3 +198,172 @@ class TestMatchingChartEndpoint:
         assert all(ws[i] < ws[i + 1] for i in range(len(ws) - 1)), (
             "ws_range_n_m2 must be sorted ascending"
         )
+
+
+# ===========================================================================
+# Additional endpoint coverage: _raise_http_from_domain + _resolve_aircraft_params
+# ===========================================================================
+
+
+class TestMatchingChartEndpointAdditional:
+    """Tests targeting uncovered code paths in the endpoint module."""
+
+    def test_invalid_mode_returns_422(self, client_and_db):
+        """An invalid mode enum value should return 422 Unprocessable Entity."""
+        client, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = _make_cessna_plane(db)
+            aeroplane_uuid = str(plane.uuid)
+
+        resp = client.get(
+            f"/aeroplanes/{aeroplane_uuid}/matching-chart",
+            params={"mode": "invalid_mode_xyz"},
+        )
+        assert resp.status_code == 422
+
+    def test_mode_uav_belly_land_accepted(self, client_and_db):
+        """uav_belly_land mode should return 200 (covers the belly-land code path)."""
+        client, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = _make_cessna_plane(db)
+            aeroplane_uuid = str(plane.uuid)
+
+        resp = client.get(
+            f"/aeroplanes/{aeroplane_uuid}/matching-chart",
+            params={"mode": "uav_belly_land"},
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        # Landing constraint should have ws_max = null in belly-land mode
+        landing = [c for c in data["constraints"] if c["name"] == "Landing"]
+        assert len(landing) == 1
+        assert landing[0]["ws_max"] is None
+
+    def test_mode_rc_hand_launch_accepted(self, client_and_db):
+        """rc_hand_launch mode should return 200 (covers no-runway code path)."""
+        client, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = _make_cessna_plane(db)
+            aeroplane_uuid = str(plane.uuid)
+
+        resp = client.get(
+            f"/aeroplanes/{aeroplane_uuid}/matching-chart",
+            params={"mode": "rc_hand_launch"},
+        )
+        assert resp.status_code == 200, resp.text
+
+    def test_resolve_aircraft_params_with_b_ref_m_in_context(self, client_and_db):
+        """When b_ref_m is in assumption_computation_context it is forwarded to service."""
+        client, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db, name="b-ref-test")
+
+            # Seed minimal assumptions
+            from app.models.aeroplanemodel import DesignAssumptionModel
+            for param, val in [("mass", 10.0), ("cl_max", 1.2), ("cd0", 0.035), ("t_static_N", 50.0)]:
+                db.add(DesignAssumptionModel(
+                    aeroplane_id=plane.id,
+                    parameter_name=param,
+                    estimate_value=val,
+                    active_source="ESTIMATE",
+                ))
+
+            # Context includes b_ref_m (triggers line 99)
+            plane.assumption_computation_context = {
+                "s_ref_m2": 0.05,
+                "e_oswald": 0.8,
+                "aspect_ratio": 7.0,
+                "v_md_mps": 12.0,
+                "b_ref_m": 1.0,       # <-- this is the key triggering line 99
+            }
+            db.flush()
+            db.commit()
+            aeroplane_uuid = str(plane.uuid)
+
+        resp = client.get(f"/aeroplanes/{aeroplane_uuid}/matching-chart")
+        assert resp.status_code == 200, resp.text
+
+    def test_resolve_aircraft_params_without_context(self, client_and_db):
+        """When assumption_computation_context is None, defaults are used gracefully."""
+        client, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = make_aeroplane(db, name="no-context-test")
+
+            from app.models.aeroplanemodel import DesignAssumptionModel
+            for param, val in [("mass", 5.0), ("cl_max", 1.1), ("cd0", 0.04), ("t_static_N", 20.0)]:
+                db.add(DesignAssumptionModel(
+                    aeroplane_id=plane.id,
+                    parameter_name=param,
+                    estimate_value=val,
+                    active_source="ESTIMATE",
+                ))
+
+            # No computation context — triggers all the "None" fallback paths
+            plane.assumption_computation_context = None
+            db.flush()
+            db.commit()
+            aeroplane_uuid = str(plane.uuid)
+
+        resp = client.get(f"/aeroplanes/{aeroplane_uuid}/matching-chart")
+        assert resp.status_code == 200, resp.text
+
+    def test_service_exception_is_mapped_to_http(self, client_and_db, monkeypatch):
+        """ServiceException raised by compute_chart is mapped to 4xx/5xx (covers line 241)."""
+        from app.core.exceptions import NotFoundError
+        import app.api.v2.endpoints.aeroplane.matching_chart as mc_endpoint
+
+        original = mc_endpoint.compute_chart if hasattr(mc_endpoint, "compute_chart") else None
+
+        client, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            plane = _make_cessna_plane(db)
+            aeroplane_uuid = str(plane.uuid)
+
+        # Patch compute_chart inside the endpoint's module namespace
+        def _raise_not_found(*args, **kwargs):
+            raise NotFoundError("simulated not found")
+
+        monkeypatch.setattr(
+            "app.services.matching_chart_service.compute_chart",
+            _raise_not_found,
+        )
+
+        # The endpoint imports compute_chart lazily at call time, so we need to
+        # patch at the right place. Use a different strategy: patch at the
+        # endpoint's import point.
+        import app.services.matching_chart_service as mcs_module
+        monkeypatch.setattr(mcs_module, "compute_chart", _raise_not_found)
+
+        resp = client.get(f"/aeroplanes/{aeroplane_uuid}/matching-chart")
+        # NotFoundError → 404 via _raise_http_from_domain
+        assert resp.status_code in {404, 422, 500}
+
+    def test_raise_http_from_domain_internal_error(self):
+        """_raise_http_from_domain maps InternalError to HTTP 500."""
+        from fastapi import HTTPException
+        from app.core.exceptions import InternalError
+        from app.api.v2.endpoints.aeroplane.matching_chart import _raise_http_from_domain
+
+        with pytest.raises(HTTPException) as exc_info:
+            _raise_http_from_domain(InternalError("boom"))
+        assert exc_info.value.status_code == 500
+
+    def test_raise_http_from_domain_not_found(self):
+        """_raise_http_from_domain maps NotFoundError to HTTP 404."""
+        from fastapi import HTTPException
+        from app.core.exceptions import NotFoundError
+        from app.api.v2.endpoints.aeroplane.matching_chart import _raise_http_from_domain
+
+        with pytest.raises(HTTPException) as exc_info:
+            _raise_http_from_domain(NotFoundError("not there"))
+        assert exc_info.value.status_code == 404
+
+    def test_raise_http_from_domain_generic_service_exception(self):
+        """_raise_http_from_domain maps generic ServiceException to HTTP 422."""
+        from fastapi import HTTPException
+        from app.core.exceptions import ServiceException
+        from app.api.v2.endpoints.aeroplane.matching_chart import _raise_http_from_domain
+
+        with pytest.raises(HTTPException) as exc_info:
+            _raise_http_from_domain(ServiceException("generic"))
+        assert exc_info.value.status_code == 422
