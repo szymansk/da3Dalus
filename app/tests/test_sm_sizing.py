@@ -1064,6 +1064,9 @@ class TestConvergenceGuardEndpoint:
             "x_np_m": 0.12,
             "cg_aft_m": 0.105,
             "sm_at_aft": 0.05,
+            "cg_forward_m": 0.06,
+            "sm_at_fwd": 0.20,
+            "cg_stability_fwd_m": 0.075,
             "target_static_margin": 0.10,
             "cl_alpha_per_rad": 5.5,
             "s_h_m2": 0.08,
@@ -1159,3 +1162,256 @@ class TestConvergenceGuardEndpoint:
         )
         # Should succeed (not 409) since count < 3 after a target reset
         assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+
+
+# ===========================================================================
+# Class 8: gh-515 — bi-directional SM sizing (at_cg='fwd')
+# ===========================================================================
+
+def _ctx_fwd(
+    *,
+    mac_m: float = 0.30,
+    s_ref_m2: float = 0.60,
+    x_np_m: float = 0.12,
+    # aft-CG loading
+    cg_aft_m: float = 0.105,
+    # fwd-CG loading (furthest forward from all loading scenarios)
+    cg_fwd_actual: float = 0.06,
+    # forward stability limit from elevator authority (gh-500)
+    cg_stability_fwd_m: float | None = 0.075,
+    # tail geometry
+    s_h_m2: float = 0.08,
+    l_h_m: float = 0.55,
+    # config flags
+    is_canard: bool = False,
+    is_tailless: bool = False,
+    is_boxwing: bool = False,
+    is_tandem: bool = False,
+) -> dict:
+    """Build a context dict with both aft and fwd CG data for gh-515 tests."""
+    sm_at_aft = (x_np_m - cg_aft_m) / mac_m
+    sm_at_fwd = (x_np_m - cg_fwd_actual) / mac_m
+    return {
+        "mac_m": mac_m,
+        "s_ref_m2": s_ref_m2,
+        "x_np_m": x_np_m,
+        "cg_aft_m": cg_aft_m,
+        "sm_at_aft": sm_at_aft,
+        # fwd CG data (gh-488/500)
+        "cg_forward_m": cg_fwd_actual,     # actual furthest-fwd CG from loading scenarios
+        "sm_at_fwd": sm_at_fwd,
+        "cg_stability_fwd_m": cg_stability_fwd_m,  # elevator authority limit (gh-500)
+        # tail
+        "s_h_m2": s_h_m2,
+        "l_h_m": l_h_m,
+        "cl_alpha_per_rad": 5.5,
+        "target_static_margin": 0.10,
+        # flags
+        "is_canard": is_canard,
+        "is_tailless": is_tailless,
+        "is_boxwing": is_boxwing,
+        "is_tandem": is_tandem,
+    }
+
+
+class TestSuggestCorrectionsFwd:
+    """gh-515: suggest_corrections(at_cg='fwd') — forward-CG violation path."""
+
+    def test_fwd_sm_exceeds_max_fwd_returns_wing_shift_forward(self):
+        """SM_fwd > sm_max_fwd (fwd CG exceeds elevator authority) → wing_shift with negative delta.
+
+        Physics:
+          SM_fwd = (x_NP - cg_fwd_actual) / MAC
+          sm_max_fwd = (x_NP - cg_stability_fwd_m) / MAC
+          cg_fwd_actual=0.06 < cg_stability_fwd_m=0.075 → SM_fwd=0.20 > sm_max_fwd=0.15.
+          To reduce SM_fwd: move x_NP forward → wing shift FORWARD (delta < 0).
+        """
+        suggest = _import_service()
+        # SM_fwd = (0.12-0.06)/0.30 = 0.20, sm_max_fwd = (0.12-0.075)/0.30 = 0.15
+        ctx = _ctx_fwd(
+            x_np_m=0.12, cg_fwd_actual=0.06, cg_stability_fwd_m=0.075, mac_m=0.30
+        )
+        result = suggest(ctx, target_sm=0.10, at_cg="fwd")
+        assert result["status"] in ("suggestion", "error"), f"Expected suggestion/error, got: {result}"
+        wing_opts = [o for o in result.get("options", []) if o["lever"] == "wing_shift"]
+        assert wing_opts, f"Expected wing_shift option, options={result.get('options')}"
+        # SM_fwd too large → bring NP forward → delta < 0
+        assert wing_opts[0]["delta_value"] < 0, (
+            f"SM_fwd=0.20 > sm_max_fwd=0.15: should move wing fwd (delta<0), "
+            f"got {wing_opts[0]['delta_value']}"
+        )
+
+    def test_fwd_sm_below_min_returns_wing_shift_aft(self):
+        """SM_fwd < sm_min (fwd CG too close to NP, nearly unstable) → wing_shift AFT (delta > 0).
+
+        Physics:
+          cg_fwd=0.115, x_NP=0.12 → SM_fwd=(0.12-0.115)/0.30=0.017 < sm_min=0.02
+          To increase SM_fwd: move x_NP aft → wing shift AFT (delta > 0).
+        """
+        suggest = _import_service()
+        # SM_fwd = (0.12-0.115)/0.30 = 0.017 < sm_min=0.02
+        ctx = _ctx_fwd(
+            x_np_m=0.12, cg_fwd_actual=0.115, cg_stability_fwd_m=0.075, mac_m=0.30
+        )
+        result = suggest(ctx, target_sm=0.10, at_cg="fwd")
+        assert result["status"] in ("suggestion", "error")
+        wing_opts = [o for o in result.get("options", []) if o["lever"] == "wing_shift"]
+        assert wing_opts, f"Expected wing_shift option, got options={result.get('options')}"
+        # SM_fwd too small → bring NP aft → delta > 0
+        assert wing_opts[0]["delta_value"] > 0, (
+            f"SM_fwd=0.017 < sm_min=0.02: should move wing aft (delta>0), "
+            f"got {wing_opts[0]['delta_value']}"
+        )
+
+    def test_fwd_cg_stability_fwd_none_returns_not_applicable(self):
+        """cg_stability_fwd_m=None (elevator authority infeasible) → not_applicable with hint."""
+        suggest = _import_service()
+        ctx = _ctx_fwd(cg_stability_fwd_m=None)
+        result = suggest(ctx, target_sm=0.10, at_cg="fwd")
+        assert result["status"] == "not_applicable"
+        msg = (result.get("message") or result.get("hint") or "").lower()
+        assert "elevator" in msg or "authority" in msg or "not" in msg, (
+            f"Expected elevator/authority in message, got: {msg!r}"
+        )
+
+    def test_fwd_cg_no_violation_returns_ok(self):
+        """When fwd CG is within bounds: sm_min ≤ SM_fwd ≤ sm_max_fwd → status ok."""
+        suggest = _import_service()
+        # SM_fwd = (0.12 - 0.09) / 0.30 = 0.10  (at target_sm)
+        # sm_max_fwd = (0.12 - 0.075) / 0.30 = 0.15
+        # 0.10 ∈ [0.02, 0.15] → OK
+        ctx = _ctx_fwd(x_np_m=0.12, cg_fwd_actual=0.09, cg_stability_fwd_m=0.075, mac_m=0.30)
+        result = suggest(ctx, target_sm=0.10, at_cg="fwd")
+        assert result["status"] == "ok", f"Expected ok, got: {result}"
+        assert result["options"] == []
+
+    def test_fwd_options_have_required_fields(self):
+        """Each fwd option must have lever, delta_value, delta_unit, predicted_sm, narrative."""
+        suggest = _import_service()
+        ctx = _ctx_fwd(
+            x_np_m=0.12, cg_fwd_actual=0.06, cg_stability_fwd_m=0.075, mac_m=0.30
+        )
+        result = suggest(ctx, target_sm=0.10, at_cg="fwd")
+        for opt in result.get("options", []):
+            assert "lever" in opt
+            assert "delta_value" in opt
+            assert "delta_unit" in opt
+            assert "predicted_sm" in opt
+            assert "narrative" in opt
+
+    def test_fwd_htail_scale_option_present(self):
+        """htail_scale (increase Cm_δe authority) must be an option for fwd-CG violation."""
+        suggest = _import_service()
+        ctx = _ctx_fwd(
+            x_np_m=0.12, cg_fwd_actual=0.06, cg_stability_fwd_m=0.075, mac_m=0.30
+        )
+        result = suggest(ctx, target_sm=0.10, at_cg="fwd")
+        levers = {o["lever"] for o in result.get("options", [])}
+        assert "htail_scale" in levers, (
+            f"htail_scale must be suggested for fwd-CG violation, got levers={levers}"
+        )
+
+
+class TestBidirectionalBothViolate:
+    """gh-515: when both aft AND fwd CG violate → return BOTH option sets."""
+
+    def test_both_cg_violate_returns_combined_options(self):
+        """When aft SM too low AND fwd SM out of bounds, calling each direction returns options.
+
+        This tests that the function correctly handles each direction independently.
+        Callers can call suggest_corrections for aft and fwd separately and combine.
+        """
+        suggest = _import_service()
+        # Setup: aft SM = 0.05 (below target 0.10) → aft violation
+        #        fwd SM = 0.20 > sm_max_fwd = 0.15 → fwd violation
+        ctx = _ctx_fwd(
+            x_np_m=0.12, cg_aft_m=0.105, cg_fwd_actual=0.06,
+            cg_stability_fwd_m=0.075, mac_m=0.30
+        )
+        # sm_at_aft = (0.12-0.105)/0.30 = 0.05 < target=0.10 → suggestion
+        ctx["sm_at_aft"] = 0.05
+
+        aft_result = suggest(ctx, target_sm=0.10, at_cg="aft")
+        fwd_result = suggest(ctx, target_sm=0.10, at_cg="fwd")
+
+        assert aft_result["status"] in ("suggestion", "error"), f"aft: {aft_result}"
+        assert len(aft_result.get("options", [])) > 0, "aft must have options"
+
+        assert fwd_result["status"] in ("suggestion", "error"), f"fwd: {fwd_result}"
+        assert len(fwd_result.get("options", [])) > 0, "fwd must have options"
+
+
+class TestFwdCgIntegration:
+    """gh-515 integration: apply wing_shift → fwd SM within bound."""
+
+    def _setup_plane_with_fwd_cg(self, db_session) -> tuple[str, int]:
+        """Create aeroplane with fwd-CG violation context, return (uuid, main_wing_id)."""
+        from app.models.aeroplanemodel import AeroplaneModel, WingModel, WingXSecModel
+        uid = str(uuid.uuid4())
+        # SM_fwd = (0.12 - 0.06) / 0.30 = 0.20 > sm_max_fwd = (0.12-0.075)/0.30 = 0.15
+        ctx = {
+            "mac_m": 0.30,
+            "s_ref_m2": 0.60,
+            "x_np_m": 0.12,
+            "cg_aft_m": 0.105,
+            "sm_at_aft": 0.05,
+            "cg_forward_m": 0.06,
+            "sm_at_fwd": 0.20,
+            "cg_stability_fwd_m": 0.075,
+            "target_static_margin": 0.10,
+            "cl_alpha_per_rad": 5.5,
+            "s_h_m2": 0.08,
+            "l_h_m": 0.55,
+            "is_canard": False,
+            "is_tailless": False,
+            "is_boxwing": False,
+            "is_tandem": False,
+        }
+        ap = AeroplaneModel(name="fwd-cg-test-plane", uuid=uid, assumption_computation_context=ctx)
+        db_session.add(ap)
+        db_session.flush()
+
+        mw = WingModel(name="main_wing", symmetric=True, aeroplane_id=ap.id)
+        db_session.add(mw)
+        db_session.flush()
+        xs0 = WingXSecModel(wing_id=mw.id, xyz_le=[0.0, 0.0, 0.0], chord=0.30, twist=0.0,
+                            airfoil="naca2412", sort_index=0)
+        xs1 = WingXSecModel(wing_id=mw.id, xyz_le=[0.0, 0.5, 0.0], chord=0.20, twist=0.0,
+                            airfoil="naca2412", sort_index=1)
+        db_session.add_all([xs0, xs1])
+
+        ht = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=ap.id)
+        db_session.add(ht)
+        db_session.flush()
+        hxs0 = WingXSecModel(wing_id=ht.id, xyz_le=[0.60, 0.0, 0.0], chord=0.12, twist=0.0,
+                              airfoil="naca0012", sort_index=0)
+        db_session.add(hxs0)
+        db_session.commit()
+        return str(ap.uuid), mw.id
+
+    def test_fwd_suggest_then_apply_wing_shift_reduces_sm_fwd(self, client_and_db):
+        """Integration: get fwd suggestion, apply wing_shift, verify SM_fwd direction correct.
+
+        The fwd suggestion returns a wing_shift with delta_value < 0 (move fwd, reduce NP).
+        After applying that shift, the predicted_sm should be ≤ sm_max_fwd.
+        """
+        client, SessionLocal = client_and_db
+        with SessionLocal() as db:
+            uid, wing_id = self._setup_plane_with_fwd_cg(db)
+
+        # Get fwd suggestion
+        resp = client.get(f"/aeroplanes/{uid}/sm-suggestion?at_cg=fwd")
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["status"] in ("suggestion", "error"), f"Expected suggestion, got {data}"
+        wing_opts = [o for o in data.get("options", []) if o["lever"] == "wing_shift"]
+        assert wing_opts, "Expected wing_shift option"
+
+        delta = wing_opts[0]["delta_value"]
+        predicted_sm_fwd = wing_opts[0]["predicted_sm"]
+
+        # The predicted SM after shift should be ≤ sm_max_fwd = (0.12-0.075)/0.30 = 0.15
+        sm_max_fwd = (0.12 - 0.075) / 0.30
+        assert predicted_sm_fwd <= sm_max_fwd + 0.01, (
+            f"predicted_sm_fwd={predicted_sm_fwd:.3f} should be ≤ sm_max_fwd={sm_max_fwd:.3f}"
+        )

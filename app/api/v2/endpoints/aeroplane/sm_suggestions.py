@@ -6,9 +6,9 @@ POST /aeroplanes/{uuid}/sm-suggestions/apply  — apply (or dry-run) a suggestio
 from __future__ import annotations
 
 import logging
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
 from pydantic import UUID4
 from sqlalchemy.orm import Session
 
@@ -50,10 +50,12 @@ def _get_aeroplane(db: Session, aeroplane_id: UUID4) -> AeroplaneModel:
     response_model=SmSuggestionResponse,
     summary="Static margin sizing suggestion (Step 9 ↔ Step 11)",
     description=(
-        "Analyse the current static margin at aft CG versus the target_static_margin "
-        "assumption.  Returns up to two banner options: move the main wing fore/aft "
-        "(wing_shift) OR chord-scale the horizontal tail (htail_scale). "
-        "Silent when SM is already in target range [target_sm, 0.20]. "
+        "Analyse the current static margin versus the target_static_margin assumption. "
+        "Use at_cg='aft' (default) for aft-CG sizing or at_cg='fwd' for forward-CG "
+        "sizing against the elevator-authority limit (gh-515). "
+        "Returns up to two banner options: move the main wing fore/aft (wing_shift) OR "
+        "chord-scale the horizontal tail (htail_scale). "
+        "Silent when SM is already in target range. "
         "Returns not_applicable for canard, tailless, or no-analysis-yet configurations."
     ),
     responses={
@@ -63,6 +65,10 @@ def _get_aeroplane(db: Session, aeroplane_id: UUID4) -> AeroplaneModel:
 )
 async def get_sm_suggestion(
     aeroplane_id: Annotated[UUID4, Path(..., description="Aeroplane UUID")],
+    at_cg: Annotated[
+        Literal["aft", "fwd"],
+        Query(description="CG loading direction: 'aft' (default) or 'fwd' for forward-CG sizing"),
+    ] = "aft",
     db: Session = Depends(get_db),
 ) -> SmSuggestionResponse:
     """Compute SM sizing suggestions for an aeroplane."""
@@ -71,7 +77,7 @@ async def get_sm_suggestion(
     target_sm = ctx.get("target_static_margin", 0.10)
 
     try:
-        raw = sm_sizing_service.suggest_corrections(ctx, target_sm=target_sm, at_cg="aft")
+        raw = sm_sizing_service.suggest_corrections(ctx, target_sm=target_sm, at_cg=at_cg)
     except Exception as exc:
         logger.error(
             "SM suggestion failed for %s: %s", aeroplane_id, exc, exc_info=True

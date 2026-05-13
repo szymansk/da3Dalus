@@ -236,8 +236,9 @@ def enrich_context_with_cg_envelope(
 ) -> dict[str, Any]:
     """Additively add CG envelope keys to an existing computation context dict.
 
-    Preserves all existing keys (esp. cg_agg_m for backward compat) and
-    adds the new gh-488 keys: cg_forward_m, cg_aft_m, sm_at_fwd, sm_at_aft.
+    Preserves all existing keys (esp. cg_agg_m for backward compat) and adds:
+      cg_forward_m, cg_aft_m, sm_at_fwd, sm_at_aft       (gh-488)
+      cg_stability_fwd_m, cg_stability_aft_m               (gh-515)
 
     When x_np_m is not in the context (recompute hasn't run), sm_at_fwd/aft
     are stored as None to avoid deceptive stub values.
@@ -246,7 +247,7 @@ def enrich_context_with_cg_envelope(
         ctx: existing assumption_computation_context dict.
         cg_loading_fwd_m: forward loading CG [m].
         cg_loading_aft_m: aft loading CG [m].
-        cg_stability_fwd_m: forward stability limit [m], or None.
+        cg_stability_fwd_m: forward stability limit [m] (from elevator authority), or None.
         cg_stability_aft_m: aft stability limit [m], or None.
 
     Returns:
@@ -268,6 +269,9 @@ def enrich_context_with_cg_envelope(
     ctx["cg_aft_m"] = round(cg_loading_aft_m, 4)
     ctx["sm_at_fwd"] = sm_at_fwd
     ctx["sm_at_aft"] = sm_at_aft
+    # Persist stability limits so sm_sizing_service can consume them without DB re-query.
+    ctx["cg_stability_fwd_m"] = round(cg_stability_fwd_m, 4) if cg_stability_fwd_m is not None else None
+    ctx["cg_stability_aft_m"] = round(cg_stability_aft_m, 4) if cg_stability_aft_m is not None else None
     return ctx
 
 
