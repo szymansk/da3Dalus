@@ -60,9 +60,15 @@ jobs:
 
   fast:
     needs: changes
+    # The `labeled`/`unlabeled` pull_request types are subscribed only so
+    # the `full` job can pick up `ci-full` label additions. We must not
+    # re-run `fast` for unrelated label changes (e.g. adding
+    # `documentation` or `wip`).
     if: |
       github.event_name != 'schedule' &&
       !(github.event_name == 'workflow_dispatch' && inputs.run_nightly) &&
+      !(github.event.action == 'labeled' && github.event.label.name != 'ci-full') &&
+      !(github.event.action == 'unlabeled' && github.event.label.name != 'ci-full') &&
       (needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'push')
     runs-on: ubuntu-latest
 
@@ -123,10 +129,15 @@ jobs:
           if-no-files-found: ignore
 
   full:
-    needs: changes
     # Trigger when the PR carries the `ci-full` label, or on manual
     # dispatch with run_full=true. Skips on regular pushes / scheduled
-    # runs to avoid duplicating nightly coverage.
+    # runs to avoid duplicating nightly coverage. No `needs: changes`
+    # — this job ignores paths-filter and runs whenever its trigger
+    # condition is met.
+    #
+    # No coverage upload here: the integration tier exists to gate
+    # CAD/AVL/ASB regressions, not to feed SonarCloud. SonarCloud
+    # already uses the `fast` tier's coverage XML.
     if: |
       (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'ci-full')) ||
       (github.event_name == 'workflow_dispatch' && inputs.run_full)
@@ -170,7 +181,6 @@ jobs:
           QT_QPA_PLATFORM: offscreen
 
   nightly:
-    needs: changes
     # Runs on cron (default branch only) and on manual dispatch when
     # run_nightly=true. Independent of the `changes` filter so the
     # full matrix runs even on commits that only touch docs.
@@ -235,7 +245,13 @@ jobs:
 
   frontend:
     needs: changes
-    if: ${{ needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch' }}
+    # Same label-noise guard as `fast`: do not re-run on unrelated label
+    # changes. Also skip when the dispatcher asked for the nightly tier.
+    if: |
+      !(github.event.action == 'labeled' && github.event.label.name != 'ci-full') &&
+      !(github.event.action == 'unlabeled' && github.event.label.name != 'ci-full') &&
+      !(github.event_name == 'workflow_dispatch' && inputs.run_nightly) &&
+      (needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -270,11 +286,16 @@ jobs:
 
   sonarcloud:
     needs: [fast, frontend]
+    # Scan after fast+frontend complete, but skip:
+    #   * when both upstreams are skipped (nothing to report)
+    #   * on nightly dispatch — nightly produces its own coverage XML
+    #     and we don't push that to SonarCloud yet.
     if: |
       always() &&
       (needs.fast.result == 'success' || needs.fast.result == 'skipped') &&
       (needs.frontend.result == 'success' || needs.frontend.result == 'skipped') &&
-      !(needs.fast.result == 'skipped' && needs.frontend.result == 'skipped')
+      !(needs.fast.result == 'skipped' && needs.frontend.result == 'skipped') &&
+      !(github.event_name == 'workflow_dispatch' && inputs.run_nightly)
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository

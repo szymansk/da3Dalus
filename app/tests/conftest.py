@@ -69,6 +69,13 @@ def _markers_for_path(path: str) -> list[str]:
     - ``test_avl_*`` with ``generator`` / ``runner`` / ``strip_forces``
       in the name → ``requires_avl`` (real binary invocation, not just
       dataclass / geometry helpers)
+
+    Note: ``requires_aerosandbox`` is intentionally NOT auto-tagged. The
+    AeroSandbox-dependent files (e.g. ``test_analysis_smoke.py``,
+    ``test_wingconfig_roundtrip.py``) use ``pytest.importorskip`` at the
+    module level or per-test hand markers, so file-level tagging would
+    double-mark. Add a heuristic here only if those files stop using
+    importorskip.
     """
     name = os.path.basename(path)
     markers: list[str] = []
@@ -88,11 +95,16 @@ def _markers_for_path(path: str) -> list[str]:
 
 
 def pytest_collection_modifyitems(
-    config: pytest.Config, items: list[pytest.Item]
+    config: pytest.Config, items: list[pytest.Item]  # noqa: ARG001
 ) -> None:
-    """Apply markers derived from file name to every collected test item."""
+    """Apply markers derived from file name to every collected test item.
+
+    ``config`` is required by the pluggy hookspec even though we do not
+    use it; renaming to ``_config`` would fail plugin validation.
+    """
+    del config  # silence unused-arg linters; required by hookspec
     for item in items:
-        for marker_name in _markers_for_path(str(item.fspath)):
+        for marker_name in _markers_for_path(str(item.path)):
             item.add_marker(getattr(pytest.mark, marker_name))
 
 
