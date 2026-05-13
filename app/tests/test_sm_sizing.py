@@ -687,3 +687,198 @@ class TestApplyHtailScaleService:
         assert hxsec0.chord == pytest.approx(0.12 * (1 + delta_pct), rel=1e-4)
         assert hxsec1.chord == pytest.approx(0.10 * (1 + delta_pct), rel=1e-4)
         db.flush.assert_called_once()
+
+
+# ===========================================================================
+# Class 6: gh-494 fix — B2/B3/B4 and physics-reviewer findings
+# ===========================================================================
+
+class TestAlphaVhDimensionlessFix:
+    """P1 (Scholz): α_VH must be dimensionless — no /mac_m in formula."""
+
+    def test_alpha_vh_dimensionless_for_model_scale(self):
+        """With S_H/S_w=0.08/0.60 and dε/dα=0.6: α_VH ≈ 0.08, not 0.27."""
+        svc = _import_module()
+        ctx = {
+            "mac_m": 0.30,
+            "s_ref_m2": 0.60,
+            "s_h_m2": 0.08,
+        }
+        a_vh = svc._alpha_vh(ctx)
+        # (0.6 * 0.08 / 0.60) = 0.08 — within 0.01–0.20 clamp
+        assert 0.07 < a_vh < 0.09, (
+            f"α_VH = {a_vh:.4f} — expected ~0.08, old bug gave ~0.27 (1/m)"
+        )
+
+    def test_alpha_vh_independent_of_mac(self):
+        """α_VH must not change when MAC changes (it is dimensionless)."""
+        svc = _import_module()
+        ctx_small_mac = {"mac_m": 0.20, "s_ref_m2": 0.60, "s_h_m2": 0.08}
+        ctx_large_mac = {"mac_m": 1.00, "s_ref_m2": 0.60, "s_h_m2": 0.08}
+        a_small = svc._alpha_vh(ctx_small_mac)
+        a_large = svc._alpha_vh(ctx_large_mac)
+        assert abs(a_small - a_large) < 1e-6, (
+            f"α_VH must be MAC-independent: small={a_small:.4f}, large={a_large:.4f}"
+        )
+
+    def test_alpha_vh_clamp_lower_bound(self):
+        """Very small tail (S_H/S_w→0): α_VH clamps to 0.01."""
+        svc = _import_module()
+        ctx = {"mac_m": 0.30, "s_ref_m2": 10.0, "s_h_m2": 0.001}
+        a_vh = svc._alpha_vh(ctx)
+        assert a_vh >= 0.01, f"α_VH clamp lower bound violated: {a_vh}"
+
+    def test_alpha_vh_clamp_upper_bound(self):
+        """Very large tail (S_H/S_w→big): α_VH clamps to 0.20."""
+        svc = _import_module()
+        ctx = {"mac_m": 0.30, "s_ref_m2": 0.10, "s_h_m2": 1.0}
+        a_vh = svc._alpha_vh(ctx)
+        assert a_vh <= 0.20, f"α_VH clamp upper bound violated: {a_vh}"
+
+    def test_dsm_dx_correct_range_after_fix(self):
+        """With fixed α_VH, ∂SM/∂x_wing should be ~3.07 for the standard fixture."""
+        svc = _import_module()
+        ctx = {
+            "mac_m": 0.30,
+            "s_ref_m2": 0.60,
+            "s_h_m2": 0.08,
+            "l_h_m": 0.55,
+        }
+        dsm_dx = svc._dsm_dx_wing(ctx)
+        # With fix: α_VH=0.08 → (1-0.08)/0.30 = 3.067
+        # Old bug: α_VH=0.267 → (1-0.267)/0.30 = 2.444
+        assert 2.9 < dsm_dx < 3.2, (
+            f"∂SM/∂x_wing = {dsm_dx:.4f} — expected ~3.07 after fix (was ~2.44 before fix)"
+        )
+
+
+class TestMissingMacNotApplicable:
+    """B2: missing mac_m or s_ref_m2 → not_applicable, not silent fallback."""
+
+    def test_missing_mac_suggest_returns_not_applicable(self):
+        """suggest_corrections with mac_m=None → not_applicable with helpful message."""
+        suggest = _import_service()
+        ctx = _ctx(mac_m=0.30, x_np_m=0.12, cg_aft_m=0.105, sm_at_aft=0.05)
+        ctx["mac_m"] = None  # remove mac_m
+        result = suggest(ctx, target_sm=0.10, at_cg="aft")
+        assert result["status"] == "not_applicable"
+        msg = (result.get("message") or result.get("hint") or "").lower()
+        assert "mac" in msg or "run analysis" in msg
+
+    def test_zero_mac_suggest_returns_not_applicable(self):
+        """suggest_corrections with mac_m=0 → not_applicable."""
+        suggest = _import_service()
+        ctx = _ctx(x_np_m=0.12, cg_aft_m=0.105, sm_at_aft=0.05)
+        ctx["mac_m"] = 0.0
+        result = suggest(ctx, target_sm=0.10, at_cg="aft")
+        assert result["status"] == "not_applicable"
+
+    def test_missing_s_ref_suggest_returns_not_applicable(self):
+        """suggest_corrections with s_ref_m2=None → not_applicable."""
+        suggest = _import_service()
+        ctx = _ctx(x_np_m=0.12, cg_aft_m=0.105, sm_at_aft=0.05)
+        ctx["s_ref_m2"] = None
+        result = suggest(ctx, target_sm=0.10, at_cg="aft")
+        assert result["status"] == "not_applicable"
+
+
+class TestHtailScaleNegativeDelta:
+    """B4: delta_value ≤ -0.9 must be rejected by schema and service."""
+
+    def test_htail_scale_delta_minus_1_raises_422(self, client_and_db):
+        """POST apply htail_scale with delta_value=-1.0 → 422 (Pydantic gt=-0.9 guard)."""
+        client, SessionLocal = client_and_db
+        # Create a plane with wings
+        from app.models.aeroplanemodel import AeroplaneModel, WingModel, WingXSecModel
+        with SessionLocal() as db:
+            uid_str = str(uuid.uuid4())
+            ctx = {
+                "mac_m": 0.30, "s_ref_m2": 0.60, "x_np_m": 0.12,
+                "cg_aft_m": 0.105, "sm_at_aft": 0.05, "target_static_margin": 0.10,
+                "cl_alpha_per_rad": 5.5, "s_h_m2": 0.08, "l_h_m": 0.55,
+                "is_canard": False, "is_tailless": False,
+                "is_boxwing": False, "is_tandem": False,
+            }
+            ap = AeroplaneModel(
+                name="b4-test-plane", uuid=uid_str,
+                assumption_computation_context=ctx,
+            )
+            db.add(ap)
+            db.flush()
+            htail = WingModel(name="horizontal_tail", symmetric=True, aeroplane_id=ap.id)
+            db.add(htail)
+            db.flush()
+            hxs = WingXSecModel(
+                wing_id=htail.id, xyz_le=[0.6, 0.0, 0.0], chord=0.12,
+                twist=0.0, airfoil="naca0012", sort_index=0,
+            )
+            db.add(hxs)
+            db.commit()
+            uid = str(ap.uuid)
+
+        resp = client.post(
+            f"/aeroplanes/{uid}/sm-suggestions/apply",
+            json={"lever": "htail_scale", "delta_value": -1.0, "dry_run": False},
+        )
+        assert resp.status_code == 422, (
+            f"Expected 422 for delta_value=-1.0, got {resp.status_code}: {resp.text}"
+        )
+
+    def test_htail_scale_service_raises_for_scale_near_zero(self):
+        """apply_htail_scale service-level check: scale ≤ 0.1 raises ValueError."""
+        from app.services.sm_sizing_service import apply_htail_scale
+        db = MagicMock()
+
+        hxsec = MagicMock()
+        hxsec.chord = 0.12
+        htail_mock = MagicMock()
+        htail_mock.name = "horizontal_tail"
+        htail_mock.x_secs = [hxsec]
+
+        plane_mock = MagicMock()
+        plane_mock.assumption_computation_context = {
+            "mac_m": 0.30, "s_ref_m2": 0.60, "x_np_m": 0.12,
+            "cg_aft_m": 0.105, "sm_at_aft": 0.05, "target_static_margin": 0.10,
+            "cl_alpha_per_rad": 5.5, "s_h_m2": 0.08, "l_h_m": 0.55,
+            "is_canard": False, "is_tailless": False,
+            "is_boxwing": False, "is_tandem": False,
+        }
+        plane_mock.id = 1
+        plane_mock.wings = [htail_mock]
+
+        db.query.return_value.filter.return_value.first.return_value = plane_mock
+
+        with pytest.raises(ValueError, match="non-positive chord"):
+            apply_htail_scale(db, "test-uuid", delta_pct=-0.92, dry_run=False)
+
+
+class TestTandemNotApplicable:
+    """is_tandem=True → not_applicable (coverage for tandem-wing configs)."""
+
+    def test_tandem_suggest_not_applicable(self):
+        """suggest_corrections with is_tandem=True → not_applicable."""
+        suggest = _import_service()
+        ctx = _ctx(is_tandem=True)
+        result = suggest(ctx, target_sm=0.10, at_cg="aft")
+        assert result["status"] == "not_applicable"
+        msg = (result.get("message") or result.get("hint") or "").lower()
+        assert "tandem" in msg
+
+
+class TestHtailScaleNarrativePreservesSpan:
+    """FIX-2 (Scholz P6): narrative must say 'preserves span' not 'preserves AR'."""
+
+    def test_htail_scale_narrative_preserves_span(self):
+        """htail_scale option narrative must say 'preserves span' (AR changes)."""
+        suggest = _import_service()
+        ctx = _ctx(x_np_m=0.12, mac_m=0.30, target_static_margin=0.10, sm_at_aft=0.05)
+        result = suggest(ctx, target_sm=0.10, at_cg="aft")
+        htail_opts = [o for o in result["options"] if o["lever"] == "htail_scale"]
+        assert htail_opts, "Expected htail_scale option in result"
+        narrative = htail_opts[0]["narrative"]
+        assert "preserves span" in narrative.lower(), (
+            f"Narrative should say 'preserves span (AR changes)' but got: {narrative}"
+        )
+        assert "preserves ar" not in narrative.lower(), (
+            f"Narrative must NOT say 'preserves AR' — it is physically wrong: {narrative}"
+        )

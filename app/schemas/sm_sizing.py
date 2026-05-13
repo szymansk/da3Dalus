@@ -84,8 +84,11 @@ class SmApplyRequest(BaseModel):
     )
     delta_value: float = Field(
         ...,
+        gt=-0.9,
+        lt=2.0,
         description=(
-            "Change magnitude. wing_shift: metres. htail_scale: fraction (0.20 = +20%)."
+            "Change magnitude. wing_shift: metres. htail_scale: fraction (0.20 = +20%). "
+            "For htail_scale: must be > -0.9 (prevents non-positive chord) and < 2.0."
         ),
     )
     dry_run: bool = Field(
