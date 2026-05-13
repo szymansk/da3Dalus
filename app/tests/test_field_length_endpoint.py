@@ -6,6 +6,7 @@ Covers the GET /aeroplanes/{id}/field-lengths endpoint:
 - 422 when stall speed or s_ref not in context
 - 422 when t_static_N is absent for runway mode
 - Query parameters: landing_mode=belly_land, takeoff_mode=hand_launch
+- Flap detection: wing with flap TED produces different (shorter) distances
 """
 
 from __future__ import annotations
@@ -14,7 +15,14 @@ import uuid
 
 import pytest
 
-from app.models.aeroplanemodel import AeroplaneModel, DesignAssumptionModel
+from app.models.aeroplanemodel import (
+    AeroplaneModel,
+    DesignAssumptionModel,
+    WingModel,
+    WingXSecDetailModel,
+    WingXSecModel,
+    WingXSecTrailingEdgeDeviceModel,
+)
 from app.tests.conftest import make_aeroplane
 
 
@@ -168,3 +176,78 @@ class TestFieldLengthEndpoint:
         data = resp.json()
         assert data["mode_takeoff"] == "runway"
         assert data["mode_landing"] == "runway"
+
+    def test_flap_ted_produces_shorter_field_lengths(self, client_and_db):
+        """Wing with a flap TED (role='flap') → shorter s_TO and s_LDG than no-flap.
+
+        With a flap, CL_max_TO is boosted by 1.1× and CL_max_LDG by 1.3×,
+        resulting in shorter ground rolls (higher CL_max → lower required speed
+        → shorter distance).
+        """
+        client, SessionLocal = client_and_db
+
+        # Aeroplane WITHOUT flap
+        with SessionLocal() as db:
+            plane_clean = _make_plane_with_context(db, t_static_N=1900.0)
+            uuid_clean = str(plane_clean.uuid)
+
+        # Aeroplane WITH flap TED
+        with SessionLocal() as db:
+            plane_flap = _make_plane_with_context(db, t_static_N=1900.0)
+
+            # Add a main wing with a flap TED
+            wing = WingModel(name="main_wing", symmetric=True, aeroplane_id=plane_flap.id)
+            db.add(wing)
+            db.flush()
+
+            xsec = WingXSecModel(
+                wing_id=wing.id,
+                xyz_le=[0.0, 0.0, 0.0],
+                chord=0.3,
+                twist=0.0,
+                airfoil="naca2412",
+                sort_index=0,
+            )
+            db.add(xsec)
+            db.flush()
+
+            detail = WingXSecDetailModel(wing_xsec_id=xsec.id, x_sec_type="segment")
+            db.add(detail)
+            db.flush()
+
+            ted = WingXSecTrailingEdgeDeviceModel(
+                wing_xsec_detail_id=detail.id,
+                name="Flap",
+                role="flap",
+                rel_chord_root=0.7,
+                rel_chord_tip=0.7,
+                symmetric=True,
+            )
+            db.add(ted)
+            db.commit()
+            uuid_flap = str(plane_flap.uuid)
+
+        r_clean = client.get(
+            f"/aeroplanes/{uuid_clean}/field-lengths",
+            params={"takeoff_mode": "runway", "landing_mode": "runway"},
+        )
+        r_flap = client.get(
+            f"/aeroplanes/{uuid_flap}/field-lengths",
+            params={"takeoff_mode": "runway", "landing_mode": "runway"},
+        )
+
+        assert r_clean.status_code == 200, r_clean.text
+        assert r_flap.status_code == 200, r_flap.text
+
+        clean_data = r_clean.json()
+        flap_data = r_flap.json()
+
+        # With flap, CL_max is higher → both takeoff and landing distances shorter
+        assert flap_data["s_to_ground_m"] < clean_data["s_to_ground_m"], (
+            f"Expected flap TO ({flap_data['s_to_ground_m']:.1f} m) "
+            f"< clean TO ({clean_data['s_to_ground_m']:.1f} m)"
+        )
+        assert flap_data["s_ldg_ground_m"] < clean_data["s_ldg_ground_m"], (
+            f"Expected flap LDG ({flap_data['s_ldg_ground_m']:.1f} m) "
+            f"< clean LDG ({clean_data['s_ldg_ground_m']:.1f} m)"
+        )

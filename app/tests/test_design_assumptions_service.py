@@ -22,13 +22,13 @@ from app.tests.conftest import make_aeroplane
 
 
 class TestSeedDefaults:
-    def test_creates_thirteen_assumptions(self, client_and_db):
-        # 8 original + 5 electric-endurance params added in gh-491: takeoff and landing field length (Roskam ground-roll + RC modes))
+    def test_creates_fourteen_assumptions(self, client_and_db):
+        # 8 original + 5 electric-endurance params added in gh-491
         _, SessionLocal = client_and_db
         with SessionLocal() as db:
             aeroplane = make_aeroplane(db)
             summary = svc.seed_defaults(db, aeroplane.uuid)
-            assert len(summary.assumptions) == 14: takeoff and landing field length (Roskam ground-roll + RC modes))
+            assert len(summary.assumptions) == 14
 
     def test_default_values_match(self, client_and_db):
         _, SessionLocal = client_and_db
@@ -47,7 +47,7 @@ class TestSeedDefaults:
             svc.seed_defaults(db, aeroplane.uuid)
             summary = svc.seed_defaults(db, aeroplane.uuid)
             # 8 original + 5 electric-endurance params added in gh-491
-            assert len(summary.assumptions) == 13: takeoff and landing field length (Roskam ground-roll + RC modes))
+            assert len(summary.assumptions) == 14
 
     def test_all_defaults_use_estimate_source(self, client_and_db):
         _, SessionLocal = client_and_db
@@ -77,7 +77,7 @@ class TestListAssumptions:
             svc.seed_defaults(db, aeroplane.uuid)
             summary = svc.list_assumptions(db, aeroplane.uuid)
             # 8 original + 5 electric-endurance params added in gh-491
-            assert len(summary.assumptions) == 13: takeoff and landing field length (Roskam ground-roll + RC modes))
+            assert len(summary.assumptions) == 14
 
     def test_empty_before_seed(self, client_and_db):
         _, SessionLocal = client_and_db

@@ -31,7 +31,7 @@ interface UseFieldLengthsOptions {
   landingMode?: LandingMode;
   vThrowMps?: number | null;
   vReleaseMps?: number | null;
-  bungeForceN?: number | null;
+  bungeeForceN?: number | null;
   stretchM?: number | null;
 }
 
@@ -42,7 +42,7 @@ export function useFieldLengths(
     landingMode = "runway",
     vThrowMps,
     vReleaseMps,
-    bungeForceN,
+    bungeeForceN,
     stretchM,
   }: UseFieldLengthsOptions = {}
 ) {
@@ -51,7 +51,7 @@ export function useFieldLengths(
   params.set("landing_mode", landingMode);
   if (vThrowMps != null) params.set("v_throw_mps", String(vThrowMps));
   if (vReleaseMps != null) params.set("v_release_mps", String(vReleaseMps));
-  if (bungeForceN != null) params.set("bungee_force_N", String(bungeForceN));
+  if (bungeeForceN != null) params.set("bungee_force_N", String(bungeeForceN));
   if (stretchM != null) params.set("stretch_m", String(stretchM));
 
   const url = aeroplaneId

@@ -11,12 +11,12 @@ Takeoff ground roll (Roskam §3.4 simplified):
 
     where:
       W/S  = wing loading in N/m²
-      T/W  = thrust-to-weight ratio (using T_static_mean ≈ 0.75 · T_static_zero)
+      T/W  = thrust-to-weight ratio (T as supplied — see T_static_mean note)
       ρ    = sea-level ISA density = 1.225 kg/m³
 
 Takeoff to 50 ft obstacle:
 
-    s_TO_50ft = K_TO_50FT · s_TO_ground   (K_TO_50FT = 1.66, SE-piston AEO)
+    s_TO_50ft = _K_TO_50FT · s_TO_ground   (_K_TO_50FT = 1.66, SE-piston AEO)
 
 Landing ground roll (Roskam §3.4):
 
@@ -26,7 +26,7 @@ Landing ground roll (Roskam §3.4):
 
 Landing from 50 ft obstacle:
 
-    s_LDG_50ft = K_LDG_50FT · s_LDG_ground   (K_LDG_50FT = 1.5)
+    s_LDG_50ft = _K_LDG_50FT · s_LDG_ground   (_K_LDG_50FT = 2.73)
 
 RC mode modifiers:
   hand_launch  : s_TO_ground = 0 when v_throw ≥ 1.10·V_S; error if below.
@@ -35,9 +35,12 @@ RC mode modifiers:
   belly_land   : μ_brake = 0.5 (grass + fuselage friction, no wheels).
 
 Assumptions (spec §3.4 and gh-489 amendments):
-  - T_static_mean ≈ 0.75 · T_static_zero (drag-during-roll approximation
-    embedded in the 1.21 constant; Roskam confirms T_eff < T_static for props)
-  - μ_roll = 0.025 (hard runway, from spec)
+  - _T_STATIC_MEAN_FACTOR = 1.0 (pass-through): Roskam's 1.21 constant already
+    encodes the T_mean/T_static ratio. The caller supplies zero-velocity static
+    thrust and no additional de-rate is applied.
+  - _K_LDG_50FT = 2.73: Roskam gives ~1.5 for the air phase only; the full
+    total-from-50ft multiplier (air + ground) calibrated against Cessna 172N
+    POH (410 m / 150 m = 2.73).
   - V_LOF = 1.2 · V_S
   - V_TD  = 1.3 · V_S  (V_app ≈ V_TD for the simplified model)
   - Sea-level ISA (ρ = 1.225 kg/m³)
@@ -63,8 +66,8 @@ _G: float = 9.81             # m/s² — standard gravity
 _C_TO: float = 1.21
 
 # Obstacle correction factors
-K_TO_50FT: float = 1.66     # Roskam §3.4, SE-piston AEO, 50-ft obstacle
-K_LDG_50FT: float = 2.73    # Roskam §3.4 total from 50 ft ÷ ground roll (≈ 2.5–3.0 for light aircraft)
+_K_TO_50FT: float = 1.66     # Roskam §3.4, SE-piston AEO, 50-ft obstacle
+_K_LDG_50FT: float = 2.73    # Roskam §3.4 total from 50 ft ÷ ground roll (≈ 2.5–3.0 for light aircraft)
 # NOTE: Roskam gives k_LDG_50ft ≈ 1.5 for the *air phase alone*; the full
 # total-from-50ft multiplier (air + ground) is ~2.5–3.0.  The Cessna 172N
 # POH cross-check calibrates this to 2.73 (410 m / 150 m).
@@ -74,7 +77,6 @@ K_LDG_50FT: float = 2.73    # Roskam §3.4 total from 50 ft ÷ ground roll (≈ 
 _K_LDG_HARD: float = 0.5847
 
 # Friction coefficients
-_MU_ROLL_HARD: float = 0.025   # rolling resistance, hard runway (Roskam)
 _MU_BRAKE_HARD: float = 0.4    # braking, dry hard runway
 _MU_BELLY: float = 0.5         # belly landing (grass + fuselage scraping)
 
@@ -377,7 +379,7 @@ def compute_field_lengths(
                 v_release, v_lof, mass_kg, s_ref_m2, cl_max_to, t_static, rho, g
             )
 
-        s_to_50ft = _apply_obstacle_factor(s_to_ground, K_TO_50FT)
+        s_to_50ft = _apply_obstacle_factor(s_to_ground, _K_TO_50FT)
 
     else:  # runway
         _check_thrust(aircraft, takeoff_mode)
@@ -385,7 +387,7 @@ def compute_field_lengths(
         s_to_ground = _compute_s_to_ground(
             mass_kg, s_ref_m2, cl_max_to, t_static, rho, g
         )
-        s_to_50ft = _apply_obstacle_factor(s_to_ground, K_TO_50FT)
+        s_to_50ft = _apply_obstacle_factor(s_to_ground, _K_TO_50FT)
 
     # --- Landing field length -------------------------------------------------
     mu_brake: float
@@ -398,7 +400,7 @@ def compute_field_lengths(
     s_ldg_ground = _compute_s_ldg_ground(
         mass_kg, s_ref_m2, cl_max_ldg, rho, g, mu_brake
     )
-    s_ldg_50ft = _apply_obstacle_factor(s_ldg_ground, K_LDG_50FT)
+    s_ldg_50ft = _apply_obstacle_factor(s_ldg_ground, _K_LDG_50FT)
 
     return {
         "s_to_ground_m": round(s_to_ground, 1),

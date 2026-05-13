@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Annotated, Literal, NoReturn
+from typing import Annotated, NoReturn
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import UUID4
@@ -11,13 +11,23 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import InternalError, NotFoundError, ServiceException
 from app.db.session import get_db
-from app.models.aeroplanemodel import AeroplaneModel, DesignAssumptionModel
+from app.models.aeroplanemodel import (
+    AeroplaneModel,
+    WingModel,
+    WingXSecDetailModel,
+    WingXSecModel,
+    WingXSecTrailingEdgeDeviceModel,
+)
 from app.schemas.design_assumption import PARAMETER_DEFAULTS
 from app.schemas.field_length import FieldLengthRead, LandingMode, TakeoffMode
+from app.services.design_assumptions_service import get_effective_assumption
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# TED role value that identifies a flap surface
+_FLAP_ROLE = "flap"
 
 
 def _raise_http_from_domain(exc: ServiceException) -> NoReturn:
@@ -39,23 +49,29 @@ def _get_aeroplane(db: Session, aeroplane_id: UUID4) -> AeroplaneModel:
     return plane
 
 
-def _effective_assumption(
-    db: Session, aeroplane_id: int, param_name: str
-) -> float | None:
-    """Return the effective (active-source) value of a design assumption, or None."""
-    row = (
-        db.query(DesignAssumptionModel)
+def _detect_flap_type(db: Session, aeroplane_id: int) -> str | None:
+    """Detect the flap type from wing trailing-edge devices.
+
+    Queries all TEDs for all wings of the aeroplane and returns "plain" when
+    any TED with role == "flap" is found. Returns None (no-flaps) otherwise.
+
+    The DB does not store a plain/slotted/fowler sub-type on the TED row,
+    so "plain" is used as a conservative default when a flap is present.
+    The flap-factor table in the service maps "plain" to 1.1× TO / 1.3× LDG.
+    """
+    # Join chain: TED → WingXSecDetail → WingXSec → Wing → filter by aeroplane_id
+    has_flap = (
+        db.query(WingXSecTrailingEdgeDeviceModel)
+        .join(WingXSecDetailModel, WingXSecDetailModel.id == WingXSecTrailingEdgeDeviceModel.wing_xsec_detail_id)
+        .join(WingXSecModel, WingXSecModel.id == WingXSecDetailModel.wing_xsec_id)
+        .join(WingModel, WingModel.id == WingXSecModel.wing_id)
         .filter(
-            DesignAssumptionModel.aeroplane_id == aeroplane_id,
-            DesignAssumptionModel.parameter_name == param_name,
+            WingModel.aeroplane_id == aeroplane_id,
+            WingXSecTrailingEdgeDeviceModel.role == _FLAP_ROLE,
         )
         .first()
     )
-    if row is None:
-        return PARAMETER_DEFAULTS.get(param_name)
-    if row.active_source == "CALCULATED" and row.calculated_value is not None:
-        return row.calculated_value
-    return row.estimate_value
+    return "plain" if has_flap is not None else None
 
 
 @router.get(
@@ -122,9 +138,9 @@ async def get_field_lengths(
         # Gather inputs from design assumptions + computation context
         ctx = plane.assumption_computation_context or {}
 
-        mass_kg = _effective_assumption(db, plane.id, "mass") or PARAMETER_DEFAULTS["mass"]
-        cl_max = _effective_assumption(db, plane.id, "cl_max") or PARAMETER_DEFAULTS["cl_max"]
-        t_static_raw = _effective_assumption(db, plane.id, "t_static_N")
+        mass_kg = get_effective_assumption(db, plane.id, "mass") or PARAMETER_DEFAULTS["mass"]
+        cl_max = get_effective_assumption(db, plane.id, "cl_max") or PARAMETER_DEFAULTS["cl_max"]
+        t_static_raw = get_effective_assumption(db, plane.id, "t_static_N")
         s_ref_m2 = ctx.get("s_ref_m2")
         v_stall_mps = ctx.get("v_stall_mps")
 
@@ -143,11 +159,15 @@ async def get_field_lengths(
                 )
             )
 
+        # Detect flap type from wing TEDs (Amendment 2: flap-aware CL_max)
+        flap_type = _detect_flap_type(db, plane.id)
+
         aircraft: dict = {
             "mass_kg": float(mass_kg),
             "s_ref_m2": float(s_ref_m2),
             "cl_max": float(cl_max),
             "v_stall_mps": float(v_stall_mps),
+            "flap_type": flap_type,
         }
 
         # Include thrust if present (and non-zero)
