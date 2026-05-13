@@ -254,6 +254,10 @@ def compute_endurance(db: Session, aircraft: Any) -> dict[str, Any]:
     v_min_sink: float | None = ctx.get("v_min_sink_mps")
     s_ref: float | None = ctx.get("s_ref_m2")
     ar: float | None = ctx.get("aspect_ratio")
+    mac_m: float | None = ctx.get("mac_m")
+
+    # Re-table for V-specific cd0/e lookup (gh-493 Amendment 7)
+    polar_re_table: list | None = ctx.get("polar_re_table")
 
     # Resolve mass — must be explicitly provided; 2.0 kg silent default removed (gh-490)
     _mass_raw = da.get("mass")
@@ -334,12 +338,43 @@ def compute_endurance(db: Session, aircraft: Any) -> dict[str, Any]:
         warnings=warnings,
     )
 
+    # --- V-specific cd0/e from Re table (gh-493 Amendment 7) ---------------
+    # If polar_re_table is available in context, look up V-specific values.
+    # Backward-compat: fall back to scalar cd0/e_oswald when table is absent.
+    if polar_re_table and mac_m is not None and mac_m > 0:
+        from app.services.polar_re_table_service import lookup_cd0_at_v, lookup_e_oswald_at_v
+        cd0_at_vmd = lookup_cd0_at_v(
+            v_mps=float(v_md),
+            table=polar_re_table,
+            mac_m=float(mac_m),
+            rho=RHO_SEA_LEVEL,
+        )
+        cd0_at_vmin = lookup_cd0_at_v(
+            v_mps=float(v_min_sink),
+            table=polar_re_table,
+            mac_m=float(mac_m),
+            rho=RHO_SEA_LEVEL,
+        )
+        e_at_vmd = lookup_e_oswald_at_v(v_mps=float(v_md), table=polar_re_table)
+        e_at_vmin = lookup_e_oswald_at_v(v_mps=float(v_min_sink), table=polar_re_table)
+        logger.debug(
+            "Endurance: using Re-table cd0 at V_md=%.1f m/s: %.5f (vs scalar %.5f); "
+            "cd0 at V_min_sink=%.1f m/s: %.5f",
+            v_md, cd0_at_vmd, cd0, v_min_sink, cd0_at_vmin,
+        )
+    else:
+        # Backward-compat: no Re table — use scalar cd0/e_oswald
+        cd0_at_vmd = cd0
+        cd0_at_vmin = cd0
+        e_at_vmd = e_oswald
+        e_at_vmin = e_oswald
+
     # --- Power required at V_md and V_min_sink ------------------------------
     p_req_vmd = _power_required(
         rho=RHO_SEA_LEVEL,
         v=float(v_md),
-        cd0=cd0,
-        e=e_oswald,
+        cd0=cd0_at_vmd,
+        e=e_at_vmd,
         ar=float(ar),
         mass=mass,
         s_ref=float(s_ref),
@@ -348,8 +383,8 @@ def compute_endurance(db: Session, aircraft: Any) -> dict[str, Any]:
     p_req_vmin = _power_required(
         rho=RHO_SEA_LEVEL,
         v=float(v_min_sink),
-        cd0=cd0,
-        e=e_oswald,
+        cd0=cd0_at_vmin,
+        e=e_at_vmin,
         ar=float(ar),
         mass=mass,
         s_ref=float(s_ref),

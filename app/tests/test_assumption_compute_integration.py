@@ -69,8 +69,8 @@ def test_recompute_publishes_assumption_changed_on_cg_change(client_and_db):
         ),
         patch(
             "app.services.assumption_compute_service._fine_sweep_cl_max",
-            # Now returns (cl_max, cl_array, cd_array) — gh-486
-            return_value=(1.35, np.array([0.2, 0.4, 0.6, 0.8, 1.0, 1.2]), np.array([0.021, 0.023, 0.027, 0.034, 0.043, 0.055])),
+            # gh-493: now returns 4-tuple (cl_max, cl_array, cd_array, v_array)
+            return_value=(1.35, np.array([0.2, 0.4, 0.6, 0.8, 1.0, 1.2]), np.array([0.021, 0.023, 0.027, 0.034, 0.043, 0.055]), np.linspace(9.0, 28.0, 6)),
         ),
         patch(
             "app.services.assumption_compute_service._extract_cl_alpha_from_linear_sweep",
@@ -128,8 +128,8 @@ def test_recompute_does_not_publish_when_cg_unchanged(client_and_db):
         ),
         patch(
             "app.services.assumption_compute_service._fine_sweep_cl_max",
-            # Now returns (cl_max, cl_array, cd_array) — gh-486
-            return_value=(1.35, np.array([0.2, 0.4, 0.6, 0.8, 1.0, 1.2]), np.array([0.021, 0.023, 0.027, 0.034, 0.043, 0.055])),
+            # gh-493: now returns 4-tuple (cl_max, cl_array, cd_array, v_array)
+            return_value=(1.35, np.array([0.2, 0.4, 0.6, 0.8, 1.0, 1.2]), np.array([0.021, 0.023, 0.027, 0.034, 0.043, 0.055]), np.linspace(9.0, 28.0, 6)),
         ),
         patch(
             "app.services.assumption_compute_service._extract_cl_alpha_from_linear_sweep",

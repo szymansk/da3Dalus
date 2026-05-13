@@ -85,10 +85,11 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     try:
         x_np, mac, cd0, s_ref = _stability_run_at_cruise(asb_airplane, v_cruise)
         stall_alpha = _coarse_alpha_sweep(asb_airplane, v_cruise, config)
-        # _fine_sweep_cl_max returns (cl_max, cl_array, cd_array) so that the
-        # parabolic polar fit (gh-486) can consume the raw sweep data.
+        # _fine_sweep_cl_max returns (cl_max, cl_array, cd_array, v_array) so that
+        # the parabolic polar fit (gh-486) and Re-table builder (gh-493) can
+        # consume the raw sweep data without extra AeroBuildup invocations.
         fine_result = _fine_sweep_cl_max(asb_airplane, stall_alpha, v_cruise, v_max, config)
-        cl_max, sweep_cl_arr, sweep_cd_arr = fine_result
+        cl_max, sweep_cl_arr, sweep_cd_arr, sweep_v_arr = fine_result
     except Exception:
         logger.exception(
             "AeroBuildup failed during recompute for aircraft %s — aborting", aeroplane_uuid
@@ -129,6 +130,46 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     )
     e_oswald_fallback = e_oswald_fit is None
     e_oswald_effective = e_oswald_fit if e_oswald_fit is not None else 0.8
+    # -----------------------------------------------------------------------
+
+    # --- gh-493: Reynolds-dependent polar table ----------------------------
+    # Build a 3-band Re table by rebinning the existing fine-sweep data.
+    # V-bands: {V_s_approx, V_cruise, max(1.3·V_cruise, V_max_goal)}.
+    # NO new AeroBuildup invocations — marginal cost ≤ 200 ms (3× OLS fits).
+    # V_max heuristic is decoupled from the powertrain to prevent chicken-egg.
+    # I2: clamp top anchor to actual sweep max to avoid sparse top band.
+    v_stall_approx_re = max(v_cruise * 0.5, 3.0)  # same heuristic as _fine_sweep_cl_max
+    v_sweep_max_re = v_max  # actual upper bound of the fine sweep velocity range
+    v_max_re_anchor = min(max(1.3 * v_cruise, v_max), v_sweep_max_re)
+    v_anchor_points_re = [v_stall_approx_re, v_cruise, v_max_re_anchor]
+    polar_re_table_top_band_fallback = False
+    try:
+        from app.services.polar_re_table_service import build_re_table
+        polar_re_table, polar_re_table_degenerate = build_re_table(
+            v_array=np.asarray(sweep_v_arr, dtype=float),
+            cl_array=np.asarray(sweep_cl_arr, dtype=float),
+            cd_array=np.asarray(sweep_cd_arr, dtype=float),
+            mac_m=mac,
+            rho=1.225,
+            v_anchor_points=v_anchor_points_re,
+            cl_max=cl_max_effective_for_fit if cl_max_effective_for_fit else cl_max,
+            ar=aspect_ratio if aspect_ratio is not None else 0.0,
+            v_sweep_max=v_sweep_max_re,
+        )
+        # I2: set top_band_fallback flag if any non-degenerate row has fallback_used=True
+        if not polar_re_table_degenerate and polar_re_table:
+            top_row = max(polar_re_table, key=lambda r: r.get("re", 0))
+            polar_re_table_top_band_fallback = top_row.get("fallback_used", False)
+        # I3: validate + serialize through PolarReTableRow schema at cache boundary
+        # This strips any internal fields and enforces schema discipline.
+        from app.schemas.polar_re_table import PolarReTableRow
+        polar_re_table = [PolarReTableRow(**row).model_dump() for row in polar_re_table]
+    except Exception:
+        logger.exception(
+            "Re-table build failed for aircraft %s — skipping (non-fatal)", aeroplane_uuid
+        )
+        polar_re_table = []
+        polar_re_table_degenerate = True
     # -----------------------------------------------------------------------
 
     # --- gh-488: Loading + Stability envelopes ---------------------------
@@ -173,6 +214,39 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     v_max_effective = v_max_computed if v_max_computed is not None else v_max
     is_glider = p_to_w <= 0
 
+    # --- gh-493 Amendment 7: Picard iteration for V_md / V_min_sink ----------
+    # One Picard pass: re-lookup cd0/e at the converged scalar V, re-solve once.
+    # Backward-compat: only runs when polar_re_table is available (non-empty).
+    if polar_re_table and mac > 0:
+        from app.services.polar_re_table_service import lookup_cd0_at_v, lookup_e_oswald_at_v
+        v_md = _picard_iterate_speed(
+            v0=v_md,
+            speed_fn=_min_drag_speed,
+            speed_fn_kwargs=dict(mass_kg=mass, s_ref_m2=s_ref, aspect_ratio=aspect_ratio),
+            polar_table=polar_re_table,
+            mac_m=mac,
+        )
+        v_min_sink = _picard_iterate_speed(
+            v0=v_min_sink,
+            speed_fn=_min_sink_speed,
+            speed_fn_kwargs=dict(mass_kg=mass, s_ref_m2=s_ref, aspect_ratio=aspect_ratio),
+            polar_table=polar_re_table,
+            mac_m=mac,
+        )
+        # For V_max: use Re-table cd0/e at converged V_max
+        if v_max_computed is not None:
+            v_max_computed = _picard_iterate_speed(
+                v0=v_max_computed,
+                speed_fn=_max_level_speed,
+                speed_fn_kwargs=dict(
+                    mass_kg=mass, s_ref_m2=s_ref, aspect_ratio=aspect_ratio,
+                    power_to_weight=p_to_w, prop_eta=prop_eta,
+                ),
+                polar_table=polar_re_table,
+                mac_m=mac,
+            )
+            v_max_effective = v_max_computed if v_max_computed is not None else v_max
+
     # If the user hasn't set a flight profile, suggest V_md as the
     # cruise speed (best L/D = best range for prop aircraft). Once the
     # user creates a profile and sets cruise_speed_mps, we respect it.
@@ -208,12 +282,20 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         # Kept for backward compat — single-value consumers still get a CG.
         "cg_agg_m": round(cg_agg, 4) if cg_agg is not None else None,
         # Parabolic polar fit results (gh-486)
+        # ctx["cd0"] scalar = stability-run cd0 (backward-compat key for gh-486 consumers)
+        "cd0": round(cd0, 5),
         "e_oswald": round(e_oswald_fit, 4) if e_oswald_fit is not None else None,
         "e_oswald_r2": round(e_r2, 4) if e_r2 is not None else None,
         "e_oswald_quality": _classify_polar_quality(e_r2) if e_r2 is not None else "unknown",
         "e_oswald_fallback_used": e_oswald_fallback,
         # Linear-range CL_α from α-sweep (gh-487) — consumed by compute_vn_curve for gust loads
         "cl_alpha_per_rad": round(cl_alpha_per_rad, 4) if cl_alpha_per_rad is not None else None,
+        # Reynolds-dependent polar table (gh-493) — 3 V-bands from existing fine-sweep rebinning.
+        # No extra AeroBuildup runs. Schema per row: {re, v_mps, cd0, e_oswald, cl_max, r2, fallback_used}
+        # ctx["cd0"] and ctx["e_oswald"] scalar keys REMAIN for backward compat (gh-486 consumers).
+        "polar_re_table": polar_re_table,
+        "polar_re_table_degenerate": polar_re_table_degenerate,
+        "polar_re_table_top_band_fallback": polar_re_table_top_band_fallback,
         "computed_at": datetime.now(timezone.utc).isoformat(),
     }
     enrich_context_with_cg_envelope(
@@ -353,11 +435,16 @@ def _fine_sweep_cl_max(
     v_cruise: float,
     v_max: float,
     config: AircraftComputationConfigModel,
-) -> tuple[float, np.ndarray, np.ndarray]:
-    """Returns (CL_max, cl_array, cd_array) from a fine alpha × velocity sweep.
+) -> tuple[float, np.ndarray, np.ndarray, np.ndarray]:
+    """Returns (CL_max, cl_array, cd_array, v_array) from a fine alpha × velocity sweep.
 
-    The returned CL and CD arrays span the full swept range and are used by the
-    parabolic polar fitter (gh-486) to derive the Oswald efficiency factor.
+    The returned CL, CD, and V arrays span the full swept range.  CL and CD are
+    used by the parabolic polar fitter (gh-486) to derive the Oswald efficiency
+    factor.  V is additionally used by the Re-table builder (gh-493) to bin
+    samples by velocity band.
+
+    Note: the v_array is the velocity at which each (CL, CD) sample was taken.
+    It has the same length as cl_array and cd_array.
     """
     import aerosandbox as asb
 
@@ -372,6 +459,7 @@ def _fine_sweep_cl_max(
     cl_max = -float("inf")
     cl_list: list[float] = []
     cd_list: list[float] = []
+    v_list: list[float] = []
     for v in velocities:
         for a in alphas:
             op = asb.OperatingPoint(velocity=float(v), alpha=float(a))
@@ -381,9 +469,15 @@ def _fine_sweep_cl_max(
             cd = _extract_scalar(r, "CD", default=0.0)
             cl_list.append(cl)
             cd_list.append(cd)
+            v_list.append(float(v))
             if cl > cl_max:
                 cl_max = cl
-    return float(cl_max), np.asarray(cl_list, dtype=float), np.asarray(cd_list, dtype=float)
+    return (
+        float(cl_max),
+        np.asarray(cl_list, dtype=float),
+        np.asarray(cd_list, dtype=float),
+        np.asarray(v_list, dtype=float),
+    )
 
 
 def _extract_cl_alpha_from_linear_sweep(
@@ -828,6 +922,66 @@ def _min_sink_speed(
         return None
     weight_n = mass_kg * g
     return float(np.sqrt(2.0 * weight_n / (rho * s_ref_m2 * cl_mp)))
+
+
+def _picard_iterate_speed(
+    v0: float | None,
+    speed_fn,
+    speed_fn_kwargs: dict,
+    polar_table: list,
+    mac_m: float,
+    rho: float = 1.225,
+    picard_tolerance: float = 0.05,
+) -> float | None:
+    """One Picard iteration pass for Re-dependent speed computations (gh-493 I2).
+
+    Computes V_1 by evaluating ``speed_fn`` with cd0/e looked up at the
+    scalar V_0.  If |V_1 - V_0| / V_0 < ``picard_tolerance`` (5%), accepts
+    V_1.  Otherwise logs a warning and also accepts V_1 (one-pass policy).
+
+    Parameters
+    ----------
+    v0              : Initial speed [m/s] from scalar-polar computation.
+                      Returns ``None`` immediately if v0 is None.
+    speed_fn        : One of ``_min_drag_speed``, ``_min_sink_speed``,
+                      ``_max_level_speed`` — must accept keyword arguments
+                      ``cd0`` and ``oswald_e`` plus ``**speed_fn_kwargs``.
+    speed_fn_kwargs : Dict of additional kwargs forwarded to ``speed_fn``
+                      (excludes ``cd0`` and ``oswald_e`` which are injected here).
+    polar_table     : list[dict] from ``build_re_table``.
+    mac_m           : Mean aerodynamic chord [m].
+    rho             : Air density [kg/m³].
+    picard_tolerance: Relative change threshold below which convergence is
+                      declared (default 5 %).
+
+    Returns
+    -------
+    V_1 (Picard-iterated speed) or None if ``speed_fn`` returns None.
+    """
+    if v0 is None:
+        return None
+    if not polar_table or mac_m <= 0:
+        return v0
+
+    from app.services.polar_re_table_service import lookup_cd0_at_v, lookup_e_oswald_at_v
+
+    cd0_at_v0 = lookup_cd0_at_v(v_mps=v0, table=polar_table, mac_m=mac_m, rho=rho)
+    e_at_v0 = lookup_e_oswald_at_v(v_mps=v0, table=polar_table)
+
+    v1 = speed_fn(cd0=cd0_at_v0, oswald_e=e_at_v0, **speed_fn_kwargs)
+
+    if v1 is None:
+        return v0
+
+    rel_change = abs(v1 - v0) / max(abs(v0), 1e-6)
+    if rel_change >= picard_tolerance:
+        logger.warning(
+            "Picard iteration: speed changed by %.1f %% (V_0=%.2f m/s → V_1=%.2f m/s). "
+            "Re table may not be representative at this V. Accepting V_1 (one-pass policy).",
+            rel_change * 100.0, v0, v1,
+        )
+
+    return v1
 
 
 def _cache_context(
