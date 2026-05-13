@@ -13,6 +13,7 @@ aeroplane row for the UI Info Chip Row.
 This is a sync function. Callers from async context MUST wrap with
 asyncio.to_thread().
 """
+
 from __future__ import annotations
 
 import logging
@@ -59,9 +60,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     asb_airplane = _build_asb_airplane(aircraft)
 
     if not asb_airplane.wings:
-        logger.info(
-            "No wings on aircraft %s — skipping assumption recompute", aeroplane_uuid
-        )
+        logger.info("No wings on aircraft %s — skipping assumption recompute", aeroplane_uuid)
         return
 
     # Override ASB's reference area / chord / span so all CL/CD numbers
@@ -102,15 +101,27 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     old_cg = _get_current_calculated_value(db, aircraft.id, "cg_x")
 
     update_calculated_value(
-        db, aeroplane_uuid, "cl_max", round(cl_max, 4), "aerobuildup",
+        db,
+        aeroplane_uuid,
+        "cl_max",
+        round(cl_max, 4),
+        "aerobuildup",
         auto_switch_source=True,
     )
     update_calculated_value(
-        db, aeroplane_uuid, "cd0", round(cd0, 5), "aerobuildup",
+        db,
+        aeroplane_uuid,
+        "cd0",
+        round(cd0, 5),
+        "aerobuildup",
         auto_switch_source=True,
     )
     update_calculated_value(
-        db, aeroplane_uuid, "cg_x", round(cg_x, 4), "aerobuildup",
+        db,
+        aeroplane_uuid,
+        "cg_x",
+        round(cg_x, 4),
+        "aerobuildup",
         auto_switch_source=True,
     )
 
@@ -145,6 +156,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     polar_re_table_top_band_fallback = False
     try:
         from app.services.polar_re_table_service import build_re_table
+
         polar_re_table, polar_re_table_degenerate = build_re_table(
             v_array=np.asarray(sweep_v_arr, dtype=float),
             cl_array=np.asarray(sweep_cl_arr, dtype=float),
@@ -163,6 +175,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         # I3: validate + serialize through PolarReTableRow schema at cache boundary
         # This strips any internal fields and enforces schema discipline.
         from app.schemas.polar_re_table import PolarReTableRow
+
         polar_re_table = [PolarReTableRow(**row).model_dump() for row in polar_re_table]
     except Exception:
         logger.exception(
@@ -190,6 +203,36 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         x_np=float(x_np), mac=float(mac), target_sm=float(target_sm)
     )
 
+    # gh-500: Replace 0.30·MAC stub with physics-based forward CG limit.
+    # On failure, keeps the stub from compute_stability_envelope (safe fallback).
+    try:
+        from app.services.elevator_authority_service import compute_forward_cg_limit
+
+        _fwd_cg_result = compute_forward_cg_limit(db, aircraft)
+        if _fwd_cg_result.cg_fwd_m is not None:
+            _stability["cg_stability_fwd_m"] = _fwd_cg_result.cg_fwd_m
+            if _fwd_cg_result.warnings:
+                logger.info(
+                    "Elevator authority forward CG (aircraft %s): %s",
+                    aircraft.id,
+                    "; ".join(_fwd_cg_result.warnings),
+                )
+        else:
+            # Infeasibility: no feasible forward CG limit from physics.
+            # Keep the stub (conservative) and log a warning.
+            logger.warning(
+                "Elevator authority infeasibility for aircraft %s — keeping stub forward CG limit. "
+                "Warnings: %s",
+                aircraft.id,
+                "; ".join(_fwd_cg_result.warnings),
+            )
+    except Exception:
+        logger.debug(
+            "Elevator authority forward CG failed for aircraft %s — keeping stub.",
+            aircraft.id,
+            exc_info=True,
+        )
+
     re = _reynolds_number(v_cruise, mac)
     mass = _load_effective_assumption(db, aircraft.id, "mass")
     # Use EFFECTIVE values so user overrides (toggle to ESTIMATE)
@@ -201,14 +244,21 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     v_stall = _stall_speed(mass, s_ref, cl_max_effective)
     # Use fitted Oswald e (or fallback 0.8) for V_md and V_min_sink.
     v_md = _min_drag_speed(mass, s_ref, cd0_effective, aspect_ratio, oswald_e=e_oswald_effective)
-    v_min_sink = _min_sink_speed(mass, s_ref, cd0_effective, aspect_ratio, oswald_e=e_oswald_effective)
+    v_min_sink = _min_sink_speed(
+        mass, s_ref, cd0_effective, aspect_ratio, oswald_e=e_oswald_effective
+    )
 
     # V_max from physics if powered (P/W > 0); otherwise fall back to
     # the user-set goal in the flight profile (gliders set max speed
     # via structural limits, not thrust).
     # V_max also uses the fitted Oswald e for consistency with V_md/V_min_sink.
     v_max_computed = _max_level_speed(
-        mass, s_ref, cd0_effective, aspect_ratio, p_to_w, prop_eta,
+        mass,
+        s_ref,
+        cd0_effective,
+        aspect_ratio,
+        p_to_w,
+        prop_eta,
         oswald_e=e_oswald_effective,
     )
     v_max_effective = v_max_computed if v_max_computed is not None else v_max
@@ -219,6 +269,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     # Backward-compat: only runs when polar_re_table is available (non-empty).
     if polar_re_table and mac > 0:
         from app.services.polar_re_table_service import lookup_cd0_at_v, lookup_e_oswald_at_v
+
         v_md = _picard_iterate_speed(
             v0=v_md,
             speed_fn=_min_drag_speed,
@@ -239,8 +290,11 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
                 v0=v_max_computed,
                 speed_fn=_max_level_speed,
                 speed_fn_kwargs=dict(
-                    mass_kg=mass, s_ref_m2=s_ref, aspect_ratio=aspect_ratio,
-                    power_to_weight=p_to_w, prop_eta=prop_eta,
+                    mass_kg=mass,
+                    s_ref_m2=s_ref,
+                    aspect_ratio=aspect_ratio,
+                    power_to_weight=p_to_w,
+                    prop_eta=prop_eta,
                 ),
                 polar_table=polar_re_table,
                 mac_m=mac,
@@ -314,9 +368,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         from app.services.invalidation_service import mark_ops_dirty
 
         mark_ops_dirty(db, aircraft.id)
-        event_bus.publish(
-            AssumptionChanged(aeroplane_id=aircraft.id, parameter_name="cg_x")
-        )
+        event_bus.publish(AssumptionChanged(aeroplane_id=aircraft.id, parameter_name="cg_x"))
 
 
 def _build_asb_airplane(aircraft: AeroplaneModel):
@@ -324,9 +376,7 @@ def _build_asb_airplane(aircraft: AeroplaneModel):
     return aeroplane_schema_to_asb_airplane_async(plane_schema=schema)
 
 
-def _load_or_create_config(
-    db: Session, aeroplane_id: int
-) -> AircraftComputationConfigModel:
+def _load_or_create_config(db: Session, aeroplane_id: int) -> AircraftComputationConfigModel:
     config = (
         db.query(AircraftComputationConfigModel)
         .filter(AircraftComputationConfigModel.aeroplane_id == aeroplane_id)
@@ -341,9 +391,7 @@ def _load_or_create_config(
     return config
 
 
-def _load_flight_profile_speeds(
-    db: Session, aircraft: AeroplaneModel
-) -> tuple[float, float, bool]:
+def _load_flight_profile_speeds(db: Session, aircraft: AeroplaneModel) -> tuple[float, float, bool]:
     """Returns (cruise_mps, v_max_goal_mps, user_set_cruise).
 
     user_set_cruise=False when the aircraft has no flight profile (we
@@ -357,9 +405,7 @@ def _load_flight_profile_speeds(
     profile, source_profile_id = _load_effective_flight_profile(db, aircraft)
     goals = profile.get("goals", {})
     cruise = float(goals.get("cruise_speed_mps", 18.0))
-    v_max = float(
-        goals.get("max_level_speed_mps") or max(1.35 * cruise, cruise + 8.0)
-    )
+    v_max = float(goals.get("max_level_speed_mps") or max(1.35 * cruise, cruise + 8.0))
     user_set_cruise = source_profile_id is not None
     return cruise, v_max, user_set_cruise
 
@@ -377,9 +423,7 @@ def _select_main_wing(asb_airplane):
     return max(asb_airplane.wings, key=lambda w: float(w.area()))
 
 
-def _stability_run_at_cruise(
-    asb_airplane, v_cruise: float
-) -> tuple[float, float, float, float]:
+def _stability_run_at_cruise(asb_airplane, v_cruise: float) -> tuple[float, float, float, float]:
     """Returns (x_np, MAC, CD0, S_ref).
 
     Uses analyse_aerodynamics → AnalysisModel for x_np and CD0 (same
@@ -391,9 +435,7 @@ def _stability_run_at_cruise(
     """
     xyz_ref = list(asb_airplane.xyz_ref) if asb_airplane.xyz_ref is not None else [0.0, 0.0, 0.0]
     op_schema = OperatingPointSchema(velocity=v_cruise, alpha=0.0, xyz_ref=xyz_ref)
-    result, _ = analyse_aerodynamics(
-        AnalysisToolUrlType.AEROBUILDUP, op_schema, asb_airplane
-    )
+    result, _ = analyse_aerodynamics(AnalysisToolUrlType.AEROBUILDUP, op_schema, asb_airplane)
     x_np = _scalar(result.reference.Xnp)
     cd0 = _scalar(result.coefficients.CD)
 
@@ -566,8 +608,7 @@ def _extract_cl_alpha_from_linear_sweep(
         return None
 
     logger.debug(
-        "CL_α extraction: CL_α=%.4f rad⁻¹, CL_0=%.4f, R²=%.4f "
-        "(α ∈ [%.0f°, %.0f°]).",
+        "CL_α extraction: CL_α=%.4f rad⁻¹, CL_0=%.4f, R²=%.4f (α ∈ [%.0f°, %.0f°]).",
         cl_alpha_fit,
         cl_0,
         r2,
@@ -629,11 +670,13 @@ def _fit_parabolic_polar(
     if len(cl_win) < 6:
         logger.warning(
             "polar fit rejected: only %d points in window [%.3f, %.3f] (need ≥ 6)",
-            len(cl_win), cl_lo, cl_hi,
+            len(cl_win),
+            cl_lo,
+            cl_hi,
         )
         return None, None, None
 
-    cl2_win = cl_win ** 2
+    cl2_win = cl_win**2
 
     # Monotonicity guard: dCD/d(CL²) must be non-negative across window
     # (laminar-bubble dip produces a region where CD decreases as CL² increases)
@@ -652,15 +695,11 @@ def _fit_parabolic_polar(
     k, cd0_fit = np.polyfit(cl2_win, cd_win, deg=1)
 
     if k <= 0:
-        logger.warning(
-            "polar fit rejected: non-positive slope k=%.6f (requires k>0)", k
-        )
+        logger.warning("polar fit rejected: non-positive slope k=%.6f (requires k>0)", k)
         return None, None, None
 
     if cd0_fit <= 0:
-        logger.warning(
-            "polar fit rejected: non-positive cd0_fit=%.6f (requires cd0>0)", cd0_fit
-        )
+        logger.warning("polar fit rejected: non-positive cd0_fit=%.6f (requires cd0>0)", cd0_fit)
         return None, None, None
 
     e_oswald = 1.0 / (np.pi * ar * k)
@@ -678,7 +717,9 @@ def _fit_parabolic_polar(
             logger.warning(
                 "polar fit rejected: cd0_fit=%.5f deviates %.1f%% from stability "
                 "run cd0=%.5f (threshold 20%%)",
-                cd0_fit, rel_dev * 100, cd0_stability,
+                cd0_fit,
+                rel_dev * 100,
+                cd0_stability,
             )
             return None, None, None
 
@@ -690,7 +731,10 @@ def _fit_parabolic_polar(
     n_pts = int(len(cl_win))
     logger.info(
         "polar fit success: e_oswald=%.4f cd0=%.5f R²=%.4f n_points=%d",
-        e_oswald, cd0_fit, r2, n_pts,
+        e_oswald,
+        cd0_fit,
+        r2,
+        n_pts,
     )
     return float(cd0_fit), float(e_oswald), float(r2)
 
@@ -707,9 +751,7 @@ def _classify_polar_quality(r2: float) -> str:
     return "low"
 
 
-def _load_effective_assumption(
-    db: Session, aeroplane_id: int, param_name: str
-) -> float:
+def _load_effective_assumption(db: Session, aeroplane_id: int, param_name: str) -> float:
     """Return the effective value of a design assumption (calculated or estimate)."""
     row = (
         db.query(DesignAssumptionModel)
@@ -726,9 +768,7 @@ def _load_effective_assumption(
     return row.estimate_value
 
 
-def _get_current_calculated_value(
-    db: Session, aeroplane_id: int, param_name: str
-) -> float | None:
+def _get_current_calculated_value(db: Session, aeroplane_id: int, param_name: str) -> float | None:
     """Return the current calculated_value for a design assumption, or None."""
     row = (
         db.query(DesignAssumptionModel)
@@ -743,24 +783,15 @@ def _get_current_calculated_value(
 
 def _load_cg_agg(db: Session, aeroplane_id: int) -> float | None:
     """Return mass-weighted CG x from weight items, or None if no items exist."""
-    rows = (
-        db.query(WeightItemModel)
-        .filter(WeightItemModel.aeroplane_id == aeroplane_id)
-        .all()
-    )
+    rows = db.query(WeightItemModel).filter(WeightItemModel.aeroplane_id == aeroplane_id).all()
     if not rows:
         return None
-    items = [
-        {"mass_kg": r.mass_kg, "x_m": r.x_m, "y_m": r.y_m, "z_m": r.z_m}
-        for r in rows
-    ]
+    items = [{"mass_kg": r.mass_kg, "x_m": r.x_m, "y_m": r.y_m, "z_m": r.z_m} for r in rows]
     _, cg_x, _, _ = aggregate_weight_items(items)
     return cg_x
 
 
-def _reynolds_number(
-    velocity: float, mac: float, rho: float = 1.225, mu: float = 1.81e-5
-) -> float:
+def _reynolds_number(velocity: float, mac: float, rho: float = 1.225, mu: float = 1.81e-5) -> float:
     """Sea-level standard atmosphere Reynolds number.
 
     Sufficient for the UI chip; not altitude-aware. Operating points use
@@ -849,11 +880,7 @@ def _max_level_speed(
     coeffs = [a, 0.0, 0.0, -p_eta, b]
     roots = np.roots(coeffs)
     # Pick the largest real positive root above V_md.
-    real_positive = [
-        float(r.real)
-        for r in roots
-        if abs(r.imag) < 1e-6 and r.real > 0
-    ]
+    real_positive = [float(r.real) for r in roots if abs(r.imag) < 1e-6 and r.real > 0]
     if not real_positive:
         return None
     return max(real_positive)
@@ -878,12 +905,7 @@ def _min_drag_speed(
 
     Returns None for degenerate inputs (no wing, zero AR, zero CD0).
     """
-    if (
-        s_ref_m2 <= 0
-        or cd0 <= 1e-6
-        or aspect_ratio is None
-        or aspect_ratio <= 0
-    ):
+    if s_ref_m2 <= 0 or cd0 <= 1e-6 or aspect_ratio is None or aspect_ratio <= 0:
         return None
     k = 1.0 / (np.pi * aspect_ratio * oswald_e)
     cl_opt = float(np.sqrt(cd0 / k))
@@ -910,12 +932,7 @@ def _min_sink_speed(
 
     Returns None for degenerate inputs (no wing, zero AR, zero CD0).
     """
-    if (
-        s_ref_m2 <= 0
-        or cd0 <= 1e-6
-        or aspect_ratio is None
-        or aspect_ratio <= 0
-    ):
+    if s_ref_m2 <= 0 or cd0 <= 1e-6 or aspect_ratio is None or aspect_ratio <= 0:
         return None
     cl_mp = float(np.sqrt(3.0 * np.pi * oswald_e * aspect_ratio * cd0))
     if cl_mp <= 0:
@@ -978,15 +995,15 @@ def _picard_iterate_speed(
         logger.warning(
             "Picard iteration: speed changed by %.1f %% (V_0=%.2f m/s → V_1=%.2f m/s). "
             "Re table may not be representative at this V. Accepting V_1 (one-pass policy).",
-            rel_change * 100.0, v0, v1,
+            rel_change * 100.0,
+            v0,
+            v1,
         )
 
     return v1
 
 
-def _cache_context(
-    db: Session, aircraft: AeroplaneModel, context: dict[str, Any]
-) -> None:
+def _cache_context(db: Session, aircraft: AeroplaneModel, context: dict[str, Any]) -> None:
     """Write computation context JSON to the aeroplane row."""
     aircraft.assumption_computation_context = context
     db.flush()
