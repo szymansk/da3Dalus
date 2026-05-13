@@ -39,7 +39,7 @@ def _required_power_w(speed_ms: float, total_mass_kg: float, altitude_m: float) 
     # Add induced drag (simple)
     cl = (2 * total_mass_kg * 9.81) / (rho * speed_ms**2 * WING_AREA_ESTIMATE_M2)
     aspect_ratio = 8.0  # typical for RC
-    induced_drag = (cl**2) / (math.pi * aspect_ratio * 0.9)
+    induced_drag = (cl**2) / (math.pi * aspect_ratio * 0.9)  # TODO(gh-485): see audit §6.1, full powertrain refactor pending. Do not fix isolated here — needs full geometry-from-DB refactor.
     total_drag = drag_n + 0.5 * rho * speed_ms**2 * induced_drag * WING_AREA_ESTIMATE_M2
     power_shaft = total_drag * speed_ms
     return power_shaft / (PROP_EFFICIENCY * MOTOR_EFFICIENCY)

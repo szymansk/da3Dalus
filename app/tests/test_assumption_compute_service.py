@@ -7,6 +7,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import numpy as np
+
 from app.models.aeroplanemodel import DesignAssumptionModel
 from app.services.assumption_compute_service import recompute_assumptions
 from app.services.design_assumptions_service import seed_defaults
@@ -47,7 +49,8 @@ def _patches():
         ),
         patch(
             "app.services.assumption_compute_service._fine_sweep_cl_max",
-            return_value=1.35,
+            # Now returns (cl_max, cl_array, cd_array) — gh-486
+            return_value=(1.35, np.array([0.2, 0.4, 0.6, 0.8, 1.0, 1.2]), np.array([0.026, 0.028, 0.032, 0.039, 0.049, 0.062])),
         ),
         patch(
             "app.services.assumption_compute_service._load_flight_profile_speeds",

@@ -85,7 +85,10 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     try:
         x_np, mac, cd0, s_ref = _stability_run_at_cruise(asb_airplane, v_cruise)
         stall_alpha = _coarse_alpha_sweep(asb_airplane, v_cruise, config)
-        cl_max = _fine_sweep_cl_max(asb_airplane, stall_alpha, v_cruise, v_max, config)
+        # _fine_sweep_cl_max returns (cl_max, cl_array, cd_array) so that the
+        # parabolic polar fit (gh-486) can consume the raw sweep data.
+        fine_result = _fine_sweep_cl_max(asb_airplane, stall_alpha, v_cruise, v_max, config)
+        cl_max, sweep_cl_arr, sweep_cd_arr = fine_result
     except Exception:
         logger.exception(
             "AeroBuildup failed during recompute for aircraft %s — aborting", aeroplane_uuid
@@ -110,6 +113,24 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         auto_switch_source=True,
     )
 
+    # --- Parabolic polar fit (gh-486) -----------------------------------
+    # Fit C_D = C_D0 + C_L² / (π·e·AR) to the raw sweep data; cache the
+    # derived Oswald efficiency e in the assumption_computation_context so
+    # that _min_drag_speed / _min_sink_speed use aircraft-specific e instead
+    # of the fallback constant 0.8.
+    aspect_ratio = _main_wing_aspect_ratio(asb_airplane)
+    cl_max_effective_for_fit = _load_effective_assumption(db, aircraft.id, "cl_max")
+    _cd0_fit, e_oswald_fit, e_r2 = _fit_parabolic_polar(
+        np.asarray(sweep_cl_arr, dtype=float),
+        np.asarray(sweep_cd_arr, dtype=float),
+        ar=aspect_ratio if aspect_ratio is not None else 0.0,
+        cl_max=cl_max_effective_for_fit,
+        cd0_stability=cd0,
+    )
+    e_oswald_fallback = e_oswald_fit is None
+    e_oswald_effective = e_oswald_fit if e_oswald_fit is not None else 0.8
+    # -----------------------------------------------------------------------
+
     cg_agg = _load_cg_agg(db, aircraft.id)
     re = _reynolds_number(v_cruise, mac)
     mass = _load_effective_assumption(db, aircraft.id, "mass")
@@ -119,16 +140,18 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     cd0_effective = _load_effective_assumption(db, aircraft.id, "cd0")
     p_to_w = _load_effective_assumption(db, aircraft.id, "power_to_weight")
     prop_eta = _load_effective_assumption(db, aircraft.id, "prop_efficiency")
-    aspect_ratio = _main_wing_aspect_ratio(asb_airplane)
     v_stall = _stall_speed(mass, s_ref, cl_max_effective)
-    v_md = _min_drag_speed(mass, s_ref, cd0_effective, aspect_ratio)
-    v_min_sink = _min_sink_speed(mass, s_ref, cd0_effective, aspect_ratio)
+    # Use fitted Oswald e (or fallback 0.8) for V_md and V_min_sink.
+    v_md = _min_drag_speed(mass, s_ref, cd0_effective, aspect_ratio, oswald_e=e_oswald_effective)
+    v_min_sink = _min_sink_speed(mass, s_ref, cd0_effective, aspect_ratio, oswald_e=e_oswald_effective)
 
     # V_max from physics if powered (P/W > 0); otherwise fall back to
     # the user-set goal in the flight profile (gliders set max speed
     # via structural limits, not thrust).
+    # V_max also uses the fitted Oswald e for consistency with V_md/V_min_sink.
     v_max_computed = _max_level_speed(
-        mass, s_ref, cd0_effective, aspect_ratio, p_to_w, prop_eta
+        mass, s_ref, cd0_effective, aspect_ratio, p_to_w, prop_eta,
+        oswald_e=e_oswald_effective,
     )
     v_max_effective = v_max_computed if v_max_computed is not None else v_max
     is_glider = p_to_w <= 0
@@ -154,6 +177,11 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         "x_np_m": round(x_np, 4),
         "target_static_margin": target_sm,
         "cg_agg_m": round(cg_agg, 4) if cg_agg is not None else None,
+        # Parabolic polar fit results (gh-486)
+        "e_oswald": round(e_oswald_fit, 4) if e_oswald_fit is not None else None,
+        "e_oswald_r2": round(e_r2, 4) if e_r2 is not None else None,
+        "e_oswald_quality": _classify_polar_quality(e_r2) if e_r2 is not None else "unknown",
+        "e_oswald_fallback_used": e_oswald_fallback,
         "computed_at": datetime.now(timezone.utc).isoformat(),
     })
 
@@ -285,8 +313,12 @@ def _fine_sweep_cl_max(
     v_cruise: float,
     v_max: float,
     config: AircraftComputationConfigModel,
-) -> float:
-    """Returns CL_max from a fine alpha × velocity sweep."""
+) -> tuple[float, np.ndarray, np.ndarray]:
+    """Returns (CL_max, cl_array, cd_array) from a fine alpha × velocity sweep.
+
+    The returned CL and CD arrays span the full swept range and are used by the
+    parabolic polar fitter (gh-486) to derive the Oswald efficiency factor.
+    """
     import aerosandbox as asb
 
     alpha_min = stall_alpha_deg - config.fine_alpha_margin_deg
@@ -298,15 +330,20 @@ def _fine_sweep_cl_max(
 
     xyz_ref = list(asb_airplane.xyz_ref) if asb_airplane.xyz_ref is not None else [0.0, 0.0, 0.0]
     cl_max = -float("inf")
+    cl_list: list[float] = []
+    cd_list: list[float] = []
     for v in velocities:
         for a in alphas:
             op = asb.OperatingPoint(velocity=float(v), alpha=float(a))
             abu = asb.AeroBuildup(airplane=asb_airplane, op_point=op, xyz_ref=xyz_ref)
             r = abu.run()
             cl = _extract_scalar(r, "CL", default=0.0)
+            cd = _extract_scalar(r, "CD", default=0.0)
+            cl_list.append(cl)
+            cd_list.append(cd)
             if cl > cl_max:
                 cl_max = cl
-    return float(cl_max)
+    return float(cl_max), np.asarray(cl_list, dtype=float), np.asarray(cd_list, dtype=float)
 
 
 def _extract_scalar(result: Any, key: str, *, default: float) -> float:
@@ -317,6 +354,126 @@ def _extract_scalar(result: Any, key: str, *, default: float) -> float:
         val = getattr(result, key, None)
     scalar = _scalar(val)
     return float(scalar) if scalar is not None else default
+
+
+def _fit_parabolic_polar(
+    cl: np.ndarray,
+    cd: np.ndarray,
+    ar: float,
+    cl_max: float,
+    cd0_stability: float,
+) -> tuple[float | None, float | None, float | None]:
+    """Fit C_D = C_D0 + C_L²/(π·e·AR) to raw polar data via OLS.
+
+    Reference: Anderson §6.1.2 (drag polar), §6.7.2 ((L/D)_max derivation).
+
+    Window: linear region of the polar in CL-space:
+        C_L_lo = max(0.10, 0.10 · C_L,max)
+        C_L_hi = 0.85 · C_L,max
+
+    Requires ≥ 6 sample points in the window. All rejection guards must
+    pass; otherwise returns (None, None, None) and emits a logger.warning.
+
+    Rejection guards:
+    - ≥ 6 points in window
+    - k > 0 (slope positive — physically required)
+    - cd0_fit > 0 (positive intercept)
+    - e_oswald ∈ (0.4, 1.0] (physical range)
+    - dCD/d(CL²) monotonically non-decreasing (laminar-bubble guard)
+    - |cd0_fit - cd0_stability| / cd0_stability ≤ 0.20 (sanity check)
+
+    Returns:
+        (cd0_fit, e_oswald, r2) on success, or (None, None, None) on rejection.
+    """
+    if ar is None or ar <= 0:
+        logger.warning("polar fit rejected: invalid aspect ratio %r", ar)
+        return None, None, None
+    cl_lo = max(0.10, 0.10 * cl_max)
+    cl_hi = 0.85 * cl_max
+
+    mask = (cl >= cl_lo) & (cl <= cl_hi)
+    cl_win = cl[mask]
+    cd_win = cd[mask]
+
+    if len(cl_win) < 6:
+        logger.warning(
+            "polar fit rejected: only %d points in window [%.3f, %.3f] (need ≥ 6)",
+            len(cl_win), cl_lo, cl_hi,
+        )
+        return None, None, None
+
+    cl2_win = cl_win ** 2
+
+    # Monotonicity guard: dCD/d(CL²) must be non-negative across window
+    # (laminar-bubble dip produces a region where CD decreases as CL² increases)
+    sort_idx = np.argsort(cl2_win)
+    cl2_sorted = cl2_win[sort_idx]
+    cd_sorted = cd_win[sort_idx]
+    diffs = np.diff(cd_sorted)
+    if np.any(diffs < -1e-6):
+        logger.warning(
+            "polar fit rejected: non-monotonic dCD/d(CL²) in window — "
+            "possible laminar bubble or stall contamination"
+        )
+        return None, None, None
+
+    # OLS fit: C_D = k · C_L² + cd0  (numpy returns highest-degree first)
+    k, cd0_fit = np.polyfit(cl2_win, cd_win, deg=1)
+
+    if k <= 0:
+        logger.warning(
+            "polar fit rejected: non-positive slope k=%.6f (requires k>0)", k
+        )
+        return None, None, None
+
+    if cd0_fit <= 0:
+        logger.warning(
+            "polar fit rejected: non-positive cd0_fit=%.6f (requires cd0>0)", cd0_fit
+        )
+        return None, None, None
+
+    e_oswald = 1.0 / (np.pi * ar * k)
+
+    if not (0.4 < e_oswald <= 1.0):
+        logger.warning(
+            "polar fit rejected: e_oswald=%.4f outside physical range (0.4, 1.0]",
+            e_oswald,
+        )
+        return None, None, None
+
+    if cd0_stability > 0:
+        rel_dev = abs(cd0_fit - cd0_stability) / cd0_stability
+        if rel_dev > 0.20:
+            logger.warning(
+                "polar fit rejected: cd0_fit=%.5f deviates %.1f%% from stability "
+                "run cd0=%.5f (threshold 20%%)",
+                cd0_fit, rel_dev * 100, cd0_stability,
+            )
+            return None, None, None
+
+    # R² for quality reporting
+    ss_res = float(np.sum((cd_win - (k * cl2_win + cd0_fit)) ** 2))
+    ss_tot = float(np.sum((cd_win - np.mean(cd_win)) ** 2))
+    r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
+
+    n_pts = int(len(cl_win))
+    logger.info(
+        "polar fit success: e_oswald=%.4f cd0=%.5f R²=%.4f n_points=%d",
+        e_oswald, cd0_fit, r2, n_pts,
+    )
+    return float(cd0_fit), float(e_oswald), float(r2)
+
+
+def _classify_polar_quality(r2: float) -> str:
+    """Classify polar fit quality by R².
+
+    Returns 'high' (R²>0.99), 'medium' (0.95≤R²≤0.99), or 'low' (R²<0.95).
+    """
+    if r2 > 0.99:
+        return "high"
+    if r2 >= 0.95:
+        return "medium"
+    return "low"
 
 
 def _load_effective_assumption(
@@ -422,6 +579,7 @@ def _max_level_speed(
     prop_eta: float,
     rho: float = 1.225,
     g: float = 9.81,
+    oswald_e: float = 0.8,
 ) -> float | None:
     """Sea-level V_max from a power balance.
 
@@ -452,7 +610,7 @@ def _max_level_speed(
 
     weight_n = mass_kg * g
     p_eta = power_to_weight * mass_kg * prop_eta
-    k = 1.0 / (np.pi * aspect_ratio * 0.8)
+    k = 1.0 / (np.pi * aspect_ratio * oswald_e)
     a = 0.5 * rho * s_ref_m2 * cd0
     b = 2.0 * k * weight_n * weight_n / (rho * s_ref_m2)
 
