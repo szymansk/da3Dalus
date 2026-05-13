@@ -131,7 +131,24 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     e_oswald_effective = e_oswald_fit if e_oswald_fit is not None else 0.8
     # -----------------------------------------------------------------------
 
-    cg_agg = _load_cg_agg(db, aircraft.id)
+    # --- gh-488: Loading + Stability envelopes ---------------------------
+    # cg_agg_m now reflects the is_default loading scenario's CG (per
+    # spec gh-488). Falls back to legacy weight-item aggregation for
+    # pre-migration aeroplanes that have no loading scenarios yet.
+    from app.services.loading_scenario_service import (
+        compute_cg_agg_for_aeroplane,
+        compute_loading_envelope_for_aeroplane,
+        compute_stability_envelope,
+        enrich_context_with_cg_envelope,
+    )
+
+    cg_agg = compute_cg_agg_for_aeroplane(db, aircraft)
+
+    _loading = compute_loading_envelope_for_aeroplane(db, aircraft)
+    _stability = compute_stability_envelope(
+        x_np=float(x_np), mac=float(mac), target_sm=float(target_sm)
+    )
+
     re = _reynolds_number(v_cruise, mac)
     mass = _load_effective_assumption(db, aircraft.id, "mass")
     # Use EFFECTIVE values so user overrides (toggle to ESTIMATE)
@@ -168,7 +185,10 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     # for the Pratt-Walker gust alleviation computation.
     cl_alpha_per_rad = _extract_cl_alpha_from_linear_sweep(asb_airplane, v_cruise)
 
-    _cache_context(db, aircraft, {
+    # Build base context; enrich_context_with_cg_envelope appends gh-488 keys
+    # additively (cg_forward_m, cg_aft_m, sm_at_fwd, sm_at_aft) without
+    # disturbing existing keys (esp. cg_agg_m — backward compat).
+    context: dict = {
         "v_cruise_mps": round(v_cruise_effective, 1),
         "v_cruise_auto": cruise_is_auto,
         "v_max_mps": round(v_max_effective, 1),
@@ -182,6 +202,8 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         "aspect_ratio": round(aspect_ratio, 2) if aspect_ratio is not None else None,
         "x_np_m": round(x_np, 4),
         "target_static_margin": target_sm,
+        # cg_agg_m = CG of the is_default scenario (or plain weight-item CG).
+        # Kept for backward compat — single-value consumers still get a CG.
         "cg_agg_m": round(cg_agg, 4) if cg_agg is not None else None,
         # Parabolic polar fit results (gh-486)
         "e_oswald": round(e_oswald_fit, 4) if e_oswald_fit is not None else None,
@@ -191,7 +213,15 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         # Linear-range CL_α from α-sweep (gh-487) — consumed by compute_vn_curve for gust loads
         "cl_alpha_per_rad": round(cl_alpha_per_rad, 4) if cl_alpha_per_rad is not None else None,
         "computed_at": datetime.now(timezone.utc).isoformat(),
-    })
+    }
+    enrich_context_with_cg_envelope(
+        ctx=context,
+        cg_loading_fwd_m=_loading["cg_loading_fwd_m"],
+        cg_loading_aft_m=_loading["cg_loading_aft_m"],
+        cg_stability_fwd_m=_stability["cg_stability_fwd_m"],
+        cg_stability_aft_m=_stability["cg_stability_aft_m"],
+    )
+    _cache_context(db, aircraft, context)
 
     if old_cg is None or abs(cg_x - old_cg) > 1e-6:
         # Mirror update_assumption: mark OPs DIRTY in the same transaction

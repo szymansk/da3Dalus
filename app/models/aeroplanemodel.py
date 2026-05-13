@@ -473,6 +473,37 @@ class FuselageModel(Base):
         return fuselage
 
 
+class LoadingScenarioModel(Base):
+    """Loading scenario — a named CG loadout for CG envelope computation (gh-488).
+
+    Each scenario describes a combination of component overrides and adhoc items
+    (pilot, payload, ballast, etc.) that determines a CG position.  The min/max
+    across all scenarios for an aeroplane defines the Loading-Envelope.
+    """
+
+    __tablename__ = "loading_scenarios"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    aeroplane_id = Column(
+        Integer,
+        ForeignKey(_FK_AEROPLANES_ID, ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name = Column(String, nullable=False)
+    aircraft_class = Column(String, nullable=False, default="rc_trainer", server_default="rc_trainer")
+    component_overrides = Column(JSON, nullable=False, default=dict, server_default="{}")
+    is_default = Column(Boolean, nullable=False, default=False, server_default="false")
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    aeroplane = relationship("AeroplaneModel", back_populates="loading_scenarios")
+
+
 class AeroplaneModel(Base):
     __tablename__ = "aeroplanes"
     uuid = Column(GUID, default=lambda: uuid.uuid4(), unique=True, nullable=False)
@@ -546,6 +577,12 @@ class AeroplaneModel(Base):
         "StabilityResultModel",
         back_populates="aeroplane",
         cascade=_CASCADE_ALL_DELETE_ORPHAN,
+    )
+    loading_scenarios = relationship(
+        "LoadingScenarioModel",
+        back_populates="aeroplane",
+        cascade=_CASCADE_ALL_DELETE_ORPHAN,
+        order_by="LoadingScenarioModel.id",
     )
 
 
