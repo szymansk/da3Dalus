@@ -11,12 +11,13 @@ import type { StabilityData } from "@/hooks/useStability";
 import { StabilityPanel } from "@/components/workbench/StabilityPanel";
 import type { StoredOperatingPoint, AVLTrimResult, AeroBuildupTrimResult, TrimConstraint, ControlSurface } from "@/hooks/useOperatingPoints";
 import { OperatingPointsPanel } from "@/components/workbench/OperatingPointsPanel";
+import { MatchingChartTab } from "@/components/workbench/MatchingChartTab";
 import { AnalysisStatusIndicator } from "./AnalysisStatusIndicator";
 import type { AnalysisStatus } from "@/hooks/useAnalysisStatus";
 import { useDesignAssumptions } from "@/hooks/useDesignAssumptions";
 import { useRecomputeStatus } from "@/hooks/useRecomputeStatus";
 
-const TABS = ["Assumptions", "Operating Points", "Polar", "Trefftz Plane", "Streamlines", "Envelope", "Stability"] as const;
+const TABS = ["Assumptions", "Operating Points", "Polar", "Trefftz Plane", "Streamlines", "Envelope", "Stability", "Sizing"] as const;
 export type Tab = (typeof TABS)[number];
 export { TABS };
 
@@ -607,6 +608,7 @@ export function AnalysisViewerPanel({
     "Envelope",
     "Stability",
     "Operating Points",
+    "Sizing",
   ]);
   const showWingGate = !hasWings && COMPUTATION_TABS.has(activeTab);
 
@@ -853,6 +855,18 @@ export function AnalysisViewerPanel({
           onDeleteAll={onDeleteAllOps}
           onCreateOp={onCreateOp}
         />
+      )}
+
+      {!showWingGate && activeTab === "Sizing" && aeroplaneId && (
+        <MatchingChartTab aeroplaneId={aeroplaneId} />
+      )}
+
+      {!showWingGate && activeTab === "Sizing" && !aeroplaneId && (
+        <div className="flex flex-1 items-center justify-center bg-card-muted">
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
+            Select an aeroplane to show the matching chart
+          </span>
+        </div>
       )}
 
       {/* Info Chip Row */}

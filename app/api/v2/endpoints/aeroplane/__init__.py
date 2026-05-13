@@ -20,6 +20,7 @@ from .flight_envelope import router as flight_envelope_router
 from .loading_scenarios import router as loading_scenarios_router
 from .field_lengths import router as field_lengths_router
 from .tail_sizing import router as tail_sizing_router
+from .matching_chart import router as matching_chart_router
 
 # Include the routers
 router.include_router(base_router)
@@ -37,3 +38,4 @@ router.include_router(flight_envelope_router)
 router.include_router(loading_scenarios_router)
 router.include_router(field_lengths_router)
 router.include_router(tail_sizing_router)
+router.include_router(matching_chart_router)
