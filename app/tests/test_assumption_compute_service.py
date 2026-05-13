@@ -283,8 +283,11 @@ def test_polar_re_table_keys_in_context(client_and_db):
         assert isinstance(ctx["polar_re_table_degenerate"], bool)
         assert isinstance(ctx["polar_re_table"], list)
 
-        # Backward-compat: scalar cd0 and e_oswald must still be present (gh-486)
+        # Backward-compat: scalar cd0 and e_oswald must BOTH still be present (gh-486)
         # (they may be None if fit failed, but the keys must exist)
-        assert "cd0" in ctx or "e_oswald" in ctx, (
-            "Backward-compat scalar keys (cd0 / e_oswald) must remain in context"
+        assert "cd0" in ctx, (
+            "Backward-compat scalar key 'cd0' must remain in context"
+        )
+        assert "e_oswald" in ctx, (
+            "Backward-compat scalar key 'e_oswald' must remain in context"
         )

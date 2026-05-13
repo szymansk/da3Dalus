@@ -503,6 +503,32 @@ def compute_chart(
     cl_max_to: float = float(aircraft.get("cl_max_takeoff", cl_max_clean))
     cl_max_l: float = float(aircraft.get("cl_max_landing", cl_max_clean))
 
+    # --- gh-493 Amendment 7: Re-table for V-specific cd0/e ------------------
+    # Look up cd0 at V_md and V_cruise from polar_re_table when available.
+    # Backward-compat: if polar_re_table is missing/empty, use scalar cd0/e.
+    polar_re_table = aircraft.get("polar_re_table")
+    mac_m = aircraft.get("mac_m")
+
+    def _cd0_at_v(v: float) -> float:
+        """Return cd0 at velocity v from Re table or scalar fallback."""
+        if polar_re_table and mac_m and float(mac_m) > 0:
+            from app.services.polar_re_table_service import lookup_cd0_at_v
+            return lookup_cd0_at_v(
+                v_mps=v, table=polar_re_table, mac_m=float(mac_m), rho=rho
+            )
+        return cd0
+
+    def _e_at_v(v: float) -> float:
+        """Return e_oswald at velocity v from Re table or scalar fallback."""
+        if polar_re_table and mac_m and float(mac_m) > 0:
+            from app.services.polar_re_table_service import lookup_e_oswald_at_v
+            return lookup_e_oswald_at_v(v_mps=v, table=polar_re_table)
+        return e
+
+    # Scalar cd0/e for cruise constraint (at V_cruise)
+    cd0_cruise = _cd0_at_v(v_cruise)
+    e_cruise = _e_at_v(v_cruise)
+
     # --- W/S sweep -----------------------------------------------------------
     ws_range = [
         _WS_MIN + (_WS_MAX - _WS_MIN) * i / (_WS_STEPS - 1)
@@ -521,14 +547,20 @@ def compute_chart(
     else:
         ws_ldg_max = _landing_constraint(s_rwy, cl_max_l, rho)
 
-    # 3. Cruise (line: T/W vs W/S)
-    cruise_tw = [_cruise_constraint(ws, v_cruise, cd0, e, ar, rho) for ws in ws_range]
+    # 3. Cruise (line: T/W vs W/S) — use cd0/e at V_cruise
+    cruise_tw = [_cruise_constraint(ws, v_cruise, cd0_cruise, e_cruise, ar, rho) for ws in ws_range]
 
     # 4. Climb (line: T/W vs W/S — climb speed varies per W/S for accuracy)
-    climb_tw = [
-        _climb_constraint(ws, gamma, _v_md(ws, cd0, e, ar, rho), cd0, e, ar, rho)
-        for ws in ws_range
-    ]
+    # Use cd0/e at V_md for each W/S point (Re-dependent via lookup)
+    def _climb_tw_at_ws(ws: float) -> float:
+        v_min_drag = _v_md(ws, cd0, e, ar, rho)  # initial V_md with scalar polar
+        cd0_vmd = _cd0_at_v(v_min_drag)
+        e_vmd = _e_at_v(v_min_drag)
+        # Recompute V_md with Re-specific cd0/e (one Picard pass)
+        v_min_drag_refined = _v_md(ws, cd0_vmd, e_vmd, ar, rho)
+        return _climb_constraint(ws, gamma, v_min_drag_refined, cd0_vmd, e_vmd, ar, rho)
+
+    climb_tw = [_climb_tw_at_ws(ws) for ws in ws_range]
 
     # 5. Stall (vertical: W/S_max)
     ws_stall_max = _stall_constraint(v_s, cl_max_clean, rho)
@@ -570,7 +602,7 @@ def compute_chart(
             "hover_text": (
                 "Level cruise at V_cruise. "
                 f"Anderson §6.7: T/W = q·CD0/(W/S) + (W/S)·k/q. "
-                f"V_cruise={v_cruise:.1f} m/s, CD0={cd0:.4f}, e={e:.3f}, AR={ar:.2f}."
+                f"V_cruise={v_cruise:.1f} m/s, CD0={cd0_cruise:.4f}, e={e_cruise:.3f}, AR={ar:.2f}."
             ),
         },
         {
@@ -581,8 +613,8 @@ def compute_chart(
             "binding": False,
             "hover_text": (
                 f"Climb gradient γ={gamma:.1f}°. "
-                "Anderson §6.3: T/W = sin(γ) + D/W (clean polar). "
-                f"CD0={cd0:.4f}, e={e:.3f}, AR={ar:.2f}."
+                "Anderson §6.3: T/W = sin(γ) + D/W (clean polar, cd0/e at V_md). "
+                f"CD0_scalar={cd0:.4f}, e_scalar={e:.3f}, AR={ar:.2f}."
             ),
         },
         {

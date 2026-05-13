@@ -844,3 +844,105 @@ class TestUavBellyLandMode:
         chart = compute_chart(LIGHT_RC, mode="rc_hand_launch")
         assert chart["feasibility"] in {"feasible", "infeasible_below_constraints"}
         assert len(chart["constraints"]) >= 4
+
+
+# ===========================================================================
+# gh-493 Amendment 7: Re-table consumer wiring for matching chart
+# ===========================================================================
+
+
+class TestAmendment7MatchingChartWiring:
+    """compute_chart uses V-specific cd0/e from polar_re_table when available.
+
+    Backward-compat: when polar_re_table is absent, scalar cd0/e_oswald is used.
+    """
+
+    def _make_aircraft_with_retable(
+        self,
+        cd0_scalar: float = 0.035,
+        cd0_low_re: float = 0.050,
+        cd0_high_re: float = 0.030,
+    ) -> dict:
+        """Build aircraft dict with a polar_re_table spanning the cruise range."""
+        mac_m = 0.254
+        rho = 1.225
+        mu = 1.81e-5
+
+        v_low = 8.0
+        v_high = 20.0
+        re_low = int(rho * v_low * mac_m / mu)
+        re_high = int(rho * v_high * mac_m / mu)
+
+        return {
+            **LIGHT_RC,
+            "cd0": cd0_scalar,
+            "mac_m": mac_m,
+            "polar_re_table": [
+                {
+                    "re": re_low,
+                    "v_mps": v_low,
+                    "cd0": cd0_low_re,
+                    "e_oswald": 0.78,
+                    "cl_max": 1.2,
+                    "r2": 0.98,
+                    "fallback_used": False,
+                },
+                {
+                    "re": re_high,
+                    "v_mps": v_high,
+                    "cd0": cd0_high_re,
+                    "e_oswald": 0.78,
+                    "cl_max": 1.2,
+                    "r2": 0.99,
+                    "fallback_used": False,
+                },
+            ],
+        }
+
+    def test_chart_with_retable_differs_from_scalar(self):
+        """With polar_re_table, climb constraint differs from scalar-cd0 chart.
+
+        When table cd0 at V_md ≠ scalar cd0, climb T/W line should shift.
+        """
+        compute_chart = _service()
+
+        # Aircraft with Re table (table has significantly different cd0 from scalar)
+        aircraft_with_table = self._make_aircraft_with_retable(
+            cd0_scalar=0.035, cd0_low_re=0.060, cd0_high_re=0.020
+        )
+        # Aircraft without Re table (uses scalar cd0)
+        aircraft_scalar = {**LIGHT_RC, "cd0": 0.035}
+
+        chart_table = compute_chart(aircraft_with_table)
+        chart_scalar = compute_chart(aircraft_scalar)
+
+        # Both charts should be valid
+        assert chart_table["feasibility"] in {"feasible", "infeasible_below_constraints"}
+        assert chart_scalar["feasibility"] in {"feasible", "infeasible_below_constraints"}
+
+        # Extract climb constraint T/W at mid-W/S (should differ between table and scalar)
+        climb_table = next(c for c in chart_table["constraints"] if c["name"] == "Climb")
+        climb_scalar = next(c for c in chart_scalar["constraints"] if c["name"] == "Climb")
+
+        tw_table_pts = climb_table["t_w_points"]
+        tw_scalar_pts = climb_scalar["t_w_points"]
+
+        mid_idx = len(tw_table_pts) // 2
+        tw_table_mid = tw_table_pts[mid_idx]
+        tw_scalar_mid = tw_scalar_pts[mid_idx]
+
+        assert abs(tw_table_mid - tw_scalar_mid) > 1e-6, (
+            f"Re-table climb wiring inactive: T/W identical "
+            f"({tw_table_mid:.5f}) with table and scalar cd0 both differing. "
+            "Amendment 7 must wire lookup_cd0_at_v for climb constraint."
+        )
+
+    def test_chart_without_retable_uses_scalar_fallback(self):
+        """When polar_re_table is absent, chart uses scalar cd0 (backward compat)."""
+        compute_chart = _service()
+
+        aircraft_no_table = {**LIGHT_RC}  # no polar_re_table key
+
+        chart = compute_chart(aircraft_no_table)
+        assert chart["feasibility"] in {"feasible", "infeasible_below_constraints"}
+        assert len(chart["constraints"]) >= 4

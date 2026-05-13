@@ -639,6 +639,161 @@ class TestComputeEnduranceForAeroplane:
         assert any("deviat" in w.lower() for w in result["warnings"])
 
 
+class TestAmendment7ConsumerWiring:
+    """gh-493 Amendment 7: endurance_service uses V-specific cd0/e from Re table.
+
+    Verifies that compute_endurance reads polar_re_table from ctx and calls
+    lookup_cd0_at_v / lookup_e_oswald_at_v at V_md and V_min_sink.
+    """
+
+    def _make_aircraft_with_retable(
+        self,
+        cd0_scalar: float = 0.035,
+        cd0_table_vmd: float = 0.030,
+        v_md: float = 10.6,
+        v_min_sink: float = 8.05,
+    ):
+        """Build aircraft with a 2-row polar_re_table that differs from scalar cd0."""
+        import math
+
+        mac_m = 0.254
+        rho = 1.225
+        mu = 1.81e-5
+
+        # Build a minimal 2-row table that spans V_md and V_min_sink
+        re_low = int(rho * (v_min_sink * 0.8) * mac_m / mu)
+        re_high = int(rho * (v_md * 1.5) * mac_m / mu)
+
+        polar_re_table = [
+            {
+                "re": re_low,
+                "v_mps": v_min_sink * 0.8,
+                "cd0": cd0_table_vmd * 1.10,  # higher cd0 at lower Re
+                "e_oswald": 0.78,
+                "cl_max": 1.2,
+                "r2": 0.98,
+                "fallback_used": False,
+            },
+            {
+                "re": re_high,
+                "v_mps": v_md * 1.5,
+                "cd0": cd0_table_vmd * 0.92,  # lower cd0 at higher Re
+                "e_oswald": 0.78,
+                "cl_max": 1.2,
+                "r2": 0.98,
+                "fallback_used": False,
+            },
+        ]
+
+        aircraft = SimpleNamespace()
+        aircraft.assumption_computation_context = {
+            "e_oswald": 0.78,
+            "e_oswald_quality": "high",
+            "e_oswald_fallback_used": False,
+            "v_md_mps": v_md,
+            "v_min_sink_mps": v_min_sink,
+            "s_ref_m2": 0.40,
+            "aspect_ratio": 7.0,
+            "mac_m": mac_m,
+            "polar_re_table": polar_re_table,
+        }
+        aircraft._design_assumptions = {
+            "mass": 2.0,
+            "cd0": cd0_scalar,
+            "battery_capacity_wh": 74.0,
+            "battery_specific_energy_wh_per_kg": 180.0,
+            "propulsion_eta_prop": 0.65,
+            "propulsion_eta_motor": 0.85,
+            "propulsion_eta_esc": 0.94,
+            "motor_continuous_power_w": 200.0,
+        }
+        aircraft._battery_mass_kg = 0.40
+        return aircraft
+
+    def test_endurance_with_retable_differs_from_scalar_result(self):
+        """When polar_re_table is present, P_req differs from the scalar-cd0 baseline.
+
+        This test verifies that Amendment 7 wiring is active: compute_endurance
+        uses V-specific cd0 from the table, not just the scalar da["cd0"].
+        """
+        from app.services.endurance_service import compute_endurance
+
+        # Aircraft with Re table
+        aircraft_with_table = self._make_aircraft_with_retable(
+            cd0_scalar=0.035, cd0_table_vmd=0.025  # table has significantly different cd0
+        )
+        # Aircraft without Re table (scalar only)
+        aircraft_scalar = SimpleNamespace()
+        aircraft_scalar.assumption_computation_context = {
+            "e_oswald": 0.78,
+            "e_oswald_quality": "high",
+            "e_oswald_fallback_used": False,
+            "v_md_mps": 10.6,
+            "v_min_sink_mps": 8.05,
+            "s_ref_m2": 0.40,
+            "aspect_ratio": 7.0,
+            # No mac_m, no polar_re_table → uses scalar fallback
+        }
+        aircraft_scalar._design_assumptions = {
+            "mass": 2.0,
+            "cd0": 0.035,
+            "battery_capacity_wh": 74.0,
+            "battery_specific_energy_wh_per_kg": 180.0,
+            "propulsion_eta_prop": 0.65,
+            "propulsion_eta_motor": 0.85,
+            "propulsion_eta_esc": 0.94,
+            "motor_continuous_power_w": 200.0,
+        }
+        aircraft_scalar._battery_mass_kg = 0.40
+
+        result_table = compute_endurance(db=None, aircraft=aircraft_with_table)
+        result_scalar = compute_endurance(db=None, aircraft=aircraft_scalar)
+
+        # Both should succeed
+        assert result_table["t_endurance_max_s"] is not None
+        assert result_scalar["t_endurance_max_s"] is not None
+
+        # With a different cd0 from the table, P_req and thus endurance should differ
+        # (not testing direction — just that the values are different when table cd0 ≠ scalar cd0)
+        p_table = result_table["p_req_at_v_md_w"]
+        p_scalar = result_scalar["p_req_at_v_md_w"]
+        assert abs(p_table - p_scalar) > 0.5, (
+            f"Re-table wiring not active: P_req identical ({p_table:.2f} W) "
+            "even though table cd0 ≠ scalar cd0. Amendment 7 must wire the lookup."
+        )
+
+    def test_endurance_without_retable_uses_scalar_fallback(self):
+        """When polar_re_table is absent/empty, compute_endurance uses scalar cd0."""
+        from app.services.endurance_service import compute_endurance
+
+        aircraft_no_table = SimpleNamespace()
+        aircraft_no_table.assumption_computation_context = {
+            "e_oswald": 0.78,
+            "e_oswald_quality": "high",
+            "e_oswald_fallback_used": False,
+            "v_md_mps": 10.6,
+            "v_min_sink_mps": 8.05,
+            "s_ref_m2": 0.40,
+            "aspect_ratio": 7.0,
+            "polar_re_table": [],  # empty table → fall back to scalar
+        }
+        aircraft_no_table._design_assumptions = {
+            "mass": 2.0,
+            "cd0": 0.03,
+            "battery_capacity_wh": 74.0,
+            "battery_specific_energy_wh_per_kg": 180.0,
+            "propulsion_eta_prop": 0.65,
+            "propulsion_eta_motor": 0.85,
+            "propulsion_eta_esc": 0.94,
+            "motor_continuous_power_w": 200.0,
+        }
+        aircraft_no_table._battery_mass_kg = None
+
+        result = compute_endurance(db=None, aircraft=aircraft_no_table)
+        assert result["t_endurance_max_s"] is not None
+        assert result["t_endurance_max_s"] > 0
+
+
 class TestPowertrainServiceRefactor:
     """Verify powertrain_sizing_service calls endurance_service.compute_endurance."""
 

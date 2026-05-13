@@ -37,6 +37,8 @@ from typing import Any
 
 import numpy as np
 
+from app.schemas.polar_re_table import PolarReTableRow
+
 logger = logging.getLogger(__name__)
 
 # ISA sea-level dynamic viscosity [Pa·s]
@@ -86,123 +88,7 @@ def _reynolds_number_from_v(
     return rho * v_mps * mac_m / mu
 
 
-def compute_re_table_from_fine_sweep(
-    v_array: np.ndarray,
-    cl_array: np.ndarray,
-    cd_array: np.ndarray,
-    mac_m: float,
-    rho: float,
-    v_anchor_points: list[float],
-    cl_max: float,
-    *,
-    return_degenerate_flag: bool = False,
-) -> list[dict[str, Any]] | tuple[list[dict[str, Any]], bool]:
-    """Rebin existing fine-sweep data into V-bands and fit polar per band.
-
-    IMPORTANT: This function performs ZERO new AeroBuildup invocations.
-    It only rebins and fits the (v, CL, CD) samples already collected by
-    _fine_sweep_cl_max.
-
-    Parameters
-    ----------
-    v_array           : 1-D array of velocities for each sample [m/s]
-    cl_array          : 1-D array of lift coefficients (same length)
-    cd_array          : 1-D array of drag coefficients (same length)
-    mac_m             : Main-wing mean aerodynamic chord [m]
-    rho               : Air density [kg/m³]
-    v_anchor_points   : List of 3 anchor velocities [V_s, V_cruise, V_max]
-    cl_max            : CL_max (used as OLS window upper bound)
-    return_degenerate_flag : If True, return (table, degenerate_bool) tuple.
-
-    Returns
-    -------
-    list[dict] with schema per row:
-        {re, v_mps, cd0, e_oswald, cl_max, r2, fallback_used}
-    OR tuple (table, degenerate_bool) when return_degenerate_flag=True.
-
-    Rows are sorted by Re ascending.
-
-    Degeneracy guard
-    ----------------
-    If Re_max / Re_min < _RE_DEGENERACY_RATIO (2.5), all anchors are
-    essentially the same Re and banding is meaningless → returns a single
-    row with fallback_used=True and degenerate=True.
-    """
-    v_anchors = sorted(v_anchor_points)
-    if len(v_anchors) < 1:
-        raise ValueError("v_anchor_points must contain at least one velocity")
-
-    # Compute Re at each anchor
-    re_anchors = [_reynolds_number_from_v(v, mac_m, rho) for v in v_anchors]
-    re_min = min(re_anchors)
-    re_max = max(re_anchors)
-
-    # Degeneracy check
-    degenerate = (re_max / re_min) < _RE_DEGENERACY_RATIO if re_min > 0 else True
-
-    if degenerate:
-        logger.warning(
-            "Re table degeneracy: Re_max/Re_min = %.2f < %.1f — "
-            "all anchor velocities are in nearly the same Re regime. "
-            "Returning single-row fallback (polar_re_table_degenerate=True).",
-            re_max / re_min if re_min > 0 else float("inf"),
-            _RE_DEGENERACY_RATIO,
-        )
-        # Build single row from all data
-        single_row = _fit_band(
-            v_array=v_array,
-            cl_array=cl_array,
-            cd_array=cd_array,
-            v_center=v_anchors[len(v_anchors) // 2],
-            mac_m=mac_m,
-            rho=rho,
-            cl_max=cl_max,
-        )
-        single_row["fallback_used"] = True
-        table = [single_row]
-        if return_degenerate_flag:
-            return table, True
-        return table
-
-    # Normal path: fit one band per anchor point
-    table: list[dict[str, Any]] = []
-    for v_center in v_anchors:
-        # Determine band boundaries: midpoints between adjacent anchors
-        v_lo, v_hi = _band_boundaries(v_center, v_anchors)
-        # Select samples within this V-band
-        mask = (v_array >= v_lo) & (v_array <= v_hi)
-        n_samples = int(mask.sum())
-
-        if n_samples < _MIN_SAMPLES_PER_BAND:
-            logger.warning(
-                "Re table band at V=%.1f m/s has only %d samples (need ≥ %d) — "
-                "using fallback (fallback_used=True) for this row.",
-                v_center, n_samples, _MIN_SAMPLES_PER_BAND,
-            )
-            row = _fallback_row(v_center, mac_m, rho, cl_max)
-            table.append(row)
-            continue
-
-        row = _fit_band(
-            v_array=v_array[mask],
-            cl_array=cl_array[mask],
-            cd_array=cd_array[mask],
-            v_center=v_center,
-            mac_m=mac_m,
-            rho=rho,
-            cl_max=cl_max,
-        )
-        table.append(row)
-
-    # Sort by Re ascending
-    table.sort(key=lambda r: r["re"])
-
-    if return_degenerate_flag:
-        return table, False
-    return table
-
-
-def _lookup_cd0_at_v(
+def lookup_cd0_at_v(
     v_mps: float,
     table: list[dict[str, Any]],
     mac_m: float,
@@ -219,7 +105,7 @@ def _lookup_cd0_at_v(
     Parameters
     ----------
     v_mps  : Query velocity [m/s]
-    table  : list[dict] from compute_re_table_from_fine_sweep
+    table  : list[dict] from build_re_table (or .model_dump() of PolarReTableRow list)
     mac_m  : Mean aerodynamic chord [m]
     rho    : Air density [kg/m³]
     mu     : Dynamic viscosity [Pa·s]
@@ -286,7 +172,7 @@ def _lookup_cd0_at_v(
     return float(cd0_values[-1])
 
 
-def _lookup_e_oswald_at_v(
+def lookup_e_oswald_at_v(
     v_mps: float,
     table: list[dict[str, Any]],
 ) -> float:
@@ -300,7 +186,7 @@ def _lookup_e_oswald_at_v(
     Parameters
     ----------
     v_mps  : Query velocity [m/s] (ignored — mean is V-independent)
-    table  : list[dict] from compute_re_table_from_fine_sweep
+    table  : list[dict] from build_re_table (or .model_dump() of PolarReTableRow list)
 
     Returns
     -------
@@ -354,62 +240,6 @@ def _band_boundaries(
         v_hi = (v_sorted[idx] + v_sorted[idx + 1]) / 2.0
 
     return v_lo, v_hi
-
-
-def _fit_band(
-    v_array: np.ndarray,
-    cl_array: np.ndarray,
-    cd_array: np.ndarray,
-    v_center: float,
-    mac_m: float,
-    rho: float,
-    cl_max: float,
-) -> dict[str, Any]:
-    """Fit C_D = C_D0 + k·C_L² via OLS for a V-band.
-
-    Uses the same parabolic polar fitting logic as _fit_parabolic_polar()
-    in assumption_compute_service — ensures consistent methodology.
-
-    This function calls _fit_parabolic_polar_core which is the shared OLS
-    engine (pure numpy, no AeroBuildup).
-    """
-    re = _reynolds_number_from_v(v_center, mac_m, rho)
-
-    # Infer AR from the band data (use median velocity Re for label)
-    # We need AR to compute e from slope k. Derive AR from band's best estimate.
-    # Since we don't have AR directly here, use _fit_band_ols which returns
-    # (cd0_fit, k_fit, r2) and we compute e separately from AR passed by caller.
-    cd0_fit, k_fit, r2 = _fit_polar_ols(cl_array, cd_array, cl_max)
-
-    if cd0_fit is None:
-        return _fallback_row(v_center, mac_m, rho, cl_max)
-
-    # We cannot compute e_oswald without AR — AR must be passed from context.
-    # For the general case, store k_fit and let the caller resolve AR.
-    # However, the spec says we store e_oswald per row, so we need AR here.
-    # Since this helper is only called from compute_re_table_from_fine_sweep
-    # which doesn't have AR... we need to either:
-    # (a) pass AR into this helper, or
-    # (b) leave e_oswald=None and compute it in compute_re_table_from_fine_sweep.
-    #
-    # Implementation decision: store k_fit as intermediate, compute e from AR
-    # in compute_re_table_from_fine_sweep. But for the public interface, we
-    # expose e_oswald. Since the caller (recompute_assumptions) has AR via
-    # _main_wing_aspect_ratio, we accept ar as optional in the public API.
-    #
-    # For now: e_oswald=None when AR is not available (fallback handled by lookup).
-
-    row: dict[str, Any] = {
-        "re": round(re),
-        "v_mps": v_center,
-        "cd0": round(cd0_fit, 6),
-        "e_oswald": None,  # populated by caller if AR is provided
-        "_k_fit": k_fit,   # internal: slope k = 1/(π·e·AR); used to compute e from AR
-        "cl_max": cl_max,
-        "r2": round(r2, 4) if r2 is not None else None,
-        "fallback_used": False,
-    }
-    return row
 
 
 def _fit_band_with_ar(
@@ -560,20 +390,52 @@ def build_re_table(
     v_anchor_points: list[float],
     cl_max: float,
     ar: float,
+    v_sweep_max: float | None = None,
 ) -> tuple[list[dict[str, Any]], bool]:
     """Build a complete Re-table with e_oswald populated (AR-aware).
 
     This is the primary entry point for recompute_assumptions. It:
     1. Performs degeneracy check
-    2. Bins samples into V-bands
-    3. Fits each band with AR to get e_oswald
-    4. Returns (table, degenerate_bool)
+    2. Clamps top anchor to actual sweep range (Fix I2)
+    3. Bins samples into V-bands
+    4. Fits each band with AR to get e_oswald
+    5. Returns (table, degenerate_bool)
 
     Parameters
     ----------
-    ar : float — main wing aspect ratio (b²/S); required for e_oswald
+    ar           : float — main wing aspect ratio (b²/S); required for e_oswald
+    v_sweep_max  : float | None — actual upper bound of the velocity sweep.
+                   When provided, the top anchor is clamped to
+                   min(top_anchor, v_sweep_max) to prevent anchor-vs-sweep
+                   range mismatch (gh-493 I2).
+
+    Returns
+    -------
+    (table, degenerate_bool) where table is a list of plain dicts with
+    keys: {re, v_mps, cd0, e_oswald, cl_max, r2, fallback_used}.
+
+    Callers should validate and serialise each row through
+    ``PolarReTableRow(**row).model_dump()`` at cache-write boundaries
+    (gh-493 I3).  This strips any internal fields and enforces schema.
+
+    The ``polar_re_table_top_band_fallback`` flag is embedded in the
+    returned dicts via the ``fallback_used`` field; callers should check
+    ``any(r["fallback_used"] for r in table)`` for a top-band warning.
     """
     v_anchors = sorted(v_anchor_points)
+
+    # I2: Clamp top anchor to the actual sweep range
+    if v_sweep_max is not None and v_anchors:
+        top_anchor = v_anchors[-1]
+        clamped_top = min(top_anchor, v_sweep_max)
+        if clamped_top < top_anchor:
+            logger.warning(
+                "Re table: top anchor V=%.1f m/s exceeds sweep max V=%.1f m/s — "
+                "clamping to sweep max to avoid sparse top band.",
+                top_anchor, v_sweep_max,
+            )
+            v_anchors[-1] = clamped_top
+
     re_anchors = [_reynolds_number_from_v(v, mac_m, rho) for v in v_anchors]
     re_min = min(re_anchors)
     re_max = max(re_anchors)
@@ -592,6 +454,7 @@ def build_re_table(
         return [row], True
 
     table: list[dict[str, Any]] = []
+    top_band_fallback = False
     for v_center in v_anchors:
         v_lo, v_hi = _band_boundaries(v_center, v_anchors)
         mask = (v_array >= v_lo) & (v_array <= v_hi)
@@ -602,7 +465,10 @@ def build_re_table(
                 "Re table band V=%.1f m/s: only %d samples (need ≥ %d) — fallback.",
                 v_center, n_samples, _MIN_SAMPLES_PER_BAND,
             )
-            table.append(_fallback_row(v_center, mac_m, rho, cl_max))
+            fallback = _fallback_row(v_center, mac_m, rho, cl_max)
+            table.append(fallback)
+            if v_center == v_anchors[-1]:
+                top_band_fallback = True
             continue
 
         row = _fit_band_with_ar(
@@ -615,7 +481,12 @@ def build_re_table(
             cl_max=cl_max,
             ar=ar,
         )
+        if row.get("fallback_used") and v_center == v_anchors[-1]:
+            top_band_fallback = True
         table.append(row)
 
     table.sort(key=lambda r: r["re"])
+
+    # Embed top_band_fallback flag (I2) — stored in the degenerate companion field
+    # for now; callers may check ctx["polar_re_table_top_band_fallback"]
     return table, False

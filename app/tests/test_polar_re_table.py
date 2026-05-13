@@ -1,9 +1,9 @@
 """Reynolds-dependent polar table tests — gh-493.
 
 TDD test suite covering:
-- compute_re_table_from_fine_sweep(): rebins existing fine-sweep data into V-bands, fits OLS per band
-- _lookup_cd0_at_v(): linear interpolation in 1/√Re space (Blasius/Schlichting skin-friction scaling)
-- _lookup_e_oswald_at_v(): constant mean (Hepperle/Drela KISS)
+- build_re_table(): rebins existing fine-sweep data into V-bands, fits OLS per band (AR-aware)
+- lookup_cd0_at_v(): linear interpolation in 1/√Re space (Blasius/Schlichting skin-friction scaling)
+- lookup_e_oswald_at_v(): constant mean (Hepperle/Drela KISS)
 - Degeneracy guard (Re_max/Re_min < 2.5 → single-row fallback)
 - Minimum sample guard (< 6 samples per band → fallback_used=True)
 - Extrapolation clamping with warning
@@ -11,6 +11,7 @@ TDD test suite covering:
 - New context keys: ctx["polar_re_table"], ctx["polar_re_table_degenerate"]
 - Integration: _power_required consumer uses V-specific cd0(V)
 - Integration: _min_drag_speed solver inner loop queries table per V
+- A11 cross-check: RC trainer cd0 in [0.040, 0.065]; Cessna cd0 in [0.027, 0.034]
 
 Amendment 11 cross-check tests require actual AeroBuildup runs and are tagged @pytest.mark.slow.
 
@@ -22,6 +23,7 @@ Sources:
 from __future__ import annotations
 
 import math
+import time
 import warnings
 from typing import Any
 
@@ -29,10 +31,9 @@ import numpy as np
 import pytest
 
 from app.services.polar_re_table_service import (
-    compute_re_table_from_fine_sweep,
     build_re_table,
-    _lookup_cd0_at_v,
-    _lookup_e_oswald_at_v,
+    lookup_cd0_at_v,
+    lookup_e_oswald_at_v,
     _reynolds_number_from_v,
     _fit_band_with_ar,
     _fit_polar_ols,
@@ -94,20 +95,23 @@ RC_TRAINER = {
     "s_ref_m2": 0.40,
     "ar": 7.0,
     "mac_m": 0.254,
-    "cd0": 0.035,
+    # Scholz A11: RC trainer cd0 ∈ [0.040, 0.065]; seed with midpoint 0.050
+    "cd0": 0.050,
     "e": 0.78,
     "cl_max": 1.2,
 }
 
-# ASW-27 scale (b=4 m), mid-Re anchor
+# ASW-27 large-scale model (b=7 m), Re ≈ 1M at V=37 m/s, MAC=0.5 m
+# Scholz A11: adjusted from indoor microglider (MAC=0.14 m → Re≈142k)
+# to a half-scale soaring model (MAC=0.5 m, V=37 m/s → Re≈1.25M)
 ASW_27_SCALE = {
-    "name": "ASW-27 scale",
+    "name": "ASW-27 large-scale model",
     "mass_kg": 12.0,
     "s_ref_m2": 0.56,
     "ar": 28.5,
-    "mac_m": 0.14,
-    "cd0": 0.024,
-    "e": 0.85,
+    "mac_m": 0.50,
+    "cd0": 0.018,
+    "e": 0.88,
     "cl_max": 1.3,
 }
 
@@ -127,12 +131,12 @@ def _make_rc_trainer_sweep(
 
 
 # ===========================================================================
-# Unit tests: compute_re_table_from_fine_sweep
+# Unit tests: build_re_table (was compute_re_table_from_fine_sweep)
 # ===========================================================================
 
 
-class TestComputeReTableFromFineSweep:
-    """Tests for compute_re_table_from_fine_sweep()."""
+class TestBuildReTableCore:
+    """Tests for build_re_table() core behaviour (schema, schema, row count)."""
 
     def test_returns_three_rows_for_normal_sweep(self):
         """Standard sweep (7V × 12α) → 3 rows."""
@@ -142,7 +146,7 @@ class TestComputeReTableFromFineSweep:
         v_s = 6.0
         v_cruise = 14.0
         v_max = max(1.3 * v_cruise, 20.0)
-        table = compute_re_table_from_fine_sweep(
+        table, _deg = build_re_table(
             v_array=v_arr,
             cl_array=cl_arr,
             cd_array=cd_arr,
@@ -150,6 +154,7 @@ class TestComputeReTableFromFineSweep:
             rho=1.225,
             v_anchor_points=[v_s, v_cruise, v_max],
             cl_max=ac["cl_max"],
+            ar=ac["ar"],
         )
         assert len(table) == 3, f"Expected 3 rows, got {len(table)}"
 
@@ -157,7 +162,7 @@ class TestComputeReTableFromFineSweep:
         """Each row has {re, v_mps, cd0, e_oswald, cl_max, r2, fallback_used}."""
         v_arr, cl_arr, cd_arr = _make_rc_trainer_sweep()
         ac = RC_TRAINER
-        table = compute_re_table_from_fine_sweep(
+        table, _deg = build_re_table(
             v_array=v_arr,
             cl_array=cl_arr,
             cd_array=cd_arr,
@@ -165,9 +170,12 @@ class TestComputeReTableFromFineSweep:
             rho=1.225,
             v_anchor_points=[6.0, 14.0, 20.0],
             cl_max=ac["cl_max"],
+            ar=ac["ar"],
         )
         required_keys = {"re", "v_mps", "cd0", "e_oswald", "cl_max", "r2", "fallback_used"}
         for i, row in enumerate(table):
+            # _k_fit must NOT be in the public row (I1: no internal leakage)
+            assert "_k_fit" not in row, f"Row {i} leaks internal _k_fit field"
             missing = required_keys - set(row.keys())
             assert not missing, f"Row {i} missing keys: {missing}"
 
@@ -175,7 +183,7 @@ class TestComputeReTableFromFineSweep:
         """Table rows are sorted by Re ascending."""
         v_arr, cl_arr, cd_arr = _make_rc_trainer_sweep()
         ac = RC_TRAINER
-        table = compute_re_table_from_fine_sweep(
+        table, _deg = build_re_table(
             v_array=v_arr,
             cl_array=cl_arr,
             cd_array=cd_arr,
@@ -183,6 +191,7 @@ class TestComputeReTableFromFineSweep:
             rho=1.225,
             v_anchor_points=[6.0, 14.0, 20.0],
             cl_max=ac["cl_max"],
+            ar=ac["ar"],
         )
         res = [row["re"] for row in table]
         assert res == sorted(res), f"Re values not ascending: {res}"
@@ -192,7 +201,7 @@ class TestComputeReTableFromFineSweep:
         anchors = [6.0, 14.0, 20.0]
         v_arr, cl_arr, cd_arr = _make_rc_trainer_sweep()
         ac = RC_TRAINER
-        table = compute_re_table_from_fine_sweep(
+        table, _deg = build_re_table(
             v_array=v_arr,
             cl_array=cl_arr,
             cd_array=cd_arr,
@@ -200,6 +209,7 @@ class TestComputeReTableFromFineSweep:
             rho=1.225,
             v_anchor_points=anchors,
             cl_max=ac["cl_max"],
+            ar=ac["ar"],
         )
         returned_vs = sorted([row["v_mps"] for row in table])
         # Anchor-nearest velocities from the sweep should be within half a step
@@ -215,7 +225,7 @@ class TestComputeReTableFromFineSweep:
         RHO = 1.225
         mac = RC_TRAINER["mac_m"]
         v_arr, cl_arr, cd_arr = _make_rc_trainer_sweep()
-        table = compute_re_table_from_fine_sweep(
+        table, _deg = build_re_table(
             v_array=v_arr,
             cl_array=cl_arr,
             cd_array=cd_arr,
@@ -223,6 +233,7 @@ class TestComputeReTableFromFineSweep:
             rho=RHO,
             v_anchor_points=[6.0, 14.0, 20.0],
             cl_max=RC_TRAINER["cl_max"],
+            ar=RC_TRAINER["ar"],
         )
         for row in table:
             expected_re = RHO * row["v_mps"] * mac / MU
@@ -234,7 +245,7 @@ class TestComputeReTableFromFineSweep:
         """cd0 from each row fit must be positive and plausible for RC aircraft."""
         v_arr, cl_arr, cd_arr = _make_rc_trainer_sweep()
         ac = RC_TRAINER
-        table = compute_re_table_from_fine_sweep(
+        table, _deg = build_re_table(
             v_array=v_arr,
             cl_array=cl_arr,
             cd_array=cd_arr,
@@ -242,6 +253,7 @@ class TestComputeReTableFromFineSweep:
             rho=1.225,
             v_anchor_points=[6.0, 14.0, 20.0],
             cl_max=ac["cl_max"],
+            ar=ac["ar"],
         )
         for row in table:
             if not row["fallback_used"]:
@@ -249,10 +261,16 @@ class TestComputeReTableFromFineSweep:
                 assert 0 < row["cd0"] < 0.15, f"cd0={row['cd0']} out of physical range"
 
     def test_e_oswald_from_fit_in_physical_range(self):
-        """e_oswald from each non-fallback row must be in (0.4, 1.0]."""
+        """e_oswald from each non-fallback row must be in (0.4, 1.0].
+
+        Redirected to build_re_table (AR-aware): e_oswald is now actually
+        computed so this test exercises the physical range guard.
+        Previously this called compute_re_table_from_fine_sweep (no AR),
+        which always returned e_oswald=None — a vacuous guard (Scholz A11).
+        """
         v_arr, cl_arr, cd_arr = _make_rc_trainer_sweep()
         ac = RC_TRAINER
-        table = compute_re_table_from_fine_sweep(
+        table, _deg = build_re_table(
             v_array=v_arr,
             cl_array=cl_arr,
             cd_array=cd_arr,
@@ -260,11 +278,14 @@ class TestComputeReTableFromFineSweep:
             rho=1.225,
             v_anchor_points=[6.0, 14.0, 20.0],
             cl_max=ac["cl_max"],
+            ar=ac["ar"],
         )
-        for row in table:
-            if not row["fallback_used"] and row["e_oswald"] is not None:
+        non_fallback = [r for r in table if not r["fallback_used"]]
+        assert len(non_fallback) >= 1, "At least one band must produce a valid fit"
+        for row in non_fallback:
+            if row["e_oswald"] is not None:
                 assert 0.4 < row["e_oswald"] <= 1.0, (
-                    f"e_oswald={row['e_oswald']} outside physical range"
+                    f"e_oswald={row['e_oswald']} outside physical range (0.4, 1.0]"
                 )
 
 
@@ -279,13 +300,11 @@ class TestDegeneracyGuard:
     def test_degeneracy_when_v_spread_is_tiny(self):
         """V_s ≈ V_cruise ≈ V_max → Re_max/Re_min < 2.5 → degenerate=True, 1 row."""
         # All anchors very close together → effectively same Re
-        v_arr, cl_arr, cd_arr = _make_rc_trainer_sweep(n_v=6, n_alpha=12)
-        # Override to very tight velocity range
         v_arr_tight = np.linspace(14.0, 15.0, 6 * 12)  # all near 14.5 m/s
         cl_tight = np.linspace(0.2, 1.0, len(v_arr_tight))
         cd_tight = 0.035 + cl_tight**2 / (math.pi * 0.78 * 7.0)
 
-        result = compute_re_table_from_fine_sweep(
+        table, degenerate = build_re_table(
             v_array=v_arr_tight,
             cl_array=cl_tight,
             cd_array=cd_tight,
@@ -293,16 +312,17 @@ class TestDegeneracyGuard:
             rho=1.225,
             v_anchor_points=[14.0, 14.5, 15.0],  # Re_max/Re_min ≈ 15/14 = 1.07 < 2.5
             cl_max=RC_TRAINER["cl_max"],
+            ar=RC_TRAINER["ar"],
         )
         # Should return 1 degenerate row
-        assert len(result) == 1, f"Expected 1 row (degenerate), got {len(result)}"
-        assert result[0]["fallback_used"] is True, "Degenerate row must have fallback_used=True"
+        assert len(table) == 1, f"Expected 1 row (degenerate), got {len(table)}"
+        assert degenerate is True
+        assert table[0]["fallback_used"] is True, "Degenerate row must have fallback_used=True"
 
     def test_degenerate_flag_returned_separately(self):
-        """compute_re_table_from_fine_sweep returns (table, degenerate_bool) tuple."""
-        # The function should be callable to get degeneracy flag
+        """build_re_table always returns (table, degenerate_bool) tuple."""
         v_arr, cl_arr, cd_arr = _make_rc_trainer_sweep()
-        result = compute_re_table_from_fine_sweep(
+        result = build_re_table(
             v_array=v_arr,
             cl_array=cl_arr,
             cd_array=cd_arr,
@@ -310,10 +330,9 @@ class TestDegeneracyGuard:
             rho=1.225,
             v_anchor_points=[6.0, 14.0, 20.0],
             cl_max=RC_TRAINER["cl_max"],
-            return_degenerate_flag=True,
+            ar=RC_TRAINER["ar"],
         )
-        # Called with return_degenerate_flag=True → returns (table, bool)
-        assert isinstance(result, tuple), "Should return (table, degenerate_flag) tuple"
+        assert isinstance(result, tuple), "build_re_table must return (table, degenerate_flag) tuple"
         table, degenerate = result
         assert isinstance(table, list)
         assert isinstance(degenerate, bool)
@@ -325,7 +344,7 @@ class TestDegeneracyGuard:
         cl_tight = np.linspace(0.2, 1.0, 72)
         cd_tight = 0.035 + cl_tight**2 / (math.pi * 0.78 * 7.0)
 
-        result = compute_re_table_from_fine_sweep(
+        table, degenerate = build_re_table(
             v_array=v_tight,
             cl_array=cl_tight,
             cd_array=cd_tight,
@@ -333,9 +352,8 @@ class TestDegeneracyGuard:
             rho=1.225,
             v_anchor_points=[14.0, 14.5, 15.0],
             cl_max=RC_TRAINER["cl_max"],
-            return_degenerate_flag=True,
+            ar=RC_TRAINER["ar"],
         )
-        table, degenerate = result
         assert degenerate is True
 
 
@@ -365,7 +383,7 @@ class TestMinimumSampleGuard:
         cl_arr = np.concatenate([cl_low, cl_high])
         cd_arr = np.concatenate([cd_low, cd_high])
 
-        table = compute_re_table_from_fine_sweep(
+        table, _deg = build_re_table(
             v_array=v_arr,
             cl_array=cl_arr,
             cd_array=cd_arr,
@@ -373,6 +391,7 @@ class TestMinimumSampleGuard:
             rho=1.225,
             v_anchor_points=[7.0, 14.0, 20.0],
             cl_max=RC_TRAINER["cl_max"],
+            ar=RC_TRAINER["ar"],
         )
         # The high-V band has only 2 samples → fallback_used=True
         high_v_rows = [r for r in table if r["v_mps"] >= 18.0]
@@ -384,7 +403,7 @@ class TestMinimumSampleGuard:
 
 
 # ===========================================================================
-# Interpolation: _lookup_cd0_at_v
+# Interpolation: lookup_cd0_at_v
 # ===========================================================================
 
 
@@ -413,14 +432,14 @@ class TestLookupCd0AtV:
 
         # V corresponding to Re=100k: V = Re * mu / (rho * mac)
         v_for_re_100k = 100_000.0 * MU / (RHO * mac)
-        cd0_at_re100k = _lookup_cd0_at_v(v_mps=v_for_re_100k, table=table, mac_m=mac, rho=RHO)
+        cd0_at_re100k = lookup_cd0_at_v(v_mps=v_for_re_100k, table=table, mac_m=mac, rho=RHO)
         assert abs(cd0_at_re100k - 0.050) < 1e-6, (
             f"Expected 0.050 at Re=100k (v={v_for_re_100k:.2f} m/s), got {cd0_at_re100k}"
         )
 
         # V corresponding to Re=400k
         v_for_re_400k = 400_000.0 * MU / (RHO * mac)
-        cd0_at_re400k = _lookup_cd0_at_v(v_mps=v_for_re_400k, table=table, mac_m=mac, rho=RHO)
+        cd0_at_re400k = lookup_cd0_at_v(v_mps=v_for_re_400k, table=table, mac_m=mac, rho=RHO)
         assert abs(cd0_at_re400k - 0.020) < 1e-6, (
             f"Expected 0.020 at Re=400k (v={v_for_re_400k:.2f} m/s), got {cd0_at_re400k}"
         )
@@ -442,7 +461,7 @@ class TestLookupCd0AtV:
         re_mid = 200_000.0
         v_mid = re_mid * MU / (RHO * mac)
 
-        cd0_interp = _lookup_cd0_at_v(v_mps=v_mid, table=table, mac_m=mac, rho=RHO)
+        cd0_interp = lookup_cd0_at_v(v_mps=v_mid, table=table, mac_m=mac, rho=RHO)
 
         # 1/√Re interpolation:
         re_lo, re_hi = 100_000.0, 400_000.0
@@ -489,7 +508,7 @@ class TestLookupCd0AtV:
         mac = RC_TRAINER["mac_m"]
         # Query at V below lowest table entry (v=8 m/s)
         v_below = 3.0
-        cd0_clamped = _lookup_cd0_at_v(v_mps=v_below, table=table, mac_m=mac, rho=RHO)
+        cd0_clamped = lookup_cd0_at_v(v_mps=v_below, table=table, mac_m=mac, rho=RHO)
 
         # Must return the cd0 at the lowest Re endpoint
         assert abs(cd0_clamped - 0.050) < 1e-6, (
@@ -513,7 +532,7 @@ class TestLookupCd0AtV:
         mac = RC_TRAINER["mac_m"]
         # Query at V far above highest table entry
         v_above = 100.0
-        cd0_clamped = _lookup_cd0_at_v(v_mps=v_above, table=table, mac_m=mac, rho=1.225)
+        cd0_clamped = lookup_cd0_at_v(v_mps=v_above, table=table, mac_m=mac, rho=1.225)
 
         assert abs(cd0_clamped - 0.012) < 1e-6, (
             f"Expected cd0=0.012 (clamped to highest Re), got {cd0_clamped}"
@@ -522,7 +541,7 @@ class TestLookupCd0AtV:
 
 
 # ===========================================================================
-# Interpolation: _lookup_e_oswald_at_v
+# Interpolation: lookup_e_oswald_at_v
 # ===========================================================================
 
 
@@ -537,11 +556,11 @@ class TestLookupEOswaldAtV:
         ]
 
     def test_returns_constant_mean_regardless_of_v(self):
-        """_lookup_e_oswald_at_v returns same mean for any query V."""
+        """lookup_e_oswald_at_v returns same mean for any query V."""
         table = self._make_table()
         mean_e = (0.73 + 0.76 + 0.79) / 3.0
         for v in [5.0, 10.0, 20.0, 50.0, 100.0]:
-            e_at_v = _lookup_e_oswald_at_v(v_mps=v, table=table)
+            e_at_v = lookup_e_oswald_at_v(v_mps=v, table=table)
             assert abs(e_at_v - mean_e) < 1e-9, (
                 f"Expected constant mean e={mean_e:.4f}, got {e_at_v:.4f} at v={v}"
             )
@@ -555,7 +574,7 @@ class TestLookupEOswaldAtV:
         ]
         # Only rows 1 and 2 contribute → mean of 0.76 and 0.79
         expected_mean = (0.76 + 0.79) / 2.0
-        e = _lookup_e_oswald_at_v(v_mps=10.0, table=table)
+        e = lookup_e_oswald_at_v(v_mps=10.0, table=table)
         assert abs(e - expected_mean) < 1e-9, (
             f"Expected mean excluding fallback={expected_mean:.4f}, got {e:.4f}"
         )
@@ -566,7 +585,7 @@ class TestLookupEOswaldAtV:
             {"re": 100_000.0,  "v_mps": 8.0,  "cd0": None, "e_oswald": None, "cl_max": 1.2, "r2": None, "fallback_used": True},
             {"re": 400_000.0,  "v_mps": 16.0, "cd0": None, "e_oswald": None, "cl_max": 1.2, "r2": None, "fallback_used": True},
         ]
-        e = _lookup_e_oswald_at_v(v_mps=10.0, table=table)
+        e = lookup_e_oswald_at_v(v_mps=10.0, table=table)
         assert abs(e - 0.8) < 1e-9, f"Expected fallback 0.8, got {e}"
 
 
@@ -579,7 +598,7 @@ class TestBackwardCompatibility:
     """ctx['cd0'] and ctx['e_oswald'] scalars remain mapped to the V_cruise row."""
 
     def test_context_scalar_cd0_present(self):
-        """compute_re_table_from_fine_sweep doesn't break ctx['cd0'] scalar.
+        """build_re_table V_cruise row provides the backward-compat scalar source.
 
         Integration-level: the new table is supplementary; the V_cruise-row
         cd0 should match the backward-compat scalar.
@@ -587,7 +606,7 @@ class TestBackwardCompatibility:
         v_arr, cl_arr, cd_arr = _make_rc_trainer_sweep()
         ac = RC_TRAINER
         v_cruise = 14.0
-        table = compute_re_table_from_fine_sweep(
+        table, _deg = build_re_table(
             v_array=v_arr,
             cl_array=cl_arr,
             cd_array=cd_arr,
@@ -595,6 +614,7 @@ class TestBackwardCompatibility:
             rho=1.225,
             v_anchor_points=[6.0, v_cruise, 20.0],
             cl_max=ac["cl_max"],
+            ar=ac["ar"],
         )
         # V_cruise row → cd0 is the backward-compat scalar source
         cruise_rows = [r for r in table if abs(r["v_mps"] - v_cruise) < 2.0]
@@ -608,7 +628,7 @@ class TestBackwardCompatibility:
         """polar_re_table and polar_re_table_degenerate are the new context keys."""
         v_arr, cl_arr, cd_arr = _make_rc_trainer_sweep()
         ac = RC_TRAINER
-        table, degenerate = compute_re_table_from_fine_sweep(
+        table, degenerate = build_re_table(
             v_array=v_arr,
             cl_array=cl_arr,
             cd_array=cd_arr,
@@ -616,7 +636,7 @@ class TestBackwardCompatibility:
             rho=1.225,
             v_anchor_points=[6.0, 14.0, 20.0],
             cl_max=ac["cl_max"],
-            return_degenerate_flag=True,
+            ar=ac["ar"],
         )
         assert isinstance(table, list)
         assert isinstance(degenerate, bool)
@@ -657,7 +677,7 @@ class TestConsumerIntegration:
     def test_power_required_uses_lower_cd0_at_higher_v(self):
         """At higher V, cd0 from Re table is lower → smaller parasitic drag contribution.
 
-        This test patches _lookup_cd0_at_v to return different values at different V
+        This test patches lookup_cd0_at_v to return different values at different V
         and verifies _power_required changes accordingly.
         """
         from app.services.endurance_service import _power_required
@@ -716,14 +736,14 @@ class TestCrossCheckSyntheticRanges:
     def _fit_sweep_and_get_cruise_cd0(
         self, ac: dict, v_s: float, v_cruise: float, v_max: float
     ) -> float | None:
-        """Run compute_re_table_from_fine_sweep on synthetic data, return cruise-band cd0."""
+        """Run build_re_table on synthetic data, return cruise-band cd0."""
         velocities = [v_s * 0.9, v_s, v_cruise * 0.8, v_cruise, v_max * 0.9, v_max]
         # Use enough alphas for ≥6 points per band
         alphas_deg = np.linspace(-2.0, 12.0, 14).tolist()
         v_arr, cl_arr, cd_arr = _make_synthetic_sweep(
             velocities, alphas_deg, ac["cd0"], ac["e"], ac["ar"], ac["cl_max"]
         )
-        table = compute_re_table_from_fine_sweep(
+        table, _deg = build_re_table(
             v_array=v_arr,
             cl_array=cl_arr,
             cd_array=cd_arr,
@@ -731,6 +751,7 @@ class TestCrossCheckSyntheticRanges:
             rho=1.225,
             v_anchor_points=[v_s, v_cruise, v_max],
             cl_max=ac["cl_max"],
+            ar=ac["ar"],
         )
         # Find the cruise-band row
         cruise_rows = sorted(table, key=lambda r: abs(r["v_mps"] - v_cruise))
@@ -740,11 +761,10 @@ class TestCrossCheckSyntheticRanges:
         return row["cd0"] if not row["fallback_used"] else None
 
     def test_rc_trainer_cd0_in_draggy_range(self):
-        """RC trainer / draggy aircraft at Re≈200k → cd0 ∈ [0.025, 0.075].
+        """RC trainer / draggy aircraft at Re≈200k → cd0 ∈ [0.040, 0.065].
 
-        Slightly relaxed from spec [0.040, 0.065] because this is a synthetic
-        clean polar; the spec range is for the real AeroBuildup cross-check (slow test).
-        The clean synthetic will be close to the input cd0=0.035.
+        Scholz A11 spec range: [0.040, 0.065] for RC aircraft at this Re band.
+        Seeded with cd0=0.050 (midpoint); synthetic clean polar should recover it.
         """
         ac = RC_TRAINER
         v_s = 8.0
@@ -758,23 +778,33 @@ class TestCrossCheckSyntheticRanges:
 
         cd0_fit = self._fit_sweep_and_get_cruise_cd0(ac, v_s, v_cruise, v_max)
         if cd0_fit is not None:
-            # Synthetic clean polar should recover close to input cd0=0.035
-            assert 0.015 < cd0_fit < 0.075, (
-                f"RC trainer synthetic cd0_fit={cd0_fit:.4f} outside [0.015, 0.075]"
+            # Tight Scholz A11 bounds: clean synthetic polar seeded with 0.050
+            assert 0.040 < cd0_fit < 0.065, (
+                f"RC trainer synthetic cd0_fit={cd0_fit:.4f} outside [0.040, 0.065] (Scholz A11)"
             )
 
     def test_asw27_scale_cd0_in_mid_re_range(self):
-        """ASW-27 scale at Re≈1M → cd0 from synthetic fit close to ground truth."""
+        """ASW-27 large-scale model at Re≈1M → cd0 from synthetic fit close to ground truth.
+
+        Fixture uses MAC=0.50 m, V=37 m/s → Re≈1.25M (half-scale soaring model).
+        Seeded cd0=0.018 for sailplane.
+        """
         ac = ASW_27_SCALE
-        v_s = 6.0
-        v_cruise = 15.0
-        v_max = max(1.3 * v_cruise, 25.0)
+        v_s = 12.0
+        v_cruise = 37.0
+        v_max = max(1.3 * v_cruise, 50.0)
+
+        # Verify Re is in expected range (~1M)
+        re_cruise = _reynolds_number_from_v(v_cruise, ac["mac_m"], rho=1.225)
+        assert 0.8e6 < re_cruise < 2.0e6, (
+            f"ASW-27 scale cruise Re expected ~1M, got {re_cruise:.3e}"
+        )
 
         cd0_fit = self._fit_sweep_and_get_cruise_cd0(ac, v_s, v_cruise, v_max)
         if cd0_fit is not None:
-            # Synthetic should recover near input cd0=0.024
-            assert 0.010 < cd0_fit < 0.050, (
-                f"ASW-27 scale synthetic cd0_fit={cd0_fit:.4f} outside [0.010, 0.050]"
+            # Synthetic should recover near input cd0=0.018 for a sailplane
+            assert 0.008 < cd0_fit < 0.040, (
+                f"ASW-27 scale synthetic cd0_fit={cd0_fit:.4f} outside [0.008, 0.040]"
             )
 
 
@@ -1042,3 +1072,101 @@ class TestFitBandWithAr:
         )
         # Should trigger fallback due to e outside range
         assert row["fallback_used"] is True
+
+
+# ===========================================================================
+# Cessna 172 cd0 range test (Scholz A11, Fix 10)
+# ===========================================================================
+
+
+class TestCessnacd0Range:
+    """Cessna 172 parametrized Re table: cd0 at V_cruise row ∈ [0.027, 0.034].
+
+    Scholz A11: GA aircraft at Re≈6M should have cd0 ∈ [0.027, 0.034].
+    Uses synthetic polar seeded from the CESSNA_172 fixture.
+    """
+
+    def test_cessna_cruise_cd0_in_ga_range(self):
+        """build_re_table at Cessna 172 params → cd0 at V_cruise ∈ [0.027, 0.034]."""
+        ac = CESSNA_172
+        v_cruise = 62.0
+        v_s = 25.0
+        v_max = max(1.3 * v_cruise, 80.0)
+
+        # Verify cruise Re is in expected range
+        re_cruise = _reynolds_number_from_v(v_cruise, ac["mac_m"], rho=1.225)
+        assert 5.0e6 < re_cruise < 8.0e6, (
+            f"Cessna cruise Re expected ~6M, got {re_cruise:.3e}"
+        )
+
+        # Build synthetic sweep with enough alphas for ≥6 samples per band
+        velocities = [v_s, v_cruise * 0.7, v_cruise, v_cruise * 1.15, v_max * 0.9, v_max]
+        alphas_deg = np.linspace(-2.0, 12.0, 14).tolist()
+        v_arr, cl_arr, cd_arr = _make_synthetic_sweep(
+            velocities, alphas_deg, ac["cd0"], ac["e"], ac["ar"], ac["cl_max"]
+        )
+
+        table, degenerate = build_re_table(
+            v_array=v_arr,
+            cl_array=cl_arr,
+            cd_array=cd_arr,
+            mac_m=ac["mac_m"],
+            rho=1.225,
+            v_anchor_points=[v_s, v_cruise, v_max],
+            cl_max=ac["cl_max"],
+            ar=ac["ar"],
+        )
+        assert not degenerate, "Cessna sweep should not be degenerate (wide Re spread)"
+
+        # Find the cruise-band row
+        cruise_rows = sorted(table, key=lambda r: abs(r["v_mps"] - v_cruise))
+        assert len(cruise_rows) > 0, "No cruise row in table"
+        cruise_row = cruise_rows[0]
+
+        if not cruise_row["fallback_used"]:
+            cd0_fit = cruise_row["cd0"]
+            assert cd0_fit is not None, "Cruise row cd0 must not be None"
+            assert 0.027 < cd0_fit < 0.034, (
+                f"Cessna 172 V_cruise cd0_fit={cd0_fit:.5f} outside Scholz A11 [0.027, 0.034]"
+            )
+
+
+# ===========================================================================
+# Performance benchmark (Fix 11 / N2)
+# ===========================================================================
+
+
+class TestPerfBenchmark:
+    """build_re_table on a realistic sweep (10 V × 12 alpha = 120 samples)
+    must complete in ≤200 ms (pure Python, no AeroBuildup)."""
+
+    def test_build_re_table_completes_in_200ms(self):
+        """build_re_table on 120-sample sweep must finish in ≤200 ms."""
+        ac = RC_TRAINER
+        n_v = 10
+        n_alpha = 12
+        velocities = np.linspace(6.0, 25.0, n_v).tolist()
+        alphas_deg = np.linspace(-2.0, 12.0, n_alpha).tolist()
+        v_arr, cl_arr, cd_arr = _make_synthetic_sweep(
+            velocities, alphas_deg, ac["cd0"], ac["e"], ac["ar"], ac["cl_max"]
+        )
+        v_s = 6.0
+        v_cruise = 14.0
+        v_max = max(1.3 * v_cruise, 25.0)
+
+        t0 = time.perf_counter()
+        _table, _deg = build_re_table(
+            v_array=v_arr,
+            cl_array=cl_arr,
+            cd_array=cd_arr,
+            mac_m=ac["mac_m"],
+            rho=1.225,
+            v_anchor_points=[v_s, v_cruise, v_max],
+            cl_max=ac["cl_max"],
+            ar=ac["ar"],
+        )
+        elapsed_ms = (time.perf_counter() - t0) * 1000.0
+
+        assert elapsed_ms < 200.0, (
+            f"build_re_table took {elapsed_ms:.1f} ms on 120-sample sweep (limit: 200 ms)"
+        )
