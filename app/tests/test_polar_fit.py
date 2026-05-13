@@ -348,7 +348,8 @@ class TestCachedContextIntegration:
             ),
             patch(
                 "app.services.assumption_compute_service._fine_sweep_cl_max",
-                return_value=(ac["cl_max"], cls, cds),
+                # gh-493: now returns 4-tuple (cl_max, cl_arr, cd_arr, v_arr)
+                return_value=(ac["cl_max"], cls, cds, np.linspace(12.0, 28.0, len(cls))),
             ),
             patch(
                 "app.services.assumption_compute_service._extract_cl_alpha_from_linear_sweep",

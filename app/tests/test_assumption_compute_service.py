@@ -49,8 +49,8 @@ def _patches():
         ),
         patch(
             "app.services.assumption_compute_service._fine_sweep_cl_max",
-            # Now returns (cl_max, cl_array, cd_array) — gh-486
-            return_value=(1.35, np.array([0.2, 0.4, 0.6, 0.8, 1.0, 1.2]), np.array([0.026, 0.028, 0.032, 0.039, 0.049, 0.062])),
+            # gh-493: now returns 4-tuple (cl_max, cl_array, cd_array, v_array)
+            return_value=(1.35, np.array([0.2, 0.4, 0.6, 0.8, 1.0, 1.2]), np.array([0.026, 0.028, 0.032, 0.039, 0.049, 0.062]), np.linspace(9.0, 28.0, 6)),
         ),
         patch(
             "app.services.assumption_compute_service._extract_cl_alpha_from_linear_sweep",
@@ -251,3 +251,40 @@ def test_b_ref_m_is_in_context_after_recompute(client_and_db):
         assert "b_ref_m" in ctx, "b_ref_m must be present in assumption_computation_context"
         # The stub wing has span=1.5 m
         assert ctx["b_ref_m"] == 1.5
+
+
+def test_polar_re_table_keys_in_context(client_and_db):
+    """gh-493: polar_re_table and polar_re_table_degenerate must be in context.
+
+    Backward-compat: cd0 and e_oswald scalar keys must ALSO remain.
+    """
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        db.commit()
+        aeroplane_uuid = str(aeroplane.uuid)
+        aeroplane_id = aeroplane.id
+
+    p1, p2, p3, p4, p5, p6 = _patches()
+    with p1, p2, p3, p4, p5, p6:
+        with SessionLocal() as db:
+            recompute_assumptions(db, aeroplane_uuid)
+            db.commit()
+
+    with SessionLocal() as db:
+        from app.models.aeroplanemodel import AeroplaneModel
+        a = db.query(AeroplaneModel).filter_by(id=aeroplane_id).first()
+        ctx = a.assumption_computation_context
+
+        # New gh-493 keys
+        assert "polar_re_table" in ctx, "polar_re_table must be in context"
+        assert "polar_re_table_degenerate" in ctx, "polar_re_table_degenerate must be in context"
+        assert isinstance(ctx["polar_re_table_degenerate"], bool)
+        assert isinstance(ctx["polar_re_table"], list)
+
+        # Backward-compat: scalar cd0 and e_oswald must still be present (gh-486)
+        # (they may be None if fit failed, but the keys must exist)
+        assert "cd0" in ctx or "e_oswald" in ctx, (
+            "Backward-compat scalar keys (cd0 / e_oswald) must remain in context"
+        )

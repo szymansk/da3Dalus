@@ -85,10 +85,11 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     try:
         x_np, mac, cd0, s_ref = _stability_run_at_cruise(asb_airplane, v_cruise)
         stall_alpha = _coarse_alpha_sweep(asb_airplane, v_cruise, config)
-        # _fine_sweep_cl_max returns (cl_max, cl_array, cd_array) so that the
-        # parabolic polar fit (gh-486) can consume the raw sweep data.
+        # _fine_sweep_cl_max returns (cl_max, cl_array, cd_array, v_array) so that
+        # the parabolic polar fit (gh-486) and Re-table builder (gh-493) can
+        # consume the raw sweep data without extra AeroBuildup invocations.
         fine_result = _fine_sweep_cl_max(asb_airplane, stall_alpha, v_cruise, v_max, config)
-        cl_max, sweep_cl_arr, sweep_cd_arr = fine_result
+        cl_max, sweep_cl_arr, sweep_cd_arr, sweep_v_arr = fine_result
     except Exception:
         logger.exception(
             "AeroBuildup failed during recompute for aircraft %s — aborting", aeroplane_uuid
@@ -129,6 +130,34 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     )
     e_oswald_fallback = e_oswald_fit is None
     e_oswald_effective = e_oswald_fit if e_oswald_fit is not None else 0.8
+    # -----------------------------------------------------------------------
+
+    # --- gh-493: Reynolds-dependent polar table ----------------------------
+    # Build a 3-band Re table by rebinning the existing fine-sweep data.
+    # V-bands: {V_s_approx, V_cruise, max(1.3·V_cruise, V_max_goal)}.
+    # NO new AeroBuildup invocations — marginal cost ≤ 200 ms (3× OLS fits).
+    # V_max heuristic is decoupled from the powertrain to prevent chicken-egg.
+    v_stall_approx_re = max(v_cruise * 0.5, 3.0)  # same heuristic as _fine_sweep_cl_max
+    v_max_re_anchor = max(1.3 * v_cruise, v_max)
+    v_anchor_points_re = [v_stall_approx_re, v_cruise, v_max_re_anchor]
+    try:
+        from app.services.polar_re_table_service import build_re_table
+        polar_re_table, polar_re_table_degenerate = build_re_table(
+            v_array=np.asarray(sweep_v_arr, dtype=float),
+            cl_array=np.asarray(sweep_cl_arr, dtype=float),
+            cd_array=np.asarray(sweep_cd_arr, dtype=float),
+            mac_m=mac,
+            rho=1.225,
+            v_anchor_points=v_anchor_points_re,
+            cl_max=cl_max_effective_for_fit if cl_max_effective_for_fit else cl_max,
+            ar=aspect_ratio if aspect_ratio is not None else 0.0,
+        )
+    except Exception:
+        logger.exception(
+            "Re-table build failed for aircraft %s — skipping (non-fatal)", aeroplane_uuid
+        )
+        polar_re_table = []
+        polar_re_table_degenerate = True
     # -----------------------------------------------------------------------
 
     # --- gh-488: Loading + Stability envelopes ---------------------------
@@ -214,6 +243,11 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         "e_oswald_fallback_used": e_oswald_fallback,
         # Linear-range CL_α from α-sweep (gh-487) — consumed by compute_vn_curve for gust loads
         "cl_alpha_per_rad": round(cl_alpha_per_rad, 4) if cl_alpha_per_rad is not None else None,
+        # Reynolds-dependent polar table (gh-493) — 3 V-bands from existing fine-sweep rebinning.
+        # No extra AeroBuildup runs. Schema per row: {re, v_mps, cd0, e_oswald, cl_max, r2, fallback_used}
+        # ctx["cd0"] and ctx["e_oswald"] scalar keys REMAIN for backward compat (gh-486 consumers).
+        "polar_re_table": polar_re_table,
+        "polar_re_table_degenerate": polar_re_table_degenerate,
         "computed_at": datetime.now(timezone.utc).isoformat(),
     }
     enrich_context_with_cg_envelope(
@@ -353,11 +387,16 @@ def _fine_sweep_cl_max(
     v_cruise: float,
     v_max: float,
     config: AircraftComputationConfigModel,
-) -> tuple[float, np.ndarray, np.ndarray]:
-    """Returns (CL_max, cl_array, cd_array) from a fine alpha × velocity sweep.
+) -> tuple[float, np.ndarray, np.ndarray, np.ndarray]:
+    """Returns (CL_max, cl_array, cd_array, v_array) from a fine alpha × velocity sweep.
 
-    The returned CL and CD arrays span the full swept range and are used by the
-    parabolic polar fitter (gh-486) to derive the Oswald efficiency factor.
+    The returned CL, CD, and V arrays span the full swept range.  CL and CD are
+    used by the parabolic polar fitter (gh-486) to derive the Oswald efficiency
+    factor.  V is additionally used by the Re-table builder (gh-493) to bin
+    samples by velocity band.
+
+    Note: the v_array is the velocity at which each (CL, CD) sample was taken.
+    It has the same length as cl_array and cd_array.
     """
     import aerosandbox as asb
 
@@ -372,6 +411,7 @@ def _fine_sweep_cl_max(
     cl_max = -float("inf")
     cl_list: list[float] = []
     cd_list: list[float] = []
+    v_list: list[float] = []
     for v in velocities:
         for a in alphas:
             op = asb.OperatingPoint(velocity=float(v), alpha=float(a))
@@ -381,9 +421,15 @@ def _fine_sweep_cl_max(
             cd = _extract_scalar(r, "CD", default=0.0)
             cl_list.append(cl)
             cd_list.append(cd)
+            v_list.append(float(v))
             if cl > cl_max:
                 cl_max = cl
-    return float(cl_max), np.asarray(cl_list, dtype=float), np.asarray(cd_list, dtype=float)
+    return (
+        float(cl_max),
+        np.asarray(cl_list, dtype=float),
+        np.asarray(cd_list, dtype=float),
+        np.asarray(v_list, dtype=float),
+    )
 
 
 def _extract_cl_alpha_from_linear_sweep(
