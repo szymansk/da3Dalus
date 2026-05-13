@@ -249,7 +249,7 @@ def _apply_conditioning_guard(
             confidence=confidence_warn_tier,
             cm_delta_e=cm_delta_e,
             cl_max_landing=cl_max_landing,
-            flap_state="clean" if delta_cm_flap == 0.0 else "deployed",
+            flap_state="clean" if abs(delta_cm_flap) < 1e-9 else "deployed",
             warnings=warnings,
         )
     return None
