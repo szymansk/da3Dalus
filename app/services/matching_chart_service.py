@@ -89,6 +89,7 @@ def _mode_defaults(mode: str) -> dict[str, float]:
     rc_hand_launch  : RC hand-launched (no runway takeoff constraint)
     uav_runway      : Fixed-wing UAV with a proper runway
     uav_belly_land  : UAV with belly-land recovery (no runway landing constraint)
+    ga_runway       : Full-scale single-engine GA (Cessna 172-class), FAR-23.65
 
     Returns
     -------
@@ -117,6 +118,18 @@ def _mode_defaults(mode: str) -> dict[str, float]:
             "s_runway": 200.0,
             "gamma_climb_deg": 4.0,
             "v_s_target": 12.0,
+        },
+        # FAR-23.65 single-engine GA (Cessna 172-class):
+        #   γ_climb_min = 1.5° (FAR-23.65 all-engine climb, conservative for GA sizing)
+        #   V_lof = 1.3·V_s (FAR-23.65 lift-off speed margin)
+        #   μ_friction ≈ 0.04 (hard paved runway, ICAO Annex 14)
+        #   CL_max_takeoff ≈ 1.6 (typical GA flaps-10 setting)
+        #   v_s_target = 27.7 m/s (54 kt — FAR-23 max stall speed for Normal/Utility GA)
+        #   s_runway = 500 m (typical paved GA airfield field length to 50 ft)
+        "ga_runway": {
+            "s_runway": 500.0,
+            "gamma_climb_deg": 1.5,
+            "v_s_target": 27.7,
         },
     }
     if mode not in defaults:
@@ -443,8 +456,9 @@ def compute_chart(
           ``v_md_mps``, ``v_stall_mps``, ``s_ref_m2``, ``b_ref_m``
 
     mode : str
-        One of ``rc_runway``, ``rc_hand_launch``, ``uav_runway``, ``uav_belly_land``.
-        Sets default field-length, climb-gradient, and stall-speed targets.
+        One of ``rc_runway``, ``rc_hand_launch``, ``uav_runway``, ``uav_belly_land``,
+        ``ga_runway``.  Sets default field-length, climb-gradient, and stall-speed
+        targets.  ``ga_runway`` targets FAR-23.65 single-engine GA (Cessna 172-class).
 
     s_runway : float | None
         Override field length target [m] (to 50 ft for TO; from 50 ft for LDG).

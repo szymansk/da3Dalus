@@ -847,6 +847,146 @@ class TestUavBellyLandMode:
 
 
 # ===========================================================================
+# Class 13: ga_runway mode — FAR-23.65 general-aviation (gh-510)
+# ===========================================================================
+
+
+class TestGaRunwayMode:
+    """ga_runway mode: FAR-23.65 single-engine GA constraints.
+
+    Reference aircraft: Cessna 172N at MTOM
+      W/S ≈ 660–691 N/m², T/W ≈ 0.178–0.18
+    """
+
+    def test_ga_runway_mode_in_mode_defaults(self):
+        """ga_runway must be a known mode (not fall back to uav_runway defaults)."""
+        mcs = _helpers()
+        defaults_ga = mcs._mode_defaults("ga_runway")
+        defaults_uav = mcs._mode_defaults("uav_runway")
+        # ga_runway must differ from uav_runway in at least one key
+        assert defaults_ga != defaults_uav, (
+            "ga_runway mode must have distinct defaults from uav_runway"
+        )
+
+    def test_ga_runway_gamma_climb_is_1_5_deg(self):
+        """FAR-23.65: single-engine climb gradient target γ_min = 1.5°."""
+        mcs = _helpers()
+        defaults = mcs._mode_defaults("ga_runway")
+        assert defaults["gamma_climb_deg"] == 1.5, (
+            f"ga_runway gamma_climb_deg = {defaults['gamma_climb_deg']}, expected 1.5°"
+        )
+
+    def test_ga_runway_v_s_target_accommodates_cessna(self):
+        """ga_runway v_s_target must be ≥ Cessna 172 stall speed (≈26 m/s clean).
+
+        FAR-23 allows up to ~27.7 m/s (54 kt) stall speed for normal GA aircraft.
+        Default v_s_target must leave W/S=660–691 N/m² feasible.
+        """
+        mcs = _helpers()
+        defaults = mcs._mode_defaults("ga_runway")
+        rho = 1.225
+        cl_max_clean = 1.6   # Cessna 172 CL_max clean
+
+        # W/S_max from stall constraint must be > Cessna's 660–691 N/m²
+        ws_stall_max = 0.5 * rho * defaults["v_s_target"] ** 2 * cl_max_clean
+        assert ws_stall_max >= 660.0, (
+            f"ga_runway stall W/S_max={ws_stall_max:.0f} N/m² is below Cessna "
+            f"W/S=660 N/m²: v_s_target={defaults['v_s_target']} m/s too low."
+        )
+
+    def test_ga_runway_s_runway_typical_paved(self):
+        """ga_runway s_runway must be a typical paved GA runway length (≥ 400 m)."""
+        mcs = _helpers()
+        defaults = mcs._mode_defaults("ga_runway")
+        assert defaults["s_runway"] >= 400.0, (
+            f"ga_runway s_runway = {defaults['s_runway']} m; expected ≥ 400 m for GA paved runway"
+        )
+
+    def test_cessna_172_feasible_in_ga_runway_mode(self):
+        """Cessna 172 design point (T/W=0.18, W/S≈660 N/m²) must be feasible in ga_runway.
+
+        This is the primary acceptance criterion for gh-510:
+        previously classified infeasible_below_constraints in uav_runway mode.
+        """
+        compute_chart = _service()
+        chart = compute_chart(CESSNA_172, mode="ga_runway")
+        assert chart["feasibility"] == "feasible", (
+            f"Cessna 172 must be feasible in ga_runway mode, "
+            f"got: {chart['feasibility']}. "
+            f"Design point: {chart['design_point']}"
+        )
+
+    def test_cessna_172_feasible_at_691_ws(self):
+        """Cessna 172-class design point at T/W=0.18, W/S=691 N/m² is feasible (ticket AC).
+
+        This is the explicit acceptance criterion from the GH-510 issue.
+        """
+        compute_chart = _service()
+        # Use explicit ws_n_m2 = 691 as specified in the ticket
+        aircraft_ga = {
+            **CESSNA_172,
+            "ws_n_m2": 691.0,
+            "t_static_N": 0.18 * 1088.0 * 9.81,  # T/W = 0.18
+        }
+        chart = compute_chart(aircraft_ga, mode="ga_runway")
+        assert chart["feasibility"] == "feasible", (
+            f"Cessna-class at T/W=0.18, W/S=691 N/m² must be feasible in ga_runway, "
+            f"got: {chart['feasibility']}. Design point: {chart['design_point']}"
+        )
+
+    def test_ga_runway_produces_valid_chart_structure(self):
+        """ga_runway mode returns valid chart structure (all required keys, ≥4 constraints)."""
+        compute_chart = _service()
+        chart = compute_chart(CESSNA_172, mode="ga_runway")
+        required_keys = {"ws_range_n_m2", "constraints", "design_point", "feasibility", "warnings"}
+        assert required_keys.issubset(chart.keys()), (
+            f"Missing keys: {required_keys - chart.keys()}"
+        )
+        assert len(chart["constraints"]) >= 4
+        assert chart["feasibility"] in {"feasible", "infeasible_below_constraints"}
+
+    def test_ga_runway_has_landing_constraint(self):
+        """ga_runway mode must include a landing distance constraint (not belly-land)."""
+        compute_chart = _service()
+        chart = compute_chart(CESSNA_172, mode="ga_runway")
+        landing = next((c for c in chart["constraints"] if c["name"] == "Landing"), None)
+        assert landing is not None, "ga_runway must include a Landing constraint"
+        # Landing ws_max must be a finite positive value (not None / inf like belly-land)
+        assert landing["ws_max"] is not None, "ga_runway Landing ws_max must not be None"
+        assert math.isfinite(landing["ws_max"]), (
+            f"ga_runway Landing ws_max must be finite, got {landing['ws_max']}"
+        )
+
+    def test_ga_runway_gamma_climb_lower_than_rc_and_uav(self):
+        """GA climb angle (1.5°) is lower than RC (5°) and UAV (4°).
+
+        FAR-23.65 sets a gentler climb requirement for full-scale single-engine GA.
+        """
+        mcs = _helpers()
+        gamma_ga = mcs._mode_defaults("ga_runway")["gamma_climb_deg"]
+        gamma_rc = mcs._mode_defaults("rc_runway")["gamma_climb_deg"]
+        gamma_uav = mcs._mode_defaults("uav_runway")["gamma_climb_deg"]
+        assert gamma_ga < gamma_uav < gamma_rc, (
+            f"Expected γ_ga < γ_uav < γ_rc: "
+            f"got ga={gamma_ga}°, uav={gamma_uav}°, rc={gamma_rc}°"
+        )
+
+    def test_rc_runway_still_passes_after_ga_runway_added(self):
+        """Regression: rc_runway mode still works after ga_runway addition."""
+        compute_chart = _service()
+        chart = compute_chart(LIGHT_RC, mode="rc_runway")
+        assert chart["feasibility"] in {"feasible", "infeasible_below_constraints"}
+        assert len(chart["constraints"]) >= 4
+
+    def test_uav_runway_still_passes_after_ga_runway_added(self):
+        """Regression: uav_runway mode still works after ga_runway addition."""
+        compute_chart = _service()
+        chart = compute_chart(CESSNA_172, mode="uav_runway")
+        assert chart["feasibility"] in {"feasible", "infeasible_below_constraints"}
+        assert len(chart["constraints"]) >= 4
+
+
+# ===========================================================================
 # gh-493 Amendment 7: Re-table consumer wiring for matching chart
 # ===========================================================================
 
