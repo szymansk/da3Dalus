@@ -30,6 +30,32 @@ class TestControlSurfaceRole:
         from app.services.trim_enrichment_service import ROLE_COEFFICIENT_MAP
         assert set(ROLE_COEFFICIENT_MAP) <= {r.value for r in ControlSurfaceRole}
 
+    def test_every_actuating_role_is_covered_by_an_axis(self):
+        # Why (gh-483): every ControlSurfaceRole value that represents an
+        # actuating surface must appear in at least one of the four axis
+        # routing sets used by the trim solver. Otherwise a user-assignable
+        # role silently fails to influence trim. Only "other" is exempt
+        # (it's a catch-all label, not a routed axis).
+        from app.services.operating_point_generator_service import (
+            PITCH_ROLES, ROLL_ROLES, YAW_ROLES, FLAP_ROLES,
+        )
+        actuating = {r.value for r in ControlSurfaceRole} - {"other"}
+        covered = PITCH_ROLES | ROLL_ROLES | YAW_ROLES | FLAP_ROLES
+        assert actuating <= covered, (
+            f"Unrouted control surface roles (no axis assignment): "
+            f"{actuating - covered}"
+        )
+
+    def test_retrim_pitch_roles_match_op_generator(self):
+        # Why (gh-483): retrim_service decides which OPs to mark DIRTY
+        # when a hinge angle on a pitch surface changes. If retrim's
+        # pitch set is narrower than the OP generator's, changes to a
+        # ruddervator (or any other newly-added pitch role) silently
+        # leave stale trim values in place.
+        from app.services.operating_point_generator_service import PITCH_ROLES
+        from app.services.retrim_service import _PITCH_ROLES
+        assert _PITCH_ROLES == PITCH_ROLES
+
 
 class TestTedSchemaRoleField:
     def test_role_defaults_to_other(self):
@@ -151,6 +177,24 @@ class TestRoleBasedDetection:
         assert caps["has_pitch_control"] is True
         assert caps["has_roll_control"] is True
 
+    def test_ruddervator_detected_as_both_pitch_and_yaw(self):
+        # gh-483: V-tail surfaces provide pitch (via symmetric deflection)
+        # AND yaw (via differential deflection). Both capability flags
+        # must be set so the trim solver considers the aircraft trimmable
+        # in pitch and yaw.
+        airplane = _mock_airplane_with_controls(["[ruddervator]V-Tail"])
+        caps = _detect_control_capabilities(airplane)
+        assert caps["has_pitch_control"] is True
+        assert caps["has_yaw_control"] is True
+
+    def test_flaperon_detected_as_roll(self):
+        # gh-483: flaperon = flap + aileron. The roll-control flag must
+        # be set so trim points that require roll authority are not
+        # silently skipped on flaperon-only configurations.
+        airplane = _mock_airplane_with_controls(["[flaperon]Flap-Aileron"])
+        caps = _detect_control_capabilities(airplane)
+        assert caps["has_roll_control"] is True
+
     def test_other_role_not_detected_as_control(self):
         airplane = _mock_airplane_with_controls(["[other]Custom"])
         caps = _detect_control_capabilities(airplane)
@@ -177,6 +221,36 @@ class TestRoleBasedPickControl:
             roles={"elevator"},
         )
         assert result == "[elevator]Höhenruder"
+
+    def test_pick_ruddervator_for_pitch(self):
+        # gh-483: Pitch-axis trim must be able to select a ruddervator
+        # surface when no dedicated elevator exists.
+        from app.services.operating_point_generator_service import PITCH_ROLES
+        result = _pick_control_name(
+            ["[ruddervator]V-Tail-L", "[ruddervator]V-Tail-R"],
+            roles=PITCH_ROLES,
+        )
+        assert result == "[ruddervator]V-Tail-L"
+
+    def test_pick_ruddervator_for_yaw(self):
+        # gh-483: Yaw-axis trim must be able to select a ruddervator
+        # surface when no dedicated rudder exists.
+        from app.services.operating_point_generator_service import YAW_ROLES
+        result = _pick_control_name(
+            ["[ruddervator]V-Tail-L", "[ruddervator]V-Tail-R"],
+            roles=YAW_ROLES,
+        )
+        assert result == "[ruddervator]V-Tail-L"
+
+    def test_pick_flaperon_for_roll(self):
+        # gh-483: Roll-axis trim must be able to select a flaperon when
+        # the aircraft has no dedicated aileron.
+        from app.services.operating_point_generator_service import ROLL_ROLES
+        result = _pick_control_name(
+            ["[flaperon]Left", "[flaperon]Right"],
+            roles=ROLL_ROLES,
+        )
+        assert result == "[flaperon]Left"
 
     def test_pick_flap(self):
         result = _pick_control_name(

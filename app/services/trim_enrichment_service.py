@@ -31,8 +31,9 @@ ROLE_COEFFICIENT_MAP: dict[str, str] = {
     "stabilator": "Cm",
     "aileron": "Cl",
     "rudder": "Cn",
-    "elevon": "Cm",  # primary axis for elevon
-    "flaperon": "Cl",
+    "elevon": "Cm",       # dual-role: pitch is primary, roll via differential
+    "flaperon": "Cl",     # dual-role: roll is primary, flap (lift) via symmetric
+    "ruddervator": "Cm",  # V-tail: pitch is primary, yaw via differential
     "flap": "CL",
 }
 
@@ -273,7 +274,7 @@ def generate_result_summary(
     pitch_reserve_str = ""
     for name, reserve in deflection_reserves.items():
         role, _ = parse_role_tag(name)
-        if role in ("elevator", "stabilator", "elevon"):
+        if role in ("elevator", "stabilator", "elevon", "ruddervator"):
             reserve_pct = (1 - reserve.usage_fraction) * 100
             pitch_reserve_str = f" with {reserve_pct:.0f}% elevator reserve"
             break

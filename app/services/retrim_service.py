@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_PITCH_ROLES = {"elevator", "stabilator", "elevon"}
+_PITCH_ROLES = {"elevator", "stabilator", "elevon", "ruddervator"}
 
 
 def _find_pitch_control_name(db: Session, aeroplane_id: int) -> str | None:
