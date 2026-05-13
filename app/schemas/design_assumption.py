@@ -23,7 +23,43 @@ VALID_PARAMETERS = Literal[
     "propulsion_eta_motor",
     "propulsion_eta_esc",
     "motor_continuous_power_w",
-    # Static thrust — gh-489: rc_pylon_3d into Literal + unit comment + stash resolve)
+    # Static thrust — gh-489
+    "t_static_N",
+]
+ACTIVE_SOURCE = Literal["ESTIMATE", "CALCULATED"]
+DIVERGENCE_LEVEL = Literal["none", "info", "warning", "alert"]
+
+# Pure user choices that never get a calculated value. power_to_weight
+# and prop_efficiency are NOT in this set: they're user-set initially
+# but will be replaced by a powertrain compute later.
+# Electric endurance params (battery_capacity_wh etc.) are design choices:
+# they are entered by the user and never auto-calculated from geometry.
+DESIGN_CHOICE_PARAMS = frozenset({
+    "target_static_margin",
+    "g_limit",
+    "battery_capacity_wh",
+    "battery_specific_energy_wh_per_kg",
+    "propulsion_eta_motor",
+    "propulsion_eta_esc",
+    "motor_continuous_power_w",
+})
+
+PARAMETER_UNITS: dict[str, str] = {
+    "mass": "kg",
+    "cg_x": "m",
+    "target_static_margin": "% MAC",
+    "cd0": "",
+    "cl_max": "",
+    "g_limit": "g",
+    "power_to_weight": "W/kg",
+    "prop_efficiency": "",
+    # Electric endurance / propulsion — gh-490
+    "battery_capacity_wh": "Wh",
+    "battery_specific_energy_wh_per_kg": "Wh/kg",
+    "propulsion_eta_motor": "",
+    "propulsion_eta_esc": "",
+    "motor_continuous_power_w": "W",
+    # Static thrust — gh-489
     "t_static_N": "N",
 }
 
@@ -57,7 +93,7 @@ PARAMETER_DEFAULTS: dict[str, float] = {
     # Motor continuous power rating: 0.0 signals "not yet set" (→ p_margin unknown)
     "motor_continuous_power_w": 0.0,
     # Static thrust at zero velocity (gh-489 takeoff field length).
-    # Default = 0 (glider / unknown). User MUST override for powered runway takeoff.: rc_pylon_3d into Literal + unit comment + stash resolve)
+    # Default = 0 (glider / unknown). User MUST override for powered runway takeoff.
     "t_static_N": 0.0,
 }
 
