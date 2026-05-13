@@ -23,7 +23,8 @@ class TestSeedAssumptions:
         resp = client.post(f"/aeroplanes/{aeroplane.uuid}/assumptions")
         assert resp.status_code == 201
         body = resp.json()
-        assert len(body["assumptions"]) == 8
+        # 8 original + 5 electric-endurance params added in gh-490
+        assert len(body["assumptions"]) == 13
         assert body["warnings_count"] == 0
 
     def test_seed_idempotent(self, client_and_db):
@@ -34,7 +35,7 @@ class TestSeedAssumptions:
         client.post(f"/aeroplanes/{aeroplane.uuid}/assumptions")
         resp = client.post(f"/aeroplanes/{aeroplane.uuid}/assumptions")
         assert resp.status_code == 201
-        assert len(resp.json()["assumptions"]) == 8
+        assert len(resp.json()["assumptions"]) == 13
 
     def test_seed_404_for_missing_aeroplane(self, client_and_db):
         client, _ = client_and_db
@@ -58,7 +59,8 @@ class TestListAssumptions:
         resp = client.get(f"/aeroplanes/{aeroplane.uuid}/assumptions")
         assert resp.status_code == 200
         body = resp.json()
-        assert len(body["assumptions"]) == 8
+        # 8 original + 5 electric-endurance params added in gh-490
+        assert len(body["assumptions"]) == 13
 
     def test_list_empty_before_seed(self, client_and_db):
         client, SessionLocal = client_and_db
