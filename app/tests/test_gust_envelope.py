@@ -293,38 +293,55 @@ class TestGustEnvelopeComputation:
 class TestMuGValidity:
     """μ_g validity warnings: Pratt validity range [3, 200]."""
 
-    def test_mu_g_validity_warning_below_3(self, caplog):
-        """When μ_g < 3 a WARNING is logged about Pratt validity range."""
-        import logging
-        from app.services.flight_envelope_service import _compute_k_g
+    def test_mu_g_validity_warning_below_3(self, monkeypatch):
+        """When μ_g < 3 a WARNING is logged about Pratt validity range.
 
-        with caplog.at_level(logging.WARNING, logger="app.services.flight_envelope_service"):
-            _compute_k_g(1.0)  # μ_g=1 → below validity range
+        Uses monkeypatch on the module logger (instead of pytest's caplog)
+        because caplog's interaction with project-wide logging config
+        proved order-dependent in the full test suite.
+        """
+        import app.services.flight_envelope_service as _fes
 
-        assert any("pratt" in r.message.lower() or "validity" in r.message.lower()
-                   for r in caplog.records)
+        captured: list[str] = []
+        original_warning = _fes.logger.warning
 
-    def test_mu_g_validity_warning_above_200(self, caplog):
+        def _spy_warning(msg, *args, **kwargs):
+            captured.append(msg % args if args else msg)
+            return original_warning(msg, *args, **kwargs)
+
+        monkeypatch.setattr(_fes.logger, "warning", _spy_warning)
+        _fes._compute_k_g(1.0)  # μ_g=1 → below validity range
+        assert any("pratt" in m.lower() or "validity" in m.lower() for m in captured)
+
+    def test_mu_g_validity_warning_above_200(self, monkeypatch):
         """When μ_g > 200 a WARNING is logged about Pratt validity range."""
-        import logging
-        from app.services.flight_envelope_service import _compute_k_g
+        import app.services.flight_envelope_service as _fes
 
-        with caplog.at_level(logging.WARNING, logger="app.services.flight_envelope_service"):
-            _compute_k_g(300.0)  # μ_g=300 → above validity range
+        captured: list[str] = []
+        original_warning = _fes.logger.warning
 
-        assert any("pratt" in r.message.lower() or "validity" in r.message.lower()
-                   for r in caplog.records)
+        def _spy_warning(msg, *args, **kwargs):
+            captured.append(msg % args if args else msg)
+            return original_warning(msg, *args, **kwargs)
 
-    def test_mu_g_no_warning_in_valid_range(self, caplog):
+        monkeypatch.setattr(_fes.logger, "warning", _spy_warning)
+        _fes._compute_k_g(300.0)  # μ_g=300 → above validity range
+        assert any("pratt" in m.lower() or "validity" in m.lower() for m in captured)
+
+    def test_mu_g_no_warning_in_valid_range(self, monkeypatch):
         """No warning when μ_g is within [3, 200]."""
-        import logging
-        from app.services.flight_envelope_service import _compute_k_g
+        import app.services.flight_envelope_service as _fes
 
-        with caplog.at_level(logging.WARNING, logger="app.services.flight_envelope_service"):
-            _compute_k_g(50.0)
+        captured: list[str] = []
+        original_warning = _fes.logger.warning
 
-        assert not any("pratt" in r.message.lower() or "validity" in r.message.lower()
-                       for r in caplog.records)
+        def _spy_warning(msg, *args, **kwargs):
+            captured.append(msg % args if args else msg)
+            return original_warning(msg, *args, **kwargs)
+
+        monkeypatch.setattr(_fes.logger, "warning", _spy_warning)
+        _fes._compute_k_g(50.0)
+        assert not any("pratt" in m.lower() or "validity" in m.lower() for m in captured)
 
 
 # ────────────────────────────────────────────────────────────────────────────
