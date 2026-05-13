@@ -199,6 +199,8 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         "reynolds": round(re),
         "mac_m": round(mac, 4),
         "s_ref_m2": round(s_ref, 4),
+        # b_ref_m — main-wing span (gh-491 sub-task: was set on asb_airplane but not cached)
+        "b_ref_m": round(float(main_wing.span()), 4) if main_wing is not None else None,
         "aspect_ratio": round(aspect_ratio, 2) if aspect_ratio is not None else None,
         "x_np_m": round(x_np, 4),
         "target_static_margin": target_sm,

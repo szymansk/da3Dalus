@@ -226,3 +226,28 @@ def test_recompute_caches_context_and_publishes_cg_change(client_and_db):
 
     cg_events = [e for e in captured if e.parameter_name == "cg_x"]
     assert len(cg_events) == 1
+
+
+def test_b_ref_m_is_in_context_after_recompute(client_and_db):
+    """gh-491 sub-task: b_ref_m (span) must be persisted in assumption_computation_context."""
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        db.commit()
+        aeroplane_uuid = str(aeroplane.uuid)
+        aeroplane_id = aeroplane.id
+
+    p1, p2, p3, p4, p5, p6 = _patches()
+    with p1, p2, p3, p4, p5, p6:
+        with SessionLocal() as db:
+            recompute_assumptions(db, aeroplane_uuid)
+            db.commit()
+
+    with SessionLocal() as db:
+        from app.models.aeroplanemodel import AeroplaneModel
+        a = db.query(AeroplaneModel).filter_by(id=aeroplane_id).first()
+        ctx = a.assumption_computation_context
+        assert "b_ref_m" in ctx, "b_ref_m must be present in assumption_computation_context"
+        # The stub wing has span=1.5 m
+        assert ctx["b_ref_m"] == 1.5

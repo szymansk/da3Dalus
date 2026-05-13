@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 AIRCRAFT_CLASS = Literal[
     "rc_trainer",
     "rc_aerobatic",
+    "rc_pylon_3d",
     "rc_combust",
     "uav_survey",
     "glider",
