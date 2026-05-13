@@ -12,10 +12,15 @@ Scope choices:
 
 Factory helpers return ORM instances that are already committed to the
 session, so tests can rely on `.id` being populated.
+
+gh-504: ``pytest_collection_modifyitems`` auto-tags tests by file name so
+the CI tiering does not require hand-marking every file. The mapping is
+unit-tested in ``test_marker_auto_tagging.py``.
 """
 
 from __future__ import annotations
 
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Tuple
@@ -42,6 +47,53 @@ from app.models.aeroplanemodel import (
 from app.models.analysismodels import OperatingPointModel
 from app.services import cad_service
 from app.services.component_type_service import seed_default_types
+
+
+# --------------------------------------------------------------------------- #
+# Auto-tagging by filename (gh-504)
+# --------------------------------------------------------------------------- #
+# The CI tiers (fast / full / nightly) filter tests via pytest markers, but
+# hand-marking ~2500 tests is unrealistic. We derive the marker set from the
+# test file name. The mapping is unit-tested in
+# ``test_marker_auto_tagging.py`` so a rename can never silently move a
+# test between tiers without the test catching it.
+
+
+def _markers_for_path(path: str) -> list[str]:
+    """Return marker names that should auto-apply to a test file at ``path``.
+
+    Heuristics, in order of conservativeness:
+    - ``_e2e`` / ``_smoke`` → ``e2e`` (heaviest tier, nightly only)
+    - ``_integration`` → ``integration``
+    - ``tessellation`` / ``fuselage_slice`` → ``requires_cadquery``
+    - ``test_avl_*`` with ``generator`` / ``runner`` / ``strip_forces``
+      in the name → ``requires_avl`` (real binary invocation, not just
+      dataclass / geometry helpers)
+    """
+    name = os.path.basename(path)
+    markers: list[str] = []
+
+    if "_e2e" in name or "_smoke" in name:
+        markers.append("e2e")
+    if "_integration" in name:
+        markers.append("integration")
+    if "tessellation" in name or "fuselage_slice" in name:
+        markers.append("requires_cadquery")
+    if name.startswith("test_avl") and any(
+        token in name for token in ("generator", "runner", "strip_forces")
+    ):
+        markers.append("requires_avl")
+
+    return markers
+
+
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    """Apply markers derived from file name to every collected test item."""
+    for item in items:
+        for marker_name in _markers_for_path(str(item.fspath)):
+            item.add_marker(getattr(pytest.mark, marker_name))
 
 
 # --------------------------------------------------------------------------- #

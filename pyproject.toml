@@ -46,6 +46,7 @@ nlopt = ">=2.9,<3.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest-cov = "^7.1.0"
+pytest-xdist = "^3.6"
 ruff = "^0.15.10"
 pydeps = "^3.0.3"
 pyright = "^1.1.409"
@@ -74,6 +75,7 @@ markers = [
     "unit: pure unit test, mocked dependencies, no DB or external tooling",
     "integration: uses TestClient + in-memory DB, exercises real endpoints",
     "slow: takes more than ~10 seconds to run (default runs skip this)",
+    "e2e: end-to-end workflow test (CAD + analysis pipelines, nightly tier)",
     "requires_cadquery: needs a working CadQuery installation",
     "requires_aerosandbox: needs a working Aerosandbox installation",
     "requires_avl: needs the vendored AVL binary (Avl/bin/avl)",
