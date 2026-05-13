@@ -509,11 +509,6 @@ def compute_chart(
         for i in range(_WS_STEPS)
     ]
 
-    # --- Climb speed (V at best L/D — spec: clean polar, Anderson §6.3) -----
-    # Use V_md at midpoint W/S for climb (conservative, close to best-climb speed)
-    ws_mid = (_WS_MIN + _WS_MAX) * 0.5
-    v_climb = _v_md(ws_mid, cd0=cd0, e=e, ar=ar, rho=rho)
-
     # --- Constraint lines ---------------------------------------------------
 
     # 1. Takeoff (line: T/W vs W/S)

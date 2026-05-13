@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Annotated, NoReturn
+from typing import Annotated, Any, NoReturn
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import UUID4
@@ -38,6 +38,77 @@ def _get_aeroplane(db: Session, aeroplane_id: UUID4) -> AeroplaneModel:
     if plane is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aeroplane not found")
     return plane
+
+
+def _resolve_aircraft_params(
+    db: Session,
+    plane: AeroplaneModel,
+    v_cruise_override: float | None,
+) -> dict[str, Any]:
+    """Build the aircraft parameter dict consumed by compute_chart.
+
+    Reads design assumptions and the assumption_computation_context stored on
+    the aeroplane model, then merges them into a flat dict.  The caller may
+    supply an explicit cruise-speed override which takes precedence over both
+    the context value and the polar estimate.
+
+    Parameters
+    ----------
+    db              : open SQLAlchemy session
+    plane           : resolved AeroplaneModel row
+    v_cruise_override : explicit v_cruise_mps from query params, or None
+
+    Returns
+    -------
+    dict ready to pass to ``compute_chart`` as the *aircraft* argument.
+    """
+    ctx: dict[str, Any] = plane.assumption_computation_context or {}
+
+    mass_kg = float(
+        get_effective_assumption(db, plane.id, "mass") or PARAMETER_DEFAULTS["mass"]
+    )
+    cl_max = float(
+        get_effective_assumption(db, plane.id, "cl_max") or PARAMETER_DEFAULTS["cl_max"]
+    )
+    cd0 = float(
+        get_effective_assumption(db, plane.id, "cd0") or PARAMETER_DEFAULTS.get("cd0", 0.03)
+    )
+    t_static_raw = get_effective_assumption(db, plane.id, "t_static_N")
+    t_static_n = float(t_static_raw) if t_static_raw and float(t_static_raw) > 0 else 0.0
+
+    s_ref_m2: float | None = ctx.get("s_ref_m2")
+    e_oswald: float | None = ctx.get("e_oswald")
+    ar: float | None = ctx.get("aspect_ratio")
+    v_md_ctx: float | None = ctx.get("v_md_mps")
+    v_stall_ctx: float | None = ctx.get("v_stall_mps")
+    b_ref_m: float | None = ctx.get("b_ref_m")
+
+    aircraft: dict[str, Any] = {
+        "mass_kg": mass_kg,
+        "t_static_N": t_static_n,
+        "cd0": cd0,
+        "e_oswald": e_oswald if e_oswald else 0.8,
+        "ar": ar if ar else 7.0,
+        "cl_max_clean": cl_max,
+        "cl_max_takeoff": cl_max,        # clean CL_max for TO (conservative)
+        "cl_max_landing": cl_max * 1.3,  # rough flaps factor for landing
+    }
+    if s_ref_m2 is not None and s_ref_m2 > 0:
+        aircraft["s_ref_m2"] = s_ref_m2
+    if b_ref_m is not None:
+        aircraft["b_ref_m"] = b_ref_m
+    if v_md_ctx is not None:
+        aircraft["v_md_mps"] = v_md_ctx
+    if v_stall_ctx is not None:
+        aircraft["v_stall_mps"] = v_stall_ctx
+
+    # Cruise speed: explicit override wins; otherwise fall back to v_md from context.
+    # When neither is present the service estimates v_cruise from polar parameters.
+    v_cruise_resolved = v_cruise_override if v_cruise_override is not None else v_md_ctx
+    if v_cruise_resolved is not None:
+        aircraft["v_cruise_mps"] = v_cruise_resolved
+
+    return aircraft
 
 
 @router.get(
@@ -129,55 +200,7 @@ async def get_matching_chart(
 
     try:
         plane = _get_aeroplane(db, aeroplane_id)
-        ctx = plane.assumption_computation_context or {}
-
-        # --- Gather aircraft parameters from design assumptions + context ---
-        mass_kg = float(
-            get_effective_assumption(db, plane.id, "mass") or PARAMETER_DEFAULTS["mass"]
-        )
-        cl_max = float(
-            get_effective_assumption(db, plane.id, "cl_max") or PARAMETER_DEFAULTS["cl_max"]
-        )
-        cd0 = float(
-            get_effective_assumption(db, plane.id, "cd0") or PARAMETER_DEFAULTS.get("cd0", 0.03)
-        )
-        t_static_raw = get_effective_assumption(db, plane.id, "t_static_N")
-        t_static_n = float(t_static_raw) if t_static_raw and float(t_static_raw) > 0 else 0.0
-
-        # From computation context (polar-derived)
-        s_ref_m2: float | None = ctx.get("s_ref_m2")
-        e_oswald: float | None = ctx.get("e_oswald")
-        ar: float | None = ctx.get("aspect_ratio")
-        v_md_ctx: float | None = ctx.get("v_md_mps")
-        v_stall_ctx: float | None = ctx.get("v_stall_mps")
-        b_ref_m: float | None = ctx.get("b_ref_m")
-
-        # Build aircraft dict for service
-        aircraft: dict = {
-            "mass_kg": mass_kg,
-            "t_static_N": t_static_n,
-            "cd0": cd0,
-            "e_oswald": e_oswald if e_oswald else 0.8,
-            "ar": ar if ar else 7.0,
-            "cl_max_clean": cl_max,
-            "cl_max_takeoff": cl_max,      # clean CL_max for TO (conservative)
-            "cl_max_landing": cl_max * 1.3,  # rough flaps factor for landing
-        }
-        if s_ref_m2 is not None and s_ref_m2 > 0:
-            aircraft["s_ref_m2"] = s_ref_m2
-        if b_ref_m is not None:
-            aircraft["b_ref_m"] = b_ref_m
-        if v_md_ctx is not None:
-            aircraft["v_md_mps"] = v_md_ctx
-        if v_stall_ctx is not None:
-            aircraft["v_stall_mps"] = v_stall_ctx
-
-        # Cruise speed: from context, or from override, or estimated in service
-        if v_cruise_mps is not None:
-            aircraft["v_cruise_mps"] = v_cruise_mps
-        elif v_md_ctx is not None:
-            # Use V_md as proxy for cruise (max range speed)
-            aircraft["v_cruise_mps"] = v_md_ctx
+        aircraft = _resolve_aircraft_params(db, plane, v_cruise_override=v_cruise_mps)
 
         result = compute_chart(
             aircraft,

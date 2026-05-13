@@ -194,4 +194,23 @@ describe("MatchingChartTab", () => {
     render(<MatchingChartTab aeroplaneId="test-id" />);
     expect(screen.getByText(/Scholz/i)).toBeInTheDocument();
   });
+
+  it("shows drag hint info text when data is available", () => {
+    hookReturn = MOCK_OK_STATE;
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    expect(screen.getByText(/drag design point/i)).toBeInTheDocument();
+  });
+
+  it("renders plot container with data-testid", () => {
+    hookReturn = MOCK_OK_STATE;
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    expect(document.querySelector("[data-testid='matching-chart-plot']")).toBeTruthy();
+  });
+
+  it("renders design-point summary cells with data-testid", () => {
+    hookReturn = MOCK_OK_STATE;
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    expect(document.querySelector("[data-testid='dp-ws']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='dp-tw']")).toBeTruthy();
+  });
 });
