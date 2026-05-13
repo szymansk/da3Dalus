@@ -41,21 +41,21 @@ def _air_density(altitude_m: float) -> float:
 
 
 def _required_power_w(speed_ms: float, total_mass_kg: float, altitude_m: float) -> float:
-    """Backward-compatible shim: estimate power with request defaults.
+    """Legacy shim — removed in gh-490 (Model A refactor).
 
-    Preserved for existing tests and callers that do not supply geometry.
-    New code should use _combo_required_power_w with explicit geometry.
-    Uses RC-typical defaults: cd0=0.03, e=0.8, AR=8, S=0.5 m², η_total≈0.52.
+    This function no longer accepts requests without aircraft geometry.
+    Call _combo_required_power_w with explicit cd0, e_oswald, ar, s_ref_m2,
+    and eta_total derived from the actual aircraft or powertrain sizing request.
+
+    Raises
+    ------
+    NotImplementedError always — powertrain_sizing_service requires aircraft
+    geometry; legacy estimate-only mode removed in gh-490.
     """
-    return _combo_required_power_w(
-        speed_ms=speed_ms,
-        total_mass_kg=total_mass_kg,
-        altitude_m=altitude_m,
-        cd0=0.03,
-        e_oswald=0.8,
-        ar=8.0,
-        s_ref_m2=0.5,
-        eta_total=DEFAULT_ETA_PROP * DEFAULT_ETA_MOTOR * DEFAULT_ETA_ESC,
+    raise NotImplementedError(
+        "powertrain_sizing_service requires aircraft geometry (cd0, e_oswald, AR, S); "
+        "legacy estimate-only mode removed in gh-490. "
+        "Use _combo_required_power_w with explicit geometry parameters."
     )
 
 
@@ -126,14 +126,14 @@ def _evaluate_motor_battery_combo(
 
     total_mass = request.airframe_mass_kg + motor_mass_kg + battery_mass_kg
 
-    # Pull aerodynamic geometry from request if available, fall back to defaults
-    cd0 = getattr(request, "cd0", 0.03)
-    e_oswald = getattr(request, "e_oswald", 0.8)
-    ar = getattr(request, "aspect_ratio", 8.0)
-    s_ref_m2 = getattr(request, "s_ref_m2", 0.5)
-    eta_prop = getattr(request, "eta_prop", DEFAULT_ETA_PROP)
-    eta_motor = getattr(request, "eta_motor", DEFAULT_ETA_MOTOR)
-    eta_esc = getattr(request, "eta_esc", DEFAULT_ETA_ESC)
+    # Pull aerodynamic geometry from request fields (Optional; fall back to RC-typical defaults)
+    cd0: float = request.cd0 if request.cd0 is not None else 0.03
+    e_oswald: float = request.e_oswald if request.e_oswald is not None else 0.8
+    ar: float = request.aspect_ratio if request.aspect_ratio is not None else 8.0
+    s_ref_m2: float = request.s_ref_m2 if request.s_ref_m2 is not None else 0.5
+    eta_prop: float = request.eta_prop if request.eta_prop is not None else DEFAULT_ETA_PROP
+    eta_motor: float = request.eta_motor if request.eta_motor is not None else DEFAULT_ETA_MOTOR
+    eta_esc: float = request.eta_esc if request.eta_esc is not None else DEFAULT_ETA_ESC
     eta_total = eta_prop * eta_motor * eta_esc
 
     actual_cruise_power = _combo_required_power_w(

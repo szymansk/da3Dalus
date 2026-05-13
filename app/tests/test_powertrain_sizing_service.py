@@ -108,35 +108,20 @@ class TestAirDensity:
 
 
 class TestRequiredPowerW:
-    def test_positive_result_for_typical_inputs(self):
-        power = _required_power_w(15.0, 2.0, 0.0)
-        assert power > 0.0
+    """_required_power_w is a removed shim — always raises NotImplementedError (gh-490)."""
 
-    def test_higher_speed_requires_more_power(self):
-        p_slow = _required_power_w(10.0, 2.0, 0.0)
-        p_fast = _required_power_w(25.0, 2.0, 0.0)
-        assert p_fast > p_slow
+    def test_raises_not_implemented_for_typical_inputs(self):
+        """Legacy shim raises NotImplementedError; callers must use _combo_required_power_w."""
+        with pytest.raises(NotImplementedError, match="aircraft geometry"):
+            _required_power_w(15.0, 2.0, 0.0)
 
-    def test_heavier_aircraft_requires_more_power(self):
-        p_light = _required_power_w(15.0, 1.0, 0.0)
-        p_heavy = _required_power_w(15.0, 5.0, 0.0)
-        assert p_heavy > p_light
+    def test_raises_not_implemented_for_zero_speed(self):
+        with pytest.raises(NotImplementedError):
+            _required_power_w(0.0, 2.0, 0.0)
 
-    def test_higher_altitude_changes_power(self):
-        """Power at altitude differs from sea level due to density changes."""
-        p_sea = _required_power_w(15.0, 2.0, 0.0)
-        p_alt = _required_power_w(15.0, 2.0, 3000.0)
-        assert p_sea != p_alt
-
-    def test_zero_speed_returns_zero_power(self):
-        """At zero airspeed no aerodynamic power is needed; should return 0.0."""
-        result = _required_power_w(0.0, 2.0, 0.0)
-        assert result == 0.0
-
-    def test_negative_speed_returns_zero_power(self):
-        """Negative speed is physically meaningless; should return 0.0."""
-        result = _required_power_w(-5.0, 2.0, 0.0)
-        assert result == 0.0
+    def test_raises_not_implemented_for_high_altitude(self):
+        with pytest.raises(NotImplementedError):
+            _required_power_w(15.0, 2.0, 3000.0)
 
 
 # --------------------------------------------------------------------------- #

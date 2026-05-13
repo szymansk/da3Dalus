@@ -223,16 +223,23 @@ class TestAssumptionsSummary:
 
 
 class TestConstants:
-    def test_parameter_defaults_has_eight_entries(self):
-        assert len(PARAMETER_DEFAULTS) == 8
+    def test_parameter_defaults_has_thirteen_entries(self):
+        # 8 original + 5 electric-endurance params added in gh-490
+        assert len(PARAMETER_DEFAULTS) == 13
 
-    def test_parameter_units_has_eight_entries(self):
-        assert len(PARAMETER_UNITS) == 8
+    def test_parameter_units_has_thirteen_entries(self):
+        assert len(PARAMETER_UNITS) == 13
 
     def test_design_choice_params(self):
         assert "target_static_margin" in DESIGN_CHOICE_PARAMS
         assert "g_limit" in DESIGN_CHOICE_PARAMS
         assert "mass" not in DESIGN_CHOICE_PARAMS
+        # Electric endurance params are design choices (gh-490)
+        assert "battery_capacity_wh" in DESIGN_CHOICE_PARAMS
+        assert "battery_specific_energy_wh_per_kg" in DESIGN_CHOICE_PARAMS
+        assert "propulsion_eta_motor" in DESIGN_CHOICE_PARAMS
+        assert "propulsion_eta_esc" in DESIGN_CHOICE_PARAMS
+        assert "motor_continuous_power_w" in DESIGN_CHOICE_PARAMS
 
     def test_all_defaults_have_units(self):
         for key in PARAMETER_DEFAULTS:

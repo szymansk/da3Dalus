@@ -17,6 +17,12 @@ VALID_PARAMETERS = Literal[
     "g_limit",
     "power_to_weight",
     "prop_efficiency",
+    # Electric endurance / propulsion — gh-490
+    "battery_capacity_wh",
+    "battery_specific_energy_wh_per_kg",
+    "propulsion_eta_motor",
+    "propulsion_eta_esc",
+    "motor_continuous_power_w",
 ]
 ACTIVE_SOURCE = Literal["ESTIMATE", "CALCULATED"]
 DIVERGENCE_LEVEL = Literal["none", "info", "warning", "alert"]
@@ -24,7 +30,17 @@ DIVERGENCE_LEVEL = Literal["none", "info", "warning", "alert"]
 # Pure user choices that never get a calculated value. power_to_weight
 # and prop_efficiency are NOT in this set: they're user-set initially
 # but will be replaced by a powertrain compute later.
-DESIGN_CHOICE_PARAMS = frozenset({"target_static_margin", "g_limit"})
+# Electric endurance params (battery_capacity_wh etc.) are design choices:
+# they are entered by the user and never auto-calculated from geometry.
+DESIGN_CHOICE_PARAMS = frozenset({
+    "target_static_margin",
+    "g_limit",
+    "battery_capacity_wh",
+    "battery_specific_energy_wh_per_kg",
+    "propulsion_eta_motor",
+    "propulsion_eta_esc",
+    "motor_continuous_power_w",
+})
 
 PARAMETER_UNITS: dict[str, str] = {
     "mass": "kg",
@@ -35,6 +51,12 @@ PARAMETER_UNITS: dict[str, str] = {
     "g_limit": "g",
     "power_to_weight": "W/kg",
     "prop_efficiency": "",
+    # Electric endurance / propulsion — gh-490
+    "battery_capacity_wh": "Wh",
+    "battery_specific_energy_wh_per_kg": "Wh/kg",
+    "propulsion_eta_motor": "",
+    "propulsion_eta_esc": "",
+    "motor_continuous_power_w": "W",
 }
 
 PARAMETER_DEFAULTS: dict[str, float] = {
@@ -54,6 +76,18 @@ PARAMETER_DEFAULTS: dict[str, float] = {
     "power_to_weight": 220.0,
     # Typical 0.55-0.75 for RC propellers at cruise; 0.65 is a sane middle.
     "prop_efficiency": 0.65,
+    # Electric endurance / propulsion assumptions — gh-490
+    # battery_capacity_wh: 0.0 signals "not yet set" (missing input →
+    # compute_endurance returns None values with a warning).
+    "battery_capacity_wh": 0.0,
+    # Pack-level LiPo specific energy (Hepperle 2012; cell-level ≈ 220 Wh/kg)
+    "battery_specific_energy_wh_per_kg": 180.0,
+    # Brushless outrunner motor efficiency (typical 80-90 %)
+    "propulsion_eta_motor": 0.85,
+    # Modern ESC efficiency (typical 92-96 %)
+    "propulsion_eta_esc": 0.94,
+    # Motor continuous power rating: 0.0 signals "not yet set" (→ p_margin unknown)
+    "motor_continuous_power_w": 0.0,
 }
 
 

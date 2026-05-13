@@ -96,7 +96,7 @@ export function EnduranceCard({ aeroplaneId }: Props) {
               title={
                 isEstimated
                   ? "Estimated — polar fit unreliable. Run assumption recompute to improve."
-                  : data.warnings[0]
+                  : data.warnings.join(" | ")
               }
             />
           )}
@@ -171,13 +171,20 @@ export function EnduranceCard({ aeroplaneId }: Props) {
         </span>
       </div>
 
-      {/* Warnings (collapsed to first warning) */}
+      {/* Warnings — all warnings rendered as stacked alerts */}
       {hasWarnings && (
-        <div className="flex items-start gap-1.5 rounded-lg bg-yellow-500/10 p-2">
-          <AlertTriangle size={11} className="mt-0.5 flex-shrink-0 text-yellow-400" />
-          <span className="font-[family-name:var(--font-geist-sans)] text-[10px] text-yellow-300">
-            {data.warnings[0]}
-          </span>
+        <div className="flex flex-col gap-1">
+          {data.warnings.map((warning, idx) => (
+            <div
+              key={idx}
+              className="flex items-start gap-1.5 rounded-lg bg-yellow-500/10 p-2"
+            >
+              <AlertTriangle size={11} className="mt-0.5 flex-shrink-0 text-yellow-400" />
+              <span className="font-[family-name:var(--font-geist-sans)] text-[10px] text-yellow-300">
+                {warning}
+              </span>
+            </div>
+          ))}
         </div>
       )}
     </div>

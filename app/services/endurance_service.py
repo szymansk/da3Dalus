@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import logging
 import math
+import types
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -254,8 +255,14 @@ def compute_endurance(db: Session, aircraft: Any) -> dict[str, Any]:
     s_ref: float | None = ctx.get("s_ref_m2")
     ar: float | None = ctx.get("aspect_ratio")
 
-    # Fall back to design assumption if context missing s_ref / ar
-    mass: float = float(da.get("mass", 2.0))
+    # Resolve mass — must be explicitly provided; 2.0 kg silent default removed (gh-490)
+    _mass_raw = da.get("mass")
+    if _mass_raw is None:
+        raise ValueError(
+            "aircraft mass is required for endurance computation but was not supplied. "
+            "Set the 'mass' design assumption and call seed_defaults first."
+        )
+    mass: float = float(_mass_raw)
     cd0: float = float(da.get("cd0", 0.03))
 
     # Propulsion efficiencies
@@ -413,7 +420,7 @@ def compute_endurance_for_aeroplane(db: Session, aeroplane_uuid: Any) -> dict[st
 
     Reads design assumptions (mass, cd0, propulsion efficiencies,
     battery_capacity_wh, motor_continuous_power_w) from the aeroplane's
-    assumption rows and computation context.
+    persisted DesignAssumptionModel rows (seeded by seed_defaults / gh-490).
 
     Battery mass is taken from the first weight item with category='battery'.
     m_TO always uses the user-component mass, not the capacity-implied value.
@@ -427,8 +434,13 @@ def compute_endurance_for_aeroplane(db: Session, aeroplane_uuid: Any) -> dict[st
     if not aeroplane:
         raise NotFoundError(entity="Aeroplane", resource_id=aeroplane_uuid)
 
-    # --- Load effective design assumptions ----------------------------------
-    def _eff(param: str) -> float | None:
+    # --- Load effective design assumptions from DB --------------------------
+    def _load_effective_assumption(param: str) -> float | None:
+        """Return the effective value for a design assumption row.
+
+        Falls back to PARAMETER_DEFAULTS when no row exists.
+        Returns None if the param has no default (unknown parameter).
+        """
         row = (
             db.query(DesignAssumptionModel)
             .filter(
@@ -454,37 +466,66 @@ def compute_endurance_for_aeroplane(db: Session, aeroplane_uuid: Any) -> dict[st
     )
     battery_mass_kg: float | None = battery_item.mass_kg if battery_item else None
 
+    # --- Resolve mass and cd0 with explicit None-checks ---------------------
+    _mass_raw = _load_effective_assumption("mass")
+    if _mass_raw is None:
+        raise ValueError(
+            "mass design assumption is missing — run seed_defaults first "
+            "(compute_endurance_for_aeroplane requires a mass value)"
+        )
+    mass_val: float = float(_mass_raw)
+
+    _cd0_raw = _load_effective_assumption("cd0")
+    cd0_val: float = float(_cd0_raw) if _cd0_raw is not None else PARAMETER_DEFAULTS["cd0"]
+
+    # --- Resolve propulsion efficiencies (explicit None-checks) -------------
+    _eta_prop_raw = _load_effective_assumption("prop_efficiency")
+    eta_prop_val: float = float(_eta_prop_raw) if _eta_prop_raw is not None else DEFAULT_ETA_PROP
+
+    _eta_motor_raw = _load_effective_assumption("propulsion_eta_motor")
+    eta_motor_val: float = (
+        float(_eta_motor_raw) if _eta_motor_raw is not None else DEFAULT_ETA_MOTOR
+    )
+
+    _eta_esc_raw = _load_effective_assumption("propulsion_eta_esc")
+    eta_esc_val: float = float(_eta_esc_raw) if _eta_esc_raw is not None else DEFAULT_ETA_ESC
+
+    # --- Resolve battery parameters -----------------------------------------
+    _specific_energy_raw = _load_effective_assumption("battery_specific_energy_wh_per_kg")
+    specific_energy_val: float = (
+        float(_specific_energy_raw)
+        if _specific_energy_raw is not None
+        else DEFAULT_BATTERY_SPECIFIC_ENERGY_WH_PER_KG
+    )
+
+    # battery_capacity_wh: 0.0 default means "not yet configured"
+    _capacity_raw = _load_effective_assumption("battery_capacity_wh")
+    capacity_val: float | None = (
+        float(_capacity_raw) if (_capacity_raw is not None and _capacity_raw > 0.0) else None
+    )
+
+    # motor_continuous_power_w: 0.0 default means "not yet configured"
+    _motor_w_raw = _load_effective_assumption("motor_continuous_power_w")
+    motor_w_val: float | None = (
+        float(_motor_w_raw) if (_motor_w_raw is not None and _motor_w_raw > 0.0) else None
+    )
+
     # Build the _design_assumptions dict that compute_endurance expects
     da: dict[str, Any] = {
-        "mass": _eff("mass") or PARAMETER_DEFAULTS["mass"],
-        "cd0": _eff("cd0") or PARAMETER_DEFAULTS["cd0"],
-        # Propulsion efficiencies — use design assumption values if present,
-        # otherwise fall back to gh-490 defaults
-        "propulsion_eta_prop": _eff("prop_efficiency") or DEFAULT_ETA_PROP,
-        "propulsion_eta_motor": DEFAULT_ETA_MOTOR,
-        "propulsion_eta_esc": DEFAULT_ETA_ESC,
-        # These come directly from the aeroplane's computation context
-        # (set via the MCP / design assumptions UI)
-        "battery_capacity_wh": None,  # must come from somewhere — see below
-        "battery_specific_energy_wh_per_kg": DEFAULT_BATTERY_SPECIFIC_ENERGY_WH_PER_KG,
-        "motor_continuous_power_w": None,
+        "mass": mass_val,
+        "cd0": cd0_val,
+        "propulsion_eta_prop": eta_prop_val,
+        "propulsion_eta_motor": eta_motor_val,
+        "propulsion_eta_esc": eta_esc_val,
+        "battery_capacity_wh": capacity_val,
+        "battery_specific_energy_wh_per_kg": specific_energy_val,
+        "motor_continuous_power_w": motor_w_val,
     }
 
-    # Battery capacity and motor power are stored in the computation context
-    # when the user has set them.  Fall back gracefully if absent.
+    # Computation context supplies polar-derived geometry (e_oswald, v_md, etc.)
     ctx = aeroplane.assumption_computation_context or {}
-    da["battery_capacity_wh"] = ctx.get("battery_capacity_wh") or None
-    da["battery_specific_energy_wh_per_kg"] = (
-        ctx.get("battery_specific_energy_wh_per_kg") or DEFAULT_BATTERY_SPECIFIC_ENERGY_WH_PER_KG
-    )
-    da["propulsion_eta_prop"] = ctx.get("propulsion_eta_prop") or da["propulsion_eta_prop"]
-    da["propulsion_eta_motor"] = ctx.get("propulsion_eta_motor") or da["propulsion_eta_motor"]
-    da["propulsion_eta_esc"] = ctx.get("propulsion_eta_esc") or da["propulsion_eta_esc"]
-    da["motor_continuous_power_w"] = ctx.get("motor_continuous_power_w") or None
 
     # Build a lightweight namespace aircraft that compute_endurance can read
-    import types
-
     aircraft_ns = types.SimpleNamespace()
     aircraft_ns.assumption_computation_context = ctx
     aircraft_ns._design_assumptions = da
