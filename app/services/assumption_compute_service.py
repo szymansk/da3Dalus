@@ -148,8 +148,10 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     # V_max from physics if powered (P/W > 0); otherwise fall back to
     # the user-set goal in the flight profile (gliders set max speed
     # via structural limits, not thrust).
+    # V_max also uses the fitted Oswald e for consistency with V_md/V_min_sink.
     v_max_computed = _max_level_speed(
-        mass, s_ref, cd0_effective, aspect_ratio, p_to_w, prop_eta
+        mass, s_ref, cd0_effective, aspect_ratio, p_to_w, prop_eta,
+        oswald_e=e_oswald_effective,
     )
     v_max_effective = v_max_computed if v_max_computed is not None else v_max
     is_glider = p_to_w <= 0
@@ -178,6 +180,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         # Parabolic polar fit results (gh-486)
         "e_oswald": round(e_oswald_fit, 4) if e_oswald_fit is not None else None,
         "e_oswald_r2": round(e_r2, 4) if e_r2 is not None else None,
+        "e_oswald_quality": _classify_polar_quality(e_r2) if e_r2 is not None else "unknown",
         "e_oswald_fallback_used": e_oswald_fallback,
         "computed_at": datetime.now(timezone.utc).isoformat(),
     })
@@ -382,6 +385,9 @@ def _fit_parabolic_polar(
     Returns:
         (cd0_fit, e_oswald, r2) on success, or (None, None, None) on rejection.
     """
+    if ar is None or ar <= 0:
+        logger.warning("polar fit rejected: invalid aspect ratio %r", ar)
+        return None, None, None
     cl_lo = max(0.10, 0.10 * cl_max)
     cl_hi = 0.85 * cl_max
 
@@ -573,6 +579,7 @@ def _max_level_speed(
     prop_eta: float,
     rho: float = 1.225,
     g: float = 9.81,
+    oswald_e: float = 0.8,
 ) -> float | None:
     """Sea-level V_max from a power balance.
 
@@ -603,7 +610,7 @@ def _max_level_speed(
 
     weight_n = mass_kg * g
     p_eta = power_to_weight * mass_kg * prop_eta
-    k = 1.0 / (np.pi * aspect_ratio * 0.8)
+    k = 1.0 / (np.pi * aspect_ratio * oswald_e)
     a = 0.5 * rho * s_ref_m2 * cd0
     b = 2.0 * k * weight_n * weight_n / (rho * s_ref_m2)
 
