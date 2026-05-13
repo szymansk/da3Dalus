@@ -109,6 +109,7 @@ async def get_sm_suggestion(
     responses={
         404: {"description": "Aeroplane not found"},
         400: {"description": "Configuration not applicable (canard, tailless, no NP)"},
+        409: {"description": "Apply-loop convergence not reached after 3 iterations (gh-509, Scholz A6)"},
         422: {"description": "Invalid lever or delta_value"},
     },
 )

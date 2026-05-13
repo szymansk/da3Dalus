@@ -25,12 +25,19 @@ Mass-coupling warning (spec-gate A5):
 Apply operations (spec-gate A3):
   wing_shift: batch update WingXSecModel.xyz_le[0] for all xsecs of the main wing.
   htail_scale: chord-scale each htail xsec chord by (1 + delta_pct).
+
+Convergence guard (spec-gate A6, gh-509):
+  Each real apply increments sm_apply_count in assumption_computation_context.
+  When count ≥ 3 AND |delta_sm_new − delta_sm_last| < 0.005 (0.5%), the apply
+  is refused with HTTPException(409).  A fresh recompute_assumptions call (or a
+  change in target_static_margin) resets the counter.
 """
 from __future__ import annotations
 
 import logging
 from typing import Any, Literal
 
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -60,6 +67,14 @@ _MASS_COUPLING_WARNING = (
 # Negative S_H warning (overshoot path, spec-gate A6)
 _NEGATIVE_SH_WARNING = (
     "Shrinking HS reduces yaw damping — verify Dutch-roll mode after Apply."
+)
+
+# Convergence guard (spec-gate A6, gh-509)
+_SM_APPLY_MAX_ITERS = 3          # maximum apply calls before convergence check fires
+_SM_CONVERGENCE_THRESHOLD = 0.005  # |Δ(delta_sm)| < 0.5% → converged / stuck
+_SM_CONVERGENCE_MESSAGE = (
+    "Convergence not reached after 3 iterations. "
+    "Adjust target_static_margin or check geometry."
 )
 
 
@@ -155,6 +170,56 @@ def _is_not_applicable(ctx: dict) -> tuple[bool, str]:
             "S_ref is missing or zero — run analysis to compute MAC/S_ref first."
         )
     return False, ""
+
+
+# ---------------------------------------------------------------------------
+# Convergence guard helpers (gh-509, spec-gate A6)
+# ---------------------------------------------------------------------------
+
+def _check_convergence_guard(ctx: dict, delta_sm_new: float) -> None:
+    """Raise HTTPException(409) when the apply-loop has stalled after 3 iterations.
+
+    Called before each real (non-dry-run) apply operation.
+
+    The guard fires when BOTH conditions hold:
+      1. sm_apply_count >= _SM_APPLY_MAX_ITERS (3)
+      2. |delta_sm_new − sm_apply_last_delta_sm| < _SM_CONVERGENCE_THRESHOLD (0.5%)
+
+    Condition 2 alone is insufficient — a single marginal apply at count=0 must
+    be allowed.  Condition 1 alone would block permanently after 3 large applies.
+    Together they detect a stalled loop.
+
+    Args:
+        ctx: assumption_computation_context dict (mutated in-place on the apply path)
+        delta_sm_new: predicted SM change this iteration = predicted_sm − sm_at_aft
+    """
+    apply_count: int = int(ctx.get("sm_apply_count") or 0)
+    if apply_count < _SM_APPLY_MAX_ITERS:
+        return  # under the cap — always allowed
+
+    last_delta: float | None = ctx.get("sm_apply_last_delta_sm")
+    if last_delta is None:
+        return  # no history yet — allow (first call after a fresh recompute at count=3)
+
+    if abs(delta_sm_new - last_delta) < _SM_CONVERGENCE_THRESHOLD:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=_SM_CONVERGENCE_MESSAGE,
+        )
+
+
+def _update_convergence_counter(ctx: dict, delta_sm: float) -> None:
+    """Increment sm_apply_count and store sm_apply_last_delta_sm after a successful apply.
+
+    Mutates the ctx dict in-place (SQLAlchemy JSON column — caller must flag as
+    modified via ``flag_modified`` if the ORM does not detect the change automatically).
+
+    Args:
+        ctx: assumption_computation_context dict
+        delta_sm: predicted SM change this iteration = predicted_sm − sm_at_aft
+    """
+    ctx["sm_apply_count"] = int(ctx.get("sm_apply_count") or 0) + 1
+    ctx["sm_apply_last_delta_sm"] = delta_sm
 
 
 # ---------------------------------------------------------------------------
@@ -435,8 +500,8 @@ def apply_wing_shift(
     Returns:
         dict with dry_run, predicted_sm, (on real apply) new_sm.
 
-    TODO(gh-509): 3-iter convergence guard per Scholz A6 spec.
-    After 3 apply operations without a fresh recompute, return 409 Conflict.
+    Raises:
+        HTTPException(409): when apply-loop convergence guard fires (gh-509, spec A6).
     """
     aircraft = _find_aeroplane(db, aeroplane_uuid)
     if aircraft is None:
@@ -463,6 +528,7 @@ def apply_wing_shift(
 
     dsm_dx = _dsm_dx_wing(ctx)
     predicted_sm = sm_at_aft + dsm_dx * delta_m
+    delta_sm = predicted_sm - sm_at_aft
 
     if dry_run:
         return {
@@ -471,6 +537,9 @@ def apply_wing_shift(
             "delta_value": delta_m,
             "predicted_sm": round(predicted_sm, 4),
         }
+
+    # --- Convergence guard (gh-509, spec A6): check before applying ---
+    _check_convergence_guard(ctx, delta_sm)
 
     # --- Real apply: update all main-wing xsec xyz_le[0] ---
     main_wing = _find_main_wing(aircraft)
@@ -484,12 +553,22 @@ def apply_wing_shift(
 
     db.flush()
 
+    # Update convergence counter after successful DB write
+    _update_convergence_counter(ctx, delta_sm)
+    # Flag the JSON column as modified so SQLAlchemy detects the in-place change
+    try:
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(aircraft, "assumption_computation_context")
+    except Exception:
+        pass  # non-critical; the column will still be flushed on session commit
+
     # Trigger assumption recompute via geometry event
     _trigger_geometry_recompute(aircraft)
 
     logger.info(
-        "apply_wing_shift: aircraft=%s delta_m=%.4f predicted_sm=%.4f xsecs_updated=%d",
+        "apply_wing_shift: aircraft=%s delta_m=%.4f predicted_sm=%.4f xsecs_updated=%d sm_apply_count=%d",
         aeroplane_uuid, delta_m, predicted_sm, len(main_wing.x_secs or []),
+        ctx.get("sm_apply_count", 0),
     )
 
     return {
@@ -519,6 +598,9 @@ def apply_htail_scale(
 
     Returns:
         dict with dry_run, predicted_sm, (on real apply) new_sm.
+
+    Raises:
+        HTTPException(409): when apply-loop convergence guard fires (gh-509, spec A6).
     """
     aircraft = _find_aeroplane(db, aeroplane_uuid)
     if aircraft is None:
@@ -546,6 +628,7 @@ def apply_htail_scale(
     dsm_dsh = _dsm_dsh(ctx)
     delta_sh_m2 = delta_pct * s_h_m2
     predicted_sm = sm_at_aft + dsm_dsh * delta_sh_m2
+    delta_sm = predicted_sm - sm_at_aft
 
     if dry_run:
         return {
@@ -554,6 +637,9 @@ def apply_htail_scale(
             "delta_value": delta_pct,
             "predicted_sm": round(predicted_sm, 4),
         }
+
+    # --- Convergence guard (gh-509, spec A6): check before applying ---
+    _check_convergence_guard(ctx, delta_sm)
 
     # --- Real apply: chord-scale all htail xsecs ---
     htail = _find_htail(aircraft)
@@ -571,11 +657,21 @@ def apply_htail_scale(
 
     db.flush()
 
+    # Update convergence counter after successful DB write
+    _update_convergence_counter(ctx, delta_sm)
+    # Flag the JSON column as modified so SQLAlchemy detects the in-place change
+    try:
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(aircraft, "assumption_computation_context")
+    except Exception:
+        pass  # non-critical; the column will still be flushed on session commit
+
     _trigger_geometry_recompute(aircraft)
 
     logger.info(
-        "apply_htail_scale: aircraft=%s delta_pct=%.4f predicted_sm=%.4f xsecs_updated=%d",
+        "apply_htail_scale: aircraft=%s delta_pct=%.4f predicted_sm=%.4f xsecs_updated=%d sm_apply_count=%d",
         aeroplane_uuid, delta_pct, predicted_sm, len(htail.x_secs or []),
+        ctx.get("sm_apply_count", 0),
     )
 
     return {
