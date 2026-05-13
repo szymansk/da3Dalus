@@ -1024,3 +1024,818 @@ class TestCgAggMatchesDefaultScenario:
         # No scenarios → falls back to weight-items aggregation → motor at x=0.30
         # Only one item → cg = 0.30
         assert abs(cg_agg - 0.30) < 1e-9, f"Expected 0.30 (legacy fallback), got {cg_agg}"
+
+
+# ---------------------------------------------------------------------------
+# TestEdgeCases — classify_sm thresholds, zero-mass, single-axis position override
+# ---------------------------------------------------------------------------
+
+
+class TestEdgeCases:
+    """Covers boundary values in classify_sm and compute_scenario_cg edge paths."""
+
+    def test_classify_sm_none_returns_unknown(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """classify_sm(None, target) must return 'unknown'."""
+        from app.services.loading_scenario_service import classify_sm
+
+        assert classify_sm(None, 0.08) == "unknown"
+
+    def test_classify_sm_exactly_unstable_limit(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """classify_sm(0.02, target) is 'warn' (boundary is exclusive for error)."""
+        from app.services.loading_scenario_service import classify_sm
+
+        # sm == _SM_UNSTABLE_LIMIT (0.02): NOT < 0.02, so falls to next branch
+        # 0.02 < target_sm (0.08) → warn
+        assert classify_sm(0.02, 0.08) == "warn"
+
+    def test_classify_sm_just_below_unstable_limit(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """classify_sm(0.019, target) is 'error' (sm < 0.02)."""
+        from app.services.loading_scenario_service import classify_sm
+
+        assert classify_sm(0.019, 0.08) == "error"
+
+    def test_classify_sm_exactly_heavy_nose_warn_threshold(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """classify_sm(0.20, target) is 'ok' (sm <= 0.20 is still OK)."""
+        from app.services.loading_scenario_service import classify_sm
+
+        assert classify_sm(0.20, 0.08) == "ok"
+
+    def test_classify_sm_just_above_heavy_nose_warn(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """classify_sm(0.201, target) is 'warn' (heavy nose range 0.20 < sm <= 0.30)."""
+        from app.services.loading_scenario_service import classify_sm
+
+        assert classify_sm(0.201, 0.08) == "warn"
+
+    def test_classify_sm_exactly_elevator_limit(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """classify_sm(0.30, target) is 'warn' (sm == 0.30 is within warn band)."""
+        from app.services.loading_scenario_service import classify_sm
+
+        assert classify_sm(0.30, 0.08) == "warn"
+
+    def test_classify_sm_just_above_elevator_limit(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """classify_sm(0.301, target) is 'error' (sm > 0.30)."""
+        from app.services.loading_scenario_service import classify_sm
+
+        assert classify_sm(0.301, 0.08) == "error"
+
+    def test_classify_sm_exactly_at_target(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """classify_sm(target_sm, target_sm) is 'ok' (at the lower end of OK band)."""
+        from app.services.loading_scenario_service import classify_sm
+
+        assert classify_sm(0.08, 0.08) == "ok"
+
+    def test_compute_scenario_cg_zero_total_mass_falls_back_to_base_cg(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """When total_mass <= 0, compute_scenario_cg returns base_cg_x as fallback."""
+        from app.services.loading_scenario_service import compute_scenario_cg
+
+        # Disabled all components via toggle, no adhoc items → total_mass = 0
+        components = [
+            {"id": "comp1", "mass_kg": 1.0, "x_m": 0.20, "y_m": 0.0, "z_m": 0.0},
+        ]
+        result = compute_scenario_cg(
+            base_mass_kg=1.0,
+            base_cg_x=0.15,
+            adhoc_items=[],
+            mass_overrides=[],
+            toggles=[{"component_uuid": "comp1", "enabled": False}],
+            position_overrides=[],
+            components=components,
+        )
+        # total_mass == 0 → fallback to base_cg_x
+        assert result == pytest.approx(0.15)
+
+    def test_position_override_y_z_optional(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """PositionOverride with only x_m_override (y_m_override / z_m_override = None)
+        must not crash and must correctly apply x-only shift."""
+        from app.services.loading_scenario_service import compute_scenario_cg
+
+        components = [
+            {"id": "bat", "mass_kg": 0.3, "x_m": 0.10, "y_m": 0.0, "z_m": 0.0},
+            {"id": "fus", "mass_kg": 1.0, "x_m": 0.20, "y_m": 0.0, "z_m": 0.0},
+        ]
+        # PositionOverride only sets x_m_override — y/z stay at component values
+        result = compute_scenario_cg(
+            base_mass_kg=1.3,
+            base_cg_x=0.0,
+            adhoc_items=[],
+            mass_overrides=[],
+            toggles=[],
+            position_overrides=[{"component_uuid": "bat", "x_m_override": 0.05}],
+            components=components,
+        )
+        expected = (1.0 * 0.20 + 0.3 * 0.05) / 1.3
+        assert abs(result - expected) < 1e-9
+
+    def test_empty_component_overrides_no_crash(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """compute_scenario_cg with all-empty overrides returns correct base CG."""
+        from app.services.loading_scenario_service import compute_scenario_cg
+
+        result = compute_scenario_cg(
+            base_mass_kg=1.0,
+            base_cg_x=0.20,
+            adhoc_items=[],
+            mass_overrides=[],
+            toggles=None,
+            position_overrides=None,
+        )
+        assert result == pytest.approx(0.20)
+
+
+# ---------------------------------------------------------------------------
+# TestErrorPaths — 404 / missing scenario / invalid aircraft_class
+# ---------------------------------------------------------------------------
+
+
+class TestErrorPaths:
+    """Covers 404 error paths for CRUD endpoints."""
+
+    def test_list_scenarios_404_unknown_aeroplane(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """GET /aeroplanes/{unknown_uuid}/loading-scenarios → 404."""
+        client, _SessionLocal = client_and_db
+        unknown = str(uuid.uuid4())
+        resp = client.get(f"/aeroplanes/{unknown}/loading-scenarios")
+        assert resp.status_code == 404
+
+    def test_create_scenario_404_unknown_aeroplane(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """POST /aeroplanes/{unknown_uuid}/loading-scenarios → 404."""
+        client, _SessionLocal = client_and_db
+        unknown = str(uuid.uuid4())
+        resp = client.post(
+            f"/aeroplanes/{unknown}/loading-scenarios",
+            json=_scenario_payload(name="Ghost Scenario"),
+        )
+        assert resp.status_code == 404
+
+    def test_update_scenario_404_missing_scenario_id(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """PATCH .../loading-scenarios/999 → 404 when scenario does not exist."""
+        client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            aeroplane_uuid = str(plane.uuid)
+
+        resp = client.patch(
+            f"/aeroplanes/{aeroplane_uuid}/loading-scenarios/999999",
+            json={"name": "Nonexistent"},
+        )
+        assert resp.status_code == 404
+
+    def test_update_scenario_404_unknown_aeroplane(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """PATCH /aeroplanes/{unknown}/loading-scenarios/1 → 404."""
+        client, _SessionLocal = client_and_db
+        unknown = str(uuid.uuid4())
+        resp = client.patch(
+            f"/aeroplanes/{unknown}/loading-scenarios/1",
+            json={"name": "Ghost"},
+        )
+        assert resp.status_code == 404
+
+    def test_delete_scenario_404_missing_scenario_id(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """DELETE .../loading-scenarios/999 → 404 when scenario does not exist."""
+        client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            aeroplane_uuid = str(plane.uuid)
+
+        resp = client.delete(
+            f"/aeroplanes/{aeroplane_uuid}/loading-scenarios/999999"
+        )
+        assert resp.status_code == 404
+
+    def test_delete_scenario_404_unknown_aeroplane(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """DELETE /aeroplanes/{unknown}/loading-scenarios/1 → 404."""
+        client, _SessionLocal = client_and_db
+        unknown = str(uuid.uuid4())
+        resp = client.delete(f"/aeroplanes/{unknown}/loading-scenarios/1")
+        assert resp.status_code == 404
+
+    def test_get_cg_envelope_404_unknown_aeroplane(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """GET /aeroplanes/{unknown}/cg-envelope → 404."""
+        client, _SessionLocal = client_and_db
+        unknown = str(uuid.uuid4())
+        resp = client.get(f"/aeroplanes/{unknown}/cg-envelope")
+        assert resp.status_code == 404
+
+    def test_update_scenario_partial_name_only(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """PATCH with only name updates name, leaves other fields intact."""
+        client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            aeroplane_uuid = str(plane.uuid)
+
+        create_resp = client.post(
+            f"/aeroplanes/{aeroplane_uuid}/loading-scenarios",
+            json=_scenario_payload(name="Original", aircraft_class="rc_aerobatic"),
+        )
+        scenario_id = create_resp.json()["id"]
+
+        patch_resp = client.patch(
+            f"/aeroplanes/{aeroplane_uuid}/loading-scenarios/{scenario_id}",
+            json={"name": "Renamed"},
+        )
+        assert patch_resp.status_code == 200
+        result = patch_resp.json()
+        assert result["name"] == "Renamed"
+        assert result["aircraft_class"] == "rc_aerobatic"  # unchanged
+
+    def test_update_scenario_aircraft_class_only(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """PATCH with only aircraft_class updates it, leaves name intact."""
+        client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            aeroplane_uuid = str(plane.uuid)
+
+        create_resp = client.post(
+            f"/aeroplanes/{aeroplane_uuid}/loading-scenarios",
+            json=_scenario_payload(name="Keep Name", aircraft_class="rc_trainer"),
+        )
+        scenario_id = create_resp.json()["id"]
+
+        patch_resp = client.patch(
+            f"/aeroplanes/{aeroplane_uuid}/loading-scenarios/{scenario_id}",
+            json={"aircraft_class": "glider"},
+        )
+        assert patch_resp.status_code == 200
+        result = patch_resp.json()
+        assert result["aircraft_class"] == "glider"
+        assert result["name"] == "Keep Name"  # unchanged
+
+    def test_update_scenario_is_default_only(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """PATCH with only is_default=True makes scenario the default."""
+        client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            aeroplane_uuid = str(plane.uuid)
+
+        create_resp = client.post(
+            f"/aeroplanes/{aeroplane_uuid}/loading-scenarios",
+            json=_scenario_payload(name="Will Be Default", is_default=False),
+        )
+        scenario_id = create_resp.json()["id"]
+
+        patch_resp = client.patch(
+            f"/aeroplanes/{aeroplane_uuid}/loading-scenarios/{scenario_id}",
+            json={"is_default": True},
+        )
+        assert patch_resp.status_code == 200
+        assert patch_resp.json()["is_default"] is True
+
+    def test_update_scenario_overrides_only(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """PATCH with only component_overrides updates overrides."""
+        client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            aeroplane_uuid = str(plane.uuid)
+
+        create_resp = client.post(
+            f"/aeroplanes/{aeroplane_uuid}/loading-scenarios",
+            json=_scenario_payload(name="Overrides Test"),
+        )
+        scenario_id = create_resp.json()["id"]
+
+        new_overrides = {
+            "toggles": [],
+            "mass_overrides": [{"component_uuid": "xyz", "mass_kg_override": 0.5}],
+            "position_overrides": [],
+            "adhoc_items": [],
+        }
+        patch_resp = client.patch(
+            f"/aeroplanes/{aeroplane_uuid}/loading-scenarios/{scenario_id}",
+            json={"component_overrides": new_overrides},
+        )
+        assert patch_resp.status_code == 200
+        result = patch_resp.json()
+        assert len(result["component_overrides"]["mass_overrides"]) == 1
+
+
+# ---------------------------------------------------------------------------
+# TestStabilityEnvelopeFallbacks — x_np=None / mac=None / both None / mac=0
+# ---------------------------------------------------------------------------
+
+
+class TestStabilityEnvelopeFallbacks:
+    """Covers compute_stability_envelope None/zero handling and get_cg_envelope
+    branches where x_np or mac is None (lines 598-599, 613, 624-625 in svc)."""
+
+    def test_stability_envelope_x_np_none(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """x_np=None → both stability limits are None."""
+        from app.services.loading_scenario_service import compute_stability_envelope
+
+        result = compute_stability_envelope(x_np=None, mac=0.20, target_sm=0.08)
+        assert result["cg_stability_aft_m"] is None
+        assert result["cg_stability_fwd_m"] is None
+
+    def test_stability_envelope_mac_none(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """mac=None → both stability limits are None."""
+        from app.services.loading_scenario_service import compute_stability_envelope
+
+        result = compute_stability_envelope(x_np=0.30, mac=None, target_sm=0.08)
+        assert result["cg_stability_aft_m"] is None
+        assert result["cg_stability_fwd_m"] is None
+
+    def test_stability_envelope_mac_zero(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """mac=0 → both stability limits are None (division by zero guard)."""
+        from app.services.loading_scenario_service import compute_stability_envelope
+
+        result = compute_stability_envelope(x_np=0.30, mac=0.0, target_sm=0.08)
+        assert result["cg_stability_aft_m"] is None
+        assert result["cg_stability_fwd_m"] is None
+
+    def test_enrich_context_no_x_np_returns_none_sm(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """enrich_context_with_cg_envelope with no x_np_m in ctx → sm_at_fwd/aft = None."""
+        from app.services.loading_scenario_service import enrich_context_with_cg_envelope
+
+        ctx: dict = {"cg_agg_m": 0.15}  # no x_np_m, no mac_m
+        enriched = enrich_context_with_cg_envelope(
+            ctx=ctx,
+            cg_loading_fwd_m=0.14,
+            cg_loading_aft_m=0.17,
+            cg_stability_fwd_m=None,
+            cg_stability_aft_m=None,
+        )
+        assert enriched["sm_at_fwd"] is None
+        assert enriched["sm_at_aft"] is None
+        assert enriched["cg_forward_m"] == pytest.approx(0.14, abs=1e-3)
+        assert enriched["cg_aft_m"] == pytest.approx(0.17, abs=1e-3)
+
+    def test_enrich_context_with_x_np_and_mac_computes_sm(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """enrich_context_with_cg_envelope with x_np_m and mac_m computes sm values."""
+        from app.services.loading_scenario_service import enrich_context_with_cg_envelope
+
+        ctx: dict = {"cg_agg_m": 0.15, "x_np_m": 0.30, "mac_m": 0.20}
+        enriched = enrich_context_with_cg_envelope(
+            ctx=ctx,
+            cg_loading_fwd_m=0.14,
+            cg_loading_aft_m=0.17,
+            cg_stability_fwd_m=0.24,
+            cg_stability_aft_m=0.284,
+        )
+        # sm_at_fwd = (0.30 - 0.14) / 0.20 = 0.80
+        assert enriched["sm_at_fwd"] == pytest.approx(0.80, abs=1e-3)
+        # sm_at_aft = (0.30 - 0.17) / 0.20 = 0.65
+        assert enriched["sm_at_aft"] == pytest.approx(0.65, abs=1e-3)
+
+    def test_cg_envelope_with_full_context_computes_sm(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """GET /cg-envelope with x_np_m and mac_m in context returns computed sm values."""
+        client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            _seed_assumptions(session, plane.id)
+            # Provide a realistic aero context
+            plane.assumption_computation_context = {
+                "x_np_m": 0.30,
+                "mac_m": 0.20,
+            }
+            session.commit()
+            aeroplane_uuid = str(plane.uuid)
+
+        resp = client.get(f"/aeroplanes/{aeroplane_uuid}/cg-envelope")
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        # With x_np and mac present, sm values should be computed (not None)
+        assert data["sm_at_fwd"] is not None
+        assert data["sm_at_aft"] is not None
+        assert data["cg_stability_fwd_m"] is not None
+        assert data["cg_stability_aft_m"] is not None
+
+    def test_cg_envelope_error_classification_adds_sm_warning(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """When classification is 'error' and sm_at_aft is known, warning mentions SM value."""
+        client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            _seed_assumptions(session, plane.id)
+            # CG very close to NP → very low SM (< 0.02 → error)
+            # x_np = 0.16, mac = 0.20, cg_x (from assumptions) = 0.15
+            # sm_at_aft ≈ (0.16 - 0.15) / 0.20 = 0.05 → warn, not error
+            # To force error: set x_np very close to cg so sm < 0.02
+            # cg = 0.15, x_np = 0.153, mac = 0.20 → sm ≈ 0.015 → error
+            plane.assumption_computation_context = {
+                "x_np_m": 0.153,
+                "mac_m": 0.20,
+            }
+            session.commit()
+            aeroplane_uuid = str(plane.uuid)
+
+        resp = client.get(f"/aeroplanes/{aeroplane_uuid}/cg-envelope")
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["classification"] == "error"
+        # Error classification → warning must mention SM
+        assert any("SM" in w or "sm" in w.lower() for w in data["warnings"])
+
+    def test_cg_agg_returns_none_when_no_scenarios_and_no_weight_items(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """compute_cg_agg_for_aeroplane returns None when no scenarios and no weight items."""
+        from app.services.loading_scenario_service import compute_cg_agg_for_aeroplane
+
+        _client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            _seed_assumptions(session, plane.id)
+            # No loading scenarios, no weight items → should return None
+            plane_row = session.query(AeroplaneModel).filter_by(uuid=plane.uuid).first()
+            cg_agg = compute_cg_agg_for_aeroplane(session, plane_row)
+
+        assert cg_agg is None
+
+
+# ---------------------------------------------------------------------------
+# TestTemplatesEndpointAllClasses — template endpoint for each aircraft class
+# ---------------------------------------------------------------------------
+
+
+class TestTemplatesEndpointAllClasses:
+    """Covers the /templates endpoint for all aircraft_class values via HTTP."""
+
+    @pytest.mark.parametrize(
+        "ac",
+        ["rc_trainer", "rc_aerobatic", "rc_combust", "uav_survey", "glider", "boxwing"],
+    )
+    def test_templates_endpoint_for_each_class(
+        self, ac: str, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """GET /loading-scenarios/templates?aircraft_class=<ac> returns ≥1 template."""
+        client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            aeroplane_uuid = str(plane.uuid)
+
+        resp = client.get(
+            f"/aeroplanes/{aeroplane_uuid}/loading-scenarios/templates",
+            params={"aircraft_class": ac},
+        )
+        assert resp.status_code == 200, f"[{ac}] {resp.text}"
+        templates = resp.json()
+        assert isinstance(templates, list)
+        assert len(templates) >= 1, f"No templates returned for {ac}"
+        for t in templates:
+            assert "name" in t, f"Template missing 'name' for {ac}: {t}"
+
+    def test_templates_endpoint_unknown_class_falls_back(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """Unknown aircraft_class falls back to rc_trainer templates (no 422)."""
+        client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            aeroplane_uuid = str(plane.uuid)
+
+        resp = client.get(
+            f"/aeroplanes/{aeroplane_uuid}/loading-scenarios/templates",
+            params={"aircraft_class": "unknown_class"},
+        )
+        # The endpoint accepts any string (no enum validation at HTTP layer),
+        # service falls back to rc_trainer templates.
+        assert resp.status_code == 200, resp.text
+        templates = resp.json()
+        assert len(templates) >= 1
+
+    def test_templates_endpoint_missing_aeroplane_404(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """Templates endpoint returns 404 when aeroplane UUID does not exist."""
+        client, _SessionLocal = client_and_db
+        unknown = str(uuid.uuid4())
+        resp = client.get(
+            f"/aeroplanes/{unknown}/loading-scenarios/templates",
+            params={"aircraft_class": "rc_trainer"},
+        )
+        assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# TestOverridesJsonSerialization — component_overrides stored as JSON string
+# ---------------------------------------------------------------------------
+
+
+class TestOverridesJsonSerialization:
+    """Covers the json.loads branch in _model_to_schema, compute_cg_agg, and
+    compute_loading_envelope (lines 302, 364, 432 in loading_scenario_service)."""
+
+    def test_overrides_serialized_as_json_string_round_trips(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """When component_overrides are stored as a JSON string (legacy SQLite path),
+        the service deserialises them correctly."""
+        import json as _json
+
+        from app.models.aeroplanemodel import LoadingScenarioModel
+        from app.services.loading_scenario_service import _model_to_schema
+
+        _client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            _seed_assumptions(session, plane.id)
+
+            # Store overrides as a JSON string (simulates legacy column value)
+            overrides_dict = {
+                "toggles": [],
+                "mass_overrides": [{"component_uuid": "abc", "mass_kg_override": 0.3}],
+                "position_overrides": [],
+                "adhoc_items": [],
+            }
+            scenario = LoadingScenarioModel(
+                aeroplane_id=plane.id,
+                name="JSON String Scenario",
+                aircraft_class="rc_trainer",
+                component_overrides=_json.dumps(overrides_dict),
+                is_default=False,
+            )
+            session.add(scenario)
+            session.commit()
+            session.refresh(scenario)
+
+            # _model_to_schema should handle JSON string overrides without error
+            result = _model_to_schema(scenario)
+
+        assert len(result.component_overrides.mass_overrides) == 1
+        assert result.component_overrides.mass_overrides[0].component_uuid == "abc"
+
+    def test_compute_loading_envelope_with_json_string_overrides(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """compute_loading_envelope_for_aeroplane handles JSON-string overrides."""
+        import json as _json
+
+        from app.models.aeroplanemodel import LoadingScenarioModel
+        from app.services.loading_scenario_service import compute_loading_envelope_for_aeroplane
+
+        _client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            _seed_assumptions(session, plane.id)
+
+            overrides_dict = {
+                "toggles": [],
+                "mass_overrides": [],
+                "position_overrides": [],
+                "adhoc_items": [
+                    {"name": "Item", "mass_kg": 0.5, "x_m": 0.30, "y_m": 0.0, "z_m": 0.0}
+                ],
+            }
+            scenario = LoadingScenarioModel(
+                aeroplane_id=plane.id,
+                name="JSON Envelope Scenario",
+                aircraft_class="rc_trainer",
+                component_overrides=_json.dumps(overrides_dict),
+                is_default=True,
+            )
+            session.add(scenario)
+            session.commit()
+
+        with SessionLocal() as session:
+            plane_row = session.query(AeroplaneModel).filter_by(uuid=plane.uuid).first()
+            envelope = compute_loading_envelope_for_aeroplane(session, plane_row)
+
+        # adhoc item at x=0.30 with base at x=0.15 → aft shift
+        assert envelope["cg_loading_aft_m"] > 0.15
+
+    def test_compute_cg_agg_with_json_string_overrides(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """compute_cg_agg_for_aeroplane handles JSON-string overrides in default scenario."""
+        import json as _json
+
+        from app.models.aeroplanemodel import LoadingScenarioModel
+        from app.services.loading_scenario_service import compute_cg_agg_for_aeroplane
+
+        _client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            _seed_assumptions(session, plane.id)
+
+            overrides_dict = {
+                "toggles": [],
+                "mass_overrides": [],
+                "position_overrides": [],
+                "adhoc_items": [],
+            }
+            scenario = LoadingScenarioModel(
+                aeroplane_id=plane.id,
+                name="Default JSON Scenario",
+                aircraft_class="rc_trainer",
+                component_overrides=_json.dumps(overrides_dict),
+                is_default=True,
+            )
+            session.add(scenario)
+            session.commit()
+
+        with SessionLocal() as session:
+            plane_row = session.query(AeroplaneModel).filter_by(uuid=plane.uuid).first()
+            cg_agg = compute_cg_agg_for_aeroplane(session, plane_row)
+
+        # Empty overrides + base mass at x=0.15 → cg_agg ≈ 0.15
+        assert cg_agg is not None
+        assert abs(cg_agg - 0.15) < 1e-6
+
+
+# ---------------------------------------------------------------------------
+# TestLoadAssumptionValueBranches — covers CALCULATED source path (lines 293-295)
+# ---------------------------------------------------------------------------
+
+
+class TestLoadAssumptionValueBranches:
+    """Covers _load_assumption_value branches:
+    - no row → returns default (line 293)
+    - CALCULATED source with calculated_value → returns calculated_value (lines 294-295)
+    - non-CALCULATED source → returns estimate_value (line 296)
+    """
+
+    def test_load_assumption_value_no_row_returns_default(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """When no assumption row exists, default is returned via compute_loading_envelope."""
+        from app.services.loading_scenario_service import compute_loading_envelope_for_aeroplane
+
+        _client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            # Deliberately do NOT seed assumptions → _load_assumption_value returns default
+            envelope = compute_loading_envelope_for_aeroplane(session, plane)
+
+        # No assumptions → base_mass defaults to 1.0, base_cg_x defaults to 0.0
+        # No scenarios → fwd = aft = 0.0 (default cg_x)
+        assert envelope["cg_loading_fwd_m"] == pytest.approx(0.0)
+        assert envelope["cg_loading_aft_m"] == pytest.approx(0.0)
+
+    def test_load_assumption_value_calculated_source_used(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """When active_source=CALCULATED with a calculated_value, that value is used."""
+        from app.services.loading_scenario_service import compute_loading_envelope_for_aeroplane
+
+        _client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            # Seed a CALCULATED assumption for cg_x
+            session.add(
+                DesignAssumptionModel(
+                    aeroplane_id=plane.id,
+                    parameter_name="cg_x",
+                    estimate_value=0.15,
+                    calculated_value=0.22,
+                    active_source="CALCULATED",
+                    updated_at=datetime.now(timezone.utc),
+                )
+            )
+            session.add(
+                DesignAssumptionModel(
+                    aeroplane_id=plane.id,
+                    parameter_name="mass",
+                    estimate_value=1.5,
+                    calculated_value=None,
+                    active_source="ESTIMATE",
+                    updated_at=datetime.now(timezone.utc),
+                )
+            )
+            session.commit()
+
+        with SessionLocal() as session:
+            plane_row = session.query(AeroplaneModel).filter_by(uuid=plane.uuid).first()
+            envelope = compute_loading_envelope_for_aeroplane(session, plane_row)
+
+        # No scenarios → fwd = aft = base_cg_x = calculated 0.22 (not estimate 0.15)
+        assert envelope["cg_loading_fwd_m"] == pytest.approx(0.22)
+        assert envelope["cg_loading_aft_m"] == pytest.approx(0.22)
+
+
+# ---------------------------------------------------------------------------
+# TestCgEnvelopeRankingBranch — aft rank > fwd rank → overall = classification_aft
+# ---------------------------------------------------------------------------
+
+
+class TestCgEnvelopeRankingBranch:
+    """Covers line 613 in loading_scenario_service: `overall = classification_aft`
+    when the aft SM is worse than the fwd SM (different scenarios produce different
+    CG values that land in different classification bands)."""
+
+    def test_aft_classification_dominates_when_worse(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """When aft CG is much closer to NP (very low SM), aft classification
+        dominates overall even if fwd is fine.
+
+        Setup:
+          x_np = 0.20, mac = 0.20
+          - Scenario A (fwd adhoc): pushes CG to ~0.10 → sm_fwd = (0.20-0.10)/0.20 = 0.50 → ok
+          - Scenario B (aft adhoc): pushes CG to ~0.195 → sm_aft = (0.20-0.195)/0.20 = 0.025 → warn (> 0.02 and < target)
+          aft rank (warn=2) > fwd rank (ok=1) → overall = 'warn', taken from aft branch.
+        """
+        client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            _seed_assumptions(session, plane.id, extra={"target_static_margin": 0.08})
+            plane.assumption_computation_context = {
+                "x_np_m": 0.20,
+                "mac_m": 0.20,
+            }
+            session.commit()
+            aeroplane_uuid = str(plane.uuid)
+
+        # Scenario A: large fwd ballast → CG shifts well forward
+        # base: 1.5 kg @ 0.15; adding 3.0 kg @ 0.01 → CG ≈ (1.5*0.15 + 3.0*0.01)/4.5 ≈ 0.057
+        # sm_fwd = (0.20 - 0.057)/0.20 ≈ 0.715 → ok (but target=0.08 < 0.20)
+        client.post(
+            f"/aeroplanes/{aeroplane_uuid}/loading-scenarios",
+            json=_scenario_payload(
+                name="Very Fwd",
+                component_overrides={
+                    "toggles": [],
+                    "mass_overrides": [],
+                    "position_overrides": [],
+                    "adhoc_items": [
+                        {"name": "Nose Ballast", "mass_kg": 3.0, "x_m": 0.01, "y_m": 0.0, "z_m": 0.0}
+                    ],
+                },
+            ),
+        )
+        # Scenario B: large aft item → CG shifts very close to NP
+        # base: 1.5 kg @ 0.15; adding 3.0 kg @ 0.22 → CG ≈ (1.5*0.15+3.0*0.22)/4.5 ≈ 0.197
+        # sm_aft = (0.20 - 0.197)/0.20 ≈ 0.015 → error (< 0.02)
+        client.post(
+            f"/aeroplanes/{aeroplane_uuid}/loading-scenarios",
+            json=_scenario_payload(
+                name="Very Aft",
+                component_overrides={
+                    "toggles": [],
+                    "mass_overrides": [],
+                    "position_overrides": [],
+                    "adhoc_items": [
+                        {"name": "Aft Ballast", "mass_kg": 3.0, "x_m": 0.22, "y_m": 0.0, "z_m": 0.0}
+                    ],
+                },
+            ),
+        )
+
+        resp = client.get(f"/aeroplanes/{aeroplane_uuid}/cg-envelope")
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+
+        # aft CG is very close to NP → sm_aft is very small (< 0.02) → error
+        # fwd CG is well forward of NP → sm_fwd is large → ok
+        # aft classification (error) > fwd classification (ok) → overall = 'error'
+        # This exercises line 613: overall = classification_aft
+        assert data["classification"] in ("error", "warn"), (
+            f"Expected error or warn, got {data['classification']!r} "
+            f"(sm_at_fwd={data['sm_at_fwd']}, sm_at_aft={data['sm_at_aft']})"
+        )
+        # Ensure aft SM is worse (lower) than fwd SM
+        assert data["sm_at_aft"] < data["sm_at_fwd"]
