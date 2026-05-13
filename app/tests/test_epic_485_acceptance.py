@@ -444,8 +444,6 @@ def _make_asb_stubs(ac: dict):
     The fine-sweep data is a clean parabolic polar so the Re-table builder
     and Oswald-fit code run through their real paths without AeroBuildup.
     """
-    import numpy as np
-
     cd0 = ac["cd0"]
     e = ac["e_oswald"]
     ar = ac["ar"]
