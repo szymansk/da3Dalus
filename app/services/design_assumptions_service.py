@@ -64,6 +64,33 @@ def _assumption_to_read(model: DesignAssumptionModel) -> AssumptionRead:
     )
 
 
+def get_effective_assumption(
+    db: Session, aeroplane_id: int, param_name: str
+) -> float | None:
+    """Return the effective (active-source) value of a design assumption, or None.
+
+    Returns the calculated value when active_source == "CALCULATED" and a
+    calculated value exists; otherwise returns the estimate value. Returns
+    None when no row is found and no default is registered.
+
+    Single source of truth — use this instead of querying DesignAssumptionModel
+    directly from endpoints or other services.
+    """
+    row = (
+        db.query(DesignAssumptionModel)
+        .filter(
+            DesignAssumptionModel.aeroplane_id == aeroplane_id,
+            DesignAssumptionModel.parameter_name == param_name,
+        )
+        .first()
+    )
+    if row is None:
+        return PARAMETER_DEFAULTS.get(param_name)
+    if row.active_source == "CALCULATED" and row.calculated_value is not None:
+        return row.calculated_value
+    return row.estimate_value
+
+
 def seed_defaults(db: Session, aeroplane_uuid) -> AssumptionsSummary:
     """Create default assumptions for an aeroplane if they don't exist yet."""
     try:

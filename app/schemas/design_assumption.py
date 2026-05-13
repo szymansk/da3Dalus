@@ -23,6 +23,8 @@ VALID_PARAMETERS = Literal[
     "propulsion_eta_motor",
     "propulsion_eta_esc",
     "motor_continuous_power_w",
+    # Static thrust — gh-489
+    "t_static_N",
 ]
 ACTIVE_SOURCE = Literal["ESTIMATE", "CALCULATED"]
 DIVERGENCE_LEVEL = Literal["none", "info", "warning", "alert"]
@@ -57,6 +59,8 @@ PARAMETER_UNITS: dict[str, str] = {
     "propulsion_eta_motor": "",
     "propulsion_eta_esc": "",
     "motor_continuous_power_w": "W",
+    # Static thrust — gh-489
+    "t_static_N": "N",
 }
 
 PARAMETER_DEFAULTS: dict[str, float] = {
@@ -88,6 +92,9 @@ PARAMETER_DEFAULTS: dict[str, float] = {
     "propulsion_eta_esc": 0.94,
     # Motor continuous power rating: 0.0 signals "not yet set" (→ p_margin unknown)
     "motor_continuous_power_w": 0.0,
+    # Static thrust at zero velocity (gh-489 takeoff field length).
+    # Default = 0 (glider / unknown). User MUST override for powered runway takeoff.
+    "t_static_N": 0.0,
 }
 
 

@@ -223,12 +223,12 @@ class TestAssumptionsSummary:
 
 
 class TestConstants:
-    def test_parameter_defaults_has_thirteen_entries(self):
-        # 8 original + 5 electric-endurance params added in gh-490
-        assert len(PARAMETER_DEFAULTS) == 13
+    def test_parameter_defaults_has_fourteen_entries(self):
+        # 8 original + 5 electric-endurance params added in gh-491
+        assert len(PARAMETER_DEFAULTS) == 14
 
-    def test_parameter_units_has_thirteen_entries(self):
-        assert len(PARAMETER_UNITS) == 13
+    def test_parameter_units_has_fourteen_entries(self):
+        assert len(PARAMETER_UNITS) == 14
 
     def test_design_choice_params(self):
         assert "target_static_margin" in DESIGN_CHOICE_PARAMS
