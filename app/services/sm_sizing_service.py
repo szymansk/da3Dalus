@@ -15,8 +15,9 @@ Formulas (Anderson §7.6 Eq. 7.41, spec-gate A1):
   ∂SM/∂S_H = (a_t/a)·(1 - dε/dα)·l_H / (S_w·MAC)
 
 Scope (spec-gate A4): aft-CG only.
-  TODO(gh-500): after gh-500 merge → add fwd-CG trim-drag suggestion using
-  Cm_δe, δe_max, ΔCm_flap.  Binding limit becomes min(aft_violation, fwd_violation).
+  TODO(gh-515): add fwd-CG trim-drag suggestion using Cm_δe, δe_max, ΔCm_flap
+  from forward_cg_result in ctx. Binding limit becomes min(aft_violation, fwd_violation).
+  See https://github.com/szymansk/da3Dalus/issues/515
 
 Mass-coupling warning (spec-gate A5):
   Wing-mass ≈ 30% MTOW → Δx_wing = 0.05·MAC shifts CG by ~0.015·MAC ≈ 1 SM unit.
@@ -229,7 +230,7 @@ def _update_convergence_counter(ctx: dict, delta_sm: float) -> None:
 def suggest_corrections(
     ctx: dict,
     target_sm: float = 0.10,
-    at_cg: Literal["aft"] = "aft",  # noqa: ARG001  (gh-500 will add fwd)
+    at_cg: Literal["aft"] = "aft",  # noqa: ARG001  (gh-515 will add fwd)
 ) -> dict[str, Any]:
     """Suggest geometry changes to hit target_sm for the aft-CG loading.
 
@@ -345,7 +346,7 @@ def suggest_corrections(
             )
     elif x_np_m is None:
         # No x_NP available — cannot perform forward-clip check
-        pass  # TODO(gh-500): forward-CG clip fully enabled when fwd CG data is available
+        pass  # TODO(gh-515): forward-CG clip fully enabled when fwd CG data is available
 
     warnings: list[str] = []
     if clip_warning:
