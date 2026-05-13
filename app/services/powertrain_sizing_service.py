@@ -1,4 +1,13 @@
-"""Powertrain Sizing Service — recommend motor+ESC+battery combos for a mission."""
+"""Powertrain Sizing Service — recommend motor+ESC+battery combos for a mission.
+
+Refactored for gh-490 (Model A): the catalog sweep logic is preserved, but the
+power-required physics are now delegated to endurance_service._power_required
+instead of relying on hardcoded geometry constants.
+
+The hardcoded geometry constants and the simplified power helper have been
+replaced by a call to endurance_service._power_required with per-combo
+aerodynamic parameters (gh-490 Model A).
+"""
 
 import logging
 import math
@@ -13,36 +22,71 @@ from app.schemas.powertrain_sizing import (
     PowertrainSizingRequest,
     PowertrainSizingResponse,
 )
+from app.services.endurance_service import (
+    DEFAULT_ETA_ESC,
+    DEFAULT_ETA_MOTOR,
+    DEFAULT_ETA_PROP,
+    RHO_SEA_LEVEL,
+    _power_required,
+)
 
 logger = logging.getLogger(__name__)
 
-# Simplified aerodynamic constants for estimation
-AIR_DENSITY_SEA_LEVEL = 1.225  # kg/m³
-DRAG_COEFF_ESTIMATE = 0.04
-WING_AREA_ESTIMATE_M2 = 0.5
-PROP_EFFICIENCY = 0.7
-MOTOR_EFFICIENCY = 0.85
+AIR_DENSITY_SEA_LEVEL = RHO_SEA_LEVEL  # kept for backward compat with existing tests
 
 
 def _air_density(altitude_m: float) -> float:
     """ISA air density approximation."""
-    return AIR_DENSITY_SEA_LEVEL * math.exp(-altitude_m / 8500.0)
+    return RHO_SEA_LEVEL * math.exp(-altitude_m / 8500.0)
 
 
 def _required_power_w(speed_ms: float, total_mass_kg: float, altitude_m: float) -> float:
-    """Estimate power required for level flight at given speed."""
+    """Backward-compatible shim: estimate power with request defaults.
+
+    Preserved for existing tests and callers that do not supply geometry.
+    New code should use _combo_required_power_w with explicit geometry.
+    Uses RC-typical defaults: cd0=0.03, e=0.8, AR=8, S=0.5 m², η_total≈0.52.
+    """
+    return _combo_required_power_w(
+        speed_ms=speed_ms,
+        total_mass_kg=total_mass_kg,
+        altitude_m=altitude_m,
+        cd0=0.03,
+        e_oswald=0.8,
+        ar=8.0,
+        s_ref_m2=0.5,
+        eta_total=DEFAULT_ETA_PROP * DEFAULT_ETA_MOTOR * DEFAULT_ETA_ESC,
+    )
+
+
+def _combo_required_power_w(
+    speed_ms: float,
+    total_mass_kg: float,
+    altitude_m: float,
+    cd0: float,
+    e_oswald: float,
+    ar: float,
+    s_ref_m2: float,
+    eta_total: float,
+) -> float:
+    """Power required for a specific motor+battery combo at cruise speed.
+
+    Delegates physics to endurance_service._power_required with per-combo
+    aerodynamic geometry rather than hardcoded constants (gh-490 Model A).
+    """
     if speed_ms <= 0:
         return 0.0
     rho = _air_density(altitude_m)
-    # Parasitic drag: half rho v-squared Cd S
-    drag_n = 0.5 * rho * speed_ms**2 * DRAG_COEFF_ESTIMATE * WING_AREA_ESTIMATE_M2
-    # Add induced drag (simple)
-    cl = (2 * total_mass_kg * 9.81) / (rho * speed_ms**2 * WING_AREA_ESTIMATE_M2)
-    aspect_ratio = 8.0  # typical for RC
-    induced_drag = (cl**2) / (math.pi * aspect_ratio * 0.9)  # TODO(gh-485): see audit §6.1, full powertrain refactor pending. Do not fix isolated here — needs full geometry-from-DB refactor.
-    total_drag = drag_n + 0.5 * rho * speed_ms**2 * induced_drag * WING_AREA_ESTIMATE_M2
-    power_shaft = total_drag * speed_ms
-    return power_shaft / (PROP_EFFICIENCY * MOTOR_EFFICIENCY)
+    return _power_required(
+        rho=rho,
+        v=speed_ms,
+        cd0=cd0,
+        e=e_oswald,
+        ar=ar,
+        mass=total_mass_kg,
+        s_ref=s_ref_m2,
+        eta_total=eta_total,
+    )
 
 
 def _find_matching_esc(escs: list, min_current_a: float):
@@ -66,7 +110,11 @@ def _compute_confidence(flight_time_min: float, target_flight_time_min: float) -
 def _evaluate_motor_battery_combo(
     motor, battery, escs: list, request: PowertrainSizingRequest
 ) -> PowertrainCandidate | None:
-    """Evaluate a single motor+battery combination; return a candidate or None."""
+    """Evaluate a single motor+battery combination; return a candidate or None.
+
+    Aerodynamic geometry (cd0, e_oswald, ar, s_ref) comes from the request
+    or reasonable RC defaults.  Physics are computed via endurance_service.
+    """
     motor_mass_kg = (motor.mass_g or 0) / 1000.0
     battery_mass_kg = (battery.mass_g or 0) / 1000.0
     battery_specs = battery.specs or {}
@@ -77,8 +125,26 @@ def _evaluate_motor_battery_combo(
         return None
 
     total_mass = request.airframe_mass_kg + motor_mass_kg + battery_mass_kg
-    actual_cruise_power = _required_power_w(
-        request.target_cruise_speed_ms, total_mass, request.altitude_m
+
+    # Pull aerodynamic geometry from request if available, fall back to defaults
+    cd0 = getattr(request, "cd0", 0.03)
+    e_oswald = getattr(request, "e_oswald", 0.8)
+    ar = getattr(request, "aspect_ratio", 8.0)
+    s_ref_m2 = getattr(request, "s_ref_m2", 0.5)
+    eta_prop = getattr(request, "eta_prop", DEFAULT_ETA_PROP)
+    eta_motor = getattr(request, "eta_motor", DEFAULT_ETA_MOTOR)
+    eta_esc = getattr(request, "eta_esc", DEFAULT_ETA_ESC)
+    eta_total = eta_prop * eta_motor * eta_esc
+
+    actual_cruise_power = _combo_required_power_w(
+        speed_ms=request.target_cruise_speed_ms,
+        total_mass_kg=total_mass,
+        altitude_m=request.altitude_m,
+        cd0=cd0,
+        e_oswald=e_oswald,
+        ar=ar,
+        s_ref_m2=s_ref_m2,
+        eta_total=eta_total,
     )
 
     cruise_current_a = actual_cruise_power / voltage if voltage > 0 else 999
@@ -108,13 +174,13 @@ def _evaluate_motor_battery_combo(
 def size_powertrain(
     db: Session, aeroplane_uuid, request: PowertrainSizingRequest
 ) -> PowertrainSizingResponse:
-    aeroplane = db.query(AeroplaneModel).filter(
-        AeroplaneModel.uuid == aeroplane_uuid
-    ).first()
+    aeroplane = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == aeroplane_uuid).first()
     if not aeroplane:
         raise NotFoundError(entity="Aeroplane", resource_id=aeroplane_uuid)
 
-    motors = db.query(ComponentModel).filter(ComponentModel.component_type == "brushless_motor").all()
+    motors = (
+        db.query(ComponentModel).filter(ComponentModel.component_type == "brushless_motor").all()
+    )
     batteries = db.query(ComponentModel).filter(ComponentModel.component_type == "battery").all()
     escs = db.query(ComponentModel).filter(ComponentModel.component_type == "esc").all()
 

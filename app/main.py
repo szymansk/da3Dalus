@@ -16,6 +16,7 @@ from app.api.v2.endpoints.aeroplane import construction_parts
 from app.api.v2.endpoints import aeroplane_construction_plans
 from app.api.v2.endpoints import construction_plans
 from app.api.v2.endpoints import construction_templates
+from app.api.v2.endpoints import endurance
 from app.api.v2.endpoints import flight_profiles
 from app.api.v2.endpoints import fuselage_slice
 from app.api.v2.endpoints import health
@@ -173,6 +174,7 @@ def create_app() -> FastAPI:
         lifespan=_combined_lifespan,
     )
     app.include_router(health.router, prefix="", tags=["health"])
+    app.include_router(endurance.router, prefix="", tags=["endurance"])
     app.include_router(aeroplane_v2.router, prefix="", tags=[])
     app.include_router(components.router, prefix="", tags=["components"])
     app.include_router(component_types.router, prefix="", tags=["component-types"])
