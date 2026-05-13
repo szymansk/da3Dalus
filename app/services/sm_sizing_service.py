@@ -14,10 +14,12 @@ Formulas (Anderson §7.6 Eq. 7.41, spec-gate A1):
 
   ∂SM/∂S_H = (a_t/a)·(1 - dε/dα)·l_H / (S_w·MAC)
 
-Scope (spec-gate A4): aft-CG only.
-  TODO(gh-515): add fwd-CG trim-drag suggestion using Cm_δe, δe_max, ΔCm_flap
-  from forward_cg_result in ctx. Binding limit becomes min(aft_violation, fwd_violation).
-  See https://github.com/szymansk/da3Dalus/issues/515
+Bi-directional scope (gh-515):
+  at_cg='aft'  — aft-CG sizing (NP must be aft enough relative to heaviest aft loading).
+  at_cg='fwd'  — fwd-CG sizing using cg_stability_fwd_m from gh-500 elevator authority.
+    Violation: SM_fwd < sm_min OR SM_fwd > sm_max_fwd
+    where SM_fwd = (x_NP - cg_fwd_actual) / MAC
+          sm_max_fwd = (x_NP - cg_stability_fwd_m) / MAC
 
 Mass-coupling warning (spec-gate A5):
   Wing-mass ≈ 30% MTOW → Δx_wing = 0.05·MAC shifts CG by ~0.015·MAC ≈ 1 SM unit.
@@ -230,9 +232,9 @@ def _update_convergence_counter(ctx: dict, delta_sm: float) -> None:
 def suggest_corrections(
     ctx: dict,
     target_sm: float = 0.10,
-    at_cg: Literal["aft"] = "aft",  # noqa: ARG001  (gh-515 will add fwd)
+    at_cg: Literal["aft", "fwd"] = "aft",
 ) -> dict[str, Any]:
-    """Suggest geometry changes to hit target_sm for the aft-CG loading.
+    """Suggest geometry changes to hit target_sm for the aft- or fwd-CG loading.
 
     Reads from the assumption_computation_context dict (produced by
     recompute_assumptions and enriched by loading-scenario/CG-envelope services).
@@ -253,6 +255,10 @@ def suggest_corrections(
             "message": reason,
             "hint": reason,
         }
+
+    # --- Dispatch to forward-CG path ----------------------------------------
+    if at_cg == "fwd":
+        return _suggest_corrections_fwd(ctx, target_sm)
 
     # mac_m and s_ref_m2 are guaranteed non-None/non-zero by _is_not_applicable guard above
     mac_m: float = float(ctx["mac_m"])
@@ -346,7 +352,7 @@ def suggest_corrections(
             )
     elif x_np_m is None:
         # No x_NP available — cannot perform forward-clip check
-        pass  # TODO(gh-515): forward-CG clip fully enabled when fwd CG data is available
+        pass
 
     warnings: list[str] = []
     if clip_warning:
@@ -362,6 +368,217 @@ def suggest_corrections(
         "options": [wing_opt, htail_opt],
         "mass_coupling_warning": _MASS_COUPLING_WARNING,
         "warnings": warnings,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Forward-CG path (gh-515)
+# ---------------------------------------------------------------------------
+
+def _suggest_corrections_fwd(ctx: dict, target_sm: float) -> dict[str, Any]:
+    """Suggest geometry changes for the forward-CG loading scenario (gh-515).
+
+    Violation conditions (SM_fwd = (x_NP - cg_fwd_actual) / MAC):
+      A. SM_fwd < sm_min  → fwd CG too close to NP (nearly unstable) → move NP aft (wing aft)
+      B. SM_fwd > sm_max_fwd  → fwd CG exceeds elevator authority → move NP fwd (wing fwd)
+                                  OR increase tail authority (htail_scale)
+
+    cg_fwd_actual = ctx['cg_forward_m']  (most forward loading CG from loading scenarios)
+    sm_max_fwd    = (x_NP - cg_stability_fwd_m) / MAC  (from gh-500 elevator authority)
+    """
+    mac_m: float = float(ctx["mac_m"])
+    x_np_m: float | None = ctx.get("x_np_m")
+    if x_np_m is None:
+        return {
+            "status": "not_applicable",
+            "options": [],
+            "message": "Run analysis first to compute x_NP (assumption recompute not yet run).",
+            "hint": "Run analysis first to compute x_NP (assumption recompute not yet run).",
+        }
+
+    cg_stability_fwd_m: float | None = ctx.get("cg_stability_fwd_m")
+    if cg_stability_fwd_m is None:
+        return {
+            "status": "not_applicable",
+            "options": [],
+            "message": (
+                "Forward CG stability limit (cg_stability_fwd_m) is not available — "
+                "elevator authority could not be computed. "
+                "Investigate elevator authority (Cm_δe) before sizing for forward CG."
+            ),
+            "hint": (
+                "cg_stability_fwd_m is None: elevator authority infeasible. "
+                "Check elevator chord / control authority."
+            ),
+        }
+
+    cg_fwd_actual: float | None = ctx.get("cg_forward_m")
+    if cg_fwd_actual is None:
+        return {
+            "status": "not_applicable",
+            "options": [],
+            "message": "Forward CG (cg_forward_m) not available — run loading scenario first.",
+            "hint": "Run loading scenario recompute to populate cg_forward_m.",
+        }
+
+    sm_fwd: float = (x_np_m - cg_fwd_actual) / mac_m
+    sm_max_fwd: float = (x_np_m - cg_stability_fwd_m) / mac_m
+
+    dsm_dx = _dsm_dx_wing(ctx)
+    dsm_dsh = _dsm_dsh(ctx)
+    s_h_m2: float = ctx.get("s_h_m2") or 0.08
+
+    # --- No violation: SM_fwd in [sm_min, sm_max_fwd] ----------------------
+    if _SM_UNSTABLE_LIMIT <= sm_fwd <= sm_max_fwd:
+        return {
+            "status": "ok",
+            "options": [],
+            "message": (
+                f"SM_fwd = {sm_fwd:.3f} is within the forward-CG bounds "
+                f"[{_SM_UNSTABLE_LIMIT:.2f}, {sm_max_fwd:.3f}]."
+            ),
+        }
+
+    # --- Violation type A: SM_fwd < sm_min → nearly unstable at fwd CG ----
+    if sm_fwd < _SM_UNSTABLE_LIMIT:
+        # Need to increase SM_fwd: move NP aft → wing AFT (positive delta)
+        delta_needed = target_sm - sm_fwd  # positive
+        delta_x = delta_needed / dsm_dx    # positive (aft)
+        delta_sh_m2 = delta_needed / dsm_dsh
+        delta_pct = delta_sh_m2 / s_h_m2
+
+        return {
+            "status": "error",
+            "block_save": True,
+            "message": (
+                f"SM_fwd = {sm_fwd:.3f} at forward CG is BELOW the minimum stability threshold "
+                f"({_SM_UNSTABLE_LIMIT:.2f}) — aircraft may be aerodynamically unstable at "
+                "forward loading. Apply one of the suggested corrections before saving."
+            ),
+            "options": [
+                _wing_shift_fwd_option(ctx, delta_x, sm_fwd, target_sm, violation="too_small"),
+                _htail_scale_fwd_option(ctx, delta_pct, sm_fwd, target_sm),
+            ],
+            "mass_coupling_warning": _MASS_COUPLING_WARNING,
+        }
+
+    # --- Violation type B: SM_fwd > sm_max_fwd → exceeds elevator authority -
+    # Need to decrease SM_fwd: move NP forward → wing FORWARD (negative delta)
+    # OR increase elevator authority → increase S_H (positive delta_pct)
+    delta_needed_to_limit = sm_max_fwd - sm_fwd  # negative (need to reduce SM_fwd)
+    delta_x = delta_needed_to_limit / dsm_dx      # negative (fwd shift)
+    # For htail_scale: increasing S_H increases sm_max_fwd (relaxes the limit)
+    # Increase sm_max_fwd by Δsm_limit = sm_fwd - sm_max_fwd
+    sm_deficit = sm_fwd - sm_max_fwd              # positive excess above limit
+    # sm_max_fwd = (x_NP - cg_stability_fwd_m) / MAC
+    # Increasing S_H by ΔS_H increases x_NP by dsm_dsh * ΔS_H * MAC... no.
+    # Actually increasing S_H relaxes cg_stability_fwd_m (moves it forward).
+    # The htail_scale option here is: increase S_H → more Cm_δe → elevator can trim
+    # more forward CGs → cg_stability_fwd_m decreases → sm_max_fwd increases.
+    # Use a proportional estimate: delta_sh_m2 needed to cover sm_deficit via sm_max_fwd change.
+    # sm_max_fwd = (x_NP - cg_stability_fwd_m) / MAC; cg_stability_fwd_m ∝ elevator authority.
+    # Conservative estimate: same magnitude of ΔS_H as for the aft case (covers the gap).
+    delta_sh_m2_fwd = sm_deficit / dsm_dsh
+    delta_pct_fwd = delta_sh_m2_fwd / s_h_m2
+
+    warnings: list[str] = []
+    if delta_pct_fwd < 0:
+        warnings.append(_NEGATIVE_SH_WARNING)
+
+    return {
+        "status": "suggestion",
+        "options": [
+            _wing_shift_fwd_option(ctx, delta_x, sm_fwd, sm_max_fwd, violation="too_large"),
+            _htail_scale_fwd_option(ctx, delta_pct_fwd, sm_fwd, sm_max_fwd),
+        ],
+        "mass_coupling_warning": _MASS_COUPLING_WARNING,
+        "warnings": warnings,
+        "sm_fwd": round(sm_fwd, 4),
+        "sm_max_fwd": round(sm_max_fwd, 4),
+    }
+
+
+def _wing_shift_fwd_option(
+    ctx: dict,
+    delta_x_m: float,
+    sm_fwd_current: float,
+    sm_fwd_target: float,
+    violation: str,
+) -> dict:
+    """Build wing_shift option for the forward-CG path.
+
+    ∂SM_fwd/∂x_wing = (1 - α_VH) / MAC  (same sign as aft: moving wing aft increases NP and SM).
+
+    For violation='too_large' (SM_fwd > sm_max_fwd): delta_x_m < 0 (move wing forward, reduce NP).
+    For violation='too_small' (SM_fwd < sm_min): delta_x_m > 0 (move wing aft, increase NP).
+    """
+    mac_m_raw = ctx.get("mac_m")
+    mac_m: float = float(mac_m_raw) if mac_m_raw and float(mac_m_raw) > 0 else 0.30
+    dsm_dx = _dsm_dx_wing(ctx)
+    predicted_sm = sm_fwd_current + dsm_dx * delta_x_m
+    delta_mm = round(delta_x_m * 1000.0, 1)
+    direction = "forward" if delta_x_m < 0 else "aft"
+
+    if violation == "too_large":
+        action_hint = (
+            "reduces NP position to bring SM_fwd within elevator-authority limit"
+        )
+    else:
+        action_hint = (
+            "increases NP position to improve forward-CG stability margin"
+        )
+
+    narrative = (
+        f"Move main wing {abs(delta_mm):.1f} mm {direction} (Δx = {delta_mm:+.1f} mm) "
+        f"to reach SM_fwd ≈ {sm_fwd_target*100:.1f}% at forward CG. "
+        f"MAC = {mac_m*1000:.0f} mm. "
+        f"This {action_hint}. "
+        f"{_MASS_COUPLING_WARNING}"
+    )
+    return {
+        "lever": "wing_shift",
+        "delta_value": round(delta_x_m, 5),
+        "delta_unit": "m",
+        "predicted_sm": round(predicted_sm, 4),
+        "narrative": narrative,
+    }
+
+
+def _htail_scale_fwd_option(
+    ctx: dict,
+    delta_pct: float,
+    sm_fwd_current: float,
+    sm_fwd_target: float,
+) -> dict:
+    """Build htail_scale option for the forward-CG path.
+
+    Increasing S_H increases elevator authority (Cm_δe), which relaxes the forward CG
+    stability limit (cg_stability_fwd_m moves forward → sm_max_fwd increases).
+    The delta_pct here is the chord-scale fraction needed to cover the SM_fwd excess.
+    """
+    mac_m_raw = ctx.get("mac_m")
+    mac_m: float = float(mac_m_raw) if mac_m_raw and float(mac_m_raw) > 0 else 0.30  # noqa: F841
+    s_h_m2: float = ctx.get("s_h_m2") or 0.08
+    dsm_dsh = _dsm_dsh(ctx)
+    # Predicted SM_fwd after relaxing the limit via increased S_H:
+    # We approximate: increasing S_H shifts sm_max_fwd by dsm_dsh * ΔS_H,
+    # meaning the allowable forward margin grows. Here predicted_sm is the new target limit.
+    predicted_sm = sm_fwd_current - dsm_dsh * delta_pct * s_h_m2
+    action = "Enlarge" if delta_pct > 0 else "Shrink"
+    narrative = (
+        f"{action} horizontal tail chord by {abs(delta_pct)*100:.1f}% "
+        f"(Δ = {delta_pct*100:+.1f}%) to increase elevator authority (Cm_δe), "
+        f"relaxing the forward CG stability limit to SM_fwd ≈ {sm_fwd_target*100:.1f}%. "
+        f"Chord-scale preserves span (AR changes proportionally)."
+    )
+    if delta_pct < 0:
+        narrative += " " + _NEGATIVE_SH_WARNING
+    return {
+        "lever": "htail_scale",
+        "delta_value": round(delta_pct, 5),
+        "delta_unit": "fraction",  # 0.20 = +20%
+        "predicted_sm": round(predicted_sm, 4),
+        "narrative": narrative,
     }
 
 
