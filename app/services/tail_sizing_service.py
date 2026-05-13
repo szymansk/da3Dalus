@@ -341,9 +341,15 @@ def _worst_classification(cls_h: _Classification, cls_v: _Classification) -> _Cl
 def build_tail_sizing_context_from_aeroplane(aircraft) -> dict | None:
     """Extract the tail-sizing context dict from an AeroplaneModel.
 
+    All geometric quantities returned are in **metres** / **m²** — the
+    DB stores wing geometry in metres (see project convention: mm in
+    WingConfig, m in DB/ASB). No mm-to-m conversion happens here; conversion
+    of the *recommended areas* to mm² happens at the service caller layer
+    (compute_tail_volumes returns m²; endpoint multiplies by 1e6 for mm²).
+
     Reads:
-      - assumption_computation_context (mac_m, s_ref_m2, b_ref_m, x_np_m)
-      - wing geometry (area, leading-edge x, MAC) by wing name convention
+      - assumption_computation_context (mac_m, s_ref_m2, b_ref_m, x_np_m — all metres)
+      - wing geometry (area_m2, leading-edge x_m, MAC_m) by wing name convention
       - aircraft_class from the is_default loading scenario
 
     Returns None when the aircraft lacks wings or the context is not yet
