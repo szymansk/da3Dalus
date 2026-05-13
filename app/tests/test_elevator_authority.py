@@ -129,16 +129,15 @@ class TestForwardCGSchema:
         assert result.cg_fwd_m is None
 
     def test_confidence_enum_values(self):
-        """All 5 confidence tiers are present (avl_full dropped in gh-500; tracked in gh-516)."""
+        """All 6 confidence tiers are present (avl_full added in gh-516)."""
         ForwardCGConfidence, _ = _import_schema()
-        # avl_full removed — tracked in gh-516
+        # gh-516: avl_full re-introduced as highest-confidence tier
+        assert ForwardCGConfidence.avl_full.value == "avl_full"
         assert ForwardCGConfidence.asb_high_with_flap.value == "asb_high_with_flap"
         assert ForwardCGConfidence.asb_high_clean.value == "asb_high_clean"
         assert ForwardCGConfidence.asb_warn_with_flap.value == "asb_warn_with_flap"
         assert ForwardCGConfidence.asb_warn_clean.value == "asb_warn_clean"
         assert ForwardCGConfidence.stub.value == "stub"
-        # avl_full must NOT be present
-        assert not hasattr(ForwardCGConfidence, "avl_full")
 
 
 # ---------------------------------------------------------------------------
