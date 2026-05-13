@@ -1,4 +1,16 @@
-"""Flight envelope service — V-n curve computation, KPI derivation, and DB persistence."""
+"""Flight envelope service — V-n curve computation, KPI derivation, and DB persistence.
+
+Gust envelope (gh-487):
+  Discrete sharp-edged vertical gust — Pratt-Walker model (NACA TN 2964).
+  Gust alleviation factor K_g per FAR-25.341(a)(2) / CS-VLA.333.
+  U_gust values from CS-VLA.333(c)(1) / FAR-23.333(c):
+    V_C: 15.24 m/s (50 ft/s EAS)
+    V_D:  7.62 m/s (25 ft/s EAS)
+  CL_α from assumption_computation_context["cl_alpha_per_rad"] (alpha-sweep
+  regression); falls back to Helmbold-Diederich (Anderson 6e Eq. 5.81) when
+  context is unavailable.
+  Mean Geometric Chord c̄ = S_ref / b_ref (not MAC) — see gh-487 spec.
+"""
 
 from __future__ import annotations
 
@@ -15,6 +27,7 @@ from app.models.flight_envelope_model import FlightEnvelopeModel
 from app.schemas.design_assumption import PARAMETER_DEFAULTS
 from app.schemas.flight_envelope import (
     FlightEnvelopeRead,
+    GustCriticalWarning,
     PerformanceKPI,
     VnCurve,
     VnMarker,
@@ -24,6 +37,206 @@ from app.schemas.flight_envelope import (
 logger = logging.getLogger(__name__)
 
 GRAVITY = 9.81
+
+# Gust speeds per CS-VLA.333(c)(1) / FAR-23.333(c) — sharp-edged EAS
+GUST_U_VC_MPS: float = 15.24  # 50 ft/s at cruise speed V_C
+GUST_U_VD_MPS: float = 7.62   # 25 ft/s at dive speed V_D
+
+# Pratt-Walker μ_g validity range (NACA TN 2964 / FAR-25.341 applicability)
+_MU_G_MIN: float = 3.0
+_MU_G_MAX: float = 200.0
+
+
+# ---------------------------------------------------------------------------
+# Gust-envelope computation helpers (Pratt-Walker / FAR-25.341 / CS-VLA.333)
+# ---------------------------------------------------------------------------
+
+
+def _helmbold_cl_alpha(ar: float) -> float:
+    """Finite-span CL_α by Helmbold-Diederich (Anderson 6e Eq. 5.81).
+
+    CL_α = 2π·AR / (AR + 2)
+
+    Used as cold-start fallback when no alpha-sweep is available.
+    Explicitly NOT the thin-airfoil 2π limit — that overestimates CL_α
+    at AR=6 by ~39%, producing unrealistically high gust loads.
+
+    Sources: Anderson, Introduction to Flight, 6th ed., §5.3.
+    """
+    return 2.0 * math.pi * ar / (ar + 2.0)
+
+
+def _compute_mu_g(
+    mass_kg: float,
+    s_ref: float,
+    c_mgc: float,
+    cl_alpha: float,
+    rho: float = 1.225,
+    g: float = GRAVITY,
+) -> float:
+    """Gust mass ratio μ_g (dimensionless).
+
+    μ_g = 2·(W/S) / (ρ·c̄·CL_α·g)
+
+    where c̄ = S_ref / b_ref  (Mean Geometric Chord, **not** MAC).
+    For trapezoidal wings MGC ≈ MAC; for double-trapezoid the difference
+    can be relevant (see gh-487 spec, issue body §AC section).
+
+    Sources: FAR-25.341(a)(2); NACA TN 2964 (Pratt & Walker, 1953).
+    """
+    wing_loading = mass_kg * g / s_ref  # W/S in N/m²
+    return 2.0 * wing_loading / (rho * c_mgc * cl_alpha * g)
+
+
+def _compute_k_g(mu_g: float) -> float:
+    """Gust alleviation factor K_g (dimensionless).
+
+    K_g = 0.88·μ_g / (5.3 + μ_g)
+
+    Emits a WARNING when μ_g is outside the Pratt validity range [3, 200]:
+    - μ_g < 3  → very light/small aircraft; K_g may be optimistic.
+    - μ_g > 200 → very large/heavy aircraft; formula may be conservative.
+
+    Sources: FAR-25.341(a)(2); CS-VLA.333; NACA TN 2964.
+    """
+    if mu_g < _MU_G_MIN or mu_g > _MU_G_MAX:
+        logger.warning(
+            "μ_g = %.3f is outside Pratt validity range [%.0f, %.0f]. "
+            "Gust alleviation factor K_g may be inaccurate "
+            "(ref: NACA TN 2964 / FAR-25.341).",
+            mu_g,
+            _MU_G_MIN,
+            _MU_G_MAX,
+        )
+    return 0.88 * mu_g / (5.3 + mu_g)
+
+
+def _compute_delta_n(
+    rho: float,
+    v: float,
+    cl_alpha: float,
+    u_gust: float,
+    k_g: float,
+    mass_kg: float,
+    s_ref: float,
+    g: float = GRAVITY,
+) -> float:
+    """Gust load-factor increment Δn (dimensionless).
+
+    Pratt-Walker discrete sharp-edged gust:
+
+        ΔL = ½·ρ·V·S·CL_α·U_gust·K_g
+        Δn = ΔL / W = ½·ρ·V·CL_α·U_gust·K_g / (W/S)
+
+    Sources: FAR-25.341(a); CS-VLA.341; NACA TN 2964 (Pratt & Walker, 1953);
+    Anderson, Introduction to Flight, 6th ed. §6.5.
+    """
+    wing_loading = mass_kg * g / s_ref  # W/S in N/m²
+    return 0.5 * rho * v * cl_alpha * u_gust * k_g / wing_loading
+
+
+def _extract_cl_alpha_from_context(ctx: dict) -> float | None:
+    """Return cl_alpha_per_rad from the assumption computation context.
+
+    Returns None when the key is absent or the value is not a finite number
+    (guards against corrupted context caches).
+    """
+    val = ctx.get("cl_alpha_per_rad")
+    if val is None:
+        return None
+    try:
+        fval = float(val)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(fval) or fval <= 0:
+        return None
+    return fval
+
+
+def _build_gust_lines(
+    mass_kg: float,
+    wing_area_m2: float,
+    b_ref_m: float,
+    cl_alpha: float,
+    g_limit: float,
+    v_stall: float,
+    v_dive: float,
+    rho: float = 1.225,
+    gust_u_vc_mps: float = GUST_U_VC_MPS,
+    gust_u_vd_mps: float = GUST_U_VD_MPS,
+    n_points: int = 60,
+) -> tuple[list[VnPoint], list[VnPoint], list[GustCriticalWarning]]:
+    """Compute positive and negative gust load-factor lines.
+
+    Returns (gust_lines_positive, gust_lines_negative, warnings).
+
+    The gust lines run from V_stall to V_dive.  U_gust is linearly
+    interpolated between U_vc (at V_C = v_dive / 1.4) and U_vd (at V_dive).
+    Below V_C, U_vc is used (conservative per CS-VLA.333(c)(1)).
+
+    GustCriticalWarning is emitted at any point where 1+Δn > g_limit
+    (positive) or 1-Δn < -0.4·g_limit (negative).
+    """
+    c_mgc = wing_area_m2 / b_ref_m  # Mean Geometric Chord = S/b (not MAC)
+    mu_g = _compute_mu_g(mass_kg, wing_area_m2, c_mgc, cl_alpha, rho)
+    k_g = _compute_k_g(mu_g)
+
+    v_c = v_dive / 1.4  # Cruise speed (V_D = 1.4 · V_C by construction)
+
+    positive: list[VnPoint] = []
+    negative: list[VnPoint] = []
+    warnings: list[GustCriticalWarning] = []
+    warned_positive = False
+    warned_negative = False
+
+    for i in range(n_points):
+        v = v_stall + (v_dive - v_stall) * i / (n_points - 1)
+
+        # U_gust: constant at U_vc below V_C; linearly taper to U_vd at V_D
+        if v <= v_c:
+            u = gust_u_vc_mps
+        else:
+            # Linear interpolation from U_vc at V_C to U_vd at V_D
+            frac = (v - v_c) / (v_dive - v_c)
+            u = gust_u_vc_mps + frac * (gust_u_vd_mps - gust_u_vc_mps)
+
+        delta_n = _compute_delta_n(rho, v, cl_alpha, u, k_g, mass_kg, wing_area_m2)
+        n_pos = 1.0 + delta_n
+        n_neg = 1.0 - delta_n
+
+        positive.append(VnPoint(velocity_mps=round(v, 6), load_factor=round(n_pos, 6)))
+        negative.append(VnPoint(velocity_mps=round(v, 6), load_factor=round(n_neg, 6)))
+
+        if n_pos > g_limit and not warned_positive:
+            warned_positive = True
+            warnings.append(
+                GustCriticalWarning(
+                    velocity_mps=round(v, 4),
+                    n_gust=round(n_pos, 4),
+                    g_limit=round(g_limit, 4),
+                    message=(
+                        f"Gust-critical: gust load factor {n_pos:.2f}g exceeds "
+                        f"maneuver limit {g_limit:.2f}g at V={v:.1f} m/s. "
+                        "Structure must be sized by gust loads, not maneuver loads."
+                    ),
+                )
+            )
+        if n_neg < -0.4 * g_limit and not warned_negative:
+            warned_negative = True
+            warnings.append(
+                GustCriticalWarning(
+                    velocity_mps=round(v, 4),
+                    n_gust=round(n_neg, 4),
+                    g_limit=round(-0.4 * g_limit, 4),
+                    message=(
+                        f"Gust-critical: negative gust load factor {n_neg:.2f}g "
+                        f"exceeds negative maneuver limit {-0.4 * g_limit:.2f}g "
+                        f"at V={v:.1f} m/s."
+                    ),
+                )
+            )
+
+    return positive, negative, warnings
 
 
 # ---------------------------------------------------------------------------
@@ -38,11 +251,25 @@ def compute_vn_curve(
     wing_area_m2: float,
     rho: float = 1.225,
     v_max_mps: float = 28.0,
+    b_ref_m: float | None = None,
+    cl_alpha_per_rad: float | None = None,
+    gust_u_vc_mps: float = GUST_U_VC_MPS,
+    gust_u_vd_mps: float = GUST_U_VD_MPS,
 ) -> VnCurve:
-    """Compute the V-n diagram boundary curves.
+    """Compute the V-n diagram boundary curves, including gust envelope.
 
-    Returns a VnCurve with positive and negative boundary points from
-    stall speed to dive speed (1.4 * v_max).
+    Returns a VnCurve with positive and negative maneuver boundary points
+    from stall speed to dive speed (1.4 * v_max), plus optional gust lines.
+
+    Gust lines require CL_α (from cl_alpha_per_rad or Helmbold fallback)
+    AND b_ref_m (for MGC = S/b calculation of μ_g).  When neither is
+    available, gust_lines_positive / negative remain empty.
+
+    Gust model:
+      Discrete sharp-edged gust per Pratt-Walker (NACA TN 2964).
+      K_g per FAR-25.341(a)(2) / CS-VLA.333.
+      Default U_gust: 15.24 m/s at V_C, 7.62 m/s at V_D
+      (CS-VLA.333(c)(1) / FAR-23.333(c)).
     """
     if mass_kg <= 0 or cl_max <= 0 or wing_area_m2 <= 0 or v_max_mps <= 0:
         raise ValueError("mass_kg, cl_max, wing_area_m2, and v_max_mps must be positive")
@@ -67,11 +294,41 @@ def compute_vn_curve(
         positive.append(VnPoint(velocity_mps=round(v, 6), load_factor=round(n_pos, 6)))
         negative.append(VnPoint(velocity_mps=round(v, 6), load_factor=round(n_neg, 6)))
 
+    # --- Gust envelope (Pratt-Walker) ----------------------------------------
+    # Requires CL_α and wingspan (for MGC = S/b).
+    # CL_α: prefer supplied value; fall back to Helmbold-Diederich if b_ref_m
+    # is known (AR derivable from S and b); else skip gust lines.
+    gust_lines_positive: list[VnPoint] = []
+    gust_lines_negative: list[VnPoint] = []
+    gust_warnings: list[GustCriticalWarning] = []
+
+    effective_cl_alpha: float | None = cl_alpha_per_rad
+    if effective_cl_alpha is None and b_ref_m is not None and b_ref_m > 0:
+        ar = (b_ref_m**2) / wing_area_m2
+        effective_cl_alpha = _helmbold_cl_alpha(ar)
+
+    if effective_cl_alpha is not None and b_ref_m is not None and b_ref_m > 0:
+        gust_lines_positive, gust_lines_negative, gust_warnings = _build_gust_lines(
+            mass_kg=mass_kg,
+            wing_area_m2=wing_area_m2,
+            b_ref_m=b_ref_m,
+            cl_alpha=effective_cl_alpha,
+            g_limit=g_limit,
+            v_stall=v_stall,
+            v_dive=v_dive,
+            rho=rho,
+            gust_u_vc_mps=gust_u_vc_mps,
+            gust_u_vd_mps=gust_u_vd_mps,
+        )
+
     return VnCurve(
         positive=positive,
         negative=negative,
         dive_speed_mps=round(v_dive, 6),
         stall_speed_mps=round(v_stall, 6),
+        gust_lines_positive=gust_lines_positive,
+        gust_lines_negative=gust_lines_negative,
+        gust_warnings=gust_warnings,
     )
 
 
@@ -324,16 +581,35 @@ def _load_operating_point_markers(
     return markers
 
 
+def _get_b_ref(db: Session, aeroplane: AeroplaneModel) -> float | None:
+    """Return wingspan b_ref from the ASB airplane model, or None."""
+    from app.converters.model_schema_converters import (
+        aeroplane_model_to_aeroplane_schema_async,
+        aeroplane_schema_to_asb_airplane_async,
+    )
+
+    try:
+        schema = aeroplane_model_to_aeroplane_schema_async(aeroplane)
+        asb_airplane = aeroplane_schema_to_asb_airplane_async(schema)
+        b = asb_airplane.b_ref
+        return float(b) if b is not None and b > 0 else None
+    except Exception:
+        return None
+
+
 def _model_to_read(row: FlightEnvelopeModel) -> FlightEnvelopeRead:
     """Convert a FlightEnvelopeModel row to a FlightEnvelopeRead schema."""
+    vn_curve = VnCurve.model_validate(row.vn_curve_json)
     return FlightEnvelopeRead(
         id=row.id,
         aeroplane_id=row.aeroplane_id,
-        vn_curve=VnCurve.model_validate(row.vn_curve_json),
+        vn_curve=vn_curve,
         kpis=[PerformanceKPI.model_validate(k) for k in row.kpis_json],
         operating_points=[VnMarker.model_validate(m) for m in row.markers_json],
         assumptions_snapshot=row.assumptions_snapshot,
         computed_at=row.computed_at,
+        # Mirror vn_curve.gust_warnings at the top level for easy frontend access
+        gust_warnings=vn_curve.gust_warnings,
     )
 
 
@@ -347,21 +623,32 @@ def compute_flight_envelope(db: Session, aeroplane_uuid) -> FlightEnvelopeRead:
 
     Steps:
     1. Load aeroplane and design assumptions
-    2. Get wing area via ASB conversion
+    2. Get wing area and b_ref via ASB conversion
     3. Get v_max from flight profile
-    4. Compute V-n curve and KPIs
+    4. Compute V-n curve (maneuver + gust envelope) and KPIs
     5. Load operating-point markers
     6. Upsert to DB
     7. Return FlightEnvelopeRead
+
+    Gust envelope (gh-487):
+      CL_α is read from assumption_computation_context["cl_alpha_per_rad"]
+      when available (set by assumption_compute_service after alpha-sweep);
+      falls back to Helmbold-Diederich (Anderson 6e Eq. 5.81) otherwise.
+      b_ref is taken from the ASB airplane for MGC = S/b computation.
     """
     aeroplane = _get_aeroplane(db, aeroplane_uuid)
     assumptions = _load_assumptions(db, aeroplane_uuid)
     wing_area_m2 = _get_wing_area_m2(db, aeroplane)
+    b_ref_m = _get_b_ref(db, aeroplane)
     v_max = _get_v_max(db, aeroplane)
 
     mass_kg = assumptions["mass"]
     cl_max = assumptions["cl_max"]
     g_limit = assumptions["g_limit"]
+
+    # CL_α for gust computation — prefer context cache, fall back to Helmbold
+    ctx = aeroplane.assumption_computation_context or {}
+    cl_alpha_per_rad: float | None = _extract_cl_alpha_from_context(ctx)
 
     vn_curve = compute_vn_curve(
         mass_kg=mass_kg,
@@ -369,6 +656,8 @@ def compute_flight_envelope(db: Session, aeroplane_uuid) -> FlightEnvelopeRead:
         g_limit=g_limit,
         wing_area_m2=wing_area_m2,
         v_max_mps=v_max,
+        b_ref_m=b_ref_m,
+        cl_alpha_per_rad=cl_alpha_per_rad,
     )
 
     markers = _load_operating_point_markers(db, aeroplane, mass_kg, wing_area_m2)
@@ -377,7 +666,6 @@ def compute_flight_envelope(db: Session, aeroplane_uuid) -> FlightEnvelopeRead:
     # context (populated by assumption_compute_service). When present these
     # take precedence over the heuristic 1.4·V_s / 1.2·V_s fallbacks
     # (gh-475 — audit §4.1, off by ~15 % for high-AR airframes).
-    ctx = aeroplane.assumption_computation_context or {}
     v_md_polar = ctx.get("v_md_mps")
     v_min_sink_polar = ctx.get("v_min_sink_mps")
 

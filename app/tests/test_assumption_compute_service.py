@@ -53,6 +53,10 @@ def _patches():
             return_value=(1.35, np.array([0.2, 0.4, 0.6, 0.8, 1.0, 1.2]), np.array([0.026, 0.028, 0.032, 0.039, 0.049, 0.062])),
         ),
         patch(
+            "app.services.assumption_compute_service._extract_cl_alpha_from_linear_sweep",
+            return_value=5.7,
+        ),
+        patch(
             "app.services.assumption_compute_service._load_flight_profile_speeds",
             return_value=(18.0, 28.0, True),
         ),
@@ -68,8 +72,8 @@ def test_recompute_writes_all_three_assumptions(client_and_db):
         aeroplane_uuid = str(aeroplane.uuid)
         aeroplane_id = aeroplane.id
 
-    p1, p2, p3, p4, p5 = _patches()
-    with p1, p2, p3, p4, p5:
+    p1, p2, p3, p4, p5, p6 = _patches()
+    with p1, p2, p3, p4, p5, p6:
         with SessionLocal() as db:
             recompute_assumptions(db, aeroplane_uuid)
             db.commit()
@@ -202,9 +206,9 @@ def test_recompute_caches_context_and_publishes_cg_change(client_and_db):
     handler = captured.append
     event_bus.subscribe(AssumptionChanged, handler)
 
-    p1, p2, p3, p4, p5 = _patches()
+    p1, p2, p3, p4, p5, p6 = _patches()
     try:
-        with p1, p2, p3, p4, p5:
+        with p1, p2, p3, p4, p5, p6:
             with SessionLocal() as db:
                 recompute_assumptions(db, aeroplane_uuid)
                 db.commit()
