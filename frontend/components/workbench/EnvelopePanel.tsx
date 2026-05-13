@@ -91,6 +91,7 @@ export function EnvelopePanel({ envelope, isComputing, error, onCompute }: Props
         <VnDiagram
           vnCurve={envelope.vn_curve}
           operatingPoints={envelope.operating_points}
+          gustWarnings={envelope.gust_warnings}
         />
       )}
     </div>

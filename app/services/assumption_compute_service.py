@@ -162,6 +162,12 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     v_cruise_effective = v_md if (not user_set_cruise and v_md is not None) else v_cruise
     cruise_is_auto = not user_set_cruise and v_md is not None
 
+    # CL_α from linear-range alpha-sweep (gh-487 — gust envelope).
+    # Regression over α ∈ [-2°, +6°] with R² > 0.995 quality gate.
+    # Cached as cl_alpha_per_rad; downstream compute_vn_curve uses it
+    # for the Pratt-Walker gust alleviation computation.
+    cl_alpha_per_rad = _extract_cl_alpha_from_linear_sweep(asb_airplane, v_cruise)
+
     _cache_context(db, aircraft, {
         "v_cruise_mps": round(v_cruise_effective, 1),
         "v_cruise_auto": cruise_is_auto,
@@ -182,6 +188,8 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         "e_oswald_r2": round(e_r2, 4) if e_r2 is not None else None,
         "e_oswald_quality": _classify_polar_quality(e_r2) if e_r2 is not None else "unknown",
         "e_oswald_fallback_used": e_oswald_fallback,
+        # Linear-range CL_α from α-sweep (gh-487) — consumed by compute_vn_curve for gust loads
+        "cl_alpha_per_rad": round(cl_alpha_per_rad, 4) if cl_alpha_per_rad is not None else None,
         "computed_at": datetime.now(timezone.utc).isoformat(),
     })
 
@@ -344,6 +352,103 @@ def _fine_sweep_cl_max(
             if cl > cl_max:
                 cl_max = cl
     return float(cl_max), np.asarray(cl_list, dtype=float), np.asarray(cd_list, dtype=float)
+
+
+def _extract_cl_alpha_from_linear_sweep(
+    asb_airplane,
+    v_cruise: float,
+    alpha_min_deg: float = -2.0,
+    alpha_max_deg: float = 6.0,
+    alpha_step_deg: float = 1.0,
+    r2_threshold: float = 0.995,
+) -> float | None:
+    """CL_α from a linear-range alpha-sweep at cruise speed (gh-487).
+
+    Runs AeroBuildup at α ∈ [alpha_min_deg, alpha_max_deg] (default [-2°, +6°])
+    and fits CL = CL_α·α + CL_0 with ordinary least squares.
+
+    Quality gate: if R² < r2_threshold (default 0.995), the lift curve is
+    nonlinear in this range (early stall, control surface interaction, etc.)
+    and cl_alpha_per_rad is returned as None.  The downstream gust computation
+    will then fall back to Helmbold-Diederich.
+
+    Returns CL_α in rad⁻¹ (radians, not degrees).
+
+    Sources: gh-487 spec; Anderson 6e §5.3; FAR-25.341(a)(2).
+    """
+    import aerosandbox as asb
+
+    xyz_ref = list(asb_airplane.xyz_ref) if asb_airplane.xyz_ref is not None else [0.0, 0.0, 0.0]
+    alphas_deg = np.arange(alpha_min_deg, alpha_max_deg + 0.01, alpha_step_deg)
+    alphas_rad = np.deg2rad(alphas_deg)
+
+    cls: list[float] = []
+    for a in alphas_deg:
+        op = asb.OperatingPoint(velocity=v_cruise, alpha=float(a))
+        abu = asb.AeroBuildup(airplane=asb_airplane, op_point=op, xyz_ref=xyz_ref)
+        r = abu.run()
+        cls.append(_extract_scalar(r, "CL", default=float("nan")))
+
+    alphas_arr = np.array(alphas_rad)
+    cls_arr = np.array(cls)
+
+    # Discard NaN points (convergence failures)
+    mask = np.isfinite(cls_arr)
+    if mask.sum() < 3:
+        logger.warning(
+            "CL_α extraction: fewer than 3 valid data points in α ∈ [%.0f°, %.0f°] "
+            "— skipping (will fall back to Helmbold).",
+            alpha_min_deg,
+            alpha_max_deg,
+        )
+        return None
+
+    a_fit = alphas_arr[mask]
+    cl_fit = cls_arr[mask]
+
+    # Least-squares: CL = cl_alpha * alpha + cl_0
+    # Normal equations: [sum(a²) sum(a); sum(a) N] [cl_alpha; cl_0] = [sum(a·CL); sum(CL)]
+    a_mat = np.column_stack([a_fit, np.ones_like(a_fit)])
+    coeffs, *_ = np.linalg.lstsq(a_mat, cl_fit, rcond=None)
+    cl_alpha_fit = float(coeffs[0])
+    cl_0 = float(coeffs[1])
+
+    # R² quality gate
+    cl_pred = cl_alpha_fit * a_fit + cl_0
+    ss_res = float(np.sum((cl_fit - cl_pred) ** 2))
+    ss_tot = float(np.sum((cl_fit - cl_fit.mean()) ** 2))
+    r2 = 1.0 - ss_res / ss_tot if ss_tot > 1e-12 else 0.0
+
+    if r2 < r2_threshold:
+        logger.warning(
+            "CL_α extraction: R²=%.4f < %.3f in α ∈ [%.0f°, %.0f°]. "
+            "Lift curve may be nonlinear — setting cl_alpha_per_rad=None "
+            "(will fall back to Helmbold-Diederich for gust loads).",
+            r2,
+            r2_threshold,
+            alpha_min_deg,
+            alpha_max_deg,
+        )
+        return None
+
+    if cl_alpha_fit <= 0:
+        logger.warning(
+            "CL_α extraction: fitted CL_α=%.4f ≤ 0 (degenerate geometry?). "
+            "Setting cl_alpha_per_rad=None.",
+            cl_alpha_fit,
+        )
+        return None
+
+    logger.debug(
+        "CL_α extraction: CL_α=%.4f rad⁻¹, CL_0=%.4f, R²=%.4f "
+        "(α ∈ [%.0f°, %.0f°]).",
+        cl_alpha_fit,
+        cl_0,
+        r2,
+        alpha_min_deg,
+        alpha_max_deg,
+    )
+    return cl_alpha_fit
 
 
 def _extract_scalar(result: Any, key: str, *, default: float) -> float:

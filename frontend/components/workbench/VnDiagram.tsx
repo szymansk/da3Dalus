@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import type { VnCurve, VnMarker } from "@/hooks/useFlightEnvelope";
+import type { GustCriticalWarning, VnCurve, VnMarker } from "@/hooks/useFlightEnvelope";
 
 const STATUS_COLORS: Record<string, string> = {
   TRIMMED: "#30A46C",
@@ -12,9 +12,10 @@ const STATUS_COLORS: Record<string, string> = {
 interface Props {
   readonly vnCurve: VnCurve;
   readonly operatingPoints: VnMarker[];
+  readonly gustWarnings?: GustCriticalWarning[];
 }
 
-export function VnDiagram({ vnCurve, operatingPoints }: Props) {
+export function VnDiagram({ vnCurve, operatingPoints, gustWarnings }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -32,27 +33,57 @@ export function VnDiagram({ vnCurve, operatingPoints }: Props) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const traces: Record<string, any>[] = [];
 
-      // Positive g boundary
+      // Positive g boundary — Maneuver envelope
       traces.push({
         x: vnCurve.positive.map((p) => p.velocity_mps),
         y: vnCurve.positive.map((p) => p.load_factor),
         type: "scatter",
         mode: "lines",
-        name: "+g limit",
+        name: "Manöver +g / Maneuver +g",
         line: { color: "#FF8400", width: 2 },
-        hovertemplate: "V: %{x:.1f} m/s<br>n: %{y:.2f}<extra></extra>",
+        hovertemplate: "V: %{x:.1f} m/s<br>n: %{y:.2f}<extra>Maneuver</extra>",
       });
 
-      // Negative g boundary
+      // Negative g boundary — Maneuver envelope
       traces.push({
         x: vnCurve.negative.map((p) => p.velocity_mps),
         y: vnCurve.negative.map((p) => p.load_factor),
         type: "scatter",
         mode: "lines",
-        name: "-g limit",
+        name: "Manöver −g / Maneuver −g",
         line: { color: "#FF8400", width: 2, dash: "dash" },
-        hovertemplate: "V: %{x:.1f} m/s<br>n: %{y:.2f}<extra></extra>",
+        hovertemplate: "V: %{x:.1f} m/s<br>n: %{y:.2f}<extra>Maneuver</extra>",
       });
+
+      // Gust envelope — positive line (Pratt-Walker, CS-VLA.333)
+      const gustPos = vnCurve.gust_lines_positive ?? [];
+      const gustNeg = vnCurve.gust_lines_negative ?? [];
+
+      if (gustPos.length > 0) {
+        traces.push({
+          x: gustPos.map((p) => p.velocity_mps),
+          y: gustPos.map((p) => p.load_factor),
+          type: "scatter",
+          mode: "lines",
+          name: "Böen +g / Gust +g",
+          line: { color: "#7DD3FC", width: 1.5, dash: "dot" },
+          hovertemplate:
+            "V: %{x:.1f} m/s<br>n: %{y:.2f}<extra>Gust (CS-VLA.333)</extra>",
+        });
+      }
+
+      if (gustNeg.length > 0) {
+        traces.push({
+          x: gustNeg.map((p) => p.velocity_mps),
+          y: gustNeg.map((p) => p.load_factor),
+          type: "scatter",
+          mode: "lines",
+          name: "Böen −g / Gust −g",
+          line: { color: "#7DD3FC", width: 1.5, dash: "dashdot" },
+          hovertemplate:
+            "V: %{x:.1f} m/s<br>n: %{y:.2f}<extra>Gust (CS-VLA.333)</extra>",
+        });
+      }
 
       // Operating point markers grouped by status
       const grouped = new Map<string, VnMarker[]>();
@@ -196,8 +227,21 @@ export function VnDiagram({ vnCurve, operatingPoints }: Props) {
     );
   }
 
+  const warnings = gustWarnings ?? vnCurve.gust_warnings ?? [];
+
   return (
-    <div className="flex flex-1 flex-col overflow-hidden bg-card-muted">
+    <div className="flex flex-1 flex-col gap-2 overflow-hidden bg-card-muted">
+      {warnings.length > 0 && (
+        <div className="rounded-lg border border-sky-500/40 bg-sky-500/10 px-4 py-2">
+          <p className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-medium text-sky-300">
+            Gust-critical: structure sized by gust loads, not maneuver loads
+          </p>
+          <p className="mt-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-sky-400/70">
+            Böen-Hülle überschreitet Manöver-g-Limit — Böenlasten maßgebend
+            (CS-VLA.333 / FAR-25.341)
+          </p>
+        </div>
+      )}
       <div ref={containerRef} className="min-h-0 flex-1" />
     </div>
   );

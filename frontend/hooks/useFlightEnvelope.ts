@@ -8,11 +8,26 @@ export interface VnPoint {
   load_factor: number;
 }
 
+export interface GustCriticalWarning {
+  velocity_mps: number;
+  /** Peak gust load factor (1 + Δn) at this speed */
+  n_gust: number;
+  /** Maneuver g-limit the gust load exceeds */
+  g_limit: number;
+  message: string;
+}
+
 export interface VnCurve {
   positive: VnPoint[];
   negative: VnPoint[];
   dive_speed_mps: number;
   stall_speed_mps: number;
+  /** Positive gust load-factor line (1 + Δn) — Pratt-Walker, CS-VLA.333 */
+  gust_lines_positive: VnPoint[];
+  /** Negative gust load-factor line (1 − Δn) */
+  gust_lines_negative: VnPoint[];
+  /** Structural warnings when gust loads exceed maneuver g-limit */
+  gust_warnings: GustCriticalWarning[];
 }
 
 export interface PerformanceKPI {
@@ -41,6 +56,8 @@ export interface FlightEnvelopeData {
   operating_points: VnMarker[];
   assumptions_snapshot: Record<string, number>;
   computed_at: string;
+  /** Top-level gust-critical warnings (mirrors vn_curve.gust_warnings) */
+  gust_warnings: GustCriticalWarning[];
 }
 
 export interface UseFlightEnvelopeReturn {
