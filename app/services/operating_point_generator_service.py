@@ -32,9 +32,16 @@ from app.services.trim_enrichment_service import (
 
 logger = logging.getLogger(__name__)
 
-PITCH_ROLES = {"elevator", "stabilator", "elevon"}
-ROLL_ROLES = {"aileron", "elevon"}
-YAW_ROLES = {"rudder"}
+# Dual-role surfaces are listed in every axis set whose primary or
+# secondary effect they provide:
+#   - elevon     = elevator (pitch) + aileron (roll)
+#   - flaperon   = aileron  (roll)  + flap     (lift augmentation)
+#   - ruddervator = elevator (pitch) + rudder  (yaw) — V-tail
+# Membership here drives _detect_control_capabilities and the
+# axis-specific _pick_control_name() lookups during trim solving.
+PITCH_ROLES = {"elevator", "stabilator", "elevon", "ruddervator"}
+ROLL_ROLES = {"aileron", "elevon", "flaperon"}
+YAW_ROLES = {"rudder", "ruddervator"}
 FLAP_ROLES = {"flap"}
 
 
