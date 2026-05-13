@@ -232,7 +232,11 @@ export function VnDiagram({ vnCurve, operatingPoints, gustWarnings }: Props) {
   return (
     <div className="flex flex-1 flex-col gap-2 overflow-hidden bg-card-muted">
       {warnings.length > 0 && (
-        <div className="rounded-lg border border-sky-500/40 bg-sky-500/10 px-4 py-2">
+        <div
+          role="alert"
+          aria-live="polite"
+          className="rounded-lg border border-sky-500/40 bg-sky-500/10 px-4 py-2"
+        >
           <p className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-medium text-sky-300">
             Gust-critical: structure sized by gust loads, not maneuver loads
           </p>

@@ -22,12 +22,12 @@ export interface VnCurve {
   negative: VnPoint[];
   dive_speed_mps: number;
   stall_speed_mps: number;
-  /** Positive gust load-factor line (1 + Δn) — Pratt-Walker, CS-VLA.333 */
-  gust_lines_positive: VnPoint[];
-  /** Negative gust load-factor line (1 − Δn) */
-  gust_lines_negative: VnPoint[];
-  /** Structural warnings when gust loads exceed maneuver g-limit */
-  gust_warnings: GustCriticalWarning[];
+  /** Positive gust load-factor line (1 + Δn) — Pratt-Walker, CS-VLA.333. Optional: matches backend's default_factory=list */
+  gust_lines_positive?: VnPoint[];
+  /** Negative gust load-factor line (1 − Δn). Optional: matches backend's default_factory=list */
+  gust_lines_negative?: VnPoint[];
+  /** Structural warnings when gust loads exceed maneuver g-limit. Optional: matches backend's default_factory=list */
+  gust_warnings?: GustCriticalWarning[];
 }
 
 export interface PerformanceKPI {
