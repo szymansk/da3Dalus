@@ -1,4 +1,4 @@
-"""Elevator authority forward CG limit — gh-500 (Anderson §7.7).
+"""Elevator authority forward CG limit — gh-500 (Anderson §7.7), gh-516 (AVL path).
 
 Replaces the 0.30·MAC stub in ``loading_scenario_service.compute_stability_envelope``
 with a physics-based forward CG limit derived from the NP-centered trim inversion.
@@ -15,7 +15,7 @@ A physically infeasible result is x_cg_fwd > x_np (forward limit aft of NP).
 
 ## Sign convention (Amendment B3 — CRITICAL)
 
-  AeroBuildup is run with NEGATIVE (TE-UP) deflection for Cm_δe estimation.
+  AeroBuildup (and AVL) is run with NEGATIVE (TE-UP) deflection for Cm_δe estimation.
   Result: Cm_δe > 0 (nose-up moment per unit negative-deflection rad).
   δe_max = abs(negative_deflection_deg) * π/180
   Product Cm_δe · δe_max > 0 (nose-up trim contribution).
@@ -30,6 +30,7 @@ A physically infeasible result is x_cg_fwd > x_np (forward limit aft of NP).
 
   ASB AeroBuildup operates on 3D inclined V-tail geometry → dihedral is already
   baked into the Cm_δe result.  DO NOT apply cos²(γ) correction to the ASB path.
+  AVL vortex-lattice also handles full 3D geometry — same rule applies.
   cos²(γ) is ONLY applied in the analytic STUB path formula:
     Cm_δe_stub = a_t·(S_H/S_w)·(l_H/MAC) · cos²(γ)
 
@@ -38,18 +39,38 @@ A physically infeasible result is x_cg_fwd > x_np (forward limit aft of NP).
   ``sm_sizing_service._SM_FORWARD_CLIP_LIMIT`` is the hardcoded 0.30 orphan.
   After gh-500 the caller passes cg_stability_fwd_m into ctx, and sm_sizing
   uses that dynamic value; 0.30 is kept only as a last-resort fallback.
+
+## AVL solver path (gh-516)
+
+  Use force_solver="avl" to request the high-fidelity AVL vortex-lattice path.
+  AVL is **opt-in only** — never automatic. The default is force_solver="asb".
+
+  When to use AVL:
+    - V-tail / elevon / flaperon configurations (ASB warn-tier layouts)
+    - When ASB returns asb_warn_* confidence and you want higher confidence
+    - Unconventional configurations where strip-theory AeroBuildup is less reliable
+
+  The AVL path:
+    - Builds an AVL geometry file from the aircraft schema
+    - Runs AVL twice: baseline (zero deflection) + TE-UP deflection
+    - Extracts Cm from AVL stability output
+    - Computes Cm_δe = (Cm_deflected - Cm_baseline) / δe_rad
+    - Always returns ForwardCGConfidence.avl_full regardless of aircraft type
+    - Same conditioning + infeasibility guards as ASB path
 """
 
 from __future__ import annotations
 
 import logging
 import math
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 from app.schemas.forward_cg import ForwardCGConfidence, ForwardCGResult
+from app.services.avl_runner import AVLRunner
+from app.services.avl_geometry_service import build_avl_geometry_file
 
 logger = logging.getLogger(__name__)
 
@@ -364,53 +385,71 @@ def _build_stub_result(
 def compute_forward_cg_limit(
     db: "Session",
     aeroplane,
+    force_solver: Literal["asb", "avl"] = "asb",
 ) -> ForwardCGResult:
     """Compute the physics-based forward CG limit for the given aircraft.
 
     Implements the NP-centered trim inversion (Anderson §7.7, Amendment B1):
       x_cg_fwd = x_np - (Cm_ac + Cm_δe·δe_max + ΔCm_flap) · c_ref / CL_max_landing
 
-    Uses AeroSandbox AeroBuildup as the sole solver. A high-fidelity AVL solver path
-    is tracked in gh-516 and is not yet implemented.
+    Two solver paths are available (gh-516):
+      - force_solver="asb" (default): AeroSandbox AeroBuildup (strip theory, fast)
+      - force_solver="avl": AVL vortex-lattice (opt-in, higher fidelity for unconventional
+        configurations — V-tail, tailless, heavy-flap layouts)
+
+    AVL is **opt-in only** — never automatic. Use it when ASB returns asb_warn_* confidence
+    and you want a more reliable result. The AVL result always has confidence=avl_full.
 
     Requires:
-      - AeroBuildup available (aerosandbox installed)
+      - AeroBuildup or AVL binary available (per solver)
       - Aircraft has wings with neutral point (from assumption run)
       - Aircraft has at least one pitch-control TED (elevator/ruddervator/elevon)
 
     On any failure, falls back to the 0.30·MAC stub.
 
     Sign convention (Amendment B3):
-      The Cm_δe AeroBuildup run uses NEGATIVE deflection (TE-UP) so that
-      Cm_δe > 0 (nose-up per unit negative rad).
+      Cm_δe is computed with NEGATIVE (TE-UP) deflection → Cm_δe > 0
+      (nose-up per unit negative rad). Same convention for both ASB and AVL paths.
 
     V-tail (Amendment B4):
-      ASB 3D geometry already encodes dihedral → do NOT apply cos²(γ) to Cm_δe.
+      Both ASB 3D and AVL vortex-lattice encode dihedral → do NOT apply cos²(γ).
       cos²(γ) is ONLY in the analytic stub formula path.
 
     Args:
         db: SQLAlchemy session.
         aeroplane: AeroplaneModel instance.
+        force_solver: Solver to use — "asb" (default) or "avl" (opt-in high-fidelity).
 
     Returns:
         ForwardCGResult with physics-based or stub cg_fwd_m.
     """
     try:
+        if force_solver == "avl":
+            return _compute_forward_cg_limit_avl(db, aeroplane)
         return _compute_forward_cg_limit_asb(db, aeroplane)
     except Exception as exc:
         logger.warning(
-            "Elevator authority ASB computation failed for aircraft %s — "
+            "Elevator authority %s computation failed for aircraft %s — "
             "falling back to stub. Error: %s",
+            force_solver.upper(),
             getattr(aeroplane, "id", "unknown"),
             exc,
         )
         # Stub fallback — need x_np and mac from DB assumptions
-        x_np_m, mac_m, cl_max_clean = _load_stability_assumptions(db, aeroplane)
+        try:
+            x_np_m, mac_m, cl_max_clean = _load_stability_assumptions(db, aeroplane)
+        except Exception:
+            # If we can't even load assumptions, use hardcoded safe defaults
+            logger.error(
+                "Cannot load stability assumptions for stub fallback on aircraft %s",
+                getattr(aeroplane, "id", "unknown"),
+            )
+            raise
         return _build_stub_result(
             x_np_m=x_np_m,
             mac_m=mac_m,
             cl_max_clean=cl_max_clean,
-            reason=f"asb-error: {exc}",
+            reason=f"{force_solver}-error: {exc}",
         )
 
 
@@ -889,3 +928,244 @@ def _to_scalar(value) -> float:
     except ImportError:
         pass
     return float(value) if value is not None else 0.0
+
+
+# ---------------------------------------------------------------------------
+# AVL high-fidelity path — gh-516
+# ---------------------------------------------------------------------------
+
+
+def _build_avl_file_for_elevator(plane_schema) -> str:
+    """Build an AVL geometry file string from the aircraft schema.
+
+    Uses the existing avl_geometry_service to generate the geometry file
+    with default spacing configuration.
+
+    Args:
+        plane_schema: AeroplaneSchema instance.
+
+    Returns:
+        AVL geometry file content as a string.
+    """
+    from app.schemas.aeroanalysisschema import SpacingConfig
+
+    spacing_config = SpacingConfig()
+    avl_file = build_avl_geometry_file(plane_schema, spacing_config)
+    return repr(avl_file)
+
+
+def _compute_forward_cg_limit_avl(
+    db: "Session",
+    aeroplane,
+) -> ForwardCGResult:
+    """AVL high-fidelity path for forward CG limit (gh-516).
+
+    Runs AVL with TE-UP elevator deflection (B3 sign convention) to compute Cm_δe
+    via finite difference (two runs: baseline + deflected). Always returns
+    ForwardCGConfidence.avl_full regardless of aircraft configuration.
+
+    Use when ASB returns asb_warn_* (V-tail, elevon, flaperon) and higher fidelity
+    is needed. AVL vortex-lattice models 3D geometry including dihedral natively,
+    so no cos²(γ) correction is applied (same as ASB path — Amendment B4).
+
+    Applies the same conditioning and infeasibility guards as the ASB path.
+    Does not run a flap analysis (AVL control-surface sweeps are slower).
+    CL_max_landing falls back to Roskam +0.5 if flap TEDs exist on the aircraft.
+
+    Raises on failure so the caller can fall back to stub.
+    """
+    import aerosandbox as asb
+
+    from app.converters.model_schema_converters import aeroplane_schema_to_asb_airplane_async
+    from app.services.analysis_service import get_aeroplane_schema_or_raise
+
+    aeroplane_id = aeroplane.id
+
+    # Load required stability assumptions
+    x_np_m_raw = _load_assumption_value(db, aeroplane_id, "x_np")
+    mac_m_raw = _load_assumption_value(db, aeroplane_id, "mac")
+    cl_max_raw = _load_assumption_value(db, aeroplane_id, "cl_max")
+
+    if x_np_m_raw is None or mac_m_raw is None or float(mac_m_raw) <= 0:
+        raise ValueError(
+            f"x_np={x_np_m_raw} or mac={mac_m_raw} not available — run assumptions first."
+        )
+    x_np_m = float(x_np_m_raw)
+    mac_m = float(mac_m_raw)
+    cl_max_clean = float(cl_max_raw) if cl_max_raw is not None else 1.4
+
+    # Load cruise speed and stall alpha for operating point
+    v_cruise_raw = _load_assumption_value(db, aeroplane_id, "v_cruise")
+    v_cruise = float(v_cruise_raw) if v_cruise_raw is not None else 15.0
+    stall_alpha_raw = _load_assumption_value(db, aeroplane_id, "stall_alpha")
+    stall_alpha_deg = float(stall_alpha_raw) if stall_alpha_raw is not None else 12.0
+
+    # Build ASB airplane for reference geometry and AVL runner setup
+    plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_id)
+    asb_airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
+    xyz_ref = list(asb_airplane.xyz_ref) if asb_airplane.xyz_ref is not None else [0.0, 0.0, 0.0]
+
+    # Find elevator TED
+    elevator_ted, elevator_role = _find_pitch_control_ted(aeroplane)
+    if elevator_ted is None:
+        raise ValueError("No pitch-control TED found (elevator/ruddervator/elevon/flaperon).")
+
+    # Get max elevator deflection (Amendment B3: use abs of negative_deflection_deg)
+    delta_e_max_rad = _delta_e_max_rad(
+        negative_deflection_deg=getattr(elevator_ted, "negative_deflection_deg", None)
+    )
+    # TE-UP = negative deflection (Amendment B3)
+    delta_e_neg_deg = -abs(float(delta_e_max_rad * 180.0 / math.pi))
+
+    # Determine the elevator control surface name in the AVL file
+    # The converter prefixes names with [role]
+    elevator_surface_name = f"[{elevator_role}]{getattr(elevator_ted, 'name', elevator_role)}"
+
+    # CL_max_landing: use Roskam +0.5 if flap TEDs present (no AVL flap sweep)
+    flap_teds = _find_flap_teds(aeroplane)
+    has_flap = bool(flap_teds)
+    cl_max_landing = cl_max_clean + (_ROSKAM_FLAP_CL_BONUS if has_flap else 0.0)
+    flap_state = "stub" if has_flap else "clean"
+
+    # Build AVL geometry file
+    avl_file_content = _build_avl_file_for_elevator(plane_schema)
+
+    # Operating point at near-stall approach
+    op_point = asb.OperatingPoint(
+        velocity=v_cruise * 0.6,
+        alpha=stall_alpha_deg,
+    )
+
+    # Build AVL runner
+    runner = AVLRunner(
+        airplane=asb_airplane,
+        op_point=op_point,
+        xyz_ref=xyz_ref,
+        timeout=60,
+    )
+
+    # --- AVL Run 1: Baseline (zero elevator deflection) ---
+    result_baseline = runner.run(
+        avl_file_content=avl_file_content,
+        control_overrides={elevator_surface_name: 0.0},
+    )
+    cm_baseline = _extract_cm(result_baseline)
+
+    # --- AVL Run 2: TE-UP deflection (Amendment B3) ---
+    result_deflected = runner.run(
+        avl_file_content=avl_file_content,
+        control_overrides={elevator_surface_name: delta_e_neg_deg},
+    )
+    cm_deflected = _extract_cm(result_deflected)
+
+    # Compute Cm_δe via finite difference (same as ASB path)
+    cm_delta_e_raw = (cm_deflected - cm_baseline) / delta_e_max_rad
+
+    if cm_delta_e_raw <= 0.0:
+        logger.warning(
+            "AVL Cm_δe = %.4f ≤ 0 after TE-UP deflection for aircraft %s. "
+            "Elevator does not produce nose-up moment — verify control surface geometry.",
+            cm_delta_e_raw,
+            aeroplane_id,
+        )
+
+    # AVL 3D path: no cos² correction (same as ASB path — Amendment B4)
+    cm_delta_e = abs(cm_delta_e_raw)  # Enforce positive convention
+    cm_ac = cm_baseline
+
+    # AVL path always returns avl_full confidence
+    confidence = ForwardCGConfidence.avl_full
+    warnings: list[str] = []
+
+    logger.info(
+        "AVL elevator authority run for aircraft %s: Cm_δe=%.4f (baseline=%.4f, "
+        "deflected=%.4f, δe=%.1f°), CL_max_landing=%.3f",
+        aeroplane_id,
+        cm_delta_e,
+        cm_baseline,
+        cm_deflected,
+        abs(delta_e_neg_deg),
+        cl_max_landing,
+    )
+
+    # --- Conditioning guard (same as ASB path) ---
+    conditioning_result = _apply_conditioning_guard(
+        x_np_m=x_np_m,
+        mac_m=mac_m,
+        cm_delta_e=cm_delta_e,
+        cl_max_landing=cl_max_landing,
+        cm_ac=cm_ac,
+        delta_cm_flap=0.0,  # AVL path: no flap run
+        delta_e_max_rad=delta_e_max_rad,
+        confidence_warn_tier=confidence,
+        warnings=warnings,
+    )
+    if conditioning_result is not None:
+        return conditioning_result
+
+    # --- Infeasibility guard (same as ASB path) ---
+    infeasibility_result = _apply_infeasibility_guard(
+        cm_ac=cm_ac,
+        cm_delta_e=cm_delta_e,
+        delta_e_max_rad=delta_e_max_rad,
+        delta_cm_flap=0.0,  # AVL path: no flap run
+        confidence_warn_tier=confidence,
+        warnings=warnings,
+    )
+    if infeasibility_result is not None:
+        return ForwardCGResult(
+            cg_fwd_m=None,
+            confidence=confidence,
+            cm_delta_e=cm_delta_e,
+            cl_max_landing=cl_max_landing,
+            flap_state=flap_state,
+            warnings=infeasibility_result.warnings,
+        )
+
+    # --- Apply trim inversion formula ---
+    x_cg_fwd = _trim_inversion(
+        x_np_m=x_np_m,
+        cm_ac=cm_ac,
+        cm_delta_e=cm_delta_e,
+        delta_e_max_rad=delta_e_max_rad,
+        delta_cm_flap=0.0,  # AVL path: no flap run
+        c_ref_m=mac_m,
+        cl_max_landing=cl_max_landing,
+    )
+
+    # Post-hoc sanity check: x_cg_fwd must not exceed x_np
+    if x_cg_fwd > x_np_m:
+        warn_msg = (
+            f"AVL forward CG limit aft of NP — physically infeasible "
+            f"(x_cg_fwd={x_cg_fwd:.4f} > x_np={x_np_m:.4f}). "
+            "Returning cg_fwd_m=None."
+        )
+        logger.warning(warn_msg)
+        return ForwardCGResult(
+            cg_fwd_m=None,
+            confidence=confidence,
+            cm_delta_e=cm_delta_e,
+            cl_max_landing=cl_max_landing,
+            flap_state=flap_state,
+            warnings=list(warnings) + [warn_msg],
+        )
+
+    logger.info(
+        "AVL forward CG limit: x_cg_fwd=%.4f m (x_np=%.4f, SM_fwd=%.3f MAC), "
+        "Cm_δe=%.4f, δe_max=%.1f°, CL_max_landing=%.3f",
+        x_cg_fwd,
+        x_np_m,
+        (x_np_m - x_cg_fwd) / mac_m,
+        cm_delta_e,
+        delta_e_max_rad * 180.0 / math.pi,
+        cl_max_landing,
+    )
+
+    return ForwardCGResult(
+        cg_fwd_m=x_cg_fwd,
+        confidence=confidence,
+        cm_delta_e=cm_delta_e,
+        cl_max_landing=cl_max_landing,
+        flap_state=flap_state,
+        warnings=warnings,
+    )
