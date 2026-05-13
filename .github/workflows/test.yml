@@ -1,14 +1,33 @@
 name: test
 
+# Tiered CI strategy (gh-504):
+#   fast    — PRs + push to main; Python 3.12 only; PR-tier marker filter
+#             excludes @slow, @e2e, @requires_cadquery, @requires_aerosandbox,
+#             @requires_avl. Runs with pytest-xdist. Target: <= 12 min.
+#   full    — Opt-in via the `ci-full` PR label or manual dispatch. Adds back
+#             requires_cadquery / requires_aerosandbox / requires_avl, still
+#             excludes @slow and @e2e. Target: <= 15 min.
+#   nightly — Cron 03:00 UTC plus manual dispatch. Full suite (all markers),
+#             full Python matrix 3.11 + 3.12. Target: <= 60 min.
+#   frontend — unchanged.
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  schedule:
+    - cron: "0 3 * * *"
   workflow_dispatch:
     inputs:
-      run_slow:
-        description: "Include tests marked 'slow' (CAD E2E workflows, ~5-10 min extra)"
+      run_full:
+        description: "Run the `full` tier (adds CAD/AVL/ASB-heavy tests)"
+        required: false
+        type: boolean
+        default: false
+      run_nightly:
+        description: "Run the `nightly` tier (full suite, full Python matrix)"
         required: false
         type: boolean
         default: false
@@ -41,7 +60,133 @@ jobs:
 
   fast:
     needs: changes
-    if: ${{ needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch' }}
+    # The `labeled`/`unlabeled` pull_request types are subscribed only so
+    # the `full` job can pick up `ci-full` label additions. We must not
+    # re-run `fast` for unrelated label changes (e.g. adding
+    # `documentation` or `wip`).
+    if: |
+      github.event_name != 'schedule' &&
+      !(github.event_name == 'workflow_dispatch' && inputs.run_nightly) &&
+      !(github.event.action == 'labeled' && github.event.label.name != 'ci-full') &&
+      !(github.event.action == 'unlabeled' && github.event.label.name != 'ci-full') &&
+      (needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'push')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: |
+          pipx install poetry
+          poetry --version
+
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v5
+        with:
+          path: .venv
+          key: poetry-${{ runner.os }}-py3.12-${{ hashFiles('poetry.lock') }}
+
+      - name: Configure Poetry
+        run: poetry config virtualenvs.in-project true
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-root
+
+      - name: Lint (ruff)
+        run: poetry run ruff check .
+
+      - name: Run PR-fast test tier with coverage
+        # Excludes the heavy tiers (slow, e2e) and tests that need
+        # external tooling (CadQuery / Aerosandbox / AVL). pytest-xdist
+        # parallelises across CPU cores. SQLite in-memory DBs are per-test
+        # so workers do not share state; the cad_service task pool is reset
+        # by the autouse `clean_cad_task_state` fixture.
+        run: |
+          poetry run pytest \
+            -m "not slow and not e2e and not requires_cadquery and not requires_aerosandbox and not requires_avl" \
+            -n auto --dist worksteal \
+            --tb=short \
+            --cov=app \
+            --cov=cad_designer \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-fail-under=70
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-xml-py3.12
+          path: coverage.xml
+          if-no-files-found: ignore
+
+  full:
+    # Trigger when the PR carries the `ci-full` label, or on manual
+    # dispatch with run_full=true. Skips on regular pushes / scheduled
+    # runs to avoid duplicating nightly coverage. No `needs: changes`
+    # — this job ignores paths-filter and runs whenever its trigger
+    # condition is met.
+    #
+    # No coverage upload here: the integration tier exists to gate
+    # CAD/AVL/ASB regressions, not to feed SonarCloud. SonarCloud
+    # already uses the `fast` tier's coverage XML.
+    if: |
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'ci-full')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.run_full)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: |
+          pipx install poetry
+          poetry --version
+
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v5
+        with:
+          path: .venv
+          key: poetry-${{ runner.os }}-py3.12-${{ hashFiles('poetry.lock') }}
+
+      - name: Configure Poetry
+        run: poetry config virtualenvs.in-project true
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-root
+
+      - name: Run PR-full test tier (CAD + AVL + ASB integration)
+        # Adds back the heavy-tooling tests but still excludes the
+        # nightly-only `slow` and `e2e` tiers.
+        run: |
+          poetry run pytest \
+            -m "not slow and not e2e" \
+            -n auto --dist worksteal \
+            --tb=short
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+  nightly:
+    # Runs on cron (default branch only) and on manual dispatch when
+    # run_nightly=true. Independent of the `changes` filter so the
+    # full matrix runs even on commits that only touch docs.
+    if: |
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && inputs.run_nightly)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -66,7 +211,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: .venv
-          key: poetry-${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('poetry.lock') }}
+          key: poetry-${{ runner.os }}-py${{ matrix.python-version }}-nightly-${{ hashFiles('poetry.lock') }}
 
       - name: Configure Poetry
         run: poetry config virtualenvs.in-project true
@@ -74,32 +219,39 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction --no-root
 
-      - name: Lint (ruff)
-        run: poetry run ruff check .
-
-      - name: Run fast test suite with coverage
+      - name: Run full suite (all markers)
+        # No marker filter — exercises slow + e2e CAD pipelines too.
+        # Memory-heavy slow tests must NOT be parallelised (per project
+        # convention); we run sequentially here.
         run: |
-          poetry run pytest -m "not slow" \
-            --tb=short \
-            --cov=app \
-            --cov=cad_designer \
-            --cov-report=term-missing \
-            --cov-report=xml \
-            --cov-fail-under=70
+          timeout --kill-after=30s 3000 \
+            poetry run pytest -v --tb=short \
+              --cov=app \
+              --cov=cad_designer \
+              --cov-report=term-missing \
+              --cov-report=xml
         env:
           QT_QPA_PLATFORM: offscreen
+          PYTHONUNBUFFERED: "1"
+          PYTHONFAULTHANDLER: "1"
 
       - name: Upload coverage report
-        if: always()
+        if: always() && matrix.python-version == '3.12'
         uses: actions/upload-artifact@v5
         with:
-          name: coverage-xml-py${{ matrix.python-version }}
+          name: coverage-xml-py3.12-nightly
           path: coverage.xml
           if-no-files-found: ignore
 
   frontend:
     needs: changes
-    if: ${{ needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch' }}
+    # Same label-noise guard as `fast`: do not re-run on unrelated label
+    # changes. Also skip when the dispatcher asked for the nightly tier.
+    if: |
+      !(github.event.action == 'labeled' && github.event.label.name != 'ci-full') &&
+      !(github.event.action == 'unlabeled' && github.event.label.name != 'ci-full') &&
+      !(github.event_name == 'workflow_dispatch' && inputs.run_nightly) &&
+      (needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -134,10 +286,16 @@ jobs:
 
   sonarcloud:
     needs: [fast, frontend]
+    # Scan after fast+frontend complete, but skip:
+    #   * when both upstreams are skipped (nothing to report)
+    #   * on nightly dispatch — nightly produces its own coverage XML
+    #     and we don't push that to SonarCloud yet.
     if: |
       always() &&
       (needs.fast.result == 'success' || needs.fast.result == 'skipped') &&
-      (needs.frontend.result == 'success' || needs.frontend.result == 'skipped')
+      (needs.frontend.result == 'success' || needs.frontend.result == 'skipped') &&
+      !(needs.fast.result == 'skipped' && needs.frontend.result == 'skipped') &&
+      !(github.event_name == 'workflow_dispatch' && inputs.run_nightly)
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -162,47 +320,3 @@ jobs:
         uses: SonarSource/sonarcloud-github-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-  slow:
-    needs: changes
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_slow }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.12"]
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install Poetry
-        run: |
-          pipx install poetry
-          poetry --version
-
-      - name: Cache Poetry virtualenv
-        uses: actions/cache@v5
-        with:
-          path: .venv
-          key: poetry-${{ runner.os }}-py${{ matrix.python-version }}-slow-${{ hashFiles('poetry.lock') }}
-
-      - name: Configure Poetry
-        run: poetry config virtualenvs.in-project true
-
-      - name: Install dependencies
-        run: poetry install --no-interaction --no-root
-
-      - name: Run full suite including slow E2E tests
-        run: |
-          timeout --kill-after=30s 900 \
-            poetry run pytest -v -s --capture=no --tb=short
-        env:
-          QT_QPA_PLATFORM: offscreen
-          PYTHONUNBUFFERED: "1"
-          PYTHONFAULTHANDLER: "1"
