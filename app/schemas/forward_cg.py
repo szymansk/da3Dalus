@@ -14,18 +14,18 @@ from pydantic import BaseModel, Field
 
 
 class ForwardCGConfidence(str, Enum):
-    """Six-tier confidence classification for the forward CG limit calculation.
+    """Five-tier confidence classification for the forward CG limit calculation.
 
     Tiers reflect solver path and aircraft configuration:
-      - avl_full: AVL solver with explicit flap run (highest accuracy)
-      - asb_high_with_flap: ASB AeroBuildup on conventional aircraft + flap run
+      - asb_high_with_flap: ASB AeroBuildup on conventional aircraft + flap run (highest accuracy)
       - asb_high_clean: ASB on conventional aircraft, no flap (clean configuration)
       - asb_warn_with_flap: ASB on warn-tier layout (V-tail/elevon/heavy-flap) + flap run
       - asb_warn_clean: ASB on warn-tier layout, clean configuration
       - stub: 0.30·MAC conservative fallback (no physics data available)
+
+    Note: An AVL high-fidelity tier (avl_full) is planned in gh-516.
     """
 
-    avl_full = "avl_full"
     asb_high_with_flap = "asb_high_with_flap"
     asb_high_clean = "asb_high_clean"
     asb_warn_with_flap = "asb_warn_with_flap"

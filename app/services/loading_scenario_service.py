@@ -89,6 +89,12 @@ def compute_stability_envelope(
     hasn't run yet).  The caller must surface those None values to the user
     instead of synthesising a deceptive fallback.
 
+    Note: As of gh-500, the cg_stability_fwd_m value returned here (0.30·MAC stub)
+    is overridden by assumption_compute_service.recompute_assumptions with a
+    physics-based value from elevator_authority_service.compute_forward_cg_limit.
+    This function alone produces the conservative 0.30·MAC stub; the override
+    happens at a higher level in the assumption pipeline.
+
     Args:
         x_np: neutral point position [m] (longitudinal), or None.
         mac: mean aerodynamic chord [m], or None.
@@ -96,9 +102,8 @@ def compute_stability_envelope(
 
     Returns dict with:
         cg_stability_aft_m: aft stability limit = x_NP - target_sm * MAC, or None.
-        cg_stability_fwd_m: forward stability limit (stub = x_NP - 0.30 * MAC), or None.
-            TODO: replace with full Cm-trim @ CL_max_landing per Anderson §7.7
-            as a follow-up ticket. This stub is conservative.
+        cg_stability_fwd_m: forward stability limit stub = x_NP - 0.30 * MAC, or None.
+            Overridden by the elevator authority service in recompute_assumptions.
     """
     if x_np is None or mac is None or mac <= 0:
         return {"cg_stability_aft_m": None, "cg_stability_fwd_m": None}

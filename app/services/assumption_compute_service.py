@@ -209,6 +209,8 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         from app.services.elevator_authority_service import compute_forward_cg_limit
 
         _fwd_cg_result = compute_forward_cg_limit(db, aircraft)
+        # Persist the full result so UI / sm_sizing can read confidence, warnings, etc.
+        _stability["forward_cg_result"] = _fwd_cg_result.model_dump()
         if _fwd_cg_result.cg_fwd_m is not None:
             _stability["cg_stability_fwd_m"] = _fwd_cg_result.cg_fwd_m
             if _fwd_cg_result.warnings:
@@ -227,7 +229,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
                 "; ".join(_fwd_cg_result.warnings),
             )
     except Exception:
-        logger.debug(
+        logger.warning(
             "Elevator authority forward CG failed for aircraft %s — keeping stub.",
             aircraft.id,
             exc_info=True,

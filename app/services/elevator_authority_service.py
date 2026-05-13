@@ -3,22 +3,38 @@
 Replaces the 0.30·MAC stub in ``loading_scenario_service.compute_stability_envelope``
 with a physics-based forward CG limit derived from the NP-centered trim inversion.
 
-Physics formula (Amendment B1):
+## Coordinate convention
+
+x = 0 at the nose, x increases toward the tail (aft-positive convention).
+Therefore a *forward* CG limit has a *smaller* x value than x_np.
+A physically infeasible result is x_cg_fwd > x_np (forward limit aft of NP).
+
+## Physics formula (Amendment B1)
+
   x_cg_fwd = x_np - (Cm_ac + Cm_δe·δe_max + ΔCm_flap) · c_ref / CL_max_landing
 
-Sign convention (Amendment B3 — CRITICAL):
+## Sign convention (Amendment B3 — CRITICAL)
+
   AeroBuildup is run with NEGATIVE (TE-UP) deflection for Cm_δe estimation.
   Result: Cm_δe > 0 (nose-up moment per unit negative-deflection rad).
   δe_max = abs(negative_deflection_deg) * π/180
   Product Cm_δe · δe_max > 0 (nose-up trim contribution).
 
-V-tail (Amendment B4 — the cos² trap):
+## Infeasibility (Amendment S3, fix B4)
+
+  Guard checks the FULL sum: Cm_ac + Cm_δe·δe_max + ΔCm_flap ≤ 0.
+  When the full sum is ≤ 0 the elevator cannot overcome the nose-down moment
+  at stall even at maximum deflection → no feasible forward CG → cg_fwd_m=None.
+
+## V-tail (Amendment B4 — the cos² trap)
+
   ASB AeroBuildup operates on 3D inclined V-tail geometry → dihedral is already
   baked into the Cm_δe result.  DO NOT apply cos²(γ) correction to the ASB path.
   cos²(γ) is ONLY applied in the analytic STUB path formula:
     Cm_δe_stub = a_t·(S_H/S_w)·(l_H/MAC) · cos²(γ)
 
-Backward-compat (Amendment B5):
+## Backward-compat (Amendment B5)
+
   ``sm_sizing_service._SM_FORWARD_CLIP_LIMIT`` is the hardcoded 0.30 orphan.
   After gh-500 the caller passes cg_stability_fwd_m into ctx, and sm_sizing
   uses that dynamic value; 0.30 is kept only as a last-resort fallback.
@@ -240,28 +256,50 @@ def _apply_conditioning_guard(
 
 
 def _apply_infeasibility_guard(
+    cm_ac: float,
     cm_delta_e: float,
     delta_e_max_rad: float,
     delta_cm_flap: float,
     confidence_warn_tier: ForwardCGConfidence,
     warnings: list[str],
 ) -> ForwardCGResult | None:
-    """Apply the infeasibility guard (Amendment S3).
+    """Apply the infeasibility guard (Amendment S3, fix B4).
 
-    If Cm_δe·δe_max + ΔCm_flap ≤ 0, the elevator cannot overcome the
-    combined nose-down moment (from Cm_ac baseline + flap) at stall.
+    B4 fix: guard checks the FULL net pitching moment balance:
+      net_pitch_up = Cm_ac + Cm_δe·δe_max + ΔCm_flap
+
+    If net_pitch_up ≤ 0, the elevator cannot overcome the combined nose-down
+    moment (Cm_ac baseline + flap) at stall even with full TE-UP deflection.
     No feasible forward CG exists.
+
+    The old guard only checked Cm_δe·δe_max + ΔCm_flap, missing cases where
+    Cm_ac alone flips the net sum negative.
+
+    Args:
+        cm_ac: Pitching moment at aerodynamic center (negative = nose-down).
+        cm_delta_e: Elevator authority [1/rad], positive (TE-UP convention).
+        delta_e_max_rad: Max elevator deflection [rad].
+        delta_cm_flap: Flap-induced pitching moment (typically ≤ 0).
+        confidence_warn_tier: Confidence tier to assign to the infeasibility result.
+        warnings: Accumulated warning list (copied, not mutated).
 
     Returns:
         ForwardCGResult with cg_fwd_m=None if guard triggered, None otherwise.
     """
-    net_control = cm_delta_e * delta_e_max_rad + delta_cm_flap
-    if net_control <= 0.0:
+    net_pitch_up = cm_ac + cm_delta_e * delta_e_max_rad + delta_cm_flap
+    if net_pitch_up <= 0.0:
         warnings = list(warnings)
-        warnings.append("Elevator cannot overcome flap moment at stall — no feasible forward CG")
+        warnings.append(
+            "Elevator cannot overcome nose-down moment at stall (Cm_ac + Cm_δe·δe_max + ΔCm_flap "
+            f"= {net_pitch_up:.4f} ≤ 0) — no feasible forward CG"
+        )
         logger.warning(
-            "Infeasibility guard triggered: Cm_δe·δe_max + ΔCm_flap = %.4f ≤ 0.",
-            net_control,
+            "Infeasibility guard triggered: Cm_ac + Cm_δe·δe_max + ΔCm_flap = %.4f ≤ 0 "
+            "(Cm_ac=%.4f, Cm_δe·δe_max=%.4f, ΔCm_flap=%.4f).",
+            net_pitch_up,
+            cm_ac,
+            cm_delta_e * delta_e_max_rad,
+            delta_cm_flap,
         )
         return ForwardCGResult(
             cg_fwd_m=None,
@@ -326,12 +364,14 @@ def _build_stub_result(
 def compute_forward_cg_limit(
     db: "Session",
     aeroplane,
-    force_solver: str = "asb",
 ) -> ForwardCGResult:
     """Compute the physics-based forward CG limit for the given aircraft.
 
     Implements the NP-centered trim inversion (Anderson §7.7, Amendment B1):
       x_cg_fwd = x_np - (Cm_ac + Cm_δe·δe_max + ΔCm_flap) · c_ref / CL_max_landing
+
+    Uses AeroSandbox AeroBuildup as the sole solver. A high-fidelity AVL solver path
+    is tracked in gh-516 and is not yet implemented.
 
     Requires:
       - AeroBuildup available (aerosandbox installed)
@@ -342,7 +382,7 @@ def compute_forward_cg_limit(
 
     Sign convention (Amendment B3):
       The Cm_δe AeroBuildup run uses NEGATIVE deflection (TE-UP) so that
-      Cm_δe > 0 (nose-up per unit negative rad). This is verified via assertion.
+      Cm_δe > 0 (nose-up per unit negative rad).
 
     V-tail (Amendment B4):
       ASB 3D geometry already encodes dihedral → do NOT apply cos²(γ) to Cm_δe.
@@ -351,7 +391,6 @@ def compute_forward_cg_limit(
     Args:
         db: SQLAlchemy session.
         aeroplane: AeroplaneModel instance.
-        force_solver: "asb" (default) or "avl" (for explicit user override only).
 
     Returns:
         ForwardCGResult with physics-based or stub cg_fwd_m.
@@ -532,8 +571,10 @@ def _compute_forward_cg_limit_asb(
     # Convert back to degrees for AeroBuildup (negative = TE-UP)
     delta_e_neg_deg = -abs(float(delta_e_max_rad * 180.0 / math.pi))
 
-    # --- ASB Run 1: Baseline (zero deflection) at stall-approach alpha ---
-    # Use stall alpha from assumptions or moderate angle
+    # --- ASB Run 1: Baseline (zero deflection) at clean stall-approach alpha ---
+    # Use stall alpha from assumptions or moderate angle.
+    # Note: if flap run succeeds (Scholz B2), we re-run baseline + TE-UP at the
+    # landing-stall alpha (alpha at CL_max_flap), which is more accurate.
     stall_alpha_raw = _load_assumption_value(db, aeroplane_id, "stall_alpha")
     stall_alpha_deg = float(stall_alpha_raw) if stall_alpha_raw is not None else 12.0
 
@@ -542,22 +583,83 @@ def _compute_forward_cg_limit_asb(
         alpha=stall_alpha_deg,
     )
 
-    # Baseline run: zero deflection
+    # --- Flap run first (Scholz B2): get α_stall_landing before Cm_δe runs ---
+    # Running the flap analysis first lets us feed α_stall_landing back into the
+    # baseline + TE-UP runs so Cm_δe is evaluated at the correct landing-stall alpha.
+    delta_cm_flap = 0.0
+    cl_max_landing = cl_max_clean
+    has_flap_run = False
+    flap_state: str = "clean"
+    alpha_stall_landing_deg = stall_alpha_deg  # default: clean stall alpha
+
+    flap_teds = _find_flap_teds(aeroplane)
+    if flap_teds:
+        try:
+            # Baseline run at clean stall alpha needed for ΔCm_flap reference
+            asb_baseline_clean = asb_airplane.with_control_deflections(
+                {elevator_surface_name: 0.0}
+            )
+            abu_baseline_clean = asb.AeroBuildup(
+                airplane=asb_baseline_clean,
+                op_point=op_stall,
+                xyz_ref=xyz_ref,
+            )
+            cm_baseline_clean = _extract_cm(abu_baseline_clean.run())
+
+            delta_cm_flap, cl_max_landing_flap, alpha_stall_landing_deg = _run_flap_analysis(
+                asb_airplane=asb_airplane,
+                flap_teds=flap_teds,
+                aeroplane=aeroplane,
+                op_stall=op_stall,
+                xyz_ref=xyz_ref,
+                cm_baseline=cm_baseline_clean,
+            )
+            cl_max_landing = cl_max_landing_flap
+            has_flap_run = True
+            flap_state = "deployed"
+            logger.info(
+                "Flap run for aircraft %s: α_stall_landing=%.1f°, CL_max_landing=%.3f, "
+                "ΔCm_flap=%.4f",
+                aeroplane_id,
+                alpha_stall_landing_deg,
+                cl_max_landing,
+                delta_cm_flap,
+            )
+        except (ValueError, RuntimeError, ImportError) as exc:
+            logger.warning(
+                "Flap run failed for aircraft %s — using Roskam §4.7 +0.5 stub. Error: %s",
+                aeroplane_id,
+                exc,
+            )
+            cl_max_landing = cl_max_clean + _ROSKAM_FLAP_CL_BONUS
+            flap_state = "stub"
+    else:
+        # No flap aircraft: CL_max_landing = CL_max_clean (Amendment B2)
+        cl_max_landing = cl_max_clean
+        flap_state = "clean"
+
+    # --- ASB Run 1: Baseline (zero deflection) at landing-stall alpha (Scholz B2) ---
+    # Use α_stall_landing if a flap run succeeded; otherwise clean stall alpha.
+    op_stall_landing = asb.OperatingPoint(
+        velocity=v_cruise * 0.6,
+        alpha=alpha_stall_landing_deg,
+    )
+
     asb_baseline = asb_airplane.with_control_deflections({elevator_surface_name: 0.0})
     abu_baseline = asb.AeroBuildup(
         airplane=asb_baseline,
-        op_point=op_stall,
+        op_point=op_stall_landing,
         xyz_ref=xyz_ref,
     )
     result_baseline = abu_baseline.run()
     cm_baseline = _extract_cm(result_baseline)
 
-    # --- ASB Run 2: TE-UP deflection (Amendment B3) ---
+    # --- ASB Run 2: TE-UP deflection (Amendment B3) at landing-stall alpha ---
     # NEGATIVE deflection = TE-UP = nose-up moment → Cm_δe > 0
     asb_deflected = asb_airplane.with_control_deflections({elevator_surface_name: delta_e_neg_deg})
     abu_deflected = asb.AeroBuildup(
         airplane=asb_deflected,
-        op_point=op_stall,
+        op_point=op_stall_landing,
         xyz_ref=xyz_ref,
     )
     result_deflected = abu_deflected.run()
@@ -569,7 +671,9 @@ def _compute_forward_cg_limit_asb(
     # Cm_delta_e = (Cm_deflected - Cm_baseline) / abs(delta_e_neg_deg * π/180)
     cm_delta_e_raw = (cm_deflected - cm_baseline) / delta_e_max_rad
 
-    # Amendment B3 assertion: Cm_δe must be positive for TE-UP deflection
+    # B1: Cm_δe must be positive for TE-UP deflection.
+    # If raw value ≤ 0, log warning and apply abs() — safer than hard assert in production
+    # (geometry quirks shouldn't crash the assumption pipeline).
     if cm_delta_e_raw <= 0.0:
         logger.warning(
             "Cm_δe = %.4f ≤ 0 after TE-UP deflection run for aircraft %s. "
@@ -588,39 +692,6 @@ def _compute_forward_cg_limit_asb(
     # Get Cm_ac from baseline (zero-deflection, at x_np reference — AeroBuildup
     # uses xyz_ref which we set to x_np for the stability run)
     cm_ac = cm_baseline
-
-    # --- Flap run (Amendment B2): ΔCm_flap and CL_max_landing ---
-    delta_cm_flap = 0.0
-    cl_max_landing = cl_max_clean
-    has_flap_run = False
-    flap_state: str = "clean"
-
-    flap_teds = _find_flap_teds(aeroplane)
-    if flap_teds:
-        try:
-            delta_cm_flap, cl_max_landing_flap = _run_flap_analysis(
-                asb_airplane=asb_airplane,
-                flap_teds=flap_teds,
-                aeroplane=aeroplane,
-                op_stall=op_stall,
-                xyz_ref=xyz_ref,
-                cm_baseline=cm_baseline,
-            )
-            cl_max_landing = cl_max_landing_flap
-            has_flap_run = True
-            flap_state = "deployed"
-        except Exception as exc:
-            logger.warning(
-                "Flap run failed for aircraft %s — using Roskam §4.7 +0.5 stub. Error: %s",
-                aeroplane_id,
-                exc,
-            )
-            cl_max_landing = cl_max_clean + _ROSKAM_FLAP_CL_BONUS
-            flap_state = "stub"
-    else:
-        # No flap aircraft: CL_max_landing = CL_max_clean (Amendment B2)
-        cl_max_landing = cl_max_clean
-        flap_state = "clean"
 
     # --- Confidence tier ---
     confidence = _determine_confidence_tier(
@@ -650,8 +721,10 @@ def _compute_forward_cg_limit_asb(
     if conditioning_result is not None:
         return conditioning_result
 
-    # --- Infeasibility guard (Amendment S3) ---
+    # --- Infeasibility guard (Amendment S3, fix B4) ---
+    # Guard checks FULL sum: Cm_ac + Cm_δe·δe_max + ΔCm_flap
     infeasibility_result = _apply_infeasibility_guard(
+        cm_ac=cm_ac,
         cm_delta_e=cm_delta_e,
         delta_e_max_rad=delta_e_max_rad,
         delta_cm_flap=delta_cm_flap,
@@ -679,6 +752,26 @@ def _compute_forward_cg_limit_asb(
         c_ref_m=mac_m,
         cl_max_landing=cl_max_landing,
     )
+
+    # --- Post-hoc sanity check (B4): x_cg_fwd must never exceed x_np ---
+    # If x_cg_fwd > x_np the 'forward' limit is aft of the NP — physically impossible.
+    # This should be caught by the infeasibility guard above, but guard floating-point
+    # boundary may miss exact-zero cases.
+    if x_cg_fwd > x_np_m:
+        warn_msg = (
+            f"Forward CG limit aft of NP — physically infeasible "
+            f"(x_cg_fwd={x_cg_fwd:.4f} > x_np={x_np_m:.4f}). "
+            "Returning cg_fwd_m=None."
+        )
+        logger.warning(warn_msg)
+        return ForwardCGResult(
+            cg_fwd_m=None,
+            confidence=confidence,
+            cm_delta_e=cm_delta_e,
+            cl_max_landing=cl_max_landing,
+            flap_state=flap_state,
+            warnings=list(warnings) + [warn_msg],
+        )
 
     logger.info(
         "Forward CG limit computed: x_cg_fwd=%.4f m (x_np=%.4f, SM_fwd=%.3f MAC), "
@@ -711,14 +804,17 @@ def _run_flap_analysis(
     op_stall,
     xyz_ref: list[float],
     cm_baseline: float,
-) -> tuple[float, float]:
-    """Run a flap-deployed AeroBuildup to get ΔCm_flap and CL_max_landing.
+) -> tuple[float, float, float]:
+    """Run a flap-deployed AeroBuildup to get ΔCm_flap, CL_max_landing, and α_stall_landing.
 
-    Amendment B2: single run delivers both α_stall_landing AND CL_max_landing.
-    The ΔCm_flap is the Cm difference between flap-deployed and clean baseline.
+    Scholz B2 fix: returns the alpha at which CL_max is achieved (α_stall_landing)
+    so the caller can re-run the baseline and TE-UP AeroBuildup runs at that alpha.
+    This ensures Cm_δe is evaluated at the correct landing-stall angle, not the
+    clean-stall alpha from assumptions.
 
     Returns:
-        (delta_cm_flap, cl_max_landing): flap-induced Cm delta and landing CL_max.
+        (delta_cm_flap, cl_max_landing, alpha_stall_flap): flap-induced Cm delta,
+        landing CL_max, and the alpha [deg] at which CL_max_landing was achieved.
 
     Raises on failure so caller can fall back to stub.
     """
@@ -742,6 +838,7 @@ def _run_flap_analysis(
     alphas = np.arange(-5.0, 20.0, 1.0)
     cl_max_flap = -float("inf")
     cm_at_cl_max = 0.0
+    alpha_at_cl_max = float(op_stall.alpha)  # fallback to clean stall alpha
 
     for alpha in alphas:
         op = asb.OperatingPoint(velocity=op_stall.velocity, alpha=float(alpha))
@@ -756,11 +853,12 @@ def _run_flap_analysis(
         if cl > cl_max_flap:
             cl_max_flap = cl
             cm_at_cl_max = cm
+            alpha_at_cl_max = float(alpha)
 
     # ΔCm_flap = Cm_deployed - Cm_clean (typically negative = nose-down)
     delta_cm_flap = cm_at_cl_max - cm_baseline
 
-    return delta_cm_flap, float(cl_max_flap)
+    return delta_cm_flap, float(cl_max_flap), alpha_at_cl_max
 
 
 def _extract_cm(result) -> float:

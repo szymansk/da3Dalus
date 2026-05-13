@@ -129,14 +129,16 @@ class TestForwardCGSchema:
         assert result.cg_fwd_m is None
 
     def test_confidence_enum_values(self):
-        """All 6 confidence tiers from the spec are present."""
+        """All 5 confidence tiers are present (avl_full dropped in gh-500; tracked in gh-516)."""
         ForwardCGConfidence, _ = _import_schema()
-        assert ForwardCGConfidence.avl_full.value == "avl_full"
+        # avl_full removed — tracked in gh-516
         assert ForwardCGConfidence.asb_high_with_flap.value == "asb_high_with_flap"
         assert ForwardCGConfidence.asb_high_clean.value == "asb_high_clean"
         assert ForwardCGConfidence.asb_warn_with_flap.value == "asb_warn_with_flap"
         assert ForwardCGConfidence.asb_warn_clean.value == "asb_warn_clean"
         assert ForwardCGConfidence.stub.value == "stub"
+        # avl_full must NOT be present
+        assert not hasattr(ForwardCGConfidence, "avl_full")
 
 
 # ---------------------------------------------------------------------------
@@ -294,14 +296,19 @@ class TestInfeasibilityGuard:
     """Guard: Cm_δe·δe_max + ΔCm_flap ≤ 0 → no feasible forward CG."""
 
     def test_infeasible_returns_none_cg_fwd(self):
-        """When pitch-up control moment cannot overcome flap nose-down, cg_fwd_m=None."""
+        """When full pitch-up balance cannot overcome nose-down moment, cg_fwd_m=None.
+
+        Full check (B4 fix): Cm_ac + Cm_δe·δe_max + ΔCm_flap ≤ 0 → infeasible.
+        Here flap overwhelms elevator even with cm_ac=0: 0 + 0.02 - 0.30 = -0.28 ≤ 0.
+        """
         ForwardCGConfidence, ForwardCGResult = _import_schema()
         svc = _import_module()
 
         result = svc._apply_infeasibility_guard(
+            cm_ac=0.0,  # neutral Cm_ac; flap alone overwhelms elevator
             cm_delta_e=0.10,
             delta_e_max_rad=0.20,  # 0.10 * 0.20 = 0.02
-            delta_cm_flap=-0.30,  # flap overwhelms: 0.02 - 0.30 = -0.28 ≤ 0
+            delta_cm_flap=-0.30,  # flap overwhelms: 0 + 0.02 - 0.30 = -0.28 ≤ 0
             confidence_warn_tier=ForwardCGConfidence.asb_high_with_flap,
             warnings=[],
         )
@@ -310,14 +317,19 @@ class TestInfeasibilityGuard:
         assert any("no feasible forward CG" in w for w in result.warnings)
 
     def test_feasible_no_guard(self):
-        """When pitch-up control moment exceeds flap nose-down, guard does NOT trigger."""
+        """When full pitch-up balance exceeds nose-down moment, guard does NOT trigger.
+
+        Full check (B4 fix): Cm_ac + Cm_δe·δe_max + ΔCm_flap > 0 → feasible.
+        Here: -0.05 + 0.139 - 0.05 = 0.039 > 0 → guard returns None.
+        """
         ForwardCGConfidence, _ = _import_schema()
         svc = _import_module()
 
         result = svc._apply_infeasibility_guard(
+            cm_ac=-0.05,  # typical nose-down Cm_ac
             cm_delta_e=0.32,
-            delta_e_max_rad=0.436,  # 0.32 * 0.436 = 0.139 > 0
-            delta_cm_flap=-0.05,  # small flap: 0.139 - 0.05 = 0.089 > 0
+            delta_e_max_rad=0.436,  # 0.32 * 0.436 = 0.139
+            delta_cm_flap=-0.05,  # small flap: -0.05 + 0.139 - 0.05 = 0.039 > 0
             confidence_warn_tier=ForwardCGConfidence.asb_high_with_flap,
             warnings=[],
         )
@@ -411,12 +423,15 @@ class TestTrimInversionFormula:
             "Heavy flap should either make limit more restrictive or infeasible"
         )
 
-    def test_formula_symmetry_cm_ac(self):
-        """Larger Cm_ac magnitude (more nose-down) requires more elevator authority → more restrictive."""
+    def test_more_nose_down_cm_ac_more_restrictive(self):
+        """Larger Cm_ac magnitude (more nose-down) requires more elevator authority → more restrictive.
+
+        Uses feasible parameters so both case A and B are physically meaningful.
+        """
         svc = _import_module()
-        # Aircraft A: Cm_ac = -0.05 (small nose-down)
-        # Aircraft B: Cm_ac = -0.15 (large nose-down)
-        # Same elevator, same CL_max
+        # Aircraft A: Cm_ac = -0.05 (small nose-down)  — net = -0.05 + 0.32*0.4363 = 0.09 > 0 → feasible
+        # Aircraft B: Cm_ac = -0.10 (moderate nose-down) — net = -0.10 + 0.1396 = 0.0396 > 0 → feasible
+        # Both have net_pitch_up > 0 so both ARE feasible and x_fwd < x_np
         common = dict(
             x_np_m=0.40,
             cm_delta_e=0.32,
@@ -425,19 +440,160 @@ class TestTrimInversionFormula:
             c_ref_m=0.30,
             cl_max_landing=1.4,
         )
+        x_np_m = 0.40
         x_fwd_A = svc._trim_inversion(**common, cm_ac=-0.05)
-        x_fwd_B = svc._trim_inversion(**common, cm_ac=-0.15)
+        x_fwd_B = svc._trim_inversion(**common, cm_ac=-0.10)
 
-        # More nose-down (B) requires more elevator to trim → more restrictive forward limit.
-        # In AFT-POSITIVE coordinates (x=0 nose, x increases toward tail):
-        #   x_cg_fwd_B > x_cg_fwd_A  (B is more restrictive = forward limit moved AFT = closer to x_np)
-        # When elevator cannot overcome Cm_ac, x_cg_fwd may cross x_np → infeasible (caught by guard).
-        # NOTE: original salvaged test had assertion direction inverted (physics bug).
-        # More nose-down Cm_ac reduces net_pitch_up → formula x_np - net*c/CL gives LARGER x_cg_fwd.
+        # Both must be physically feasible (x_fwd < x_np in aft-positive convention)
+        assert x_fwd_A <= x_np_m, f"x_fwd_A={x_fwd_A} must be <= x_np={x_np_m}"
+        assert x_fwd_B <= x_np_m, f"x_fwd_B={x_fwd_B} must be <= x_np={x_np_m}"
+
+        # More nose-down (B) requires more elevator → more restrictive forward limit.
+        # In AFT-POSITIVE coordinates: x_cg_fwd_B > x_cg_fwd_A  (closer to x_np)
         assert x_fwd_B > x_fwd_A, (
             f"More nose-down Cm_ac should give more restrictive (larger, closer to x_np) x_cg_fwd. "
-            f"A (Cm_ac=-0.05): {x_fwd_A:.4f}, B (Cm_ac=-0.15): {x_fwd_B:.4f}"
+            f"A (Cm_ac=-0.05): {x_fwd_A:.4f}, B (Cm_ac=-0.10): {x_fwd_B:.4f}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Class 6b: Infeasibility guard physics correctness (B4 regression)
+# ---------------------------------------------------------------------------
+
+
+class TestInfeasibilityGuardPhysics:
+    """B4 regression: guard must use FULL Cm_ac + Cm_δe·δe_max + ΔCm_flap sum.
+
+    Bug: old guard checked Cm_δe·δe_max + ΔCm_flap ≤ 0 (omitted Cm_ac).
+    This misses cases where Cm_ac flips the net_pitch_up sign negative
+    even though Cm_δe·δe_max > 0 alone.
+    """
+
+    def test_infeasibility_guard_uses_full_cm_ac_sum(self):
+        """Guard must trigger when Cm_ac + Cm_δe·δe_max + ΔCm_flap ≤ 0.
+
+        Concrete bug-case from B4 review:
+          Cm_ac=-0.15, Cm_δe=0.32, δe_max=25°=0.4363 rad, ΔCm_flap=0
+          Cm_δe·δe_max alone = 0.1396 > 0  →  OLD guard: PASSES (wrong!)
+          Cm_ac + Cm_δe·δe_max = -0.15 + 0.1396 = -0.0104 < 0  →  INFEASIBLE
+
+        With the fix, guard must return cg_fwd_m=None for this case.
+        """
+        svc = _import_module()
+        ForwardCGConfidence, _ = _import_schema()
+
+        cm_ac = -0.15
+        cm_delta_e = 0.32
+        delta_e_max_rad = 25.0 * math.pi / 180.0  # 0.4363 rad
+        delta_cm_flap = 0.0
+
+        # Verify the bug scenario: Cm_δe·δe_max > 0 but full sum < 0
+        partial_sum = cm_delta_e * delta_e_max_rad + delta_cm_flap
+        full_sum = cm_ac + partial_sum
+        assert partial_sum > 0, "Precondition: partial sum > 0 (old guard would miss this)"
+        assert full_sum < 0, "Precondition: full sum < 0 (correct guard should trigger)"
+
+        result = svc._apply_infeasibility_guard(
+            cm_ac=cm_ac,
+            cm_delta_e=cm_delta_e,
+            delta_e_max_rad=delta_e_max_rad,
+            delta_cm_flap=delta_cm_flap,
+            confidence_warn_tier=ForwardCGConfidence.asb_high_clean,
+            warnings=[],
+        )
+        assert result is not None, (
+            "Infeasibility guard must trigger when Cm_ac + Cm_δe·δe_max + ΔCm_flap ≤ 0"
+        )
+        assert result.cg_fwd_m is None, (
+            "Guard must return cg_fwd_m=None for infeasible configuration"
+        )
+
+    def test_x_cg_fwd_never_exceeds_x_np(self):
+        """Forward CG limit must never be aft of NP — physically impossible.
+
+        x_cg_fwd > x_np in aft-positive convention means the 'forward' limit
+        is AFT of the NP — impossible since the NP is the stability boundary.
+
+        Uses the exact B4 bug-case parameters:
+          Cm_ac=-0.15, Cm_δe=0.32, δe_max=25°, ΔCm_flap=0, x_np=0.40, MAC=0.30
+          x_cg_fwd (buggy) = 0.40 - (-0.0104)*0.30/1.4 = 0.4022 > 0.40 (WRONG)
+          x_cg_fwd (fixed)  → infeasible → cg_fwd_m=None
+        """
+        svc = _import_module()
+        ForwardCGConfidence, _ = _import_schema()
+
+        x_np_m = 0.40
+        cm_ac = -0.15
+        cm_delta_e = 0.32
+        delta_e_max_rad = 25.0 * math.pi / 180.0
+        delta_cm_flap = 0.0
+        c_ref_m = 0.30
+        cl_max_landing = 1.4
+
+        # First: infeasibility guard should catch this case
+        guard_result = svc._apply_infeasibility_guard(
+            cm_ac=cm_ac,
+            cm_delta_e=cm_delta_e,
+            delta_e_max_rad=delta_e_max_rad,
+            delta_cm_flap=delta_cm_flap,
+            confidence_warn_tier=ForwardCGConfidence.asb_high_clean,
+            warnings=[],
+        )
+        if guard_result is not None:
+            # Guard caught it → cg_fwd_m must be None (infeasible)
+            assert guard_result.cg_fwd_m is None
+        else:
+            # Guard did not trigger → formula result must still respect x_np
+            x_cg_fwd = svc._trim_inversion(
+                x_np_m=x_np_m,
+                cm_ac=cm_ac,
+                cm_delta_e=cm_delta_e,
+                delta_e_max_rad=delta_e_max_rad,
+                delta_cm_flap=delta_cm_flap,
+                c_ref_m=c_ref_m,
+                cl_max_landing=cl_max_landing,
+            )
+            assert x_cg_fwd <= x_np_m, (
+                f"x_cg_fwd={x_cg_fwd:.4f} must be <= x_np={x_np_m:.4f} — "
+                "forward CG limit aft of NP is physically impossible"
+            )
+
+    def test_guard_does_not_trigger_when_full_sum_positive(self):
+        """Guard must NOT trigger when Cm_ac + Cm_δe·δe_max + ΔCm_flap > 0."""
+        svc = _import_module()
+        ForwardCGConfidence, _ = _import_schema()
+
+        # net = -0.05 + 0.32*0.4363 + 0 = 0.0396 > 0 → feasible
+        result = svc._apply_infeasibility_guard(
+            cm_ac=-0.05,
+            cm_delta_e=0.32,
+            delta_e_max_rad=25.0 * math.pi / 180.0,
+            delta_cm_flap=0.0,
+            confidence_warn_tier=ForwardCGConfidence.asb_high_clean,
+            warnings=[],
+        )
+        assert result is None, "Guard must return None when full sum > 0 (feasible case)"
+
+    def test_guard_triggers_on_zero_full_sum(self):
+        """Guard triggers when net = exactly 0 (boundary condition)."""
+        svc = _import_module()
+        ForwardCGConfidence, _ = _import_schema()
+
+        # net = 0 exactly: Cm_ac = -(Cm_δe·δe_max) = -(0.32*0.4363) = -0.1396
+        cm_delta_e = 0.32
+        delta_e_max_rad = 25.0 * math.pi / 180.0
+        cm_ac = -(cm_delta_e * delta_e_max_rad)  # exact zero net
+
+        result = svc._apply_infeasibility_guard(
+            cm_ac=cm_ac,
+            cm_delta_e=cm_delta_e,
+            delta_e_max_rad=delta_e_max_rad,
+            delta_cm_flap=0.0,
+            confidence_warn_tier=ForwardCGConfidence.asb_high_clean,
+            warnings=[],
+        )
+        assert result is not None, "Guard must trigger when full sum == 0"
+        assert result.cg_fwd_m is None
 
 
 # ---------------------------------------------------------------------------
@@ -601,6 +757,71 @@ class TestPhysicsHelpers:
         delta_neg = svc._delta_e_max_rad(negative_deflection_deg=-25.0)
         delta_pos = svc._delta_e_max_rad(negative_deflection_deg=25.0)
         assert delta_neg == pytest.approx(delta_pos, rel=1e-5)
+
+
+# ---------------------------------------------------------------------------
+# Class 9b: Scholz B2 — landing-stall alpha from flap run
+# ---------------------------------------------------------------------------
+
+
+class TestScholzB2FlapAlpha:
+    """Scholz B2: _run_flap_analysis must return a 3-tuple including alpha_stall_flap."""
+
+    def test_run_flap_analysis_returns_three_tuple(self):
+        """_run_flap_analysis must return (delta_cm_flap, cl_max, alpha_stall_deg)."""
+        svc = _import_module()
+
+        # Simulate: at alpha=10, CL is highest (1.5); at all others, CL=1.0
+        peak_alpha = 10.0
+
+        class FakeAbu:
+            def __init__(self, *, airplane, op_point, xyz_ref):
+                self.alpha = float(op_point.alpha)
+
+            def run(self):
+                if abs(self.alpha - peak_alpha) < 0.5:
+                    return {"CL": 1.5, "Cm": -0.12}
+                return {"CL": 1.0, "Cm": -0.08}
+
+        mock_asb = MagicMock()
+        mock_asb.AeroBuildup = FakeAbu
+        mock_asb.OperatingPoint = lambda velocity, alpha: MagicMock(
+            velocity=velocity, alpha=alpha
+        )
+
+        mock_asb_airplane = MagicMock()
+        mock_asb_airplane.with_control_deflections.return_value = mock_asb_airplane
+
+        mock_flap_ted = MagicMock()
+        mock_flap_ted.role = "flap"
+        mock_flap_ted.name = "Flap"
+        mock_flap_ted.positive_deflection_deg = 30.0
+
+        mock_op_stall = MagicMock()
+        mock_op_stall.velocity = 15.0
+        mock_op_stall.alpha = 12.0  # clean stall alpha
+
+        with patch.dict("sys.modules", {"aerosandbox": mock_asb, "numpy": __import__("numpy")}):
+            result = svc._run_flap_analysis(
+                asb_airplane=mock_asb_airplane,
+                flap_teds=[mock_flap_ted],
+                aeroplane=MagicMock(),
+                op_stall=mock_op_stall,
+                xyz_ref=[0.0, 0.0, 0.0],
+                cm_baseline=-0.08,
+            )
+
+        assert isinstance(result, tuple), "_run_flap_analysis must return a tuple"
+        assert len(result) == 3, "_run_flap_analysis must return 3-tuple (delta_cm, cl_max, alpha)"
+
+        delta_cm_flap, cl_max, alpha_stall = result
+        assert math.isfinite(delta_cm_flap)
+        assert cl_max >= 1.0
+        assert math.isfinite(alpha_stall)
+        # Alpha at max CL should be near 10 (within 1 deg, given 1-deg sweep step)
+        assert abs(alpha_stall - peak_alpha) <= 1.0, (
+            f"alpha_stall_flap={alpha_stall} should be near peak alpha={peak_alpha}"
+        )
 
 
 # ---------------------------------------------------------------------------
