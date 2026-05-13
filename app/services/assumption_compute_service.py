@@ -131,14 +131,18 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     e_oswald_effective = e_oswald_fit if e_oswald_fit is not None else 0.8
     # -----------------------------------------------------------------------
 
-    cg_agg = _load_cg_agg(db, aircraft.id)
-
-    # --- gh-488: Loading + Stability envelopes (additive to existing context) ---
+    # --- gh-488: Loading + Stability envelopes ---------------------------
+    # cg_agg_m now reflects the is_default loading scenario's CG (per
+    # spec gh-488). Falls back to legacy weight-item aggregation for
+    # pre-migration aeroplanes that have no loading scenarios yet.
     from app.services.loading_scenario_service import (
+        compute_cg_agg_for_aeroplane,
         compute_loading_envelope_for_aeroplane,
         compute_stability_envelope,
         enrich_context_with_cg_envelope,
     )
+
+    cg_agg = compute_cg_agg_for_aeroplane(db, aircraft)
 
     _loading = compute_loading_envelope_for_aeroplane(db, aircraft)
     _stability = compute_stability_envelope(

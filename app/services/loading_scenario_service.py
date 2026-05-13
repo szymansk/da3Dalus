@@ -55,16 +55,18 @@ _SM_ELEVATOR_LIMIT = 0.30    # above → ERROR (elevator authority)
 # ---------------------------------------------------------------------------
 
 
-def classify_sm(sm: float, target_sm: float) -> str:
+def classify_sm(sm: float | None, target_sm: float) -> str:
     """5-tier SM classification relative to target_sm (Scholz §4.2).
 
     Args:
-        sm: current static margin (dimensionless, fraction of MAC).
+        sm: current static margin (dimensionless, fraction of MAC), or None.
         target_sm: design target static margin (dimensionless).
 
     Returns:
-        "error" | "warn" | "ok"
+        "error" | "warn" | "ok" | "unknown"
     """
+    if sm is None:
+        return "unknown"
     if sm < _SM_UNSTABLE_LIMIT:
         return "error"
     if sm < target_sm:
@@ -76,20 +78,29 @@ def classify_sm(sm: float, target_sm: float) -> str:
     return "error"
 
 
-def compute_stability_envelope(x_np: float, mac: float, target_sm: float) -> dict[str, float]:
+def compute_stability_envelope(
+    x_np: float | None, mac: float | None, target_sm: float
+) -> dict[str, float | None]:
     """Compute the Stability-Envelope for given aerodynamic parameters.
 
+    Returns None values when x_np or mac is unavailable (recompute_assumptions
+    hasn't run yet).  The caller must surface those None values to the user
+    instead of synthesising a deceptive fallback.
+
     Args:
-        x_np: neutral point position [m] (longitudinal).
-        mac: mean aerodynamic chord [m].
+        x_np: neutral point position [m] (longitudinal), or None.
+        mac: mean aerodynamic chord [m], or None.
         target_sm: design target static margin (fraction of MAC).
 
     Returns dict with:
-        cg_stability_aft_m: aft stability limit = x_NP - target_sm * MAC
-        cg_stability_fwd_m: forward stability limit (stub = x_NP - 0.30 * MAC)
+        cg_stability_aft_m: aft stability limit = x_NP - target_sm * MAC, or None.
+        cg_stability_fwd_m: forward stability limit (stub = x_NP - 0.30 * MAC), or None.
             TODO: replace with full Cm-trim @ CL_max_landing per Anderson §7.7
             as a follow-up ticket. This stub is conservative.
     """
+    if x_np is None or mac is None or mac <= 0:
+        return {"cg_stability_aft_m": None, "cg_stability_fwd_m": None}
+
     cg_stability_aft_m = x_np - target_sm * mac
     # Stub forward limit: SM = 0.30 is the conservative upper bound before
     # elevator authority at landing stall becomes critical (Anderson §7.7).
@@ -106,26 +117,67 @@ def compute_scenario_cg(
     base_cg_x: float,
     adhoc_items: list[dict],
     mass_overrides: list[dict],
+    toggles: list[dict] | None = None,
+    position_overrides: list[dict] | None = None,
+    components: list[dict] | None = None,
 ) -> float:
     """Compute the CG_x for a single loading scenario.
 
-    Applies adhoc items on top of the base (design) mass/CG.  Mass overrides
-    shift individual component masses but we do not have per-component CG data
-    in the DB at this time, so they are accounted for via total-mass scaling.
+    Supports all four override types: toggles, mass_overrides, position_overrides,
+    adhoc_items.  When ``components`` is provided (a list of per-component dicts with
+    ``id``, ``mass_kg``, ``x_m`` fields), the function builds the moment sum from
+    the individual components and applies overrides per-component.  When
+    ``components`` is None or empty, falls back to the legacy base_mass / base_cg_x
+    aggregation (backward-compat for pre-migration aeroplanes).
 
     Args:
-        base_mass_kg: design total mass [kg].
-        base_cg_x: design CG_x [m].
+        base_mass_kg: design total mass [kg] — used as fallback when no components.
+        base_cg_x: design CG_x [m] — used as fallback when no components.
         adhoc_items: list of {"name", "mass_kg", "x_m", "y_m", "z_m"} dicts.
         mass_overrides: list of {"component_uuid", "mass_kg_override"} dicts.
-            Currently not used in CG computation (no per-component CG DB yet).
+        toggles: list of {"component_uuid", "enabled"} dicts. enabled=False removes
+            the component from the CG computation.
+        position_overrides: list of {"component_uuid", "x_m_override", ...} dicts.
+        components: per-component weight list with fields ``id`` (str), ``mass_kg``,
+            ``x_m``.  When provided, base_mass_kg/base_cg_x are ignored.
 
     Returns:
         cg_x [m] for this scenario.
     """
-    total_mass = base_mass_kg
-    moment_x = base_mass_kg * base_cg_x
+    toggles = toggles or []
+    position_overrides = position_overrides or []
 
+    # Build lookup maps for fast override access
+    disabled_uuids: set[str] = {
+        t["component_uuid"] for t in toggles if not t.get("enabled", True)
+    }
+    mass_ovr_map: dict[str, float] = {
+        m["component_uuid"]: float(m["mass_kg_override"])
+        for m in mass_overrides
+    }
+    pos_ovr_map: dict[str, float] = {
+        p["component_uuid"]: float(p["x_m_override"])
+        for p in position_overrides
+    }
+
+    if components:
+        # Per-component path: apply all override types
+        total_mass = 0.0
+        moment_x = 0.0
+        for comp in components:
+            cid = str(comp.get("id", ""))
+            if cid in disabled_uuids:
+                continue  # toggle off → mass = 0
+            m = mass_ovr_map.get(cid, float(comp.get("mass_kg", 0.0) or 0.0))
+            x = pos_ovr_map.get(cid, float(comp.get("x_m", 0.0) or 0.0))
+            total_mass += m
+            moment_x += m * x
+    else:
+        # Legacy fallback: base_mass/base_cg_x only (pre-migration aeroplanes)
+        total_mass = base_mass_kg
+        moment_x = base_mass_kg * base_cg_x
+
+    # Adhoc items are always additive on top
     for item in adhoc_items:
         m = float(item.get("mass_kg", 0.0) or 0.0)
         x = float(item.get("x_m", 0.0) or 0.0)
@@ -140,23 +192,25 @@ def compute_scenario_cg(
 def validate_cg_envelope(
     cg_loading_fwd_m: float,
     cg_loading_aft_m: float,
-    cg_stability_fwd_m: float,
-    cg_stability_aft_m: float,
+    cg_stability_fwd_m: float | None,
+    cg_stability_aft_m: float | None,
 ) -> list[str]:
     """Validate that Loading-Envelope is within Stability-Envelope.
 
     Returns a list of warning/error strings.  Empty list = all OK.
+    None stability limits (x_NP not yet computed) produce no validation
+    warnings — the caller must add a separate 'stability unavailable' warning.
     """
     warnings: list[str] = []
 
-    if cg_loading_aft_m > cg_stability_aft_m:
+    if cg_stability_aft_m is not None and cg_loading_aft_m > cg_stability_aft_m:
         excess_mm = round((cg_loading_aft_m - cg_stability_aft_m) * 1000, 1)
         warnings.append(
             f"CG exceeds aft stability limit by {excess_mm} mm — "
             "aircraft may be unstable in the aft loading scenario."
         )
 
-    if cg_loading_fwd_m < cg_stability_fwd_m:
+    if cg_stability_fwd_m is not None and cg_loading_fwd_m < cg_stability_fwd_m:
         excess_mm = round((cg_stability_fwd_m - cg_loading_fwd_m) * 1000, 1)
         warnings.append(
             f"CG is {excess_mm} mm forward of the forward stability limit — "
@@ -170,34 +224,43 @@ def enrich_context_with_cg_envelope(
     ctx: dict[str, Any],
     cg_loading_fwd_m: float,
     cg_loading_aft_m: float,
-    cg_stability_fwd_m: float,
-    cg_stability_aft_m: float,
+    cg_stability_fwd_m: float | None,
+    cg_stability_aft_m: float | None,
 ) -> dict[str, Any]:
-    """Addively add CG envelope keys to an existing computation context dict.
+    """Additively add CG envelope keys to an existing computation context dict.
 
     Preserves all existing keys (esp. cg_agg_m for backward compat) and
     adds the new gh-488 keys: cg_forward_m, cg_aft_m, sm_at_fwd, sm_at_aft.
+
+    When x_np_m is not in the context (recompute hasn't run), sm_at_fwd/aft
+    are stored as None to avoid deceptive stub values.
 
     Args:
         ctx: existing assumption_computation_context dict.
         cg_loading_fwd_m: forward loading CG [m].
         cg_loading_aft_m: aft loading CG [m].
-        cg_stability_fwd_m: forward stability limit [m].
-        cg_stability_aft_m: aft stability limit [m].
+        cg_stability_fwd_m: forward stability limit [m], or None.
+        cg_stability_aft_m: aft stability limit [m], or None.
 
     Returns:
         Updated dict (same object, modified in-place).
     """
-    x_np = float(ctx.get("x_np_m") or 0.0)
-    mac = float(ctx.get("mac_m") or 1.0)  # avoid division by zero
+    x_np_raw = ctx.get("x_np_m")
+    mac_raw = ctx.get("mac_m")
+    x_np = float(x_np_raw) if x_np_raw else None
+    mac = float(mac_raw) if mac_raw else None
 
-    sm_at_fwd = (x_np - cg_loading_fwd_m) / mac if mac > 0 else 0.0
-    sm_at_aft = (x_np - cg_loading_aft_m) / mac if mac > 0 else 0.0
+    if x_np is not None and mac is not None and mac > 0:
+        sm_at_fwd = round((x_np - cg_loading_fwd_m) / mac, 4)
+        sm_at_aft = round((x_np - cg_loading_aft_m) / mac, 4)
+    else:
+        sm_at_fwd = None
+        sm_at_aft = None
 
     ctx["cg_forward_m"] = round(cg_loading_fwd_m, 4)
     ctx["cg_aft_m"] = round(cg_loading_aft_m, 4)
-    ctx["sm_at_fwd"] = round(sm_at_fwd, 4)
-    ctx["sm_at_aft"] = round(sm_at_aft, 4)
+    ctx["sm_at_fwd"] = sm_at_fwd
+    ctx["sm_at_aft"] = sm_at_aft
     return ctx
 
 
@@ -247,12 +310,98 @@ def _model_to_schema(scenario: LoadingScenarioModel) -> LoadingScenarioRead:
     )
 
 
+def _load_components_as_dicts(db: Session, aeroplane_id: int) -> list[dict]:
+    """Load weight items as plain dicts for use in compute_scenario_cg.
+
+    Returns a list of {"id": str(item.id), "mass_kg": ..., "x_m": ..., ...} dicts.
+    Empty list when no weight items exist (triggers legacy base_mass/base_cg_x path).
+    """
+    from app.models.aeroplanemodel import WeightItemModel
+
+    rows = (
+        db.query(WeightItemModel)
+        .filter(WeightItemModel.aeroplane_id == aeroplane_id)
+        .all()
+    )
+    return [
+        {
+            "id": str(r.id),
+            "mass_kg": float(r.mass_kg or 0.0),
+            "x_m": float(r.x_m or 0.0),
+            "y_m": float(r.y_m or 0.0),
+            "z_m": float(r.z_m or 0.0),
+        }
+        for r in rows
+    ]
+
+
+def compute_cg_agg_for_aeroplane(db: Session, aeroplane: AeroplaneModel) -> float | None:
+    """Compute the single-value CG_agg for backward-compatible clients.
+
+    Spec (gh-488): cg_agg_m MUST equal the CG of the ``is_default`` scenario.
+    Falls back to legacy weight-item aggregation when no loading scenarios exist
+    (backward-compat for pre-migration aeroplanes).
+
+    Returns:
+        CG_x [m], or None when no data is available (no scenarios AND no weight items).
+    """
+    base_mass = _load_assumption_value(db, aeroplane.id, "mass", default=1.0)
+    base_cg_x = _load_assumption_value(db, aeroplane.id, "cg_x", default=0.0)
+
+    # Try is_default scenario first
+    default_scenario = (
+        db.query(LoadingScenarioModel)
+        .filter(
+            LoadingScenarioModel.aeroplane_id == aeroplane.id,
+            LoadingScenarioModel.is_default.is_(True),
+        )
+        .first()
+    )
+    if default_scenario is not None:
+        overrides_raw = default_scenario.component_overrides or {}
+        if isinstance(overrides_raw, str):
+            import json
+            overrides_raw = json.loads(overrides_raw)
+        overrides = ComponentOverrides.model_validate(overrides_raw)
+        components = _load_components_as_dicts(db, aeroplane.id)
+        return compute_scenario_cg(
+            base_mass_kg=base_mass,
+            base_cg_x=base_cg_x,
+            adhoc_items=[item.model_dump() for item in overrides.adhoc_items],
+            mass_overrides=[m.model_dump() for m in overrides.mass_overrides],
+            toggles=[t.model_dump() for t in overrides.toggles],
+            position_overrides=[p.model_dump() for p in overrides.position_overrides],
+            components=components or None,
+        )
+
+    # Legacy fallback: weight-item aggregation (pre-migration aeroplanes)
+    from app.models.aeroplanemodel import WeightItemModel
+    from app.services.mass_cg_service import aggregate_weight_items
+
+    rows = (
+        db.query(WeightItemModel)
+        .filter(WeightItemModel.aeroplane_id == aeroplane.id)
+        .all()
+    )
+    if not rows:
+        return None
+
+    items = [
+        {"mass_kg": r.mass_kg, "x_m": r.x_m, "y_m": r.y_m, "z_m": r.z_m}
+        for r in rows
+    ]
+    _, cg_x, _, _ = aggregate_weight_items(items)
+    return cg_x
+
+
 def compute_loading_envelope_for_aeroplane(
     db: Session, aeroplane: AeroplaneModel
-) -> dict[str, float]:
+) -> dict[str, Any]:
     """Compute the Loading-Envelope (min/max CG) over all loading scenarios.
 
-    Falls back to the design cg_x when no loading scenarios exist (backward compat).
+    Applies all four override types (toggles, mass_overrides, position_overrides,
+    adhoc_items) per scenario.  Falls back to the design cg_x when no loading
+    scenarios exist (backward compat).
 
     Returns dict with:
         cg_loading_fwd_m: forward-most CG across all scenarios [m]
@@ -261,6 +410,7 @@ def compute_loading_envelope_for_aeroplane(
     """
     base_mass = _load_assumption_value(db, aeroplane.id, "mass", default=1.0)
     base_cg_x = _load_assumption_value(db, aeroplane.id, "cg_x", default=0.0)
+    components = _load_components_as_dicts(db, aeroplane.id)
 
     scenarios = (
         db.query(LoadingScenarioModel)
@@ -282,13 +432,14 @@ def compute_loading_envelope_for_aeroplane(
             import json
             overrides_raw = json.loads(overrides_raw)
         overrides = ComponentOverrides.model_validate(overrides_raw)
-        adhoc = [item.model_dump() for item in overrides.adhoc_items]
-        mass_ovr = [m.model_dump() for m in overrides.mass_overrides]
         cg = compute_scenario_cg(
             base_mass_kg=base_mass,
             base_cg_x=base_cg_x,
-            adhoc_items=adhoc,
-            mass_overrides=mass_ovr,
+            adhoc_items=[item.model_dump() for item in overrides.adhoc_items],
+            mass_overrides=[m.model_dump() for m in overrides.mass_overrides],
+            toggles=[t.model_dump() for t in overrides.toggles],
+            position_overrides=[p.model_dump() for p in overrides.position_overrides],
+            components=components or None,
         )
         cg_values.append(cg)
 
@@ -419,6 +570,13 @@ def get_cg_envelope(
     """Compute the full CG envelope (loading + stability + classification).
 
     Returns a dict compatible with CgEnvelopeRead schema.
+
+    Stability fields (cg_stability_fwd_m, cg_stability_aft_m, sm_at_fwd, sm_at_aft)
+    are None when recompute_assumptions hasn't been run yet (x_NP / MAC missing from
+    assumption_computation_context).  The classification is "unknown" in that case and
+    an explicit 'stability unavailable' warning is added.  This prevents the old
+    deceptive pattern of synthesising x_np = cg_x + target_sm*MAC which made
+    sm_at_aft == target_sm always (a false-positive "perfect" envelope).
     """
     aeroplane = _get_aeroplane(db, aeroplane_uuid)
 
@@ -427,35 +585,33 @@ def get_cg_envelope(
     cg_fwd = loading["cg_loading_fwd_m"]
     cg_aft = loading["cg_loading_aft_m"]
 
-    # Stability envelope — requires x_NP and MAC from context or assumptions
+    # Stability envelope — requires x_NP and MAC from recompute_assumptions context.
+    # Do NOT synthesise fallback values: that produces a deceptively "perfect" envelope.
     ctx = aeroplane.assumption_computation_context or {}
-    x_np = float(ctx.get("x_np_m") or 0.0)
-    mac = float(ctx.get("mac_m") or 1.0)
+    x_np_raw = ctx.get("x_np_m")
+    mac_raw = ctx.get("mac_m")
+    x_np = float(x_np_raw) if x_np_raw else None
+    mac = float(mac_raw) if mac_raw else None
     target_sm = _load_assumption_value(db, aeroplane.id, "target_static_margin", default=0.08)
-
-    if x_np == 0.0 or mac <= 0:
-        # Fall back to assumptions-based estimate if context not yet populated
-        base_cg_x = _load_assumption_value(db, aeroplane.id, "cg_x", default=0.15)
-        # Approximate: NP ≈ cg_x + target_sm * MAC (inverse of cg_x = NP - SM*MAC)
-        # Without actual aero computation, use a conservative MAC estimate.
-        # This is handled gracefully: the user sees stubs until a full recompute runs.
-        mac = float(ctx.get("mac_m") or 0.20)
-        x_np = base_cg_x + target_sm * mac
 
     stability = compute_stability_envelope(x_np=x_np, mac=mac, target_sm=target_sm)
     stab_fwd = stability["cg_stability_fwd_m"]
     stab_aft = stability["cg_stability_aft_m"]
 
-    # Static margins at loading extremes
-    sm_at_fwd = (x_np - cg_fwd) / mac if mac > 0 else 0.0
-    sm_at_aft = (x_np - cg_aft) / mac if mac > 0 else 0.0
+    # Static margins — only computable when x_NP and MAC are available
+    if x_np is not None and mac is not None and mac > 0:
+        sm_at_fwd: float | None = (x_np - cg_fwd) / mac
+        sm_at_aft: float | None = (x_np - cg_aft) / mac
+    else:
+        sm_at_fwd = None
+        sm_at_aft = None
 
     # Classify worst-case (aft = most critical for stability)
     classification_fwd = classify_sm(sm_at_fwd, target_sm)
     classification_aft = classify_sm(sm_at_aft, target_sm)
 
-    # Hierarchy: error > warn > ok
-    _rank = {"error": 2, "warn": 1, "ok": 0}
+    # Hierarchy: error > warn > ok > unknown
+    _rank = {"error": 3, "warn": 2, "ok": 1, "unknown": 0}
     if _rank[classification_fwd] >= _rank[classification_aft]:
         overall = classification_fwd
     else:
@@ -463,18 +619,23 @@ def get_cg_envelope(
 
     # Validation warnings
     warnings = validate_cg_envelope(cg_fwd, cg_aft, stab_fwd, stab_aft)
-    if overall == "error":
+
+    if overall == "unknown":
+        warnings.insert(
+            0,
+            "Stability envelope unavailable — recompute_assumptions hasn't been run. "
+            "Run a full analysis to populate x_NP and MAC.",
+        )
+    elif overall == "error" and sm_at_aft is not None:
         warnings.insert(0, f"SM at aft CG = {sm_at_aft:.1%} — outside safe operating range.")
-    elif overall == "warn":
-        pass  # validation_cg_envelope already captures this
 
     return {
         "cg_loading_fwd_m": round(cg_fwd, 4),
         "cg_loading_aft_m": round(cg_aft, 4),
-        "cg_stability_fwd_m": round(stab_fwd, 4),
-        "cg_stability_aft_m": round(stab_aft, 4),
-        "sm_at_fwd": round(sm_at_fwd, 4),
-        "sm_at_aft": round(sm_at_aft, 4),
+        "cg_stability_fwd_m": round(stab_fwd, 4) if stab_fwd is not None else None,
+        "cg_stability_aft_m": round(stab_aft, 4) if stab_aft is not None else None,
+        "sm_at_fwd": round(sm_at_fwd, 4) if sm_at_fwd is not None else None,
+        "sm_at_aft": round(sm_at_aft, 4) if sm_at_aft is not None else None,
         "classification": overall,
         "warnings": warnings,
     }

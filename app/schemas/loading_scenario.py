@@ -25,7 +25,9 @@ AIRCRAFT_CLASS = Literal[
 ADHOC_CATEGORY = Literal["pilot", "payload", "ballast", "fuel", "fpv_gear", "other"]
 
 # Overall classification of the CG envelope status
-CG_CLASSIFICATION = Literal["error", "warn", "ok"]
+# "unknown" is returned when the stability envelope cannot be computed
+# (x_NP and MAC not yet populated by recompute_assumptions).
+CG_CLASSIFICATION = Literal["error", "warn", "ok", "unknown"]
 
 
 # ---------------------------------------------------------------------------
@@ -160,24 +162,37 @@ class CgEnvelopeRead(BaseModel):
 
     cg_loading_fwd_m: float = Field(..., description="Forward-most loading CG [m]")
     cg_loading_aft_m: float = Field(..., description="Aft-most loading CG [m]")
-    cg_stability_fwd_m: float = Field(
-        ...,
+    cg_stability_fwd_m: float | None = Field(
+        None,
         description=(
             "Forward stability limit (elevator-authority stub = x_NP - 0.30*MAC) [m]. "
+            "None when x_NP / MAC not yet computed (run recompute_assumptions first). "
             "TODO: replace with full Cm-trim@CL_max_landing per Anderson §7.7."
         ),
     )
-    cg_stability_aft_m: float = Field(
-        ..., description="Aft stability limit = x_NP - target_sm*MAC [m]"
+    cg_stability_aft_m: float | None = Field(
+        None, description="Aft stability limit = x_NP - target_sm*MAC [m]. None until computed."
     )
-    sm_at_fwd: float = Field(
-        ..., description="Static margin at forward loading CG (dimensionless)"
+    sm_at_fwd: float | None = Field(
+        None,
+        description=(
+            "Static margin at forward loading CG (dimensionless). "
+            "None when stability envelope is unavailable."
+        ),
     )
-    sm_at_aft: float = Field(
-        ..., description="Static margin at aft loading CG (dimensionless)"
+    sm_at_aft: float | None = Field(
+        None,
+        description=(
+            "Static margin at aft loading CG (dimensionless). "
+            "None when stability envelope is unavailable."
+        ),
     )
     classification: CG_CLASSIFICATION = Field(
-        ..., description="Overall envelope classification: error | warn | ok"
+        ...,
+        description=(
+            "Overall envelope classification: error | warn | ok | unknown. "
+            "'unknown' when x_NP/MAC not yet computed — run recompute_assumptions."
+        ),
     )
     warnings: list[str] = Field(
         default_factory=list, description="Human-readable warnings and errors"

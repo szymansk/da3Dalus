@@ -660,3 +660,367 @@ class TestRetrimIntegration:
         assert any(e.parameter_name == "cg_x" for e in received), (
             f"AssumptionChanged(cg_x) not emitted. Got: {received}"
         )
+
+
+# ---------------------------------------------------------------------------
+# TestComponentOverridesAffectCg  (Issue C — all 4 override types)
+# ---------------------------------------------------------------------------
+
+
+def _make_weight_items(session, aeroplane_id: int) -> tuple:
+    """Create two WeightItemModel rows: 'fuselage' and 'battery'.
+
+    Returns (fuselage_item, battery_item) — both committed and refreshed.
+    """
+    from app.models.aeroplanemodel import WeightItemModel
+
+    fuselage = WeightItemModel(
+        aeroplane_id=aeroplane_id,
+        name="Fuselage",
+        mass_kg=1.0,
+        x_m=0.20,
+        y_m=0.0,
+        z_m=0.0,
+        category="structural",
+    )
+    battery = WeightItemModel(
+        aeroplane_id=aeroplane_id,
+        name="Battery",
+        mass_kg=0.3,
+        x_m=0.10,
+        y_m=0.0,
+        z_m=0.0,
+        category="electronics",
+    )
+    session.add_all([fuselage, battery])
+    session.commit()
+    session.refresh(fuselage)
+    session.refresh(battery)
+    return fuselage, battery
+
+
+class TestComponentOverridesAffectCg:
+    """Issue C: compute_scenario_cg must honour all 4 override types."""
+
+    def test_mass_override_shifts_cg(self, client_and_db: Tuple[TestClient, any]) -> None:
+        """Doubling the battery mass (0.3→0.6 kg) shifts CG toward battery position."""
+        from app.services.loading_scenario_service import compute_scenario_cg
+
+        _client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            fuselage, battery = _make_weight_items(session, plane.id)
+            fus_uuid = str(fuselage.id)
+            bat_uuid = str(battery.id)
+
+        # Components as plain dicts (same shape as WeightItemModel fields)
+        components = [
+            {"id": fus_uuid, "mass_kg": 1.0, "x_m": 0.20, "y_m": 0.0, "z_m": 0.0},
+            {"id": bat_uuid, "mass_kg": 0.3, "x_m": 0.10, "y_m": 0.0, "z_m": 0.0},
+        ]
+
+        # Base CG: (1.0*0.20 + 0.3*0.10) / 1.3 = 0.23/1.3 ≈ 0.1769
+        base_cg = compute_scenario_cg(
+            base_mass_kg=1.3,
+            base_cg_x=0.0,  # ignored when components provided
+            adhoc_items=[],
+            mass_overrides=[],
+            toggles=[],
+            position_overrides=[],
+            components=components,
+        )
+        assert abs(base_cg - (1.0 * 0.20 + 0.3 * 0.10) / 1.3) < 1e-9
+
+        # Override battery mass 0.3→0.6 kg → CG shifts toward battery (x=0.10, forward)
+        overridden_cg = compute_scenario_cg(
+            base_mass_kg=1.6,
+            base_cg_x=0.0,
+            adhoc_items=[],
+            mass_overrides=[{"component_uuid": bat_uuid, "mass_kg_override": 0.6}],
+            toggles=[],
+            position_overrides=[],
+            components=components,
+        )
+        # Expected: (1.0*0.20 + 0.6*0.10) / 1.6 = 0.26/1.6 = 0.1625
+        assert abs(overridden_cg - (1.0 * 0.20 + 0.6 * 0.10) / 1.6) < 1e-9
+        # Battery is forward of base CG → heavier battery → more forward CG
+        assert overridden_cg < base_cg
+
+    def test_position_override_shifts_cg(self, client_and_db: Tuple[TestClient, any]) -> None:
+        """Moving battery 50mm forward (x=0.10→0.05) shifts CG forward."""
+        from app.services.loading_scenario_service import compute_scenario_cg
+
+        _client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            fuselage, battery = _make_weight_items(session, plane.id)
+            fus_uuid = str(fuselage.id)
+            bat_uuid = str(battery.id)
+
+        components = [
+            {"id": fus_uuid, "mass_kg": 1.0, "x_m": 0.20, "y_m": 0.0, "z_m": 0.0},
+            {"id": bat_uuid, "mass_kg": 0.3, "x_m": 0.10, "y_m": 0.0, "z_m": 0.0},
+        ]
+
+        base_cg = compute_scenario_cg(
+            base_mass_kg=1.3, base_cg_x=0.0,
+            adhoc_items=[], mass_overrides=[], toggles=[], position_overrides=[],
+            components=components,
+        )
+
+        # Move battery from x=0.10 to x=0.05 (50mm forward)
+        shifted_cg = compute_scenario_cg(
+            base_mass_kg=1.3, base_cg_x=0.0,
+            adhoc_items=[], mass_overrides=[], toggles=[],
+            position_overrides=[{"component_uuid": bat_uuid, "x_m_override": 0.05}],
+            components=components,
+        )
+        # Expected: (1.0*0.20 + 0.3*0.05) / 1.3 = 0.215/1.3 ≈ 0.1654
+        assert abs(shifted_cg - (1.0 * 0.20 + 0.3 * 0.05) / 1.3) < 1e-9
+        assert shifted_cg < base_cg
+
+    def test_toggle_disabled_excludes_component(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """Battery enabled=False → CG computed without battery contribution."""
+        from app.services.loading_scenario_service import compute_scenario_cg
+
+        _client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            fuselage, battery = _make_weight_items(session, plane.id)
+            fus_uuid = str(fuselage.id)
+            bat_uuid = str(battery.id)
+
+        components = [
+            {"id": fus_uuid, "mass_kg": 1.0, "x_m": 0.20, "y_m": 0.0, "z_m": 0.0},
+            {"id": bat_uuid, "mass_kg": 0.3, "x_m": 0.10, "y_m": 0.0, "z_m": 0.0},
+        ]
+
+        # Disable battery → only fuselage remains
+        no_battery_cg = compute_scenario_cg(
+            base_mass_kg=1.3, base_cg_x=0.0,
+            adhoc_items=[], mass_overrides=[],
+            toggles=[{"component_uuid": bat_uuid, "enabled": False}],
+            position_overrides=[],
+            components=components,
+        )
+        # Expected: fuselage only → CG = 0.20
+        assert abs(no_battery_cg - 0.20) < 1e-9
+
+    def test_combined_overrides(self, client_and_db: Tuple[TestClient, any]) -> None:
+        """All 4 override types applied simultaneously produce correct CG."""
+        from app.services.loading_scenario_service import compute_scenario_cg
+
+        _client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            fuselage, battery = _make_weight_items(session, plane.id)
+            fus_uuid = str(fuselage.id)
+            bat_uuid = str(battery.id)
+
+        # Add a third component (motor)
+        from app.models.aeroplanemodel import WeightItemModel
+        with SessionLocal() as session:
+            motor = WeightItemModel(
+                aeroplane_id=plane.id, name="Motor", mass_kg=0.2,
+                x_m=0.35, y_m=0.0, z_m=0.0, category="propulsion",
+            )
+            session.add(motor)
+            session.commit()
+            session.refresh(motor)
+            motor_uuid = str(motor.id)
+
+        components = [
+            {"id": fus_uuid, "mass_kg": 1.0, "x_m": 0.20, "y_m": 0.0, "z_m": 0.0},
+            {"id": bat_uuid, "mass_kg": 0.3, "x_m": 0.10, "y_m": 0.0, "z_m": 0.0},
+            {"id": motor_uuid, "mass_kg": 0.2, "x_m": 0.35, "y_m": 0.0, "z_m": 0.0},
+        ]
+
+        # mass_override: battery 0.3→0.5 kg
+        # position_override: motor x=0.35→0.30
+        # toggle: fuselage stays on, motor stays on
+        # adhoc: 0.1 kg camera at x=0.05
+        cg = compute_scenario_cg(
+            base_mass_kg=1.5, base_cg_x=0.0,
+            adhoc_items=[{"name": "Camera", "mass_kg": 0.1, "x_m": 0.05, "y_m": 0.0, "z_m": 0.0}],
+            mass_overrides=[{"component_uuid": bat_uuid, "mass_kg_override": 0.5}],
+            toggles=[],
+            position_overrides=[{"component_uuid": motor_uuid, "x_m_override": 0.30}],
+            components=components,
+        )
+        # Expected:
+        #   fuselage: 1.0 kg @ 0.20
+        #   battery:  0.5 kg @ 0.10 (mass override)
+        #   motor:    0.2 kg @ 0.30 (position override)
+        #   camera:   0.1 kg @ 0.05 (adhoc)
+        # total: 1.8, moment: 0.20 + 0.05 + 0.06 + 0.005 = 0.315
+        # CG = 0.315/1.8 = 0.175
+        expected = (1.0 * 0.20 + 0.5 * 0.10 + 0.2 * 0.30 + 0.1 * 0.05) / (1.0 + 0.5 + 0.2 + 0.1)
+        assert abs(cg - expected) < 1e-9
+
+    def test_overrides_fall_back_to_base_when_no_components(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """When components=None, function uses legacy base_mass/base_cg_x (backward compat)."""
+        from app.services.loading_scenario_service import compute_scenario_cg
+
+        _client, SessionLocal = client_and_db
+
+        # Old call signature — no components param
+        cg = compute_scenario_cg(
+            base_mass_kg=1.5,
+            base_cg_x=0.15,
+            adhoc_items=[{"name": "Item", "mass_kg": 0.5, "x_m": 0.05, "y_m": 0.0, "z_m": 0.0}],
+            mass_overrides=[],
+        )
+        # (1.5*0.15 + 0.5*0.05) / 2.0 = 0.25/2.0 = 0.125
+        assert abs(cg - 0.125) < 1e-9
+
+
+# ---------------------------------------------------------------------------
+# TestMissingContextFallback  (Issue A — no deceptive x_np synthesis)
+# ---------------------------------------------------------------------------
+
+
+class TestMissingContextFallback:
+    def test_stability_envelope_returns_none_when_no_context(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """compute_stability_envelope with x_np=None returns None values."""
+        from app.services.loading_scenario_service import compute_stability_envelope
+
+        result = compute_stability_envelope(x_np=None, mac=None, target_sm=0.08)
+        assert result["cg_stability_aft_m"] is None
+        assert result["cg_stability_fwd_m"] is None
+
+    def test_cg_envelope_warns_when_stability_unknown(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """GET /cg-envelope returns 'stability_unavailable' warning when x_np not computed yet."""
+        client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            _seed_assumptions(session, plane.id)
+            # Deliberately NO assumption_computation_context → x_np missing
+            plane.assumption_computation_context = {}
+            session.commit()
+            aeroplane_uuid = str(plane.uuid)
+
+        resp = client.get(f"/aeroplanes/{aeroplane_uuid}/cg-envelope")
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+
+        # Stability fields must be null, not fabricated
+        assert data["cg_stability_fwd_m"] is None
+        assert data["cg_stability_aft_m"] is None
+        assert data["sm_at_fwd"] is None
+        assert data["sm_at_aft"] is None
+
+        # Classification must be "unknown" (not "ok" from a fake-perfect envelope)
+        assert data["classification"] == "unknown"
+
+        # Must contain an explicit stability_unavailable warning
+        assert any("stability" in w.lower() and "unavailable" in w.lower() for w in data["warnings"]), (
+            f"Expected 'stability unavailable' warning. Got: {data['warnings']}"
+        )
+
+    def test_no_false_positive_perfect_envelope(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """Without real aero data, sm_at_aft must NOT equal target_sm (deceptive)."""
+        client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            _seed_assumptions(session, plane.id)
+            plane.assumption_computation_context = {}
+            session.commit()
+            aeroplane_uuid = str(plane.uuid)
+
+        resp = client.get(f"/aeroplanes/{aeroplane_uuid}/cg-envelope")
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+
+        # The old code synthesised x_np = cg_x + target_sm*MAC which made
+        # sm_at_aft == target_sm always (deceptive "perfect" envelope).
+        # After the fix, sm_at_aft must be None.
+        assert data["sm_at_aft"] is None, (
+            f"sm_at_aft should be None when x_np not computed. Got {data['sm_at_aft']!r}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# TestCgAggMatchesDefaultScenario  (Issue B — cg_agg_m wiring)
+# ---------------------------------------------------------------------------
+
+
+class TestCgAggMatchesDefaultScenario:
+    def test_cg_agg_m_equals_default_scenario_cg_after_recompute(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """cg_agg_m in context equals the CG of the is_default scenario."""
+        from app.services.loading_scenario_service import compute_scenario_cg
+
+        client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            _seed_assumptions(session, plane.id)
+            aeroplane_uuid = str(plane.uuid)
+
+        # Create a default scenario with an adhoc item that shifts CG
+        create_resp = client.post(
+            f"/aeroplanes/{aeroplane_uuid}/loading-scenarios",
+            json=_scenario_payload(
+                name="Default",
+                is_default=True,
+                component_overrides={
+                    "toggles": [],
+                    "mass_overrides": [],
+                    "position_overrides": [],
+                    "adhoc_items": [
+                        {"name": "Payload", "mass_kg": 0.5, "x_m": 0.25, "y_m": 0.0, "z_m": 0.0}
+                    ],
+                },
+            ),
+        )
+        assert create_resp.status_code == 201, create_resp.text
+
+        # Manually call compute_cg_agg_for_aeroplane to check it matches
+        from app.services.loading_scenario_service import compute_cg_agg_for_aeroplane
+
+        with SessionLocal() as session:
+            plane_row = session.query(AeroplaneModel).filter_by(uuid=plane.uuid).first()
+            cg_agg = compute_cg_agg_for_aeroplane(session, plane_row)
+
+        # base: mass=1.5, cg_x=0.15; adhoc: 0.5 kg at 0.25
+        # expected CG = (1.5*0.15 + 0.5*0.25) / 2.0 = (0.225 + 0.125) / 2.0 = 0.175
+        expected = (1.5 * 0.15 + 0.5 * 0.25) / 2.0
+        assert abs(cg_agg - expected) < 1e-9, f"Expected {expected}, got {cg_agg}"
+
+    def test_cg_agg_m_falls_back_to_legacy_when_no_scenarios(
+        self, client_and_db: Tuple[TestClient, any]
+    ) -> None:
+        """When no loading scenarios exist, compute_cg_agg falls back to legacy weight items."""
+        from app.services.loading_scenario_service import compute_cg_agg_for_aeroplane
+        from app.models.aeroplanemodel import WeightItemModel
+
+        _client, SessionLocal = client_and_db
+        with SessionLocal() as session:
+            plane = _make_aeroplane(session)
+            _seed_assumptions(session, plane.id)
+            # Add weight items (no loading scenarios)
+            wi = WeightItemModel(
+                aeroplane_id=plane.id, name="Motor", mass_kg=0.5,
+                x_m=0.30, y_m=0.0, z_m=0.0, category="propulsion",
+            )
+            session.add(wi)
+            session.commit()
+            session.refresh(plane)
+
+        with SessionLocal() as session:
+            plane_row = session.query(AeroplaneModel).filter_by(uuid=plane.uuid).first()
+            cg_agg = compute_cg_agg_for_aeroplane(session, plane_row)
+
+        # No scenarios → falls back to weight-items aggregation → motor at x=0.30
+        # Only one item → cg = 0.30
+        assert abs(cg_agg - 0.30) < 1e-9, f"Expected 0.30 (legacy fallback), got {cg_agg}"
