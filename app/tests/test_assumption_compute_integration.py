@@ -9,6 +9,8 @@ import pytest
 from unittest.mock import patch
 from types import SimpleNamespace
 
+import numpy as np
+
 from app.core.events import (
     AssumptionChanged,
     GeometryChanged,
@@ -67,7 +69,8 @@ def test_recompute_publishes_assumption_changed_on_cg_change(client_and_db):
         ),
         patch(
             "app.services.assumption_compute_service._fine_sweep_cl_max",
-            return_value=1.35,
+            # Now returns (cl_max, cl_array, cd_array) — gh-486
+            return_value=(1.35, np.array([0.2, 0.4, 0.6, 0.8, 1.0, 1.2]), np.array([0.021, 0.023, 0.027, 0.034, 0.043, 0.055])),
         ),
         patch(
             "app.services.assumption_compute_service._load_flight_profile_speeds",
@@ -121,7 +124,8 @@ def test_recompute_does_not_publish_when_cg_unchanged(client_and_db):
         ),
         patch(
             "app.services.assumption_compute_service._fine_sweep_cl_max",
-            return_value=1.35,
+            # Now returns (cl_max, cl_array, cd_array) — gh-486
+            return_value=(1.35, np.array([0.2, 0.4, 0.6, 0.8, 1.0, 1.2]), np.array([0.021, 0.023, 0.027, 0.034, 0.043, 0.055])),
         ),
         patch(
             "app.services.assumption_compute_service._load_flight_profile_speeds",
