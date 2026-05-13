@@ -28,6 +28,7 @@ from app.schemas.design_assumption import PARAMETER_DEFAULTS
 from app.schemas.flight_envelope import (
     FlightEnvelopeRead,
     GustCriticalWarning,
+    GustValidityWarning,
     PerformanceKPI,
     VnCurve,
     VnMarker,
@@ -40,7 +41,7 @@ GRAVITY = 9.81
 
 # Gust speeds per CS-VLA.333(c)(1) / FAR-23.333(c) — sharp-edged EAS
 GUST_U_VC_MPS: float = 15.24  # 50 ft/s at cruise speed V_C
-GUST_U_VD_MPS: float = 7.62   # 25 ft/s at dive speed V_D
+GUST_U_VD_MPS: float = 7.62  # 25 ft/s at dive speed V_D
 
 # Pratt-Walker μ_g validity range (NACA TN 2964 / FAR-25.341 applicability)
 _MU_G_MIN: float = 3.0
@@ -165,7 +166,7 @@ def _build_gust_lines(
     gust_u_vc_mps: float = GUST_U_VC_MPS,
     gust_u_vd_mps: float = GUST_U_VD_MPS,
     n_points: int = 60,
-) -> tuple[list[VnPoint], list[VnPoint], list[GustCriticalWarning]]:
+) -> tuple[list[VnPoint], list[VnPoint], list[GustCriticalWarning | GustValidityWarning]]:
     """Compute positive and negative gust load-factor lines.
 
     Returns (gust_lines_positive, gust_lines_negative, warnings).
@@ -176,6 +177,11 @@ def _build_gust_lines(
 
     GustCriticalWarning is emitted at any point where 1+Δn > g_limit
     (positive) or 1-Δn < -0.4·g_limit (negative).
+
+    GustValidityWarning is emitted when μ_g ∉ [3, 200] — the Pratt-Walker
+    formula is only validated in this range (NACA TN 2964). RC/UAV with low
+    W/S frequently produce μ_g < 3, making gust loads potentially optimistic
+    (gh-497).
     """
     c_mgc = wing_area_m2 / b_ref_m  # Mean Geometric Chord = S/b (not MAC)
     mu_g = _compute_mu_g(mass_kg, wing_area_m2, c_mgc, cl_alpha, rho)
@@ -185,9 +191,39 @@ def _build_gust_lines(
 
     positive: list[VnPoint] = []
     negative: list[VnPoint] = []
-    warnings: list[GustCriticalWarning] = []
+    warnings: list[GustCriticalWarning | GustValidityWarning] = []
     warned_positive = False
     warned_negative = False
+
+    # Emit structured validity warning when μ_g is outside Pratt-Walker range
+    if mu_g < _MU_G_MIN:
+        warnings.append(
+            GustValidityWarning(
+                mu_g_value=round(mu_g, 4),
+                validity_min=_MU_G_MIN,
+                validity_max=_MU_G_MAX,
+                message=(
+                    f"μ_g={mu_g:.2f} is outside Pratt-Walker validity range "
+                    f"[{_MU_G_MIN:.0f}, {_MU_G_MAX:.0f}]. "
+                    "Gust loads may be optimistic for this light/small aircraft "
+                    "(ref: NACA TN 2964 / FAR-25.341)."
+                ),
+            )
+        )
+    elif mu_g > _MU_G_MAX:
+        warnings.append(
+            GustValidityWarning(
+                mu_g_value=round(mu_g, 4),
+                validity_min=_MU_G_MIN,
+                validity_max=_MU_G_MAX,
+                message=(
+                    f"μ_g={mu_g:.2f} is outside Pratt-Walker validity range "
+                    f"[{_MU_G_MIN:.0f}, {_MU_G_MAX:.0f}]. "
+                    "Gust loads may be conservative for this heavy aircraft "
+                    "(ref: NACA TN 2964 / FAR-25.341)."
+                ),
+            )
+        )
 
     for i in range(n_points):
         v = v_stall + (v_dive - v_stall) * i / (n_points - 1)

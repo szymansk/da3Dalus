@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -44,6 +44,33 @@ class GustCriticalWarning(BaseModel):
     )
 
 
+class GustValidityWarning(BaseModel):
+    """Warning emitted when μ_g falls outside the Pratt-Walker validity range [3, 200].
+
+    The Pratt-Walker discrete gust formula (NACA TN 2964 / CS-VLA.333 / FAR-25.341)
+    is empirically validated only for mass parameters μ_g ∈ [3, 200].
+
+    - μ_g < 3  → very light/small aircraft (RC/UAV); K_g may be optimistic,
+                 resulting in under-estimated gust loads.
+    - μ_g > 200 → very large/heavy aircraft; formula may be conservative.
+
+    Users in the target group (RC/UAV, low W/S) previously received only a
+    server-side log warning with no frontend feedback (gh-497).
+    """
+
+    mu_g_value: float = Field(..., description="Computed mass parameter μ_g")
+    validity_min: float = Field(3.0, description="Lower bound of Pratt validity range")
+    validity_max: float = Field(200.0, description="Upper bound of Pratt validity range")
+    message: str = Field(
+        ...,
+        description=(
+            "Human-readable warning, e.g. "
+            "'μ_g=1.63 is outside Pratt-Walker validity range [3, 200]. "
+            "Gust loads may be optimistic for light/small aircraft.'"
+        ),
+    )
+
+
 class VnCurve(BaseModel):
     """Complete V-n envelope boundary curves.
 
@@ -72,11 +99,12 @@ class VnCurve(BaseModel):
             "Same regulatory basis as gust_lines_positive."
         ),
     )
-    gust_warnings: list[GustCriticalWarning] = Field(
+    gust_warnings: list[Union[GustCriticalWarning, GustValidityWarning]] = Field(
         default_factory=list,
         description=(
-            "Structural warnings emitted when gust load exceeds maneuver g-limit "
-            "at V_C or V_D. Empty when the aircraft is not gust-critical."
+            "Gust-related warnings. May include GustCriticalWarning (structure sized "
+            "by gust loads) and/or GustValidityWarning (μ_g outside Pratt-Walker "
+            "validity range [3, 200]). Empty when no gust warnings apply."
         ),
     )
 
@@ -132,11 +160,12 @@ class FlightEnvelopeRead(BaseModel):
     operating_points: list[VnMarker]
     assumptions_snapshot: dict
     computed_at: datetime
-    gust_warnings: list[GustCriticalWarning] = Field(
+    gust_warnings: list[Union[GustCriticalWarning, GustValidityWarning]] = Field(
         default_factory=list,
         description=(
-            "Top-level gust-critical warnings (mirrors vn_curve.gust_warnings). "
-            "Non-empty when gust loads exceed maneuver g-limit at V_C or V_D."
+            "Top-level gust warnings (mirrors vn_curve.gust_warnings). "
+            "May include GustCriticalWarning (gust loads exceed maneuver g-limit) "
+            "and/or GustValidityWarning (μ_g outside Pratt-Walker range [3, 200])."
         ),
     )
 

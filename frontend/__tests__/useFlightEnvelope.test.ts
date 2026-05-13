@@ -47,6 +47,7 @@ const FAKE_ENVELOPE: FlightEnvelopeData = {
   ],
   assumptions_snapshot: { mass_kg: 2.5, n_positive: 3.8 },
   computed_at: "2026-05-07T12:00:00Z",
+  gust_warnings: [],
 };
 
 describe("useFlightEnvelope", () => {
