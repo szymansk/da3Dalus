@@ -507,7 +507,7 @@ class TestApplyEndpoint:
             from app.models.aeroplanemodel import WingXSecModel
             xsecs = db.query(WingXSecModel).filter(WingXSecModel.wing_id == htail_id).all()
             original_chords = [0.12, 0.10]
-            for xs, orig in zip(sorted(xsecs, key=lambda x: x.sort_index), original_chords):
+            for xs, orig in zip(sorted(xsecs, key=lambda x: x.sort_index), original_chords, strict=True):
                 assert xs.chord == pytest.approx(orig * (1 + delta_pct), rel=1e-4), (
                     f"htail xsec sort_index={xs.sort_index}: chord={xs.chord}, "
                     f"expected {orig * (1 + delta_pct):.4f}"
