@@ -23,6 +23,7 @@ SM Classification (relative to target_sm — Scholz §4.2):
 """
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
@@ -33,6 +34,7 @@ from app.core.events import AssumptionChanged, event_bus
 from app.core.exceptions import InternalError, NotFoundError
 from app.models.aeroplanemodel import AeroplaneModel, DesignAssumptionModel, LoadingScenarioModel
 from app.schemas.loading_scenario import (
+    CgEnvelopeRead,
     ComponentOverrides,
     LoadingScenarioCreate,
     LoadingScenarioRead,
@@ -297,7 +299,6 @@ def _load_assumption_value(
 def _model_to_schema(scenario: LoadingScenarioModel) -> LoadingScenarioRead:
     overrides_raw = scenario.component_overrides or {}
     if isinstance(overrides_raw, str):
-        import json
         overrides_raw = json.loads(overrides_raw)
     overrides = ComponentOverrides.model_validate(overrides_raw)
     return LoadingScenarioRead(
@@ -360,7 +361,6 @@ def compute_cg_agg_for_aeroplane(db: Session, aeroplane: AeroplaneModel) -> floa
     if default_scenario is not None:
         overrides_raw = default_scenario.component_overrides or {}
         if isinstance(overrides_raw, str):
-            import json
             overrides_raw = json.loads(overrides_raw)
         overrides = ComponentOverrides.model_validate(overrides_raw)
         components = _load_components_as_dicts(db, aeroplane.id)
@@ -429,7 +429,6 @@ def compute_loading_envelope_for_aeroplane(
     for scenario in scenarios:
         overrides_raw = scenario.component_overrides or {}
         if isinstance(overrides_raw, str):
-            import json
             overrides_raw = json.loads(overrides_raw)
         overrides = ComponentOverrides.model_validate(overrides_raw)
         cg = compute_scenario_cg(
@@ -454,11 +453,7 @@ def _trigger_retrim(db: Session, aeroplane: AeroplaneModel) -> None:
     """Mark OPs dirty and emit AssumptionChanged(cg_x) for downstream retrim."""
     from app.services.invalidation_service import mark_ops_dirty
 
-    try:
-        mark_ops_dirty(db, aeroplane.id)
-    except Exception:
-        logger.exception("mark_ops_dirty failed for aeroplane %s", aeroplane.id)
-
+    mark_ops_dirty(db, aeroplane.id)
     event_bus.publish(
         AssumptionChanged(aeroplane_id=aeroplane.id, parameter_name="cg_x")
     )
@@ -566,7 +561,7 @@ def delete_scenario(db: Session, aeroplane_uuid, scenario_id: int) -> None:
 
 def get_cg_envelope(
     db: Session, aeroplane_uuid
-) -> dict[str, Any]:
+) -> CgEnvelopeRead:
     """Compute the full CG envelope (loading + stability + classification).
 
     Returns a dict compatible with CgEnvelopeRead schema.
@@ -629,13 +624,13 @@ def get_cg_envelope(
     elif overall == "error" and sm_at_aft is not None:
         warnings.insert(0, f"SM at aft CG = {sm_at_aft:.1%} — outside safe operating range.")
 
-    return {
-        "cg_loading_fwd_m": round(cg_fwd, 4),
-        "cg_loading_aft_m": round(cg_aft, 4),
-        "cg_stability_fwd_m": round(stab_fwd, 4) if stab_fwd is not None else None,
-        "cg_stability_aft_m": round(stab_aft, 4) if stab_aft is not None else None,
-        "sm_at_fwd": round(sm_at_fwd, 4) if sm_at_fwd is not None else None,
-        "sm_at_aft": round(sm_at_aft, 4) if sm_at_aft is not None else None,
-        "classification": overall,
-        "warnings": warnings,
-    }
+    return CgEnvelopeRead(
+        cg_loading_fwd_m=round(cg_fwd, 4),
+        cg_loading_aft_m=round(cg_aft, 4),
+        cg_stability_fwd_m=round(stab_fwd, 4) if stab_fwd is not None else None,
+        cg_stability_aft_m=round(stab_aft, 4) if stab_aft is not None else None,
+        sm_at_fwd=round(sm_at_fwd, 4) if sm_at_fwd is not None else None,
+        sm_at_aft=round(sm_at_aft, 4) if sm_at_aft is not None else None,
+        classification=overall,
+        warnings=warnings,
+    )

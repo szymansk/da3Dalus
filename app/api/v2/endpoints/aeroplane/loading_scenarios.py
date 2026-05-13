@@ -166,8 +166,7 @@ async def get_cg_envelope(
       warn:  0.02 ≤ SM < target or 0.20 < SM ≤ 0.30
       ok:    target ≤ SM ≤ 0.20
     """
-    result = _call(svc.get_cg_envelope, db, aeroplane_id)
-    return CgEnvelopeRead(**result)
+    return _call(svc.get_cg_envelope, db, aeroplane_id)
 
 
 @router.get(
