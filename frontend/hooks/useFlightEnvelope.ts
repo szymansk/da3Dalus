@@ -61,7 +61,13 @@ export interface PerformanceKPI {
   value: number;
   unit: string;
   source_op_id: number | null;
-  confidence: "trimmed" | "estimated" | "limit";
+  /**
+   * - `trimmed`: from a TRIMMED operating point
+   * - `computed`: polar/physics-derived from cached assumptions (gh-475)
+   * - `estimated`: heuristic shortcut (e.g. 1.4·V_s)
+   * - `limit`: boundary or user-supplied limit
+   */
+  confidence: "trimmed" | "computed" | "estimated" | "limit";
 }
 
 export interface VnMarker {
