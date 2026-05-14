@@ -1,0 +1,45 @@
+{
+  "segments": [
+    {
+      "root_airfoil": {
+        "airfoil": "../components/airfoils/fx71l150.dat",
+        "chord": 1170.0,
+        "dihedral_as_rotation_in_degrees": 0,
+        "incidence": 0
+      },
+      "length": 1370.0,
+      "sweep": 200,
+      "sweep_angle": 8.30,
+      "tip_airfoil": {
+        "airfoil": "../components/airfoils/fx71l150.dat",
+        "chord": 800.0,
+        "dihedral_as_rotation_in_degrees": 0,
+        "incidence": 0
+      },
+      "spare_list": null,
+      "trailing_edge_device": {
+        "name": "rudder",
+        "rel_chord_root": 0.33,
+        "rel_chord_tip": 0.33,
+        "hinge_spacing": null,
+        "side_spacing_root": null,
+        "side_spacing_tip": null,
+        "_servo": null,
+        "servo_placement": "top",
+        "rel_chord_servo_position": null,
+        "rel_length_servo_position": null,
+        "positive_deflection_deg": 30,
+        "negative_deflection_deg": 30,
+        "trailing_edge_offset_factor": 1.0,
+        "hinge_type": "top",
+        "symmetric": false
+      },
+      "number_interpolation_points": 201,
+      "tip_type": "flat",
+      "wing_segment_type": "tip"
+    }
+  ],
+  "nose_pnt": [0, 0, 0],
+  "parameters": "relative",
+  "symmetric": false
+}

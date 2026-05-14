@@ -1,0 +1,185 @@
+{
+  "name": "Schleicher ASK-21",
+  "total_mass_kg": 525.0,
+  "wings": [
+    {
+      "segments": [
+        {
+          "root_airfoil": {
+            "airfoil": "../components/airfoils/fxs02196.dat",
+            "chord": 1500.0,
+            "dihedral_as_rotation_in_degrees": 4.0,
+            "incidence": 2.0
+          },
+          "length": 3000.0,
+          "sweep": 0,
+          "sweep_angle": 0.0,
+          "tip_airfoil": {
+            "airfoil": "../components/airfoils/fxs02196.dat",
+            "chord": 1200.0,
+            "dihedral_as_rotation_in_degrees": 0,
+            "incidence": 1.4
+          },
+          "spare_list": null,
+          "trailing_edge_device": null,
+          "number_interpolation_points": 201,
+          "tip_type": null,
+          "wing_segment_type": "root"
+        },
+        {
+          "root_airfoil": {
+            "airfoil": "../components/airfoils/fxs02196.dat",
+            "chord": 1200.0,
+            "dihedral_as_rotation_in_degrees": 0,
+            "incidence": 1.4
+          },
+          "length": 2500.0,
+          "sweep": 0,
+          "sweep_angle": 0.0,
+          "tip_airfoil": {
+            "airfoil": "../components/airfoils/fxs02196.dat",
+            "chord": 900.0,
+            "dihedral_as_rotation_in_degrees": 0,
+            "incidence": 0.8
+          },
+          "spare_list": null,
+          "trailing_edge_device": null,
+          "number_interpolation_points": 201,
+          "tip_type": null,
+          "wing_segment_type": "segment"
+        },
+        {
+          "root_airfoil": {
+            "airfoil": "../components/airfoils/fxs02196.dat",
+            "chord": 900.0,
+            "dihedral_as_rotation_in_degrees": 0,
+            "incidence": 0.8
+          },
+          "length": 3000.0,
+          "sweep": 0,
+          "sweep_angle": 0.0,
+          "tip_airfoil": {
+            "airfoil": "../components/airfoils/fx60126.dat",
+            "chord": 500.0,
+            "dihedral_as_rotation_in_degrees": 0,
+            "incidence": 0.0
+          },
+          "spare_list": null,
+          "trailing_edge_device": {
+            "name": "aileron",
+            "rel_chord_root": 0.22,
+            "rel_chord_tip": 0.32,
+            "hinge_spacing": null,
+            "side_spacing_root": null,
+            "side_spacing_tip": null,
+            "_servo": null,
+            "servo_placement": "top",
+            "rel_chord_servo_position": null,
+            "rel_length_servo_position": null,
+            "positive_deflection_deg": 20,
+            "negative_deflection_deg": 20,
+            "trailing_edge_offset_factor": 1.0,
+            "hinge_type": "top",
+            "symmetric": false
+          },
+          "number_interpolation_points": 201,
+          "tip_type": "flat",
+          "wing_segment_type": "tip"
+        }
+      ],
+      "nose_pnt": [2700, 0, 0],
+      "parameters": "relative",
+      "symmetric": true
+    },
+    {
+      "segments": [
+        {
+          "root_airfoil": {
+            "airfoil": "../components/airfoils/naca0010.dat",
+            "chord": 700.0,
+            "dihedral_as_rotation_in_degrees": 0,
+            "incidence": 0
+          },
+          "length": 1550.0,
+          "sweep": 80,
+          "sweep_angle": 2.95,
+          "tip_airfoil": {
+            "airfoil": "../components/airfoils/naca0010.dat",
+            "chord": 540.0,
+            "dihedral_as_rotation_in_degrees": 0,
+            "incidence": 0
+          },
+          "spare_list": null,
+          "trailing_edge_device": {
+            "name": "elevator",
+            "rel_chord_root": 0.30,
+            "rel_chord_tip": 0.30,
+            "hinge_spacing": null,
+            "side_spacing_root": null,
+            "side_spacing_tip": null,
+            "_servo": null,
+            "servo_placement": "top",
+            "rel_chord_servo_position": null,
+            "rel_length_servo_position": null,
+            "positive_deflection_deg": 25,
+            "negative_deflection_deg": 25,
+            "trailing_edge_offset_factor": 1.0,
+            "hinge_type": "top",
+            "symmetric": true
+          },
+          "number_interpolation_points": 201,
+          "tip_type": "flat",
+          "wing_segment_type": "tip"
+        }
+      ],
+      "nose_pnt": [7700, 0, 1370],
+      "parameters": "relative",
+      "symmetric": true
+    },
+    {
+      "segments": [
+        {
+          "root_airfoil": {
+            "airfoil": "../components/airfoils/fx71l150.dat",
+            "chord": 1170.0,
+            "dihedral_as_rotation_in_degrees": 0,
+            "incidence": 0
+          },
+          "length": 1370.0,
+          "sweep": 200,
+          "sweep_angle": 8.30,
+          "tip_airfoil": {
+            "airfoil": "../components/airfoils/fx71l150.dat",
+            "chord": 800.0,
+            "dihedral_as_rotation_in_degrees": 0,
+            "incidence": 0
+          },
+          "spare_list": null,
+          "trailing_edge_device": {
+            "name": "rudder",
+            "rel_chord_root": 0.33,
+            "rel_chord_tip": 0.33,
+            "hinge_spacing": null,
+            "side_spacing_root": null,
+            "side_spacing_tip": null,
+            "_servo": null,
+            "servo_placement": "top",
+            "rel_chord_servo_position": null,
+            "rel_length_servo_position": null,
+            "positive_deflection_deg": 30,
+            "negative_deflection_deg": 30,
+            "trailing_edge_offset_factor": 1.0,
+            "hinge_type": "top",
+            "symmetric": false
+          },
+          "number_interpolation_points": 201,
+          "tip_type": "flat",
+          "wing_segment_type": "tip"
+        }
+      ],
+      "nose_pnt": [6800, 0, 0],
+      "parameters": "relative",
+      "symmetric": false
+    }
+  ]
+}
