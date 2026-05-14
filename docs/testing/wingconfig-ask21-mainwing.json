@@ -63,8 +63,8 @@
       "spare_list": null,
       "trailing_edge_device": {
         "name": "aileron",
-        "rel_chord_root": 0.22,
-        "rel_chord_tip": 0.32,
+        "rel_chord_root": 0.78,
+        "rel_chord_tip": 0.68,
         "hinge_spacing": null,
         "side_spacing_root": null,
         "side_spacing_tip": null,
@@ -83,7 +83,11 @@
       "wing_segment_type": "tip"
     }
   ],
-  "nose_pnt": [0, 0, 0],
+  "nose_pnt": [
+    0,
+    0,
+    0
+  ],
   "parameters": "relative",
   "symmetric": true
 }

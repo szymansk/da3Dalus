@@ -67,8 +67,8 @@
           "spare_list": null,
           "trailing_edge_device": {
             "name": "aileron",
-            "rel_chord_root": 0.22,
-            "rel_chord_tip": 0.32,
+            "rel_chord_root": 0.78,
+            "rel_chord_tip": 0.68,
             "hinge_spacing": null,
             "side_spacing_root": null,
             "side_spacing_tip": null,
@@ -87,7 +87,11 @@
           "wing_segment_type": "tip"
         }
       ],
-      "nose_pnt": [2700, 0, 0],
+      "nose_pnt": [
+        2700,
+        0,
+        0
+      ],
       "parameters": "relative",
       "symmetric": true
     },
@@ -112,8 +116,8 @@
           "spare_list": null,
           "trailing_edge_device": {
             "name": "elevator",
-            "rel_chord_root": 0.30,
-            "rel_chord_tip": 0.30,
+            "rel_chord_root": 0.7,
+            "rel_chord_tip": 0.7,
             "hinge_spacing": null,
             "side_spacing_root": null,
             "side_spacing_tip": null,
@@ -132,7 +136,11 @@
           "wing_segment_type": "tip"
         }
       ],
-      "nose_pnt": [7700, 0, 1370],
+      "nose_pnt": [
+        7000,
+        0,
+        1370
+      ],
       "parameters": "relative",
       "symmetric": true
     },
@@ -142,12 +150,12 @@
           "root_airfoil": {
             "airfoil": "../components/airfoils/fx71l150.dat",
             "chord": 1170.0,
-            "dihedral_as_rotation_in_degrees": 0,
+            "dihedral_as_rotation_in_degrees": 90,
             "incidence": 0
           },
           "length": 1370.0,
           "sweep": 200,
-          "sweep_angle": 8.30,
+          "sweep_angle": 8.3,
           "tip_airfoil": {
             "airfoil": "../components/airfoils/fx71l150.dat",
             "chord": 800.0,
@@ -157,8 +165,8 @@
           "spare_list": null,
           "trailing_edge_device": {
             "name": "rudder",
-            "rel_chord_root": 0.33,
-            "rel_chord_tip": 0.33,
+            "rel_chord_root": 0.67,
+            "rel_chord_tip": 0.67,
             "hinge_spacing": null,
             "side_spacing_root": null,
             "side_spacing_tip": null,
@@ -177,7 +185,11 @@
           "wing_segment_type": "tip"
         }
       ],
-      "nose_pnt": [6800, 0, 0],
+      "nose_pnt": [
+        6800,
+        0,
+        0
+      ],
       "parameters": "relative",
       "symmetric": false
     }

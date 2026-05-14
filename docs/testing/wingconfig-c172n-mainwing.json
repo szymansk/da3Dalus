@@ -19,19 +19,19 @@
       "spare_list": null,
       "trailing_edge_device": {
         "name": "flap",
-        "rel_chord_root": 0.30,
-        "rel_chord_tip": 0.30,
+        "rel_chord_root": 0.7,
+        "rel_chord_tip": 0.7,
         "hinge_spacing": null,
         "side_spacing_root": null,
         "side_spacing_tip": null,
         "_servo": null,
-        "servo_placement": "bottom",
+        "servo_placement": "top",
         "rel_chord_servo_position": null,
         "rel_length_servo_position": null,
         "positive_deflection_deg": 30,
         "negative_deflection_deg": 0,
         "trailing_edge_offset_factor": 1.0,
-        "hinge_type": "bottom",
+        "hinge_type": "top",
         "symmetric": true
       },
       "number_interpolation_points": 201,
@@ -57,8 +57,8 @@
       "spare_list": null,
       "trailing_edge_device": {
         "name": "aileron",
-        "rel_chord_root": 0.22,
-        "rel_chord_tip": 0.22,
+        "rel_chord_root": 0.78,
+        "rel_chord_tip": 0.78,
         "hinge_spacing": null,
         "side_spacing_root": null,
         "side_spacing_tip": null,
@@ -77,7 +77,11 @@
       "wing_segment_type": "tip"
     }
   ],
-  "nose_pnt": [0, 0, 0],
+  "nose_pnt": [
+    0,
+    0,
+    0
+  ],
   "parameters": "relative",
   "symmetric": true
 }
