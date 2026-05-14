@@ -11,6 +11,11 @@ const CONFIDENCE_STYLES: Record<
     text: "text-emerald-400",
     label: "Trimmed",
   },
+  computed: {
+    bg: "bg-sky-500/15",
+    text: "text-sky-400",
+    label: "Computed",
+  },
   estimated: {
     bg: "bg-yellow-500/15",
     text: "text-yellow-400",
@@ -24,7 +29,10 @@ const CONFIDENCE_STYLES: Record<
 };
 
 function KpiCard({ kpi }: Readonly<{ kpi: PerformanceKPI }>) {
-  const style = CONFIDENCE_STYLES[kpi.confidence];
+  // Defensive fallback: if backend adds a new confidence literal before
+  // this map is updated, surface as 'Estimated' rather than crashing
+  // the entire analysis page (gh-521).
+  const style = CONFIDENCE_STYLES[kpi.confidence] ?? CONFIDENCE_STYLES.estimated;
 
   return (
     <div className="flex flex-col gap-1.5 rounded-xl border border-border bg-card p-4">
