@@ -3,10 +3,17 @@
 Multi-step workflow (no single-endpoint upload exists):
 1. POST /aeroplanes?name=...                         -> creates empty aeroplane
 2. POST /aeroplanes/{id}/wings/{name}/from-wingconfig -> for each wing
+3. PATCH each asymmetric trailing_edge_device         -> workaround for gh-523
 
 Mass is intentionally NOT set here — /total_mass_kg is the obsolete path;
 the canonical mass source is the component tree / weight items, which a
 separate fixture (or the UI) is responsible for populating.
+
+The asymmetric TED PATCH is a workaround for gh-523: the
+/from-wingconfig endpoint silently drops trailing_edge_devices whose
+`symmetric` field is `false`. Until that is fixed in the endpoint,
+we add ailerons/rudders one-by-one via
+PATCH /wings/{name}/cross_sections/{idx}/trailing_edge_device.
 
 Run from the repo root with the backend listening on localhost:8001:
 
@@ -73,6 +80,32 @@ def ingest_aircraft(client: httpx.Client, config_path: Path, wing_names: list[st
             print(f"    ✗ wing {wing_name}: {resp.status_code} {resp.text[:400]}")
             resp.raise_for_status()
         print(f"    ✓ wing {wing_name}")
+
+        # 2b) Workaround for gh-523: PATCH asymmetric TEDs that the
+        # bulk endpoint silently dropped. The PATCH endpoint accepts a
+        # strict subset of the WingConfig TED fields — strip servo
+        # plumbing (handled via a separate endpoint).
+        PATCH_TED_FIELDS = {
+            "name", "rel_chord_root", "rel_chord_tip",
+            "hinge_spacing", "side_spacing_root", "side_spacing_tip",
+            "rel_chord_servo_position", "rel_length_servo_position",
+            "servo_placement",
+            "positive_deflection_deg", "negative_deflection_deg",
+            "trailing_edge_offset_factor", "hinge_type", "symmetric",
+        }
+        for seg_idx, seg in enumerate(wing_body["segments"]):
+            ted = seg.get("trailing_edge_device")
+            if not ted or ted.get("symmetric") is not False:
+                continue
+            patch_body = {k: v for k, v in ted.items() if k in PATCH_TED_FIELDS}
+            url = (f"/aeroplanes/{aeroplane_id}/wings/{wing_name}"
+                   f"/cross_sections/{seg_idx}/trailing_edge_device")
+            r = client.patch(url, json=patch_body)
+            if r.status_code >= 400:
+                print(f"      ✗ PATCH ted '{ted['name']}' @ xsec {seg_idx}: "
+                      f"{r.status_code} {r.text[:200]}")
+            else:
+                print(f"      ✓ PATCH ted '{ted['name']}' @ xsec {seg_idx}")
 
     # Mass deliberately not set: /total_mass_kg is obsolete; mass comes
     # from the component tree / weight items, populated elsewhere.
