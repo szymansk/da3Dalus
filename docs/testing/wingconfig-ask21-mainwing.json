@@ -76,7 +76,8 @@
         "negative_deflection_deg": 20,
         "trailing_edge_offset_factor": 1.0,
         "hinge_type": "top",
-        "symmetric": false
+        "symmetric": false,
+        "role": "aileron"
       },
       "number_interpolation_points": 201,
       "tip_type": "flat",

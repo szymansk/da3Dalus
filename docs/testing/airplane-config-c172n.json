@@ -36,7 +36,8 @@
             "negative_deflection_deg": 0,
             "trailing_edge_offset_factor": 1.0,
             "hinge_type": "top",
-            "symmetric": true
+            "symmetric": true,
+            "role": "flap"
           },
           "number_interpolation_points": 201,
           "tip_type": null,
@@ -74,7 +75,8 @@
             "negative_deflection_deg": 20,
             "trailing_edge_offset_factor": 1.0,
             "hinge_type": "top",
-            "symmetric": false
+            "symmetric": false,
+            "role": "aileron"
           },
           "number_interpolation_points": 201,
           "tip_type": "flat",
@@ -123,7 +125,8 @@
             "negative_deflection_deg": 23,
             "trailing_edge_offset_factor": 1.0,
             "hinge_type": "top",
-            "symmetric": true
+            "symmetric": true,
+            "role": "elevator"
           },
           "number_interpolation_points": 201,
           "tip_type": "flat",
@@ -172,7 +175,8 @@
             "negative_deflection_deg": 24,
             "trailing_edge_offset_factor": 1.0,
             "hinge_type": "top",
-            "symmetric": false
+            "symmetric": false,
+            "role": "rudder"
           },
           "number_interpolation_points": 201,
           "tip_type": "flat",

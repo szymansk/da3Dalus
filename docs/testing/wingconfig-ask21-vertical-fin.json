@@ -32,7 +32,8 @@
         "negative_deflection_deg": 30,
         "trailing_edge_offset_factor": 1.0,
         "hinge_type": "top",
-        "symmetric": false
+        "symmetric": false,
+        "role": "rudder"
       },
       "number_interpolation_points": 201,
       "tip_type": "flat",

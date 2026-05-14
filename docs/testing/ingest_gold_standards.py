@@ -81,12 +81,18 @@ def ingest_aircraft(client: httpx.Client, config_path: Path, wing_names: list[st
             resp.raise_for_status()
         print(f"    ✓ wing {wing_name}")
 
-        # 2b) Workaround for gh-523: PATCH asymmetric TEDs that the
-        # bulk endpoint silently dropped. The PATCH endpoint accepts a
-        # strict subset of the WingConfig TED fields — strip servo
-        # plumbing (handled via a separate endpoint).
+        # 2b) Workaround for gh-523: PATCH every TED. Two reasons:
+        # - asymmetric TEDs (`symmetric: false`) are silently dropped
+        #   by /from-wingconfig — PATCH inserts them.
+        # - symmetric TEDs are stored but the `role` field is reset to
+        #   "other", regardless of what the WingConfig JSON declares.
+        #   PATCH overwrites it with the correct enum value.
+        # The PATCH endpoint accepts a strict subset of the WingConfig
+        # TED fields — strip servo plumbing (handled via a separate
+        # endpoint).
         PATCH_TED_FIELDS = {
-            "name", "rel_chord_root", "rel_chord_tip",
+            "name", "role", "label",
+            "rel_chord_root", "rel_chord_tip",
             "hinge_spacing", "side_spacing_root", "side_spacing_tip",
             "rel_chord_servo_position", "rel_length_servo_position",
             "servo_placement",
@@ -95,7 +101,7 @@ def ingest_aircraft(client: httpx.Client, config_path: Path, wing_names: list[st
         }
         for seg_idx, seg in enumerate(wing_body["segments"]):
             ted = seg.get("trailing_edge_device")
-            if not ted or ted.get("symmetric") is not False:
+            if not ted:
                 continue
             patch_body = {k: v for k, v in ted.items() if k in PATCH_TED_FIELDS}
             url = (f"/aeroplanes/{aeroplane_id}/wings/{wing_name}"
