@@ -7,6 +7,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import {
   useFlightEnvelope,
+  isGustCriticalWarning,
+  isGustValidityWarning,
+  type AnyGustWarning,
   type FlightEnvelopeData,
 } from "@/hooks/useFlightEnvelope";
 
@@ -203,5 +206,41 @@ describe("useFlightEnvelope", () => {
     rerender({ id: null });
 
     expect(result.current.data).toBeNull();
+  });
+});
+
+describe("gust warning type guards (gh-497)", () => {
+  it("isGustCriticalWarning matches GustCriticalWarning shape", () => {
+    const critical: AnyGustWarning = {
+      velocity_mps: 50,
+      n_gust: 4.5,
+      g_limit: 3.8,
+      message: "Gust-critical: structure sized by gust loads",
+    };
+    const validity: AnyGustWarning = {
+      mu_g_value: 1.5,
+      validity_min: 3.0,
+      validity_max: 200.0,
+      message: "μ_g outside Pratt-Walker validity range",
+    };
+    expect(isGustCriticalWarning(critical)).toBe(true);
+    expect(isGustCriticalWarning(validity)).toBe(false);
+  });
+
+  it("isGustValidityWarning matches GustValidityWarning shape", () => {
+    const critical: AnyGustWarning = {
+      velocity_mps: 50,
+      n_gust: 4.5,
+      g_limit: 3.8,
+      message: "Gust-critical",
+    };
+    const validity: AnyGustWarning = {
+      mu_g_value: 250.0,
+      validity_min: 3.0,
+      validity_max: 200.0,
+      message: "μ_g > 200 (heavy)",
+    };
+    expect(isGustValidityWarning(validity)).toBe(true);
+    expect(isGustValidityWarning(critical)).toBe(false);
   });
 });
