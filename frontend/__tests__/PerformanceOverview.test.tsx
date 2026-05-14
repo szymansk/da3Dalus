@@ -50,4 +50,19 @@ describe("PerformanceOverview (gh-521)", () => {
     render(<PerformanceOverview kpis={[]} />);
     expect(screen.getByText(/No performance data available/)).toBeDefined();
   });
+
+  it("falls back to 'Estimated' badge when backend emits an unknown confidence literal", () => {
+    // Simulates future backend type drift — bypasses TS type union to test
+    // the runtime defensive fallback (?? CONFIDENCE_STYLES.estimated).
+    const future = {
+      label: "v_md",
+      display_name: "V_MD",
+      value: 12.5,
+      unit: "m/s",
+      source_op_id: null,
+      confidence: "preliminary",
+    } as unknown as PerformanceKPI;
+    render(<PerformanceOverview kpis={[future]} />);
+    expect(screen.getByText(/Estimated/)).toBeDefined();
+  });
 });
