@@ -214,9 +214,7 @@ class TestGustEnvelopeComputation:
         k_g = _compute_k_g(mu_g)
         delta_n = _compute_delta_n(rho, v_c, cl_alpha, u_gust_vc, k_g, mass_kg, s_ref_40)
 
-        assert delta_n > 2.0, (
-            f"Expected Δn > 2 for AR=20 W/S=40 sailplane, got {delta_n:.3f}"
-        )
+        assert delta_n > 2.0, f"Expected Δn > 2 for AR=20 W/S=40 sailplane, got {delta_n:.3f}"
 
     def test_gust_critical_warning_when_n_gust_exceeds_g_limit(self):
         """GustCriticalWarning emitted when 1 + Δn_gust > g_limit.
@@ -379,12 +377,22 @@ class TestClAlphaContext:
         helmbold = 2 * math.pi * ar / (ar + 2)
 
         curve_helmbold = compute_vn_curve(
-            mass_kg=5.0, cl_max=1.4, g_limit=4.0, wing_area_m2=0.5,
-            v_max_mps=25.0, b_ref_m=b_ref, cl_alpha_per_rad=helmbold,
+            mass_kg=5.0,
+            cl_max=1.4,
+            g_limit=4.0,
+            wing_area_m2=0.5,
+            v_max_mps=25.0,
+            b_ref_m=b_ref,
+            cl_alpha_per_rad=helmbold,
         )
         curve_high = compute_vn_curve(
-            mass_kg=5.0, cl_max=1.4, g_limit=4.0, wing_area_m2=0.5,
-            v_max_mps=25.0, b_ref_m=b_ref, cl_alpha_per_rad=helmbold * 1.5,
+            mass_kg=5.0,
+            cl_max=1.4,
+            g_limit=4.0,
+            wing_area_m2=0.5,
+            v_max_mps=25.0,
+            b_ref_m=b_ref,
+            cl_alpha_per_rad=helmbold * 1.5,
         )
         # Higher CL_α → larger Δn → higher load factor at first gust point
         n_helmbold = curve_helmbold.gust_lines_positive[0].load_factor
@@ -484,21 +492,35 @@ class TestGustEnvelopeSchemas:
             stall_speed_mps=8.0,
         )
         kpi = PerformanceKPI(
-            label="stall_speed", display_name="Stall Speed",
-            value=8.5, unit="m/s", source_op_id=None, confidence="estimated",
+            label="stall_speed",
+            display_name="Stall Speed",
+            value=8.5,
+            unit="m/s",
+            source_op_id=None,
+            confidence="estimated",
         )
         marker = VnMarker(
-            op_id=1, name="cruise", velocity_mps=20.0,
-            load_factor=1.0, status="TRIMMED", label="cruise",
+            op_id=1,
+            name="cruise",
+            velocity_mps=20.0,
+            load_factor=1.0,
+            status="TRIMMED",
+            label="cruise",
         )
         warning = GustCriticalWarning(
-            velocity_mps=30.0, n_gust=4.2, g_limit=3.0,
+            velocity_mps=30.0,
+            n_gust=4.2,
+            g_limit=3.0,
             message="Gust-critical: structure sized by gust loads, not maneuver loads",
         )
         envelope = FlightEnvelopeRead(
-            id=1, aeroplane_id=42, vn_curve=curve,
-            kpis=[kpi], operating_points=[marker],
-            assumptions_snapshot={"mass": 1.5}, computed_at=now,
+            id=1,
+            aeroplane_id=42,
+            vn_curve=curve,
+            kpis=[kpi],
+            operating_points=[marker],
+            assumptions_snapshot={"mass": 1.5},
+            computed_at=now,
             gust_warnings=[warning],
         )
         assert len(envelope.gust_warnings) == 1
@@ -508,7 +530,11 @@ class TestGustEnvelopeSchemas:
         """FlightEnvelopeRead.gust_warnings defaults to empty list."""
         from datetime import datetime, timezone
         from app.schemas.flight_envelope import (
-            FlightEnvelopeRead, PerformanceKPI, VnCurve, VnMarker, VnPoint,
+            FlightEnvelopeRead,
+            PerformanceKPI,
+            VnCurve,
+            VnMarker,
+            VnPoint,
         )
 
         now = datetime.now(timezone.utc)
@@ -519,16 +545,31 @@ class TestGustEnvelopeSchemas:
             stall_speed_mps=8.0,
         )
         envelope = FlightEnvelopeRead(
-            id=1, aeroplane_id=42, vn_curve=curve,
-            kpis=[PerformanceKPI(
-                label="stall_speed", display_name="Stall Speed",
-                value=8.5, unit="m/s", source_op_id=None, confidence="estimated",
-            )],
-            operating_points=[VnMarker(
-                op_id=1, name="cruise", velocity_mps=20.0,
-                load_factor=1.0, status="TRIMMED", label="cruise",
-            )],
-            assumptions_snapshot={}, computed_at=now,
+            id=1,
+            aeroplane_id=42,
+            vn_curve=curve,
+            kpis=[
+                PerformanceKPI(
+                    label="stall_speed",
+                    display_name="Stall Speed",
+                    value=8.5,
+                    unit="m/s",
+                    source_op_id=None,
+                    confidence="estimated",
+                )
+            ],
+            operating_points=[
+                VnMarker(
+                    op_id=1,
+                    name="cruise",
+                    velocity_mps=20.0,
+                    load_factor=1.0,
+                    status="TRIMMED",
+                    label="cruise",
+                )
+            ],
+            assumptions_snapshot={},
+            computed_at=now,
         )
         assert envelope.gust_warnings == []
 
@@ -740,21 +781,31 @@ class TestBuildGustLinesEdgeCases:
         assert pos[0].load_factor > 1.0  # positive gust always > 1
         assert neg[0].load_factor < 1.0  # negative gust always < 1
 
-    def test_gust_lines_no_warning_when_n_below_limit(self):
-        """No GustCriticalWarning when gust loads stay within g_limit."""
+    def test_gust_lines_no_critical_warning_when_n_below_limit(self):
+        """No GustCriticalWarning when gust loads stay within g_limit.
+
+        Note: a GustValidityWarning may be present when μ_g > 200 (very heavy
+        aircraft with low-AR wing). This test specifically checks that no
+        GustCriticalWarning (structural over-load) fires — not that the list
+        is empty (gh-497: validity warnings may now also appear).
+        """
+        from app.schemas.flight_envelope import GustCriticalWarning
         from app.services.flight_envelope_service import _build_gust_lines
 
-        # Very heavy aircraft (large wing loading) → small Δn
+        # Very heavy aircraft (large wing loading) → small Δn → no critical warning
         _, _, warnings = _build_gust_lines(
-            mass_kg=1000.0,  # very heavy
+            mass_kg=1000.0,  # very heavy → μ_g >> 200 → GustValidityWarning expected
             wing_area_m2=0.5,
             b_ref_m=3.0,
-            cl_alpha=0.5,   # small cl_alpha → small Δn
-            g_limit=100.0,  # very large limit → no warning
+            cl_alpha=0.5,  # small cl_alpha → small Δn
+            g_limit=100.0,  # very large limit → no critical warning
             v_stall=10.0,
             v_dive=40.0,
         )
-        assert warnings == []
+        critical_warnings = [w for w in warnings if isinstance(w, GustCriticalWarning)]
+        assert critical_warnings == [], (
+            "No GustCriticalWarning expected when gust loads stay within g_limit"
+        )
 
     def test_gust_above_vc_uses_interpolated_u(self):
         """At V > V_C, gust speed is interpolated between U_vc and U_vd."""
@@ -789,6 +840,7 @@ class TestBuildGustLinesEdgeCases:
 
     def test_negative_gust_warning_emitted(self):
         """GustCriticalWarning for negative gust when n_neg < -0.4 * g_limit."""
+        from app.schemas.flight_envelope import GustCriticalWarning
         from app.services.flight_envelope_service import _build_gust_lines
 
         # Light, high-AR aircraft: large Δn → n_neg = 1 - Δn very negative
@@ -802,17 +854,16 @@ class TestBuildGustLinesEdgeCases:
             wing_area_m2=s,
             b_ref_m=b,
             cl_alpha=6.0,
-            g_limit=1.5,   # small g_limit → easy to trigger negative warning
+            g_limit=1.5,  # small g_limit → easy to trigger negative warning
             v_stall=5.0,
             v_dive=25.0,
         )
-        # GustCriticalWarning has n_gust field (not load_factor)
-        # For very light aircraft with small g_limit, negative warning should fire
-        # (1 - large_Δn could breach -0.4 * 1.5 = -0.6)
-        # We just check the code path runs without error, warnings may or may not fire
+        # warnings may contain GustValidityWarning (light aircraft → μ_g < 3)
+        # and possibly GustCriticalWarning. Filter to only critical warnings.
         assert isinstance(warnings, list)
-        # If any negative warning fired, its n_gust should be negative
-        neg_warnings = [w for w in warnings if w.n_gust < 0]
+        critical_warnings = [w for w in warnings if isinstance(w, GustCriticalWarning)]
+        # If any negative critical warning fired, its n_gust should be negative
+        neg_warnings = [w for w in critical_warnings if w.n_gust < 0]
         assert all(w.n_gust < 0 for w in neg_warnings)
 
 
@@ -877,9 +928,7 @@ class TestExtractClAlphaFromLinearSweep:
         alphas_rad = np.deg2rad(alphas_deg)
         cl_true = 5.7 * alphas_rad  # perfect linear, CL_α = 5.7 rad⁻¹
 
-        results_iter = iter(
-            [SimpleNamespace(CL=cl, CD=0.03) for cl in cl_true]
-        )
+        results_iter = iter([SimpleNamespace(CL=cl, CD=0.03) for cl in cl_true])
 
         def fake_run(self_):
             return next(results_iter)
@@ -1108,9 +1157,7 @@ class TestFlightEnvelopeDBHelpers:
         op_none = SimpleNamespace(id=3, velocity=None, name=None, status=None)
 
         db = MagicMock()
-        db.query.return_value.filter.return_value.all.return_value = [
-            op_zero, op_valid, op_none
-        ]
+        db.query.return_value.filter.return_value.all.return_value = [op_zero, op_valid, op_none]
         aeroplane = SimpleNamespace(id=42)
 
         markers = _load_operating_point_markers(db, aeroplane, mass_kg=5.0, wing_area_m2=0.5)
@@ -1136,3 +1183,287 @@ class TestFlightEnvelopeDBHelpers:
         assert len(markers) == 1
         assert markers[0].name == "unnamed"
         assert markers[0].status == "NOT_TRIMMED"
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# gh-497: GustValidityWarning — μ_g outside Pratt-Walker validity range
+# ────────────────────────────────────────────────────────────────────────────
+
+
+class TestGustValidityWarning:
+    """gh-497: Structured GustValidityWarning in API response when μ_g ∉ [3, 200].
+
+    Acceptance criteria:
+    - New schema GustValidityWarning with mu_g_value, validity_min, validity_max, message
+    - compute_vn_curve includes GustValidityWarning in gust_warnings when μ_g < 3
+    - compute_vn_curve includes GustValidityWarning in gust_warnings when μ_g > 200
+    - compute_vn_curve does NOT include GustValidityWarning when μ_g in [3, 200]
+    - message contains 'outside Pratt-Walker validity range [3, 200]'
+    - FlightEnvelopeRead.gust_warnings includes GustValidityWarning (via vn_curve)
+    """
+
+    def test_gust_validity_warning_schema_exists(self):
+        """GustValidityWarning schema is importable from flight_envelope schemas."""
+        from app.schemas.flight_envelope import GustValidityWarning
+
+        w = GustValidityWarning(
+            mu_g_value=1.5,
+            validity_min=3.0,
+            validity_max=200.0,
+            message="μ_g=1.50 is outside Pratt-Walker validity range [3, 200]",
+        )
+        assert w.mu_g_value == 1.5
+        assert w.validity_min == 3.0
+        assert w.validity_max == 200.0
+        assert "outside Pratt-Walker validity range [3, 200]" in w.message
+
+    def test_gust_validity_warning_defaults(self):
+        """GustValidityWarning validity_min defaults to 3.0, validity_max to 200.0."""
+        from app.schemas.flight_envelope import GustValidityWarning
+
+        w = GustValidityWarning(
+            mu_g_value=1.5,
+            message="test",
+        )
+        assert w.validity_min == 3.0
+        assert w.validity_max == 200.0
+
+    def test_low_ws_rc_aircraft_emits_validity_warning_mu_g_below_3(self):
+        """RC model with W/S=30 N/m², c̄=0.15 m, CL_α=4.6 → μ_g≈1.5 → GustValidityWarning.
+
+        Regression test: the exact target group described in gh-497 — small RC/UAV
+        with low wing loading now gets explicit feedback in the API response.
+
+        μ_g = 2·(W/S) / (ρ·c̄·CL_α·g)
+            = 2·30 / (1.225 · 0.15 · 4.6 · 9.81) ≈ 7.15
+
+        Wait — that may be > 3. Let's use a realistic RC with even lower W/S:
+        W/S = 12 N/m², c̄ = 0.2 m, CL_α = 4.6 →
+        μ_g = 2·12 / (1.225 · 0.2 · 4.6 · 9.81) ≈ 2.17 < 3 ✓
+        """
+        import math
+
+        from app.services.flight_envelope_service import _compute_mu_g
+
+        # Verify the fixture has μ_g < 3
+        rho = 1.225
+        wing_loading = 12.0  # N/m² (very light RC model)
+        c_mgc = 0.2  # m
+        cl_alpha = 4.6  # rad⁻¹
+        g = 9.81
+        mass_kg = wing_loading / g * 0.25  # S=0.25 m² → W/S=12 N/m²
+        s_ref = 0.25
+
+        mu_g = _compute_mu_g(mass_kg, s_ref, c_mgc, cl_alpha, rho, g)
+        assert mu_g < 3.0, f"Fixture setup error: μ_g={mu_g:.3f} should be < 3"
+
+    def test_vn_curve_gust_warnings_includes_validity_warning_when_mu_g_below_3(self):
+        """compute_vn_curve adds GustValidityWarning to gust_warnings when μ_g < 3.
+
+        Tiny RC glider fixture:
+          mass=0.31 kg, S=0.25 m², b=0.5 m → c̄=0.5 m → AR=1 (use b=1.25 to get AR=6.25)
+          Actually: b=0.8m, S=0.25 m² → c̄=S/b=0.3125, AR=b²/S=2.56
+          μ_g = 2·(0.31·9.81/0.25) / (1.225 · 0.3125 · cl_alpha · 9.81)
+          with cl_alpha=4.0: μ_g ≈ 2·12.17 / (1.225·0.3125·4.0·9.81) ≈ 24.34/14.97 ≈ 1.63 < 3 ✓
+        """
+        import math
+
+        from app.schemas.flight_envelope import GustValidityWarning
+        from app.services.flight_envelope_service import _compute_mu_g, compute_vn_curve
+
+        # Tiny RC glider — verified to produce μ_g < 3
+        mass_kg = 0.31
+        s_ref = 0.25
+        b_ref = 0.8
+        cl_alpha = 4.0
+
+        c_mgc = s_ref / b_ref
+        mu_g = _compute_mu_g(mass_kg, s_ref, c_mgc, cl_alpha)
+        assert mu_g < 3.0, f"Fixture: μ_g={mu_g:.3f} must be < 3 to trigger warning"
+
+        curve = compute_vn_curve(
+            mass_kg=mass_kg,
+            cl_max=1.2,
+            g_limit=3.0,
+            wing_area_m2=s_ref,
+            v_max_mps=15.0,
+            b_ref_m=b_ref,
+            cl_alpha_per_rad=cl_alpha,
+        )
+
+        validity_warnings = [w for w in curve.gust_warnings if isinstance(w, GustValidityWarning)]
+        assert len(validity_warnings) >= 1, (
+            f"Expected GustValidityWarning in gust_warnings (μ_g={mu_g:.3f}), "
+            f"got: {curve.gust_warnings}"
+        )
+        vw = validity_warnings[0]
+        assert vw.mu_g_value == pytest.approx(mu_g, rel=1e-4)
+        assert "outside Pratt-Walker validity range [3, 200]" in vw.message
+
+    def test_vn_curve_gust_warnings_no_validity_warning_when_mu_g_in_range(self):
+        """compute_vn_curve does NOT emit GustValidityWarning when μ_g ∈ [3, 200].
+
+        Typical glider fixture: mass=5 kg, S=0.5 m², b=2.5 m → μ_g ≈ 30 (in range).
+        """
+        import math
+
+        from app.schemas.flight_envelope import GustValidityWarning
+        from app.services.flight_envelope_service import _compute_mu_g, compute_vn_curve
+
+        # Verify in-range
+        mass_kg = 5.0
+        s_ref = 0.5
+        b_ref = 2.5
+        cl_alpha = 5.5
+
+        c_mgc = s_ref / b_ref
+        mu_g = _compute_mu_g(mass_kg, s_ref, c_mgc, cl_alpha)
+        assert 3.0 <= mu_g <= 200.0, f"Fixture: μ_g={mu_g:.3f} should be in [3, 200]"
+
+        curve = compute_vn_curve(
+            mass_kg=mass_kg,
+            cl_max=1.4,
+            g_limit=4.0,
+            wing_area_m2=s_ref,
+            v_max_mps=25.0,
+            b_ref_m=b_ref,
+            cl_alpha_per_rad=cl_alpha,
+        )
+
+        validity_warnings = [w for w in curve.gust_warnings if isinstance(w, GustValidityWarning)]
+        assert len(validity_warnings) == 0, (
+            f"Expected NO GustValidityWarning (μ_g={mu_g:.3f} in range), got: {validity_warnings}"
+        )
+
+    def test_vn_curve_gust_warnings_includes_validity_warning_when_mu_g_above_200(self):
+        """compute_vn_curve adds GustValidityWarning when μ_g > 200.
+
+        Very heavy aircraft with very small chord:
+        mass=50000 kg, S=2.0 m², b=40.0 m → c̄=0.05 m
+        μ_g = 2·(50000·9.81/2.0) / (1.225·0.05·5.5·9.81) ≈ huge > 200 ✓
+        """
+        import math
+
+        from app.schemas.flight_envelope import GustValidityWarning
+        from app.services.flight_envelope_service import _compute_mu_g, compute_vn_curve
+
+        mass_kg = 50000.0
+        s_ref = 2.0
+        b_ref = 40.0
+        cl_alpha = 5.5
+
+        c_mgc = s_ref / b_ref
+        mu_g = _compute_mu_g(mass_kg, s_ref, c_mgc, cl_alpha)
+        assert mu_g > 200.0, f"Fixture: μ_g={mu_g:.1f} must be > 200 to trigger warning"
+
+        curve = compute_vn_curve(
+            mass_kg=mass_kg,
+            cl_max=1.5,
+            g_limit=2.5,
+            wing_area_m2=s_ref,
+            v_max_mps=100.0,
+            b_ref_m=b_ref,
+            cl_alpha_per_rad=cl_alpha,
+        )
+
+        validity_warnings = [w for w in curve.gust_warnings if isinstance(w, GustValidityWarning)]
+        assert len(validity_warnings) >= 1, (
+            f"Expected GustValidityWarning in gust_warnings (μ_g={mu_g:.1f}), "
+            f"got: {curve.gust_warnings}"
+        )
+        vw = validity_warnings[0]
+        assert vw.mu_g_value == pytest.approx(mu_g, rel=1e-4)
+        assert "outside Pratt-Walker validity range [3, 200]" in vw.message
+
+    def test_validity_warning_message_contains_actual_mu_g_value(self):
+        """GustValidityWarning.message includes the actual μ_g value."""
+        from app.schemas.flight_envelope import GustValidityWarning
+        from app.services.flight_envelope_service import _compute_mu_g, compute_vn_curve
+
+        # Tiny RC glider fixture (μ_g < 3)
+        mass_kg = 0.31
+        s_ref = 0.25
+        b_ref = 0.8
+        cl_alpha = 4.0
+
+        curve = compute_vn_curve(
+            mass_kg=mass_kg,
+            cl_max=1.2,
+            g_limit=3.0,
+            wing_area_m2=s_ref,
+            v_max_mps=15.0,
+            b_ref_m=b_ref,
+            cl_alpha_per_rad=cl_alpha,
+        )
+
+        validity_warnings = [w for w in curve.gust_warnings if isinstance(w, GustValidityWarning)]
+        assert len(validity_warnings) >= 1
+        # Message should contain the μ_g value (e.g. "1.63" or "1.6")
+        vw = validity_warnings[0]
+        mu_g_str = f"{vw.mu_g_value:.2f}"
+        assert mu_g_str in vw.message, f"Expected μ_g value '{mu_g_str}' in message: '{vw.message}'"
+
+    def test_flight_envelope_read_gust_warnings_includes_validity_warning(self):
+        """FlightEnvelopeRead.gust_warnings accepts GustValidityWarning (union type).
+
+        The top-level gust_warnings list must be able to hold GustValidityWarning
+        objects (not just GustCriticalWarning), enabling the frontend to detect
+        and render validity warnings from FlightEnvelopeRead.gust_warnings.
+        """
+        from datetime import datetime, timezone
+
+        from app.schemas.flight_envelope import (
+            FlightEnvelopeRead,
+            GustValidityWarning,
+            PerformanceKPI,
+            VnCurve,
+            VnMarker,
+            VnPoint,
+        )
+
+        now = datetime.now(timezone.utc)
+        vw = GustValidityWarning(
+            mu_g_value=1.63,
+            validity_min=3.0,
+            validity_max=200.0,
+            message="μ_g=1.63 is outside Pratt-Walker validity range [3, 200]. "
+            "Gust loads may be optimistic for light/small aircraft.",
+        )
+        curve = VnCurve(
+            positive=[VnPoint(velocity_mps=10.0, load_factor=1.0)],
+            negative=[VnPoint(velocity_mps=10.0, load_factor=-0.5)],
+            dive_speed_mps=40.0,
+            stall_speed_mps=8.0,
+            gust_warnings=[vw],
+        )
+        envelope = FlightEnvelopeRead(
+            id=1,
+            aeroplane_id=42,
+            vn_curve=curve,
+            kpis=[
+                PerformanceKPI(
+                    label="stall_speed",
+                    display_name="Stall Speed",
+                    value=8.5,
+                    unit="m/s",
+                    source_op_id=None,
+                    confidence="estimated",
+                )
+            ],
+            operating_points=[
+                VnMarker(
+                    op_id=1,
+                    name="cruise",
+                    velocity_mps=20.0,
+                    load_factor=1.0,
+                    status="TRIMMED",
+                    label="cruise",
+                )
+            ],
+            assumptions_snapshot={"mass": 0.31},
+            computed_at=now,
+            gust_warnings=[vw],
+        )
+        assert len(envelope.gust_warnings) == 1
+        assert isinstance(envelope.gust_warnings[0], GustValidityWarning)
+        assert envelope.gust_warnings[0].mu_g_value == pytest.approx(1.63)

@@ -1,7 +1,13 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import type { GustCriticalWarning, VnCurve, VnMarker } from "@/hooks/useFlightEnvelope";
+import {
+  isGustCriticalWarning,
+  isGustValidityWarning,
+  type AnyGustWarning,
+  type VnCurve,
+  type VnMarker,
+} from "@/hooks/useFlightEnvelope";
 
 const STATUS_COLORS: Record<string, string> = {
   TRIMMED: "#30A46C",
@@ -12,7 +18,7 @@ const STATUS_COLORS: Record<string, string> = {
 interface Props {
   readonly vnCurve: VnCurve;
   readonly operatingPoints: VnMarker[];
-  readonly gustWarnings?: GustCriticalWarning[];
+  readonly gustWarnings?: AnyGustWarning[];
 }
 
 export function VnDiagram({ vnCurve, operatingPoints, gustWarnings }: Props) {
@@ -228,10 +234,12 @@ export function VnDiagram({ vnCurve, operatingPoints, gustWarnings }: Props) {
   }
 
   const warnings = gustWarnings ?? vnCurve.gust_warnings ?? [];
+  const criticalWarnings = warnings.filter(isGustCriticalWarning);
+  const validityWarnings = warnings.filter(isGustValidityWarning);
 
   return (
     <div className="flex flex-1 flex-col gap-2 overflow-hidden bg-card-muted">
-      {warnings.length > 0 && (
+      {criticalWarnings.length > 0 && (
         <div
           role="alert"
           aria-live="polite"
@@ -243,6 +251,20 @@ export function VnDiagram({ vnCurve, operatingPoints, gustWarnings }: Props) {
           <p className="mt-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-sky-400/70">
             Böen-Hülle überschreitet Manöver-g-Limit — Böenlasten maßgebend
             (CS-VLA.333 / FAR-25.341)
+          </p>
+        </div>
+      )}
+      {validityWarnings.length > 0 && (
+        <div
+          role="alert"
+          aria-live="polite"
+          className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2"
+        >
+          <p className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-medium text-amber-300">
+            Pratt-Walker validity: gust loads may be optimistic
+          </p>
+          <p className="mt-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-amber-400/70">
+            {validityWarnings[0].message}
           </p>
         </div>
       )}

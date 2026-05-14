@@ -17,6 +17,31 @@ export interface GustCriticalWarning {
   message: string;
 }
 
+/** Warning emitted when μ_g is outside the Pratt-Walker validity range [3, 200] (gh-497). */
+export interface GustValidityWarning {
+  mu_g_value: number;
+  validity_min: number;
+  validity_max: number;
+  message: string;
+}
+
+/** Discriminated union of all gust warning types */
+export type AnyGustWarning = GustCriticalWarning | GustValidityWarning;
+
+/** Type guard: check if a warning is a GustValidityWarning */
+export function isGustValidityWarning(
+  w: AnyGustWarning,
+): w is GustValidityWarning {
+  return "mu_g_value" in w;
+}
+
+/** Type guard: check if a warning is a GustCriticalWarning */
+export function isGustCriticalWarning(
+  w: AnyGustWarning,
+): w is GustCriticalWarning {
+  return "velocity_mps" in w && "n_gust" in w;
+}
+
 export interface VnCurve {
   positive: VnPoint[];
   negative: VnPoint[];
@@ -26,8 +51,8 @@ export interface VnCurve {
   gust_lines_positive?: VnPoint[];
   /** Negative gust load-factor line (1 − Δn). Optional: matches backend's default_factory=list */
   gust_lines_negative?: VnPoint[];
-  /** Structural warnings when gust loads exceed maneuver g-limit. Optional: matches backend's default_factory=list */
-  gust_warnings?: GustCriticalWarning[];
+  /** Gust warnings: GustCriticalWarning and/or GustValidityWarning (gh-487, gh-497). Optional: matches backend's default_factory=list */
+  gust_warnings?: AnyGustWarning[];
 }
 
 export interface PerformanceKPI {
@@ -56,8 +81,8 @@ export interface FlightEnvelopeData {
   operating_points: VnMarker[];
   assumptions_snapshot: Record<string, number>;
   computed_at: string;
-  /** Top-level gust-critical warnings (mirrors vn_curve.gust_warnings) */
-  gust_warnings: GustCriticalWarning[];
+  /** Top-level gust warnings (mirrors vn_curve.gust_warnings): includes GustCriticalWarning and/or GustValidityWarning */
+  gust_warnings: AnyGustWarning[];
 }
 
 export interface UseFlightEnvelopeReturn {
