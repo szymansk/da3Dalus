@@ -579,3 +579,117 @@ def test_opti_success_keeps_trim_method_opti_and_target_velocity():
     assert point.trim_method == "opti"
     assert point.velocity == pytest.approx(22.0)
     assert point.alpha_rad == pytest.approx(_m.radians(3.5))
+
+
+# ============================================================================
+# gh-527 / epic gh-525 finding C2 — flap deflection bounded by TED limits
+# ============================================================================
+
+
+def test_clip_flap_to_ted_limit_clips_excessive_deflection():
+    """gh-527: when a target's flap_deflection_deg exceeds the TED's
+    positive_deflection_deg, the OPG clips it to the limit before the
+    trim solver sees the value."""
+    from app.services.operating_point_generator_service import _clip_flap_to_ted_limit
+
+    target = {
+        "name": "approach_landing",
+        "config": "landing",
+        "flap_deflection_deg": 30.0,
+    }
+    # TED only goes to 20°
+    deflection_limits = {"[flap]Flap": (20.0, 20.0)}
+    clipped = _clip_flap_to_ted_limit(target, deflection_limits)
+    assert clipped["flap_deflection_deg"] == 20.0
+    assert "FLAP_DEFLECTION_CLIPPED" in clipped.get("warnings", [])
+
+
+def test_clip_flap_within_limit_is_unchanged():
+    """A 15° target on a 25°-rated flap is passed through unchanged with
+    no clip warning."""
+    from app.services.operating_point_generator_service import _clip_flap_to_ted_limit
+
+    target = {
+        "name": "takeoff_climb",
+        "config": "takeoff",
+        "flap_deflection_deg": 15.0,
+    }
+    deflection_limits = {"[flap]Flap": (25.0, 25.0)}
+    clipped = _clip_flap_to_ted_limit(target, deflection_limits)
+    assert clipped["flap_deflection_deg"] == 15.0
+    assert "FLAP_DEFLECTION_CLIPPED" not in clipped.get("warnings", [])
+
+
+def test_clip_flap_no_target_deflection_is_a_noop():
+    """Targets without flap_deflection_deg (clean configs) pass through."""
+    from app.services.operating_point_generator_service import _clip_flap_to_ted_limit
+
+    target = {"name": "cruise", "config": "clean"}
+    deflection_limits = {"[flap]Flap": (25.0, 25.0)}
+    clipped = _clip_flap_to_ted_limit(target, deflection_limits)
+    assert "flap_deflection_deg" not in clipped
+
+
+def test_clip_flap_no_flap_in_limits_is_a_noop():
+    """Aircraft without a flap-role TED → no clipping, no warning."""
+    from app.services.operating_point_generator_service import _clip_flap_to_ted_limit
+
+    target = {
+        "name": "approach_landing",
+        "config": "landing",
+        "flap_deflection_deg": 30.0,
+    }
+    deflection_limits = {"[elevator]Elevator": (25.0, 25.0)}
+    clipped = _clip_flap_to_ted_limit(target, deflection_limits)
+    # No flap geometry → leave the target alone (no spurious clip)
+    assert clipped["flap_deflection_deg"] == 30.0
+    assert "FLAP_DEFLECTION_CLIPPED" not in clipped.get("warnings", [])
+
+
+def test_trimmed_point_controls_include_flap_deflection():
+    """gh-527: when the target has a flap_deflection_deg, the resulting
+    TrimmedPoint must include the flap in its `controls` dict so the
+    enrichment pipeline can compute its authority ratio."""
+    from app.services.operating_point_generator_service import _trim_or_estimate_point
+
+    airplane = _mock_airplane_with_controls("[elevator]Elevator", "[flap]Flap")
+
+    target = {
+        "name": "approach_landing",
+        "config": "landing",
+        "velocity": 14.0,
+        "altitude": 0.0,
+        "beta_target_deg": 0.0,
+        "n_target": 1.0,
+        "flap_deflection_deg": 22.0,
+    }
+
+    with (
+        patch(
+            "app.services.operating_point_generator_service._solve_trim_candidate_with_opti",
+            return_value={
+                "score": 0.15,
+                "alpha_deg": 7.5,
+                "beta_deg": 0.0,
+                "controls": {"[elevator]Elevator": -3.0},
+                "metrics": {"cm": 0.001, "cl": 1.0, "cy": 0.0},
+            },
+        ),
+        patch(
+            "app.services.operating_point_generator_service._cl_target_for_velocity",
+            return_value=1.0,
+        ),
+    ):
+        point = _trim_or_estimate_point(
+            asb_airplane=airplane,
+            aircraft=SimpleNamespace(id=1, total_mass_kg=1.5),
+            target=target,
+            constraints={"max_alpha_deg": 18.0, "max_beta_deg": 12.0},
+            capabilities={"available_controls": ["[elevator]Elevator", "[flap]Flap"]},
+            effective_mass_kg=1.5,
+        )
+
+    assert "[flap]Flap" in point.controls, (
+        f"flap deflection must be in OP controls; got {list(point.controls.keys())}"
+    )
+    assert point.controls["[flap]Flap"] == pytest.approx(22.0)

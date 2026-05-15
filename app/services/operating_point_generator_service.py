@@ -45,6 +45,62 @@ YAW_ROLES = {"rudder", "ruddervator"}
 FLAP_ROLES = {"flap"}
 
 
+def _clip_flap_to_ted_limit(
+    target: dict[str, Any],
+    deflection_limits: dict[str, tuple[float, float]],
+) -> dict[str, Any]:
+    """Clip a target's ``flap_deflection_deg`` to the TED limit (gh-527).
+
+    Epic gh-525 finding C2: the OPG historically hard-coded 15° (takeoff)
+    and 30° (landing) flap deflections without checking the aircraft's
+    ``TrailingEdgeDevice.positive_deflection_deg``. AVL has no internal
+    hinge clamp and NeuralFoil silently extrapolates τ(x_h/c) past the
+    training range, so an out-of-bound target produced physically wrong
+    (over-attached) flow with no warning.
+
+    This helper returns a copy of ``target`` with ``flap_deflection_deg``
+    clipped to the first flap-role surface in ``deflection_limits``.
+    A ``"FLAP_DEFLECTION_CLIPPED"`` warning is appended when clipping
+    occurs so the OP carries an audit trail.
+    """
+    raw_flap = target.get("flap_deflection_deg")
+    if raw_flap is None:
+        return target
+
+    flap_limits: tuple[float, float] | None = None
+    for name, limits in deflection_limits.items():
+        role, _ = parse_role_tag(name)
+        if role and role in FLAP_ROLES:
+            flap_limits = limits
+            break
+    if flap_limits is None:
+        # No flap-role TED in geometry → don't manufacture a limit from
+        # thin air. The trim solver itself will silently no-op the
+        # missing surface.
+        return target
+
+    max_pos, max_neg = flap_limits
+    requested = float(raw_flap)
+    limit = max_pos if requested >= 0 else max_neg
+    clipped_value = max(-max_neg, min(requested, max_pos))
+
+    result = dict(target)
+    result["flap_deflection_deg"] = clipped_value
+    if abs(requested) > limit + 1e-6:
+        warnings = list(result.get("warnings", []))
+        if "FLAP_DEFLECTION_CLIPPED" not in warnings:
+            warnings.append("FLAP_DEFLECTION_CLIPPED")
+        result["warnings"] = warnings
+        logger.warning(
+            "Clipped flap_deflection_deg for OP '%s' from %.1f° to %.1f° (TED limit %.1f°)",
+            target.get("name", "<unknown>"),
+            requested,
+            clipped_value,
+            limit,
+        )
+    return result
+
+
 @dataclass
 class TrimmedPoint:
     name: str
@@ -773,6 +829,19 @@ def _trim_or_estimate_point(
 
     trim_status = _apply_limit_warnings(best_alpha, best_beta, best_score, constraints, warnings)
 
+    # gh-527: surface the fixed flap deflection in the OP's controls dict
+    # so the enrichment pipeline reports its authority ratio alongside
+    # elevator / aileron / rudder.
+    flap_deflection_target = target.get("flap_deflection_deg")
+    if flap_deflection_target is not None:
+        available_controls = [
+            str(name).strip() for name in capabilities.get("available_controls", [])
+        ]
+        flap_name = _pick_control_name(available_controls, roles=FLAP_ROLES)
+        if flap_name is not None and flap_name not in best_controls:
+            best_controls = dict(best_controls)
+            best_controls[flap_name] = float(flap_deflection_target)
+
     return TrimmedPoint(
         name=target["name"],
         description=(
@@ -886,6 +955,11 @@ def generate_default_set_for_aircraft(
 
         plane_schema = aeroplane_model_to_aeroplane_schema_async(aircraft)
         asb_airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
+        # gh-527: clip per-target flap deflection to the TED mechanical
+        # limit BEFORE the trim solver sees the value. Out-of-bound flap
+        # angles produce non-physical AVL / NeuralFoil results otherwise.
+        _flap_limits_for_clip = build_deflection_limits_from_schema(plane_schema)
+        targets = [_clip_flap_to_ted_limit(t, _flap_limits_for_clip) for t in targets]
         # Use the design CG as the moment-reference point for trim, so
         # Cm=0 means "balanced about the user's design CG", not about
         # the origin. Mirrors what stability_summary already does.
