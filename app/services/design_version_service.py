@@ -12,6 +12,7 @@ from app.models.aeroplanemodel import (
     DesignVersionModel,
     WeightItemModel,
 )
+from app.models.mission_objective import MissionObjectiveModel
 from app.schemas.design_version import (
     DesignVersionCreate,
     DesignVersionDiff,
@@ -74,19 +75,30 @@ def _serialize_fuselage(fuselage) -> dict[str, Any]:
     return result
 
 
-def _serialize_mission_objective(obj: Any | None) -> dict[str, Any] | None:
+def _serialize_mission_objective(
+    obj: MissionObjectiveModel | None,
+) -> dict[str, Any] | None:
     """Serialize the singular MissionObjectiveModel for a design-version snapshot.
 
     Returns ``None`` when no objective has been persisted for the aeroplane.
-    The full schema-aware serialization is added once the new model lands
-    (see Task 1.3 of the Mission Tab redesign plan).
+    Maps to the new schema (gh-546): the 7-axis performance targets plus
+    the field-performance inputs.
     """
     if obj is None:
         return None
     return {
-        col.name: getattr(obj, col.name)
-        for col in obj.__table__.columns
-        if col.name not in ("id", "aeroplane_id")
+        "mission_type": obj.mission_type,
+        "target_cruise_mps": obj.target_cruise_mps,
+        "target_stall_safety": obj.target_stall_safety,
+        "target_maneuver_n": obj.target_maneuver_n,
+        "target_glide_ld": obj.target_glide_ld,
+        "target_climb_energy": obj.target_climb_energy,
+        "target_wing_loading_n_m2": obj.target_wing_loading_n_m2,
+        "target_field_length_m": obj.target_field_length_m,
+        "available_runway_m": obj.available_runway_m,
+        "runway_type": obj.runway_type,
+        "t_static_N": obj.t_static_N,
+        "takeoff_mode": obj.takeoff_mode,
     }
 
 
