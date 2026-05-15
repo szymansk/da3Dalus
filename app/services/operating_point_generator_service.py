@@ -736,10 +736,16 @@ def _trim_or_estimate_point(
         best_alpha = float(opti_solution["alpha_deg"])
         best_beta = float(opti_solution["beta_deg"])
         best_controls = dict(opti_solution["controls"])
+        # gh-528: surface solver_path on the success path so consumers
+        # can branch consistently with the fallback path.
         best_residuals = dict(opti_solution.get("metrics", {}))
+        best_residuals["solver_path"] = "opti"
         best_method = "opti"
 
-    # Fallback grid-search if opti didn't converge well enough
+    # gh-528 / epic gh-525 finding C3: grid-search fallback updates BOTH
+    # alpha AND velocity post-trim. Records solver_path in trim_residuals
+    # so downstream consumers (UI, AVL replay) can distinguish a confident
+    # Opti convergence from an estimated grid result.
     if best_score > 0.35:
         gs_score, gs_alpha, gs_beta, gs_velocity, gs_controls = _grid_search_trim(
             asb_airplane,
@@ -756,8 +762,13 @@ def _trim_or_estimate_point(
                 gs_beta,
                 gs_controls,
             )
-            best_residuals = {}
-            best_method = "grid_search"
+            best_residuals = {
+                "solver_path": "grid_fallback",
+                "final_residual": float(gs_score),
+                "grid_velocity_mps": float(gs_velocity),
+                "target_velocity_mps": float(velocity),
+            }
+            best_method = "grid_fallback"
             velocity = gs_velocity
 
     trim_status = _apply_limit_warnings(best_alpha, best_beta, best_score, constraints, warnings)
