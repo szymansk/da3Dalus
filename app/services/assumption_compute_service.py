@@ -165,8 +165,13 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         polar_takeoff = polar_clean.model_copy(update={"provenance": "no_flap_geometry"})
         polar_landing = polar_clean.model_copy(update={"provenance": "no_flap_geometry"})
     else:
+        # gh-534: takeoff keeps a moderate 15° seed (high deflection at TO
+        # hurts climb performance — Scholz §8 / Loftin). Landing uses the
+        # FULL TED limit so a real Fowler flap doesn't get capped at 30°
+        # and over-state V_s0 / V_APP (Cessna-172 POH cross-check was off
+        # by 23 % with the old 30° cap).
         delta_to = min(15.0, float(ted_max))
-        delta_ldg = min(30.0, float(ted_max))
+        delta_ldg = float(ted_max)
         # Independent try blocks per configuration (gh-526 review feedback):
         # a takeoff-sweep failure must not prevent the landing sweep from
         # running — they are physically independent passes.
