@@ -335,7 +335,8 @@ def compute_field_lengths(
     warnings: list[str] = []
 
     # --- CL_max resolution ---------------------------------------------------
-    cl_max_base: float = float(aircraft.get("cl_max", 1.4))
+    cl_max_raw = aircraft.get("cl_max")
+    cl_max_base: float = float(cl_max_raw) if cl_max_raw is not None else 1.4
     flap_type: str | None = aircraft.get("flap_type", None)
     to_factor, ldg_factor = detect_cl_max_flap_factors(flap_type)
 
@@ -490,6 +491,10 @@ def compute_field_lengths_for_aeroplane(
         objective = get_mission_objective(db, aeroplane.id)
         ctx = aeroplane.assumption_computation_context or {}
         polar_by_config = ctx.get("polar_by_config") or {}
+        cl_max_clean = (polar_by_config.get("clean") or {}).get("cl_max")
+        # Prefer top-level cl_max; fall back to the polar's clean cl_max so
+        # we accept either calling convention for the cached context.
+        cl_max = ctx.get("cl_max") if ctx.get("cl_max") is not None else cl_max_clean
         aircraft_dict: dict = {
             "mass_kg": ctx.get("mass_kg"),
             # gh-548: fall back to the AeroplaneModel column so this wrapper
@@ -499,14 +504,14 @@ def compute_field_lengths_for_aeroplane(
             "v_stall_mps": ctx.get("v_stall_mps"),
             "v_s_to_mps": ctx.get("v_s_to_mps"),
             "v_s0_mps": ctx.get("v_s0_mps"),
-            "cl_max": ctx.get("cl_max"),
+            "cl_max": cl_max,
             "cl_max_takeoff": (polar_by_config.get("takeoff") or {}).get("cl_max"),
             "cl_max_landing": (polar_by_config.get("landing") or {}).get("cl_max"),
             "flap_type": ctx.get("flap_type"),
             # Field-performance inputs from the MissionObjective.
             "available_runway_m": objective.available_runway_m,
             "runway_type": objective.runway_type,
-            "t_static_N": objective.t_static_N,
+            "t_static_N": objective.t_static_N if objective.t_static_N else None,
             "takeoff_mode": objective.takeoff_mode,
         }
         return compute_field_lengths(

@@ -221,21 +221,25 @@ def _kpi_wing_loading(
 def _compute_field_length_score(
     aeroplane: AeroplaneModel,
     target_field_length_m: float,
+    db: Session | None = None,
 ) -> tuple[float | None, float | None]:
     """Return ``(effective_field_length_m, score_0_1)`` or ``(None, None)``.
 
     The score is ``target_field / effective_field`` clipped to ``[0, 1]``:
-    a shorter effective field is better. Returns ``(None, None)`` when
-    the field-length service can't run (e.g. it isn't wired yet — Phase
-    3 adds ``compute_field_lengths_for_aeroplane``; the broad ``except``
-    keeps Phase 2 unblocked).
+    a shorter effective field is better. Returns ``(None, None)`` if the
+    field-length service can't compute (missing context, missing thrust
+    for a powered mode, etc.).
+
+    Passing ``db`` is strongly preferred — it keeps the MissionObjective
+    lookup in the same session as the caller and is required by tests
+    that use a transient SQLite database.
     """
     try:
         from app.services.field_length_service import (
             compute_field_lengths_for_aeroplane,
         )
 
-        result = compute_field_lengths_for_aeroplane(aeroplane)
+        result = compute_field_lengths_for_aeroplane(aeroplane, db=db)
         eff = max(result.get("s_to_50ft_m", 0), result.get("s_ldg_50ft_m", 0))
         if eff <= 0:
             return None, None
@@ -250,10 +254,11 @@ def _kpi_field_friendliness(
     target_field_length_m: float,
     range_min: float,
     range_max: float,
+    db: Session | None = None,
 ) -> MissionAxisKpi:
     """Field friendliness — composite take-off + landing field length score."""
     formula = "max(s_TO_50ft, s_LDG_50ft); score = target / effective"
-    eff, score = _compute_field_length_score(aeroplane, target_field_length_m)
+    eff, score = _compute_field_length_score(aeroplane, target_field_length_m, db=db)
     if eff is None or score is None:
         return _missing("field_friendliness", range_min, range_max, formula)
     return MissionAxisKpi(
@@ -345,6 +350,7 @@ def compute_mission_kpis(
             aeroplane,
             objective.target_field_length_m,
             *rng["field_friendliness"],
+            db=db,
         ),
     }
 

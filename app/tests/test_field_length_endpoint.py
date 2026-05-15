@@ -43,22 +43,46 @@ def _seed_assumption(session, aeroplane_id: int, param_name: str, value: float):
 
 
 def _make_plane_with_context(session, *, t_static_N: float | None = 1900.0) -> AeroplaneModel:
-    """Create an aeroplane with all required data for field-length computation."""
-    plane = make_aeroplane(session, name="field-len-test")
+    """Create an aeroplane with all required data for field-length computation.
 
-    # Seed design assumptions
-    _seed_assumption(session, plane.id, "mass", 1088.0)
-    _seed_assumption(session, plane.id, "cl_max", 1.5)
-    if t_static_N is not None:
-        _seed_assumption(session, plane.id, "t_static_N", t_static_N)
+    gh-548 (Phase 3): field-performance inputs (``t_static_N``, runway type,
+    takeoff mode) now live on the MissionObjective, not design_assumptions.
+    Mass and cl_max remain in the computation context.
+    """
+    from app.schemas.mission_objective import MissionObjective
+    from app.services.mission_objective_service import upsert_mission_objective
+
+    plane = make_aeroplane(session, name="field-len-test", total_mass_kg=1088.0)
 
     # Seed computation context (normally written by assumption_compute_service)
     plane.assumption_computation_context = {
+        "mass_kg": 1088.0,
+        "cl_max": 1.5,
         "v_stall_mps": 25.4,
         "s_ref_m2": 16.17,
         "v_cruise_mps": 55.0,
     }
     session.flush()
+
+    # Seed MissionObjective (gh-548 source of truth for field-performance).
+    upsert_mission_objective(
+        session,
+        plane.id,
+        MissionObjective(
+            mission_type="trainer",
+            target_cruise_mps=18.0,
+            target_stall_safety=1.8,
+            target_maneuver_n=3.0,
+            target_glide_ld=12.0,
+            target_climb_energy=22.0,
+            target_wing_loading_n_m2=412.0,
+            target_field_length_m=50.0,
+            available_runway_m=400.0,
+            runway_type="grass",
+            t_static_N=t_static_N if t_static_N is not None else 0.0,
+            takeoff_mode="runway",
+        ),
+    )
     session.commit()
     return plane
 
@@ -114,12 +138,24 @@ class TestFieldLengthEndpoint:
         assert resp.status_code == 422
 
     def test_422_when_stall_speed_missing_from_context(self, client_and_db):
+        from app.schemas.mission_objective import MissionObjective
+        from app.services.mission_objective_service import upsert_mission_objective
+
         client, SessionLocal = client_and_db
         with SessionLocal() as db:
-            plane = make_aeroplane(db, name="no-context")
-            _seed_assumption(db, plane.id, "mass", 1088.0)
-            _seed_assumption(db, plane.id, "cl_max", 1.5)
-            _seed_assumption(db, plane.id, "t_static_N", 1900.0)
+            plane = make_aeroplane(db, name="no-context", total_mass_kg=1088.0)
+            upsert_mission_objective(
+                db,
+                plane.id,
+                MissionObjective(
+                    mission_type="trainer",
+                    target_cruise_mps=18.0, target_stall_safety=1.8,
+                    target_maneuver_n=3.0, target_glide_ld=12.0,
+                    target_climb_energy=22.0, target_wing_loading_n_m2=412.0,
+                    target_field_length_m=50.0, available_runway_m=400.0,
+                    runway_type="grass", t_static_N=1900.0, takeoff_mode="runway",
+                ),
+            )
             # No assumption_computation_context
             plane.assumption_computation_context = None
             db.flush()
