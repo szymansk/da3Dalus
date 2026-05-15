@@ -31,40 +31,58 @@ NEVER use the Explore agent. Always launch  @"code-base-explorer (agent)". It is
 ## Domain Experts (Skills)
 
 For domain questions, **invoke the matching skill in a subagent**.
-Pick by topic — they don't overlap:
+The experts form a hierarchy by authority — when two skills disagree,
+the higher-authority one wins.
 
-| Skill | Use for |
-|---|---|
-| `/avl-advisor` | AVL-specific: `.avl` / `.mass` / `.run` files, Trefftz Plane, vortex spacing, eigenmodes, control surfaces, trim setup in AVL |
-| `/aerodynamics-expert` | Aerodynamics theory (Anderson): boundary layers, shocks, potential flow, compressibility, stall, drag mechanisms |
-| `/aerosandbox-expert` | AeroSandbox code & workflows: VLM/AeroBuildup setup, Opti problems, NeuralFoil, trajectory optimization |
-| `/aircraft-design-scholz` | Conceptual / preliminary aircraft design (Scholz / Sadraey): sizing (T/W vs W/S), wing parameters, performance (field length, Breguet), high-lift, fuselage layout, CS-25 / FAR-25 |
-| `/rc-aircraft-designer` | **RC / model aircraft only** (rcplanedesigner.com): wing loading, MAC, taper, tail volume, lever arms, first-flight CG, static-margin targets per mission (trainer / sport / aerobatic), landing-gear geometry, coherent-baseline design cycle. **Not for UAV.** |
+### Authority hierarchy
 
-Rule of thumb:
-- *"Why does X happen aerodynamically?"* → `aerodynamics-expert`
-- *"How big should my wing be on a 180-seat airliner?"* → `aircraft-design-scholz`
-- *"What static margin / wing loading for my 1.5 m trainer?"* → `rc-aircraft-designer`
-- *"How do I set this up in code?"* → `aerosandbox-expert`
+1. **`/aircraft-design-scholz` — lead authority.** Real academic
+   methodology: Prof. Dieter Scholz's HAW Hamburg lectures + Mohammad
+   Sadraey's *Aircraft Design: A Systems Engineering Approach* (Wiley
+   2013, 800 pp). Rigorous, citable, peer-reviewed. **Use this whenever
+   a question can be answered analytically** — sizing, performance,
+   stability, high-lift, fuselage layout, matching chart. When
+   `rc-aircraft-designer` and `scholz` disagree, **scholz wins**.
+
+2. **`/aerodynamics-expert` — physics ground truth.** Anderson's
+   *Fundamentals of Aerodynamics* 6e. Use whenever the question is
+   "why" (mechanism / theory), not "how big" (sizing). Always agrees
+   with scholz on first principles.
+
+3. **`/aerosandbox-expert`, `/avl-advisor` — implementation tools.**
+   Use for "how do I run / set up / interpret this tool".
+
+4. **`/rc-aircraft-designer` — hobbyist reference (lower authority).**
+   Curated from rcplanedesigner.com. Useful for RC-specific
+   mission-consistent ranges (trainer / sport / aerobatic) and
+   first-flight rules of thumb, but it is **hobbyist-level material**
+   — not academic. Only invoke for **RC / model aircraft** end-user
+   values. **Not for UAV.** When it contradicts scholz, defer to scholz.
+
+### Skill table
+
+| Skill | Authority | Use for |
+|---|---|---|
+| `/aircraft-design-scholz` | **lead** | Conceptual / preliminary aircraft design (Scholz / Sadraey): sizing (T/W vs W/S), wing parameters, performance (field length, Breguet), high-lift, fuselage layout, CS-25 / FAR-25. **First choice for any sizing or performance question.** |
+| `/aerodynamics-expert` | ground truth | Aerodynamics theory (Anderson): boundary layers, shocks, potential flow, compressibility, stall, drag mechanisms |
+| `/aerosandbox-expert` | tool | AeroSandbox code & workflows: VLM/AeroBuildup setup, Opti problems, NeuralFoil, trajectory optimization |
+| `/avl-advisor` | tool | AVL-specific: `.avl` / `.mass` / `.run` files, Trefftz Plane, vortex spacing, eigenmodes, control surfaces, trim setup in AVL |
+| `/rc-aircraft-designer` | hobbyist | **RC / model aircraft only** (rcplanedesigner.com): wing loading, MAC, taper, tail volume, lever arms, first-flight CG, static-margin targets per mission (trainer / sport / aerobatic), landing-gear geometry. **Not for UAV.** Defer to scholz on conflicts. |
+
+### Planned
+
+- **`/uav-designer`** — dedicated UAV / small-fixed-wing-unmanned
+  expert (payload-fraction, endurance optimization, long-range mission
+  profiles, energy-storage trades). Not built yet — until it lands,
+  UAV questions go to `aircraft-design-scholz` + `aerosandbox-expert`.
+
+### Rule of thumb
+
+- *"Size my 180-seat airliner / 50 kg UAV wing"* → `aircraft-design-scholz`
+- *"What static margin for my 1.5 m RC trainer?"* → `rc-aircraft-designer`
+- *"Why does flap deflection raise C_L_max?"* → `aerodynamics-expert`
+- *"How do I set up this Opti problem?"* → `aerosandbox-expert`
 - *"What does this `.avl` field mean?"* → `avl-advisor`
-
-`rc-aircraft-designer` and `aircraft-design-scholz` overlap conceptually
-but split by scale and audience:
-- `/rc-aircraft-designer` — **RC / model aircraft only** (rcplanedesigner.com
-  vocabulary: trainer / sport / aerobatic). Do **not** invoke for UAV /
-  small-fixed-wing-unmanned questions even though the SKILL.md
-  description loosely mentions them — the vault has no UAV-specific
-  content (no payload-fraction, no endurance optimization, no
-  long-range mission profiles).
-- `/aircraft-design-scholz` — full-scale / CS-25 / Loftin / Scholz /
-  Sadraey methodology; covers UAV sizing via its general transport-
-  aircraft machinery (Breguet range/endurance, matching chart,
-  high-lift sizing, fuselage slenderness, etc.).
-
-The da3Dalus app serves both RC hobbyists and professional RC/UAV
-designers. For RC-specific values → `rc-aircraft-designer`. For UAV
-sizing and analytical machinery → `aircraft-design-scholz` +
-`aerosandbox-expert`.
 
 ## Using Superpowers
 
