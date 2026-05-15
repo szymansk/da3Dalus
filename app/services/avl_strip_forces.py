@@ -153,6 +153,12 @@ def get_control_surface_index_map(airplane) -> dict[str, int]:
     Traverses airplane.wings -> xsecs -> control_surfaces in order,
     assigning indices based on first occurrence (same order as
     build_control_deflection_commands).
+
+    YDUPLICATE-dedup (gh-529): symmetric control surfaces (e.g. a flap or
+    aileron pair) share a single name in the ASB representation, so they
+    naturally collapse to ONE AVL d-index here. The corresponding
+    ``SgnDup`` factor is derived separately via
+    :func:`build_yduplicate_sign_map`.
     """
     seen: dict[str, int] = {}
     idx = 1
@@ -163,6 +169,28 @@ def get_control_surface_index_map(airplane) -> dict[str, int]:
                     seen[cs.name] = idx
                     idx += 1
     return seen
+
+
+def build_yduplicate_sign_map(airplane) -> dict[str, float]:
+    """Build the per-surface ``SgnDup`` factor for YDUPLICATE pairs (gh-529).
+
+    AVL convention (avl_doc §CONTROL): the ``SgnDup`` on a YDUPLICATEd
+    surface is +1 for symmetric deflection (flap, elevator) and -1 for
+    antisymmetric deflection (aileron pair). ASB encodes this via the
+    ``symmetric`` flag on each control surface, but we surface it
+    explicitly here so the snapshot can be replayed without re-walking
+    the geometry.
+    """
+    signs: dict[str, float] = {}
+    for wing in airplane.wings:
+        for xsec in wing.xsecs:
+            for cs in xsec.control_surfaces:
+                if cs.name in signs:
+                    continue
+                # symmetric=True → +1 (flap); symmetric=False → -1 (aileron)
+                symmetric = bool(getattr(cs, "symmetric", True))
+                signs[cs.name] = 1.0 if symmetric else -1.0
+    return signs
 
 
 _VARIABLE_TO_AVL: dict[str, str] = {
