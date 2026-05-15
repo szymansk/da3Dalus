@@ -538,6 +538,12 @@ class AeroplaneModel(Base):
         "FuselageModel", back_populates="aeroplane", cascade=_CASCADE_ALL_DELETE_ORPHAN
     )
     flight_profile = relationship("RCFlightProfileModel", back_populates="aircraft")
+    mission_objective = relationship(
+        "MissionObjectiveModel",
+        back_populates="aeroplane",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
     weight_items = relationship(
         "WeightItemModel",
         back_populates="aeroplane",

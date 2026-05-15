@@ -11,3 +11,5 @@ from app.models.analysismodels import OperatingPointModel, OperatingPointSetMode
 from app.models.computation_config import AircraftComputationConfigModel
 from app.models.flight_envelope_model import FlightEnvelopeModel
 from app.models.flightprofilemodel import RCFlightProfileModel
+from app.models.mission_objective import MissionObjectiveModel
+from app.models.mission_preset import MissionPresetModel
