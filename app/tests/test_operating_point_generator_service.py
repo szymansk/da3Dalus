@@ -382,3 +382,200 @@ def test_reference_speeds_cold_start_uses_cruise_over_margin():
     assert refs["vs_clean"] == pytest.approx(20.0)
     assert refs["vs_to"] == pytest.approx(20.0)
     assert refs["vs_ldg"] == pytest.approx(20.0)
+
+
+# ============================================================================
+# gh-528 / epic gh-525 finding C3 — grid-search fallback velocity update
+# ============================================================================
+
+
+def test_grid_search_returns_trim_method_grid_fallback():
+    """gh-528: when Opti fails to converge well, the trim fallback path
+    must set ``trim_method = 'grid_fallback'`` (not 'grid_search') so
+    downstream consumers can distinguish a confident Opti convergence
+    from an estimated grid result.
+    """
+    from app.services.operating_point_generator_service import _trim_or_estimate_point
+
+    airplane = _mock_airplane_with_controls("[elevator]Elevator")
+
+    target = {
+        "name": "best_angle_climb_vx",
+        "config": "clean",
+        "velocity": 18.0,
+        "altitude": 0.0,
+        "beta_target_deg": 0.0,
+        "n_target": 1.0,
+    }
+
+    # Force Opti to "fail" (return None) so we enter the grid fallback.
+    # Force the grid to return a sensible (alpha, beta, V, controls).
+    with (
+        patch(
+            "app.services.operating_point_generator_service._solve_trim_candidate_with_opti",
+            return_value=None,
+        ),
+        patch(
+            "app.services.operating_point_generator_service._grid_search_trim",
+            return_value=(0.20, 6.0, 0.0, 17.5, {"[elevator]Elevator": -2.5}),
+        ),
+        patch(
+            "app.services.operating_point_generator_service._cl_target_for_velocity",
+            return_value=0.65,
+        ),
+    ):
+        point = _trim_or_estimate_point(
+            asb_airplane=airplane,
+            aircraft=SimpleNamespace(id=1, total_mass_kg=1.5),
+            target=target,
+            constraints={"max_alpha_deg": 18.0, "max_beta_deg": 12.0},
+            capabilities={"available_controls": ["[elevator]Elevator"]},
+            effective_mass_kg=1.5,
+        )
+
+    assert point.trim_method == "grid_fallback", (
+        f"Expected trim_method='grid_fallback' on Opti failure, got '{point.trim_method}'"
+    )
+
+
+def test_grid_search_updates_velocity_from_grid_result():
+    """gh-528: after the grid fallback, the OP must record the grid's
+    chosen velocity, not the target heuristic.
+
+    Reproduces the regression: target velocity was 18.0 but the grid
+    converged at 17.5 — the OP must surface 17.5.
+    """
+    from app.services.operating_point_generator_service import _trim_or_estimate_point
+
+    airplane = _mock_airplane_with_controls("[elevator]Elevator")
+
+    target = {
+        "name": "best_angle_climb_vx",
+        "config": "clean",
+        "velocity": 18.0,  # target heuristic
+        "altitude": 0.0,
+        "beta_target_deg": 0.0,
+        "n_target": 1.0,
+    }
+
+    with (
+        patch(
+            "app.services.operating_point_generator_service._solve_trim_candidate_with_opti",
+            return_value=None,
+        ),
+        patch(
+            "app.services.operating_point_generator_service._grid_search_trim",
+            return_value=(0.20, 6.0, 0.0, 17.5, {"[elevator]Elevator": -2.5}),
+        ),
+        patch(
+            "app.services.operating_point_generator_service._cl_target_for_velocity",
+            return_value=0.65,
+        ),
+    ):
+        point = _trim_or_estimate_point(
+            asb_airplane=airplane,
+            aircraft=SimpleNamespace(id=1, total_mass_kg=1.5),
+            target=target,
+            constraints={"max_alpha_deg": 18.0, "max_beta_deg": 12.0},
+            capabilities={"available_controls": ["[elevator]Elevator"]},
+            effective_mass_kg=1.5,
+        )
+
+    assert point.velocity == pytest.approx(17.5), (
+        f"Expected velocity=17.5 from grid result, got {point.velocity}"
+    )
+
+
+def test_grid_fallback_records_solver_path_in_trim_enrichment():
+    """gh-528 AC: trim_residuals / trim_enrichment must surface
+    a ``solver_path`` field so downstream consumers can audit which
+    branch produced each OP."""
+    from app.services.operating_point_generator_service import _trim_or_estimate_point
+
+    airplane = _mock_airplane_with_controls("[elevator]Elevator")
+    target = {
+        "name": "approach_landing",
+        "config": "landing",
+        "velocity": 14.0,
+        "altitude": 0.0,
+        "beta_target_deg": 0.0,
+        "n_target": 1.0,
+        "flap_deflection_deg": 30.0,
+    }
+
+    with (
+        patch(
+            "app.services.operating_point_generator_service._solve_trim_candidate_with_opti",
+            return_value=None,
+        ),
+        patch(
+            "app.services.operating_point_generator_service._grid_search_trim",
+            return_value=(0.30, 8.0, 0.0, 13.8, {"[elevator]Elevator": -4.0}),
+        ),
+        patch(
+            "app.services.operating_point_generator_service._cl_target_for_velocity",
+            return_value=1.05,
+        ),
+    ):
+        point = _trim_or_estimate_point(
+            asb_airplane=airplane,
+            aircraft=SimpleNamespace(id=1, total_mass_kg=1.5),
+            target=target,
+            constraints={"max_alpha_deg": 18.0, "max_beta_deg": 12.0},
+            capabilities={"available_controls": ["[elevator]Elevator"]},
+            effective_mass_kg=1.5,
+        )
+
+    # trim_residuals receives the structured fallback metadata so
+    # downstream tools (UI, AVL replay) can branch on solver_path.
+    assert point.trim_residuals is not None
+    assert point.trim_residuals.get("solver_path") == "grid_fallback"
+
+
+def test_opti_success_keeps_trim_method_opti_and_target_velocity():
+    """Regression: when Opti converges, trim_method stays 'opti' and
+    the OP records the target velocity (Opti fixes V, solves for α)."""
+    from app.services.operating_point_generator_service import _trim_or_estimate_point
+
+    airplane = _mock_airplane_with_controls("[elevator]Elevator")
+
+    target = {
+        "name": "cruise",
+        "config": "clean",
+        "velocity": 22.0,
+        "altitude": 0.0,
+        "beta_target_deg": 0.0,
+        "n_target": 1.0,
+    }
+
+    # Opti succeeds with low residual → no fallback.
+    with (
+        patch(
+            "app.services.operating_point_generator_service._solve_trim_candidate_with_opti",
+            return_value={
+                "score": 0.10,
+                "alpha_deg": 3.5,
+                "beta_deg": 0.0,
+                "controls": {"[elevator]Elevator": -1.2},
+                "metrics": {"cm": 0.001, "cl": 0.42, "cy": 0.0},
+            },
+        ),
+        patch(
+            "app.services.operating_point_generator_service._cl_target_for_velocity",
+            return_value=0.42,
+        ),
+    ):
+        point = _trim_or_estimate_point(
+            asb_airplane=airplane,
+            aircraft=SimpleNamespace(id=1, total_mass_kg=1.5),
+            target=target,
+            constraints={"max_alpha_deg": 18.0, "max_beta_deg": 12.0},
+            capabilities={"available_controls": ["[elevator]Elevator"]},
+            effective_mass_kg=1.5,
+        )
+
+    import math as _m
+
+    assert point.trim_method == "opti"
+    assert point.velocity == pytest.approx(22.0)
+    assert point.alpha_rad == pytest.approx(_m.radians(3.5))
