@@ -28,16 +28,23 @@ a React frontend.
 ## Codebase Exploration
 NEVER use the Explore agent. Always launch  @"code-base-explorer (agent)". It is faster and more precise than grep-based search. 
 
-## AVL Questions
+## Domain Experts (Skills)
 
-For ANY question about AVL (Athena Vortex Lattice) — geometry files,
-input format, running simulations, interpreting output, Oswald factor,
-induced drag, box wings, Trefftz Plane, spacing, control surfaces,
-trim, or eigenmodes — **invoke `/avl-advisor`**. It has an indexed
-knowledge base over the official AVL User Primer and the Budziak thesis.
+For domain questions, **invoke the matching skill in a subagent**.
+Pick by topic — they don't overlap:
 
-## Aerodynamics Questions
-For ANY questions about aerodynamics - e.G. stall speed, best glide, sub sonic aerodynynamics, ... - **invoke `/aerodynamics-expert`.
+| Skill | Use for |
+|---|---|
+| `/avl-advisor` | AVL-specific: `.avl` / `.mass` / `.run` files, Trefftz Plane, vortex spacing, eigenmodes, control surfaces, trim setup in AVL |
+| `/aerodynamics-expert` | Aerodynamics theory (Anderson): boundary layers, shocks, potential flow, compressibility, stall, drag mechanisms |
+| `/aerosandbox-expert` | AeroSandbox code & workflows: VLM/AeroBuildup setup, Opti problems, NeuralFoil, trajectory optimization |
+| `/aircraft-design-scholz` | Conceptual / preliminary aircraft design (Scholz / HAW): sizing (T/W vs W/S), wing parameters, performance (field length, Breguet), high-lift, fuselage layout, CS-25 / FAR-25 |
+
+Rule of thumb:
+- *"Why does X happen aerodynamically?"* → `aerodynamics-expert`
+- *"How big should my wing be?"* → `aircraft-design-scholz`
+- *"How do I set this up in code?"* → `aerosandbox-expert`
+- *"What does this `.avl` field mean?"* → `avl-advisor`
 
 ## Using Superpowers
 
