@@ -93,11 +93,15 @@ def test_kpi_glide_missing_when_cd0_zero():
 def test_kpi_climb_energy_from_polar():
     ctx = {
         "aspect_ratio": 8.0,
-        "polar_by_config": {"clean": {"cd0": 0.025, "e_oswald": 0.80}},
+        "polar_by_config": {
+            "clean": {"cd0": 0.025, "e_oswald": 0.80, "cl_max": 1.4},
+        },
     }
-    kpi = _kpi_climb_energy(ctx, range_min=5.0, range_max=25.0)
-    assert kpi.value is not None
-    assert kpi.value > 0
+    kpi = _kpi_climb_energy(ctx, range_min=10.0, range_max=60.0)
+    # Closed-form: (C_L^1.5 / C_D)_max = (3·π·e·AR)^0.75 / (4 · C_D0^0.25)
+    # Hand-check: e=0.80, AR=8, C_D0=0.025 -> ~13.61
+    expected = (3.0 * math.pi * 0.80 * 8.0) ** 0.75 / (4.0 * 0.025**0.25)
+    assert kpi.value == pytest.approx(expected, rel=1e-3)
     assert kpi.provenance == "computed"
 
 
@@ -320,3 +324,21 @@ def test_compute_mission_kpis_field_friendliness_falls_back_gracefully(client_an
     field = kset.ist_polygon["field_friendliness"]
     assert field.provenance == "missing"
     assert field.value is None
+
+
+def test_compute_mission_kpis_raises_when_presets_table_empty(client_and_db):
+    """Empty mission_presets table surfaces as a 500, not an empty radar payload."""
+    from app.models.mission_preset import MissionPresetModel
+
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        db.commit()
+        aircraft_id = aeroplane.id
+        # Wipe presets to simulate a broken deployment (missing Alembic seed).
+        db.query(MissionPresetModel).delete()
+        db.commit()
+
+    with SessionLocal() as db:
+        with pytest.raises(RuntimeError, match="No mission preset"):
+            compute_mission_kpis(db, aircraft_id, ["trainer"])

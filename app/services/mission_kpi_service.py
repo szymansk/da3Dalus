@@ -18,11 +18,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import math
 from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.models.aeroplanemodel import AeroplaneModel
 from app.schemas.mission_kpi import (
@@ -131,7 +134,7 @@ def _kpi_climb_energy(
     ctx: dict[str, Any], range_min: float, range_max: float
 ) -> MissionAxisKpi:
     """Climb-energy figure ``(C_L^1.5 / C_D)_max`` — relevant for thermalling and ROC."""
-    formula = "(C_L^1.5 / C_D)_max = (3π·e·AR)^0.75 / (4·√3·√C_D0)"
+    formula = "(C_L^1.5 / C_D)_max = (3·π·e·AR)^0.75 / (4 · C_D0^0.25)"
     polar = ctx.get("polar_by_config", {}).get("clean") if ctx.get("polar_by_config") else None
     ar = ctx.get("aspect_ratio")
     if not polar or ar is None:
@@ -140,9 +143,12 @@ def _kpi_climb_energy(
     e = polar.get("e_oswald")
     if cd0 is None or cd0 <= 0 or e is None or e <= 0 or ar <= 0:
         return _missing("climb", range_min, range_max, formula)
-    # Closed-form maximum of CL^1.5/CD with parabolic polar
-    # CD = CD0 + CL^2/(pi e AR); max at CL such that 3·CD0 = CD_i.
-    value = (3.0 * math.pi * e * ar) ** 0.75 / math.sqrt(cd0) / (math.sqrt(3.0) * 4.0)
+    # Closed-form maximum of CL^1.5/CD for the parabolic polar
+    # CD = CD0 + CL^2/(π·e·AR). Setting d(CL^1.5/CD)/dCL = 0 gives
+    # 1.5·CD = 2·k·CL^2 with k = 1/(π·e·AR), so CL*^2 = 3·π·e·AR·CD0
+    # and CD* = 4·CD0. Therefore:
+    #   (CL^1.5 / CD)_max = (3·π·e·AR)^0.75 / (4 · CD0^0.25)
+    value = (3.0 * math.pi * e * ar) ** 0.75 / (4.0 * cd0**0.25)
     return MissionAxisKpi(
         axis="climb",
         value=value,
@@ -313,16 +319,21 @@ def compute_mission_kpis(
     # Pick the primary mission preset for Ist axis ranges; fall back to
     # the "trainer" preset when the active id is unknown so we always
     # have *some* ranges to normalise against.
-    primary_preset = presets.get(active_mission_ids[0]) or presets.get("trainer")
+    primary_preset = presets.get(active_mission_ids[0])
     if primary_preset is None:
-        # Defensive: no presets seeded at all — return empty Ist polygon.
-        return MissionKpiSet(
-            aeroplane_uuid=str(aeroplane.uuid),
-            ist_polygon={},
-            target_polygons=[],
-            active_mission_id=active_mission_ids[0],
-            computed_at=datetime.now(timezone.utc).isoformat(),
-            context_hash=_hash_context(ctx),
+        primary_preset = presets.get("trainer")
+    if primary_preset is None:
+        # No presets at all — a missing Alembic seed or empty table. Fail
+        # loudly with a 500 instead of returning a degenerate empty radar
+        # payload that clients can't render or interpret.
+        logger.error(
+            "mission_presets table is empty or missing both '%s' and 'trainer' — "
+            "cannot compute KPIs. Ensure Alembic migration + seed have run.",
+            active_mission_ids[0],
+        )
+        raise RuntimeError(
+            f"No mission preset found for '{active_mission_ids[0]}' and no "
+            "'trainer' fallback. Verify mission_presets table is seeded."
         )
     rng = primary_preset.axis_ranges
 
