@@ -549,6 +549,36 @@ def test_flap_takeoff_deflection_clipped_to_ted_max(client_and_db):
     assert pbc["landing"]["flap_deflection_deg"] == 10.0
 
 
+def test_landing_polar_uses_full_ted_limit_above_30deg(client_and_db):
+    """gh-534: with a 40°-rated Fowler flap, the landing polar must run
+    at the FULL TED max (40°), not the historical 30° cap.
+
+    The old 30° cap (assumption_compute_service:168) under-deflected
+    real Fowler flaps → CL_max_LDG too low → V_s0 too high → V_APP
+    overshot the POH by ~23 % on a Cessna-172 cross-check.
+    """
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        db.commit()
+        aeroplane_uuid = str(aeroplane.uuid)
+        aeroplane_id = aeroplane.id
+
+    with _enter_patches(flap_ted_max=40.0):
+        with SessionLocal() as db:
+            recompute_assumptions(db, aeroplane_uuid)
+            db.commit()
+
+    ctx = _load_ctx(SessionLocal, aeroplane_id)
+    pbc = ctx["polar_by_config"]
+    # Takeoff stays at the 15° seed (high-deflection at takeoff would
+    # hurt climb performance — keep the moderate seed).
+    assert pbc["takeoff"]["flap_deflection_deg"] == 15.0
+    # Landing uses the FULL TED limit (no 30° cap).
+    assert pbc["landing"]["flap_deflection_deg"] == 40.0
+
+
 # ============================================================================
 # gh-476 — extended V-speed set (v_a, v_dive, v_x, v_y) in ComputationContext
 # ============================================================================
