@@ -82,9 +82,7 @@ def _ctx_get(ctx: dict[str, Any], key: str) -> float | None:
 # ----- Per-axis calculators -------------------------------------------------
 
 
-def _kpi_stall_safety(
-    ctx: dict[str, Any], range_min: float, range_max: float
-) -> MissionAxisKpi:
+def _kpi_stall_safety(ctx: dict[str, Any], range_min: float, range_max: float) -> MissionAxisKpi:
     """V_cruise / V_s1 — higher is safer."""
     formula = "V_cruise / V_s1"
     v_cruise = _ctx_get(ctx, "v_cruise_mps")
@@ -104,9 +102,7 @@ def _kpi_stall_safety(
     )
 
 
-def _kpi_glide(
-    ctx: dict[str, Any], range_min: float, range_max: float
-) -> MissionAxisKpi:
+def _kpi_glide(ctx: dict[str, Any], range_min: float, range_max: float) -> MissionAxisKpi:
     """Maximum lift-to-drag ratio from the clean polar."""
     formula = "(L/D)_max = 0.5 · √(π · e · AR / C_D0)"
     polar = ctx.get("polar_by_config", {}).get("clean") if ctx.get("polar_by_config") else None
@@ -130,9 +126,7 @@ def _kpi_glide(
     )
 
 
-def _kpi_climb_energy(
-    ctx: dict[str, Any], range_min: float, range_max: float
-) -> MissionAxisKpi:
+def _kpi_climb_energy(ctx: dict[str, Any], range_min: float, range_max: float) -> MissionAxisKpi:
     """Climb-energy figure ``(C_L^1.5 / C_D)_max`` — relevant for thermalling and ROC."""
     formula = "(C_L^1.5 / C_D)_max = (3·π·e·AR)^0.75 / (4 · C_D0^0.25)"
     polar = ctx.get("polar_by_config", {}).get("clean") if ctx.get("polar_by_config") else None
@@ -161,9 +155,7 @@ def _kpi_climb_energy(
     )
 
 
-def _kpi_cruise(
-    ctx: dict[str, Any], range_min: float, range_max: float
-) -> MissionAxisKpi:
+def _kpi_cruise(ctx: dict[str, Any], range_min: float, range_max: float) -> MissionAxisKpi:
     """Cruise speed straight from ``ComputationContext``."""
     formula = "V_cruise (from ComputationContext)"
     v = _ctx_get(ctx, "v_cruise_mps")
@@ -181,9 +173,7 @@ def _kpi_cruise(
     )
 
 
-def _kpi_maneuver(
-    ctx: dict[str, Any], range_min: float, range_max: float
-) -> MissionAxisKpi:
+def _kpi_maneuver(ctx: dict[str, Any], range_min: float, range_max: float) -> MissionAxisKpi:
     """Maximum positive load factor from the V-n diagram."""
     formula = "n_max from V-n diagram (load factor)"
     n_max = ctx.get("flight_envelope_n_max")
@@ -325,11 +315,13 @@ def compute_mission_kpis(
     if primary_preset is None:
         # No presets at all — a missing Alembic seed or empty table. Fail
         # loudly with a 500 instead of returning a degenerate empty radar
-        # payload that clients can't render or interpret.
+        # payload that clients can't render or interpret. Don't log the
+        # user-controlled mission id directly (S5145 log-injection); the
+        # client gets the value back via the RuntimeError message.
         logger.error(
-            "mission_presets table is empty or missing both '%s' and 'trainer' — "
-            "cannot compute KPIs. Ensure Alembic migration + seed have run.",
-            active_mission_ids[0],
+            "mission_presets table is empty or missing the requested mission id "
+            "and 'trainer' fallback — cannot compute KPIs. Ensure Alembic "
+            "migration + seed have run."
         )
         raise RuntimeError(
             f"No mission preset found for '{active_mission_ids[0]}' and no "

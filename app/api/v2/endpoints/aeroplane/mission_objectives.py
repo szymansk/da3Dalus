@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import UUID4
 from sqlalchemy.orm import Session
@@ -63,14 +65,13 @@ def get_presets(db: Session = Depends(get_db)) -> list[MissionPreset]:
 
 @router.get(
     "/aeroplanes/{uuid}/mission-kpis",
-    response_model=MissionKpiSet,
     summary="Compute the 7-axis Mission compliance KPI set",
     tags=["mission"],
 )
 def get_kpis(
     uuid: UUID4,
-    missions: list[str] = Query(default_factory=list),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    missions: Annotated[list[str], Query()] = [],  # noqa: B006 — FastAPI Query default
 ) -> MissionKpiSet:
     aeroplane_id = _resolve_aeroplane_id(db, uuid)
     return compute_mission_kpis(db, aeroplane_id, missions)
