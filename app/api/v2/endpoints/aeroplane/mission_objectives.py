@@ -1,14 +1,18 @@
-"""REST endpoints for Mission Objectives + Mission Presets (gh-546)."""
+"""REST endpoints for Mission Objectives, Mission Presets, Mission KPIs (gh-546, gh-547)."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import UUID4
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.aeroplanemodel import AeroplaneModel
+from app.schemas.mission_kpi import MissionKpiSet
 from app.schemas.mission_objective import MissionObjective, MissionPreset
+from app.services.mission_kpi_service import compute_mission_kpis
 from app.services.mission_objective_service import (
     get_mission_objective,
     list_mission_presets,
@@ -57,3 +61,17 @@ def put_objectives(
 )
 def get_presets(db: Session = Depends(get_db)) -> list[MissionPreset]:
     return list_mission_presets(db)
+
+
+@router.get(
+    "/aeroplanes/{uuid}/mission-kpis",
+    summary="Compute the 7-axis Mission compliance KPI set",
+    tags=["mission"],
+)
+def get_kpis(
+    uuid: UUID4,
+    db: Annotated[Session, Depends(get_db)],
+    missions: Annotated[list[str], Query()] = [],  # noqa: B006 — FastAPI Query default
+) -> MissionKpiSet:
+    aeroplane_id = _resolve_aeroplane_id(db, uuid)
+    return compute_mission_kpis(db, aeroplane_id, missions)
