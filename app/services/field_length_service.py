@@ -59,15 +59,17 @@ logger = logging.getLogger(__name__)
 # Physical and formula constants
 # ---------------------------------------------------------------------------
 
-_RHO_SL: float = 1.225      # kg/m³ — sea-level ISA density
-_G: float = 9.81             # m/s² — standard gravity
+_RHO_SL: float = 1.225  # kg/m³ — sea-level ISA density
+_G: float = 9.81  # m/s² — standard gravity
 
 # Roskam §3.4 simplified ground-roll coefficient
 _C_TO: float = 1.21
 
 # Obstacle correction factors
-_K_TO_50FT: float = 1.66     # Roskam §3.4, SE-piston AEO, 50-ft obstacle
-_K_LDG_50FT: float = 2.73    # Roskam §3.4 total from 50 ft ÷ ground roll (≈ 2.5–3.0 for light aircraft)
+_K_TO_50FT: float = 1.66  # Roskam §3.4, SE-piston AEO, 50-ft obstacle
+_K_LDG_50FT: float = (
+    2.73  # Roskam §3.4 total from 50 ft ÷ ground roll (≈ 2.5–3.0 for light aircraft)
+)
 # NOTE: Roskam gives k_LDG_50ft ≈ 1.5 for the *air phase alone*; the full
 # total-from-50ft multiplier (air + ground) is ~2.5–3.0.  The Cessna 172N
 # POH cross-check calibrates this to 2.73 (410 m / 150 m).
@@ -77,8 +79,8 @@ _K_LDG_50FT: float = 2.73    # Roskam §3.4 total from 50 ft ÷ ground roll (≈
 _K_LDG_HARD: float = 0.5847
 
 # Friction coefficients
-_MU_BRAKE_HARD: float = 0.4    # braking, dry hard runway
-_MU_BELLY: float = 0.5         # belly landing (grass + fuselage scraping)
+_MU_BRAKE_HARD: float = 0.4  # braking, dry hard runway
+_MU_BELLY: float = 0.5  # belly landing (grass + fuselage scraping)
 
 # Roskam §3.4 note: T in the formula is the mean thrust during ground roll.
 # For RC propellers, T_mean ≈ 0.75 · T_static_zero_velocity.
@@ -93,18 +95,18 @@ _MU_BELLY: float = 0.5         # belly landing (grass + fuselage scraping)
 _T_STATIC_MEAN_FACTOR: float = 1.0  # T as supplied (factor encoded in 1.21 constant)
 
 # V factors (Roskam standard)
-_V_LOF_FACTOR: float = 1.2    # V_LOF = 1.2 · V_S
-_V_APP_FACTOR: float = 1.3    # V_app = 1.3 · V_S
+_V_LOF_FACTOR: float = 1.2  # V_LOF = 1.2 · V_S
+_V_APP_FACTOR: float = 1.3  # V_app = 1.3 · V_S
 
 # Hand-launch V_throw thresholds
-_HAND_THROW_FLOOR: float = 1.10   # physics floor (must be ≥ 1.10·V_S)
-_HAND_THROW_WARN: float = 1.20    # climb-out margin warning (< 1.20·V_S)
+_HAND_THROW_FLOOR: float = 1.10  # physics floor (must be ≥ 1.10·V_S)
+_HAND_THROW_WARN: float = 1.20  # climb-out margin warning (< 1.20·V_S)
 _HAND_THROW_DEFAULT: float = 10.0  # m/s default throw speed
 
 # Flap type → (CL_max_TO_factor, CL_max_LDG_factor)
 # Source: gh-489 spec, Amendment 2
 _FLAP_FACTORS: dict[str | None, tuple[float, float]] = {
-    None: (1.0, 1.0),           # no flaps
+    None: (1.0, 1.0),  # no flaps
     "none": (1.0, 1.0),
     "plain": (1.1, 1.3),
     "slotted": (1.1, 1.3),
@@ -189,9 +191,9 @@ def _compute_s_to_ground(
     where T is the de-rated mean static thrust: T_mean = T_static_factor · T_static.
     """
     weight_n = mass_kg * g
-    wing_loading = weight_n / s_ref_m2              # W/S [N/m²]
-    t_mean = _T_STATIC_MEAN_FACTOR * t_static_N     # effective thrust [N]
-    t_over_w = t_mean / weight_n                    # T/W dimensionless
+    wing_loading = weight_n / s_ref_m2  # W/S [N/m²]
+    t_mean = _T_STATIC_MEAN_FACTOR * t_static_N  # effective thrust [N]
+    t_over_w = t_mean / weight_n  # T/W dimensionless
     return _C_TO * wing_loading / (rho * g * cl_max_to * t_over_w)
 
 
@@ -321,16 +323,17 @@ def compute_field_lengths(
     flap_type: str | None = aircraft.get("flap_type", None)
     to_factor, ldg_factor = detect_cl_max_flap_factors(flap_type)
 
-    cl_max_to: float = float(
-        aircraft.get("cl_max_takeoff") or cl_max_base * to_factor
-    )
-    cl_max_ldg: float = float(
-        aircraft.get("cl_max_landing") or cl_max_base * ldg_factor
-    )
+    cl_max_to: float = float(aircraft.get("cl_max_takeoff") or cl_max_base * to_factor)
+    cl_max_ldg: float = float(aircraft.get("cl_max_landing") or cl_max_base * ldg_factor)
 
     # --- Derived speeds ------------------------------------------------------
-    v_lof = _v_lof(v_stall)
-    v_app = _v_app(v_stall)
+    # gh-526: prefer the per-configuration V_s when present (cached by
+    # assumption_compute_service after one AeroBuildup pass per high-lift
+    # configuration). Falls back to the clean V_s for pre-gh-526 contexts.
+    v_stall_to: float = float(aircraft.get("v_s_to_mps") or v_stall)
+    v_stall_ldg: float = float(aircraft.get("v_s0_mps") or v_stall)
+    v_lof = _v_lof(v_stall_to)
+    v_app = _v_app(v_stall_ldg)
 
     # --- Takeoff field length -------------------------------------------------
     s_to_ground: float
@@ -384,9 +387,7 @@ def compute_field_lengths(
     else:  # runway
         _check_thrust(aircraft, takeoff_mode)
         t_static = float(aircraft["t_static_N"])
-        s_to_ground = _compute_s_to_ground(
-            mass_kg, s_ref_m2, cl_max_to, t_static, rho, g
-        )
+        s_to_ground = _compute_s_to_ground(mass_kg, s_ref_m2, cl_max_to, t_static, rho, g)
         s_to_50ft = _apply_obstacle_factor(s_to_ground, _K_TO_50FT)
 
     # --- Landing field length -------------------------------------------------
@@ -397,9 +398,7 @@ def compute_field_lengths(
     else:  # runway
         mu_brake = _MU_BRAKE_HARD
 
-    s_ldg_ground = _compute_s_ldg_ground(
-        mass_kg, s_ref_m2, cl_max_ldg, rho, g, mu_brake
-    )
+    s_ldg_ground = _compute_s_ldg_ground(mass_kg, s_ref_m2, cl_max_ldg, rho, g, mu_brake)
     s_ldg_50ft = _apply_obstacle_factor(s_ldg_ground, _K_LDG_50FT)
 
     return {

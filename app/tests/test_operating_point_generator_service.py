@@ -14,6 +14,7 @@ from app.models.flightprofilemodel import RCFlightProfileModel
 from app.schemas.aeroanalysisschema import OperatingPointStatus, TrimOperatingPointRequest
 from app.services.operating_point_generator_service import (
     TrimmedPoint,
+    _estimate_reference_speeds,
     generate_default_set_for_aircraft,
     trim_operating_point_for_aircraft,
 )
@@ -21,8 +22,12 @@ from app.services.operating_point_generator_service import (
 
 @pytest.fixture()
 def db_session():
-    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
+    engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    TestingSessionLocal = sessionmaker(
+        bind=engine, autocommit=False, autoflush=False, class_=Session
+    )
     Base.metadata.create_all(bind=engine)
     db = TestingSessionLocal()
     try:
@@ -90,9 +95,18 @@ def test_generate_default_set_with_profile_assignment(db_session):
     db_session.commit()
 
     with (
-        patch("app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async", return_value=SimpleNamespace()),
-        patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_with_controls("[rudder]Rudder")),
-        patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
+        patch(
+            "app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async",
+            return_value=SimpleNamespace(),
+        ),
+        patch(
+            "app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async",
+            return_value=_mock_airplane_with_controls("[rudder]Rudder"),
+        ),
+        patch(
+            "app.services.operating_point_generator_service._trim_or_estimate_point",
+            side_effect=_fake_trim,
+        ),
     ):
         result = generate_default_set_for_aircraft(db_session, aircraft_uuid)
 
@@ -100,7 +114,11 @@ def test_generate_default_set_with_profile_assignment(db_session):
     assert len(result.operating_points) == 11
     assert "dutch_role_start" in [p.name for p in result.operating_points]
 
-    persisted = db_session.query(OperatingPointModel).filter(OperatingPointModel.aircraft_id == aircraft.id).all()
+    persisted = (
+        db_session.query(OperatingPointModel)
+        .filter(OperatingPointModel.aircraft_id == aircraft.id)
+        .all()
+    )
     assert len(persisted) == 11
 
 
@@ -111,9 +129,18 @@ def test_generate_default_set_without_profile_uses_defaults(db_session):
     db_session.commit()
 
     with (
-        patch("app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async", return_value=SimpleNamespace()),
-        patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_with_controls("[rudder]Rudder")),
-        patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
+        patch(
+            "app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async",
+            return_value=SimpleNamespace(),
+        ),
+        patch(
+            "app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async",
+            return_value=_mock_airplane_with_controls("[rudder]Rudder"),
+        ),
+        patch(
+            "app.services.operating_point_generator_service._trim_or_estimate_point",
+            side_effect=_fake_trim,
+        ),
     ):
         result = generate_default_set_for_aircraft(db_session, aircraft_uuid)
 
@@ -128,14 +155,27 @@ def test_generate_replace_existing_replaces_old_rows(db_session):
     db_session.commit()
 
     with (
-        patch("app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async", return_value=SimpleNamespace()),
-        patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_with_controls("[rudder]Rudder")),
-        patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
+        patch(
+            "app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async",
+            return_value=SimpleNamespace(),
+        ),
+        patch(
+            "app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async",
+            return_value=_mock_airplane_with_controls("[rudder]Rudder"),
+        ),
+        patch(
+            "app.services.operating_point_generator_service._trim_or_estimate_point",
+            side_effect=_fake_trim,
+        ),
     ):
         generate_default_set_for_aircraft(db_session, aircraft_uuid)
         generate_default_set_for_aircraft(db_session, aircraft_uuid, replace_existing=True)
 
-    points = db_session.query(OperatingPointModel).filter(OperatingPointModel.aircraft_id == aircraft.id).all()
+    points = (
+        db_session.query(OperatingPointModel)
+        .filter(OperatingPointModel.aircraft_id == aircraft.id)
+        .all()
+    )
     assert len(points) == 11
 
 
@@ -147,9 +187,18 @@ def test_generate_skips_points_when_required_controls_missing(db_session, caplog
     db_session.commit()
 
     with (
-        patch("app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async", return_value=SimpleNamespace()),
-        patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_with_controls()),
-        patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
+        patch(
+            "app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async",
+            return_value=SimpleNamespace(),
+        ),
+        patch(
+            "app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async",
+            return_value=_mock_airplane_with_controls(),
+        ),
+        patch(
+            "app.services.operating_point_generator_service._trim_or_estimate_point",
+            side_effect=_fake_trim,
+        ),
     ):
         result = generate_default_set_for_aircraft(db_session, aircraft_uuid)
 
@@ -169,9 +218,18 @@ def test_generate_with_rudder_keeps_dutch_role_point(db_session):
     db_session.commit()
 
     with (
-        patch("app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async", return_value=SimpleNamespace()),
-        patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_with_controls("[rudder]Rudder")),
-        patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
+        patch(
+            "app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async",
+            return_value=SimpleNamespace(),
+        ),
+        patch(
+            "app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async",
+            return_value=_mock_airplane_with_controls("[rudder]Rudder"),
+        ),
+        patch(
+            "app.services.operating_point_generator_service._trim_or_estimate_point",
+            side_effect=_fake_trim,
+        ),
     ):
         result = generate_default_set_for_aircraft(db_session, aircraft_uuid)
 
@@ -187,14 +245,27 @@ def test_generate_replace_existing_with_skips_keeps_consistent_rows(db_session):
     db_session.commit()
 
     with (
-        patch("app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async", return_value=SimpleNamespace()),
-        patch("app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async", return_value=_mock_airplane_with_controls()),
-        patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
+        patch(
+            "app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async",
+            return_value=SimpleNamespace(),
+        ),
+        patch(
+            "app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async",
+            return_value=_mock_airplane_with_controls(),
+        ),
+        patch(
+            "app.services.operating_point_generator_service._trim_or_estimate_point",
+            side_effect=_fake_trim,
+        ),
     ):
         generate_default_set_for_aircraft(db_session, aircraft_uuid)
         generate_default_set_for_aircraft(db_session, aircraft_uuid, replace_existing=True)
 
-    points = db_session.query(OperatingPointModel).filter(OperatingPointModel.aircraft_id == aircraft.id).all()
+    points = (
+        db_session.query(OperatingPointModel)
+        .filter(OperatingPointModel.aircraft_id == aircraft.id)
+        .all()
+    )
     assert len(points) == 9
 
 
@@ -238,12 +309,18 @@ def test_trim_single_operating_point_for_aircraft(db_session):
     )
 
     with (
-        patch("app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async", return_value=SimpleNamespace()),
+        patch(
+            "app.services.operating_point_generator_service.aeroplane_model_to_aeroplane_schema_async",
+            return_value=SimpleNamespace(),
+        ),
         patch(
             "app.services.operating_point_generator_service.aeroplane_schema_to_asb_airplane_async",
             return_value=_mock_airplane_with_controls("[elevator]Elevator"),
         ),
-        patch("app.services.operating_point_generator_service._trim_or_estimate_point", side_effect=_fake_trim),
+        patch(
+            "app.services.operating_point_generator_service._trim_or_estimate_point",
+            side_effect=_fake_trim,
+        ),
     ):
         result = trim_operating_point_for_aircraft(db_session, aircraft_uuid, request)
 
@@ -253,3 +330,55 @@ def test_trim_single_operating_point_for_aircraft(db_session):
     assert result.point.velocity == pytest.approx(21.0)
     assert result.point.altitude == pytest.approx(120.0)
     assert result.point.aircraft_id == aircraft.id
+
+
+# ============================================================================
+# gh-526 / epic gh-525 finding C1 — physics-based reference speeds from polar
+# ============================================================================
+
+
+def _profile_with_cruise(cruise_mps: float = 22.0) -> dict:
+    return {
+        "goals": {
+            "cruise_speed_mps": cruise_mps,
+            "min_speed_margin_vs_clean": 1.20,
+        },
+        "environment": {},
+        "constraints": {},
+    }
+
+
+def test_reference_speeds_use_per_config_v_s_from_context():
+    """gh-526: when v_s1_mps / v_s_to_mps / v_s0_mps are in context, use them
+    directly instead of applying 0.95 / 0.90 scalars to a single V_s."""
+    cached_context = {
+        "v_stall_mps": 14.0,  # legacy alias
+        "v_s1_mps": 14.0,  # clean
+        "v_s_to_mps": 12.5,  # takeoff (with flap)
+        "v_s0_mps": 10.5,  # landing (full flap)
+    }
+    refs = _estimate_reference_speeds(_profile_with_cruise(), cached_context)
+    assert refs["vs_clean"] == pytest.approx(14.0)
+    assert refs["vs_to"] == pytest.approx(12.5)
+    assert refs["vs_ldg"] == pytest.approx(10.5)
+
+
+def test_reference_speeds_legacy_context_uses_v_stall_for_all_configs():
+    """gh-526: older contexts without v_s_to / v_s0 fall back to v_stall_mps
+    for both takeoff and landing (no 0.95 / 0.90 scalar applied)."""
+    cached_context = {"v_stall_mps": 14.0}  # legacy / pre-526 context
+    refs = _estimate_reference_speeds(_profile_with_cruise(), cached_context)
+    assert refs["vs_clean"] == pytest.approx(14.0)
+    # Without polar_by_config we have no flap-config info — same V_s everywhere
+    assert refs["vs_to"] == pytest.approx(14.0)
+    assert refs["vs_ldg"] == pytest.approx(14.0)
+
+
+def test_reference_speeds_cold_start_uses_cruise_over_margin():
+    """gh-526: no context at all → cruise / min_margin_clean for all three,
+    with no 0.95 / 0.90 multipliers (those scalars are physically meaningless)."""
+    refs = _estimate_reference_speeds(_profile_with_cruise(cruise_mps=24.0), None)
+    # 24 / 1.20 = 20.0
+    assert refs["vs_clean"] == pytest.approx(20.0)
+    assert refs["vs_to"] == pytest.approx(20.0)
+    assert refs["vs_ldg"] == pytest.approx(20.0)

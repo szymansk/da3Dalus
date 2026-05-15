@@ -37,6 +37,7 @@ from app.models.computation_config import (
 from app.schemas.AeroplaneRequest import AnalysisToolUrlType
 from app.schemas.aeroanalysisschema import OperatingPointSchema
 from app.schemas.design_assumption import PARAMETER_DEFAULTS
+from app.schemas.polar_by_config import ParabolicPolar
 from app.services.design_assumptions_service import (
     _get_aeroplane,
     seed_defaults,
@@ -143,6 +144,78 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     e_oswald_effective = e_oswald_fit if e_oswald_fit is not None else 0.8
     # -----------------------------------------------------------------------
 
+    # --- gh-526 / epic gh-525 C1: per-configuration parabolic polar -------
+    # Run AeroBuildup once per high-lift configuration so V_s0 (landing)
+    # and V_s1 (clean) reflect physics instead of the 0.95 / 0.90 heuristic
+    # the OPG used historically (audit §5.5).
+    polar_clean = ParabolicPolar(
+        cd0=round(_cd0_fit, 5) if _cd0_fit is not None else None,
+        e_oswald=round(e_oswald_fit, 4) if e_oswald_fit is not None else None,
+        cl_max=round(cl_max, 4),
+        e_oswald_r2=round(e_r2, 4) if e_r2 is not None else None,
+        e_oswald_quality=_classify_polar_quality(e_r2) if e_r2 is not None else "unknown",
+        flap_deflection_deg=0.0,
+        provenance="aerobuildup",
+    )
+
+    ted_max = _extract_flap_ted_max(aircraft)
+    if ted_max is None:
+        # No flap geometry — fallback path: clone clean to takeoff & landing.
+        polar_takeoff = polar_clean.model_copy(update={"provenance": "no_flap_geometry"})
+        polar_landing = polar_clean.model_copy(update={"provenance": "no_flap_geometry"})
+    else:
+        delta_to = min(15.0, float(ted_max))
+        delta_ldg = min(30.0, float(ted_max))
+        # Independent try blocks per configuration (gh-526 review feedback):
+        # a takeoff-sweep failure must not prevent the landing sweep from
+        # running — they are physically independent passes.
+        try:
+            polar_takeoff = _run_polar_for_deflection(
+                asb_airplane=asb_airplane,
+                flap_deflection_deg=delta_to,
+                v_cruise=v_cruise,
+                v_max=v_max,
+                config=config,
+                aspect_ratio=aspect_ratio,
+                cd0_stability=cd0,
+                cl_max_effective_for_fit=cl_max_effective_for_fit,
+            )
+        except Exception:
+            logger.exception(
+                "Takeoff-config AeroBuildup failed for aircraft %s (δ=%.1f°) — "
+                "falling back to clean polar",
+                aeroplane_uuid,
+                delta_to,
+            )
+            polar_takeoff = polar_clean.model_copy(update={"provenance": "aerobuildup_failed"})
+
+        try:
+            polar_landing = _run_polar_for_deflection(
+                asb_airplane=asb_airplane,
+                flap_deflection_deg=delta_ldg,
+                v_cruise=v_cruise,
+                v_max=v_max,
+                config=config,
+                aspect_ratio=aspect_ratio,
+                cd0_stability=cd0,
+                cl_max_effective_for_fit=cl_max_effective_for_fit,
+            )
+        except Exception:
+            logger.exception(
+                "Landing-config AeroBuildup failed for aircraft %s (δ=%.1f°) — "
+                "falling back to clean polar",
+                aeroplane_uuid,
+                delta_ldg,
+            )
+            polar_landing = polar_clean.model_copy(update={"provenance": "aerobuildup_failed"})
+
+    polar_by_config = {
+        "clean": polar_clean.model_dump(),
+        "takeoff": polar_takeoff.model_dump(),
+        "landing": polar_landing.model_dump(),
+    }
+    # -----------------------------------------------------------------------
+
     # --- gh-493: Reynolds-dependent polar table ----------------------------
     # Build a 3-band Re table by rebinning the existing fine-sweep data.
     # V-bands: {V_s_approx, V_cruise, max(1.3·V_cruise, V_max_goal)}.
@@ -244,6 +317,14 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     p_to_w = _load_effective_assumption(db, aircraft.id, "power_to_weight")
     prop_eta = _load_effective_assumption(db, aircraft.id, "prop_efficiency")
     v_stall = _stall_speed(mass, s_ref, cl_max_effective)
+    # gh-526: per-configuration stall speeds derived from physics. The OPG
+    # consumes these instead of its historical 0.95 / 0.90 heuristic.
+    # v_s1 = clean (alias of v_stall_mps for backward compat).
+    # v_s_to = takeoff (with flaps clipped to TED limit), v_s0 = landing.
+    # When no flap geometry exists, all three fall back to V_s1.
+    v_s1 = v_stall
+    v_s_to = _stall_speed(mass, s_ref, polar_by_config["takeoff"]["cl_max"])
+    v_s0 = _stall_speed(mass, s_ref, polar_by_config["landing"]["cl_max"])
     # Use fitted Oswald e (or fallback 0.8) for V_md and V_min_sink.
     v_md = _min_drag_speed(mass, s_ref, cd0_effective, aspect_ratio, oswald_e=e_oswald_effective)
     v_min_sink = _min_sink_speed(
@@ -323,6 +404,13 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         "v_cruise_auto": cruise_is_auto,
         "v_max_mps": round(v_max_effective, 1),
         "v_stall_mps": round(v_stall, 1) if v_stall is not None else None,
+        # gh-526: v_s1_mps is the clean-config alias of v_stall_mps; v_s0_mps
+        # is the landing-config stall (with flaps deflected, if geometry has
+        # a flap); v_s_to_mps is the takeoff-config stall. All three derived
+        # from physics, not heuristic scalars.
+        "v_s1_mps": round(v_s1, 1) if v_s1 is not None else None,
+        "v_s_to_mps": round(v_s_to, 1) if v_s_to is not None else None,
+        "v_s0_mps": round(v_s0, 1) if v_s0 is not None else None,
         "v_md_mps": round(v_md, 1) if v_md is not None else None,
         "v_min_sink_mps": round(v_min_sink, 1) if v_min_sink is not None else None,
         "is_glider": is_glider,
@@ -352,6 +440,10 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         "polar_re_table": polar_re_table,
         "polar_re_table_degenerate": polar_re_table_degenerate,
         "polar_re_table_top_band_fallback": polar_re_table_top_band_fallback,
+        # gh-526: per-configuration polar fits {clean, takeoff, landing}.
+        # See app/schemas/polar_by_config.py.  Replaces the implicit
+        # 0.95 / 0.90 V_s heuristic in operating_point_generator_service.
+        "polar_by_config": polar_by_config,
         "computed_at": datetime.now(timezone.utc).isoformat(),
     }
     enrich_context_with_cg_envelope(
@@ -376,6 +468,105 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
 def _build_asb_airplane(aircraft: AeroplaneModel):
     schema = aeroplane_model_to_aeroplane_schema_async(aircraft)
     return aeroplane_schema_to_asb_airplane_async(plane_schema=schema)
+
+
+def _run_polar_for_deflection(
+    *,
+    asb_airplane: Any,
+    flap_deflection_deg: float,
+    v_cruise: float,
+    v_max: float,
+    config: Any,
+    aspect_ratio: float | None,
+    cd0_stability: float,
+    cl_max_effective_for_fit: float | None,
+) -> ParabolicPolar:
+    """Run AeroBuildup with the flap deflected; return the fitted polar.
+
+    Strategy (gh-526):
+    - Deep-copy the airplane with ``with_control_deflections`` so the
+      original (clean) airplane is unaffected.
+    - Re-use ``_coarse_alpha_sweep`` and ``_fine_sweep_cl_max`` against the
+      deflected airplane to get C_L_max for this configuration.
+    - Re-fit a parabolic polar against the deflected sweep so C_D0 / e
+      reflect the high-lift drag rise.
+
+    On any AeroBuildup error the caller is responsible for falling back
+    to a cloned clean polar with ``provenance="fit_rejected"``.
+    """
+    flap_name = _detect_first_flap_name(asb_airplane)
+    if flap_name is None:
+        # Caller must route to the no-flap fallback BEFORE invoking this
+        # helper. Returning a sentinel here would feed cl_max=0.0 into
+        # _stall_speed and produce an infinite V_s (review feedback).
+        raise AssertionError(
+            "_run_polar_for_deflection called without a flap surface present — "
+            "this is a caller-side routing bug"
+        )
+    deflected = asb_airplane.with_control_deflections({flap_name: flap_deflection_deg})
+    stall_alpha = _coarse_alpha_sweep(deflected, v_cruise, config)
+    cl_max, cl_arr, cd_arr, _v_arr = _fine_sweep_cl_max(
+        deflected, stall_alpha, v_cruise, v_max, config
+    )
+    _cd0_fit, e_oswald_fit, e_r2 = _fit_parabolic_polar(
+        np.asarray(cl_arr, dtype=float),
+        np.asarray(cd_arr, dtype=float),
+        ar=aspect_ratio if aspect_ratio is not None else 0.0,
+        cl_max=cl_max_effective_for_fit if cl_max_effective_for_fit else cl_max,
+        cd0_stability=cd0_stability,
+    )
+    return ParabolicPolar(
+        cd0=round(_cd0_fit, 5) if _cd0_fit is not None else None,
+        e_oswald=round(e_oswald_fit, 4) if e_oswald_fit is not None else None,
+        cl_max=round(float(cl_max), 4),
+        e_oswald_r2=round(e_r2, 4) if e_r2 is not None else None,
+        e_oswald_quality=_classify_polar_quality(e_r2) if e_r2 is not None else "unknown",
+        flap_deflection_deg=float(flap_deflection_deg),
+        provenance="aerobuildup",
+    )
+
+
+def _detect_first_flap_name(asb_airplane) -> str | None:
+    """Return the ASB control-surface name of the first flap-role surface.
+
+    Mirrors ``operating_point_generator_service._pick_control_name`` for
+    the FLAP_ROLES set. Avoids cross-service imports by re-implementing
+    the trivial role-tag parse locally.
+    """
+    for wing in getattr(asb_airplane, "wings", []) or []:
+        for xsec in getattr(wing, "xsecs", []) or []:
+            for cs in getattr(xsec, "control_surfaces", []) or []:
+                raw = str(getattr(cs, "name", "")).strip()
+                # role tag is the substring between the first '[' and ']'
+                if raw.startswith("[") and "]" in raw:
+                    role = raw[1 : raw.index("]")].lower()
+                    if role == "flap":
+                        return raw
+    return None
+
+
+def _extract_flap_ted_max(aircraft: AeroplaneModel) -> float | None:
+    """Return the positive deflection limit of the first flap-role TED.
+
+    Walks ``aircraft.wings → x_secs → trailing_edge_device`` and returns the
+    ``positive_deflection_deg`` of the first TED whose ``role`` is
+    ``"flap"``. Returns ``None`` when no flap-role TED exists — callers use
+    this signal to fall back to a single clean-config polar.
+
+    gh-526 / epic gh-525 finding C1.
+    """
+    for wing in getattr(aircraft, "wings", []) or []:
+        for xsec in getattr(wing, "x_secs", []) or []:
+            ted = getattr(xsec, "trailing_edge_device", None)
+            if ted is None:
+                continue
+            role = (getattr(ted, "role", None) or "other").lower()
+            if role == "flap":
+                limit = getattr(ted, "positive_deflection_deg", None)
+                if limit is None:
+                    return 25.0  # mirror converter fallback (gh-526)
+                return float(limit)
+    return None
 
 
 def _load_or_create_config(db: Session, aeroplane_id: int) -> AircraftComputationConfigModel:
