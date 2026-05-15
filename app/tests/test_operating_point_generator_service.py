@@ -630,6 +630,43 @@ def test_clip_flap_no_target_deflection_is_a_noop():
     assert "flap_deflection_deg" not in clipped
 
 
+def test_clip_flap_uses_minimum_limit_across_multi_flap_aircraft():
+    """gh-536: when multiple flap-role TEDs are present with different
+    `positive_deflection_deg`, the clipper must use the MOST RESTRICTIVE
+    (minimum) limit so the outboard flap is never over-deflected.
+    """
+    from app.services.operating_point_generator_service import _clip_flap_to_ted_limit
+
+    target = {
+        "name": "approach_landing",
+        "config": "landing",
+        "flap_deflection_deg": 30.0,
+    }
+    # Inboard flap rated 40°, outboard flap rated 20°. Min(40, 20) = 20.
+    deflection_limits = {
+        "[flap]Inboard": (40.0, 40.0),
+        "[flap]Outboard": (20.0, 20.0),
+    }
+    clipped = _clip_flap_to_ted_limit(target, deflection_limits)
+    assert clipped["flap_deflection_deg"] == 20.0
+    assert "FLAP_DEFLECTION_CLIPPED" in clipped.get("warnings", [])
+
+
+def test_clip_flap_single_flap_unchanged_by_multi_flap_logic():
+    """Regression: single flap-role TED → behaviour identical to pre-gh-536."""
+    from app.services.operating_point_generator_service import _clip_flap_to_ted_limit
+
+    target = {
+        "name": "approach_landing",
+        "config": "landing",
+        "flap_deflection_deg": 30.0,
+    }
+    deflection_limits = {"[flap]Flap": (40.0, 40.0)}  # only flap, well above target
+    clipped = _clip_flap_to_ted_limit(target, deflection_limits)
+    assert clipped["flap_deflection_deg"] == 30.0
+    assert "FLAP_DEFLECTION_CLIPPED" not in clipped.get("warnings", [])
+
+
 def test_clip_flap_no_flap_in_limits_is_a_noop():
     """Aircraft without a flap-role TED → no clipping, no warning."""
     from app.services.operating_point_generator_service import _clip_flap_to_ted_limit

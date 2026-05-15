@@ -59,25 +59,32 @@ def _clip_flap_to_ted_limit(
     (over-attached) flow with no warning.
 
     This helper returns a copy of ``target`` with ``flap_deflection_deg``
-    clipped to the first flap-role surface in ``deflection_limits``.
-    A ``"FLAP_DEFLECTION_CLIPPED"`` warning is appended when clipping
-    occurs so the OP carries an audit trail.
+    clipped to the most restrictive flap-role surface in
+    ``deflection_limits`` (gh-536: multi-flap aircraft such as an
+    inboard + outboard pair with different `positive_deflection_deg`
+    must be governed by the smaller authority so the smaller surface
+    never over-deflects). A ``"FLAP_DEFLECTION_CLIPPED"`` warning is
+    appended when clipping occurs so the OP carries an audit trail.
     """
     raw_flap = target.get("flap_deflection_deg")
     if raw_flap is None:
         return target
 
-    flap_limits: tuple[float, float] | None = None
+    flap_pos_limits: list[float] = []
+    flap_neg_limits: list[float] = []
     for name, limits in deflection_limits.items():
         role, _ = parse_role_tag(name)
         if role and role in FLAP_ROLES:
-            flap_limits = limits
-            break
-    if flap_limits is None:
+            flap_pos_limits.append(limits[0])
+            flap_neg_limits.append(limits[1])
+    if not flap_pos_limits:
         # No flap-role TED in geometry → don't manufacture a limit from
         # thin air. The trim solver itself will silently no-op the
         # missing surface.
         return target
+
+    # gh-536: most restrictive limit governs across all flap-role TEDs.
+    flap_limits = (min(flap_pos_limits), min(flap_neg_limits))
 
     max_pos, max_neg = flap_limits
     requested = float(raw_flap)
