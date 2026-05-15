@@ -91,6 +91,7 @@ def create_app() -> FastAPI:
     async def _combined_lifespan(app: "FastAPI"):
         from app.services import cad_service as _cad_service
         from app.services.component_type_service import seed_default_types
+        from app.services.mission_objective_service import seed_mission_presets
         from app.db.session import SessionLocal
 
         # Idempotent safety net (gh#83): ensure the 9 default component types
@@ -107,6 +108,24 @@ def create_app() -> FastAPI:
         except Exception as exc:  # noqa: BLE001 — never block startup on this
             logging.getLogger(__name__).warning(
                 "seed_default_types at startup failed: %s",
+                exc,
+            )
+
+        # Idempotent safety net (gh-546): ensure the six default Mission
+        # Presets exist. Production runs Alembic which already seeds them
+        # via bulk_insert, but a fresh DB built with Base.metadata.create_all
+        # (e.g. dev container without migrations) would have an empty
+        # mission_presets table and GET /mission-presets would return [].
+        try:
+            _seed_session = SessionLocal()
+            try:
+                seed_mission_presets(_seed_session)
+                _seed_session.commit()
+            finally:
+                _seed_session.close()
+        except Exception as exc:  # noqa: BLE001 — never block startup on this
+            logging.getLogger(__name__).warning(
+                "seed_mission_presets at startup failed: %s",
                 exc,
             )
 

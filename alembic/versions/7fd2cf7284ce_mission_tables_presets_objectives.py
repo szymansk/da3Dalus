@@ -26,15 +26,20 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Upgrade schema."""
     # 1. Drop legacy placeholder table (migration 5b41e8c65a14).
+    # `if_exists=True` guards against partial DBs where the legacy
+    # placeholder was never created (e.g. future migration chain refactors
+    # that move the down_revision, or fresh DBs without the legacy index).
     op.drop_index(
         op.f("ix_mission_objectives_id"),
         table_name="mission_objectives",
+        if_exists=True,
     )
     op.drop_index(
         op.f("ix_mission_objectives_aeroplane_id"),
         table_name="mission_objectives",
+        if_exists=True,
     )
-    op.drop_table("mission_objectives")
+    op.drop_table("mission_objectives", if_exists=True)
 
     # 2. Create mission_presets.
     op.create_table(

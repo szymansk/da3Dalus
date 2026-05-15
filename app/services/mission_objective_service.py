@@ -8,20 +8,27 @@ from app.models.mission_objective import MissionObjectiveModel
 from app.models.mission_preset import MissionPresetModel
 from app.schemas.mission_objective import MissionObjective, MissionPreset
 
-_DEFAULT_OBJECTIVE = MissionObjective(
-    mission_type="trainer",
-    target_cruise_mps=18.0,
-    target_stall_safety=1.8,
-    target_maneuver_n=3.0,
-    target_glide_ld=12.0,
-    target_climb_energy=22.0,
-    target_wing_loading_n_m2=412.0,
-    target_field_length_m=50.0,
-    available_runway_m=50.0,
-    runway_type="grass",
-    t_static_N=18.0,
-    takeoff_mode="runway",
-)
+
+def _default_objective() -> MissionObjective:
+    """Build a fresh MissionObjective with system defaults.
+
+    Returned as a new instance per call so callers cannot accidentally
+    mutate a shared singleton.
+    """
+    return MissionObjective(
+        mission_type="trainer",
+        target_cruise_mps=18.0,
+        target_stall_safety=1.8,
+        target_maneuver_n=3.0,
+        target_glide_ld=12.0,
+        target_climb_energy=22.0,
+        target_wing_loading_n_m2=412.0,
+        target_field_length_m=50.0,
+        available_runway_m=50.0,
+        runway_type="grass",
+        t_static_N=18.0,
+        takeoff_mode="runway",
+    )
 
 
 def get_mission_objective(db: Session, aeroplane_id: int) -> MissionObjective:
@@ -32,21 +39,8 @@ def get_mission_objective(db: Session, aeroplane_id: int) -> MissionObjective:
         .one_or_none()
     )
     if row is None:
-        return _DEFAULT_OBJECTIVE.model_copy()
-    return MissionObjective(
-        mission_type=row.mission_type,
-        target_cruise_mps=row.target_cruise_mps,
-        target_stall_safety=row.target_stall_safety,
-        target_maneuver_n=row.target_maneuver_n,
-        target_glide_ld=row.target_glide_ld,
-        target_climb_energy=row.target_climb_energy,
-        target_wing_loading_n_m2=row.target_wing_loading_n_m2,
-        target_field_length_m=row.target_field_length_m,
-        available_runway_m=row.available_runway_m,
-        runway_type=row.runway_type,
-        t_static_N=row.t_static_N,
-        takeoff_mode=row.takeoff_mode,
-    )
+        return _default_objective()
+    return MissionObjective.model_validate(row, from_attributes=True)
 
 
 def upsert_mission_objective(
@@ -64,7 +58,8 @@ def upsert_mission_objective(
     for field, value in payload.model_dump().items():
         setattr(row, field, value)
     db.flush()
-    return payload
+    db.refresh(row)
+    return MissionObjective.model_validate(row, from_attributes=True)
 
 
 def list_mission_presets(db: Session) -> list[MissionPreset]:
