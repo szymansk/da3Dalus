@@ -17,27 +17,27 @@ describe("renderSymbol", () => {
   });
 
   it("renders single underscore as subscript", () => {
-    expect(html(renderSymbol("V_x"))).toBe('V<sub class="text-[9px]">x</sub>');
-    expect(html(renderSymbol("V_y"))).toBe('V<sub class="text-[9px]">y</sub>');
-    expect(html(renderSymbol("V_a"))).toBe('V<sub class="text-[9px]">a</sub>');
+    expect(html(renderSymbol("V_x"))).toBe('V<sub class="text-[10px]">x</sub>');
+    expect(html(renderSymbol("V_y"))).toBe('V<sub class="text-[10px]">y</sub>');
+    expect(html(renderSymbol("V_a"))).toBe('V<sub class="text-[10px]">a</sub>');
   });
 
   it("renders multi-underscore subscript with inner underscores → commas", () => {
     expect(html(renderSymbol("V_min_sink"))).toBe(
-      'V<sub class="text-[9px]">min,sink</sub>',
+      'V<sub class="text-[10px]">min,sink</sub>',
     );
   });
 
   it("keeps trailing non-word characters outside the subscript", () => {
     expect(html(renderSymbol("V_cruise*"))).toBe(
-      'V<sub class="text-[9px]">cruise</sub>*',
+      'V<sub class="text-[10px]">cruise</sub>*',
     );
   });
 
   it("renders multi-letter abbreviations after underscore (V_NE, V_md)", () => {
-    expect(html(renderSymbol("V_NE"))).toBe('V<sub class="text-[9px]">NE</sub>');
-    expect(html(renderSymbol("V_md"))).toBe('V<sub class="text-[9px]">md</sub>');
-    expect(html(renderSymbol("V_max"))).toBe('V<sub class="text-[9px]">max</sub>');
+    expect(html(renderSymbol("V_NE"))).toBe('V<sub class="text-[10px]">NE</sub>');
+    expect(html(renderSymbol("V_md"))).toBe('V<sub class="text-[10px]">md</sub>');
+    expect(html(renderSymbol("V_max"))).toBe('V<sub class="text-[10px]">max</sub>');
   });
 
   it("falls back to the original label for malformed input", () => {

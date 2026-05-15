@@ -22,37 +22,48 @@ interface Props {
   readonly rightSlot?: React.ReactNode;
 }
 
+// Replace underscores with spaces so screen readers say
+// "V min sink" instead of "V underscore min underscore sink".
+function humanize(symbol: string): string {
+  return symbol.replace(/_/g, " ");
+}
+
 function Chip({
   icon: Icon,
   symbol,
   value,
+  valueNode,
   description,
   stale = false,
 }: {
   readonly icon: React.ComponentType<{ size: number; className: string }>;
   readonly symbol: string;
-  readonly value: string;
+  readonly value?: string;
+  readonly valueNode?: React.ReactNode;
   readonly description?: string;
   readonly stale?: boolean;
 }) {
   const valueClass = stale ? "text-red-400" : "text-foreground";
-  const ariaLabel = description ? `${symbol}: ${description}` : symbol;
+  const ariaLabel = description
+    ? `${humanize(symbol)}: ${description}`
+    : humanize(symbol);
   return (
     <div
       role="group"
+      tabIndex={0}
       aria-label={ariaLabel}
-      className="group/chip relative flex items-center gap-1.5 rounded-full bg-card-muted px-3 py-1.5"
+      className="group/chip relative flex items-center gap-1.5 rounded-full bg-card-muted px-3 py-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
     >
       <Icon size={12} className="text-muted-foreground" />
       <span className="font-[family-name:var(--font-geist-sans)] text-[12px] text-foreground">
         {renderSymbol(symbol)}
         {" = "}
-        <span className={valueClass}>{value}</span>
+        {valueNode ?? <span className={valueClass}>{value}</span>}
       </span>
       {description && (
         <span
-          role="tooltip"
-          className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 hidden w-max max-w-[240px] -translate-x-1/2 rounded-lg border border-border bg-card px-2.5 py-1.5 text-[10px] font-normal leading-snug text-foreground shadow-lg group-hover/chip:block"
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 hidden w-max max-w-[240px] -translate-x-1/2 rounded-lg border border-border bg-card px-2.5 py-1.5 text-[10px] font-normal leading-snug text-foreground shadow-lg group-hover/chip:block group-focus-within/chip:block"
         >
           {description}
         </span>
@@ -84,6 +95,23 @@ export function InfoChipRow({ aeroplaneId, cgAero, isRecomputing, rightSlot }: P
   // in flight these are stale → render in red so the user knows not to
   // trust them until the recompute settles.
   const stale = !!isRecomputing;
+
+  const cgValueNode = (
+    <>
+      <span className={stale ? "text-red-400" : ""}>{cgValue}</span>
+      {cgAero != null && ctx?.cg_agg_m != null && ctx?.mac_m != null && (
+        <span
+          className={`ml-1 ${
+            stale
+              ? "text-red-400"
+              : cgDivergenceColor(cgAero, ctx.cg_agg_m, ctx.mac_m)
+          }`}
+        >
+          ({ctx.cg_agg_m.toFixed(3)})
+        </span>
+      )}
+    </>
+  );
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-t border-border bg-card px-4 py-3">
@@ -196,34 +224,13 @@ export function InfoChipRow({ aeroplaneId, cgAero, isRecomputing, rightSlot }: P
         }
         stale={stale}
       />
-      <div
-        role="group"
-        aria-label={`CG: ${cgDescription}`}
-        className="group/chip relative flex items-center gap-1.5 rounded-full bg-card-muted px-3 py-1.5"
-      >
-        <Navigation size={12} className="text-muted-foreground" />
-        <span className="font-[family-name:var(--font-geist-sans)] text-[12px] text-foreground">
-          {"CG = "}
-          <span className={stale ? "text-red-400" : ""}>{cgValue}</span>
-          {cgAero != null && ctx?.cg_agg_m != null && ctx?.mac_m != null && (
-            <span
-              className={`ml-1 ${
-                stale
-                  ? "text-red-400"
-                  : cgDivergenceColor(cgAero, ctx.cg_agg_m, ctx.mac_m)
-              }`}
-            >
-              ({ctx.cg_agg_m.toFixed(3)})
-            </span>
-          )}
-        </span>
-        <span
-          role="tooltip"
-          className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 hidden w-max max-w-[240px] -translate-x-1/2 rounded-lg border border-border bg-card px-2.5 py-1.5 text-[10px] font-normal leading-snug text-foreground shadow-lg group-hover/chip:block"
-        >
-          {cgDescription}
-        </span>
-      </div>
+      <Chip
+        icon={Navigation}
+        symbol="CG"
+        description={cgDescription}
+        valueNode={cgValueNode}
+        stale={stale}
+      />
       <div className="flex-1" />
       {isRecomputing && (
         <span

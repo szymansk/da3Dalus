@@ -88,16 +88,16 @@ describe("Info Chip Row", () => {
     const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
     render(<InfoChipRow aeroplaneId="42" cgAero={0.073} />);
 
-    // Chips are addressable by their accessible name (symbol: description).
-    expect(screen.getByRole("group", { name: /V_min_sink/ })).toBeInTheDocument();
+    // Chips are addressable by their humanized accessible name ("V min sink: …").
+    expect(screen.getByRole("group", { name: /V min sink/ })).toBeInTheDocument();
     expect(screen.getByText(/13\.2 m\/s/)).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: /V_x/ })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /^V x:/ })).toBeInTheDocument();
     expect(screen.getByText(/12\.0 m\/s/)).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: /V_y/ })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /^V y:/ })).toBeInTheDocument();
     expect(screen.getByText(/15\.5 m\/s/)).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: /V_a/ })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /^V a:/ })).toBeInTheDocument();
     expect(screen.getByText(/17\.5 m\/s/)).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: /V_dive/ })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /V dive/ })).toBeInTheDocument();
     expect(screen.getByText(/30\.0 m\/s/)).toBeInTheDocument();
   });
 
@@ -123,13 +123,13 @@ describe("Info Chip Row", () => {
     const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
     render(<InfoChipRow aeroplaneId="42" cgAero={0.13} />);
 
-    expect(screen.queryByRole("group", { name: /^V_a:/ })).toBeNull();
-    expect(screen.getByRole("group", { name: /V_NE/ })).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: /V_min_sink/ })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: /^V a:/ })).toBeNull();
+    expect(screen.getByRole("group", { name: /V NE/ })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /V min sink/ })).toBeInTheDocument();
   });
 
-  // gh-540: each chip exposes a hover description via tooltip + aria-label.
-  it("renders hover-description tooltip and accessible aria-label per chip", async () => {
+  // gh-540: each chip exposes a hover description and is keyboard-focusable.
+  it("renders hover-description tooltip and is keyboard focusable", async () => {
     (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
       data: {
         v_min_sink_mps: 13.2,
@@ -144,10 +144,15 @@ describe("Info Chip Row", () => {
     const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
     render(<InfoChipRow aeroplaneId="42" cgAero={0.073} />);
 
-    const chip = screen.getByRole("group", { name: /V_min_sink:.*minimum sink/i });
+    const chip = screen.getByRole("group", { name: /V min sink.*minimum sink/i });
     expect(chip).toBeInTheDocument();
+    // WCAG 2.1 SC 1.4.13: hover-only tooltips must also reveal on focus.
+    expect(chip).toHaveAttribute("tabindex", "0");
 
-    const tooltip = chip.querySelector('[role="tooltip"]');
+    // Tooltip text is inside the chip subtree. It is aria-hidden because
+    // the parent chip already carries the description via aria-label.
+    expect(chip.textContent).toMatch(/minimum sink/i);
+    const tooltip = chip.querySelector('[aria-hidden="true"]');
     expect(tooltip).not.toBeNull();
     expect(tooltip!.textContent).toMatch(/minimum sink/i);
   });
@@ -168,5 +173,20 @@ describe("Info Chip Row", () => {
     expect(subTexts).toContain("min,sink");
     expect(subTexts).toContain("x");
     expect(subTexts).toContain("dive");
+  });
+
+  // gh-540: aria-label is humanized (no literal underscores spoken).
+  it("humanizes underscores in aria-label for screen readers", async () => {
+    (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: { v_min_sink_mps: 13.2 },
+      isLoading: false,
+      error: null,
+    });
+
+    const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
+    render(<InfoChipRow aeroplaneId="42" cgAero={null} />);
+
+    const chip = screen.getByRole("group", { name: /^V min sink:/ });
+    expect(chip.getAttribute("aria-label")).not.toMatch(/_/);
   });
 });

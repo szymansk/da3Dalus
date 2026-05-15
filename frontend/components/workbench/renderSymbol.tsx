@@ -29,7 +29,7 @@ export function renderSymbol(label: string): React.ReactNode {
   return (
     <>
       {base}
-      <sub className="text-[9px]">{sub}</sub>
+      <sub className="text-[10px]">{sub}</sub>
       {trailing}
     </>
   );
