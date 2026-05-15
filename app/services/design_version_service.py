@@ -10,7 +10,6 @@ from app.core.exceptions import InternalError, NotFoundError
 from app.models.aeroplanemodel import (
     AeroplaneModel,
     DesignVersionModel,
-    MissionObjectivesModel,
     WeightItemModel,
 )
 from app.schemas.design_version import (
@@ -75,7 +74,13 @@ def _serialize_fuselage(fuselage) -> dict[str, Any]:
     return result
 
 
-def _serialize_mission_objectives(obj: MissionObjectivesModel | None) -> dict[str, Any] | None:
+def _serialize_mission_objective(obj: Any | None) -> dict[str, Any] | None:
+    """Serialize the singular MissionObjectiveModel for a design-version snapshot.
+
+    Returns ``None`` when no objective has been persisted for the aeroplane.
+    The full schema-aware serialization is added once the new model lands
+    (see Task 1.3 of the Mission Tab redesign plan).
+    """
     if obj is None:
         return None
     return {
@@ -103,7 +108,9 @@ def _build_snapshot(aeroplane: AeroplaneModel) -> dict[str, Any]:
         "xyz_ref": aeroplane.xyz_ref,
         "wings": [_serialize_wing(w) for w in aeroplane.wings],
         "fuselages": [_serialize_fuselage(f) for f in aeroplane.fuselages],
-        "mission_objectives": _serialize_mission_objectives(aeroplane.mission_objectives),
+        "mission_objective": _serialize_mission_objective(
+            getattr(aeroplane, "mission_objective", None)
+        ),
         "weight_items": _serialize_weight_items(list(aeroplane.weight_items)),
     }
 

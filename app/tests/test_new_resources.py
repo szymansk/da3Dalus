@@ -1,4 +1,4 @@
-"""CRUD endpoint tests for Mission Objectives, Weight Items, and Copilot History.
+"""CRUD endpoint tests for Weight Items and Copilot History.
 
 Each test function creates its own aeroplane via the REST API and then
 exercises the subresource CRUD operations.
@@ -22,53 +22,7 @@ def _create_aeroplane(client, name: str = "test-plane") -> str:
 
 
 # ===========================================================================
-# 1. Mission Objectives
-# ===========================================================================
-
-
-class TestMissionObjectives:
-    def test_put_and_get_mission_objectives(self, client_and_db):
-        client, _ = client_and_db
-        aeroplane_id = _create_aeroplane(client)
-
-        body = {"payload_kg": 2.5, "target_flight_time_min": 45}
-        put_resp = client.put(
-            f"/aeroplanes/{aeroplane_id}/mission-objectives", json=body
-        )
-        assert put_resp.status_code in (200, 201), put_resp.text
-
-        get_resp = client.get(f"/aeroplanes/{aeroplane_id}/mission-objectives")
-        assert get_resp.status_code == 200, get_resp.text
-        data = get_resp.json()
-        assert data["payload_kg"] == 2.5
-        assert data["target_flight_time_min"] == 45
-
-    def test_delete_mission_objectives(self, client_and_db):
-        client, _ = client_and_db
-        aeroplane_id = _create_aeroplane(client)
-
-        body = {"payload_kg": 2.5, "target_flight_time_min": 45}
-        client.put(f"/aeroplanes/{aeroplane_id}/mission-objectives", json=body)
-
-        del_resp = client.delete(
-            f"/aeroplanes/{aeroplane_id}/mission-objectives"
-        )
-        assert del_resp.status_code == 204, del_resp.text
-
-    def test_get_mission_objectives_after_delete_returns_404(self, client_and_db):
-        client, _ = client_and_db
-        aeroplane_id = _create_aeroplane(client)
-
-        body = {"payload_kg": 2.5, "target_flight_time_min": 45}
-        client.put(f"/aeroplanes/{aeroplane_id}/mission-objectives", json=body)
-        client.delete(f"/aeroplanes/{aeroplane_id}/mission-objectives")
-
-        get_resp = client.get(f"/aeroplanes/{aeroplane_id}/mission-objectives")
-        assert get_resp.status_code == 404, get_resp.text
-
-
-# ===========================================================================
-# 2. Weight Items
+# Weight Items
 # ===========================================================================
 
 
@@ -152,7 +106,7 @@ class TestWeightItems:
 
 
 # ===========================================================================
-# 3. Copilot History
+# Copilot History
 # ===========================================================================
 
 

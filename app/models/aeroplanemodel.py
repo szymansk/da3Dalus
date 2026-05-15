@@ -538,12 +538,6 @@ class AeroplaneModel(Base):
         "FuselageModel", back_populates="aeroplane", cascade=_CASCADE_ALL_DELETE_ORPHAN
     )
     flight_profile = relationship("RCFlightProfileModel", back_populates="aircraft")
-    mission_objectives = relationship(
-        "MissionObjectivesModel",
-        back_populates="aeroplane",
-        uselist=False,
-        cascade=_CASCADE_ALL_DELETE_ORPHAN,
-    )
     weight_items = relationship(
         "WeightItemModel",
         back_populates="aeroplane",
@@ -584,30 +578,6 @@ class AeroplaneModel(Base):
         cascade=_CASCADE_ALL_DELETE_ORPHAN,
         order_by="LoadingScenarioModel.id",
     )
-
-
-class MissionObjectivesModel(Base):
-    __tablename__ = "mission_objectives"
-
-    aeroplane_id = Column(
-        Integer,
-        ForeignKey(_FK_AEROPLANES_ID, ondelete="CASCADE"),
-        nullable=False,
-        unique=True,
-        index=True,
-    )
-    payload_kg = Column(Float, nullable=True)
-    target_flight_time_min = Column(Float, nullable=True)
-    maneuverability_class = Column(String, nullable=True)
-    size_envelope_length_mm = Column(Float, nullable=True)
-    size_envelope_width_mm = Column(Float, nullable=True)
-    size_envelope_height_mm = Column(Float, nullable=True)
-    engine_type = Column(String, nullable=True)
-    target_stall_speed_ms = Column(Float, nullable=True)
-    target_cruise_speed_ms = Column(Float, nullable=True)
-    target_top_speed_ms = Column(Float, nullable=True)
-
-    aeroplane = relationship("AeroplaneModel", back_populates="mission_objectives")
 
 
 class WeightItemModel(Base):
