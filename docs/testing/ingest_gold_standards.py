@@ -71,7 +71,7 @@ def ingest_aircraft(client: httpx.Client, config_path: Path, wing_names: list[st
     # 2) POST each wing
     assert len(cfg["wings"]) == len(wing_names), \
         f"{len(cfg['wings'])} wings in config vs {len(wing_names)} names supplied"
-    for wing_name, wing_body in zip(wing_names, cfg["wings"]):
+    for wing_name, wing_body in zip(wing_names, cfg["wings"], strict=True):
         resp = client.post(
             f"/aeroplanes/{aeroplane_id}/wings/{wing_name}/from-wingconfig",
             json=wing_body,
