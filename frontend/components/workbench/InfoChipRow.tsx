@@ -1,6 +1,17 @@
 "use client";
 
-import { Wind, Ruler, Target, Navigation, Gauge, AlertTriangle, Loader2 } from "lucide-react";
+import {
+  Wind,
+  Ruler,
+  Target,
+  Navigation,
+  Gauge,
+  AlertTriangle,
+  Loader2,
+  Plane,
+  TrendingUp,
+  Zap,
+} from "lucide-react";
 import { useComputationContext } from "@/hooks/useComputationContext";
 
 interface Props {
@@ -55,8 +66,20 @@ export function InfoChipRow({ aeroplaneId, cgAero, isRecomputing, rightSlot }: P
   const stale = !!isRecomputing;
 
   return (
-    <div className="flex items-center gap-2 border-t border-border bg-card px-4 py-3">
-      <Chip icon={AlertTriangle} prefix="V_stall = " value={fmt(ctx?.v_stall_mps, 1, " m/s")} stale={stale} />
+    <div className="flex flex-wrap items-center gap-2 border-t border-border bg-card px-4 py-3">
+      {/* Envelope speeds (gh-476: extended chip set) */}
+      <Chip
+        icon={AlertTriangle}
+        prefix="V_stall = "
+        value={fmt(ctx?.v_stall_mps, 1, " m/s")}
+        stale={stale}
+      />
+      <Chip
+        icon={Wind}
+        prefix="V_min_sink = "
+        value={fmt(ctx?.v_min_sink_mps, 1, " m/s")}
+        stale={stale}
+      />
       <Chip icon={Wind} prefix="V_md = " value={fmt(ctx?.v_md_mps, 1, " m/s")} stale={stale} />
       <Chip
         icon={Wind}
@@ -65,11 +88,40 @@ export function InfoChipRow({ aeroplaneId, cgAero, isRecomputing, rightSlot }: P
         stale={stale}
       />
       <Chip
+        icon={TrendingUp}
+        prefix="V_x = "
+        value={fmt(ctx?.v_x_mps, 1, " m/s")}
+        stale={stale}
+      />
+      <Chip
+        icon={Plane}
+        prefix="V_y = "
+        value={fmt(ctx?.v_y_mps, 1, " m/s")}
+        stale={stale}
+      />
+      {/* V_a hidden for gliders — they use V_RA per CS-22 (separate ticket). */}
+      {!ctx?.is_glider && (
+        <Chip
+          icon={Gauge}
+          prefix="V_a = "
+          value={fmt(ctx?.v_a_mps, 1, " m/s")}
+          stale={stale}
+        />
+      )}
+      <Chip
         icon={Gauge}
         prefix={ctx?.is_glider ? "V_NE = " : "V_max = "}
         value={fmt(ctx?.v_max_mps, 1, " m/s")}
         stale={stale}
       />
+      <Chip
+        icon={Zap}
+        prefix="V_dive = "
+        value={fmt(ctx?.v_dive_mps, 1, " m/s")}
+        stale={stale}
+      />
+      {/* Divider between envelope speeds and aero geometry */}
+      <div className="h-5 w-px bg-border" />
       <Chip icon={Wind} prefix="Re ≈ " value={fmtRe(ctx?.reynolds)} stale={stale} />
       <Chip icon={Ruler} prefix="MAC = " value={fmt(ctx?.mac_m, 2, " m")} stale={stale} />
       <Chip icon={Target} prefix="NP = " value={fmt(ctx?.x_np_m, 3, " m")} stale={stale} />

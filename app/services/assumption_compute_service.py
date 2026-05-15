@@ -17,6 +17,7 @@ asyncio.to_thread().
 from __future__ import annotations
 
 import logging
+import math
 from datetime import datetime, timezone
 from typing import Any
 
@@ -390,6 +391,14 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     v_cruise_effective = v_md if (not user_set_cruise and v_md is not None) else v_cruise
     cruise_is_auto = not user_set_cruise and v_md is not None
 
+    # gh-476: extended V-speed set surfaced on the dashboard chip row.
+    # Must run AFTER v_max_effective is finalised (Picard iteration) and
+    # AFTER v_cruise_effective is resolved (drives the V_a cap).
+    g_limit_effective = _load_effective_assumption(db, aircraft.id, "g_limit")
+    v_a = _compute_v_a(v_s1_mps=v_s1, g_limit=g_limit_effective, v_cruise_mps=v_cruise_effective)
+    v_dive = _compute_v_dive(v_max_effective)
+    v_x, v_y = _read_vx_vy_from_ops(db, aircraft.id)
+
     # CL_α from linear-range alpha-sweep (gh-487 — gust envelope).
     # Regression over α ∈ [-2°, +6°] with R² > 0.995 quality gate.
     # Cached as cl_alpha_per_rad; downstream compute_vn_curve uses it
@@ -413,6 +422,14 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         "v_s0_mps": round(v_s0, 1) if v_s0 is not None else None,
         "v_md_mps": round(v_md, 1) if v_md is not None else None,
         "v_min_sink_mps": round(v_min_sink, 1) if v_min_sink is not None else None,
+        # gh-476: extended V-speed set surfaced on the chip row.
+        # V_a, V_dive: physics / heuristic (provenance noted in field doc).
+        # V_x, V_y: pulled from operating-point rows when they exist;
+        # None until OPG has run.
+        "v_a_mps": round(v_a, 1) if v_a is not None else None,
+        "v_dive_mps": round(v_dive, 1) if v_dive is not None else None,
+        "v_x_mps": round(v_x, 1) if v_x is not None else None,
+        "v_y_mps": round(v_y, 1) if v_y is not None else None,
         "is_glider": is_glider,
         "reynolds": round(re),
         "mac_m": round(mac, 4),
@@ -543,6 +560,66 @@ def _detect_first_flap_name(asb_airplane) -> str | None:
                     if role == "flap":
                         return raw
     return None
+
+
+def _compute_v_a(
+    v_s1_mps: float | None,
+    g_limit: float | None,
+    v_cruise_mps: float | None,
+) -> float | None:
+    """Manoeuvring speed V_a = V_s1 · √n_max, capped at V_C (gh-476).
+
+    Anderson §6.7 / CS-25.335(c) / Scholz lecture §6: at V_a the wing
+    reaches C_L_max exactly at the structural load limit n_max, so a
+    full-deflection pitch input cannot exceed n_max. Scholz further
+    requires V_a ≤ V_C — without this cap, V_a can drift above cruise
+    on high-load-limit designs (e.g. acrobatic n+ = 6).
+
+    Returns ``None`` when any input is missing or non-positive.
+    """
+    if v_s1_mps is None or v_s1_mps <= 0 or g_limit is None or g_limit <= 0:
+        return None
+    raw = v_s1_mps * math.sqrt(g_limit)
+    if v_cruise_mps is not None and v_cruise_mps > 0:
+        return min(raw, v_cruise_mps)
+    return raw
+
+
+def _compute_v_dive(v_max_mps: float | None) -> float | None:
+    """V_dive heuristic = 1.4 · V_max (gh-476).
+
+    Provenance: ``heuristic`` — flutter analysis is out of project scope.
+    Anchored on V_max per the ticket spec; the audit (§5.5 / M3) prefers
+    anchoring on V_C, which is tracked as a separate follow-up.
+    """
+    if v_max_mps is None or v_max_mps <= 0:
+        return None
+    return 1.4 * v_max_mps
+
+
+def _read_vx_vy_from_ops(db: Session, aircraft_id: int) -> tuple[float | None, float | None]:
+    """Read V_x / V_y from existing operating-point rows (gh-476).
+
+    Both speeds come from the OPG's `best_angle_climb_vx` and
+    `best_rate_climb_vy` operating points. When the OPG has not yet
+    been run, returns ``(None, None)`` — the chip row renders '–'.
+    """
+    from app.models.analysismodels import OperatingPointModel
+
+    rows = (
+        db.query(OperatingPointModel)
+        .filter(
+            OperatingPointModel.aircraft_id == aircraft_id,
+            OperatingPointModel.name.in_(["best_angle_climb_vx", "best_rate_climb_vy"]),
+        )
+        .all()
+    )
+    by_name = {row.name: row for row in rows}
+    v_x_row = by_name.get("best_angle_climb_vx")
+    v_y_row = by_name.get("best_rate_climb_vy")
+    v_x = float(v_x_row.velocity) if v_x_row is not None else None
+    v_y = float(v_y_row.velocity) if v_y_row is not None else None
+    return v_x, v_y
 
 
 def _extract_flap_ted_max(aircraft: AeroplaneModel) -> float | None:
