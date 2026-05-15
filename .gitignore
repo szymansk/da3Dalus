@@ -280,3 +280,5 @@ Avl/plotlib/*.a
 Avl/plotlib/config.make
 Avl/eispack/*.o
 Avl/eispack/*.a
+
+db/
