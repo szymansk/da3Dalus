@@ -50,8 +50,14 @@ from __future__ import annotations
 
 import logging
 import math
+from typing import TYPE_CHECKING
 
 from app.core.exceptions import ServiceException
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
+    from app.models.aeroplanemodel import AeroplaneModel
 
 logger = logging.getLogger(__name__)
 
@@ -313,7 +319,17 @@ def compute_field_lengths(
         mode_takeoff, mode_landing,
         warnings : list[str]
     """
-    mass_kg: float = aircraft["mass_kg"]
+    # gh-548: prefer ``mass_kg`` from the computation context, fall back to
+    # ``total_mass_kg`` (the AeroplaneModel column) so this service agrees
+    # with mission_kpi_service on the W/S source. Either key is acceptable;
+    # raise the historical KeyError if neither is present so existing
+    # callers see the same error mode.
+    if aircraft.get("mass_kg") is not None:
+        mass_kg = float(aircraft["mass_kg"])
+    elif aircraft.get("total_mass_kg") is not None:
+        mass_kg = float(aircraft["total_mass_kg"])
+    else:
+        raise KeyError("mass_kg")
     s_ref_m2: float = aircraft["s_ref_m2"]
     v_stall: float = aircraft["v_stall_mps"]
     warnings: list[str] = []
@@ -429,3 +445,75 @@ def _check_thrust(aircraft: dict, mode: str) -> None:
                 "Set t_static_N via Design Assumptions or provide a measured value."
             )
         )
+
+
+# ---------------------------------------------------------------------------
+# MissionObjective-aware wrapper (gh-548)
+# ---------------------------------------------------------------------------
+
+
+def compute_field_lengths_for_aeroplane(
+    aeroplane: AeroplaneModel,
+    *,
+    db: Session | None = None,
+) -> dict:
+    """Compute field lengths using the aeroplane's MissionObjective.
+
+    Field-performance inputs (runway, thrust, takeoff mode) come from the
+    aeroplane's :class:`MissionObjective` row (with system defaults if no
+    row exists). Aerodynamic inputs (mass, stall speed, S_ref, polar
+    cl_max per high-lift config, flap type) come from
+    ``assumption_computation_context``.
+
+    This is the replacement entry point for the historical pattern of
+    reading runway/brake/T_static from ``design_assumptions``.
+
+    Parameters
+    ----------
+    aeroplane:
+        The aeroplane model to evaluate. Its ``assumption_computation_context``
+        provides the cached aero inputs.
+    db:
+        Optional SQLAlchemy session. If omitted, a short-lived session is
+        opened (and closed) via ``SessionLocal``.
+    """
+    from app.db.session import SessionLocal
+    from app.services.mission_objective_service import get_mission_objective
+
+    if db is None:
+        db = SessionLocal()
+        owned = True
+    else:
+        owned = False
+
+    try:
+        objective = get_mission_objective(db, aeroplane.id)
+        ctx = aeroplane.assumption_computation_context or {}
+        polar_by_config = ctx.get("polar_by_config") or {}
+        aircraft_dict: dict = {
+            "mass_kg": ctx.get("mass_kg"),
+            # gh-548: fall back to the AeroplaneModel column so this wrapper
+            # agrees with mission_kpi_service on the W/S mass source.
+            "total_mass_kg": getattr(aeroplane, "total_mass_kg", None),
+            "s_ref_m2": ctx.get("s_ref_m2"),
+            "v_stall_mps": ctx.get("v_stall_mps"),
+            "v_s_to_mps": ctx.get("v_s_to_mps"),
+            "v_s0_mps": ctx.get("v_s0_mps"),
+            "cl_max": ctx.get("cl_max"),
+            "cl_max_takeoff": (polar_by_config.get("takeoff") or {}).get("cl_max"),
+            "cl_max_landing": (polar_by_config.get("landing") or {}).get("cl_max"),
+            "flap_type": ctx.get("flap_type"),
+            # Field-performance inputs from the MissionObjective.
+            "available_runway_m": objective.available_runway_m,
+            "runway_type": objective.runway_type,
+            "t_static_N": objective.t_static_N,
+            "takeoff_mode": objective.takeoff_mode,
+        }
+        return compute_field_lengths(
+            aircraft_dict,
+            takeoff_mode=objective.takeoff_mode,
+            landing_mode="belly_land" if objective.runway_type == "belly" else "runway",
+        )
+    finally:
+        if owned:
+            db.close()
