@@ -46,20 +46,63 @@ def get_mission_objective(db: Session, aeroplane_id: int) -> MissionObjective:
 def upsert_mission_objective(
     db: Session, aeroplane_id: int, payload: MissionObjective
 ) -> MissionObjective:
-    """Create or update the MissionObjective for an aeroplane."""
+    """Create or update the MissionObjective for an aeroplane.
+
+    When the mission_type changes (including the first create), the preset's
+    suggested_estimates are auto-applied to design_assumptions.estimate_value
+    via :func:`_apply_preset_estimates` (gh-549). Only estimate_value is
+    touched — calculated_value, calculated_source, and active_source remain
+    owned by assumption_compute_service / AeroBuildup.
+    """
     row = (
         db.query(MissionObjectiveModel)
         .filter(MissionObjectiveModel.aeroplane_id == aeroplane_id)
         .one_or_none()
     )
+    old_mission_type = row.mission_type if row else None
     if row is None:
         row = MissionObjectiveModel(aeroplane_id=aeroplane_id)
         db.add(row)
     for field, value in payload.model_dump().items():
         setattr(row, field, value)
     db.flush()
+
+    # Auto-apply preset estimates when mission_type changes (incl. first create)
+    if old_mission_type != payload.mission_type:
+        _apply_preset_estimates(db, aeroplane_id, payload.mission_type)
+
     db.refresh(row)
     return MissionObjective.model_validate(row, from_attributes=True)
+
+
+def _apply_preset_estimates(db: Session, aeroplane_id: int, mission_type: str) -> None:
+    """Write the preset's suggested_estimates to design_assumptions.estimate_value.
+
+    Never touches calculated_value or active_source — those remain owned by
+    assumption_compute_service / AeroBuildup. Silent no-op for unknown
+    mission_type; KPI service is responsible for raising on bad ids.
+    """
+    from app.models.aeroplanemodel import DesignAssumptionModel
+
+    preset = (
+        db.query(MissionPresetModel).filter_by(id=mission_type).one_or_none()
+    )
+    if preset is None:
+        return
+    estimates: dict = preset.suggested_estimates
+    for param_name, value in estimates.items():
+        a_row = (
+            db.query(DesignAssumptionModel)
+            .filter_by(aeroplane_id=aeroplane_id, parameter_name=param_name)
+            .one_or_none()
+        )
+        if a_row is None:
+            a_row = DesignAssumptionModel(
+                aeroplane_id=aeroplane_id, parameter_name=param_name
+            )
+            db.add(a_row)
+        a_row.estimate_value = value
+    db.flush()
 
 
 def list_mission_presets(db: Session) -> list[MissionPreset]:
