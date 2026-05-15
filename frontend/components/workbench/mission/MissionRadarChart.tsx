@@ -91,7 +91,7 @@ export function MissionRadarChart({
       />
 
       {/* Concentric grid rings */}
-      {[0.33, 0.66, 1.0].map((ring) => (
+      {[0.33, 0.66, 1].map((ring) => (
         <polygon
           key={ring}
           className="radar-grid"
@@ -106,7 +106,7 @@ export function MissionRadarChart({
 
       {/* Axes (spokes + dashed extensions to outer ring) */}
       {AXES.map((axis, i) => {
-        const tip = polarToCartesian(i, 1.0, R);
+        const tip = polarToCartesian(i, 1, R);
         const tipOuter = polarToCartesian(i, 1.3, R);
         return (
           <g key={axis}>
