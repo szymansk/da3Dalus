@@ -38,13 +38,23 @@ Pick by topic — they don't overlap:
 | `/avl-advisor` | AVL-specific: `.avl` / `.mass` / `.run` files, Trefftz Plane, vortex spacing, eigenmodes, control surfaces, trim setup in AVL |
 | `/aerodynamics-expert` | Aerodynamics theory (Anderson): boundary layers, shocks, potential flow, compressibility, stall, drag mechanisms |
 | `/aerosandbox-expert` | AeroSandbox code & workflows: VLM/AeroBuildup setup, Opti problems, NeuralFoil, trajectory optimization |
-| `/aircraft-design-scholz` | Conceptual / preliminary aircraft design (Scholz / HAW): sizing (T/W vs W/S), wing parameters, performance (field length, Breguet), high-lift, fuselage layout, CS-25 / FAR-25 |
+| `/aircraft-design-scholz` | Conceptual / preliminary aircraft design (Scholz / Sadraey): sizing (T/W vs W/S), wing parameters, performance (field length, Breguet), high-lift, fuselage layout, CS-25 / FAR-25 |
+| `/rc-aircraft-designer` | RC / model-aircraft design (rcplanedesigner.com): wing loading, MAC, taper, tail volume, lever arms, first-flight CG, static-margin targets per mission (trainer / sport / aerobatic), landing-gear geometry, coherent-baseline design cycle |
 
 Rule of thumb:
 - *"Why does X happen aerodynamically?"* → `aerodynamics-expert`
-- *"How big should my wing be?"* → `aircraft-design-scholz`
+- *"How big should my wing be on a 180-seat airliner?"* → `aircraft-design-scholz`
+- *"What static margin / wing loading for my 1.5 m trainer?"* → `rc-aircraft-designer`
 - *"How do I set this up in code?"* → `aerosandbox-expert`
 - *"What does this `.avl` field mean?"* → `avl-advisor`
+
+`rc-aircraft-designer` and `aircraft-design-scholz` overlap conceptually
+but split by scale and audience: full-scale / CS-25 / Loftin / Scholz
+methodology lives in the latter; RC / model / small-UAV mission-consistent
+ranges live in the former. The da3Dalus app primarily serves the RC/UAV
+audience — prefer `rc-aircraft-designer` for end-user-facing questions
+about typical values, and `aircraft-design-scholz` for the deeper
+analytical machinery (Breguet, matching chart, double-trapezoidal wing).
 
 ## Using Superpowers
 
