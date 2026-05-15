@@ -39,7 +39,7 @@ Pick by topic — they don't overlap:
 | `/aerodynamics-expert` | Aerodynamics theory (Anderson): boundary layers, shocks, potential flow, compressibility, stall, drag mechanisms |
 | `/aerosandbox-expert` | AeroSandbox code & workflows: VLM/AeroBuildup setup, Opti problems, NeuralFoil, trajectory optimization |
 | `/aircraft-design-scholz` | Conceptual / preliminary aircraft design (Scholz / Sadraey): sizing (T/W vs W/S), wing parameters, performance (field length, Breguet), high-lift, fuselage layout, CS-25 / FAR-25 |
-| `/rc-aircraft-designer` | RC / model-aircraft design (rcplanedesigner.com): wing loading, MAC, taper, tail volume, lever arms, first-flight CG, static-margin targets per mission (trainer / sport / aerobatic), landing-gear geometry, coherent-baseline design cycle |
+| `/rc-aircraft-designer` | **RC / model aircraft only** (rcplanedesigner.com): wing loading, MAC, taper, tail volume, lever arms, first-flight CG, static-margin targets per mission (trainer / sport / aerobatic), landing-gear geometry, coherent-baseline design cycle. **Not for UAV.** |
 
 Rule of thumb:
 - *"Why does X happen aerodynamically?"* → `aerodynamics-expert`
@@ -49,12 +49,22 @@ Rule of thumb:
 - *"What does this `.avl` field mean?"* → `avl-advisor`
 
 `rc-aircraft-designer` and `aircraft-design-scholz` overlap conceptually
-but split by scale and audience: full-scale / CS-25 / Loftin / Scholz
-methodology lives in the latter; RC / model / small-UAV mission-consistent
-ranges live in the former. The da3Dalus app primarily serves the RC/UAV
-audience — prefer `rc-aircraft-designer` for end-user-facing questions
-about typical values, and `aircraft-design-scholz` for the deeper
-analytical machinery (Breguet, matching chart, double-trapezoidal wing).
+but split by scale and audience:
+- `/rc-aircraft-designer` — **RC / model aircraft only** (rcplanedesigner.com
+  vocabulary: trainer / sport / aerobatic). Do **not** invoke for UAV /
+  small-fixed-wing-unmanned questions even though the SKILL.md
+  description loosely mentions them — the vault has no UAV-specific
+  content (no payload-fraction, no endurance optimization, no
+  long-range mission profiles).
+- `/aircraft-design-scholz` — full-scale / CS-25 / Loftin / Scholz /
+  Sadraey methodology; covers UAV sizing via its general transport-
+  aircraft machinery (Breguet range/endurance, matching chart,
+  high-lift sizing, fuselage slenderness, etc.).
+
+The da3Dalus app serves both RC hobbyists and professional RC/UAV
+designers. For RC-specific values → `rc-aircraft-designer`. For UAV
+sizing and analytical machinery → `aircraft-design-scholz` +
+`aerosandbox-expert`.
 
 ## Using Superpowers
 
