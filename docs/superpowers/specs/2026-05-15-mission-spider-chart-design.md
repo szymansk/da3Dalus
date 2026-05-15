@@ -311,7 +311,75 @@ Each phase ticket is independently revertable:
 - Phases 5–7 are frontend-only; the placeholder Mission tab UI remains available behind a feature flag (`mission.tab.v2.enabled`) until phase 6 lands.
 - The v2 EPIC (#8) is meta — its existence is independent of the v1 code.
 
-## 12. Decisions taken during review
+## 12. Visual reference
+
+A full interactive HTML mockup of the target Mission tab lives at
+[`assets/2026-05-15-mission-tab-mock.html`](./assets/2026-05-15-mission-tab-mock.html).
+Open it in any browser to inspect spacing, typography, and the
+provenance-badge / multi-mission-toggle / banner patterns in their
+intended rendered form.
+
+### Layout wireframe
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│ RV-7 / —    [1·Mission ●]  [2·Construction] [3·Analysis] [4·Comp.]   │
+│                                                       [↻] [v3 ▾] [⚙] │
+├───────────────────────────────────┬──────────────────────────────────┤
+│                                   │                                  │
+│  ⊙ Mission Compliance             │  ⊙ Mission Objectives            │
+│  ─────────────────────            │  ─────────────────────           │
+│                                   │  ┌───────────────────────────┐   │
+│           ▲ Glide                 │  │ ⚡ Mission = Trainer       │   │
+│       Stall●─┼─●Climb             │  │   g_limit:3.0 · SM:0.15… │   │
+│       ●         ●                 │  │   [In Assumptions →]      │   │
+│     Maneuver  Cruise              │  └───────────────────────────┘   │
+│        ●     ●                    │                                  │
+│         W/S Field                 │  Mission Type    ┌───────────┐   │
+│            ●                      │                  │ Trainer ▾ │   │
+│      (orange Ist + white Soll     │                  └───────────┘   │
+│       + red gap-fill +            │                                  │
+│       blue Sailplane ghost)       │  ── PERFORMANCE TARGETS ───      │
+│                                   │  Cruise [18.0 m/s]  Stall [1.80] │
+│  ── VERGLEICHS-PROFILE ───        │  Maneuver [3.0 g]   Glide [12]   │
+│  ☑ Trainer (aktiv)  ☐ Sport       │  Climb [22]         W/S [42]     │
+│  ☑ Sailplane (blue) ☐ Wing-Racer  │                                  │
+│  ☐ 3D / Acro        ☐ STOL        │  ── FIELD PERFORMANCE ───        │
+│                                   │  Runway [50 m]      Type [grass▾]│
+│  ▬ Ist  ┄ Soll  ▒ Gap             │  T_static [18 N]    Mode [run.▾] │
+│                                   │                                  │
+│                                   │            [Cancel] [Save]       │
+├───────────────────────────────────┴──────────────────────────────────┤
+│ V_stall 23 · V_md 48 · V_cruise 65 · V_max 95 · Re 1.2e5 · MAC 210 … │
+├──────────────────────────────────────────────────────────────────────┤
+│ 💬 Ask the copilot…                                                  │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+### Key visual details (from the rendered mock)
+
+- **Radar** sits centred in the left panel, ~360 px max, with three solid
+  grid rings (0.33 / 0.66 / 1.0) and one dashed outer ring (~1.3) showing
+  where neighbour-mission markers can land when the chart auto-rescales.
+- **Provenance badges** are 2.6-px circles in `#22dd66` (computed),
+  `#f0c75e` (estimated), `#555` (missing) placed next to each axis label.
+- **Ist polygon** uses `rgba(255, 132, 0, 0.34)` fill with `#FF8400`
+  stroke. **Soll** is dashed white. **Gap** is `rgba(239, 68, 68, 0.14)`.
+  **Ghost missions** use 10 % alpha fill with a coloured dashed stroke
+  (sky-blue for Sailplane, red for Wing-Racer, etc.).
+- **Toggle grid** for comparison profiles renders below the radar in a
+  two-column layout. The active profile is highlighted in orange; ghost
+  profiles inherit their polygon colour.
+- **Auto-apply banner** in the right panel uses a left-bar accent
+  (`#FF8400` 3 px) with a gradient background, mono-spaced diff line, and
+  a single secondary action linking to the Assumptions tab.
+- **Form inputs** use suffix chips for units (`m/s`, `g`, `g/dm²`,
+  `m`, `N`). Numeric inputs are monospaced.
+- **Field Performance section** is visually marked "aus Assumptions
+  migriert" as a one-time orientation cue for users coming from the old
+  layout. The label is removed after v1 stabilises (drop in v2 cleanup).
+
+## 13. Decisions taken during review
 
 The following details were resolved after the initial spec write-up:
 

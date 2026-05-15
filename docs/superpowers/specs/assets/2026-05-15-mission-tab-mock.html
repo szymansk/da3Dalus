@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>da3Dalus · Mission Tab Mock · 2026-05-15</title>
+<style>
+  body { background: #0a0a0a; color: #e5e5e5; font-family: 'Geist', 'Inter', system-ui, sans-serif; margin: 0; padding: 24px; }
+  h1 { color: #FF8400; font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  .doc-meta { color: #666; font-size: 12px; margin-bottom: 18px; }
+  * { box-sizing: border-box; }
+
+  .app-frame { background: #0d0d0d; border-radius: 8px; overflow: hidden; border: 1px solid #2a2a2a; max-width: 1200px; }
+
+  .app-tabbar { display:flex; align-items:center; justify-content:space-between; padding: 10px 16px; background: #0a0a0a; border-bottom: 1px solid #1f1f1f; font-size: 12px; }
+  .app-tabbar-left { display:flex; align-items:center; gap: 18px; }
+  .app-aircraft { color: #888; font-family: monospace; }
+  .app-tabs { display:flex; gap: 4px; }
+  .app-tab { padding: 6px 12px; border-radius: 999px; color: #888; cursor:pointer; font-size: 12px; display:flex; align-items:center; gap:6px; }
+  .app-tab .num { color: #555; font-weight: 600; }
+  .app-tab.active { background: #1a1a1a; color: #FF8400; border: 1px solid #2a2a2a; }
+  .app-tab.active .num { color: #FF8400; }
+  .app-tabbar-right { display:flex; gap: 12px; align-items:center; }
+  .app-icon { width: 18px; height: 18px; background:#222; border-radius: 50%; display:inline-block; }
+  .app-avatar { width: 22px; height: 22px; background: #FF8400; border-radius: 50%; color:#111; font-size:11px; font-weight:600; display:flex; align-items:center; justify-content:center; }
+
+  .app-body { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; min-height: 540px; background: #0d0d0d; }
+  .panel { background: #161616; border: 1px solid #1f1f1f; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; }
+  .panel-title { color: #FF8400; font-size: 13px; font-weight: 600; margin: 0 0 12px; display:flex; align-items:center; gap: 8px; }
+
+  .radar-svg { width: 100%; aspect-ratio: 1 / 1; max-width: 360px; max-height: 360px; margin: 0 auto 8px; display:block; }
+  .radar-grid { stroke: #2a2a2a; stroke-width: 0.6; fill: none; }
+  .radar-grid-outer { stroke: #1f1f1f; stroke-width: 0.4; fill: none; stroke-dasharray: 3 3; }
+  .radar-axis { stroke: #444; stroke-width: 0.6; }
+  .radar-soll { fill: none; stroke: #fff; stroke-width: 1.4; stroke-dasharray: 4 3; }
+  .radar-ist  { fill: rgba(255, 132, 0, 0.34); stroke: #FF8400; stroke-width: 1.8; }
+  .ghost-sailplane { fill: rgba(102,204,255,0.10); stroke: #66ccff; stroke-width: 1.1; stroke-dasharray: 2 2; }
+  .radar-gap { fill: rgba(239, 68, 68, 0.14); }
+  .radar-label { font: 600 11px sans-serif; fill: #cccccc; text-anchor: middle; }
+  .radar-label-val { font: 9px sans-serif; fill: #888; text-anchor: middle; }
+  .radar-vertex { fill: #FF8400; stroke: #fff; stroke-width: 0.6; }
+  .badge-green { fill: #22dd66; }
+  .badge-yellow { fill: #f0c75e; }
+
+  .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; margin-top: 8px; padding: 8px 10px; background: #111; border-radius: 6px; }
+  .toggle-row { display:flex; align-items:center; gap: 6px; font-size: 11px; padding: 4px 0; }
+  .toggle-cb { width: 12px; height: 12px; border:1px solid #444; border-radius: 3px; display:inline-block; flex-shrink: 0; }
+  .toggle-cb.on { background: #FF8400; border-color: #FF8400; }
+  .toggle-cb.on-blue { background: #66ccff; border-color: #66ccff; }
+  .toggle-active { color: #FF8400; font-weight: 600; }
+  .toggle-ghost-blue { color: #66ccff; }
+  .toggle-row .dim { color: #555; font-size: 10px; margin-left: auto; }
+
+  .field-group { margin-bottom: 12px; }
+  .field-label { font-size: 11px; color: #888; margin-bottom: 4px; display:flex; justify-content:space-between; }
+  .field-input { background: #0d0d0d; border: 1px solid #2a2a2a; border-radius: 4px; padding: 7px 10px; font-size: 12px; color: #fff; width: 100%; font-family: monospace; }
+  .field-input-suffix { display: flex; align-items: stretch; }
+  .field-input-suffix .field-input { border-radius: 4px 0 0 4px; }
+  .field-suffix { background: #1f1f1f; border: 1px solid #2a2a2a; border-left: 0; border-radius: 0 4px 4px 0; padding: 7px 10px; color: #888; font-size: 11px; font-family: monospace; }
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+  .section-header { color: #666; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; margin: 16px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #1f1f1f; }
+
+  .banner { background: linear-gradient(90deg, rgba(255,132,0,0.16), rgba(255,132,0,0.04)); border-left: 3px solid #FF8400; padding: 10px 12px; margin: 0 0 14px; border-radius: 4px; font-size: 11px; line-height: 1.55; }
+  .banner-title { color: #FF8400; font-weight: 600; margin-bottom: 4px; }
+  .banner-diff { color: #ccc; font-family: monospace; font-size: 10px; margin: 3px 0 7px; }
+  .banner-actions { display:flex; gap:6px; }
+  .btn { padding: 5px 10px; font-size: 11px; border-radius: 4px; font-weight: 600; cursor: pointer; border: 0; }
+  .btn-primary { background: #FF8400; color: #111; }
+  .btn-ghost { background: transparent; color: #888; border: 1px solid #2a2a2a; }
+  .footer-buttons { display:flex; justify-content: flex-end; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid #1f1f1f; }
+
+  .info-chips { display:flex; gap: 6px; padding: 8px 16px; background: #0a0a0a; border-top: 1px solid #1f1f1f; overflow-x:auto; flex-wrap: wrap; }
+  .info-chip { background: #161616; border: 1px solid #1f1f1f; border-radius: 999px; padding: 4px 10px; font: 10px monospace; color: #888; white-space: nowrap; }
+  .info-chip .v { color: #FF8400; font-weight: 600; }
+
+  .copilot { padding: 10px 16px; background: #0a0a0a; border-top: 1px solid #1f1f1f; display:flex; align-items:center; gap:8px; color: #555; font-size: 11px; }
+  .copilot-icon { width: 14px; height: 14px; background: #222; border-radius: 50%; }
+</style>
+</head>
+<body>
+
+<h1>da3Dalus — Mission Tab Redesign</h1>
+<div class="doc-meta">Spec asset · 2026-05-15 · companion to <code>docs/superpowers/specs/2026-05-15-mission-spider-chart-design.md</code></div>
+
+<div class="app-frame">
+
+  <div class="app-tabbar">
+    <div class="app-tabbar-left">
+      <span class="app-aircraft">RV-7 /  —</span>
+      <div class="app-tabs">
+        <div class="app-tab active"><span class="num">1</span>·<span>Mission</span></div>
+        <div class="app-tab"><span class="num">2</span>·<span>Construction</span></div>
+        <div class="app-tab"><span class="num">3</span>·<span>Analysis</span></div>
+        <div class="app-tab"><span class="num">4</span>·<span>Components</span></div>
+        <div class="app-tab"><span class="num">5</span>·<span>Plans</span></div>
+      </div>
+    </div>
+    <div class="app-tabbar-right">
+      <span class="app-icon"></span>
+      <span style="font-size:10px; color:#888">v3 ▾</span>
+      <span class="app-icon"></span>
+      <span class="app-icon"></span>
+      <div class="app-avatar">SZ</div>
+    </div>
+  </div>
+
+  <div class="app-body">
+
+    <div class="panel">
+      <div class="panel-title"><span style="color:#FF8400">⊙</span> Mission Compliance</div>
+
+      <svg viewBox="-150 -150 300 300" class="radar-svg">
+        <polygon class="radar-grid-outer" points="0,-117 91,-53 73,47 32,114 -32,114 -73,47 -91,-53"/>
+        <polygon class="radar-grid" points="0,-90 70,-41 56,36 25,87 -25,87 -56,36 -70,-41"/>
+        <polygon class="radar-grid" points="0,-60 47,-27 37,24 17,58 -17,58 -37,24 -47,-27"/>
+        <polygon class="radar-grid" points="0,-30 23,-13 19,12 8,29 -8,29 -19,12 -23,-13"/>
+
+        <line class="radar-axis" x1="0" y1="0" x2="0"    y2="-117"/>
+        <line class="radar-axis" x1="0" y1="0" x2="91"   y2="-53"/>
+        <line class="radar-axis" x1="0" y1="0" x2="73"   y2="47"/>
+        <line class="radar-axis" x1="0" y1="0" x2="32"   y2="114"/>
+        <line class="radar-axis" x1="0" y1="0" x2="-32"  y2="114"/>
+        <line class="radar-axis" x1="0" y1="0" x2="-73"  y2="47"/>
+        <line class="radar-axis" x1="0" y1="0" x2="-91"  y2="-53"/>
+
+        <polygon class="ghost-sailplane" points="0,-105 38,-22 33,21 13,46 -13,46 -28,17 -42,-25"/>
+        <polygon class="radar-gap" points="0,-80 62,-36 50,32 22,76 -22,76 -50,32 -62,-36"/>
+        <polygon class="radar-soll" points="0,-80 62,-36 50,32 22,76 -22,76 -50,32 -62,-36"/>
+        <polygon class="radar-ist" points="0,-52 41,-24 33,21 14,49 -14,49 -33,21 -41,-24"/>
+
+        <circle cx="0"   cy="-52" r="2.6" class="radar-vertex"/>
+        <circle cx="41"  cy="-24" r="2.6" class="radar-vertex"/>
+        <circle cx="33"  cy="21"  r="2.6" class="radar-vertex"/>
+        <circle cx="14"  cy="49"  r="2.6" class="radar-vertex"/>
+        <circle cx="-14" cy="49"  r="2.6" class="radar-vertex"/>
+        <circle cx="-33" cy="21"  r="2.6" class="radar-vertex"/>
+        <circle cx="-41" cy="-24" r="2.6" class="radar-vertex"/>
+
+        <text x="0"    y="-127" class="radar-label">Glide</text>
+        <text x="0"    y="-138" class="radar-label-val">L/D 12 / 14</text>
+        <circle cx="20" cy="-130" r="2.6" class="badge-green"/>
+        <text x="100"   y="-55" class="radar-label">Climb</text>
+        <text x="105"  y="-44" class="radar-label-val">C_L^1.5/CD</text>
+        <circle cx="124" cy="-58" r="2.6" class="badge-green"/>
+        <text x="83"   y="55"  class="radar-label">Cruise</text>
+        <text x="86"  y="66"   class="radar-label-val">18 / 18 m/s</text>
+        <circle cx="106" cy="52" r="2.6" class="badge-green"/>
+        <text x="38"   y="128" class="radar-label">Field</text>
+        <text x="38"   y="140" class="radar-label-val">50 m / target</text>
+        <circle cx="58" cy="125" r="2.6" class="badge-yellow"/>
+        <text x="-38"  y="128" class="radar-label">W/S</text>
+        <text x="-38"  y="140" class="radar-label-val">42 g/dm²</text>
+        <circle cx="-58" cy="125" r="2.6" class="badge-green"/>
+        <text x="-83"  y="55"  class="radar-label">Maneuver</text>
+        <text x="-86"  y="66"  class="radar-label-val">3.0 g</text>
+        <circle cx="-110" cy="52" r="2.6" class="badge-green"/>
+        <text x="-100" y="-55" class="radar-label">Stall</text>
+        <text x="-105" y="-44" class="radar-label-val">1.45 / 1.80</text>
+        <circle cx="-124" cy="-58" r="2.6" class="badge-green"/>
+
+        <circle cx="0" cy="-107" r="2.6" fill="#66ccff" stroke="#66ccff"/>
+      </svg>
+
+      <div style="font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 0.08em; margin: 4px 0 4px;">Vergleichs-Profile</div>
+      <div class="toggle-grid">
+        <div class="toggle-row toggle-active"><span class="toggle-cb on"></span>Trainer <span class="dim">aktiv</span></div>
+        <div class="toggle-row"><span class="toggle-cb"></span>Sport</div>
+        <div class="toggle-row toggle-ghost-blue"><span class="toggle-cb on-blue"></span>Sailplane</div>
+        <div class="toggle-row"><span class="toggle-cb"></span>Wing-Racer</div>
+        <div class="toggle-row"><span class="toggle-cb"></span>3D / Acro</div>
+        <div class="toggle-row"><span class="toggle-cb"></span>STOL / Bush</div>
+      </div>
+
+      <div style="display:flex; gap:14px; font-size:10px; color:#888; margin-top:10px; padding: 6px 4px;">
+        <span style="display:flex; align-items:center; gap:5px">
+          <span style="width:12px; height:6px; background:#FF8400; opacity:0.6; border-radius:1px;"></span>Analysis (Ist)
+        </span>
+        <span style="display:flex; align-items:center; gap:5px">
+          <span style="width:12px; height:6px; border: 1px dashed #fff; border-radius:1px;"></span>Target (Soll)
+        </span>
+        <span style="display:flex; align-items:center; gap:5px">
+          <span style="width:8px; height:8px; background:rgba(239,68,68,0.4); border-radius:1px;"></span>Gap
+        </span>
+      </div>
+    </div>
+
+    <div class="panel" style="overflow-y: auto;">
+      <div class="panel-title"><span style="color:#FF8400">⊙</span> Mission Objectives</div>
+
+      <div class="banner">
+        <div class="banner-title">⚡ Mission auf <span style="color:#fff">Trainer</span> gesetzt — Estimates angepasst</div>
+        <div class="banner-diff">g_limit: 3.0 · target_static_margin: 0.15 · CL_max: 1.4 · P/W: 0.5</div>
+        <div class="banner-actions">
+          <button class="btn btn-ghost">In Assumptions ansehen →</button>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label"><span>Mission Type</span></div>
+        <select class="field-input"><option>Trainer  ▾</option></select>
+      </div>
+
+      <div class="section-header">Performance Targets</div>
+      <div class="field-grid">
+        <div class="field-group"><div class="field-label"><span>Target Cruise</span><span>m/s</span></div><div class="field-input-suffix"><input class="field-input" value="18.0"/><span class="field-suffix">m/s</span></div></div>
+        <div class="field-group"><div class="field-label"><span>Stall Safety</span><span>V_cr / V_s1</span></div><div class="field-input-suffix"><input class="field-input" value="1.80"/><span class="field-suffix">–</span></div></div>
+        <div class="field-group"><div class="field-label"><span>Max Maneuver</span><span>n_max</span></div><div class="field-input-suffix"><input class="field-input" value="3.0"/><span class="field-suffix">g</span></div></div>
+        <div class="field-group"><div class="field-label"><span>Min Glide (L/D)</span><span>–</span></div><div class="field-input-suffix"><input class="field-input" value="12"/><span class="field-suffix">–</span></div></div>
+        <div class="field-group"><div class="field-label"><span>Climb Energy</span><span>C_L^1.5/CD</span></div><div class="field-input-suffix"><input class="field-input" value="22"/><span class="field-suffix">–</span></div></div>
+        <div class="field-group"><div class="field-label"><span>Target Wing Load</span><span>g/dm²</span></div><div class="field-input-suffix"><input class="field-input" value="42"/><span class="field-suffix">g/dm²</span></div></div>
+      </div>
+
+      <div class="section-header">Field Performance · <span style="color:#FF8400; text-transform:none">aus Assumptions migriert</span></div>
+      <div class="field-grid">
+        <div class="field-group"><div class="field-label"><span>Available Runway</span><span>m</span></div><div class="field-input-suffix"><input class="field-input" value="50"/><span class="field-suffix">m</span></div></div>
+        <div class="field-group"><div class="field-label"><span>Runway Type</span></div><select class="field-input"><option>grass ▾</option></select></div>
+        <div class="field-group"><div class="field-label"><span>Static Thrust</span><span>at V=0</span></div><div class="field-input-suffix"><input class="field-input" value="18"/><span class="field-suffix">N</span></div></div>
+        <div class="field-group"><div class="field-label"><span>Takeoff Mode</span></div><select class="field-input"><option>runway ▾</option></select></div>
+      </div>
+
+      <div class="footer-buttons">
+        <button class="btn btn-ghost">Cancel</button>
+        <button class="btn btn-primary">Save</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="info-chips">
+    <span class="info-chip">V_stall <span class="v">23 km/h</span></span>
+    <span class="info-chip">V_min_sink <span class="v">38 km/h</span></span>
+    <span class="info-chip">V_md <span class="v">48 km/h</span></span>
+    <span class="info-chip">V_cruise <span class="v">65 km/h</span></span>
+    <span class="info-chip">V_x <span class="v">52 km/h</span></span>
+    <span class="info-chip">V_y <span class="v">60 km/h</span></span>
+    <span class="info-chip">V_a <span class="v">40 km/h</span></span>
+    <span class="info-chip">V_max <span class="v">95 km/h</span></span>
+    <span class="info-chip">V_dive <span class="v">133 km/h</span></span>
+    <span class="info-chip">Re <span class="v">1.2e5</span></span>
+    <span class="info-chip">MAC <span class="v">210 mm</span></span>
+    <span class="info-chip">SM <span class="v">15%</span></span>
+  </div>
+
+  <div class="copilot"><span class="copilot-icon"></span> Ask the copilot…</div>
+</div>
+
+</body>
+</html>
