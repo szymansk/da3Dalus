@@ -1,4 +1,5 @@
 """REST endpoints for Mission Objectives + Mission Presets (gh-546)."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException

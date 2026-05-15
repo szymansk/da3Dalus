@@ -1,4 +1,5 @@
 """Pydantic schemas for the Mission compliance spider chart (gh-546)."""
+
 from __future__ import annotations
 
 from typing import Literal
@@ -6,8 +7,13 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 AxisName = Literal[
-    "stall_safety", "glide", "climb", "cruise",
-    "maneuver", "wing_loading", "field_friendliness",
+    "stall_safety",
+    "glide",
+    "climb",
+    "cruise",
+    "maneuver",
+    "wing_loading",
+    "field_friendliness",
 ]
 """The seven mission-compliance axes."""
 

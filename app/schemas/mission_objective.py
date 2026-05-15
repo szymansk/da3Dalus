@@ -1,4 +1,5 @@
 """Mission-Objective + Mission-Preset Pydantic schemas (gh-546)."""
+
 from __future__ import annotations
 
 from typing import Literal

@@ -1,4 +1,5 @@
 """SQLAlchemy model for per-aeroplane Mission Objectives (gh-546)."""
+
 from sqlalchemy import Column, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
@@ -13,7 +14,7 @@ class MissionObjectiveModel(Base):
         Integer,
         ForeignKey("aeroplanes.id", ondelete="CASCADE"),
         nullable=False,
-        unique=True,   # one row per aeroplane
+        unique=True,  # one row per aeroplane
         index=True,
     )
 

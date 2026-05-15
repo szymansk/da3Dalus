@@ -1,4 +1,5 @@
 """CRUD + preset lookup for Mission Objectives (gh-546)."""
+
 from __future__ import annotations
 
 from sqlalchemy.orm import Session
@@ -9,11 +10,17 @@ from app.schemas.mission_objective import MissionObjective, MissionPreset
 
 _DEFAULT_OBJECTIVE = MissionObjective(
     mission_type="trainer",
-    target_cruise_mps=18.0, target_stall_safety=1.8,
-    target_maneuver_n=3.0, target_glide_ld=12.0,
-    target_climb_energy=22.0, target_wing_loading_n_m2=412.0,
-    target_field_length_m=50.0, available_runway_m=50.0,
-    runway_type="grass", t_static_N=18.0, takeoff_mode="runway",
+    target_cruise_mps=18.0,
+    target_stall_safety=1.8,
+    target_maneuver_n=3.0,
+    target_glide_ld=12.0,
+    target_climb_energy=22.0,
+    target_wing_loading_n_m2=412.0,
+    target_field_length_m=50.0,
+    available_runway_m=50.0,
+    runway_type="grass",
+    t_static_N=18.0,
+    takeoff_mode="runway",
 )
 
 
@@ -65,7 +72,9 @@ def list_mission_presets(db: Session) -> list[MissionPreset]:
     rows = db.query(MissionPresetModel).all()
     return [
         MissionPreset(
-            id=row.id, label=row.label, description=row.description,
+            id=row.id,
+            label=row.label,
+            description=row.description,
             target_polygon=row.target_polygon,
             axis_ranges={k: tuple(v) for k, v in row.axis_ranges.items()},
             suggested_estimates=row.suggested_estimates,
