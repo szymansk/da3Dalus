@@ -31,6 +31,15 @@ vi.mock("@/components/workbench/WorkbenchTwoPanel", () => ({
   ),
 }));
 
+vi.mock("@/components/workbench/mission/AxisDrawer", () => ({
+  AxisDrawer: ({ axis, onClose }: { axis: string; onClose: () => void }) => (
+    <div data-testid="axis-drawer">
+      drawer-axis-{axis}
+      <button type="button" onClick={onClose}>close-drawer</button>
+    </div>
+  ),
+}));
+
 import MissionPage from "@/app/workbench/mission/page";
 
 describe("MissionPage", () => {
@@ -62,29 +71,25 @@ describe("MissionPage", () => {
     expect(screen.getByText(/objectives-stub/)).toBeInTheDocument();
   });
 
-  it("shows drilldown placeholder toast after onAxisClick is invoked", () => {
+  it("shows AxisDrawer after onAxisClick is invoked", () => {
     aeroplaneId = "aero-1";
     render(<MissionPage />);
     act(() => {
       fireEvent.click(screen.getByText(/compliance-stub/));
     });
-    expect(screen.getByText(/Axis drilldown for/)).toBeInTheDocument();
-    expect(screen.getByText(/climb/)).toBeInTheDocument();
-    expect(screen.getByText(/coming in Phase 7/)).toBeInTheDocument();
+    expect(screen.getByTestId("axis-drawer")).toHaveTextContent("drawer-axis-climb");
   });
 
-  it("closes the drilldown toast when × is clicked", () => {
+  it("closes the AxisDrawer when its close button is clicked", () => {
     aeroplaneId = "aero-1";
     render(<MissionPage />);
     act(() => {
       fireEvent.click(screen.getByText(/compliance-stub/));
     });
-    expect(screen.getByText(/Axis drilldown for/)).toBeInTheDocument();
+    expect(screen.getByTestId("axis-drawer")).toBeInTheDocument();
     act(() => {
-      fireEvent.click(
-        screen.getByRole("button", { name: /Close drilldown placeholder/ }),
-      );
+      fireEvent.click(screen.getByText("close-drawer"));
     });
-    expect(screen.queryByText(/Axis drilldown for/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("axis-drawer")).toBeNull();
   });
 });
