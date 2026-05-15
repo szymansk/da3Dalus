@@ -18,9 +18,9 @@ from app.core.exceptions import InternalError, NotFoundError
 from app.models.aeroplanemodel import (
     AeroplaneModel,
     DesignVersionModel,
-    MissionObjectivesModel,
     WeightItemModel,
 )
+from app.models.mission_objective import MissionObjectiveModel
 from app.schemas.design_version import (
     DesignVersionCreate,
     DesignVersionDiff,
@@ -34,7 +34,7 @@ from app.services.design_version_service import (
     _get_aeroplane,
     _get_version,
     _serialize_fuselage,
-    _serialize_mission_objectives,
+    _serialize_mission_objective,
     _serialize_weight_items,
     _serialize_wing,
     create_version,
@@ -57,7 +57,7 @@ def _make_mock_aeroplane(
     xyz_ref: list[float] | None = None,
     wings: list | None = None,
     fuselages: list | None = None,
-    mission_objectives: Any = None,
+    mission_objective: Any = None,
     weight_items: list | None = None,
     design_versions: list | None = None,
 ) -> MagicMock:
@@ -69,7 +69,7 @@ def _make_mock_aeroplane(
     ap.xyz_ref = xyz_ref or [0.0, 0.0, 0.0]
     ap.wings = wings or []
     ap.fuselages = fuselages or []
-    ap.mission_objectives = mission_objectives
+    ap.mission_objective = mission_objective
     ap.weight_items = weight_items or []
     ap.design_versions = design_versions or []
     return ap
@@ -242,24 +242,40 @@ class TestSerializeFuselage:
         assert "fuselage_id" not in result["x_secs"][0]
 
 
-class TestSerializeMissionObjectives:
+class TestSerializeMissionObjective:
     def test_none_returns_none(self):
-        assert _serialize_mission_objectives(None) is None
+        assert _serialize_mission_objective(None) is None
 
-    def test_with_objectives(self):
-        obj = MagicMock(spec=MissionObjectivesModel)
-        col_payload = MagicMock()
-        col_payload.name = "payload_kg"
-        col_id = MagicMock()
-        col_id.name = "id"
-        col_ap = MagicMock()
-        col_ap.name = "aeroplane_id"
-        obj.__table__ = MagicMock()
-        obj.__table__.columns = [col_id, col_ap, col_payload]
-        obj.payload_kg = 2.5
+    def test_with_objective(self):
+        obj = MagicMock(spec=MissionObjectiveModel)
+        obj.mission_type = "trainer"
+        obj.target_cruise_mps = 18.0
+        obj.target_stall_safety = 1.8
+        obj.target_maneuver_n = 3.0
+        obj.target_glide_ld = 12.0
+        obj.target_climb_energy = 22.0
+        obj.target_wing_loading_n_m2 = 412.0
+        obj.target_field_length_m = 50.0
+        obj.available_runway_m = 50.0
+        obj.runway_type = "grass"
+        obj.t_static_N = 18.0
+        obj.takeoff_mode = "runway"
 
-        result = _serialize_mission_objectives(obj)
-        assert result == {"payload_kg": 2.5}
+        result = _serialize_mission_objective(obj)
+        assert result == {
+            "mission_type": "trainer",
+            "target_cruise_mps": 18.0,
+            "target_stall_safety": 1.8,
+            "target_maneuver_n": 3.0,
+            "target_glide_ld": 12.0,
+            "target_climb_energy": 22.0,
+            "target_wing_loading_n_m2": 412.0,
+            "target_field_length_m": 50.0,
+            "available_runway_m": 50.0,
+            "runway_type": "grass",
+            "t_static_N": 18.0,
+            "takeoff_mode": "runway",
+        }
         assert "id" not in result
         assert "aeroplane_id" not in result
 
@@ -305,7 +321,7 @@ class TestBuildSnapshot:
             xyz_ref=[0.1, 0.2, 0.3],
             wings=[wing],
             fuselages=[fus],
-            mission_objectives=None,
+            mission_objective=None,
             weight_items=[],
         )
 
@@ -315,7 +331,7 @@ class TestBuildSnapshot:
         assert result["xyz_ref"] == [0.1, 0.2, 0.3]
         assert len(result["wings"]) == 1
         assert len(result["fuselages"]) == 1
-        assert result["mission_objectives"] is None
+        assert result["mission_objective"] is None
         assert result["weight_items"] == []
 
 
@@ -371,7 +387,7 @@ class TestCreateVersion:
         mock_db = MagicMock()
         now = datetime.now(timezone.utc)
         ap = _make_mock_aeroplane(
-            wings=[], fuselages=[], weight_items=[], mission_objectives=None
+            wings=[], fuselages=[], weight_items=[], mission_objective=None
         )
         mock_db.query.return_value.filter.return_value.first.return_value = ap
 
@@ -403,7 +419,7 @@ class TestCreateVersion:
     def test_db_error_raises_internal_error(self):
         mock_db = MagicMock()
         ap = _make_mock_aeroplane(
-            wings=[], fuselages=[], weight_items=[], mission_objectives=None
+            wings=[], fuselages=[], weight_items=[], mission_objective=None
         )
         mock_db.query.return_value.filter.return_value.first.return_value = ap
         mock_db.flush.side_effect = SQLAlchemyError("disk full")

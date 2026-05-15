@@ -1,0 +1,193 @@
+"""Seed data for the six default Mission Presets (gh-546).
+
+Used by the Alembic data migration. Values come from the brainstorming
+spec §3 "Mission Soll-Polygone" — adjusted per the spec's normalisation
+ranges. Source of truth: docs/superpowers/specs/2026-05-15-mission-spider-chart-design.md
+"""
+
+from __future__ import annotations
+
+from app.schemas.mission_objective import MissionPreset, MissionPresetEstimates
+
+SEED_PRESETS: list[MissionPreset] = [
+    MissionPreset(
+        id="trainer",
+        label="Trainer",
+        description="Forgiving low-loading trainer for first-flight pilots.",
+        target_polygon={
+            "stall_safety": 1.0,
+            "glide": 0.4,
+            "climb": 0.3,
+            "cruise": 0.3,
+            "maneuver": 0.3,
+            "wing_loading": 0.3,
+            "field_friendliness": 0.9,
+        },
+        axis_ranges={
+            "stall_safety": (1.3, 2.5),
+            "glide": (5.0, 18.0),
+            "climb": (5.0, 25.0),
+            "cruise": (10.0, 25.0),
+            "maneuver": (2.0, 5.0),
+            "wing_loading": (20.0, 80.0),
+            "field_friendliness": (3.0, 100.0),
+        },
+        suggested_estimates=MissionPresetEstimates(
+            g_limit=3.0,
+            target_static_margin=0.15,
+            cl_max=1.4,
+            power_to_weight=0.5,
+            prop_efficiency=0.7,
+        ),
+    ),
+    MissionPreset(
+        id="sport",
+        label="Sport",
+        description="All-rounder with moderate loading and honest control authority.",
+        target_polygon={
+            "stall_safety": 0.7,
+            "glide": 0.6,
+            "climb": 0.6,
+            "cruise": 0.6,
+            "maneuver": 0.6,
+            "wing_loading": 0.6,
+            "field_friendliness": 0.6,
+        },
+        axis_ranges={
+            "stall_safety": (1.3, 2.2),
+            "glide": (8.0, 20.0),
+            "climb": (8.0, 30.0),
+            "cruise": (15.0, 35.0),
+            "maneuver": (3.0, 7.0),
+            "wing_loading": (40.0, 120.0),
+            "field_friendliness": (5.0, 100.0),
+        },
+        suggested_estimates=MissionPresetEstimates(
+            g_limit=5.0,
+            target_static_margin=0.10,
+            cl_max=1.3,
+            power_to_weight=0.7,
+            prop_efficiency=0.7,
+        ),
+    ),
+    MissionPreset(
+        id="sailplane",
+        label="Sailplane",
+        description="High-AR thermal glider with low minimum sink and high L/D.",
+        target_polygon={
+            "stall_safety": 0.8,
+            "glide": 1.0,
+            "climb": 0.5,
+            "cruise": 0.3,
+            "maneuver": 0.3,
+            "wing_loading": 0.1,
+            "field_friendliness": 0.5,
+        },
+        axis_ranges={
+            "stall_safety": (1.3, 2.0),
+            "glide": (15.0, 35.0),
+            "climb": (15.0, 60.0),
+            "cruise": (10.0, 25.0),
+            "maneuver": (2.5, 5.5),
+            "wing_loading": (10.0, 50.0),
+            "field_friendliness": (3.0, 100.0),
+        },
+        suggested_estimates=MissionPresetEstimates(
+            g_limit=5.3,
+            target_static_margin=0.10,
+            cl_max=1.3,
+            power_to_weight=0.0,
+            prop_efficiency=0.0,
+        ),
+    ),
+    MissionPreset(
+        id="wing_racer",
+        label="Wing-Racer",
+        description="Low-AR pylon / FPV racer optimised for cruise + maneuver.",
+        target_polygon={
+            "stall_safety": 0.5,
+            "glide": 0.7,
+            "climb": 0.7,
+            "cruise": 1.0,
+            "maneuver": 0.7,
+            "wing_loading": 0.9,
+            "field_friendliness": 0.4,
+        },
+        axis_ranges={
+            "stall_safety": (1.3, 2.0),
+            "glide": (6.0, 18.0),
+            "climb": (10.0, 35.0),
+            "cruise": (30.0, 80.0),
+            "maneuver": (5.0, 12.0),
+            "wing_loading": (80.0, 250.0),
+            "field_friendliness": (3.0, 100.0),
+        },
+        suggested_estimates=MissionPresetEstimates(
+            g_limit=10.0,
+            target_static_margin=0.05,
+            cl_max=1.0,
+            power_to_weight=1.0,
+            prop_efficiency=0.7,
+        ),
+    ),
+    MissionPreset(
+        id="acro_3d",
+        label="3D / Acro",
+        description="Neutral-stability 3D model with very high control authority.",
+        target_polygon={
+            "stall_safety": 0.5,
+            "glide": 0.4,
+            "climb": 0.7,
+            "cruise": 0.5,
+            "maneuver": 1.0,
+            "wing_loading": 0.8,
+            "field_friendliness": 0.5,
+        },
+        axis_ranges={
+            "stall_safety": (1.3, 2.0),
+            "glide": (6.0, 14.0),
+            "climb": (15.0, 40.0),
+            "cruise": (15.0, 30.0),
+            "maneuver": (6.0, 12.0),
+            "wing_loading": (60.0, 180.0),
+            "field_friendliness": (3.0, 80.0),
+        },
+        suggested_estimates=MissionPresetEstimates(
+            g_limit=8.0,
+            target_static_margin=0.0,
+            cl_max=1.1,
+            power_to_weight=1.4,
+            prop_efficiency=0.7,
+        ),
+    ),
+    MissionPreset(
+        id="stol_bush",
+        label="STOL / Bush",
+        description="Short take-off / bush model with high CL_max and short field.",
+        target_polygon={
+            "stall_safety": 0.9,
+            "glide": 0.5,
+            "climb": 0.6,
+            "cruise": 0.3,
+            "maneuver": 0.4,
+            "wing_loading": 0.2,
+            "field_friendliness": 1.0,
+        },
+        axis_ranges={
+            "stall_safety": (1.3, 3.0),
+            "glide": (6.0, 16.0),
+            "climb": (8.0, 30.0),
+            "cruise": (10.0, 25.0),
+            "maneuver": (2.5, 5.0),
+            "wing_loading": (15.0, 80.0),
+            "field_friendliness": (2.0, 50.0),
+        },
+        suggested_estimates=MissionPresetEstimates(
+            g_limit=4.0,
+            target_static_margin=0.15,
+            cl_max=2.0,
+            power_to_weight=0.8,
+            prop_efficiency=0.7,
+        ),
+    ),
+]

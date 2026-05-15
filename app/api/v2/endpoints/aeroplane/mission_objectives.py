@@ -1,106 +1,59 @@
-from typing import Annotated
-import logging
+"""REST endpoints for Mission Objectives + Mission Presets (gh-546)."""
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, status
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import UUID4
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import (
-    ConflictError,
-    InternalError,
-    NotFoundError,
-    ServiceException,
-    ValidationDomainError,
-    ValidationError,
-)
 from app.db.session import get_db
-from app.schemas.mission_objectives import MissionObjectivesRead, MissionObjectivesWrite
-from app.services import mission_objectives_service as svc
-
-logger = logging.getLogger(__name__)
+from app.models.aeroplanemodel import AeroplaneModel
+from app.schemas.mission_objective import MissionObjective, MissionPreset
+from app.services.mission_objective_service import (
+    get_mission_objective,
+    list_mission_presets,
+    upsert_mission_objective,
+)
 
 router = APIRouter()
 
 
-def _raise_http(exc: ServiceException) -> None:
-    if isinstance(exc, NotFoundError):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
-    if isinstance(exc, (ValidationError, ValidationDomainError)):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message
-        ) from exc
-    if isinstance(exc, ConflictError):
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
-    raise HTTPException(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message
-    ) from exc
-
-
-def _call(func, *args, **kwargs):
-    try:
-        return func(*args, **kwargs)
-    except ServiceException as exc:
-        _raise_http(exc)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {exc}") from exc
+def _resolve_aeroplane_id(db: Session, uuid: UUID4) -> int:
+    row = db.query(AeroplaneModel).filter(AeroplaneModel.uuid == uuid).one_or_none()
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"aeroplane {uuid} not found")
+    return row.id
 
 
 @router.get(
-    "/aeroplanes/{aeroplane_id}/mission-objectives",
-    status_code=status.HTTP_200_OK,
-    tags=["mission-objectives"],
-    operation_id="get_mission_objectives",
-    responses={
-        404: {"description": "Resource not found"},
-        409: {"description": "Conflict"},
-        422: {"description": "Validation error"},
-        500: {"description": "Internal server error"},
-    },
+    "/aeroplanes/{uuid}/mission-objectives",
+    response_model=MissionObjective,
+    summary="Read Mission Objectives for an aeroplane",
+    tags=["mission"],
 )
-async def get_mission_objectives(
-    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
-    db: Annotated[Session, Depends(get_db)],
-) -> MissionObjectivesRead:
-    """Get the mission objectives for the aeroplane."""
-    return _call(svc.get_mission_objectives, db, aeroplane_id)
+def get_objectives(uuid: UUID4, db: Session = Depends(get_db)) -> MissionObjective:
+    aeroplane_id = _resolve_aeroplane_id(db, uuid)
+    return get_mission_objective(db, aeroplane_id)
 
 
 @router.put(
-    "/aeroplanes/{aeroplane_id}/mission-objectives",
-    status_code=status.HTTP_200_OK,
-    tags=["mission-objectives"],
-    operation_id="upsert_mission_objectives",
-    responses={
-        404: {"description": "Resource not found"},
-        409: {"description": "Conflict"},
-        422: {"description": "Validation error"},
-        500: {"description": "Internal server error"},
-    },
+    "/aeroplanes/{uuid}/mission-objectives",
+    response_model=MissionObjective,
+    summary="Create or update Mission Objectives for an aeroplane",
+    tags=["mission"],
 )
-async def upsert_mission_objectives(
-    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
-    body: Annotated[MissionObjectivesWrite, Body(..., description="Mission objectives data")],
-    db: Annotated[Session, Depends(get_db)],
-) -> MissionObjectivesRead:
-    """Create or update the mission objectives for the aeroplane."""
-    return _call(svc.upsert_mission_objectives, db, aeroplane_id, body)
+def put_objectives(
+    uuid: UUID4, payload: MissionObjective, db: Session = Depends(get_db)
+) -> MissionObjective:
+    aeroplane_id = _resolve_aeroplane_id(db, uuid)
+    return upsert_mission_objective(db, aeroplane_id, payload)
 
 
-@router.delete(
-    "/aeroplanes/{aeroplane_id}/mission-objectives",
-    status_code=status.HTTP_204_NO_CONTENT,
-    tags=["mission-objectives"],
-    operation_id="delete_mission_objectives",
-    responses={
-        404: {"description": "Resource not found"},
-        409: {"description": "Conflict"},
-        422: {"description": "Validation error"},
-        500: {"description": "Internal server error"},
-    },
+@router.get(
+    "/mission-presets",
+    response_model=list[MissionPreset],
+    summary="List all Mission Presets",
+    tags=["mission"],
 )
-async def delete_mission_objectives(
-    aeroplane_id: Annotated[UUID4, Path(..., description="The ID of the aeroplane")],
-    db: Annotated[Session, Depends(get_db)],
-) -> None:
-    """Delete the mission objectives for the aeroplane."""
-    _call(svc.delete_mission_objectives, db, aeroplane_id)
+def get_presets(db: Session = Depends(get_db)) -> list[MissionPreset]:
+    return list_mission_presets(db)
