@@ -33,19 +33,10 @@ export function AxisDrawer({ aeroplaneId, axis, onClose }: Props) {
   const k = kpis.ist_polygon[axis];
   if (!k) return null;
 
-  let valueText: string;
-  if (k.value != null) {
-    valueText = `${k.value.toFixed(3)} ${k.unit ?? ""}`;
-  } else {
-    valueText = "–";
-  }
-
-  let scoreText: string;
-  if (k.score_0_1 != null) {
-    scoreText = `${(k.score_0_1 * 100).toFixed(0)} %`;
-  } else {
-    scoreText = "–";
-  }
+  const valueText =
+    k.value == null ? "–" : `${k.value.toFixed(3)} ${k.unit ?? ""}`;
+  const scoreText =
+    k.score_0_1 == null ? "–" : `${(k.score_0_1 * 100).toFixed(0)} %`;
 
   return (
     <div className="fixed right-4 top-20 w-80 rounded-lg border-l-2 border-orange-500 bg-card p-4 shadow-lg z-50">
