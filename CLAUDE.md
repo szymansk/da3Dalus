@@ -69,13 +69,6 @@ the higher-authority one wins.
 | `/avl-advisor` | tool | AVL-specific: `.avl` / `.mass` / `.run` files, Trefftz Plane, vortex spacing, eigenmodes, control surfaces, trim setup in AVL |
 | `/rc-aircraft-designer` | hobbyist | **RC / model aircraft only** (rcplanedesigner.com): wing loading, MAC, taper, tail volume, lever arms, first-flight CG, static-margin targets per mission (trainer / sport / aerobatic), landing-gear geometry. **Not for UAV.** Defer to scholz on conflicts. |
 
-### Planned
-
-- **`/uav-designer`** — dedicated UAV / small-fixed-wing-unmanned
-  expert (payload-fraction, endurance optimization, long-range mission
-  profiles, energy-storage trades). Not built yet — until it lands,
-  UAV questions go to `aircraft-design-scholz` + `aerosandbox-expert`.
-
 ### Rule of thumb
 
 - *"Size my 180-seat airliner / 50 kg UAV wing"* → `aircraft-design-scholz`
