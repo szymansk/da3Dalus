@@ -204,40 +204,48 @@ def _estimate_reference_speeds(
 ) -> dict[str, float]:
     """Estimate clean / take-off / landing stall speeds for OP seeding.
 
-    Precedence (gh-475 — audit §4.3, the cruise/margin path inverts
-    physical causality and produces 2.5×-too-high V_s for STOL designs):
+    Precedence (gh-526 — epic gh-525 finding C1; replaces the historical
+    0.95 / 0.90 V_s heuristic):
 
-    1. ``cached_context["v_stall_mps"]`` when available — this is the
-       physics-derived value ``√(2·m·g / (ρ·S·C_L_max))`` cached by
-       ``assumption_compute_service`` after an AeroBuildup pass.
-    2. ``V_cruise / min_speed_margin_vs_clean`` as a cold-start fallback
+    1. ``cached_context["v_s1_mps"]`` / ``v_s_to_mps`` / ``v_s0_mps`` when
+       available — these are the **physics-derived** stall speeds
+       ``√(2·m·g / (ρ·S·C_L_max_cfg))`` cached by
+       ``assumption_compute_service`` after one ``AeroBuildup`` pass per
+       configuration.
+    2. ``cached_context["v_stall_mps"]`` only (legacy / pre-gh-526
+       context): fall back to using the clean stall for all three
+       configs. The historical 0.95 / 0.90 multipliers are **not** applied
+       because they have no physical basis (audit §5.5).
+    3. ``V_cruise / min_speed_margin_vs_clean`` as a cold-start fallback
        when no polar has been computed yet.
-
-    Configuration / flap deltas:
-    - ``vs_to``  ≈ 0.95 · V_s_clean (mild high-lift effect)
-    - ``vs_ldg`` ≈ 0.90 · V_s_clean (full flaps)
-    These multipliers are retained from the original implementation; a
-    proper fix needs ``C_L_max_landing`` in design assumptions (separate
-    ticket).
     """
     goals = profile["goals"]
     cruise = float(goals.get("cruise_speed_mps", 18.0))
     min_margin_clean = max(1.05, float(goals.get("min_speed_margin_vs_clean", 1.20)))
 
-    cached_vs = None
-    if cached_context is not None:
-        raw = cached_context.get("v_stall_mps")
+    def _pick(key: str) -> float | None:
+        if cached_context is None:
+            return None
+        raw = cached_context.get(key)
         if isinstance(raw, (int, float)) and raw > 0:
-            cached_vs = float(raw)
+            return float(raw)
+        return None
 
-    vs_clean = cached_vs if cached_vs is not None else max(3.0, cruise / min_margin_clean)
-    vs_to = max(2.5, vs_clean * 0.95)
-    vs_ldg = max(2.0, vs_clean * 0.90)
+    vs_clean_ctx = _pick("v_s1_mps") or _pick("v_stall_mps")
+    if vs_clean_ctx is None:
+        vs_clean = max(3.0, cruise / min_margin_clean)
+        vs_to = vs_clean
+        vs_ldg = vs_clean
+    else:
+        vs_clean = vs_clean_ctx
+        # Prefer per-config physics; fall back to clean value when missing.
+        vs_to = _pick("v_s_to_mps") or vs_clean
+        vs_ldg = _pick("v_s0_mps") or vs_clean
 
     return {
-        "vs_clean": vs_clean,
-        "vs_to": vs_to,
-        "vs_ldg": vs_ldg,
+        "vs_clean": max(3.0, vs_clean),
+        "vs_to": max(2.5, vs_to),
+        "vs_ldg": max(2.0, vs_ldg),
     }
 
 
@@ -696,9 +704,7 @@ def _trim_or_estimate_point(
     # the legacy aircraft.total_mass_kg field — that way Component-Tree
     # weight changes (which sync into the mass assumption) flow into
     # CL_target without requiring a separate aircraft-level update.
-    mass_for_cl = (
-        effective_mass_kg if effective_mass_kg is not None else aircraft.total_mass_kg
-    )
+    mass_for_cl = effective_mass_kg if effective_mass_kg is not None else aircraft.total_mass_kg
 
     def cl_target_fn(v: float) -> Optional[float]:
         return _cl_target_for_velocity(v, mass_for_cl, s_ref, rho, n_target)
@@ -856,9 +862,7 @@ def generate_default_set_for_aircraft(
         # Effective values from design assumptions take precedence over
         # legacy aircraft fields, so Component-Tree weight changes and
         # SM choices flow into the trim solution without an extra step.
-        effective_mass_kg = _load_effective_mass_kg(
-            db, aircraft.id, aircraft.total_mass_kg
-        )
+        effective_mass_kg = _load_effective_mass_kg(db, aircraft.id, aircraft.total_mass_kg)
         design_cg_x = _load_design_cg_x(db, aircraft.id)
 
         # Seed V_s from cached physics when available; cruise/margin only
@@ -1001,9 +1005,7 @@ def trim_operating_point_for_aircraft(
                 },
             )
 
-        effective_mass_kg = _load_effective_mass_kg(
-            db, aircraft.id, aircraft.total_mass_kg
-        )
+        effective_mass_kg = _load_effective_mass_kg(db, aircraft.id, aircraft.total_mass_kg)
         design_cg_x = _load_design_cg_x(db, aircraft.id)
 
         point = _trim_or_estimate_point(
