@@ -1,0 +1,50 @@
+{
+  "segments": [
+    {
+      "root_airfoil": {
+        "airfoil": "../components/airfoils/naca0009.dat",
+        "chord": 650.0,
+        "dihedral_as_rotation_in_degrees": 0,
+        "incidence": -1.0
+      },
+      "length": 1725.0,
+      "sweep": 60,
+      "sweep_angle": 1.99,
+      "tip_airfoil": {
+        "airfoil": "../components/airfoils/naca0009.dat",
+        "chord": 510.0,
+        "dihedral_as_rotation_in_degrees": 0,
+        "incidence": -1.0
+      },
+      "spare_list": null,
+      "trailing_edge_device": {
+        "name": "elevator",
+        "rel_chord_root": 0.68,
+        "rel_chord_tip": 0.68,
+        "hinge_spacing": null,
+        "side_spacing_root": null,
+        "side_spacing_tip": null,
+        "_servo": null,
+        "servo_placement": "top",
+        "rel_chord_servo_position": null,
+        "rel_length_servo_position": null,
+        "positive_deflection_deg": 28,
+        "negative_deflection_deg": 23,
+        "trailing_edge_offset_factor": 1.0,
+        "hinge_type": "top",
+        "symmetric": true,
+        "role": "elevator"
+      },
+      "number_interpolation_points": 201,
+      "tip_type": "flat",
+      "wing_segment_type": "tip"
+    }
+  ],
+  "nose_pnt": [
+    0,
+    0,
+    0
+  ],
+  "parameters": "relative",
+  "symmetric": true
+}
