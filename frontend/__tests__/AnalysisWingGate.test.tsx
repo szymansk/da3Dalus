@@ -16,6 +16,10 @@ vi.mock("lucide-react", () => {
     AlertTriangle: icon,
     SlidersHorizontal: icon,
     Activity: icon,
+    Loader2: icon,
+    Plane: icon,
+    TrendingUp: icon,
+    Zap: icon,
   };
 });
 

@@ -9,6 +9,12 @@ export interface ComputationContext {
   v_max_mps?: number | null;
   v_stall_mps?: number | null;
   v_md_mps?: number | null;
+  // gh-476: extended V-speed set surfaced on the chip row.
+  v_min_sink_mps?: number | null;
+  v_a_mps?: number | null;
+  v_dive_mps?: number | null;
+  v_x_mps?: number | null;
+  v_y_mps?: number | null;
   is_glider?: boolean;
   reynolds: number;
   mac_m: number;

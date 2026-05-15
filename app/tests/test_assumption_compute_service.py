@@ -549,6 +549,174 @@ def test_flap_takeoff_deflection_clipped_to_ted_max(client_and_db):
     assert pbc["landing"]["flap_deflection_deg"] == 10.0
 
 
+# ============================================================================
+# gh-476 — extended V-speed set (v_a, v_dive, v_x, v_y) in ComputationContext
+# ============================================================================
+
+
+def test_context_includes_v_a_mps_from_stall_and_g_limit(client_and_db):
+    """gh-476: V_a = V_s · √g_limit, capped at V_C (Scholz / CS-25.335(c))."""
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        db.commit()
+        aeroplane_uuid = str(aeroplane.uuid)
+        aeroplane_id = aeroplane.id
+
+    with _enter_patches(flap_ted_max=30.0):
+        with SessionLocal() as db:
+            recompute_assumptions(db, aeroplane_uuid)
+            db.commit()
+
+    ctx = _load_ctx(SessionLocal, aeroplane_id)
+    assert "v_a_mps" in ctx
+    # The default g_limit is 3.0 (PARAMETER_DEFAULTS). v_a = v_s1 · √3
+    # capped at v_cruise.
+    expected_uncapped = ctx["v_s1_mps"] * (3.0**0.5)
+    expected = min(expected_uncapped, ctx["v_cruise_mps"])
+    assert abs(ctx["v_a_mps"] - expected) < 0.2
+
+
+def test_context_v_a_is_capped_at_v_cruise(client_and_db):
+    """gh-476 + Scholz M4: V_a must not exceed V_C even when V_s·√n+ does."""
+    from app.models.aeroplanemodel import DesignAssumptionModel
+
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        # Force a high g_limit so V_s · √n_max exceeds V_cruise.
+        g_row = (
+            db.query(DesignAssumptionModel)
+            .filter_by(aeroplane_id=aeroplane.id, parameter_name="g_limit")
+            .first()
+        )
+        g_row.calculated_value = 12.0
+        g_row.calculated_source = "test"
+        g_row.active_source = "CALCULATED"
+        db.commit()
+        aeroplane_uuid = str(aeroplane.uuid)
+        aeroplane_id = aeroplane.id
+
+    with _enter_patches(flap_ted_max=30.0):
+        with SessionLocal() as db:
+            recompute_assumptions(db, aeroplane_uuid)
+            db.commit()
+
+    ctx = _load_ctx(SessionLocal, aeroplane_id)
+    assert ctx["v_a_mps"] == ctx["v_cruise_mps"], (
+        f"V_a must be capped at V_C; got V_a={ctx['v_a_mps']}, V_C={ctx['v_cruise_mps']}"
+    )
+
+
+def test_context_includes_v_dive_mps_as_heuristic(client_and_db):
+    """gh-476: V_dive = 1.4·V_max (heuristic placeholder until flutter analysis)."""
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        db.commit()
+        aeroplane_uuid = str(aeroplane.uuid)
+        aeroplane_id = aeroplane.id
+
+    with _enter_patches(flap_ted_max=30.0):
+        with SessionLocal() as db:
+            recompute_assumptions(db, aeroplane_uuid)
+            db.commit()
+
+    ctx = _load_ctx(SessionLocal, aeroplane_id)
+    assert "v_dive_mps" in ctx
+    assert abs(ctx["v_dive_mps"] - 1.4 * ctx["v_max_mps"]) < 0.2
+
+
+def test_context_v_x_and_v_y_are_none_when_no_ops_exist(client_and_db):
+    """gh-476: V_x / V_y come from operating-point output. When no OPs
+    have been generated yet, both must be None (chip row shows '–')."""
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        db.commit()
+        aeroplane_uuid = str(aeroplane.uuid)
+        aeroplane_id = aeroplane.id
+
+    with _enter_patches(flap_ted_max=30.0):
+        with SessionLocal() as db:
+            recompute_assumptions(db, aeroplane_uuid)
+            db.commit()
+
+    ctx = _load_ctx(SessionLocal, aeroplane_id)
+    assert "v_x_mps" in ctx
+    assert "v_y_mps" in ctx
+    assert ctx["v_x_mps"] is None
+    assert ctx["v_y_mps"] is None
+
+
+def test_context_v_x_and_v_y_read_from_existing_ops(client_and_db):
+    """gh-476: when operating points named `best_angle_climb_vx` /
+    `best_rate_climb_vy` exist, their `velocity` fields populate v_x_mps
+    and v_y_mps in the assumption context."""
+    from app.models.analysismodels import OperatingPointModel
+
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        db.commit()
+        # Seed two OPs that gh-476 should pick up.
+        db.add(
+            OperatingPointModel(
+                name="best_angle_climb_vx",
+                description="seed",
+                aircraft_id=aeroplane.id,
+                config="clean",
+                status="TRIMMED",
+                warnings=[],
+                controls={},
+                velocity=12.5,
+                alpha=0.08,
+                beta=0.0,
+                p=0.0,
+                q=0.0,
+                r=0.0,
+                xyz_ref=[0, 0, 0],
+                altitude=0.0,
+            )
+        )
+        db.add(
+            OperatingPointModel(
+                name="best_rate_climb_vy",
+                description="seed",
+                aircraft_id=aeroplane.id,
+                config="clean",
+                status="TRIMMED",
+                warnings=[],
+                controls={},
+                velocity=15.3,
+                alpha=0.04,
+                beta=0.0,
+                p=0.0,
+                q=0.0,
+                r=0.0,
+                xyz_ref=[0, 0, 0],
+                altitude=0.0,
+            )
+        )
+        db.commit()
+        aeroplane_uuid = str(aeroplane.uuid)
+        aeroplane_id = aeroplane.id
+
+    with _enter_patches(flap_ted_max=30.0):
+        with SessionLocal() as db:
+            recompute_assumptions(db, aeroplane_uuid)
+            db.commit()
+
+    ctx = _load_ctx(SessionLocal, aeroplane_id)
+    assert ctx["v_x_mps"] == 12.5
+    assert ctx["v_y_mps"] == 15.3
+
+
 @contextlib.contextmanager
 def _enter_patches_no_fine_sweep(flap_ted_max: float | None = None):
     """Variant: skip the fine_sweep patch so the test can supply its own

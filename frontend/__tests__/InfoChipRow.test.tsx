@@ -14,6 +14,10 @@ vi.mock("lucide-react", () => {
     Settings: icon,
     Gauge: icon,
     AlertTriangle: icon,
+    Loader2: icon,
+    Plane: icon,
+    TrendingUp: icon,
+    Zap: icon,
   };
 });
 
@@ -59,5 +63,67 @@ describe("Info Chip Row", () => {
 
     const dashes = screen.getAllByText("–");
     expect(dashes.length).toBeGreaterThanOrEqual(4);
+  });
+
+  // gh-476: extended V-speed chips
+  it("renders V_min_sink, V_x, V_y, V_a, V_dive when available", async () => {
+    (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: {
+        v_cruise_mps: 18.0,
+        v_min_sink_mps: 13.2,
+        v_x_mps: 12.0,
+        v_y_mps: 15.5,
+        v_a_mps: 17.5,
+        v_dive_mps: 30.0,
+        reynolds: 230000,
+        mac_m: 0.21,
+        x_np_m: 0.085,
+        target_static_margin: 0.12,
+        cg_agg_m: 0.092,
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
+    render(<InfoChipRow aeroplaneId="42" cgAero={0.073} />);
+
+    expect(screen.getByText(/V_min_sink/)).toBeInTheDocument();
+    expect(screen.getByText(/13\.2 m\/s/)).toBeInTheDocument();
+    expect(screen.getByText(/V_x/)).toBeInTheDocument();
+    expect(screen.getByText(/12\.0 m\/s/)).toBeInTheDocument();
+    expect(screen.getByText(/V_y/)).toBeInTheDocument();
+    expect(screen.getByText(/15\.5 m\/s/)).toBeInTheDocument();
+    expect(screen.getByText(/V_a/)).toBeInTheDocument();
+    expect(screen.getByText(/17\.5 m\/s/)).toBeInTheDocument();
+    expect(screen.getByText(/V_dive/)).toBeInTheDocument();
+    expect(screen.getByText(/30\.0 m\/s/)).toBeInTheDocument();
+  });
+
+  // gh-476: V_a hidden for gliders (no manoeuvring placard in CS-22).
+  it("hides V_a chip when is_glider is true", async () => {
+    (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: {
+        v_cruise_mps: 30.0,
+        v_min_sink_mps: 22.0,
+        v_a_mps: 25.0,
+        v_dive_mps: 60.0,
+        is_glider: true,
+        reynolds: 800000,
+        mac_m: 0.42,
+        x_np_m: 0.15,
+        target_static_margin: 0.12,
+        cg_agg_m: 0.13,
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
+    render(<InfoChipRow aeroplaneId="42" cgAero={0.13} />);
+
+    expect(screen.queryByText(/V_a = /)).toBeNull();
+    expect(screen.getByText(/V_NE/)).toBeInTheDocument();
+    expect(screen.getByText(/V_min_sink/)).toBeInTheDocument();
   });
 });
