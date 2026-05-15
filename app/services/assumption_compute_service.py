@@ -166,6 +166,9 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     else:
         delta_to = min(15.0, float(ted_max))
         delta_ldg = min(30.0, float(ted_max))
+        # Independent try blocks per configuration (gh-526 review feedback):
+        # a takeoff-sweep failure must not prevent the landing sweep from
+        # running — they are physically independent passes.
         try:
             polar_takeoff = _run_polar_for_deflection(
                 asb_airplane=asb_airplane,
@@ -177,6 +180,16 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
                 cd0_stability=cd0,
                 cl_max_effective_for_fit=cl_max_effective_for_fit,
             )
+        except Exception:
+            logger.exception(
+                "Takeoff-config AeroBuildup failed for aircraft %s (δ=%.1f°) — "
+                "falling back to clean polar",
+                aeroplane_uuid,
+                delta_to,
+            )
+            polar_takeoff = polar_clean.model_copy(update={"provenance": "aerobuildup_failed"})
+
+        try:
             polar_landing = _run_polar_for_deflection(
                 asb_airplane=asb_airplane,
                 flap_deflection_deg=delta_ldg,
@@ -188,14 +201,13 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
                 cl_max_effective_for_fit=cl_max_effective_for_fit,
             )
         except Exception:
-            # Defensive: a flap-deflected sweep failure must not corrupt
-            # the clean polar that is already correctly computed.
             logger.exception(
-                "Flap-deflected AeroBuildup failed for aircraft %s — falling back to clean polar",
+                "Landing-config AeroBuildup failed for aircraft %s (δ=%.1f°) — "
+                "falling back to clean polar",
                 aeroplane_uuid,
+                delta_ldg,
             )
-            polar_takeoff = polar_clean.model_copy(update={"provenance": "fit_rejected"})
-            polar_landing = polar_clean.model_copy(update={"provenance": "fit_rejected"})
+            polar_landing = polar_clean.model_copy(update={"provenance": "aerobuildup_failed"})
 
     polar_by_config = {
         "clean": polar_clean.model_dump(),
@@ -460,11 +472,11 @@ def _build_asb_airplane(aircraft: AeroplaneModel):
 
 def _run_polar_for_deflection(
     *,
-    asb_airplane,
+    asb_airplane: Any,
     flap_deflection_deg: float,
     v_cruise: float,
     v_max: float,
-    config,
+    config: Any,
     aspect_ratio: float | None,
     cd0_stability: float,
     cl_max_effective_for_fit: float | None,
@@ -484,11 +496,12 @@ def _run_polar_for_deflection(
     """
     flap_name = _detect_first_flap_name(asb_airplane)
     if flap_name is None:
-        # Belt-and-braces: caller should have routed to fallback already.
-        return ParabolicPolar(
-            cl_max=0.0,
-            flap_deflection_deg=0.0,
-            provenance="no_flap_geometry",
+        # Caller must route to the no-flap fallback BEFORE invoking this
+        # helper. Returning a sentinel here would feed cl_max=0.0 into
+        # _stall_speed and produce an infinite V_s (review feedback).
+        raise AssertionError(
+            "_run_polar_for_deflection called without a flap surface present — "
+            "this is a caller-side routing bug"
         )
     deflected = asb_airplane.with_control_deflections({flap_name: flap_deflection_deg})
     stall_alpha = _coarse_alpha_sweep(deflected, v_cruise, config)

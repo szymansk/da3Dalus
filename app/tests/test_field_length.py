@@ -24,8 +24,8 @@ CESSNA_172 = {
     "cl_max": 1.5,
     "cl_max_takeoff": 1.5,
     "cl_max_landing": 2.1,
-    "t_static_N": 1900.0,   # approximately 0.75 * T_static_zero = 0.75 * 2535
-    "v_stall_mps": 25.4,    # matches POH stall speed
+    "t_static_N": 1900.0,  # approximately 0.75 * T_static_zero = 0.75 * 2535
+    "v_stall_mps": 25.4,  # matches POH stall speed
 }
 
 
@@ -33,19 +33,23 @@ CESSNA_172 = {
 # Convenience import helpers
 # ---------------------------------------------------------------------------
 
+
 def _service():
     from app.services.field_length_service import compute_field_lengths
+
     return compute_field_lengths
 
 
 def _helpers():
     from app.services import field_length_service as fls
+
     return fls
 
 
 # ===========================================================================
 # Cessna 172N cross-check (4 assertions, ±15%)
 # ===========================================================================
+
 
 class TestFieldLengthRunway:
     """Cessna 172N at MTOM, sea level ISA — cross-check against POH data.
@@ -64,9 +68,7 @@ class TestFieldLengthRunway:
         """s_TO_ground ≈ 270 m ± 15%."""
         result = _service()(CESSNA_172, takeoff_mode="runway", landing_mode="runway")
         s = result["s_to_ground_m"]
-        assert 270 * 0.85 <= s <= 270 * 1.15, (
-            f"Expected s_TO_ground ≈ 270 m ±15%, got {s:.1f} m"
-        )
+        assert 270 * 0.85 <= s <= 270 * 1.15, f"Expected s_TO_ground ≈ 270 m ±15%, got {s:.1f} m"
 
     def test_cessna172_to_50ft(self):
         """s_TO_50ft ≈ 470 m ± 15%.
@@ -77,34 +79,32 @@ class TestFieldLengthRunway:
         """
         result = _service()(CESSNA_172, takeoff_mode="runway", landing_mode="runway")
         s = result["s_to_50ft_m"]
-        assert 470 * 0.85 <= s <= 470 * 1.15, (
-            f"Expected s_TO_50ft ≈ 470 m ±15%, got {s:.1f} m"
-        )
+        assert 470 * 0.85 <= s <= 470 * 1.15, f"Expected s_TO_50ft ≈ 470 m ±15%, got {s:.1f} m"
 
     def test_cessna172_ldg_ground(self):
         """s_LDG_ground ≈ 160 m ± 15%."""
         result = _service()(CESSNA_172, takeoff_mode="runway", landing_mode="runway")
         s = result["s_ldg_ground_m"]
-        assert 160 * 0.85 <= s <= 160 * 1.15, (
-            f"Expected s_LDG_ground ≈ 160 m ±15%, got {s:.1f} m"
-        )
+        assert 160 * 0.85 <= s <= 160 * 1.15, f"Expected s_LDG_ground ≈ 160 m ±15%, got {s:.1f} m"
 
     def test_cessna172_ldg_50ft(self):
         """s_LDG_50ft ≈ 410 m ± 15%."""
         result = _service()(CESSNA_172, takeoff_mode="runway", landing_mode="runway")
         s = result["s_ldg_50ft_m"]
-        assert 410 * 0.85 <= s <= 410 * 1.15, (
-            f"Expected s_LDG_50ft ≈ 410 m ±15%, got {s:.1f} m"
-        )
+        assert 410 * 0.85 <= s <= 410 * 1.15, f"Expected s_LDG_50ft ≈ 410 m ±15%, got {s:.1f} m"
 
     def test_result_contains_required_fields(self):
         """Result dict has all required output fields."""
         result = _service()(CESSNA_172)
         required = {
-            "s_to_ground_m", "s_to_50ft_m",
-            "s_ldg_ground_m", "s_ldg_50ft_m",
-            "vto_obstacle_mps", "vapp_mps",
-            "mode_takeoff", "mode_landing",
+            "s_to_ground_m",
+            "s_to_50ft_m",
+            "s_ldg_ground_m",
+            "s_ldg_50ft_m",
+            "vto_obstacle_mps",
+            "vapp_mps",
+            "mode_takeoff",
+            "mode_landing",
             "warnings",
         }
         missing = required - result.keys()
@@ -122,10 +122,36 @@ class TestFieldLengthRunway:
         v_stall = CESSNA_172["v_stall_mps"]
         assert abs(result["vapp_mps"] - 1.3 * v_stall) < 0.1
 
+    def test_per_config_v_s_used_when_available(self):
+        """gh-526: when v_s_to_mps and v_s0_mps are in the aircraft context,
+        V_LOF and V_APP must be derived from them (per-flap-config physics),
+        not from the clean v_stall_mps."""
+        aircraft = dict(CESSNA_172)
+        # Simulate gh-526 context: takeoff stall ~7% below clean, landing
+        # ~17% below clean (matches Anderson §4.10 plain-flap envelope).
+        aircraft["v_s_to_mps"] = 23.7  # 0.93 × 25.4
+        aircraft["v_s0_mps"] = 21.0  # 0.83 × 25.4
+        result = _service()(aircraft)
+        assert abs(result["vto_obstacle_mps"] - 1.2 * 23.7) < 0.1
+        assert abs(result["vapp_mps"] - 1.3 * 21.0) < 0.1
+
+    def test_legacy_context_falls_back_to_v_stall_mps(self):
+        """Pre-gh-526 contexts have no v_s_to_mps / v_s0_mps. Field-length
+        service must fall back to the clean v_stall_mps unchanged."""
+        aircraft = dict(CESSNA_172)
+        # No v_s_to_mps / v_s0_mps keys → legacy behaviour
+        assert "v_s_to_mps" not in aircraft
+        assert "v_s0_mps" not in aircraft
+        result = _service()(aircraft)
+        v_stall = aircraft["v_stall_mps"]
+        assert abs(result["vto_obstacle_mps"] - 1.2 * v_stall) < 0.1
+        assert abs(result["vapp_mps"] - 1.3 * v_stall) < 0.1
+
 
 # ===========================================================================
 # CL_max auto-detect from flap config
 # ===========================================================================
+
 
 class TestClMaxAutoDetect:
     """CL_max uplift factors based on flap configuration."""
@@ -175,6 +201,7 @@ class TestClMaxAutoDetect:
 # Hand-launch mode
 # ===========================================================================
 
+
 class TestHandLaunch:
     """Hand-launch RC mode: v_throw physics floor at 1.10·V_S."""
 
@@ -210,8 +237,9 @@ class TestHandLaunch:
         aircraft = self._aircraft_with_throw(v_throw=1.12 * v_stall)
         result = _service()(aircraft, takeoff_mode="hand_launch")
         assert result["s_to_ground_m"] == pytest.approx(0.0)
-        assert any("climb" in w.lower() or "margin" in w.lower() or "1.20" in w
-                   for w in result["warnings"])
+        assert any(
+            "climb" in w.lower() or "margin" in w.lower() or "1.20" in w for w in result["warnings"]
+        )
 
     def test_v_throw_above_1_20_no_climb_warning(self):
         """v_throw ≥ 1.20 · V_S → no climb-out margin warning."""
@@ -220,8 +248,7 @@ class TestHandLaunch:
         result = _service()(aircraft, takeoff_mode="hand_launch")
         # No warning about climb margin
         climb_warnings = [
-            w for w in result["warnings"]
-            if "climb" in w.lower() or "margin" in w.lower()
+            w for w in result["warnings"] if "climb" in w.lower() or "margin" in w.lower()
         ]
         assert not climb_warnings
 
@@ -249,6 +276,7 @@ class TestHandLaunch:
 # Bungee / Catapult mode
 # ===========================================================================
 
+
 class TestBungeeCatapult:
     """Bungee and catapult launch modes."""
 
@@ -270,8 +298,13 @@ class TestBungeeCatapult:
         """v_release ≥ V_LOF → s_TO_ground = 0."""
         from app.services.field_length_service import _v_lof
 
-        aircraft = {**CESSNA_172, "mass_kg": 5.0, "s_ref_m2": 0.5,
-                    "v_stall_mps": 8.0, "cl_max_takeoff": 1.5}
+        aircraft = {
+            **CESSNA_172,
+            "mass_kg": 5.0,
+            "s_ref_m2": 0.5,
+            "v_stall_mps": 8.0,
+            "cl_max_takeoff": 1.5,
+        }
         v_lof = _v_lof(aircraft["v_stall_mps"])
         # Set v_release higher than V_LOF
         aircraft_with_release = {**aircraft, "v_release_mps": v_lof + 2.0}
@@ -305,6 +338,7 @@ class TestBungeeCatapult:
 # Belly landing mode
 # ===========================================================================
 
+
 class TestBellyLand:
     """Belly landing uses μ=0.5 (grass + fuselage friction)."""
 
@@ -326,14 +360,13 @@ class TestBellyLand:
         r_belly = _service()(CESSNA_172, landing_mode="belly_land")
         ratio = r_belly["s_ldg_ground_m"] / r_runway["s_ldg_ground_m"]
         # μ=0.5 / μ=0.4 scaling → roughly 0.80 of runway distance
-        assert 0.70 <= ratio <= 0.99, (
-            f"Belly/runway ratio = {ratio:.3f}, expected ≈ 0.80"
-        )
+        assert 0.70 <= ratio <= 0.99, f"Belly/runway ratio = {ratio:.3f}, expected ≈ 0.80"
 
 
 # ===========================================================================
 # Thrust missing guard
 # ===========================================================================
+
 
 class TestThrustMissing:
     """t_static_N is required for takeoff; missing → ServiceException."""
@@ -369,6 +402,7 @@ class TestThrustMissing:
 # ===========================================================================
 # Internal helper unit tests
 # ===========================================================================
+
 
 class TestHelpers:
     """Unit tests for internal computation helpers."""

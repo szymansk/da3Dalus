@@ -486,11 +486,49 @@ def test_v_s1_alias_matches_v_stall_for_backward_compat(client_and_db):
     assert ctx["v_stall_mps"] == ctx["v_s1_mps"]
 
 
-def test_flap_takeoff_deflection_clipped_to_ted_max(client_and_db):
-    """T5: default δ_to=15° respects TED.positive_deflection_deg.
+def test_aerobuildup_failure_falls_back_to_clean_polar(client_and_db):
+    """T6: when the flap-deflected AeroBuildup raises, the corresponding
+    config falls back to the clean polar with provenance='aerobuildup_failed'.
 
-    With a TED limit of 10°, the takeoff polar should be computed with
-    δ_to=10° (clipped), not 15°.
+    Audits the independent-try-block change so a takeoff failure does NOT
+    prevent the landing pass from running (review feedback).
+    """
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        db.commit()
+        aeroplane_uuid = str(aeroplane.uuid)
+        aeroplane_id = aeroplane.id
+
+    # Force the flap-deflected helper to raise — the clean polar should
+    # still be produced, and both takeoff/landing get the fallback flag.
+    with (
+        patch(
+            "app.services.assumption_compute_service._run_polar_for_deflection",
+            side_effect=RuntimeError("simulated AeroBuildup crash"),
+        ),
+        _enter_patches(flap_ted_max=30.0),
+    ):
+        with SessionLocal() as db:
+            recompute_assumptions(db, aeroplane_uuid)
+            db.commit()
+
+    ctx = _load_ctx(SessionLocal, aeroplane_id)
+    pbc = ctx["polar_by_config"]
+    assert pbc["clean"]["provenance"] == "aerobuildup"
+    assert pbc["takeoff"]["provenance"] == "aerobuildup_failed"
+    assert pbc["landing"]["provenance"] == "aerobuildup_failed"
+    # Fallback uses clean cl_max so V_s comes out as the clean stall.
+    assert pbc["takeoff"]["cl_max"] == pbc["clean"]["cl_max"]
+    assert pbc["landing"]["cl_max"] == pbc["clean"]["cl_max"]
+
+
+def test_flap_takeoff_deflection_clipped_to_ted_max(client_and_db):
+    """T7: default δ_to=15° and δ_ldg=30° are clipped to TED.positive_deflection_deg.
+
+    With a TED limit of 10°, both takeoff and landing polars should be
+    computed at δ=10°, not 15° / 30°.
     """
     _, SessionLocal = client_and_db
     with SessionLocal() as db:

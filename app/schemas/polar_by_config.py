@@ -21,9 +21,15 @@ ConfigName = Literal["clean", "takeoff", "landing"]
 Provenance = Literal[
     "aerobuildup",  # full AeroBuildup pass with deflected flap
     "no_flap_geometry",  # aircraft has no flap → cloned from clean
-    "fit_rejected",  # AeroBuildup ran but the parabolic fit was rejected
+    "aerobuildup_failed",  # the flap-deflected AeroBuildup raised → cloned from clean
 ]
-"""How the polar entry was produced."""
+"""How the polar entry was produced.
+
+`aerobuildup_failed` covers any exception during the deflected sweep
+(AeroBuildup convergence, parabolic-fit rejection, downstream NaN) —
+the UI should treat it as "we tried, the solver fell over, falling back
+to clean polar" rather than a successful but low-quality fit.
+"""
 
 
 class ParabolicPolar(BaseModel):
