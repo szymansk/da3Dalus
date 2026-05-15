@@ -195,15 +195,22 @@ def compute_mission_kpis(
     """
 ```
 
-### 5.3 New model + migration
+### 5.3 New models + migration
 
-`app/models/mission_objective.py` — SQLAlchemy table mirroring the Pydantic schema. One row per aeroplane (FK to `aeroplanes`).
+Two new SQLAlchemy tables:
+
+- `app/models/mission_objective.py` — `mission_objectives` table, one row per aeroplane (FK to `aeroplanes`). Mirrors the Pydantic `MissionObjective`.
+- `app/models/mission_preset.py` — `mission_presets` table, one row per preset (Trainer, Sport, Sailplane, …). Mirrors the Pydantic `MissionPreset`.
+
+Storing presets in the DB (rather than as a Python dict) enables future user-extensible presets without code changes, supports versioning, and lets admin tooling edit values without redeploying.
 
 Alembic migration:
 
-1. Create `mission_objectives` table.
-2. Drop field-performance columns from `design_assumptions` if they exist (`runway_length_m`, `runway_type`, `t_static_N`, `takeoff_mode`). If they only exist in code as `PARAMETER_DEFAULTS` keys without DB persistence, just remove from the assumption-parameter list.
-3. Backfill — for existing aeroplanes, create a default `mission_objectives` row from each aeroplane's current assumption_computation_context or use Trainer defaults.
+1. Create `mission_presets` table.
+2. Seed initial presets via a data migration step using a `op.bulk_insert` of the six default presets (Trainer, Sport, Sailplane, Wing-Racer, 3D / Acro, STOL / Bush). Seeded values live in a single `app/services/mission_preset_seed.py` so they're version-controlled and re-applyable.
+3. Create `mission_objectives` table.
+4. Drop field-performance columns from `design_assumptions` if they exist (`runway_length_m`, `runway_type`, `t_static_N`, `takeoff_mode`). If they only exist in code as `PARAMETER_DEFAULTS` keys without DB persistence, just remove from the assumption-parameter list.
+5. Backfill — for existing aeroplanes, create a default `mission_objectives` row preserving the aeroplane's existing field-performance values verbatim (if present in the legacy Assumption data); use Trainer defaults only for fields that were never set.
 
 ### 5.4 New endpoints
 
@@ -285,7 +292,7 @@ This change is breaking but small in scope — the assumption-parameter list shr
 
 Phase ordering reflects data-flow dependencies:
 
-1. **`feat(mission): MissionObjective schema + service + endpoints`** — DB table, Pydantic, GET/PUT, mission-presets library in code. No frontend yet.
+1. **`feat(mission): MissionObjective + MissionPreset DB tables + endpoints`** — two new DB tables, Pydantic schemas, seed data migration for the six initial presets, GET/PUT/GET endpoints. No frontend yet.
 2. **`feat(mission): mission_kpi_service computing 7 axes`** — pure aggregation from existing services + the new MissionObjective.
 3. **`refactor(field-length): consume MissionObjective instead of Assumptions dict`** — service signature change + Alembic migration moving field-performance fields out of Assumptions.
 4. **`feat(mission): Mission-preset auto-apply estimates`** — atomic write of suggested_estimates to design_assumptions.estimate_value on mission_type change.
@@ -304,10 +311,10 @@ Each phase ticket is independently revertable:
 - Phases 5–7 are frontend-only; the placeholder Mission tab UI remains available behind a feature flag (`mission.tab.v2.enabled`) until phase 6 lands.
 - The v2 EPIC (#8) is meta — its existence is independent of the v1 code.
 
-## 12. Open questions for review
+## 12. Decisions taken during review
 
-- **Mission-preset library**: should presets be code-only (`PRESETS = {...}` in Python) or a versioned DB table? Code-only is simpler for v1; DB enables user-extensible presets later (deferred to v2).
-- **Multi-mission overlay default**: should the default be "only active mission" or "active + closest two neighbours"? v1 spec says only-active; v2 could add a "Show neighbours" auto-toggle.
-- **Field-Performance defaults**: when migrating an existing aeroplane that has field-performance values in Assumptions, do we keep their values verbatim in the new MissionObjective, or reset to Trainer defaults? v1 spec says keep verbatim during migration.
+The following details were resolved after the initial spec write-up:
 
-These do not block implementation. They're flagged here for the user to skim and accept defaults or reroute as wished.
+- **Mission-preset library** lives in a DB table (`mission_presets`), seeded via Alembic data migration. See §5.3.
+- **Multi-mission overlay** defaults to "only the active mission". Comparison missions are opt-in via the toggle grid.
+- **Field-Performance migration** preserves existing aeroplane values verbatim. Trainer defaults are only used for fields that were never set in the legacy Assumption data.
