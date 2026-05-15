@@ -476,3 +476,147 @@ class TestHelpers:
         result = _service()(CESSNA_172)
         assert result["s_to_50ft_m"] > result["s_to_ground_m"]
         assert result["s_ldg_50ft_m"] > result["s_ldg_ground_m"]
+
+
+# ===========================================================================
+# Mass-priority fallback (gh-548 reviewer-flagged consistency)
+# ===========================================================================
+
+
+class TestMassFallback:
+    """compute_field_lengths should prefer ``mass_kg``; fall back to
+    ``total_mass_kg`` when ``mass_kg`` is absent — matches the priority
+    used by mission_kpi_service so the two surfaces agree on W/S.
+    """
+
+    def test_falls_back_to_total_mass_kg_when_mass_kg_absent(self):
+        ac = {k: v for k, v in CESSNA_172.items() if k != "mass_kg"}
+        ac["total_mass_kg"] = CESSNA_172["mass_kg"]
+        result = _service()(ac, takeoff_mode="runway", landing_mode="runway")
+        # Should produce the same value as the canonical fixture
+        ref = _service()(CESSNA_172, takeoff_mode="runway", landing_mode="runway")
+        assert result["s_to_ground_m"] == pytest.approx(ref["s_to_ground_m"])
+        assert result["s_ldg_ground_m"] == pytest.approx(ref["s_ldg_ground_m"])
+
+    def test_prefers_mass_kg_over_total_mass_kg(self):
+        ac = dict(CESSNA_172)
+        ac["total_mass_kg"] = 9999.0  # garbage; must be ignored
+        result = _service()(ac)
+        ref = _service()(CESSNA_172)
+        assert result["s_to_ground_m"] == pytest.approx(ref["s_to_ground_m"])
+
+
+# ===========================================================================
+# compute_field_lengths_for_aeroplane wrapper (Task 3.1)
+# ===========================================================================
+
+
+class TestComputeFieldLengthsForAeroplane:
+    """The new wrapper assembles the legacy ``aircraft`` dict from the
+    aeroplane's ``assumption_computation_context`` and ``MissionObjective``.
+    """
+
+    def test_compute_field_lengths_for_aeroplane_uses_mission_runway(
+        self, client_and_db
+    ):
+        _, SessionLocal = client_and_db
+        from app.models.aeroplanemodel import AeroplaneModel
+        from app.schemas.mission_objective import MissionObjective
+        from app.services.field_length_service import (
+            compute_field_lengths_for_aeroplane,
+        )
+        from app.services.mission_objective_service import upsert_mission_objective
+        from app.tests.conftest import make_aeroplane
+
+        with SessionLocal() as db:
+            aeroplane = make_aeroplane(db)
+
+            a = db.query(AeroplaneModel).filter_by(id=aeroplane.id).one()
+            a.assumption_computation_context = {
+                "mass_kg": 1.5,
+                "s_ref_m2": 0.3,
+                "v_stall_mps": 8.0,
+                "cl_max": 1.4,
+                "polar_by_config": {
+                    "takeoff": {"cl_max": 1.6},
+                    "landing": {"cl_max": 1.8},
+                },
+            }
+            upsert_mission_objective(
+                db,
+                aeroplane.id,
+                MissionObjective(
+                    mission_type="trainer",
+                    target_cruise_mps=18,
+                    target_stall_safety=1.8,
+                    target_maneuver_n=3,
+                    target_glide_ld=12,
+                    target_climb_energy=22,
+                    target_wing_loading_n_m2=400,
+                    target_field_length_m=50,
+                    available_runway_m=80.0,
+                    runway_type="grass",
+                    t_static_N=20.0,
+                    takeoff_mode="runway",
+                ),
+            )
+            db.commit()
+            aeroplane_id = aeroplane.id
+
+        with SessionLocal() as db:
+            a = db.query(AeroplaneModel).filter_by(id=aeroplane_id).one()
+            result = compute_field_lengths_for_aeroplane(a, db=db)
+            assert result["mode_takeoff"] == "runway"
+            assert result["s_to_ground_m"] > 0
+            assert result["s_ldg_ground_m"] > 0
+
+    def test_compute_field_lengths_for_aeroplane_uses_total_mass_fallback(
+        self, client_and_db
+    ):
+        """When ctx has no mass_kg, the wrapper supplies aeroplane.total_mass_kg
+        so the legacy compute_field_lengths can fall back to it.
+        """
+        _, SessionLocal = client_and_db
+        from app.models.aeroplanemodel import AeroplaneModel
+        from app.schemas.mission_objective import MissionObjective
+        from app.services.field_length_service import (
+            compute_field_lengths_for_aeroplane,
+        )
+        from app.services.mission_objective_service import upsert_mission_objective
+        from app.tests.conftest import make_aeroplane
+
+        with SessionLocal() as db:
+            aeroplane = make_aeroplane(db, total_mass_kg=2.0)
+
+            a = db.query(AeroplaneModel).filter_by(id=aeroplane.id).one()
+            a.assumption_computation_context = {
+                # No mass_kg — wrapper must supply total_mass_kg.
+                "s_ref_m2": 0.3,
+                "v_stall_mps": 8.0,
+                "cl_max": 1.4,
+            }
+            upsert_mission_objective(
+                db,
+                aeroplane.id,
+                MissionObjective(
+                    mission_type="trainer",
+                    target_cruise_mps=18,
+                    target_stall_safety=1.8,
+                    target_maneuver_n=3,
+                    target_glide_ld=12,
+                    target_climb_energy=22,
+                    target_wing_loading_n_m2=400,
+                    target_field_length_m=50,
+                    available_runway_m=80.0,
+                    runway_type="grass",
+                    t_static_N=20.0,
+                    takeoff_mode="runway",
+                ),
+            )
+            db.commit()
+            aeroplane_id = aeroplane.id
+
+        with SessionLocal() as db:
+            a = db.query(AeroplaneModel).filter_by(id=aeroplane_id).one()
+            result = compute_field_lengths_for_aeroplane(a, db=db)
+            assert result["s_to_ground_m"] > 0

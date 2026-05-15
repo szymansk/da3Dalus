@@ -1,4 +1,4 @@
-"""Field length endpoints — takeoff and landing distance (gh-489)."""
+"""Field length endpoints — takeoff and landing distance (gh-489, gh-548)."""
 
 from __future__ import annotations
 
@@ -18,9 +18,8 @@ from app.models.aeroplanemodel import (
     WingXSecModel,
     WingXSecTrailingEdgeDeviceModel,
 )
-from app.schemas.design_assumption import PARAMETER_DEFAULTS
 from app.schemas.field_length import FieldLengthRead, LandingMode, TakeoffMode
-from app.services.design_assumptions_service import get_effective_assumption
+from app.services.mission_objective_service import get_mission_objective
 
 logger = logging.getLogger(__name__)
 
@@ -115,34 +114,35 @@ async def get_field_lengths(
     """Compute takeoff and landing field lengths for an aeroplane.
 
     Uses the Roskam Vol I §3.4 simplified ground-roll (energy method) with
-    RC-specific mode extensions. Reads aircraft parameters from the
-    design-assumptions table and the assumption_computation_context cache.
+    RC-specific mode extensions. Field-performance inputs come from the
+    aeroplane's :class:`MissionObjective`; aerodynamic inputs come from the
+    cached ``assumption_computation_context``.
 
-    **Required assumptions** (set via Design Assumptions):
-    - ``mass``         — aircraft mass [kg]
-    - ``cl_max``       — maximum lift coefficient (base value)
+    **Required in MissionObjective** (gh-548):
+    - ``t_static_N``     — zero-velocity static thrust [N] (0 = absent → 422
+      error for powered runway/bungee modes)
+    - ``takeoff_mode``   — default if query param is not given
+    - ``runway_type``    — informational; ``belly`` maps to belly_land
 
     **Required in computation context** (populated by assumption recompute):
-    - ``v_stall_mps``  — stall speed [m/s]
-    - ``s_ref_m2``     — wing reference area [m²]
-
-    **Required for runway/bungee takeoff**:
-    - ``t_static_N``   — zero-velocity static thrust [N]
-      (set via Design Assumptions; 0 = absent → 422 error)
+    - ``mass_kg``        — aircraft mass [kg]; falls back to
+      ``aeroplane.total_mass_kg``
+    - ``cl_max``         — maximum lift coefficient
+    - ``v_stall_mps``    — stall speed [m/s]
+    - ``s_ref_m2``       — wing reference area [m²]
     """
     from app.services.field_length_service import compute_field_lengths
 
     try:
         plane = _get_aeroplane(db, aeroplane_id)
 
-        # Gather inputs from design assumptions + computation context
         ctx = plane.assumption_computation_context or {}
+        objective = get_mission_objective(db, plane.id)
 
-        mass_kg = get_effective_assumption(db, plane.id, "mass") or PARAMETER_DEFAULTS["mass"]
-        cl_max = get_effective_assumption(db, plane.id, "cl_max") or PARAMETER_DEFAULTS["cl_max"]
-        t_static_raw = get_effective_assumption(db, plane.id, "t_static_N")
         s_ref_m2 = ctx.get("s_ref_m2")
         v_stall_mps = ctx.get("v_stall_mps")
+        mass_kg = ctx.get("mass_kg") or plane.total_mass_kg
+        cl_max = ctx.get("cl_max")
 
         if s_ref_m2 is None or s_ref_m2 <= 0:
             raise ServiceException(
@@ -158,24 +158,37 @@ async def get_field_lengths(
                     "Trigger an assumption recompute first."
                 )
             )
+        if mass_kg is None or mass_kg <= 0:
+            raise ServiceException(
+                message=(
+                    "Aircraft mass is not available. Set total_mass_kg on the "
+                    "aeroplane or trigger an assumption recompute."
+                )
+            )
 
         # Detect flap type from wing TEDs (Amendment 2: flap-aware CL_max)
-        flap_type = _detect_flap_type(db, plane.id)
+        flap_type = ctx.get("flap_type") or _detect_flap_type(db, plane.id)
+        polar_by_config = ctx.get("polar_by_config") or {}
 
         aircraft: dict = {
             "mass_kg": float(mass_kg),
             "s_ref_m2": float(s_ref_m2),
-            "cl_max": float(cl_max),
+            "cl_max": float(cl_max) if cl_max is not None else 1.4,
             "v_stall_mps": float(v_stall_mps),
+            "v_s_to_mps": ctx.get("v_s_to_mps"),
+            "v_s0_mps": ctx.get("v_s0_mps"),
+            "cl_max_takeoff": (polar_by_config.get("takeoff") or {}).get("cl_max"),
+            "cl_max_landing": (polar_by_config.get("landing") or {}).get("cl_max"),
             "flap_type": flap_type,
         }
 
-        # Include thrust if present (and non-zero)
-        if t_static_raw is not None and float(t_static_raw) > 0:
-            aircraft["t_static_N"] = float(t_static_raw)
+        # Include thrust if present (and non-zero); MissionObjective is the
+        # source of truth after gh-548.
+        if objective.t_static_N is not None and float(objective.t_static_N) > 0:
+            aircraft["t_static_N"] = float(objective.t_static_N)
         # else: leave absent → service will raise if mode requires it
 
-        # RC mode inputs
+        # RC mode inputs (query overrides)
         if v_throw_mps is not None:
             aircraft["v_throw_mps"] = v_throw_mps
         if v_release_mps is not None:
@@ -185,7 +198,11 @@ async def get_field_lengths(
         if stretch_m is not None:
             aircraft["stretch_m"] = stretch_m
 
-        result = compute_field_lengths(aircraft, takeoff_mode=takeoff_mode, landing_mode=landing_mode)
+        result = compute_field_lengths(
+            aircraft,
+            takeoff_mode=takeoff_mode,
+            landing_mode=landing_mode,
+        )
         return FieldLengthRead(**result)
 
     except ServiceException as exc:

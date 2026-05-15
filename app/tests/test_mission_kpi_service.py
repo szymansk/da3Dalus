@@ -305,6 +305,50 @@ def test_compute_mission_kpis_missing_context_marks_axes_missing(client_and_db):
         assert kpi.score_0_1 is None
 
 
+def test_compute_mission_kpis_field_friendliness_computed_after_phase3(client_and_db):
+    """gh-548 Phase 3: with a real MissionObjective + complete context,
+    field_friendliness now reports provenance='computed' (instead of the
+    pre-Phase-3 'missing' fallback).
+    """
+    from app.schemas.mission_objective import MissionObjective
+    from app.services.mission_objective_service import upsert_mission_objective
+
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db, total_mass_kg=2.0)
+        aircraft_id = aeroplane.id
+
+    # Seed a context that includes v_stall_mps so the real
+    # compute_field_lengths can run.
+    full_ctx = dict(_SYNTHETIC_CONTEXT)
+    full_ctx["v_stall_mps"] = 8.0
+    _seed_context(SessionLocal, aircraft_id, full_ctx)
+
+    with SessionLocal() as db:
+        upsert_mission_objective(
+            db, aircraft_id,
+            MissionObjective(
+                mission_type="trainer",
+                target_cruise_mps=18.0, target_stall_safety=1.8,
+                target_maneuver_n=3.0, target_glide_ld=12.0,
+                target_climb_energy=22.0, target_wing_loading_n_m2=412.0,
+                target_field_length_m=50.0, available_runway_m=80.0,
+                runway_type="grass", t_static_N=20.0, takeoff_mode="runway",
+            ),
+        )
+        db.commit()
+
+    with SessionLocal() as db:
+        kset = compute_mission_kpis(db, aircraft_id, ["trainer"])
+
+    field = kset.ist_polygon["field_friendliness"]
+    assert field.provenance == "computed", (
+        f"Expected 'computed' after Phase 3 wiring, got {field.provenance!r}"
+    )
+    assert field.value is not None and field.value > 0
+    assert field.score_0_1 is not None
+
+
 def test_compute_mission_kpis_field_friendliness_falls_back_gracefully(client_and_db):
     """When field_length_service is unavailable, the axis is "missing"."""
     _, SessionLocal = client_and_db
