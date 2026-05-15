@@ -9,4 +9,17 @@ export async function fetcher<T>(path: string): Promise<T> {
   return res.json();
 }
 
+export async function putJson<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`PUT ${path} failed: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return res.json();
+}
+
 export { API_BASE };
