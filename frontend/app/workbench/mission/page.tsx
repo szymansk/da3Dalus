@@ -6,6 +6,7 @@ import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { MissionCompliancePanel } from "@/components/workbench/mission/MissionCompliancePanel";
 import { MissionObjectivesPanel } from "@/components/workbench/mission/MissionObjectivesPanel";
 import type { AxisName } from "@/hooks/useMissionPresets";
+import { AxisDrawer } from "@/components/workbench/mission/AxisDrawer";
 
 export default function MissionPage() {
   const { aeroplaneId, hydrated, openPicker } = useAeroplaneContext();
@@ -43,21 +44,11 @@ export default function MissionPage() {
       </WorkbenchTwoPanel>
 
       {drawerAxis && (
-        <div className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded border border-orange-500/40 bg-card px-4 py-2 text-xs text-muted-foreground">
-          <span>
-            Axis drilldown for{" "}
-            <span className="font-mono text-orange-500">{drawerAxis}</span> —
-            coming in Phase 7
-          </span>
-          <button
-            type="button"
-            onClick={() => setDrawerAxis(null)}
-            aria-label="Close drilldown placeholder"
-            className="text-muted-foreground hover:text-foreground"
-          >
-            ×
-          </button>
-        </div>
+        <AxisDrawer
+          aeroplaneId={aeroplaneId}
+          axis={drawerAxis}
+          onClose={() => setDrawerAxis(null)}
+        />
       )}
     </>
   );
