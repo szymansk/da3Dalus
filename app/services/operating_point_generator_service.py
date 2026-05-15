@@ -257,7 +257,7 @@ def _load_effective_flight_profile(
 def _estimate_reference_speeds(
     profile: dict[str, Any],
     cached_context: dict[str, Any] | None = None,
-) -> dict[str, float]:
+) -> dict[str, Any]:
     """Estimate clean / take-off / landing stall speeds for OP seeding.
 
     Precedence (gh-526 — epic gh-525 finding C1; replaces the historical
@@ -292,17 +292,45 @@ def _estimate_reference_speeds(
         vs_clean = max(3.0, cruise / min_margin_clean)
         vs_to = vs_clean
         vs_ldg = vs_clean
+        provenance = "cold_start"  # gh-535: caller must stamp STALE_NO_POLAR
     else:
         vs_clean = vs_clean_ctx
         # Prefer per-config physics; fall back to clean value when missing.
         vs_to = _pick("v_s_to_mps") or vs_clean
         vs_ldg = _pick("v_s0_mps") or vs_clean
+        provenance = "polar"
 
     return {
         "vs_clean": max(3.0, vs_clean),
         "vs_to": max(2.5, vs_to),
         "vs_ldg": max(2.0, vs_ldg),
+        "provenance": provenance,
     }
+
+
+def _stamp_stale_no_polar(
+    targets: list[dict[str, Any]],
+    refs: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Append ``STALE_NO_POLAR`` to every target when refs came from the
+    cold-start path (no polar yet, V_s estimated from cruise/margin).
+
+    The warning rides through to the persisted ``OperatingPointModel.warnings``
+    so consumers (UI chip row, AVL replay, SonarQube enrichment) can flag
+    these OPs as estimated rather than physics-derived (gh-535 / epic
+    gh-525 M1 follow-up).
+    """
+    if refs.get("provenance") != "cold_start":
+        return targets
+    stamped: list[dict[str, Any]] = []
+    for target in targets:
+        copy = dict(target)
+        warnings = list(copy.get("warnings", []))
+        if "STALE_NO_POLAR" not in warnings:
+            warnings.append("STALE_NO_POLAR")
+        copy["warnings"] = warnings
+        stamped.append(copy)
+    return stamped
 
 
 def _build_target_definitions(
@@ -960,6 +988,10 @@ def generate_default_set_for_aircraft(
         # angles produce non-physical AVL / NeuralFoil results otherwise.
         _flap_limits_for_clip = build_deflection_limits_from_schema(plane_schema)
         targets = [_clip_flap_to_ted_limit(t, _flap_limits_for_clip) for t in targets]
+        # gh-535: when the OPG ran without a polar (cold-start fallback to
+        # cruise/margin), stamp every target's warnings list so persisted
+        # OPs surface the STALE_NO_POLAR signal to consumers.
+        targets = _stamp_stale_no_polar(targets, refs)
         # Use the design CG as the moment-reference point for trim, so
         # Cm=0 means "balanced about the user's design CG", not about
         # the origin. Mirrors what stability_summary already does.

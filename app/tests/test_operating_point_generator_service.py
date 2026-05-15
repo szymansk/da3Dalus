@@ -693,3 +693,55 @@ def test_trimmed_point_controls_include_flap_deflection():
         f"flap deflection must be in OP controls; got {list(point.controls.keys())}"
     )
     assert point.controls["[flap]Flap"] == pytest.approx(22.0)
+
+
+# ============================================================================
+# gh-535 — STALE_NO_POLAR warning on cold-start (epic gh-525 follow-up)
+# ============================================================================
+
+
+def test_estimate_reference_speeds_reports_polar_provenance_when_context_present():
+    """gh-535: when v_s1_mps is in context, provenance is 'polar'."""
+    cached_context = {
+        "v_stall_mps": 14.0,
+        "v_s1_mps": 14.0,
+        "v_s_to_mps": 12.5,
+        "v_s0_mps": 10.5,
+    }
+    refs = _estimate_reference_speeds(_profile_with_cruise(), cached_context)
+    assert refs.get("provenance") == "polar"
+
+
+def test_estimate_reference_speeds_reports_cold_start_when_context_missing():
+    """gh-535: with no context, provenance is 'cold_start' so callers
+    can stamp the STALE_NO_POLAR warning."""
+    refs = _estimate_reference_speeds(_profile_with_cruise(cruise_mps=24.0), None)
+    assert refs.get("provenance") == "cold_start"
+
+
+def test_stamp_stale_no_polar_appends_warning_on_cold_start_only():
+    """gh-535: targets coming through `_stamp_stale_no_polar` carry
+    'STALE_NO_POLAR' in `warnings` only when refs.provenance == 'cold_start'."""
+    from app.services.operating_point_generator_service import _stamp_stale_no_polar
+
+    targets = [
+        {"name": "cruise", "config": "clean", "velocity": 20.0},
+        {"name": "approach_landing", "config": "landing", "velocity": 14.0},
+    ]
+    stamped_cold = _stamp_stale_no_polar(targets, {"provenance": "cold_start"})
+    for t in stamped_cold:
+        assert "STALE_NO_POLAR" in t["warnings"]
+
+    stamped_polar = _stamp_stale_no_polar(targets, {"provenance": "polar"})
+    for t in stamped_polar:
+        assert "STALE_NO_POLAR" not in t.get("warnings", [])
+
+
+def test_stamp_stale_no_polar_does_not_duplicate_existing_warning():
+    """Idempotent: re-stamping a target that already has the warning
+    must not produce duplicates."""
+    from app.services.operating_point_generator_service import _stamp_stale_no_polar
+
+    targets = [{"name": "cruise", "warnings": ["STALE_NO_POLAR"]}]
+    stamped = _stamp_stale_no_polar(targets, {"provenance": "cold_start"})
+    assert stamped[0]["warnings"].count("STALE_NO_POLAR") == 1
