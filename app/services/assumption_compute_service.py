@@ -160,6 +160,24 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     )
 
     ted_max = _extract_flap_ted_max(aircraft)
+    # gh-537: parity guard between the schema walker
+    # (`_extract_flap_ted_max`, model.wings.x_secs.trailing_edge_device)
+    # and the ASB walker (`_detect_first_flap_name`, asb_airplane.wings.
+    # xsecs.control_surfaces). If the model claims a flap exists but the
+    # ASB conversion didn't propagate it (converter desync), route to the
+    # no-flap fallback with a clear warning — never let
+    # `_run_polar_for_deflection` raise AssertionError on the live path.
+    if ted_max is not None and _detect_first_flap_name(asb_airplane) is None:
+        logger.warning(
+            "Schema/ASB flap-name parity mismatch for aircraft %s: schema "
+            "reports a flap TED (positive_deflection_deg=%.1f°) but the ASB "
+            "airplane has no flap-role control surface. Falling back to "
+            "clean polar for takeoff/landing — investigate the converter.",
+            aeroplane_uuid,
+            ted_max,
+        )
+        ted_max = None  # route through the no-flap fallback below.
+
     if ted_max is None:
         # No flap geometry — fallback path: clone clean to takeoff & landing.
         polar_takeoff = polar_clean.model_copy(update={"provenance": "no_flap_geometry"})

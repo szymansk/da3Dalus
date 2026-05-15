@@ -549,6 +549,81 @@ def test_flap_takeoff_deflection_clipped_to_ted_max(client_and_db):
     assert pbc["landing"]["flap_deflection_deg"] == 10.0
 
 
+def test_flap_geometry_mismatch_falls_back_with_warning(client_and_db, caplog):
+    """gh-537: when the schema reports a flap TED but the ASB airplane has
+    no flap-role control surface, the per-config polar must fall back to
+    `no_flap_geometry` provenance with a clear log warning — not raise.
+
+    Repro: `_extract_flap_ted_max` returns 25.0 (model says flap exists),
+    but `_make_fake_airplane(with_flap=False)` produces an airplane with
+    no flap-role control surface (ASB sees nothing).
+    """
+    import logging
+
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        db.commit()
+        aeroplane_uuid = str(aeroplane.uuid)
+        aeroplane_id = aeroplane.id
+
+    asb_no_flap = _make_fake_airplane(with_flap=False)
+    caplog.set_level(logging.WARNING, logger="app.services.assumption_compute_service")
+    with (
+        patch(
+            "app.services.assumption_compute_service._build_asb_airplane",
+            return_value=asb_no_flap,
+        ),
+        patch(
+            "app.services.assumption_compute_service._stability_run_at_cruise",
+            return_value=(0.085, 0.20, 0.025, 0.30),
+        ),
+        patch(
+            "app.services.assumption_compute_service._coarse_alpha_sweep",
+            return_value=15.0,
+        ),
+        patch(
+            "app.services.assumption_compute_service._fine_sweep_cl_max",
+            return_value=(
+                1.35,
+                np.array([0.2, 0.4, 0.6, 0.8, 1.0, 1.2]),
+                np.array([0.026, 0.028, 0.032, 0.039, 0.049, 0.062]),
+                np.linspace(9.0, 28.0, 6),
+            ),
+        ),
+        patch(
+            "app.services.assumption_compute_service._extract_cl_alpha_from_linear_sweep",
+            return_value=5.7,
+        ),
+        patch(
+            "app.services.assumption_compute_service._load_flight_profile_speeds",
+            return_value=(18.0, 28.0, True),
+        ),
+        patch(
+            "app.services.assumption_compute_service._extract_flap_ted_max",
+            return_value=25.0,  # schema disagrees with ASB
+        ),
+    ):
+        with SessionLocal() as db:
+            # Must not raise — the parity guard catches the mismatch.
+            recompute_assumptions(db, aeroplane_uuid)
+            db.commit()
+
+    ctx = _load_ctx(SessionLocal, aeroplane_id)
+    pbc = ctx["polar_by_config"]
+    assert pbc["takeoff"]["provenance"] == "no_flap_geometry"
+    assert pbc["landing"]["provenance"] == "no_flap_geometry"
+    parity_warning = any(
+        "parity" in rec.message.lower() or "mismatch" in rec.message.lower()
+        for rec in caplog.records
+        if rec.levelno >= logging.WARNING
+    )
+    assert parity_warning, (
+        f"Expected a parity/mismatch warning; got: {[r.message for r in caplog.records]}"
+    )
+
+
 def test_landing_polar_uses_full_ted_limit_above_30deg(client_and_db):
     """gh-534: with a 40°-rated Fowler flap, the landing polar must run
     at the FULL TED max (40°), not the historical 30° cap.
