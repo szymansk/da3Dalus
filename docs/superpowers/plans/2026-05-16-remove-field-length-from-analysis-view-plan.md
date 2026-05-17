@@ -15,6 +15,22 @@
 
 ---
 
+## AMENDMENT 2026-05-17 — Option B: drop BDD scenario from this PR
+
+A pre-existing infrastructure bug surfaced during Task 1: `frontend/e2e/features/` contains ~85 unimplemented step phrases that prevent `npm run test:e2e` from running cleanly. Bug ticket: [#564](https://github.com/szymansk/da3Dalus/issues/564). Per CLAUDE.md Iron Law #6, the only acceptable responses are "fix the infrastructure" or "open a high-priority bug ticket and pause." The user chose **Option B**: keep this PR focused on the deletion, drop the new BDD regression scenario, re-add it in a follow-up after #564 is closed.
+
+**Effect on this plan:**
+
+- **Task 1 (RED — failing BDD scenario): SKIPPED.** Do not create `frontend/e2e/features/analysis-no-field-length.feature` or `frontend/e2e/steps/analysis.steps.ts` in this PR. They will be added in a follow-up PR linked to #564.
+- **Task 4 (REFACTOR): skip Step 4.4 (full Playwright BDD suite).** Keep Steps 4.1 (typecheck), 4.2 (deps:check), 4.3 (vitest unit). Acceptance for "no regressions" rests on grep + typecheck + deps + unit + manual browser check.
+- **Task 5 (manual browser): unchanged.** This becomes the primary functional acceptance gate for the deletion.
+- **Task 6 (PR): unchanged.** The PR body must mention #564 as the blocker for the missing BDD test and link to the follow-up commitment.
+- All other tasks (Task 2 VERIFY, Task 3 GREEN, Task 6) proceed as written.
+
+The "Dev-server / port override" section below still applies for Step 5 (manual browser check), but `PLAYWRIGHT_BASE_URL` is no longer in play because the BDD suite is not being run in this PR.
+
+---
+
 ## Dev-server / port override (mandatory)
 
 A Next.js dev server is **already running on `:3000`** from the user's main repo (not this worktree). Playwright's `webServer.reuseExistingServer: true` would silently reuse it — which would test the WRONG codebase.
