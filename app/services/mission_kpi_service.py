@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
+from app.core.exceptions import ServiceException
 from app.models.aeroplanemodel import AeroplaneModel
 from app.schemas.mission_kpi import (
     AxisName,
@@ -34,6 +35,18 @@ from app.schemas.mission_kpi import (
     MissionKpiSet,
     MissionTargetPolygon,
 )
+
+# Module-level import so the symbol exists for both runtime calls and
+# `unittest.mock.patch("app.services.mission_kpi_service.compute_field_lengths_for_aeroplane", ...)`.
+# Falls back to None on platforms where the field-length service can't be
+# loaded (e.g. linux/aarch64 without aerosandbox); _compute_field_length_score
+# surfaces that as a warning rather than swallowing it.
+try:
+    from app.services.field_length_service import (
+        compute_field_lengths_for_aeroplane,
+    )
+except ImportError:  # pragma: no cover — platform-dependent
+    compute_field_lengths_for_aeroplane = None  # type: ignore[assignment]
 
 
 # ----- Helpers --------------------------------------------------------------
@@ -52,8 +65,18 @@ def _normalise_score(value: float, lo: float, hi: float) -> float:
     return max(0.0, min(1.0, score))
 
 
-def _missing(axis: AxisName, lo: float, hi: float, formula: str) -> MissionAxisKpi:
-    """Build a ``provenance="missing"`` axis (renders as polygon gap)."""
+def _missing(
+    axis: AxisName,
+    lo: float,
+    hi: float,
+    formula: str,
+    warning: str | None = None,
+) -> MissionAxisKpi:
+    """Build a ``provenance="missing"`` axis (renders as polygon gap).
+
+    When ``warning`` is provided, the user-facing AxisDrawer surfaces it
+    as the cause for the axis being unavailable (e.g. *"set t_static_N"*).
+    """
     return MissionAxisKpi(
         axis=axis,
         value=None,
@@ -63,6 +86,7 @@ def _missing(axis: AxisName, lo: float, hi: float, formula: str) -> MissionAxisK
         range_max=hi,
         provenance="missing",
         formula=formula,
+        warning=warning,
     )
 
 
@@ -222,31 +246,42 @@ def _compute_field_length_score(
     aeroplane: AeroplaneModel,
     target_field_length_m: float,
     db: Session | None = None,
-) -> tuple[float | None, float | None]:
-    """Return ``(effective_field_length_m, score_0_1)`` or ``(None, None)``.
+) -> tuple[float | None, float | None, str | None]:
+    """Return ``(effective_field_length_m, score_0_1, warning)``.
 
     The score is ``target_field / effective_field`` clipped to ``[0, 1]``:
-    a shorter effective field is better. Returns ``(None, None)`` if the
-    field-length service can't compute (missing context, missing thrust
-    for a powered mode, etc.).
+    a shorter effective field is better. The ``warning`` carries the
+    user-facing reason when the score can't be computed (e.g. *"Set
+    t_static_N…"*) so the AxisDrawer can surface it — pre-#562 this was
+    only visible via the now-removed FieldLengthsPanel.
+
+    Unexpected exceptions (anything other than ``ServiceException``)
+    bubble up to the endpoint's logging handler — they indicate real
+    bugs, not user-actionable conditions.
 
     Passing ``db`` is strongly preferred — it keeps the MissionObjective
     lookup in the same session as the caller and is required by tests
     that use a transient SQLite database.
     """
-    try:
-        from app.services.field_length_service import (
-            compute_field_lengths_for_aeroplane,
-        )
+    if compute_field_lengths_for_aeroplane is None:
+        return None, None, "Field-length service unavailable on this platform"
 
+    try:
         result = compute_field_lengths_for_aeroplane(aeroplane, db=db)
-        eff = max(result.get("s_to_50ft_m", 0), result.get("s_ldg_50ft_m", 0))
-        if eff <= 0:
-            return None, None
-        score = max(0.0, min(1.0, target_field_length_m / eff))
-        return float(eff), float(score)
-    except Exception:  # noqa: BLE001 — graceful fallback for missing field service
-        return None, None
+    except ImportError as exc:
+        # Surfaces if the service does a lazy aerosandbox import at call time.
+        logger.warning("field_length_service ImportError at call site: %s", exc)
+        return None, None, "Field-length service unavailable on this platform"
+    except ServiceException as exc:
+        # User-actionable: missing t_static_N, missing s_ref_m2, etc.
+        logger.info("field_friendliness KPI unavailable: %s", exc.message)
+        return None, None, exc.message
+
+    eff = max(result.get("s_to_50ft_m", 0), result.get("s_ldg_50ft_m", 0))
+    if eff <= 0:
+        return None, None, "Computed effective field length is zero"
+    score = max(0.0, min(1.0, target_field_length_m / eff))
+    return float(eff), float(score), None
 
 
 def _kpi_field_friendliness(
@@ -258,9 +293,13 @@ def _kpi_field_friendliness(
 ) -> MissionAxisKpi:
     """Field friendliness — composite take-off + landing field length score."""
     formula = "max(s_TO_50ft, s_LDG_50ft); score = target / effective"
-    eff, score = _compute_field_length_score(aeroplane, target_field_length_m, db=db)
+    eff, score, warning = _compute_field_length_score(
+        aeroplane, target_field_length_m, db=db
+    )
     if eff is None or score is None:
-        return _missing("field_friendliness", range_min, range_max, formula)
+        return _missing(
+            "field_friendliness", range_min, range_max, formula, warning=warning
+        )
     return MissionAxisKpi(
         axis="field_friendliness",
         value=eff,

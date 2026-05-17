@@ -14,9 +14,12 @@ from unittest.mock import patch
 import pytest
 
 from app.models.aeroplanemodel import AeroplaneModel
+from app.core.exceptions import ServiceException
 from app.services.mission_kpi_service import (
+    _compute_field_length_score,
     _kpi_climb_energy,
     _kpi_cruise,
+    _kpi_field_friendliness,
     _kpi_glide,
     _kpi_maneuver,
     _kpi_stall_safety,
@@ -195,7 +198,7 @@ def test_compute_mission_kpis_full_payload(client_and_db):
 
     with patch(
         "app.services.mission_kpi_service._compute_field_length_score",
-        return_value=(45.0, 1.0),
+        return_value=(45.0, 1.0, None),
     ):
         with SessionLocal() as db:
             kset = compute_mission_kpis(db, aircraft_id, ["trainer"])
@@ -233,7 +236,7 @@ def test_compute_mission_kpis_multi_mission_overlay(client_and_db):
 
     with patch(
         "app.services.mission_kpi_service._compute_field_length_score",
-        return_value=(45.0, 1.0),
+        return_value=(45.0, 1.0, None),
     ):
         with SessionLocal() as db:
             kset = compute_mission_kpis(db, aircraft_id, ["trainer", "sailplane"])
@@ -253,7 +256,7 @@ def test_compute_mission_kpis_defaults_to_objective_mission_when_empty(client_an
 
     with patch(
         "app.services.mission_kpi_service._compute_field_length_score",
-        return_value=(45.0, 1.0),
+        return_value=(45.0, 1.0, None),
     ):
         with SessionLocal() as db:
             kset = compute_mission_kpis(db, aircraft_id, [])
@@ -273,7 +276,7 @@ def test_compute_mission_kpis_skips_unknown_mission_ids(client_and_db):
 
     with patch(
         "app.services.mission_kpi_service._compute_field_length_score",
-        return_value=(45.0, 1.0),
+        return_value=(45.0, 1.0, None),
     ):
         with SessionLocal() as db:
             kset = compute_mission_kpis(
@@ -293,7 +296,7 @@ def test_compute_mission_kpis_missing_context_marks_axes_missing(client_and_db):
     # No context seeded — aeroplane.assumption_computation_context is None/empty
     with patch(
         "app.services.mission_kpi_service._compute_field_length_score",
-        return_value=(None, None),
+        return_value=(None, None, None),
     ):
         with SessionLocal() as db:
             kset = compute_mission_kpis(db, aircraft_id, ["trainer"])
@@ -350,7 +353,10 @@ def test_compute_mission_kpis_field_friendliness_computed_after_phase3(client_an
 
 
 def test_compute_mission_kpis_field_friendliness_falls_back_gracefully(client_and_db):
-    """When field_length_service is unavailable, the axis is "missing"."""
+    """When the field-length service is unavailable on the platform (e.g.
+    aerosandbox can't be imported on linux/aarch64), the axis is "missing"
+    with a user-facing warning instead of crashing the whole radar payload.
+    """
     _, SessionLocal = client_and_db
     with SessionLocal() as db:
         aeroplane = make_aeroplane(db, total_mass_kg=2.0)
@@ -358,16 +364,20 @@ def test_compute_mission_kpis_field_friendliness_falls_back_gracefully(client_an
 
     _seed_context(SessionLocal, aircraft_id)
 
-    # Note: we DO NOT patch _compute_field_length_score here.
-    # On `main`, the underlying compute_field_lengths_for_aeroplane doesn't
-    # exist yet (lands in Phase 3) — the try/except inside the helper must
-    # return (None, None) so the axis becomes "missing".
-    with SessionLocal() as db:
-        kset = compute_mission_kpis(db, aircraft_id, ["trainer"])
+    # Simulate platform-level "service unavailable" by patching the
+    # module-level reference to None — same code path as the module-load
+    # ImportError fallback.
+    with patch(
+        "app.services.mission_kpi_service.compute_field_lengths_for_aeroplane",
+        None,
+    ):
+        with SessionLocal() as db:
+            kset = compute_mission_kpis(db, aircraft_id, ["trainer"])
 
     field = kset.ist_polygon["field_friendliness"]
     assert field.provenance == "missing"
     assert field.value is None
+    assert field.warning is not None and "unavailable" in field.warning.lower()
 
 
 def test_compute_mission_kpis_raises_when_presets_table_empty(client_and_db):
@@ -386,3 +396,113 @@ def test_compute_mission_kpis_raises_when_presets_table_empty(client_and_db):
     with SessionLocal() as db:
         with pytest.raises(RuntimeError, match="No mission preset"):
             compute_mission_kpis(db, aircraft_id, ["trainer"])
+
+
+# ---------------------------------------------------------------------------
+# Warning propagation (#562 review fix — surface t_static_N / recompute hints
+# via MissionAxisKpi.warning now that FieldLengthsPanel is gone).
+# ---------------------------------------------------------------------------
+
+
+def _stub_aeroplane():
+    """Smallest possible AeroplaneModel-like stub for the field-length helpers.
+
+    _compute_field_length_score only touches the model when delegating to
+    field_length_service. We mock that delegation in every test below, so a
+    bare object suffices.
+    """
+    return object()
+
+
+def test_compute_field_length_score_returns_warning_on_service_exception():
+    """ServiceException raised by field_length_service must be propagated
+    as the third element of the tuple (was silently swallowed pre-fix)."""
+    msg = "t_static_N (static thrust) is required for takeoff_mode='runway'"
+    with patch(
+        "app.services.mission_kpi_service.compute_field_lengths_for_aeroplane",
+        side_effect=ServiceException(message=msg),
+    ):
+        eff, score, warning = _compute_field_length_score(
+            _stub_aeroplane(), target_field_length_m=50.0
+        )
+    assert eff is None
+    assert score is None
+    assert warning == msg
+
+
+def test_compute_field_length_score_returns_warning_on_import_error():
+    """ImportError (field_length_service unavailable on the platform) is the
+    only OTHER exception we should catch — narrowed from bare Exception."""
+    with patch(
+        "app.services.mission_kpi_service.compute_field_lengths_for_aeroplane",
+        side_effect=ImportError("aerosandbox not available"),
+    ):
+        eff, score, warning = _compute_field_length_score(
+            _stub_aeroplane(), target_field_length_m=50.0
+        )
+    assert eff is None
+    assert score is None
+    assert warning is not None and "unavailable" in warning.lower()
+
+
+def test_compute_field_length_score_propagates_unexpected_exception():
+    """Unrelated RuntimeErrors must NOT be silently swallowed — they
+    indicate real bugs and should bubble up to the endpoint handler so
+    they get logged and reported."""
+    with patch(
+        "app.services.mission_kpi_service.compute_field_lengths_for_aeroplane",
+        side_effect=RuntimeError("division by zero in CL_max"),
+    ):
+        with pytest.raises(RuntimeError, match="division by zero"):
+            _compute_field_length_score(
+                _stub_aeroplane(), target_field_length_m=50.0
+            )
+
+
+def test_compute_field_length_score_returns_warning_when_eff_is_zero():
+    """Degenerate eff=0 (no takeoff distance) must surface a warning so
+    the user knows why the axis is missing, not just that it is."""
+    with patch(
+        "app.services.mission_kpi_service.compute_field_lengths_for_aeroplane",
+        return_value={"s_to_50ft_m": 0.0, "s_ldg_50ft_m": 0.0},
+    ):
+        eff, score, warning = _compute_field_length_score(
+            _stub_aeroplane(), target_field_length_m=50.0
+        )
+    assert eff is None
+    assert score is None
+    assert warning is not None and "zero" in warning.lower()
+
+
+def test_compute_field_length_score_no_warning_on_success():
+    """The happy path must return (eff, score, None) — no spurious warning."""
+    with patch(
+        "app.services.mission_kpi_service.compute_field_lengths_for_aeroplane",
+        return_value={"s_to_50ft_m": 40.0, "s_ldg_50ft_m": 35.0},
+    ):
+        eff, score, warning = _compute_field_length_score(
+            _stub_aeroplane(), target_field_length_m=50.0
+        )
+    assert eff == 40.0
+    assert score == 1.0  # target/eff clipped to 1.0
+    assert warning is None
+
+
+def test_kpi_field_friendliness_forwards_warning_to_missing_kpi():
+    """The user-facing MissionAxisKpi.warning must carry the actionable
+    hint from field_length_service. This is the regression-prevention test
+    for the t_static_N hint being lost after FieldLengthsPanel removal."""
+    msg = "t_static_N (static thrust) is required for takeoff_mode='runway'"
+    with patch(
+        "app.services.mission_kpi_service.compute_field_lengths_for_aeroplane",
+        side_effect=ServiceException(message=msg),
+    ):
+        kpi = _kpi_field_friendliness(
+            _stub_aeroplane(),
+            target_field_length_m=50.0,
+            range_min=0.0,
+            range_max=200.0,
+        )
+    assert kpi.provenance == "missing"
+    assert kpi.warning == msg
+    assert kpi.axis == "field_friendliness"
