@@ -19,7 +19,6 @@ import { AnalysisConfigPanel } from "@/components/workbench/AnalysisConfigPanel"
 import { AvlGeometryEditor } from "@/components/workbench/AvlGeometryEditor";
 import { AssumptionsPanel } from "@/components/workbench/AssumptionsPanel";
 import { MassSweepPanel } from "@/components/workbench/MassSweepPanel";
-import { FieldLengthsPanel } from "@/components/workbench/FieldLengthsPanel";
 
 export default function AnalysisPage() {
   const { aeroplaneId, hydrated, selectedWing, openPicker } = useAeroplaneContext();
@@ -113,7 +112,6 @@ export default function AnalysisPage() {
             assumptionsSlot={
               <>
                 <AssumptionsPanel aeroplaneId={aeroplaneId} />
-                <FieldLengthsPanel aeroplaneId={aeroplaneId} />
                 <div className="mt-6">
                   <MassSweepPanel
                     data={massSweep.data}

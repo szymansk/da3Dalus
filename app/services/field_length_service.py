@@ -321,17 +321,34 @@ def compute_field_lengths(
     """
     # gh-548: prefer ``mass_kg`` from the computation context, fall back to
     # ``total_mass_kg`` (the AeroplaneModel column) so this service agrees
-    # with mission_kpi_service on the W/S source. Either key is acceptable;
-    # raise the historical KeyError if neither is present so existing
-    # callers see the same error mode.
+    # with mission_kpi_service on the W/S source.
+    # gh-562 review fix: surface missing-mass as a user-actionable
+    # ServiceException so mission_kpi_service.warning carries the hint
+    # (was historically a bare KeyError that propagated as a 500).
     if aircraft.get("mass_kg") is not None:
         mass_kg = float(aircraft["mass_kg"])
     elif aircraft.get("total_mass_kg") is not None:
         mass_kg = float(aircraft["total_mass_kg"])
     else:
-        raise KeyError("mass_kg")
+        raise ServiceException(
+            message=(
+                "Aircraft mass is not available. Set total_mass_kg on the "
+                "aeroplane or trigger an assumption recompute."
+            )
+        )
     s_ref_m2: float = aircraft["s_ref_m2"]
-    v_stall: float = aircraft["v_stall_mps"]
+    # gh-562 review fix: surface "no stall speed cached yet" as a user-actionable
+    # ServiceException so the mission_kpi_service warning channel can carry the
+    # hint instead of hiding the cause behind a downstream TypeError.
+    v_stall_raw = aircraft.get("v_stall_mps")
+    if v_stall_raw is None or v_stall_raw <= 0:
+        raise ServiceException(
+            message=(
+                "v_stall_mps (stall speed) is required but missing or non-positive. "
+                "Trigger an assumption recompute first by saving the wing geometry."
+            )
+        )
+    v_stall: float = float(v_stall_raw)
     warnings: list[str] = []
 
     # --- CL_max resolution ---------------------------------------------------
