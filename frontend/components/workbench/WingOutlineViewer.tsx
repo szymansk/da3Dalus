@@ -14,6 +14,12 @@ interface WingOutlineViewerProps {
   selectedWing?: string | null;
   selectedFuselage?: string | null;
   selectedFuselageXsecIndex?: number | null;
+  /** Additional Plotly traces appended after wing/fuselage traces.
+   *  Used by overlay components (gh-569 stability overlay; future
+   *  expansions) via the useOverlayRegistry hook.
+   *  Must be referentially stable (useMemo / useState) — a new array
+   *  reference on every render triggers a full replot. */
+  extraTraces?: PlotlyData[];
 }
 
 // ── Airfoil coordinate cache ─────────────────────────────────────
@@ -836,6 +842,7 @@ export function WingOutlineViewer({
   wings, fuselages, visibleWings, visibleFuselages,
   selectedXsecIndex = null, selectedWing = null,
   selectedFuselage = null, selectedFuselageXsecIndex = null,
+  extraTraces,
 }: Readonly<WingOutlineViewerProps>) {
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -865,6 +872,11 @@ export function WingOutlineViewer({
         selectedFuselageXsecIndex: selectedFuselageXsecIndex ?? null,
         showQuarterChord,
       });
+
+      // gh-569: append overlay traces from useOverlayRegistry
+      if (extraTraces && extraTraces.length > 0) {
+        traces.push(...extraTraces);
+      }
 
       // Guard: empty scene placeholder to avoid Plotly GL crashes
       if (traces.length === 0) {
@@ -907,7 +919,7 @@ export function WingOutlineViewer({
         try { plotlyRef.current.purge(node); } catch { /* ok */ }
       }
     };
-  }, [wings, fuselages, visibleWings, visibleFuselages, selectedXsecIndex, selectedWing, selectedFuselage, selectedFuselageXsecIndex, showQuarterChord]);
+  }, [wings, fuselages, visibleWings, visibleFuselages, selectedXsecIndex, selectedWing, selectedFuselage, selectedFuselageXsecIndex, showQuarterChord, extraTraces]);
 
   return (
     <div className="relative h-full w-full">

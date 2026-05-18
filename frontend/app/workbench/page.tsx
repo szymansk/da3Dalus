@@ -12,11 +12,13 @@ import { AeroplaneTree } from "@/components/workbench/AeroplaneTree";
 import { SparEditDialog } from "@/components/workbench/SparEditDialog";
 import { TedEditDialog } from "@/components/workbench/TedEditDialog";
 import { WingOutlineViewer } from "@/components/workbench/WingOutlineViewer";
+import { StabilityOverlay } from "@/components/workbench/stability-overlay/StabilityOverlay";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAeroplanes } from "@/hooks/useAeroplanes";
 import { useWings, useWing, useAllWingData } from "@/hooks/useWings";
 import { useFuselages } from "@/hooks/useFuselages";
 import { useAllFuselageData, useFuselage } from "@/hooks/useFuselage";
+import { useOverlayRegistry } from "@/hooks/useOverlayRegistry";
 import { API_BASE } from "@/lib/fetcher";
 
 export default function WorkbenchPage() {
@@ -150,6 +152,45 @@ export default function WorkbenchPage() {
   const { wings: allWings, mutate: mutateAllWings } = useAllWingData(aeroplaneId, wingNames);
   const { fuselages: allFuselages, mutate: mutateAllFuselages } = useAllFuselageData(aeroplaneId, fuselageNames);
 
+  // Pick the main wing (largest planform-area proxy) and extract its root LE
+  // y/z so the stability overlay markers sit on the wing's chord line rather
+  // than at the global origin (which floats below the wing on high-wing aircraft).
+  const mainWingRoot = useMemo(() => {
+    if (!allWings || allWings.length === 0) return null;
+    // Planform-area proxy: halfSpan × root_chord (ignores taper).
+    // Sufficient to pick the main wing; not a true area measurement.
+    const planArea = (w: (typeof allWings)[number]) => {
+      const xs = w.x_secs;
+      if (!xs || xs.length < 2) return 0;
+      const halfSpan = Math.abs(
+        (xs[xs.length - 1].xyz_le?.[1] ?? 0) - (xs[0].xyz_le?.[1] ?? 0),
+      );
+      return halfSpan * (xs[0].chord ?? 0);
+    };
+    const main = allWings.reduce((a, b) => (planArea(a) >= planArea(b) ? a : b));
+    const rootLe = main.x_secs?.[0]?.xyz_le;
+    if (!rootLe || rootLe.length < 3 || rootLe[1] == null || rootLe[2] == null) {
+      if (rootLe) {
+        console.warn(
+          `[workbench] main wing "${main.name}" has malformed root xyz_le`,
+          rootLe,
+        );
+      }
+      return null;
+    }
+    return { y: rootLe[1], z: rootLe[2] };
+  }, [allWings]);
+
+  // Composable Plotly overlay registry. Each overlay (e.g. StabilityOverlay)
+  // publishes traces into this registry via its own stable register(key) setter;
+  // WingOutlineViewer renders the flat `overlayTraces` array additively.
+  // register(key) returns the identical setter across renders for the same
+  // key (per the useOverlayRegistry contract — verified by
+  // `frontend/__tests__/useOverlayRegistry.test.ts`), so it is safe to use
+  // directly in StabilityOverlay's effect deps without memoisation.
+  const { traces: overlayTraces, register } = useOverlayRegistry();
+  const stabilityRegister = register("stability");
+
   useEffect(() => {
     if (hydrated && !aeroplaneId) openPicker();
   }, [hydrated, aeroplaneId, openPicker]);
@@ -254,7 +295,7 @@ export default function WorkbenchPage() {
               {viewerMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
             </button>
           </div>
-          <div className="min-h-0 flex-1">
+          <div className="relative min-h-0 flex-1">
             <WingOutlineViewer
               wings={allWings}
               fuselages={allFuselages}
@@ -264,7 +305,18 @@ export default function WorkbenchPage() {
               selectedXsecIndex={selectedXsecIndex}
               selectedFuselage={selectedFuselage}
               selectedFuselageXsecIndex={selectedFuselageXsecIndex}
+              extraTraces={overlayTraces}
             />
+            {/* Overlay toolbar — sits to the left of WingOutlineViewer's own
+                ¼ Chord button (which lives at bottom-3 right-3, z-20). */}
+            <div className="absolute bottom-3 right-20 z-30">
+              <StabilityOverlay
+                aeroplaneId={aeroplaneId}
+                register={stabilityRegister}
+                referenceY={mainWingRoot?.y}
+                referenceZ={mainWingRoot?.z}
+              />
+            </div>
           </div>
         </div>
         </div>

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useComputationContext } from "@/hooks/useComputationContext";
 import { renderSymbol } from "@/components/workbench/renderSymbol";
+import { cgDivergenceColor } from "./stability-overlay/divergence-color";
 
 interface Props {
   readonly aeroplaneId: string | null;
@@ -70,13 +71,6 @@ function Chip({
       )}
     </div>
   );
-}
-
-function cgDivergenceColor(cgAero: number, cgAgg: number, mac: number): string {
-  const deltaPct = (Math.abs(cgAgg - cgAero) / mac) * 100;
-  if (deltaPct < 5) return "text-emerald-400";
-  if (deltaPct <= 15) return "text-orange-400";
-  return "text-red-400";
 }
 
 export function InfoChipRow({ aeroplaneId, cgAero, isRecomputing, rightSlot }: Props) {
