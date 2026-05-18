@@ -16,20 +16,20 @@ describe("buildStabilityTraces", () => {
       expect(traces).toHaveLength(5);
     });
 
-    it("places NP at x_np_m * 1000 (mm) along the x axis", () => {
+    it("places NP at x_np_m (metres) along the x axis", () => {
       const np = traces.find((t) => t.name === "NP")!;
-      expect((np.x as number[])[0]).toBeCloseTo(2607, 0);
+      expect((np.x as number[])[0]).toBeCloseTo(2.607, 3);
     });
 
-    it("places CG SOLL at (x_np_m − target_sm · mac_m) * 1000", () => {
+    it("places CG SOLL at x_np_m − target_sm · mac_m (metres)", () => {
       const cgSoll = traces.find((t) => t.name === "CG (design)")!;
-      const expected = (2.607 - 0.12 * 1.387) * 1000;
-      expect((cgSoll.x as number[])[0]).toBeCloseTo(expected, 0);
+      const expected = 2.607 - 0.12 * 1.387;
+      expect((cgSoll.x as number[])[0]).toBeCloseTo(expected, 3);
     });
 
-    it("places CG IST at cg_agg_m * 1000", () => {
+    it("places CG IST at cg_agg_m (metres)", () => {
       const cgIst = traces.find((t) => t.name === "CG (actual)")!;
-      expect((cgIst.x as number[])[0]).toBeCloseTo(2510, 0);
+      expect((cgIst.x as number[])[0]).toBeCloseTo(2.510, 3);
     });
 
     it("uses orange #FF8400 for CG SOLL marker", () => {
