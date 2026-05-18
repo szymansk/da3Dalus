@@ -34,15 +34,21 @@ app/workbench/page.tsx
 
 | Marker | Trace | Style | Hovertext |
 |---|---|---|---|
-| NP | `scatter3d` 1 pt | sphere, blue, 8 px | NP + MAC |
-| CG SOLL | `scatter3d` 1 pt | sphere, `#FF8400`, 12 px | CG soll + target SM |
-| CG IST | `scatter3d` 1 pt | sphere, ~6 px, semi-transparent, colour via `cgDivergenceColor(soll,ist,mac)` | CG ist + resulting SM + Δ |
+| NP | `mesh3d` icosphere | blue, radius = 2 % MAC (world units), `opacity: 0.4` | NP + MAC |
+| CG SOLL | `mesh3d` icosphere | `#FF8400` orange, radius = 3.5 % MAC, `opacity: 0.4` | CG soll + target SM |
+| CG IST | `mesh3d` icosphere | colour via `cgDivergenceColor(soll, ist, mac)` → hex, radius = 2.2 % MAC, `opacity: 0.4` | CG ist + resulting SM + Δ |
 | SM band | `scatter3d` 2 pts, `mode: "lines"` | solid yellow-green | target SM |
-| SOLL↔IST link | `scatter3d` 2 pts, `mode: "lines"`, dashed | colour from IST marker; only when both present and `|Δ|/MAC > 1 %` | (none) |
+| SOLL↔IST link | `scatter3d` 2 pts, `mode: "lines"`, dashed | colour from IST marker; only when both present and `\|Δ\|/MAC > 1 %` | (none) |
+
+**Sphere geometry note:** marker spheres are `mesh3d` icospheres (12 vertices, 20 triangles) sized in **world units** as a fraction of MAC. This means they **scale with zoom** (shrink when zooming out, grow when zooming in) — avoiding the overlap problem of pixel-based `scatter3d` markers. Lines stay as `scatter3d` because their `linewidth` (pixels) is acceptable for 1D elements. All three spheres render at `opacity: 0.4` so the SM-band and delta-link endpoints (which sit at the sphere centres) are visible inside the spheres.
 
 ### Coordinate handling
 
-Backend NP/CG in metres; `WingOutlineViewer` renders wings in mm with `aspectmode: "data"`. Apply `× 1000` to NP/CG values before placing in Plotly traces. Longitudinal axis is X.
+Backend NP/CG are in **metres**. `WingOutlineViewer` consumes wing data in **metres** directly (no scale conversion in `transformProfile`), with `aspectmode: "data"`. → marker coordinates are passed through **unchanged** (metres in, metres out). Longitudinal axis is X.
+
+### Marker origin (chord-line placement)
+
+Markers are placed at `(x_marker, refY, refZ)` where `refY` and `refZ` come from the **root leading edge of the main wing** (largest wing by `halfSpan × rootChord` proxy), forwarded from `app/workbench/page.tsx` → `<StabilityOverlay referenceY referenceZ />` → `buildStabilityTraces(ctx, opts)`. This puts all markers on the wing root's chord-line height — for a high-wing aircraft they sit at the wing root rather than floating at the global `z=0`. When no wing data is available, `refY` and `refZ` fall back to `0`.
 
 ### Tooltips
 

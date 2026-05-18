@@ -1140,3 +1140,37 @@ git commit -m "docs(gh-569): record manual browser verification result"
 **Type consistency** — `PlotlyTrace`/`PlotlyData` aliases consistent across T2/T3/T4/T5; `StabilityCtx` shape (`x_np_m`, `mac_m`, `cg_agg_m`, `target_static_margin`) consistent across T4/T5; `register(key) → (next: PlotlyTrace[]) => void` consistent across T3/T5/T6. ✓
 
 **Out-of-scope discipline** — no tasks touch backend, no tasks delete the Stability tab, no tasks fix #568, no mounting in airfoil-preview page. ✓
+
+---
+
+## Appendix A — Divergences from plan (discovered during T7 verification)
+
+The plan made two wrong assumptions that the manual browser verification (T7) caught:
+
+1. **"Apply × 1000 (m → mm)" — wrong.** `WingOutlineViewer` actually consumes wing data in **metres** (not millimetres). The mm convention applies to the WingConfig schemas / CAD-designer topology, not the Plotly-rendered wing data the frontend receives. The first browser load showed the markers landing 1000× too far along x — fix in commit `d18b3e5` (drop the multiplier, rename `xNpMm → xNp`). See memory `feedback_plotly_units.md`.
+
+2. **Markers floating at `(x, 0, 0)` — bad UX for high-wing.** Placing every marker at the global origin's y/z made them float below the wing on a Hochdecker (high-wing). Fixed by extracting the **root LE y/z of the main wing** (largest by `halfSpan × rootChord` proxy) in `app/workbench/page.tsx` and forwarding through `<StabilityOverlay referenceY referenceZ />` to `buildStabilityTraces(ctx, opts)`. Markers now sit on the wing-root chord-line height. Commit `dfded7c`.
+
+Additional refinements (UX polish, not divergences):
+
+3. **`scatter3d` pixel markers → `mesh3d` icospheres** (commit `6ed5051`). Pixel-sized markers stayed the same size while zooming, leading to overlap at zoom-out. Switched the three sphere markers to `mesh3d` icospheres sized as a fraction of MAC — they now scale with zoom naturally. Lines stay as `scatter3d` (their `linewidth` in pixels is fine).
+
+4. **All sphere markers at `opacity: 0.4`** (commit `2cd9770`). With opaque spheres, the SM-band and delta-link endpoints (which sit at the sphere centres) were hidden. 40 % opacity makes the line endpoints visible through the sphere.
+
+## Appendix B — Manual Verification (T7)
+
+Date: 2026-05-18
+Tester: szymanski (user) via http://localhost:3001/workbench (dev server from the gh-569 worktree)
+
+Result: **PASS** after the four iterations documented in Appendix A above.
+
+Verified items:
+- Three sphere markers (NP, CG SOLL, CG IST) visible at correct longitudinal positions, sitting on the wing-root chord-line.
+- SM band and SOLL↔IST delta link visible (line endpoints visible through 40 %-opaque spheres).
+- Hovertext per marker readable; values match the footer chip values.
+- Toggle works, persists across reload.
+- Airfoil-preview page unaffected (no Stability toggle).
+- Existing `¼ Chord` toggle still works.
+- No console errors.
+
+The unit-and-placement divergences (Appendix A) are reflected in the final spec doc and issue #569 body via a follow-up doc-sync commit.
