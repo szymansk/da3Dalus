@@ -12,11 +12,13 @@ import { AeroplaneTree } from "@/components/workbench/AeroplaneTree";
 import { SparEditDialog } from "@/components/workbench/SparEditDialog";
 import { TedEditDialog } from "@/components/workbench/TedEditDialog";
 import { WingOutlineViewer } from "@/components/workbench/WingOutlineViewer";
+import { StabilityOverlay } from "@/components/workbench/stability-overlay/StabilityOverlay";
 import { useAeroplaneContext } from "@/components/workbench/AeroplaneContext";
 import { useAeroplanes } from "@/hooks/useAeroplanes";
 import { useWings, useWing, useAllWingData } from "@/hooks/useWings";
 import { useFuselages } from "@/hooks/useFuselages";
 import { useAllFuselageData, useFuselage } from "@/hooks/useFuselage";
+import { useOverlayRegistry } from "@/hooks/useOverlayRegistry";
 import { API_BASE } from "@/lib/fetcher";
 
 export default function WorkbenchPage() {
@@ -150,6 +152,12 @@ export default function WorkbenchPage() {
   const { wings: allWings, mutate: mutateAllWings } = useAllWingData(aeroplaneId, wingNames);
   const { fuselages: allFuselages, mutate: mutateAllFuselages } = useAllFuselageData(aeroplaneId, fuselageNames);
 
+  // Composable Plotly overlay registry. Each overlay (e.g. StabilityOverlay)
+  // publishes traces into this registry via its own stable register(key) setter;
+  // WingOutlineViewer renders the flat `overlayTraces` array additively.
+  const { traces: overlayTraces, register } = useOverlayRegistry();
+  const stabilityRegister = useMemo(() => register("stability"), [register]);
+
   useEffect(() => {
     if (hydrated && !aeroplaneId) openPicker();
   }, [hydrated, aeroplaneId, openPicker]);
@@ -254,7 +262,7 @@ export default function WorkbenchPage() {
               {viewerMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
             </button>
           </div>
-          <div className="min-h-0 flex-1">
+          <div className="relative min-h-0 flex-1">
             <WingOutlineViewer
               wings={allWings}
               fuselages={allFuselages}
@@ -264,7 +272,19 @@ export default function WorkbenchPage() {
               selectedXsecIndex={selectedXsecIndex}
               selectedFuselage={selectedFuselage}
               selectedFuselageXsecIndex={selectedFuselageXsecIndex}
+              extraTraces={overlayTraces}
             />
+            {/* Overlay toolbar — sits to the left of WingOutlineViewer's own
+                ¼ Chord button (which lives at bottom-3 right-3, z-20). */}
+            <div
+              className="absolute bottom-3 right-20 z-30"
+              style={{ pointerEvents: "auto" }}
+            >
+              <StabilityOverlay
+                aeroplaneId={aeroplaneId}
+                register={stabilityRegister}
+              />
+            </div>
           </div>
         </div>
         </div>
