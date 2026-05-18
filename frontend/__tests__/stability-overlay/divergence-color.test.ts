@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cgDivergenceColor } from "../../components/workbench/stability-overlay/divergence-color";
+import { cgDivergenceColor } from "@/components/workbench/stability-overlay/divergence-color";
 
 // Thresholds (match the original InfoChipRow helper):
 //   |Δ|/MAC * 100 <  5%        → text-emerald-400 (green)
