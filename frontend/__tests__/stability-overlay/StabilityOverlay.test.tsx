@@ -87,8 +87,11 @@ describe("StabilityOverlay", () => {
     );
     const lastCall = register.mock.calls[register.mock.calls.length - 1][0];
     const np = lastCall.find((t: { name: string }) => t.name === "NP")!;
-    expect((np.y as number[])[0]).toBeCloseTo(0, 6);
-    expect((np.z as number[])[0]).toBeCloseTo(0.45, 6);
+    // NP is now a mesh3d icosphere — its centre (mean of vertex coords)
+    // must land at the supplied refY / refZ.
+    const avg = (a: number[]) => a.reduce((s, v) => s + v, 0) / a.length;
+    expect(avg(np.y as number[])).toBeCloseTo(0, 6);
+    expect(avg(np.z as number[])).toBeCloseTo(0.45, 6);
   });
 
   it("clears its registered traces on unmount", () => {

@@ -8,6 +8,16 @@ const FULL = {
   target_static_margin: 0.12,
 };
 
+/** Mean of vertex coordinates — for a symmetric icosphere this equals the centre. */
+function meshCenter(trace: { x: unknown; y: unknown; z: unknown }) {
+  const avg = (a: number[]) => a.reduce((s, v) => s + v, 0) / a.length;
+  return {
+    x: avg(trace.x as number[]),
+    y: avg(trace.y as number[]),
+    z: avg(trace.z as number[]),
+  };
+}
+
 describe("buildStabilityTraces", () => {
   describe("complete data", () => {
     const traces = buildStabilityTraces(FULL);
@@ -16,26 +26,37 @@ describe("buildStabilityTraces", () => {
       expect(traces).toHaveLength(5);
     });
 
-    it("places NP at x_np_m (metres) along the x axis", () => {
+    it("places NP icosphere centred at x_np_m (metres)", () => {
       const np = traces.find((t) => t.name === "NP")!;
-      expect((np.x as number[])[0]).toBeCloseTo(2.607, 3);
+      const c = meshCenter(np);
+      expect(c.x).toBeCloseTo(2.607, 3);
+      expect(c.y).toBeCloseTo(0, 3);
+      expect(c.z).toBeCloseTo(0, 3);
     });
 
-    it("places CG SOLL at x_np_m − target_sm · mac_m (metres)", () => {
+    it("places CG SOLL icosphere centred at x_np_m − target_sm · mac_m (metres)", () => {
       const cgSoll = traces.find((t) => t.name === "CG (design)")!;
       const expected = 2.607 - 0.12 * 1.387;
-      expect((cgSoll.x as number[])[0]).toBeCloseTo(expected, 3);
+      const c = meshCenter(cgSoll);
+      expect(c.x).toBeCloseTo(expected, 3);
     });
 
-    it("places CG IST at cg_agg_m (metres)", () => {
+    it("places CG IST icosphere centred at cg_agg_m (metres)", () => {
       const cgIst = traces.find((t) => t.name === "CG (actual)")!;
-      expect((cgIst.x as number[])[0]).toBeCloseTo(2.510, 3);
+      const c = meshCenter(cgIst);
+      expect(c.x).toBeCloseTo(2.510, 3);
     });
 
-    it("uses orange #FF8400 for CG SOLL marker", () => {
+    it("uses orange #FF8400 for CG SOLL mesh colour", () => {
       const cgSoll = traces.find((t) => t.name === "CG (design)")!;
-      const marker = cgSoll.marker as { color?: string };
-      expect(marker.color?.toUpperCase()).toBe("#FF8400");
+      expect((cgSoll.color as string).toUpperCase()).toBe("#FF8400");
+    });
+
+    it("renders CG IST as a semi-transparent mesh3d (no scatter marker)", () => {
+      const cgIst = traces.find((t) => t.name === "CG (actual)")!;
+      expect(cgIst.type).toBe("mesh3d");
+      expect(cgIst.opacity).toBeLessThan(1);
+      expect(cgIst.marker).toBeUndefined();
     });
 
     it("renders SM band as a line between SOLL CG and NP", () => {
@@ -82,11 +103,12 @@ describe("buildStabilityTraces", () => {
   });
 
   describe("reference point (chord-line placement)", () => {
-    it("places NP at the provided y/z when opts.referenceY/referenceZ given", () => {
+    it("centres NP icosphere at the provided y/z when opts.referenceY/referenceZ given", () => {
       const traces = buildStabilityTraces(FULL, { referenceY: 0, referenceZ: 0.45 });
       const np = traces.find((t) => t.name === "NP")!;
-      expect((np.y as number[])[0]).toBeCloseTo(0, 6);
-      expect((np.z as number[])[0]).toBeCloseTo(0.45, 6);
+      const c = meshCenter(np);
+      expect(c.y).toBeCloseTo(0, 6);
+      expect(c.z).toBeCloseTo(0.45, 6);
     });
 
     it("places SM band endpoints at the provided z (line stays planar at refZ)", () => {
@@ -99,8 +121,9 @@ describe("buildStabilityTraces", () => {
     it("falls back to y=0, z=0 when opts is omitted", () => {
       const traces = buildStabilityTraces(FULL);
       const np = traces.find((t) => t.name === "NP")!;
-      expect((np.y as number[])[0]).toBe(0);
-      expect((np.z as number[])[0]).toBe(0);
+      const c = meshCenter(np);
+      expect(c.y).toBeCloseTo(0, 6);
+      expect(c.z).toBeCloseTo(0, 6);
     });
   });
 

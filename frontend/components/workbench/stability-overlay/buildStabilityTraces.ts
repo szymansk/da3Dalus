@@ -1,4 +1,5 @@
 import { cgDivergenceColor } from "./divergence-color";
+import { makeIcosphere } from "./sphereGeometry";
 
 /** Loose Plotly trace shape — keeps this module Plotly-import-free. */
 export type PlotlyTrace = Record<string, unknown>;
@@ -27,14 +28,21 @@ const COLOR_CG_SOLL = "#FF8400";   // project theme accent
 const COLOR_CG_IST_FALLBACK = "#9ca3af"; // tailwind gray-400
 const COLOR_SM_BAND = "#a3e635";   // tailwind lime-400
 
-const SIZE_NP_PX = 8;
-const SIZE_CG_SOLL_PX = 12;
-const SIZE_CG_IST_PX = 6;
+// Marker radii expressed as a fraction of MAC — markers scale with the
+// aircraft size so they stay visually proportional. When MAC is unknown
+// we fall back to a fixed metre radius tuned for small RC models.
+const NP_RADIUS_FRAC = 0.020;       // 2.0 % of MAC
+const CG_SOLL_RADIUS_FRAC = 0.035;  // 3.5 % of MAC (primary, larger)
+const CG_IST_RADIUS_FRAC = 0.022;   // 2.2 % of MAC
+const RADIUS_FALLBACK_M = 0.05;     // 5 cm when MAC unavailable
 
 const SM_BAND_WIDTH = 4;
 const DELTA_LINK_WIDTH = 2;
-const CG_IST_OUTLINE_WIDTH = 2;
-const CG_IST_OPACITY = 0.85;
+const CG_IST_OPACITY = 0.55;
+
+function radiusFromMac(mac: number | null, frac: number): number {
+  return mac != null && mac > 0 ? mac * frac : RADIUS_FALLBACK_M;
+}
 
 /** Map cgDivergenceColor's Tailwind class string to a hex for Plotly. */
 function tailwindToHex(cls: string): string {
@@ -75,14 +83,18 @@ function resolve(ctx: StabilityCtx): Resolved | null {
 
 function buildNpTrace(r: Resolved, refY: number, refZ: number): PlotlyTrace {
   const macLine = r.hasMac ? `<br>MAC = ${(r.macM as number).toFixed(2)} m` : "";
+  const sphere = makeIcosphere(r.xNp, refY, refZ, radiusFromMac(r.macM, NP_RADIUS_FRAC));
   return {
-    type: "scatter3d",
-    mode: "markers",
+    type: "mesh3d",
     name: "NP",
-    x: [r.xNp],
-    y: [refY],
-    z: [refZ],
-    marker: { size: SIZE_NP_PX, color: COLOR_NP, symbol: "circle" },
+    x: sphere.x,
+    y: sphere.y,
+    z: sphere.z,
+    i: sphere.i,
+    j: sphere.j,
+    k: sphere.k,
+    color: COLOR_NP,
+    flatshading: true,
     hovertext: `Neutral Point<br>x = ${r.xNp.toFixed(3)} m` + macLine,
     hoverinfo: "text",
     showlegend: false,
@@ -91,14 +103,23 @@ function buildNpTrace(r: Resolved, refY: number, refZ: number): PlotlyTrace {
 
 function buildCgSollTrace(r: Resolved, refY: number, refZ: number): PlotlyTrace {
   const targetSmPct = ((r.targetSm as number) * 100).toFixed(1);
+  const sphere = makeIcosphere(
+    r.xSoll as number,
+    refY,
+    refZ,
+    radiusFromMac(r.macM, CG_SOLL_RADIUS_FRAC),
+  );
   return {
-    type: "scatter3d",
-    mode: "markers",
+    type: "mesh3d",
     name: "CG (design)",
-    x: [r.xSoll as number],
-    y: [refY],
-    z: [refZ],
-    marker: { size: SIZE_CG_SOLL_PX, color: COLOR_CG_SOLL, symbol: "circle" },
+    x: sphere.x,
+    y: sphere.y,
+    z: sphere.z,
+    i: sphere.i,
+    j: sphere.j,
+    k: sphere.k,
+    color: COLOR_CG_SOLL,
+    flatshading: true,
     hovertext:
       `CG (design target)<br>x = ${(r.xSoll as number).toFixed(3)} m` +
       `<br>target SM = ${targetSmPct} % MAC`,
@@ -145,20 +166,24 @@ function buildIstHovertext(r: Resolved): string {
 }
 
 function buildCgIstTrace(r: Resolved, color: string, refY: number, refZ: number): PlotlyTrace {
+  const sphere = makeIcosphere(
+    r.xIst as number,
+    refY,
+    refZ,
+    radiusFromMac(r.macM, CG_IST_RADIUS_FRAC),
+  );
   return {
-    type: "scatter3d",
-    mode: "markers",
+    type: "mesh3d",
     name: "CG (actual)",
-    x: [r.xIst as number],
-    y: [refY],
-    z: [refZ],
-    marker: {
-      size: SIZE_CG_IST_PX,
-      color,
-      symbol: "circle-open",
-      line: { color, width: CG_IST_OUTLINE_WIDTH },
-      opacity: CG_IST_OPACITY,
-    },
+    x: sphere.x,
+    y: sphere.y,
+    z: sphere.z,
+    i: sphere.i,
+    j: sphere.j,
+    k: sphere.k,
+    color,
+    flatshading: true,
+    opacity: CG_IST_OPACITY,
     hovertext: buildIstHovertext(r),
     hoverinfo: "text",
     showlegend: false,
@@ -188,7 +213,12 @@ function buildDeltaLinkTrace(
 }
 
 /**
- * Pure factory: build the Plotly scatter3d traces for the stability overlay.
+ * Pure factory: build the Plotly traces for the stability overlay.
+ *
+ * Markers (NP / CG SOLL / CG IST) are `mesh3d` icospheres sized in world
+ * units (as a fraction of MAC) so they scale naturally with zoom. Lines
+ * (SM band, delta link) are `scatter3d` line traces — their pixel
+ * line-width is unaffected by overlap.
  *
  * Coordinate convention: metres in, metres out (matches WingOutlineViewer's
  * coordinate frame — wing outline positions are passed through unchanged).
