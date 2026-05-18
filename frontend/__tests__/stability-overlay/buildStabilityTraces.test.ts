@@ -52,11 +52,19 @@ describe("buildStabilityTraces", () => {
       expect((cgSoll.color as string).toUpperCase()).toBe("#FF8400");
     });
 
-    it("renders CG IST as a semi-transparent mesh3d (no scatter marker)", () => {
+    it("renders CG IST as a mesh3d (no scatter marker)", () => {
       const cgIst = traces.find((t) => t.name === "CG (actual)")!;
       expect(cgIst.type).toBe("mesh3d");
-      expect(cgIst.opacity).toBeLessThan(1);
       expect(cgIst.marker).toBeUndefined();
+    });
+
+    it("renders all three sphere markers at 40% opacity (so lines show through)", () => {
+      const np = traces.find((t) => t.name === "NP")!;
+      const cgSoll = traces.find((t) => t.name === "CG (design)")!;
+      const cgIst = traces.find((t) => t.name === "CG (actual)")!;
+      expect(np.opacity).toBe(0.4);
+      expect(cgSoll.opacity).toBe(0.4);
+      expect(cgIst.opacity).toBe(0.4);
     });
 
     it("renders SM band as a line between SOLL CG and NP", () => {

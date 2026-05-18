@@ -38,7 +38,9 @@ const RADIUS_FALLBACK_M = 0.05;     // 5 cm when MAC unavailable
 
 const SM_BAND_WIDTH = 4;
 const DELTA_LINK_WIDTH = 2;
-const CG_IST_OPACITY = 0.55;
+// All three sphere markers share this opacity so the SM band / delta link
+// endpoints (which sit at the sphere centres) remain visible through them.
+const SPHERE_OPACITY = 0.4;
 
 function radiusFromMac(mac: number | null, frac: number): number {
   return mac != null && mac > 0 ? mac * frac : RADIUS_FALLBACK_M;
@@ -95,6 +97,7 @@ function buildNpTrace(r: Resolved, refY: number, refZ: number): PlotlyTrace {
     k: sphere.k,
     color: COLOR_NP,
     flatshading: true,
+    opacity: SPHERE_OPACITY,
     hovertext: `Neutral Point<br>x = ${r.xNp.toFixed(3)} m` + macLine,
     hoverinfo: "text",
     showlegend: false,
@@ -120,6 +123,7 @@ function buildCgSollTrace(r: Resolved, refY: number, refZ: number): PlotlyTrace 
     k: sphere.k,
     color: COLOR_CG_SOLL,
     flatshading: true,
+    opacity: SPHERE_OPACITY,
     hovertext:
       `CG (design target)<br>x = ${(r.xSoll as number).toFixed(3)} m` +
       `<br>target SM = ${targetSmPct} % MAC`,
@@ -183,7 +187,7 @@ function buildCgIstTrace(r: Resolved, color: string, refY: number, refZ: number)
     k: sphere.k,
     color,
     flatshading: true,
-    opacity: CG_IST_OPACITY,
+    opacity: SPHERE_OPACITY,
     hovertext: buildIstHovertext(r),
     hoverinfo: "text",
     showlegend: false,
