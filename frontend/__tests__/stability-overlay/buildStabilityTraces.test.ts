@@ -89,9 +89,11 @@ describe("buildStabilityTraces", () => {
       expect(String(np.hovertext)).toContain("2.607");
     });
 
-    it("CG IST trace hovertext includes the Δ to target", () => {
+    it("CG IST trace hovertext includes Δ value with % MAC suffix", () => {
       const ist = traces.find((t) => t.name === "CG (actual)")!;
-      expect(String(ist.hovertext)).toMatch(/Δ|delta/i);
+      const text = String(ist.hovertext);
+      expect(text).toContain("% MAC");
+      expect(text).toMatch(/Δ to target = [+-]\d+\.\d+ % MAC/);
     });
   });
 });

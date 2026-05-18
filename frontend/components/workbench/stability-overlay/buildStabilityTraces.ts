@@ -11,7 +11,8 @@ export interface StabilityCtx {
 }
 
 const M_TO_MM = 1000;
-const DELTA_LINK_THRESHOLD_PCT = 1; // |Δ|/MAC > 1% renders the dashed link
+// Link is rendered when |Δ| / MAC strictly exceeds this percentage threshold.
+const DELTA_LINK_THRESHOLD_PCT = 1;
 
 const COLOR_NP = "#3b82f6";        // tailwind blue-500
 const COLOR_CG_SOLL = "#FF8400";   // project theme accent
