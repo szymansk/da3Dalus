@@ -155,8 +155,11 @@ export default function WorkbenchPage() {
   // Composable Plotly overlay registry. Each overlay (e.g. StabilityOverlay)
   // publishes traces into this registry via its own stable register(key) setter;
   // WingOutlineViewer renders the flat `overlayTraces` array additively.
+  // register(key) returns the identical setter across renders for the same
+  // key (per the useOverlayRegistry contract — see T3 tests), so it is safe
+  // to use directly in StabilityOverlay's effect deps without memoisation.
   const { traces: overlayTraces, register } = useOverlayRegistry();
-  const stabilityRegister = useMemo(() => register("stability"), [register]);
+  const stabilityRegister = register("stability");
 
   useEffect(() => {
     if (hydrated && !aeroplaneId) openPicker();
@@ -276,10 +279,7 @@ export default function WorkbenchPage() {
             />
             {/* Overlay toolbar — sits to the left of WingOutlineViewer's own
                 ¼ Chord button (which lives at bottom-3 right-3, z-20). */}
-            <div
-              className="absolute bottom-3 right-20 z-30"
-              style={{ pointerEvents: "auto" }}
-            >
+            <div className="absolute bottom-3 right-20 z-30">
               <StabilityOverlay
                 aeroplaneId={aeroplaneId}
                 register={stabilityRegister}
