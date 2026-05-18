@@ -9,7 +9,6 @@ import { useStripForces } from "@/hooks/useStripForces";
 import { useStreamlines } from "@/hooks/useStreamlines";
 import { useWings, useAllWingData, useWing } from "@/hooks/useWings";
 import { useFlightEnvelope } from "@/hooks/useFlightEnvelope";
-import { useStability } from "@/hooks/useStability";
 import { useOperatingPoints, extractControlSurfaces } from "@/hooks/useOperatingPoints";
 import { useAnalysisStatus } from "@/hooks/useAnalysisStatus";
 import { useMassSweep } from "@/hooks/useMassSweep";
@@ -26,7 +25,6 @@ export default function AnalysisPage() {
   const stripForces = useStripForces(aeroplaneId);
   const streamlines = useStreamlines(aeroplaneId);
   const envelope = useFlightEnvelope(aeroplaneId);
-  const stability = useStability(aeroplaneId);
   const ops = useOperatingPoints(aeroplaneId);
   const analysisStatus = useAnalysisStatus(aeroplaneId);
   const massSweep = useMassSweep(aeroplaneId);
@@ -70,8 +68,8 @@ export default function AnalysisPage() {
     "Trefftz Plane": "Trefftz Plane Configuration",
     "Streamlines": "Streamlines Configuration",
     "Envelope": "Flight Envelope",
-    "Stability": "Stability Analysis",
     "Operating Points": "Operating Points",
+    "Sizing": "Sizing",
   };
   const modalTitle = modalTitleByTab[activeTab];
 
@@ -127,10 +125,6 @@ export default function AnalysisPage() {
             isComputingEnvelope={envelope.isComputing}
             envelopeError={envelope.error}
             onComputeEnvelope={envelope.compute}
-            stability={stability.data}
-            isComputingStability={stability.isComputing}
-            stabilityError={stability.error}
-            onComputeStability={stability.compute}
             operatingPoints={ops.points}
             isLoadingOps={ops.isLoading}
             isGeneratingOps={ops.isGenerating}

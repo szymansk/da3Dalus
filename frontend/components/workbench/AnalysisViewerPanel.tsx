@@ -7,8 +7,6 @@ import type { AnalysisResult } from "@/hooks/useAnalysis";
 import type { StripForcesResult } from "@/hooks/useStripForces";
 import type { FlightEnvelopeData } from "@/hooks/useFlightEnvelope";
 import { EnvelopePanel } from "@/components/workbench/EnvelopePanel";
-import type { StabilityData } from "@/hooks/useStability";
-import { StabilityPanel } from "@/components/workbench/StabilityPanel";
 import type { StoredOperatingPoint, AVLTrimResult, AeroBuildupTrimResult, TrimConstraint, ControlSurface } from "@/hooks/useOperatingPoints";
 import { OperatingPointsPanel } from "@/components/workbench/OperatingPointsPanel";
 import { MatchingChartTab } from "@/components/workbench/MatchingChartTab";
@@ -17,7 +15,7 @@ import type { AnalysisStatus } from "@/hooks/useAnalysisStatus";
 import { useDesignAssumptions } from "@/hooks/useDesignAssumptions";
 import { useRecomputeStatus } from "@/hooks/useRecomputeStatus";
 
-const TABS = ["Assumptions", "Operating Points", "Polar", "Trefftz Plane", "Streamlines", "Envelope", "Stability", "Sizing"] as const;
+const TABS = ["Assumptions", "Operating Points", "Polar", "Trefftz Plane", "Streamlines", "Envelope", "Sizing"] as const;
 export type Tab = (typeof TABS)[number];
 export { TABS };
 
@@ -48,10 +46,6 @@ interface Props {
   readonly isComputingEnvelope?: boolean;
   readonly envelopeError?: string | null;
   readonly onComputeEnvelope?: () => void;
-  readonly stability?: StabilityData | null;
-  readonly isComputingStability?: boolean;
-  readonly stabilityError?: string | null;
-  readonly onComputeStability?: () => void;
   readonly operatingPoints?: StoredOperatingPoint[];
   readonly isLoadingOps?: boolean;
   readonly isGeneratingOps?: boolean;
@@ -570,10 +564,6 @@ export function AnalysisViewerPanel({
   isComputingEnvelope,
   envelopeError,
   onComputeEnvelope,
-  stability,
-  isComputingStability,
-  stabilityError,
-  onComputeStability,
   operatingPoints,
   isLoadingOps,
   isGeneratingOps,
@@ -606,7 +596,6 @@ export function AnalysisViewerPanel({
     "Trefftz Plane",
     "Streamlines",
     "Envelope",
-    "Stability",
     "Operating Points",
     "Sizing",
   ]);
@@ -827,15 +816,6 @@ export function AnalysisViewerPanel({
           isComputing={isComputingEnvelope ?? false}
           error={envelopeError ?? null}
           onCompute={onComputeEnvelope ?? (() => {})}
-        />
-      )}
-
-      {!showWingGate && activeTab === "Stability" && (
-        <StabilityPanel
-          data={stability ?? null}
-          isComputing={isComputingStability ?? false}
-          error={stabilityError ?? null}
-          onCompute={onComputeStability ?? (() => {})}
         />
       )}
 
