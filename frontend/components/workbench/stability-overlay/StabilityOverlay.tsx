@@ -51,6 +51,10 @@ export function StabilityOverlay({ aeroplaneId, register }: Readonly<Props>) {
 
   useEffect(() => {
     register(traces);
+    // Cleanup fires on every traces change AND on unmount.
+    // Intentional: registry must always reflect the current overlay state.
+    // React 18+ batches the cleanup + new register call into a single commit,
+    // so consumers see one state update per change, not two.
     return () => {
       register([]);
     };
@@ -70,6 +74,7 @@ export function StabilityOverlay({ aeroplaneId, register }: Readonly<Props>) {
       type="button"
       onClick={toggle}
       disabled={!hasData}
+      aria-pressed={enabled}
       title={buttonTitle}
       className={`rounded-lg border px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[10px] backdrop-blur-sm disabled:opacity-50 ${activeClasses}`}
     >

@@ -83,8 +83,9 @@ describe("StabilityOverlay", () => {
     withCtx({ x_np_m: 2.607, mac_m: 1.387, cg_agg_m: 2.510, target_static_margin: 0.12 });
     const register = vi.fn();
     const { unmount } = render(<StabilityOverlay aeroplaneId="a" register={register} />);
+    register.mockClear();
     unmount();
-    const lastCall = register.mock.calls[register.mock.calls.length - 1][0];
-    expect(lastCall).toEqual([]);
+    expect(register).toHaveBeenCalledTimes(1);
+    expect(register).toHaveBeenCalledWith([]);
   });
 });
