@@ -68,6 +68,9 @@ export interface SphereMesh {
  * Build an icosphere centred at `(cx, cy, cz)` with the given `radius`.
  * Returns coordinate arrays and triangle index arrays in the shape
  * expected by Plotly `mesh3d` traces.
+ *
+ * Note: name uses "icosphere" for its sphere-marker role; the returned mesh
+ * is actually a bare icosahedron (12 verts, 20 faces) — no geodesic subdivision.
  */
 export function makeIcosphere(
   cx: number,

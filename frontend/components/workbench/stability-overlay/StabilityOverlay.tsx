@@ -65,10 +65,15 @@ export function StabilityOverlay({
 
   useEffect(() => {
     register(traces);
-    // Cleanup fires on every traces change AND on unmount.
-    // Intentional: registry must always reflect the current overlay state.
-    // React 18+ batches the cleanup + new register call into a single commit,
-    // so consumers see one state update per change, not two.
+    // Cleanup fires on every traces change AND on unmount. Intentional:
+    // the registry must always reflect the current overlay state. Note
+    // that this re-runs the cleanup `register([])` and the setup
+    // `register(traces)` back-to-back — both setState calls are caught
+    // by React 18+ automatic batching, so consumers see one render per
+    // change. Side effect: this re-inserts the 'stability' key at the
+    // end of useOverlayRegistry's insertion order on every change —
+    // fine for a single overlay, watch out if cross-overlay z-ordering
+    // ever matters.
     return () => {
       register([]);
     };

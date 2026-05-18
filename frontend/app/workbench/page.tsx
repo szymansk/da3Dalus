@@ -157,6 +157,8 @@ export default function WorkbenchPage() {
   // than at the global origin (which floats below the wing on high-wing aircraft).
   const mainWingRoot = useMemo(() => {
     if (!allWings || allWings.length === 0) return null;
+    // Planform-area proxy: halfSpan × root_chord (ignores taper).
+    // Sufficient to pick the main wing; not a true area measurement.
     const planArea = (w: (typeof allWings)[number]) => {
       const xs = w.x_secs;
       if (!xs || xs.length < 2) return 0;
@@ -167,16 +169,25 @@ export default function WorkbenchPage() {
     };
     const main = allWings.reduce((a, b) => (planArea(a) >= planArea(b) ? a : b));
     const rootLe = main.x_secs?.[0]?.xyz_le;
-    if (!rootLe || rootLe.length < 3) return null;
-    return { y: rootLe[1] ?? 0, z: rootLe[2] ?? 0 };
+    if (!rootLe || rootLe.length < 3 || rootLe[1] == null || rootLe[2] == null) {
+      if (rootLe) {
+        console.warn(
+          `[workbench] main wing "${main.name}" has malformed root xyz_le`,
+          rootLe,
+        );
+      }
+      return null;
+    }
+    return { y: rootLe[1], z: rootLe[2] };
   }, [allWings]);
 
   // Composable Plotly overlay registry. Each overlay (e.g. StabilityOverlay)
   // publishes traces into this registry via its own stable register(key) setter;
   // WingOutlineViewer renders the flat `overlayTraces` array additively.
   // register(key) returns the identical setter across renders for the same
-  // key (per the useOverlayRegistry contract — see T3 tests), so it is safe
-  // to use directly in StabilityOverlay's effect deps without memoisation.
+  // key (per the useOverlayRegistry contract — verified by
+  // `frontend/__tests__/useOverlayRegistry.test.ts`), so it is safe to use
+  // directly in StabilityOverlay's effect deps without memoisation.
   const { traces: overlayTraces, register } = useOverlayRegistry();
   const stabilityRegister = register("stability");
 

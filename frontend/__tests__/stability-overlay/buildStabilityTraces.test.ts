@@ -149,5 +149,19 @@ describe("buildStabilityTraces", () => {
       expect(text).toContain("% MAC");
       expect(text).toMatch(/Δ to target = [+-]\d+\.\d+ % MAC/);
     });
+
+    it("CG SOLL trace hovertext includes target SM percent", () => {
+      const cgSoll = traces.find((t) => t.name === "CG (design)")!;
+      const text = String(cgSoll.hovertext);
+      expect(text).toContain("target SM");
+      expect(text).toMatch(/target SM = \d{1,3}\.\d{1,3} % MAC/);
+    });
+
+    it("SM band trace hovertext includes target Static Margin percent", () => {
+      const band = traces.find((t) => t.name === "Static Margin")!;
+      const text = String(band.hovertext);
+      expect(text).toContain("Static Margin");
+      expect(text).toMatch(/Target Static Margin = \d{1,3}\.\d{1,3} % MAC/);
+    });
   });
 });

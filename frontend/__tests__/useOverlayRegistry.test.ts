@@ -16,6 +16,14 @@ describe("useOverlayRegistry", () => {
     expect(cb1).toBe(cb2);
   });
 
+  it("returns referentially identical traces array across renders without register calls", () => {
+    const { result, rerender } = renderHook(() => useOverlayRegistry());
+    act(() => { result.current.register("a")([{ type: "scatter3d", x: [1] }]); });
+    const t1 = result.current.traces;
+    rerender();
+    expect(result.current.traces).toBe(t1);
+  });
+
   it("accumulates traces registered under different keys (insertion order preserved)", () => {
     const { result } = renderHook(() => useOverlayRegistry());
 

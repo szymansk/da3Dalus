@@ -1,8 +1,6 @@
+import type { PlotlyTrace } from "@/hooks/useOverlayRegistry";
 import { cgDivergenceColor } from "./divergence-color";
 import { makeIcosphere } from "./sphereGeometry";
-
-/** Loose Plotly trace shape — keeps this module Plotly-import-free. */
-export type PlotlyTrace = Record<string, unknown>;
 
 export interface StabilityCtx {
   x_np_m: number | null;

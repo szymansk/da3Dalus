@@ -68,6 +68,16 @@ describe("StabilityOverlay", () => {
     expect(lastCall).toEqual([]);
   });
 
+  it("reflects toggle state via aria-pressed", () => {
+    withCtx({ x_np_m: 2.607, mac_m: 1.387, cg_agg_m: 2.510, target_static_margin: 0.12 });
+    const register = vi.fn();
+    render(<StabilityOverlay aeroplaneId="a" register={register} />);
+    const btn = screen.getByRole("button", { name: /stability/i });
+    expect(btn).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(btn);
+    expect(btn).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("omits IST trace when cg_agg_m is null", () => {
     withCtx({ x_np_m: 2.607, mac_m: 1.387, cg_agg_m: null, target_static_margin: 0.12 });
     const register = vi.fn();
