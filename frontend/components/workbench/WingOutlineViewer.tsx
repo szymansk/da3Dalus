@@ -16,7 +16,9 @@ interface WingOutlineViewerProps {
   selectedFuselageXsecIndex?: number | null;
   /** Additional Plotly traces appended after wing/fuselage traces.
    *  Used by overlay components (gh-569 stability overlay; future
-   *  expansions) via the useOverlayRegistry hook. */
+   *  expansions) via the useOverlayRegistry hook.
+   *  Must be referentially stable (useMemo / useState) — a new array
+   *  reference on every render triggers a full replot. */
   extraTraces?: PlotlyData[];
 }
 
