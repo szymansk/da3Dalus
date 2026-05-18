@@ -79,6 +79,18 @@ describe("StabilityOverlay", () => {
     expect(names).toContain("CG (design)");
   });
 
+  it("forwards referenceY and referenceZ to the trace builder", () => {
+    withCtx({ x_np_m: 2.607, mac_m: 1.387, cg_agg_m: 2.510, target_static_margin: 0.12 });
+    const register = vi.fn();
+    render(
+      <StabilityOverlay aeroplaneId="a" register={register} referenceY={0} referenceZ={0.45} />,
+    );
+    const lastCall = register.mock.calls[register.mock.calls.length - 1][0];
+    const np = lastCall.find((t: { name: string }) => t.name === "NP")!;
+    expect((np.y as number[])[0]).toBeCloseTo(0, 6);
+    expect((np.z as number[])[0]).toBeCloseTo(0.45, 6);
+  });
+
   it("clears its registered traces on unmount", () => {
     withCtx({ x_np_m: 2.607, mac_m: 1.387, cg_agg_m: 2.510, target_static_margin: 0.12 });
     const register = vi.fn();

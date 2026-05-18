@@ -11,6 +11,12 @@ interface Props {
   aeroplaneId: string | null;
   /** Stable setter from useOverlayRegistry — pass register('stability'). */
   register: (next: PlotlyTrace[]) => void;
+  /** Optional y-coordinate for marker placement (metres).
+   *  Use the main wing's root LE y so markers sit on the wing. */
+  referenceY?: number;
+  /** Optional z-coordinate for marker placement (metres).
+   *  Use the main wing's root LE z so markers sit on the wing's chord line. */
+  referenceZ?: number;
 }
 
 /**
@@ -21,7 +27,12 @@ interface Props {
  * Mount inside the workbench preview's overlay bar. Composes alongside
  * <WingOutlineViewer extraTraces={registry.traces} />.
  */
-export function StabilityOverlay({ aeroplaneId, register }: Readonly<Props>) {
+export function StabilityOverlay({
+  aeroplaneId,
+  register,
+  referenceY,
+  referenceZ,
+}: Readonly<Props>) {
   const { data: ctx } = useComputationContext(aeroplaneId);
 
   const [enabled, setEnabled] = useState<boolean>(() => {
@@ -41,13 +52,16 @@ export function StabilityOverlay({ aeroplaneId, register }: Readonly<Props>) {
 
   const traces = useMemo<PlotlyTrace[]>(() => {
     if (!enabled || !ctx) return [];
-    return buildStabilityTraces({
-      x_np_m: ctx.x_np_m,
-      mac_m: ctx.mac_m,
-      cg_agg_m: ctx.cg_agg_m,
-      target_static_margin: ctx.target_static_margin,
-    });
-  }, [enabled, ctx]);
+    return buildStabilityTraces(
+      {
+        x_np_m: ctx.x_np_m,
+        mac_m: ctx.mac_m,
+        cg_agg_m: ctx.cg_agg_m,
+        target_static_margin: ctx.target_static_margin,
+      },
+      { referenceY, referenceZ },
+    );
+  }, [enabled, ctx, referenceY, referenceZ]);
 
   useEffect(() => {
     register(traces);

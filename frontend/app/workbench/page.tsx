@@ -152,6 +152,25 @@ export default function WorkbenchPage() {
   const { wings: allWings, mutate: mutateAllWings } = useAllWingData(aeroplaneId, wingNames);
   const { fuselages: allFuselages, mutate: mutateAllFuselages } = useAllFuselageData(aeroplaneId, fuselageNames);
 
+  // Pick the main wing (largest planform-area proxy) and extract its root LE
+  // y/z so the stability overlay markers sit on the wing's chord line rather
+  // than at the global origin (which floats below the wing on high-wing aircraft).
+  const mainWingRoot = useMemo(() => {
+    if (!allWings || allWings.length === 0) return null;
+    const planArea = (w: (typeof allWings)[number]) => {
+      const xs = w.x_secs;
+      if (!xs || xs.length < 2) return 0;
+      const halfSpan = Math.abs(
+        (xs[xs.length - 1].xyz_le?.[1] ?? 0) - (xs[0].xyz_le?.[1] ?? 0),
+      );
+      return halfSpan * (xs[0].chord ?? 0);
+    };
+    const main = allWings.reduce((a, b) => (planArea(a) >= planArea(b) ? a : b));
+    const rootLe = main.x_secs?.[0]?.xyz_le;
+    if (!rootLe || rootLe.length < 3) return null;
+    return { y: rootLe[1] ?? 0, z: rootLe[2] ?? 0 };
+  }, [allWings]);
+
   // Composable Plotly overlay registry. Each overlay (e.g. StabilityOverlay)
   // publishes traces into this registry via its own stable register(key) setter;
   // WingOutlineViewer renders the flat `overlayTraces` array additively.
@@ -283,6 +302,8 @@ export default function WorkbenchPage() {
               <StabilityOverlay
                 aeroplaneId={aeroplaneId}
                 register={stabilityRegister}
+                referenceY={mainWingRoot?.y}
+                referenceZ={mainWingRoot?.z}
               />
             </div>
           </div>

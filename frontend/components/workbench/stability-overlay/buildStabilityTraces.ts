@@ -10,6 +10,15 @@ export interface StabilityCtx {
   target_static_margin: number | null;
 }
 
+export interface BuildStabilityTracesOpts {
+  /** y-coordinate for all markers, in metres. Default 0 (centreline). */
+  referenceY?: number;
+  /** z-coordinate for all markers, in metres. Default 0.
+   *  Pass the root LE z of the main wing so markers sit on the wing
+   *  rather than floating at z=0 (relevant for high-wing aircraft). */
+  referenceZ?: number;
+}
+
 // Link is rendered when |Δ| / MAC strictly exceeds this percentage threshold.
 const DELTA_LINK_THRESHOLD_PCT = 1;
 
@@ -64,15 +73,15 @@ function resolve(ctx: StabilityCtx): Resolved | null {
   };
 }
 
-function buildNpTrace(r: Resolved): PlotlyTrace {
+function buildNpTrace(r: Resolved, refY: number, refZ: number): PlotlyTrace {
   const macLine = r.hasMac ? `<br>MAC = ${(r.macM as number).toFixed(2)} m` : "";
   return {
     type: "scatter3d",
     mode: "markers",
     name: "NP",
     x: [r.xNp],
-    y: [0],
-    z: [0],
+    y: [refY],
+    z: [refZ],
     marker: { size: SIZE_NP_PX, color: COLOR_NP, symbol: "circle" },
     hovertext: `Neutral Point<br>x = ${r.xNp.toFixed(3)} m` + macLine,
     hoverinfo: "text",
@@ -80,15 +89,15 @@ function buildNpTrace(r: Resolved): PlotlyTrace {
   };
 }
 
-function buildCgSollTrace(r: Resolved): PlotlyTrace {
+function buildCgSollTrace(r: Resolved, refY: number, refZ: number): PlotlyTrace {
   const targetSmPct = ((r.targetSm as number) * 100).toFixed(1);
   return {
     type: "scatter3d",
     mode: "markers",
     name: "CG (design)",
     x: [r.xSoll as number],
-    y: [0],
-    z: [0],
+    y: [refY],
+    z: [refZ],
     marker: { size: SIZE_CG_SOLL_PX, color: COLOR_CG_SOLL, symbol: "circle" },
     hovertext:
       `CG (design target)<br>x = ${(r.xSoll as number).toFixed(3)} m` +
@@ -98,15 +107,15 @@ function buildCgSollTrace(r: Resolved): PlotlyTrace {
   };
 }
 
-function buildSmBandTrace(r: Resolved): PlotlyTrace {
+function buildSmBandTrace(r: Resolved, refY: number, refZ: number): PlotlyTrace {
   const targetSmPct = ((r.targetSm as number) * 100).toFixed(1);
   return {
     type: "scatter3d",
     mode: "lines",
     name: "Static Margin",
     x: [r.xSoll as number, r.xNp],
-    y: [0, 0],
-    z: [0, 0],
+    y: [refY, refY],
+    z: [refZ, refZ],
     line: { color: COLOR_SM_BAND, width: SM_BAND_WIDTH },
     hovertext: `Target Static Margin = ${targetSmPct} % MAC`,
     hoverinfo: "text",
@@ -135,14 +144,14 @@ function buildIstHovertext(r: Resolved): string {
   return lines.join("<br>");
 }
 
-function buildCgIstTrace(r: Resolved, color: string): PlotlyTrace {
+function buildCgIstTrace(r: Resolved, color: string, refY: number, refZ: number): PlotlyTrace {
   return {
     type: "scatter3d",
     mode: "markers",
     name: "CG (actual)",
     x: [r.xIst as number],
-    y: [0],
-    z: [0],
+    y: [refY],
+    z: [refZ],
     marker: {
       size: SIZE_CG_IST_PX,
       color,
@@ -156,7 +165,12 @@ function buildCgIstTrace(r: Resolved, color: string): PlotlyTrace {
   };
 }
 
-function buildDeltaLinkTrace(r: Resolved, color: string): PlotlyTrace | null {
+function buildDeltaLinkTrace(
+  r: Resolved,
+  color: string,
+  refY: number,
+  refZ: number,
+): PlotlyTrace | null {
   if (!(r.hasSoll && r.hasMac) || r.xIst == null || r.xSoll == null) return null;
   const deltaPct = (((r.xIst as number) - (r.xSoll as number)) / (r.macM as number)) * 100;
   if (Math.abs(deltaPct) <= DELTA_LINK_THRESHOLD_PCT) return null;
@@ -165,8 +179,8 @@ function buildDeltaLinkTrace(r: Resolved, color: string): PlotlyTrace | null {
     mode: "lines",
     name: "Δ SOLL→IST",
     x: [r.xSoll, r.xIst as number],
-    y: [0, 0],
-    z: [0, 0],
+    y: [refY, refY],
+    z: [refZ, refZ],
     line: { color, width: DELTA_LINK_WIDTH, dash: "dash" },
     hoverinfo: "skip",
     showlegend: false,
@@ -182,21 +196,27 @@ function buildDeltaLinkTrace(r: Resolved, color: string): PlotlyTrace | null {
  * Returns an empty array when there is no NP — the overlay cannot
  * meaningfully render anything without it.
  */
-export function buildStabilityTraces(ctx: StabilityCtx): PlotlyTrace[] {
+export function buildStabilityTraces(
+  ctx: StabilityCtx,
+  opts?: BuildStabilityTracesOpts,
+): PlotlyTrace[] {
   const r = resolve(ctx);
   if (r == null) return [];
 
-  const traces: PlotlyTrace[] = [buildNpTrace(r)];
+  const refY = opts?.referenceY ?? 0;
+  const refZ = opts?.referenceZ ?? 0;
+
+  const traces: PlotlyTrace[] = [buildNpTrace(r, refY, refZ)];
 
   if (r.hasSoll && r.xSoll != null) {
-    traces.push(buildCgSollTrace(r));
-    traces.push(buildSmBandTrace(r));
+    traces.push(buildCgSollTrace(r, refY, refZ));
+    traces.push(buildSmBandTrace(r, refY, refZ));
   }
 
   if (r.xIst != null) {
     const istColor = resolveIstColor(r);
-    traces.push(buildCgIstTrace(r, istColor));
-    const link = buildDeltaLinkTrace(r, istColor);
+    traces.push(buildCgIstTrace(r, istColor, refY, refZ));
+    const link = buildDeltaLinkTrace(r, istColor, refY, refZ);
     if (link != null) traces.push(link);
   }
 

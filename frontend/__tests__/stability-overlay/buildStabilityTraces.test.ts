@@ -81,6 +81,29 @@ describe("buildStabilityTraces", () => {
     });
   });
 
+  describe("reference point (chord-line placement)", () => {
+    it("places NP at the provided y/z when opts.referenceY/referenceZ given", () => {
+      const traces = buildStabilityTraces(FULL, { referenceY: 0, referenceZ: 0.45 });
+      const np = traces.find((t) => t.name === "NP")!;
+      expect((np.y as number[])[0]).toBeCloseTo(0, 6);
+      expect((np.z as number[])[0]).toBeCloseTo(0.45, 6);
+    });
+
+    it("places SM band endpoints at the provided z (line stays planar at refZ)", () => {
+      const traces = buildStabilityTraces(FULL, { referenceY: 0, referenceZ: 0.45 });
+      const band = traces.find((t) => t.name === "Static Margin")!;
+      const zs = band.z as number[];
+      expect(zs.every((z) => Math.abs(z - 0.45) < 1e-6)).toBe(true);
+    });
+
+    it("falls back to y=0, z=0 when opts is omitted", () => {
+      const traces = buildStabilityTraces(FULL);
+      const np = traces.find((t) => t.name === "NP")!;
+      expect((np.y as number[])[0]).toBe(0);
+      expect((np.z as number[])[0]).toBe(0);
+    });
+  });
+
   describe("hovertext", () => {
     const traces = buildStabilityTraces(FULL);
 
