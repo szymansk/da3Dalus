@@ -375,22 +375,32 @@ async def calculate_streamlines_json(
 ) -> dict:
     """Calculate streamlines and return Plotly figure as JSON dict.
 
+    When ``operating_point.operating_point_id`` is set, the stored trimmed
+    OP is resolved server-side (gh-577) so the run reflects a
+    trim-consistent state (alpha, all control-surface deflections, xyz_ref
+    from one record). Without an id, the inline schema is used unchanged
+    for the explicitly-labelled diagnostic/manual mode.
+
     Returns:
         dict: Plotly figure JSON with 'data' and 'layout' keys.
 
     Raises:
-        NotFoundError: If the aeroplane does not exist.
+        NotFoundError: If the aeroplane or operating_point_id does not exist.
+        ValidationDomainError: If the referenced OP is not trimmed.
         InternalError: If an analysis error occurs.
     """
     import json as _json
 
+    from app.services import operating_point_resolver
+
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
+    resolved_op = operating_point_resolver.resolve_operating_point(db, operating_point)
 
     try:
         asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
         _, figure = analyse_aerodynamics(
             AnalysisToolUrlType.VORTEX_LATTICE,
-            operating_point,
+            resolved_op,
             asb_airplane,
             draw_streamlines=True,
         )
@@ -1360,21 +1370,29 @@ async def get_streamlines_three_view_image(
     """
     Generate a four-view diagram with streamlines as PNG.
 
+    When ``operating_point.operating_point_id`` is set the stored trimmed OP
+    is resolved server-side (gh-577) so the wake/streamlines reflect a
+    trim-consistent state.
+
     Returns:
         bytes: PNG image data.
 
     Raises:
-        NotFoundError: If the aeroplane does not exist.
+        NotFoundError: If the aeroplane or operating_point_id does not exist.
+        ValidationDomainError: If the referenced OP is not trimmed.
         InternalError: If an analysis error occurs.
     """
+    from app.services import operating_point_resolver
+
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
+    resolved_op = operating_point_resolver.resolve_operating_point(db, operating_point)
 
     try:
         asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
 
         _, figure = analyse_aerodynamics(
             AnalysisToolUrlType.VORTEX_LATTICE,
-            operating_point,
+            resolved_op,
             asb_airplane,
             draw_streamlines=True,
             backend="plotly",
@@ -1425,14 +1443,26 @@ async def analyze_airplane_strip_forces(
 ) -> StripForcesResponse:
     """Run AVL with strip-force capture for the full airplane (all wings).
 
+    When ``operating_point.operating_point_id`` is set the stored trimmed OP
+    is resolved server-side (gh-577) so the strip-force distribution
+    reflects a trim-consistent state.
+
     Returns:
         StripForcesResponse with per-surface spanwise strip-force distributions.
     """
     import aerosandbox as asb
 
     from app.services.avl_runner import AVLRunner
+    from app.services import operating_point_resolver
 
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
+    # gh-577: alpha/xyz_ref/velocity/altitude are pulled from the trimmed OP
+    # when ``operating_point_id`` is set. NOTE: AVL takes control-surface
+    # deflections from the geometry file (built from ``plane_schema``), so
+    # the resolved ``control_deflections`` do NOT yet feed AVL here — only
+    # the VLM streamline path consumes them. Full deflection injection into
+    # the AVL geometry file is tracked as a follow-up.
+    operating_point = operating_point_resolver.resolve_operating_point(db, operating_point)
     from app.services.avl_geometry_service import (
         get_user_avl_content,
         build_avl_geometry_file,

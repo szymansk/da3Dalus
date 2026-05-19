@@ -20,6 +20,13 @@ export interface StreamlinesParams {
    * streamline visualisation is consistent with the rest of the system.
    */
   xyz_ref?: number[];
+  /**
+   * gh-577: bind the run to a stored, trimmed OperatingPoint. When set
+   * the backend resolves alpha (rad→deg), xyz_ref, velocity, altitude,
+   * body rates and all control-surface deflections from that record so
+   * the Trefftz plane / streamlines reflect a trim-consistent state.
+   */
+  operating_point_id?: number | null;
 }
 
 export function useStreamlines(aeroplaneId: string | null) {
@@ -35,18 +42,22 @@ export function useStreamlines(aeroplaneId: string | null) {
       setState({ figure: null, isComputing: true, error: null });
 
       try {
+        const body: Record<string, unknown> = {
+          velocity: params.velocity,
+          alpha: params.alpha,
+          beta: params.beta,
+          altitude: params.altitude,
+          xyz_ref: params.xyz_ref ?? [0, 0, 0],
+        };
+        if (params.operating_point_id != null) {
+          body.operating_point_id = params.operating_point_id;
+        }
         const res = await fetch(
           `${API_BASE}/aeroplanes/${aeroplaneId}/streamlines`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              velocity: params.velocity,
-              alpha: params.alpha,
-              beta: params.beta,
-              altitude: params.altitude,
-              xyz_ref: params.xyz_ref ?? [0, 0, 0],
-            }),
+            body: JSON.stringify(body),
           },
         );
         if (!res.ok) {

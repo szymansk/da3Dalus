@@ -249,6 +249,18 @@ class OperatingPointSchema(BaseModel):
         "Overrides geometry defaults for this operating point.",
     )
 
+    operating_point_id: int | None = Field(
+        default=None,
+        description=(
+            "If set, the request binds to a stored, trimmed OperatingPoint. The "
+            "service resolves it server-side and overwrites alpha/beta (rad→deg), "
+            "xyz_ref, velocity, altitude, body rates, and control deflections "
+            "(from `control_deflections` override, else `controls` trim output). "
+            "Use this for trim-consistent Trefftz/streamline visualisations "
+            "(gh-577). Leave null for diagnostic / manual runs."
+        ),
+    )
+
     model_config = ConfigDict(
         from_attributes=True,
         json_schema_extra={

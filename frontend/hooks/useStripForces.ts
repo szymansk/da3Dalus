@@ -56,6 +56,14 @@ export interface StripForcesAllParams {
   beta: number;
   altitude: number;
   xyz_ref: number[];
+  /**
+   * gh-577: bind the run to a stored, trimmed OperatingPoint. When set
+   * the backend resolves alpha (rad→deg), xyz_ref, velocity, altitude,
+   * body rates and all control-surface deflections from that record so
+   * the strip-force / Trefftz computation reflects a trim-consistent
+   * state. The inline velocity/alpha/beta/altitude/xyz_ref are ignored.
+   */
+  operating_point_id?: number | null;
 }
 
 export function useStripForces(aeroplaneId: string | null) {
@@ -108,18 +116,22 @@ export function useStripForces(aeroplaneId: string | null) {
       setResult(null);
 
       try {
+        const requestBody: Record<string, unknown> = {
+          velocity: params.velocity,
+          alpha: params.alpha,
+          beta: params.beta,
+          altitude: params.altitude,
+          xyz_ref: params.xyz_ref,
+        };
+        if (params.operating_point_id != null) {
+          requestBody.operating_point_id = params.operating_point_id;
+        }
         const res = await fetch(
           `${API_BASE}/aeroplanes/${aeroplaneId}/strip_forces`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              velocity: params.velocity,
-              alpha: params.alpha,
-              beta: params.beta,
-              altitude: params.altitude,
-              xyz_ref: params.xyz_ref,
-            }),
+            body: JSON.stringify(requestBody),
           },
         );
         if (!res.ok) {
