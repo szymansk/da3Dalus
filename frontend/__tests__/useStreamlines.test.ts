@@ -106,6 +106,56 @@ describe("useStreamlines", () => {
     });
   });
 
+  it("sends operating_point_id when set (gh-577 trim-consistent run)", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(FAKE_FIGURE), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const { result } = renderHook(() => useStreamlines("aero-77"));
+
+    await act(async () => {
+      await result.current.computeStreamlines({
+        velocity: 30,
+        alpha: 10,
+        beta: 2,
+        altitude: 500,
+        operating_point_id: 42,
+      });
+    });
+
+    const [, options] = fetchSpy.mock.calls[0];
+    const body = JSON.parse(options!.body as string);
+    expect(body.operating_point_id).toBe(42);
+  });
+
+  it("omits operating_point_id when null (manual mode)", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(FAKE_FIGURE), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const { result } = renderHook(() => useStreamlines("aero-77"));
+
+    await act(async () => {
+      await result.current.computeStreamlines({
+        velocity: 30,
+        alpha: 10,
+        beta: 2,
+        altitude: 500,
+        operating_point_id: null,
+      });
+    });
+
+    const [, options] = fetchSpy.mock.calls[0];
+    const body = JSON.parse(options!.body as string);
+    expect("operating_point_id" in body).toBe(false);
+  });
+
   it("sets error string on API error (non-ok response)", async () => {
     vi.spyOn(global, "fetch").mockResolvedValue(
       new Response("Internal Server Error", { status: 500 }),
@@ -119,7 +169,10 @@ describe("useStreamlines", () => {
 
     expect(result.current.isComputing).toBe(false);
     expect(result.current.figure).toBeNull();
-    expect(result.current.error).toBe("Streamlines failed: 500 Internal Server Error");
+    // gh-577 review: error message now goes through parseApiError so 5xx
+    // is tagged "failed (500)" with the body text appended.
+    expect(result.current.error).toContain("Streamlines failed (500)");
+    expect(result.current.error).toContain("Internal Server Error");
   });
 
   it("sets error string on network failure", async () => {

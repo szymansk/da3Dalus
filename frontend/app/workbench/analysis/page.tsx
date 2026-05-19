@@ -183,6 +183,7 @@ export default function AnalysisPage() {
                   (a) => a.parameter_name === "cg_x",
                 )?.effective_value ?? null
               }
+              operatingPoints={ops.points}
               onClose={() => setConfigOpen(false)}
             />
           </div>
