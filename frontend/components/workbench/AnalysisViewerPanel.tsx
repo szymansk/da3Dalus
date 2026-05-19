@@ -849,29 +849,34 @@ export function AnalysisViewerPanel({
         </div>
       )}
 
-      {/* Info Chip Row */}
-      <InfoChipRow
-        aeroplaneId={aeroplaneId}
-        cgAero={cgAero}
-        isRecomputing={recomputeStatus.isRecomputing}
-        rightSlot={
-          <span className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
-            {charts ? `${charts.alpha.length} points` : "No data"}
-            {lastRunTime && lastRunDurationMs != null && (
-              <>
-                {" "}
-                {"\u00B7"} Last run:{" "}
-                {lastRunTime.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: false,
-                })}{" "}
-                {"\u00B7"} {lastRunDurationMs} ms
-              </>
-            )}
-          </span>
+      {/* Info Chip Row \u2014 gh-575: drop the "No data" sentinel; render nothing
+          for the points segment when no charts have been computed yet. */}
+      {(() => {
+        const parts: string[] = [];
+        if (charts) parts.push(`${charts.alpha.length} points`);
+        if (lastRunTime && lastRunDurationMs != null) {
+          const time = lastRunTime.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          });
+          parts.push(`Last run: ${time} \u00B7 ${lastRunDurationMs} ms`);
         }
-      />
+        const rightSlot =
+          parts.length > 0 ? (
+            <span className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
+              {parts.join(" \u00B7 ")}
+            </span>
+          ) : null;
+        return (
+          <InfoChipRow
+            aeroplaneId={aeroplaneId}
+            cgAero={cgAero}
+            isRecomputing={recomputeStatus.isRecomputing}
+            rightSlot={rightSlot}
+          />
+        );
+      })()}
     </div>
   );
 }

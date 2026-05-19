@@ -20,6 +20,7 @@ vi.mock("lucide-react", () => {
     Plane: icon,
     TrendingUp: icon,
     Zap: icon,
+    RefreshCw: icon,
   };
 });
 
