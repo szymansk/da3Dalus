@@ -177,13 +177,17 @@ export function InfoChipRow({ aeroplaneId, cgAero, isRecomputing, rightSlot }: P
           stale={stale}
         />
       )}
-      <Chip
-        icon={Zap}
-        symbol="V_dive"
-        description="Design dive speed (heuristic: 1.4 × V_max)"
-        value={fmt(ctx?.v_dive_mps, 1, " m/s")}
-        stale={stale}
-      />
+      {/* V_dive hidden for gliders — gh-573: the 1.4 × V_max heuristic is invalid
+          without V_max (hidden by gh-563); CS-22 V_D is a placard value. */}
+      {!ctx?.is_glider && (
+        <Chip
+          icon={Zap}
+          symbol="V_dive"
+          description="Design dive speed (heuristic: 1.4 × V_max)"
+          value={fmt(ctx?.v_dive_mps, 1, " m/s")}
+          stale={stale}
+        />
+      )}
       {/* Divider between envelope speeds and aero geometry */}
       <div className="h-5 w-px bg-border" />
       <Chip

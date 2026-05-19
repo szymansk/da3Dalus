@@ -127,6 +127,8 @@ describe("Info Chip Row", () => {
     // gh-563: V_max chip (formerly relabeled V_NE for gliders) hidden for gliders.
     expect(screen.queryByRole("group", { name: /V NE/ })).toBeNull();
     expect(screen.queryByRole("group", { name: /^V max:/ })).toBeNull();
+    // gh-573: V_dive (heuristic 1.4 × V_max) hidden for gliders since V_max is hidden too.
+    expect(screen.queryByRole("group", { name: /V dive/ })).toBeNull();
     expect(screen.getByRole("group", { name: /V min sink/ })).toBeInTheDocument();
   });
 
