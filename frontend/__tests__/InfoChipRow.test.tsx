@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 
 vi.mock("lucide-react", () => {
@@ -18,6 +18,7 @@ vi.mock("lucide-react", () => {
     Plane: icon,
     TrendingUp: icon,
     Zap: icon,
+    RefreshCw: icon,
   };
 });
 
@@ -177,6 +178,91 @@ describe("Info Chip Row", () => {
     expect(subTexts).toContain("min,sink");
     expect(subTexts).toContain("x");
     expect(subTexts).toContain("dive");
+  });
+
+  // gh-575: chip row splits into two rows (envelope speeds, aero geometry).
+  it("splits envelope speeds and aero geometry into two separate rows", async () => {
+    (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: {
+        v_cruise_mps: 18.0,
+        v_stall_mps: 8.0,
+        v_min_sink_mps: 13.2,
+        v_md_mps: 14.0,
+        v_x_mps: 12.0,
+        v_y_mps: 15.5,
+        v_a_mps: 17.5,
+        v_max_mps: 25.0,
+        v_dive_mps: 30.0,
+        reynolds: 230000,
+        mac_m: 0.21,
+        x_np_m: 0.085,
+        target_static_margin: 0.12,
+        cg_agg_m: 0.092,
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
+    render(<InfoChipRow aeroplaneId="42" cgAero={0.073} />);
+
+    const speedsRow = screen.getByTestId("chip-row-speeds");
+    const geometryRow = screen.getByTestId("chip-row-geometry");
+
+    // Envelope speeds belong to row 1.
+    expect(speedsRow).toContainElement(screen.getByRole("group", { name: /^V stall:/ }));
+    expect(speedsRow).toContainElement(screen.getByRole("group", { name: /V min sink/ }));
+    expect(speedsRow).toContainElement(screen.getByRole("group", { name: /^V max:/ }));
+
+    // Aero geometry belongs to row 2.
+    expect(geometryRow).toContainElement(screen.getByRole("group", { name: /^Re:/ }));
+    expect(geometryRow).toContainElement(screen.getByRole("group", { name: /^MAC:/ }));
+    expect(geometryRow).toContainElement(screen.getByRole("group", { name: /^CG:/ }));
+
+    // No chip is placed in the wrong row.
+    expect(geometryRow).not.toContainElement(screen.getByRole("group", { name: /^V stall:/ }));
+    expect(speedsRow).not.toContainElement(screen.getByRole("group", { name: /^Re:/ }));
+  });
+
+  // gh-575: refresh button invokes mutate (SWR revalidation) on click.
+  it("renders a refresh button that calls mutate when clicked", async () => {
+    const mutate = vi.fn();
+    (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: { v_cruise_mps: 18.0, reynolds: 230000, mac_m: 0.21, x_np_m: 0.085, target_static_margin: 0.12, cg_agg_m: 0.092 },
+      isLoading: false,
+      error: null,
+      mutate,
+    });
+
+    const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
+    render(<InfoChipRow aeroplaneId="42" cgAero={0.073} />);
+
+    const button = screen.getByRole("button", { name: /refresh computation context/i });
+    expect(button).toBeInTheDocument();
+    expect(button).not.toBeDisabled();
+
+    fireEvent.click(button);
+    expect(mutate).toHaveBeenCalledTimes(1);
+  });
+
+  // gh-575: refresh button is disabled while a recompute is in flight.
+  it("disables refresh button while isRecomputing is true", async () => {
+    const mutate = vi.fn();
+    (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: { v_cruise_mps: 18.0, reynolds: 230000, mac_m: 0.21, x_np_m: 0.085, target_static_margin: 0.12, cg_agg_m: 0.092 },
+      isLoading: false,
+      error: null,
+      mutate,
+    });
+
+    const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
+    render(<InfoChipRow aeroplaneId="42" cgAero={0.073} isRecomputing />);
+
+    const button = screen.getByRole("button", { name: /refresh computation context/i });
+    expect(button).toBeDisabled();
+
+    fireEvent.click(button);
+    expect(mutate).not.toHaveBeenCalled();
   });
 
   // gh-540: aria-label is humanized (no literal underscores spoken).

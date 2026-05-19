@@ -19,6 +19,33 @@ const TABS = ["Assumptions", "Operating Points", "Polar", "Trefftz Plane", "Stre
 export type Tab = (typeof TABS)[number];
 export { TABS };
 
+// gh-575: build the chip-row rightSlot from optional analysis-run metadata.
+// Returns null when neither segment is present, so the "No data" sentinel
+// the previous implementation rendered is dropped entirely.
+// Exported for direct unit testing.
+export function buildAnalysisRightSlot(
+  pointCount: number | null,
+  lastRunTime: Date | null | undefined,
+  lastRunDurationMs: number | null | undefined,
+): React.ReactNode {
+  const parts: string[] = [];
+  if (pointCount != null) parts.push(`${pointCount} points`);
+  if (lastRunTime && lastRunDurationMs != null) {
+    const time = lastRunTime.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    parts.push(`Last run: ${time} · ${lastRunDurationMs} ms`);
+  }
+  if (parts.length === 0) return null;
+  return (
+    <span className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
+      {parts.join(" · ")}
+    </span>
+  );
+}
+
 interface WingXSec {
   readonly xyz_le: readonly number[];
   readonly chord: number;
@@ -849,28 +876,17 @@ export function AnalysisViewerPanel({
         </div>
       )}
 
-      {/* Info Chip Row */}
+      {/* Info Chip Row \u2014 gh-575: rightSlot built from optional analysis metadata;
+          renders null when neither charts nor a last-run timestamp is present. */}
       <InfoChipRow
         aeroplaneId={aeroplaneId}
         cgAero={cgAero}
         isRecomputing={recomputeStatus.isRecomputing}
-        rightSlot={
-          <span className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
-            {charts ? `${charts.alpha.length} points` : "No data"}
-            {lastRunTime && lastRunDurationMs != null && (
-              <>
-                {" "}
-                {"\u00B7"} Last run:{" "}
-                {lastRunTime.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: false,
-                })}{" "}
-                {"\u00B7"} {lastRunDurationMs} ms
-              </>
-            )}
-          </span>
-        }
+        rightSlot={buildAnalysisRightSlot(
+          charts ? charts.alpha.length : null,
+          lastRunTime,
+          lastRunDurationMs,
+        )}
       />
     </div>
   );
