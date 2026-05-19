@@ -166,17 +166,17 @@ export function InfoChipRow({ aeroplaneId, cgAero, isRecomputing, rightSlot }: P
           stale={stale}
         />
       )}
-      <Chip
-        icon={Gauge}
-        symbol={ctx?.is_glider ? "V_NE" : "V_max"}
-        description={
-          ctx?.is_glider
-            ? "Never-exceed speed (CS-22 placard speed for gliders)"
-            : "Maximum operating speed"
-        }
-        value={fmt(ctx?.v_max_mps, 1, " m/s")}
-        stale={stale}
-      />
+      {/* V_max hidden for gliders — gh-563: no powertrain to define V_max, and
+          V_NE is a CS-22 placard speed with no user input. */}
+      {!ctx?.is_glider && (
+        <Chip
+          icon={Gauge}
+          symbol="V_max"
+          description="Maximum operating speed"
+          value={fmt(ctx?.v_max_mps, 1, " m/s")}
+          stale={stale}
+        />
+      )}
       <Chip
         icon={Zap}
         symbol="V_dive"

@@ -124,7 +124,9 @@ describe("Info Chip Row", () => {
     render(<InfoChipRow aeroplaneId="42" cgAero={0.13} />);
 
     expect(screen.queryByRole("group", { name: /^V a:/ })).toBeNull();
-    expect(screen.getByRole("group", { name: /V NE/ })).toBeInTheDocument();
+    // gh-563: V_max chip (formerly relabeled V_NE for gliders) hidden for gliders.
+    expect(screen.queryByRole("group", { name: /V NE/ })).toBeNull();
+    expect(screen.queryByRole("group", { name: /^V max:/ })).toBeNull();
     expect(screen.getByRole("group", { name: /V min sink/ })).toBeInTheDocument();
   });
 
