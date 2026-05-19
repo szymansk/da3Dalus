@@ -22,7 +22,8 @@ export { TABS };
 // gh-575: build the chip-row rightSlot from optional analysis-run metadata.
 // Returns null when neither segment is present, so the "No data" sentinel
 // the previous implementation rendered is dropped entirely.
-function buildAnalysisRightSlot(
+// Exported for direct unit testing.
+export function buildAnalysisRightSlot(
   pointCount: number | null,
   lastRunTime: Date | null | undefined,
   lastRunDurationMs: number | null | undefined,
