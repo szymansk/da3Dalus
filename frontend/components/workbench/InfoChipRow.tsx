@@ -196,13 +196,24 @@ export function InfoChipRow({ aeroplaneId, cgAero, isRecomputing, rightSlot }: P
           />
         )}
         <div className="flex-1" />
+        {/* gh-575: Recomputing pill kept next to the refresh button so users see
+            the in-flight state co-located with the action that triggered it. */}
+        {isRecomputing && (
+          <span
+            className="flex items-center gap-1 rounded-full bg-orange-500/15 px-2 py-1 text-[11px] text-orange-400"
+            data-testid="recomputing-chip"
+          >
+            <Loader2 size={11} className="animate-spin" />
+            Recomputing…
+          </span>
+        )}
         {/* gh-575: refresh button revalidates the SWR-cached computation context. */}
         <button
           type="button"
           aria-label="Refresh computation context"
           onClick={() => mutate()}
           disabled={isRecomputing}
-          className="flex items-center gap-1 rounded-full bg-card-muted px-2.5 py-1.5 text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex items-center gap-1 rounded-full bg-card-muted px-2.5 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
         >
           <RefreshCw size={12} />
         </button>
@@ -253,15 +264,6 @@ export function InfoChipRow({ aeroplaneId, cgAero, isRecomputing, rightSlot }: P
           stale={stale}
         />
         <div className="flex-1" />
-        {isRecomputing && (
-          <span
-            className="flex items-center gap-1 rounded-full bg-orange-500/15 px-2 py-1 text-[11px] text-orange-400"
-            data-testid="recomputing-chip"
-          >
-            <Loader2 size={11} className="animate-spin" />
-            Recomputing…
-          </span>
-        )}
         {rightSlot}
       </div>
     </div>

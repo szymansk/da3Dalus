@@ -19,6 +19,32 @@ const TABS = ["Assumptions", "Operating Points", "Polar", "Trefftz Plane", "Stre
 export type Tab = (typeof TABS)[number];
 export { TABS };
 
+// gh-575: build the chip-row rightSlot from optional analysis-run metadata.
+// Returns null when neither segment is present, so the "No data" sentinel
+// the previous implementation rendered is dropped entirely.
+function buildAnalysisRightSlot(
+  pointCount: number | null,
+  lastRunTime: Date | null | undefined,
+  lastRunDurationMs: number | null | undefined,
+): React.ReactNode {
+  const parts: string[] = [];
+  if (pointCount != null) parts.push(`${pointCount} points`);
+  if (lastRunTime && lastRunDurationMs != null) {
+    const time = lastRunTime.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    parts.push(`Last run: ${time} · ${lastRunDurationMs} ms`);
+  }
+  if (parts.length === 0) return null;
+  return (
+    <span className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
+      {parts.join(" · ")}
+    </span>
+  );
+}
+
 interface WingXSec {
   readonly xyz_le: readonly number[];
   readonly chord: number;
@@ -849,34 +875,18 @@ export function AnalysisViewerPanel({
         </div>
       )}
 
-      {/* Info Chip Row \u2014 gh-575: drop the "No data" sentinel; render nothing
-          for the points segment when no charts have been computed yet. */}
-      {(() => {
-        const parts: string[] = [];
-        if (charts) parts.push(`${charts.alpha.length} points`);
-        if (lastRunTime && lastRunDurationMs != null) {
-          const time = lastRunTime.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          });
-          parts.push(`Last run: ${time} \u00B7 ${lastRunDurationMs} ms`);
-        }
-        const rightSlot =
-          parts.length > 0 ? (
-            <span className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground">
-              {parts.join(" \u00B7 ")}
-            </span>
-          ) : null;
-        return (
-          <InfoChipRow
-            aeroplaneId={aeroplaneId}
-            cgAero={cgAero}
-            isRecomputing={recomputeStatus.isRecomputing}
-            rightSlot={rightSlot}
-          />
-        );
-      })()}
+      {/* Info Chip Row \u2014 gh-575: rightSlot built from optional analysis metadata;
+          renders null when neither charts nor a last-run timestamp is present. */}
+      <InfoChipRow
+        aeroplaneId={aeroplaneId}
+        cgAero={cgAero}
+        isRecomputing={recomputeStatus.isRecomputing}
+        rightSlot={buildAnalysisRightSlot(
+          charts ? charts.alpha.length : null,
+          lastRunTime,
+          lastRunDurationMs,
+        )}
+      />
     </div>
   );
 }
