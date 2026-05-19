@@ -169,7 +169,10 @@ describe("useStreamlines", () => {
 
     expect(result.current.isComputing).toBe(false);
     expect(result.current.figure).toBeNull();
-    expect(result.current.error).toBe("Streamlines failed: 500 Internal Server Error");
+    // gh-577 review: error message now goes through parseApiError so 5xx
+    // is tagged "failed (500)" with the body text appended.
+    expect(result.current.error).toContain("Streamlines failed (500)");
+    expect(result.current.error).toContain("Internal Server Error");
   });
 
   it("sets error string on network failure", async () => {

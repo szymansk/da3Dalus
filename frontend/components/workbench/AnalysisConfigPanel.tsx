@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Play, RefreshCw, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import type { UseAnalysisReturn } from "@/hooks/useAnalysis";
 import type { StripForcesAllParams } from "@/hooks/useStripForces";
@@ -67,12 +67,14 @@ function OperatingPointBasisSelector({
   trimmedOps,
   effectiveOpId,
   onSelectOpId,
+  scope,
 }: Readonly<{
   opBasis: OpBasis;
   onChangeOpBasis: (basis: OpBasis) => void;
   trimmedOps: StoredOperatingPoint[];
   effectiveOpId: number | null;
   onSelectOpId: (id: number) => void;
+  scope: "vlm" | "avl";
 }>) {
   const radioKey = (basis: OpBasis) => (e: React.KeyboardEvent<HTMLSpanElement>) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -131,6 +133,7 @@ function OperatingPointBasisSelector({
           trimmedOps={trimmedOps}
           effectiveOpId={effectiveOpId}
           onSelectOpId={onSelectOpId}
+          scope={scope}
         />
       )}
 
@@ -149,15 +152,24 @@ function TrimmedOpDropdown({
   trimmedOps,
   effectiveOpId,
   onSelectOpId,
+  scope,
 }: Readonly<{
   trimmedOps: StoredOperatingPoint[];
   effectiveOpId: number | null;
   onSelectOpId: (id: number) => void;
+  /**
+   * Which downstream solver consumes the resolved OP. Controls the
+   * honest footnote about whether control-surface deflections actually
+   * reach the solver (VLM: yes; AVL: only α / xyz_ref / V — gh-577
+   * follow-up).
+   */
+  scope: "vlm" | "avl";
 }>) {
+  const selectId = useId();
   return (
     <div className="flex flex-col gap-1">
       <label
-        htmlFor="op-basis-select"
+        htmlFor={selectId}
         className="font-[family-name:var(--font-geist-sans)] text-[11px] text-muted-foreground"
       >
         Trimmed operating point
@@ -170,7 +182,7 @@ function TrimmedOpDropdown({
       ) : (
         <div className="relative">
           <select
-            id="op-basis-select"
+            id={selectId}
             value={effectiveOpId ?? ""}
             onChange={(e) => onSelectOpId(Number.parseInt(e.target.value, 10))}
             className="w-full appearance-none rounded-xl border border-border bg-input px-3 py-2 pr-8 font-[family-name:var(--font-geist-sans)] text-[13px] text-foreground"
@@ -188,10 +200,18 @@ function TrimmedOpDropdown({
           />
         </div>
       )}
-      <p className="font-[family-name:var(--font-geist-sans)] text-[10px] italic text-subtle-foreground">
-        α, xyz_ref, velocity, altitude, and control-surface deflections are
-        taken from the selected trim solution (gh-577).
-      </p>
+      {scope === "vlm" ? (
+        <p className="font-[family-name:var(--font-geist-sans)] text-[10px] italic text-subtle-foreground">
+          α, xyz_ref, velocity, altitude, and all control-surface deflections
+          come from the selected trim solution (gh-577).
+        </p>
+      ) : (
+        <p className="font-[family-name:var(--font-geist-sans)] text-[10px] italic text-subtle-foreground">
+          α, xyz_ref, velocity, altitude come from the trim solution.
+          Control-surface deflections are taken from the geometry file —
+          AVL deflection injection is a planned follow-up (gh-577).
+        </p>
+      )}
     </div>
   );
 }
@@ -324,13 +344,29 @@ export function AnalysisConfigPanel({
   if (activeTab === "Polar") handleRun = handleRunPolar;
   else if (activeTab === "Trefftz Plane") handleRun = handleRunStripForces;
 
-  const opBasisSelector = (
+  // Two scope-specific selectors so the footnote is honest about which
+  // solver actually consumes the deflections (VLM streamlines: yes;
+  // AVL strip forces: only α / xyz_ref / V today — gh-577 follow-up).
+  // Rendered into mutually exclusive tab branches, so they share parent
+  // state (opBasis, chosenOpId) without prop-drilling.
+  const opBasisSelectorVlm = (
     <OperatingPointBasisSelector
       opBasis={opBasis}
       onChangeOpBasis={setOpBasis}
       trimmedOps={trimmedOps}
       effectiveOpId={effectiveOpId}
       onSelectOpId={setChosenOpId}
+      scope="vlm"
+    />
+  );
+  const opBasisSelectorAvl = (
+    <OperatingPointBasisSelector
+      opBasis={opBasis}
+      onChangeOpBasis={setOpBasis}
+      trimmedOps={trimmedOps}
+      effectiveOpId={effectiveOpId}
+      onSelectOpId={setChosenOpId}
+      scope="avl"
     />
   );
 
@@ -678,7 +714,7 @@ export function AnalysisConfigPanel({
       {/* ══════════════════════════════════════════════════════════════════ */}
       {activeTab === "Trefftz Plane" && (
         <>
-          {opBasisSelector}
+          {opBasisSelectorAvl}
           <div
             className={`flex flex-col gap-3 rounded-xl border border-border bg-card p-4 ${
               useTrimmedOp ? "opacity-50" : ""
@@ -808,7 +844,7 @@ export function AnalysisConfigPanel({
       {/* ══════════════════════════════════════════════════════════════════ */}
       {activeTab === "Streamlines" && (
         <>
-          {opBasisSelector}
+          {opBasisSelectorVlm}
           <div
             className={`flex flex-col gap-3 rounded-xl border border-border bg-card p-4 ${
               useTrimmedOp ? "opacity-50" : ""

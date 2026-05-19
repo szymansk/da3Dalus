@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { API_BASE } from "@/lib/fetcher";
+import { parseApiError } from "@/lib/parseApiError";
 
 interface StreamlinesState {
   figure: Record<string, unknown> | null;
@@ -61,8 +62,7 @@ export function useStreamlines(aeroplaneId: string | null) {
           },
         );
         if (!res.ok) {
-          const body = await res.text();
-          throw new Error(`Streamlines failed: ${res.status} ${body}`);
+          throw new Error(await parseApiError(res, "Streamlines"));
         }
         const figure = await res.json();
         setState({ figure, isComputing: false, error: null });

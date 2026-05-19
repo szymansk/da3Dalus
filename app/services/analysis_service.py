@@ -22,13 +22,16 @@ from sqlalchemy.orm import Session
 
 from app.api.utils import analyse_aerodynamics, compile_four_view_figure
 from app.converters.model_schema_converters import aeroplane_schema_to_asb_airplane_async
-from app.core.exceptions import NotFoundError, InternalError
+from app.core.exceptions import NotFoundError, InternalError, ServiceException
 from app.db.exceptions import NotFoundInDbException
 from app.db.repository import get_wing_by_name_and_aeroplane_id, get_aeroplane_by_id
 from app.schemas import AeroplaneSchema
 from app.schemas.AeroplaneRequest import AnalysisToolUrlType, AlphaSweepRequest, SimpleSweepRequest
 from app.schemas.aeroanalysisschema import OperatingPointSchema
 from app.schemas.strip_forces import StripForcesResponse, SurfaceStripForces, StripForceEntry
+from app.services import operating_point_resolver
+from app.services.operating_point_resolver import validate_deflections_against_airplane
+from app.services.wing_service import get_aeroplane_or_raise
 
 logger = logging.getLogger(__name__)
 
@@ -391,13 +394,17 @@ async def calculate_streamlines_json(
     """
     import json as _json
 
-    from app.services import operating_point_resolver
-
+    aircraft = get_aeroplane_or_raise(db, aeroplane_uuid)
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
-    resolved_op = operating_point_resolver.resolve_operating_point(db, operating_point)
+    resolved_op = operating_point_resolver.resolve_operating_point(
+        db, operating_point, aircraft_pk=aircraft.id,
+    )
 
     try:
         asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
+        validate_deflections_against_airplane(
+            asb_airplane, resolved_op.control_deflections,
+        )
         _, figure = analyse_aerodynamics(
             AnalysisToolUrlType.VORTEX_LATTICE,
             resolved_op,
@@ -405,9 +412,15 @@ async def calculate_streamlines_json(
             draw_streamlines=True,
         )
         return _json.loads(figure.to_json())
+    except ServiceException:
+        # Already a domain error — let the endpoint map it to the right HTTP code.
+        raise
     except Exception as e:
-        logger.error("Error calculating streamlines: %s", e)
-        raise InternalError(message=f"Analysis error: {e}")
+        logger.exception(
+            "Error calculating streamlines for aeroplane %s (op_id=%s)",
+            aeroplane_uuid, resolved_op.operating_point_id,
+        )
+        raise InternalError(message=f"Analysis error: {e}") from e
 
 
 async def analyze_alpha_sweep(db: Session, aeroplane_uuid, sweep_request: AlphaSweepRequest) -> Any:
@@ -1382,13 +1395,17 @@ async def get_streamlines_three_view_image(
         ValidationDomainError: If the referenced OP is not trimmed.
         InternalError: If an analysis error occurs.
     """
-    from app.services import operating_point_resolver
-
+    aircraft = get_aeroplane_or_raise(db, aeroplane_uuid)
     plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
-    resolved_op = operating_point_resolver.resolve_operating_point(db, operating_point)
+    resolved_op = operating_point_resolver.resolve_operating_point(
+        db, operating_point, aircraft_pk=aircraft.id,
+    )
 
     try:
         asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
+        validate_deflections_against_airplane(
+            asb_airplane, resolved_op.control_deflections,
+        )
 
         _, figure = analyse_aerodynamics(
             AnalysisToolUrlType.VORTEX_LATTICE,
@@ -1401,9 +1418,14 @@ async def get_streamlines_three_view_image(
         fig = compile_four_view_figure(figure)
         img_bytes = fig.to_image(format="png", width=1000, height=1000, scale=2)
         return img_bytes
+    except ServiceException:
+        raise
     except Exception as e:
-        logger.error(f"Error generating streamlines view: {e}")
-        raise InternalError(message=f"Analysis error: {e}")
+        logger.exception(
+            "Error generating streamlines view for aeroplane %s (op_id=%s)",
+            aeroplane_uuid, resolved_op.operating_point_id,
+        )
+        raise InternalError(message=f"Analysis error: {e}") from e
 
 
 async def get_three_view_image(db: Session, aeroplane_uuid) -> bytes:
@@ -1453,16 +1475,6 @@ async def analyze_airplane_strip_forces(
     import aerosandbox as asb
 
     from app.services.avl_runner import AVLRunner
-    from app.services import operating_point_resolver
-
-    plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
-    # gh-577: alpha/xyz_ref/velocity/altitude are pulled from the trimmed OP
-    # when ``operating_point_id`` is set. NOTE: AVL takes control-surface
-    # deflections from the geometry file (built from ``plane_schema``), so
-    # the resolved ``control_deflections`` do NOT yet feed AVL here — only
-    # the VLM streamline path consumes them. Full deflection injection into
-    # the AVL geometry file is tracked as a follow-up.
-    operating_point = operating_point_resolver.resolve_operating_point(db, operating_point)
     from app.services.avl_geometry_service import (
         get_user_avl_content,
         build_avl_geometry_file,
@@ -1470,33 +1482,46 @@ async def analyze_airplane_strip_forces(
     )
     from app.schemas.aeroanalysisschema import CdclConfig, SpacingConfig
 
+    aircraft = get_aeroplane_or_raise(db, aeroplane_uuid)
+    plane_schema = get_aeroplane_schema_or_raise(db, aeroplane_uuid)
+    # gh-577: alpha/xyz_ref/velocity/altitude are pulled from the trimmed OP
+    # when ``operating_point_id`` is set. NOTE: AVL reads control-surface
+    # deflections from the geometry file (built from ``plane_schema``), so
+    # the resolved ``control_deflections`` do NOT yet feed AVL here — only
+    # the VLM streamline path consumes them. Full deflection injection into
+    # the AVL geometry file is tracked as a follow-up. The UI labels the
+    # AVL strip-forces tab honestly to reflect this partial-trim state.
+    resolved_op = operating_point_resolver.resolve_operating_point(
+        db, operating_point, aircraft_pk=aircraft.id,
+    )
+
     user_avl_content = get_user_avl_content(db, aeroplane_uuid)
     if user_avl_content is None:
-        cdcl_config = operating_point.cdcl_config or CdclConfig()
-        spacing_config = operating_point.spacing_config or SpacingConfig()
+        cdcl_config = resolved_op.cdcl_config or CdclConfig()
+        spacing_config = resolved_op.spacing_config or SpacingConfig()
         avl_file = build_avl_geometry_file(plane_schema, spacing_config)
-        inject_cdcl(avl_file, plane_schema, operating_point, cdcl_config)
+        inject_cdcl(avl_file, plane_schema, resolved_op, cdcl_config)
         user_avl_content = repr(avl_file)
 
     try:
         asb_airplane: Airplane = aeroplane_schema_to_asb_airplane_async(plane_schema=plane_schema)
-        asb_airplane.xyz_ref = operating_point.xyz_ref
+        asb_airplane.xyz_ref = resolved_op.xyz_ref
 
-        atmosphere = asb.Atmosphere(altitude=operating_point.altitude)
+        atmosphere = asb.Atmosphere(altitude=resolved_op.altitude)
         op_point = asb.OperatingPoint(
-            velocity=operating_point.velocity,
-            alpha=operating_point.alpha,
-            beta=operating_point.beta,
-            p=operating_point.p,
-            q=operating_point.q,
-            r=operating_point.r,
+            velocity=resolved_op.velocity,
+            alpha=resolved_op.alpha,
+            beta=resolved_op.beta,
+            p=resolved_op.p,
+            q=resolved_op.q,
+            r=resolved_op.r,
             atmosphere=atmosphere,
         )
 
         runner = AVLRunner(
             airplane=asb_airplane,
             op_point=op_point,
-            xyz_ref=operating_point.xyz_ref,
+            xyz_ref=resolved_op.xyz_ref,
             timeout=60,
         )
         result = runner.run(
@@ -1520,17 +1545,22 @@ async def analyze_airplane_strip_forces(
             )
 
         return StripForcesResponse(
-            alpha=result.get("alpha", operating_point.alpha),
-            beta=result.get("beta", operating_point.beta),
+            alpha=result.get("alpha", resolved_op.alpha),
+            beta=result.get("beta", resolved_op.beta),
             mach=result.get("mach", 0),
             sref=result.get("Sref", 0),
             cref=result.get("Cref", 0),
             bref=result.get("Bref", 0),
             surfaces=surfaces,
         )
+    except ServiceException:
+        raise
     except Exception as e:
-        logger.error(f"Error analyzing airplane strip forces: {e}")
-        raise InternalError(message=f"Strip forces analysis error: {e}")
+        logger.exception(
+            "Error analyzing airplane strip forces for aeroplane %s (op_id=%s)",
+            aeroplane_uuid, resolved_op.operating_point_id,
+        )
+        raise InternalError(message=f"Strip forces analysis error: {e}") from e
 
 
 async def analyze_wing_strip_forces(

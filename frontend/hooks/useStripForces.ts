@@ -3,6 +3,7 @@
 
 import { useState, useCallback } from "react";
 import { API_BASE } from "@/lib/fetcher";
+import { parseApiError } from "@/lib/parseApiError";
 
 export interface StripForceEntry {
   j: number;
@@ -94,8 +95,7 @@ export function useStripForces(aeroplaneId: string | null) {
           },
         );
         if (!res.ok) {
-          const body = await res.text();
-          throw new Error(`Strip forces failed: ${res.status} ${body}`);
+          throw new Error(await parseApiError(res, "Strip forces"));
         }
         const data: StripForcesResult = await res.json();
         setResult(data);
@@ -135,8 +135,7 @@ export function useStripForces(aeroplaneId: string | null) {
           },
         );
         if (!res.ok) {
-          const body = await res.text();
-          throw new Error(`Strip forces failed: ${res.status} ${body}`);
+          throw new Error(await parseApiError(res, "Strip forces"));
         }
         const data: StripForcesResult = await res.json();
         setResult(data);
