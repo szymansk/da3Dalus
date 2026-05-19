@@ -506,3 +506,158 @@ class TestStreamlineServiceUsesResolvedOp:
                         operating_point=OperatingPointSchema(operating_point_id=42),
                     )
                 )
+
+    def _patch_service_pipeline(self, analysis_service, resolved):
+        """Common ExitStack patches; returns the stack (caller manages enter/exit)."""
+        from contextlib import ExitStack
+        from unittest.mock import patch
+
+        stack = ExitStack()
+        stack.enter_context(patch.object(
+            analysis_service, "get_aeroplane_or_raise",
+            return_value=MagicMock(id=7),
+        ))
+        stack.enter_context(patch.object(
+            analysis_service, "get_aeroplane_schema_or_raise",
+            return_value=MagicMock(),
+        ))
+        stack.enter_context(patch.object(
+            analysis_service, "aeroplane_schema_to_asb_airplane_async",
+            return_value=MagicMock(),
+        ))
+        stack.enter_context(patch.object(
+            analysis_service.operating_point_resolver,
+            "resolve_operating_point",
+            return_value=resolved,
+        ))
+        stack.enter_context(patch.object(
+            analysis_service, "validate_deflections_against_airplane",
+        ))
+        return stack
+
+    def test_streamlines_service_wraps_generic_error_as_internal(self):
+        """gh-577 review: non-ServiceException errors get logger.exception + InternalError."""
+        import asyncio
+        from unittest.mock import patch
+
+        from app.core.exceptions import InternalError
+        from app.services import analysis_service
+
+        resolved = self._resolved_op()
+
+        with self._patch_service_pipeline(analysis_service, resolved) as stack:
+            stack.enter_context(patch.object(
+                analysis_service, "analyse_aerodynamics",
+                side_effect=RuntimeError("VLM crashed"),
+            ))
+            with pytest.raises(InternalError):
+                asyncio.run(
+                    analysis_service.calculate_streamlines_json(
+                        _db_returning(_make_op()),
+                        aeroplane_uuid="0" * 36,
+                        operating_point=OperatingPointSchema(operating_point_id=42),
+                    )
+                )
+
+    def test_three_view_service_wraps_generic_error_as_internal(self):
+        import asyncio
+        from unittest.mock import patch
+
+        from app.core.exceptions import InternalError
+        from app.services import analysis_service
+
+        resolved = self._resolved_op()
+
+        with self._patch_service_pipeline(analysis_service, resolved) as stack:
+            stack.enter_context(patch.object(
+                analysis_service, "analyse_aerodynamics",
+                side_effect=RuntimeError("VLM crashed"),
+            ))
+            stack.enter_context(patch.object(
+                analysis_service, "compile_four_view_figure",
+            ))
+            with pytest.raises(InternalError):
+                asyncio.run(
+                    analysis_service.get_streamlines_three_view_image(
+                        _db_returning(_make_op()),
+                        aeroplane_uuid="0" * 36,
+                        operating_point=OperatingPointSchema(operating_point_id=42),
+                    )
+                )
+
+    def test_strip_forces_service_wraps_generic_error_as_internal(self):
+        import asyncio
+        from unittest.mock import patch
+
+        from app.core.exceptions import InternalError
+        from app.services import analysis_service
+
+        resolved = self._resolved_op()
+
+        with self._patch_service_pipeline(analysis_service, resolved) as stack:
+            mock_runner_cls = stack.enter_context(patch(
+                "app.services.avl_runner.AVLRunner",
+            ))
+            stack.enter_context(patch(
+                "app.services.avl_geometry_service.get_user_avl_content",
+                return_value="MOCK_AVL_CONTENT",
+            ))
+            mock_runner_cls.return_value.run.side_effect = RuntimeError("AVL crashed")
+
+            with pytest.raises(InternalError):
+                asyncio.run(
+                    analysis_service.analyze_airplane_strip_forces(
+                        _db_returning(_make_op()),
+                        aeroplane_uuid="0" * 36,
+                        operating_point=OperatingPointSchema(operating_point_id=42),
+                    )
+                )
+
+    def test_streamlines_service_skips_resolver_when_no_id(self):
+        """Diagnostic / manual mode — inline schema passes through untouched."""
+        import asyncio
+        from contextlib import ExitStack
+        from unittest.mock import patch
+
+        from app.services import analysis_service
+
+        inline = OperatingPointSchema(
+            alpha=5.0, velocity=14.0, altitude=100.0, xyz_ref=[0.18, 0, 0],
+        )
+
+        with ExitStack() as stack:
+            stack.enter_context(patch.object(
+                analysis_service, "get_aeroplane_or_raise",
+                return_value=MagicMock(id=7),
+            ))
+            stack.enter_context(patch.object(
+                analysis_service, "get_aeroplane_schema_or_raise",
+                return_value=MagicMock(),
+            ))
+            stack.enter_context(patch.object(
+                analysis_service, "aeroplane_schema_to_asb_airplane_async",
+                return_value=MagicMock(),
+            ))
+            stack.enter_context(patch.object(
+                analysis_service, "validate_deflections_against_airplane",
+            ))
+            mock_analyse = stack.enter_context(patch.object(
+                analysis_service, "analyse_aerodynamics",
+            ))
+            fake_fig = MagicMock()
+            fake_fig.to_json.return_value = '{"data":[],"layout":{}}'
+            mock_analyse.return_value = (MagicMock(), fake_fig)
+
+            asyncio.run(
+                analysis_service.calculate_streamlines_json(
+                    _db_returning(None),  # OP lookup never reached
+                    aeroplane_uuid="0" * 36,
+                    operating_point=inline,
+                )
+            )
+
+            # The schema reaching analyse_aerodynamics is the inline one,
+            # not a resolved record — operating_point_id stays None.
+            call_op = mock_analyse.call_args.args[1]
+            assert call_op.operating_point_id is None
+            assert call_op.alpha == 5.0
