@@ -242,7 +242,7 @@ class TestValidateDeflectionsAgainstAirplane:
         # MagicMock's `name` kwarg is reserved for the mock's repr; set
         # the attribute after construction.
         surfaces = [MagicMock() for _ in surface_names]
-        for surf, n in zip(surfaces, surface_names):
+        for surf, n in zip(surfaces, surface_names, strict=True):
             surf.name = n
         xsec = MagicMock()
         xsec.control_surfaces = surfaces
