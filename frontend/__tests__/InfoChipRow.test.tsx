@@ -21,6 +21,8 @@ vi.mock("lucide-react", () => {
     RefreshCw: icon,
     Square: icon,
     ArrowLeftRight: icon,
+    // gh-581: TaillessBanner uses Info icon when ctx.is_tailless is true.
+    Info: icon,
   };
 });
 
@@ -407,6 +409,52 @@ describe("Info Chip Row", () => {
     expect(smChip).toBeInTheDocument();
     // 0.075 → 8% (rounds to 0 decimals via .toFixed(0))
     expect(smChip.textContent).toMatch(/8%/);
+  });
+
+  // gh-581: Tailless UX banner surfaces when backend reports is_tailless=true.
+  // Banner explains tail-volume sizing is N/A, SM corridor is tighter, and that
+  // trim comes from sweep + washout + reflex (hybrid preferred per Apogee).
+  it("renders the TaillessBanner when ctx.is_tailless is true", async () => {
+    (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: {
+        is_tailless: true,
+        v_cruise_mps: 18.0,
+        reynolds: 230000,
+        mac_m: 0.21,
+        x_np_m: 0.085,
+        target_static_margin: 0.075,
+        cg_agg_m: 0.078,
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
+    render(<InfoChipRow aeroplaneId="42" cgAero={0.078} />);
+
+    expect(screen.getByTestId("tailless-banner")).toBeInTheDocument();
+    expect(screen.getByText(/Tailless configuration/i)).toBeInTheDocument();
+  });
+
+  // gh-581: Conventional aircraft must NOT see the tailless banner.
+  it("does not render the TaillessBanner when ctx.is_tailless is false or missing", async () => {
+    (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: {
+        v_cruise_mps: 18.0,
+        reynolds: 230000,
+        mac_m: 0.21,
+        x_np_m: 0.085,
+        target_static_margin: 0.12,
+        cg_agg_m: 0.092,
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
+    render(<InfoChipRow aeroplaneId="42" cgAero={0.073} />);
+
+    expect(screen.queryByTestId("tailless-banner")).not.toBeInTheDocument();
   });
 
   // gh-540: aria-label is humanized (no literal underscores spoken).

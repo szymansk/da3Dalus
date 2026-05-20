@@ -6,7 +6,7 @@ from app.services.mission_preset_seed import SEED_PRESETS
 
 
 def test_seed_presets_exist():
-    """gh-580: motor_glider added to the canonical preset set."""
+    """gh-581: flying_wing added to the canonical preset set."""
     ids = {p.id for p in SEED_PRESETS}
     assert ids == {
         "trainer",
@@ -17,6 +17,7 @@ def test_seed_presets_exist():
         "stol_bush",
         "slope_soarer",
         "motor_glider",
+        "flying_wing",
     }
 
 
@@ -91,6 +92,118 @@ def test_motor_glider_description_cites_cs22_and_clarifies_ld_market_convention(
     assert "CS-22.337" in description
     assert "market convention" in description.lower()
     assert "L/D" in description
+
+
+def test_flying_wing_preset_defaults():
+    """gh-581: Nurflügler carries the review-verified defaults (Scholz + Anderson + Apogee + Lennon)."""
+    preset = next(p for p in SEED_PRESETS if p.id == "flying_wing")
+    assert preset.label == "Flying Wing (Nurflügler)"
+    est = preset.suggested_estimates
+    # Tighter SM corridor for tailless (range 5–10 %, default 7.5 %) — see #579
+    assert est.target_static_margin == 0.075
+    # Reflex/symmetric airfoils lose 9–15 % cl_max vs. cambered (Apogee)
+    assert est.cl_max == 1.0
+    # Sport-class g-limit for RC flying wings
+    assert est.g_limit == 5.0
+    # Powered default: most RC flying wings are EDF or prop
+    assert est.power_to_weight == 100.0
+    assert est.prop_efficiency == 0.65
+    # KPI polygon: high maneuver USP, mid cruise, low stall-safety
+    polygon = preset.target_polygon
+    assert polygon["stall_safety"] == 0.40
+    assert polygon["glide"] == 0.55
+    assert polygon["climb"] == 0.50
+    assert polygon["cruise"] == 0.65
+    assert polygon["maneuver"] == 0.75
+    assert polygon["wing_loading"] == 0.55
+    assert polygon["field_friendliness"] == 0.50
+
+
+def test_flying_wing_description_documents_washout_airfoil_pairing_correctly():
+    """gh-581 CRITICAL: the description must pair washout with airfoil family in the
+    CORRECT direction (3–5° symmetric / 5–9° reflex). The draft inverted it, and
+    if shipped reversed would cause tip-stall + nose-up pitch break on reflex
+    sections (the exact failure mode Northrop's LE slots were invented for)."""
+    preset = next(p for p in SEED_PRESETS if p.id == "flying_wing")
+    desc = preset.description
+    # Both ranges must appear in the description
+    assert "3–5°" in desc, "symmetric washout range missing"
+    assert "5–9°" in desc, "reflex washout range missing"
+    # The pairing must be present in the description text
+    assert "symmetric" in desc.lower()
+    assert "reflex" in desc.lower()
+    # Reflex sections need MORE washout (not less) — pin the wording so a future
+    # edit can't quietly re-invert the pairing without tripping this guard
+    assert "MORE washout" in desc or "more washout" in desc.lower()
+
+
+def test_flying_wing_description_documents_sweep_convention():
+    """gh-581 (Anderson review): sweep convention (LE vs c/4) must be explicit
+    in the description — they differ by ~5° for typical taper."""
+    preset = next(p for p in SEED_PRESETS if p.id == "flying_wing")
+    desc = preset.description
+    assert "LE-sweep" in desc or "leading-edge" in desc.lower()
+
+
+def test_flying_wing_description_documents_taper_hard_constraint():
+    """gh-581: taper 0.4 ≤ λ ≤ 0.6 is a HARD CONSTRAINT for tailless, not just
+    the default — Lennon + Sadraey converge on tip-stall risk above 4:1."""
+    preset = next(p for p in SEED_PRESETS if p.id == "flying_wing")
+    desc = preset.description
+    assert "0.4" in desc
+    assert "0.6" in desc
+    assert "HARD CONSTRAINT" in desc or "hard constraint" in desc.lower()
+
+
+def test_flying_wing_description_documents_pendulum_caveat():
+    """gh-581 (Apogee review): symmetric airfoil on a tailless wing requires
+    CG below the chord plane (dx/dα = 0 from the section alone, so the wing
+    is statically unstable without pendulum effect). Must be in the
+    description so users see the caveat in the UI."""
+    preset = next(p for p in SEED_PRESETS if p.id == "flying_wing")
+    desc = preset.description
+    assert "pendulum" in desc.lower()
+    assert "below" in desc.lower()
+    # dx/dα framework explicitly cited
+    assert "dx/dα" in desc
+
+
+def test_flying_wing_description_prefers_hybrid_strategy():
+    """gh-581 (Apogee review): hybrid strategy (moderate reflex + sweep + washout)
+    is the preferred default per Apogee — best modern flying wings. The
+    description must surface this as the recommended pick."""
+    preset = next(p for p in SEED_PRESETS if p.id == "flying_wing")
+    desc = preset.description
+    assert "HYBRID" in desc or "hybrid" in desc.lower()
+    assert "preferred" in desc.lower()
+
+
+def test_flying_wing_description_documents_stability_guard():
+    """gh-581: sweep<20° AND washout<3° simultaneously is rejected — the
+    stability guard must be documented in the description so users know
+    the rule before encountering it."""
+    preset = next(p for p in SEED_PRESETS if p.id == "flying_wing")
+    desc = preset.description
+    assert "sweep < 20°" in desc or "sweep<20°" in desc.lower().replace(" ", "")
+    assert "washout < 3°" in desc or "washout<3°" in desc.lower().replace(" ", "")
+
+
+def test_flying_wing_description_documents_yaw_oos():
+    """gh-581: yaw stability (drag rudders / split rudders / vertical fins) is
+    explicitly OOS — must be flagged in the description so users know to plan
+    yaw separately."""
+    preset = next(p for p in SEED_PRESETS if p.id == "flying_wing")
+    desc = preset.description
+    assert "yaw" in desc.lower()
+    assert "out of scope" in desc.lower() or "separate ticket" in desc.lower()
+
+
+def test_flying_wing_is_powered_by_default():
+    """gh-581: most RC flying wings are powered (EDF / prop). The preset
+    defaults to powered so downstream ``is_glider = p_to_w <= 0`` returns
+    False (V_max chip and other powered-only chips remain enabled)."""
+    preset = next(p for p in SEED_PRESETS if p.id == "flying_wing")
+    assert preset.suggested_estimates.power_to_weight > 0
 
 
 def test_each_preset_covers_all_seven_axes():

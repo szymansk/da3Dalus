@@ -25,6 +25,7 @@ class FlightProfileType(str, Enum):
     glider = "glider"
     motor_glider = "motor_glider"
     slope_soarer = "slope_soarer"
+    flying_wing = "flying_wing"
     custom = "custom"
 
 

@@ -26,6 +26,10 @@ export interface ComputationContext {
   x_np_m: number;
   target_static_margin: number;
   cg_agg_m: number | null;
+  // gh-581: tailless configuration flag — derived backend-side from geometry
+  // (no horizontal-tail wing). Used to surface the tailless UX banner and to
+  // gate tail-volume-related UI off when true.
+  is_tailless?: boolean;
   computed_at: string;
 }
 

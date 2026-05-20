@@ -49,7 +49,7 @@ def test_put_mission_objectives_persists(client_and_db):
 
 
 def test_get_mission_presets_returns_all_seeded(client_and_db):
-    """gh-580: eight seeded presets including the new motor_glider."""
+    """gh-581: nine seeded presets including the new flying_wing."""
     client, _ = client_and_db
     r = client.get("/mission-presets")
     assert r.status_code == 200
@@ -63,6 +63,7 @@ def test_get_mission_presets_returns_all_seeded(client_and_db):
         "stol_bush",
         "slope_soarer",
         "motor_glider",
+        "flying_wing",
     }
 
 
@@ -93,6 +94,23 @@ def test_get_mission_presets_exposes_motor_glider_payload(client_and_db):
     assert est["target_static_margin"] == 0.10
     assert est["cl_max"] == 1.4
     assert est["g_limit"] == 5.3
+
+
+def test_get_mission_presets_exposes_flying_wing_payload(client_and_db):
+    """gh-581: the Nurflügler preset surfaces via the public API with expected fields."""
+    client, _ = client_and_db
+    r = client.get("/mission-presets")
+    assert r.status_code == 200
+    preset = next(p for p in r.json() if p["id"] == "flying_wing")
+    assert preset["label"] == "Flying Wing (Nurflügler)"
+    est = preset["suggested_estimates"]
+    # Tighter SM corridor for tailless (5–10 % MAC, default 7.5 %) — see #579
+    assert est["target_static_margin"] == 0.075
+    # Reflex/symmetric penalty per Apogee (9–15 % cl_max loss)
+    assert est["cl_max"] == 1.0
+    assert est["g_limit"] == 5.0
+    assert est["power_to_weight"] == 100.0
+    assert est["prop_efficiency"] == 0.65
 
 
 def test_get_mission_kpis_returns_seven_axes(client_and_db):
