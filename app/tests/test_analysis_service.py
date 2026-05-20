@@ -965,3 +965,142 @@ class TestAnalyzeAlphaSweep:
         cp = result["characteristic_points"]
         assert cp["maximum_lift_coefficient_point"] is not None
         assert cp["trim_point_cm_equals_zero"] is not None
+
+
+# =========================================================================
+# gh-592: StripForcesResponse compute-parameter echo
+# =========================================================================
+
+
+class TestReynoldsFromAtmosphere:
+    """Reynolds helper used by the strip-forces response builder (gh-592)."""
+
+    def test_returns_zero_when_velocity_is_non_positive(self):
+        from app.services.analysis_service import _reynolds_from_atmosphere
+
+        assert _reynolds_from_atmosphere(0.0, 0.5, 0.0) == 0.0
+        assert _reynolds_from_atmosphere(-1.0, 0.5, 0.0) == 0.0
+
+    def test_returns_zero_when_cref_is_non_positive(self):
+        from app.services.analysis_service import _reynolds_from_atmosphere
+
+        assert _reynolds_from_atmosphere(15.0, 0.0, 0.0) == 0.0
+        assert _reynolds_from_atmosphere(15.0, -0.2, 0.0) == 0.0
+
+    def test_returns_positive_for_valid_inputs(self):
+        from app.services.analysis_service import _reynolds_from_atmosphere
+
+        # Sea-level air, V=15 m/s, c=0.5 m → Re ~ 5e5 (kinematic viscosity ~1.46e-5)
+        re = _reynolds_from_atmosphere(15.0, 0.5, 0.0)
+        assert re > 1e5
+        assert re < 1e7
+
+    def test_swallows_aerosandbox_import_failure(self, monkeypatch):
+        """If aerosandbox is unavailable, helper returns 0.0 rather than raise."""
+        import builtins as _builtins
+        from app.services import analysis_service as svc
+
+        real_import = _builtins.__import__
+
+        def fake_import(name, *args, **kwargs):
+            if name == "aerosandbox":
+                raise ImportError("simulated missing aerosandbox")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(_builtins, "__import__", fake_import)
+        assert svc._reynolds_from_atmosphere(15.0, 0.5, 0.0) == 0.0
+
+
+class TestBuildStripForcesResponse:
+    """The response builder echoes every compute input back to the frontend."""
+
+    def _resolved_op(self):
+        from app.schemas.aeroanalysisschema import OperatingPointSchema
+
+        return OperatingPointSchema(
+            name="level_cruise",
+            velocity=15.0,
+            alpha=2.5,
+            beta=0.0,
+            altitude=500.0,
+            xyz_ref=[0.25, 0.0, 0.0],
+        )
+
+    def _avl_result(self):
+        return {
+            "alpha": 2.5,
+            "beta": 0.0,
+            "mach": 0.044,
+            "Sref": 0.6,
+            "Cref": 0.25,
+            "Bref": 2.4,
+        }
+
+    def test_populates_every_gh592_field(self):
+        from app.services.analysis_service import _build_strip_forces_response
+
+        resp = _build_strip_forces_response(
+            avl_result=self._avl_result(),
+            surfaces=[],
+            resolved_op=self._resolved_op(),
+            wing_name="main_wing",
+        )
+
+        assert resp.velocity_mps == pytest.approx(15.0)
+        assert resp.altitude_m == pytest.approx(500.0)
+        assert resp.xyz_ref_m == [pytest.approx(0.25), pytest.approx(0.0), pytest.approx(0.0)]
+        assert resp.wing_name == "main_wing"
+        assert resp.aero_model == "AVL"
+        assert resp.operating_point_label == "level_cruise"
+        assert resp.computed_at is not None
+        # Reynolds > 0 for valid V and Cref
+        assert resp.reynolds is not None
+        assert resp.reynolds > 0.0
+
+    def test_echoes_existing_fields_from_avl_result(self):
+        from app.services.analysis_service import _build_strip_forces_response
+
+        resp = _build_strip_forces_response(
+            avl_result=self._avl_result(),
+            surfaces=[],
+            resolved_op=self._resolved_op(),
+            wing_name="main_wing",
+        )
+
+        assert resp.alpha == pytest.approx(2.5)
+        assert resp.beta == pytest.approx(0.0)
+        assert resp.mach == pytest.approx(0.044)
+        assert resp.sref == pytest.approx(0.6)
+        assert resp.cref == pytest.approx(0.25)
+        assert resp.bref == pytest.approx(2.4)
+
+    def test_operating_point_label_none_when_unnamed(self):
+        from app.schemas.aeroanalysisschema import OperatingPointSchema
+        from app.services.analysis_service import _build_strip_forces_response
+
+        op = OperatingPointSchema(
+            velocity=20.0,
+            alpha=0.0,
+            beta=0.0,
+            altitude=0.0,
+            xyz_ref=[0.0, 0.0, 0.0],
+        )
+        resp = _build_strip_forces_response(
+            avl_result=self._avl_result(),
+            resolved_op=op,
+            surfaces=[],
+            wing_name="ac",
+        )
+        assert resp.operating_point_label is None
+
+    def test_aero_model_is_pluggable(self):
+        from app.services.analysis_service import _build_strip_forces_response
+
+        resp = _build_strip_forces_response(
+            avl_result=self._avl_result(),
+            surfaces=[],
+            resolved_op=self._resolved_op(),
+            wing_name="main_wing",
+            aero_model="ASB",
+        )
+        assert resp.aero_model == "ASB"

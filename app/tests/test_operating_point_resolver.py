@@ -419,9 +419,15 @@ class TestStreamlineServiceUsesResolvedOp:
         op = _make_op()
 
         with ExitStack() as stack:
+            # gh-592: aircraft.name now feeds the StripForcesResponse wing_name
+            # echo, so the mock must expose a real string. Note: passing
+            # ``name="..."`` to MagicMock() sets the mock's repr name, not the
+            # ``.name`` attribute — we have to assign it after construction.
+            aircraft_mock = MagicMock(id=7)
+            aircraft_mock.name = "test_plane"
             stack.enter_context(patch.object(
                 analysis_service, "get_aeroplane_or_raise",
-                return_value=MagicMock(id=7),
+                return_value=aircraft_mock,
             ))
             stack.enter_context(patch.object(
                 analysis_service, "get_aeroplane_schema_or_raise",

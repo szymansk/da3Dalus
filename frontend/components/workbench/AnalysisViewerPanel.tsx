@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { Maximize2, Minimize2, Settings } from "lucide-react";
+import { Loader2, Maximize2, Minimize2, Settings } from "lucide-react";
 import { InfoChipRow } from "@/components/workbench/InfoChipRow";
 import type { AnalysisResult } from "@/hooks/useAnalysis";
 import type { StripForcesResult } from "@/hooks/useStripForces";
@@ -402,6 +402,42 @@ function buildSegmentMarkerTrace(
   };
 }
 
+// -- Trefftz Plane Compute-Parameter Annotation (gh-592) ------------------
+
+// gh-592: build the multi-line metadata text the Trefftz Plotly annotation
+// renders in the top-left of the figure. All compute parameters live INSIDE
+// the figure — no surrounding chrome. `<br>` is Plotly's line-break in
+// annotation text. Exported for direct unit testing.
+export function buildTrefftzAnnotationText(stripForces: StripForcesResult): string {
+  const fmtFixed = (value: number | undefined | null, digits: number, fallback = "—") =>
+    value == null || Number.isNaN(value) ? fallback : value.toFixed(digits);
+  const fmtExp = (value: number | undefined | null, digits: number, fallback = "—") =>
+    value == null || Number.isNaN(value) || value === 0 ? fallback : value.toExponential(digits);
+  const xyz = stripForces.xyz_ref_m ?? [];
+  const xyzStr = xyz.length >= 3
+    ? `(${fmtFixed(xyz[0], 3)}, ${fmtFixed(xyz[1], 3)}, ${fmtFixed(xyz[2], 3)}) m`
+    : "—";
+  const opLabel = stripForces.operating_point_label
+    ? `  ·  OP: ${stripForces.operating_point_label}`
+    : "";
+  const lines = [
+    `Flow      α = ${fmtFixed(stripForces.alpha, 2)}°  ·  ` +
+      `β = ${fmtFixed(stripForces.beta, 2)}°  ·  ` +
+      `V = ${fmtFixed(stripForces.velocity_mps, 1)} m/s  ·  ` +
+      `Mach = ${fmtFixed(stripForces.mach, 3)}  ·  ` +
+      `Alt = ${fmtFixed(stripForces.altitude_m, 0)} m`,
+    `Geometry  Wing: ${stripForces.wing_name ?? "—"}  ·  ` +
+      `S_ref = ${fmtFixed(stripForces.sref, 4)} m²  ·  ` +
+      `C_ref = ${fmtFixed(stripForces.cref, 4)} m  ·  ` +
+      `B_ref = ${fmtFixed(stripForces.bref, 4)} m`,
+    `Reference x_cg = ${xyzStr}  ·  ` +
+      `Re = ${fmtExp(stripForces.reynolds, 2)}  ·  ` +
+      `Model: ${stripForces.aero_model ?? "AVL"}`,
+    `Run       ${stripForces.computed_at ?? "—"}${opLabel}`,
+  ];
+  return lines.join("<br>");
+}
+
 // -- Trefftz Plane Combined Chart -----------------------------------------
 
 function TrefftzPlaneChart({
@@ -435,18 +471,15 @@ function TrefftzPlaneChart({
       }
 
       const shapes: PlotlyShape[] = [];
+      // gh-592: multi-line, structured compute-parameter readout. All metadata
+      // (flow / geometry / reference / run) stays INSIDE the Plotly figure \u2014
+      // no surrounding chrome (sidebar, header, footer).
       const annotations = [{
         x: 0.01, y: 0.98, xref: "paper", yref: "paper",
         xanchor: "left", yanchor: "top", showarrow: false,
+        align: "left",
         font: { color: "#71717A", family: "JetBrains Mono, monospace", size: 10 },
-        text: [
-          `\u03B1 = ${stripForces.alpha.toFixed(2)}\u00B0`,
-          `\u03B2 = ${stripForces.beta.toFixed(2)}\u00B0`,
-          `Mach = ${stripForces.mach.toFixed(3)}`,
-          `Sref = ${stripForces.sref.toFixed(4)} m\u00B2`,
-          `Cref = ${stripForces.cref.toFixed(4)} m`,
-          `Bref = ${stripForces.bref.toFixed(4)} m`,
-        ].join("  \u00B7  "),
+        text: buildTrefftzAnnotationText(stripForces),
       }];
 
       const layout = {
@@ -501,7 +534,8 @@ function TrefftzPlaneChart({
 
 // -- Tab Content Helpers --------------------------------------------------
 
-function TrefftzPlaneTabContent({
+// Exported for direct unit testing (gh-592).
+export function TrefftzPlaneTabContent({
   stripForcesLoading,
   stripForces,
   wingXSecs,
@@ -515,9 +549,15 @@ function TrefftzPlaneTabContent({
   if (stripForcesLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-muted-foreground">
-          Running AVL strip-force analysis...
-        </span>
+        <div
+          className="flex items-center gap-2 text-muted-foreground"
+          data-testid="trefftz-spinner"
+        >
+          <Loader2 size={14} className="animate-spin" />
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px]">
+            Running strip-force analysis…
+          </span>
+        </div>
       </div>
     );
   }

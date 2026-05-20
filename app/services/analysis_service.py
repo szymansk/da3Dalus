@@ -8,7 +8,7 @@ separated from HTTP concerns for better testability and reusability.
 import io
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.parse import urljoin
 from typing import Any, List, Optional
 from uuid import uuid4
@@ -1458,6 +1458,62 @@ async def get_three_view_image(db: Session, aeroplane_uuid) -> bytes:
         raise InternalError(message=f"Error generating diagram: {e}")
 
 
+def _reynolds_from_atmosphere(velocity: float, cref: float, altitude: float) -> float:
+    """Compute the chord-based Reynolds number for the strip-forces echo.
+
+    Uses Aerosandbox's standard atmosphere to get the kinematic viscosity at
+    ``altitude``. Returns ``0.0`` if any required input is non-positive or if
+    Aerosandbox is unavailable, so the strip-forces response can always be
+    built (gh-592).
+    """
+    if velocity <= 0.0 or cref <= 0.0:
+        return 0.0
+    try:
+        import aerosandbox as asb
+
+        nu = float(asb.Atmosphere(altitude=altitude).kinematic_viscosity())
+        if nu <= 0.0:
+            return 0.0
+        return float(velocity * cref / nu)
+    except Exception:  # pragma: no cover - defensive: aerosandbox missing
+        logger.exception("Failed to compute Reynolds number for strip-forces echo")
+        return 0.0
+
+
+def _build_strip_forces_response(
+    *,
+    avl_result: dict[str, Any],
+    surfaces: list[SurfaceStripForces],
+    resolved_op: OperatingPointSchema,
+    wing_name: str,
+    aero_model: str = "AVL",
+) -> StripForcesResponse:
+    """Construct the StripForcesResponse with full compute-parameter echo (gh-592)."""
+    cref = float(avl_result.get("Cref", 0) or 0)
+    reynolds = _reynolds_from_atmosphere(
+        velocity=float(resolved_op.velocity),
+        cref=cref,
+        altitude=float(resolved_op.altitude),
+    )
+    return StripForcesResponse(
+        alpha=avl_result.get("alpha", resolved_op.alpha),
+        beta=avl_result.get("beta", resolved_op.beta),
+        mach=avl_result.get("mach", 0),
+        sref=avl_result.get("Sref", 0),
+        cref=cref,
+        bref=avl_result.get("Bref", 0),
+        surfaces=surfaces,
+        velocity_mps=float(resolved_op.velocity),
+        altitude_m=float(resolved_op.altitude),
+        xyz_ref_m=[float(v) for v in resolved_op.xyz_ref],
+        wing_name=wing_name,
+        reynolds=reynolds,
+        aero_model=aero_model,
+        computed_at=datetime.now(timezone.utc),
+        operating_point_label=resolved_op.name,
+    )
+
+
 async def analyze_airplane_strip_forces(
     db: Session,
     aeroplane_uuid,
@@ -1544,14 +1600,11 @@ async def analyze_airplane_strip_forces(
                 )
             )
 
-        return StripForcesResponse(
-            alpha=result.get("alpha", resolved_op.alpha),
-            beta=result.get("beta", resolved_op.beta),
-            mach=result.get("mach", 0),
-            sref=result.get("Sref", 0),
-            cref=result.get("Cref", 0),
-            bref=result.get("Bref", 0),
+        return _build_strip_forces_response(
+            avl_result=result,
             surfaces=surfaces,
+            resolved_op=resolved_op,
+            wing_name=aircraft.name,
         )
     except ServiceException:
         raise
@@ -1637,14 +1690,11 @@ async def analyze_wing_strip_forces(
                 )
             )
 
-        return StripForcesResponse(
-            alpha=result.get("alpha", operating_point.alpha),
-            beta=result.get("beta", operating_point.beta),
-            mach=result.get("mach", 0),
-            sref=result.get("Sref", 0),
-            cref=result.get("Cref", 0),
-            bref=result.get("Bref", 0),
+        return _build_strip_forces_response(
+            avl_result=result,
             surfaces=surfaces,
+            resolved_op=operating_point,
+            wing_name=wing_name,
         )
     except Exception as e:
         logger.error(f"Error analyzing wing strip forces: {e}")
