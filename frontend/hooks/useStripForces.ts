@@ -40,6 +40,17 @@ export interface StripForcesResult {
   cref: number;
   bref: number;
   surfaces: SurfaceStripForces[];
+  // gh-592: full compute-parameter echo for the Trefftz-Plane Plotly annotation.
+  // Optional for backward-compatibility — the backend always populates them now,
+  // but old cached responses or unit-test stubs may omit them.
+  velocity_mps?: number;
+  altitude_m?: number;
+  xyz_ref_m?: number[];
+  wing_name?: string;
+  reynolds?: number;
+  aero_model?: "AVL" | "ASB";
+  computed_at?: string;
+  operating_point_label?: string | null;
 }
 
 export interface StripForcesParams {
