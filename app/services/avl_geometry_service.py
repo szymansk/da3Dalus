@@ -35,9 +35,21 @@ from app.schemas.avl_geometry import AvlGeometryResponse
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Regex for detecting NACA 4/5-digit airfoil names
+# Regex for detecting valid NACA 4-/5-digit airfoil names.
+#
+# Must be **integer** digit groups only — the NACA series itself is defined
+# with integer-valued parameters (e.g. NACA 2412, NACA 23012). AVL's ``NACA``
+# keyword expects an integer code and raises ``Read error`` on any decimal
+# value. Decimal-bearing names such as ``naca23013.5`` are custom airfoils
+# that exist as ``.dat`` files under ``components/airfoils/`` — they fall
+# through to file resolution (``_resolve_airfoil_reference`` → ``AFIL``)
+# instead of being passed verbatim to AVL's NACA generator.
+#
+# gh-588: the previous pattern ``\d{4,5}(?:\.\d+)?`` (from gh-409) over-matched
+# and routed ``naca23013.5`` into ``AvlNaca``, crashing AVL with
+# ``Read error on line N`` during ``Building surface: main_wing``.
 # ---------------------------------------------------------------------------
-_NACA_RE = _re.compile(r"^naca\s*(\d{4,5}(?:\.\d+)?)$", _re.IGNORECASE)
+_NACA_RE = _re.compile(r"^naca\s*(\d{4,5})$", _re.IGNORECASE)
 
 
 # ---------------------------------------------------------------------------
