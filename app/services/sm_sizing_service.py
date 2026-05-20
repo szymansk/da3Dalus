@@ -38,7 +38,7 @@ Convergence guard (spec-gate A6, gh-509):
 from __future__ import annotations
 
 import logging
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -732,6 +732,38 @@ def _htail_scale_option(
 # Apply helpers
 # ---------------------------------------------------------------------------
 
+def _ctx_dict(aircraft: Any) -> dict[str, Any]:
+    """Materialise ``aircraft.assumption_computation_context`` into a typed dict.
+
+    The SQLAlchemy column is declared with the legacy ``Column(JSON, ...)`` style
+    (no ``Mapped[]`` wrapper), so static type checkers infer
+    ``Column[Any] | dict | None`` for the attribute. Casting once at the ORM
+    boundary lets every helper downstream rely on a clean ``dict[str, Any]``
+    signature without per-call casts or ``# type: ignore`` clutter.
+    """
+    raw = aircraft.assumption_computation_context
+    if raw is None:
+        return {}
+    return cast(dict[str, Any], dict(cast(dict[str, Any], raw)))
+
+
+def _persist_ctx(aircraft: Any, ctx: dict[str, Any]) -> None:
+    """Write a mutated context dict back into the SQLAlchemy column.
+
+    The dict() copy in :func:`_ctx_dict` makes the ORM column and the local
+    ``ctx`` reference independent — re-assigning here is what actually persists
+    apply-loop counter updates. ``flag_modified`` is best-effort (mutable JSON
+    columns are flagged automatically on attribute assignment, but flushing it
+    explicitly is cheap insurance).
+    """
+    aircraft.assumption_computation_context = cast(Any, ctx)
+    try:
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(aircraft, "assumption_computation_context")
+    except Exception:
+        pass  # non-critical; the column will still be flushed on session commit
+
+
 def _find_aeroplane(db: Session, aeroplane_uuid: str):
     """Find AeroplaneModel by UUID string, return None if not found."""
     from app.models.aeroplanemodel import AeroplaneModel
@@ -810,7 +842,9 @@ def apply_wing_shift(
     if aircraft is None:
         raise ValueError(f"Aeroplane {aeroplane_uuid} not found")
 
-    ctx = aircraft.assumption_computation_context or {}
+    # Materialise the SQLAlchemy JSON column to a plain dict at the ORM boundary
+    # (see _ctx_dict for rationale — keeps helper signatures typed as `dict`).
+    ctx: dict[str, Any] = _ctx_dict(aircraft)
 
     # Validate configuration (apply variant rejects tailless — no htail lever)
     na, reason = _is_apply_not_applicable(ctx)
@@ -858,12 +892,9 @@ def apply_wing_shift(
 
     # Update convergence counter after successful DB write
     _update_convergence_counter(ctx, delta_sm)
-    # Flag the JSON column as modified so SQLAlchemy detects the in-place change
-    try:
-        from sqlalchemy.orm.attributes import flag_modified
-        flag_modified(aircraft, "assumption_computation_context")
-    except Exception:
-        pass  # non-critical; the column will still be flushed on session commit
+    # Persist the mutated copy back to the column (the _ctx_dict boundary copy
+    # means in-place mutations would otherwise be lost).
+    _persist_ctx(aircraft, ctx)
 
     # Trigger assumption recompute via geometry event
     _trigger_geometry_recompute(aircraft)
@@ -909,7 +940,9 @@ def apply_htail_scale(
     if aircraft is None:
         raise ValueError(f"Aeroplane {aeroplane_uuid} not found")
 
-    ctx = aircraft.assumption_computation_context or {}
+    # Materialise the SQLAlchemy JSON column to a plain dict at the ORM boundary
+    # (see _ctx_dict for rationale — keeps helper signatures typed as `dict`).
+    ctx: dict[str, Any] = _ctx_dict(aircraft)
 
     na, reason = _is_apply_not_applicable(ctx)
     if na:
@@ -962,12 +995,8 @@ def apply_htail_scale(
 
     # Update convergence counter after successful DB write
     _update_convergence_counter(ctx, delta_sm)
-    # Flag the JSON column as modified so SQLAlchemy detects the in-place change
-    try:
-        from sqlalchemy.orm.attributes import flag_modified
-        flag_modified(aircraft, "assumption_computation_context")
-    except Exception:
-        pass  # non-critical; the column will still be flushed on session commit
+    # Persist the mutated copy back to the column.
+    _persist_ctx(aircraft, ctx)
 
     _trigger_geometry_recompute(aircraft)
 
