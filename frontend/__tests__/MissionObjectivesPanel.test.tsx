@@ -24,6 +24,7 @@ vi.mock("@/hooks/useMissionPresets", () => ({
     data: [
       { id: "trainer", label: "Trainer", description: "", target_polygon: {}, axis_ranges: {}, suggested_estimates: { g_limit: 4, target_static_margin: 0.12, cl_max: 1.4, power_to_weight: 0.4, prop_efficiency: 0.6 } },
       { id: "sailplane", label: "Sailplane", description: "", target_polygon: {}, axis_ranges: {}, suggested_estimates: { g_limit: 2, target_static_margin: 0.18, cl_max: 1.2, power_to_weight: 0.0, prop_efficiency: 0.0 } },
+      { id: "slope_soarer", label: "Slope Soarer", description: "", target_polygon: {}, axis_ranges: {}, suggested_estimates: { g_limit: 6, target_static_margin: 0.08, cl_max: 1.1, power_to_weight: 0.0, prop_efficiency: 0.0 } },
     ],
     isLoading: false, error: null,
   }),
@@ -34,6 +35,8 @@ describe("MissionObjectivesPanel", () => {
     render(<MissionObjectivesPanel aeroplaneId="x"/>);
     expect(screen.getByRole("option", { name: /Trainer/ })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /Sailplane/ })).toBeInTheDocument();
+    // gh-582: slope_soarer surfaces in the selector once the backend seeds it.
+    expect(screen.getByRole("option", { name: /Slope Soarer/ })).toBeInTheDocument();
   });
 
   it("renders the field-performance section", () => {
