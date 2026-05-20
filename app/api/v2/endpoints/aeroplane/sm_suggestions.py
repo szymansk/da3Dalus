@@ -96,6 +96,10 @@ async def get_sm_suggestion(
         message=raw.get("message"),
         hint=raw.get("hint"),
         warnings=raw.get("warnings", []),
+        # gh-579: tailless_recommendation fields (None for conventional)
+        target_static_margin=raw.get("target_static_margin"),
+        sm_forward_cg=raw.get("sm_forward_cg"),
+        sm_aft_cg=raw.get("sm_aft_cg"),
     )
 
 
