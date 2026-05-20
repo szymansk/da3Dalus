@@ -52,6 +52,24 @@ logger = logging.getLogger(__name__)
 _SM_UNSTABLE_LIMIT = 0.02     # below → ERROR, block_save
 _SM_HEAVY_NOSE_WARN = 0.20    # above → overshoot suggestion
 
+# Tailless / flying-wing SM target (gh-579, Anderson + Apogee + Scholz + Lennon)
+# All four authorities converge on SM = 5–10% MAC for tailless designs.
+_SM_TAILLESS_TARGET = 0.075   # mid of 5–10% range
+_SM_TAILLESS_FWD_CG = 0.10    # forward CG limit @ SM = 10% MAC (CG far ahead of NP)
+_SM_TAILLESS_AFT_CG = 0.05    # aft CG limit @ SM = 5% MAC (CG approaching NP)
+
+# Below this absolute CG envelope width the configuration is unusable in practice
+# (e.g. a micro RC plank with MAC ≈ 80 mm has only 4 mm of CG travel).
+_SM_TAILLESS_MIN_ENVELOPE_M = 0.005  # 5 mm
+
+_SM_TAILLESS_MESSAGE = (
+    "Tailless/flying-wing — target SM 5–10 % MAC. "
+    "Tail-volume sizing not applicable; sweep + washout (or reflex airfoil) "
+    "deliver pitch trim (dx/dα > 0). "
+    "CG envelope ≈ ½ as wide as conventional — keep mass-fixed items "
+    "(battery/motor/RX/servos) on the CG axis."
+)
+
 # Roskam Vol I §8.1: downwash factor (1 - dε/dα) for conventional tail
 _DE_DA_FACTOR = 0.6   # (1 - dε/dα), typical for conventional aft tail
 
@@ -150,11 +168,16 @@ def _dsm_dsh(ctx: dict) -> float:
 # ---------------------------------------------------------------------------
 
 def _is_not_applicable(ctx: dict) -> tuple[bool, str]:
-    """Return (True, reason) when SM suggestion is not applicable for this config."""
+    """Return (True, reason) when SM suggestion is not applicable for this config.
+
+    NOTE (gh-579): is_tailless is NOT in this guard — tailless aircraft return a
+    distinct `tailless_recommendation` (SM 5–10% MAC) handled by
+    `_tailless_recommendation()`. is_tailless is still not applicable for the
+    *apply* operations (wing_shift / htail_scale) because the geometry levers
+    require a horizontal tail — see `_is_apply_not_applicable`.
+    """
     if ctx.get("is_canard"):
         return True, "Canard configuration — SM sizing not applicable (no aft-tail lever)."
-    if ctx.get("is_tailless"):
-        return True, "Tailless/flying-wing configuration — SM sizing not applicable."
     if ctx.get("is_boxwing"):
         return True, "Boxwing configuration — SM sizing not applicable (complex NP coupling)."
     if ctx.get("is_tandem"):
@@ -173,6 +196,62 @@ def _is_not_applicable(ctx: dict) -> tuple[bool, str]:
             "S_ref is missing or zero — run analysis to compute MAC/S_ref first."
         )
     return False, ""
+
+
+def _is_apply_not_applicable(ctx: dict) -> tuple[bool, str]:
+    """Return (True, reason) when SM *apply* operations are not applicable.
+
+    Apply (wing_shift / htail_scale) needs a horizontal tail. Tailless aircraft
+    cannot use either lever — sizing is read-only for them.
+    See `_is_not_applicable` for the wider suggestion-path guard.
+    """
+    if ctx.get("is_tailless"):
+        return True, (
+            "Tailless/flying-wing — SM apply operations (wing_shift/htail_scale) "
+            "not applicable (no horizontal tail). Adjust CG location instead."
+        )
+    return _is_not_applicable(ctx)
+
+
+def _tailless_recommendation(ctx: dict) -> dict[str, Any]:
+    """Build the tailless SM-sizing recommendation payload (gh-579).
+
+    Anderson + Apogee + Scholz + Lennon converge on SM = 5–10 % MAC for
+    tailless / flying-wing configurations. Returns:
+      target_static_margin = 0.075  (mid of range)
+      sm_forward_cg        = 0.10   (forward CG limit, CG far ahead of NP)
+      sm_aft_cg            = 0.05   (aft CG limit, CG approaching NP)
+
+    A WARNING is logged when the absolute CG envelope (sm_fwd − sm_aft) × MAC
+    falls below `_SM_TAILLESS_MIN_ENVELOPE_M` (5 mm).
+    """
+    mac_m_raw = ctx.get("mac_m")
+    mac_m: float | None = (
+        float(mac_m_raw) if mac_m_raw is not None and float(mac_m_raw) > 0 else None
+    )
+
+    # Narrow-envelope guard (spec gh-579): warn when computed absolute CG envelope
+    # (0.10 − 0.05) × MAC < 5 mm — physically unusable on tiny RC planks.
+    if mac_m is not None:
+        envelope_m = (_SM_TAILLESS_FWD_CG - _SM_TAILLESS_AFT_CG) * mac_m
+        if envelope_m < _SM_TAILLESS_MIN_ENVELOPE_M:
+            logger.warning(
+                "Tailless SM recommendation: narrow CG envelope (%.1f mm < %.1f mm). "
+                "MAC=%.3f m yields physically unusable CG travel — consider a longer chord.",
+                envelope_m * 1000.0,
+                _SM_TAILLESS_MIN_ENVELOPE_M * 1000.0,
+                mac_m,
+            )
+
+    return {
+        "status": "tailless_recommendation",
+        "options": [],
+        "target_static_margin": _SM_TAILLESS_TARGET,
+        "sm_forward_cg": _SM_TAILLESS_FWD_CG,
+        "sm_aft_cg": _SM_TAILLESS_AFT_CG,
+        "message": _SM_TAILLESS_MESSAGE,
+        "hint": _SM_TAILLESS_MESSAGE,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -246,6 +325,12 @@ def suggest_corrections(
       mass_coupling_warning: str  (always present when wing_shift option is returned)
       message: str  (present for not_applicable / error)
     """
+    # --- Tailless / flying-wing recommendation (gh-579) --------------------
+    # SM is applicable to tailless aircraft (Anderson + Apogee + Scholz +
+    # Lennon convergence on 5–10% MAC). Only tail-volume sizing is N/A.
+    if ctx.get("is_tailless"):
+        return _tailless_recommendation(ctx)
+
     # --- Guard: configuration not supported --------------------------------
     na, reason = _is_not_applicable(ctx)
     if na:
@@ -727,12 +812,12 @@ def apply_wing_shift(
 
     ctx = aircraft.assumption_computation_context or {}
 
-    # Validate configuration
-    na, reason = _is_not_applicable(ctx)
+    # Validate configuration (apply variant rejects tailless — no htail lever)
+    na, reason = _is_apply_not_applicable(ctx)
     if na:
         raise ValueError(f"not_applicable: {reason}")
 
-    # mac_m and s_ref_m2 are guaranteed valid by _is_not_applicable guard above
+    # mac_m and s_ref_m2 are guaranteed valid by _is_apply_not_applicable guard above
     mac_m: float = float(ctx["mac_m"])
     sm_at_aft: float | None = ctx.get("sm_at_aft")
     x_np_m: float | None = ctx.get("x_np_m")
@@ -826,11 +911,11 @@ def apply_htail_scale(
 
     ctx = aircraft.assumption_computation_context or {}
 
-    na, reason = _is_not_applicable(ctx)
+    na, reason = _is_apply_not_applicable(ctx)
     if na:
         raise ValueError(f"not_applicable: {reason}")
 
-    # mac_m and s_ref_m2 are guaranteed valid by _is_not_applicable guard above
+    # mac_m and s_ref_m2 are guaranteed valid by _is_apply_not_applicable guard above
     mac_m: float = float(ctx["mac_m"])
     sm_at_aft: float | None = ctx.get("sm_at_aft")
     x_np_m: float | None = ctx.get("x_np_m")

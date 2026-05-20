@@ -37,13 +37,17 @@ class SmOption(BaseModel):
 class SmSuggestionResponse(BaseModel):
     """Response from GET /aeroplanes/{uuid}/sm-suggestion."""
 
-    status: Literal["ok", "suggestion", "error", "not_applicable"] = Field(
+    status: Literal[
+        "ok", "suggestion", "error", "not_applicable", "tailless_recommendation"
+    ] = Field(
         ...,
         description=(
             "ok: SM already in target range [target_sm, 0.20]. "
             "suggestion: SM deviates, options provided. "
             "error: SM < 0.02 (unstable), block_save=True. "
-            "not_applicable: canard/tailless/no-analysis."
+            "not_applicable: canard/boxwing/tandem/no-analysis. "
+            "tailless_recommendation: tailless/flying-wing — SM 5–10 % MAC "
+            "(gh-579, Anderson + Apogee + Scholz + Lennon)."
         ),
     )
     options: list[SmOption] = Field(
@@ -72,6 +76,28 @@ class SmSuggestionResponse(BaseModel):
     warnings: list[str] = Field(
         default_factory=list,
         description="Additional advisory warnings (e.g. negative S_H, forward-CG clip).",
+    )
+    # gh-579: tailless_recommendation fields (None for conventional aircraft).
+    target_static_margin: float | None = Field(
+        None,
+        description=(
+            "Tailless recommendation only (gh-579): target SM, e.g. 0.075 "
+            "(mid of 5–10% MAC range per Anderson/Apogee/Scholz/Lennon)."
+        ),
+    )
+    sm_forward_cg: float | None = Field(
+        None,
+        description=(
+            "Tailless recommendation only (gh-579): SM at the forward CG limit "
+            "(CG far ahead of NP), typically 0.10 (10% MAC)."
+        ),
+    )
+    sm_aft_cg: float | None = Field(
+        None,
+        description=(
+            "Tailless recommendation only (gh-579): SM at the aft CG limit "
+            "(CG approaching NP), typically 0.05 (5% MAC)."
+        ),
     )
 
 

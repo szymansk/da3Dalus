@@ -265,6 +265,36 @@ describe("Info Chip Row", () => {
     expect(mutate).not.toHaveBeenCalled();
   });
 
+  // gh-579: SM chip must render for tailless aircraft.
+  // Anderson + Apogee + Scholz + Lennon converge on SM = 5–10% MAC for tailless;
+  // backend now returns target_static_margin = 0.075 for tailless configurations
+  // (formerly returned status="not_applicable", which suppressed the chip target).
+  // Tailless and glider often co-occur for unpowered flying wings, so we
+  // verify the chip renders correctly with both flags set.
+  it("renders SM chip for tailless glider with target_static_margin=0.075", async () => {
+    (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: {
+        is_glider: true,
+        v_min_sink_mps: 13.2,
+        reynolds: 230000,
+        mac_m: 0.21,
+        x_np_m: 0.085,
+        target_static_margin: 0.075, // 7.5% MAC — tailless recommendation
+        cg_agg_m: 0.078,
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
+    render(<InfoChipRow aeroplaneId="42" cgAero={0.078} />);
+
+    const smChip = screen.getByRole("group", { name: /^SM:/ });
+    expect(smChip).toBeInTheDocument();
+    // 0.075 → 8% (rounds to 0 decimals via .toFixed(0))
+    expect(smChip.textContent).toMatch(/8%/);
+  });
+
   // gh-540: aria-label is humanized (no literal underscores spoken).
   it("humanizes underscores in aria-label for screen readers", async () => {
     (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({

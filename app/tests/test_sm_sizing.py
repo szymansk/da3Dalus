@@ -159,19 +159,97 @@ class TestSuggestCorrections:
         result = suggest(ctx, target_sm=0.10, at_cg="aft")
         assert result["status"] == "not_applicable"
 
-    def test_tailless_returns_not_applicable(self):
-        """Tailless configuration → not_applicable."""
+    def test_tailless_returns_recommendation(self):
+        """Tailless configuration → tailless_recommendation with SM = 5-10% MAC.
+
+        gh-579: SM is fully applicable to tailless aircraft (Anderson, Apogee,
+        Scholz, Lennon all converge on 5-10% MAC). Only tail-volume-coefficient
+        sizing is not applicable. Target SM = 0.075 (mid of 5-10%), fwd CG @
+        SM=0.10, aft CG @ SM=0.05.
+        """
         suggest = _import_service()
         ctx = _ctx(is_tailless=True)
         result = suggest(ctx, target_sm=0.10, at_cg="aft")
+        assert result["status"] == "tailless_recommendation"
+        assert result["target_static_margin"] == pytest.approx(0.075)
+        assert result["sm_forward_cg"] == pytest.approx(0.10)
+        assert result["sm_aft_cg"] == pytest.approx(0.05)
+        # Message must mention the 5–10% range, sweep+washout/reflex, and CG envelope
+        msg = result["message"]
+        assert "5" in msg and "10" in msg
+        assert "tail-volume" in msg.lower() or "tail volume" in msg.lower()
+
+    def test_tailless_unswept_returns_recommendation(self):
+        """Unswept tailless (plank / Marske-style) still returns a recommendation.
+
+        gh-579: do NOT gate on sweep — a plank with reflex airfoil + washout
+        is just as valid as a swept flying-wing. SM sizing remains applicable.
+        """
+        suggest = _import_service()
+        # Unswept tailless: still tailless, no sweep info needed
+        ctx = _ctx(is_tailless=True, x_np_m=0.10, mac_m=0.20)
+        result = suggest(ctx, target_sm=0.075, at_cg="aft")
+        assert result["status"] == "tailless_recommendation"
+        assert result["target_static_margin"] == pytest.approx(0.075)
+
+    def test_canard_still_returns_not_applicable(self):
+        """Regression guard: canard branch remains not_applicable (gh-579 scope only is_tailless)."""
+        suggest = _import_service()
+        ctx = _ctx(is_canard=True)
+        result = suggest(ctx, target_sm=0.10, at_cg="aft")
         assert result["status"] == "not_applicable"
 
-    def test_boxwing_returns_not_applicable(self):
-        """Boxwing configuration → not_applicable."""
+    def test_boxwing_still_returns_not_applicable(self):
+        """Regression guard: boxwing branch remains not_applicable (gh-579 scope only is_tailless)."""
         suggest = _import_service()
         ctx = _ctx(is_boxwing=True)
         result = suggest(ctx, target_sm=0.10, at_cg="aft")
         assert result["status"] == "not_applicable"
+
+    def test_tailless_narrow_envelope_logs_warning(self, monkeypatch):
+        """When (0.10 - 0.05) × MAC < 5 mm, the service logs a warning.
+
+        gh-579: protects against numerically valid but physically unusable
+        CG ranges (e.g. micro RC plank with MAC=80 mm → envelope=4 mm).
+        """
+        import app.services.sm_sizing_service as svc
+
+        captured: list[str] = []
+        original_warning = svc.logger.warning
+
+        def _spy_warning(msg, *args, **kwargs):
+            captured.append(msg % args if args else msg)
+            return original_warning(msg, *args, **kwargs)
+
+        monkeypatch.setattr(svc.logger, "warning", _spy_warning)
+        # MAC = 0.080 m → envelope = (0.10 - 0.05) * 0.080 = 0.004 m = 4 mm < 5 mm
+        ctx = _ctx(is_tailless=True, mac_m=0.080, x_np_m=0.05, cg_aft_m=0.045)
+        result = svc.suggest_corrections(ctx, target_sm=0.075, at_cg="aft")
+        assert result["status"] == "tailless_recommendation"
+        assert any(
+            "envelope" in m.lower() or "narrow" in m.lower() or "5 mm" in m.lower()
+            for m in captured
+        ), f"Expected narrow-envelope warning. Got: {captured}"
+
+    def test_tailless_wide_envelope_no_warning(self, monkeypatch):
+        """Regression guard: a reasonable-MAC tailless does NOT trigger the warning."""
+        import app.services.sm_sizing_service as svc
+
+        captured: list[str] = []
+        original_warning = svc.logger.warning
+
+        def _spy_warning(msg, *args, **kwargs):
+            captured.append(msg % args if args else msg)
+            return original_warning(msg, *args, **kwargs)
+
+        monkeypatch.setattr(svc.logger, "warning", _spy_warning)
+        # MAC = 0.30 m → envelope = 0.05 * 0.30 = 0.015 m = 15 mm  ≥ 5 mm
+        ctx = _ctx(is_tailless=True, mac_m=0.30)
+        svc.suggest_corrections(ctx, target_sm=0.075, at_cg="aft")
+        assert not any(
+            "envelope" in m.lower() and ("narrow" in m.lower() or "5 mm" in m.lower())
+            for m in captured
+        ), f"Did not expect narrow-envelope warning. Got: {captured}"
 
     def test_predicted_sm_matches_target(self):
         """predicted_sm of each option must equal target_sm (within 2%)."""
