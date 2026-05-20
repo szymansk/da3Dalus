@@ -191,21 +191,49 @@ class TestBuildAirfoilNode:
         assert result.digits == "0012"
 
 
-    def test_naca_decimal_thickness(self):
-        from app.avl.geometry import AvlNaca
+    def test_naca_decimal_thickness_falls_through_to_file(self):
+        """gh-588 (regression of gh-409): a decimal in a NACA-style name is NOT
+        a valid 4-/5-digit NACA designation. AVL's ``NACA`` keyword expects an
+        integer code (e.g. 2412, 23012) and crashes with ``Read error`` on a
+        decimal value. The generator must therefore route ``naca23013.5`` to
+        the file-resolution branch (``AFIL <path/naca23013.5.dat>``), which
+        AVL accepts.
+        """
+        from app.avl.geometry import AvlAfile
         from app.services.avl_geometry_service import _build_airfoil_node
 
         result = _build_airfoil_node("naca23013.5")
-        assert isinstance(result, AvlNaca)
-        assert result.digits == "23013.5"
+        assert isinstance(result, AvlAfile), (
+            "Decimal-named airfoils must resolve to AFIL so AVL can parse the "
+            "geometry; emitting NACA with a decimal designation triggers a "
+            "Read error on the AVL side (gh-588)."
+        )
+        assert result.filepath.endswith("naca23013.5.dat")
 
-    def test_naca_decimal_thickness_case_insensitive(self):
-        from app.avl.geometry import AvlNaca
+    def test_naca_decimal_thickness_case_insensitive_falls_through_to_file(self):
+        """gh-588: same as above with upper-case spelling."""
+        from app.avl.geometry import AvlAfile
         from app.services.avl_geometry_service import _build_airfoil_node
 
         result = _build_airfoil_node("NACA23013.5")
-        assert isinstance(result, AvlNaca)
-        assert result.digits == "23013.5"
+        assert isinstance(result, AvlAfile)
+        assert result.filepath.endswith("naca23013.5.dat")
+
+    def test_generated_avl_uses_afil_not_naca_for_decimal_airfoil(self):
+        """gh-588 end-to-end: the serialised ``.avl`` content for a decimal-named
+        airfoil must contain ``AFIL <path>`` and must NOT contain a bare
+        ``NACA\\n23013.5`` line that AVL would reject.
+        """
+        from app.services.avl_geometry_service import _build_airfoil_node
+
+        node = _build_airfoil_node("naca23013.5")
+        serialised = repr(node)
+        assert "AFIL" in serialised
+        assert "naca23013.5.dat" in serialised
+        # The bare decimal designation must not appear on its own line — AVL's
+        # NACA-keyword parser would choke on it.
+        assert "NACA\n23013.5" not in serialised
+        assert "23013.5\n" != serialised  # not a stand-alone integer line
 
 
 class TestBuildGeometryEdgeCases:
