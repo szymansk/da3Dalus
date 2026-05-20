@@ -68,7 +68,7 @@ def test_upsert_creates_then_updates(client_and_db):
 
 
 def test_list_mission_presets_returns_all_seeded(client_and_db):
-    """gh-582: slope_soarer is in the seeded library alongside the original six."""
+    """gh-580: motor_glider is in the seeded library alongside the original seven."""
     _, SessionLocal = client_and_db
     with SessionLocal() as db:
         presets = list_mission_presets(db)
@@ -81,6 +81,7 @@ def test_list_mission_presets_returns_all_seeded(client_and_db):
         "acro_3d",
         "stol_bush",
         "slope_soarer",
+        "motor_glider",
     }
 
 
@@ -186,6 +187,40 @@ def test_upsert_slope_soarer_writes_unpowered_estimates(client_and_db):
         assert rows["cl_max"].estimate_value == 1.1
         assert rows["power_to_weight"].estimate_value == 0.0
         assert rows["prop_efficiency"].estimate_value == 0.0
+
+
+def test_upsert_motor_glider_writes_powered_estimates(client_and_db):
+    """gh-580: switching to motor_glider writes power_to_weight=100 so downstream
+    ``is_glider = p_to_w <= 0`` correctly treats it as a powered aircraft
+    (V_max chip and other powered-only outputs remain enabled)."""
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        from app.tests.conftest import make_aeroplane
+        from app.services.design_assumptions_service import seed_defaults
+        from app.models.aeroplanemodel import DesignAssumptionModel
+
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        db.commit()
+        aircraft_id = aeroplane.id
+
+    with SessionLocal() as db:
+        upsert_mission_objective(db, aircraft_id, _make_objective(mission_type="motor_glider"))
+        db.commit()
+
+    with SessionLocal() as db:
+        rows = {
+            r.parameter_name: r
+            for r in db.query(DesignAssumptionModel).filter_by(aeroplane_id=aircraft_id).all()
+        }
+        # motor_glider preset values from app/services/mission_preset_seed.py
+        assert rows["g_limit"].estimate_value == 5.3
+        assert rows["target_static_margin"].estimate_value == 0.10
+        assert rows["cl_max"].estimate_value == 1.4
+        assert rows["power_to_weight"].estimate_value == 100.0
+        assert rows["prop_efficiency"].estimate_value == 0.65
+        # Critical: powered → is_glider=False downstream
+        assert rows["power_to_weight"].estimate_value > 0
 
 
 def test_upsert_no_change_in_mission_type_does_not_rewrite_estimates(client_and_db):
