@@ -293,3 +293,44 @@ class TestSectionDensityNspanBump:
         result = optimise_surface_spacing(surface, config)
         # Real min_gap is 1.0, span is 1.0 → bump not required; stay at 20.
         assert result.n_span == 20
+
+
+class TestRequiredNspanHelper:
+    """Direct coverage of the early-return branches in
+    ``_required_nspan_for_section_density`` so SonarQube ``new_coverage`` lands
+    above the 80 % gate. The main paths are exercised end-to-end by
+    ``TestSectionDensityNspanBump`` above; these tests pin the corner cases.
+    """
+
+    def test_returns_zero_for_empty_surface(self):
+        from app.avl.spacing import _required_nspan_for_section_density
+
+        surface = AvlSurface(name="W", n_chord=12, c_space=1.0, sections=[])
+        assert _required_nspan_for_section_density(surface) == 0
+
+    def test_returns_zero_for_single_section(self):
+        from app.avl.spacing import _required_nspan_for_section_density
+
+        surface = AvlSurface(
+            name="W",
+            n_chord=12,
+            c_space=1.0,
+            sections=[AvlSection(xyz_le=(0, 0, 0), chord=0.2)],
+        )
+        assert _required_nspan_for_section_density(surface) == 0
+
+    def test_returns_zero_for_zero_span_surface(self):
+        """All sections at the same Y (e.g. a rudder declared as two coincident
+        sections) → no spanwise constraint to satisfy."""
+        from app.avl.spacing import _required_nspan_for_section_density
+
+        surface = AvlSurface(
+            name="rudder",
+            n_chord=12,
+            c_space=1.0,
+            sections=[
+                AvlSection(xyz_le=(0, 0.0, 0), chord=0.2),
+                AvlSection(xyz_le=(0, 0.0, 0.3), chord=0.18),
+            ],
+        )
+        assert _required_nspan_for_section_density(surface) == 0
