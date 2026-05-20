@@ -1,4 +1,5 @@
 """Tests for app.services.mission_objective_service (gh-546)."""
+
 from __future__ import annotations
 
 from app.schemas.mission_objective import MissionObjective
@@ -13,11 +14,17 @@ from app.tests.conftest import make_aeroplane
 def _make_objective(**overrides):
     payload = dict(
         mission_type="trainer",
-        target_cruise_mps=18.0, target_stall_safety=1.8,
-        target_maneuver_n=3.0, target_glide_ld=12.0,
-        target_climb_energy=22.0, target_wing_loading_n_m2=412.0,
-        target_field_length_m=50.0, available_runway_m=50.0,
-        runway_type="grass", t_static_N=18.0, takeoff_mode="runway",
+        target_cruise_mps=18.0,
+        target_stall_safety=1.8,
+        target_maneuver_n=3.0,
+        target_glide_ld=12.0,
+        target_climb_energy=22.0,
+        target_wing_loading_n_m2=412.0,
+        target_field_length_m=50.0,
+        available_runway_m=50.0,
+        runway_type="grass",
+        t_static_N=18.0,
+        takeoff_mode="runway",
     )
     payload.update(overrides)
     return MissionObjective(**payload)
@@ -60,12 +67,21 @@ def test_upsert_creates_then_updates(client_and_db):
         assert obj.target_cruise_mps == 25.0
 
 
-def test_list_mission_presets_returns_six_seeded(client_and_db):
+def test_list_mission_presets_returns_all_seeded(client_and_db):
+    """gh-582: slope_soarer is in the seeded library alongside the original six."""
     _, SessionLocal = client_and_db
     with SessionLocal() as db:
         presets = list_mission_presets(db)
         ids = {p.id for p in presets}
-    assert ids == {"trainer", "sport", "sailplane", "wing_racer", "acro_3d", "stol_bush"}
+    assert ids == {
+        "trainer",
+        "sport",
+        "sailplane",
+        "wing_racer",
+        "acro_3d",
+        "stol_bush",
+        "slope_soarer",
+    }
 
 
 def test_upsert_changes_mission_type_writes_suggested_estimates(client_and_db):
@@ -88,8 +104,7 @@ def test_upsert_changes_mission_type_writes_suggested_estimates(client_and_db):
     with SessionLocal() as db:
         rows = {
             r.parameter_name: r
-            for r in db.query(DesignAssumptionModel)
-            .filter_by(aeroplane_id=aircraft_id).all()
+            for r in db.query(DesignAssumptionModel).filter_by(aeroplane_id=aircraft_id).all()
         }
         # Sailplane preset values from app/services/mission_preset_seed.py
         assert rows["g_limit"].estimate_value == 5.3
@@ -135,11 +150,42 @@ def test_upsert_does_not_touch_calculated_value_when_changing_mission(client_and
             .one()
         )
         # estimate_value was overwritten by the preset
-        assert cl_max_row.estimate_value == 1.3   # sailplane preset
+        assert cl_max_row.estimate_value == 1.3  # sailplane preset
         # calculated_value preserved
         assert cl_max_row.calculated_value == 1.62
         # active_source preserved (CALCULATED takes precedence per existing convention)
         assert cl_max_row.active_source == "CALCULATED"
+
+
+def test_upsert_slope_soarer_writes_unpowered_estimates(client_and_db):
+    """gh-582: switching to slope_soarer writes power_to_weight=0 so downstream
+    is_glider auto-detection sees an unpowered aircraft."""
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        from app.tests.conftest import make_aeroplane
+        from app.services.design_assumptions_service import seed_defaults
+        from app.models.aeroplanemodel import DesignAssumptionModel
+
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        db.commit()
+        aircraft_id = aeroplane.id
+
+    with SessionLocal() as db:
+        upsert_mission_objective(db, aircraft_id, _make_objective(mission_type="slope_soarer"))
+        db.commit()
+
+    with SessionLocal() as db:
+        rows = {
+            r.parameter_name: r
+            for r in db.query(DesignAssumptionModel).filter_by(aeroplane_id=aircraft_id).all()
+        }
+        # slope_soarer preset values from app/services/mission_preset_seed.py
+        assert rows["g_limit"].estimate_value == 6.0
+        assert rows["target_static_margin"].estimate_value == 0.08
+        assert rows["cl_max"].estimate_value == 1.1
+        assert rows["power_to_weight"].estimate_value == 0.0
+        assert rows["prop_efficiency"].estimate_value == 0.0
 
 
 def test_upsert_no_change_in_mission_type_does_not_rewrite_estimates(client_and_db):
@@ -182,4 +228,4 @@ def test_upsert_no_change_in_mission_type_does_not_rewrite_estimates(client_and_
             .filter_by(aeroplane_id=aircraft_id, parameter_name="g_limit")
             .one()
         )
-        assert row.estimate_value == 4.5   # user override preserved
+        assert row.estimate_value == 4.5  # user override preserved

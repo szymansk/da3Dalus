@@ -24,6 +24,7 @@ class FlightProfileType(str, Enum):
     three_d = "3d"
     glider = "glider"
     motor_glider = "motor_glider"
+    slope_soarer = "slope_soarer"
     custom = "custom"
 
 
@@ -144,7 +145,10 @@ class Goals(BaseModel):
 
     @model_validator(mode="after")
     def validate_speed_relationship(self):
-        if self.max_level_speed_mps is not None and self.max_level_speed_mps <= self.cruise_speed_mps:
+        if (
+            self.max_level_speed_mps is not None
+            and self.max_level_speed_mps <= self.cruise_speed_mps
+        ):
             raise ValueError("max_level_speed_mps must be greater than cruise_speed_mps.")
         return self
 
@@ -187,7 +191,10 @@ class Handling(BaseModel):
 
     @model_validator(mode="after")
     def apply_agile_default_roll_rate(self):
-        if self.stability_preference == StabilityPreference.agile and self.roll_rate_target_dps is None:
+        if (
+            self.stability_preference == StabilityPreference.agile
+            and self.roll_rate_target_dps is None
+        ):
             self.roll_rate_target_dps = DEFAULT_AGILE_ROLL_RATE_DPS
         return self
 

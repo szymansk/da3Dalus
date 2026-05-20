@@ -190,4 +190,40 @@ SEED_PRESETS: list[MissionPreset] = [
             prop_efficiency=0.7,
         ),
     ),
+    MissionPreset(
+        id="slope_soarer",
+        label="Slope Soarer",
+        description=(
+            "Unpowered RC slope soarer — higher wing loading (50–150 g/dm²) "
+            "than thermal gliders for stable penetration in gusty ridge lift. "
+            "Hand-launched, aerobatic-capable, low dihedral (0–2°) for roll "
+            "responsiveness. Airfoil hints: RG14, RG15, NACA 0012, HN-354, "
+            "HN-1033, SD7037. AR range 5–12 covers sport through F3F racers."
+        ),
+        target_polygon={
+            "stall_safety": 0.45,
+            "glide": 0.50,
+            "climb": 0.30,
+            "cruise": 0.75,
+            "maneuver": 0.80,
+            "wing_loading": 0.70,
+            "field_friendliness": 0.85,
+        },
+        axis_ranges={
+            "stall_safety": (1.3, 2.0),
+            "glide": (10.0, 25.0),
+            "climb": (5.0, 25.0),
+            "cruise": (15.0, 45.0),
+            "maneuver": (5.0, 8.0),
+            "wing_loading": (50.0, 150.0),
+            "field_friendliness": (3.0, 100.0),
+        },
+        suggested_estimates=MissionPresetEstimates(
+            g_limit=6.0,
+            target_static_margin=0.08,
+            cl_max=1.1,
+            power_to_weight=0.0,
+            prop_efficiency=0.0,
+        ),
+    ),
 ]

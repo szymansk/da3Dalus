@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.flight_profile import RCFlightProfileCreate
+from app.schemas.flight_profile import FlightProfileType, RCFlightProfileCreate
 
 
 def valid_profile_payload() -> dict:
@@ -59,3 +59,17 @@ def test_schema_rejects_turn_n_above_bank_limit():
     payload["constraints"]["max_bank_deg"] = 45
     with pytest.raises(ValidationError):
         RCFlightProfileCreate.model_validate(payload)
+
+
+def test_flight_profile_type_includes_slope_soarer():
+    """gh-582: slope_soarer is a first-class profile type."""
+    assert FlightProfileType.slope_soarer == "slope_soarer"
+    assert FlightProfileType("slope_soarer") is FlightProfileType.slope_soarer
+
+
+def test_schema_accepts_slope_soarer_profile_type():
+    """gh-582: payload with type='slope_soarer' validates successfully."""
+    payload = valid_profile_payload()
+    payload["type"] = "slope_soarer"
+    profile = RCFlightProfileCreate.model_validate(payload)
+    assert profile.type == FlightProfileType.slope_soarer

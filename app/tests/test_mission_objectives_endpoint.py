@@ -1,4 +1,5 @@
 """Endpoint tests for Mission Objectives + Mission Presets (gh-546)."""
+
 from __future__ import annotations
 
 from app.tests.conftest import make_aeroplane
@@ -27,11 +28,17 @@ def test_put_mission_objectives_persists(client_and_db):
 
     payload = {
         "mission_type": "sailplane",
-        "target_cruise_mps": 14.0, "target_stall_safety": 1.6,
-        "target_maneuver_n": 4.0, "target_glide_ld": 25.0,
-        "target_climb_energy": 45.0, "target_wing_loading_n_m2": 200.0,
-        "target_field_length_m": 60.0, "available_runway_m": 80.0,
-        "runway_type": "grass", "t_static_N": 0.0, "takeoff_mode": "bungee",
+        "target_cruise_mps": 14.0,
+        "target_stall_safety": 1.6,
+        "target_maneuver_n": 4.0,
+        "target_glide_ld": 25.0,
+        "target_climb_energy": 45.0,
+        "target_wing_loading_n_m2": 200.0,
+        "target_field_length_m": 60.0,
+        "available_runway_m": 80.0,
+        "runway_type": "grass",
+        "t_static_N": 0.0,
+        "takeoff_mode": "bungee",
     }
     r = client.put(f"/aeroplanes/{uuid}/mission-objectives", json=payload)
     assert r.status_code == 200
@@ -41,12 +48,35 @@ def test_put_mission_objectives_persists(client_and_db):
     assert r2.json()["target_glide_ld"] == 25.0
 
 
-def test_get_mission_presets_returns_six(client_and_db):
+def test_get_mission_presets_returns_all_seeded(client_and_db):
+    """gh-582: seven seeded presets including the new slope_soarer."""
     client, _ = client_and_db
     r = client.get("/mission-presets")
     assert r.status_code == 200
     ids = {p["id"] for p in r.json()}
-    assert ids == {"trainer", "sport", "sailplane", "wing_racer", "acro_3d", "stol_bush"}
+    assert ids == {
+        "trainer",
+        "sport",
+        "sailplane",
+        "wing_racer",
+        "acro_3d",
+        "stol_bush",
+        "slope_soarer",
+    }
+
+
+def test_get_mission_presets_exposes_slope_soarer_payload(client_and_db):
+    """gh-582: the new preset surfaces via the public API with expected fields."""
+    client, _ = client_and_db
+    r = client.get("/mission-presets")
+    assert r.status_code == 200
+    preset = next(p for p in r.json() if p["id"] == "slope_soarer")
+    assert preset["label"] == "Slope Soarer"
+    est = preset["suggested_estimates"]
+    assert est["power_to_weight"] == 0.0
+    assert est["target_static_margin"] == 0.08
+    assert est["cl_max"] == 1.1
+    assert est["g_limit"] == 6.0
 
 
 def test_get_mission_kpis_returns_seven_axes(client_and_db):
@@ -96,9 +126,7 @@ def test_get_mission_kpis_multi_mission_param(client_and_db):
         aeroplane = make_aeroplane(db)
         uuid = str(aeroplane.uuid)
 
-    r = client.get(
-        f"/aeroplanes/{uuid}/mission-kpis?missions=trainer&missions=sailplane"
-    )
+    r = client.get(f"/aeroplanes/{uuid}/mission-kpis?missions=trainer&missions=sailplane")
     assert r.status_code == 200
     body = r.json()
     assert {p["mission_id"] for p in body["target_polygons"]} == {
