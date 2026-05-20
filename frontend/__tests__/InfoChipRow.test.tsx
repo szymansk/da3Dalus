@@ -19,6 +19,8 @@ vi.mock("lucide-react", () => {
     TrendingUp: icon,
     Zap: icon,
     RefreshCw: icon,
+    Square: icon,
+    ArrowLeftRight: icon,
   };
 });
 
@@ -181,6 +183,7 @@ describe("Info Chip Row", () => {
   });
 
   // gh-575: chip row splits into two rows (envelope speeds, aero geometry).
+  // gh-593: geometry row now includes S_ref and B_ref alongside MAC.
   it("splits envelope speeds and aero geometry into two separate rows", async () => {
     (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
       data: {
@@ -195,6 +198,8 @@ describe("Info Chip Row", () => {
         v_dive_mps: 30.0,
         reynolds: 230000,
         mac_m: 0.21,
+        s_ref_m2: 0.42,
+        b_ref_m: 2.0,
         x_np_m: 0.085,
         target_static_margin: 0.12,
         cg_agg_m: 0.092,
@@ -214,14 +219,123 @@ describe("Info Chip Row", () => {
     expect(speedsRow).toContainElement(screen.getByRole("group", { name: /V min sink/ }));
     expect(speedsRow).toContainElement(screen.getByRole("group", { name: /^V max:/ }));
 
-    // Aero geometry belongs to row 2.
+    // Aero geometry belongs to row 2 (gh-593: includes S_ref + B_ref).
     expect(geometryRow).toContainElement(screen.getByRole("group", { name: /^Re:/ }));
+    expect(geometryRow).toContainElement(screen.getByRole("group", { name: /^S ref:/ }));
     expect(geometryRow).toContainElement(screen.getByRole("group", { name: /^MAC:/ }));
+    expect(geometryRow).toContainElement(screen.getByRole("group", { name: /^B ref:/ }));
     expect(geometryRow).toContainElement(screen.getByRole("group", { name: /^CG:/ }));
 
     // No chip is placed in the wrong row.
     expect(geometryRow).not.toContainElement(screen.getByRole("group", { name: /^V stall:/ }));
     expect(speedsRow).not.toContainElement(screen.getByRole("group", { name: /^Re:/ }));
+  });
+
+  // gh-593: S_ref chip renders with the formatted area value (3 decimals + " m²").
+  it("renders S_ref chip with the s_ref_m2 value formatted as area", async () => {
+    (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: {
+        reynolds: 230000,
+        mac_m: 0.21,
+        s_ref_m2: 0.42,
+        b_ref_m: 2.0,
+        x_np_m: 0.085,
+        target_static_margin: 0.12,
+        cg_agg_m: 0.092,
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
+    render(<InfoChipRow aeroplaneId="42" cgAero={0.073} />);
+
+    const sRefChip = screen.getByRole("group", { name: /^S ref:/ });
+    expect(sRefChip).toBeInTheDocument();
+    expect(sRefChip.textContent).toMatch(/0\.420 m²/);
+    // Tooltip explains the coefficient formula (drag/lift non-dim).
+    expect(sRefChip.getAttribute("aria-label")).toMatch(/Reference area/);
+    expect(sRefChip.getAttribute("aria-label")).toMatch(/C_L = L \/ \(q · S_ref\)/);
+  });
+
+  // gh-593: B_ref chip renders with the formatted span value (2 decimals + " m").
+  it("renders B_ref chip with the b_ref_m value formatted as length", async () => {
+    (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: {
+        reynolds: 230000,
+        mac_m: 0.21,
+        s_ref_m2: 0.42,
+        b_ref_m: 2.0,
+        x_np_m: 0.085,
+        target_static_margin: 0.12,
+        cg_agg_m: 0.092,
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
+    render(<InfoChipRow aeroplaneId="42" cgAero={0.073} />);
+
+    const bRefChip = screen.getByRole("group", { name: /^B ref:/ });
+    expect(bRefChip).toBeInTheDocument();
+    expect(bRefChip.textContent).toMatch(/2\.00 m/);
+    // Tooltip explains the moment-coefficient formula (roll/yaw non-dim).
+    expect(bRefChip.getAttribute("aria-label")).toMatch(/Reference span/);
+    expect(bRefChip.getAttribute("aria-label")).toMatch(
+      /C_l = M_roll \/ \(q · S_ref · B_ref\)/,
+    );
+  });
+
+  // gh-593: MAC tooltip explicitly calls out the C_ref alias used in AVL / ASB.
+  it("MAC chip description mentions C_ref alias", async () => {
+    (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: {
+        reynolds: 230000,
+        mac_m: 0.21,
+        s_ref_m2: 0.42,
+        b_ref_m: 2.0,
+        x_np_m: 0.085,
+        target_static_margin: 0.12,
+        cg_agg_m: 0.092,
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
+    render(<InfoChipRow aeroplaneId="42" cgAero={0.073} />);
+
+    const macChip = screen.getByRole("group", { name: /^MAC:/ });
+    expect(macChip.getAttribute("aria-label")).toMatch(/C_ref/);
+    // The tooltip should also still contain the pitching-moment formula.
+    expect(macChip.getAttribute("aria-label")).toMatch(
+      /C_m = M_pitch \/ \(q · S_ref · C_ref\)/,
+    );
+  });
+
+  // gh-593: when s_ref_m2 / b_ref_m are missing, chips render dash placeholders.
+  it("renders dashes for S_ref / B_ref when values are missing from context", async () => {
+    (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: {
+        reynolds: 230000,
+        mac_m: 0.21,
+        // s_ref_m2 / b_ref_m intentionally absent
+        x_np_m: 0.085,
+        target_static_margin: 0.12,
+        cg_agg_m: 0.092,
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
+    render(<InfoChipRow aeroplaneId="42" cgAero={0.073} />);
+
+    const sRefChip = screen.getByRole("group", { name: /^S ref:/ });
+    const bRefChip = screen.getByRole("group", { name: /^B ref:/ });
+    expect(sRefChip.textContent).toMatch(/=\s*–/);
+    expect(bRefChip.textContent).toMatch(/=\s*–/);
   });
 
   // gh-575: refresh button invokes mutate (SWR revalidation) on click.

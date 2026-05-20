@@ -12,6 +12,8 @@ import {
   RefreshCw,
   TrendingUp,
   Zap,
+  Square,
+  ArrowLeftRight,
 } from "lucide-react";
 import { useComputationContext } from "@/hooks/useComputationContext";
 import { renderSymbol } from "@/components/workbench/renderSymbol";
@@ -231,11 +233,28 @@ export function InfoChipRow({ aeroplaneId, cgAero, isRecomputing, rightSlot }: P
           value={fmtRe(ctx?.reynolds)}
           stale={stale}
         />
+        {/* gh-593: reference triplet S_ref · MAC · B_ref grouped for visual
+            cohesion. All three are the AVL/ASB non-dimensionalisation
+            references for force and moment coefficients. */}
+        <Chip
+          icon={Square}
+          symbol="S_ref"
+          description="Reference area — projected wing area used to non-dimensionalize forces (C_L = L / (q · S_ref))"
+          value={fmt(ctx?.s_ref_m2, 3, " m²")}
+          stale={stale}
+        />
         <Chip
           icon={Ruler}
           symbol="MAC"
-          description="Mean Aerodynamic Chord — reference length for force and moment coefficients"
+          description="Mean Aerodynamic Chord (= C_ref in AVL/ASB) — reference chord for pitching moment coefficient (C_m = M_pitch / (q · S_ref · C_ref))"
           value={fmt(ctx?.mac_m, 2, " m")}
+          stale={stale}
+        />
+        <Chip
+          icon={ArrowLeftRight}
+          symbol="B_ref"
+          description="Reference span — wingspan used to non-dimensionalize roll and yaw moments (C_l = M_roll / (q · S_ref · B_ref))"
+          value={fmt(ctx?.b_ref_m, 2, " m")}
           stale={stale}
         />
         <Chip

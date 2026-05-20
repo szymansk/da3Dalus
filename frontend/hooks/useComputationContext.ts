@@ -19,6 +19,9 @@ export interface ComputationContext {
   reynolds: number;
   mac_m: number;
   s_ref_m2?: number | null;
+  // gh-593: reference span (main wing), surfaced as the B_ref chip alongside
+  // S_ref and MAC for coefficient non-dimensionalisation.
+  b_ref_m?: number | null;
   aspect_ratio?: number | null;
   x_np_m: number;
   target_static_margin: number;
