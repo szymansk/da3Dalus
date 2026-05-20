@@ -18,6 +18,7 @@ import {
 import { useComputationContext } from "@/hooks/useComputationContext";
 import { renderSymbol } from "@/components/workbench/renderSymbol";
 import { cgDivergenceColor } from "./stability-overlay/divergence-color";
+import { TaillessBanner } from "./TaillessBanner";
 
 interface Props {
   readonly aeroplaneId: string | null;
@@ -110,10 +111,21 @@ export function InfoChipRow({ aeroplaneId, cgAero, isRecomputing, rightSlot }: P
     </>
   );
 
+  // gh-581: surface the tailless UX banner above the chip rows when
+  // backend-derived `is_tailless = true` (no horizontal-tail wing). The
+  // banner explains that tail-volume sizing is not applicable and the
+  // SM corridor is tighter (see #579 + Apogee hybrid-strategy guidance).
+  const isTailless = !!ctx?.is_tailless;
+
   // gh-575: split the chips into two rows (envelope speeds + aero geometry)
   // with a user-triggered refresh button on row 1.
   return (
     <div className="flex flex-col gap-2 border-t border-border bg-card px-4 py-3">
+      {isTailless && (
+        <div className="flex">
+          <TaillessBanner />
+        </div>
+      )}
       {/* Row 1 — envelope speeds (gh-476: extended chip set) */}
       <div
         data-testid="chip-row-speeds"

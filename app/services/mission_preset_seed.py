@@ -273,4 +273,67 @@ SEED_PRESETS: list[MissionPreset] = [
             prop_efficiency=0.65,
         ),
     ),
+    MissionPreset(
+        id="flying_wing",
+        label="Flying Wing (Nurflügler)",
+        description=(
+            "Tailless RC flying wing (Nurflügler) — longitudinal trim via "
+            "sweep + washout + reflex airfoil. Tail-volume sizing not "
+            "applicable; static-margin corridor tightened (5–10 % MAC, "
+            "default 7.5 %) per #579 — this is a dynamic-stability / "
+            "control-power floor, NOT a static-aerodynamic limit (C_m,q "
+            "pitch damping is much smaller without a tail moment arm). "
+            "Aspect ratio default 8 (range 6–12). Sweep default 25° "
+            "leading-edge sweep (range 20–35°); sweep convention is "
+            "LE-sweep, NOT c/4 — the two differ by ~5° for typical taper. "
+            "Washout default 5° at the mid (range varies by airfoil): "
+            "**3–5° for symmetric** sections (NACA 0012-class), "
+            "**5–9° for reflex** sections (E184/E230, MH-series) — reflex "
+            "sections have less inherent stabilising camber and need MORE "
+            "washout, not less (Lennon Ch. 23 + NACA tunnel data). "
+            "Taper ratio default 0.5 — HARD CONSTRAINT 0.4 ≤ λ ≤ 0.6 to "
+            "avoid tip-stall + nose-up pitch break (Lennon: avoid 4:1 "
+            "taper; Sadraey converges). Stability guard: simultaneously "
+            "sweep < 20° AND washout < 3° is rejected (C_m,q margin "
+            "phugoid-divergent). Airfoil hints: **classic** Eppler E184 "
+            "(root) / E230 (tip); **modern** MH-series (MH45, MH60, MH61, "
+            "MH64). PREFERRED STRATEGY: HYBRID (moderate reflex + moderate "
+            "sweep + moderate washout) per Apogee — best modern flying "
+            "wings. Symmetric-airfoil caveat: dx/dα = 0 from the section "
+            "alone, so a symmetric airfoil on a Nurflügler requires "
+            "CG BELOW the wing chord plane (pendulum stability) — "
+            "otherwise the wing is not statically stable. Penalty of "
+            "reflex sections per Apogee: −9–15 % cl_max, −5 % minimum "
+            "profile drag (so cl_max = 1.0 is conservative: 1.25 cambered "
+            "× 0.85–0.91). YAW STABILITY is out of scope here — drag "
+            "rudders / split rudders / vertical fins / winglets are a "
+            "separate ticket; see Sadraey §12.2 and Apogee for design "
+            "guidance."
+        ),
+        target_polygon={
+            "stall_safety": 0.40,
+            "glide": 0.55,
+            "climb": 0.50,
+            "cruise": 0.65,
+            "maneuver": 0.75,
+            "wing_loading": 0.55,
+            "field_friendliness": 0.50,
+        },
+        axis_ranges={
+            "stall_safety": (1.3, 2.0),
+            "glide": (6.0, 18.0),
+            "climb": (8.0, 30.0),
+            "cruise": (15.0, 40.0),
+            "maneuver": (4.0, 8.0),
+            "wing_loading": (40.0, 150.0),
+            "field_friendliness": (3.0, 100.0),
+        },
+        suggested_estimates=MissionPresetEstimates(
+            g_limit=5.0,
+            target_static_margin=0.075,
+            cl_max=1.0,
+            power_to_weight=100.0,
+            prop_efficiency=0.65,
+        ),
+    ),
 ]

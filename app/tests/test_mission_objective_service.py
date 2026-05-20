@@ -68,7 +68,7 @@ def test_upsert_creates_then_updates(client_and_db):
 
 
 def test_list_mission_presets_returns_all_seeded(client_and_db):
-    """gh-580: motor_glider is in the seeded library alongside the original seven."""
+    """gh-581: flying_wing is in the seeded library alongside the original eight."""
     _, SessionLocal = client_and_db
     with SessionLocal() as db:
         presets = list_mission_presets(db)
@@ -82,6 +82,7 @@ def test_list_mission_presets_returns_all_seeded(client_and_db):
         "stol_bush",
         "slope_soarer",
         "motor_glider",
+        "flying_wing",
     }
 
 
@@ -217,6 +218,40 @@ def test_upsert_motor_glider_writes_powered_estimates(client_and_db):
         assert rows["g_limit"].estimate_value == 5.3
         assert rows["target_static_margin"].estimate_value == 0.10
         assert rows["cl_max"].estimate_value == 1.4
+        assert rows["power_to_weight"].estimate_value == 100.0
+        assert rows["prop_efficiency"].estimate_value == 0.65
+        # Critical: powered → is_glider=False downstream
+        assert rows["power_to_weight"].estimate_value > 0
+
+
+def test_upsert_flying_wing_writes_estimates(client_and_db):
+    """gh-581: switching to flying_wing writes the tailless-tuned estimates —
+    tighter SM (0.075), reduced cl_max (1.0 due to reflex penalty), and
+    powered defaults (most RC flying wings are EDF / prop)."""
+    _, SessionLocal = client_and_db
+    with SessionLocal() as db:
+        from app.tests.conftest import make_aeroplane
+        from app.services.design_assumptions_service import seed_defaults
+        from app.models.aeroplanemodel import DesignAssumptionModel
+
+        aeroplane = make_aeroplane(db)
+        seed_defaults(db, str(aeroplane.uuid))
+        db.commit()
+        aircraft_id = aeroplane.id
+
+    with SessionLocal() as db:
+        upsert_mission_objective(db, aircraft_id, _make_objective(mission_type="flying_wing"))
+        db.commit()
+
+    with SessionLocal() as db:
+        rows = {
+            r.parameter_name: r
+            for r in db.query(DesignAssumptionModel).filter_by(aeroplane_id=aircraft_id).all()
+        }
+        # flying_wing preset values from app/services/mission_preset_seed.py
+        assert rows["g_limit"].estimate_value == 5.0
+        assert rows["target_static_margin"].estimate_value == 0.075
+        assert rows["cl_max"].estimate_value == 1.0
         assert rows["power_to_weight"].estimate_value == 100.0
         assert rows["prop_efficiency"].estimate_value == 0.65
         # Critical: powered → is_glider=False downstream

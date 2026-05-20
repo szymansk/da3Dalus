@@ -73,3 +73,17 @@ def test_schema_accepts_slope_soarer_profile_type():
     payload["type"] = "slope_soarer"
     profile = RCFlightProfileCreate.model_validate(payload)
     assert profile.type == FlightProfileType.slope_soarer
+
+
+def test_flight_profile_type_includes_flying_wing():
+    """gh-581: flying_wing is a first-class profile type for the Nurflügler preset."""
+    assert FlightProfileType.flying_wing == "flying_wing"
+    assert FlightProfileType("flying_wing") is FlightProfileType.flying_wing
+
+
+def test_schema_accepts_flying_wing_profile_type():
+    """gh-581: payload with type='flying_wing' validates successfully."""
+    payload = valid_profile_payload()
+    payload["type"] = "flying_wing"
+    profile = RCFlightProfileCreate.model_validate(payload)
+    assert profile.type == FlightProfileType.flying_wing
