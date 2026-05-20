@@ -40,6 +40,40 @@ def _has_centreline_break(surface: AvlSurface) -> bool:
     return False
 
 
+def _required_nspan_for_section_density(
+    surface: AvlSurface, safety_margin: int = 2
+) -> int:
+    """Minimum ``Nspan`` that lets AVL allocate ≥ 1 panel per inter-section gap.
+
+    AVL refuses with ``Cannot adjust spanwise spacing at section N`` /
+    ``Insufficient number of spanwise vortices to work with`` when the
+    surface-level ``Nspan`` cannot fit a panel into the tightest
+    inter-section gap. The binding threshold matches ``ceil(span / min_gap)``
+    empirically (gh-590), regardless of the ``s_space`` choice — cosine
+    edge-concentration doesn't loosen the constraint.
+
+    Coincident sections (chord-/twist-discontinuity at the same Y) are
+    ignored when picking the smallest gap so they don't force ``Nspan`` to
+    infinity. Surfaces with < 2 sections or zero span return 0 (no
+    constraint).
+    """
+    if len(surface.sections) < 2:
+        return 0
+    y_positions = sorted(sec.xyz_le[1] for sec in surface.sections)
+    span = y_positions[-1] - y_positions[0]
+    if span <= 0:
+        return 0
+    gaps = [
+        b - a
+        for a, b in zip(y_positions, y_positions[1:], strict=False)
+        if b - a > 1e-9
+    ]
+    if not gaps:
+        return 0
+    min_gap = min(gaps)
+    return math.ceil(span / min_gap) + safety_margin
+
+
 def optimise_surface_spacing(surface: AvlSurface, config: SpacingConfig) -> AvlSurface:
     """Apply intelligent spacing rules to a surface, returning a modified copy.
 
@@ -50,6 +84,10 @@ def optimise_surface_spacing(surface: AvlSurface, config: SpacingConfig) -> AvlS
     - Unswept wing without a centreline break: switch spanwise spacing to
       -sine (``s_space = -2.0``) which concentrates panels at tip and root
       where induced drag gradients are steepest.
+    - **Tight section density** (gh-590): bump ``n_span`` to satisfy AVL's
+      per-section panel constraint so wings with near-coincident sections
+      at spar / control-surface boundaries don't crash with
+      ``Cannot adjust spanwise spacing at section N``.
     """
     result = copy.copy(surface)
     result.n_chord = config.n_chord
@@ -67,5 +105,8 @@ def optimise_surface_spacing(surface: AvlSurface, config: SpacingConfig) -> AvlS
     # Rule: unswept wings without centreline break use -sine spacing
     if _is_unswept(surface) and not _has_centreline_break(surface):
         result.s_space = -2.0
+
+    # Rule: bump Nspan if tight section gaps would crash AVL (gh-590)
+    result.n_span = max(result.n_span, _required_nspan_for_section_density(surface))
 
     return result
