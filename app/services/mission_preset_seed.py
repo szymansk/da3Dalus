@@ -226,4 +226,51 @@ SEED_PRESETS: list[MissionPreset] = [
             prop_efficiency=0.0,
         ),
     ),
+    MissionPreset(
+        id="motor_glider",
+        label="Motorsegler (Motor Glider)",
+        description=(
+            "Self-launching motor glider — high-AR sailplane geometry with a "
+            "small climb-only powerplant (folding or retractable prop). "
+            "Aspect ratio default 15 (range 14–22): Stemme S10 ≈ 22 (upper "
+            "end), ASK-21 Mi ≈ 16, Grob G109 ≈ 16.6. Wing loading mid "
+            "(~35 g/dm² typical for RC; ~30–45 kg/m² full-scale). "
+            "Power-to-weight 80–150 W/kg covers self-launch climb. "
+            "Caveat: prop_efficiency=0.65 reflects the climb segment with a "
+            "folding/feathering prop; in glide the prop is stowed and the "
+            "drag contribution is implicit (≈ 0). The current schema carries "
+            "a single value, so 0.65 is the climb assumption. "
+            "g_limit=5.3 cites CS-22.337 utility-category ultimate factor "
+            "(1.5 × +3.5 limit) for sailplanes and powered sailplanes. "
+            "Note: L/D ≥ 20 is a market convention (FAI Self-Launching "
+            "Glider classification), NOT a CS-22 requirement; the achieved "
+            "L/D depends on the cleanly retracted-prop polar and must be "
+            "verified post-VLM."
+        ),
+        target_polygon={
+            "stall_safety": 0.65,
+            "glide": 0.85,
+            "climb": 0.50,
+            "cruise": 0.55,
+            "maneuver": 0.30,
+            "wing_loading": 0.45,
+            "field_friendliness": 0.60,
+        },
+        axis_ranges={
+            "stall_safety": (1.3, 2.0),
+            "glide": (15.0, 30.0),
+            "climb": (5.0, 25.0),
+            "cruise": (15.0, 35.0),
+            "maneuver": (3.0, 6.0),
+            "wing_loading": (20.0, 80.0),
+            "field_friendliness": (3.0, 100.0),
+        },
+        suggested_estimates=MissionPresetEstimates(
+            g_limit=5.3,
+            target_static_margin=0.10,
+            cl_max=1.4,
+            power_to_weight=100.0,
+            prop_efficiency=0.65,
+        ),
+    ),
 ]

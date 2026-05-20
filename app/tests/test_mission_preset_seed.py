@@ -6,7 +6,7 @@ from app.services.mission_preset_seed import SEED_PRESETS
 
 
 def test_seed_presets_exist():
-    """gh-582: slope_soarer added to the canonical preset set."""
+    """gh-580: motor_glider added to the canonical preset set."""
     ids = {p.id for p in SEED_PRESETS}
     assert ids == {
         "trainer",
@@ -16,6 +16,7 @@ def test_seed_presets_exist():
         "acro_3d",
         "stol_bush",
         "slope_soarer",
+        "motor_glider",
     }
 
 
@@ -39,6 +40,57 @@ def test_slope_soarer_preset_defaults():
     lo, hi = preset.axis_ranges["wing_loading"]
     assert lo == 50.0
     assert hi == 150.0
+
+
+def test_motor_glider_preset_defaults():
+    """gh-580: Motorsegler carries the Scholz-review-verified defaults."""
+    preset = next(p for p in SEED_PRESETS if p.id == "motor_glider")
+    assert preset.label == "Motorsegler (Motor Glider)"
+    est = preset.suggested_estimates
+    # Powered: power_to_weight=100 W/kg covers self-launch climb (80–150 range)
+    assert est.power_to_weight == 100.0
+    # Climb-segment prop efficiency for folding/feathering prop
+    assert est.prop_efficiency == 0.65
+    # Slightly more stable than sport, conservative for cross-country glide
+    assert est.target_static_margin == 0.10
+    # Cambered laminar profile, no stall protection needed
+    assert est.cl_max == 1.4
+    # CS-22.337 utility-category ultimate factor (1.5 × +3.5 limit)
+    assert est.g_limit == 5.3
+    # KPI polygon: high glide, mid climb/cruise/stall, low maneuver
+    polygon = preset.target_polygon
+    assert polygon["glide"] >= 0.8
+    assert polygon["stall_safety"] == 0.65
+    assert polygon["climb"] == 0.50
+    assert polygon["cruise"] == 0.55
+    assert polygon["maneuver"] <= 0.35
+    assert polygon["wing_loading"] == 0.45
+    assert polygon["field_friendliness"] == 0.60
+
+
+def test_motor_glider_is_powered_for_is_glider_flag():
+    """gh-580: motor_glider has power_to_weight > 0 so downstream
+    ``is_glider = p_to_w <= 0`` correctly treats it as a powered aircraft.
+    This is the key behavioural distinction from the unpowered ``sailplane``
+    and ``slope_soarer`` presets."""
+    preset = next(p for p in SEED_PRESETS if p.id == "motor_glider")
+    assert preset.suggested_estimates.power_to_weight > 0
+    # Sanity: compare with the unpowered presets
+    sailplane = next(p for p in SEED_PRESETS if p.id == "sailplane")
+    slope_soarer = next(p for p in SEED_PRESETS if p.id == "slope_soarer")
+    assert sailplane.suggested_estimates.power_to_weight == 0.0
+    assert slope_soarer.suggested_estimates.power_to_weight == 0.0
+
+
+def test_motor_glider_description_cites_cs22_and_clarifies_ld_market_convention():
+    """gh-580 (Scholz review): the description must (a) cite CS-22.337 for
+    g_limit and (b) explicitly state that L/D ≥ 20 is market convention,
+    NOT a CS-22 requirement, to avoid propagating the regulatory myth."""
+    preset = next(p for p in SEED_PRESETS if p.id == "motor_glider")
+    description = preset.description
+    assert "CS-22.337" in description
+    assert "market convention" in description.lower()
+    assert "L/D" in description
 
 
 def test_each_preset_covers_all_seven_axes():
