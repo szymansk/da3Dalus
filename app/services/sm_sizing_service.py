@@ -732,6 +732,52 @@ def _htail_scale_option(
 # Apply helpers
 # ---------------------------------------------------------------------------
 
+def _load_apply_state(
+    db: Session,
+    aeroplane_uuid: str,
+) -> tuple[Any, dict[str, Any], float, float]:
+    """Shared prologue for `apply_wing_shift` / `apply_htail_scale`.
+
+    Looks up the aeroplane, materialises the assumption context, validates the
+    configuration (rejects tailless), and derives ``mac_m`` and ``sm_at_aft``.
+    Centralising this removes the SonarCloud-flagged duplication between the
+    two apply functions and gives both call sites a single, type-safe entry
+    point with a consistent error surface.
+
+    Returns:
+        (aircraft, ctx, mac_m, sm_at_aft) — all four guaranteed non-None.
+
+    Raises:
+        ValueError: aircraft missing, configuration not applicable, or SM
+            cannot be derived (no x_np_m / cg_aft_m and no precomputed sm_at_aft).
+    """
+    aircraft = _find_aeroplane(db, aeroplane_uuid)
+    if aircraft is None:
+        raise ValueError(f"Aeroplane {aeroplane_uuid} not found")
+
+    # Materialise the SQLAlchemy JSON column to a plain dict at the ORM boundary
+    # (see _ctx_dict for rationale — keeps helper signatures typed as `dict`).
+    ctx: dict[str, Any] = _ctx_dict(aircraft)
+
+    na, reason = _is_apply_not_applicable(ctx)
+    if na:
+        raise ValueError(f"not_applicable: {reason}")
+
+    # mac_m / s_ref_m2 are guaranteed valid by _is_apply_not_applicable guard above.
+    mac_m: float = float(ctx["mac_m"])
+    sm_at_aft: float | None = ctx.get("sm_at_aft")
+    x_np_m: float | None = ctx.get("x_np_m")
+    cg_aft_m: float | None = ctx.get("cg_aft_m")
+
+    if sm_at_aft is None and x_np_m is not None and cg_aft_m is not None:
+        sm_at_aft = (x_np_m - cg_aft_m) / mac_m
+
+    if sm_at_aft is None:
+        raise ValueError("cannot compute predicted_sm without sm_at_aft — run analysis first")
+
+    return aircraft, ctx, mac_m, sm_at_aft
+
+
 def _ctx_dict(aircraft: Any) -> dict[str, Any]:
     """Materialise ``aircraft.assumption_computation_context`` into a typed dict.
 
@@ -838,30 +884,7 @@ def apply_wing_shift(
     Raises:
         HTTPException(409): when apply-loop convergence guard fires (gh-509, spec A6).
     """
-    aircraft = _find_aeroplane(db, aeroplane_uuid)
-    if aircraft is None:
-        raise ValueError(f"Aeroplane {aeroplane_uuid} not found")
-
-    # Materialise the SQLAlchemy JSON column to a plain dict at the ORM boundary
-    # (see _ctx_dict for rationale — keeps helper signatures typed as `dict`).
-    ctx: dict[str, Any] = _ctx_dict(aircraft)
-
-    # Validate configuration (apply variant rejects tailless — no htail lever)
-    na, reason = _is_apply_not_applicable(ctx)
-    if na:
-        raise ValueError(f"not_applicable: {reason}")
-
-    # mac_m and s_ref_m2 are guaranteed valid by _is_apply_not_applicable guard above
-    mac_m: float = float(ctx["mac_m"])
-    sm_at_aft: float | None = ctx.get("sm_at_aft")
-    x_np_m: float | None = ctx.get("x_np_m")
-    cg_aft_m: float | None = ctx.get("cg_aft_m")
-
-    if sm_at_aft is None and x_np_m is not None and cg_aft_m is not None:
-        sm_at_aft = (x_np_m - cg_aft_m) / mac_m
-
-    if sm_at_aft is None:
-        raise ValueError("cannot compute predicted_sm without sm_at_aft — run analysis first")
+    aircraft, ctx, _mac_m, sm_at_aft = _load_apply_state(db, aeroplane_uuid)
 
     dsm_dx = _dsm_dx_wing(ctx)
     predicted_sm = sm_at_aft + dsm_dx * delta_m
@@ -936,30 +959,8 @@ def apply_htail_scale(
     Raises:
         HTTPException(409): when apply-loop convergence guard fires (gh-509, spec A6).
     """
-    aircraft = _find_aeroplane(db, aeroplane_uuid)
-    if aircraft is None:
-        raise ValueError(f"Aeroplane {aeroplane_uuid} not found")
-
-    # Materialise the SQLAlchemy JSON column to a plain dict at the ORM boundary
-    # (see _ctx_dict for rationale — keeps helper signatures typed as `dict`).
-    ctx: dict[str, Any] = _ctx_dict(aircraft)
-
-    na, reason = _is_apply_not_applicable(ctx)
-    if na:
-        raise ValueError(f"not_applicable: {reason}")
-
-    # mac_m and s_ref_m2 are guaranteed valid by _is_apply_not_applicable guard above
-    mac_m: float = float(ctx["mac_m"])
-    sm_at_aft: float | None = ctx.get("sm_at_aft")
-    x_np_m: float | None = ctx.get("x_np_m")
-    cg_aft_m: float | None = ctx.get("cg_aft_m")
+    aircraft, ctx, _mac_m, sm_at_aft = _load_apply_state(db, aeroplane_uuid)
     s_h_m2: float = ctx.get("s_h_m2") or 0.08
-
-    if sm_at_aft is None and x_np_m is not None and cg_aft_m is not None:
-        sm_at_aft = (x_np_m - cg_aft_m) / mac_m
-
-    if sm_at_aft is None:
-        raise ValueError("cannot compute predicted_sm without sm_at_aft — run analysis first")
 
     dsm_dsh = _dsm_dsh(ctx)
     delta_sh_m2 = delta_pct * s_h_m2
