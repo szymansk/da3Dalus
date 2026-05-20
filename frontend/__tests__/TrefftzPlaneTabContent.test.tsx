@@ -31,6 +31,8 @@ vi.mock("lucide-react", () => {
     TrendingUp: icon,
     Zap: icon,
     RefreshCw: icon,
+    Square: icon,
+    ArrowLeftRight: icon,
   };
 });
 
