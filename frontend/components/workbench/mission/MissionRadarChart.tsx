@@ -384,8 +384,17 @@ function AxisTooltip({ axis, kpis, active, ghosts }: AxisTooltipProps) {
           transformOrigin,
         }}
       >
-        <div className="mb-1 font-semibold text-orange-400">
+        <div
+          data-testid={`axis-tooltip-${axis}-header`}
+          className="mb-1 font-semibold text-orange-400"
+        >
           {AXIS_LABELS[axis]}
+          {active && (
+            <span className="ml-1 font-normal text-muted-foreground">
+              {" · "}
+              {active.label}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center justify-between gap-2">
@@ -406,13 +415,13 @@ function AxisTooltip({ axis, kpis, active, ghosts }: AxisTooltipProps) {
         </div>
 
         {active && sollValue !== null && (
-          <div className="flex items-center justify-between gap-2">
+          <div
+            data-testid={`axis-tooltip-${axis}-soll`}
+            className="flex items-center justify-between gap-2"
+          >
             <span className="text-muted-foreground">Soll:</span>
             <span className="tabular-nums">
               {fmt(sollValue)} {unit}
-            </span>
-            <span className="text-[9px] text-muted-foreground">
-              ({active.label})
             </span>
           </div>
         )}
