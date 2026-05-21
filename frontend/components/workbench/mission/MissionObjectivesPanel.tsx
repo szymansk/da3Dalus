@@ -2,17 +2,82 @@
 
 import React, { useRef, useState } from "react";
 import { useMissionObjectives, type MissionObjective } from "@/hooks/useMissionObjectives";
-import { useMissionPresets } from "@/hooks/useMissionPresets";
+import { useMissionPresets, type MissionPreset, type AxisName } from "@/hooks/useMissionPresets";
+import { normalizedToRaw } from "@/lib/missionScale";
 
 interface Props {
   readonly aeroplaneId: string;
 }
+
+/** Per-axis → MissionObjective target-field mapping (gh-601). */
+const AXIS_TO_TARGET_FIELD: Partial<Record<AxisName, keyof MissionObjective>> = {
+  stall_safety: "target_stall_safety",
+  glide: "target_glide_ld",
+  climb: "target_climb_energy",
+  cruise: "target_cruise_mps",
+  maneuver: "target_maneuver_n",
+  wing_loading: "target_wing_loading_n_m2",
+  // field_friendliness — no direct target field (out of scope per #601).
+};
+
+const TARGET_FIELD_LABELS: Record<string, string> = {
+  target_stall_safety: "Stall Safety",
+  target_glide_ld: "Glide (L/D)",
+  target_climb_energy: "Climb Energy",
+  target_cruise_mps: "Cruise (m/s)",
+  target_maneuver_n: "Maneuver (g)",
+  target_wing_loading_n_m2: "Wing Loading (N/m²)",
+};
+
+/** Suggested target value computed from a preset's polygon × axis ranges. */
+interface SuggestedTarget {
+  readonly axis: AxisName;
+  readonly field: keyof MissionObjective;
+  readonly label: string;
+  readonly current: number;
+  readonly suggested: number;
+}
+
+function computeSuggestedTargets(
+  preset: MissionPreset,
+  draft: MissionObjective,
+): SuggestedTarget[] {
+  const out: SuggestedTarget[] = [];
+  for (const [axis, field] of Object.entries(AXIS_TO_TARGET_FIELD) as [
+    AxisName,
+    keyof MissionObjective,
+  ][]) {
+    const score = preset.target_polygon[axis];
+    const range = preset.axis_ranges[axis];
+    if (score === undefined || range === undefined) continue;
+    const suggested = normalizedToRaw(score, range);
+    const current = draft[field] as number;
+    out.push({
+      axis,
+      field,
+      label: TARGET_FIELD_LABELS[field] ?? field,
+      current,
+      suggested,
+    });
+  }
+  return out;
+}
+
+/** Row is shown only when the relative delta exceeds 0.5%. */
+function isMeaningfulDiff(current: number, suggested: number): boolean {
+  const denom = Math.max(Math.abs(current), Math.abs(suggested), 1e-9);
+  return Math.abs(current - suggested) / denom > 0.005;
+}
+
+const fmt = (n: number): string =>
+  Number.isInteger(n) ? n.toFixed(1) : n.toFixed(2);
 
 export function MissionObjectivesPanel({ aeroplaneId }: Props) {
   const { data: persisted, update } = useMissionObjectives(aeroplaneId);
   const { data: presets } = useMissionPresets();
   const [draft, setDraft] = useState<MissionObjective | null>(null);
   const [bannerKey, setBannerKey] = useState<string | null>(null);
+  const [bannerVisible, setBannerVisible] = useState<boolean>(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // "Adjust state when a prop changes" pattern — avoids useEffect+setState
@@ -34,21 +99,97 @@ export function MissionObjectivesPanel({ aeroplaneId }: Props) {
   const onMissionTypeChange = (id: string) => {
     set("mission_type", id);
     setBannerKey(id);
+    setBannerVisible(true);
   };
 
   const activePreset = presets.find((p) => p.id === draft.mission_type);
+
+  const suggestedTargets =
+    activePreset && bannerKey ? computeSuggestedTargets(activePreset, draft) : [];
+  const diffRows = suggestedTargets.filter((r) => isMeaningfulDiff(r.current, r.suggested));
+
+  const handleApply = () => {
+    if (!activePreset) return;
+    // Snapshot the current draft and apply all suggested targets at once.
+    // We cancel any pending debounced update synchronously here so the older
+    // (mission_type-only) PUT cannot race past this one.
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+    const next = { ...draft };
+    for (const row of suggestedTargets) {
+      (next as Record<string, number>)[row.field as string] = row.suggested;
+    }
+    setDraft(next);
+    void update(next);
+    setBannerVisible(false);
+  };
+
+  const handleDismiss = () => {
+    setBannerVisible(false);
+  };
+
+  const showBanner = bannerVisible && bannerKey && activePreset;
 
   return (
     <div className="flex h-full flex-col gap-3">
       <h3 className="text-sm font-semibold text-orange-500">⊙ Mission Objectives</h3>
 
-      {bannerKey && activePreset && (
-        <div className="rounded border-l-2 border-orange-500 bg-orange-500/10 p-3 text-xs">
+      {showBanner && (
+        <div
+          className="rounded border-l-2 border-orange-500 bg-orange-500/10 p-3 text-xs"
+          data-testid="mission-apply-banner"
+        >
           <div className="font-semibold text-orange-500">
-            ⚡ Mission auf <span className="text-white">{activePreset.label}</span> gesetzt — Estimates angepasst
+            ⚡ Mission set to <span className="text-white">{activePreset.label}</span> — estimates applied
           </div>
           <div className="mt-1 font-mono text-[10px] text-foreground/80">
-            {Object.entries(activePreset.suggested_estimates).map(([k, v]) => `${k}=${v}`).join(" · ")}
+            {Object.entries(activePreset.suggested_estimates)
+              .map(([k, v]) => `${k}=${v}`)
+              .join(" · ")}
+          </div>
+
+          {diffRows.length > 0 && (
+            <div className="mt-2">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                Suggested Performance Targets
+              </div>
+              <table className="w-full font-mono text-[10px]">
+                <tbody>
+                  {diffRows.map((row) => (
+                    <tr key={row.field} data-testid={`diff-row-${row.field}`}>
+                      <td className="py-0.5 pr-2 text-foreground/80">{row.label}</td>
+                      <td className="py-0.5 pr-2 text-right text-muted-foreground tabular-nums">
+                        {fmt(row.current)}
+                      </td>
+                      <td className="py-0.5 pr-1 text-muted-foreground">→</td>
+                      <td className="py-0.5 text-right text-orange-300 tabular-nums">
+                        {fmt(row.suggested)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="mt-2 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={handleDismiss}
+              className="rounded border border-border bg-transparent px-3 py-1 text-[11px] text-muted-foreground hover:bg-card hover:text-foreground"
+            >
+              Dismiss
+            </button>
+            <button
+              type="button"
+              onClick={handleApply}
+              disabled={diffRows.length === 0}
+              className="rounded bg-orange-500 px-3 py-1 text-[11px] font-semibold text-black hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Apply
+            </button>
           </div>
         </div>
       )}
