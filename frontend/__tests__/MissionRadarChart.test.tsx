@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { render, fireEvent } from "@testing-library/react";
 import React from "react";
 import { MissionRadarChart } from "@/components/workbench/mission/MissionRadarChart";
 import type { MissionKpiSet, MissionAxisKpi } from "@/hooks/useMissionKpis";
@@ -16,6 +16,18 @@ const baseKpi = (axis: AxisName, score: number): MissionAxisKpi => ({
   formula: "-",
   warning: null,
 });
+
+const cruiseKpi: MissionAxisKpi = {
+  axis: "cruise",
+  value: 18.2,
+  unit: "m/s",
+  score_0_1: 0.5,
+  range_min: 10,
+  range_max: 25,
+  provenance: "computed",
+  formula: "-",
+  warning: null,
+};
 
 const kset: MissionKpiSet = {
   aeroplane_uuid: "x",
@@ -106,5 +118,125 @@ describe("MissionRadarChart", () => {
       new MouseEvent("click", { bubbles: true }),
     );
     expect(onAxisClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders a hover wedge per axis (gh-601)", () => {
+    const { container } = render(
+      <MissionRadarChart
+        kpis={kset}
+        activeMissions={[preset("trainer")]}
+        onAxisClick={() => undefined}
+      />,
+    );
+    const wedges = container.querySelectorAll('[data-testid^="hover-wedge-"]');
+    expect(wedges.length).toBe(7);
+  });
+
+  it("shows tooltip with raw cruise value on axis hover (gh-601)", () => {
+    const ksetCruise = { ...kset, ist_polygon: { ...kset.ist_polygon, cruise: cruiseKpi } };
+    const { getByTestId, queryByTestId } = render(
+      <MissionRadarChart
+        kpis={ksetCruise}
+        activeMissions={[preset("trainer")]}
+        onAxisClick={() => undefined}
+      />,
+    );
+    expect(queryByTestId("axis-tooltip-cruise")).not.toBeInTheDocument();
+
+    fireEvent.mouseEnter(getByTestId("hover-wedge-cruise"));
+
+    const tooltip = getByTestId("axis-tooltip-cruise");
+    expect(tooltip).toBeInTheDocument();
+    const text = tooltip.textContent ?? "";
+    // Ist: 10 + 0.5 × (25 − 10) = 17.50
+    expect(text).toMatch(/17\.50/);
+    expect(text).toMatch(/m\/s/);
+    // Soll for trainer preset: 10 + 0.5 × (25 − 10) = 17.50
+    expect(text).toMatch(/Soll/);
+  });
+
+  it("hides tooltip on mouseleave (gh-601)", () => {
+    const { getByTestId, queryByTestId } = render(
+      <MissionRadarChart
+        kpis={kset}
+        activeMissions={[preset("trainer")]}
+        onAxisClick={() => undefined}
+      />,
+    );
+    const wedge = getByTestId("hover-wedge-cruise");
+    fireEvent.mouseEnter(wedge);
+    expect(queryByTestId("axis-tooltip-cruise")).toBeInTheDocument();
+    fireEvent.mouseLeave(wedge);
+    expect(queryByTestId("axis-tooltip-cruise")).not.toBeInTheDocument();
+  });
+
+  it("does not collapse Ist polygon when preset's axis_ranges are narrower than the actual KPI (gh-601 Part C)", () => {
+    // Wing-Racer style preset with cruise range [25, 40].
+    const wingRacer = preset("wing_racer");
+    wingRacer.axis_ranges = {
+      stall_safety: [1.3, 2.5],
+      glide: [5, 18],
+      climb: [5, 25],
+      cruise: [25, 40],
+      maneuver: [2, 5],
+      wing_loading: [20, 80],
+      field_friendliness: [3, 100],
+    };
+    // Aircraft cruises at 18 m/s — below the Wing-Racer preset's lower bound.
+    const ksetLowCruise: MissionKpiSet = {
+      ...kset,
+      ist_polygon: {
+        ...kset.ist_polygon,
+        cruise: {
+          axis: "cruise",
+          value: 18,
+          unit: "m/s",
+          score_0_1: 0.4,
+          range_min: 10,
+          range_max: 30,
+          provenance: "computed",
+          formula: "-",
+          warning: null,
+        },
+      },
+    };
+    const { container } = render(
+      <MissionRadarChart
+        kpis={ksetLowCruise}
+        activeMissions={[wingRacer]}
+        onAxisClick={() => undefined}
+      />,
+    );
+    const ist = container.querySelector("polygon.radar-ist");
+    expect(ist).not.toBeNull();
+    const pointsAttr = ist!.getAttribute("points") ?? "";
+    // Parse points and ensure at least one vertex is > 5 px from origin.
+    const distances = pointsAttr
+      .trim()
+      .split(/\s+/)
+      .map((p) => p.split(",").map(Number))
+      .map(([x, y]) => Math.hypot(x, y));
+    expect(Math.max(...distances)).toBeGreaterThan(5);
+  });
+
+  it("includes ghost mission values in tooltip (gh-601)", () => {
+    const ghost = preset("sailplane");
+    // Set a distinctive cruise score on the ghost so we can locate it.
+    ghost.target_polygon.cruise = 0.8;
+    ghost.axis_ranges.cruise = [10, 30]; // 10 + 0.8 × 20 = 26
+    const { getByTestId } = render(
+      <MissionRadarChart
+        kpis={kset}
+        activeMissions={[preset("trainer"), ghost]}
+        onAxisClick={() => undefined}
+      />,
+    );
+    fireEvent.mouseEnter(getByTestId("hover-wedge-cruise"));
+    const tooltip = getByTestId("axis-tooltip-cruise");
+    const text = tooltip.textContent ?? "";
+    // Ghost label "sailplane" is present
+    expect(text).toMatch(/sailplane/);
+    // Ghost value 26.00
+    expect(text).toMatch(/26\.00/);
   });
 });

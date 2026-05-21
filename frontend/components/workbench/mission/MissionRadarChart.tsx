@@ -1,11 +1,13 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import type { MissionKpiSet } from "@/hooks/useMissionKpis";
 import type { MissionPreset, AxisName } from "@/hooks/useMissionPresets";
 import {
   AXES,
+  AXIS_UNITS,
   computeAxisRanges,
+  normalizedToRaw,
   polarToCartesian,
   renormalise,
 } from "@/lib/missionScale";
@@ -38,12 +40,34 @@ const badgeColor = (p: "computed" | "estimated" | "missing"): string => {
 const toPointsAttr = (pts: { x: number; y: number }[]): string =>
   pts.map((p) => `${p.x},${p.y}`).join(" ");
 
+const fmt = (n: number): string =>
+  Math.abs(n) >= 100 ? n.toFixed(0) : n.toFixed(2);
+
+/** SVG path for the radial hit-wedge at axis index `i` (out of N). */
+function wedgePath(i: number, n: number, outerRadius: number): string {
+  const half = Math.PI / n; // half of the angular slice
+  const center = (Math.PI * 2 * i) / n - Math.PI / 2;
+  const a0 = center - half;
+  const a1 = center + half;
+  const x0 = Math.cos(a0) * outerRadius;
+  const y0 = Math.sin(a0) * outerRadius;
+  const x1 = Math.cos(a1) * outerRadius;
+  const y1 = Math.sin(a1) * outerRadius;
+  // sweep = 1 (clockwise in SVG); large-arc = 0 since slice < 180°
+  return `M 0 0 L ${x0} ${y0} A ${outerRadius} ${outerRadius} 0 0 1 ${x1} ${y1} Z`;
+}
+
 export function MissionRadarChart({
   kpis,
   activeMissions,
   onAxisClick,
 }: Props) {
-  const globalRanges = computeAxisRanges(activeMissions);
+  const [hoveredAxis, setHoveredAxis] = useState<AxisName | null>(null);
+  // Pass the Ist kpis in so axis ranges include the aircraft's actual
+  // values; this prevents the orange polygon collapsing to the chart
+  // center when the active mission's `axis_ranges` are narrower than
+  // the aircraft's KPI band (gh-601).
+  const globalRanges = computeAxisRanges(activeMissions, kpis);
 
   const istPoints = AXES.map((axis, i) => {
     const k = kpis.ist_polygon[axis];
@@ -215,6 +239,133 @@ export function MissionRadarChart({
           </g>
         );
       })}
+
+      {/* Invisible hover wedges — one per axis. Sits on top of polygons so
+          mouse events are captured. Fill is transparent but pointer-events
+          are enabled. */}
+      {AXES.map((axis, i) => (
+        <path
+          key={`wedge-${axis}`}
+          data-testid={`hover-wedge-${axis}`}
+          d={wedgePath(i, AXES.length, R * 1.4)}
+          fill="transparent"
+          stroke="none"
+          style={{ pointerEvents: "all", cursor: "pointer" }}
+          onMouseEnter={() => setHoveredAxis(axis)}
+          onMouseLeave={() => setHoveredAxis(null)}
+        />
+      ))}
+
+      {/* Hover tooltip — anchored near the hovered axis label. */}
+      {hoveredAxis && (
+        <AxisTooltip
+          axis={hoveredAxis}
+          kpis={kpis}
+          active={active}
+          ghosts={ghosts}
+        />
+      )}
     </svg>
+  );
+}
+
+interface AxisTooltipProps {
+  readonly axis: AxisName;
+  readonly kpis: MissionKpiSet;
+  readonly active: MissionPreset | undefined;
+  readonly ghosts: MissionPreset[];
+}
+
+function AxisTooltip({ axis, kpis, active, ghosts }: AxisTooltipProps) {
+  const i = AXES.indexOf(axis);
+  const anchor = polarToCartesian(i, 1.55, R);
+  const unit = AXIS_UNITS[axis];
+
+  const k = kpis.ist_polygon[axis];
+  const istValue =
+    k.score_0_1 !== null
+      ? normalizedToRaw(k.score_0_1, [k.range_min, k.range_max])
+      : null;
+
+  const sollValue = active
+    ? normalizedToRaw(active.target_polygon[axis], active.axis_ranges[axis])
+    : null;
+
+  const ghostValues = ghosts.map((g, idx) => ({
+    label: g.label,
+    color: GHOST_COLORS[idx % GHOST_COLORS.length],
+    value: normalizedToRaw(g.target_polygon[axis], g.axis_ranges[axis]),
+  }));
+
+  // Position the tooltip box. Width/height are estimates; we offset so the
+  // tooltip stays inside the SVG viewport for all axes.
+  const boxW = 150;
+  const baseH = 56;
+  const extraH = 14 * ghostValues.length;
+  const boxH = baseH + extraH;
+  const tx = anchor.x < 0 ? anchor.x - boxW : anchor.x;
+  const ty = anchor.y < 0 ? anchor.y - boxH : anchor.y;
+
+  return (
+    <foreignObject
+      x={tx}
+      y={ty}
+      width={boxW}
+      height={boxH}
+      style={{ pointerEvents: "none" }}
+      data-testid={`axis-tooltip-${axis}`}
+    >
+      <div
+        // xmlns required so React renders HTML inside foreignObject
+        xmlns="http://www.w3.org/1999/xhtml"
+        className="rounded border border-border bg-background/95 p-1.5 font-mono text-[10px] leading-tight text-foreground shadow-lg"
+        style={{ width: "100%", boxSizing: "border-box" }}
+      >
+        <div className="mb-1 font-semibold text-orange-400">
+          {AXIS_LABELS[axis]}
+        </div>
+
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-muted-foreground">Ist:</span>
+          <span className="tabular-nums">
+            {istValue === null ? "—" : `${fmt(istValue)} ${unit}`}
+          </span>
+          <span
+            aria-hidden="true"
+            style={{
+              display: "inline-block",
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: badgeColor(k.provenance),
+            }}
+          />
+        </div>
+
+        {active && sollValue !== null && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground">Soll:</span>
+            <span className="tabular-nums">
+              {fmt(sollValue)} {unit}
+            </span>
+            <span className="text-[9px] text-muted-foreground">
+              ({active.label})
+            </span>
+          </div>
+        )}
+
+        {ghostValues.map((g) => (
+          <div
+            key={g.label}
+            className="flex items-center justify-between gap-2"
+          >
+            <span style={{ color: g.color }}>{g.label}:</span>
+            <span className="tabular-nums">
+              {fmt(g.value)} {unit}
+            </span>
+          </div>
+        ))}
+      </div>
+    </foreignObject>
   );
 }
