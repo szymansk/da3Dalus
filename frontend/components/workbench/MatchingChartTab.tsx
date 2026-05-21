@@ -335,6 +335,15 @@ export function findBindingConstraintAtPoint(
   return bindingName;
 }
 
+/** Pattern matching CS-25-only constraint names that don't apply to
+ * single-engine RC / UAV aircraft: Second-Segment Climb (OEI), Missed-Approach.
+ *
+ * gh-613 Phase A: these CS-25 multi-engine bands are still drawn on the chart
+ * for conformance-band reference, but they must not trigger the
+ * "insufficient T/W" warning for single-engine designs.
+ */
+const CS25_ONLY_CONSTRAINT_PATTERN = /segment.?2|second.?segment|missed.?approach|oei/i;
+
 /** Return the name of the most-violated **t_w_points** constraint at the
  * given (ws, tw) point, or null if none is violated.
  *
@@ -345,12 +354,18 @@ export function findBindingConstraintAtPoint(
  *
  * gh-606: Scholz review substantive finding — turn the chart from
  * decorative to diagnostic by flagging insufficient T/W.
+ *
+ * gh-613 Phase A: when `skipOei` is true, constraints whose name matches
+ * the CS-25-only pattern (Second-Segment Climb, Missed-Approach, generic
+ * OEI bands) are excluded from the binding-selection logic. The constraint
+ * curves are still drawn on the chart — only the warning text is gated.
  */
 export function findInsufficientThrustConstraint(
   ws: number,
   tw: number,
   wsRange: number[],
   constraints: ConstraintLine[],
+  skipOei: boolean = false,
 ): string | null {
   if (!wsRange.length) return null;
   const nearestIdx = _nearestWsIdx(ws, wsRange);
@@ -358,6 +373,7 @@ export function findInsufficientThrustConstraint(
   let maxRatio = 0;
   for (const c of constraints) {
     if (!c.t_w_points) continue;
+    if (skipOei && CS25_ONLY_CONSTRAINT_PATTERN.test(c.name)) continue;
     const twReq = c.t_w_points[nearestIdx];
     if (twReq <= 0) continue;
     const ratio = (twReq - tw) / twReq;
@@ -397,6 +413,54 @@ export function computeAspectRatio(bRefM: number | null | undefined, sRefM2: num
 interface InfoModalProps {
   readonly open: boolean;
   readonly onClose: () => void;
+}
+
+// ---------------------------------------------------------------------------
+// gh-613 Phase A — CS-25 honesty: per-constraint relevance badges
+// ---------------------------------------------------------------------------
+
+type ConstraintRelevance = "universal" | "conditional" | "cs25-only";
+
+const RELEVANCE_LABEL: Record<ConstraintRelevance, string> = {
+  universal: "✅ Universal",
+  conditional: "⚠️ Conditional",
+  "cs25-only": "❌ CS-25-only",
+};
+
+const RELEVANCE_CLASS: Record<ConstraintRelevance, string> = {
+  universal:
+    "inline-flex items-center gap-1 rounded bg-green-500/15 px-1.5 py-0.5 text-[10px] text-green-400",
+  conditional:
+    "inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-400",
+  "cs25-only":
+    "inline-flex items-center gap-1 rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] text-red-400",
+};
+
+/** Small inline badge tagging each constraint row in the info modal with its
+ * relevance to single-engine RC / UAV designs.
+ *
+ * gh-613 Phase A: helps the user separate "CS-25 conformance band" curves
+ * (Second-Segment OEI, Missed-Approach) from RC-applicable constraints.
+ */
+function RelevanceBadge({
+  relevance,
+  tooltip,
+  testId,
+}: Readonly<{
+  relevance: ConstraintRelevance;
+  tooltip: string;
+  testId: string;
+}>) {
+  return (
+    <span
+      className={RELEVANCE_CLASS[relevance]}
+      title={tooltip}
+      data-relevance={relevance}
+      data-testid={testId}
+    >
+      {RELEVANCE_LABEL[relevance]}
+    </span>
+  );
 }
 
 /** Modal explaining the matching-chart methodology per Loftin / Scholz §5 /
@@ -517,14 +581,76 @@ function InfoModal({ open, onClose }: InfoModalProps) {
             <h4 className="mb-1 text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
               Constraints (curves)
             </h4>
-            <ul className="list-disc pl-5">
-              <li><strong>Stall</strong> &mdash; vertical line at maximum W/S that still hits V<sub>s</sub> target.</li>
-              <li><strong>Take-off field</strong> &mdash; rising-with-W/S curve; binds at small fields and high W/S.</li>
-              <li><strong>Second-segment climb</strong> &mdash; CS-25 / FAR-25-style climb-gradient floor.</li>
-              <li><strong>Missed-approach climb</strong> &mdash; landing-config climb-gradient floor.</li>
-              <li>
-                <strong>Cruise</strong> <em>(typically slack)</em> &mdash; matched iteratively via fuel mass, not enforced
-                on the chart per Sadraey §4.3. Drawn for reference, not selection.
+            {/* gh-613 Phase A: CS-25 provenance callout — drawn BEFORE the
+                constraint list so the user knows the methodology pedigree
+                before scanning the per-row badges. */}
+            <div
+              className="mb-2 border-l-4 border-amber-500/50 bg-amber-500/5 p-3 text-[12px]"
+              data-testid="info-section-cs25-callout"
+            >
+              <em>
+                This chart&apos;s constraint curves follow the Scholz/Loftin CS-25
+                methodology, originally calibrated for multi-engine transport
+                aircraft. For single-engine RC and UAV applications, the chart
+                format (W/S vs T/W, feasibility region, design-point derivation)
+                translates directly, but some constraints &mdash; specifically
+                Second-Segment Climb (OEI) and Missed-Approach Climb &mdash; assume
+                an engine-out condition that single-engine aircraft cannot
+                experience. Read those curves as CS-25 conformance bands, not RC
+                requirements.
+              </em>
+            </div>
+            <ul className="flex list-disc flex-col gap-1.5 pl-5">
+              <li className="flex flex-wrap items-center gap-2">
+                <span><strong>Stall</strong> &mdash; vertical line at maximum W/S that still hits V<sub>s</sub> target.</span>
+                <RelevanceBadge
+                  relevance="universal"
+                  tooltip="Universal — pure aerodynamics"
+                  testId="constraint-badge-stall"
+                />
+              </li>
+              <li className="flex flex-wrap items-center gap-2">
+                <span><strong>Take-off field</strong> &mdash; rising-with-W/S curve; binds at small fields and high W/S.</span>
+                <RelevanceBadge
+                  relevance="conditional"
+                  tooltip="Wheeled takeoff only"
+                  testId="constraint-badge-takeoff"
+                />
+              </li>
+              <li className="flex flex-wrap items-center gap-2">
+                <span><strong>Second-segment climb (OEI)</strong> &mdash; CS-25 / FAR-25-style climb-gradient floor.</span>
+                <RelevanceBadge
+                  relevance="cs25-only"
+                  tooltip="CS-25 multi-engine — single-engine N/A"
+                  testId="constraint-badge-second-segment"
+                />
+              </li>
+              <li className="flex flex-wrap items-center gap-2">
+                <span><strong>Missed-approach climb</strong> &mdash; landing-config climb-gradient floor.</span>
+                <RelevanceBadge
+                  relevance="cs25-only"
+                  tooltip="CS-25 multi-engine — single-engine N/A"
+                  testId="constraint-badge-missed-approach"
+                />
+              </li>
+              <li className="flex flex-wrap items-center gap-2">
+                <span>
+                  <strong>Cruise</strong> <em>(typically slack)</em> &mdash; matched iteratively via fuel mass, not enforced
+                  on the chart per Sadraey §4.3. Drawn for reference, not selection.
+                </span>
+                <RelevanceBadge
+                  relevance="universal"
+                  tooltip="Universal — slack constraint, iterated via fuel mass"
+                  testId="constraint-badge-cruise"
+                />
+              </li>
+              <li className="flex flex-wrap items-center gap-2">
+                <span><strong>Landing field</strong> &mdash; landing distance constraint; vertical W/S limit at the runway.</span>
+                <RelevanceBadge
+                  relevance="conditional"
+                  tooltip="Runway landing only"
+                  testId="constraint-badge-landing"
+                />
               </li>
             </ul>
           </section>
@@ -1048,13 +1174,14 @@ function MatchingChartContent({
             Matching chart is jet/powered-only &mdash; gliders are sized by sink-rate polar, not T/W vs W/S.
           </div>
         )}
-        {/* gh-606: insufficient-thrust callout per Scholz review substantive finding */}
+        {/* gh-606: insufficient-thrust callout per Scholz review substantive finding.
+            gh-613 Phase A: warning excludes single-engine-irrelevant OEI bands. */}
         {!isGlider && currentDp && insufficientConstraintName && (
           <div
             className="absolute right-3 top-3 max-w-[360px] rounded bg-red-900/70 px-2 py-1 text-[10px] text-red-200"
             data-testid="insufficient-thrust-callout"
           >
-            Your assumed T/W = {currentDp.t_w.toFixed(3)} is insufficient for the {insufficientConstraintName} constraint at the current W/S.
+            Your assumed T/W = {currentDp.t_w.toFixed(3)} is insufficient for the {insufficientConstraintName} constraint at the current W/S (excluding single-engine-irrelevant OEI bands).
           </div>
         )}
       </div>
@@ -1138,6 +1265,9 @@ export function MatchingChartTab({ aeroplaneId }: Props) {
   }, [isGlider, massKg, sRefM2, tStaticN, aspectRatio]);
 
   // gh-606: insufficient-thrust diagnostic (substantive finding in Scholz review).
+  // gh-613 Phase A: skip CS-25-only OEI constraints when selecting the binding
+  // constraint. Those curves are still drawn (as CS-25 conformance bands) but
+  // do not raise a warning for single-engine RC / UAV designs.
   const insufficientConstraintName = useMemo(() => {
     if (!data || !currentDp) return null;
     return findInsufficientThrustConstraint(
@@ -1145,6 +1275,7 @@ export function MatchingChartTab({ aeroplaneId }: Props) {
       currentDp.t_w,
       data.ws_range_n_m2,
       data.constraints,
+      true, // skipOei
     );
   }, [data, currentDp]);
 
