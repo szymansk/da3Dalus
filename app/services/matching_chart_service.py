@@ -123,27 +123,38 @@ _CONSTRAINT_KEY_VERTICAL_CLIMB: str = "vertical_climb"
 _CONSTRAINT_KEY_HAND_LAUNCH: str = "hand_launch"
 
 
-# Allowed log labels for the flight_profile field — sanitises user-supplied
-# query-param input before it reaches the logger (Sonar S5145).
-_LOG_ALLOWED_PROFILES: frozenset[str] = frozenset({
-    "trainer", "sport", "wing_racer", "acro_3d", "stol_bush",
-    "slope_soarer", "glider", "sailplane", "motor_glider", "flying_wing",
-    "custom",
-})
+# Log labels for the flight_profile field — Sonar S5145-safe.  Logging is
+# done with constants from this mapping rather than the user-supplied
+# `profile` string itself, so the value the logger sees never originates
+# from a query parameter or user-controlled storage.
+_LOG_PROFILE_LABELS: dict[str, str] = {
+    "trainer":      "trainer",
+    "sport":        "sport",
+    "wing_racer":   "wing_racer",
+    "acro_3d":      "acro_3d",
+    "stol_bush":    "stol_bush",
+    "slope_soarer": "slope_soarer",
+    "glider":       "glider",
+    "sailplane":    "sailplane",
+    "motor_glider": "motor_glider",
+    "flying_wing":  "flying_wing",
+    "custom":       "custom",
+}
 
 
 def _sanitize_profile_for_log(profile: str | None) -> str:
     """Return a log-safe label for the active flight_profile.
 
-    The flight_profile string flows in from a query parameter and from
+    ``flight_profile`` flows in from a query parameter and from
     ``MissionObjective.mission_type`` (a stored user-controlled string).
-    Logging it raw is flagged by Sonar S5145 ("log user-controlled data").
-    Whitelisting against the known mission-preset ids removes the risk
-    while keeping the log message useful.
+    Logging it raw is flagged by Sonar S5145 (log forging).  We map the
+    input through a constant string table — the value the logger receives
+    is *never* the original user-supplied string itself, only one of a
+    fixed set of literals defined in this module.
     """
     if profile is None:
         return "<none>"
-    return profile if profile in _LOG_ALLOWED_PROFILES else "<unknown>"
+    return _LOG_PROFILE_LABELS.get(profile, "<unknown>")
 
 
 def _resolve_profile_key(profile: str | None) -> str | None:
@@ -987,8 +998,10 @@ def compute_chart(
         constraints_final.append(c2)
     _ = binding_by_id  # retained for clarity, not used after match-by-name
 
-    # Sanitise the profile string before logging — it originates from a
-    # query param and Sonar S5145 flags raw user-controlled logging.
+    # The profile string is user-controlled (query param or stored value).
+    # Sonar S5145: never pass the raw flight_profile into the logger.  We
+    # look it up in a constant string table whose values are module-level
+    # literals, so the logger only ever receives a known literal string.
     safe_profile = _sanitize_profile_for_log(flight_profile)
     logger.info(
         "Matching chart: mode=%s, profile=%s, W/S=%.1f N/m², T/W=%.4f, feasibility=%s",
