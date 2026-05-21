@@ -44,9 +44,9 @@ def test_slope_soarer_preset_defaults():
 
 
 def test_motor_glider_preset_defaults():
-    """gh-580: Motorsegler carries the Scholz-review-verified defaults."""
+    """gh-580: the motor glider preset carries the Scholz-review-verified defaults."""
     preset = next(p for p in SEED_PRESETS if p.id == "motor_glider")
-    assert preset.label == "Motorsegler (Motor Glider)"
+    assert preset.label == "Motor Glider"
     est = preset.suggested_estimates
     # Powered: power_to_weight=100 W/kg covers self-launch climb (80–150 range)
     assert est.power_to_weight == 100.0
@@ -95,9 +95,9 @@ def test_motor_glider_description_cites_cs22_and_clarifies_ld_market_convention(
 
 
 def test_flying_wing_preset_defaults():
-    """gh-581: Nurflügler carries the review-verified defaults (Scholz + Anderson + Apogee + Lennon)."""
+    """gh-581: the flying wing preset carries the review-verified defaults (Scholz + Anderson + Apogee + Lennon)."""
     preset = next(p for p in SEED_PRESETS if p.id == "flying_wing")
-    assert preset.label == "Flying Wing (Nurflügler)"
+    assert preset.label == "Flying Wing"
     est = preset.suggested_estimates
     # Tighter SM corridor for tailless (range 5–10 %, default 7.5 %) — see #579
     assert est.target_static_margin == 0.075

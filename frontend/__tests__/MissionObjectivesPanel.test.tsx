@@ -25,8 +25,8 @@ vi.mock("@/hooks/useMissionPresets", () => ({
       { id: "trainer", label: "Trainer", description: "", target_polygon: {}, axis_ranges: {}, suggested_estimates: { g_limit: 4, target_static_margin: 0.12, cl_max: 1.4, power_to_weight: 0.4, prop_efficiency: 0.6 } },
       { id: "sailplane", label: "Sailplane", description: "", target_polygon: {}, axis_ranges: {}, suggested_estimates: { g_limit: 2, target_static_margin: 0.18, cl_max: 1.2, power_to_weight: 0.0, prop_efficiency: 0.0 } },
       { id: "slope_soarer", label: "Slope Soarer", description: "", target_polygon: {}, axis_ranges: {}, suggested_estimates: { g_limit: 6, target_static_margin: 0.08, cl_max: 1.1, power_to_weight: 0.0, prop_efficiency: 0.0 } },
-      { id: "motor_glider", label: "Motorsegler (Motor Glider)", description: "", target_polygon: {}, axis_ranges: {}, suggested_estimates: { g_limit: 5.3, target_static_margin: 0.10, cl_max: 1.4, power_to_weight: 100, prop_efficiency: 0.65 } },
-      { id: "flying_wing", label: "Flying Wing (Nurflügler)", description: "", target_polygon: {}, axis_ranges: {}, suggested_estimates: { g_limit: 5.0, target_static_margin: 0.075, cl_max: 1.0, power_to_weight: 100, prop_efficiency: 0.65 } },
+      { id: "motor_glider", label: "Motor Glider", description: "", target_polygon: {}, axis_ranges: {}, suggested_estimates: { g_limit: 5.3, target_static_margin: 0.10, cl_max: 1.4, power_to_weight: 100, prop_efficiency: 0.65 } },
+      { id: "flying_wing", label: "Flying Wing", description: "", target_polygon: {}, axis_ranges: {}, suggested_estimates: { g_limit: 5.0, target_static_margin: 0.075, cl_max: 1.0, power_to_weight: 100, prop_efficiency: 0.65 } },
     ],
     isLoading: false, error: null,
   }),
@@ -39,9 +39,9 @@ describe("MissionObjectivesPanel", () => {
     expect(screen.getByRole("option", { name: /Sailplane/ })).toBeInTheDocument();
     // gh-582: slope_soarer surfaces in the selector once the backend seeds it.
     expect(screen.getByRole("option", { name: /Slope Soarer/ })).toBeInTheDocument();
-    // gh-580: motor_glider (Motorsegler) surfaces in the selector once seeded.
-    expect(screen.getByRole("option", { name: /Motorsegler/ })).toBeInTheDocument();
-    // gh-581: flying_wing (Nurflügler) surfaces in the selector once seeded.
+    // gh-580: motor_glider surfaces in the selector once seeded.
+    expect(screen.getByRole("option", { name: /Motor Glider/ })).toBeInTheDocument();
+    // gh-581: flying_wing surfaces in the selector once seeded.
     expect(screen.getByRole("option", { name: /Flying Wing/ })).toBeInTheDocument();
   });
 
