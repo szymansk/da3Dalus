@@ -1,7 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/react";
 import React from "react";
-import { MissionRadarChart } from "@/components/workbench/mission/MissionRadarChart";
+import {
+  MissionRadarChart,
+  tooltipAnchor,
+} from "@/components/workbench/mission/MissionRadarChart";
+import { AXES } from "@/lib/missionScale";
 import type { MissionKpiSet, MissionAxisKpi } from "@/hooks/useMissionKpis";
 import type { MissionPreset, AxisName } from "@/hooks/useMissionPresets";
 
@@ -75,6 +79,51 @@ const preset = (id: string): MissionPreset => ({
     power_to_weight: 0.5,
     prop_efficiency: 0.7,
   },
+});
+
+describe("tooltipAnchor (gh-609)", () => {
+  // 7-axis radar: i=0 stall_safety, 1 glide, 2 climb, 3 cruise,
+  //               4 maneuver,    5 wing_loading, 6 field_friendliness
+  it("anchors top-half axes with yAlign='top' (sin < 0)", () => {
+    // i=0 → angle=-π/2 → sin=-1 → top half
+    const a = tooltipAnchor(0, 7);
+    expect(a.yAlign).toBe("top");
+    // dy should be positive (push down away from label)
+    expect(a.dy).toBeGreaterThan(0);
+  });
+
+  it("anchors bottom-half axes with yAlign='bottom' (sin > 0)", () => {
+    // i=3 (cruise) → sin≈+0.90 → bottom half
+    const a = tooltipAnchor(3, 7);
+    expect(a.yAlign).toBe("bottom");
+    expect(a.dy).toBeLessThan(0);
+  });
+
+  it("anchors right-half axes with xAlign='right' (cos > 0)", () => {
+    // i=2 (climb) → cos≈+0.97 → right half
+    const a = tooltipAnchor(2, 7);
+    expect(a.xAlign).toBe("right");
+    expect(a.dx).toBeLessThan(0);
+  });
+
+  it("anchors left-half axes with xAlign='left' (cos < 0)", () => {
+    // i=5 (wing_loading) → cos≈-0.97 → left half
+    const a = tooltipAnchor(5, 7);
+    expect(a.xAlign).toBe("left");
+    expect(a.dx).toBeGreaterThan(0);
+  });
+
+  it("uses zero horizontal offset for near-vertical axes (|cos| < 0.2)", () => {
+    // i=0 (stall_safety) → cos=0 → no horizontal nudge
+    const a = tooltipAnchor(0, 7);
+    expect(a.dx).toBe(0);
+  });
+
+  it("uses zero vertical offset for near-horizontal axes (|sin| < 0.2)", () => {
+    // For n=4, i=1 → angle=0 → cos=1, sin=0 → no vertical nudge
+    const a = tooltipAnchor(1, 4);
+    expect(a.dy).toBe(0);
+  });
 });
 
 describe("MissionRadarChart", () => {
@@ -217,6 +266,69 @@ describe("MissionRadarChart", () => {
       .map((p) => p.split(",").map(Number))
       .map(([x, y]) => Math.hypot(x, y));
     expect(Math.max(...distances)).toBeGreaterThan(5);
+  });
+
+  it("anchors tooltip to the right (extends leftward) on right-half axes (gh-609)", () => {
+    // Cruise sits at i=3 → cos≈0.43 > 0 → right half → xAlign='right'.
+    const { getByTestId } = render(
+      <MissionRadarChart
+        kpis={kset}
+        activeMissions={[preset("trainer")]}
+        onAxisClick={() => undefined}
+      />,
+    );
+    fireEvent.mouseEnter(getByTestId("hover-wedge-cruise"));
+    const tooltip = getByTestId("axis-tooltip-cruise");
+    expect(tooltip.getAttribute("data-x-align")).toBe("right");
+    // The inner div should be text-aligned to the right.
+    const innerDiv = tooltip.firstElementChild as HTMLElement;
+    expect(innerDiv?.style.textAlign).toBe("right");
+  });
+
+  it("anchors tooltip to the left (extends rightward) on left-half axes (gh-609)", () => {
+    // Wing-loading sits at i=5 → cos≈-0.97 < 0 → left half → xAlign='left'.
+    const { getByTestId } = render(
+      <MissionRadarChart
+        kpis={kset}
+        activeMissions={[preset("trainer")]}
+        onAxisClick={() => undefined}
+      />,
+    );
+    fireEvent.mouseEnter(getByTestId("hover-wedge-wing_loading"));
+    const tooltip = getByTestId("axis-tooltip-wing_loading");
+    expect(tooltip.getAttribute("data-x-align")).toBe("left");
+    const innerDiv = tooltip.firstElementChild as HTMLElement;
+    expect(innerDiv?.style.textAlign).toBe("left");
+  });
+
+  it("keeps every axis tooltip inside the SVG viewBox (gh-609)", () => {
+    // viewBox is "-150 -150 300 300" → bounds [-150, 150] in both axes.
+    const VIEW_MIN = -150;
+    const VIEW_MAX = 150;
+    const BOX_W = 150;
+    const BASE_H = 56; // matches MissionRadarChart's baseH for no ghosts
+    for (const axis of AXES) {
+      const { getByTestId, unmount } = render(
+        <MissionRadarChart
+          kpis={kset}
+          activeMissions={[preset("trainer")]}
+          onAxisClick={() => undefined}
+        />,
+      );
+      fireEvent.mouseEnter(getByTestId(`hover-wedge-${axis}`));
+      const tooltip = getByTestId(`axis-tooltip-${axis}`);
+      const x = Number(tooltip.getAttribute("x"));
+      const y = Number(tooltip.getAttribute("y"));
+      const w = Number(tooltip.getAttribute("width") ?? BOX_W);
+      const h = Number(tooltip.getAttribute("height") ?? BASE_H);
+      // Allow a small slack (8px) for the visual anchor nudge — but never
+      // more than the viewBox.
+      expect(x).toBeGreaterThanOrEqual(VIEW_MIN - 8);
+      expect(x + w).toBeLessThanOrEqual(VIEW_MAX + 8);
+      expect(y).toBeGreaterThanOrEqual(VIEW_MIN - 8);
+      expect(y + h).toBeLessThanOrEqual(VIEW_MAX + 8);
+      unmount();
+    }
   });
 
   it("includes ghost mission values in tooltip (gh-601)", () => {

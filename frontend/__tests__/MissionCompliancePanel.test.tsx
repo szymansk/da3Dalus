@@ -115,7 +115,9 @@ describe("MissionCompliancePanel", () => {
       <MissionCompliancePanel aeroplaneId="x" onAxisClick={() => {}} />,
     );
     expect(screen.getByText(/Mission Compliance/)).toBeInTheDocument();
-    expect(screen.getByText(/Vergleichs-Profile/)).toBeInTheDocument();
+    expect(screen.getByText(/Comparison Profiles/)).toBeInTheDocument();
+    // The German legacy string should not appear anywhere (gh-609).
+    expect(screen.queryByText(/Vergleichs-Profile/)).not.toBeInTheDocument();
   });
 
   it("adds a comparison mission when a non-active toggle is clicked", () => {

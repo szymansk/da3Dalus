@@ -54,7 +54,7 @@ export function MissionCompliancePanel({ aeroplaneId, onAxisClick }: Props) {
         onAxisClick={onAxisClick}
       />
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-3">
-        Vergleichs-Profile
+        Comparison Profiles
       </div>
       <MissionToggleGrid
         presets={presets}
