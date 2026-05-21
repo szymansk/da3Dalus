@@ -13,6 +13,18 @@ export type AircraftMode =
   | "uav_runway"
   | "uav_belly_land";
 
+/** gh-613 Phase B: constraint provenance classification.
+ *
+ * - `universal`: pure-physics constraints applicable to every fixed-wing
+ *   aircraft (Stall, Generic Climb, Cruise…).
+ * - `rc_specific`: RC/UAV-relevant constraints from Lennon / mission
+ *   convention (Mission-Min T/W, Wing-Cube-Loading, Power-Loading,
+ *   Vertical-Climb, Hand-Launch).
+ * - `cs25_only`: CS-25 / FAR-25 multi-engine bands (OEI Second-Segment,
+ *   Missed-Approach) that single-engine aircraft cannot experience.
+ */
+export type ConstraintCategory = "universal" | "rc_specific" | "cs25_only";
+
 export interface ConstraintLine {
   name: string;
   /** T/W values at each W/S sample point (line constraints); null for vertical constraints */
@@ -25,6 +37,12 @@ export interface ConstraintLine {
   binding: boolean;
   /** Short formula / reference for hover tooltip */
   hover_text: string | null;
+  /** gh-613 Phase B: constraint provenance — drives modal badges. */
+  category: ConstraintCategory;
+  /** gh-613 Phase B: false → excluded from insufficient-T/W warning logic. */
+  binding_for_warning: boolean;
+  /** gh-613 Phase B: false → not drawn on the chart for the active flight_profile. */
+  applicable_for_profile: boolean;
 }
 
 export interface DesignPoint {
@@ -57,6 +75,8 @@ export interface UseMatchingChartOptions {
   vSTarget?: number | null;
   gammaClimbDeg?: number | null;
   vCruiseMps?: number | null;
+  /** gh-613 Phase B: mission profile id (trainer, sport, acro_3d, …). */
+  flightProfile?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -71,6 +91,7 @@ export function useMatchingChart(
     vSTarget,
     gammaClimbDeg,
     vCruiseMps,
+    flightProfile,
   }: UseMatchingChartOptions = {}
 ) {
   const params = new URLSearchParams();
@@ -79,6 +100,7 @@ export function useMatchingChart(
   if (vSTarget != null) params.set("v_s_target", String(vSTarget));
   if (gammaClimbDeg != null) params.set("gamma_climb_deg", String(gammaClimbDeg));
   if (vCruiseMps != null) params.set("v_cruise_mps", String(vCruiseMps));
+  if (flightProfile != null && flightProfile !== "") params.set("flight_profile", flightProfile);
 
   const url = aeroplaneId
     ? `/aeroplanes/${encodeURIComponent(aeroplaneId)}/matching-chart?${params}`
