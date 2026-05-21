@@ -204,6 +204,83 @@ describe("MissionRadarChart", () => {
     expect(text).toMatch(/Soll/);
   });
 
+  it("renders active mission label in the tooltip header, not on the Soll row (gh-617)", () => {
+    const ksetCruise = {
+      ...kset,
+      ist_polygon: { ...kset.ist_polygon, cruise: cruiseKpi },
+    };
+    const { getByTestId } = render(
+      <MissionRadarChart
+        kpis={ksetCruise}
+        activeMissions={[preset("trainer")]}
+        onAxisClick={() => undefined}
+      />,
+    );
+    fireEvent.mouseEnter(getByTestId("hover-wedge-cruise"));
+
+    // Header has axis name AND the active mission label, separated by " · ".
+    const header = getByTestId("axis-tooltip-cruise-header");
+    const headerText = header.textContent ?? "";
+    expect(headerText).toMatch(/Cruise/);
+    expect(headerText).toMatch(/trainer/);
+    // Both pieces are present with a "·" separator (regardless of order).
+    expect(headerText).toMatch(/·/);
+
+    // Soll row contains only value + unit (no trailing parenthesised label).
+    // Spans are inline; textContent concatenates without spaces between them,
+    // hence "Soll:17.50 m/s". The `$` anchor verifies no trailing "(...)".
+    const sollRow = getByTestId("axis-tooltip-cruise-soll");
+    const sollText = (sollRow.textContent ?? "").trim();
+    expect(sollText).toMatch(/^Soll:\s*\d+\.\d+\s+m\/s$/);
+    // No trailing "(trainer)" suffix on the Soll row.
+    expect(sollText).not.toMatch(/\(trainer\)/);
+  });
+
+  it("header degrades to just the axis name when no active mission is selected (gh-617)", () => {
+    const ksetCruise = {
+      ...kset,
+      ist_polygon: { ...kset.ist_polygon, cruise: cruiseKpi },
+    };
+    const { getByTestId } = render(
+      <MissionRadarChart
+        kpis={ksetCruise}
+        activeMissions={[]}
+        onAxisClick={() => undefined}
+      />,
+    );
+    fireEvent.mouseEnter(getByTestId("hover-wedge-cruise"));
+    const header = getByTestId("axis-tooltip-cruise-header");
+    const headerText = (header.textContent ?? "").trim();
+    expect(headerText).toBe("Cruise");
+    // No separator when no active mission is present.
+    expect(headerText).not.toMatch(/·/);
+  });
+
+  it("ghost rows still carry their own per-row profile label (gh-617)", () => {
+    const ghost = preset("sailplane");
+    ghost.target_polygon.cruise = 0.8;
+    ghost.axis_ranges.cruise = [10, 30]; // 10 + 0.8 × 20 = 26
+    const { getByTestId } = render(
+      <MissionRadarChart
+        kpis={kset}
+        activeMissions={[preset("trainer"), ghost]}
+        onAxisClick={() => undefined}
+      />,
+    );
+    fireEvent.mouseEnter(getByTestId("hover-wedge-cruise"));
+
+    // Header carries the ACTIVE mission only ("trainer"), not the ghost.
+    const header = getByTestId("axis-tooltip-cruise-header");
+    expect(header.textContent ?? "").toMatch(/trainer/);
+    expect(header.textContent ?? "").not.toMatch(/sailplane/);
+
+    // Ghost row preserves the "<label>: <value> <unit>" format.
+    const tooltip = getByTestId("axis-tooltip-cruise");
+    const text = tooltip.textContent ?? "";
+    // Format: "sailplane: 26.00 m/s"
+    expect(text).toMatch(/sailplane:\s*26\.00\s+m\/s/);
+  });
+
   it("hides tooltip on mouseleave (gh-601)", () => {
     const { getByTestId, queryByTestId } = render(
       <MissionRadarChart
