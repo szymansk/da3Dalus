@@ -123,6 +123,29 @@ _CONSTRAINT_KEY_VERTICAL_CLIMB: str = "vertical_climb"
 _CONSTRAINT_KEY_HAND_LAUNCH: str = "hand_launch"
 
 
+# Allowed log labels for the flight_profile field — sanitises user-supplied
+# query-param input before it reaches the logger (Sonar S5145).
+_LOG_ALLOWED_PROFILES: frozenset[str] = frozenset({
+    "trainer", "sport", "wing_racer", "acro_3d", "stol_bush",
+    "slope_soarer", "glider", "sailplane", "motor_glider", "flying_wing",
+    "custom",
+})
+
+
+def _sanitize_profile_for_log(profile: str | None) -> str:
+    """Return a log-safe label for the active flight_profile.
+
+    The flight_profile string flows in from a query parameter and from
+    ``MissionObjective.mission_type`` (a stored user-controlled string).
+    Logging it raw is flagged by Sonar S5145 ("log user-controlled data").
+    Whitelisting against the known mission-preset ids removes the risk
+    while keeping the log message useful.
+    """
+    if profile is None:
+        return "<none>"
+    return profile if profile in _LOG_ALLOWED_PROFILES else "<unknown>"
+
+
 def _resolve_profile_key(profile: str | None) -> str | None:
     """Normalise a flight-profile id into a key usable for _PROFILE_CONSTRAINT_MAP.
 
@@ -964,10 +987,13 @@ def compute_chart(
         constraints_final.append(c2)
     _ = binding_by_id  # retained for clarity, not used after match-by-name
 
+    # Sanitise the profile string before logging — it originates from a
+    # query param and Sonar S5145 flags raw user-controlled logging.
+    safe_profile = _sanitize_profile_for_log(flight_profile)
     logger.info(
         "Matching chart: mode=%s, profile=%s, W/S=%.1f N/m², T/W=%.4f, feasibility=%s",
         mode,
-        flight_profile,
+        safe_profile,
         design_point["ws_n_m2"],
         design_point["t_w"],
         feasibility,
