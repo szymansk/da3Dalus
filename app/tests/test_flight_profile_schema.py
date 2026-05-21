@@ -76,7 +76,7 @@ def test_schema_accepts_slope_soarer_profile_type():
 
 
 def test_flight_profile_type_includes_flying_wing():
-    """gh-581: flying_wing is a first-class profile type for the Nurflügler preset."""
+    """gh-581: flying_wing is a first-class profile type for the flying wing preset."""
     assert FlightProfileType.flying_wing == "flying_wing"
     assert FlightProfileType("flying_wing") is FlightProfileType.flying_wing
 

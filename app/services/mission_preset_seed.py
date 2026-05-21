@@ -228,7 +228,7 @@ SEED_PRESETS: list[MissionPreset] = [
     ),
     MissionPreset(
         id="motor_glider",
-        label="Motorsegler (Motor Glider)",
+        label="Motor Glider",
         description=(
             "Self-launching motor glider — high-AR sailplane geometry with a "
             "small climb-only powerplant (folding or retractable prop). "
@@ -275,9 +275,9 @@ SEED_PRESETS: list[MissionPreset] = [
     ),
     MissionPreset(
         id="flying_wing",
-        label="Flying Wing (Nurflügler)",
+        label="Flying Wing",
         description=(
-            "Tailless RC flying wing (Nurflügler) — longitudinal trim via "
+            "Tailless RC flying wing — longitudinal trim via "
             "sweep + washout + reflex airfoil. Tail-volume sizing not "
             "applicable; static-margin corridor tightened (5–10 % MAC, "
             "default 7.5 %) per #579 — this is a dynamic-stability / "
@@ -300,7 +300,7 @@ SEED_PRESETS: list[MissionPreset] = [
             "MH64). PREFERRED STRATEGY: HYBRID (moderate reflex + moderate "
             "sweep + moderate washout) per Apogee — best modern flying "
             "wings. Symmetric-airfoil caveat: dx/dα = 0 from the section "
-            "alone, so a symmetric airfoil on a Nurflügler requires "
+            "alone, so a symmetric airfoil on a flying wing requires "
             "CG BELOW the wing chord plane (pendulum stability) — "
             "otherwise the wing is not statically stable. Penalty of "
             "reflex sections per Apogee: −9–15 % cl_max, −5 % minimum "

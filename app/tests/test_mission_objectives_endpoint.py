@@ -82,12 +82,12 @@ def test_get_mission_presets_exposes_slope_soarer_payload(client_and_db):
 
 
 def test_get_mission_presets_exposes_motor_glider_payload(client_and_db):
-    """gh-580: the Motorsegler preset surfaces via the public API with expected fields."""
+    """gh-580: the motor glider preset surfaces via the public API with expected fields."""
     client, _ = client_and_db
     r = client.get("/mission-presets")
     assert r.status_code == 200
     preset = next(p for p in r.json() if p["id"] == "motor_glider")
-    assert preset["label"] == "Motorsegler (Motor Glider)"
+    assert preset["label"] == "Motor Glider"
     est = preset["suggested_estimates"]
     assert est["power_to_weight"] == 100.0
     assert est["prop_efficiency"] == 0.65
@@ -97,12 +97,12 @@ def test_get_mission_presets_exposes_motor_glider_payload(client_and_db):
 
 
 def test_get_mission_presets_exposes_flying_wing_payload(client_and_db):
-    """gh-581: the Nurflügler preset surfaces via the public API with expected fields."""
+    """gh-581: the flying wing preset surfaces via the public API with expected fields."""
     client, _ = client_and_db
     r = client.get("/mission-presets")
     assert r.status_code == 200
     preset = next(p for p in r.json() if p["id"] == "flying_wing")
-    assert preset["label"] == "Flying Wing (Nurflügler)"
+    assert preset["label"] == "Flying Wing"
     est = preset["suggested_estimates"]
     # Tighter SM corridor for tailless (5–10 % MAC, default 7.5 %) — see #579
     assert est["target_static_margin"] == 0.075
