@@ -1,13 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, AlertTriangle, Info } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Loader2, AlertTriangle, Info, X } from "lucide-react";
 import {
   useMatchingChart,
   type AircraftMode,
   type MatchingChartData,
   type ConstraintLine,
 } from "@/hooks/useMatchingChart";
+import { useDesignAssumptions } from "@/hooks/useDesignAssumptions";
+import { useComputationContext } from "@/hooks/useComputationContext";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -21,6 +23,18 @@ interface DragPoint {
   ws_n_m2: number;
   t_w: number;
 }
+
+interface CurrentDesignPoint {
+  readonly ws_n_m2: number;
+  readonly t_w: number;
+  readonly mass_kg: number;
+  readonly s_m2: number;
+  readonly t_n: number;
+  readonly w_n: number;
+  readonly ar: number | null;
+}
+
+const G_MPS2 = 9.80665;
 
 // ---------------------------------------------------------------------------
 // Mode labels
@@ -39,6 +53,22 @@ const MODE_DEFAULTS: Record<AircraftMode, { sRunway: number; vSTarget: number; g
   uav_runway: { sRunway: 200, vSTarget: 12, gamma: 4 },
   uav_belly_land: { sRunway: 200, vSTarget: 12, gamma: 4 },
 };
+
+// ---------------------------------------------------------------------------
+// Formatting helpers
+// ---------------------------------------------------------------------------
+
+/** Format a number to N significant figures.
+ *
+ * gh-606: per Scholz review (minor finding), the T value in the readout
+ * panel should be 3 sig figs, not toFixed(1). Examples: 123.456 → "123",
+ * 1234.56 → "1.23e+3", 0.01234 → "0.0123". Exported for unit testing.
+ */
+export function formatSigFigs(value: number, sigFigs: number): string {
+  if (!isFinite(value)) return "—";
+  if (value === 0) return "0";
+  return value.toPrecision(sigFigs);
+}
 
 // ---------------------------------------------------------------------------
 // Plotly trace / shape builders (extracted to reduce function nesting depth)
@@ -92,7 +122,45 @@ function buildDesignPointTrace(
     },
     hovertemplate: (
       `<b>Design Point</b><br>W/S = ${ws_n_m2.toFixed(0)} N/m²<br>` +
-      `T/W = ${t_w.toFixed(4)}<br><i>T/W = T_static_SL / W_MTOW</i><extra></extra>`
+      `T/W = ${t_w.toFixed(4)}<br><i>y-axis: T_TO/W_TO (RC airframes: t_static_N proxy)</i><extra></extra>`
+    ),
+  };
+}
+
+/** Build the static current-design-point marker trace.
+ *
+ * gh-606: this is a separate trace from the (existing, draggable) "Design
+ * Point" — it visualises where the current aircraft (mass, s_ref, t_static)
+ * actually sits on the chart. Colour: teal (`#22dd99`) to distinguish from
+ * the orange explored point. Symbol: filled diamond.
+ *
+ * Tooltip labels W explicitly as `m_MTO·g` (per Scholz review substantive
+ * finding) and T as the user's *assumed* static thrust (RC proxy for
+ * T_TO at sea level). Exported for unit testing.
+ */
+export function buildCurrentDesignPointTrace(cdp: CurrentDesignPoint): PlotlyTrace {
+  const arStr = cdp.ar != null ? cdp.ar.toFixed(2) : "—";
+  return {
+    x: [cdp.ws_n_m2],
+    y: [cdp.t_w],
+    type: "scatter",
+    mode: "markers",
+    name: "Current Design Point",
+    marker: {
+      symbol: "diamond",
+      size: 12,
+      color: "#22dd99",
+      line: { color: "#0a0a0a", width: 1.5 },
+    },
+    hovertemplate: (
+      `<b>Current Design Point</b><br>` +
+      `W/S = ${cdp.ws_n_m2.toFixed(1)} N/m²<br>` +
+      `T/W = ${cdp.t_w.toFixed(3)}<br>` +
+      `S = ${cdp.s_m2.toFixed(2)} m²<br>` +
+      `T = ${formatSigFigs(cdp.t_n, 3)} N (your assumed static thrust)<br>` +
+      `W = m_MTO·g = ${cdp.w_n.toFixed(1)} N<br>` +
+      `AR = ${arStr}` +
+      `<extra></extra>`
     ),
   };
 }
@@ -196,7 +264,9 @@ function buildLayout(
         x: 0.01, y: 0.99, xref: "paper", yref: "paper",
         xanchor: "left", yanchor: "top", showarrow: false,
         font: { color: "#52525B", size: 9 },
-        text: "Convention: T/W = T_static_SL / W_MTOW · AR held constant",
+        // gh-606: Scholz review critical #1 — y-axis is T_TO/W_TO (sea-level
+        // take-off thrust); t_static_N is only an RC-airframe proxy.
+        text: "y-axis: T_TO/W_TO · RC airframes use static thrust as proxy · AR is a chart input",
       },
       {
         x: displayDp.ws_n_m2, y: displayDp.t_w, xref: "x", yref: "y",
@@ -265,6 +335,275 @@ export function findBindingConstraintAtPoint(
   return bindingName;
 }
 
+/** Return the name of the most-violated **t_w_points** constraint at the
+ * given (ws, tw) point, or null if none is violated.
+ *
+ * Unlike `findBindingConstraintAtPoint`, this does NOT report ws_max
+ * constraints (we only care about climb/takeoff insufficient-thrust
+ * diagnostics for the current-design-point callout). Exported for unit
+ * testing.
+ *
+ * gh-606: Scholz review substantive finding — turn the chart from
+ * decorative to diagnostic by flagging insufficient T/W.
+ */
+export function findInsufficientThrustConstraint(
+  ws: number,
+  tw: number,
+  wsRange: number[],
+  constraints: ConstraintLine[],
+): string | null {
+  if (!wsRange.length) return null;
+  const nearestIdx = _nearestWsIdx(ws, wsRange);
+  let bindingName: string | null = null;
+  let maxRatio = 0;
+  for (const c of constraints) {
+    if (!c.t_w_points) continue;
+    const twReq = c.t_w_points[nearestIdx];
+    if (twReq <= 0) continue;
+    const ratio = (twReq - tw) / twReq;
+    if (ratio > maxRatio) {
+      maxRatio = ratio;
+      bindingName = c.name;
+    }
+  }
+  return bindingName;
+}
+
+// ---------------------------------------------------------------------------
+// Derived value helpers (pure, exported for unit testing)
+// ---------------------------------------------------------------------------
+
+/** Compute S [m²] from weight [N] and wing loading [N/m²]. */
+export function computeWingArea(weightN: number, wsNm2: number): number {
+  if (wsNm2 <= 0) return NaN;
+  return weightN / wsNm2;
+}
+
+/** Compute T [N] from weight [N] and thrust-to-weight ratio. */
+export function computeThrust(weightN: number, tw: number): number {
+  return tw * weightN;
+}
+
+/** Compute aspect ratio from reference span [m] and reference area [m²]. */
+export function computeAspectRatio(bRefM: number | null | undefined, sRefM2: number | null | undefined): number | null {
+  if (bRefM == null || sRefM2 == null || sRefM2 <= 0) return null;
+  return (bRefM * bRefM) / sRefM2;
+}
+
+// ---------------------------------------------------------------------------
+// Info modal — Scholz/Sadraey sizing methodology explainer
+// ---------------------------------------------------------------------------
+
+interface InfoModalProps {
+  readonly open: boolean;
+  readonly onClose: () => void;
+}
+
+/** Modal explaining the matching-chart methodology per Loftin / Scholz §5 /
+ * Sadraey §4.3.1. English-only. Vault concepts referenced:
+ * `[[matching-chart-optimization]]`, `[[exam-matching-chart-design-point]]`,
+ * `[[preliminary-sizing-overview]]`. */
+function InfoModal({ open, onClose }: InfoModalProps) {
+  useEffect(() => {
+    if (!open) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      data-testid="matching-chart-info-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="matching-chart-info-title"
+    >
+      <div className="max-h-[85vh] w-[680px] overflow-y-auto rounded-xl border border-border bg-card p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h3
+            id="matching-chart-info-title"
+            className="font-[family-name:var(--font-geist-sans)] text-[15px] font-medium text-foreground"
+          >
+            Matching Chart — sizing methodology
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Close sizing methodology help"
+            data-testid="info-modal-close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-4 font-[family-name:var(--font-geist-sans)] text-[12px] leading-relaxed text-foreground">
+
+          {/* 1. What you're doing */}
+          <section data-testid="info-section-overview">
+            <h4 className="mb-1 text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+              What you&apos;re doing
+            </h4>
+            <p>
+              Preliminary sizing per Loftin / Scholz §5 / Sadraey §4.3.1. The goal is to find the
+              smallest (T, S) pair that satisfies every performance constraint. The chart visualises
+              the *feasible region* in (W/S, T/W)-space, and the optimum design point typically sits
+              at the intersection of the take-off requirement and the binding climb constraint.
+            </p>
+            <p className="mt-2 text-muted-foreground">
+              <strong>SI units throughout.</strong> Sizing is a <strong>3&ndash;5 iteration outer loop</strong>: a
+              single chart read is one pass. Each pass refines the polar (C<sub>D0</sub>,
+              C<sub>L,max</sub>) and the mass estimate; the chart is re-plotted; design point is
+              re-picked. Convergence comes from the loop, not from a single read.
+            </p>
+          </section>
+
+          {/* 2. Glossary */}
+          <section data-testid="info-section-glossary">
+            <h4 className="mb-1 text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Glossary
+            </h4>
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <th scope="col" className="py-0.5 pr-3 font-normal">Symbol</th>
+                  <th scope="col" className="py-0.5 font-normal">Meaning [units]</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td className="py-0.5 pr-3 font-mono text-foreground">S</td><td className="py-0.5">wing reference area [m²]</td></tr>
+                <tr>
+                  <td className="py-0.5 pr-3 font-mono text-foreground">T</td>
+                  <td className="py-0.5">
+                    take-off thrust at sea level [N] (approximated by your static-thrust input for RC airframes)
+                  </td>
+                </tr>
+                <tr><td className="py-0.5 pr-3 font-mono text-foreground">W</td><td className="py-0.5">total weight m<sub>MTO</sub>·g [N]</td></tr>
+                <tr><td className="py-0.5 pr-3 font-mono text-foreground">AR</td><td className="py-0.5">aspect ratio b²/S [-]</td></tr>
+                <tr><td className="py-0.5 pr-3 font-mono text-foreground">W/S</td><td className="py-0.5">wing loading [N/m²] — sets stall speed, landing distance, cruise efficiency</td></tr>
+                <tr><td className="py-0.5 pr-3 font-mono text-foreground">T/W</td><td className="py-0.5">thrust-to-weight ratio [-] — sets climb gradient, take-off distance, acceleration</td></tr>
+                <tr><td className="py-0.5 pr-3 font-mono text-foreground">L/D</td><td className="py-0.5">lift-to-drag ratio at the operating point [-] — drives cruise constraint</td></tr>
+                <tr><td className="py-0.5 pr-3 font-mono text-foreground">C<sub>L,max</sub></td><td className="py-0.5">maximum lift coefficient (clean, take-off, landing) [-] — drives stall and field-length constraints</td></tr>
+              </tbody>
+            </table>
+          </section>
+
+          {/* 3. Axes */}
+          <section data-testid="info-section-axes">
+            <h4 className="mb-1 text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Axes
+            </h4>
+            <p>
+              <strong>x-axis:</strong> W/S [N/m²]. <strong>y-axis:</strong> T<sub>TO</sub>/W<sub>TO</sub>
+              (take-off thrust over take-off weight at ISA sea level). For electric / prop RC
+              airframes the lapse from static thrust to lift-off is a few percent, so your
+              <span className="font-mono"> t_static_N</span> assumption is used as a proxy &mdash; the chart equates them, but
+              that is a <em>convention</em>, not a definition.
+            </p>
+            <p className="mt-2">
+              <strong>AR is a chart INPUT, not a slider.</strong> AR enters the Oswald factor
+              <span className="font-mono"> e</span>, the induced-drag term, and therefore every climb and cruise curve directly.
+              Changing AR upstream requires <em>re-plotting</em>; the chart does not auto-update from
+              the readout panel. AR adjustment lives in the 3&ndash;5-iteration outer loop.
+            </p>
+          </section>
+
+          {/* 4. Constraints */}
+          <section data-testid="info-section-constraints">
+            <h4 className="mb-1 text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Constraints (curves)
+            </h4>
+            <ul className="list-disc pl-5">
+              <li><strong>Stall</strong> &mdash; vertical line at maximum W/S that still hits V<sub>s</sub> target.</li>
+              <li><strong>Take-off field</strong> &mdash; rising-with-W/S curve; binds at small fields and high W/S.</li>
+              <li><strong>Second-segment climb</strong> &mdash; CS-25 / FAR-25-style climb-gradient floor.</li>
+              <li><strong>Missed-approach climb</strong> &mdash; landing-config climb-gradient floor.</li>
+              <li>
+                <strong>Cruise</strong> <em>(typically slack)</em> &mdash; matched iteratively via fuel mass, not enforced
+                on the chart per Sadraey §4.3. Drawn for reference, not selection.
+              </li>
+            </ul>
+          </section>
+
+          {/* 5. Red area */}
+          <section data-testid="info-section-red-area">
+            <h4 className="mb-1 text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Red area = infeasible
+            </h4>
+            <p>
+              The shaded red region marks combinations of (W/S, T/W) where <strong>at least one
+              constraint is violated</strong>. The unshaded region above all constraint curves
+              (and to the left of the stall line) is feasible. A larger feasible region is a
+              <em> permissible</em> design space, not yet an <em>optimum</em>.
+            </p>
+          </section>
+
+          {/* 6. Design point selection */}
+          <section data-testid="info-section-design-point">
+            <h4 className="mb-1 text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Picking the design point (Scholz Fig. 5.9)
+            </h4>
+            <p>
+              Scholz preference: <strong>primary</strong> &mdash; minimise T/W (engine cost / weight
+              drops). <strong>Secondary</strong> &mdash; maximise W/S (smaller wing, lighter
+              structure). The optimum is therefore at the <strong>intersection of the take-off line
+              and the binding climb constraint</strong> &mdash; then W/S is pushed rightward to the
+              landing / stall limit.
+            </p>
+            <pre
+              aria-hidden="true"
+              className="mt-2 rounded bg-card-muted p-2 font-mono text-[10px] leading-tight text-muted-foreground"
+            >
+{`  T/W ▲
+      │  climb (binding)
+      │  ╲
+      │   ╲ take-off
+      │    ╲╲
+      │   ★ ◀─── optimum
+      │     ──────────  cruise (slack)
+      │
+      └────────────▶  W/S
+                 ▲
+                 │ stall / landing limit`}
+            </pre>
+          </section>
+
+          {/* 7. Reading off results */}
+          <section data-testid="info-section-readoff">
+            <h4 className="mb-1 text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+              How to read off results
+            </h4>
+            <p>
+              Once the design point (W/S)<sub>d</sub> and (T/W)<sub>d</sub> is chosen:
+            </p>
+            <ul className="mt-1 list-disc pl-5">
+              <li><span className="font-mono">S = W / (W/S)<sub>d</sub></span> &mdash; wing reference area follows from the current MTOW estimate.</li>
+              <li><span className="font-mono">T = (T/W)<sub>d</sub> · W</span> &mdash; required sea-level take-off thrust.</li>
+              <li>AR is held during the read-off but it was an <em>input</em> to the chart construction.</li>
+            </ul>
+          </section>
+
+          {/* 8. Iteration disclosure */}
+          <section data-testid="info-section-iteration">
+            <h4 className="mb-1 text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Iteration (3&ndash;5 passes)
+            </h4>
+            <p>
+              The matching chart is one step inside a larger sizing loop. Re-plot after each
+              update to mass, polar, AR, or cruise altitude until the design point converges.
+              Single-pass numbers from the readout are useful for orientation, not final sizing.
+            </p>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Plotly chart renderer with drag support
 // ---------------------------------------------------------------------------
@@ -273,6 +612,7 @@ interface MatchingChartPlotProps {
   readonly data: MatchingChartData;
   readonly dragPoint: DragPoint | null;
   readonly isDragging: boolean;
+  readonly currentDp: CurrentDesignPoint | null;
   readonly onDragStart: (ws: number, tw: number) => void;
   readonly onDragMove: (ws: number, tw: number) => void;
   readonly onDragEnd: () => void;
@@ -282,6 +622,7 @@ function MatchingChartPlot({
   data,
   dragPoint,
   isDragging,
+  currentDp,
   onDragStart,
   onDragMove,
   onDragEnd,
@@ -374,6 +715,11 @@ function MatchingChartPlot({
         ...constraintTraces,
         buildDesignPointTrace(displayDp.ws_n_m2, displayDp.t_w, data.feasibility, isDragging),
       ];
+      // gh-606: include current-design-point trace when available (powered
+      // aircraft only — gliders are suppressed upstream in MatchingChartTab).
+      if (currentDp) {
+        allTraces.push(buildCurrentDesignPointTrace(currentDp));
+      }
       const layout = { ...buildLayout(ws, data, displayDp, isDragging), shapes };
 
       await Plotly.react(node, allTraces, layout, {
@@ -386,7 +732,7 @@ function MatchingChartPlot({
       disposed = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, displayDp.ws_n_m2, displayDp.t_w, isDragging, dragBindingName]);
+  }, [data, displayDp.ws_n_m2, displayDp.t_w, isDragging, dragBindingName, currentDp]);
 
   // Cleanup Plotly on unmount
   useEffect(() => {
@@ -459,56 +805,93 @@ interface DesignPointSummaryProps {
   readonly isDragging: boolean;
   readonly displayDp: { ws_n_m2: number; t_w: number } | undefined;
   readonly liveDragBinding: string | null;
+  readonly weightN: number | null;
+  readonly aspectRatio: number | null;
 }
 
-function DesignPointSummary({ data, isDragging, displayDp, liveDragBinding }: DesignPointSummaryProps) {
-  const activeColor = isDragging ? "#FF8400" : undefined;
-
+/** Single readout cell with optional title (tooltip) and testid. */
+function SummaryCell({
+  label,
+  value,
+  title,
+  color,
+  testId,
+}: Readonly<{
+  label: string;
+  value: string;
+  title?: string;
+  color?: string;
+  testId?: string;
+}>) {
   return (
-    <div className="flex flex-wrap gap-4 rounded-xl border border-border bg-card px-4 py-3">
+    <div className="flex flex-col gap-0.5">
+      <span
+        className="font-[family-name:var(--font-geist-sans)] text-[10px] text-muted-foreground"
+        title={title}
+      >
+        {label}
+      </span>
+      <span
+        className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] font-semibold"
+        style={color ? { color } : undefined}
+        data-testid={testId}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+/** Format helpers — pulled out to flatten the JSX. */
+function fmtWs(displayDp: { ws_n_m2: number } | undefined): string {
+  return displayDp ? `${displayDp.ws_n_m2.toFixed(0)} N/m²` : "—";
+}
+function fmtTw(displayDp: { t_w: number } | undefined): string {
+  return displayDp ? displayDp.t_w.toFixed(3) : "—";
+}
+function fmtArea(area: number | null): string {
+  return area != null && isFinite(area) ? `${area.toFixed(3)} m²` : "—";
+}
+function fmtThrust(thrust: number | null): string {
+  return thrust != null && isFinite(thrust) ? `${formatSigFigs(thrust, 3)} N` : "—";
+}
+function fmtWeight(w: number | null): string {
+  return w != null && isFinite(w) ? `${w.toFixed(1)} N` : "—";
+}
+function fmtAr(ar: number | null): string {
+  return ar != null && isFinite(ar) ? ar.toFixed(2) : "—";
+}
+
+function BindingCells({
+  data,
+  isDragging,
+  liveDragBinding,
+}: Readonly<{
+  data: MatchingChartData;
+  isDragging: boolean;
+  liveDragBinding: string | null;
+}>) {
+  if (isDragging) {
+    if (!liveDragBinding) return null;
+    const color = data.constraints.find((c) => c.name === liveDragBinding)?.color ?? "#FF8400";
+    return (
       <div className="flex flex-col gap-0.5">
-        <span className="font-[family-name:var(--font-geist-sans)] text-[10px] text-muted-foreground">
-          {isDragging ? "Drag W/S" : "Design Point W/S"}
-        </span>
+        <span className="font-[family-name:var(--font-geist-sans)] text-[10px] text-muted-foreground">Binding</span>
         <span
-          className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] font-semibold"
-          style={{ color: activeColor }}
-          data-testid="dp-ws"
+          className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] font-semibold"
+          style={{ color }}
+          data-testid="drag-binding"
         >
-          {displayDp ? `${displayDp.ws_n_m2.toFixed(0)} N/m²` : "—"}
+          {liveDragBinding}
         </span>
       </div>
-      <div className="flex flex-col gap-0.5">
-        <span className="font-[family-name:var(--font-geist-sans)] text-[10px] text-muted-foreground">
-          {isDragging ? "Drag T/W" : "Design Point T/W"}
-        </span>
-        <span
-          className="font-[family-name:var(--font-jetbrains-mono)] text-[14px] font-semibold"
-          style={{ color: activeColor }}
-          data-testid="dp-tw"
-        >
-          {displayDp ? displayDp.t_w.toFixed(3) : "—"}
-        </span>
-      </div>
-      {isDragging && liveDragBinding && (
-        <div className="flex flex-col gap-0.5">
-          <span className="font-[family-name:var(--font-geist-sans)] text-[10px] text-muted-foreground">
-            Binding
-          </span>
-          <span
-            className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] font-semibold"
-            style={{ color: data.constraints.find((c) => c.name === liveDragBinding)?.color ?? "#FF8400" }}
-            data-testid="drag-binding"
-          >
-            {liveDragBinding}
-          </span>
-        </div>
-      )}
-      {!isDragging && data.constraints.filter((c) => c.binding).map((c) => (
+    );
+  }
+  return (
+    <>
+      {data.constraints.filter((c) => c.binding).map((c) => (
         <div key={c.name} className="flex flex-col gap-0.5">
-          <span className="font-[family-name:var(--font-geist-sans)] text-[10px] text-muted-foreground">
-            Binding
-          </span>
+          <span className="font-[family-name:var(--font-geist-sans)] text-[10px] text-muted-foreground">Binding</span>
           <span
             className="font-[family-name:var(--font-jetbrains-mono)] text-[12px] font-semibold"
             style={{ color: c.color }}
@@ -517,6 +900,65 @@ function DesignPointSummary({ data, isDragging, displayDp, liveDragBinding }: De
           </span>
         </div>
       ))}
+    </>
+  );
+}
+
+function DesignPointSummary({
+  data,
+  isDragging,
+  displayDp,
+  liveDragBinding,
+  weightN,
+  aspectRatio,
+}: DesignPointSummaryProps) {
+  const activeColor = isDragging ? "#FF8400" : undefined;
+  const hasMass = weightN != null && weightN > 0;
+  // gh-606: live-derived S = W/(W/S), T = T/W·W using the held W and AR.
+  const derivedS = displayDp && hasMass ? computeWingArea(weightN!, displayDp.ws_n_m2) : null;
+  const derivedT = displayDp && hasMass ? computeThrust(weightN!, displayDp.t_w) : null;
+
+  return (
+    <div className="flex flex-wrap gap-4 rounded-xl border border-border bg-card px-4 py-3">
+      <SummaryCell
+        label={isDragging ? "Drag W/S" : "Design Point W/S"}
+        value={fmtWs(displayDp)}
+        color={activeColor}
+        testId="dp-ws"
+      />
+      <SummaryCell
+        label={isDragging ? "Drag T/W" : "Design Point T/W"}
+        value={fmtTw(displayDp)}
+        color={activeColor}
+        testId="dp-tw"
+      />
+      <SummaryCell
+        label="S = W / (W/S)"
+        title="S = W / (W/S)"
+        value={fmtArea(derivedS)}
+        color={activeColor}
+        testId="dp-derived-s"
+      />
+      <SummaryCell
+        label="T = (T/W)·W"
+        title="T = (T/W) · W"
+        value={fmtThrust(derivedT)}
+        color={activeColor}
+        testId="dp-derived-t"
+      />
+      <SummaryCell
+        label="W (m_MTO · g)"
+        title="W = m_MTO · g, treated as constant during this chart read"
+        value={fmtWeight(weightN)}
+        testId="dp-w"
+      />
+      <SummaryCell
+        label="AR (input — see info modal)"
+        title="AR is a chart input — changing it requires re-plotting"
+        value={fmtAr(aspectRatio)}
+        testId="dp-ar"
+      />
+      <BindingCells data={data} isDragging={isDragging} liveDragBinding={liveDragBinding} />
     </div>
   );
 }
@@ -542,11 +984,27 @@ function FeasibilityBadge({ feasibility }: Readonly<{ feasibility: string }>) {
 // Chart + drag state (extracted to enable key-based reset when data changes)
 // ---------------------------------------------------------------------------
 
+interface MatchingChartContentProps {
+  readonly data: MatchingChartData;
+  readonly currentDp: CurrentDesignPoint | null;
+  readonly weightN: number | null;
+  readonly aspectRatio: number | null;
+  readonly isGlider: boolean;
+  readonly insufficientConstraintName: string | null;
+}
+
 /** Internal component that owns drag state for a given snapshot of chart data.
  * Rendered with key={data.design_point.ws_n_m2 + data.design_point.t_w} so that
  * when fresh server data arrives the drag state resets automatically via re-mount.
  */
-function MatchingChartContent({ data }: Readonly<{ data: MatchingChartData }>) {
+function MatchingChartContent({
+  data,
+  currentDp,
+  weightN,
+  aspectRatio,
+  isGlider,
+  insufficientConstraintName,
+}: MatchingChartContentProps) {
   const [dragPoint, setDragPoint] = useState<DragPoint | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -571,21 +1029,42 @@ function MatchingChartContent({ data }: Readonly<{ data: MatchingChartData }>) {
 
   return (
     <>
-      <div className="rounded-xl border border-border bg-card p-2">
+      <div className="relative rounded-xl border border-border bg-card p-2">
         <MatchingChartPlot
           data={data}
           dragPoint={dragPoint}
           isDragging={isDragging}
+          currentDp={currentDp}
           onDragStart={handleDragStart}
           onDragMove={handleDragMove}
           onDragEnd={handleDragEnd}
         />
+        {/* gh-606: glider suppression per Scholz review critical #3 */}
+        {isGlider && (
+          <div
+            className="absolute left-3 top-3 max-w-[420px] rounded bg-card-muted/90 px-2 py-1 text-[10px] text-muted-foreground"
+            data-testid="glider-callout"
+          >
+            Matching chart is jet/powered-only &mdash; gliders are sized by sink-rate polar, not T/W vs W/S.
+          </div>
+        )}
+        {/* gh-606: insufficient-thrust callout per Scholz review substantive finding */}
+        {!isGlider && currentDp && insufficientConstraintName && (
+          <div
+            className="absolute right-3 top-3 max-w-[360px] rounded bg-red-900/70 px-2 py-1 text-[10px] text-red-200"
+            data-testid="insufficient-thrust-callout"
+          >
+            Your assumed T/W = {currentDp.t_w.toFixed(3)} is insufficient for the {insufficientConstraintName} constraint at the current W/S.
+          </div>
+        )}
       </div>
       <DesignPointSummary
         data={data}
         isDragging={isDragging}
         displayDp={displayDp}
         liveDragBinding={liveDragBinding}
+        weightN={weightN}
+        aspectRatio={aspectRatio}
       />
     </>
   );
@@ -600,6 +1079,7 @@ export function MatchingChartTab({ aeroplaneId }: Props) {
   const [sRunway, setSRunway] = useState<number>(MODE_DEFAULTS[mode].sRunway);
   const [vSTarget, setVSTarget] = useState<number>(MODE_DEFAULTS[mode].vSTarget);
   const [gamma, setGamma] = useState<number>(MODE_DEFAULTS[mode].gamma);
+  const [infoOpen, setInfoOpen] = useState(false);
 
   function handleModeChange(newMode: AircraftMode) {
     setMode(newMode);
@@ -614,6 +1094,59 @@ export function MatchingChartTab({ aeroplaneId }: Props) {
     vSTarget,
     gammaClimbDeg: gamma,
   });
+
+  // gh-606: pull mass + t_static + s_ref + b_ref to compute the current
+  // (W/S, T/W) point and the live readout's "held" W and AR.
+  const { data: assumptionsData } = useDesignAssumptions(aeroplaneId);
+  const { data: ctx } = useComputationContext(aeroplaneId);
+
+  const massKg = useMemo(() => {
+    const a = assumptionsData?.assumptions.find((x) => x.parameter_name === "mass");
+    return a ? a.effective_value : null;
+  }, [assumptionsData]);
+
+  const tStaticN = useMemo(() => {
+    const a = assumptionsData?.assumptions.find((x) => x.parameter_name === "t_static_N");
+    return a ? a.effective_value : null;
+  }, [assumptionsData]);
+
+  const sRefM2 = ctx?.s_ref_m2 ?? null;
+  const bRefM = ctx?.b_ref_m ?? null;
+  const isGlider = ctx?.is_glider === true;
+
+  const weightN = massKg != null && massKg > 0 ? massKg * G_MPS2 : null;
+  const aspectRatio = computeAspectRatio(bRefM, sRefM2);
+
+  // gh-606: glider suppression — Scholz review critical #3. Drawing a phantom
+  // marker at T/W = 0 trains the user to misread the chart. Suppress entirely.
+  const currentDp: CurrentDesignPoint | null = useMemo(() => {
+    if (isGlider) return null;
+    if (massKg == null || sRefM2 == null || tStaticN == null) return null;
+    if (sRefM2 <= 0 || massKg <= 0 || tStaticN <= 0) return null;
+    const w = massKg * G_MPS2;
+    const ws = w / sRefM2;
+    const tw = tStaticN / w;
+    return {
+      ws_n_m2: ws,
+      t_w: tw,
+      mass_kg: massKg,
+      s_m2: sRefM2,
+      t_n: tStaticN,
+      w_n: w,
+      ar: aspectRatio,
+    };
+  }, [isGlider, massKg, sRefM2, tStaticN, aspectRatio]);
+
+  // gh-606: insufficient-thrust diagnostic (substantive finding in Scholz review).
+  const insufficientConstraintName = useMemo(() => {
+    if (!data || !currentDp) return null;
+    return findInsufficientThrustConstraint(
+      currentDp.ws_n_m2,
+      currentDp.t_w,
+      data.ws_range_n_m2,
+      data.constraints,
+    );
+  }, [data, currentDp]);
 
   // Stable key: changes only when the server returns a new design point.
   // This re-mounts MatchingChartContent and resets its internal drag state.
@@ -695,13 +1228,28 @@ export function MatchingChartTab({ aeroplaneId }: Props) {
           />
         </div>
 
-        <div className="ml-auto flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          <Info size={11} />
-          <span className="font-[family-name:var(--font-geist-sans)]">
-            Drag design point to explore required S and T for fixed W and AR
+        {/* gh-606: Info button now opens the methodology modal. */}
+        <div className="ml-auto flex items-center gap-2 text-[10px] text-muted-foreground">
+          <button
+            type="button"
+            onClick={() => setInfoOpen(true)}
+            aria-label="Open sizing methodology help"
+            data-testid="info-modal-trigger"
+            className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 hover:border-orange-400 hover:text-foreground"
+          >
+            <Info size={11} />
+            <span className="font-[family-name:var(--font-geist-sans)]">
+              How to read this chart
+            </span>
+          </button>
+          <span className="font-[family-name:var(--font-geist-sans)] hidden md:inline">
+            Drag the design point to explore S and T for the held W and AR
           </span>
         </div>
       </div>
+
+      {/* gh-606: Modal */}
+      <InfoModal open={infoOpen} onClose={() => setInfoOpen(false)} />
 
       {/* States */}
       {isLoading && (
@@ -727,7 +1275,15 @@ export function MatchingChartTab({ aeroplaneId }: Props) {
       {data && !isLoading && (
         <>
           {/* MatchingChartContent owns drag state; key forces reset on new server data */}
-          <MatchingChartContent key={contentKey} data={data} />
+          <MatchingChartContent
+            key={contentKey}
+            data={data}
+            currentDp={currentDp}
+            weightN={weightN}
+            aspectRatio={aspectRatio}
+            isGlider={isGlider}
+            insufficientConstraintName={insufficientConstraintName}
+          />
 
           {/* Warnings */}
           {data.warnings.length > 0 && (

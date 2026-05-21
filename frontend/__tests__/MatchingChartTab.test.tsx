@@ -17,12 +17,14 @@ vi.mock("lucide-react", () => {
     AlertTriangle: icon,
     Info: icon,
     Loader2: icon,
+    X: icon,
   };
 });
 
-// Plotly dynamic import — return a stub that does nothing
+// Plotly dynamic import — return a stub that captures calls so we can inspect traces
+const plotlyReactMock = vi.fn().mockResolvedValue(undefined);
 vi.mock("plotly.js-gl3d-dist-min", () => ({
-  react: vi.fn().mockResolvedValue(undefined),
+  react: plotlyReactMock,
   purge: vi.fn(),
 }));
 
@@ -37,7 +39,47 @@ vi.mock("@/hooks/useMatchingChart", () => ({
   useMatchingChart: () => hookReturn,
 }));
 
-import { MatchingChartTab, findBindingConstraintAtPoint } from "@/components/workbench/MatchingChartTab";
+// gh-606: mocks for design-assumptions + computation-context. Tests override
+// these per scenario via the let-binding pattern (mutable closure).
+type MockAssumption = {
+  parameter_name: string;
+  effective_value: number;
+};
+let mockAssumptions: MockAssumption[] = [];
+let mockCtx: { s_ref_m2?: number | null; b_ref_m?: number | null; is_glider?: boolean } | null = null;
+
+vi.mock("@/hooks/useDesignAssumptions", () => ({
+  useDesignAssumptions: () => ({
+    data: { assumptions: mockAssumptions, warnings_count: 0 },
+    isLoading: false,
+    isRecomputing: false,
+    error: null,
+    seedDefaults: vi.fn(),
+    updateEstimate: vi.fn(),
+    switchSource: vi.fn(),
+    mutate: vi.fn(),
+  }),
+}));
+
+vi.mock("@/hooks/useComputationContext", () => ({
+  useComputationContext: () => ({
+    data: mockCtx,
+    error: null,
+    isLoading: false,
+    mutate: vi.fn(),
+  }),
+}));
+
+import {
+  MatchingChartTab,
+  findBindingConstraintAtPoint,
+  findInsufficientThrustConstraint,
+  formatSigFigs,
+  computeWingArea,
+  computeThrust,
+  computeAspectRatio,
+  buildCurrentDesignPointTrace,
+} from "@/components/workbench/MatchingChartTab";
 
 // ── Test data ─────────────────────────────────────────────────────────────────
 
@@ -115,6 +157,10 @@ const MOCK_INFEASIBLE: MatchingChartData = {
 describe("MatchingChartTab", () => {
   beforeEach(() => {
     hookReturn = MOCK_LOADING_STATE;
+    // gh-606: default empty assumptions + null ctx — current-design-point hidden
+    mockAssumptions = [];
+    mockCtx = null;
+    plotlyReactMock.mockClear();
   });
 
   it("shows loading spinner while fetching", () => {
@@ -208,10 +254,10 @@ describe("MatchingChartTab", () => {
     expect(screen.getByText(/Scholz/i)).toBeInTheDocument();
   });
 
-  it("shows drag hint info text when data is available", () => {
+  it("shows info-modal trigger button when data is available", () => {
     hookReturn = MOCK_OK_STATE;
     render(<MatchingChartTab aeroplaneId="test-id" />);
-    expect(screen.getByText(/drag design point/i)).toBeInTheDocument();
+    expect(screen.getByText(/How to read this chart/i)).toBeInTheDocument();
   });
 
   it("renders plot container with data-testid", () => {
@@ -826,5 +872,475 @@ describe("MatchingChartTab — async Plotly render (trace builders + buildLayout
     rerender(<MatchingChartTab aeroplaneId="test-id" />);
     await act(async () => { await Promise.resolve(); });
     expect(screen.getByText(/660/)).toBeInTheDocument();
+  });
+});
+
+// ── gh-606: Info modal ────────────────────────────────────────────────────────
+
+describe("MatchingChartTab — info modal (gh-606)", () => {
+  beforeEach(() => {
+    hookReturn = MOCK_OK_STATE;
+    mockAssumptions = [];
+    mockCtx = null;
+  });
+
+  it("info-modal trigger has aria-label and is keyboard-accessible", () => {
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    const trigger = screen.getByTestId("info-modal-trigger");
+    expect(trigger).toHaveAttribute("aria-label", "Open sizing methodology help");
+    expect(trigger.tagName).toBe("BUTTON");
+  });
+
+  it("modal is hidden initially", () => {
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    expect(screen.queryByTestId("matching-chart-info-modal")).toBeNull();
+  });
+
+  it("clicking trigger opens the modal with all 8 sections", () => {
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    act(() => {
+      fireEvent.click(screen.getByTestId("info-modal-trigger"));
+    });
+    expect(screen.getByTestId("matching-chart-info-modal")).toBeInTheDocument();
+    // Eight sections per Scholz-corrected spec
+    expect(screen.getByTestId("info-section-overview")).toBeInTheDocument();
+    expect(screen.getByTestId("info-section-glossary")).toBeInTheDocument();
+    expect(screen.getByTestId("info-section-axes")).toBeInTheDocument();
+    expect(screen.getByTestId("info-section-constraints")).toBeInTheDocument();
+    expect(screen.getByTestId("info-section-red-area")).toBeInTheDocument();
+    expect(screen.getByTestId("info-section-design-point")).toBeInTheDocument();
+    expect(screen.getByTestId("info-section-readoff")).toBeInTheDocument();
+    expect(screen.getByTestId("info-section-iteration")).toBeInTheDocument();
+  });
+
+  it("modal y-axis section names T_TO/W_TO and the static-thrust proxy", () => {
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    act(() => {
+      fireEvent.click(screen.getByTestId("info-modal-trigger"));
+    });
+    const axes = screen.getByTestId("info-section-axes");
+    // textContent strips <sub> tags, so T_TO/W_TO becomes TTO/WTO
+    expect(axes.textContent).toMatch(/TTO\/WTO/);
+    expect(axes.textContent).toMatch(/take-off thrust over take-off weight/);
+    expect(axes.textContent).toMatch(/proxy/);
+    // AR labelled as chart INPUT, not "held constant"
+    expect(axes.textContent).toMatch(/AR is a chart INPUT/);
+  });
+
+  it("modal glossary entry for T mentions the RC approximation", () => {
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    act(() => {
+      fireEvent.click(screen.getByTestId("info-modal-trigger"));
+    });
+    const glossary = screen.getByTestId("info-section-glossary");
+    expect(glossary.textContent).toMatch(/take-off thrust at sea level/);
+    expect(glossary.textContent).toMatch(/static-thrust input/);
+    expect(glossary.textContent).toMatch(/L\/D/);
+    expect(glossary.textContent).toMatch(/C/); // C_L,max
+  });
+
+  it("modal overview discloses 3-5 iteration outer loop and SI units", () => {
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    act(() => {
+      fireEvent.click(screen.getByTestId("info-modal-trigger"));
+    });
+    const overview = screen.getByTestId("info-section-overview");
+    expect(overview.textContent).toMatch(/3.{0,3}5 iteration/);
+    expect(overview.textContent).toMatch(/SI units/);
+  });
+
+  it("modal cruise is shown but called out as slack (parenthesised)", () => {
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    act(() => {
+      fireEvent.click(screen.getByTestId("info-modal-trigger"));
+    });
+    const constraints = screen.getByTestId("info-section-constraints");
+    expect(constraints.textContent).toMatch(/Cruise/);
+    expect(constraints.textContent).toMatch(/slack/);
+  });
+
+  it("modal includes Scholz Fig. 5.9 sketch reference", () => {
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    act(() => {
+      fireEvent.click(screen.getByTestId("info-modal-trigger"));
+    });
+    const dp = screen.getByTestId("info-section-design-point");
+    expect(dp.textContent).toMatch(/Fig\. 5\.9/);
+    expect(dp.textContent).toMatch(/intersection of the take-off line/);
+  });
+
+  it("ESC closes the modal", () => {
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    act(() => {
+      fireEvent.click(screen.getByTestId("info-modal-trigger"));
+    });
+    expect(screen.getByTestId("matching-chart-info-modal")).toBeInTheDocument();
+    act(() => {
+      fireEvent.keyDown(window, { key: "Escape" });
+    });
+    expect(screen.queryByTestId("matching-chart-info-modal")).toBeNull();
+  });
+
+  it("close button closes the modal", () => {
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    act(() => {
+      fireEvent.click(screen.getByTestId("info-modal-trigger"));
+    });
+    act(() => {
+      fireEvent.click(screen.getByTestId("info-modal-close"));
+    });
+    expect(screen.queryByTestId("matching-chart-info-modal")).toBeNull();
+  });
+});
+
+// ── gh-606: Current design point marker — powered ────────────────────────────
+
+describe("MatchingChartTab — current design point (powered, gh-606)", () => {
+  beforeEach(() => {
+    hookReturn = MOCK_OK_STATE;
+    mockAssumptions = [
+      { parameter_name: "mass", effective_value: 2.0 }, // 2 kg
+      { parameter_name: "t_static_N", effective_value: 30.0 }, // 30 N
+    ];
+    mockCtx = { s_ref_m2: 0.5, b_ref_m: 2.0, is_glider: false };
+  });
+
+  it("renders Current Design Point trace via Plotly.react", async () => {
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    await act(async () => { await Promise.resolve(); });
+    // Plotly.react should have been called; pull the traces argument
+    const calls = plotlyReactMock.mock.calls;
+    expect(calls.length).toBeGreaterThan(0);
+    const traces = calls[calls.length - 1][1] as Array<{ name?: string }>;
+    const cdp = traces.find((t) => t.name === "Current Design Point");
+    expect(cdp).toBeDefined();
+  });
+
+  it("Current Design Point uses (W/S, T/W) = (39.2, 1.53) for 2kg/0.5m²/30N", async () => {
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    await act(async () => { await Promise.resolve(); });
+    const traces = plotlyReactMock.mock.calls.at(-1)![1] as Array<{
+      name?: string;
+      x?: number[];
+      y?: number[];
+    }>;
+    const cdp = traces.find((t) => t.name === "Current Design Point")!;
+    // W = 2 × 9.80665 = 19.6133 N. W/S = 19.6133 / 0.5 = 39.227. T/W = 30 / 19.6133 = 1.530.
+    expect(cdp.x![0]).toBeCloseTo(39.227, 2);
+    expect(cdp.y![0]).toBeCloseTo(1.530, 2);
+  });
+
+  it("Current Design Point marker uses teal #22dd99 and diamond symbol", async () => {
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    await act(async () => { await Promise.resolve(); });
+    const traces = plotlyReactMock.mock.calls.at(-1)![1] as Array<{
+      name?: string;
+      marker?: { symbol?: string; color?: string };
+    }>;
+    const cdp = traces.find((t) => t.name === "Current Design Point")!;
+    expect(cdp.marker?.symbol).toBe("diamond");
+    expect(cdp.marker?.color).toBe("#22dd99");
+  });
+
+  it("Current Design Point hover template names W as m_MTO·g", async () => {
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    await act(async () => { await Promise.resolve(); });
+    const traces = plotlyReactMock.mock.calls.at(-1)![1] as Array<{
+      name?: string;
+      hovertemplate?: string;
+    }>;
+    const cdp = traces.find((t) => t.name === "Current Design Point")!;
+    expect(cdp.hovertemplate).toMatch(/m_MTO/);
+    expect(cdp.hovertemplate).toMatch(/W\/S/);
+    expect(cdp.hovertemplate).toMatch(/T\/W/);
+    expect(cdp.hovertemplate).toMatch(/AR/);
+    expect(cdp.hovertemplate).toMatch(/assumed static thrust/);
+  });
+});
+
+// ── gh-606: Glider suppression ───────────────────────────────────────────────
+
+describe("MatchingChartTab — glider current design point suppressed (gh-606)", () => {
+  beforeEach(() => {
+    hookReturn = MOCK_OK_STATE;
+  });
+
+  it("no Current Design Point trace for glider context", async () => {
+    mockAssumptions = [
+      { parameter_name: "mass", effective_value: 2.0 },
+      { parameter_name: "t_static_N", effective_value: 0 },
+    ];
+    mockCtx = { s_ref_m2: 0.5, b_ref_m: 3.0, is_glider: true };
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    await act(async () => { await Promise.resolve(); });
+    const traces = plotlyReactMock.mock.calls.at(-1)![1] as Array<{ name?: string }>;
+    const cdp = traces.find((t) => t.name === "Current Design Point");
+    expect(cdp).toBeUndefined();
+  });
+
+  it("renders the glider callout", async () => {
+    mockAssumptions = [];
+    mockCtx = { s_ref_m2: 0.5, b_ref_m: 3.0, is_glider: true };
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    await act(async () => { await Promise.resolve(); });
+    const callout = screen.getByTestId("glider-callout");
+    expect(callout.textContent).toMatch(/jet\/powered-only/);
+    expect(callout.textContent).toMatch(/sink-rate polar/);
+  });
+
+  it("no Current Design Point trace when t_static_N = 0 (even non-glider flag)", async () => {
+    mockAssumptions = [
+      { parameter_name: "mass", effective_value: 2.0 },
+      { parameter_name: "t_static_N", effective_value: 0 },
+    ];
+    mockCtx = { s_ref_m2: 0.5, b_ref_m: 2.0, is_glider: false };
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    await act(async () => { await Promise.resolve(); });
+    const traces = plotlyReactMock.mock.calls.at(-1)![1] as Array<{ name?: string }>;
+    expect(traces.find((t) => t.name === "Current Design Point")).toBeUndefined();
+  });
+});
+
+// ── gh-606: Insufficient-thrust callout ──────────────────────────────────────
+
+describe("MatchingChartTab — insufficient thrust warning (gh-606)", () => {
+  it("renders callout when current marker T/W is below a constraint curve", async () => {
+    // Constraint at T/W = 0.5 across the board. Current T/W = 30 / (40 × 9.80665) = ~0.0765 — well below.
+    // mass = 40 kg, s_ref = 1.0 m² → W = 392 N, W/S = 392, T/W = 30/392 = 0.0765.
+    const customData: MatchingChartData = {
+      ...MOCK_CESSNA,
+      ws_range_n_m2: Array.from({ length: 200 }, (_, i) => 10 + (1490 / 199) * i),
+      constraints: [
+        {
+          name: "Climb",
+          t_w_points: Array(200).fill(0.5),
+          ws_max: null,
+          color: "#E5484D",
+          binding: true,
+          hover_text: "Insufficient climb thrust",
+        },
+      ],
+      design_point: { ws_n_m2: 400, t_w: 0.5 },
+    };
+    hookReturn = { ...MOCK_OK_STATE, data: customData };
+    mockAssumptions = [
+      { parameter_name: "mass", effective_value: 40 },
+      { parameter_name: "t_static_N", effective_value: 30 },
+    ];
+    mockCtx = { s_ref_m2: 1.0, b_ref_m: 3.0, is_glider: false };
+
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    await act(async () => { await Promise.resolve(); });
+
+    const callout = screen.getByTestId("insufficient-thrust-callout");
+    expect(callout.textContent).toMatch(/insufficient/i);
+    expect(callout.textContent).toMatch(/Climb/);
+  });
+
+  it("does NOT render callout when current marker is above all constraints", async () => {
+    const customData: MatchingChartData = {
+      ...MOCK_CESSNA,
+      constraints: [
+        {
+          name: "Climb",
+          t_w_points: Array(200).fill(0.05),
+          ws_max: null,
+          color: "#E5484D",
+          binding: false,
+          hover_text: "OK",
+        },
+      ],
+    };
+    hookReturn = { ...MOCK_OK_STATE, data: customData };
+    mockAssumptions = [
+      { parameter_name: "mass", effective_value: 2 },
+      { parameter_name: "t_static_N", effective_value: 30 },
+    ];
+    mockCtx = { s_ref_m2: 0.5, b_ref_m: 2.0, is_glider: false };
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    await act(async () => { await Promise.resolve(); });
+    expect(screen.queryByTestId("insufficient-thrust-callout")).toBeNull();
+  });
+});
+
+// ── gh-606: Live derived readout ─────────────────────────────────────────────
+
+describe("MatchingChartTab — live derived readout (gh-606)", () => {
+  beforeEach(() => {
+    hookReturn = MOCK_OK_STATE;
+    mockAssumptions = [
+      { parameter_name: "mass", effective_value: 2.0 }, // W = 19.6133 N
+      { parameter_name: "t_static_N", effective_value: 30.0 },
+    ];
+    mockCtx = { s_ref_m2: 0.5, b_ref_m: 2.0, is_glider: false };
+  });
+
+  it("readout shows derived S, T, W, and AR cells", () => {
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    // Initial design point W/S=660, T/W=0.178 → S = 19.6133/660 ≈ 0.0297, T = 0.178·19.6133 ≈ 3.49
+    const sCell = document.querySelector("[data-testid='dp-derived-s']");
+    const tCell = document.querySelector("[data-testid='dp-derived-t']");
+    const wCell = document.querySelector("[data-testid='dp-w']");
+    const arCell = document.querySelector("[data-testid='dp-ar']");
+    expect(sCell).toBeTruthy();
+    expect(tCell).toBeTruthy();
+    expect(wCell).toBeTruthy();
+    expect(arCell).toBeTruthy();
+    // W displayed in N
+    expect(wCell!.textContent).toMatch(/19\.6/);
+    // AR = b²/S = 4 / 0.5 = 8.00
+    expect(arCell!.textContent).toMatch(/8\.00/);
+  });
+
+  it("AR label uses 'AR (input — see info modal)' not 'AR (held)'", () => {
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    expect(screen.getByText(/AR \(input — see info modal\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/AR \(held\)/)).toBeNull();
+  });
+
+  it("W label uses 'W (m_MTO · g)'", () => {
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    expect(screen.getByText(/W \(m_MTO · g\)/)).toBeInTheDocument();
+  });
+
+  it("derived S = W / (W/S) when dragging to (W/S = 100, T/W = 0.4)", async () => {
+    const customData: MatchingChartData = {
+      ...MOCK_CESSNA,
+      design_point: { ws_n_m2: 100, t_w: 0.4 },
+    };
+    hookReturn = { ...MOCK_OK_STATE, data: customData };
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    // W = 19.6133 N, so S = 19.6133 / 100 = 0.196 m²
+    const sCell = document.querySelector("[data-testid='dp-derived-s']");
+    expect(sCell!.textContent).toMatch(/0\.196/);
+    // T = 0.4 × 19.6133 = 7.85 N → 3 sig figs ≈ "7.85"
+    const tCell = document.querySelector("[data-testid='dp-derived-t']");
+    expect(tCell!.textContent).toMatch(/7\.85/);
+  });
+
+  it("derived cells show em dash when mass missing", () => {
+    mockAssumptions = []; // no mass
+    mockCtx = { s_ref_m2: 0.5, b_ref_m: 2.0, is_glider: false };
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    const sCell = document.querySelector("[data-testid='dp-derived-s']");
+    expect(sCell!.textContent).toMatch(/—/);
+  });
+});
+
+// ── gh-606: pure helpers ──────────────────────────────────────────────────────
+
+describe("formatSigFigs (gh-606)", () => {
+  it("formats 123 to 3 sig figs as '123'", () => {
+    expect(formatSigFigs(123, 3)).toBe("123");
+  });
+  it("formats 1234.56 to 3 sig figs", () => {
+    // toPrecision(3) on 1234.56 = "1.23e+3"
+    expect(formatSigFigs(1234.56, 3)).toMatch(/1\.23e\+3/);
+  });
+  it("formats 0.01234 to 3 sig figs", () => {
+    expect(formatSigFigs(0.01234, 3)).toBe("0.0123");
+  });
+  it("returns '0' for zero", () => {
+    expect(formatSigFigs(0, 3)).toBe("0");
+  });
+  it("returns em dash for non-finite", () => {
+    expect(formatSigFigs(Infinity, 3)).toBe("—");
+    expect(formatSigFigs(NaN, 3)).toBe("—");
+  });
+});
+
+describe("computeWingArea / computeThrust / computeAspectRatio (gh-606)", () => {
+  it("S = W / (W/S)", () => {
+    expect(computeWingArea(19.6133, 660)).toBeCloseTo(0.0297, 4);
+    expect(computeWingArea(19.6133, 100)).toBeCloseTo(0.196, 3);
+  });
+  it("computeWingArea returns NaN for W/S <= 0", () => {
+    expect(Number.isNaN(computeWingArea(100, 0))).toBe(true);
+    expect(Number.isNaN(computeWingArea(100, -1))).toBe(true);
+  });
+  it("T = T/W · W", () => {
+    expect(computeThrust(100, 0.5)).toBe(50);
+    expect(computeThrust(19.6133, 0.4)).toBeCloseTo(7.845, 3);
+  });
+  it("AR = b²/S", () => {
+    expect(computeAspectRatio(2, 0.5)).toBeCloseTo(8.0, 5);
+    expect(computeAspectRatio(3, 1)).toBe(9);
+  });
+  it("AR returns null on missing/invalid inputs", () => {
+    expect(computeAspectRatio(null, 1)).toBeNull();
+    expect(computeAspectRatio(2, null)).toBeNull();
+    expect(computeAspectRatio(2, 0)).toBeNull();
+    expect(computeAspectRatio(2, -1)).toBeNull();
+  });
+});
+
+describe("findInsufficientThrustConstraint (gh-606)", () => {
+  const wsRange = Array.from({ length: 100 }, (_, i) => 100 + i * 10);
+  const constraints: ConstraintLine[] = [
+    { name: "Takeoff", t_w_points: Array(100).fill(0.2), ws_max: null, color: "#FF8400", binding: true, hover_text: null },
+    { name: "Climb", t_w_points: Array(100).fill(0.5), ws_max: null, color: "#E5484D", binding: false, hover_text: null },
+    { name: "Stall", t_w_points: null, ws_max: 800, color: "#A78BFA", binding: false, hover_text: null },
+  ];
+
+  it("returns most-violated t_w_points constraint when below all", () => {
+    // T/W = 0.05 violates both Takeoff (0.2) and Climb (0.5). Climb has the larger ratio.
+    expect(findInsufficientThrustConstraint(500, 0.05, wsRange, constraints)).toBe("Climb");
+  });
+
+  it("returns null when current T/W is above all curves", () => {
+    expect(findInsufficientThrustConstraint(500, 0.8, wsRange, constraints)).toBeNull();
+  });
+
+  it("ignores ws_max-only constraints", () => {
+    const wsOnly: ConstraintLine[] = [
+      { name: "Stall", t_w_points: null, ws_max: 800, color: "#A78BFA", binding: false, hover_text: null },
+    ];
+    expect(findInsufficientThrustConstraint(900, 0.1, wsRange, wsOnly)).toBeNull();
+  });
+
+  it("returns null on empty wsRange", () => {
+    expect(findInsufficientThrustConstraint(500, 0.05, [], constraints)).toBeNull();
+  });
+
+  it("ignores zero-valued constraints to avoid divide-by-zero", () => {
+    const zero: ConstraintLine[] = [
+      { name: "Zero", t_w_points: Array(100).fill(0), ws_max: null, color: "#fff", binding: false, hover_text: null },
+    ];
+    expect(findInsufficientThrustConstraint(500, 0.1, wsRange, zero)).toBeNull();
+  });
+});
+
+describe("buildCurrentDesignPointTrace (gh-606)", () => {
+  it("produces a Plotly trace with the expected shape", () => {
+    const trace = buildCurrentDesignPointTrace({
+      ws_n_m2: 39.227,
+      t_w: 1.530,
+      mass_kg: 2,
+      s_m2: 0.5,
+      t_n: 30,
+      w_n: 19.6133,
+      ar: 8.0,
+    });
+    expect(trace.name).toBe("Current Design Point");
+    expect(trace.type).toBe("scatter");
+    expect(trace.mode).toBe("markers");
+    expect(trace.x).toEqual([39.227]);
+    expect(trace.y).toEqual([1.530]);
+    expect(trace.marker.symbol).toBe("diamond");
+    expect(trace.marker.color).toBe("#22dd99");
+    expect(trace.hovertemplate).toContain("m_MTO·g");
+  });
+
+  it("renders em-dash for AR when null", () => {
+    const trace = buildCurrentDesignPointTrace({
+      ws_n_m2: 100,
+      t_w: 0.2,
+      mass_kg: 1,
+      s_m2: 0.5,
+      t_n: 10,
+      w_n: 9.81,
+      ar: null,
+    });
+    expect(trace.hovertemplate).toContain("AR = —");
   });
 });
