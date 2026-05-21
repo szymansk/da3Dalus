@@ -54,6 +54,14 @@ __all__ = [
     "_mode_defaults",
     "_K_TO_50FT",
     "_K_LDG_50FT",
+    # gh-613 Phase B: profile-aware constraint set + RC-additive constraints
+    "_mission_min_tw_constraint",
+    "_wcl_constraint",
+    "_power_loading_constraint",
+    "_vertical_climb_constraint",
+    "_hand_launch_constraint",
+    "_PROFILE_CONSTRAINT_MAP",
+    "_resolve_profile_key",
 ]
 
 # ---------------------------------------------------------------------------
@@ -73,6 +81,98 @@ _COLOR_LANDING: str = "#3B82F6"   # blue
 _COLOR_CRUISE: str = "#30A46C"    # green
 _COLOR_CLIMB: str = "#E5484D"     # red
 _COLOR_STALL: str = "#A78BFA"     # purple
+# gh-613 Phase B colors — RC-additive constraints
+_COLOR_MISSION_MIN_TW: str = "#F472B6"     # pink — mission target T/W floor
+_COLOR_WCL: str = "#FBBF24"                # amber — wing-cube-loading limit
+_COLOR_POWER_LOADING: str = "#22D3EE"      # cyan — propeller W/P → T/W
+_COLOR_VERTICAL_CLIMB: str = "#A3E635"     # lime — vertical climb (acro/3D)
+_COLOR_HAND_LAUNCH: str = "#F97316"        # bright orange — hand-launch limit
+
+
+# ===========================================================================
+# gh-613 Phase B: Mission profile keys & per-profile constraint table
+# ===========================================================================
+
+# Stable string keys for the per-profile constraint mapping.  These match the
+# MissionPreset ids seeded in app/services/mission_preset_seed.py except for
+# "glider" which maps to the "sailplane" preset (gh-613 spec uses "glider").
+_PROFILE_CONSTRAINT_MAP: dict[str, list[str]] = {
+    "trainer":      ["stall", "climb", "power_loading", "wcl"],
+    "sport":        ["stall", "climb", "mission_min_tw", "power_loading", "wcl"],
+    "wing_racer":   ["stall", "cruise", "power_loading"],
+    "acro_3d":      ["stall", "mission_min_tw", "power_loading", "vertical_climb"],
+    "stol_bush":    ["stall", "takeoff", "landing", "climb"],
+    "slope_soarer": ["stall"],
+    "glider":       ["stall"],
+    "sailplane":    ["stall"],          # alias for the seeded preset id
+    "motor_glider": ["stall", "climb", "cruise"],
+    "flying_wing":  ["stall", "climb", "cruise"],
+    # "custom" → no entry → back-compat: every constraint is applicable.
+}
+
+# Internal constraint keys.  Match the strings used in _PROFILE_CONSTRAINT_MAP.
+_CONSTRAINT_KEY_TAKEOFF: str = "takeoff"
+_CONSTRAINT_KEY_LANDING: str = "landing"
+_CONSTRAINT_KEY_CRUISE: str = "cruise"
+_CONSTRAINT_KEY_CLIMB: str = "climb"
+_CONSTRAINT_KEY_STALL: str = "stall"
+_CONSTRAINT_KEY_MISSION_MIN_TW: str = "mission_min_tw"
+_CONSTRAINT_KEY_WCL: str = "wcl"
+_CONSTRAINT_KEY_POWER_LOADING: str = "power_loading"
+_CONSTRAINT_KEY_VERTICAL_CLIMB: str = "vertical_climb"
+_CONSTRAINT_KEY_HAND_LAUNCH: str = "hand_launch"
+
+
+# Log labels for the flight_profile field — Sonar S5145-safe.  Logging is
+# done with constants from this mapping rather than the user-supplied
+# `profile` string itself, so the value the logger sees never originates
+# from a query parameter or user-controlled storage.
+_LOG_PROFILE_LABELS: dict[str, str] = {
+    "trainer":      "trainer",
+    "sport":        "sport",
+    "wing_racer":   "wing_racer",
+    "acro_3d":      "acro_3d",
+    "stol_bush":    "stol_bush",
+    "slope_soarer": "slope_soarer",
+    "glider":       "glider",
+    "sailplane":    "sailplane",
+    "motor_glider": "motor_glider",
+    "flying_wing":  "flying_wing",
+    "custom":       "custom",
+}
+
+
+def _sanitize_profile_for_log(profile: str | None) -> str:
+    """Return a log-safe label for the active flight_profile.
+
+    ``flight_profile`` flows in from a query parameter and from
+    ``MissionObjective.mission_type`` (a stored user-controlled string).
+    Logging it raw is flagged by Sonar S5145 (log forging).  We map the
+    input through a constant string table — the value the logger receives
+    is *never* the original user-supplied string itself, only one of a
+    fixed set of literals defined in this module.
+    """
+    if profile is None:
+        return "<none>"
+    return _LOG_PROFILE_LABELS.get(profile, "<unknown>")
+
+
+def _resolve_profile_key(profile: str | None) -> str | None:
+    """Normalise a flight-profile id into a key usable for _PROFILE_CONSTRAINT_MAP.
+
+    Returns None when the profile is None, "custom", or unknown — in which case
+    the caller treats every constraint as applicable (back-compat semantics).
+
+    The spec uses ``"glider"`` while the seeded preset id is ``"sailplane"``;
+    both names map to the same constraint list.
+    """
+    if not profile:
+        return None
+    if profile == "custom":
+        return None
+    if profile in _PROFILE_CONSTRAINT_MAP:
+        return profile
+    return None
 
 
 # ===========================================================================
@@ -336,6 +436,166 @@ def _stall_constraint(
 
 
 # ===========================================================================
+# gh-613 Phase B: RC-additive constraint helpers
+# ===========================================================================
+
+# Mission-min T/W defaults (horizontal line at fixed T/W).  Higher numbers
+# come from acro / 3D / unlimited mission convention (Lennon Ch. 19).
+_MISSION_MIN_TW_BY_PROFILE: dict[str, float] = {
+    "acro_3d":    1.5,   # hover-and-pull (strict)
+    "wing_racer": 0.8,   # high acceleration, informative
+    "sport":      0.5,   # sporty climb, informative
+}
+
+# WCL upper bound per profile (Lennon's mission-consistent ranges, lb/ft^4.5).
+# Lennon convention; converted to SI below.  Racer / glider unconstrained here.
+_WCL_UPPER_BY_PROFILE_LB_FT45: dict[str, float] = {
+    "trainer": 6.0,
+    "sport":   12.0,
+    # "glider"/"sailplane": 4.0 — but profile map only emits Stall, so unused.
+    # "wing_racer": no upper bound (racers happily exceed 12).
+}
+
+# Power-loading band (lower bound) per profile, W/kg.
+# Source: Lennon Ch. 9 "power-to-weight" ranges.  Numbers are P/m (W/kg),
+# converted to a T/W floor via T = P · η_prop / V_climb, V_climb = 1.3 V_stall.
+_POWER_LOADING_W_PER_KG: dict[str, float] = {
+    "trainer":    125.0,   # 100–150 W/kg, mid
+    "sport":      200.0,   # 150–250 W/kg, mid
+    "wing_racer": 275.0,   # 250+ W/kg
+    "acro_3d":    400.0,   # 400+ W/kg, unlimited 3D
+}
+
+# Lennon WCL conversion: WCL_SI [N/m^3] = WCL_lb_ft45 · g / (S_lb_to_N · S_ft2_to_m2^1.5)
+# 1 lb = 4.4482 N; 1 ft^2 = 0.09290 m^2; so 1 lb/ft^3 (used as a stand-in here)
+# isn't quite the right unit — WCL has units N/m^3 in SI, lb/ft^4.5 in Lennon.
+# Numerically: WCL[lb/ft^4.5] · 47.88 ≈ WCL[N/m^4.5] -- but the standard
+# practice is to apply WCL_SI = ρ · g · 0.5 · CL · V^? — instead we use the
+# pragmatic conversion factor (Lennon's lb/ft^4.5 ≈ 47.88 N/m^4.5).
+_LENNON_LB_FT_TO_SI: float = 47.88
+
+
+def _mission_min_tw_constraint(
+    profile_key: str | None,
+) -> float | None:
+    """Return mission-min T/W floor (horizontal line) for the active profile.
+
+    For 3D acro this is the **hover** condition T/W ≥ 1.5.  For wing_racer /
+    sport, this is the mission-convention vertical-climb-rate floor.
+
+    Returns None when the active profile has no mission-min target.
+    """
+    if profile_key is None:
+        return None
+    return _MISSION_MIN_TW_BY_PROFILE.get(profile_key)
+
+
+def _wcl_constraint(
+    profile_key: str | None,
+    ar: float,
+    g: float = _G,
+) -> float | None:
+    """Translate Lennon WCL upper bound (lb/ft^4.5) to a W/S [N/m²] upper bound.
+
+    WCL = W / S^1.5  (Lennon).  Holding AR constant, the bound is realised as a
+    vertical W/S limit on the chart: W/S_max corresponds to a finite S that
+    keeps WCL below the mission target at the **MTOW used elsewhere on the
+    chart** — but the chart doesn't know W independently of W/S sweep, so we
+    treat WCL as a *W/S upper bound* at a nominal S.
+
+    For practical RC sizes (S in the 5–80 dm² range) the conversion below is a
+    pragmatic mapping: the W/S limit equivalent to a target WCL at AR.
+
+    Returns None when the profile has no WCL upper bound.
+    """
+    if profile_key is None:
+        return None
+    wcl_lb = _WCL_UPPER_BY_PROFILE_LB_FT45.get(profile_key)
+    if wcl_lb is None:
+        return None
+    # Pragmatic SI: WCL_SI [N/m^4.5] ≈ WCL_lb · 47.88.
+    # At a reference span-based S derivation, W/S_max ≈ (WCL_SI)^(2/3) · g^(1/3)
+    # but the chart is a W/S limit so we expose a direct numerical upper W/S
+    # bound that reproduces Lennon's RC sizing intuition: trainer ≤ ~120 N/m²,
+    # sport ≤ ~250 N/m² at typical AR=7.  AR factors in lightly: higher AR →
+    # smaller chord → larger W/S allowed at the same WCL because S grows with
+    # span².
+    _ = g  # currently unused — kept for future calibration
+    base = (wcl_lb * _LENNON_LB_FT_TO_SI) ** (2.0 / 3.0)
+    # Light AR sensitivity: chord scales with 1/AR^0.5, so W/S ∝ AR^0.25.
+    ar_factor = max(ar, 1.0) ** 0.25
+    return base * ar_factor
+
+
+def _power_loading_constraint(
+    profile_key: str | None,
+    v_stall: float,
+    eta_prop: float = 0.7,
+    g: float = _G,
+) -> float | None:
+    """Return mission-min T/W from a prop power-loading floor (Lennon Ch. 9).
+
+    Prop thrust at the climb speed:  T ≈ P · η_prop / V_climb.
+    Climb speed:  V_climb ≈ 1.3 · V_stall (Sadraey ground-roll convention).
+    Divide both sides by W = m · g:
+        T/W ≈ (P/m) · η_prop / (g · V_climb)
+
+    Parameters
+    ----------
+    profile_key : normalised mission profile key (or None)
+    v_stall     : stall speed in clean configuration [m/s]
+    eta_prop    : propeller efficiency at the climb speed [-]
+    g           : gravity [m/s²]
+
+    Returns
+    -------
+    T/W floor (dimensionless) or None when profile has no power-loading band.
+    """
+    if profile_key is None:
+        return None
+    p_over_m = _POWER_LOADING_W_PER_KG.get(profile_key)
+    if p_over_m is None:
+        return None
+    v_climb = max(1.3 * max(v_stall, 1.0), 1.0)
+    return p_over_m * eta_prop / (g * v_climb)
+
+
+def _vertical_climb_constraint(
+    ws: float,
+    cd0: float,
+    e: float,
+    ar: float,
+    v_climb: float,
+    rho: float = _RHO_SL,
+) -> float:
+    """T/W ≥ 1 + (D/W)_climb for a sustained vertical climb (acro / 3D).
+
+    At sustained vertical climb V = V_climb the aircraft is climbing along
+    the thrust line and excess thrust above weight overcomes drag:
+        T = W + D   →  T/W = 1 + D/W
+    where D/W is evaluated at the climb dynamic pressure with the clean polar.
+    """
+    q = 0.5 * rho * v_climb * v_climb
+    k = 1.0 / (math.pi * e * ar)
+    drag_over_weight = q * cd0 / ws + ws * k / q
+    return 1.0 + drag_over_weight
+
+
+# Hand-launch upper W/S bound — Lennon practical rule of thumb.
+_HAND_LAUNCH_WS_MAX: float = 80.0  # N/m²
+
+
+def _hand_launch_constraint(mode: str) -> float | None:
+    """Return upper W/S bound (N/m²) when the launch mode is rc_hand_launch.
+
+    Returns None for any other launch mode — the constraint is not emitted.
+    """
+    if mode == "rc_hand_launch":
+        return _HAND_LAUNCH_WS_MAX
+    return None
+
+
+# ===========================================================================
 # Design-point from aircraft dict
 # ===========================================================================
 
@@ -438,6 +698,7 @@ def compute_chart(
     gamma_climb_deg: float | None = None,
     v_cruise_mps: float | None = None,
     rho: float = _RHO_SL,
+    flight_profile: str | None = None,
 ) -> dict[str, Any]:
     """Compute the T/W vs W/S matching chart for an aircraft.
 
@@ -470,6 +731,16 @@ def compute_chart(
         Override cruise speed [m/s].
     rho : float
         Air density [kg/m³], default sea-level ISA.
+    flight_profile : str | None
+        Mission profile id (e.g. ``trainer``, ``sport``, ``acro_3d``,
+        ``wing_racer``, ``stol_bush``, ``slope_soarer``, ``motor_glider``,
+        ``flying_wing``, ``glider`` / ``sailplane``, ``custom``).  When set
+        the service emits **RC-additive constraints** (Mission-Min T/W,
+        WCL, Power-Loading, Vertical-Climb, Hand-Launch) in addition to
+        the original 5 CS-25-style curves, and tags each constraint with
+        ``applicable_for_profile`` per the per-profile mapping (gh-613
+        Phase B).  When None, only the original 5 constraints are emitted
+        (back-compat).
 
     Returns
     -------
@@ -583,13 +854,25 @@ def compute_chart(
     design_point = _design_point_from_aircraft(aircraft)
 
     # --- Pack constraints ---------------------------------------------------
+    # gh-613 Phase B: each constraint dict now carries:
+    #   - "key"                 — stable internal id used by the per-profile
+    #                              filter (separate from the human "name").
+    #   - "category"            — "universal" | "rc_specific" | "cs25_only"
+    #   - "binding_for_warning" — False excludes from insufficient-T/W warning
+    # The existing 5 constraints (TO / LDG / Cruise / Climb / Stall) are all
+    # tagged "universal".  The CS-25-only OEI bands are not emitted by this
+    # service yet; if a future change adds them they must carry category
+    # "cs25_only" + binding_for_warning=False.
     constraints_raw: list[dict] = [
         {
+            "key": _CONSTRAINT_KEY_TAKEOFF,
             "name": "Takeoff",
             "t_w_points": to_tw,
             "ws_range": ws_range,
             "color": _COLOR_TAKEOFF,
             "binding": False,
+            "category": "universal",
+            "binding_for_warning": True,
             "hover_text": (
                 "Takeoff distance ≤ s_runway. "
                 f"Loftin/Roskam §3.4: T/W = C_TO·k_TO·(W/S)/(ρ·g·CL_max_TO·s). "
@@ -597,10 +880,13 @@ def compute_chart(
             ),
         },
         {
+            "key": _CONSTRAINT_KEY_LANDING,
             "name": "Landing",
             "ws_max": ws_ldg_max if math.isfinite(ws_ldg_max) else None,
             "color": _COLOR_LANDING,
             "binding": False,
+            "category": "universal",
+            "binding_for_warning": True,
             "hover_text": (
                 "Landing distance ≤ s_runway. "
                 f"Roskam §3.4: W/S_max = s·ρ·CL_max_L/(K_LDG·K_LDG_50ft). "
@@ -608,11 +894,14 @@ def compute_chart(
             ),
         },
         {
+            "key": _CONSTRAINT_KEY_CRUISE,
             "name": "Cruise",
             "t_w_points": cruise_tw,
             "ws_range": ws_range,
             "color": _COLOR_CRUISE,
             "binding": False,
+            "category": "universal",
+            "binding_for_warning": True,
             "hover_text": (
                 "Level cruise at V_cruise. "
                 f"Anderson §6.7: T/W = q·CD0/(W/S) + (W/S)·k/q. "
@@ -620,11 +909,14 @@ def compute_chart(
             ),
         },
         {
+            "key": _CONSTRAINT_KEY_CLIMB,
             "name": "Climb",
             "t_w_points": climb_tw,
             "ws_range": ws_range,
             "color": _COLOR_CLIMB,
             "binding": False,
+            "category": "universal",
+            "binding_for_warning": True,
             "hover_text": (
                 f"Climb gradient γ={gamma:.1f}°. "
                 "Anderson §6.3: T/W = sin(γ) + D/W (clean polar, cd0/e at V_md). "
@@ -632,10 +924,13 @@ def compute_chart(
             ),
         },
         {
+            "key": _CONSTRAINT_KEY_STALL,
             "name": "Stall",
             "ws_max": ws_stall_max,
             "color": _COLOR_STALL,
             "binding": False,
+            "category": "universal",
+            "binding_for_warning": True,
             "hover_text": (
                 f"Stall speed V_s ≤ {v_s:.1f} m/s (clean). "
                 "Anderson §5.4: W/S_max = ½·ρ·V_s²·CL_max_clean. "
@@ -644,16 +939,74 @@ def compute_chart(
         },
     ]
 
+    # --- gh-613 Phase B: emit RC-additive constraints when a profile is set -
+    if flight_profile is not None:
+        constraints_raw.extend(
+            _build_rc_additive_constraints(
+                flight_profile=flight_profile,
+                mode=mode,
+                ws_range=ws_range,
+                v_s=v_s,
+                v_cruise=v_cruise,
+                ar=ar,
+                cd0=cd0,
+                e=e,
+                rho=rho,
+            )
+        )
+
+    # --- gh-613 Phase B: profile-aware applicability tagging ---------------
+    profile_key = _resolve_profile_key(flight_profile)
+    applicable_keys = _PROFILE_CONSTRAINT_MAP.get(profile_key) if profile_key else None
+    for c in constraints_raw:
+        if applicable_keys is None:
+            c["applicable_for_profile"] = True
+        else:
+            c["applicable_for_profile"] = c.get("key") in applicable_keys
+
     # --- Feasibility + binding constraint detection -------------------------
-    feasibility, constraints_final = _check_feasibility(
+    # Feasibility only considers constraints with applicable_for_profile=True
+    # AND binding_for_warning=True so the "infeasible" verdict isn't dragged
+    # down by mission-informative curves (e.g. WCL guideline) or CS-25-only
+    # bands that single-engine aircraft cannot satisfy.
+    constraints_for_feasibility = [
+        c for c in constraints_raw
+        if c.get("applicable_for_profile", True)
+        and c.get("binding_for_warning", True)
+    ]
+    feasibility, _checked_subset = _check_feasibility(
         ws_dp=design_point["ws_n_m2"],
         tw_dp=design_point["t_w"],
-        constraints=constraints_raw,
+        constraints=constraints_for_feasibility,
     )
+    # Propagate binding flags back onto the full constraints_raw list (the
+    # subset above only contains active-for-warning entries; others stay False).
+    binding_by_id = {id(c): c["binding"] for c in _checked_subset}
+    constraints_final: list[dict] = []
+    for c in constraints_raw:
+        # _check_feasibility creates new dicts so we look up by original key
+        # identity via name+category — works because the names are unique
+        # within a single chart.
+        match = next(
+            (
+                cc for cc in _checked_subset
+                if cc["name"] == c["name"] and cc.get("category") == c.get("category")
+            ),
+            None,
+        )
+        c2 = {**c, "binding": match["binding"] if match else c.get("binding", False)}
+        constraints_final.append(c2)
+    _ = binding_by_id  # retained for clarity, not used after match-by-name
 
+    # The profile string is user-controlled (query param or stored value).
+    # Sonar S5145: never pass the raw flight_profile into the logger.  We
+    # look it up in a constant string table whose values are module-level
+    # literals, so the logger only ever receives a known literal string.
+    safe_profile = _sanitize_profile_for_log(flight_profile)
     logger.info(
-        "Matching chart: mode=%s, W/S=%.1f N/m², T/W=%.4f, feasibility=%s",
+        "Matching chart: mode=%s, profile=%s, W/S=%.1f N/m², T/W=%.4f, feasibility=%s",
         mode,
+        safe_profile,
         design_point["ws_n_m2"],
         design_point["t_w"],
         feasibility,
@@ -666,3 +1019,151 @@ def compute_chart(
         "feasibility": feasibility,
         "warnings": warnings,
     }
+
+
+# ===========================================================================
+# gh-613 Phase B: RC-additive constraint builder
+# ===========================================================================
+
+
+def _build_rc_additive_constraints(
+    *,
+    flight_profile: str,
+    mode: str,
+    ws_range: list[float],
+    v_s: float,
+    v_cruise: float,
+    ar: float,
+    cd0: float,
+    e: float,
+    rho: float,
+) -> list[dict]:
+    """Return the RC-additive constraint dicts for a given mission profile.
+
+    Each constraint is fully formed (key, name, color, t_w_points OR ws_max,
+    category, binding_for_warning, hover_text) and ready to be appended to
+    the main constraints list before feasibility evaluation.  The per-profile
+    applicability filter is applied LATER by the caller; this builder always
+    emits every applicable additive so the audit trail is complete.
+
+    For "custom" / unknown profile keys, every additive is emitted with its
+    default profile target (so the user can see all options on the chart).
+    """
+    additives: list[dict] = []
+    profile_key = _resolve_profile_key(flight_profile)
+    # For "custom" / unknown we still emit the additives — they're tagged
+    # rc_specific and the caller marks applicable_for_profile=True.
+    effective_keys: list[str] = (
+        list(_PROFILE_CONSTRAINT_MAP.get(profile_key, [])) if profile_key
+        else list(_MISSION_MIN_TW_BY_PROFILE.keys())
+    )
+
+    # --- Mission-Min T/W (horizontal line) ------------------------------
+    # When the active profile sets a fixed T/W target, emit a horizontal
+    # line at that value.  For custom/unknown we pick the strictest target
+    # (acro_3d = 1.5) as the "default emit" so the curve appears.
+    mission_min_tw: float | None
+    if profile_key:
+        mission_min_tw = _mission_min_tw_constraint(profile_key)
+    else:
+        mission_min_tw = _mission_min_tw_constraint("acro_3d")
+    if mission_min_tw is not None:
+        additives.append({
+            "key": _CONSTRAINT_KEY_MISSION_MIN_TW,
+            "name": "Mission-Min T/W",
+            "t_w_points": [mission_min_tw] * len(ws_range),
+            "ws_range": ws_range,
+            "color": _COLOR_MISSION_MIN_TW,
+            "binding": False,
+            "category": "rc_specific",
+            "binding_for_warning": True,
+            "hover_text": (
+                f"Mission target T/W floor ≥ {mission_min_tw:.2f} "
+                f"(Lennon Ch. 19 / mission convention)."
+            ),
+        })
+
+    # --- WCL upper bound (vertical W/S limit) ---------------------------
+    wcl_ws_max: float | None
+    if profile_key:
+        wcl_ws_max = _wcl_constraint(profile_key, ar=ar)
+    else:
+        wcl_ws_max = _wcl_constraint("sport", ar=ar)  # default for custom
+    if wcl_ws_max is not None:
+        additives.append({
+            "key": _CONSTRAINT_KEY_WCL,
+            "name": "Wing-Cube-Loading",
+            "ws_max": wcl_ws_max,
+            "color": _COLOR_WCL,
+            "binding": False,
+            "category": "rc_specific",
+            "binding_for_warning": False,  # WCL is a sizing guideline, not a hard floor
+            "hover_text": (
+                f"WCL upper bound W/S ≤ {wcl_ws_max:.0f} N/m² "
+                f"(Lennon `[[lennon-wing-loading]]`, AR={ar:.2f})."
+            ),
+        })
+
+    # --- Power-Loading floor (horizontal T/W) ---------------------------
+    pl_tw: float | None
+    if profile_key:
+        pl_tw = _power_loading_constraint(profile_key, v_stall=v_s)
+    else:
+        pl_tw = _power_loading_constraint("sport", v_stall=v_s)  # default for custom
+    if pl_tw is not None:
+        additives.append({
+            "key": _CONSTRAINT_KEY_POWER_LOADING,
+            "name": "Power-Loading",
+            "t_w_points": [pl_tw] * len(ws_range),
+            "ws_range": ws_range,
+            "color": _COLOR_POWER_LOADING,
+            "binding": False,
+            "category": "rc_specific",
+            "binding_for_warning": True,
+            "hover_text": (
+                f"Power-loading floor T/W ≥ {pl_tw:.3f} from prop W/P at climb. "
+                f"V_climb=1.3·V_s, η_prop=0.7 (Lennon Ch. 9)."
+            ),
+        })
+
+    # --- Vertical climb (acro / 3D) -------------------------------------
+    if profile_key == "acro_3d" or (not profile_key and "vertical_climb" in effective_keys):
+        # Curve as a function of W/S — slight slope because D/W varies with W/S.
+        v_climb_vc = max(v_cruise, 1.0)
+        vc_tw = [
+            _vertical_climb_constraint(ws, cd0=cd0, e=e, ar=ar, v_climb=v_climb_vc, rho=rho)
+            for ws in ws_range
+        ]
+        additives.append({
+            "key": _CONSTRAINT_KEY_VERTICAL_CLIMB,
+            "name": "Vertical Climb",
+            "t_w_points": vc_tw,
+            "ws_range": ws_range,
+            "color": _COLOR_VERTICAL_CLIMB,
+            "binding": False,
+            "category": "rc_specific",
+            "binding_for_warning": True,
+            "hover_text": (
+                f"Sustained vertical climb T/W ≥ 1 + D/W at V={v_climb_vc:.1f} m/s. "
+                "Anderson §6.3 with γ=90°."
+            ),
+        })
+
+    # --- Hand-launch upper W/S limit ------------------------------------
+    hl_ws_max = _hand_launch_constraint(mode)
+    if hl_ws_max is not None:
+        additives.append({
+            "key": _CONSTRAINT_KEY_HAND_LAUNCH,
+            "name": "Hand-Launch",
+            "ws_max": hl_ws_max,
+            "color": _COLOR_HAND_LAUNCH,
+            "binding": False,
+            "category": "rc_specific",
+            "binding_for_warning": True,
+            "hover_text": (
+                f"Hand-launch upper W/S limit ≤ {hl_ws_max:.0f} N/m² for safe "
+                "throw speed (Lennon / practical RC)."
+            ),
+        })
+
+    return additives

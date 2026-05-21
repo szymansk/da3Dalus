@@ -8,6 +8,19 @@ from pydantic import BaseModel, Field
 
 AircraftMode = Literal["rc_runway", "rc_hand_launch", "uav_runway", "uav_belly_land"]
 
+# gh-613 Phase B: structured constraint classification.
+# - universal:   pure-physics constraints that apply to every fixed-wing
+#                aircraft (e.g. stall, generic climb, cruise).
+# - rc_specific: RC/UAV-relevant constraints from Lennon / mission convention
+#                that are NOT part of the original CS-25 matching chart
+#                (e.g. Mission-Min T/W, WCL, Power-Loading, vertical climb,
+#                hand-launch feasibility).
+# - cs25_only:   CS-25 / FAR-25 multi-engine constraints that do not apply
+#                to single-engine RC / UAV aircraft (e.g. Second-Segment
+#                OEI, Missed-Approach OEI).  Drawn for conformance reference
+#                but excluded from the insufficient-T/W warning.
+ConstraintCategory = Literal["universal", "rc_specific", "cs25_only"]
+
 
 class ConstraintLine(BaseModel):
     """A line constraint T/W(W/S) or a vertical W/S_max line on the matching chart."""
@@ -32,6 +45,24 @@ class ConstraintLine(BaseModel):
     hover_text: str | None = Field(
         default=None,
         description="Short formula / reference shown on hover in the frontend chart",
+    )
+    # gh-613 Phase B: structured constraint classification + filtering.
+    category: ConstraintCategory = Field(
+        default="universal",
+        description="Constraint provenance: 'universal' (pure physics), "
+        "'rc_specific' (RC/UAV-relevant Lennon/mission constraint), "
+        "'cs25_only' (CS-25 multi-engine constraint, single-engine N/A).",
+    )
+    binding_for_warning: bool = Field(
+        default=True,
+        description="When False this constraint is excluded from the "
+        "insufficient-T/W warning logic (typically CS-25-only constraints).",
+    )
+    applicable_for_profile: bool = Field(
+        default=True,
+        description="When False this constraint is not relevant for the active "
+        "flight_profile and should not be rendered on the chart. The constraint "
+        "data is still returned for auditability.",
     )
 
 

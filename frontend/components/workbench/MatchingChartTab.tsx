@@ -5,6 +5,7 @@ import { Loader2, AlertTriangle, Info, X } from "lucide-react";
 import {
   useMatchingChart,
   type AircraftMode,
+  type ConstraintCategory,
   type MatchingChartData,
   type ConstraintLine,
 } from "@/hooks/useMatchingChart";
@@ -79,10 +80,23 @@ type PlotlyTrace = Record<string, any>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type PlotlyShape = Record<string, any>;
 
+/** gh-613 Phase B: returns the constraints actually drawn on the chart.
+ *
+ * Filters out constraints whose `applicable_for_profile` is explicitly
+ * false. When the field is missing (legacy response) the constraint is
+ * kept for back-compat.
+ */
+export function applicableConstraints(constraints: ConstraintLine[]): ConstraintLine[] {
+  return constraints.filter((c) =>
+    typeof c.applicable_for_profile === "boolean" ? c.applicable_for_profile : true,
+  );
+}
+
 function buildHullFill(ws: number[], data: MatchingChartData): PlotlyTrace {
+  const renderable = applicableConstraints(data.constraints);
   const hullY = ws.map((_, i) => {
     let maxTw = 0;
-    for (const c of data.constraints) {
+    for (const c of renderable) {
       if (c.t_w_points) maxTw = Math.max(maxTw, c.t_w_points[i]);
     }
     return maxTw;
@@ -173,14 +187,16 @@ function buildConstraintTraces(
   const traces: PlotlyTrace[] = [];
   const shapes: PlotlyShape[] = [];
   const dp = data.design_point;
+  // gh-613 Phase B: only render curves whose profile says they apply.
+  const renderable = applicableConstraints(data.constraints);
 
   const yMax =
     Math.max(
-      ...data.constraints.flatMap((c) => c.t_w_points?.filter((v) => isFinite(v)) ?? []),
+      ...renderable.flatMap((c) => c.t_w_points?.filter((v) => isFinite(v)) ?? []),
       dp.t_w * 2,
     ) * 1.1;
 
-  for (const c of data.constraints) {
+  for (const c of renderable) {
     // During drag: highlight constraint that would bind at drag position
     const isBinding = dragBindingName !== null ? c.name === dragBindingName : c.binding;
     const lineWidth = isBinding ? 3 : 1.5;
@@ -231,7 +247,9 @@ function buildLayout(
   isDragging: boolean,
 ) {
   const dpColor = data.feasibility === "feasible" ? "#30A46C" : "#E5484D";
-  const allTw = data.constraints.flatMap((c) => c.t_w_points?.filter((v) => isFinite(v)) ?? []);
+  // gh-613 Phase B: y-axis range follows the curves we actually draw.
+  const renderable = applicableConstraints(data.constraints);
+  const allTw = renderable.flatMap((c) => c.t_w_points?.filter((v) => isFinite(v)) ?? []);
   const yMax = allTw.length > 0 ? Math.max(...allTw, displayDp.t_w) * 1.15 : displayDp.t_w * 2;
 
   return {
@@ -341,8 +359,23 @@ export function findBindingConstraintAtPoint(
  * gh-613 Phase A: these CS-25 multi-engine bands are still drawn on the chart
  * for conformance-band reference, but they must not trigger the
  * "insufficient T/W" warning for single-engine designs.
+ *
+ * gh-613 Phase B: the structured `binding_for_warning` field on each
+ * constraint supersedes this regex. The regex is retained ONLY as a
+ * back-compat fallback for legacy responses that lack the field.
  */
 const CS25_ONLY_CONSTRAINT_PATTERN = /segment.?2|second.?segment|missed.?approach|oei/i;
+
+/** Return whether a constraint should count toward the insufficient-T/W warning.
+ *
+ * gh-613 Phase B: prefer the structured `binding_for_warning` field when
+ * present; fall back to the Phase A regex on `name` for legacy responses.
+ * Exported for unit testing.
+ */
+export function isConstraintBindingForWarning(c: ConstraintLine): boolean {
+  if (typeof c.binding_for_warning === "boolean") return c.binding_for_warning;
+  return !CS25_ONLY_CONSTRAINT_PATTERN.test(c.name);
+}
 
 /** Return the name of the most-violated **t_w_points** constraint at the
  * given (ws, tw) point, or null if none is violated.
@@ -355,17 +388,17 @@ const CS25_ONLY_CONSTRAINT_PATTERN = /segment.?2|second.?segment|missed.?approac
  * gh-606: Scholz review substantive finding — turn the chart from
  * decorative to diagnostic by flagging insufficient T/W.
  *
- * gh-613 Phase A: when `skipOei` is true, constraints whose name matches
- * the CS-25-only pattern (Second-Segment Climb, Missed-Approach, generic
- * OEI bands) are excluded from the binding-selection logic. The constraint
- * curves are still drawn on the chart — only the warning text is gated.
+ * gh-613 Phase B: data-driven warning filter. When `skipNonBinding`
+ * is true (default), constraints whose `binding_for_warning` is false
+ * are excluded. The Phase A regex is used as a name-based fallback only
+ * when the field is missing on a legacy response.
  */
 export function findInsufficientThrustConstraint(
   ws: number,
   tw: number,
   wsRange: number[],
   constraints: ConstraintLine[],
-  skipOei: boolean = false,
+  skipNonBinding: boolean = false,
 ): string | null {
   if (!wsRange.length) return null;
   const nearestIdx = _nearestWsIdx(ws, wsRange);
@@ -373,7 +406,7 @@ export function findInsufficientThrustConstraint(
   let maxRatio = 0;
   for (const c of constraints) {
     if (!c.t_w_points) continue;
-    if (skipOei && CS25_ONLY_CONSTRAINT_PATTERN.test(c.name)) continue;
+    if (skipNonBinding && !isConstraintBindingForWarning(c)) continue;
     const twReq = c.t_w_points[nearestIdx];
     if (twReq <= 0) continue;
     const ratio = (twReq - tw) / twReq;
@@ -419,12 +452,13 @@ interface InfoModalProps {
 // gh-613 Phase A — CS-25 honesty: per-constraint relevance badges
 // ---------------------------------------------------------------------------
 
-type ConstraintRelevance = "universal" | "conditional" | "cs25-only";
+type ConstraintRelevance = "universal" | "conditional" | "cs25-only" | "rc-specific";
 
 const RELEVANCE_LABEL: Record<ConstraintRelevance, string> = {
   universal: "✅ Universal",
   conditional: "⚠️ Conditional",
   "cs25-only": "❌ CS-25-only",
+  "rc-specific": "🛩 RC-specific",
 };
 
 const RELEVANCE_CLASS: Record<ConstraintRelevance, string> = {
@@ -434,7 +468,52 @@ const RELEVANCE_CLASS: Record<ConstraintRelevance, string> = {
     "inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-400",
   "cs25-only":
     "inline-flex items-center gap-1 rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] text-red-400",
+  "rc-specific":
+    "inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] text-sky-300",
 };
+
+/** gh-613 Phase B: map a backend `category` to the modal's relevance label.
+ *
+ * Some constraints (Takeoff, Landing) are "universal" in the data layer but
+ * conditional at the modal-row level — they only apply when there is a
+ * wheeled takeoff / runway landing. The override map carries those nuances;
+ * any constraint not in the override falls back to its category mapping.
+ *
+ * Exported for unit testing.
+ */
+export const CATEGORY_TO_RELEVANCE: Record<ConstraintCategory, ConstraintRelevance> = {
+  universal: "universal",
+  rc_specific: "rc-specific",
+  cs25_only: "cs25-only",
+};
+
+/** Constraint-name → modal-row override.  These keep the Phase A modal copy
+ * accurate (Takeoff = "Wheeled takeoff only" → "conditional") even though the
+ * backend marks them "universal".  Lookup is case-insensitive on the start of
+ * the constraint name.
+ */
+export const CONSTRAINT_NAME_RELEVANCE_OVERRIDES: Array<[RegExp, ConstraintRelevance]> = [
+  [/^take.?off/i, "conditional"],
+  [/^landing/i, "conditional"],
+  [/second.?segment|missed.?approach|oei/i, "cs25-only"],
+];
+
+/** Resolve the modal relevance for a constraint, given its category + name.
+ *
+ * Precedence:
+ *   1. Name regex overrides (Takeoff/Landing → conditional, OEI → cs25-only).
+ *   2. Category mapping from the backend.
+ *   3. Fallback to "universal".
+ */
+export function constraintRelevance(c: Pick<ConstraintLine, "name" | "category">): ConstraintRelevance {
+  for (const [re, rel] of CONSTRAINT_NAME_RELEVANCE_OVERRIDES) {
+    if (re.test(c.name)) return rel;
+  }
+  if (c.category && CATEGORY_TO_RELEVANCE[c.category]) {
+    return CATEGORY_TO_RELEVANCE[c.category];
+  }
+  return "universal";
+}
 
 /** Small inline badge tagging each constraint row in the info modal with its
  * relevance to single-engine RC / UAV designs.
@@ -1265,17 +1344,20 @@ export function MatchingChartTab({ aeroplaneId }: Props) {
   }, [isGlider, massKg, sRefM2, tStaticN, aspectRatio]);
 
   // gh-606: insufficient-thrust diagnostic (substantive finding in Scholz review).
-  // gh-613 Phase A: skip CS-25-only OEI constraints when selecting the binding
-  // constraint. Those curves are still drawn (as CS-25 conformance bands) but
-  // do not raise a warning for single-engine RC / UAV designs.
+  // gh-613 Phase B: data-driven filter — only constraints whose
+  // `binding_for_warning` field is true count toward the warning. Falls back
+  // to the Phase A name-regex when the field is missing on a legacy response.
   const insufficientConstraintName = useMemo(() => {
     if (!data || !currentDp) return null;
+    // Honour the per-profile filter too: a constraint marked
+    // applicable_for_profile=false must never raise a warning.
+    const consideredConstraints = applicableConstraints(data.constraints);
     return findInsufficientThrustConstraint(
       currentDp.ws_n_m2,
       currentDp.t_w,
       data.ws_range_n_m2,
-      data.constraints,
-      true, // skipOei
+      consideredConstraints,
+      true, // skipNonBinding — uses binding_for_warning when present
     );
   }, [data, currentDp]);
 

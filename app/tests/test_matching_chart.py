@@ -1086,3 +1086,337 @@ class TestAmendment7MatchingChartWiring:
         chart = compute_chart(aircraft_no_table)
         assert chart["feasibility"] in {"feasible", "infeasible_below_constraints"}
         assert len(chart["constraints"]) >= 4
+
+
+# ===========================================================================
+# gh-613 Phase B: profile-aware constraint set + RC-additive constraints
+# ===========================================================================
+
+
+class TestPhaseBConstraintCategoryTagging:
+    """Every constraint emitted by compute_chart carries a category tag."""
+
+    def test_every_original_constraint_is_universal(self):
+        """Stall / Takeoff / Landing / Cruise / Climb are all tagged 'universal'."""
+        compute_chart = _service()
+        chart = compute_chart(LIGHT_RC, mode="rc_runway")
+        for c in chart["constraints"]:
+            assert c.get("category") == "universal", (
+                f"Constraint {c['name']!r} category={c.get('category')!r}, expected 'universal'"
+            )
+
+    def test_constraints_have_binding_for_warning_default_true(self):
+        """Original constraints default to binding_for_warning=True (no CS-25-only here)."""
+        compute_chart = _service()
+        chart = compute_chart(LIGHT_RC, mode="rc_runway")
+        for c in chart["constraints"]:
+            assert c.get("binding_for_warning", True) is True, (
+                f"Constraint {c['name']!r} binding_for_warning should default to True"
+            )
+
+    def test_constraints_applicable_for_profile_default_true(self):
+        """Without flight_profile, applicable_for_profile defaults to True."""
+        compute_chart = _service()
+        chart = compute_chart(LIGHT_RC, mode="rc_runway")
+        for c in chart["constraints"]:
+            assert c.get("applicable_for_profile", True) is True
+
+
+class TestPhaseBMissionMinTwConstraint:
+    """Mission-Min T/W: horizontal T/W floor per profile (Lennon Ch. 19)."""
+
+    def test_acro_3d_has_mission_min_tw_at_1_5(self):
+        compute_chart = _service()
+        chart = compute_chart(LIGHT_RC, mode="rc_runway", flight_profile="acro_3d")
+        mm = next((c for c in chart["constraints"] if c["name"] == "Mission-Min T/W"), None)
+        assert mm is not None, "acro_3d profile must emit Mission-Min T/W"
+        assert mm.get("category") == "rc_specific"
+        assert mm.get("applicable_for_profile") is True
+        # Horizontal line — all t_w_points equal
+        pts = mm.get("t_w_points")
+        assert pts is not None and len(pts) > 0
+        assert all(abs(p - 1.5) < 1e-6 for p in pts), (
+            f"acro_3d Mission-Min T/W should be 1.5; got {pts[0]!r}"
+        )
+
+    def test_wing_racer_mission_min_tw_at_0_8(self):
+        compute_chart = _service()
+        chart = compute_chart(LIGHT_RC, mode="rc_runway", flight_profile="wing_racer")
+        mm = next((c for c in chart["constraints"] if c["name"] == "Mission-Min T/W"), None)
+        # wing_racer map does not include mission_min_tw, but the additive is
+        # still emitted (only marked applicable_for_profile=False).
+        # The helper value should be 0.8 either way.
+        if mm is not None:
+            pts = mm.get("t_w_points") or []
+            if pts:
+                assert abs(pts[0] - 0.8) < 1e-6, f"wing_racer Mission-Min T/W = {pts[0]!r}, expected 0.8"
+
+    def test_trainer_has_no_mission_min_tw_applicable(self):
+        """Trainer profile does NOT include mission_min_tw — marked not applicable."""
+        compute_chart = _service()
+        chart = compute_chart(LIGHT_RC, mode="rc_runway", flight_profile="trainer")
+        mm = next((c for c in chart["constraints"] if c["name"] == "Mission-Min T/W"), None)
+        # Emitted but not applicable for trainer
+        if mm is not None:
+            assert mm.get("applicable_for_profile") is False, (
+                "Mission-Min T/W must be marked not applicable for the trainer profile"
+            )
+
+
+class TestPhaseBWclConstraint:
+    """Wing-Cube-Loading: vertical W/S upper bound translating Lennon's bounds."""
+
+    def test_wcl_helper_returns_positive_ws_for_trainer(self):
+        mcs = _helpers()
+        ws_max = mcs._wcl_constraint(profile_key="trainer", ar=7.0)
+        assert ws_max is not None
+        assert ws_max > 0.0
+
+    def test_wcl_higher_for_sport_than_trainer(self):
+        """Sport has a larger WCL allowance than trainer (Lennon)."""
+        mcs = _helpers()
+        ws_trainer = mcs._wcl_constraint(profile_key="trainer", ar=7.0)
+        ws_sport = mcs._wcl_constraint(profile_key="sport", ar=7.0)
+        assert ws_sport is not None and ws_trainer is not None
+        assert ws_sport > ws_trainer, (
+            f"Sport WCL bound ({ws_sport:.1f}) should exceed trainer ({ws_trainer:.1f})"
+        )
+
+    def test_wcl_returns_none_for_unknown_profile(self):
+        mcs = _helpers()
+        ws_max = mcs._wcl_constraint(profile_key=None, ar=7.0)
+        assert ws_max is None
+
+    def test_wcl_constraint_appears_for_trainer_chart(self):
+        compute_chart = _service()
+        chart = compute_chart(LIGHT_RC, mode="rc_runway", flight_profile="trainer")
+        wcl = next((c for c in chart["constraints"] if c["name"] == "Wing-Cube-Loading"), None)
+        assert wcl is not None, "trainer profile must emit a Wing-Cube-Loading constraint"
+        assert wcl.get("ws_max") is not None and wcl["ws_max"] > 0
+        assert wcl.get("category") == "rc_specific"
+        assert wcl.get("applicable_for_profile") is True
+        # WCL is a guideline, NOT a hard warning trigger.
+        assert wcl.get("binding_for_warning") is False
+
+
+class TestPhaseBPowerLoadingConstraint:
+    """Power-Loading: prop W/P translated to a T/W floor (Lennon Ch. 9)."""
+
+    def test_power_loading_helper_basic(self):
+        mcs = _helpers()
+        tw = mcs._power_loading_constraint(profile_key="trainer", v_stall=7.0)
+        assert tw is not None and tw > 0.0
+
+    def test_power_loading_higher_for_acro_than_trainer(self):
+        """Acro 3D needs much more power-loading-derived T/W than trainer."""
+        mcs = _helpers()
+        tw_acro = mcs._power_loading_constraint(profile_key="acro_3d", v_stall=7.0)
+        tw_trainer = mcs._power_loading_constraint(profile_key="trainer", v_stall=7.0)
+        assert tw_acro is not None and tw_trainer is not None
+        assert tw_acro > tw_trainer
+
+    def test_power_loading_appears_for_sport_chart(self):
+        compute_chart = _service()
+        chart = compute_chart(LIGHT_RC, mode="rc_runway", flight_profile="sport")
+        pl = next((c for c in chart["constraints"] if c["name"] == "Power-Loading"), None)
+        assert pl is not None
+        assert pl.get("category") == "rc_specific"
+        assert pl.get("applicable_for_profile") is True
+        pts = pl.get("t_w_points") or []
+        assert len(pts) > 0
+        # Horizontal line — every point equal
+        assert all(abs(p - pts[0]) < 1e-6 for p in pts)
+
+
+class TestPhaseBVerticalClimbConstraint:
+    """Vertical-Climb: T/W >= 1 + D/W at climb speed."""
+
+    def test_vertical_climb_helper_above_one(self):
+        mcs = _helpers()
+        tw = mcs._vertical_climb_constraint(
+            ws=500.0, cd0=0.03, e=0.8, ar=7.0, v_climb=20.0
+        )
+        # T/W must be > 1 (need to overcome weight + drag)
+        assert tw > 1.0
+
+    def test_vertical_climb_appears_for_acro_3d(self):
+        compute_chart = _service()
+        chart = compute_chart(LIGHT_RC, mode="rc_runway", flight_profile="acro_3d")
+        vc = next((c for c in chart["constraints"] if c["name"] == "Vertical Climb"), None)
+        assert vc is not None, "acro_3d profile must emit a Vertical Climb constraint"
+        assert vc.get("category") == "rc_specific"
+        assert vc.get("applicable_for_profile") is True
+        pts = vc.get("t_w_points") or []
+        # All points above 1
+        assert len(pts) > 0
+        assert all(p > 1.0 for p in pts)
+
+
+class TestPhaseBHandLaunchConstraint:
+    """Hand-Launch: upper W/S bound for safe throw speed (mode=rc_hand_launch)."""
+
+    def test_hand_launch_returns_80_for_rc_hand_launch(self):
+        mcs = _helpers()
+        ws = mcs._hand_launch_constraint(mode="rc_hand_launch")
+        assert ws == 80.0
+
+    def test_hand_launch_returns_none_for_other_modes(self):
+        mcs = _helpers()
+        assert mcs._hand_launch_constraint(mode="rc_runway") is None
+        assert mcs._hand_launch_constraint(mode="uav_runway") is None
+        assert mcs._hand_launch_constraint(mode="ga_runway") is None
+
+    def test_hand_launch_appears_only_in_hand_launch_mode(self):
+        compute_chart = _service()
+        # Same profile but different launch modes
+        chart_runway = compute_chart(LIGHT_RC, mode="rc_runway", flight_profile="sport")
+        chart_hand = compute_chart(LIGHT_RC, mode="rc_hand_launch", flight_profile="sport")
+        has_hl_runway = any(c["name"] == "Hand-Launch" for c in chart_runway["constraints"])
+        has_hl_hand = any(c["name"] == "Hand-Launch" for c in chart_hand["constraints"])
+        assert not has_hl_runway, "Hand-Launch must NOT be emitted in rc_runway mode"
+        assert has_hl_hand, "Hand-Launch must be emitted in rc_hand_launch mode"
+
+
+class TestPhaseBPerProfileFilter:
+    """Per-profile constraint mapping marks applicable_for_profile correctly."""
+
+    def _by_key(self, constraints: list[dict]) -> dict[str, dict]:
+        return {c.get("key", c["name"].lower()): c for c in constraints}
+
+    def test_trainer_profile_applicable_keys(self):
+        """trainer → Stall + Climb + Power-Loading + WCL applicable; others not."""
+        compute_chart = _service()
+        chart = compute_chart(LIGHT_RC, mode="rc_runway", flight_profile="trainer")
+        by_key = self._by_key(chart["constraints"])
+
+        # Required applicable
+        for required in ("stall", "climb", "power_loading", "wcl"):
+            c = by_key.get(required)
+            assert c is not None, f"trainer profile must emit a {required!r} constraint"
+            assert c["applicable_for_profile"] is True, (
+                f"trainer profile: {required!r} should be applicable"
+            )
+
+        # NOT applicable (or absent)
+        for not_applicable in ("takeoff", "landing", "cruise", "mission_min_tw", "vertical_climb"):
+            c = by_key.get(not_applicable)
+            if c is not None:
+                assert c["applicable_for_profile"] is False, (
+                    f"trainer profile: {not_applicable!r} should NOT be applicable"
+                )
+
+    def test_acro_3d_profile_includes_mission_min_tw(self):
+        compute_chart = _service()
+        chart = compute_chart(LIGHT_RC, mode="rc_runway", flight_profile="acro_3d")
+        by_key = self._by_key(chart["constraints"])
+        c = by_key.get("mission_min_tw")
+        assert c is not None
+        assert c["applicable_for_profile"] is True
+
+    def test_acro_3d_profile_includes_vertical_climb(self):
+        compute_chart = _service()
+        chart = compute_chart(LIGHT_RC, mode="rc_runway", flight_profile="acro_3d")
+        by_key = self._by_key(chart["constraints"])
+        c = by_key.get("vertical_climb")
+        assert c is not None
+        assert c["applicable_for_profile"] is True
+
+    def test_glider_profile_is_just_stall(self):
+        """glider/sailplane profile: only Stall is applicable."""
+        compute_chart = _service()
+        chart = compute_chart(LIGHT_RC, mode="rc_runway", flight_profile="glider")
+        by_key = self._by_key(chart["constraints"])
+        # Stall applicable
+        assert by_key["stall"]["applicable_for_profile"] is True
+        for k, c in by_key.items():
+            if k != "stall":
+                assert c["applicable_for_profile"] is False, (
+                    f"glider profile: only stall should be applicable; {k!r} is True"
+                )
+
+    def test_sailplane_alias_matches_glider(self):
+        compute_chart = _service()
+        chart_g = compute_chart(LIGHT_RC, mode="rc_runway", flight_profile="glider")
+        chart_s = compute_chart(LIGHT_RC, mode="rc_runway", flight_profile="sailplane")
+        keys_g = {c["name"] for c in chart_g["constraints"] if c["applicable_for_profile"]}
+        keys_s = {c["name"] for c in chart_s["constraints"] if c["applicable_for_profile"]}
+        assert keys_g == keys_s, (
+            f"sailplane alias must give same applicable set as glider: g={keys_g}, s={keys_s}"
+        )
+
+    def test_custom_profile_marks_all_applicable(self):
+        """custom profile: full CS-25 set + RC-additives all applicable (back-compat)."""
+        compute_chart = _service()
+        chart = compute_chart(LIGHT_RC, mode="rc_runway", flight_profile="custom")
+        for c in chart["constraints"]:
+            assert c["applicable_for_profile"] is True, (
+                f"custom profile must mark {c['name']!r} applicable_for_profile=True"
+            )
+
+    def test_no_profile_marks_all_applicable_and_no_rc_additives(self):
+        """flight_profile=None: only original 5 constraints, all applicable (back-compat)."""
+        compute_chart = _service()
+        chart = compute_chart(LIGHT_RC, mode="rc_runway")
+        names = {c["name"] for c in chart["constraints"]}
+        assert names == {"Takeoff", "Landing", "Cruise", "Climb", "Stall"}, (
+            f"Without flight_profile, only 5 original constraints expected; got {names}"
+        )
+        for c in chart["constraints"]:
+            assert c["applicable_for_profile"] is True
+
+
+class TestPhaseBProfileMapTable:
+    """_PROFILE_CONSTRAINT_MAP is the source-of-truth, exposed for testability."""
+
+    def test_profile_map_exposes_expected_profiles(self):
+        mcs = _helpers()
+        expected = {
+            "trainer", "sport", "wing_racer", "acro_3d", "stol_bush",
+            "slope_soarer", "glider", "sailplane", "motor_glider", "flying_wing",
+        }
+        assert expected.issubset(set(mcs._PROFILE_CONSTRAINT_MAP.keys()))
+
+    def test_resolve_profile_key_handles_custom_and_none(self):
+        mcs = _helpers()
+        assert mcs._resolve_profile_key(None) is None
+        assert mcs._resolve_profile_key("custom") is None
+        assert mcs._resolve_profile_key("totally_unknown") is None
+        assert mcs._resolve_profile_key("trainer") == "trainer"
+        assert mcs._resolve_profile_key("glider") == "glider"
+
+    def test_profile_map_values_are_subsets_of_known_keys(self):
+        """Every key in the profile map matches a real constraint key emitted somewhere."""
+        mcs = _helpers()
+        known_keys = {
+            "takeoff", "landing", "cruise", "climb", "stall",
+            "mission_min_tw", "wcl", "power_loading", "vertical_climb", "hand_launch",
+        }
+        for profile, keys in mcs._PROFILE_CONSTRAINT_MAP.items():
+            for k in keys:
+                assert k in known_keys, (
+                    f"profile {profile!r} references unknown constraint key {k!r}"
+                )
+
+
+class TestPhaseBBackwardCompatibility:
+    """Existing matching-chart behavior is preserved for callers without flight_profile."""
+
+    def test_cessna_feasible_unchanged_with_no_profile(self):
+        compute_chart = _service()
+        chart = compute_chart(
+            CESSNA_172, mode="uav_runway", s_runway=411.0, v_s_target=26.0,
+        )
+        assert chart["feasibility"] == "feasible"
+
+    def test_constraint_count_unchanged_without_profile(self):
+        compute_chart = _service()
+        chart = compute_chart(CESSNA_172, mode="uav_runway")
+        assert len(chart["constraints"]) == 5
+
+    def test_constraint_count_grows_with_profile(self):
+        compute_chart = _service()
+        chart_no = compute_chart(CESSNA_172, mode="uav_runway")
+        chart_acro = compute_chart(CESSNA_172, mode="uav_runway", flight_profile="acro_3d")
+        assert len(chart_acro["constraints"]) > len(chart_no), (
+            "Profile-aware chart should add RC-additive constraints"
+        )

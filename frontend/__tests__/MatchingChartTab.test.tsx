@@ -1659,3 +1659,366 @@ describe("buildCurrentDesignPointTrace (gh-606)", () => {
     expect(trace.hovertemplate).toContain("AR = —");
   });
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// gh-613 Phase B — data-driven constraint rendering
+// ───────────────────────────────────────────────────────────────────────────
+
+import {
+  applicableConstraints,
+  isConstraintBindingForWarning,
+  constraintRelevance,
+  CATEGORY_TO_RELEVANCE,
+} from "@/components/workbench/MatchingChartTab";
+
+describe("gh-613 Phase B — applicableConstraints filter", () => {
+  it("keeps constraints with applicable_for_profile=true", () => {
+    const cs: ConstraintLine[] = [
+      {
+        name: "Stall",
+        t_w_points: null,
+        ws_max: 900,
+        color: "#A78BFA",
+        binding: false,
+        hover_text: null,
+        category: "universal",
+        binding_for_warning: true,
+        applicable_for_profile: true,
+      },
+    ];
+    expect(applicableConstraints(cs)).toHaveLength(1);
+  });
+
+  it("drops constraints with applicable_for_profile=false", () => {
+    const cs: ConstraintLine[] = [
+      {
+        name: "Stall",
+        t_w_points: null,
+        ws_max: 900,
+        color: "#A78BFA",
+        binding: false,
+        hover_text: null,
+        category: "universal",
+        binding_for_warning: true,
+        applicable_for_profile: true,
+      },
+      {
+        name: "Takeoff",
+        t_w_points: [0.1, 0.2, 0.3],
+        ws_max: null,
+        color: "#FF8400",
+        binding: false,
+        hover_text: null,
+        category: "universal",
+        binding_for_warning: true,
+        applicable_for_profile: false,
+      },
+    ];
+    const out = applicableConstraints(cs);
+    expect(out.map((c) => c.name)).toEqual(["Stall"]);
+  });
+
+  it("falls back to keeping constraints when applicable_for_profile is missing (legacy)", () => {
+    const cs = [
+      {
+        name: "Climb",
+        t_w_points: [0.1, 0.2],
+        ws_max: null,
+        color: "#E5484D",
+        binding: false,
+        hover_text: null,
+      } as ConstraintLine,
+    ];
+    expect(applicableConstraints(cs)).toHaveLength(1);
+  });
+});
+
+describe("gh-613 Phase B — isConstraintBindingForWarning (data-driven)", () => {
+  it("returns true when binding_for_warning=true", () => {
+    expect(
+      isConstraintBindingForWarning({
+        name: "Stall",
+        t_w_points: null,
+        ws_max: 900,
+        color: "#A78BFA",
+        binding: false,
+        hover_text: null,
+        category: "universal",
+        binding_for_warning: true,
+        applicable_for_profile: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("returns false when binding_for_warning=false (independent of name)", () => {
+    expect(
+      isConstraintBindingForWarning({
+        name: "Wing-Cube-Loading",
+        t_w_points: null,
+        ws_max: 250,
+        color: "#FBBF24",
+        binding: false,
+        hover_text: null,
+        category: "rc_specific",
+        binding_for_warning: false,
+        applicable_for_profile: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("falls back to the Phase A name regex when binding_for_warning is missing", () => {
+    const legacyOei = {
+      name: "Second-Segment Climb (OEI)",
+      t_w_points: [0.5, 0.5],
+      ws_max: null,
+      color: "#E5484D",
+      binding: false,
+      hover_text: null,
+    } as ConstraintLine;
+    expect(isConstraintBindingForWarning(legacyOei)).toBe(false);
+
+    const legacyClimb = {
+      name: "Climb",
+      t_w_points: [0.5, 0.5],
+      ws_max: null,
+      color: "#E5484D",
+      binding: false,
+      hover_text: null,
+    } as ConstraintLine;
+    expect(isConstraintBindingForWarning(legacyClimb)).toBe(true);
+  });
+});
+
+describe("gh-613 Phase B — findInsufficientThrustConstraint uses binding_for_warning", () => {
+  const wsRange = Array.from({ length: 50 }, (_, i) => 50 + i * 10);
+
+  it("ignores constraints with binding_for_warning=false even when violated", () => {
+    const cs: ConstraintLine[] = [
+      {
+        name: "Some Guideline",
+        t_w_points: Array(50).fill(0.5),
+        ws_max: null,
+        color: "#FBBF24",
+        binding: false,
+        hover_text: null,
+        category: "rc_specific",
+        binding_for_warning: false,
+        applicable_for_profile: true,
+      },
+    ];
+    expect(
+      findInsufficientThrustConstraint(200, 0.05, wsRange, cs, true),
+    ).toBeNull();
+  });
+
+  it("still flags constraints with binding_for_warning=true", () => {
+    const cs: ConstraintLine[] = [
+      {
+        name: "Climb",
+        t_w_points: Array(50).fill(0.4),
+        ws_max: null,
+        color: "#E5484D",
+        binding: false,
+        hover_text: null,
+        category: "universal",
+        binding_for_warning: true,
+        applicable_for_profile: true,
+      },
+    ];
+    expect(
+      findInsufficientThrustConstraint(200, 0.05, wsRange, cs, true),
+    ).toBe("Climb");
+  });
+});
+
+describe("gh-613 Phase B — constraintRelevance (modal badge mapping)", () => {
+  it("maps category=universal → 'universal'", () => {
+    expect(CATEGORY_TO_RELEVANCE.universal).toBe("universal");
+  });
+
+  it("maps category=rc_specific → 'rc-specific'", () => {
+    expect(CATEGORY_TO_RELEVANCE.rc_specific).toBe("rc-specific");
+  });
+
+  it("maps category=cs25_only → 'cs25-only'", () => {
+    expect(CATEGORY_TO_RELEVANCE.cs25_only).toBe("cs25-only");
+  });
+
+  it("overrides Takeoff to 'conditional' (universal in data, conditional in modal copy)", () => {
+    expect(
+      constraintRelevance({ name: "Takeoff", category: "universal" }),
+    ).toBe("conditional");
+  });
+
+  it("overrides Landing to 'conditional'", () => {
+    expect(
+      constraintRelevance({ name: "Landing", category: "universal" }),
+    ).toBe("conditional");
+  });
+
+  it("preserves cs25-only for OEI even when category says universal", () => {
+    expect(
+      constraintRelevance({ name: "Second-Segment Climb (OEI)", category: "universal" }),
+    ).toBe("cs25-only");
+  });
+
+  it("falls back to category for non-overridden names", () => {
+    expect(
+      constraintRelevance({ name: "Stall", category: "universal" }),
+    ).toBe("universal");
+    expect(
+      constraintRelevance({ name: "Mission-Min T/W", category: "rc_specific" }),
+    ).toBe("rc-specific");
+  });
+});
+
+describe("gh-613 Phase B — MatchingChartTab integration", () => {
+  beforeEach(() => {
+    hookReturn = MOCK_LOADING_STATE;
+    mockAssumptions = [];
+    mockCtx = null;
+    plotlyReactMock.mockClear();
+  });
+
+  it("does not render constraints whose applicable_for_profile=false on the chart", async () => {
+    const trainerProfileData: MatchingChartData = {
+      ws_range_n_m2: Array.from({ length: 10 }, (_, i) => 100 + i * 100),
+      constraints: [
+        {
+          name: "Stall",
+          t_w_points: null,
+          ws_max: 900,
+          color: "#A78BFA",
+          binding: false,
+          hover_text: null,
+          category: "universal",
+          binding_for_warning: true,
+          applicable_for_profile: true,
+        },
+        {
+          name: "Takeoff",
+          t_w_points: Array(10).fill(0.15),
+          ws_max: null,
+          color: "#FF8400",
+          binding: false,
+          hover_text: null,
+          category: "universal",
+          binding_for_warning: true,
+          // not relevant for trainer profile
+          applicable_for_profile: false,
+        },
+      ],
+      design_point: { ws_n_m2: 500, t_w: 0.2 },
+      feasibility: "feasible",
+      warnings: [],
+    };
+    hookReturn = { data: trainerProfileData, error: null, isLoading: false, mutate: vi.fn() };
+
+    await act(async () => {
+      render(<MatchingChartTab aeroplaneId="t" />);
+    });
+
+    // Plotly.react must have been called with traces that omit Takeoff.
+    expect(plotlyReactMock).toHaveBeenCalled();
+    const lastCall = plotlyReactMock.mock.calls[plotlyReactMock.mock.calls.length - 1];
+    const traces = lastCall[1] as Array<{ name?: string }>;
+    const traceNames = traces.map((t) => t.name).filter(Boolean);
+    expect(traceNames).not.toContain("Takeoff");
+  });
+
+  it("does not flag insufficient-T/W warning when only a binding_for_warning=false constraint is violated", async () => {
+    const wcl_only_violated: MatchingChartData = {
+      ws_range_n_m2: Array.from({ length: 10 }, (_, i) => 100 + i * 100),
+      constraints: [
+        {
+          name: "Stall",
+          t_w_points: null,
+          ws_max: 2000,
+          color: "#A78BFA",
+          binding: false,
+          hover_text: null,
+          category: "universal",
+          binding_for_warning: true,
+          applicable_for_profile: true,
+        },
+        {
+          // Lennon guideline — violated but should not raise a warning
+          name: "Wing-Cube-Loading",
+          t_w_points: Array(10).fill(0.5),
+          ws_max: null,
+          color: "#FBBF24",
+          binding: false,
+          hover_text: null,
+          category: "rc_specific",
+          binding_for_warning: false,
+          applicable_for_profile: true,
+        },
+      ],
+      design_point: { ws_n_m2: 500, t_w: 0.1 },
+      feasibility: "feasible",
+      warnings: [],
+    };
+    hookReturn = { data: wcl_only_violated, error: null, isLoading: false, mutate: vi.fn() };
+    mockAssumptions = [
+      { parameter_name: "mass", effective_value: 2 },
+      { parameter_name: "t_static_N", effective_value: 5 },
+    ];
+    mockCtx = { s_ref_m2: 0.04, b_ref_m: 0.6, is_glider: false };
+
+    await act(async () => {
+      render(<MatchingChartTab aeroplaneId="t" />);
+    });
+
+    // The insufficient-T/W callout must not appear.
+    expect(
+      document.querySelector("[data-testid='insufficient-thrust-callout']"),
+    ).toBeNull();
+  });
+
+  it("flags insufficient-T/W warning when a binding_for_warning=true constraint is violated", async () => {
+    const climb_violated: MatchingChartData = {
+      ws_range_n_m2: Array.from({ length: 10 }, (_, i) => 100 + i * 100),
+      constraints: [
+        {
+          name: "Stall",
+          t_w_points: null,
+          ws_max: 2000,
+          color: "#A78BFA",
+          binding: false,
+          hover_text: null,
+          category: "universal",
+          binding_for_warning: true,
+          applicable_for_profile: true,
+        },
+        {
+          name: "Climb",
+          t_w_points: Array(10).fill(0.4),
+          ws_max: null,
+          color: "#E5484D",
+          binding: false,
+          hover_text: null,
+          category: "universal",
+          binding_for_warning: true,
+          applicable_for_profile: true,
+        },
+      ],
+      design_point: { ws_n_m2: 500, t_w: 0.1 },
+      feasibility: "feasible",
+      warnings: [],
+    };
+    hookReturn = { data: climb_violated, error: null, isLoading: false, mutate: vi.fn() };
+    mockAssumptions = [
+      { parameter_name: "mass", effective_value: 2 },
+      { parameter_name: "t_static_N", effective_value: 5 },
+    ];
+    mockCtx = { s_ref_m2: 0.04, b_ref_m: 0.6, is_glider: false };
+
+    await act(async () => {
+      render(<MatchingChartTab aeroplaneId="t" />);
+    });
+
+    expect(
+      document.querySelector("[data-testid='insufficient-thrust-callout']"),
+    ).toBeTruthy();
+  });
+});
