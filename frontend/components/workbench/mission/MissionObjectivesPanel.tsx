@@ -78,12 +78,21 @@ export function MissionObjectivesPanel({ aeroplaneId }: Props) {
   const [draft, setDraft] = useState<MissionObjective | null>(null);
   const [bannerKey, setBannerKey] = useState<string | null>(null);
   const [bannerVisible, setBannerVisible] = useState<boolean>(false);
+  const [lastAeroplaneId, setLastAeroplaneId] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // "Adjust state when a prop changes" pattern — avoids useEffect+setState
-  // (which react-hooks/set-state-in-effect forbids). Seed draft once on first
-  // server response; subsequent SWR revalidations are intentionally ignored so
-  // the user's in-flight edits are not clobbered.
+  // (which react-hooks/set-state-in-effect forbids). When the aeroplaneId
+  // changes (user switched aeroplane), drop the previous draft so the next
+  // server response for the new aeroplane re-seeds it — otherwise the panel
+  // would render aeroplane A's data while writes target aeroplane B's URL
+  // (gh-602, data-corruption risk). For the SAME aeroplane, the draft is
+  // seeded once on the first server response; subsequent SWR revalidations
+  // are intentionally ignored so the user's in-flight edits are not clobbered.
+  if (lastAeroplaneId !== aeroplaneId) {
+    setLastAeroplaneId(aeroplaneId);
+    setDraft(null);
+  }
   if (persisted && !draft) setDraft({ ...persisted });
 
   if (!draft || !presets) return <div className="text-muted-foreground text-sm">Loading…</div>;

@@ -25,17 +25,30 @@ const fullAxisRanges = {
   field_friendliness: [3, 100] as [number, number],
 };
 
+// Default mission-objective payload — individual tests can override
+// the per-aeroplane payload via `setMissionData(id, data)` (gh-602).
+const defaultMissionData = {
+  mission_type: "trainer",
+  target_cruise_mps: 18, target_stall_safety: 1.8,
+  target_maneuver_n: 3, target_glide_ld: 12,
+  target_climb_energy: 22, target_wing_loading_n_m2: 412,
+  target_field_length_m: 50,
+  available_runway_m: 50, runway_type: "grass",
+  t_static_N: 18, takeoff_mode: "runway",
+};
+
+// Per-aeroplaneId mission-data store used by the mock.
+const missionDataById = new Map<string, typeof defaultMissionData>();
+const setMissionData = (id: string, data: typeof defaultMissionData) => {
+  missionDataById.set(id, data);
+};
+const resetMissionData = () => {
+  missionDataById.clear();
+};
+
 vi.mock("@/hooks/useMissionObjectives", () => ({
-  useMissionObjectives: () => ({
-    data: {
-      mission_type: "trainer",
-      target_cruise_mps: 18, target_stall_safety: 1.8,
-      target_maneuver_n: 3, target_glide_ld: 12,
-      target_climb_energy: 22, target_wing_loading_n_m2: 412,
-      target_field_length_m: 50,
-      available_runway_m: 50, runway_type: "grass",
-      t_static_N: 18, takeoff_mode: "runway",
-    },
+  useMissionObjectives: (aeroplaneId: string | null) => ({
+    data: missionDataById.get(aeroplaneId ?? "") ?? defaultMissionData,
     update: updateMock,
     isLoading: false, error: null,
   }),
@@ -57,6 +70,7 @@ vi.mock("@/hooks/useMissionPresets", () => ({
 describe("MissionObjectivesPanel", () => {
   beforeEach(() => {
     updateMock.mockClear();
+    resetMissionData();
   });
 
   it("renders the mission type dropdown with all presets", () => {
@@ -149,5 +163,42 @@ describe("MissionObjectivesPanel", () => {
       expect(arg.target_cruise_mps).toBe(18);
       expect(arg.target_glide_ld).toBe(12);
     }
+  });
+
+  it("reloads draft from new persisted data when aeroplaneId changes (gh-602)", () => {
+    setMissionData("a", { ...defaultMissionData, target_cruise_mps: 18 });
+    setMissionData("b", { ...defaultMissionData, target_cruise_mps: 42 });
+
+    const { rerender } = render(<MissionObjectivesPanel aeroplaneId="a"/>);
+    // Aeroplane A's cruise value (18) is shown.
+    const inputA = screen.getByLabelText(/Target Cruise/i) as HTMLInputElement;
+    expect(inputA.value).toBe("18");
+
+    // User switches to aeroplane B — its persisted data differs.
+    rerender(<MissionObjectivesPanel aeroplaneId="b"/>);
+    const inputB = screen.getByLabelText(/Target Cruise/i) as HTMLInputElement;
+    expect(inputB.value).toBe("42");
+    expect(inputB.value).not.toBe("18");
+  });
+
+  it("preserves in-flight draft edits across SWR revalidations for the SAME aeroplaneId (gh-602)", () => {
+    setMissionData("a", { ...defaultMissionData, target_cruise_mps: 10 });
+
+    const { rerender } = render(<MissionObjectivesPanel aeroplaneId="a"/>);
+    const input = screen.getByLabelText(/Target Cruise/i) as HTMLInputElement;
+    expect(input.value).toBe("10");
+
+    // User edits the cruise value to 99.
+    fireEvent.change(input, { target: { value: "99" } });
+    expect(input.value).toBe("99");
+
+    // SWR revalidates the SAME aeroplane — server still returns 10
+    // (the user's 99 hasn't been persisted yet). The draft must NOT be
+    // clobbered by this revalidation.
+    setMissionData("a", { ...defaultMissionData, target_cruise_mps: 10 });
+    rerender(<MissionObjectivesPanel aeroplaneId="a"/>);
+
+    const inputAfter = screen.getByLabelText(/Target Cruise/i) as HTMLInputElement;
+    expect(inputAfter.value).toBe("99");
   });
 });
