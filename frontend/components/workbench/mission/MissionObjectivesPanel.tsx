@@ -4,10 +4,41 @@ import React, { useRef, useState } from "react";
 import { useMissionObjectives, type MissionObjective } from "@/hooks/useMissionObjectives";
 import { useMissionPresets, type MissionPreset, type AxisName } from "@/hooks/useMissionPresets";
 import { normalizedToRaw } from "@/lib/missionScale";
+import { InfoLabel } from "@/components/workbench/InfoLabel";
 
 interface Props {
   readonly aeroplaneId: string;
 }
+
+/**
+ * Per-field info-tooltip copy for the Mission Tab inputs (gh-610).
+ * Tooltips surface on hover OR keyboard focus to keep the panel
+ * discoverable without overwhelming users who already know the fields.
+ */
+const FIELD_DESCRIPTIONS = {
+  mission_type:
+    "Preset that suggests defaults for the editable performance targets and the design assumptions. Changing the preset applies its suggested values via the banner Apply button.",
+  target_cruise_mps:
+    "Design cruise speed at altitude. Drives propeller selection, drag analysis, and the cruise-constraint curve on the matching chart.",
+  target_stall_safety:
+    "Safety factor on stall speed (×); e.g. 1.8 means landing approach at 1.8 × V_stall. Lower = closer to stall = more demanding pilot skill.",
+  target_maneuver_n:
+    "Limit load factor n_max (g). Sets structural g-loading; CS-22 utility category = 5.3, aerobatic = 6+.",
+  target_glide_ld:
+    "Minimum lift-to-drag ratio in the cruise polar. Sailplanes ≥ 20; sport ≥ 10; trainer ≥ 8.",
+  target_climb_energy:
+    "Energy-per-time proxy for climb performance: rate-of-climb × g-load. Higher = stronger powerplant relative to weight.",
+  target_wing_loading_n_m2:
+    "Design wing loading W/S (N/m²). Sets stall speed and the W/S-axis position on the matching chart. Higher = smaller wing but higher stall speed.",
+  available_runway_m:
+    "Hard ground length available for take-off / landing (m). Sets the take-off and landing constraint curves on the matching chart.",
+  runway_type:
+    "Surface affecting rolling friction (grass higher, asphalt lower) and crash-landing tolerance (belly = no gear).",
+  t_static_N:
+    "Powertrain static thrust at zero airspeed (N). Sets the T/W ratio on the matching chart. For gliders, 0.",
+  takeoff_mode:
+    "runway = wheeled take-off; hand_launch = thrown by hand (RC); bungee = elastic catapult (gliders); catapult = launched device.",
+} as const;
 
 /** Per-axis → MissionObjective target-field mapping (gh-601). */
 const AXIS_TO_TARGET_FIELD: Partial<Record<AxisName, keyof MissionObjective>> = {
@@ -204,9 +235,11 @@ export function MissionObjectivesPanel({ aeroplaneId }: Props) {
       )}
 
       <div className="space-y-2">
-        <label htmlFor="mission-type" className="block text-xs text-muted-foreground">
-          Mission Type
-        </label>
+        <InfoLabel
+          label="Mission Type"
+          description={FIELD_DESCRIPTIONS.mission_type}
+          htmlFor="mission-type"
+        />
         <select
           id="mission-type" aria-label="Mission Type"
           className="w-full rounded bg-background border border-border px-2 py-1.5 text-sm"
@@ -221,32 +254,32 @@ export function MissionObjectivesPanel({ aeroplaneId }: Props) {
         Performance Targets
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <NumField label="Target Cruise" suffix="m/s" value={draft.target_cruise_mps} onChange={(v) => set("target_cruise_mps", v)}/>
-        <NumField label="Stall Safety" suffix="–" value={draft.target_stall_safety} onChange={(v) => set("target_stall_safety", v)}/>
-        <NumField label="Max Maneuver" suffix="g" value={draft.target_maneuver_n} onChange={(v) => set("target_maneuver_n", v)}/>
-        <NumField label="Min Glide (L/D)" suffix="–" value={draft.target_glide_ld} onChange={(v) => set("target_glide_ld", v)}/>
-        <NumField label="Climb Energy" suffix="–" value={draft.target_climb_energy} onChange={(v) => set("target_climb_energy", v)}/>
-        <NumField label="Target Wing Load" suffix="N/m²" value={draft.target_wing_loading_n_m2} onChange={(v) => set("target_wing_loading_n_m2", v)}/>
+        <NumField label="Target Cruise" suffix="m/s" value={draft.target_cruise_mps} onChange={(v) => set("target_cruise_mps", v)} description={FIELD_DESCRIPTIONS.target_cruise_mps}/>
+        <NumField label="Stall Safety" suffix="–" value={draft.target_stall_safety} onChange={(v) => set("target_stall_safety", v)} description={FIELD_DESCRIPTIONS.target_stall_safety}/>
+        <NumField label="Max Maneuver" suffix="g" value={draft.target_maneuver_n} onChange={(v) => set("target_maneuver_n", v)} description={FIELD_DESCRIPTIONS.target_maneuver_n}/>
+        <NumField label="Min Glide (L/D)" suffix="–" value={draft.target_glide_ld} onChange={(v) => set("target_glide_ld", v)} description={FIELD_DESCRIPTIONS.target_glide_ld}/>
+        <NumField label="Climb Energy" suffix="–" value={draft.target_climb_energy} onChange={(v) => set("target_climb_energy", v)} description={FIELD_DESCRIPTIONS.target_climb_energy}/>
+        <NumField label="Target Wing Load" suffix="N/m²" value={draft.target_wing_loading_n_m2} onChange={(v) => set("target_wing_loading_n_m2", v)} description={FIELD_DESCRIPTIONS.target_wing_loading_n_m2}/>
       </div>
 
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border pb-1 mt-2">
         Field Performance
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <NumField label="Available Runway" suffix="m" value={draft.available_runway_m} onChange={(v) => set("available_runway_m", v)}/>
-        <SelectField label="Runway Type" value={draft.runway_type} options={["grass", "asphalt", "belly"]} onChange={(v) => set("runway_type", v as MissionObjective["runway_type"])}/>
-        <NumField label="Static Thrust" suffix="N" value={draft.t_static_N} onChange={(v) => set("t_static_N", v)}/>
-        <SelectField label="Takeoff Mode" value={draft.takeoff_mode} options={["runway", "hand_launch", "bungee", "catapult"]} onChange={(v) => set("takeoff_mode", v as MissionObjective["takeoff_mode"])}/>
+        <NumField label="Available Runway" suffix="m" value={draft.available_runway_m} onChange={(v) => set("available_runway_m", v)} description={FIELD_DESCRIPTIONS.available_runway_m}/>
+        <SelectField label="Runway Type" value={draft.runway_type} options={["grass", "asphalt", "belly"]} onChange={(v) => set("runway_type", v as MissionObjective["runway_type"])} description={FIELD_DESCRIPTIONS.runway_type}/>
+        <NumField label="Static Thrust" suffix="N" value={draft.t_static_N} onChange={(v) => set("t_static_N", v)} description={FIELD_DESCRIPTIONS.t_static_N}/>
+        <SelectField label="Takeoff Mode" value={draft.takeoff_mode} options={["runway", "hand_launch", "bungee", "catapult"]} onChange={(v) => set("takeoff_mode", v as MissionObjective["takeoff_mode"])} description={FIELD_DESCRIPTIONS.takeoff_mode}/>
       </div>
     </div>
   );
 }
 
-function NumField(props: { label: string; suffix: string; value: number; onChange: (v: number) => void }) {
+function NumField(props: { label: string; suffix: string; value: number; onChange: (v: number) => void; description?: string }) {
   const id = `f-${props.label.replace(/\s+/g, "-").toLowerCase()}`;
   return (
     <div>
-      <label htmlFor={id} className="block text-xs text-muted-foreground mb-1">{props.label}</label>
+      <InfoLabel label={props.label} description={props.description} htmlFor={id} />
       <div className="flex">
         <input
           id={id} aria-label={props.label} type="number"
@@ -262,11 +295,11 @@ function NumField(props: { label: string; suffix: string; value: number; onChang
   );
 }
 
-function SelectField(props: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
+function SelectField(props: { label: string; value: string; options: string[]; onChange: (v: string) => void; description?: string }) {
   const id = `f-${props.label.replace(/\s+/g, "-").toLowerCase()}`;
   return (
     <div>
-      <label htmlFor={id} className="block text-xs text-muted-foreground mb-1">{props.label}</label>
+      <InfoLabel label={props.label} description={props.description} htmlFor={id} />
       <select id={id} aria-label={props.label}
         className="w-full rounded bg-background border border-border px-2 py-1.5 text-sm"
         value={props.value} onChange={(e) => props.onChange(e.target.value)}>

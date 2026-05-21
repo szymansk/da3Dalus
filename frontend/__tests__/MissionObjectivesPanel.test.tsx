@@ -181,6 +181,112 @@ describe("MissionObjectivesPanel", () => {
     expect(inputB.value).not.toBe("18");
   });
 
+  describe("per-field info tooltips (gh-610)", () => {
+    // The 11 expected tooltip texts. Keep in lockstep with FIELD_DESCRIPTIONS
+    // in MissionObjectivesPanel — if the prod copy changes, this test should
+    // fail and surface the divergence.
+    const TOOLTIPS: Record<string, string> = {
+      "Mission Type":
+        "Preset that suggests defaults for the editable performance targets and the design assumptions. Changing the preset applies its suggested values via the banner Apply button.",
+      "Target Cruise":
+        "Design cruise speed at altitude. Drives propeller selection, drag analysis, and the cruise-constraint curve on the matching chart.",
+      "Stall Safety":
+        "Safety factor on stall speed (×); e.g. 1.8 means landing approach at 1.8 × V_stall. Lower = closer to stall = more demanding pilot skill.",
+      "Max Maneuver":
+        "Limit load factor n_max (g). Sets structural g-loading; CS-22 utility category = 5.3, aerobatic = 6+.",
+      "Min Glide (L/D)":
+        "Minimum lift-to-drag ratio in the cruise polar. Sailplanes ≥ 20; sport ≥ 10; trainer ≥ 8.",
+      "Climb Energy":
+        "Energy-per-time proxy for climb performance: rate-of-climb × g-load. Higher = stronger powerplant relative to weight.",
+      "Target Wing Load":
+        "Design wing loading W/S (N/m²). Sets stall speed and the W/S-axis position on the matching chart. Higher = smaller wing but higher stall speed.",
+      "Available Runway":
+        "Hard ground length available for take-off / landing (m). Sets the take-off and landing constraint curves on the matching chart.",
+      "Runway Type":
+        "Surface affecting rolling friction (grass higher, asphalt lower) and crash-landing tolerance (belly = no gear).",
+      "Static Thrust":
+        "Powertrain static thrust at zero airspeed (N). Sets the T/W ratio on the matching chart. For gliders, 0.",
+      "Takeoff Mode":
+        "runway = wheeled take-off; hand_launch = thrown by hand (RC); bungee = elastic catapult (gliders); catapult = launched device.",
+    };
+
+    it("renders 11 tooltip elements — one per editable input + Mission Type", () => {
+      render(<MissionObjectivesPanel aeroplaneId="x" />);
+      // role="tooltip" elements are hidden via Tailwind `hidden` class but
+      // still in the DOM so screen readers and `screen.getAllByRole` find them.
+      const tips = screen.getAllByRole("tooltip", { hidden: true });
+      expect(tips.length).toBe(11);
+    });
+
+    it("each tooltip text matches the spec exactly", () => {
+      render(<MissionObjectivesPanel aeroplaneId="x" />);
+      const tipTexts = screen
+        .getAllByRole("tooltip", { hidden: true })
+        .map((el) => el.textContent ?? "");
+      for (const expected of Object.values(TOOLTIPS)) {
+        expect(tipTexts).toContain(expected);
+      }
+    });
+
+    it("Mission Type dropdown has its info tooltip", () => {
+      render(<MissionObjectivesPanel aeroplaneId="x" />);
+      const tips = screen.getAllByRole("tooltip", { hidden: true });
+      const has = tips.some((t) => t.textContent === TOOLTIPS["Mission Type"]);
+      expect(has).toBe(true);
+    });
+  });
+
+  // Coverage for each per-field onChange closure (gh-610). Firing a value
+  // change exercises the inline `(v) => set("...", v)` handler on every
+  // NumField/SelectField, ensuring the description-prop refactor did not
+  // silently break wiring.
+  describe("per-field onChange handlers (gh-610 coverage)", () => {
+    it.each([
+      ["Target Cruise", "21"],
+      ["Stall Safety", "1.6"],
+      ["Max Maneuver", "4"],
+      ["Min Glide (L/D)", "14"],
+      ["Climb Energy", "20"],
+      ["Target Wing Load", "300"],
+      ["Available Runway", "75"],
+      ["Static Thrust", "12"],
+    ])("NumField %s onChange wires through to draft", (label, newValue) => {
+      render(<MissionObjectivesPanel aeroplaneId="x"/>);
+      // Use exact-string match so labels with regex metachars like "Min Glide (L/D)"
+      // do not get parsed as regex groups.
+      const input = screen.getByLabelText(label, { exact: true }) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: newValue } });
+      expect(input.value).toBe(newValue);
+    });
+
+    it.each([
+      ["Runway Type", "asphalt"],
+      ["Takeoff Mode", "hand_launch"],
+    ])("SelectField %s onChange wires through to draft", (label, newValue) => {
+      render(<MissionObjectivesPanel aeroplaneId="x"/>);
+      const select = screen.getByLabelText(label, { exact: true }) as HTMLSelectElement;
+      fireEvent.change(select, { target: { value: newValue } });
+      expect(select.value).toBe(newValue);
+    });
+
+    it("debounced update() fires 300 ms after a value change", () => {
+      vi.useFakeTimers();
+      try {
+        render(<MissionObjectivesPanel aeroplaneId="x"/>);
+        const input = screen.getByLabelText(/Target Cruise/i) as HTMLInputElement;
+        fireEvent.change(input, { target: { value: "33" } });
+        // Before the debounce fires, update() has not been called.
+        expect(updateMock).not.toHaveBeenCalled();
+        vi.advanceTimersByTime(350);
+        expect(updateMock).toHaveBeenCalled();
+        const arg = updateMock.mock.calls[updateMock.mock.calls.length - 1][0];
+        expect(arg.target_cruise_mps).toBe(33);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
   it("preserves in-flight draft edits across SWR revalidations for the SAME aeroplaneId (gh-602)", () => {
     setMissionData("a", { ...defaultMissionData, target_cruise_mps: 10 });
 
