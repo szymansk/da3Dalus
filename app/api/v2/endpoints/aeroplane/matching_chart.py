@@ -166,6 +166,22 @@ async def get_matching_chart(
             "Defaults to v_md_mps from assumption context or polar estimate.",
         ),
     ] = None,
+    flight_profile: Annotated[
+        str | None,
+        Query(
+            description=(
+                "Mission profile id (e.g. trainer, sport, acro_3d, wing_racer, "
+                "stol_bush, slope_soarer, motor_glider, flying_wing, "
+                "glider/sailplane, custom). When set, the service emits "
+                "RC-additive constraints (Mission-Min T/W, WCL, Power-Loading, "
+                "Vertical-Climb, Hand-Launch) and tags each constraint with "
+                "applicable_for_profile per the gh-613 Phase B mapping. When "
+                "omitted, the active MissionObjective.mission_type is used "
+                "(if any); else only the original 5 constraints are emitted "
+                "(back-compat)."
+            ),
+        ),
+    ] = None,
 ) -> MatchingChartResponse:
     """Compute the T/W vs W/S matching chart for an aeroplane.
 
@@ -202,6 +218,15 @@ async def get_matching_chart(
         plane = _get_aeroplane(db, aeroplane_id)
         aircraft = _resolve_aircraft_params(db, plane, v_cruise_override=v_cruise_mps)
 
+        # gh-613 Phase B: resolve flight_profile from explicit query param
+        # (precedence) or from the aeroplane's MissionObjective.mission_type.
+        resolved_flight_profile = flight_profile
+        if resolved_flight_profile is None:
+            mission_obj = getattr(plane, "mission_objective", None)
+            mission_type = getattr(mission_obj, "mission_type", None) if mission_obj else None
+            if mission_type:
+                resolved_flight_profile = mission_type
+
         result = compute_chart(
             aircraft,
             mode=mode,
@@ -209,6 +234,7 @@ async def get_matching_chart(
             v_s_target=v_s_target,
             gamma_climb_deg=gamma_climb_deg,
             v_cruise_mps=v_cruise_mps,
+            flight_profile=resolved_flight_profile,
         )
 
         # --- Map result to Pydantic schema -----------------------------------
@@ -222,6 +248,10 @@ async def get_matching_chart(
                     color=c["color"],
                     binding=c["binding"],
                     hover_text=c.get("hover_text"),
+                    # gh-613 Phase B
+                    category=c.get("category", "universal"),
+                    binding_for_warning=c.get("binding_for_warning", True),
+                    applicable_for_profile=c.get("applicable_for_profile", True),
                 )
             )
 
