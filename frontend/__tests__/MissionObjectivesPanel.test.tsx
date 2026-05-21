@@ -236,6 +236,57 @@ describe("MissionObjectivesPanel", () => {
     });
   });
 
+  // Coverage for each per-field onChange closure (gh-610). Firing a value
+  // change exercises the inline `(v) => set("...", v)` handler on every
+  // NumField/SelectField, ensuring the description-prop refactor did not
+  // silently break wiring.
+  describe("per-field onChange handlers (gh-610 coverage)", () => {
+    it.each([
+      ["Target Cruise", "21"],
+      ["Stall Safety", "1.6"],
+      ["Max Maneuver", "4"],
+      ["Min Glide (L/D)", "14"],
+      ["Climb Energy", "20"],
+      ["Target Wing Load", "300"],
+      ["Available Runway", "75"],
+      ["Static Thrust", "12"],
+    ])("NumField %s onChange wires through to draft", (label, newValue) => {
+      render(<MissionObjectivesPanel aeroplaneId="x"/>);
+      // Use exact-string match so labels with regex metachars like "Min Glide (L/D)"
+      // do not get parsed as regex groups.
+      const input = screen.getByLabelText(label, { exact: true }) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: newValue } });
+      expect(input.value).toBe(newValue);
+    });
+
+    it.each([
+      ["Runway Type", "asphalt"],
+      ["Takeoff Mode", "hand_launch"],
+    ])("SelectField %s onChange wires through to draft", (label, newValue) => {
+      render(<MissionObjectivesPanel aeroplaneId="x"/>);
+      const select = screen.getByLabelText(label, { exact: true }) as HTMLSelectElement;
+      fireEvent.change(select, { target: { value: newValue } });
+      expect(select.value).toBe(newValue);
+    });
+
+    it("debounced update() fires 300 ms after a value change", () => {
+      vi.useFakeTimers();
+      try {
+        render(<MissionObjectivesPanel aeroplaneId="x"/>);
+        const input = screen.getByLabelText(/Target Cruise/i) as HTMLInputElement;
+        fireEvent.change(input, { target: { value: "33" } });
+        // Before the debounce fires, update() has not been called.
+        expect(updateMock).not.toHaveBeenCalled();
+        vi.advanceTimersByTime(350);
+        expect(updateMock).toHaveBeenCalled();
+        const arg = updateMock.mock.calls[updateMock.mock.calls.length - 1][0];
+        expect(arg.target_cruise_mps).toBe(33);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
   it("preserves in-flight draft edits across SWR revalidations for the SAME aeroplaneId (gh-602)", () => {
     setMissionData("a", { ...defaultMissionData, target_cruise_mps: 10 });
 
