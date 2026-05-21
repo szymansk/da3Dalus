@@ -36,7 +36,7 @@ const presets: MissionPreset[] = [
 ];
 
 describe("MissionToggleGrid", () => {
-  it("disables the active preset button and marks it 'aktiv'", () => {
+  it("disables the active preset button and marks it 'active'", () => {
     render(
       <MissionToggleGrid
         presets={presets}
@@ -47,7 +47,9 @@ describe("MissionToggleGrid", () => {
     );
     const trainer = screen.getByRole("button", { name: /Trainer/ });
     expect(trainer).toBeDisabled();
-    expect(screen.getByText(/aktiv/)).toBeInTheDocument();
+    expect(screen.getByText(/active/)).toBeInTheDocument();
+    // The German legacy string should not appear (gh-609).
+    expect(screen.queryByText(/aktiv$/)).not.toBeInTheDocument();
   });
 
   it("calls onToggle when a non-active preset is clicked", () => {

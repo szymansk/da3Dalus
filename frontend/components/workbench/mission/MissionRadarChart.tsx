@@ -43,6 +43,52 @@ const toPointsAttr = (pts: { x: number; y: number }[]): string =>
 const fmt = (n: number): string =>
   Math.abs(n) >= 100 ? n.toFixed(0) : n.toFixed(2);
 
+/**
+ * Quadrant-aware placement helper for the axis hover tooltip (gh-609).
+ *
+ * The tooltip foreignObject is anchored near the axis-label coordinate. To
+ * prevent the box from being clipped at the SVG viewport edges, we choose
+ * which corner of the box sits at the anchor based on the axis quadrant:
+ *
+ *   - cos(angle) > 0 → axis on the right half → grow leftward (right-anchored).
+ *   - sin(angle) > 0 → axis below center  → grow upward   (bottom-anchored).
+ *
+ * The small `dx` / `dy` offsets nudge the box away from the label so it
+ * doesn't visually overlap.
+ *
+ * @param axisIndex zero-based axis index.
+ * @param n total number of axes (7 here, but generic).
+ */
+export function tooltipAnchor(
+  axisIndex: number,
+  n: number,
+): {
+  dx: number;
+  dy: number;
+  xAlign: "left" | "right";
+  yAlign: "top" | "bottom";
+} {
+  const angle = (2 * Math.PI * axisIndex) / n - Math.PI / 2;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  // cos > 0  → right half → box extends LEFT  → small leftward nudge
+  // cos < 0  → left half  → box extends RIGHT → small rightward nudge
+  let dx = 0;
+  if (cos > 0.2) dx = -8;
+  else if (cos < -0.2) dx = 8;
+  // sin > 0  → bottom half (SVG-y is inverted) → box extends UP
+  // sin < 0  → top half → box extends DOWN
+  let dy = 0;
+  if (sin > 0.2) dy = -8;
+  else if (sin < -0.2) dy = 8;
+  return {
+    dx,
+    dy,
+    xAlign: cos > 0.2 ? "right" : "left",
+    yAlign: sin > 0.2 ? "bottom" : "top",
+  };
+}
+
 /** SVG path for the radial hit-wedge at axis index `i` (out of N). */
 function wedgePath(i: number, n: number, outerRadius: number): string {
   const half = Math.PI / n; // half of the angular slice
@@ -298,13 +344,23 @@ function AxisTooltip({ axis, kpis, active, ghosts }: AxisTooltipProps) {
   }));
 
   // Position the tooltip box. Width/height are estimates; we offset so the
-  // tooltip stays inside the SVG viewport for all axes.
+  // tooltip stays inside the SVG viewport for all axes (gh-609).
+  //
+  // Anchor logic: pick the corner of the box that sits at the anchor based on
+  // the axis quadrant. cos > 0 (right half) → grow leftward; sin > 0 (bottom
+  // half) → grow upward. This keeps the box inside the viewBox for all 7
+  // axes, including the previously-clipped Cruise (bottom-right) and W/S
+  // (left) labels.
   const boxW = 150;
   const baseH = 56;
   const extraH = 14 * ghostValues.length;
   const boxH = baseH + extraH;
-  const tx = anchor.x < 0 ? anchor.x - boxW : anchor.x;
-  const ty = anchor.y < 0 ? anchor.y - boxH : anchor.y;
+  const { dx, dy, xAlign, yAlign } = tooltipAnchor(i, AXES.length);
+  const tx = (xAlign === "right" ? anchor.x - boxW : anchor.x) + dx;
+  const ty = (yAlign === "bottom" ? anchor.y - boxH : anchor.y) + dy;
+  // Grow the box from the anchor corner so transitions / hover layout feel
+  // natural even though we render statically.
+  const transformOrigin = `${xAlign} ${yAlign}`;
 
   return (
     <foreignObject
@@ -314,12 +370,19 @@ function AxisTooltip({ axis, kpis, active, ghosts }: AxisTooltipProps) {
       height={boxH}
       style={{ pointerEvents: "none" }}
       data-testid={`axis-tooltip-${axis}`}
+      data-x-align={xAlign}
+      data-y-align={yAlign}
     >
       <div
         // xmlns required so React renders HTML inside foreignObject
         xmlns="http://www.w3.org/1999/xhtml"
         className="rounded border border-border bg-background/95 p-1.5 font-mono text-[10px] leading-tight text-foreground shadow-lg"
-        style={{ width: "100%", boxSizing: "border-box" }}
+        style={{
+          width: "100%",
+          boxSizing: "border-box",
+          textAlign: xAlign,
+          transformOrigin,
+        }}
       >
         <div className="mb-1 font-semibold text-orange-400">
           {AXIS_LABELS[axis]}

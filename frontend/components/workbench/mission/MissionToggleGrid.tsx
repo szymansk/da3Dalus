@@ -44,7 +44,7 @@ export function MissionToggleGrid({
             {p.label}
             {isActive && (
               <span className="ml-auto text-[10px] text-muted-foreground">
-                aktiv
+                active
               </span>
             )}
           </button>
