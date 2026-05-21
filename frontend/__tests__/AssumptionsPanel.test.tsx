@@ -15,6 +15,7 @@ vi.mock("lucide-react", () => {
   return {
     AlertTriangle: icon,
     ArrowLeftRight: icon,
+    Info: icon,
     Loader2: icon,
     Plus: icon,
   };
@@ -40,8 +41,15 @@ let hookReturn: {
   mutate: typeof mockMutate;
 };
 
+// gh-603: ctx.is_glider drives whether powertrain groups render.
+let ctxReturn: { data: { is_glider?: boolean } | null };
+
 vi.mock("@/hooks/useDesignAssumptions", () => ({
   useDesignAssumptions: () => hookReturn,
+}));
+
+vi.mock("@/hooks/useComputationContext", () => ({
+  useComputationContext: () => ctxReturn,
 }));
 
 import { AssumptionsPanel } from "@/components/workbench/AssumptionsPanel";
@@ -80,6 +88,8 @@ describe("AssumptionsPanel", () => {
       switchSource: mockSwitchSource,
       mutate: mockMutate,
     };
+    // Default: not a glider (all groups visible).
+    ctxReturn = { data: { is_glider: false } };
   });
 
   it("shows loading state", () => {
@@ -173,6 +183,7 @@ describe("AssumptionsPanel", () => {
 describe("AssumptionRow (via AssumptionsPanel)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    ctxReturn = { data: { is_glider: false } };
   });
 
   it("shows design choice badge for design_choice assumptions", () => {
@@ -444,5 +455,248 @@ describe("AssumptionRow (via AssumptionsPanel)", () => {
     await user.keyboard("{Enter}");
 
     expect(mockUpdateEstimate).toHaveBeenCalledWith("mass", 3.0);
+  });
+});
+
+// ── gh-603: thematic grouping & glider hiding ─────────────────────
+
+import { ASSUMPTION_GROUPS } from "@/components/workbench/AssumptionsPanel";
+
+const ALL_PARAM_NAMES: Assumption["parameter_name"][] = [
+  "mass",
+  "cg_x",
+  "target_static_margin",
+  "g_limit",
+  "cl_max",
+  "cd0",
+  "power_to_weight",
+  "prop_efficiency",
+  "propulsion_eta_motor",
+  "propulsion_eta_esc",
+  "motor_continuous_power_w",
+  "battery_capacity_wh",
+  "battery_specific_energy_wh_per_kg",
+  "t_static_N",
+];
+
+function makeAllAssumptions(): Assumption[] {
+  return ALL_PARAM_NAMES.map((name, idx) =>
+    makeAssumption({
+      id: idx + 1,
+      parameter_name: name,
+      // CL_max needs unit "-" so it doesn't get treated as percent.
+      unit: name === "target_static_margin" ? "% MAC" : "-",
+      effective_value: 0.1,
+      estimate_value: 0.1,
+    }),
+  );
+}
+
+describe("AssumptionsPanel — thematic grouping (gh-603)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    ctxReturn = { data: { is_glider: false } };
+  });
+
+  it("renders all 6 groups for a non-glider", () => {
+    hookReturn = {
+      data: { assumptions: makeAllAssumptions(), warnings_count: 0 },
+      isLoading: false,
+      error: null,
+      seedDefaults: mockSeedDefaults,
+      updateEstimate: mockUpdateEstimate,
+      switchSource: mockSwitchSource,
+      mutate: mockMutate,
+    };
+
+    const { container } = render(<AssumptionsPanel aeroplaneId="aero-1" />);
+
+    for (const id of [
+      "mass_balance",
+      "stability",
+      "aerodynamics",
+      "propulsion",
+      "energy",
+      "takeoff",
+    ]) {
+      expect(
+        container.querySelector(`[data-testid="assumption-group-${id}"]`),
+      ).not.toBeNull();
+    }
+  });
+
+  it("hides propulsion/energy/takeoff groups when is_glider is true", () => {
+    hookReturn = {
+      data: { assumptions: makeAllAssumptions(), warnings_count: 0 },
+      isLoading: false,
+      error: null,
+      seedDefaults: mockSeedDefaults,
+      updateEstimate: mockUpdateEstimate,
+      switchSource: mockSwitchSource,
+      mutate: mockMutate,
+    };
+    ctxReturn = { data: { is_glider: true } };
+
+    const { container } = render(<AssumptionsPanel aeroplaneId="aero-1" />);
+
+    // Always-on groups present.
+    expect(
+      container.querySelector('[data-testid="assumption-group-mass_balance"]'),
+    ).not.toBeNull();
+    expect(
+      container.querySelector('[data-testid="assumption-group-stability"]'),
+    ).not.toBeNull();
+    expect(
+      container.querySelector('[data-testid="assumption-group-aerodynamics"]'),
+    ).not.toBeNull();
+    // Powertrain groups hidden.
+    expect(
+      container.querySelector('[data-testid="assumption-group-propulsion"]'),
+    ).toBeNull();
+    expect(
+      container.querySelector('[data-testid="assumption-group-energy"]'),
+    ).toBeNull();
+    expect(
+      container.querySelector('[data-testid="assumption-group-takeoff"]'),
+    ).toBeNull();
+  });
+
+  it("renders all 6 groups when ctx.is_glider is undefined (defensive)", () => {
+    hookReturn = {
+      data: { assumptions: makeAllAssumptions(), warnings_count: 0 },
+      isLoading: false,
+      error: null,
+      seedDefaults: mockSeedDefaults,
+      updateEstimate: mockUpdateEstimate,
+      switchSource: mockSwitchSource,
+      mutate: mockMutate,
+    };
+    // ctx not yet loaded.
+    ctxReturn = { data: null };
+
+    const { container } = render(<AssumptionsPanel aeroplaneId="aero-1" />);
+
+    expect(
+      container.querySelector('[data-testid="assumption-group-propulsion"]'),
+    ).not.toBeNull();
+    expect(
+      container.querySelector('[data-testid="assumption-group-energy"]'),
+    ).not.toBeNull();
+    expect(
+      container.querySelector('[data-testid="assumption-group-takeoff"]'),
+    ).not.toBeNull();
+  });
+
+  it("renders groups in the expected order", () => {
+    hookReturn = {
+      data: { assumptions: makeAllAssumptions(), warnings_count: 0 },
+      isLoading: false,
+      error: null,
+      seedDefaults: mockSeedDefaults,
+      updateEstimate: mockUpdateEstimate,
+      switchSource: mockSwitchSource,
+      mutate: mockMutate,
+    };
+
+    const { container } = render(<AssumptionsPanel aeroplaneId="aero-1" />);
+
+    const ids = Array.from(
+      container.querySelectorAll('[data-testid^="assumption-group-"]'),
+    ).map((el) => el.getAttribute("data-testid"));
+
+    expect(ids).toEqual([
+      "assumption-group-mass_balance",
+      "assumption-group-stability",
+      "assumption-group-aerodynamics",
+      "assumption-group-propulsion",
+      "assumption-group-energy",
+      "assumption-group-takeoff",
+    ]);
+  });
+
+  it("skips empty groups (no matching parameters in data)", () => {
+    // Provide only mass and cg_x -> only mass_balance should render.
+    hookReturn = {
+      data: {
+        assumptions: [
+          makeAssumption({ id: 1, parameter_name: "mass" }),
+          makeAssumption({ id: 2, parameter_name: "cg_x", unit: "m" }),
+        ],
+        warnings_count: 0,
+      },
+      isLoading: false,
+      error: null,
+      seedDefaults: mockSeedDefaults,
+      updateEstimate: mockUpdateEstimate,
+      switchSource: mockSwitchSource,
+      mutate: mockMutate,
+    };
+
+    const { container } = render(<AssumptionsPanel aeroplaneId="aero-1" />);
+
+    expect(
+      container.querySelector('[data-testid="assumption-group-mass_balance"]'),
+    ).not.toBeNull();
+    // Other groups have no data → not rendered.
+    expect(
+      container.querySelector('[data-testid="assumption-group-stability"]'),
+    ).toBeNull();
+    expect(
+      container.querySelector('[data-testid="assumption-group-aerodynamics"]'),
+    ).toBeNull();
+    expect(
+      container.querySelector('[data-testid="assumption-group-propulsion"]'),
+    ).toBeNull();
+  });
+
+  it("renders group section headers (labels)", () => {
+    hookReturn = {
+      data: { assumptions: makeAllAssumptions(), warnings_count: 0 },
+      isLoading: false,
+      error: null,
+      seedDefaults: mockSeedDefaults,
+      updateEstimate: mockUpdateEstimate,
+      switchSource: mockSwitchSource,
+      mutate: mockMutate,
+    };
+
+    render(<AssumptionsPanel aeroplaneId="aero-1" />);
+
+    expect(screen.getByText("Mass & Balance")).toBeDefined();
+    expect(screen.getByText("Stability")).toBeDefined();
+    expect(screen.getByText("Aerodynamics")).toBeDefined();
+    expect(screen.getByText("Propulsion")).toBeDefined();
+    expect(screen.getByText("Energy")).toBeDefined();
+    expect(screen.getByText("Takeoff")).toBeDefined();
+  });
+});
+
+describe("ASSUMPTION_GROUPS table (gh-603)", () => {
+  it("contains exactly the 6 expected group ids in order", () => {
+    expect(ASSUMPTION_GROUPS.map((g) => g.id)).toEqual([
+      "mass_balance",
+      "stability",
+      "aerodynamics",
+      "propulsion",
+      "energy",
+      "takeoff",
+    ]);
+  });
+
+  it("covers every VALID_PARAMETERS member exactly once", () => {
+    const flat = ASSUMPTION_GROUPS.flatMap((g) => g.params);
+    // No duplicates.
+    expect(new Set(flat).size).toBe(flat.length);
+    // Same set as the backend VALID_PARAMETERS contract.
+    expect(new Set(flat)).toEqual(new Set(ALL_PARAM_NAMES));
+  });
+
+  it("flags only propulsion/energy/takeoff as hideForGlider", () => {
+    const hidden = ASSUMPTION_GROUPS.filter((g) => g.hideForGlider).map(
+      (g) => g.id,
+    );
+    expect(new Set(hidden)).toEqual(
+      new Set(["propulsion", "energy", "takeoff"]),
+    );
   });
 });
