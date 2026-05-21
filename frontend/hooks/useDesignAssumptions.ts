@@ -5,15 +5,28 @@ import { useCallback, useEffect, useRef } from "react";
 import { API_BASE, fetcher } from "@/lib/fetcher";
 import { useRecomputeStatus } from "@/hooks/useRecomputeStatus";
 
+// Mirrors `VALID_PARAMETERS` in `app/schemas/design_assumption.py`.
+// Keep both lists in sync — `AssumptionsPanel.ASSUMPTION_GROUPS` asserts
+// every member of this union is grouped exactly once.
+export type AssumptionParameterName =
+  | "mass"
+  | "cg_x"
+  | "target_static_margin"
+  | "cd0"
+  | "cl_max"
+  | "g_limit"
+  | "power_to_weight"
+  | "prop_efficiency"
+  | "battery_capacity_wh"
+  | "battery_specific_energy_wh_per_kg"
+  | "propulsion_eta_motor"
+  | "propulsion_eta_esc"
+  | "motor_continuous_power_w"
+  | "t_static_N";
+
 export interface Assumption {
   id: number;
-  parameter_name:
-    | "mass"
-    | "cg_x"
-    | "target_static_margin"
-    | "cd0"
-    | "cl_max"
-    | "g_limit";
+  parameter_name: AssumptionParameterName;
   estimate_value: number;
   calculated_value: number | null;
   calculated_source: string | null;
