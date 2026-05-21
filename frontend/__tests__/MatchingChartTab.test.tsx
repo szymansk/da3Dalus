@@ -1310,6 +1310,321 @@ describe("findInsufficientThrustConstraint (gh-606)", () => {
   });
 });
 
+// ── gh-613 Phase A: CS-25 honesty in the info modal ──────────────────────────
+
+describe("MatchingChartTab — gh-613 Phase A CS-25 callout", () => {
+  beforeEach(() => {
+    hookReturn = MOCK_OK_STATE;
+    mockAssumptions = [];
+    mockCtx = null;
+  });
+
+  it("constraints section shows CS-25 provenance callout when modal is open", () => {
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    act(() => {
+      fireEvent.click(screen.getByTestId("info-modal-trigger"));
+    });
+    const callout = screen.getByTestId("info-section-cs25-callout");
+    expect(callout).toBeInTheDocument();
+    expect(callout.textContent).toMatch(/Scholz\/Loftin CS-25 methodology/);
+    expect(callout.textContent).toMatch(/multi-engine transport aircraft/);
+    expect(callout.textContent).toMatch(/Second-Segment Climb \(OEI\)/);
+    expect(callout.textContent).toMatch(/Missed-Approach Climb/);
+    expect(callout.textContent).toMatch(/CS-25 conformance bands, not RC requirements/);
+  });
+
+  it("CS-25 callout precedes the constraints list inside the constraints section", () => {
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    act(() => {
+      fireEvent.click(screen.getByTestId("info-modal-trigger"));
+    });
+    const constraintsSection = screen.getByTestId("info-section-constraints");
+    const callout = screen.getByTestId("info-section-cs25-callout");
+    // Callout must live inside the constraints section
+    expect(constraintsSection.contains(callout)).toBe(true);
+    // Callout must come before the <ul> of constraints
+    const ul = constraintsSection.querySelector("ul");
+    expect(ul).toBeTruthy();
+    expect(
+      callout.compareDocumentPosition(ul!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeGreaterThan(0);
+  });
+});
+
+describe("MatchingChartTab — gh-613 Phase A relevance badges", () => {
+  beforeEach(() => {
+    hookReturn = MOCK_OK_STATE;
+    mockAssumptions = [];
+    mockCtx = null;
+  });
+
+  function openModal() {
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    act(() => {
+      fireEvent.click(screen.getByTestId("info-modal-trigger"));
+    });
+  }
+
+  it("Stall constraint has Universal badge", () => {
+    openModal();
+    const badge = screen.getByTestId("constraint-badge-stall");
+    expect(badge).toHaveAttribute("data-relevance", "universal");
+    expect(badge.textContent).toMatch(/Universal/);
+    expect(badge).toHaveAttribute("title", "Universal — pure aerodynamics");
+  });
+
+  it("Takeoff field length has Conditional badge", () => {
+    openModal();
+    const badge = screen.getByTestId("constraint-badge-takeoff");
+    expect(badge).toHaveAttribute("data-relevance", "conditional");
+    expect(badge.textContent).toMatch(/Conditional/);
+    expect(badge).toHaveAttribute("title", "Wheeled takeoff only");
+  });
+
+  it("Second-segment climb has CS-25-only badge", () => {
+    openModal();
+    const badge = screen.getByTestId("constraint-badge-second-segment");
+    expect(badge).toHaveAttribute("data-relevance", "cs25-only");
+    expect(badge.textContent).toMatch(/CS-25-only/);
+    expect(badge).toHaveAttribute(
+      "title",
+      "CS-25 multi-engine — single-engine N/A",
+    );
+  });
+
+  it("Missed-approach climb has CS-25-only badge", () => {
+    openModal();
+    const badge = screen.getByTestId("constraint-badge-missed-approach");
+    expect(badge).toHaveAttribute("data-relevance", "cs25-only");
+    expect(badge.textContent).toMatch(/CS-25-only/);
+    expect(badge).toHaveAttribute(
+      "title",
+      "CS-25 multi-engine — single-engine N/A",
+    );
+  });
+
+  it("Cruise has Universal badge with slack tooltip", () => {
+    openModal();
+    const badge = screen.getByTestId("constraint-badge-cruise");
+    expect(badge).toHaveAttribute("data-relevance", "universal");
+    expect(badge.textContent).toMatch(/Universal/);
+    expect(badge).toHaveAttribute(
+      "title",
+      "Universal — slack constraint, iterated via fuel mass",
+    );
+  });
+
+  it("Landing field length has Conditional badge", () => {
+    openModal();
+    const badge = screen.getByTestId("constraint-badge-landing");
+    expect(badge).toHaveAttribute("data-relevance", "conditional");
+    expect(badge.textContent).toMatch(/Conditional/);
+    expect(badge).toHaveAttribute("title", "Runway landing only");
+  });
+});
+
+// ── gh-613 Phase A: relax insufficient-T/W warning (skip OEI / Missed-Approach) ──
+
+describe("MatchingChartTab — gh-613 Phase A insufficient-T/W skips OEI", () => {
+  it("does NOT render warning when only an OEI Second-Segment constraint is violated", async () => {
+    const data: MatchingChartData = {
+      ...MOCK_CESSNA,
+      constraints: [
+        // Only the OEI constraint is binding/violated — everything else is OK.
+        {
+          name: "Second-Segment Climb (OEI)",
+          t_w_points: Array(200).fill(0.5),
+          ws_max: null,
+          color: "#E5484D",
+          binding: true,
+          hover_text: "OEI segment-2",
+        },
+        {
+          name: "Cruise",
+          t_w_points: Array(200).fill(0.05),
+          ws_max: null,
+          color: "#30A46C",
+          binding: false,
+          hover_text: "Cruise",
+        },
+      ],
+      design_point: { ws_n_m2: 400, t_w: 0.5 },
+    };
+    hookReturn = { ...MOCK_OK_STATE, data };
+    mockAssumptions = [
+      { parameter_name: "mass", effective_value: 40 },
+      { parameter_name: "t_static_N", effective_value: 30 }, // T/W ≈ 0.076
+    ];
+    mockCtx = { s_ref_m2: 1.0, b_ref_m: 3.0, is_glider: false };
+
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // OEI was the only "binding" violator — warning must be suppressed.
+    expect(screen.queryByTestId("insufficient-thrust-callout")).toBeNull();
+  });
+
+  it("does NOT render warning when only Missed-Approach constraint is violated", async () => {
+    const data: MatchingChartData = {
+      ...MOCK_CESSNA,
+      constraints: [
+        {
+          name: "Missed-Approach Climb",
+          t_w_points: Array(200).fill(0.5),
+          ws_max: null,
+          color: "#E5484D",
+          binding: true,
+          hover_text: "Missed approach",
+        },
+      ],
+      design_point: { ws_n_m2: 400, t_w: 0.5 },
+    };
+    hookReturn = { ...MOCK_OK_STATE, data };
+    mockAssumptions = [
+      { parameter_name: "mass", effective_value: 40 },
+      { parameter_name: "t_static_N", effective_value: 30 },
+    ];
+    mockCtx = { s_ref_m2: 1.0, b_ref_m: 3.0, is_glider: false };
+
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByTestId("insufficient-thrust-callout")).toBeNull();
+  });
+
+  it("DOES render warning when a non-OEI constraint (e.g. Stall climb) is violated", async () => {
+    const data: MatchingChartData = {
+      ...MOCK_CESSNA,
+      constraints: [
+        // OEI exists but is satisfied (low requirement) — should still be skipped from warning anyway
+        {
+          name: "Second-Segment Climb (OEI)",
+          t_w_points: Array(200).fill(0.02),
+          ws_max: null,
+          color: "#888",
+          binding: false,
+          hover_text: "OEI segment-2",
+        },
+        // Stall (T/W requirement) is genuinely violated
+        {
+          name: "Stall Climb",
+          t_w_points: Array(200).fill(0.5),
+          ws_max: null,
+          color: "#E5484D",
+          binding: true,
+          hover_text: "Stall climb",
+        },
+      ],
+      design_point: { ws_n_m2: 400, t_w: 0.5 },
+    };
+    hookReturn = { ...MOCK_OK_STATE, data };
+    mockAssumptions = [
+      { parameter_name: "mass", effective_value: 40 },
+      { parameter_name: "t_static_N", effective_value: 30 },
+    ];
+    mockCtx = { s_ref_m2: 1.0, b_ref_m: 3.0, is_glider: false };
+
+    render(<MatchingChartTab aeroplaneId="test-id" />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const callout = screen.getByTestId("insufficient-thrust-callout");
+    expect(callout).toBeInTheDocument();
+    // The non-OEI constraint name should appear (Stall Climb), not the OEI one.
+    expect(callout.textContent).toMatch(/Stall Climb/);
+    expect(callout.textContent).not.toMatch(/Second-Segment Climb \(OEI\)/);
+  });
+});
+
+describe("findInsufficientThrustConstraint — gh-613 Phase A skipOei flag", () => {
+  const wsRange = Array.from({ length: 100 }, (_, i) => 100 + i * 10);
+
+  it("skipOei=true ignores 'Second-Segment Climb (OEI)' constraint", () => {
+    const constraints: ConstraintLine[] = [
+      {
+        name: "Second-Segment Climb (OEI)",
+        t_w_points: Array(100).fill(0.5),
+        ws_max: null,
+        color: "#E5484D",
+        binding: true,
+        hover_text: null,
+      },
+    ];
+    // T/W = 0.05 violates the OEI constraint; with skipOei it should be ignored.
+    expect(
+      findInsufficientThrustConstraint(500, 0.05, wsRange, constraints, true),
+    ).toBeNull();
+    // Without the flag (or with skipOei=false) the constraint is still considered.
+    expect(
+      findInsufficientThrustConstraint(500, 0.05, wsRange, constraints, false),
+    ).toBe("Second-Segment Climb (OEI)");
+  });
+
+  it("skipOei=true ignores 'Missed-Approach Climb' constraint", () => {
+    const constraints: ConstraintLine[] = [
+      {
+        name: "Missed-Approach Climb",
+        t_w_points: Array(100).fill(0.5),
+        ws_max: null,
+        color: "#E5484D",
+        binding: true,
+        hover_text: null,
+      },
+    ];
+    expect(
+      findInsufficientThrustConstraint(500, 0.05, wsRange, constraints, true),
+    ).toBeNull();
+  });
+
+  it("skipOei=true still flags genuine non-OEI binding constraints", () => {
+    const constraints: ConstraintLine[] = [
+      {
+        name: "Second-Segment Climb (OEI)",
+        t_w_points: Array(100).fill(0.5),
+        ws_max: null,
+        color: "#E5484D",
+        binding: true,
+        hover_text: null,
+      },
+      {
+        name: "Climb",
+        t_w_points: Array(100).fill(0.4),
+        ws_max: null,
+        color: "#E5484D",
+        binding: false,
+        hover_text: null,
+      },
+    ];
+    // T/W = 0.05 violates Climb (non-OEI) — should still report it.
+    expect(
+      findInsufficientThrustConstraint(500, 0.05, wsRange, constraints, true),
+    ).toBe("Climb");
+  });
+
+  it("default (no skipOei argument) preserves previous behavior", () => {
+    // Backwards compat: callers that don't pass the flag get the old behavior.
+    const constraints: ConstraintLine[] = [
+      {
+        name: "Second-Segment Climb (OEI)",
+        t_w_points: Array(100).fill(0.5),
+        ws_max: null,
+        color: "#E5484D",
+        binding: true,
+        hover_text: null,
+      },
+    ];
+    // No 5th arg → undefined → falsy → OEI not skipped → bindingName returned.
+    expect(
+      findInsufficientThrustConstraint(500, 0.05, wsRange, constraints),
+    ).toBe("Second-Segment Climb (OEI)");
+  });
+});
+
 describe("buildCurrentDesignPointTrace (gh-606)", () => {
   it("produces a Plotly trace with the expected shape", () => {
     const trace = buildCurrentDesignPointTrace({
