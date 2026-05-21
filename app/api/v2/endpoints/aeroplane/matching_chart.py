@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Annotated, Any, NoReturn
+from typing import Annotated, Any, NoReturn, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import UUID4
@@ -62,18 +62,24 @@ def _resolve_aircraft_params(
     -------
     dict ready to pass to ``compute_chart`` as the *aircraft* argument.
     """
-    ctx: dict[str, Any] = plane.assumption_computation_context or {}
+    # Materialise SQLAlchemy columns to plain types at the boundary so
+    # downstream helpers (typed as int / dict) type-check cleanly under
+    # Pyright. SQLAlchemy's legacy declarative columns appear as Column[T]
+    # rather than Mapped[T]; typing.cast is the right idiom here. Same
+    # pattern as #579's _ctx_dict fix in sm_sizing_service.py.
+    plane_id: int = cast(int, plane.id)
+    ctx: dict[str, Any] = cast(dict[str, Any], plane.assumption_computation_context or {})
 
     mass_kg = float(
-        get_effective_assumption(db, plane.id, "mass") or PARAMETER_DEFAULTS["mass"]
+        get_effective_assumption(db, plane_id, "mass") or PARAMETER_DEFAULTS["mass"]
     )
     cl_max = float(
-        get_effective_assumption(db, plane.id, "cl_max") or PARAMETER_DEFAULTS["cl_max"]
+        get_effective_assumption(db, plane_id, "cl_max") or PARAMETER_DEFAULTS["cl_max"]
     )
     cd0 = float(
-        get_effective_assumption(db, plane.id, "cd0") or PARAMETER_DEFAULTS.get("cd0", 0.03)
+        get_effective_assumption(db, plane_id, "cd0") or PARAMETER_DEFAULTS.get("cd0", 0.03)
     )
-    t_static_raw = get_effective_assumption(db, plane.id, "t_static_N")
+    t_static_raw = get_effective_assumption(db, plane_id, "t_static_N")
     t_static_n = float(t_static_raw) if t_static_raw and float(t_static_raw) > 0 else 0.0
 
     s_ref_m2: float | None = ctx.get("s_ref_m2")
