@@ -16,7 +16,7 @@ import {
   ArrowLeftRight,
 } from "lucide-react";
 import { useComputationContext } from "@/hooks/useComputationContext";
-import { renderSymbol } from "@/components/workbench/renderSymbol";
+import { Chip } from "@/components/workbench/Chip";
 import { cgDivergenceColor } from "./stability-overlay/divergence-color";
 import { TaillessBanner } from "./TaillessBanner";
 
@@ -25,56 +25,6 @@ interface Props {
   readonly cgAero: number | null;
   readonly isRecomputing?: boolean;
   readonly rightSlot?: React.ReactNode;
-}
-
-// Replace underscores with spaces so screen readers say
-// "V min sink" instead of "V underscore min underscore sink".
-function humanize(symbol: string): string {
-  return symbol.replace(/_/g, " ");
-}
-
-function Chip({
-  icon: Icon,
-  symbol,
-  value,
-  valueNode,
-  description,
-  stale = false,
-}: {
-  readonly icon: React.ComponentType<{ size: number; className: string }>;
-  readonly symbol: string;
-  readonly value?: string;
-  readonly valueNode?: React.ReactNode;
-  readonly description?: string;
-  readonly stale?: boolean;
-}) {
-  const valueClass = stale ? "text-red-400" : "text-foreground";
-  const ariaLabel = description
-    ? `${humanize(symbol)}: ${description}`
-    : humanize(symbol);
-  return (
-    <div
-      role="group"
-      tabIndex={0}
-      aria-label={ariaLabel}
-      className="group/chip relative flex items-center gap-1.5 rounded-full bg-card-muted px-3 py-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-    >
-      <Icon size={12} className="text-muted-foreground" />
-      <span className="font-[family-name:var(--font-geist-sans)] text-[12px] text-foreground">
-        {renderSymbol(symbol)}
-        {" = "}
-        {valueNode ?? <span className={valueClass}>{value}</span>}
-      </span>
-      {description && (
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 hidden w-max max-w-[240px] -translate-x-1/2 rounded-lg border border-border bg-card px-2.5 py-1.5 text-[10px] font-normal leading-snug text-foreground shadow-lg group-hover/chip:block group-focus-within/chip:block"
-        >
-          {description}
-        </span>
-      )}
-    </div>
-  );
 }
 
 export function InfoChipRow({ aeroplaneId, cgAero, isRecomputing, rightSlot }: Props) {
