@@ -84,7 +84,7 @@ class TestResolveOperatingPoint:
         op = _make_op(alpha=math.radians(4.2))
         db = _db_returning(op)
         result = resolve_operating_point(
-            db, OperatingPointSchema(operating_point_id=42, alpha=999.0)
+            db, OperatingPointSchema(operating_point_id=42, alpha=99.0)
         )
         assert result.alpha == pytest.approx(4.2, rel=1e-6)
 
@@ -163,18 +163,14 @@ class TestResolveOperatingPoint:
 
         op = _make_op(status=OperatingPointStatus.NOT_TRIMMED)
         with pytest.raises(ValidationDomainError):
-            resolve_operating_point(
-                _db_returning(op), OperatingPointSchema(operating_point_id=42)
-            )
+            resolve_operating_point(_db_returning(op), OperatingPointSchema(operating_point_id=42))
 
     def test_dirty_op_is_rejected_by_default(self):
         from app.services.operating_point_resolver import resolve_operating_point
 
         op = _make_op(status=OperatingPointStatus.DIRTY)
         with pytest.raises(ValidationDomainError):
-            resolve_operating_point(
-                _db_returning(op), OperatingPointSchema(operating_point_id=42)
-            )
+            resolve_operating_point(_db_returning(op), OperatingPointSchema(operating_point_id=42))
 
     def test_missing_op_raises_not_found(self):
         from app.services.operating_point_resolver import resolve_operating_point
@@ -203,9 +199,7 @@ class TestResolveOperatingPoint:
         db = MagicMock()
         # `.filter().filter().first()` returns None — the row exists for the id
         # but not for the (id, aircraft_id) pair.
-        db.query.return_value.filter.return_value.filter.return_value.first.return_value = (
-            None
-        )
+        db.query.return_value.filter.return_value.filter.return_value.first.return_value = None
         with pytest.raises(NotFoundError):
             resolve_operating_point(
                 db,
@@ -219,18 +213,116 @@ class TestResolveOperatingPoint:
 
         op = _make_op(altitude=None)
         with pytest.raises(ValidationDomainError):
-            resolve_operating_point(
-                _db_returning(op), OperatingPointSchema(operating_point_id=42)
-            )
+            resolve_operating_point(_db_returning(op), OperatingPointSchema(operating_point_id=42))
 
     def test_empty_xyz_ref_raises_validation(self):
         from app.services.operating_point_resolver import resolve_operating_point
 
         op = _make_op(xyz_ref=[])
         with pytest.raises(ValidationDomainError):
-            resolve_operating_point(
-                _db_returning(op), OperatingPointSchema(operating_point_id=42)
-            )
+            resolve_operating_point(_db_returning(op), OperatingPointSchema(operating_point_id=42))
+
+
+class TestOperatingPointModelToSchema:
+    """Unit tests for the shared operating_point_model_to_schema helper (gh-587).
+
+    The helper is the single source of truth for model→schema conversion and
+    must apply the rad→deg conversion that was missing in retrim_service.
+    """
+
+    def test_alpha_converted_rad_to_deg(self):
+        from app.services.operating_point_resolver import operating_point_model_to_schema
+
+        op = _make_op(alpha=math.radians(45.0))
+        schema = operating_point_model_to_schema(op)
+        assert schema.alpha == pytest.approx(45.0, rel=1e-6)
+
+    def test_beta_converted_rad_to_deg(self):
+        from app.services.operating_point_resolver import operating_point_model_to_schema
+
+        op = _make_op(beta=math.radians(2.0))
+        schema = operating_point_model_to_schema(op)
+        assert schema.beta == pytest.approx(2.0, rel=1e-6)
+
+    def test_operating_point_id_set_on_schema(self):
+        from app.services.operating_point_resolver import operating_point_model_to_schema
+
+        op = _make_op(id=99)
+        schema = operating_point_model_to_schema(op)
+        assert schema.operating_point_id == 99
+
+    def test_velocity_altitude_body_rates_passed_through(self):
+        from app.services.operating_point_resolver import operating_point_model_to_schema
+
+        op = _make_op(velocity=30.0, altitude=500.0, p=0.1, q=0.2, r=0.0)
+        schema = operating_point_model_to_schema(op)
+        assert schema.velocity == 30.0
+        assert schema.altitude == 500.0
+        assert schema.p == pytest.approx(0.1)
+        assert schema.q == pytest.approx(0.2)
+        assert schema.r == pytest.approx(0.0)
+
+    def test_deflections_from_controls_when_override_none(self):
+        from app.services.operating_point_resolver import operating_point_model_to_schema
+
+        op = _make_op(controls={"elevator": -2.0}, control_deflections=None)
+        schema = operating_point_model_to_schema(op)
+        assert schema.control_deflections == {"elevator": -2.0}
+
+    def test_manual_override_wins_over_controls(self):
+        from app.services.operating_point_resolver import operating_point_model_to_schema
+
+        op = _make_op(
+            controls={"elevator": -2.0},
+            control_deflections={"elevator": -1.0},
+        )
+        schema = operating_point_model_to_schema(op)
+        assert schema.control_deflections == {"elevator": -1.0}
+
+    def test_cdcl_config_and_spacing_config_forwarded(self):
+        from app.schemas.aeroanalysisschema import CdclConfig, SpacingConfig
+        from app.services.operating_point_resolver import operating_point_model_to_schema
+
+        cdcl = CdclConfig()
+        spacing = SpacingConfig()
+        op = _make_op()
+        schema = operating_point_model_to_schema(op, cdcl_config=cdcl, spacing_config=spacing)
+        assert schema.cdcl_config is cdcl
+        assert schema.spacing_config is spacing
+
+    def test_missing_altitude_raises_validation_error(self):
+        from app.core.exceptions import ValidationDomainError
+        from app.services.operating_point_resolver import operating_point_model_to_schema
+
+        op = _make_op(altitude=None)
+        with pytest.raises(ValidationDomainError):
+            operating_point_model_to_schema(op)
+
+    def test_missing_alpha_raises_validation_error(self):
+        from app.core.exceptions import ValidationDomainError
+        from app.services.operating_point_resolver import operating_point_model_to_schema
+
+        op = _make_op(alpha=None)
+        with pytest.raises(ValidationDomainError):
+            operating_point_model_to_schema(op)
+
+    def test_empty_xyz_ref_raises_validation_error(self):
+        from app.core.exceptions import ValidationDomainError
+        from app.services.operating_point_resolver import operating_point_model_to_schema
+
+        op = _make_op(xyz_ref=[])
+        with pytest.raises(ValidationDomainError):
+            operating_point_model_to_schema(op)
+
+    def test_p_q_r_zero_not_rejected_by_require_field(self):
+        """Genuine 0.0 body rates (not None) must pass _require_field."""
+        from app.services.operating_point_resolver import operating_point_model_to_schema
+
+        op = _make_op(p=0.0, q=0.0, r=0.0)
+        schema = operating_point_model_to_schema(op)
+        assert schema.p == 0.0
+        assert schema.q == 0.0
+        assert schema.r == 0.0
 
 
 class TestValidateDeflectionsAgainstAirplane:
@@ -258,9 +350,7 @@ class TestValidateDeflectionsAgainstAirplane:
 
         airplane = self._make_airplane(["elevator", "aileron"])
         # No exception
-        validate_deflections_against_airplane(
-            airplane, {"elevator": -2.0, "aileron": 0.5}
-        )
+        validate_deflections_against_airplane(airplane, {"elevator": -2.0, "aileron": 0.5})
 
     def test_raises_listing_unknown_names(self):
         from app.services.operating_point_resolver import (
@@ -269,9 +359,7 @@ class TestValidateDeflectionsAgainstAirplane:
 
         airplane = self._make_airplane(["elevator"])
         with pytest.raises(ValidationDomainError) as exc:
-            validate_deflections_against_airplane(
-                airplane, {"elevator": -2.0, "rudder": 1.0}
-            )
+            validate_deflections_against_airplane(airplane, {"elevator": -2.0, "rudder": 1.0})
         assert "rudder" in exc.value.message
         assert "elevator" in exc.value.message  # listed as available
 
@@ -312,29 +400,46 @@ class TestStreamlineServiceUsesResolvedOp:
         op = _make_op()
 
         with ExitStack() as stack:
-            stack.enter_context(patch.object(
-                analysis_service, "get_aeroplane_or_raise",
-                return_value=MagicMock(id=7),
-            ))
-            stack.enter_context(patch.object(
-                analysis_service, "get_aeroplane_schema_or_raise",
-                return_value=MagicMock(),
-            ))
-            stack.enter_context(patch.object(
-                analysis_service, "aeroplane_schema_to_asb_airplane_async",
-                return_value=MagicMock(),
-            ))
-            mock_resolver = stack.enter_context(patch.object(
-                analysis_service.operating_point_resolver,
-                "resolve_operating_point",
-                return_value=resolved,
-            ))
-            stack.enter_context(patch.object(
-                analysis_service, "validate_deflections_against_airplane",
-            ))
-            mock_analyse = stack.enter_context(patch.object(
-                analysis_service, "analyse_aerodynamics",
-            ))
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "get_aeroplane_or_raise",
+                    return_value=MagicMock(id=7),
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "get_aeroplane_schema_or_raise",
+                    return_value=MagicMock(),
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "aeroplane_schema_to_asb_airplane_async",
+                    return_value=MagicMock(),
+                )
+            )
+            mock_resolver = stack.enter_context(
+                patch.object(
+                    analysis_service.operating_point_resolver,
+                    "resolve_operating_point",
+                    return_value=resolved,
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "validate_deflections_against_airplane",
+                )
+            )
+            mock_analyse = stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "analyse_aerodynamics",
+                )
+            )
             fake_fig = MagicMock()
             fake_fig.to_json.return_value = '{"data":[],"layout":{}}'
             mock_analyse.return_value = (MagicMock(), fake_fig)
@@ -366,32 +471,52 @@ class TestStreamlineServiceUsesResolvedOp:
         op = _make_op()
 
         with ExitStack() as stack:
-            stack.enter_context(patch.object(
-                analysis_service, "get_aeroplane_or_raise",
-                return_value=MagicMock(id=7),
-            ))
-            stack.enter_context(patch.object(
-                analysis_service, "get_aeroplane_schema_or_raise",
-                return_value=MagicMock(),
-            ))
-            stack.enter_context(patch.object(
-                analysis_service, "aeroplane_schema_to_asb_airplane_async",
-                return_value=MagicMock(),
-            ))
-            mock_resolver = stack.enter_context(patch.object(
-                analysis_service.operating_point_resolver,
-                "resolve_operating_point",
-                return_value=resolved,
-            ))
-            stack.enter_context(patch.object(
-                analysis_service, "validate_deflections_against_airplane",
-            ))
-            mock_analyse = stack.enter_context(patch.object(
-                analysis_service, "analyse_aerodynamics",
-            ))
-            mock_four_view = stack.enter_context(patch.object(
-                analysis_service, "compile_four_view_figure",
-            ))
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "get_aeroplane_or_raise",
+                    return_value=MagicMock(id=7),
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "get_aeroplane_schema_or_raise",
+                    return_value=MagicMock(),
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "aeroplane_schema_to_asb_airplane_async",
+                    return_value=MagicMock(),
+                )
+            )
+            mock_resolver = stack.enter_context(
+                patch.object(
+                    analysis_service.operating_point_resolver,
+                    "resolve_operating_point",
+                    return_value=resolved,
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "validate_deflections_against_airplane",
+                )
+            )
+            mock_analyse = stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "analyse_aerodynamics",
+                )
+            )
+            mock_four_view = stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "compile_four_view_figure",
+                )
+            )
             mock_analyse.return_value = (MagicMock(), MagicMock())
             mock_four_view.return_value.to_image.return_value = b"png-bytes"
 
@@ -425,34 +550,54 @@ class TestStreamlineServiceUsesResolvedOp:
             # ``.name`` attribute — we have to assign it after construction.
             aircraft_mock = MagicMock(id=7)
             aircraft_mock.name = "test_plane"
-            stack.enter_context(patch.object(
-                analysis_service, "get_aeroplane_or_raise",
-                return_value=aircraft_mock,
-            ))
-            stack.enter_context(patch.object(
-                analysis_service, "get_aeroplane_schema_or_raise",
-                return_value=MagicMock(),
-            ))
-            stack.enter_context(patch.object(
-                analysis_service, "aeroplane_schema_to_asb_airplane_async",
-                return_value=MagicMock(),
-            ))
-            mock_resolver = stack.enter_context(patch.object(
-                analysis_service.operating_point_resolver,
-                "resolve_operating_point",
-                return_value=resolved,
-            ))
-            mock_runner_cls = stack.enter_context(patch(
-                "app.services.avl_runner.AVLRunner",
-            ))
-            stack.enter_context(patch(
-                "app.services.avl_geometry_service.get_user_avl_content",
-                return_value="MOCK_AVL_CONTENT",
-            ))
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "get_aeroplane_or_raise",
+                    return_value=aircraft_mock,
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "get_aeroplane_schema_or_raise",
+                    return_value=MagicMock(),
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "aeroplane_schema_to_asb_airplane_async",
+                    return_value=MagicMock(),
+                )
+            )
+            mock_resolver = stack.enter_context(
+                patch.object(
+                    analysis_service.operating_point_resolver,
+                    "resolve_operating_point",
+                    return_value=resolved,
+                )
+            )
+            mock_runner_cls = stack.enter_context(
+                patch(
+                    "app.services.avl_runner.AVLRunner",
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "app.services.avl_geometry_service.get_user_avl_content",
+                    return_value="MOCK_AVL_CONTENT",
+                )
+            )
             mock_runner = MagicMock()
             mock_runner.run.return_value = {
-                "strip_forces": [], "alpha": 4.2, "beta": 0.5,
-                "mach": 0, "Sref": 1.0, "Cref": 1.0, "Bref": 1.0,
+                "strip_forces": [],
+                "alpha": 4.2,
+                "beta": 0.5,
+                "mach": 0,
+                "Sref": 1.0,
+                "Cref": 1.0,
+                "Bref": 1.0,
             }
             mock_runner_cls.return_value = mock_runner
 
@@ -477,33 +622,51 @@ class TestStreamlineServiceUsesResolvedOp:
         from app.services import analysis_service
 
         resolved = OperatingPointSchema(
-            operating_point_id=42, alpha=4.2, velocity=20.0, altitude=100.0,
-            xyz_ref=[0.1, 0, 0], control_deflections={"ghost": 0.0},
+            operating_point_id=42,
+            alpha=4.2,
+            velocity=20.0,
+            altitude=100.0,
+            xyz_ref=[0.1, 0, 0],
+            control_deflections={"ghost": 0.0},
         )
         op = _make_op()
 
         with ExitStack() as stack:
-            stack.enter_context(patch.object(
-                analysis_service, "get_aeroplane_or_raise",
-                return_value=MagicMock(id=7),
-            ))
-            stack.enter_context(patch.object(
-                analysis_service, "get_aeroplane_schema_or_raise",
-                return_value=MagicMock(),
-            ))
-            stack.enter_context(patch.object(
-                analysis_service, "aeroplane_schema_to_asb_airplane_async",
-                return_value=MagicMock(),
-            ))
-            stack.enter_context(patch.object(
-                analysis_service.operating_point_resolver,
-                "resolve_operating_point",
-                return_value=resolved,
-            ))
-            stack.enter_context(patch.object(
-                analysis_service, "validate_deflections_against_airplane",
-                side_effect=ValidationDomainError(message="ghost surface"),
-            ))
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "get_aeroplane_or_raise",
+                    return_value=MagicMock(id=7),
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "get_aeroplane_schema_or_raise",
+                    return_value=MagicMock(),
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "aeroplane_schema_to_asb_airplane_async",
+                    return_value=MagicMock(),
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    analysis_service.operating_point_resolver,
+                    "resolve_operating_point",
+                    return_value=resolved,
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "validate_deflections_against_airplane",
+                    side_effect=ValidationDomainError(message="ghost surface"),
+                )
+            )
             with pytest.raises(ValidationDomainError):
                 asyncio.run(
                     analysis_service.calculate_streamlines_json(
@@ -519,26 +682,40 @@ class TestStreamlineServiceUsesResolvedOp:
         from unittest.mock import patch
 
         stack = ExitStack()
-        stack.enter_context(patch.object(
-            analysis_service, "get_aeroplane_or_raise",
-            return_value=MagicMock(id=7),
-        ))
-        stack.enter_context(patch.object(
-            analysis_service, "get_aeroplane_schema_or_raise",
-            return_value=MagicMock(),
-        ))
-        stack.enter_context(patch.object(
-            analysis_service, "aeroplane_schema_to_asb_airplane_async",
-            return_value=MagicMock(),
-        ))
-        stack.enter_context(patch.object(
-            analysis_service.operating_point_resolver,
-            "resolve_operating_point",
-            return_value=resolved,
-        ))
-        stack.enter_context(patch.object(
-            analysis_service, "validate_deflections_against_airplane",
-        ))
+        stack.enter_context(
+            patch.object(
+                analysis_service,
+                "get_aeroplane_or_raise",
+                return_value=MagicMock(id=7),
+            )
+        )
+        stack.enter_context(
+            patch.object(
+                analysis_service,
+                "get_aeroplane_schema_or_raise",
+                return_value=MagicMock(),
+            )
+        )
+        stack.enter_context(
+            patch.object(
+                analysis_service,
+                "aeroplane_schema_to_asb_airplane_async",
+                return_value=MagicMock(),
+            )
+        )
+        stack.enter_context(
+            patch.object(
+                analysis_service.operating_point_resolver,
+                "resolve_operating_point",
+                return_value=resolved,
+            )
+        )
+        stack.enter_context(
+            patch.object(
+                analysis_service,
+                "validate_deflections_against_airplane",
+            )
+        )
         return stack
 
     def test_streamlines_service_wraps_generic_error_as_internal(self):
@@ -552,10 +729,13 @@ class TestStreamlineServiceUsesResolvedOp:
         resolved = self._resolved_op()
 
         with self._patch_service_pipeline(analysis_service, resolved) as stack:
-            stack.enter_context(patch.object(
-                analysis_service, "analyse_aerodynamics",
-                side_effect=RuntimeError("VLM crashed"),
-            ))
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "analyse_aerodynamics",
+                    side_effect=RuntimeError("VLM crashed"),
+                )
+            )
             with pytest.raises(InternalError):
                 asyncio.run(
                     analysis_service.calculate_streamlines_json(
@@ -575,13 +755,19 @@ class TestStreamlineServiceUsesResolvedOp:
         resolved = self._resolved_op()
 
         with self._patch_service_pipeline(analysis_service, resolved) as stack:
-            stack.enter_context(patch.object(
-                analysis_service, "analyse_aerodynamics",
-                side_effect=RuntimeError("VLM crashed"),
-            ))
-            stack.enter_context(patch.object(
-                analysis_service, "compile_four_view_figure",
-            ))
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "analyse_aerodynamics",
+                    side_effect=RuntimeError("VLM crashed"),
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "compile_four_view_figure",
+                )
+            )
             with pytest.raises(InternalError):
                 asyncio.run(
                     analysis_service.get_streamlines_three_view_image(
@@ -601,13 +787,17 @@ class TestStreamlineServiceUsesResolvedOp:
         resolved = self._resolved_op()
 
         with self._patch_service_pipeline(analysis_service, resolved) as stack:
-            mock_runner_cls = stack.enter_context(patch(
-                "app.services.avl_runner.AVLRunner",
-            ))
-            stack.enter_context(patch(
-                "app.services.avl_geometry_service.get_user_avl_content",
-                return_value="MOCK_AVL_CONTENT",
-            ))
+            mock_runner_cls = stack.enter_context(
+                patch(
+                    "app.services.avl_runner.AVLRunner",
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "app.services.avl_geometry_service.get_user_avl_content",
+                    return_value="MOCK_AVL_CONTENT",
+                )
+            )
             mock_runner_cls.return_value.run.side_effect = RuntimeError("AVL crashed")
 
             with pytest.raises(InternalError):
@@ -628,28 +818,46 @@ class TestStreamlineServiceUsesResolvedOp:
         from app.services import analysis_service
 
         inline = OperatingPointSchema(
-            alpha=5.0, velocity=14.0, altitude=100.0, xyz_ref=[0.18, 0, 0],
+            alpha=5.0,
+            velocity=14.0,
+            altitude=100.0,
+            xyz_ref=[0.18, 0, 0],
         )
 
         with ExitStack() as stack:
-            stack.enter_context(patch.object(
-                analysis_service, "get_aeroplane_or_raise",
-                return_value=MagicMock(id=7),
-            ))
-            stack.enter_context(patch.object(
-                analysis_service, "get_aeroplane_schema_or_raise",
-                return_value=MagicMock(),
-            ))
-            stack.enter_context(patch.object(
-                analysis_service, "aeroplane_schema_to_asb_airplane_async",
-                return_value=MagicMock(),
-            ))
-            stack.enter_context(patch.object(
-                analysis_service, "validate_deflections_against_airplane",
-            ))
-            mock_analyse = stack.enter_context(patch.object(
-                analysis_service, "analyse_aerodynamics",
-            ))
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "get_aeroplane_or_raise",
+                    return_value=MagicMock(id=7),
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "get_aeroplane_schema_or_raise",
+                    return_value=MagicMock(),
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "aeroplane_schema_to_asb_airplane_async",
+                    return_value=MagicMock(),
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "validate_deflections_against_airplane",
+                )
+            )
+            mock_analyse = stack.enter_context(
+                patch.object(
+                    analysis_service,
+                    "analyse_aerodynamics",
+                )
+            )
             fake_fig = MagicMock()
             fake_fig.to_json.return_value = '{"data":[],"layout":{}}'
             mock_analyse.return_value = (MagicMock(), fake_fig)

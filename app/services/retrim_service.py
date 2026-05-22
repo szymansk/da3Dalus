@@ -14,12 +14,10 @@ from app.models.aeroplanemodel import (
     WingXSecTrailingEdgeDeviceModel,
 )
 from app.models.analysismodels import OperatingPointModel
-from app.schemas.aeroanalysisschema import (
-    AeroBuildupTrimRequest,
-    OperatingPointSchema,
-)
+from app.schemas.aeroanalysisschema import AeroBuildupTrimRequest
 from app.schemas.AeroplaneRequest import AnalysisToolUrlType
 from app.services.aerobuildup_trim_service import trim_with_aerobuildup
+from app.services.operating_point_resolver import operating_point_model_to_schema
 from app.services.stability_service import get_stability_summary
 
 if TYPE_CHECKING:
@@ -49,23 +47,6 @@ def _find_pitch_control_name(db: Session, aeroplane_id: int) -> str | None:
     return row[0] if row else None
 
 
-def _op_model_to_schema(op: OperatingPointModel) -> OperatingPointSchema:
-    """Convert an OperatingPointModel row to an OperatingPointSchema."""
-    return OperatingPointSchema(
-        name=op.name,
-        description=op.description or "",
-        velocity=op.velocity,
-        alpha=op.alpha,
-        beta=op.beta,
-        p=op.p or 0.0,
-        q=op.q or 0.0,
-        r=op.r or 0.0,
-        xyz_ref=op.xyz_ref or [0.0, 0.0, 0.0],
-        altitude=op.altitude or 0.0,
-        control_deflections=op.control_deflections,
-    )
-
-
 async def retrim_dirty_ops(aeroplane_id: int) -> None:
     """Re-trim all DIRTY operating points for an aeroplane.
 
@@ -89,9 +70,7 @@ async def retrim_dirty_ops(aeroplane_id: int) -> None:
             return
 
         dirty_ops = (
-            db.query(OperatingPointModel)
-            .filter_by(aircraft_id=aeroplane_id, status="DIRTY")
-            .all()
+            db.query(OperatingPointModel).filter_by(aircraft_id=aeroplane_id, status="DIRTY").all()
         )
         if not dirty_ops:
             logger.debug("Retrim: no dirty OPs for aeroplane %d", aeroplane_id)
@@ -105,7 +84,7 @@ async def retrim_dirty_ops(aeroplane_id: int) -> None:
             db.flush()
 
             try:
-                op_schema = _op_model_to_schema(op)
+                op_schema = operating_point_model_to_schema(op)
                 request = AeroBuildupTrimRequest(
                     operating_point=op_schema,
                     trim_variable=pitch_control,
@@ -135,12 +114,10 @@ async def retrim_dirty_ops(aeroplane_id: int) -> None:
             db.flush()
 
         if any_trimmed:
-            first_trimmed = next(
-                (op for op in dirty_ops if op.status == "TRIMMED"), None
-            )
+            first_trimmed = next((op for op in dirty_ops if op.status == "TRIMMED"), None)
             if first_trimmed:
                 try:
-                    op_schema = _op_model_to_schema(first_trimmed)
+                    op_schema = operating_point_model_to_schema(first_trimmed)
                     await get_stability_summary(
                         db, aeroplane_uuid, op_schema, AnalysisToolUrlType.AEROBUILDUP
                     )
