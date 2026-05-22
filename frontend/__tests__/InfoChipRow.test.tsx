@@ -184,9 +184,9 @@ describe("Info Chip Row", () => {
     expect(subTexts).toContain("dive");
   });
 
-  // gh-575: chip row splits into two rows (envelope speeds, aero geometry).
-  // gh-593: geometry row now includes S_ref and B_ref alongside MAC.
-  it("splits envelope speeds and aero geometry into two separate rows", async () => {
+  // gh-626: chip row splits into FOUR thematic rows
+  // (speeds / geometry / polar / stability).
+  it("splits chips into four thematic rows: speeds / geometry / polar / stability", async () => {
     (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
       data: {
         v_cruise_mps: 18.0,
@@ -202,12 +202,20 @@ describe("Info Chip Row", () => {
         mac_m: 0.21,
         s_ref_m2: 0.42,
         b_ref_m: 2.0,
+        aspect_ratio: 10.0,
+        cd0: 0.02,
+        e_oswald: 0.8,
+        e_oswald_quality: "high",
+        e_oswald_fallback_used: false,
+        polar_by_config: { clean: { cl_max: 1.4 } },
         x_np_m: 0.085,
         target_static_margin: 0.12,
         cg_agg_m: 0.092,
+        is_glider: false,
       },
       isLoading: false,
       error: null,
+      mutate: vi.fn(),
     });
 
     const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
@@ -215,22 +223,34 @@ describe("Info Chip Row", () => {
 
     const speedsRow = screen.getByTestId("chip-row-speeds");
     const geometryRow = screen.getByTestId("chip-row-geometry");
+    const polarRow = screen.getByTestId("chip-row-polar");
+    const stabilityRow = screen.getByTestId("chip-row-stability");
 
-    // Envelope speeds belong to row 1.
+    // Envelope speeds in row 1.
     expect(speedsRow).toContainElement(screen.getByRole("group", { name: /^V stall:/ }));
-    expect(speedsRow).toContainElement(screen.getByRole("group", { name: /V min sink/ }));
     expect(speedsRow).toContainElement(screen.getByRole("group", { name: /^V max:/ }));
 
-    // Aero geometry belongs to row 2 (gh-593: includes S_ref + B_ref).
-    expect(geometryRow).toContainElement(screen.getByRole("group", { name: /^Re:/ }));
+    // Geometry row (gh-626: AR added here, Re moved to polar row).
     expect(geometryRow).toContainElement(screen.getByRole("group", { name: /^S ref:/ }));
     expect(geometryRow).toContainElement(screen.getByRole("group", { name: /^MAC:/ }));
     expect(geometryRow).toContainElement(screen.getByRole("group", { name: /^B ref:/ }));
-    expect(geometryRow).toContainElement(screen.getByRole("group", { name: /^CG:/ }));
+    expect(geometryRow).toContainElement(screen.getByRole("group", { name: /^AR:/ }));
+
+    // Polar row (gh-626 NEW: Re, C_D0, e, k, C_L,md, C_L,max, (L/D)_max, ρ).
+    expect(polarRow).toContainElement(screen.getByRole("group", { name: /^Re:/ }));
+    expect(polarRow).toContainElement(screen.getByRole("group", { name: /^C D0:/ }));
+    expect(polarRow).toContainElement(screen.getByRole("group", { name: /^e:/ }));
+    expect(polarRow).toContainElement(screen.getByRole("group", { name: /^ρ:/ }));
+
+    // Stability row.
+    expect(stabilityRow).toContainElement(screen.getByRole("group", { name: /^CG:/ }));
+    expect(stabilityRow).toContainElement(screen.getByRole("group", { name: /^NP:/ }));
 
     // No chip is placed in the wrong row.
     expect(geometryRow).not.toContainElement(screen.getByRole("group", { name: /^V stall:/ }));
     expect(speedsRow).not.toContainElement(screen.getByRole("group", { name: /^Re:/ }));
+    expect(geometryRow).not.toContainElement(screen.getByRole("group", { name: /^Re:/ }));
+    expect(polarRow).not.toContainElement(screen.getByRole("group", { name: /^CG:/ }));
   });
 
   // gh-593: S_ref chip renders with the formatted area value (3 decimals + " m²").
