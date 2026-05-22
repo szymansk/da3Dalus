@@ -4,6 +4,7 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from pydantic import ValidationError
 
 from fastapi import HTTPException, Request
 
@@ -475,21 +476,15 @@ class TestOperatingPointSchemaAlphaBetaValidator:
     """gh-587/gh-577: alpha and beta must be in degrees; values > 180 are radians in disguise."""
 
     def test_alpha_above_180_rejected(self):
-        import pydantic
-
-        with pytest.raises(pydantic.ValidationError):
+        with pytest.raises(ValidationError):
             OperatingPointSchema(alpha=999.0)
 
     def test_beta_above_180_rejected(self):
-        import pydantic
-
-        with pytest.raises(pydantic.ValidationError):
+        with pytest.raises(ValidationError):
             OperatingPointSchema(beta=999.0)
 
     def test_alpha_list_with_element_above_180_rejected(self):
-        import pydantic
-
-        with pytest.raises(pydantic.ValidationError):
+        with pytest.raises(ValidationError):
             OperatingPointSchema(alpha=[1.0, 999.0])
 
     def test_alpha_exactly_180_accepted(self):
@@ -517,9 +512,7 @@ class TestOperatingPointSchemaAlphaBetaValidator:
         assert schema.beta == -180.0
 
     def test_error_message_mentions_degrees_and_gh(self):
-        import pydantic
-
-        with pytest.raises(pydantic.ValidationError) as exc_info:
+        with pytest.raises(ValidationError) as exc_info:
             OperatingPointSchema(alpha=999.0)
         msg = str(exc_info.value)
         assert "degree" in msg.lower() or "gh-577" in msg or "gh-587" in msg

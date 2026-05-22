@@ -38,7 +38,12 @@ from typing import TYPE_CHECKING
 
 from app.core.exceptions import NotFoundError, ValidationDomainError
 from app.models.analysismodels import OperatingPointModel
-from app.schemas.aeroanalysisschema import OperatingPointSchema, OperatingPointStatus
+from app.schemas.aeroanalysisschema import (
+    CdclConfig,
+    OperatingPointSchema,
+    OperatingPointStatus,
+    SpacingConfig,
+)
 
 if TYPE_CHECKING:
     import aerosandbox as asb
@@ -83,8 +88,8 @@ def _require_field(op: OperatingPointModel, field: str):
 def operating_point_model_to_schema(
     op: OperatingPointModel,
     *,
-    cdcl_config=None,
-    spacing_config=None,
+    cdcl_config: CdclConfig | None = None,
+    spacing_config: SpacingConfig | None = None,
 ) -> OperatingPointSchema:
     """Convert an :class:`OperatingPointModel` DB row to an analysis-ready schema.
 

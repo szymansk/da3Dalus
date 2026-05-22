@@ -263,28 +263,27 @@ class OperatingPointSchema(BaseModel):
 
     @field_validator("alpha", "beta")
     @classmethod
-    def _validate_degrees_range(cls, value):
+    def _validate_degrees_range(cls, value: float | list[float]) -> float | list[float]:
         """Reject values whose magnitude exceeds 180 — they are almost certainly radians.
 
         alpha/beta must be in **degrees**. Values > 180 indicate an unconverted
         radians value passed through (see gh-577/gh-587). When alpha is a list
         (sweep), each element is checked individually.
         """
-        if isinstance(value, list):
-            for element in value:
-                if abs(element) > 180:
-                    raise ValueError(
-                        f"alpha/beta must be in degrees; element {element!r} exceeds ±180. "
-                        f"A value this large almost certainly means radians were passed "
-                        f"instead of degrees (gh-577/gh-587). Convert with math.degrees()."
-                    )
-        else:
-            if abs(value) > 180:
+
+        def _check(v: float) -> None:
+            if abs(v) > 180:
                 raise ValueError(
-                    f"alpha/beta must be in degrees; {value!r} exceeds ±180. "
+                    f"alpha/beta must be in degrees; {v!r} exceeds ±180. "
                     f"A value this large almost certainly means radians were passed "
                     f"instead of degrees (gh-577/gh-587). Convert with math.degrees()."
                 )
+
+        if isinstance(value, list):
+            for element in value:
+                _check(element)
+        else:
+            _check(value)
         return value
 
     model_config = ConfigDict(
