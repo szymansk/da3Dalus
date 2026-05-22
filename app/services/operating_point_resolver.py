@@ -34,11 +34,16 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from app.core.exceptions import NotFoundError, ValidationDomainError
 from app.models.analysismodels import OperatingPointModel
-from app.schemas.aeroanalysisschema import OperatingPointSchema, OperatingPointStatus
+from app.schemas.aeroanalysisschema import (
+    CdclConfig,
+    OperatingPointSchema,
+    OperatingPointStatus,
+    SpacingConfig,
+)
 
 if TYPE_CHECKING:
     import aerosandbox as asb
@@ -61,7 +66,7 @@ def _pick_deflections(op: OperatingPointModel) -> dict[str, float] | None:
     return dict(controls) if controls else None
 
 
-def _require_field(op: OperatingPointModel, field: str):
+def _require_field(op: OperatingPointModel, field: str) -> Any:
     """Raise loudly if a NOT-NULL state field arrived as ``None`` (corrupt row).
 
     The DB columns are declared ``nullable=False``; silently substituting
@@ -78,6 +83,56 @@ def _require_field(op: OperatingPointModel, field: str):
             )
         )
     return value
+
+
+def operating_point_model_to_schema(
+    op: OperatingPointModel,
+    *,
+    cdcl_config: CdclConfig | None = None,
+    spacing_config: SpacingConfig | None = None,
+) -> OperatingPointSchema:
+    """Convert an :class:`OperatingPointModel` DB row to an analysis-ready schema.
+
+    Single source of truth for model→schema conversion (gh-587). Both
+    :func:`resolve_operating_point` and :mod:`app.services.retrim_service`
+    delegate here so the rad→deg conversion and the ``_require_field`` guards
+    are never duplicated.
+
+    ``alpha`` / ``beta`` are stored as **radians** on the model; the schema
+    and every downstream ``asb.OperatingPoint`` consumer expect **degrees**.
+
+    ``cdcl_config`` / ``spacing_config`` are caller-supplied because the DB
+    row does not own these — they come from the inbound request schema.
+    """
+    velocity = _require_field(op, "velocity")
+    alpha_rad = _require_field(op, "alpha")
+    beta_rad = _require_field(op, "beta")
+    p = _require_field(op, "p")
+    q = _require_field(op, "q")
+    r = _require_field(op, "r")
+    altitude = _require_field(op, "altitude")
+    xyz_ref = _require_field(op, "xyz_ref")
+    if not xyz_ref:  # empty list ≠ valid moment reference
+        raise ValidationDomainError(message=f"OperatingPoint {op.id} has empty xyz_ref.")
+
+    deflections = _pick_deflections(op)
+
+    return OperatingPointSchema(
+        name=op.name,
+        description=op.description or "",
+        velocity=velocity,
+        alpha=math.degrees(alpha_rad),
+        beta=math.degrees(beta_rad),
+        p=p,
+        q=q,
+        r=r,
+        xyz_ref=xyz_ref,
+        altitude=altitude,
+        cdcl_config=cdcl_config,
+        spacing_config=spacing_config,
+        control_deflections=deflections,
+        operating_point_id=op.id,
+    )
 
 
 def resolve_operating_point(
@@ -140,45 +195,22 @@ def resolve_operating_point(
             )
         )
 
-    # NOT-NULL state — fail loudly on corrupt rows.
-    velocity = _require_field(op, "velocity")
-    alpha_rad = _require_field(op, "alpha")
-    beta_rad = _require_field(op, "beta")
-    altitude = _require_field(op, "altitude")
-    xyz_ref = _require_field(op, "xyz_ref")
-    if not xyz_ref:  # empty list ≠ valid moment reference
-        raise ValidationDomainError(
-            message=f"OperatingPoint {op_id} has empty xyz_ref."
-        )
-
-    deflections = _pick_deflections(op)
+    result = operating_point_model_to_schema(
+        op,
+        cdcl_config=op_schema.cdcl_config,
+        spacing_config=op_schema.spacing_config,
+    )
     logger.info(
         "Resolved OperatingPoint %s (aircraft %s): alpha=%.3f deg, "
         "velocity=%.2f m/s, xyz_ref=%s, deflections=%s",
         op_id,
         op.aircraft_id,
-        math.degrees(alpha_rad),
-        velocity,
-        xyz_ref,
-        deflections,
+        result.alpha,
+        result.velocity,
+        result.xyz_ref,
+        result.control_deflections,
     )
-
-    return OperatingPointSchema(
-        name=op.name,
-        description=op.description or "",
-        velocity=velocity,
-        alpha=math.degrees(alpha_rad),
-        beta=math.degrees(beta_rad),
-        p=op.p or 0.0,
-        q=op.q or 0.0,
-        r=op.r or 0.0,
-        xyz_ref=xyz_ref,
-        altitude=altitude,
-        cdcl_config=op_schema.cdcl_config,
-        spacing_config=op_schema.spacing_config,
-        control_deflections=deflections,
-        operating_point_id=op_id,
-    )
+    return result
 
 
 def _airplane_surface_names(airplane: "asb.Airplane") -> set[str]:

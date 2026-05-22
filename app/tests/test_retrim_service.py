@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -35,7 +36,11 @@ class TestFindPitchControlName:
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(
-            wing_id=wing.id, xyz_le=[0, 0, 0], chord=0.2, twist=0, airfoil="naca0012",
+            wing_id=wing.id,
+            xyz_le=[0, 0, 0],
+            chord=0.2,
+            twist=0,
+            airfoil="naca0012",
             sort_index=0,
         )
         db.add(xsec)
@@ -44,7 +49,9 @@ class TestFindPitchControlName:
         db.add(detail)
         db.flush()
         ted = WingXSecTrailingEdgeDeviceModel(
-            wing_xsec_detail_id=detail.id, name="elevator", role="elevator",
+            wing_xsec_detail_id=detail.id,
+            name="elevator",
+            role="elevator",
         )
         db.add(ted)
         db.commit()
@@ -60,7 +67,9 @@ class TestFindPitchControlName:
         db = SessionLocal()
         aeroplane = make_aeroplane(db, name="elevon-test")
         from app.models.aeroplanemodel import (
-            WingModel, WingXSecModel, WingXSecDetailModel,
+            WingModel,
+            WingXSecModel,
+            WingXSecDetailModel,
             WingXSecTrailingEdgeDeviceModel,
         )
 
@@ -68,7 +77,11 @@ class TestFindPitchControlName:
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(
-            wing_id=wing.id, xyz_le=[0, 0, 0], chord=0.3, twist=0, airfoil="naca0012",
+            wing_id=wing.id,
+            xyz_le=[0, 0, 0],
+            chord=0.3,
+            twist=0,
+            airfoil="naca0012",
             sort_index=0,
         )
         db.add(xsec)
@@ -77,7 +90,9 @@ class TestFindPitchControlName:
         db.add(detail)
         db.flush()
         ted = WingXSecTrailingEdgeDeviceModel(
-            wing_xsec_detail_id=detail.id, name="elevon", role="elevon",
+            wing_xsec_detail_id=detail.id,
+            name="elevon",
+            role="elevon",
         )
         db.add(ted)
         db.commit()
@@ -102,7 +117,9 @@ class TestFindPitchControlName:
         db = SessionLocal()
         aeroplane = make_aeroplane(db, name="aileron-only")
         from app.models.aeroplanemodel import (
-            WingModel, WingXSecModel, WingXSecDetailModel,
+            WingModel,
+            WingXSecModel,
+            WingXSecDetailModel,
             WingXSecTrailingEdgeDeviceModel,
         )
 
@@ -110,7 +127,11 @@ class TestFindPitchControlName:
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(
-            wing_id=wing.id, xyz_le=[0, 0, 0], chord=0.3, twist=0, airfoil="naca0012",
+            wing_id=wing.id,
+            xyz_le=[0, 0, 0],
+            chord=0.3,
+            twist=0,
+            airfoil="naca0012",
             sort_index=0,
         )
         db.add(xsec)
@@ -119,7 +140,9 @@ class TestFindPitchControlName:
         db.add(detail)
         db.flush()
         ted = WingXSecTrailingEdgeDeviceModel(
-            wing_xsec_detail_id=detail.id, name="aileron", role="aileron",
+            wing_xsec_detail_id=detail.id,
+            name="aileron",
+            role="aileron",
         )
         db.add(ted)
         db.commit()
@@ -156,7 +179,9 @@ class TestRetrimDirtyOps:
         aeroplane = make_aeroplane(db, name="trim-test")
 
         from app.models.aeroplanemodel import (
-            WingModel, WingXSecModel, WingXSecDetailModel,
+            WingModel,
+            WingXSecModel,
+            WingXSecDetailModel,
             WingXSecTrailingEdgeDeviceModel,
         )
 
@@ -164,7 +189,11 @@ class TestRetrimDirtyOps:
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(
-            wing_id=wing.id, xyz_le=[0, 0, 0], chord=0.2, twist=0, airfoil="naca0012",
+            wing_id=wing.id,
+            xyz_le=[0, 0, 0],
+            chord=0.2,
+            twist=0,
+            airfoil="naca0012",
             sort_index=0,
         )
         db.add(xsec)
@@ -173,7 +202,9 @@ class TestRetrimDirtyOps:
         db.add(detail)
         db.flush()
         ted = WingXSecTrailingEdgeDeviceModel(
-            wing_xsec_detail_id=detail.id, name="elevator", role="elevator",
+            wing_xsec_detail_id=detail.id,
+            name="elevator",
+            role="elevator",
         )
         db.add(ted)
         db.commit()
@@ -217,7 +248,9 @@ class TestRetrimDirtyOps:
         aeroplane = make_aeroplane(db, name="partial-fail")
 
         from app.models.aeroplanemodel import (
-            WingModel, WingXSecModel, WingXSecDetailModel,
+            WingModel,
+            WingXSecModel,
+            WingXSecDetailModel,
             WingXSecTrailingEdgeDeviceModel,
         )
 
@@ -225,7 +258,11 @@ class TestRetrimDirtyOps:
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(
-            wing_id=wing.id, xyz_le=[0, 0, 0], chord=0.2, twist=0, airfoil="naca0012",
+            wing_id=wing.id,
+            xyz_le=[0, 0, 0],
+            chord=0.2,
+            twist=0,
+            airfoil="naca0012",
             sort_index=0,
         )
         db.add(xsec)
@@ -234,7 +271,9 @@ class TestRetrimDirtyOps:
         db.add(detail)
         db.flush()
         ted = WingXSecTrailingEdgeDeviceModel(
-            wing_xsec_detail_id=detail.id, name="elevator", role="elevator",
+            wing_xsec_detail_id=detail.id,
+            name="elevator",
+            role="elevator",
         )
         db.add(ted)
         db.commit()
@@ -289,7 +328,9 @@ class TestRetrimDirtyOps:
         aeroplane = make_aeroplane(db, name="limit-test")
 
         from app.models.aeroplanemodel import (
-            WingModel, WingXSecModel, WingXSecDetailModel,
+            WingModel,
+            WingXSecModel,
+            WingXSecDetailModel,
             WingXSecTrailingEdgeDeviceModel,
         )
 
@@ -297,7 +338,11 @@ class TestRetrimDirtyOps:
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(
-            wing_id=wing.id, xyz_le=[0, 0, 0], chord=0.2, twist=0, airfoil="naca0012",
+            wing_id=wing.id,
+            xyz_le=[0, 0, 0],
+            chord=0.2,
+            twist=0,
+            airfoil="naca0012",
             sort_index=0,
         )
         db.add(xsec)
@@ -306,7 +351,9 @@ class TestRetrimDirtyOps:
         db.add(detail)
         db.flush()
         ted = WingXSecTrailingEdgeDeviceModel(
-            wing_xsec_detail_id=detail.id, name="elevator", role="elevator",
+            wing_xsec_detail_id=detail.id,
+            name="elevator",
+            role="elevator",
         )
         db.add(ted)
         db.commit()
@@ -362,7 +409,9 @@ class TestRetrimDirtyOps:
         aeroplane = make_aeroplane(db, name="stability-test")
 
         from app.models.aeroplanemodel import (
-            WingModel, WingXSecModel, WingXSecDetailModel,
+            WingModel,
+            WingXSecModel,
+            WingXSecDetailModel,
             WingXSecTrailingEdgeDeviceModel,
         )
 
@@ -370,7 +419,11 @@ class TestRetrimDirtyOps:
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(
-            wing_id=wing.id, xyz_le=[0, 0, 0], chord=0.2, twist=0, airfoil="naca0012",
+            wing_id=wing.id,
+            xyz_le=[0, 0, 0],
+            chord=0.2,
+            twist=0,
+            airfoil="naca0012",
             sort_index=0,
         )
         db.add(xsec)
@@ -379,7 +432,9 @@ class TestRetrimDirtyOps:
         db.add(detail)
         db.flush()
         ted = WingXSecTrailingEdgeDeviceModel(
-            wing_xsec_detail_id=detail.id, name="elevator", role="elevator",
+            wing_xsec_detail_id=detail.id,
+            name="elevator",
+            role="elevator",
         )
         db.add(ted)
         db.commit()
@@ -411,7 +466,6 @@ class TestRetrimDirtyOps:
 
         mock_stability.assert_called_once()
 
-
     def test_aeroplane_deleted_before_retrim(self, client_and_db):
         """Finding 9: aeroplane deleted between schedule and execution."""
         _, SessionLocal = client_and_db
@@ -436,7 +490,9 @@ class TestRetrimDirtyOps:
         aeroplane = make_aeroplane(db, name="merge-test")
 
         from app.models.aeroplanemodel import (
-            WingModel, WingXSecModel, WingXSecDetailModel,
+            WingModel,
+            WingXSecModel,
+            WingXSecDetailModel,
             WingXSecTrailingEdgeDeviceModel,
         )
 
@@ -444,7 +500,11 @@ class TestRetrimDirtyOps:
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(
-            wing_id=wing.id, xyz_le=[0, 0, 0], chord=0.2, twist=0, airfoil="naca0012",
+            wing_id=wing.id,
+            xyz_le=[0, 0, 0],
+            chord=0.2,
+            twist=0,
+            airfoil="naca0012",
             sort_index=0,
         )
         db.add(xsec)
@@ -453,13 +513,18 @@ class TestRetrimDirtyOps:
         db.add(detail)
         db.flush()
         ted = WingXSecTrailingEdgeDeviceModel(
-            wing_xsec_detail_id=detail.id, name="elevator", role="elevator",
+            wing_xsec_detail_id=detail.id,
+            name="elevator",
+            role="elevator",
         )
         db.add(ted)
         db.commit()
 
         make_operating_point(
-            db, aircraft_id=aeroplane.id, name="cruise", status="DIRTY",
+            db,
+            aircraft_id=aeroplane.id,
+            name="cruise",
+            status="DIRTY",
             control_deflections={"aileron": 5.0},
         )
         db.close()
@@ -499,7 +564,9 @@ class TestRetrimDirtyOps:
         aeroplane = make_aeroplane(db, name="stab-fail")
 
         from app.models.aeroplanemodel import (
-            WingModel, WingXSecModel, WingXSecDetailModel,
+            WingModel,
+            WingXSecModel,
+            WingXSecDetailModel,
             WingXSecTrailingEdgeDeviceModel,
         )
 
@@ -507,7 +574,11 @@ class TestRetrimDirtyOps:
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(
-            wing_id=wing.id, xyz_le=[0, 0, 0], chord=0.2, twist=0, airfoil="naca0012",
+            wing_id=wing.id,
+            xyz_le=[0, 0, 0],
+            chord=0.2,
+            twist=0,
+            airfoil="naca0012",
             sort_index=0,
         )
         db.add(xsec)
@@ -516,7 +587,9 @@ class TestRetrimDirtyOps:
         db.add(detail)
         db.flush()
         ted = WingXSecTrailingEdgeDeviceModel(
-            wing_xsec_detail_id=detail.id, name="elevator", role="elevator",
+            wing_xsec_detail_id=detail.id,
+            name="elevator",
+            role="elevator",
         )
         db.add(ted)
         db.commit()
@@ -553,6 +626,137 @@ class TestRetrimDirtyOps:
         db2.close()
 
 
+class TestOpModelToSchemaRadDegConversion:
+    """gh-587 regression: retrim path must convert alpha/beta from rad→deg.
+
+    Before gh-587 the retrim seeded the solver with alpha in radians (≈ 0 °
+    for small angles), discarding the converged trim. These tests pin the fix.
+    """
+
+    def _make_op_mock(self, **overrides) -> MagicMock:
+        from app.models.analysismodels import OperatingPointModel
+        from app.schemas.aeroanalysisschema import OperatingPointStatus
+
+        defaults = dict(
+            id=7,
+            name="cruise",
+            description="",
+            aircraft_id=1,
+            status=OperatingPointStatus.TRIMMED,
+            warnings=[],
+            controls={"elevator": -2.5},
+            velocity=20.0,
+            alpha=math.pi / 4,  # 45° stored as radians
+            beta=math.radians(3.0),
+            p=0.0,
+            q=0.0,
+            r=0.0,
+            xyz_ref=[0.18, 0.0, 0.0],
+            altitude=100.0,
+            control_deflections=None,
+            trim_enrichment=None,
+        )
+        defaults.update(overrides)
+        op = MagicMock(spec=OperatingPointModel)
+        for k, v in defaults.items():
+            setattr(op, k, v)
+        return op
+
+    def test_retrim_schema_alpha_is_degrees_not_radians(self):
+        """Alpha stored as π/4 rad must arrive as 45° on the schema."""
+        from app.services.operating_point_resolver import operating_point_model_to_schema
+
+        op = self._make_op_mock(alpha=math.pi / 4)
+        schema = operating_point_model_to_schema(op)
+        assert schema.alpha == pytest.approx(45.0, rel=1e-6)
+
+    def test_retrim_schema_beta_is_degrees_not_radians(self):
+        """Beta stored as radians must be converted to degrees on the schema."""
+        from app.services.operating_point_resolver import operating_point_model_to_schema
+
+        op = self._make_op_mock(beta=math.radians(3.0))
+        schema = operating_point_model_to_schema(op)
+        assert schema.beta == pytest.approx(3.0, rel=1e-6)
+
+    def test_retrim_service_calls_operating_point_model_to_schema(self, client_and_db):
+        """retrim_dirty_ops must use operating_point_model_to_schema (not _op_model_to_schema)."""
+        _, SessionLocal = client_and_db
+        db = SessionLocal()
+        aeroplane = make_aeroplane(db, name="rad-deg-test")
+
+        from app.models.aeroplanemodel import (
+            WingModel,
+            WingXSecDetailModel,
+            WingXSecModel,
+            WingXSecTrailingEdgeDeviceModel,
+        )
+
+        wing = WingModel(name="h-stab", aeroplane_id=aeroplane.id, symmetric=True)
+        db.add(wing)
+        db.flush()
+        xsec = WingXSecModel(
+            wing_id=wing.id,
+            xyz_le=[0, 0, 0],
+            chord=0.2,
+            twist=0,
+            airfoil="naca0012",
+            sort_index=0,
+        )
+        db.add(xsec)
+        db.flush()
+        detail = WingXSecDetailModel(wing_xsec_id=xsec.id)
+        db.add(detail)
+        db.flush()
+        ted = WingXSecTrailingEdgeDeviceModel(
+            wing_xsec_detail_id=detail.id,
+            name="elevator",
+            role="elevator",
+        )
+        db.add(ted)
+        db.commit()
+
+        # Store alpha as π/4 radians — after the fix, the schema must get 45°
+        make_operating_point(
+            db,
+            aircraft_id=aeroplane.id,
+            name="cruise",
+            status="DIRTY",
+            alpha=math.pi / 4,
+        )
+        db.close()
+
+        captured_schemas: list = []
+
+        async def _capture_trim(db, uuid, request):
+            captured_schemas.append(request.operating_point)
+            result = MagicMock()
+            result.converged = True
+            result.trimmed_deflection = -2.0
+            return result
+
+        with (
+            patch("app.services.retrim_service.SessionLocal", SessionLocal),
+            patch(
+                "app.services.retrim_service.trim_with_aerobuildup",
+                side_effect=_capture_trim,
+            ),
+            patch(
+                "app.services.retrim_service.get_stability_summary",
+                new_callable=AsyncMock,
+            ),
+        ):
+            from app.services.retrim_service import retrim_dirty_ops
+
+            asyncio.run(retrim_dirty_ops(aeroplane.id))
+
+        assert len(captured_schemas) == 1, "Expected exactly one trim call"
+        schema = captured_schemas[0]
+        # The schema must carry 45°, not ≈0.785 (radians value)
+        assert schema.alpha == pytest.approx(45.0, rel=1e-3), (
+            f"alpha was {schema.alpha!r} — expected 45.0° (gh-587 regression)"
+        )
+
+
 class TestStartupRegistration:
     """Verify trim function is registered at app startup."""
 
@@ -571,7 +775,9 @@ class TestRetrimIntegration:
         aeroplane = make_aeroplane(db, name="integration-test")
 
         from app.models.aeroplanemodel import (
-            WingModel, WingXSecModel, WingXSecDetailModel,
+            WingModel,
+            WingXSecModel,
+            WingXSecDetailModel,
             WingXSecTrailingEdgeDeviceModel,
         )
 
@@ -579,7 +785,11 @@ class TestRetrimIntegration:
         db.add(wing)
         db.flush()
         xsec = WingXSecModel(
-            wing_id=wing.id, xyz_le=[0, 0, 0], chord=0.2, twist=0, airfoil="naca0012",
+            wing_id=wing.id,
+            xyz_le=[0, 0, 0],
+            chord=0.2,
+            twist=0,
+            airfoil="naca0012",
             sort_index=0,
         )
         db.add(xsec)
@@ -588,16 +798,24 @@ class TestRetrimIntegration:
         db.add(detail)
         db.flush()
         ted = WingXSecTrailingEdgeDeviceModel(
-            wing_xsec_detail_id=detail.id, name="elevator", role="elevator",
+            wing_xsec_detail_id=detail.id,
+            name="elevator",
+            role="elevator",
         )
         db.add(ted)
         db.commit()
 
         make_operating_point(
-            db, aircraft_id=aeroplane.id, name="cruise", status="TRIMMED",
+            db,
+            aircraft_id=aeroplane.id,
+            name="cruise",
+            status="TRIMMED",
         )
         make_operating_point(
-            db, aircraft_id=aeroplane.id, name="stall", status="TRIMMED",
+            db,
+            aircraft_id=aeroplane.id,
+            name="stall",
+            status="TRIMMED",
         )
         db.close()
 

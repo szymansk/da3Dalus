@@ -3,6 +3,9 @@ import unittest
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+from pydantic import ValidationError
+
 from fastapi import HTTPException, Request
 
 from app.api.v2.endpoints.aeroanalysis import (
@@ -38,7 +41,10 @@ class TestAeroanalysis(unittest.TestCase):
         mock_db = MagicMock()
         expected = {"ok": True}
 
-        with patch("app.api.v2.endpoints.aeroanalysis.analysis_service.analyze_wing", new=AsyncMock(return_value=expected)) as mock_analyze:
+        with patch(
+            "app.api.v2.endpoints.aeroanalysis.analysis_service.analyze_wing",
+            new=AsyncMock(return_value=expected),
+        ) as mock_analyze:
             result = asyncio.run(
                 analyze_wing_post(
                     aeroplane_id=self.test_plane_id,
@@ -83,7 +89,10 @@ class TestAeroanalysis(unittest.TestCase):
         mock_db = MagicMock()
         expected = {"lift": 123}
 
-        with patch("app.api.v2.endpoints.aeroanalysis.analysis_service.analyze_airplane", new=AsyncMock(return_value=expected)) as mock_analyze:
+        with patch(
+            "app.api.v2.endpoints.aeroanalysis.analysis_service.analyze_airplane",
+            new=AsyncMock(return_value=expected),
+        ) as mock_analyze:
             result = asyncio.run(
                 analyze_airplane_post(
                     aeroplane_id=self.test_plane_id,
@@ -241,10 +250,13 @@ class TestAeroanalysis(unittest.TestCase):
         mock_settings = MagicMock()
         mock_settings.base_url = "http://example.com"
 
-        with patch(
-            "app.api.v2.endpoints.aeroanalysis.analysis_service.get_streamlines_three_view_image",
-            new=AsyncMock(return_value=b"png"),
-        ) as mock_image, patch("app.api.v2.endpoints.aeroanalysis.uuid4") as mock_uuid:
+        with (
+            patch(
+                "app.api.v2.endpoints.aeroanalysis.analysis_service.get_streamlines_three_view_image",
+                new=AsyncMock(return_value=b"png"),
+            ) as mock_image,
+            patch("app.api.v2.endpoints.aeroanalysis.uuid4") as mock_uuid,
+        ):
             mock_uuid.return_value = MagicMock(hex="abc123")
 
             result = asyncio.run(
@@ -258,7 +270,11 @@ class TestAeroanalysis(unittest.TestCase):
             )
 
         self.assertIsInstance(result, StaticUrlResponse)
-        self.assertTrue(result.url.endswith(f"/static/{self.test_plane_id}/png/streamlines_three_view_abc123.png"))
+        self.assertTrue(
+            result.url.endswith(
+                f"/static/{self.test_plane_id}/png/streamlines_three_view_abc123.png"
+            )
+        )
         mock_image.assert_awaited_once_with(mock_db, self.test_plane_id, self.test_operating_point)
 
     def test_get_aeroplane_three_view_success(self):
@@ -268,10 +284,13 @@ class TestAeroanalysis(unittest.TestCase):
         mock_settings = MagicMock()
         mock_settings.base_url = "http://example.com"
 
-        with patch(
-            "app.api.v2.endpoints.aeroanalysis.analysis_service.get_three_view_image",
-            new=AsyncMock(return_value=b"png"),
-        ) as mock_image, patch("app.api.v2.endpoints.aeroanalysis.uuid4") as mock_uuid:
+        with (
+            patch(
+                "app.api.v2.endpoints.aeroanalysis.analysis_service.get_three_view_image",
+                new=AsyncMock(return_value=b"png"),
+            ) as mock_image,
+            patch("app.api.v2.endpoints.aeroanalysis.uuid4") as mock_uuid,
+        ):
             mock_uuid.return_value = MagicMock(hex="def456")
 
             result = asyncio.run(
@@ -284,7 +303,9 @@ class TestAeroanalysis(unittest.TestCase):
             )
 
         self.assertIsInstance(result, StaticUrlResponse)
-        self.assertTrue(result.url.endswith(f"/static/{self.test_plane_id}/png/three_view_def456.png"))
+        self.assertTrue(
+            result.url.endswith(f"/static/{self.test_plane_id}/png/three_view_def456.png")
+        )
         mock_image.assert_awaited_once_with(mock_db, self.test_plane_id)
 
     def test_calculate_streamlines_json_success(self):
@@ -358,8 +379,13 @@ class TestAnalysisServiceAwaitContract(unittest.TestCase):
         self.mock_plane_schema.name = "TestPlane"
         self.mock_plane_schema.wings = {}
         self.test_operating_point = OperatingPointSchema.model_construct(
-            velocity=10.0, alpha=5.0, beta=0.0,
-            p=0.0, q=0.0, r=0.0, xyz_ref=[0.0, 0.0, 0.0],
+            velocity=10.0,
+            alpha=5.0,
+            beta=0.0,
+            p=0.0,
+            q=0.0,
+            r=0.0,
+            xyz_ref=[0.0, 0.0, 0.0],
         )
 
     def _make_mock_result(self):
@@ -381,9 +407,16 @@ class TestAnalysisServiceAwaitContract(unittest.TestCase):
 
         mock_result = self._make_mock_result()
         sweep_request = AlphaSweepRequest.model_construct(
-            altitude=1000.0, velocity=30.0,
-            alpha_start=-5, alpha_end=15, alpha_num=3,
-            beta=0.0, p=0.0, q=0.0, r=0.0, xyz_ref=[0, 0, 0],
+            altitude=1000.0,
+            velocity=30.0,
+            alpha_start=-5,
+            alpha_end=15,
+            alpha_num=3,
+            beta=0.0,
+            p=0.0,
+            q=0.0,
+            r=0.0,
+            xyz_ref=[0, 0, 0],
         )
 
         with (
@@ -429,12 +462,60 @@ class TestAnalysisServiceAwaitContract(unittest.TestCase):
         ):
             result = asyncio.run(
                 analyze_airplane(
-                    self.mock_db, self.test_plane_id,
-                    self.test_operating_point, AnalysisToolUrlType.AEROBUILDUP,
+                    self.mock_db,
+                    self.test_plane_id,
+                    self.test_operating_point,
+                    AnalysisToolUrlType.AEROBUILDUP,
                 )
             )
 
         self.assertEqual(result, mock_result)
+
+
+class TestOperatingPointSchemaAlphaBetaValidator:
+    """gh-587/gh-577: alpha and beta must be in degrees; values > 180 are radians in disguise."""
+
+    def test_alpha_above_180_rejected(self):
+        with pytest.raises(ValidationError):
+            OperatingPointSchema(alpha=999.0)
+
+    def test_beta_above_180_rejected(self):
+        with pytest.raises(ValidationError):
+            OperatingPointSchema(beta=999.0)
+
+    def test_alpha_list_with_element_above_180_rejected(self):
+        with pytest.raises(ValidationError):
+            OperatingPointSchema(alpha=[1.0, 999.0])
+
+    def test_alpha_exactly_180_accepted(self):
+        schema = OperatingPointSchema(alpha=180.0)
+        assert schema.alpha == 180.0
+
+    def test_alpha_negative_180_accepted(self):
+        schema = OperatingPointSchema(alpha=-180.0)
+        assert schema.alpha == -180.0
+
+    def test_normal_alpha_accepted(self):
+        schema = OperatingPointSchema(alpha=4.2)
+        assert schema.alpha == pytest.approx(4.2)
+
+    def test_normal_beta_accepted(self):
+        schema = OperatingPointSchema(beta=2.0)
+        assert schema.beta == pytest.approx(2.0)
+
+    def test_alpha_list_all_valid_accepted(self):
+        schema = OperatingPointSchema(alpha=[0.0, 5.0, -10.0, 180.0])
+        assert schema.alpha == [0.0, 5.0, -10.0, 180.0]
+
+    def test_beta_exactly_minus_180_accepted(self):
+        schema = OperatingPointSchema(beta=-180.0)
+        assert schema.beta == -180.0
+
+    def test_error_message_mentions_degrees_and_gh(self):
+        with pytest.raises(ValidationError) as exc_info:
+            OperatingPointSchema(alpha=999.0)
+        msg = str(exc_info.value)
+        assert "degree" in msg.lower() or "gh-577" in msg or "gh-587" in msg
 
 
 if __name__ == "__main__":
