@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from app.core.exceptions import NotFoundError, ValidationDomainError
 from app.models.analysismodels import OperatingPointModel
@@ -66,7 +66,7 @@ def _pick_deflections(op: OperatingPointModel) -> dict[str, float] | None:
     return dict(controls) if controls else None
 
 
-def _require_field(op: OperatingPointModel, field: str):
+def _require_field(op: OperatingPointModel, field: str) -> Any:
     """Raise loudly if a NOT-NULL state field arrived as ``None`` (corrupt row).
 
     The DB columns are declared ``nullable=False``; silently substituting
