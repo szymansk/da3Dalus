@@ -108,7 +108,7 @@ class TestFitParabolicPolar:
         """Clean synthetic Cessna 172 polar recovers e within ±0.07."""
         ac = CESSNA_172
         cls, cds = _make_synthetic_polar(ac["cd0"], ac["e"], ac["ar"], ac["cl_max"])
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=ac["ar"], cl_max=ac["cl_max"], cd0_stability=ac["cd0"]
         )
         assert e_fit is not None, "fit should succeed on clean synthetic polar"
@@ -120,7 +120,7 @@ class TestFitParabolicPolar:
         """Clean synthetic ASW-27 polar (high AR) recovers e within ±0.07."""
         ac = ASW_27
         cls, cds = _make_synthetic_polar(ac["cd0"], ac["e"], ac["ar"], ac["cl_max"])
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=ac["ar"], cl_max=ac["cl_max"], cd0_stability=ac["cd0"]
         )
         assert e_fit is not None, "fit should succeed on clean synthetic polar"
@@ -132,7 +132,7 @@ class TestFitParabolicPolar:
         """Clean synthetic RC-Trainer polar recovers e within ±0.07."""
         ac = RC_TRAINER
         cls, cds = _make_synthetic_polar(ac["cd0"], ac["e"], ac["ar"], ac["cl_max"])
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=ac["ar"], cl_max=ac["cl_max"], cd0_stability=ac["cd0"]
         )
         assert e_fit is not None, "fit should succeed on clean synthetic polar"
@@ -145,7 +145,7 @@ class TestFitParabolicPolar:
         # Build a polar over a wide range; fit should still work for the clamped window
         cls = np.linspace(0.05, 0.45, 30)
         cds = 0.03 + cls**2 / (math.pi * 0.75 * 7.0)
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=7.0, cl_max=0.5, cd0_stability=0.03
         )
         # cl_hi = 0.85 * 0.5 = 0.425, cl_lo = 0.10 → window is [0.10, 0.425]
@@ -161,7 +161,7 @@ class TestFitParabolicPolar:
         # Only provide points ABOVE the window
         cls = np.linspace(cl_hi + 0.01, cl_max * 1.2, 5)
         cds = 0.03 + cls**2 / (math.pi * 0.75 * 7.0)
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03
         )
         assert e_fit is None, "no points in window → should return None"
@@ -174,7 +174,7 @@ class TestFitParabolicPolar:
         cl_hi = 0.85 * cl_max
         cls = np.linspace(cl_lo, cl_hi, 5)
         cds = 0.03 + cls**2 / (math.pi * 0.75 * 7.0)
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03
         )
         assert (cd0_fit, e_fit, r2) == (None, None, None), (
@@ -187,7 +187,7 @@ class TestFitParabolicPolar:
         cls = np.linspace(0.1, 0.8, 20)
         # Decreasing CD with increasing CL² — physically impossible
         cds = 0.04 - 0.01 * cls**2
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.04
         )
         assert (cd0_fit, e_fit, r2) == (None, None, None), (
@@ -201,7 +201,7 @@ class TestFitParabolicPolar:
         k_tiny_e = 1.0 / (math.pi * 0.1 * 7.0)
         cls = np.linspace(0.1, 0.8, 20)
         cds = 0.03 + k_tiny_e * cls**2
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03
         )
         assert (cd0_fit, e_fit, r2) == (None, None, None), (
@@ -215,7 +215,7 @@ class TestFitParabolicPolar:
         k_too_high_e = 1.0 / (math.pi * 1.5 * 7.0)
         cls = np.linspace(0.1, 0.8, 20)
         cds = 0.03 + k_too_high_e * cls**2
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03
         )
         assert (cd0_fit, e_fit, r2) == (None, None, None), (
@@ -234,7 +234,7 @@ class TestFitParabolicPolar:
         mid = len(cls) // 2
         cds[mid] -= 0.015  # big dip
         cds[mid + 1] -= 0.010
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03
         )
         assert (cd0_fit, e_fit, r2) == (None, None, None), (
@@ -249,7 +249,7 @@ class TestFitParabolicPolar:
         k = 1.0 / (math.pi * 0.75 * 7.0)
         cls = np.linspace(0.1, 0.8, 20)
         cds = 0.06 + k * cls**2
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03
         )
         assert (cd0_fit, e_fit, r2) == (None, None, None), (
@@ -257,14 +257,14 @@ class TestFitParabolicPolar:
         )
 
     def test_returns_r2_in_tuple(self):
-        """Return value is a 3-tuple (cd0, e_oswald, r2) where r2 ∈ [0, 1]."""
+        """Return value is a 4-tuple (cd0, e_oswald, r2, rejection) where r2 ∈ [0, 1]."""
         ac = CESSNA_172
         cls, cds = _make_synthetic_polar(ac["cd0"], ac["e"], ac["ar"], ac["cl_max"])
         result = _fit_parabolic_polar(
             cls, cds, ar=ac["ar"], cl_max=ac["cl_max"], cd0_stability=ac["cd0"]
         )
-        assert len(result) == 3, "must return 3-tuple (cd0, e, r2)"
-        cd0_fit, e_fit, r2 = result
+        assert len(result) == 4, "must return 4-tuple (cd0, e, r2, rejection)"
+        cd0_fit, e_fit, r2, *_ = result
         assert r2 is not None
         assert 0.9 < r2 <= 1.0, f"clean synthetic polar should have R²>0.9, got {r2}"
 
@@ -274,7 +274,7 @@ class TestFitParabolicPolar:
         cls = np.linspace(0.1, 0.8, 20)
         # Very shallow slope but negative intercept → fit gives cd0 < 0
         cds = -0.01 + 0.001 * cls**2
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03
         )
         assert (cd0_fit, e_fit, r2) == (None, None, None), (
@@ -463,7 +463,7 @@ class TestCrossCheckAgainstAndersonFormula:
     def test_e_fit_within_0_07_of_reference(self, ac):
         """e_fit from clean synthetic polar must match reference e within ±0.07."""
         cls, cds = _make_synthetic_polar(ac["cd0"], ac["e"], ac["ar"], ac["cl_max"])
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=ac["ar"], cl_max=ac["cl_max"], cd0_stability=ac["cd0"]
         )
         assert e_fit is not None, f"{ac['name']}: fit failed on clean synthetic polar"
@@ -475,7 +475,7 @@ class TestCrossCheckAgainstAndersonFormula:
     def test_v_md_within_5_percent_of_anderson(self, ac):
         """V_md with fitted e must be within 5% of Anderson textbook formula."""
         cls, cds = _make_synthetic_polar(ac["cd0"], ac["e"], ac["ar"], ac["cl_max"])
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=ac["ar"], cl_max=ac["cl_max"], cd0_stability=ac["cd0"]
         )
         assert e_fit is not None, f"{ac['name']}: fit failed on clean synthetic polar"
@@ -496,7 +496,7 @@ class TestCrossCheckAgainstAndersonFormula:
     def test_cd0_fit_within_20_percent_of_stability_run(self, ac):
         """cd0_fit from clean synthetic polar must be within ±20% of true cd0."""
         cls, cds = _make_synthetic_polar(ac["cd0"], ac["e"], ac["ar"], ac["cl_max"])
-        cd0_fit, e_fit, r2 = _fit_parabolic_polar(
+        cd0_fit, e_fit, r2, *_ = _fit_parabolic_polar(
             cls, cds, ar=ac["ar"], cl_max=ac["cl_max"], cd0_stability=ac["cd0"]
         )
         assert cd0_fit is not None, f"{ac['name']}: fit failed on clean synthetic polar"
@@ -549,7 +549,8 @@ class TestRejectionLogging:
             cls, cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03
         )
 
-        assert result == (None, None, None)
+        cd0_r, e_r, r2_r, *_ = result
+        assert (cd0_r, e_r, r2_r) == (None, None, None)
         # Check that a warning was emitted mentioning monotonicity or laminar bubble
         all_msgs = [str(msg) + " ".join(str(a) for a in args) for msg, args in warning_calls]
         assert any(
@@ -558,3 +559,110 @@ class TestRejectionLogging:
         ), (
             f"Expected a warning about non-monotonic polar. Got: {all_msgs}"
         )
+
+
+# ---------------------------------------------------------------------------
+# gh-630: PolarRejection propagation per gate
+# ---------------------------------------------------------------------------
+
+
+def _make_insufficient_points():
+    cl_max = 1.0
+    cl_lo = max(0.10, 0.10 * cl_max)
+    cl_hi = 0.85 * cl_max
+    cls = np.linspace(cl_lo, cl_hi, 5)
+    cds = 0.03 + cls**2 / (math.pi * 0.75 * 7.0)
+    return dict(cl=cls, cd=cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03)
+
+
+def _make_non_monotonic():
+    cl_max = 1.2
+    cl_lo = max(0.10, 0.10 * cl_max)
+    cl_hi = 0.85 * cl_max
+    cls = np.linspace(cl_lo, cl_hi, 25)
+    k = 1.0 / (math.pi * 0.75 * 7.0)
+    cds = 0.03 + k * cls**2
+    # Inject a downward dip mid-window — laminar-bubble signature
+    mid = len(cds) // 2
+    cds[mid] = cds[mid] - 0.005
+    return dict(cl=cls, cd=cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03)
+
+
+def _make_negative_slope():
+    # Use a strictly flat CD array: monotonicity passes (diffs == 0),
+    # but OLS fit on constant CDs gives k == 0, triggering the k <= 0 gate.
+    cl_max = 1.0
+    cls = np.linspace(0.1, 0.8, 20)
+    cds = np.full_like(cls, 0.04)  # k = 0 from OLS → negative_slope_k gate
+    return dict(cl=cls, cd=cds, ar=7.0, cl_max=cl_max, cd0_stability=0.04)
+
+
+def _make_non_positive_cd0():
+    cl_max = 1.0
+    cls = np.linspace(0.1, 0.8, 20)
+    k = 1.0 / (math.pi * 0.75 * 7.0)
+    cds = k * cls**2 - 0.0050  # negative offset ensures cd0_fit < 0
+    return dict(cl=cls, cd=cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03)
+
+
+def _make_unphysical_e_low():
+    cl_max = 1.0
+    k = 1.0 / (math.pi * 0.1 * 7.0)  # e=0.1 → out of range
+    cls = np.linspace(0.1, 0.8, 20)
+    cds = 0.03 + k * cls**2
+    return dict(cl=cls, cd=cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03)
+
+
+def _make_unphysical_e_high():
+    cl_max = 1.0
+    k = 1.0 / (math.pi * 1.5 * 7.0)  # e=1.5 → out of range
+    cls = np.linspace(0.1, 0.8, 20)
+    cds = 0.03 + k * cls**2
+    return dict(cl=cls, cd=cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03)
+
+
+def _make_cd0_stability_mismatch():
+    cl_max = 1.0
+    cls = np.linspace(0.1, 0.8, 20)
+    k = 1.0 / (math.pi * 0.75 * 7.0)
+    cds = 0.10 + k * cls**2  # fitted cd0≈0.10 vs stability 0.03 → 233% deviation
+    return dict(cl=cls, cd=cds, ar=7.0, cl_max=cl_max, cd0_stability=0.03)
+
+
+GATE_CASES = [
+    ("insufficient_points", "sweep", _make_insufficient_points),
+    ("non_monotonic_polar", "data", _make_non_monotonic),
+    ("negative_slope_k", "design", _make_negative_slope),
+    ("non_positive_cd0", "consistency", _make_non_positive_cd0),
+    ("unphysical_e_oswald", "design", _make_unphysical_e_low),
+    ("unphysical_e_oswald", "design", _make_unphysical_e_high),
+    ("cd0_stability_mismatch", "consistency", _make_cd0_stability_mismatch),
+]
+
+
+@pytest.mark.parametrize("expected_gate,expected_category,factory", GATE_CASES)
+def test_fit_parabolic_polar_returns_rejection(expected_gate, expected_category, factory):
+    from app.schemas.polar_by_config import PolarRejection
+
+    inputs = factory()
+    result = _fit_parabolic_polar(**inputs)
+    assert isinstance(result, tuple) and len(result) == 4, (
+        "gh-630: _fit_parabolic_polar must return (cd0, e, r2, rejection)"
+    )
+    cd0_fit, e_fit, r2, rejection = result
+    assert (cd0_fit, e_fit, r2) == (None, None, None)
+    assert isinstance(rejection, PolarRejection)
+    assert rejection.gate == expected_gate
+    assert rejection.category == expected_category
+    assert rejection.hint  # non-empty
+
+
+def test_fit_parabolic_polar_success_carries_no_rejection():
+    from app.schemas.polar_by_config import PolarRejection
+
+    cls, cds = _make_synthetic_polar(0.031, 0.75, 7.32, 1.6)
+    result = _fit_parabolic_polar(cls, cds, ar=7.32, cl_max=1.6, cd0_stability=0.031)
+    assert len(result) == 4
+    cd0_fit, e_fit, r2, rejection = result
+    assert e_fit is not None
+    assert rejection is None
