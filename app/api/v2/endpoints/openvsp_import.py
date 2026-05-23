@@ -17,6 +17,7 @@ Returns:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import tempfile
 from pathlib import Path
@@ -100,12 +101,19 @@ async def import_openvsp(
         )
 
     # Persist to a temp file so the openvsp loader can open it by path.
-    with tempfile.NamedTemporaryFile(suffix=".vsp3", delete=False) as tmp:
-        tmp.write(raw)
-        tmp_path = Path(tmp.name)
+    # Both the temp-file write and the parser itself are blocking — run
+    # them on the thread pool so the event loop stays responsive (S7493).
+    def _write_temp() -> Path:
+        with tempfile.NamedTemporaryFile(suffix=".vsp3", delete=False) as tmp:
+            tmp.write(raw)
+            return Path(tmp.name)
+
+    tmp_path = await asyncio.to_thread(_write_temp)
 
     try:
-        response = openvsp_import_service.import_openvsp_file(db, tmp_path)
+        response = await asyncio.to_thread(
+            openvsp_import_service.import_openvsp_file, db, tmp_path
+        )
     except FileNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -123,7 +131,7 @@ async def import_openvsp(
         ) from exc
     finally:
         try:
-            tmp_path.unlink(missing_ok=True)
+            await asyncio.to_thread(tmp_path.unlink, missing_ok=True)
         except OSError:
             logger.warning("Could not remove temp file %s", tmp_path)
 
