@@ -13,8 +13,10 @@
 # testing
 /coverage
 /.features-gen/
+/e2e/.features-gen*/
 /test-results/
 /playwright-report/
+/playwright-report-polar-warning/
 
 # next.js
 /.next/

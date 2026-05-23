@@ -276,7 +276,10 @@ export function AssumptionsPanel({ aeroplaneId }: Props) {
                   "your polar shape is unphysical" warnings. All three configs
                   are wired; the badge returns null for non-design / null cases. */}
               {group.id === "aerodynamics" && ctx?.polar_by_config && (
-                <div className="flex flex-col gap-1 border-t border-border px-4 py-2">
+                <div
+                  className="flex flex-col gap-1 border-t border-border px-4 py-2"
+                  data-testid="polar-rejection-badges"
+                >
                   <PolarRejectionBadge rejection={ctx.polar_by_config.clean.rejection} />
                   <PolarRejectionBadge rejection={ctx.polar_by_config.takeoff.rejection} />
                   <PolarRejectionBadge rejection={ctx.polar_by_config.landing.rejection} />
