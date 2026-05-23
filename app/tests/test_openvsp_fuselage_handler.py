@@ -240,7 +240,7 @@ class TestRoundedRectToN:
             _rounded_rect_to_n(width=2.0, height=2.0, radius=r) for r in (0.0, 0.25, 0.5, 0.75, 1.0)
         ]
         # decreasing as radius increases
-        for a, b in zip(ns, ns[1:]):
+        for a, b in zip(ns, ns[1:], strict=False):
             assert a >= b
 
 
