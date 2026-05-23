@@ -508,6 +508,20 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         "reynolds": round(re),
         "mac_m": round(mac, 4),
         "s_ref_m2": round(s_ref, 4),
+        # gh-625 Bug B: publish the effective `mass` design assumption to the
+        # context so consumers (mission KPI _kpi_wing_loading,
+        # field_length_service.compute_field_lengths_for_aeroplane introduced
+        # in gh-548, _kpi_field_friendliness) can find it without falling back
+        # to the AeroplaneModel.total_mass_kg column that is None on most
+        # aeroplanes.
+        "mass_kg": round(mass, 3) if mass is not None and mass > 0 else None,
+        # gh-625 Bug A: publish the effective `g_limit` as the design-limit
+        # peak load factor so _kpi_maneuver can compute. A physics-aware
+        # refinement reading the V-n curve's gust-augmented peak can replace
+        # this later; for now the design-limit value is the correct source.
+        "flight_envelope_n_max": (
+            g_limit_effective if g_limit_effective is not None and g_limit_effective > 0 else None
+        ),
         # b_ref_m — main-wing span (gh-491 sub-task: was set on asb_airplane but not cached)
         "b_ref_m": round(float(main_wing.span()), 4) if main_wing is not None else None,
         "aspect_ratio": round(aspect_ratio, 2) if aspect_ratio is not None else None,

@@ -419,6 +419,30 @@ class TestCachedContextIntegration:
         assert isinstance(ctx["e_oswald"], float)
         assert ctx.get("e_oswald_fallback_used") is False
 
+    # gh-625: recompute must publish mass_kg and flight_envelope_n_max into the
+    # cached context so the mission KPI consumers (_kpi_wing_loading,
+    # _kpi_field_friendliness, _kpi_maneuver) can find them. Wiring gaps left
+    # the Ist polygon collapsed on every aeroplane whose mass lives in the
+    # design-assumption layer rather than the AeroplaneModel.total_mass_kg
+    # column.
+    def test_recompute_caches_mass_kg_into_context(self, client_and_db):
+        """gh-625: context['mass_kg'] is the effective `mass` assumption."""
+        ctx = self._run_recompute_with_fake_polar(client_and_db, CESSNA_172, fit_succeeds=True)
+        assert ctx is not None
+        assert "mass_kg" in ctx, "gh-625 Bug B: recompute must cache mass_kg"
+        assert isinstance(ctx["mass_kg"], (int, float))
+        assert ctx["mass_kg"] > 0, "mass_kg should equal the positive `mass` assumption"
+
+    def test_recompute_caches_flight_envelope_n_max(self, client_and_db):
+        """gh-625: context['flight_envelope_n_max'] is the effective `g_limit`."""
+        ctx = self._run_recompute_with_fake_polar(client_and_db, CESSNA_172, fit_succeeds=True)
+        assert ctx is not None
+        assert "flight_envelope_n_max" in ctx, (
+            "gh-625 Bug A: recompute must cache flight_envelope_n_max"
+        )
+        assert isinstance(ctx["flight_envelope_n_max"], (int, float))
+        assert ctx["flight_envelope_n_max"] > 0
+
     def test_fallback_marked_when_fit_fails(self, client_and_db):
         """When the polar fit rejects, e_oswald_fallback_used=True in context."""
         ctx = self._run_recompute_with_fake_polar(client_and_db, CESSNA_172, fit_succeeds=False)
