@@ -360,9 +360,12 @@ describe("Info Chip Row", () => {
     expect(bRefChip.textContent).toMatch(/=\s*–/);
   });
 
-  // gh-575: refresh button invokes mutate (SWR revalidation) on click.
-  it("renders a refresh button that calls mutate when clicked", async () => {
-    const mutate = vi.fn();
+  // gh-687: refresh button must force a recompute (POST /recompute),
+  // not just re-fetch the cached context. Previously it only called
+  // mutate() on the SWR key, which made the button feel like a no-op
+  // because the backend cached context never changed.
+  it("renders a force-recompute button that POSTs to /recompute and revalidates", async () => {
+    const mutate = vi.fn().mockResolvedValue(undefined);
     (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
       data: { v_cruise_mps: 18.0, reynolds: 230000, mac_m: 0.21, x_np_m: 0.085, target_static_margin: 0.12, cg_agg_m: 0.092 },
       isLoading: false,
@@ -370,19 +373,36 @@ describe("Info Chip Row", () => {
       mutate,
     });
 
-    const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
-    render(<InfoChipRow aeroplaneId="42" cgAero={0.073} />);
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 202 }));
 
-    const button = screen.getByRole("button", { name: /refresh computation context/i });
-    expect(button).toBeInTheDocument();
-    expect(button).not.toBeDisabled();
+    try {
+      const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
+      render(<InfoChipRow aeroplaneId="42" cgAero={0.073} />);
 
-    fireEvent.click(button);
-    expect(mutate).toHaveBeenCalledTimes(1);
+      const button = screen.getByRole("button", { name: /force recompute/i });
+      expect(button).toBeInTheDocument();
+      expect(button).not.toBeDisabled();
+
+      fireEvent.click(button);
+      // Wait for the awaited fetch + mutate chain to settle.
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(String(url)).toMatch(/\/aeroplanes\/42\/recompute$/);
+      expect(init?.method).toBe("POST");
+      expect(mutate).toHaveBeenCalledTimes(1);
+    } finally {
+      fetchMock.mockRestore();
+    }
   });
 
-  // gh-575: refresh button is disabled while a recompute is in flight.
-  it("disables refresh button while isRecomputing is true", async () => {
+  // gh-575/gh-687: button is disabled (and does not POST) while a
+  // recompute is already in flight.
+  it("disables force-recompute button while isRecomputing is true", async () => {
     const mutate = vi.fn();
     (useComputationContext as ReturnType<typeof vi.fn>).mockReturnValue({
       data: { v_cruise_mps: 18.0, reynolds: 230000, mac_m: 0.21, x_np_m: 0.085, target_static_margin: 0.12, cg_agg_m: 0.092 },
@@ -391,14 +411,23 @@ describe("Info Chip Row", () => {
       mutate,
     });
 
-    const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
-    render(<InfoChipRow aeroplaneId="42" cgAero={0.073} isRecomputing />);
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(null, { status: 202 }),
+    );
 
-    const button = screen.getByRole("button", { name: /refresh computation context/i });
-    expect(button).toBeDisabled();
+    try {
+      const { InfoChipRow } = await import("@/components/workbench/InfoChipRow");
+      render(<InfoChipRow aeroplaneId="42" cgAero={0.073} isRecomputing />);
 
-    fireEvent.click(button);
-    expect(mutate).not.toHaveBeenCalled();
+      const button = screen.getByRole("button", { name: /force recompute/i });
+      expect(button).toBeDisabled();
+
+      fireEvent.click(button);
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(mutate).not.toHaveBeenCalled();
+    } finally {
+      fetchMock.mockRestore();
+    }
   });
 
   // gh-579: SM chip must render for tailless aircraft.
