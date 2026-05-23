@@ -102,7 +102,7 @@ def _enter_patches_with_rejection():
         stack.enter_context(
             patch(
                 "app.services.assumption_compute_service._fine_sweep_cl_max",
-                return_value=(1.35, cl_array, cd_array, v_array),
+                return_value=(1.35, cl_array, cd_array, v_array, np.zeros_like(cl_array)),
             )
         )
         stack.enter_context(

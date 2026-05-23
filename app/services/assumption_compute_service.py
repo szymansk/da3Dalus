@@ -91,11 +91,12 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     try:
         x_np, mac, cd0, s_ref = _stability_run_at_cruise(asb_airplane, v_cruise)
         stall_alpha = _coarse_alpha_sweep(asb_airplane, v_cruise, config)
-        # _fine_sweep_cl_max returns (cl_max, cl_array, cd_array, v_array) so that
-        # the parabolic polar fit (gh-486) and Re-table builder (gh-493) can
-        # consume the raw sweep data without extra AeroBuildup invocations.
+        # _fine_sweep_cl_max returns (cl_max, cl_arr, cd_arr, v_arr, cdi_arr).
+        # gh-486 parabolic fit + gh-493 Re-table builder consume cl/cd/v.
+        # gh-636 Oswald extraction consumes cdi (CDi = D_induced / (q·S_ref)
+        # collected per (V, α) sample inside the sweep — zero extra AB calls).
         fine_result = _fine_sweep_cl_max(asb_airplane, stall_alpha, v_cruise, v_max, config)
-        cl_max, sweep_cl_arr, sweep_cd_arr, sweep_v_arr = fine_result
+        cl_max, sweep_cl_arr, sweep_cd_arr, sweep_v_arr, sweep_cdi_arr = fine_result
     except Exception:
         logger.exception(
             "AeroBuildup failed during recompute for aircraft %s — aborting", aeroplane_uuid
@@ -146,8 +147,32 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         cl_max=cl_max_effective_for_fit,
         cd0_stability=cd0,
     )
-    e_oswald_fallback = e_oswald_fit is None
-    e_oswald_effective = e_oswald_fit if e_oswald_fit is not None else 0.8
+    # gh-636: derive (L/D)max + e_oswald directly from the AeroBuildup sweep
+    # — no parabolic-fit dependency for e. The fit still gives us cd0; e is
+    # now sourced from AeroBuildup's D_induced output at the (L/D)max point.
+    ld_max_clean, cl_at_ld_max_clean, ld_max_idx_clean = _ld_max_from_sweep(
+        np.asarray(sweep_cl_arr, dtype=float),
+        np.asarray(sweep_cd_arr, dtype=float),
+    )
+    e_oswald_ab = _e_oswald_from_sweep(
+        np.asarray(sweep_cl_arr, dtype=float),
+        np.asarray(sweep_cdi_arr, dtype=float),
+        aspect_ratio,
+        ld_max_idx_clean,
+    )
+    # Provenance chain: prefer AeroBuildup-Trefftz; fall back to the parabolic
+    # fit's e if AB-path didn't yield a sane value; finally the 0.8 default.
+    if e_oswald_ab is not None:
+        e_oswald_final: float | None = e_oswald_ab
+        e_oswald_provenance_clean = "aerobuildup_trefftz"
+    elif e_oswald_fit is not None:
+        e_oswald_final = e_oswald_fit
+        e_oswald_provenance_clean = "fit"
+    else:
+        e_oswald_final = None
+        e_oswald_provenance_clean = "fallback"
+    e_oswald_fallback = e_oswald_final is None
+    e_oswald_effective = e_oswald_final if e_oswald_final is not None else 0.8
     # -----------------------------------------------------------------------
 
     # --- gh-526 / epic gh-525 C1: per-configuration parabolic polar -------
@@ -156,13 +181,16 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     # the OPG used historically (audit §5.5).
     polar_clean = ParabolicPolar(
         cd0=round(_cd0_fit, 5) if _cd0_fit is not None else None,
-        e_oswald=round(e_oswald_fit, 4) if e_oswald_fit is not None else None,
+        e_oswald=round(e_oswald_final, 4) if e_oswald_final is not None else None,
         cl_max=round(cl_max, 4),
         e_oswald_r2=round(e_r2, 4) if e_r2 is not None else None,
         e_oswald_quality=_classify_polar_quality(e_r2) if e_r2 is not None else "unknown",
         flap_deflection_deg=0.0,
         provenance="aerobuildup",
         rejection=polar_rejection,
+        ld_max=round(ld_max_clean, 2) if ld_max_clean is not None else None,
+        cl_at_ld_max=round(cl_at_ld_max_clean, 3) if cl_at_ld_max_clean is not None else None,
+        e_oswald_provenance=e_oswald_provenance_clean,
     )
 
     ted_max = _extract_flap_ted_max(aircraft)
@@ -474,7 +502,10 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         # Parabolic polar fit results (gh-486)
         # ctx["cd0"] scalar = stability-run cd0 (backward-compat key for gh-486 consumers)
         "cd0": round(cd0, 5),
-        "e_oswald": round(e_oswald_fit, 4) if e_oswald_fit is not None else None,
+        # gh-636: top-level e_oswald uses the same provenance chain as
+        # polar_by_config[clean].e_oswald — i.e. AB-Trefftz preferred, then
+        # parabolic-fit, then None. Matches `e_oswald_fallback_used` semantics.
+        "e_oswald": round(e_oswald_final, 4) if e_oswald_final is not None else None,
         "e_oswald_r2": round(e_r2, 4) if e_r2 is not None else None,
         "e_oswald_quality": _classify_polar_quality(e_r2) if e_r2 is not None else "unknown",
         "e_oswald_fallback_used": e_oswald_fallback,
@@ -551,7 +582,7 @@ def _run_polar_for_deflection(
         )
     deflected = asb_airplane.with_control_deflections({flap_name: flap_deflection_deg})
     stall_alpha = _coarse_alpha_sweep(deflected, v_cruise, config)
-    cl_max, cl_arr, cd_arr, _v_arr = _fine_sweep_cl_max(
+    cl_max, cl_arr, cd_arr, _v_arr, cdi_arr = _fine_sweep_cl_max(
         deflected, stall_alpha, v_cruise, v_max, config
     )
     _cd0_fit, e_oswald_fit, e_r2, polar_rejection = _fit_parabolic_polar(
@@ -561,15 +592,38 @@ def _run_polar_for_deflection(
         cl_max=cl_max_effective_for_fit if cl_max_effective_for_fit else cl_max,
         cd0_stability=cd0_stability,
     )
+    # gh-636: empirical (L/D)max + AB-Trefftz e for this configuration.
+    ld_max_cfg, cl_at_ld_max_cfg, ld_max_idx_cfg = _ld_max_from_sweep(
+        np.asarray(cl_arr, dtype=float),
+        np.asarray(cd_arr, dtype=float),
+    )
+    e_oswald_ab_cfg = _e_oswald_from_sweep(
+        np.asarray(cl_arr, dtype=float),
+        np.asarray(cdi_arr, dtype=float),
+        aspect_ratio,
+        ld_max_idx_cfg,
+    )
+    if e_oswald_ab_cfg is not None:
+        e_final: float | None = e_oswald_ab_cfg
+        provenance_e = "aerobuildup_trefftz"
+    elif e_oswald_fit is not None:
+        e_final = e_oswald_fit
+        provenance_e = "fit"
+    else:
+        e_final = None
+        provenance_e = "fallback"
     return ParabolicPolar(
         cd0=round(_cd0_fit, 5) if _cd0_fit is not None else None,
-        e_oswald=round(e_oswald_fit, 4) if e_oswald_fit is not None else None,
+        e_oswald=round(e_final, 4) if e_final is not None else None,
         cl_max=round(float(cl_max), 4),
         e_oswald_r2=round(e_r2, 4) if e_r2 is not None else None,
         e_oswald_quality=_classify_polar_quality(e_r2) if e_r2 is not None else "unknown",
         flap_deflection_deg=float(flap_deflection_deg),
         provenance="aerobuildup",
         rejection=polar_rejection,
+        ld_max=round(ld_max_cfg, 2) if ld_max_cfg is not None else None,
+        cl_at_ld_max=round(cl_at_ld_max_cfg, 3) if cl_at_ld_max_cfg is not None else None,
+        e_oswald_provenance=provenance_e,
     )
 
 
@@ -777,16 +831,17 @@ def _fine_sweep_cl_max(
     v_cruise: float,
     v_max: float,
     config: AircraftComputationConfigModel,
-) -> tuple[float, np.ndarray, np.ndarray, np.ndarray]:
-    """Returns (CL_max, cl_array, cd_array, v_array) from a fine alpha × velocity sweep.
+) -> tuple[float, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Returns (CL_max, cl_array, cd_array, v_array, cdi_array) from a fine α × V sweep.
 
-    The returned CL, CD, and V arrays span the full swept range.  CL and CD are
-    used by the parabolic polar fitter (gh-486) to derive the Oswald efficiency
-    factor.  V is additionally used by the Re-table builder (gh-493) to bin
-    samples by velocity band.
+    All returned arrays have the same length (one entry per (V, α) sample).
 
-    Note: the v_array is the velocity at which each (CL, CD) sample was taken.
-    It has the same length as cl_array and cd_array.
+    - cl_array / cd_array drive the gh-486 parabolic polar fit and the gh-493
+      Re-table builder.
+    - cdi_array (gh-636) is the AeroBuildup-internal induced-drag coefficient
+      at each sample. It lets `recompute_assumptions` extract Oswald e directly
+      via ``e = CL² / (π·AR·CDi)`` at the (L/D)max point, without re-fitting a
+      parabola. Costs zero extra AeroBuildup calls.
     """
     import aerosandbox as asb
 
@@ -798,10 +853,12 @@ def _fine_sweep_cl_max(
     velocities = np.linspace(v_stall_approx, v_max, config.fine_velocity_count)
 
     xyz_ref = list(asb_airplane.xyz_ref) if asb_airplane.xyz_ref is not None else [0.0, 0.0, 0.0]
+    s_ref = float(asb_airplane.s_ref)
     cl_max = -float("inf")
     cl_list: list[float] = []
     cd_list: list[float] = []
     v_list: list[float] = []
+    cdi_list: list[float] = []
     for v in velocities:
         for a in alphas:
             op = asb.OperatingPoint(velocity=float(v), alpha=float(a))
@@ -809,9 +866,18 @@ def _fine_sweep_cl_max(
             r = abu.run()
             cl = _extract_scalar(r, "CL", default=0.0)
             cd = _extract_scalar(r, "CD", default=0.0)
+            # gh-636: D_induced is exposed by AeroBuildup per op-point.
+            # CDi = D_induced / (q · S_ref). NaN/missing → fall back to NaN so
+            # the consumer can detect and skip these entries.
+            d_induced = _extract_scalar(r, "D_induced", default=float("nan"))
+            q = 0.5 * 1.225 * float(v) ** 2  # ISA sea-level rho; consistent with op
+            cdi = (
+                d_induced / (q * s_ref) if (s_ref > 0 and np.isfinite(d_induced)) else float("nan")
+            )
             cl_list.append(cl)
             cd_list.append(cd)
             v_list.append(float(v))
+            cdi_list.append(cdi)
             if cl > cl_max:
                 cl_max = cl
     return (
@@ -819,6 +885,7 @@ def _fine_sweep_cl_max(
         np.asarray(cl_list, dtype=float),
         np.asarray(cd_list, dtype=float),
         np.asarray(v_list, dtype=float),
+        np.asarray(cdi_list, dtype=float),
     )
 
 
@@ -943,6 +1010,54 @@ def _build_rejection(
         threshold=threshold,
         hint=hint,
     )
+
+
+def _ld_max_from_sweep(
+    cl_arr: np.ndarray, cd_arr: np.ndarray
+) -> tuple[float | None, float | None, int | None]:
+    """Empirical (L/D)max and the CL at which it occurs (gh-636).
+
+    Independent of any fit. Returns (ld_max, cl_at_ld_max, index) on success,
+    or (None, None, None) if the sweep contains no usable point (all-NaN /
+    non-positive CD).
+    """
+    # mask of valid points: finite CL/CD with CD > 0 and CL > 0 (positive lift).
+    mask = np.isfinite(cl_arr) & np.isfinite(cd_arr) & (cd_arr > 0.0) & (cl_arr > 0.0)
+    if not mask.any():
+        return None, None, None
+    ld = np.full_like(cl_arr, -np.inf, dtype=float)
+    ld[mask] = cl_arr[mask] / cd_arr[mask]
+    i = int(np.argmax(ld))
+    if not np.isfinite(ld[i]):
+        return None, None, None
+    return float(ld[i]), float(cl_arr[i]), i
+
+
+def _e_oswald_from_sweep(
+    cl_arr: np.ndarray,
+    cdi_arr: np.ndarray,
+    ar: float | None,
+    ld_max_index: int | None,
+) -> float | None:
+    """Oswald factor e from AeroBuildup's per-sample induced drag (gh-636).
+
+    Uses ``e = CL² / (π · AR · CDi)`` at the (L/D)max sample. AeroBuildup
+    exposes ``D_induced`` per op-point, so this is direct — no parabolic fit
+    needed. Falls back to None when inputs are missing/non-physical.
+    """
+    if ld_max_index is None or ar is None or not np.isfinite(ar) or ar <= 0:
+        return None
+    cl = cl_arr[ld_max_index]
+    cdi = cdi_arr[ld_max_index]
+    if not (np.isfinite(cl) and np.isfinite(cdi) and cdi > 0 and cl > 0):
+        return None
+    e = float(cl**2 / (np.pi * ar * cdi))
+    # Sanity clip: a meaningful e is in (0, ~1.05] (allow tiny VLM-Trefftz
+    # overshoot above 1.0 for near-elliptical wings). Reject pathological
+    # values rather than push them downstream.
+    if not (0.0 < e <= 1.10):
+        return None
+    return e
 
 
 def _fit_parabolic_polar(
