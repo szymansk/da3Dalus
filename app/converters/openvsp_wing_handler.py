@@ -31,7 +31,7 @@ from __future__ import annotations
 import math
 from types import ModuleType
 
-from app.converters import openvsp_importer
+from app.converters import openvsp_airfoil, openvsp_importer
 from app.converters.openvsp_importer import AeroplaneSchema, ImportContext
 from app.schemas.aeroplaneschema import AsbWingSchema, WingXSecSchema
 
@@ -169,12 +169,29 @@ def _handle_wing(
     n_sec = n_xsec - 1
     symmetric = _read_symmetric(vsp, gid)
 
+    def _airfoil_for(xs_index: int) -> str:
+        """Resolve airfoil via openvsp_airfoil; fall back to placeholder on error."""
+        try:
+            xs_id = vsp.GetXSec(xsurf, xs_index)
+        except Exception:
+            return _airfoil_placeholder()
+        try:
+            return openvsp_airfoil.import_airfoil_from_xsec(
+                xs_id=xs_id,
+                geom_id=gid,
+                xsurf=xsurf,
+                xs_index=xs_index,
+                ctx=ctx,
+                vsp=vsp,
+            )
+        except Exception:
+            return _airfoil_placeholder()
+
     # Build the xsec list. Section index i (1..n_sec) describes the
     # segment OUTBOARD of XSec[i-1] and terminating at XSec[i].
     x_secs: list[WingXSecSchema] = []
 
-    # Root xsec at (0, 0, 0) with chord = section_1.Root_Chord and
-    # airfoil placeholder (real airfoil import is #642).
+    # Root xsec at (0, 0, 0) with chord = section_1.Root_Chord.
     root_chord = _read_section_parm(vsp, gid, 1, "Root_Chord")
     if root_chord <= 0:
         ctx.add_warning(
@@ -190,7 +207,7 @@ def _handle_wing(
             xyz_le=[0.0, 0.0, 0.0],
             chord=root_chord,
             twist=0.0,
-            airfoil=_airfoil_placeholder(),
+            airfoil=_airfoil_for(0),
             x_sec_type="root",
         )
     )
@@ -241,7 +258,7 @@ def _handle_wing(
                 xyz_le=[cum_x, cum_y, cum_z],
                 chord=tip_chord if tip_chord > 0 else prev_chord,
                 twist=twist,
-                airfoil=_airfoil_placeholder(),
+                airfoil=_airfoil_for(i),
                 x_sec_type=None if is_last else "segment",
             )
         )
@@ -269,6 +286,8 @@ def _handle_wing(
 
         aeroplane.wings = OrderedDict()
     aeroplane.wings[name] = wing
+    # Record gid→name so SS_CONTROL post-pass (gh-644) can find this wing.
+    ctx.wing_geom_ids[gid] = name
 
 
 # ---------------------------------------------------------------------------

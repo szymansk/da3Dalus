@@ -104,6 +104,10 @@ class ImportContext:
     weight_items: list[WeightItemWrite] = field(default_factory=list)
     source_length_unit: Optional[int] = None
     source_scale_to_meters: Optional[float] = None
+    # Map of WING geom-id → schema name. Populated by the WING handler
+    # and consumed by post-passes that need to walk wings (e.g.
+    # SS_CONTROL → TrailingEdgeDevice in gh-644).
+    wing_geom_ids: dict[str, str] = field(default_factory=dict)
 
     def add_warning(
         self,
