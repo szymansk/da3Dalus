@@ -164,12 +164,25 @@ class ImportResult:
 # so handler bodies remain testable with a fake module.
 
 HandlerFn = Callable[[str, str, AeroplaneSchema, ImportContext, ModuleType], None]
+PostPassFn = Callable[[AeroplaneSchema, ImportContext, ModuleType], None]
 _HANDLERS: dict[str, HandlerFn] = {}
+_POST_PASSES: list[PostPassFn] = []
 
 
 def register_handler(geom_type: str, handler: HandlerFn) -> None:
     """Register a handler for a VSP geom type (``"WING"``, ``"FUSELAGE"``, ...)."""
     _HANDLERS[geom_type] = handler
+
+
+def register_post_pass(fn: PostPassFn) -> None:
+    """Register a post-pass callable that runs once after the dispatch loop.
+
+    Use for cross-component work like vehicle-CG resolution (#645).
+    Post-passes run in registration order and receive the populated
+    AeroplaneSchema, the ImportContext, and the live vsp module.
+    """
+    if fn not in _POST_PASSES:
+        _POST_PASSES.append(fn)
 
 
 # Map of unsupported geom types → frontend-facing reason.
@@ -308,6 +321,18 @@ def import_vsp3(path: Path) -> ImportResult:
                 severity="warning",
             )
             ctx.mark_lossy(gid)
+
+    # Post-passes (vehicle-CG, etc.) run once on the populated aeroplane.
+    for post_fn in _POST_PASSES:
+        try:
+            post_fn(aeroplane, ctx, vsp)
+        except Exception as exc:  # pragma: no cover - defensive
+            ctx.add_warning(
+                component_type="POST_PASS",
+                component_name=post_fn.__name__,
+                reason=f"Post-pass {post_fn.__name__} failed: {exc}",
+                severity="warning",
+            )
 
     return ImportResult(
         aeroplane=aeroplane,
