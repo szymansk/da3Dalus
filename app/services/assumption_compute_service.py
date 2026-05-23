@@ -459,6 +459,17 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
             )
             v_max_effective = v_max_computed if v_max_computed is not None else v_max
 
+    # gh-683: clamp V_md / V_min_sink to V_stall. The closed-form CL formulas
+    # (CL_opt = √(CD0·π·AR·e), CL_mp = √(3·π·AR·e·CD0)) assume the polar is
+    # parabolic up to the optimum CL — for high-AR / draggy polars the optimum
+    # CL exceeds CL_max and the formula back-solves a sub-stall V. That speed
+    # is physically unreachable. Clamping to V_stall surfaces the actual
+    # operating point (stall) instead of a fictitious sub-stall point.
+    if v_md is not None and v_stall is not None:
+        v_md = max(v_md, v_stall)
+    if v_min_sink is not None and v_stall is not None:
+        v_min_sink = max(v_min_sink, v_stall)
+
     # If the user hasn't set a flight profile, suggest V_md as the
     # cruise speed (best L/D = best range for prop aircraft). Once the
     # user creates a profile and sets cruise_speed_mps, we respect it.

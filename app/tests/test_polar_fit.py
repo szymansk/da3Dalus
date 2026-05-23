@@ -700,6 +700,51 @@ class TestCachedContextIntegration:
             f"({v_ms_with_fitted_e:.2f}) than fallback e=0.8 ({v_ms_with_fallback_e:.2f})"
         )
 
+    # gh-683: V_md and V_min_sink must never come back below V_stall — the
+    # closed-form CL formulas (CL_opt = √(CD0·π·AR·e), CL_mp = √(3·π·AR·e·CD0))
+    # can exceed CL_max for high-AR / draggy polars, producing sub-stall V's.
+    # Olek (2 kg, AR≈19) used to show V_stall=13.6 / V_md=13.2 / V_min_sink=10.0
+    # — fixed by clamping to V_stall at the recompute call site.
+
+    def test_v_md_clamped_to_v_stall(self, client_and_db):
+        """gh-683: V_md must be ≥ V_stall in the cached context."""
+        ctx = self._run_recompute_with_fake_polar(client_and_db, CESSNA_172, fit_succeeds=True)
+        v_stall = ctx.get("v_stall_mps")
+        v_md = ctx.get("v_md_mps")
+        assert v_stall is not None and v_md is not None
+        assert v_md >= v_stall, (
+            f"gh-683: V_md ({v_md}) must not be below V_stall ({v_stall}); "
+            "closed-form CL_opt > CL_max requires clamping at the call site."
+        )
+
+    def test_v_min_sink_clamped_to_v_stall(self, client_and_db):
+        """gh-683: V_min_sink must be ≥ V_stall in the cached context."""
+        ctx = self._run_recompute_with_fake_polar(client_and_db, CESSNA_172, fit_succeeds=True)
+        v_stall = ctx.get("v_stall_mps")
+        v_min_sink = ctx.get("v_min_sink_mps")
+        assert v_stall is not None and v_min_sink is not None
+        assert v_min_sink >= v_stall, (
+            f"gh-683: V_min_sink ({v_min_sink}) must not be below V_stall ({v_stall}); "
+            "closed-form CL_mp > CL_max requires clamping at the call site."
+        )
+
+    def test_v_min_sink_clamp_fires_for_high_ar_glider(self, client_and_db):
+        """gh-683: ASW-27 (AR=28.5, CL_max=1.3) — CL_mp > CL_max, clamp must fire.
+
+        Direct math: CL_mp = √(3·π·e·AR·CD0) = √(3·π·0.80·28.5·0.011) ≈ 1.537
+        which exceeds CL_max=1.3 — the formula predicts a sub-stall V_min_sink.
+        Without the clamp the cached value violates V_min_sink ≥ V_stall.
+        """
+        ctx = self._run_recompute_with_fake_polar(client_and_db, ASW_27, fit_succeeds=True)
+        v_stall = ctx.get("v_stall_mps")
+        v_min_sink = ctx.get("v_min_sink_mps")
+        assert v_stall is not None and v_min_sink is not None
+        # The clamp must fire for this fixture — without it, v_min_sink < v_stall.
+        assert v_min_sink == pytest.approx(v_stall, abs=0.05), (
+            f"gh-683: V_min_sink ({v_min_sink}) should be clamped to V_stall ({v_stall}) "
+            "for the ASW-27 fixture where CL_mp > CL_max."
+        )
+
 
 # ---------------------------------------------------------------------------
 # Cross-check against Anderson formula (all three reference aircraft)
