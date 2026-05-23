@@ -53,6 +53,37 @@ class TestPolarRejection:
                 hint="-",
             )
 
+    def test_rejects_non_canonical_gate_category_pair(self):
+        """gh-630 type-hardening: gate=design but category=sweep must raise."""
+        with pytest.raises(ValidationError):
+            PolarRejection(
+                gate="negative_slope_k",   # canonical: design
+                category="sweep",           # nonsensical pair
+                fitted_value=-0.001,
+                threshold="k > 0",
+                hint="hint",
+            )
+
+    def test_accepts_all_six_canonical_pairs(self):
+        """All 6 canonical (gate, category) pairs from _GATE_CATEGORY validate."""
+        canonical = [
+            ("insufficient_points", "sweep"),
+            ("non_monotonic_polar", "data"),
+            ("negative_slope_k", "design"),
+            ("non_positive_cd0", "consistency"),
+            ("unphysical_e_oswald", "design"),
+            ("cd0_stability_mismatch", "consistency"),
+        ]
+        for gate, category in canonical:
+            r = PolarRejection(
+                gate=gate,
+                category=category,
+                fitted_value=None,
+                threshold="-",
+                hint="-",
+            )
+            assert r.gate == gate and r.category == category
+
     def test_serialises_to_dict(self):
         r = PolarRejection(
             gate="unphysical_e_oswald",

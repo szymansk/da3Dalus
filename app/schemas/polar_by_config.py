@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 ConfigName = Literal["clean", "takeoff", "landing"]
 """Configuration keys for `polar_by_config`."""
@@ -51,6 +51,20 @@ RejectionCategory = Literal["sweep", "data", "design", "consistency"]
 """
 
 
+_GATE_CATEGORY: dict[RejectionGate, RejectionCategory] = {
+    "insufficient_points": "sweep",
+    "non_monotonic_polar": "data",
+    "negative_slope_k": "design",
+    "non_positive_cd0": "consistency",
+    "unphysical_e_oswald": "design",
+    "cd0_stability_mismatch": "consistency",
+}
+"""Canonical gate→category mapping (gh-630). Enforced by the
+`PolarRejection` model validator to prevent nonsensical pairs like
+internal-only gates marked `design` (which would surface to users) or
+design gates marked `sweep` (which would suppress real warnings)."""
+
+
 class PolarRejection(BaseModel):
     """Why `_fit_parabolic_polar` could not produce a fit (gh-630).
 
@@ -65,6 +79,16 @@ class PolarRejection(BaseModel):
     )
     threshold: str = Field(..., description="Threshold expression the value failed against")
     hint: str = Field(..., description="Human-readable explanation; shown to user when design")
+
+    @model_validator(mode="after")
+    def _check_canonical_gate_category(self) -> "PolarRejection":
+        expected = _GATE_CATEGORY[self.gate]
+        if self.category != expected:
+            raise ValueError(
+                f"non-canonical gate/category pair: gate={self.gate!r} requires "
+                f"category={expected!r}, got {self.category!r}"
+            )
+        return self
 
 
 class ParabolicPolar(BaseModel):
