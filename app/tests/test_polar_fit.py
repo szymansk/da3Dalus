@@ -292,13 +292,32 @@ class TestCachedContextIntegration:
     """Verify that recompute_assumptions populates e_oswald context keys."""
 
     def _run_recompute_with_fake_polar(
-        self, client_and_db, ac: dict, fit_succeeds: bool = True
+        self,
+        client_and_db,
+        ac: dict,
+        fit_succeeds: bool = True,
+        fake_rejection_kwargs: dict | None = None,
     ):
         """Helper: run recompute_assumptions with a fake alpha sweep that
-        produces a clean synthetic polar for the given reference aircraft."""
+        produces a clean synthetic polar for the given reference aircraft.
+
+        Parameters
+        ----------
+        fit_succeeds:
+            When True, sweep data yields a successful fit.
+            When False AND fake_rejection_kwargs is None, sweep data has only
+            3 points so the real fit naturally fails with (None, None, None, None).
+            When False AND fake_rejection_kwargs is provided, _fit_parabolic_polar
+            is mocked directly to return (None, None, None, PolarRejection(...)).
+        fake_rejection_kwargs:
+            Optional dict of kwargs for PolarRejection. Only honoured when
+            fit_succeeds=False. When provided, _fit_parabolic_polar is patched
+            to return the desired 4-tuple with the constructed rejection object.
+        """
         from types import SimpleNamespace
         from unittest.mock import patch
 
+        from app.schemas.polar_by_config import PolarRejection
         from app.services.assumption_compute_service import recompute_assumptions
         from app.services.design_assumptions_service import seed_defaults
         from app.tests.conftest import make_aeroplane
@@ -330,18 +349,22 @@ class TestCachedContextIntegration:
         if fit_succeeds:
             cls, cds = _make_synthetic_polar(ac["cd0"], ac["e"], ac["ar"], ac["cl_max"])
         else:
-            # Degenerate: only 3 points — fit will fail
+            # Degenerate: only 3 points — fit will fail (< 6 points in window)
             cls = np.array([0.1, 0.2, 0.3])
             cds = np.array([0.03, 0.035, 0.04])
 
-        with (
+        mac_val = float(fake_wing.mean_aerodynamic_chord())
+        v_arr = np.linspace(12.0, 28.0, len(cls))
+
+        # Common patch targets used regardless of fit-mock strategy.
+        common_patches = [
             patch(
                 "app.services.assumption_compute_service._build_asb_airplane",
                 return_value=fake_airplane,
             ),
             patch(
                 "app.services.assumption_compute_service._stability_run_at_cruise",
-                return_value=(0.085, float(fake_wing.mean_aerodynamic_chord()), ac["cd0"], ac["s_ref_m2"]),
+                return_value=(0.085, mac_val, ac["cd0"], ac["s_ref_m2"]),
             ),
             patch(
                 "app.services.assumption_compute_service._coarse_alpha_sweep",
@@ -350,7 +373,7 @@ class TestCachedContextIntegration:
             patch(
                 "app.services.assumption_compute_service._fine_sweep_cl_max",
                 # gh-493: now returns 4-tuple (cl_max, cl_arr, cd_arr, v_arr)
-                return_value=(ac["cl_max"], cls, cds, np.linspace(12.0, 28.0, len(cls))),
+                return_value=(ac["cl_max"], cls, cds, v_arr),
             ),
             patch(
                 "app.services.assumption_compute_service._extract_cl_alpha_from_linear_sweep",
@@ -360,10 +383,37 @@ class TestCachedContextIntegration:
                 "app.services.assumption_compute_service._load_flight_profile_speeds",
                 return_value=(18.0, 28.0, True),
             ),
+        ]
+
+        # When fake_rejection_kwargs is provided, mock _fit_parabolic_polar
+        # to return the requested rejection object directly.
+        if not fit_succeeds and fake_rejection_kwargs is not None:
+            fake_rejection = PolarRejection(**fake_rejection_kwargs)
+            common_patches.append(
+                patch(
+                    "app.services.assumption_compute_service._fit_parabolic_polar",
+                    return_value=(None, None, None, fake_rejection),
+                )
+            )
+
+        with (
+            common_patches[0],
+            common_patches[1],
+            common_patches[2],
+            common_patches[3],
+            common_patches[4],
+            common_patches[5],
         ):
-            with SessionLocal() as db:
-                recompute_assumptions(db, aeroplane_uuid)
-                db.commit()
+            # Activate the optional fit patch if it was added.
+            if len(common_patches) == 7:
+                with common_patches[6]:
+                    with SessionLocal() as db:
+                        recompute_assumptions(db, aeroplane_uuid)
+                        db.commit()
+            else:
+                with SessionLocal() as db:
+                    recompute_assumptions(db, aeroplane_uuid)
+                    db.commit()
 
         with SessionLocal() as db:
             a = db.query(AeroplaneModel).filter_by(id=aeroplane_id).first()
@@ -384,6 +434,28 @@ class TestCachedContextIntegration:
         assert ctx is not None
         assert "e_oswald_fallback_used" in ctx
         assert ctx["e_oswald_fallback_used"] is True
+
+    def test_polar_clean_rejection_propagates_to_context(self, client_and_db):
+        """When the clean polar fit is rejected with a design gate, the rejection
+        is attached to polar_by_config['clean'] in the cached context."""
+        ctx = self._run_recompute_with_fake_polar(
+            client_and_db,
+            CESSNA_172,
+            fit_succeeds=False,
+            fake_rejection_kwargs=dict(
+                gate="negative_slope_k",
+                category="design",
+                fitted_value=-0.001,
+                threshold="k > 0",
+                hint="Polare zeigt …",
+            ),
+        )
+        assert ctx is not None
+        pbc = ctx.get("polar_by_config", {})
+        clean = pbc.get("clean", {})
+        assert clean.get("rejection") is not None
+        assert clean["rejection"]["gate"] == "negative_slope_k"
+        assert clean["rejection"]["category"] == "design"
 
     def test_min_drag_speed_uses_cached_e(self, client_and_db):
         """v_md_mps in context is computed with fitted e (not hardcoded 0.8).

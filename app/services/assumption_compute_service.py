@@ -134,7 +134,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
     # of the fallback constant 0.8.
     aspect_ratio = _main_wing_aspect_ratio(asb_airplane)
     cl_max_effective_for_fit = _load_effective_assumption(db, aircraft.id, "cl_max")
-    _cd0_fit, e_oswald_fit, e_r2, _polar_rejection = _fit_parabolic_polar(
+    _cd0_fit, e_oswald_fit, e_r2, polar_rejection = _fit_parabolic_polar(
         np.asarray(sweep_cl_arr, dtype=float),
         np.asarray(sweep_cd_arr, dtype=float),
         ar=aspect_ratio if aspect_ratio is not None else 0.0,
@@ -157,6 +157,7 @@ def recompute_assumptions(db: Session, aeroplane_uuid) -> None:
         e_oswald_quality=_classify_polar_quality(e_r2) if e_r2 is not None else "unknown",
         flap_deflection_deg=0.0,
         provenance="aerobuildup",
+        rejection=polar_rejection,
     )
 
     ted_max = _extract_flap_ted_max(aircraft)
