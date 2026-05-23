@@ -5,7 +5,6 @@ from __future__ import annotations
 from types import ModuleType
 
 import pytest
-from fastapi.testclient import TestClient
 
 
 # ---------------------------------------------------------------------------
@@ -35,10 +34,10 @@ def _make_fake_vsp(geoms: list[dict] | None = None, name: str = "Empty") -> Modu
 
 
 @pytest.fixture
-def client():
-    from app.main import create_app
-
-    return TestClient(create_app())
+def client(client_and_db):
+    """Reuse the shared client_and_db fixture (in-memory SQLite + lifespan)."""
+    cl, _session_factory = client_and_db
+    return cl
 
 
 # ---------------------------------------------------------------------------
