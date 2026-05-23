@@ -549,7 +549,7 @@ def _run_polar_for_deflection(
     cl_max, cl_arr, cd_arr, _v_arr = _fine_sweep_cl_max(
         deflected, stall_alpha, v_cruise, v_max, config
     )
-    _cd0_fit, e_oswald_fit, e_r2, _polar_rejection = _fit_parabolic_polar(
+    _cd0_fit, e_oswald_fit, e_r2, polar_rejection = _fit_parabolic_polar(
         np.asarray(cl_arr, dtype=float),
         np.asarray(cd_arr, dtype=float),
         ar=aspect_ratio if aspect_ratio is not None else 0.0,
@@ -564,6 +564,7 @@ def _run_polar_for_deflection(
         e_oswald_quality=_classify_polar_quality(e_r2) if e_r2 is not None else "unknown",
         flap_deflection_deg=float(flap_deflection_deg),
         provenance="aerobuildup",
+        rejection=polar_rejection,
     )
 
 

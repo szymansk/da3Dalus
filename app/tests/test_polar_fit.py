@@ -457,6 +457,166 @@ class TestCachedContextIntegration:
         assert clean["rejection"]["gate"] == "negative_slope_k"
         assert clean["rejection"]["category"] == "design"
 
+    def _run_recompute_with_flap_fake(
+        self,
+        client_and_db,
+        ac: dict,
+        clean_succeeds: bool = True,
+        landing_succeeds: bool = True,
+        landing_rejection_kwargs: dict | None = None,
+    ):
+        """Helper: run recompute_assumptions with per-config control over polar outcomes.
+
+        Exercises the real ``_run_polar_for_deflection`` code path (takeoff +
+        landing configs) by patching ``_extract_flap_ted_max`` to return 30.0
+        and ``_detect_first_flap_name`` to return a synthetic flap name.
+
+        ``_fit_parabolic_polar`` is patched with a call-order side_effect:
+          1st call (clean) → success tuple.
+          2nd call (takeoff, δ=15°) → success tuple.
+          3rd call (landing, δ=30°) → rejection tuple when
+            ``landing_succeeds=False`` and ``landing_rejection_kwargs`` provided.
+
+        This exercises the real ``_run_polar_for_deflection`` so that the
+        production fix (threading ``rejection`` through the constructor) is
+        actually tested.
+        """
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        from app.schemas.polar_by_config import PolarRejection
+        from app.services.assumption_compute_service import recompute_assumptions
+        from app.services.design_assumptions_service import seed_defaults
+        from app.tests.conftest import make_aeroplane
+        from app.models.aeroplanemodel import AeroplaneModel
+
+        _, SessionLocal = client_and_db
+
+        with SessionLocal() as db:
+            aeroplane = make_aeroplane(db)
+            seed_defaults(db, str(aeroplane.uuid))
+            db.commit()
+            aeroplane_uuid = str(aeroplane.uuid)
+            aeroplane_id = aeroplane.id
+
+        fake_wing = SimpleNamespace(
+            area=lambda: ac["s_ref_m2"],
+            mean_aerodynamic_chord=lambda: math.sqrt(ac["s_ref_m2"] / ac["ar"]),
+            span=lambda: math.sqrt(ac["s_ref_m2"] * ac["ar"]),
+        )
+        # fake_airplane must support .with_control_deflections() so that the
+        # real _run_polar_for_deflection doesn't raise AttributeError before
+        # reaching _fit_parabolic_polar.
+        fake_airplane = SimpleNamespace(
+            wings=[fake_wing],
+            xyz_ref=[0.08, 0.0, 0.0],
+            s_ref=ac["s_ref_m2"],
+            c_ref=math.sqrt(ac["s_ref_m2"] / ac["ar"]),
+            b_ref=math.sqrt(ac["s_ref_m2"] * ac["ar"]),
+        )
+        # Return a copy of itself so deflected airplane works with the mocked sweeps.
+        fake_airplane.with_control_deflections = lambda _deflections: fake_airplane
+
+        cls, cds = _make_synthetic_polar(ac["cd0"], ac["e"], ac["ar"], ac["cl_max"])
+        mac_val = float(fake_wing.mean_aerodynamic_chord())
+        v_arr = np.linspace(12.0, 28.0, len(cls))
+
+        # Build the ordered list of returns for _fit_parabolic_polar.
+        # Order: 1=clean, 2=takeoff, 3=landing.
+        if not landing_succeeds and landing_rejection_kwargs is not None:
+            landing_rejection = PolarRejection(**landing_rejection_kwargs)
+            landing_fit_return = (None, None, None, landing_rejection)
+        else:
+            landing_fit_return = (0.05, 0.72, 0.95, None)
+
+        fake_fit_returns = [
+            (ac["cd0"], ac["e"], 0.98, None),    # 1st call: clean (success)
+            (0.04, 0.78, 0.97, None),             # 2nd call: takeoff (success)
+            landing_fit_return,                   # 3rd call: landing
+        ]
+
+        def _fit_side_effect(*args, **kwargs):
+            return fake_fit_returns.pop(0)
+
+        common_patches = [
+            patch(
+                "app.services.assumption_compute_service._build_asb_airplane",
+                return_value=fake_airplane,
+            ),
+            patch(
+                "app.services.assumption_compute_service._stability_run_at_cruise",
+                return_value=(0.085, mac_val, ac["cd0"], ac["s_ref_m2"]),
+            ),
+            patch(
+                "app.services.assumption_compute_service._coarse_alpha_sweep",
+                return_value=15.0,
+            ),
+            patch(
+                "app.services.assumption_compute_service._fine_sweep_cl_max",
+                return_value=(ac["cl_max"], cls, cds, v_arr),
+            ),
+            patch(
+                "app.services.assumption_compute_service._extract_cl_alpha_from_linear_sweep",
+                return_value=5.7,
+            ),
+            patch(
+                "app.services.assumption_compute_service._load_flight_profile_speeds",
+                return_value=(18.0, 28.0, True),
+            ),
+            patch(
+                "app.services.assumption_compute_service._extract_flap_ted_max",
+                return_value=30.0,
+            ),
+            patch(
+                "app.services.assumption_compute_service._detect_first_flap_name",
+                return_value="[flap]_main",
+            ),
+            patch(
+                "app.services.assumption_compute_service._fit_parabolic_polar",
+                side_effect=_fit_side_effect,
+            ),
+        ]
+
+        with (
+            common_patches[0],
+            common_patches[1],
+            common_patches[2],
+            common_patches[3],
+            common_patches[4],
+            common_patches[5],
+            common_patches[6],
+            common_patches[7],
+            common_patches[8],
+        ):
+            with SessionLocal() as db:
+                recompute_assumptions(db, aeroplane_uuid)
+                db.commit()
+
+        with SessionLocal() as db:
+            a = db.query(AeroplaneModel).filter_by(id=aeroplane_id).first()
+            return a.assumption_computation_context
+
+    def test_polar_landing_rejection_independent_of_clean(self, client_and_db):
+        """Landing-config fit failure attaches rejection only to polar_by_config['landing'],
+        leaving 'clean' (and 'takeoff') unaffected."""
+        ctx = self._run_recompute_with_flap_fake(
+            client_and_db,
+            CESSNA_172,
+            clean_succeeds=True,
+            landing_succeeds=False,
+            landing_rejection_kwargs=dict(
+                gate="unphysical_e_oswald",
+                category="design",
+                fitted_value=1.12,
+                threshold="(0.4, 1.0]",
+                hint="e=1.12 außerhalb (0.4, 1.0].",
+            ),
+        )
+        pbc = ctx["polar_by_config"]
+        assert pbc["clean"]["rejection"] is None
+        assert pbc["landing"]["rejection"]["gate"] == "unphysical_e_oswald"
+        assert pbc["landing"]["rejection"]["category"] == "design"
+
     def test_min_drag_speed_uses_cached_e(self, client_and_db):
         """v_md_mps in context is computed with fitted e (not hardcoded 0.8).
 
